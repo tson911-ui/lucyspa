@@ -900,19 +900,13 @@ Points:
 
 ### 18.3 Point Expiry
 
-Use rolling expiration per earned lot.
+Current Lucy Spa rule: **loyalty points never expire.**
 
-Current rule:
+Once points are earned after an eligible `PAID` transaction, they remain in the customer account indefinitely until redeemed or reversed through a valid adjustment/refund/reversal.
 
-**Each earned point lot expires 365 days after it is earned.**
+There is **no automatic expiration, annual reset, or rolling expiry** for loyalty points.
 
-Example:
-
-`+500 points on 15/09/2026 → expires 15/09/2027`.
-
-Keep ledger history after expiry.
-
-Do not delete expired point transactions.
+Keep the complete points ledger history permanently. Do not delete historical point transactions.
 
 ### 18.4 Manual Adjustments
 
@@ -2173,7 +2167,7 @@ Use server/domain services for critical operations, such as:
 -   Invoice calculation.
 -   Discount application.
 -   Payment reconciliation.
--   Point earning/expiration.
+-   Point earning/redemption/adjustment.
 -   Referral reward.
 -   Combo consumption/restoration.
 -   Reward issuance/redemption.
@@ -2273,7 +2267,6 @@ Examples:
 -   KTV Start/End warning: initial `5 minutes`.
 -   OTP expiration/rate limits.
 -   Base loyalty conversion: initial `1,000 VND = 1 point`.
--   Point expiry: initial `365 days`.
 -   Birthday multiplier: initial `2× base points`.
 -   Cash float target: initial `1,000,000 VND`.
 -   Low-stock threshold.
@@ -2674,7 +2667,7 @@ requirement baseline:
 
   Base loyalty                        1 point / 1,000 VND eligible spend
 
-  Point expiry                        365 days per earned lot
+  Point expiry                        No expiry
 
   Birthday points                     +100% bonus = 2× base points
 
