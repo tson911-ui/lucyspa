@@ -1,0 +1,9 @@
+LUCY_SPA_PRD.md
+pnpm-lock.yaml
+node_modules
+dist
+.next
+coverage
+.local
+packages/database/src/generated
+**/next-env.d.ts

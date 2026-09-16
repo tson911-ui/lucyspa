@@ -1,0 +1,45 @@
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  runtime                = "nodejs"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Branch identity only. Operating rules and authorization arrive in later phases.
+model Branch {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code         String        @unique
+  name         String
+  timezone     String        @default("Asia/Ho_Chi_Minh")
+  isActive     Boolean       @default(true) @map("is_active")
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  outboxEvents OutboxEvent[]
+
+  @@map("branches")
+}
+
+// Durable event envelope, written in the originating business transaction.
+// Publication/consumer behavior is deliberately deferred. Retain event history.
+model OutboxEvent {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId      String?   @map("branch_id") @db.Uuid
+  branch        Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  aggregateType String    @map("aggregate_type")
+  aggregateId   String    @map("aggregate_id")
+  eventType     String    @map("event_type")
+  schemaVersion Int       @default(1) @map("schema_version")
+  payload       Json      @db.JsonB
+  occurredAt    DateTime  @default(now()) @map("occurred_at") @db.Timestamptz(3)
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(3)
+
+  @@index([publishedAt, occurredAt, id], map: "outbox_events_pending_idx")
+  @@index([branchId], map: "outbox_events_branch_id_idx")
+  @@map("outbox_events")
+}

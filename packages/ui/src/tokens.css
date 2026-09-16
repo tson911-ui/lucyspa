@@ -1,0 +1,12 @@
+/* Provisional branding tokens. Replace after Owner supplies final brand assets. */
+:root {
+  --lucy-red: #782b36;
+  --lucy-gold: #b69456;
+  --lucy-gold-light: #e9d6aa;
+  --lucy-ivory: #faf7f1;
+  --lucy-ink: #382c2c;
+  --lucy-muted: #726261;
+  --lucy-border: #e5dcd2;
+  --lucy-font-display: Georgia, 'Times New Roman', serif;
+  --lucy-font-body: Arial, Helvetica, sans-serif;
+}

@@ -1,0 +1,36 @@
+name: Phase 0 checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/setup@v2
+        with:
+          version: 12.4.2
+          runtime: node@24.20.0
+          cache: true
+          install: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm env:init
+      - run: docker compose up -d --wait
+      - run: pnpm db:validate
+      - run: pnpm db:deploy
+      - run: pnpm db:status
+      - run: pnpm check
+      - run: pnpm test:integration
+      - run: pnpm smoke
+      - name: Stop local infrastructure
+        if: always()
+        run: docker compose down

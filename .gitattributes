@@ -1,0 +1,5 @@
+* text=auto eol=lf
+LUCY_SPA_PRD.md -text
+*.png binary
+*.jpg binary
+*.ico binary

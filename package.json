@@ -1,0 +1,50 @@
+{
+  "name": "lucy-spa",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=24.20.0 <25",
+    "pnpm": "12.4.2"
+  },
+  "scripts": {
+    "env:init": "node scripts/init-env.mjs",
+    "dev": "pnpm build:server && pnpm -r --parallel --filter \"./apps/*\" --fail-if-no-match run dev",
+    "dev:web": "pnpm --filter @lucy-spa/web dev",
+    "dev:api": "pnpm build:server && pnpm --filter @lucy-spa/api dev",
+    "dev:worker": "pnpm build:server && pnpm --filter @lucy-spa/worker dev",
+    "build:server": "pnpm db:generate && pnpm -r --filter \"./packages/*\" --fail-if-no-match run --if-present build",
+    "build": "pnpm db:generate && pnpm -r run --if-present build",
+    "typecheck": "pnpm build:server && pnpm -r run --if-present typecheck",
+    "lint": "eslint . --max-warnings 0 && node scripts/check-boundaries.mjs",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "test": "pnpm build:server && pnpm --filter @lucy-spa/api build && pnpm --filter @lucy-spa/worker build && pnpm -r run --if-present test",
+    "test:integration": "pnpm build:server && pnpm --filter @lucy-spa/database test:integration",
+    "smoke:worker": "pnpm --filter @lucy-spa/worker smoke",
+    "smoke": "node scripts/smoke.mjs",
+    "infra:up": "docker compose up -d --wait",
+    "infra:down": "docker compose down",
+    "infra:status": "docker compose ps",
+    "db:generate": "pnpm --filter @lucy-spa/database generate",
+    "db:validate": "pnpm --filter @lucy-spa/database validate",
+    "db:migrate": "pnpm --filter @lucy-spa/database migrate:dev",
+    "db:deploy": "pnpm --filter @lucy-spa/database migrate:deploy",
+    "db:status": "pnpm --filter @lucy-spa/database migrate:status",
+    "db:seed": "pnpm --filter @lucy-spa/database seed",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@next/eslint-plugin-next": "16.3.5",
+    "@types/node": "^24.0.0",
+    "eslint": "10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.5.0",
+    "prettier": "3.9.6",
+    "tsx": "^4.20.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.0"
+  }
+}

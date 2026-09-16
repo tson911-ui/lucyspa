@@ -1,0 +1,36 @@
+{
+  "name": "@lucy-spa/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc-watch -p tsconfig.json --onSuccess \"node --env-file-if-exists=../../.env dist/main.js\"",
+    "start": "node --env-file-if-exists=../../.env dist/main.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test \"dist/**/*.test.js\""
+  },
+  "dependencies": {
+    "@lucy-spa/contracts": "workspace:*",
+    "@lucy-spa/database": "workspace:*",
+    "@lucy-spa/server": "workspace:*",
+    "@nestjs/common": "11.2.5",
+    "@nestjs/core": "11.2.5",
+    "@nestjs/platform-express": "11.2.5",
+    "@nestjs/swagger": "11.4.7",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.14.2",
+    "ioredis": "5.8.2",
+    "pino": "10.3.1",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
+  },
+  "devDependencies": {
+    "@lucy-spa/config": "workspace:*",
+    "@nestjs/testing": "11.2.5",
+    "@types/express": "5.0.3",
+    "@types/supertest": "6.0.3",
+    "supertest": "7.2.2",
+    "tsc-watch": "7.2.1"
+  }
+}
