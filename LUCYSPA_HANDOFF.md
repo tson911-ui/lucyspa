@@ -3,25 +3,33 @@
 ## Start here: next fresh agent/session
 
 1. Read **all of [LUCY_SPA_PRD.md](LUCY_SPA_PRD.md)**, this handoff, and [README.md](README.md).
-   The current PRD is authoritative; do not modify it. Apply the Owner's explicit
-   non-expiring loyalty instruction despite stale expiry references elsewhere in the PRD.
+   The current PRD is authoritative for product requirements; change it only with
+   explicit Owner authorization. Use its current locked rules, including the two
+   independent, non-expiring loyalty wallets summarized below.
 2. Inspect `git status`, `git log`, `git diff`, the repository, and existing untracked
    files before changing anything. Preserve completed work; do not scaffold again.
 3. Check the latest user authorization and relevant runtime state. Reuse verified
    results below when code is unchanged; rerun checks affected by changes or failures.
-4. Do not start Phase 1 without explicit Owner approval. Do not commit, push, change
+4. Phase 1 Step 1 design is complete; Step 2 implementation requires separate explicit
+   Owner authorization after document review. Do not commit, push, change
    Git remotes, expose secrets, or install unrelated system software without authorization.
 
 ## Current phase and Git state
 
-- **Phase 0: PASS. Phase 1 has not started; approval is pending.**
-- Branch `main`; HEAD `8da1cee` (`docs: make loyalty points non-expiring`), reported
-  up to date with `origin/main`. Earlier commit: `97a4f7c` (initial PRD).
-- Phase 0 added **72 untracked files**; this handoff is the 73rd. Nothing is staged.
-  Tracked-file `git diff`/`git diff --stat` are empty because implementation is untracked.
-- No implementation commit or push was made; Git remote configuration is unchanged.
-- PRD bytes remain unchanged. Verified SHA-256:
-  `C9D3142FD4867112F081931DD690BD996758883CA571D256AEFB004420542AA4`.
+- **Phase 0: PASS, committed and pushed. Phase 1 Step 1 design is complete;
+  Step 2 has NOT started.** No Phase 1 schema or migration has been created.
+- Read-only Git inspection on 2026-09-23: branch `main`; HEAD and the local
+  `origin/main` reference are both `807ed8c` (`feat: complete Phase 0 foundation`).
+  The push was verified in the earlier inspection; no remote query was made during
+  this documentation update. Current Git inspection overrides older handoff snapshots.
+- [Phase 1 auth/security design](docs/PHASE1_AUTH_SECURITY_DESIGN.md) is the completed
+  Step 1 design artifact. It remains untracked and unchanged by this update.
+- The pre-existing `apps/web/next-env.d.ts` diff changes two generated type imports
+  from `.next/types/` to `.next/dev/types/`. It was previously identified as automatic
+  Next.js development output and is preserved untouched; it is not Phase 1 work.
+- The current authorized update changes only this handoff and `LUCY_SPA_PRD.md` to
+  record the Owner's locked business rules and current project status. No files are
+  staged, committed or pushed, and no application implementation is part of it.
 
 ## Architecture and structure
 
@@ -54,7 +62,11 @@ scripts/        Environment setup, package-boundary checks, runtime smoke checks
 
 ## Infrastructure and database
 
-- Last runtime verification: Docker Engine 29.8.0 / Compose 5.5.1; PostgreSQL
+The following records the previous 2026-09-16/17 verification, not a new runtime or
+environment check. No services, migrations, seeds or `.env` inspection were run
+during the current documentation update.
+
+- Previous runtime verification: Docker Engine 29.8.0 / Compose 5.5.1; PostgreSQL
   `17-alpine` and Redis `7.4-alpine` both healthy. Loopback ports: 5432 and 6379.
 - Named volumes preserve data. Redis uses AOF and `noeviction`. Docker stopped
   between interrupted sessions; restoring the Engine/services resolved connection
@@ -69,7 +81,10 @@ scripts/        Environment setup, package-boundary checks, runtime smoke checks
   No Owner/users/business settings were seeded; integration fixtures rolled back.
 - Temporary smoke-test app processes were stopped; use `pnpm dev` for local review.
 
-## Verified Phase 0 results
+## Previously verified Phase 0 results
+
+These results were recorded during the 2026-09-16/17 verification and have not been
+rerun for this documentation-only update.
 
 | Validation                                                        | Result                                                                                |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
@@ -83,13 +98,16 @@ scripts/        Environment setup, package-boundary checks, runtime smoke checks
 | Git whitespace and credential-file review                         | PASS; no local credentials in the 72 implementation files                             |
 
 Checks completed across interrupted sessions, not one uninterrupted `pnpm check` run.
+The subsequent pushed Phase 0 commit also had a successful GitHub Actions run,
+[run 35068715168](https://github.com/tson911-ui/lucyspa/actions/runs/35068715168),
+verified earlier in the conversation; its current remote status was not rechecked here.
 Root commands `pnpm check`, `pnpm test:integration`, and `pnpm smoke` remain the
 documented verification entry points. Do not repeat expensive unchanged checks solely
 because a new session starts.
 
 ## Known non-blocking limitations
 
-- GitHub Actions is configured but has not run remotely; nothing has been pushed.
+- No new runtime or CI verification was needed or performed for this documentation update.
 - Transitive `cron-parser@4.9.0` emits a deprecation warning.
 - No business jobs, outbox dispatcher, production deployment, backup/restore setup
   or launch hardening yet; these remain later-phase work.
@@ -106,11 +124,37 @@ because a new session starts.
 - Financial/operational history is preserved; corrections use valid adjustments,
   voids or reversals. No destructive ledger deletion or retroactive recalculation.
 - Service/combo refunds are not allowed. Combos currently have no expiry.
-- **Loyalty points NEVER expire:** no 365-day expiry, annual reset or rolling expiry.
-  Earned points remain indefinitely until redeemed or validly reversed/adjusted;
-  preserve complete historical point ledger records permanently.
-- Base earning: 1 point per 1,000 VND eligible paid spend. Exact-birthday earning:
-  2× base points. Tips earn no points; points cannot transfer or pay part of an invoice.
+- **Spa Points and Beauty Points are separate wallets:** no transfer, merging or
+  conversion to cash or partial invoice payment. Both never expire or reset;
+  preserve complete ledger history. Spa Points cover eligible services/combos;
+  Beauty Points cover eligible cosmetics. Award whole points after successful
+  payment at 1 point per 1,000 VND eligible amount actually paid after discounts
+  and vouchers; tips are excluded and the same spend must not earn twice.
+  Mixed-invoice allocation and fractional remainders remain unspecified; do not invent them.
+- Each wallet independently uses its current valid balance for membership tiers:
+  0–499: no member discount; Silver 500–999: 3%; Gold 1,000–2,999: 4%;
+  Platinum 3,000–4,999: 5%; Diamond 5,000–9,999: 7%; Ruby 10,000+: 9%.
+  Member discounts spend zero points and use the tier before the transaction.
+- Ordinary promotions and member discounts do not stack. Automatically apply the
+  financially better eligible benefit and show staff which benefit was selected.
+- Birthday benefits are Owner-configured by type, value, eligibility, scope,
+  conditions and stacking; there is no automatic birthday point multiplier. If a fixed
+  birthday voucher is configured to stack with membership, apply the member
+  discount first, then the voucher, then calculate points. A 50,000 VND voucher is
+  an example, not a default.
+- Referral reward is fixed: referrer A receives **10 Spa Points AND 10 Beauty Points**
+  once when genuinely new customer B completes successful registration, the first
+  qualifying spa service visit and payment of the first qualifying transaction.
+  Invoice value does not change this reward. Never claw back A's referral bonus if
+  B's transaction is later refunded/reversed. Phone identifies the permanent referrer.
+- Eligible combo purchases may receive the Spa member discount even when bonus
+  sessions are included. Earn Spa Points once on the paid purchase; session use
+  earns zero additional points. Newly paid extras follow normal earning rules.
+- Preserve the existing product-return policies. For a fault exchange, a replacement
+  with higher relevant value earns Beauty Points only on the eligible additional
+  paid/value difference; same/lower relevant values preserve original points without duplicate earning
+  or reduction. A true refund reverses attributable purchase points through ledger
+  adjustments and may lower the tier; the referrer's fixed bonus remains protected.
 - Free bonus-combo/reward/gift services generate no KTV tour compensation.
 - KTV cannot set arbitrary service/product prices. Enforce permissions, branch scope
   and sole-Owner protections server-side; hiding UI controls is insufficient.
@@ -119,11 +163,13 @@ because a new session starts.
 
 ## Exact next step and Owner inputs
 
-**Wait for explicit approval to begin Phase 1.** After approval, perform the read/inspect
-sequence above, confirm the inputs below, and present a focused implementation plan
-for PRD Phase 1: customer registration, email OTP, login/logout, password reset,
-Owner bootstrap, employee accounts, roles/permissions, Owner protection and audit
-foundation. Extend the existing architecture; do not implement later-phase workflows.
+**Review the updated PRD, this handoff and the completed Step 1 design, then wait for
+separate explicit authorization for Step 2.** No schema, migration or application
+implementation is authorized by this documentation update. The Phase 1 scope remains
+customer registration, email OTP, login/logout, password reset, Owner bootstrap,
+employee accounts, roles/permissions, Owner protection and audit foundation. Extend
+the existing architecture when authorized; the locked loyalty/combo/promotion rules
+remain later-phase requirements, not permission to implement them now.
 
 Important inputs before relevant Phase 1 work:
 
@@ -132,7 +178,10 @@ Important inputs before relevant Phase 1 work:
   obtain credentials securely when needed, never through committed files.
 - Initial branch name/code and staff scope if creating real branch/employee records.
 
-Later-phase inputs remain unresolved: final branding/service data, reward/referral
-formulas, tour/salary/commission rates, product prices/stock, campaign stacking,
-payment credentials, hosting/storage, and Future/TBD shipping/tax/integration policies.
-These are not permission to invent defaults or expand Phase 1 scope.
+Later-phase inputs remain unresolved: final branding/service data, configured reward
+catalog items/thresholds, birthday benefit configuration, campaign-specific eligibility
+and values, mixed-invoice point allocation and fractional-remainder handling,
+tour/salary/commission rates, product prices/stock, payment credentials, hosting/storage,
+and Future/TBD shipping/tax/integration policies. The fixed referral formula and ordinary
+promotion/member-discount selection rule are now resolved. Missing inputs are not
+permission to invent defaults or expand Phase 1 scope.

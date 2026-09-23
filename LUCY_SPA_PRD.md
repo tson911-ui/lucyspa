@@ -92,8 +92,8 @@ V1 includes:
 -   Cash, PayOS-ready and split-payment architecture.
 -   Discounts/vouchers.
 -   Combos.
--   Loyalty points.
--   Birthday point multiplier.
+-   Independent Lucy Spa and Lucy Beauty loyalty points and membership tiers.
+-   Configurable Birthday Rewards / Birthday Vouchers.
 -   Referrals.
 -   Reward catalog/entitlements.
 -   Product catalog and variants.
@@ -268,7 +268,7 @@ Customer can view relevant:
 -   Booking history.
 -   Service history.
 -   Payment/invoice history.
--   Points balance/history.
+-   Separate Lucy Spa and Lucy Beauty point balances/history and current tiers.
 -   Combo balance/history.
 -   Rewards.
 -   Referral information.
@@ -382,7 +382,7 @@ Suggested fields:
 -   Active status.
 -   Eligible skills.
 -   Tour configuration.
--   Point eligibility.
+-   Lucy Spa point eligibility for eligible paid service amounts.
 -   Branch availability where applicable.
 
 ### 8.2 Initial Internal Duration Rules
@@ -674,6 +674,8 @@ Before payment, show:
 -   Product seller attribution.
 -   Combo/reward usage.
 -   Discounts/vouchers.
+-   Applicable pre-transaction Spa/Beauty membership tier and selected benefit,
+    visible to staff so they can explain the choice to the customer.
 -   Tips.
 -   Payment breakdown.
 -   Total.
@@ -693,9 +695,20 @@ historical integrity, including as applicable:
 -   Tour amount/rule result.
 -   Commission amount/rule result.
 -   Employee attribution.
+-   Applicable Spa/Beauty wallet, valid pre-transaction balance and tier.
+-   Applied tier threshold/discount rule and result, selected ordinary promotion,
+    and any configured Birthday Reward/Voucher and stacking/calculation result.
+-   Eligible amount actually paid attributed to each wallet and related point
+    awards/adjustments, with references needed to reconstruct their origin.
 
 Future configuration changes must not retroactively alter historical
 records.
+
+In particular, later changes to tier thresholds, discount percentages,
+promotion configuration or Birthday Reward configuration must not rewrite
+completed financial or loyalty facts. Preserve the applied rule/version and
+result as appropriate; corrections use linked adjustments, not recalculation
+of finalized history.
 
 ### 14.3 Invoice Statuses
 
@@ -793,6 +806,33 @@ permission.
 
 Discount application must be audited when sensitive/manual.
 
+### 16.1 Ordinary Promotions and Member Discounts
+
+Ordinary eligible promotions and Member Discounts **do not stack**. When
+more than one ordinary eligible discount is available, automatically apply
+the financially better eligible benefit for the customer, considering its
+applicable scope and conditions. Staff must see which benefit was selected
+so they can explain and advise the customer. Do not charge the customer a
+less favorable eligible discount merely because staff did not select one.
+
+Use the appropriate Lucy Spa or Lucy Beauty tier from the customer's valid
+balance **before** the transaction earns points (section 18). Member
+Discounts do not consume points. Do not add service-specific Member
+Discount caps/exclusions or Beauty monetary caps that contradict this
+shared tier model; honor the configured eligibility of the transaction.
+
+Example: Diamond provides 7%, while an eligible sale provides 15%.
+On 500,000 VND, apply the 15% sale only: `500,000 → 425,000 VND paid`.
+The corresponding wallet earns 425 points after successful payment.
+Not using the Member Discount does not itself change the customer's tier.
+If the eligible sale is 5% and the Member Discount is 7%, select the 7%
+Member Discount instead.
+
+Birthday Rewards are handled separately under section 19. They are not
+automatically ordinary promotions, nor automatically stackable with every
+promotion. Ambiguous mixed-invoice allocation or valuation of unlike
+benefits must not be invented to choose a discount.
+
 ------------------------------------------------------------------------
 
 ## 17. Service Combos / Packages
@@ -818,7 +858,8 @@ Owner can configure:
 -   Bonus sessions.
 -   Package price.
 -   Active status.
--   Point eligibility/rules if needed.
+-   Eligible purchase configuration, subject to the fixed earning-once rule
+    in section 17.7; usage cannot earn the purchase points again.
 -   Expiry mode.
 
 Current Lucy Spa rule: **combos have no expiry**.
@@ -872,23 +913,78 @@ does **not** generate service tour compensation.
 Only a service for which the customer is actually charged under the
 applicable paid-service rule generates tour compensation.
 
+### 17.7 Combo Purchase: Member Discount and Points
+
+Customers may receive their applicable **Lucy Spa Member Discount** on an
+eligible combo purchase, including combos with included promotional
+sessions such as buy 10/get 2 or buy 5/get 1. Included bonus sessions do not
+disqualify the purchase from that Member Discount. Any competing ordinary
+eligible discount follows section 16.1; it does not stack with the Member
+Discount.
+
+Use the Lucy Spa tier determined before this purchase earns new points.
+Award Spa points **once**, after the combo purchase is successfully paid,
+from the eligible amount actually paid after discounts/vouchers.
+
+Example: eligible combo price 1,000,000 VND, Diamond 7% Member Discount,
+930,000 VND actually paid → **930 Lucy Spa points**.
+
+Later consumption of any prepaid combo session earns **0 new points**.
+Included free/gift sessions also earn no additional points. Preserve the
+existing no-expiry, family-use, adjustment and no-tour-on-free-session rules.
+
+### 17.8 Extra Services During a Combo Visit
+
+An additional service purchased outside the prepaid combo is a new eligible
+paid service. Apply the applicable Lucy Spa Member/Promotion rules and
+award Spa points from the eligible amount actually paid for that extra
+service. The consumed prepaid combo session still earns no new points.
+
+Example: a customer uses one prepaid session and adds an eligible
+200,000 VND service. Combo usage earns 0 points; the extra service follows
+normal discount, successful payment and point-earning rules.
+
 ------------------------------------------------------------------------
 
-## 18. Loyalty Points
+## 18. Loyalty Points and Membership
+
+Each customer has two independent balances:
+
+-   **Lucy Spa Points:** eligible Lucy Spa services and Spa-side activity.
+-   **Lucy Beauty Points:** eligible Lucy Beauty product/cosmetic purchases
+    and Beauty-side activity.
+
+The balances cannot be merged or transferred between Spa and Beauty.
+Each balance independently determines its membership tier. A customer may
+be Diamond in Lucy Spa and Gold in Lucy Beauty at the same time. The two
+wallets are business distinctions, not a substitute for branch scope.
 
 ### 18.1 Base Earning Rule
 
 Current rule:
 
-**1,000 VND eligible spend = 1 point**
+**1,000 VND of eligible amount actually paid = 1 point.**
 
-Cosmetic purchases also earn base points.
+Use **whole points only**. Award purchase points only after successful
+`PAID` payment, based on the eligible amount actually paid after applicable
+discounts/vouchers. **Tips earn no points.**
 
-Award points only after successful `PAID` transaction.
+Attribute eligible Spa service/combo amounts to Lucy Spa Points and
+eligible Beauty product/cosmetic amounts to Lucy Beauty Points. Other
+explicitly authorized activity awards must identify their wallet; the
+fixed referral award in section 20 credits both independently.
 
-Calculate on eligible amount actually paid after discount.
+Do not award points twice for the same paid amount, including payment
+retries, split-payment processing, replacement of already-paid products
+or consumption of prepaid combo sessions. Additional eligible exchange
+amounts follow section 28.5.
 
-**Tips are excluded.**
+For mixed invoices, preserve attribution to the corresponding eligible
+portions. Do not invent allocation of shared discounts/vouchers or
+payments between Spa and Beauty where no rule is established. Fractional
+remainders and rounding/aggregation boundaries not specified here require
+an explicit rule before implementation; no fractional points or assumed
+carry-forward policy may be introduced.
 
 ### 18.2 Points Are Not Currency
 
@@ -897,16 +993,27 @@ Points:
 -   Cannot directly reduce invoice amount.
 -   Cannot be combined with money as partial payment.
 -   Cannot be transferred between customer accounts.
+-   Cannot be transferred between Spa and Beauty or merged.
+-   Cannot be converted into cash.
+
+**Member Discounts do not spend or deduct points.** There is no normal
+workflow for selecting and redeeming a point milestone for a Member
+Discount, and no one-milestone-per-transaction rule. Points continue
+accumulating; a valid refund/correction can change the balance as described
+below. A membership benefit is a tier entitlement, not point currency.
 
 ### 18.3 Point Expiry
 
-Current Lucy Spa rule: **loyalty points never expire.**
+**Lucy Spa Points and Lucy Beauty Points never expire.**
 
-Once points are earned after an eligible `PAID` transaction, they remain in the customer account indefinitely until redeemed or reversed through a valid adjustment/refund/reversal.
+Valid earned points remain indefinitely. Member benefit usage does not
+reduce them. Only applicable authorized adjustments/refunds/reversals
+change awarded balances; the referral retention exception in section 20.4
+must also be respected.
 
-There is **no automatic expiration, annual reset, or rolling expiry** for loyalty points.
-
-Keep the complete points ledger history permanently. Do not delete historical point transactions.
+There is **no automatic expiration, annual reset or rolling expiry** in
+either wallet. Keep complete historical point ledger records permanently.
+Voucher/reward validity periods and inventory expiry are separate concepts.
 
 ### 18.4 Manual Adjustments
 
@@ -916,44 +1023,105 @@ manually.
 Require:
 
 -   Amount.
+-   Wallet (Lucy Spa or Lucy Beauty).
 -   Reason.
 -   Actor.
 -   Timestamp.
 -   Audit log.
 
-Prefer ledger adjustments rather than overwriting balance.
+Use compensating ledger entries, never overwrite the balance or delete,
+mutate or rewrite the original point event. Preserve the original
+transaction/event, linked adjustment, reason, authorized actor, timestamp
+and reference to the original event where appropriate. Prevent duplicate
+correction/refund adjustments for the same effect.
+
+Example: staff mistakenly confirms payment and `+500` points are awarded.
+An authorized manager corrects it through a linked `-500` adjustment.
+Both entries remain auditable. A cancelled/incorrect transaction does not
+erase its history or create an ordinary service/combo refund workflow.
+
+Recalculate the current valid balance and tier in the affected wallet
+after an adjustment. A threshold crossing can decrease that tier. Keep the
+other wallet independent and do not claw back a referrer's protected
+introduction award because the referred transaction was later reversed.
 
 ### 18.5 Membership Tiers
 
-Architecture may support configurable tiers such as:
+Use the **same locked table independently for Lucy Spa and Lucy Beauty**:
 
--   Member.
--   Silver.
--   Gold.
--   Diamond.
+| Current valid points in the corresponding wallet | Membership tier | Member Discount |
+| --- | --- | --- |
+| 0–499 | No membership tier discount | 0% |
+| 500–999 | Silver | 3% |
+| 1,000–2,999 | Gold | 4% |
+| 3,000–4,999 | Platinum | 5% |
+| 5,000–9,999 | Diamond | 7% |
+| 10,000+ | Ruby | 9% |
 
-Tier activation/business thresholds can be deferred/configured later.
+Use the spelling **Diamond**. These are membership tiers derived from the
+current valid point balance, not point-spending/redemption milestones.
+Member Discounts use the corresponding wallet's tier and do not deduct
+points. Refund/correction-driven tier decreases are allowed. Do not
+invent treatment of an adjustment that would make a balance negative.
+
+### 18.6 Tier and Point Timing for a Transaction
+
+1.  Read the customer's valid balance in the corresponding wallet before
+    the transaction earns points.
+2.  Determine that wallet's membership tier.
+3.  Determine the applicable eligible discount/promotion, following
+    sections 16 and 19.
+4.  Calculate the final eligible amount actually paid.
+5.  Complete payment successfully.
+6.  Award the transaction's points to the corresponding wallet once.
+7.  Recalculate balance/tier for future transactions.
+
+Crossing a threshold during this transaction does **not** retroactively
+change its discount. A transaction that does not use the Member Discount
+does not by that fact reduce the customer's tier.
+
+Example: 980 Lucy Spa points → Silver 3%. An eligible 100,000 VND service
+becomes 97,000 VND after the Member Discount. Successful payment earns
+97 Spa points. The new balance is 1,077 (Gold); Gold 4% applies from the
+next eligible transaction, not this completed one.
+
+Snapshot the applied balance/tier, benefit rules/results and eligible
+paid amounts so later configuration or balance changes cannot rewrite
+the transaction (section 14.2).
 
 ------------------------------------------------------------------------
 
 ## 19. Birthday Rewards
 
-Current birthday point rule:
+Birthday does **not** automatically multiply loyalty points. Use
+Owner-configurable **Birthday Rewards / Birthday Vouchers** instead.
 
-**Base points + 100% birthday bonus = 2× base points.**
+A configured benefit may be a fixed monetary discount, percentage
+discount, free service, gift or another supported configurable benefit.
+Owner controls its actual type, value, eligibility, Spa/Beauty scope,
+validity/conditions and permitted combinations. Do not invent a fixed
+reward, birthday eligibility period or usage limit when not configured.
 
-Example:
+A Birthday Reward may be configured to combine with a Member benefit.
+It does not automatically stack with every Member benefit or ordinary
+promotion: follow the configured eligibility and stacking rules. A missing
+combination rule must not be inferred as permission to stack.
 
-`500,000 VND eligible spend → 500 base + 500 birthday bonus = 1,000 points`.
+When a configured fixed monetary Birthday Voucher is allowed to combine
+with a Member Discount, use this order:
 
-Birthday bonus applies **only on the customer's date of birth**.
+`Original eligible amount → Member Discount → Birthday Voucher → final eligible amount actually paid → points`
 
-Do not apply it on other days.
+Example only: original eligible amount 500,000 VND; Diamond 7% gives
+465,000 VND; an explicitly configured, combinable 50,000 VND Birthday
+Voucher leaves 415,000 VND actually paid and earns 415 points in the
+corresponding wallet. **50,000 VND is an example, not a global default or
+fixed birthday benefit.** The award follows normal earning from the final
+eligible amount; free/gift benefits do not create an additional paid amount.
 
-Other birthday gifts must be configurable in Dashboard.
-
-If future abuse-prevention limits are desired (e.g. one invoice/day),
-they must be configured explicitly rather than invented.
+Preserve the applied Birthday Reward configuration/result with the
+historical transaction. Other reward/voucher types follow their configured
+rules, not an assumed fixed-voucher calculation.
 
 ------------------------------------------------------------------------
 
@@ -987,14 +1155,39 @@ referred by A.
 
 ### 20.3 Reward Trigger
 
-Referrer receives referral reward only from each referred customer's
-**first eligible successful paid transaction**.
+Let **A** be the referrer and **B** the referred customer. Award A only
+after all of these conditions are satisfied:
 
-There is no ongoing lifetime reward from every future purchase by that
-referred customer.
+-   B is genuinely a **new customer**, coming to Lucy Spa for the first time.
+-   B successfully registers.
+-   B completes their first qualifying service/customer visit.
+-   Payment for that first qualifying transaction completes successfully.
 
-The exact eligible transaction categories/reward formula should be
-configurable and must not be guessed if not configured.
+A then receives the fixed reward **+10 Lucy Spa points AND +10 Lucy Beauty
+points**, once for that referred customer B. These are two independent
+credits, not a transfer or conversion between wallets.
+
+The size/value of B's invoice or points earned does not increase A's award.
+Whether B pays 100,000 VND, 500,000 VND or 5,000,000 VND for that qualifying
+first visit, A receives only +10 Spa and +10 Beauty points. Product purchase
+alone does not replace the first qualifying completed Spa visit condition.
+B's second and later visits/transactions never generate additional referral
+points for A. Enforce the genuinely-new and one-time conditions; do not
+invent additional referral limits.
+
+The existing phone identifier, permanent referrer relationship and referral
+chain behavior remain. Each link must independently satisfy the same new
+customer/first-visit/registration/payment conditions.
+
+### 20.4 Referral Reward Retention
+
+If B's qualifying transaction is later refunded or reversed, **do not claw
+back A's already-earned +10 Spa and +10 Beauty introduction award**. It
+rewards successful new-customer introduction and remains with A.
+
+Keep this award distinguishable from purchase points attributable to B's
+payment, which follow applicable refund/correction rules. This retention
+exception does not permit ordinary service/combo refunds (section 29).
 
 ------------------------------------------------------------------------
 
@@ -1002,7 +1195,7 @@ configurable and must not be guessed if not configured.
 
 Keep these domains separate:
 
--   Loyalty Points.
+-   Lucy Spa Points and Lucy Beauty Points (independent balances/tiers).
 -   Combo Sessions.
 -   Vouchers.
 -   Reward Gifts/Entitlements.
@@ -1029,6 +1222,12 @@ A reward entitlement should track:
 
 Do not mix a free service entitlement into the points balance.
 
+Reward/voucher redemption means use of the configured entitlement; it is
+separate from membership benefits and does not itself authorize deducting
+loyalty points. Member Discounts never require point redemption. A reward's
+configured expiry does not cause either point balance to expire. Do not
+invent a point-priced reward program from the existence of this catalog.
+
 ------------------------------------------------------------------------
 
 ## 22. Cosmetic Promotions
@@ -1050,16 +1249,23 @@ Campaign configuration should support:
 -   First-purchase condition if configured.
 -   Minimum eligible spend.
 -   Start/end.
--   Bonus points.
+-   Bonus points and the corresponding wallet where explicitly configured.
 -   Reward entitlement.
 -   Usage limit.
 -   Customer usage limit.
 -   Active status.
--   Priority/stacking policy.
+-   Benefit eligibility/selection and combination rules consistent with
+    sections 16.1 and 19.
 
-If campaign stacking or whether displayed points are "bonus" vs "total"
-has not been configured, the system must require an explicit rule rather
-than infer one.
+Ordinary promotional discounts compete with the corresponding Member
+Discount: automatically select the financially better eligible discount
+and do not stack them. Configured bonus/gift benefits must not silently
+override that rule. Birthday combinations follow section 19 separately.
+
+For campaign details still unresolved, including whether displayed points
+are "bonus" versus "total", gift/bonus combinations or valuation of unlike
+benefits, require an explicit rule rather than infer one. The ordinary
+discount-versus-Member selection rule is already locked, not a TBD.
 
 ------------------------------------------------------------------------
 
@@ -1286,20 +1492,65 @@ respond.
 The software should record the case and evidence; it should not attempt
 medical diagnosis.
 
-### 28.4 Return Accounting
+### 28.4 Return Accounting and History
 
-When an approved product refund/return occurs, reverse/adjust as
-applicable:
+Record whether the Lucy Beauty case is a **product-fault exchange** or a
+**refund**; their point effects differ under sections 28.5 and 28.6. Preserve
+the seal/packaging, 48-hour, photo/evidence and shipping-cost policies above.
+The product-fault customer-care exception does not automatically extend to
+unrelated voluntary returns or grant a new refund eligibility window.
 
--   Money.
--   Base points.
--   Bonus points.
--   Reward entitlement.
--   Product commission.
--   Stock, only if item is actually eligible to return to sellable
-    inventory.
+Reverse/adjust money, product commission and configured reward entitlements
+as applicable under their existing policies; record stock effects. Return
+stock to sellable inventory only if the item is actually eligible. Do not
+infer an exchange refund/payment policy merely from the point examples below.
 
-Create audit history.
+Keep original purchases, point awards, exchanges, refunds and their linked
+adjustments auditable. Do not delete or rewrite finalized history. Campaign
+point adjustments must be attributable to the refunded amount under the
+configured rule; the protected referral award to A is never clawed back
+because B's qualifying transaction was refunded/reversed (section 20.4).
+
+### 28.5 Product-Fault Exchange: Lucy Beauty Points
+
+For an eligible exchange resolving a product fault/problem:
+
+-   **Higher relevant replacement value:** retain the original purchase
+    points and award additional Beauty points only on the eligible
+    additional paid/value difference, at the normal earning rate.
+-   **Same relevant value:** retain the original points; award no duplicate
+    points for the replacement.
+-   **Lower relevant value:** retain the original points. Do not deduct
+    them merely because the replacement is cheaper; this is customer-care
+    handling of the product incident.
+
+Examples: an eligible original 500,000 VND purchase earns 500 Beauty
+points. A 600,000 VND replacement earns an additional 100 Beauty points
+where the eligible additional amount is 100,000 VND. A same-value
+replacement earns no additional points. A 400,000 VND replacement retains
+the original 500 points. Do not award again on the original paid portion
+or assume list-price difference is always an eligible additional amount.
+
+These rules concern fault exchanges, not the point reversal required for
+a transaction actually refunded under section 28.6.
+
+### 28.6 Product Refund: Lucy Beauty Point Reversal
+
+An eligible refund follows the applicable product return/refund policy.
+Reverse the points attributable to the refunded amount through a linked
+compensating adjustment in the Beauty wallet. Preserve the original award.
+
+Example: an eligible 800,000 VND purchase earns 800 Beauty points. A full
+eligible refund of 800,000 VND creates this retained historical sequence:
+
+`PURCHASE +800 → REFUND_ADJUSTMENT -800`
+
+Recalculate the valid Beauty balance and tier after the adjustment. For
+example, 5,200 points (Diamond) minus 800 becomes 4,400 (Platinum).
+Refund-driven tier decreases are allowed. Spa balance/tier is independent.
+For partial refunds, use the attributable original paid amount/point
+history; do not invent allocation or fractional-point reversal rules when
+the necessary policy is not established.
 
 ------------------------------------------------------------------------
 
@@ -1799,7 +2050,9 @@ Audit at least:
 -   Tour changes.
 -   Commission changes.
 -   Payroll adjustments/closing.
--   Manual point adjustments.
+-   Manual point adjustments, including wallet-specific corrections/refund
+    adjustments and their original-event references.
+-   Membership tier/discount, promotion and Birthday Reward configuration changes.
 -   Voucher/discount changes.
 -   Product returns/refunds.
 -   Inventory receipts/adjustments.
@@ -1894,8 +2147,10 @@ cover at least:
 
 ### Loyalty
 
--   `PointLedger`
--   `PointLot` or equivalent expiration-aware ledger
+-   Independent Lucy Spa / Lucy Beauty point balances and derived membership tiers.
+-   `PointLedger`, attributable to its wallet and originating paid amount/activity.
+-   `PointLot` or equivalent historical earning-source grouping if useful;
+    it must not introduce point expiration or spending for Member Discounts.
 -   `Referral`
 -   `RewardDefinition`
 -   `RewardEntitlement`
@@ -1965,9 +2220,18 @@ Examples:
 -   Positive monetary/quantity constraints where appropriate.
 -   Prevent negative stock unless explicit controlled override exists.
 -   Prevent double package consumption.
--   Prevent duplicate point award for same event.
--   Prevent duplicate referral reward for same referred customer's first
-    eligible event.
+-   Prevent duplicate point awards for the same eligible paid amount/activity,
+    including retries, split payments, fault exchanges and prepaid combo usage.
+-   Preserve independent Spa/Beauty balances and pre-transaction tier selection.
+-   Prevent Member Discount usage from consuming points.
+-   Enforce ordinary promotion/Member non-stacking and best eligible discount;
+    apply Birthday Reward combinations only as configured.
+-   Prevent duplicate referral awards: exactly +10 Spa AND +10 Beauty points
+    once after the genuinely new referred customer's first qualifying registered,
+    completed and successfully paid Spa visit. Preserve that referrer's award
+    if the referred transaction is later refunded/reversed.
+-   Link point refund/correction adjustments to original events, preventing
+    duplicate reversal effects and recalculating the affected current tier.
 -   Prevent duplicate PayOS webhook/payment application.
 -   Prevent KTV accepting next service while current service remains
     active.
@@ -1990,6 +2254,10 @@ floating-point monetary arithmetic.
 
 Do not use JavaScript floating point for authoritative financial
 calculations.
+
+Loyalty balances and awards use whole points. Keep wallet attribution and
+applied financial/point results reconstructable; do not invent unspecified
+rounding, fractional carry or mixed-invoice allocation policies.
 
 ### 43.2 Time
 
@@ -2097,7 +2365,7 @@ Exact URLs are implementation details, but organize the product clearly.
 -   Booking.
 -   My bookings.
 -   My visits/invoices.
--   My points.
+-   My Spa/Beauty point balances, histories and independent membership tiers.
 -   My combos.
 -   My rewards.
 -   My referrals.
@@ -2167,8 +2435,10 @@ Use server/domain services for critical operations, such as:
 -   Invoice calculation.
 -   Discount application.
 -   Payment reconciliation.
--   Point earning/redemption/adjustment.
--   Referral reward.
+-   Wallet-specific point earning/adjustment and membership tier calculation.
+-   Pre-transaction tier and best eligible discount selection, including
+    configured Birthday Reward combination rules.
+-   Fixed one-time +10 Spa AND +10 Beauty referral reward.
 -   Combo consumption/restoration.
 -   Reward issuance/redemption.
 -   Inventory reservation/movement.
@@ -2252,6 +2522,12 @@ UI code.
 
 Avoid awarding points/commission twice if an event is retried.
 
+Loyalty events must identify the corresponding wallet, source activity/paid
+amount and applicable historical rule/result. Refund/correction events
+reference the original event. A combo usage event must not award its purchase
+points again; a refund of B's qualifying transaction must not reverse A's
+protected referral introduction award.
+
 ------------------------------------------------------------------------
 
 ## 51. Configuration Registry
@@ -2266,14 +2542,23 @@ Examples:
 -   Late-cancel alert threshold: initial `15 minutes`.
 -   KTV Start/End warning: initial `5 minutes`.
 -   OTP expiration/rate limits.
--   Base loyalty conversion: initial `1,000 VND = 1 point`.
--   Birthday multiplier: initial `2× base points`.
+-   Base loyalty conversion: `1,000 VND eligible amount actually paid = 1 whole point`.
+-   Membership tier thresholds/discounts: the same locked table in section 18.5,
+    evaluated independently for Spa and Beauty; benefits never consume points.
+-   Ordinary promotion eligibility and best-discount selection under section 16.1.
+-   Birthday Reward/Voucher type, value, eligibility, scope, conditions and
+    combinations under section 19; no automatic birthday point multiplier.
 -   Cash float target: initial `1,000,000 VND`.
 -   Low-stock threshold.
 -   Expiry-warning days.
 -   Notification channel settings.
 
 Sensitive configuration changes require permissions and audit logs.
+
+The current tier table and fixed referral award are locked requirements,
+not missing formulas to guess. Any later Owner-authorized changes to rules
+must retain applied historical versions/results. No setting may silently
+enable point expiry or make Member Discounts consume points.
 
 ------------------------------------------------------------------------
 
@@ -2346,9 +2631,21 @@ High-priority automated test areas:
 -   Start/End state enforcement.
 -   Invoice totals.
 -   Split payment reconciliation.
--   Point earning and 365-day expiration.
--   Birthday 2× points.
--   Referral one-time reward.
+-   Independent Spa/Beauty earning, balances and tiers; points remain valid
+    indefinitely, with no automatic expiry or reset.
+-   Every boundary in the locked tier table, including Platinum and Ruby;
+    Member Discounts never spend points.
+-   Pre-transaction tier selection and future-only upgrades after earning;
+    adjustment/refund-driven tier decreases.
+-   Best eligible ordinary promotion versus Member Discount without stacking,
+    with staff-visible benefit selection.
+-   Configurable Birthday Rewards, explicit stacking and Member-then-fixed-voucher
+    calculation; no automatic point multiplier or fixed 50,000 VND reward.
+-   Fixed referral +10 Spa AND +10 Beauty once after genuine-new-customer,
+    registration, first qualifying completed visit and successful payment;
+    no invoice-value scaling, later-visit rewards or refund clawback of A's award.
+-   Eligible combo Member Discount and purchase earning once; usage/free sessions
+    earn zero; separately paid extras follow normal rules.
 -   Combo consumption.
 -   No tour for free entitlement.
 -   Tour versioning.
@@ -2356,6 +2653,9 @@ High-priority automated test areas:
 -   Inventory movements.
 -   Stock reservation.
 -   Product return reversals.
+-   Product-fault exchange retention for same/lower value and eligible additional
+    Beauty earning for higher value, distinct from actual-refund reversals.
+-   Linked compensating point corrections preserving original events and tiers.
 -   Cash closing.
 -   Payroll locking.
 -   Audit logging.
@@ -2449,15 +2749,21 @@ Deliver:
 
 Deliver:
 
--   Points ledger.
--   365-day expiration.
--   Birthday bonus.
--   Referral.
+-   Independent, non-expiring Spa/Beauty point balances and permanent ledgers.
+-   Shared membership tier table applied separately per wallet; no point spending
+    for Member Discounts and correct pre-transaction tier timing.
+-   Best eligible ordinary discount selection without promotion/Member stacking.
+-   Configurable Birthday Rewards/Vouchers and explicit combination rules.
+-   Fixed one-time +10 Spa AND +10 Beauty introduction award with retention
+    after the referred transaction is refunded/reversed.
 -   Reward catalog.
 -   Reward entitlements.
 -   Combo definitions.
 -   Combo ownership/family usage.
--   Adjustments.
+-   Eligible combo purchase Member Discount and points once; no usage earning;
+    extra paid services follow normal rules.
+-   Linked point adjustments and recalculated current balance/tier, preserving
+    history and the product-fault/refund distinctions when those flows arrive.
 
 ### Phase 6 --- Products and Inventory
 
@@ -2474,6 +2780,8 @@ Deliver:
 -   Lot/expiry.
 -   Low-stock alerts.
 -   Returns.
+-   Beauty product-fault exchange versus actual-refund point effects under
+    sections 28.5-28.6, integrated with the Phase 5 ledgers and tiers.
 
 ### Phase 7 --- Compensation and Cash
 
@@ -2619,8 +2927,10 @@ eventually need:
 -   Product cost/list/promotional prices.
 -   Initial stock.
 -   Suppliers.
--   Reward catalog thresholds/items.
--   Campaign rules.
+-   Reward catalog issuance thresholds/items, separate from membership tiers.
+-   Actual Birthday Reward/Voucher configuration and supported combination rules.
+-   Campaign-specific eligibility, values and unresolved benefit details within
+    the locked ordinary promotion/Member selection rule.
 -   PayOS account/credentials.
 -   Transaction bank configuration.
 -   Email provider/domain.
@@ -2639,77 +2949,49 @@ values.
 Unless Owner explicitly changes them, the following are the current
 requirement baseline:
 
-  -----------------------------------------------------------------------
-  Rule                                Current Value
-  ----------------------------------- -----------------------------------
-  Business hours                      09:00--21:00
-
-  Lunch break                         None
-
-  Booking hold for late arrival       20 minutes
-
-  Late cancellation manager alert     \<15 minutes before booking
-
-  KTV Start/End warning               5 minutes
-
-  KTV may accept next customer before No
-  current End                         
-
-  KTV may enter arbitrary service     No
-  price                               
-
-  Price authority                     Owner / authorized high-level
-                                      manager
-
-  Combo expiry                        No expiry
-
-  Service/combo refund                No
-
-  Base loyalty                        1 point / 1,000 VND eligible spend
-
-  Point expiry                        No expiry
-
-  Birthday points                     +100% bonus = 2× base points
-
-  Birthday period                     Exact birthday date only
-
-  Referral identifier                 Customer phone number
-
-  Referrer relationship               Permanent
-
-  Referral earning                    First eligible paid transaction per
-                                      referred customer
-
-  Cosmetics earn base points          Yes
-
-  Tip earns points                    No
-
-  Points transferable                 No
-
-  Points usable as partial cash       No
-  payment                             
-
-  Free combo/reward service earns KTV No
-  tour                                
-
-  Product prices imported from source No
-  site automatically                  
-
-  Product importer writes directly to No
-  live catalog without review         
-
-  Initial cash float target           1,000,000 VND, configurable
-
-  KTV cash withdrawal permission      No
-
-  Multi-branch architecture           Yes, from V1
-
-  Online product shipping             Future/TBD
-
-  Zalo                                Future/integration phase
-
-  Physical payment speaker            Future/integration-specific
-  -----------------------------------------------------------------------
+| Rule | Current value |
+| --- | --- |
+| Business hours / lunch break | 09:00--21:00 / none |
+| Booking hold for late arrival | 20 minutes |
+| Late cancellation manager alert | Less than 15 minutes before booking |
+| KTV Start/End warning | 5 minutes |
+| KTV may accept next customer before current End | No |
+| KTV may enter arbitrary service price | No |
+| Price authority | Owner / authorized high-level manager |
+| Combo expiry | No expiry |
+| Service/combo refund | No |
+| Point balances | Independent Lucy Spa Points and Lucy Beauty Points |
+| Base earning in each wallet | 1 whole point / 1,000 VND eligible amount actually paid after discounts/vouchers; award after successful payment |
+| Point expiry | Never; no automatic reset or rolling expiry |
+| Tier thresholds and percentages | Same locked table in section 18.5, applied independently to each wallet |
+| Tier for a transaction | Valid balance before the transaction earns points; no retroactive discount upgrade |
+| Member Discount consumes points | No; no milestone-spending workflow |
+| Ordinary promotion versus Member Discount | Automatically select the financially better eligible discount; do not stack; show staff the selection |
+| Birthday benefit | Owner-configured reward/voucher type, value, eligibility, scope, period/conditions and combinations; no automatic point multiplier |
+| Fixed Birthday Voucher allowed with Member Discount | Apply Member Discount, subtract configured voucher, then earn from final eligible paid amount; 50,000 VND is only an example |
+| Referral identifier / relationship | Customer phone number / permanent |
+| Referral qualification | Genuinely new customer, first Spa visit, successful registration, first qualifying service/customer visit completed and paid |
+| Referral award | +10 Spa AND +10 Beauty points to A once per qualifying B; independent of invoice value; no later-visit award |
+| Referral award after B refund/reversal | A keeps the already-earned introduction award |
+| Combo purchase | Applicable Spa Member Discount allowed on eligible combos, including included bonus sessions; earn Spa points once on successful paid purchase |
+| Combo session consumption | No new points, including free/gift sessions |
+| Extra service outside a combo | Normal applicable Spa discount/payment/point rules on the newly paid service |
+| Beauty product-fault exchange | Retain original points; add only eligible higher-value difference points; same/lower value does not duplicate/reduce points |
+| Beauty actual refund | Reverse attributable points through a linked adjustment; current Beauty tier may decrease |
+| Incorrect payment/point award | Authorized compensating adjustment with reason, actor, time and original-event reference; recalculate balance/tier |
+| Cosmetics earn base points | Yes, in Lucy Beauty Points |
+| Tips earn points | No |
+| Point transfer / merging / conversion to cash | No, including between Spa and Beauty or between customers |
+| Points usable as partial payment | No |
+| Free combo/reward service earns KTV tour | No |
+| Source-site product prices adopted automatically | No |
+| Importer writes directly to live catalog without review | No |
+| Initial cash float target | 1,000,000 VND, configurable |
+| KTV cash withdrawal permission | No |
+| Multi-branch architecture | Yes, from V1 |
+| Online product shipping | Future/TBD |
+| Zalo | Future/integration phase |
+| Physical payment speaker | Future/integration-specific |
 
 ------------------------------------------------------------------------
 
@@ -2732,13 +3014,25 @@ The following are intentionally unresolved and must not be invented:
 -   Final product commissions.
 -   Final product prices.
 -   Final product stock.
--   Exact cosmetic campaign thresholds/stacking until configured.
--   Exact referral eligible transaction categories/reward formula until
-    configured.
+-   Exact cosmetic campaign thresholds, bonus/gift details and permitted
+    combinations not already fixed by section 16.1.
+-   Actual Birthday Reward/Voucher type, value, eligibility, scope,
+    validity/conditions and combination rules until configured.
+-   Ambiguous mixed-invoice discount/voucher/payment allocation between
+    Spa and Beauty, including partial-refund point attribution.
+-   Fractional-point remainder, rounding/aggregation boundaries or carry
+    handling where the whole-point rule does not determine a result.
+-   Treatment of a valid reversal exceeding the current point balance,
+    already-consumed campaign benefits, and valuation of unlike promotional
+    benefits where no applicable rule is established.
 -   Public-vs-internal review publishing policy.
 -   Automatic attendance-based payroll deductions.
 -   Tax/e-invoice integration.
 -   Final hosting/storage providers.
+
+The membership table, ordinary best-discount/non-stacking rule and fixed
+one-time +10 Spa AND +10 Beauty referral reward are resolved locked rules,
+not TBD formulas. Do not change them while filling in unrelated details.
 
 ------------------------------------------------------------------------
 
@@ -2751,8 +3045,9 @@ at least these end-to-end scenarios:
 
 Customer registers → email OTP verifies → books multiple services →
 selects qualified KTV → receives confirmation → arrives → staff marks
-arrived → KTV Starts/Ends → invoice created → customer pays → points
-awarded → invoice visible.
+arrived → KTV Starts/Ends → invoice uses the pre-transaction Spa tier and
+applicable benefit → customer pays → Spa points awarded once from eligible
+paid service amount → future tier updated → invoice visible.
 
 ### Scenario B --- Busy KTV
 
@@ -2770,36 +3065,49 @@ cannot be assigned until End/authorized resolution.
 
 Member owns non-expiring service combo → relative provides owner's phone
 → staff finds correct owner → records relative use → consumes one
-correct service session → no tour generated for free bonus entitlement →
-history remains auditable.
+correct service session → no new points at usage time → no tour generated
+for free bonus entitlement → history remains auditable.
 
 ### Scenario E --- Product Sale
 
 KTV sells product → system uses configured price → KTV cannot change
-price → stock decreases → base points awarded after payment → seller
-commission recorded → invoice snapshots values.
+price → best eligible ordinary discount selected using the pre-transaction
+Beauty tier → stock decreases → Beauty points awarded once from eligible
+paid amount → seller commission recorded → invoice snapshots applied rules/results.
 
 ### Scenario F --- Birthday
 
-Eligible customer pays 500,000 VND on exact birthday → receives 500 base
-points + 500 birthday bonus → point lots carry 365-day expiration.
+Owner configures a fixed Birthday Voucher that is eligible to combine with
+membership. Example configuration only: original eligible amount 500,000
+VND, Diamond 7% → 465,000 VND; configured 50,000 VND voucher → 415,000 VND
+paid → 415 points in the corresponding wallet. No automatic point
+multiplier. Changing the configured type/value/conditions changes future
+eligible behavior without rewriting this transaction; no benefit is
+assumed to stack without its configured rule.
 
 ### Scenario G --- Referral Chain
 
-A permanently refers B → B completes first eligible paid transaction → A
-receives configured one-time referral reward → B later refers C → B can
-receive C's first-transaction referral reward.
+A permanently refers B → verify B is genuinely new, successfully registered
+and on their first qualifying completed/paid Spa visit → A receives exactly
++10 Spa AND +10 Beauty points once, regardless of B's invoice value.
+B's later visits give A no further referral award; later refund/reversal
+of B's qualifying transaction does not claw back A's award. B may later
+refer C and receive the same fixed award only when C independently meets
+all those conditions.
 
 ### Scenario H --- Inventory Count Difference
 
 System stock 20 → physical count 19 → authorized manager records -1
 adjustment with reason → audit log created → no silent stock overwrite.
 
-### Scenario I --- Product Return
+### Scenario I --- Lucy Beauty Refund
 
-Eligible cosmetic return approved → return/refund recorded → applicable
-points/rewards/commission reversed → stock restored only if sellable →
-original financial history retained.
+Eligible 800,000 VND product refund approved under the retained return policy
+→ preserve original `PURCHASE +800` → create `REFUND_ADJUSTMENT -800`
+→ Beauty balance 5,200 (Diamond) becomes 4,400 (Platinum) → other applicable
+money/reward/commission effects recorded → stock restored only if sellable.
+Spa balance is unchanged; a referrer's protected introduction award remains.
+The original financial/point history is retained.
 
 ### Scenario J --- Product Import
 
@@ -2822,6 +3130,49 @@ recorded → system calculates expected cash → actual cash counted →
 discrepancy shown → authorized withdrawal leaves configured next-day
 float → closing locked/audited.
 
+### Scenario M --- Independent Tiers and Transaction Timing
+
+Customer has 980 Spa points (Silver). Eligible service 100,000 VND less 3%
+→ 97,000 VND paid → +97 Spa points → 1,077 Spa points (Gold). Gold 4% starts
+with the next eligible transaction. Beauty points/tier do not change.
+Both balances retain valid points indefinitely and neither Member benefit
+spends points. Another customer may simultaneously be Spa Diamond and
+Beauty Gold; each eligible portion uses its corresponding tier.
+
+### Scenario N --- Ordinary Promotion Selection
+
+Diamond 7% competes with an eligible 15% sale on 500,000 VND → automatically
+select 15% only → 425,000 VND paid → 425 points in the corresponding wallet.
+Staff can explain the selected benefit; not using the Member Discount does
+not lower the tier. Repeat with a 5% sale: choose the eligible 7% Member
+Discount, without stacking or point deduction.
+
+### Scenario O --- Combo Purchase, Usage and Extra Service
+
+Eligible 1,000,000 VND combo includes promotional sessions. Diamond 7%
+Member Discount is allowed → 930,000 VND paid → +930 Spa points once.
+Later paid/bonus prepaid session usage gives 0 new points. An additional
+eligible 200,000 VND service outside the combo follows normal Spa benefit
+selection/payment/earning on its actual paid amount. Combo remains
+non-expiring and free bonus/gift sessions generate no tour compensation.
+
+### Scenario P --- Lucy Beauty Product-Fault Exchange
+
+Original eligible 500,000 VND purchase earns +500 Beauty points. In an
+eligible fault exchange, a 600,000 VND replacement with an eligible
+100,000 VND additional amount earns only +100 more; a same-value replacement
+earns no more; a 400,000 VND replacement retains the original 500 points.
+None rewrites the original award. These are fault-exchange cases, not the
+actual-refund flow in Scenario I or a general voluntary-return exception.
+
+### Scenario Q --- Incorrect Payment Correction
+
+Staff mistakenly confirms a payment → +500 points recorded → authorized
+manager records linked -500 adjustment with reason, actor and timestamp
+→ original and correcting events remain visible → affected valid wallet
+balance/tier recalculated, including a decrease when below a threshold.
+No historical event is deleted or edited.
+
 ------------------------------------------------------------------------
 
 ## 63. Final Product Direction
@@ -2838,7 +3189,9 @@ capabilities:
 
 `Product → Inventory → Sale → Return`
 
-`Customer → Points/Referral/Combo/Reward`
+`Customer → Independent Spa/Beauty Points and Tiers → Membership Benefits`
+
+`Customer → Referral/Combo/Reward`
 
 `Branch → Employees/Bookings/Inventory/Cash/Reports`
 
