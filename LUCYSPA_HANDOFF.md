@@ -17,8 +17,10 @@
    [Step 4 report](docs/PHASE1_STEP4_REGISTRATION.md). Step 5 customer login/logout is
    committed and pushed (`2c3d0c2`); see the
    [Step 5 report](docs/PHASE1_STEP5_LOGIN_LOGOUT.md). Step 6 customer password reset is
-   implemented and awaiting review; read the
-   [Step 6 report](docs/PHASE1_STEP6_PASSWORD_RESET.md).
+   committed and pushed (`a89d147`); see the
+   [Step 6 report](docs/PHASE1_STEP6_PASSWORD_RESET.md). Step 7 permission engine and
+   catalog is implemented and awaiting review; read the
+   [Step 7 report](docs/PHASE1_STEP7_PERMISSION_ENGINE.md).
    Do not change Git remotes, expose secrets or
    install unrelated system software without authorization.
 
@@ -29,11 +31,13 @@
   Step 3 runtime foundation is committed and pushed (`a68f66a`). Step 4 customer
   registration/email OTP is committed and pushed (`bff1ddc`). Step 5 customer
   login/logout is committed and pushed (`2c3d0c2`). Step 6 customer password reset is
-  implemented, locally validated, uncommitted and awaiting review.**
+  committed and pushed (`a89d147`). Step 7 permission engine/catalog is implemented,
+  locally validated, uncommitted and awaiting review.**
   The [Step 3 report](docs/PHASE1_STEP3_AUTH_RUNTIME.md) and
   [Step 4 report](docs/PHASE1_STEP4_REGISTRATION.md) and
   [Step 5 report](docs/PHASE1_STEP5_LOGIN_LOGOUT.md) and
-  [Step 6 report](docs/PHASE1_STEP6_PASSWORD_RESET.md) record scope and validation.
+  [Step 6 report](docs/PHASE1_STEP6_PASSWORD_RESET.md) and
+  [Step 7 report](docs/PHASE1_STEP7_PERMISSION_ENGINE.md) record scope and validation.
   Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
@@ -187,9 +191,14 @@ because a new session starts.
 
 ## Exact next step and Owner inputs
 
-**Step 6 is implemented: review its
-[implementation report](docs/PHASE1_STEP6_PASSWORD_RESET.md); do not start Step 7 without
-separate authorization.** No Step 6 files have been staged, committed or pushed.
+**Step 7 is implemented: review its
+[implementation report](docs/PHASE1_STEP7_PERMISSION_ENGINE.md); do not start Step 8 without
+separate authorization.** No Step 7 files have been staged, committed or pushed.
+Approved remaining plan: Step 8 Owner bootstrap (interactive/stdin password) + workforce
+authentication; Step 9 workforce recovery; Step 10 employee lifecycle; Step 11 role/
+permission administration + audit read; Step 12 email dispatch/cleanup (provider
+deferred); Step 13 Phase 1 completion gate. Run `pnpm db:permissions:sync` explicitly
+(operator command, never on startup) before any grant can be created.
 Workforce login/recovery, recovery-email verification, logout-all, `/auth/me` and
 reauthentication remain unimplemented.
 Locally, run `pnpm auth:env:init` once to append the OTP and delivery key rings

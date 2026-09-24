@@ -4,3 +4,4 @@ await import('../apps/api/dist/auth/session.integration.test.js');
 await import('../apps/api/dist/auth/registration.integration.test.js');
 await import('../apps/api/dist/auth/login.integration.test.js');
 await import('../apps/api/dist/auth/password-reset.integration.test.js');
+await import('../apps/api/dist/authorization/authorization.integration.test.js');

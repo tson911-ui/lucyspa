@@ -21,3 +21,18 @@ export async function takeSharedAuthGraphLock(
     SELECT pg_advisory_xact_lock_shared(${AUTH_GRAPH_LOCK_NAMESPACE}::integer, ${AUTH_GRAPH_LOCK_KEY}::integer)::text
   `;
 }
+
+/**
+ * Security-graph writers (role, override, scope and grant-affecting changes) take this
+ * exclusive lock as the FIRST statement of their transaction, instead of the shared
+ * lock, so no authentication mutation can observe a partially applied graph. Never
+ * upgrade from a shared lock taken earlier in the same transaction.
+ */
+export async function takeExclusiveAuthGraphLock(
+  transaction: Prisma.TransactionClient,
+): Promise<void> {
+  assertAuthTransaction(transaction);
+  await transaction.$queryRaw`
+    SELECT pg_advisory_xact_lock(${AUTH_GRAPH_LOCK_NAMESPACE}::integer, ${AUTH_GRAPH_LOCK_KEY}::integer)::text
+  `;
+}

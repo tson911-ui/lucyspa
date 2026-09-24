@@ -3,6 +3,14 @@ import { PrismaClient } from './generated/prisma/client.js';
 
 export type { Prisma, Branch, OutboxEvent } from './generated/prisma/client.js';
 export { appendOutboxEvent, type AppendOutboxEventInput } from './outbox.js';
+export {
+  PERMISSION_CATALOG,
+  PermissionCatalogMismatchError,
+  syncPermissionCatalog,
+  type PermissionCatalogSyncResult,
+  type PermissionDefinition,
+} from './permission-catalog.js';
+export type { PermissionCode } from './generated/prisma/enums.js';
 
 export type DatabaseClient = PrismaClient;
 

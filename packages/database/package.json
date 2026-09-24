@@ -23,6 +23,7 @@
     "migrate:deploy": "prisma migrate deploy",
     "migrate:status": "prisma migrate status",
     "seed": "pnpm build && prisma db seed",
+    "permissions:sync": "pnpm build && node dist/sync-permissions.js",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:integration": "node --test dist/database.integration.test.js dist/auth-schema.integration.test.js"
