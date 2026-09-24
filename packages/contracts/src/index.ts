@@ -123,3 +123,97 @@ export interface RecoveryEmailVerifyRequest {
   flowToken: string;
   otp: string;
 }
+
+/** Employee lifecycle status. Owner and customers are never employee-administration targets. */
+export type EmployeeStatus = 'PENDING_SETUP' | 'ACTIVE' | 'INACTIVE';
+
+/**
+ * POST /api/v1/employees → 201 EmployeeResponse. Creates only PENDING_SETUP. No password,
+ * kind, status, verification flag or grant is accepted. `baseSalaryVnd` is a nonnegative
+ * integer decimal string; omitting it stores null (unknown), never zero.
+ */
+export interface EmployeeCreateRequest {
+  employeeId: string;
+  fullName: string;
+  /** Calendar date `YYYY-MM-DD`. */
+  dateOfBirth: string;
+  address: string;
+  phone: string;
+  /** Optional recovery email; stored unverified until the employee proves it. */
+  email?: string | null;
+  locale: PreferredLocale;
+  branchIds: string[];
+  baseSalaryVnd?: string | null;
+}
+
+/**
+ * The employee record visible to an authorized workforce actor. `baseSalaryVnd` is
+ * present only when VIEW_EMPLOYEE_PAY passes for every branch of the employee.
+ */
+export interface EmployeeResponse {
+  id: string;
+  employeeId: string;
+  fullName: string;
+  dateOfBirth: string;
+  address: string;
+  phone: string;
+  email: string | null;
+  emailVerified: boolean;
+  locale: PreferredLocale;
+  status: EmployeeStatus;
+  branchIds: string[];
+  /** Optimistic-concurrency version; send it back as `expectedVersion`. */
+  version: number;
+  baseSalaryVnd?: string | null;
+}
+
+/** POST /api/v1/employees/:id/profile. Contact identifiers and pay are excluded. */
+export interface EmployeeProfileUpdateRequest {
+  expectedVersion: number;
+  fullName?: string;
+  dateOfBirth?: string;
+  address?: string;
+  locale?: PreferredLocale;
+}
+
+/**
+ * POST /api/v1/employees/:id/status. INACTIVE from ACTIVE/PENDING_SETUP; ACTIVE only from
+ * INACTIVE, resulting in ACTIVE with a remaining credential, otherwise PENDING_SETUP.
+ */
+export interface EmployeeStatusChangeRequest {
+  expectedVersion: number;
+  status: 'ACTIVE' | 'INACTIVE';
+  reason: string;
+}
+
+/** POST /api/v1/employees/:id/scope: the complete resulting branch membership set. */
+export interface EmployeeScopeChangeRequest {
+  expectedVersion: number;
+  branchIds: string[];
+  reason: string;
+}
+
+/** POST /api/v1/employees/:id/base-salary; null clears it to unknown. No payroll math. */
+export interface EmployeeBaseSalaryRequest {
+  expectedVersion: number;
+  baseSalaryVnd: string | null;
+  reason: string;
+}
+
+/** POST /api/v1/employees/:id/setup; requires fresh password reauthentication. */
+export interface EmployeeSetupIssueRequest {
+  expectedVersion: number;
+  reason: string;
+}
+
+/** Returned once; hand over through the authorized secure channel. Never stored raw. */
+export interface EmployeeSetupIssueResponse {
+  setupToken: string;
+  expiresAt: string;
+}
+
+/** POST /api/v1/auth/employee-setup/complete → 204; no login cookie, sign in normally. */
+export interface EmployeeSetupCompleteRequest {
+  setupToken: string;
+  newPassword: string;
+}

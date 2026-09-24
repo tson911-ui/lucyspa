@@ -7,3 +7,4 @@ await import('../apps/api/dist/auth/password-reset.integration.test.js');
 await import('../apps/api/dist/authorization/authorization.integration.test.js');
 await import('../apps/api/dist/bootstrap/workforce-auth.integration.test.js');
 await import('../apps/api/dist/auth/workforce-recovery.integration.test.js');
+await import('../apps/api/dist/employees/employee.integration.test.js');

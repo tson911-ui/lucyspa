@@ -2,7 +2,7 @@ import type { Prisma } from '@lucy-spa/database';
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../platform/prisma.service.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
-import { takeSharedAuthGraphLock } from './auth-store.js';
+import { takeExclusiveAuthGraphLock, takeSharedAuthGraphLock } from './auth-store.js';
 import { AuthError } from './auth.error.js';
 import { capabilityDigest, constantTimeEqual, generateCapability } from './crypto.js';
 import {
@@ -44,6 +44,20 @@ export class SessionService {
   ): Promise<T> {
     return this.prisma.client.$transaction(async (transaction) => {
       await takeSharedAuthGraphLock(transaction);
+      return work(transaction);
+    });
+  }
+
+  /**
+   * Security-graph writers (membership/scope changes): the exclusive graph lock is the
+   * first statement, so no authentication mutation observes a partially applied graph.
+   * Later shared-lock requests by this same transaction are granted by PostgreSQL.
+   */
+  async withExclusiveTransaction<T>(
+    work: (transaction: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    return this.prisma.client.$transaction(async (transaction) => {
+      await takeExclusiveAuthGraphLock(transaction);
       return work(transaction);
     });
   }

@@ -5,6 +5,8 @@ import { AuthContextController } from './auth/auth-context.controller.js';
 import { AuthThrottleService } from './auth/auth-throttle.service.js';
 import { ContextThrottleService } from './auth/context-throttle.service.js';
 import { CsrfGuard } from './auth/csrf.guard.js';
+import { EmployeeSetupController } from './auth/employee-setup.controller.js';
+import { EmployeeSetupService } from './auth/employee-setup.service.js';
 import { LoginService } from './auth/login.service.js';
 import { PasswordResetController } from './auth/password-reset.controller.js';
 import { PasswordResetService } from './auth/password-reset.service.js';
@@ -15,6 +17,8 @@ import { RegistrationController } from './auth/registration.controller.js';
 import { RegistrationService } from './auth/registration.service.js';
 import { SessionAuthController } from './auth/session-auth.controller.js';
 import { SessionService } from './auth/session.service.js';
+import { EmployeeController } from './employees/employee.controller.js';
+import { EmployeeService } from './employees/employee.service.js';
 import { HealthController } from './health/health.controller.js';
 import { InfrastructureService } from './platform/infrastructure.service.js';
 import { API_ENVIRONMENT, API_LOGGER, type ApiEnvironment } from './platform/tokens.js';
@@ -32,6 +36,8 @@ export class AppModule {
         SessionAuthController,
         PasswordResetController,
         RecoveryEmailController,
+        EmployeeSetupController,
+        EmployeeController,
       ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },
@@ -45,6 +51,8 @@ export class AppModule {
         LoginService,
         PasswordResetService,
         RecoveryEmailService,
+        EmployeeSetupService,
+        EmployeeService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
       ],

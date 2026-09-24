@@ -326,7 +326,10 @@ export class PasswordResetService {
     });
   }
 
-  /** Lock order: identity, challenge row, then the User row; reread the locked state. */
+  /**
+   * Lock order: identity, the User row, then the challenge row; reread the locked state.
+   * User before challenge matches setup reissue, inactivation and recovery-email paths.
+   */
   private async lock(
     tx: Prisma.TransactionClient,
     digest: Buffer | null,
@@ -345,8 +348,8 @@ export class PasswordResetService {
       return null;
     }
     await lockIdentity(tx, this.environment.auth, PURPOSE, located.user.emailCanonical);
-    await tx.$queryRaw`SELECT id FROM auth_challenges WHERE id = ${located.id}::uuid FOR UPDATE`;
     await tx.$queryRaw`SELECT id FROM users WHERE id = ${located.userId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT id FROM auth_challenges WHERE id = ${located.id}::uuid FOR UPDATE`;
     const challenge = await tx.authChallenge.findUnique({
       where: { id: located.id },
       select: challengeSelect,

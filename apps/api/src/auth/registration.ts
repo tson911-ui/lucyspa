@@ -29,7 +29,8 @@ export interface RegistrationCandidate {
   locale: 'vi' | 'en';
 }
 
-function text(value: string, field: string, maxCodePoints: number): string {
+/** Trimmed NFC profile text without controls; also used for employee profiles. */
+export function text(value: string, field: string, maxCodePoints: number): string {
   // Reject lone surrogates and control characters, including CR/LF, before storage.
   if (/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(value)) {
     throw new AuthError('VALIDATION_FAILED', field);

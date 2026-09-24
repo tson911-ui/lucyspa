@@ -7,6 +7,9 @@ const errors = {
   AUTHENTICATION_REQUIRED: [401, 'Authentication required'],
   REQUEST_NOT_ALLOWED: [403, 'Request not allowed'],
   REAUTHENTICATION_REQUIRED: [403, 'Recent password confirmation required'],
+  FORBIDDEN: [403, 'Forbidden'],
+  NOT_FOUND: [404, 'Not found'],
+  CONFLICT: [409, 'Conflict'],
   SERVICE_UNAVAILABLE: [503, 'Service unavailable'],
   RATE_LIMITED: [429, 'Too many requests'],
 } as const;
