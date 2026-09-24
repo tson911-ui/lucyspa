@@ -9,7 +9,7 @@ const MAX_DELIVERY_ATTEMPTS = 5;
 const LEASE_MS = 30_000;
 const RETRY_BASE_MS = 15_000;
 
-export type AuthEmailPurpose = 'ACTIVATE_CUSTOMER';
+export type AuthEmailPurpose = 'ACTIVATE_CUSTOMER' | 'RESET_PASSWORD';
 
 /** Only the recipient and code needed for sending; decrypted by the delivery processor. */
 interface AuthEmailEnvelope {
@@ -42,6 +42,17 @@ export interface AuthEmailTransport {
 
 export function renderAuthEmail(message: AuthEmailMessage): { subject: string; text: string } {
   const minutes = 5;
+  if (message.purpose === 'RESET_PASSWORD') {
+    return message.locale === 'vi'
+      ? {
+          subject: 'Mã đặt lại mật khẩu Lucy Spa',
+          text: `Mã đặt lại mật khẩu Lucy Spa của bạn là ${message.code}. Mã có hiệu lực trong ${minutes} phút. Nếu bạn không yêu cầu, hãy bỏ qua email này; mật khẩu của bạn không thay đổi. Lucy Spa không bao giờ hỏi mã này qua điện thoại.`,
+        }
+      : {
+          subject: 'Your Lucy Spa password reset code',
+          text: `Your Lucy Spa password reset code is ${message.code}. It expires in ${minutes} minutes. If you did not request it, ignore this email; your password is unchanged. Lucy Spa never asks for this code by phone.`,
+        };
+  }
   return message.locale === 'vi'
     ? {
         subject: 'Mã xác minh Lucy Spa',
@@ -75,13 +86,14 @@ export async function enqueueAuthEmail(
     to: string;
     code: string;
     locale: 'vi' | 'en';
+    purpose?: AuthEmailPurpose;
   },
 ): Promise<string> {
   const { version, key } = keyRing(auth);
   const deliveryId = randomUUID();
   const envelope: AuthEmailEnvelope = {
     v: 1,
-    purpose: 'ACTIVATE_CUSTOMER',
+    purpose: input.purpose ?? 'ACTIVATE_CUSTOMER',
     to: input.to,
     code: input.code,
     locale: input.locale,
@@ -345,7 +357,7 @@ function parseEnvelope(plaintext: string): AuthEmailEnvelope | null {
   try {
     const value = JSON.parse(plaintext) as Partial<AuthEmailEnvelope>;
     return value.v === 1 &&
-      value.purpose === 'ACTIVATE_CUSTOMER' &&
+      (value.purpose === 'ACTIVATE_CUSTOMER' || value.purpose === 'RESET_PASSWORD') &&
       typeof value.to === 'string' &&
       typeof value.code === 'string' &&
       /^[0-9]{6}$/.test(value.code) &&

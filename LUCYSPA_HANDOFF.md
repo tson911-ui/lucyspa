@@ -15,8 +15,10 @@
    and pushed (`a68f66a`); see the [Step 3 report](docs/PHASE1_STEP3_AUTH_RUNTIME.md).
    Step 4 customer registration/email OTP is committed and pushed (`bff1ddc`); see the
    [Step 4 report](docs/PHASE1_STEP4_REGISTRATION.md). Step 5 customer login/logout is
+   committed and pushed (`2c3d0c2`); see the
+   [Step 5 report](docs/PHASE1_STEP5_LOGIN_LOGOUT.md). Step 6 customer password reset is
    implemented and awaiting review; read the
-   [Step 5 report](docs/PHASE1_STEP5_LOGIN_LOGOUT.md).
+   [Step 6 report](docs/PHASE1_STEP6_PASSWORD_RESET.md).
    Do not change Git remotes, expose secrets or
    install unrelated system software without authorization.
 
@@ -26,10 +28,12 @@
   Step 2 is reviewed, applied to the local database and verified PASS.
   Step 3 runtime foundation is committed and pushed (`a68f66a`). Step 4 customer
   registration/email OTP is committed and pushed (`bff1ddc`). Step 5 customer
-  login/logout is implemented, locally validated, uncommitted and awaiting review.**
+  login/logout is committed and pushed (`2c3d0c2`). Step 6 customer password reset is
+  implemented, locally validated, uncommitted and awaiting review.**
   The [Step 3 report](docs/PHASE1_STEP3_AUTH_RUNTIME.md) and
   [Step 4 report](docs/PHASE1_STEP4_REGISTRATION.md) and
-  [Step 5 report](docs/PHASE1_STEP5_LOGIN_LOGOUT.md) record scope and validation.
+  [Step 5 report](docs/PHASE1_STEP5_LOGIN_LOGOUT.md) and
+  [Step 6 report](docs/PHASE1_STEP6_PASSWORD_RESET.md) record scope and validation.
   Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
@@ -183,15 +187,16 @@ because a new session starts.
 
 ## Exact next step and Owner inputs
 
-**Step 5 is implemented: review its
-[implementation report](docs/PHASE1_STEP5_LOGIN_LOGOUT.md); do not start Step 6 without
-separate authorization.** No Step 5 files have been staged, committed or pushed.
-Workforce login, logout-all, `/auth/me` and reauthentication remain unimplemented.
+**Step 6 is implemented: review its
+[implementation report](docs/PHASE1_STEP6_PASSWORD_RESET.md); do not start Step 7 without
+separate authorization.** No Step 6 files have been staged, committed or pushed.
+Workforce login/recovery, recovery-email verification, logout-all, `/auth/me` and
+reauthentication remain unimplemented.
 Locally, run `pnpm auth:env:init` once to append the OTP and delivery key rings
 (existing keys are kept). Real OTP email needs an Owner-supplied provider, sender and
 credentials, plus a later outbox dispatcher and `AuthEmailTransport` adapter.
 The configured local database has both Phase 0 and Step 2
-migrations applied. The remaining Phase 1 scope includes workforce login, logout-all/me/reauthentication, password reset, Owner bootstrap, employee
+migrations applied. The remaining Phase 1 scope includes workforce login, logout-all/me/reauthentication, workforce recovery, Owner bootstrap, employee
 accounts, authorization and audit workflows. Extend the existing architecture only
 when authorized; the locked loyalty/combo/promotion rules remain later-phase
 requirements, not permission to implement them now.

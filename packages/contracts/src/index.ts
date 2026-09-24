@@ -81,3 +81,20 @@ export interface CurrentAccountResponse {
       }
     | { version: number; owner: true };
 }
+
+/**
+ * POST /api/v1/auth/password-reset/request → 202 AcceptedFlowResponse for every
+ * well-formed request. Step 6 supports the CUSTOMER realm only.
+ */
+export interface PasswordResetRequest {
+  realm: 'CUSTOMER';
+  email: string;
+  locale: PreferredLocale;
+}
+
+/** POST /api/v1/auth/password-reset/complete → 204; all sessions revoked, log in again. */
+export interface PasswordResetCompleteRequest {
+  flowToken: string;
+  otp: string;
+  newPassword: string;
+}

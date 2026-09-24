@@ -6,6 +6,8 @@ import { AuthThrottleService } from './auth/auth-throttle.service.js';
 import { ContextThrottleService } from './auth/context-throttle.service.js';
 import { CsrfGuard } from './auth/csrf.guard.js';
 import { LoginService } from './auth/login.service.js';
+import { PasswordResetController } from './auth/password-reset.controller.js';
+import { PasswordResetService } from './auth/password-reset.service.js';
 import { PasswordService } from './auth/password.service.js';
 import { RegistrationController } from './auth/registration.controller.js';
 import { RegistrationService } from './auth/registration.service.js';
@@ -26,6 +28,7 @@ export class AppModule {
         AuthContextController,
         RegistrationController,
         SessionAuthController,
+        PasswordResetController,
       ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },
@@ -37,6 +40,7 @@ export class AppModule {
         AuthThrottleService,
         RegistrationService,
         LoginService,
+        PasswordResetService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
       ],

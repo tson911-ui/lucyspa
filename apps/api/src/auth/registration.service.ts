@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { AcceptedFlowResponse } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import { enqueueAuthEmail, invalidatePendingDeliveries } from './auth-delivery.js';
 import { AuthThrottleService } from './auth-throttle.service.js';
@@ -10,43 +10,40 @@ import {
   capabilityDigest,
   generateCapability,
   generateOtp,
-  identityDigest,
   otpDigest,
   verifyOtpDigest,
 } from './crypto.js';
+import {
+  accepted,
+  codeExpiry,
+  debitIpIssue,
+  debitIpVerify,
+  emailIssuanceAllowed,
+  flowTokenDigest,
+  guardAuth,
+  identityFailuresExhausted,
+  lockIdentity,
+  OTP_POLICY,
+  RateLimitedError,
+  recordIdentityFailure,
+  requireDeliveryKey,
+  requireOtpKey,
+} from './otp-flow.js';
+import { PasswordResetService } from './password-reset.service.js';
 import { PasswordService } from './password.service.js';
 import { normalizeRegistration, type RegistrationInput } from './registration.js';
 import { SessionService } from './session.service.js';
 
-/** Design section 6 defaults; the public receipt values are constant for real and dummy flows. */
+/** Design section 6 defaults; shared OTP rules live in otp-flow.ts. */
 export const ACTIVATION_POLICY = Object.freeze({
+  ...OTP_POLICY,
   intentLifetimeSeconds: 1_800,
-  codeLifetimeSeconds: 300,
-  maxAttempts: 5,
-  resendCooldownSeconds: 60,
-  emailHourlyLimit: 5,
-  emailDailyLimit: 10,
-  ipIssueWindowSeconds: 3_600,
-  ipVerifyLimit: 100,
-  verifyWindowSeconds: 900,
-  identityFailureLimit: 10,
 } as const);
 
-const PURPOSE = 'ACTIVATE_CUSTOMER';
-const OPS = {
-  ipIssue: 'OTP_ISSUE_IP',
-  ipVerify: 'OTP_VERIFY_IP',
-  emailCooldown: 'OTP_ISSUE_EMAIL_COOLDOWN',
-  emailHour: 'OTP_ISSUE_EMAIL_HOUR',
-  emailDay: 'OTP_ISSUE_EMAIL_DAY',
-  identityFailure: 'OTP_VERIFY_FAILURE_IDENTITY',
-} as const;
+// Existing imports of these names from this module remain valid.
+export { accepted, RateLimitedError };
 
-export class RateLimitedError extends AuthError {
-  constructor(readonly retryAfterSeconds: number) {
-    super('RATE_LIMITED');
-  }
-}
+const PURPOSE = 'ACTIVATE_CUSTOMER';
 
 type VerifyOutcome = 'ACTIVATED' | 'FAILED' | 'RATE_LIMITED' | 'UNIQUE_CONFLICT';
 
@@ -74,6 +71,10 @@ export class RegistrationService {
     @Inject(SessionService) private readonly sessions: Pick<SessionService, 'withTransaction'>,
     @Inject(PasswordService) private readonly passwords: Pick<PasswordService, 'hashForSetting'>,
     @Inject(AuthThrottleService) private readonly throttle: AuthThrottleService,
+    // The shared resend endpoint forwards reset flows; absent in activation-only tests.
+    @Optional()
+    @Inject(PasswordResetService)
+    private readonly resets?: Pick<PasswordResetService, 'rotateLocked'>,
   ) {}
 
   /**
@@ -81,21 +82,14 @@ export class RegistrationService {
    * identities get an unstored random flow token and no email.
    */
   async register(input: RegistrationInput, peer: string): Promise<AcceptedFlowResponse> {
-    const otp = this.otpKey();
-    this.deliveryReady();
+    const otp = requireOtpKey(this.environment.auth);
+    requireDeliveryKey(this.environment.auth);
     const candidate = normalizeRegistration(input);
-    await this.guard(async () => {
+    await guardAuth(async () => {
       const admitted = await this.sessions.withTransaction(async (tx) =>
-        this.throttle.debitWindow(
-          tx,
-          OPS.ipIssue,
-          peer,
-          this.environment.auth.otpIpIssueLimit,
-          ACTIVATION_POLICY.ipIssueWindowSeconds,
-          await this.throttle.now(tx),
-        ),
+        debitIpIssue(tx, this.throttle, this.environment.auth, peer, await this.throttle.now(tx)),
       );
-      if (!admitted) throw new RateLimitedError(ACTIVATION_POLICY.ipIssueWindowSeconds);
+      if (!admitted) throw new RateLimitedError(OTP_POLICY.ipIssueWindowSeconds);
     });
     // Hash before any identity lookup so every accepted path performs the same work.
     let passwordHash: string;
@@ -106,11 +100,18 @@ export class RegistrationService {
       throw new AuthError('SERVICE_UNAVAILABLE');
     }
     const flowToken = generateCapability();
-    await this.guard(() =>
+    await guardAuth(() =>
       this.sessions.withTransaction(async (tx) => {
         const now = await this.throttle.now(tx);
-        const identities = await this.lockIdentity(tx, candidate.emailCanonical);
-        if (!(await this.issuanceAllowed(tx, candidate.emailCanonical, now))) return;
+        const identities = await lockIdentity(
+          tx,
+          this.environment.auth,
+          PURPOSE,
+          candidate.emailCanonical,
+        );
+        if (!(await emailIssuanceAllowed(tx, this.throttle, candidate.emailCanonical, now))) {
+          return;
+        }
         const existing = await tx.user.findFirst({
           where: {
             OR: [
@@ -126,7 +127,7 @@ export class RegistrationService {
         const intentId = randomUUID();
         const challengeId = randomUUID();
         const expiresAt = new Date(now.getTime() + ACTIVATION_POLICY.intentLifetimeSeconds * 1_000);
-        const codeExpiresAt = this.codeExpiry(now, expiresAt);
+        const codeExpiresAt = codeExpiry(now, expiresAt);
         const code = generateOtp();
         await tx.registrationIntent.create({
           data: {
@@ -149,7 +150,7 @@ export class RegistrationService {
           data: {
             id: challengeId,
             purpose: PURPOSE,
-            flowTokenHash: new Uint8Array(this.digest(flowToken)),
+            flowTokenHash: new Uint8Array(flowTokenDigest(flowToken)),
             identityKey: new Uint8Array(identities.active.digest),
             identityKeyVersion: identities.active.version,
             registrationIntentId: intentId,
@@ -192,18 +193,7 @@ export class RegistrationService {
     try {
       outcome = await this.sessions.withTransaction(async (tx) => {
         const now = await this.throttle.now(tx);
-        if (
-          !(await this.throttle.debitWindow(
-            tx,
-            OPS.ipVerify,
-            peer,
-            ACTIVATION_POLICY.ipVerifyLimit,
-            ACTIVATION_POLICY.verifyWindowSeconds,
-            now,
-          ))
-        ) {
-          return 'RATE_LIMITED';
-        }
+        if (!(await debitIpVerify(tx, this.throttle, peer, now))) return 'RATE_LIMITED';
         const challenge = await this.lockChallenge(tx, digest);
         const intent = challenge?.registrationIntent;
         if (!challenge || !intent || challenge.consumedAt || challenge.invalidatedAt) {
@@ -218,14 +208,9 @@ export class RegistrationService {
           await this.invalidateFlow(tx, challenge, now);
           return 'FAILED';
         }
-        const failures = await this.throttle.windowCount(
-          tx,
-          OPS.identityFailure,
-          intent.emailCanonical,
-          ACTIVATION_POLICY.verifyWindowSeconds,
-          now,
-        );
-        if (failures >= ACTIVATION_POLICY.identityFailureLimit) return 'FAILED';
+        if (await identityFailuresExhausted(tx, this.throttle, intent.emailCanonical, now)) {
+          return 'FAILED';
+        }
         const key =
           challenge.keyVersion === null
             ? undefined
@@ -254,14 +239,7 @@ export class RegistrationService {
             select: { id: true },
           });
           if (exhausted) await this.invalidateFlow(tx, challenge, now, false);
-          await this.throttle.debitWindow(
-            tx,
-            OPS.identityFailure,
-            intent.emailCanonical,
-            ACTIVATION_POLICY.identityFailureLimit,
-            ACTIVATION_POLICY.verifyWindowSeconds,
-            now,
-          );
+          await recordIdentityFailure(tx, this.throttle, intent.emailCanonical, now);
           return 'FAILED';
         }
         const conflict = await tx.user.findFirst({
@@ -310,7 +288,12 @@ export class RegistrationService {
           select: { id: true },
         });
         await invalidatePendingDeliveries(tx, [challenge.id]);
-        const identities = await this.lockIdentity(tx, intent.emailCanonical);
+        const identities = await lockIdentity(
+          tx,
+          this.environment.auth,
+          PURPOSE,
+          intent.emailCanonical,
+        );
         await this.invalidateActionable(tx, identities.all, now);
         const audit = {
           actorKind: 'SYSTEM',
@@ -344,7 +327,7 @@ export class RegistrationService {
     }
     if (outcome === 'UNIQUE_CONFLICT') {
       // The rolled-back activation lost a uniqueness race; retire the unusable flow.
-      await this.guard(() =>
+      await guardAuth(() =>
         this.sessions.withTransaction(async (tx) => {
           const now = await this.throttle.now(tx);
           const challenge = await this.lockChallenge(tx, digest);
@@ -355,30 +338,30 @@ export class RegistrationService {
       );
       throw new AuthError('VERIFICATION_FAILED');
     }
-    if (outcome === 'RATE_LIMITED')
-      throw new RateLimitedError(ACTIVATION_POLICY.verifyWindowSeconds);
+    if (outcome === 'RATE_LIMITED') throw new RateLimitedError(OTP_POLICY.verifyWindowSeconds);
     if (outcome === 'FAILED') throw new AuthError('VERIFICATION_FAILED');
   }
 
   /** Rotates the code of a live flow; the response never reveals whether it did. */
   async resend(flowToken: string, peer: string): Promise<void> {
-    const otp = this.otpKey();
-    this.deliveryReady();
+    const otp = requireOtpKey(this.environment.auth);
+    requireDeliveryKey(this.environment.auth);
     const digest = capabilityDigest(flowToken);
-    await this.guard(async () => {
+    await guardAuth(async () => {
       const limited = await this.sessions.withTransaction(async (tx) => {
         const now = await this.throttle.now(tx);
-        if (
-          !(await this.throttle.debitWindow(
-            tx,
-            OPS.ipIssue,
-            peer,
-            this.environment.auth.otpIpIssueLimit,
-            ACTIVATION_POLICY.ipIssueWindowSeconds,
-            now,
-          ))
-        ) {
+        if (!(await debitIpIssue(tx, this.throttle, this.environment.auth, peer, now))) {
           return true;
+        }
+        if (digest !== null && this.resets) {
+          const located = await tx.authChallenge.findUnique({
+            where: { flowTokenHash: new Uint8Array(digest) },
+            select: { purpose: true },
+          });
+          if (located?.purpose === 'RESET_PASSWORD') {
+            await this.resets.rotateLocked(tx, digest, now);
+            return false;
+          }
         }
         const challenge = await this.lockChallenge(tx, digest);
         const intent = challenge?.registrationIntent;
@@ -392,10 +375,12 @@ export class RegistrationService {
           await this.invalidateFlow(tx, challenge, now);
           return false;
         }
-        if (!(await this.issuanceAllowed(tx, intent.emailCanonical, now))) return false;
+        if (!(await emailIssuanceAllowed(tx, this.throttle, intent.emailCanonical, now))) {
+          return false;
+        }
         const generation = challenge.generation + 1;
         const code = generateOtp();
-        const codeExpiresAt = this.codeExpiry(now, challenge.flowExpiresAt);
+        const codeExpiresAt = codeExpiry(now, challenge.flowExpiresAt);
         await invalidatePendingDeliveries(tx, [challenge.id]);
         await tx.authChallenge.update({
           where: { id: challenge.id },
@@ -425,7 +410,7 @@ export class RegistrationService {
         });
         return false;
       });
-      if (limited) throw new RateLimitedError(ACTIVATION_POLICY.ipIssueWindowSeconds);
+      if (limited) throw new RateLimitedError(OTP_POLICY.ipIssueWindowSeconds);
     });
   }
 
@@ -440,60 +425,14 @@ export class RegistrationService {
     });
     if (!located || located.purpose !== PURPOSE || !located.registrationIntent) return null;
     // Lock order: identity, then the challenge row; then reread the locked state.
-    await this.lockIdentity(tx, located.registrationIntent.emailCanonical);
+    await lockIdentity(
+      tx,
+      this.environment.auth,
+      PURPOSE,
+      located.registrationIntent.emailCanonical,
+    );
     await tx.$queryRaw`SELECT id FROM auth_challenges WHERE id = ${located.id}::uuid FOR UPDATE`;
     return tx.authChallenge.findUnique({ where: { id: located.id }, select: challengeSelect });
-  }
-
-  /** Serializes issuance/verification per canonical email across all retained key versions. */
-  private async lockIdentity(
-    tx: Prisma.TransactionClient,
-    emailCanonical: string,
-  ): Promise<{ active: { version: number; digest: Buffer }; all: Buffer[] }> {
-    const auth = this.environment.auth;
-    const versions = [...auth.throttleKeys].sort(([a], [b]) => a - b);
-    const all: Buffer[] = [];
-    let active: { version: number; digest: Buffer } | undefined;
-    for (const [version, key] of versions) {
-      const digest = identityDigest(PURPOSE, emailCanonical, key);
-      all.push(digest);
-      if (version === auth.throttleActiveVersion) active = { version, digest };
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(${digest.readBigInt64BE(0)}::bigint)::text`;
-    }
-    if (!active) throw new Error('Identity key unavailable.');
-    return { active, all };
-  }
-
-  private async issuanceAllowed(
-    tx: Prisma.TransactionClient,
-    emailCanonical: string,
-    now: Date,
-  ): Promise<boolean> {
-    return (
-      (await this.throttle.claimCooldown(
-        tx,
-        OPS.emailCooldown,
-        emailCanonical,
-        ACTIVATION_POLICY.resendCooldownSeconds,
-        now,
-      )) &&
-      (await this.throttle.debitWindow(
-        tx,
-        OPS.emailHour,
-        emailCanonical,
-        ACTIVATION_POLICY.emailHourlyLimit,
-        3_600,
-        now,
-      )) &&
-      (await this.throttle.debitWindow(
-        tx,
-        OPS.emailDay,
-        emailCanonical,
-        ACTIVATION_POLICY.emailDailyLimit,
-        86_400,
-        now,
-      ))
-    );
   }
 
   /** Supersedes any actionable activation for this identity before a new one is inserted. */
@@ -559,54 +498,6 @@ export class RegistrationService {
       credentialVersion: null,
     } as const;
   }
-
-  private codeExpiry(now: Date, flowExpiresAt: Date): Date {
-    return new Date(
-      Math.min(
-        now.getTime() + ACTIVATION_POLICY.codeLifetimeSeconds * 1_000,
-        flowExpiresAt.getTime(),
-      ),
-    );
-  }
-
-  private digest(flowToken: string): Buffer {
-    const digest = capabilityDigest(flowToken);
-    if (digest === null) throw new Error('Capability generation failed.');
-    return digest;
-  }
-
-  private otpKey(): { version: number; key: Buffer } {
-    const { otpActiveVersion, otpKeys } = this.environment.auth;
-    const key = otpActiveVersion === undefined ? undefined : otpKeys?.get(otpActiveVersion);
-    // Fail closed before any write when the flow's independent keys are not configured.
-    if (otpActiveVersion === undefined || !key) throw new AuthError('SERVICE_UNAVAILABLE');
-    return { version: otpActiveVersion, key };
-  }
-
-  private deliveryReady(): void {
-    const { deliveryActiveVersion, deliveryKeys } = this.environment.auth;
-    if (deliveryActiveVersion === undefined || !deliveryKeys?.has(deliveryActiveVersion)) {
-      throw new AuthError('SERVICE_UNAVAILABLE');
-    }
-  }
-
-  private async guard<T>(work: () => Promise<T>): Promise<T> {
-    try {
-      return await work();
-    } catch (error) {
-      if (error instanceof AuthError) throw error;
-      throw new AuthError('SERVICE_UNAVAILABLE');
-    }
-  }
-}
-
-export function accepted(flowToken: string): AcceptedFlowResponse {
-  return {
-    status: 'accepted',
-    flowToken,
-    codeLifetimeSeconds: ACTIVATION_POLICY.codeLifetimeSeconds,
-    resendAfterSeconds: ACTIVATION_POLICY.resendCooldownSeconds,
-  };
 }
 
 function isUniqueViolation(error: unknown): boolean {
