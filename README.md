@@ -26,8 +26,11 @@ Future business logic and server-side authorization belong in backend domain mod
 
 PostgreSQL is authoritative. Redis/BullMQ is technical job infrastructure and must
 never hold the only copy of bookings, customer queues, balances or financial records.
-There are two application tables: `branches` and `outbox_events`. Branch identity is
-not tied to a single physical location. Timestamps use PostgreSQL `timestamptz`;
+Phase 0 created `branches` and `outbox_events`. Phase 1 Step 2 adds 15 identity,
+authentication, authorization and audit models. Its reviewed migration is applied
+to the approved local database, with post-migration checks passing; see the
+[schema and migration report](docs/PHASE1_STEP2_DATABASE.md). Branch identity
+is not tied to a single physical location. Timestamps use PostgreSQL `timestamptz`;
 branch-local display will use the branch timezone.
 
 The outbox helper requires a caller-owned Prisma transaction so a future domain write

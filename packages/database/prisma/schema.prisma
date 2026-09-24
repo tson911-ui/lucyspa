@@ -11,16 +11,20 @@ datasource db {
   provider = "postgresql"
 }
 
-// Branch identity only. Operating rules and authorization arrive in later phases.
+// Phase 0 branch identity, extended only with Phase 1 authorization relations.
 model Branch {
-  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code         String        @unique
-  name         String
-  timezone     String        @default("Asia/Ho_Chi_Minh")
-  isActive     Boolean       @default(true) @map("is_active")
-  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  outboxEvents OutboxEvent[]
+  id                  String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                String                     @unique
+  name                String
+  timezone            String                     @default("Asia/Ho_Chi_Minh")
+  isActive            Boolean                    @default(true) @map("is_active")
+  createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  outboxEvents        OutboxEvent[]
+  employeeAssignments EmployeeBranchAssignment[]
+  roleAssignments     UserRoleAssignment[]
+  permissionOverrides UserPermissionOverride[]
+  auditEvents         AuditEvent[]
 
   @@map("branches")
 }
@@ -42,4 +46,387 @@ model OutboxEvent {
   @@index([publishedAt, occurredAt, id], map: "outbox_events_pending_idx")
   @@index([branchId], map: "outbox_events_branch_id_idx")
   @@map("outbox_events")
+}
+
+enum UserKind {
+  CUSTOMER
+  EMPLOYEE
+  OWNER
+}
+
+enum UserStatus {
+  PENDING_SETUP
+  ACTIVE
+  INACTIVE
+}
+
+enum PreferredLocale {
+  vi
+  en
+}
+
+enum AuthChallengePurpose {
+  ACTIVATE_CUSTOMER
+  RESET_PASSWORD
+  VERIFY_RECOVERY_EMAIL
+  EMPLOYEE_SETUP
+}
+
+enum AuthDeliveryState {
+  PENDING
+  DELIVERED
+  FAILED
+  INVALIDATED
+  EXPIRED
+}
+
+enum SessionKind {
+  ANONYMOUS
+  AUTHENTICATED
+}
+
+enum ScopeKind {
+  GLOBAL
+  BRANCH
+}
+
+enum PermissionEffect {
+  ALLOW
+  DENY
+}
+
+enum ScopeCapability {
+  GLOBAL_ONLY
+  BRANCH_CAPABLE
+}
+
+enum DataClassification {
+  STANDARD
+  EMPLOYEE_PAY
+}
+
+enum AuditActorKind {
+  USER
+  BOOTSTRAP
+  SYSTEM
+}
+
+// Executable permission semantics are code-owned; role names carry no authority.
+enum PermissionCode {
+  VIEW_EMPLOYEES
+  CREATE_EMPLOYEES
+  UPDATE_EMPLOYEES
+  MANAGE_EMPLOYEE_STATUS
+  MANAGE_EMPLOYEE_ACCESS
+  MANAGE_EMPLOYEE_SCOPE
+  VIEW_EMPLOYEE_PAY
+  MANAGE_EMPLOYEE_PAY
+  MANAGE_PERMISSIONS
+  VIEW_AUDIT_LOG
+}
+
+// SQL additionally enforces kind/profile consistency at transaction commit,
+// canonical identities, credential state and protected sole-Owner invariants.
+model User {
+  id                           String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind                         UserKind
+  status                       UserStatus
+  fullName                     String                     @map("full_name")
+  preferredLocale              PreferredLocale            @map("preferred_locale")
+  emailCanonical               String?                    @unique(map: "users_email_canonical_key") @map("email_canonical") @db.VarChar(254)
+  emailDelivery                String?                    @map("email_delivery") @db.VarChar(254)
+  emailVerifiedAt              DateTime?                  @map("email_verified_at") @db.Timestamptz(3)
+  phoneCanonical               String?                    @unique(map: "users_phone_canonical_key") @map("phone_canonical") @db.VarChar(16)
+  normalizationVersion         Int                        @map("normalization_version")
+  passwordHash                 String?                    @map("password_hash")
+  credentialVersion            Int                        @default(1) @map("credential_version")
+  authzVersion                 Int                        @default(1) @map("authz_version")
+  rowVersion                   Int                        @default(1) @map("row_version")
+  createdAt                    DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                    DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  customerProfile              CustomerProfile?
+  employeeProfile              EmployeeProfile?
+  grantedBranchAssignments     EmployeeBranchAssignment[] @relation("BranchAssignmentGrantor")
+  completedRegistrationIntents RegistrationIntent[]
+  authChallenges               AuthChallenge[]
+  sessions                     Session[]
+  roleAssignments              UserRoleAssignment[]
+  permissionOverrides          UserPermissionOverride[]
+  actorAuditEvents             AuditEvent[]               @relation("AuditActor")
+  subjectAuditEvents           AuditEvent[]               @relation("AuditSubject")
+
+  @@index([kind, status, id], map: "users_kind_status_idx")
+  @@map("users")
+}
+
+model CustomerProfile {
+  userId      String   @id @map("user_id") @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  dateOfBirth DateTime @map("date_of_birth") @db.Date
+  address     String
+
+  @@map("customer_profiles")
+}
+
+model EmployeeProfile {
+  userId                String                     @id @map("user_id") @db.Uuid
+  user                  User                       @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeCodeCanonical String                     @unique(map: "employee_profiles_employee_code_canonical_key") @map("employee_code_canonical") @db.VarChar(64)
+  dateOfBirth           DateTime                   @map("date_of_birth") @db.Date
+  address               String
+  baseSalaryVnd         BigInt?                    @map("base_salary_vnd")
+  branchAssignments     EmployeeBranchAssignment[]
+
+  @@map("employee_profiles")
+}
+
+// Revocation preserves membership history; SQL permits one active user/branch pair.
+model EmployeeBranchAssignment {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeUserId  String          @map("employee_user_id") @db.Uuid
+  employee        EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  branchId        String          @map("branch_id") @db.Uuid
+  branch          Branch          @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  grantedAt       DateTime        @default(now()) @map("granted_at") @db.Timestamptz(3)
+  revokedAt       DateTime?       @map("revoked_at") @db.Timestamptz(3)
+  grantedByUserId String          @map("granted_by_user_id") @db.Uuid
+  grantedBy       User            @relation("BranchAssignmentGrantor", fields: [grantedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([employeeUserId, revokedAt, branchId], map: "employee_branch_assignments_user_scope_idx")
+  @@index([branchId, revokedAt, employeeUserId], map: "employee_branch_assignments_branch_scope_idx")
+  @@index([grantedByUserId], map: "employee_branch_assignments_grantor_idx")
+  @@map("employee_branch_assignments")
+}
+
+// Candidate identifiers deliberately do not reserve unique User identities.
+// Terminal candidate records are transient and may be removed by bounded cleanup.
+model RegistrationIntent {
+  id                   String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  emailCanonical       String          @map("email_canonical") @db.VarChar(254)
+  emailDelivery        String          @map("email_delivery") @db.VarChar(254)
+  phoneCanonical       String          @map("phone_canonical") @db.VarChar(16)
+  normalizationVersion Int             @map("normalization_version")
+  passwordHash         String          @map("password_hash")
+  fullName             String          @map("full_name")
+  dateOfBirth          DateTime        @map("date_of_birth") @db.Date
+  address              String
+  preferredLocale      PreferredLocale @map("preferred_locale")
+  createdAt            DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt            DateTime        @map("expires_at") @db.Timestamptz(3)
+  completedAt          DateTime?       @map("completed_at") @db.Timestamptz(3)
+  invalidatedAt        DateTime?       @map("invalidated_at") @db.Timestamptz(3)
+  completedUserId      String?         @map("completed_user_id") @db.Uuid
+  completedUser        User?           @relation(fields: [completedUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  challenges           AuthChallenge[]
+
+  @@index([emailCanonical, expiresAt], map: "registration_intents_email_expiry_idx")
+  @@index([expiresAt, id], map: "registration_intents_expiry_idx")
+  @@index([completedUserId], map: "registration_intents_completed_user_idx")
+  @@map("registration_intents")
+}
+
+// SQL checks the XOR subject, purpose-specific material and irreversible terminal
+// state. Actionable identity/purpose uniqueness is a reviewed partial SQL index.
+model AuthChallenge {
+  id                    String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purpose               AuthChallengePurpose
+  flowTokenHash         Bytes                @unique(map: "auth_challenges_flow_token_hash_key") @map("flow_token_hash")
+  identityKey           Bytes                @map("identity_key")
+  identityKeyVersion    Int                  @map("identity_key_version")
+  registrationIntentId  String?              @map("registration_intent_id") @db.Uuid
+  registrationIntent    RegistrationIntent?  @relation(fields: [registrationIntentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  userId                String?              @map("user_id") @db.Uuid
+  user                  User?                @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  generation            Int                  @default(1)
+  verifierDigest        Bytes?               @map("verifier_digest")
+  keyVersion            Int?                 @map("key_version")
+  credentialVersion     Int?                 @map("credential_version")
+  authzVersion          Int?                 @map("authz_version")
+  deliveryEmailSnapshot String?              @map("delivery_email_snapshot") @db.VarChar(254)
+  failedAttempts        Int                  @default(0) @map("failed_attempts")
+  maxAttempts           Int                  @map("max_attempts")
+  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  flowExpiresAt         DateTime             @map("flow_expires_at") @db.Timestamptz(3)
+  codeGeneratedAt       DateTime?            @map("code_generated_at") @db.Timestamptz(3)
+  codeExpiresAt         DateTime?            @map("code_expires_at") @db.Timestamptz(3)
+  consumedAt            DateTime?            @map("consumed_at") @db.Timestamptz(3)
+  invalidatedAt         DateTime?            @map("invalidated_at") @db.Timestamptz(3)
+  deliveries            AuthDelivery[]
+
+  @@index([userId, purpose], map: "auth_challenges_user_purpose_idx")
+  @@index([registrationIntentId], map: "auth_challenges_intent_idx")
+  @@index([flowExpiresAt, id], map: "auth_challenges_flow_expiry_idx")
+  @@index([codeExpiresAt, id], map: "auth_challenges_code_expiry_idx")
+  @@map("auth_challenges")
+}
+
+// Only temporary encrypted recipient/code material belongs here. The existing
+// outbox references this ID in a versioned payload and never carries secrets.
+model AuthDelivery {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  challengeId       String            @map("challenge_id") @db.Uuid
+  challenge         AuthChallenge     @relation(fields: [challengeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  generation        Int
+  state             AuthDeliveryState @default(PENDING)
+  encryptedPayload  Bytes?            @map("encrypted_payload")
+  nonce             Bytes?
+  tag               Bytes?
+  keyVersion        Int?              @map("key_version")
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt         DateTime          @map("expires_at") @db.Timestamptz(3)
+  attempts          Int               @default(0)
+  nextAttemptAt     DateTime          @map("next_attempt_at") @db.Timestamptz(3)
+  leaseToken        Bytes?            @map("lease_token")
+  leaseUntil        DateTime?         @map("lease_until") @db.Timestamptz(3)
+  deliveredAt       DateTime?         @map("delivered_at") @db.Timestamptz(3)
+  providerMessageId String?           @map("provider_message_id")
+  safeErrorCode     String?           @map("safe_error_code")
+
+  @@unique([challengeId, generation], map: "auth_deliveries_challenge_generation_key")
+  @@index([state, nextAttemptAt, leaseUntil, id], map: "auth_deliveries_claim_idx")
+  @@index([expiresAt, id], map: "auth_deliveries_expiry_idx")
+  @@map("auth_deliveries")
+}
+
+model Session {
+  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tokenHash         Bytes       @unique(map: "sessions_token_hash_key") @map("token_hash")
+  kind              SessionKind
+  userId            String?     @map("user_id") @db.Uuid
+  user              User?       @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  credentialVersion Int?        @map("credential_version")
+  authzVersion      Int?        @map("authz_version")
+  csrfKeyVersion    Int         @map("csrf_key_version")
+  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastActivityAt    DateTime    @map("last_activity_at") @db.Timestamptz(3)
+  absoluteExpiresAt DateTime    @map("absolute_expires_at") @db.Timestamptz(3)
+  revokedAt         DateTime?   @map("revoked_at") @db.Timestamptz(3)
+  reauthenticatedAt DateTime?   @map("reauthenticated_at") @db.Timestamptz(3)
+
+  @@index([userId, revokedAt, absoluteExpiresAt], map: "sessions_user_revocation_expiry_idx")
+  @@index([absoluteExpiresAt, id], map: "sessions_expiry_idx")
+  @@map("sessions")
+}
+
+// Unknown identities/IPs receive the same limits without storing their raw values.
+// A zero-second epoch window is a separate persistent cooldown bucket in SQL.
+model AuthThrottleBucket {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  operationBucket String    @map("operation_bucket")
+  pseudonymousKey Bytes     @map("pseudonymous_key")
+  keyVersion      Int       @map("key_version")
+  windowStartedAt DateTime  @map("window_started_at") @db.Timestamptz(3)
+  windowSeconds   Int       @map("window_seconds")
+  count           Int       @default(0)
+  nextAllowedAt   DateTime? @map("next_allowed_at") @db.Timestamptz(3)
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(3)
+
+  @@unique([operationBucket, pseudonymousKey, keyVersion, windowStartedAt, windowSeconds], map: "auth_throttle_buckets_operation_key_window_key")
+  @@index([expiresAt, id], map: "auth_throttle_buckets_expiry_idx")
+  @@map("auth_throttle_buckets")
+}
+
+model Role {
+  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code            String               @unique(map: "roles_code_key")
+  displayNameVi   String               @map("display_name_vi")
+  displayNameEn   String               @map("display_name_en")
+  isActive        Boolean              @default(true) @map("is_active")
+  rowVersion      Int                  @default(1) @map("row_version")
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  permissions     RolePermission[]
+  userAssignments UserRoleAssignment[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id                 String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code               PermissionCode           @unique(map: "permissions_code_key")
+  scopeCapability    ScopeCapability          @map("scope_capability")
+  dataClassification DataClassification       @map("data_classification")
+  roles              RolePermission[]
+  userOverrides      UserPermissionOverride[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  permissionId String     @map("permission_id") @db.Uuid
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId], map: "role_permissions_permission_idx")
+  @@map("role_permissions")
+}
+
+// SQL enforces EMPLOYEE recipients and distinct GLOBAL/BRANCH unique scopes.
+model UserRoleAssignment {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  roleId     String    @map("role_id") @db.Uuid
+  role       Role      @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  scopeKind  ScopeKind @map("scope_kind")
+  branchId   String?   @map("branch_id") @db.Uuid
+  branch     Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion Int       @default(1) @map("row_version")
+
+  @@index([userId, scopeKind, branchId], map: "user_role_assignments_user_scope_idx")
+  @@index([roleId], map: "user_role_assignments_role_idx")
+  @@index([branchId], map: "user_role_assignments_branch_idx")
+  @@map("user_role_assignments")
+}
+
+model UserPermissionOverride {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String           @map("user_id") @db.Uuid
+  user         User             @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  permissionId String           @map("permission_id") @db.Uuid
+  permission   Permission       @relation(fields: [permissionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  effect       PermissionEffect
+  scopeKind    ScopeKind        @map("scope_kind")
+  branchId     String?          @map("branch_id") @db.Uuid
+  branch       Branch?          @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion   Int              @default(1) @map("row_version")
+
+  @@index([userId, scopeKind, branchId], map: "user_permission_overrides_user_scope_idx")
+  @@index([permissionId], map: "user_permission_overrides_permission_idx")
+  @@index([branchId], map: "user_permission_overrides_branch_idx")
+  @@map("user_permission_overrides")
+}
+
+// SQL protects append-only history; runtime database roles must also lack table
+// ownership, DDL, UPDATE, DELETE and TRUNCATE rights. JSON uses action allowlists.
+model AuditEvent {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schemaVersion      Int                @default(1) @map("schema_version")
+  action             String
+  occurredAt         DateTime           @default(now()) @map("occurred_at") @db.Timestamptz(3)
+  actorKind          AuditActorKind     @map("actor_kind")
+  actorUserId        String?            @map("actor_user_id") @db.Uuid
+  actor              User?              @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  subjectUserId      String?            @map("subject_user_id") @db.Uuid
+  subject            User?              @relation("AuditSubject", fields: [subjectUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  entityType         String             @map("entity_type")
+  entityId           String             @map("entity_id")
+  branchId           String?            @map("branch_id") @db.Uuid
+  branch             Branch?            @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  requestId          String?            @map("request_id")
+  correlationId      String?            @map("correlation_id")
+  reason             String?
+  before             Json?              @db.JsonB
+  after              Json?              @db.JsonB
+  dataClassification DataClassification @map("data_classification")
+
+  @@index([occurredAt, id], map: "audit_events_time_idx")
+  @@index([actorUserId, occurredAt, id], map: "audit_events_actor_idx")
+  @@index([subjectUserId, occurredAt, id], map: "audit_events_subject_idx")
+  @@index([entityType, entityId, occurredAt, id], map: "audit_events_entity_idx")
+  @@index([branchId, action, occurredAt, id], map: "audit_events_branch_action_idx")
+  @@index([action, occurredAt, id], map: "audit_events_action_idx")
+  @@map("audit_events")
 }

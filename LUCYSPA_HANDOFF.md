@@ -10,26 +10,36 @@
    files before changing anything. Preserve completed work; do not scaffold again.
 3. Check the latest user authorization and relevant runtime state. Reuse verified
    results below when code is unchanged; rerun checks affected by changes or failures.
-4. Phase 1 Step 1 design is complete; Step 2 implementation requires separate explicit
-   Owner authorization after document review. Do not commit, push, change
-   Git remotes, expose secrets, or install unrelated system software without authorization.
+4. Phase 1 Step 2 has been reviewed, its migration applied to the approved local
+   database, and post-migration checks passed. Read the
+   [Step 2 database report](docs/PHASE1_STEP2_DATABASE.md) before proceeding. Step 3
+   requires separate authorization. Do not change Git remotes, expose secrets or
+   install unrelated system software without authorization.
 
 ## Current phase and Git state
 
-- **Phase 0: PASS, committed and pushed. Phase 1 Step 1 design is complete;
-  Step 2 has NOT started.** No Phase 1 schema or migration has been created.
-- Read-only Git inspection on 2026-09-23: branch `main`; HEAD and the local
-  `origin/main` reference are both `807ed8c` (`feat: complete Phase 0 foundation`).
-  The push was verified in the earlier inspection; no remote query was made during
-  this documentation update. Current Git inspection overrides older handoff snapshots.
-- [Phase 1 auth/security design](docs/PHASE1_AUTH_SECURITY_DESIGN.md) is the completed
-  Step 1 design artifact. It remains untracked and unchanged by this update.
+- **Phase 0: PASS, committed and pushed. Phase 1 Step 1 design is complete.
+  Step 2 is reviewed, applied to the local database and verified PASS.
+  Step 3 has not started.** Validation results and remaining production privilege
+  prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
+- This handoff accompanies the Step 2 commit
+  `feat: add phase1 auth database foundation` on `main`. Its baseline was `f793433`
+  (`docs: finalize loyalty requirements and phase1 auth design`). Inspect current
+  Git status/log and remote state instead of treating that baseline as the latest
+  commit. The Owner explicitly authorized committing and pushing the seven Step 2
+  files; the generated web file is excluded.
+- [Phase 1 auth/security design](docs/PHASE1_AUTH_SECURITY_DESIGN.md) is the committed,
+  approved Step 1 artifact and remains unchanged by Step 2.
 - The pre-existing `apps/web/next-env.d.ts` diff changes two generated type imports
   from `.next/types/` to `.next/dev/types/`. It was previously identified as automatic
   Next.js development output and is preserved untouched; it is not Phase 1 work.
-- The current authorized update changes only this handoff and `LUCY_SPA_PRD.md` to
-  record the Owner's locked business rules and current project status. No files are
-  staged, committed or pushed, and no application implementation is part of it.
+- The Step 2 changes add only the database schema/migration, constraint integration
+  tests and supporting documentation. No accounts or other data are seeded, no
+  runtime authentication endpoints are implemented, and the PRD remains unchanged.
+- This status supersedes older Step 2 authorization wording below. Historical
+  Phase 0 verification and infrastructure notes remain for context; they are not
+  the current database inventory. Both Phase 0 and Step 2 migrations are now applied
+  locally, with matching checksums and no failed or pending migrations.
 
 ## Architecture and structure
 
@@ -163,13 +173,14 @@ because a new session starts.
 
 ## Exact next step and Owner inputs
 
-**Review the updated PRD, this handoff and the completed Step 1 design, then wait for
-separate explicit authorization for Step 2.** No schema, migration or application
-implementation is authorized by this documentation update. The Phase 1 scope remains
-customer registration, email OTP, login/logout, password reset, Owner bootstrap,
-employee accounts, roles/permissions, Owner protection and audit foundation. Extend
-the existing architecture when authorized; the locked loyalty/combo/promotion rules
-remain later-phase requirements, not permission to implement them now.
+**Step 2 is complete: read the
+[validation report](docs/PHASE1_STEP2_DATABASE.md) and wait for separate authorization
+before starting Step 3.** The configured local database has both Phase 0 and Step 2
+migrations applied. The remaining Phase 1 scope includes customer
+registration, email OTP, login/logout, password reset, Owner bootstrap, employee
+accounts, authorization and audit workflows. Extend the existing architecture only
+when authorized; the locked loyalty/combo/promotion rules remain later-phase
+requirements, not permission to implement them now.
 
 Important inputs before relevant Phase 1 work:
 
