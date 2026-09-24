@@ -217,3 +217,133 @@ export interface EmployeeSetupCompleteRequest {
   setupToken: string;
   newPassword: string;
 }
+
+/** Code-owned Phase 1 permission catalog; any other code is rejected. */
+export type PermissionCodeName =
+  | 'VIEW_EMPLOYEES'
+  | 'CREATE_EMPLOYEES'
+  | 'UPDATE_EMPLOYEES'
+  | 'MANAGE_EMPLOYEE_STATUS'
+  | 'MANAGE_EMPLOYEE_ACCESS'
+  | 'MANAGE_EMPLOYEE_SCOPE'
+  | 'VIEW_EMPLOYEE_PAY'
+  | 'MANAGE_EMPLOYEE_PAY'
+  | 'MANAGE_PERMISSIONS'
+  | 'VIEW_AUDIT_LOG';
+
+/** A named permission bundle. OWNER is virtual and never a role. */
+export interface RoleResponse {
+  id: string;
+  code: string;
+  displayNameVi: string;
+  displayNameEn: string;
+  isActive: boolean;
+  permissions: PermissionCodeName[];
+  /** Send back as `expectedVersion`. */
+  version: number;
+}
+
+/** GET /api/v1/roles */
+export interface RoleListResponse {
+  roles: RoleResponse[];
+  permissions: PermissionCodeName[];
+}
+
+/** POST /api/v1/roles → 201 RoleResponse. */
+export interface RoleCreateRequest {
+  code: string;
+  displayNameVi: string;
+  displayNameEn: string;
+  permissions: PermissionCodeName[];
+  reason: string;
+}
+
+/** POST /api/v1/roles/:id → names and activation only; the code is immutable. */
+export interface RoleUpdateRequest {
+  expectedVersion: number;
+  displayNameVi?: string;
+  displayNameEn?: string;
+  isActive?: boolean;
+  reason: string;
+}
+
+/** POST /api/v1/roles/:id/permissions → the complete resulting permission set. */
+export interface RolePermissionsRequest {
+  expectedVersion: number;
+  permissions: PermissionCodeName[];
+  reason: string;
+}
+
+/**
+ * GET /api/v1/employees/:id/authorization. `version` is the employee's authorization
+ * version, used as `expectedVersion` by assignment and override commands.
+ */
+export interface EmployeeAuthorizationResponse {
+  userId: string;
+  version: number;
+  roleAssignments: { id: string; roleId: string; roleCode: string; scope: AuthorizationScope }[];
+  overrides: {
+    id: string;
+    permission: PermissionCodeName;
+    effect: 'ALLOW' | 'DENY';
+    scope: AuthorizationScope;
+  }[];
+}
+
+/** POST /api/v1/employees/:id/roles → 200 EmployeeAuthorizationResponse. */
+export interface RoleAssignRequest {
+  expectedVersion: number;
+  roleId: string;
+  scope: AuthorizationScope;
+  reason: string;
+}
+
+/** POST /api/v1/employees/:id/roles/revoke */
+export interface RoleRevokeRequest {
+  expectedVersion: number;
+  assignmentId: string;
+  reason: string;
+}
+
+/** POST /api/v1/employees/:id/overrides: creates or changes the override at that scope. */
+export interface PermissionOverrideSetRequest {
+  expectedVersion: number;
+  permission: PermissionCodeName;
+  effect: 'ALLOW' | 'DENY';
+  scope: AuthorizationScope;
+  reason: string;
+}
+
+/** POST /api/v1/employees/:id/overrides/remove: removal restores inheritance. */
+export interface PermissionOverrideRemoveRequest {
+  expectedVersion: number;
+  overrideId: string;
+  reason: string;
+}
+
+/** One permitted audit record; before/after are per-action allowlisted snapshots. */
+export interface AuditEventResponse {
+  id: string;
+  action: string;
+  occurredAt: string;
+  actorKind: 'USER' | 'BOOTSTRAP' | 'SYSTEM';
+  actorUserId: string | null;
+  subjectUserId: string | null;
+  entityType: string;
+  entityId: string;
+  branchId: string | null;
+  requestId: string | null;
+  reason: string | null;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+  dataClassification: 'STANDARD' | 'EMPLOYEE_PAY';
+}
+
+/**
+ * GET /api/v1/audit-events?limit&cursor&branchId&action&subjectUserId&actorUserId&
+ * entityType&entityId&from&to. Newest first; scope filtering happens before paging.
+ */
+export interface AuditEventPageResponse {
+  items: AuditEventResponse[];
+  nextCursor: string | null;
+}

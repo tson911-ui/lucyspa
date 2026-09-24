@@ -14,9 +14,9 @@ import { Inject, Injectable } from '@nestjs/common';
 import { invalidatePendingDeliveries } from '../auth/auth-delivery.js';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { AuthError } from '../auth/auth.error.js';
-import { capabilityDigest, generateCapability, identityDigest } from '../auth/crypto.js';
+import { generateCapability, identityDigest } from '../auth/crypto.js';
 import { flowTokenDigest, OTP_POLICY } from '../auth/otp-flow.js';
-import { hasFreshReauthentication, type SessionPrincipal } from '../auth/session.policy.js';
+import { hasFreshReauthentication } from '../auth/session.policy.js';
 import { SessionService } from '../auth/session.service.js';
 import {
   authorizationSummary,
@@ -29,6 +29,12 @@ import {
   invalidateAuthorization,
   loadAuthorityGraph,
 } from '../authorization/authorization.store.js';
+import {
+  requireAcross,
+  runAdminCommand,
+  type AdminActor,
+  type AdminContext,
+} from '../authorization/admin-command.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import {
   isUuid,
@@ -81,19 +87,8 @@ type EmployeeRecord = Prisma.UserGetPayload<{ select: typeof employeeSelect }> &
   >;
 };
 
-interface Actor {
-  readonly principal: SessionPrincipal;
-  readonly graph: AuthorityGraph;
-  readonly userId: string;
-  readonly owner: boolean;
-}
-
-interface CommandContext {
-  readonly tx: Prisma.TransactionClient;
-  readonly now: Date;
-  readonly actor: Actor;
-  readonly requestId: string | null;
-}
+type Actor = AdminActor;
+type CommandContext = AdminContext;
 
 interface TargetContext extends CommandContext {
   readonly target: EmployeeRecord;
@@ -111,10 +106,6 @@ function auditBranch(branchIds: readonly string[]): string | null {
 
 function dateOnly(value: Date): string {
   return value.toISOString().slice(0, 10);
-}
-
-function uniqueViolation(error: unknown): boolean {
-  return Reflect.get(Object(error), 'code') === 'P2002';
 }
 
 /**
@@ -518,68 +509,31 @@ export class EmployeeService {
     requestId: string | undefined,
     work: (context: TargetContext) => Promise<T>,
   ): Promise<T> {
-    const digest = sessionToken === undefined ? null : capabilityDigest(sessionToken);
-    if (sessionToken === undefined || digest === null) {
-      throw new AuthError('AUTHENTICATION_REQUIRED');
-    }
     const target = targetId?.toLowerCase() ?? null;
     if (target !== null && !isUuid(target)) throw new AuthError('NOT_FOUND');
-    const run = exclusive
-      ? this.sessions.withExclusiveTransaction.bind(this.sessions)
-      : this.sessions.withTransaction.bind(this.sessions);
-    try {
-      return await run(async (tx) => {
-        const hint = await tx.session.findUnique({
-          where: { tokenHash: new Uint8Array(digest) },
-          select: { userId: true },
-        });
-        if (!hint?.userId) throw new AuthError('AUTHENTICATION_REQUIRED');
-        const users = [...new Set([hint.userId, ...(target ? [target] : [])])].sort();
-        for (const id of users) {
-          await tx.$queryRaw`SELECT id FROM users WHERE id = ${id}::uuid FOR UPDATE`;
-        }
-        const principal = await this.sessions.resolveForMutation(sessionToken, tx);
-        if (
-          principal?.kind !== 'AUTHENTICATED' ||
-          principal.userId === null ||
-          principal.userId !== hint.userId
-        ) {
-          throw new AuthError('AUTHENTICATION_REQUIRED');
-        }
-        // Customers never reach employee administration.
-        if (principal.userKind !== 'OWNER' && principal.userKind !== 'EMPLOYEE') {
-          throw new AuthError('FORBIDDEN');
-        }
-        const graph = await loadAuthorityGraph(tx, principal.userId);
-        if (!graph) throw new AuthError('AUTHENTICATION_REQUIRED');
-        const actor: Actor = {
-          principal,
-          graph,
-          userId: principal.userId,
-          owner: graph.kind === 'OWNER',
-        };
-        const now = await this.throttle.now(tx);
-        const base = { tx, now, actor, requestId: requestId ?? null };
+    return runAdminCommand(
+      { sessions: this.sessions, throttle: this.throttle },
+      sessionToken,
+      { exclusive, requestId, lockUsers: () => Promise.resolve(target ? [target] : []) },
+      async (base) => {
         if (target === null) return work(base as TargetContext);
-        const record = await tx.user.findUnique({ where: { id: target }, select: employeeSelect });
+        const record = await base.tx.user.findUnique({
+          where: { id: target },
+          select: employeeSelect,
+        });
         // Owner and customers are never employee-administration targets.
         if (!record || record.kind !== 'EMPLOYEE' || !record.employeeProfile) {
           throw new AuthError('NOT_FOUND');
         }
         const employee = record as EmployeeRecord;
         return work({ ...base, target: employee, branchIds: branchesOf(employee) });
-      });
-    } catch (error) {
-      if (error instanceof AuthError) throw error;
-      // A concurrent insert won the unique identifier; reveal no conflicting account.
-      if (uniqueViolation(error)) throw new AuthError('CONFLICT');
-      throw new AuthError('SERVICE_UNAVAILABLE');
-    }
+      },
+    );
   }
 
   /** Every affected branch must pass; no branch requires GLOBAL authority. */
   private require(actor: Actor, permission: string, branchIds: readonly string[]): void {
-    if (!decideAcross(actor.graph, permission, branchIds)) throw new AuthError('FORBIDDEN');
+    requireAcross(actor, permission, branchIds);
   }
 
   /** Non-Owners cannot change their own status, scope, pay or credentials. */
