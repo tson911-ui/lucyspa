@@ -11,10 +11,13 @@ export interface AuthEnvironment {
   throttleKeys: ReadonlyMap<number, Buffer>;
   otpActiveVersion?: number;
   otpKeys?: ReadonlyMap<number, Buffer>;
+  deliveryActiveVersion?: number;
+  deliveryKeys?: ReadonlyMap<number, Buffer>;
   cookieName: '__Host-lucy_session' | 'lucy_session_dev';
   cookieSecure: boolean;
   contextLimit: number;
   contextWindowSeconds: number;
+  otpIpIssueLimit: number;
 }
 
 function invalid(field: string): never {
@@ -133,7 +136,23 @@ export function parseAuthEnvironment(
       otpActiveVersion: activeVersion(env, 'AUTH_OTP_ACTIVE_VERSION', otpKeys),
     };
   }
-  requireIndependentKeys([csrfKeys, throttleKeys, ...(otp.otpKeys ? [otp.otpKeys] : [])]);
+  let delivery: Pick<AuthEnvironment, 'deliveryKeys' | 'deliveryActiveVersion'> = {};
+  if (
+    env['AUTH_DELIVERY_KEYS'] !== undefined ||
+    env['AUTH_DELIVERY_ACTIVE_VERSION'] !== undefined
+  ) {
+    const deliveryKeys = keyRing(env, 'AUTH_DELIVERY_KEYS');
+    delivery = {
+      deliveryKeys,
+      deliveryActiveVersion: activeVersion(env, 'AUTH_DELIVERY_ACTIVE_VERSION', deliveryKeys),
+    };
+  }
+  requireIndependentKeys([
+    csrfKeys,
+    throttleKeys,
+    ...(otp.otpKeys ? [otp.otpKeys] : []),
+    ...(delivery.deliveryKeys ? [delivery.deliveryKeys] : []),
+  ]);
 
   return {
     anonymousTtlSeconds,
@@ -145,9 +164,12 @@ export function parseAuthEnvironment(
     throttleActiveVersion,
     throttleKeys,
     ...otp,
+    ...delivery,
     cookieName: insecureCookie ? 'lucy_session_dev' : '__Host-lucy_session',
     cookieSecure: !insecureCookie,
     contextLimit: positiveInteger(env, 'AUTH_CONTEXT_LIMIT', 30),
     contextWindowSeconds: positiveInteger(env, 'AUTH_CONTEXT_WINDOW_SECONDS', 900),
+    // Per direct peer per hour; raise explicitly for shared spa networks behind one address.
+    otpIpIssueLimit: positiveInteger(env, 'AUTH_OTP_IP_ISSUE_LIMIT', 30),
   };
 }

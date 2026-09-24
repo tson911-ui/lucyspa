@@ -1,4 +1,13 @@
-import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  createHmac,
+  hkdfSync,
+  randomBytes,
+  randomInt,
+  timingSafeEqual,
+} from 'node:crypto';
 
 const TOKEN_BYTES = 32;
 const MAX_DATABASE_VERSION = 2_147_483_647;
@@ -130,4 +139,71 @@ export function verifyOtpDigest(
 export function throttleDigest(purpose: string, identifier: string, key: Uint8Array): Buffer {
   if (!purpose || !identifier) throw new Error('Invalid throttle binding');
   return keyedDigest(key, ['throttle-v1', purpose, identifier]);
+}
+
+/** Purpose-specific pseudonymous identity key for challenge uniqueness and locking. */
+export function identityDigest(purpose: string, identifier: string, key: Uint8Array): Buffer {
+  if (!purpose || !identifier) throw new Error('Invalid identity binding');
+  return keyedDigest(key, ['identity-v1', purpose, identifier]);
+}
+
+export interface DeliveryBinding {
+  deliveryId: string;
+  challengeId: string;
+  generation: number;
+}
+
+export interface SealedPayload {
+  ciphertext: Buffer;
+  nonce: Buffer;
+  tag: Buffer;
+}
+
+function deliveryKey(key: Uint8Array): Buffer {
+  if (key.byteLength < TOKEN_BYTES) throw new Error('Invalid delivery key');
+  return Buffer.from(hkdfSync('sha256', key, Buffer.alloc(0), 'lucy-auth-delivery-v1', 32));
+}
+
+function deliveryContext(binding: DeliveryBinding): Buffer {
+  if (!binding.deliveryId || !binding.challengeId || !positiveVersion(binding.generation)) {
+    throw new Error('Invalid delivery binding');
+  }
+  return lengthPrefixedTuple([
+    'auth-delivery-v1',
+    binding.deliveryId,
+    binding.challengeId,
+    binding.generation.toString(),
+  ]);
+}
+
+/** AES-256-GCM with a unique random nonce; the delivery/challenge/generation is authenticated. */
+export function sealDeliveryPayload(
+  plaintext: string,
+  binding: DeliveryBinding,
+  key: Uint8Array,
+): SealedPayload {
+  const nonce = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', deliveryKey(key), nonce, { authTagLength: 16 });
+  cipher.setAAD(deliveryContext(binding));
+  const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  return { ciphertext, nonce, tag: cipher.getAuthTag() };
+}
+
+/** Returns null for any tampering, wrong binding or wrong key; never a partial plaintext. */
+export function openDeliveryPayload(
+  sealed: SealedPayload,
+  binding: DeliveryBinding,
+  key: Uint8Array,
+): string | null {
+  if (sealed.nonce.byteLength !== 12 || sealed.tag.byteLength !== 16) return null;
+  try {
+    const decipher = createDecipheriv('aes-256-gcm', deliveryKey(key), sealed.nonce, {
+      authTagLength: 16,
+    });
+    decipher.setAAD(deliveryContext(binding));
+    decipher.setAuthTag(sealed.tag);
+    return Buffer.concat([decipher.update(sealed.ciphertext), decipher.final()]).toString('utf8');
+  } catch {
+    return null;
+  }
 }

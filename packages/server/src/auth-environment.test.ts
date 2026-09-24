@@ -20,6 +20,7 @@ test('auth config supplies reviewed security defaults and production host-cookie
   assert.equal(config.freshAuthSeconds, 300);
   assert.equal(config.contextLimit, 30);
   assert.equal(config.contextWindowSeconds, 900);
+  assert.equal(config.otpIpIssueLimit, 30);
   assert.equal(config.cookieName, '__Host-lucy_session');
   assert.equal(config.cookieSecure, true);
   assert.equal(config.csrfActiveVersion, 1);
@@ -200,6 +201,7 @@ test('all security durations, limits and active versions are bounded positive ca
     'AUTH_FRESH_AUTH_SECONDS',
     'AUTH_CONTEXT_LIMIT',
     'AUTH_CONTEXT_WINDOW_SECONDS',
+    'AUTH_OTP_IP_ISSUE_LIMIT',
     'AUTH_CSRF_ACTIVE_VERSION',
     'AUTH_THROTTLE_ACTIVE_VERSION',
   ]) {
@@ -265,4 +267,49 @@ test('auth configuration errors do not serialize supplied secret values', () => 
       (error: unknown) => error instanceof Error && !error.message.includes(secret),
     );
   }
+});
+
+test('optional delivery encryption ring must be complete and independent of OTP keys', () => {
+  const otp = JSON.stringify({ '1': randomBytes(32).toString('base64url') });
+  const config = parseAuthEnvironment(
+    {
+      ...environment(),
+      AUTH_OTP_KEYS: otp,
+      AUTH_OTP_ACTIVE_VERSION: '1',
+      AUTH_DELIVERY_KEYS: JSON.stringify({ '2': randomBytes(32).toString('base64url') }),
+      AUTH_DELIVERY_ACTIVE_VERSION: '2',
+    },
+    'production',
+    'https://example.test',
+  );
+  assert.equal(config.deliveryActiveVersion, 2);
+  assert.equal(config.deliveryKeys?.get(2)?.length, 32);
+  assert.equal(
+    parseAuthEnvironment(environment(), 'production', 'https://example.test').deliveryKeys,
+    undefined,
+  );
+  assert.throws(
+    () =>
+      parseAuthEnvironment(
+        { ...environment(), AUTH_DELIVERY_ACTIVE_VERSION: '1' },
+        'production',
+        'https://example.test',
+      ),
+    /AUTH_DELIVERY_KEYS/,
+  );
+  assert.throws(
+    () =>
+      parseAuthEnvironment(
+        {
+          ...environment(),
+          AUTH_OTP_KEYS: otp,
+          AUTH_OTP_ACTIVE_VERSION: '1',
+          AUTH_DELIVERY_KEYS: otp,
+          AUTH_DELIVERY_ACTIVE_VERSION: '1',
+        },
+        'production',
+        'https://example.test',
+      ),
+    /INDEPENDENT/,
+  );
 });

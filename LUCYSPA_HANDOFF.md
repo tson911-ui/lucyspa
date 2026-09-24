@@ -11,9 +11,10 @@
 3. Check the latest user authorization and relevant runtime state. Reuse verified
    results below when code is unchanged; rerun checks affected by changes or failures.
 4. Phase 1 Step 2 has been reviewed, its migration applied to the approved local
-   database, and post-migration checks passed. Step 3 runtime foundation is now
-   implemented and awaiting review; read the
-   [Step 3 report](docs/PHASE1_STEP3_AUTH_RUNTIME.md) for its exact files and checks.
+   database, and post-migration checks passed. Step 3 runtime foundation is committed
+   and pushed (`a68f66a`); see the [Step 3 report](docs/PHASE1_STEP3_AUTH_RUNTIME.md).
+   Step 4 customer registration/email OTP activation is implemented and awaiting
+   review; read the [Step 4 report](docs/PHASE1_STEP4_REGISTRATION.md).
    Do not change Git remotes, expose secrets or
    install unrelated system software without authorization.
 
@@ -21,8 +22,10 @@
 
 - **Phase 0: PASS, committed and pushed. Phase 1 Step 1 design is complete.
   Step 2 is reviewed, applied to the local database and verified PASS.
-  Step 3 runtime foundation is implemented, locally validated, uncommitted and awaiting review.**
-  Its [report](docs/PHASE1_STEP3_AUTH_RUNTIME.md) records scope and validation.
+  Step 3 runtime foundation is committed and pushed (`a68f66a`). Step 4 customer
+  registration/email OTP is implemented, locally validated, uncommitted and awaiting review.**
+  The [Step 3 report](docs/PHASE1_STEP3_AUTH_RUNTIME.md) and
+  [Step 4 report](docs/PHASE1_STEP4_REGISTRATION.md) record scope and validation.
   Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
@@ -176,12 +179,14 @@ because a new session starts.
 
 ## Exact next step and Owner inputs
 
-**Step 3 is implemented: review its
-[implementation report](docs/PHASE1_STEP3_AUTH_RUNTIME.md); do not start Step 4 without
-separate authorization.** No Step 3 files have been staged, committed or pushed.
+**Step 4 is implemented: review its
+[implementation report](docs/PHASE1_STEP4_REGISTRATION.md); do not start Step 5 without
+separate authorization.** No Step 4 files have been staged, committed or pushed.
+Locally, run `pnpm auth:env:init` once to append the OTP and delivery key rings
+(existing keys are kept). Real OTP email needs an Owner-supplied provider, sender and
+credentials, plus a later outbox dispatcher and `AuthEmailTransport` adapter.
 The configured local database has both Phase 0 and Step 2
-migrations applied. The remaining Phase 1 scope includes customer
-registration, email OTP, login/logout, password reset, Owner bootstrap, employee
+migrations applied. The remaining Phase 1 scope includes login/logout, password reset, Owner bootstrap, employee
 accounts, authorization and audit workflows. Extend the existing architecture only
 when authorized; the locked loyalty/combo/promotion rules remain later-phase
 requirements, not permission to implement them now.

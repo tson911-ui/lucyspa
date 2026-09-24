@@ -7,6 +7,9 @@ import {
   csrfToken,
   generateCapability,
   generateOtp,
+  identityDigest,
+  openDeliveryPayload,
+  sealDeliveryPayload,
   lengthPrefixedTuple,
   otpDigest,
   throttleDigest,
@@ -151,4 +154,42 @@ test('throttle pseudonyms separate operations and identities without retaining r
   assert.notDeepEqual(digest, throttleDigest('AUTH_CONTEXT_IP', '127.0.0.1', randomBytes(32)));
   assert.throws(() => throttleDigest('', '127.0.0.1', key), /Invalid throttle binding/);
   assert.throws(() => throttleDigest('AUTH_CONTEXT_IP', '127.0.0.1', Buffer.alloc(31)));
+});
+
+test('identity digests are purpose-bound and keyed', () => {
+  const key = randomBytes(32);
+  const digest = identityDigest('ACTIVATE_CUSTOMER', 'linh@example.com', key);
+  assert.equal(digest.length, 32);
+  assert.notDeepEqual(digest, identityDigest('RESET_PASSWORD', 'linh@example.com', key));
+  assert.notDeepEqual(
+    digest,
+    identityDigest('ACTIVATE_CUSTOMER', 'linh@example.com', randomBytes(32)),
+  );
+  assert.notDeepEqual(digest, throttleDigest('ACTIVATE_CUSTOMER', 'linh@example.com', key));
+  assert.throws(() => identityDigest('', 'x', key), /Invalid identity binding/);
+});
+
+test('delivery envelopes authenticate their delivery, challenge and generation', () => {
+  const key = randomBytes(32);
+  const binding = { deliveryId: 'delivery', challengeId: 'challenge', generation: 2 };
+  const sealed = sealDeliveryPayload('{"code":"012345"}', binding, key);
+  assert.equal(sealed.nonce.length, 12);
+  assert.equal(sealed.tag.length, 16);
+  assert.equal(sealed.ciphertext.includes(Buffer.from('012345')), false);
+  assert.equal(openDeliveryPayload(sealed, binding, key), '{"code":"012345"}');
+  const again = sealDeliveryPayload('{"code":"012345"}', binding, key);
+  assert.notDeepEqual(again.nonce, sealed.nonce);
+  for (const other of [
+    { ...binding, deliveryId: 'other' },
+    { ...binding, challengeId: 'other' },
+    { ...binding, generation: 3 },
+  ]) {
+    assert.equal(openDeliveryPayload(sealed, other, key), null);
+  }
+  assert.equal(openDeliveryPayload(sealed, binding, randomBytes(32)), null);
+  const tampered = Buffer.from(sealed.ciphertext);
+  tampered[0] = (tampered[0] ?? 0) ^ 1;
+  assert.equal(openDeliveryPayload({ ...sealed, ciphertext: tampered }, binding, key), null);
+  assert.equal(openDeliveryPayload({ ...sealed, tag: Buffer.alloc(16) }, binding, key), null);
+  assert.throws(() => sealDeliveryPayload('x', { ...binding, generation: 0 }, key));
 });
