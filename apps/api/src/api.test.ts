@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { type Server } from 'node:http';
 import { after, before, test } from 'node:test';
 import type { ApiErrorResponse } from '@lucy-spa/contracts';
@@ -19,6 +20,8 @@ import request from 'supertest';
 import { AppModule } from './app.module.js';
 import { configureHttp } from './platform/configure-http.js';
 import { InfrastructureService } from './platform/infrastructure.service.js';
+import { SessionService } from './auth/session.service.js';
+import { csrfToken, generateCapability } from './auth/crypto.js';
 
 class ValidationFixtureDto {
   @IsString()
@@ -49,9 +52,21 @@ const environment = parseApiEnvironment({
   NODE_ENV: 'test',
   DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
   REDIS_URL: 'redis://localhost:6379',
-  WEB_ORIGIN: 'http://localhost:3000',
+  WEB_ORIGIN: 'https://spa.example',
+  AUTH_CSRF_KEYS: JSON.stringify({ 1: randomBytes(32).toString('base64url') }),
+  AUTH_CSRF_ACTIVE_VERSION: '1',
+  AUTH_THROTTLE_KEYS: JSON.stringify({ 1: randomBytes(32).toString('base64url') }),
+  AUTH_THROTTLE_ACTIVE_VERSION: '1',
   SWAGGER_ENABLED: 'true',
 });
+const token = generateCapability();
+const sessionId = randomUUID();
+const csrf = csrfToken(sessionId, token, environment.auth.csrfKeys.get(1)!);
+const csrfHeaders = {
+  Origin: environment.webOrigin,
+  Cookie: `${environment.auth.cookieName}=${token}`,
+  'X-CSRF-Token': csrf,
+};
 const logs: string[] = [];
 const logger = pino(
   { level: 'info' },
@@ -71,6 +86,8 @@ before(async () => {
     imports: [AppModule.forRoot(environment, logger)],
     controllers: [TestFixtureController],
   })
+    .overrideProvider(SessionService)
+    .useValue({ resolve: () => Promise.resolve({ id: sessionId, csrfKeyVersion: 1 }) })
     .overrideProvider(InfrastructureService)
     .useValue({
       pingDatabase: () =>
@@ -136,18 +153,25 @@ test('readiness checks both dependencies and reports sanitized failures', async 
 test('global validation rejects extra properties and invalid DTO types', async () => {
   const extra = await request(server)
     .post('/test-fixture/validate')
+    .set(csrfHeaders)
     .send({ label: 'valid', unexpected: 'value' })
     .expect(400);
   assert.equal((extra.body as ApiErrorResponse).code, 'HTTP_400');
-  await request(server).post('/test-fixture/validate').send({ label: 123 }).expect(400);
-  await request(server).post('/test-fixture/validate').send({}).expect(400);
   await request(server)
     .post('/test-fixture/validate')
+    .set(csrfHeaders)
+    .send({ label: 123 })
+    .expect(400);
+  await request(server).post('/test-fixture/validate').set(csrfHeaders).send({}).expect(400);
+  await request(server)
+    .post('/test-fixture/validate')
+    .set(csrfHeaders)
     .set('Content-Type', 'application/json')
     .send('{')
     .expect(400);
   const valid = await request(server)
     .post('/test-fixture/validate')
+    .set(csrfHeaders)
     .send({ label: 'valid' })
     .expect(201);
   assert.deepEqual(valid.body, { label: 'valid' });

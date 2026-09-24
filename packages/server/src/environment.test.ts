@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
 import { test } from 'node:test';
 import { parseApiEnvironment, parseWorkerEnvironment } from './environment.js';
 import { redisConnectionOptions } from './redis.js';
@@ -6,7 +7,11 @@ import { redisConnectionOptions } from './redis.js';
 const valid = {
   DATABASE_URL: 'postgresql://localhost/test',
   REDIS_URL: 'redis://localhost:6379/0',
-  WEB_ORIGIN: 'http://localhost:3000',
+  WEB_ORIGIN: 'https://spa.example',
+  AUTH_CSRF_KEYS: JSON.stringify({ 1: randomBytes(32).toString('base64url') }),
+  AUTH_CSRF_ACTIVE_VERSION: '1',
+  AUTH_THROTTLE_KEYS: JSON.stringify({ 1: randomBytes(32).toString('base64url') }),
+  AUTH_THROTTLE_ACTIVE_VERSION: '1',
 };
 
 test('configuration rejects missing dependencies and invalid ports without leaking inputs', () => {

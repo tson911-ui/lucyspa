@@ -11,16 +11,19 @@
 3. Check the latest user authorization and relevant runtime state. Reuse verified
    results below when code is unchanged; rerun checks affected by changes or failures.
 4. Phase 1 Step 2 has been reviewed, its migration applied to the approved local
-   database, and post-migration checks passed. Read the
-   [Step 2 database report](docs/PHASE1_STEP2_DATABASE.md) before proceeding. Step 3
-   requires separate authorization. Do not change Git remotes, expose secrets or
+   database, and post-migration checks passed. Step 3 runtime foundation is now
+   implemented and awaiting review; read the
+   [Step 3 report](docs/PHASE1_STEP3_AUTH_RUNTIME.md) for its exact files and checks.
+   Do not change Git remotes, expose secrets or
    install unrelated system software without authorization.
 
 ## Current phase and Git state
 
 - **Phase 0: PASS, committed and pushed. Phase 1 Step 1 design is complete.
   Step 2 is reviewed, applied to the local database and verified PASS.
-  Step 3 has not started.** Validation results and remaining production privilege
+  Step 3 runtime foundation is implemented, locally validated, uncommitted and awaiting review.**
+  Its [report](docs/PHASE1_STEP3_AUTH_RUNTIME.md) records scope and validation.
+  Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
   `feat: add phase1 auth database foundation` on `main`. Its baseline was `f793433`
@@ -173,9 +176,10 @@ because a new session starts.
 
 ## Exact next step and Owner inputs
 
-**Step 2 is complete: read the
-[validation report](docs/PHASE1_STEP2_DATABASE.md) and wait for separate authorization
-before starting Step 3.** The configured local database has both Phase 0 and Step 2
+**Step 3 is implemented: review its
+[implementation report](docs/PHASE1_STEP3_AUTH_RUNTIME.md); do not start Step 4 without
+separate authorization.** No Step 3 files have been staged, committed or pushed.
+The configured local database has both Phase 0 and Step 2
 migrations applied. The remaining Phase 1 scope includes customer
 registration, email OTP, login/logout, password reset, Owner bootstrap, employee
 accounts, authorization and audit workflows. Extend the existing architecture only

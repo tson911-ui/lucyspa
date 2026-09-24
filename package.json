@@ -9,7 +9,8 @@
     "pnpm": "12.4.2"
   },
   "scripts": {
-    "env:init": "node scripts/init-env.mjs",
+    "env:init": "node scripts/init-env.mjs && node scripts/init-auth-env.mjs",
+    "auth:env:init": "node scripts/init-auth-env.mjs",
     "dev": "pnpm build:server && pnpm -r --parallel --filter \"./apps/*\" --fail-if-no-match run dev",
     "dev:web": "pnpm --filter @lucy-spa/web dev",
     "dev:api": "pnpm build:server && pnpm --filter @lucy-spa/api dev",
@@ -22,6 +23,7 @@
     "format:check": "prettier . --check",
     "test": "pnpm build:server && pnpm --filter @lucy-spa/api build && pnpm --filter @lucy-spa/worker build && pnpm -r run --if-present test",
     "test:integration": "pnpm build:server && pnpm --filter @lucy-spa/database test:integration",
+    "test:auth:integration": "pnpm build:server && pnpm --filter @lucy-spa/api build && pnpm --filter @lucy-spa/api test:integration",
     "smoke:worker": "pnpm --filter @lucy-spa/worker smoke",
     "smoke": "node scripts/smoke.mjs",
     "infra:up": "docker compose up -d --wait",

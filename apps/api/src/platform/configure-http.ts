@@ -46,7 +46,7 @@ export function configureHttp(
     const config = new DocumentBuilder()
       .setTitle('Lucy Spa API')
       .setDescription(
-        'Phase 0 infrastructure endpoints. Business modules are introduced in later phases.',
+        'Infrastructure and authentication context foundation. Authentication workflows are introduced in later steps.',
       )
       .setVersion('0.0.0')
       .build();

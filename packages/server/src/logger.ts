@@ -1,27 +1,67 @@
-import { pino } from 'pino';
+import { pino, type DestinationStream } from 'pino';
 
-export function createLogger(service: string, level: string) {
-  return pino({
-    level,
-    base: { service },
-    redact: {
-      paths: [
-        'password',
-        'token',
-        'authorization',
-        'cookie',
-        'databaseUrl',
-        'redisUrl',
-        'req.headers.authorization',
-        'req.headers.cookie',
-        '*.password',
-        '*.token',
-      ],
-      censor: '[REDACTED]',
+export function createLogger(service: string, level: string, destination?: DestinationStream) {
+  return pino(
+    {
+      level,
+      base: { service },
+      redact: {
+        paths: [
+          'password',
+          'token',
+          'authorization',
+          'cookie',
+          'databaseUrl',
+          'redisUrl',
+          'passwordHash',
+          'newPassword',
+          'otp',
+          'flowToken',
+          'setupToken',
+          'csrfToken',
+          'sessionToken',
+          'rawToken',
+          'tokenHash',
+          'verifierDigest',
+          'encryptedPayload',
+          'nonce',
+          'tag',
+          'emailPayload',
+          'auth',
+          'headers',
+          'body',
+          'req.body',
+          'req.headers',
+          'res.headers',
+          'req.headers.authorization',
+          'req.headers.cookie',
+          '*.password',
+          '*.token',
+          '*.passwordHash',
+          '*.newPassword',
+          '*.otp',
+          '*.flowToken',
+          '*.setupToken',
+          '*.csrfToken',
+          '*.sessionToken',
+          '*.rawToken',
+          '*.tokenHash',
+          '*.verifierDigest',
+          '*.encryptedPayload',
+          '*.nonce',
+          '*.tag',
+          '*.emailPayload',
+          '*.auth',
+          '*.body',
+          '*.headers',
+        ],
+        censor: '[REDACTED]',
+      },
+      serializers: {
+        // Errors from drivers can embed URLs, SQL or user values in messages/stacks.
+        err: (error: unknown) => ({ type: error instanceof Error ? error.name : 'UnknownError' }),
+      },
     },
-    serializers: {
-      // Errors from drivers can embed URLs, SQL or user values in messages/stacks.
-      err: (error: unknown) => ({ type: error instanceof Error ? error.name : 'UnknownError' }),
-    },
-  });
+    destination,
+  );
 }

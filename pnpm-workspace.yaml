@@ -3,6 +3,7 @@ packages:
   - packages/*
 
 allowBuilds:
+  argon2: true
   '@scarf/scarf': false
   msgpackr-extract: false
   '@nestjs/core': true

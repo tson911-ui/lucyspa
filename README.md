@@ -1,7 +1,10 @@
 # Lucy Spa
 
-Phase 0 project foundation. Product requirements live in [LUCY_SPA_PRD.md](LUCY_SPA_PRD.md).
-No customer authentication or business workflows are implemented yet.
+Phase 0 and Phase 1 authentication runtime foundation. Product requirements live in
+[LUCY_SPA_PRD.md](LUCY_SPA_PRD.md). Step 3 provides password/identity/security/session
+primitives and `GET /api/v1/auth/context`; registration, login and other complete
+authentication/business flows remain later work. See the
+[Step 3 implementation and validation report](docs/PHASE1_STEP3_AUTH_RUNTIME.md).
 
 ## Architecture
 
@@ -75,6 +78,15 @@ production. Do not commit `.env`. API/worker/Prisma load the root `.env`; the we
 does not load backend secrets. Inject environment variables through the runtime in a
 future deployment. Explicit process environment values take precedence.
 
+`env:init` also creates an ignored `.env.auth.local` with independent random CSRF
+and throttle keys. For an existing checkout, run `pnpm auth:env:init` once; this
+leaves `.env` and existing auth keys unchanged. API dev/start commands load both
+files. Production must inject external keys, an HTTPS `WEB_ORIGIN`, and
+`AUTH_ALLOW_INSECURE_LOCAL_COOKIE=false`; startup rejects the local cookie exception.
+The web process receives no auth secrets. It forwards `/api/*` to the validated
+server setting `API_UPSTREAM_ORIGIN` (default `http://127.0.0.1:3001`). Use
+`http://localhost:3000` consistently in local browsers to match `WEB_ORIGIN`.
+
 Local services bind to loopback only and keep data in named Docker volumes. `infra:down`
 stops/removes containers while preserving volumes. Existing PostgreSQL volumes retain
 their original credentials: editing `.env` alone does not rotate a database password.
@@ -97,21 +109,22 @@ Never expose connection URLs through `NEXT_PUBLIC_*` variables.
 
 ## Development and verification
 
-| Command                                             | Result                                                              |
-| --------------------------------------------------- | ------------------------------------------------------------------- |
-| `pnpm dev`                                          | Build shared packages, then watch all three apps                    |
-| `pnpm dev:web` / `pnpm dev:api` / `pnpm dev:worker` | Run an individual app                                               |
-| `pnpm build:server`                                 | Generate Prisma and compile shared packages                         |
-| `pnpm format` / `pnpm format:check`                 | Format/check project files; PRD excluded                            |
-| `pnpm lint`                                         | ESLint and package boundaries                                       |
-| `pnpm typecheck`                                    | All strict TypeScript checks, including Next route types            |
-| `pnpm test`                                         | Unit and HTTP API tests; no live infrastructure needed              |
-| `pnpm test:integration`                             | Real PostgreSQL constraints and transaction/outbox rollback         |
-| `pnpm build`                                        | All packages and production application builds                      |
-| `pnpm check`                                        | Formatting, lint, types, tests and builds                           |
-| `pnpm smoke:worker`                                 | Explicit BullMQ round trip; start worker first                      |
-| `pnpm smoke`                                        | Start built apps on temporary ports; test web/API/BullMQ; stop them |
-| `pnpm infra:status`                                 | Container health/status                                             |
+| Command                                             | Result                                                                            |
+| --------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `pnpm dev`                                          | Build shared packages, then watch all three apps                                  |
+| `pnpm dev:web` / `pnpm dev:api` / `pnpm dev:worker` | Run an individual app                                                             |
+| `pnpm build:server`                                 | Generate Prisma and compile shared packages                                       |
+| `pnpm format` / `pnpm format:check`                 | Format/check project files; PRD excluded                                          |
+| `pnpm lint`                                         | ESLint and package boundaries                                                     |
+| `pnpm typecheck`                                    | All strict TypeScript checks, including Next route types                          |
+| `pnpm test`                                         | Unit and HTTP API tests; no live infrastructure needed                            |
+| `pnpm test:integration`                             | Real PostgreSQL constraints and transaction/outbox rollback                       |
+| `pnpm test:auth:integration`                        | Step 3 sessions, context HTTP and throttle against PostgreSQL; fixtures roll back |
+| `pnpm build`                                        | All packages and production application builds                                    |
+| `pnpm check`                                        | Formatting, lint, types, tests and builds                                         |
+| `pnpm smoke:worker`                                 | Explicit BullMQ round trip; start worker first                                    |
+| `pnpm smoke`                                        | Start built apps on temporary ports; test web/API/BullMQ; stop them               |
+| `pnpm infra:status`                                 | Container health/status                                                           |
 
 App source changes are watched. Shared backend package changes require
 `pnpm build:server` and an app restart. UI source is transpiled by Next.js.
@@ -158,9 +171,9 @@ and validates migrations, integration tests and application startup against Post
 is configured. Optional dependency telemetry and native acceleration build scripts are
 explicitly disabled in the workspace build policy.
 
-This is a production-oriented foundation, not a launch-ready deployment. Authentication,
-RBAC/Owner protection, audit domain, business modules, real job processors, outbox
+This is a production-oriented foundation, not a launch-ready deployment. Complete authentication
+flows, RBAC/Owner workflows, audit domain, business modules, real job processors, outbox
 dispatch, production backup/restore, deployment and monitoring belong to later phases.
 Before Phase 1, Owner input is needed for the initial Owner bootstrap identity and
 the email provider/sending domain and test-delivery arrangement. Final branding can wait.
-Do not begin Phase 1 without explicit review approval.
+Step 3 is awaiting review. Do not begin Step 4 without separate authorization.

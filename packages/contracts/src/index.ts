@@ -11,3 +11,8 @@ export interface ApiErrorResponse {
   message: string | string[];
   requestId: string;
 }
+
+export interface AuthContextResponse {
+  csrfToken: string;
+  authenticated: boolean;
+}

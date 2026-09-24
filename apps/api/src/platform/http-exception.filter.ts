@@ -4,6 +4,7 @@ import type { ApiErrorResponse } from '@lucy-spa/contracts';
 import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
 import type { Response } from 'express';
 import type { Logger } from 'pino';
+import { AuthError } from '../auth/auth.error.js';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -16,13 +17,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const requestId = typeof requestIdHeader === 'string' ? requestIdHeader : randomUUID();
     const body: ApiErrorResponse = {
       statusCode,
-      code: `HTTP_${statusCode}`,
+      code: exception instanceof AuthError ? exception.code : `HTTP_${statusCode}`,
       // Even framework 404s may echo an incoming URL containing sensitive data.
-      // Until explicit public domain errors exist, expose standard messages only.
+      // Domain errors are allowlisted; other exceptions expose standard messages only.
       message:
-        statusCode >= 500
-          ? 'Internal server error'
-          : (STATUS_CODES[statusCode] ?? 'Request failed'),
+        exception instanceof AuthError
+          ? exception.message
+          : statusCode >= 500
+            ? 'Internal server error'
+            : (STATUS_CODES[statusCode] ?? 'Request failed'),
       requestId,
     };
     if (statusCode >= 500) {

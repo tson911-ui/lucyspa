@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer } from 'node:net';
@@ -87,7 +88,14 @@ try {
       NODE_ENV: 'production',
       API_HOST: '127.0.0.1',
       API_PORT: String(apiPort),
-      WEB_ORIGIN: webUrl,
+      // The production API requires an HTTPS public origin, even while this
+      // infrastructure-only probe connects directly to its loopback upstream.
+      WEB_ORIGIN: 'https://spa.example',
+      AUTH_ALLOW_INSECURE_LOCAL_COOKIE: 'false',
+      AUTH_CSRF_KEYS: JSON.stringify({ 1: randomBytes(32).toString('base64url') }),
+      AUTH_CSRF_ACTIVE_VERSION: '1',
+      AUTH_THROTTLE_KEYS: JSON.stringify({ 1: randomBytes(32).toString('base64url') }),
+      AUTH_THROTTLE_ACTIVE_VERSION: '1',
       SWAGGER_ENABLED: 'true',
     },
   );
@@ -125,7 +133,11 @@ try {
     service: 'api',
   });
   const openapi = await (await get(`${apiUrl}/openapi.json`)).json();
-  assert.deepEqual(Object.keys(openapi.paths).sort(), ['/health/live', '/health/ready']);
+  assert.deepEqual(Object.keys(openapi.paths).sort(), [
+    '/api/v1/auth/context',
+    '/health/live',
+    '/health/ready',
+  ]);
   const missing = await get(`${apiUrl}/unknown?token=never-echo-this`);
   assert.equal(missing.status, 404);
   assert.doesNotMatch(await missing.text(), /never-echo-this/);

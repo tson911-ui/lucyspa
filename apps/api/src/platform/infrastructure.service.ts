@@ -1,9 +1,10 @@
-import { createDatabaseClient, type DatabaseClient } from '@lucy-spa/database';
+import type { DatabaseClient } from '@lucy-spa/database';
 import { redisConnectionOptions } from '@lucy-spa/server';
 import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import type { Logger } from 'pino';
 import { API_ENVIRONMENT, API_LOGGER, type ApiEnvironment } from './tokens.js';
+import { PrismaService } from './prisma.service.js';
 
 const HEALTH_TIMEOUT_MS = 3_000;
 
@@ -34,8 +35,9 @@ export class InfrastructureService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(API_ENVIRONMENT) environment: ApiEnvironment,
     @Inject(API_LOGGER) private readonly logger: Logger,
+    @Inject(PrismaService) prisma: PrismaService,
   ) {
-    this.database = createDatabaseClient(environment.databaseUrl);
+    this.database = prisma.client;
     this.redis = new Redis({
       ...redisConnectionOptions(environment.redisUrl, 'producer'),
       lazyConnect: true,
@@ -72,6 +74,5 @@ export class InfrastructureService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     this.redis.disconnect();
-    await this.database.$disconnect();
   }
 }

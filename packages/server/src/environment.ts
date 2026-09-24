@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseAuthEnvironment } from './auth-environment.js';
 
 const port = z.coerce.number().int().min(1).max(65535);
 const databaseUrl = z
@@ -59,6 +60,7 @@ export function parseApiEnvironment(env: NodeJS.ProcessEnv) {
     host: config.API_HOST,
     port: config.API_PORT,
     webOrigin: config.WEB_ORIGIN,
+    auth: parseAuthEnvironment(env, config.NODE_ENV, config.WEB_ORIGIN),
     swaggerEnabled:
       config.SWAGGER_ENABLED === undefined
         ? config.NODE_ENV !== 'production'
