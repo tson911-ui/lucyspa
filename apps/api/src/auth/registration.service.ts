@@ -31,6 +31,7 @@ import {
 } from './otp-flow.js';
 import { PasswordResetService } from './password-reset.service.js';
 import { PasswordService } from './password.service.js';
+import { RecoveryEmailService } from './recovery-email.service.js';
 import { normalizeRegistration, type RegistrationInput } from './registration.js';
 import { SessionService } from './session.service.js';
 
@@ -75,6 +76,10 @@ export class RegistrationService {
     @Optional()
     @Inject(PasswordResetService)
     private readonly resets?: Pick<PasswordResetService, 'rotateLocked'>,
+    // Also forwards workforce recovery-email flows; optional for the same reason.
+    @Optional()
+    @Inject(RecoveryEmailService)
+    private readonly recoveryEmails?: Pick<RecoveryEmailService, 'rotateLocked'>,
   ) {}
 
   /**
@@ -353,13 +358,17 @@ export class RegistrationService {
         if (!(await debitIpIssue(tx, this.throttle, this.environment.auth, peer, now))) {
           return true;
         }
-        if (digest !== null && this.resets) {
+        if (digest !== null && (this.resets || this.recoveryEmails)) {
           const located = await tx.authChallenge.findUnique({
             where: { flowTokenHash: new Uint8Array(digest) },
             select: { purpose: true },
           });
-          if (located?.purpose === 'RESET_PASSWORD') {
+          if (located?.purpose === 'RESET_PASSWORD' && this.resets) {
             await this.resets.rotateLocked(tx, digest, now);
+            return false;
+          }
+          if (located?.purpose === 'VERIFY_RECOVERY_EMAIL' && this.recoveryEmails) {
+            await this.recoveryEmails.rotateLocked(tx, digest, now);
             return false;
           }
         }

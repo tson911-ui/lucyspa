@@ -1,34 +1,30 @@
-import { randomUUID } from 'node:crypto';
-import type { AcceptedFlowResponse } from '@lucy-spa/contracts';
+import type { AcceptedFlowResponse, PasswordResetRealm } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
 import { Inject, Injectable } from '@nestjs/common';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
-import { enqueueAuthEmail, invalidatePendingDeliveries } from './auth-delivery.js';
+import { invalidatePendingDeliveries } from './auth-delivery.js';
 import { AuthThrottleService } from './auth-throttle.service.js';
 import { AuthError } from './auth.error.js';
-import {
-  capabilityDigest,
-  generateCapability,
-  generateOtp,
-  otpDigest,
-  verifyOtpDigest,
-} from './crypto.js';
+import { capabilityDigest, generateCapability, verifyOtpDigest } from './crypto.js';
 import { IdentityValidationError, normalizeEmail } from './identity.js';
 import {
   accepted,
-  codeExpiry,
   debitIpIssue,
   debitIpVerify,
   emailIssuanceAllowed,
-  flowTokenDigest,
   guardAuth,
   identityFailuresExhausted,
+  invalidateChallenges,
+  issueUserChallenge,
   lockIdentity,
   OTP_POLICY,
   RateLimitedError,
   recordIdentityFailure,
   requireDeliveryKey,
   requireOtpKey,
+  rotateUserChallenge,
+  supersedeActionable,
+  userOtpBinding,
 } from './otp-flow.js';
 import {
   PasswordPolicyError,
@@ -76,20 +72,28 @@ type LockedChallenge = Prisma.AuthChallengeGetPayload<{ select: typeof challenge
 type LockedUser = Prisma.UserGetPayload<{ select: typeof userSelect }>;
 type CompleteOutcome = 'RESET' | 'FAILED' | 'RATE_LIMITED';
 
-/** Customer realm only in Phase 1 Step 6; workforce recovery arrives with those accounts. */
-function eligible(user: LockedUser | null): user is LockedUser & {
-  emailCanonical: string;
-  emailDelivery: string;
-} {
+type RecoverableUser = LockedUser & { emailCanonical: string; emailDelivery: string };
+
+/**
+ * An ACTIVE User with a password and a verified email. Pending-setup and inactive
+ * employees are never activated or reactivated through reset.
+ */
+function eligible(user: LockedUser | null): user is RecoverableUser {
   return (
     user !== null &&
-    user.kind === 'CUSTOMER' &&
     user.status === 'ACTIVE' &&
     user.emailVerifiedAt !== null &&
     user.passwordHash !== null &&
     user.emailCanonical !== null &&
     user.emailDelivery !== null
   );
+}
+
+/** A credential in one realm grants nothing in the other; principal kind is immutable. */
+function inRealm(user: LockedUser, realm: PasswordResetRealm): boolean {
+  return realm === 'CUSTOMER'
+    ? user.kind === 'CUSTOMER'
+    : user.kind === 'OWNER' || user.kind === 'EMPLOYEE';
 }
 
 @Injectable()
@@ -104,9 +108,15 @@ export class PasswordResetService {
   /**
    * Always the same accepted shape. Unknown, ineligible and suppressed identities get an
    * unstored random flow token and no email; eligible ones get a code at the stored
-   * verified delivery address, never the submitted spelling.
+   * verified delivery address, never the submitted spelling. The Owner and employees
+   * recover in the WORKFORCE realm once their recovery email is verified.
    */
-  async request(email: string, locale: 'vi' | 'en', peer: string): Promise<AcceptedFlowResponse> {
+  async request(
+    email: string,
+    locale: 'vi' | 'en',
+    peer: string,
+    realm: PasswordResetRealm = 'CUSTOMER',
+  ): Promise<AcceptedFlowResponse> {
     const otp = requireOtpKey(this.environment.auth);
     requireDeliveryKey(this.environment.auth);
     let emailCanonical: string;
@@ -126,45 +136,16 @@ export class PasswordResetService {
         // Budgets apply equally to known and unknown identities.
         if (!(await emailIssuanceAllowed(tx, this.throttle, emailCanonical, now))) return false;
         const user = await tx.user.findUnique({ where: { emailCanonical }, select: userSelect });
-        if (!eligible(user)) return false;
-        await this.supersede(tx, identities.all, now);
-        const challengeId = randomUUID();
-        const flowExpiresAt = new Date(now.getTime() + RESET_POLICY.flowLifetimeSeconds * 1_000);
-        const codeExpiresAt = codeExpiry(now, flowExpiresAt);
-        const code = generateOtp();
-        await tx.authChallenge.create({
-          data: {
-            id: challengeId,
-            purpose: PURPOSE,
-            flowTokenHash: new Uint8Array(flowTokenDigest(flowToken)),
-            identityKey: new Uint8Array(identities.active.digest),
-            identityKeyVersion: identities.active.version,
-            userId: user.id,
-            generation: 1,
-            verifierDigest: new Uint8Array(
-              otpDigest(this.binding(challengeId, 1, user, user.credentialVersion), code, otp.key),
-            ),
-            keyVersion: otp.version,
-            credentialVersion: user.credentialVersion,
-            authzVersion: user.authzVersion,
-            deliveryEmailSnapshot: user.emailDelivery,
-            maxAttempts: OTP_POLICY.maxAttempts,
-            createdAt: now,
-            flowExpiresAt,
-            codeGeneratedAt: now,
-            codeExpiresAt,
-          },
-          select: { id: true },
-        });
-        await enqueueAuthEmail(tx, this.environment.auth, {
-          challengeId,
-          generation: 1,
-          now,
-          codeExpiresAt,
-          to: user.emailDelivery,
-          code,
-          locale,
+        if (!eligible(user) || !inRealm(user, realm)) return false;
+        await supersedeActionable(tx, PURPOSE, identities.all, now);
+        await issueUserChallenge(tx, this.environment.auth, otp, {
           purpose: PURPOSE,
+          flowToken,
+          identity: identities.active,
+          user,
+          now,
+          flowLifetimeSeconds: RESET_POLICY.flowLifetimeSeconds,
+          locale,
         });
         return false;
       });
@@ -230,7 +211,13 @@ export class PasswordResetService {
           now < challenge.codeExpiresAt &&
           verifyOtpDigest(
             challenge.verifierDigest,
-            this.binding(challenge.id, challenge.generation, user, challenge.credentialVersion),
+            userOtpBinding(
+              PURPOSE,
+              challenge.id,
+              challenge.generation,
+              user,
+              challenge.credentialVersion,
+            ),
             otp,
             key,
           );
@@ -266,7 +253,8 @@ export class PasswordResetService {
         const others = await tx.authChallenge.findMany({
           where: {
             userId: user.id,
-            purpose: { in: ['RESET_PASSWORD', 'EMPLOYEE_SETUP'] },
+            // A pending recovery-email proof is bound to the replaced credential too.
+            purpose: { in: ['RESET_PASSWORD', 'EMPLOYEE_SETUP', 'VERIFY_RECOVERY_EMAIL'] },
             consumedAt: null,
             invalidatedAt: null,
           },
@@ -329,36 +317,12 @@ export class PasswordResetService {
       return;
     }
     if (!(await emailIssuanceAllowed(tx, this.throttle, user.emailCanonical, now))) return;
-    const generation = challenge.generation + 1;
-    const code = generateOtp();
-    const codeExpiresAt = codeExpiry(now, challenge.flowExpiresAt);
-    await invalidatePendingDeliveries(tx, [challenge.id]);
-    await tx.authChallenge.update({
-      where: { id: challenge.id },
-      data: {
-        generation,
-        verifierDigest: new Uint8Array(
-          otpDigest(
-            this.binding(challenge.id, generation, user, challenge.credentialVersion),
-            code,
-            otp.key,
-          ),
-        ),
-        keyVersion: otp.version,
-        codeGeneratedAt: now,
-        codeExpiresAt,
-      },
-      select: { id: true },
-    });
-    await enqueueAuthEmail(tx, this.environment.auth, {
-      challengeId: challenge.id,
-      generation,
-      now,
-      codeExpiresAt,
-      to: user.emailDelivery,
-      code,
-      locale: user.preferredLocale,
+    await rotateUserChallenge(tx, this.environment.auth, otp, {
       purpose: PURPOSE,
+      challenge: { ...challenge, credentialVersion: challenge.credentialVersion },
+      user,
+      now,
+      locale: user.preferredLocale,
     });
   }
 
@@ -366,10 +330,7 @@ export class PasswordResetService {
   private async lock(
     tx: Prisma.TransactionClient,
     digest: Buffer | null,
-  ): Promise<{
-    challenge: LockedChallenge;
-    user: LockedUser & { emailCanonical: string; emailDelivery: string };
-  } | null> {
+  ): Promise<{ challenge: LockedChallenge; user: RecoverableUser } | null> {
     if (digest === null) return null;
     const located = await tx.authChallenge.findUnique({
       where: { flowTokenHash: new Uint8Array(digest) },
@@ -415,45 +376,7 @@ export class PasswordResetService {
     );
   }
 
-  private async invalidate(tx: Prisma.TransactionClient, challengeId: string, now: Date) {
-    await tx.authChallenge.update({
-      where: { id: challengeId },
-      data: { invalidatedAt: now },
-      select: { id: true },
-    });
-    await invalidatePendingDeliveries(tx, [challengeId]);
-  }
-
-  /** Supersedes any actionable reset for this identity before a new one is inserted. */
-  private async supersede(tx: Prisma.TransactionClient, identityKeys: Buffer[], now: Date) {
-    const actionable = await tx.authChallenge.findMany({
-      where: {
-        purpose: PURPOSE,
-        identityKey: { in: identityKeys.map((key) => new Uint8Array(key)) },
-        consumedAt: null,
-        invalidatedAt: null,
-      },
-      select: { id: true },
-    });
-    if (actionable.length === 0) return;
-    const ids = actionable.map((row) => row.id);
-    await tx.authChallenge.updateMany({ where: { id: { in: ids } }, data: { invalidatedAt: now } });
-    await invalidatePendingDeliveries(tx, ids);
-  }
-
-  private binding(
-    challengeId: string,
-    generation: number,
-    user: { id: string; emailCanonical: string },
-    credentialVersion: number,
-  ) {
-    return {
-      purpose: PURPOSE,
-      challengeId,
-      generation,
-      subjectId: user.id,
-      emailCanonical: user.emailCanonical,
-      credentialVersion,
-    } as const;
+  private invalidate(tx: Prisma.TransactionClient, challengeId: string, now: Date) {
+    return invalidateChallenges(tx, [challengeId], now);
   }
 }

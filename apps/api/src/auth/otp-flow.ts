@@ -1,9 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import type { AcceptedFlowResponse } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
 import type { AuthEnvironment } from '@lucy-spa/server';
+import { enqueueAuthEmail, invalidatePendingDeliveries } from './auth-delivery.js';
 import type { AuthThrottleService } from './auth-throttle.service.js';
 import { AuthError } from './auth.error.js';
-import { capabilityDigest, identityDigest } from './crypto.js';
+import { capabilityDigest, generateOtp, identityDigest, otpDigest } from './crypto.js';
 
 /**
  * Shared email-OTP flow rules (design section 6). Budgets are keyed by canonical email
@@ -30,7 +32,18 @@ export const OTP_OPS = {
   identityFailure: 'OTP_VERIFY_FAILURE_IDENTITY',
 } as const;
 
-export type EmailOtpPurpose = 'ACTIVATE_CUSTOMER' | 'RESET_PASSWORD';
+export type EmailOtpPurpose = 'ACTIVATE_CUSTOMER' | 'RESET_PASSWORD' | 'VERIFY_RECOVERY_EMAIL';
+
+/** Email flows bound to an existing User, its stored address and its credential version. */
+export type UserOtpPurpose = 'RESET_PASSWORD' | 'VERIFY_RECOVERY_EMAIL';
+
+export interface OtpSubject {
+  readonly id: string;
+  readonly emailCanonical: string;
+  readonly emailDelivery: string;
+  readonly credentialVersion: number;
+  readonly authzVersion: number;
+}
 
 export class RateLimitedError extends AuthError {
   constructor(readonly retryAfterSeconds: number) {
@@ -191,6 +204,170 @@ export async function recordIdentityFailure(
     emailCanonical,
     OTP_POLICY.identityFailureLimit,
     OTP_POLICY.verifyWindowSeconds,
+    now,
+  );
+}
+
+export function userOtpBinding(
+  purpose: UserOtpPurpose,
+  challengeId: string,
+  generation: number,
+  subject: { id: string; emailCanonical: string },
+  credentialVersion: number,
+) {
+  return {
+    purpose,
+    challengeId,
+    generation,
+    subjectId: subject.id,
+    emailCanonical: subject.emailCanonical,
+    credentialVersion,
+  } as const;
+}
+
+/**
+ * Inserts generation 1 of a User-bound flow, sent to the stored delivery address, and
+ * queues its email in the same transaction. The caller holds the identity lock and has
+ * already superseded older actionable flows and debited the email budgets.
+ */
+export async function issueUserChallenge(
+  tx: Prisma.TransactionClient,
+  auth: AuthEnvironment,
+  otp: { version: number; key: Buffer },
+  input: {
+    purpose: UserOtpPurpose;
+    flowToken: string;
+    identity: { version: number; digest: Buffer };
+    user: OtpSubject;
+    now: Date;
+    flowLifetimeSeconds: number;
+    locale: 'vi' | 'en';
+  },
+): Promise<void> {
+  const { purpose, user, now } = input;
+  const challengeId = randomUUID();
+  const flowExpiresAt = new Date(now.getTime() + input.flowLifetimeSeconds * 1_000);
+  const codeExpiresAt = codeExpiry(now, flowExpiresAt);
+  const code = generateOtp();
+  await tx.authChallenge.create({
+    data: {
+      id: challengeId,
+      purpose,
+      flowTokenHash: new Uint8Array(flowTokenDigest(input.flowToken)),
+      identityKey: new Uint8Array(input.identity.digest),
+      identityKeyVersion: input.identity.version,
+      userId: user.id,
+      generation: 1,
+      verifierDigest: new Uint8Array(
+        otpDigest(
+          userOtpBinding(purpose, challengeId, 1, user, user.credentialVersion),
+          code,
+          otp.key,
+        ),
+      ),
+      keyVersion: otp.version,
+      credentialVersion: user.credentialVersion,
+      authzVersion: user.authzVersion,
+      deliveryEmailSnapshot: user.emailDelivery,
+      maxAttempts: OTP_POLICY.maxAttempts,
+      createdAt: now,
+      flowExpiresAt,
+      codeGeneratedAt: now,
+      codeExpiresAt,
+    },
+    select: { id: true },
+  });
+  await enqueueAuthEmail(tx, auth, {
+    challengeId,
+    generation: 1,
+    now,
+    codeExpiresAt,
+    to: user.emailDelivery,
+    code,
+    locale: input.locale,
+    purpose,
+  });
+}
+
+/** Replaces a live User-bound flow's code with a new generation; the deadline is unchanged. */
+export async function rotateUserChallenge(
+  tx: Prisma.TransactionClient,
+  auth: AuthEnvironment,
+  otp: { version: number; key: Buffer },
+  input: {
+    purpose: UserOtpPurpose;
+    challenge: { id: string; generation: number; flowExpiresAt: Date; credentialVersion: number };
+    user: { id: string; emailCanonical: string; emailDelivery: string };
+    now: Date;
+    locale: 'vi' | 'en';
+  },
+): Promise<void> {
+  const { purpose, challenge, user, now } = input;
+  const generation = challenge.generation + 1;
+  const code = generateOtp();
+  const codeExpiresAt = codeExpiry(now, challenge.flowExpiresAt);
+  await invalidatePendingDeliveries(tx, [challenge.id]);
+  await tx.authChallenge.update({
+    where: { id: challenge.id },
+    data: {
+      generation,
+      verifierDigest: new Uint8Array(
+        otpDigest(
+          userOtpBinding(purpose, challenge.id, generation, user, challenge.credentialVersion),
+          code,
+          otp.key,
+        ),
+      ),
+      keyVersion: otp.version,
+      codeGeneratedAt: now,
+      codeExpiresAt,
+    },
+    select: { id: true },
+  });
+  await enqueueAuthEmail(tx, auth, {
+    challengeId: challenge.id,
+    generation,
+    now,
+    codeExpiresAt,
+    to: user.emailDelivery,
+    code,
+    locale: input.locale,
+    purpose,
+  });
+}
+
+export async function invalidateChallenges(
+  tx: Prisma.TransactionClient,
+  challengeIds: readonly string[],
+  now: Date,
+): Promise<void> {
+  if (challengeIds.length === 0) return;
+  await tx.authChallenge.updateMany({
+    where: { id: { in: [...challengeIds] } },
+    data: { invalidatedAt: now },
+  });
+  await invalidatePendingDeliveries(tx, challengeIds);
+}
+
+/** Supersedes any actionable flow of this purpose for the identity before a new one is inserted. */
+export async function supersedeActionable(
+  tx: Prisma.TransactionClient,
+  purpose: UserOtpPurpose,
+  identityKeys: Buffer[],
+  now: Date,
+): Promise<void> {
+  const actionable = await tx.authChallenge.findMany({
+    where: {
+      purpose,
+      identityKey: { in: identityKeys.map((key) => new Uint8Array(key)) },
+      consumedAt: null,
+      invalidatedAt: null,
+    },
+    select: { id: true },
+  });
+  await invalidateChallenges(
+    tx,
+    actionable.map((row) => row.id),
     now,
   );
 }

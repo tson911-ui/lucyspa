@@ -9,7 +9,7 @@ const MAX_DELIVERY_ATTEMPTS = 5;
 const LEASE_MS = 30_000;
 const RETRY_BASE_MS = 15_000;
 
-export type AuthEmailPurpose = 'ACTIVATE_CUSTOMER' | 'RESET_PASSWORD';
+export type AuthEmailPurpose = 'ACTIVATE_CUSTOMER' | 'RESET_PASSWORD' | 'VERIFY_RECOVERY_EMAIL';
 
 /** Only the recipient and code needed for sending; decrypted by the delivery processor. */
 interface AuthEmailEnvelope {
@@ -51,6 +51,17 @@ export function renderAuthEmail(message: AuthEmailMessage): { subject: string; t
       : {
           subject: 'Your Lucy Spa password reset code',
           text: `Your Lucy Spa password reset code is ${message.code}. It expires in ${minutes} minutes. If you did not request it, ignore this email; your password is unchanged. Lucy Spa never asks for this code by phone.`,
+        };
+  }
+  if (message.purpose === 'VERIFY_RECOVERY_EMAIL') {
+    return message.locale === 'vi'
+      ? {
+          subject: 'Mã xác minh email khôi phục Lucy Spa',
+          text: `Mã xác minh email khôi phục tài khoản nhân sự Lucy Spa của bạn là ${message.code}. Mã có hiệu lực trong ${minutes} phút. Nếu bạn không yêu cầu, hãy bỏ qua email này và báo cho quản lý. Lucy Spa không bao giờ hỏi mã này qua điện thoại.`,
+        }
+      : {
+          subject: 'Verify your Lucy Spa recovery email',
+          text: `Your Lucy Spa staff recovery email verification code is ${message.code}. It expires in ${minutes} minutes. If you did not request it, ignore this email and tell your manager. Lucy Spa never asks for this code by phone.`,
         };
   }
   return message.locale === 'vi'
@@ -357,7 +368,9 @@ function parseEnvelope(plaintext: string): AuthEmailEnvelope | null {
   try {
     const value = JSON.parse(plaintext) as Partial<AuthEmailEnvelope>;
     return value.v === 1 &&
-      (value.purpose === 'ACTIVATE_CUSTOMER' || value.purpose === 'RESET_PASSWORD') &&
+      (value.purpose === 'ACTIVATE_CUSTOMER' ||
+        value.purpose === 'RESET_PASSWORD' ||
+        value.purpose === 'VERIFY_RECOVERY_EMAIL') &&
       typeof value.to === 'string' &&
       typeof value.code === 'string' &&
       /^[0-9]{6}$/.test(value.code) &&

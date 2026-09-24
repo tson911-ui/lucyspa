@@ -126,7 +126,8 @@ test('password reset routes enforce CSRF, strict DTOs and the accepted/204 contr
       .send(completeBody)
       .expect(403);
     for (const invalid of [
-      { ...requestBody, realm: 'WORKFORCE' },
+      { ...requestBody, realm: 'EMPLOYEE' },
+      { ...requestBody, realm: 'OWNER' },
       { ...requestBody, locale: 'fr' },
       { ...requestBody, userId: randomUUID() },
     ]) {
@@ -164,6 +165,14 @@ test('password reset routes enforce CSRF, strict DTOs and the accepted/204 contr
     assert.equal(body['codeLifetimeSeconds'], 300);
     assert.equal(body['resendAfterSeconds'], 60);
 
+    // The Owner and employees recover in the WORKFORCE realm with the same contract.
+    const workforce = await request(server)
+      .post('/api/v1/auth/password-reset/request')
+      .set(headers)
+      .send({ ...requestBody, realm: 'WORKFORCE' })
+      .expect(202);
+    assert.deepEqual(Object.keys(workforce.body as object).sort(), Object.keys(body).sort());
+
     const completed = await request(server)
       .post('/api/v1/auth/password-reset/complete')
       .set(headers)
@@ -191,9 +200,10 @@ test('password reset routes enforce CSRF, strict DTOs and the accepted/204 contr
       .expect(429);
     assert.equal(limited.headers['retry-after'], '900');
 
-    assert.deepEqual(calls[0], ['request', 'linh@example.com', 'vi', calls[0]?.[3]]);
+    assert.deepEqual(calls[0], ['request', 'linh@example.com', 'vi', calls[0]?.[3], 'CUSTOMER']);
     assert.equal(typeof calls[0]?.[3], 'string');
-    assert.deepEqual(calls[1]?.slice(0, 4), [
+    assert.deepEqual(calls[1], ['request', 'linh@example.com', 'vi', calls[0]?.[3], 'WORKFORCE']);
+    assert.deepEqual(calls[2]?.slice(0, 4), [
       'complete',
       flowToken,
       '012345',

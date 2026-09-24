@@ -90,12 +90,16 @@ export interface CurrentAccountResponse {
     | { version: number; owner: true };
 }
 
+/** CUSTOMER recovers customers; WORKFORCE recovers the Owner and employees. */
+export type PasswordResetRealm = 'CUSTOMER' | 'WORKFORCE';
+
 /**
  * POST /api/v1/auth/password-reset/request → 202 AcceptedFlowResponse for every
- * well-formed request. Step 6 supports the CUSTOMER realm only.
+ * well-formed request. A code is sent only to an ACTIVE account of that realm with a
+ * verified email.
  */
 export interface PasswordResetRequest {
-  realm: 'CUSTOMER';
+  realm: PasswordResetRealm;
   email: string;
   locale: PreferredLocale;
 }
@@ -105,4 +109,17 @@ export interface PasswordResetCompleteRequest {
   flowToken: string;
   otp: string;
   newPassword: string;
+}
+
+/**
+ * POST /api/v1/auth/recovery-email/request takes an empty object from an authenticated
+ * Owner/employee session reauthenticated within the fresh-proof window → 202
+ * AcceptedFlowResponse for the stored, still unverified recovery email.
+ *
+ * POST /api/v1/auth/recovery-email/verify → 204 from the same authenticated User; marks
+ * that stored email verified and changes nothing else.
+ */
+export interface RecoveryEmailVerifyRequest {
+  flowToken: string;
+  otp: string;
 }

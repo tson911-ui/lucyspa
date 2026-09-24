@@ -168,7 +168,7 @@ function peer(request: Request): string {
  * The contract input is an empty object. The global pipe cannot validate a
  * property-less DTO under forbidUnknownValues, so reject any property here.
  */
-function requireEmptyObject(body: unknown): void {
+export function requireEmptyObject(body: unknown): void {
   if (
     typeof body !== 'object' ||
     body === null ||

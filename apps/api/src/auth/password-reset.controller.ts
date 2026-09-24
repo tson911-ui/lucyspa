@@ -1,6 +1,7 @@
 import type {
   AcceptedFlowResponse,
   PasswordResetCompleteRequest,
+  PasswordResetRealm,
   PasswordResetRequest,
 } from '@lucy-spa/contracts';
 import { Body, Controller, HttpCode, Inject, Post, Req, Res } from '@nestjs/common';
@@ -11,7 +12,9 @@ import { RateLimitedError } from './otp-flow.js';
 import { PasswordResetService } from './password-reset.service.js';
 
 class PasswordResetRequestDto implements PasswordResetRequest {
-  @ApiProperty({ enum: ['CUSTOMER'] }) @IsIn(['CUSTOMER']) realm!: 'CUSTOMER';
+  @ApiProperty({ enum: ['CUSTOMER', 'WORKFORCE'] })
+  @IsIn(['CUSTOMER', 'WORKFORCE'])
+  realm!: PasswordResetRealm;
   @ApiProperty() @IsString() @MaxLength(1_024) email!: string;
   @ApiProperty({ enum: ['vi', 'en'] }) @IsIn(['vi', 'en']) locale!: 'vi' | 'en';
 }
@@ -35,7 +38,9 @@ export class PasswordResetController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<AcceptedFlowResponse> {
-    return retryAfter(response, () => this.resets.request(body.email, body.locale, peer(request)));
+    return retryAfter(response, () =>
+      this.resets.request(body.email, body.locale, peer(request), body.realm),
+    );
   }
 
   @Post('complete')
@@ -60,11 +65,11 @@ export class PasswordResetController {
 }
 
 // Forwarded headers are untrusted until deployment configures an explicit proxy list.
-function peer(request: Request): string {
+export function peer(request: Request): string {
   return request.socket.remoteAddress ?? 'unknown';
 }
 
-async function retryAfter<T>(response: Response, work: () => Promise<T>): Promise<T> {
+export async function retryAfter<T>(response: Response, work: () => Promise<T>): Promise<T> {
   try {
     return await work();
   } catch (error) {

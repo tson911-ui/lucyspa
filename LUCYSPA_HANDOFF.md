@@ -41,7 +41,8 @@
   [Step 5 report](docs/PHASE1_STEP5_LOGIN_LOGOUT.md) and
   [Step 6 report](docs/PHASE1_STEP6_PASSWORD_RESET.md) and
   [Step 7 report](docs/PHASE1_STEP7_PERMISSION_ENGINE.md) and
-  [Step 8 report](docs/PHASE1_STEP8_OWNER_WORKFORCE_AUTH.md) record scope and validation.
+  [Step 8 report](docs/PHASE1_STEP8_OWNER_WORKFORCE_AUTH.md) and
+  [Step 9 report](docs/PHASE1_STEP9_WORKFORCE_RECOVERY.md) record scope and validation.
   Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
@@ -195,9 +196,10 @@ because a new session starts.
 
 ## Exact next step and Owner inputs
 
-**Step 8 is implemented: review its
-[implementation report](docs/PHASE1_STEP8_OWNER_WORKFORCE_AUTH.md); do not start Step 9
-without separate authorization.** No Step 8 files have been staged, committed or pushed.
+**Step 9 is implemented: review its
+[implementation report](docs/PHASE1_STEP9_WORKFORCE_RECOVERY.md); do not start Step 10
+without separate authorization.** Step 8 is committed (`2f49625`); no Step 9 files have
+been staged, committed or pushed.
 No real Owner exists; create it only on explicit Owner instruction with
 `pnpm owner:bootstrap` (password via hidden prompt/stdin only).
 Approved remaining plan: Step 8 Owner bootstrap (interactive/stdin password) + workforce
@@ -205,12 +207,12 @@ authentication; Step 9 workforce recovery; Step 10 employee lifecycle; Step 11 r
 permission administration + audit read; Step 12 email dispatch/cleanup (provider
 deferred); Step 13 Phase 1 completion gate. Run `pnpm db:permissions:sync` explicitly
 (operator command, never on startup) before any grant can be created.
-Workforce recovery and recovery-email verification remain unimplemented (Step 9).
+Workforce password recovery and recovery-email verification are implemented (Step 9).
 Locally, run `pnpm auth:env:init` once to append the OTP and delivery key rings
 (existing keys are kept). Real OTP email needs an Owner-supplied provider, sender and
 credentials, plus a later outbox dispatcher and `AuthEmailTransport` adapter.
 The configured local database has both Phase 0 and Step 2
-migrations applied. The remaining Phase 1 scope includes workforce recovery, employee
+migrations applied. The remaining Phase 1 scope includes employee
 accounts, authorization and audit workflows. Extend the existing architecture only
 when authorized; the locked loyalty/combo/promotion rules remain later-phase
 requirements, not permission to implement them now.

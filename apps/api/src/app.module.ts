@@ -9,6 +9,8 @@ import { LoginService } from './auth/login.service.js';
 import { PasswordResetController } from './auth/password-reset.controller.js';
 import { PasswordResetService } from './auth/password-reset.service.js';
 import { PasswordService } from './auth/password.service.js';
+import { RecoveryEmailController } from './auth/recovery-email.controller.js';
+import { RecoveryEmailService } from './auth/recovery-email.service.js';
 import { RegistrationController } from './auth/registration.controller.js';
 import { RegistrationService } from './auth/registration.service.js';
 import { SessionAuthController } from './auth/session-auth.controller.js';
@@ -29,6 +31,7 @@ export class AppModule {
         RegistrationController,
         SessionAuthController,
         PasswordResetController,
+        RecoveryEmailController,
       ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },
@@ -41,6 +44,7 @@ export class AppModule {
         RegistrationService,
         LoginService,
         PasswordResetService,
+        RecoveryEmailService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
       ],
