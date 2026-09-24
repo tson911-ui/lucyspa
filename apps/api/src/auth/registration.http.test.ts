@@ -15,6 +15,7 @@ import { InfrastructureService } from '../platform/infrastructure.service.js';
 import { AuthThrottleService } from './auth-throttle.service.js';
 import { AuthError } from './auth.error.js';
 import { csrfToken, generateCapability } from './crypto.js';
+import { LoginService } from './login.service.js';
 import { PasswordService } from './password.service.js';
 import { accepted, RateLimitedError, RegistrationService } from './registration.service.js';
 import { sessionPrincipal, type SessionRecord } from './session.policy.js';
@@ -85,6 +86,8 @@ async function application(
     .overrideProvider(PasswordService)
     .useValue({ hashForSetting: () => Promise.reject(new Error('not expected')) })
     .overrideProvider(AuthThrottleService)
+    .useValue({})
+    .overrideProvider(LoginService)
     .useValue({});
   if (registrationService) {
     builder = builder.overrideProvider(RegistrationService).useValue(registrationService);

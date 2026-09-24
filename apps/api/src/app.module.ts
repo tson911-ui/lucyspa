@@ -5,9 +5,11 @@ import { AuthContextController } from './auth/auth-context.controller.js';
 import { AuthThrottleService } from './auth/auth-throttle.service.js';
 import { ContextThrottleService } from './auth/context-throttle.service.js';
 import { CsrfGuard } from './auth/csrf.guard.js';
+import { LoginService } from './auth/login.service.js';
 import { PasswordService } from './auth/password.service.js';
 import { RegistrationController } from './auth/registration.controller.js';
 import { RegistrationService } from './auth/registration.service.js';
+import { SessionAuthController } from './auth/session-auth.controller.js';
 import { SessionService } from './auth/session.service.js';
 import { HealthController } from './health/health.controller.js';
 import { InfrastructureService } from './platform/infrastructure.service.js';
@@ -19,7 +21,12 @@ export class AppModule {
   static forRoot(environment: ApiEnvironment, logger: Logger): DynamicModule {
     return {
       module: AppModule,
-      controllers: [HealthController, AuthContextController, RegistrationController],
+      controllers: [
+        HealthController,
+        AuthContextController,
+        RegistrationController,
+        SessionAuthController,
+      ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },
         { provide: API_LOGGER, useValue: logger },
@@ -29,6 +36,7 @@ export class AppModule {
         ContextThrottleService,
         AuthThrottleService,
         RegistrationService,
+        LoginService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
       ],

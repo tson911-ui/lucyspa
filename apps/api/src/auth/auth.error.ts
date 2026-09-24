@@ -3,6 +3,7 @@ import { HttpException } from '@nestjs/common';
 const errors = {
   VALIDATION_FAILED: [400, 'Validation failed'],
   VERIFICATION_FAILED: [400, 'Verification failed; request a new code or restart registration'],
+  AUTHENTICATION_FAILED: [401, 'Authentication failed'],
   AUTHENTICATION_REQUIRED: [401, 'Authentication required'],
   REQUEST_NOT_ALLOWED: [403, 'Request not allowed'],
   SERVICE_UNAVAILABLE: [503, 'Service unavailable'],

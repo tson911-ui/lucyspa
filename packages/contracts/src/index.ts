@@ -53,3 +53,31 @@ export interface ChallengeResendResponse {
   status: 'accepted';
   resendAfterSeconds: 60;
 }
+
+/**
+ * POST /api/v1/auth/login. Step 5 supports the CUSTOMER realm with an email identifier;
+ * WORKFORCE login is added with Owner/employee accounts in a later step.
+ */
+export interface LoginRequest {
+  realm: 'CUSTOMER';
+  identifierType: 'EMAIL';
+  identifier: string;
+  password: string;
+}
+
+export type AuthorizationScope = { kind: 'GLOBAL' } | { kind: 'BRANCH'; branchId: string };
+
+/** The caller's own display hints only; customers have empty grant lists. */
+export interface CurrentAccountResponse {
+  id: string;
+  kind: 'CUSTOMER' | 'EMPLOYEE' | 'OWNER';
+  displayName: string;
+  locale: PreferredLocale;
+  authorization:
+    | {
+        version: number;
+        grants: { permission: string; scope: AuthorizationScope }[];
+        denies: { permission: string; scope: AuthorizationScope }[];
+      }
+    | { version: number; owner: true };
+}
