@@ -1,10 +1,13 @@
 import type { CurrentAccountResponse } from '@lucy-spa/contracts';
+import type { Prisma } from '@lucy-spa/database';
 import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
+import { authorizationSummary } from '../authorization/authorization.js';
+import { loadAuthorityGraph } from '../authorization/authorization.store.js';
 import { PrismaService } from '../platform/prisma.service.js';
 import { AuthThrottleService } from './auth-throttle.service.js';
 import { AuthError } from './auth.error.js';
 import { generateCapability } from './crypto.js';
-import { normalizeEmail } from './identity.js';
+import { normalizeEmail, normalizeEmployeeCode } from './identity.js';
 import { PasswordService } from './password.service.js';
 import { RateLimitedError } from './registration.service.js';
 import { SessionService, type CredentialEvidence } from './session.service.js';
@@ -16,10 +19,25 @@ export const LOGIN_POLICY = Object.freeze({
   windowSeconds: 900,
 } as const);
 
-const OPS = {
-  identifierFailure: 'LOGIN_FAILURE_CUSTOMER_EMAIL',
-  ipFailure: 'LOGIN_FAILURE_IP',
-} as const;
+export type LoginRealm = 'CUSTOMER' | 'WORKFORCE';
+export type LoginIdentifierType = 'EMAIL' | 'EMPLOYEE_ID';
+
+export interface LoginPrincipal {
+  readonly realm: LoginRealm;
+  readonly identifierType: LoginIdentifierType;
+}
+
+const CUSTOMER_EMAIL: LoginPrincipal = { realm: 'CUSTOMER', identifierType: 'EMAIL' };
+
+/** Failure budgets are per realm/identifier type, so realms never share or leak budgets. */
+const IDENTIFIER_FAILURE_OPS: Readonly<Record<string, string | undefined>> = {
+  CUSTOMER_EMAIL: 'LOGIN_FAILURE_CUSTOMER_EMAIL',
+  WORKFORCE_EMAIL: 'LOGIN_FAILURE_WORKFORCE_EMAIL',
+  WORKFORCE_EMPLOYEE_ID: 'LOGIN_FAILURE_WORKFORCE_EMPLOYEE_ID',
+};
+const IP_FAILURE_OP = 'LOGIN_FAILURE_IP';
+// Reauthentication is keyed by the authenticated User rather than a typed identifier.
+const REAUTH_FAILURE_OP = 'REAUTH_FAILURE_USER';
 
 export interface LoginResult {
   readonly token: string;
@@ -36,7 +54,23 @@ const userSelect = {
   passwordHash: true,
   credentialVersion: true,
   authzVersion: true,
-} as const;
+} as const satisfies Prisma.UserSelect;
+
+type LoginUser = Prisma.UserGetPayload<{ select: typeof userSelect }>;
+
+/**
+ * Realm separation: a credential match in one realm grants no access in the other.
+ * CUSTOMER: active, email-verified customers. WORKFORCE by email: the Owner, or an active
+ * employee whose email is verified. WORKFORCE by employee ID: active employees.
+ */
+function eligible(user: LoginUser | null, principal: LoginPrincipal): user is LoginUser {
+  if (user === null || user.status !== 'ACTIVE' || user.passwordHash === null) return false;
+  if (principal.realm === 'CUSTOMER') {
+    return user.kind === 'CUSTOMER' && user.emailVerifiedAt !== null;
+  }
+  if (principal.identifierType === 'EMPLOYEE_ID') return user.kind === 'EMPLOYEE';
+  return user.kind === 'OWNER' || (user.kind === 'EMPLOYEE' && user.emailVerifiedAt !== null);
+}
 
 @Injectable()
 export class LoginService implements OnModuleInit {
@@ -45,7 +79,10 @@ export class LoginService implements OnModuleInit {
   constructor(
     @Inject(PrismaService) private readonly prisma: Pick<PrismaService, 'client'>,
     @Inject(SessionService)
-    private readonly sessions: Pick<SessionService, 'withTransaction' | 'rotateAuthenticated'>,
+    private readonly sessions: Pick<
+      SessionService,
+      'withTransaction' | 'rotateAuthenticated' | 'resolve' | 'resolveForMutation'
+    >,
     @Inject(PasswordService)
     private readonly passwords: Pick<
       PasswordService,
@@ -60,8 +97,8 @@ export class LoginService implements OnModuleInit {
   }
 
   /**
-   * CUSTOMER realm, email identifier. Exactly one real or dummy Argon2 verification;
-   * unknown, wrong-password, wrong-realm and ineligible accounts share one 401.
+   * Exactly one real or dummy Argon2 verification. Unknown, malformed, wrong-password,
+   * wrong-realm and ineligible accounts share one 401.
    */
   async login(
     identifier: string,
@@ -69,135 +106,266 @@ export class LoginService implements OnModuleInit {
     sessionToken: string,
     peer: string,
     requestId?: string,
+    principal: LoginPrincipal = CUSTOMER_EMAIL,
   ): Promise<LoginResult> {
-    let emailCanonical: string | null = null;
-    try {
-      emailCanonical = normalizeEmail(identifier).emailCanonical;
-    } catch {
-      // Malformed identifiers fail like unknown accounts, after the same dummy work.
-    }
+    const key = this.identifierKey(identifier, principal);
+    // CUSTOMER accounts sign in only by email; EMPLOYEE_ID exists only in WORKFORCE.
+    const operation = IDENTIFIER_FAILURE_OPS[`${principal.realm}_${principal.identifierType}`];
+    if (operation === undefined) throw new AuthError('VALIDATION_FAILED', 'identifierType');
     const user = await this.guard(() =>
       this.sessions.withTransaction(async (tx) => {
         const now = await this.throttle.now(tx);
-        const ipFailures = await this.throttle.windowCount(
-          tx,
-          OPS.ipFailure,
-          peer,
-          LOGIN_POLICY.windowSeconds,
-          now,
-        );
-        const identifierFailures =
-          emailCanonical === null
-            ? 0
-            : await this.throttle.windowCount(
-                tx,
-                OPS.identifierFailure,
-                emailCanonical,
-                LOGIN_POLICY.windowSeconds,
-                now,
-              );
         // Applies equally to known and unknown identifiers; no password work when limited.
         if (
-          ipFailures >= LOGIN_POLICY.ipFailureLimit ||
-          identifierFailures >= LOGIN_POLICY.identifierFailureLimit
+          (await this.throttle.windowCount(
+            tx,
+            IP_FAILURE_OP,
+            peer,
+            LOGIN_POLICY.windowSeconds,
+            now,
+          )) >= LOGIN_POLICY.ipFailureLimit ||
+          (key !== null &&
+            (await this.throttle.windowCount(
+              tx,
+              operation,
+              key,
+              LOGIN_POLICY.windowSeconds,
+              now,
+            )) >= LOGIN_POLICY.identifierFailureLimit)
         ) {
           throw new RateLimitedError(LOGIN_POLICY.windowSeconds);
         }
-        return emailCanonical === null
-          ? null
-          : tx.user.findUnique({ where: { emailCanonical }, select: userSelect });
+        if (key === null) return null;
+        if (principal.identifierType === 'EMPLOYEE_ID') {
+          const profile = await tx.employeeProfile.findUnique({
+            where: { employeeCodeCanonical: key },
+            select: { user: { select: userSelect } },
+          });
+          return profile?.user ?? null;
+        }
+        return tx.user.findUnique({ where: { emailCanonical: key }, select: userSelect });
       }),
     );
 
-    const snapshot =
-      user?.passwordHash != null
-        ? {
-            userId: user.id,
-            passwordHash: user.passwordHash,
-            credentialVersion: user.credentialVersion,
-          }
-        : null;
-    let verified = false;
-    let evidenceHash: string | null = null;
-    try {
-      if (snapshot) {
-        const result = await this.passwords.verifyAndRehash(password, snapshot, this.prisma.client);
-        verified = result.verified;
-        evidenceHash = snapshot.passwordHash;
-        if (result.rehash === 'updated') {
-          // Session evidence must match the guarded rehash, never the pre-rehash hash.
-          const current = await this.prisma.client.user.findUnique({
-            where: { id: snapshot.userId },
-            select: { passwordHash: true, credentialVersion: true },
-          });
-          evidenceHash =
-            current?.credentialVersion === snapshot.credentialVersion ? current.passwordHash : null;
+    const evidenceHash = await this.verifyPassword(user, password);
+    // Eligibility is evaluated only after the verification work, never as an early shortcut.
+    if (evidenceHash === null || !eligible(user, principal)) {
+      await this.recordFailure([
+        [IP_FAILURE_OP, peer, LOGIN_POLICY.ipFailureLimit],
+        ...(key === null ? [] : [[operation, key, LOGIN_POLICY.identifierFailureLimit] as const]),
+      ]);
+      throw new AuthError('AUTHENTICATION_FAILED');
+    }
+    const token = await this.rotate(sessionToken, user, evidenceHash, false, requestId);
+    return { token, account: await this.account(user.id) };
+  }
+
+  /** GET /auth/me: the authenticated caller's own account; 401 otherwise. */
+  async currentAccount(sessionToken: string | undefined): Promise<CurrentAccountResponse> {
+    const principal = await this.guard(() => this.sessions.resolve(sessionToken));
+    if (principal?.kind !== 'AUTHENTICATED' || principal.userId === null) {
+      throw new AuthError('AUTHENTICATION_REQUIRED');
+    }
+    return this.account(principal.userId);
+  }
+
+  /**
+   * Fresh password proof for sensitive actions. Success rotates the session (new token,
+   * previous revoked, no overlap) and never extends its absolute lifetime.
+   */
+  async reauthenticate(
+    sessionToken: string | undefined,
+    password: string,
+    peer: string,
+    requestId?: string,
+  ): Promise<string> {
+    const principal = await this.guard(() => this.sessions.resolve(sessionToken));
+    if (
+      sessionToken === undefined ||
+      principal?.kind !== 'AUTHENTICATED' ||
+      principal.userId === null
+    ) {
+      throw new AuthError('AUTHENTICATION_REQUIRED');
+    }
+    const userId = principal.userId;
+    const user = await this.guard(() =>
+      this.sessions.withTransaction(async (tx) => {
+        const now = await this.throttle.now(tx);
+        if (
+          (await this.throttle.windowCount(
+            tx,
+            IP_FAILURE_OP,
+            peer,
+            LOGIN_POLICY.windowSeconds,
+            now,
+          )) >= LOGIN_POLICY.ipFailureLimit ||
+          (await this.throttle.windowCount(
+            tx,
+            REAUTH_FAILURE_OP,
+            userId,
+            LOGIN_POLICY.windowSeconds,
+            now,
+          )) >= LOGIN_POLICY.identifierFailureLimit
+        ) {
+          throw new RateLimitedError(LOGIN_POLICY.windowSeconds);
         }
-      } else {
-        await this.passwords.verify(password, await this.dummy());
+        return tx.user.findUnique({ where: { id: userId }, select: userSelect });
+      }),
+    );
+    const evidenceHash = await this.verifyPassword(user, password);
+    if (evidenceHash === null || user === null) {
+      await this.recordFailure([
+        [IP_FAILURE_OP, peer, LOGIN_POLICY.ipFailureLimit],
+        [REAUTH_FAILURE_OP, userId, LOGIN_POLICY.identifierFailureLimit],
+      ]);
+      throw new AuthError('AUTHENTICATION_FAILED');
+    }
+    try {
+      return await this.rotate(sessionToken, user, evidenceHash, true, requestId);
+    } catch (error) {
+      if (error instanceof AuthError && error.code === 'AUTHENTICATION_FAILED') {
+        // The session itself became invalid; the caller must sign in again.
+        throw new AuthError('AUTHENTICATION_REQUIRED');
       }
+      throw error;
+    }
+  }
+
+  /** Revokes every session of the authenticated User, including the current one. */
+  async logoutAll(sessionToken: string | undefined, requestId?: string): Promise<void> {
+    if (sessionToken === undefined) throw new AuthError('AUTHENTICATION_REQUIRED');
+    await this.guard(() =>
+      this.sessions.withTransaction(async (tx) => {
+        // Locks the User, then the current session (documented lock order).
+        const principal = await this.sessions.resolveForMutation(sessionToken, tx);
+        if (principal?.kind !== 'AUTHENTICATED' || principal.userId === null) {
+          throw new AuthError('AUTHENTICATION_REQUIRED');
+        }
+        const now = await this.throttle.now(tx);
+        const revoked = await tx.session.updateMany({
+          where: { userId: principal.userId, revokedAt: null },
+          data: { revokedAt: now },
+        });
+        await tx.auditEvent.create({
+          data: {
+            action: 'SESSIONS_REVOKED',
+            actorKind: 'USER',
+            actorUserId: principal.userId,
+            subjectUserId: principal.userId,
+            entityType: 'User',
+            entityId: principal.userId,
+            requestId: requestId ?? null,
+            occurredAt: now,
+            dataClassification: 'STANDARD',
+            after: { reason: 'LOGOUT_ALL', revokedSessions: revoked.count },
+          },
+          select: { id: true },
+        });
+      }),
+    );
+  }
+
+  private identifierKey(identifier: string, principal: LoginPrincipal): string | null {
+    try {
+      return principal.identifierType === 'EMPLOYEE_ID'
+        ? normalizeEmployeeCode(identifier).employeeCodeCanonical
+        : normalizeEmail(identifier).emailCanonical;
+    } catch {
+      // Malformed identifiers fail like unknown accounts, after the same dummy work.
+      return null;
+    }
+  }
+
+  /**
+   * One real or dummy verification. Returns the credential evidence hash, which after a
+   * guarded rehash is the new stored hash (never the pre-rehash hash), or null.
+   */
+  private async verifyPassword(user: LoginUser | null, password: string): Promise<string | null> {
+    try {
+      if (user?.passwordHash == null) {
+        await this.passwords.verify(password, await this.dummy());
+        return null;
+      }
+      const snapshot = {
+        userId: user.id,
+        passwordHash: user.passwordHash,
+        credentialVersion: user.credentialVersion,
+      };
+      const result = await this.passwords.verifyAndRehash(password, snapshot, this.prisma.client);
+      if (!result.verified) return null;
+      if (result.rehash !== 'updated') return snapshot.passwordHash;
+      const current = await this.prisma.client.user.findUnique({
+        where: { id: snapshot.userId },
+        select: { passwordHash: true, credentialVersion: true },
+      });
+      return current?.credentialVersion === snapshot.credentialVersion
+        ? current.passwordHash
+        : null;
     } catch {
       throw new AuthError('SERVICE_UNAVAILABLE');
     }
-    // Eligibility is evaluated only after the verification work, never as an early shortcut.
-    const eligible =
-      user !== null &&
-      user.kind === 'CUSTOMER' &&
-      user.status === 'ACTIVE' &&
-      user.emailVerifiedAt !== null;
-    if (!verified || !eligible || evidenceHash === null) {
-      await this.recordFailure(emailCanonical, peer);
-      throw new AuthError('AUTHENTICATION_FAILED');
-    }
+  }
 
+  private async rotate(
+    sessionToken: string,
+    user: LoginUser,
+    passwordHash: string,
+    reauthenticated: boolean,
+    requestId?: string,
+  ): Promise<string> {
     const evidence: CredentialEvidence = {
       userId: user.id,
-      passwordHash: evidenceHash,
+      passwordHash,
       credentialVersion: user.credentialVersion,
       authzVersion: user.authzVersion,
     };
-    let token: string;
     try {
-      ({ token } = await this.sessions.rotateAuthenticated(sessionToken, evidence, {
-        reauthenticated: false,
+      const { token } = await this.sessions.rotateAuthenticated(sessionToken, evidence, {
+        reauthenticated,
         ...(requestId ? { requestId } : {}),
-      }));
+      });
+      return token;
     } catch (error) {
-      // A concurrent reset, version change or revoked pre-auth session fails closed.
+      // A concurrent reset, version change or revoked session fails closed.
       if (error instanceof AuthError) throw new AuthError('AUTHENTICATION_FAILED');
       throw new AuthError('SERVICE_UNAVAILABLE');
     }
-    return {
-      token,
-      account: {
-        id: user.id,
-        kind: 'CUSTOMER',
-        displayName: user.fullName,
-        locale: user.preferredLocale,
-        authorization: { version: user.authzVersion, grants: [], denies: [] },
-      },
-    };
+  }
+
+  /** CurrentAccount from authoritative data; authorization comes from the Step 7 engine. */
+  private account(userId: string): Promise<CurrentAccountResponse> {
+    return this.guard(() =>
+      this.sessions.withTransaction(async (tx) => {
+        const user = await tx.user.findUnique({
+          where: { id: userId },
+          select: { id: true, kind: true, fullName: true, preferredLocale: true },
+        });
+        const graph = await loadAuthorityGraph(tx, userId);
+        if (!user || !graph) throw new AuthError('AUTHENTICATION_REQUIRED');
+        return {
+          id: user.id,
+          kind: user.kind,
+          displayName: user.fullName,
+          locale: user.preferredLocale,
+          authorization: authorizationSummary(graph),
+        };
+      }),
+    );
   }
 
   /** Failure debits commit in their own transaction; the 401 never rolls them back. */
-  private async recordFailure(emailCanonical: string | null, peer: string): Promise<void> {
+  private async recordFailure(
+    debits: ReadonlyArray<readonly [operation: string, identifier: string, limit: number]>,
+  ): Promise<void> {
     await this.guard(() =>
       this.sessions.withTransaction(async (tx) => {
         const now = await this.throttle.now(tx);
-        await this.throttle.debitWindow(
-          tx,
-          OPS.ipFailure,
-          peer,
-          LOGIN_POLICY.ipFailureLimit,
-          LOGIN_POLICY.windowSeconds,
-          now,
-        );
-        if (emailCanonical !== null) {
+        for (const [operation, identifier, limit] of debits) {
           await this.throttle.debitWindow(
             tx,
-            OPS.identifierFailure,
-            emailCanonical,
-            LOGIN_POLICY.identifierFailureLimit,
+            operation,
+            identifier,
+            limit,
             LOGIN_POLICY.windowSeconds,
             now,
           );

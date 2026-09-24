@@ -111,7 +111,7 @@ test('login and logout enforce CSRF, strict DTOs, cookie rotation and generic fa
     assert.equal(logins.length + revoked.length, 0);
 
     for (const invalid of [
-      { ...credentials, realm: 'WORKFORCE' },
+      { ...credentials, realm: 'ADMIN' },
       { ...credentials, identifierType: 'EMPLOYEE_ID' },
       { ...credentials, userId: randomUUID() },
       { ...credentials, password: 123 },

@@ -73,6 +73,8 @@ test(
                 withTransaction: <T>(work: (t: Prisma.TransactionClient) => Promise<T>) => work(tx),
                 rotateAuthenticated: (token, evidence, options) =>
                   sessions.rotateAuthenticated(token, evidence, options, tx),
+                resolve: (token) => sessions.resolve(token, tx),
+                resolveForMutation: (token) => sessions.resolveForMutation(token, tx),
               },
               passwords,
               new AuthThrottleService(environment),

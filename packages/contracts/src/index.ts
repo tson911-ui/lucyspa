@@ -55,13 +55,21 @@ export interface ChallengeResendResponse {
 }
 
 /**
- * POST /api/v1/auth/login. Step 5 supports the CUSTOMER realm with an email identifier;
- * WORKFORCE login is added with Owner/employee accounts in a later step.
+ * POST /api/v1/auth/login. CUSTOMER uses EMAIL. WORKFORCE uses EMAIL (Owner, or an
+ * employee's verified email) or EMPLOYEE_ID. A credential in one realm grants nothing
+ * in the other.
  */
-export interface LoginRequest {
-  realm: 'CUSTOMER';
-  identifierType: 'EMAIL';
-  identifier: string;
+export type LoginRequest =
+  | { realm: 'CUSTOMER'; identifierType: 'EMAIL'; identifier: string; password: string }
+  | {
+      realm: 'WORKFORCE';
+      identifierType: 'EMAIL' | 'EMPLOYEE_ID';
+      identifier: string;
+      password: string;
+    };
+
+/** POST /api/v1/auth/reauthenticate → 204 with a rotated cookie; refetch CSRF context. */
+export interface ReauthenticateRequest {
   password: string;
 }
 
