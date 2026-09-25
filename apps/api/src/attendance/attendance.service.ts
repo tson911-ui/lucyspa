@@ -21,7 +21,10 @@ import { decide, GLOBAL } from '../authorization/authorization.js';
 import { requiredReason } from '../catalog/catalog.input.js';
 import { isUuid } from '../employees/employee.input.js';
 
-/** Bounded reads: at most 93 business days; defaults to the last 31. */
+/**
+ * Bounded reads: at most 93 business days. Without `to`, the default window is 31 business
+ * dates ending at UTC today + 1 (see `attendanceRange`).
+ */
 export const ATTENDANCE_LIMITS = Object.freeze({
   maxRangeDays: 93,
   defaultRangeDays: 31,
@@ -61,6 +64,30 @@ function parseDate(value: string, field: string): Date {
     throw new AuthError('VALIDATION_FAILED', field);
   }
   return date;
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * The read window. Explicit `from` / `to` are exact business dates. Without `to`, the upper
+ * bound is the UTC calendar date + 1: business dates are branch-local, and no timezone is
+ * more than one calendar day ahead of UTC (UTC+14 at most), so today's record of every
+ * branch is included whatever the server clock's date. Without `from`, the window spans
+ * `defaultRangeDays` ending at `to`. The 93-day maximum applies to every window.
+ */
+export function attendanceRange(query: AttendanceQuery, now: Date): { from: Date; to: Date } {
+  const to =
+    query.to === undefined
+      ? new Date(Date.parse(now.toISOString().slice(0, 10)) + DAY_MS)
+      : parseDate(query.to, 'to');
+  const from =
+    query.from === undefined
+      ? new Date(to.getTime() - (ATTENDANCE_LIMITS.defaultRangeDays - 1) * DAY_MS)
+      : parseDate(query.from, 'from');
+  if (from > to || (to.getTime() - from.getTime()) / DAY_MS + 1 > ATTENDANCE_LIMITS.maxRangeDays) {
+    throw new AuthError('VALIDATION_FAILED', 'from');
+  }
+  return { from, to };
 }
 
 function parseInstant(value: string, field: string): Date {
@@ -343,19 +370,7 @@ export class AttendanceService {
   }
 
   private range(query: AttendanceQuery): { from: Date; to: Date } {
-    const day = 86_400_000;
-    const to =
-      query.to === undefined
-        ? new Date(new Date().toISOString().slice(0, 10))
-        : parseDate(query.to, 'to');
-    const from =
-      query.from === undefined
-        ? new Date(to.getTime() - (ATTENDANCE_LIMITS.defaultRangeDays - 1) * day)
-        : parseDate(query.from, 'from');
-    if (from > to || (to.getTime() - from.getTime()) / day + 1 > ATTENDANCE_LIMITS.maxRangeDays) {
-      throw new AuthError('VALIDATION_FAILED', 'from');
-    }
-    return { from, to };
+    return attendanceRange(query, new Date());
   }
 
   private visibleBranches(actor: AdminActor, permission: string): 'ALL' | string[] {

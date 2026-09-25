@@ -451,6 +451,42 @@ test(
               await fails(attendance.checkIn(workerSession, { branchId: WEST }), 'CONFLICT');
             });
 
+            // Step 10A release-gate regression: the default window must include a branch-local
+            // business date one day ahead of the UTC date. The record is pinned to UTC date D
+            // at 11:00Z, which is D + 1 at 01:00 in Kiritimati (UTC+14), so the outcome does
+            // not depend on the time of day the suite runs.
+            await context.test(
+              'default reads include a branch-local date ahead of UTC',
+              async () => {
+                const utcToday = new Date().toISOString().slice(0, 10);
+                const checkInAt = new Date(`${utcToday}T11:00:00.000Z`);
+                const aheadDate = localDate(checkInAt, 'Pacific/Kiritimati');
+                assert.ok(aheadDate > utcToday, 'branch-local date is D + 1');
+                const early = await principal('EMPLOYEE', [EAST]);
+                const record = await tx.attendanceRecord.create({
+                  data: {
+                    employeeUserId: early,
+                    branchId: EAST,
+                    businessDate: new Date(`${aheadDate}T00:00:00.000Z`),
+                    checkInAt,
+                  },
+                  select: { id: true },
+                });
+                const own = await attendance.listOwn(await login(early), {});
+                assert.deepEqual(
+                  own.records.map((row) => [row.id, row.businessDate]),
+                  [[record.id, aheadDate]],
+                );
+                const branchView = await attendance.listBranch(viewerEastSession, {
+                  employeeId: early,
+                });
+                assert.deepEqual(
+                  branchView.records.map((row) => row.id),
+                  [record.id],
+                );
+              },
+            );
+
             await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
             throw rollback;
           },

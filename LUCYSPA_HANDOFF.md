@@ -365,6 +365,19 @@ migration).
   couldn't have been cleaned up. Authenticated flows are covered by tests, not a local
   browser pass.
 
+**Phase 2 Step 10A (completion gate / readiness) — release-gate correction.** The
+readiness run found one blocker. When `to` is omitted, the attendance reads
+(`GET /attendance/me`, `GET /attendance`) defaulted their upper bound to the server's
+UTC calendar date. A branch ahead of UTC could therefore miss today's record: in
+Ho Chi Minh City between 00:00 and 06:59 local time; in the test, the UTC+14 fixture after
+10:00 UTC. The Owner-authorized fix (commit `fix: use safe attendance default date
+window`) makes the default upper bound UTC date + 1, keeps a 31-date default window ending
+there, and leaves explicit `from`/`to`, the 93-day maximum and all business-date logic
+unchanged. It adds fixed-clock and time-of-day-independent regression tests. There is no
+schema change or migration. Step 7's original behavior is as recorded in its report; this
+correction supersedes only the default window. Phase 2 is **not** yet deployed to
+production.
+
 **Next step: Phase 2 Step 10 — Completion Gate + Production Deployment**; it needs
 separate Owner authorization and must not be started without it. Owner decisions
 H1–H9 are recorded in the Step 2 report. Adjusted plan: Step 3 branch administration
