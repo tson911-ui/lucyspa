@@ -45,7 +45,8 @@
   [Step 9 report](docs/PHASE1_STEP9_WORKFORCE_RECOVERY.md) and
   [Step 10 report](docs/PHASE1_STEP10_EMPLOYEE_LIFECYCLE.md) and
   [Step 11 report](docs/PHASE1_STEP11_ROLE_ADMIN_AUDIT_READ.md) and
-  [Step 12 report](docs/PHASE1_STEP12_EMAIL_DISPATCH_CLEANUP.md) record scope and validation.
+  [Step 12 report](docs/PHASE1_STEP12_EMAIL_DISPATCH_CLEANUP.md) and
+  [Step 13 completion gate](docs/PHASE1_STEP13_COMPLETION_GATE.md) record scope and validation.
   Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
@@ -199,10 +200,13 @@ because a new session starts.
 
 ## Exact next step and Owner inputs
 
-**Step 12 is implemented: review its
-[implementation report](docs/PHASE1_STEP12_EMAIL_DISPATCH_CLEANUP.md); do not start Step 13
-without separate authorization.** Step 11 is committed (`b8c4837`); no Step 12 files have
-been staged, committed or pushed. Phase 1 is NOT complete until the Step 13 gate.
+**PHASE 1 COMPLETE — deployment prerequisites remain** (see the
+[Step 13 completion gate](docs/PHASE1_STEP13_COMPLETION_GATE.md)). Steps 1–12 are committed
+through `93b2316`; the Step 13 gate report awaits approval. Do not start Phase 2 or deploy
+without separate authorization. Deployment prerequisites (VPS deployment, production DB
+roles/keys, Owner bootstrap, permission sync, worker SMTP configuration, custom DKIM/DMARC)
+are listed in the gate report. Carried-forward non-blocking decision: the foreground
+idle-activity policy (Step 8).
 No real Owner exists; create it only on explicit Owner instruction with
 `pnpm owner:bootstrap` (password via hidden prompt/stdin only).
 Approved remaining plan: Step 8 Owner bootstrap (interactive/stdin password) + workforce
@@ -220,8 +224,7 @@ Workspace SMTP relay (`smtp-relay.gmail.com:587`, STARTTLS, no SMTP AUTH, IP-all
 VPS) as `Lucy Spa <system@lucyspa.vn>` when `MAIL_TRANSPORT=smtp`; see `.env.example`.
 Custom lucyspa.vn DKIM and DMARC alignment are pending external Google/DNS activation.
 The configured local database has both Phase 0 and Step 2
-migrations applied. The remaining Phase 1 scope is the completion gate
-(Step 13). Extend the existing architecture only
+migrations applied. No Phase 1 implementation scope remains. Extend the existing architecture only
 when authorized; the locked loyalty/combo/promotion rules remain later-phase
 requirements, not permission to implement them now.
 
