@@ -144,6 +144,66 @@ export interface EmployeeCreateRequest {
   locale: PreferredLocale;
   branchIds: string[];
   baseSalaryVnd?: string | null;
+  /**
+   * Initial employment classification, chosen explicitly: TRAINEE or OFFICIAL_EMPLOYEE (an
+   * official hire does not start as a trainee). OFFICIAL_EMPLOYEE creates payroll eligibility
+   * and therefore also needs MANAGE_EMPLOYEE_PAY.
+   */
+  classification: InitialEmploymentClassification;
+  /** Workforce start date `YYYY-MM-DD`: the effective date of the initial classification. */
+  employmentStartDate: string;
+  /** Required when the start date is before today's business date. */
+  employmentReason?: string;
+}
+
+/**
+ * Employment classification, separate from the account status (`EmployeeStatus`), roles,
+ * branches and skills. Only OFFICIAL_EMPLOYEE is payroll-eligible:
+ * - TRAINEE (Học viên): no salary, service/tour pay, commission or other payroll pay;
+ * - OFFICIAL_EMPLOYEE (Nhân viên chính thức): payroll-eligible from its effective date;
+ * - ENDED (Đã kết thúc làm việc/học việc): not payroll-eligible from its effective date.
+ */
+export type EmploymentClassification = 'TRAINEE' | 'OFFICIAL_EMPLOYEE' | 'ENDED';
+export type InitialEmploymentClassification = 'TRAINEE' | 'OFFICIAL_EMPLOYEE';
+
+/** One append-only history entry. `recordedByUserId` is null only for migration backfill. */
+export interface EmploymentClassificationEntry {
+  classification: EmploymentClassification;
+  /** Calendar date `YYYY-MM-DD`; the classification applies from this date on. */
+  effectiveDate: string;
+  reason: string | null;
+  recordedByUserId: string | null;
+  recordedAt: string;
+}
+
+/**
+ * GET /api/v1/employees/:id/employment?date=YYYY-MM-DD. `history` is oldest first.
+ * `current` is the classification in effect on today's business date (null before the start
+ * date); `onDate` answers the optional `date` query. `version` is the employee version used as
+ * `expectedVersion` for classification changes.
+ */
+export interface EmploymentResponse {
+  employeeId: string;
+  version: number;
+  today: string;
+  current: EmploymentClassificationEntry | null;
+  onDate: { date: string; entry: EmploymentClassificationEntry | null } | null;
+  payrollEligibleToday: boolean;
+  history: EmploymentClassificationEntry[];
+}
+
+/**
+ * POST /api/v1/employees/:id/employment: record a classification change with MANAGE_EMPLOYEE_PAY
+ * at every branch of the employee (never for oneself unless Owner). Allowed: TRAINEE →
+ * OFFICIAL_EMPLOYEE (promotion), TRAINEE → ENDED, OFFICIAL_EMPLOYEE → ENDED. The effective date
+ * must be later than the latest change; an effective date before today's business date
+ * (backdating) is Owner-only.
+ */
+export interface EmploymentClassificationChangeRequest {
+  expectedVersion: number;
+  classification: 'OFFICIAL_EMPLOYEE' | 'ENDED';
+  effectiveDate: string;
+  reason: string;
 }
 
 /**

@@ -584,6 +584,8 @@ test(
                     phone: phone().replace('+84', '0'),
                     locale: 'vi',
                     branchIds: [A],
+                    classification: 'TRAINEE',
+                    employmentStartDate: '2030-01-01',
                   });
                   userIds.push(created.id);
                   const setup = await employees.issueSetup(ownerSession, created.id, {

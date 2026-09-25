@@ -1,4 +1,7 @@
 import type {
+  EmploymentClassificationChangeRequest,
+  EmploymentResponse,
+  InitialEmploymentClassification,
   EmployeeBaseSalaryRequest,
   EmployeeCreateRequest,
   EmployeeDirectoryResponse,
@@ -45,6 +48,7 @@ import { EmployeeDirectoryService } from './employee-directory.service.js';
 import { EmployeeService } from './employee.service.js';
 
 const SALARY = /^(?:0|[1-9][0-9]{0,17})$/;
+const DATE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
 const MAX_VERSION = 2_147_483_647;
 
 class EmployeeDirectoryQueryDto {
@@ -78,6 +82,34 @@ class EmployeeCreateDto implements EmployeeCreateRequest {
   @IsString()
   @Matches(SALARY)
   baseSalaryVnd?: string | null;
+  @ApiProperty({ enum: ['TRAINEE', 'OFFICIAL_EMPLOYEE'] })
+  @IsIn(['TRAINEE', 'OFFICIAL_EMPLOYEE'])
+  classification!: InitialEmploymentClassification;
+  @ApiProperty({ description: 'Workforce start date YYYY-MM-DD (initial classification).' })
+  @IsString()
+  @Matches(DATE)
+  employmentStartDate!: string;
+  @ApiProperty({ required: false, description: 'Required for a start date in the past.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2_048)
+  employmentReason?: string;
+}
+
+class ClassificationChangeDto implements EmploymentClassificationChangeRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
+  @ApiProperty({ enum: ['OFFICIAL_EMPLOYEE', 'ENDED'] })
+  @IsIn(['OFFICIAL_EMPLOYEE', 'ENDED'])
+  classification!: 'OFFICIAL_EMPLOYEE' | 'ENDED';
+  @ApiProperty({ description: 'Effective date YYYY-MM-DD.' })
+  @IsString()
+  @Matches(DATE)
+  effectiveDate!: string;
+  @ApiProperty() @IsString() @MaxLength(2_048) reason!: string;
+}
+
+class EmploymentQueryDto {
+  @IsOptional() @IsString() @Matches(DATE) date?: string;
 }
 
 class VersionedDto {
@@ -162,6 +194,37 @@ export class EmployeeController {
       Object.entries({ ...query }).filter(([, value]) => value !== undefined),
     );
     return this.directory.list(this.session(request), defined);
+  }
+
+  /** Employment classification history, current classification and classification on a date. */
+  @Get(':id/employment')
+  employment(
+    @Param('id') id: string,
+    @Query() query: EmploymentQueryDto,
+    @Req() request: Request,
+  ): Promise<EmploymentResponse> {
+    return this.employees.employment(
+      this.session(request),
+      id,
+      query.date === undefined ? {} : { date: query.date },
+    );
+  }
+
+  /** Classification change (promotion or end), effective-dated and append-only. */
+  @Post(':id/employment')
+  @HttpCode(200)
+  changeClassification(
+    @Param('id') id: string,
+    @Body() body: ClassificationChangeDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<EmploymentResponse> {
+    return this.employees.changeClassification(
+      this.session(request),
+      id,
+      body,
+      requestId(response),
+    );
   }
 
   @Get(':id')

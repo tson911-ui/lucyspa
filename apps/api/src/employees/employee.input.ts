@@ -1,4 +1,8 @@
-import type { EmployeeCreateRequest, EmployeeProfileUpdateRequest } from '@lucy-spa/contracts';
+import type {
+  EmployeeCreateRequest,
+  EmployeeProfileUpdateRequest,
+  InitialEmploymentClassification,
+} from '@lucy-spa/contracts';
 import { AuthError } from '../auth/auth.error.js';
 import {
   IdentityValidationError,
@@ -7,6 +11,9 @@ import {
   normalizePhone,
 } from '../auth/identity.js';
 import { parseDateOfBirth, REGISTRATION_LIMITS, text } from '../auth/registration.js';
+import { INITIAL_CLASSIFICATIONS, parseEmploymentDate } from './employment.js';
+
+export const EMPLOYMENT_REASON_MAX_CODE_POINTS = 500;
 
 export const EMPLOYEE_LIMITS = Object.freeze({
   ...REGISTRATION_LIMITS,
@@ -28,6 +35,9 @@ export interface EmployeeCandidate {
   locale: 'vi' | 'en';
   branchIds: string[];
   baseSalaryVnd: bigint | null;
+  classification: InitialEmploymentClassification;
+  employmentStartDate: Date;
+  employmentReason: string | null;
 }
 
 export interface ProfilePatch {
@@ -97,6 +107,17 @@ export function normalizeEmployee(input: EmployeeCreateRequest): EmployeeCandida
     locale: input.locale,
     branchIds: normalizeBranchIds(input.branchIds),
     baseSalaryVnd: parseBaseSalary(input.baseSalaryVnd),
+    // Explicit: an official hire is never silently created as a trainee (or vice versa).
+    classification: (INITIAL_CLASSIFICATIONS as readonly string[]).includes(input.classification)
+      ? input.classification
+      : (() => {
+          throw new AuthError('VALIDATION_FAILED', 'classification');
+        })(),
+    employmentStartDate: parseEmploymentDate(input.employmentStartDate, 'employmentStartDate'),
+    employmentReason:
+      input.employmentReason === undefined
+        ? null
+        : text(input.employmentReason, 'employmentReason', EMPLOYMENT_REASON_MAX_CODE_POINTS),
   };
 }
 

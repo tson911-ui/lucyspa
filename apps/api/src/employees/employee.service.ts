@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type {
+  EmploymentClassificationChangeRequest,
+  EmploymentResponse,
   EmployeeBaseSalaryRequest,
   EmployeeBranchAssignmentsResponse,
   EmployeeBranchAssignRequest,
@@ -17,6 +19,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { invalidatePendingDeliveries } from '../auth/auth-delivery.js';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { AuthError } from '../auth/auth.error.js';
+import { text } from '../auth/registration.js';
 import { generateCapability, identityDigest } from '../auth/crypto.js';
 import { flowTokenDigest, OTP_POLICY } from '../auth/otp-flow.js';
 import { hasFreshReauthentication } from '../auth/session.policy.js';
@@ -44,9 +47,21 @@ import {
   normalizeBranchIds,
   normalizeEmployee,
   normalizeProfilePatch,
+  EMPLOYMENT_REASON_MAX_CODE_POINTS,
   normalizeReason,
   parseBaseSalary,
 } from './employee.input.js';
+import {
+  businessToday,
+  classificationHistory,
+  classificationOn,
+  classificationSelect,
+  day,
+  parseEmploymentDate,
+  payrollEligible,
+  presentClassification,
+  transitionAllowed,
+} from './employment.js';
 
 /** Design section 2: a setup capability is high-entropy and lives 24 hours. */
 export const EMPLOYEE_SETUP_POLICY = Object.freeze({ lifetimeSeconds: 86_400 } as const);
@@ -143,7 +158,16 @@ export class EmployeeService {
       if (candidate.baseSalaryVnd !== null) {
         this.require(actor, 'MANAGE_EMPLOYEE_PAY', candidate.branchIds);
       }
+      // Official employment creates payroll eligibility: the pay authority is required too.
+      if (candidate.classification === 'OFFICIAL_EMPLOYEE') {
+        this.require(actor, 'MANAGE_EMPLOYEE_PAY', candidate.branchIds);
+      }
       await this.requireActiveBranches(tx, candidate.branchIds);
+      // A start date in the past (recording existing staff) must say why.
+      const today = await businessToday(tx, candidate.branchIds);
+      if (candidate.employmentStartDate < today && candidate.employmentReason === null) {
+        throw new AuthError('VALIDATION_FAILED', 'employmentReason');
+      }
       await this.requireUnique(tx, candidate);
       const id = randomUUID();
       await tx.user.create({
@@ -171,6 +195,18 @@ export class EmployeeService {
         },
         select: { id: true },
       });
+      // Initial classification in the same transaction: no employee without history.
+      await tx.employmentClassificationChange.create({
+        data: {
+          employeeUserId: id,
+          classification: candidate.classification,
+          effectiveDate: candidate.employmentStartDate,
+          reason: candidate.employmentReason,
+          recordedByUserId: actor.userId,
+          recordedAt: now,
+        },
+        select: { id: true },
+      });
       if (candidate.branchIds.length > 0) {
         await tx.employeeBranchAssignment.createMany({
           data: candidate.branchIds.map((branchId) => ({
@@ -189,6 +225,13 @@ export class EmployeeService {
           recoveryEmailSupplied: candidate.emailCanonical !== null,
         },
       });
+      await this.audit(context, id, candidate.branchIds, 'EMPLOYMENT_CLASSIFICATION_RECORDED', {
+        ...(candidate.employmentReason ? { reason: candidate.employmentReason } : {}),
+        after: {
+          classification: candidate.classification,
+          effectiveDate: day(candidate.employmentStartDate),
+        },
+      });
       if (candidate.baseSalaryVnd !== null) {
         await this.audit(context, id, candidate.branchIds, 'BASE_SALARY_CHANGED', {
           before: { baseSalaryVnd: null },
@@ -197,6 +240,98 @@ export class EmployeeService {
         });
       }
       return this.present(actor, await this.load(tx, id));
+    });
+  }
+
+  /**
+   * Employment classification history (oldest first), the classification in effect today and,
+   * with `date`, on that business date. Visible to the employee themself and to VIEW_EMPLOYEES
+   * over every branch of the employee; otherwise 404.
+   */
+  async employment(
+    sessionToken: string | undefined,
+    targetId: string,
+    query: { date?: string },
+  ): Promise<EmploymentResponse> {
+    const date = query.date === undefined ? null : parseEmploymentDate(query.date, 'date');
+    return this.command(
+      sessionToken,
+      targetId,
+      false,
+      undefined,
+      async ({ tx, actor, target, branchIds }) => {
+        if (actor.userId !== target.id && !decideAcross(actor.graph, 'VIEW_EMPLOYEES', branchIds)) {
+          throw new AuthError('NOT_FOUND');
+        }
+        return this.presentEmployment(tx, target, branchIds, date);
+      },
+    );
+  }
+
+  /**
+   * Records a classification change: TRAINEE → OFFICIAL_EMPLOYEE (promotion), TRAINEE → ENDED
+   * or OFFICIAL_EMPLOYEE → ENDED. It changes payroll eligibility, so it needs
+   * MANAGE_EMPLOYEE_PAY at every branch of the employee and is never self-service for
+   * non-Owners. The effective date must be later than the latest change (history is never
+   * rewritten); a date before today's business date (backdating) is Owner-only. A reason is
+   * always required. No other state (account, roles, branches, skills) changes.
+   */
+  async changeClassification(
+    sessionToken: string | undefined,
+    targetId: string,
+    input: EmploymentClassificationChangeRequest,
+    requestId?: string,
+  ): Promise<EmploymentResponse> {
+    if (input.classification !== 'OFFICIAL_EMPLOYEE' && input.classification !== 'ENDED') {
+      throw new AuthError('VALIDATION_FAILED', 'classification');
+    }
+    const effectiveDate = parseEmploymentDate(input.effectiveDate, 'effectiveDate');
+    const reason = text(input.reason, 'reason', EMPLOYMENT_REASON_MAX_CODE_POINTS);
+    return this.command(sessionToken, targetId, false, requestId, async (context) => {
+      const { tx, actor, target, branchIds, now } = context;
+      this.forbidSelf(actor, target);
+      this.require(actor, 'MANAGE_EMPLOYEE_PAY', branchIds);
+      this.expectVersion(target, input.expectedVersion);
+      const latest = await tx.employmentClassificationChange.findFirst({
+        where: { employeeUserId: target.id },
+        orderBy: { effectiveDate: 'desc' },
+        select: classificationSelect,
+      });
+      if (!latest || !transitionAllowed(latest.classification, input.classification)) {
+        throw new AuthError('CONFLICT', 'classification');
+      }
+      if (effectiveDate <= latest.effectiveDate) {
+        throw new AuthError('VALIDATION_FAILED', 'effectiveDate');
+      }
+      const today = await businessToday(tx, branchIds);
+      const backdated = effectiveDate < today;
+      if (backdated && !actor.owner) throw new AuthError('FORBIDDEN');
+      await tx.employmentClassificationChange.create({
+        data: {
+          employeeUserId: target.id,
+          classification: input.classification,
+          effectiveDate,
+          reason,
+          recordedByUserId: actor.userId,
+          recordedAt: now,
+        },
+        select: { id: true },
+      });
+      await tx.user.update({
+        where: { id: target.id },
+        data: { rowVersion: { increment: 1 } },
+        select: { id: true },
+      });
+      await this.audit(context, target.id, branchIds, 'EMPLOYMENT_CLASSIFICATION_CHANGED', {
+        reason,
+        before: { classification: latest.classification, effectiveDate: day(latest.effectiveDate) },
+        after: {
+          classification: input.classification,
+          effectiveDate: day(effectiveDate),
+          backdated,
+        },
+      });
+      return this.presentEmployment(tx, await this.load(tx, target.id), branchIds, null);
     });
   }
 
@@ -831,6 +966,30 @@ export class EmployeeService {
   }
 
   /** Pay appears only when VIEW_EMPLOYEE_PAY passes for the full target. */
+  private async presentEmployment(
+    tx: Prisma.TransactionClient,
+    target: EmployeeRecord,
+    branchIds: readonly string[],
+    date: Date | null,
+  ): Promise<EmploymentResponse> {
+    const today = await businessToday(tx, branchIds);
+    const history = await classificationHistory(tx, target.id);
+    const current = await classificationOn(tx, target.id, today);
+    const onDate = date === null ? null : await classificationOn(tx, target.id, date);
+    return {
+      employeeId: target.id,
+      version: target.rowVersion,
+      today: day(today),
+      current: current ? presentClassification(current) : null,
+      onDate:
+        date === null
+          ? null
+          : { date: day(date), entry: onDate ? presentClassification(onDate) : null },
+      payrollEligibleToday: payrollEligible(current?.classification ?? null),
+      history: history.map(presentClassification),
+    };
+  }
+
   private present(actor: Actor, target: EmployeeRecord): EmployeeResponse {
     const branchIds = branchesOf(target);
     const response: EmployeeResponse = {

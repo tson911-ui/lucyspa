@@ -156,35 +156,36 @@ enum LeaveType {
 // SQL additionally enforces kind/profile consistency at transaction commit,
 // canonical identities, credential state and protected sole-Owner invariants.
 model User {
-  id                           String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                           String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   kind                         UserKind
   status                       UserStatus
-  fullName                     String                     @map("full_name")
-  preferredLocale              PreferredLocale            @map("preferred_locale")
-  emailCanonical               String?                    @unique(map: "users_email_canonical_key") @map("email_canonical") @db.VarChar(254)
-  emailDelivery                String?                    @map("email_delivery") @db.VarChar(254)
-  emailVerifiedAt              DateTime?                  @map("email_verified_at") @db.Timestamptz(3)
-  phoneCanonical               String?                    @unique(map: "users_phone_canonical_key") @map("phone_canonical") @db.VarChar(16)
-  normalizationVersion         Int                        @map("normalization_version")
-  passwordHash                 String?                    @map("password_hash")
-  credentialVersion            Int                        @default(1) @map("credential_version")
-  authzVersion                 Int                        @default(1) @map("authz_version")
-  rowVersion                   Int                        @default(1) @map("row_version")
-  createdAt                    DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                    DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  fullName                     String                           @map("full_name")
+  preferredLocale              PreferredLocale                  @map("preferred_locale")
+  emailCanonical               String?                          @unique(map: "users_email_canonical_key") @map("email_canonical") @db.VarChar(254)
+  emailDelivery                String?                          @map("email_delivery") @db.VarChar(254)
+  emailVerifiedAt              DateTime?                        @map("email_verified_at") @db.Timestamptz(3)
+  phoneCanonical               String?                          @unique(map: "users_phone_canonical_key") @map("phone_canonical") @db.VarChar(16)
+  normalizationVersion         Int                              @map("normalization_version")
+  passwordHash                 String?                          @map("password_hash")
+  credentialVersion            Int                              @default(1) @map("credential_version")
+  authzVersion                 Int                              @default(1) @map("authz_version")
+  rowVersion                   Int                              @default(1) @map("row_version")
+  createdAt                    DateTime                         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                    DateTime                         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   customerProfile              CustomerProfile?
   employeeProfile              EmployeeProfile?
-  grantedBranchAssignments     EmployeeBranchAssignment[] @relation("BranchAssignmentGrantor")
+  grantedBranchAssignments     EmployeeBranchAssignment[]       @relation("BranchAssignmentGrantor")
   completedRegistrationIntents RegistrationIntent[]
   authChallenges               AuthChallenge[]
   sessions                     Session[]
   roleAssignments              UserRoleAssignment[]
   permissionOverrides          UserPermissionOverride[]
-  actorAuditEvents             AuditEvent[]               @relation("AuditActor")
-  subjectAuditEvents           AuditEvent[]               @relation("AuditSubject")
-  grantedEmployeeSkills        EmployeeSkill[]            @relation("EmployeeSkillGrantor")
-  decidedLeaveRequests         LeaveRequest[]             @relation("LeaveDecider")
-  cancelledLeaveRequests       LeaveRequest[]             @relation("LeaveCanceller")
+  actorAuditEvents             AuditEvent[]                     @relation("AuditActor")
+  subjectAuditEvents           AuditEvent[]                     @relation("AuditSubject")
+  grantedEmployeeSkills        EmployeeSkill[]                  @relation("EmployeeSkillGrantor")
+  decidedLeaveRequests         LeaveRequest[]                   @relation("LeaveDecider")
+  cancelledLeaveRequests       LeaveRequest[]                   @relation("LeaveCanceller")
+  recordedClassifications      EmploymentClassificationChange[] @relation("ClassificationRecorder")
 
   @@index([kind, status, id], map: "users_kind_status_idx")
   @@map("users")
@@ -200,21 +201,49 @@ model CustomerProfile {
 }
 
 model EmployeeProfile {
-  userId                String                     @id @map("user_id") @db.Uuid
-  user                  User                       @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  employeeCodeCanonical String                     @unique(map: "employee_profiles_employee_code_canonical_key") @map("employee_code_canonical") @db.VarChar(64)
-  dateOfBirth           DateTime                   @map("date_of_birth") @db.Date
+  userId                String                           @id @map("user_id") @db.Uuid
+  user                  User                             @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeCodeCanonical String                           @unique(map: "employee_profiles_employee_code_canonical_key") @map("employee_code_canonical") @db.VarChar(64)
+  dateOfBirth           DateTime                         @map("date_of_birth") @db.Date
   address               String
-  baseSalaryVnd         BigInt?                    @map("base_salary_vnd")
+  baseSalaryVnd         BigInt?                          @map("base_salary_vnd")
   branchAssignments     EmployeeBranchAssignment[]
   skills                EmployeeSkill[]
   attendanceRecords     AttendanceRecord[]
   leaveRequests         LeaveRequest[]
+  classificationChanges EmploymentClassificationChange[]
 
   @@map("employee_profiles")
 }
 
 // Revocation preserves membership history; SQL permits one active user/branch pair.
+// Employment classification, separate from account status (User.status), roles, branches
+// and skills. Payroll-eligible only while OFFICIAL_EMPLOYEE.
+enum EmploymentClassification {
+  TRAINEE
+  OFFICIAL_EMPLOYEE
+  ENDED
+}
+
+// Append-only, effective-dated classification history (SQL guards transitions, ordering and
+// immutability). The classification on date D is the change with the latest effectiveDate <= D.
+model EmploymentClassificationChange {
+  id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeUserId   String                   @map("employee_user_id") @db.Uuid
+  employee         EmployeeProfile          @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  classification   EmploymentClassification
+  effectiveDate    DateTime                 @map("effective_date") @db.Date
+  reason           String?
+  /// Null only for rows backfilled by the migration that introduced this history.
+  recordedByUserId String?                  @map("recorded_by_user_id") @db.Uuid
+  recordedBy       User?                    @relation("ClassificationRecorder", fields: [recordedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  recordedAt       DateTime                 @default(now()) @map("recorded_at") @db.Timestamptz(3)
+
+  @@unique([employeeUserId, effectiveDate], map: "employment_classification_changes_employee_date_key")
+  @@index([recordedByUserId], map: "employment_classification_changes_recorder_idx")
+  @@map("employment_classification_changes")
+}
+
 model EmployeeBranchAssignment {
   id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   employeeUserId  String          @map("employee_user_id") @db.Uuid

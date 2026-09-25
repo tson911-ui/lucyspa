@@ -130,6 +130,8 @@ test('employee commands enforce CSRF/origin, strict DTOs and their contracts', a
       changeStatus: respond('changeStatus'),
       changeScope: respond('changeScope'),
       setBaseSalary: respond('setBaseSalary'),
+      employment: respond('employment') as never,
+      changeClassification: respond('changeClassification') as never,
       issueSetup: (...args: unknown[]) => {
         calls.push(['issueSetup', ...args]);
         return Promise.resolve({
@@ -150,6 +152,8 @@ test('employee commands enforce CSRF/origin, strict DTOs and their contracts', a
     locale: 'vi',
     branchIds: employee.branchIds,
     baseSalaryVnd: '8500000',
+    classification: 'OFFICIAL_EMPLOYEE',
+    employmentStartDate: '2026-10-01',
   };
   const commands: [string, object][] = [
     ['/api/v1/employees', create],
@@ -188,6 +192,14 @@ test('employee commands enforce CSRF/origin, strict DTOs and their contracts', a
       { password: 'a calm lotus evening' },
       { emailVerified: true },
       { roleIds: [randomUUID()] },
+      // The initial classification is explicit, never ENDED, with a real start date.
+      { classification: 'ENDED' },
+      { classification: undefined },
+      { classification: 'trainee' },
+      { employmentStartDate: undefined },
+      { employmentStartDate: '01/10/2026' },
+      { employmentStartDate: '2026-10-01T00:00:00Z' },
+      { isTrainee: true },
     ]) {
       await request(server)
         .post('/api/v1/employees')
@@ -218,10 +230,71 @@ test('employee commands enforce CSRF/origin, strict DTOs and their contracts', a
         { expectedVersion: 1, baseSalaryVnd: 100, reason: 'x' },
       ],
       [`/api/v1/employees/${id}/scope`, { expectedVersion: 0, branchIds: [], reason: 'x' }],
+      // Classification changes: only OFFICIAL_EMPLOYEE or ENDED, a date, a reason, a version.
+      [
+        `/api/v1/employees/${id}/employment`,
+        { expectedVersion: 1, classification: 'TRAINEE', effectiveDate: '2026-12-15', reason: 'x' },
+      ],
+      [
+        `/api/v1/employees/${id}/employment`,
+        { expectedVersion: 1, classification: 'OFFICIAL_EMPLOYEE', effectiveDate: '2026-12-15' },
+      ],
+      [
+        `/api/v1/employees/${id}/employment`,
+        { classification: 'OFFICIAL_EMPLOYEE', effectiveDate: '2026-12-15', reason: 'x' },
+      ],
+      [
+        `/api/v1/employees/${id}/employment`,
+        { expectedVersion: 1, classification: 'ENDED', effectiveDate: '15/12/2026', reason: 'x' },
+      ],
+      [
+        `/api/v1/employees/${id}/employment`,
+        {
+          expectedVersion: 1,
+          classification: 'ENDED',
+          effectiveDate: '2026-12-15',
+          reason: 'x',
+          recordedByUserId: randomUUID(),
+        },
+      ],
     ] as const) {
       await request(server).post(path).set(headers).send(body).expect(400);
     }
+    // The classification change is a CSRF-protected command like every other.
+    const change = {
+      expectedVersion: 1,
+      classification: 'OFFICIAL_EMPLOYEE',
+      effectiveDate: '2026-12-15',
+      reason: 'Training completed',
+    };
+    await request(server)
+      .post(`/api/v1/employees/${id}/employment`)
+      .set({ Cookie: headers.Cookie, Origin: headers.Origin })
+      .send(change)
+      .expect(403);
+    await request(server)
+      .post(`/api/v1/employees/${id}/employment`)
+      .set({ ...headers, Origin: 'https://evil.example' })
+      .send(change)
+      .expect(403);
+    await request(server)
+      .get(`/api/v1/employees/${id}/employment?date=15-12-2026`)
+      .set({ Cookie: headers.Cookie })
+      .expect(400);
     assert.equal(calls.length, 0);
+    await request(server)
+      .post(`/api/v1/employees/${id}/employment`)
+      .set(headers)
+      .send(change)
+      .expect(200);
+    await request(server)
+      .get(`/api/v1/employees/${id}/employment?date=2026-11-01`)
+      .set({ Cookie: headers.Cookie })
+      .expect(200);
+    assert.deepEqual(calls[0]?.slice(0, 3), ['changeClassification', token, id]);
+    assert.deepEqual(JSON.parse(JSON.stringify(calls[0]?.[3])), change);
+    assert.deepEqual(calls[1], ['employment', token, id, { date: '2026-11-01' }]);
+    calls.length = 0;
 
     const created = await request(server)
       .post('/api/v1/employees')

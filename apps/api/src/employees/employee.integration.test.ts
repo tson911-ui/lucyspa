@@ -229,6 +229,10 @@ test(
                 email: null,
                 locale: 'vi',
                 branchIds,
+                // Step 1 of employee management: the initial classification is explicit. A
+                // future start date keeps these pre-existing fixtures free of backdating rules.
+                classification: 'TRAINEE',
+                employmentStartDate: '2030-01-01',
                 ...extra,
               } satisfies EmployeeCreateRequest;
             };

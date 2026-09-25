@@ -458,6 +458,31 @@ manually by the Owner/operator; see the
   - **Tests:** catalog integration 8/8, delete HTTP 1/1, web 37/37. No migration; no
     production data is deleted automatically.
 
+- **Employee management Step 1: employment classification** (`feat: add employment
+classification history`; local commit, not pushed, not deployed). See the
+  [Step 1 report](docs/EMPLOYEE_MANAGEMENT_STEP1_EMPLOYMENT_CLASSIFICATION.md).
+  - **Values:** `TRAINEE` / `OFFICIAL_EMPLOYEE` / `ENDED`; only OFFICIAL_EMPLOYEE is
+    payroll-eligible. Classification is separate from account status, roles, branches and
+    skills.
+  - **Transitions:** creation chooses TRAINEE or OFFICIAL_EMPLOYEE explicitly (never
+    ENDED; no forced trainee stage). Allowed changes: TRAINEE → OFFICIAL_EMPLOYEE,
+    TRAINEE → ENDED, OFFICIAL_EMPLOYEE → ENDED. No rehire.
+  - **History:** migration `20260930000000_employment_classification` adds
+    `employment_classification_changes`, an append-only, DATE-effective, authoritative
+    history (one entry per date, strictly increasing dates, transitions guarded by a SQL
+    trigger). Existing employees are backfilled as OFFICIAL_EMPLOYEE from their creation
+    date.
+  - **API:**
+    - create requires `classification` + `employmentStartDate` (plus a reason when in the
+      past; OFFICIAL_EMPLOYEE also needs `MANAGE_EMPLOYEE_PAY`);
+    - `GET /employees/:id/employment[?date=]` returns history, current, on-date and
+      payroll eligibility;
+    - `POST /employees/:id/employment` needs `MANAGE_EMPLOYEE_PAY`, a reason, no self
+      change and an Owner for backdating; audited.
+  - **Tests:** employment integration 11/11, full API integration 124/124, API unit/HTTP
+    86/0. No UI yet.
+  - **Step 2 not started.**
+
 - **Service price ranges and pricing units** (`feat: add service price ranges and pricing units`).
   - **Model:** `priceVnd` = minimum price per unit (the price itself when exact),
     `priceMaxVnd` = maximum, `pricingUnit` = `PER_SERVICE` | `PER_NAIL`.
