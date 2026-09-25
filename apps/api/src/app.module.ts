@@ -26,6 +26,8 @@ import { ServiceCatalogController } from './catalog/service-catalog.controller.j
 import { ServiceCatalogService } from './catalog/service-catalog.service.js';
 import { SkillController } from './skills/skill.controller.js';
 import { SkillService } from './skills/skill.service.js';
+import { LeaveController } from './leave/leave.controller.js';
+import { LeaveService } from './leave/leave.service.js';
 import { AuthorizationAdminController } from './authorization/authorization-admin.controller.js';
 import { RoleAdminService } from './authorization/role-admin.service.js';
 import { EmployeeController } from './employees/employee.controller.js';
@@ -54,6 +56,7 @@ export class AppModule {
         ServiceCatalogController,
         SkillController,
         AttendanceController,
+        LeaveController,
       ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },
@@ -75,6 +78,7 @@ export class AppModule {
         ServiceCatalogService,
         SkillService,
         AttendanceService,
+        LeaveService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
       ],

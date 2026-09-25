@@ -143,6 +143,16 @@ enum LeaveStatus {
   CANCELLED
 }
 
+// What the leave is for. Paid/unpaid treatment is future Leave Policy, not the type.
+enum LeaveType {
+  ANNUAL
+  SICK
+  PERSONAL
+  FAMILY_EVENT
+  MATERNITY
+  OTHER
+}
+
 // SQL additionally enforces kind/profile consistency at transaction commit,
 // canonical identities, credential state and protected sole-Owner invariants.
 model User {
@@ -608,6 +618,7 @@ model LeaveRequest {
   employee           EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
   startDate          DateTime        @map("start_date") @db.Date
   endDate            DateTime        @map("end_date") @db.Date
+  leaveType          LeaveType       @map("leave_type")
   reason             String
   status             LeaveStatus     @default(PENDING)
   requestedAt        DateTime        @default(now()) @map("requested_at") @db.Timestamptz(3)

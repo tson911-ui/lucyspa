@@ -733,3 +733,75 @@ export interface AttendanceCorrectionRequest {
   checkOutAt?: string;
   reason: string;
 }
+
+/**
+ * Leave type: what the leave is for. It never implies paid/unpaid treatment, quota use or
+ * payroll effect; those belong to a future configurable Leave Policy. Display labels
+ * (VI/EN) are UI concerns.
+ */
+export type LeaveType = 'ANNUAL' | 'SICK' | 'PERSONAL' | 'FAMILY_EVENT' | 'MATERNITY' | 'OTHER';
+
+export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+/**
+ * One employee-level leave request (never per branch) over whole calendar days.
+ * `startDate` / `endDate` are inclusive `YYYY-MM-DD` dates; `days` is the inclusive
+ * calendar-day count (informational; no quota is enforced).
+ */
+export interface LeaveRequestResponse {
+  id: string;
+  employeeId: string;
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string;
+  days: number;
+  reason: string;
+  status: LeaveStatus;
+  requestedAt: string;
+  decidedByUserId: string | null;
+  decidedAt: string | null;
+  decisionReason: string | null;
+  cancelledByUserId: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
+  version: number;
+}
+
+export interface LeaveRequestListResponse {
+  requests: LeaveRequestResponse[];
+}
+
+/** POST /api/v1/leave-requests: the caller's own request, created PENDING. */
+export interface LeaveRequestCreateRequest {
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string;
+  reason: string;
+}
+
+/** POST /api/v1/leave-requests/:id/cancel: the employee's own PENDING request only. */
+export interface LeaveRequestCancelRequest {
+  expectedVersion: number;
+  reason?: string;
+}
+
+/**
+ * POST /api/v1/leave-requests/:id/approve (reason optional) and /:id/reject (reason
+ * required): APPROVE_LEAVE over every active branch of the employee.
+ */
+export interface LeaveRequestDecisionRequest {
+  expectedVersion: number;
+  reason?: string;
+}
+
+/**
+ * GET /api/v1/leave-requests/me and GET /api/v1/leave-requests (APPROVE_LEAVE scope):
+ * requests overlapping `[from, to]` (`YYYY-MM-DD`, at most 400 days; default from 93
+ * days ago to 366 days ahead), optionally filtered by status (and employee).
+ */
+export interface LeaveRequestQuery {
+  from?: string;
+  to?: string;
+  status?: LeaveStatus;
+  employeeId?: string;
+}

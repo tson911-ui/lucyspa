@@ -56,7 +56,8 @@
   management; the [Phase 2 Step 5 report](docs/PHASE2_STEP5_SKILLS_EMPLOYEE_SKILLS.md) records
   skills and employee skills; the [Phase 2 Step 6 report](docs/PHASE2_STEP6_OPERATIONAL_BRANCH_ASSIGNMENTS.md)
   records operational branch assignments; the
-  [Phase 2 Step 7 report](docs/PHASE2_STEP7_ATTENDANCE.md) records attendance.
+  [Phase 2 Step 7 report](docs/PHASE2_STEP7_ATTENDANCE.md) records attendance; the
+  [Phase 2 Step 8 report](docs/PHASE2_STEP8_LEAVE_MANAGEMENT.md) records leave management.
   Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
@@ -327,8 +328,27 @@ attendance`; no migration).
 - Reads: own records, and `VIEW_ATTENDANCE` branch-scoped reads, bounded to 93 days.
 - History survives assignment revocation and branch deactivation.
 
-**Next step: Phase 2 Step 8 — Leave Management**; it needs separate Owner authorization
-and must not be started without it. Owner decisions
+**Phase 2 Step 8 — CLOSED** (leave management, API only; commit `feat: add phase 2 leave
+management`; Owner-authorized migration `20260927000000_phase2_leave_type`, applied
+locally only).
+
+- Controlled `LeaveType`: `ANNUAL`, `SICK`, `PERSONAL`, `FAMILY_EVENT`, `MATERNITY`,
+  `OTHER`. Leave type is separate from paid/unpaid treatment (no `UNPAID` type, no pay
+  fields).
+- Whole calendar days (inclusive DATE range); one employee-level request, never per
+  branch.
+- Employee creates, reads and cancels (PENDING only) their own requests; `APPROVE_LEAVE`
+  over every active branch of the employee approves or rejects (GLOBAL for branchless;
+  no self-decision).
+- PENDING/APPROVED requests never overlap (employee row lock); REJECTED/CANCELLED don't
+  block; everything is audited and nothing is deleted.
+- 1 leave day per month is the documented business baseline. Quota, carry-forward,
+  paid/unpaid and payroll are deferred to a future configurable Leave Policy.
+- APPROVED leave is queryable by employee and date for future Booking
+  (`employeesOnApprovedLeave`).
+
+**Next step: Phase 2 Step 9 — Workforce Login/Dashboard + Phase 2 UI Integration**; it
+needs separate Owner authorization and must not be started without it. Owner decisions
 H1–H9 are recorded in the Step 2 report. Adjusted plan: Step 3 branch administration
 and hours; Step 4 services; Step 5 skills; Step 6 branch assignments (reuse
 membership); Step 7 attendance; Step 8 leave; Step 9 dashboard/auth shell and Phase 2

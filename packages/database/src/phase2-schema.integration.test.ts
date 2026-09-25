@@ -20,6 +20,11 @@ const phase1Migrations = [
 ];
 const phase2Migration =
   '../prisma/migrations/20260925000000_phase2_services_skills_operations/migration.sql';
+// Later additive Phase 2 migrations, applied in order after the foundation.
+const phase2FollowUps = [
+  '../prisma/migrations/20260926000000_phase2_branch_row_version/migration.sql',
+  '../prisma/migrations/20260927000000_phase2_leave_type/migration.sql',
+];
 const PHASE1_CODES = PERMISSION_CATALOG.slice(0, 10);
 
 function identifier(value: string): string {
@@ -159,6 +164,9 @@ test('Phase 2 schema invariants in an isolated, rolled-back schema', async (cont
         );
       }
       await client.query(await readFile(new URL(phase2Migration, import.meta.url), 'utf8'));
+      for (const path of phase2FollowUps) {
+        await client.query(await readFile(new URL(path, import.meta.url), 'utf8'));
+      }
 
       await check('Phase 1 permission rows survive the PermissionCode rebuild', async () => {
         const rows = await client.query<{ id: string; code: string }>(
@@ -495,9 +503,24 @@ test('Phase 2 schema invariants in an isolated, rolled-back schema', async (cont
             start_date: '2026-10-01',
             end_date: '2026-10-02',
             reason: 'Family matter',
+            leave_type: 'PERSONAL',
             ...overrides,
           });
         await rejects(() => request({ end_date: '2026-09-30' }));
+        // A controlled, required leave type; no paid/unpaid code exists.
+        await rejects(() => request({ leave_type: null }), '23502');
+        await rejects(() => request({ leave_type: 'UNPAID' }), '22P02');
+        const types = await client.query<{ labels: string[] }>(
+          'SELECT enum_range(NULL::"LeaveType")::text[] AS labels',
+        );
+        assert.deepEqual(types.rows[0]?.labels, [
+          'ANNUAL',
+          'SICK',
+          'PERSONAL',
+          'FAMILY_EVENT',
+          'MATERNITY',
+          'OTHER',
+        ]);
         await rejects(() => request({ reason: '  ' }));
         await rejects(() => request({ decided_by_user_id: manager, decided_at: new Date() }));
         await rejects(() => request({ status: 'APPROVED' }));
@@ -508,9 +531,10 @@ test('Phase 2 schema invariants in an isolated, rolled-back schema', async (cont
 
         // PENDING may be edited, then approved; the request facts are then frozen.
         const approved = await request();
-        await client.query("UPDATE leave_requests SET end_date = '2026-10-03' WHERE id = $1", [
-          approved,
-        ]);
+        await client.query(
+          "UPDATE leave_requests SET end_date = '2026-10-03', leave_type = 'SICK' WHERE id = $1",
+          [approved],
+        );
         const decide = (id: string, status: string, extra = '') =>
           client.query(
             `UPDATE leave_requests SET status = '${status}', decided_by_user_id = $2,
@@ -530,6 +554,9 @@ test('Phase 2 schema invariants in an isolated, rolled-back schema', async (cont
         );
         await rejects(() =>
           client.query("UPDATE leave_requests SET reason = 'Changed' WHERE id = $1", [approved]),
+        );
+        await rejects(() =>
+          client.query("UPDATE leave_requests SET leave_type = 'OTHER' WHERE id = $1", [approved]),
         );
         // APPROVED -> CANCELLED stays possible for a later authorized workflow.
         await client.query(
