@@ -12,8 +12,9 @@ export interface PermissionDefinition {
 }
 
 /**
- * Code-owned Phase 1 catalog (design section 7). Every permission is branch-capable;
- * only the two pay permissions are EMPLOYEE_PAY data. Semantics are immutable in SQL.
+ * Code-owned catalog (Phase 1 design section 7, extended in Phase 2). Every permission
+ * is branch-capable except MANAGE_SERVICE_PRICES (GLOBAL_ONLY); only the two pay
+ * permissions are EMPLOYEE_PAY data. Semantics are immutable in SQL.
  */
 export const PERMISSION_CATALOG = Object.freeze([
   { code: 'VIEW_EMPLOYEES', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
@@ -46,6 +47,20 @@ export const PERMISSION_CATALOG = Object.freeze([
   },
   { code: 'MANAGE_PERMISSIONS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
   { code: 'VIEW_AUDIT_LOG', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  // Phase 2. Catalog-wide actions (services, skills, branch creation) still require a
+  // GLOBAL grant in the engine; branch grants cover per-branch operations only.
+  { code: 'MANAGE_BRANCHES', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  { code: 'MANAGE_SERVICES', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  // One price per service for every branch: never grantable at branch scope.
+  {
+    code: 'MANAGE_SERVICE_PRICES',
+    scopeCapability: 'GLOBAL_ONLY',
+    dataClassification: 'STANDARD',
+  },
+  { code: 'MANAGE_SKILLS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  { code: 'VIEW_ATTENDANCE', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  { code: 'MANAGE_ATTENDANCE', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  { code: 'APPROVE_LEAVE', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
 ] as const satisfies readonly PermissionDefinition[]);
 
 export interface PermissionCatalogSyncResult {

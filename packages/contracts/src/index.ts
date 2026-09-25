@@ -229,7 +229,14 @@ export type PermissionCodeName =
   | 'VIEW_EMPLOYEE_PAY'
   | 'MANAGE_EMPLOYEE_PAY'
   | 'MANAGE_PERMISSIONS'
-  | 'VIEW_AUDIT_LOG';
+  | 'VIEW_AUDIT_LOG'
+  | 'MANAGE_BRANCHES'
+  | 'MANAGE_SERVICES'
+  | 'MANAGE_SERVICE_PRICES'
+  | 'MANAGE_SKILLS'
+  | 'VIEW_ATTENDANCE'
+  | 'MANAGE_ATTENDANCE'
+  | 'APPROVE_LEAVE';
 
 /** A named permission bundle. OWNER is virtual and never a role. */
 export interface RoleResponse {

@@ -38,6 +38,11 @@ import {
 import { invalidateAuthorization, loadAuthorityGraph } from './authorization.store.js';
 
 const CATALOG = PERMISSION_CATALOG.map((entry) => entry.code) as PermissionCodeName[];
+const GLOBAL_ONLY: ReadonlySet<string> = new Set(
+  PERMISSION_CATALOG.filter((entry) => entry.scopeCapability === 'GLOBAL_ONLY').map(
+    (entry) => entry.code,
+  ),
+);
 const ROLE_NAME_MAX = 100;
 
 const roleSelect = {
@@ -406,6 +411,10 @@ export class RoleAdminService {
     const [permission] = normalizePermissions([input.permission]);
     if (!permission) throw new AuthError('VALIDATION_FAILED', 'permission');
     const scope = normalizeScope(input.scope);
+    // A GLOBAL_ONLY permission (SQL also refuses) cannot be overridden per branch.
+    if (scope.kind === 'BRANCH' && GLOBAL_ONLY.has(permission)) {
+      throw new AuthError('VALIDATION_FAILED', 'scope');
+    }
     const reason = normalizeReason(input.reason);
     return this.frame(sessionToken, true, requestId, [id], async (context) => {
       const { tx } = context;

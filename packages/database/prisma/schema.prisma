@@ -13,18 +13,21 @@ datasource db {
 
 // Phase 0 branch identity, extended only with Phase 1 authorization relations.
 model Branch {
-  id                  String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code                String                     @unique
+  id                  String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                String                      @unique
   name                String
-  timezone            String                     @default("Asia/Ho_Chi_Minh")
-  isActive            Boolean                    @default(true) @map("is_active")
-  createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  timezone            String                      @default("Asia/Ho_Chi_Minh")
+  isActive            Boolean                     @default(true) @map("is_active")
+  createdAt           DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   outboxEvents        OutboxEvent[]
   employeeAssignments EmployeeBranchAssignment[]
   roleAssignments     UserRoleAssignment[]
   permissionOverrides UserPermissionOverride[]
   auditEvents         AuditEvent[]
+  serviceAvailability ServiceBranchAvailability[]
+  operatingHours      BranchOperatingHours[]
+  attendanceRecords   AttendanceRecord[]
 
   @@map("branches")
 }
@@ -123,6 +126,20 @@ enum PermissionCode {
   MANAGE_EMPLOYEE_PAY
   MANAGE_PERMISSIONS
   VIEW_AUDIT_LOG
+  MANAGE_BRANCHES
+  MANAGE_SERVICES
+  MANAGE_SERVICE_PRICES
+  MANAGE_SKILLS
+  VIEW_ATTENDANCE
+  MANAGE_ATTENDANCE
+  APPROVE_LEAVE
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
 }
 
 // SQL additionally enforces kind/profile consistency at transaction commit,
@@ -154,6 +171,9 @@ model User {
   permissionOverrides          UserPermissionOverride[]
   actorAuditEvents             AuditEvent[]               @relation("AuditActor")
   subjectAuditEvents           AuditEvent[]               @relation("AuditSubject")
+  grantedEmployeeSkills        EmployeeSkill[]            @relation("EmployeeSkillGrantor")
+  decidedLeaveRequests         LeaveRequest[]             @relation("LeaveDecider")
+  cancelledLeaveRequests       LeaveRequest[]             @relation("LeaveCanceller")
 
   @@index([kind, status, id], map: "users_kind_status_idx")
   @@map("users")
@@ -176,6 +196,9 @@ model EmployeeProfile {
   address               String
   baseSalaryVnd         BigInt?                    @map("base_salary_vnd")
   branchAssignments     EmployeeBranchAssignment[]
+  skills                EmployeeSkill[]
+  attendanceRecords     AttendanceRecord[]
+  leaveRequests         LeaveRequest[]
 
   @@map("employee_profiles")
 }
@@ -429,4 +452,179 @@ model AuditEvent {
   @@index([branchId, action, occurredAt, id], map: "audit_events_branch_action_idx")
   @@index([action, occurredAt, id], map: "audit_events_action_idx")
   @@map("audit_events")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: services, skills, operations. SQL adds canonical-code, range, history
+// and state-transition guards that Prisma cannot express.
+
+model ServiceCategory {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code       String    @unique(map: "service_categories_code_key")
+  nameVi     String    @map("name_vi")
+  nameEn     String    @map("name_en")
+  sortOrder  Int       @default(0) @map("sort_order")
+  isActive   Boolean   @default(true) @map("is_active")
+  rowVersion Int       @default(1) @map("row_version")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  services   Service[]
+
+  @@index([isActive, sortOrder, id], map: "service_categories_active_order_idx")
+  @@map("service_categories")
+}
+
+// One concrete duration per service; 30/60-minute offerings are separate services.
+// durationMinutes is internal scheduling data, never a public menu label.
+model Service {
+  id              String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code            String                      @unique(map: "services_code_key")
+  categoryId      String                      @map("category_id") @db.Uuid
+  category        ServiceCategory             @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  nameVi          String                      @map("name_vi")
+  nameEn          String                      @map("name_en")
+  descriptionVi   String?                     @map("description_vi")
+  descriptionEn   String?                     @map("description_en")
+  priceVnd        BigInt                      @map("price_vnd")
+  durationMinutes Int                         @map("duration_minutes")
+  isActive        Boolean                     @default(true) @map("is_active")
+  rowVersion      Int                         @default(1) @map("row_version")
+  createdAt       DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  eligibleSkills  ServiceSkill[]
+  branches        ServiceBranchAvailability[]
+
+  @@index([categoryId, isActive, id], map: "services_category_idx")
+  @@map("services")
+}
+
+model Skill {
+  id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code       String          @unique(map: "skills_code_key")
+  nameVi     String          @map("name_vi")
+  nameEn     String          @map("name_en")
+  isActive   Boolean         @default(true) @map("is_active")
+  rowVersion Int             @default(1) @map("row_version")
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  services   ServiceSkill[]
+  employees  EmployeeSkill[]
+
+  @@map("skills")
+}
+
+// Eligible skills: an employee holding ANY one of them qualifies (evaluated in Phase 3).
+model ServiceSkill {
+  serviceId String   @map("service_id") @db.Uuid
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  skillId   String   @map("skill_id") @db.Uuid
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@id([serviceId, skillId])
+  @@index([skillId], map: "service_skills_skill_idx")
+  @@map("service_skills")
+}
+
+// Explicit offering: a service with no active row for a branch is not offered there.
+model ServiceBranchAvailability {
+  serviceId  String   @map("service_id") @db.Uuid
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId   String   @map("branch_id") @db.Uuid
+  branch     Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  isActive   Boolean  @default(true) @map("is_active")
+  rowVersion Int      @default(1) @map("row_version")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@id([serviceId, branchId])
+  @@index([branchId, isActive, serviceId], map: "service_branch_availability_branch_idx")
+  @@map("service_branch_availability")
+}
+
+// Revocation preserves history; SQL permits one active employee/skill pair.
+model EmployeeSkill {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeUserId  String          @map("employee_user_id") @db.Uuid
+  employee        EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  skillId         String          @map("skill_id") @db.Uuid
+  skill           Skill           @relation(fields: [skillId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  grantedAt       DateTime        @default(now()) @map("granted_at") @db.Timestamptz(3)
+  revokedAt       DateTime?       @map("revoked_at") @db.Timestamptz(3)
+  grantedByUserId String          @map("granted_by_user_id") @db.Uuid
+  grantedBy       User            @relation("EmployeeSkillGrantor", fields: [grantedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([employeeUserId, revokedAt, skillId], map: "employee_skills_employee_idx")
+  @@index([skillId, revokedAt, employeeUserId], map: "employee_skills_skill_idx")
+  @@index([grantedByUserId], map: "employee_skills_grantor_idx")
+  @@map("employee_skills")
+}
+
+// Branch-local wall-clock minutes since midnight, never UTC instants. ISO weekday
+// 1 = Monday ... 7 = Sunday. Defaults are applied by branch configuration, not here.
+model BranchOperatingHours {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  branch         Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  isoWeekday     Int      @map("iso_weekday") @db.SmallInt
+  isClosed       Boolean  @default(false) @map("is_closed")
+  opensAtMinute  Int?     @map("opens_at_minute") @db.SmallInt
+  closesAtMinute Int?     @map("closes_at_minute") @db.SmallInt
+  rowVersion     Int      @default(1) @map("row_version")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([branchId, isoWeekday], map: "branch_operating_hours_branch_weekday_key")
+  @@map("branch_operating_hours")
+}
+
+// businessDate is the check-in date in the branch timezone (SQL-enforced). One record
+// per employee, branch and business date; no breaks and no pay effects in Phase 2.
+model AttendanceRecord {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeUserId String          @map("employee_user_id") @db.Uuid
+  employee       EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  branchId       String          @map("branch_id") @db.Uuid
+  branch         Branch          @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  businessDate   DateTime        @map("business_date") @db.Date
+  checkInAt      DateTime        @map("check_in_at") @db.Timestamptz(3)
+  checkOutAt     DateTime?       @map("check_out_at") @db.Timestamptz(3)
+  rowVersion     Int             @default(1) @map("row_version")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([employeeUserId, branchId, businessDate], map: "attendance_records_employee_branch_date_key")
+  @@index([branchId, businessDate, employeeUserId], map: "attendance_records_branch_date_idx")
+  @@index([employeeUserId, checkOutAt], map: "attendance_records_employee_open_idx")
+  @@map("attendance_records")
+}
+
+// Whole calendar days. PENDING -> APPROVED | REJECTED | CANCELLED, and APPROVED ->
+// CANCELLED for a later authorized workflow; SQL rejects every other transition.
+model LeaveRequest {
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeUserId     String          @map("employee_user_id") @db.Uuid
+  employee           EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  startDate          DateTime        @map("start_date") @db.Date
+  endDate            DateTime        @map("end_date") @db.Date
+  reason             String
+  status             LeaveStatus     @default(PENDING)
+  requestedAt        DateTime        @default(now()) @map("requested_at") @db.Timestamptz(3)
+  decidedByUserId    String?         @map("decided_by_user_id") @db.Uuid
+  decidedBy          User?           @relation("LeaveDecider", fields: [decidedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  decidedAt          DateTime?       @map("decided_at") @db.Timestamptz(3)
+  decisionReason     String?         @map("decision_reason")
+  cancelledByUserId  String?         @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy        User?           @relation("LeaveCanceller", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelledAt        DateTime?       @map("cancelled_at") @db.Timestamptz(3)
+  cancellationReason String?         @map("cancellation_reason")
+  rowVersion         Int             @default(1) @map("row_version")
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([employeeUserId, status, startDate], map: "leave_requests_employee_idx")
+  @@index([status, startDate, endDate], map: "leave_requests_status_dates_idx")
+  @@index([decidedByUserId], map: "leave_requests_decider_idx")
+  @@index([cancelledByUserId], map: "leave_requests_canceller_idx")
+  @@map("leave_requests")
 }

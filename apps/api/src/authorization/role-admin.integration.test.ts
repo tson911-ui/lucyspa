@@ -309,7 +309,7 @@ test(
                 );
                 const listed = await roles.listRoles(ownerSession);
                 assert.ok(listed.roles.some((entry) => entry.id === role.id));
-                assert.equal(listed.permissions.length, 10);
+                assert.equal(listed.permissions.length, 17);
                 const events = await tx.auditEvent.findMany({
                   where: { entityId: role.id },
                   orderBy: { action: 'asc' },
@@ -455,6 +455,17 @@ test(
                   reason,
                 });
                 assert.equal(reduced.overrides.length, 2);
+                // GLOBAL_ONLY permissions (service prices) cannot be overridden per branch.
+                await fails(
+                  roles.setOverride(ownerSession, target, {
+                    expectedVersion: reduced.version,
+                    permission: 'MANAGE_SERVICE_PRICES',
+                    effect: 'DENY',
+                    scope: { kind: 'BRANCH', branchId: A },
+                    reason,
+                  }),
+                  'VALIDATION_FAILED',
+                );
                 const [change] = await tx.auditEvent.findMany({
                   where: {
                     subjectUserId: target,

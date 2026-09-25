@@ -47,6 +47,9 @@
   [Step 11 report](docs/PHASE1_STEP11_ROLE_ADMIN_AUDIT_READ.md) and
   [Step 12 report](docs/PHASE1_STEP12_EMAIL_DISPATCH_CLEANUP.md) and
   [Step 13 completion gate](docs/PHASE1_STEP13_COMPLETION_GATE.md) record scope and validation.
+- Phase 2 (Services, Employees and Operations) is authorized. Step 1 (design contract)
+  was analysis only; the [Phase 2 Step 2 report](docs/PHASE2_STEP2_DATABASE_FOUNDATION.md)
+  records the database foundation.
   Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
@@ -202,8 +205,20 @@ because a new session starts.
 
 **PHASE 1 COMPLETE** (see the
 [Step 13 completion gate](docs/PHASE1_STEP13_COMPLETION_GATE.md), `fab9147`). Steps 1–12
-are closed; the HTML auth-email presentation followed in `389c0b4`. Do not start Phase 2
-without separate authorization.
+are closed; the HTML auth-email presentation followed in `389c0b4`.
+
+**Phase 2 is in progress.** Step 2 (database foundation) is **closed** (Owner-approved;
+commit `feat: add phase 2 database foundation`). It adds one additive migration
+(`20260925000000_phase2_services_skills_operations`) with services, skills, employee
+skills, service branch availability, branch operating hours, attendance and leave
+tables, plus 7 permission codes (`MANAGE_SERVICE_PRICES` is GLOBAL_ONLY). It is
+applied to the local development database only; it is **not yet deployed to
+production**. Production needs `pnpm db:deploy` and then `pnpm db:permissions:sync` at
+deployment. Step 3 has not started and needs Owner authorization. Owner decisions
+H1–H9 are recorded in the Step 2 report. Adjusted plan: Step 3 branch administration
+and hours; Step 4 services; Step 5 skills; Step 6 branch assignments (reuse
+membership); Step 7 attendance; Step 8 leave; Step 9 dashboard/auth shell and Phase 2
+UI; Step 10 completion gate and deployment.
 
 Production deployment (verified by the operator, recorded in the
 [Step 12 report](docs/PHASE1_STEP12_EMAIL_DISPATCH_CLEANUP.md#production-verification)):

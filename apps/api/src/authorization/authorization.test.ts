@@ -341,7 +341,7 @@ test('account authorization summary: Owner virtual role, customer empty, effecti
   });
 });
 
-test('the code-owned catalog is exactly the ten design permissions', () => {
+test('the code-owned catalog is exactly the Phase 1 and Phase 2 permissions', () => {
   assert.deepEqual(
     PERMISSION_CATALOG.map((entry) => [
       entry.code,
@@ -359,6 +359,13 @@ test('the code-owned catalog is exactly the ten design permissions', () => {
       ['MANAGE_EMPLOYEE_PAY', 'BRANCH_CAPABLE', 'EMPLOYEE_PAY'],
       ['MANAGE_PERMISSIONS', 'BRANCH_CAPABLE', 'STANDARD'],
       ['VIEW_AUDIT_LOG', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['MANAGE_BRANCHES', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['MANAGE_SERVICES', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['MANAGE_SERVICE_PRICES', 'GLOBAL_ONLY', 'STANDARD'],
+      ['MANAGE_SKILLS', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['VIEW_ATTENDANCE', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['MANAGE_ATTENDANCE', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['APPROVE_LEAVE', 'BRANCH_CAPABLE', 'STANDARD'],
     ],
   );
 });
