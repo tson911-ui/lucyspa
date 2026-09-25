@@ -18,6 +18,7 @@ import { AuthError } from '../auth/auth.error.js';
 import { PasswordService } from '../auth/password.service.js';
 import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
+import { EmployeeDirectoryService } from './employee-directory.service.js';
 import { EmployeeService } from './employee.service.js';
 import { businessToday, day } from './employment.js';
 
@@ -88,6 +89,7 @@ test(
             };
             const throttle = new AuthThrottleService(environment);
             const employees = new EmployeeService(environment, runner, throttle);
+            const directory = new EmployeeDirectoryService(runner, throttle);
             await syncPermissionCatalog(tx);
             const permissions = new Map(
               (await tx.permission.findMany({ select: { id: true, code: true } })).map((row) => [
@@ -325,6 +327,12 @@ test(
                 const read = await employees.employment(payerSession, created.id, {});
                 assert.equal(read.current?.classification, 'OFFICIAL_EMPLOYEE');
                 assert.equal(read.payrollEligibleToday, true);
+                // The directory shows the latest recorded classification (Step 2 label).
+                const [listed] = (await directory.list(payerSession, { q: created.employeeId }))
+                  .items;
+                assert.equal(listed?.id, created.id);
+                assert.equal(listed?.classification, 'OFFICIAL_EMPLOYEE');
+                assert.equal(listed?.classificationEffectiveDate, today);
               },
             );
 

@@ -1,5 +1,6 @@
 import type {
   EmployeeStatus,
+  EmploymentClassification,
   LeaveStatus,
   LeaveType,
   ServicePricingUnit,
@@ -319,6 +320,63 @@ const vi = {
     grantedAt: 'Từ',
     revokedAt: 'Đến',
     noName: 'Nhân viên {id}',
+    classification: 'Phân loại',
+    classifications: {
+      TRAINEE: 'Học viên',
+      OFFICIAL_EMPLOYEE: 'Nhân viên chính thức',
+      ENDED: 'Đã kết thúc làm việc/học việc',
+    } satisfies Record<EmploymentClassification, string>,
+    classificationFrom: '{label} (từ {date})',
+    add: 'Thêm nhân sự',
+    create: {
+      title: 'Thêm nhân sự',
+      intro:
+        'Nhân sự mới có thể là học viên hoặc nhân viên chính thức ngay từ đầu — không bắt buộc qua giai đoạn học viên.',
+      personal: 'Thông tin cá nhân',
+      employment: 'Phân loại và ngày bắt đầu',
+      branches: 'Chi nhánh',
+      fields: {
+        employeeId: 'Mã nhân viên',
+        fullName: 'Họ tên',
+        dateOfBirth: 'Ngày sinh',
+        address: 'Địa chỉ',
+        phone: 'Số điện thoại',
+        email: 'Email',
+        locale: 'Ngôn ngữ của nhân sự',
+        branchIds: 'Chi nhánh',
+        classification: 'Phân loại nhân sự',
+        employmentStartDate: 'Ngày bắt đầu',
+        employmentReason: 'Lý do ghi nhận ngày bắt đầu trong quá khứ',
+      },
+      employeeIdHint: 'Chữ không dấu, số, “-” hoặc “_”; tối đa 64 ký tự.',
+      phoneHint: 'Ví dụ: 0905 123 456',
+      emailHint: 'Không bắt buộc.',
+      traineeHint: 'Đang học việc, chưa hưởng lương.',
+      officialHint: 'Nhân viên chính thức, được tính lương từ ngày bắt đầu.',
+      officialNoPay:
+        'Chỉ người có quyền quản lý lương nhân viên mới tạo được nhân viên chính thức. Bạn vẫn có thể thêm học viên.',
+      officialNoPayForBranches:
+        'Bạn không có quyền quản lý lương ở mọi chi nhánh đã chọn nên chưa thể tạo nhân viên chính thức ở đó.',
+      startHint: 'Phân loại đã chọn có hiệu lực từ ngày này.',
+      reasonHint:
+        'Ngày bắt đầu trước hôm nay, ví dụ nhân sự đã làm việc từ trước: vui lòng ghi lý do.',
+      branchesHint: 'Chọn ít nhất một chi nhánh mà bạn được phép thêm nhân sự.',
+      noBranches: 'Bạn chưa được phép thêm nhân sự ở chi nhánh nào đang hoạt động.',
+      accountNote:
+        'Tạo nhân sự chưa cấp quyền đăng nhập. Nhân sự mới ở trạng thái “Chờ thiết lập” cho đến khi tài khoản được cấp ở bước sau.',
+      submit: 'Tạo nhân sự',
+      submitting: 'Đang tạo…',
+      missing: 'Vui lòng kiểm tra: {fields}.',
+      created:
+        'Đã tạo nhân sự {name} ({code}) — {classification}. Nhân sự chưa thể đăng nhập cho đến khi tài khoản được cấp.',
+      viewCreated: 'Xem chi tiết',
+      duplicateEmployeeId: 'Mã nhân viên này đã được dùng.',
+      duplicatePhone: 'Số điện thoại này đã được dùng cho một tài khoản khác.',
+      duplicateEmail: 'Email này đã được dùng cho một tài khoản khác.',
+      invalidField: '“{field}” chưa hợp lệ. Vui lòng kiểm tra lại.',
+      forbidden:
+        'Bạn không có quyền tạo nhân sự này. Hãy kiểm tra chi nhánh đã chọn và quyền tạo nhân viên chính thức.',
+    },
   },
 };
 
@@ -629,6 +687,62 @@ const en: Dictionary = {
     grantedAt: 'From',
     revokedAt: 'Until',
     noName: 'Employee {id}',
+    classification: 'Classification',
+    classifications: {
+      TRAINEE: 'Trainee',
+      OFFICIAL_EMPLOYEE: 'Official employee',
+      ENDED: 'Employment ended',
+    },
+    classificationFrom: '{label} (from {date})',
+    add: 'Add workforce member',
+    create: {
+      title: 'Add workforce member',
+      intro:
+        'A new member can start directly as a trainee or as an official employee — the trainee stage is not required.',
+      personal: 'Personal details',
+      employment: 'Classification and start date',
+      branches: 'Branches',
+      fields: {
+        employeeId: 'Employee ID',
+        fullName: 'Full name',
+        dateOfBirth: 'Date of birth',
+        address: 'Address',
+        phone: 'Phone',
+        email: 'Email',
+        locale: "Member's language",
+        branchIds: 'Branches',
+        classification: 'Classification',
+        employmentStartDate: 'Start date',
+        employmentReason: 'Reason for a past start date',
+      },
+      employeeIdHint: 'Letters, digits, “-” or “_”; up to 64 characters.',
+      phoneHint: 'For example: 0905 123 456',
+      emailHint: 'Optional.',
+      traineeHint: 'Learning the job; not paid a salary.',
+      officialHint: 'Official employee, payroll-eligible from the start date.',
+      officialNoPay:
+        'Only someone who manages employee pay can create an official employee. You can still add a trainee.',
+      officialNoPayForBranches:
+        'You do not manage employee pay in every selected branch, so an official employee cannot be created there.',
+      startHint: 'The chosen classification applies from this date.',
+      reasonHint: 'The start date is before today, e.g. for existing staff: please give a reason.',
+      branchesHint: 'Choose at least one branch where you may add workforce members.',
+      noBranches: 'You may not add workforce members in any active branch.',
+      accountNote:
+        'Creating a workforce member does not grant sign-in. The new member stays “Pending setup” until their account is provisioned in a later step.',
+      submit: 'Create workforce member',
+      submitting: 'Creating…',
+      missing: 'Please check: {fields}.',
+      created:
+        'Created {name} ({code}) — {classification}. They cannot sign in until their account is provisioned.',
+      viewCreated: 'View details',
+      duplicateEmployeeId: 'This employee ID is already in use.',
+      duplicatePhone: 'This phone number is already used by another account.',
+      duplicateEmail: 'This email is already used by another account.',
+      invalidField: '“{field}” is not valid. Please check it.',
+      forbidden:
+        'You are not allowed to create this workforce member. Check the selected branches and the official-employee permission.',
+    },
   },
 };
 

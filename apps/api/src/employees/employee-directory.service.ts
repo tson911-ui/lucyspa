@@ -11,6 +11,7 @@ import { SessionService } from '../auth/session.service.js';
 import { runAdminCommand } from '../authorization/admin-command.js';
 import { decide, GLOBAL, type AuthorityGraph } from '../authorization/authorization.js';
 import { isUuid } from './employee.input.js';
+import { day } from './employment.js';
 
 export const EMPLOYEE_DIRECTORY_PAGE = Object.freeze({
   defaultLimit: 50,
@@ -37,6 +38,12 @@ const directorySelect = {
   employeeProfile: {
     select: {
       employeeCodeCanonical: true,
+      // Latest recorded classification (Employee management Step 2 directory label).
+      classificationChanges: {
+        select: { classification: true, effectiveDate: true },
+        orderBy: { effectiveDate: 'desc' },
+        take: 1,
+      },
       branchAssignments: {
         where: { revokedAt: null },
         select: { branchId: true },
@@ -95,7 +102,7 @@ export function directoryVisibility(
 
 /**
  * Read-only employee directory for workforce UIs (Phase 2 Step 9): minimal operational
- * identity only. Scope is applied before filters, ordering and paging, so hidden
+ * identity and the latest employment classification only. Scope is applied before filters, ordering and paging, so hidden
  * employees never appear in pages, cursors or search results.
  */
 @Injectable()
@@ -175,6 +182,7 @@ export class EmployeeDirectoryService {
         const page = rows.slice(0, limit);
         const items = page.map((row): EmployeeDirectoryEntry => {
           const profile = row.employeeProfile!;
+          const latest = profile.classificationChanges[0];
           return {
             id: row.id,
             employeeId: profile.employeeCodeCanonical,
@@ -182,6 +190,8 @@ export class EmployeeDirectoryService {
             status: row.status as EmployeeStatus,
             branchIds: profile.branchAssignments.map((entry) => entry.branchId),
             version: row.rowVersion,
+            classification: latest?.classification ?? null,
+            classificationEffectiveDate: latest ? day(latest.effectiveDate) : null,
           };
         });
         const last = items.at(-1);

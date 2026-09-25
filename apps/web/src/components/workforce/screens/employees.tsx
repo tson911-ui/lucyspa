@@ -3,26 +3,53 @@
 import type {
   EmployeeDirectoryEntry,
   EmployeeDirectoryResponse,
+  EmployeeResponse,
   EmployeeStatus,
+  InitialEmploymentClassification,
 } from '@lucy-spa/contracts';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { fill } from '../../../i18n/workforce';
+import {
+  canOfferCreate,
+  classificationText,
+  directoryClassification,
+} from '../../../lib/workforce/employee-create';
 import { branchLabel, useBranches } from '../data';
-import { useWorkforce } from '../session';
-import { Badge, Empty, ErrorState, Field, Loading, PageHeader, Section, type Tone } from '../ui';
+import { useAccount, useWorkforce } from '../session';
+import {
+  Badge,
+  Empty,
+  ErrorState,
+  Field,
+  Loading,
+  Notice,
+  PageHeader,
+  Section,
+  type Tone,
+} from '../ui';
+import { EmployeeCreateForm } from './employee-create';
 
 const STATUSES: EmployeeStatus[] = ['ACTIVE', 'PENDING_SETUP', 'INACTIVE'];
+const NO_FILTERS = { q: '', branchId: '', status: '' };
 export const EMPLOYEE_STATUS_TONE: Record<EmployeeStatus, Tone> = {
   ACTIVE: 'success',
   PENDING_SETUP: 'warning',
   INACTIVE: 'neutral',
 };
 
-/** Employee directory (VIEW_EMPLOYEES scope, enforced by the API before paging). */
+/**
+ * Employee directory (VIEW_EMPLOYEES scope, enforced by the API before paging) and the
+ * "Add workforce member" action for accounts with CREATE_EMPLOYEES.
+ */
 export function EmployeesScreen() {
-  const { api, t, base } = useWorkforce();
+  const { api, t, base, locale } = useWorkforce();
+  const { account } = useAccount();
   const branches = useBranches(api);
-  const [filters, setFilters] = useState({ q: '', branchId: '', status: '' });
+  const offerCreate = canOfferCreate(account);
+  const [adding, setAdding] = useState(false);
+  const [created, setCreated] = useState<CreatedMember | null>(null);
+  const [filters, setFilters] = useState(NO_FILTERS);
   const [applied, setApplied] = useState(filters);
   const [items, setItems] = useState<EmployeeDirectoryEntry[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -61,9 +88,50 @@ export function EmployeesScreen() {
     setApplied(filters);
   }
 
+  function onCreated(employee: EmployeeResponse, classification: InitialEmploymentClassification) {
+    setAdding(false);
+    setCreated({ employee, classification });
+    // Show the whole directory again so the new member is listed.
+    setFilters(NO_FILTERS);
+    setApplied({ ...NO_FILTERS });
+  }
+
   return (
     <>
-      <PageHeader title={t.employees.title} />
+      <PageHeader title={t.employees.title}>
+        {offerCreate && !adding ? (
+          <button
+            type="button"
+            className="wf-button wf-button-primary"
+            aria-controls="add-workforce-member"
+            aria-expanded={false}
+            onClick={() => {
+              setCreated(null);
+              setAdding(true);
+            }}
+          >
+            {t.employees.add}
+          </button>
+        ) : null}
+      </PageHeader>
+      {created ? <CreatedNotice {...created} /> : null}
+      {offerCreate && adding ? (
+        <div id="add-workforce-member">
+          <Section title={t.employees.create.title}>
+            {branches.error ? (
+              <ErrorState error={branches.error} t={t} onRetry={() => void branches.reload()} />
+            ) : branches.data ? (
+              <EmployeeCreateForm
+                branches={branches.data}
+                onCreated={onCreated}
+                onCancel={() => setAdding(false)}
+              />
+            ) : (
+              <Loading t={t} />
+            )}
+          </Section>
+        </div>
+      ) : null}
       <Section title={t.common.search}>
         <form className="wf-filters" role="search" onSubmit={search}>
           <Field id="emp-q" label={t.employees.search}>
@@ -118,6 +186,7 @@ export function EmployeesScreen() {
                 <th scope="col">{t.employees.employeeId}</th>
                 <th scope="col">{t.employees.fullName}</th>
                 <th scope="col">{t.common.branch}</th>
+                <th scope="col">{t.employees.classification}</th>
                 <th scope="col">{t.common.status}</th>
                 <th scope="col">{t.common.actions}</th>
               </tr>
@@ -130,6 +199,9 @@ export function EmployeesScreen() {
                   <td data-label={t.common.branch}>
                     {employee.branchIds.map((id) => branchLabel(id, branches.data, t)).join(', ') ||
                       '—'}
+                  </td>
+                  <td data-label={t.employees.classification}>
+                    {directoryClassification(employee, branches.data, t, locale)}
                   </td>
                   <td data-label={t.common.status}>
                     <Badge tone={EMPLOYEE_STATUS_TONE[employee.status]}>
@@ -152,5 +224,27 @@ export function EmployeesScreen() {
         ) : null}
       </Section>
     </>
+  );
+}
+
+interface CreatedMember {
+  employee: EmployeeResponse;
+  classification: InitialEmploymentClassification;
+}
+
+/** Success after creation: who was created, as what, and that sign-in is not yet granted. */
+export function CreatedNotice({ employee, classification }: CreatedMember) {
+  const { t, base } = useWorkforce();
+  return (
+    <Notice tone="success">
+      <p>
+        {fill(t.employees.create.created, {
+          name: employee.fullName,
+          code: employee.employeeId,
+          classification: classificationText(classification, t),
+        })}
+      </p>
+      <Link href={`${base}/employees/${employee.id}`}>{t.employees.create.viewCreated}</Link>
+    </Notice>
   );
 }

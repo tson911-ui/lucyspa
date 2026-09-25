@@ -458,6 +458,30 @@ manually by the Owner/operator; see the
   - **Tests:** catalog integration 8/8, delete HTTP 1/1, web 37/37. No migration; no
     production data is deleted automatically.
 
+- **Employee management Step 2: "Add workforce member" UI** (`feat: add workforce member
+creation UI`; local commit on top of Step 1, not pushed, not deployed). See the
+  [Step 2 report](docs/EMPLOYEE_MANAGEMENT_STEP2_ADD_WORKFORCE_MEMBER_UI.md).
+  - **Where:** Workforce › Employees has "Thêm nhân sự" / "Add workforce member" for
+    `CREATE_EMPLOYEES`, opening an inline form.
+  - **Fields:** those of the existing create API: employee ID, name, date of birth, phone,
+    optional email, language, address, explicit classification, start date (with a reason
+    when in the past) and branches.
+  - **Classification:** TRAINEE or OFFICIAL_EMPLOYEE is an explicit choice with no default
+    and never ENDED. OFFICIAL_EMPLOYEE is disabled, with an explanation, without
+    `MANAGE_EMPLOYEE_PAY` in every selected branch; the API still enforces it.
+  - **Not included:** salary (decision documented), password, setup link, roles and
+    skills.
+  - **Duplicate submits** are blocked by a single-flight guard.
+  - **After creation:** the directory reloads with a success notice (the member cannot sign
+    in yet) and a detail link. The directory gains a "Phân loại" column: the
+    `EmployeeDirectoryEntry` fields `classification` and `classificationEffectiveDate`,
+    with no migration.
+  - **Tests:** web 48/48 (8 new), employment integration 11/11, directory integration 5/5,
+    API unit/HTTP 86/0.
+  - **Employee management is not complete.** Next is Step 3, employee detail (profile and
+    classification history with promotion/ending); account provisioning, roles and skills
+    come later.
+
 - **Employee management Step 1: employment classification** (`feat: add employment
 classification history`; local commit, not pushed, not deployed). See the
   [Step 1 report](docs/EMPLOYEE_MANAGEMENT_STEP1_EMPLOYMENT_CLASSIFICATION.md).

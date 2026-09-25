@@ -262,6 +262,8 @@ test(
                 const [entry] = (await directory.list(sessionAB, { q: await codeOf(multi) })).items;
                 assert.deepEqual(Object.keys(entry ?? {}).sort(), [
                   'branchIds',
+                  'classification',
+                  'classificationEffectiveDate',
                   'employeeId',
                   'fullName',
                   'id',

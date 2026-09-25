@@ -249,6 +249,13 @@ export interface EmployeeDirectoryEntry {
   status: EmployeeStatus;
   branchIds: string[];
   version: number;
+  /**
+   * The latest recorded employment classification and the date it takes effect
+   * (`YYYY-MM-DD`, possibly in the future for a new hire or scheduled change). Null only for
+   * an employee without classification history.
+   */
+  classification: EmploymentClassification | null;
+  classificationEffectiveDate: string | null;
 }
 
 export interface EmployeeDirectoryResponse {
