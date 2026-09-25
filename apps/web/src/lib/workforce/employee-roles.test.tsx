@@ -99,6 +99,7 @@ const catalog: RoleListResponse = {
     },
   ],
   permissions: [],
+  permissionCatalog: [],
 };
 const authorization: EmployeeAuthorizationResponse = {
   userId: member.id,
@@ -297,7 +298,7 @@ test('18–19. ended employment: no new roles; existing ones stay and can be rem
 
 test('an empty role catalog is reported honestly, without invented roles', () => {
   const markup = view(owner, {
-    catalog: { roles: [], permissions: [] },
+    catalog: { roles: [], permissions: [], permissionCatalog: [] },
     authorization: { ...authorization, roleAssignments: [] },
   });
   assert.ok(markup.includes(vi.roles.emptyCatalog));

@@ -315,6 +315,17 @@ test(
                 const listed = await roles.listRoles(ownerSession);
                 assert.ok(listed.roles.some((entry) => entry.id === role.id));
                 assert.equal(listed.permissions.length, 17);
+                // Scope capability comes from the code-owned catalog (Step 4B role UI).
+                assert.deepEqual(
+                  listed.permissionCatalog.map((entry) => entry.code),
+                  listed.permissions,
+                );
+                assert.deepEqual(
+                  listed.permissionCatalog
+                    .filter((entry) => entry.scopeCapability === 'GLOBAL_ONLY')
+                    .map((entry) => entry.code),
+                  ['MANAGE_SERVICE_PRICES'],
+                );
                 const events = await tx.auditEvent.findMany({
                   where: { entityId: role.id },
                   orderBy: { action: 'asc' },

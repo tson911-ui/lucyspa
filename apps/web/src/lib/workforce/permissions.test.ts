@@ -17,6 +17,7 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'services',
     'skills',
     'employees',
+    'roles',
   ]);
   assert.deepEqual(
     keys(
@@ -28,6 +29,9 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     ['dashboard', 'attendance', 'leave', 'skills', 'employees'],
   );
   assert.ok(keys(employee([['MANAGE_SERVICE_PRICES']])).includes('services'));
+  // Roles & permissions: MANAGE_PERMISSIONS in any scope (branch administrators read only).
+  assert.ok(keys(employee([['MANAGE_PERMISSIONS', 'A']])).includes('roles'));
+  assert.ok(!keys(employee([['VIEW_EMPLOYEES']])).includes('roles'));
   assert.ok(!keys(employee([['APPROVE_LEAVE', 'A']])).includes('employees'));
 });
 

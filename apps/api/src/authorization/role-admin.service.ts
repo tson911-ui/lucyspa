@@ -129,7 +129,14 @@ export class RoleAdminService {
     return this.frame(sessionToken, false, undefined, [], async ({ tx, actor }) => {
       if (!this.administersAnywhere(actor.graph)) throw new AuthError('FORBIDDEN');
       const roles = await tx.role.findMany({ select: roleSelect, orderBy: { code: 'asc' } });
-      return { roles: roles.map(presentRole), permissions: [...CATALOG] };
+      return {
+        roles: roles.map(presentRole),
+        permissions: [...CATALOG],
+        permissionCatalog: PERMISSION_CATALOG.map((entry) => ({
+          code: entry.code as PermissionCodeName,
+          scopeCapability: entry.scopeCapability,
+        })),
+      };
     });
   }
 

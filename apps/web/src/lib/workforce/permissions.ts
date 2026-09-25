@@ -77,7 +77,7 @@ export function canAcross(
 }
 
 export type NavKey =
-  'dashboard' | 'attendance' | 'leave' | 'branches' | 'services' | 'skills' | 'employees';
+  'dashboard' | 'attendance' | 'leave' | 'branches' | 'services' | 'skills' | 'employees' | 'roles';
 
 export interface NavItem {
   key: NavKey;
@@ -125,6 +125,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'employees',
       group: 'management',
       path: '/employees',
+    },
+    // Roles & permissions: readable with MANAGE_PERMISSIONS in some scope (the API rule).
+    canAnywhere(account, 'MANAGE_PERMISSIONS') && {
+      key: 'roles',
+      group: 'management',
+      path: '/roles',
     },
   ];
   return items.filter((item): item is NavItem => item !== false);

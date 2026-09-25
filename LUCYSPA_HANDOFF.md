@@ -458,6 +458,31 @@ manually by the Owner/operator; see the
   - **Tests:** catalog integration 8/8, delete HTTP 1/1, web 37/37. No migration; no
     production data is deleted automatically.
 
+- **Employee management Step 4B: role management UI** (`feat: add role management UI`;
+  local commit on top of `e6755ff`; not pushed, not deployed, no migration). See the
+  [Step 4B report](docs/EMPLOYEE_MANAGEMENT_STEP4B_ROLE_MANAGEMENT.md).
+  - **Page:** "Vai trò & quyền" (`/workforce/roles`, nav with `MANAGE_PERMISSIONS`).
+    - Lists roles with labelled permissions.
+    - "Tạo vai trò": code, VI/EN names, permissions (none preselected), reason.
+    - "Sửa vai trò": the code is read-only; names and the full permission set can change;
+      roles can be switched on or off.
+    - Role changes need GLOBAL `MANAGE_PERMISSIONS`; branch administrators get read-only
+      access.
+  - **Permissions** come from the API. The only API change: `GET /roles` adds
+    `permissionCatalog` (scope capability; only `MANAGE_SERVICE_PRICES` is global-only).
+  - **Containment is unchanged:** a non-Owner can bundle only unrestricted global
+    permissions it holds, cannot edit its own roles, and cannot create an `OWNER` role.
+    Held permissions stay removable.
+  - **Roles are bundles:** the branch is chosen on assignment (employee detail), never on
+    the role.
+  - **No deletion** (roles are switched off instead).
+  - **No roles seeded:** the Owner must create KTV, Branch Manager, etc. and choose their
+    permissions.
+  - **Deferred:** the per-user overrides UI.
+  - **Tests:** role-assignment integration 6/6 (Step 4B subtest), role-admin 8/8,
+    web 75/75.
+  - **Next:** Step 5, skills.
+
 - **Employee management Step 4: role assignment UI** (`feat: add employee role assignment
 UI`; local commit on top of `deae20c`; not pushed, not deployed, no migration). See the
   [Step 4 report](docs/EMPLOYEE_MANAGEMENT_STEP4_ROLE_ASSIGNMENT.md).

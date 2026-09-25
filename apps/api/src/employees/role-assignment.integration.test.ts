@@ -469,6 +469,122 @@ test(
               },
             );
 
+            await context.test(
+              'Step 4B: roles created and edited through the role API, contained, then assignable',
+              async () => {
+                // 12–13, 16–17: no new kinds or classifications; no seeded KTV/manager bundles.
+                const kinds = await tx.$queryRaw<{ value: string }[]>`
+                  SELECT unnest(enum_range(NULL::"UserKind"))::text AS value`;
+                assert.deepEqual(
+                  kinds.map((row) => row.value),
+                  ['CUSTOMER', 'EMPLOYEE', 'OWNER'],
+                );
+                const seeded = await tx.role.count({
+                  where: {
+                    code: { in: ['KTV', 'BRANCH_MANAGER', 'MANAGER', 'QUAN_LY_CHI_NHANH'] },
+                  },
+                });
+                assert.equal(seeded, 0, 'no default role bundles exist');
+                // A global permission administrator (not the Owner) holding only some powers.
+                const admin = await principal('EMPLOYEE', [A]);
+                await grant(admin, ['MANAGE_PERMISSIONS', 'VIEW_ATTENDANCE', 'APPROVE_LEAVE']);
+                await insertRow(admin, 'OFFICIAL_EMPLOYEE', '2020-01-01');
+                const adminSession = await login(admin, true);
+                const catalog = await roles.listRoles(adminSession);
+                assert.deepEqual(
+                  catalog.permissionCatalog.map((entry) => entry.code),
+                  catalog.permissions,
+                );
+                // 5. Create with the bundle the administrator explicitly chooses.
+                const code = `tech_${run.toLowerCase()}`;
+                const created = await roles.createRole(adminSession, {
+                  code,
+                  displayNameVi: 'Kỹ thuật viên',
+                  displayNameEn: 'Technician',
+                  permissions: ['VIEW_ATTENDANCE'],
+                  reason: 'Role for technicians',
+                });
+                assert.equal(created.code, code.toUpperCase());
+                assert.deepEqual(created.permissions, ['VIEW_ATTENDANCE']);
+                // 9–10. Containment: nothing the administrator lacks, on create or edit.
+                await fails(
+                  roles.createRole(adminSession, {
+                    code: `pay_${run}`,
+                    displayNameVi: 'Lương',
+                    displayNameEn: 'Pay',
+                    permissions: ['MANAGE_EMPLOYEE_PAY'],
+                    reason: 'Escalation',
+                  }),
+                  'FORBIDDEN',
+                );
+                await fails(
+                  roles.setRolePermissions(adminSession, created.id, {
+                    expectedVersion: created.version,
+                    permissions: ['VIEW_ATTENDANCE', 'MANAGE_EMPLOYEE_ACCESS'],
+                    reason: 'Escalation',
+                  }),
+                  'FORBIDDEN',
+                );
+                // 11. No Owner role.
+                await fails(
+                  roles.createRole(adminSession, {
+                    code: 'owner',
+                    displayNameVi: 'Chủ',
+                    displayNameEn: 'Owner',
+                    permissions: [],
+                    reason: 'x',
+                  }),
+                  'VALIDATION_FAILED',
+                  'code',
+                );
+                // A branch-scoped administrator (hr) may read but not change roles.
+                await fails(
+                  roles.createRole(hrSession, {
+                    code: `branch_${run}`,
+                    displayNameVi: 'x',
+                    displayNameEn: 'x',
+                    permissions: [],
+                    reason: 'x',
+                  }),
+                  'FORBIDDEN',
+                );
+                // 6–8. Edit names (the code never changes) and the permission set.
+                const renamed = await roles.updateRole(adminSession, created.id, {
+                  expectedVersion: created.version,
+                  displayNameVi: 'KTV',
+                  reason: 'Shorter name',
+                });
+                assert.equal(renamed.code, created.code, 'code is immutable');
+                const regranted = await roles.setRolePermissions(adminSession, created.id, {
+                  expectedVersion: renamed.version,
+                  permissions: ['APPROVE_LEAVE', 'VIEW_ATTENDANCE'],
+                  reason: 'KTVs approve nothing yet; test only',
+                });
+                assert.deepEqual(regranted.permissions, ['APPROVE_LEAVE', 'VIEW_ATTENDANCE']);
+                const listed = (await roles.listRoles(hrSession)).roles.find(
+                  (role) => role.id === created.id,
+                );
+                assert.deepEqual(listed?.permissions, ['APPROVE_LEAVE', 'VIEW_ATTENDANCE']);
+                // 18. The Step 4 assignment uses the created role immediately, at branch scope.
+                const member = track(await employees.create(hrSession, input([A])));
+                const assigned = await roles.assignRole(hrSession, member.id, {
+                  expectedVersion: (await authz(member.id)).version,
+                  roleId: created.id,
+                  scope: { kind: 'BRANCH', branchId: A },
+                  reason: 'Technician at A',
+                });
+                assert.deepEqual(
+                  assigned.roleAssignments.map((row) => [row.roleId, row.scope]),
+                  [[created.id, { kind: 'BRANCH', branchId: A }]],
+                  'the role carries no branch; the assignment does',
+                );
+                const [audit] = await tx.auditEvent.findMany({
+                  where: { action: 'ROLE_CREATED', entityId: created.id },
+                });
+                assert.equal(audit?.reason, 'Role for technicians');
+              },
+            );
+
             await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
             throw rollback;
           },

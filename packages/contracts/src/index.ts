@@ -393,10 +393,18 @@ export interface RoleResponse {
   version: number;
 }
 
+/**
+ * How a permission may be granted: BRANCH_CAPABLE (GLOBAL or per branch) or GLOBAL_ONLY
+ * (never at branch scope). From the code-owned permission catalog.
+ */
+export type PermissionScopeCapability = 'BRANCH_CAPABLE' | 'GLOBAL_ONLY';
+
 /** GET /api/v1/roles */
 export interface RoleListResponse {
   roles: RoleResponse[];
   permissions: PermissionCodeName[];
+  /** The same catalog with each permission's scope capability (read-only metadata). */
+  permissionCatalog: { code: PermissionCodeName; scopeCapability: PermissionScopeCapability }[];
 }
 
 /** POST /api/v1/roles → 201 RoleResponse. */
