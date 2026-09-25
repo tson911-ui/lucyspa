@@ -55,7 +55,8 @@
   [Phase 2 Step 4 report](docs/PHASE2_STEP4_SERVICE_MANAGEMENT.md) records service
   management; the [Phase 2 Step 5 report](docs/PHASE2_STEP5_SKILLS_EMPLOYEE_SKILLS.md) records
   skills and employee skills; the [Phase 2 Step 6 report](docs/PHASE2_STEP6_OPERATIONAL_BRANCH_ASSIGNMENTS.md)
-  records operational branch assignments.
+  records operational branch assignments; the
+  [Phase 2 Step 7 report](docs/PHASE2_STEP7_ATTENDANCE.md) records attendance.
   Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
@@ -313,8 +314,21 @@ phase 2 operational branch assignments`; no migration).
 - Removing the final branch is allowed. A branchless employee then needs GLOBAL scope
   authority, which Step 6 now enforces per design section 7.
 
-**Next step: Phase 2 Step 7 (Attendance)**; it needs separate Owner authorization and
-must not be started without it. Owner decisions
+**Phase 2 Step 7 — CLOSED** (attendance, API only; commit `feat: add phase 2
+attendance`; no migration).
+
+- Attendance V1: one check-in + one check-out per employee + branch + business date,
+  with no breaks.
+- Check-in needs an active `EmployeeBranchAssignment` at an active branch (branch row
+  `FOR SHARE`); the business date comes from the branch timezone.
+- Self check-out only for today's open record; a forgotten check-out is a
+  `MANAGE_ATTENDANCE` correction (reason, `expectedVersion`, audit, no
+  self-correction).
+- Reads: own records, and `VIEW_ATTENDANCE` branch-scoped reads, bounded to 93 days.
+- History survives assignment revocation and branch deactivation.
+
+**Next step: Phase 2 Step 8 — Leave Management**; it needs separate Owner authorization
+and must not be started without it. Owner decisions
 H1–H9 are recorded in the Step 2 report. Adjusted plan: Step 3 branch administration
 and hours; Step 4 services; Step 5 skills; Step 6 branch assignments (reuse
 membership); Step 7 attendance; Step 8 leave; Step 9 dashboard/auth shell and Phase 2

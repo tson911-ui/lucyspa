@@ -674,3 +674,62 @@ export interface EmployeeBranchRevokeRequest {
   expectedVersion: number;
   reason: string;
 }
+
+/**
+ * Attendance V1: one check-in + one check-out per employee + branch + business date, with
+ * no breaks and no shifts. `businessDate` is the check-in's calendar date in the branch
+ * timezone. Timestamps are UTC ISO-8601.
+ */
+export interface AttendanceRecordResponse {
+  id: string;
+  employeeId: string;
+  branchId: string;
+  businessDate: string;
+  checkInAt: string;
+  checkOutAt: string | null;
+  /** Send back as `expectedVersion` for corrections. */
+  version: number;
+}
+
+export interface AttendanceListResponse {
+  records: AttendanceRecordResponse[];
+}
+
+/**
+ * POST /api/v1/attendance/check-in → 201. The caller checks themself in at a branch where
+ * they have an active EmployeeBranchAssignment. The server clock sets the time.
+ */
+export interface AttendanceCheckInRequest {
+  branchId: string;
+}
+
+/**
+ * POST /api/v1/attendance/:id/check-out: the caller's own open record for the current
+ * branch business date. A forgotten check-out from an earlier day is corrected by a
+ * manager.
+ */
+export type AttendanceCheckOutRequest = Record<string, never>;
+
+/**
+ * GET /api/v1/attendance/me?from&to&branchId: the caller's own records. GET
+ * /api/v1/attendance?from&to&branchId&employeeId: VIEW_ATTENDANCE, branch-scoped. Dates
+ * are `YYYY-MM-DD` business dates; the range is at most 93 days (default: the last 31).
+ */
+export interface AttendanceQuery {
+  from?: string;
+  to?: string;
+  branchId?: string;
+  employeeId?: string;
+}
+
+/**
+ * POST /api/v1/attendance/:id/correct: MANAGE_ATTENDANCE for the record's branch. It
+ * corrects a forgotten or wrong check-out, and the check-in within the same business
+ * date. A reason is required and the change is always audited.
+ */
+export interface AttendanceCorrectionRequest {
+  expectedVersion: number;
+  checkInAt?: string;
+  checkOutAt?: string;
+  reason: string;
+}

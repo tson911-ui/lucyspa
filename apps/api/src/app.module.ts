@@ -17,6 +17,8 @@ import { RegistrationController } from './auth/registration.controller.js';
 import { RegistrationService } from './auth/registration.service.js';
 import { SessionAuthController } from './auth/session-auth.controller.js';
 import { SessionService } from './auth/session.service.js';
+import { AttendanceController } from './attendance/attendance.controller.js';
+import { AttendanceService } from './attendance/attendance.service.js';
 import { AuditReadService } from './authorization/audit-read.service.js';
 import { BranchController } from './branches/branch.controller.js';
 import { BranchService } from './branches/branch.service.js';
@@ -51,6 +53,7 @@ export class AppModule {
         BranchController,
         ServiceCatalogController,
         SkillController,
+        AttendanceController,
       ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },
@@ -71,6 +74,7 @@ export class AppModule {
         BranchService,
         ServiceCatalogService,
         SkillService,
+        AttendanceService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
       ],
