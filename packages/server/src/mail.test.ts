@@ -102,6 +102,38 @@ test('templates: Lucy Spa branding, purpose, code, deadline and ignore guidance'
       assert.ok(email.text.includes('14:35, 25/09/2026'));
       assert.match(email.text, locale === 'vi' ? /bỏ qua email này/ : /ignore this email/);
       assert.equal(email.text.includes('linh@example.com'), false, 'no recipient echo');
+      // Plain-text fallback: the code sits alone on its own framed line.
+      assert.match(email.text, /={10,}\n.+:\n\n {8}012345\n={10,}/);
+      // HTML: the code is large, bold and centered in its own cell, exactly once.
+      const html = email.html;
+      assert.match(html, /^<!DOCTYPE html>/);
+      assert.ok(html.includes(`<html lang="${locale}">`));
+      const cell = /<td align="center" style="([^"]*)">012345<\/td>/.exec(html);
+      assert.ok(cell, 'code cell');
+      for (const rule of [
+        'font-size:32px',
+        'font-weight:700',
+        'text-align:center',
+        'padding:20px 0 24px 0',
+      ]) {
+        assert.ok(cell[1]!.includes(rule), rule);
+      }
+      assert.equal(html.split('012345').length - 1, 1);
+      assert.ok(html.includes('14:35, 25/09/2026'));
+      assert.equal(html.includes('linh@example.com'), false);
+      // Self-contained: inline styles only, no scripts, stylesheets, images or links.
+      for (const forbidden of [
+        /<script/i,
+        /<style/i,
+        /<link/i,
+        /<img/i,
+        /\bsrc=/i,
+        /\bhref=/i,
+        /https?:/i,
+        /url\(/i,
+      ]) {
+        assert.equal(forbidden.test(html), false, String(forbidden));
+      }
     }
   }
   assert.equal(subjects.size, 6, 'distinct subject per purpose and locale');
@@ -114,6 +146,17 @@ test('templates: Lucy Spa branding, purpose, code, deadline and ignore guidance'
     expiresAt,
   });
   assert.equal(reset.subject, 'Lucy Spa – Mã đặt lại mật khẩu');
+  // Every interpolated value is HTML-escaped.
+  const escaped = renderAuthEmail({
+    deliveryId: 'd',
+    purpose: 'RESET_PASSWORD',
+    to: 'x@example.com',
+    code: '<b>&"',
+    locale: 'en',
+    expiresAt,
+  });
+  assert.ok(escaped.html.includes('&lt;b&gt;&amp;&quot;'));
+  assert.equal(escaped.html.includes('<b>&"'), false);
 });
 
 test('the fake transport records sends and replays queued failures', async () => {
@@ -127,6 +170,7 @@ test('the fake transport records sends and replays queued failures', async () =>
     expiresAt: new Date(),
     subject: 's',
     text: 't',
+    html: '<p>t</p>',
   };
   transport.failNext(new AuthEmailSendError('PROVIDER_DEFERRED', false));
   await assert.rejects(transport.send(message, 'd1'), AuthEmailSendError);
@@ -174,6 +218,7 @@ test('SMTP transport refuses to send when the server does not offer STARTTLS', a
           expiresAt: new Date(),
           subject: 's',
           text: 'code 012345',
+          html: '<p>code 012345</p>',
         },
         '11111111-1111-4111-8111-111111111111',
       ),

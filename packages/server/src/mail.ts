@@ -145,6 +145,7 @@ export class SmtpAuthEmailTransport implements AuthEmailTransport {
         to: message.to,
         subject: message.subject,
         text: message.text,
+        html: message.html,
         messageId: `<${idempotencyKey}.auth@${this.domain}>`,
         headers: { 'Auto-Submitted': 'auto-generated' },
       });
