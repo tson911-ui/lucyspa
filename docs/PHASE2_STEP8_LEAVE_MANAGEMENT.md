@@ -84,8 +84,10 @@ The Step 2 `leave_requests` table, plus the new `leave_type` column:
 - **Read:**
   - `GET /api/v1/leave-requests/me?from&to&status` returns the caller's own requests
     that overlap the range.
-  - Bounded: the range is at most 400 days (default 93 days back to 366 days ahead), and
-    at most 500 rows are returned.
+  - Bounded: an explicit range is at most 400 days, and at most 500 rows are returned.
+    Without `from`/`to`, the default runs from 93 days back to 306 days ahead (400 days
+    inclusive). This was corrected after deployment; see "Post-deployment correction" at
+    the end of this report.
 - **Cancel:**
   - `POST /:id/cancel` with `{ expectedVersion, reason? }` works on the caller's own
     PENDING request only.
@@ -301,3 +303,26 @@ The postcheck confirms no leave rows or users remain and no Owner was created.
 
 **Phase 2 Step 9: Workforce Login/Dashboard + Phase 2 UI Integration.** It needs separate
 Owner authorization.
+
+## Post-deployment correction: default leave read window
+
+- **Production bug:** as shipped in Step 8 and deployed in `93a256e`, the default window
+  was 93 days back to **366** days ahead. Counted inclusively that is 460 days, which
+  exceeds the 400-day read maximum enforced by the same code. Every leave list request
+  without `from`/`to` was rejected with `VALIDATION_FAILED` "from". The workforce Leave
+  page and dashboard never send those dates, so opening the Leave page failed (reported
+  when opened as Owner). The Step 8 tests always passed an explicit range, so they didn't
+  catch it.
+- **Final behavior** (commit `fix: keep default leave window within limit`):
+  - default past: **93 days**;
+  - default future: **306 days**;
+  - inclusive default window: **400 days**;
+  - explicit maximum range: **400 days** (unchanged).
+- **Unchanged:** explicit `from`/`to` validation, authorization and all other leave
+  behavior. The past side was kept, so three months of history and older undecided
+  requests stay visible.
+- **Regression tests:**
+  - a limits check that the default window fits the maximum (unit test, no database);
+  - an integration test in which reads without `from`/`to` succeed for the employee, a
+    branch approver and a GLOBAL approver, include requests at −93, +30 and +306 days,
+    and exclude −94 and +307.

@@ -140,8 +140,10 @@ account; it will happen after the Owner bootstrap is separately authorized.
   documented only; paid/unpaid and carry-forward are deferred to a future configurable
   Leave Policy.
 - **Booking integration** (availability, auto-suggest, conflicts) is Phase 3.
-- **Leave's default read window** is anchored on the UTC date. It sits at the centre of a
-  93-day back / 366-day ahead window, so there's no practical effect.
+- **Leave's default read window** is anchored on the UTC date. It runs from 93 days back
+  to 306 days ahead, so there's no practical effect. The originally deployed 366-day-ahead
+  default exceeded the 400-day maximum and was fixed after deployment; see the Step 8
+  report's post-deployment correction.
 - **Per-step deferrals:** the other items recorded in the Step 2–9 reports. For example,
   the Step 2 report's header still shows its pre-approval status, although the handoff
   records it closed.

@@ -826,7 +826,8 @@ export interface LeaveRequestDecisionRequest {
 /**
  * GET /api/v1/leave-requests/me and GET /api/v1/leave-requests (APPROVE_LEAVE scope):
  * requests overlapping `[from, to]` (`YYYY-MM-DD`, at most 400 days; default from 93
- * days ago to 366 days ahead), optionally filtered by status (and employee).
+ * days ago to 306 days ahead, 400 days inclusive), optionally filtered by status (and
+ * employee).
  */
 export interface LeaveRequestQuery {
   from?: string;

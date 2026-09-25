@@ -407,6 +407,24 @@ manually by the Owner/operator; see the
 
 **Phase 2 — COMPLETE.** Steps 1–10 are closed and the release runs in production.
 
+**Post-deployment fixes (committed; not yet deployed, production still runs
+`93a256e`):**
+
+- `fix: prevent unchanged branch hours submission` (`4c0af62`). The branch-hours form
+  submitted an unchanged week, which the API rejects by contract (`VALIDATION_FAILED`
+  "days"). Save is now enabled only when a weekday changes.
+- `fix: keep default leave window within limit`. The default leave read window (93 days
+  back to 366 days ahead = 460 days inclusive) exceeded the 400-day maximum, so every
+  leave list without `from`/`to` failed with `VALIDATION_FAILED` "from". This broke the
+  Leave page and the dashboard leave counts in production (found when opened as Owner).
+  Final behavior:
+  - default past 93 days;
+  - default future 306 days;
+  - inclusive default window 400 days;
+  - explicit maximum range unchanged at 400 days.
+
+  Regression tests were added. See the Step 8 report's post-deployment correction.
+
 **Next operational action: Owner bootstrap** (`pnpm owner:bootstrap` on the production
 server, password via hidden prompt or stdin). It needs separate explicit Owner
 authorization, and production has no Owner yet. After it: authenticated production smoke

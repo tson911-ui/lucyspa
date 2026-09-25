@@ -582,6 +582,44 @@ test(
               },
             );
 
+            // Production regression: the Leave page and dashboard send no from/to. The default
+            // window (today - 93 .. today + 306, inclusive = 400 days) must satisfy the read
+            // maximum and include requests at both inclusive edges. Dates are relative to the
+            // UTC date, and a dedicated employee avoids overlap with other fixtures.
+            await context.test('default window: reads without from/to succeed', async () => {
+              const utcToday = Date.parse(new Date().toISOString().slice(0, 10));
+              const offset = (days: number) =>
+                new Date(utcToday + days * 86_400_000).toISOString().slice(0, 10);
+              const planner = await principal('EMPLOYEE', [A]);
+              const plannerSession = await login(planner);
+              const at = async (days: number) =>
+                (await leave.create(plannerSession, ask('ANNUAL', offset(days)))).id;
+              const oldest = await at(-93);
+              const soon = await at(30);
+              const furthest = await at(306);
+              const tooOld = await at(-94);
+              const tooFar = await at(307);
+              const own = await leave.listOwn(plannerSession, {});
+              const ids = new Set(own.requests.map((row) => row.id));
+              for (const id of [oldest, soon, furthest]) assert.ok(ids.has(id), 'inside window');
+              for (const id of [tooOld, tooFar]) assert.ok(!ids.has(id), 'outside window');
+              assert.equal(
+                (await leave.listOwn(plannerSession, { status: 'PENDING' })).requests.length,
+                3,
+              );
+              for (const session of [managerASession, globalSession]) {
+                const scoped = await leave.listScoped(session, {});
+                assert.ok(scoped.requests.some((row) => row.id === soon));
+                await leave.listScoped(session, { status: 'PENDING' });
+              }
+              // Explicit ranges keep the 400-day maximum.
+              await fails(
+                leave.listOwn(plannerSession, { from: offset(-93), to: offset(307) }),
+                'VALIDATION_FAILED',
+                'from',
+              );
+            });
+
             await context.test(
               'future booking: approved leave by employee and calendar date',
               async () => {

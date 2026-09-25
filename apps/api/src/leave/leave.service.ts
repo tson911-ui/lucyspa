@@ -42,14 +42,16 @@ export const LEAVE_STATUSES: readonly LeaveStatus[] = Object.freeze([
 ]);
 
 /**
- * Bounds: one request spans at most 366 calendar days; reads cover at most 400 days
- * (default: 93 days back to 366 days ahead) and return at most 500 requests.
+ * Bounds: one request spans at most 366 calendar days; reads cover at most 400 days and
+ * return at most 500 requests. The default window (93 days back to 306 days ahead,
+ * inclusive) is exactly 400 days, so it always satisfies the read maximum:
+ * defaultPastDays + defaultFutureDays + 1 <= maxRangeDays.
  */
 export const LEAVE_LIMITS = Object.freeze({
   maxRequestDays: 366,
   maxRangeDays: 400,
   defaultPastDays: 93,
-  defaultFutureDays: 366,
+  defaultFutureDays: 306,
   maxRecords: 500,
   reasonMaxCodePoints: 1_000,
 });
