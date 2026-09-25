@@ -1390,6 +1390,127 @@ appropriate normal configured price.
 
 Public UI may show list price crossed out and active promotional price.
 
+### 24.1 Promotion / Campaign Management (FUTURE / NOT CURRENT PHASE)
+
+**Status: future requirement. Not authorized for implementation in the
+current phase, and not part of Phase 2.** It extends this section's product
+promotions and belongs to the existing Phase 6 --- Products and Inventory
+("Promotions", section 56). No new phase is created for it.
+
+Goal: Lucy Beauty may eventually have hundreds or thousands of products.
+The Owner must be able to run promotions such as 10/10, 11/11, Black
+Friday, Christmas, New Year, Tết, monthly and custom campaigns **without
+editing each product's base selling price**. The Owner decides which
+products participate, how much they are discounted, when the promotion
+starts and ends, and where/how it is presented to customers.
+
+**Campaign concept.** A future Promotion/Campaign has fields/behavior
+equivalent to: name; optional internal description; start date/time; end
+date/time; status (Draft / Scheduled / Active / Ended or Expired); selected
+products; discount rule; and promotional presentation configuration.
+Exact schema and enum names belong to implementation.
+
+-   Campaigns can be scheduled in advance. They apply automatically at the
+    configured start and stop applying automatically at the configured end.
+-   The Owner never has to restore each product's normal price after a
+    campaign ends.
+-   Time handling follows the project's branch/business timezone principles
+    (section 43.2). For example, "11/11 Sale" runs 11/11 00:00 to 23:59
+    local time. The scheduler/job implementation belongs to the future
+    design.
+
+**Bulk product selection.** Filter and search by brand,
+category/subcategory, SKU/model, product name, price range,
+inventory/availability where applicable, and other useful attributes.
+Support individual selection, multi-select, and select-all from a filtered
+result where safe. For example, filtering Brand = The Whoo and Category =
+Skincare gives 42 products; **Select All → add to campaign** avoids
+editing 42 products one by one.
+
+**Discount configuration.** At least percentage off (for example 10% or
+20%), fixed amount off (for example 100,000 VND) and an explicit
+promotional price where appropriate (for example 899,000 VND). These are
+examples, not a hard-coded list, if the pricing architecture needs a more
+general rule representation.
+
+-   The base/catalog selling price and the temporary promotional price stay
+    conceptually separate.
+-   A promotion never destroys or rewrites the historical/base price to
+    create a temporary sale.
+-   One campaign may apply one rule to a selected group or, where the
+    implementation supports it, different rules to different groups (for
+    example Black Friday: Group A 10%, Group B 20%, Group C a promotional
+    price). The final schema is a future design decision.
+
+**Conflicts and stacking.** A product may accidentally belong to
+overlapping campaigns (for example Black Friday 20% and Weekend Sale 10%).
+The engine must **never** add them into a 30% discount. It must:
+
+-   Detect overlapping applicable promotions.
+-   Prevent accidental double discounting.
+-   Show conflicts during campaign configuration and review.
+-   Apply only the promotion allowed by the business rule.
+
+Ordinary promotions follow section 16.1: they do not stack with each
+other or with the corresponding Member Discount, and the financially better
+eligible benefit applies unless an explicit configured rule says otherwise.
+No more complex priority algorithm is defined here.
+
+**Customer-facing presentation surfaces.** A campaign can drive
+customer-facing presentation without code changes for each sale event:
+homepage hero/banner, promotional popup (section 4.2), product-card sale
+badge, product-detail sale presentation, sale collection/page, and
+promotional section/block. For example: "BLACK FRIDAY · Up to 30% off ·
+[Shop Sale]". The Owner associates these elements with a campaign instead
+of asking a developer to edit the website for every event.
+
+**Popup/banner management.** Authorized users can configure title, short
+message, campaign image/banner, CTA label, CTA destination, active time
+range and campaign association, with a preview (at least desktop and
+mobile) before activation where practical. This is manageable campaign
+presentation only; no page builder or CMS is designed here.
+
+**Product display during a promotion.** Where applicable, show the
+normal/base price, the promotional price, the discount amount/percentage,
+a sale badge and the campaign association (for example
+`1,000,000 VND → 900,000 VND, -10%`). Visual styling is not hard-coded
+here. The premium motion system (section 4.4) may enhance campaign
+presentation, but promotion business logic stays independent of visual
+animation.
+
+**Review, preview and approval.** Before scheduling/publishing, the
+Owner/authorized user reviews the selected products, proposed discounts,
+resulting promotional prices, start/end time, conflicts/overlaps and the
+banner/popup configuration, to catch mistakes before the campaign becomes
+active. Sensitive commercial changes remain subject to the appropriate
+authorization.
+
+**Operating goal.**
+
+`Create Campaign → Choose dates → Find/filter products → Select in bulk → Set discount → Configure optional banner/popup/sale presentation → Preview → Schedule/Publish`
+
+Then the **system** activates at the start time, shows promotional
+pricing/presentation, stops at the end time, and restores normal effective
+catalog pricing automatically. The Owner never has to change hundreds of
+prices by hand, restore them after the campaign, or ask a developer to
+create a popup/banner for an ordinary promotion.
+
+**Relationship to other components (kept separate):**
+
+-   **Supplier Catalog Importer (section 30.9):** discovers and synchronizes
+    supplier/source product information, and prepares Lucy Beauty catalog
+    candidates and proposed source changes.
+-   **Lucy Beauty Product Catalog:** the operational product source of
+    truth.
+-   **Promotion/Campaign Engine:** applies Lucy Beauty's temporary
+    commercial promotion rules to selected catalog products.
+-   **Customer website:** presents the resulting campaign, sale pricing,
+    badges, banners, popups and sale pages.
+
+A supplier price change never automatically becomes a Lucy Beauty
+promotion, and a Lucy Beauty promotion never modifies supplier
+observations.
+
 ------------------------------------------------------------------------
 
 ## 25. Product Sales and Employee Attribution
@@ -2040,6 +2161,82 @@ Source of truth:
 
 Supplier synchronization must never become a way for an external website
 to silently control Lucy Beauty's live catalog.
+
+#### 30.9.14 Simple Supplier Source Onboarding
+
+For an already configured Supplier, adding another website/source should
+need as little Owner technical work as reasonably possible. The intended
+Owner experience is approximately:
+
+`Supplier → Add Source → Enter source URL → Test / Validate Source → READY`
+
+After that, the importer and synchronization handle future work
+(sections 30.9.10-30.9.11). The Owner should not normally need to
+understand HTML, CSS selectors, crawling rules, APIs, image downloading,
+parsing, normalization, deduplication or synchronization internals.
+
+**Source discovery and validation.** When a URL is added, the system
+attempts to:
+
+-   Validate that the source is reachable.
+-   Identify whether it appears to contain an accessible product catalog.
+-   Discover product/catalog structure where practical.
+-   Determine whether useful structured data, an API or a feed is
+    available.
+-   Perform a controlled sample extraction and show enough of it to
+    confirm the source is interpreted correctly.
+
+Conceptual source statuses include equivalents of `PENDING_VALIDATION`,
+`READY`, `ADAPTER_REQUIRED`, `AUTHENTICATION_REQUIRED`, `SOURCE_ERROR` and
+`DISABLED`. Exact names belong to implementation.
+
+**Adapter fallback.** Not every website can be supported reliably from a
+URL alone. A source may use unusual HTML, render its catalog with
+JavaScript, use an internal/authorized API, require authentication, use
+unusual pagination, change structure later, or otherwise need
+source-specific extraction logic. The architecture therefore allows a
+**Supplier Source Adapter / Connector** (extending the adapter abstraction
+in section 30.8):
+
+-   Generic sources are discovered/configured automatically where
+    reliable.
+-   A source-specific adapter is used when necessary, and it is configured
+    or fixed once.
+-   After the source becomes `READY`, normal imports and repeated
+    synchronization are automated.
+
+The adapter implementation is a future design decision.
+
+**Test Source.** Before large imports or synchronization are enabled, an
+authorized user can run **Test Source**. The result makes it easy to verify
+a small sample: products discovered, name, SKU/model, price, images,
+category/brand if detected, and source URL/reference. This keeps a
+misread source from generating thousands of bad catalog candidates.
+
+**Website structure changes.** If a previously working source changes
+structure and can no longer be read reliably, the system:
+
+-   Marks/reports the source as unhealthy (an equivalent of
+    `ADAPTER_UPDATE_REQUIRED` / `SOURCE_ERROR`) for technical attention.
+-   Stops trusting new extraction results from that source.
+-   Preserves the previous successful observations.
+-   Never interprets extraction failure as `SOURCE_REMOVED` for that
+    source's products (section 30.9.13).
+-   Never alters the live Lucy Beauty catalog automatically.
+
+The Owner's workflow stays review-oriented. The Owner is never expected to
+repair crawler logic.
+
+**UX target.** For a supported supplier website, the normal Owner workflow
+is close to:
+
+`ADD URL → TEST → ENABLE`
+
+After that, the system collects, processes, synchronizes and prepares
+changes, and the Owner mainly reviews product, image and price correctness
+and approves. This does **not** promise that every arbitrary website can be
+fully auto-configured from a URL alone; the adapter fallback above always
+remains available.
 
 Architecture direction (end-to-end flow; this extends, and does not
 compete with, the pipeline in section 30.2):
@@ -3194,6 +3391,9 @@ Deliver:
     history and the product-fault/refund distinctions when those flows arrive.
 
 ### Phase 6 --- Products and Inventory
+
+See also section 24.1 (future Promotion/Campaign Management) for the
+"Promotions" deliverable.
 
 Deliver:
 

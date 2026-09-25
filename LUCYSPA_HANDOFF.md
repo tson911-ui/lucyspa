@@ -272,6 +272,22 @@ implementation now**):
 
   It is still future work only; the roadmap is unchanged (model in Phase 6, importer in
   Phase 9).
+  Section 30.9.14 adds low-friction source onboarding (Add URL → Test/Validate →
+  Enable/Ready), with an adapter/connector fallback. When a source's structure breaks,
+  it is marked unhealthy and its data isn't trusted, prior observations are kept,
+  nothing is treated as removed, and the live catalog isn't touched.
+
+- **Lucy Beauty Promotion/Campaign Management (PRD section 24.1):** extends section 24;
+  roadmap home is the existing Phase 6 "Promotions". It covers:
+  - bulk product selection from filters;
+  - percentage, fixed-amount or promotional-price discounts;
+  - scheduling with automatic start and end, and no manual restoration of base prices;
+  - conflict detection with no accidental stacking (section 16.1);
+  - campaign-driven banners, popups and sale presentation;
+  - preview, review and authorized approval.
+
+  It stays separate from the supplier importer and the product catalog. Not authorized
+  for implementation now.
 
 Phase 2 Step 5 (skills and employee skills) remains the next implementation step. Owner decisions
 H1–H9 are recorded in the Step 2 report. Adjusted plan: Step 3 branch administration
