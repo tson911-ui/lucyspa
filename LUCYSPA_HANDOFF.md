@@ -51,7 +51,9 @@
   was analysis only; the [Phase 2 Step 2 report](docs/PHASE2_STEP2_DATABASE_FOUNDATION.md)
   records the database foundation; the
   [Phase 2 Step 3 report](docs/PHASE2_STEP3_BRANCH_ADMIN_HOURS.md) records branch
-  administration and business hours.
+  administration and business hours; the
+  [Phase 2 Step 4 report](docs/PHASE2_STEP4_SERVICE_MANAGEMENT.md) records service
+  management.
   Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
@@ -224,8 +226,26 @@ the timezone fixed once attendance exists. It adds a second additive migration
 production. Step 4 decision (Owner): a branch-scoped `MANAGE_SERVICES` grant may toggle
 service availability for that branch only, never master service configuration (name,
 category, duration, metadata) or price. Price stays under GLOBAL_ONLY
-`MANAGE_SERVICE_PRICES`. Eligible service skills are deferred to Step 5. Step 4 has not
-started and needs Owner authorization. Owner decisions
+`MANAGE_SERVICE_PRICES`. Eligible service skills are deferred to Step 5.
+
+Step 4 (service management, API only) is **closed** (Owner-approved; commit `feat: add
+phase 2 service management`). It covers service categories, services (master data; one
+concrete duration per offering), a price command restricted to GLOBAL_ONLY
+`MANAGE_SERVICE_PRICES` and audited before/after, and explicit per-branch availability
+(no row means not offered). Branch-scoped `MANAGE_SERVICES` can toggle only its own
+branch. No schema change; not deployed to production.
+
+Owner decisions at Step 4 close:
+
+- Service creation requires GLOBAL `MANAGE_SERVICES` **and** `MANAGE_SERVICE_PRICES`,
+  because it sets the initial price.
+- Category deactivation never cascades to its services.
+- For Step 5:
+  - service ↔ eligible skills is written under GLOBAL `MANAGE_SERVICES`;
+  - employee ↔ skills under `MANAGE_SKILLS` with the target's branch scope;
+  - the skill catalog under GLOBAL `MANAGE_SKILLS`.
+
+Step 5 has not started and needs separate Owner authorization. Owner decisions
 H1–H9 are recorded in the Step 2 report. Adjusted plan: Step 3 branch administration
 and hours; Step 4 services; Step 5 skills; Step 6 branch assignments (reuse
 membership); Step 7 attendance; Step 8 leave; Step 9 dashboard/auth shell and Phase 2

@@ -430,3 +430,125 @@ export interface BranchHoursUpdateRequest {
   days: BranchOperatingDay[];
   reason?: string;
 }
+
+/** Workforce view of a service category. */
+export interface ServiceCategoryResponse {
+  id: string;
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  sortOrder: number;
+  isActive: boolean;
+  version: number;
+}
+
+/**
+ * GET /api/v1/service-categories. Inactive categories are included only for GLOBAL
+ * MANAGE_SERVICES holders.
+ */
+export interface ServiceCategoryListResponse {
+  categories: ServiceCategoryResponse[];
+}
+
+/** POST /api/v1/service-categories → 201. GLOBAL MANAGE_SERVICES. The code is immutable. */
+export interface ServiceCategoryCreateRequest {
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  sortOrder?: number;
+  reason?: string;
+}
+
+/** POST /api/v1/service-categories/:id. */
+export interface ServiceCategoryUpdateRequest {
+  expectedVersion: number;
+  nameVi?: string;
+  nameEn?: string;
+  sortOrder?: number;
+  reason?: string;
+}
+
+/** POST /api/v1/service-categories/:id/status and /api/v1/services/:id/status. */
+export interface CatalogStatusRequest {
+  expectedVersion: number;
+  isActive: boolean;
+  reason: string;
+}
+
+/** Whether a branch offers the service. No row means the service is not offered there. */
+export interface ServiceBranchAvailabilityEntry {
+  branchId: string;
+  isActive: boolean;
+  version: number;
+}
+
+/**
+ * Workforce view of a service. `durationMinutes` is internal scheduling data and must
+ * never be shown as a public menu label. `priceVnd` is a nonnegative integer VND string.
+ * `availability` lists only branches the caller may see.
+ */
+export interface ServiceResponse {
+  id: string;
+  code: string;
+  categoryId: string;
+  nameVi: string;
+  nameEn: string;
+  descriptionVi: string | null;
+  descriptionEn: string | null;
+  priceVnd: string;
+  durationMinutes: number;
+  isActive: boolean;
+  version: number;
+  availability: ServiceBranchAvailabilityEntry[];
+}
+
+/** GET /api/v1/services?categoryId&branchId (branchId: only services offered there). */
+export interface ServiceListResponse {
+  services: ServiceResponse[];
+}
+
+/**
+ * POST /api/v1/services → 201. Requires GLOBAL MANAGE_SERVICES and, because it sets a
+ * price, GLOBAL_ONLY MANAGE_SERVICE_PRICES. A 30-minute and a 60-minute offering are
+ * separate services. The new service is offered nowhere until availability is set.
+ */
+export interface ServiceCreateRequest {
+  code: string;
+  categoryId: string;
+  nameVi: string;
+  nameEn: string;
+  descriptionVi?: string | null;
+  descriptionEn?: string | null;
+  priceVnd: string;
+  durationMinutes: number;
+  reason?: string;
+}
+
+/** POST /api/v1/services/:id: master data only (GLOBAL MANAGE_SERVICES; no price, no code). */
+export interface ServiceUpdateRequest {
+  expectedVersion: number;
+  categoryId?: string;
+  nameVi?: string;
+  nameEn?: string;
+  descriptionVi?: string | null;
+  descriptionEn?: string | null;
+  durationMinutes?: number;
+  reason?: string;
+}
+
+/** POST /api/v1/services/:id/price: GLOBAL_ONLY MANAGE_SERVICE_PRICES; always audited. */
+export interface ServicePriceRequest {
+  expectedVersion: number;
+  priceVnd: string;
+  reason: string;
+}
+
+/**
+ * POST /api/v1/services/:id/branches/:branchId: MANAGE_SERVICES for that branch.
+ * `expectedVersion` is the availability row's version, or null when none exists yet.
+ */
+export interface ServiceAvailabilityRequest {
+  expectedVersion: number | null;
+  isActive: boolean;
+  reason?: string;
+}

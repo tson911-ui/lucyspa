@@ -1,0 +1,55 @@
+import { AuthError } from '../auth/auth.error.js';
+import { text } from '../auth/registration.js';
+
+export const CATALOG_LIMITS = Object.freeze({
+  nameMaxCodePoints: 200,
+  descriptionMaxCodePoints: 2_000,
+  reasonMaxCodePoints: 500,
+  maxSortOrder: 100_000,
+  maxDurationMinutes: 1_440,
+});
+
+/** Catalog codes are stable identifiers: trimmed, uppercased, `[A-Z][A-Z0-9_]*` (SQL too). */
+export function normalizeCatalogCode(value: string): string {
+  const code = value.trim().toUpperCase();
+  if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(code)) throw new AuthError('VALIDATION_FAILED', 'code');
+  return code;
+}
+
+export function catalogName(value: string, field: string): string {
+  return text(value, field, CATALOG_LIMITS.nameMaxCodePoints);
+}
+
+/** `null` clears an optional description; blank text is rejected (SQL too). */
+export function catalogDescription(value: string | null, field: string): string | null {
+  return value === null ? null : text(value, field, CATALOG_LIMITS.descriptionMaxCodePoints);
+}
+
+export function optionalReason(value: string | undefined): string | null {
+  return value === undefined ? null : text(value, 'reason', CATALOG_LIMITS.reasonMaxCodePoints);
+}
+
+export function requiredReason(value: string): string {
+  return text(value, 'reason', CATALOG_LIMITS.reasonMaxCodePoints);
+}
+
+export function sortOrder(value: number): number {
+  if (!Number.isInteger(value) || value < 0 || value > CATALOG_LIMITS.maxSortOrder) {
+    throw new AuthError('VALIDATION_FAILED', 'sortOrder');
+  }
+  return value;
+}
+
+/** One concrete internal duration; offerings of different lengths are separate services. */
+export function durationMinutes(value: number): number {
+  if (!Number.isInteger(value) || value < 1 || value > CATALOG_LIMITS.maxDurationMinutes) {
+    throw new AuthError('VALIDATION_FAILED', 'durationMinutes');
+  }
+  return value;
+}
+
+/** Nonnegative integer VND carried as a decimal string and stored as bigint. */
+export function priceVnd(value: string): bigint {
+  if (!/^(?:0|[1-9][0-9]{0,17})$/.test(value)) throw new AuthError('VALIDATION_FAILED', 'priceVnd');
+  return BigInt(value);
+}

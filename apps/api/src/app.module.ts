@@ -20,6 +20,8 @@ import { SessionService } from './auth/session.service.js';
 import { AuditReadService } from './authorization/audit-read.service.js';
 import { BranchController } from './branches/branch.controller.js';
 import { BranchService } from './branches/branch.service.js';
+import { ServiceCatalogController } from './catalog/service-catalog.controller.js';
+import { ServiceCatalogService } from './catalog/service-catalog.service.js';
 import { AuthorizationAdminController } from './authorization/authorization-admin.controller.js';
 import { RoleAdminService } from './authorization/role-admin.service.js';
 import { EmployeeController } from './employees/employee.controller.js';
@@ -45,6 +47,7 @@ export class AppModule {
         EmployeeController,
         AuthorizationAdminController,
         BranchController,
+        ServiceCatalogController,
       ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },
@@ -63,6 +66,7 @@ export class AppModule {
         RoleAdminService,
         AuditReadService,
         BranchService,
+        ServiceCatalogService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
       ],
