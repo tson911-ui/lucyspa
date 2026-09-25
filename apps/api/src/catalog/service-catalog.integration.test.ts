@@ -625,8 +625,16 @@ test(
                 assert.equal(priced.priceVnd, '180000');
                 assert.equal(priced.version, current.version + 1);
                 const [event] = await audit(serviceId, 'SERVICE_PRICE_CHANGED');
-                assert.deepEqual(event?.before, { priceVnd: '150000' });
-                assert.deepEqual(event?.after, { priceVnd: '180000' });
+                assert.deepEqual(event?.before, {
+                  priceVnd: '150000',
+                  priceMaxVnd: '150000',
+                  pricingUnit: 'PER_SERVICE',
+                });
+                assert.deepEqual(event?.after, {
+                  priceVnd: '180000',
+                  priceMaxVnd: '180000',
+                  pricingUnit: 'PER_SERVICE',
+                });
                 assert.equal(event?.reason, 'New menu');
                 assert.equal(event?.dataClassification, 'STANDARD');
                 await fails(
@@ -757,6 +765,171 @@ test(
                   catalog.setAvailability(customer, serviceId, A, {
                     expectedVersion: 2,
                     isActive: true,
+                  }),
+                  'FORBIDDEN',
+                );
+              },
+            );
+
+            await context.test(
+              'pricing: exact or ranged price per service or per nail, validated, audited',
+              async () => {
+                const pricing = await catalog.createCategory(ownerSession, {
+                  code: `PRICING_${run}`,
+                  nameVi: 'Nail',
+                  nameEn: 'Nail',
+                });
+                const base = {
+                  categoryId: pricing.id,
+                  nameVi: 'Dịch vụ',
+                  nameEn: 'Service',
+                  durationMinutes: 30,
+                };
+                const invalid = (work: Promise<unknown>, field: string) =>
+                  assert.rejects(
+                    work,
+                    (error: unknown) =>
+                      error instanceof AuthError &&
+                      error.code === 'VALIDATION_FAILED' &&
+                      error.field === field,
+                  );
+                const price = (row: {
+                  priceVnd: string;
+                  priceMaxVnd: string;
+                  pricingUnit: string;
+                }) => [row.priceVnd, row.priceMaxVnd, row.pricingUnit];
+                // Exact PER_SERVICE (the default when only priceVnd is sent).
+                const wash = await catalog.createService(ownerSession, {
+                  ...base,
+                  code: `GOI_THUONG_${run}`,
+                  priceVnd: '40000',
+                });
+                assert.deepEqual(price(wash), ['40000', '40000', 'PER_SERVICE']);
+                // Exact PER_NAIL and a ranged PER_NAIL price.
+                const ombre = await catalog.createService(ownerSession, {
+                  ...base,
+                  code: `OMBRE_${run}`,
+                  priceVnd: '5000',
+                  priceMaxVnd: '5000',
+                  pricingUnit: 'PER_NAIL',
+                });
+                assert.deepEqual(price(ombre), ['5000', '5000', 'PER_NAIL']);
+                const sticker = await catalog.createService(ownerSession, {
+                  ...base,
+                  code: `STICKER_${run}`,
+                  priceVnd: '5000',
+                  priceMaxVnd: '10000',
+                  pricingUnit: 'PER_NAIL',
+                });
+                assert.deepEqual(price(sticker), ['5000', '10000', 'PER_NAIL']);
+                // Reads (detail and list) return the range and unit.
+                assert.deepEqual(price(await catalog.getService(ownerSession, sticker.id)), [
+                  '5000',
+                  '10000',
+                  'PER_NAIL',
+                ]);
+                const listed = (await catalog.listServices(ownerSession, {})).services.find(
+                  (row) => row.id === sticker.id,
+                );
+                assert.deepEqual(price(listed!), ['5000', '10000', 'PER_NAIL']);
+                const [created] = await audit(sticker.id, 'SERVICE_CREATED');
+                const after = created?.after as Record<string, unknown>;
+                assert.deepEqual(
+                  [after['priceVnd'], after['priceMaxVnd'], after['pricingUnit']],
+                  ['5000', '10000', 'PER_NAIL'],
+                );
+                // Validation on create; nothing is written.
+                const badCreate = (
+                  overrides: Record<string, unknown>,
+                  field: string,
+                  code: string,
+                ) =>
+                  invalid(
+                    catalog.createService(ownerSession, {
+                      ...base,
+                      code: `${code}_${run}`,
+                      priceVnd: '5000',
+                      ...overrides,
+                    } as never),
+                    field,
+                  );
+                await badCreate({ priceMaxVnd: '4000' }, 'priceMaxVnd', 'P1');
+                await badCreate({ priceVnd: '-5000' }, 'priceVnd', 'P2');
+                await badCreate({ priceMaxVnd: '-1' }, 'priceMaxVnd', 'P3');
+                await badCreate({ pricingUnit: 'PER_HOUR' }, 'pricingUnit', 'P4');
+                await badCreate({ priceVnd: '5000.5' }, 'priceVnd', 'P5');
+                assert.equal(
+                  await tx.service.count({
+                    where: {
+                      code: { in: ['P1', 'P2', 'P3', 'P4', 'P5'].map((c) => `${c}_${run}`) },
+                    },
+                  }),
+                  0,
+                );
+                // Updates through the price command: range and unit, audited.
+                const charm = await catalog.setPrice(priceManager, sticker.id, {
+                  expectedVersion: sticker.version,
+                  priceVnd: '5000',
+                  priceMaxVnd: '30000',
+                  reason: 'Menu 2026',
+                });
+                assert.deepEqual(
+                  price(charm),
+                  ['5000', '30000', 'PER_NAIL'],
+                  'unit kept when omitted',
+                );
+                const [changed] = await audit(sticker.id, 'SERVICE_PRICE_CHANGED');
+                assert.deepEqual(changed?.before, {
+                  priceVnd: '5000',
+                  priceMaxVnd: '10000',
+                  pricingUnit: 'PER_NAIL',
+                });
+                assert.deepEqual(changed?.after, {
+                  priceVnd: '5000',
+                  priceMaxVnd: '30000',
+                  pricingUnit: 'PER_NAIL',
+                });
+                // A flat service becomes per-nail; omitting the maximum makes the price exact.
+                const perNail = await catalog.setPrice(priceManager, wash.id, {
+                  expectedVersion: wash.version,
+                  priceVnd: '6000',
+                  pricingUnit: 'PER_NAIL',
+                  reason: 'Per nail',
+                });
+                assert.deepEqual(price(perNail), ['6000', '6000', 'PER_NAIL']);
+                const exactAgain = await catalog.setPrice(priceManager, charm.id, {
+                  expectedVersion: charm.version,
+                  priceVnd: '5000',
+                  reason: 'Flat per nail',
+                });
+                assert.deepEqual(price(exactAgain), ['5000', '5000', 'PER_NAIL']);
+                // Invalid updates change nothing.
+                const badPrice = (overrides: Record<string, unknown>, field: string) =>
+                  invalid(
+                    catalog.setPrice(priceManager, exactAgain.id, {
+                      expectedVersion: exactAgain.version,
+                      priceVnd: '5000',
+                      reason: 'x',
+                      ...overrides,
+                    } as never),
+                    field,
+                  );
+                await badPrice({ priceMaxVnd: '4999' }, 'priceMaxVnd');
+                await badPrice({ pricingUnit: 'PER_TOE' }, 'pricingUnit');
+                await badPrice({ priceVnd: '-1' }, 'priceVnd');
+                await badPrice({}, 'priceVnd'); // unchanged price, range and unit
+                assert.deepEqual(price(await catalog.getService(ownerSession, exactAgain.id)), [
+                  '5000',
+                  '5000',
+                  'PER_NAIL',
+                ]);
+                // Master-data edits never touch pricing; only the price authority changes it.
+                await fails(
+                  catalog.setPrice(catalogManager, exactAgain.id, {
+                    expectedVersion: exactAgain.version,
+                    priceVnd: '7000',
+                    pricingUnit: 'PER_SERVICE',
+                    reason: 'x',
                   }),
                   'FORBIDDEN',
                 );

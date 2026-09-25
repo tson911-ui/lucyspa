@@ -397,3 +397,72 @@ removedSkillLinks, removedAvailabilityRows }`.
 - **Limitation:** web tests render components on the server and exercise the deletion
   logic directly. The repository has no DOM/click testing library, so the click paths
   (Hủy, confirm) are covered at the logic level rather than by simulated clicks.
+
+## Post-deployment enhancement: price ranges and pricing units
+
+Added so the real menu can be entered exactly, for example per-nail Nail Design prices
+("5.000 ₫/ngón", "5.000–10.000 ₫/ngón"). Commit `feat: add service price ranges and
+pricing units`.
+
+- **Model:**
+
+  | Field (API / SQL)               | Meaning                                                         |
+  | ------------------------------- | --------------------------------------------------------------- |
+  | `priceVnd` / `price_vnd`        | **Minimum** price per pricing unit; the price itself when exact |
+  | `priceMaxVnd` / `price_max_vnd` | Maximum price per pricing unit; equal to `priceVnd` when exact  |
+  | `pricingUnit` / `pricing_unit`  | `PER_SERVICE` (a flat price) or `PER_NAIL` (per nail)           |
+  - The existing `priceVnd` field keeps its name. For every flat-price service it means
+    exactly what it meant before, so existing clients, audit history and future invoice
+    snapshots stay valid.
+  - `ServicePricingUnit` is a SQL/Prisma enum. Further units are added as enum values
+    only when real menu data needs them.
+
+- **Invariant:** `0 <= priceVnd <= priceMaxVnd`, in integer VND (bigint, carried as
+  decimal strings, never floating point). It is enforced by the SQL CHECKs
+  `services_price_nonnegative` and `services_price_range`, by the API (`servicePrice`) and,
+  as guidance only, by the form. An exact price is min = max.
+- **Migration:** `20260929000000_phase2_service_price_range_unit` creates the enum and adds
+  `pricing_unit` (NOT NULL, default `PER_SERVICE`) and `price_max_vnd`. It then backfills
+  `price_max_vnd = price_vnd`, sets it NOT NULL and adds the CHECK. Every existing
+  service becomes an exact `PER_SERVICE` price; no other data changes.
+- **API** (pricing is price data, so it changes only through the price authority):
+  - **Responses** add `priceMaxVnd` and `pricingUnit`.
+  - **Create:** `priceMaxVnd` is optional (default `priceVnd`, an exact price) and
+    `pricingUnit` is optional (default `PER_SERVICE`); it already requires the price
+    permission.
+  - **`POST /services/:id/price`** (GLOBAL_ONLY `MANAGE_SERVICE_PRICES`, reason required)
+    takes `priceVnd` plus an optional `priceMaxVnd` (omitted means exact) and an optional
+    `pricingUnit` (omitted means unchanged). A change that alters nothing is rejected.
+  - **Master-data updates** never touch pricing.
+  - **Errors:** `VALIDATION_FAILED` "priceMaxVnd" (below the minimum or malformed),
+    "priceVnd" (negative, malformed or unchanged) and "pricingUnit" (unknown). The strict
+    DTOs reject numbers, lowercase units and unknown fields with 400.
+- **Audit:** `SERVICE_CREATED` and `SERVICE_PRICE_CHANGED` (before/after) record
+  `priceVnd`, `priceMaxVnd` and `pricingUnit`. The `SERVICE_DELETED` snapshot also records
+  the full price. Deletion behavior itself is unchanged.
+- **UI:**
+  - the create form and the service's price section share "Giá tối thiểu", "Giá tối đa"
+    and "Đơn vị tính giá" ("Theo dịch vụ" / "Theo ngón"), with a live preview of the
+    displayed price and a message when the maximum is below the minimum;
+  - the price section needs a reason and only submits a real change;
+  - the list and the detail header show "40.000 ₫", "5.000 ₫/ngón" or
+    "5.000–10.000 ₫/ngón" (English "/nail"), with no range when min = max.
+- **Existing Nail Design services** were not changed automatically; the Owner edits them
+  after deployment. No service code appears in application logic.
+- **Tests (all pass):**
+  - database schema test 12/12: a service created before the migration is backfilled to
+    `80000–80000 PER_SERVICE`; enum values; exact, per-nail and ranged prices accepted;
+    max < min, negative, unknown-unit and null values rejected;
+  - service catalog integration 9/9 (new pricing subtest): exact PER_SERVICE (default),
+    exact PER_NAIL and ranged PER_NAIL creates; detail and list reads return range and
+    unit; creation audit; five invalid creates that write nothing; a price command that
+    sets a range (unit kept), changes the unit (omitted maximum means exact) and returns
+    to exact; before/after audit; invalid and unchanged updates rejected with the price
+    unchanged; `MANAGE_SERVICES` alone cannot change pricing. The existing price subtest
+    now asserts the range and unit in its audit.
+  - service catalog HTTP 1/1: range and unit reach the price command; numbers, negative
+    values, unknown or lowercase units and pricing fields on the master-data route are
+    rejected. Delete HTTP 1/1.
+  - web 40/40: VI/EN display of exact and ranged per-nail and flat prices; string-based
+    grouping beyond 2^53; the form rule compares as integers; form labels, unit options
+    and preview.

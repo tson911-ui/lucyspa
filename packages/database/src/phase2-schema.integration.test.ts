@@ -28,6 +28,8 @@ const phase2FollowUps = [
 // Applied after a pre-existing service row is inserted, to prove the backfill.
 const serviceDurationMigration =
   '../prisma/migrations/20260928000000_phase2_service_duration_estimate/migration.sql';
+const servicePricingMigration =
+  '../prisma/migrations/20260929000000_phase2_service_price_range_unit/migration.sql';
 const PHASE1_CODES = PERMISSION_CATALOG.slice(0, 10);
 
 function identifier(value: string): string {
@@ -145,6 +147,7 @@ test('Phase 2 schema invariants in an isolated, rolled-back schema', async (cont
       duration_minutes: 90,
       estimated_min_minutes: duration,
       estimated_max_minutes: duration,
+      price_max_vnd: overrides['price_vnd'] ?? 120000,
       ...overrides,
     });
   };
@@ -187,6 +190,8 @@ test('Phase 2 schema invariants in an isolated, rolled-back schema', async (cont
       await client.query(
         await readFile(new URL(serviceDurationMigration, import.meta.url), 'utf8'),
       );
+      // The same pre-existing service then receives the pricing migration.
+      await client.query(await readFile(new URL(servicePricingMigration, import.meta.url), 'utf8'));
 
       await check('Phase 1 permission rows survive the PermissionCode rebuild', async () => {
         const rows = await client.query<{ id: string; code: string }>(
@@ -320,6 +325,25 @@ test('Phase 2 schema invariants in an isolated, rolled-back schema', async (cont
           await rejects(() => service({ estimated_max_minutes: null }), '23502');
         },
       );
+
+      await check('services: price range and pricing unit backfilled and bounded', async () => {
+        const legacy = await client.query<{ min: string; max: string; unit: string }>(
+          `SELECT price_vnd::text AS min, price_max_vnd::text AS max, pricing_unit::text AS unit
+             FROM services WHERE code = 'LEGACY_DURATION'`,
+        );
+        assert.deepEqual(legacy.rows[0], { min: '80000', max: '80000', unit: 'PER_SERVICE' });
+        const units = await client.query<{ labels: string[] }>(
+          'SELECT enum_range(NULL::"ServicePricingUnit")::text[] AS labels',
+        );
+        assert.deepEqual(units.rows[0]?.labels, ['PER_SERVICE', 'PER_NAIL']);
+        await service({ price_vnd: 40000, price_max_vnd: 40000 });
+        await service({ price_vnd: 5000, price_max_vnd: 5000, pricing_unit: 'PER_NAIL' });
+        await service({ price_vnd: 5000, price_max_vnd: 30000, pricing_unit: 'PER_NAIL' });
+        await rejects(() => service({ price_vnd: 10000, price_max_vnd: 5000 }));
+        await rejects(() => service({ price_vnd: -1, price_max_vnd: 5000 }));
+        await rejects(() => service({ pricing_unit: 'PER_HOUR' }), '22P02');
+        await rejects(() => service({ price_max_vnd: null }), '23502');
+      });
 
       await check(
         'services: canonical codes, VND and duration bounds, restrictive FKs',

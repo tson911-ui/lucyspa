@@ -117,6 +117,8 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
     nameVi: 'Massage chân',
     nameEn: 'Foot massage',
     priceVnd: '150000',
+    priceMaxVnd: '200000',
+    pricingUnit: 'PER_SERVICE',
     durationMinutes: 30,
     estimatedMinMinutes: 20,
     estimatedMaxMinutes: 30,
@@ -143,7 +145,13 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
     [`/api/v1/services/${id}/status`, { expectedVersion: 1, isActive: false, reason: 'x' }, 200],
     [
       `/api/v1/services/${id}/price`,
-      { expectedVersion: 1, priceVnd: '180000', reason: 'Menu' },
+      {
+        expectedVersion: 1,
+        priceVnd: '5000',
+        priceMaxVnd: '10000',
+        pricingUnit: 'PER_NAIL',
+        reason: 'Menu',
+      },
       200,
     ],
     [`/api/v1/services/${id}/branches/${branchId}`, { expectedVersion: null, isActive: true }, 200],
@@ -176,6 +184,19 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
       ['/api/v1/services', { ...service, priceVnd: '1.5' }],
       ['/api/v1/services', { ...service, durationMinutes: '30' }],
       ['/api/v1/services', { ...service, estimatedMinMinutes: '20' }],
+      ['/api/v1/services', { ...service, priceMaxVnd: 200000 }],
+      ['/api/v1/services', { ...service, priceMaxVnd: '-1' }],
+      ['/api/v1/services', { ...service, pricingUnit: 'PER_HOUR' }],
+      ['/api/v1/services', { ...service, pricingUnit: 'per_nail' }],
+      [
+        `/api/v1/services/${id}/price`,
+        { expectedVersion: 1, priceVnd: '1', reason: 'x', pricingUnit: 'PER_TOE' },
+      ],
+      [
+        `/api/v1/services/${id}/price`,
+        { expectedVersion: 1, priceVnd: '1', reason: 'x', priceMaxVnd: 2 },
+      ],
+      [`/api/v1/services/${id}`, { expectedVersion: 1, pricingUnit: 'PER_NAIL' }],
       ['/api/v1/services', { ...service, estimatedMaxMinutes: 30.5 }],
       ['/api/v1/services', { ...service, estimatedDurationText: '30-45 phút' }],
       [`/api/v1/services/${id}`, { expectedVersion: 1, estimatedMinMinutes: '15' }],
@@ -219,6 +240,14 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
       35,
     );
     assert.deepEqual(calls[6]?.slice(0, 3), ['setPrice', token, id]);
+    // The price range and pricing unit reach the price command unchanged.
+    assert.deepEqual(JSON.parse(JSON.stringify(calls[6]?.[3])), {
+      expectedVersion: 1,
+      priceVnd: '5000',
+      priceMaxVnd: '10000',
+      pricingUnit: 'PER_NAIL',
+      reason: 'Menu',
+    });
     assert.deepEqual(calls[7]?.slice(0, 4), ['setAvailability', token, id, branchId]);
     assert.deepEqual(calls.at(-2)?.slice(0, 2), ['listServices', token]);
     assert.deepEqual(calls.at(-2)?.[2], { categoryId: id, branchId });

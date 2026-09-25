@@ -487,6 +487,12 @@ model ServiceCategory {
 
 // One concrete duration per service; 30/60-minute offerings are separate services.
 // durationMinutes is internal scheduling data, never a public menu label.
+// What one service price applies to. Add units only for real menu data.
+enum ServicePricingUnit {
+  PER_SERVICE
+  PER_NAIL
+}
+
 model Service {
   id                  String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   code                String                      @unique(map: "services_code_key")
@@ -496,7 +502,10 @@ model Service {
   nameEn              String                      @map("name_en")
   descriptionVi       String?                     @map("description_vi")
   descriptionEn       String?                     @map("description_en")
+  /// Minimum price per pricing unit (the price itself when exact); SQL: 0 <= min <= max.
   priceVnd            BigInt                      @map("price_vnd")
+  priceMaxVnd         BigInt                      @map("price_max_vnd")
+  pricingUnit         ServicePricingUnit          @default(PER_SERVICE) @map("pricing_unit")
   /// Internal scheduling duration: the one deterministic duration booking reserves.
   durationMinutes     Int                         @map("duration_minutes")
   /// Customer-facing estimate; SQL enforces 1 <= min <= max <= durationMinutes.

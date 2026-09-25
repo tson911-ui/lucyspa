@@ -37,8 +37,9 @@ import {
   estimateMinutes,
   normalizeCatalogCode,
   optionalReason,
-  priceVnd,
+  pricingUnit,
   requiredReason,
+  servicePrice,
   sortOrder,
 } from './catalog.input.js';
 
@@ -61,6 +62,8 @@ const serviceSelect = {
   descriptionVi: true,
   descriptionEn: true,
   priceVnd: true,
+  priceMaxVnd: true,
+  pricingUnit: true,
   durationMinutes: true,
   estimatedMinMinutes: true,
   estimatedMaxMinutes: true,
@@ -300,7 +303,11 @@ export class ServiceCatalogService {
     const nameEn = catalogName(input.nameEn, 'nameEn');
     const descriptionVi = catalogDescription(input.descriptionVi ?? null, 'descriptionVi');
     const descriptionEn = catalogDescription(input.descriptionEn ?? null, 'descriptionEn');
-    const price = priceVnd(input.priceVnd);
+    const price = servicePrice({
+      priceVnd: input.priceVnd,
+      priceMaxVnd: input.priceMaxVnd,
+      pricingUnit: input.pricingUnit ?? 'PER_SERVICE',
+    });
     const duration = durationMinutes(input.durationMinutes);
     // Both estimate bounds or neither; without them the estimate is exact.
     if ((input.estimatedMinMinutes === undefined) !== (input.estimatedMaxMinutes === undefined)) {
@@ -338,7 +345,7 @@ export class ServiceCatalogService {
           nameEn,
           descriptionVi,
           descriptionEn,
-          priceVnd: price,
+          ...price,
           ...durations,
         },
         select: serviceSelect,
@@ -350,7 +357,9 @@ export class ServiceCatalogService {
           categoryId,
           nameVi,
           nameEn,
-          priceVnd: price.toString(),
+          priceVnd: price.priceVnd.toString(),
+          priceMaxVnd: price.priceMaxVnd.toString(),
+          pricingUnit: price.pricingUnit,
           ...durations,
           isActive: true,
         },
@@ -465,6 +474,8 @@ export class ServiceCatalogService {
           nameVi: current.nameVi,
           nameEn: current.nameEn,
           priceVnd: current.priceVnd.toString(),
+          priceMaxVnd: current.priceMaxVnd.toString(),
+          pricingUnit: current.pricingUnit,
           durationMinutes: current.durationMinutes,
           estimatedMinMinutes: current.estimatedMinMinutes,
           estimatedMaxMinutes: current.estimatedMaxMinutes,
@@ -524,22 +535,42 @@ export class ServiceCatalogService {
     requestId?: string,
   ): Promise<ServiceResponse> {
     const id = this.id(serviceId);
-    const price = priceVnd(input.priceVnd);
+    if (input.pricingUnit !== undefined) pricingUnit(input.pricingUnit);
     const reason = requiredReason(input.reason);
     return this.frame(sessionToken, requestId, async (context) => {
       const { tx, actor } = context;
       requireAcross(actor, 'MANAGE_SERVICE_PRICES', []);
       const current = await this.lockService(tx, id, input.expectedVersion);
-      if (current.priceVnd === price) throw new AuthError('VALIDATION_FAILED', 'priceVnd');
+      // Omitted maximum: an exact price. Omitted unit: unchanged.
+      const price = servicePrice({
+        priceVnd: input.priceVnd,
+        priceMaxVnd: input.priceMaxVnd,
+        pricingUnit: input.pricingUnit ?? current.pricingUnit,
+      });
+      if (
+        current.priceVnd === price.priceVnd &&
+        current.priceMaxVnd === price.priceMaxVnd &&
+        current.pricingUnit === price.pricingUnit
+      ) {
+        throw new AuthError('VALIDATION_FAILED', 'priceVnd');
+      }
       const row = await tx.service.update({
         where: { id },
-        data: { priceVnd: price, rowVersion: { increment: 1 } },
+        data: { ...price, rowVersion: { increment: 1 } },
         select: serviceSelect,
       });
       await this.audit(context, 'SERVICE_PRICE_CHANGED', 'Service', id, {
         reason,
-        before: { priceVnd: current.priceVnd.toString() },
-        after: { priceVnd: price.toString() },
+        before: {
+          priceVnd: current.priceVnd.toString(),
+          priceMaxVnd: current.priceMaxVnd.toString(),
+          pricingUnit: current.pricingUnit,
+        },
+        after: {
+          priceVnd: price.priceVnd.toString(),
+          priceMaxVnd: price.priceMaxVnd.toString(),
+          pricingUnit: price.pricingUnit,
+        },
       });
       return this.present(actor, row);
     });
@@ -718,6 +749,8 @@ export class ServiceCatalogService {
       descriptionVi: row.descriptionVi,
       descriptionEn: row.descriptionEn,
       priceVnd: row.priceVnd.toString(),
+      priceMaxVnd: row.priceMaxVnd.toString(),
+      pricingUnit: row.pricingUnit,
       durationMinutes: row.durationMinutes,
       estimatedMinMinutes: row.estimatedMinMinutes,
       estimatedMaxMinutes: row.estimatedMaxMinutes,

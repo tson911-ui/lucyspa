@@ -1,4 +1,9 @@
-import type { EmployeeStatus, LeaveStatus, LeaveType } from '@lucy-spa/contracts';
+import type {
+  EmployeeStatus,
+  LeaveStatus,
+  LeaveType,
+  ServicePricingUnit,
+} from '@lucy-spa/contracts';
 import type { Locale } from './locales';
 
 /**
@@ -225,6 +230,17 @@ const vi = {
     price: 'Giá',
     priceVnd: 'Giá (VND)',
     priceHint: 'Số nguyên VND, không dấu phân cách.',
+    priceMin: 'Giá tối thiểu (VND)',
+    priceMax: 'Giá tối đa (VND)',
+    priceRangeHint: 'Giá cố định: nhập bằng giá tối thiểu.',
+    pricingUnit: 'Đơn vị tính giá',
+    pricingUnits: {
+      PER_SERVICE: 'Theo dịch vụ',
+      PER_NAIL: 'Theo ngón',
+    } satisfies Record<ServicePricingUnit, string>,
+    unitSuffix: { PER_SERVICE: '', PER_NAIL: '/ngón' } satisfies Record<ServicePricingUnit, string>,
+    priceMaxBeforeMin: 'Giá tối đa phải lớn hơn hoặc bằng giá tối thiểu.',
+    priceInvalid: 'Giá phải là số nguyên VND không âm, không có dấu phân cách.',
     duration: 'Thời lượng xếp lịch nội bộ (phút)',
     durationNote:
       'Một thời lượng cố định để giữ lịch nhân viên; không nhỏ hơn thời lượng tối đa. Không hiển thị cho khách.',
@@ -527,6 +543,14 @@ const en: Dictionary = {
     price: 'Price',
     priceVnd: 'Price (VND)',
     priceHint: 'Whole VND, digits only.',
+    priceMin: 'Minimum price (VND)',
+    priceMax: 'Maximum price (VND)',
+    priceRangeHint: 'For an exact price, enter the minimum again.',
+    pricingUnit: 'Pricing unit',
+    pricingUnits: { PER_SERVICE: 'Per service', PER_NAIL: 'Per nail' },
+    unitSuffix: { PER_SERVICE: '', PER_NAIL: '/nail' },
+    priceMaxBeforeMin: 'The maximum price must be at least the minimum.',
+    priceInvalid: 'Prices must be whole, non-negative VND amounts without separators.',
     duration: 'Internal scheduling duration (minutes)',
     durationNote:
       'The one fixed duration reserved for staff scheduling; at least the estimated maximum. Never shown to customers.',

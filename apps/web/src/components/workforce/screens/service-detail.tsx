@@ -9,12 +9,13 @@ import type {
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import { durationNumbers, durationProblem } from '../../../lib/workforce/durations';
-import { formatVnd, isVndInput } from '../../../lib/workforce/format';
+import { formatServicePrice, priceProblem, type PriceForm } from '../../../lib/workforce/pricing';
 import { canAt, canGlobal } from '../../../lib/workforce/permissions';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import { DurationFields } from './service-durations';
+import { PriceFields } from './service-price-fields';
 import {
   Badge,
   ErrorState,
@@ -53,7 +54,7 @@ export function ServiceDetailScreen({ id }: { id: string }) {
         <>
           <PageHeader
             title={locale === 'vi' ? service.data.nameVi : service.data.nameEn}
-            intro={`${service.data.code} · ${formatVnd(service.data.priceVnd, locale)}`}
+            intro={`${service.data.code} · ${formatServicePrice(service.data, t, locale)}`}
           >
             <Badge tone={service.data.isActive ? 'success' : 'neutral'}>
               {service.data.isActive ? t.common.active : t.common.inactive}
@@ -222,22 +223,33 @@ function Price({
   reload: () => Promise<void>;
 }) {
   const { api, t, locale } = useWorkforce();
-  const [price, setPrice] = useState(service.priceVnd);
+  const current = (): PriceForm => ({
+    priceVnd: service.priceVnd,
+    priceMaxVnd: service.priceMaxVnd,
+    pricingUnit: service.pricingUnit,
+  });
+  const [price, setPrice] = useState<PriceForm>(current);
   const [reason, setReason] = useState('');
   const submit = useSubmit();
-  useEffect(() => setPrice(service.priceVnd), [service.priceVnd, service.version]);
-  const valid = isVndInput(price);
+  useEffect(() => setPrice(current()), [service.version]);
+  const valid = priceProblem(price) === null;
+  const changed =
+    price.priceVnd !== service.priceVnd ||
+    price.priceMaxVnd !== service.priceMaxVnd ||
+    price.pricingUnit !== service.pricingUnit;
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (!valid) return;
+    if (!valid || !changed) return;
     const ok = await submit.run(
       () =>
         runMutation(
           () =>
             api.post(`/api/v1/services/${service.id}/price`, {
               expectedVersion: service.version,
-              priceVnd: price,
+              priceVnd: price.priceVnd,
+              priceMaxVnd: price.priceMaxVnd,
+              pricingUnit: price.pricingUnit,
               reason,
             }),
           reload,
@@ -252,40 +264,31 @@ function Price({
 
   return (
     <Section title={t.services.priceSection}>
-      <p className="wf-emphasis">{formatVnd(service.priceVnd, locale)}</p>
+      <p className="wf-emphasis">{formatServicePrice(service, t, locale)}</p>
       {editable ? (
         <form className="wf-form" onSubmit={(event) => void save(event)}>
-          <div className="wf-row">
-            <Field id="price-new" label={t.services.priceVnd} required hint={t.services.priceHint}>
-              <input
-                id="price-new"
-                required
-                inputMode="numeric"
-                pattern="0|[1-9][0-9]{0,17}"
-                aria-invalid={!valid}
-                value={price}
-                onChange={(event) => setPrice(event.target.value.trim())}
-              />
-            </Field>
-            <Field id="price-reason" label={t.services.priceReason} required>
-              <input
-                id="price-reason"
-                required
-                maxLength={500}
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-              />
-            </Field>
-          </div>
-          {valid && price !== service.priceVnd ? (
-            <p className="wf-muted">{formatVnd(price, locale)}</p>
-          ) : null}
+          <PriceFields
+            idPrefix="price-new"
+            value={price}
+            onChange={setPrice}
+            t={t}
+            locale={locale}
+          />
+          <Field id="price-reason" label={t.services.priceReason} required>
+            <input
+              id="price-reason"
+              required
+              maxLength={500}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </Field>
           <FormFeedback error={submit.error} success={submit.success} t={t} />
           <SubmitButton
             pending={submit.pending}
             label={t.services.changePrice}
             pendingLabel={t.common.saving}
-            disabled={!valid || price === service.priceVnd || reason.trim() === ''}
+            disabled={!valid || !changed || reason.trim() === ''}
           />
         </form>
       ) : null}

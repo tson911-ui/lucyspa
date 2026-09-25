@@ -1,6 +1,7 @@
 'use client';
 
 import type {
+  ServicePricingUnit,
   ServiceCategoryListResponse,
   ServiceCategoryResponse,
   ServiceCreateRequest,
@@ -9,7 +10,6 @@ import type {
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { durationNumbers, durationProblem, formatEstimate } from '../../../lib/workforce/durations';
-import { formatVnd, isVndInput } from '../../../lib/workforce/format';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
@@ -21,7 +21,9 @@ import {
   type DeleteTarget,
 } from '../../../lib/workforce/catalog-delete';
 import { ConfirmDeleteDialog } from '../confirm-delete';
+import { formatServicePrice, priceProblem } from '../../../lib/workforce/pricing';
 import { DurationFields } from './service-durations';
+import { PriceFields } from './service-price-fields';
 import {
   Badge,
   Empty,
@@ -183,7 +185,7 @@ export function ServicesScreen() {
                     {locale === 'vi' ? service.nameVi : service.nameEn}
                   </td>
                   <td data-label={t.services.category}>{categoryName(service.categoryId)}</td>
-                  <td data-label={t.services.price}>{formatVnd(service.priceVnd, locale)}</td>
+                  <td data-label={t.services.price}>{formatServicePrice(service, t, locale)}</td>
                   <td data-label={t.services.estimate}>
                     {formatEstimate(service.estimatedMinMinutes, service.estimatedMaxMinutes, t)}
                   </td>
@@ -439,24 +441,28 @@ function ServiceCreate({
     nameVi: '',
     nameEn: '',
     priceVnd: '',
+    priceMaxVnd: '',
+    pricingUnit: 'PER_SERVICE' as ServicePricingUnit,
     estimatedMinMinutes: '60',
     estimatedMaxMinutes: '60',
     durationMinutes: '60',
   };
   const [form, setForm] = useState(empty);
   const submit = useSubmit();
-  const priceValid = form.priceVnd === '' || isVndInput(form.priceVnd);
+  const priceValid = priceProblem(form) === null;
   const durationsValid = durationProblem(form) === null;
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (!isVndInput(form.priceVnd) || !durationsValid) return;
+    if (!priceValid || !durationsValid) return;
     const body: ServiceCreateRequest = {
       code: form.code,
       categoryId: form.categoryId,
       nameVi: form.nameVi,
       nameEn: form.nameEn,
       priceVnd: form.priceVnd,
+      priceMaxVnd: form.priceMaxVnd,
+      pricingUnit: form.pricingUnit,
       ...durationNumbers(form),
     };
     const ok = await submit.run(
@@ -522,28 +528,21 @@ function ServiceCreate({
             />
           </Field>
         </div>
-        <div className="wf-row">
-          <Field id="svc-price" label={t.services.priceVnd} required hint={t.services.priceHint}>
-            <input
-              id="svc-price"
-              required
-              inputMode="numeric"
-              pattern="0|[1-9][0-9]{0,17}"
-              aria-invalid={!priceValid}
-              value={form.priceVnd}
-              onChange={(event) => setForm({ ...form, priceVnd: event.target.value.trim() })}
-            />
-          </Field>
-        </div>
+        <div className="wf-row"></div>
+        <PriceFields
+          idPrefix="svc-price"
+          value={form}
+          onChange={(next) => setForm({ ...form, ...next })}
+          t={t}
+          locale={locale}
+        />
         <DurationFields
           idPrefix="svc"
           value={form}
           onChange={(next) => setForm({ ...form, ...next })}
           t={t}
         />
-        {form.priceVnd && priceValid ? (
-          <p className="wf-muted">{formatVnd(form.priceVnd, locale)}</p>
-        ) : null}
+
         <FormFeedback error={submit.error} success={submit.success} t={t} />
         <SubmitButton
           pending={submit.pending}

@@ -458,6 +458,23 @@ manually by the Owner/operator; see the
   - **Tests:** catalog integration 8/8, delete HTTP 1/1, web 37/37. No migration; no
     production data is deleted automatically.
 
+- **Service price ranges and pricing units** (`feat: add service price ranges and pricing units`).
+  - **Model:** `priceVnd` = minimum price per unit (the price itself when exact),
+    `priceMaxVnd` = maximum, `pricingUnit` = `PER_SERVICE` | `PER_NAIL`.
+  - **Rule:** `0 <= priceVnd <= priceMaxVnd` in integer VND, enforced in SQL, the API and
+    the form.
+  - **Migration `20260929000000_phase2_service_price_range_unit`** backfills existing
+    services to exact `PER_SERVICE` prices (`priceMaxVnd = priceVnd`).
+  - **Pricing changes** only through the price command (GLOBAL_ONLY
+    `MANAGE_SERVICE_PRICES`, reason required), audited with range and unit.
+  - **UI:** "Giá tối thiểu", "Giá tối đa" and "Đơn vị tính giá"; the list shows e.g.
+    "5.000–10.000 ₫/ngón" (English "/nail").
+  - **The five Nail Design services are not changed automatically;** the Owner edits them
+    after deploying.
+  - **Tests:** schema 12/12, catalog integration 9/9, catalog HTTP 1/1, web 40/40.
+  - **Deploying requires `pnpm db:deploy`** (after a verified backup) for this migration
+    and `20260928000000_phase2_service_duration_estimate`.
+
 - **Session activity (sliding idle timeout).**
   - **Problem:** production showed an actively working Owner being logged out.
     `lastActivityAt` had stayed fixed at login, because the `touch` primitive was never

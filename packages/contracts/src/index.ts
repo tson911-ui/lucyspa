@@ -533,8 +533,19 @@ export interface ServiceBranchAvailabilityEntry {
 }
 
 /**
- * Workforce view of a service. `priceVnd` is a nonnegative integer VND string.
- * `availability` lists only branches the caller may see.
+ * What one service price applies to: the whole service, or one nail ("/ngón", "/nail").
+ * Further units are added only for real menu data.
+ */
+export type ServicePricingUnit = 'PER_SERVICE' | 'PER_NAIL';
+
+/**
+ * Workforce view of a service. `availability` lists only branches the caller may see.
+ *
+ * Price (integer VND strings), always `0 <= priceVnd <= priceMaxVnd`, per `pricingUnit`:
+ * - `priceVnd`: the minimum price, and the price itself when exact (min = max). Existing
+ *   clients that read `priceVnd` keep reading the same value for flat-price services.
+ * - `priceMaxVnd`: the maximum price ("5.000–10.000 ₫/ngón"); equal to `priceVnd` when exact.
+ * - `pricingUnit`: PER_SERVICE (a flat price) or PER_NAIL (per nail).
  *
  * Durations (minutes), always `1 <= estimatedMinMinutes <= estimatedMaxMinutes <=
  * durationMinutes <= 1440`:
@@ -552,6 +563,8 @@ export interface ServiceResponse {
   descriptionVi: string | null;
   descriptionEn: string | null;
   priceVnd: string;
+  priceMaxVnd: string;
+  pricingUnit: ServicePricingUnit;
   durationMinutes: number;
   estimatedMinMinutes: number;
   estimatedMaxMinutes: number;
@@ -585,6 +598,10 @@ export interface ServiceCreateRequest {
   descriptionVi?: string | null;
   descriptionEn?: string | null;
   priceVnd: string;
+  /** Defaults to `priceVnd` (an exact price). */
+  priceMaxVnd?: string;
+  /** Defaults to PER_SERVICE. */
+  pricingUnit?: ServicePricingUnit;
   durationMinutes: number;
   estimatedMinMinutes?: number;
   estimatedMaxMinutes?: number;
@@ -612,7 +629,12 @@ export interface ServiceUpdateRequest {
 /** POST /api/v1/services/:id/price: GLOBAL_ONLY MANAGE_SERVICE_PRICES; always audited. */
 export interface ServicePriceRequest {
   expectedVersion: number;
+  /** Minimum price (the price itself when exact). */
   priceVnd: string;
+  /** Omitted: the price is exact (maximum = `priceVnd`). */
+  priceMaxVnd?: string;
+  /** Omitted: the pricing unit is unchanged. */
+  pricingUnit?: ServicePricingUnit;
   reason: string;
 }
 

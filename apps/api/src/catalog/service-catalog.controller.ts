@@ -1,4 +1,5 @@
 import type {
+  ServicePricingUnit,
   CatalogDeleteRequest,
   CatalogDeleteResponse,
   CatalogStatusRequest,
@@ -31,6 +32,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -43,6 +45,7 @@ import {
 import type { Request, Response } from 'express';
 import { sessionCookie } from '../auth/cookies.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
+import { PRICING_UNITS } from './catalog.input.js';
 import { ServiceCatalogService } from './service-catalog.service.js';
 
 const MAX_VERSION = 2_147_483_647;
@@ -91,10 +94,19 @@ class ServiceCreateDto implements ServiceCreateRequest {
   @IsString()
   @MaxLength(8_192)
   descriptionEn?: string | null;
-  @ApiProperty({ description: 'Nonnegative integer VND.' })
+  @ApiProperty({ description: 'Minimum (or exact) nonnegative integer VND.' })
   @IsString()
   @Matches(PRICE)
   priceVnd!: string;
+  @ApiProperty({ required: false, description: 'Maximum VND (default: exact price).' })
+  @IsOptional()
+  @IsString()
+  @Matches(PRICE)
+  priceMaxVnd?: string;
+  @ApiProperty({ required: false, enum: PRICING_UNITS })
+  @IsOptional()
+  @IsIn(PRICING_UNITS)
+  pricingUnit?: ServicePricingUnit;
   @ApiProperty({
     description: 'Internal scheduling duration (minutes); >= estimatedMaxMinutes; never public.',
   })
@@ -138,10 +150,19 @@ class ServiceUpdateDto extends VersionedDto implements ServiceUpdateRequest {
 }
 
 class PriceDto extends VersionedDto implements ServicePriceRequest {
-  @ApiProperty({ description: 'Nonnegative integer VND.' })
+  @ApiProperty({ description: 'Minimum (or exact) nonnegative integer VND.' })
   @IsString()
   @Matches(PRICE)
   priceVnd!: string;
+  @ApiProperty({ required: false, description: 'Maximum VND (default: exact price).' })
+  @IsOptional()
+  @IsString()
+  @Matches(PRICE)
+  priceMaxVnd?: string;
+  @ApiProperty({ required: false, enum: PRICING_UNITS })
+  @IsOptional()
+  @IsIn(PRICING_UNITS)
+  pricingUnit?: ServicePricingUnit;
   @ApiProperty() @IsString() @MaxLength(2_048) reason!: string;
 }
 

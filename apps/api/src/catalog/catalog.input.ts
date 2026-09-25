@@ -82,7 +82,40 @@ export function checkServiceDurations(durations: ServiceDurations): ServiceDurat
 }
 
 /** Nonnegative integer VND carried as a decimal string and stored as bigint. */
-export function priceVnd(value: string): bigint {
-  if (!/^(?:0|[1-9][0-9]{0,17})$/.test(value)) throw new AuthError('VALIDATION_FAILED', 'priceVnd');
+export function priceVnd(value: string, field = 'priceVnd'): bigint {
+  if (!/^(?:0|[1-9][0-9]{0,17})$/.test(value)) throw new AuthError('VALIDATION_FAILED', field);
   return BigInt(value);
+}
+
+/** Pricing units in use (SQL enum `ServicePricingUnit`). */
+export const PRICING_UNITS = ['PER_SERVICE', 'PER_NAIL'] as const;
+export type PricingUnit = (typeof PRICING_UNITS)[number];
+
+export function pricingUnit(value: string): PricingUnit {
+  if (!(PRICING_UNITS as readonly string[]).includes(value)) {
+    throw new AuthError('VALIDATION_FAILED', 'pricingUnit');
+  }
+  return value as PricingUnit;
+}
+
+export interface ServicePrice {
+  /** Minimum price per unit; the price itself when exact. */
+  priceVnd: bigint;
+  priceMaxVnd: bigint;
+  pricingUnit: PricingUnit;
+}
+
+/**
+ * A service price: `0 <= min <= max` in integer VND (SQL enforces it too). A missing maximum
+ * means an exact price (max = min).
+ */
+export function servicePrice(input: {
+  priceVnd: string;
+  priceMaxVnd?: string | undefined;
+  pricingUnit: string;
+}): ServicePrice {
+  const min = priceVnd(input.priceVnd);
+  const max = input.priceMaxVnd === undefined ? min : priceVnd(input.priceMaxVnd, 'priceMaxVnd');
+  if (max < min) throw new AuthError('VALIDATION_FAILED', 'priceMaxVnd');
+  return { priceVnd: min, priceMaxVnd: max, pricingUnit: pricingUnit(input.pricingUnit) };
 }
