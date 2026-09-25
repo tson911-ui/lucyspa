@@ -94,7 +94,7 @@ test('1–2. the add action is offered only with CREATE_EMPLOYEES', () => {
     assert.ok(canOfferCreate(account));
     assert.match(render(<EmployeesScreen />, account), new RegExp(`>${vi.employees.add}<`));
   }
-  assert.match(render(<EmployeesScreen />, owner, 'en'), />Add workforce member</);
+  assert.match(render(<EmployeesScreen />, owner, 'en'), />Add employee</);
   const viewer = employee([['VIEW_EMPLOYEES', 'A']]);
   assert.equal(canOfferCreate(viewer), false);
   assert.doesNotMatch(render(<EmployeesScreen />, viewer), new RegExp(vi.employees.add));

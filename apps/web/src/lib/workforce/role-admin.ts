@@ -111,6 +111,7 @@ export function createRequest(input: {
   displayNameVi: string;
   displayNameEn: string;
   permissions: readonly PermissionCodeName[];
+  isManagerGroup?: boolean;
   reason: string;
 }): RoleCreateRequest {
   return {
@@ -118,14 +119,18 @@ export function createRequest(input: {
     displayNameVi: input.displayNameVi.trim(),
     displayNameEn: input.displayNameEn.trim(),
     permissions: [...input.permissions].sort(),
+    isManagerGroup: input.isManagerGroup === true,
     reason: input.reason.trim(),
   };
 }
 
-/** Names only when changed (the code is immutable); null when nothing changed. */
+/**
+ * Names and the manager-group flag, only when changed (the code is immutable); null when
+ * nothing changed. The flag is directory grouping only and grants nothing.
+ */
 export function namesRequest(
   role: RoleResponse,
-  names: { displayNameVi: string; displayNameEn: string },
+  names: { displayNameVi: string; displayNameEn: string; isManagerGroup?: boolean },
   reason: string,
 ): RoleUpdateRequest | null {
   const vi = names.displayNameVi.trim();
@@ -133,7 +138,12 @@ export function namesRequest(
   const request: RoleUpdateRequest = { expectedVersion: role.version, reason: reason.trim() };
   if (vi !== role.displayNameVi) request.displayNameVi = vi;
   if (en !== role.displayNameEn) request.displayNameEn = en;
-  return request.displayNameVi === undefined && request.displayNameEn === undefined
+  if (names.isManagerGroup !== undefined && names.isManagerGroup !== role.isManagerGroup) {
+    request.isManagerGroup = names.isManagerGroup;
+  }
+  return request.displayNameVi === undefined &&
+    request.displayNameEn === undefined &&
+    request.isManagerGroup === undefined
     ? null
     : request;
 }

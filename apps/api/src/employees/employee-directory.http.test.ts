@@ -108,6 +108,12 @@ test('employee directory route enforces a strict query and its contract', async 
       'phone=0912',
       'email=a@example.com',
       `q=${'x'.repeat(401)}`,
+      // Directory groups and numbered pages (managers vs employees).
+      'group=OWNERS',
+      'group=managers',
+      'page=0',
+      'page=abc',
+      'role=MANAGER',
     ]) {
       await request(server).get(`/api/v1/employees?${query}`).set(cookie).expect(400);
     }
@@ -123,6 +129,11 @@ test('employee directory route enforces a strict query and its contract', async 
       token,
       { q: 'lan', branchId, status: 'ACTIVE', limit: '20', cursor: 'QUJD' },
     ]);
+    await request(server)
+      .get('/api/v1/employees?group=MANAGERS&page=3&limit=20')
+      .set(cookie)
+      .expect(200);
+    assert.deepEqual(calls[2], ['list', token, { group: 'MANAGERS', page: '3', limit: '20' }]);
     // The single-employee read keeps its own route.
     for (const [error, status] of [
       [new AuthError('FORBIDDEN'), 403],

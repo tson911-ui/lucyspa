@@ -40,6 +40,7 @@ const role: RoleResponse = {
   displayNameVi: 'Kỹ thuật viên',
   displayNameEn: 'Technician',
   isActive: true,
+  isManagerGroup: false,
   permissions: ['APPROVE_LEAVE', 'VIEW_ATTENDANCE'],
   version: 3,
 };
@@ -121,6 +122,7 @@ test('5–8. create and edit use the existing role API; the code never changes',
       displayNameVi: 'Kỹ thuật viên',
       displayNameEn: 'Technician',
       permissions: ['APPROVE_LEAVE', 'VIEW_ATTENDANCE'],
+      isManagerGroup: false,
       reason: 'Vai trò cho KTV',
     },
   );
@@ -243,6 +245,7 @@ test('12, 14–17. roles are bundles; assignment decides the scope; nothing is s
     'code',
     'displayNameEn',
     'displayNameVi',
+    'isManagerGroup',
     'permissions',
     'reason',
   ]);

@@ -265,9 +265,18 @@ export interface EmployeeDirectoryEntry {
   classificationEffectiveDate: string | null;
 }
 
+/**
+ * Directory group (`group` query): MANAGERS = at least one assignment of an active
+ * manager-group role; EMPLOYEES = none. Each member is in exactly one group.
+ */
+export type EmployeeDirectoryGroup = 'MANAGERS' | 'EMPLOYEES';
+
 export interface EmployeeDirectoryResponse {
   items: EmployeeDirectoryEntry[];
+  /** Keyset mode (no `page` query). */
   nextCursor: string | null;
+  /** Numbered-page mode (`page` query): server-side offset over the scoped, filtered set. */
+  page?: { number: number; size: number; total: number };
 }
 
 /** POST /api/v1/employees/:id/profile. Contact identifiers and pay are excluded. */
@@ -388,6 +397,11 @@ export interface RoleResponse {
   displayNameVi: string;
   displayNameEn: string;
   isActive: boolean;
+  /**
+   * Members holding this role are listed under "Quản lý / Managers" in the employee
+   * directory. Display grouping only: it grants no permission.
+   */
+  isManagerGroup: boolean;
   permissions: PermissionCodeName[];
   /** Send back as `expectedVersion`. */
   version: number;
@@ -413,6 +427,8 @@ export interface RoleCreateRequest {
   displayNameVi: string;
   displayNameEn: string;
   permissions: PermissionCodeName[];
+  /** Directory grouping (default false). */
+  isManagerGroup?: boolean;
   reason: string;
 }
 
@@ -422,6 +438,7 @@ export interface RoleUpdateRequest {
   displayNameVi?: string;
   displayNameEn?: string;
   isActive?: boolean;
+  isManagerGroup?: boolean;
   reason: string;
 }
 

@@ -395,6 +395,8 @@ model Role {
   displayNameVi   String               @map("display_name_vi")
   displayNameEn   String               @map("display_name_en")
   isActive        Boolean              @default(true) @map("is_active")
+  /// Display grouping only (the "Quản lý" section of the employee directory); grants nothing.
+  isManagerGroup  Boolean              @default(false) @map("is_manager_group")
   rowVersion      Int                  @default(1) @map("row_version")
   createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)

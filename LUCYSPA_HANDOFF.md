@@ -458,6 +458,29 @@ manually by the Owner/operator; see the
   - **Tests:** catalog integration 8/8, delete HTTP 1/1, web 37/37. No migration; no
     production data is deleted automatically.
 
+- **Employee directory: Managers / Employees groups with numbered pages** (`fix: group
+employee directory by manager role with pagination`).
+  - **Directory layout:** "Quản lý / Managers" appears above "Nhân viên / Employees".
+    Each group has its own table, empty state and server-side pages (20 per page,
+    « 1 2 3 … 8 »), and the two groups page independently.
+  - **Who is a manager:** a member with at least one assignment of an **active role marked
+    "Nhóm quản lý"**. The Owner sets this per role in "Vai trò & quyền". Everyone else is
+    an employee, and nobody appears in both groups.
+  - **Unaffected:** classification (TRAINEE/OFFICIAL_EMPLOYEE/ENDED), account status,
+    skills and employee code never decide the group. The flag is display grouping only
+    and grants no permission.
+  - **Migration `20261001000000_role_manager_group`:** adds `roles.is_manager_group`,
+    default false.
+  - **API:**
+    - `GET /employees` accepts `group=MANAGERS|EMPLOYEES` and `page=N` (offset + `page`
+      total); cursor mode is unchanged for other callers;
+    - roles carry `isManagerGroup` on create, update and read.
+  - **Search and filters** apply to both groups; a new search resets both to page 1. The
+    EN create button now reads "Add employee".
+  - **Deploying** needs `pnpm db:deploy` for this migration together with the pending
+    Employee Management migrations. **Manager roles must then be flagged**, or the
+    Managers section stays empty.
+
 - **Employee management Step 5: employee skill assignment UI** (`feat: add employee skill
 assignment UI`; local commit on top of `f7badbb`; not pushed, not deployed, no
   migration). See the [Step 5 report](docs/EMPLOYEE_MANAGEMENT_STEP5_SKILL_ASSIGNMENT.md).

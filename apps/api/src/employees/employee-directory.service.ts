@@ -1,5 +1,6 @@
 import type {
   EmployeeDirectoryEntry,
+  EmployeeDirectoryGroup,
   EmployeeDirectoryResponse,
   EmployeeStatus,
 } from '@lucy-spa/contracts';
@@ -28,7 +29,18 @@ export interface EmployeeDirectoryInput {
   status?: string;
   cursor?: string;
   limit?: string;
+  /** MANAGERS | EMPLOYEES (manager-group role assignment); omitted = everyone. */
+  group?: string;
+  /** 1-based page number: numbered pages with a total instead of a keyset cursor. */
+  page?: string;
 }
+
+const GROUPS: readonly EmployeeDirectoryGroup[] = ['MANAGERS', 'EMPLOYEES'];
+
+/** An assignment of an active manager-group role (display grouping only). */
+const MANAGER_ASSIGNMENT = {
+  roleAssignments: { some: { role: { isActive: true, isManagerGroup: true } } },
+} satisfies Prisma.UserWhereInput;
 
 const directorySelect = {
   id: true,
@@ -52,6 +64,8 @@ const directorySelect = {
     },
   },
 } satisfies Prisma.UserSelect;
+
+type DirectoryRow = Prisma.UserGetPayload<{ select: typeof directorySelect }>;
 
 function invalid(field: string): never {
   throw new AuthError('VALIDATION_FAILED', field);
@@ -130,6 +144,13 @@ export class EmployeeDirectoryService {
     if (branchId !== undefined && !isUuid(branchId)) invalid('branchId');
     const status = query.status as EmployeeStatus | undefined;
     if (status !== undefined && !STATUSES.includes(status)) invalid('status');
+    const group = query.group as EmployeeDirectoryGroup | undefined;
+    if (group !== undefined && !GROUPS.includes(group)) invalid('group');
+    const pageNumber = query.page === undefined ? undefined : Number(query.page);
+    if (pageNumber !== undefined && (!Number.isInteger(pageNumber) || pageNumber < 1)) {
+      invalid('page');
+    }
+    if (pageNumber !== undefined && cursor !== undefined) invalid('cursor');
     const q = query.q?.normalize('NFC').trim();
     if (
       q !== undefined &&
@@ -154,6 +175,8 @@ export class EmployeeDirectoryService {
           { kind: 'EMPLOYEE', employeeProfile: { isNot: null } },
           { OR: visible },
           ...(status ? [{ status }] : []),
+          ...(group === 'MANAGERS' ? [MANAGER_ASSIGNMENT] : []),
+          ...(group === 'EMPLOYEES' ? [{ NOT: MANAGER_ASSIGNMENT }] : []),
           ...(branchId
             ? [{ employeeProfile: { branchAssignments: { some: { revokedAt: null, branchId } } } }]
             : []),
@@ -173,14 +196,7 @@ export class EmployeeDirectoryService {
             : []),
           ...(cursor ? [{ employeeProfile: { employeeCodeCanonical: { gt: cursor } } }] : []),
         ];
-        const rows = await tx.user.findMany({
-          where: { AND: filters },
-          select: directorySelect,
-          orderBy: { employeeProfile: { employeeCodeCanonical: 'asc' } },
-          take: limit + 1,
-        });
-        const page = rows.slice(0, limit);
-        const items = page.map((row): EmployeeDirectoryEntry => {
+        const present = (row: DirectoryRow): EmployeeDirectoryEntry => {
           const profile = row.employeeProfile!;
           const latest = profile.classificationChanges[0];
           return {
@@ -193,7 +209,32 @@ export class EmployeeDirectoryService {
             classification: latest?.classification ?? null,
             classificationEffectiveDate: latest ? day(latest.effectiveDate) : null,
           };
+        };
+        const orderBy = { employeeProfile: { employeeCodeCanonical: 'asc' } } as const;
+        if (pageNumber !== undefined) {
+          // Numbered pages: offset over the same scoped, filtered and ordered set, plus the
+          // total, so each directory group paginates on the server independently.
+          const total = await tx.user.count({ where: { AND: filters } });
+          const rows = await tx.user.findMany({
+            where: { AND: filters },
+            select: directorySelect,
+            orderBy,
+            skip: (pageNumber - 1) * limit,
+            take: limit,
+          });
+          return {
+            items: rows.map(present),
+            nextCursor: null,
+            page: { number: pageNumber, size: limit, total },
+          };
+        }
+        const rows = await tx.user.findMany({
+          where: { AND: filters },
+          select: directorySelect,
+          orderBy,
+          take: limit + 1,
         });
+        const items = rows.slice(0, limit).map(present);
         const last = items.at(-1);
         return {
           items,

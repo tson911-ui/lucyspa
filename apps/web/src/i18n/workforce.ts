@@ -329,6 +329,9 @@ const vi = {
       'Thay đổi quyền của vai trò áp dụng ngay cho mọi nhân sự đang có vai trò này và đăng xuất họ khỏi các phiên đang mở.',
     readOnlyNote:
       'Bạn chỉ xem được vai trò; tạo và sửa vai trò cần quyền quản lý vai trò trên toàn hệ thống.',
+    managerGroup: 'Nhóm quản lý',
+    managerGroupHint:
+      '— người có vai trò này hiển thị trong mục “Quản lý” của danh sách nhân sự. Chỉ để phân nhóm hiển thị, không cấp thêm quyền.',
     scopeTitle: 'Phạm vi áp dụng',
     scopeLegend:
       'Mỗi quyền áp dụng được theo chi nhánh hoặc toàn hệ thống (chọn khi gán vai trò), trừ quyền ghi “Chỉ toàn hệ thống”.',
@@ -409,7 +412,19 @@ const vi = {
     cancelled: 'Bạn đã hủy xác nhận mật khẩu nên chưa có gì được lưu.',
   },
   employees: {
-    title: 'Nhân viên',
+    title: 'Nhân sự',
+    directory: {
+      managers: 'Quản lý',
+      employees: 'Nhân viên',
+      noManagers: 'Chưa có quản lý.',
+      noEmployees: 'Chưa có nhân viên.',
+      noManagersFiltered: 'Không có quản lý phù hợp với tìm kiếm hoặc bộ lọc.',
+      noEmployeesFiltered: 'Không có nhân viên phù hợp với tìm kiếm hoặc bộ lọc.',
+      pagination: 'Trang của danh sách {group}',
+      previous: 'Trang trước',
+      next: 'Trang sau',
+      pageNumber: 'Trang {page}',
+    },
     search: 'Tìm theo mã hoặc tên',
     employeeId: 'Mã nhân viên',
     fullName: 'Họ tên',
@@ -927,6 +942,9 @@ const en: Dictionary = {
       "Changing a role's permissions applies immediately to every member with this role and signs them out of open sessions.",
     readOnlyNote:
       'You can view roles only; creating and editing roles needs global role management.',
+    managerGroup: 'Manager group',
+    managerGroupHint:
+      '— members with this role are listed under “Managers” in the workforce directory. Display grouping only; it grants no permission.',
     scopeTitle: 'Where it can apply',
     scopeLegend:
       'Each permission can apply per branch or to all branches (chosen when the role is assigned), except those marked “All branches only”.',
@@ -1007,7 +1025,19 @@ const en: Dictionary = {
     cancelled: 'Password confirmation was cancelled, so nothing was saved.',
   },
   employees: {
-    title: 'Employees',
+    title: 'Workforce',
+    directory: {
+      managers: 'Managers',
+      employees: 'Employees',
+      noManagers: 'No managers yet.',
+      noEmployees: 'No employees yet.',
+      noManagersFiltered: 'No managers match the search or filters.',
+      noEmployeesFiltered: 'No employees match the search or filters.',
+      pagination: '{group} pages',
+      previous: 'Previous page',
+      next: 'Next page',
+      pageNumber: 'Page {page}',
+    },
     search: 'Search by ID or name',
     employeeId: 'Employee ID',
     fullName: 'Full name',
@@ -1059,7 +1089,7 @@ const en: Dictionary = {
       ENDED: 'Employment ended',
     },
     classificationFrom: '{label} (from {date})',
-    add: 'Add workforce member',
+    add: 'Add employee',
     create: {
       title: 'Add workforce member',
       intro:

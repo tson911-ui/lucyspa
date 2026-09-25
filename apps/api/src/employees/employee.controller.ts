@@ -61,6 +61,8 @@ class EmployeeDirectoryQueryDto {
   @IsOptional() @IsIn(['PENDING_SETUP', 'ACTIVE', 'INACTIVE']) status?: string;
   @IsOptional() @IsString() @MaxLength(128) cursor?: string;
   @IsOptional() @Matches(/^[1-9][0-9]{0,2}$/) limit?: string;
+  @IsOptional() @IsIn(['MANAGERS', 'EMPLOYEES']) group?: string;
+  @IsOptional() @Matches(/^[1-9][0-9]{0,5}$/) page?: string;
 }
 
 class EmployeeCreateDto implements EmployeeCreateRequest {

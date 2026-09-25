@@ -85,6 +85,7 @@ class RoleCreateDto implements RoleCreateRequest {
   @ArrayMaxSize(CODES.length)
   @IsIn(CODES, { each: true })
   permissions!: PermissionCodeName[];
+  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() isManagerGroup?: boolean;
   @ApiProperty() @IsString() @MaxLength(2_048) reason!: string;
 }
 
@@ -100,6 +101,7 @@ class RoleUpdateDto extends VersionedReasonDto implements RoleUpdateRequest {
   @MaxLength(512)
   displayNameEn?: string;
   @ApiProperty({ required: false }) @IsOptional() @IsBoolean() isActive?: boolean;
+  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() isManagerGroup?: boolean;
 }
 
 class RolePermissionsDto extends VersionedReasonDto implements RolePermissionsRequest {

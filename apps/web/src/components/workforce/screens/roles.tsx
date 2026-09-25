@@ -180,7 +180,13 @@ function CreateRoleForm({
 }) {
   const { api, t } = useWorkforce();
   const texts = t.roleAdmin;
-  const empty = { code: '', displayNameVi: '', displayNameEn: '', reason: '' };
+  const empty = {
+    code: '',
+    displayNameVi: '',
+    displayNameEn: '',
+    reason: '',
+    isManagerGroup: false,
+  };
   const [form, setForm] = useState(empty);
   const [permissions, setPermissions] = useState<PermissionCodeName[]>([]);
   const submit = useSubmit();
@@ -246,6 +252,11 @@ function CreateRoleForm({
             />
           </Field>
         </div>
+        <ManagerGroupField
+          id="role-new-manager"
+          checked={form.isManagerGroup}
+          onChange={(checked) => setForm({ ...form, isManagerGroup: checked })}
+        />
         <h3>{texts.permissions}</h3>
         <PermissionChecklist
           idPrefix="role-new"
@@ -299,6 +310,7 @@ function RoleCard({
         <Badge tone={role.isActive ? 'success' : 'neutral'}>
           {role.isActive ? texts.active : texts.inactive}
         </Badge>
+        {role.isManagerGroup ? <Badge tone="info">{texts.managerGroup}</Badge> : null}
       </h3>
       <p className="wf-muted wf-small">
         {texts.nameVi}: {role.displayNameVi} · {texts.nameEn}: {role.displayNameEn}
@@ -350,6 +362,7 @@ function EditRoleForm({
   const [names, setNames] = useState({
     displayNameVi: role.displayNameVi,
     displayNameEn: role.displayNameEn,
+    isManagerGroup: role.isManagerGroup,
   });
   const [permissions, setPermissions] = useState<PermissionCodeName[]>(role.permissions);
   const [reason, setReason] = useState('');
@@ -427,6 +440,11 @@ function EditRoleForm({
             />
           </Field>
         </div>
+        <ManagerGroupField
+          id={`${id}-manager`}
+          checked={names.isManagerGroup}
+          onChange={(checked) => setNames({ ...names, isManagerGroup: checked })}
+        />
         <h4>{texts.permissions}</h4>
         <PermissionChecklist
           idPrefix={id}
@@ -469,5 +487,34 @@ function EditRoleForm({
         <p className="wf-hint">{texts.activationHint}</p>
       </form>
     </details>
+  );
+}
+
+/** Directory grouping flag: holders are listed under "Quản lý"; it grants no permission. */
+function ManagerGroupField({
+  id,
+  checked,
+  onChange,
+}: {
+  id: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  const { t } = useWorkforce();
+  const texts = t.roleAdmin;
+  return (
+    <div className="wf-checklist">
+      <label htmlFor={id}>
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          onChange={(event) => onChange(event.target.checked)}
+        />
+        <span>
+          {texts.managerGroup} <span className="wf-muted wf-small">{texts.managerGroupHint}</span>
+        </span>
+      </label>
+    </div>
   );
 }

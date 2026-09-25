@@ -345,6 +345,20 @@
   overflow-wrap: anywhere;
 }
 
+/* Directory pagination: « 1 2 3 … 8 » */
+.wf-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.wf-pagination .wf-button {
+  min-width: 44px;
+  padding: 0 0.6rem;
+}
+
 /* Employee detail facts: label/value pairs that stack on narrow screens. */
 .wf-facts {
   display: grid;

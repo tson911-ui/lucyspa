@@ -52,6 +52,7 @@ const roleSelect = {
   displayNameVi: true,
   displayNameEn: true,
   isActive: true,
+  isManagerGroup: true,
   rowVersion: true,
   permissions: { select: { permission: { select: { code: true } } } },
 } satisfies Prisma.RoleSelect;
@@ -71,6 +72,7 @@ function presentRole(role: RoleRecord): RoleResponse {
     displayNameVi: role.displayNameVi,
     displayNameEn: role.displayNameEn,
     isActive: role.isActive,
+    isManagerGroup: role.isManagerGroup,
     permissions: role.permissions.map((row) => row.permission.code as PermissionCodeName).sort(),
     version: role.rowVersion,
   };
@@ -151,6 +153,7 @@ export class RoleAdminService {
     const displayNameEn = roleName(input.displayNameEn, 'displayNameEn');
     const permissions = normalizePermissions(input.permissions);
     const reason = normalizeReason(input.reason);
+    const isManagerGroup = input.isManagerGroup === true;
     return this.frame(sessionToken, true, requestId, [], async (context) => {
       const { tx, actor } = context;
       requireAcross(actor, 'MANAGE_PERMISSIONS', []);
@@ -164,6 +167,7 @@ export class RoleAdminService {
           code,
           displayNameVi,
           displayNameEn,
+          isManagerGroup,
           permissions: { create: ids.map((permissionId) => ({ permissionId })) },
         },
         select: roleSelect,
@@ -173,7 +177,7 @@ export class RoleAdminService {
         entityType: 'Role',
         entityId: role.id,
         reason,
-        after: { code, isActive: true, permissions },
+        after: { code, isActive: true, isManagerGroup, permissions },
       });
       return presentRole(role);
     });
@@ -195,6 +199,8 @@ export class RoleAdminService {
         ? { displayNameEn: roleName(input.displayNameEn, 'displayNameEn') }
         : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      // Directory grouping only; it grants nothing, so it needs no graph re-check.
+      ...(input.isManagerGroup !== undefined ? { isManagerGroup: input.isManagerGroup } : {}),
     };
     if (Object.keys(patch).length === 0) throw new AuthError('VALIDATION_FAILED');
     const reason = normalizeReason(input.reason);
@@ -231,6 +237,7 @@ export class RoleAdminService {
           displayNameVi: role.displayNameVi,
           displayNameEn: role.displayNameEn,
           isActive: role.isActive,
+          isManagerGroup: role.isManagerGroup,
         },
         after: patch,
       });
