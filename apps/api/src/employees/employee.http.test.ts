@@ -132,6 +132,8 @@ test('employee commands enforce CSRF/origin, strict DTOs and their contracts', a
       setBaseSalary: respond('setBaseSalary'),
       employment: respond('employment') as never,
       changeClassification: respond('changeClassification') as never,
+      setCredentials: respond('setCredentials'),
+      endEmployment: respond('endEmployment') as never,
       issueSetup: (...args: unknown[]) => {
         calls.push(['issueSetup', ...args]);
         return Promise.resolve({
@@ -200,6 +202,9 @@ test('employee commands enforce CSRF/origin, strict DTOs and their contracts', a
       { employmentStartDate: '01/10/2026' },
       { employmentStartDate: '2026-10-01T00:00:00Z' },
       { isTrainee: true },
+      // The optional initial password is a string, never another type or a username.
+      { initialPassword: 123456789012345 },
+      { username: 'NV001' },
     ]) {
       await request(server)
         .post('/api/v1/employees')
@@ -294,6 +299,59 @@ test('employee commands enforce CSRF/origin, strict DTOs and their contracts', a
     assert.deepEqual(calls[0]?.slice(0, 3), ['changeClassification', token, id]);
     assert.deepEqual(JSON.parse(JSON.stringify(calls[0]?.[3])), change);
     assert.deepEqual(calls[1], ['employment', token, id, { date: '2026-11-01' }]);
+    calls.length = 0;
+
+    // Owner/manager-set credentials and ending employment: strict DTOs, CSRF, no echo.
+    const credentials = {
+      expectedVersion: 1,
+      newPassword: 'hoa sen xanh buổi sáng 2026',
+      reason: 'Forgot password',
+    };
+    const ending = {
+      expectedVersion: 1,
+      effectiveDate: '2026-12-31',
+      reason: 'Left Lucy Spa',
+      disableAccess: true,
+    };
+    for (const [path, body] of [
+      [`/api/v1/employees/${id}/credentials`, { ...credentials, newPassword: 123456789012345 }],
+      [`/api/v1/employees/${id}/credentials`, { expectedVersion: 1, reason: 'x' }],
+      [`/api/v1/employees/${id}/credentials`, { ...credentials, reason: undefined }],
+      [`/api/v1/employees/${id}/credentials`, { ...credentials, username: 'nv001' }],
+      [`/api/v1/employees/${id}/end-employment`, { ...ending, disableAccess: 'yes' }],
+      [`/api/v1/employees/${id}/end-employment`, { ...ending, disableAccess: undefined }],
+      [`/api/v1/employees/${id}/end-employment`, { ...ending, effectiveDate: '31/12/2026' }],
+      [`/api/v1/employees/${id}/end-employment`, { ...ending, classification: 'ENDED' }],
+    ] as const) {
+      await request(server).post(path).set(headers).send(body).expect(400);
+    }
+    for (const [path, body] of [
+      [`/api/v1/employees/${id}/credentials`, credentials],
+      [`/api/v1/employees/${id}/end-employment`, ending],
+    ] as const) {
+      await request(server)
+        .post(path)
+        .set({ Cookie: headers.Cookie, Origin: headers.Origin })
+        .send(body)
+        .expect(403);
+    }
+    assert.equal(calls.length, 0);
+    const set = await request(server)
+      .post(`/api/v1/employees/${id}/credentials`)
+      .set(headers)
+      .send(credentials)
+      .expect(200);
+    assert.equal(set.headers['cache-control'], 'no-store');
+    assert.equal(JSON.stringify(set.body).includes(credentials.newPassword), false);
+    await request(server)
+      .post(`/api/v1/employees/${id}/end-employment`)
+      .set(headers)
+      .send(ending)
+      .expect(200);
+    assert.deepEqual(calls[0]?.slice(0, 3), ['setCredentials', token, id]);
+    assert.deepEqual(JSON.parse(JSON.stringify(calls[0]?.[3])), credentials);
+    assert.deepEqual(calls[1]?.slice(0, 3), ['endEmployment', token, id]);
+    assert.deepEqual(JSON.parse(JSON.stringify(calls[1]?.[3])), ending);
     calls.length = 0;
 
     const created = await request(server)

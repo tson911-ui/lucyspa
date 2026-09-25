@@ -292,11 +292,17 @@ OTP must have:
 
 ### 6.4 Forgot Password
 
-Use verification/reset flow:
+**Customers** use the self-service verification/reset flow:
 
 `Request reset → email OTP/token verification → set new password`
 
 Never email a default or existing password.
+
+**Internal workforce** (approved Owner decision, Employee management): the
+Owner or an authorized manager sets or resets a workforce member's password
+directly, without any employee OTP (see 7.1a). The existing workforce email
+reset may remain available for workforce members with a verified recovery
+email, but it is not the required path.
 
 ### 6.5 Updating Email or Phone
 
@@ -348,6 +354,41 @@ Initial employee information includes:
 
 When employment ends, mark employee `INACTIVE`. Do not delete historical
 employee identity.
+
+### 7.1a Workforce Accounts and Credentials (approved)
+
+Customers and internal workforce have separate account flows. Customer
+self-registration, OTP verification and customer password recovery are
+unchanged.
+
+Internal workforce (trainees, official employees, KTVs, managers and future
+roles) does not self-register and needs no OTP for account provisioning:
+
+-   The employee ID (employee code, for example `NV0001`) is the workforce
+    login ID. There is no separate username. The code is only an
+    identifier: it carries no classification or role meaning.
+-   When creating a workforce member, an authorized creator may set up login
+    access immediately by setting an initial password; the account is then
+    active at once. Without it the account waits for access to be set up.
+-   The Owner or an authorized manager may set or reset a workforce member's
+    password directly (no employee OTP).
+-   These actions need the employee-access permission in every branch of the
+    employee, a recent confirmation of the acting user's own password, and
+    never let a manager take over a more powerful account, their own
+    account or the Owner's account.
+-   Passwords follow the existing policy (15–128 characters, common passwords
+    rejected), are stored only as secure hashes, and never appear in logs,
+    audit records or responses. Setting a password signs the employee out of
+    every existing session.
+-   Employment classification (Trainee, Official employee, Ended) is separate
+    from account status and from roles. A trainee may have an active account.
+    "Manager" is a role, not a classification.
+-   Ending employment records the Ended classification with its date and, when
+    requested and the date is today or earlier, disables sign-in in the same
+    action. Nothing is deleted. A future end date is recorded but does not
+    disable access automatically (there is no scheduler); access must then be
+    disabled on or after that date. Ended employment cannot be re-enabled or
+    given new credentials (no rehire).
 
 ### 7.2 Suggested Roles
 

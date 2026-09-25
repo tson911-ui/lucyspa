@@ -458,6 +458,40 @@ manually by the Owner/operator; see the
   - **Tests:** catalog integration 8/8, delete HTTP 1/1, web 37/37. No migration; no
     production data is deleted automatically.
 
+- **Employee management: workforce accounts, Owner/manager-managed credentials**
+  (`feat: add owner-managed workforce credentials`; local commit on top of `7a516ed`, not
+  pushed, not deployed, no migration). See the
+  [report](docs/EMPLOYEE_MANAGEMENT_WORKFORCE_ACCOUNTS.md) and PRD 6.4/7.1a. This
+  supersedes Step 2's "no password" rule.
+  - **Customer vs workforce:** customer registration, OTP and recovery are unchanged. The
+    workforce never self-registers, and the Owner or an authorized manager sets and resets
+    workforce passwords directly (no employee OTP).
+  - **Login ID:** the employee code (e.g. `NV0001`, WORKFORCE/EMPLOYEE_ID). There is no
+    username column, and the code carries no classification or role meaning.
+  - **"Thêm nhân sự":** optional "Cấp tài khoản đăng nhập ngay" section (login ID = employee
+    code, initial password with confirmation, at least 15 characters). The member is
+    created ACTIVE in the same atomic request.
+    - Requires `MANAGE_EMPLOYEE_ACCESS` in every branch and a fresh reauthentication (new
+      reusable dialog, `useReauthentication`).
+    - Without the section the member stays PENDING_SETUP.
+  - **`POST /employees/:id/credentials`** (set/reset) requires fresh reauthentication, all
+    branches, containment, no self-target, not INACTIVE and not ENDED.
+    - It increments `credentialVersion` and revokes sessions.
+    - Audit `ACCESS_PASSWORD_SET` holds no password material.
+  - **`POST /employees/:id/end-employment`** appends ENDED.
+    - With `disableAccess` and a date of today or earlier, it also makes the account
+      INACTIVE in the same transaction.
+    - A future date is recorded only (`access: UNCHANGED_FUTURE_DATE`; no scheduler, so
+      disable manually on or after the date).
+  - **ENDED guards:** no reactivation, credentials or setup issuance while ENDED is in
+    effect (no rehire). Nothing is deleted.
+  - **Roles:** Manager and KTV remain database roles; MANAGER is not a classification.
+  - **Tests:** workforce-account integration 11/11, full API integration 135/135
+    (customer auth unchanged), API unit/HTTP 86/0, web 55/55.
+  - **Employee management is not complete.** Next is employee detail: profile,
+    classification history and promotion, "Đặt lại mật khẩu", "Kết thúc làm việc",
+    status and branches. Role and skill UIs come later.
+
 - **Employee management Step 2: "Add workforce member" UI** (`feat: add workforce member
 creation UI`; local commit on top of Step 1, not pushed, not deployed). See the
   [Step 2 report](docs/EMPLOYEE_MANAGEMENT_STEP2_ADD_WORKFORCE_MEMBER_UI.md).

@@ -120,7 +120,12 @@ test(
             const throttle = new AuthThrottleService(environment);
             const roles = new RoleAdminService(runner, throttle);
             const audit = new AuditReadService(runner, throttle);
-            const employees = new EmployeeService(environment, runner, throttle);
+            const employees = new EmployeeService(
+              environment,
+              runner,
+              throttle,
+              new PasswordService(),
+            );
             await syncPermissionCatalog(tx);
             const branch = async (label: string) =>
               (

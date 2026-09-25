@@ -154,6 +154,13 @@ export interface EmployeeCreateRequest {
   employmentStartDate: string;
   /** Required when the start date is before today's business date. */
   employmentReason?: string;
+  /**
+   * Optional initial workforce password (existing policy: 15–128 characters, not a common
+   * password). When present the account is created ACTIVE and can sign in immediately with
+   * the employee code; this additionally needs MANAGE_EMPLOYEE_ACCESS in every branch and a
+   * fresh reauthentication of the creator. Without it the account stays PENDING_SETUP.
+   */
+  initialPassword?: string;
 }
 
 /**
@@ -297,6 +304,46 @@ export interface EmployeeBaseSalaryRequest {
 }
 
 /** POST /api/v1/employees/:id/setup; requires fresh password reauthentication. */
+/**
+ * POST /api/v1/employees/:id/credentials: the Owner or an authorized manager sets or replaces
+ * an employee's workforce password directly (no employee OTP). Needs MANAGE_EMPLOYEE_ACCESS in
+ * every branch of the employee, fresh reauthentication and containment; never for oneself
+ * (unless Owner), never for INACTIVE or ENDED employment. The account becomes ACTIVE, the
+ * credential version increments and every existing session of the employee is revoked.
+ */
+export interface EmployeeCredentialsRequest {
+  expectedVersion: number;
+  newPassword: string;
+  reason: string;
+}
+
+/**
+ * POST /api/v1/employees/:id/end-employment ("Kết thúc làm việc"): appends ENDED to the
+ * classification history (Step 1 rules) and, with `disableAccess` and an effective date of
+ * today or earlier, sets the account INACTIVE in the same transaction. Nothing is deleted.
+ * There is no scheduler: a future effective date never disables access automatically.
+ */
+export interface EmploymentEndRequest {
+  expectedVersion: number;
+  effectiveDate: string;
+  reason: string;
+  disableAccess: boolean;
+}
+
+/**
+ * What happened to sign-in access: DISABLED now; ALREADY_INACTIVE; UNCHANGED (not requested);
+ * UNCHANGED_FUTURE_DATE (requested, but the end date is in the future: access stays enabled
+ * until someone disables it — nothing does this automatically).
+ */
+export type EmploymentEndAccess =
+  'DISABLED' | 'ALREADY_INACTIVE' | 'UNCHANGED' | 'UNCHANGED_FUTURE_DATE';
+
+export interface EmploymentEndResponse {
+  employee: EmployeeResponse;
+  employment: EmploymentResponse;
+  access: EmploymentEndAccess;
+}
+
 export interface EmployeeSetupIssueRequest {
   expectedVersion: number;
   reason: string;

@@ -88,7 +88,7 @@ test(
               resolveForMutation: (token: string) => sessions.resolveForMutation(token, tx),
             };
             const throttle = new AuthThrottleService(environment);
-            const employees = new EmployeeService(environment, runner, throttle);
+            const employees = new EmployeeService(environment, runner, throttle, passwords);
             const directory = new EmployeeDirectoryService(runner, throttle);
             await syncPermissionCatalog(tx);
             const permissions = new Map(

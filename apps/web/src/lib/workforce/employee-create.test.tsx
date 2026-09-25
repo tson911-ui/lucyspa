@@ -210,11 +210,17 @@ test('7–8, 13. the request: start date, branches, no salary or account fields'
     />,
     owner,
   );
-  assert.doesNotMatch(markup, /type="password"|mật khẩu/i);
+  // Sign-in access is opt-in: no password field until "set up login access now" is chosen.
+  assert.doesNotMatch(markup, /type="password"/);
   assert.doesNotMatch(markup, /baseSalary|lương cơ bản/i, 'no salary field');
   assert.ok(markup.includes(vi.employees.create.accountNote));
+  const optional = [
+    vi.employees.create.fields.employmentReason,
+    vi.employees.create.fields.initialPassword,
+    vi.employees.create.fields.confirmPassword,
+  ];
   for (const label of Object.values(vi.employees.create.fields).filter(
-    (label) => label !== vi.employees.create.fields.employmentReason,
+    (label) => !optional.includes(label),
   )) {
     assert.ok(markup.includes(label), label);
   }

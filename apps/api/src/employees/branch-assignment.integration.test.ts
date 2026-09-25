@@ -87,6 +87,7 @@ test(
               environment,
               runner,
               new AuthThrottleService(environment),
+              new PasswordService(),
             );
             await syncPermissionCatalog(tx);
             const permissions = new Map(

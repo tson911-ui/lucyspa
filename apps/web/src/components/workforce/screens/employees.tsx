@@ -238,11 +238,16 @@ export function CreatedNotice({ employee, classification }: CreatedMember) {
   return (
     <Notice tone="success">
       <p>
-        {fill(t.employees.create.created, {
-          name: employee.fullName,
-          code: employee.employeeId,
-          classification: classificationText(classification, t),
-        })}
+        {fill(
+          employee.status === 'ACTIVE'
+            ? t.employees.create.createdWithAccess
+            : t.employees.create.created,
+          {
+            name: employee.fullName,
+            code: employee.employeeId,
+            classification: classificationText(classification, t),
+          },
+        )}
       </p>
       <Link href={`${base}/employees/${employee.id}`}>{t.employees.create.viewCreated}</Link>
     </Notice>

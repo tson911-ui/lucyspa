@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type {
+  EmployeeCredentialsRequest,
+  EmploymentEndAccess,
+  EmploymentEndRequest,
+  EmploymentEndResponse,
   EmploymentClassificationChangeRequest,
   EmploymentResponse,
   EmployeeBaseSalaryRequest,
@@ -22,6 +26,11 @@ import { AuthError } from '../auth/auth.error.js';
 import { text } from '../auth/registration.js';
 import { generateCapability, identityDigest } from '../auth/crypto.js';
 import { flowTokenDigest, OTP_POLICY } from '../auth/otp-flow.js';
+import {
+  PasswordPolicyError,
+  PasswordService,
+  validatePasswordForSetting,
+} from '../auth/password.service.js';
 import { hasFreshReauthentication } from '../auth/session.policy.js';
 import { SessionService } from '../auth/session.service.js';
 import {
@@ -142,19 +151,34 @@ export class EmployeeService {
       'withTransaction' | 'withExclusiveTransaction' | 'resolveForMutation'
     >,
     @Inject(AuthThrottleService) private readonly throttle: Pick<AuthThrottleService, 'now'>,
+    @Inject(PasswordService) private readonly passwords: Pick<PasswordService, 'hashForSetting'>,
   ) {}
 
-  /** Creates only PENDING_SETUP with explicit branch membership; no credential, no grant. */
+  /**
+   * Creates an employee with explicit branch membership and no grant. Without
+   * `initialPassword` the account is PENDING_SETUP. With it (Owner/manager-provisioned
+   * workforce access) the account is created ACTIVE in the same transaction; that needs
+   * MANAGE_EMPLOYEE_ACCESS at every branch and a fresh reauthentication of the creator.
+   */
   async create(
     sessionToken: string | undefined,
     input: EmployeeCreateRequest,
     requestId?: string,
   ): Promise<EmployeeResponse> {
     const candidate = normalizeEmployee(input);
+    const passwordHash =
+      input.initialPassword === undefined
+        ? null
+        : await this.preparePassword(sessionToken, input.initialPassword, 'initialPassword');
     // Membership is part of the security graph: exclusive lock.
     return this.command(sessionToken, null, true, requestId, async (context) => {
       const { tx, now, actor } = context;
       this.require(actor, 'CREATE_EMPLOYEES', candidate.branchIds);
+      if (passwordHash !== null) {
+        // Provisioning sign-in is an access decision, exactly as for later credential changes.
+        this.requireFresh(actor, now);
+        this.require(actor, 'MANAGE_EMPLOYEE_ACCESS', candidate.branchIds);
+      }
       if (candidate.baseSalaryVnd !== null) {
         this.require(actor, 'MANAGE_EMPLOYEE_PAY', candidate.branchIds);
       }
@@ -174,7 +198,7 @@ export class EmployeeService {
         data: {
           id,
           kind: 'EMPLOYEE',
-          status: 'PENDING_SETUP',
+          status: passwordHash === null ? 'PENDING_SETUP' : 'ACTIVE',
           fullName: candidate.fullName,
           preferredLocale: candidate.locale,
           emailCanonical: candidate.emailCanonical,
@@ -183,7 +207,7 @@ export class EmployeeService {
           emailVerifiedAt: null,
           phoneCanonical: candidate.phoneCanonical,
           normalizationVersion: candidate.normalizationVersion,
-          passwordHash: null,
+          passwordHash,
           employeeProfile: {
             create: {
               employeeCodeCanonical: candidate.employeeCodeCanonical,
@@ -219,12 +243,18 @@ export class EmployeeService {
       }
       await this.audit(context, id, candidate.branchIds, 'EMPLOYEE_CREATED', {
         after: {
-          status: 'PENDING_SETUP',
+          status: passwordHash === null ? 'PENDING_SETUP' : 'ACTIVE',
           employeeId: candidate.employeeCodeCanonical,
           branchIds: candidate.branchIds,
           recoveryEmailSupplied: candidate.emailCanonical !== null,
         },
       });
+      if (passwordHash !== null) {
+        // Never any password material: only the fact, the method and the version.
+        await this.audit(context, id, candidate.branchIds, 'ACCESS_PASSWORD_SET', {
+          after: { status: 'ACTIVE', credentialVersion: 1, method: 'INITIAL_PROVISIONING' },
+        });
+      }
       await this.audit(context, id, candidate.branchIds, 'EMPLOYMENT_CLASSIFICATION_RECORDED', {
         ...(candidate.employmentReason ? { reason: candidate.employmentReason } : {}),
         after: {
@@ -288,50 +318,122 @@ export class EmployeeService {
     const effectiveDate = parseEmploymentDate(input.effectiveDate, 'effectiveDate');
     const reason = text(input.reason, 'reason', EMPLOYMENT_REASON_MAX_CODE_POINTS);
     return this.command(sessionToken, targetId, false, requestId, async (context) => {
-      const { tx, actor, target, branchIds, now } = context;
+      const { tx, actor, target, branchIds } = context;
       this.forbidSelf(actor, target);
-      this.require(actor, 'MANAGE_EMPLOYEE_PAY', branchIds);
       this.expectVersion(target, input.expectedVersion);
-      const latest = await tx.employmentClassificationChange.findFirst({
-        where: { employeeUserId: target.id },
-        orderBy: { effectiveDate: 'desc' },
-        select: classificationSelect,
-      });
-      if (!latest || !transitionAllowed(latest.classification, input.classification)) {
-        throw new AuthError('CONFLICT', 'classification');
-      }
-      if (effectiveDate <= latest.effectiveDate) {
-        throw new AuthError('VALIDATION_FAILED', 'effectiveDate');
-      }
-      const today = await businessToday(tx, branchIds);
-      const backdated = effectiveDate < today;
-      if (backdated && !actor.owner) throw new AuthError('FORBIDDEN');
-      await tx.employmentClassificationChange.create({
-        data: {
-          employeeUserId: target.id,
-          classification: input.classification,
-          effectiveDate,
-          reason,
-          recordedByUserId: actor.userId,
-          recordedAt: now,
-        },
-        select: { id: true },
-      });
-      await tx.user.update({
-        where: { id: target.id },
-        data: { rowVersion: { increment: 1 } },
-        select: { id: true },
-      });
-      await this.audit(context, target.id, branchIds, 'EMPLOYMENT_CLASSIFICATION_CHANGED', {
-        reason,
-        before: { classification: latest.classification, effectiveDate: day(latest.effectiveDate) },
-        after: {
-          classification: input.classification,
-          effectiveDate: day(effectiveDate),
-          backdated,
-        },
-      });
+      await this.appendClassification(context, input.classification, effectiveDate, reason);
       return this.presentEmployment(tx, await this.load(tx, target.id), branchIds, null);
+    });
+  }
+
+  /**
+   * Sets or replaces the employee's workforce password (Owner/manager-managed; no employee
+   * OTP). Rules as for setup issuance: never oneself unless Owner, fresh reauthentication,
+   * MANAGE_EMPLOYEE_ACCESS at every branch, containment (no takeover of a more powerful
+   * colleague). Refused for INACTIVE accounts and for ENDED employment (no rehire through
+   * access management). The account becomes ACTIVE, the credential version increments,
+   * open setup/reset/recovery flows end and every session of the employee is revoked.
+   */
+  async setCredentials(
+    sessionToken: string | undefined,
+    targetId: string,
+    input: EmployeeCredentialsRequest,
+    requestId?: string,
+  ): Promise<EmployeeResponse> {
+    const reason = normalizeReason(input.reason);
+    const passwordHash = await this.preparePassword(sessionToken, input.newPassword, 'newPassword');
+    return this.command(sessionToken, targetId, false, requestId, async (context) => {
+      const { tx, now, actor, target, branchIds } = context;
+      this.forbidSelf(actor, target);
+      this.requireFresh(actor, now);
+      this.require(actor, 'MANAGE_EMPLOYEE_ACCESS', branchIds);
+      this.expectVersion(target, input.expectedVersion);
+      if (target.status === 'INACTIVE') throw new AuthError('CONFLICT', 'status');
+      await this.requireNotEnded(tx, target.id, branchIds);
+      await this.requireContainment(tx, actor, target.id);
+      const credentialVersion = target.credentialVersion + 1;
+      const changed = await tx.user.updateMany({
+        where: { id: target.id, credentialVersion: target.credentialVersion },
+        data: {
+          status: 'ACTIVE',
+          passwordHash,
+          credentialVersion,
+          rowVersion: { increment: 1 },
+        },
+      });
+      if (changed.count !== 1) throw new AuthError('CONFLICT');
+      await this.retireFlows(tx, target.id, CREDENTIAL_FLOWS, now);
+      const revoked = (
+        await tx.session.updateMany({
+          where: { userId: target.id, revokedAt: null },
+          data: { revokedAt: now },
+        })
+      ).count;
+      await this.audit(context, target.id, branchIds, 'ACCESS_PASSWORD_SET', {
+        reason,
+        before: { status: target.status, credentialVersion: target.credentialVersion },
+        after: {
+          status: 'ACTIVE',
+          credentialVersion,
+          method: 'MANAGER_SET',
+          replacedExisting: target.passwordHash !== null,
+        },
+      });
+      await this.revokedAudit(context, target.id, branchIds, revoked, 'ACCESS_PASSWORD_SET');
+      return this.present(actor, await this.load(tx, target.id));
+    });
+  }
+
+  /**
+   * "Kết thúc làm việc": appends ENDED (Step 1 rules: MANAGE_EMPLOYEE_PAY, later than the
+   * latest change, backdating Owner-only) and, when `disableAccess` is set and the end date
+   * is today or earlier, makes the account INACTIVE in the same transaction
+   * (MANAGE_EMPLOYEE_STATUS; sessions revoked, credential flows retired). A future end date
+   * never disables access now and nothing disables it later automatically (no scheduler);
+   * the response says so. Nothing is deleted.
+   */
+  async endEmployment(
+    sessionToken: string | undefined,
+    targetId: string,
+    input: EmploymentEndRequest,
+    requestId?: string,
+  ): Promise<EmploymentEndResponse> {
+    const effectiveDate = parseEmploymentDate(input.effectiveDate, 'effectiveDate');
+    const reason = text(input.reason, 'reason', EMPLOYMENT_REASON_MAX_CODE_POINTS);
+    if (typeof input.disableAccess !== 'boolean') {
+      throw new AuthError('VALIDATION_FAILED', 'disableAccess');
+    }
+    return this.command(sessionToken, targetId, false, requestId, async (context) => {
+      const { tx, actor, target, branchIds } = context;
+      this.forbidSelf(actor, target);
+      this.expectVersion(target, input.expectedVersion);
+      const today = await businessToday(tx, branchIds);
+      const disableNow = input.disableAccess && effectiveDate <= today;
+      if (disableNow && target.status !== 'INACTIVE') {
+        this.require(actor, 'MANAGE_EMPLOYEE_STATUS', branchIds);
+      }
+      await this.appendClassification(context, 'ENDED', effectiveDate, reason);
+      let access: EmploymentEndAccess = 'UNCHANGED';
+      if (input.disableAccess && !disableNow) access = 'UNCHANGED_FUTURE_DATE';
+      else if (disableNow && target.status === 'INACTIVE') access = 'ALREADY_INACTIVE';
+      else if (disableNow) {
+        await this.inactivate(context, target, reason);
+        access = 'DISABLED';
+      }
+      await this.audit(context, target.id, branchIds, 'EMPLOYMENT_ENDED', {
+        reason,
+        after: {
+          effectiveDate: day(effectiveDate),
+          disableAccessRequested: input.disableAccess,
+          access,
+        },
+      });
+      const employee = await this.load(tx, target.id);
+      return {
+        employee: this.present(actor, employee),
+        employment: await this.presentEmployment(tx, employee, branchIds, null),
+        access,
+      };
     });
   }
 
@@ -399,27 +501,17 @@ export class EmployeeService {
   ): Promise<EmployeeResponse> {
     const reason = normalizeReason(input.reason);
     return this.command(sessionToken, targetId, false, requestId, async (context) => {
-      const { tx, now, actor, target, branchIds } = context;
+      const { tx, actor, target, branchIds } = context;
       this.forbidSelf(actor, target);
       this.require(actor, 'MANAGE_EMPLOYEE_STATUS', branchIds);
       this.expectVersion(target, input.expectedVersion);
       if (input.status === 'INACTIVE') {
         if (target.status === 'INACTIVE') throw new AuthError('CONFLICT');
-        await tx.user.update({
-          where: { id: target.id },
-          data: { status: 'INACTIVE', rowVersion: { increment: 1 } },
-          select: { id: true },
-        });
-        await this.retireFlows(tx, target.id, CREDENTIAL_FLOWS, now);
-        const revoked = await invalidateAuthorization(tx, [target.id], now);
-        await this.audit(context, target.id, branchIds, 'STATUS_CHANGED', {
-          reason,
-          before: { status: target.status },
-          after: { status: 'INACTIVE' },
-        });
-        await this.revokedAudit(context, target.id, branchIds, revoked, 'EMPLOYEE_INACTIVATED');
+        await this.inactivate(context, target, reason);
       } else {
         if (target.status !== 'INACTIVE') throw new AuthError('CONFLICT');
+        // Reactivation after ENDED employment would be a rehire, which is not supported.
+        await this.requireNotEnded(tx, target.id, branchIds);
         await this.requireContainment(tx, actor, target.id);
         const status = target.passwordHash === null ? 'PENDING_SETUP' : 'ACTIVE';
         await tx.user.update({
@@ -675,12 +767,11 @@ export class EmployeeService {
     return this.command(sessionToken, targetId, false, requestId, async (context) => {
       const { tx, now, actor, target, branchIds } = context;
       this.forbidSelf(actor, target);
-      if (!hasFreshReauthentication(actor.principal, now, this.environment.auth.freshAuthSeconds)) {
-        throw new AuthError('REAUTHENTICATION_REQUIRED');
-      }
+      this.requireFresh(actor, now);
       this.require(actor, 'MANAGE_EMPLOYEE_ACCESS', branchIds);
       this.expectVersion(target, input.expectedVersion);
       if (target.status === 'INACTIVE') throw new AuthError('CONFLICT');
+      await this.requireNotEnded(tx, target.id, branchIds);
       await this.requireContainment(tx, actor, target.id);
       const reissue = target.status === 'ACTIVE';
       const credentialVersion = reissue ? target.credentialVersion + 1 : target.credentialVersion;
@@ -787,6 +878,120 @@ export class EmployeeService {
   /** Every affected branch must pass; no branch requires GLOBAL authority. */
   private require(actor: Actor, permission: string, branchIds: readonly string[]): void {
     requireAcross(actor, permission, branchIds);
+  }
+
+  /**
+   * Appends one classification change under the Step 1 rules (see `changeClassification`).
+   * The caller has already checked self-targeting and the expected version.
+   */
+  private async appendClassification(
+    context: TargetContext,
+    classification: 'OFFICIAL_EMPLOYEE' | 'ENDED',
+    effectiveDate: Date,
+    reason: string,
+  ): Promise<void> {
+    const { tx, actor, target, branchIds, now } = context;
+    this.require(actor, 'MANAGE_EMPLOYEE_PAY', branchIds);
+    const latest = await tx.employmentClassificationChange.findFirst({
+      where: { employeeUserId: target.id },
+      orderBy: { effectiveDate: 'desc' },
+      select: classificationSelect,
+    });
+    if (!latest || !transitionAllowed(latest.classification, classification)) {
+      throw new AuthError('CONFLICT', 'classification');
+    }
+    if (effectiveDate <= latest.effectiveDate) {
+      throw new AuthError('VALIDATION_FAILED', 'effectiveDate');
+    }
+    const today = await businessToday(tx, branchIds);
+    const backdated = effectiveDate < today;
+    if (backdated && !actor.owner) throw new AuthError('FORBIDDEN');
+    await tx.employmentClassificationChange.create({
+      data: {
+        employeeUserId: target.id,
+        classification,
+        effectiveDate,
+        reason,
+        recordedByUserId: actor.userId,
+        recordedAt: now,
+      },
+      select: { id: true },
+    });
+    await tx.user.update({
+      where: { id: target.id },
+      data: { rowVersion: { increment: 1 } },
+      select: { id: true },
+    });
+    await this.audit(context, target.id, branchIds, 'EMPLOYMENT_CLASSIFICATION_CHANGED', {
+      reason,
+      before: { classification: latest.classification, effectiveDate: day(latest.effectiveDate) },
+      after: { classification, effectiveDate: day(effectiveDate), backdated },
+    });
+  }
+
+  /** ACTIVE/PENDING_SETUP to INACTIVE: flows retired, authorization invalidated, audited. */
+  private async inactivate(
+    context: TargetContext,
+    target: EmployeeRecord,
+    reason: string,
+  ): Promise<void> {
+    const { tx, now, branchIds } = context;
+    await tx.user.update({
+      where: { id: target.id },
+      data: { status: 'INACTIVE', rowVersion: { increment: 1 } },
+      select: { id: true },
+    });
+    await this.retireFlows(tx, target.id, CREDENTIAL_FLOWS, now);
+    const revoked = await invalidateAuthorization(tx, [target.id], now);
+    await this.audit(context, target.id, branchIds, 'STATUS_CHANGED', {
+      reason,
+      before: { status: target.status },
+      after: { status: 'INACTIVE' },
+    });
+    await this.revokedAudit(context, target.id, branchIds, revoked, 'EMPLOYEE_INACTIVATED');
+  }
+
+  /**
+   * Ended employment is final (no rehire): access cannot be re-enabled or re-provisioned
+   * once ENDED is in effect on today's business date. History is never rewritten.
+   */
+  private async requireNotEnded(
+    tx: Prisma.TransactionClient,
+    employeeUserId: string,
+    branchIds: readonly string[],
+  ): Promise<void> {
+    const today = await businessToday(tx, branchIds);
+    const current = await classificationOn(tx, employeeUserId, today);
+    if (current?.classification === 'ENDED') throw new AuthError('CONFLICT', 'employment');
+  }
+
+  private requireFresh(actor: Actor, now: Date): void {
+    if (!hasFreshReauthentication(actor.principal, now, this.environment.auth.freshAuthSeconds)) {
+      throw new AuthError('REAUTHENTICATION_REQUIRED');
+    }
+  }
+
+  /**
+   * Existing workforce password policy and Argon2id hashing, before any transaction (the
+   * expensive work never holds locks). Only callers with a session reach the hashing work.
+   */
+  private async preparePassword(
+    sessionToken: string | undefined,
+    value: string,
+    field: 'initialPassword' | 'newPassword',
+  ): Promise<string> {
+    if (sessionToken === undefined) throw new AuthError('AUTHENTICATION_REQUIRED');
+    try {
+      validatePasswordForSetting(value);
+    } catch (error) {
+      if (error instanceof PasswordPolicyError) throw new AuthError('VALIDATION_FAILED', field);
+      throw error;
+    }
+    try {
+      return await this.passwords.hashForSetting(value);
+    } catch {
+      throw new AuthError('SERVICE_UNAVAILABLE');
+    }
   }
 
   /** Non-Owners cannot change their own status, scope, pay or credentials. */

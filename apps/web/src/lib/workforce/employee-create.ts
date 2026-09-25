@@ -12,13 +12,15 @@ import type { Locale } from '../../i18n/locales';
 import { ApiError, type WorkforceApi } from './api';
 import { formatDate, todayIn } from './format';
 import { canAcross, canAnywhere, canAt, type Account } from './permissions';
+import { ReauthenticationCancelled } from './reauth';
 import { errorMessage } from './workflows';
 
 /**
  * "Add workforce member" (Employee management Step 2). Creates an EMPLOYEE through the
- * existing `POST /api/v1/employees` only: no password, setup token, role, permission,
- * skill or salary. The API stays authoritative; these helpers only decide what the form
- * offers and catch obviously incomplete input before a request is sent.
+ * existing `POST /api/v1/employees`, optionally with Owner/manager-set sign-in access (an
+ * initial password; the employee code is the login ID). Never a setup token, role,
+ * permission, skill or salary. The API stays authoritative; these helpers only decide what
+ * the form offers and catch obviously incomplete input before a request is sent.
  */
 
 /** The only classifications a new workforce member can start with. ENDED never is one. */
@@ -40,6 +42,10 @@ export interface CreateForm {
   employmentStartDate: string;
   employmentReason: string;
   branchIds: string[];
+  /** "Cấp tài khoản đăng nhập ngay": create the account ACTIVE with an initial password. */
+  provisionAccess: boolean;
+  initialPassword: string;
+  confirmPassword: string;
 }
 
 export function emptyCreateForm(locale: Locale, branchIds: string[] = []): CreateForm {
@@ -55,7 +61,33 @@ export function emptyCreateForm(locale: Locale, branchIds: string[] = []): Creat
     employmentStartDate: '',
     employmentReason: '',
     branchIds,
+    provisionAccess: false,
+    initialPassword: '',
+    confirmPassword: '',
   };
+}
+
+/** The existing workforce password policy's length bounds (the API also blocks common ones). */
+export const PASSWORD_LENGTH = { min: 15, max: 128 } as const;
+
+/** Code points after NFC normalization, as the API counts them. */
+export function passwordLength(value: string): number {
+  return [...value.normalize('NFC')].length;
+}
+
+/** The login ID is the employee code itself (the API upper-cases it). */
+export function loginIdPreview(employeeId: string): string {
+  return employeeId.trim().toUpperCase();
+}
+
+/**
+ * Sign-in access at creation needs MANAGE_EMPLOYEE_ACCESS in every selected branch (the API
+ * additionally requires a recent password confirmation of the creator).
+ */
+export function canProvisionAccess(account: Account, branchIds: readonly string[]): boolean {
+  return branchIds.length > 0
+    ? canAcross(account, 'MANAGE_EMPLOYEE_ACCESS', branchIds)
+    : canAnywhere(account, 'MANAGE_EMPLOYEE_ACCESS');
 }
 
 /** Whether to offer the "Add workforce member" action at all (CREATE_EMPLOYEES somewhere). */
@@ -126,13 +158,17 @@ export type CreateProblem =
   | 'official'
   | 'employmentStartDate'
   | 'employmentReason'
-  | 'branchIds';
+  | 'branchIds'
+  | 'access'
+  | 'initialPassword'
+  | 'confirmPassword';
 
 /** Missing or clearly invalid input, for immediate feedback. Formats stay server-owned. */
 export function createProblems(
   form: CreateForm,
   availability: OfficialAvailability,
   today: string,
+  accessAllowed = true,
 ): CreateProblem[] {
   const problems: CreateProblem[] = [];
   const blank = (value: string) => value.trim().length === 0;
@@ -151,6 +187,15 @@ export function createProblems(
     problems.push('employmentReason');
   }
   if (form.branchIds.length === 0) problems.push('branchIds');
+  if (form.provisionAccess) {
+    if (!accessAllowed) problems.push('access');
+    const length = passwordLength(form.initialPassword);
+    if (length < PASSWORD_LENGTH.min || length > PASSWORD_LENGTH.max) {
+      problems.push('initialPassword');
+    } else if (form.confirmPassword !== form.initialPassword) {
+      problems.push('confirmPassword');
+    }
+  }
   return problems;
 }
 
@@ -161,7 +206,8 @@ export function needsStartReason(form: CreateForm, today: string): boolean {
 
 /**
  * The exact request body: the fields of `EmployeeCreateRequest` the form collects, with an
- * explicit classification. No salary, password, role, permission or skill is ever sent.
+ * explicit classification, plus the initial password only when access is set up now (sent
+ * exactly as typed: the API normalizes it). No salary, role, permission or skill is sent.
  */
 export function toCreateRequest(form: CreateForm, today: string): EmployeeCreateRequest {
   if (form.classification !== 'TRAINEE' && form.classification !== 'OFFICIAL_EMPLOYEE') {
@@ -181,10 +227,11 @@ export function toCreateRequest(form: CreateForm, today: string): EmployeeCreate
     classification: form.classification,
     employmentStartDate: form.employmentStartDate,
     ...(needsStartReason(form, today) && reason.length > 0 ? { employmentReason: reason } : {}),
+    ...(form.provisionAccess ? { initialPassword: form.initialPassword } : {}),
   };
 }
 
-/** The single create command. Account provisioning is a separate, later step. */
+/** The single create command (employee, classification, branches and optional access). */
 export function createEmployee(
   api: WorkforceApi,
   request: EmployeeCreateRequest,
@@ -224,16 +271,21 @@ const FIELD_OF: Record<string, FieldLabelKey> = {
   classification: 'classification',
   employmentStartDate: 'employmentStartDate',
   employmentReason: 'employmentReason',
+  initialPassword: 'initialPassword',
 };
 
 /** Localized create failures: duplicates and invalid fields name the field in plain words. */
 export function createErrorMessage(error: unknown, t: WorkforceDictionary): string {
   const texts = t.employees.create;
+  if (error instanceof ReauthenticationCancelled) return t.reauth.cancelled;
   if (error instanceof ApiError) {
     const field = error.field ? FIELD_OF[error.field] : undefined;
     if (error.code === 'CONFLICT' && field === 'employeeId') return texts.duplicateEmployeeId;
     if (error.code === 'CONFLICT' && field === 'phone') return texts.duplicatePhone;
     if (error.code === 'CONFLICT' && field === 'email') return texts.duplicateEmail;
+    if (error.code === 'VALIDATION_FAILED' && field === 'initialPassword') {
+      return texts.passwordRejected;
+    }
     if (error.code === 'VALIDATION_FAILED' && field) {
       return fill(texts.invalidField, { field: texts.fields[field] });
     }

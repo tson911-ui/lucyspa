@@ -1,4 +1,7 @@
 import type {
+  EmployeeCredentialsRequest,
+  EmploymentEndRequest,
+  EmploymentEndResponse,
   EmploymentClassificationChangeRequest,
   EmploymentResponse,
   InitialEmploymentClassification,
@@ -31,6 +34,7 @@ import { ApiCreatedResponse, ApiOkResponse, ApiProperty } from '@nestjs/swagger'
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsOptional,
@@ -94,6 +98,14 @@ class EmployeeCreateDto implements EmployeeCreateRequest {
   @IsString()
   @MaxLength(2_048)
   employmentReason?: string;
+  @ApiProperty({
+    required: false,
+    description: 'Initial workforce password (15–128 characters); account created ACTIVE.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1_024)
+  initialPassword?: string;
 }
 
 class ClassificationChangeDto implements EmploymentClassificationChangeRequest {
@@ -161,6 +173,23 @@ class EmployeeBaseSalaryDto extends ReasonedDto implements EmployeeBaseSalaryReq
 
 class EmployeeSetupIssueDto extends ReasonedDto implements EmployeeSetupIssueRequest {}
 
+class EmployeeCredentialsDto extends ReasonedDto implements EmployeeCredentialsRequest {
+  @ApiProperty({ description: 'New workforce password (15–128 characters).' })
+  @IsString()
+  @MaxLength(1_024)
+  newPassword!: string;
+}
+
+class EmploymentEndDto extends ReasonedDto implements EmploymentEndRequest {
+  @ApiProperty({ description: 'Last classification effective date YYYY-MM-DD (ENDED from).' })
+  @IsString()
+  @Matches(DATE)
+  effectiveDate!: string;
+  @ApiProperty({ description: 'Disable sign-in now when the end date is today or earlier.' })
+  @IsBoolean()
+  disableAccess!: boolean;
+}
+
 /**
  * Workforce employee administration. The global guard enforces JSON, exact Origin and
  * the session-bound CSRF token on every command; the session cookie identifies the actor.
@@ -175,7 +204,9 @@ export class EmployeeController {
 
   @Post()
   @HttpCode(201)
-  @ApiCreatedResponse({ description: 'PENDING_SETUP employee; issue setup separately.' })
+  @ApiCreatedResponse({
+    description: 'PENDING_SETUP employee, or ACTIVE when initialPassword is provided.',
+  })
   create(
     @Body() body: EmployeeCreateDto,
     @Req() request: Request,
@@ -332,6 +363,37 @@ export class EmployeeController {
     );
     response.setHeader('Cache-Control', 'no-store');
     return issued;
+  }
+
+  /** Owner/manager-set workforce password (provision or reset). Never echoed or logged. */
+  @Post(':id/credentials')
+  @HttpCode(200)
+  async setCredentials(
+    @Param('id') id: string,
+    @Body() body: EmployeeCredentialsDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<EmployeeResponse> {
+    const employee = await this.employees.setCredentials(
+      this.session(request),
+      id,
+      body,
+      requestId(response),
+    );
+    response.setHeader('Cache-Control', 'no-store');
+    return employee;
+  }
+
+  /** "Kết thúc làm việc": ENDED classification and, when requested and due, no sign-in. */
+  @Post(':id/end-employment')
+  @HttpCode(200)
+  endEmployment(
+    @Param('id') id: string,
+    @Body() body: EmploymentEndDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<EmploymentEndResponse> {
+    return this.employees.endEmployment(this.session(request), id, body, requestId(response));
   }
 
   private session(request: Request): string | undefined {

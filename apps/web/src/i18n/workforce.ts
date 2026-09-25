@@ -294,6 +294,15 @@ const vi = {
     nameEn: 'Tên tiếng Anh',
     created: 'Đã tạo kỹ năng.',
   },
+  reauth: {
+    title: 'Xác nhận lại mật khẩu của bạn',
+    body: 'Thao tác này thay đổi quyền đăng nhập của nhân sự. Hãy nhập mật khẩu của chính bạn (tài khoản đang đăng nhập) để tiếp tục — không phải mật khẩu của nhân viên.',
+    password: 'Mật khẩu của bạn',
+    confirm: 'Xác nhận',
+    confirming: 'Đang xác nhận…',
+    wrongPassword: 'Mật khẩu không đúng. Vui lòng thử lại.',
+    cancelled: 'Bạn đã hủy xác nhận mật khẩu nên chưa có gì được lưu.',
+  },
   employees: {
     title: 'Nhân viên',
     search: 'Tìm theo mã hoặc tên',
@@ -347,7 +356,24 @@ const vi = {
         classification: 'Phân loại nhân sự',
         employmentStartDate: 'Ngày bắt đầu',
         employmentReason: 'Lý do ghi nhận ngày bắt đầu trong quá khứ',
+        access: 'Tài khoản đăng nhập',
+        initialPassword: 'Mật khẩu ban đầu',
+        confirmPassword: 'Nhập lại mật khẩu',
       },
+      accessSection: 'Tài khoản đăng nhập',
+      provisionAccess: 'Cấp tài khoản đăng nhập ngay',
+      provisionHint:
+        'Nhân sự đăng nhập bằng mã nhân viên và mật khẩu bạn đặt — không cần email hay mã OTP.',
+      loginId: 'Mã đăng nhập',
+      loginIdPending: 'Nhập mã nhân viên ở trên — đó cũng là mã đăng nhập.',
+      passwordHint:
+        'Ít nhất 15 ký tự. Có thể dùng một cụm từ dễ nhớ, ví dụ “hoa sen xanh buổi sáng”.',
+      accessNotAllowed:
+        'Bạn không có quyền cấp tài khoản đăng nhập ở mọi chi nhánh đã chọn. Bạn vẫn có thể tạo nhân sự và cấp tài khoản sau.',
+      passwordRejected:
+        'Mật khẩu ban đầu chưa đạt yêu cầu: 15–128 ký tự và không phải mật khẩu quá phổ biến.',
+      createdWithAccess:
+        'Đã tạo nhân sự {name} ({code}) — {classification}. Nhân sự có thể đăng nhập ngay bằng mã nhân viên {code} và mật khẩu đã đặt.',
       employeeIdHint: 'Chữ không dấu, số, “-” hoặc “_”; tối đa 64 ký tự.',
       phoneHint: 'Ví dụ: 0905 123 456',
       emailHint: 'Không bắt buộc.',
@@ -363,7 +389,7 @@ const vi = {
       branchesHint: 'Chọn ít nhất một chi nhánh mà bạn được phép thêm nhân sự.',
       noBranches: 'Bạn chưa được phép thêm nhân sự ở chi nhánh nào đang hoạt động.',
       accountNote:
-        'Tạo nhân sự chưa cấp quyền đăng nhập. Nhân sự mới ở trạng thái “Chờ thiết lập” cho đến khi tài khoản được cấp ở bước sau.',
+        'Không cấp tài khoản ngay: nhân sự ở trạng thái “Chờ thiết lập” và chưa thể đăng nhập cho đến khi được cấp tài khoản.',
       submit: 'Tạo nhân sự',
       submitting: 'Đang tạo…',
       missing: 'Vui lòng kiểm tra: {fields}.',
@@ -375,7 +401,7 @@ const vi = {
       duplicateEmail: 'Email này đã được dùng cho một tài khoản khác.',
       invalidField: '“{field}” chưa hợp lệ. Vui lòng kiểm tra lại.',
       forbidden:
-        'Bạn không có quyền tạo nhân sự này. Hãy kiểm tra chi nhánh đã chọn và quyền tạo nhân viên chính thức.',
+        'Bạn không có quyền tạo nhân sự này. Hãy kiểm tra chi nhánh đã chọn, quyền tạo nhân viên chính thức và quyền cấp tài khoản đăng nhập.',
     },
   },
 };
@@ -661,6 +687,15 @@ const en: Dictionary = {
     nameEn: 'English name',
     created: 'Skill created.',
   },
+  reauth: {
+    title: 'Confirm your password',
+    body: "This action changes a workforce member's sign-in access. Enter your own password (the account signed in now) to continue — not the employee's password.",
+    password: 'Your password',
+    confirm: 'Confirm',
+    confirming: 'Confirming…',
+    wrongPassword: 'Incorrect password. Please try again.',
+    cancelled: 'Password confirmation was cancelled, so nothing was saved.',
+  },
   employees: {
     title: 'Employees',
     search: 'Search by ID or name',
@@ -714,7 +749,23 @@ const en: Dictionary = {
         classification: 'Classification',
         employmentStartDate: 'Start date',
         employmentReason: 'Reason for a past start date',
+        access: 'Sign-in access',
+        initialPassword: 'Initial password',
+        confirmPassword: 'Confirm password',
       },
+      accessSection: 'Sign-in access',
+      provisionAccess: 'Set up login access now',
+      provisionHint:
+        'The member signs in with their employee ID and the password you set — no email or OTP needed.',
+      loginId: 'Login ID',
+      loginIdPending: 'Enter the employee ID above — it is also the login ID.',
+      passwordHint: 'At least 15 characters. A memorable phrase works, e.g. “blue lotus morning”.',
+      accessNotAllowed:
+        'You may not set up sign-in access in every selected branch. You can still create the member and set up access later.',
+      passwordRejected:
+        'The initial password does not meet the policy: 15–128 characters and not a common password.',
+      createdWithAccess:
+        'Created {name} ({code}) — {classification}. They can sign in now with employee ID {code} and the password you set.',
       employeeIdHint: 'Letters, digits, “-” or “_”; up to 64 characters.',
       phoneHint: 'For example: 0905 123 456',
       emailHint: 'Optional.',
@@ -729,7 +780,7 @@ const en: Dictionary = {
       branchesHint: 'Choose at least one branch where you may add workforce members.',
       noBranches: 'You may not add workforce members in any active branch.',
       accountNote:
-        'Creating a workforce member does not grant sign-in. The new member stays “Pending setup” until their account is provisioned in a later step.',
+        'Without login access now, the member stays “Pending setup” and cannot sign in until access is set up.',
       submit: 'Create workforce member',
       submitting: 'Creating…',
       missing: 'Please check: {fields}.',
@@ -741,7 +792,7 @@ const en: Dictionary = {
       duplicateEmail: 'This email is already used by another account.',
       invalidField: '“{field}” is not valid. Please check it.',
       forbidden:
-        'You are not allowed to create this workforce member. Check the selected branches and the official-employee permission.',
+        'You are not allowed to create this workforce member. Check the selected branches, the official-employee permission and the sign-in access permission.',
     },
   },
 };
