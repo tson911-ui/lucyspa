@@ -458,6 +458,30 @@ manually by the Owner/operator; see the
   - **Tests:** catalog integration 8/8, delete HTTP 1/1, web 37/37. No migration; no
     production data is deleted automatically.
 
+- **Employee management Step 3: employee detail and lifecycle UI** (`feat: add employee
+detail lifecycle UI`; local commit on top of `9adfb14`; not pushed, not deployed; web
+  only, no API or migration change). See the
+  [Step 3 report](docs/EMPLOYEE_MANAGEMENT_STEP3_EMPLOYEE_DETAIL.md).
+  - **The detail page shows:** header badges for classification and account status
+    (separately); the profile with the employee code as read-only login ID; editing of
+    full name, date of birth, address and language only (the existing command);
+    classification, effective date and history; the sign-in account; branch assignments
+    and skills (both unchanged).
+  - **Actions**, each using the existing command and the all-branch permission hints:
+    - "Chuyển thành nhân viên chính thức" (TRAINEE only; changes the classification only,
+      asserted in integration);
+    - "Kết thúc làm việc", which states the access outcome before confirming. For a
+      future date it says access is NOT auto-disabled (no scheduler);
+    - "Đặt lại mật khẩu" / "Cấp mật khẩu đăng nhập", with the password-confirmation
+      dialog;
+    - "Vô hiệu hóa / Kích hoạt lại đăng nhập".
+  - **ENDED in effect:** no promotion, ending, reset or re-enable controls.
+  - **Tests:** web 63/63 (8 new detail tests), employment integration 11/11 (promotion
+    isolation), branch-assignment 5/5, workforce-account 11/11, employee 10/10. Customer
+    auth unchanged: registration 7/7, login 4/4, reset 5/5, HTTP 12/12.
+  - **Employee management is not complete.** Next is the role assignment UI; the skill UI
+    comes after.
+
 - **Employee management: workforce accounts, Owner/manager-managed credentials**
   (`feat: add owner-managed workforce credentials`; local commit on top of `7a516ed`, not
   pushed, not deployed, no migration). See the

@@ -5,12 +5,14 @@ import type {
   EmployeeBranchAssignmentsResponse,
   EmployeeResponse,
   EmployeeSkillsResponse,
+  EmploymentResponse,
   SkillListResponse,
 } from '@lucy-spa/contracts';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { formatDateTime } from '../../../lib/workforce/format';
 import { canAcross, canAnywhere } from '../../../lib/workforce/permissions';
+import { detailActions } from '../../../lib/workforce/employee-detail';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { branchLabel, useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
@@ -29,10 +31,19 @@ import {
   useSubmit,
 } from '../ui';
 import { EMPLOYEE_STATUS_TONE } from './employees';
+import {
+  AccessSection,
+  ClassificationBadge,
+  EmploymentSection,
+  ProfileSection,
+} from './employee-lifecycle';
 
 /**
- * The Phase 2 operational view of one employee: skills and branch assignments. Only the
- * directory fields are shown (no contact, pay or birth-date data). No HR features.
+ * One workforce member (Employee management Step 3): profile, employment classification
+ * (history, promotion, ending), sign-in account (password reset, status), branch
+ * assignments and — unchanged from Phase 2 — skills. Account status and employment
+ * classification are shown separately. Actions are offered from the `/auth/me` hints; the
+ * API authorizes every command.
  */
 export function EmployeeDetailScreen({ id }: { id: string }) {
   const { api, t, base } = useWorkforce();
@@ -40,7 +51,14 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
     () => api.get<EmployeeResponse>(`/api/v1/employees/${id}`),
     [api, id],
   );
+  const employment = useResource(
+    () => api.get<EmploymentResponse>(`/api/v1/employees/${id}/employment`),
+    [api, id],
+  );
   const branches = useBranches(api);
+  const reloadAll = async () => {
+    await Promise.all([employee.reload(), employment.reload()]);
+  };
 
   return (
     <>
@@ -52,20 +70,73 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
         <ErrorState error={employee.error} t={t} onRetry={() => void employee.reload()} />
       ) : null}
       {employee.data ? (
-        <>
-          <PageHeader title={employee.data.fullName} intro={employee.data.employeeId}>
-            <Badge tone={EMPLOYEE_STATUS_TONE[employee.data.status]}>
-              {t.employees.statuses[employee.data.status]}
-            </Badge>
-          </PageHeader>
-          <EmployeeSkills employee={employee.data} />
-          <BranchAssignments
-            employee={employee.data}
-            branches={branches.data}
-            reloadEmployee={employee.reload}
-          />
-        </>
+        <EmployeeDetail
+          employee={employee.data}
+          employment={employment.data}
+          employmentError={employment.error}
+          branches={branches.data}
+          reloadAll={reloadAll}
+          reloadEmployment={employment.reload}
+        />
       ) : null}
+    </>
+  );
+}
+
+/** The loaded detail: header, lifecycle sections, branch assignments and skills. */
+export function EmployeeDetail({
+  employee,
+  employment,
+  employmentError,
+  branches,
+  reloadAll,
+  reloadEmployment,
+}: {
+  employee: EmployeeResponse;
+  employment: EmploymentResponse | null;
+  employmentError: unknown;
+  branches: Map<string, BranchSummary> | null;
+  reloadAll: () => Promise<void>;
+  reloadEmployment: () => Promise<void>;
+}) {
+  const { t } = useWorkforce();
+  const { account } = useAccount();
+  const actions = detailActions(account, employee, employment);
+  const timeZone =
+    (employee.branchIds[0] && branches?.get(employee.branchIds[0])?.timezone) || 'UTC';
+  return (
+    <>
+      <PageHeader title={employee.fullName} intro={employee.employeeId}>
+        <span className="wf-header-badges">
+          <span className="wf-muted wf-small">{t.employees.classification}:</span>
+          <ClassificationBadge employment={employment} />
+          <span className="wf-muted wf-small">{t.employees.detail.accountStatus}:</span>
+          <Badge tone={EMPLOYEE_STATUS_TONE[employee.status]}>
+            {t.employees.statuses[employee.status]}
+          </Badge>
+        </span>
+      </PageHeader>
+      <ProfileSection employee={employee} actions={actions} onChanged={reloadAll} />
+      {employmentError ? (
+        <ErrorState error={employmentError} t={t} onRetry={() => void reloadEmployment()} />
+      ) : null}
+      {employment ? (
+        <EmploymentSection
+          employee={employee}
+          employment={employment}
+          actions={actions}
+          timeZone={timeZone}
+          onChanged={reloadAll}
+        />
+      ) : null}
+      <AccessSection
+        employee={employee}
+        employment={employment}
+        actions={actions}
+        onChanged={reloadAll}
+      />
+      <BranchAssignments employee={employee} branches={branches} reloadEmployee={reloadAll} />
+      <EmployeeSkills employee={employee} />
     </>
   );
 }

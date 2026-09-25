@@ -376,6 +376,28 @@ test(
                   ),
                 ).id;
                 const [initial] = await rows(trainee);
+                // Everything except the classification history, before the promotion.
+                const unrelated = async () => ({
+                  user: await tx.user.findUniqueOrThrow({
+                    where: { id: trainee },
+                    select: {
+                      status: true,
+                      passwordHash: true,
+                      credentialVersion: true,
+                      authzVersion: true,
+                      employeeProfile: {
+                        select: {
+                          employeeCodeCanonical: true,
+                          branchAssignments: { select: { id: true, revokedAt: true } },
+                          skills: { select: { skillId: true } },
+                        },
+                      },
+                    },
+                  }),
+                  roles: await tx.userRoleAssignment.count({ where: { userId: trainee } }),
+                  overrides: await tx.userPermissionOverride.count({ where: { userId: trainee } }),
+                });
+                const beforePromotion = await unrelated();
                 const before = await employees.employment(payerSession, trainee, {});
                 const changed = await employees.changeClassification(payerSession, trainee, {
                   expectedVersion: before.version,
@@ -393,6 +415,9 @@ test(
                 );
                 // The trainee entry is untouched.
                 assert.deepEqual((await rows(trainee))[0], initial);
+                // Promotion changes only the classification: account, credentials, authorization,
+                // employee code, branches, roles and skills stay exactly as they were.
+                assert.deepEqual(await unrelated(), beforePromotion);
                 // Promotion is in the future: today is still TRAINEE, not payroll-eligible.
                 assert.equal(changed.current?.classification, 'TRAINEE');
                 assert.equal(changed.payrollEligibleToday, false);

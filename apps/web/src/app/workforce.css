@@ -345,6 +345,42 @@
   overflow-wrap: anywhere;
 }
 
+/* Employee detail facts: label/value pairs that stack on narrow screens. */
+.wf-facts {
+  display: grid;
+  grid-template-columns: minmax(9rem, max-content) 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.wf-facts dt {
+  color: var(--lucy-muted);
+  font-weight: 600;
+}
+
+.wf-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.wf-header-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+}
+
+@media (max-width: 560px) {
+  .wf-facts {
+    grid-template-columns: 1fr;
+    gap: 0.1rem;
+  }
+
+  .wf-facts dd {
+    margin-bottom: 0.5rem;
+  }
+}
+
 .wf-inline-form {
   display: grid;
   gap: 0.6rem;
