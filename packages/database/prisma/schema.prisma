@@ -18,6 +18,7 @@ model Branch {
   name                String
   timezone            String                      @default("Asia/Ho_Chi_Minh")
   isActive            Boolean                     @default(true) @map("is_active")
+  rowVersion          Int                         @default(1) @map("row_version")
   createdAt           DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt           DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   outboxEvents        OutboxEvent[]

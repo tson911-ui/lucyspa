@@ -49,7 +49,9 @@
   [Step 13 completion gate](docs/PHASE1_STEP13_COMPLETION_GATE.md) record scope and validation.
 - Phase 2 (Services, Employees and Operations) is authorized. Step 1 (design contract)
   was analysis only; the [Phase 2 Step 2 report](docs/PHASE2_STEP2_DATABASE_FOUNDATION.md)
-  records the database foundation.
+  records the database foundation; the
+  [Phase 2 Step 3 report](docs/PHASE2_STEP3_BRANCH_ADMIN_HOURS.md) records branch
+  administration and business hours.
   Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
@@ -214,7 +216,16 @@ skills, service branch availability, branch operating hours, attendance and leav
 tables, plus 7 permission codes (`MANAGE_SERVICE_PRICES` is GLOBAL_ONLY). It is
 applied to the local development database only; it is **not yet deployed to
 production**. Production needs `pnpm db:deploy` and then `pnpm db:permissions:sync` at
-deployment. Step 3 has not started and needs Owner authorization. Owner decisions
+deployment. Step 3 (branch administration and business hours, API only) is **closed**
+(Owner-approved, including the extra migration): branch create/list/detail/rename/timezone/
+activation and per-weekday hours, with default 09:00–21:00 hours created atomically and
+the timezone fixed once attendance exists. It adds a second additive migration
+(`20260926000000_phase2_branch_row_version`), applied locally only and not deployed to
+production. Step 4 decision (Owner): a branch-scoped `MANAGE_SERVICES` grant may toggle
+service availability for that branch only, never master service configuration (name,
+category, duration, metadata) or price. Price stays under GLOBAL_ONLY
+`MANAGE_SERVICE_PRICES`. Eligible service skills are deferred to Step 5. Step 4 has not
+started and needs Owner authorization. Owner decisions
 H1–H9 are recorded in the Step 2 report. Adjusted plan: Step 3 branch administration
 and hours; Step 4 services; Step 5 skills; Step 6 branch assignments (reuse
 membership); Step 7 attendance; Step 8 leave; Step 9 dashboard/auth shell and Phase 2

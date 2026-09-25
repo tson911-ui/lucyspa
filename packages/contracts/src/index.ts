@@ -354,3 +354,79 @@ export interface AuditEventPageResponse {
   items: AuditEventResponse[];
   nextCursor: string | null;
 }
+
+/** Branch-local wall-clock time `HH:MM` (24-hour); `24:00` is allowed as a closing time. */
+export type LocalTime = string;
+
+/** One ISO weekday (1 = Monday ... 7 = Sunday) of a branch's regular operating hours. */
+export interface BranchOperatingDay {
+  isoWeekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  isClosed: boolean;
+  /** Present only when open. */
+  opensAt: LocalTime | null;
+  closesAt: LocalTime | null;
+}
+
+export interface BranchSummary {
+  id: string;
+  code: string;
+  name: string;
+  /** IANA timezone; attendance business dates are computed in it. */
+  timezone: string;
+  isActive: boolean;
+  /** Send back as `expectedVersion`. Covers the branch and its operating hours. */
+  version: number;
+}
+
+/** GET /api/v1/branches/:id */
+export interface BranchResponse extends BranchSummary {
+  /**
+   * Configured weekdays, Monday first. Branches created through the API always have all
+   * seven; a branch created before Phase 2 (development seed) may have none until set.
+   */
+  hours: BranchOperatingDay[];
+}
+
+/** GET /api/v1/branches: only branches the caller may see. */
+export interface BranchListResponse {
+  branches: BranchSummary[];
+}
+
+/**
+ * POST /api/v1/branches → 201 BranchResponse. Requires GLOBAL MANAGE_BRANCHES. The new
+ * branch gets default hours of 09:00–21:00 every day, all editable afterwards.
+ */
+export interface BranchCreateRequest {
+  code: string;
+  name: string;
+  /** Defaults to Asia/Ho_Chi_Minh. */
+  timezone?: string;
+  /** Defaults to true. */
+  isActive?: boolean;
+  reason?: string;
+}
+
+/**
+ * POST /api/v1/branches/:id → name and timezone. The code is immutable. The timezone
+ * can change only while the branch has no attendance records.
+ */
+export interface BranchUpdateRequest {
+  expectedVersion: number;
+  name?: string;
+  timezone?: string;
+  reason?: string;
+}
+
+/** POST /api/v1/branches/:id/status: activation changes members' effective authority. */
+export interface BranchStatusRequest {
+  expectedVersion: number;
+  isActive: boolean;
+  reason: string;
+}
+
+/** POST /api/v1/branches/:id/hours: one or more weekdays; the others are unchanged. */
+export interface BranchHoursUpdateRequest {
+  expectedVersion: number;
+  days: BranchOperatingDay[];
+  reason?: string;
+}

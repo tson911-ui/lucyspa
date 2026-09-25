@@ -10,3 +10,4 @@ await import('../apps/api/dist/auth/workforce-recovery.integration.test.js');
 await import('../apps/api/dist/employees/employee.integration.test.js');
 await import('../apps/api/dist/authorization/role-admin.integration.test.js');
 await import('../apps/api/dist/auth/email-dispatch.integration.test.js');
+await import('../apps/api/dist/branches/branch.integration.test.js');
