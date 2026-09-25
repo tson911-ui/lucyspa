@@ -31,6 +31,7 @@ import { LeaveService } from './leave/leave.service.js';
 import { AuthorizationAdminController } from './authorization/authorization-admin.controller.js';
 import { RoleAdminService } from './authorization/role-admin.service.js';
 import { EmployeeController } from './employees/employee.controller.js';
+import { EmployeeDirectoryService } from './employees/employee-directory.service.js';
 import { EmployeeService } from './employees/employee.service.js';
 import { HealthController } from './health/health.controller.js';
 import { InfrastructureService } from './platform/infrastructure.service.js';
@@ -72,6 +73,7 @@ export class AppModule {
         RecoveryEmailService,
         EmployeeSetupService,
         EmployeeService,
+        EmployeeDirectoryService,
         RoleAdminService,
         AuditReadService,
         BranchService,

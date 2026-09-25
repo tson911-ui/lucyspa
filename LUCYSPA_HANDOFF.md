@@ -57,7 +57,8 @@
   skills and employee skills; the [Phase 2 Step 6 report](docs/PHASE2_STEP6_OPERATIONAL_BRANCH_ASSIGNMENTS.md)
   records operational branch assignments; the
   [Phase 2 Step 7 report](docs/PHASE2_STEP7_ATTENDANCE.md) records attendance; the
-  [Phase 2 Step 8 report](docs/PHASE2_STEP8_LEAVE_MANAGEMENT.md) records leave management.
+  [Phase 2 Step 8 report](docs/PHASE2_STEP8_LEAVE_MANAGEMENT.md) records leave management; the
+  [Phase 2 Step 9 report](docs/PHASE2_STEP9_WORKFORCE_UI.md) records the workforce UI.
   Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
@@ -347,8 +348,25 @@ locally only).
 - APPROVED leave is queryable by employee and date for future Booking
   (`employeesOnApprovedLeave`).
 
-**Next step: Phase 2 Step 9 — Workforce Login/Dashboard + Phase 2 UI Integration**; it
-needs separate Owner authorization and must not be started without it. Owner decisions
+**Phase 2 Step 9 — CLOSED** (workforce UI; commit `feat: add phase 2 workforce ui`; no
+migration).
+
+- Workforce area `/{vi|en}/workforce`: login through the existing session/CSRF API,
+  route guard, permission-aware shell from `/auth/me` hints (UX only; the server
+  authorizes), and a lightweight dashboard.
+- UI for branches and hours, services (master, price, availability, eligible skills),
+  skills, employees (directory, skills, branch assignments), attendance (self, branch
+  view, corrections) and leave (requests, cancel PENDING, approvals).
+- One authorized backend addition: read-only `GET /api/v1/employees` directory, using the
+  same `VIEW_EMPLOYEES` containment as the single read, filtered before paging, minimal
+  fields.
+- Web tests use `node --import tsx --test` (no new dependency).
+- No temporary workforce account was created: user rows are permanent by design, so it
+  couldn't have been cleaned up. Authenticated flows are covered by tests, not a local
+  browser pass.
+
+**Next step: Phase 2 Step 10 — Completion Gate + Production Deployment**; it needs
+separate Owner authorization and must not be started without it. Owner decisions
 H1–H9 are recorded in the Step 2 report. Adjusted plan: Step 3 branch administration
 and hours; Step 4 services; Step 5 skills; Step 6 branch assignments (reuse
 membership); Step 7 attendance; Step 8 leave; Step 9 dashboard/auth shell and Phase 2

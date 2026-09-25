@@ -16,3 +16,4 @@ await import('../apps/api/dist/skills/skill.integration.test.js');
 await import('../apps/api/dist/employees/branch-assignment.integration.test.js');
 await import('../apps/api/dist/attendance/attendance.integration.test.js');
 await import('../apps/api/dist/leave/leave.integration.test.js');
+await import('../apps/api/dist/employees/employee-directory.integration.test.js');

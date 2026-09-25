@@ -167,6 +167,35 @@ export interface EmployeeResponse {
   baseSalaryVnd?: string | null;
 }
 
+/**
+ * GET /api/v1/employees?q&branchId&status&cursor&limit: the employee directory. Only
+ * employees the caller may read under VIEW_EMPLOYEES (every active branch of the
+ * employee; GLOBAL for an employee without one) are included, filtered before paging.
+ * `q` matches the employee code or full name. Ordered by employee code; keyset cursor;
+ * `limit` 1–100 (default 50). No contact, birth-date, address or pay data.
+ */
+export interface EmployeeDirectoryQuery {
+  q?: string;
+  branchId?: string;
+  status?: EmployeeStatus;
+  cursor?: string;
+  limit?: number;
+}
+
+export interface EmployeeDirectoryEntry {
+  id: string;
+  employeeId: string;
+  fullName: string;
+  status: EmployeeStatus;
+  branchIds: string[];
+  version: number;
+}
+
+export interface EmployeeDirectoryResponse {
+  items: EmployeeDirectoryEntry[];
+  nextCursor: string | null;
+}
+
 /** POST /api/v1/employees/:id/profile. Contact identifiers and pay are excluded. */
 export interface EmployeeProfileUpdateRequest {
   expectedVersion: number;

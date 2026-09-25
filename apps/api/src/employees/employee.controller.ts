@@ -1,6 +1,7 @@
 import type {
   EmployeeBaseSalaryRequest,
   EmployeeCreateRequest,
+  EmployeeDirectoryResponse,
   EmployeeProfileUpdateRequest,
   EmployeeResponse,
   EmployeeBranchAssignmentsResponse,
@@ -11,7 +12,18 @@ import type {
   EmployeeSetupIssueResponse,
   EmployeeStatusChangeRequest,
 } from '@lucy-spa/contracts';
-import { Body, Controller, Get, HttpCode, Inject, Param, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Inject,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiProperty } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
@@ -29,10 +41,19 @@ import {
 import type { Request, Response } from 'express';
 import { sessionCookie } from '../auth/cookies.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
+import { EmployeeDirectoryService } from './employee-directory.service.js';
 import { EmployeeService } from './employee.service.js';
 
 const SALARY = /^(?:0|[1-9][0-9]{0,17})$/;
 const MAX_VERSION = 2_147_483_647;
+
+class EmployeeDirectoryQueryDto {
+  @IsOptional() @IsString() @MaxLength(400) q?: string;
+  @IsOptional() @IsString() @MaxLength(36) branchId?: string;
+  @IsOptional() @IsIn(['PENDING_SETUP', 'ACTIVE', 'INACTIVE']) status?: string;
+  @IsOptional() @IsString() @MaxLength(128) cursor?: string;
+  @IsOptional() @Matches(/^[1-9][0-9]{0,2}$/) limit?: string;
+}
 
 class EmployeeCreateDto implements EmployeeCreateRequest {
   @ApiProperty() @IsString() @MaxLength(256) employeeId!: string;
@@ -117,6 +138,7 @@ export class EmployeeController {
   constructor(
     @Inject(API_ENVIRONMENT) private readonly environment: ApiEnvironment,
     @Inject(EmployeeService) private readonly employees: EmployeeService,
+    @Inject(EmployeeDirectoryService) private readonly directory: EmployeeDirectoryService,
   ) {}
 
   @Post()
@@ -128,6 +150,18 @@ export class EmployeeController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<EmployeeResponse> {
     return this.employees.create(this.session(request), body, requestId(response));
+  }
+
+  @Get()
+  @ApiOkResponse({ description: 'Directory scoped by VIEW_EMPLOYEES before paging.' })
+  list(
+    @Query() query: EmployeeDirectoryQueryDto,
+    @Req() request: Request,
+  ): Promise<EmployeeDirectoryResponse> {
+    const defined = Object.fromEntries(
+      Object.entries({ ...query }).filter(([, value]) => value !== undefined),
+    );
+    return this.directory.list(this.session(request), defined);
   }
 
   @Get(':id')
