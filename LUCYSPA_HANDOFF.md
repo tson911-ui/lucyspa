@@ -458,6 +458,29 @@ manually by the Owner/operator; see the
   - **Tests:** catalog integration 8/8, delete HTTP 1/1, web 37/37. No migration; no
     production data is deleted automatically.
 
+- **Employee management Step 4: role assignment UI** (`feat: add employee role assignment
+UI`; local commit on top of `deae20c`; not pushed, not deployed, no migration). See the
+  [Step 4 report](docs/EMPLOYEE_MANAGEMENT_STEP4_ROLE_ASSIGNMENT.md).
+  - **Where:** a "Vai trò" section on employee detail, shown with `MANAGE_PERMISSIONS`
+    over all of the member's branches.
+  - **Display:** each assignment shows its role name/code and a distinct scope badge
+    ("Toàn hệ thống" for GLOBAL, "Chi nhánh: …" for BRANCH).
+  - **Actions:** "Gán vai trò" and "Gỡ vai trò" (reason required) use the existing
+    role-admin API. Options come from the loaded catalog and branches.
+  - **UI hints:** roles that exceed the actor are disabled; there are no self changes.
+  - **Enforcement:** the API enforces containment, scope and Owner protection.
+  - **Roles vs classification:** roles are never employment classifications, and no code
+    checks role names.
+  - **Backend:** `assignRole` refuses ENDED employment (409 `employment`); revoking is
+    still allowed. History is kept in the audit log (`ROLE_ASSIGNED`/`ROLE_REVOKED`).
+  - **No roles are seeded and there is no role-admin UI:** the Owner must create KTV and
+    Branch Manager roles through `POST /api/v1/roles` until one exists.
+  - **Tests:** role-assignment integration 5/5, web 69/69 (6 new), role-admin 8/8,
+    authorization 4/4, employee/employment/workforce-account suites, customer auth
+    unchanged.
+  - **Employee management is not complete.** Next: skills (Step 5), or a minimal
+    role-administration screen first.
+
 - **Employee management Step 3: employee detail and lifecycle UI** (`feat: add employee
 detail lifecycle UI`; local commit on top of `9adfb14`; not pushed, not deployed; web
   only, no API or migration change). See the

@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { formatDateTime } from '../../../lib/workforce/format';
 import { canAcross, canAnywhere } from '../../../lib/workforce/permissions';
-import { detailActions } from '../../../lib/workforce/employee-detail';
+import { detailActions, employmentEnded } from '../../../lib/workforce/employee-detail';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { branchLabel, useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
@@ -37,10 +37,11 @@ import {
   EmploymentSection,
   ProfileSection,
 } from './employee-lifecycle';
+import { RolesSection } from './employee-roles';
 
 /**
- * One workforce member (Employee management Step 3): profile, employment classification
- * (history, promotion, ending), sign-in account (password reset, status), branch
+ * One workforce member (Employee management Steps 3–4): profile, employment classification
+ * (history, promotion, ending), sign-in account (password reset, status), roles, branch
  * assignments and — unchanged from Phase 2 — skills. Account status and employment
  * classification are shown separately. Actions are offered from the `/auth/me` hints; the
  * API authorizes every command.
@@ -134,6 +135,11 @@ export function EmployeeDetail({
         employment={employment}
         actions={actions}
         onChanged={reloadAll}
+      />
+      <RolesSection
+        employee={employee}
+        ended={employment ? employmentEnded(employment) : false}
+        branches={branches}
       />
       <BranchAssignments employee={employee} branches={branches} reloadEmployee={reloadAll} />
       <EmployeeSkills employee={employee} />

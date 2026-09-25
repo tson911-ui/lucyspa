@@ -20,6 +20,7 @@ import { invalidateChallenges } from '../auth/otp-flow.js';
 import { text } from '../auth/registration.js';
 import { SessionService } from '../auth/session.service.js';
 import { isUuid, normalizeReason } from '../employees/employee.input.js';
+import { businessToday, classificationOn } from '../employees/employment.js';
 import {
   appendAdminAudit,
   requireAcross,
@@ -315,6 +316,11 @@ export class RoleAdminService {
     return this.frame(sessionToken, true, requestId, [id], async (context) => {
       const { tx } = context;
       await this.requireTarget(context, id, scope, input.expectedVersion);
+      // Ended employment receives no new roles (no rehire); revocation stays possible.
+      const today = await businessToday(tx, await this.employeeBranches(tx, id));
+      if ((await classificationOn(tx, id, today))?.classification === 'ENDED') {
+        throw new AuthError('CONFLICT', 'employment');
+      }
       const role = await tx.role.findUnique({ where: { id: roleId }, select: roleSelect });
       if (!role) throw new AuthError('VALIDATION_FAILED', 'roleId');
       await this.requireBranch(tx, scope);

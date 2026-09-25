@@ -295,6 +295,34 @@ const vi = {
     nameEn: 'Tên tiếng Anh',
     created: 'Đã tạo kỹ năng.',
   },
+  roles: {
+    title: 'Vai trò',
+    intro:
+      'Vai trò quyết định nhân sự được làm gì trong hệ thống (ví dụ KTV, quản lý chi nhánh). Vai trò không thay đổi phân loại nhân sự, tài khoản, mã nhân viên hay kỹ năng.',
+    none: 'Chưa được gán vai trò nào.',
+    global: 'Toàn hệ thống',
+    atBranch: 'Chi nhánh: {branch}',
+    inactiveRole: 'Vai trò đang tắt — hiện không cấp quyền nào.',
+    assign: 'Gán vai trò',
+    role: 'Vai trò',
+    scope: 'Phạm vi',
+    revoke: 'Gỡ vai trò',
+    reasonHint: 'Bắt buộc khi gán hoặc gỡ vai trò.',
+    exceeds: 'vượt quyền của bạn',
+    signOutNote: 'Thay đổi vai trò sẽ đăng xuất nhân sự khỏi các phiên đang mở.',
+    assigned: 'Đã gán vai trò.',
+    revoked: 'Đã gỡ vai trò.',
+    emptyCatalog:
+      'Chưa có vai trò nào trong hệ thống. Vai trò (ví dụ KTV, Quản lý chi nhánh) cần được tạo trước bởi người quản trị quyền; hiện chưa có màn hình tạo vai trò.',
+    noScope: 'Bạn không có quyền gán vai trò ở chi nhánh nào của nhân sự này.',
+    selfNote: 'Bạn không thể thay đổi vai trò của chính mình.',
+    endedNoNewRoles:
+      'Nhân sự đã kết thúc làm việc: không gán vai trò mới. Vai trò hiện có vẫn hiển thị và có thể gỡ.',
+    forbidden:
+      'Bạn không có quyền thực hiện thay đổi vai trò này (vai trò có quyền bạn không có, hoặc phạm vi ngoài quyền của bạn).',
+    badScope: 'Phạm vi đã chọn không hợp lệ hoặc chi nhánh đã ngừng hoạt động.',
+    history: 'Lịch sử gán/gỡ vai trò được lưu trong nhật ký kiểm toán.',
+  },
   reauth: {
     title: 'Xác nhận lại mật khẩu của bạn',
     body: 'Thao tác này thay đổi quyền đăng nhập của nhân sự. Hãy nhập mật khẩu của chính bạn (tài khoản đang đăng nhập) để tiếp tục — không phải mật khẩu của nhân viên.',
@@ -767,6 +795,34 @@ const en: Dictionary = {
     nameVi: 'Vietnamese name',
     nameEn: 'English name',
     created: 'Skill created.',
+  },
+  roles: {
+    title: 'Roles',
+    intro:
+      'Roles decide what the member can do in the system (for example KTV, branch manager). A role does not change the employment classification, account, employee ID or skills.',
+    none: 'No roles assigned.',
+    global: 'All branches (global)',
+    atBranch: 'Branch: {branch}',
+    inactiveRole: 'Role is switched off — it currently grants nothing.',
+    assign: 'Assign role',
+    role: 'Role',
+    scope: 'Scope',
+    revoke: 'Remove role',
+    reasonHint: 'Required to assign or remove a role.',
+    exceeds: 'exceeds your permissions',
+    signOutNote: 'Changing roles signs the member out of open sessions.',
+    assigned: 'Role assigned.',
+    revoked: 'Role removed.',
+    emptyCatalog:
+      'No roles exist yet. Roles (for example KTV, Branch manager) must first be created by a permission administrator; there is no role creation screen yet.',
+    noScope: 'You may not assign roles in any branch of this member.',
+    selfNote: 'You cannot change your own roles.',
+    endedNoNewRoles:
+      'Employment has ended: no new roles. Existing roles stay visible and can be removed.',
+    forbidden:
+      'You may not make this role change (the role has permissions you do not hold, or the scope is outside yours).',
+    badScope: 'The selected scope is not valid or the branch is inactive.',
+    history: 'Role assignment and removal history is kept in the audit log.',
   },
   reauth: {
     title: 'Confirm your password',
