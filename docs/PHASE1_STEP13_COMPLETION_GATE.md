@@ -68,7 +68,9 @@ forward as a non-blocking decision:
   authenticated session ends 30 minutes after its last refresh even while in use. This
   fails safe. The `touch` primitive exists; choosing which foreground requests count
   as activity is a product decision for when the UI is built. Background polling must
-  not extend the idle time.
+  not extend the idle time. **Resolved after Phase 2 deployment:** genuine user activity
+  now slides a 60-minute idle window (12-hour absolute unchanged); see the design's
+  "Session activity".
 
 Other documented choices and deferrals remain as recorded in their reports:
 

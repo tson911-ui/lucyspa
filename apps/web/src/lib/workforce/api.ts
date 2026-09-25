@@ -41,11 +41,27 @@ async function toError(response: Response): Promise<ApiError> {
 
 export type Query = Record<string, string | number | undefined>;
 
+/**
+ * Marks a read as caused by the user (navigation, an explicit load or reload), so the API
+ * counts it as activity and restarts the idle timeout. Commands (POST) always count.
+ */
+export const ACTIVITY_HEADER = 'X-Lucy-Activity';
+
+export interface RequestOptions {
+  /**
+   * A read not caused by the user (session checks, any future polling or background
+   * refresh). It must never keep the session alive, so it carries no activity marker.
+   */
+  readonly passive?: boolean;
+}
+
 export interface WorkforceApiOptions {
   /** Injected in tests; the browser's fetch otherwise. */
   readonly fetch?: typeof fetch;
-  /** Called once per 401 so the shell can return to the login screen. */
-  readonly onUnauthenticated?: () => void;
+  /** Called on every 401 with the method, so the shell can keep or leave the page. */
+  readonly onUnauthenticated?: (method: 'GET' | 'POST') => void;
+  /** Called after every successful response (the session is valid again). */
+  readonly onAuthenticatedResponse?: () => void;
 }
 
 /**
@@ -64,30 +80,33 @@ export class WorkforceApi {
 
   /** Refreshes the CSRF token (required after login, reauthentication and logout). */
   async context(): Promise<AuthContextResponse> {
-    const context = await this.request<AuthContextResponse>('GET', '/api/v1/auth/context');
+    const context = await this.request<AuthContextResponse>('GET', '/api/v1/auth/context', {
+      passive: true,
+    });
     this.csrfToken = context.csrfToken;
     return context;
   }
 
-  get<T>(path: string, query: Query = {}): Promise<T> {
+  /** A user-caused read by default; pass `{ passive: true }` for automatic reads. */
+  get<T>(path: string, query: Query = {}, options: RequestOptions = {}): Promise<T> {
     const search = new URLSearchParams();
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined && value !== '') search.set(key, String(value));
     }
     const suffix = search.size > 0 ? `?${search.toString()}` : '';
-    return this.request<T>('GET', `${path}${suffix}`);
+    return this.request<T>('GET', `${path}${suffix}`, options);
   }
 
   async post<T>(path: string, body: object = {}): Promise<T> {
     if (this.csrfToken === null) await this.context();
     try {
-      return await this.request<T>('POST', path, body);
+      return await this.request<T>('POST', path, {}, body);
     } catch (error) {
       // A rotated session invalidates the old token; the guard rejected the request
       // before it ran, so one retry with a fresh token is safe.
       if (error instanceof ApiError && error.code === 'REQUEST_NOT_ALLOWED') {
         await this.context();
-        return this.request<T>('POST', path, body);
+        return this.request<T>('POST', path, {}, body);
       }
       throw error;
     }
@@ -98,8 +117,14 @@ export class WorkforceApi {
     this.csrfToken = null;
   }
 
-  private async request<T>(method: 'GET' | 'POST', path: string, body?: object): Promise<T> {
+  private async request<T>(
+    method: 'GET' | 'POST',
+    path: string,
+    options: RequestOptions = {},
+    body?: object,
+  ): Promise<T> {
     const headers: Record<string, string> = { Accept: 'application/json' };
+    if (method === 'GET' && !options.passive) headers[ACTIVITY_HEADER] = 'user';
     if (method === 'POST') {
       headers['Content-Type'] = 'application/json';
       if (this.csrfToken) headers['X-CSRF-Token'] = this.csrfToken;
@@ -119,10 +144,11 @@ export class WorkforceApi {
     if (!response.ok) {
       const error = await toError(response);
       if (error.status === 401 && error.code === 'AUTHENTICATION_REQUIRED') {
-        this.options.onUnauthenticated?.();
+        this.options.onUnauthenticated?.(method);
       }
       throw error;
     }
+    this.options.onAuthenticatedResponse?.();
     if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
   }

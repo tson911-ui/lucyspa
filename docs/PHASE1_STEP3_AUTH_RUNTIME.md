@@ -36,7 +36,8 @@ migration or database privilege changes were needed. The pre-existing
 - Shared API Prisma provider. Sessions store only token digests. Reads validate
   absolute/idle expiry, revocation, current User kind/status/credential prerequisites,
   both security versions and availability of the stored CSRF key version.
-  Context reads never update activity. Explicit foreground touch is a separate helper.
+  Context reads never update activity. Explicit foreground touch is a separate helper
+  (later wired to genuine user activity; see the design's "Session activity").
 - Rotation uses a new row and revokes the previous token atomically. User state,
   checked password hash and versions are rechecked under locks. Reauthentication
   retains the original absolute expiry. Authenticated lifecycle changes and their
@@ -75,7 +76,7 @@ if supplied, both its ring and active version must validate.
 | `AUTH_OTP_KEYS`, `AUTH_OTP_ACTIVE_VERSION`           | Optional complete independent pair; no email flow yet                                 |
 | `AUTH_ALLOW_INSECURE_LOCAL_COOKIE`                   | Explicit `true` only for development/test with loopback HTTP                          |
 | `AUTH_ANONYMOUS_TTL_SECONDS`                         | 900                                                                                   |
-| `AUTH_IDLE_TTL_SECONDS`                              | 1800                                                                                  |
+| `AUTH_IDLE_TTL_SECONDS`                              | 1800 at Step 3; 3600 since the session-activity change (see the design)               |
 | `AUTH_ABSOLUTE_TTL_SECONDS`                          | 43200                                                                                 |
 | `AUTH_FRESH_AUTH_SECONDS`                            | 300                                                                                   |
 | `AUTH_CONTEXT_LIMIT`, `AUTH_CONTEXT_WINDOW_SECONDS`  | 30 new anonymous sessions per direct peer per 900-second fixed UTC window             |

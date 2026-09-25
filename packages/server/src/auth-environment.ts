@@ -117,7 +117,7 @@ export function parseAuthEnvironment(
   if (!insecureCookie && origin.protocol !== 'https:') return invalid('WEB_ORIGIN');
 
   const anonymousTtlSeconds = positiveInteger(env, 'AUTH_ANONYMOUS_TTL_SECONDS', 900);
-  const idleTtlSeconds = positiveInteger(env, 'AUTH_IDLE_TTL_SECONDS', 1800);
+  const idleTtlSeconds = positiveInteger(env, 'AUTH_IDLE_TTL_SECONDS', 3600);
   const absoluteTtlSeconds = positiveInteger(env, 'AUTH_ABSOLUTE_TTL_SECONDS', 43_200);
   const freshAuthSeconds = positiveInteger(env, 'AUTH_FRESH_AUTH_SECONDS', 300);
   if (anonymousTtlSeconds > absoluteTtlSeconds) return invalid('AUTH_ANONYMOUS_TTL_SECONDS');

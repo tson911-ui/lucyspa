@@ -127,8 +127,8 @@ All unsafe routes keep the Step 3 JSON, exact-Origin and session-bound CSRF prot
   failure numbers (10 per 15 minutes), keyed by the authenticated User rather than a
   typed identifier.
 - **`/me` and idle activity.** `/auth/me` is read-only and does not extend idle
-  activity. The Step 3 foreground `touch` primitive is still not wired to any
-  endpoint; see the open items.
+  activity. The Step 3 foreground `touch` primitive was not wired to any endpoint at
+  this step; see the open items. (Resolved later: see the design's "Session activity".)
 
 ## Validation
 
@@ -215,7 +215,8 @@ Open items:
     `OWNER_BOOTSTRAP_DATABASE_URL`. That provisioning is Step 13 work.
 - **Idle timeout.** No endpoint extends idle activity yet, so authenticated sessions
   end after 30 idle minutes regardless of use. A deliberate foreground-activity policy
-  is still needed.
+  is still needed. (Resolved later: sliding 60-minute idle on genuine user activity; see
+  the design's "Session activity".)
 - **Unverified Owner email.** The Owner's email stays unverified until Step 9's
   recovery-email verification, so Owner self-service recovery is unavailable until
   then.

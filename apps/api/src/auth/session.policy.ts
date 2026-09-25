@@ -96,6 +96,33 @@ export function sessionPrincipal(
   };
 }
 
+/**
+ * Genuine user activity refreshes `lastActivityAt` at most once per this interval. It never
+ * exceeds a tenth of the idle timeout, so coalesced writes can never expire an active user:
+ * the recorded activity always lags real activity by less than the interval.
+ */
+export function activityWriteIntervalSeconds(policy: Pick<SessionPolicy, 'idleTtlSeconds'>) {
+  return Math.max(1, Math.min(60, Math.floor(policy.idleTtlSeconds / 10)));
+}
+
+/**
+ * Whether genuine activity on a valid principal should be written now. Only authenticated
+ * sessions that are neither idle- nor absolute-expired qualify (activity never revives an
+ * expired session), and only when the recorded activity is at least one interval old.
+ * Writing only moves `lastActivityAt`; the absolute expiry is immutable (SQL enforces it).
+ */
+export function activityWriteDue(
+  principal: SessionPrincipal,
+  now: Date,
+  policy: Pick<SessionPolicy, 'idleTtlSeconds'>,
+): boolean {
+  if (principal.kind !== 'AUTHENTICATED' || now >= principal.absoluteExpiresAt) return false;
+  const since = now.getTime() - principal.lastActivityAt.getTime();
+  return (
+    since < policy.idleTtlSeconds * 1_000 && since >= activityWriteIntervalSeconds(policy) * 1_000
+  );
+}
+
 export function hasFreshReauthentication(
   principal: SessionPrincipal,
   now: Date,

@@ -441,6 +441,32 @@ manually by the Owner/operator; see the
   integration 4/4, API unit/HTTP 77 pass, web 29/29. See the Step 4 report's
   post-deployment enhancement.
 
+- **Session activity (sliding idle timeout).**
+  - **Problem:** production showed an actively working Owner being logged out.
+    `lastActivityAt` had stayed fixed at login, because the `touch` primitive was never
+    wired, so every session ended 30 minutes after login.
+  - **Change:** genuine user activity now refreshes it, and the default idle timeout is
+    **60 minutes** (`AUTH_IDLE_TTL_SECONDS=3600`). The **12-hour** absolute limit is
+    unchanged and never extended.
+  - **Counts as activity:** authenticated `/api/v1` `POST` commands after the CSRF
+    guard, and `GET`s the client marks `X-Lucy-Activity: user`.
+  - **Never counts:** unmarked `GET`s, `/auth/context`, `/auth/me`, and health checks.
+  - **Write coalescing:** at most one write per `min(60 s, idle / 10)`; activity never
+    revives an expired or revoked session.
+  - **UI:** a failed submission keeps the form and offers sign-in in a new tab; a failed
+    read returns to login and back to the same page.
+  - **Tests:** API activity unit 7/7, activity HTTP 1/1, session integration 12/12, API
+    auth/HTTP suites pass, server 19/19, web 33/33.
+  - **Remaining unsaved-form limitations (follow-ups):**
+    - a read that hits the expiry while a form has unsaved changes still redirects and
+      discards them;
+    - there is no in-page sign-in dialog and no leave-page warning for dirty forms.
+
+    See the design's "Session activity".
+
+  - **Deploying:** production must not override `AUTH_IDLE_TTL_SECONDS` if the 60-minute
+    default is wanted; no migration is needed.
+
   **Deploying these changes requires `pnpm db:deploy`** (after a verified backup), since
   production is at 5 migrations and this adds a 6th.
 
@@ -469,7 +495,8 @@ Remaining follow-ups (not Phase 1 code blockers):
 - **Real Owner.** Not yet created.
 - **Production database roles.** Separate the runtime and migration roles, and put the
   Owner-bootstrap privilege on a dedicated role.
-- **Carried-forward decision.** The foreground idle-activity policy (Step 8).
+- **Carried-forward decision.** The foreground idle-activity policy (Step 8). **Resolved**
+  by the session-activity change listed under the post-deployment changes.
 
 No real Owner exists; create it only on explicit Owner instruction with
 `pnpm owner:bootstrap` (password via hidden prompt/stdin only).

@@ -285,7 +285,12 @@ test('HTTP authentication context and global CSRF contract', async (t) => {
           });
           if (invalidate === 'revoked') record.revokedAt = new Date();
           if (invalidate === 'absolute') record.absoluteExpiresAt = new Date(Date.now() - 1);
-          if (invalidate === 'idle') record.lastActivityAt = new Date(Date.now() - 1_800_001);
+          if (invalidate === 'idle') {
+            // Just past the configured idle timeout (default 60 minutes).
+            record.lastActivityAt = new Date(
+              Date.now() - environment.auth.idleTtlSeconds * 1_000 - 1,
+            );
+          }
           if (invalidate === 'status') record.user!.status = 'INACTIVE';
           if (invalidate === 'credential') record.user!.credentialVersion += 1;
           if (invalidate === 'authz') record.user!.authzVersion += 1;

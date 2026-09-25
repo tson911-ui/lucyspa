@@ -6,6 +6,7 @@ import { takeExclusiveAuthGraphLock, takeSharedAuthGraphLock } from './auth-stor
 import { AuthError } from './auth.error.js';
 import { capabilityDigest, constantTimeEqual, generateCapability } from './crypto.js';
 import {
+  activityWriteDue,
   hasActiveCredential,
   sessionPrincipal,
   sessionSelect,
@@ -214,7 +215,24 @@ export class SessionService {
     return issued;
   }
 
-  /** Invoke only for foreground activity; no endpoint calls this automatically. */
+  /**
+   * Records genuine user activity (see `session-activity.ts` for what counts). A lock-free
+   * read decides whether a write is due (`activityWriteDue`: at most once per interval, never
+   * for an expired, revoked or otherwise invalid session). Only then does `touch` revalidate
+   * the session under locks and move `lastActivityAt`. Nothing here extends the absolute
+   * expiry.
+   */
+  async recordActivity(
+    token: string,
+    transaction?: Prisma.TransactionClient,
+  ): Promise<'written' | 'not-due' | 'invalid'> {
+    const principal = await this.resolve(token, transaction);
+    if (principal === null || principal.kind !== 'AUTHENTICATED') return 'invalid';
+    if (!activityWriteDue(principal, new Date(), this.environment.auth)) return 'not-due';
+    return (await this.touch(token, transaction)) ? 'written' : 'invalid';
+  }
+
+  /** Foreground activity only; called through `recordActivity` for genuine user activity. */
   async touch(token: string, transaction?: Prisma.TransactionClient): Promise<boolean> {
     if (!transaction) return this.withTransaction((tx) => this.touch(token, tx));
     const principal = await this.resolveForMutation(token, transaction);

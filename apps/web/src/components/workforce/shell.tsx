@@ -6,7 +6,8 @@ import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import type { WorkforceDictionary } from '../../i18n/workforce';
 import { navigationFor, type NavItem } from '../../lib/workforce/permissions';
-import { useAccount, useWorkforce } from './session';
+import { useAccount, useSessionNotice, useWorkforce } from './session';
+import { Notice } from './ui';
 
 const GROUPS: NavItem['group'][] = ['home', 'operations', 'management'];
 
@@ -122,9 +123,34 @@ export function WorkforceShell({ children }: { children: ReactNode }) {
           />
         </nav>
         <main className="wf-main" id="main-content" tabIndex={-1}>
+          <SessionLostNotice />
           {children}
         </main>
       </div>
     </div>
+  );
+}
+
+/**
+ * Shown when a submission failed because the session expired. The page and the form's
+ * entries stay; signing in again happens in a new tab, and then the user saves again here
+ * (the client picks up the new session's CSRF token automatically).
+ */
+export function SessionLostNotice() {
+  const { t, base } = useWorkforce();
+  const { lost, dismiss } = useSessionNotice();
+  if (!lost) return null;
+  return (
+    <Notice tone="warning">
+      <p>{t.auth.sessionLost}</p>
+      <p>
+        <a href={`${base}/login?next=${encodeURIComponent(base)}`} target="_blank" rel="noopener">
+          {t.auth.signInNewTab}
+        </a>{' '}
+        <button type="button" className="wf-button wf-button-quiet" onClick={dismiss}>
+          {t.common.close}
+        </button>
+      </p>
+    </Notice>
   );
 }

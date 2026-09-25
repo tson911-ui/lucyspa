@@ -23,7 +23,7 @@ import {
 } from './auth-store.js';
 import { AuthError } from './auth.error.js';
 import { ContextThrottleService } from './context-throttle.service.js';
-import { capabilityDigest, throttleDigest } from './crypto.js';
+import { capabilityDigest, generateCapability, throttleDigest } from './crypto.js';
 import { SessionService, type CredentialEvidence } from './session.service.js';
 
 // Explicit opt-in: ordinary unit/HTTP tests do not connect to PostgreSQL.
@@ -352,6 +352,86 @@ test(
                 });
                 assert.equal(await service.resolve(session.token, transaction), null);
                 assert.equal(await service.touch(session.token, transaction), false);
+              },
+            );
+            await context.test(
+              'genuine activity: throttled idle refresh, passive reads never refresh, no revival',
+              async () => {
+                const user = await transaction.user.findUniqueOrThrow({
+                  where: { id: userId },
+                  select: { credentialVersion: true, authzVersion: true },
+                });
+                const minute = 60_000;
+                // An authenticated session row with chosen timestamps (inserts are unguarded;
+                // updates may only move last_activity_at forward).
+                const session = async (loginAgo: number, activityAgo: number) => {
+                  const token = generateCapability();
+                  const now = Date.now();
+                  const created = await transaction.session.create({
+                    data: {
+                      tokenHash: new Uint8Array(capabilityDigest(token)!),
+                      kind: 'AUTHENTICATED',
+                      userId,
+                      credentialVersion: user.credentialVersion,
+                      authzVersion: user.authzVersion,
+                      csrfKeyVersion: environment.auth.csrfActiveVersion,
+                      createdAt: new Date(now - loginAgo),
+                      lastActivityAt: new Date(now - activityAgo),
+                      absoluteExpiresAt: new Date(now - loginAgo + 12 * 60 * minute),
+                    },
+                    select: { id: true, absoluteExpiresAt: true },
+                  });
+                  sessionIds.push(created.id);
+                  return { token, id: created.id, absoluteExpiresAt: created.absoluteExpiresAt };
+                };
+                const activity = async (id: string) =>
+                  (await transaction.session.findUniqueOrThrow({ where: { id } })).lastActivityAt;
+
+                // Logged in 2 hours ago, last genuine activity 5 minutes ago: still valid.
+                const active = await session(120 * minute, 5 * minute);
+                const before = await activity(active.id);
+                // Passive resolution (context/me/background reads) never refreshes activity.
+                for (let i = 0; i < 3; i += 1) {
+                  assert.ok(await service.resolve(active.token, transaction));
+                }
+                assert.equal((await activity(active.id)).getTime(), before.getTime());
+                // Genuine activity advances the idle deadline; the absolute expiry is fixed.
+                assert.equal(await service.recordActivity(active.token, transaction), 'written');
+                const after = await activity(active.id);
+                assert.ok(after.getTime() > before.getTime() + 4 * minute);
+                const row = await transaction.session.findUniqueOrThrow({
+                  where: { id: active.id },
+                });
+                assert.equal(row.absoluteExpiresAt.getTime(), active.absoluteExpiresAt.getTime());
+                // Coalesced: a second activity within the write interval does not write again.
+                assert.equal(await service.recordActivity(active.token, transaction), 'not-due');
+                assert.equal((await activity(active.id)).getTime(), after.getTime());
+
+                // 60 minutes without genuine activity: expired, and activity cannot revive it.
+                const idle = await session(90 * minute, 61 * minute);
+                const idleBefore = await activity(idle.id);
+                assert.equal(await service.resolve(idle.token, transaction), null);
+                assert.equal(await service.recordActivity(idle.token, transaction), 'invalid');
+                assert.equal((await activity(idle.id)).getTime(), idleBefore.getTime());
+                assert.equal(await service.resolve(idle.token, transaction), null);
+
+                // Revoked sessions stay rejected and are never refreshed.
+                const revoked = await session(10 * minute, 5 * minute);
+                assert.equal(await service.revoke(revoked.token, undefined, transaction), true);
+                const revokedBefore = await activity(revoked.id);
+                assert.equal(await service.recordActivity(revoked.token, transaction), 'invalid');
+                assert.equal((await activity(revoked.id)).getTime(), revokedBefore.getTime());
+                assert.equal(await service.resolve(revoked.token, transaction), null);
+
+                // Invalid tokens and anonymous sessions are never refreshed.
+                assert.equal(
+                  await service.recordActivity(generateCapability(), transaction),
+                  'invalid',
+                );
+                assert.equal(await service.recordActivity('not-a-token', transaction), 'invalid');
+                const anonymous = await service.createAnonymous(transaction);
+                sessionIds.push(anonymous.session.id);
+                assert.equal(await service.recordActivity(anonymous.token, transaction), 'invalid');
               },
             );
             await context.test(

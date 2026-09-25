@@ -230,11 +230,78 @@ status/kind, credential version and authorization version. PostgreSQL is the
 authority; failure to read it fails closed. Do not trust a cached role or browser
 supplied user/branch identity. Redis is not the sole session store.
 
-Proposed limits: anonymous pre-auth session 15 minutes absolute; authenticated
-session 30 minutes idle and 12 hours absolute; fresh password reauthentication
-valid for 5 minutes for sensitive actions. Background polling must not extend
-idle time indefinitely. Server clocks/timestamps enforce limits. No remember-me
-mode is added. Values are centrally validated security configuration.
+Limits: anonymous pre-auth session 15 minutes absolute; authenticated session
+**60 minutes idle** (sliding on genuine user activity; originally proposed as 30
+minutes) and 12 hours absolute; fresh password reauthentication valid for 5 minutes for
+sensitive actions. Background polling must not extend idle time indefinitely. Server
+clocks/timestamps enforce limits. No remember-me mode is added. Values are centrally
+validated security configuration (`AUTH_IDLE_TTL_SECONDS` default 3600,
+`AUTH_ABSOLUTE_TTL_SECONDS` default 43200).
+
+**Session activity (implemented after Phase 2 deployment).**
+
+- **The gap it closes:** until then, no endpoint refreshed activity, so
+  `lastActivityAt` stayed fixed at login and every session ended 30 minutes after login
+  even while in use (the Phase 1 Step 13 carried-forward decision). A production Owner was
+  logged out this way while creating services.
+- **Sliding idle:** genuine user activity refreshes `lastActivityAt` and restarts the
+  60-minute idle window. Sixty minutes without genuine activity expire the session. An open
+  but untouched page does not keep it alive.
+- **Counts as activity** (`isUserActivity`, `apps/api/src/auth/session-activity.ts`):
+  - every authenticated `POST` command under `/api/v1`, after the global JSON,
+    exact-Origin and CSRF guard has accepted it;
+  - a `GET` under `/api/v1` that the workforce client marks `X-Lucy-Activity: user`. The
+    client marks reads caused by navigation or an explicit user action.
+- **Never counts:**
+  - unmarked `GET`s (background or automatic reads);
+  - `/api/v1/auth/context` and `/api/v1/auth/me`, even if marked;
+  - health checks, other paths, and `HEAD`/`OPTIONS`;
+  - login, logout and reauthentication, which replace or revoke the session instead.
+- **Recording:** the global `SessionActivityInterceptor` records after the handler
+  finishes. It runs only for requests that passed the guards, so a CSRF-rejected request is
+  never counted.
+  - `SessionService.recordActivity` first reads the session without locks. It writes only
+    when the session is authenticated, not idle- or absolute-expired, and its recorded
+    activity is at least one write interval old.
+  - The write goes through the existing `touch`, which revalidates everything under locks
+    (revocation, credential/authorization versions, key version, expiry).
+  - Activity never revives an expired or revoked session, never authorizes anything, and a
+    recording failure never fails the request.
+- **Write coalescing:** at most one write per interval of `min(60 s, idle / 10)`, so 60 s
+  by default. Recorded activity lags real activity by less than one interval (at most 10%
+  of the idle timeout), so coalescing cannot expire an active user.
+- **Absolute expiry:** activity only moves `lastActivityAt` forward. `absolute_expires_at`
+  is immutable (the `sessions_lifecycle_guard` trigger), so the 12-hour limit is never
+  extended.
+- **Expiry in the workforce UI:**
+  - a failed submission keeps the page and its entries (nothing was saved) and offers
+    sign-in in a new tab, after which the user saves again;
+  - a failed read returns to login with the current page as the return path, and
+    sign-in returns there.
+  - No token, password or CSRF secret is stored in web storage.
+- **Remaining unsaved-form limitations (follow-ups, not implemented):**
+  - if a _read_ hits the expiry while a form has unsaved changes, the redirect to login
+    still discards them (forms don't issue reads after a failed submit, so this is
+    uncommon);
+  - there is no in-page sign-in dialog and no warning before leaving a dirty form;
+  - after signing in as a _different_ user in the new tab, the kept page's permission
+    hints stay stale until reload (the server still authorizes every request).
+- **Tests (all pass):**
+  - `session-activity.test.ts` 7/7 (fixed clock): the idle deadline advances; an active
+    user survives past 60 minutes after login; 60 minutes of inactivity expire (14:20 →
+    15:20); the 12-hour cap holds; polling cannot keep a session alive; coalescing never
+    expires an active user; activity classification.
+  - `session-activity.http.test.ts` 1/1: commands record activity; CSRF-rejected requests
+    record nothing; 403/401 decisions are unchanged; unmarked reads, `/auth/me`,
+    `/auth/context` and health never count; recording failures never fail requests.
+  - `session.integration.test.ts` 12/12 (real PostgreSQL, rolled back): passive
+    resolution never writes; throttled write; absolute expiry unchanged; idle-expired
+    and revoked sessions are neither revived nor refreshed; invalid and anonymous tokens
+    are rejected.
+  - Web 33/33: the activity marker appears only on user reads; a failed submit keeps
+    the page while a failed read redirects; the return path round-trips through
+    `safeNext`.
+  - API unit/HTTP 85 pass; server 19/19.
 
 Replace the session token at login and reauthentication; invalidate the previous
 token without an overlap window. Reset/change of password, employee inactivation,

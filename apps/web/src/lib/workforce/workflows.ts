@@ -146,7 +146,8 @@ export async function loadSession(api: WorkforceApi): Promise<SessionResult> {
   const context = await api.context();
   if (!context.authenticated) return { kind: 'anonymous' };
   try {
-    const account = await api.get<CurrentAccountResponse>('/api/v1/auth/me');
+    // Session resolution is passive: it must never extend the idle timeout.
+    const account = await api.get<CurrentAccountResponse>('/api/v1/auth/me', {}, { passive: true });
     return isWorkforce(account) ? { kind: 'workforce', account } : { kind: 'customer', account };
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) return { kind: 'anonymous' };

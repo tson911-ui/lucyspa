@@ -15,7 +15,7 @@ function environment(): NodeJS.ProcessEnv {
 test('auth config supplies reviewed security defaults and production host-cookie mode', () => {
   const config = parseAuthEnvironment(environment(), 'production', 'https://spa.example.test');
   assert.equal(config.anonymousTtlSeconds, 900);
-  assert.equal(config.idleTtlSeconds, 1800);
+  assert.equal(config.idleTtlSeconds, 3600);
   assert.equal(config.absoluteTtlSeconds, 43_200);
   assert.equal(config.freshAuthSeconds, 300);
   assert.equal(config.contextLimit, 30);
@@ -232,7 +232,7 @@ test('all security durations, limits and active versions are bounded positive ca
   for (const overrides of [
     { AUTH_ANONYMOUS_TTL_SECONDS: '43201' },
     { AUTH_IDLE_TTL_SECONDS: '43201' },
-    { AUTH_FRESH_AUTH_SECONDS: '1801' },
+    { AUTH_FRESH_AUTH_SECONDS: '3601' }, // fresh-auth window may not exceed the idle timeout
   ])
     assert.throws(() =>
       parseAuthEnvironment(

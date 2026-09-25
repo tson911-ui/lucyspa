@@ -15,6 +15,7 @@ import {
 import type { Locale } from '../../i18n/locales';
 import { getWorkforceDictionary, type WorkforceDictionary } from '../../i18n/workforce';
 import { WorkforceApi } from '../../lib/workforce/api';
+import { expiredLoginPath, expiryAction } from '../../lib/workforce/expiry';
 import { loadSession, workforceLogout } from '../../lib/workforce/workflows';
 
 export interface WorkforceContextValue {
@@ -28,19 +29,45 @@ export interface WorkforceContextValue {
 /** Exported for component tests; application code uses `WorkforceProvider`. */
 export const WorkforceContext = createContext<WorkforceContextValue | null>(null);
 
+/** Set while a submission failed because the session expired and the page was kept. */
+export interface SessionNoticeValue {
+  lost: boolean;
+  dismiss: () => void;
+}
+
+/** Exported for component tests; application code uses `WorkforceProvider`. */
+export const SessionNoticeContext = createContext<SessionNoticeValue>({
+  lost: false,
+  dismiss: () => undefined,
+});
+
+export function useSessionNotice(): SessionNoticeValue {
+  return useContext(SessionNoticeContext);
+}
+
 export function WorkforceProvider({ locale, children }: { locale: Locale; children: ReactNode }) {
   const router = useRouter();
   const base = `/${locale}/workforce`;
-  // Any 401 from the API means the session ended (expiry, revocation, sign-out elsewhere).
-  const expired = useRef(false);
+  const [lost, setLost] = useState(false);
+  // Any 401 means the session ended (idle or absolute expiry, revocation, sign-out
+  // elsewhere). See `expiryAction`: a failed submission keeps the page and its entries; a
+  // failed read returns to login with this page as the return path.
+  const redirecting = useRef(false);
   const api = useMemo(
     () =>
       new WorkforceApi({
-        onUnauthenticated: () => {
-          if (expired.current) return;
-          expired.current = true;
-          router.replace(`${base}/login?expired=1`);
+        onUnauthenticated: (method) => {
+          if (expiryAction(method) === 'keep') {
+            setLost(true);
+            return;
+          }
+          if (redirecting.current) return;
+          redirecting.current = true;
+          router.replace(
+            expiredLoginPath(base, `${window.location.pathname}${window.location.search}`),
+          );
         },
+        onAuthenticatedResponse: () => setLost(false),
       }),
     [router, base],
   );
@@ -48,7 +75,12 @@ export function WorkforceProvider({ locale, children }: { locale: Locale; childr
     () => ({ locale, t: getWorkforceDictionary(locale), api, base }),
     [locale, api, base],
   );
-  return <WorkforceContext.Provider value={value}>{children}</WorkforceContext.Provider>;
+  const notice = useMemo(() => ({ lost, dismiss: () => setLost(false) }), [lost]);
+  return (
+    <WorkforceContext.Provider value={value}>
+      <SessionNoticeContext.Provider value={notice}>{children}</SessionNoticeContext.Provider>
+    </WorkforceContext.Provider>
+  );
 }
 
 export function useWorkforce(): WorkforceContextValue {

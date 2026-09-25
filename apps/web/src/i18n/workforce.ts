@@ -44,7 +44,7 @@ const vi = {
   errors: {
     validation: 'Dữ liệu chưa hợp lệ. Vui lòng kiểm tra lại.',
     validationField: 'Trường “{field}” chưa hợp lệ.',
-    unauthenticated: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+    unauthenticated: 'Phiên đăng nhập đã hết hạn nên thao tác này chưa được lưu.',
     forbidden: 'Bạn không có quyền thực hiện thao tác này.',
     notFound: 'Không tìm thấy dữ liệu, hoặc bạn không có quyền xem.',
     conflict:
@@ -74,6 +74,9 @@ const vi = {
     sessionExpired: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
     signedOut: 'Bạn đã đăng xuất.',
     checking: 'Đang kiểm tra phiên đăng nhập…',
+    sessionLost:
+      'Phiên đăng nhập đã hết hạn. Thông tin bạn đã nhập vẫn còn trên trang này nhưng chưa được lưu. Hãy đăng nhập lại trong thẻ mới, rồi quay lại đây và lưu lại.',
+    signInNewTab: 'Đăng nhập lại trong thẻ mới',
     owner: 'Chủ spa',
     employee: 'Nhân viên',
   },
@@ -328,7 +331,7 @@ const en: Dictionary = {
   errors: {
     validation: 'Some details are not valid. Please check and try again.',
     validationField: 'The “{field}” value is not valid.',
-    unauthenticated: 'Your session has expired. Please sign in again.',
+    unauthenticated: 'Your session has expired, so this was not saved.',
     forbidden: 'You do not have permission to do this.',
     notFound: 'Not found, or you do not have access to it.',
     conflict:
@@ -358,6 +361,9 @@ const en: Dictionary = {
     sessionExpired: 'Your session has expired. Please sign in again.',
     signedOut: 'You have signed out.',
     checking: 'Checking your session…',
+    sessionLost:
+      'Your session has expired. What you entered is still on this page but has not been saved. Sign in again in a new tab, then come back here and save again.',
+    signInNewTab: 'Sign in again in a new tab',
     owner: 'Owner',
     employee: 'Employee',
   },
