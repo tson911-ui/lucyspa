@@ -1,8 +1,10 @@
 # Phase 1 Step 12: email dispatcher and cleanup
 
-Status: **implemented and validated locally; awaiting approval**. No staging, commit,
-push or Step 13 work. Baseline is Step 11 commit `b8c4837`. **Phase 1 is not complete**;
-Step 13 is the completion gate.
+Status: **CLOSED / COMPLETE.** Committed as `93b2316` (`feat: add email dispatch and
+auth cleanup`) on Step 11 baseline `b8c4837`. The HTML email presentation followed in
+`389c0b4` (`feat: improve authentication email presentation`). Both are deployed.
+**Email delivery is operational end-to-end in production** (see
+[Production verification](#production-verification)).
 
 This implements the delivery and cleanup parts of the approved
 [authentication/security design](PHASE1_AUTH_SECURITY_DESIGN.md), section 6 ("Atomic
@@ -265,24 +267,57 @@ packages/server/src/mail.ts
 docs/PHASE1_STEP12_EMAIL_DISPATCH_CLEANUP.md
 ```
 
-## Remaining operational work
+## HTML presentation (`389c0b4`)
 
-These are not application-code blockers.
+After Step 12 was committed, the authentication emails gained an HTML alternative next
+to the plain text. OTP logic, expiry, dispatch and SMTP settings are unchanged.
 
-- **Custom DKIM and DMARC.** The custom lucyspa.vn DKIM key is pending Google Workspace
-  activation, and DMARC currently fails alignment until it exists. SPF and Google
-  transport DKIM already pass. This is external DNS/Admin work.
-- **VPS environment.** Set on the VPS:
-  - `MAIL_TRANSPORT=smtp` and the SMTP variables above;
-  - the **same** `AUTH_DELIVERY_KEYS` ring as the API;
-  - no SMTP credentials.
+- **The code** is shown at 32px, bold and centered, in its own visually separated cell.
+- **Plain-text fallback** remains, with the code on its own framed line.
+- **Styling:** inline styles only, no external assets, and escaped content.
+- **Coverage:** registration, password reset and workforce recovery-email verification
+  all share this renderer.
 
-  Then run the worker (`pnpm --filter @lucy-spa/worker start`) with PostgreSQL and
-  Redis reachable. The worker's public IP must stay on the Google relay allowlist.
+## Production verification
 
-- **First real send.** An end-to-end send through the relay is a manual, opt-in
-  check, for example by requesting a password reset for a test account after
-  deployment. No automated test sends real email.
+The following production state was verified by the operator. No secret values are
+recorded here.
+
+- **Processes.** The VPS runs `lucyspa-api`, `lucyspa-worker` and `lucyspa-web` under
+  PM2. PM2 startup via systemd is enabled, and the saved process list restores all
+  three.
+- **Web and API.**
+  - The API is reachable through nginx at `https://lucyspa.vn/api/v1/auth/context`.
+  - `WEB_ORIGIN` is `https://lucyspa.vn`, and secure cookies are enabled.
+- **Data stores and catalog.**
+  - PostgreSQL and Redis connectivity work.
+  - The permission catalog has been synced: 10 inserted.
+- **Worker email transport** uses the Google Workspace SMTP relay:
+  - `MAIL_TRANSPORT=smtp`, `SMTP_HOST=smtp-relay.gmail.com`, `SMTP_PORT=587`;
+  - `SMTP_SECURITY=starttls`, so TLS is required;
+  - `SMTP_EHLO_NAME=lucyspa.vn`, `MAIL_FROM_ADDRESS=system@lucyspa.vn`,
+    `MAIL_FROM_NAME=Lucy Spa`.
+
+  No SMTP authentication is used: the relay authorizes the VPS public IP.
+
+- **Delivery.**
+  - A direct SMTP relay test from the VPS succeeded.
+  - The full application path was verified in production: customer registration API
+    → `AuthDelivery`/outbox → worker → SMTP relay → Gmail. A real registration OTP
+    email was received.
+  - After `389c0b4` was deployed, a second real registration email confirmed the new
+    HTML presentation in Gmail.
+
+**Result: email delivery is operational end-to-end in production. Step 12 is closed.**
+
+## Follow-up hardening (not a Step 12 blocker)
+
+- **Deliverability.** Production OTP email currently lands in Gmail **Spam**. This
+  is DNS and domain-reputation work, not an application defect; no mail or auth code
+  change is planned for it:
+  - SPF and Google transport DKIM pass;
+  - the custom lucyspa.vn DKIM key is pending Google Workspace activation;
+  - DMARC alignment follows once custom DKIM is published.
 - **Throttle buckets.** Expired throttle buckets are not cleaned: the design's
   cleanup list does not include them. They carry `expiresAt` and can be added under a
   reviewed rule.

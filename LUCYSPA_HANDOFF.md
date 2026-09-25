@@ -200,13 +200,31 @@ because a new session starts.
 
 ## Exact next step and Owner inputs
 
-**PHASE 1 COMPLETE — deployment prerequisites remain** (see the
-[Step 13 completion gate](docs/PHASE1_STEP13_COMPLETION_GATE.md)). Steps 1–12 are committed
-through `93b2316`; the Step 13 gate report awaits approval. Do not start Phase 2 or deploy
-without separate authorization. Deployment prerequisites (VPS deployment, production DB
-roles/keys, Owner bootstrap, permission sync, worker SMTP configuration, custom DKIM/DMARC)
-are listed in the gate report. Carried-forward non-blocking decision: the foreground
-idle-activity policy (Step 8).
+**PHASE 1 COMPLETE** (see the
+[Step 13 completion gate](docs/PHASE1_STEP13_COMPLETION_GATE.md), `fab9147`). Steps 1–12
+are closed; the HTML auth-email presentation followed in `389c0b4`. Do not start Phase 2
+without separate authorization.
+
+Production deployment (verified by the operator, recorded in the
+[Step 12 report](docs/PHASE1_STEP12_EMAIL_DISPATCH_CLEANUP.md#production-verification)):
+
+- The VPS runs `lucyspa-api`, `lucyspa-worker` and `lucyspa-web` under PM2, restored at
+  boot through systemd.
+- nginx serves `https://lucyspa.vn` (`WEB_ORIGIN`) with secure cookies.
+- PostgreSQL and Redis are connected, and the permission catalog is synced (10 rows).
+- **Email delivery is operational end-to-end**: registration → outbox → worker → Google
+  Workspace SMTP relay → Gmail, verified with real OTP emails, including the HTML
+  presentation.
+
+Remaining follow-ups (not Phase 1 code blockers):
+
+- **Deliverability.** OTP email lands in Gmail Spam until the custom lucyspa.vn DKIM key
+  and DMARC alignment are in place; SPF and Google transport DKIM pass.
+- **Real Owner.** Not yet created.
+- **Production database roles.** Separate the runtime and migration roles, and put the
+  Owner-bootstrap privilege on a dedicated role.
+- **Carried-forward decision.** The foreground idle-activity policy (Step 8).
+
 No real Owner exists; create it only on explicit Owner instruction with
 `pnpm owner:bootstrap` (password via hidden prompt/stdin only).
 Approved remaining plan: Step 8 Owner bootstrap (interactive/stdin password) + workforce
@@ -222,7 +240,8 @@ Locally, run `pnpm auth:env:init` once to append the OTP and delivery key rings
 (existing keys are kept). OTP email is sent by the worker (Step 12) through the Google
 Workspace SMTP relay (`smtp-relay.gmail.com:587`, STARTTLS, no SMTP AUTH, IP-allowlisted
 VPS) as `Lucy Spa <system@lucyspa.vn>` when `MAIL_TRANSPORT=smtp`; see `.env.example`.
-Custom lucyspa.vn DKIM and DMARC alignment are pending external Google/DNS activation.
+This is live in production. Custom lucyspa.vn DKIM and DMARC alignment are pending
+external Google/DNS activation (deliverability follow-up).
 The configured local database has both Phase 0 and Step 2
 migrations applied. No Phase 1 implementation scope remains. Extend the existing architecture only
 when authorized; the locked loyalty/combo/promotion rules remain later-phase
