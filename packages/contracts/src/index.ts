@@ -500,6 +500,11 @@ export interface ServiceResponse {
   isActive: boolean;
   version: number;
   availability: ServiceBranchAvailabilityEntry[];
+  /**
+   * Skills that qualify an employee for this service. An employee satisfies the skill
+   * dimension with ANY one of them (evaluated by the Phase 3 booking engine, not here).
+   */
+  eligibleSkills: SkillSummary[];
 }
 
 /** GET /api/v1/services?categoryId&branchId (branchId: only services offered there). */
@@ -550,5 +555,77 @@ export interface ServicePriceRequest {
 export interface ServiceAvailabilityRequest {
   expectedVersion: number | null;
   isActive: boolean;
+  reason?: string;
+}
+
+/** A skill as referenced from services and employees. */
+export interface SkillSummary {
+  id: string;
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  isActive: boolean;
+}
+
+export interface SkillResponse extends SkillSummary {
+  version: number;
+}
+
+/** GET /api/v1/skills. Inactive skills are included only for GLOBAL MANAGE_SKILLS holders. */
+export interface SkillListResponse {
+  skills: SkillResponse[];
+}
+
+/** POST /api/v1/skills → 201. GLOBAL MANAGE_SKILLS. The code is immutable. */
+export interface SkillCreateRequest {
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  reason?: string;
+}
+
+/** POST /api/v1/skills/:id: names only. Status uses /api/v1/skills/:id/status. */
+export interface SkillUpdateRequest {
+  expectedVersion: number;
+  nameVi?: string;
+  nameEn?: string;
+  reason?: string;
+}
+
+/**
+ * POST /api/v1/services/:id/skills: GLOBAL MANAGE_SERVICES. Replaces the complete set of
+ * eligible skills (it may be empty). `expectedVersion` is the service's version.
+ */
+export interface ServiceSkillsRequest {
+  expectedVersion: number;
+  skillIds: string[];
+  reason?: string;
+}
+
+/** One active skill of an employee. */
+export interface EmployeeSkillEntry {
+  skill: SkillSummary;
+  grantedAt: string;
+  grantedByUserId: string;
+}
+
+/** GET /api/v1/employees/:id/skills: the employee's active skills (history is kept). */
+export interface EmployeeSkillsResponse {
+  employeeId: string;
+  skills: EmployeeSkillEntry[];
+}
+
+/**
+ * POST /api/v1/employees/:id/skills: MANAGE_SKILLS for every branch of the employee.
+ * Skills are employee capabilities, not per-branch copies. Granting an already active
+ * skill is 409.
+ */
+export interface EmployeeSkillGrantRequest {
+  skillId: string;
+  reason?: string;
+}
+
+/** POST /api/v1/employees/:id/skills/:skillId/revoke: ends the active grant; history kept. */
+export interface EmployeeSkillRevokeRequest {
   reason?: string;
 }

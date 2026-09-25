@@ -9,6 +9,7 @@ import type {
   ServiceListResponse,
   ServicePriceRequest,
   ServiceResponse,
+  ServiceSkillsRequest,
   ServiceUpdateRequest,
 } from '@lucy-spa/contracts';
 import {
@@ -25,6 +26,8 @@ import {
 } from '@nestjs/common';
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsInt,
   IsOptional,
@@ -126,6 +129,16 @@ class AvailabilityDto implements ServiceAvailabilityRequest {
   @Max(MAX_VERSION)
   expectedVersion!: number | null;
   @ApiProperty() @IsBoolean() isActive!: boolean;
+  @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(2_048) reason?: string;
+}
+
+class ServiceSkillsDto extends VersionedDto implements ServiceSkillsRequest {
+  @ApiProperty({ type: [String], description: 'Complete set; ANY one skill qualifies.' })
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  @MaxLength(36, { each: true })
+  skillIds!: string[];
   @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(2_048) reason?: string;
 }
 
@@ -244,6 +257,17 @@ export class ServiceCatalogController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<ServiceResponse> {
     return this.catalog.setPrice(this.session(request), id, body, requestId(response));
+  }
+
+  @Post('services/:id/skills')
+  @HttpCode(200)
+  setEligibleSkills(
+    @Param('id') id: string,
+    @Body() body: ServiceSkillsDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<ServiceResponse> {
+    return this.catalog.setEligibleSkills(this.session(request), id, body, requestId(response));
   }
 
   @Post('services/:id/branches/:branchId')

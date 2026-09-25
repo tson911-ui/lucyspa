@@ -53,7 +53,8 @@
   [Phase 2 Step 3 report](docs/PHASE2_STEP3_BRANCH_ADMIN_HOURS.md) records branch
   administration and business hours; the
   [Phase 2 Step 4 report](docs/PHASE2_STEP4_SERVICE_MANAGEMENT.md) records service
-  management.
+  management; the [Phase 2 Step 5 report](docs/PHASE2_STEP5_SKILLS_EMPLOYEE_SKILLS.md) records
+  skills and employee skills.
   Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
@@ -289,7 +290,19 @@ implementation now**):
   It stays separate from the supplier importer and the product catalog. Not authorized
   for implementation now.
 
-Phase 2 Step 5 (skills and employee skills) remains the next implementation step. Owner decisions
+**Phase 2 Step 5: CLOSED** (skills and employee skills, API only; commit `feat: add
+phase 2 skills management`; no migration):
+
+- skill catalog under GLOBAL `MANAGE_SKILLS`;
+- service eligible skills under GLOBAL `MANAGE_SERVICES`, versioned by the service;
+- employee skills under `MANAGE_SKILLS` across every `EmployeeBranchAssignment` branch
+  of the employee, with history kept.
+
+Future qualification rule for Phase 3: an employee satisfies the skill dimension when
+the service's eligible skills and the employee's active skills intersect.
+
+**Next step: Phase 2 Step 6 (Operational Branch Assignments)**; it needs separate Owner
+authorization and must not be started without it. Owner decisions
 H1–H9 are recorded in the Step 2 report. Adjusted plan: Step 3 branch administration
 and hours; Step 4 services; Step 5 skills; Step 6 branch assignments (reuse
 membership); Step 7 attendance; Step 8 leave; Step 9 dashboard/auth shell and Phase 2

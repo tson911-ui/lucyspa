@@ -10,6 +10,7 @@ import type {
   ServiceListResponse,
   ServicePriceRequest,
   ServiceResponse,
+  ServiceSkillsRequest,
   ServiceUpdateRequest,
 } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
@@ -60,7 +61,15 @@ const serviceSelect = {
   isActive: true,
   rowVersion: true,
   branches: { select: { branchId: true, isActive: true, rowVersion: true } },
+  eligibleSkills: {
+    select: {
+      skill: { select: { id: true, code: true, nameVi: true, nameEn: true, isActive: true } },
+    },
+  },
 } satisfies Prisma.ServiceSelect;
+
+/** A bounded configuration set; the catalog is small and codes are human-managed. */
+const MAX_ELIGIBLE_SKILLS = 50;
 
 type CategoryRow = Prisma.ServiceCategoryGetPayload<{ select: typeof categorySelect }>;
 type ServiceRow = Prisma.ServiceGetPayload<{ select: typeof serviceSelect }>;
@@ -457,6 +466,67 @@ export class ServiceCatalogService {
     });
   }
 
+  /**
+   * Replaces the service's eligible skills (service configuration, not skill
+   * administration): GLOBAL `MANAGE_SERVICES` only; `MANAGE_SKILLS` never suffices. The
+   * set may be empty. Newly added skills must exist and be active; a kept skill that was
+   * deactivated since stays until removed. Skills themselves are never deleted. The
+   * service's `expectedVersion` protects the whole set.
+   */
+  async setEligibleSkills(
+    sessionToken: string | undefined,
+    serviceId: string,
+    input: ServiceSkillsRequest,
+    requestId?: string,
+  ): Promise<ServiceResponse> {
+    const id = this.id(serviceId);
+    const skillIds = [...new Set(input.skillIds.map((value) => this.id(value, 'skillIds')))].sort();
+    if (skillIds.length > MAX_ELIGIBLE_SKILLS) throw new AuthError('VALIDATION_FAILED', 'skillIds');
+    const reason = optionalReason(input.reason);
+    return this.frame(sessionToken, requestId, async (context) => {
+      const { tx, actor } = context;
+      requireAcross(actor, 'MANAGE_SERVICES', []);
+      const current = await this.lockService(tx, id, input.expectedVersion);
+      const previous = current.eligibleSkills.map((entry) => entry.skill.id).sort();
+      const added = skillIds.filter((skillId) => !previous.includes(skillId));
+      const removed = previous.filter((skillId) => !skillIds.includes(skillId));
+      if (added.length === 0 && removed.length === 0) {
+        throw new AuthError('VALIDATION_FAILED', 'skillIds');
+      }
+      if (added.length > 0) {
+        // Skills are locked so a concurrent deactivation cannot slip in.
+        await tx.$queryRaw`SELECT id FROM skills WHERE id = ANY(${added}::uuid[]) FOR SHARE`;
+        const usable = await tx.skill.count({ where: { id: { in: added }, isActive: true } });
+        if (usable !== added.length) throw new AuthError('VALIDATION_FAILED', 'skillIds');
+        await tx.serviceSkill.createMany({
+          data: added.map((skillId) => ({ serviceId: id, skillId })),
+        });
+      }
+      if (removed.length > 0) {
+        await tx.serviceSkill.deleteMany({ where: { serviceId: id, skillId: { in: removed } } });
+      }
+      const row = await tx.service.update({
+        where: { id },
+        data: { rowVersion: { increment: 1 } },
+        select: serviceSelect,
+      });
+      const codes = new Map(
+        [
+          ...current.eligibleSkills.map((entry) => entry.skill),
+          ...row.eligibleSkills.map((e) => e.skill),
+        ].map((skill) => [skill.id, skill.code]),
+      );
+      const describe = (ids: string[]) =>
+        ids.map((skillId) => ({ id: skillId, code: codes.get(skillId) ?? null }));
+      await this.audit(context, 'SERVICE_SKILLS_CHANGED', 'Service', id, {
+        reason,
+        before: { skills: describe(previous) },
+        after: { skills: describe(skillIds), added: describe(added), removed: describe(removed) },
+      });
+      return this.present(actor, row);
+    });
+  }
+
   // -------------------------------------------------------------------- helpers
 
   private frame<T>(
@@ -518,6 +588,9 @@ export class ServiceCatalogService {
           version: entry.rowVersion,
         }))
         .sort((a, b) => (a.branchId < b.branchId ? -1 : 1)),
+      eligibleSkills: row.eligibleSkills
+        .map((entry) => entry.skill)
+        .sort((a, b) => (a.code < b.code ? -1 : 1)),
     };
   }
 

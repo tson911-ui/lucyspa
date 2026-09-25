@@ -22,6 +22,8 @@ import { BranchController } from './branches/branch.controller.js';
 import { BranchService } from './branches/branch.service.js';
 import { ServiceCatalogController } from './catalog/service-catalog.controller.js';
 import { ServiceCatalogService } from './catalog/service-catalog.service.js';
+import { SkillController } from './skills/skill.controller.js';
+import { SkillService } from './skills/skill.service.js';
 import { AuthorizationAdminController } from './authorization/authorization-admin.controller.js';
 import { RoleAdminService } from './authorization/role-admin.service.js';
 import { EmployeeController } from './employees/employee.controller.js';
@@ -48,6 +50,7 @@ export class AppModule {
         AuthorizationAdminController,
         BranchController,
         ServiceCatalogController,
+        SkillController,
       ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },
@@ -67,6 +70,7 @@ export class AppModule {
         AuditReadService,
         BranchService,
         ServiceCatalogService,
+        SkillService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
       ],
