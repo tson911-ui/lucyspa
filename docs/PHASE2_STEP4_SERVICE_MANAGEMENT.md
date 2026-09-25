@@ -44,7 +44,8 @@ scheduling estimates, not public labels), section 8.3 (price authority) and sect
 | Availability | Explicit per-branch rows. **No active row means the service is not offered at that branch.** A new service is offered nowhere until configured.                                                       |
 
 - **Separate offerings.** A 30-minute and a 60-minute foot massage are separate
-  services (tested). There are no duration ranges.
+  services (tested). At Step 4 there were no duration ranges; a customer-facing
+  estimated range was added later (see "Post-deployment enhancement" at the end).
 - **Duration is internal.** `durationMinutes` is exposed only through the authenticated
   workforce API. No public menu representation exists.
 - **No invented category rule.** The PRD sets none, so deactivating a category does
@@ -222,7 +223,8 @@ docs/PHASE2_STEP4_SERVICE_MANAGEMENT.md
   configuration.
 - **No speculative columns or commands** were added for any of these.
 - **Public menu:** not built. Any future public representation must omit
-  `durationMinutes`.
+  `durationMinutes`; the estimated range (`estimatedMinMinutes`–`estimatedMaxMinutes`)
+  is the customer-facing value.
 - **Price history** lives only in the audit log. Invoices will snapshot prices
   (Phase 4).
 - **Inactive entities:** availability rows for an inactive service or branch are
@@ -250,3 +252,63 @@ docs/PHASE2_STEP4_SERVICE_MANAGEMENT.md
 - **Reads:** an employee's skills and a skill's holders, both scoped.
 - **Tests:** HTTP and rolled-back integration.
 - **Out of scope:** the Phase 3 qualification engine and UI.
+
+## Post-deployment enhancement: estimated service duration ranges
+
+Added after Phase 2 was deployed (commit `feat: add estimated service duration ranges`),
+before the full service catalog is entered. Many spa services have no exact
+customer-facing duration (hair wash about 30–45 minutes, herbal hair wash about 60–80,
+facials 60–90, nails 60–120), while booking will still need one deterministic duration.
+
+- **Model:**
+
+  | Field                 | Meaning                                                                 |
+  | --------------------- | ----------------------------------------------------------------------- |
+  | `estimatedMinMinutes` | Customer-facing minimum estimate                                        |
+  | `estimatedMaxMinutes` | Customer-facing maximum estimate                                        |
+  | `durationMinutes`     | Deterministic internal scheduling duration (meaning and name unchanged) |
+
+- **Invariant:** `1 <= estimatedMinMinutes <= estimatedMaxMinutes <= durationMinutes <=
+1440`, whole minutes. A future booking slot is never shorter than the longest duration
+  promised to the customer. An exact-duration service uses min = max. It is enforced by
+  the SQL CHECK `services_estimated_duration_range`, the API (`checkServiceDurations`)
+  and, as guidance only, the workforce form.
+- **Migration:** `20260928000000_phase2_service_duration_estimate` adds
+  `estimated_min_minutes` and `estimated_max_minutes`, then backfills, then sets NOT
+  NULL and adds the CHECK. It adds no extension, drops nothing and changes no other data.
+- **Backward compatibility:**
+  - existing services are migrated with estimated min and max equal to their existing
+    `durationMinutes` (exact estimates);
+  - `durationMinutes` keeps its name and meaning.
+- **API:**
+  - responses add both estimate fields;
+  - create accepts both bounds or neither (neither means exact; exactly one is 400,
+    naming the missing field);
+  - update accepts any subset and validates the resulting combination against the
+    stored values (for example, lowering `durationMinutes` below the estimated maximum
+    is `VALIDATION_FAILED` "durationMinutes");
+  - audit events include the new fields;
+  - permissions, versions and price behavior are unchanged.
+- **UI:**
+  - the create and edit forms share one set of three inputs (estimated minimum,
+    estimated maximum, internal scheduling duration), with the rule explained and Save
+    disabled until the values are valid;
+  - the service list shows the estimate ("30–45 phút", or "60 min" when exact).
+- **Phase 3 booking is NOT implemented.** `durationMinutes` is only being preserved as the
+  future scheduling duration; nothing reserves staff time yet.
+- **Tests (all pass):**
+  - database schema test 11/11: backfill of a service created before the migration;
+    exact, range and range-with-slack values accepted; out-of-order and null values
+    rejected;
+  - service catalog integration 6/6: create with a range and read it back, audit, exact
+    and implicit-exact creates, six invalid creates that write nothing, partial updates
+    validated against current values, slot below maximum rejected, range and slot moved
+    together;
+  - service catalog HTTP 1/1: new fields pass the real ValidationPipe; string,
+    fractional and unknown fields rejected;
+  - skills integration 4/4 (services created without an estimate);
+  - API unit/HTTP 77 pass (17 opt-in integration tests skipped there and run
+    separately);
+  - web 29/29 (3 new);
+  - web `tsc`, ESLint, Prettier, boundaries and Prisma validate pass; the local
+    database with 6 migrations shows an empty schema diff.

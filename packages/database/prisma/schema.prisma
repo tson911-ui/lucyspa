@@ -488,22 +488,26 @@ model ServiceCategory {
 // One concrete duration per service; 30/60-minute offerings are separate services.
 // durationMinutes is internal scheduling data, never a public menu label.
 model Service {
-  id              String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code            String                      @unique(map: "services_code_key")
-  categoryId      String                      @map("category_id") @db.Uuid
-  category        ServiceCategory             @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  nameVi          String                      @map("name_vi")
-  nameEn          String                      @map("name_en")
-  descriptionVi   String?                     @map("description_vi")
-  descriptionEn   String?                     @map("description_en")
-  priceVnd        BigInt                      @map("price_vnd")
-  durationMinutes Int                         @map("duration_minutes")
-  isActive        Boolean                     @default(true) @map("is_active")
-  rowVersion      Int                         @default(1) @map("row_version")
-  createdAt       DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  eligibleSkills  ServiceSkill[]
-  branches        ServiceBranchAvailability[]
+  id                  String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                String                      @unique(map: "services_code_key")
+  categoryId          String                      @map("category_id") @db.Uuid
+  category            ServiceCategory             @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  nameVi              String                      @map("name_vi")
+  nameEn              String                      @map("name_en")
+  descriptionVi       String?                     @map("description_vi")
+  descriptionEn       String?                     @map("description_en")
+  priceVnd            BigInt                      @map("price_vnd")
+  /// Internal scheduling duration: the one deterministic duration booking reserves.
+  durationMinutes     Int                         @map("duration_minutes")
+  /// Customer-facing estimate; SQL enforces 1 <= min <= max <= durationMinutes.
+  estimatedMinMinutes Int                         @map("estimated_min_minutes")
+  estimatedMaxMinutes Int                         @map("estimated_max_minutes")
+  isActive            Boolean                     @default(true) @map("is_active")
+  rowVersion          Int                         @default(1) @map("row_version")
+  createdAt           DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  eligibleSkills      ServiceSkill[]
+  branches            ServiceBranchAvailability[]
 
   @@index([categoryId, isActive, id], map: "services_category_idx")
   @@map("services")

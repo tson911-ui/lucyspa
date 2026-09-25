@@ -8,11 +8,13 @@ import type {
 } from '@lucy-spa/contracts';
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
+import { durationNumbers, durationProblem } from '../../../lib/workforce/durations';
 import { formatVnd, isVndInput } from '../../../lib/workforce/format';
 import { canAt, canGlobal } from '../../../lib/workforce/permissions';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
+import { DurationFields } from './service-durations';
 import {
   Badge,
   ErrorState,
@@ -89,14 +91,20 @@ function MasterData({
     descriptionVi: service.descriptionVi ?? '',
     descriptionEn: service.descriptionEn ?? '',
     durationMinutes: String(service.durationMinutes),
+    estimatedMinMinutes: String(service.estimatedMinMinutes),
+    estimatedMaxMinutes: String(service.estimatedMaxMinutes),
   });
   const [form, setForm] = useState(initial);
   const submit = useSubmit();
   useEffect(() => setForm(initial()), [service.version]);
 
+  const durationsValid = durationProblem(form) === null;
+
   async function save(event: FormEvent) {
     event.preventDefault();
+    if (!durationsValid) return;
     const text = (value: string) => (value.trim() === '' ? null : value);
+    const durations = durationNumbers(form);
     const body: ServiceUpdateRequest = {
       expectedVersion: service.version,
       ...(form.categoryId !== service.categoryId ? { categoryId: form.categoryId } : {}),
@@ -108,8 +116,15 @@ function MasterData({
       ...(text(form.descriptionEn) !== service.descriptionEn
         ? { descriptionEn: text(form.descriptionEn) }
         : {}),
-      ...(Number(form.durationMinutes) !== service.durationMinutes
-        ? { durationMinutes: Number(form.durationMinutes) }
+      // Only changed durations are sent; the API validates the resulting combination.
+      ...(durations.durationMinutes !== service.durationMinutes
+        ? { durationMinutes: durations.durationMinutes }
+        : {}),
+      ...(durations.estimatedMinMinutes !== service.estimatedMinMinutes
+        ? { estimatedMinMinutes: durations.estimatedMinMinutes }
+        : {}),
+      ...(durations.estimatedMaxMinutes !== service.estimatedMaxMinutes
+        ? { estimatedMaxMinutes: durations.estimatedMaxMinutes }
         : {}),
     };
     const ok = await submit.run(
@@ -174,22 +189,12 @@ function MasterData({
               />
             </Field>
           </div>
-          <Field
-            id="sd-duration"
-            label={t.services.duration}
-            required
-            hint={t.services.durationNote}
-          >
-            <input
-              id="sd-duration"
-              type="number"
-              min={1}
-              max={1440}
-              required
-              value={form.durationMinutes}
-              onChange={(event) => setForm({ ...form, durationMinutes: event.target.value })}
-            />
-          </Field>
+          <DurationFields
+            idPrefix="sd"
+            value={form}
+            onChange={(next) => setForm({ ...form, ...next })}
+            t={t}
+          />
         </fieldset>
         {editable ? (
           <>
@@ -198,6 +203,7 @@ function MasterData({
               pending={submit.pending}
               label={t.common.save}
               pendingLabel={t.common.saving}
+              disabled={!durationsValid}
             />
           </>
         ) : null}

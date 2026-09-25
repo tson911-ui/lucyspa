@@ -48,6 +48,39 @@ export function durationMinutes(value: number): number {
   return value;
 }
 
+/** One bound of the customer-facing estimated duration (whole minutes, 1 to 24 hours). */
+export function estimateMinutes(
+  value: number,
+  field: 'estimatedMinMinutes' | 'estimatedMaxMinutes',
+): number {
+  if (!Number.isInteger(value) || value < 1 || value > CATALOG_LIMITS.maxDurationMinutes) {
+    throw new AuthError('VALIDATION_FAILED', field);
+  }
+  return value;
+}
+
+export interface ServiceDurations {
+  /** Internal scheduling duration: the one deterministic duration booking reserves. */
+  durationMinutes: number;
+  estimatedMinMinutes: number;
+  estimatedMaxMinutes: number;
+}
+
+/**
+ * The duration invariant (SQL enforces it too):
+ * `1 <= estimatedMinMinutes <= estimatedMaxMinutes <= durationMinutes`. A booking slot
+ * is therefore never shorter than the longest duration promised to the customer.
+ */
+export function checkServiceDurations(durations: ServiceDurations): ServiceDurations {
+  if (durations.estimatedMaxMinutes < durations.estimatedMinMinutes) {
+    throw new AuthError('VALIDATION_FAILED', 'estimatedMaxMinutes');
+  }
+  if (durations.durationMinutes < durations.estimatedMaxMinutes) {
+    throw new AuthError('VALIDATION_FAILED', 'durationMinutes');
+  }
+  return durations;
+}
+
 /** Nonnegative integer VND carried as a decimal string and stored as bigint. */
 export function priceVnd(value: string): bigint {
   if (!/^(?:0|[1-9][0-9]{0,17})$/.test(value)) throw new AuthError('VALIDATION_FAILED', 'priceVnd');

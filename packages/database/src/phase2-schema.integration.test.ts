@@ -25,6 +25,9 @@ const phase2FollowUps = [
   '../prisma/migrations/20260926000000_phase2_branch_row_version/migration.sql',
   '../prisma/migrations/20260927000000_phase2_leave_type/migration.sql',
 ];
+// Applied after a pre-existing service row is inserted, to prove the backfill.
+const serviceDurationMigration =
+  '../prisma/migrations/20260928000000_phase2_service_duration_estimate/migration.sql';
 const PHASE1_CODES = PERMISSION_CATALOG.slice(0, 10);
 
 function identifier(value: string): string {
@@ -130,16 +133,21 @@ test('Phase 2 schema invariants in an isolated, rolled-back schema', async (cont
   const branch = (code: string) => insert('branches', { code, name: `Branch ${code}` });
   const category = (code = `CAT_${++fixtureSequence}`) =>
     insert('service_categories', { code, name_vi: 'Gội đầu', name_en: 'Hair wash' });
-  const service = async (overrides: Record<string, unknown> = {}) =>
-    insert('services', {
+  // Default estimate: exact (min = max = the scheduling duration) unless overridden.
+  const service = async (overrides: Record<string, unknown> = {}) => {
+    const duration = overrides['duration_minutes'] ?? 90;
+    return insert('services', {
       code: `SVC_${++fixtureSequence}`,
       category_id: await category(),
       name_vi: 'Gội dưỡng sinh',
       name_en: 'Herbal hair wash',
       price_vnd: 120000,
       duration_minutes: 90,
+      estimated_min_minutes: duration,
+      estimated_max_minutes: duration,
       ...overrides,
     });
+  };
   const skill = (code = `SKILL_${++fixtureSequence}`) =>
     insert('skills', { code, name_vi: 'Gội đầu', name_en: 'Hair wash' });
 
@@ -167,6 +175,18 @@ test('Phase 2 schema invariants in an isolated, rolled-back schema', async (cont
       for (const path of phase2FollowUps) {
         await client.query(await readFile(new URL(path, import.meta.url), 'utf8'));
       }
+      // A service that exists before the duration-estimate migration (production shape).
+      await insert('services', {
+        code: 'LEGACY_DURATION',
+        category_id: await category('CAT_LEGACY'),
+        name_vi: 'Gội thường',
+        name_en: 'Regular hair wash',
+        price_vnd: 80000,
+        duration_minutes: 45,
+      });
+      await client.query(
+        await readFile(new URL(serviceDurationMigration, import.meta.url), 'utf8'),
+      );
 
       await check('Phase 1 permission rows survive the PermissionCode rebuild', async () => {
         const rows = await client.query<{ id: string; code: string }>(
@@ -264,6 +284,42 @@ test('Phase 2 schema invariants in an isolated, rolled-back schema', async (cont
           branch_id: branchId,
         });
       });
+
+      await check(
+        'services: estimated duration range backfilled and bounded by scheduling',
+        async () => {
+          const legacy = await client.query<{ min: number; max: number; duration: number }>(
+            `SELECT estimated_min_minutes AS min, estimated_max_minutes AS max,
+                    duration_minutes AS duration FROM services WHERE code = 'LEGACY_DURATION'`,
+          );
+          assert.deepEqual(legacy.rows[0], { min: 45, max: 45, duration: 45 });
+          // Exact, a range equal to the slot, and a range with scheduling slack.
+          await service({
+            duration_minutes: 60,
+            estimated_min_minutes: 60,
+            estimated_max_minutes: 60,
+          });
+          await service({
+            duration_minutes: 45,
+            estimated_min_minutes: 30,
+            estimated_max_minutes: 45,
+          });
+          await service({
+            duration_minutes: 90,
+            estimated_min_minutes: 60,
+            estimated_max_minutes: 80,
+          });
+          await rejects(() => service({ estimated_min_minutes: 0, estimated_max_minutes: 30 }));
+          await rejects(() =>
+            service({ duration_minutes: 60, estimated_min_minutes: 60, estimated_max_minutes: 45 }),
+          );
+          await rejects(() =>
+            service({ duration_minutes: 60, estimated_min_minutes: 30, estimated_max_minutes: 70 }),
+          );
+          await rejects(() => service({ estimated_min_minutes: null }), '23502');
+          await rejects(() => service({ estimated_max_minutes: null }), '23502');
+        },
+      );
 
       await check(
         'services: canonical codes, VND and duration bounds, restrictive FKs',

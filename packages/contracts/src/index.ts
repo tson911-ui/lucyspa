@@ -512,9 +512,15 @@ export interface ServiceBranchAvailabilityEntry {
 }
 
 /**
- * Workforce view of a service. `durationMinutes` is internal scheduling data and must
- * never be shown as a public menu label. `priceVnd` is a nonnegative integer VND string.
+ * Workforce view of a service. `priceVnd` is a nonnegative integer VND string.
  * `availability` lists only branches the caller may see.
+ *
+ * Durations (minutes), always `1 <= estimatedMinMinutes <= estimatedMaxMinutes <=
+ * durationMinutes <= 1440`:
+ * - `estimatedMinMinutes` / `estimatedMaxMinutes`: the customer-facing estimate ("about
+ *   30–45 minutes"); equal for an exact-duration service.
+ * - `durationMinutes`: the one internal scheduling duration that booking reserves. It is
+ *   never shorter than the estimate's maximum and must never be shown as a public label.
  */
 export interface ServiceResponse {
   id: string;
@@ -526,6 +532,8 @@ export interface ServiceResponse {
   descriptionEn: string | null;
   priceVnd: string;
   durationMinutes: number;
+  estimatedMinMinutes: number;
+  estimatedMaxMinutes: number;
   isActive: boolean;
   version: number;
   availability: ServiceBranchAvailabilityEntry[];
@@ -545,6 +553,8 @@ export interface ServiceListResponse {
  * POST /api/v1/services → 201. Requires GLOBAL MANAGE_SERVICES and, because it sets a
  * price, GLOBAL_ONLY MANAGE_SERVICE_PRICES. A 30-minute and a 60-minute offering are
  * separate services. The new service is offered nowhere until availability is set.
+ * Give both estimate bounds, or neither: without them the estimate is exact
+ * (min = max = `durationMinutes`).
  */
 export interface ServiceCreateRequest {
   code: string;
@@ -555,10 +565,16 @@ export interface ServiceCreateRequest {
   descriptionEn?: string | null;
   priceVnd: string;
   durationMinutes: number;
+  estimatedMinMinutes?: number;
+  estimatedMaxMinutes?: number;
   reason?: string;
 }
 
-/** POST /api/v1/services/:id: master data only (GLOBAL MANAGE_SERVICES; no price, no code). */
+/**
+ * POST /api/v1/services/:id: master data only (GLOBAL MANAGE_SERVICES; no price, no code).
+ * Duration fields may change independently; the resulting values must still satisfy
+ * `1 <= estimatedMinMinutes <= estimatedMaxMinutes <= durationMinutes <= 1440`.
+ */
 export interface ServiceUpdateRequest {
   expectedVersion: number;
   categoryId?: string;
@@ -567,6 +583,8 @@ export interface ServiceUpdateRequest {
   descriptionVi?: string | null;
   descriptionEn?: string | null;
   durationMinutes?: number;
+  estimatedMinMinutes?: number;
+  estimatedMaxMinutes?: number;
   reason?: string;
 }
 

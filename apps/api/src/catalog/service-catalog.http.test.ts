@@ -118,6 +118,8 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
     nameEn: 'Foot massage',
     priceVnd: '150000',
     durationMinutes: 30,
+    estimatedMinMinutes: 20,
+    estimatedMaxMinutes: 30,
   };
   const commands: [string, object, number][] = [
     ['/api/v1/service-categories', { code: 'HAIR', nameVi: 'Gội', nameEn: 'Hair' }, 201],
@@ -130,7 +132,12 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
     ['/api/v1/services', service, 201],
     [
       `/api/v1/services/${id}`,
-      { expectedVersion: 1, durationMinutes: 35, descriptionVi: null },
+      {
+        expectedVersion: 1,
+        durationMinutes: 35,
+        estimatedMaxMinutes: 35,
+        descriptionVi: null,
+      },
       200,
     ],
     [`/api/v1/services/${id}/status`, { expectedVersion: 1, isActive: false, reason: 'x' }, 200],
@@ -168,6 +175,10 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
       ['/api/v1/services', { ...service, priceVnd: '-1' }],
       ['/api/v1/services', { ...service, priceVnd: '1.5' }],
       ['/api/v1/services', { ...service, durationMinutes: '30' }],
+      ['/api/v1/services', { ...service, estimatedMinMinutes: '20' }],
+      ['/api/v1/services', { ...service, estimatedMaxMinutes: 30.5 }],
+      ['/api/v1/services', { ...service, estimatedDurationText: '30-45 phút' }],
+      [`/api/v1/services/${id}`, { expectedVersion: 1, estimatedMinMinutes: '15' }],
       ['/api/v1/services', { ...service, tourAmountVnd: '15000' }],
       ['/api/v1/services', { ...service, durationMinutes: undefined }],
       [`/api/v1/services/${id}/price`, { expectedVersion: 1, priceVnd: '1' }],
@@ -201,6 +212,12 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
       .query({ unknown: 'x' })
       .set({ Cookie: headers.Cookie })
       .expect(400);
+    // The duration estimate reaches the service unchanged (create and update).
+    assert.deepEqual(JSON.parse(JSON.stringify(calls[3]?.[2])), service);
+    assert.deepEqual(
+      (JSON.parse(JSON.stringify(calls[4]?.[3])) as Record<string, unknown>)['estimatedMaxMinutes'],
+      35,
+    );
     assert.deepEqual(calls[6]?.slice(0, 3), ['setPrice', token, id]);
     assert.deepEqual(calls[7]?.slice(0, 4), ['setAvailability', token, id, branchId]);
     assert.deepEqual(calls.at(-2)?.slice(0, 2), ['listServices', token]);

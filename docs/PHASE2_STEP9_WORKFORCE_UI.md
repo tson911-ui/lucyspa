@@ -122,7 +122,9 @@ note instead of self-service cards.
 Three clearly separate parts on the service detail:
 
 - **Service master** (GLOBAL `MANAGE_SERVICES`): category, VI/EN names and descriptions,
-  and the internal duration, which is labelled as never shown to customers.
+  and the internal duration, which is labelled as never shown to customers. (The form
+  later gained the customer-facing estimated duration range; see the Step 4 report's
+  post-deployment enhancement.)
 - **Price** (GLOBAL `MANAGE_SERVICE_PRICES`): a digits-only VND string with a required
   reason. VND is formatted from the integer string (thousand separators) and never passes
   through a floating-point number; a test covers an 18-digit amount.

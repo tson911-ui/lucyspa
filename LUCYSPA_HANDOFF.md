@@ -407,13 +407,13 @@ manually by the Owner/operator; see the
 
 **Phase 2 — COMPLETE.** Steps 1–10 are closed and the release runs in production.
 
-**Post-deployment fixes (committed; not yet deployed, production still runs
+**Post-deployment changes (committed; not yet deployed, production still runs
 `93a256e`):**
 
 - `fix: prevent unchanged branch hours submission` (`4c0af62`). The branch-hours form
   submitted an unchanged week, which the API rejects by contract (`VALIDATION_FAILED`
   "days"). Save is now enabled only when a weekday changes.
-- `fix: keep default leave window within limit`. The default leave read window (93 days
+- `fix: keep default leave window within limit` (`1e9d196`). The default leave read window (93 days
   back to 366 days ahead = 460 days inclusive) exceeded the 400-day maximum, so every
   leave list without `from`/`to` failed with `VALIDATION_FAILED` "from". This broke the
   Leave page and the dashboard leave counts in production (found when opened as Owner).
@@ -424,6 +424,25 @@ manually by the Owner/operator; see the
   - explicit maximum range unchanged at 400 days.
 
   Regression tests were added. See the Step 8 report's post-deployment correction.
+
+- `feat: add estimated service duration ranges`. Services gain a customer-facing
+  estimated duration range next to the internal scheduling duration:
+  - `estimatedMinMinutes`: customer-facing minimum estimate;
+  - `estimatedMaxMinutes`: customer-facing maximum estimate;
+  - `durationMinutes`: the deterministic internal scheduling duration (unchanged);
+  - invariant: `estimatedMinMinutes <= estimatedMaxMinutes <= durationMinutes`, enforced
+    in SQL, the API and the form.
+
+  Migration `20260928000000_phase2_service_duration_estimate`: existing services are
+  migrated with estimated min and max equal to their existing `durationMinutes`. Phase 3
+  booking is **not** implemented; `durationMinutes` is only preserved as the future
+  scheduling duration. The workforce create/edit forms and the service list show the new
+  fields. Tests: schema 11/11, service catalog integration 6/6 and HTTP 1/1, skills
+  integration 4/4, API unit/HTTP 77 pass, web 29/29. See the Step 4 report's
+  post-deployment enhancement.
+
+  **Deploying these changes requires `pnpm db:deploy`** (after a verified backup), since
+  production is at 5 migrations and this adds a 6th.
 
 **Next operational action: Owner bootstrap** (`pnpm owner:bootstrap` on the production
 server, password via hidden prompt or stdin). It needs separate explicit Owner

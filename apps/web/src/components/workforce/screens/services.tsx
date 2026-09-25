@@ -8,10 +8,12 @@ import type {
 } from '@lucy-spa/contracts';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
+import { durationNumbers, durationProblem, formatEstimate } from '../../../lib/workforce/durations';
 import { formatVnd, isVndInput } from '../../../lib/workforce/format';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
+import { DurationFields } from './service-durations';
 import {
   Badge,
   Empty,
@@ -108,6 +110,7 @@ export function ServicesScreen() {
                 <th scope="col">{t.common.name}</th>
                 <th scope="col">{t.services.category}</th>
                 <th scope="col">{t.services.price}</th>
+                <th scope="col">{t.services.estimate}</th>
                 <th scope="col">{t.common.status}</th>
                 <th scope="col">{t.common.actions}</th>
               </tr>
@@ -121,6 +124,9 @@ export function ServicesScreen() {
                   </td>
                   <td data-label={t.services.category}>{categoryName(service.categoryId)}</td>
                   <td data-label={t.services.price}>{formatVnd(service.priceVnd, locale)}</td>
+                  <td data-label={t.services.estimate}>
+                    {formatEstimate(service.estimatedMinMinutes, service.estimatedMaxMinutes, t)}
+                  </td>
                   <td data-label={t.common.status}>
                     <Badge tone={service.isActive ? 'success' : 'neutral'}>
                       {service.isActive ? t.common.active : t.common.inactive}
@@ -352,22 +358,25 @@ function ServiceCreate({
     nameVi: '',
     nameEn: '',
     priceVnd: '',
+    estimatedMinMinutes: '60',
+    estimatedMaxMinutes: '60',
     durationMinutes: '60',
   };
   const [form, setForm] = useState(empty);
   const submit = useSubmit();
   const priceValid = form.priceVnd === '' || isVndInput(form.priceVnd);
+  const durationsValid = durationProblem(form) === null;
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (!isVndInput(form.priceVnd)) return;
+    if (!isVndInput(form.priceVnd) || !durationsValid) return;
     const body: ServiceCreateRequest = {
       code: form.code,
       categoryId: form.categoryId,
       nameVi: form.nameVi,
       nameEn: form.nameEn,
       priceVnd: form.priceVnd,
-      durationMinutes: Number(form.durationMinutes),
+      ...durationNumbers(form),
     };
     const ok = await submit.run(
       () => runMutation(() => api.post('/api/v1/services', body), reload),
@@ -444,24 +453,13 @@ function ServiceCreate({
               onChange={(event) => setForm({ ...form, priceVnd: event.target.value.trim() })}
             />
           </Field>
-          <Field
-            id="svc-duration"
-            label={t.services.duration}
-            required
-            hint={t.services.durationNote}
-          >
-            <input
-              id="svc-duration"
-              type="number"
-              required
-              min={1}
-              max={1440}
-              step={1}
-              value={form.durationMinutes}
-              onChange={(event) => setForm({ ...form, durationMinutes: event.target.value })}
-            />
-          </Field>
         </div>
+        <DurationFields
+          idPrefix="svc"
+          value={form}
+          onChange={(next) => setForm({ ...form, ...next })}
+          t={t}
+        />
         {form.priceVnd && priceValid ? (
           <p className="wf-muted">{formatVnd(form.priceVnd, locale)}</p>
         ) : null}
@@ -470,7 +468,7 @@ function ServiceCreate({
           pending={submit.pending}
           label={t.common.create}
           pendingLabel={t.common.saving}
-          disabled={!priceValid}
+          disabled={!priceValid || !durationsValid}
         />
       </form>
     </details>

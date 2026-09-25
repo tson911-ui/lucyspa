@@ -89,9 +89,25 @@ class ServiceCreateDto implements ServiceCreateRequest {
   @IsString()
   @Matches(PRICE)
   priceVnd!: string;
-  @ApiProperty({ description: 'Internal scheduling data; never a public label.' })
+  @ApiProperty({
+    description: 'Internal scheduling duration (minutes); >= estimatedMaxMinutes; never public.',
+  })
   @IsInt()
   durationMinutes!: number;
+  @ApiProperty({
+    required: false,
+    description: 'Customer-facing estimate, minimum minutes. Give both bounds or neither.',
+  })
+  @IsOptional()
+  @IsInt()
+  estimatedMinMinutes?: number;
+  @ApiProperty({
+    required: false,
+    description: 'Customer-facing estimate, maximum minutes (<= durationMinutes).',
+  })
+  @IsOptional()
+  @IsInt()
+  estimatedMaxMinutes?: number;
   @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(2_048) reason?: string;
 }
 
@@ -110,6 +126,8 @@ class ServiceUpdateDto extends VersionedDto implements ServiceUpdateRequest {
   @MaxLength(8_192)
   descriptionEn?: string | null;
   @ApiProperty({ required: false }) @IsOptional() @IsInt() durationMinutes?: number;
+  @ApiProperty({ required: false }) @IsOptional() @IsInt() estimatedMinMinutes?: number;
+  @ApiProperty({ required: false }) @IsOptional() @IsInt() estimatedMaxMinutes?: number;
   @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(2_048) reason?: string;
 }
 

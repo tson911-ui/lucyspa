@@ -30,7 +30,9 @@ import { isUuid } from '../employees/employee.input.js';
 import {
   catalogDescription,
   catalogName,
+  checkServiceDurations,
   durationMinutes,
+  estimateMinutes,
   normalizeCatalogCode,
   optionalReason,
   priceVnd,
@@ -58,6 +60,8 @@ const serviceSelect = {
   descriptionEn: true,
   priceVnd: true,
   durationMinutes: true,
+  estimatedMinMinutes: true,
+  estimatedMaxMinutes: true,
   isActive: true,
   rowVersion: true,
   branches: { select: { branchId: true, isActive: true, rowVersion: true } },
@@ -257,6 +261,24 @@ export class ServiceCatalogService {
     const descriptionEn = catalogDescription(input.descriptionEn ?? null, 'descriptionEn');
     const price = priceVnd(input.priceVnd);
     const duration = durationMinutes(input.durationMinutes);
+    // Both estimate bounds or neither; without them the estimate is exact.
+    if ((input.estimatedMinMinutes === undefined) !== (input.estimatedMaxMinutes === undefined)) {
+      throw new AuthError(
+        'VALIDATION_FAILED',
+        input.estimatedMinMinutes === undefined ? 'estimatedMinMinutes' : 'estimatedMaxMinutes',
+      );
+    }
+    const durations = checkServiceDurations({
+      durationMinutes: duration,
+      estimatedMinMinutes:
+        input.estimatedMinMinutes === undefined
+          ? duration
+          : estimateMinutes(input.estimatedMinMinutes, 'estimatedMinMinutes'),
+      estimatedMaxMinutes:
+        input.estimatedMaxMinutes === undefined
+          ? duration
+          : estimateMinutes(input.estimatedMaxMinutes, 'estimatedMaxMinutes'),
+    });
     const reason = optionalReason(input.reason);
     return this.frame(sessionToken, requestId, async (context) => {
       const { tx, actor } = context;
@@ -276,7 +298,7 @@ export class ServiceCatalogService {
           descriptionVi,
           descriptionEn,
           priceVnd: price,
-          durationMinutes: duration,
+          ...durations,
         },
         select: serviceSelect,
       });
@@ -288,7 +310,7 @@ export class ServiceCatalogService {
           nameVi,
           nameEn,
           priceVnd: price.toString(),
-          durationMinutes: duration,
+          ...durations,
           isActive: true,
         },
       });
@@ -296,7 +318,10 @@ export class ServiceCatalogService {
     });
   }
 
-  /** Master data only: names, descriptions, category, duration. Never code or price. */
+  /**
+   * Master data only: names, descriptions, category, durations. Never code or price. The
+   * durations after the change must still satisfy the duration invariant.
+   */
   async updateService(
     sessionToken: string | undefined,
     serviceId: string,
@@ -307,7 +332,14 @@ export class ServiceCatalogService {
     const patch: Partial<
       Pick<
         ServiceRow,
-        'categoryId' | 'nameVi' | 'nameEn' | 'descriptionVi' | 'descriptionEn' | 'durationMinutes'
+        | 'categoryId'
+        | 'nameVi'
+        | 'nameEn'
+        | 'descriptionVi'
+        | 'descriptionEn'
+        | 'durationMinutes'
+        | 'estimatedMinMinutes'
+        | 'estimatedMaxMinutes'
       >
     > = {};
     if (input.categoryId !== undefined) patch.categoryId = this.id(input.categoryId, 'categoryId');
@@ -322,12 +354,23 @@ export class ServiceCatalogService {
     if (input.durationMinutes !== undefined) {
       patch.durationMinutes = durationMinutes(input.durationMinutes);
     }
+    if (input.estimatedMinMinutes !== undefined) {
+      patch.estimatedMinMinutes = estimateMinutes(input.estimatedMinMinutes, 'estimatedMinMinutes');
+    }
+    if (input.estimatedMaxMinutes !== undefined) {
+      patch.estimatedMaxMinutes = estimateMinutes(input.estimatedMaxMinutes, 'estimatedMaxMinutes');
+    }
     if (Object.keys(patch).length === 0) throw new AuthError('VALIDATION_FAILED');
     const reason = optionalReason(input.reason);
     return this.frame(sessionToken, requestId, async (context) => {
       const { tx, actor } = context;
       requireAcross(actor, 'MANAGE_SERVICES', []);
       const current = await this.lockService(tx, id, input.expectedVersion);
+      checkServiceDurations({
+        durationMinutes: patch.durationMinutes ?? current.durationMinutes,
+        estimatedMinMinutes: patch.estimatedMinMinutes ?? current.estimatedMinMinutes,
+        estimatedMaxMinutes: patch.estimatedMaxMinutes ?? current.estimatedMaxMinutes,
+      });
       const changes = this.changed(current, patch);
       if (changes.categoryId !== undefined) await this.requireCategory(tx, changes.categoryId);
       const row = await tx.service.update({
@@ -578,6 +621,8 @@ export class ServiceCatalogService {
       descriptionEn: row.descriptionEn,
       priceVnd: row.priceVnd.toString(),
       durationMinutes: row.durationMinutes,
+      estimatedMinMinutes: row.estimatedMinMinutes,
+      estimatedMaxMinutes: row.estimatedMaxMinutes,
       isActive: row.isActive,
       version: row.rowVersion,
       availability: row.branches

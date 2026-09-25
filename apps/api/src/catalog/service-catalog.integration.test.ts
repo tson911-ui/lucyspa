@@ -466,6 +466,144 @@ test(
             );
 
             await context.test(
+              'durations: customer-facing estimate range within the scheduling duration',
+              async () => {
+                const base = {
+                  categoryId,
+                  nameVi: 'Gội dưỡng sinh',
+                  nameEn: 'Herbal wellness hair wash',
+                  priceVnd: '200000',
+                };
+                const field = (work: Promise<unknown>, name: string) =>
+                  assert.rejects(
+                    work,
+                    (error: unknown) =>
+                      error instanceof AuthError &&
+                      error.code === 'VALIDATION_FAILED' &&
+                      error.field === name,
+                  );
+                // A range (about 60–80 minutes) reserved as 90 minutes, stored and read back.
+                const herbal = await catalog.createService(ownerSession, {
+                  ...base,
+                  code: `HERBAL_${run}`,
+                  estimatedMinMinutes: 60,
+                  estimatedMaxMinutes: 80,
+                  durationMinutes: 90,
+                });
+                const read = await catalog.getService(ownerSession, herbal.id);
+                assert.deepEqual(
+                  [read.estimatedMinMinutes, read.estimatedMaxMinutes, read.durationMinutes],
+                  [60, 80, 90],
+                );
+                const [created] = await audit(herbal.id, 'SERVICE_CREATED');
+                assert.deepEqual(
+                  (created?.after as Record<string, unknown>)['estimatedMaxMinutes'],
+                  80,
+                );
+                // Exact duration: min = max = scheduling; omitting both bounds means exact.
+                const exact = await catalog.createService(ownerSession, {
+                  ...base,
+                  code: `EXACT_${run}`,
+                  estimatedMinMinutes: 60,
+                  estimatedMaxMinutes: 60,
+                  durationMinutes: 60,
+                });
+                assert.equal(exact.estimatedMaxMinutes, 60);
+                const implicit = await catalog.createService(ownerSession, {
+                  ...base,
+                  code: `IMPLICIT_${run}`,
+                  durationMinutes: 45,
+                });
+                assert.deepEqual(
+                  [implicit.estimatedMinMinutes, implicit.estimatedMaxMinutes],
+                  [45, 45],
+                );
+                // Validation on create.
+                const bad = (overrides: Record<string, unknown>, name: string, code: string) =>
+                  field(
+                    catalog.createService(ownerSession, {
+                      ...base,
+                      code: `${code}_${run}`,
+                      durationMinutes: 60,
+                      ...overrides,
+                    } as never),
+                    name,
+                  );
+                await bad(
+                  { estimatedMinMinutes: 0, estimatedMaxMinutes: 30 },
+                  'estimatedMinMinutes',
+                  'E1',
+                );
+                await bad(
+                  { estimatedMinMinutes: 45, estimatedMaxMinutes: 30 },
+                  'estimatedMaxMinutes',
+                  'E2',
+                );
+                await bad(
+                  { estimatedMinMinutes: 30, estimatedMaxMinutes: 75 },
+                  'durationMinutes',
+                  'E3',
+                );
+                await bad({ estimatedMinMinutes: 30 }, 'estimatedMaxMinutes', 'E4');
+                await bad({ estimatedMaxMinutes: 45 }, 'estimatedMinMinutes', 'E5');
+                await bad(
+                  { estimatedMinMinutes: 30.5, estimatedMaxMinutes: 45 },
+                  'estimatedMinMinutes',
+                  'E6',
+                );
+                assert.equal(
+                  await tx.service.count({
+                    where: { code: { startsWith: 'E', endsWith: `_${run}` } },
+                  }),
+                  1,
+                  'only EXACT was created; rejected commands wrote nothing',
+                );
+                // Updates: any subset, validated against the resulting values.
+                const widened = await catalog.updateService(catalogManager, herbal.id, {
+                  expectedVersion: herbal.version,
+                  estimatedMinMinutes: 50,
+                });
+                assert.deepEqual(
+                  [
+                    widened.estimatedMinMinutes,
+                    widened.estimatedMaxMinutes,
+                    widened.durationMinutes,
+                  ],
+                  [50, 80, 90],
+                );
+                const [updated] = await audit(herbal.id, 'SERVICE_UPDATED');
+                assert.deepEqual(updated?.before, { estimatedMinMinutes: 60 });
+                assert.deepEqual(updated?.after, { estimatedMinMinutes: 50 });
+                // Shrinking the slot below the promised maximum is refused.
+                await field(
+                  catalog.updateService(catalogManager, herbal.id, {
+                    expectedVersion: widened.version,
+                    durationMinutes: 75,
+                  }),
+                  'durationMinutes',
+                );
+                await field(
+                  catalog.updateService(catalogManager, herbal.id, {
+                    expectedVersion: widened.version,
+                    estimatedMaxMinutes: 40,
+                  }),
+                  'estimatedMaxMinutes',
+                );
+                // Moving range and slot together is one consistent change.
+                const moved = await catalog.updateService(catalogManager, herbal.id, {
+                  expectedVersion: widened.version,
+                  estimatedMaxMinutes: 100,
+                  durationMinutes: 100,
+                });
+                assert.deepEqual(
+                  [moved.estimatedMinMinutes, moved.estimatedMaxMinutes, moved.durationMinutes],
+                  [50, 100, 100],
+                );
+                assert.equal(moved.version, widened.version + 1);
+              },
+            );
+
+            await context.test(
               'price: GLOBAL_ONLY MANAGE_SERVICE_PRICES, audited before/after',
               async () => {
                 const current = await catalog.getService(ownerSession, serviceId);
