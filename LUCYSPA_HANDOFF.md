@@ -458,6 +458,24 @@ manually by the Owner/operator; see the
   - **Tests:** catalog integration 8/8, delete HTTP 1/1, web 37/37. No migration; no
     production data is deleted automatically.
 
+- **Employee management Step 5: employee skill assignment UI** (`feat: add employee skill
+assignment UI`; local commit on top of `f7badbb`; not pushed, not deployed, no
+  migration). See the [Step 5 report](docs/EMPLOYEE_MANAGEMENT_STEP5_SKILL_ASSIGNMENT.md).
+  - **UI:** the employee-detail "Kỹ năng" section shows current skills (since when), assign
+    (from the loaded catalog, optional reason) and remove (history kept), plus a
+    removed-skill history list.
+  - **Backend:** skill responses add `history` (the existing revoked rows). Granting
+    refuses ENDED employment (409 `employment`); INACTIVE was already refused. Removal is
+    still allowed.
+  - **Separation:** skills are employee-level qualifications, separate from roles,
+    classification and branches. Nothing is automatic: no skills on
+    creation/promotion/role assignment, no roles from skills. TRAINEE may hold skills.
+  - **Authorization is unchanged:** `MANAGE_SKILLS` over every branch, no self changes.
+  - **Tests:** employee-skills integration 5/5, skill suites 4/4 + 1/1, web 80/80, Step
+    2–4B regressions, customer auth unchanged.
+  - **Employee management feature set is complete locally.** Next: review and one
+    combined deployment (backup, `pnpm db:deploy`), then Phase 3 planning.
+
 - **Employee management Step 4B: role management UI** (`feat: add role management UI`;
   local commit on top of `e6755ff`; not pushed, not deployed, no migration). See the
   [Step 4B report](docs/EMPLOYEE_MANAGEMENT_STEP4B_ROLE_MANAGEMENT.md).

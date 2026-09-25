@@ -4,14 +4,12 @@ import type {
   BranchSummary,
   EmployeeBranchAssignmentsResponse,
   EmployeeResponse,
-  EmployeeSkillsResponse,
   EmploymentResponse,
-  SkillListResponse,
 } from '@lucy-spa/contracts';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { formatDateTime } from '../../../lib/workforce/format';
-import { canAcross, canAnywhere } from '../../../lib/workforce/permissions';
+import { canAnywhere } from '../../../lib/workforce/permissions';
 import { detailActions, employmentEnded } from '../../../lib/workforce/employee-detail';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { branchLabel, useBranches } from '../data';
@@ -38,11 +36,12 @@ import {
   ProfileSection,
 } from './employee-lifecycle';
 import { RolesSection } from './employee-roles';
+import { SkillsSection } from './employee-skills';
 
 /**
- * One workforce member (Employee management Steps 3–4): profile, employment classification
+ * One workforce member (Employee management Steps 3–5): profile, employment classification
  * (history, promotion, ending), sign-in account (password reset, status), roles, branch
- * assignments and — unchanged from Phase 2 — skills. Account status and employment
+ * assignments and skills (current and removed). Account status and employment
  * classification are shown separately. Actions are offered from the `/auth/me` hints; the
  * API authorizes every command.
  */
@@ -142,116 +141,12 @@ export function EmployeeDetail({
         branches={branches}
       />
       <BranchAssignments employee={employee} branches={branches} reloadEmployee={reloadAll} />
-      <EmployeeSkills employee={employee} />
+      <SkillsSection
+        employee={employee}
+        ended={employment ? employmentEnded(employment) : false}
+        branches={branches}
+      />
     </>
-  );
-}
-
-function EmployeeSkills({ employee }: { employee: EmployeeResponse }) {
-  const { api, t, locale } = useWorkforce();
-  const { account } = useAccount();
-  const skills = useResource(
-    () => api.get<EmployeeSkillsResponse>(`/api/v1/employees/${employee.id}/skills`),
-    [api, employee.id],
-  );
-  const catalog = useResource(() => api.get<SkillListResponse>('/api/v1/skills'), [api]);
-  const [skillId, setSkillId] = useState('');
-  const submit = useSubmit();
-  // UX hint of the API rule: MANAGE_SKILLS over every branch of the employee; never self.
-  const manage =
-    canAcross(account, 'MANAGE_SKILLS', employee.branchIds) &&
-    (account.kind === 'OWNER' || account.id !== employee.id);
-  const held = new Set(skills.data?.skills.map((entry) => entry.skill.id));
-  const available = (catalog.data?.skills ?? []).filter(
-    (skill) => skill.isActive && !held.has(skill.id),
-  );
-
-  async function grant(event: FormEvent) {
-    event.preventDefault();
-    const ok = await submit.run(
-      () =>
-        runMutation(
-          () => api.post(`/api/v1/employees/${employee.id}/skills`, { skillId }),
-          skills.reload,
-        ),
-      t.common.saved,
-    );
-    if (ok) {
-      setSkillId('');
-      await skills.reload();
-    }
-  }
-
-  async function revoke(id: string) {
-    const ok = await submit.run(
-      () =>
-        runMutation(
-          () => api.post(`/api/v1/employees/${employee.id}/skills/${id}/revoke`, {}),
-          skills.reload,
-        ),
-      t.common.saved,
-    );
-    if (ok) await skills.reload();
-  }
-
-  return (
-    <Section title={t.employees.skills}>
-      {skills.loading ? <Loading t={t} /> : null}
-      {skills.error ? (
-        <ErrorState error={skills.error} t={t} onRetry={() => void skills.reload()} />
-      ) : null}
-      <FormFeedback error={submit.error} success={submit.success} t={t} />
-      {skills.data && skills.data.skills.length === 0 ? (
-        <Empty>{t.employees.noSkills}</Empty>
-      ) : null}
-      <ul className="wf-plain-list">
-        {skills.data?.skills.map((entry) => (
-          <li key={entry.skill.id} className="wf-list-row">
-            <span>
-              {locale === 'vi' ? entry.skill.nameVi : entry.skill.nameEn}{' '}
-              <span className="wf-muted wf-small">({entry.skill.code})</span>
-            </span>
-            {manage ? (
-              <button
-                type="button"
-                className="wf-button wf-button-quiet"
-                disabled={submit.pending}
-                onClick={() => void revoke(entry.skill.id)}
-              >
-                {t.employees.revokeSkill}
-              </button>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-      {manage ? (
-        <form className="wf-filters" onSubmit={(event) => void grant(event)}>
-          <Field id="grant-skill" label={t.employees.grantSkill} required>
-            <select
-              id="grant-skill"
-              required
-              value={skillId}
-              onChange={(event) => setSkillId(event.target.value)}
-            >
-              <option value="" disabled>
-                —
-              </option>
-              {available.map((skill) => (
-                <option key={skill.id} value={skill.id}>
-                  {locale === 'vi' ? skill.nameVi : skill.nameEn} ({skill.code})
-                </option>
-              ))}
-            </select>
-          </Field>
-          <SubmitButton
-            pending={submit.pending}
-            label={t.employees.grantSkill}
-            pendingLabel={t.common.saving}
-            disabled={skillId === ''}
-          />
-        </form>
-      ) : null}
-    </Section>
   );
 }
 

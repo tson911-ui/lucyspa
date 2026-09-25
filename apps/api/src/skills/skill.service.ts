@@ -28,6 +28,7 @@ import {
   requiredReason,
 } from '../catalog/catalog.input.js';
 import { isUuid } from '../employees/employee.input.js';
+import { businessToday, classificationOn } from '../employees/employment.js';
 
 const skillSelect = {
   id: true,
@@ -222,6 +223,11 @@ export class SkillService {
       const target = await this.authorizeEmployee(context, id);
       // Existing workforce convention (setup issuance): no new capability for INACTIVE.
       if (target.status === 'INACTIVE') throw new AuthError('CONFLICT', 'status');
+      // Ended employment receives no new qualifications (no rehire); revoking stays possible.
+      const today = await businessToday(tx, target.branchIds);
+      if ((await classificationOn(tx, id, today))?.classification === 'ENDED') {
+        throw new AuthError('CONFLICT', 'employment');
+      }
       await tx.$queryRaw`SELECT id FROM skills WHERE id = ${skillId}::uuid FOR SHARE`;
       const skill = await tx.skill.findUnique({ where: { id: skillId }, select: skillSelect });
       if (!skill || !skill.isActive) throw new AuthError('VALIDATION_FAILED', 'skillId');
@@ -365,8 +371,25 @@ export class SkillService {
         skill: { select: { id: true, code: true, nameVi: true, nameEn: true, isActive: true } },
       },
     });
+    // Revoked grants are kept as history and returned as such (Employee management Step 5).
+    const revoked = await tx.employeeSkill.findMany({
+      where: { employeeUserId: id, revokedAt: { not: null } },
+      orderBy: [{ revokedAt: 'desc' }, { id: 'asc' }],
+      select: {
+        grantedAt: true,
+        revokedAt: true,
+        grantedByUserId: true,
+        skill: { select: { id: true, code: true, nameVi: true, nameEn: true, isActive: true } },
+      },
+    });
     return {
       employeeId: id,
+      history: revoked.map((row) => ({
+        skill: row.skill,
+        grantedAt: row.grantedAt.toISOString(),
+        revokedAt: row.revokedAt!.toISOString(),
+        grantedByUserId: row.grantedByUserId,
+      })),
       skills: rows
         .map((row) => ({
           skill: row.skill,

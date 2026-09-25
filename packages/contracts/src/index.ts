@@ -821,10 +821,19 @@ export interface EmployeeSkillEntry {
   grantedByUserId: string;
 }
 
-/** GET /api/v1/employees/:id/skills: the employee's active skills (history is kept). */
+/** A former grant: the same row, ended at `revokedAt` (never deleted). */
+export interface EmployeeSkillHistoryEntry extends EmployeeSkillEntry {
+  revokedAt: string;
+}
+
+/**
+ * GET /api/v1/employees/:id/skills: the employee's active skills, and `history`: the
+ * revoked grants (most recently revoked first). Grants are never deleted.
+ */
 export interface EmployeeSkillsResponse {
   employeeId: string;
   skills: EmployeeSkillEntry[];
+  history: EmployeeSkillHistoryEntry[];
 }
 
 /**
