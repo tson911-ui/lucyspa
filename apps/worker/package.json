@@ -6,8 +6,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev": "node --env-file-if-exists=../../.env --import tsx --watch src/main.ts",
-    "start": "node --env-file-if-exists=../../.env dist/main.js",
+    "dev": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.auth.local --import tsx --watch src/main.ts",
+    "start": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.auth.local dist/main.js",
     "test": "node --test \"dist/**/*.test.js\"",
     "smoke": "node --env-file-if-exists=../../.env dist/smoke.js"
   },

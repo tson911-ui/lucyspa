@@ -7,15 +7,19 @@ import {
   SYSTEM_CHECK_QUEUE,
 } from '@lucy-spa/server';
 import { Worker } from 'bullmq';
+import { parseAuthJobsEnvironment, startAuthJobs } from './auth-jobs.js';
 import { processSystemCheck } from './processor.js';
 
 const bootstrapLogger = createLogger('worker', 'info');
 
 async function bootstrap() {
   const config = parseWorkerEnvironment(process.env);
+  // Validated before any connection: invalid email/cleanup configuration fails closed.
+  const authJobsConfig = parseAuthJobsEnvironment(process.env, config.nodeEnv);
   const logger = createLogger('worker', config.logLevel);
   const database = createDatabaseClient(config.databaseUrl);
   let worker: Worker | undefined;
+  let authJobs: { stop(): Promise<void> } | undefined;
   try {
     await database.$queryRaw`SELECT 1`;
     worker = new Worker(SYSTEM_CHECK_QUEUE, async (job) => processSystemCheck(job), {
@@ -39,11 +43,10 @@ async function bootstrap() {
     } finally {
       clearTimeout(timer);
     }
-    logger.info(
-      { queue: SYSTEM_CHECK_QUEUE },
-      'Worker ready; only technical diagnostics are enabled',
-    );
+    authJobs = startAuthJobs(database, authJobsConfig, logger);
+    logger.info({ queue: SYSTEM_CHECK_QUEUE }, 'Worker ready');
   } catch (error) {
+    await authJobs?.stop();
     await worker?.close(true);
     await database.$disconnect();
     throw error;
@@ -55,6 +58,7 @@ async function bootstrap() {
     const deadline = setTimeout(() => process.exit(1), 15000);
     deadline.unref();
     try {
+      await authJobs?.stop();
       await worker?.close();
       await database.$disconnect();
       logger.info('Worker stopped');

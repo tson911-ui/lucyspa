@@ -1,13 +1,14 @@
-import {
-  createCipheriv,
-  createDecipheriv,
-  createHash,
-  createHmac,
-  hkdfSync,
-  randomBytes,
-  randomInt,
-  timingSafeEqual,
-} from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
+import { lengthPrefixedTuple } from '@lucy-spa/server';
+
+// Delivery sealing is shared with the worker; re-exported for existing API imports.
+export {
+  lengthPrefixedTuple,
+  openDeliveryPayload,
+  sealDeliveryPayload,
+  type DeliveryBinding,
+  type SealedPayload,
+} from '@lucy-spa/server';
 
 const TOKEN_BYTES = 32;
 const MAX_DATABASE_VERSION = 2_147_483_647;
@@ -35,21 +36,6 @@ export function constantTimeEqual(left: Uint8Array, right: Uint8Array): boolean 
 }
 
 /** Each UTF-8 field is preceded by its unsigned 32-bit big-endian byte length. */
-export function lengthPrefixedTuple(fields: readonly string[]): Buffer {
-  const chunks: Buffer[] = [];
-  for (const field of fields) {
-    // Unpaired UTF-16 surrogates would alias U+FFFD in UTF-8 and break tuple injectivity.
-    const value = Buffer.from(field, 'utf8');
-    if (value.toString('utf8') !== field || value.length > 0xffff_ffff) {
-      throw new Error('Invalid cryptographic tuple field');
-    }
-    const prefix = Buffer.alloc(4);
-    prefix.writeUInt32BE(value.length);
-    chunks.push(prefix, value);
-  }
-  return Buffer.concat(chunks);
-}
-
 function keyedDigest(key: Uint8Array, fields: readonly string[]): Buffer {
   if (key.byteLength < TOKEN_BYTES) throw new Error('Invalid authentication key');
   return createHmac('sha256', key).update(lengthPrefixedTuple(fields)).digest();
@@ -145,65 +131,4 @@ export function throttleDigest(purpose: string, identifier: string, key: Uint8Ar
 export function identityDigest(purpose: string, identifier: string, key: Uint8Array): Buffer {
   if (!purpose || !identifier) throw new Error('Invalid identity binding');
   return keyedDigest(key, ['identity-v1', purpose, identifier]);
-}
-
-export interface DeliveryBinding {
-  deliveryId: string;
-  challengeId: string;
-  generation: number;
-}
-
-export interface SealedPayload {
-  ciphertext: Buffer;
-  nonce: Buffer;
-  tag: Buffer;
-}
-
-function deliveryKey(key: Uint8Array): Buffer {
-  if (key.byteLength < TOKEN_BYTES) throw new Error('Invalid delivery key');
-  return Buffer.from(hkdfSync('sha256', key, Buffer.alloc(0), 'lucy-auth-delivery-v1', 32));
-}
-
-function deliveryContext(binding: DeliveryBinding): Buffer {
-  if (!binding.deliveryId || !binding.challengeId || !positiveVersion(binding.generation)) {
-    throw new Error('Invalid delivery binding');
-  }
-  return lengthPrefixedTuple([
-    'auth-delivery-v1',
-    binding.deliveryId,
-    binding.challengeId,
-    binding.generation.toString(),
-  ]);
-}
-
-/** AES-256-GCM with a unique random nonce; the delivery/challenge/generation is authenticated. */
-export function sealDeliveryPayload(
-  plaintext: string,
-  binding: DeliveryBinding,
-  key: Uint8Array,
-): SealedPayload {
-  const nonce = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', deliveryKey(key), nonce, { authTagLength: 16 });
-  cipher.setAAD(deliveryContext(binding));
-  const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  return { ciphertext, nonce, tag: cipher.getAuthTag() };
-}
-
-/** Returns null for any tampering, wrong binding or wrong key; never a partial plaintext. */
-export function openDeliveryPayload(
-  sealed: SealedPayload,
-  binding: DeliveryBinding,
-  key: Uint8Array,
-): string | null {
-  if (sealed.nonce.byteLength !== 12 || sealed.tag.byteLength !== 16) return null;
-  try {
-    const decipher = createDecipheriv('aes-256-gcm', deliveryKey(key), sealed.nonce, {
-      authTagLength: 16,
-    });
-    decipher.setAAD(deliveryContext(binding));
-    decipher.setAuthTag(sealed.tag);
-    return Buffer.concat([decipher.update(sealed.ciphertext), decipher.final()]).toString('utf8');
-  } catch {
-    return null;
-  }
 }

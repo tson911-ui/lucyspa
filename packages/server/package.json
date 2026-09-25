@@ -15,11 +15,14 @@
     "test": "node --test \"dist/**/*.test.js\""
   },
   "dependencies": {
+    "@lucy-spa/database": "workspace:*",
     "bullmq": "5.81.5",
+    "nodemailer": "10.0.10",
     "pino": "10.3.1",
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "@lucy-spa/config": "workspace:*"
+    "@lucy-spa/config": "workspace:*",
+    "@types/nodemailer": "8.0.2"
   }
 }

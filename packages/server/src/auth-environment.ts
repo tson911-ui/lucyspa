@@ -173,3 +173,18 @@ export function parseAuthEnvironment(
     otpIpIssueLimit: positiveInteger(env, 'AUTH_OTP_IP_ISSUE_LIMIT', 30),
   };
 }
+
+/**
+ * The delivery ring alone, for the email worker: it decrypts delivery envelopes and
+ * needs no CSRF, throttle or OTP keys. Same syntax and validation as the API ring.
+ */
+export function parseDeliveryKeyRing(env: NodeJS.ProcessEnv): {
+  deliveryKeys: ReadonlyMap<number, Buffer>;
+  deliveryActiveVersion: number;
+} {
+  const deliveryKeys = keyRing(env, 'AUTH_DELIVERY_KEYS');
+  return {
+    deliveryKeys,
+    deliveryActiveVersion: activeVersion(env, 'AUTH_DELIVERY_ACTIVE_VERSION', deliveryKeys),
+  };
+}

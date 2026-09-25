@@ -358,9 +358,15 @@ importers:
 
   packages/server:
     dependencies:
+      '@lucy-spa/database':
+        specifier: workspace:*
+        version: link:../database
       bullmq:
         specifier: 5.81.5
         version: 5.81.5(supports-color@7.2.0)
+      nodemailer:
+        specifier: 10.0.10
+        version: 10.0.10
       pino:
         specifier: 10.3.1
         version: 10.3.1
@@ -371,6 +377,9 @@ importers:
       '@lucy-spa/config':
         specifier: workspace:*
         version: link:../config
+      '@types/nodemailer':
+        specifier: 8.0.2
+        version: 8.0.2
 
   packages/ui:
     devDependencies:
@@ -1241,6 +1250,9 @@ packages:
 
   '@types/node@24.13.4':
     resolution: {integrity: sha512-YJ7EqCstVTzIr0fMr7qul/977en+pQHrfmuKIo6Zr9i75Be21dr3MovcfvGtyvi2HAUrRerWps5sMO9I7WaxDw==}
+
+  '@types/nodemailer@8.0.2':
+    resolution: {integrity: sha512-c7M5ox8p0nEOfbJ2E9Qcmt8/QCu/VzsiAhzBiZbvky2PhKZDHpKB3sQHBM5MEZNkCfBOaS6S9//AGPRTNB7IaA==}
 
   '@types/pg@8.23.1':
     resolution: {integrity: sha512-fKVHpikPdg4GKks3JuLEhvwSyvwzF23hnabPy6DD8ljVbC7+6J5dQzdv4arV6jqq57djnMgs1HKBxX4P8aBI3A==}
@@ -2197,6 +2209,10 @@ packages:
   node-gyp-build@4.8.4:
     resolution: {integrity: sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==}
     hasBin: true
+
+  nodemailer@10.0.10:
+    resolution: {integrity: sha512-He9XskOFms62SyAKkLu8CcGcYHAo+BSHSsORI8s4PJH8qZgZY4L4lDfvyN0twvmbpyG+eGrxpyBlskj9d9rJ8A==}
+    engines: {node: '>=20.0.0'}
 
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
@@ -3446,6 +3462,10 @@ snapshots:
     dependencies:
       undici-types: 7.18.2
 
+  '@types/nodemailer@8.0.2':
+    dependencies:
+      '@types/node': 24.13.4
+
   '@types/pg@8.23.1':
     dependencies:
       '@types/node': 24.13.4
@@ -4530,6 +4550,8 @@ snapshots:
     optional: true
 
   node-gyp-build@4.8.4: {}
+
+  nodemailer@10.0.10: {}
 
   object-assign@4.1.1: {}
 
