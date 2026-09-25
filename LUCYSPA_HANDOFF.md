@@ -58,7 +58,9 @@
   records operational branch assignments; the
   [Phase 2 Step 7 report](docs/PHASE2_STEP7_ATTENDANCE.md) records attendance; the
   [Phase 2 Step 8 report](docs/PHASE2_STEP8_LEAVE_MANAGEMENT.md) records leave management; the
-  [Phase 2 Step 9 report](docs/PHASE2_STEP9_WORKFORCE_UI.md) records the workforce UI.
+  [Phase 2 Step 9 report](docs/PHASE2_STEP9_WORKFORCE_UI.md) records the workforce UI; the
+  [Phase 2 Step 10 report](docs/PHASE2_STEP10_PRODUCTION_DEPLOYMENT.md) records the
+  production deployment. **Phase 2 is COMPLETE.**
   Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
@@ -216,7 +218,7 @@ because a new session starts.
 [Step 13 completion gate](docs/PHASE1_STEP13_COMPLETION_GATE.md), `fab9147`). Steps 1–12
 are closed; the HTML auth-email presentation followed in `389c0b4`.
 
-**Phase 2 is in progress.** Step 2 (database foundation) is **closed** (Owner-approved;
+**Phase 2 is COMPLETE** (see Step 10 below). Step 2 (database foundation) is **closed** (Owner-approved;
 commit `feat: add phase 2 database foundation`). It adds one additive migration
 (`20260925000000_phase2_services_skills_operations`) with services, skills, employee
 skills, service branch availability, branch operating hours, attendance and leave
@@ -378,12 +380,39 @@ schema change or migration. Step 7's original behavior is as recorded in its rep
 correction supersedes only the default window. Phase 2 is **not** yet deployed to
 production.
 
-**Next step: Phase 2 Step 10 — Completion Gate + Production Deployment**; it needs
-separate Owner authorization and must not be started without it. Owner decisions
-H1–H9 are recorded in the Step 2 report. Adjusted plan: Step 3 branch administration
-and hours; Step 4 services; Step 5 skills; Step 6 branch assignments (reuse
-membership); Step 7 attendance; Step 8 leave; Step 9 dashboard/auth shell and Phase 2
-UI; Step 10 completion gate and deployment.
+**Phase 2 Step 10 — CLOSED** (production deployment on 2026-09-25 UTC, performed
+manually by the Owner/operator; see the
+[Step 10 report](docs/PHASE2_STEP10_PRODUCTION_DEPLOYMENT.md)).
+
+- **Application production release commit:** `93a256e` (full
+  `93a256e6bbd2055fd9af823c4028c1404cb878db`), deployed over `389c0b4` in `/opt/lucyspa`.
+  The later documentation-only closure commit is not an application release and needs no
+  redeploy.
+- **Backup** before migration: `/root/backups/lucyspa-pre-phase2-20260925T113940Z.dump`
+  (custom format, 94 KB, verified with `pg_restore --list`: 187 TOC entries), retained.
+- **Migrations:** `pnpm db:deploy` applied
+  `20260925000000_phase2_services_skills_operations`,
+  `20260926000000_phase2_branch_row_version` and `20260927000000_phase2_leave_type`.
+  `pnpm db:status` reports 5 migrations, up to date. No reset, push, manual SQL or
+  restore.
+- **Permission sync:** `pnpm db:permissions:sync` inserted 7 with 10 already present;
+  the recheck gave 0 inserted, 17 present (idempotent, no mismatch).
+- **Processes and health:** `lucyspa-api`, `lucyspa-worker` and `lucyspa-web` restarted
+  and online; API `status: ok`, database and Redis up.
+- **Anonymous smoke:** `/vi`, `/en`, `/vi/workforce/login`, `/en/workforce/login` all 200;
+  `/api/v1/auth/context` valid JSON (`authenticated: false`); anonymous `/auth/me` 401.
+  **No authenticated production smoke test was performed.**
+- **Known accepted limitations** are carried from Step 10A (see the Step 10 report,
+  section 11).
+
+**Phase 2 — COMPLETE.** Steps 1–10 are closed and the release runs in production.
+
+**Next operational action: Owner bootstrap** (`pnpm owner:bootstrap` on the production
+server, password via hidden prompt or stdin). It needs separate explicit Owner
+authorization, and production has no Owner yet. After it: authenticated production smoke
+testing of the workforce UI and staff permission grants. This is an operational step, not
+unfinished Phase 2 implementation. Phase 3 has not started and needs its own
+authorization. Owner decisions H1–H9 remain recorded in the Step 2 report.
 
 Production deployment (verified by the operator, recorded in the
 [Step 12 report](docs/PHASE1_STEP12_EMAIL_DISPATCH_CLEANUP.md#production-verification)):
