@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { getWorkforceDictionary } from '../../../i18n/workforce';
 import { employee, owner, render } from '../../../test/support';
 import { AttendanceScreen } from './attendance';
-import { editableHours } from './branch-detail';
+import { editableHours, hoursChanged } from './branch-detail';
 import { BranchesScreen } from './branches';
 import { LeaveScreen, LeaveTable, LeaveTypeOptions } from './leave';
 import { safeNext } from './login';
@@ -147,4 +147,32 @@ test('business hours editor covers all seven weekdays; login redirects stay insi
   ]) {
     assert.equal(safeNext(hostile, base), base, String(hostile));
   }
+});
+
+test('an unchanged week is not submittable (the API rejects no-op hours updates)', () => {
+  const open = (isoWeekday: 1 | 2 | 3 | 4 | 5 | 6 | 7) => ({
+    isoWeekday,
+    isClosed: false,
+    opensAt: '09:00',
+    closesAt: '21:00',
+  });
+  // A new branch: default 09:00–21:00 every day, version 1 (the production report).
+  const stored = ([1, 2, 3, 4, 5, 6, 7] as const).map(open);
+  assert.equal(hoursChanged(stored, editableHours(stored)), false);
+  const later = editableHours(stored).map((day) =>
+    day.isoWeekday === 7 ? { ...day, closesAt: '20:00' } : day,
+  );
+  assert.equal(hoursChanged(stored, later), true);
+  const closedSunday = editableHours(stored).map((day) =>
+    day.isoWeekday === 7 ? { ...day, isClosed: true, opensAt: null, closesAt: null } : day,
+  );
+  assert.equal(hoursChanged(stored, closedSunday), true);
+  // A branch created before Phase 2 has no rows: the filled-in week is a change.
+  assert.equal(hoursChanged([], editableHours([])), true);
+  // A stored closed day stays unchanged even if the form kept stale times while closed.
+  const closed = [{ isoWeekday: 1 as const, isClosed: true, opensAt: null, closesAt: null }];
+  assert.equal(
+    hoursChanged(closed, [{ isoWeekday: 1, isClosed: true, opensAt: '09:00', closesAt: '21:00' }]),
+    false,
+  );
 });

@@ -485,6 +485,31 @@ test(
                   days: [{ isoWeekday: 1, isClosed: false, opensAt: '09:00', closesAt: '21:00' }],
                 });
                 assert.equal(configured.hours.length, 1);
+
+                // Production regression: a new branch (version 1) already has the default
+                // 09:00–21:00 week, so the UI's unchanged seven-open-days payload is a no-op.
+                // The API contract rejects no-op updates as VALIDATION_FAILED "days".
+                const fresh = await branches.create(adminSession, {
+                  code: `HOURS-${run}`,
+                  name: 'Unchanged hours',
+                });
+                assert.equal(fresh.version, 1);
+                await assert.rejects(
+                  branches.setHours(adminSession, fresh.id, {
+                    expectedVersion: 1,
+                    days: [1, 2, 3, 4, 5, 6, 7].map((isoWeekday) => ({
+                      isoWeekday: isoWeekday as 1 | 2 | 3 | 4 | 5 | 6 | 7,
+                      isClosed: false,
+                      opensAt: '09:00',
+                      closesAt: '21:00',
+                    })),
+                  }),
+                  (error: unknown) =>
+                    error instanceof AuthError &&
+                    error.code === 'VALIDATION_FAILED' &&
+                    error.field === 'days',
+                );
+                assert.equal((await branches.get(adminSession, fresh.id)).version, 1);
               },
             );
 

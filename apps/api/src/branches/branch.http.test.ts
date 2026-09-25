@@ -180,6 +180,25 @@ test('branch commands enforce CSRF/origin, strict DTOs and their contracts', asy
     for (const [path, body] of commands.slice(1)) {
       await request(server).post(path).set(headers).send(body).expect(200);
     }
+    // Production regression: the exact seven-open-days payload the workforce UI sends
+    // passes the real global ValidationPipe unchanged (whitelist/forbidNonWhitelisted on).
+    const sevenOpenDays = {
+      expectedVersion: 1,
+      days: [1, 2, 3, 4, 5, 6, 7].map((isoWeekday) => ({
+        isoWeekday,
+        isClosed: false,
+        opensAt: '09:00',
+        closesAt: '21:00',
+      })),
+    };
+    await request(server)
+      .post(`/api/v1/branches/${id}/hours`)
+      .set(headers)
+      .send(sevenOpenDays)
+      .expect(200);
+    const forwarded = calls.at(-1);
+    assert.deepEqual(forwarded?.slice(0, 3), ['setHours', token, id]);
+    assert.deepEqual(JSON.parse(JSON.stringify(forwarded?.[3])), sevenOpenDays);
     await request(server).get('/api/v1/branches').set({ Cookie: headers.Cookie }).expect(200);
     await request(server).get(`/api/v1/branches/${id}`).set({ Cookie: headers.Cookie }).expect(200);
     assert.deepEqual(calls[0]?.slice(0, 2), ['create', token]);

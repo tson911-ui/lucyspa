@@ -40,6 +40,23 @@ export function editableHours(hours: readonly BranchOperatingDay[]): BranchOpera
   );
 }
 
+/**
+ * Whether the edited week differs from the stored hours. The API rejects an update that
+ * changes no weekday (`VALIDATION_FAILED` "days"), so an unchanged form is not submitted.
+ * A weekday with no stored row (branches created before Phase 2) always counts as a change.
+ */
+export function hoursChanged(
+  stored: readonly BranchOperatingDay[],
+  edited: readonly BranchOperatingDay[],
+): boolean {
+  return edited.some((day) => {
+    const current = stored.find((entry) => entry.isoWeekday === day.isoWeekday);
+    if (!current) return true;
+    if (current.isClosed !== day.isClosed) return true;
+    return !day.isClosed && (current.opensAt !== day.opensAt || current.closesAt !== day.closesAt);
+  });
+}
+
 export function BranchDetailScreen({ id }: { id: string }) {
   const { api, t, base } = useWorkforce();
   const { account } = useAccount();
@@ -167,6 +184,7 @@ function BranchHours({
 
   async function save(event: FormEvent) {
     event.preventDefault();
+    if (!hoursChanged(branch.hours, days)) return;
     const body: BranchHoursUpdateRequest = {
       expectedVersion: branch.version,
       days: days.map((day) =>
@@ -250,6 +268,7 @@ function BranchHours({
               pending={submit.pending}
               label={t.branches.saveHours}
               pendingLabel={t.common.saving}
+              disabled={!hoursChanged(branch.hours, days)}
             />
           </>
         ) : null}
