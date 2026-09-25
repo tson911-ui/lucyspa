@@ -236,6 +236,21 @@ const vi = {
     estimateRange: '{min}–{max} phút',
     estimateExact: '{min} phút',
     durationInvalid: 'Thời lượng phải là số phút nguyên từ 1 đến 1440.',
+    delete: 'Xóa',
+    deleteServiceTitle: 'Bạn có chắc muốn xóa dịch vụ này?',
+    deleteServiceBody:
+      'Thao tác này xóa vĩnh viễn một dịch vụ được tạo nhầm và không thể hoàn tác. Nếu chỉ muốn ngừng cung cấp dịch vụ, hãy dùng “Ngừng hoạt động”.',
+    deleteServiceConfirm: 'Xóa dịch vụ',
+    deleteCategoryTitle: 'Bạn có chắc muốn xóa nhóm dịch vụ này?',
+    deleteCategoryBody:
+      'Thao tác này xóa vĩnh viễn một nhóm dịch vụ được tạo nhầm và không thể hoàn tác.',
+    deleteCategoryConfirm: 'Xóa nhóm dịch vụ',
+    deletedService: 'Đã xóa dịch vụ “{name}”.',
+    deletedCategory: 'Đã xóa nhóm dịch vụ “{name}”.',
+    deleteServiceInUse:
+      'Không thể xóa vĩnh viễn dịch vụ này vì đã có dữ liệu nghiệp vụ liên quan. Hãy dùng “Ngừng hoạt động” thay vì xóa.',
+    deleteCategoryHasServices:
+      'Không thể xóa nhóm dịch vụ vì nhóm này vẫn còn dịch vụ. Hãy chuyển hoặc xóa các dịch vụ trước.',
     durationMaxBeforeMin: 'Thời lượng tối đa phải lớn hơn hoặc bằng thời lượng tối thiểu.',
     durationSlotTooShort:
       'Thời lượng xếp lịch nội bộ phải lớn hơn hoặc bằng thời lượng ước tính tối đa.',
@@ -523,6 +538,21 @@ const en: Dictionary = {
     estimateRange: '{min}–{max} min',
     estimateExact: '{min} min',
     durationInvalid: 'Durations must be whole minutes from 1 to 1440.',
+    delete: 'Delete',
+    deleteServiceTitle: 'Delete this service?',
+    deleteServiceBody:
+      'This action permanently deletes an incorrectly-created service and cannot be undone. To stop offering a service, use “Deactivate” instead.',
+    deleteServiceConfirm: 'Delete service',
+    deleteCategoryTitle: 'Delete this service category?',
+    deleteCategoryBody:
+      'This action permanently deletes an incorrectly-created service category and cannot be undone.',
+    deleteCategoryConfirm: 'Delete category',
+    deletedService: 'Service “{name}” deleted.',
+    deletedCategory: 'Service category “{name}” deleted.',
+    deleteServiceInUse:
+      'This service cannot be permanently deleted because business records refer to it. Use “Deactivate” instead.',
+    deleteCategoryHasServices:
+      'This category still contains services and cannot be deleted. Move or delete its services first.',
     durationMaxBeforeMin: 'The estimated maximum must be at least the estimated minimum.',
     durationSlotTooShort:
       'The internal scheduling duration must be at least the estimated maximum.',

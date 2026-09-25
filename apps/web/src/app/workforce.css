@@ -290,6 +290,61 @@
   max-width: 44rem;
 }
 
+.wf-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.wf-danger-text {
+  border-color: var(--wf-error);
+  color: var(--wf-error);
+}
+
+/* Confirmation for destructive actions. */
+.wf-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 1rem;
+  place-items: center;
+  background: rgb(56 44 44 / 45%);
+}
+
+.wf-dialog {
+  width: min(100%, 30rem);
+  padding: 1.5rem;
+  border: 1px solid var(--lucy-border);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 20%);
+}
+
+.wf-dialog h2 {
+  margin: 0 0 1rem;
+  font-size: 1.2rem;
+}
+
+.wf-dialog-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.wf-dialog-facts dt {
+  color: var(--lucy-muted);
+  font-weight: 600;
+}
+
+.wf-dialog-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .wf-inline-form {
   display: grid;
   gap: 0.6rem;

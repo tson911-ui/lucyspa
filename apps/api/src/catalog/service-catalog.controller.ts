@@ -1,4 +1,6 @@
 import type {
+  CatalogDeleteRequest,
+  CatalogDeleteResponse,
   CatalogStatusRequest,
   ServiceAvailabilityRequest,
   ServiceCategoryCreateRequest,
@@ -48,6 +50,10 @@ const PRICE = /^(?:0|[1-9][0-9]{0,17})$/;
 
 class VersionedDto {
   @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
+}
+
+class DeleteDto extends VersionedDto implements CatalogDeleteRequest {
+  @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(2_048) reason?: string;
 }
 
 class CategoryCreateDto implements ServiceCategoryCreateRequest {
@@ -218,6 +224,18 @@ export class ServiceCatalogController {
     return this.catalog.setCategoryStatus(this.session(request), id, body, requestId(response));
   }
 
+  /** Permanent deletion of an empty, incorrectly created category (not deactivation). */
+  @Post('service-categories/:id/delete')
+  @HttpCode(200)
+  deleteCategory(
+    @Param('id') id: string,
+    @Body() body: DeleteDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<CatalogDeleteResponse> {
+    return this.catalog.deleteCategory(this.session(request), id, body, requestId(response));
+  }
+
   @Get('services')
   listServices(
     @Query() query: ServiceQueryDto,
@@ -253,6 +271,18 @@ export class ServiceCatalogController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<ServiceResponse> {
     return this.catalog.updateService(this.session(request), id, body, requestId(response));
+  }
+
+  /** Permanent deletion of an incorrectly created service (not deactivation). */
+  @Post('services/:id/delete')
+  @HttpCode(200)
+  deleteService(
+    @Param('id') id: string,
+    @Body() body: DeleteDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<CatalogDeleteResponse> {
+    return this.catalog.deleteService(this.session(request), id, body, requestId(response));
   }
 
   @Post('services/:id/status')

@@ -504,6 +504,27 @@ export interface CatalogStatusRequest {
   reason: string;
 }
 
+/**
+ * POST /api/v1/services/:id/delete and /api/v1/service-categories/:id/delete: permanent
+ * deletion of incorrectly created configuration data. This is not deactivation: the row is
+ * removed and only its audit snapshot remains.
+ * - A service needs GLOBAL MANAGE_SERVICES and GLOBAL_ONLY MANAGE_SERVICE_PRICES (the
+ *   authority that creates one). Its eligible-skill links and branch-availability rows are
+ *   removed with it. Any other record referencing the service (future history such as
+ *   bookings or invoices) refuses the deletion: 409 CONFLICT "inUse"; deactivate instead.
+ * - A category needs GLOBAL MANAGE_SERVICES and must contain no service at all (active or
+ *   inactive): 409 CONFLICT "services". Its services are never cascaded.
+ */
+export interface CatalogDeleteRequest {
+  expectedVersion: number;
+  reason?: string;
+}
+
+export interface CatalogDeleteResponse {
+  id: string;
+  deleted: true;
+}
+
 /** Whether a branch offers the service. No row means the service is not offered there. */
 export interface ServiceBranchAvailabilityEntry {
   branchId: string;

@@ -763,6 +763,227 @@ test(
               },
             );
 
+            const conflictOn = (work: Promise<unknown>, field: string) =>
+              assert.rejects(
+                work,
+                (error: unknown) =>
+                  error instanceof AuthError && error.code === 'CONFLICT' && error.field === field,
+              );
+
+            await context.test(
+              'service deletion: permanent, configuration removed, history-protected, audited',
+              async () => {
+                const deleter = await actor(['MANAGE_SERVICES', 'MANAGE_SERVICE_PRICES']);
+                const category = await catalog.createCategory(ownerSession, {
+                  code: `DEL_SVC_CAT_${run}`,
+                  nameVi: 'Nhóm thử xóa',
+                  nameEn: 'Delete test group',
+                });
+                const skill = await tx.skill.create({
+                  data: { code: `DEL_SKILL_${run}`, nameVi: 'Kỹ năng', nameEn: 'Skill' },
+                  select: { id: true },
+                });
+                // A fully configured service: an eligible skill and branch availability.
+                const configured = async (code: string) => {
+                  const created = await catalog.createService(ownerSession, {
+                    code: `${code}_${run}`,
+                    categoryId: category.id,
+                    nameVi: 'Dịch vụ tạo nhầm',
+                    nameEn: 'Mistaken service',
+                    priceVnd: '100000',
+                    durationMinutes: 60,
+                  });
+                  const withSkill = await catalog.setEligibleSkills(ownerSession, created.id, {
+                    expectedVersion: created.version,
+                    skillIds: [skill.id],
+                  });
+                  await catalog.setAvailability(ownerSession, created.id, A, {
+                    expectedVersion: null,
+                    isActive: true,
+                  });
+                  return catalog.getService(ownerSession, withSkill.id);
+                };
+                const rows = async (id: string) => [
+                  await tx.service.count({ where: { id } }),
+                  await tx.serviceSkill.count({ where: { serviceId: id } }),
+                  await tx.serviceBranchAvailability.count({ where: { serviceId: id } }),
+                ];
+                const mistaken = await configured('MISTAKEN');
+                assert.deepEqual(await rows(mistaken.id), [1, 1, 1]);
+
+                // Server-side authorization: deletion needs the authority that creates one.
+                for (const denied of [
+                  catalogManager,
+                  priceManager,
+                  branchManager,
+                  staff,
+                  customer,
+                ]) {
+                  await fails(
+                    catalog.deleteService(denied, mistaken.id, {
+                      expectedVersion: mistaken.version,
+                    }),
+                    'FORBIDDEN',
+                  );
+                }
+                await fails(
+                  catalog.deleteService(undefined, mistaken.id, { expectedVersion: 1 }),
+                  'AUTHENTICATION_REQUIRED',
+                );
+                await fails(
+                  catalog.deleteService(deleter, mistaken.id, {
+                    expectedVersion: mistaken.version + 5,
+                  }),
+                  'CONFLICT',
+                );
+                assert.deepEqual(await rows(mistaken.id), [1, 1, 1], 'refusals delete nothing');
+
+                const result = await catalog.deleteService(deleter, mistaken.id, {
+                  expectedVersion: mistaken.version,
+                  reason: 'Entered by mistake',
+                });
+                assert.deepEqual(result, { id: mistaken.id, deleted: true });
+                assert.deepEqual(await rows(mistaken.id), [0, 0, 0], 'no orphan rows remain');
+                assert.equal(await tx.skill.count({ where: { id: skill.id } }), 1, 'skill kept');
+                assert.equal(await tx.branch.count({ where: { id: A } }), 1, 'branch kept');
+                await fails(catalog.getService(ownerSession, mistaken.id), 'NOT_FOUND');
+                const listed = await catalog.listServices(ownerSession, {});
+                assert.ok(!listed.services.some((row) => row.id === mistaken.id));
+                await fails(
+                  catalog.deleteService(deleter, mistaken.id, {
+                    expectedVersion: mistaken.version,
+                  }),
+                  'NOT_FOUND',
+                );
+                const [event] = await audit(mistaken.id, 'SERVICE_DELETED');
+                assert.equal(event?.entityType, 'Service');
+                assert.equal(event?.reason, 'Entered by mistake');
+                assert.equal(event?.branchId, null);
+                const before = event?.before as Record<string, unknown>;
+                assert.equal(before['code'], `MISTAKEN_${run}`);
+                assert.equal(before['nameVi'], 'Dịch vụ tạo nhầm');
+                assert.equal(before['priceVnd'], '100000');
+                assert.deepEqual(before['eligibleSkillIds'], [skill.id]);
+                assert.deepEqual(event?.after, {
+                  deleted: true,
+                  removedSkillLinks: 1,
+                  removedAvailabilityRows: 1,
+                });
+
+                // A record that must keep the service (a future booking or invoice line)
+                // references it through a RESTRICT foreign key. Simulated with a probe table
+                // created inside this rolled-back transaction (DDL is transactional), since
+                // Phase 3 history does not exist yet.
+                const kept = await configured('KEPT');
+                const probe = `service_history_probe_${run.toLowerCase()}`;
+                await tx.$executeRawUnsafe(
+                  `CREATE TABLE ${probe} (service_id uuid NOT NULL REFERENCES services(id) ON DELETE RESTRICT)`,
+                );
+                await tx.$executeRawUnsafe(`INSERT INTO ${probe} VALUES ($1::uuid)`, kept.id);
+                await conflictOn(
+                  catalog.deleteService(deleter, kept.id, { expectedVersion: kept.version }),
+                  'inUse',
+                );
+                assert.deepEqual(
+                  await rows(kept.id),
+                  [1, 1, 1],
+                  'blocked deletion is atomic: configuration rows are not removed either',
+                );
+                assert.equal((await audit(kept.id, 'SERVICE_DELETED')).length, 0);
+                await tx.$executeRawUnsafe(`DROP TABLE ${probe}`);
+                // Deactivation remains available for such services.
+                const off = await catalog.setServiceStatus(deleter, kept.id, {
+                  expectedVersion: kept.version,
+                  isActive: false,
+                  reason: 'Retired',
+                });
+                assert.equal(off.isActive, false);
+              },
+            );
+
+            await context.test(
+              'category deletion: only empty categories, never cascades, audited',
+              async () => {
+                const create = (code: string) =>
+                  catalog.createCategory(catalogManager, {
+                    code: `${code}_${run}`,
+                    nameVi: 'Nhóm tạo nhầm',
+                    nameEn: 'Mistaken group',
+                  });
+                const empty = await create('EMPTY_CAT');
+                for (const denied of [priceManager, branchManager, staff, customer]) {
+                  await fails(
+                    catalog.deleteCategory(denied, empty.id, { expectedVersion: empty.version }),
+                    'FORBIDDEN',
+                  );
+                }
+                await fails(
+                  catalog.deleteCategory(undefined, empty.id, { expectedVersion: 1 }),
+                  'AUTHENTICATION_REQUIRED',
+                );
+                await fails(
+                  catalog.deleteCategory(catalogManager, empty.id, { expectedVersion: 99 }),
+                  'CONFLICT',
+                );
+                assert.equal(await tx.serviceCategory.count({ where: { id: empty.id } }), 1);
+                assert.deepEqual(
+                  await catalog.deleteCategory(catalogManager, empty.id, {
+                    expectedVersion: empty.version,
+                  }),
+                  { id: empty.id, deleted: true },
+                );
+                assert.equal(await tx.serviceCategory.count({ where: { id: empty.id } }), 0);
+                const categories = await catalog.listCategories(catalogManager);
+                assert.ok(!categories.categories.some((row) => row.id === empty.id));
+                const [event] = await audit(empty.id, 'SERVICE_CATEGORY_DELETED');
+                assert.equal(event?.entityType, 'ServiceCategory');
+                assert.equal(
+                  (event?.before as Record<string, unknown>)['code'],
+                  `EMPTY_CAT_${run}`,
+                );
+                assert.deepEqual(event?.after, { deleted: true });
+
+                // A category with services (active or inactive) is never deleted or cascaded.
+                const used = await create('USED_CAT');
+                const service = await catalog.createService(ownerSession, {
+                  code: `IN_USED_CAT_${run}`,
+                  categoryId: used.id,
+                  nameVi: 'Dịch vụ',
+                  nameEn: 'Service',
+                  priceVnd: '50000',
+                  durationMinutes: 30,
+                });
+                await conflictOn(
+                  catalog.deleteCategory(catalogManager, used.id, {
+                    expectedVersion: used.version,
+                  }),
+                  'services',
+                );
+                const inactive = await catalog.setServiceStatus(ownerSession, service.id, {
+                  expectedVersion: service.version,
+                  isActive: false,
+                  reason: 'Retired',
+                });
+                await conflictOn(
+                  catalog.deleteCategory(catalogManager, used.id, {
+                    expectedVersion: used.version,
+                  }),
+                  'services',
+                );
+                assert.equal(await tx.serviceCategory.count({ where: { id: used.id } }), 1);
+                assert.equal(await tx.service.count({ where: { categoryId: used.id } }), 1);
+                assert.equal((await audit(used.id, 'SERVICE_CATEGORY_DELETED')).length, 0);
+                // Once its services are gone, the category can be deleted.
+                await catalog.deleteService(ownerSession, service.id, {
+                  expectedVersion: inactive.version,
+                });
+                await catalog.deleteCategory(catalogManager, used.id, {
+                  expectedVersion: used.version,
+                });
+                assert.equal(await tx.serviceCategory.count({ where: { id: used.id } }), 0);
+              },
+            );
+
             await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
             throw rollback;
           },

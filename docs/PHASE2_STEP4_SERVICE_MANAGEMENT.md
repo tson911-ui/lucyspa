@@ -312,3 +312,88 @@ facials 60–90, nails 60–120), while booking will still need one deterministi
   - web 29/29 (3 new);
   - web `tsc`, ESLint, Prettier, boundaries and Prisma validate pass; the local
     database with 6 migrations shows an empty schema diff.
+
+## Post-deployment enhancement: permanent deletion of services and categories
+
+Added so the Owner can remove services and categories that were entered incorrectly
+(commit `feat: add safe service catalog deletion`). No existing
+data is deleted automatically, and no migration or schema change is involved.
+
+- **Delete vs deactivate:** "Xóa" (delete) permanently removes the record; only its
+  audit snapshot remains. "Ngừng hoạt động" (deactivate) keeps the record and history and
+  is the normal way to retire a service or category. Deactivation is unchanged.
+- **Routes:** `POST /api/v1/services/:id/delete` and
+  `POST /api/v1/service-categories/:id/delete`, with body
+  `{ expectedVersion, reason? }` → `200 { id, deleted: true }`.
+  - These are ordinary commands, so the global JSON, exact-Origin and CSRF guard applies.
+    There is no `DELETE`-method route and no security exception.
+  - Strict bodies reject any other field (for example `cascade`).
+- **Authorization** (server-side, transaction-time):
+  - **Service:** GLOBAL `MANAGE_SERVICES` **and** GLOBAL_ONLY `MANAGE_SERVICE_PRICES`,
+    the authority that creates a service.
+  - **Category:** GLOBAL `MANAGE_SERVICES`, the authority that creates one.
+  - Branch-scoped managers, staff and customers get 403; anonymous callers 401.
+- **Current references, from the actual schema:**
+  - `services` is referenced only by `service_skills` (eligible skills) and
+    `service_branch_availability`. Both are configuration owned by the service, with FK
+    `ON DELETE RESTRICT`.
+  - `service_categories` is referenced only by `services` (`RESTRICT`).
+  - There is no history table yet. Audit events refer to entities by id without a foreign
+    key and are never deleted.
+- **Service deletion rules:**
+  - In one transaction: lock the service and check `expectedVersion`, delete its
+    `service_skills` and `service_branch_availability` rows, then delete the service.
+  - Skills and branches themselves are untouched, and no orphan rows remain.
+  - Any other row that references the service makes the delete fail through its RESTRICT
+    foreign key. The whole transaction rolls back (nothing is partially deleted) and the
+    API returns `409 CONFLICT` "inUse"; the UI says to use "Ngừng hoạt động" instead.
+  - This is the protection **Phase 3 history must keep:** booking, invoice or any other
+    history table that references `services` must use `ON DELETE RESTRICT` (never
+    CASCADE), so a service with history can only be deactivated.
+- **Category deletion rules:**
+  - Refused with `409 CONFLICT` "services" while **any** service belongs to the
+    category, active or inactive. Services are never cascaded.
+  - The RESTRICT foreign key from services is the final guard against a concurrent insert.
+  - Once its services are moved or deleted, the category can be deleted.
+- **Other errors:** stale `expectedVersion` → 409 (the list reloads); an unknown or
+  already-deleted id → 404.
+- **Audit** (append-only, global event):
+  - `SERVICE_DELETED` records a before snapshot: code, category, names, price, durations,
+    status, eligible skill ids and availability. Its after value is `{ deleted: true,
+removedSkillLinks, removedAvailabilityRows }`.
+  - `SERVICE_CATEGORY_DELETED` records a before snapshot (code, names, sort order,
+    status) and `{ deleted: true }`.
+  - Both record the actor, time, request id and optional reason.
+- **UI** (Workforce → Dịch vụ):
+  - "Xóa" sits next to "Sửa" in the category list and next to "Chi tiết" in the service
+    list (shown only with the matching permissions; the API still decides).
+  - A confirmation dialog shows the name and code, explains that the deletion is
+    permanent (and points to "Ngừng hoạt động" for services), and offers "Hủy" and a
+    visually destructive "Xóa dịch vụ" / "Xóa nhóm dịch vụ".
+  - Nothing is sent until that button is pressed; Hủy, Escape or the backdrop close it.
+  - On success the row disappears immediately, the list reloads, and a success message
+    names the record.
+  - On refusal the record stays visible and the dialog shows the reason in Vietnamese,
+    for example "Không thể xóa nhóm dịch vụ vì nhóm này vẫn còn dịch vụ. Hãy chuyển hoặc
+    xóa các dịch vụ trước."
+- **Tests (all pass):**
+  - service catalog integration 8/8 (real PostgreSQL, rolled back), with two new subtests:
+    - **Services:** unauthorized callers refused and nothing deleted; stale version
+      refused; authorized deletion removes the service and its skill and availability rows
+      with no orphans, keeping skills and branches; the service disappears from reads;
+      deleting again is 404; audit snapshot checked; a probe row referencing the service
+      through a RESTRICT foreign key (simulating future history) blocks deletion
+      atomically with nothing removed and no audit event, and deactivation still works.
+    - **Categories:** an empty category is deleted and audited; categories with an
+      active or an inactive service are refused and nothing is removed; after its service
+      is deleted, the category can be deleted; unauthorized callers and stale versions are
+      refused.
+  - Delete HTTP contract 1/1: CSRF/Origin on both routes, strict bodies, no DELETE route,
+    error mapping.
+  - Service catalog HTTP 1/1.
+  - Web 37/37, 4 new: the dialog shows name and code and opening it sends nothing; a
+    confirmed deletion is one CSRF-protected POST with only `expectedVersion`; Vietnamese
+    refusal messages; immediate row removal and success message.
+- **Limitation:** web tests render components on the server and exercise the deletion
+  logic directly. The repository has no DOM/click testing library, so the click paths
+  (Hủy, confirm) are covered at the logic level rather than by simulated clicks.

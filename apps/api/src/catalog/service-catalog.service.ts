@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type {
+  CatalogDeleteRequest,
+  CatalogDeleteResponse,
   CatalogStatusRequest,
   ServiceAvailabilityRequest,
   ServiceCategoryCreateRequest,
@@ -208,6 +210,45 @@ export class ServiceCatalogService {
     });
   }
 
+  /**
+   * Permanent deletion of an incorrectly created category (GLOBAL MANAGE_SERVICES, the
+   * authority that creates one). Refused while any service, active or inactive, belongs to
+   * it; services are never cascaded. The RESTRICT foreign key from services is the final
+   * guard against a concurrent insert. Deactivation remains the normal way to retire one.
+   */
+  async deleteCategory(
+    sessionToken: string | undefined,
+    categoryId: string,
+    input: CatalogDeleteRequest,
+    requestId?: string,
+  ): Promise<CatalogDeleteResponse> {
+    const id = this.id(categoryId);
+    const reason = optionalReason(input.reason);
+    return this.frame(sessionToken, requestId, async (context) => {
+      const { tx } = context;
+      requireAcross(context.actor, 'MANAGE_SERVICES', []);
+      const current = await this.lockCategory(tx, id, input.expectedVersion);
+      if ((await tx.service.count({ where: { categoryId: id } })) > 0) {
+        throw new AuthError('CONFLICT', 'services');
+      }
+      await referencedElsewhere('services', () =>
+        tx.serviceCategory.delete({ where: { id }, select: { id: true } }),
+      );
+      await this.audit(context, 'SERVICE_CATEGORY_DELETED', 'ServiceCategory', id, {
+        reason,
+        before: {
+          code: current.code,
+          nameVi: current.nameVi,
+          nameEn: current.nameEn,
+          sortOrder: current.sortOrder,
+          isActive: current.isActive,
+        },
+        after: { deleted: true },
+      });
+      return { id, deleted: true };
+    });
+  }
+
   // ------------------------------------------------------------------- services
 
   /**
@@ -384,6 +425,63 @@ export class ServiceCatalogService {
         after: changes,
       });
       return this.present(actor, row);
+    });
+  }
+
+  /**
+   * Permanent deletion of an incorrectly created service. It needs the authority that
+   * creates one (GLOBAL MANAGE_SERVICES and GLOBAL_ONLY MANAGE_SERVICE_PRICES). In one
+   * transaction it removes the service's own configuration rows (eligible-skill links and
+   * branch availability), then the service. Every other reference to a service is a
+   * RESTRICT foreign key, so any record that must keep the service (future history such as
+   * bookings or invoices) makes the delete fail and the whole transaction roll back:
+   * 409 CONFLICT "inUse", and the service should be deactivated instead.
+   */
+  async deleteService(
+    sessionToken: string | undefined,
+    serviceId: string,
+    input: CatalogDeleteRequest,
+    requestId?: string,
+  ): Promise<CatalogDeleteResponse> {
+    const id = this.id(serviceId);
+    const reason = optionalReason(input.reason);
+    return this.frame(sessionToken, requestId, async (context) => {
+      const { tx, actor } = context;
+      requireAcross(actor, 'MANAGE_SERVICES', []);
+      requireAcross(actor, 'MANAGE_SERVICE_PRICES', []);
+      const current = await this.lockService(tx, id, input.expectedVersion);
+      const skills = await tx.serviceSkill.deleteMany({ where: { serviceId: id } });
+      const availability = await tx.serviceBranchAvailability.deleteMany({
+        where: { serviceId: id },
+      });
+      await referencedElsewhere('inUse', () =>
+        tx.service.delete({ where: { id }, select: { id: true } }),
+      );
+      await this.audit(context, 'SERVICE_DELETED', 'Service', id, {
+        reason,
+        before: {
+          code: current.code,
+          categoryId: current.categoryId,
+          nameVi: current.nameVi,
+          nameEn: current.nameEn,
+          priceVnd: current.priceVnd.toString(),
+          durationMinutes: current.durationMinutes,
+          estimatedMinMinutes: current.estimatedMinMinutes,
+          estimatedMaxMinutes: current.estimatedMaxMinutes,
+          isActive: current.isActive,
+          eligibleSkillIds: current.eligibleSkills.map((entry) => entry.skill.id),
+          availability: current.branches.map((entry) => ({
+            branchId: entry.branchId,
+            isActive: entry.isActive,
+          })),
+        },
+        after: {
+          deleted: true,
+          removedSkillLinks: skills.count,
+          removedAvailabilityRows: availability.count,
+        },
+      });
+      return { id, deleted: true };
     });
   }
 
@@ -700,5 +798,23 @@ export class ServiceCatalogService {
       ...(detail.before ? { before: detail.before } : {}),
       after: detail.after,
     });
+  }
+}
+
+/**
+ * Runs a delete whose target may still be referenced by a RESTRICT foreign key. A violation
+ * (PostgreSQL 23503 / Prisma P2003) becomes 409 CONFLICT naming `field`; the thrown error
+ * rolls the whole command transaction back, so nothing is partially deleted.
+ */
+async function referencedElsewhere<T>(field: string, work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    const code = Reflect.get(Object(error), 'code');
+    const cause = Reflect.get(Object(Reflect.get(Object(error), 'cause')), 'originalCode');
+    if (code === 'P2003' || code === '23503' || cause === '23503') {
+      throw new AuthError('CONFLICT', field);
+    }
+    throw error;
   }
 }

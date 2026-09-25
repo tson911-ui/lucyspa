@@ -441,6 +441,23 @@ manually by the Owner/operator; see the
   integration 4/4, API unit/HTTP 77 pass, web 29/29. See the Step 4 report's
   post-deployment enhancement.
 
+- **Permanent deletion of services and service categories**
+  (`feat: add safe service catalog deletion`).
+  - "Xóa" permanently removes incorrectly created configuration; "Ngừng hoạt động"
+    (deactivate) remains the normal way to retire.
+  - **Routes:** `POST /api/v1/services/:id/delete` needs GLOBAL `MANAGE_SERVICES` +
+    `MANAGE_SERVICE_PRICES`; `POST /api/v1/service-categories/:id/delete` needs GLOBAL
+    `MANAGE_SERVICES`. Both are CSRF-protected, with a confirmation dialog in the UI.
+  - **Service:** its eligible-skill and branch-availability rows are removed in the same
+    transaction. Any other reference (a RESTRICT foreign key) refuses with 409 "inUse",
+    and nothing is deleted.
+  - **Category:** refused with 409 "services" while it contains any service; services are
+    never cascaded.
+  - **Audit:** `SERVICE_DELETED` / `SERVICE_CATEGORY_DELETED` with a before snapshot.
+  - **Phase 3 must reference `services` with `ON DELETE RESTRICT`.**
+  - **Tests:** catalog integration 8/8, delete HTTP 1/1, web 37/37. No migration; no
+    production data is deleted automatically.
+
 - **Session activity (sliding idle timeout).**
   - **Problem:** production showed an actively working Owner being logged out.
     `lastActivityAt` had stayed fixed at login, because the `touch` primitive was never

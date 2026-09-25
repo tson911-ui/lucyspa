@@ -13,6 +13,14 @@ import { formatVnd, isVndInput } from '../../../lib/workforce/format';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
+import { ApiError } from '../../../lib/workforce/api';
+import {
+  deletedMessage,
+  requestDelete,
+  withoutDeleted,
+  type DeleteTarget,
+} from '../../../lib/workforce/catalog-delete';
+import { ConfirmDeleteDialog } from '../confirm-delete';
 import { DurationFields } from './service-durations';
 import {
   Badge,
@@ -39,6 +47,30 @@ export function ServicesScreen() {
     [api],
   );
   const services = useResource(() => api.get<ServiceListResponse>('/api/v1/services'), [api]);
+  // Permanent deletion (not deactivation): confirmed in a dialog, authorized by the API.
+  const [target, setTarget] = useState<DeleteTarget | null>(null);
+  const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
+  const [deletedNotice, setDeletedNotice] = useState<string | null>(null);
+  const reloadFor = (kind: DeleteTarget['kind']) =>
+    kind === 'service' ? services.reload() : categories.reload();
+
+  async function confirmDelete(confirmed: DeleteTarget) {
+    try {
+      await requestDelete(api, confirmed);
+    } catch (error) {
+      // A changed record is reloaded so the next attempt uses its current version; a refused
+      // deletion keeps the record visible and the dialog explains why.
+      if (error instanceof ApiError && error.code === 'CONFLICT' && !error.field) {
+        await reloadFor(confirmed.kind);
+      }
+      throw error;
+    }
+    setRemoved((current) => new Set([...current, confirmed.id]));
+    setDeletedNotice(deletedMessage(confirmed, t));
+    setTarget(null);
+    await reloadFor(confirmed.kind);
+  }
+
   const categoryName = (id: string) => {
     const category = categories.data?.categories.find((entry) => entry.id === id);
     return category ? (locale === 'vi' ? category.nameVi : category.nameEn) : '—';
@@ -47,6 +79,15 @@ export function ServicesScreen() {
   return (
     <>
       <PageHeader title={t.services.title} />
+      {deletedNotice ? <Notice tone="success">{deletedNotice}</Notice> : null}
+      {target ? (
+        <ConfirmDeleteDialog
+          target={target}
+          t={t}
+          onCancel={() => setTarget(null)}
+          onConfirm={() => confirmDelete(target)}
+        />
+      ) : null}
       <Section title={t.services.categories}>
         {categories.loading ? <Loading t={t} /> : null}
         {categories.error ? (
@@ -69,7 +110,7 @@ export function ServicesScreen() {
               </tr>
             </thead>
             <tbody>
-              {categories.data.categories.map((category) => (
+              {withoutDeleted(categories.data.categories, removed).map((category) => (
                 <tr key={category.id}>
                   <td data-label={t.common.code}>{category.code}</td>
                   <td data-label={t.services.nameVi}>{category.nameVi}</td>
@@ -82,7 +123,26 @@ export function ServicesScreen() {
                   </td>
                   {manage ? (
                     <td data-label={t.common.actions}>
-                      <CategoryEdit category={category} reload={categories.reload} />
+                      <div className="wf-row-actions">
+                        <CategoryEdit category={category} reload={categories.reload} />
+                        <button
+                          type="button"
+                          className="wf-button wf-button-quiet wf-danger-text"
+                          aria-label={`${t.services.delete}: ${locale === 'vi' ? category.nameVi : category.nameEn}`}
+                          onClick={() => {
+                            setDeletedNotice(null);
+                            setTarget({
+                              kind: 'category',
+                              id: category.id,
+                              name: locale === 'vi' ? category.nameVi : category.nameEn,
+                              code: category.code,
+                              version: category.version,
+                            });
+                          }}
+                        >
+                          {t.services.delete}
+                        </button>
+                      </div>
                     </td>
                   ) : null}
                 </tr>
@@ -116,7 +176,7 @@ export function ServicesScreen() {
               </tr>
             </thead>
             <tbody>
-              {services.data.services.map((service) => (
+              {withoutDeleted(services.data.services, removed).map((service) => (
                 <tr key={service.id}>
                   <td data-label={t.common.code}>{service.code}</td>
                   <td data-label={t.common.name}>
@@ -133,7 +193,28 @@ export function ServicesScreen() {
                     </Badge>
                   </td>
                   <td data-label={t.common.actions}>
-                    <Link href={`${base}/services/${service.id}`}>{t.common.details}</Link>
+                    <div className="wf-row-actions">
+                      <Link href={`${base}/services/${service.id}`}>{t.common.details}</Link>
+                      {canCreate ? (
+                        <button
+                          type="button"
+                          className="wf-button wf-button-quiet wf-danger-text"
+                          aria-label={`${t.services.delete}: ${locale === 'vi' ? service.nameVi : service.nameEn}`}
+                          onClick={() => {
+                            setDeletedNotice(null);
+                            setTarget({
+                              kind: 'service',
+                              id: service.id,
+                              name: locale === 'vi' ? service.nameVi : service.nameEn,
+                              code: service.code,
+                              version: service.version,
+                            });
+                          }}
+                        >
+                          {t.services.delete}
+                        </button>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))}
