@@ -256,7 +256,22 @@ implementation now**):
 - **Lucy Beauty Supplier Catalog Importer (PRD section 30.9):** extends section 30 and
   belongs to the existing Phase 9 (Product Importer), after the Phase 6 product model.
   It needs preview/review and authorized approval, never silently changes prices, and
-  never deletes products that disappear from the source.
+  never deletes products that disappear from the source. Sections 30.9.1–30.9.13 now
+  explicitly cover:
+  - one supplier with multiple catalog sources/websites;
+  - automated data collection and image processing;
+  - cross-source deduplication (ambiguous matches go to review, never a silent merge);
+  - preserved source mappings;
+  - manual ("Check Supplier Updates") and configurable scheduled synchronization, with
+    change detection;
+  - exception-driven Owner review with bulk approval of ready items;
+  - source-level removal semantics (never delete, never auto-deactivate);
+  - source-specific price observations that never set the live price;
+  - per-source failure isolation;
+  - Lucy Beauty remaining the operational source of truth.
+
+  It is still future work only; the roadmap is unchanged (model in Phase 6, importer in
+  Phase 9).
 
 Phase 2 Step 5 (skills and employee skills) remains the next implementation step. Owner decisions
 H1–H9 are recorded in the Step 2 report. Adjusted plan: Step 3 branch administration

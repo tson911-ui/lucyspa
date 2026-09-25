@@ -1774,23 +1774,331 @@ Commercial safety:
 -   A Preview/Review stage is required before approved data becomes part of
     the live Lucy Beauty catalog.
 
-Architecture direction:
+#### 30.9.1 Goal: Low-Manual-Work, Multi-Source Synchronization
 
-`Supplier Source → Extract/Crawl → Normalize → Categorize → Image Processing → Deduplicate/Diff → Preview/Review → Authorized Approval → Lucy Beauty Product Catalog`
+The importer is a low-manual-work, multi-source supplier catalog
+synchronization system. The Owner should **not** have to manually
+download images, copy product text, rename files, enter prices, classify
+products, compare websites or work out what changed. The system automates
+those tasks as far as is safe.
+
+The normal Owner workflow is **not**:
+
+`download → rename → copy → paste → classify → enter price → upload`
+
+The intended workflow is:
+
+-   **System:** collects → normalizes → deduplicates → classifies →
+    processes images → prepares candidate/draft products.
+-   **Owner:** reviews → corrects exceptions if needed → approves.
+
+#### 30.9.2 Supplier vs. Supplier Source
+
+-   **Supplier** = the distributor/vendor organization.
+-   **Supplier Source** = an authorized catalog/data source belonging to
+    that supplier.
+
+One Supplier may have many Supplier Sources. Do not assume one supplier
+equals one website:
+
+```text
+Supplier A
+├── Website Source A
+├── Website Source B
+├── Website Source C
+└── Website Source D
+```
+
+Different sources of the same supplier may contain overlapping products,
+duplicates, different subsets, products found on only one source, and
+different prices, content or images for the same underlying product.
+
+The architecture should allow further source types where useful (website,
+API, CSV, Excel, structured feed, ZIP + manifest) without designing them
+now. Every source remains identifiable for traceability.
+
+#### 30.9.3 Aggregating All Sources
+
+A scan covers all enabled sources of the same supplier. Candidates
+represent underlying products, not source records:
+
+```text
+Website A: Product 1, Product 2, Product 3
+Website B: Product 2, Product 4
+Website C: Product 1, Product 5
+→ candidates: Product 1, 2, 3, 4, 5   (not seven Lucy Beauty products)
+```
+
+A product does not need to appear on every source. A product found on
+only one source is still a valid catalog candidate.
+
+#### 30.9.4 Cross-Source Matching and Deduplication
+
+The system attempts to recognize when records from different sources
+represent the same underlying product.
+
+-   Prefer strong identifiers: supplier product code, SKU, model,
+    barcode, brand + model/variant, or other reliable structured
+    identifiers.
+-   A product title alone is **never** a reliable unique identifier.
+-   Where deterministic matching is not possible, normalization, fuzzy or
+    AI-assisted matching may be used.
+-   Fuzzy/AI matching must **not** silently merge products when confidence
+    is insufficient. Ambiguous cases become `POSSIBLE_DUPLICATE` /
+    `NEEDS_REVIEW` for an authorized reviewer, who can eventually choose:
+    Merge (same product), Keep separate, or Ignore candidate.
+
+#### 30.9.5 Source Mappings
+
+When several source records map to one Lucy Beauty product, the system
+preserves which source records produced it:
+
+```text
+Lucy Beauty Product
+├── Supplier Source A → supplier product record
+├── Supplier Source B → supplier product record
+└── Supplier Source D → supplier product record
+```
+
+This supports traceability, repeated synchronization, source-specific
+changes and price observations, and knowing whether a product still
+exists elsewhere when one source removes it. The final schema is a
+future design decision.
+
+#### 30.9.6 Automated Data Collection
+
+For each authorized source, the importer automates, where the source
+provides it:
+
+-   Discovering product pages/records.
+-   Product name; SKU/model/product code; barcode; brand;
+    category/subcategory.
+-   Normal/source price and promotional/source price.
+-   Descriptions, detailed content, attributes/variants where applicable.
+-   Product images.
+-   Source URL/reference and other useful source metadata.
+
+Structured source data is preferred over AI inference. AI assists
+normalization/classification only where useful.
+
+#### 30.9.7 Automated Image Pipeline
+
+The Owner should not have to save, match, rename, resize, compress or
+organize product images by hand. The importer should be capable of:
+
+-   Downloading permitted product images.
+-   Associating them with the correct source/product.
+-   Preserving image order where meaningful.
+-   Detecting duplicate images where practical.
+-   Deterministic filenames from identifiers plus sequence, for example
+    `brand-model-sku-01`, `brand-model-sku-02`, `brand-model-sku-03`.
+-   Generating web-optimized derivatives and thumbnail/display versions.
+-   Preserving source metadata for traceability.
+
+Optimize for web performance without unnecessarily destroying source-image
+quality. The exact format, storage and CDN strategy belong to
+implementation.
+
+#### 30.9.8 Automated Normalization and Classification
+
+The importer proposes/maps Brand, Category, Subcategory, Product,
+Variant/model, SKU and product attributes into the Lucy Beauty catalog
+model.
+
+-   Reuse existing Lucy Beauty brands/categories when a reliable match
+    exists, instead of creating duplicates.
+-   AI may help classify ambiguous data.
+-   Low-confidence mappings become review items; they never silently
+    create incorrect catalog structure.
+
+#### 30.9.9 Draft/Review Stage and Bulk Approval
+
+Automatically prepared products enter an import candidate / draft /
+review state before becoming live. New supplier products never become
+publicly live merely because the crawler found them.
+
+Default lifecycle (exact state names belong to implementation):
+
+`DETECTED → EXTRACTED → NORMALIZED → MATCHED / DEDUPLICATED → DRAFT / READY_FOR_REVIEW → APPROVED → IMPORTED / PUBLISHED` (as the catalog workflow allows)
+
+Review should make it easy to verify product identity/name, images,
+brand/category, SKU/model, source price, important content, duplicate
+warnings and validation warnings.
+
+Bulk review/approval is supported where safe: the Owner can eventually
+**Approve All Ready Products** and separately review only
+warnings/exceptions, rather than approving hundreds of obviously valid
+products one by one.
+
+#### 30.9.10 Manual and Scheduled Checking
+
+-   **Manual:** an authorized user can trigger **Check Supplier Updates**,
+    which scans the enabled sources of that supplier.
+-   **Scheduled:** enabled sources may be scanned periodically. The
+    cadence must be configurable (for example daily or another
+    Owner-selected interval), never hard-coded.
+
+Automatic checking means **automatic detection and preparation**. It
+never means automatic publication of sensitive catalog changes.
+
+#### 30.9.11 Repeated Synchronization and Change Detection
+
+After the initial import, the Owner does not revisit supplier websites to
+find changes. Each scan compares new observations with previous
+observations and mappings and classifies changes, such as `NEW`,
+`UNCHANGED`, `PRICE_CHANGED`, `CONTENT_CHANGED`, `IMAGE_CHANGED`,
+`SOURCE_REMOVED`, `POSSIBLE_DUPLICATE` and `NEEDS_REVIEW`. More than one
+change type may apply to a product if the design supports it.
+
+Operations are exception-driven: `UNCHANGED` products normally need no
+attention, so hundreds of unchanged products never create hundreds of
+review tasks.
+
+-   **New products detected later.** A product added to **any** configured
+    source (for example only on Website C of four) is detected as `NEW`.
+    The system may then extract its data, download permitted images,
+    normalize fields, propose brand/category, optimize images, check
+    duplicates and prepare a Product Draft. The Owner reviews and approves
+    it without having to discover it.
+-   **Source-level removal.** `SOURCE_REMOVED` is evaluated per source. If
+    Product X disappears from Website A but remains on B and C, the system
+    records "no longer found on Source A", **not** "the supplier no longer
+    carries Product X". Only when it is missing from every relevant
+    configured source may it be reported as absent from all known supplier
+    sources. Even then the Lucy Beauty product is **never** automatically
+    deleted, and **never** automatically deactivated for that reason alone.
+    History is preserved and the item goes to review.
+-   **Different source prices.** The same product may have different
+    observed prices (for example 1,800,000 / 1,750,000 / 1,900,000 VND on
+    three sites). The importer never decides that the Lucy Beauty selling
+    price becomes the cheapest, highest, latest or any other source price.
+    Source-specific price observations are preserved for review and
+    traceability.
+-   **Price changes.** Review shows the current Lucy Beauty selling price,
+    the previous and newly observed source prices, and which
+    supplier/source made the observation. The system may prepare a
+    proposed change but never silently updates the live selling price. An
+    authorized person approves any price change under the applicable
+    pricing permissions (section 30.5 still applies).
+-   **Content/image changes.** Differences are detected where practical,
+    the new source data is preserved and prepared for review. Lucy
+    Beauty's manually curated content is never silently overwritten unless
+    a future field-level synchronization policy explicitly allows it for
+    that field. The design distinguishes **supplier-observed data** from
+    **Lucy Beauty curated/live data**, so repeated synchronization never
+    destroys Owner edits.
+
+#### 30.9.12 Notifications and Sync History
+
+When a scheduled synchronization finds meaningful changes, the system can
+notify the Owner/authorized user with a summary such as:
+
+```text
+Supplier update detected
+15 NEW products · 8 PRICE_CHANGED · 4 CONTENT_CHANGED
+3 IMAGE_CHANGED · 2 SOURCE_REMOVED · 1 POSSIBLE_DUPLICATE
+```
+
+No-change scans create no Owner work and no noisy notifications. The
+channel belongs to implementation; no specific channel (Telegram, Zalo,
+email, Messenger or another) is mandated here.
+
+The design retains enough synchronization history to answer:
+
+-   Which supplier and which source were checked, and when each source was
+    last checked successfully.
+-   When a source product was first seen and last seen.
+-   What changed, and which source value was observed.
+-   Which Lucy Beauty product it is mapped to, and whether the match was
+    automatic or manually confirmed.
+-   Whether a proposed change was approved, rejected, ignored or is still
+    pending.
+
+The full schema is a future design decision.
+
+#### 30.9.13 Failure Isolation and Source of Truth
+
+Failure of one source never invalidates successful scans of the others:
+
+```text
+Website A → success
+Website B → success
+Website C → temporarily unavailable   (recorded/reported as failed)
+Website D → success                   (A, B and D results preserved)
+```
+
+A temporary crawler/source failure is never interpreted as all of that
+source's products being removed. This is essential for `SOURCE_REMOVED`
+detection.
+
+Source of truth:
+
+-   Supplier websites/sources = authorized **external information
+    sources**.
+-   Lucy Beauty Product Catalog = the **operational source of truth**
+    after approved import.
+
+Supplier synchronization must never become a way for an external website
+to silently control Lucy Beauty's live catalog.
+
+Architecture direction (end-to-end flow; this extends, and does not
+compete with, the pipeline in section 30.2):
+
+```text
+ONE SUPPLIER
+  ↓
+MULTIPLE AUTHORIZED SOURCES
+  ↓
+Manual or Scheduled Scan
+  ↓
+Per-Source Extraction
+  ↓
+Normalization
+  ↓
+Cross-Source Product Matching / Deduplication
+  ↓
+Source Mapping
+  ↓
+Image Processing
+  ↓
+Compare with Previous Observations / Lucy Beauty Mapping
+  ↓
+Change Detection
+  ↓
+Prepare Product Drafts / Proposed Changes
+  ↓
+Notify Owner if meaningful changes exist
+  ↓
+Owner Review / Exception Review
+  ↓
+Bulk Approve Ready Items where safe
+  ↓
+Approve / Reject / Ignore
+  ↓
+LUCY BEAUTY PRODUCT CATALOG
+```
 
 The Lucy Beauty product database/catalog is the source of truth after
 import. ZIP/manifest-based import/export may be supported as a transport
 mechanism, but a ZIP file must never become the product source of truth.
 
-Required ordering:
+Required ordering (everything in section 30.9 remains FUTURE / NOT
+CURRENT PHASE):
 
-1.  First define/build the Lucy Beauty Product / Brand / Category /
-    Product Image data model (Phase 6).
-2.  Then build and validate the Supplier Catalog Importer (Phase 9).
-3.  Test it on a small, controlled product sample.
-4.  Only then use it for bulk ingestion of the real supplier catalog.
-5.  Use the resulting Lucy Beauty catalog as the source for
-    storefront/inventory/POS workflows as appropriate.
+1.  Define/build the Lucy Beauty Product / Brand / Category / Product
+    Image model (Phase 6).
+2.  Define the Supplier + Supplier Source + mapping/synchronization
+    architecture.
+3.  Build the Supplier Catalog Importer (Phase 9).
+4.  Validate against a small, controlled sample from **all** relevant
+    supplier websites/sources.
+5.  Validate cross-source duplicate detection.
+6.  Validate image processing and product classification.
+7.  Validate repeated synchronization/change detection.
+8.  The Owner reviews the results.
+9.  Only then perform bulk real-catalog ingestion, and use the resulting
+    Lucy Beauty catalog as the source for storefront/inventory/POS
+    workflows as appropriate.
 
 The importer should be available **before** the Owner has to manually
 populate a large real product catalog.
