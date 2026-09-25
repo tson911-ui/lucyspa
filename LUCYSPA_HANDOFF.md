@@ -245,7 +245,20 @@ Owner decisions at Step 4 close:
   - employee ↔ skills under `MANAGE_SKILLS` with the target's branch scope;
   - the skill catalog under GLOBAL `MANAGE_SKILLS`.
 
-Step 5 has not started and needs separate Owner authorization. Owner decisions
+Step 5 has not started and needs separate Owner authorization.
+
+Future requirements added to the PRD (documentation only; **neither is authorized for
+implementation now**):
+
+- **Premium motion (PRD section 4.4):** a cohesive premium motion design system for
+  the **customer-facing** website, not the workforce dashboards. It is recorded as an
+  unnumbered future milestone in PRD section 56 and is not part of Phase 2.
+- **Lucy Beauty Supplier Catalog Importer (PRD section 30.9):** extends section 30 and
+  belongs to the existing Phase 9 (Product Importer), after the Phase 6 product model.
+  It needs preview/review and authorized approval, never silently changes prices, and
+  never deletes products that disappear from the source.
+
+Phase 2 Step 5 (skills and employee skills) remains the next implementation step. Owner decisions
 H1–H9 are recorded in the Step 2 report. Adjusted plan: Step 3 branch administration
 and hours; Step 4 services; Step 5 skills; Step 6 branch assignments (reuse
 membership); Step 7 attendance; Step 8 leave; Step 9 dashboard/auth shell and Phase 2

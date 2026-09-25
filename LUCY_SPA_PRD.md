@@ -180,6 +180,49 @@ should not be offered at a start time that would make its estimated
 completion exceed branch closing time unless an authorized business rule
 later allows it.
 
+### 4.4 Premium Motion Design (FUTURE / NOT CURRENT PHASE)
+
+**Status: future requirement. Not authorized for implementation in the
+current phase, and not part of Phase 2.**
+
+The public/customer-facing Lucy Spa website must not end up visually
+static or look like a generic CRUD application. When the customer-facing
+UI is implemented, it should use one cohesive, premium motion design
+system appropriate for a luxury spa and beauty brand (section 4.1).
+
+Possible techniques, used only where they genuinely improve the
+experience (not a requirement to use every effect):
+
+-   Smooth content reveals.
+-   Subtle scroll-driven animation.
+-   Light parallax.
+-   Page transitions.
+-   Image/product hover interactions.
+-   Micro-interactions.
+-   Sticky storytelling or other modern interactions.
+
+Rules:
+
+-   Motion is cohesive across the whole site, defined once as part of the
+    design system, not arbitrary per-page effects.
+-   Premium and elegant, never distracting.
+-   Responsive.
+-   Performance-conscious: must not materially damage Core Web Vitals or
+    SEO.
+-   Reduce or avoid expensive effects on weaker/mobile devices where
+    appropriate.
+-   Respect `prefers-reduced-motion` and accessibility (section 54).
+-   Internal workforce/admin dashboards prioritize speed and usability and
+    must **not** receive unnecessary cinematic animation.
+
+Implementation timing: implement the premium motion system when the
+**customer-facing** website UI/design system is being built and its main
+layout and design language are stable. The Phase 2 workforce login and
+dashboard is **not** the target for this motion system. The current
+roadmap (section 56) does not assign a numbered phase to the
+customer-facing website UI, so this is recorded as a future
+implementation milestone rather than a numbered phase.
+
 ------------------------------------------------------------------------
 
 ## 5. Branch Model
@@ -1675,6 +1718,83 @@ structure/API and must be assessed when the source URL is provided.
 The importer must respect access controls and technical constraints of
 the authorized source.
 
+### 30.9 Lucy Beauty Supplier Catalog Importer (FUTURE / NOT CURRENT PHASE)
+
+**Status: future requirement. Not authorized for implementation in the
+current phase, and not part of Phase 2. It extends sections 30.1-30.8
+and belongs to Phase 9 --- Product Importer (section 56), built after
+the Phase 6 product model.**
+
+Business context: Lucy Spa may receive explicit permission from an
+authorized distributor/supplier to reuse product information, images and
+pricing from that supplier's website, and Lucy Beauty may contain too
+many products for manual entry.
+
+Only import content from supplier sources for which Lucy Spa has
+authorization/permission to use the relevant content.
+
+Potential source data:
+
+-   Product name.
+-   SKU/model.
+-   Brand.
+-   Category/subcategory.
+-   Normal price.
+-   Promotional price when available.
+-   Descriptions and detailed product content.
+-   Product attributes.
+-   Product images.
+-   Source URL/reference for traceability.
+
+The importer should:
+
+-   Associate images with the correct product.
+-   Use deterministic image naming based on suitable identifiers such as
+    brand/model/SKU.
+-   Support multiple images per product.
+-   Optimize images for web delivery.
+-   Normalize source data into the Lucy Beauty product model.
+-   Prefer structured source data over AI inference; use AI
+    classification/normalization only when useful and reviewable.
+-   Detect duplicates and changes between repeated imports.
+
+Repeated imports should distinguish states such as `NEW`, `UNCHANGED`,
+`PRICE_CHANGED`, `CONTENT_CHANGED`, `IMAGE_CHANGED`, `SOURCE_REMOVED` and
+`DUPLICATE` / `NEEDS_REVIEW` (extending the re-import preview in
+section 30.6).
+
+Commercial safety:
+
+-   The importer must **not** silently change sensitive commercial data
+    such as active selling prices. Captured supplier prices are reference
+    data for review; section 30.5 still applies. Any price change goes
+    through the applicable Lucy Spa authorization/approval rules.
+-   A product disappearing from the supplier website must **not**
+    automatically delete or deactivate the Lucy Beauty product.
+-   A Preview/Review stage is required before approved data becomes part of
+    the live Lucy Beauty catalog.
+
+Architecture direction:
+
+`Supplier Source → Extract/Crawl → Normalize → Categorize → Image Processing → Deduplicate/Diff → Preview/Review → Authorized Approval → Lucy Beauty Product Catalog`
+
+The Lucy Beauty product database/catalog is the source of truth after
+import. ZIP/manifest-based import/export may be supported as a transport
+mechanism, but a ZIP file must never become the product source of truth.
+
+Required ordering:
+
+1.  First define/build the Lucy Beauty Product / Brand / Category /
+    Product Image data model (Phase 6).
+2.  Then build and validate the Supplier Catalog Importer (Phase 9).
+3.  Test it on a small, controlled product sample.
+4.  Only then use it for bulk ingestion of the real supplier catalog.
+5.  Use the resulting Lucy Beauty catalog as the source for
+    storefront/inventory/POS workflows as appropriate.
+
+The importer should be available **before** the Owner has to manually
+populate a large real product catalog.
+
 ------------------------------------------------------------------------
 
 ## 31. Bulk Product Import and Update
@@ -2810,6 +2930,11 @@ Deliver:
 
 ### Phase 9 --- Product Importer
 
+See also section 30.9 (Lucy Beauty Supplier Catalog Importer, future
+extended requirements). Build it on the Phase 6 product model and
+validate it on a small sample before bulk ingestion. The Owner should
+not have to populate a large real catalog manually before it exists.
+
 Deliver:
 
 -   Import source configuration.
@@ -2825,6 +2950,13 @@ Deliver:
 -   Excel/CSV fallback.
 -   Bulk image import.
 -   Bulk update/export.
+
+### Future Implementation Milestones (unnumbered)
+
+-   **Customer-facing premium motion system**: section 4.4. Implement
+    when the customer-facing website UI/design system is built and its
+    layout and design language are stable. Not part of Phase 2 and not
+    applied to workforce/admin dashboards.
 
 ### Phase 10 --- Hardening and Launch
 
