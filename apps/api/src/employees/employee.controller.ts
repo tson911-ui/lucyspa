@@ -3,6 +3,9 @@ import type {
   EmployeeCreateRequest,
   EmployeeProfileUpdateRequest,
   EmployeeResponse,
+  EmployeeBranchAssignmentsResponse,
+  EmployeeBranchAssignRequest,
+  EmployeeBranchRevokeRequest,
   EmployeeScopeChangeRequest,
   EmployeeSetupIssueRequest,
   EmployeeSetupIssueResponse,
@@ -80,6 +83,12 @@ class EmployeeStatusDto extends ReasonedDto implements EmployeeStatusChangeReque
   status!: 'ACTIVE' | 'INACTIVE';
 }
 
+class BranchAssignDto extends ReasonedDto implements EmployeeBranchAssignRequest {
+  @ApiProperty() @IsString() @MaxLength(36) branchId!: string;
+}
+
+class BranchRevokeDto extends ReasonedDto implements EmployeeBranchRevokeRequest {}
+
 class EmployeeScopeDto extends ReasonedDto implements EmployeeScopeChangeRequest {
   @ApiProperty({ type: [String] })
   @IsArray()
@@ -147,6 +156,44 @@ export class EmployeeController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<EmployeeResponse> {
     return this.employees.changeStatus(this.session(request), id, body, requestId(response));
+  }
+
+  @Get(':id/branch-assignments')
+  @ApiOkResponse({ description: 'Active EmployeeBranchAssignment rows and revoked history.' })
+  branchAssignments(
+    @Param('id') id: string,
+    @Req() request: Request,
+  ): Promise<EmployeeBranchAssignmentsResponse> {
+    return this.employees.branchAssignments(this.session(request), id);
+  }
+
+  @Post(':id/branch-assignments')
+  @HttpCode(200)
+  assignBranch(
+    @Param('id') id: string,
+    @Body() body: BranchAssignDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<EmployeeBranchAssignmentsResponse> {
+    return this.employees.assignBranch(this.session(request), id, body, requestId(response));
+  }
+
+  @Post(':id/branch-assignments/:branchId/revoke')
+  @HttpCode(200)
+  revokeBranch(
+    @Param('id') id: string,
+    @Param('branchId') branchId: string,
+    @Body() body: BranchRevokeDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<EmployeeBranchAssignmentsResponse> {
+    return this.employees.revokeBranch(
+      this.session(request),
+      id,
+      branchId,
+      body,
+      requestId(response),
+    );
   }
 
   @Post(':id/scope')

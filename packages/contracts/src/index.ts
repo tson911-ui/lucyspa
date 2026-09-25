@@ -629,3 +629,48 @@ export interface EmployeeSkillGrantRequest {
 export interface EmployeeSkillRevokeRequest {
   reason?: string;
 }
+
+/**
+ * One EmployeeBranchAssignment row: the single source of truth for an employee's
+ * operational (and authorization) branch membership. Revoked rows are kept as history.
+ */
+export interface EmployeeBranchAssignmentEntry {
+  id: string;
+  branchId: string;
+  grantedAt: string;
+  grantedByUserId: string;
+  /** null while active. */
+  revokedAt: string | null;
+}
+
+/**
+ * GET /api/v1/employees/:id/branch-assignments. `version` is the employee's version (the
+ * same `expectedVersion` used by the employee scope commands).
+ */
+export interface EmployeeBranchAssignmentsResponse {
+  employeeId: string;
+  version: number;
+  active: EmployeeBranchAssignmentEntry[];
+  history: EmployeeBranchAssignmentEntry[];
+}
+
+/**
+ * POST /api/v1/employees/:id/branch-assignments: add one active branch. MANAGE_EMPLOYEE_SCOPE
+ * at every current and new branch (a security-graph change). An already active branch is
+ * 409; an inactive or unknown branch is 400.
+ */
+export interface EmployeeBranchAssignRequest {
+  expectedVersion: number;
+  branchId: string;
+  reason: string;
+}
+
+/**
+ * POST /api/v1/employees/:id/branch-assignments/:branchId/revoke: end one active
+ * assignment and keep it as history. Removing the last branch is allowed; afterwards the
+ * employee can be administered only with GLOBAL authority.
+ */
+export interface EmployeeBranchRevokeRequest {
+  expectedVersion: number;
+  reason: string;
+}

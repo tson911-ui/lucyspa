@@ -54,7 +54,8 @@
   administration and business hours; the
   [Phase 2 Step 4 report](docs/PHASE2_STEP4_SERVICE_MANAGEMENT.md) records service
   management; the [Phase 2 Step 5 report](docs/PHASE2_STEP5_SKILLS_EMPLOYEE_SKILLS.md) records
-  skills and employee skills.
+  skills and employee skills; the [Phase 2 Step 6 report](docs/PHASE2_STEP6_OPERATIONAL_BRANCH_ASSIGNMENTS.md)
+  records operational branch assignments.
   Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
@@ -301,8 +302,19 @@ phase 2 skills management`; no migration):
 Future qualification rule for Phase 3: an employee satisfies the skill dimension when
 the service's eligible skills and the employee's active skills intersect.
 
-**Next step: Phase 2 Step 6 (Operational Branch Assignments)**; it needs separate Owner
-authorization and must not be started without it. Owner decisions
+**Phase 2 Step 6: CLOSED** (operational branch assignments, API only; commit `feat: add
+phase 2 operational branch assignments`; no migration).
+
+- It reuses `EmployeeBranchAssignment` (H2) through the Step 10 scope routine, with
+  discrete assign and revoke commands plus an active/history read, all under
+  `MANAGE_EMPLOYEE_SCOPE` at every affected branch.
+- Each change is an exclusive-lock graph change: containment, target `authzVersion`
+  bump, session revocation and audit.
+- Removing the final branch is allowed. A branchless employee then needs GLOBAL scope
+  authority, which Step 6 now enforces per design section 7.
+
+**Next step: Phase 2 Step 7 (Attendance)**; it needs separate Owner authorization and
+must not be started without it. Owner decisions
 H1–H9 are recorded in the Step 2 report. Adjusted plan: Step 3 branch administration
 and hours; Step 4 services; Step 5 skills; Step 6 branch assignments (reuse
 membership); Step 7 attendance; Step 8 leave; Step 9 dashboard/auth shell and Phase 2

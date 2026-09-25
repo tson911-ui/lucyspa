@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type {
   EmployeeBaseSalaryRequest,
+  EmployeeBranchAssignmentsResponse,
+  EmployeeBranchAssignRequest,
+  EmployeeBranchRevokeRequest,
   EmployeeCreateRequest,
   EmployeeProfileUpdateRequest,
   EmployeeResponse,
@@ -313,64 +316,179 @@ export class EmployeeService {
     const next = normalizeBranchIds(input.branchIds);
     const reason = normalizeReason(input.reason);
     return this.command(sessionToken, targetId, true, requestId, async (context) => {
-      const { tx, now, actor, target, branchIds: previous } = context;
-      this.forbidSelf(actor, target);
-      const added = next.filter((id) => !previous.includes(id));
-      const removed = previous.filter((id) => !next.includes(id));
-      this.require(actor, 'MANAGE_EMPLOYEE_SCOPE', [...previous, ...next]);
-      this.expectVersion(target, input.expectedVersion);
-      if (added.length === 0 && removed.length === 0) {
-        throw new AuthError('VALIDATION_FAILED', 'branchIds');
-      }
-      await this.requireActiveBranches(tx, added);
-      const before = await loadAuthorityGraph(tx, target.id);
-      if (!before) throw new AuthError('NOT_FOUND');
-      const after: AuthorityGraph = {
-        ...before,
-        activeBranchIds: new Set([
-          ...[...before.activeBranchIds].filter((id) => !removed.includes(id)),
-          ...added,
-        ]),
-      };
-      if (checkGraphChange(actor.graph, before, after) !== null) {
-        throw new AuthError('FORBIDDEN');
-      }
-      if (this.activatesGrants(before, after)) {
-        this.require(actor, 'MANAGE_PERMISSIONS', added);
-      }
-      if (removed.length > 0) {
-        await tx.employeeBranchAssignment.updateMany({
-          where: { employeeUserId: target.id, branchId: { in: removed }, revokedAt: null },
-          data: { revokedAt: now },
-        });
-      }
-      if (added.length > 0) {
-        await tx.employeeBranchAssignment.createMany({
-          data: added.map((branchId) => ({
-            employeeUserId: target.id,
-            branchId,
-            grantedAt: now,
-            grantedByUserId: actor.userId,
-          })),
-        });
-      }
-      await tx.user.update({
-        where: { id: target.id },
-        data: { rowVersion: { increment: 1 } },
-        select: { id: true },
-      });
-      // A setup capability must never become a route into the changed authority.
-      await this.retireFlows(tx, target.id, [SETUP_PURPOSE], now);
-      const revoked = await invalidateAuthorization(tx, [target.id], now);
-      // Multi-branch change: a global event, authorized by whoever can see all of it.
-      await this.audit(context, target.id, [], 'BRANCH_SCOPE_CHANGED', {
-        reason,
-        before: { branchIds: previous },
-        after: { branchIds: next },
-      });
-      await this.revokedAudit(context, target.id, [], revoked, 'BRANCH_SCOPE_CHANGED');
-      return this.present(actor, await this.load(tx, target.id));
+      await this.applyScope(context, next, input.expectedVersion, reason);
+      return this.present(context.actor, await this.load(context.tx, context.target.id));
     });
+  }
+
+  /**
+   * The employee's branch assignments (Phase 2 Step 6): active rows and revoked history.
+   * Same visibility as the employee record: VIEW_EMPLOYEES over every branch of the
+   * employee, or the employee themself; otherwise 404.
+   */
+  async branchAssignments(
+    sessionToken: string | undefined,
+    targetId: string,
+  ): Promise<EmployeeBranchAssignmentsResponse> {
+    return this.command(
+      sessionToken,
+      targetId,
+      false,
+      undefined,
+      ({ tx, actor, target, branchIds }) => {
+        if (actor.userId !== target.id && !decideAcross(actor.graph, 'VIEW_EMPLOYEES', branchIds)) {
+          throw new AuthError('NOT_FOUND');
+        }
+        return this.presentAssignments(tx, target);
+      },
+    );
+  }
+
+  /**
+   * Adds one operational branch (Phase 2 Step 6). It is the same security-graph change as
+   * `changeScope`, with the resulting set = current + branch.
+   */
+  async assignBranch(
+    sessionToken: string | undefined,
+    targetId: string,
+    input: EmployeeBranchAssignRequest,
+    requestId?: string,
+  ): Promise<EmployeeBranchAssignmentsResponse> {
+    const [branchId] = normalizeBranchIds([input.branchId]);
+    const reason = normalizeReason(input.reason);
+    return this.command(sessionToken, targetId, true, requestId, async (context) => {
+      const { actor, target, branchIds: previous } = context;
+      if (!branchId) throw new AuthError('VALIDATION_FAILED', 'branchId');
+      // Authorize before revealing membership state.
+      this.forbidSelf(actor, target);
+      this.require(actor, 'MANAGE_EMPLOYEE_SCOPE', [...previous, branchId]);
+      if (previous.length === 0) this.require(actor, 'MANAGE_EMPLOYEE_SCOPE', []);
+      if (previous.includes(branchId)) throw new AuthError('CONFLICT', 'branchId');
+      await this.applyScope(
+        context,
+        [...previous, branchId].sort(),
+        input.expectedVersion,
+        reason,
+        {
+          operation: 'ASSIGN',
+          branchId,
+        },
+      );
+      return this.presentAssignments(context.tx, target);
+    });
+  }
+
+  /**
+   * Revokes one active branch and keeps it as history. Removing the final branch is
+   * allowed (design section 7: an employee without any active branch requires GLOBAL
+   * authority afterwards).
+   */
+  async revokeBranch(
+    sessionToken: string | undefined,
+    targetId: string,
+    branchId: string,
+    input: EmployeeBranchRevokeRequest,
+    requestId?: string,
+  ): Promise<EmployeeBranchAssignmentsResponse> {
+    const branch = branchId.toLowerCase();
+    if (!isUuid(branch)) throw new AuthError('NOT_FOUND');
+    const reason = normalizeReason(input.reason);
+    return this.command(sessionToken, targetId, true, requestId, async (context) => {
+      const { actor, target, branchIds: previous } = context;
+      // Authorize before revealing membership state.
+      this.forbidSelf(actor, target);
+      this.require(actor, 'MANAGE_EMPLOYEE_SCOPE', previous);
+      if (!previous.includes(branch)) throw new AuthError('NOT_FOUND');
+      await this.applyScope(
+        context,
+        previous.filter((id) => id !== branch),
+        input.expectedVersion,
+        reason,
+        { operation: 'REVOKE', branchId: branch },
+      );
+      return this.presentAssignments(context.tx, target);
+    });
+  }
+
+  /**
+   * The one branch-scope graph change (Phase 1 Step 10, reused by Phase 2 Step 6).
+   * - MANAGE_EMPLOYEE_SCOPE at every old and new branch; non-Owners never change
+   *   themselves.
+   * - `checkGraphChange` refuses any gained capability the actor lacks, and activating a
+   *   dormant branch grant also needs MANAGE_PERMISSIONS.
+   * - History-preserving revocation.
+   * - authzVersion bump, session revocation, retired setup capabilities and audit.
+   * The caller holds the exclusive graph lock and the User locks.
+   */
+  private async applyScope(
+    context: TargetContext,
+    next: string[],
+    expectedVersion: number,
+    reason: string,
+    change?: { operation: 'ASSIGN' | 'REVOKE'; branchId: string },
+  ): Promise<void> {
+    const { tx, now, actor, target, branchIds: previous } = context;
+    this.forbidSelf(actor, target);
+    const added = next.filter((id) => !previous.includes(id));
+    const removed = previous.filter((id) => !next.includes(id));
+    this.require(actor, 'MANAGE_EMPLOYEE_SCOPE', [...previous, ...next]);
+    // Design section 7: an employee without any active branch requires GLOBAL authority,
+    // so a branch-scoped actor can never claim a branchless employee into their branch.
+    if (previous.length === 0) this.require(actor, 'MANAGE_EMPLOYEE_SCOPE', []);
+    this.expectVersion(target, expectedVersion);
+    if (added.length === 0 && removed.length === 0) {
+      throw new AuthError('VALIDATION_FAILED', 'branchIds');
+    }
+    await this.requireActiveBranches(tx, added);
+    const before = await loadAuthorityGraph(tx, target.id);
+    if (!before) throw new AuthError('NOT_FOUND');
+    const after: AuthorityGraph = {
+      ...before,
+      activeBranchIds: new Set([
+        ...[...before.activeBranchIds].filter((id) => !removed.includes(id)),
+        ...added,
+      ]),
+    };
+    if (checkGraphChange(actor.graph, before, after) !== null) {
+      throw new AuthError('FORBIDDEN');
+    }
+    if (this.activatesGrants(before, after)) {
+      this.require(actor, 'MANAGE_PERMISSIONS', added);
+    }
+    if (removed.length > 0) {
+      await tx.employeeBranchAssignment.updateMany({
+        where: { employeeUserId: target.id, branchId: { in: removed }, revokedAt: null },
+        data: { revokedAt: now },
+      });
+    }
+    if (added.length > 0) {
+      await tx.employeeBranchAssignment.createMany({
+        data: added.map((branchId) => ({
+          employeeUserId: target.id,
+          branchId,
+          grantedAt: now,
+          grantedByUserId: actor.userId,
+        })),
+      });
+    }
+    await tx.user.update({
+      where: { id: target.id },
+      data: { rowVersion: { increment: 1 } },
+      select: { id: true },
+    });
+    // A setup capability must never become a route into the changed authority.
+    await this.retireFlows(tx, target.id, [SETUP_PURPOSE], now);
+    const revoked = await invalidateAuthorization(tx, [target.id], now);
+    // Multi-branch change: a global event, authorized by whoever can see all of it.
+    await this.audit(context, target.id, [], 'BRANCH_SCOPE_CHANGED', {
+      reason,
+      before: { branchIds: previous },
+      after: {
+        branchIds: next,
+        ...(change ? { operation: change.operation, branchId: change.branchId } : {}),
+      },
+    });
+    await this.revokedAudit(context, target.id, [], revoked, 'BRANCH_SCOPE_CHANGED');
   }
 
   /** Supplied base salary only (null = unknown). Restricted EMPLOYEE_PAY audit. */
@@ -682,6 +800,34 @@ export class EmployeeService {
       where: { id },
       select: employeeSelect,
     })) as EmployeeRecord;
+  }
+
+  private async presentAssignments(
+    tx: Prisma.TransactionClient,
+    target: EmployeeRecord,
+  ): Promise<EmployeeBranchAssignmentsResponse> {
+    const rows = await tx.employeeBranchAssignment.findMany({
+      where: { employeeUserId: target.id },
+      select: { id: true, branchId: true, grantedAt: true, grantedByUserId: true, revokedAt: true },
+      orderBy: [{ grantedAt: 'asc' }, { id: 'asc' }],
+    });
+    const { rowVersion } = await tx.user.findUniqueOrThrow({
+      where: { id: target.id },
+      select: { rowVersion: true },
+    });
+    const entries = rows.map((row) => ({
+      id: row.id,
+      branchId: row.branchId,
+      grantedAt: row.grantedAt.toISOString(),
+      grantedByUserId: row.grantedByUserId,
+      revokedAt: row.revokedAt?.toISOString() ?? null,
+    }));
+    return {
+      employeeId: target.id,
+      version: rowVersion,
+      active: entries.filter((entry) => entry.revokedAt === null),
+      history: entries.filter((entry) => entry.revokedAt !== null),
+    };
   }
 
   /** Pay appears only when VIEW_EMPLOYEE_PAY passes for the full target. */
