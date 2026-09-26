@@ -2,16 +2,16 @@
 
 ## Project status (authoritative; supersedes older status wording below)
 
-| Phase                                         | Status                                                                                                |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Phase 0                                       | PASS                                                                                                  |
-| Phase 1 (auth and security)                   | COMPLETE ([Step 13 gate](docs/PHASE1_STEP13_COMPLETION_GATE.md))                                      |
-| **Phase 2 (services, employees, operations)** | **CLOSED / PRODUCTION ACCEPTED**                                                                      |
-| **Phase 2 follow-up (Steps 1–7)**             | **COMPLETE / PRODUCTION ACCEPTED** (production at `98ec1d0`)                                          |
-| **Phase 3 (booking)**                         | **NOT STARTED. It is the next implementation phase**; it needs its own authorization and design step. |
-| Full payroll                                  | NOT implemented (deferred)                                                                            |
-| Full finance/accounting                       | NOT implemented (deferred)                                                                            |
-| Full UX/UI redesign                           | Planned **after the Phase 3 core** is complete                                                        |
+| Phase                                         | Status                                                                                                                                                                                                                             |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 0                                       | PASS                                                                                                                                                                                                                               |
+| Phase 1 (auth and security)                   | COMPLETE ([Step 13 gate](docs/PHASE1_STEP13_COMPLETION_GATE.md))                                                                                                                                                                   |
+| **Phase 2 (services, employees, operations)** | **CLOSED / PRODUCTION ACCEPTED**                                                                                                                                                                                                   |
+| **Phase 2 follow-up (Steps 1–7)**             | **COMPLETE / PRODUCTION ACCEPTED** (production at `98ec1d0`)                                                                                                                                                                       |
+| **Phase 3 (booking)**                         | **IN PROGRESS: Step 1 (Booking & Visits Design Contract) OWNER APPROVED / COMPLETE; Step 2 (Booking & Visit Database Foundation) NOT started** ([design](docs/PHASE3_BOOKING_VISITS_DESIGN.md)); no Phase 3 code or migration yet. |
+| Full payroll                                  | NOT implemented (deferred)                                                                                                                                                                                                         |
+| Full finance/accounting                       | NOT implemented (deferred)                                                                                                                                                                                                         |
+| Full UX/UI redesign                           | Planned **after the Phase 3 core** is complete                                                                                                                                                                                     |
 
 **Phase 2 follow-up: Collaborator, My Account and My Income (CLOSED / PRODUCTION ACCEPTED).**
 Design: [Collaborator and My Account foundation design](docs/PHASE2_FOLLOWUP_COLLABORATOR_MY_ACCOUNT_DESIGN.md).
