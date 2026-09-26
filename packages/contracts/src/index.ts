@@ -84,6 +84,33 @@ export interface SelfPasswordChangeRequest {
   newPassword: string;
 }
 
+/**
+ * POST /api/v1/me/email/request → 202 AcceptedFlowResponse. Verified self-service email
+ * change for the signed-in Owner or employee: the current password is required; the code is
+ * sent ONLY to `newEmail`. The account's email does not change until verification.
+ * Refusals: 401 AUTHENTICATION_FAILED (password), 400 `newEmail` / `newEmailUnchanged`,
+ * 409 `email` (taken or reserved), 429.
+ */
+export interface EmailChangeRequest {
+  currentPassword: string;
+  newEmail: string;
+}
+
+/** POST /api/v1/me/email/resend → 204: a new code for the caller's own live flow. */
+export interface EmailChangeResendRequest {
+  flowToken: string;
+}
+
+/**
+ * POST /api/v1/me/email/verify → 204 with a rotated session cookie (refetch the CSRF
+ * context). The new address becomes the account's one verified email; every other session
+ * is revoked. A wrong, expired, used or superseded code is 400 VERIFICATION_FAILED.
+ */
+export interface EmailChangeVerifyRequest {
+  flowToken: string;
+  otp: string;
+}
+
 export type AuthorizationScope = { kind: 'GLOBAL' } | { kind: 'BRANCH'; branchId: string };
 
 /** The caller's own display hints only; customers have empty grant lists. */

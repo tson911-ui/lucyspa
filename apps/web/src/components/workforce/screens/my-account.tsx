@@ -4,10 +4,17 @@ import type { MyAccountResponse } from '@lucy-spa/contracts';
 import { useState, type FormEvent } from 'react';
 import { detailErrorMessage } from '../../../lib/workforce/employee-detail';
 import { formatDate } from '../../../lib/workforce/format';
+import { fill } from '../../../i18n/workforce';
+import { OTP_PATTERN } from '../../../lib/workforce/recovery';
 import {
   changeOwnPassword,
   changePasswordErrorMessage,
   changePasswordProblem,
+  emailChangeErrorMessage,
+  emailChangeProblem,
+  requestEmailChange,
+  resendEmailChange,
+  verifyEmailChange,
   EMPTY_CHANGE_PASSWORD,
   myAccountCommands,
   myProfileForm,
@@ -36,8 +43,9 @@ import { TITLE_TONE } from './employee-lifecycle';
 /**
  * "Tài khoản của tôi / My Account" (follow-up Step 3). A self-service view over the same
  * authoritative profile that employee detail reads and writes; nothing here is a copy.
- * Recovery email reuses the existing section and endpoints (it also stays on the dashboard
- * for now: a temporary second entry point to the same single feature).
+ * Account & Security holds the one email area (current email, verified change). The existing
+ * recovery-email proof appears only while the stored email is unverified; the dashboard keeps
+ * its own entry for now (a temporary second entry point to the same single feature).
  */
 export function MyAccountScreen() {
   const { api, t } = useWorkforce();
@@ -50,7 +58,8 @@ export function MyAccountScreen() {
         <ErrorState error={account.error} t={t} onRetry={() => void account.reload()} />
       ) : null}
       {account.data ? <MyAccountView account={account.data} reload={account.reload} /> : null}
-      <RecoveryEmailSection />
+      {/* One email area: the existing recovery-email proof only while the email is unproven. */}
+      {account.data?.email && !account.data.email.verified ? <RecoveryEmailSection /> : null}
     </>
   );
 }
@@ -149,7 +158,7 @@ export function MyAccountView({
           <dt>{texts.status}</dt>
           <dd>{employee ? t.employees.statuses[account.status] : texts.ownerStatus}</dd>
         </dl>
-        <p className="wf-hint">{texts.emailReadonly}</p>
+        <ChangeEmailSection account={account} reload={reload} />
         <ChangePasswordSection />
       </Section>
     </>
@@ -352,6 +361,184 @@ export function ChangePasswordSection() {
         {submit.success ? <Notice tone="success">{submit.success}</Notice> : null}
         <SubmitButton pending={submit.pending} label={texts.submit} pendingLabel={texts.pending} />
       </form>
+    </details>
+  );
+}
+
+type EmailStep = { kind: 'form' } | { kind: 'code'; flowToken: string; email: string };
+
+/**
+ * "Đổi email / Change email" (follow-up Step 5). Current password + new address sends a code
+ * to the NEW address; the account email changes only when that code is verified. The
+ * password lives only in this form's state and is cleared after every request.
+ */
+export function ChangeEmailSection({
+  account,
+  reload,
+}: {
+  account: MyAccountResponse;
+  reload: () => Promise<void>;
+}) {
+  const { api, t } = useWorkforce();
+  const texts = t.myAccount.changeEmail;
+  const [step, setStep] = useState<EmailStep>({ kind: 'form' });
+  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [shown, setShown] = useState(false);
+  const submit = useSubmit();
+  const problem = emailChangeProblem(password, email, account.email?.address ?? null);
+
+  async function send(event: FormEvent) {
+    event.preventDefault();
+    if (problem !== null) {
+      setShown(true);
+      return;
+    }
+    const target = email.trim();
+    const result: { flowToken?: string } = {};
+    await submit.run(
+      async () => {
+        try {
+          result.flowToken = (await requestEmailChange(api, password, target)).flowToken;
+          return { ok: true };
+        } catch (error) {
+          return { ok: false, error };
+        }
+      },
+      fill(texts.codeSent, { email: target }),
+    );
+    setPassword('');
+    if (result.flowToken) {
+      setStep({ kind: 'code', flowToken: result.flowToken, email: target });
+      setCode('');
+    }
+  }
+
+  async function resend() {
+    if (step.kind !== 'code') return;
+    await submit.run(
+      async () => {
+        try {
+          await resendEmailChange(api, step.flowToken);
+          return { ok: true };
+        } catch (error) {
+          return { ok: false, error };
+        }
+      },
+      fill(texts.resent, { email: step.email }),
+    );
+  }
+
+  async function verify(event: FormEvent) {
+    event.preventDefault();
+    if (step.kind !== 'code' || !OTP_PATTERN.test(code.trim())) return;
+    const ok = await submit.run(
+      async () => {
+        try {
+          await verifyEmailChange(api, step.flowToken, code);
+          return { ok: true };
+        } catch (error) {
+          return { ok: false, error };
+        }
+      },
+      fill(texts.done, { email: step.email }),
+    );
+    if (ok) {
+      setStep({ kind: 'form' });
+      setEmail('');
+      setCode('');
+      await reload();
+    }
+  }
+
+  function cancel() {
+    setStep({ kind: 'form' });
+    setCode('');
+    submit.clear();
+  }
+
+  return (
+    <details className="wf-disclosure" open={step.kind === 'code' || undefined}>
+      <summary>{texts.title}</summary>
+      <p className="wf-hint">{texts.intro}</p>
+      {submit.error ? (
+        <Notice tone="error">{emailChangeErrorMessage(submit.error, t)}</Notice>
+      ) : null}
+      {submit.success ? (
+        <Notice tone={step.kind === 'code' ? 'info' : 'success'}>{submit.success}</Notice>
+      ) : null}
+      {step.kind === 'form' ? (
+        <form
+          className="wf-form wf-member-form"
+          autoComplete="off"
+          onSubmit={(event) => void send(event)}
+        >
+          <Field id="email-current-password" label={texts.current} required>
+            <input
+              id="email-current-password"
+              type="password"
+              required
+              maxLength={1024}
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => {
+                setShown(false);
+                setPassword(event.target.value);
+              }}
+            />
+          </Field>
+          <Field id="email-new" label={texts.newEmail} required>
+            <input
+              id="email-new"
+              type="email"
+              required
+              maxLength={254}
+              autoComplete="email"
+              value={email}
+              onChange={(event) => {
+                setShown(false);
+                setEmail(event.target.value);
+              }}
+            />
+          </Field>
+          {shown && problem !== null ? <Notice tone="error">{texts[problem]}</Notice> : null}
+          <SubmitButton pending={submit.pending} label={texts.send} pendingLabel={texts.sending} />
+        </form>
+      ) : (
+        <form className="wf-form wf-member-form" onSubmit={(event) => void verify(event)}>
+          <Field id="email-code" label={texts.code} required>
+            <input
+              id="email-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              required
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+            />
+          </Field>
+          <div className="wf-form-actions">
+            <SubmitButton
+              pending={submit.pending}
+              label={texts.verify}
+              pendingLabel={texts.verifying}
+            />
+            <button
+              type="button"
+              className="wf-button wf-button-quiet"
+              disabled={submit.pending}
+              onClick={() => void resend()}
+            >
+              {texts.resend}
+            </button>
+            <button type="button" className="wf-button" disabled={submit.pending} onClick={cancel}>
+              {texts.cancel}
+            </button>
+          </div>
+        </form>
+      )}
     </details>
   );
 }

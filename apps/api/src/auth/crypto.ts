@@ -67,7 +67,7 @@ export function generateOtp(): string {
 }
 
 export interface OtpBinding {
-  purpose: 'ACTIVATE_CUSTOMER' | 'RESET_PASSWORD' | 'VERIFY_RECOVERY_EMAIL';
+  purpose: 'ACTIVATE_CUSTOMER' | 'RESET_PASSWORD' | 'VERIFY_RECOVERY_EMAIL' | 'CHANGE_EMAIL';
   challengeId: string;
   generation: number;
   subjectId: string;
@@ -82,7 +82,9 @@ function positiveVersion(value: number): boolean {
 /** The key must come from the independent OTP ring, never the CSRF/throttle ring. */
 export function otpDigest(binding: OtpBinding, code: string, key: Uint8Array): Buffer {
   if (
-    !['ACTIVATE_CUSTOMER', 'RESET_PASSWORD', 'VERIFY_RECOVERY_EMAIL'].includes(binding.purpose) ||
+    !['ACTIVATE_CUSTOMER', 'RESET_PASSWORD', 'VERIFY_RECOVERY_EMAIL', 'CHANGE_EMAIL'].includes(
+      binding.purpose,
+    ) ||
     !binding.challengeId ||
     !binding.subjectId ||
     !binding.emailCanonical ||

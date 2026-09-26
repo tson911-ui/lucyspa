@@ -216,9 +216,9 @@ export class SessionService {
   }
 
   /**
-   * Self-service password change (follow-up Step 4). The caller has, in this transaction,
-   * verified the current password, replaced the credential (credentialVersion bumped) and
-   * revoked EVERY session of the user, including `previous`. This issues exactly one
+   * Self-service password change (Step 4) or verified email change (Step 5). The caller has,
+   * in this transaction, proven the change (current password, or the new email's code),
+   * applied it and revoked EVERY session of the user, including `previous`. This issues exactly one
    * replacement session for the device that made the change, at the new credential version,
    * so that device stays signed in while every other session stays invalid. A new token is
    * issued (never the old one); the absolute lifetime is not extended.
@@ -227,6 +227,7 @@ export class SessionService {
     transaction: Prisma.TransactionClient,
     previous: SessionPrincipal,
     requestId?: string,
+    reason: 'PASSWORD_CHANGED' | 'EMAIL_CHANGED' = 'PASSWORD_CHANGED',
   ): Promise<IssuedSession> {
     if (previous.kind !== 'AUTHENTICATED' || previous.userId === null) {
       throw new AuthError('AUTHENTICATION_REQUIRED');
@@ -264,7 +265,7 @@ export class SessionService {
           sessionId: issued.session.id,
           credentialVersion: user.credentialVersion,
           authzVersion: user.authzVersion,
-          reason: 'PASSWORD_CHANGED',
+          reason,
         },
       },
       select: { id: true },

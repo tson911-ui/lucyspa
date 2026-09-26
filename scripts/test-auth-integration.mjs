@@ -26,3 +26,4 @@ await import('../apps/api/dist/bootstrap/owner-recovery.integration.test.js');
 await import('../apps/api/dist/employees/collaborator.integration.test.js');
 await import('../apps/api/dist/account/my-account.integration.test.js');
 await import('../apps/api/dist/account/my-password.integration.test.js');
+await import('../apps/api/dist/account/email-change.integration.test.js');

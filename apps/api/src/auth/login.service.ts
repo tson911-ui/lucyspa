@@ -63,7 +63,7 @@ const userSelect = {
   authzVersion: true,
 } as const satisfies Prisma.UserSelect;
 
-type LoginUser = Prisma.UserGetPayload<{ select: typeof userSelect }>;
+export type LoginUser = Prisma.UserGetPayload<{ select: typeof userSelect }>;
 
 /**
  * Realm separation: a credential match in one realm grants no access in the other.
@@ -243,27 +243,17 @@ export class LoginService implements OnModuleInit {
   }
 
   /**
-   * Self-service password change for the signed-in Owner or employee (follow-up Step 4).
-   *
-   * - Identity: the session only; customers are refused.
-   * - Abuse: the same failure budgets as reauthentication (per IP and per User); a wrong
-   *   current password debits them and returns one generic 401 AUTHENTICATION_FAILED.
-   * - Proof: the current password is verified with the existing verifier (never the session
-   *   alone). The new one passes the existing setting policy (length, blocklist) and must
-   *   differ from the current one; that check runs only after the proof, so it is no oracle.
-   * - Effect (one transaction): Argon2id hash replaced and credentialVersion bumped (as a
-   *   reset does), outstanding reset/setup/recovery-email flows retired, EVERY session of the
-   *   user revoked, then one replacement session issued for this device. Returns its token.
-   * - Audit: PASSWORD_CHANGED (method SELF_SERVICE) and SESSIONS_REVOKED; never a password
-   *   or hash.
+   * "Prove your current password while signed in", shared by self-service password change
+   * (Step 4) and verified email change (Step 5). The session must be an authenticated Owner
+   * or employee (customers: FORBIDDEN). The reauthentication failure budgets apply (per IP
+   * and per User); a wrong password debits them and is one generic AUTHENTICATION_FAILED.
+   * Returns the verified credential evidence; callers re-check it under their own locks.
    */
-  async changePassword(
+  async proveCurrentPassword(
     sessionToken: string | undefined,
     currentPassword: string,
-    newPassword: string,
     peer: string,
-    requestId?: string,
-  ): Promise<string> {
+  ): Promise<{ userId: string; user: LoginUser; evidenceHash: string }> {
     const principal = await this.guard(() => this.sessions.resolve(sessionToken));
     if (
       sessionToken === undefined ||
@@ -274,14 +264,6 @@ export class LoginService implements OnModuleInit {
     }
     if (principal.userKind !== 'OWNER' && principal.userKind !== 'EMPLOYEE') {
       throw new AuthError('FORBIDDEN');
-    }
-    let replacement: string;
-    try {
-      replacement = validatePasswordForSetting(newPassword);
-    } catch (error) {
-      if (error instanceof PasswordPolicyError)
-        throw new AuthError('VALIDATION_FAILED', 'newPassword');
-      throw error;
     }
     const userId = principal.userId;
     const user = await this.guard(() =>
@@ -315,6 +297,45 @@ export class LoginService implements OnModuleInit {
         [REAUTH_FAILURE_OP, userId, LOGIN_POLICY.identifierFailureLimit],
       ]);
       throw new AuthError('AUTHENTICATION_FAILED');
+    }
+    return { userId, user, evidenceHash };
+  }
+
+  /**
+   * Self-service password change for the signed-in Owner or employee (follow-up Step 4).
+   *
+   * - Identity: the session only; customers are refused.
+   * - Abuse: the same failure budgets as reauthentication (per IP and per User); a wrong
+   *   current password debits them and returns one generic 401 AUTHENTICATION_FAILED.
+   * - Proof: the current password is verified with the existing verifier (never the session
+   *   alone). The new one passes the existing setting policy (length, blocklist) and must
+   *   differ from the current one; that check runs only after the proof, so it is no oracle.
+   * - Effect (one transaction): Argon2id hash replaced and credentialVersion bumped (as a
+   *   reset does), outstanding reset/setup/recovery-email flows retired, EVERY session of the
+   *   user revoked, then one replacement session issued for this device. Returns its token.
+   * - Audit: PASSWORD_CHANGED (method SELF_SERVICE) and SESSIONS_REVOKED; never a password
+   *   or hash.
+   */
+  async changePassword(
+    sessionToken: string | undefined,
+    currentPassword: string,
+    newPassword: string,
+    peer: string,
+    requestId?: string,
+  ): Promise<string> {
+    if (sessionToken === undefined) throw new AuthError('AUTHENTICATION_REQUIRED');
+    const { userId, user, evidenceHash } = await this.proveCurrentPassword(
+      sessionToken,
+      currentPassword,
+      peer,
+    );
+    let replacement: string;
+    try {
+      replacement = validatePasswordForSetting(newPassword);
+    } catch (error) {
+      if (error instanceof PasswordPolicyError)
+        throw new AuthError('VALIDATION_FAILED', 'newPassword');
+      throw error;
     }
     // The verified current password normalizes exactly as the replacement does.
     if (normalizePassword(currentPassword) === replacement) {
@@ -365,7 +386,12 @@ export class LoginService implements OnModuleInit {
           where: { userId, revokedAt: null },
           data: { revokedAt: now },
         });
-        const issued = await this.sessions.continueAfterCredentialChange(tx, current, requestId);
+        const issued = await this.sessions.continueAfterCredentialChange(
+          tx,
+          current,
+          requestId,
+          'PASSWORD_CHANGED',
+        );
         const others = Math.max(revoked.count - 1, 0);
         const audit = {
           actorKind: 'USER',

@@ -83,6 +83,7 @@ test('templates: Lucy Spa branding, purpose, code, deadline and ignore guidance'
     'ACTIVATE_CUSTOMER',
     'RESET_PASSWORD',
     'VERIFY_RECOVERY_EMAIL',
+    'CHANGE_EMAIL',
   ];
   const subjects = new Set<string>();
   for (const purpose of purposes) {
@@ -136,7 +137,27 @@ test('templates: Lucy Spa branding, purpose, code, deadline and ignore guidance'
       }
     }
   }
-  assert.equal(subjects.size, 6, 'distinct subject per purpose and locale');
+  assert.equal(subjects.size, 8, 'distinct subject per purpose and locale');
+  // Follow-up Step 5: the email-change message says what the code is for.
+  const change = renderAuthEmail({
+    deliveryId: 'd',
+    purpose: 'CHANGE_EMAIL',
+    to: 'new@example.com',
+    code: '123456',
+    locale: 'vi',
+    expiresAt,
+  });
+  assert.equal(change.subject, 'Lucy Spa – Mã xác minh đổi email tài khoản');
+  assert.match(change.text, /đổi email/);
+  assert.match(change.text, /email của tài khoản sẽ không thay đổi/);
+  assert.match(
+    renderAuthEmail({
+      ...{ deliveryId: 'd', to: 'n@example.com', code: '123456', expiresAt },
+      purpose: 'CHANGE_EMAIL',
+      locale: 'en',
+    }).text,
+    /change its sign-in and recovery email/,
+  );
   const reset = renderAuthEmail({
     deliveryId: 'd',
     purpose: 'RESET_PASSWORD',

@@ -1,4 +1,8 @@
 import type {
+  AcceptedFlowResponse,
+  EmailChangeRequest,
+  EmailChangeResendRequest,
+  EmailChangeVerifyRequest,
   MyAccountProfileUpdateRequest,
   MyAccountResponse,
   SelfPasswordChangeRequest,
@@ -101,6 +105,69 @@ export function changePasswordErrorMessage(error: unknown, t: WorkforceDictionar
       return texts.same;
     }
     if (error.code === 'VALIDATION_FAILED' && error.field === 'newPassword') return texts.rejected;
+  }
+  return errorMessage(error, t);
+}
+
+// ------------------------------------------------------------------ change email
+
+export type EmailChangeProblem =
+  'passwordRequired' | 'emailRequired' | 'invalidEmail' | 'sameEmail' | null;
+
+/** Usability only; the server normalizes, validates and decides availability. */
+export function emailChangeProblem(
+  currentPassword: string,
+  newEmail: string,
+  currentEmail: string | null = null,
+): EmailChangeProblem {
+  if (currentPassword === '') return 'passwordRequired';
+  const email = newEmail.trim();
+  if (email === '') return 'emailRequired';
+  if (!/^[^\s@]+@[^\s@]+$/.test(email)) return 'invalidEmail';
+  return currentEmail !== null && email.toLowerCase() === currentEmail.toLowerCase()
+    ? 'sameEmail'
+    : null;
+}
+
+/**
+ * POST /api/v1/me/email/request: current password + new address (identity is the session).
+ * The code goes to the NEW address only; the account email is unchanged until verified.
+ */
+export function requestEmailChange(
+  api: WorkforceApi,
+  currentPassword: string,
+  newEmail: string,
+): Promise<AcceptedFlowResponse> {
+  const body: EmailChangeRequest = { currentPassword, newEmail: newEmail.trim() };
+  return api.post<AcceptedFlowResponse>('/api/v1/me/email/request', body);
+}
+
+export async function resendEmailChange(api: WorkforceApi, flowToken: string): Promise<void> {
+  const body: EmailChangeResendRequest = { flowToken };
+  await api.post<void>('/api/v1/me/email/resend', body);
+}
+
+/** Verification rotates the session cookie, so the CSRF token is refreshed afterwards. */
+export async function verifyEmailChange(
+  api: WorkforceApi,
+  flowToken: string,
+  otp: string,
+): Promise<void> {
+  const body: EmailChangeVerifyRequest = { flowToken, otp: otp.trim() };
+  await api.post<void>('/api/v1/me/email/verify', body);
+  await api.context();
+}
+
+export function emailChangeErrorMessage(error: unknown, t: WorkforceDictionary): string {
+  const texts = t.myAccount.changeEmail;
+  if (error instanceof ApiError) {
+    if (error.code === 'AUTHENTICATION_FAILED') return texts.wrongPassword;
+    if (error.code === 'VERIFICATION_FAILED') return texts.codeRejected;
+    if (error.code === 'CONFLICT' && error.field === 'email') return texts.taken;
+    if (error.code === 'VALIDATION_FAILED' && error.field === 'newEmail') return texts.invalidEmail;
+    if (error.code === 'VALIDATION_FAILED' && error.field === 'newEmailUnchanged') {
+      return texts.sameEmail;
+    }
   }
   return errorMessage(error, t);
 }

@@ -1,11 +1,12 @@
 # Phase 2 follow-up: Collaborator and My Account foundation (design)
 
-**Status: DESIGN; Owner decisions Q1–Q16 RESOLVED (2026-09-26). Steps 2 and 3 deployed and
-accepted (see the [Step 2](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md) and
-[Step 3](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP3_MY_ACCOUNT.md) reports); Step 4 implemented, not
-deployed (see [Step 4 report](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP4_CHANGE_PASSWORD.md)); Steps
-5–7 NOT implemented.** Phase 2 remains CLOSED / PRODUCTION ACCEPTED
-(Phase 2 closure docs `2d69e41`; application code in production through `1a49e72`, follow-up Step 3). Phase 3
+**Status: DESIGN; Owner decisions Q1–Q16 RESOLVED (2026-09-26). Steps 2–4 deployed and
+accepted (see the [Step 2](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md),
+[Step 3](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP3_MY_ACCOUNT.md) and
+[Step 4](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP4_CHANGE_PASSWORD.md) reports); Step 5 implemented,
+not deployed (see [Step 5 report](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP5_VERIFIED_EMAIL_CHANGE.md));
+Steps 6–7 NOT implemented.** Phase 2 remains CLOSED / PRODUCTION ACCEPTED
+(Phase 2 closure docs `2d69e41`; application code in production through `73cf6ad`, follow-up Step 4). Phase 3
 (booking) remains NOT STARTED. This follow-up is designed now because collaborator
 availability feeds booking. Nothing below exists in code, and there are no migrations yet.
 

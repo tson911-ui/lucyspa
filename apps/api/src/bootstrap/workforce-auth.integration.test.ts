@@ -67,8 +67,8 @@ test(
                   sessions.rotateAuthenticated(token, evidence, options, tx),
                 resolve: (token) => sessions.resolve(token, tx),
                 resolveForMutation: (token) => sessions.resolveForMutation(token, tx),
-                continueAfterCredentialChange: (t, previous, requestId) =>
-                  sessions.continueAfterCredentialChange(t, previous, requestId),
+                continueAfterCredentialChange: (t, previous, requestId, reason) =>
+                  sessions.continueAfterCredentialChange(t, previous, requestId, reason),
               },
               passwords,
               new AuthThrottleService(environment),

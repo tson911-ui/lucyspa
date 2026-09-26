@@ -74,6 +74,7 @@ enum AuthChallengePurpose {
   RESET_PASSWORD
   VERIFY_RECOVERY_EMAIL
   EMPLOYEE_SETUP
+  CHANGE_EMAIL
 }
 
 enum AuthDeliveryState {

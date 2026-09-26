@@ -1,5 +1,6 @@
 /** Email-OTP purposes that carry a code. EMPLOYEE_SETUP capabilities are never emailed. */
-export type AuthEmailPurpose = 'ACTIVATE_CUSTOMER' | 'RESET_PASSWORD' | 'VERIFY_RECOVERY_EMAIL';
+export type AuthEmailPurpose =
+  'ACTIVATE_CUSTOMER' | 'RESET_PASSWORD' | 'VERIFY_RECOVERY_EMAIL' | 'CHANGE_EMAIL';
 
 export type AuthEmailLocale = 'vi' | 'en';
 
@@ -59,7 +60,8 @@ export function parseAuthEmailEnvelope(plaintext: string): AuthEmailEnvelope | n
     return value.v === 1 &&
       (value.purpose === 'ACTIVATE_CUSTOMER' ||
         value.purpose === 'RESET_PASSWORD' ||
-        value.purpose === 'VERIFY_RECOVERY_EMAIL') &&
+        value.purpose === 'VERIFY_RECOVERY_EMAIL' ||
+        value.purpose === 'CHANGE_EMAIL') &&
       typeof value.to === 'string' &&
       typeof value.code === 'string' &&
       /^[0-9]{6}$/.test(value.code) &&
@@ -134,6 +136,22 @@ const copy = {
         'Your Lucy Spa staff account is verifying this address as its password recovery email.',
       use: 'Enter this code while signed in to confirm the address:',
       ignore: 'If you did not request this, ignore this email and tell your manager.',
+    },
+  },
+  CHANGE_EMAIL: {
+    vi: {
+      subject: 'Lucy Spa – Mã xác minh đổi email tài khoản',
+      purpose:
+        'Một tài khoản nhân sự Lucy Spa đang yêu cầu đổi email đăng nhập/khôi phục sang địa chỉ này.',
+      use: 'Nhập mã sau trong mục “Tài khoản của tôi” khi đang đăng nhập để hoàn tất việc đổi email:',
+      ignore: 'Nếu bạn không yêu cầu, hãy bỏ qua email này; email của tài khoản sẽ không thay đổi.',
+    },
+    en: {
+      subject: 'Lucy Spa – Confirm your new account email',
+      purpose:
+        'A Lucy Spa staff account asked to change its sign-in and recovery email to this address.',
+      use: 'Enter this code in “My Account” while signed in to finish changing the email:',
+      ignore: 'If you did not request this, ignore this email; the account email will not change.',
     },
   },
 } as const;

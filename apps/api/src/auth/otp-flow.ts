@@ -32,10 +32,15 @@ export const OTP_OPS = {
   identityFailure: 'OTP_VERIFY_FAILURE_IDENTITY',
 } as const;
 
-export type EmailOtpPurpose = 'ACTIVATE_CUSTOMER' | 'RESET_PASSWORD' | 'VERIFY_RECOVERY_EMAIL';
+export type EmailOtpPurpose =
+  'ACTIVATE_CUSTOMER' | 'RESET_PASSWORD' | 'VERIFY_RECOVERY_EMAIL' | 'CHANGE_EMAIL';
 
-/** Email flows bound to an existing User, its stored address and its credential version. */
-export type UserOtpPurpose = 'RESET_PASSWORD' | 'VERIFY_RECOVERY_EMAIL';
+/**
+ * Email flows bound to an existing User and its credential version. RESET_PASSWORD and
+ * VERIFY_RECOVERY_EMAIL target the stored address; CHANGE_EMAIL targets (and binds) the
+ * proposed new address, which is the `OtpSubject` email for that flow.
+ */
+export type UserOtpPurpose = 'RESET_PASSWORD' | 'VERIFY_RECOVERY_EMAIL' | 'CHANGE_EMAIL';
 
 export interface OtpSubject {
   readonly id: string;

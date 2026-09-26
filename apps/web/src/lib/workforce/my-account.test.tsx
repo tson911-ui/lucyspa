@@ -2,6 +2,7 @@ import type { MyAccountResponse } from '@lucy-spa/contracts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  ChangeEmailSection,
   ChangePasswordSection,
   MyAccountView,
 } from '../../components/workforce/screens/my-account';
@@ -14,7 +15,12 @@ import {
   changeOwnPassword,
   changePasswordErrorMessage,
   changePasswordProblem,
+  emailChangeErrorMessage,
+  emailChangeProblem,
   EMPTY_CHANGE_PASSWORD,
+  requestEmailChange,
+  resendEmailChange,
+  verifyEmailChange,
   myAccountCommands,
   myProfileForm,
   myProfilePatch,
@@ -87,7 +93,7 @@ test('the view shows the authoritative profile, title, work and security, read-o
     'thu@example.com',
     vi.myAccount.emailUnverified,
     vi.myAccount.workReadonly,
-    vi.myAccount.emailReadonly,
+    vi.myAccount.changeEmail.title,
   ]) {
     assert.ok(markup.includes(text), text);
   }
@@ -243,4 +249,86 @@ test('change password: client checks help; the server stays authoritative', asyn
     changePasswordErrorMessage(new ApiError(401, 'AUTHENTICATION_FAILED'), en),
     'The current password is incorrect.',
   );
+});
+
+test('change email: a real form in Account & Security; the code step comes later', () => {
+  const markup = view(mine);
+  const security = markup.slice(markup.indexOf(vi.myAccount.security.replace('&', '&amp;')));
+  assert.ok(security.includes(`<summary>${vi.myAccount.changeEmail.title}</summary>`));
+  assert.ok(!markup.includes('Email không đổi được ở đây'), 'the static note is gone');
+  const form = render(
+    <ChangeEmailSection account={mine} reload={() => Promise.resolve()} />,
+    employee(),
+  );
+  assert.match(
+    form,
+    /<input id="email-current-password" type="password"[^>]*autoComplete="current-password"/,
+  );
+  assert.match(form, /<input id="email-new" type="email"/);
+  assert.ok(form.includes(`>${vi.myAccount.changeEmail.send}<`));
+  assert.ok(form.includes(vi.myAccount.changeEmail.intro));
+  assert.doesNotMatch(form, /id="email-code"/, 'no code field before a code was sent');
+  assert.doesNotMatch(form, /value="[^"]+"/, 'nothing pre-filled');
+  const english = render(
+    <ChangeEmailSection account={ownerAccount} reload={() => Promise.resolve()} />,
+    owner,
+    'en',
+  );
+  for (const label of ['Current password', 'New email', 'Send verification code']) {
+    assert.ok(english.includes(label), label);
+  }
+  assert.ok(view(ownerAccount).includes(vi.myAccount.changeEmail.title), 'Owner too');
+});
+
+test('change email: request, resend and verify over /me/email; safe messages', async () => {
+  assert.equal(emailChangeProblem('', 'a@example.com'), 'passwordRequired');
+  assert.equal(emailChangeProblem('pw', '  '), 'emailRequired');
+  assert.equal(emailChangeProblem('pw', 'not an email'), 'invalidEmail');
+  assert.equal(emailChangeProblem('pw', ' new@example.com '), null);
+  assert.equal(emailChangeProblem('pw', 'THU@example.com', 'thu@example.com'), 'sameEmail');
+  const flow = {
+    status: 'accepted',
+    flowToken: 'f'.repeat(43),
+    codeLifetimeSeconds: 300,
+    resendAfterSeconds: 60,
+  };
+  const { fetcher, calls } = scriptedFetch([
+    context('c1', true),
+    () => json(202, flow),
+    () => json(204, null),
+    () => json(204, null),
+    context('c2', true),
+  ]);
+  const api = new WorkforceApi({ fetch: fetcher });
+  const accepted = await requestEmailChange(api, 'a calm lotus evening 2026', ' new@example.com ');
+  await resendEmailChange(api, accepted.flowToken);
+  await verifyEmailChange(api, accepted.flowToken, ' 123456 ');
+  assert.deepEqual(
+    calls.map((call) => [call.method, call.url]),
+    [
+      ['GET', '/api/v1/auth/context'],
+      ['POST', '/api/v1/me/email/request'],
+      ['POST', '/api/v1/me/email/resend'],
+      ['POST', '/api/v1/me/email/verify'],
+      ['GET', '/api/v1/auth/context'],
+    ],
+  );
+  // Only the password and address; never an account identifier.
+  assert.deepEqual(calls[1]?.body, {
+    currentPassword: 'a calm lotus evening 2026',
+    newEmail: 'new@example.com',
+  });
+  assert.deepEqual(calls[2]?.body, { flowToken: flow.flowToken });
+  assert.deepEqual(calls[3]?.body, { flowToken: flow.flowToken, otp: '123456' });
+  const texts = vi.myAccount.changeEmail;
+  for (const [error, message] of [
+    [new ApiError(401, 'AUTHENTICATION_FAILED'), texts.wrongPassword],
+    [new ApiError(400, 'VERIFICATION_FAILED'), texts.codeRejected],
+    [new ApiError(409, 'CONFLICT', 'email'), texts.taken],
+    [new ApiError(400, 'VALIDATION_FAILED', 'newEmail'), texts.invalidEmail],
+    [new ApiError(400, 'VALIDATION_FAILED', 'newEmailUnchanged'), texts.sameEmail],
+    [new ApiError(429, 'RATE_LIMITED'), vi.errors.rateLimited],
+  ] as const) {
+    assert.equal(emailChangeErrorMessage(error, vi), message);
+  }
 });

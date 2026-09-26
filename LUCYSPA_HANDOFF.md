@@ -24,23 +24,27 @@ It covers:
 It is being prepared before Phase 3 because collaborator availability affects booking.
 **Owner decisions Q1–Q16 are RESOLVED (2026-09-26)** and are recorded in the design.
 
-| Follow-up step                                                         | Status                                                                                                                                     |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Step 1: design                                                         | Done (`9592622`)                                                                                                                           |
-| Step 2: COLLABORATOR + manager invariant + titles + directory sections | **Deployed to production and accepted by the Owner** (`455394f`; [Step 2 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md)) |
-| Step 3: My Account + shared authoritative profile                      | **Deployed to production and accepted by the Owner** (`1a49e72`; [Step 3 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP3_MY_ACCOUNT.md))   |
-| Step 4: self-service change password                                   | **Implemented, pushed, NOT DEPLOYED** ([Step 4 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP4_CHANGE_PASSWORD.md))                        |
-| Steps 5–7: verified email change, collaborator schedule/pay, My Income | NOT implemented                                                                                                                            |
+| Follow-up step                                                         | Status                                                                                                                                        |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Step 1: design                                                         | Done (`9592622`)                                                                                                                              |
+| Step 2: COLLABORATOR + manager invariant + titles + directory sections | **Deployed to production and accepted by the Owner** (`455394f`; [Step 2 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md))    |
+| Step 3: My Account + shared authoritative profile                      | **Deployed to production and accepted by the Owner** (`1a49e72`; [Step 3 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP3_MY_ACCOUNT.md))      |
+| Step 4: self-service change password                                   | **Deployed to production and accepted by the Owner** (`73cf6ad`; [Step 4 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP4_CHANGE_PASSWORD.md)) |
+| Step 5: verified self-service email change                             | **Implemented, pushed, NOT DEPLOYED** ([Step 5 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP5_VERIFIED_EMAIL_CHANGE.md))                     |
+| Steps 6–7: collaborator schedule/pay, My Income                        | NOT implemented                                                                                                                               |
 
-**Production application commit: `1a49e72`** (follow-up Step 3). Step 4 adds **no
-migration**. Deploying it needs Owner authorization: backup, `git pull`, `pnpm build`, PM2
-restart, then the smoke checks in the Step 4 report.
+**Production application commit: `73cf6ad`** (follow-up Step 4). Step 5 adds **two additive
+migrations** (`20261003000000_auth_challenge_change_email`,
+`20261003000001_auth_challenge_change_email_guard`). Deploying it needs Owner authorization:
+backup, `git pull`, `pnpm db:deploy`, `pnpm build`, and a restart of all three PM2 processes
+(the worker must learn the `CHANGE_EMAIL` email template). Then run the smoke checks in the
+Step 5 report.
 
 - The original Phase 2 remains **CLOSED / PRODUCTION ACCEPTED**.
 - **Phase 3 (booking) remains NOT STARTED.**
 - A **full UX/UI redesign is deferred** until the Phase 3 core is complete; the current
   workforce UI is temporary functional UI.
-- The next follow-up step is Step 5: verified email change.
+- The next follow-up step is Step 6: collaborator work schedule and agreed pay.
 
 ### Production state (Phase 2 closure, 2026-09-26)
 
