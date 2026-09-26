@@ -10,7 +10,7 @@ import type {
   EmploymentEndResponse,
   EmploymentResponse,
 } from '@lucy-spa/contracts';
-import type { WorkforceDictionary } from '../../i18n/workforce';
+import { fill, type WorkforceDictionary } from '../../i18n/workforce';
 import type { Locale } from '../../i18n/locales';
 import { ApiError, type WorkforceApi } from './api';
 import { isCalendarDate, PASSWORD_LENGTH, passwordLength } from './employee-create';
@@ -75,6 +75,7 @@ export function detailActions(
 
 export interface ProfileForm {
   fullName: string;
+  phone: string;
   dateOfBirth: string;
   address: string;
   locale: Locale;
@@ -83,6 +84,7 @@ export interface ProfileForm {
 export function profileForm(employee: EmployeeResponse): ProfileForm {
   return {
     fullName: employee.fullName,
+    phone: employee.phone,
     dateOfBirth: employee.dateOfBirth,
     address: employee.address,
     locale: employee.locale,
@@ -90,9 +92,10 @@ export function profileForm(employee: EmployeeResponse): ProfileForm {
 }
 
 /**
- * Only the fields the profile command supports (full name, date of birth, address,
- * language), and only those that changed. Employee code, phone and email are not editable
- * here. Null when nothing changed.
+ * Only the fields the profile command supports (full name, phone, date of birth, address,
+ * language), and only those that changed. Employee code and email are not editable here.
+ * The same fields and rules as My Account (one shared write path on the server). Null when
+ * nothing changed.
  */
 export function profilePatch(
   employee: EmployeeResponse,
@@ -101,7 +104,9 @@ export function profilePatch(
   const patch: EmployeeProfileUpdateRequest = { expectedVersion: employee.version };
   const fullName = form.fullName.trim();
   const address = form.address.trim();
+  const phone = form.phone.trim();
   if (fullName !== employee.fullName) patch.fullName = fullName;
+  if (phone !== employee.phone) patch.phone = phone;
   if (form.dateOfBirth !== employee.dateOfBirth) patch.dateOfBirth = form.dateOfBirth;
   if (address !== employee.address) patch.address = address;
   if (form.locale !== employee.locale) patch.locale = form.locale;
@@ -209,6 +214,20 @@ export const employeeCommands = {
 };
 
 /** Localized failures of the detail commands; the API decides, this only explains. */
+/** Shared profile refusals (management and My Account): phone clash, invalid field. */
+export function profileFieldMessage(error: ApiError, t: WorkforceDictionary): string | null {
+  const create = t.employees.create;
+  if (error.code === 'CONFLICT' && error.field === 'phone') return create.duplicatePhone;
+  const field = error.field;
+  if (
+    error.code === 'VALIDATION_FAILED' &&
+    (field === 'fullName' || field === 'phone' || field === 'dateOfBirth' || field === 'address')
+  ) {
+    return fill(create.invalidField, { field: create.fields[field] });
+  }
+  return null;
+}
+
 export function detailErrorMessage(error: unknown, t: WorkforceDictionary): string {
   const texts = t.employees.detail;
   if (error instanceof ReauthenticationCancelled) return t.reauth.cancelled;
@@ -228,6 +247,7 @@ export function detailErrorMessage(error: unknown, t: WorkforceDictionary): stri
     if (error.code === 'VALIDATION_FAILED' && error.field === 'effectiveDate') {
       return texts.dateNotAfterLatest;
     }
+    return profileFieldMessage(error, t) ?? errorMessage(error, t);
   }
   return errorMessage(error, t);
 }

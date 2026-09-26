@@ -214,7 +214,8 @@ test('employee commands enforce CSRF/origin, strict DTOs and their contracts', a
         .expect(400);
     }
     for (const [path, body] of [
-      [`/api/v1/employees/${id}/profile`, { expectedVersion: 1, phone: '0912345679' }],
+      // Phone is now a shared profile field (follow-up Step 3), but always a string.
+      [`/api/v1/employees/${id}/profile`, { expectedVersion: 1, phone: 912345679 }],
       [`/api/v1/employees/${id}/profile`, { expectedVersion: 1, email: 'x@example.com' }],
       [`/api/v1/employees/${id}/profile`, { expectedVersion: 1, baseSalaryVnd: '1' }],
       [`/api/v1/employees/${id}/profile`, { fullName: 'No version' }],

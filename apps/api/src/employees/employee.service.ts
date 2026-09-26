@@ -71,6 +71,7 @@ import {
   presentClassification,
   transitionAllowed,
 } from './employment.js';
+import { writeProfile } from './profile.js';
 import { holdsManagerRole, workforceTitle } from './workforce-title.js';
 
 /** Design section 2: a setup capability is high-entropy and lives 24 hours. */
@@ -464,7 +465,7 @@ export class EmployeeService {
     );
   }
 
-  /** Non-security profile fields only; contact identifiers and pay are excluded. */
+  /** Non-security profile fields (and phone); email and pay are excluded. Shared write path. */
   async updateProfile(
     sessionToken: string | undefined,
     targetId: string,
@@ -476,24 +477,10 @@ export class EmployeeService {
       const { tx, actor, target, branchIds } = context;
       this.require(actor, 'UPDATE_EMPLOYEES', branchIds);
       this.expectVersion(target, input.expectedVersion);
-      await tx.user.update({
-        where: { id: target.id },
-        data: {
-          ...(patch.fullName !== undefined ? { fullName: patch.fullName } : {}),
-          ...(patch.locale !== undefined ? { preferredLocale: patch.locale } : {}),
-          rowVersion: { increment: 1 },
-          employeeProfile: {
-            update: {
-              ...(patch.dateOfBirth !== undefined ? { dateOfBirth: patch.dateOfBirth } : {}),
-              ...(patch.address !== undefined ? { address: patch.address } : {}),
-            },
-          },
-        },
-        select: { id: true },
-      });
+      const fields = await writeProfile(tx, target.id, patch, true);
       // Field names only; profile values are not copied into permanent history.
       await this.audit(context, target.id, branchIds, 'PROFILE_UPDATED', {
-        after: { fields: Object.keys(patch).sort() },
+        after: { fields },
       });
       return this.present(actor, await this.load(tx, target.id));
     });

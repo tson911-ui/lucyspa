@@ -77,7 +77,15 @@ export function canAcross(
 }
 
 export type NavKey =
-  'dashboard' | 'attendance' | 'leave' | 'branches' | 'services' | 'skills' | 'employees' | 'roles';
+  | 'dashboard'
+  | 'myAccount'
+  | 'attendance'
+  | 'leave'
+  | 'branches'
+  | 'services'
+  | 'skills'
+  | 'employees'
+  | 'roles';
 
 export interface NavItem {
   key: NavKey;
@@ -96,6 +104,8 @@ export function navigationFor(account: Account): NavItem[] {
   const employee = account.kind === 'EMPLOYEE';
   const items: (NavItem | false)[] = [
     { key: 'dashboard', group: 'home', path: '' },
+    // Every workforce account (Owner included) has its own account page.
+    { key: 'myAccount', group: 'home', path: '/account' },
     (employee || canAnywhere(account, 'VIEW_ATTENDANCE')) && {
       key: 'attendance',
       group: 'operations',

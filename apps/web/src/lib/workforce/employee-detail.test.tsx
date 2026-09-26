@@ -174,16 +174,31 @@ test('3. profile edits send only supported, changed fields to the existing comma
     dateOfBirth: '1998-07-15',
   })!;
   assert.deepEqual(Object.keys(patch).sort(), ['address', 'dateOfBirth', 'expectedVersion']);
+  // Follow-up Step 3: phone is a shared profile field (same rules as My Account).
+  assert.deepEqual(profilePatch(member, { ...form, phone: ' 0905 111 222 ' }), {
+    expectedVersion: 4,
+    phone: '0905 111 222',
+  });
   const { fetcher, calls } = scriptedFetch([context('c', true), () => json(200, member)]);
   await employeeCommands.updateProfile(new WorkforceApi({ fetch: fetcher }), member.id, patch);
   assert.equal(calls[1]?.url, `/api/v1/employees/${member.id}/profile`);
   assert.deepEqual(calls[1]?.body, patch);
   const markup = detail(trainee);
   assert.ok(markup.includes(vi.employees.detail.profileReadonlyNote));
-  for (const id of ['profile-name', 'profile-dob', 'profile-address', 'profile-locale']) {
+  for (const id of [
+    'profile-name',
+    'profile-phone',
+    'profile-dob',
+    'profile-address',
+    'profile-locale',
+  ]) {
     assert.match(markup, new RegExp(`id="${id}"`), id);
   }
-  assert.doesNotMatch(markup, /id="profile-(phone|email|code)"/);
+  assert.doesNotMatch(markup, /id="profile-(email|code)"/);
+  assert.equal(
+    detailErrorMessage(new ApiError(409, 'CONFLICT', 'phone'), vi),
+    vi.employees.create.duplicatePhone,
+  );
 });
 
 test('4. classification, effective date, upcoming entries and history are shown', () => {

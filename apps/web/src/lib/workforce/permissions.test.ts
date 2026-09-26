@@ -7,10 +7,15 @@ const keys = (account: Parameters<typeof navigationFor>[0]) =>
   navigationFor(account).map((item) => item.key);
 
 test('navigation follows effective permissions, not hard-coded roles', () => {
-  assert.deepEqual(keys(employee()), ['dashboard', 'attendance', 'leave'], 'self-service only');
+  assert.deepEqual(
+    keys(employee()),
+    ['dashboard', 'myAccount', 'attendance', 'leave'],
+    'self-service only',
+  );
   assert.deepEqual(keys(customer), [], 'customers get no workforce navigation');
   assert.deepEqual(keys(owner), [
     'dashboard',
+    'myAccount',
     'attendance',
     'leave',
     'branches',
@@ -26,7 +31,7 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
         ['MANAGE_SKILLS', 'A'],
       ]),
     ),
-    ['dashboard', 'attendance', 'leave', 'skills', 'employees'],
+    ['dashboard', 'myAccount', 'attendance', 'leave', 'skills', 'employees'],
   );
   assert.ok(keys(employee([['MANAGE_SERVICE_PRICES']])).includes('services'));
   // Roles & permissions: MANAGE_PERMISSIONS in any scope (branch administrators read only).

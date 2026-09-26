@@ -301,13 +301,51 @@ export interface EmployeeDirectoryResponse {
   page?: { number: number; size: number; total: number };
 }
 
-/** POST /api/v1/employees/:id/profile. Contact identifiers and pay are excluded. */
+/**
+ * POST /api/v1/employees/:id/profile (management) and POST /api/v1/me/account/profile
+ * (self). Both write the same `users` / `employee_profiles` rows through one shared write
+ * path. Email, login ID, classification, roles, branches, skills, status and pay are
+ * excluded. `phone` is unique across all users (409 `phone` on a clash).
+ */
 export interface EmployeeProfileUpdateRequest {
   expectedVersion: number;
   fullName?: string;
+  phone?: string;
   dateOfBirth?: string;
   address?: string;
   locale?: PreferredLocale;
+}
+
+/** Self-service profile update: the same allowlisted fields as the management command. */
+export type MyAccountProfileUpdateRequest = EmployeeProfileUpdateRequest;
+
+/**
+ * GET /api/v1/me/account: the signed-in workforce account's own view over the same
+ * authoritative rows employee detail reads (no copy). Identity comes from the session only.
+ * The Owner has no employee profile: `employee` is null. No pay or authorization data.
+ */
+export interface MyAccountResponse {
+  id: string;
+  kind: 'OWNER' | 'EMPLOYEE';
+  fullName: string;
+  phone: string | null;
+  /** The stored (recovery) email and whether it is verified; changed only by a later verified flow. */
+  email: { address: string; verified: boolean } | null;
+  locale: PreferredLocale;
+  status: EmployeeStatus;
+  /** Authoritative server-derived title (Step 2). */
+  title: WorkforceTitle;
+  employee: {
+    employeeId: string;
+    dateOfBirth: string;
+    address: string;
+    /** In effect today (null before the start date). */
+    classification: EmploymentClassification | null;
+    branches: { id: string; code: string; name: string }[];
+    skills: { id: string; code: string; nameVi: string; nameEn: string }[];
+  } | null;
+  /** Optimistic-concurrency version shared with employee detail; send back as `expectedVersion`. */
+  version: number;
 }
 
 /**

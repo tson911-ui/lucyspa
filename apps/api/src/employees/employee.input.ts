@@ -42,6 +42,7 @@ export interface EmployeeCandidate {
 
 export interface ProfilePatch {
   fullName?: string;
+  phone?: { phoneCanonical: string; normalizationVersion: number };
   dateOfBirth?: Date;
   address?: string;
   locale?: 'vi' | 'en';
@@ -121,12 +122,17 @@ export function normalizeEmployee(input: EmployeeCreateRequest): EmployeeCandida
   };
 }
 
-/** Allowlisted non-security fields only; at least one must be supplied. */
+/**
+ * Allowlisted non-security fields only; at least one must be supplied. Shared by the
+ * management command and My Account, so the rules cannot diverge. Phone uses the same
+ * canonicalization as signup and employee creation.
+ */
 export function normalizeProfilePatch(input: EmployeeProfileUpdateRequest): ProfilePatch {
   const patch: ProfilePatch = {};
   if (input.fullName !== undefined) {
     patch.fullName = text(input.fullName, 'fullName', EMPLOYEE_LIMITS.fullNameMaxCodePoints);
   }
+  if (input.phone !== undefined) patch.phone = identity(() => normalizePhone(input.phone));
   if (input.dateOfBirth !== undefined) patch.dateOfBirth = parseDateOfBirth(input.dateOfBirth);
   if (input.address !== undefined) {
     patch.address = text(input.address, 'address', EMPLOYEE_LIMITS.addressMaxCodePoints);

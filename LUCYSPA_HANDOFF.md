@@ -24,25 +24,22 @@ It covers:
 It is being prepared before Phase 3 because collaborator availability affects booking.
 **Owner decisions Q1–Q16 are RESOLVED (2026-09-26)** and are recorded in the design.
 
-| Follow-up step                                                               | Status                                                                                                           |
-| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Step 1: design                                                               | Done (`9592622`)                                                                                                 |
-| Step 2: COLLABORATOR + manager invariant + titles + directory sections       | **Implemented, pushed, NOT DEPLOYED** ([Step 2 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md)) |
-| Steps 3–7: My Account, password, email, collaborator schedule/pay, My Income | NOT implemented                                                                                                  |
+| Follow-up step                                                         | Status                                                                                                                                     |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Step 1: design                                                         | Done (`9592622`)                                                                                                                           |
+| Step 2: COLLABORATOR + manager invariant + titles + directory sections | **Deployed to production and accepted by the Owner** (`455394f`; [Step 2 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md)) |
+| Step 3: My Account + shared authoritative profile                      | **Implemented, pushed, NOT DEPLOYED** ([Step 3 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP3_MY_ACCOUNT.md))                             |
+| Steps 4–7: password, email, collaborator schedule/pay, My Income       | NOT implemented                                                                                                                            |
 
-**Deploying Step 2 needs Owner authorization.** It adds two migrations
-(`20261002000000_employment_collaborator`, `20261002000001_employment_collaborator_transitions`).
-Run it in this order:
+**Production application commit: `455394f`** (follow-up Step 2). Step 3 adds **no
+migration**. Deploying it needs Owner authorization: backup, `git pull`, `pnpm build`, PM2
+restart, then the smoke checks in the Step 3 report.
 
-1. take a backup;
-2. run `pnpm db:precheck:collaborator`, which must report 0/0;
-3. `pnpm db:deploy`;
-4. `pnpm build`;
-5. PM2 restart;
-6. run the pre-check again.
-
-Production is still at `fb0725d`. Phase 2 remains CLOSED / PRODUCTION ACCEPTED; **Phase 3
-remains NOT STARTED.** The next follow-up step is Step 3: My Account read + self profile edit.
+- The original Phase 2 remains **CLOSED / PRODUCTION ACCEPTED**.
+- **Phase 3 (booking) remains NOT STARTED.**
+- A **full UX/UI redesign is deferred** until the Phase 3 core is complete; the current
+  workforce UI is temporary functional UI.
+- The next follow-up step is Step 4: self-service password change.
 
 ### Production state (Phase 2 closure, 2026-09-26)
 

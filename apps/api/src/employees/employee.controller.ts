@@ -130,8 +130,9 @@ class VersionedDto {
   @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
 }
 
-class EmployeeProfileDto extends VersionedDto implements EmployeeProfileUpdateRequest {
+export class EmployeeProfileDto extends VersionedDto implements EmployeeProfileUpdateRequest {
   @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(1_024) fullName?: string;
+  @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(128) phone?: string;
   @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(10) dateOfBirth?: string;
   @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(2_048) address?: string;
   @ApiProperty({ required: false, enum: ['vi', 'en'] })

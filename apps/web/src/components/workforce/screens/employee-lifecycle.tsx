@@ -129,6 +129,19 @@ export function ProfileSection({
                   onChange={(event) => set('fullName', event.target.value)}
                 />
               </Field>
+              <Field id="profile-phone" label={texts.phone} required>
+                <input
+                  id="profile-phone"
+                  type="tel"
+                  required
+                  maxLength={32}
+                  autoComplete="off"
+                  value={form.phone}
+                  onChange={(event) => set('phone', event.target.value)}
+                />
+              </Field>
+            </div>
+            <div className="wf-row">
               <Field id="profile-dob" label={texts.dateOfBirth} required>
                 <input
                   id="profile-dob"
@@ -176,7 +189,7 @@ export function ProfileSection({
 
 // ------------------------------------------------------------------ employment
 
-const TITLE_TONE: Record<string, Tone> = {
+export const TITLE_TONE: Record<string, Tone> = {
   MANAGER: 'success',
   EMPLOYEE: 'success',
   COLLABORATOR: 'warning',
