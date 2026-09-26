@@ -117,6 +117,43 @@ export async function collaboratorWorkCovering(
 }
 
 /**
+ * The batched form of `collaboratorWorkCovering` for the availability engine: every SCHEDULED
+ * occurrence of these employees at the branch on the date. A window is covered under the same
+ * rule when `coversWindow` holds for one of them (the whole window, never a partial one).
+ */
+export async function collaboratorWorkOnDate(
+  tx: Prisma.TransactionClient,
+  query: { employeeUserIds: readonly string[]; branchId: string; workDate: Date },
+): Promise<Map<string, WorkWindow[]>> {
+  const byEmployee = new Map<string, WorkWindow[]>();
+  if (query.employeeUserIds.length === 0) return byEmployee;
+  const rows = await tx.collaboratorWorkOccurrence.findMany({
+    where: {
+      employeeUserId: { in: [...query.employeeUserIds] },
+      branchId: query.branchId,
+      workDate: query.workDate,
+      status: 'SCHEDULED',
+    },
+    select: { employeeUserId: true, startMinute: true, endMinute: true },
+  });
+  for (const row of rows) {
+    const list = byEmployee.get(row.employeeUserId) ?? [];
+    list.push({ startMinute: row.startMinute, endMinute: row.endMinute });
+    byEmployee.set(row.employeeUserId, list);
+  }
+  return byEmployee;
+}
+
+/** An occurrence covers the whole window (the `collaboratorWorkCovering` predicate). */
+export function coversWindow(occurrence: WorkWindow, window: WorkWindow): boolean {
+  return (
+    window.startMinute < window.endMinute &&
+    occurrence.startMinute <= window.startMinute &&
+    occurrence.endMinute >= window.endMinute
+  );
+}
+
+/**
  * Employment moved away from COLLABORATOR from `fromDate` (ENDED, or promotion): every
  * SCHEDULED occurrence on or after that date is cancelled in the caller's transaction,
  * kept as history and audited. Earlier occurrences are untouched. Returns the count.

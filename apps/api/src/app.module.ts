@@ -43,6 +43,7 @@ import { SkillController } from './skills/skill.controller.js';
 import { SkillService } from './skills/skill.service.js';
 import { LeaveController } from './leave/leave.controller.js';
 import { LeaveService } from './leave/leave.service.js';
+import { AvailabilityService } from './availability/availability.service.js';
 import { AuthorizationAdminController } from './authorization/authorization-admin.controller.js';
 import { RoleAdminService } from './authorization/role-admin.service.js';
 import { EmployeeController } from './employees/employee.controller.js';
@@ -106,6 +107,7 @@ export class AppModule {
         EmailChangeService,
         CollaboratorWorkService,
         MyIncomeService,
+        AvailabilityService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
         { provide: APP_INTERCEPTOR, useClass: SessionActivityInterceptor },
