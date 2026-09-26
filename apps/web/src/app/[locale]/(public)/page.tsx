@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getDictionary } from '../../../i18n/dictionaries';
 import { isLocale } from '../../../i18n/locales';
@@ -14,8 +15,14 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         <p className="eyebrow">{dictionary.eyebrow}</p>
         <h1>{dictionary.heading}</h1>
         <p className="introduction">{dictionary.introduction}</p>
+        <nav className="welcome-actions" aria-label={dictionary.book}>
+          <Link className="welcome-primary" href={`/${locale}/account/book`}>
+            {dictionary.book}
+          </Link>
+          <Link href={`/${locale}/account/login`}>{dictionary.signIn}</Link>
+          <Link href={`/${locale}/account/register`}>{dictionary.register}</Link>
+        </nav>
         <div className="welcome-note">
-          <p>{dictionary.comingSoon}</p>
           <p>{dictionary.welcome}</p>
         </div>
       </div>

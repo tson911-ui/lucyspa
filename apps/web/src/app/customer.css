@@ -1,0 +1,293 @@
+/* Member area (Phase 3 Step 4): functional and responsive. Builds on the Lucy tokens and the
+   shared `wf-` form, button and notice primitives; only layout lives here. */
+.cu-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+}
+
+.cu-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--lucy-border);
+  background: var(--lucy-ivory);
+}
+
+.cu-brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: none;
+}
+
+.cu-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.cu-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.cu-nav a[aria-current='page'] {
+  background: #ffffff;
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--lucy-red);
+}
+
+.cu-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.cu-main {
+  width: min(100%, 48rem);
+  margin: 0 auto;
+  padding: 1.25rem 1rem 3rem;
+}
+
+.cu-main:focus {
+  outline: none;
+}
+
+.cu-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.cu-panel h1:focus {
+  outline: none;
+}
+
+.cu-panel h1,
+.cu-panel h2 {
+  margin: 0.25rem 0 0;
+}
+
+.cu-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.cu-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+}
+
+.cu-steps li {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--lucy-border);
+  border-radius: 999px;
+  color: var(--lucy-muted);
+}
+
+.cu-steps li.cu-done {
+  color: var(--lucy-ink);
+}
+
+.cu-steps li[aria-current='step'] {
+  border-color: var(--lucy-red);
+  color: var(--lucy-ink);
+  font-weight: 600;
+}
+
+.cu-choices,
+.cu-person,
+.cu-times {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.cu-choices legend,
+.cu-times legend {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.cu-person {
+  padding: 0.9rem;
+  border: 1px solid var(--lucy-border);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.cu-choice {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  min-height: 44px;
+  padding: 0.75rem;
+  border: 1px solid var(--lucy-border);
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.cu-choice input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.1rem;
+  flex: none;
+}
+
+.cu-choice:has(input:checked) {
+  border-color: var(--lucy-red);
+}
+
+.cu-order ol,
+.cu-lines {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.cu-order li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cu-inline-actions {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.cu-time-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.cu-time {
+  position: relative;
+}
+
+.cu-time input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+}
+
+.cu-time span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1px solid var(--lucy-border);
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.cu-time input:checked + span {
+  border-color: var(--lucy-red);
+  background: var(--lucy-red);
+  color: var(--lucy-ivory);
+  font-weight: 600;
+}
+
+.cu-time input:focus-visible + span {
+  outline: 2px solid var(--lucy-red);
+  outline-offset: 2px;
+}
+
+.cu-summary {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.35rem 1rem;
+  margin: 0;
+}
+
+.cu-summary dt {
+  color: var(--lucy-muted);
+}
+
+.cu-summary dd {
+  margin: 0;
+}
+
+.cu-cards {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cu-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem;
+  border: 1px solid var(--lucy-border);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.cu-card p {
+  margin: 0;
+}
+
+.cu-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cu-confirm {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--wf-error);
+  border-radius: 12px;
+  background: var(--wf-error-bg);
+}
+
+@media (max-width: 560px) {
+  .cu-header-actions {
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+  }
+
+  .cu-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cu-summary dd {
+    margin-bottom: 0.5rem;
+  }
+
+  .cu-actions > * {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}

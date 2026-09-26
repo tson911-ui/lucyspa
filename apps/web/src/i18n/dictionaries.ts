@@ -8,9 +8,11 @@ interface Dictionary {
   eyebrow: string;
   heading: string;
   introduction: string;
-  comingSoon: string;
   welcome: string;
   signature: string;
+  book: string;
+  signIn: string;
+  register: string;
 }
 
 const dictionaries = {
@@ -22,9 +24,11 @@ const dictionaries = {
     eyebrow: 'Chào mừng đến với Lucy Spa',
     heading: 'Một khoảng lặng.\nDành riêng cho bạn.',
     introduction: 'Thả lỏng, chậm lại và dành thời gian chăm sóc chính mình.',
-    comingSoon: 'Không gian trực tuyến của Lucy Spa đang được chuẩn bị.',
     welcome: 'Hẹn sớm gặp bạn.',
     signature: 'Dịu dàng chăm sóc. Trọn vẹn yêu thương.',
+    book: 'Đặt lịch hẹn',
+    signIn: 'Đăng nhập thành viên',
+    register: 'Đăng ký thành viên',
   },
   en: {
     title: 'Lucy Spa — A moment just for you',
@@ -34,9 +38,11 @@ const dictionaries = {
     eyebrow: 'Welcome to Lucy Spa',
     heading: 'A quiet moment.\nJust for you.',
     introduction: 'Unwind, slow down, and take a little time for yourself.',
-    comingSoon: 'The Lucy Spa online experience is being prepared.',
     welcome: 'We look forward to welcoming you.',
     signature: 'Gentle care. Thoughtfully yours.',
+    book: 'Book an appointment',
+    signIn: 'Member sign in',
+    register: 'Become a member',
   },
 } satisfies Record<Locale, Dictionary>;
 

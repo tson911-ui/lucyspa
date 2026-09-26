@@ -14,6 +14,8 @@ import {
   MyPasswordController,
 } from './account/my-account.controller.js';
 import { MyIncomeService } from './account/my-income.service.js';
+import { CustomerBookingController } from './booking/customer-booking.controller.js';
+import { CustomerBookingService } from './booking/customer-booking.service.js';
 import { MyAccountService } from './account/my-account.service.js';
 import { AuthContextController } from './auth/auth-context.controller.js';
 import { AuthThrottleService } from './auth/auth-throttle.service.js';
@@ -80,6 +82,7 @@ export class AppModule {
         CollaboratorWorkController,
         MyCollaboratorWorkController,
         MyIncomeController,
+        CustomerBookingController,
       ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },
@@ -108,6 +111,7 @@ export class AppModule {
         CollaboratorWorkService,
         MyIncomeService,
         AvailabilityService,
+        CustomerBookingService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
         { provide: APP_INTERCEPTOR, useClass: SessionActivityInterceptor },

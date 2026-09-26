@@ -31,3 +31,5 @@ await import('../apps/api/dist/collaborator-work/collaborator-work.integration.t
 await import('../apps/api/dist/auth/password-policy.integration.test.js');
 await import('../apps/api/dist/account/my-income.integration.test.js');
 await import('../apps/api/dist/availability/availability.integration.test.js');
+await import('../apps/api/dist/booking/customer-booking.integration.test.js');
+await import('../apps/api/dist/booking/customer-booking.race.integration.test.js');

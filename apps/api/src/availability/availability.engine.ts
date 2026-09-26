@@ -497,6 +497,33 @@ export function evaluateSequenceAt(
   };
 }
 
+/** Reasons that do not depend on the time of day (account, employment, branch, skills). */
+const TIME_INDEPENDENT_REASONS: ReadonlySet<EmployeeReason> = new Set([
+  'EMPLOYEE_INACTIVE',
+  'TRAINEE',
+  'NOT_ASSIGNED',
+  'NOT_QUALIFIED',
+]);
+
+/**
+ * For each service of the facts, the employees who pass the time-independent rules on the
+ * facts' date (the same `employeeVerdict` rules, without leave, CTV work, attendance or
+ * occupancy). Used to offer a specific KTV before a time is chosen; the chosen time is then
+ * checked by `evaluateSequenceAt` / `validateAssignment`.
+ */
+export function qualifiedEmployeesByService(facts: AvailabilityFacts): string[][] {
+  const none = { startMinute: 0, endMinute: 0, occupancy: { start: 0, end: 0 } };
+  return facts.services.map((service) =>
+    facts.employees
+      .filter((employee) =>
+        employeeVerdict(facts, employee, service, none).reasons.every(
+          (reason) => !TIME_INDEPENDENT_REASONS.has(reason),
+        ),
+      )
+      .map((employee) => employee.userId),
+  );
+}
+
 // ------------------------------------------------------------------ transaction-compatible API
 
 /** One sequence at one start: sequence reasons, per-line verdicts and whole-sequence candidates. */

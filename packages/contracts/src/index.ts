@@ -1307,3 +1307,130 @@ export interface MyIncomeResponse {
   /** Future sources (not implemented yet) for this classification; never zeroes. */
   unavailableSources: UnavailableIncomeSource[];
 }
+
+// ---------------------------------------------------------------- Phase 3 Step 4: customer booking
+
+/** Who receives a service (O11). SELF is the signed-in owner; others are named, never accounts. */
+export type BookingRecipientRelationName = 'SELF' | 'CHILD' | 'FAMILY' | 'OTHER';
+
+/** GET /api/v1/me/booking/branches: active branches open for online booking. */
+export interface CustomerBookingBranchesResponse {
+  branches: { id: string; code: string; name: string }[];
+}
+
+/**
+ * GET /api/v1/me/booking/branches/:branchId: services offered there and the bookable date
+ * range (branch-local, from the booking settings; never hard-coded in the client).
+ */
+export interface CustomerBookingBranchResponse {
+  branch: { id: string; code: string; name: string; timezone: string };
+  /** First and last bookable branch-local dates, `YYYY-MM-DD`. */
+  firstDate: string;
+  lastDate: string;
+  services: {
+    id: string;
+    code: string;
+    nameVi: string;
+    nameEn: string;
+    categoryNameVi: string;
+    categoryNameEn: string;
+    durationMinutes: number;
+    /** Catalog reference price range (integer VND strings); not a bill (O5). */
+    priceMinVnd: string;
+    priceMaxVnd: string;
+    pricingUnit: 'PER_SERVICE' | 'PER_NAIL';
+  }[];
+}
+
+/**
+ * GET /api/v1/me/booking/branches/:branchId/employees?serviceIds=a,b: for each requested
+ * service, the KTVs qualified for it (display name only). Time is checked later.
+ */
+export interface CustomerBookingEmployeesResponse {
+  services: { serviceId: string; employees: { id: string; displayName: string }[] }[];
+}
+
+/** One requested line: the service, its recipient key and a KTV (null = Any KTV). */
+export interface CustomerBookingLineInput {
+  serviceId: string;
+  recipientKey: string;
+  employeeUserId: string | null;
+}
+
+/** GET /api/v1/me/booking/availability: feasible starts for the whole ordered sequence. */
+export interface CustomerBookingAvailabilityResponse {
+  date: string;
+  /** Branch-local start times `HH:MM`, on the configured slot grid. */
+  starts: string[];
+}
+
+export interface CustomerBookingRecipientInput {
+  /** Client-chosen key, unique within the request, referenced by lines. */
+  key: string;
+  relation: BookingRecipientRelationName;
+  /** Required unless SELF. */
+  displayName?: string;
+  phone?: string;
+}
+
+/** POST /api/v1/me/bookings. The owner is always the session's customer. */
+export interface CustomerBookingCreateRequest {
+  /** Client UUID; a retry with the same key returns the same booking. */
+  idempotencyKey: string;
+  branchId: string;
+  /** Branch-local `YYYY-MM-DD` and `HH:MM`. */
+  date: string;
+  startTime: string;
+  recipients: CustomerBookingRecipientInput[];
+  lines: CustomerBookingLineInput[];
+}
+
+/** Displayed state (contract section 3): after check-in it is derived from the visit. */
+export type CustomerBookingDisplayStatus =
+  'CONFIRMED' | 'ARRIVED' | 'IN_SERVICE' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+
+export interface CustomerBookingSummary {
+  id: string;
+  code: string;
+  /** Times are shown in the branch's IANA timezone. */
+  branch: { id: string; name: string; timezone: string };
+  date: string;
+  startsAt: string;
+  endsAt: string;
+  status: CustomerBookingDisplayStatus;
+  serviceNames: { vi: string; en: string }[];
+  canCancel: boolean;
+}
+
+export interface CustomerBookingDetail extends CustomerBookingSummary {
+  createdAt: string;
+  cancelledAt: string | null;
+  cancelledLate: boolean | null;
+  recipients: { key: string; relation: BookingRecipientRelationName; displayName: string | null }[];
+  lines: {
+    sequence: number;
+    serviceNameVi: string;
+    serviceNameEn: string;
+    durationMinutes: number;
+    startsAt: string;
+    endsAt: string;
+    recipientKey: string;
+    assignmentMode: 'SPECIFIC' | 'ANY';
+    employee: { id: string; displayName: string };
+    /** Catalog reference snapshot (O5), not a bill. */
+    priceMinVnd: string;
+    priceMaxVnd: string;
+    pricingUnit: 'PER_SERVICE' | 'PER_NAIL';
+  }[];
+}
+
+/** GET /api/v1/me/bookings */
+export interface CustomerBookingListResponse {
+  upcoming: CustomerBookingSummary[];
+  history: CustomerBookingSummary[];
+}
+
+/** POST /api/v1/me/bookings/:id/cancel */
+export interface CustomerBookingCancelRequest {
+  reason?: string;
+}

@@ -12,6 +12,15 @@ const errors = {
   CONFLICT: [409, 'Conflict'],
   SERVICE_UNAVAILABLE: [503, 'Service unavailable'],
   RATE_LIMITED: [429, 'Too many requests'],
+  // Phase 3 customer booking outcomes (stable, customer-safe; no engine internals).
+  BOOKING_INVALID_TIME: [400, 'The branch is not open for this time'],
+  BOOKING_OUTSIDE_HORIZON: [400, 'The date is outside the booking window'],
+  BOOKING_SERVICE_UNAVAILABLE: [409, 'A service is not available at this branch'],
+  BOOKING_CUSTOMER_CONFLICT: [409, 'You already have a booking at this time'],
+  BOOKING_SLOT_UNAVAILABLE: [409, 'This time is no longer available'],
+  BOOKING_KTV_UNAVAILABLE: [409, 'The chosen staff member is not available at this time'],
+  BOOKING_NO_SUITABLE_KTV: [409, 'No suitable staff member is available at this time'],
+  BOOKING_CANCEL_NOT_ALLOWED: [409, 'This booking can no longer be cancelled'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */
