@@ -18,6 +18,8 @@ import { CustomerBookingController } from './booking/customer-booking.controller
 import { CustomerBookingService } from './booking/customer-booking.service.js';
 import { OperationsController } from './operations/operations.controller.js';
 import { OperationsService } from './operations/operations.service.js';
+import { ServiceExecutionController } from './operations/service-execution.controller.js';
+import { ServiceExecutionService } from './operations/service-execution.service.js';
 import { WalkInController } from './walkin/walkin.controller.js';
 import { WalkInService } from './walkin/walkin.service.js';
 import { MyAccountService } from './account/my-account.service.js';
@@ -88,6 +90,7 @@ export class AppModule {
         MyIncomeController,
         CustomerBookingController,
         OperationsController,
+        ServiceExecutionController,
         WalkInController,
       ],
       providers: [
@@ -119,6 +122,7 @@ export class AppModule {
         AvailabilityService,
         CustomerBookingService,
         OperationsService,
+        ServiceExecutionService,
         WalkInService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },

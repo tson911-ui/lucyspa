@@ -326,6 +326,44 @@ export async function loadAvailabilityFacts(
 
 const overlapsInterval = (a: Interval, b: Interval) => a.start < b.end && b.start < a.end;
 
+/**
+ * Step 7: revalidate an assigned line at its exact actual START, using its immutable
+ * duration/buffer snapshots. Reuses the same operational facts and employee rules;
+ * never replans the line or rounds its execution timestamp to the booking minute grid.
+ */
+export function evaluateExecutionStart(
+  facts: AvailabilityFacts,
+  line: { employeeUserId: string; durationMinutes: number; bufferMinutes: number },
+): { eligible: boolean; reasons: (SequenceReason | EmployeeReason)[] } {
+  const reasons: (SequenceReason | EmployeeReason)[] = [];
+  if (facts.context !== 'OPERATIONAL') throw new Error('START requires OPERATIONAL facts.');
+  if (facts.serviceDate !== facts.today) reasons.push('NOT_SAME_DAY');
+  if (!facts.branchActive || !facts.window) reasons.push('BRANCH_CLOSED');
+  const service = facts.services[0];
+  if (!service?.offered) reasons.push('SERVICE_UNAVAILABLE');
+  const end = facts.now + line.durationMinutes * 60_000;
+  const minute = facts.minuteInstants.findIndex(
+    (instant, index) => instant <= facts.now && facts.now < (facts.minuteInstants[index + 1] ?? instant),
+  );
+  const startMinute = minute + (facts.now - (facts.minuteInstants[minute] ?? facts.now)) / 60_000;
+  if (
+    minute < 0 ||
+    (facts.window &&
+      (facts.now < (facts.minuteInstants[facts.window.startMinute] ?? Infinity) ||
+        end > (facts.minuteInstants[facts.window.endMinute] ?? -Infinity)))
+  ) reasons.push('OUTSIDE_HOURS');
+  const employee = facts.employees.find((entry) => entry.userId === line.employeeUserId);
+  if (!employee) reasons.push('EMPLOYEE_INACTIVE');
+  if (employee && service) {
+    reasons.push(...employeeVerdict(facts, employee, service, {
+      startMinute,
+      endMinute: startMinute + line.durationMinutes,
+      occupancy: { start: facts.now, end: end + line.bufferMinutes * 60_000 },
+    }).reasons);
+  }
+  return { eligible: reasons.length === 0, reasons };
+}
+
 const EMPLOYEE_REASON_ORDER: readonly EmployeeReason[] = [
   'EMPLOYEE_INACTIVE',
   'TRAINEE',

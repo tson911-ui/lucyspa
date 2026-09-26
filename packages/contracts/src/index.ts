@@ -1668,3 +1668,47 @@ export interface WalkInVisitResponse {
 export interface WalkInIntentRequest {
   requestedEmployeeUserId: string | null;
 }
+// Phase 3 Step 7: normal execution of the signed-in employee's assigned visit lines.
+export type ServiceStartBlock =
+  | 'SERVICE_START_NOT_ALLOWED'
+  | 'SERVICE_SEQUENCE_BLOCKED'
+  | 'SERVICE_KTV_BUSY'
+  | 'SERVICE_NOT_TODAY'
+  | 'SERVICE_NOT_READY'
+  | 'SERVICE_START_UNAVAILABLE';
+
+export interface ServiceExecutionWork {
+  lineId: string;
+  visitId: string;
+  visitCode: string;
+  visitStatus: 'OPEN' | 'IN_SERVICE' | 'COMPLETED' | 'CANCELLED';
+  branchId: string;
+  serviceDate: string;
+  participantId: string;
+  participantName: string | null;
+  sequence: number;
+  service: { code: string; nameVi: string; nameEn: string; durationMinutes: number };
+  status: 'WAITING' | 'PLANNED' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+  plannedStartAt: string | null;
+  plannedEndAt: string | null;
+  execution: {
+    id: string;
+    status: 'IN_PROGRESS' | 'ENDED';
+    startedAt: string;
+    expectedEndAt: string;
+    endedAt: string | null;
+    endKind: 'NORMAL' | 'MANAGER_RESOLVED' | null;
+  } | null;
+  actions: { start: boolean; end: boolean; startBlockedBy: ServiceStartBlock | null };
+}
+
+export interface MyServiceWorkResponse {
+  branch: { id: string; name: string; timezone: string };
+  date: string;
+  now: string;
+  /** Today's own assigned lines, plus older unfinished executions so END remains reachable. */
+  lines: ServiceExecutionWork[];
+}
+
+/** START/END accept only an empty JSON object; the line id is the idempotency identity. */
+export type ServiceExecutionActionRequest = Record<string, never>;
