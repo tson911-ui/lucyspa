@@ -1,7 +1,7 @@
 import { Module, type DynamicModule } from '@nestjs/common';
 import type { Logger } from 'pino';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { MyAccountController } from './account/my-account.controller.js';
+import { MyAccountController, MyPasswordController } from './account/my-account.controller.js';
 import { MyAccountService } from './account/my-account.service.js';
 import { AuthContextController } from './auth/auth-context.controller.js';
 import { AuthThrottleService } from './auth/auth-throttle.service.js';
@@ -62,6 +62,7 @@ export class AppModule {
         AttendanceController,
         LeaveController,
         MyAccountController,
+        MyPasswordController,
       ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },

@@ -25,3 +25,4 @@ await import('../apps/api/dist/employees/employee-directory-groups.integration.t
 await import('../apps/api/dist/bootstrap/owner-recovery.integration.test.js');
 await import('../apps/api/dist/employees/collaborator.integration.test.js');
 await import('../apps/api/dist/account/my-account.integration.test.js');
+await import('../apps/api/dist/account/my-password.integration.test.js');

@@ -5,9 +5,14 @@ import { useState, type FormEvent } from 'react';
 import { detailErrorMessage } from '../../../lib/workforce/employee-detail';
 import { formatDate } from '../../../lib/workforce/format';
 import {
+  changeOwnPassword,
+  changePasswordErrorMessage,
+  changePasswordProblem,
+  EMPTY_CHANGE_PASSWORD,
   myAccountCommands,
   myProfileForm,
   myProfilePatch,
+  type ChangePasswordForm,
   type MyProfileForm,
 } from '../../../lib/workforce/my-account';
 import { runMutation } from '../../../lib/workforce/workflows';
@@ -145,6 +150,7 @@ export function MyAccountView({
           <dd>{employee ? t.employees.statuses[account.status] : texts.ownerStatus}</dd>
         </dl>
         <p className="wf-hint">{texts.emailReadonly}</p>
+        <ChangePasswordSection />
       </Section>
     </>
   );
@@ -253,6 +259,98 @@ function ProfileEditor({
           label={t.common.save}
           pendingLabel={t.common.saving}
         />
+      </form>
+    </details>
+  );
+}
+
+/**
+ * "Đổi mật khẩu / Change password" (follow-up Step 4): for a signed-in user who knows the
+ * current password (not forgot-password). Passwords live only in this form's state and are
+ * cleared after success; this device stays signed in, every other session is signed out.
+ */
+export function ChangePasswordSection() {
+  const { api, t } = useWorkforce();
+  const texts = t.myAccount.changePassword;
+  const [form, setForm] = useState<ChangePasswordForm>(EMPTY_CHANGE_PASSWORD);
+  const [shown, setShown] = useState(false);
+  const submit = useSubmit();
+  const problem = changePasswordProblem(form);
+  const set = (key: keyof ChangePasswordForm, value: string) => {
+    setShown(false);
+    setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  async function change(event: FormEvent) {
+    event.preventDefault();
+    if (problem !== null) {
+      setShown(true);
+      return;
+    }
+    const ok = await submit.run(async () => {
+      try {
+        await changeOwnPassword(api, form);
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error };
+      }
+    }, texts.done);
+    // Never keep passwords around: cleared after success, current one cleared after a refusal.
+    if (ok) setForm(EMPTY_CHANGE_PASSWORD);
+    else setForm((current) => ({ ...current, current: '' }));
+  }
+
+  return (
+    <details className="wf-disclosure">
+      <summary>{texts.title}</summary>
+      <form
+        className="wf-form wf-member-form"
+        autoComplete="off"
+        onSubmit={(event) => void change(event)}
+      >
+        <p className="wf-hint">{texts.intro}</p>
+        <Field id="change-current" label={texts.current} required>
+          <input
+            id="change-current"
+            type="password"
+            required
+            maxLength={1024}
+            autoComplete="current-password"
+            value={form.current}
+            onChange={(event) => set('current', event.target.value)}
+          />
+        </Field>
+        <div className="wf-row">
+          <Field id="change-next" label={texts.next} required hint={texts.hint}>
+            <input
+              id="change-next"
+              type="password"
+              required
+              minLength={15}
+              maxLength={128}
+              autoComplete="new-password"
+              aria-describedby="change-next-hint"
+              value={form.next}
+              onChange={(event) => set('next', event.target.value)}
+            />
+          </Field>
+          <Field id="change-confirm" label={texts.confirm} required>
+            <input
+              id="change-confirm"
+              type="password"
+              required
+              autoComplete="new-password"
+              value={form.confirm}
+              onChange={(event) => set('confirm', event.target.value)}
+            />
+          </Field>
+        </div>
+        {shown && problem !== null ? <Notice tone="error">{texts[problem]}</Notice> : null}
+        {submit.error ? (
+          <Notice tone="error">{changePasswordErrorMessage(submit.error, t)}</Notice>
+        ) : null}
+        {submit.success ? <Notice tone="success">{submit.success}</Notice> : null}
+        <SubmitButton pending={submit.pending} label={texts.submit} pendingLabel={texts.pending} />
       </form>
     </details>
   );

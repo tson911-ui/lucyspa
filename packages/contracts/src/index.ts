@@ -73,6 +73,17 @@ export interface ReauthenticateRequest {
   password: string;
 }
 
+/**
+ * POST /api/v1/me/password → 204 with a rotated cookie; refetch CSRF context. The signed-in
+ * Owner or employee changes their own password: the current password is verified, the new
+ * one must pass the password policy and differ from it. Every other session is revoked; this
+ * device continues on a new session. Identity comes from the session only.
+ */
+export interface SelfPasswordChangeRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export type AuthorizationScope = { kind: 'GLOBAL' } | { kind: 'BRANCH'; branchId: string };
 
 /** The caller's own display hints only; customers have empty grant lists. */

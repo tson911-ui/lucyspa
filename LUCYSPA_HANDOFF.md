@@ -28,18 +28,19 @@ It is being prepared before Phase 3 because collaborator availability affects bo
 | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Step 1: design                                                         | Done (`9592622`)                                                                                                                           |
 | Step 2: COLLABORATOR + manager invariant + titles + directory sections | **Deployed to production and accepted by the Owner** (`455394f`; [Step 2 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md)) |
-| Step 3: My Account + shared authoritative profile                      | **Implemented, pushed, NOT DEPLOYED** ([Step 3 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP3_MY_ACCOUNT.md))                             |
-| Steps 4–7: password, email, collaborator schedule/pay, My Income       | NOT implemented                                                                                                                            |
+| Step 3: My Account + shared authoritative profile                      | **Deployed to production and accepted by the Owner** (`1a49e72`; [Step 3 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP3_MY_ACCOUNT.md))   |
+| Step 4: self-service change password                                   | **Implemented, pushed, NOT DEPLOYED** ([Step 4 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP4_CHANGE_PASSWORD.md))                        |
+| Steps 5–7: verified email change, collaborator schedule/pay, My Income | NOT implemented                                                                                                                            |
 
-**Production application commit: `455394f`** (follow-up Step 2). Step 3 adds **no
+**Production application commit: `1a49e72`** (follow-up Step 3). Step 4 adds **no
 migration**. Deploying it needs Owner authorization: backup, `git pull`, `pnpm build`, PM2
-restart, then the smoke checks in the Step 3 report.
+restart, then the smoke checks in the Step 4 report.
 
 - The original Phase 2 remains **CLOSED / PRODUCTION ACCEPTED**.
 - **Phase 3 (booking) remains NOT STARTED.**
 - A **full UX/UI redesign is deferred** until the Phase 3 core is complete; the current
   workforce UI is temporary functional UI.
-- The next follow-up step is Step 4: self-service password change.
+- The next follow-up step is Step 5: verified email change.
 
 ### Production state (Phase 2 closure, 2026-09-26)
 

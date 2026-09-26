@@ -216,6 +216,63 @@ export class SessionService {
   }
 
   /**
+   * Self-service password change (follow-up Step 4). The caller has, in this transaction,
+   * verified the current password, replaced the credential (credentialVersion bumped) and
+   * revoked EVERY session of the user, including `previous`. This issues exactly one
+   * replacement session for the device that made the change, at the new credential version,
+   * so that device stays signed in while every other session stays invalid. A new token is
+   * issued (never the old one); the absolute lifetime is not extended.
+   */
+  async continueAfterCredentialChange(
+    transaction: Prisma.TransactionClient,
+    previous: SessionPrincipal,
+    requestId?: string,
+  ): Promise<IssuedSession> {
+    if (previous.kind !== 'AUTHENTICATED' || previous.userId === null) {
+      throw new AuthError('AUTHENTICATION_REQUIRED');
+    }
+    const now = await this.now(transaction);
+    const user = await transaction.user.findUnique({
+      where: { id: previous.userId },
+      select: sessionSelect.user.select,
+    });
+    if (user === null || !hasActiveCredential(user) || now >= previous.absoluteExpiresAt) {
+      throw new AuthError('AUTHENTICATION_REQUIRED');
+    }
+    const issued = await this.insert(transaction, now, {
+      kind: 'AUTHENTICATED',
+      userId: previous.userId,
+      credentialVersion: user.credentialVersion,
+      authzVersion: user.authzVersion,
+      absoluteExpiresAt: previous.absoluteExpiresAt,
+      // The current password was just proven.
+      reauthenticatedAt: now,
+    });
+    await transaction.auditEvent.create({
+      data: {
+        action: 'SESSION_CREATED',
+        actorKind: 'USER',
+        actorUserId: previous.userId,
+        subjectUserId: previous.userId,
+        entityType: 'Session',
+        entityId: issued.session.id,
+        requestId: requestId ?? null,
+        occurredAt: now,
+        dataClassification: 'STANDARD',
+        before: { previousSessionId: previous.id },
+        after: {
+          sessionId: issued.session.id,
+          credentialVersion: user.credentialVersion,
+          authzVersion: user.authzVersion,
+          reason: 'PASSWORD_CHANGED',
+        },
+      },
+      select: { id: true },
+    });
+    return issued;
+  }
+
+  /**
    * Records genuine user activity (see `session-activity.ts` for what counts). A lock-free
    * read decides whether a write is due (`activityWriteDue`: at most once per interval, never
    * for an expired, revoked or otherwise invalid session). Only then does `touch` revalidate

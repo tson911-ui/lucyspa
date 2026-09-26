@@ -1,6 +1,13 @@
-import type { MyAccountProfileUpdateRequest, MyAccountResponse } from '@lucy-spa/contracts';
+import type {
+  MyAccountProfileUpdateRequest,
+  MyAccountResponse,
+  SelfPasswordChangeRequest,
+} from '@lucy-spa/contracts';
 import type { Locale } from '../../i18n/locales';
-import type { WorkforceApi } from './api';
+import type { WorkforceDictionary } from '../../i18n/workforce';
+import { ApiError, type WorkforceApi } from './api';
+import { passwordProblem } from './employee-detail';
+import { errorMessage } from './workflows';
 
 /**
  * "Tài khoản của tôi / My Account": the signed-in account's own view over the same profile
@@ -50,4 +57,50 @@ export function myProfilePatch(
   }
   if (form.locale !== account.locale) patch.locale = form.locale;
   return Object.keys(patch).length > 1 ? patch : null;
+}
+
+// ------------------------------------------------------------------ change password
+
+/** Held only in the form's state while typing; cleared after a successful change. */
+export interface ChangePasswordForm {
+  current: string;
+  next: string;
+  confirm: string;
+}
+
+export const EMPTY_CHANGE_PASSWORD: ChangePasswordForm = { current: '', next: '', confirm: '' };
+
+export type ChangePasswordProblem = 'currentRequired' | 'length' | 'mismatch' | 'same' | null;
+
+/** Usability checks only; the server stays authoritative (policy, blocklist, proof). */
+export function changePasswordProblem(form: ChangePasswordForm): ChangePasswordProblem {
+  if (form.current === '') return 'currentRequired';
+  const problem = passwordProblem(form.next, form.confirm);
+  if (problem !== null) return problem;
+  return form.next === form.current ? 'same' : null;
+}
+
+/**
+ * POST /api/v1/me/password: passwords only (identity is the session). The response rotates
+ * the session cookie, so the CSRF token is refreshed afterwards, as after reauthentication.
+ */
+export async function changeOwnPassword(
+  api: WorkforceApi,
+  form: ChangePasswordForm,
+): Promise<void> {
+  const body: SelfPasswordChangeRequest = { currentPassword: form.current, newPassword: form.next };
+  await api.post<void>('/api/v1/me/password', body);
+  await api.context();
+}
+
+export function changePasswordErrorMessage(error: unknown, t: WorkforceDictionary): string {
+  const texts = t.myAccount.changePassword;
+  if (error instanceof ApiError) {
+    if (error.code === 'AUTHENTICATION_FAILED') return texts.wrongCurrent;
+    if (error.code === 'VALIDATION_FAILED' && error.field === 'newPasswordUnchanged') {
+      return texts.same;
+    }
+    if (error.code === 'VALIDATION_FAILED' && error.field === 'newPassword') return texts.rejected;
+  }
+  return errorMessage(error, t);
 }

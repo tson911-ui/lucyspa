@@ -1,13 +1,24 @@
 import type { MyAccountResponse } from '@lucy-spa/contracts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { MyAccountView } from '../../components/workforce/screens/my-account';
+import {
+  ChangePasswordSection,
+  MyAccountView,
+} from '../../components/workforce/screens/my-account';
 import { getWorkforceDictionary } from '../../i18n/workforce';
 import { context, employee, json, owner, render, scriptedFetch } from '../../test/support';
 import { WorkforceApi } from './api';
 import { detailErrorMessage } from './employee-detail';
 import { ApiError } from './api';
-import { myAccountCommands, myProfileForm, myProfilePatch } from './my-account';
+import {
+  changeOwnPassword,
+  changePasswordErrorMessage,
+  changePasswordProblem,
+  EMPTY_CHANGE_PASSWORD,
+  myAccountCommands,
+  myProfileForm,
+  myProfilePatch,
+} from './my-account';
 import { navigationFor } from './permissions';
 
 const vi = getWorkforceDictionary('vi');
@@ -158,5 +169,78 @@ test('self-edits send only changed allowlisted fields to /me, never an ID', asyn
     detailErrorMessage(new ApiError(400, 'VALIDATION_FAILED', 'phone'), vi).includes(
       vi.employees.create.fields.phone,
     ),
+  );
+});
+
+test('change password: a form under Account & Security with password fields only', () => {
+  const markup = view(mine);
+  const security = markup.slice(markup.indexOf(vi.myAccount.security.replace('&', '&amp;')));
+  assert.ok(security.includes(vi.myAccount.changePassword.title), 'inside Account & Security');
+  const form = render(<ChangePasswordSection />, employee());
+  for (const [id, label, autocomplete] of [
+    ['change-current', 'Mật khẩu hiện tại', 'current-password'],
+    ['change-next', 'Mật khẩu mới', 'new-password'],
+    ['change-confirm', 'Xác nhận mật khẩu mới', 'new-password'],
+  ] as const) {
+    assert.ok(form.includes(`>${label}<`), label);
+    assert.match(
+      form,
+      new RegExp(`<input id="${id}" type="password"[^>]*autoComplete="${autocomplete}"`),
+      id,
+    );
+  }
+  assert.ok(form.includes(`>${vi.myAccount.changePassword.submit}<`));
+  assert.doesNotMatch(form, /value="[^"]+"/, 'no password value is ever pre-filled');
+  const english = render(<ChangePasswordSection />, owner, 'en');
+  for (const label of ['Current password', 'New password', 'Confirm new password']) {
+    assert.ok(english.includes(`>${label}<`), label);
+  }
+  assert.ok(view(ownerAccount).includes(vi.myAccount.changePassword.title), 'Owner too');
+});
+
+test('change password: client checks help; the server stays authoritative', async () => {
+  const good = {
+    current: 'a calm lotus evening 2026',
+    next: 'jasmine tea by the river',
+    confirm: 'jasmine tea by the river',
+  };
+  assert.equal(changePasswordProblem(EMPTY_CHANGE_PASSWORD), 'currentRequired');
+  assert.equal(changePasswordProblem({ ...good, next: 'short', confirm: 'short' }), 'length');
+  // E. a confirmation mismatch never reaches the server.
+  assert.equal(changePasswordProblem({ ...good, confirm: `${good.next}!` }), 'mismatch');
+  assert.equal(
+    changePasswordProblem({ ...good, next: good.current, confirm: good.current }),
+    'same',
+  );
+  assert.equal(changePasswordProblem(good), null);
+  // Passwords only (no ID); then a fresh CSRF token for the rotated session.
+  const { fetcher, calls } = scriptedFetch([
+    context('c1', true),
+    () => json(204, null),
+    context('c2', true),
+  ]);
+  await changeOwnPassword(new WorkforceApi({ fetch: fetcher }), good);
+  assert.deepEqual(
+    calls.map((call) => [call.method, call.url]),
+    [
+      ['GET', '/api/v1/auth/context'],
+      ['POST', '/api/v1/me/password'],
+      ['GET', '/api/v1/auth/context'],
+    ],
+  );
+  assert.deepEqual(calls[1]?.body, { currentPassword: good.current, newPassword: good.next });
+  // Safe, specific messages; never the password.
+  const texts = vi.myAccount.changePassword;
+  for (const [error, message] of [
+    [new ApiError(401, 'AUTHENTICATION_FAILED'), texts.wrongCurrent],
+    [new ApiError(400, 'VALIDATION_FAILED', 'newPassword'), texts.rejected],
+    [new ApiError(400, 'VALIDATION_FAILED', 'newPasswordUnchanged'), texts.same],
+    [new ApiError(429, 'RATE_LIMITED'), vi.errors.rateLimited],
+  ] as const) {
+    assert.equal(changePasswordErrorMessage(error, vi), message);
+  }
+  assert.equal(
+    changePasswordErrorMessage(new ApiError(401, 'AUTHENTICATION_FAILED'), en),
+    'The current password is incorrect.',
   );
 });

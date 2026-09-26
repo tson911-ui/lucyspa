@@ -9,7 +9,13 @@ import { AuthError } from './auth.error.js';
 import { generateCapability } from './crypto.js';
 import { normalizeEmail, normalizeEmployeeCode } from './identity.js';
 import { titleOfEmployee } from '../employees/workforce-title.js';
-import { PasswordService } from './password.service.js';
+import { invalidateChallenges } from './otp-flow.js';
+import {
+  normalizePassword,
+  PasswordPolicyError,
+  PasswordService,
+  validatePasswordForSetting,
+} from './password.service.js';
 import { RateLimitedError } from './registration.service.js';
 import { SessionService, type CredentialEvidence } from './session.service.js';
 
@@ -82,7 +88,11 @@ export class LoginService implements OnModuleInit {
     @Inject(SessionService)
     private readonly sessions: Pick<
       SessionService,
-      'withTransaction' | 'rotateAuthenticated' | 'resolve' | 'resolveForMutation'
+      | 'withTransaction'
+      | 'rotateAuthenticated'
+      | 'resolve'
+      | 'resolveForMutation'
+      | 'continueAfterCredentialChange'
     >,
     @Inject(PasswordService)
     private readonly passwords: Pick<
@@ -230,6 +240,165 @@ export class LoginService implements OnModuleInit {
       }
       throw error;
     }
+  }
+
+  /**
+   * Self-service password change for the signed-in Owner or employee (follow-up Step 4).
+   *
+   * - Identity: the session only; customers are refused.
+   * - Abuse: the same failure budgets as reauthentication (per IP and per User); a wrong
+   *   current password debits them and returns one generic 401 AUTHENTICATION_FAILED.
+   * - Proof: the current password is verified with the existing verifier (never the session
+   *   alone). The new one passes the existing setting policy (length, blocklist) and must
+   *   differ from the current one; that check runs only after the proof, so it is no oracle.
+   * - Effect (one transaction): Argon2id hash replaced and credentialVersion bumped (as a
+   *   reset does), outstanding reset/setup/recovery-email flows retired, EVERY session of the
+   *   user revoked, then one replacement session issued for this device. Returns its token.
+   * - Audit: PASSWORD_CHANGED (method SELF_SERVICE) and SESSIONS_REVOKED; never a password
+   *   or hash.
+   */
+  async changePassword(
+    sessionToken: string | undefined,
+    currentPassword: string,
+    newPassword: string,
+    peer: string,
+    requestId?: string,
+  ): Promise<string> {
+    const principal = await this.guard(() => this.sessions.resolve(sessionToken));
+    if (
+      sessionToken === undefined ||
+      principal?.kind !== 'AUTHENTICATED' ||
+      principal.userId === null
+    ) {
+      throw new AuthError('AUTHENTICATION_REQUIRED');
+    }
+    if (principal.userKind !== 'OWNER' && principal.userKind !== 'EMPLOYEE') {
+      throw new AuthError('FORBIDDEN');
+    }
+    let replacement: string;
+    try {
+      replacement = validatePasswordForSetting(newPassword);
+    } catch (error) {
+      if (error instanceof PasswordPolicyError)
+        throw new AuthError('VALIDATION_FAILED', 'newPassword');
+      throw error;
+    }
+    const userId = principal.userId;
+    const user = await this.guard(() =>
+      this.sessions.withTransaction(async (tx) => {
+        const now = await this.throttle.now(tx);
+        if (
+          (await this.throttle.windowCount(
+            tx,
+            IP_FAILURE_OP,
+            peer,
+            LOGIN_POLICY.windowSeconds,
+            now,
+          )) >= LOGIN_POLICY.ipFailureLimit ||
+          (await this.throttle.windowCount(
+            tx,
+            REAUTH_FAILURE_OP,
+            userId,
+            LOGIN_POLICY.windowSeconds,
+            now,
+          )) >= LOGIN_POLICY.identifierFailureLimit
+        ) {
+          throw new RateLimitedError(LOGIN_POLICY.windowSeconds);
+        }
+        return tx.user.findUnique({ where: { id: userId }, select: userSelect });
+      }),
+    );
+    const evidenceHash = await this.verifyPassword(user, currentPassword);
+    if (evidenceHash === null || user === null) {
+      await this.recordFailure([
+        [IP_FAILURE_OP, peer, LOGIN_POLICY.ipFailureLimit],
+        [REAUTH_FAILURE_OP, userId, LOGIN_POLICY.identifierFailureLimit],
+      ]);
+      throw new AuthError('AUTHENTICATION_FAILED');
+    }
+    // The verified current password normalizes exactly as the replacement does.
+    if (normalizePassword(currentPassword) === replacement) {
+      throw new AuthError('VALIDATION_FAILED', 'newPasswordUnchanged');
+    }
+    let passwordHash: string;
+    try {
+      passwordHash = await this.passwords.hashForSetting(replacement);
+    } catch {
+      throw new AuthError('SERVICE_UNAVAILABLE');
+    }
+    return this.guard(() =>
+      this.sessions.withTransaction(async (tx) => {
+        // Locks the User, then the current session (documented lock order).
+        const current = await this.sessions.resolveForMutation(sessionToken, tx);
+        if (current?.kind !== 'AUTHENTICATED' || current.userId !== userId) {
+          throw new AuthError('AUTHENTICATION_REQUIRED');
+        }
+        const now = await this.throttle.now(tx);
+        const credentialVersion = user.credentialVersion + 1;
+        // Guarded on the verified credential: a concurrent reset or change fails closed.
+        const changed = await tx.user.updateMany({
+          where: {
+            id: userId,
+            status: 'ACTIVE',
+            passwordHash: evidenceHash,
+            credentialVersion: user.credentialVersion,
+          },
+          data: { passwordHash, credentialVersion },
+        });
+        if (changed.count !== 1) throw new AuthError('AUTHENTICATION_REQUIRED');
+        const outstanding = await tx.authChallenge.findMany({
+          where: {
+            userId,
+            purpose: { in: ['RESET_PASSWORD', 'EMPLOYEE_SETUP', 'VERIFY_RECOVERY_EMAIL'] },
+            consumedAt: null,
+            invalidatedAt: null,
+          },
+          select: { id: true },
+        });
+        await invalidateChallenges(
+          tx,
+          outstanding.map((row) => row.id),
+          now,
+        );
+        // Every session, this one included; this device continues on a new one below.
+        const revoked = await tx.session.updateMany({
+          where: { userId, revokedAt: null },
+          data: { revokedAt: now },
+        });
+        const issued = await this.sessions.continueAfterCredentialChange(tx, current, requestId);
+        const others = Math.max(revoked.count - 1, 0);
+        const audit = {
+          actorKind: 'USER',
+          actorUserId: userId,
+          subjectUserId: userId,
+          entityType: 'User',
+          entityId: userId,
+          requestId: requestId ?? null,
+          occurredAt: now,
+          dataClassification: 'STANDARD',
+        } as const;
+        await tx.auditEvent.createMany({
+          data: [
+            {
+              ...audit,
+              action: 'PASSWORD_CHANGED',
+              before: { credentialVersion: user.credentialVersion },
+              after: { credentialVersion, method: 'SELF_SERVICE' },
+            },
+            ...(others > 0
+              ? [
+                  {
+                    ...audit,
+                    action: 'SESSIONS_REVOKED',
+                    after: { reason: 'PASSWORD_CHANGED', revokedSessions: others },
+                  },
+                ]
+              : []),
+          ],
+        });
+        return issued.token;
+      }),
+    );
   }
 
   /** Revokes every session of the authenticated User, including the current one. */
