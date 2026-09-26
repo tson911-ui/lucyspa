@@ -165,7 +165,8 @@ export async function loadTieBreakFacts(
   };
 }
 
-async function settingValue(tx: Prisma.TransactionClient, key: string): Promise<number> {
+/** One registry setting, validated (missing → registry default; invalid stored value → error). */
+export async function settingValue(tx: Prisma.TransactionClient, key: string): Promise<number> {
   const definition = BOOKING_SETTINGS.find((entry) => entry.key === key);
   if (!definition) throw new Error(`Unknown booking setting ${key}.`);
   const row = await tx.appSetting.findUnique({ where: { key }, select: { value: true } });

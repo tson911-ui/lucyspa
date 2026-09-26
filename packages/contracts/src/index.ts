@@ -1434,3 +1434,117 @@ export interface CustomerBookingListResponse {
 export interface CustomerBookingCancelRequest {
   reason?: string;
 }
+
+// ---------------------------------------------------------------- Phase 3 Step 5: operations
+
+/**
+ * Derived operational state of a booking (never stored; computed by the server from the
+ * booking, its visit, the settings and `now`):
+ * UPCOMING → ARRIVAL_WINDOW_OPEN (from `booking.checkInWindowMinutes` before the start) →
+ * LATE_HOLD (after the start, until `booking.lateHoldMinutes` after it) → HOLD_EXPIRED
+ * (a Manager decides; nothing is automatic). After arrival: ARRIVED, IN_SERVICE, COMPLETED.
+ */
+export type OperationalBookingState =
+  | 'UPCOMING'
+  | 'ARRIVAL_WINDOW_OPEN'
+  | 'LATE_HOLD'
+  | 'HOLD_EXPIRED'
+  | 'ARRIVED'
+  | 'IN_SERVICE'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'NO_SHOW';
+
+/** When an arrived booking arrived relative to its start and hold. */
+export type ArrivalPunctuality = 'ON_TIME' | 'LATE_IN_HOLD' | 'LATE_AFTER_HOLD';
+
+export interface OperationalBooking {
+  id: string;
+  code: string;
+  startsAt: string;
+  endsAt: string;
+  state: OperationalBookingState;
+  /** Arrival (check-in) is allowed from this instant (O2). */
+  arrivalOpensAt: string;
+  /** End of the late hold (Q4); the reservation stays protected until a Manager acts. */
+  holdUntil: string;
+  owner: { displayName: string; phoneMasked: string | null };
+  recipients: { relation: BookingRecipientRelationName; displayName: string | null }[];
+  lines: {
+    sequence: number;
+    serviceNameVi: string;
+    serviceNameEn: string;
+    startsAt: string;
+    endsAt: string;
+    recipientRelation: BookingRecipientRelationName;
+    recipientName: string | null;
+    employee: { id: string; displayName: string };
+    /** Set by the Step 8 leave-conflict workflow; shown, never resolved here. */
+    conflict: 'LEAVE' | null;
+  }[];
+  visit: {
+    id: string;
+    code: string;
+    arrivedAt: string;
+    punctuality: ArrivalPunctuality;
+    queueOverrideAt: string | null;
+  } | null;
+  actions: { arrive: boolean; noShow: boolean; advance: boolean };
+}
+
+/**
+ * Group of a waiting line in the computed queue (contract section 8 with Owner decision 3):
+ * OVERRIDE, then booked priority (ON_TIME, LATE_IN_HOLD, by planned start), then everyone
+ * ordered by actual arrival time: LATE_AFTER_HOLD (the hold expired before arrival, so the
+ * appointment priority is lost) together with WALK_IN (Step 6).
+ */
+export type QueueGroup = 'OVERRIDE' | 'ON_TIME' | 'LATE_IN_HOLD' | 'LATE_AFTER_HOLD' | 'WALK_IN';
+
+export interface OperationalQueueKtv {
+  employee: { id: string; displayName: string };
+  /** No running line and no planned or reserved interval covering now. */
+  freeNow: boolean;
+  serving: {
+    visitCode: string;
+    participantName: string;
+    serviceNameVi: string;
+    serviceNameEn: string;
+  }[];
+  /** Arrived, not started: the computed order (position 1 is next). */
+  waiting: {
+    position: number;
+    group: QueueGroup;
+    visitId: string;
+    visitCode: string;
+    bookingCode: string | null;
+    participantName: string;
+    serviceNameVi: string;
+    serviceNameEn: string;
+    plannedStartAt: string;
+  }[];
+  /** Not arrived yet: reservations that still block this KTV's capacity. */
+  reserved: {
+    bookingId: string;
+    bookingCode: string;
+    startsAt: string;
+    endsAt: string;
+    state: 'UPCOMING' | 'ARRIVAL_WINDOW_OPEN' | 'LATE_HOLD' | 'HOLD_EXPIRED';
+  }[];
+}
+
+/** GET /api/v1/operations/branches/:branchId/today */
+export interface OperationalTodayResponse {
+  branch: { id: string; name: string; timezone: string };
+  /** Branch-local business date and the server instant used for every derived state. */
+  date: string;
+  now: string;
+  settings: { checkInWindowMinutes: number; lateHoldMinutes: number };
+  bookings: OperationalBooking[];
+  queue: OperationalQueueKtv[];
+  permissions: { arrive: boolean; manageQueue: boolean };
+}
+
+/** POST /api/v1/operations/bookings/:id/no-show and /visits/:id/advance */
+export interface OperationalReasonRequest {
+  reason: string;
+}

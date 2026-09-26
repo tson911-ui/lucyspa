@@ -33,3 +33,5 @@ await import('../apps/api/dist/account/my-income.integration.test.js');
 await import('../apps/api/dist/availability/availability.integration.test.js');
 await import('../apps/api/dist/booking/customer-booking.integration.test.js');
 await import('../apps/api/dist/booking/customer-booking.race.integration.test.js');
+await import('../apps/api/dist/operations/operations.integration.test.js');
+await import('../apps/api/dist/operations/operations.race.integration.test.js');

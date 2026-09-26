@@ -21,6 +21,12 @@ const errors = {
   BOOKING_KTV_UNAVAILABLE: [409, 'The chosen staff member is not available at this time'],
   BOOKING_NO_SUITABLE_KTV: [409, 'No suitable staff member is available at this time'],
   BOOKING_CANCEL_NOT_ALLOWED: [409, 'This booking can no longer be cancelled'],
+  // Phase 3 Step 5 operational outcomes.
+  BOOKING_ARRIVAL_TOO_EARLY: [409, 'The check-in window for this booking has not opened yet'],
+  BOOKING_ARRIVAL_NOT_ALLOWED: [409, 'This booking can no longer be checked in'],
+  BOOKING_HOLD_ACTIVE: [409, 'The late hold still protects this booking'],
+  BOOKING_NO_SHOW_NOT_ALLOWED: [409, 'This booking cannot be marked as no-show'],
+  QUEUE_ADVANCE_NOT_ALLOWED: [409, 'This visit cannot be advanced'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

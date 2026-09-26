@@ -19,6 +19,8 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'myIncome',
     'attendance',
     'leave',
+    // Phase 3 Step 5: the operational booking board (VIEW_BOOKINGS; the Owner holds all).
+    'bookingBoard',
     'collaboratorSchedule',
     'branches',
     'services',
