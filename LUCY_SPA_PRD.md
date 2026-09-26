@@ -288,7 +288,9 @@ OTP must have:
 -   Use a reputable password hashing algorithm/library.
 -   Staff, managers and Owner must never be able to retrieve a
     customer's password.
--   Enforce a reasonable password policy.
+-   Enforce a reasonable password policy: 8–128 characters for every
+    account, customer and workforce alike (Owner decision 2026-09-26), with
+    known common passwords rejected when a password is set or reset.
 
 ### 6.4 Forgot Password
 
@@ -381,9 +383,11 @@ roles) does not self-register and needs no OTP for account provisioning:
     rejected), are stored only as secure hashes, and never appear in logs,
     audit records or responses. Setting a password signs the employee out of
     every existing session.
--   Employment classification (Trainee, Official employee, Ended) is separate
-    from account status and from roles. A trainee may have an active account.
-    "Manager" is a role, not a classification.
+-   Employment classification (Trainee, Collaborator/CTV, Official employee,
+    Ended) is separate from account status and from roles. A trainee may have
+    an active account. "Manager" is a role, not a classification: a manager is
+    an official employee holding a manager-group role, with official-employee
+    compensation.
 -   Ending employment records the Ended classification with its date and, when
     requested and the date is today or earlier, disables sign-in in the same
     action. Nothing is deleted. A future end date is recorded but does not
@@ -519,6 +523,8 @@ Booking suggestions must filter employees using at least:
 6.  Existing bookings.
 7.  Current service state.
 8.  Queue/availability.
+9.  For a collaborator (CTV): a scheduled CTV work occurrence at that branch
+    covering the whole service time (see 9.1).
 
 Suggested operational statuses:
 
@@ -531,6 +537,43 @@ Suggested operational statuses:
 
 Prefer deriving status automatically from operational events rather than
 relying only on manual status toggles.
+
+### 9.1 Collaborator (CTV) Work Schedule and Agreed Pay
+
+A collaborator (CTV) has no fixed schedule and no base salary. Owner or an
+authorized manager calls a CTV in for a specific work occurrence at one
+branch on one branch-local work date.
+
+-   Each occurrence has exactly one mode:
+    -   `Theo ca` / SHIFT: explicit start and end times, which must lie
+        entirely inside the branch opening hours for that date. A shift
+        outside the opening hours is blocked, not merely warned.
+    -   `Full ngày` / FULL_DAY: takes the branch opening hours of that date
+        as a snapshot when it is scheduled. Later changes to branch hours
+        never rewrite an agreed occurrence. A closed day cannot be
+        scheduled.
+-   The same CTV cannot have overlapping scheduled occurrences, at any
+    branch.
+-   Only a person who is a CTV on the work date, with an assignment at the
+    branch, can be scheduled.
+-   `Tiền công thỏa thuận` / agreed pay is entered manually per occurrence.
+    It is never calculated from hours or an hourly rate. Attendance (late,
+    early, missing check-out) never changes it. Corrections are explicit,
+    authorized and audited.
+-   Scheduling and pay are separate authorities: the scheduling permission
+    does not grant entering or viewing pay.
+-   A CTV sees their own schedule and their own agreed pay.
+-   Occurrences are never deleted. Cancellation keeps the record with a
+    reason. Past-dated changes are allowed for authorized management with a
+    reason.
+-   When a person stops being a CTV (ended or promoted), their future
+    occurrences are cancelled; historical ones are kept.
+-   A CTV does not use Leave. No scheduled occurrence means not scheduled to
+    work.
+-   Agreed CTV pay is a personnel/operating cost of the branch where the
+    occurrence happened. It is not depreciation. The occurrence is its single
+    source: payroll, finance and personal income views reference it and never
+    copy the amount.
 
 ------------------------------------------------------------------------
 
@@ -550,6 +593,9 @@ salary deduction formulas for lateness/absence unless Owner configures
 them later.
 
 ### 10.2 Leave
+
+Collaborators (CTV) do not use leave; their availability comes from their
+scheduled work occurrences (see 9.1).
 
 Flow:
 
@@ -2477,6 +2523,33 @@ automatic salary deductions unless configured.
 
 Closed payroll periods should be locked against ordinary destructive
 editing. Corrections use authorized adjustments.
+
+Collaborator (CTV) compensation is the agreed pay of their work occurrences
+(see 9.1), separate from official-employee compensation. Payroll references
+those occurrences; it does not copy their amounts.
+
+### 34.1 My Income (Thu nhập của tôi)
+
+Every workforce member has a read-only view of their own compensation
+information, built only from the authoritative sources that exist:
+
+-   It never stores or duplicates financial amounts. It is a view of the same
+    sources that payroll and finance use.
+-   **CTV:** agreed pay of scheduled work occurrences, by day, week (Monday
+    to Sunday) or calendar month, using each occurrence's branch-local work
+    date. It shows the total, the count, per-occurrence details and the
+    branch.
+    -   Occurrences whose pay is not yet agreed are shown and counted as such,
+        never as zero and never in the total.
+    -   Cancelled occurrences do not count.
+    -   The amount is agreed pay, not money received, paid or net.
+-   **Official employee (including a manager):** the currently configured
+    monthly base salary, never prorated or converted into daily, weekly or
+    earned amounts.
+-   **Trainee and Owner:** no compensation is invented.
+-   Income sources that do not exist yet (service tour, commission, tips,
+    adjustments) are shown as not yet available, never as zero amounts.
+-   Historical CTV pay remains CTV pay after a change of classification.
 
 ------------------------------------------------------------------------
 

@@ -2,54 +2,58 @@
 
 ## Project status (authoritative; supersedes older status wording below)
 
-| Phase                                         | Status                                                           |
-| --------------------------------------------- | ---------------------------------------------------------------- |
-| Phase 0                                       | PASS                                                             |
-| Phase 1 (auth and security)                   | COMPLETE ([Step 13 gate](docs/PHASE1_STEP13_COMPLETION_GATE.md)) |
-| **Phase 2 (services, employees, operations)** | **CLOSED / PRODUCTION ACCEPTED**                                 |
-| **Phase 3 (booking)**                         | **NOT STARTED.** It needs its own authorization and design step. |
+| Phase                                         | Status                                                                                                |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Phase 0                                       | PASS                                                                                                  |
+| Phase 1 (auth and security)                   | COMPLETE ([Step 13 gate](docs/PHASE1_STEP13_COMPLETION_GATE.md))                                      |
+| **Phase 2 (services, employees, operations)** | **CLOSED / PRODUCTION ACCEPTED**                                                                      |
+| **Phase 2 follow-up (Steps 1–7)**             | **COMPLETE / PRODUCTION ACCEPTED** (production at `98ec1d0`)                                          |
+| **Phase 3 (booking)**                         | **NOT STARTED. It is the next implementation phase**; it needs its own authorization and design step. |
+| Full payroll                                  | NOT implemented (deferred)                                                                            |
+| Full finance/accounting                       | NOT implemented (deferred)                                                                            |
+| Full UX/UI redesign                           | Planned **after the Phase 3 core** is complete                                                        |
 
-**Pre-Phase-3 follow-up (in progress):**
-[Collaborator and My Account foundation design](docs/PHASE2_FOLLOWUP_COLLABORATOR_MY_ACCOUNT_DESIGN.md).
-It covers:
+**Phase 2 follow-up: Collaborator, My Account and My Income (CLOSED / PRODUCTION ACCEPTED).**
+Design: [Collaborator and My Account foundation design](docs/PHASE2_FOLLOWUP_COLLABORATOR_MY_ACCOUNT_DESIGN.md).
+Owner decisions Q1–Q16 were resolved on 2026-09-26 and are recorded in the design.
 
-- the COLLABORATOR classification;
-- the manager invariant (managers must be OFFICIAL_EMPLOYEE);
-- display titles;
-- collaborator work schedule and agreed pay;
-- My Account (single source of truth) and email/password self-service;
-- a My Income foundation;
-- the Phase 3 booking contract.
+| Follow-up step                                                             | Status                                                                                                                                                                             |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Step 1: design                                                             | Done (`9592622`)                                                                                                                                                                   |
+| Step 2: COLLABORATOR + manager invariant + titles + directory sections     | Deployed and accepted (`455394f`; [Step 2 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md))                                                                        |
+| Step 3: My Account + shared authoritative profile                          | Deployed and accepted (`1a49e72`; [Step 3 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP3_MY_ACCOUNT.md))                                                                          |
+| Step 4: self-service change password                                       | Deployed and accepted (`73cf6ad`; [Step 4 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP4_CHANGE_PASSWORD.md))                                                                     |
+| Step 5: verified self-service email change                                 | Deployed and accepted (`6a69d6b`; [Step 5 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP5_VERIFIED_EMAIL_CHANGE.md))                                                               |
+| Step 6: collaborator work schedule + agreed pay; global password minimum 8 | Deployed and accepted (`1261871`; migrations `20261004000000` and `20261004000001` applied; [Step 6 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP6_COLLABORATOR_SCHEDULE_PAY.md)) |
+| Step 7: My Income (Thu nhập của tôi) foundation                            | **Deployed and accepted** (`98ec1d0`; no migration; [Step 7 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP7_MY_INCOME.md))                                                         |
 
-It is being prepared before Phase 3 because collaborator availability affects booking.
-**Owner decisions Q1–Q16 are RESOLVED (2026-09-26)** and are recorded in the design.
+### Production state (follow-up closure)
 
-| Follow-up step                                                             | Status                                                                                                                                                                                                            |
-| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Step 1: design                                                             | Done (`9592622`)                                                                                                                                                                                                  |
-| Step 2: COLLABORATOR + manager invariant + titles + directory sections     | **Deployed to production and accepted by the Owner** (`455394f`; [Step 2 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md))                                                                        |
-| Step 3: My Account + shared authoritative profile                          | **Deployed to production and accepted by the Owner** (`1a49e72`; [Step 3 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP3_MY_ACCOUNT.md))                                                                          |
-| Step 4: self-service change password                                       | **Deployed to production and accepted by the Owner** (`73cf6ad`; [Step 4 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP4_CHANGE_PASSWORD.md))                                                                     |
-| Step 5: verified self-service email change                                 | **Deployed to production and accepted by the Owner** (`6a69d6b`; [Step 5 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP5_VERIFIED_EMAIL_CHANGE.md))                                                               |
-| Step 6: collaborator work schedule + agreed pay; global password minimum 8 | **Deployed to production and accepted by the Owner** (`1261871`, migrations `20261004000000` and `20261004000001` applied; [Step 6 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP6_COLLABORATOR_SCHEDULE_PAY.md)) |
-| Step 7: My Income (Thu nhập của tôi) foundation                            | **Implemented, pushed, NOT DEPLOYED** ([Step 7 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP7_MY_INCOME.md))                                                                                                     |
+- **Deployed commit: `98ec1d0`** (`feat: add my income read model over authoritative
+compensation sources`).
+- The production build succeeded, and `lucyspa-api`, `lucyspa-web` and `lucyspa-worker` are
+  online.
+- **My Income smoke test:** manually run in production and accepted. The Owner's My Income
+  correctly shows that no personal income source is configured.
+- **Schema:** unchanged by Step 7. The latest applied migrations are the Step 6 pair,
+  `20261004000000_work_schedule_permissions` and
+  `20261004000001_collaborator_work_occurrences`.
 
-**Production application commit: `1261871`** (follow-up Step 6). Step 7 is a read model with
-**no migration**. Deploying it needs Owner authorization: backup, `git pull`, `pnpm build`,
-PM2 restart, then the smoke checks in the Step 7 report.
+### Contracts Phase 3 and later modules must preserve
 
-- The original Phase 2 remains **CLOSED / PRODUCTION ACCEPTED**.
-- **Phase 3 (booking) remains NOT STARTED.** It must use the collaborator availability
-  contract (Step 6 report, A14).
-- **Full payroll is NOT implemented.** My Income only reads the existing sources.
-- **Full finance/accounting is NOT implemented.** No journals, expenses, P&L or
-  depreciation. Collaborator agreed pay is a branch personnel/operating cost (not
-  depreciation), and later modules must reference the same occurrence rows.
-- The **full UX/UI redesign remains scheduled after the Phase 3 core**; the current
-  workforce UI is temporary functional UI.
-- **Recommended next step:** Phase 3 booking planning and design.
+- **Collaborator availability for booking.** A CTV is only potentially bookable inside a
+  SCHEDULED work occurrence at that branch covering the whole service time. This is the
+  `collaboratorWorkCovering` read contract; see the Step 6 report, A14. TRAINEE is not
+  bookable, and OFFICIAL_EMPLOYEE does not need occurrences.
+- **Passwords:** 8–128 characters for every account (customer and workforce), with the
+  common-password blocklist.
+- **One economic source.** CTV agreed pay lives only on its work occurrence. My Income,
+  future payroll and future branch finance read and reference that row; they never copy the
+  amount. It is a personnel/operating cost of the occurrence's branch, **not depreciation**.
+- **No fake zeroes.** Missing future income sources (service tour, commission, tips,
+  adjustments) are shown as "not yet available", never as 0.
 
-### Production state (Phase 2 closure, 2026-09-26)
+### Production state (original Phase 2 closure, 2026-09-26; historical)
 
 - **Deployed commit:** production is deployed through `fb0725d`
   (`fix: add workforce and owner password recovery`).
