@@ -466,7 +466,7 @@ test(
                   visit.lines.map((l) => [
                     l.bookingServiceLineId,
                     l.employeeUserId,
-                    l.plannedStartAt.toISOString(),
+                    l.plannedStartAt?.toISOString(),
                     l.status,
                     l.serviceCode,
                     l.assignmentMode,

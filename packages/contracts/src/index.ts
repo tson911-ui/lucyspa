@@ -1541,10 +1541,130 @@ export interface OperationalTodayResponse {
   settings: { checkInWindowMinutes: number; lateHoldMinutes: number };
   bookings: OperationalBooking[];
   queue: OperationalQueueKtv[];
+  /** Step 6: unassigned (WAITING) service sequences, branch-wide; no KTV until assignment. */
+  waitingPool: OperationalWaitingEntry[];
+  /** `arrive` (MANAGE_BOOKINGS) also covers walk-in intake, assignment and waiting intent. */
   permissions: { arrive: boolean; manageQueue: boolean };
 }
 
 /** POST /api/v1/operations/bookings/:id/no-show and /visits/:id/advance */
 export interface OperationalReasonRequest {
   reason: string;
+}
+
+// ---------------------------------------------------------------- Phase 3 Step 6: walk-in
+
+export type VisitParticipantKindName = 'MEMBER' | 'GUEST' | 'CHILD';
+
+/** One participant's WAITING service sequence in the branch waiting pool (no KTV yet). */
+export interface OperationalWaitingEntry {
+  position: number;
+  /** OVERRIDE (a Manager advanced the visit) or WALK_IN (by actual arrival time). */
+  group: QueueGroup;
+  visitId: string;
+  visitCode: string;
+  participantId: string;
+  participantName: string;
+  participantKind: VisitParticipantKindName;
+  arrivedAt: string;
+  lines: {
+    id: string;
+    sequence: number;
+    serviceId: string;
+    serviceNameVi: string;
+    serviceNameEn: string;
+    durationMinutes: number;
+    assignmentMode: 'SPECIFIC' | 'ANY';
+    /** The requested KTV of a SPECIFIC line (intent, not an assignment). */
+    requestedEmployee: { id: string; displayName: string } | null;
+  }[];
+  /** `cancel`: the walk-in left before any service started (MANAGE_BOOKINGS). */
+  actions: { assign: boolean; changeIntent: boolean; advance: boolean; cancel: boolean };
+}
+
+/** GET /api/v1/operations/branches/:branchId/members?phone=… or ?email=… (exact match only). */
+export interface WalkInMemberLookupResponse {
+  members: {
+    id: string;
+    displayName: string;
+    phoneMasked: string | null;
+    emailMasked: string | null;
+  }[];
+}
+
+/** GET /api/v1/operations/branches/:branchId/walk-in-options */
+export interface WalkInOptionsResponse {
+  branch: { id: string; name: string; timezone: string };
+  services: {
+    id: string;
+    nameVi: string;
+    nameEn: string;
+    durationMinutes: number;
+    priceMinVnd: string;
+    priceMaxVnd: string;
+    pricingUnit: 'PER_SERVICE' | 'PER_NAIL';
+    /** KTVs passing the time-independent rules today (account, employment, branch, skills). */
+    employees: { id: string; displayName: string; checkedIn: boolean }[];
+  }[];
+}
+
+export interface WalkInParticipantInput {
+  /** Client key, unique in the request, referenced by lines and guardians. */
+  key: string;
+  kind: VisitParticipantKindName;
+  /** MEMBER: the existing customer account chosen from the lookup. */
+  customerUserId?: string;
+  /** GUEST and CHILD: the name to call; never an account. */
+  displayName?: string;
+  phone?: string;
+  /** CHILD: the key of the adult participant in the same walk-in. */
+  guardianKey?: string;
+}
+
+/** POST /api/v1/operations/branches/:branchId/walk-ins */
+export interface WalkInCreateRequest {
+  /** Client UUID; a retry with the same key returns the same visit. */
+  idempotencyKey: string;
+  participants: WalkInParticipantInput[];
+  /** In order per participant; `requestedEmployeeUserId` null = Any KTV. */
+  lines: { participantKey: string; serviceId: string; requestedEmployeeUserId: string | null }[];
+}
+
+/** Why a participant's sequence could not be assigned now (it stays WAITING). */
+export type WalkInWaitReason =
+  'NO_CAPACITY' | 'REQUESTED_KTV_UNAVAILABLE' | 'OUTSIDE_HOURS' | 'SERVICE_UNAVAILABLE';
+
+export interface WalkInParticipantResult {
+  participantId: string;
+  displayName: string;
+  kind: VisitParticipantKindName;
+  /** ASSIGNED: every line PLANNED with a real KTV and time; WAITING: none assigned. */
+  state: 'ASSIGNED' | 'WAITING' | 'NO_SERVICES';
+  waitReason: WalkInWaitReason | null;
+  lines: {
+    id: string;
+    sequence: number;
+    serviceNameVi: string;
+    serviceNameEn: string;
+    status: 'WAITING' | 'PLANNED' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+    assignmentMode: 'SPECIFIC' | 'ANY';
+    requestedEmployee: { id: string; displayName: string } | null;
+    employee: { id: string; displayName: string } | null;
+    plannedStartAt: string | null;
+    plannedEndAt: string | null;
+  }[];
+}
+
+/** Walk-in creation and assignment results. */
+export interface WalkInVisitResponse {
+  visitId: string;
+  visitCode: string;
+  arrivedAt: string;
+  timezone: string;
+  participants: WalkInParticipantResult[];
+}
+
+/** POST /api/v1/operations/visits/:visitId/lines/:lineId/intent (WAITING lines only). */
+export interface WalkInIntentRequest {
+  requestedEmployeeUserId: string | null;
 }

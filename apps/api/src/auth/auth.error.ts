@@ -27,6 +27,10 @@ const errors = {
   BOOKING_HOLD_ACTIVE: [409, 'The late hold still protects this booking'],
   BOOKING_NO_SHOW_NOT_ALLOWED: [409, 'This booking cannot be marked as no-show'],
   QUEUE_ADVANCE_NOT_ALLOWED: [409, 'This visit cannot be advanced'],
+  // Phase 3 Step 6 walk-in outcomes.
+  WALKIN_NOT_ASSIGNABLE: [409, 'This visit no longer takes assignments'],
+  WALKIN_LINE_NOT_WAITING: [409, 'Only a waiting service line can change its requested staff'],
+  WALKIN_CANCEL_NOT_ALLOWED: [409, 'This walk-in can no longer be cancelled'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

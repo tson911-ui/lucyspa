@@ -18,6 +18,8 @@ import { CustomerBookingController } from './booking/customer-booking.controller
 import { CustomerBookingService } from './booking/customer-booking.service.js';
 import { OperationsController } from './operations/operations.controller.js';
 import { OperationsService } from './operations/operations.service.js';
+import { WalkInController } from './walkin/walkin.controller.js';
+import { WalkInService } from './walkin/walkin.service.js';
 import { MyAccountService } from './account/my-account.service.js';
 import { AuthContextController } from './auth/auth-context.controller.js';
 import { AuthThrottleService } from './auth/auth-throttle.service.js';
@@ -86,6 +88,7 @@ export class AppModule {
         MyIncomeController,
         CustomerBookingController,
         OperationsController,
+        WalkInController,
       ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },
@@ -116,6 +119,7 @@ export class AppModule {
         AvailabilityService,
         CustomerBookingService,
         OperationsService,
+        WalkInService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
         { provide: APP_INTERCEPTOR, useClass: SessionActivityInterceptor },

@@ -4,6 +4,9 @@ import type {
   OperationalBooking,
   OperationalQueueKtv,
   OperationalTodayResponse,
+  OperationalWaitingEntry,
+  WalkInOptionsResponse,
+  WalkInVisitResponse,
 } from '@lucy-spa/contracts';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { fill } from '../../../i18n/workforce';
@@ -15,6 +18,7 @@ import {
   matchesSearch,
   stateTone,
 } from '../../../lib/workforce/booking-board';
+import { waitReasonText, walkInCancelBody } from '../../../lib/workforce/walk-in';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import { Badge, Empty, Field, Loading, Notice, PageHeader, Section, SubmitButton } from '../ui';
@@ -22,7 +26,8 @@ import { Badge, Empty, Field, Loading, Notice, PageHeader, Section, SubmitButton
 type Pending =
   | { kind: 'arrive'; booking: OperationalBooking }
   | { kind: 'noShow'; booking: OperationalBooking }
-  | { kind: 'advance'; booking: OperationalBooking }
+  | { kind: 'advance'; visitId: string; code: string }
+  | { kind: 'cancelWalkIn'; visitId: string; code: string }
   | null;
 
 /**
@@ -84,12 +89,21 @@ export function BookingBoardScreen() {
         await api.post(`/api/v1/operations/bookings/${pending.booking.id}/arrive`, {});
       } else if (pending.kind === 'noShow') {
         await api.post(`/api/v1/operations/bookings/${pending.booking.id}/no-show`, { reason });
-      } else if (pending.booking.visit) {
-        await api.post(`/api/v1/operations/visits/${pending.booking.visit.id}/advance`, { reason });
+      } else if (pending.kind === 'cancelWalkIn') {
+        const body = walkInCancelBody(reason);
+        if (!body) return;
+        await api.post(`/api/v1/operations/visits/${pending.visitId}/cancel-walk-in`, body);
+      } else {
+        await api.post(`/api/v1/operations/visits/${pending.visitId}/advance`, { reason });
       }
       setMessage({
         tone: 'success',
-        text: pending.kind === 'arrive' ? t.bookingBoard.arrived : t.bookingBoard.done,
+        text:
+          pending.kind === 'arrive'
+            ? t.bookingBoard.arrived
+            : pending.kind === 'cancelWalkIn'
+              ? t.bookingBoard.walkInCancelled
+              : t.bookingBoard.done,
       });
       setPending(null);
       setReason('');
@@ -159,7 +173,9 @@ export function BookingBoardScreen() {
               ? t.bookingBoard.arrive
               : pending.kind === 'noShow'
                 ? t.bookingBoard.noShow
-                : t.bookingBoard.advance}
+                : pending.kind === 'cancelWalkIn'
+                  ? t.bookingBoard.cancelWalkIn
+                  : t.bookingBoard.advance}
           </h2>
           <p>
             {pending.kind === 'arrive'
@@ -167,14 +183,11 @@ export function BookingBoardScreen() {
                   name: pending.booking.owner.displayName,
                   code: pending.booking.code,
                 })
-              : fill(
-                  pending.kind === 'noShow'
-                    ? t.bookingBoard.noShowIntro
-                    : t.bookingBoard.advanceIntro,
-                  {
-                    code: pending.booking.visit?.code ?? pending.booking.code,
-                  },
-                )}
+              : pending.kind === 'noShow'
+                ? fill(t.bookingBoard.noShowIntro, { code: pending.booking.code })
+                : pending.kind === 'cancelWalkIn'
+                  ? fill(t.bookingBoard.cancelWalkInIntro, { code: pending.code })
+                  : fill(t.bookingBoard.advanceIntro, { code: pending.code })}
           </p>
           {pending.kind !== 'arrive' ? (
             <Field id="board-reason" label={t.bookingBoard.reason} required>
@@ -199,7 +212,9 @@ export function BookingBoardScreen() {
             </button>
             <SubmitButton
               pending={working}
-              tone={pending.kind === 'noShow' ? 'danger' : 'primary'}
+              tone={
+                pending.kind === 'noShow' || pending.kind === 'cancelWalkIn' ? 'danger' : 'primary'
+              }
               label={t.bookingBoard.confirm}
               pendingLabel={t.bookingBoard.working}
               disabled={pending.kind !== 'arrive' && !reason.trim()}
@@ -305,7 +320,11 @@ export function BookingBoardScreen() {
                           type="button"
                           className="wf-button"
                           onClick={() => (
-                            setPending({ kind: 'advance', booking }),
+                            setPending({
+                              kind: 'advance',
+                              visitId: booking.visit!.id,
+                              code: booking.visit!.code,
+                            }),
                             setMessage(null)
                           )}
                         >
@@ -318,6 +337,27 @@ export function BookingBoardScreen() {
               ))}
             </tbody>
           </table>
+        ) : null}
+      </Section>
+
+      <Section title={t.bookingBoard.pool}>
+        <p className="wf-small">{t.bookingBoard.poolIntro}</p>
+        {board && board.waitingPool.length === 0 ? <Empty>{t.bookingBoard.poolEmpty}</Empty> : null}
+        {board && board.waitingPool.length > 0 ? (
+          <WaitingPool
+            board={board}
+            time={time}
+            onCancel={(entry) => (
+              setPending({ kind: 'cancelWalkIn', visitId: entry.visitId, code: entry.visitCode }),
+              setReason(''),
+              setMessage(null)
+            )}
+            onAdvance={(entry) => (
+              setPending({ kind: 'advance', visitId: entry.visitId, code: entry.visitCode }),
+              setMessage(null)
+            )}
+            onDone={(text, tone) => (setMessage({ tone, text }), void load(false))}
+          />
         ) : null}
       </Section>
 
@@ -383,5 +423,179 @@ function QueueCard({ ktv, time }: { ktv: OperationalQueueKtv; time: (iso: string
         </>
       ) : null}
     </article>
+  );
+}
+
+/**
+ * Step 6: the branch waiting pool (unassigned walk-in services: no KTV, no time). The order is
+ * advisory; staff assign any entry that fits. "Assign staff" asks the server to place the
+ * participant's whole sequence now (it may stay waiting); the requested KTV of a waiting service
+ * can change until it is assigned.
+ */
+function WaitingPool({
+  board,
+  time,
+  onAdvance,
+  onCancel,
+  onDone,
+}: {
+  board: OperationalTodayResponse;
+  time: (iso: string) => string;
+  onAdvance: (entry: OperationalWaitingEntry) => void;
+  onCancel: (entry: OperationalWaitingEntry) => void;
+  onDone: (text: string, tone: 'success' | 'error') => void;
+}) {
+  const { api, t, locale } = useWorkforce();
+  const [options, setOptions] = useState<WalkInOptionsResponse | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [intent, setIntent] = useState<Record<string, string>>({});
+  const canChange = board.permissions.arrive;
+  useEffect(() => {
+    if (!canChange) return;
+    let active = true;
+    api
+      .get<WalkInOptionsResponse>(
+        `/api/v1/operations/branches/${board.branch.id}/walk-in-options`,
+        {},
+        { passive: true },
+      )
+      .then((data) => active && setOptions(data))
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [api, board.branch.id, canChange]);
+  const name = (vi: string, en: string) => (locale === 'vi' ? vi : en);
+
+  async function assign(entry: OperationalWaitingEntry) {
+    if (busy) return;
+    setBusy(entry.participantId);
+    try {
+      const result = await api.post<WalkInVisitResponse>(
+        `/api/v1/operations/visits/${entry.visitId}/participants/${entry.participantId}/assign`,
+        {},
+      );
+      const participant = result.participants.find(
+        (item) => item.participantId === entry.participantId,
+      );
+      onDone(
+        participant?.state === 'ASSIGNED'
+          ? fill(t.bookingBoard.assignedNow, { name: entry.participantName })
+          : fill(t.bookingBoard.stillWaiting, {
+              name: entry.participantName,
+              reason: waitReasonText(participant?.waitReason ?? null, t),
+            }),
+        participant?.state === 'ASSIGNED' ? 'success' : 'error',
+      );
+    } catch (error) {
+      onDone(boardErrorMessage(error, t), 'error');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function saveIntent(entry: OperationalWaitingEntry, lineId: string) {
+    const choice = intent[lineId];
+    if (busy || choice === undefined) return;
+    setBusy(lineId);
+    try {
+      await api.post(`/api/v1/operations/visits/${entry.visitId}/lines/${lineId}/intent`, {
+        requestedEmployeeUserId: choice === 'ANY' ? null : choice,
+      });
+      onDone(t.bookingBoard.intentSaved, 'success');
+    } catch (error) {
+      onDone(boardErrorMessage(error, t), 'error');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <ol className="wf-cards">
+      {board.waitingPool.map((entry) => (
+        <li key={entry.participantId} className="wf-card">
+          <h3>
+            {entry.position}. {entry.participantName}{' '}
+            <Badge tone="neutral">{t.walkIn.kinds[entry.participantKind]}</Badge>{' '}
+            <Badge tone="info">{t.bookingBoard.groups[entry.group]}</Badge>
+          </h3>
+          <p className="wf-small">
+            {entry.visitCode} · {fill(t.bookingBoard.arrivedShort, { time: time(entry.arrivedAt) })}
+          </p>
+          <ul className="wf-plain-list">
+            {entry.lines.map((line) => {
+              const staff =
+                options?.services.find((service) => service.id === line.serviceId)?.employees ?? [];
+              const current = line.requestedEmployee?.id ?? 'ANY';
+              return (
+                <li key={line.id}>
+                  {name(line.serviceNameVi, line.serviceNameEn)} · {line.durationMinutes}′ ·{' '}
+                  {line.requestedEmployee
+                    ? fill(t.bookingBoard.requested, { name: line.requestedEmployee.displayName })
+                    : t.bookingBoard.any}
+                  {entry.actions.changeIntent && options ? (
+                    <span className="wf-inline-form">
+                      <label className="wf-visually-hidden" htmlFor={`intent-${line.id}`}>
+                        {t.bookingBoard.changeStaff}
+                      </label>
+                      <select
+                        id={`intent-${line.id}`}
+                        value={intent[line.id] ?? current}
+                        onChange={(event) =>
+                          setIntent((values) => ({ ...values, [line.id]: event.target.value }))
+                        }
+                      >
+                        <option value="ANY">{t.walkIn.anyStaff}</option>
+                        {staff.map((employee) => (
+                          <option key={employee.id} value={employee.id}>
+                            {employee.displayName}
+                            {employee.checkedIn ? '' : ` ${t.walkIn.notCheckedIn}`}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="wf-button wf-button-quiet"
+                        disabled={busy !== null || (intent[line.id] ?? current) === current}
+                        onClick={() => void saveIntent(entry, line.id)}
+                      >
+                        {t.bookingBoard.save}
+                      </button>
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+          <div className="wf-row-actions">
+            {entry.actions.assign ? (
+              <button
+                type="button"
+                className="wf-button wf-button-primary"
+                disabled={busy !== null}
+                aria-busy={busy === entry.participantId}
+                onClick={() => void assign(entry)}
+              >
+                {busy === entry.participantId ? t.bookingBoard.assigning : t.bookingBoard.assignNow}
+              </button>
+            ) : null}
+            {entry.actions.advance ? (
+              <button type="button" className="wf-button" onClick={() => onAdvance(entry)}>
+                {t.bookingBoard.advance}
+              </button>
+            ) : null}
+            {entry.actions.cancel ? (
+              <button
+                type="button"
+                className="wf-button wf-button-danger"
+                onClick={() => onCancel(entry)}
+              >
+                {t.bookingBoard.cancelWalkIn}
+              </button>
+            ) : null}
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }

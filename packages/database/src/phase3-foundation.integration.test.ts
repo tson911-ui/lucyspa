@@ -914,6 +914,212 @@ test('Phase 3 Step 2 database foundation invariants (all fixtures roll back)', a
             },
           );
 
+          await context.test(
+            'Step 6 amendment: WAITING lines carry intent but no KTV, time or occupancy',
+            async () => {
+              const ktvW = await user('EMPLOYEE');
+              const visit = await tx.visit.create({
+                data: {
+                  code: `WI-${run}-1`,
+                  branchId: branch,
+                  origin: 'WALK_IN',
+                  serviceDate: DATE,
+                  arrivedAt: at('16:00'),
+                  createdByUserId: staff,
+                },
+                select: { id: true },
+              });
+              const guest = await tx.visitParticipant.create({
+                data: { visitId: visit.id, kind: 'GUEST', displayName: 'Khách lẻ' },
+                select: { id: true },
+              });
+              const catalog = {
+                serviceId: service,
+                durationMinutes: 60,
+                serviceCode: snapshot.serviceCode,
+                serviceNameVi: snapshot.serviceNameVi,
+                serviceNameEn: snapshot.serviceNameEn,
+                catalogPriceMinVnd: snapshot.catalogPriceMinVnd,
+                catalogPriceMaxVnd: snapshot.catalogPriceMaxVnd,
+                catalogPricingUnit: snapshot.catalogPricingUnit,
+              };
+              let seq = 0;
+              const waiting = (data: Partial<Prisma.VisitServiceLineUncheckedCreateInput> = {}) =>
+                tx.visitServiceLine.create({
+                  data: {
+                    visitId: visit.id,
+                    participantId: guest.id,
+                    sequence: ++seq,
+                    status: 'WAITING',
+                    assignmentMode: 'ANY',
+                    ...catalog,
+                    ...data,
+                  },
+                  select: { id: true },
+                });
+              const claims = (lineId: string) =>
+                tx.$queryRaw<
+                  { n: bigint }[]
+                >`SELECT count(*) AS n FROM ktv_occupancies WHERE visit_service_line_id = ${lineId}::uuid`.then(
+                  (rows) => Number(rows[0]?.n ?? 0),
+                );
+              const anyLine = await waiting();
+              const specificLine = await waiting({
+                assignmentMode: 'SPECIFIC',
+                requestedEmployeeUserId: ktvW,
+              });
+              assert.equal(await claims(anyLine.id), 0, 'a waiting line never occupies');
+              assert.equal(await claims(specificLine.id), 0);
+
+              // Partial or contradictory shapes are impossible.
+              const shape = /visit_service_lines_assignment|visit_service_lines_requested/;
+              await rejects(() => waiting({ employeeUserId: ktvB }), shape);
+              await rejects(
+                () => waiting({ plannedStartAt: at('17:00'), plannedEndAt: at('18:00') }),
+                shape,
+              );
+              await rejects(() => waiting({ assignmentMode: 'SPECIFIC' }), shape);
+              await rejects(() => waiting({ requestedEmployeeUserId: ktvW }), shape);
+              await rejects(
+                () =>
+                  waiting({
+                    status: 'PLANNED',
+                    employeeUserId: ktvB,
+                    plannedStartAt: at('17:00'),
+                    bufferMinutes: 0,
+                  }),
+                shape,
+              );
+              await rejects(
+                () =>
+                  waiting({
+                    status: 'PLANNED',
+                    plannedStartAt: at('17:00'),
+                    plannedEndAt: at('18:00'),
+                    bufferMinutes: 0,
+                  }),
+                shape,
+              );
+              await rejects(
+                () =>
+                  tx.visitServiceLine.update({
+                    where: { id: anyLine.id },
+                    data: { status: 'PLANNED', rowVersion: { increment: 1 } },
+                  }),
+                shape,
+              );
+
+              // Intent may change only while waiting; the requested KTV is never substituted.
+              await tx.visitServiceLine.update({
+                where: { id: anyLine.id },
+                data: {
+                  assignmentMode: 'SPECIFIC',
+                  requestedEmployeeUserId: ktvB,
+                  rowVersion: { increment: 1 },
+                },
+              });
+              await rejects(
+                () =>
+                  tx.visitServiceLine.update({
+                    where: { id: specificLine.id },
+                    data: {
+                      status: 'PLANNED',
+                      employeeUserId: ktvB,
+                      plannedStartAt: at('17:00'),
+                      plannedEndAt: at('18:00'),
+                      bufferMinutes: 0,
+                      rowVersion: { increment: 1 },
+                    },
+                  }),
+                shape,
+              );
+              // No execution can start on a waiting line (no assigned KTV).
+              await rejects(
+                () =>
+                  tx.serviceExecution.create({
+                    data: {
+                      visitServiceLineId: specificLine.id,
+                      employeeUserId: ktvW,
+                      startedAt: at('17:00'),
+                      expectedEndAt: at('18:00'),
+                    },
+                  }),
+                /assigned KTV/,
+              );
+              // WAITING -> PLANNED (initial assignment) claims exactly one interval, with its buffer.
+              await tx.visitServiceLine.update({
+                where: { id: specificLine.id },
+                data: {
+                  status: 'PLANNED',
+                  employeeUserId: ktvW,
+                  plannedStartAt: at('17:00'),
+                  plannedEndAt: at('18:00'),
+                  bufferMinutes: 10,
+                  rowVersion: { increment: 1 },
+                },
+              });
+              assert.equal(await claims(specificLine.id), 1);
+              const [period] = await tx.$queryRaw<{ upper: Date }[]>`
+              SELECT upper(period) AS upper FROM ktv_occupancies WHERE visit_service_line_id = ${specificLine.id}::uuid`;
+              assert.equal(period!.upper.toISOString(), at('18:10').toISOString());
+              await rejects(
+                () =>
+                  tx.visitServiceLine.update({
+                    where: { id: specificLine.id },
+                    data: {
+                      requestedEmployeeUserId: null,
+                      assignmentMode: 'ANY',
+                      rowVersion: { increment: 1 },
+                    },
+                  }),
+                /cannot be rewritten/,
+              );
+              // An overlapping assignment for the same KTV is refused by the unchanged backstop.
+              const third = await waiting();
+              await rejects(
+                () =>
+                  tx.visitServiceLine.update({
+                    where: { id: third.id },
+                    data: {
+                      status: 'PLANNED',
+                      employeeUserId: ktvW,
+                      plannedStartAt: at('18:05'),
+                      plannedEndAt: at('19:05'),
+                      bufferMinutes: 0,
+                      rowVersion: { increment: 1 },
+                    },
+                  }),
+                /ktv_occupancies_no_overlap/,
+              );
+              assert.equal(await claims(third.id), 0);
+              // A visit cannot close while a line still waits; cancelling a waiting line leaves nothing.
+              const cancelVisit = () =>
+                tx.visit.update({
+                  where: { id: visit.id },
+                  data: {
+                    status: 'CANCELLED',
+                    cancelledAt: at('19:00'),
+                    cancelledByUserId: staff,
+                    rowVersion: { increment: 1 },
+                  },
+                });
+              await rejects(cancelVisit, /closes only after/);
+              for (const lineId of [anyLine.id, third.id, specificLine.id]) {
+                await tx.visitServiceLine.update({
+                  where: { id: lineId },
+                  data: {
+                    status: 'CANCELLED',
+                    cancelledAt: at('19:00'),
+                    cancelledByUserId: staff,
+                    rowVersion: { increment: 1 },
+                  },
+                });
+                assert.equal(await claims(lineId), 0);
+              }
+              await cancelVisit();
+            },
+          );
+
           throw rollback;
         },
         { timeout: 120_000 },

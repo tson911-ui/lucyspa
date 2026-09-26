@@ -415,7 +415,10 @@ export async function cancelCustomerBooking(
       (line) => line.status === 'IN_PROGRESS' || line.status === 'DONE',
     );
     if (visit.status !== 'OPEN' || started) throw new AuthError('BOOKING_CANCEL_NOT_ALLOWED');
-    for (const line of visit.lines.filter((entry) => entry.status === 'PLANNED')) {
+    // Every unstarted line: PLANNED, and WAITING (Step 6 amendment; a waiting line has no KTV).
+    for (const line of visit.lines.filter(
+      (entry) => entry.status === 'PLANNED' || entry.status === 'WAITING',
+    )) {
       await tx.visitServiceLine.update({
         where: { id: line.id },
         data: {

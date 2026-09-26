@@ -245,7 +245,8 @@ model EmployeeProfile {
   classificationChanges EmploymentClassificationChange[]
   collaboratorWork      CollaboratorWorkOccurrence[]
   bookingLines          BookingServiceLine[]
-  visitLines            VisitServiceLine[]
+  visitLines            VisitServiceLine[]               @relation("VisitLineEmployee")
+  requestedVisitLines   VisitServiceLine[]               @relation("VisitLineRequestedEmployee")
   serviceExecutions     ServiceExecution[]
   assignmentsFrom       ServiceLineAssignmentChange[]    @relation("AssignmentFrom")
   assignmentsTo         ServiceLineAssignmentChange[]    @relation("AssignmentTo")
@@ -833,6 +834,7 @@ enum VisitParticipantKind {
 }
 
 enum VisitServiceLineStatus {
+  WAITING
   PLANNED
   IN_PROGRESS
   DONE
@@ -1017,50 +1019,54 @@ model VisitParticipant {
 // One service for one participant, with its KTV, planned window, snapshots (O5, O7) and the
 // START-overdue warning fact (O1).
 model VisitServiceLine {
-  id                   String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  visitId              String                        @map("visit_id") @db.Uuid
-  visit                Visit                         @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  participantId        String                        @map("participant_id") @db.Uuid
-  participant          VisitParticipant              @relation(fields: [visitId, participantId], references: [visitId, id], onDelete: Restrict, onUpdate: Restrict)
-  sequence             Int                           @db.SmallInt
-  bookingServiceLineId String?                       @unique(map: "visit_service_lines_booking_service_line_id_key") @map("booking_service_line_id") @db.Uuid
-  bookingServiceLine   BookingServiceLine?           @relation(fields: [bookingServiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  serviceId            String                        @map("service_id") @db.Uuid
-  service              Service                       @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  employeeUserId       String                        @map("employee_user_id") @db.Uuid
-  employee             EmployeeProfile               @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
-  assignmentMode       KtvAssignmentMode             @map("assignment_mode")
-  status               VisitServiceLineStatus        @default(PLANNED)
-  plannedStartAt       DateTime                      @map("planned_start_at") @db.Timestamptz(3)
-  plannedEndAt         DateTime                      @map("planned_end_at") @db.Timestamptz(3)
-  durationMinutes      Int                           @map("duration_minutes")
-  bufferMinutes        Int                           @map("buffer_minutes")
-  serviceCode          String                        @map("service_code")
-  serviceNameVi        String                        @map("service_name_vi")
-  serviceNameEn        String                        @map("service_name_en")
-  catalogPriceMinVnd   BigInt                        @map("catalog_price_min_vnd")
-  catalogPriceMaxVnd   BigInt                        @map("catalog_price_max_vnd")
-  catalogPricingUnit   ServicePricingUnit            @map("catalog_pricing_unit")
-  addedOnBehalf        Boolean                       @default(false) @map("added_on_behalf")
-  addedByUserId        String?                       @map("added_by_user_id") @db.Uuid
-  addedBy              User?                         @relation("VisitLineAddedBy", fields: [addedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  addedAt              DateTime?                     @map("added_at") @db.Timestamptz(3)
-  cancelledAt          DateTime?                     @map("cancelled_at") @db.Timestamptz(3)
-  cancelledByUserId    String?                       @map("cancelled_by_user_id") @db.Uuid
-  cancelledBy          User?                         @relation("VisitLineCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  cancelReason         String?                       @map("cancel_reason")
-  assignmentConflict   AssignmentConflict?           @map("assignment_conflict")
-  startOverdueWarnedAt DateTime?                     @map("start_overdue_warned_at") @db.Timestamptz(3)
-  rowVersion           Int                           @default(1) @map("row_version")
-  createdAt            DateTime                      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt            DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  execution            ServiceExecution?
-  assignmentChanges    ServiceLineAssignmentChange[]
+  id                      String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  visitId                 String                        @map("visit_id") @db.Uuid
+  visit                   Visit                         @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  participantId           String                        @map("participant_id") @db.Uuid
+  participant             VisitParticipant              @relation(fields: [visitId, participantId], references: [visitId, id], onDelete: Restrict, onUpdate: Restrict)
+  sequence                Int                           @db.SmallInt
+  bookingServiceLineId    String?                       @unique(map: "visit_service_lines_booking_service_line_id_key") @map("booking_service_line_id") @db.Uuid
+  bookingServiceLine      BookingServiceLine?           @relation(fields: [bookingServiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  serviceId               String                        @map("service_id") @db.Uuid
+  service                 Service                       @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId          String?                       @map("employee_user_id") @db.Uuid
+  employee                EmployeeProfile?              @relation("VisitLineEmployee", fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  assignmentMode          KtvAssignmentMode             @map("assignment_mode")
+  /// Step 6: the KTV a SPECIFIC walk-in line asks for while it waits (never an assignment).
+  requestedEmployeeUserId String?                       @map("requested_employee_user_id") @db.Uuid
+  requestedEmployee       EmployeeProfile?              @relation("VisitLineRequestedEmployee", fields: [requestedEmployeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  status                  VisitServiceLineStatus        @default(PLANNED)
+  plannedStartAt          DateTime?                     @map("planned_start_at") @db.Timestamptz(3)
+  plannedEndAt            DateTime?                     @map("planned_end_at") @db.Timestamptz(3)
+  durationMinutes         Int                           @map("duration_minutes")
+  bufferMinutes           Int?                          @map("buffer_minutes")
+  serviceCode             String                        @map("service_code")
+  serviceNameVi           String                        @map("service_name_vi")
+  serviceNameEn           String                        @map("service_name_en")
+  catalogPriceMinVnd      BigInt                        @map("catalog_price_min_vnd")
+  catalogPriceMaxVnd      BigInt                        @map("catalog_price_max_vnd")
+  catalogPricingUnit      ServicePricingUnit            @map("catalog_pricing_unit")
+  addedOnBehalf           Boolean                       @default(false) @map("added_on_behalf")
+  addedByUserId           String?                       @map("added_by_user_id") @db.Uuid
+  addedBy                 User?                         @relation("VisitLineAddedBy", fields: [addedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  addedAt                 DateTime?                     @map("added_at") @db.Timestamptz(3)
+  cancelledAt             DateTime?                     @map("cancelled_at") @db.Timestamptz(3)
+  cancelledByUserId       String?                       @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy             User?                         @relation("VisitLineCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelReason            String?                       @map("cancel_reason")
+  assignmentConflict      AssignmentConflict?           @map("assignment_conflict")
+  startOverdueWarnedAt    DateTime?                     @map("start_overdue_warned_at") @db.Timestamptz(3)
+  rowVersion              Int                           @default(1) @map("row_version")
+  createdAt               DateTime                      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  execution               ServiceExecution?
+  assignmentChanges       ServiceLineAssignmentChange[]
 
   @@unique([participantId, sequence], map: "visit_service_lines_participant_sequence_key")
   @@index([visitId, participantId], map: "visit_service_lines_visit_idx")
   @@index([employeeUserId, plannedStartAt], map: "visit_service_lines_employee_idx")
   @@index([serviceId], map: "visit_service_lines_service_idx")
+  @@index([requestedEmployeeUserId], map: "visit_service_lines_requested_employee_idx")
   @@index([addedByUserId], map: "visit_service_lines_added_by_idx")
   @@index([cancelledByUserId], map: "visit_service_lines_cancelled_by_idx")
   @@map("visit_service_lines")

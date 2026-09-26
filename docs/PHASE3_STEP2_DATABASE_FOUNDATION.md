@@ -298,3 +298,31 @@ Full workspace suites and builds were not run, per the step's scope. `pnpm typec
 - Every update must bump `row_version`; the guards reject updates that do not.
 - Read settings through `BOOKING_SETTINGS` and `isValidBookingSetting`, and write them with a version bump.
 - Warning facts are write-once. Execution END is never automatic (O1).
+
+## Amendment (Step 6, Owner-approved): TRUE WAITING WALK-IN
+
+Found during Step 6. A physically present walk-in with no free KTV could not be recorded, because every visit service line required a real KTV and planned interval. The Owner rejected leaving the customer unrecorded or reserving an arbitrary future slot, and approved this amendment. Full details: [`PHASE3_STEP6_WALKIN_GUEST_VISIT_FOUNDATION.md`](PHASE3_STEP6_WALKIN_GUEST_VISIT_FOUNDATION.md) §3.
+
+- **Migrations:**
+  - `20261006000000_phase3_visit_line_waiting_status` adds the `WAITING` value to `VisitServiceLineStatus` (its own migration);
+  - `20261006000001_phase3_waiting_walkin_lines` makes the other changes.
+- **Lifecycle:** `WAITING → PLANNED → IN_PROGRESS → DONE`, and `WAITING → CANCELLED`. `PLANNED` keeps meaning assigned.
+- **Columns:**
+  - `employee_user_id`, `planned_start_at`, `planned_end_at` and `buffer_minutes` become nullable and are **all or none** (CHECK `visit_service_lines_assignment`);
+  - `WAITING` means none are set and there is no booking line;
+  - `PLANNED`/`IN_PROGRESS`/`DONE` mean all are set, and the existing end = start + duration shape applies.
+- **Requested KTV:** new `requested_employee_user_id` (foreign key `RESTRICT`, indexed). CHECK `visit_service_lines_requested`:
+  - only with `SPECIFIC`;
+  - required while a `SPECIFIC` line waits;
+  - an assigned requested line's KTV must equal it.
+- **Triggers:**
+  - `lucy_sync_visit_line_occupancy` claims only for an assigned `PLANNED`/`IN_PROGRESS` line, so **`WAITING` never occupies**. `WAITING → PLANNED` creates the claim under the **unchanged** `ktv_occupancies_no_overlap` exclusion constraint.
+  - `lucy_guard_visit_service_line` adds the new transitions; intent changes only while waiting; the KTV is set by the initial assignment, may change while `PLANNED` (Step 8) and is fixed once started; `duration_minutes` is immutable.
+  - `lucy_guard_visit`: a visit cannot close while a line is `WAITING`.
+  - All replaced functions are re-hardened.
+- **Compatibility:**
+  - existing rows were all assigned and satisfy the new CHECKs unchanged: **no backfill**;
+  - booked lines keep `requested_employee_user_id` NULL;
+  - the Step 3 engine already reads only `PLANNED`/`IN_PROGRESS` lines;
+  - the execution guard already requires the assigned KTV, so a waiting line can never start.
+- **Ownership:** initial assignment (`WAITING → PLANNED`) is a Step 6 operation. Changing the KTV of an assigned line remains Step 8 (`REASSIGN_SERVICES`).

@@ -2,6 +2,8 @@ import type {
   BookingRecipientRelationName,
   OperationalBooking,
   OperationalQueueKtv,
+  OperationalWaitingEntry,
+  VisitParticipantKindName,
 } from '@lucy-spa/contracts';
 import { appendOutboxEvent, type Prisma } from '@lucy-spa/database';
 import { AuthError } from '../auth/auth.error.js';
@@ -338,7 +340,11 @@ export async function operationalToday(
     canArrive: boolean;
     canManageQueue: boolean;
   },
-): Promise<{ bookings: OperationalBooking[]; queue: OperationalQueueKtv[] }> {
+): Promise<{
+  bookings: OperationalBooking[];
+  queue: OperationalQueueKtv[];
+  waitingPool: OperationalWaitingEntry[];
+}> {
   const { now, settings } = input;
   const rows = await tx.booking.findMany({
     where: { branchId: input.branchId, serviceDate: input.date },
@@ -402,7 +408,11 @@ export async function operationalToday(
       },
     };
   });
-  return { bookings, queue: await computeQueue(tx, { ...input, rows }) };
+  return {
+    bookings,
+    queue: await computeQueue(tx, { ...input, rows }),
+    waitingPool: await computeWaitingPool(tx, input),
+  };
 }
 
 async function computeQueue(
@@ -415,8 +425,8 @@ async function computeQueue(
     rows: { id: string; code: string; status: string; startsAt: Date }[];
   },
 ): Promise<OperationalQueueKtv[]> {
-  // Visit lines of today's visits at this branch (booked now; walk-ins from Step 6 on).
-  const visitLines = await tx.visitServiceLine.findMany({
+  // Assigned visit lines of today's visits at this branch (booked arrivals and walk-ins).
+  const assignedLines = await tx.visitServiceLine.findMany({
     where: {
       visit: { branchId: input.branchId, serviceDate: input.date },
       status: { in: ['PLANNED', 'IN_PROGRESS'] },
@@ -444,6 +454,20 @@ async function computeQueue(
       },
     },
   });
+  // PLANNED / IN_PROGRESS lines always carry their assignment (database CHECK); narrow the types.
+  const visitLines = assignedLines.flatMap((line) =>
+    line.employeeUserId && line.plannedStartAt && line.plannedEndAt && line.bufferMinutes !== null
+      ? [
+          {
+            ...line,
+            employeeUserId: line.employeeUserId,
+            plannedStartAt: line.plannedStartAt,
+            plannedEndAt: line.plannedEndAt,
+            bufferMinutes: line.bufferMinutes,
+          },
+        ]
+      : [],
+  );
   // Reservations of bookings not arrived yet (still CONFIRMED): they keep blocking capacity.
   const reservedLines = await tx.bookingServiceLine.findMany({
     where: { booking: { branchId: input.branchId, serviceDate: input.date, status: 'CONFIRMED' } },
@@ -539,6 +563,124 @@ async function computeQueue(
           endsAt: line.plannedEndAt.toISOString(),
           state: preArrivalState(line.booking.startsAt, input.now, input.settings),
         })),
+    };
+  });
+}
+
+/**
+ * Step 6: the branch waiting pool. One entry per participant with WAITING lines (no KTV, no
+ * time, no occupancy) in today's OPEN / IN_SERVICE visits. It is ordered with the same
+ * `orderQueue` rules as the per-KTV queues: a Manager-advanced visit first (OVERRIDE, by override
+ * time), then walk-ins by actual arrival time. The order is advisory: staff may assign any entry
+ * whose services and KTV fit the capacity that is free.
+ */
+async function computeWaitingPool(
+  tx: Prisma.TransactionClient,
+  input: {
+    branchId: string;
+    date: Date;
+    now: Date;
+    settings: TimingSettings;
+    canArrive: boolean;
+    canManageQueue: boolean;
+  },
+): Promise<OperationalWaitingEntry[]> {
+  const lines = await tx.visitServiceLine.findMany({
+    where: {
+      status: 'WAITING',
+      visit: {
+        branchId: input.branchId,
+        serviceDate: input.date,
+        status: { in: ['OPEN', 'IN_SERVICE'] },
+      },
+    },
+    orderBy: [{ participantId: 'asc' }, { sequence: 'asc' }],
+    select: {
+      id: true,
+      sequence: true,
+      serviceId: true,
+      serviceNameVi: true,
+      serviceNameEn: true,
+      durationMinutes: true,
+      assignmentMode: true,
+      requestedEmployee: { select: { userId: true, user: { select: { fullName: true } } } },
+      participant: {
+        select: {
+          id: true,
+          kind: true,
+          displayName: true,
+          customer: { select: { fullName: true } },
+        },
+      },
+      visit: {
+        select: {
+          id: true,
+          code: true,
+          origin: true,
+          status: true,
+          arrivedAt: true,
+          queueOverrideAt: true,
+          booking: { select: { startsAt: true } },
+        },
+      },
+    },
+  });
+  const byParticipant = new Map<string, typeof lines>();
+  for (const line of lines) {
+    const group = byParticipant.get(line.participant.id) ?? [];
+    group.push(line);
+    byParticipant.set(line.participant.id, group);
+  }
+  // One representative per participant; an unassigned entry is ordered by arrival (its first
+  // line id is only the final deterministic tie-break).
+  const representatives: WaitingLine[] = [...byParticipant.values()].map((group) => {
+    const first = group[0]!;
+    return {
+      lineId: first.id,
+      employeeUserId: '',
+      plannedStartAt: first.visit.arrivedAt,
+      visitId: first.visit.id,
+      visitOrigin: first.visit.origin,
+      arrivedAt: first.visit.arrivedAt,
+      queueOverrideAt: first.visit.queueOverrideAt,
+      bookingStartsAt: first.visit.booking?.startsAt ?? null,
+    };
+  });
+  const participantOfLine = new Map(lines.map((line) => [line.id, line.participant.id]));
+  return orderQueue(representatives, input.settings).map((entry, index) => {
+    const group = byParticipant.get(participantOfLine.get(entry.lineId)!)!;
+    const first = group[0]!;
+    return {
+      position: index + 1,
+      group: entry.group,
+      visitId: first.visit.id,
+      visitCode: first.visit.code,
+      participantId: first.participant.id,
+      participantName: first.participant.customer?.fullName ?? first.participant.displayName ?? '',
+      participantKind: first.participant.kind as VisitParticipantKindName,
+      arrivedAt: first.visit.arrivedAt.toISOString(),
+      lines: group.map((line) => ({
+        id: line.id,
+        sequence: line.sequence,
+        serviceId: line.serviceId,
+        serviceNameVi: line.serviceNameVi,
+        serviceNameEn: line.serviceNameEn,
+        durationMinutes: line.durationMinutes,
+        assignmentMode: line.assignmentMode,
+        requestedEmployee: line.requestedEmployee
+          ? { id: line.requestedEmployee.userId, displayName: line.requestedEmployee.user.fullName }
+          : null,
+      })),
+      actions: {
+        assign: input.canArrive,
+        changeIntent: input.canArrive,
+        advance:
+          input.canManageQueue &&
+          first.visit.status === 'OPEN' &&
+          first.visit.queueOverrideAt === null,
+        cancel:
+          input.canArrive && first.visit.status === 'OPEN' && first.visit.origin === 'WALK_IN',
+      },
     };
   });
 }
