@@ -79,6 +79,7 @@ export function canAcross(
 export type NavKey =
   | 'dashboard'
   | 'myAccount'
+  | 'myIncome'
   | 'attendance'
   | 'leave'
   | 'collaboratorSchedule'
@@ -107,6 +108,7 @@ export function navigationFor(account: Account): NavItem[] {
     { key: 'dashboard', group: 'home', path: '' },
     // Every workforce account (Owner included) has its own account page.
     { key: 'myAccount', group: 'home', path: '/account' },
+    { key: 'myIncome', group: 'home', path: '/income' },
     (employee || canAnywhere(account, 'VIEW_ATTENDANCE')) && {
       key: 'attendance',
       group: 'operations',

@@ -1245,3 +1245,58 @@ export interface CollaboratorWorkOptionsResponse {
   window: { startTime: string; endTime: string } | null;
   collaborators: { id: string; employeeCode: string; fullName: string }[];
 }
+
+// ------------------------------------------------------------------ my income (Step 7)
+
+/** Day, ISO week (Monday–Sunday) or calendar month, on branch-local work dates. */
+export type IncomePeriod = 'DAY' | 'WEEK' | 'MONTH';
+
+/** Income sources that do not exist yet; listed, never reported as 0. */
+export type UnavailableIncomeSource = 'SERVICE_TOUR' | 'COMMISSION' | 'TIPS' | 'ADJUSTMENTS';
+
+/**
+ * GET /api/v1/me/income?period&date: the signed-in member's own compensation information,
+ * read from the authoritative sources that exist (no income ledger). Amounts are integer
+ * VND strings. Nothing here is payroll, paid, net or attendance-adjusted.
+ */
+export interface MyIncomeResponse {
+  kind: 'OWNER' | 'EMPLOYEE';
+  title: WorkforceTitle;
+  /** Classification in effect today (null before the start, or for the Owner). */
+  classification: EmploymentClassification | null;
+  period: { kind: IncomePeriod; date: string; from: string; to: string };
+  /**
+   * Official employees only: the configured current base salary, a monthly amount as
+   * recorded on the employee profile (null amount = not configured). Never prorated or
+   * converted to earnings for a day, week or month. Null when not applicable.
+   */
+  baseSalary: { amountVnd: string | null; unit: 'MONTH' } | null;
+  /**
+   * Collaborator work in the period (for a current collaborator, or when the period holds
+   * earlier collaborator work). Scheduled occurrences only; cancelled work never counts.
+   * The total sums only agreed amounts: an occurrence without agreed pay is listed and
+   * counted as unagreed, never as 0. Null when not applicable.
+   */
+  collaboratorWork: {
+    totalAgreedPayVnd: string;
+    occurrenceCount: number;
+    unagreedCount: number;
+    byBranch: {
+      branchId: string;
+      totalAgreedPayVnd: string;
+      occurrenceCount: number;
+      unagreedCount: number;
+    }[];
+    items: {
+      id: string;
+      workDate: string;
+      branchId: string;
+      mode: CollaboratorWorkMode;
+      startTime: string;
+      endTime: string;
+      agreedPayVnd: string | null;
+    }[];
+  } | null;
+  /** Future sources (not implemented yet) for this classification; never zeroes. */
+  unavailableSources: UnavailableIncomeSource[];
+}

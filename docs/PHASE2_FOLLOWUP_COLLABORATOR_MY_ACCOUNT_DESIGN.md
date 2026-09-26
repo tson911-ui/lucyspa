@@ -1,16 +1,17 @@
 # Phase 2 follow-up: Collaborator and My Account foundation (design)
 
-**Status: DESIGN; Owner decisions Q1–Q16 RESOLVED (2026-09-26). Steps 2–5 deployed and
-accepted (see the [Step 2](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md),
-[Step 3](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP3_MY_ACCOUNT.md),
-[Step 4](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP4_CHANGE_PASSWORD.md) and
-[Step 5](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP5_VERIFIED_EMAIL_CHANGE.md) reports); Step 6
-implemented, not deployed (see
-[Step 6 report](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP6_COLLABORATOR_SCHEDULE_PAY.md)); Step 7 NOT
-implemented.** Phase 2 remains CLOSED / PRODUCTION ACCEPTED
-(Phase 2 closure docs `2d69e41`; application code in production through `6a69d6b`, follow-up Step 5). Phase 3
+**Status: DESIGN; Owner decisions Q1–Q16 RESOLVED (2026-09-26). Steps 2–6 deployed and
+accepted (see the Step [2](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md),
+[3](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP3_MY_ACCOUNT.md),
+[4](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP4_CHANGE_PASSWORD.md),
+[5](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP5_VERIFIED_EMAIL_CHANGE.md) and
+[6](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP6_COLLABORATOR_SCHEDULE_PAY.md) reports); Step 7 (My
+Income) implemented, not deployed (see
+[Step 7 report](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP7_MY_INCOME.md)).** Phase 2 remains CLOSED / PRODUCTION ACCEPTED
+(Phase 2 closure docs `2d69e41`; application code in production through `1261871`, follow-up Step 6). Phase 3
 (booking) remains NOT STARTED. This follow-up is designed now because collaborator
-availability feeds booking. Nothing below exists in code, and there are no migrations yet.
+availability feeds booking. The sections below are the original design; the implemented
+contracts are recorded in the step reports and in the "Final Step N contract" notes.
 
 ## 1. Current-system findings (inspected, not re-analyzed)
 
@@ -401,6 +402,20 @@ unique across customers too. A self-edit can collide with a customer's phone, an
 - A user sees only their own income.
 - Others' income needs `VIEW_EMPLOYEE_PAY` over the member's branches (existing).
 - There is no new "view all income" permission until payroll exists.
+
+**Final Step 7 contract** (implemented; see the
+[Step 7 report](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP7_MY_INCOME.md)):
+
+- **What it is:** `GET /api/v1/me/income?period=DAY|WEEK|MONTH&date`, a read model with no
+  table or ledger.
+- **Collaborator pay:** agreed pay of SCHEDULED occurrences by branch-local work date, with
+  ISO weeks (Monday–Sunday). Null pay is counted as "unagreed", never 0.
+- **Base salary:** official employees and managers see the configured monthly amount only.
+  It is never prorated, and it has no effective-date history.
+- **Other classifications:** a trainee gets nothing invented; the Owner has no source.
+- **Future sources:** listed as unavailable, never as zeroes.
+- **One source:** the same occurrence amount is referenced by future payroll and branch
+  finance.
 
 ## 11. Authorization model
 

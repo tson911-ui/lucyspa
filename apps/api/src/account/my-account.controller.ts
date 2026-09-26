@@ -4,16 +4,17 @@ import type {
   EmailChangeResendRequest,
   EmailChangeVerifyRequest,
   MyAccountResponse,
+  MyIncomeResponse,
   SelfPasswordChangeRequest,
 } from '@lucy-spa/contracts';
-import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Post, Query, Req, Res } from '@nestjs/common';
 import {
   ApiAcceptedResponse,
   ApiNoContentResponse,
   ApiOkResponse,
   ApiProperty,
 } from '@nestjs/swagger';
-import { IsString, Matches, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import type { Request, Response } from 'express';
 import { sessionCookie, setSessionCookie } from '../auth/cookies.js';
 import { LoginService } from '../auth/login.service.js';
@@ -22,6 +23,7 @@ import { EmployeeProfileDto } from '../employees/employee.controller.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import { EmailChangeService } from './email-change.service.js';
 import { MyAccountService } from './my-account.service.js';
+import { MyIncomeService } from './my-income.service.js';
 
 /** The same allowlisted, strict profile DTO as the management command (no ID field). */
 class MyAccountProfileDto extends EmployeeProfileDto {}
@@ -39,6 +41,12 @@ class EmailChangeResendDto implements EmailChangeResendRequest {
 class EmailChangeVerifyDto implements EmailChangeVerifyRequest {
   @ApiProperty({ writeOnly: true }) @IsString() @MaxLength(64) flowToken!: string;
   @ApiProperty({ writeOnly: true }) @IsString() @Matches(/^[0-9]{6}$/) otp!: string;
+}
+
+/** Period and anchor date only: whose income is decided by the session, never a parameter. */
+class MyIncomeQueryDto {
+  @IsOptional() @IsIn(['DAY', 'WEEK', 'MONTH']) period?: 'DAY' | 'WEEK' | 'MONTH';
+  @IsOptional() @IsString() @Matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) date?: string;
 }
 
 /** Passwords only: no user, employee ID or code is accepted (identity is the session). */
@@ -186,5 +194,26 @@ export class MyEmailController {
       ),
     );
     setSessionCookie(response, this.environment.auth, token);
+  }
+}
+
+/**
+ * "Thu nhập của tôi / My Income" (follow-up Step 7): the signed-in member's own
+ * compensation information, read-only. Responses are `no-store` (global) and never logged.
+ */
+@Controller('api/v1/me/income')
+export class MyIncomeController {
+  constructor(
+    @Inject(API_ENVIRONMENT) private readonly environment: ApiEnvironment,
+    @Inject(MyIncomeService) private readonly income: MyIncomeService,
+  ) {}
+
+  @Get()
+  @ApiOkResponse({ description: 'Own compensation sources for a day, ISO week or month.' })
+  get(@Query() query: MyIncomeQueryDto, @Req() request: Request): Promise<MyIncomeResponse> {
+    return this.income.get(
+      sessionCookie(request.headers.cookie, this.environment.auth.cookieName),
+      Object.fromEntries(Object.entries({ ...query }).filter(([, value]) => value !== undefined)),
+    );
   }
 }

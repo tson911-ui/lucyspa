@@ -24,43 +24,30 @@ It covers:
 It is being prepared before Phase 3 because collaborator availability affects booking.
 **Owner decisions Q1–Q16 are RESOLVED (2026-09-26)** and are recorded in the design.
 
-| Follow-up step                                                             | Status                                                                                                                                              |
-| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Step 1: design                                                             | Done (`9592622`)                                                                                                                                    |
-| Step 2: COLLABORATOR + manager invariant + titles + directory sections     | **Deployed to production and accepted by the Owner** (`455394f`; [Step 2 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md))          |
-| Step 3: My Account + shared authoritative profile                          | **Deployed to production and accepted by the Owner** (`1a49e72`; [Step 3 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP3_MY_ACCOUNT.md))            |
-| Step 4: self-service change password                                       | **Deployed to production and accepted by the Owner** (`73cf6ad`; [Step 4 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP4_CHANGE_PASSWORD.md))       |
-| Step 5: verified self-service email change                                 | **Deployed to production and accepted by the Owner** (`6a69d6b`; [Step 5 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP5_VERIFIED_EMAIL_CHANGE.md)) |
-| Step 6: collaborator work schedule + agreed pay; global password minimum 8 | **Implemented, pushed, NOT DEPLOYED** ([Step 6 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP6_COLLABORATOR_SCHEDULE_PAY.md))                       |
-| Step 7: My Income foundation                                               | NOT implemented                                                                                                                                     |
+| Follow-up step                                                             | Status                                                                                                                                                                                                            |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Step 1: design                                                             | Done (`9592622`)                                                                                                                                                                                                  |
+| Step 2: COLLABORATOR + manager invariant + titles + directory sections     | **Deployed to production and accepted by the Owner** (`455394f`; [Step 2 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md))                                                                        |
+| Step 3: My Account + shared authoritative profile                          | **Deployed to production and accepted by the Owner** (`1a49e72`; [Step 3 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP3_MY_ACCOUNT.md))                                                                          |
+| Step 4: self-service change password                                       | **Deployed to production and accepted by the Owner** (`73cf6ad`; [Step 4 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP4_CHANGE_PASSWORD.md))                                                                     |
+| Step 5: verified self-service email change                                 | **Deployed to production and accepted by the Owner** (`6a69d6b`; [Step 5 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP5_VERIFIED_EMAIL_CHANGE.md))                                                               |
+| Step 6: collaborator work schedule + agreed pay; global password minimum 8 | **Deployed to production and accepted by the Owner** (`1261871`, migrations `20261004000000` and `20261004000001` applied; [Step 6 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP6_COLLABORATOR_SCHEDULE_PAY.md)) |
+| Step 7: My Income (Thu nhập của tôi) foundation                            | **Implemented, pushed, NOT DEPLOYED** ([Step 7 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP7_MY_INCOME.md))                                                                                                     |
 
-**Production application commit: `6a69d6b`** (follow-up Step 5). Step 6 adds **two additive
-migrations** (`20261004000000_work_schedule_permissions`,
-`20261004000001_collaborator_work_occurrences`) and **needs `pnpm db:permissions:sync`**
-after `pnpm db:deploy`. The second migration also restores the pinned `search_path` of
-`lucy_guard_auth_challenge`, which the Step 5 `CREATE OR REPLACE` had reset.
-
-Deploying Step 6 needs Owner authorization. Run it in this order:
-
-1. take a backup;
-2. `git pull`;
-3. `pnpm db:deploy`;
-4. `pnpm db:permissions:sync`;
-5. `pnpm build`;
-6. restart all three PM2 processes;
-7. grant the schedule permissions to roles;
-8. run the smoke checks in the Step 6 report.
-
-**Password rule:** every account now uses 8–128 characters (Owner decision 2026-09-26).
-Existing passwords stay valid, and the common-password blocklist was regenerated to cover
-8+ characters.
+**Production application commit: `1261871`** (follow-up Step 6). Step 7 is a read model with
+**no migration**. Deploying it needs Owner authorization: backup, `git pull`, `pnpm build`,
+PM2 restart, then the smoke checks in the Step 7 report.
 
 - The original Phase 2 remains **CLOSED / PRODUCTION ACCEPTED**.
 - **Phase 3 (booking) remains NOT STARTED.** It must use the collaborator availability
-  contract in the Step 6 report (A14).
-- A **full UX/UI redesign is scheduled after the Phase 3 core** is complete; the current
+  contract (Step 6 report, A14).
+- **Full payroll is NOT implemented.** My Income only reads the existing sources.
+- **Full finance/accounting is NOT implemented.** No journals, expenses, P&L or
+  depreciation. Collaborator agreed pay is a branch personnel/operating cost (not
+  depreciation), and later modules must reference the same occurrence rows.
+- The **full UX/UI redesign remains scheduled after the Phase 3 core**; the current
   workforce UI is temporary functional UI.
-- The next follow-up step is Step 7: the My Income foundation.
+- **Recommended next step:** Phase 3 booking planning and design.
 
 ### Production state (Phase 2 closure, 2026-09-26)
 
