@@ -1,5 +1,125 @@
 # Lucy Spa handoff
 
+## Project status (authoritative; supersedes older status wording below)
+
+| Phase                                         | Status                                                           |
+| --------------------------------------------- | ---------------------------------------------------------------- |
+| Phase 0                                       | PASS                                                             |
+| Phase 1 (auth and security)                   | COMPLETE ([Step 13 gate](docs/PHASE1_STEP13_COMPLETION_GATE.md)) |
+| **Phase 2 (services, employees, operations)** | **CLOSED / PRODUCTION ACCEPTED**                                 |
+| **Phase 3 (booking)**                         | **NOT STARTED.** It needs its own authorization and design step. |
+
+### Production state (Phase 2 closure, 2026-09-26)
+
+- **Deployed commit:** production is deployed through `fb0725d`
+  (`fix: add workforce and owner password recovery`).
+- **Final deployment**, performed by the operator on the VPS in `/opt/lucyspa`:
+  - `git pull`: `d12ad0e..fb0725d`;
+  - `pnpm db:deploy`: 9 migrations found, no pending migrations;
+  - `pnpm build`: PASS;
+  - PM2 restart: `lucyspa-api`, `lucyspa-web` and `lucyspa-worker` all online.
+- **Backup** taken immediately before the Owner-recovery deployment:
+  `/root/backups/lucyspa-pre-owner-recovery-20260926T032732Z.dump` (152 KB).
+  The earlier Phase 2 backup is `/root/backups/lucyspa-pre-phase2-20260925T113940Z.dump`
+  (see the [Step 10 report](docs/PHASE2_STEP10_PRODUCTION_DEPLOYMENT.md)).
+
+### Phase 2 production acceptance (verified in production)
+
+1. **Branches:** branch administration and business hours work.
+2. **Services and categories:** administration works, including service duration
+   estimates, price ranges, pricing units, and safe service/category deletion.
+3. **Skills:** the skill catalog works.
+4. **Employee management:**
+   - workforce member creation;
+   - the TRAINEE / OFFICIAL_EMPLOYEE / ENDED classification model;
+   - branch assignment;
+   - workforce credential provisioning and reset;
+   - the employment lifecycle;
+   - role assignment;
+   - skill assignment.
+5. **Roles:** role administration ("Vai trò & quyền") works.
+6. **Manager grouping:**
+   - roles have an explicit manager-group flag, and the production Manager role is
+     flagged;
+   - employee Trần Hoàng Anh Thư appears in "Quản lý / Managers" and not again in
+     "Nhân viên / Employees";
+   - the two tables are separate and independently server-paginated.
+7. **Skill assignment:** Trần Hoàng Anh Thư currently holds `GOI_DAU` (Gội đầu) and
+   `CHAM_SOC_DA_MAT` (Chăm sóc da mặt).
+8. **Owner recovery:**
+   - the workforce login has "Quên mật khẩu?" recovery, and the recovery-email UI exists;
+   - **the production Owner recovery email is VERIFIED**;
+   - resets use the existing secure backend flow and revoke existing sessions;
+   - the emergency server command `pnpm owner:reset-password --email <owner-email>`
+     exists;
+   - managers and employees cannot reset the Owner.
+9. **Owner model:** the Owner remains the special `User.kind = OWNER` with no
+   `EmployeeProfile`.
+
+### Accepted limitations and deferrals (still open; NOT implemented)
+
+- **No scheduler:**
+  - future-dated employment endings do not disable sign-in automatically; disable it
+    manually from the end date;
+  - no background business jobs.
+- **Employee and roles:**
+  - there is no rehire workflow: ENDED is final;
+  - the per-user permission override (ALLOW/DENY) API exists with no UI;
+  - roles cannot be deleted, only switched off; role history exists only in the audit log;
+  - a branch-scoped manager-group assignment counts for directory grouping regardless of
+    branch;
+  - phone and email cannot be edited through the profile command, and the employee code
+    (login ID) is immutable by design.
+- **Workforce passwords:**
+  - no self-service password change;
+  - no "must change password at first login";
+  - no password generator;
+  - the setup-token flow is kept but unused in the normal workflow.
+- **Skills:** employee-level only, with no branch-specific qualification and no per-skill
+  effective dates.
+- **Leave:** "1 day/month" is documented only; there is no balance or accrual engine.
+- **Not started:** payroll, salary history, commissions, tour pay, booking, customer
+  booking UI, and the full UI/UX redesign.
+- **Testing:** there are no browser click/DOM tests; the web tests are SSR and pure-logic.
+- **Repository:** `apps/web/next-env.d.ts` keeps a pre-existing generated diff that is
+  never staged or committed.
+
+### Constraints Phase 3 (booking) must preserve
+
+- **Branch:**
+  - operating hours are per weekday;
+  - each branch has an IANA timezone, fixed once attendance exists;
+  - business dates are computed in the branch timezone by the database, never
+    hard-coded;
+  - branches can be deactivated, not deleted.
+- **Services:**
+  - one concrete `durationMinutes` per offering, plus an estimated min/max range;
+  - price min/max per pricing unit (`PER_SERVICE` / `PER_NAIL`), as integer VND strings;
+  - per-branch availability;
+  - Phase 3 tables must reference `services` with `ON DELETE RESTRICT`, because
+    service/category deletion relies on RESTRICT foreign keys.
+- **Skills:** an employee qualifies for a service when the service's eligible skills
+  intersect the employee's active skills. Employee skills are history-preserving:
+  revoked grants are kept.
+- **Branch assignments:** active `EmployeeBranchAssignment` rows are the single source of
+  both operational and authorization branch membership.
+- **Leave:** approved leave (with `LeaveType`) and attendance business dates exist.
+  Phase 3 must decide how approved leave blocks availability.
+- **Employment and account:**
+  - classification is effective-dated history;
+  - only OFFICIAL_EMPLOYEE is payroll-eligible;
+  - ENDED means no new roles, skills or credentials;
+  - account status (PENDING_SETUP / ACTIVE / INACTIVE) is separate from classification;
+  - Phase 3 must define bookability from classification, status, leave and branch, and
+    never merge these concepts.
+- **Roles and authorization:**
+  - authorization is permission-based;
+  - roles such as KTV or Branch Manager are database permission bundles assigned
+    GLOBAL or per branch, with containment (`EXCEEDS_ACTOR`) and Owner protection;
+  - no code may check role names;
+  - qualification comes from skills, not roles;
+  - the manager-group flag is display grouping only.
+
 ## Start here: next fresh agent/session
 
 1. Read **all of [LUCY_SPA_PRD.md](LUCY_SPA_PRD.md)**, this handoff, and [README.md](README.md).
@@ -60,7 +180,9 @@
   [Phase 2 Step 8 report](docs/PHASE2_STEP8_LEAVE_MANAGEMENT.md) records leave management; the
   [Phase 2 Step 9 report](docs/PHASE2_STEP9_WORKFORCE_UI.md) records the workforce UI; the
   [Phase 2 Step 10 report](docs/PHASE2_STEP10_PRODUCTION_DEPLOYMENT.md) records the
-  production deployment. **Phase 2 is COMPLETE.**
+  production deployment. **Phase 2 is CLOSED / PRODUCTION ACCEPTED** (production at
+  `fb0725d`, including the Employee Management steps, Owner recovery and the directory
+  grouping; see "Project status" at the top).
   Validation results and remaining production privilege
   prerequisites are recorded in the [Step 2 report](docs/PHASE1_STEP2_DATABASE.md).
 - This handoff accompanies the Step 2 commit
@@ -160,8 +282,9 @@ because a new session starts.
 
 - No new runtime or CI verification was needed or performed for this documentation update.
 - Transitive `cron-parser@4.9.0` emits a deprecation warning.
-- No business jobs, outbox dispatcher, production deployment, backup/restore setup
-  or launch hardening yet; these remain later-phase work.
+- No business jobs (scheduler) or launch hardening yet. Production runs on the VPS
+  (PM2), the email outbox and worker are operational, and database backups are taken
+  manually with `pg_dump` before each deployment.
 - Windows automation encountered stale PATH/NVM sandbox restrictions. Existing tools
   worked with process-local PATH and approved execution outside the sandbox; no
   system software/configuration changes were needed. Do not reinstall tools blindly.
@@ -218,7 +341,8 @@ because a new session starts.
 [Step 13 completion gate](docs/PHASE1_STEP13_COMPLETION_GATE.md), `fab9147`). Steps 1–12
 are closed; the HTML auth-email presentation followed in `389c0b4`.
 
-**Phase 2 is COMPLETE** (see Step 10 below). Step 2 (database foundation) is **closed** (Owner-approved;
+**Phase 2 is CLOSED / PRODUCTION ACCEPTED** (production at `fb0725d`; see "Project
+status" at the top). **Phase 3 (booking) is NOT STARTED.** Historical step notes follow. Step 2 (database foundation) is **closed** (Owner-approved;
 commit `feat: add phase 2 database foundation`). It adds one additive migration
 (`20260925000000_phase2_services_skills_operations`) with services, skills, employee
 skills, service branch availability, branch operating hours, attendance and leave
@@ -738,12 +862,9 @@ classification history`; local commit, not pushed, not deployed). See the
   **Deploying these changes requires `pnpm db:deploy`** (after a verified backup), since
   production is at 5 migrations and this adds a 6th.
 
-**Next operational action: Owner bootstrap** (`pnpm owner:bootstrap` on the production
-server, password via hidden prompt or stdin). It needs separate explicit Owner
-authorization, and production has no Owner yet. After it: authenticated production smoke
-testing of the workforce UI and staff permission grants. This is an operational step, not
-unfinished Phase 2 implementation. Phase 3 has not started and needs its own
-authorization. Owner decisions H1–H9 remain recorded in the Step 2 report.
+**Superseded:** the Owner was bootstrapped and Phase 2 was accepted in production (see
+"Project status" at the top). **Next phase: Phase 3 — Booking, NOT STARTED**; it needs
+its own authorization. Owner decisions H1–H9 remain recorded in the Step 2 report.
 
 Production deployment (verified by the operator, recorded in the
 [Step 12 report](docs/PHASE1_STEP12_EMAIL_DISPATCH_CLEANUP.md#production-verification)):
