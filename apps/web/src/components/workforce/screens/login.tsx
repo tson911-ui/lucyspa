@@ -143,6 +143,9 @@ function LoginForm() {
           </Field>
           <SubmitButton pending={pending} label={t.auth.signIn} pendingLabel={t.auth.signingIn} />
         </form>
+        <p>
+          <Link href={`${base}/forgot-password`}>{t.auth.forgotPassword}</Link>
+        </p>
       </div>
     </main>
   );

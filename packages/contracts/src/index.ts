@@ -88,6 +88,11 @@ export interface CurrentAccountResponse {
         denies: { permission: string; scope: AuthorizationScope }[];
       }
     | { version: number; owner: true };
+  /**
+   * Owner and employees only (absent for customers): the stored recovery email and whether
+   * it is verified. Workforce password recovery by email works only once it is verified.
+   */
+  recoveryEmail?: { address: string; verified: boolean } | null;
 }
 
 /** CUSTOMER recovers customers; WORKFORCE recovers the Owner and employees. */

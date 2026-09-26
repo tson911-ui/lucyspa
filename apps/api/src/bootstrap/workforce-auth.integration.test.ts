@@ -236,6 +236,8 @@ test(
                 displayName: 'Lucy Owner',
                 locale: 'vi',
                 authorization: { version: 1, owner: true },
+                // Bootstrap never verifies the address; the Owner verifies it after sign-in.
+                recoveryEmail: { address: ownerEmail, verified: false },
               });
               assert.deepEqual(await service.currentAccount(result.token), result.account);
               await fails(service.currentAccount(await anonymous()), 'AUTHENTICATION_REQUIRED');

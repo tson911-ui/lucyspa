@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --test \"dist/**/*.test.js\"",
     "test:integration": "node --env-file-if-exists=../../.env --test ../../scripts/test-auth-integration.mjs",
-    "owner:bootstrap": "node --env-file-if-exists=../../.env dist/bootstrap/bootstrap-owner.cli.js"
+    "owner:bootstrap": "node --env-file-if-exists=../../.env dist/bootstrap/bootstrap-owner.cli.js",
+    "owner:reset-password": "node --env-file-if-exists=../../.env dist/bootstrap/owner-password-reset.cli.js"
   },
   "dependencies": {
     "@lucy-spa/contracts": "workspace:*",

@@ -22,3 +22,4 @@ await import('../apps/api/dist/employees/workforce-account.integration.test.js')
 await import('../apps/api/dist/employees/role-assignment.integration.test.js');
 await import('../apps/api/dist/employees/employee-skills.integration.test.js');
 await import('../apps/api/dist/employees/employee-directory-groups.integration.test.js');
+await import('../apps/api/dist/bootstrap/owner-recovery.integration.test.js');

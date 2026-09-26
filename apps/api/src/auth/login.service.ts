@@ -338,7 +338,14 @@ export class LoginService implements OnModuleInit {
       this.sessions.withTransaction(async (tx) => {
         const user = await tx.user.findUnique({
           where: { id: userId },
-          select: { id: true, kind: true, fullName: true, preferredLocale: true },
+          select: {
+            id: true,
+            kind: true,
+            fullName: true,
+            preferredLocale: true,
+            emailDelivery: true,
+            emailVerifiedAt: true,
+          },
         });
         const graph = await loadAuthorityGraph(tx, userId);
         if (!user || !graph) throw new AuthError('AUTHENTICATION_REQUIRED');
@@ -348,6 +355,14 @@ export class LoginService implements OnModuleInit {
           displayName: user.fullName,
           locale: user.preferredLocale,
           authorization: authorizationSummary(graph),
+          // Workforce only: the recovery email status shown to the account itself.
+          ...(user.kind === 'CUSTOMER'
+            ? {}
+            : {
+                recoveryEmail: user.emailDelivery
+                  ? { address: user.emailDelivery, verified: user.emailVerifiedAt !== null }
+                  : null,
+              }),
         };
       }),
     );

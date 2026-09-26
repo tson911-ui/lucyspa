@@ -11,6 +11,7 @@ import { formatTime } from '../../../lib/workforce/format';
 import { canAnywhere, navigationFor } from '../../../lib/workforce/permissions';
 import { attendanceState } from '../../../lib/workforce/workflows';
 import { branchLabel, useBranches } from '../data';
+import { RecoveryEmailSection } from '../recovery-email';
 import { useAccount, useWorkforce } from '../session';
 import { Badge, ErrorState, Loading, PageHeader, Section, useResource } from '../ui';
 
@@ -52,6 +53,8 @@ export function DashboardScreen() {
         intro={t.dashboard.intro}
       />
       {!employee ? <p className="wf-muted">{t.dashboard.ownerNote}</p> : null}
+      {/* Account recovery: verify the recovery email while still signed in. */}
+      <RecoveryEmailSection />
       {employee ? (
         <div className="wf-grid">
           <Section title={t.dashboard.todayAttendance}>

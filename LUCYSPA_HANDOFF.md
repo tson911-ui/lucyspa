@@ -458,6 +458,44 @@ manually by the Owner/operator; see the
   - **Tests:** catalog integration 8/8, delete HTTP 1/1, web 37/37. No migration; no
     production data is deleted automatically.
 
+- **Owner / workforce lockout recovery** (`fix: add workforce and owner password
+recovery`). Customer registration, login and password reset are unchanged.
+  - **Why:** the Owner is bootstrapped with an **unverified** email, and workforce email
+    recovery only works for a verified email. Previously there was no page for either
+    flow, so a forgotten Owner password could not be recovered in the app.
+  - **In-app recovery email (dashboard "Email khôi phục"):**
+    - `/auth/me` now also returns `recoveryEmail {address, verified}` for Owner and
+      employees only; customers are unchanged.
+    - The dashboard shows the status, with a strong warning for an unverified Owner.
+    - "Gửi mã xác minh" calls the existing `/auth/recovery-email/request`, using the
+      password-confirmation dialog. The code goes to `/verify`.
+  - **"Quên mật khẩu?"** on the workforce login leads to `/{locale}/workforce/forgot-password`:
+    - the steps are email → 6-digit code + new password (with confirmation) → back to
+      sign in, over the existing `/auth/password-reset/request|complete` with
+      `realm: WORKFORCE`;
+    - the reply is always neutral ("Nếu email này thuộc…"), and code failures all read the
+      same;
+    - completion is the existing path: Argon2id hash, `credentialVersion` +1, every
+      session revoked, other flows retired, audited.
+  - **Emergency operator reset:** `pnpm owner:reset-password --email <owner email>`
+    on the server, with authorized shell access only.
+    - The new password is typed twice at a hidden prompt, or given as two stdin lines;
+      never as a flag.
+    - It touches only the single OWNER. The `--email` must match the Owner's, otherwise
+      nothing changes, so an employee or customer can never be reset this way. It fails
+      safely when there is no Owner or more than one.
+    - It applies the existing policy and Argon2id, increments `credentialVersion`,
+      revokes all Owner sessions, retires open reset/setup/recovery codes and their
+      pending emails, and audits `OWNER_PASSWORD_RESET_BY_OPERATOR` (actor BOOTSTRAP, no
+      password material).
+    - Email verification is left unchanged.
+  - **After deploying (required):** the production Owner signs in, opens "Tổng quan", and
+    verifies "Email khôi phục" once. Until then only the emergency command can recover a
+    forgotten Owner password.
+  - **Tests:** `bootstrap/owner-recovery` integration 5/5, workforce-recovery 5/5,
+    workforce-auth 7/7, customer password-reset 5/5, login 4/4, registration 7/7, session
+    12/12, web 88/88 (4 new recovery tests), and a CLI refusal smoke test.
+
 - **Employee directory: Managers / Employees groups with numbered pages** (`fix: group
 employee directory by manager role with pagination`).
   - **Directory layout:** "Quản lý / Managers" appears above "Nhân viên / Employees".
