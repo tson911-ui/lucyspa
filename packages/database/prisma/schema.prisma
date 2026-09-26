@@ -13,14 +13,14 @@ datasource db {
 
 // Phase 0 branch identity, extended only with Phase 1 authorization relations.
 model Branch {
-  id                  String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code                String                      @unique
+  id                  String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                String                       @unique
   name                String
-  timezone            String                      @default("Asia/Ho_Chi_Minh")
-  isActive            Boolean                     @default(true) @map("is_active")
-  rowVersion          Int                         @default(1) @map("row_version")
-  createdAt           DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  timezone            String                       @default("Asia/Ho_Chi_Minh")
+  isActive            Boolean                      @default(true) @map("is_active")
+  rowVersion          Int                          @default(1) @map("row_version")
+  createdAt           DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   outboxEvents        OutboxEvent[]
   employeeAssignments EmployeeBranchAssignment[]
   roleAssignments     UserRoleAssignment[]
@@ -29,6 +29,7 @@ model Branch {
   serviceAvailability ServiceBranchAvailability[]
   operatingHours      BranchOperatingHours[]
   attendanceRecords   AttendanceRecord[]
+  collaboratorWork    CollaboratorWorkOccurrence[]
 
   @@map("branches")
 }
@@ -135,6 +136,8 @@ enum PermissionCode {
   VIEW_ATTENDANCE
   MANAGE_ATTENDANCE
   APPROVE_LEAVE
+  VIEW_WORK_SCHEDULE
+  MANAGE_WORK_SCHEDULE
 }
 
 enum LeaveStatus {
@@ -187,6 +190,9 @@ model User {
   decidedLeaveRequests         LeaveRequest[]                   @relation("LeaveDecider")
   cancelledLeaveRequests       LeaveRequest[]                   @relation("LeaveCanceller")
   recordedClassifications      EmploymentClassificationChange[] @relation("ClassificationRecorder")
+  createdCollaboratorWork      CollaboratorWorkOccurrence[]     @relation("CollaboratorWorkCreator")
+  updatedCollaboratorWork      CollaboratorWorkOccurrence[]     @relation("CollaboratorWorkUpdater")
+  cancelledCollaboratorWork    CollaboratorWorkOccurrence[]     @relation("CollaboratorWorkCanceller")
 
   @@index([kind, status, id], map: "users_kind_status_idx")
   @@map("users")
@@ -213,6 +219,7 @@ model EmployeeProfile {
   attendanceRecords     AttendanceRecord[]
   leaveRequests         LeaveRequest[]
   classificationChanges EmploymentClassificationChange[]
+  collaboratorWork      CollaboratorWorkOccurrence[]
 
   @@map("employee_profiles")
 }
@@ -685,4 +692,54 @@ model LeaveRequest {
   @@index([decidedByUserId], map: "leave_requests_decider_idx")
   @@index([cancelledByUserId], map: "leave_requests_canceller_idx")
   @@map("leave_requests")
+}
+
+enum CollaboratorWorkMode {
+  SHIFT
+  FULL_DAY
+}
+
+enum CollaboratorWorkStatus {
+  SCHEDULED
+  CANCELLED
+}
+
+// Follow-up Step 6: one row per collaborator (CTV) work occurrence; never deleted.
+// workDate is the branch-local business date; startMinute/endMinute are minutes of that
+// day (no overnight). FULL_DAY stores the branch opening hours as a snapshot when agreed.
+// agreedPayVnd is the manually agreed amount for this occurrence (never hours x rate, never
+// changed by attendance); null = not agreed yet. It is the single economic source amount
+// later payroll and branch cost reporting reference (personnel/operating cost).
+// SQL-only: shape CHECKs, the FULL_DAY partial unique index and the history guard trigger.
+model CollaboratorWorkOccurrence {
+  id                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeUserId    String                 @map("employee_user_id") @db.Uuid
+  employee          EmployeeProfile        @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  branchId          String                 @map("branch_id") @db.Uuid
+  branch            Branch                 @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  workDate          DateTime               @map("work_date") @db.Date
+  mode              CollaboratorWorkMode
+  startMinute       Int                    @map("start_minute") @db.SmallInt
+  endMinute         Int                    @map("end_minute") @db.SmallInt
+  agreedPayVnd      BigInt?                @map("agreed_pay_vnd")
+  status            CollaboratorWorkStatus @default(SCHEDULED)
+  note              String?
+  createdByUserId   String                 @map("created_by_user_id") @db.Uuid
+  createdBy         User                   @relation("CollaboratorWorkCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedByUserId   String                 @map("updated_by_user_id") @db.Uuid
+  updatedBy         User                   @relation("CollaboratorWorkUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  updatedAt         DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  cancelledByUserId String?                @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy       User?                  @relation("CollaboratorWorkCanceller", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelledAt       DateTime?              @map("cancelled_at") @db.Timestamptz(3)
+  cancelReason      String?                @map("cancel_reason")
+  rowVersion        Int                    @default(1) @map("row_version")
+
+  @@index([employeeUserId, workDate, status], map: "collaborator_work_employee_date_idx")
+  @@index([branchId, workDate, status], map: "collaborator_work_branch_date_idx")
+  @@index([createdByUserId], map: "collaborator_work_creator_idx")
+  @@index([updatedByUserId], map: "collaborator_work_updater_idx")
+  @@index([cancelledByUserId], map: "collaborator_work_canceller_idx")
+  @@map("collaborator_work_occurrences")
 }

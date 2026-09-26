@@ -174,7 +174,7 @@ export function endAccessMessage(access: EmploymentEndAccess, t: WorkforceDictio
 
 export type PasswordProblem = 'length' | 'mismatch' | null;
 
-/** The policy length (15–128 code points) and the confirmation; the API checks the rest. */
+/** The policy length (8–128 code points) and the confirmation; the API checks the rest. */
 export function passwordProblem(password: string, confirmation: string): PasswordProblem {
   const length = passwordLength(password);
   if (length < PASSWORD_LENGTH.min || length > PASSWORD_LENGTH.max) return 'length';

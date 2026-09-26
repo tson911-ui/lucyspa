@@ -151,7 +151,7 @@ test('forgot password: WORKFORCE request and completion over the existing endpoi
   assert.ok(first.includes('href="/vi/workforce/login"'));
   const second = forgotView('code');
   assert.match(second, /id="forgot-code"[^>]*autoComplete="one-time-code"/);
-  assert.match(second, /id="forgot-password" type="password"[^>]*minLength="15"/);
+  assert.match(second, /id="forgot-password" type="password"[^>]*minLength="8"/);
   assert.ok(second.includes(vi.recovery.confirmPassword));
   assert.ok(forgotView('done').includes(vi.recovery.done));
   assert.ok(forgotView('code', { problem: 'mismatch' }).includes(vi.recovery.passwordMismatch));

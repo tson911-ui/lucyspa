@@ -206,7 +206,13 @@ test('Phase 2 schema invariants in an isolated, rolled-back schema', async (cont
       });
 
       await check('the code-owned catalog matches the database semantics exactly', async () => {
-        for (const entry of PERMISSION_CATALOG.slice(10)) {
+        // This isolated schema stops at Phase 2; the follow-up Step 6 schedule codes come from
+        // a later enum-only migration (checked against the fully migrated database by the
+        // authorization integration test).
+        const phase2Catalog = PERMISSION_CATALOG.filter(
+          (entry) => entry.code !== 'VIEW_WORK_SCHEDULE' && entry.code !== 'MANAGE_WORK_SCHEDULE',
+        );
+        for (const entry of phase2Catalog.slice(10)) {
           await insert('permissions', {
             code: entry.code,
             scope_capability: entry.scopeCapability,
@@ -218,7 +224,7 @@ test('Phase 2 schema invariants in an isolated, rolled-back schema', async (cont
         );
         assert.deepEqual(
           labels.rows[0]?.labels,
-          PERMISSION_CATALOG.map((entry) => entry.code),
+          phase2Catalog.map((entry) => entry.code),
         );
         // Service prices are GLOBAL_ONLY; every other Phase 2 code is BRANCH_CAPABLE.
         await client.query("DELETE FROM permissions WHERE code = 'MANAGE_SERVICE_PRICES'");

@@ -8,9 +8,11 @@ published common passwords; this is not an exhaustive breach database.
 - Source file last change: 2025-05-08; reviewed for this snapshot 2026-09-24.
 - Source SHA-256: `1472aafa2561df5e3293aee252aee3ca660c12b399a283cf808bb01b39be388b`.
 - License: upstream MIT, reproduced in [LICENSE](LICENSE).
-- Generated entries: 72 unique SHA-256 fingerprints after NFC normalization and
-  retaining passwords with 15–128 Unicode code points. Every other source entry
-  already fails Lucy Spa's length policy. Matching preserves case and spaces.
+- Generated entries: 39,329 unique SHA-256 fingerprints after NFC normalization and
+  retaining passwords with 8–128 Unicode code points (regenerated 2026-09-26 when the
+  Owner lowered the global minimum from 15 to 8; the earlier snapshot kept only the 72
+  entries of 15+ code points). Every other source entry already fails Lucy Spa's length
+  policy. Matching preserves case and spaces.
 
 These fingerprints represent **public blocklist words only**, not user
 credentials. Account passwords always use Argon2id. No runtime password or hash

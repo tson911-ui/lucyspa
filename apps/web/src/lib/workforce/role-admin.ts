@@ -65,6 +65,8 @@ const GROUP_OF: Readonly<Record<string, PermissionGroup>> = {
   VIEW_ATTENDANCE: 'operations',
   MANAGE_ATTENDANCE: 'operations',
   APPROVE_LEAVE: 'operations',
+  VIEW_WORK_SCHEDULE: 'operations',
+  MANAGE_WORK_SCHEDULE: 'operations',
   MANAGE_BRANCHES: 'catalog',
   MANAGE_SERVICES: 'catalog',
   MANAGE_SERVICE_PRICES: 'catalog',

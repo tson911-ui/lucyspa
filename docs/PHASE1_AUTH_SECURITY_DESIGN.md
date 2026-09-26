@@ -195,7 +195,7 @@ PRD basis: sections 6.3, 6.4 and 44.
 Argon2id and its baseline are supported by
 [OWASP password-storage guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
 
-Proposed policy: 15-128 Unicode code points after NFC normalization; preserve
+Proposed policy: 15-128 Unicode code points after NFC normalization (**superseded 2026-09-26 by Owner decision: 8–128 for every account; see the [follow-up Step 6 report](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP6_COLLABORATOR_SCHEDULE_PAY.md)**); preserve
 case and spaces, never trim or truncate, and use the same normalization on every
 password entry path. Allow paste/password managers and passphrases. Reject known
 common/compromised passwords through a local maintained blocklist when setting

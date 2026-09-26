@@ -61,6 +61,18 @@ export const PERMISSION_CATALOG = Object.freeze([
   { code: 'VIEW_ATTENDANCE', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
   { code: 'MANAGE_ATTENDANCE', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
   { code: 'APPROVE_LEAVE', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  // Follow-up Step 6: collaborator work schedule. Scheduling never grants pay: setting or
+  // changing agreed pay also needs MANAGE_EMPLOYEE_PAY, seeing it VIEW_EMPLOYEE_PAY.
+  {
+    code: 'VIEW_WORK_SCHEDULE',
+    scopeCapability: 'BRANCH_CAPABLE',
+    dataClassification: 'STANDARD',
+  },
+  {
+    code: 'MANAGE_WORK_SCHEDULE',
+    scopeCapability: 'BRANCH_CAPABLE',
+    dataClassification: 'STANDARD',
+  },
 ] as const satisfies readonly PermissionDefinition[]);
 
 export interface PermissionCatalogSyncResult {

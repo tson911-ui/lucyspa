@@ -27,3 +27,5 @@ await import('../apps/api/dist/employees/collaborator.integration.test.js');
 await import('../apps/api/dist/account/my-account.integration.test.js');
 await import('../apps/api/dist/account/my-password.integration.test.js');
 await import('../apps/api/dist/account/email-change.integration.test.js');
+await import('../apps/api/dist/collaborator-work/collaborator-work.integration.test.js');
+await import('../apps/api/dist/auth/password-policy.integration.test.js');

@@ -69,7 +69,8 @@ export function emptyCreateForm(locale: Locale, branchIds: string[] = []): Creat
 }
 
 /** The existing workforce password policy's length bounds (the API also blocks common ones). */
-export const PASSWORD_LENGTH = { min: 15, max: 128 } as const;
+/** The global password rule (Owner decision, follow-up Step 6): 8–128 code points. */
+export const PASSWORD_LENGTH = { min: 8, max: 128 } as const;
 
 /** Code points after NFC normalization, as the API counts them. */
 export function passwordLength(value: string): number {

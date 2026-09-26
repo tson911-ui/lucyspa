@@ -14,7 +14,8 @@ const digests = new Set();
 for (const line of new TextDecoder('utf-8', { fatal: true }).decode(source).split(/\r?\n/)) {
   const normalized = line.normalize('NFC');
   const count = [...normalized].length;
-  if (count >= 15 && count <= 128) {
+  // Lucy Spa policy (follow-up Step 6): 8–128 code points; shorter entries fail on length.
+  if (count >= 8 && count <= 128) {
     digests.add(createHash('sha256').update(normalized, 'utf8').digest('hex'));
   }
 }

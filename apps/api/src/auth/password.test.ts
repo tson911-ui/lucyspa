@@ -6,6 +6,7 @@ import * as argon2 from 'argon2';
 import {
   normalizePassword,
   PASSWORD_HASH_PARAMETERS,
+  PASSWORD_POLICY,
   PasswordPolicyError,
   PasswordService,
   PasswordWorkLimitError,
@@ -20,7 +21,10 @@ test('password policy counts NFC Unicode code points without trimming or changin
   assert.equal(normalizePassword('🌺'.repeat(128)), '🌺'.repeat(128));
   assert.equal(normalizePassword('  Giữ Nguyên 15  '), '  Giữ Nguyên 15  ');
   assert.equal(validatePasswordForSetting(passphrase), passphrase);
-  for (const input of ['a'.repeat(14), 'a'.repeat(129), 'e\u0301'.repeat(14), '🌺'.repeat(129)]) {
+  // Global rule (follow-up Step 6): 8–128 code points for every account.
+  assert.equal(normalizePassword('e\u0301'.repeat(8)), 'é'.repeat(8));
+  assert.equal(normalizePassword('🌺'.repeat(8)), '🌺'.repeat(8));
+  for (const input of ['a'.repeat(7), 'a'.repeat(129), 'e\u0301'.repeat(7), '🌺'.repeat(129)]) {
     assert.throws(
       () => normalizePassword(input),
       (error: unknown) => error instanceof PasswordPolicyError && error.code === 'PASSWORD_LENGTH',
@@ -35,6 +39,30 @@ test('password policy counts NFC Unicode code points without trimming or changin
     `bad\udc00${passphrase}`,
   ]) {
     assert.throws(() => normalizePassword(input), PasswordPolicyError);
+  }
+});
+
+test('the global minimum is 8 and the maximum 128; the blocklist still applies', () => {
+  assert.equal(PASSWORD_POLICY.minCodePoints, 8);
+  assert.equal(PASSWORD_POLICY.maxCodePoints, 128);
+  const rejectedLength = (input: string) =>
+    assert.throws(
+      () => validatePasswordForSetting(input),
+      (error: unknown) => error instanceof PasswordPolicyError && error.code === 'PASSWORD_LENGTH',
+    );
+  rejectedLength('Lotus#7');
+  rejectedLength('Hoa sen buổi sáng 2026 '.repeat(6).slice(0, 128) + 'x');
+  assert.equal(validatePasswordForSetting('Lotus#72'), 'Lotus#72');
+  const longest = 'Hoa sen buổi sáng 2026 '.repeat(6).slice(0, 128);
+  assert.equal([...longest].length, 128);
+  assert.equal(validatePasswordForSetting(longest), longest);
+  for (const common of ['12345678', 'password', '123456789987654321']) {
+    assert.throws(
+      () => validatePasswordForSetting(common),
+      (error: unknown) =>
+        error instanceof PasswordPolicyError && error.code === 'PASSWORD_COMPROMISED',
+      common,
+    );
   }
 });
 

@@ -376,7 +376,8 @@ roles) does not self-register and needs no OTP for account provisioning:
     employee, a recent confirmation of the acting user's own password, and
     never let a manager take over a more powerful account, their own
     account or the Owner's account.
--   Passwords follow the existing policy (15–128 characters, common passwords
+-   Passwords follow the global policy for every Lucy Spa account (8–128
+    characters since the Owner decision of 2026-09-26; common passwords
     rejected), are stored only as secure hashes, and never appear in logs,
     audit records or responses. Setting a password signs the employee out of
     every existing session.

@@ -394,11 +394,7 @@ test(
             await context.test(
               '6. the existing password policy applies to initial passwords',
               async () => {
-                for (const weak of [
-                  'too short 1',
-                  '123456789987654321',
-                  '\uD800 lone surrogate pw',
-                ]) {
+                for (const weak of ['short 1', '123456789987654321', '\uD800 lone surrogate pw']) {
                   const candidate = input([A], { initialPassword: weak });
                   await fails(
                     employees.create(adminSession, candidate),

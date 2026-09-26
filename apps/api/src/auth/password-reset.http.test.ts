@@ -245,10 +245,10 @@ test('reset fails closed or rejects invalid input before any transaction or hash
     const weak = await request(configured.server)
       .post('/api/v1/auth/password-reset/complete')
       .set(configured.headers)
-      .send({ flowToken: generateCapability(), otp: '012345', newPassword: 'short-secret' })
+      .send({ flowToken: generateCapability(), otp: '012345', newPassword: 'sh-sec1' })
       .expect(400);
     assert.equal((weak.body as ApiErrorResponse).message, 'Validation failed: newPassword');
-    assert.equal(JSON.stringify(weak.body).includes('short-secret'), false);
+    assert.equal(JSON.stringify(weak.body).includes('sh-sec1'), false);
     assert.deepEqual(configured.counts(), { transactions: 0, hashes: 0 });
   } finally {
     await configured.app.close();

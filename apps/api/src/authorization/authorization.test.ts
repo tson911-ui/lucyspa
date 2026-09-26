@@ -341,7 +341,7 @@ test('account authorization summary: Owner virtual role, customer empty, effecti
   });
 });
 
-test('the code-owned catalog is exactly the Phase 1 and Phase 2 permissions', () => {
+test('the code-owned catalog is exactly the Phase 1, Phase 2 and follow-up Step 6 permissions', () => {
   assert.deepEqual(
     PERMISSION_CATALOG.map((entry) => [
       entry.code,
@@ -366,6 +366,9 @@ test('the code-owned catalog is exactly the Phase 1 and Phase 2 permissions', ()
       ['VIEW_ATTENDANCE', 'BRANCH_CAPABLE', 'STANDARD'],
       ['MANAGE_ATTENDANCE', 'BRANCH_CAPABLE', 'STANDARD'],
       ['APPROVE_LEAVE', 'BRANCH_CAPABLE', 'STANDARD'],
+      // Follow-up Step 6: collaborator work schedule (never pay).
+      ['VIEW_WORK_SCHEDULE', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['MANAGE_WORK_SCHEDULE', 'BRANCH_CAPABLE', 'STANDARD'],
     ],
   );
 });

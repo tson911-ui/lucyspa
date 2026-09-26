@@ -3,7 +3,7 @@
 import { BrandWordmark } from '@lucy-spa/ui';
 import Link from 'next/link';
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { oneAtATime } from '../../../lib/workforce/employee-create';
+import { oneAtATime, PASSWORD_LENGTH } from '../../../lib/workforce/employee-create';
 import {
   completeWorkforceReset,
   recoveryErrorMessage,
@@ -192,8 +192,8 @@ export function ForgotPasswordView(props: {
                 type="password"
                 autoComplete="new-password"
                 required
-                minLength={15}
-                maxLength={128}
+                minLength={PASSWORD_LENGTH.min}
+                maxLength={PASSWORD_LENGTH.max}
                 aria-invalid={props.problem === 'length' || undefined}
                 aria-describedby="forgot-password-hint"
                 value={props.password}

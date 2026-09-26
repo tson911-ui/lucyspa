@@ -3,6 +3,11 @@ import type { Logger } from 'pino';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { EmailChangeService } from './account/email-change.service.js';
 import {
+  CollaboratorWorkController,
+  MyCollaboratorWorkController,
+} from './collaborator-work/collaborator-work.controller.js';
+import { CollaboratorWorkService } from './collaborator-work/collaborator-work.service.js';
+import {
   MyAccountController,
   MyEmailController,
   MyPasswordController,
@@ -69,6 +74,8 @@ export class AppModule {
         MyAccountController,
         MyPasswordController,
         MyEmailController,
+        CollaboratorWorkController,
+        MyCollaboratorWorkController,
       ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },
@@ -94,6 +101,7 @@ export class AppModule {
         LeaveService,
         MyAccountService,
         EmailChangeService,
+        CollaboratorWorkService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
         { provide: APP_INTERCEPTOR, useClass: SessionActivityInterceptor },

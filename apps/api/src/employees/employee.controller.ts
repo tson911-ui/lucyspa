@@ -102,7 +102,7 @@ class EmployeeCreateDto implements EmployeeCreateRequest {
   employmentReason?: string;
   @ApiProperty({
     required: false,
-    description: 'Initial workforce password (15–128 characters); account created ACTIVE.',
+    description: 'Initial workforce password (8–128 characters); account created ACTIVE.',
   })
   @IsOptional()
   @IsString()
@@ -177,7 +177,7 @@ class EmployeeBaseSalaryDto extends ReasonedDto implements EmployeeBaseSalaryReq
 class EmployeeSetupIssueDto extends ReasonedDto implements EmployeeSetupIssueRequest {}
 
 class EmployeeCredentialsDto extends ReasonedDto implements EmployeeCredentialsRequest {
-  @ApiProperty({ description: 'New workforce password (15–128 characters).' })
+  @ApiProperty({ description: 'New workforce password (8–128 characters).' })
   @IsString()
   @MaxLength(1_024)
   newPassword!: string;

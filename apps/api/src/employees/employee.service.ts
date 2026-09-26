@@ -71,6 +71,7 @@ import {
   presentClassification,
   transitionAllowed,
 } from './employment.js';
+import { cancelCollaboratorWorkFrom } from '../collaborator-work/collaborator-work.rules.js';
 import { writeProfile } from './profile.js';
 import { holdsManagerRole, workforceTitle } from './workforce-title.js';
 
@@ -939,6 +940,18 @@ export class EmployeeService {
       data: { rowVersion: { increment: 1 } },
       select: { id: true },
     });
+    // Owner decision Q14: leaving COLLABORATOR (ENDED, or promotion) cancels the scheduled
+    // collaborator work from the effective date on, atomically; the rows are kept.
+    if (latest.classification === 'COLLABORATOR') {
+      await cancelCollaboratorWorkFrom(tx, {
+        employeeUserId: target.id,
+        fromDate: effectiveDate,
+        actorUserId: actor.userId,
+        now,
+        reason,
+        requestId: context.requestId,
+      });
+    }
     await this.audit(context, target.id, branchIds, 'EMPLOYMENT_CLASSIFICATION_CHANGED', {
       reason,
       before: { classification: latest.classification, effectiveDate: day(latest.effectiveDate) },

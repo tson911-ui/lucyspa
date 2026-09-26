@@ -274,6 +274,11 @@ test('Step 2. the header shows the authoritative server title', () => {
 
 test('8–10. password reset: policy, confirmation, credential command with reauthentication', async () => {
   assert.equal(passwordProblem('short', 'short'), 'length');
+  // Global rule (follow-up Step 6): 8–128 code points.
+  assert.equal(passwordProblem('Lotus#7', 'Lotus#7'), 'length');
+  assert.equal(passwordProblem('Lotus#72', 'Lotus#72'), null);
+  assert.equal(passwordProblem('a'.repeat(128), 'a'.repeat(128)), null);
+  assert.equal(passwordProblem('a'.repeat(129), 'a'.repeat(129)), 'length');
   assert.equal(passwordProblem(PASSWORD, `${PASSWORD}.`), 'mismatch');
   assert.equal(passwordProblem(PASSWORD, PASSWORD), null);
   const request = credentialsRequest(4, PASSWORD, ' Quên mật khẩu ');
@@ -305,7 +310,7 @@ test('8–10. password reset: policy, confirmation, credential command with reau
   );
   const markup = detail(trainee);
   assert.ok(markup.includes(vi.employees.detail.resetPassword));
-  assert.match(markup, /id="reset-password" type="password"[^>]*minLength="15"/);
+  assert.match(markup, /id="reset-password" type="password"[^>]*minLength="8"/);
   assert.ok(markup.includes(vi.employees.detail.passwordHint));
   assert.ok(
     detail(trainee, owner, { ...member, status: 'PENDING_SETUP' }).includes(

@@ -37,7 +37,7 @@ async function main(): Promise<void> {
   } catch (error) {
     if (error instanceof PasswordPolicyError) {
       throw new UsageError(
-        'Password rejected by policy (15-128 characters, not a known common password).',
+        'Password rejected by policy (8-128 characters, not a known common password).',
       );
     }
     throw error;

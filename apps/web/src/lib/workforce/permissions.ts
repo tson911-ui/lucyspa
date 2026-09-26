@@ -81,6 +81,7 @@ export type NavKey =
   | 'myAccount'
   | 'attendance'
   | 'leave'
+  | 'collaboratorSchedule'
   | 'branches'
   | 'services'
   | 'skills'
@@ -115,6 +116,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'leave',
       group: 'operations',
       path: '/leave',
+    },
+    (canAnywhere(account, 'VIEW_WORK_SCHEDULE') ||
+      canAnywhere(account, 'MANAGE_WORK_SCHEDULE')) && {
+      key: 'collaboratorSchedule',
+      group: 'operations',
+      path: '/collaborator-schedule',
     },
     canAnywhere(account, 'MANAGE_BRANCHES') && {
       key: 'branches',

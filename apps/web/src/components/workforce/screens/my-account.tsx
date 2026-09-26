@@ -1,10 +1,21 @@
 'use client';
 
-import type { MyAccountResponse } from '@lucy-spa/contracts';
+import type {
+  BranchSummary,
+  CollaboratorWorkOccurrence,
+  MyAccountResponse,
+} from '@lucy-spa/contracts';
 import { useState, type FormEvent } from 'react';
 import { detailErrorMessage } from '../../../lib/workforce/employee-detail';
 import { formatDate } from '../../../lib/workforce/format';
 import { fill } from '../../../i18n/workforce';
+import {
+  collaboratorWorkCommands,
+  payLabel,
+  scheduleRange,
+} from '../../../lib/workforce/collaborator-work';
+import { businessToday, PASSWORD_LENGTH } from '../../../lib/workforce/employee-create';
+import { useBranches } from '../data';
 import { OTP_PATTERN } from '../../../lib/workforce/recovery';
 import {
   changeOwnPassword,
@@ -139,6 +150,9 @@ export function MyAccountView({
             ))}
           </ul>
         </Section>
+      ) : null}
+      {account.title === 'COLLABORATOR' || employee?.classification === 'COLLABORATOR' ? (
+        <MySchedule account={account} />
       ) : null}
       <Section title={texts.security}>
         <dl className="wf-facts">
@@ -335,8 +349,8 @@ export function ChangePasswordSection() {
               id="change-next"
               type="password"
               required
-              minLength={15}
-              maxLength={128}
+              minLength={PASSWORD_LENGTH.min}
+              maxLength={PASSWORD_LENGTH.max}
               autoComplete="new-password"
               aria-describedby="change-next-hint"
               value={form.next}
@@ -540,5 +554,71 @@ export function ChangeEmailSection({
         </form>
       )}
     </details>
+  );
+}
+
+/**
+ * "Lịch làm việc / Work schedule" for a signed-in collaborator (follow-up Step 6): their own
+ * occurrences and own agreed pay, read-only. Not payroll and not an income total.
+ */
+function MySchedule({ account }: { account: MyAccountResponse }) {
+  const { api } = useWorkforce();
+  const branches = useBranches(api);
+  const today = businessToday(
+    account.employee?.branches.map((branch) => branch.id) ?? [],
+    branches.data ?? null,
+  );
+  const range = scheduleRange(today);
+  const mine = useResource(
+    () => collaboratorWorkCommands.mine(api, range.from, range.to),
+    [api, range.from, range.to],
+  );
+  return <MyScheduleView items={mine.data?.items ?? null} branches={branches.data} />;
+}
+
+export function MyScheduleView({
+  items,
+  branches,
+}: {
+  items: CollaboratorWorkOccurrence[] | null;
+  branches: ReadonlyMap<string, BranchSummary> | null;
+}) {
+  const { t, locale } = useWorkforce();
+  const texts = t.myAccount.schedule;
+  const work = t.collaboratorWork;
+  return (
+    <Section title={texts.title}>
+      <p className="wf-hint">{texts.intro}</p>
+      {items === null ? <Loading t={t} /> : null}
+      {items !== null && items.length === 0 ? <Empty>{texts.empty}</Empty> : null}
+      {items !== null && items.length > 0 ? (
+        <table className="wf-table">
+          <thead>
+            <tr>
+              <th scope="col">{work.workDate}</th>
+              <th scope="col">{work.branch}</th>
+              <th scope="col">{work.mode}</th>
+              <th scope="col">{work.time}</th>
+              <th scope="col">{work.pay}</th>
+              <th scope="col">{work.status}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((row) => (
+              <tr key={row.id}>
+                <td data-label={work.workDate}>{formatDate(row.workDate, locale)}</td>
+                <td data-label={work.branch}>{branches?.get(row.branchId)?.name ?? '—'}</td>
+                <td data-label={work.mode}>{work.modes[row.mode]}</td>
+                <td data-label={work.time}>
+                  {row.startTime}–{row.endTime}
+                </td>
+                <td data-label={work.pay}>{payLabel(row, t, locale)}</td>
+                <td data-label={work.status}>{work.statuses[row.status]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
+    </Section>
   );
 }

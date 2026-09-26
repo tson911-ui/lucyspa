@@ -121,10 +121,10 @@ test('the account section shows the employee code as login ID and the password p
     />,
   );
   assert.match(markup, /<output id="new-login-id"[^>]*>NV0001<\/output>/);
-  assert.match(markup, /id="new-password" type="password"[^>]*minLength="15"/);
+  assert.match(markup, /id="new-password" type="password"[^>]*minLength="8"/);
   assert.match(markup, /autoComplete="new-password"/);
   assert.ok(markup.includes(vi.employees.create.fields.confirmPassword));
-  assert.ok(markup.includes('Ít nhất 15 ký tự'));
+  assert.ok(markup.includes('Từ 8 ký tự trở lên'));
   const english = renderToStaticMarkup(
     <AccessFields
       form={form({ provisionAccess: true, employeeId: '' })}
@@ -137,7 +137,7 @@ test('the account section shows the employee code as login ID and the password p
   assert.ok(english.includes('Set up login access now'));
   assert.ok(english.includes(en.employees.create.loginIdPending));
   assert.ok(english.includes(en.employees.create.accessNotAllowed));
-  assert.ok(english.includes('At least 15 characters'));
+  assert.ok(english.includes('At least 8 characters'));
 });
 
 test('password checks mirror the policy length; the request carries it only when chosen', () => {

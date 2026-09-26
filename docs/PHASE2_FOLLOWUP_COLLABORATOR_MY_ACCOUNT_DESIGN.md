@@ -1,12 +1,14 @@
 # Phase 2 follow-up: Collaborator and My Account foundation (design)
 
-**Status: DESIGN; Owner decisions Q1–Q16 RESOLVED (2026-09-26). Steps 2–4 deployed and
+**Status: DESIGN; Owner decisions Q1–Q16 RESOLVED (2026-09-26). Steps 2–5 deployed and
 accepted (see the [Step 2](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md),
-[Step 3](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP3_MY_ACCOUNT.md) and
-[Step 4](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP4_CHANGE_PASSWORD.md) reports); Step 5 implemented,
-not deployed (see [Step 5 report](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP5_VERIFIED_EMAIL_CHANGE.md));
-Steps 6–7 NOT implemented.** Phase 2 remains CLOSED / PRODUCTION ACCEPTED
-(Phase 2 closure docs `2d69e41`; application code in production through `73cf6ad`, follow-up Step 4). Phase 3
+[Step 3](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP3_MY_ACCOUNT.md),
+[Step 4](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP4_CHANGE_PASSWORD.md) and
+[Step 5](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP5_VERIFIED_EMAIL_CHANGE.md) reports); Step 6
+implemented, not deployed (see
+[Step 6 report](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP6_COLLABORATOR_SCHEDULE_PAY.md)); Step 7 NOT
+implemented.** Phase 2 remains CLOSED / PRODUCTION ACCEPTED
+(Phase 2 closure docs `2d69e41`; application code in production through `6a69d6b`, follow-up Step 5). Phase 3
 (booking) remains NOT STARTED. This follow-up is designed now because collaborator
 availability feeds booking. Nothing below exists in code, and there are no migrations yet.
 
@@ -241,6 +243,24 @@ occurrence.
 - **Create:** no server idempotency key, consistent with existing commands. A
   double-submit is caught by the overlap rule (409) plus the UI single-flight guard.
 - **Edit and cancel:** `expectedVersion`.
+
+**Final Step 6 contracts** (implemented; these refine the proposal above, see the
+[Step 6 report](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP6_COLLABORATOR_SCHEDULE_PAY.md)):
+
+- **Times:** `start_minute`/`end_minute` SMALLINT minutes of the branch-local date, rather
+  than TIME, matching the branch-hours model.
+- **Pay:** `agreed_pay_vnd` is nullable (not agreed yet), so a scheduler without pay
+  permission can schedule. Pay is added later with `MANAGE_EMPLOYEE_PAY`.
+- **Edits:** the branch **can** be edited (the Owner request for Step 6), with pay authority
+  at both branches when the occurrence is priced.
+- **Reasons:** a reason is required for past dates and for cancellation.
+- **Leaving COLLABORATOR:** ENDED **or promotion** cancels SCHEDULED work from the
+  effective date on.
+- **Permissions:** both `VIEW_WORK_SCHEDULE` and `MANAGE_WORK_SCHEDULE` were added (Q12).
+- **Cost source:** the occurrence amount is the single source for future payroll and branch
+  personnel cost. It is not depreciation.
+- **Password rule:** the global password minimum is now 8 (Owner decision), applied to
+  every account.
 
 ## 7. My Account: single source of truth
 

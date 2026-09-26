@@ -18,6 +18,7 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'myAccount',
     'attendance',
     'leave',
+    'collaboratorSchedule',
     'branches',
     'services',
     'skills',

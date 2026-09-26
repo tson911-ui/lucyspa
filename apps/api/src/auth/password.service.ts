@@ -3,7 +3,9 @@ import type { DatabaseClient } from '@lucy-spa/database';
 import * as argon2 from 'argon2';
 import { COMMON_PASSWORD_DIGESTS } from './password-data/common-passwords.js';
 
-export const PASSWORD_POLICY = Object.freeze({ minCodePoints: 15, maxCodePoints: 128 });
+// Owner decision (follow-up Step 6): one global rule for every Lucy Spa account, customer
+// and workforce alike: 8–128 code points after NFC normalization. The blocklist still applies.
+export const PASSWORD_POLICY = Object.freeze({ minCodePoints: 8, maxCodePoints: 128 });
 export const PASSWORD_HASH_PARAMETERS = Object.freeze({
   type: argon2.argon2id,
   version: 0x13,

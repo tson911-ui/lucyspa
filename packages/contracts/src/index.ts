@@ -200,7 +200,7 @@ export interface EmployeeCreateRequest {
   /** Required when the start date is before today's business date. */
   employmentReason?: string;
   /**
-   * Optional initial workforce password (existing policy: 15–128 characters, not a common
+   * Optional initial workforce password (existing policy: 8–128 characters, not a common
    * password). When present the account is created ACTIVE and can sign in immediately with
    * the employee code; this additionally needs MANAGE_EMPLOYEE_ACCESS in every branch and a
    * fresh reauthentication of the creator. Without it the account stays PENDING_SETUP.
@@ -486,7 +486,9 @@ export type PermissionCodeName =
   | 'MANAGE_SKILLS'
   | 'VIEW_ATTENDANCE'
   | 'MANAGE_ATTENDANCE'
-  | 'APPROVE_LEAVE';
+  | 'APPROVE_LEAVE'
+  | 'VIEW_WORK_SCHEDULE'
+  | 'MANAGE_WORK_SCHEDULE';
 
 /** A named permission bundle. OWNER is virtual and never a role. */
 export interface RoleResponse {
@@ -1141,4 +1143,105 @@ export interface LeaveRequestQuery {
   to?: string;
   status?: LeaveStatus;
   employeeId?: string;
+}
+
+// ------------------------------------------------------------------ collaborator work (Step 6)
+
+/** Theo ca (explicit times) or Full ngày (snapshot of the branch hours when agreed). */
+export type CollaboratorWorkMode = 'SHIFT' | 'FULL_DAY';
+export type CollaboratorWorkStatus = 'SCHEDULED' | 'CANCELLED';
+
+/**
+ * One collaborator (CTV) work occurrence. Times are "HH:MM" on the branch-local work date
+ * (end may be "24:00"). `agreedPayVnd` is the manually agreed amount for this occurrence as
+ * an integer VND string (never derived from hours or attendance); null = not agreed yet.
+ * It is present only for the collaborator themself, or with VIEW_EMPLOYEE_PAY or
+ * MANAGE_EMPLOYEE_PAY at the occurrence's branch; otherwise the key is absent.
+ */
+export interface CollaboratorWorkOccurrence {
+  id: string;
+  employeeId: string;
+  employeeCode: string;
+  employeeName: string;
+  branchId: string;
+  workDate: string;
+  mode: CollaboratorWorkMode;
+  startTime: string;
+  endTime: string;
+  agreedPayVnd?: string | null;
+  status: CollaboratorWorkStatus;
+  note: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+}
+
+export interface CollaboratorWorkListResponse {
+  items: CollaboratorWorkOccurrence[];
+}
+
+/**
+ * GET /api/v1/collaborator-work?from&to[&branchId][&employeeId][&status]: occurrences at the
+ * branches where the caller holds VIEW_WORK_SCHEDULE or MANAGE_WORK_SCHEDULE (at most 62
+ * days). GET /api/v1/me/collaborator-work?from&to: the caller's own, with pay.
+ */
+export interface CollaboratorWorkQuery {
+  from: string;
+  to: string;
+  branchId?: string;
+  employeeId?: string;
+  status?: CollaboratorWorkStatus;
+}
+
+/**
+ * POST /api/v1/collaborator-work (MANAGE_WORK_SCHEDULE at the branch). SHIFT needs
+ * `startTime` and `endTime` inside the branch hours; FULL_DAY takes the branch hours of that
+ * date as a snapshot. `agreedPayVnd` (optional) needs MANAGE_EMPLOYEE_PAY at the branch.
+ * A past work date needs `reason`.
+ */
+export interface CollaboratorWorkCreateRequest {
+  employeeId: string;
+  branchId: string;
+  workDate: string;
+  mode: CollaboratorWorkMode;
+  startTime?: string;
+  endTime?: string;
+  agreedPayVnd?: string | null;
+  note?: string | null;
+  reason?: string;
+}
+
+/**
+ * POST /api/v1/collaborator-work/:id: controlled edit of a SCHEDULED occurrence. Every rule
+ * is re-checked; changing pay needs MANAGE_EMPLOYEE_PAY; a past (old or new) date needs
+ * `reason`. A FULL_DAY occurrence keeps its snapshot unless its date, branch or mode changes.
+ */
+export interface CollaboratorWorkUpdateRequest {
+  expectedVersion: number;
+  branchId?: string;
+  workDate?: string;
+  mode?: CollaboratorWorkMode;
+  startTime?: string;
+  endTime?: string;
+  agreedPayVnd?: string | null;
+  note?: string | null;
+  reason?: string;
+}
+
+/** POST /api/v1/collaborator-work/:id/cancel: kept as history; a reason is required. */
+export interface CollaboratorWorkCancelRequest {
+  expectedVersion: number;
+  reason: string;
+}
+
+/**
+ * GET /api/v1/collaborator-work/options?branchId&workDate (MANAGE_WORK_SCHEDULE at the
+ * branch): the branch hours of that date (null when closed) and the collaborators who may be
+ * scheduled there (COLLABORATOR on that date, active assignment at the branch).
+ */
+export interface CollaboratorWorkOptionsResponse {
+  window: { startTime: string; endTime: string } | null;
+  collaborators: { id: string; employeeCode: string; fullName: string }[];
 }

@@ -332,3 +332,21 @@ test('change email: request, resend and verify over /me/email; safe messages', a
     assert.equal(emailChangeErrorMessage(error, vi), message);
   }
 });
+
+test('Step 6: no password text or input still requires 15 characters', () => {
+  const texts = JSON.stringify([vi, en]);
+  for (const stale of ['15 ký tự', '15 characters', '15–128', '15 đến 128', '15 to 128']) {
+    assert.ok(!texts.includes(stale), stale);
+  }
+  const form = render(<ChangePasswordSection />, employee());
+  assert.match(form, /id="change-next" type="password"[^>]*minLength="8"[^>]*maxLength="128"/);
+  assert.ok(form.includes('Từ 8 ký tự trở lên'));
+  assert.equal(
+    changePasswordProblem({ current: 'x', next: 'Lotus#7', confirm: 'Lotus#7' }),
+    'length',
+  );
+  assert.equal(
+    changePasswordProblem({ current: 'x', next: 'Lotus#72', confirm: 'Lotus#72' }),
+    null,
+  );
+});
