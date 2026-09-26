@@ -268,6 +268,7 @@ test(
                   'fullName',
                   'id',
                   'status',
+                  'title',
                   'version',
                 ]);
                 assert.deepEqual(entry?.branchIds, [A, B].sort());

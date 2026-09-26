@@ -196,6 +196,7 @@ test('employee commands enforce CSRF/origin, strict DTOs and their contracts', a
       { roleIds: [randomUUID()] },
       // The initial classification is explicit, never ENDED, with a real start date.
       { classification: 'ENDED' },
+      { classification: 'collaborator' },
       { classification: undefined },
       { classification: 'trainee' },
       { employmentStartDate: undefined },

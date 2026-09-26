@@ -61,7 +61,7 @@ class EmployeeDirectoryQueryDto {
   @IsOptional() @IsIn(['PENDING_SETUP', 'ACTIVE', 'INACTIVE']) status?: string;
   @IsOptional() @IsString() @MaxLength(128) cursor?: string;
   @IsOptional() @Matches(/^[1-9][0-9]{0,2}$/) limit?: string;
-  @IsOptional() @IsIn(['MANAGERS', 'EMPLOYEES']) group?: string;
+  @IsOptional() @IsIn(['MANAGERS', 'EMPLOYEES', 'COLLABORATORS', 'TRAINEES']) group?: string;
   @IsOptional() @Matches(/^[1-9][0-9]{0,5}$/) page?: string;
 }
 
@@ -88,8 +88,8 @@ class EmployeeCreateDto implements EmployeeCreateRequest {
   @IsString()
   @Matches(SALARY)
   baseSalaryVnd?: string | null;
-  @ApiProperty({ enum: ['TRAINEE', 'OFFICIAL_EMPLOYEE'] })
-  @IsIn(['TRAINEE', 'OFFICIAL_EMPLOYEE'])
+  @ApiProperty({ enum: ['TRAINEE', 'COLLABORATOR', 'OFFICIAL_EMPLOYEE'] })
+  @IsIn(['TRAINEE', 'COLLABORATOR', 'OFFICIAL_EMPLOYEE'])
   classification!: InitialEmploymentClassification;
   @ApiProperty({ description: 'Workforce start date YYYY-MM-DD (initial classification).' })
   @IsString()
@@ -112,9 +112,9 @@ class EmployeeCreateDto implements EmployeeCreateRequest {
 
 class ClassificationChangeDto implements EmploymentClassificationChangeRequest {
   @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
-  @ApiProperty({ enum: ['OFFICIAL_EMPLOYEE', 'ENDED'] })
-  @IsIn(['OFFICIAL_EMPLOYEE', 'ENDED'])
-  classification!: 'OFFICIAL_EMPLOYEE' | 'ENDED';
+  @ApiProperty({ enum: ['COLLABORATOR', 'OFFICIAL_EMPLOYEE', 'ENDED'] })
+  @IsIn(['COLLABORATOR', 'OFFICIAL_EMPLOYEE', 'ENDED'])
+  classification!: 'COLLABORATOR' | 'OFFICIAL_EMPLOYEE' | 'ENDED';
   @ApiProperty({ description: 'Effective date YYYY-MM-DD.' })
   @IsString()
   @Matches(DATE)

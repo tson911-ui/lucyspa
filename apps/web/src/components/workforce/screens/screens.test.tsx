@@ -46,6 +46,13 @@ test('leave: request form for employees; approvals only with APPROVE_LEAVE', () 
   assert.doesNotMatch(plain, new RegExp(vi.leave.decisions));
   const approver = render(<LeaveScreen />, employee([['APPROVE_LEAVE', 'A']]), 'en');
   assert.match(approver, new RegExp(en.leave.decisions));
+  // Collaborators never use leave (Q15): a notice instead of the request form.
+  const collaborator = render(<LeaveScreen />, {
+    ...employee(),
+    workforceTitle: 'COLLABORATOR',
+  });
+  assert.ok(collaborator.includes(vi.leave.collaboratorNoLeave));
+  assert.doesNotMatch(collaborator, new RegExp(vi.leave.newRequest));
 });
 
 test('leave types and statuses are shown with localized labels, not raw codes', () => {

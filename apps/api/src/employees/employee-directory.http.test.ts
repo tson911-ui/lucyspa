@@ -133,6 +133,9 @@ test('employee directory route enforces a strict query and its contract', async 
       .get('/api/v1/employees?group=MANAGERS&page=3&limit=20')
       .set(cookie)
       .expect(200);
+    for (const group of ['EMPLOYEES', 'COLLABORATORS', 'TRAINEES']) {
+      await request(server).get(`/api/v1/employees?group=${group}&page=1`).set(cookie).expect(200);
+    }
     assert.deepEqual(calls[2], ['list', token, { group: 'MANAGERS', page: '3', limit: '20' }]);
     // The single-employee read keeps its own route.
     for (const [error, status] of [

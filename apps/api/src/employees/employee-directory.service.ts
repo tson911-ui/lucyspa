@@ -12,7 +12,8 @@ import { SessionService } from '../auth/session.service.js';
 import { runAdminCommand } from '../authorization/admin-command.js';
 import { decide, GLOBAL, type AuthorityGraph } from '../authorization/authorization.js';
 import { isUuid } from './employee.input.js';
-import { day } from './employment.js';
+import { businessToday, day } from './employment.js';
+import { directoryGroupIds, MANAGER_ASSIGNMENT, workforceTitle } from './workforce-title.js';
 
 export const EMPLOYEE_DIRECTORY_PAGE = Object.freeze({
   defaultLimit: 50,
@@ -29,32 +30,33 @@ export interface EmployeeDirectoryInput {
   status?: string;
   cursor?: string;
   limit?: string;
-  /** MANAGERS | EMPLOYEES (manager-group role assignment); omitted = everyone. */
+  /** MANAGERS | EMPLOYEES | COLLABORATORS | TRAINEES; omitted = everyone. */
   group?: string;
   /** 1-based page number: numbered pages with a total instead of a keyset cursor. */
   page?: string;
 }
 
-const GROUPS: readonly EmployeeDirectoryGroup[] = ['MANAGERS', 'EMPLOYEES'];
-
-/** An assignment of an active manager-group role (display grouping only). */
-const MANAGER_ASSIGNMENT = {
-  roleAssignments: { some: { role: { isActive: true, isManagerGroup: true } } },
-} satisfies Prisma.UserWhereInput;
+const GROUPS: readonly EmployeeDirectoryGroup[] = [
+  'MANAGERS',
+  'EMPLOYEES',
+  'COLLABORATORS',
+  'TRAINEES',
+];
 
 const directorySelect = {
   id: true,
   status: true,
   fullName: true,
   rowVersion: true,
+  roleAssignments: { where: MANAGER_ASSIGNMENT, select: { id: true }, take: 1 },
   employeeProfile: {
     select: {
       employeeCodeCanonical: true,
-      // Latest recorded classification (Employee management Step 2 directory label).
+      // Classification history (newest first): the latest recorded entry and the one in
+      // effect today (the display title).
       classificationChanges: {
         select: { classification: true, effectiveDate: true },
         orderBy: { effectiveDate: 'desc' },
-        take: 1,
       },
       branchAssignments: {
         where: { revokedAt: null },
@@ -166,6 +168,14 @@ export class EmployeeDirectoryService {
       { exclusive: false },
       async ({ tx, actor }) => {
         const branches = await tx.branch.findMany({ select: { id: true } });
+        // One business date for the whole directory: the latest local date among branches.
+        const today = day(
+          await businessToday(
+            tx,
+            branches.map((row) => row.id),
+          ),
+        );
+        const groupIds = group === undefined ? null : await directoryGroupIds(tx, group, today);
         const visible = directoryVisibility(
           actor.graph,
           branches.map((row) => row.id),
@@ -175,8 +185,7 @@ export class EmployeeDirectoryService {
           { kind: 'EMPLOYEE', employeeProfile: { isNot: null } },
           { OR: visible },
           ...(status ? [{ status }] : []),
-          ...(group === 'MANAGERS' ? [MANAGER_ASSIGNMENT] : []),
-          ...(group === 'EMPLOYEES' ? [{ NOT: MANAGER_ASSIGNMENT }] : []),
+          ...(groupIds === null ? [] : [{ id: { in: groupIds } }]),
           ...(branchId
             ? [{ employeeProfile: { branchAssignments: { some: { revokedAt: null, branchId } } } }]
             : []),
@@ -199,6 +208,9 @@ export class EmployeeDirectoryService {
         const present = (row: DirectoryRow): EmployeeDirectoryEntry => {
           const profile = row.employeeProfile!;
           const latest = profile.classificationChanges[0];
+          const current =
+            profile.classificationChanges.find((entry) => day(entry.effectiveDate) <= today)
+              ?.classification ?? null;
           return {
             id: row.id,
             employeeId: profile.employeeCodeCanonical,
@@ -208,6 +220,11 @@ export class EmployeeDirectoryService {
             version: row.rowVersion,
             classification: latest?.classification ?? null,
             classificationEffectiveDate: latest ? day(latest.effectiveDate) : null,
+            title: workforceTitle({
+              owner: false,
+              current,
+              manager: current === 'OFFICIAL_EMPLOYEE' && row.roleAssignments.length > 0,
+            }),
           };
         };
         const orderBy = { employeeProfile: { employeeCodeCanonical: 'asc' } } as const;

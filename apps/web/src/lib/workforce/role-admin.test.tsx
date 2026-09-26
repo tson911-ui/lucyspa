@@ -231,6 +231,7 @@ test('12, 14–17. roles are bundles; assignment decides the scope; nothing is s
   // Employment classification is untouched by roles.
   assert.deepEqual(Object.keys(vi.employees.classifications), [
     'TRAINEE',
+    'COLLABORATOR',
     'OFFICIAL_EMPLOYEE',
     'ENDED',
   ]);

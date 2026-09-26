@@ -29,12 +29,7 @@ import {
   useSubmit,
 } from '../ui';
 import { EMPLOYEE_STATUS_TONE } from './employees';
-import {
-  AccessSection,
-  ClassificationBadge,
-  EmploymentSection,
-  ProfileSection,
-} from './employee-lifecycle';
+import { AccessSection, TitleBadge, EmploymentSection, ProfileSection } from './employee-lifecycle';
 import { RolesSection } from './employee-roles';
 import { SkillsSection } from './employee-skills';
 
@@ -108,8 +103,8 @@ export function EmployeeDetail({
     <>
       <PageHeader title={employee.fullName} intro={employee.employeeId}>
         <span className="wf-header-badges">
-          <span className="wf-muted wf-small">{t.employees.classification}:</span>
-          <ClassificationBadge employment={employment} />
+          <span className="wf-muted wf-small">{t.employees.titleColumn}:</span>
+          <TitleBadge employment={employment} />
           <span className="wf-muted wf-small">{t.employees.detail.accountStatus}:</span>
           <Badge tone={EMPLOYEE_STATUS_TONE[employee.status]}>
             {t.employees.statuses[employee.status]}
@@ -138,6 +133,7 @@ export function EmployeeDetail({
       <RolesSection
         employee={employee}
         ended={employment ? employmentEnded(employment) : false}
+        official={employment?.current?.classification === 'OFFICIAL_EMPLOYEE'}
         branches={branches}
       />
       <BranchAssignments employee={employee} branches={branches} reloadEmployee={reloadAll} />

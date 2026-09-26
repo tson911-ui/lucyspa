@@ -221,6 +221,7 @@ model EmployeeProfile {
 // and skills. Payroll-eligible only while OFFICIAL_EMPLOYEE.
 enum EmploymentClassification {
   TRAINEE
+  COLLABORATOR
   OFFICIAL_EMPLOYEE
   ENDED
 }

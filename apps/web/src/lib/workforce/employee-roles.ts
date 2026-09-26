@@ -143,6 +143,9 @@ export const roleCommands = {
 export function roleErrorMessage(error: unknown, t: WorkforceDictionary): string {
   if (error instanceof ApiError) {
     if (error.code === 'CONFLICT' && error.field === 'employment') return t.roles.endedNoNewRoles;
+    if (error.code === 'CONFLICT' && error.field === 'employmentClassification') {
+      return t.roles.managerNeedsOfficial;
+    }
     if (error.code === 'FORBIDDEN') return t.roles.forbidden;
     if (error.code === 'VALIDATION_FAILED' && error.field === 'scope') return t.roles.badScope;
   }

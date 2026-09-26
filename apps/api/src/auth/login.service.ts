@@ -8,6 +8,7 @@ import { AuthThrottleService } from './auth-throttle.service.js';
 import { AuthError } from './auth.error.js';
 import { generateCapability } from './crypto.js';
 import { normalizeEmail, normalizeEmployeeCode } from './identity.js';
+import { titleOfEmployee } from '../employees/workforce-title.js';
 import { PasswordService } from './password.service.js';
 import { RateLimitedError } from './registration.service.js';
 import { SessionService, type CredentialEvidence } from './session.service.js';
@@ -345,10 +346,26 @@ export class LoginService implements OnModuleInit {
             preferredLocale: true,
             emailDelivery: true,
             emailVerifiedAt: true,
+            employeeProfile: {
+              select: {
+                branchAssignments: { where: { revokedAt: null }, select: { branchId: true } },
+              },
+            },
           },
         });
         const graph = await loadAuthorityGraph(tx, userId);
         if (!user || !graph) throw new AuthError('AUTHENTICATION_REQUIRED');
+        // Workforce only: the authoritative display title (Owner, or derived for employees).
+        const title =
+          user.kind === 'OWNER'
+            ? ('OWNER' as const)
+            : user.kind === 'EMPLOYEE'
+              ? await titleOfEmployee(
+                  tx,
+                  user.id,
+                  user.employeeProfile?.branchAssignments.map((row) => row.branchId) ?? [],
+                )
+              : null;
         return {
           id: user.id,
           kind: user.kind,
@@ -362,6 +379,7 @@ export class LoginService implements OnModuleInit {
                 recoveryEmail: user.emailDelivery
                   ? { address: user.emailDelivery, verified: user.emailVerifiedAt !== null }
                   : null,
+                ...(title ? { workforceTitle: title } : {}),
               }),
         };
       }),

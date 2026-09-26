@@ -184,6 +184,9 @@ export function roleAdminErrorMessage(error: unknown, t: WorkforceDictionary): s
   const texts = t.roleAdmin;
   if (error instanceof ApiError) {
     if (error.code === 'CONFLICT' && error.field === 'code') return texts.duplicateCode;
+    if (error.code === 'CONFLICT' && error.field === 'managerGroupHolders') {
+      return texts.managerGroupHolders;
+    }
     if (error.code === 'VALIDATION_FAILED' && error.field === 'code') return texts.invalidCode;
     if (error.code === 'VALIDATION_FAILED' && error.field === 'permissions') {
       return texts.invalidPermissions;

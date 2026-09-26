@@ -9,14 +9,40 @@
 | **Phase 2 (services, employees, operations)** | **CLOSED / PRODUCTION ACCEPTED**                                 |
 | **Phase 3 (booking)**                         | **NOT STARTED.** It needs its own authorization and design step. |
 
-**Pre-Phase-3 follow-up (design only, NOT implemented):**
+**Pre-Phase-3 follow-up (in progress):**
 [Collaborator and My Account foundation design](docs/PHASE2_FOLLOWUP_COLLABORATOR_MY_ACCOUNT_DESIGN.md).
-It covers the COLLABORATOR classification, the manager invariant (managers must be
-OFFICIAL_EMPLOYEE), display titles, collaborator work schedule and agreed pay, My Account
-(single source of truth), email/password self-service, a My Income foundation, and the
-Phase 3 booking contract. It is being prepared before Phase 3 because collaborator
-availability affects booking. Phase 2 remains CLOSED / PRODUCTION ACCEPTED; Phase 3
-remains NOT STARTED. Owner decisions Q1–Q16 are listed in the design.
+It covers:
+
+- the COLLABORATOR classification;
+- the manager invariant (managers must be OFFICIAL_EMPLOYEE);
+- display titles;
+- collaborator work schedule and agreed pay;
+- My Account (single source of truth) and email/password self-service;
+- a My Income foundation;
+- the Phase 3 booking contract.
+
+It is being prepared before Phase 3 because collaborator availability affects booking.
+**Owner decisions Q1–Q16 are RESOLVED (2026-09-26)** and are recorded in the design.
+
+| Follow-up step                                                               | Status                                                                                                           |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Step 1: design                                                               | Done (`9592622`)                                                                                                 |
+| Step 2: COLLABORATOR + manager invariant + titles + directory sections       | **Implemented, pushed, NOT DEPLOYED** ([Step 2 report](docs/EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md)) |
+| Steps 3–7: My Account, password, email, collaborator schedule/pay, My Income | NOT implemented                                                                                                  |
+
+**Deploying Step 2 needs Owner authorization.** It adds two migrations
+(`20261002000000_employment_collaborator`, `20261002000001_employment_collaborator_transitions`).
+Run it in this order:
+
+1. take a backup;
+2. run `pnpm db:precheck:collaborator`, which must report 0/0;
+3. `pnpm db:deploy`;
+4. `pnpm build`;
+5. PM2 restart;
+6. run the pre-check again.
+
+Production is still at `fb0725d`. Phase 2 remains CLOSED / PRODUCTION ACCEPTED; **Phase 3
+remains NOT STARTED.** The next follow-up step is Step 3: My Account read + self profile edit.
 
 ### Production state (Phase 2 closure, 2026-09-26)
 

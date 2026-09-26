@@ -236,14 +236,38 @@ test('4–7. assign and remove use the existing API with loaded IDs', async () =
   }
 });
 
-test('8–9. employment classification stays TRAINEE / OFFICIAL_EMPLOYEE / ENDED', () => {
+test('8–9. employment classification stays TRAINEE / COLLABORATOR / OFFICIAL_EMPLOYEE / ENDED', () => {
   for (const dictionary of [vi, en]) {
     assert.deepEqual(Object.keys(dictionary.employees.classifications), [
       'TRAINEE',
+      'COLLABORATOR',
       'OFFICIAL_EMPLOYEE',
       'ENDED',
     ]);
   }
+});
+
+test('Step 2. manager-group roles are offered only to an official employee', () => {
+  const managerCatalog: RoleListResponse = {
+    ...catalog,
+    roles: catalog.roles.map((role) =>
+      role.id === ROLE_MANAGER ? { ...role, isManagerGroup: true } : role,
+    ),
+  };
+  const managerOption = (markup: string) =>
+    optionsOf(markup, 'role-id').find((option) => option.value === ROLE_MANAGER);
+  const official = view(owner, { catalog: managerCatalog });
+  assert.ok(!managerOption(official)?.label.includes(vi.roles.managerOfficialOnly));
+  const notOfficial = view(owner, { catalog: managerCatalog, official: false });
+  assert.ok(managerOption(notOfficial)?.label.includes(vi.roles.managerOfficialOnly));
+  assert.match(notOfficial, new RegExp(`value="${ROLE_MANAGER}" disabled`));
+  // Ordinary roles stay available to trainees and collaborators.
+  const ordinary = optionsOf(notOfficial, 'role-id').find((option) => option.value === ROLE_KTV);
+  assert.ok(!ordinary?.label.includes(vi.roles.managerOfficialOnly));
+  assert.equal(
+    roleErrorMessage(new ApiError(409, 'CONFLICT', 'employmentClassification'), vi),
+    vi.roles.managerNeedsOfficial,
+  );
 });
 
 test('14–17. containment, self, Owner and scope hints (the API decides)', () => {
@@ -271,7 +295,7 @@ test('14–17. containment, self, Owner and scope hints (the API decides)', () =
   assert.ok(canManageRoles(hrA, { ...member, branchIds: [BRANCH_A] }));
   assert.equal(
     render(
-      <RolesSection employee={member} ended={false} branches={branches} />,
+      <RolesSection employee={member} ended={false} official branches={branches} />,
       employee([['VIEW_EMPLOYEES']]),
     ),
     '',

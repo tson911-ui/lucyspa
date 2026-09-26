@@ -2,9 +2,9 @@ import type { EmployeeDirectoryGroup, EmployeeDirectoryResponse } from '@lucy-sp
 import type { WorkforceApi } from './api';
 
 /**
- * Employee directory groups (Quản lý / Nhân viên) with numbered pages. Grouping comes from
- * the API (`group`: an active manager-group role assignment) and each group is paginated on
- * the server (`page` + total), independently of the other.
+ * Employee directory sections (Quản lý / Nhân viên / CTV / Học viên) with numbered pages.
+ * Each section comes from the API (`group`) and is paginated on the server (`page` +
+ * total), independently of the others. Titles are server-derived.
  */
 
 export const DIRECTORY_PAGE_SIZE = 20;
@@ -64,7 +64,7 @@ export function filtersActive(filters: DirectoryFilters): boolean {
 /** Each group's current page, kept together but changed one group at a time. */
 export type GroupPages = Readonly<Record<EmployeeDirectoryGroup, number>>;
 
-export const FIRST_PAGES: GroupPages = { MANAGERS: 1, EMPLOYEES: 1 };
+export const FIRST_PAGES: GroupPages = { MANAGERS: 1, EMPLOYEES: 1, COLLABORATORS: 1, TRAINEES: 1 };
 
 /** Changes only `group`'s page; the other group's page is untouched. */
 export function withGroupPage(

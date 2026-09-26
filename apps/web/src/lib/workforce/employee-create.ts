@@ -26,6 +26,7 @@ import { errorMessage } from './workflows';
 /** The only classifications a new workforce member can start with. ENDED never is one. */
 export const INITIAL_CLASSIFICATIONS: readonly InitialEmploymentClassification[] = [
   'TRAINEE',
+  'COLLABORATOR',
   'OFFICIAL_EMPLOYEE',
 ];
 
@@ -210,7 +211,8 @@ export function needsStartReason(form: CreateForm, today: string): boolean {
  * exactly as typed: the API normalizes it). No salary, role, permission or skill is sent.
  */
 export function toCreateRequest(form: CreateForm, today: string): EmployeeCreateRequest {
-  if (form.classification !== 'TRAINEE' && form.classification !== 'OFFICIAL_EMPLOYEE') {
+  const classification = form.classification;
+  if (classification === '') {
     throw new Error('An initial classification must be chosen explicitly.');
   }
   const email = form.email.trim();
@@ -224,7 +226,7 @@ export function toCreateRequest(form: CreateForm, today: string): EmployeeCreate
     email: email.length > 0 ? email : null,
     locale: form.locale,
     branchIds: [...form.branchIds],
-    classification: form.classification,
+    classification,
     employmentStartDate: form.employmentStartDate,
     ...(needsStartReason(form, today) && reason.length > 0 ? { employmentReason: reason } : {}),
     ...(form.provisionAccess ? { initialPassword: form.initialPassword } : {}),
@@ -302,24 +304,20 @@ export function classificationText(
 }
 
 /**
- * Directory label for the latest recorded classification. A classification that only takes
- * effect later (a future start date or a scheduled change) says from when.
+ * Directory label: the authoritative server title. A member whose start date is still ahead
+ * shows from when ("Chưa bắt đầu (từ 01/10/2026)").
  */
-export function directoryClassification(
-  entry: Pick<
-    EmployeeDirectoryEntry,
-    'classification' | 'classificationEffectiveDate' | 'branchIds'
-  >,
-  branches: ReadonlyMap<string, BranchSummary> | null,
+export function directoryTitle(
+  entry: Pick<EmployeeDirectoryEntry, 'title' | 'classificationEffectiveDate'>,
   t: WorkforceDictionary,
   locale: Locale,
-  now: Date = new Date(),
 ): string {
-  if (!entry.classification) return '—';
-  const label = classificationText(entry.classification, t);
-  const from = entry.classificationEffectiveDate;
-  if (from && from > businessToday(entry.branchIds, branches, now)) {
-    return fill(t.employees.classificationFrom, { label, date: formatDate(from, locale) });
+  const label = t.employees.titles[entry.title];
+  if (entry.title === 'NOT_STARTED' && entry.classificationEffectiveDate) {
+    return fill(t.employees.classificationFrom, {
+      label,
+      date: formatDate(entry.classificationEffectiveDate, locale),
+    });
   }
   return label;
 }

@@ -23,6 +23,7 @@ import {
 } from '../authorization/admin-command.js';
 import { decide, GLOBAL } from '../authorization/authorization.js';
 import { isUuid } from '../employees/employee.input.js';
+import { currentClassification } from '../employees/workforce-title.js';
 
 /** Controlled leave types (SQL enum `LeaveType`). None implies paid/unpaid treatment. */
 export const LEAVE_TYPES: readonly LeaveType[] = Object.freeze([
@@ -168,6 +169,17 @@ export class LeaveService {
     return this.frame(sessionToken, requestId, [], async (context) => {
       const { tx, actor } = context;
       if (actor.principal.userKind !== 'EMPLOYEE') throw new AuthError('FORBIDDEN');
+      // Collaborators work by schedule and never use the leave workflow (Owner decision Q15).
+      const branches = await tx.employeeBranchAssignment.findMany({
+        where: { employeeUserId: actor.userId, revokedAt: null },
+        select: { branchId: true },
+      });
+      const current = await currentClassification(
+        tx,
+        actor.userId,
+        branches.map((row) => row.branchId),
+      );
+      if (current === 'COLLABORATOR') throw new AuthError('CONFLICT', 'classification');
       await this.requireNoOverlap(tx, actor.userId, startDate, endDate);
       const row = await tx.leaveRequest.create({
         data: {

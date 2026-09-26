@@ -71,6 +71,7 @@ import {
   presentClassification,
   transitionAllowed,
 } from './employment.js';
+import { holdsManagerRole, workforceTitle } from './workforce-title.js';
 
 /** Design section 2: a setup capability is high-entropy and lives 24 hours. */
 export const EMPLOYEE_SETUP_POLICY = Object.freeze({ lifetimeSeconds: 86_400 } as const);
@@ -182,7 +183,13 @@ export class EmployeeService {
       if (candidate.baseSalaryVnd !== null) {
         this.require(actor, 'MANAGE_EMPLOYEE_PAY', candidate.branchIds);
       }
+      // Base salary is for official employment only (Owner decision Q16).
+      if (candidate.baseSalaryVnd !== null && candidate.classification !== 'OFFICIAL_EMPLOYEE') {
+        throw new AuthError('VALIDATION_FAILED', 'baseSalaryVnd');
+      }
       // Official employment creates payroll eligibility: the pay authority is required too.
+      // TRAINEE and COLLABORATOR need only CREATE_EMPLOYEES (collaborator pay is per
+      // scheduled occurrence and authorized there, Owner decision Q2).
       if (candidate.classification === 'OFFICIAL_EMPLOYEE') {
         this.require(actor, 'MANAGE_EMPLOYEE_PAY', candidate.branchIds);
       }
@@ -312,7 +319,11 @@ export class EmployeeService {
     input: EmploymentClassificationChangeRequest,
     requestId?: string,
   ): Promise<EmploymentResponse> {
-    if (input.classification !== 'OFFICIAL_EMPLOYEE' && input.classification !== 'ENDED') {
+    if (
+      input.classification !== 'COLLABORATOR' &&
+      input.classification !== 'OFFICIAL_EMPLOYEE' &&
+      input.classification !== 'ENDED'
+    ) {
       throw new AuthError('VALIDATION_FAILED', 'classification');
     }
     const effectiveDate = parseEmploymentDate(input.effectiveDate, 'effectiveDate');
@@ -732,6 +743,19 @@ export class EmployeeService {
       this.forbidSelf(actor, target);
       this.require(actor, 'MANAGE_EMPLOYEE_PAY', branchIds);
       this.expectVersion(target, input.expectedVersion);
+      // Base salary is for official employment only (Owner decision Q16). The latest
+      // recorded classification decides, so a scheduled promotion can be prepared; clearing
+      // a salary is always allowed.
+      if (salary !== null) {
+        const latest = await tx.employmentClassificationChange.findFirst({
+          where: { employeeUserId: target.id },
+          orderBy: { effectiveDate: 'desc' },
+          select: { classification: true },
+        });
+        if (latest?.classification !== 'OFFICIAL_EMPLOYEE') {
+          throw new AuthError('CONFLICT', 'classification');
+        }
+      }
       await tx.user.update({
         where: { id: target.id },
         data: {
@@ -886,7 +910,7 @@ export class EmployeeService {
    */
   private async appendClassification(
     context: TargetContext,
-    classification: 'OFFICIAL_EMPLOYEE' | 'ENDED',
+    classification: 'COLLABORATOR' | 'OFFICIAL_EMPLOYEE' | 'ENDED',
     effectiveDate: Date,
     reason: string,
   ): Promise<void> {
@@ -902,6 +926,12 @@ export class EmployeeService {
     }
     if (effectiveDate <= latest.effectiveDate) {
       throw new AuthError('VALIDATION_FAILED', 'effectiveDate');
+    }
+    // Manager invariant (Owner decision Q3): an official employee holding an active
+    // manager-group role never leaves official employment while holding it. The role must
+    // be removed first; it is never removed silently.
+    if (latest.classification === 'OFFICIAL_EMPLOYEE' && (await holdsManagerRole(tx, target.id))) {
+      throw new AuthError('CONFLICT', 'managerRole');
     }
     const today = await businessToday(tx, branchIds);
     const backdated = effectiveDate < today;
@@ -1181,6 +1211,9 @@ export class EmployeeService {
     const history = await classificationHistory(tx, target.id);
     const current = await classificationOn(tx, target.id, today);
     const onDate = date === null ? null : await classificationOn(tx, target.id, date);
+    const currentClassification = current?.classification ?? null;
+    const manager =
+      currentClassification === 'OFFICIAL_EMPLOYEE' && (await holdsManagerRole(tx, target.id));
     return {
       employeeId: target.id,
       version: target.rowVersion,
@@ -1190,7 +1223,8 @@ export class EmployeeService {
         date === null
           ? null
           : { date: day(date), entry: onDate ? presentClassification(onDate) : null },
-      payrollEligibleToday: payrollEligible(current?.classification ?? null),
+      payrollEligibleToday: payrollEligible(currentClassification),
+      title: workforceTitle({ owner: false, current: currentClassification, manager }),
       history: history.map(presentClassification),
     };
   }

@@ -305,6 +305,15 @@ test(
 
             await context.test('reads are object-scoped and pay is gated', async () => {
               const inA = track(await employees.create(managerSession, input([A])));
+              // Base salary is for official employment only (follow-up Q16): promote first.
+              await tx.employmentClassificationChange.create({
+                data: {
+                  employeeUserId: inA.id,
+                  classification: 'OFFICIAL_EMPLOYEE',
+                  effectiveDate: new Date('2030-02-01T00:00:00.000Z'),
+                  reason: 'Promoted for the pay test',
+                },
+              });
               const other = await principal('EMPLOYEE', [B]);
               await grant(other, ['CREATE_EMPLOYEES'], B);
               const inB = track(await employees.create(await login(other), input([B])));
@@ -359,7 +368,10 @@ test(
               // Owner-supplied salary at creation: restricted audit, visible to the Owner.
               if (ownerSession) {
                 const withPay = track(
-                  await employees.create(ownerSession, input([A, B], { baseSalaryVnd: '0' })),
+                  await employees.create(
+                    ownerSession,
+                    input([A, B], { baseSalaryVnd: '0', classification: 'OFFICIAL_EMPLOYEE' }),
+                  ),
                 );
                 assert.equal(withPay.baseSalaryVnd, '0');
                 const [created] = await auditOf(withPay.id, 'BASE_SALARY_CHANGED');

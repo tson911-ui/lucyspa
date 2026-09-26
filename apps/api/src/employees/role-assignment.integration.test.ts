@@ -323,7 +323,9 @@ test(
                 SELECT unnest(enum_range(NULL::"EmploymentClassification"))::text AS value`;
                 assert.deepEqual(
                   values.map((row) => row.value),
-                  ['TRAINEE', 'OFFICIAL_EMPLOYEE', 'ENDED'],
+                  // COLLABORATOR is an employment classification too (follow-up Step 2);
+                  // roles such as KTV or manager never are.
+                  ['TRAINEE', 'COLLABORATOR', 'OFFICIAL_EMPLOYEE', 'ENDED'],
                 );
               },
             );

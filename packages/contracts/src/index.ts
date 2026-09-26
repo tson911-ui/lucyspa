@@ -93,6 +93,8 @@ export interface CurrentAccountResponse {
    * it is verified. Workforce password recovery by email works only once it is verified.
    */
   recoveryEmail?: { address: string; verified: boolean } | null;
+  /** Owner and employees only: the authoritative display title. */
+  workforceTitle?: WorkforceTitle;
 }
 
 /** CUSTOMER recovers customers; WORKFORCE recovers the Owner and employees. */
@@ -175,8 +177,17 @@ export interface EmployeeCreateRequest {
  * - OFFICIAL_EMPLOYEE (Nhân viên chính thức): payroll-eligible from its effective date;
  * - ENDED (Đã kết thúc làm việc/học việc): not payroll-eligible from its effective date.
  */
-export type EmploymentClassification = 'TRAINEE' | 'OFFICIAL_EMPLOYEE' | 'ENDED';
-export type InitialEmploymentClassification = 'TRAINEE' | 'OFFICIAL_EMPLOYEE';
+export type EmploymentClassification = 'TRAINEE' | 'COLLABORATOR' | 'OFFICIAL_EMPLOYEE' | 'ENDED';
+export type InitialEmploymentClassification = 'TRAINEE' | 'COLLABORATOR' | 'OFFICIAL_EMPLOYEE';
+
+/**
+ * The one authoritative workforce display title, derived by the server (never stored):
+ * OWNER "Chủ Spa"; MANAGER "Quản lý" (OFFICIAL_EMPLOYEE today with an active manager-group
+ * role); EMPLOYEE "Nhân viên"; COLLABORATOR "CTV"; TRAINEE "Học viên"; NOT_STARTED
+ * "Chưa bắt đầu" (start date in the future); ENDED "Đã nghỉ".
+ */
+export type WorkforceTitle =
+  'OWNER' | 'MANAGER' | 'EMPLOYEE' | 'COLLABORATOR' | 'TRAINEE' | 'NOT_STARTED' | 'ENDED';
 
 /** One append-only history entry. `recordedByUserId` is null only for migration backfill. */
 export interface EmploymentClassificationEntry {
@@ -201,6 +212,8 @@ export interface EmploymentResponse {
   current: EmploymentClassificationEntry | null;
   onDate: { date: string; entry: EmploymentClassificationEntry | null } | null;
   payrollEligibleToday: boolean;
+  /** Authoritative display title today (includes the manager-group role). */
+  title: WorkforceTitle;
   history: EmploymentClassificationEntry[];
 }
 
@@ -213,7 +226,7 @@ export interface EmploymentResponse {
  */
 export interface EmploymentClassificationChangeRequest {
   expectedVersion: number;
-  classification: 'OFFICIAL_EMPLOYEE' | 'ENDED';
+  classification: 'COLLABORATOR' | 'OFFICIAL_EMPLOYEE' | 'ENDED';
   effectiveDate: string;
   reason: string;
 }
@@ -268,13 +281,17 @@ export interface EmployeeDirectoryEntry {
    */
   classification: EmploymentClassification | null;
   classificationEffectiveDate: string | null;
+  /** Authoritative display title today. */
+  title: WorkforceTitle;
 }
 
 /**
- * Directory group (`group` query): MANAGERS = at least one assignment of an active
- * manager-group role; EMPLOYEES = none. Each member is in exactly one group.
+ * Directory section (`group` query), four mutually exclusive groups: MANAGERS (OFFICIAL
+ * today + active manager-group role), EMPLOYEES (other OFFICIAL), COLLABORATORS, TRAINEES.
+ * Ended or not-yet-started members are placed by their last active or upcoming
+ * classification.
  */
-export type EmployeeDirectoryGroup = 'MANAGERS' | 'EMPLOYEES';
+export type EmployeeDirectoryGroup = 'MANAGERS' | 'EMPLOYEES' | 'COLLABORATORS' | 'TRAINEES';
 
 export interface EmployeeDirectoryResponse {
   items: EmployeeDirectoryEntry[];

@@ -2,6 +2,7 @@ import type {
   EmployeeStatus,
   EmploymentClassification,
   EmploymentEndAccess,
+  WorkforceTitle,
   LeaveStatus,
   LeaveType,
   ServicePricingUnit,
@@ -151,6 +152,8 @@ const vi = {
   leave: {
     title: 'Nghỉ phép',
     newRequest: 'Tạo đơn nghỉ phép',
+    collaboratorNoLeave:
+      'CTV làm việc theo lịch làm việc đã thỏa thuận nên không dùng đơn nghỉ phép. Không có lịch nghĩa là không có ca làm.',
     type: 'Loại nghỉ',
     startDate: 'Từ ngày',
     endDate: 'Đến ngày',
@@ -370,6 +373,8 @@ const vi = {
       VIEW_AUDIT_LOG: 'Xem nhật ký kiểm toán',
     },
     duplicateCode: 'Mã vai trò này đã tồn tại.',
+    managerGroupHolders:
+      'Vai trò này đang được gán cho người không phải nhân viên (CTV hoặc học viên), nên chưa thể là vai trò quản lý đang dùng.',
     invalidCode: 'Mã vai trò chưa hợp lệ (chữ in hoa, số, “_”; không dùng OWNER).',
     invalidPermissions: 'Danh sách quyền không hợp lệ hoặc không thay đổi.',
     forbidden:
@@ -389,6 +394,9 @@ const vi = {
     revoke: 'Gỡ vai trò',
     reasonHint: 'Bắt buộc khi gán hoặc gỡ vai trò.',
     exceeds: 'vượt quyền của bạn',
+    managerOfficialOnly: 'chỉ dành cho nhân viên',
+    managerNeedsOfficial:
+      'Vai trò quản lý chỉ gán được cho nhân viên (không phải CTV hay học viên). Hãy chuyển phân loại sang nhân viên trước.',
     signOutNote: 'Thay đổi vai trò sẽ đăng xuất nhân sự khỏi các phiên đang mở.',
     assigned: 'Đã gán vai trò.',
     revoked: 'Đã gỡ vai trò.',
@@ -455,10 +463,16 @@ const vi = {
     directory: {
       managers: 'Quản lý',
       employees: 'Nhân viên',
+      collaborators: 'CTV',
+      trainees: 'Học viên',
       noManagers: 'Chưa có quản lý.',
       noEmployees: 'Chưa có nhân viên.',
+      noCollaborators: 'Chưa có CTV.',
+      noTrainees: 'Chưa có học viên.',
       noManagersFiltered: 'Không có quản lý phù hợp với tìm kiếm hoặc bộ lọc.',
       noEmployeesFiltered: 'Không có nhân viên phù hợp với tìm kiếm hoặc bộ lọc.',
+      noCollaboratorsFiltered: 'Không có CTV phù hợp với tìm kiếm hoặc bộ lọc.',
+      noTraineesFiltered: 'Không có học viên phù hợp với tìm kiếm hoặc bộ lọc.',
       pagination: 'Trang của danh sách {group}',
       previous: 'Trang trước',
       next: 'Trang sau',
@@ -512,15 +526,27 @@ const vi = {
     classification: 'Phân loại',
     classifications: {
       TRAINEE: 'Học viên',
-      OFFICIAL_EMPLOYEE: 'Nhân viên chính thức',
-      ENDED: 'Đã kết thúc làm việc/học việc',
+      COLLABORATOR: 'CTV',
+      OFFICIAL_EMPLOYEE: 'Nhân viên',
+      ENDED: 'Đã nghỉ',
     } satisfies Record<EmploymentClassification, string>,
+    /** Authoritative display titles (server-derived). */
+    titles: {
+      OWNER: 'Chủ Spa',
+      MANAGER: 'Quản lý',
+      EMPLOYEE: 'Nhân viên',
+      COLLABORATOR: 'CTV',
+      TRAINEE: 'Học viên',
+      NOT_STARTED: 'Chưa bắt đầu',
+      ENDED: 'Đã nghỉ',
+    } satisfies Record<WorkforceTitle, string>,
+    titleColumn: 'Chức danh',
     classificationFrom: '{label} (từ {date})',
     add: 'Thêm nhân sự',
     create: {
       title: 'Thêm nhân sự',
       intro:
-        'Nhân sự mới có thể là học viên hoặc nhân viên chính thức ngay từ đầu — không bắt buộc qua giai đoạn học viên.',
+        'Nhân sự mới có thể là học viên, CTV hoặc nhân viên ngay từ đầu — không bắt buộc qua giai đoạn học viên.',
       personal: 'Thông tin cá nhân',
       employment: 'Phân loại và ngày bắt đầu',
       branches: 'Chi nhánh',
@@ -558,6 +584,7 @@ const vi = {
       phoneHint: 'Ví dụ: 0905 123 456',
       emailHint: 'Không bắt buộc.',
       traineeHint: 'Đang học việc, chưa hưởng lương.',
+      collaboratorHint: 'Làm việc linh hoạt theo lịch; được trả công theo từng buổi đã thỏa thuận.',
       officialHint: 'Nhân viên chính thức, được tính lương từ ngày bắt đầu.',
       officialNoPay:
         'Chỉ người có quyền quản lý lương nhân viên mới tạo được nhân viên chính thức. Bạn vẫn có thể thêm học viên.',
@@ -617,12 +644,15 @@ const vi = {
       recordedAt: 'Ghi nhận lúc',
       endedNotice:
         'Đã kết thúc làm việc từ {date}. Không thể chuyển phân loại, đặt lại mật khẩu hay kích hoạt lại tài khoản. Hồ sơ và lịch sử vẫn được giữ nguyên.',
-      promote: 'Chuyển thành nhân viên chính thức',
+      promote: 'Chuyển phân loại',
+      changeTo: 'Chuyển sang',
       promoteHint:
         'Chỉ thay đổi phân loại nhân sự. Mã nhân viên, vai trò, chi nhánh, kỹ năng và mật khẩu giữ nguyên.',
       effectiveDate: 'Ngày hiệu lực',
       backdateOwnerOnly: 'Chỉ chủ spa được ghi nhận ngày trước hôm nay.',
-      promoted: 'Đã chuyển thành nhân viên chính thức từ {date}.',
+      promoted: 'Đã chuyển sang {label} từ {date}.',
+      managerRoleFirst:
+        'Nhân sự đang có vai trò quản lý: hãy gỡ vai trò quản lý trước khi kết thúc làm việc hoặc chuyển phân loại.',
       end: 'Kết thúc làm việc',
       endConfirm: 'Xác nhận kết thúc làm việc',
       endHint:
@@ -806,6 +836,8 @@ const en: Dictionary = {
   leave: {
     title: 'Leave',
     newRequest: 'Request leave',
+    collaboratorNoLeave:
+      'Collaborators work by their agreed schedule and do not use leave requests. No scheduled occurrence means no work that day.',
     type: 'Leave type',
     startDate: 'Start date',
     endDate: 'End date',
@@ -1022,6 +1054,8 @@ const en: Dictionary = {
       VIEW_AUDIT_LOG: 'View the audit log',
     },
     duplicateCode: 'This role code already exists.',
+    managerGroupHolders:
+      'This role is held by someone who is not an employee (collaborator or trainee), so it cannot be an active manager role.',
     invalidCode: 'The role code is not valid (uppercase letters, digits, “_”; not OWNER).',
     invalidPermissions: 'The permission list is not valid or did not change.',
     forbidden:
@@ -1041,6 +1075,9 @@ const en: Dictionary = {
     revoke: 'Remove role',
     reasonHint: 'Required to assign or remove a role.',
     exceeds: 'exceeds your permissions',
+    managerOfficialOnly: 'employees only',
+    managerNeedsOfficial:
+      'A manager role can only be given to an employee (not a collaborator or trainee). Change the classification to employee first.',
     signOutNote: 'Changing roles signs the member out of open sessions.',
     assigned: 'Role assigned.',
     revoked: 'Role removed.',
@@ -1107,10 +1144,16 @@ const en: Dictionary = {
     directory: {
       managers: 'Managers',
       employees: 'Employees',
+      collaborators: 'Collaborators',
+      trainees: 'Trainees',
       noManagers: 'No managers yet.',
       noEmployees: 'No employees yet.',
+      noCollaborators: 'No collaborators yet.',
+      noTrainees: 'No trainees yet.',
       noManagersFiltered: 'No managers match the search or filters.',
       noEmployeesFiltered: 'No employees match the search or filters.',
+      noCollaboratorsFiltered: 'No collaborators match the search or filters.',
+      noTraineesFiltered: 'No trainees match the search or filters.',
       pagination: '{group} pages',
       previous: 'Previous page',
       next: 'Next page',
@@ -1163,15 +1206,26 @@ const en: Dictionary = {
     classification: 'Classification',
     classifications: {
       TRAINEE: 'Trainee',
-      OFFICIAL_EMPLOYEE: 'Official employee',
-      ENDED: 'Employment ended',
+      COLLABORATOR: 'Collaborator',
+      OFFICIAL_EMPLOYEE: 'Employee',
+      ENDED: 'Ended',
     },
+    titles: {
+      OWNER: 'Spa Owner',
+      MANAGER: 'Manager',
+      EMPLOYEE: 'Employee',
+      COLLABORATOR: 'Collaborator',
+      TRAINEE: 'Trainee',
+      NOT_STARTED: 'Not started',
+      ENDED: 'Ended',
+    },
+    titleColumn: 'Title',
     classificationFrom: '{label} (from {date})',
     add: 'Add employee',
     create: {
       title: 'Add workforce member',
       intro:
-        'A new member can start directly as a trainee or as an official employee — the trainee stage is not required.',
+        'A new member can start directly as a trainee, a collaborator or an employee — the trainee stage is not required.',
       personal: 'Personal details',
       employment: 'Classification and start date',
       branches: 'Branches',
@@ -1208,6 +1262,7 @@ const en: Dictionary = {
       phoneHint: 'For example: 0905 123 456',
       emailHint: 'Optional.',
       traineeHint: 'Learning the job; not paid a salary.',
+      collaboratorHint: 'Works flexibly by schedule; paid the agreed amount per work occurrence.',
       officialHint: 'Official employee, payroll-eligible from the start date.',
       officialNoPay:
         'Only someone who manages employee pay can create an official employee. You can still add a trainee.',
@@ -1266,12 +1321,15 @@ const en: Dictionary = {
       recordedAt: 'Recorded at',
       endedNotice:
         'Employment ended on {date}. Classification changes, password resets and reactivation are not possible. The profile and history are kept.',
-      promote: 'Promote to official employee',
+      promote: 'Change classification',
+      changeTo: 'Change to',
       promoteHint:
         'Changes the employment classification only. Employee ID, roles, branches, skills and password stay the same.',
       effectiveDate: 'Effective date',
       backdateOwnerOnly: 'Only the Owner can record a date before today.',
-      promoted: 'Promoted to official employee from {date}.',
+      promoted: 'Changed to {label} from {date}.',
+      managerRoleFirst:
+        'This member holds a manager role: remove the manager role before ending employment or changing the classification.',
       end: 'End employment',
       endConfirm: 'Confirm end of employment',
       endHint:

@@ -47,25 +47,30 @@ import {
 export function RolesSection({
   employee,
   ended,
+  official,
   branches,
 }: {
   employee: EmployeeResponse;
   /** ENDED employment in effect: no new roles are offered (the API refuses them too). */
   ended: boolean;
+  /** OFFICIAL_EMPLOYEE today: the only classification that may hold a manager-group role. */
+  official: boolean;
   branches: ReadonlyMap<string, BranchSummary> | null;
 }) {
   const { account } = useAccount();
   if (!canManageRoles(account, employee)) return null;
-  return <RolesPanel employee={employee} ended={ended} branches={branches} />;
+  return <RolesPanel employee={employee} ended={ended} official={official} branches={branches} />;
 }
 
 function RolesPanel({
   employee,
   ended,
+  official,
   branches,
 }: {
   employee: EmployeeResponse;
   ended: boolean;
+  official: boolean;
   branches: ReadonlyMap<string, BranchSummary> | null;
 }) {
   const { api } = useWorkforce();
@@ -78,6 +83,7 @@ function RolesPanel({
     <RolesView
       employee={employee}
       ended={ended}
+      official={official}
       branches={branches}
       authorization={authorization.data}
       catalog={catalog.data}
@@ -94,6 +100,7 @@ function RolesPanel({
 export function RolesView({
   employee,
   ended,
+  official = true,
   branches,
   authorization,
   catalog,
@@ -103,6 +110,8 @@ export function RolesView({
 }: {
   employee: EmployeeResponse;
   ended: boolean;
+  /** Manager-group roles are offered only to an OFFICIAL_EMPLOYEE (the API enforces it). */
+  official?: boolean;
   branches: ReadonlyMap<string, BranchSummary> | null;
   authorization: EmployeeAuthorizationResponse | null;
   catalog: RoleListResponse | null;
@@ -257,11 +266,18 @@ export function RolesView({
                       —
                     </option>
                     {roles.map((role) => {
-                      const allowed = !selectedScope || grantable(account, role, selectedScope);
+                      const managerBlocked = role.isManagerGroup && !official;
+                      const allowed =
+                        !managerBlocked &&
+                        (!selectedScope || grantable(account, role, selectedScope));
                       return (
                         <option key={role.id} value={role.id} disabled={!allowed}>
                           {locale === 'vi' ? role.displayNameVi : role.displayNameEn} ({role.code})
-                          {allowed ? '' : ` — ${texts.exceeds}`}
+                          {managerBlocked
+                            ? ` — ${texts.managerOfficialOnly}`
+                            : allowed
+                              ? ''
+                              : ` — ${texts.exceeds}`}
                         </option>
                       );
                     })}

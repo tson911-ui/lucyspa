@@ -1,6 +1,8 @@
 # Phase 2 follow-up: Collaborator and My Account foundation (design)
 
-**Status: DESIGN ONLY — not implemented.** Phase 2 remains CLOSED / PRODUCTION ACCEPTED
+**Status: DESIGN; Owner decisions Q1–Q16 RESOLVED (2026-09-26). Step 2 implemented (see
+[Step 2 report](EMPLOYEE_MANAGEMENT_FOLLOWUP_STEP2_COLLABORATOR.md)); Steps 3–7 NOT
+implemented.** Phase 2 remains CLOSED / PRODUCTION ACCEPTED
 (application code in production through `fb0725d`; closure docs `2d69e41`). Phase 3
 (booking) remains NOT STARTED. This follow-up is designed now because collaborator
 availability feeds booking. Nothing below exists in code, and there are no migrations yet.
@@ -89,13 +91,13 @@ The employee code stays the stable identifier; it never encodes classification o
 The "from" state is the latest recorded classification; each change must be dated later
 than the latest one. Backdating remains Owner-only.
 
-| From \ To         | TRAINEE | COLLABORATOR             | OFFICIAL_EMPLOYEE | ENDED      |
-| ----------------- | ------- | ------------------------ | ----------------- | ---------- |
-| _(initial)_       | ✅      | ✅ **new**               | ✅                | ❌         |
-| TRAINEE           | —       | ✅ **new**               | ✅                | ✅         |
-| COLLABORATOR      | ❌      | —                        | ✅ **new**        | ✅ **new** |
-| OFFICIAL_EMPLOYEE | ❌      | ❌ _(Owner decision Q1)_ | —                 | ✅         |
-| ENDED             | ❌      | ❌                       | ❌                | —          |
+| From \ To         | TRAINEE | COLLABORATOR         | OFFICIAL_EMPLOYEE | ENDED      |
+| ----------------- | ------- | -------------------- | ----------------- | ---------- |
+| _(initial)_       | ✅      | ✅ **new**           | ✅                | ❌         |
+| TRAINEE           | —       | ✅ **new**           | ✅                | ✅         |
+| COLLABORATOR      | ❌      | —                    | ✅ **new**        | ✅ **new** |
+| OFFICIAL_EMPLOYEE | ❌      | ❌ (Q1: not allowed) | —                 | ✅         |
+| ENDED             | ❌      | ❌                   | ❌                | —          |
 
 - **Why TRAINEE → COLLABORATOR:** a trainee who finishes training may work flexibly
   without becoming official. It is business-safe: pay moves from none to agreed
@@ -123,13 +125,13 @@ covered by E3 below.
 Enforced in the API, the source of truth, at every write that could break it. Each check
 runs inside the existing transaction and locks:
 
-| #   | Command                                                                                                 | Rule                                                                                                                                                                                                                                                                               |
-| --- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| E1  | `assignRole` (role active + manager-group)                                                              | Refuse `409 employmentClassification` unless the target is OFFICIAL_EMPLOYEE today                                                                                                                                                                                                 |
-| E2  | `updateRole` setting `isManagerGroup=true` or re-activating a manager-group role                        | Refuse `409` if any current holder is not OFFICIAL_EMPLOYEE today (report the count)                                                                                                                                                                                               |
-| E3  | `endEmployment` / classification change _away_ from OFFICIAL_EMPLOYEE while holding manager-group roles | **Owner decision Q3.** Recommended: refuse with `409 managerRole` until the manager-group assignments are revoked (explicit, audited, no silent role change). Alternative: revoke them atomically in the same transaction, audited as `ROLE_REVOKED`, reason `EMPLOYMENT_CHANGED`. |
-| E4  | Classification change _to_ a non-official state via the Step 1 command                                  | Same as E3                                                                                                                                                                                                                                                                         |
-| E5  | `createEmployee`                                                                                        | No roles at creation, so nothing to check                                                                                                                                                                                                                                          |
+| #   | Command                                                                                                 | Rule                                                                                                                                       |
+| --- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| E1  | `assignRole` (role active + manager-group)                                                              | Refuse `409 employmentClassification` unless the target is OFFICIAL_EMPLOYEE today                                                         |
+| E2  | `updateRole` setting `isManagerGroup=true` or re-activating a manager-group role                        | Refuse `409` if any current holder is not OFFICIAL_EMPLOYEE today (report the count)                                                       |
+| E3  | `endEmployment` / classification change _away_ from OFFICIAL_EMPLOYEE while holding manager-group roles | **Q3 resolved: refuse** with `409 managerRole` until the manager-group assignments are revoked (explicit, audited, no silent role change). |
+| E4  | Classification change _to_ a non-official state via the Step 1 command                                  | Same as E3                                                                                                                                 |
+| E5  | `createEmployee`                                                                                        | No roles at creation, so nothing to check                                                                                                  |
 
 **Future-dated changes:** a scheduled ENDED on a future date leaves the member a manager
 until that date. Enforcement at E3 happens when the change is recorded. The display rule
@@ -169,8 +171,12 @@ NOT_STARTED`) plus localized labels in the web dictionary.
 viên" (was "Nhân viên chính thức"), ENDED "Đã nghỉ" (was "Đã kết thúc làm việc/học
 việc").
 
-**Directory grouping:** "Quản lý" becomes title = MANAGER. Everyone else stays in "Nhân
-viên", showing their title per row. A separate "CTV" section is Q5.
+**Directory grouping (Q5 resolved):** four mutually exclusive sections, each
+server-paginated: Quản lý (title MANAGER), Nhân viên (OFFICIAL without a manager role), CTV
+(COLLABORATOR) and Học viên (TRAINEE). ENDED and not-yet-started members are placed in the
+section of their last active classification (ENDED) or of their upcoming one (not
+started), with the title "Đã nghỉ" / "Chưa bắt đầu". So nobody disappears or is duplicated,
+and the existing status filter keeps working.
 
 ## 6. Collaborator schedule and pay model
 
@@ -378,7 +384,7 @@ unique across customers too. A self-edit can collide with a customer's phone, an
 | Action                                    | Permission (scope = every branch of the member, unless noted)                                                                                                           |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Classification changes incl. COLLABORATOR | `MANAGE_EMPLOYEE_PAY` (existing)                                                                                                                                        |
-| Create member as COLLABORATOR             | `CREATE_EMPLOYEES` + `MANAGE_EMPLOYEE_PAY` (Q2)                                                                                                                         |
+| Create member as COLLABORATOR             | `CREATE_EMPLOYEES` only (Q2)                                                                                                                                            |
 | Assign manager-group role                 | `MANAGE_PERMISSIONS` + containment (existing) + **E1**                                                                                                                  |
 | Collaborator schedule create/edit/cancel  | **New `MANAGE_WORK_SCHEDULE`** (branch-capable, at the occurrence's branch). Setting or changing `agreed_pay_vnd` also needs `MANAGE_EMPLOYEE_PAY` at that branch (Q12) |
 | View schedules (without pay)              | New `VIEW_WORK_SCHEDULE` (branch-capable), or reuse `VIEW_ATTENDANCE` (Q12)                                                                                             |
@@ -530,23 +536,42 @@ backup):
 6. **Step 7: My Income foundation** (own agreed-pay views, explicit deferral states).
 7. Then Phase 3 booking planning, using the section 13 contract.
 
-## Owner decisions needed
+## Owner decisions (RESOLVED 2026-09-26; these override any earlier recommendation above)
 
-| #   | Question                                                                                             | Recommendation                           |
-| --- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| Q1  | Allow OFFICIAL_EMPLOYEE → COLLABORATOR?                                                              | No, for now                              |
-| Q2  | Does creating/converting to COLLABORATOR need `MANAGE_EMPLOYEE_PAY`?                                 | Yes                                      |
-| Q3  | Ending/downgrading a manager: refuse until the role is removed, or auto-revoke atomically?           | Refuse (explicit)                        |
-| Q4  | Title for members whose start date is in the future                                                  | "Chưa bắt đầu"                           |
-| Q5  | A separate "CTV" directory section?                                                                  | No; title column in "Nhân viên"          |
-| Q6  | FULL_DAY hours: snapshot at scheduling or always current?                                            | Snapshot                                 |
-| Q7  | SHIFT outside branch hours: block or warn?                                                           | Block                                    |
-| Q8  | Past-dated occurrences: managers with a reason, or Owner-only?                                       | Managers with a reason                   |
-| Q9  | May employees see their own base salary in My Account?                                               | Yes (own only)                           |
-| Q10 | Phone self-edit without verification acceptable?                                                     | Yes (not a login identifier)             |
-| Q11 | May employees change their own full name?                                                            | Yes, audited                             |
-| Q12 | New `MANAGE_WORK_SCHEDULE`/`VIEW_WORK_SCHEDULE`, and must pay entry also need `MANAGE_EMPLOYEE_PAY`? | Yes / yes                                |
-| Q13 | Are TRAINEEs bookable in Phase 3?                                                                    | No by default                            |
-| Q14 | Recording ENDED: auto-cancel that collaborator's later occurrences?                                  | Yes, in the same transaction, audited    |
-| Q15 | Collaborator leave: use the leave module or not needed (they are scheduled)?                         | Not needed; hide leave for collaborators |
-| Q16 | Base salary for COLLABORATOR/TRAINEE: refuse non-null?                                               | Yes, refuse                              |
+| #   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q1  | OFFICIAL_EMPLOYEE → COLLABORATOR: **not allowed.**                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Q2  | Selecting COLLABORATOR (at creation or as a classification change) needs **no pay permission by itself**. The employment/classification authorization stays as it is: `CREATE_EMPLOYEES` at creation, and the existing classification-change permission for changes. Entering or changing collaborator **agreed pay** requires the pay/compensation permission.                                                                                                                                 |
+| Q3  | Ending or changing an OFFICIAL_EMPLOYEE who holds an active manager-group role: **REFUSE**. The management role must be removed first; a manager role is never removed silently.                                                                                                                                                                                                                                                                                                                |
+| Q4  | Future employment start displays **"Chưa bắt đầu / Not started"**.                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Q5  | **Four mutually exclusive directory sections**: Quản lý / Managers, Nhân viên / Employees, CTV / Collaborators, Học viên / Trainees. Each person appears in exactly one. Precedence: OFFICIAL + active manager-group role → Managers; OFFICIAL → Employees; COLLABORATOR → Collaborators; TRAINEE → Trainees. ENDED and not-yet-started people keep the existing status/filter behaviour without duplicates. The Owner is not in the directory. Each section keeps real server-side pagination. |
+| Q6  | FULL_DAY **snapshots** the branch business-hours window at creation. Later branch-hour edits never rewrite an agreed occurrence.                                                                                                                                                                                                                                                                                                                                                                |
+| Q7  | A SHIFT outside branch opening hours is **blocked**, not just warned.                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Q8  | Past-dated occurrences are allowed for Owner/authorized management with the permission, with a **required reason**, audited.                                                                                                                                                                                                                                                                                                                                                                    |
+| Q9  | A person may **see their own compensation**. Others' compensation stays permission-controlled.                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Q10 | Self-service phone change is allowed **without OTP**, audited. Verification can be added if phone ever becomes an auth/recovery factor.                                                                                                                                                                                                                                                                                                                                                         |
+| Q11 | Self-service name change is allowed, audited.                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Q12 | Explicit collaborator-schedule management authorization, plus the pay/compensation permission for entering or changing agreed pay. Pay is never exposed just because someone can schedule.                                                                                                                                                                                                                                                                                                      |
+| Q13 | Trainees are **not bookable** in Phase 3.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Q14 | COLLABORATOR → ENDED **cancels** that collaborator's future occurrences within the controlled transition. Records are kept (never deleted) and the cancellation is audited. This takes effect once the occurrences exist (Step 6).                                                                                                                                                                                                                                                              |
+| Q15 | Collaborators **do not use Leave**; their work is governed by the schedule. The leave workflow is refused for collaborators.                                                                                                                                                                                                                                                                                                                                                                    |
+| Q16 | Base salary is **refused for COLLABORATOR and TRAINEE**; it is for OFFICIAL_EMPLOYEE only.                                                                                                                                                                                                                                                                                                                                                                                                      |
+
+**Additional confirmed rules:**
+
+- A manager must be OFFICIAL_EMPLOYEE.
+- A collaborator becomes a manager only through COLLABORATOR → OFFICIAL_EMPLOYEE → a
+  manager-group role.
+- Display titles:
+  - Chủ Spa / Spa Owner;
+  - Quản lý / Manager;
+  - Nhân viên / Employee;
+  - CTV / Collaborator;
+  - Học viên / Trainee;
+  - Chưa bắt đầu / Not started;
+  - Đã nghỉ / Ended, for ENDED.
+- My Account and employee detail share one authoritative profile, so changes on either
+  surface are visible on the other immediately.
+- Collaborator pay is manual per occurrence and never derived from hours or attendance;
+  attendance and schedule/pay stay separate.
+- Phase 3 must require a covering collaborator occurrence.

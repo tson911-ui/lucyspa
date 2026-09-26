@@ -15,7 +15,7 @@ import { fill } from '../../../i18n/workforce';
 import {
   canOfferCreate,
   classificationText,
-  directoryClassification,
+  directoryTitle,
 } from '../../../lib/workforce/employee-create';
 import {
   directoryPage,
@@ -45,8 +45,8 @@ import { EmployeeCreateForm } from './employee-create';
 
 const STATUSES: EmployeeStatus[] = ['ACTIVE', 'PENDING_SETUP', 'INACTIVE'];
 const NO_FILTERS: DirectoryFilters = { q: '', branchId: '', status: '' };
-/** Managers first, then everyone else; each member appears in exactly one group. */
-const GROUPS: EmployeeDirectoryGroup[] = ['MANAGERS', 'EMPLOYEES'];
+/** Four mutually exclusive sections, managers first; each member appears in exactly one. */
+const GROUPS: EmployeeDirectoryGroup[] = ['MANAGERS', 'EMPLOYEES', 'COLLABORATORS', 'TRAINEES'];
 export const EMPLOYEE_STATUS_TONE: Record<EmployeeStatus, Tone> = {
   ACTIVE: 'success',
   PENDING_SETUP: 'warning',
@@ -248,6 +248,17 @@ function DirectoryGroupSection({
   );
 }
 
+const SECTION_TEXT = {
+  MANAGERS: { title: 'managers', empty: 'noManagers', filtered: 'noManagersFiltered' },
+  EMPLOYEES: { title: 'employees', empty: 'noEmployees', filtered: 'noEmployeesFiltered' },
+  COLLABORATORS: {
+    title: 'collaborators',
+    empty: 'noCollaborators',
+    filtered: 'noCollaboratorsFiltered',
+  },
+  TRAINEES: { title: 'trainees', empty: 'noTrainees', filtered: 'noTraineesFiltered' },
+} as const;
+
 /** A group's table, empty state and pagination (renders without a network in tests). */
 export function DirectoryGroupView({
   group,
@@ -272,17 +283,11 @@ export function DirectoryGroupView({
 }) {
   const { t } = useWorkforce();
   const texts = t.employees.directory;
-  const title = group === 'MANAGERS' ? texts.managers : texts.employees;
+  const section = SECTION_TEXT[group];
+  const title = texts[section.title];
   const items = data?.items ?? [];
   const pages = totalPages(data?.page?.total ?? 0, data?.page?.size);
-  const empty =
-    group === 'MANAGERS'
-      ? filtered
-        ? texts.noManagersFiltered
-        : texts.noManagers
-      : filtered
-        ? texts.noEmployeesFiltered
-        : texts.noEmployees;
+  const empty = filtered ? texts[section.filtered] : texts[section.empty];
   return (
     <Section title={title}>
       {error ? <ErrorState error={error} t={t} onRetry={() => void reload()} /> : null}
@@ -309,7 +314,7 @@ function DirectoryTable({
           <th scope="col">{t.employees.employeeId}</th>
           <th scope="col">{t.employees.fullName}</th>
           <th scope="col">{t.common.branch}</th>
-          <th scope="col">{t.employees.classification}</th>
+          <th scope="col">{t.employees.titleColumn}</th>
           <th scope="col">{t.common.status}</th>
           <th scope="col">{t.common.actions}</th>
         </tr>
@@ -324,9 +329,7 @@ function DirectoryTable({
                 .map((id) => branchLabel(id, branches as Map<string, BranchSummary> | null, t))
                 .join(', ') || '—'}
             </td>
-            <td data-label={t.employees.classification}>
-              {directoryClassification(employee, branches, t, locale)}
-            </td>
+            <td data-label={t.employees.titleColumn}>{directoryTitle(employee, t, locale)}</td>
             <td data-label={t.common.status}>
               <Badge tone={EMPLOYEE_STATUS_TONE[employee.status]}>
                 {t.employees.statuses[employee.status]}

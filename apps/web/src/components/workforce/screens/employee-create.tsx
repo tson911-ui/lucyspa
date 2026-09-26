@@ -253,6 +253,19 @@ export function EmployeeCreateForm({
               <input
                 type="radio"
                 name="new-classification"
+                value="COLLABORATOR"
+                checked={form.classification === 'COLLABORATOR'}
+                onChange={() => set('classification', 'COLLABORATOR')}
+              />
+              <span>
+                <strong>{t.employees.classifications.COLLABORATOR}</strong>
+                <span className="wf-hint">{texts.collaboratorHint}</span>
+              </span>
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="new-classification"
                 value="OFFICIAL_EMPLOYEE"
                 disabled={availability !== 'allowed'}
                 aria-describedby={officialNote ? 'new-official-note' : undefined}

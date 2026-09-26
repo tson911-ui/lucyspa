@@ -93,7 +93,11 @@ export function WorkforceShell({ children }: { children: ReactNode }) {
             {account.displayName}
             <span className="wf-muted wf-small">
               {' · '}
-              {account.kind === 'OWNER' ? t.auth.owner : t.auth.employee}
+              {account.workforceTitle
+                ? t.employees.titles[account.workforceTitle]
+                : account.kind === 'OWNER'
+                  ? t.auth.owner
+                  : t.auth.employee}
             </span>
           </span>
           <Link href={switchHref} hrefLang={other} lang={other} className="wf-lang">

@@ -57,7 +57,14 @@ export function LeaveScreen() {
   return (
     <>
       <PageHeader title={t.leave.title} intro={t.leave.wholeDays} />
-      {account.kind === 'EMPLOYEE' ? <OwnLeave /> : null}
+      {account.kind === 'EMPLOYEE' ? (
+        // Collaborators work by schedule and never use leave (Owner decision Q15).
+        account.workforceTitle === 'COLLABORATOR' ? (
+          <Notice tone="info">{t.leave.collaboratorNoLeave}</Notice>
+        ) : (
+          <OwnLeave />
+        )
+      ) : null}
       {canAnywhere(account, 'APPROVE_LEAVE') ? <LeaveDecisions /> : null}
     </>
   );

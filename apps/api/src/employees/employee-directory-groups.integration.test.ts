@@ -295,6 +295,8 @@ test(
             const official = await person('c-off', { classification: 'OFFICIAL_EMPLOYEE' });
             const trainee = await person('d-trn');
             const oldRole = await person('e-old');
+            await person('f-trn');
+            await person('g-trn');
             await assign(manager.id, managerRole);
             await assign(both.id, ktvRole);
             await assign(both.id, managerRole);
@@ -309,33 +311,29 @@ test(
               '1–6. one group per member, from active manager-group roles',
               async () => {
                 const managers = await ids({ group: 'MANAGERS', page: '1' });
-                const others = await ids({ group: 'EMPLOYEES', page: '1' });
+                const employees = await ids({ group: 'EMPLOYEES', page: '1' });
+                const collaborators = await ids({ group: 'COLLABORATORS', page: '1' });
+                const trainees = await ids({ group: 'TRAINEES', page: '1' });
                 assert.deepEqual(managers, [manager.id, both.id], 'manager, and manager + KTV');
-                assert.ok(others.includes(official.id), 'OFFICIAL_EMPLOYEE + KTV is an employee');
-                assert.ok(others.includes(trainee.id), 'TRAINEE is an employee');
+                assert.ok(employees.includes(official.id), 'OFFICIAL_EMPLOYEE + KTV: employee');
+                assert.ok(trainees.includes(trainee.id), 'TRAINEE: its own section');
                 assert.ok(
-                  others.includes(oldRole.id),
+                  trainees.includes(oldRole.id),
                   'a switched-off manager role does not count',
                 );
-                assert.equal(
-                  others.filter((id) => managers.includes(id)).length,
-                  0,
-                  'no duplicates',
-                );
+                assert.deepEqual(collaborators, []);
+                const sections = [...managers, ...employees, ...collaborators, ...trainees];
+                assert.equal(new Set(sections).size, sections.length, 'no duplicates');
                 const all = await ids({});
-                assert.deepEqual(
-                  [...managers, ...others].sort(),
-                  [...all].sort(),
-                  'complete split',
-                );
+                assert.deepEqual([...sections].sort(), [...all].sort(), 'complete split');
               },
             );
 
             await context.test(
               '7–11. server-side numbered pages with totals, per group',
               async () => {
-                const first = await list({ group: 'EMPLOYEES', page: '1', limit: '2' });
-                const second = await list({ group: 'EMPLOYEES', page: '2', limit: '2' });
+                const first = await list({ group: 'TRAINEES', page: '1', limit: '2' });
+                const second = await list({ group: 'TRAINEES', page: '2', limit: '2' });
                 const total = first.page!.total;
                 assert.ok(total >= 3);
                 assert.deepEqual(first.page, { number: 1, size: 2, total });
@@ -348,7 +346,7 @@ test(
                 );
                 assert.equal(first.nextCursor, null);
                 // Beyond the last page: empty items, the same total.
-                const beyond = await list({ group: 'EMPLOYEES', page: '99', limit: '2' });
+                const beyond = await list({ group: 'TRAINEES', page: '99', limit: '2' });
                 assert.deepEqual([beyond.items.length, beyond.page!.total], [0, total]);
                 // Managers page independently with their own total.
                 const managers = await list({ group: 'MANAGERS', page: '1', limit: '1' });

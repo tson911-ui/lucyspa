@@ -15,6 +15,8 @@ import {
   passwordProblem,
   profileForm,
   profilePatch,
+  nextClassifications,
+  latestClassification,
   promotionRequest,
   statusRequest,
   type DetailActions,
@@ -37,6 +39,7 @@ import { EMPLOYEE_STATUS_TONE } from './employees';
 
 const CLASSIFICATION_TONE: Record<string, Tone> = {
   TRAINEE: 'info',
+  COLLABORATOR: 'warning',
   OFFICIAL_EMPLOYEE: 'success',
   ENDED: 'neutral',
 };
@@ -173,6 +176,27 @@ export function ProfileSection({
 
 // ------------------------------------------------------------------ employment
 
+const TITLE_TONE: Record<string, Tone> = {
+  MANAGER: 'success',
+  EMPLOYEE: 'success',
+  COLLABORATOR: 'warning',
+  TRAINEE: 'info',
+  NOT_STARTED: 'neutral',
+  ENDED: 'neutral',
+  OWNER: 'info',
+};
+
+/** The authoritative, server-derived title (never recomputed in the browser). */
+export function TitleBadge({ employment }: { employment: EmploymentResponse | null }) {
+  const { t } = useWorkforce();
+  if (!employment) return null;
+  return (
+    <Badge tone={TITLE_TONE[employment.title] ?? 'neutral'}>
+      {t.employees.titles[employment.title]}
+    </Badge>
+  );
+}
+
 export function ClassificationBadge({ employment }: { employment: EmploymentResponse | null }) {
   const { t } = useWorkforce();
   const current = employment?.current?.classification;
@@ -292,6 +316,11 @@ function PromoteForm({
   const { api, t, locale } = useWorkforce();
   const { account } = useAccount();
   const texts = t.employees.detail;
+  const options = nextClassifications(latestClassification(employment));
+  // An explicit choice; preselected only when there is a single possible target.
+  const [target, setTarget] = useState<(typeof options)[number] | ''>(
+    options.length === 1 ? options[0]! : '',
+  );
   const [date, setDate] = useState(employment.today);
   const [reason, setReason] = useState('');
   const submit = useSubmit();
@@ -299,7 +328,7 @@ function PromoteForm({
 
   async function promote(event: FormEvent) {
     event.preventDefault();
-    if (!isCalendarDate(date) || reason.trim() === '' || ownerOnly) return;
+    if (target === '' || !isCalendarDate(date) || reason.trim() === '' || ownerOnly) return;
     const ok = await submit.run(
       () =>
         runMutation(
@@ -307,14 +336,19 @@ function PromoteForm({
             employeeCommands.promote(
               api,
               employee.id,
-              promotionRequest(employment.version, date, reason),
+              promotionRequest(employment.version, target, date, reason),
             ),
           onChanged,
         ),
       '',
     );
     if (ok) {
-      onDone(fill(texts.promoted, { date: formatDate(date, locale) }));
+      onDone(
+        fill(texts.promoted, {
+          label: t.employees.classifications[target],
+          date: formatDate(date, locale),
+        }),
+      );
       await onChanged();
     }
   }
@@ -324,6 +358,23 @@ function PromoteForm({
       <summary>{texts.promote}</summary>
       <form className="wf-form wf-member-form" onSubmit={(event) => void promote(event)}>
         <p className="wf-hint">{texts.promoteHint}</p>
+        <fieldset className="wf-choices">
+          <legend>{texts.changeTo}</legend>
+          {options.map((option) => (
+            <label key={option}>
+              <input
+                type="radio"
+                name="promote-target"
+                value={option}
+                checked={target === option}
+                onChange={() => setTarget(option)}
+              />
+              <span>
+                <strong>{t.employees.classifications[option]}</strong>
+              </span>
+            </label>
+          ))}
+        </fieldset>
         <div className="wf-row">
           <Field id="promote-date" label={texts.effectiveDate} required>
             <input
@@ -351,7 +402,7 @@ function PromoteForm({
           pending={submit.pending}
           label={texts.promote}
           pendingLabel={t.common.saving}
-          disabled={ownerOnly || reason.trim() === ''}
+          disabled={target === '' || ownerOnly || reason.trim() === ''}
         />
       </form>
     </details>

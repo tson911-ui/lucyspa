@@ -1,6 +1,7 @@
 import type {
   BranchSummary,
   EmployeeDirectoryEntry,
+  EmployeeDirectoryGroup,
   EmployeeDirectoryResponse,
 } from '@lucy-spa/contracts';
 import assert from 'node:assert/strict';
@@ -41,6 +42,12 @@ const entry = (
   version: 1,
   classification,
   classificationEffectiveDate: '2026-01-01',
+  title:
+    classification === 'OFFICIAL_EMPLOYEE'
+      ? 'EMPLOYEE'
+      : classification === null
+        ? 'NOT_STARTED'
+        : classification,
 });
 const page = (
   items: EmployeeDirectoryEntry[],
@@ -52,7 +59,7 @@ const page = (
   page: { number, size: DIRECTORY_PAGE_SIZE, total },
 });
 const view = (
-  group: 'MANAGERS' | 'EMPLOYEES',
+  group: EmployeeDirectoryGroup,
   data: EmployeeDirectoryResponse | null,
   extra: { page?: number; filtered?: boolean; locale?: 'vi' | 'en' } = {},
 ) =>
@@ -100,19 +107,24 @@ test('1–6, 16. sections: Managers above Employees; the API decides membership'
   const employeeTable = view('EMPLOYEES', employees);
   assert.ok(managerTable.includes('Trần Quản Lý'));
   assert.ok(!employeeTable.includes('Trần Quản Lý'));
-  assert.ok(managerTable.includes(vi.employees.classifications.OFFICIAL_EMPLOYEE));
-  assert.ok(employeeTable.includes(vi.employees.classifications.TRAINEE));
-  assert.ok(employeeTable.includes(`>${vi.employees.classification}<`), 'a column, not a group');
+  assert.ok(managerTable.includes(vi.employees.titles.EMPLOYEE));
+  assert.ok(employeeTable.includes(vi.employees.titles.TRAINEE));
+  assert.ok(employeeTable.includes(`>${vi.employees.titleColumn}<`), 'a column, not a group');
   assert.ok(view('EMPLOYEES', employees, { locale: 'en' }).includes('Trainee'));
 });
 
 test('7–11. pages: independent per group, bounded, current page marked, hidden if one', () => {
   // 7–8. Changing one group's page leaves the other untouched.
   const afterManagers = withGroupPage(FIRST_PAGES, 'MANAGERS', 3);
-  assert.deepEqual(afterManagers, { MANAGERS: 3, EMPLOYEES: 1 });
+  assert.deepEqual(afterManagers, { MANAGERS: 3, EMPLOYEES: 1, COLLABORATORS: 1, TRAINEES: 1 });
   const afterEmployees = withGroupPage(afterManagers, 'EMPLOYEES', 2);
-  assert.deepEqual(afterEmployees, { MANAGERS: 3, EMPLOYEES: 2 });
-  assert.deepEqual(withGroupPage(afterEmployees, 'MANAGERS', 0), { MANAGERS: 1, EMPLOYEES: 2 });
+  assert.deepEqual(afterEmployees, { MANAGERS: 3, EMPLOYEES: 2, COLLABORATORS: 1, TRAINEES: 1 });
+  assert.deepEqual(withGroupPage(afterEmployees, 'MANAGERS', 0), {
+    MANAGERS: 1,
+    EMPLOYEES: 2,
+    COLLABORATORS: 1,
+    TRAINEES: 1,
+  });
   // 9. Boundaries.
   assert.deepEqual(
     [pagerState(1, 8).previousDisabled, pagerState(1, 8).nextDisabled],
@@ -145,6 +157,52 @@ test('7–11. pages: independent per group, bounded, current page marked, hidden
   );
   // 11. One page: no pager at all.
   assert.doesNotMatch(view('MANAGERS', page([entry('QL01', 'B', null)], 5)), /wf-pagination/);
+});
+
+test('Step 2. four exclusive sections in order: Quản lý, Nhân viên, CTV, Học viên', () => {
+  const screen = render(<EmployeesScreen />, owner);
+  const at = [
+    vi.employees.directory.managers,
+    vi.employees.directory.employees,
+    vi.employees.directory.collaborators,
+    vi.employees.directory.trainees,
+  ].map((title) => screen.indexOf(`<h2>${title}</h2>`));
+  assert.ok(at.every((index) => index > 0));
+  assert.deepEqual(
+    [...at].sort((a, b) => a - b),
+    at,
+    'sections in the decided order',
+  );
+  assert.deepEqual(Object.keys(FIRST_PAGES), [
+    'MANAGERS',
+    'EMPLOYEES',
+    'COLLABORATORS',
+    'TRAINEES',
+  ]);
+  const collaborators = view(
+    'COLLABORATORS',
+    page([entry('CTV01', 'Lê Cộng Tác', 'COLLABORATOR')]),
+  );
+  assert.ok(collaborators.includes('Lê Cộng Tác') && collaborators.includes('>CTV<'));
+  assert.ok(view('COLLABORATORS', page([])).includes(vi.employees.directory.noCollaborators));
+  assert.ok(view('TRAINEES', page([])).includes(vi.employees.directory.noTrainees));
+  assert.ok(
+    view('TRAINEES', page([]), { filtered: true }).includes(
+      vi.employees.directory.noTraineesFiltered,
+    ),
+  );
+  // A member who has not started yet shows "Chưa bắt đầu" with the date.
+  const upcoming = view(
+    'TRAINEES',
+    page([
+      {
+        ...entry('HV09', 'Phạm Sắp Vào', 'TRAINEE'),
+        title: 'NOT_STARTED',
+        classificationEffectiveDate: '2026-10-01',
+      },
+    ]),
+  );
+  assert.ok(upcoming.includes('Chưa bắt đầu (từ 01/10/2026)'));
 });
 
 test('12–14. empty and filtered states per section', () => {

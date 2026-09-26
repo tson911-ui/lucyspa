@@ -3,6 +3,7 @@ import type {
   EmployeeProfileUpdateRequest,
   EmployeeResponse,
   EmployeeStatusChangeRequest,
+  EmploymentClassification,
   EmploymentClassificationChangeRequest,
   EmploymentEndAccess,
   EmploymentEndRequest,
@@ -59,9 +60,10 @@ export function detailActions(
   const ended = employment ? employmentEnded(employment) : false;
   return {
     editProfile: canAcross(account, 'UPDATE_EMPLOYEES', branches),
-    // TRAINEE → OFFICIAL_EMPLOYEE only; nothing follows ENDED (no rehire).
-    promote: pay && latest === 'TRAINEE',
-    end: pay && (latest === 'TRAINEE' || latest === 'OFFICIAL_EMPLOYEE'),
+    // Forward changes only (TRAINEE → CTV/Nhân viên, CTV → Nhân viên); never after ENDED.
+    promote: pay && nextClassifications(latest).length > 0,
+    end:
+      pay && (latest === 'TRAINEE' || latest === 'COLLABORATOR' || latest === 'OFFICIAL_EMPLOYEE'),
     disableWhenEnding: status,
     resetPassword: access && employee.status !== 'INACTIVE' && employment !== null && !ended,
     deactivate: status && employee.status !== 'INACTIVE',
@@ -113,17 +115,26 @@ export function backdatedForNonOwner(account: Account, date: string, today: stri
   return account.kind !== 'OWNER' && isCalendarDate(date) && date < today;
 }
 
+/**
+ * The classification changes offered from the latest recorded one (the API's matrix, minus
+ * ENDED which has its own action): TRAINEE → COLLABORATOR | OFFICIAL_EMPLOYEE,
+ * COLLABORATOR → OFFICIAL_EMPLOYEE. Never back from OFFICIAL_EMPLOYEE, never after ENDED.
+ */
+export function nextClassifications(
+  latest: EmploymentClassification | null,
+): ('COLLABORATOR' | 'OFFICIAL_EMPLOYEE')[] {
+  if (latest === 'TRAINEE') return ['COLLABORATOR', 'OFFICIAL_EMPLOYEE'];
+  if (latest === 'COLLABORATOR') return ['OFFICIAL_EMPLOYEE'];
+  return [];
+}
+
 export function promotionRequest(
   version: number,
+  classification: 'COLLABORATOR' | 'OFFICIAL_EMPLOYEE',
   effectiveDate: string,
   reason: string,
 ): EmploymentClassificationChangeRequest {
-  return {
-    expectedVersion: version,
-    classification: 'OFFICIAL_EMPLOYEE',
-    effectiveDate,
-    reason: reason.trim(),
-  };
+  return { expectedVersion: version, classification, effectiveDate, reason: reason.trim() };
 }
 
 export type EndingOutcome =
@@ -207,6 +218,9 @@ export function detailErrorMessage(error: unknown, t: WorkforceDictionary): stri
     }
     if (error.code === 'CONFLICT' && error.field === 'employment') {
       return texts.endedNoAccessChanges;
+    }
+    if (error.code === 'CONFLICT' && error.field === 'managerRole') {
+      return texts.managerRoleFirst;
     }
     if (error.code === 'CONFLICT' && error.field === 'classification') {
       return texts.transitionNotAllowed;

@@ -22,6 +22,7 @@ import {
   passwordProblem,
   profileForm,
   profilePatch,
+  nextClassifications,
   promotionRequest,
 } from './employee-detail';
 import { ApiError } from './api';
@@ -71,8 +72,15 @@ const entry = (
 });
 const employment = (history: EmploymentClassificationEntry[]): EmploymentResponse => {
   const current = [...history].reverse().find((row) => row.effectiveDate <= TODAY) ?? null;
+  const title =
+    current === null
+      ? 'NOT_STARTED'
+      : current.classification === 'OFFICIAL_EMPLOYEE'
+        ? 'EMPLOYEE'
+        : current.classification;
   return {
     employeeId: member.id,
+    title,
     version: member.version,
     today: TODAY,
     current,
@@ -133,14 +141,14 @@ test('1–2, 15, 19. detail shows profile, read-only login ID, separate status a
   assert.doesNotMatch(markup, /<input[^>]*value="NV0021"/, 'employee code is never an input');
   assert.doesNotMatch(markup, /username|tên đăng nhập/i);
   // Account status and employment classification are separate, each labelled.
-  assert.ok(markup.includes(`${vi.employees.classification}:`));
+  assert.ok(markup.includes(`${vi.employees.titleColumn}:`));
   assert.ok(markup.includes(`${vi.employees.detail.accountStatus}:`));
   assert.ok(markup.includes(vi.employees.classifications.TRAINEE));
   assert.ok(markup.includes(vi.employees.statuses.ACTIVE));
   const english = detail(official, owner, member, 'en');
   for (const text of [
     'Employee ID (login ID)',
-    'Official employee',
+    'Employee',
     'Classification history',
     'Reset password',
     'End employment',
@@ -182,21 +190,21 @@ test('4. classification, effective date, upcoming entries and history are shown'
   const markup = detail(endingLater);
   assert.ok(markup.includes(vi.employees.detail.history));
   assert.ok(markup.includes('01/08/2026'));
-  assert.ok(markup.includes('Đã ghi nhận trước: Đã kết thúc làm việc/học việc từ 31/10/2026.'));
+  assert.ok(markup.includes('Đã ghi nhận trước: Đã nghỉ từ 31/10/2026.'));
   assert.ok(markup.includes(`<dd>${vi.employees.detail.no}</dd>`), 'trainee: not payroll-eligible');
   const historyRows = detail(official).match(/<tr><td data-label="Hiệu lực từ">/g) ?? [];
   assert.equal(historyRows.length, 2);
   assert.ok(detail(official).includes(`<dd>${vi.employees.detail.yes}</dd>`));
 });
 
-test('5–7. promotion: only from TRAINEE, only the classification changes', async () => {
+test('5–7. classification change: forward only, only the classification changes', async () => {
   assert.ok(detailActions(owner, member, trainee).promote);
   assert.equal(detailActions(owner, member, official).promote, false);
   assert.equal(detailActions(owner, member, ended).promote, false);
   assert.equal(detailActions(owner, member, endingLater).promote, false, 'ENDED recorded');
   assert.ok(detail(trainee).includes(vi.employees.detail.promote));
   assert.ok(!detail(official).includes(vi.employees.detail.promote));
-  const request = promotionRequest(4, '2026-10-01', ' Hoàn thành học việc ');
+  const request = promotionRequest(4, 'OFFICIAL_EMPLOYEE', '2026-10-01', ' Hoàn thành học việc ');
   assert.deepEqual(request, {
     expectedVersion: 4,
     classification: 'OFFICIAL_EMPLOYEE',
@@ -218,6 +226,35 @@ test('5–7. promotion: only from TRAINEE, only the classification changes', asy
     detailErrorMessage(new ApiError(409, 'CONFLICT', 'classification'), vi),
     vi.employees.detail.transitionNotAllowed,
   );
+  // Step 2: the offered targets follow the matrix (never back from Nhân viên, never after ENDED).
+  assert.deepEqual(nextClassifications('TRAINEE'), ['COLLABORATOR', 'OFFICIAL_EMPLOYEE']);
+  assert.deepEqual(nextClassifications('COLLABORATOR'), ['OFFICIAL_EMPLOYEE']);
+  assert.deepEqual(nextClassifications('OFFICIAL_EMPLOYEE'), []);
+  assert.deepEqual(nextClassifications('ENDED'), []);
+  assert.deepEqual(nextClassifications(null), []);
+  const collaborator = employment([entry('COLLABORATOR', '2026-08-01')]);
+  assert.ok(detailActions(owner, member, collaborator).promote);
+  assert.ok(detailActions(owner, member, collaborator).end);
+  assert.deepEqual(
+    promotionRequest(4, 'COLLABORATOR', '2026-10-01', 'x').classification,
+    'COLLABORATOR',
+  );
+  // Ending a manager is refused until the role is removed; the reason is explained.
+  assert.equal(
+    detailErrorMessage(new ApiError(409, 'CONFLICT', 'managerRole'), vi),
+    vi.employees.detail.managerRoleFirst,
+  );
+});
+
+test('Step 2. the header shows the authoritative server title', () => {
+  assert.ok(detail(trainee).includes(`>${vi.employees.titles.TRAINEE}<`));
+  assert.ok(detail(official).includes(`>${vi.employees.titles.EMPLOYEE}<`));
+  const collaborator = employment([entry('COLLABORATOR', '2026-08-01')]);
+  assert.ok(detail(collaborator).includes(`>${vi.employees.titles.COLLABORATOR}<`));
+  const manager = { ...official, title: 'MANAGER' as const };
+  assert.ok(detail(manager).includes(`>${vi.employees.titles.MANAGER}<`));
+  const notStarted = employment([entry('TRAINEE', '2026-10-01')]);
+  assert.ok(detail(notStarted).includes(`>${vi.employees.titles.NOT_STARTED}<`));
 });
 
 test('8–10. password reset: policy, confirmation, credential command with reauthentication', async () => {

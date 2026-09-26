@@ -22,7 +22,7 @@ import {
   createErrorMessage,
   createProblems,
   creatableBranches,
-  directoryClassification,
+  directoryTitle,
   emptyCreateForm,
   INITIAL_CLASSIFICATIONS,
   needsStartReason,
@@ -114,7 +114,7 @@ test('1–2. the add action is offered only with CREATE_EMPLOYEES', () => {
 });
 
 test('3–6. explicit TRAINEE or OFFICIAL_EMPLOYEE choice; no default, no ENDED', () => {
-  assert.deepEqual(INITIAL_CLASSIFICATIONS, ['TRAINEE', 'OFFICIAL_EMPLOYEE']);
+  assert.deepEqual(INITIAL_CLASSIFICATIONS, ['TRAINEE', 'COLLABORATOR', 'OFFICIAL_EMPLOYEE']);
   assert.equal(emptyCreateForm('vi').classification, '', 'nothing preselected');
   const markup = render(
     <EmployeeCreateForm
@@ -134,6 +134,13 @@ test('3–6. explicit TRAINEE or OFFICIAL_EMPLOYEE choice; no default, no ENDED'
   assert.doesNotMatch(markup, new RegExp(vi.employees.classifications.ENDED));
   assert.ok(markup.includes(vi.employees.classifications.TRAINEE));
   assert.ok(markup.includes(vi.employees.classifications.OFFICIAL_EMPLOYEE));
+  // Step 2: CTV is a third explicit choice with its own hint.
+  assert.ok(markup.includes('value="COLLABORATOR"'));
+  assert.ok(markup.includes(vi.employees.create.collaboratorHint));
+  assert.equal(
+    toCreateRequest(filled({ classification: 'COLLABORATOR' }), TODAY).classification,
+    'COLLABORATOR',
+  );
   assert.ok(markup.includes(vi.employees.create.intro), 'the trainee stage is not required');
   // A missing choice is reported, never defaulted.
   assert.ok(
@@ -239,33 +246,26 @@ test('9. the created member is confirmed and listed with its classification', ()
   assert.ok(notice.includes(vi.employees.classifications.OFFICIAL_EMPLOYEE));
   assert.ok(notice.includes('chưa thể đăng nhập'), 'no claim that the member can sign in');
   assert.ok(notice.includes(`href="/vi/workforce/employees/${createdEmployee.id}"`));
-  const now = new Date('2026-09-26T03:00:00Z');
-  const entry = (classification: 'TRAINEE' | 'OFFICIAL_EMPLOYEE', date: string) => ({
-    classification,
-    classificationEffectiveDate: date,
-    branchIds: ['A'],
-  });
+  // The directory shows the authoritative server title; a future start shows from when.
   assert.equal(
-    directoryClassification(entry('TRAINEE', '2026-09-01'), branches, vi, 'vi', now),
+    directoryTitle({ title: 'TRAINEE', classificationEffectiveDate: '2026-09-01' }, vi, 'vi'),
     'Học viên',
   );
   assert.equal(
-    directoryClassification(entry('OFFICIAL_EMPLOYEE', '2026-10-01'), branches, vi, 'vi', now),
-    'Nhân viên chính thức (từ 01/10/2026)',
+    directoryTitle({ title: 'NOT_STARTED', classificationEffectiveDate: '2026-10-01' }, vi, 'vi'),
+    'Chưa bắt đầu (từ 01/10/2026)',
   );
   assert.equal(
-    directoryClassification(entry('OFFICIAL_EMPLOYEE', '2026-10-01'), branches, en, 'en', now),
-    'Official employee (from 2026-10-01)',
+    directoryTitle({ title: 'NOT_STARTED', classificationEffectiveDate: '2026-10-01' }, en, 'en'),
+    'Not started (from 2026-10-01)',
   );
   assert.equal(
-    directoryClassification(
-      { classification: null, classificationEffectiveDate: null, branchIds: [] },
-      branches,
-      vi,
-      'vi',
-      now,
-    ),
-    '—',
+    directoryTitle({ title: 'MANAGER', classificationEffectiveDate: '2026-01-01' }, vi, 'vi'),
+    'Quản lý',
+  );
+  assert.equal(
+    directoryTitle({ title: 'COLLABORATOR', classificationEffectiveDate: '2026-01-01' }, vi, 'vi'),
+    'CTV',
   );
 });
 

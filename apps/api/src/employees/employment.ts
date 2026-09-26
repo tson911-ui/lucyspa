@@ -14,13 +14,16 @@ import { AuthError } from '../auth/auth.error.js';
  */
 export const INITIAL_CLASSIFICATIONS: readonly InitialEmploymentClassification[] = [
   'TRAINEE',
+  'COLLABORATOR',
   'OFFICIAL_EMPLOYEE',
 ];
 
 /** Allowed changes after an existing classification. Nothing follows ENDED (no rehire). */
 const TRANSITIONS: Readonly<Record<EmploymentClassification, readonly EmploymentClassification[]>> =
   {
-    TRAINEE: ['OFFICIAL_EMPLOYEE', 'ENDED'],
+    TRAINEE: ['COLLABORATOR', 'OFFICIAL_EMPLOYEE', 'ENDED'],
+    // Never back from official to collaborator (Owner decision Q1).
+    COLLABORATOR: ['OFFICIAL_EMPLOYEE', 'ENDED'],
     OFFICIAL_EMPLOYEE: ['ENDED'],
     ENDED: [],
   };
@@ -32,7 +35,10 @@ export function transitionAllowed(
   return TRANSITIONS[from].includes(to);
 }
 
-/** Only official employment is payroll-eligible; trainees and ended employment are not. */
+/**
+ * Fixed/base salary payroll: official employment only. Collaborators are paid per scheduled
+ * occurrence (a later step); trainees and ended employment are not paid.
+ */
 export function payrollEligible(classification: EmploymentClassification | null): boolean {
   return classification === 'OFFICIAL_EMPLOYEE';
 }

@@ -215,6 +215,21 @@ export class RoleAdminService {
       if (activation && patch.isActive) {
         this.requireBundleHeld(actor, presentRole(role).permissions);
       }
+      // Manager invariant (E2): a role that becomes an active manager-group role (flag set,
+      // or re-activated while flagged) may only be held by OFFICIAL_EMPLOYEEs today.
+      const willManage =
+        (patch.isManagerGroup ?? role.isManagerGroup) && (patch.isActive ?? role.isActive);
+      const wasManaging = role.isManagerGroup && role.isActive;
+      if (willManage && !wasManaging) {
+        for (const recipient of recipients) {
+          const branches = await this.employeeBranches(tx, recipient);
+          const today = await businessToday(tx, branches);
+          const current = (await classificationOn(tx, recipient, today))?.classification;
+          if (current !== 'OFFICIAL_EMPLOYEE') {
+            throw new AuthError('CONFLICT', 'managerGroupHolders');
+          }
+        }
+      }
       const write = () =>
         tx.role
           .update({
@@ -332,11 +347,17 @@ export class RoleAdminService {
       await this.requireTarget(context, id, scope, input.expectedVersion);
       // Ended employment receives no new roles (no rehire); revocation stays possible.
       const today = await businessToday(tx, await this.employeeBranches(tx, id));
-      if ((await classificationOn(tx, id, today))?.classification === 'ENDED') {
+      const current = (await classificationOn(tx, id, today))?.classification ?? null;
+      if (current === 'ENDED') {
         throw new AuthError('CONFLICT', 'employment');
       }
       const role = await tx.role.findUnique({ where: { id: roleId }, select: roleSelect });
       if (!role) throw new AuthError('VALIDATION_FAILED', 'roleId');
+      // Manager invariant (E1): only an OFFICIAL_EMPLOYEE may hold an active manager-group
+      // role. Normal roles never depend on, or change, the classification.
+      if (role.isActive && role.isManagerGroup && current !== 'OFFICIAL_EMPLOYEE') {
+        throw new AuthError('CONFLICT', 'employmentClassification');
+      }
       await this.requireBranch(tx, scope);
       const duplicate = await tx.userRoleAssignment.findFirst({
         where: {
