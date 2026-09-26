@@ -206,12 +206,9 @@ test('Phase 2 schema invariants in an isolated, rolled-back schema', async (cont
       });
 
       await check('the code-owned catalog matches the database semantics exactly', async () => {
-        // This isolated schema stops at Phase 2; the follow-up Step 6 schedule codes come from
-        // a later enum-only migration (checked against the fully migrated database by the
-        // authorization integration test).
-        const phase2Catalog = PERMISSION_CATALOG.filter(
-          (entry) => entry.code !== 'VIEW_WORK_SCHEDULE' && entry.code !== 'MANAGE_WORK_SCHEDULE',
-        );
+        // This isolated schema stops at Phase 2: the first 17 codes. Later codes come from
+        // enum-only migrations (checked against the fully migrated database elsewhere).
+        const phase2Catalog = PERMISSION_CATALOG.slice(0, 17);
         for (const entry of phase2Catalog.slice(10)) {
           await insert('permissions', {
             code: entry.code,

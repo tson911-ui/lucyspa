@@ -40,7 +40,7 @@ test(
             await context.test('operator catalog sync is idempotent and exact', async () => {
               const first = await syncPermissionCatalog(tx);
               assert.equal(first.inserted + first.unchanged, PERMISSION_CATALOG.length);
-              assert.equal(PERMISSION_CATALOG.length, 19);
+              assert.equal(PERMISSION_CATALOG.length, 26);
               const second = await syncPermissionCatalog(tx);
               assert.deepEqual(second, { inserted: 0, unchanged: PERMISSION_CATALOG.length });
               const stored = await tx.permission.findMany({

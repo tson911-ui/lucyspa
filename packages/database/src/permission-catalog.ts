@@ -13,7 +13,7 @@ export interface PermissionDefinition {
 
 /**
  * Code-owned catalog (Phase 1 design section 7, extended in Phase 2). Every permission
- * is branch-capable except MANAGE_SERVICE_PRICES (GLOBAL_ONLY); only the two pay
+ * is branch-capable except MANAGE_SERVICE_PRICES and MANAGE_BOOKING_SETTINGS (GLOBAL_ONLY); only the two pay
  * permissions are EMPLOYEE_PAY data. Semantics are immutable in SQL.
  */
 export const PERMISSION_CATALOG = Object.freeze([
@@ -71,6 +71,23 @@ export const PERMISSION_CATALOG = Object.freeze([
   {
     code: 'MANAGE_WORK_SCHEDULE',
     scopeCapability: 'BRANCH_CAPABLE',
+    dataClassification: 'STANDARD',
+  },
+  // Phase 3 Booking & Visits (design O8). Skills qualify KTVs; these codes authorize actions.
+  { code: 'VIEW_BOOKINGS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  { code: 'MANAGE_BOOKINGS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  { code: 'MANAGE_QUEUE', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  { code: 'REASSIGN_SERVICES', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  { code: 'PERFORM_SERVICES', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  {
+    code: 'RESOLVE_SERVICE_EXECUTION',
+    scopeCapability: 'BRANCH_CAPABLE',
+    dataClassification: 'STANDARD',
+  },
+  // Booking settings are organization-wide (section 18): never grantable at branch scope.
+  {
+    code: 'MANAGE_BOOKING_SETTINGS',
+    scopeCapability: 'GLOBAL_ONLY',
     dataClassification: 'STANDARD',
   },
 ] as const satisfies readonly PermissionDefinition[]);

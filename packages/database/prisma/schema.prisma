@@ -30,6 +30,8 @@ model Branch {
   operatingHours      BranchOperatingHours[]
   attendanceRecords   AttendanceRecord[]
   collaboratorWork    CollaboratorWorkOccurrence[]
+  bookings            Booking[]
+  visits              Visit[]
 
   @@map("branches")
 }
@@ -138,6 +140,13 @@ enum PermissionCode {
   APPROVE_LEAVE
   VIEW_WORK_SCHEDULE
   MANAGE_WORK_SCHEDULE
+  VIEW_BOOKINGS
+  MANAGE_BOOKINGS
+  MANAGE_QUEUE
+  REASSIGN_SERVICES
+  PERFORM_SERVICES
+  RESOLVE_SERVICE_EXECUTION
+  MANAGE_BOOKING_SETTINGS
 }
 
 enum LeaveStatus {
@@ -193,6 +202,21 @@ model User {
   createdCollaboratorWork      CollaboratorWorkOccurrence[]     @relation("CollaboratorWorkCreator")
   updatedCollaboratorWork      CollaboratorWorkOccurrence[]     @relation("CollaboratorWorkUpdater")
   cancelledCollaboratorWork    CollaboratorWorkOccurrence[]     @relation("CollaboratorWorkCanceller")
+  ownedBookings                Booking[]                        @relation("BookingOwner")
+  createdBookings              Booking[]                        @relation("BookingCreator")
+  checkedInBookings            Booking[]                        @relation("BookingCheckedInBy")
+  cancelledBookings            Booking[]                        @relation("BookingCancelledBy")
+  noShowBookings               Booking[]                        @relation("BookingNoShowBy")
+  ownedVisits                  Visit[]                          @relation("VisitOwner")
+  createdVisits                Visit[]                          @relation("VisitCreator")
+  cancelledVisits              Visit[]                          @relation("VisitCancelledBy")
+  queueOverriddenVisits        Visit[]                          @relation("VisitQueueOverrideBy")
+  visitParticipations          VisitParticipant[]
+  addedVisitLines              VisitServiceLine[]               @relation("VisitLineAddedBy")
+  cancelledVisitLines          VisitServiceLine[]               @relation("VisitLineCancelledBy")
+  endedServiceExecutions       ServiceExecution[]               @relation("ExecutionEndedBy")
+  assignmentChanges            ServiceLineAssignmentChange[]    @relation("AssignmentActor")
+  updatedSettings              AppSetting[]
 
   @@index([kind, status, id], map: "users_kind_status_idx")
   @@map("users")
@@ -220,6 +244,11 @@ model EmployeeProfile {
   leaveRequests         LeaveRequest[]
   classificationChanges EmploymentClassificationChange[]
   collaboratorWork      CollaboratorWorkOccurrence[]
+  bookingLines          BookingServiceLine[]
+  visitLines            VisitServiceLine[]
+  serviceExecutions     ServiceExecution[]
+  assignmentsFrom       ServiceLineAssignmentChange[]    @relation("AssignmentFrom")
+  assignmentsTo         ServiceLineAssignmentChange[]    @relation("AssignmentTo")
 
   @@map("employee_profiles")
 }
@@ -557,6 +586,8 @@ model Service {
   updatedAt           DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   eligibleSkills      ServiceSkill[]
   branches            ServiceBranchAvailability[]
+  bookingLines        BookingServiceLine[]
+  visitLines          VisitServiceLine[]
 
   @@index([categoryId, isActive, id], map: "services_category_idx")
   @@map("services")
@@ -742,4 +773,374 @@ model CollaboratorWorkOccurrence {
   @@index([updatedByUserId], map: "collaborator_work_updater_idx")
   @@index([cancelledByUserId], map: "collaborator_work_canceller_idx")
   @@map("collaborator_work_occurrences")
+}
+
+// ---------------------------------------------------------------- Phase 3 (Booking & Visits)
+// docs/PHASE3_BOOKING_VISITS_DESIGN.md. SQL-only: shape CHECKs, status-fact rules, partial
+// unique indexes, lifecycle/history guard triggers, the branch-local service_date rule and the
+// ktv_occupancies btree_gist exclusion backstop (O9).
+
+enum BookingStatus {
+  CONFIRMED
+  CHECKED_IN
+  CANCELLED
+  NO_SHOW
+}
+
+enum BookingChannel {
+  ONLINE
+  DESK
+}
+
+enum BookingRecipientRelation {
+  SELF
+  CHILD
+  FAMILY
+  OTHER
+}
+
+enum KtvAssignmentMode {
+  SPECIFIC
+  ANY
+}
+
+enum AssignmentConflict {
+  LEAVE
+}
+
+enum AssignmentChangeReason {
+  LEAVE
+  CUSTOMER_CHOICE
+  MANAGER
+}
+
+enum VisitOrigin {
+  BOOKING
+  WALK_IN
+}
+
+enum VisitStatus {
+  OPEN
+  IN_SERVICE
+  COMPLETED
+  CANCELLED
+}
+
+enum VisitParticipantKind {
+  MEMBER
+  GUEST
+  CHILD
+}
+
+enum VisitServiceLineStatus {
+  PLANNED
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum ServiceExecutionStatus {
+  IN_PROGRESS
+  ENDED
+}
+
+enum ServiceExecutionEndKind {
+  NORMAL
+  MANAGER_RESOLVED
+}
+
+// A member's reservation (design section 3). Created CONFIRMED only (O4); terminal states are
+// CHECKED_IN (the visit owns progress), CANCELLED and NO_SHOW. The owner is a customer account.
+model Booking {
+  id                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code              String               @unique(map: "bookings_code_key")
+  branchId          String               @map("branch_id") @db.Uuid
+  branch            Branch               @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  ownerUserId       String               @map("owner_user_id") @db.Uuid
+  owner             User                 @relation("BookingOwner", fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  status            BookingStatus        @default(CONFIRMED)
+  channel           BookingChannel
+  startsAt          DateTime             @map("starts_at") @db.Timestamptz(3)
+  endsAt            DateTime             @map("ends_at") @db.Timestamptz(3)
+  serviceDate       DateTime             @map("service_date") @db.Date
+  idempotencyKey    String               @map("idempotency_key") @db.Uuid
+  createdByUserId   String               @map("created_by_user_id") @db.Uuid
+  createdBy         User                 @relation("BookingCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  checkedInAt       DateTime?            @map("checked_in_at") @db.Timestamptz(3)
+  checkedInByUserId String?              @map("checked_in_by_user_id") @db.Uuid
+  checkedInBy       User?                @relation("BookingCheckedInBy", fields: [checkedInByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelledAt       DateTime?            @map("cancelled_at") @db.Timestamptz(3)
+  cancelledByUserId String?              @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy       User?                @relation("BookingCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelReason      String?              @map("cancel_reason")
+  cancelledLate     Boolean?             @map("cancelled_late")
+  noShowAt          DateTime?            @map("no_show_at") @db.Timestamptz(3)
+  noShowByUserId    String?              @map("no_show_by_user_id") @db.Uuid
+  noShowBy          User?                @relation("BookingNoShowBy", fields: [noShowByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  noShowReason      String?              @map("no_show_reason")
+  rowVersion        Int                  @default(1) @map("row_version")
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  recipients        BookingRecipient[]
+  lines             BookingServiceLine[]
+  visit             Visit?
+
+  @@unique([createdByUserId, idempotencyKey], map: "bookings_creator_idempotency_key")
+  @@index([branchId, serviceDate, status], map: "bookings_branch_date_idx")
+  @@index([ownerUserId, startsAt], map: "bookings_owner_idx")
+  @@index([checkedInByUserId], map: "bookings_checked_in_by_idx")
+  @@index([cancelledByUserId], map: "bookings_cancelled_by_idx")
+  @@index([noShowByUserId], map: "bookings_no_show_by_idx")
+  @@map("bookings")
+}
+
+// The service recipient of booking lines (O11): SELF = the owner; otherwise a named family
+// member or other recipient. Never an account.
+model BookingRecipient {
+  id           String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId    String                   @map("booking_id") @db.Uuid
+  booking      Booking                  @relation(fields: [bookingId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  relation     BookingRecipientRelation
+  displayName  String?                  @map("display_name")
+  phone        String?
+  createdAt    DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  lines        BookingServiceLine[]
+  participants VisitParticipant[]
+
+  @@unique([bookingId, id], map: "booking_recipients_booking_id_id_key")
+  @@map("booking_recipients")
+}
+
+// One requested service: KTV per line (Q3), duration and buffer snapshots (O7) and the
+// catalog reference snapshot (O5, historical reference only; no billing).
+model BookingServiceLine {
+  id                 String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId          String                        @map("booking_id") @db.Uuid
+  booking            Booking                       @relation(fields: [bookingId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sequence           Int                           @db.SmallInt
+  recipientId        String                        @map("recipient_id") @db.Uuid
+  recipient          BookingRecipient              @relation(fields: [bookingId, recipientId], references: [bookingId, id], onDelete: Restrict, onUpdate: Restrict)
+  serviceId          String                        @map("service_id") @db.Uuid
+  service            Service                       @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId     String                        @map("employee_user_id") @db.Uuid
+  employee           EmployeeProfile               @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  assignmentMode     KtvAssignmentMode             @map("assignment_mode")
+  plannedStartAt     DateTime                      @map("planned_start_at") @db.Timestamptz(3)
+  plannedEndAt       DateTime                      @map("planned_end_at") @db.Timestamptz(3)
+  durationMinutes    Int                           @map("duration_minutes")
+  bufferMinutes      Int                           @map("buffer_minutes")
+  serviceCode        String                        @map("service_code")
+  serviceNameVi      String                        @map("service_name_vi")
+  serviceNameEn      String                        @map("service_name_en")
+  catalogPriceMinVnd BigInt                        @map("catalog_price_min_vnd")
+  catalogPriceMaxVnd BigInt                        @map("catalog_price_max_vnd")
+  catalogPricingUnit ServicePricingUnit            @map("catalog_pricing_unit")
+  assignmentConflict AssignmentConflict?           @map("assignment_conflict")
+  rowVersion         Int                           @default(1) @map("row_version")
+  createdAt          DateTime                      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  visitLine          VisitServiceLine?
+  assignmentChanges  ServiceLineAssignmentChange[]
+
+  @@unique([bookingId, sequence], map: "booking_service_lines_booking_sequence_key")
+  @@index([employeeUserId, plannedStartAt], map: "booking_service_lines_employee_idx")
+  @@index([serviceId], map: "booking_service_lines_service_idx")
+  @@index([bookingId, recipientId], map: "booking_service_lines_recipient_idx")
+  @@map("booking_service_lines")
+}
+
+// An on-site stay (design section 4): from a booking at check-in, or a walk-in.
+model Visit {
+  id                    String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                  String             @unique(map: "visits_code_key")
+  branchId              String             @map("branch_id") @db.Uuid
+  branch                Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  origin                VisitOrigin
+  bookingId             String?            @unique(map: "visits_booking_id_key") @map("booking_id") @db.Uuid
+  booking               Booking?           @relation(fields: [bookingId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  ownerUserId           String?            @map("owner_user_id") @db.Uuid
+  owner                 User?              @relation("VisitOwner", fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  status                VisitStatus        @default(OPEN)
+  serviceDate           DateTime           @map("service_date") @db.Date
+  arrivedAt             DateTime           @map("arrived_at") @db.Timestamptz(3)
+  completedAt           DateTime?          @map("completed_at") @db.Timestamptz(3)
+  cancelledAt           DateTime?          @map("cancelled_at") @db.Timestamptz(3)
+  cancelledByUserId     String?            @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy           User?              @relation("VisitCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelReason          String?            @map("cancel_reason")
+  queueOverrideAt       DateTime?          @map("queue_override_at") @db.Timestamptz(3)
+  queueOverrideByUserId String?            @map("queue_override_by_user_id") @db.Uuid
+  queueOverrideBy       User?              @relation("VisitQueueOverrideBy", fields: [queueOverrideByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdByUserId       String             @map("created_by_user_id") @db.Uuid
+  createdBy             User               @relation("VisitCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  idempotencyKey        String?            @map("idempotency_key") @db.Uuid
+  rowVersion            Int                @default(1) @map("row_version")
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  participants          VisitParticipant[]
+  lines                 VisitServiceLine[]
+
+  @@unique([createdByUserId, idempotencyKey], map: "visits_creator_idempotency_key")
+  @@index([branchId, serviceDate, status], map: "visits_branch_date_idx")
+  @@index([ownerUserId], map: "visits_owner_idx")
+  @@index([cancelledByUserId], map: "visits_cancelled_by_idx")
+  @@index([queueOverrideByUserId], map: "visits_queue_override_by_idx")
+  @@map("visits")
+}
+
+// Who receives services (design section 9): MEMBER (a customer account), GUEST or CHILD
+// (never accounts; a child names a guardian participant of the same visit).
+model VisitParticipant {
+  id                    String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  visitId               String               @map("visit_id") @db.Uuid
+  visit                 Visit                @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  kind                  VisitParticipantKind
+  customerUserId        String?              @map("customer_user_id") @db.Uuid
+  customer              User?                @relation(fields: [customerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  displayName           String?              @map("display_name")
+  phone                 String?
+  note                  String?
+  guardianParticipantId String?              @map("guardian_participant_id") @db.Uuid
+  guardian              VisitParticipant?    @relation("ParticipantGuardian", fields: [visitId, guardianParticipantId], references: [visitId, id], onDelete: Restrict, onUpdate: Restrict)
+  wards                 VisitParticipant[]   @relation("ParticipantGuardian")
+  bookingRecipientId    String?              @unique(map: "visit_participants_booking_recipient_id_key") @map("booking_recipient_id") @db.Uuid
+  bookingRecipient      BookingRecipient?    @relation(fields: [bookingRecipientId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  lines                 VisitServiceLine[]
+
+  @@unique([visitId, id], map: "visit_participants_visit_id_id_key")
+  @@index([customerUserId], map: "visit_participants_customer_idx")
+  @@index([visitId, guardianParticipantId], map: "visit_participants_guardian_idx")
+  @@map("visit_participants")
+}
+
+// One service for one participant, with its KTV, planned window, snapshots (O5, O7) and the
+// START-overdue warning fact (O1).
+model VisitServiceLine {
+  id                   String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  visitId              String                        @map("visit_id") @db.Uuid
+  visit                Visit                         @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  participantId        String                        @map("participant_id") @db.Uuid
+  participant          VisitParticipant              @relation(fields: [visitId, participantId], references: [visitId, id], onDelete: Restrict, onUpdate: Restrict)
+  sequence             Int                           @db.SmallInt
+  bookingServiceLineId String?                       @unique(map: "visit_service_lines_booking_service_line_id_key") @map("booking_service_line_id") @db.Uuid
+  bookingServiceLine   BookingServiceLine?           @relation(fields: [bookingServiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  serviceId            String                        @map("service_id") @db.Uuid
+  service              Service                       @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId       String                        @map("employee_user_id") @db.Uuid
+  employee             EmployeeProfile               @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  assignmentMode       KtvAssignmentMode             @map("assignment_mode")
+  status               VisitServiceLineStatus        @default(PLANNED)
+  plannedStartAt       DateTime                      @map("planned_start_at") @db.Timestamptz(3)
+  plannedEndAt         DateTime                      @map("planned_end_at") @db.Timestamptz(3)
+  durationMinutes      Int                           @map("duration_minutes")
+  bufferMinutes        Int                           @map("buffer_minutes")
+  serviceCode          String                        @map("service_code")
+  serviceNameVi        String                        @map("service_name_vi")
+  serviceNameEn        String                        @map("service_name_en")
+  catalogPriceMinVnd   BigInt                        @map("catalog_price_min_vnd")
+  catalogPriceMaxVnd   BigInt                        @map("catalog_price_max_vnd")
+  catalogPricingUnit   ServicePricingUnit            @map("catalog_pricing_unit")
+  addedOnBehalf        Boolean                       @default(false) @map("added_on_behalf")
+  addedByUserId        String?                       @map("added_by_user_id") @db.Uuid
+  addedBy              User?                         @relation("VisitLineAddedBy", fields: [addedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  addedAt              DateTime?                     @map("added_at") @db.Timestamptz(3)
+  cancelledAt          DateTime?                     @map("cancelled_at") @db.Timestamptz(3)
+  cancelledByUserId    String?                       @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy          User?                         @relation("VisitLineCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelReason         String?                       @map("cancel_reason")
+  assignmentConflict   AssignmentConflict?           @map("assignment_conflict")
+  startOverdueWarnedAt DateTime?                     @map("start_overdue_warned_at") @db.Timestamptz(3)
+  rowVersion           Int                           @default(1) @map("row_version")
+  createdAt            DateTime                      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  execution            ServiceExecution?
+  assignmentChanges    ServiceLineAssignmentChange[]
+
+  @@unique([participantId, sequence], map: "visit_service_lines_participant_sequence_key")
+  @@index([visitId, participantId], map: "visit_service_lines_visit_idx")
+  @@index([employeeUserId, plannedStartAt], map: "visit_service_lines_employee_idx")
+  @@index([serviceId], map: "visit_service_lines_service_idx")
+  @@index([addedByUserId], map: "visit_service_lines_added_by_idx")
+  @@index([cancelledByUserId], map: "visit_service_lines_cancelled_by_idx")
+  @@map("visit_service_lines")
+}
+
+// START/END facts of one visit line (design section 11): no auto-END; a Manager resolution
+// carries a reason; pre-END and END-overdue warning facts (O1).
+model ServiceExecution {
+  id                 String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  visitServiceLineId String                   @unique(map: "service_executions_visit_service_line_id_key") @map("visit_service_line_id") @db.Uuid
+  visitServiceLine   VisitServiceLine         @relation(fields: [visitServiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId     String                   @map("employee_user_id") @db.Uuid
+  employee           EmployeeProfile          @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  status             ServiceExecutionStatus   @default(IN_PROGRESS)
+  startedAt          DateTime                 @map("started_at") @db.Timestamptz(3)
+  expectedEndAt      DateTime                 @map("expected_end_at") @db.Timestamptz(3)
+  endedAt            DateTime?                @map("ended_at") @db.Timestamptz(3)
+  endKind            ServiceExecutionEndKind? @map("end_kind")
+  endedByUserId      String?                  @map("ended_by_user_id") @db.Uuid
+  endedBy            User?                    @relation("ExecutionEndedBy", fields: [endedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  resolutionReason   String?                  @map("resolution_reason")
+  preEndWarnedAt     DateTime?                @map("pre_end_warned_at") @db.Timestamptz(3)
+  endOverdueWarnedAt DateTime?                @map("end_overdue_warned_at") @db.Timestamptz(3)
+  rowVersion         Int                      @default(1) @map("row_version")
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([employeeUserId, status], map: "service_executions_employee_idx")
+  @@index([endedByUserId], map: "service_executions_ended_by_idx")
+  @@map("service_executions")
+}
+
+// Append-only KTV reassignment history (design section 10).
+model ServiceLineAssignmentChange {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingServiceLineId String?                @map("booking_service_line_id") @db.Uuid
+  bookingServiceLine   BookingServiceLine?    @relation(fields: [bookingServiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  visitServiceLineId   String?                @map("visit_service_line_id") @db.Uuid
+  visitServiceLine     VisitServiceLine?      @relation(fields: [visitServiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  fromEmployeeUserId   String                 @map("from_employee_user_id") @db.Uuid
+  fromEmployee         EmployeeProfile        @relation("AssignmentFrom", fields: [fromEmployeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  toEmployeeUserId     String                 @map("to_employee_user_id") @db.Uuid
+  toEmployee           EmployeeProfile        @relation("AssignmentTo", fields: [toEmployeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  reason               AssignmentChangeReason
+  note                 String?
+  actorUserId          String                 @map("actor_user_id") @db.Uuid
+  actor                User                   @relation("AssignmentActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  occurredAt           DateTime               @default(now()) @map("occurred_at") @db.Timestamptz(3)
+
+  @@index([bookingServiceLineId, occurredAt], map: "assignment_changes_booking_line_idx")
+  @@index([visitServiceLineId, occurredAt], map: "assignment_changes_visit_line_idx")
+  @@index([fromEmployeeUserId], map: "assignment_changes_from_idx")
+  @@index([toEmployeeUserId], map: "assignment_changes_to_idx")
+  @@index([actorUserId], map: "assignment_changes_actor_idx")
+  @@map("service_line_assignment_changes")
+}
+
+// The configuration registry (design section 18): code-owned keys (booking-settings.ts),
+// integer values validated in SQL, seeded with the approved defaults.
+model AppSetting {
+  key             String   @id
+  value           Json     @db.JsonB
+  rowVersion      Int      @default(1) @map("row_version")
+  updatedByUserId String?  @map("updated_by_user_id") @db.Uuid
+  updatedBy       User?    @relation(fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([updatedByUserId], map: "app_settings_updated_by_idx")
+  @@map("app_settings")
+}
+
+// Derived KTV occupancy, written only by database triggers; the btree_gist exclusion
+// constraint (SQL-only) rejects overlapping intervals for one KTV (O9).
+model KtvOccupancy {
+  id                   String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeUserId       String                   @map("employee_user_id") @db.Uuid
+  period               Unsupported("tstzrange")
+  bookingServiceLineId String?                  @unique(map: "ktv_occupancies_booking_service_line_id_key") @map("booking_service_line_id") @db.Uuid
+  visitServiceLineId   String?                  @unique(map: "ktv_occupancies_visit_service_line_id_key") @map("visit_service_line_id") @db.Uuid
+
+  @@map("ktv_occupancies")
 }

@@ -5,6 +5,12 @@ export type { Prisma, Branch, OutboxEvent } from './generated/prisma/client.js';
 export { appendOutboxEvent, type AppendOutboxEventInput } from './outbox.js';
 export { collaboratorPrecheck, type CollaboratorPrecheckFinding } from './collaborator-precheck.js';
 export {
+  BOOKING_SETTINGS,
+  isValidBookingSetting,
+  type BookingSettingDefinition,
+  type BookingSettingKey,
+} from './booking-settings.js';
+export {
   PERMISSION_CATALOG,
   PermissionCatalogMismatchError,
   syncPermissionCatalog,

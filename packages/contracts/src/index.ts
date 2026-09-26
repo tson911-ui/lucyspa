@@ -488,7 +488,14 @@ export type PermissionCodeName =
   | 'MANAGE_ATTENDANCE'
   | 'APPROVE_LEAVE'
   | 'VIEW_WORK_SCHEDULE'
-  | 'MANAGE_WORK_SCHEDULE';
+  | 'MANAGE_WORK_SCHEDULE'
+  | 'VIEW_BOOKINGS'
+  | 'MANAGE_BOOKINGS'
+  | 'MANAGE_QUEUE'
+  | 'REASSIGN_SERVICES'
+  | 'PERFORM_SERVICES'
+  | 'RESOLVE_SERVICE_EXECUTION'
+  | 'MANAGE_BOOKING_SETTINGS';
 
 /** A named permission bundle. OWNER is virtual and never a role. */
 export interface RoleResponse {
