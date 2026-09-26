@@ -9,6 +9,15 @@
 | **Phase 2 (services, employees, operations)** | **CLOSED / PRODUCTION ACCEPTED**                                 |
 | **Phase 3 (booking)**                         | **NOT STARTED.** It needs its own authorization and design step. |
 
+**Pre-Phase-3 follow-up (design only, NOT implemented):**
+[Collaborator and My Account foundation design](docs/PHASE2_FOLLOWUP_COLLABORATOR_MY_ACCOUNT_DESIGN.md).
+It covers the COLLABORATOR classification, the manager invariant (managers must be
+OFFICIAL_EMPLOYEE), display titles, collaborator work schedule and agreed pay, My Account
+(single source of truth), email/password self-service, a My Income foundation, and the
+Phase 3 booking contract. It is being prepared before Phase 3 because collaborator
+availability affects booking. Phase 2 remains CLOSED / PRODUCTION ACCEPTED; Phase 3
+remains NOT STARTED. Owner decisions Q1–Q16 are listed in the design.
+
 ### Production state (Phase 2 closure, 2026-09-26)
 
 - **Deployed commit:** production is deployed through `fb0725d`
