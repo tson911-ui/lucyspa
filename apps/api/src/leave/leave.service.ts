@@ -24,6 +24,7 @@ import {
 import { decide, GLOBAL } from '../authorization/authorization.js';
 import { isUuid } from '../employees/employee.input.js';
 import { currentClassification } from '../employees/workforce-title.js';
+import { recordApprovedLeaveConflicts } from '../operations/leave-conflicts.js';
 
 /** Controlled leave types (SQL enum `LeaveType`). None implies paid/unpaid treatment. */
 export const LEAVE_TYPES: readonly LeaveType[] = Object.freeze([
@@ -329,6 +330,7 @@ export class LeaveService {
         },
         select: requestSelect,
       });
+      const affectedLineCount = status === 'APPROVED' ? await recordApprovedLeaveConflicts(context, updated) : 0;
       await this.audit(
         context,
         status === 'APPROVED' ? 'LEAVE_APPROVED' : 'LEAVE_REJECTED',
@@ -336,7 +338,7 @@ export class LeaveService {
         {
           reason,
           before: { ...this.facts(row), status: row.status },
-          after: { ...this.facts(updated), status: updated.status, employeeBranchIds: branchIds },
+          after: { ...this.facts(updated), status: updated.status, employeeBranchIds: branchIds, affectedLineCount },
         },
       );
       return present(updated);

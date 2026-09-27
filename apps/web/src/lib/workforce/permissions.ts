@@ -86,6 +86,7 @@ export type NavKey =
   | 'bookingBoard'
   | 'walkIn'
   | 'myServices'
+  | 'reassignment'
   | 'branches'
   | 'services'
   | 'skills'
@@ -131,6 +132,11 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'myServices',
       group: 'operations',
       path: '/my-services',
+    },
+    canAnywhere(account, 'REASSIGN_SERVICES') && {
+      key: 'reassignment',
+      group: 'operations',
+      path: '/reassignment',
     },
     canAnywhere(account, 'MANAGE_BOOKINGS') && {
       key: 'walkIn',

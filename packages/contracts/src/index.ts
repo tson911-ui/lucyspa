@@ -1712,3 +1712,52 @@ export interface MyServiceWorkResponse {
 
 /** START/END accept only an empty JSON object; the line id is the idempotency identity. */
 export type ServiceExecutionActionRequest = Record<string, never>;
+// Phase 3 Step 8: explicit reassignment of existing assigned, unstarted work.
+export type ReassignmentLineKind = 'BOOKING' | 'VISIT';
+export type ReassignmentScope = 'LINE' | 'PARTICIPANT';
+export interface ReassignmentLine {
+  kind: ReassignmentLineKind;
+  id: string;
+  version: number;
+  branchId: string;
+  parentId: string;
+  parentCode: string;
+  participantId: string;
+  participantName: string | null;
+  sequence: number;
+  serviceDate: string;
+  service: { nameVi: string; nameEn: string };
+  plannedStartAt: string;
+  plannedEndAt: string;
+  employee: { id: string; displayName: string };
+  assignmentMode: 'ANY' | 'SPECIFIC';
+  /** Original request: existing walk-in reference or the first assignment-history source. */
+  requestedEmployeeId: string | null;
+  leaveConflict: boolean;
+  leaveRequestId: string | null;
+}
+export interface ReassignmentWorkResponse {
+  branch: { id: string; name: string; timezone: string };
+  from: string;
+  to: string;
+  lines: ReassignmentLine[];
+  nextCursor: string | null;
+}
+export interface ReplacementOptionsResponse {
+  scope: ReassignmentScope;
+  /** Exact explicit scope: only this participant's unstarted lines assigned to the current KTV. */
+  lines: ReassignmentLine[];
+  candidates: { id: string; displayName: string; preferred: boolean }[];
+  /** Existing Q3 planner suggestion, never a persisted or implicit assignment. */
+  suggestedAssignments: { lineId: string; employeeUserId: string }[];
+  requiresSpecificAcknowledgement: boolean;
+}
+export interface ReassignServicesRequest {
+  scope: ReassignmentScope;
+  targets: { id: string; expectedVersion: number }[];
+  employeeUserId: string;
+  context: 'LEAVE' | 'MANAGER';
+  reason: string;
+  acknowledgeSpecific: boolean;
+}
+export interface ReassignServicesResponse { lines: ReassignmentLine[] }

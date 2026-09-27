@@ -20,6 +20,8 @@ import { OperationsController } from './operations/operations.controller.js';
 import { OperationsService } from './operations/operations.service.js';
 import { ServiceExecutionController } from './operations/service-execution.controller.js';
 import { ServiceExecutionService } from './operations/service-execution.service.js';
+import { ReassignmentController } from './operations/reassignment.controller.js';
+import { ReassignmentService } from './operations/reassignment.service.js';
 import { WalkInController } from './walkin/walkin.controller.js';
 import { WalkInService } from './walkin/walkin.service.js';
 import { MyAccountService } from './account/my-account.service.js';
@@ -91,6 +93,7 @@ export class AppModule {
         CustomerBookingController,
         OperationsController,
         ServiceExecutionController,
+        ReassignmentController,
         WalkInController,
       ],
       providers: [
@@ -123,6 +126,7 @@ export class AppModule {
         CustomerBookingService,
         OperationsService,
         ServiceExecutionService,
+        ReassignmentService,
         WalkInService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
