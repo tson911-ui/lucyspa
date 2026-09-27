@@ -35,14 +35,17 @@ const errors = {
   SERVICE_END_NOT_ALLOWED: [409, 'This service has not started or cannot be ended'],
   SERVICE_SEQUENCE_BLOCKED: [409, 'Complete the preceding service first'],
   SERVICE_KTV_BUSY: [409, 'End the current service before starting another'],
-  SERVICE_NOT_TODAY: [409, 'Only today\'s service work can be started'],
+  SERVICE_NOT_TODAY: [409, "Only today's service work can be started"],
   SERVICE_NOT_READY: [409, 'The planned start time has not arrived'],
   SERVICE_START_UNAVAILABLE: [409, 'Check attendance and operational availability before starting'],
   SERVICE_EXECUTION_CONFLICT: [409, 'Service work changed; refresh and try again'],
   REASSIGNMENT_NOT_ALLOWED: [409, 'Only assigned, unstarted service work can be reassigned'],
   REASSIGNMENT_CONFLICT: [409, 'The assignment changed; refresh and try again'],
   REASSIGNMENT_KTV_UNAVAILABLE: [409, 'The replacement is no longer eligible for this work'],
-  REASSIGNMENT_SPECIFIC_ACK_REQUIRED: [400, 'Explicit acknowledgement of the specific staff request is required'],
+  REASSIGNMENT_SPECIFIC_ACK_REQUIRED: [
+    400,
+    'Explicit acknowledgement of the specific staff request is required',
+  ],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

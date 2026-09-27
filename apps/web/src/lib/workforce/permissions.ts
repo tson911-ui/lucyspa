@@ -128,11 +128,12 @@ export function navigationFor(account: Account): NavItem[] {
       group: 'operations',
       path: '/booking-board',
     },
-    employee && canAnywhere(account, 'PERFORM_SERVICES') && {
-      key: 'myServices',
-      group: 'operations',
-      path: '/my-services',
-    },
+    employee &&
+      canAnywhere(account, 'PERFORM_SERVICES') && {
+        key: 'myServices',
+        group: 'operations',
+        path: '/my-services',
+      },
     canAnywhere(account, 'REASSIGN_SERVICES') && {
       key: 'reassignment',
       group: 'operations',

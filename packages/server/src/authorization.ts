@@ -9,7 +9,8 @@ export function isKnownPermission(value: string): value is PermissionCode {
   return KNOWN_PERMISSIONS.has(value);
 }
 
-export type Scope = { readonly kind: 'GLOBAL' } | { readonly kind: 'BRANCH'; readonly branchId: string };
+export type Scope =
+  { readonly kind: 'GLOBAL' } | { readonly kind: 'BRANCH'; readonly branchId: string };
 export const GLOBAL: Scope = Object.freeze({ kind: 'GLOBAL' });
 
 export interface Grant {
@@ -94,4 +95,3 @@ export function decide(
   if (denied(graph, permission, target, options)) return false;
   return granted(graph, permission, target);
 }
-

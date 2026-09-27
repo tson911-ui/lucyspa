@@ -330,7 +330,8 @@ export class LeaveService {
         },
         select: requestSelect,
       });
-      const affectedLineCount = status === 'APPROVED' ? await recordApprovedLeaveConflicts(context, updated) : 0;
+      const affectedLineCount =
+        status === 'APPROVED' ? await recordApprovedLeaveConflicts(context, updated) : 0;
       await this.audit(
         context,
         status === 'APPROVED' ? 'LEAVE_APPROVED' : 'LEAVE_REJECTED',
@@ -338,7 +339,12 @@ export class LeaveService {
         {
           reason,
           before: { ...this.facts(row), status: row.status },
-          after: { ...this.facts(updated), status: updated.status, employeeBranchIds: branchIds, affectedLineCount },
+          after: {
+            ...this.facts(updated),
+            status: updated.status,
+            employeeBranchIds: branchIds,
+            affectedLineCount,
+          },
         },
       );
       return present(updated);

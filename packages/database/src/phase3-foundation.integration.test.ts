@@ -1031,7 +1031,7 @@ test('Phase 3 Step 2 database foundation invariants (all fixtures roll back)', a
                       rowVersion: { increment: 1 },
                     },
                   }),
-                shape,
+                /Initial assignment must honor the requested KTV/,
               );
               // No execution can start on a waiting line (no assigned KTV).
               await rejects(

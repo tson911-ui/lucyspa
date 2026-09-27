@@ -1,7 +1,26 @@
 import type { CurrentAccountResponse } from '@lucy-spa/contracts';
 import { PERMISSION_CATALOG } from '@lucy-spa/database';
-import { decide, GLOBAL, isKnownPermission, type AuthorityGraph, type DecideOptions, type Grant, type Scope, type Target } from '@lucy-spa/server';
-export { decide, GLOBAL, isKnownPermission, type AuthorityGraph, type DecideOptions, type Grant, type Override, type Scope, type Target } from '@lucy-spa/server';
+import {
+  decide,
+  GLOBAL,
+  isKnownPermission,
+  type AuthorityGraph,
+  type DecideOptions,
+  type Grant,
+  type Scope,
+  type Target,
+} from '@lucy-spa/server';
+export {
+  decide,
+  GLOBAL,
+  isKnownPermission,
+  type AuthorityGraph,
+  type DecideOptions,
+  type Grant,
+  type Override,
+  type Scope,
+  type Target,
+} from '@lucy-spa/server';
 
 /**
  * Multi-branch operations: every affected branch (old and new scopes) must pass; one

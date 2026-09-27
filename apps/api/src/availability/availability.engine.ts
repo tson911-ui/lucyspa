@@ -339,32 +339,66 @@ export function evaluateReassignmentWindow(
   const start = window.startsAt.getTime();
   const end = window.endsAt.getTime();
   const until = end + window.bufferMinutes * 60_000;
-  const minute = facts.minuteInstants.findIndex((value, i) => value <= start && start < (facts.minuteInstants[i + 1] ?? value));
+  const minute = facts.minuteInstants.findIndex(
+    (value, i) => value <= start && start < (facts.minuteInstants[i + 1] ?? value),
+  );
   const startMinute = minute + (start - (facts.minuteInstants[minute] ?? start)) / 60_000;
   const endMinute = startMinute + (end - start) / 60_000;
   if (!facts.branchActive || !facts.window) reasons.push('BRANCH_CLOSED');
   if (!service?.offered) reasons.push('SERVICE_UNAVAILABLE');
-  if (minute < 0 || end <= start || (facts.window &&
+  if (
+    minute < 0 ||
+    end <= start ||
+    (facts.window &&
       (start < (facts.minuteInstants[facts.window.startMinute] ?? Infinity) ||
-       end > (facts.minuteInstants[facts.window.endMinute] ?? -Infinity)))) reasons.push('OUTSIDE_HOURS');
-  if (facts.context === 'OPERATIONAL' && facts.serviceDate !== facts.today) reasons.push('NOT_SAME_DAY');
-  if (facts.customerBookings.some((booking) => overlapsInterval(booking, { start, end }))) reasons.push('CUSTOMER_CONFLICT');
-  const verdicts = reasons.length === 0 && service ? facts.employees.map((employee) => {
-    const verdict = employeeVerdict(facts, employee, service, { startMinute, endMinute, occupancy: { start, end: until } });
-    // Even a delayed line whose old window has elapsed cannot be assigned to an unended KTV.
-    if (employee.running.length > 0 && !verdict.reasons.includes('SERVICE_RUNNING')) {
-      return { ...verdict, eligible: false, reasons: [...verdict.reasons, 'SERVICE_RUNNING' as const] };
-    }
-    return verdict;
-  }) : [];
+        end > (facts.minuteInstants[facts.window.endMinute] ?? -Infinity)))
+  )
+    reasons.push('OUTSIDE_HOURS');
+  if (facts.context === 'OPERATIONAL' && facts.serviceDate !== facts.today)
+    reasons.push('NOT_SAME_DAY');
+  if (facts.customerBookings.some((booking) => overlapsInterval(booking, { start, end })))
+    reasons.push('CUSTOMER_CONFLICT');
+  const verdicts =
+    reasons.length === 0 && service
+      ? facts.employees.map((employee) => {
+          const verdict = employeeVerdict(facts, employee, service, {
+            startMinute,
+            endMinute,
+            occupancy: { start, end: until },
+          });
+          // Even a delayed line whose old window has elapsed cannot be assigned to an unended KTV.
+          if (employee.running.length > 0 && !verdict.reasons.includes('SERVICE_RUNNING')) {
+            return {
+              ...verdict,
+              eligible: false,
+              reasons: [...verdict.reasons, 'SERVICE_RUNNING' as const],
+            };
+          }
+          return verdict;
+        })
+      : [];
   const eligible = verdicts.filter((v) => v.eligible).map((v) => v.employeeUserId);
   return {
-    feasible: reasons.length === 0 && eligible.length > 0, reasons,
+    feasible: reasons.length === 0 && eligible.length > 0,
+    reasons,
     unavailableServiceIndexes: service?.offered ? [] : [0],
-    wholeSequenceEmployeeUserIds: eligible, everyLineCovered: eligible.length > 0,
-    lines: [{ index: 0, serviceId: service?.id ?? '', durationMinutes: window.durationMinutes,
-      bufferMinutes: window.bufferMinutes, startMinute, endMinute, startsAt: window.startsAt,
-      endsAt: window.endsAt, occupiedUntil: new Date(until), verdicts, eligibleEmployeeUserIds: eligible }],
+    wholeSequenceEmployeeUserIds: eligible,
+    everyLineCovered: eligible.length > 0,
+    lines: [
+      {
+        index: 0,
+        serviceId: service?.id ?? '',
+        durationMinutes: window.durationMinutes,
+        bufferMinutes: window.bufferMinutes,
+        startMinute,
+        endMinute,
+        startsAt: window.startsAt,
+        endsAt: window.endsAt,
+        occupiedUntil: new Date(until),
+        verdicts,
+        eligibleEmployeeUserIds: eligible,
+      },
+    ],
   };
 }
 
@@ -385,7 +419,8 @@ export function evaluateExecutionStart(
   if (!service?.offered) reasons.push('SERVICE_UNAVAILABLE');
   const end = facts.now + line.durationMinutes * 60_000;
   const minute = facts.minuteInstants.findIndex(
-    (instant, index) => instant <= facts.now && facts.now < (facts.minuteInstants[index + 1] ?? instant),
+    (instant, index) =>
+      instant <= facts.now && facts.now < (facts.minuteInstants[index + 1] ?? instant),
   );
   const startMinute = minute + (facts.now - (facts.minuteInstants[minute] ?? facts.now)) / 60_000;
   if (
@@ -393,15 +428,18 @@ export function evaluateExecutionStart(
     (facts.window &&
       (facts.now < (facts.minuteInstants[facts.window.startMinute] ?? Infinity) ||
         end > (facts.minuteInstants[facts.window.endMinute] ?? -Infinity)))
-  ) reasons.push('OUTSIDE_HOURS');
+  )
+    reasons.push('OUTSIDE_HOURS');
   const employee = facts.employees.find((entry) => entry.userId === line.employeeUserId);
   if (!employee) reasons.push('EMPLOYEE_INACTIVE');
   if (employee && service) {
-    reasons.push(...employeeVerdict(facts, employee, service, {
-      startMinute,
-      endMinute: startMinute + line.durationMinutes,
-      occupancy: { start: facts.now, end: end + line.bufferMinutes * 60_000 },
-    }).reasons);
+    reasons.push(
+      ...employeeVerdict(facts, employee, service, {
+        startMinute,
+        endMinute: startMinute + line.durationMinutes,
+        occupancy: { start: facts.now, end: end + line.bufferMinutes * 60_000 },
+      }).reasons,
+    );
   }
   return { eligible: reasons.length === 0, reasons };
 }

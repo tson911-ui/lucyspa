@@ -413,6 +413,7 @@ test(
                   endDate: '2027-03-10',
                   status: 'APPROVED',
                   employeeBranchIds: [A],
+                  affectedLineCount: 0,
                 });
                 // Second transition and approved-date overlap.
                 await fails(

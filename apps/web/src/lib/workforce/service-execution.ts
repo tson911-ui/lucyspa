@@ -1,10 +1,17 @@
-import type { BranchSummary, CurrentAccountResponse, ServiceExecutionWork } from '@lucy-spa/contracts';
+import type {
+  BranchSummary,
+  CurrentAccountResponse,
+  ServiceExecutionWork,
+} from '@lucy-spa/contracts';
 import type { WorkforceDictionary } from '../../i18n/workforce';
 import { ApiError } from './api';
 import { canAt } from './permissions';
 import { errorMessage } from './workflows';
 
-export function executionBranches(account: CurrentAccountResponse, branches: ReadonlyMap<string, BranchSummary> | null) {
+export function executionBranches(
+  account: CurrentAccountResponse,
+  branches: ReadonlyMap<string, BranchSummary> | null,
+) {
   if (account.kind !== 'EMPLOYEE') return [];
   return [...(branches?.values() ?? [])]
     .filter((branch) => canAt(account, 'PERFORM_SERVICES', branch.id))

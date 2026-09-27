@@ -118,12 +118,12 @@ includes resulting Visit status and normal end kind. Naming follows the approved
 
 All routes are under `/api/v1/operations`:
 
-| Method | Path | Result |
-| --- | --- | --- |
-| GET | `branches/:branchId/my-services` | Today's own assigned lines plus older open executions |
-| GET | `service-lines/:id/execution` | Own line, execution facts, Visit status and action flags |
-| POST | `service-lines/:id/start` | Start or replay the running execution; authoritative line response |
-| POST | `service-lines/:id/end` | End or replay END; authoritative line response |
+| Method | Path                             | Result                                                             |
+| ------ | -------------------------------- | ------------------------------------------------------------------ |
+| GET    | `branches/:branchId/my-services` | Today's own assigned lines plus older open executions              |
+| GET    | `service-lines/:id/execution`    | Own line, execution facts, Visit status and action flags           |
+| POST   | `service-lines/:id/start`        | Start or replay the running execution; authoritative line response |
+| POST   | `service-lines/:id/end`          | End or replay END; authoritative line response                     |
 
 Both POSTs accept exactly `{}`. Arrays, timestamps, employee IDs, status, branch IDs,
 resolution reasons and unknown fields are rejected. Existing session cookies, JSON/Origin

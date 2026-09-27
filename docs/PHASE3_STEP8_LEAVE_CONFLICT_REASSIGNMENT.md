@@ -98,14 +98,14 @@ resolved conflict marker, increments versions, appends assignment history, audit
 and returns authoritative line state. Planned start/end, duration/buffer, order and requested
 intent are not rewritten. No ServiceExecution row is manipulated.
 
-| Concurrent actions | Integrity behavior |
-| --- | --- |
-| Reassignment vs START | Current-KTV user lock and Visit/line lock serialize decisions; PLANNED/no-execution is rechecked. A former assignee cannot start after reassignment. |
-| Reassignment vs cancellation/arrival | Booking/Visit locks plus line state/version checks prevent writing cancelled or carried work. |
-| Two reassignment requests/managers | Shared employee locks and line versions allow only the valid current request to commit; stale versions conflict. |
-| Replacement vs new booking/assignment | Replacement user lock, engine recheck and the existing PostgreSQL exclusion constraint protect the interval. |
-| Leave approval vs booking/reassignment | Both lock the leave employee's user. If assignment wins first, approval subsequently identifies its conflict; if approval wins, revalidation rejects that employee. |
-| Leave approval vs arrival | The hook locks affected CONFIRMED/CHECKED_IN Booking parents, then reads and locks Visit parents in a fresh statement, so carried work is flagged once in its current representation. |
+| Concurrent actions                     | Integrity behavior                                                                                                                                                                    |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reassignment vs START                  | Current-KTV user lock and Visit/line lock serialize decisions; PLANNED/no-execution is rechecked. A former assignee cannot start after reassignment.                                  |
+| Reassignment vs cancellation/arrival   | Booking/Visit locks plus line state/version checks prevent writing cancelled or carried work.                                                                                         |
+| Two reassignment requests/managers     | Shared employee locks and line versions allow only the valid current request to commit; stale versions conflict.                                                                      |
+| Replacement vs new booking/assignment  | Replacement user lock, engine recheck and the existing PostgreSQL exclusion constraint protect the interval.                                                                          |
+| Leave approval vs booking/reassignment | Both lock the leave employee's user. If assignment wins first, approval subsequently identifies its conflict; if approval wins, revalidation rejects that employee.                   |
+| Leave approval vs arrival              | The hook locks affected CONFIRMED/CHECKED_IN Booking parents, then reads and locks Visit parents in a fresh statement, so carried work is flagged once in its current representation. |
 
 Recognized lock, version and overlap conflicts produce safe refresh/retry errors. An abort
 rolls back every changed line, history entry, audit and event. Approval contention rolls back
@@ -152,11 +152,11 @@ explicitly confirmed before submission.
 
 All endpoints are under `/api/v1/operations`:
 
-| Method | Path | Input/result |
-| --- | --- | --- |
-| GET | `branches/:branchId/reassignment-work` | Optional `from`, `to`, `conflictsOnly`, `cursor`; authorized assigned work and next cursor |
-| GET | `assignment-lines/:kind/:id/replacements` | Required `scope=LINE\|PARTICIPANT`; exact lines/versions, eligible common replacements and planner suggestions |
-| POST | `assignment-lines/:kind/:id/reassign` | Explicit scope, target IDs/expected versions, replacement employee, context, reason and SPECIFIC acknowledgement |
+| Method | Path                                      | Input/result                                                                                                     |
+| ------ | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| GET    | `branches/:branchId/reassignment-work`    | Optional `from`, `to`, `conflictsOnly`, `cursor`; authorized assigned work and next cursor                       |
+| GET    | `assignment-lines/:kind/:id/replacements` | Required `scope=LINE\|PARTICIPANT`; exact lines/versions, eligible common replacements and planner suggestions   |
+| POST   | `assignment-lines/:kind/:id/reassign`     | Explicit scope, target IDs/expected versions, replacement employee, context, reason and SPECIFIC acknowledgement |
 
 `:kind` is BOOKING or VISIT. New shared contracts are `ReassignmentLineKind`,
 `ReassignmentScope`, `ReassignmentLine`, `ReassignmentWorkResponse`,

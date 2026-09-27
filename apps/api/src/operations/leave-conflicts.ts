@@ -32,9 +32,15 @@ export async function recordApprovedLeaveConflicts(
         AND EXISTS (SELECT 1 FROM visit_service_lines l WHERE l.visit_id = v.id
           AND l.employee_user_id = ${leave.employeeUserId}::uuid AND l.status = 'PLANNED')
       ORDER BY v.id FOR UPDATE NOWAIT`;
-    const affected = await tx.$queryRaw<{
-      kind: 'BOOKING' | 'VISIT'; id: string; branchId: string; parentId: string; mode: string;
-    }[]>`
+    const affected = await tx.$queryRaw<
+      {
+        kind: 'BOOKING' | 'VISIT';
+        id: string;
+        branchId: string;
+        parentId: string;
+        mode: string;
+      }[]
+    >`
       SELECT 'BOOKING'::text AS kind, l.id::text, b.branch_id::text AS "branchId", b.id::text AS "parentId", l.assignment_mode::text AS mode
       FROM booking_service_lines l JOIN bookings b ON b.id = l.booking_id
       WHERE l.employee_user_id = ${leave.employeeUserId}::uuid AND b.status = 'CONFIRMED'
@@ -53,27 +59,49 @@ export async function recordApprovedLeaveConflicts(
       ORDER BY kind, id`;
     for (const line of affected) {
       const data = { assignmentConflict: 'LEAVE' as const, rowVersion: { increment: 1 } };
-      if (line.kind === 'BOOKING') await tx.bookingServiceLine.update({ where: { id: line.id }, data });
+      if (line.kind === 'BOOKING')
+        await tx.bookingServiceLine.update({ where: { id: line.id }, data });
       else await tx.visitServiceLine.update({ where: { id: line.id }, data });
       await appendOutboxEvent(tx, {
-        branchId: line.branchId, aggregateType: line.kind === 'BOOKING' ? 'Booking' : 'Visit',
-        aggregateId: line.parentId, eventType: 'BOOKING_KTV_CONFLICT', schemaVersion: 1, occurredAt: now,
-        payload: { leaveRequestId: leave.id, lineKind: line.kind, lineId: line.id,
-          employeeUserId: leave.employeeUserId, assignmentMode: line.mode, context: 'LEAVE' },
+        branchId: line.branchId,
+        aggregateType: line.kind === 'BOOKING' ? 'Booking' : 'Visit',
+        aggregateId: line.parentId,
+        eventType: 'BOOKING_KTV_CONFLICT',
+        schemaVersion: 1,
+        occurredAt: now,
+        payload: {
+          leaveRequestId: leave.id,
+          lineKind: line.kind,
+          lineId: line.id,
+          employeeUserId: leave.employeeUserId,
+          assignmentMode: line.mode,
+          context: 'LEAVE',
+        },
       });
     }
     await appendOutboxEvent(tx, {
-      aggregateType: 'LeaveRequest', aggregateId: leave.id, eventType: 'EMPLOYEE_LEAVE_APPROVED',
-      schemaVersion: 1, occurredAt: now,
-      payload: { employeeUserId: leave.employeeUserId, startDate: leave.startDate.toISOString().slice(0, 10),
-        endDate: leave.endDate.toISOString().slice(0, 10), affectedLineCount: affected.length },
+      aggregateType: 'LeaveRequest',
+      aggregateId: leave.id,
+      eventType: 'EMPLOYEE_LEAVE_APPROVED',
+      schemaVersion: 1,
+      occurredAt: now,
+      payload: {
+        employeeUserId: leave.employeeUserId,
+        startDate: leave.startDate.toISOString().slice(0, 10),
+        endDate: leave.endDate.toISOString().slice(0, 10),
+        affectedLineCount: affected.length,
+      },
     });
     return affected.length;
   } catch (error) {
     if (error instanceof AuthError) throw error;
     const meta = Reflect.get(Object(error), 'meta');
     const state = sqlStateOf(error) ?? (meta ? Reflect.get(Object(meta), 'code') : undefined);
-    if (['55P03', '40P01', '40001'].includes(state ?? '') || Reflect.get(Object(error), 'code') === 'P2034') throw new AuthError('CONFLICT');
+    if (
+      ['55P03', '40P01', '40001'].includes(state ?? '') ||
+      Reflect.get(Object(error), 'code') === 'P2034'
+    )
+      throw new AuthError('CONFLICT');
     throw error;
   }
 }

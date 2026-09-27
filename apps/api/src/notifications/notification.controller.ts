@@ -25,10 +25,13 @@ export class NotificationController {
     requireEmptyObject(query);
     return this.notifications.count(this.session(request));
   }
-  @Post(':id/read') @HttpCode(200)
+  @Post(':id/read')
+  @HttpCode(200)
   read(@Param('id') id: string, @Body() body: unknown, @Req() request: Request) {
     requireEmptyObject(body);
     return this.notifications.read(this.session(request), id);
   }
-  private session(request: Request) { return sessionCookie(request.headers.cookie, this.environment.auth.cookieName); }
+  private session(request: Request) {
+    return sessionCookie(request.headers.cookie, this.environment.auth.cookieName);
+  }
 }

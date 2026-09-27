@@ -35,11 +35,11 @@ client generation against the changed schema is a prerequisite for the Step 10 g
 
 ## Warning applicability and timing
 
-| Warning | Authoritative condition | Due time (default) | Recipients |
-| --- | --- | --- | --- |
+| Warning       | Authoritative condition                                                               | Due time (default)        | Recipients                                            |
+| ------------- | ------------------------------------------------------------------------------------- | ------------------------- | ----------------------------------------------------- |
 | START_OVERDUE | Arrived Visit OPEN/IN_SERVICE; assigned PLANNED line; no execution; warning fact null | planned start + 5 minutes | Current assigned KTV and authorized branch management |
-| PRE_END | Line and execution IN_PROGRESS; no END; warning fact null | expected end − 5 minutes | Current assigned KTV and authorized branch management |
-| END_OVERDUE | Line and execution IN_PROGRESS; no END; warning fact null | expected end + 5 minutes | Current assigned KTV and authorized branch management |
+| PRE_END       | Line and execution IN_PROGRESS; no END; warning fact null                             | expected end − 5 minutes  | Current assigned KTV and authorized branch management |
+| END_OVERDUE   | Line and execution IN_PROGRESS; no END; warning fact null                             | expected end + 5 minutes  | Current assigned KTV and authorized branch management |
 
 A reservation whose customer has not arrived receives no START-overdue warning, following
 the approved design section 12. WAITING lines never acquire timers. Old unfinished
@@ -136,15 +136,15 @@ recipients additionally need active branch membership and `PERFORM_SERVICES` the
 Recipient user rows use sorted shared NOWAIT locks while reading account/employment facts;
 contention retries the worker transaction.
 
-| Source event | In-app behavior |
-| --- | --- |
-| BOOKING_CREATED | Booking owner and assigned KTVs receive confirmation/new-work information |
-| BOOKING_CANCELLED | Owner and assigned KTVs receive cancellation information |
-| BOOKING_CANCELLED with customer actor and `late=true` | Management additionally receives distinct LATE_CANCELLATION; cancellation remains unconditional |
-| BOOKING_NO_SHOW | Owner and assigned KTVs receive no-show information |
-| CUSTOMER_ARRIVED | Assigned KTVs receive arrival information; Visit timers are ensured |
-| BOOKING_KTV_CONFLICT | Branch management and affected customer account receive conflict information |
-| KTV_REASSIGNED | Management, previous/replacement KTVs and affected customer account receive a historical reassignment update |
+| Source event                                          | In-app behavior                                                                                              |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| BOOKING_CREATED                                       | Booking owner and assigned KTVs receive confirmation/new-work information                                    |
+| BOOKING_CANCELLED                                     | Owner and assigned KTVs receive cancellation information                                                     |
+| BOOKING_CANCELLED with customer actor and `late=true` | Management additionally receives distinct LATE_CANCELLATION; cancellation remains unconditional              |
+| BOOKING_NO_SHOW                                       | Owner and assigned KTVs receive no-show information                                                          |
+| CUSTOMER_ARRIVED                                      | Assigned KTVs receive arrival information; Visit timers are ensured                                          |
+| BOOKING_KTV_CONFLICT                                  | Branch management and affected customer account receive conflict information                                 |
+| KTV_REASSIGNED                                        | Management, previous/replacement KTVs and affected customer account receive a historical reassignment update |
 
 The approved Step 4 `<15m` cancellation fact is consumed as recorded; the worker does not
 recalculate it using later delivery time. Step 8 conflict and reassignment facts remain
@@ -159,11 +159,11 @@ notification subsystem. ANY/SPECIFIC intent and all Step 8 behavior remain uncha
 
 ## Authenticated API
 
-| Method | Endpoint | Behavior |
-| --- | --- | --- |
-| GET | `/api/v1/notifications` | Own inbox, 30 rows, newest-first timestamp/UUID cursor, unread count |
-| GET | `/api/v1/notifications/unread-count` | Own unread count |
-| POST | `/api/v1/notifications/:id/read` | Empty JSON body, idempotently mark own row read with database time |
+| Method | Endpoint                             | Behavior                                                             |
+| ------ | ------------------------------------ | -------------------------------------------------------------------- |
+| GET    | `/api/v1/notifications`              | Own inbox, 30 rows, newest-first timestamp/UUID cursor, unread count |
+| GET    | `/api/v1/notifications/unread-count` | Own unread count                                                     |
+| POST   | `/api/v1/notifications/:id/read`     | Empty JSON body, idempotently mark own row read with database time   |
 
 Both customer and workforce authenticated sessions can read their own inbox. Session identity
 supplies the recipient; there is no caller-provided recipient or management override.

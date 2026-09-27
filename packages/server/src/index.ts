@@ -52,6 +52,16 @@ export {
   type SmtpConfig,
 } from './mail.js';
 export { createLogger } from './logger.js';
-export { decide, GLOBAL, isKnownPermission, type AuthorityGraph, type DecideOptions, type Grant, type Override, type Scope, type Target } from './authorization.js';
+export {
+  decide,
+  GLOBAL,
+  isKnownPermission,
+  type AuthorityGraph,
+  type DecideOptions,
+  type Grant,
+  type Override,
+  type Scope,
+  type Target,
+} from './authorization.js';
 export { loadAuthorityGraph } from './authorization.store.js';
 export { redisConnectionOptions, SYSTEM_CHECK_QUEUE, QUEUE_PREFIX } from './redis.js';

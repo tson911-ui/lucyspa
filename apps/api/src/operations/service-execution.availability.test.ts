@@ -1,22 +1,40 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { evaluateExecutionStart, type AvailabilityFacts } from '../availability/availability.engine.js';
+import {
+  evaluateExecutionStart,
+  type AvailabilityFacts,
+} from '../availability/availability.engine.js';
 
 function facts(): AvailabilityFacts {
   const midnight = Date.parse('2026-10-10T00:00:00Z');
   return {
-    context: 'OPERATIONAL', now: midnight + 600 * 60_000 + 12_345,
-    serviceDate: '2026-10-10', today: '2026-10-10', branchActive: true,
+    context: 'OPERATIONAL',
+    now: midnight + 600 * 60_000 + 12_345,
+    serviceDate: '2026-10-10',
+    today: '2026-10-10',
+    branchActive: true,
     window: { startMinute: 480, endMinute: 1200 },
     settings: { maxAdvanceDays: 30, slotIntervalMinutes: 15, serviceBufferMinutes: 60 },
     // The current catalog/settings differ intentionally from the execution snapshots.
-    services: [{ id: 'service', offered: true, durationMinutes: 180, skillIds: new Set(['skill']) }],
-    employees: [{
-      userId: 'ktv', accountActive: true, classification: 'OFFICIAL_EMPLOYEE',
-      assigned: true, skillIds: new Set(['skill']), onLeave: false, collaboratorWork: [],
-      checkedIn: true, occupied: [], running: [],
-    }],
-    customerBookings: [], minuteInstants: Array.from({ length: 1501 }, (_, m) => midnight + m * 60_000),
+    services: [
+      { id: 'service', offered: true, durationMinutes: 180, skillIds: new Set(['skill']) },
+    ],
+    employees: [
+      {
+        userId: 'ktv',
+        accountActive: true,
+        classification: 'OFFICIAL_EMPLOYEE',
+        assigned: true,
+        skillIds: new Set(['skill']),
+        onLeave: false,
+        collaboratorWork: [],
+        checkedIn: true,
+        occupied: [],
+        running: [],
+      },
+    ],
+    customerBookings: [],
+    minuteInstants: Array.from({ length: 1501 }, (_, m) => midnight + m * 60_000),
   };
 }
 const line = { employeeUserId: 'ktv', durationMinutes: 30, bufferMinutes: 5 };
@@ -42,9 +60,20 @@ test('unfinished execution blocks even far beyond expected end; actual END buffe
 test('START retains branch-local today, attendance, employment, skills and branch assignment checks', () => {
   const f = facts();
   f.serviceDate = '2026-10-11';
-  Object.assign(f.employees[0]!, { checkedIn: false, classification: 'ENDED', assigned: false, skillIds: new Set() });
+  Object.assign(f.employees[0]!, {
+    checkedIn: false,
+    classification: 'ENDED',
+    assigned: false,
+    skillIds: new Set(),
+  });
   const reasons = evaluateExecutionStart(f, line).reasons;
-  for (const reason of ['NOT_SAME_DAY', 'NOT_CHECKED_IN', 'EMPLOYEE_INACTIVE', 'NOT_ASSIGNED', 'NOT_QUALIFIED']) {
+  for (const reason of [
+    'NOT_SAME_DAY',
+    'NOT_CHECKED_IN',
+    'EMPLOYEE_INACTIVE',
+    'NOT_ASSIGNED',
+    'NOT_QUALIFIED',
+  ]) {
     assert.ok(reasons.includes(reason as (typeof reasons)[number]));
   }
 });

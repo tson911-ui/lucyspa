@@ -16,7 +16,10 @@ export class ServiceExecutionController {
 
   @Get('branches/:branchId/my-services')
   @ApiOkResponse({ description: 'Own assigned services today and any older unfinished execution.' })
-  myWork(@Param('branchId') branchId: string, @Req() request: Request): Promise<MyServiceWorkResponse> {
+  myWork(
+    @Param('branchId') branchId: string,
+    @Req() request: Request,
+  ): Promise<MyServiceWorkResponse> {
     return this.executions.myWork(this.session(request), branchId);
   }
 
@@ -28,9 +31,15 @@ export class ServiceExecutionController {
 
   @Post('service-lines/:id/start')
   @HttpCode(200)
-  @ApiOkResponse({ description: 'Start own PLANNED line; repeat returns the original running execution.' })
-  start(@Param('id') id: string, @Body() body: unknown, @Req() request: Request,
-    @Res({ passthrough: true }) response: Response): Promise<ServiceExecutionWork> {
+  @ApiOkResponse({
+    description: 'Start own PLANNED line; repeat returns the original running execution.',
+  })
+  start(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<ServiceExecutionWork> {
     requireEmptyObject(body);
     return this.executions.start(this.session(request), id, this.requestId(response));
   }
@@ -38,8 +47,12 @@ export class ServiceExecutionController {
   @Post('service-lines/:id/end')
   @HttpCode(200)
   @ApiOkResponse({ description: 'End own running service; repeat preserves the original END.' })
-  end(@Param('id') id: string, @Body() body: unknown, @Req() request: Request,
-    @Res({ passthrough: true }) response: Response): Promise<ServiceExecutionWork> {
+  end(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<ServiceExecutionWork> {
     requireEmptyObject(body);
     return this.executions.end(this.session(request), id, this.requestId(response));
   }

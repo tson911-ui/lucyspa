@@ -1760,11 +1760,21 @@ export interface ReassignServicesRequest {
   reason: string;
   acknowledgeSpecific: boolean;
 }
-export interface ReassignServicesResponse { lines: ReassignmentLine[] }
+export interface ReassignServicesResponse {
+  lines: ReassignmentLine[];
+}
 // Phase 3 in-app inbox. No event payload, recipient identity or free-text audit notes are exposed.
-export type NotificationType = 'BOOKING_CREATED' | 'BOOKING_CANCELLED' | 'LATE_CANCELLATION'
-  | 'BOOKING_NO_SHOW' | 'CUSTOMER_ARRIVED' | 'BOOKING_KTV_CONFLICT' | 'KTV_REASSIGNED'
-  | 'START_OVERDUE' | 'PRE_END' | 'END_OVERDUE';
+export type NotificationType =
+  | 'BOOKING_CREATED'
+  | 'BOOKING_CANCELLED'
+  | 'LATE_CANCELLATION'
+  | 'BOOKING_NO_SHOW'
+  | 'CUSTOMER_ARRIVED'
+  | 'BOOKING_KTV_CONFLICT'
+  | 'KTV_REASSIGNED'
+  | 'START_OVERDUE'
+  | 'PRE_END'
+  | 'END_OVERDUE';
 export interface NotificationItem {
   id: string;
   type: NotificationType;
