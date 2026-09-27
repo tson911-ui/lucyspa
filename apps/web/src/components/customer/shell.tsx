@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { Notice } from '../workforce/ui';
+import { NotificationIndicator } from '../notifications/inbox';
 import { useCustomer, useCustomerAccount } from './session';
 
 /** The signed-in member area: brand, navigation (wraps on phones), language and sign-out. */
 export function CustomerShell({ children }: { children: ReactNode }) {
-  const { t, base, locale, sessionLost } = useCustomer();
+  const { t, base, locale, sessionLost, api } = useCustomer();
   const { signOut } = useCustomerAccount();
   const pathname = usePathname();
   const other = locale === 'vi' ? 'en' : 'vi';
@@ -38,6 +39,7 @@ export function CustomerShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="cu-header-actions">
+          <NotificationIndicator api={api} base={base} locale={locale} />
           <Link
             href={pathname.replace(`/${locale}/`, `/${other}/`)}
             hrefLang={other}

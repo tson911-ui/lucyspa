@@ -22,6 +22,8 @@ import { ServiceExecutionController } from './operations/service-execution.contr
 import { ServiceExecutionService } from './operations/service-execution.service.js';
 import { ReassignmentController } from './operations/reassignment.controller.js';
 import { ReassignmentService } from './operations/reassignment.service.js';
+import { NotificationController } from './notifications/notification.controller.js';
+import { NotificationService } from './notifications/notification.service.js';
 import { WalkInController } from './walkin/walkin.controller.js';
 import { WalkInService } from './walkin/walkin.service.js';
 import { MyAccountService } from './account/my-account.service.js';
@@ -94,6 +96,7 @@ export class AppModule {
         OperationsController,
         ServiceExecutionController,
         ReassignmentController,
+        NotificationController,
         WalkInController,
       ],
       providers: [
@@ -127,6 +130,7 @@ export class AppModule {
         OperationsService,
         ServiceExecutionService,
         ReassignmentService,
+        NotificationService,
         WalkInService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },

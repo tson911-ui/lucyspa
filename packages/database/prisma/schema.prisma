@@ -32,6 +32,7 @@ model Branch {
   collaboratorWork    CollaboratorWorkOccurrence[]
   bookings            Booking[]
   visits              Visit[]
+  notifications       Notification[]
 
   @@map("branches")
 }
@@ -49,10 +50,48 @@ model OutboxEvent {
   payload       Json      @db.JsonB
   occurredAt    DateTime  @default(now()) @map("occurred_at") @db.Timestamptz(3)
   publishedAt   DateTime? @map("published_at") @db.Timestamptz(3)
+  notifications Notification[]
 
   @@index([publishedAt, occurredAt, id], map: "outbox_events_pending_idx")
   @@index([branchId], map: "outbox_events_branch_id_idx")
   @@map("outbox_events")
+}
+
+// Durable in-app inbox. Delivery retries never overwrite read state.
+model Notification {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recipientUserId String    @map("recipient_user_id") @db.Uuid
+  recipient       User      @relation(fields: [recipientUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId        String    @map("branch_id") @db.Uuid
+  branch          Branch    @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sourceEventId   String    @map("source_event_id") @db.Uuid
+  sourceEvent     OutboxEvent @relation(fields: [sourceEventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  type            String
+  entityType      String    @map("entity_type")
+  entityId        String    @map("entity_id") @db.Uuid
+  contextCode     String    @map("context_code")
+  actionAt        DateTime  @map("action_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  readAt          DateTime? @map("read_at") @db.Timestamptz(3)
+
+  @@unique([sourceEventId, recipientUserId], map: "notifications_event_recipient_key")
+  @@index([recipientUserId, createdAt(sort: Desc), id(sort: Desc)], map: "notifications_inbox_idx")
+  @@index([recipientUserId, readAt], map: "notifications_unread_idx")
+  @@map("notifications")
+}
+
+// Recoverable timer metadata, never execution state. Reuse the source warning facts.
+model ServiceWarningSchedule {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lineId    String           @map("line_id") @db.Uuid
+  line      VisitServiceLine @relation(fields: [lineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  kind      String
+  targetAt  DateTime         @map("target_at") @db.Timestamptz(3)
+  dueAt     DateTime         @map("due_at") @db.Timestamptz(3)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([lineId, kind, targetAt], map: "service_warning_schedules_occurrence_key")
+  @@map("service_warning_schedules")
 }
 
 enum UserKind {
@@ -186,6 +225,7 @@ model User {
   createdAt                    DateTime                         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                    DateTime                         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   customerProfile              CustomerProfile?
+  notifications                Notification[]
   employeeProfile              EmployeeProfile?
   grantedBranchAssignments     EmployeeBranchAssignment[]       @relation("BranchAssignmentGrantor")
   completedRegistrationIntents RegistrationIntent[]
@@ -1060,6 +1100,7 @@ model VisitServiceLine {
   createdAt               DateTime                      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt               DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   execution               ServiceExecution?
+  warningSchedules        ServiceWarningSchedule[]
   assignmentChanges       ServiceLineAssignmentChange[]
 
   @@unique([participantId, sequence], map: "visit_service_lines_participant_sequence_key")

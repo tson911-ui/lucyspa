@@ -9,6 +9,7 @@ import {
 import { Worker } from 'bullmq';
 import { parseAuthJobsEnvironment, startAuthJobs } from './auth-jobs.js';
 import { processSystemCheck } from './processor.js';
+import { startBookingJobs } from './booking-jobs.js';
 
 const bootstrapLogger = createLogger('worker', 'info');
 
@@ -20,6 +21,7 @@ async function bootstrap() {
   const database = createDatabaseClient(config.databaseUrl);
   let worker: Worker | undefined;
   let authJobs: { stop(): Promise<void> } | undefined;
+  let bookingJobs: { stop(): Promise<void> } | undefined;
   try {
     await database.$queryRaw`SELECT 1`;
     worker = new Worker(SYSTEM_CHECK_QUEUE, async (job) => processSystemCheck(job), {
@@ -44,8 +46,10 @@ async function bootstrap() {
       clearTimeout(timer);
     }
     authJobs = startAuthJobs(database, authJobsConfig, logger);
+    bookingJobs = startBookingJobs(database, config.redisUrl, logger);
     logger.info({ queue: SYSTEM_CHECK_QUEUE }, 'Worker ready');
   } catch (error) {
+    await bookingJobs?.stop();
     await authJobs?.stop();
     await worker?.close(true);
     await database.$disconnect();
@@ -58,6 +62,7 @@ async function bootstrap() {
     const deadline = setTimeout(() => process.exit(1), 15000);
     deadline.unref();
     try {
+      await bookingJobs?.stop();
       await authJobs?.stop();
       await worker?.close();
       await database.$disconnect();

@@ -8,6 +8,7 @@ import type { WorkforceDictionary } from '../../i18n/workforce';
 import { navigationFor, type NavItem } from '../../lib/workforce/permissions';
 import { useAccount, useSessionNotice, useWorkforce } from './session';
 import { Notice } from './ui';
+import { NotificationIndicator } from '../notifications/inbox';
 
 const GROUPS: NavItem['group'][] = ['home', 'operations', 'management'];
 
@@ -64,7 +65,7 @@ export function NavigationLinks({
 }
 
 export function WorkforceShell({ children }: { children: ReactNode }) {
-  const { t, base, locale } = useWorkforce();
+  const { t, base, locale, api } = useWorkforce();
   const { account, signOut } = useAccount();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -89,6 +90,7 @@ export function WorkforceShell({ children }: { children: ReactNode }) {
           <BrandWordmark />
         </Link>
         <div className="wf-account">
+          <NotificationIndicator api={api} base={base} locale={locale} />
           <span className="wf-account-name">
             {account.displayName}
             <span className="wf-muted wf-small">
