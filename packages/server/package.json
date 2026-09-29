@@ -15,6 +15,7 @@
     "test": "node --test \"dist/**/*.test.js\""
   },
   "dependencies": {
+    "@lucy-spa/contracts": "workspace:*",
     "@lucy-spa/database": "workspace:*",
     "bullmq": "5.81.5",
     "nodemailer": "10.0.10",

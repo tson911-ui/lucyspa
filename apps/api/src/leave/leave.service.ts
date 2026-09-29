@@ -1,4 +1,12 @@
-import { supervisorWhere } from '@lucy-spa/server';
+import {
+  LEAVE_AGGREGATE,
+  LEAVE_DECIDED_EVENT,
+  LEAVE_EVENT_SCHEMA_VERSION,
+  LEAVE_REQUESTED_EVENT,
+  leaveDecidedPayload,
+  leaveRequestedPayload,
+  supervisorWhere,
+} from '@lucy-spa/server';
 import { requireSupervision, scopeBranchIds } from '../authorization/organization-policy.js';
 import type {
   LeaveRequestCancelRequest,
@@ -10,7 +18,7 @@ import type {
   LeaveStatus,
   LeaveType,
 } from '@lucy-spa/contracts';
-import type { Prisma } from '@lucy-spa/database';
+import { appendOutboxEvent, type Prisma } from '@lucy-spa/database';
 import { Inject, Injectable } from '@nestjs/common';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { AuthError } from '../auth/auth.error.js';
@@ -170,7 +178,7 @@ export class LeaveService {
     // The frame has locked the caller's User row FOR UPDATE: the overlap check and the
     // insert can't interleave with another leave write for this employee.
     return this.frame(sessionToken, requestId, [], async (context) => {
-      const { tx, actor } = context;
+      const { tx, actor, now } = context;
       if (actor.principal.userKind !== 'EMPLOYEE') throw new AuthError('FORBIDDEN');
       // Collaborators work by schedule and never use the leave workflow (Owner decision Q15).
       const branches = await tx.employeeBranchAssignment.findMany({
@@ -196,6 +204,16 @@ export class LeaveService {
       });
       await this.audit(context, 'LEAVE_REQUESTED', row, {
         after: { ...this.facts(row), status: row.status },
+      });
+      // Same transaction as the request: a rolled-back creation leaves no event. Minimal,
+      // structured payload (no reason); routing happens later in the Leave notification consumer.
+      await appendOutboxEvent(tx, {
+        aggregateType: LEAVE_AGGREGATE,
+        aggregateId: row.id,
+        eventType: LEAVE_REQUESTED_EVENT,
+        schemaVersion: LEAVE_EVENT_SCHEMA_VERSION,
+        occurredAt: now,
+        payload: leaveRequestedPayload(actor.userId),
       });
       return present(row);
     });
@@ -351,6 +369,15 @@ export class LeaveService {
           },
         },
       );
+      // Same transaction as the decision; never carries the decision reason or manager note.
+      await appendOutboxEvent(tx, {
+        aggregateType: LEAVE_AGGREGATE,
+        aggregateId: id,
+        eventType: LEAVE_DECIDED_EVENT,
+        schemaVersion: LEAVE_EVENT_SCHEMA_VERSION,
+        occurredAt: now,
+        payload: leaveDecidedPayload(row.employeeUserId, status),
+      });
       return present(updated);
     });
   }

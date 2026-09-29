@@ -88,3 +88,23 @@ export {
   type SupervisorRouting,
   type SupervisorRoutingInput,
 } from './notification-routing.js';
+export {
+  isLeaveEventType,
+  LEAVE_AGGREGATE,
+  LEAVE_DECIDED_EVENT,
+  LEAVE_EVENT_SCHEMA_VERSION,
+  LEAVE_EVENT_TYPES,
+  LEAVE_REQUESTED_EVENT,
+  leaveDecidedPayload,
+  leaveRequestedPayload,
+  parseLeaveEventPayload,
+  type LeaveDecidedPayload,
+  type LeaveDecision,
+  type LeaveEventType,
+  type LeaveRequestedPayload,
+} from './leave-events.js';
+export {
+  processLeaveEvent,
+  type LeaveEventOutcome,
+  type LeaveNotificationDependencies,
+} from './leave-notifications.js';

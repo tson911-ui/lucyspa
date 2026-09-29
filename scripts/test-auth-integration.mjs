@@ -43,3 +43,4 @@ await import('../apps/api/dist/operations/execution-reassignment.race.integratio
 await import('../apps/api/dist/bootstrap/organization-bootstrap.integration.test.js');
 await import('../apps/api/dist/organization/organization.integration.test.js');
 await import('../apps/api/dist/notifications/notification-routing.integration.test.js');
+await import('../apps/api/dist/leave/leave-notifications.integration.test.js');

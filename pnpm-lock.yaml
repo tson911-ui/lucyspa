@@ -358,6 +358,9 @@ importers:
 
   packages/server:
     dependencies:
+      '@lucy-spa/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@lucy-spa/database':
         specifier: workspace:*
         version: link:../database

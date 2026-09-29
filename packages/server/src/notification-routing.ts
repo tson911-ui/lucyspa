@@ -42,7 +42,10 @@ function holdsAcross(graph: AuthorityGraph, permission: string, branches: readon
 }
 
 /** Latest branch-local calendar date among the branches (UTC when there are none). */
-async function businessDate(tx: Prisma.TransactionClient, branches: readonly string[]) {
+export async function branchBusinessDate(
+  tx: Prisma.TransactionClient,
+  branches: readonly string[],
+) {
   const [row] = await tx.$queryRaw<{ today: string }[]>`
     SELECT COALESCE(MAX(to_char(now() AT TIME ZONE b.timezone, 'YYYY-MM-DD')),
                     to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD')) AS today
@@ -113,7 +116,7 @@ export async function resolveSupervisorRecipients(
     orderBy: { id: 'asc' },
   });
 
-  const today = await businessDate(tx, branches);
+  const today = await branchBusinessDate(tx, branches);
   const ranked = new Map<number, string[]>();
   for (const candidate of candidates) {
     const graph = await loadAuthorityGraph(tx, candidate.id);
