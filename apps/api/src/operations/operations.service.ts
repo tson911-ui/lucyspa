@@ -50,6 +50,8 @@ export class OperationsService {
       const permissions = {
         arrive: decide(actor.graph, 'MANAGE_BOOKINGS', at(id)),
         manageQueue: decide(actor.graph, 'MANAGE_QUEUE', at(id)),
+        cancelLine: decide(actor.graph, 'MANAGE_BOOKINGS', at(id)),
+        resolveExecution: decide(actor.graph, 'RESOLVE_SERVICE_EXECUTION', at(id)),
       };
       const board = await operationalToday(tx, {
         branchId: id,
@@ -58,6 +60,9 @@ export class OperationsService {
         settings,
         canArrive: permissions.arrive,
         canManageQueue: permissions.manageQueue,
+        actorUserId: actor.userId,
+        canCancelLine: permissions.cancelLine,
+        canResolveExecution: permissions.resolveExecution,
       });
       return { branch, date: day.day, now: now.toISOString(), settings, ...board, permissions };
     });

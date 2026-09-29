@@ -38,6 +38,8 @@ await import('../apps/api/dist/operations/operations.race.integration.test.js');
 await import('../apps/api/dist/walkin/walkin.integration.test.js');
 await import('../apps/api/dist/walkin/walkin.race.integration.test.js');
 await import('../apps/api/dist/operations/service-execution.integration.test.js');
+await import('../apps/api/dist/operations/visit-completion.integration.test.js');
+await import('../apps/api/dist/operations/visit-completion.race.integration.test.js');
 await import('../apps/api/dist/operations/reassignment.integration.test.js');
 await import('../apps/api/dist/operations/execution-reassignment.race.integration.test.js');
 await import('../apps/api/dist/bootstrap/organization-bootstrap.integration.test.js');

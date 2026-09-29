@@ -1,11 +1,28 @@
-import type { MyServiceWorkResponse, ServiceExecutionWork } from '@lucy-spa/contracts';
+import type {
+  CancelServiceLineRequest,
+  CancelledServiceLineResponse,
+  MyServiceWorkResponse,
+  ResolveServiceExecutionRequest,
+  ResolvedServiceExecutionResponse,
+  ServiceExecutionWork,
+} from '@lucy-spa/contracts';
 import { Body, Controller, Get, HttpCode, Inject, Param, Post, Req, Res } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
+import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 import type { Request, Response } from 'express';
 import { sessionCookie } from '../auth/cookies.js';
 import { requireEmptyObject } from '../auth/session-auth.controller.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import { ServiceExecutionService } from './service-execution.service.js';
+
+class ResolveEndDto implements ResolveServiceExecutionRequest {
+  @ApiProperty() @IsString() @MaxLength(2_048) reason!: string;
+  @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(40) endedAt?: string;
+}
+
+class CancelLineDto implements CancelServiceLineRequest {
+  @ApiProperty() @IsString() @MaxLength(2_048) reason!: string;
+}
 
 @Controller('api/v1/operations')
 export class ServiceExecutionController {
@@ -55,6 +72,36 @@ export class ServiceExecutionController {
   ): Promise<ServiceExecutionWork> {
     requireEmptyObject(body);
     return this.executions.end(this.session(request), id, this.requestId(response));
+  }
+
+  @Post('service-lines/:id/resolve-end')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Management resolution of a forgotten END (RESOLVE_SERVICE_EXECUTION; reason required); repeat by the same actor returns the original outcome.',
+  })
+  resolveEnd(
+    @Param('id') id: string,
+    @Body() body: ResolveEndDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<ResolvedServiceExecutionResponse> {
+    return this.executions.resolve(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Post('service-lines/:id/cancel')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Cancel one unperformed line of an open visit (MANAGE_BOOKINGS; reason required); never a deletion.',
+  })
+  cancelLine(
+    @Param('id') id: string,
+    @Body() body: CancelLineDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<CancelledServiceLineResponse> {
+    return this.executions.cancelLine(this.session(request), id, body, this.requestId(response));
   }
 
   private session(request: Request) {

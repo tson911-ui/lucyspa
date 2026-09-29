@@ -39,6 +39,9 @@ const errors = {
   SERVICE_NOT_READY: [409, 'The planned start time has not arrived'],
   SERVICE_START_UNAVAILABLE: [409, 'Check attendance and operational availability before starting'],
   SERVICE_EXECUTION_CONFLICT: [409, 'Service work changed; refresh and try again'],
+  // Phase 4 Step 2: visit completion carryover.
+  SERVICE_RESOLUTION_NOT_ALLOWED: [409, 'This service cannot be resolved'],
+  SERVICE_LINE_CANCEL_NOT_ALLOWED: [409, 'This service line can no longer be cancelled'],
   REASSIGNMENT_NOT_ALLOWED: [409, 'Only assigned, unstarted service work can be reassigned'],
   REASSIGNMENT_CONFLICT: [409, 'The assignment changed; refresh and try again'],
   REASSIGNMENT_KTV_UNAVAILABLE: [409, 'The replacement is no longer eligible for this work'],

@@ -217,6 +217,53 @@ async function lockWork(context: AdminContext, lineId: string) {
   return { context: lockedContext, line: await ownedLine(lockedContext, lineId) };
 }
 
+/**
+ * The single Visit-completion rule, shared by a normal END, a management-resolved END (Phase 4
+ * Step 2) and the cancellation of an unstarted line. Called after a line just became DONE or
+ * CANCELLED, under the visit row lock:
+ * - some line is still WAITING / PLANNED / IN_PROGRESS -> the visit is unchanged;
+ * - every line is DONE or CANCELLED and at least one is DONE -> COMPLETED (completedAt = now);
+ * - every line is CANCELLED (nothing was performed) -> CANCELLED, the existing "customer left
+ *   before any service" state (only reachable from the cancellation path, which supplies `reason`).
+ * The database guard additionally refuses to close a visit that still has an open line. No payment
+ * state is ever involved.
+ */
+export async function settleVisitAfterLineChange(
+  tx: Prisma.TransactionClient,
+  visit: { id: string; status: string },
+  now: Date,
+  actorUserId: string,
+  cancelReason?: string,
+): Promise<'OPEN' | 'IN_SERVICE' | 'COMPLETED' | 'CANCELLED'> {
+  const current = visit.status as 'OPEN' | 'IN_SERVICE' | 'COMPLETED' | 'CANCELLED';
+  const open = await tx.visitServiceLine.count({
+    where: { visitId: visit.id, status: { notIn: ['DONE', 'CANCELLED'] } },
+  });
+  if (open > 0) return current;
+  const done = await tx.visitServiceLine.count({ where: { visitId: visit.id, status: 'DONE' } });
+  if (done > 0) {
+    await tx.visit.update({
+      where: { id: visit.id },
+      data: { status: 'COMPLETED', completedAt: now, rowVersion: { increment: 1 } },
+      select: { id: true },
+    });
+    return 'COMPLETED';
+  }
+  if (!cancelReason) return current;
+  await tx.visit.update({
+    where: { id: visit.id },
+    data: {
+      status: 'CANCELLED',
+      cancelledAt: now,
+      cancelledByUserId: actorUserId,
+      cancelReason,
+      rowVersion: { increment: 1 },
+    },
+    select: { id: true },
+  });
+  return 'CANCELLED';
+}
+
 export async function startService(
   context: AdminContext,
   lineId: string,
@@ -309,15 +356,7 @@ export async function endService(
     where: { id: line.id },
     data: { status: 'DONE', rowVersion: { increment: 1 } },
   });
-  const remaining = await tx.visitServiceLine.count({
-    where: { visitId: line.visitId, status: { notIn: ['DONE', 'CANCELLED'] } },
-  });
-  if (remaining === 0) {
-    await tx.visit.update({
-      where: { id: line.visitId },
-      data: { status: 'COMPLETED', completedAt: now, rowVersion: { increment: 1 } },
-    });
-  }
+  const visitStatus = await settleVisitAfterLineChange(tx, line.visit, now, context.actor.userId);
   const facts = {
     visitId: line.visitId,
     serviceLineId: line.id,
@@ -326,7 +365,7 @@ export async function endService(
     startedAt: execution.startedAt.toISOString(),
     endedAt: now.toISOString(),
     endKind: 'NORMAL',
-    visitStatus: remaining === 0 ? 'COMPLETED' : 'IN_SERVICE',
+    visitStatus: visitStatus === 'COMPLETED' ? 'COMPLETED' : 'IN_SERVICE',
   };
   await appendAdminAudit(context, {
     action: 'SERVICE_ENDED',

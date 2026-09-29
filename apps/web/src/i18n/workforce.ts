@@ -727,7 +727,43 @@ const vi = {
     cancelWalkInIntro:
       'Khách của lượt {code} rời đi trước khi bắt đầu dịch vụ. Mọi dịch vụ chưa bắt đầu sẽ bị hủy. Đây không phải "không đến".',
     walkInCancelled: 'Đã hủy lượt khách đang chờ.',
+    active: 'Lượt khách đang mở',
+    activeIntro:
+      'Dịch vụ đang chạy có thể được kết thúc ngoại lệ khi nhân viên quên bấm kết thúc; dịch vụ chưa bắt đầu có thể bị hủy nếu khách không làm nữa. Lịch sử luôn được giữ.',
+    activeEmpty: 'Không có lượt khách nào đang mở.',
+    activeVisit: 'Lượt {code}',
+    activeStaff: 'Nhân viên',
+    activeUnassigned: 'Chưa xếp nhân viên',
+    lineStatuses: {
+      WAITING: 'Đang chờ',
+      PLANNED: 'Đã lên lịch',
+      IN_PROGRESS: 'Đang làm',
+      DONE: 'Đã xong',
+      CANCELLED: 'Đã hủy',
+    },
+    runningSince: 'Bắt đầu {start}, dự kiến xong {end}',
+    overdue: 'Quá giờ dự kiến',
+    resolveEnd: 'Kết thúc ngoại lệ',
+    resolveEndIntro:
+      'Dịch vụ "{service}" ({staff}) chưa được kết thúc. Việc này ghi nhận kết thúc thay nhân viên, có lý do và được lưu vết; thời điểm bắt đầu không thay đổi.',
+    resolveMode: 'Thời điểm kết thúc',
+    resolveModeNow: 'Ngay bây giờ',
+    resolveModeExpected: 'Theo giờ dự kiến ({time})',
+    resolveModeMinutes: 'Sau khi bắt đầu một số phút',
+    resolveMinutes: 'Số phút từ lúc bắt đầu (tối đa {max})',
+    resolved: 'Đã kết thúc ngoại lệ dịch vụ.',
+    cancelLine: 'Hủy dịch vụ chưa làm',
+    cancelLineIntro:
+      'Khách không làm dịch vụ "{service}" nữa. Dịch vụ được đánh dấu đã hủy (không xóa) và giải phóng lịch của nhân viên.',
+    lineCancelled: 'Đã hủy dịch vụ chưa làm.',
+    visitClosed: 'Lượt khách đã hoàn tất.',
+    visitCancelled: 'Lượt khách đã được hủy vì không còn dịch vụ nào được thực hiện.',
     errors: {
+      SERVICE_RESOLUTION_NOT_ALLOWED:
+        'Không thể kết thúc ngoại lệ: dịch vụ đã được kết thúc hoặc chưa bắt đầu. Hãy tải lại.',
+      SERVICE_LINE_CANCEL_NOT_ALLOWED:
+        'Không thể hủy: dịch vụ đã bắt đầu, đã xong hoặc lượt khách đã kết thúc. Hãy tải lại.',
+      SERVICE_EXECUTION_CONFLICT: 'Dịch vụ vừa thay đổi. Hãy tải lại rồi thử lại.',
       BOOKING_ARRIVAL_TOO_EARLY: 'Chưa đến giờ nhận khách cho lịch này; khách có thể chờ.',
       BOOKING_ARRIVAL_NOT_ALLOWED:
         'Lịch hẹn này không còn nhận khách được (đã hủy hoặc không đến).',
@@ -1819,7 +1855,43 @@ const en: Dictionary = {
     cancelWalkInIntro:
       'The customer of visit {code} is leaving before any service started. Every unstarted service is cancelled. This is not a no-show.',
     walkInCancelled: 'The waiting walk-in was cancelled.',
+    active: 'Open visits',
+    activeIntro:
+      'A running service can be ended by exception when staff forgot to end it; a service that has not started can be cancelled if the customer no longer wants it. History is always kept.',
+    activeEmpty: 'No open visits.',
+    activeVisit: 'Visit {code}',
+    activeStaff: 'Staff',
+    activeUnassigned: 'No staff assigned',
+    lineStatuses: {
+      WAITING: 'Waiting',
+      PLANNED: 'Planned',
+      IN_PROGRESS: 'In progress',
+      DONE: 'Done',
+      CANCELLED: 'Cancelled',
+    },
+    runningSince: 'Started {start}, expected end {end}',
+    overdue: 'Past expected end',
+    resolveEnd: 'End by exception',
+    resolveEndIntro:
+      'The service "{service}" ({staff}) was never ended. This records the end on their behalf, with a reason and an audit trail; the start time is not changed.',
+    resolveMode: 'End time',
+    resolveModeNow: 'Right now',
+    resolveModeExpected: 'At the expected end ({time})',
+    resolveModeMinutes: 'A number of minutes after the start',
+    resolveMinutes: 'Minutes since the start (at most {max})',
+    resolved: 'The service was ended by exception.',
+    cancelLine: 'Cancel unperformed service',
+    cancelLineIntro:
+      'The customer no longer wants "{service}". The service is marked cancelled (never deleted) and the staff member\'s time is released.',
+    lineCancelled: 'The unperformed service was cancelled.',
+    visitClosed: 'The visit is now complete.',
+    visitCancelled: 'The visit was cancelled because no service was performed.',
     errors: {
+      SERVICE_RESOLUTION_NOT_ALLOWED:
+        'Cannot end by exception: the service was already ended or never started. Refresh.',
+      SERVICE_LINE_CANCEL_NOT_ALLOWED:
+        'Cannot cancel: the service has started, is done or the visit is closed. Refresh.',
+      SERVICE_EXECUTION_CONFLICT: 'The service just changed. Refresh and try again.',
       BOOKING_ARRIVAL_TOO_EARLY:
         'Check-in for this booking has not opened yet; the customer can wait.',
       BOOKING_ARRIVAL_NOT_ALLOWED:

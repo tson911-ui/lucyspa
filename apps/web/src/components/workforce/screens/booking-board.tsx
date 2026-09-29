@@ -1,6 +1,9 @@
 'use client';
 
 import type {
+  CancelledServiceLineResponse,
+  OperationalActiveVisit,
+  OperationalActiveVisitLine,
   OperationalBooking,
   OperationalQueueKtv,
   OperationalTodayResponse,
@@ -18,6 +21,12 @@ import {
   matchesSearch,
   stateTone,
 } from '../../../lib/workforce/booking-board';
+import {
+  elapsedMinutes,
+  reasonBody,
+  resolveEndBody,
+  type ResolveEndMode,
+} from '../../../lib/workforce/visit-completion';
 import { waitReasonText, walkInCancelBody } from '../../../lib/workforce/walk-in';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
@@ -28,6 +37,8 @@ type Pending =
   | { kind: 'noShow'; booking: OperationalBooking }
   | { kind: 'advance'; visitId: string; code: string }
   | { kind: 'cancelWalkIn'; visitId: string; code: string }
+  | { kind: 'resolveEnd'; visit: OperationalActiveVisit; line: OperationalActiveVisitLine }
+  | { kind: 'cancelLine'; visit: OperationalActiveVisit; line: OperationalActiveVisitLine }
   | null;
 
 /**
@@ -47,6 +58,8 @@ export function BookingBoardScreen() {
   const [search, setSearch] = useState('');
   const [pending, setPending] = useState<Pending>(null);
   const [reason, setReason] = useState('');
+  const [endMode, setEndMode] = useState<ResolveEndMode>('NOW');
+  const [endMinutes, setEndMinutes] = useState('');
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
 
@@ -93,6 +106,38 @@ export function BookingBoardScreen() {
         const body = walkInCancelBody(reason);
         if (!body) return;
         await api.post(`/api/v1/operations/visits/${pending.visitId}/cancel-walk-in`, body);
+      } else if (pending.kind === 'resolveEnd') {
+        const execution = pending.line.execution;
+        if (!execution || !board) return;
+        const body = resolveEndBody({
+          reason,
+          mode: endMode,
+          minutes: endMinutes,
+          startedAt: execution.startedAt,
+          expectedEndAt: execution.expectedEndAt,
+          now: board.now,
+        });
+        if (!body) return;
+        await api.post(`/api/v1/operations/service-lines/${pending.line.id}/resolve-end`, body);
+      } else if (pending.kind === 'cancelLine') {
+        const body = reasonBody(reason);
+        if (!body) return;
+        const result = await api.post<CancelledServiceLineResponse>(
+          `/api/v1/operations/service-lines/${pending.line.id}/cancel`,
+          body,
+        );
+        if (result.visitStatus === 'COMPLETED' || result.visitStatus === 'CANCELLED') {
+          setMessage({
+            tone: 'success',
+            text:
+              result.visitStatus === 'COMPLETED'
+                ? t.bookingBoard.visitClosed
+                : t.bookingBoard.visitCancelled,
+          });
+          setPending(null);
+          setReason('');
+          return;
+        }
       } else {
         await api.post(`/api/v1/operations/visits/${pending.visitId}/advance`, { reason });
       }
@@ -103,7 +148,11 @@ export function BookingBoardScreen() {
             ? t.bookingBoard.arrived
             : pending.kind === 'cancelWalkIn'
               ? t.bookingBoard.walkInCancelled
-              : t.bookingBoard.done,
+              : pending.kind === 'resolveEnd'
+                ? t.bookingBoard.resolved
+                : pending.kind === 'cancelLine'
+                  ? t.bookingBoard.lineCancelled
+                  : t.bookingBoard.done,
       });
       setPending(null);
       setReason('');
@@ -175,7 +224,11 @@ export function BookingBoardScreen() {
                 ? t.bookingBoard.noShow
                 : pending.kind === 'cancelWalkIn'
                   ? t.bookingBoard.cancelWalkIn
-                  : t.bookingBoard.advance}
+                  : pending.kind === 'resolveEnd'
+                    ? t.bookingBoard.resolveEnd
+                    : pending.kind === 'cancelLine'
+                      ? t.bookingBoard.cancelLine
+                      : t.bookingBoard.advance}
           </h2>
           <p>
             {pending.kind === 'arrive'
@@ -187,8 +240,32 @@ export function BookingBoardScreen() {
                 ? fill(t.bookingBoard.noShowIntro, { code: pending.booking.code })
                 : pending.kind === 'cancelWalkIn'
                   ? fill(t.bookingBoard.cancelWalkInIntro, { code: pending.code })
-                  : fill(t.bookingBoard.advanceIntro, { code: pending.code })}
+                  : pending.kind === 'resolveEnd'
+                    ? fill(t.bookingBoard.resolveEndIntro, {
+                        service:
+                          locale === 'vi' ? pending.line.serviceNameVi : pending.line.serviceNameEn,
+                        staff: pending.line.employee?.displayName ?? '',
+                      })
+                    : pending.kind === 'cancelLine'
+                      ? fill(t.bookingBoard.cancelLineIntro, {
+                          service:
+                            locale === 'vi'
+                              ? pending.line.serviceNameVi
+                              : pending.line.serviceNameEn,
+                        })
+                      : fill(t.bookingBoard.advanceIntro, { code: pending.code })}
           </p>
+          {pending.kind === 'resolveEnd' && pending.line.execution && board ? (
+            <ResolveEndTime
+              execution={pending.line.execution}
+              now={board.now}
+              time={time}
+              mode={endMode}
+              minutes={endMinutes}
+              onMode={setEndMode}
+              onMinutes={setEndMinutes}
+            />
+          ) : null}
           {pending.kind !== 'arrive' ? (
             <Field id="board-reason" label={t.bookingBoard.reason} required>
               <textarea
@@ -213,7 +290,11 @@ export function BookingBoardScreen() {
             <SubmitButton
               pending={working}
               tone={
-                pending.kind === 'noShow' || pending.kind === 'cancelWalkIn' ? 'danger' : 'primary'
+                pending.kind === 'noShow' ||
+                pending.kind === 'cancelWalkIn' ||
+                pending.kind === 'cancelLine'
+                  ? 'danger'
+                  : 'primary'
               }
               label={t.bookingBoard.confirm}
               pendingLabel={t.bookingBoard.working}
@@ -340,6 +421,31 @@ export function BookingBoardScreen() {
         ) : null}
       </Section>
 
+      <Section title={t.bookingBoard.active}>
+        <p className="wf-small">{t.bookingBoard.activeIntro}</p>
+        {board && board.activeVisits.length === 0 ? (
+          <Empty>{t.bookingBoard.activeEmpty}</Empty>
+        ) : null}
+        {board && board.activeVisits.length > 0 ? (
+          <ActiveVisits
+            visits={board.activeVisits}
+            time={time}
+            onResolve={(visit, line) => (
+              setPending({ kind: 'resolveEnd', visit, line }),
+              setReason(''),
+              setEndMode('NOW'),
+              setEndMinutes(''),
+              setMessage(null)
+            )}
+            onCancelLine={(visit, line) => (
+              setPending({ kind: 'cancelLine', visit, line }),
+              setReason(''),
+              setMessage(null)
+            )}
+          />
+        ) : null}
+      </Section>
+
       <Section title={t.bookingBoard.pool}>
         <p className="wf-small">{t.bookingBoard.poolIntro}</p>
         {board && board.waitingPool.length === 0 ? <Empty>{t.bookingBoard.poolEmpty}</Empty> : null}
@@ -370,6 +476,131 @@ export function BookingBoardScreen() {
         </div>
       </Section>
     </>
+  );
+}
+
+function ActiveVisits({
+  visits,
+  time,
+  onResolve,
+  onCancelLine,
+}: {
+  visits: OperationalActiveVisit[];
+  time: (iso: string) => string;
+  onResolve: (visit: OperationalActiveVisit, line: OperationalActiveVisitLine) => void;
+  onCancelLine: (visit: OperationalActiveVisit, line: OperationalActiveVisitLine) => void;
+}) {
+  const { t, locale } = useWorkforce();
+  return (
+    <div className="wf-cards">
+      {visits.map((visit) => (
+        <article className="wf-card" key={visit.id} aria-label={visit.code}>
+          <h3>{fill(t.bookingBoard.activeVisit, { code: visit.code })}</h3>
+          <ul className="wf-plain-list">
+            {visit.lines.map((line) => (
+              <li key={line.id}>
+                {line.participantName ?? t.bookingBoard.self} ·{' '}
+                {locale === 'vi' ? line.serviceNameVi : line.serviceNameEn} ·{' '}
+                {line.employee?.displayName ?? t.bookingBoard.activeUnassigned}{' '}
+                <Badge tone={line.status === 'IN_PROGRESS' ? 'info' : 'neutral'}>
+                  {t.bookingBoard.lineStatuses[line.status]}
+                </Badge>
+                {line.execution ? (
+                  <>
+                    {' '}
+                    <span className="wf-small">
+                      {fill(t.bookingBoard.runningSince, {
+                        start: time(line.execution.startedAt),
+                        end: time(line.execution.expectedEndAt),
+                      })}
+                    </span>
+                    {line.execution.overdue ? (
+                      <Badge tone="warning">{t.bookingBoard.overdue}</Badge>
+                    ) : null}
+                  </>
+                ) : null}
+                <div className="wf-row-actions">
+                  {line.actions.resolve ? (
+                    <button
+                      type="button"
+                      className="wf-button"
+                      onClick={() => onResolve(visit, line)}
+                    >
+                      {t.bookingBoard.resolveEnd}
+                    </button>
+                  ) : null}
+                  {line.actions.cancel ? (
+                    <button
+                      type="button"
+                      className="wf-button wf-button-danger"
+                      onClick={() => onCancelLine(visit, line)}
+                    >
+                      {t.bookingBoard.cancelLine}
+                    </button>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+/** The constrained end-time choices for a forgotten END (never a free timestamp editor). */
+function ResolveEndTime({
+  execution,
+  now,
+  time,
+  mode,
+  minutes,
+  onMode,
+  onMinutes,
+}: {
+  execution: { startedAt: string; expectedEndAt: string };
+  now: string;
+  time: (iso: string) => string;
+  mode: ResolveEndMode;
+  minutes: string;
+  onMode: (mode: ResolveEndMode) => void;
+  onMinutes: (value: string) => void;
+}) {
+  const { t } = useWorkforce();
+  const expectedPassed = Date.parse(execution.expectedEndAt) <= Date.parse(now);
+  const max = elapsedMinutes(execution.startedAt, now);
+  return (
+    <fieldset>
+      <legend>{t.bookingBoard.resolveMode}</legend>
+      <label>
+        <input type="radio" checked={mode === 'NOW'} onChange={() => onMode('NOW')} />{' '}
+        {t.bookingBoard.resolveModeNow}
+      </label>
+      {expectedPassed ? (
+        <label>
+          <input type="radio" checked={mode === 'EXPECTED'} onChange={() => onMode('EXPECTED')} />{' '}
+          {fill(t.bookingBoard.resolveModeExpected, { time: time(execution.expectedEndAt) })}
+        </label>
+      ) : null}
+      <label>
+        <input type="radio" checked={mode === 'MINUTES'} onChange={() => onMode('MINUTES')} />{' '}
+        {t.bookingBoard.resolveModeMinutes}
+      </label>
+      {mode === 'MINUTES' ? (
+        <Field
+          id="board-minutes"
+          label={fill(t.bookingBoard.resolveMinutes, { max: String(max) })}
+          required
+        >
+          <input
+            id="board-minutes"
+            inputMode="numeric"
+            value={minutes}
+            onChange={(event) => onMinutes(event.target.value)}
+          />
+        </Field>
+      ) : null}
+    </fieldset>
   );
 }
 

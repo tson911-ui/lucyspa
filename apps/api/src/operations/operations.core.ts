@@ -1,5 +1,6 @@
 import type {
   BookingRecipientRelationName,
+  OperationalActiveVisit,
   OperationalBooking,
   OperationalQueueKtv,
   OperationalWaitingEntry,
@@ -339,11 +340,16 @@ export async function operationalToday(
     settings: TimingSettings;
     canArrive: boolean;
     canManageQueue: boolean;
+    /** Phase 4 Step 2: shape the per-line actions only; each command re-authorizes. */
+    actorUserId: string;
+    canCancelLine: boolean;
+    canResolveExecution: boolean;
   },
 ): Promise<{
   bookings: OperationalBooking[];
   queue: OperationalQueueKtv[];
   waitingPool: OperationalWaitingEntry[];
+  activeVisits: OperationalActiveVisit[];
 }> {
   const { now, settings } = input;
   const rows = await tx.booking.findMany({
@@ -412,7 +418,100 @@ export async function operationalToday(
     bookings,
     queue: await computeQueue(tx, { ...input, rows }),
     waitingPool: await computeWaitingPool(tx, input),
+    activeVisits: await computeActiveVisits(tx, input),
   };
+}
+
+/**
+ * Open visits of the branch with their lines (Phase 4 Step 2): today's arrived visits, plus any
+ * older visit that still has a running service so a forgotten END stays reachable. `overdue` and the
+ * offered actions come from the server clock and the caller's permissions; the commands re-check
+ * everything (state, branch authority, the no-self-resolution rule) under locks.
+ */
+async function computeActiveVisits(
+  tx: Prisma.TransactionClient,
+  input: {
+    branchId: string;
+    date: Date;
+    now: Date;
+    actorUserId: string;
+    canCancelLine: boolean;
+    canResolveExecution: boolean;
+  },
+): Promise<OperationalActiveVisit[]> {
+  const visits = await tx.visit.findMany({
+    where: {
+      branchId: input.branchId,
+      status: { in: ['OPEN', 'IN_SERVICE'] },
+      OR: [{ serviceDate: input.date }, { lines: { some: { status: 'IN_PROGRESS' } } }],
+    },
+    orderBy: [{ arrivedAt: 'asc' }, { code: 'asc' }],
+    take: 100,
+    select: {
+      id: true,
+      code: true,
+      status: true,
+      origin: true,
+      arrivedAt: true,
+      lines: {
+        orderBy: [{ participantId: 'asc' }, { sequence: 'asc' }],
+        select: {
+          id: true,
+          sequence: true,
+          status: true,
+          serviceNameVi: true,
+          serviceNameEn: true,
+          plannedStartAt: true,
+          employeeUserId: true,
+          employee: { select: { user: { select: { fullName: true } } } },
+          participant: { select: { displayName: true, customer: { select: { fullName: true } } } },
+          execution: { select: { status: true, startedAt: true, expectedEndAt: true } },
+        },
+      },
+    },
+  });
+  return visits.map((visit) => ({
+    id: visit.id,
+    code: visit.code,
+    status: visit.status as 'OPEN' | 'IN_SERVICE',
+    origin: visit.origin,
+    arrivedAt: visit.arrivedAt.toISOString(),
+    lines: visit.lines.map((line) => {
+      const running = line.execution?.status === 'IN_PROGRESS' ? line.execution : null;
+      return {
+        id: line.id,
+        sequence: line.sequence,
+        status: line.status,
+        participantName:
+          line.participant.displayName ?? line.participant.customer?.fullName ?? null,
+        serviceNameVi: line.serviceNameVi,
+        serviceNameEn: line.serviceNameEn,
+        employee:
+          line.employeeUserId && line.employee
+            ? { id: line.employeeUserId, displayName: line.employee.user.fullName }
+            : null,
+        plannedStartAt: line.plannedStartAt?.toISOString() ?? null,
+        execution: running
+          ? {
+              startedAt: running.startedAt.toISOString(),
+              expectedEndAt: running.expectedEndAt.toISOString(),
+              overdue: input.now >= running.expectedEndAt,
+            }
+          : null,
+        actions: {
+          cancel:
+            input.canCancelLine &&
+            !line.execution &&
+            (line.status === 'WAITING' || line.status === 'PLANNED'),
+          resolve:
+            input.canResolveExecution &&
+            running !== null &&
+            line.status === 'IN_PROGRESS' &&
+            line.employeeUserId !== input.actorUserId,
+        },
+      };
+    }),
+  }));
 }
 
 async function computeQueue(

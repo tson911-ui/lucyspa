@@ -367,7 +367,12 @@ test(
                 );
                 assert.equal(row.arrivalOpensAt, plus(plus(now, 120), -60).toISOString());
                 assert.deepEqual(row.actions, { arrive: false, noShow: false, advance: false });
-                assert.deepEqual(board.permissions, { arrive: false, manageQueue: false });
+                assert.deepEqual(board.permissions, {
+                  arrive: false,
+                  manageQueue: false,
+                  cancelLine: false,
+                  resolveExecution: false,
+                });
                 assert.ok(!('ownerUserId' in row) && !('idempotencyKey' in row));
                 await fails(() => operations.today(plainS, B), 'FORBIDDEN');
                 await fails(() => operations.today(elsewhereS, B), 'FORBIDDEN');
@@ -785,7 +790,12 @@ test(
                 await fails(() => operations.arrive(elsewhereS, target.id), 'FORBIDDEN');
                 await fails(() => operations.arrive(plainS, target.id), 'FORBIDDEN');
                 const desks = await operations.today(deskS, B);
-                assert.deepEqual(desks.permissions, { arrive: true, manageQueue: false });
+                assert.deepEqual(desks.permissions, {
+                  arrive: true,
+                  manageQueue: false,
+                  cancelLine: true,
+                  resolveExecution: false,
+                });
                 await operations.arrive(managerS, target.id);
               },
             );

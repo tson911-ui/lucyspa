@@ -1753,8 +1753,47 @@ export interface OperationalTodayResponse {
   queue: OperationalQueueKtv[];
   /** Step 6: unassigned (WAITING) service sequences, branch-wide; no KTV until assignment. */
   waitingPool: OperationalWaitingEntry[];
-  /** `arrive` (MANAGE_BOOKINGS) also covers walk-in intake, assignment and waiting intent. */
-  permissions: { arrive: boolean; manageQueue: boolean };
+  /**
+   * Phase 4 Step 2: arrived visits that are still open (today's, plus any older one with a running
+   * service so a forgotten END stays reachable), with the two management actions per line.
+   */
+  activeVisits: OperationalActiveVisit[];
+  /**
+   * `arrive` (MANAGE_BOOKINGS) also covers walk-in intake, assignment and waiting intent.
+   * `cancelLine` (MANAGE_BOOKINGS) and `resolveExecution` (RESOLVE_SERVICE_EXECUTION) only shape
+   * which actions are offered; each command is authorized again in its own transaction.
+   */
+  permissions: {
+    arrive: boolean;
+    manageQueue: boolean;
+    cancelLine: boolean;
+    resolveExecution: boolean;
+  };
+}
+
+/** An open (OPEN or IN_SERVICE) visit and its service lines, for Phase 4 Step 2 management actions. */
+export interface OperationalActiveVisit {
+  id: string;
+  code: string;
+  status: 'OPEN' | 'IN_SERVICE';
+  origin: 'BOOKING' | 'WALK_IN';
+  arrivedAt: string;
+  lines: OperationalActiveVisitLine[];
+}
+
+export interface OperationalActiveVisitLine {
+  id: string;
+  sequence: number;
+  status: 'WAITING' | 'PLANNED' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+  participantName: string | null;
+  serviceNameVi: string;
+  serviceNameEn: string;
+  /** Null for a WAITING line (no KTV yet). */
+  employee: { id: string; displayName: string } | null;
+  plannedStartAt: string | null;
+  /** Only for a line with a running execution. `overdue` is computed by the server clock. */
+  execution: { startedAt: string; expectedEndAt: string; overdue: boolean } | null;
+  actions: { cancel: boolean; resolve: boolean };
 }
 
 /** POST /api/v1/operations/bookings/:id/no-show and /visits/:id/advance */
@@ -1922,6 +1961,41 @@ export interface MyServiceWorkResponse {
 
 /** START/END accept only an empty JSON object; the line id is the idempotency identity. */
 export type ServiceExecutionActionRequest = Record<string, never>;
+
+/**
+ * POST /api/v1/operations/service-lines/:id/resolve-end (RESOLVE_SERVICE_EXECUTION, Phase 4 Step 2).
+ * `endedAt` is optional (default: the server clock). When given it is an ISO-8601 instant with a time
+ * zone that must lie between the execution's start and the server clock; it never rewrites `startedAt`.
+ */
+export interface ResolveServiceExecutionRequest {
+  reason: string;
+  endedAt?: string;
+}
+
+export interface ResolvedServiceExecutionResponse {
+  lineId: string;
+  visitId: string;
+  visitCode: string;
+  visitStatus: 'IN_SERVICE' | 'COMPLETED';
+  executionId: string;
+  employeeUserId: string;
+  startedAt: string;
+  endedAt: string;
+  endKind: 'MANAGER_RESOLVED';
+}
+
+/** POST /api/v1/operations/service-lines/:id/cancel (MANAGE_BOOKINGS, Phase 4 Step 2). */
+export interface CancelServiceLineRequest {
+  reason: string;
+}
+
+export interface CancelledServiceLineResponse {
+  lineId: string;
+  visitId: string;
+  visitCode: string;
+  /** The visit after the cancellation: it may complete or (when nothing was performed) be cancelled. */
+  visitStatus: 'OPEN' | 'IN_SERVICE' | 'COMPLETED' | 'CANCELLED';
+}
 // Phase 3 Step 8: explicit reassignment of existing assigned, unstarted work.
 export type ReassignmentLineKind = 'BOOKING' | 'VISIT';
 export type ReassignmentScope = 'LINE' | 'PARTICIPANT';
