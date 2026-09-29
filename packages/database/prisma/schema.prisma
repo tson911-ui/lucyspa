@@ -38,6 +38,8 @@ model Branch {
   bookings            Booking[]
   visits              Visit[]
   notifications       Notification[]
+  invoices            Invoice[]
+  payments            Payment[]
 
   @@index([areaId], map: "branches_area_idx")
   @@map("branches")
@@ -265,6 +267,7 @@ enum ScopeCapability {
 enum DataClassification {
   STANDARD
   EMPLOYEE_PAY
+  FINANCIAL
 }
 
 enum AuditActorKind {
@@ -306,6 +309,15 @@ enum PermissionCode {
   PERFORM_SERVICES
   RESOLVE_SERVICE_EXECUTION
   MANAGE_BOOKING_SETTINGS
+  VIEW_INVOICES
+  MANAGE_INVOICES
+  COLLECT_PAYMENTS
+  APPLY_DISCOUNTS
+  MANAGE_DISCOUNTS
+  CREATE_VOUCHERS
+  CANCEL_INVOICES
+  CORRECT_PAYMENTS
+  VIEW_REVENUE
 }
 
 enum LeaveStatus {
@@ -377,6 +389,21 @@ model User {
   endedServiceExecutions       ServiceExecution[]               @relation("ExecutionEndedBy")
   assignmentChanges            ServiceLineAssignmentChange[]    @relation("AssignmentActor")
   visitLineAddRequests         VisitLineAddRequest[]
+  payerInvoices                Invoice[]                        @relation("InvoicePayer")
+  createdInvoices              Invoice[]                        @relation("InvoiceCreator")
+  finalizedInvoices            Invoice[]                        @relation("InvoiceFinalizedBy")
+  cancelledInvoices            Invoice[]                        @relation("InvoiceCancelledBy")
+  pricedInvoiceLines           InvoiceLine[]                    @relation("InvoiceLinePriceSetBy")
+  collectedPayments            Payment[]                        @relation("PaymentCollector")
+  paymentCorrections           PaymentCorrection[]              @relation("PaymentCorrectionActor")
+  terminatedDiscounts          Discount[]                       @relation("DiscountTerminatedBy")
+  createdDiscountVersions      DiscountVersion[]                @relation("DiscountVersionCreator")
+  createdVouchers              Voucher[]                        @relation("VoucherCreator")
+  suppliedVoucherEntries       InvoiceVoucherEntry[]            @relation("VoucherEntrySuppliedBy")
+  removedVoucherEntries        InvoiceVoucherEntry[]            @relation("VoucherEntryRemovedBy")
+  finalizedDiscountApplications InvoiceDiscountApplication[]    @relation("DiscountApplicationFinalizer")
+  discountRedemptions          DiscountRedemption[]             @relation("DiscountRedemptionPayer")
+  releasedDiscountRedemptions  DiscountRedemptionRelease[]      @relation("DiscountReleaseActor")
   updatedSettings              AppSetting[]
   grantedOrganizationAssignments OrganizationAssignment[] @relation("OrganizationAssignmentGrantor")
   grantedTeamMemberships       TeamMembership[] @relation("TeamMembershipGrantor")
@@ -413,6 +440,7 @@ model EmployeeProfile {
   visitLines            VisitServiceLine[]               @relation("VisitLineEmployee")
   requestedVisitLines   VisitServiceLine[]               @relation("VisitLineRequestedEmployee")
   serviceExecutions     ServiceExecution[]
+  invoiceLineServices   InvoiceLineService[]
   assignmentsFrom       ServiceLineAssignmentChange[]    @relation("AssignmentFrom")
   assignmentsTo         ServiceLineAssignmentChange[]    @relation("AssignmentTo")
 
@@ -727,6 +755,7 @@ model ServiceCategory {
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   services   Service[]
+  discountVersionCategories DiscountVersionCategory[]
 
   @@index([isActive, sortOrder, id], map: "service_categories_active_order_idx")
   @@map("service_categories")
@@ -753,6 +782,9 @@ model Service {
   priceVnd            BigInt                      @map("price_vnd")
   priceMaxVnd         BigInt                      @map("price_max_vnd")
   pricingUnit         ServicePricingUnit          @default(PER_SERVICE) @map("pricing_unit")
+  /// Phase 4 OP-1: the per-service limit of the invoice-line quantity (1 for PER_SERVICE; the Owner
+  /// raises it for PER_NAIL). Snapshotted on booking and visit lines when they are established.
+  maxQuantity         Int                         @default(1) @map("max_quantity")
   /// Internal scheduling duration: the one deterministic duration booking reserves.
   durationMinutes     Int                         @map("duration_minutes")
   /// Customer-facing estimate; SQL enforces 1 <= min <= max <= durationMinutes.
@@ -766,6 +798,8 @@ model Service {
   branches            ServiceBranchAvailability[]
   bookingLines        BookingServiceLine[]
   visitLines          VisitServiceLine[]
+  invoiceLineServices InvoiceLineService[]
+  discountVersionServices DiscountVersionService[]
 
   @@index([categoryId, isActive, id], map: "services_category_idx")
   @@map("services")
@@ -1114,6 +1148,8 @@ model BookingServiceLine {
   catalogPriceMinVnd BigInt                        @map("catalog_price_min_vnd")
   catalogPriceMaxVnd BigInt                        @map("catalog_price_max_vnd")
   catalogPricingUnit ServicePricingUnit            @map("catalog_pricing_unit")
+  /// Phase 4 OP-1: the service's quantity limit when the line was established (immutable snapshot).
+  maxQuantitySnapshot Int                          @default(1) @map("max_quantity_snapshot")
   assignmentConflict AssignmentConflict?           @map("assignment_conflict")
   rowVersion         Int                           @default(1) @map("row_version")
   createdAt          DateTime                      @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -1158,6 +1194,7 @@ model Visit {
   updatedAt             DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   participants          VisitParticipant[]
   lines                 VisitServiceLine[]
+  invoices              Invoice[]
 
   @@unique([createdByUserId, idempotencyKey], map: "visits_creator_idempotency_key")
   @@index([branchId, serviceDate, status], map: "visits_branch_date_idx")
@@ -1186,6 +1223,7 @@ model VisitParticipant {
   bookingRecipient      BookingRecipient?    @relation(fields: [bookingRecipientId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
   lines                 VisitServiceLine[]
+  invoiceLineServices   InvoiceLineService[]
 
   @@unique([visitId, id], map: "visit_participants_visit_id_id_key")
   @@index([customerUserId], map: "visit_participants_customer_idx")
@@ -1223,6 +1261,9 @@ model VisitServiceLine {
   catalogPriceMinVnd      BigInt                        @map("catalog_price_min_vnd")
   catalogPriceMaxVnd      BigInt                        @map("catalog_price_max_vnd")
   catalogPricingUnit      ServicePricingUnit            @map("catalog_pricing_unit")
+  /// Phase 4 OP-1: the service's quantity limit when the line was established (immutable snapshot).
+  /// The line itself has NO quantity: one line is one performed service.
+  maxQuantitySnapshot     Int                           @default(1) @map("max_quantity_snapshot")
   addedOnBehalf           Boolean                       @default(false) @map("added_on_behalf")
   addedByUserId           String?                       @map("added_by_user_id") @db.Uuid
   addedBy                 User?                         @relation("VisitLineAddedBy", fields: [addedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -1240,6 +1281,7 @@ model VisitServiceLine {
   warningSchedules        ServiceWarningSchedule[]
   assignmentChanges       ServiceLineAssignmentChange[]
   addRequest              VisitLineAddRequest?
+  invoiceLineServices     InvoiceLineService[]
 
   @@unique([participantId, sequence], map: "visit_service_lines_participant_sequence_key")
   @@index([visitId, participantId], map: "visit_service_lines_visit_idx")
@@ -1343,4 +1385,366 @@ model KtvOccupancy {
   visitServiceLineId   String?                  @unique(map: "ktv_occupancies_visit_service_line_id_key") @map("visit_service_line_id") @db.Uuid
 
   @@map("ktv_occupancies")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 4 Step 4: POS database foundation (design docs/PHASE4_POS_INVOICE_PAYMENTS_DESIGN.md
+// sections 4.1-4.5). Tables only: the Invoice/POS, discount and payment workflows are Steps 5-8.
+// SQL adds the CHECKs, the state/immutability guards, the deferred integrity triggers and the
+// partial unique indexes (one non-CANCELLED invoice per visit; one active supplied voucher).
+// ---------------------------------------------------------------------------------------------
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING_PAYMENT
+  PAID
+  CANCELLED
+}
+
+enum InvoiceLineKind {
+  SERVICE
+}
+
+enum PaymentMethod {
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentCorrectionKind {
+  REVERSAL
+}
+
+enum DiscountKind {
+  PERCENT
+  FIXED_AMOUNT
+}
+
+enum DiscountScopeMode {
+  ALL_SERVICES
+  SELECTED
+}
+
+enum DiscountReleaseCause {
+  INVOICE_CANCELLED_UNPAID
+  ZERO_BALANCE_CORRECTION
+}
+
+// The internal commercial receipt of ONE visit (never an official VAT/e-invoice). The payer is a
+// customer account or NULL (guest). Amounts are integer VND; total = subtotal - discountTotal is
+// the receivable and may be 0. Status transitions and freezing are guarded in SQL.
+model Invoice {
+  id                  String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                String                        @unique(map: "invoices_code_key")
+  branchId            String                        @map("branch_id") @db.Uuid
+  branch              Branch                        @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  visitId             String                        @map("visit_id") @db.Uuid
+  visit               Visit                         @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  status              InvoiceStatus                 @default(DRAFT)
+  payerUserId         String?                       @map("payer_user_id") @db.Uuid
+  payer               User?                         @relation("InvoicePayer", fields: [payerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  businessDate        DateTime                      @map("business_date") @db.Date
+  calculationVersion  Int                           @map("calculation_version")
+  subtotalVnd         BigInt                        @default(0) @map("subtotal_vnd")
+  discountTotalVnd    BigInt                        @default(0) @map("discount_total_vnd")
+  totalVnd            BigInt                        @default(0) @map("total_vnd")
+  finalizedAt         DateTime?                     @map("finalized_at") @db.Timestamptz(3)
+  finalizedByUserId   String?                       @map("finalized_by_user_id") @db.Uuid
+  finalizedBy         User?                         @relation("InvoiceFinalizedBy", fields: [finalizedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelledAt         DateTime?                     @map("cancelled_at") @db.Timestamptz(3)
+  cancelledByUserId   String?                       @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy         User?                         @relation("InvoiceCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelledFromStatus InvoiceStatus?                @map("cancelled_from_status")
+  cancelReason        String?                       @map("cancel_reason")
+  paidAt              DateTime?                     @map("paid_at") @db.Timestamptz(3)
+  paidSeq             Int                           @default(0) @map("paid_seq")
+  createdByUserId     String                        @map("created_by_user_id") @db.Uuid
+  createdBy           User                          @relation("InvoiceCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion          Int                           @default(1) @map("row_version")
+  createdAt           DateTime                      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  lines               InvoiceLine[]
+  payments            Payment[]
+  voucherEntries      InvoiceVoucherEntry[]
+  discountApplication InvoiceDiscountApplication?
+  discountRedemption  DiscountRedemption?
+
+  @@index([branchId, businessDate, status], map: "invoices_branch_date_idx")
+  @@index([payerUserId, createdAt], map: "invoices_payer_idx")
+  @@map("invoices")
+}
+
+// Generic invoice line; kind selects the 1:1 detail table (Phase 4 defines only SERVICE).
+// Quantity and price stay NULL until set (a DRAFT may be unpriced); gross = quantity x price.
+model InvoiceLine {
+  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId        String               @map("invoice_id") @db.Uuid
+  invoice          Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sequence         Int                  @db.SmallInt
+  kind             InvoiceLineKind      @default(SERVICE)
+  itemCode         String               @map("item_code")
+  nameVi           String               @map("name_vi")
+  nameEn           String               @map("name_en")
+  quantity         Int?
+  unitPriceVnd     BigInt?              @map("unit_price_vnd")
+  grossVnd         BigInt?              @map("gross_vnd")
+  priceSetByUserId String?              @map("price_set_by_user_id") @db.Uuid
+  priceSetBy       User?                @relation("InvoiceLinePriceSetBy", fields: [priceSetByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  priceSetAt       DateTime?            @map("price_set_at") @db.Timestamptz(3)
+  rowVersion       Int                  @default(1) @map("row_version")
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  // SQL: exactly one detail row per SERVICE line (its primary key is the line id).
+  serviceDetails   InvoiceLineService[]
+
+  @@unique([invoiceId, sequence], map: "invoice_lines_invoice_sequence_key")
+  @@unique([invoiceId, id], map: "invoice_lines_invoice_id_id_key")
+  @@map("invoice_lines")
+}
+
+// The SERVICE detail: an exact copy of the visit-line snapshot (including the per-service quantity
+// limit snapshotted when that line was established, OP-1). One VisitServiceLine stays one
+// operational performance; it appears at most once per invoice.
+model InvoiceLineService {
+  invoiceLineId      String             @id @map("invoice_line_id") @db.Uuid
+  invoiceId          String             @map("invoice_id") @db.Uuid
+  line               InvoiceLine        @relation(fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_line_services_line_fkey")
+  visitServiceLineId String             @map("visit_service_line_id") @db.Uuid
+  visitServiceLine   VisitServiceLine   @relation(fields: [visitServiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  serviceId          String             @map("service_id") @db.Uuid
+  service            Service            @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  participantId      String             @map("participant_id") @db.Uuid
+  participant        VisitParticipant   @relation(fields: [participantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId     String             @map("employee_user_id") @db.Uuid
+  employee           EmployeeProfile    @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  pricingUnit        ServicePricingUnit @map("pricing_unit")
+  catalogPriceMinVnd BigInt             @map("catalog_price_min_vnd")
+  catalogPriceMaxVnd BigInt             @map("catalog_price_max_vnd")
+  quantityLimit      Int                @map("quantity_limit")
+  addedOnBehalf      Boolean            @map("added_on_behalf")
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([invoiceId, visitServiceLineId], map: "invoice_line_services_invoice_visit_line_key")
+  @@index([serviceId], map: "invoice_line_services_service_idx")
+  @@index([employeeUserId], map: "invoice_line_services_employee_idx")
+  @@map("invoice_line_services")
+}
+
+// Cash shape (Step 8 extends it). collectedAt and businessDate defaults are placeholders: SQL
+// always overwrites them with the database clock. A payment is never edited; a reversal is a
+// PaymentCorrection. There is no zero-VND payment and a zero-balance invoice has no payment row.
+model Payment {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId         String             @map("invoice_id") @db.Uuid
+  invoice           Invoice            @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId          String             @map("branch_id") @db.Uuid
+  branch            Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  method            PaymentMethod
+  status            PaymentStatus
+  amountDueVnd      BigInt             @map("amount_due_vnd")
+  amountVnd         BigInt             @map("amount_vnd")
+  tenderedVnd       BigInt             @map("tendered_vnd")
+  changeVnd         BigInt             @map("change_vnd")
+  collectedByUserId String             @map("collected_by_user_id") @db.Uuid
+  collectedBy       User               @relation("PaymentCollector", fields: [collectedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  collectedAt       DateTime           @default(dbgenerated("clock_timestamp()")) @map("collected_at") @db.Timestamptz(3)
+  businessDate      DateTime           @default(dbgenerated("CURRENT_DATE")) @map("business_date") @db.Date
+  idempotencyKey    String             @map("idempotency_key") @db.Uuid
+  rowVersion        Int                @default(1) @map("row_version")
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  correction        PaymentCorrection?
+
+  @@unique([collectedByUserId, idempotencyKey], map: "payments_collector_idempotency_key")
+  @@index([invoiceId], map: "payments_invoice_idx")
+  @@map("payments")
+}
+
+// Append-only: a payment is reversed at most once; the original payment row is never edited.
+model PaymentCorrection {
+  id          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId   String                @unique(map: "payment_corrections_payment_key") @map("payment_id") @db.Uuid
+  payment     Payment               @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  kind        PaymentCorrectionKind @default(REVERSAL)
+  reason      String
+  actorUserId String                @map("actor_user_id") @db.Uuid
+  actor       User                  @relation("PaymentCorrectionActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  occurredAt  DateTime              @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+
+  @@map("payment_corrections")
+}
+
+// An Owner-configured discount program (never deleted). requiresCode = false is a code-less
+// promotion (an automatic candidate); true owns voucher codes. Configuration lives in versions.
+model Discount {
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code               String               @unique(map: "discounts_code_key")
+  nameVi             String               @map("name_vi")
+  nameEn             String               @map("name_en")
+  requiresCode       Boolean              @map("requires_code")
+  isActive           Boolean              @default(true) @map("is_active")
+  terminatedAt       DateTime?            @map("terminated_at") @db.Timestamptz(3)
+  terminatedByUserId String?              @map("terminated_by_user_id") @db.Uuid
+  terminatedBy       User?                @relation("DiscountTerminatedBy", fields: [terminatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  terminatedReason   String?              @map("terminated_reason")
+  rowVersion         Int                  @default(1) @map("row_version")
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  versions           DiscountVersion[]
+  vouchers           Voucher[]
+  redemptions        DiscountRedemption[]
+
+  @@map("discounts")
+}
+
+// Immutable configuration (append-only): a percentage in basis points (1..10000) or a fixed VND
+// amount, validity window, minimum spend, scope, and NULL-means-unlimited usage limits.
+model DiscountVersion {
+  id                    String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  discountId            String                       @map("discount_id") @db.Uuid
+  discount              Discount                     @relation(fields: [discountId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  versionNo             Int                          @map("version_no")
+  kind                  DiscountKind
+  percentBp             Int?                         @map("percent_bp")
+  fixedAmountVnd        BigInt?                      @map("fixed_amount_vnd")
+  validFrom             DateTime                     @map("valid_from") @db.Timestamptz(3)
+  validUntil            DateTime                     @map("valid_until") @db.Timestamptz(3)
+  minSpendVnd           BigInt                       @default(0) @map("min_spend_vnd")
+  scopeMode             DiscountScopeMode            @map("scope_mode")
+  usageLimitTotal       Int?                         @map("usage_limit_total")
+  usageLimitPerCustomer Int?                         @map("usage_limit_per_customer")
+  createdByUserId       String                       @map("created_by_user_id") @db.Uuid
+  createdBy             User                         @relation("DiscountVersionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt             DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
+  services              DiscountVersionService[]
+  categories            DiscountVersionCategory[]
+  applications          InvoiceDiscountApplication[]
+  redemptions           DiscountRedemption[]
+
+  @@unique([discountId, versionNo], map: "discount_versions_discount_version_key")
+  @@unique([discountId, id], map: "discount_versions_discount_id_id_key")
+  @@map("discount_versions")
+}
+
+model DiscountVersionService {
+  versionId String          @map("version_id") @db.Uuid
+  version   DiscountVersion @relation(fields: [versionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  serviceId String          @map("service_id") @db.Uuid
+  service   Service         @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([versionId, serviceId])
+  @@map("discount_version_services")
+}
+
+model DiscountVersionCategory {
+  versionId  String          @map("version_id") @db.Uuid
+  version    DiscountVersion @relation(fields: [versionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  categoryId String          @map("category_id") @db.Uuid
+  category   ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([versionId, categoryId])
+  @@map("discount_version_categories")
+}
+
+// A redeemable code under a requiresCode program (canonical upper-case).
+model Voucher {
+  id              String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  discountId      String                       @map("discount_id") @db.Uuid
+  discount        Discount                     @relation(fields: [discountId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  code            String                       @unique(map: "vouchers_code_key")
+  isActive        Boolean                      @default(true) @map("is_active")
+  createdByUserId String                       @map("created_by_user_id") @db.Uuid
+  createdBy       User                         @relation("VoucherCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion      Int                          @default(1) @map("row_version")
+  createdAt       DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  entries         InvoiceVoucherEntry[]
+  applications    InvoiceDiscountApplication[]
+  redemptions     DiscountRedemption[]
+
+  @@map("vouchers")
+}
+
+// The voucher codes supplied to a DRAFT invoice (the voucher candidates). A single removal
+// transition, draft only; SQL keeps one ACTIVE entry per (invoice, voucher).
+model InvoiceVoucherEntry {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId        String    @map("invoice_id") @db.Uuid
+  invoice          Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  voucherId        String    @map("voucher_id") @db.Uuid
+  voucher          Voucher   @relation(fields: [voucherId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  suppliedByUserId String    @map("supplied_by_user_id") @db.Uuid
+  suppliedBy       User      @relation("VoucherEntrySuppliedBy", fields: [suppliedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  suppliedAt       DateTime  @default(now()) @map("supplied_at") @db.Timestamptz(3)
+  removedByUserId  String?   @map("removed_by_user_id") @db.Uuid
+  removedBy        User?     @relation("VoucherEntryRemovedBy", fields: [removedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  removedAt        DateTime? @map("removed_at") @db.Timestamptz(3)
+
+  @@map("invoice_voucher_entries")
+}
+
+// The single winning benefit, written once at finalization (immutable). SQL enforces the Q3 amount
+// rule (percent half up to 1 VND; fixed capped by the eligible subtotal).
+model InvoiceDiscountApplication {
+  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId           String          @unique(map: "invoice_discount_applications_invoice_key") @map("invoice_id") @db.Uuid
+  invoice             Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  discountId          String          @map("discount_id") @db.Uuid
+  versionId           String          @map("version_id") @db.Uuid
+  version             DiscountVersion @relation(fields: [discountId, versionId], references: [discountId, id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_discount_applications_version_fkey")
+  voucherId           String?         @map("voucher_id") @db.Uuid
+  voucher             Voucher?        @relation(fields: [voucherId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  kind                DiscountKind
+  percentBp           Int?            @map("percent_bp")
+  fixedAmountVnd      BigInt?         @map("fixed_amount_vnd")
+  eligibleSubtotalVnd BigInt          @map("eligible_subtotal_vnd")
+  computedAmountVnd   BigInt          @map("computed_amount_vnd")
+  candidates          Json            @db.JsonB
+  selectionReason     String          @map("selection_reason")
+  finalizedByUserId   String          @map("finalized_by_user_id") @db.Uuid
+  finalizedBy         User            @relation("DiscountApplicationFinalizer", fields: [finalizedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  appliedAt           DateTime        @default(dbgenerated("clock_timestamp()")) @map("applied_at") @db.Timestamptz(3)
+
+  @@map("invoice_discount_applications")
+}
+
+// The permanent usage ledger: one redemption per invoice for the winner only; active iff it has
+// no release. redeemedAt is always the database clock (SQL overwrites it).
+model DiscountRedemption {
+  id          String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId   String                     @unique(map: "discount_redemptions_invoice_key") @map("invoice_id") @db.Uuid
+  invoice     Invoice                    @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  discountId  String                     @map("discount_id") @db.Uuid
+  discount    Discount                   @relation(fields: [discountId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  versionId   String                     @map("version_id") @db.Uuid
+  version     DiscountVersion            @relation(fields: [versionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  voucherId   String?                    @map("voucher_id") @db.Uuid
+  voucher     Voucher?                   @relation(fields: [voucherId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  payerUserId String?                    @map("payer_user_id") @db.Uuid
+  payer       User?                      @relation("DiscountRedemptionPayer", fields: [payerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  redeemedAt  DateTime                   @default(dbgenerated("clock_timestamp()")) @map("redeemed_at") @db.Timestamptz(3)
+  release     DiscountRedemptionRelease?
+
+  @@index([discountId, payerUserId], map: "discount_redemptions_usage_idx")
+  @@map("discount_redemptions")
+}
+
+// Append-only release of a redemption (at most once, only for a CANCELLED invoice).
+model DiscountRedemptionRelease {
+  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  redemptionId     String               @unique(map: "discount_redemption_releases_redemption_key") @map("redemption_id") @db.Uuid
+  redemption       DiscountRedemption   @relation(fields: [redemptionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  releasedAt       DateTime             @default(dbgenerated("clock_timestamp()")) @map("released_at") @db.Timestamptz(3)
+  releasedByUserId String               @map("released_by_user_id") @db.Uuid
+  releasedBy       User                 @relation("DiscountReleaseActor", fields: [releasedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cause            DiscountReleaseCause
+  reason           String
+
+  @@map("discount_redemption_releases")
 }

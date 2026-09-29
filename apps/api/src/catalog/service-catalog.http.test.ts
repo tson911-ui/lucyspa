@@ -150,6 +150,7 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
         priceVnd: '5000',
         priceMaxVnd: '10000',
         pricingUnit: 'PER_NAIL',
+        maxQuantity: 10,
         reason: 'Menu',
       },
       200,
@@ -197,6 +198,14 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
         { expectedVersion: 1, priceVnd: '1', reason: 'x', priceMaxVnd: 2 },
       ],
       [`/api/v1/services/${id}`, { expectedVersion: 1, pricingUnit: 'PER_NAIL' }],
+      // OP-1: the quantity limit is an integer on create and on the price command only.
+      ['/api/v1/services', { ...service, pricingUnit: 'PER_NAIL', maxQuantity: '10' }],
+      ['/api/v1/services', { ...service, pricingUnit: 'PER_NAIL', maxQuantity: 1.5 }],
+      [
+        `/api/v1/services/${id}/price`,
+        { expectedVersion: 1, priceVnd: '1', reason: 'x', maxQuantity: '10' },
+      ],
+      [`/api/v1/services/${id}`, { expectedVersion: 1, maxQuantity: 5 }],
       ['/api/v1/services', { ...service, estimatedMaxMinutes: 30.5 }],
       ['/api/v1/services', { ...service, estimatedDurationText: '30-45 phút' }],
       [`/api/v1/services/${id}`, { expectedVersion: 1, estimatedMinMinutes: '15' }],
@@ -246,6 +255,7 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
       priceVnd: '5000',
       priceMaxVnd: '10000',
       pricingUnit: 'PER_NAIL',
+      maxQuantity: 10,
       reason: 'Menu',
     });
     assert.deepEqual(calls[7]?.slice(0, 4), ['setAvailability', token, id, branchId]);

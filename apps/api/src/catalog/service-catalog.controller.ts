@@ -108,6 +108,13 @@ class ServiceCreateDto implements ServiceCreateRequest {
   @IsIn(PRICING_UNITS)
   pricingUnit?: ServicePricingUnit;
   @ApiProperty({
+    required: false,
+    description: 'Quantity limit (OP-1): required for PER_NAIL; PER_SERVICE is exactly 1.',
+  })
+  @IsOptional()
+  @IsInt()
+  maxQuantity?: number;
+  @ApiProperty({
     description: 'Internal scheduling duration (minutes); >= estimatedMaxMinutes; never public.',
   })
   @IsInt()
@@ -163,6 +170,13 @@ class PriceDto extends VersionedDto implements ServicePriceRequest {
   @IsOptional()
   @IsIn(PRICING_UNITS)
   pricingUnit?: ServicePricingUnit;
+  @ApiProperty({
+    required: false,
+    description: 'Quantity limit (OP-1): required when the unit becomes PER_NAIL.',
+  })
+  @IsOptional()
+  @IsInt()
+  maxQuantity?: number;
   @ApiProperty() @IsString() @MaxLength(2_048) reason!: string;
 }
 

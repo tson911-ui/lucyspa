@@ -7,6 +7,7 @@ import {
   formatServicePrice,
   priceProblem,
   PRICING_UNITS,
+  quantityProblem,
   type PriceForm,
 } from '../../../lib/workforce/pricing';
 import { Field, Notice } from '../ui';
@@ -64,6 +65,24 @@ export function PriceFields({
           </select>
         </Field>
       </div>
+      {value.pricingUnit === 'PER_NAIL' ? (
+        <Field
+          id={`${idPrefix}-maxQuantity`}
+          label={t.services.maxQuantity}
+          hint={t.services.maxQuantityHint}
+          required
+        >
+          <input
+            id={`${idPrefix}-maxQuantity`}
+            required
+            inputMode="numeric"
+            pattern="[1-9][0-9]{0,9}"
+            aria-invalid={quantityProblem(value) !== null}
+            value={value.maxQuantity}
+            onChange={(event) => onChange({ ...value, maxQuantity: event.target.value.trim() })}
+          />
+        </Field>
+      ) : null}
       {problem === null ? (
         <p className="wf-muted">{formatServicePrice(value, t, locale)}</p>
       ) : value.priceVnd !== '' || value.priceMaxVnd !== '' ? (

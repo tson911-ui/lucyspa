@@ -39,6 +39,7 @@ import {
   optionalReason,
   pricingUnit,
   requiredReason,
+  resolveMaxQuantity,
   servicePrice,
   sortOrder,
 } from './catalog.input.js';
@@ -64,6 +65,7 @@ const serviceSelect = {
   priceVnd: true,
   priceMaxVnd: true,
   pricingUnit: true,
+  maxQuantity: true,
   durationMinutes: true,
   estimatedMinMinutes: true,
   estimatedMaxMinutes: true,
@@ -308,6 +310,8 @@ export class ServiceCatalogService {
       priceMaxVnd: input.priceMaxVnd,
       pricingUnit: input.pricingUnit ?? 'PER_SERVICE',
     });
+    // OP-1: the initial per-service quantity limit is set with the initial price.
+    const quantityLimit = resolveMaxQuantity(price.pricingUnit, input.maxQuantity, null);
     const duration = durationMinutes(input.durationMinutes);
     // Both estimate bounds or neither; without them the estimate is exact.
     if ((input.estimatedMinMinutes === undefined) !== (input.estimatedMaxMinutes === undefined)) {
@@ -346,6 +350,7 @@ export class ServiceCatalogService {
           descriptionVi,
           descriptionEn,
           ...price,
+          maxQuantity: quantityLimit,
           ...durations,
         },
         select: serviceSelect,
@@ -360,6 +365,7 @@ export class ServiceCatalogService {
           priceVnd: price.priceVnd.toString(),
           priceMaxVnd: price.priceMaxVnd.toString(),
           pricingUnit: price.pricingUnit,
+          maxQuantity: quantityLimit,
           ...durations,
           isActive: true,
         },
@@ -476,6 +482,7 @@ export class ServiceCatalogService {
           priceVnd: current.priceVnd.toString(),
           priceMaxVnd: current.priceMaxVnd.toString(),
           pricingUnit: current.pricingUnit,
+          maxQuantity: current.maxQuantity,
           durationMinutes: current.durationMinutes,
           estimatedMinMinutes: current.estimatedMinMinutes,
           estimatedMaxMinutes: current.estimatedMaxMinutes,
@@ -547,16 +554,20 @@ export class ServiceCatalogService {
         priceMaxVnd: input.priceMaxVnd,
         pricingUnit: input.pricingUnit ?? current.pricingUnit,
       });
+      // OP-1: the per-service quantity limit is changed under the same authority and audit. It
+      // applies only to lines established afterwards (existing lines keep their snapshot).
+      const quantityLimit = resolveMaxQuantity(price.pricingUnit, input.maxQuantity, current);
       if (
         current.priceVnd === price.priceVnd &&
         current.priceMaxVnd === price.priceMaxVnd &&
-        current.pricingUnit === price.pricingUnit
+        current.pricingUnit === price.pricingUnit &&
+        current.maxQuantity === quantityLimit
       ) {
         throw new AuthError('VALIDATION_FAILED', 'priceVnd');
       }
       const row = await tx.service.update({
         where: { id },
-        data: { ...price, rowVersion: { increment: 1 } },
+        data: { ...price, maxQuantity: quantityLimit, rowVersion: { increment: 1 } },
         select: serviceSelect,
       });
       await this.audit(context, 'SERVICE_PRICE_CHANGED', 'Service', id, {
@@ -565,11 +576,13 @@ export class ServiceCatalogService {
           priceVnd: current.priceVnd.toString(),
           priceMaxVnd: current.priceMaxVnd.toString(),
           pricingUnit: current.pricingUnit,
+          maxQuantity: current.maxQuantity,
         },
         after: {
           priceVnd: price.priceVnd.toString(),
           priceMaxVnd: price.priceMaxVnd.toString(),
           pricingUnit: price.pricingUnit,
+          maxQuantity: quantityLimit,
         },
       });
       return this.present(actor, row);
@@ -753,6 +766,7 @@ export class ServiceCatalogService {
       priceVnd: row.priceVnd.toString(),
       priceMaxVnd: row.priceMaxVnd.toString(),
       pricingUnit: row.pricingUnit,
+      maxQuantity: row.maxQuantity,
       durationMinutes: row.durationMinutes,
       estimatedMinMinutes: row.estimatedMinMinutes,
       estimatedMaxMinutes: row.estimatedMaxMinutes,

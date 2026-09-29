@@ -264,6 +264,7 @@ export async function createWalkIn(
       priceVnd: true,
       priceMaxVnd: true,
       pricingUnit: true,
+      maxQuantity: true,
     },
   });
   if (services.length !== serviceIds.length) throw new AuthError('BOOKING_SERVICE_UNAVAILABLE');
@@ -332,6 +333,8 @@ export async function createWalkIn(
         catalogPriceMinVnd: service.priceVnd,
         catalogPriceMaxVnd: service.priceMaxVnd,
         catalogPricingUnit: service.pricingUnit,
+        // OP-1: the per-service quantity limit is snapshotted with the other pricing inputs.
+        maxQuantitySnapshot: service.maxQuantity,
       },
       select: { id: true },
     });

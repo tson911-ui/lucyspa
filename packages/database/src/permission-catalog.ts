@@ -13,8 +13,9 @@ export interface PermissionDefinition {
 
 /**
  * Code-owned catalog (Phase 1 design section 7, extended in Phase 2). Every permission
- * is branch-capable except MANAGE_SERVICE_PRICES and MANAGE_BOOKING_SETTINGS (GLOBAL_ONLY); only the two pay
- * permissions are EMPLOYEE_PAY data. Semantics are immutable in SQL.
+ * is branch-capable except MANAGE_SERVICE_PRICES, MANAGE_BOOKING_SETTINGS, MANAGE_DISCOUNTS and
+ * CREATE_VOUCHERS (GLOBAL_ONLY); the two pay permissions are EMPLOYEE_PAY data and the nine Phase 4
+ * financial permissions are FINANCIAL data. Semantics are immutable in SQL.
  */
 export const PERMISSION_CATALOG = Object.freeze([
   { code: 'VIEW_EMPLOYEES', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
@@ -104,6 +105,20 @@ export const PERMISSION_CATALOG = Object.freeze([
   },
   { code: 'VIEW_TEAMS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
   { code: 'MANAGE_TEAMS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  // Phase 4 POS, Invoices & Payments (design Q9). FINANCIAL data; nothing is granted by default (the
+  // Owner assigns them, never by role name). Only discount programs and voucher codes are
+  // organization-wide (GLOBAL_ONLY in V1). CORRECT_PAYMENTS and cancelling a finalized invoice will
+  // require fresh re-authentication when those actions exist (Steps 5 and 7); the codes alone do
+  // nothing yet.
+  { code: 'VIEW_INVOICES', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'FINANCIAL' },
+  { code: 'MANAGE_INVOICES', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'FINANCIAL' },
+  { code: 'COLLECT_PAYMENTS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'FINANCIAL' },
+  { code: 'APPLY_DISCOUNTS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'FINANCIAL' },
+  { code: 'MANAGE_DISCOUNTS', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'FINANCIAL' },
+  { code: 'CREATE_VOUCHERS', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'FINANCIAL' },
+  { code: 'CANCEL_INVOICES', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'FINANCIAL' },
+  { code: 'CORRECT_PAYMENTS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'FINANCIAL' },
+  { code: 'VIEW_REVENUE', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'FINANCIAL' },
 ] as const satisfies readonly PermissionDefinition[]);
 
 export interface PermissionCatalogSyncResult {

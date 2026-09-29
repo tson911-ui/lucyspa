@@ -325,6 +325,11 @@ test(
               async () => {
                 const body = request(D, '10:00', [{ serviceId: svcA, employeeUserId: e2 }]);
                 specificKey = body.idempotencyKey;
+                // OP-1: give the service a non-default per-service limit for this scenario.
+                await tx.service.update({
+                  where: { id: svcA },
+                  data: { pricingUnit: 'PER_NAIL', maxQuantity: 10, rowVersion: { increment: 1 } },
+                });
                 const created = await booking.create(sessionA, body);
                 specificId = created.id;
                 assert.equal(created.status, 'CONFIRMED');
@@ -343,6 +348,27 @@ test(
                 assert.equal(row.durationMinutes, 60);
                 assert.equal(row.bufferMinutes, 0);
                 assert.equal(row.serviceCode, `BK_A_${run}`);
+                // OP-1: the limit is snapshotted with the price range and never re-read.
+                assert.equal(row.maxQuantitySnapshot, 10);
+                assert.equal(row.catalogPricingUnit, 'PER_NAIL');
+                await tx.service.update({
+                  where: { id: svcA },
+                  data: { maxQuantity: 20, rowVersion: { increment: 1 } },
+                });
+                assert.equal(
+                  (await tx.bookingServiceLine.findUniqueOrThrow({ where: { id: row.id } }))
+                    .maxQuantitySnapshot,
+                  10,
+                  'a later catalog change never alters an existing booking line',
+                );
+                await tx.service.update({
+                  where: { id: svcA },
+                  data: {
+                    pricingUnit: 'PER_SERVICE',
+                    maxQuantity: 1,
+                    rowVersion: { increment: 1 },
+                  },
+                });
                 const events = await tx.outboxEvent.findMany({
                   where: { aggregateId: created.id },
                 });

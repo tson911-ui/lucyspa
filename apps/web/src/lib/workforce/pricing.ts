@@ -11,6 +11,11 @@ export interface PriceForm {
   priceVnd: string;
   priceMaxVnd: string;
   pricingUnit: ServicePricingUnit;
+  /**
+   * The per-service quantity limit (Phase 4 OP-1) as typed. It applies only to PER_NAIL (PER_SERVICE
+   * is always one unit and sends none); the API and SQL remain authoritative.
+   */
+  maxQuantity: string;
 }
 
 export type PriceProblem = 'invalid' | 'maxBeforeMin';
@@ -24,6 +29,24 @@ export function priceProblem(
 ): PriceProblem | null {
   if (!isVndInput(form.priceVnd) || !isVndInput(form.priceMaxVnd)) return 'invalid';
   return BigInt(form.priceMaxVnd) < BigInt(form.priceVnd) ? 'maxBeforeMin' : null;
+}
+
+const MAX_QUANTITY_CEILING = 2_147_483_647;
+
+/** UX mirror of the API rule: a PER_NAIL limit is a positive integer that fits the database. */
+export function quantityProblem(
+  form: Pick<PriceForm, 'pricingUnit' | 'maxQuantity'>,
+): 'invalid' | null {
+  if (form.pricingUnit !== 'PER_NAIL') return null;
+  if (!/^[1-9][0-9]{0,9}$/.test(form.maxQuantity)) return 'invalid';
+  return Number(form.maxQuantity) <= MAX_QUANTITY_CEILING ? null : 'invalid';
+}
+
+/** The request field: only a PER_NAIL service sends its limit. */
+export function maxQuantityBody(form: Pick<PriceForm, 'pricingUnit' | 'maxQuantity'>): {
+  maxQuantity?: number;
+} {
+  return form.pricingUnit === 'PER_NAIL' ? { maxQuantity: Number(form.maxQuantity) } : {};
 }
 
 function digits(value: string, locale: Locale): string {

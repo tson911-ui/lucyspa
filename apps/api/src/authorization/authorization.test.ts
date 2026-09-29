@@ -404,6 +404,16 @@ test('the code-owned catalog is exactly the Phase 1, Phase 2 and follow-up Step 
       ['MANAGE_ORG_ASSIGNMENTS', 'BRANCH_CAPABLE', 'STANDARD'],
       ['VIEW_TEAMS', 'BRANCH_CAPABLE', 'STANDARD'],
       ['MANAGE_TEAMS', 'BRANCH_CAPABLE', 'STANDARD'],
+      // Phase 4 Step 4 (design Q9): FINANCIAL data; only discounts and vouchers are GLOBAL_ONLY.
+      ['VIEW_INVOICES', 'BRANCH_CAPABLE', 'FINANCIAL'],
+      ['MANAGE_INVOICES', 'BRANCH_CAPABLE', 'FINANCIAL'],
+      ['COLLECT_PAYMENTS', 'BRANCH_CAPABLE', 'FINANCIAL'],
+      ['APPLY_DISCOUNTS', 'BRANCH_CAPABLE', 'FINANCIAL'],
+      ['MANAGE_DISCOUNTS', 'GLOBAL_ONLY', 'FINANCIAL'],
+      ['CREATE_VOUCHERS', 'GLOBAL_ONLY', 'FINANCIAL'],
+      ['CANCEL_INVOICES', 'BRANCH_CAPABLE', 'FINANCIAL'],
+      ['CORRECT_PAYMENTS', 'BRANCH_CAPABLE', 'FINANCIAL'],
+      ['VIEW_REVENUE', 'BRANCH_CAPABLE', 'FINANCIAL'],
     ],
   );
 });

@@ -162,6 +162,8 @@ export async function arriveBooking(
         catalogPriceMinVnd: line.catalogPriceMinVnd,
         catalogPriceMaxVnd: line.catalogPriceMaxVnd,
         catalogPricingUnit: line.catalogPricingUnit,
+        // OP-1: arrival carries the booking line's snapshot; the catalog is not read again.
+        maxQuantitySnapshot: line.maxQuantitySnapshot,
         assignmentConflict: line.assignmentConflict,
       },
       select: { id: true },

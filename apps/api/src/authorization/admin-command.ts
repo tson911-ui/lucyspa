@@ -127,7 +127,7 @@ export async function appendAdminAudit(
     reason?: string | null;
     before?: Prisma.InputJsonObject;
     after?: Prisma.InputJsonObject;
-    classification?: 'STANDARD' | 'EMPLOYEE_PAY';
+    classification?: 'STANDARD' | 'EMPLOYEE_PAY' | 'FINANCIAL';
   },
 ): Promise<void> {
   await context.tx.auditEvent.create({

@@ -705,7 +705,16 @@ export type PermissionCodeName =
   | 'REASSIGN_SERVICES'
   | 'PERFORM_SERVICES'
   | 'RESOLVE_SERVICE_EXECUTION'
-  | 'MANAGE_BOOKING_SETTINGS';
+  | 'MANAGE_BOOKING_SETTINGS'
+  | 'VIEW_INVOICES'
+  | 'MANAGE_INVOICES'
+  | 'COLLECT_PAYMENTS'
+  | 'APPLY_DISCOUNTS'
+  | 'MANAGE_DISCOUNTS'
+  | 'CREATE_VOUCHERS'
+  | 'CANCEL_INVOICES'
+  | 'CORRECT_PAYMENTS'
+  | 'VIEW_REVENUE';
 
 /** A named permission bundle. OWNER is virtual and never a role. */
 export interface RoleResponse {
@@ -828,7 +837,7 @@ export interface AuditEventResponse {
   reason: string | null;
   before: Record<string, unknown> | null;
   after: Record<string, unknown> | null;
-  dataClassification: 'STANDARD' | 'EMPLOYEE_PAY';
+  dataClassification: 'STANDARD' | 'EMPLOYEE_PAY' | 'FINANCIAL';
 }
 
 /**
@@ -1021,6 +1030,12 @@ export interface ServiceResponse {
   priceVnd: string;
   priceMaxVnd: string;
   pricingUnit: ServicePricingUnit;
+  /**
+   * Phase 4 OP-1: the per-service limit of an invoice line's quantity (an integer >= 1; always 1 for
+   * PER_SERVICE). Configured per service through the price command, snapshotted on booking and visit
+   * lines when they are established, so a later change never alters an existing visit or invoice.
+   */
+  maxQuantity: number;
   durationMinutes: number;
   estimatedMinMinutes: number;
   estimatedMaxMinutes: number;
@@ -1058,6 +1073,10 @@ export interface ServiceCreateRequest {
   priceMaxVnd?: string;
   /** Defaults to PER_SERVICE. */
   pricingUnit?: ServicePricingUnit;
+  /**
+   * The quantity limit (OP-1). Required for PER_NAIL; PER_SERVICE is exactly 1 (omit it or send 1).
+   */
+  maxQuantity?: number;
   durationMinutes: number;
   estimatedMinMinutes?: number;
   estimatedMaxMinutes?: number;
@@ -1091,6 +1110,12 @@ export interface ServicePriceRequest {
   priceMaxVnd?: string;
   /** Omitted: the pricing unit is unchanged. */
   pricingUnit?: ServicePricingUnit;
+  /**
+   * The quantity limit (OP-1), changed under the same authority and audit as the price. Required when
+   * the unit becomes PER_NAIL; omitted for an existing PER_NAIL service means unchanged; PER_SERVICE is
+   * always 1. It affects only lines established afterwards.
+   */
+  maxQuantity?: number;
   reason: string;
 }
 

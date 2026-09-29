@@ -629,11 +629,13 @@ test(
                   priceVnd: '150000',
                   priceMaxVnd: '150000',
                   pricingUnit: 'PER_SERVICE',
+                  maxQuantity: 1,
                 });
                 assert.deepEqual(event?.after, {
                   priceVnd: '180000',
                   priceMaxVnd: '180000',
                   pricingUnit: 'PER_SERVICE',
+                  maxQuantity: 1,
                 });
                 assert.equal(event?.reason, 'New menu');
                 assert.equal(event?.dataClassification, 'STANDARD');
@@ -812,6 +814,7 @@ test(
                   priceVnd: '5000',
                   priceMaxVnd: '5000',
                   pricingUnit: 'PER_NAIL',
+                  maxQuantity: 10,
                 });
                 assert.deepEqual(price(ombre), ['5000', '5000', 'PER_NAIL']);
                 const sticker = await catalog.createService(ownerSession, {
@@ -820,7 +823,10 @@ test(
                   priceVnd: '5000',
                   priceMaxVnd: '10000',
                   pricingUnit: 'PER_NAIL',
+                  maxQuantity: 10,
                 });
+                assert.equal(sticker.maxQuantity, 10);
+                assert.equal(wash.maxQuantity, 1, 'a flat service is exactly one unit');
                 assert.deepEqual(price(sticker), ['5000', '10000', 'PER_NAIL']);
                 // Reads (detail and list) return the range and unit.
                 assert.deepEqual(price(await catalog.getService(ownerSession, sticker.id)), [
@@ -835,8 +841,13 @@ test(
                 const [created] = await audit(sticker.id, 'SERVICE_CREATED');
                 const after = created?.after as Record<string, unknown>;
                 assert.deepEqual(
-                  [after['priceVnd'], after['priceMaxVnd'], after['pricingUnit']],
-                  ['5000', '10000', 'PER_NAIL'],
+                  [
+                    after['priceVnd'],
+                    after['priceMaxVnd'],
+                    after['pricingUnit'],
+                    after['maxQuantity'],
+                  ],
+                  ['5000', '10000', 'PER_NAIL', 10],
                 );
                 // Validation on create; nothing is written.
                 const badCreate = (
@@ -858,14 +869,35 @@ test(
                 await badCreate({ priceMaxVnd: '-1' }, 'priceMaxVnd', 'P3');
                 await badCreate({ pricingUnit: 'PER_HOUR' }, 'pricingUnit', 'P4');
                 await badCreate({ priceVnd: '5000.5' }, 'priceVnd', 'P5');
+                // OP-1: PER_NAIL must supply its limit (a positive integer); PER_SERVICE is exactly 1.
+                await badCreate({ pricingUnit: 'PER_NAIL' }, 'maxQuantity', 'P6');
+                await badCreate({ pricingUnit: 'PER_NAIL', maxQuantity: 0 }, 'maxQuantity', 'P7');
+                await badCreate({ pricingUnit: 'PER_NAIL', maxQuantity: 1.5 }, 'maxQuantity', 'P8');
+                await badCreate(
+                  { pricingUnit: 'PER_NAIL', maxQuantity: 2 ** 31 },
+                  'maxQuantity',
+                  'P9',
+                );
+                await badCreate({ maxQuantity: 5 }, 'maxQuantity', 'PA');
                 assert.equal(
                   await tx.service.count({
                     where: {
-                      code: { in: ['P1', 'P2', 'P3', 'P4', 'P5'].map((c) => `${c}_${run}`) },
+                      code: {
+                        in: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'PA'].map(
+                          (c) => `${c}_${run}`,
+                        ),
+                      },
                     },
                   }),
                   0,
                 );
+                const flatOne = await catalog.createService(ownerSession, {
+                  ...base,
+                  code: `FLAT_ONE_${run}`,
+                  priceVnd: '5000',
+                  maxQuantity: 1,
+                });
+                assert.equal(flatOne.maxQuantity, 1, 'PER_SERVICE accepts the limit 1');
                 // Updates through the price command: range and unit, audited.
                 const charm = await catalog.setPrice(priceManager, sticker.id, {
                   expectedVersion: sticker.version,
@@ -883,20 +915,25 @@ test(
                   priceVnd: '5000',
                   priceMaxVnd: '10000',
                   pricingUnit: 'PER_NAIL',
+                  maxQuantity: 10,
                 });
                 assert.deepEqual(changed?.after, {
                   priceVnd: '5000',
                   priceMaxVnd: '30000',
                   pricingUnit: 'PER_NAIL',
+                  maxQuantity: 10,
                 });
+                assert.equal(charm.maxQuantity, 10, 'the limit is unchanged when omitted');
                 // A flat service becomes per-nail; omitting the maximum makes the price exact.
                 const perNail = await catalog.setPrice(priceManager, wash.id, {
                   expectedVersion: wash.version,
                   priceVnd: '6000',
                   pricingUnit: 'PER_NAIL',
+                  maxQuantity: 8,
                   reason: 'Per nail',
                 });
                 assert.deepEqual(price(perNail), ['6000', '6000', 'PER_NAIL']);
+                assert.equal(perNail.maxQuantity, 8);
                 const exactAgain = await catalog.setPrice(priceManager, charm.id, {
                   expectedVersion: charm.version,
                   priceVnd: '5000',
@@ -917,12 +954,51 @@ test(
                 await badPrice({ priceMaxVnd: '4999' }, 'priceMaxVnd');
                 await badPrice({ pricingUnit: 'PER_TOE' }, 'pricingUnit');
                 await badPrice({ priceVnd: '-1' }, 'priceVnd');
-                await badPrice({}, 'priceVnd'); // unchanged price, range and unit
+                await badPrice({}, 'priceVnd'); // unchanged price, range, unit and limit
+                await badPrice({ maxQuantity: 0 }, 'maxQuantity');
+                await badPrice({ maxQuantity: 2.5 }, 'maxQuantity');
+                await badPrice({ pricingUnit: 'PER_SERVICE', maxQuantity: 3 }, 'maxQuantity');
+                // Changing a flat service to PER_NAIL must supply the limit.
+                await invalid(
+                  catalog.setPrice(priceManager, flatOne.id, {
+                    expectedVersion: flatOne.version,
+                    priceVnd: '5000',
+                    pricingUnit: 'PER_NAIL',
+                    reason: 'x',
+                  }),
+                  'maxQuantity',
+                );
                 assert.deepEqual(price(await catalog.getService(ownerSession, exactAgain.id)), [
                   '5000',
                   '5000',
                   'PER_NAIL',
                 ]);
+                // The limit alone can change (same price): audited before/after. Only lines
+                // established afterwards see it (existing snapshots: the Step 4 database test).
+                const raised = await catalog.setPrice(priceManager, exactAgain.id, {
+                  expectedVersion: exactAgain.version,
+                  priceVnd: '5000',
+                  maxQuantity: 20,
+                  reason: 'Raise the limit',
+                });
+                assert.equal(raised.maxQuantity, 20);
+                const limitEvents = await audit(exactAgain.id, 'SERVICE_PRICE_CHANGED');
+                assert.ok(
+                  limitEvents.some(
+                    (event) =>
+                      (event.before as Record<string, unknown>)['maxQuantity'] === 10 &&
+                      (event.after as Record<string, unknown>)['maxQuantity'] === 20,
+                  ),
+                  'the limit change is audited before/after',
+                );
+                // Back to a flat service: the limit is exactly 1 again with no client-side value.
+                const flatAgain = await catalog.setPrice(priceManager, raised.id, {
+                  expectedVersion: raised.version,
+                  priceVnd: '5000',
+                  pricingUnit: 'PER_SERVICE',
+                  reason: 'Flat again',
+                });
+                assert.equal(flatAgain.maxQuantity, 1);
                 // Master-data edits never touch pricing; only the price authority changes it.
                 await fails(
                   catalog.setPrice(catalogManager, exactAgain.id, {

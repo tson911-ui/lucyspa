@@ -83,6 +83,9 @@ function snapshot(value: Prisma.JsonValue): Record<string, unknown> | null {
  * - a null-branch (global or multi-branch) event needs unrestricted GLOBAL VIEW_AUDIT_LOG;
  * - EMPLOYEE_PAY events additionally need VIEW_EMPLOYEE_PAY at that branch, or
  *   unrestricted GLOBAL VIEW_EMPLOYEE_PAY for null-branch events.
+ * - FINANCIAL events (Phase 4, design 11.4) additionally need VIEW_REVENUE at that branch, or
+ *   unrestricted GLOBAL VIEW_REVENUE for null-branch events.
+ * A classification with no rule here is never visible (fail closed).
  * Branch decisions reuse the Step 7 engine for every existing branch.
  */
 export function auditVisibility(
@@ -98,13 +101,22 @@ export function auditVisibility(
   const globalStandard = decide(graph, 'VIEW_AUDIT_LOG', GLOBAL, { unrestricted: true });
   const globalPay =
     globalStandard && decide(graph, 'VIEW_EMPLOYEE_PAY', GLOBAL, { unrestricted: true });
+  const financial = standard.filter((branchId) =>
+    decide(graph, 'VIEW_REVENUE', { kind: 'BRANCH', branchId }),
+  );
+  const globalFinancial =
+    globalStandard && decide(graph, 'VIEW_REVENUE', GLOBAL, { unrestricted: true });
   const visible: Prisma.AuditEventWhereInput[] = [];
   if (standard.length > 0) {
     visible.push({ dataClassification: 'STANDARD', branchId: { in: standard } });
   }
   if (pay.length > 0) visible.push({ dataClassification: 'EMPLOYEE_PAY', branchId: { in: pay } });
+  if (financial.length > 0) {
+    visible.push({ dataClassification: 'FINANCIAL', branchId: { in: financial } });
+  }
   if (globalStandard) visible.push({ dataClassification: 'STANDARD', branchId: null });
   if (globalPay) visible.push({ dataClassification: 'EMPLOYEE_PAY', branchId: null });
+  if (globalFinancial) visible.push({ dataClassification: 'FINANCIAL', branchId: null });
   return visible;
 }
 

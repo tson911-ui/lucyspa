@@ -307,7 +307,9 @@ test(
                     serviceNameEn: 'Wash (snapshot)',
                     catalogPriceMinVnd: 90_000n,
                     catalogPriceMaxVnd: 90_000n,
-                    catalogPricingUnit: 'PER_SERVICE',
+                    // OP-1: a per-line limit unlike the catalog's default (1) proves what arrival copies.
+                    catalogPricingUnit: 'PER_NAIL',
+                    maxQuantitySnapshot: 6 + index,
                   },
                 });
               }
@@ -491,6 +493,16 @@ test(
                   visit.lines[0]!.serviceNameVi,
                   'Gội (ảnh chụp)',
                   'snapshot carried, not the catalog',
+                );
+                assert.deepEqual(
+                  visit.lines.map((l) => l.maxQuantitySnapshot),
+                  bookingLines.map((l) => l.maxQuantitySnapshot),
+                  'OP-1: the booking line quantity-limit snapshot is carried to the visit line',
+                );
+                assert.deepEqual(
+                  visit.lines.map((l) => l.maxQuantitySnapshot).sort(),
+                  [6, 7, 8],
+                  'not the live catalog limit',
                 );
                 assert.equal(
                   await tx.serviceExecution.count({

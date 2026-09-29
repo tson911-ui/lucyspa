@@ -9,7 +9,13 @@ import type {
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import { durationNumbers, durationProblem } from '../../../lib/workforce/durations';
-import { formatServicePrice, priceProblem, type PriceForm } from '../../../lib/workforce/pricing';
+import {
+  formatServicePrice,
+  maxQuantityBody,
+  priceProblem,
+  quantityProblem,
+  type PriceForm,
+} from '../../../lib/workforce/pricing';
 import { canAt, canGlobal } from '../../../lib/workforce/permissions';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { useBranches } from '../data';
@@ -227,16 +233,19 @@ function Price({
     priceVnd: service.priceVnd,
     priceMaxVnd: service.priceMaxVnd,
     pricingUnit: service.pricingUnit,
+    maxQuantity: String(service.maxQuantity),
   });
   const [price, setPrice] = useState<PriceForm>(current);
   const [reason, setReason] = useState('');
   const submit = useSubmit();
   useEffect(() => setPrice(current()), [service.version]);
-  const valid = priceProblem(price) === null;
+  const valid = priceProblem(price) === null && quantityProblem(price) === null;
+  // A PER_SERVICE limit is always 1, so only a PER_NAIL limit counts as a change.
   const changed =
     price.priceVnd !== service.priceVnd ||
     price.priceMaxVnd !== service.priceMaxVnd ||
-    price.pricingUnit !== service.pricingUnit;
+    price.pricingUnit !== service.pricingUnit ||
+    (price.pricingUnit === 'PER_NAIL' && price.maxQuantity !== String(service.maxQuantity));
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -250,6 +259,7 @@ function Price({
               priceVnd: price.priceVnd,
               priceMaxVnd: price.priceMaxVnd,
               pricingUnit: price.pricingUnit,
+              ...maxQuantityBody(price),
               reason,
             }),
           reload,

@@ -3,6 +3,13 @@ import { PrismaClient } from './generated/prisma/client.js';
 
 export type { Prisma, Branch, OutboxEvent } from './generated/prisma/client.js';
 export { appendOutboxEvent, type AppendOutboxEventInput } from './outbox.js';
+export {
+  generateInvoiceCode,
+  INVOICE_CODE_ALPHABET,
+  INVOICE_CODE_PATTERN,
+  isInvoiceCode,
+  type InvoiceCodeRandom,
+} from './invoice-code.js';
 export { collaboratorPrecheck, type CollaboratorPrecheckFinding } from './collaborator-precheck.js';
 export {
   BOOKING_SETTINGS,

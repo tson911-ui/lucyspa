@@ -98,6 +98,37 @@ export function pricingUnit(value: string): PricingUnit {
   return value as PricingUnit;
 }
 
+/** SQL `INTEGER` ceiling for the per-service quantity limit. */
+const MAX_QUANTITY_CEILING = 2_147_483_647;
+
+/**
+ * The limit that goes with a pricing unit (Phase 4 OP-1; SQL enforces it too):
+ * - PER_SERVICE is exactly one unit: the limit is 1 (omitted, or 1);
+ * - PER_NAIL carries the Owner's limit, an integer >= 1 that must be supplied when the service is
+ *   created or changed to PER_NAIL; for a service that already is PER_NAIL an omitted limit is unchanged.
+ * `current` is null for a new service.
+ */
+export function resolveMaxQuantity(
+  unit: PricingUnit,
+  requested: number | undefined,
+  current: { pricingUnit: PricingUnit; maxQuantity: number } | null,
+): number {
+  if (requested !== undefined) {
+    if (!Number.isSafeInteger(requested) || requested < 1 || requested > MAX_QUANTITY_CEILING) {
+      throw new AuthError('VALIDATION_FAILED', 'maxQuantity');
+    }
+  }
+  if (unit === 'PER_SERVICE') {
+    if (requested !== undefined && requested !== 1) {
+      throw new AuthError('VALIDATION_FAILED', 'maxQuantity');
+    }
+    return 1;
+  }
+  if (requested !== undefined) return requested;
+  if (current?.pricingUnit === 'PER_NAIL') return current.maxQuantity;
+  throw new AuthError('VALIDATION_FAILED', 'maxQuantity');
+}
+
 export interface ServicePrice {
   /** Minimum price per unit; the price itself when exact. */
   priceVnd: bigint;

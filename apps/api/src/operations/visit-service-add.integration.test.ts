@@ -309,6 +309,7 @@ test(
                 assert.equal(stored.catalogPriceMinVnd, 80_000n);
                 assert.equal(stored.catalogPriceMaxVnd, 130_000n);
                 assert.equal(stored.catalogPricingUnit, 'PER_SERVICE');
+                assert.equal(stored.maxQuantitySnapshot, 1, 'a flat service is exactly one unit');
                 assert.equal(await claims(added.lineId), 1);
                 assert.equal(
                   await tx.visitLineAddRequest.count({
@@ -352,6 +353,45 @@ test(
                 await tx.service.update({
                   where: { id: extra.id },
                   data: { priceVnd: 80_000n, priceMaxVnd: 130_000n, rowVersion: { increment: 1 } },
+                });
+                // OP-1: a per-nail service carries its limit, snapshotted at that moment and never re-read.
+                await tx.service.update({
+                  where: { id: extra.id },
+                  data: { pricingUnit: 'PER_NAIL', maxQuantity: 10, rowVersion: { increment: 1 } },
+                });
+                const limited = await executions.addLine(boss.token, row.id, {
+                  participantId,
+                  serviceId: extra.id,
+                  idempotencyKey: key(),
+                });
+                const limitedRow = await tx.visitServiceLine.findUniqueOrThrow({
+                  where: { id: limited.lineId },
+                });
+                assert.equal(limitedRow.maxQuantitySnapshot, 10);
+                assert.equal(limitedRow.catalogPricingUnit, 'PER_NAIL');
+                assert.equal(stored.maxQuantitySnapshot, 1, 'the earlier line keeps its own limit');
+                await tx.service.update({
+                  where: { id: extra.id },
+                  data: { maxQuantity: 20, rowVersion: { increment: 1 } },
+                });
+                assert.equal(
+                  (await tx.visitServiceLine.findUniqueOrThrow({ where: { id: limited.lineId } }))
+                    .maxQuantitySnapshot,
+                  10,
+                  'a later catalog change never alters an existing visit line',
+                );
+                const [limitedAudit] = await audits(limited.lineId, 'VISIT_LINE_ADDED');
+                assert.equal(
+                  (limitedAudit?.after as Record<string, unknown>)['maxQuantitySnapshot'],
+                  10,
+                );
+                await tx.service.update({
+                  where: { id: extra.id },
+                  data: {
+                    pricingUnit: 'PER_SERVICE',
+                    maxQuantity: 1,
+                    rowVersion: { increment: 1 },
+                  },
                 });
               },
             );

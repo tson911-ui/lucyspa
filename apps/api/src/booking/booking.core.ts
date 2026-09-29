@@ -267,6 +267,7 @@ export async function createCustomerBooking(
       priceVnd: true,
       priceMaxVnd: true,
       pricingUnit: true,
+      maxQuantity: true,
     },
   });
   const serviceById = new Map(services.map((row) => [row.id, row]));
@@ -326,6 +327,8 @@ export async function createCustomerBooking(
         catalogPriceMinVnd: service.priceVnd,
         catalogPriceMaxVnd: service.priceMaxVnd,
         catalogPricingUnit: service.pricingUnit,
+        // OP-1: the per-service quantity limit is snapshotted with the other pricing inputs.
+        maxQuantitySnapshot: service.maxQuantity,
       },
       select: { id: true },
     });

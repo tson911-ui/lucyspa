@@ -21,7 +21,12 @@ import {
   type DeleteTarget,
 } from '../../../lib/workforce/catalog-delete';
 import { ConfirmDeleteDialog } from '../confirm-delete';
-import { formatServicePrice, priceProblem } from '../../../lib/workforce/pricing';
+import {
+  formatServicePrice,
+  maxQuantityBody,
+  priceProblem,
+  quantityProblem,
+} from '../../../lib/workforce/pricing';
 import { DurationFields } from './service-durations';
 import { PriceFields } from './service-price-fields';
 import {
@@ -443,13 +448,14 @@ function ServiceCreate({
     priceVnd: '',
     priceMaxVnd: '',
     pricingUnit: 'PER_SERVICE' as ServicePricingUnit,
+    maxQuantity: '',
     estimatedMinMinutes: '60',
     estimatedMaxMinutes: '60',
     durationMinutes: '60',
   };
   const [form, setForm] = useState(empty);
   const submit = useSubmit();
-  const priceValid = priceProblem(form) === null;
+  const priceValid = priceProblem(form) === null && quantityProblem(form) === null;
   const durationsValid = durationProblem(form) === null;
 
   async function save(event: FormEvent) {
@@ -463,6 +469,7 @@ function ServiceCreate({
       priceVnd: form.priceVnd,
       priceMaxVnd: form.priceMaxVnd,
       pricingUnit: form.pricingUnit,
+      ...maxQuantityBody(form),
       ...durationNumbers(form),
     };
     const ok = await submit.run(

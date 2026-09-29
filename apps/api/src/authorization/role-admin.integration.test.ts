@@ -315,7 +315,7 @@ test(
                 );
                 const listed = await roles.listRoles(ownerSession);
                 assert.ok(listed.roles.some((entry) => entry.id === role.id));
-                assert.equal(listed.permissions.length, 31);
+                assert.equal(listed.permissions.length, 40);
                 // Scope capability comes from the code-owned catalog (Step 4B role UI).
                 assert.deepEqual(
                   listed.permissionCatalog.map((entry) => entry.code),
@@ -325,7 +325,12 @@ test(
                   listed.permissionCatalog
                     .filter((entry) => entry.scopeCapability === 'GLOBAL_ONLY')
                     .map((entry) => entry.code),
-                  ['MANAGE_SERVICE_PRICES', 'MANAGE_BOOKING_SETTINGS'],
+                  [
+                    'MANAGE_SERVICE_PRICES',
+                    'MANAGE_BOOKING_SETTINGS',
+                    'MANAGE_DISCOUNTS',
+                    'CREATE_VOUCHERS',
+                  ],
                 );
                 const events = await tx.auditEvent.findMany({
                   where: { entityId: role.id },
@@ -474,17 +479,24 @@ test(
                   reason,
                 });
                 assert.equal(reduced.overrides.length, 2);
-                // GLOBAL_ONLY permissions (service prices) cannot be overridden per branch.
-                await fails(
-                  roles.setOverride(ownerSession, target, {
-                    expectedVersion: reduced.version,
-                    permission: 'MANAGE_SERVICE_PRICES',
-                    effect: 'DENY',
-                    scope: { kind: 'BRANCH', branchId: A },
-                    reason,
-                  }),
-                  'VALIDATION_FAILED',
-                );
+                // GLOBAL_ONLY permissions (service prices; Phase 4 discounts and vouchers) cannot be
+                // overridden per branch.
+                for (const globalOnly of [
+                  'MANAGE_SERVICE_PRICES',
+                  'MANAGE_DISCOUNTS',
+                  'CREATE_VOUCHERS',
+                ] as const) {
+                  await fails(
+                    roles.setOverride(ownerSession, target, {
+                      expectedVersion: reduced.version,
+                      permission: globalOnly,
+                      effect: 'DENY',
+                      scope: { kind: 'BRANCH', branchId: A },
+                      reason,
+                    }),
+                    'VALIDATION_FAILED',
+                  );
+                }
                 const [change] = await tx.auditEvent.findMany({
                   where: {
                     subjectUserId: target,
@@ -787,6 +799,135 @@ test(
               );
             });
 
+            await context.test(
+              'audit read: FINANCIAL events additionally need VIEW_REVENUE (Phase 4 Step 4)',
+              async () => {
+                const entityType = `ItFin${run}`;
+                const base = Date.now() - 30_000;
+                // 0 standard at A; 1, 2 financial at A and B; 3 financial without a branch.
+                const seed = [
+                  { branchId: A, dataClassification: 'STANDARD', action: 'PROFILE_UPDATED' },
+                  { branchId: A, dataClassification: 'FINANCIAL', action: 'INVOICE_FINALIZED' },
+                  { branchId: B, dataClassification: 'FINANCIAL', action: 'INVOICE_FINALIZED' },
+                  { branchId: null, dataClassification: 'FINANCIAL', action: 'INVOICE_FINALIZED' },
+                ] as const;
+                const ids: string[] = [];
+                for (const [index, row] of seed.entries()) {
+                  const created = await tx.auditEvent.create({
+                    data: {
+                      action: row.action,
+                      actorKind: 'SYSTEM',
+                      entityType,
+                      entityId: `f${index}`,
+                      branchId: row.branchId,
+                      occurredAt: new Date(base + index * 1_000),
+                      dataClassification: row.dataClassification,
+                      after: { index },
+                    },
+                    select: { id: true },
+                  });
+                  ids.push(created.id);
+                }
+                const reader = async (
+                  grants: { permission: PermissionCodeName; branchId?: string }[],
+                  denies: { permission: PermissionCodeName; branchId: string }[] = [],
+                ) => {
+                  const id = await principal('EMPLOYEE', [A]);
+                  sequence += 1;
+                  const permissions = await tx.permission.findMany({
+                    select: { id: true, code: true },
+                  });
+                  const pid = (code: string) => permissions.find((row) => row.code === code)!.id;
+                  for (const grant of grants) {
+                    await tx.userPermissionOverride.create({
+                      data: {
+                        userId: id,
+                        permissionId: pid(grant.permission),
+                        effect: 'ALLOW',
+                        scopeKind: grant.branchId ? 'BRANCH' : 'GLOBAL',
+                        branchId: grant.branchId ?? null,
+                      },
+                    });
+                  }
+                  for (const deny of denies) {
+                    await tx.userPermissionOverride.create({
+                      data: {
+                        userId: id,
+                        permissionId: pid(deny.permission),
+                        effect: 'DENY',
+                        scopeKind: 'BRANCH',
+                        branchId: deny.branchId,
+                      },
+                    });
+                  }
+                  return login(id);
+                };
+                const visible = async (session: string) =>
+                  (await audit.list(session, { entityType, limit: 100 })).items
+                    .map((item) => ids.indexOf(item.id))
+                    .sort();
+                // The audit permission alone shows the standard event only.
+                assert.deepEqual(
+                  await visible(await reader([{ permission: 'VIEW_AUDIT_LOG', branchId: A }])),
+                  [0],
+                );
+                // Pay visibility is a different classification and never reveals financial events.
+                assert.deepEqual(
+                  await visible(
+                    await reader([
+                      { permission: 'VIEW_AUDIT_LOG' },
+                      { permission: 'VIEW_EMPLOYEE_PAY' },
+                    ]),
+                  ),
+                  [0],
+                );
+                // Audit + revenue at the branch: that branch's financial event, nothing else.
+                assert.deepEqual(
+                  await visible(
+                    await reader([
+                      { permission: 'VIEW_AUDIT_LOG', branchId: A },
+                      { permission: 'VIEW_REVENUE', branchId: A },
+                    ]),
+                  ),
+                  [0, 1],
+                );
+                // Revenue at the branch without the audit permission there: nothing.
+                await fails(
+                  audit.list(await reader([{ permission: 'VIEW_REVENUE', branchId: A }]), {
+                    entityType,
+                  }),
+                  'FORBIDDEN',
+                );
+                // Unrestricted global audit + revenue: every branch and the null-branch event.
+                assert.deepEqual(
+                  await visible(
+                    await reader([
+                      { permission: 'VIEW_AUDIT_LOG' },
+                      { permission: 'VIEW_REVENUE' },
+                    ]),
+                  ),
+                  [0, 1, 2, 3],
+                );
+                // A branch DENY of revenue removes that branch and the null-branch (global) events.
+                assert.deepEqual(
+                  await visible(
+                    await reader(
+                      [{ permission: 'VIEW_AUDIT_LOG' }, { permission: 'VIEW_REVENUE' }],
+                      [{ permission: 'VIEW_REVENUE', branchId: A }],
+                    ),
+                  ),
+                  [0, 2],
+                );
+                const financialOnly = await audit.list(
+                  await reader([{ permission: 'VIEW_AUDIT_LOG' }, { permission: 'VIEW_REVENUE' }]),
+                  { entityType, action: 'INVOICE_FINALIZED', limit: 100 },
+                );
+                assert.ok(
+                  financialOnly.items.every((item) => item.dataClassification === 'FINANCIAL'),
+                );
+              },
+            );
+
             await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
             throw rollback;
           },
@@ -798,6 +939,7 @@ test(
       assert.equal(await database.role.count({ where: { code: { contains: run } } }), 0);
       assert.equal(await database.branch.count({ where: { code: { endsWith: run } } }), 0);
       assert.equal(await database.auditEvent.count({ where: { entityType: `ItAudit${run}` } }), 0);
+      assert.equal(await database.auditEvent.count({ where: { entityType: `ItFin${run}` } }), 0);
       assert.equal(await database.permission.count(), permissionCount);
       assert.equal(
         (await database.user.findFirst({ where: { kind: 'OWNER' }, select: { id: true } }))?.id,

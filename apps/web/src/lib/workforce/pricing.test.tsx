@@ -3,14 +3,26 @@ import { test } from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { PriceFields } from '../../components/workforce/screens/service-price-fields';
 import { getWorkforceDictionary } from '../../i18n/workforce';
-import { formatServicePrice, priceProblem, type PriceForm } from './pricing';
+import {
+  formatServicePrice,
+  maxQuantityBody,
+  priceProblem,
+  quantityProblem,
+  type PriceForm,
+} from './pricing';
 
 const vi = getWorkforceDictionary('vi');
 const en = getWorkforceDictionary('en');
-const price = (min: string, max: string, unit: PriceForm['pricingUnit']): PriceForm => ({
+const price = (
+  min: string,
+  max: string,
+  unit: PriceForm['pricingUnit'],
+  maxQuantity = '1',
+): PriceForm => ({
   priceVnd: min,
   priceMaxVnd: max,
   pricingUnit: unit,
+  maxQuantity,
 });
 
 test('menu prices display as one amount when exact and a range otherwise', () => {
@@ -63,4 +75,37 @@ test('the service form offers minimum, maximum and the pricing unit', () => {
   assert.ok(markup.includes('5.000–10.000 ₫/ngón'), 'live preview of the displayed price');
   const reversed = render(price('10000', '5000', 'PER_NAIL'));
   assert.ok(reversed.includes(vi.services.priceMaxBeforeMin));
+});
+
+test('the per-service quantity limit is a PER_NAIL-only positive integer (OP-1)', () => {
+  // PER_SERVICE is always one unit: nothing is typed and nothing is sent.
+  assert.equal(quantityProblem(price('40000', '40000', 'PER_SERVICE', '')), null);
+  assert.deepEqual(maxQuantityBody(price('40000', '40000', 'PER_SERVICE', '7')), {});
+  // PER_NAIL needs an explicit positive integer that fits the database.
+  assert.equal(quantityProblem(price('5000', '5000', 'PER_NAIL', '10')), null);
+  assert.equal(quantityProblem(price('5000', '5000', 'PER_NAIL', '2147483647')), null);
+  for (const bad of ['', '0', '-3', '1.5', '1e2', '010', '2147483648', '99999999999']) {
+    assert.equal(quantityProblem(price('5000', '5000', 'PER_NAIL', bad)), 'invalid', bad);
+  }
+  assert.deepEqual(maxQuantityBody(price('5000', '5000', 'PER_NAIL', '10')), { maxQuantity: 10 });
+  const markup = renderToStaticMarkup(
+    <PriceFields
+      idPrefix="svc"
+      value={price('5000', '5000', 'PER_NAIL', '10')}
+      onChange={() => undefined}
+      t={vi}
+      locale="vi"
+    />,
+  );
+  assert.ok(markup.includes(vi.services.maxQuantity), 'PER_NAIL shows the limit field');
+  const flat = renderToStaticMarkup(
+    <PriceFields
+      idPrefix="svc"
+      value={price('40000', '40000', 'PER_SERVICE')}
+      onChange={() => undefined}
+      t={vi}
+      locale="vi"
+    />,
+  );
+  assert.ok(!flat.includes(vi.services.maxQuantity), 'PER_SERVICE has no limit field');
 });

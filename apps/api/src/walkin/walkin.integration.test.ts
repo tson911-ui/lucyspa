@@ -344,6 +344,11 @@ test(
                   [{ key: 'm', kind: 'MEMBER', customerUserId: member.id }],
                   [{ participantKey: 'm', serviceId: svcA, requestedEmployeeUserId: null }],
                 );
+                // OP-1: give the service a non-default per-service limit for this scenario.
+                await tx.service.update({
+                  where: { id: svcA },
+                  data: { pricingUnit: 'PER_NAIL', maxQuantity: 9, rowVersion: { increment: 1 } },
+                });
                 const result = await walkIns.create(deskS, B, body);
                 memberVisit = result;
                 const visit = await tx.visit.findUniqueOrThrow({ where: { id: result.visitId } });
@@ -377,6 +382,27 @@ test(
                   'buffer snapshot of the current setting at assignment',
                 );
                 assert.equal(row.serviceCode, `WI_A_${run}`);
+                // OP-1: the limit is snapshotted with the price range and never re-read.
+                assert.equal(row.maxQuantitySnapshot, 9);
+                assert.equal(row.catalogPricingUnit, 'PER_NAIL');
+                await tx.service.update({
+                  where: { id: svcA },
+                  data: { maxQuantity: 20, rowVersion: { increment: 1 } },
+                });
+                assert.equal(
+                  (await tx.visitServiceLine.findUniqueOrThrow({ where: { id: line.id } }))
+                    .maxQuantitySnapshot,
+                  9,
+                  'a later catalog change never alters an existing visit line',
+                );
+                await tx.service.update({
+                  where: { id: svcA },
+                  data: {
+                    pricingUnit: 'PER_SERVICE',
+                    maxQuantity: 1,
+                    rowVersion: { increment: 1 },
+                  },
+                });
                 // Planned from the exact database clock of the intake: never in the past.
                 assert.equal(row.plannedStartAt!.getTime(), visit.arrivedAt.getTime());
                 assert.equal(
