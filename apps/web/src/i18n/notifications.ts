@@ -1,20 +1,37 @@
-import type { NotificationType } from '@lucy-spa/contracts';
+import type { LeaveType, NotificationCategory, NotificationType } from '@lucy-spa/contracts';
 import type { Locale } from './locales';
 
 const vi = {
   title: 'Thông báo',
-  intro: 'Thông báo trong ứng dụng về lịch hẹn và dịch vụ của bạn.',
+  intro: 'Thông báo trong ứng dụng về lịch hẹn, dịch vụ và công việc của bạn.',
   unread: 'Chưa đọc',
   read: 'Đã đọc',
+  archivedBadge: 'Đã lưu trữ',
   markRead: 'Đánh dấu đã đọc',
+  markAllRead: 'Đánh dấu tất cả đã đọc',
+  archive: 'Lưu trữ',
   working: 'Đang lưu…',
   empty: 'Chưa có thông báo.',
+  emptyFiltered: 'Không có thông báo phù hợp với bộ lọc.',
+  emptyArchived: 'Chưa có thông báo nào được lưu trữ.',
   loading: 'Đang tải…',
   refresh: 'Tải lại',
   more: 'Tải thêm',
   open: 'Xem công việc',
+  openLeave: 'Mở trang nghỉ phép',
   error: 'Không thể tải hoặc lưu thông báo. Vui lòng thử lại.',
   countUnavailable: 'Chưa tải được số thông báo chưa đọc',
+  bell: 'Thông báo',
+  bellUnread: 'chưa đọc',
+  filters: 'Bộ lọc thông báo',
+  allCategories: 'Tất cả',
+  unreadOnly: 'Chỉ chưa đọc',
+  showArchived: 'Đã lưu trữ',
+  showInbox: 'Hộp thư',
+  categories: {
+    OPERATIONS: 'Vận hành',
+    HR: 'Nhân sự',
+  } satisfies Record<NotificationCategory, string>,
   types: {
     BOOKING_CREATED: 'Lịch hẹn đã được xác nhận.',
     BOOKING_CANCELLED: 'Lịch hẹn đã bị hủy.',
@@ -30,24 +47,65 @@ const vi = {
     LEAVE_REQUESTED: 'Có đơn xin nghỉ cần bạn xử lý.',
     LEAVE_DECIDED: 'Đơn xin nghỉ của bạn đã có quyết định.',
   } satisfies Record<NotificationType, string>,
+  leave: {
+    requested: 'Có đơn xin nghỉ ({type}) từ {from} đến {to} cần bạn xử lý.',
+    approved: 'Đơn xin nghỉ ({type}) từ {from} đến {to} của bạn đã được duyệt.',
+    rejected: 'Đơn xin nghỉ ({type}) từ {from} đến {to} của bạn đã bị từ chối.',
+    types: {
+      ANNUAL: 'phép năm',
+      SICK: 'nghỉ ốm',
+      PERSONAL: 'việc cá nhân',
+      FAMILY_EVENT: 'việc gia đình',
+      MATERNITY: 'thai sản',
+      OTHER: 'khác',
+    } satisfies Record<LeaveType, string>,
+  },
 };
 type Dictionary = {
-  [K in keyof typeof vi]: K extends 'types' ? Record<NotificationType, string> : string;
+  [K in keyof typeof vi]: K extends 'types'
+    ? Record<NotificationType, string>
+    : K extends 'categories'
+      ? Record<NotificationCategory, string>
+      : K extends 'leave'
+        ? {
+            requested: string;
+            approved: string;
+            rejected: string;
+            types: Record<LeaveType, string>;
+          }
+        : string;
 };
 const en: Dictionary = {
   title: 'Notifications',
-  intro: 'In-app updates about your bookings and service work.',
+  intro: 'In-app updates about your bookings, service work and tasks.',
   unread: 'Unread',
   read: 'Read',
+  archivedBadge: 'Archived',
   markRead: 'Mark read',
+  markAllRead: 'Mark all as read',
+  archive: 'Archive',
   working: 'Saving…',
   empty: 'No notifications yet.',
+  emptyFiltered: 'No notifications match the filters.',
+  emptyArchived: 'No archived notifications.',
   loading: 'Loading…',
   refresh: 'Refresh',
   more: 'Load more',
   open: 'View work',
+  openLeave: 'Open leave page',
   error: 'Could not load or save notifications. Please try again.',
   countUnavailable: 'Unread count is unavailable',
+  bell: 'Notifications',
+  bellUnread: 'unread',
+  filters: 'Notification filters',
+  allCategories: 'All',
+  unreadOnly: 'Unread only',
+  showArchived: 'Archived',
+  showInbox: 'Inbox',
+  categories: {
+    OPERATIONS: 'Operations',
+    HR: 'People',
+  },
   types: {
     BOOKING_CREATED: 'The booking was confirmed.',
     BOOKING_CANCELLED: 'The booking was cancelled.',
@@ -63,6 +121,19 @@ const en: Dictionary = {
     END_OVERDUE: 'The expected end has passed without END. The staff member remains busy.',
     LEAVE_REQUESTED: 'A leave request needs your attention.',
     LEAVE_DECIDED: 'Your leave request has been decided.',
+  },
+  leave: {
+    requested: 'A leave request ({type}) from {from} to {to} needs your attention.',
+    approved: 'Your leave request ({type}) from {from} to {to} was approved.',
+    rejected: 'Your leave request ({type}) from {from} to {to} was rejected.',
+    types: {
+      ANNUAL: 'annual leave',
+      SICK: 'sick leave',
+      PERSONAL: 'personal',
+      FAMILY_EVENT: 'family event',
+      MATERNITY: 'maternity',
+      OTHER: 'other',
+    },
   },
 };
 export function getNotificationDictionary(locale: Locale): Dictionary {

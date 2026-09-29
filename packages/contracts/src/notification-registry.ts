@@ -9,7 +9,12 @@ import type { LeaveType } from './index.js';
 export const NOTIFICATION_ENTITY_TYPES = ['Booking', 'Visit', 'LeaveRequest'] as const;
 export type NotificationEntityType = (typeof NOTIFICATION_ENTITY_TYPES)[number];
 
-export type NotificationCategory = 'OPERATIONS' | 'HR';
+export const NOTIFICATION_CATEGORIES = ['OPERATIONS', 'HR'] as const;
+export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
+
+export function isNotificationCategory(value: unknown): value is NotificationCategory {
+  return (NOTIFICATION_CATEGORIES as readonly unknown[]).includes(value);
+}
 export type NotificationSeverity = 'INFO' | 'ATTENTION' | 'WARNING';
 /** Which allowlisted screen an item opens; the destination API still enforces authority. */
 export type NotificationTargetKind = 'BOOKING' | 'VISIT' | 'LEAVE_REQUEST';

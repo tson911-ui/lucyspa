@@ -44,3 +44,4 @@ await import('../apps/api/dist/bootstrap/organization-bootstrap.integration.test
 await import('../apps/api/dist/organization/organization.integration.test.js');
 await import('../apps/api/dist/notifications/notification-routing.integration.test.js');
 await import('../apps/api/dist/leave/leave-notifications.integration.test.js');
+await import('../apps/api/dist/notifications/notification-inbox.integration.test.js');

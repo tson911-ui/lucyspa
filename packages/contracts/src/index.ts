@@ -1,5 +1,10 @@
 /** Public, transport-only contracts. No ORM, Node runtime or domain implementation exports. */
-import type { NotificationEntityType, NotificationType } from './notification-registry.js';
+import type {
+  NotificationCategory,
+  NotificationEntityType,
+  NotificationParams,
+  NotificationType,
+} from './notification-registry.js';
 export type OrganizationLevel =
   | 'CEO'
   | 'REGIONAL_MANAGER'
@@ -1979,9 +1984,38 @@ export interface NotificationItem {
   actionAt: string;
   createdAt: string;
   readAt: string | null;
+  /** Archived items are hidden from the default inbox and never counted as unread. */
+  archivedAt: string | null;
+  /** Structured facts (ids, dates, enums) validated by the registry; never free text. */
+  params: NotificationParams | null;
 }
+/** Unread, non-archived notifications per registry category. */
+export type NotificationCategoryCounts = Record<NotificationCategory, number>;
 export interface NotificationPage {
   items: NotificationItem[];
   nextCursor: string | null;
+  /** Total unread, non-archived notifications (the bell badge). */
   unreadCount: number;
+  unreadByCategory: NotificationCategoryCounts;
+}
+export interface NotificationCountResponse {
+  unreadCount: number;
+  unreadByCategory: NotificationCategoryCounts;
+}
+/** GET /api/v1/notifications query: the caller's own inbox only (there is no recipient parameter). */
+export interface NotificationQuery {
+  cursor?: string;
+  category?: NotificationCategory;
+  /** `true` lists only unread items. */
+  unread?: boolean;
+  /** `true` lists only archived items; the default lists only non-archived items. */
+  archived?: boolean;
+}
+export interface NotificationReadAllRequest {
+  /** Limit to one category; omitted marks every unread non-archived item. */
+  category?: NotificationCategory;
+}
+export interface NotificationReadAllResponse extends NotificationCountResponse {
+  /** How many rows this call changed (0 on a repeat). */
+  updated: number;
 }

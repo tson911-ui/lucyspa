@@ -25,6 +25,8 @@ test('inbox is bounded and projects only own safe fields, with timestamp/UUID pa
     actionAt: now,
     createdAt: now,
     readAt: null,
+    archivedAt: null,
+    params: null,
     recipientUserId: userId,
     sourceEventId: randomUUID(),
     branch: { id: randomUUID(), name: 'Branch', timezone: 'UTC' },
@@ -35,14 +37,21 @@ test('inbox is bounded and projects only own safe fields, with timestamp/UUID pa
         query = input;
         return [row];
       },
-      count: async (input: unknown) => {
-        assert.deepEqual(input, { where: { recipientUserId: userId, readAt: null } });
-        return 1;
+      groupBy: async (input: unknown) => {
+        // Unread means not read AND not archived, and always the caller's own rows.
+        assert.deepEqual(Reflect.get(Object(input), 'where'), {
+          recipientUserId: userId,
+          readAt: null,
+          archivedAt: null,
+        });
+        return [{ type: 'START_OVERDUE', _count: { _all: 1 } }];
       },
     },
   } as unknown as Prisma.TransactionClient;
   const page = await listOwnNotifications(tx, userId, `${now.toISOString()}~${id}`);
   assert.equal(page.unreadCount, 1);
+  assert.deepEqual(page.unreadByCategory, { OPERATIONS: 1, HR: 0 });
+  assert.equal(Reflect.get(Object(Reflect.get(Object(query), 'where')), 'archivedAt'), null);
   assert.equal(page.nextCursor, null);
   assert.equal(Reflect.get(Object(query), 'take'), 31);
   assert.equal(Reflect.get(Object(Reflect.get(Object(query), 'where')), 'recipientUserId'), userId);
@@ -122,6 +131,8 @@ test('mark-read returns authoritative state and an idempotent repeat preserves t
         actionAt: first,
         createdAt: first,
         readAt,
+        archivedAt: null,
+        params: null,
         branch: { id: randomUUID(), name: 'Branch', timezone: 'UTC' },
       }),
     },

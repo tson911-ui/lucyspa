@@ -16,6 +16,8 @@ const item: NotificationItem = {
   actionAt: '2030-01-02T10:00:00.000Z',
   createdAt: '2030-01-02T10:00:01.000Z',
   readAt: null,
+  archivedAt: null,
+  params: null,
 };
 test('workforce inbox and operational warnings render VI/EN without exposing event codes', () => {
   for (const locale of ['vi', 'en'] as const) {

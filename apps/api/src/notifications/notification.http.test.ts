@@ -56,6 +56,9 @@ test('notification HTTP enforces exact payloads, own session, CSRF and safe erro
     },
   };
   let writes = 0;
+  const listed: { cursor: string | undefined; filters: unknown }[] = [];
+  const archived: string[] = [];
+  const readAlls: (string | undefined)[] = [];
   const authenticate = (value: string | undefined) => {
     if (value !== token) throw new AuthError('AUTHENTICATION_REQUIRED');
   };
@@ -79,18 +82,34 @@ test('notification HTTP enforces exact payloads, own session, CSRF and safe erro
     .useValue({})
     .overrideProvider(NotificationService)
     .useValue({
-      list: (value: string) => {
+      list: (value: string, cursor: string | undefined, filters: unknown) => {
         authenticate(value);
-        return { items: [], unreadCount: 0, nextCursor: null };
+        listed.push({ cursor, filters });
+        return {
+          items: [],
+          unreadCount: 0,
+          unreadByCategory: { OPERATIONS: 0, HR: 0 },
+          nextCursor: null,
+        };
       },
       count: (value: string) => {
         authenticate(value);
-        return { unreadCount: 0 };
+        return { unreadCount: 0, unreadByCategory: { OPERATIONS: 0, HR: 0 } };
       },
       read: (value: string, id: string) => {
         authenticate(value);
         writes++;
         return { id, readAt: now.toISOString() };
+      },
+      archive: (value: string, id: string) => {
+        authenticate(value);
+        archived.push(id);
+        return { id, archivedAt: now.toISOString() };
+      },
+      readAll: (value: string, category: string | undefined) => {
+        authenticate(value);
+        readAlls.push(category);
+        return { updated: 0, unreadCount: 0, unreadByCategory: { OPERATIONS: 0, HR: 0 } };
       },
     })
     .compile();
@@ -138,6 +157,61 @@ test('notification HTTP enforces exact payloads, own session, CSRF and safe erro
     assert.equal(writes, 0);
     await request(server).post(url).set(headers).send({}).expect(200);
     assert.equal(writes, 1);
+
+    // Filters: category from the registry, unread, archived; defaults hide archived items.
+    listed.length = 0;
+    await request(server).get('/api/v1/notifications').set({ Cookie: cookie }).expect(200);
+    await request(server)
+      .get('/api/v1/notifications')
+      .set({ Cookie: cookie })
+      .query({ category: 'HR', unread: 'true', archived: 'true' })
+      .expect(200);
+    assert.deepEqual(listed[0]!.filters, { unread: false, archived: false });
+    assert.deepEqual(listed[1]!.filters, { category: 'HR', unread: true, archived: true });
+    for (const query of [
+      { category: 'FINANCE' },
+      { unread: 'maybe' },
+      { archived: '1' },
+      { recipient: 'someone' },
+    ]) {
+      await request(server)
+        .get('/api/v1/notifications')
+        .set({ Cookie: cookie })
+        .query(query)
+        .expect(400);
+    }
+    assert.equal(listed.length, 2, 'invalid queries never reach the inbox');
+
+    // Archive: same protections as read; own inbox only, no body.
+    const archiveUrl = `/api/v1/notifications/${randomUUID()}/archive`;
+    await request(server)
+      .post(archiveUrl)
+      .set({ Cookie: cookie, Origin: headers.Origin })
+      .send({})
+      .expect(403);
+    await request(server)
+      .post(archiveUrl)
+      .set(headers)
+      .send({ recipientUserId: randomUUID() })
+      .expect(400);
+    assert.equal(archived.length, 0);
+    await request(server).post(archiveUrl).set(headers).send({}).expect(200);
+    assert.equal(archived.length, 1);
+
+    // Mark all matching read: CSRF-protected, optional registry category, nothing else accepted.
+    const readAllUrl = '/api/v1/notifications/read-all';
+    await request(server)
+      .post(readAllUrl)
+      .set({ Cookie: cookie, Origin: headers.Origin })
+      .send({})
+      .expect(403);
+    for (const body of [{ category: 'FINANCE' }, { recipientUserId: randomUUID() }, { ids: [] }]) {
+      await request(server).post(readAllUrl).set(headers).send(body).expect(400);
+    }
+    assert.equal(readAlls.length, 0);
+    await request(server).post(readAllUrl).set(headers).send({}).expect(200);
+    await request(server).post(readAllUrl).set(headers).send({ category: 'HR' }).expect(200);
+    assert.deepEqual(readAlls, [undefined, 'HR']);
   } finally {
     await app.close();
   }
