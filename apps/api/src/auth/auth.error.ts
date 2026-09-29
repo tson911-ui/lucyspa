@@ -51,6 +51,14 @@ const errors = {
   ],
   // Phase 4 Step 3: staff-added service.
   VISIT_LINE_ADD_NOT_ALLOWED: [409, 'A service can no longer be added to this visit'],
+  // Phase 4 Step 5: invoice / POS.
+  INVOICE_VISIT_NOT_COMPLETED: [409, 'Only a completed visit can be invoiced'],
+  INVOICE_STATE_INVALID: [409, 'This invoice is not in a state that allows this action'],
+  INVOICE_NOT_READY: [
+    409,
+    'Every service needs a price and a quantity before the invoice is finalized',
+  ],
+  INVOICE_CANCEL_NOT_ALLOWED: [409, 'This invoice cannot be cancelled here'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

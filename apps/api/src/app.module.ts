@@ -24,6 +24,8 @@ import { ReassignmentController } from './operations/reassignment.controller.js'
 import { ReassignmentService } from './operations/reassignment.service.js';
 import { NotificationController } from './notifications/notification.controller.js';
 import { NotificationService } from './notifications/notification.service.js';
+import { InvoiceController } from './pos/invoice.controller.js';
+import { InvoiceService } from './pos/invoice.service.js';
 import { WalkInController } from './walkin/walkin.controller.js';
 import { WalkInService } from './walkin/walkin.service.js';
 import { MyAccountService } from './account/my-account.service.js';
@@ -102,6 +104,7 @@ export class AppModule {
         ReassignmentController,
         NotificationController,
         WalkInController,
+        InvoiceController,
         OrganizationController,
         TeamController,
       ],
@@ -138,6 +141,7 @@ export class AppModule {
         ReassignmentService,
         NotificationService,
         WalkInService,
+        InvoiceService,
         OrganizationService,
         TeamService,
         { provide: PasswordService, useFactory: () => new PasswordService() },

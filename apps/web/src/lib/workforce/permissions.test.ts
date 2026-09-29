@@ -25,6 +25,8 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'reassignment',
     // Phase 3 Step 6: walk-in intake (MANAGE_BOOKINGS).
     'walkIn',
+    // Phase 4 Step 5: Invoice / POS (VIEW_INVOICES).
+    'pos',
     'collaboratorSchedule',
     'branches',
     'services',

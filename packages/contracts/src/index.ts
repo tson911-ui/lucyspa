@@ -2158,3 +2158,153 @@ export interface NotificationReadAllResponse extends NotificationCountResponse {
   /** How many rows this call changed (0 on a repeat). */
   updated: number;
 }
+
+// ------------------------------------------------------------------------------------------------
+// Phase 4 Step 5: Invoice / POS ("Hóa đơn"), the internal commercial receipt of one completed visit.
+// It is NOT an official VAT/e-invoice. Money is an integer VND decimal string; the client never sends
+// a total, a price range, a quantity limit, a state or the visit's completion (all server-derived).
+// ------------------------------------------------------------------------------------------------
+
+export type InvoiceStatusName = 'DRAFT' | 'PENDING_PAYMENT' | 'PAID' | 'CANCELLED';
+
+/** A customer account as staff may see it: masked contacts (no enumeration, no full identifiers). */
+export interface InvoicePersonSummary {
+  id: string;
+  displayName: string;
+  phoneMasked: string | null;
+  emailMasked: string | null;
+}
+
+/**
+ * One invoiced service performance. `priceMinVnd`/`priceMaxVnd`/`quantityLimit` are the HISTORICAL
+ * snapshot of the visit line (never the live catalog). `quantity` is the financial quantity of the
+ * pricing unit (1 for PER_SERVICE); `unitPriceVnd` and `quantity` are null until selected.
+ */
+export interface InvoiceLineResponse {
+  id: string;
+  sequence: number;
+  visitServiceLineId: string;
+  participant: { id: string; kind: VisitParticipantKindName; displayName: string | null };
+  employee: { id: string; displayName: string };
+  itemCode: string;
+  nameVi: string;
+  nameEn: string;
+  pricingUnit: 'PER_SERVICE' | 'PER_NAIL';
+  priceMinVnd: string;
+  priceMaxVnd: string;
+  quantityLimit: number;
+  quantity: number | null;
+  unitPriceVnd: string | null;
+  grossVnd: string | null;
+  priceSetAt: string | null;
+  addedOnBehalf: boolean;
+  /** The actor may still choose the price (a range) or the quantity (PER_NAIL) of this line. */
+  priceEditable: boolean;
+}
+
+export interface InvoiceResponse {
+  id: string;
+  code: string;
+  status: InvoiceStatusName;
+  branch: { id: string; name: string; timezone: string };
+  visit: { id: string; code: string; serviceDate: string; completedAt: string | null };
+  /** The payer; null = guest payer (no account, never inferred from guest details). */
+  payer: InvoicePersonSummary | null;
+  /** The booking owner (the default payer) when the visit has one. */
+  defaultPayer: InvoicePersonSummary | null;
+  businessDate: string;
+  calculationVersion: number;
+  subtotalVnd: string;
+  discountTotalVnd: string;
+  totalVnd: string;
+  createdAt: string;
+  finalizedAt: string | null;
+  paidAt: string | null;
+  paidSeq: number;
+  cancelledAt: string | null;
+  cancelledFromStatus: InvoiceStatusName | null;
+  cancelReason: string | null;
+  /** Optimistic-concurrency version: send it back as `expectedVersion` with every command. */
+  version: number;
+  lines: InvoiceLineResponse[];
+  /** Finalization needs every line priced with a quantity. */
+  readiness: { ready: boolean; unpricedLines: number };
+  /** Which commands this actor may issue now (the API authorizes each again). */
+  actions: {
+    editPrices: boolean;
+    setPayer: boolean;
+    finalize: boolean;
+    cancel: boolean;
+    /** A finalized invoice needs fresh password re-authentication to be cancelled. */
+    cancelNeedsReauth: boolean;
+  };
+}
+
+/** POST /api/v1/pos/visits/:visitId/invoice: opens the visit's active invoice, creating a DRAFT if none. */
+export interface InvoiceOpenedResponse {
+  invoice: InvoiceResponse;
+  /** False when the visit already had an active invoice (a retry or another cashier created it). */
+  created: boolean;
+}
+
+/** POST /api/v1/pos/invoices/:id/lines/:lineId/price: choose the price and/or quantity of one line (DRAFT only). */
+export interface InvoiceLinePriceRequest {
+  expectedVersion: number;
+  /** Inside the historical [min, max] of the line. */
+  unitPriceVnd?: string;
+  /** A positive integer within the historical quantity limit (PER_SERVICE is exactly 1). */
+  quantity?: number;
+}
+
+/** POST /api/v1/pos/invoices/:id/payer: a member (an id found by the exact lookup) or null for a guest payer. */
+export interface InvoicePayerRequest {
+  expectedVersion: number;
+  payerUserId: string | null;
+}
+
+/** POST /api/v1/pos/invoices/:id/finalize: DRAFT -> PENDING_PAYMENT, or directly PAID for a receivable of exactly 0. */
+export interface InvoiceFinalizeRequest {
+  expectedVersion: number;
+}
+
+/** POST /api/v1/pos/invoices/:id/cancel (CANCEL_INVOICES; a finalized invoice needs fresh re-authentication). */
+export interface InvoiceCancelRequest {
+  expectedVersion: number;
+  reason: string;
+}
+
+export interface PosBoardVisit {
+  visitId: string;
+  visitCode: string;
+  serviceDate: string;
+  completedAt: string | null;
+  participants: string[];
+  performedServices: number;
+}
+
+export interface PosBoardInvoice {
+  id: string;
+  code: string;
+  status: InvoiceStatusName;
+  visitId: string;
+  visitCode: string;
+  payerName: string | null;
+  totalVnd: string;
+  businessDate: string;
+  createdAt: string;
+}
+
+/**
+ * GET /api/v1/pos/branches/:branchId/board?date=YYYY-MM-DD (VIEW_INVOICES): completed visits still
+ * without an active invoice and the invoices of a trailing 7-day window ending at `date` (a branch-local
+ * business date; default today).
+ */
+export interface PosBoardResponse {
+  branch: { id: string; name: string; timezone: string };
+  date: string;
+  windowStart: string;
+  awaiting: PosBoardVisit[];
+  invoices: PosBoardInvoice[];
+  /** MANAGE_INVOICES here: the "open invoice" action is offered. */
+  canManage: boolean;
+}

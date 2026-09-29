@@ -83,7 +83,7 @@ export async function lookupMember(
   };
 }
 
-function maskEmail(email: string | null): string | null {
+export function maskEmail(email: string | null): string | null {
   if (!email) return null;
   const [local = '', domain = ''] = email.split('@');
   return `${local.slice(0, 1)}•••@${domain}`;

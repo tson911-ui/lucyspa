@@ -879,3 +879,22 @@
     flex: 1 1 100%;
   }
 }
+
+/* Invoice totals (POS): label/amount pairs aligned to the right. */
+.wf-summary {
+  display: grid;
+  gap: 0.35rem;
+  max-width: 24rem;
+  margin: 1rem 0 0 auto;
+}
+
+.wf-summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.wf-summary dt,
+.wf-summary dd {
+  margin: 0;
+}

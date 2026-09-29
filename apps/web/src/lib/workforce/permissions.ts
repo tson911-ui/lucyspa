@@ -153,6 +153,7 @@ export type NavKey =
   | 'collaboratorSchedule'
   | 'bookingBoard'
   | 'walkIn'
+  | 'pos'
   | 'myServices'
   | 'reassignment'
   | 'branches'
@@ -214,6 +215,11 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'walkIn',
       group: 'operations',
       path: '/walk-in',
+    },
+    canAnywhere(account, 'VIEW_INVOICES') && {
+      key: 'pos',
+      group: 'operations',
+      path: '/pos',
     },
     (canAnywhere(account, 'VIEW_WORK_SCHEDULE') ||
       canAnywhere(account, 'MANAGE_WORK_SCHEDULE')) && {
