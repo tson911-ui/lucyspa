@@ -12,7 +12,7 @@ import type { WorkforceDictionary } from '../../i18n/workforce';
 import { fill } from '../../i18n/workforce';
 import type { Locale } from '../../i18n/locales';
 import { ApiError, type WorkforceApi } from './api';
-import { canAcross, canAt, canGlobal, type Account } from './permissions';
+import { canAcross, canAt, canGlobal, canScope, type Account } from './permissions';
 import { errorMessage } from './workflows';
 
 /**
@@ -45,6 +45,14 @@ export function scopeOptions(
 ): AuthorizationScope[] {
   const options: AuthorizationScope[] = [];
   if (canGlobal(account, 'MANAGE_PERMISSIONS')) options.push({ kind: 'GLOBAL' });
+  for (const region of account.organization?.regions ?? []) {
+    const scope = { kind: 'REGION', regionId: region.id } as const;
+    if (canScope(account, 'MANAGE_PERMISSIONS', scope)) options.push(scope);
+  }
+  for (const area of account.organization?.areas ?? []) {
+    const scope = { kind: 'AREA', areaId: area.id } as const;
+    if (canScope(account, 'MANAGE_PERMISSIONS', scope)) options.push(scope);
+  }
   for (const branchId of employee.branchIds) {
     const branch = branches?.get(branchId);
     if (branch?.isActive && canAt(account, 'MANAGE_PERMISSIONS', branchId)) {
@@ -64,18 +72,12 @@ export function grantable(
   scope: AuthorizationScope,
 ): boolean {
   if (account.kind === 'OWNER') return true;
-  return role.permissions.every((permission) =>
-    scope.kind === 'GLOBAL'
-      ? canGlobal(account, permission)
-      : canAt(account, permission, scope.branchId),
-  );
+  return role.permissions.every((permission) => canScope(account, permission, scope));
 }
 
 /** Revoking needs MANAGE_PERMISSIONS at the assignment's scope (GLOBAL for a GLOBAL one). */
 export function canRevokeAt(account: Account, scope: AuthorizationScope): boolean {
-  return scope.kind === 'GLOBAL'
-    ? canGlobal(account, 'MANAGE_PERMISSIONS')
-    : canAt(account, 'MANAGE_PERMISSIONS', scope.branchId);
+  return canScope(account, 'MANAGE_PERMISSIONS', scope);
 }
 
 /** Roles that can be assigned: active ones only (an inactive role confers nothing). */
@@ -84,11 +86,23 @@ export function assignableRoles(catalog: RoleListResponse | null): RoleResponse[
 }
 
 export function scopeKey(scope: AuthorizationScope): string {
-  return scope.kind === 'GLOBAL' ? 'GLOBAL' : `BRANCH:${scope.branchId}`;
+  switch (scope.kind) {
+    case 'GLOBAL':
+      return 'GLOBAL';
+    case 'REGION':
+      return `REGION:${scope.regionId}`;
+    case 'AREA':
+      return `AREA:${scope.areaId}`;
+    case 'BRANCH':
+      return `BRANCH:${scope.branchId}`;
+  }
 }
 
 export function scopeFromKey(key: string): AuthorizationScope | null {
   if (key === 'GLOBAL') return { kind: 'GLOBAL' };
+  if (key.startsWith('REGION:') && key.length > 7)
+    return { kind: 'REGION', regionId: key.slice(7) };
+  if (key.startsWith('AREA:') && key.length > 5) return { kind: 'AREA', areaId: key.slice(5) };
   return key.startsWith('BRANCH:') ? { kind: 'BRANCH', branchId: key.slice(7) } : null;
 }
 
@@ -96,8 +110,13 @@ export function scopeLabel(
   scope: AuthorizationScope,
   branches: ReadonlyMap<string, BranchSummary> | null,
   t: WorkforceDictionary,
+  organization?: Account['organization'],
 ): string {
   if (scope.kind === 'GLOBAL') return t.roles.global;
+  if (scope.kind === 'REGION')
+    return `${t.nav.organization} · ${organization?.regions.find((entry) => entry.id === scope.regionId)?.name ?? scope.regionId}`;
+  if (scope.kind === 'AREA')
+    return `${t.nav.organization} · ${organization?.areas.find((entry) => entry.id === scope.areaId)?.name ?? scope.areaId}`;
   const branch = branches?.get(scope.branchId);
   return fill(t.roles.atBranch, { branch: branch ? branch.name : t.common.unknownBranch });
 }

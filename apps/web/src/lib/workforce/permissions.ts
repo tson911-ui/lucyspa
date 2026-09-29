@@ -1,4 +1,8 @@
-import type { CurrentAccountResponse, PermissionCodeName } from '@lucy-spa/contracts';
+import type {
+  AuthorizationScope,
+  CurrentAccountResponse,
+  PermissionCodeName,
+} from '@lucy-spa/contracts';
 
 /**
  * UX-only permission hints derived from `GET /api/v1/auth/me` (design section 10). They
@@ -28,7 +32,63 @@ function deniedAt(account: Account, permission: string, branchId: string | null)
     (deny) =>
       deny.permission === permission &&
       (deny.scope.kind === 'GLOBAL' ||
-        (branchId !== null && deny.scope.kind === 'BRANCH' && deny.scope.branchId === branchId)),
+        (branchId !== null && scopeContains(account, deny.scope, { kind: 'BRANCH', branchId }))),
+  );
+}
+
+/** Tree containment only; hierarchy and team restrictions are rechecked by the API. */
+export function scopeContains(
+  account: Account,
+  parent: AuthorizationScope,
+  child: AuthorizationScope,
+): boolean {
+  if (parent.kind === 'GLOBAL') return true;
+  if (parent.kind === 'REGION') {
+    if (child.kind === 'REGION') return parent.regionId === child.regionId;
+    if (child.kind === 'AREA')
+      return (
+        account.organization?.areas.some(
+          (area) => area.id === child.areaId && area.regionId === parent.regionId,
+        ) ?? false
+      );
+    if (child.kind === 'BRANCH')
+      return (
+        account.organization?.branches.some(
+          (branch) => branch.id === child.branchId && branch.regionId === parent.regionId,
+        ) ?? false
+      );
+  }
+  if (parent.kind === 'AREA') {
+    if (child.kind === 'AREA') return parent.areaId === child.areaId;
+    if (child.kind === 'BRANCH')
+      return (
+        account.organization?.branches.some(
+          (branch) => branch.id === child.branchId && branch.areaId === parent.areaId,
+        ) ?? false
+      );
+  }
+  return parent.kind === 'BRANCH' && child.kind === 'BRANCH' && parent.branchId === child.branchId;
+}
+
+/** Conservative grant hint for an entire scope, including descendant DENY overrides. */
+export function canScope(
+  account: Account,
+  permission: PermissionCodeName,
+  scope: AuthorizationScope,
+): boolean {
+  if (!isWorkforce(account)) return false;
+  if (isOwner(account)) return true;
+  const { grants, denies } = lists(account);
+  if (
+    denies.some(
+      (deny) =>
+        deny.permission === permission &&
+        (scopeContains(account, deny.scope, scope) || scopeContains(account, scope, deny.scope)),
+    )
+  )
+    return false;
+  return grants.some(
+    (grant) => grant.permission === permission && scopeContains(account, grant.scope, scope),
   );
 }
 
@@ -50,7 +110,7 @@ export function canAt(account: Account, permission: PermissionCodeName, branchId
   return lists(account).grants.some(
     (grant) =>
       grant.permission === permission &&
-      (grant.scope.kind === 'GLOBAL' || grant.scope.branchId === branchId),
+      scopeContains(account, grant.scope, { kind: 'BRANCH', branchId }),
   );
 }
 
@@ -61,7 +121,15 @@ export function canAnywhere(account: Account, permission: PermissionCodeName): b
   return lists(account).grants.some(
     (grant) =>
       grant.permission === permission &&
-      !deniedAt(account, permission, grant.scope.kind === 'GLOBAL' ? null : grant.scope.branchId),
+      (!lists(account).denies.some(
+        (deny) => deny.permission === permission && scopeContains(account, deny.scope, grant.scope),
+      ) ||
+        (account.organization?.branches.some(
+          (branch) =>
+            scopeContains(account, grant.scope, { kind: 'BRANCH', branchId: branch.id }) &&
+            !deniedAt(account, permission, branch.id),
+        ) ??
+          false)),
   );
 }
 
@@ -91,7 +159,9 @@ export type NavKey =
   | 'services'
   | 'skills'
   | 'employees'
-  | 'roles';
+  | 'roles'
+  | 'organization'
+  | 'teams';
 
 export interface NavItem {
   key: NavKey;
@@ -113,7 +183,8 @@ export function navigationFor(account: Account): NavItem[] {
     // Every workforce account (Owner included) has its own account page.
     { key: 'myAccount', group: 'home', path: '/account' },
     { key: 'myIncome', group: 'home', path: '/income' },
-    (employee || canAnywhere(account, 'VIEW_ATTENDANCE')) && {
+    ((employee && account.attendanceRequired !== false) ||
+      canAnywhere(account, 'VIEW_ATTENDANCE')) && {
       key: 'attendance',
       group: 'operations',
       path: '/attendance',
@@ -169,6 +240,16 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'employees',
       group: 'management',
       path: '/employees',
+    },
+    (canAnywhere(account, 'VIEW_ORGANIZATION') || canAnywhere(account, 'MANAGE_ORGANIZATION')) && {
+      key: 'organization',
+      group: 'management',
+      path: '/organization',
+    },
+    (canAnywhere(account, 'VIEW_TEAMS') || canAnywhere(account, 'MANAGE_TEAMS')) && {
+      key: 'teams',
+      group: 'management',
+      path: '/teams',
     },
     // Roles & permissions: readable with MANAGE_PERMISSIONS in some scope (the API rule).
     canAnywhere(account, 'MANAGE_PERMISSIONS') && {

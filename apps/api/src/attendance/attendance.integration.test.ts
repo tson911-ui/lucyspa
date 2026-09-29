@@ -19,6 +19,7 @@ import { PasswordService } from '../auth/password.service.js';
 import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { AttendanceService } from './attendance.service.js';
+import { appointForFixture } from '../testing/organization-fixture.js';
 
 // The calendar date of `instant` in `timeZone` (independent of the server timezone).
 function localDate(instant: Date, timeZone: string): string {
@@ -186,6 +187,7 @@ test(
                   branchId: branchId ?? null,
                 },
               });
+              await appointForFixture(tx, userId, branchId);
             };
             const login = async (userId: string) => {
               const user = await tx.user.findUniqueOrThrow({

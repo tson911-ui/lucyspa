@@ -17,6 +17,7 @@ import type { PrismaService } from '../platform/prisma.service.js';
 import { WalkInService } from '../walkin/walkin.service.js';
 import { ReassignmentService } from './reassignment.service.js';
 import { ServiceExecutionService } from './service-execution.service.js';
+import { appointForFixture } from '../testing/organization-fixture.js';
 
 /**
  * Real production service calls on separate committed PostgreSQL connections. The two-party
@@ -168,7 +169,7 @@ test(
           },
         });
       });
-      const staff = () =>
+      const staff = (appointed = false) =>
         database.$transaction(async (tx) => {
           const id = randomUUID();
           userIds.push(id);
@@ -215,6 +216,8 @@ test(
           await tx.userRoleAssignment.create({
             data: { userId: id, roleId: ids.role, scopeKind: 'BRANCH', branchId: ids.branch },
           });
+          // Only managers hold a hierarchy position; everyone else stays a subordinate.
+          if (appointed) await appointForFixture(tx, id, ids.branch);
           const anonymous = await sessions.createAnonymous(tx);
           sessionIds.push(anonymous.session.id);
           const issued = await sessions.rotateAuthenticated(
@@ -373,7 +376,7 @@ test(
         'START vs cancellation: never a cancelled execution or partial START',
         async () => {
           const actor = await staff();
-          const manager = await staff();
+          const manager = await staff(true);
           const line = await lineFor(actor);
           const [started, cancelled] = await race(
             () => executions.start(actor.token, line.id),
@@ -404,7 +407,7 @@ test(
         async () => {
           const original = await staff();
           const replacement = await staff();
-          const manager = await staff();
+          const manager = await staff(true);
           const line = await lineFor(original);
           const [assigned, started] = await race(
             () => reassignments.reassign(manager.token, 'VISIT', line.id, body(line, replacement)),
@@ -438,8 +441,8 @@ test(
           const original = await staff();
           const a = await staff();
           const b = await staff();
-          const managerA = await staff();
-          const managerB = await staff();
+          const managerA = await staff(true);
+          const managerB = await staff(true);
           const line = await lineFor(original);
           const results = await race(
             () => reassignments.reassign(managerA.token, 'VISIT', line.id, body(line, a)),
@@ -461,8 +464,8 @@ test(
         async () => {
           const original = await staff();
           const replacement = await staff();
-          const managerA = await staff();
-          const managerB = await staff();
+          const managerA = await staff(true);
+          const managerB = await staff(true);
           const line = await lineFor(original);
           const [assigned, cancelled] = await race(
             () => reassignments.reassign(managerA.token, 'VISIT', line.id, body(line, replacement)),
@@ -490,8 +493,8 @@ test(
         async () => {
           const original = await staff();
           const replacement = await staff();
-          const managerA = await staff();
-          const managerB = await staff();
+          const managerA = await staff(true);
+          const managerB = await staff(true);
           const line = await lineFor(original);
           const [assigned, created] = await race(
             () => reassignments.reassign(managerA.token, 'VISIT', line.id, body(line, replacement)),
@@ -529,8 +532,8 @@ test(
         async () => {
           const original = await staff();
           const replacement = await staff();
-          const managerA = await staff();
-          const managerB = await staff();
+          const managerA = await staff(true);
+          const managerB = await staff(true);
           const line = await lineFor(original);
           const leave = await leaves.create(replacement.token, {
             leaveType: 'ANNUAL',
@@ -625,6 +628,9 @@ test(
             await tx.leaveRequest.deleteMany({ where: { id: { in: leaves } } });
             await tx.session.deleteMany({
               where: { OR: [{ id: { in: sessionIds } }, { userId: { in: userIds } }] },
+            });
+            await tx.organizationAssignment.deleteMany({
+              where: { employeeUserId: { in: userIds } },
             });
             await tx.userRoleAssignment.deleteMany({ where: { userId: { in: userIds } } });
             await tx.rolePermission.deleteMany({ where: { roleId: ids.role } });

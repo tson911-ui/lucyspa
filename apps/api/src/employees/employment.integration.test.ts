@@ -21,6 +21,7 @@ import type { PrismaService } from '../platform/prisma.service.js';
 import { EmployeeDirectoryService } from './employee-directory.service.js';
 import { EmployeeService } from './employee.service.js';
 import { businessToday, day } from './employment.js';
+import { appointForFixture, isAdministrative } from '../testing/organization-fixture.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 const STAFF: PermissionCode[] = ['VIEW_EMPLOYEES', 'CREATE_EMPLOYEES', 'UPDATE_EMPLOYEES'];
@@ -178,6 +179,7 @@ test(
                   branchId: branchId ?? null,
                 },
               });
+              if (isAdministrative(codes)) await appointForFixture(tx, userId, branchId);
             };
             const login = async (userId: string, fresh = false) => {
               const user = await tx.user.findUniqueOrThrow({

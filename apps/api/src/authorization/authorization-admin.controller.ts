@@ -40,7 +40,6 @@ import {
   Max,
   MaxLength,
   Min,
-  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import type { Request, Response } from 'express';
@@ -54,21 +53,24 @@ const CODES = PERMISSION_CATALOG.map((entry) => entry.code);
 const MAX_VERSION = 2_147_483_647;
 
 class ScopeDto {
-  @ApiProperty({ enum: ['GLOBAL', 'BRANCH'] }) @IsIn(['GLOBAL', 'BRANCH']) kind!:
-    'GLOBAL' | 'BRANCH';
-  @ApiProperty({ required: false, description: 'Required for BRANCH, forbidden for GLOBAL.' })
-  @ValidateIf((scope: ScopeDto) => scope.kind === 'BRANCH' || scope.branchId !== undefined)
-  @IsString()
-  @MaxLength(36)
-  branchId?: string;
+  @ApiProperty({ enum: ['GLOBAL', 'REGION', 'AREA', 'BRANCH'] })
+  @IsIn(['GLOBAL', 'REGION', 'AREA', 'BRANCH'])
+  kind!: 'GLOBAL' | 'REGION' | 'AREA' | 'BRANCH';
+  @IsOptional() @IsString() @MaxLength(36) branchId?: string;
+  @IsOptional() @IsString() @MaxLength(36) regionId?: string;
+  @IsOptional() @IsString() @MaxLength(36) areaId?: string;
 }
-
 function toScope(scope: ScopeDto): RoleAssignRequest['scope'] {
-  if (scope.kind === 'GLOBAL') {
-    if (scope.branchId !== undefined) throw new AuthError('VALIDATION_FAILED', 'scope');
-    return { kind: 'GLOBAL' };
+  const ids = [scope.branchId, scope.regionId, scope.areaId].filter((value) => value !== undefined);
+  if (scope.kind === 'GLOBAL' && ids.length === 0) return { kind: 'GLOBAL' };
+  if (ids.length === 1) {
+    if (scope.kind === 'BRANCH' && scope.branchId)
+      return { kind: 'BRANCH', branchId: scope.branchId };
+    if (scope.kind === 'REGION' && scope.regionId)
+      return { kind: 'REGION', regionId: scope.regionId };
+    if (scope.kind === 'AREA' && scope.areaId) return { kind: 'AREA', areaId: scope.areaId };
   }
-  return { kind: 'BRANCH', branchId: scope.branchId! };
+  throw new AuthError('VALIDATION_FAILED', 'scope');
 }
 
 class VersionedReasonDto {

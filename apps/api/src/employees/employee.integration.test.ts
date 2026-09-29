@@ -22,6 +22,7 @@ import { PasswordService } from '../auth/password.service.js';
 import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { EmployeeService } from './employee.service.js';
+import { appointForFixture, isAdministrative } from '../testing/organization-fixture.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 const NEW_PASSWORD = 'a brand new lotus morning 2026';
@@ -173,6 +174,7 @@ test(
                   branchId: branchId ?? null,
                 },
               });
+              if (isAdministrative(codes)) await appointForFixture(tx, userId, branchId);
             };
             const deny = async (userId: string, code: PermissionCode, branchId: string) => {
               await tx.userPermissionOverride.create({
@@ -573,6 +575,12 @@ test(
               async () => {
                 const strong = await principal('EMPLOYEE', [A]);
                 await grant(strong, ['MANAGE_PERMISSIONS'], A);
+                // Stronger by permissions only: no appointment, so the manager still outranks it
+                // hierarchically and the refusals below come from permission containment.
+                await tx.organizationAssignment.updateMany({
+                  where: { employeeUserId: strong, endedAt: null },
+                  data: { endedAt: new Date(Date.now() + 1000) },
+                });
                 const current = await employees.get(managerSession, strong);
                 await fails(
                   employees.issueSetup(managerSession, strong, {

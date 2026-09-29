@@ -90,6 +90,20 @@ export const PERMISSION_CATALOG = Object.freeze([
     scopeCapability: 'GLOBAL_ONLY',
     dataClassification: 'STANDARD',
   },
+  // Organization hierarchy and team management (appended: catalog order is append-only).
+  { code: 'VIEW_ORGANIZATION', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  {
+    code: 'MANAGE_ORGANIZATION',
+    scopeCapability: 'BRANCH_CAPABLE',
+    dataClassification: 'STANDARD',
+  },
+  {
+    code: 'MANAGE_ORG_ASSIGNMENTS',
+    scopeCapability: 'BRANCH_CAPABLE',
+    dataClassification: 'STANDARD',
+  },
+  { code: 'VIEW_TEAMS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  { code: 'MANAGE_TEAMS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
 ] as const satisfies readonly PermissionDefinition[]);
 
 export interface PermissionCatalogSyncResult {

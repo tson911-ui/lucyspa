@@ -1,3 +1,4 @@
+import { attendanceExempt } from '@lucy-spa/server';
 import type { CurrentAccountResponse } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
 import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
@@ -567,6 +568,14 @@ export class LoginService implements OnModuleInit {
           displayName: user.fullName,
           locale: user.preferredLocale,
           authorization: authorizationSummary(graph),
+          ...(user.kind === 'CUSTOMER'
+            ? {}
+            : {
+                organization: graph.organization,
+                organizationAppointments: graph.appointments ?? [],
+                teamMemberships: graph.teamMemberships ?? [],
+                attendanceRequired: user.kind === 'EMPLOYEE' && !attendanceExempt(graph),
+              }),
           // Workforce only: the recovery email status shown to the account itself.
           ...(user.kind === 'CUSTOMER'
             ? {}

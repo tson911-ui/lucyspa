@@ -1,3 +1,4 @@
+import { attendanceExemptEmployeeIds } from '@lucy-spa/server';
 import type { EmploymentClassification } from '@lucy-spa/contracts';
 import { BOOKING_SETTINGS, isValidBookingSetting, type Prisma } from '@lucy-spa/database';
 import {
@@ -95,6 +96,7 @@ interface EmployeeFact {
   onLeave: boolean;
   collaboratorWork: WorkWindow[];
   checkedIn: boolean;
+  attendanceExempt?: boolean;
   /** Planned occupancy of other lines and ended executions, as epoch-ms half-open intervals. */
   occupied: Interval[];
   /**
@@ -282,6 +284,10 @@ export async function loadAvailabilityFacts(
   );
   const assigned = new Set(assignments.map((row) => row.employeeUserId));
   const checkedIn = new Set(attendance.map((row) => row.employeeUserId));
+  const exemptAttendance =
+    request.context === 'OPERATIONAL'
+      ? await attendanceExemptEmployeeIds(tx, pool)
+      : new Set<string>();
   const employees: EmployeeFact[] = pool.map((userId) => {
     const user = userById.get(userId);
     const mine = occupancy.filter((row) => row.employee === userId);
@@ -300,6 +306,7 @@ export async function loadAvailabilityFacts(
       onLeave: onLeave.has(userId),
       collaboratorWork: collaboratorWork.get(userId) ?? [],
       checkedIn: checkedIn.has(userId),
+      attendanceExempt: exemptAttendance.has(userId),
       occupied: mine.filter((row) => row.kind !== 'RUNNING').map(toInterval),
       running: mine
         .filter((row) => row.kind === 'RUNNING')
@@ -481,7 +488,8 @@ function employeeVerdict(
   ) {
     reasons.add('CTV_NOT_SCHEDULED');
   }
-  if (facts.context === 'OPERATIONAL' && !employee.checkedIn) reasons.add('NOT_CHECKED_IN');
+  if (facts.context === 'OPERATIONAL' && !employee.checkedIn && !employee.attendanceExempt)
+    reasons.add('NOT_CHECKED_IN');
   if (employee.running.some((interval) => overlapsInterval(interval, line.occupancy))) {
     reasons.add('SERVICE_RUNNING');
   }

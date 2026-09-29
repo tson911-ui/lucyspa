@@ -1,3 +1,6 @@
+import { canSupervise } from '@lucy-spa/server';
+import { requireSupervision } from '../authorization/organization-policy.js';
+import { endOrganizationRelationships } from '../organization/organization.lifecycle.js';
 import { randomUUID } from 'node:crypto';
 import type {
   EmployeeCredentialsRequest,
@@ -177,6 +180,21 @@ export class EmployeeService {
     return this.command(sessionToken, null, true, requestId, async (context) => {
       const { tx, now, actor } = context;
       this.require(actor, 'CREATE_EMPLOYEES', candidate.branchIds);
+      if (
+        !canSupervise(
+          actor.graph,
+          {
+            userId: 'new-employee',
+            kind: 'EMPLOYEE',
+            authzVersion: 0,
+            activeBranchIds: new Set(candidate.branchIds),
+            roleGrants: [],
+            overrides: [],
+          },
+          candidate.branchIds,
+        )
+      )
+        throw new AuthError('FORBIDDEN');
       if (passwordHash !== null) {
         // Provisioning sign-in is an access decision, exactly as for later credential changes.
         this.requireFresh(actor, now);
@@ -304,6 +322,7 @@ export class EmployeeService {
         }
         return this.presentEmployment(tx, target, branchIds, date);
       },
+      true,
     );
   }
 
@@ -416,7 +435,8 @@ export class EmployeeService {
     if (typeof input.disableAccess !== 'boolean') {
       throw new AuthError('VALIDATION_FAILED', 'disableAccess');
     }
-    return this.command(sessionToken, targetId, false, requestId, async (context) => {
+    // Ending employment can end team/appointment relationships, so it changes the authority graph.
+    return this.command(sessionToken, targetId, true, requestId, async (context) => {
       const { tx, actor, target, branchIds } = context;
       this.forbidSelf(actor, target);
       this.expectVersion(target, input.expectedVersion);
@@ -426,6 +446,23 @@ export class EmployeeService {
         this.require(actor, 'MANAGE_EMPLOYEE_STATUS', branchIds);
       }
       await this.appendClassification(context, 'ENDED', effectiveDate, reason);
+      // Ended employment cannot keep an active team membership or appointment. A future end
+      // date leaves them in place until it is due; team commands and the authority graph then
+      // treat the employee as ended and sweep the relationships (see TeamService).
+      if (effectiveDate <= today) {
+        const ended = await endOrganizationRelationships(tx, [target.id], context.now);
+        if (ended.membershipIds.length || ended.appointmentIds.length) {
+          await this.audit(context, target.id, branchIds, 'ORGANIZATION_RELATIONSHIPS_ENDED', {
+            reason,
+            after: {
+              teamIds: ended.teamIds,
+              membershipIds: ended.membershipIds,
+              appointmentIds: ended.appointmentIds,
+              cause: 'EMPLOYMENT_ENDED',
+            },
+          });
+        }
+      }
       let access: EmploymentEndAccess = 'UNCHANGED';
       if (input.disableAccess && !disableNow) access = 'UNCHANGED_FUTURE_DATE';
       else if (disableNow && target.status === 'INACTIVE') access = 'ALREADY_INACTIVE';
@@ -463,6 +500,7 @@ export class EmployeeService {
         }
         return Promise.resolve(this.present(actor, target));
       },
+      true,
     );
   }
 
@@ -567,6 +605,7 @@ export class EmployeeService {
         }
         return this.presentAssignments(tx, target);
       },
+      true,
     );
   }
 
@@ -682,6 +721,17 @@ export class EmployeeService {
       this.require(actor, 'MANAGE_PERMISSIONS', added);
     }
     if (removed.length > 0) {
+      const ended = await endOrganizationRelationships(tx, [target.id], now, removed);
+      if (ended.membershipIds.length || ended.appointmentIds.length)
+        await this.audit(context, target.id, removed, 'ORGANIZATION_RELATIONSHIPS_ENDED', {
+          reason,
+          after: {
+            teamIds: ended.teamIds,
+            membershipIds: ended.membershipIds,
+            appointmentIds: ended.appointmentIds,
+            cause: 'BRANCH_ASSIGNMENT_REVOKED',
+          },
+        });
       await tx.employeeBranchAssignment.updateMany({
         where: { employeeUserId: target.id, branchId: { in: removed }, revokedAt: null },
         data: { revokedAt: now },
@@ -850,6 +900,7 @@ export class EmployeeService {
     exclusive: boolean,
     requestId: string | undefined,
     work: (context: CommandContext) => Promise<T>,
+    hideUnsupervised?: boolean,
   ): Promise<T>;
   private async command<T>(
     sessionToken: string | undefined,
@@ -857,6 +908,7 @@ export class EmployeeService {
     exclusive: boolean,
     requestId: string | undefined,
     work: (context: TargetContext) => Promise<T>,
+    hideUnsupervised?: boolean,
   ): Promise<T>;
   private async command<T>(
     sessionToken: string | undefined,
@@ -864,6 +916,7 @@ export class EmployeeService {
     exclusive: boolean,
     requestId: string | undefined,
     work: (context: TargetContext) => Promise<T>,
+    hideUnsupervised = false,
   ): Promise<T> {
     const target = targetId?.toLowerCase() ?? null;
     if (target !== null && !isUuid(target)) throw new AuthError('NOT_FOUND');
@@ -882,6 +935,15 @@ export class EmployeeService {
           throw new AuthError('NOT_FOUND');
         }
         const employee = record as EmployeeRecord;
+        if (base.actor.userId !== target) {
+          try {
+            await requireSupervision(base.tx, base.actor.graph, target, branchesOf(employee));
+          } catch (error) {
+            // Object-level reads never reveal an employee outside the actor's hierarchy.
+            if (hideUnsupervised && error instanceof AuthError) throw new AuthError('NOT_FOUND');
+            throw error;
+          }
+        }
         return work({ ...base, target: employee, branchIds: branchesOf(employee) });
       },
     );

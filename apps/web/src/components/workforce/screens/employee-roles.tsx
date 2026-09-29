@@ -193,7 +193,7 @@ export function RolesView({
               <strong>{roleName(assignment, catalog, locale)}</strong>{' '}
               <span className="wf-muted wf-small">({assignment.roleCode})</span>{' '}
               <Badge tone={assignment.scope.kind === 'GLOBAL' ? 'warning' : 'info'}>
-                {scopeLabel(assignment.scope, branches, t)}
+                {scopeLabel(assignment.scope, branches, t, account.organization)}
               </Badge>
               {inactive.has(assignment.roleId) ? (
                 <span className="wf-muted wf-small"> {texts.inactiveRole}</span>
@@ -249,7 +249,7 @@ export function RolesView({
                     </option>
                     {scopes.map((option) => (
                       <option key={scopeKey(option)} value={scopeKey(option)}>
-                        {scopeLabel(option, branches, t)}
+                        {scopeLabel(option, branches, t, account.organization)}
                       </option>
                     ))}
                   </select>

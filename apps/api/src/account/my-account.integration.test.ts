@@ -22,6 +22,7 @@ import { EmployeeService } from '../employees/employee.service.js';
 import { businessToday, day } from '../employees/employment.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { MyAccountService } from './my-account.service.js';
+import { appointForFixture } from '../testing/organization-fixture.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 const shift = (date: string, days: number) =>
@@ -183,10 +184,12 @@ test(
                 })
               ).id;
             };
-            const assign = (userId: string, roleId: string, branchId: string) =>
-              tx.userRoleAssignment.create({
+            const assign = async (userId: string, roleId: string, branchId: string) => {
+              await tx.userRoleAssignment.create({
                 data: { userId, roleId, scopeKind: 'BRANCH', branchId },
               });
+              await appointForFixture(tx, userId, branchId);
+            };
             const login = async (userId: string) => {
               const user = await tx.user.findUniqueOrThrow({
                 where: { id: userId },

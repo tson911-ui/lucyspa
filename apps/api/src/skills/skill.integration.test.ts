@@ -19,6 +19,7 @@ import { SessionService } from '../auth/session.service.js';
 import { ServiceCatalogService } from '../catalog/service-catalog.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { SkillService } from './skill.service.js';
+import { appointForFixture, isAdministrative } from '../testing/organization-fixture.js';
 
 // Explicit opt-in: ordinary unit/HTTP tests do not connect to PostgreSQL.
 test(
@@ -175,6 +176,7 @@ test(
                   branchId: branchId ?? null,
                 },
               });
+              if (isAdministrative(codes)) await appointForFixture(tx, userId, branchId);
             };
             const login = async (userId: string) => {
               const user = await tx.user.findUniqueOrThrow({

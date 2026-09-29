@@ -1,3 +1,4 @@
+import { scopeBranchIds } from '../authorization/organization-policy.js';
 import { randomUUID } from 'node:crypto';
 import type {
   BranchCreateRequest,
@@ -118,7 +119,9 @@ export class BranchService {
     return this.frame(sessionToken, false, undefined, [], async ({ tx, actor }) => {
       const all = this.managesAll(actor);
       const branches = await tx.branch.findMany({
-        where: all ? {} : { id: { in: [...actor.graph.activeBranchIds] } },
+        where: all
+          ? {}
+          : { id: { in: scopeBranchIds(actor.graph).filter((id) => this.visible(actor, id)) } },
         select: branchSelect,
         orderBy: [{ isActive: 'desc' }, { code: 'asc' }],
       });
@@ -386,7 +389,12 @@ export class BranchService {
   }
 
   private visible(actor: AdminActor, branchId: string): boolean {
-    return this.managesAll(actor) || actor.graph.activeBranchIds.has(branchId);
+    return (
+      this.managesAll(actor) ||
+      actor.graph.activeBranchIds.has(branchId) ||
+      decide(actor.graph, 'MANAGE_BRANCHES', { kind: 'BRANCH', branchId }) ||
+      decide(actor.graph, 'VIEW_ORGANIZATION', { kind: 'BRANCH', branchId })
+    );
   }
 
   /**

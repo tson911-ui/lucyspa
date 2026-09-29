@@ -433,6 +433,20 @@ Example permissions:
 Exact permission names can be refined during implementation, but
 permission semantics must remain granular.
 
+### 7.2a Organization hierarchy and teams (Owner-approved extension)
+
+Owner remains the protected account above the employee hierarchy. CEO / Senior Manager is an employee, never Owner. The organization levels are CEO / Senior Manager → Regional Manager → Area Manager → Store Manager → Deputy Store Manager → Team Leader → Employee / KTV / CTV / Trainee. Organizational appointments, employment classification, skills and permission bundles are separate facts; a role display name grants no authority.
+
+Scope ancestry is SYSTEM → REGION → AREA → BRANCH. The existing persisted GLOBAL value represents SYSTEM. Regions and areas are configurable data; no geographic names are hard-coded. Appointments and permission scopes are explicit. Applicable DENY rules, target containment, protected Owner identity and existing permission checks remain mandatory in addition to hierarchy. Team Leaders supervise only subordinate employees in authorized teams. Deputy Store Managers have no maximum count per branch.
+
+Teams are dynamic and branch-owned. One employee may have one active team membership per branch. Each team has zero or one active Team Leader; one eligible Team Leader may lead multiple teams. Transfers are within the branch; employment branch changes remain a separate workflow. Authorized management can create/edit/delete teams, change leaders, and add/remove/transfer members in bulk using searchable, filtered, paginated checkbox selection, Select All and Clear selection. Deletion requires confirmation, ends relationships and archives the team; it never deletes accounts or employment. Team changes and membership changes are audited and historical relationships retained. When employment ends or a branch assignment is revoked, the employee's active team memberships and appointments for it end in the same transaction (history retained); an employee whose employment has ended holds no hierarchy authority.
+
+Store Managers and every higher employee-management level do not clock in/out. Deputy Store Managers, Team Leaders and ordinary employees continue attendance. Exemption is derived authoritatively from active organization appointments, enforced by the API and shared operational policy, never inferred from a role label. Attendance history remains intact; an existing open record is resolved through authorized correction rather than automatic checkout.
+
+Organization administration requires dedicated VIEW_ORGANIZATION / MANAGE_ORGANIZATION / MANAGE_ORG_ASSIGNMENTS permissions; team administration uses VIEW_TEAMS / MANAGE_TEAMS with hierarchy, scope and target checks. These permissions do not replace existing employee, credential, permission-administration, attendance or operational permissions. Legacy manager-group flags do not establish seniority: Owner explicitly configures appointments. Deployment contract: existing branch-scope managers are migrated by an operator bootstrap (dry run, apply, check) that grants the minimum position (Deputy Store Manager) at branches where they already held effective management permissions, before the hierarchy is enforced for them; SYSTEM/REGION/AREA-scope or non-official legacy holders are listed for an explicit Owner decision and never guessed.
+
+The routing foundation can resolve Employee → Team Leader → Deputy Store Manager → Store Manager → Area Manager → Regional Manager → CEO from PostgreSQL relationships and permission scope. Full Notification Center, revenue notifications and the Hệ thống / Dịch vụ / Khách hàng / Tin tức redesign remain deferred. No new delivery is implied by this foundation.
+
 ### 7.3 Owner Protection
 
 There is one highest-level Owner account.

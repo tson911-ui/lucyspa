@@ -1,3 +1,5 @@
+import { attendanceExempt, branchRecordSupervisorWhere } from '@lucy-spa/server';
+import { requireSupervision, scopeBranchIds } from '../authorization/organization-policy.js';
 import type {
   AttendanceCheckInRequest,
   AttendanceCorrectionRequest,
@@ -130,7 +132,8 @@ export class AttendanceService {
     const branchId = this.id(input.branchId, 'branchId');
     return this.frame(sessionToken, requestId, [], async (context) => {
       const { tx, actor, now } = context;
-      if (actor.principal.userKind !== 'EMPLOYEE') throw new AuthError('FORBIDDEN');
+      if (actor.principal.userKind !== 'EMPLOYEE' || attendanceExempt(actor.graph))
+        throw new AuthError('FORBIDDEN');
       // Branch row before attendance rows: a concurrent timezone change or deactivation
       // (Step 3, FOR UPDATE) cannot interleave with this check-in.
       await tx.$queryRaw`SELECT id FROM branches WHERE id = ${branchId}::uuid FOR SHARE`;
@@ -179,7 +182,8 @@ export class AttendanceService {
     const id = this.id(recordId);
     return this.frame(sessionToken, requestId, [], async (context) => {
       const { tx, actor, now } = context;
-      if (actor.principal.userKind !== 'EMPLOYEE') throw new AuthError('FORBIDDEN');
+      if (actor.principal.userKind !== 'EMPLOYEE' || attendanceExempt(actor.graph))
+        throw new AuthError('FORBIDDEN');
       const row = await this.lockRecord(tx, id);
       // Another employee's record is indistinguishable from an unknown one.
       if (!row || row.employeeUserId !== actor.userId) throw new AuthError('NOT_FOUND');
@@ -242,9 +246,22 @@ export class AttendanceService {
       if (branchId !== undefined && visible !== 'ALL' && !visible.includes(branchId)) {
         throw new AuthError('NOT_FOUND');
       }
+      // A record belongs to one branch, so hierarchy is checked at that branch only; an
+      // employee who also works elsewhere stays visible where the actor has a position.
+      const scoped =
+        branchId !== undefined
+          ? [branchId]
+          : visible === 'ALL'
+            ? (await tx.branch.findMany({ select: { id: true } })).map((row) => row.id)
+            : visible;
+      const perBranch = scoped.flatMap((id) => {
+        const user = branchRecordSupervisorWhere(actor.graph, id);
+        return user ? [{ branchId: id, employee: { user } }] : [];
+      });
+      if (perBranch.length === 0) return this.list(tx, { id: { in: [] } });
       return this.list(tx, {
+        OR: perBranch,
         businessDate: { gte: from, lte: to },
-        ...(branchId ? { branchId } : visible === 'ALL' ? {} : { branchId: { in: visible } }),
         ...(employeeId ? { employeeUserId: employeeId } : {}),
       });
     });
@@ -283,6 +300,7 @@ export class AttendanceService {
       const row = await this.lockRecord(tx, id);
       if (!row) throw new AuthError('NOT_FOUND');
       requireAcross(actor, 'MANAGE_ATTENDANCE', [row.branchId]);
+      await requireSupervision(tx, actor.graph, row.employeeUserId, [row.branchId]);
       if (!actor.owner && actor.userId === row.employeeUserId) throw new AuthError('FORBIDDEN');
       if (row.rowVersion !== input.expectedVersion) throw new AuthError('CONFLICT');
       const nextIn = checkInAt ?? row.checkInAt;
@@ -375,7 +393,7 @@ export class AttendanceService {
 
   private visibleBranches(actor: AdminActor, permission: string): 'ALL' | string[] {
     if (decide(actor.graph, permission, GLOBAL)) return 'ALL';
-    return [...actor.graph.activeBranchIds].filter((branchId) =>
+    return scopeBranchIds(actor.graph).filter((branchId) =>
       decide(actor.graph, permission, { kind: 'BRANCH', branchId }),
     );
   }

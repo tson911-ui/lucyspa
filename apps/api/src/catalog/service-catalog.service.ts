@@ -735,7 +735,9 @@ export class ServiceCatalogService {
     return (
       this.managesCatalog(actor) ||
       decide(actor.graph, 'MANAGE_BRANCHES', GLOBAL) ||
-      actor.graph.activeBranchIds.has(branchId)
+      actor.graph.activeBranchIds.has(branchId) ||
+      decide(actor.graph, 'MANAGE_BRANCHES', { kind: 'BRANCH', branchId }) ||
+      decide(actor.graph, 'MANAGE_SERVICES', { kind: 'BRANCH', branchId })
     );
   }
 

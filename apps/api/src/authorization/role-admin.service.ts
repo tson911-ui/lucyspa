@@ -1,3 +1,4 @@
+import { requireSupervision, scopeBranchIds } from './organization-policy.js';
 import type {
   AuthorizationScope,
   EmployeeAuthorizationResponse,
@@ -59,10 +60,25 @@ const roleSelect = {
 
 type RoleRecord = Prisma.RoleGetPayload<{ select: typeof roleSelect }>;
 
-function scopeOf(row: { scopeKind: 'GLOBAL' | 'BRANCH'; branchId: string | null }) {
-  return row.scopeKind === 'GLOBAL' || row.branchId === null
-    ? ({ kind: 'GLOBAL' } as const)
-    : ({ kind: 'BRANCH', branchId: row.branchId } as const);
+function scopeOf(row: {
+  scopeKind: string;
+  branchId: string | null;
+  regionId: string | null;
+  areaId: string | null;
+}): AuthorizationScope {
+  if (row.scopeKind === 'GLOBAL') return GLOBAL;
+  if (row.scopeKind === 'REGION' && row.regionId) return { kind: 'REGION', regionId: row.regionId };
+  if (row.scopeKind === 'AREA' && row.areaId) return { kind: 'AREA', areaId: row.areaId };
+  if (row.scopeKind === 'BRANCH' && row.branchId) return { kind: 'BRANCH', branchId: row.branchId };
+  throw new AuthError('SERVICE_UNAVAILABLE');
+}
+function scopeColumns(scope: AuthorizationScope) {
+  return {
+    scopeKind: scope.kind,
+    branchId: scope.kind === 'BRANCH' ? scope.branchId : null,
+    regionId: scope.kind === 'REGION' ? scope.regionId : null,
+    areaId: scope.kind === 'AREA' ? scope.areaId : null,
+  };
 }
 
 function presentRole(role: RoleRecord): RoleResponse {
@@ -97,9 +113,15 @@ function normalizePermissions(values: readonly string[]): PermissionCodeName[] {
 
 function normalizeScope(scope: AuthorizationScope): AuthorizationScope {
   if (scope.kind === 'GLOBAL') return GLOBAL;
-  const branchId = scope.branchId.toLowerCase();
-  if (!isUuid(branchId)) throw new AuthError('VALIDATION_FAILED', 'scope');
-  return { kind: 'BRANCH', branchId };
+  const id = (
+    scope.kind === 'REGION' ? scope.regionId : scope.kind === 'AREA' ? scope.areaId : scope.branchId
+  ).toLowerCase();
+  if (!isUuid(id)) throw new AuthError('VALIDATION_FAILED', 'scope');
+  return scope.kind === 'REGION'
+    ? { kind: 'REGION', regionId: id }
+    : scope.kind === 'AREA'
+      ? { kind: 'AREA', areaId: id }
+      : { kind: 'BRANCH', branchId: id };
 }
 
 function roleName(value: string, field: string): string {
@@ -323,6 +345,10 @@ export class RoleAdminService {
     const id = this.id(employeeId);
     return this.frame(sessionToken, false, undefined, [id], async ({ tx, actor }) => {
       const branches = await this.employeeBranches(tx, id);
+      // Reading another employee's grants never reveals someone outside the actor's hierarchy.
+      await requireSupervision(tx, actor.graph, id, branches).catch(() => {
+        throw new AuthError('NOT_FOUND');
+      });
       // Reads of another employee's grants require MANAGE_PERMISSIONS over all of it.
       if (!decideAcross(actor.graph, 'MANAGE_PERMISSIONS', branches)) {
         throw new AuthError('NOT_FOUND');
@@ -363,8 +389,7 @@ export class RoleAdminService {
         where: {
           userId: id,
           roleId,
-          scopeKind: scope.kind,
-          branchId: scope.kind === 'BRANCH' ? scope.branchId : null,
+          ...scopeColumns(scope),
         },
         select: { id: true },
       });
@@ -376,8 +401,7 @@ export class RoleAdminService {
             data: {
               userId: id,
               roleId,
-              scopeKind: scope.kind,
-              branchId: scope.kind === 'BRANCH' ? scope.branchId : null,
+              ...scopeColumns(scope),
             },
             select: { id: true },
           })
@@ -414,6 +438,8 @@ export class RoleAdminService {
           roleId: true,
           scopeKind: true,
           branchId: true,
+          regionId: true,
+          areaId: true,
           role: { select: { code: true } },
         },
       });
@@ -453,7 +479,7 @@ export class RoleAdminService {
     if (!permission) throw new AuthError('VALIDATION_FAILED', 'permission');
     const scope = normalizeScope(input.scope);
     // A GLOBAL_ONLY permission (SQL also refuses) cannot be overridden per branch.
-    if (scope.kind === 'BRANCH' && GLOBAL_ONLY.has(permission)) {
+    if (scope.kind !== 'GLOBAL' && GLOBAL_ONLY.has(permission)) {
       throw new AuthError('VALIDATION_FAILED', 'scope');
     }
     const reason = normalizeReason(input.reason);
@@ -467,8 +493,7 @@ export class RoleAdminService {
         where: {
           userId: id,
           permissionId,
-          scopeKind: scope.kind,
-          branchId: scope.kind === 'BRANCH' ? scope.branchId : null,
+          ...scopeColumns(scope),
         },
         select: { id: true, effect: true },
       });
@@ -486,8 +511,7 @@ export class RoleAdminService {
               userId: id,
               permissionId,
               effect: input.effect,
-              scopeKind: scope.kind,
-              branchId: scope.kind === 'BRANCH' ? scope.branchId : null,
+              ...scopeColumns(scope),
             },
             select: { id: true },
           });
@@ -526,6 +550,8 @@ export class RoleAdminService {
           effect: true,
           scopeKind: true,
           branchId: true,
+          regionId: true,
+          areaId: true,
           permission: { select: { code: true } },
         },
       });
@@ -584,7 +610,7 @@ export class RoleAdminService {
   private administersAnywhere(graph: AuthorityGraph): boolean {
     return (
       decide(graph, 'MANAGE_PERMISSIONS', GLOBAL) ||
-      [...graph.activeBranchIds].some((branchId) =>
+      scopeBranchIds(graph).some((branchId) =>
         decide(graph, 'MANAGE_PERMISSIONS', { kind: 'BRANCH', branchId }),
       )
     );
@@ -670,8 +696,10 @@ export class RoleAdminService {
     expectedVersion: number,
   ): Promise<void> {
     const branches = await this.employeeBranches(context.tx, userId);
+    await requireSupervision(context.tx, context.actor.graph, userId, branches);
     // A null scope (unknown assignment/override) checks only the target's own scope.
-    if (scope?.kind === 'GLOBAL') requireAcross(context.actor, 'MANAGE_PERMISSIONS', []);
+    if (scope && !decide(context.actor.graph, 'MANAGE_PERMISSIONS', scope, { unrestricted: true }))
+      throw new AuthError('FORBIDDEN');
     requireAcross(context.actor, 'MANAGE_PERMISSIONS', [
       ...branches,
       ...(scope?.kind === 'BRANCH' ? [scope.branchId] : []),
@@ -688,10 +716,15 @@ export class RoleAdminService {
     scope: AuthorizationScope,
   ): Promise<void> {
     if (scope.kind === 'GLOBAL') return;
-    const branch = await tx.branch.findUnique({
-      where: { id: scope.branchId },
-      select: { isActive: true },
-    });
+    const branch =
+      scope.kind === 'REGION'
+        ? await tx.region.findUnique({ where: { id: scope.regionId }, select: { isActive: true } })
+        : scope.kind === 'AREA'
+          ? await tx.area.findUnique({ where: { id: scope.areaId }, select: { isActive: true } })
+          : await tx.branch.findUnique({
+              where: { id: scope.branchId },
+              select: { isActive: true },
+            });
     if (!branch?.isActive) throw new AuthError('VALIDATION_FAILED', 'scope');
   }
 
@@ -717,8 +750,12 @@ export class RoleAdminService {
         // A global delegation cannot bypass a branch DENY over any affected recipient.
         const scopes = await tx.userRoleAssignment.findMany({
           where: { userId, roleId: sharedRoleId },
-          select: { scopeKind: true, branchId: true },
+          select: { scopeKind: true, branchId: true, regionId: true, areaId: true },
         });
+        for (const row of scopes) {
+          if (!decide(actor.graph, 'MANAGE_PERMISSIONS', scopeOf(row), { unrestricted: true }))
+            throw new AuthError('FORBIDDEN');
+        }
         const branches = await this.employeeBranches(tx, userId);
         requireAcross(actor, 'MANAGE_PERMISSIONS', [
           ...branches,
@@ -779,6 +816,8 @@ export class RoleAdminService {
             roleId: true,
             scopeKind: true,
             branchId: true,
+            regionId: true,
+            areaId: true,
             role: { select: { code: true } },
           },
           orderBy: { id: 'asc' },
@@ -789,6 +828,8 @@ export class RoleAdminService {
             effect: true,
             scopeKind: true,
             branchId: true,
+            regionId: true,
+            areaId: true,
             permission: { select: { code: true } },
           },
           orderBy: { id: 'asc' },

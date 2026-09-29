@@ -10,7 +10,10 @@ export function isKnownPermission(value: string): value is PermissionCode {
 }
 
 export type Scope =
-  { readonly kind: 'GLOBAL' } | { readonly kind: 'BRANCH'; readonly branchId: string };
+  | { readonly kind: 'GLOBAL' }
+  | { readonly kind: 'REGION'; readonly regionId: string }
+  | { readonly kind: 'AREA'; readonly areaId: string }
+  | { readonly kind: 'BRANCH'; readonly branchId: string };
 export const GLOBAL: Scope = Object.freeze({ kind: 'GLOBAL' });
 
 export interface Grant {
@@ -34,11 +37,81 @@ export interface AuthorityGraph {
   readonly activeBranchIds: ReadonlySet<string>;
   readonly roleGrants: readonly Grant[];
   readonly overrides: readonly Override[];
+  readonly organization?: OrganizationTree;
+  readonly appointments?: readonly OrganizationAppointment[];
+  readonly teamMemberships?: readonly { readonly teamId: string; readonly branchId: string }[];
+}
+
+export type OrganizationLevel =
+  | 'CEO'
+  | 'REGIONAL_MANAGER'
+  | 'AREA_MANAGER'
+  | 'STORE_MANAGER'
+  | 'DEPUTY_STORE_MANAGER'
+  | 'TEAM_LEADER';
+export interface OrganizationAppointment {
+  readonly id: string;
+  readonly level: OrganizationLevel;
+  readonly scope: Scope;
+  readonly teamId: string | null;
+}
+export interface OrganizationTree {
+  readonly regions: readonly { readonly id: string; readonly name?: string }[];
+  readonly areas: readonly {
+    readonly id: string;
+    readonly regionId: string;
+    readonly name?: string;
+  }[];
+  readonly branches: readonly {
+    readonly id: string;
+    readonly areaId: string | null;
+    readonly regionId: string | null;
+  }[];
 }
 
 /** A persisted resource's authoritative location; never a client-submitted branch. */
-export type Target =
-  { readonly kind: 'GLOBAL' } | { readonly kind: 'BRANCH'; readonly branchId: string };
+export type Target = Scope;
+
+/** Contains named and future descendants; ancestry comes from PostgreSQL, never request hints. */
+export function scopeContains(
+  graph: Pick<AuthorityGraph, 'organization'>,
+  scope: Scope,
+  target: Scope,
+): boolean {
+  if (scope.kind === 'GLOBAL') return true;
+  if (target.kind === 'GLOBAL') return false;
+  if (scope.kind === 'BRANCH')
+    return target.kind === 'BRANCH' && scope.branchId === target.branchId;
+  if (scope.kind === 'AREA') {
+    return target.kind === 'AREA'
+      ? scope.areaId === target.areaId
+      : target.kind === 'BRANCH' &&
+          graph.organization?.branches.some(
+            (branch) => branch.id === target.branchId && branch.areaId === scope.areaId,
+          ) === true;
+  }
+  if (target.kind === 'REGION') return scope.regionId === target.regionId;
+  if (target.kind === 'AREA')
+    return (
+      graph.organization?.areas.some(
+        (area) => area.id === target.areaId && area.regionId === scope.regionId,
+      ) === true
+    );
+  return (
+    graph.organization?.branches.some(
+      (branch) => branch.id === target.branchId && branch.regionId === scope.regionId,
+    ) === true
+  );
+}
+
+export function scopeIsActive(graph: AuthorityGraph, scope: Scope): boolean {
+  if (scope.kind === 'GLOBAL') return true;
+  if (scope.kind === 'REGION')
+    return graph.organization?.regions.some((region) => region.id === scope.regionId) === true;
+  if (scope.kind === 'AREA')
+    return graph.organization?.areas.some((area) => area.id === scope.areaId) === true;
+  return graph.activeBranchIds.has(scope.branchId);
+}
 
 export interface DecideOptions {
   /**
@@ -53,9 +126,8 @@ function denied(graph: AuthorityGraph, permission: string, target: Target, optio
     (override) =>
       override.effect === 'DENY' &&
       override.permission === permission &&
-      (override.scope.kind === 'GLOBAL' ||
-        (target.kind === 'BRANCH' && override.scope.branchId === target.branchId) ||
-        (target.kind === 'GLOBAL' && options.unrestricted === true)),
+      (scopeContains(graph, override.scope, target) ||
+        (options.unrestricted === true && scopeContains(graph, target, override.scope))),
   );
 }
 
@@ -66,14 +138,14 @@ function granted(graph: AuthorityGraph, permission: string, target: Target): boo
   ];
   return allows.some((grant) => {
     if (grant.permission !== permission) return false;
+    if (
+      PERMISSION_CATALOG.find((entry) => entry.code === permission)?.scopeCapability ===
+        'GLOBAL_ONLY' &&
+      grant.scope.kind !== 'GLOBAL'
+    )
+      return false;
     // A GLOBAL grant authorizes the global action and every branch, including future ones.
-    if (grant.scope.kind === 'GLOBAL') return true;
-    // A branch grant never authorizes a global action, and needs current active membership.
-    return (
-      target.kind === 'BRANCH' &&
-      grant.scope.branchId === target.branchId &&
-      graph.activeBranchIds.has(target.branchId)
-    );
+    return scopeIsActive(graph, grant.scope) && scopeContains(graph, grant.scope, target);
   });
 }
 

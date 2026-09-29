@@ -22,6 +22,7 @@ import { EmployeeService } from '../employees/employee.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { AuditReadService } from './audit-read.service.js';
 import { RoleAdminService } from './role-admin.service.js';
+import { appointForFixture } from '../testing/organization-fixture.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 
@@ -314,7 +315,7 @@ test(
                 );
                 const listed = await roles.listRoles(ownerSession);
                 assert.ok(listed.roles.some((entry) => entry.id === role.id));
-                assert.equal(listed.permissions.length, 26);
+                assert.equal(listed.permissions.length, 31);
                 // Scope capability comes from the code-owned catalog (Step 4B role UI).
                 assert.deepEqual(
                   listed.permissionCatalog.map((entry) => entry.code),
@@ -375,6 +376,7 @@ test(
                     'CONFLICT',
                   );
 
+                  await appointForFixture(tx, manager, A);
                   const session = await login(manager);
                   const staffA = await principal('EMPLOYEE', [A]);
                   const staffB = await principal('EMPLOYEE', [B]);
@@ -436,6 +438,7 @@ test(
                 });
                 const deny = denied.overrides[0]!;
                 assert.equal(deny.effect, 'DENY');
+                await appointForFixture(tx, manager, A);
                 const session = await login(manager);
                 // Lifting the DENY would confer CREATE_EMPLOYEES, which the manager lacks.
                 await fails(

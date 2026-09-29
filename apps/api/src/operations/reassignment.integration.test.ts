@@ -19,6 +19,7 @@ import { SessionService } from '../auth/session.service.js';
 import { LeaveService } from '../leave/leave.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { ReassignmentService } from './reassignment.service.js';
+import { appointForFixture } from '../testing/organization-fixture.js';
 
 // Added for the final Phase 3 gate. No tests were executed during Step 8 implementation.
 test(
@@ -214,6 +215,7 @@ test(
                     branchId: branch.id,
                   },
                 });
+                await appointForFixture(tx, employee.id, branch.id);
               }
               const token = (
                 await sessions.rotateAuthenticated(

@@ -21,6 +21,12 @@ import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { EmployeeService } from './employee.service.js';
 import { businessToday, day } from './employment.js';
+import { appointForFixture, isAdministrative } from '../testing/organization-fixture.js';
+import { loadAuthorityGraph } from '@lucy-spa/server';
+import {
+  endedEmploymentWithRelationships,
+  endOrganizationRelationships,
+} from '../organization/organization.lifecycle.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 const STAFF: PermissionCode[] = ['VIEW_EMPLOYEES', 'CREATE_EMPLOYEES', 'UPDATE_EMPLOYEES'];
@@ -176,6 +182,7 @@ test(
                   branchId: branchId ?? null,
                 },
               });
+              if (isAdministrative(codes)) await appointForFixture(tx, userId, branchId);
             };
             const login = async (userId: string, fresh = false) => {
               const user = await tx.user.findUniqueOrThrow({
@@ -435,12 +442,110 @@ test(
                   scope: { kind: 'BRANCH', branchId: A },
                   reason: 'KTV',
                 });
+                // Organization relationships must not outlive employment; history is retained.
+                const team = await tx.team.create({
+                  data: { branchId: A, code: 'LEAVER_TEAM', name: 'Leaver team' },
+                });
+                await tx.teamMembership.create({
+                  data: {
+                    teamId: team.id,
+                    branchId: A,
+                    employeeUserId: leaver.id,
+                    assignedByUserId: hr,
+                  },
+                });
+                await tx.organizationAssignment.create({
+                  data: {
+                    employeeUserId: leaver.id,
+                    level: 'TEAM_LEADER',
+                    scopeKind: 'BRANCH',
+                    branchId: A,
+                    teamId: team.id,
+                    assignedByUserId: hr,
+                  },
+                });
                 await employees.endEmployment(hrSession, leaver.id, {
                   expectedVersion: (await employees.get(hrSession, leaver.id)).version,
                   effectiveDate: today,
                   reason: 'Left',
                   disableAccess: true,
                 });
+                assert.equal(
+                  await tx.teamMembership.count({
+                    where: { employeeUserId: leaver.id, endedAt: null },
+                  }),
+                  0,
+                );
+                assert.equal(
+                  await tx.organizationAssignment.count({
+                    where: { employeeUserId: leaver.id, endedAt: null },
+                  }),
+                  0,
+                );
+                assert.equal(
+                  await tx.teamMembership.count({ where: { employeeUserId: leaver.id } }),
+                  1,
+                  'membership history kept',
+                );
+                assert.equal(
+                  await tx.organizationAssignment.count({ where: { employeeUserId: leaver.id } }),
+                  1,
+                  'appointment history kept',
+                );
+                // A future-dated end that has since fallen due: authority ignores the employee at
+                // once, and the sweep ends the relationships (history kept).
+                const late = track(
+                  await employees.create(
+                    hrSession,
+                    input([A], {
+                      employmentStartDate: shift(today, -10),
+                      employmentReason: 'Existing staff',
+                    }),
+                  ),
+                );
+                const lateTeam = await tx.team.create({
+                  data: { branchId: A, code: 'LATE_TEAM', name: 'Late team' },
+                });
+                await tx.teamMembership.create({
+                  data: {
+                    teamId: lateTeam.id,
+                    branchId: A,
+                    employeeUserId: late.id,
+                    assignedByUserId: hr,
+                  },
+                });
+                await tx.employmentClassificationChange.create({
+                  data: {
+                    employeeUserId: late.id,
+                    classification: 'ENDED',
+                    effectiveDate: new Date(`${shift(today, -1)}T00:00:00.000Z`),
+                    reason: 'Ended earlier',
+                    recordedByUserId: hr,
+                  },
+                });
+                const graph = await loadAuthorityGraph(tx, late.id);
+                assert.deepEqual(
+                  graph?.teamMemberships,
+                  [],
+                  'ended employment holds no team position',
+                );
+                const due = await endedEmploymentWithRelationships(
+                  tx,
+                  await businessToday(tx, [A]),
+                );
+                assert.ok(due.includes(late.id));
+                const swept = await endOrganizationRelationships(tx, [late.id], new Date());
+                assert.equal(swept.membershipIds.length, 1);
+                assert.equal(
+                  await tx.teamMembership.count({
+                    where: { employeeUserId: late.id, endedAt: null },
+                  }),
+                  0,
+                );
+                assert.equal(
+                  await tx.teamMembership.count({ where: { employeeUserId: late.id } }),
+                  1,
+                );
                 const after = await authz(leaver.id);
                 assert.equal(after.roleAssignments.length, 1, 'not silently removed');
                 await fails(

@@ -2,6 +2,7 @@ import type { CurrentAccountResponse } from '@lucy-spa/contracts';
 import { PERMISSION_CATALOG } from '@lucy-spa/database';
 import {
   decide,
+  canSupervise,
   GLOBAL,
   isKnownPermission,
   type AuthorityGraph,
@@ -39,34 +40,68 @@ export function decideAcross(
   );
 }
 
-// Stands for every branch not named in either graph, including future branches.
-const UNNAMED_BRANCH = '\u0000unnamed-branch';
-
-function branchUniverse(...graphs: AuthorityGraph[]): string[] {
-  const ids = new Set<string>([UNNAMED_BRANCH]);
+/** Include symbolic future descendants: today's branch expansion alone cannot prove containment. */
+function capabilityUniverse(...graphs: AuthorityGraph[]) {
+  const regions = new Map<string, { id: string }>();
+  const areas = new Map<string, { id: string; regionId: string }>();
+  const branches = new Map<
+    string,
+    { id: string; areaId: string | null; regionId: string | null }
+  >();
+  branches.set('\u0000future-branch', { id: '\u0000future-branch', areaId: null, regionId: null });
   for (const graph of graphs) {
-    for (const id of graph.activeBranchIds) ids.add(id);
-    for (const entry of [...graph.roleGrants, ...graph.overrides]) {
-      if (entry.scope.kind === 'BRANCH') ids.add(entry.scope.branchId);
+    for (const row of graph.organization?.regions ?? []) regions.set(row.id, row);
+    for (const row of graph.organization?.areas ?? []) areas.set(row.id, row);
+    for (const row of graph.organization?.branches ?? []) branches.set(row.id, row);
+    for (const id of graph.activeBranchIds)
+      if (!branches.has(id)) branches.set(id, { id, areaId: null, regionId: null });
+    for (const { scope } of [...graph.roleGrants, ...graph.overrides]) {
+      if (scope.kind === 'REGION' && !regions.has(scope.regionId))
+        regions.set(scope.regionId, { id: scope.regionId });
+      if (scope.kind === 'BRANCH' && !branches.has(scope.branchId))
+        branches.set(scope.branchId, { id: scope.branchId, areaId: null, regionId: null });
     }
   }
-  return [...ids];
+  for (const { id } of regions.values()) {
+    const areaId = '\u0000future-area:' + id;
+    areas.set(areaId, { id: areaId, regionId: id });
+  }
+  for (const area of areas.values()) {
+    const id = '\u0000future-branch:' + area.id;
+    branches.set(id, { id, areaId: area.id, regionId: area.regionId });
+  }
+  const organization = {
+    regions: [...regions.values()],
+    areas: [...areas.values()],
+    branches: [...branches.values()],
+  };
+  const targets: Target[] = [
+    GLOBAL,
+    ...organization.regions.map((row) => ({ kind: 'REGION' as const, regionId: row.id })),
+    ...organization.areas.map((row) => ({ kind: 'AREA' as const, areaId: row.id })),
+    ...organization.branches.map((row) => ({ kind: 'BRANCH' as const, branchId: row.id })),
+  ];
+  return { organization, targets };
 }
-
-function targetsFor(universe: string[]): Target[] {
-  return [GLOBAL, ...universe.map((branchId) => ({ kind: 'BRANCH', branchId }) as const)];
+function scopeKey(scope: Scope): string {
+  return scope.kind === 'GLOBAL'
+    ? '*'
+    : scope.kind === 'REGION'
+      ? 'R:' + scope.regionId
+      : scope.kind === 'AREA'
+        ? 'A:' + scope.areaId
+        : 'B:' + scope.branchId;
 }
-
-/** Every (permission, target) the subject is effectively authorized for. */
-function capabilities(graph: AuthorityGraph, universe: string[]): Set<string> {
+function capabilities(
+  graph: AuthorityGraph,
+  universe: ReturnType<typeof capabilityUniverse>,
+): Set<string> {
   const result = new Set<string>();
-  for (const { code } of PERMISSION_CATALOG) {
-    for (const target of targetsFor(universe)) {
-      if (decide(graph, code, target)) {
-        result.add(`${code}|${target.kind === 'GLOBAL' ? '*' : target.branchId}`);
-      }
+  const expanded = { ...graph, organization: universe.organization };
+  for (const { code } of PERMISSION_CATALOG)
+    for (const target of universe.targets) {
+      if (decide(expanded, code, target)) result.add(code + '|' + scopeKey(target));
     }
-  }
   return result;
 }
 
@@ -95,7 +130,8 @@ export function checkContainment(
   if (target.kind !== 'EMPLOYEE') return 'TARGET_PROTECTED';
   if (actor.kind === 'OWNER') return null;
   if (actor.userId === target.userId) return 'SELF_TARGET';
-  const universe = branchUniverse(actor, target);
+  if (!canSupervise(actor, target)) return 'EXCEEDS_ACTOR';
+  const universe = capabilityUniverse(actor, target);
   const held = capabilities(actor, universe);
   for (const capability of capabilities(asActiveEmployee(target), universe)) {
     if (!held.has(capability)) return 'EXCEEDS_ACTOR';
@@ -123,7 +159,8 @@ export function checkGraphChange(
   }
   if (actor.kind === 'OWNER') return null;
   if (actor.userId === after.userId) return 'SELF_TARGET';
-  const universe = branchUniverse(actor, before, after);
+  if (!canSupervise(actor, before) || !canSupervise(actor, after)) return 'EXCEEDS_ACTOR';
+  const universe = capabilityUniverse(actor, before, after);
   const previous = capabilities(before, universe);
   const held = capabilities(actor, universe);
   for (const capability of capabilities(after, universe)) {
@@ -133,10 +170,7 @@ export function checkGraphChange(
 }
 
 function sameScope(left: Scope, right: Scope): boolean {
-  return (
-    left.kind === right.kind &&
-    (left.kind === 'GLOBAL' || left.branchId === (right as { branchId: string }).branchId)
-  );
+  return scopeKey(left) === scopeKey(right);
 }
 
 function unique(entries: Grant[]): { permission: string; scope: Scope }[] {
@@ -153,8 +187,8 @@ function unique(entries: Grant[]): { permission: string; scope: Scope }[] {
   return result
     .map((entry) => ({ permission: entry.permission, scope: { ...entry.scope } }))
     .sort((a, b) => {
-      const left = `${a.permission}|${a.scope.kind === 'GLOBAL' ? '' : a.scope.branchId}`;
-      const right = `${b.permission}|${b.scope.kind === 'GLOBAL' ? '' : b.scope.branchId}`;
+      const left = `${a.permission}|${scopeKey(a.scope)}`;
+      const right = `${b.permission}|${scopeKey(b.scope)}`;
       return left < right ? -1 : left > right ? 1 : 0;
     });
 }
@@ -176,7 +210,7 @@ export function authorizationSummary(
   ].filter(
     (grant) =>
       isKnownPermission(grant.permission) &&
-      (grant.scope.kind === 'GLOBAL' || graph.activeBranchIds.has(grant.scope.branchId)),
+      (grant.scope.kind !== 'BRANCH' || graph.activeBranchIds.has(grant.scope.branchId)),
   );
   const denies = graph.overrides.filter(
     (override) => override.effect === 'DENY' && isKnownPermission(override.permission),

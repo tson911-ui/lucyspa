@@ -38,6 +38,7 @@
     "db:permissions:sync": "pnpm --filter @lucy-spa/database permissions:sync",
     "db:precheck:collaborator": "pnpm --filter @lucy-spa/database precheck:collaborator",
     "owner:bootstrap": "pnpm build:server && pnpm --filter @lucy-spa/api build && pnpm --filter @lucy-spa/api owner:bootstrap",
+    "organization:bootstrap": "pnpm build:server && pnpm --filter @lucy-spa/api build && pnpm --filter @lucy-spa/api organization:bootstrap",
     "owner:reset-password": "pnpm build:server && pnpm --filter @lucy-spa/api build && pnpm --filter @lucy-spa/api owner:reset-password",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },

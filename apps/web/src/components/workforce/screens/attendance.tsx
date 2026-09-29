@@ -81,6 +81,13 @@ function SelfAttendance() {
   return (
     <Section title={t.attendance.self}>
       <p className="wf-muted">{t.attendance.selfIntro}</p>
+      {account.attendanceRequired === false ? (
+        <Notice tone="info">
+          {locale === 'vi'
+            ? 'Vị trí tổ chức hiện tại của bạn không yêu cầu chấm công. Lịch sử chấm công vẫn được giữ nguyên.'
+            : 'Your current organizational position is exempt from attendance. Attendance history is retained.'}
+        </Notice>
+      ) : null}
       {own.loading || branches.loading ? <Loading t={t} /> : null}
       {own.error ? <ErrorState error={own.error} t={t} onRetry={() => void own.reload()} /> : null}
       <FormFeedback error={submit.error} success={submit.success} t={t} />
@@ -118,7 +125,7 @@ function SelfAttendance() {
                   })}
                 </Notice>
               ) : null}
-              {state.kind === 'in' ? (
+              {account.attendanceRequired === false ? null : state.kind === 'in' ? (
                 <button
                   type="button"
                   className="wf-button wf-button-primary wf-button-large"

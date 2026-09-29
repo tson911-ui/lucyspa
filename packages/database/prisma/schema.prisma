@@ -19,6 +19,11 @@ model Branch {
   timezone            String                       @default("Asia/Ho_Chi_Minh")
   isActive            Boolean                      @default(true) @map("is_active")
   rowVersion          Int                          @default(1) @map("row_version")
+  areaId              String?                      @map("area_id") @db.Uuid
+  area                Area?                        @relation(fields: [areaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  teams               Team[]
+  teamMemberships     TeamMembership[]
+  organizationAssignments OrganizationAssignment[]
   createdAt           DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt           DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   outboxEvents        OutboxEvent[]
@@ -34,6 +39,7 @@ model Branch {
   visits              Visit[]
   notifications       Notification[]
 
+  @@index([areaId], map: "branches_area_idx")
   @@map("branches")
 }
 
@@ -134,7 +140,113 @@ enum SessionKind {
 
 enum ScopeKind {
   GLOBAL
+  REGION
+  AREA
   BRANCH
+}
+
+// Code-owned hierarchy semantics; labels and role names never grant authority.
+enum OrganizationLevel {
+  CEO
+  REGIONAL_MANAGER
+  AREA_MANAGER
+  STORE_MANAGER
+  DEPUTY_STORE_MANAGER
+  TEAM_LEADER
+}
+
+model Region {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code String @unique
+  name String
+  isActive Boolean @default(true) @map("is_active")
+  rowVersion Int @default(1) @map("row_version")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  areas Area[]
+  roleAssignments UserRoleAssignment[]
+  permissionOverrides UserPermissionOverride[]
+  organizationAssignments OrganizationAssignment[]
+  @@map("regions")
+}
+
+model Area {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  regionId String @map("region_id") @db.Uuid
+  region Region @relation(fields: [regionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  code String @unique
+  name String
+  isActive Boolean @default(true) @map("is_active")
+  rowVersion Int @default(1) @map("row_version")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  branches Branch[]
+  roleAssignments UserRoleAssignment[]
+  permissionOverrides UserPermissionOverride[]
+  organizationAssignments OrganizationAssignment[]
+  @@index([regionId, isActive], map: "areas_region_active_idx")
+  @@map("areas")
+}
+
+model Team {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId String @map("branch_id") @db.Uuid
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  code String
+  name String
+  isActive Boolean @default(true) @map("is_active")
+  rowVersion Int @default(1) @map("row_version")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  memberships TeamMembership[]
+  organizationAssignments OrganizationAssignment[]
+  @@unique([branchId, code], map: "teams_branch_code_key")
+  @@unique([id, branchId], map: "teams_id_branch_key")
+  @@index([branchId, isActive, id], map: "teams_branch_active_idx")
+  @@map("teams")
+}
+
+// Appointments are ended, never overwritten/deleted. Owner has no employee appointment.
+model OrganizationAssignment {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeUserId String @map("employee_user_id") @db.Uuid
+  employee EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  level OrganizationLevel
+  scopeKind ScopeKind @map("scope_kind")
+  regionId String? @map("region_id") @db.Uuid
+  region Region? @relation(fields: [regionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  areaId String? @map("area_id") @db.Uuid
+  area Area? @relation(fields: [areaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId String? @map("branch_id") @db.Uuid
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  teamId String? @map("team_id") @db.Uuid
+  team Team? @relation(fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz(3)
+  endedAt DateTime? @map("ended_at") @db.Timestamptz(3)
+  assignedByUserId String @map("assigned_by_user_id") @db.Uuid
+  assignedBy User @relation("OrganizationAssignmentGrantor", fields: [assignedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion Int @default(1) @map("row_version")
+  @@index([employeeUserId, endedAt], map: "organization_assignments_employee_active_idx")
+  @@index([scopeKind, regionId, areaId, branchId, endedAt], map: "organization_assignments_scope_idx")
+  @@index([teamId, endedAt], map: "organization_assignments_team_idx")
+  @@map("organization_assignments")
+}
+
+model TeamMembership {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teamId String @map("team_id") @db.Uuid
+  team Team @relation(fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId String @map("branch_id") @db.Uuid
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId String @map("employee_user_id") @db.Uuid
+  employee EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz(3)
+  endedAt DateTime? @map("ended_at") @db.Timestamptz(3)
+  assignedByUserId String @map("assigned_by_user_id") @db.Uuid
+  assignedBy User @relation("TeamMembershipGrantor", fields: [assignedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  @@index([teamId, endedAt, employeeUserId], map: "team_memberships_team_active_idx")
+  @@index([employeeUserId, branchId, endedAt], map: "team_memberships_employee_active_idx")
+  @@map("team_memberships")
 }
 
 enum PermissionEffect {
@@ -160,6 +272,11 @@ enum AuditActorKind {
 
 // Executable permission semantics are code-owned; role names carry no authority.
 enum PermissionCode {
+  VIEW_ORGANIZATION
+  MANAGE_ORGANIZATION
+  MANAGE_ORG_ASSIGNMENTS
+  VIEW_TEAMS
+  MANAGE_TEAMS
   VIEW_EMPLOYEES
   CREATE_EMPLOYEES
   UPDATE_EMPLOYEES
@@ -257,6 +374,8 @@ model User {
   endedServiceExecutions       ServiceExecution[]               @relation("ExecutionEndedBy")
   assignmentChanges            ServiceLineAssignmentChange[]    @relation("AssignmentActor")
   updatedSettings              AppSetting[]
+  grantedOrganizationAssignments OrganizationAssignment[] @relation("OrganizationAssignmentGrantor")
+  grantedTeamMemberships       TeamMembership[] @relation("TeamMembershipGrantor")
 
   @@index([kind, status, id], map: "users_kind_status_idx")
   @@map("users")
@@ -279,6 +398,8 @@ model EmployeeProfile {
   address               String
   baseSalaryVnd         BigInt?                          @map("base_salary_vnd")
   branchAssignments     EmployeeBranchAssignment[]
+  organizationAssignments OrganizationAssignment[]
+  teamMemberships       TeamMembership[]
   skills                EmployeeSkill[]
   attendanceRecords     AttendanceRecord[]
   leaveRequests         LeaveRequest[]
@@ -515,6 +636,10 @@ model UserRoleAssignment {
   roleId     String    @map("role_id") @db.Uuid
   role       Role      @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   scopeKind  ScopeKind @map("scope_kind")
+  regionId   String?   @map("region_id") @db.Uuid
+  region     Region?  @relation(fields: [regionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  areaId     String?   @map("area_id") @db.Uuid
+  area       Area?    @relation(fields: [areaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   branchId   String?   @map("branch_id") @db.Uuid
   branch     Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   rowVersion Int       @default(1) @map("row_version")
@@ -522,6 +647,8 @@ model UserRoleAssignment {
   @@index([userId, scopeKind, branchId], map: "user_role_assignments_user_scope_idx")
   @@index([roleId], map: "user_role_assignments_role_idx")
   @@index([branchId], map: "user_role_assignments_branch_idx")
+  @@index([regionId], map: "user_role_assignments_region_idx")
+  @@index([areaId], map: "user_role_assignments_area_idx")
   @@map("user_role_assignments")
 }
 
@@ -533,6 +660,10 @@ model UserPermissionOverride {
   permission   Permission       @relation(fields: [permissionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   effect       PermissionEffect
   scopeKind    ScopeKind        @map("scope_kind")
+  regionId     String?          @map("region_id") @db.Uuid
+  region       Region?          @relation(fields: [regionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  areaId       String?          @map("area_id") @db.Uuid
+  area         Area?            @relation(fields: [areaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   branchId     String?          @map("branch_id") @db.Uuid
   branch       Branch?          @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   rowVersion   Int              @default(1) @map("row_version")
@@ -540,6 +671,8 @@ model UserPermissionOverride {
   @@index([userId, scopeKind, branchId], map: "user_permission_overrides_user_scope_idx")
   @@index([permissionId], map: "user_permission_overrides_permission_idx")
   @@index([branchId], map: "user_permission_overrides_branch_idx")
+  @@index([regionId], map: "user_permission_overrides_region_idx")
+  @@index([areaId], map: "user_permission_overrides_area_idx")
   @@map("user_permission_overrides")
 }
 

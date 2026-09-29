@@ -232,12 +232,19 @@ test(
                 undefined,
                 WORKFORCE_EMAIL,
               );
-              assert.deepEqual(result.account, {
+              // The organization tree mirrors configured geography; the Owner holds no
+              // appointment, has no team, and never clocks in.
+              const { organization, ...account } = result.account;
+              assert.ok(organization);
+              assert.deepEqual(account, {
                 id: owner.id,
                 kind: 'OWNER',
                 displayName: 'Lucy Owner',
                 locale: 'vi',
                 authorization: { version: 1, owner: true },
+                organizationAppointments: [],
+                teamMemberships: [],
+                attendanceRequired: false,
                 // Bootstrap never verifies the address; the Owner verifies it after sign-in.
                 recoveryEmail: { address: ownerEmail, verified: false },
                 workforceTitle: 'OWNER',

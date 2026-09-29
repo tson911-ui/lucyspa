@@ -30,6 +30,9 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'services',
     'skills',
     'employees',
+    // Organization hierarchy + teams (VIEW/MANAGE_ORGANIZATION, VIEW/MANAGE_TEAMS; Owner holds all).
+    'organization',
+    'teams',
     'roles',
   ]);
   assert.deepEqual(
@@ -46,6 +49,13 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
   assert.ok(keys(employee([['MANAGE_PERMISSIONS', 'A']])).includes('roles'));
   assert.ok(!keys(employee([['VIEW_EMPLOYEES']])).includes('roles'));
   assert.ok(!keys(employee([['APPROVE_LEAVE', 'A']])).includes('employees'));
+  assert.ok(keys(employee([['VIEW_ORGANIZATION', 'A']])).includes('organization'));
+  assert.ok(keys(employee([['VIEW_TEAMS', 'A']])).includes('teams'));
+  assert.ok(!keys(employee([['VIEW_TEAMS', 'A']])).includes('organization'));
+  assert.ok(
+    !keys(employee()).includes('teams'),
+    'a role or title alone never opens team management',
+  );
 });
 
 test('the Owner reaches operations pages through its permissions (it has no self-service)', () => {

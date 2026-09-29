@@ -1,3 +1,4 @@
+import { requireSupervision } from '../authorization/organization-policy.js';
 import type {
   CatalogStatusRequest,
   EmployeeSkillGrantRequest,
@@ -205,6 +206,7 @@ export class SkillService {
         decideAcross(actor.graph, 'VIEW_EMPLOYEES', target.branchIds) ||
         decideAcross(actor.graph, 'MANAGE_SKILLS', target.branchIds);
       if (!allowed) throw new AuthError('NOT_FOUND');
+      if (actor.userId !== id) await requireSupervision(tx, actor.graph, id, target.branchIds);
       return this.presentEmployee(tx, id);
     });
   }
@@ -356,6 +358,7 @@ export class SkillService {
     const target = await this.loadEmployee(context.tx, id);
     if (!context.actor.owner && context.actor.userId === id) throw new AuthError('FORBIDDEN');
     requireAcross(context.actor, 'MANAGE_SKILLS', target.branchIds);
+    await requireSupervision(context.tx, context.actor.graph, id, target.branchIds);
     return target;
   }
 

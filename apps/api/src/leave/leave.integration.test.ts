@@ -20,6 +20,7 @@ import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { employeesOnApprovedLeave } from './leave.availability.js';
 import { LeaveService, parseLeaveDate } from './leave.service.js';
+import { appointForFixture } from '../testing/organization-fixture.js';
 
 // Explicit opt-in: ordinary unit/HTTP tests do not connect to PostgreSQL.
 test(
@@ -203,6 +204,7 @@ test(
                   branchId: branchId ?? null,
                 },
               });
+              await appointForFixture(tx, userId, branchId);
             };
             const login = async (userId: string) => {
               const user = await tx.user.findUniqueOrThrow({
@@ -564,7 +566,11 @@ test(
                     (await leave.listScoped(session, window)).requests.map((row) => row.employeeId),
                   );
                 const seenA = await employees(managerASession);
-                assert.ok(seenA.has(worker) && seenA.has(managerA));
+                assert.ok(
+                  seenA.has(worker),
+                  "Hierarchy: a manager never sees a peer's or their own request here",
+                );
+                assert.ok(!seenA.has(managerA));
                 assert.ok(
                   !seenA.has(multi) && !seenA.has(branchless),
                   'A-only manager sees A-only staff',

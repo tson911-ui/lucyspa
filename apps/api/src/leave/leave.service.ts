@@ -1,3 +1,5 @@
+import { supervisorWhere } from '@lucy-spa/server';
+import { requireSupervision, scopeBranchIds } from '../authorization/organization-policy.js';
 import type {
   LeaveRequestCancelRequest,
   LeaveRequestCreateRequest,
@@ -282,6 +284,7 @@ export class LeaveService {
     const employeeId =
       query.employeeId === undefined ? undefined : this.id(query.employeeId, 'employeeId');
     return this.frame(sessionToken, undefined, [], async ({ tx, actor }) => {
+      where.employee = { user: supervisorWhere(actor.graph) };
       if (decide(actor.graph, 'APPROVE_LEAVE', GLOBAL)) {
         return this.query(tx, { ...where, ...(employeeId ? { employeeUserId: employeeId } : {}) });
       }
@@ -316,6 +319,7 @@ export class LeaveService {
       // Authorization before any lifecycle state is revealed.
       const branchIds = await this.activeBranches(tx, row.employeeUserId);
       requireAcross(actor, 'APPROVE_LEAVE', branchIds);
+      await requireSupervision(tx, actor.graph, row.employeeUserId, branchIds);
       if (actor.userId === row.employeeUserId) throw new AuthError('FORBIDDEN');
       if (row.status !== 'PENDING') throw new AuthError('CONFLICT', 'status');
       if (row.rowVersion !== input.expectedVersion) throw new AuthError('CONFLICT');
@@ -421,7 +425,7 @@ export class LeaveService {
   }
 
   private visibleBranches(actor: AdminActor): string[] {
-    return [...actor.graph.activeBranchIds].filter((branchId) =>
+    return scopeBranchIds(actor.graph).filter((branchId) =>
       decide(actor.graph, 'APPROVE_LEAVE', { kind: 'BRANCH', branchId }),
     );
   }

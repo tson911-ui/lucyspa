@@ -24,6 +24,7 @@ import { EmployeeService } from '../employees/employee.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { EmailChangeService } from './email-change.service.js';
 import { MyAccountService } from './my-account.service.js';
+import { appointForFixture } from '../testing/organization-fixture.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 const NEW_PASSWORD = 'jasmine tea by the quiet river';
@@ -293,6 +294,7 @@ test(
             await tx.userRoleAssignment.create({
               data: { userId: hr.id, roleId: hrRole.id, scopeKind: 'BRANCH', branchId: branch },
             });
+            await appointForFixture(tx, hr.id, branch);
             const hrSession = await login(hr.id);
 
             await context.test(

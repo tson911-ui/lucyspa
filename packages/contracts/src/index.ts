@@ -1,4 +1,159 @@
 /** Public, transport-only contracts. No ORM, Node runtime or domain implementation exports. */
+export type OrganizationLevel =
+  | 'CEO'
+  | 'REGIONAL_MANAGER'
+  | 'AREA_MANAGER'
+  | 'STORE_MANAGER'
+  | 'DEPUTY_STORE_MANAGER'
+  | 'TEAM_LEADER';
+
+export interface OrganizationRegion {
+  id: string;
+  code: string;
+  name: string;
+  version: number;
+  isActive: boolean;
+}
+export interface OrganizationArea extends OrganizationRegion {
+  regionId: string;
+}
+export interface OrganizationBranch extends OrganizationRegion {
+  areaId: string | null;
+  regionId: string | null;
+}
+export interface OrganizationSnapshotResponse {
+  regions: OrganizationRegion[];
+  areas: OrganizationArea[];
+  branches: OrganizationBranch[];
+}
+export interface OrganizationAppointment {
+  id: string;
+  userId: string;
+  fullName: string;
+  level: OrganizationLevel;
+  scope: AuthorizationScope;
+  teamId: string | null;
+  version: number;
+  startedAt: string;
+  endedAt: string | null;
+}
+export interface OrganizationAppointmentsResponse {
+  items: OrganizationAppointment[];
+}
+export interface OrganizationRegionCreateRequest {
+  code: string;
+  name: string;
+  reason: string;
+}
+export interface OrganizationRegionUpdateRequest {
+  name?: string;
+  isActive?: boolean;
+  expectedVersion: number;
+  reason: string;
+}
+export interface OrganizationAreaCreateRequest extends OrganizationRegionCreateRequest {
+  regionId: string;
+}
+export interface OrganizationAreaUpdateRequest extends OrganizationRegionUpdateRequest {
+  regionId?: string;
+}
+export interface OrganizationBranchPlacementRequest {
+  areaId: string | null;
+  expectedVersion: number;
+  reason: string;
+}
+export interface OrganizationAppointmentCreateRequest {
+  userId: string;
+  level: OrganizationLevel;
+  scope: AuthorizationScope;
+  reason: string;
+}
+export interface OrganizationAppointmentEndRequest {
+  expectedVersion: number;
+  reason: string;
+}
+
+export interface TeamSummary {
+  id: string;
+  branchId: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+  version: number;
+  leader: { assignmentId: string; userId: string; fullName: string } | null;
+  memberCount: number;
+  canManage: boolean;
+  canAssignLeader: boolean;
+}
+export interface OrganizationPage {
+  number: number;
+  size: number;
+  total: number;
+}
+export interface TeamListResponse {
+  items: TeamSummary[];
+  page: OrganizationPage;
+}
+export interface TeamCreateRequest {
+  branchId: string;
+  code: string;
+  name: string;
+  reason: string;
+}
+export interface TeamUpdateRequest {
+  name: string;
+  expectedVersion: number;
+  reason: string;
+}
+export interface TeamDeleteRequest {
+  expectedVersion: number;
+  reason: string;
+  confirmed: true;
+}
+export interface TeamLeaderRequest {
+  userId: string | null;
+  expectedVersion: number;
+  reason: string;
+}
+export type TeamMembershipFilter = 'ALL' | 'MEMBERS' | 'UNASSIGNED' | 'OTHER_TEAM';
+export interface TeamEmployeeFilters {
+  q?: string;
+  status?: EmployeeStatus;
+  classification?: Exclude<EmploymentClassification, 'ENDED'>;
+  membership?: TeamMembershipFilter;
+}
+export interface TeamEmployee {
+  userId: string;
+  employeeCode: string;
+  fullName: string;
+  status: EmployeeStatus;
+  classification: EmploymentClassification | null;
+  teamId: string | null;
+  teamName: string | null;
+}
+export interface TeamEmployeesResponse {
+  items: TeamEmployee[];
+  page: OrganizationPage;
+}
+/** All-matching commands process bounded batches and return a stable user-id cursor. */
+export type TeamBulkSelection =
+  | { userIds: string[] }
+  | { allMatching: true; filters: TeamEmployeeFilters; excludedUserIds?: string[]; after?: string };
+export interface TeamMembersRequest {
+  action: 'ADD' | 'REMOVE' | 'TRANSFER';
+  targetTeamId?: string;
+  expectedVersion: number;
+  reason: string;
+  selection: TeamBulkSelection;
+}
+export interface TeamMembersResponse {
+  processed: number;
+  changed: number;
+  hasMore: boolean;
+  nextAfter: string | null;
+  version: number;
+}
+
 export interface HealthResponse {
   status: 'ok' | 'error';
   service: string;
@@ -111,7 +266,12 @@ export interface EmailChangeVerifyRequest {
   otp: string;
 }
 
-export type AuthorizationScope = { kind: 'GLOBAL' } | { kind: 'BRANCH'; branchId: string };
+/** GLOBAL is the existing transport identifier for SYSTEM scope. */
+export type AuthorizationScope =
+  | { kind: 'GLOBAL' }
+  | { kind: 'REGION'; regionId: string }
+  | { kind: 'AREA'; areaId: string }
+  | { kind: 'BRANCH'; branchId: string };
 
 /** The caller's own display hints only; customers have empty grant lists. */
 export interface CurrentAccountResponse {
@@ -133,6 +293,25 @@ export interface CurrentAccountResponse {
   recoveryEmail?: { address: string; verified: boolean } | null;
   /** Owner and employees only: the authoritative display title. */
   workforceTitle?: WorkforceTitle;
+  /** Server-derived organization hints; the API rechecks authority for every action. */
+  organization?: {
+    regions: readonly { readonly id: string; readonly name?: string }[];
+    areas: readonly { readonly id: string; readonly regionId: string; readonly name?: string }[];
+    branches: readonly {
+      readonly id: string;
+      readonly areaId: string | null;
+      readonly regionId: string | null;
+    }[];
+  };
+  organizationAppointments?: readonly {
+    readonly id: string;
+    readonly level: OrganizationLevel;
+    readonly scope: AuthorizationScope;
+    readonly teamId: string | null;
+  }[];
+  teamMemberships?: readonly { readonly teamId: string; readonly branchId: string }[];
+  /** False for Owner and current Store Manager-or-higher organizational appointments. */
+  attendanceRequired?: boolean;
 }
 
 /** CUSTOMER recovers customers; WORKFORCE recovers the Owner and employees. */
@@ -470,6 +649,11 @@ export interface EmployeeSetupCompleteRequest {
 
 /** Code-owned Phase 1 permission catalog; any other code is rejected. */
 export type PermissionCodeName =
+  | 'VIEW_ORGANIZATION'
+  | 'MANAGE_ORGANIZATION'
+  | 'MANAGE_ORG_ASSIGNMENTS'
+  | 'VIEW_TEAMS'
+  | 'MANAGE_TEAMS'
   | 'VIEW_EMPLOYEES'
   | 'CREATE_EMPLOYEES'
   | 'UPDATE_EMPLOYEES'

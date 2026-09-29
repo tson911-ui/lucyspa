@@ -19,6 +19,7 @@ import { PasswordService } from '../auth/password.service.js';
 import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { EmployeeService } from './employee.service.js';
+import { appointForFixture } from '../testing/organization-fixture.js';
 
 // Explicit opt-in: ordinary unit/HTTP tests do not connect to PostgreSQL.
 test(
@@ -182,6 +183,7 @@ test(
                   branchId: branchId ?? null,
                 },
               });
+              await appointForFixture(tx, userId, branchId);
             };
             const login = async (userId: string) => {
               const user = await tx.user.findUniqueOrThrow({

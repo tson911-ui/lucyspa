@@ -25,9 +25,12 @@ function employee(
     branches?: string[];
     roleGrants?: Grant[];
     overrides?: Override[];
+    /** Organization hierarchy position; permissions alone never confer authority over others. */
+    appointments?: NonNullable<AuthorityGraph['appointments']>;
   } = {},
 ): AuthorityGraph {
   return {
+    ...(options.appointments ? { appointments: options.appointments } : {}),
     userId: options.id ?? 'employee',
     kind: 'EMPLOYEE',
     authzVersion: 3,
@@ -179,6 +182,7 @@ test('multi-branch operations require every affected branch; none requires GLOBA
 test('containment: target authority must be within the actor across global and every branch', () => {
   const manager = employee({
     id: 'manager',
+    appointments: [{ id: 'store', level: 'STORE_MANAGER', scope: inA, teamId: null }],
     branches: [A],
     roleGrants: [
       { permission: P, scope: inA },
@@ -213,10 +217,27 @@ test('containment: target authority must be within the actor across global and e
   assert.equal(checkContainment(deniedGlobal, globalStaff), 'EXCEEDS_ACTOR');
   assert.equal(
     checkContainment(
-      employee({ id: 'manager', roleGrants: [{ permission: P, scope: GLOBAL }] }),
+      employee({
+        id: 'manager',
+        appointments: [{ id: 'ceo', level: 'CEO', scope: GLOBAL, teamId: null }],
+        roleGrants: [{ permission: P, scope: GLOBAL }],
+      }),
       globalStaff,
     ),
     null,
+  );
+  // Permission alone is not enough: hierarchy is an additional requirement.
+  assert.equal(
+    checkContainment(
+      employee({ id: 'manager', branches: [A], roleGrants: [{ permission: P, scope: inA }] }),
+      staffA,
+    ),
+    'EXCEEDS_ACTOR',
+  );
+  // A peer does not contain a peer.
+  assert.equal(
+    checkContainment(manager, { ...staffA, appointments: manager.appointments! }),
+    'EXCEEDS_ACTOR',
   );
   // Permission-management power is authority too.
   const permissionManager = employee({
@@ -232,7 +253,7 @@ test('containment: target authority must be within the actor across global and e
   // an ineffective branch grant (no membership) is not counted.
   const ineffective = employee({
     id: 'staff',
-    branches: [],
+    branches: [A],
     roleGrants: [{ permission: P, scope: inB }],
   });
   assert.equal(checkContainment(manager, ineffective), null);
@@ -251,6 +272,7 @@ test('containment: target authority must be within the actor across global and e
 test('graph changes: gained authority must be held by the actor; removing a DENY is a grant', () => {
   const manager = employee({
     id: 'manager',
+    appointments: [{ id: 'store', level: 'STORE_MANAGER', scope: inA, teamId: null }],
     branches: [A],
     roleGrants: [
       { permission: P, scope: inA },
@@ -377,6 +399,11 @@ test('the code-owned catalog is exactly the Phase 1, Phase 2 and follow-up Step 
       ['PERFORM_SERVICES', 'BRANCH_CAPABLE', 'STANDARD'],
       ['RESOLVE_SERVICE_EXECUTION', 'BRANCH_CAPABLE', 'STANDARD'],
       ['MANAGE_BOOKING_SETTINGS', 'GLOBAL_ONLY', 'STANDARD'],
+      ['VIEW_ORGANIZATION', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['MANAGE_ORGANIZATION', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['MANAGE_ORG_ASSIGNMENTS', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['VIEW_TEAMS', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['MANAGE_TEAMS', 'BRANCH_CAPABLE', 'STANDARD'],
     ],
   );
 });

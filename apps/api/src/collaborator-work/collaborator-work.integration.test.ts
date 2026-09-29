@@ -23,6 +23,7 @@ import { LeaveService } from '../leave/leave.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { collaboratorWorkCovering, isoWeekday } from './collaborator-work.rules.js';
 import { CollaboratorWorkService } from './collaborator-work.service.js';
+import { appointForFixture } from '../testing/organization-fixture.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 const shift = (date: string, days: number) =>
@@ -200,6 +201,7 @@ test(
                 await tx.userRoleAssignment.create({
                   data: { userId, roleId: role.id, scopeKind: 'BRANCH', branchId },
                 });
+                await appointForFixture(tx, userId, branchId);
               }
             };
             const login = async (userId: string) => {
@@ -416,6 +418,11 @@ test(
                 );
                 // Never oneself.
                 await grant(ctv2, ['MANAGE_WORK_SCHEDULE'], [A]);
+                // The CTV stays a subordinate: the permission alone confers no position.
+                await tx.organizationAssignment.updateMany({
+                  where: { employeeUserId: ctv2, endedAt: null },
+                  data: { endedAt: new Date(Date.now() + 1000) },
+                });
                 await fails(
                   work.create(
                     await login(ctv2),

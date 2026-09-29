@@ -1,3 +1,4 @@
+import { supervisorWhere } from '@lucy-spa/server';
 import type {
   EmployeeDirectoryEntry,
   EmployeeDirectoryGroup,
@@ -183,6 +184,7 @@ export class EmployeeDirectoryService {
         if (visible.length === 0) throw new AuthError('FORBIDDEN');
         const filters: Prisma.UserWhereInput[] = [
           { kind: 'EMPLOYEE', employeeProfile: { isNot: null } },
+          supervisorWhere(actor.graph),
           { OR: visible },
           ...(status ? [{ status }] : []),
           ...(groupIds === null ? [] : [{ id: { in: groupIds } }]),

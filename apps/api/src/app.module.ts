@@ -61,6 +61,10 @@ import { RoleAdminService } from './authorization/role-admin.service.js';
 import { EmployeeController } from './employees/employee.controller.js';
 import { EmployeeDirectoryService } from './employees/employee-directory.service.js';
 import { EmployeeService } from './employees/employee.service.js';
+import { OrganizationController } from './organization/organization.controller.js';
+import { OrganizationService } from './organization/organization.service.js';
+import { TeamController } from './teams/team.controller.js';
+import { TeamService } from './teams/team.service.js';
 import { HealthController } from './health/health.controller.js';
 import { InfrastructureService } from './platform/infrastructure.service.js';
 import { API_ENVIRONMENT, API_LOGGER, type ApiEnvironment } from './platform/tokens.js';
@@ -98,6 +102,8 @@ export class AppModule {
         ReassignmentController,
         NotificationController,
         WalkInController,
+        OrganizationController,
+        TeamController,
       ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },
@@ -132,6 +138,8 @@ export class AppModule {
         ReassignmentService,
         NotificationService,
         WalkInService,
+        OrganizationService,
+        TeamService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
         { provide: APP_INTERCEPTOR, useClass: SessionActivityInterceptor },

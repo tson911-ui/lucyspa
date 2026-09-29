@@ -1,3 +1,5 @@
+import { branchRecordSupervisorWhere } from '@lucy-spa/server';
+import { requireSupervision } from '../authorization/organization-policy.js';
 import type {
   CollaboratorWorkCancelRequest,
   CollaboratorWorkCreateRequest,
@@ -263,6 +265,7 @@ export class CollaboratorWorkService {
         const { tx, actor, now } = context;
         const before = await this.load(tx, occurrenceId);
         this.requireSchedule(actor, before.branchId);
+        await requireSupervision(tx, actor.graph, before.employeeUserId, [before.branchId]);
         if (!actor.owner && before.employeeUserId === actor.userId) {
           throw new AuthError('FORBIDDEN');
         }
@@ -296,10 +299,19 @@ export class CollaboratorWorkService {
     const employeeId =
       query.employeeId === undefined ? undefined : uuid(query.employeeId, 'employeeId');
     return this.run(sessionToken, undefined, undefined, async ({ tx, actor }) => {
+      // An occurrence belongs to one branch, so the hierarchy is checked at that branch only.
+      const scoped = branchId
+        ? [branchId]
+        : (await tx.branch.findMany({ select: { id: true } })).map((row) => row.id);
+      const perBranch = scoped.flatMap((id) => {
+        const user = branchRecordSupervisorWhere(actor.graph, id);
+        return user ? [{ branchId: id, employee: { user } }] : [];
+      });
+      if (perBranch.length === 0) return { items: [] };
       const rows = await tx.collaboratorWorkOccurrence.findMany({
         where: {
+          OR: perBranch,
           workDate: { gte: range.from, lte: range.to },
-          ...(branchId ? { branchId } : {}),
           ...(employeeId ? { employeeUserId: employeeId } : {}),
           ...(query.status ? { status: query.status } : {}),
         },
@@ -405,6 +417,8 @@ export class CollaboratorWorkService {
     if (!user || user.kind !== 'EMPLOYEE' || !user.employeeProfile) {
       throw new AuthError('NOT_FOUND');
     }
+    // Hierarchy after existence, so a non-employee stays a 404.
+    await requireSupervision(tx, actor.graph, employeeId);
     if (user.status === 'INACTIVE') throw new AuthError('CONFLICT', 'status');
   }
 

@@ -56,12 +56,27 @@ export {
   decide,
   GLOBAL,
   isKnownPermission,
+  scopeContains,
+  scopeIsActive,
   type AuthorityGraph,
   type DecideOptions,
   type Grant,
   type Override,
   type Scope,
   type Target,
+  type OrganizationLevel,
+  type OrganizationAppointment,
+  type OrganizationTree,
 } from './authorization.js';
-export { loadAuthorityGraph } from './authorization.store.js';
+export { loadAuthorityGraph, storedScope } from './authorization.store.js';
+export {
+  ORGANIZATION_RANK,
+  canSupervise,
+  canManageTeam,
+  canAppoint,
+  attendanceExempt,
+  supervisorWhere,
+  branchRecordSupervisorWhere,
+  attendanceExemptEmployeeIds,
+} from './organization.js';
 export { redisConnectionOptions, SYSTEM_CHECK_QUEUE, QUEUE_PREFIX } from './redis.js';

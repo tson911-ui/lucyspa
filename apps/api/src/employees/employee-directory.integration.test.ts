@@ -18,6 +18,7 @@ import { PasswordService } from '../auth/password.service.js';
 import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { EmployeeDirectoryService } from './employee-directory.service.js';
+import { appointForFixture } from '../testing/organization-fixture.js';
 
 // Explicit opt-in: ordinary unit/HTTP tests do not connect to PostgreSQL.
 test(
@@ -174,6 +175,8 @@ test(
                   branchId: branchId ?? null,
                 },
               });
+              // Only viewers hold a hierarchy position; the operator and others stay subordinates.
+              if (codes.includes('VIEW_EMPLOYEES')) await appointForFixture(tx, userId, branchId);
             };
             const login = async (userId: string) => {
               const user = await tx.user.findUniqueOrThrow({
@@ -241,23 +244,15 @@ test(
             await context.test(
               'visibility: branch, multi-branch containment and GLOBAL',
               async () => {
-                assert.deepEqual(set(await ids(sessionA)), set([worker, viewerA, operator]));
+                // Hierarchy: a Store Manager sees subordinates only, never peers or itself.
+                assert.deepEqual(set(await ids(sessionA)), set([worker, operator]));
                 assert.deepEqual(
                   set(await ids(sessionAB)),
-                  set([worker, multi, inactiveB, viewerA, viewerAB, operator]),
+                  set([worker, multi, inactiveB, operator]),
                 );
                 assert.deepEqual(
                   set(await ids(sessionGlobal)),
-                  set([
-                    worker,
-                    multi,
-                    branchless,
-                    inactiveB,
-                    viewerA,
-                    viewerAB,
-                    viewerGlobal,
-                    operator,
-                  ]),
+                  set([worker, multi, branchless, inactiveB, viewerA, viewerAB, operator]),
                 );
                 const [entry] = (await directory.list(sessionAB, { q: await codeOf(multi) })).items;
                 assert.deepEqual(Object.keys(entry ?? {}).sort(), [
@@ -321,8 +316,8 @@ test(
               assert.deepEqual(await walk(sessionGlobal, '2'), all);
               // Hidden employees sort between visible ones yet never appear on any page.
               const scoped = await walk(sessionA, '1');
-              assert.deepEqual(set(scoped), set([worker, viewerA, operator]));
-              assert.equal(scoped.length, 3);
+              assert.deepEqual(set(scoped), set([worker, operator]));
+              assert.equal(scoped.length, 2);
               // Searching for a hidden employee's exact code reveals nothing.
               assert.deepEqual(await ids(sessionA, { q: await codeOf(multi) }), []);
               assert.deepEqual(await ids(sessionA, { q: await codeOf(branchless) }), []);
