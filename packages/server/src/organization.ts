@@ -99,6 +99,26 @@ export function canAppoint(
   );
 }
 
+/**
+ * Authority to administer a structure of `level` INSIDE `container` (create an Area in a
+ * Region, place a Branch in an Area, create a Team in a Branch): the Owner always; an employee
+ * only through an appointment that contains the container and outranks `level`. Unlike
+ * `canAppoint`, the container's scope kind is not the appointed level's scope kind (an Area
+ * lives in a REGION container, a Branch in an AREA or the SYSTEM), so the two must not be mixed.
+ * Permission (for example MANAGE_ORGANIZATION) is checked separately by the caller.
+ */
+export function canAdministerBelow(
+  graph: AuthorityGraph,
+  level: OrganizationLevel,
+  container: Scope,
+): boolean {
+  if (graph.kind === 'OWNER') return true;
+  if (graph.kind !== 'EMPLOYEE') return false;
+  return appointmentsAt(graph, container).some(
+    (appointment) => ORGANIZATION_RANK[appointment.level] > ORGANIZATION_RANK[level],
+  );
+}
+
 export function attendanceExempt(graph: AuthorityGraph): boolean {
   return (
     graph.kind === 'OWNER' ||

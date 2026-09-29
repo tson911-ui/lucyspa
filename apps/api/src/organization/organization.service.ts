@@ -11,7 +11,7 @@ import type {
   OrganizationRegionUpdateRequest,
 } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
-import { canAppoint, canSupervise } from '@lucy-spa/server';
+import { canAdministerBelow, canAppoint, canSupervise } from '@lucy-spa/server';
 import { Inject, Injectable } from '@nestjs/common';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { AuthError } from '../auth/auth.error.js';
@@ -161,7 +161,7 @@ export class OrganizationService {
       requestId,
       async (context) => {
         this.require(context, 'MANAGE_ORGANIZATION', GLOBAL);
-        if (!context.actor.owner && !canAppoint(context.actor.graph, 'REGIONAL_MANAGER', GLOBAL))
+        if (!canAdministerBelow(context.actor.graph, 'REGIONAL_MANAGER', GLOBAL))
           throw new AuthError('FORBIDDEN');
         const row = await context.tx.region.create({ data: { code, name } });
         await appendAdminAudit(context, {
@@ -242,7 +242,7 @@ export class OrganizationService {
       async (context) => {
         const scope = { kind: 'REGION', regionId } as const;
         this.require(context, 'MANAGE_ORGANIZATION', scope);
-        if (!canAppoint(context.actor.graph, 'AREA_MANAGER', scope))
+        if (!canAdministerBelow(context.actor.graph, 'AREA_MANAGER', scope))
           throw new AuthError('FORBIDDEN');
         await this.activeScope(context.tx, scope);
         const row = await context.tx.area.create({ data: { regionId, code, name } });
@@ -283,7 +283,7 @@ export class OrganizationService {
       for (const parentId of new Set([previous.regionId, regionId])) {
         const scope = { kind: 'REGION', regionId: parentId } as const;
         this.require(context, 'MANAGE_ORGANIZATION', scope);
-        if (!canAppoint(context.actor.graph, 'AREA_MANAGER', scope))
+        if (!canAdministerBelow(context.actor.graph, 'AREA_MANAGER', scope))
           throw new AuthError('FORBIDDEN');
       }
       await this.activeScope(context.tx, { kind: 'REGION', regionId });
@@ -335,7 +335,7 @@ export class OrganizationService {
       for (const parentId of new Set([previous.areaId, areaId])) {
         const scope = parentId ? ({ kind: 'AREA', areaId: parentId } as const) : GLOBAL;
         this.require(context, 'MANAGE_ORGANIZATION', scope);
-        if (!canAppoint(context.actor.graph, 'STORE_MANAGER', scope))
+        if (!canAdministerBelow(context.actor.graph, 'STORE_MANAGER', scope))
           throw new AuthError('FORBIDDEN');
       }
       if (areaId) await this.activeScope(context.tx, { kind: 'AREA', areaId });

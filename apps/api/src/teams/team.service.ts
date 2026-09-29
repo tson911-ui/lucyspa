@@ -9,7 +9,13 @@ import type {
   TeamEmployee,
 } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
-import { canAppoint, canManageTeam, canSupervise, supervisorWhere } from '@lucy-spa/server';
+import {
+  canAdministerBelow,
+  canAppoint,
+  canManageTeam,
+  canSupervise,
+  supervisorWhere,
+} from '@lucy-spa/server';
 import { Inject, Injectable } from '@nestjs/common';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { AuthError } from '../auth/auth.error.js';
@@ -233,7 +239,7 @@ export class TeamService {
       const scope = { kind: 'BRANCH', branchId } as const;
       if (
         !decide(context.actor.graph, 'MANAGE_TEAMS', scope) ||
-        !canAppoint(context.actor.graph, 'TEAM_LEADER', scope)
+        !canAdministerBelow(context.actor.graph, 'TEAM_LEADER', scope)
       )
         throw new AuthError('FORBIDDEN');
       if (

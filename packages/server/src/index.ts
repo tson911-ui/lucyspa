@@ -74,6 +74,7 @@ export {
   canSupervise,
   canManageTeam,
   canAppoint,
+  canAdministerBelow,
   attendanceExempt,
   supervisorWhere,
   branchRecordSupervisorWhere,

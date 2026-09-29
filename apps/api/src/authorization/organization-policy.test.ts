@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   attendanceExempt,
+  canAdministerBelow,
   canAppoint,
   canManageTeam,
   canSupervise,
@@ -171,4 +172,31 @@ test('supervisor SQL filter fails closed for non-employees and excludes self', (
   });
   const store = supervisorWhere(person('store', [{ level: 'STORE_MANAGER', scope: b1 }]));
   assert.notDeepEqual(store.OR, [{ id: { in: [] } }]);
+});
+
+test('administering a structure inside a container is not the same as appointing that level', () => {
+  const region: Scope = { kind: 'REGION', regionId: 'r1' };
+  const area: Scope = { kind: 'AREA', areaId: 'a1' };
+  // The production defect: canAppoint rejects even the Owner when the container scope kind
+  // differs from the appointed level's scope kind (an Area is created inside a REGION).
+  assert.equal(canAppoint(owner, 'AREA_MANAGER', region), false);
+  assert.equal(canAdministerBelow(owner, 'AREA_MANAGER', region), true, 'Owner creates an Area');
+  assert.equal(canAdministerBelow(owner, 'STORE_MANAGER', area), true, 'Owner places a Branch');
+  assert.equal(canAdministerBelow(owner, 'REGIONAL_MANAGER', { kind: 'GLOBAL' }), true);
+  assert.equal(canAdministerBelow(owner, 'TEAM_LEADER', b1), true, 'Owner creates a Team');
+  const regional = person('regional', [{ level: 'REGIONAL_MANAGER', scope: region }]);
+  assert.equal(canAdministerBelow(regional, 'AREA_MANAGER', region), true);
+  assert.equal(
+    canAdministerBelow(regional, 'AREA_MANAGER', { kind: 'REGION', regionId: 'r2' }),
+    false,
+  );
+  assert.equal(canAdministerBelow(regional, 'REGIONAL_MANAGER', region), false, 'peer level');
+  assert.equal(canAdministerBelow(regional, 'REGIONAL_MANAGER', { kind: 'GLOBAL' }), false);
+  const deputy = person('deputy', [{ level: 'DEPUTY_STORE_MANAGER', scope: b1 }]);
+  assert.equal(canAdministerBelow(deputy, 'TEAM_LEADER', b1), true);
+  assert.equal(canAdministerBelow(deputy, 'AREA_MANAGER', region), false);
+  assert.equal(canAdministerBelow(person('nobody'), 'TEAM_LEADER', b1), false);
+  const ceo = person('ceo', [{ level: 'CEO', scope: { kind: 'GLOBAL' } }]);
+  assert.equal(canAdministerBelow(ceo, 'REGIONAL_MANAGER', { kind: 'GLOBAL' }), true);
+  assert.equal(canAdministerBelow({ ...person('c'), kind: 'CUSTOMER' }, 'TEAM_LEADER', b1), false);
 });
