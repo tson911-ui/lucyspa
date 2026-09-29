@@ -305,6 +305,41 @@ test(
               await fails(employees.create(session, input([A, B])), 'FORBIDDEN');
             });
 
+            await context.test(
+              'detail shows active appointments only to callers who may see them',
+              async () => {
+                const target = track(await employees.create(managerSession, input([A])));
+                const deputy = await tx.organizationAssignment.create({
+                  data: {
+                    employeeUserId: target.id,
+                    level: 'DEPUTY_STORE_MANAGER',
+                    scopeKind: 'BRANCH',
+                    branchId: A,
+                    assignedByUserId: manager,
+                  },
+                });
+                // No VIEW_ORGANIZATION: the employment record alone, no management information.
+                const without = await employees.get(managerSession, target.id);
+                assert.equal('organizationAppointments' in without, false);
+                // With VIEW_ORGANIZATION the same data and rule as the directory apply.
+                const viewer = await principal('EMPLOYEE', [A]);
+                await grant(viewer, ['VIEW_EMPLOYEES', 'VIEW_ORGANIZATION', 'MANAGE_TEAMS'], A);
+                const seen = await employees.get(await login(viewer, true), target.id);
+                assert.deepEqual(
+                  seen.organizationAppointments?.map((row) => [row.id, row.level, row.scope.kind]),
+                  [[deputy.id, 'DEPUTY_STORE_MANAGER', 'BRANCH']],
+                );
+                assert.equal(seen.fullName, target.fullName);
+                // Ended appointments are not shown.
+                await tx.organizationAssignment.update({
+                  where: { id: deputy.id },
+                  data: { endedAt: new Date(Date.now() + 1000) },
+                });
+                const ended = await employees.get(await login(viewer, true), target.id);
+                assert.equal('organizationAppointments' in ended, false);
+              },
+            );
+
             await context.test('reads are object-scoped and pay is gated', async () => {
               const inA = track(await employees.create(managerSession, input([A])));
               // Base salary is for official employment only (follow-up Q16): promote first.

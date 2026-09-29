@@ -12,7 +12,9 @@ import { formatDateTime } from '../../../lib/workforce/format';
 import { canAnywhere } from '../../../lib/workforce/permissions';
 import { detailActions, employmentEnded } from '../../../lib/workforce/employee-detail';
 import { runMutation } from '../../../lib/workforce/workflows';
+import { organizationDictionary } from '../../../i18n/organization';
 import { branchLabel, useBranches } from '../data';
+import { ManagementLevels, useManagementLevelVisible } from './management-levels';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
@@ -94,8 +96,9 @@ export function EmployeeDetail({
   reloadAll: () => Promise<void>;
   reloadEmployment: () => Promise<void>;
 }) {
-  const { t } = useWorkforce();
+  const { t, locale } = useWorkforce();
   const { account } = useAccount();
+  const showLevel = useManagementLevelVisible();
   const actions = detailActions(account, employee, employment);
   const timeZone =
     (employee.branchIds[0] && branches?.get(employee.branchIds[0])?.timezone) || 'UTC';
@@ -105,6 +108,15 @@ export function EmployeeDetail({
         <span className="wf-header-badges">
           <span className="wf-muted wf-small">{t.employees.titleColumn}:</span>
           <TitleBadge employment={employment} />
+          {showLevel ? (
+            <>
+              <span className="wf-muted wf-small">{organizationDictionary(locale).level}:</span>
+              <ManagementLevels
+                appointments={employee.organizationAppointments}
+                branches={branches}
+              />
+            </>
+          ) : null}
           <span className="wf-muted wf-small">{t.employees.detail.accountStatus}:</span>
           <Badge tone={EMPLOYEE_STATUS_TONE[employee.status]}>
             {t.employees.statuses[employee.status]}

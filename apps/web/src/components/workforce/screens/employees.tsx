@@ -27,7 +27,9 @@ import {
   type DirectoryFilters,
   type GroupPages,
 } from '../../../lib/workforce/employee-directory';
+import { organizationDictionary } from '../../../i18n/organization';
 import { branchLabel, useBranches } from '../data';
+import { ManagementLevels, useManagementLevelVisible } from './management-levels';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
@@ -307,6 +309,8 @@ function DirectoryTable({
   branches: ReadonlyMap<string, BranchSummary> | null;
 }) {
   const { t, base, locale } = useWorkforce();
+  const text = organizationDictionary(locale);
+  const showLevel = useManagementLevelVisible();
   return (
     <table className="wf-table">
       <thead>
@@ -315,6 +319,7 @@ function DirectoryTable({
           <th scope="col">{t.employees.fullName}</th>
           <th scope="col">{t.common.branch}</th>
           <th scope="col">{t.employees.titleColumn}</th>
+          {showLevel ? <th scope="col">{text.level}</th> : null}
           <th scope="col">{t.common.status}</th>
           <th scope="col">{t.common.actions}</th>
         </tr>
@@ -330,6 +335,14 @@ function DirectoryTable({
                 .join(', ') || '—'}
             </td>
             <td data-label={t.employees.titleColumn}>{directoryTitle(employee, t, locale)}</td>
+            {showLevel ? (
+              <td data-label={text.level}>
+                <ManagementLevels
+                  appointments={employee.organizationAppointments}
+                  branches={branches}
+                />
+              </td>
+            ) : null}
             <td data-label={t.common.status}>
               <Badge tone={EMPLOYEE_STATUS_TONE[employee.status]}>
                 {t.employees.statuses[employee.status]}

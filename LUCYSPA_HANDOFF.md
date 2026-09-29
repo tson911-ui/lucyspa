@@ -28,7 +28,12 @@ hierarchy + containment, never a role name. Notification Center / revenue notifi
 started. Ending employment or revoking a branch assignment ends the employee's active team
 memberships/appointments (history kept); future-dated ends are swept by exclusive team commands and
 the authority graph ignores ended employees. `apps/web/next-env.d.ts` shows a pre-existing environment diff (Next dev output path) that
-was not intentionally edited and must not be committed with this work. **Production bootstrap for existing managers:** run `pnpm organization:bootstrap` (dry run), then
+was not intentionally edited and must not be committed with this work. **Follow-up patch (Owner approved, production deployment pending):** employee search is
+case/diacritic/word-prefix aware and the management level (active Organization Appointments) is
+shown on the Employees list and detail with the same authorization; see
+[docs/ORGANIZATION_APPOINTMENT_VISIBILITY_AND_SEARCH.md](docs/ORGANIZATION_APPOINTMENT_VISIBILITY_AND_SEARCH.md).
+
+**Production bootstrap for existing managers:** run `pnpm organization:bootstrap` (dry run), then
 `-- --apply`, then `-- --check` BEFORE rolling out the new application (order and mapping rules in the
 docs file). It gives branch-scope managers a Deputy Store Manager appointment where their existing
 permissions already applied, and lists SYSTEM/REGION/AREA-scope and non-official holders for explicit

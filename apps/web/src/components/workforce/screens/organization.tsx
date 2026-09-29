@@ -11,7 +11,7 @@ import type {
   OrganizationRegion,
   OrganizationSnapshotResponse,
 } from '@lucy-spa/contracts';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { organizationDictionary } from '../../../i18n/organization';
 import { canAnywhere } from '../../../lib/workforce/permissions';
 import { runMutation } from '../../../lib/workforce/workflows';
@@ -1002,15 +1002,32 @@ function CreateAppointmentForm({
   const [reason, setReason] = useState('');
   const submit = useSubmit();
 
+  // The directory search runs on the server (name or code, any case, with or without
+  // accents); typing is debounced and an empty query is simply not sent.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(employeeSearch.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [employeeSearch]);
   const employees = useResource(
     () =>
       api.get<EmployeeDirectoryResponse>('/api/v1/employees', {
         status: 'ACTIVE',
-        q: employeeSearch,
+        ...(debouncedSearch ? { q: debouncedSearch } : {}),
         limit: 20,
       }),
-    [api, employeeSearch],
+    [api, debouncedSearch],
   );
+  // A selection that is no longer among the results must not stay submitted.
+  useEffect(() => {
+    if (
+      employees.data &&
+      selectedUserId &&
+      !employees.data.items.some((entry) => entry.id === selectedUserId)
+    ) {
+      setSelectedUserId('');
+    }
+  }, [employees.data, selectedUserId]);
 
   const getScope = (): AuthorizationScope => {
     if (level === 'CEO') return { kind: 'GLOBAL' };

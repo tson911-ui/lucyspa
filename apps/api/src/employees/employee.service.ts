@@ -1,5 +1,6 @@
 import { canSupervise } from '@lucy-spa/server';
 import { requireSupervision } from '../authorization/organization-policy.js';
+import { visibleAppointments } from './employee-appointments.js';
 import { endOrganizationRelationships } from '../organization/organization.lifecycle.js';
 import { randomUUID } from 'node:crypto';
 import type {
@@ -494,11 +495,20 @@ export class EmployeeService {
       targetId,
       false,
       undefined,
-      ({ actor, target, branchIds }) => {
+      async ({ tx, actor, target, branchIds }) => {
         if (!decideAcross(actor.graph, 'VIEW_EMPLOYEES', branchIds)) {
           throw new AuthError('NOT_FOUND');
         }
-        return Promise.resolve(this.present(actor, target));
+        const response = this.present(actor, target);
+        const appointments = await visibleAppointments(tx, actor.graph, [target.id]);
+        const visible = appointments.get(target.id) ?? [];
+        // Ended employment holds no position (same rule as the directory).
+        const ended =
+          (await classificationOn(tx, target.id, await businessToday(tx, branchIds)))
+            ?.classification === 'ENDED';
+        return ended || visible.length === 0
+          ? response
+          : { ...response, organizationAppointments: visible };
       },
       true,
     );

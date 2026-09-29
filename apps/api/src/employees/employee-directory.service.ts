@@ -1,5 +1,6 @@
 import { supervisorWhere } from '@lucy-spa/server';
 import type {
+  EmployeeDirectoryAppointment,
   EmployeeDirectoryEntry,
   EmployeeDirectoryGroup,
   EmployeeDirectoryResponse,
@@ -13,6 +14,8 @@ import { SessionService } from '../auth/session.service.js';
 import { runAdminCommand } from '../authorization/admin-command.js';
 import { decide, GLOBAL, type AuthorityGraph } from '../authorization/authorization.js';
 import { isUuid } from './employee.input.js';
+import { visibleAppointments } from './employee-appointments.js';
+import { searchEmployeeIds } from './employee-search.js';
 import { businessToday, day } from './employment.js';
 import { directoryGroupIds, MANAGER_ASSIGNMENT, workforceTitle } from './workforce-title.js';
 
@@ -191,23 +194,14 @@ export class EmployeeDirectoryService {
           ...(branchId
             ? [{ employeeProfile: { branchAssignments: { some: { revokedAt: null, branchId } } } }]
             : []),
-          ...(q
-            ? [
-                {
-                  OR: [
-                    { fullName: { contains: q, mode: 'insensitive' as const } },
-                    {
-                      employeeProfile: {
-                        employeeCodeCanonical: { contains: q, mode: 'insensitive' as const },
-                      },
-                    },
-                  ],
-                },
-              ]
-            : []),
+          // Folded name/code match resolved in PostgreSQL before scoping and paging.
+          ...(q ? [{ id: { in: await searchEmployeeIds(tx, q) } }] : []),
           ...(cursor ? [{ employeeProfile: { employeeCodeCanonical: { gt: cursor } } }] : []),
         ];
-        const present = (row: DirectoryRow): EmployeeDirectoryEntry => {
+        const present = (
+          row: DirectoryRow,
+          appointments: readonly EmployeeDirectoryAppointment[] = [],
+        ): EmployeeDirectoryEntry => {
           const profile = row.employeeProfile!;
           const latest = profile.classificationChanges[0];
           const current =
@@ -227,6 +221,10 @@ export class EmployeeDirectoryService {
               current,
               manager: current === 'OFFICIAL_EMPLOYEE' && row.roleAssignments.length > 0,
             }),
+            // Ended employment holds no position; nothing is shown that the caller may not see.
+            ...(current !== 'ENDED' && appointments.length > 0
+              ? { organizationAppointments: [...appointments] }
+              : {}),
           };
         };
         const orderBy = { employeeProfile: { employeeCodeCanonical: 'asc' } } as const;
@@ -241,8 +239,13 @@ export class EmployeeDirectoryService {
             skip: (pageNumber - 1) * limit,
             take: limit,
           });
+          const byUser = await visibleAppointments(
+            tx,
+            actor.graph,
+            rows.map((row) => row.id),
+          );
           return {
-            items: rows.map(present),
+            items: rows.map((row) => present(row, byUser.get(row.id))),
             nextCursor: null,
             page: { number: pageNumber, size: limit, total },
           };
@@ -253,7 +256,12 @@ export class EmployeeDirectoryService {
           orderBy,
           take: limit + 1,
         });
-        const items = rows.slice(0, limit).map(present);
+        const byUser = await visibleAppointments(
+          tx,
+          actor.graph,
+          rows.slice(0, limit).map((row) => row.id),
+        );
+        const items = rows.slice(0, limit).map((row) => present(row, byUser.get(row.id)));
         const last = items.at(-1);
         return {
           items,

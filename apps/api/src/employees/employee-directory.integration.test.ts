@@ -324,6 +324,88 @@ test(
               assert.deepEqual(await ids(sessionA, { branchId: B }), []);
             });
 
+            await context.test(
+              'Vietnamese search: partial, any case, with or without accents',
+              async () => {
+                const thu = await principal('EMPLOYEE', [A], 'Trần Hoàng Anh Thư');
+                const other = await principal('EMPLOYEE', [A], 'Nguyễn Trần Anh');
+                const code = await codeOf(thu);
+                const found = async (q: string) =>
+                  (await directory.list(sessionGlobal, { q, limit: '100' })).items.map(
+                    (row) => row.id,
+                  );
+                for (const q of [
+                  'trần h',
+                  'TRẦN H',
+                  'tran h',
+                  'Trần Hoàng',
+                  'tran hoang anh',
+                  'anh thư',
+                  'thu',
+                  code,
+                  code.toLowerCase(),
+                ]) {
+                  assert.ok((await found(q)).includes(thu), `"${q}" finds the employee`);
+                }
+                assert.ok(
+                  !(await found('trần h')).includes(other),
+                  'word-prefix terms, not stray letters',
+                );
+                assert.ok(
+                  (await found('ần hoàng')).includes(thu),
+                  'a mid-word phrase still matches',
+                );
+                assert.deepEqual(await found('%'), [], 'metacharacters are literal');
+                // Scope is still applied after the search: viewer A cannot see other branches' staff.
+                assert.ok(
+                  (await directory.list(sessionA, { q: 'trần h' })).items.every(
+                    (row) => row.id !== multi,
+                  ),
+                );
+              },
+            );
+
+            await context.test(
+              'management level is separate from the title and follows visibility',
+              async () => {
+                const boss = await principal('EMPLOYEE', [A], 'Chief Person');
+                await tx.organizationAssignment.create({
+                  data: {
+                    employeeUserId: boss,
+                    level: 'STORE_MANAGER',
+                    scopeKind: 'BRANCH',
+                    branchId: A,
+                    assignedByUserId: viewerGlobal,
+                  },
+                });
+                const entryOf = async (session: string, id: string) =>
+                  (await directory.list(session, { q: await codeOf(id) })).items.find(
+                    (row) => row.id === id,
+                  );
+                // A caller without VIEW_ORGANIZATION sees the employment title only.
+                const plain = await entryOf(sessionGlobal, boss);
+                assert.ok(plain);
+                assert.equal(
+                  'organizationAppointments' in plain,
+                  false,
+                  'nothing is shown without visibility',
+                );
+                // With VIEW_ORGANIZATION the active appointment is shown next to, not instead of, the title.
+                const auditor = await principal('EMPLOYEE', [], 'Org Viewer');
+                await grantRole(auditor, ['VIEW_EMPLOYEES', 'VIEW_ORGANIZATION']);
+                const seen = await entryOf(await login(auditor), boss);
+                assert.deepEqual(
+                  seen?.organizationAppointments?.map((row) => [row.level, row.scope.kind]),
+                  [['STORE_MANAGER', 'BRANCH']],
+                );
+                assert.equal(seen?.title, plain.title, 'the employment title is untouched');
+                // No appointment, no management information.
+                const none = await entryOf(await login(auditor), worker);
+                assert.ok(none);
+                assert.equal('organizationAppointments' in none, false);
+              },
+            );
+
             await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
             throw rollback;
           },

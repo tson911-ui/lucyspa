@@ -467,6 +467,11 @@ export interface EmployeeResponse {
   /** Optimistic-concurrency version; send it back as `expectedVersion`. */
   version: number;
   baseSalaryVnd?: string | null;
+  /**
+   * Object read only (GET /employees/:id): active Organization Appointments the caller may
+   * see, the same data and authorization as the directory. Omitted when there are none.
+   */
+  organizationAppointments?: EmployeeDirectoryAppointment[];
 }
 
 /**
@@ -500,6 +505,21 @@ export interface EmployeeDirectoryEntry {
   classificationEffectiveDate: string | null;
   /** Authoritative display title today. */
   title: WorkforceTitle;
+  /**
+   * Active Organization Appointments visible to the caller (VIEW_ORGANIZATION or
+   * MANAGE_ORG_ASSIGNMENTS at the appointment scope). Separate from `title`, which is the
+   * employment title and is never replaced. Omitted when the employee has none the caller may
+   * see; one entry per appointment, so several scopes are all kept.
+   */
+  organizationAppointments?: EmployeeDirectoryAppointment[];
+}
+
+export interface EmployeeDirectoryAppointment {
+  id: string;
+  level: OrganizationLevel;
+  scope: AuthorizationScope;
+  teamId: string | null;
+  teamName: string | null;
 }
 
 /**
