@@ -1,4 +1,5 @@
 /** Public, transport-only contracts. No ORM, Node runtime or domain implementation exports. */
+import type { NotificationEntityType, NotificationType } from './notification-registry.js';
 export type OrganizationLevel =
   | 'CEO'
   | 'REGIONAL_MANAGER'
@@ -1968,22 +1969,13 @@ export interface ReassignServicesResponse {
   lines: ReassignmentLine[];
 }
 // Phase 3 in-app inbox. No event payload, recipient identity or free-text audit notes are exposed.
-export type NotificationType =
-  | 'BOOKING_CREATED'
-  | 'BOOKING_CANCELLED'
-  | 'LATE_CANCELLATION'
-  | 'BOOKING_NO_SHOW'
-  | 'CUSTOMER_ARRIVED'
-  | 'BOOKING_KTV_CONFLICT'
-  | 'KTV_REASSIGNED'
-  | 'START_OVERDUE'
-  | 'PRE_END'
-  | 'END_OVERDUE';
+export * from './notification-registry.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;
-  branch: { id: string; name: string; timezone: string };
-  source: { type: 'Booking' | 'Visit'; id: string; code: string };
+  /** Null for a notification about a person rather than a place (leave requests). */
+  branch: { id: string; name: string; timezone: string } | null;
+  source: { type: NotificationEntityType; id: string; code: string };
   actionAt: string;
   createdAt: string;
   readAt: string | null;

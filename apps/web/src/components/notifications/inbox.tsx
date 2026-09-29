@@ -84,12 +84,13 @@ export function NotificationCard({
 }) {
   const t = getNotificationDictionary(locale);
   const timestamp = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
-    timeZone: item.branch.timezone,
+    // A person-level notification (leave) has no branch; use the viewer's own time zone.
+    ...(item.branch ? { timeZone: item.branch.timezone } : {}),
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(item.actionAt));
   return (
-    <Section title={`${item.source.code} · ${item.branch.name}`}>
+    <Section title={item.branch ? `${item.source.code} · ${item.branch.name}` : item.source.code}>
       <Badge tone={item.readAt ? 'neutral' : 'info'}>{item.readAt ? t.read : t.unread}</Badge>
       <p>{t.types[item.type]}</p>
       <p className="wf-small">

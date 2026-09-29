@@ -27,6 +27,8 @@ const vi = {
     START_OVERDUE: 'Dịch vụ đã quá giờ bắt đầu và chưa START. Vui lòng kiểm tra.',
     PRE_END: 'Dịch vụ sắp đến giờ kết thúc dự kiến. Vui lòng theo dõi.',
     END_OVERDUE: 'Dịch vụ đã quá giờ kết thúc dự kiến và chưa END. KTV vẫn đang bận.',
+    LEAVE_REQUESTED: 'Có đơn xin nghỉ cần bạn xử lý.',
+    LEAVE_DECIDED: 'Đơn xin nghỉ của bạn đã có quyết định.',
   } satisfies Record<NotificationType, string>,
 };
 type Dictionary = {
@@ -59,6 +61,8 @@ const en: Dictionary = {
     START_OVERDUE: 'The service is overdue to START. Please check the assigned work.',
     PRE_END: 'The service is approaching its expected end. Please check progress.',
     END_OVERDUE: 'The expected end has passed without END. The staff member remains busy.',
+    LEAVE_REQUESTED: 'A leave request needs your attention.',
+    LEAVE_DECIDED: 'Your leave request has been decided.',
   },
 };
 export function getNotificationDictionary(locale: Locale): Dictionary {

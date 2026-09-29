@@ -68,8 +68,8 @@ model Notification {
   id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   recipientUserId String    @map("recipient_user_id") @db.Uuid
   recipient       User      @relation(fields: [recipientUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  branchId        String    @map("branch_id") @db.Uuid
-  branch          Branch    @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId        String?   @map("branch_id") @db.Uuid
+  branch          Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   sourceEventId   String    @map("source_event_id") @db.Uuid
   sourceEvent     OutboxEvent @relation(fields: [sourceEventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   type            String
@@ -79,6 +79,9 @@ model Notification {
   actionAt        DateTime  @map("action_at") @db.Timestamptz(3)
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   readAt          DateTime? @map("read_at") @db.Timestamptz(3)
+  /// Structured ids/dates/enums only (validated by parseNotificationParams); never free text.
+  params          Json?     @db.JsonB
+  archivedAt      DateTime? @map("archived_at") @db.Timestamptz(3)
 
   @@unique([sourceEventId, recipientUserId], map: "notifications_event_recipient_key")
   @@index([recipientUserId, createdAt(sort: Desc), id(sort: Desc)], map: "notifications_inbox_idx")

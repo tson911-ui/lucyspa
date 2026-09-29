@@ -1,4 +1,9 @@
-import type { NotificationItem, NotificationPage, NotificationType } from '@lucy-spa/contracts';
+import type {
+  NotificationEntityType,
+  NotificationItem,
+  NotificationPage,
+  NotificationType,
+} from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
 import { Inject, Injectable } from '@nestjs/common';
 import { AuthError } from '../auth/auth.error.js';
@@ -12,7 +17,7 @@ function item(row: Prisma.NotificationGetPayload<{ include: typeof include }>): 
     type: row.type as NotificationType,
     branch: row.branch,
     source: {
-      type: row.entityType as 'Booking' | 'Visit',
+      type: row.entityType as NotificationEntityType,
       id: row.entityId,
       code: row.contextCode,
     },
