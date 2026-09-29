@@ -23,20 +23,30 @@ function appointmentsAt(graph: AuthorityGraph, target: Scope): readonly Organiza
   );
 }
 
-/** Position is an additional restriction, never a permission grant. Owner is outside this hierarchy. */
-export function canSupervise(
+/** Rank reported for the Owner, above every appointment level (the Owner is outside the hierarchy). */
+export const OWNER_SUPERVISION_RANK = ORGANIZATION_RANK.CEO + 1;
+
+/**
+ * How high the actor stands over the target: `null` when the actor may not supervise the target,
+ * otherwise the rank of the actor's supervising appointment. With several locations (a
+ * multi-branch target) the actor must supervise every one, and the reported rank is the LOWEST
+ * per-location rank, i.e. the level at which the actor covers the whole target. A Team Leader only
+ * counts for members of their own team. Position is an additional restriction, never a grant.
+ */
+export function supervisionRank(
   actor: AuthorityGraph,
   target: AuthorityGraph,
   branchIds?: readonly string[],
-): boolean {
-  if (target.kind !== 'EMPLOYEE') return false;
-  if (actor.kind === 'OWNER') return true;
-  if (actor.kind !== 'EMPLOYEE' || actor.userId === target.userId) return false;
+): number | null {
+  if (target.kind !== 'EMPLOYEE') return null;
+  if (actor.kind === 'OWNER') return OWNER_SUPERVISION_RANK;
+  if (actor.kind !== 'EMPLOYEE' || actor.userId === target.userId) return null;
   const branches = branchIds ?? [...target.activeBranchIds];
   const locations: Scope[] = branches.length
     ? [...new Set(branches)].map((branchId) => ({ kind: 'BRANCH', branchId }))
     : [{ kind: 'GLOBAL' }];
-  return locations.every((location) => {
+  let lowest = Number.POSITIVE_INFINITY;
+  for (const location of locations) {
     const targetRank = Math.max(
       0,
       ...(target.appointments ?? [])
@@ -46,7 +56,7 @@ export function canSupervise(
         )
         .map((appointment) => ORGANIZATION_RANK[appointment.level]),
     );
-    return appointmentsAt(actor, location).some((appointment) => {
+    const supervising = appointmentsAt(actor, location).filter((appointment) => {
       if (ORGANIZATION_RANK[appointment.level] <= targetRank) return false;
       if (appointment.level !== 'TEAM_LEADER') return true;
       return (
@@ -59,7 +69,22 @@ export function canSupervise(
         ) === true
       );
     });
-  });
+    if (supervising.length === 0) return null;
+    lowest = Math.min(
+      lowest,
+      Math.max(...supervising.map((appointment) => ORGANIZATION_RANK[appointment.level])),
+    );
+  }
+  return lowest;
+}
+
+/** Position is an additional restriction, never a permission grant. Owner is outside this hierarchy. */
+export function canSupervise(
+  actor: AuthorityGraph,
+  target: AuthorityGraph,
+  branchIds?: readonly string[],
+): boolean {
+  return supervisionRank(actor, target, branchIds) !== null;
 }
 
 /** Team creation uses null teamId and requires Deputy level or above. */

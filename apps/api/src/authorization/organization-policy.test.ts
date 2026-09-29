@@ -6,6 +6,8 @@ import {
   canAppoint,
   canManageTeam,
   canSupervise,
+  OWNER_SUPERVISION_RANK,
+  supervisionRank,
   supervisorWhere,
   type AuthorityGraph,
   type OrganizationLevel,
@@ -199,4 +201,43 @@ test('administering a structure inside a container is not the same as appointing
   const ceo = person('ceo', [{ level: 'CEO', scope: { kind: 'GLOBAL' } }]);
   assert.equal(canAdministerBelow(ceo, 'REGIONAL_MANAGER', { kind: 'GLOBAL' }), true);
   assert.equal(canAdministerBelow({ ...person('c'), kind: 'CUSTOMER' }, 'TEAM_LEADER', b1), false);
+});
+
+test('supervisionRank reports the level at which an actor covers the whole target', () => {
+  const region: Scope = { kind: 'REGION', regionId: 'r1' };
+  const tl = person('tl', [{ level: 'TEAM_LEADER', scope: b1, teamId: 't1' }]);
+  const deputy = person('deputy', [{ level: 'DEPUTY_STORE_MANAGER', scope: b1 }]);
+  const store = person('store', [{ level: 'STORE_MANAGER', scope: b1 }]);
+  const regional = person('regional', [{ level: 'REGIONAL_MANAGER', scope: region }]);
+  const ceo = person('ceo', [{ level: 'CEO', scope: { kind: 'GLOBAL' } }]);
+  const member = person('member', [], [{ teamId: 't1', branchId: 'b1' }]);
+  const stranger = person('stranger');
+  assert.equal(supervisionRank(tl, member), 1);
+  assert.equal(supervisionRank(tl, stranger), null, 'a Team Leader only reaches their own team');
+  assert.equal(supervisionRank(deputy, stranger), 2);
+  assert.equal(supervisionRank(store, stranger), 3);
+  assert.equal(supervisionRank(regional, stranger), 5);
+  assert.equal(supervisionRank(ceo, stranger), 6);
+  assert.equal(supervisionRank(owner, stranger), OWNER_SUPERVISION_RANK);
+  assert.ok(OWNER_SUPERVISION_RANK > 6);
+  // A multi-branch target needs every branch covered; the rank is the lowest per-branch rank.
+  const twoBranches = person('two', [], [], ['b1', 'b2']);
+  assert.equal(supervisionRank(store, twoBranches), null);
+  assert.equal(supervisionRank(regional, person('two', [], [], ['b1'])), 5);
+  const both = person('both', [
+    { level: 'STORE_MANAGER', scope: b1 },
+    { level: 'DEPUTY_STORE_MANAGER', scope: { kind: 'BRANCH', branchId: 'b2' } },
+  ]);
+  assert.equal(supervisionRank(both, twoBranches), 2, 'lowest of the per-branch levels');
+  // Peers, superiors, self, non-employees: no rank.
+  assert.equal(supervisionRank(deputy, deputy), null);
+  assert.equal(supervisionRank(deputy, store), null);
+  assert.equal(supervisionRank(deputy, owner), null);
+  assert.equal(supervisionRank({ ...person('c'), kind: 'CUSTOMER' }, stranger), null);
+  // canSupervise is exactly "has a rank".
+  for (const actor of [tl, deputy, store, regional, ceo, owner, stranger, both]) {
+    for (const target of [member, stranger, twoBranches, store, owner]) {
+      assert.equal(canSupervise(actor, target), supervisionRank(actor, target) !== null);
+    }
+  }
 });

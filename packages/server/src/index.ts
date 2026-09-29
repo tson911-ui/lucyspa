@@ -72,6 +72,8 @@ export { loadAuthorityGraph, storedScope } from './authorization.store.js';
 export {
   ORGANIZATION_RANK,
   canSupervise,
+  supervisionRank,
+  OWNER_SUPERVISION_RANK,
   canManageTeam,
   canAppoint,
   canAdministerBelow,
@@ -81,3 +83,8 @@ export {
   attendanceExemptEmployeeIds,
 } from './organization.js';
 export { redisConnectionOptions, SYSTEM_CHECK_QUEUE, QUEUE_PREFIX } from './redis.js';
+export {
+  resolveSupervisorRecipients,
+  type SupervisorRouting,
+  type SupervisorRoutingInput,
+} from './notification-routing.js';
