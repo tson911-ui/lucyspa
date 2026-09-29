@@ -6,15 +6,12 @@ import type {
   WalkInVisitResponse,
 } from '@lucy-spa/contracts';
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  loadAvailabilityFacts,
-  qualifiedEmployeesByService,
-} from '../availability/availability.engine.js';
 import { AuthError } from '../auth/auth.error.js';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { SessionService } from '../auth/session.service.js';
 import { runAdminCommand, type AdminContext } from '../authorization/admin-command.js';
 import { decide } from '../authorization/authorization.js';
+import { loadServiceOptions } from './service-options.js';
 import {
   assignWaitingSequence,
   cancelWaitingWalkIn,
@@ -61,67 +58,7 @@ export class WalkInService {
     const id = this.branch(branchId);
     return this.run(token, undefined, async ({ tx, actor, now }) => {
       this.check(actor.graph, id);
-      const branch = await tx.branch.findFirst({
-        where: { id, isActive: true },
-        select: { id: true, name: true, timezone: true },
-      });
-      if (!branch) throw new AuthError('NOT_FOUND');
-      const services = await tx.service.findMany({
-        where: { isActive: true, branches: { some: { branchId: id, isActive: true } } },
-        orderBy: [{ nameVi: 'asc' }, { id: 'asc' }],
-        select: {
-          id: true,
-          nameVi: true,
-          nameEn: true,
-          durationMinutes: true,
-          priceVnd: true,
-          priceMaxVnd: true,
-          pricingUnit: true,
-        },
-      });
-      if (services.length === 0) return { branch, services: [] };
-      const [day] = await tx.$queryRaw<{ day: string }[]>`
-        SELECT to_char(${now}::timestamptz AT TIME ZONE ${branch.timezone}, 'YYYY-MM-DD') AS day`;
-      const facts = await loadAvailabilityFacts(tx, {
-        branchId: id,
-        serviceDate: day!.day,
-        serviceIds: services.map((service) => service.id),
-        context: 'OPERATIONAL',
-        now,
-      });
-      const qualified = qualifiedEmployeesByService(facts);
-      const checkedIn = new Map(
-        facts.employees.map((employee) => [employee.userId, employee.checkedIn]),
-      );
-      const names = new Map(
-        (
-          await tx.user.findMany({
-            where: { id: { in: [...new Set(qualified.flat())] } },
-            select: { id: true, fullName: true },
-          })
-        ).map((row) => [row.id, row.fullName]),
-      );
-      return {
-        branch,
-        services: services.map((service, index) => ({
-          id: service.id,
-          nameVi: service.nameVi,
-          nameEn: service.nameEn,
-          durationMinutes: service.durationMinutes,
-          priceMinVnd: service.priceVnd.toString(),
-          priceMaxVnd: service.priceMaxVnd.toString(),
-          pricingUnit: service.pricingUnit,
-          employees: (qualified[index] ?? [])
-            .map((employeeId) => ({
-              id: employeeId,
-              displayName: names.get(employeeId) ?? '',
-              checkedIn: checkedIn.get(employeeId) ?? false,
-            }))
-            .sort(
-              (a, b) => a.displayName.localeCompare(b.displayName, 'vi') || (a.id < b.id ? -1 : 1),
-            ),
-        })),
-      };
+      return loadServiceOptions(tx, id, now);
     });
   }
 

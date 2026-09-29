@@ -1778,7 +1778,11 @@ export interface OperationalActiveVisit {
   status: 'OPEN' | 'IN_SERVICE';
   origin: 'BOOKING' | 'WALK_IN';
   arrivedAt: string;
+  /** Who receives services in this visit (the target of a staff-added service). */
+  participants: { id: string; name: string | null }[];
   lines: OperationalActiveVisitLine[];
+  /** Phase 4 Step 3: MANAGE_BOOKINGS at the branch (the command re-authorizes). */
+  actions: { addService: boolean };
 }
 
 export interface OperationalActiveVisitLine {
@@ -1948,7 +1952,13 @@ export interface ServiceExecutionWork {
     endedAt: string | null;
     endKind: 'NORMAL' | 'MANAGER_RESOLVED' | null;
   } | null;
-  actions: { start: boolean; end: boolean; startBlockedBy: ServiceStartBlock | null };
+  actions: {
+    start: boolean;
+    end: boolean;
+    startBlockedBy: ServiceStartBlock | null;
+    /** Phase 4 Step 3: the performer may order another catalog service on behalf of the customer. */
+    addService: boolean;
+  };
 }
 
 export interface MyServiceWorkResponse {
@@ -1995,6 +2005,36 @@ export interface CancelledServiceLineResponse {
   visitCode: string;
   /** The visit after the cancellation: it may complete or (when nothing was performed) be cancelled. */
   visitStatus: 'OPEN' | 'IN_SERVICE' | 'COMPLETED' | 'CANCELLED';
+}
+
+/**
+ * POST /api/v1/operations/visits/:id/lines (Phase 4 Step 3, staff-added service). Only a catalog
+ * service id: the request has no name, price, quantity or time. `requestedEmployeeUserId` is the
+ * optional SPECIFIC-KTV intent (omitted or null = any qualified KTV). `idempotencyKey` is a client
+ * UUID, unique per actor, so a replay returns the same line.
+ */
+export interface AddServiceLineRequest {
+  participantId: string;
+  serviceId: string;
+  requestedEmployeeUserId?: string | null;
+  idempotencyKey: string;
+}
+
+export interface AddedServiceLineResponse {
+  lineId: string;
+  visitId: string;
+  visitCode: string;
+  participantId: string;
+  sequence: number;
+  /** PLANNED with a real KTV and time, or WAITING (see `waitReason`) until the existing assignment flow places it. */
+  status: 'WAITING' | 'PLANNED';
+  assignmentMode: 'SPECIFIC' | 'ANY';
+  employee: { id: string; displayName: string } | null;
+  plannedStartAt: string | null;
+  plannedEndAt: string | null;
+  waitReason: WalkInWaitReason | null;
+  /** True when the same actor and key already created this line. */
+  replayed: boolean;
 }
 // Phase 3 Step 8: explicit reassignment of existing assigned, unstarted work.
 export type ReassignmentLineKind = 'BOOKING' | 'VISIT';

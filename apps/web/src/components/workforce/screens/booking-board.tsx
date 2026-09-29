@@ -28,6 +28,7 @@ import {
   type ResolveEndMode,
 } from '../../../lib/workforce/visit-completion';
 import { waitReasonText, walkInCancelBody } from '../../../lib/workforce/walk-in';
+import { AddServiceForm } from './add-service';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import { Badge, Empty, Field, Loading, Notice, PageHeader, Section, SubmitButton } from '../ui';
@@ -442,6 +443,7 @@ export function BookingBoardScreen() {
               setReason(''),
               setMessage(null)
             )}
+            onAdded={(text) => (setMessage({ tone: 'success', text }), void load(false))}
           />
         ) : null}
       </Section>
@@ -484,13 +486,16 @@ function ActiveVisits({
   time,
   onResolve,
   onCancelLine,
+  onAdded,
 }: {
   visits: OperationalActiveVisit[];
   time: (iso: string) => string;
   onResolve: (visit: OperationalActiveVisit, line: OperationalActiveVisitLine) => void;
   onCancelLine: (visit: OperationalActiveVisit, line: OperationalActiveVisitLine) => void;
+  onAdded: (text: string) => void;
 }) {
   const { t, locale } = useWorkforce();
+  const [adding, setAdding] = useState<string | null>(null);
   return (
     <div className="wf-cards">
       {visits.map((visit) => (
@@ -542,6 +547,23 @@ function ActiveVisits({
               </li>
             ))}
           </ul>
+          {visit.actions.addService && adding !== visit.id ? (
+            <button type="button" className="wf-button" onClick={() => setAdding(visit.id)}>
+              {t.bookingBoard.addService}
+            </button>
+          ) : null}
+          {adding === visit.id ? (
+            <AddServiceForm
+              visitId={visit.id}
+              visitCode={visit.code}
+              participants={visit.participants}
+              onCancel={() => setAdding(null)}
+              onAdded={(text) => {
+                setAdding(null);
+                onAdded(text);
+              }}
+            />
+          ) : null}
         </article>
       ))}
     </div>

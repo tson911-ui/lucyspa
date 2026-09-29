@@ -3,10 +3,13 @@ import { AuthError } from '../auth/auth.error.js';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { SessionService } from '../auth/session.service.js';
 import type {
+  AddServiceLineRequest,
+  AddedServiceLineResponse,
   CancelServiceLineRequest,
   CancelledServiceLineResponse,
   ResolveServiceExecutionRequest,
   ResolvedServiceExecutionResponse,
+  WalkInOptionsResponse,
 } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
 import { runAdminCommand, type AdminContext } from '../authorization/admin-command.js';
@@ -14,6 +17,7 @@ import { decide } from '../authorization/authorization.js';
 import { sqlStateOf } from '../booking/customer-command.js';
 import { endService, myServiceWork, serviceWork, startService } from './service-execution.core.js';
 import { cancelServiceLine, resolveServiceExecution } from './visit-completion.core.js';
+import { addServiceOptions, addVisitServiceLine } from './visit-service-add.core.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -69,6 +73,46 @@ export class ServiceExecutionService {
         ),
       lineUsers(lineId),
     );
+  }
+
+  /**
+   * Phase 4 Step 3: add one catalog service to an open visit. `MANAGE_BOOKINGS` at the visit's
+   * branch, or `PERFORM_SERVICES` for a performer serving that visit (see the core). The id in the
+   * path is the VISIT id; the branch always comes from the record.
+   */
+  async addLine(
+    token: string | undefined,
+    visitId: string,
+    body: AddServiceLineRequest,
+    requestId?: string,
+  ): Promise<AddedServiceLineResponse> {
+    const uuid = (value: unknown, field: string) => {
+      if (typeof value !== 'string' || !UUID.test(value)) {
+        throw new AuthError('VALIDATION_FAILED', field);
+      }
+      return value.toLowerCase();
+    };
+    const participantId = uuid(body.participantId, 'participantId');
+    const serviceId = uuid(body.serviceId, 'serviceId');
+    const idempotencyKey = uuid(body.idempotencyKey, 'idempotencyKey');
+    const requested = body.requestedEmployeeUserId;
+    const requestedEmployeeUserId =
+      requested === undefined || requested === null
+        ? null
+        : uuid(requested, 'requestedEmployeeUserId');
+    return await this.run(token, visitId, requestId, (context, id) =>
+      addVisitServiceLine(context, id, {
+        participantId,
+        serviceId,
+        requestedEmployeeUserId,
+        idempotencyKey,
+      }),
+    );
+  }
+
+  /** Phase 4 Step 3: the services (and, for a desk actor, qualified KTVs) that can be added to a visit. */
+  addOptions(token: string | undefined, visitId: string): Promise<WalkInOptionsResponse> {
+    return this.run(token, visitId, undefined, (context, id) => addServiceOptions(context, id));
   }
 
   /** Phase 4 Step 2: cancel one unperformed line. Needs MANAGE_BOOKINGS at the visit's branch. */

@@ -758,7 +758,27 @@ const vi = {
     lineCancelled: 'Đã hủy dịch vụ chưa làm.',
     visitClosed: 'Lượt khách đã hoàn tất.',
     visitCancelled: 'Lượt khách đã được hủy vì không còn dịch vụ nào được thực hiện.',
+    addService: 'Thêm dịch vụ',
+    addServiceIntro:
+      'Thêm một dịch vụ có trong danh mục vào lượt {code} theo yêu cầu của khách. Không thể nhập tên hoặc giá tùy ý.',
+    addParticipant: 'Khách nhận dịch vụ',
+    addServiceField: 'Dịch vụ',
+    addStaff: 'Nhân viên',
+    addStaffAny: 'Nhân viên bất kỳ',
+    addStaffMe: 'Tôi',
+    addPrice: 'Khung giá tham khảo: {range}',
+    addLoading: 'Đang tải danh mục dịch vụ…',
+    addNoServices: 'Chi nhánh chưa có dịch vụ nào để thêm.',
+    addSubmit: 'Thêm vào lượt khách',
+    addWorking: 'Đang thêm…',
+    lineAdded: 'Đã thêm dịch vụ vào lượt khách.',
+    lineAddedPlanned: 'Đã thêm dịch vụ và xếp {staff} lúc {time}.',
+    lineAddedWaiting: 'Đã thêm dịch vụ; chưa có nhân viên phù hợp nên dịch vụ đang chờ được xếp.',
     errors: {
+      VISIT_LINE_ADD_NOT_ALLOWED:
+        'Không thể thêm dịch vụ: lượt khách đã kết thúc hoặc đã đủ số dịch vụ tối đa.',
+      BOOKING_SERVICE_UNAVAILABLE: 'Dịch vụ này hiện không còn được cung cấp tại chi nhánh.',
+      CONFLICT: 'Yêu cầu này trùng với một yêu cầu trước đó. Hãy tải lại.',
       SERVICE_RESOLUTION_NOT_ALLOWED:
         'Không thể kết thúc ngoại lệ: dịch vụ đã được kết thúc hoặc chưa bắt đầu. Hãy tải lại.',
       SERVICE_LINE_CANCEL_NOT_ALLOWED:
@@ -1886,7 +1906,28 @@ const en: Dictionary = {
     lineCancelled: 'The unperformed service was cancelled.',
     visitClosed: 'The visit is now complete.',
     visitCancelled: 'The visit was cancelled because no service was performed.',
+    addService: 'Add service',
+    addServiceIntro:
+      "Add a catalog service to visit {code} at the customer's request. Names and prices cannot be typed in.",
+    addParticipant: 'Customer receiving the service',
+    addServiceField: 'Service',
+    addStaff: 'Staff',
+    addStaffAny: 'Any qualified staff',
+    addStaffMe: 'Me',
+    addPrice: 'Reference price range: {range}',
+    addLoading: 'Loading the service catalog…',
+    addNoServices: 'This branch has no service to add.',
+    addSubmit: 'Add to the visit',
+    addWorking: 'Adding…',
+    lineAdded: 'The service was added to the visit.',
+    lineAddedPlanned: 'The service was added and {staff} was scheduled at {time}.',
+    lineAddedWaiting:
+      'The service was added; no suitable staff is free yet, so it is waiting to be assigned.',
     errors: {
+      VISIT_LINE_ADD_NOT_ALLOWED:
+        'Cannot add a service: the visit is finished or already has the maximum number of services.',
+      BOOKING_SERVICE_UNAVAILABLE: 'This service is no longer offered at this branch.',
+      CONFLICT: 'This request duplicates an earlier one. Refresh.',
       SERVICE_RESOLUTION_NOT_ALLOWED:
         'Cannot end by exception: the service was already ended or never started. Refresh.',
       SERVICE_LINE_CANCEL_NOT_ALLOWED:

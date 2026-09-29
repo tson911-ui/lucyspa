@@ -376,6 +376,7 @@ model User {
   cancelledVisitLines          VisitServiceLine[]               @relation("VisitLineCancelledBy")
   endedServiceExecutions       ServiceExecution[]               @relation("ExecutionEndedBy")
   assignmentChanges            ServiceLineAssignmentChange[]    @relation("AssignmentActor")
+  visitLineAddRequests         VisitLineAddRequest[]
   updatedSettings              AppSetting[]
   grantedOrganizationAssignments OrganizationAssignment[] @relation("OrganizationAssignmentGrantor")
   grantedTeamMemberships       TeamMembership[] @relation("TeamMembershipGrantor")
@@ -1238,6 +1239,7 @@ model VisitServiceLine {
   execution               ServiceExecution?
   warningSchedules        ServiceWarningSchedule[]
   assignmentChanges       ServiceLineAssignmentChange[]
+  addRequest              VisitLineAddRequest?
 
   @@unique([participantId, sequence], map: "visit_service_lines_participant_sequence_key")
   @@index([visitId, participantId], map: "visit_service_lines_visit_idx")
@@ -1274,6 +1276,21 @@ model ServiceExecution {
   @@index([employeeUserId, status], map: "service_executions_employee_idx")
   @@index([endedByUserId], map: "service_executions_ended_by_idx")
   @@map("service_executions")
+}
+
+// Phase 4 Step 3: replay protection of "add a service to a visit" (client UUID key, unique per actor).
+// Append-only; the created line is the stored outcome of the key.
+model VisitLineAddRequest {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorUserId        String           @map("actor_user_id") @db.Uuid
+  actor              User             @relation(fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  idempotencyKey     String           @map("idempotency_key") @db.Uuid
+  visitServiceLineId String           @unique(map: "visit_line_add_requests_line_key") @map("visit_service_line_id") @db.Uuid
+  visitServiceLine   VisitServiceLine @relation(fields: [visitServiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([actorUserId, idempotencyKey], map: "visit_line_add_requests_actor_key")
+  @@map("visit_line_add_requests")
 }
 
 // Append-only KTV reassignment history (design section 10).

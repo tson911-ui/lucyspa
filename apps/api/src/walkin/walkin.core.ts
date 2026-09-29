@@ -196,7 +196,7 @@ async function branchToday(tx: Prisma.TransactionClient, branchId: string, now: 
   return row ?? null;
 }
 
-async function requireRequestedEmployee(
+export async function requireRequestedEmployee(
   tx: Prisma.TransactionClient,
   employeeUserId: string,
   branchId: string,

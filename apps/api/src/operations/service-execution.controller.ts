@@ -1,14 +1,17 @@
 import type {
+  AddServiceLineRequest,
+  AddedServiceLineResponse,
   CancelServiceLineRequest,
   CancelledServiceLineResponse,
   MyServiceWorkResponse,
   ResolveServiceExecutionRequest,
   ResolvedServiceExecutionResponse,
   ServiceExecutionWork,
+  WalkInOptionsResponse,
 } from '@lucy-spa/contracts';
 import { Body, Controller, Get, HttpCode, Inject, Param, Post, Req, Res } from '@nestjs/common';
 import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, ValidateIf } from 'class-validator';
 import type { Request, Response } from 'express';
 import { sessionCookie } from '../auth/cookies.js';
 import { requireEmptyObject } from '../auth/session-auth.controller.js';
@@ -22,6 +25,19 @@ class ResolveEndDto implements ResolveServiceExecutionRequest {
 
 class CancelLineDto implements CancelServiceLineRequest {
   @ApiProperty() @IsString() @MaxLength(2_048) reason!: string;
+}
+
+/** Only ids: no service name, price, quantity or time can be supplied (unknown fields are rejected). */
+class AddServiceLineDto implements AddServiceLineRequest {
+  @ApiProperty() @IsString() @MaxLength(64) participantId!: string;
+  @ApiProperty() @IsString() @MaxLength(64) serviceId!: string;
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(64)
+  requestedEmployeeUserId?: string | null;
+  @ApiProperty() @IsString() @MaxLength(64) idempotencyKey!: string;
 }
 
 @Controller('api/v1/operations')
@@ -87,6 +103,30 @@ export class ServiceExecutionController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<ResolvedServiceExecutionResponse> {
     return this.executions.resolve(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Get('visits/:id/add-service-options')
+  @ApiOkResponse({
+    description:
+      'Services that can be added to this open visit (MANAGE_BOOKINGS, or PERFORM_SERVICES for a performer serving it).',
+  })
+  addOptions(@Param('id') id: string, @Req() request: Request): Promise<WalkInOptionsResponse> {
+    return this.executions.addOptions(this.session(request), id);
+  }
+
+  @Post('visits/:id/lines')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Add one catalog service to an open visit on behalf of the customer; a repeat of the same key returns the same line.',
+  })
+  addLine(
+    @Param('id') id: string,
+    @Body() body: AddServiceLineDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<AddedServiceLineResponse> {
+    return this.executions.addLine(this.session(request), id, body, this.requestId(response));
   }
 
   @Post('service-lines/:id/cancel')

@@ -453,6 +453,10 @@ async function computeActiveVisits(
       status: true,
       origin: true,
       arrivedAt: true,
+      participants: {
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        select: { id: true, displayName: true, customer: { select: { fullName: true } } },
+      },
       lines: {
         orderBy: [{ participantId: 'asc' }, { sequence: 'asc' }],
         select: {
@@ -476,6 +480,12 @@ async function computeActiveVisits(
     status: visit.status as 'OPEN' | 'IN_SERVICE',
     origin: visit.origin,
     arrivedAt: visit.arrivedAt.toISOString(),
+    participants: visit.participants.map((participant) => ({
+      id: participant.id,
+      name: participant.displayName ?? participant.customer?.fullName ?? null,
+    })),
+    // Adding a service on behalf of the customer is a desk action (MANAGE_BOOKINGS); the command re-authorizes.
+    actions: { addService: input.canCancelLine },
     lines: visit.lines.map((line) => {
       const running = line.execution?.status === 'IN_PROGRESS' ? line.execution : null;
       return {

@@ -29,7 +29,7 @@ async function branchDay(tx: Prisma.TransactionClient, branchId: string, now: Da
 }
 
 /** Account access alone is insufficient, including a GLOBAL permission grant. */
-async function requirePerformer(context: AdminContext, branchId: string) {
+export async function requirePerformer(context: AdminContext, branchId: string) {
   const { tx, actor, now } = context;
   if (!decide(actor.graph, 'PERFORM_SERVICES', { kind: 'BRANCH', branchId })) {
     throw new AuthError('FORBIDDEN');
@@ -153,6 +153,10 @@ async function present(context: AdminContext, line: WorkLine): Promise<ServiceEx
       start: blocked === null,
       end: line.status === 'IN_PROGRESS' && execution?.status === 'IN_PROGRESS',
       startBlockedBy: blocked,
+      // Phase 4 Step 3: the performer serving this visit may add a catalog service to it.
+      addService:
+        (line.visit.status === 'OPEN' || line.visit.status === 'IN_SERVICE') &&
+        line.status !== 'CANCELLED',
     },
   };
 }

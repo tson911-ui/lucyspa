@@ -9,6 +9,7 @@ import {
   executionBranches,
   executionErrorMessage,
 } from '../../../lib/workforce/service-execution';
+import { AddServiceForm } from './add-service';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import { Badge, Empty, Field, Loading, Notice, PageHeader, Section } from '../ui';
@@ -26,6 +27,7 @@ export function MyServicesScreen() {
   const [error, setError] = useState<unknown>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
+  const [adding, setAdding] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const generation = useRef(0);
   const mutating = useRef(false);
@@ -216,6 +218,24 @@ export function MyServicesScreen() {
                       ? t.execution.start
                       : t.execution.end}
                 </button>
+              ) : null}
+              {line.actions.addService && adding !== line.lineId ? (
+                <button type="button" className="wf-button" onClick={() => setAdding(line.lineId)}>
+                  {t.bookingBoard.addService}
+                </button>
+              ) : null}
+              {adding === line.lineId ? (
+                <AddServiceForm
+                  visitId={line.visitId}
+                  visitCode={line.visitCode}
+                  participants={[{ id: line.participantId, name: line.participantName }]}
+                  onCancel={() => setAdding(null)}
+                  onAdded={(text) => {
+                    setAdding(null);
+                    setMessage(text);
+                    void load(false);
+                  }}
+                />
               ) : null}
             </Section>
           ))
