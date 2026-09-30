@@ -24,6 +24,16 @@ export function notificationHref(
   if (item.source.type === 'LeaveRequest') {
     return account.kind === 'EMPLOYEE' || account.kind === 'OWNER' ? `${base}/leave` : null;
   }
+  // The revenue summary is about a branch and has no screen (reports are a later phase).
+  if (item.source.type === 'Branch') return null;
+  if (item.source.type === 'Invoice') {
+    // A customer opens their own invoice; staff open the POS invoice when they may view it there.
+    if (account.kind === 'CUSTOMER')
+      return `${base}/invoices/${encodeURIComponent(item.source.id)}`;
+    return item.branch !== null && canAt(account, 'VIEW_INVOICES', item.branch.id)
+      ? `${base}/pos/${encodeURIComponent(item.source.id)}`
+      : null;
+  }
   if (item.branch === null) return null;
   const branchId = item.branch.id;
   if (account.kind === 'CUSTOMER')
@@ -72,7 +82,69 @@ export function notificationMessage(item: NotificationItem, locale: Locale): str
       return fill(params.decision === 'APPROVED' ? t.leave.approved : t.leave.rejected, values);
     }
   }
+  if (params) return financeMessage(item, params, locale) ?? t.types[item.type];
   return t.types[item.type];
+}
+
+const money = (value: string, locale: Locale) =>
+  `${new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-US').format(BigInt(value))} ₫`;
+
+/** Finance messages render from validated params only; a missing/unknown shape falls back to the type text. */
+function financeMessage(
+  item: NotificationItem,
+  params: NonNullable<NotificationItem['params']>,
+  locale: Locale,
+): string | null {
+  const t = getNotificationDictionary(locale);
+  const f = t.finance;
+  switch (item.type) {
+    case 'INVOICE_PAID':
+      return 'amountVnd' in params
+        ? fill(f.paid, { amount: money(params.amountVnd, locale) })
+        : null;
+    case 'PAYOS_PAYMENT_SUCCEEDED':
+      return 'amountVnd' in params
+        ? fill(f.paymentSucceeded, { amount: money(params.amountVnd, locale) })
+        : null;
+    case 'PAYOS_PAYMENT_ANOMALY':
+      return 'anomaly' in params
+        ? fill(f.anomaly, {
+            kind: f.anomalyKinds[params.anomaly],
+            received: money(params.receivedAmountVnd, locale),
+            expected:
+              params.expectedAmountVnd === null
+                ? f.notApplicable
+                : money(params.expectedAmountVnd, locale),
+          })
+        : null;
+    case 'PAYMENT_REVERSED':
+      return 'method' in params
+        ? fill(f.reversed, {
+            method: f.methods[params.method],
+            amount: money(params.amountVnd, locale),
+          })
+        : null;
+    case 'INVOICE_CANCELLED_ALERT':
+      return 'cancelledFrom' in params
+        ? fill(f.cancelledAlert, {
+            from: f.cancelledFrom[params.cancelledFrom],
+            amount: money(params.amountVnd, locale),
+          })
+        : null;
+    case 'REVENUE_DAILY_SUMMARY':
+      return 'businessDate' in params && 'totalVnd' in params
+        ? fill(f.summary, {
+            date: formatLeaveDate(params.businessDate, locale),
+            total: money(params.totalVnd, locale),
+            cash: money(params.cashVnd, locale),
+            payos: money(params.payosVnd, locale),
+            paid: String(params.paidInvoiceCount),
+            pending: String(params.pendingPaymentCount),
+          })
+        : null;
+    default:
+      return null;
+  }
 }
 
 export function mergeNotifications(
@@ -107,9 +179,9 @@ export function notificationQuery(filters: InboxFilters, cursor?: string): Recor
   return query;
 }
 
-/** Category tabs: customers only ever receive operational messages, so they get no tabs. */
+/** Category tabs: customers get no tabs (their few invoice messages need no filtering). */
 /** Mirrors the registry's categories (a test compares them, so they cannot drift). */
-export const INBOX_CATEGORIES: readonly NotificationCategory[] = ['OPERATIONS', 'HR'];
+export const INBOX_CATEGORIES: readonly NotificationCategory[] = ['OPERATIONS', 'HR', 'FINANCE'];
 export function inboxCategories(account: CurrentAccountResponse): readonly NotificationCategory[] {
   return account.kind === 'CUSTOMER' ? [] : INBOX_CATEGORIES;
 }

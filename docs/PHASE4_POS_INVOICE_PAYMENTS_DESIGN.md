@@ -2,14 +2,14 @@
 
 **Status: Step 1 of 11 (Design Contract) — CLOSED / OWNER APPROVED (revision 3).** Documentation only. No migration,
 schema, API, UI or runtime change was made. Step 2 has **NOT** started. Nothing was deployed. This document is the authoritative
-Phase 4 design contract; Q7 was answered before Step 8 (section 16.3); Q8 (before Step 10) remains an open Owner checkpoint.
+Phase 4 design contract; Q7 was answered before Step 8 (section 16.3) and Q8 before Step 10 (section 17.1).
 
 This document is the authoritative Phase 4 contract that Steps 2–11 must follow. Where it is silent,
 `LUCY_SPA_PRD.md` governs; `LUCYSPA_HANDOFF.md` records the accepted state it builds on. Owner decisions
 **Q0–Q6, Q9 and Q10 are LOCKED** (section 2.1) and the seven technical decisions **OP-1 through OP-7 are LOCKED /
 OWNER-APPROVED** (section 2.3) and are integrated into the sections they govern. **Q7 (PayOS) and Q8 (invoice/revenue
-notifications) are NOT locked**: they are explicit Owner checkpoints (Q7 before Step 8, Q8 before Step 10) and this
-document deliberately leaves them open (sections 16 and 17).
+notifications) were explicit Owner checkpoints** (Q7 before Step 8, Q8 before Step 10) that this document left open in
+revision 3; both are now **ANSWERED / LOCKED** (sections 16.3 and 17.1).
 
 Revision 3 adds the Owner-approved OP-7 (the narrow correction exception for zero-balance invoices and the append-only redemption release it requires) on top of revision 2, which reconciled the document with OP-1…OP-6. In particular the earlier global quantity-limit setting is
 **gone** (the limit is per service and snapshot-based), and voucher handling was restructured so that code-less promotions
@@ -71,12 +71,12 @@ speculative Phase 5–8 tables or nullable columns now.
 
 ### 2.2 NOT locked (explicit Owner checkpoints)
 
-| #   | Checkpoint                                                                  | Must be answered before | Where it is left open |
-| --- | --------------------------------------------------------------------------- | ----------------------- | --------------------- |
-| Q7  | PayOS business choices — **ANSWERED / LOCKED before Step 8** (section 16.3) | Step 8 (done)           | Section 16.3          |
-| Q8  | Invoice / revenue notification recipients, routing and content policy       | **Step 10**             | Section 17            |
+| #   | Checkpoint                                                                                                                  | Must be answered before | Where it is left open |
+| --- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------- | --------------------- |
+| Q7  | PayOS business choices — **ANSWERED / LOCKED before Step 8** (section 16.3)                                                 | Step 8 (done)           | Section 16.3          |
+| Q8  | Invoice / revenue notification recipients, routing and content policy — **ANSWERED / LOCKED before Step 10** (section 17.1) | Step 10 (done)          | Section 17.1          |
 
-Nothing in Steps 1–7 or 9 may depend on an unresolved Q8 choice. Q7 was answered by the Owner before Step 8 (section 16.3).
+Nothing in Steps 1–7 or 9 depended on Q8. Q7 was answered before Step 8 (section 16.3) and Q8 before Step 10 (section 17.1).
 
 ### 2.3 Locked technical decisions OP-1 … OP-7 (OWNER-APPROVED; do not reopen)
 
@@ -856,12 +856,21 @@ customer authority is ever implied. The exemption is designed and tested in Step
 - **Permissions:** create, cancel and re-check a request need `COLLECT_PAYMENTS` in the invoice's branch scope. Anomaly review and management notes use the existing `CORRECT_PAYMENTS` (no new permission was invented; open question in the Step 8 report).
 - **Boundaries:** provider calls run between two short transactions, never inside the invoice lock. The webhook is `POST /api/v1/webhooks/payos`, the single `@PublicWebhook()` route (CSRF exemption by route marker); reconciliation runs in the worker and on demand and applies the same settlement rules. Without `PAYOS_*` configuration the method is disabled.
 
-## 17. Notification prerequisites (Q8 open)
+## 17. Notification policy (Q8 LOCKED) and prerequisites
 
-**Technical prerequisites only.** The final customer/Owner/manager policy — who is notified, when, with what content, and
-whether the Owner receives financial alerts directly — is **Q8**, decided by the Owner before Step 10, and is **not** locked here.
+### 17.1 Q8 — Owner answers (locked before Step 10)
 
-Prerequisites Step 10 will need (none implemented now):
+1. **Channel:** in-app notifications only (existing Notification Center); no email, no Zalo.
+2. **Customer (payer):** notified when an invoice becomes `PAID`, and when a **finalized** invoice is cancelled (cancellation reason is never shown). Nothing for drafts or partial payments.
+3. **Payment creator:** the staff member who created a PayOS request is notified when it succeeds or produces an anomaly.
+4. **Management:** no per-invoice notifications. Exceptions only, to holders of `CORRECT_PAYMENTS` at the invoice's branch: PayOS anomalies, payment reversals, cancellation of a finalized invoice.
+5. **Daily revenue summary** at 21:30 branch-local time to `VIEW_REVENUE` holders at that branch: total collected, cash, PayOS, paid invoice count, pending-payment count.
+6. **Revenue totals reach only `VIEW_REVENUE` holders;** exception notifications show only the affected invoice's amounts.
+7. **Routing** uses the invoice's branch and the existing permission engine; never role names.
+
+### 17.2 Technical prerequisites (as originally listed; Step 10 implements them)
+
+Prerequisites Step 10 needs:
 
 1. **Invoice aggregate support:** widen the closed `notifications` CHECKs (`type`, `entity_type`, type/entity pairing,
    branch scope) to an `Invoice` entity and new types; registry (single source in `packages/contracts`) gains the entity,
@@ -869,11 +878,11 @@ Prerequisites Step 10 will need (none implemented now):
 2. **A financial notification category** in the registry and inbox UI (VI/EN).
 3. **Branch/authority-aware routing:** the existing routing resolves supervisors of a _subject employee_; invoice events have a
    branch (and possibly a collector) as subject. A branch-based recipient primitive built on the same authority graph
-   (permission + scope + containment + active employment, DENY respected) is required. Which permission and levels apply is Q8.
+   (permission + scope + containment + active employment, DENY respected) is required. Q8: `CORRECT_PAYMENTS` (exceptions) and `VIEW_REVENUE` (summary) holders at the invoice's branch.
 4. **Events:** `INVOICE_PAID` (including its zero-balance form, `settlement`) and the financial exception events of section 15.1,
-   consumed through the multi-consumer contract (15.2). Whether a zero-balance paid invoice, or an OP-7 cancellation of one, notifies anyone is part of Q8.
-5. **Content rule:** `params` remain ids/dates/enums under an allowlist (no free text); whether amounts may appear is part of Q8.
-6. **Customer inbox:** customers already have an in-app inbox; whether they receive invoice notifications is Q8.
+   consumed through the multi-consumer contract (15.2). Q8: a zero-balance paid invoice and an OP-7 cancellation of one notify like any other PAID / finalized-cancelled invoice.
+5. **Content rule:** `params` remain an allowlist (ids, dates, enums; Step 10 adds integer-VND strings and counts, still no free text). Amounts: the affected invoice's amounts in invoice and exception notices; revenue totals only in the summary (Q8 item 6).
+6. **Customer inbox:** the payer receives the two payer notices (Q8 item 2) in the existing customer inbox.
 
 ## 18. E-invoice-ready boundary (Q10)
 
@@ -1002,7 +1011,7 @@ OWNER-APPROVED** (section 2.3) and are integrated above; none remains open:
 | OP-6 | LOCKED | 2.3, 4.5, 11.1–11.3, 12, 20                           |
 | OP-7 | LOCKED | 2.3, 4.1, 4.4, 5.1, 5.5, 6, 8.3, 9, 11, 12–15, 20, 22 |
 
-**No technical decision remains open.** Q7 is answered (section 16.3). The only unresolved Owner checkpoint is **Q8** (before Step 10).
+**No technical decision remains open.** Q7 is answered (section 16.3) and Q8 is answered (section 17.1); no Owner checkpoint remains open.
 
 Q7 item 8 settles it: an invoice with a wrong benefit settled by a confirmed PayOS payment gets an audited management note only (section 16.3).
 
@@ -1010,8 +1019,8 @@ Q7 item 8 settles it: an invoice with a wrong benefit settled by a confirmed Pay
 
 - Every locked decision Q0–Q6, Q9, Q10 is represented (section 2.1 and the section it names). OP-1…OP-7 are marked LOCKED and are
   integrated into data model, snapshot contract, state machine, calculation, eligibility, redemption, reconciliation, authorization,
-  audit, events, testing and migration sections. Q7 and Q8 are marked **not locked** (sections 2.2, 16.3, 17) and no business
-  choice under them is made.
+  audit, events, testing and migration sections. Q7 and Q8 were **not locked** in revision 3 and are now recorded as the Owner
+  answered them (sections 2.2, 16.3, 17.1); no business choice under them was made by this document.
 - **Consistency checks after revision 3:** the quantity limit is per Service and snapshot-based everywhere (no global setting
   remains; `app_settings` is untouched); a zero-balance invoice needs no Payment and is covered by the state machine, the
   reconciliation invariants and the event contract; a guest payer cannot consume a per-customer-limited benefit; `minimumSpend` uses the

@@ -88,7 +88,10 @@ export {
 } from './organization.js';
 export { redisConnectionOptions, SYSTEM_CHECK_QUEUE, QUEUE_PREFIX } from './redis.js';
 export {
+  holdsPermissionAt,
+  resolvePermissionHolders,
   resolveSupervisorRecipients,
+  type PermissionHoldersInput,
   type SupervisorRouting,
   type SupervisorRoutingInput,
 } from './notification-routing.js';
@@ -112,6 +115,16 @@ export {
   type LeaveEventOutcome,
   type LeaveNotificationDependencies,
 } from './leave-notifications.js';
+export {
+  FINANCIAL_NOTIFICATION_AGGREGATES,
+  FINANCIAL_NOTIFICATION_EVENT_TYPES,
+  NOTIFICATION_CONSUMER,
+  processFinancialNotificationEvent,
+  REVENUE_SUMMARY_DUE_EVENT,
+  REVENUE_SUMMARY_LOCAL_TIME,
+  scheduleRevenueSummaries,
+  type FinancialEventOutcome,
+} from './invoice-notifications.js';
 export {
   ProviderRejectedError,
   ProviderUnavailableError,

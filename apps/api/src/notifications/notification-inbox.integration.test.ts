@@ -121,7 +121,7 @@ test(
             let page = await listOwnNotifications(tx, a);
             assert.deepEqual(ids(page), expected(n1, n2, n3, n4));
             assert.equal(page.unreadCount, 3);
-            assert.deepEqual(page.unreadByCategory, { OPERATIONS: 1, HR: 2 });
+            assert.deepEqual(page.unreadByCategory, { OPERATIONS: 1, HR: 2, FINANCE: 0 });
             assert.equal(page.items.find((row) => row.id === n1.id)!.params, null);
             assert.deepEqual(page.items.find((row) => row.id === n3.id)!.params, requested);
             assert.equal(page.items.find((row) => row.id === n3.id)!.branch, null);
@@ -182,6 +182,7 @@ test(
             assert.deepEqual((await countOwnUnread(tx, a)).unreadByCategory, {
               OPERATIONS: 0,
               HR: 2,
+              FINANCE: 0,
             });
             await tx.notification.update({ where: { id: n1.id }, data: { readAt: null } }); // restore for the next checks
 
@@ -204,7 +205,7 @@ test(
             );
             page = await listOwnNotifications(tx, a);
             assert.equal(page.unreadCount, 2, 'an unread archived item is not counted');
-            assert.deepEqual(page.unreadByCategory, { OPERATIONS: 0, HR: 2 });
+            assert.deepEqual(page.unreadByCategory, { OPERATIONS: 0, HR: 2, FINANCE: 0 });
             // An archived item can still be read (own item) without leaving the archive.
             assert.ok((await readOwnNotification(tx, a, n1.id)).archivedAt);
             await tx.notification.update({ where: { id: n1.id }, data: { readAt: null } });
@@ -212,7 +213,7 @@ test(
             // Mark all matching read: own, non-archived, optionally one category; idempotent.
             const hr = await readAllOwnNotifications(tx, a, 'HR');
             assert.equal(hr.updated, 2);
-            assert.deepEqual(hr.unreadByCategory, { OPERATIONS: 0, HR: 0 });
+            assert.deepEqual(hr.unreadByCategory, { OPERATIONS: 0, HR: 0, FINANCE: 0 });
             assert.equal((await readAllOwnNotifications(tx, a, 'HR')).updated, 0);
             const other = await notify(a, 'PRE_END', { entity: 'Visit' });
             const all = await readAllOwnNotifications(tx, a);

@@ -1,6 +1,21 @@
 import type { LeaveType, NotificationCategory, NotificationType } from '@lucy-spa/contracts';
 import type { Locale } from './locales';
 
+/** Templates rendered from structured, validated notification params (never free text). */
+interface FinanceTexts {
+  paid: string;
+  paymentSucceeded: string;
+  anomaly: string;
+  anomalyKinds: Record<'AMOUNT_MISMATCH' | 'INVOICE_NOT_PAYABLE' | 'EXCEEDS_BALANCE', string>;
+  reversed: string;
+  cancelledAlert: string;
+  cancelledFrom: Record<'PENDING_PAYMENT' | 'PAID', string>;
+  methods: Record<'CASH' | 'PAYOS', string>;
+  summary: string;
+  notApplicable: string;
+  openInvoice: string;
+}
+
 const vi = {
   title: 'Thông báo',
   intro: 'Thông báo trong ứng dụng về lịch hẹn, dịch vụ và công việc của bạn.',
@@ -31,6 +46,7 @@ const vi = {
   categories: {
     OPERATIONS: 'Vận hành',
     HR: 'Nhân sự',
+    FINANCE: 'Tài chính',
   } satisfies Record<NotificationCategory, string>,
   types: {
     BOOKING_CREATED: 'Lịch hẹn đã được xác nhận.',
@@ -46,6 +62,13 @@ const vi = {
     END_OVERDUE: 'Dịch vụ đã quá giờ kết thúc dự kiến và chưa END. KTV vẫn đang bận.',
     LEAVE_REQUESTED: 'Có đơn xin nghỉ cần bạn xử lý.',
     LEAVE_DECIDED: 'Đơn xin nghỉ của bạn đã có quyết định.',
+    INVOICE_PAID: 'Hóa đơn của bạn đã được thanh toán.',
+    INVOICE_CANCELLED: 'Hóa đơn của bạn đã bị hủy.',
+    PAYOS_PAYMENT_SUCCEEDED: 'Yêu cầu thanh toán PayOS bạn tạo đã thành công.',
+    PAYOS_PAYMENT_ANOMALY: 'Có giao dịch PayOS bất thường cần xem xét.',
+    PAYMENT_REVERSED: 'Một khoản thanh toán đã được hoàn tác (điều chỉnh).',
+    INVOICE_CANCELLED_ALERT: 'Một hóa đơn đã hoàn tất vừa bị hủy.',
+    REVENUE_DAILY_SUMMARY: 'Tổng kết doanh thu trong ngày.',
   } satisfies Record<NotificationType, string>,
   leave: {
     requested: 'Có đơn xin nghỉ ({type}) từ {from} đến {to} cần bạn xử lý.',
@@ -60,20 +83,42 @@ const vi = {
       OTHER: 'khác',
     } satisfies Record<LeaveType, string>,
   },
+  finance: {
+    paid: 'Hóa đơn của bạn đã được thanh toán đủ ({amount}).',
+    paymentSucceeded: 'Yêu cầu thanh toán PayOS bạn tạo đã thành công ({amount}).',
+    anomaly:
+      'Giao dịch PayOS bất thường ({kind}): nhận {received}, dự kiến {expected}. Chưa được ghi nhận vào hóa đơn.',
+    anomalyKinds: {
+      AMOUNT_MISMATCH: 'sai số tiền',
+      INVOICE_NOT_PAYABLE: 'hóa đơn không còn nhận thanh toán',
+      EXCEEDS_BALANCE: 'vượt số còn phải trả',
+    },
+    reversed:
+      'Một khoản thanh toán {method} ({amount}) đã được hoàn tác (điều chỉnh, không phải hoàn tiền).',
+    cancelledAlert: 'Hóa đơn ({amount}) đã bị hủy khi đang ở trạng thái {from}.',
+    cancelledFrom: { PENDING_PAYMENT: 'chờ thanh toán', PAID: 'đã thanh toán' },
+    methods: { CASH: 'tiền mặt', PAYOS: 'PayOS' },
+    summary:
+      'Tổng kết ngày {date} (đến 21:30): đã thu {total} (tiền mặt {cash}, PayOS {payos}); {paid} hóa đơn đã thanh toán; {pending} hóa đơn chờ thanh toán.',
+    notApplicable: 'không có',
+    openInvoice: 'Xem hóa đơn',
+  } satisfies FinanceTexts,
 };
 type Dictionary = {
   [K in keyof typeof vi]: K extends 'types'
     ? Record<NotificationType, string>
     : K extends 'categories'
       ? Record<NotificationCategory, string>
-      : K extends 'leave'
-        ? {
-            requested: string;
-            approved: string;
-            rejected: string;
-            types: Record<LeaveType, string>;
-          }
-        : string;
+      : K extends 'finance'
+        ? FinanceTexts
+        : K extends 'leave'
+          ? {
+              requested: string;
+              approved: string;
+              rejected: string;
+              types: Record<LeaveType, string>;
+            }
+          : string;
 };
 const en: Dictionary = {
   title: 'Notifications',
@@ -105,6 +150,7 @@ const en: Dictionary = {
   categories: {
     OPERATIONS: 'Operations',
     HR: 'People',
+    FINANCE: 'Finance',
   },
   types: {
     BOOKING_CREATED: 'The booking was confirmed.',
@@ -121,6 +167,13 @@ const en: Dictionary = {
     END_OVERDUE: 'The expected end has passed without END. The staff member remains busy.',
     LEAVE_REQUESTED: 'A leave request needs your attention.',
     LEAVE_DECIDED: 'Your leave request has been decided.',
+    INVOICE_PAID: 'Your invoice has been paid.',
+    INVOICE_CANCELLED: 'Your invoice was cancelled.',
+    PAYOS_PAYMENT_SUCCEEDED: 'The PayOS payment request you created succeeded.',
+    PAYOS_PAYMENT_ANOMALY: 'A PayOS transaction needs review.',
+    PAYMENT_REVERSED: 'A payment was reversed (a correction).',
+    INVOICE_CANCELLED_ALERT: 'A completed invoice was cancelled.',
+    REVENUE_DAILY_SUMMARY: 'Daily revenue summary.',
   },
   leave: {
     requested: 'A leave request ({type}) from {from} to {to} needs your attention.',
@@ -134,6 +187,25 @@ const en: Dictionary = {
       MATERNITY: 'maternity',
       OTHER: 'other',
     },
+  },
+  finance: {
+    paid: 'Your invoice has been paid in full ({amount}).',
+    paymentSucceeded: 'The PayOS payment request you created succeeded ({amount}).',
+    anomaly:
+      'PayOS anomaly ({kind}): received {received}, expected {expected}. It was not applied to the invoice.',
+    anomalyKinds: {
+      AMOUNT_MISMATCH: 'amount mismatch',
+      INVOICE_NOT_PAYABLE: 'invoice no longer payable',
+      EXCEEDS_BALANCE: 'exceeds the balance',
+    },
+    reversed: 'A {method} payment ({amount}) was reversed (a correction, not a refund).',
+    cancelledAlert: 'An invoice ({amount}) was cancelled while {from}.',
+    cancelledFrom: { PENDING_PAYMENT: 'awaiting payment', PAID: 'paid' },
+    methods: { CASH: 'cash', PAYOS: 'PayOS' },
+    summary:
+      'Summary for {date} (up to 21:30): collected {total} (cash {cash}, PayOS {payos}); {paid} paid invoices; {pending} awaiting payment.',
+    notApplicable: 'n/a',
+    openInvoice: 'View invoice',
   },
 };
 export function getNotificationDictionary(locale: Locale): Dictionary {

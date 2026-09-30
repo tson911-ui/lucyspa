@@ -1,5 +1,10 @@
 import type { Prisma } from '@lucy-spa/database';
-import { decide, type AuthorityGraph, type OrganizationLevel } from './authorization.js';
+import {
+  decide,
+  isKnownPermission,
+  type AuthorityGraph,
+  type OrganizationLevel,
+} from './authorization.js';
 import { loadAuthorityGraph } from './authorization.store.js';
 import { ORGANIZATION_RANK, supervisionRank } from './organization.js';
 import { assertAuthTransaction } from './auth-lock.js';
@@ -150,4 +155,91 @@ export async function resolveSupervisorRecipients(
   if (owners.length === 1)
     return { recipients: [owners[0]!.id], source: 'OWNER_FALLBACK', level: null };
   return none;
+}
+
+export interface PermissionHoldersInput {
+  readonly branchId: string;
+  readonly permission: string;
+  /** Never routed to. */
+  readonly exclude?: readonly string[];
+}
+
+/** Whether the person is an ACTIVE account with employment not ended on the given branch-local date. */
+async function employedOn(tx: Prisma.TransactionClient, userId: string, today: Date) {
+  const employment = await tx.employmentClassificationChange.findFirst({
+    where: { employeeUserId: userId, effectiveDate: { lte: today } },
+    orderBy: { effectiveDate: 'desc' },
+    select: { classification: true },
+  });
+  return employment !== null && employment.classification !== 'ENDED';
+}
+
+/**
+ * Everyone who effectively holds `permission` at ONE branch, by the same authority primitives every
+ * action uses (role grants + overrides, scope containment, DENY respected). Unlike supervisor routing
+ * there is no hierarchy: a financial matter of a branch goes to all holders, never to the lowest level
+ * only. Eligible means: an ACTIVE account, and for an employee employment not ended on the branch-local
+ * date. The Owner passes the permission check as everywhere else. No role names, no ids.
+ *
+ * The caller holds the shared authorization-graph lock, as the other recipient selectors do.
+ */
+export async function resolvePermissionHolders(
+  tx: Prisma.TransactionClient,
+  input: PermissionHoldersInput,
+): Promise<readonly string[]> {
+  assertAuthTransaction(tx);
+  if (!isKnownPermission(input.permission)) return [];
+  const permission = input.permission;
+  // Narrow the pool in SQL to people who could hold the permission at all; `decide` still decides.
+  const candidates = await tx.user.findMany({
+    where: {
+      status: 'ACTIVE',
+      id: { notIn: [...(input.exclude ?? [])] },
+      OR: [
+        { kind: 'OWNER' },
+        {
+          kind: 'EMPLOYEE',
+          OR: [
+            { roleAssignments: { some: {} } },
+            {
+              permissionOverrides: {
+                some: { effect: 'ALLOW', permission: { code: permission } },
+              },
+            },
+          ],
+        },
+      ],
+    },
+    select: { id: true },
+    orderBy: { id: 'asc' },
+  });
+  const today = await branchBusinessDate(tx, [input.branchId]);
+  const holders: string[] = [];
+  for (const candidate of candidates) {
+    const graph = await loadAuthorityGraph(tx, candidate.id);
+    if (!graph || !decide(graph, input.permission, { kind: 'BRANCH', branchId: input.branchId })) {
+      continue;
+    }
+    if (graph.kind === 'EMPLOYEE' && !(await employedOn(tx, candidate.id, today))) continue;
+    holders.push(candidate.id);
+  }
+  return holders.sort();
+}
+
+/** The single-person form of `resolvePermissionHolders` (same eligibility rule). */
+export async function holdsPermissionAt(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  permission: string,
+  branchId: string,
+): Promise<boolean> {
+  assertAuthTransaction(tx);
+  const user = await tx.user.findUnique({ where: { id: userId }, select: { status: true } });
+  if (user?.status !== 'ACTIVE') return false;
+  const graph = await loadAuthorityGraph(tx, userId);
+  if (!graph || !decide(graph, permission, { kind: 'BRANCH', branchId })) return false;
+  return (
+    graph.kind !== 'EMPLOYEE' ||
+    (await employedOn(tx, userId, await branchBusinessDate(tx, [branchId])))
+  );
 }

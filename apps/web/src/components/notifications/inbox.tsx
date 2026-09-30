@@ -140,7 +140,11 @@ export function NotificationCard({
       <div className="wf-actions">
         {href ? (
           <Link className="wf-button" href={href}>
-            {item.source.type === 'LeaveRequest' ? t.openLeave : t.open}
+            {item.source.type === 'LeaveRequest'
+              ? t.openLeave
+              : item.source.type === 'Invoice'
+                ? t.finance.openInvoice
+                : t.open}
           </Link>
         ) : null}
         {!item.readAt ? (

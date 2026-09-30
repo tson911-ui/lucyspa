@@ -157,7 +157,7 @@ test('a server result replaces the row and a view that no longer matches drops i
     items: [phase3, leaveRequested],
     nextCursor: null,
     unreadCount: 2,
-    unreadByCategory: { OPERATIONS: 1, HR: 1 },
+    unreadByCategory: { OPERATIONS: 1, HR: 1, FINANCE: 0 },
   };
   const read = { ...phase3, readAt: phase3.createdAt };
   assert.deepEqual(applyItemUpdate(page, read, DEFAULT_INBOX_FILTERS).items[0], read);
@@ -196,5 +196,145 @@ test('bell and inbox render VI/EN chrome; customers get no category tabs, workfo
     );
     assert.ok(guest.includes(t.unreadOnly));
     assert.ok(!guest.includes(t.categories.HR));
+  }
+});
+
+const finance = (
+  type: NotificationItem['type'],
+  params: NotificationItem['params'],
+  source: NotificationItem['source'] = { type: 'Invoice', id: 'inv-1', code: 'INV-260930-ABCDEF' },
+): NotificationItem => ({
+  id: `fin-${type}`,
+  type,
+  branch: { id: 'A', name: 'Spa', timezone: 'Asia/Ho_Chi_Minh' },
+  source,
+  actionAt: '2030-01-02T10:00:00.000Z',
+  createdAt: '2030-01-02T10:00:01.000Z',
+  readAt: null,
+  archivedAt: null,
+  params,
+});
+
+test('finance notifications render amounts from validated params in VI and EN; the fallback is the type text', () => {
+  const paid = finance('INVOICE_PAID', { amountVnd: '200000' });
+  assert.match(notificationMessage(paid, 'vi'), /đã được thanh toán đủ \(200\.000 ₫\)/);
+  assert.match(notificationMessage(paid, 'en'), /paid in full \(200,000 ₫\)/);
+  const anomaly = finance('PAYOS_PAYMENT_ANOMALY', {
+    anomaly: 'AMOUNT_MISMATCH',
+    expectedAmountVnd: '200000',
+    receivedAmountVnd: '150000',
+  });
+  assert.match(
+    notificationMessage(anomaly, 'vi'),
+    /sai số tiền.*nhận 150\.000 ₫, dự kiến 200\.000 ₫/,
+  );
+  assert.match(
+    notificationMessage(anomaly, 'en'),
+    /amount mismatch.*received 150,000 ₫, expected 200,000 ₫/,
+  );
+  const noExpected = finance('PAYOS_PAYMENT_ANOMALY', {
+    anomaly: 'INVOICE_NOT_PAYABLE',
+    expectedAmountVnd: null,
+    receivedAmountVnd: '1000',
+  });
+  assert.match(notificationMessage(noExpected, 'en'), /expected n\/a/);
+  assert.match(
+    notificationMessage(finance('PAYMENT_REVERSED', { method: 'CASH', amountVnd: '5000' }), 'vi'),
+    /tiền mặt \(5\.000 ₫\).*không phải hoàn tiền/,
+  );
+  assert.match(
+    notificationMessage(finance('PAYMENT_REVERSED', { method: 'CASH', amountVnd: '5000' }), 'en'),
+    /cash payment \(5,000 ₫\).*not a refund/,
+  );
+  assert.match(
+    notificationMessage(
+      finance('INVOICE_CANCELLED_ALERT', { cancelledFrom: 'PAID', amountVnd: '0' }),
+      'en',
+    ),
+    /cancelled while paid/,
+  );
+  assert.match(
+    notificationMessage(finance('PAYOS_PAYMENT_SUCCEEDED', { amountVnd: '200000' }), 'vi'),
+    /PayOS bạn tạo đã thành công \(200\.000 ₫\)/,
+  );
+  const summary = finance(
+    'REVENUE_DAILY_SUMMARY',
+    {
+      businessDate: '2030-01-02',
+      totalVnd: '500000',
+      cashVnd: '300000',
+      payosVnd: '200000',
+      paidInvoiceCount: 2,
+      pendingPaymentCount: 3,
+    },
+    { type: 'Branch', id: 'A', code: '2030-01-02' },
+  );
+  for (const locale of ['vi', 'en'] as const) {
+    const text = notificationMessage(summary, locale);
+    for (const part of ['500', '300', '200', '21:30', '2 ', '3 '])
+      assert.ok(text.includes(part), part);
+  }
+  // The customer cancellation carries no params: the generic text, with no reason anywhere.
+  assert.equal(
+    notificationMessage(finance('INVOICE_CANCELLED', null), 'vi'),
+    getNotificationDictionary('vi').types.INVOICE_CANCELLED,
+  );
+  // Missing or mismatched params never break rendering.
+  assert.equal(
+    notificationMessage(finance('INVOICE_PAID', null), 'en'),
+    getNotificationDictionary('en').types.INVOICE_PAID,
+  );
+  assert.equal(
+    notificationMessage(finance('REVENUE_DAILY_SUMMARY', { amountVnd: '1' }), 'en'),
+    getNotificationDictionary('en').types.REVENUE_DAILY_SUMMARY,
+  );
+});
+
+test('invoice links open the customer invoice or the POS invoice for staff who may view it; a summary has no link', () => {
+  const paid = finance('INVOICE_PAID', { amountVnd: '200000' });
+  assert.equal(notificationHref(paid, customer, '/vi/account'), '/vi/account/invoices/inv-1');
+  assert.equal(
+    notificationHref(paid, employee([['VIEW_INVOICES', 'A']]), '/vi/workforce'),
+    '/vi/workforce/pos/inv-1',
+  );
+  // Another branch or no permission: no link (the destination API would refuse anyway).
+  assert.equal(notificationHref(paid, employee([['VIEW_INVOICES', 'B']]), '/vi/workforce'), null);
+  assert.equal(
+    notificationHref(paid, employee([['PERFORM_SERVICES', 'A']]), '/vi/workforce'),
+    null,
+  );
+  const summary = finance(
+    'REVENUE_DAILY_SUMMARY',
+    {
+      businessDate: '2030-01-02',
+      totalVnd: '0',
+      cashVnd: '0',
+      payosVnd: '0',
+      paidInvoiceCount: 0,
+      pendingPaymentCount: 0,
+    },
+    { type: 'Branch', id: 'A', code: '2030-01-02' },
+  );
+  assert.equal(notificationHref(summary, employee([['VIEW_REVENUE', 'A']]), '/vi/workforce'), null);
+});
+
+test('a finance card shows the invoice code, the VI/EN message and the invoice action', () => {
+  for (const locale of ['vi', 'en'] as const) {
+    const t = getNotificationDictionary(locale);
+    const item = finance('INVOICE_PAID', { amountVnd: '200000' });
+    const html = renderToStaticMarkup(
+      <NotificationCard
+        item={item}
+        locale={locale}
+        href="/x/invoices/inv-1"
+        busy={false}
+        onRead={noop}
+        onArchive={noop}
+      />,
+    );
+    assert.ok(html.includes('INV-260930-ABCDEF'));
+    assert.ok(html.includes(t.finance.openInvoice));
+    assert.ok(html.includes(locale === 'vi' ? '200.000' : '200,000'), 'the amount is rendered');
+    assert.ok(!html.includes('INVOICE_PAID'), 'no raw event code');
   }
 });

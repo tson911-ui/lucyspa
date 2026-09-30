@@ -23,10 +23,20 @@ const PHASE3 = [
   'END_OVERDUE',
 ];
 
-test('the registry keeps every Phase 3 type unchanged and adds only the two Leave types', () => {
+const FINANCE = [
+  'INVOICE_PAID',
+  'INVOICE_CANCELLED',
+  'PAYOS_PAYMENT_SUCCEEDED',
+  'PAYOS_PAYMENT_ANOMALY',
+  'PAYMENT_REVERSED',
+  'INVOICE_CANCELLED_ALERT',
+  'REVENUE_DAILY_SUMMARY',
+];
+
+test('the registry keeps every Phase 3 type unchanged and adds the Leave and the Q8 finance types', () => {
   assert.deepEqual(
     [...NOTIFICATION_TYPES].sort(),
-    [...PHASE3, 'LEAVE_REQUESTED', 'LEAVE_DECIDED'].sort(),
+    [...PHASE3, 'LEAVE_REQUESTED', 'LEAVE_DECIDED', ...FINANCE].sort(),
   );
   for (const type of PHASE3) {
     assert.ok(isNotificationType(type));
@@ -43,6 +53,13 @@ test('the registry keeps every Phase 3 type unchanged and adds only the two Leav
     assert.deepEqual(notificationMetadata(type).entityTypes, ['LeaveRequest']);
     assert.ok(!isAllowedNotificationEntity(type, 'Booking'));
   }
+  for (const type of FINANCE) {
+    const meta = notificationMetadata(type as never);
+    assert.equal(meta.category, 'FINANCE');
+    // Only the revenue summary is about a branch; every other finance type is about one invoice.
+    assert.deepEqual(meta.entityTypes, [type === 'REVENUE_DAILY_SUMMARY' ? 'Branch' : 'Invoice']);
+    assert.ok(!isAllowedNotificationEntity(type as never, 'Booking'));
+  }
   assert.ok(!isNotificationType('NOT_A_TYPE'));
   assert.ok(!isNotificationType('toString'));
 });
@@ -52,7 +69,10 @@ test('category filters are derived from the registry, and targets from the entit
     'LEAVE_DECIDED',
     'LEAVE_REQUESTED',
   ]);
+  assert.deepEqual([...notificationTypesInCategory('FINANCE')].sort(), [...FINANCE].sort());
   assert.equal(notificationTypesInCategory('OPERATIONS').length, PHASE3.length);
+  assert.equal(notificationTarget('Invoice'), 'INVOICE');
+  assert.equal(notificationTarget('Branch'), 'BRANCH');
   assert.equal(notificationTarget('Booking'), 'BOOKING');
   assert.equal(notificationTarget('Visit'), 'VISIT');
   assert.equal(notificationTarget('LeaveRequest'), 'LEAVE_REQUEST');
@@ -129,4 +149,66 @@ test('params are a strict allowlist of ids, dates and enums; never free text', (
     endDate: '2026-10-05',
     leaveType: 'ANNUAL',
   });
+});
+
+test('finance params carry only integer VND strings, counts and enums; never a reason or a name', () => {
+  assert.deepEqual(parseNotificationParams('INVOICE_PAID', { amountVnd: '0' }), { amountVnd: '0' });
+  assert.deepEqual(parseNotificationParams('PAYOS_PAYMENT_SUCCEEDED', { amountVnd: '200000' }), {
+    amountVnd: '200000',
+  });
+  assert.deepEqual(
+    parseNotificationParams('PAYOS_PAYMENT_ANOMALY', {
+      anomaly: 'AMOUNT_MISMATCH',
+      expectedAmountVnd: null,
+      receivedAmountVnd: '150000',
+    }),
+    { anomaly: 'AMOUNT_MISMATCH', expectedAmountVnd: null, receivedAmountVnd: '150000' },
+  );
+  assert.deepEqual(
+    parseNotificationParams('PAYMENT_REVERSED', { method: 'CASH', amountVnd: '5' }),
+    {
+      method: 'CASH',
+      amountVnd: '5',
+    },
+  );
+  assert.deepEqual(
+    parseNotificationParams('INVOICE_CANCELLED_ALERT', {
+      cancelledFrom: 'PAID',
+      amountVnd: '0',
+    }),
+    { cancelledFrom: 'PAID', amountVnd: '0' },
+  );
+  const summary = {
+    businessDate: '2026-10-05',
+    totalVnd: '500000',
+    cashVnd: '300000',
+    payosVnd: '200000',
+    paidInvoiceCount: 2,
+    pendingPaymentCount: 0,
+  };
+  assert.deepEqual(parseNotificationParams('REVENUE_DAILY_SUMMARY', summary), summary);
+  // The customer cancellation carries no params at all (no reason).
+  assert.equal(parseNotificationParams('INVOICE_CANCELLED', null), null);
+
+  const bad = (type: string, value: unknown) =>
+    assert.throws(() => parseNotificationParams(type as never, value));
+  bad('INVOICE_CANCELLED', { reason: 'Khách đổi ý' });
+  bad('INVOICE_PAID', { amountVnd: 200000 }); // number, not a string
+  bad('INVOICE_PAID', { amountVnd: '-1' });
+  bad('INVOICE_PAID', { amountVnd: '01' });
+  bad('INVOICE_PAID', { amountVnd: '1.5' });
+  bad('INVOICE_PAID', { amountVnd: '1000000000000000' }); // more than 15 digits
+  bad('INVOICE_PAID', { amountVnd: '1', reason: 'x' });
+  bad('INVOICE_PAID', null);
+  bad('PAYOS_PAYMENT_ANOMALY', {
+    anomaly: 'SOMETHING_ELSE',
+    expectedAmountVnd: null,
+    receivedAmountVnd: '1',
+  });
+  bad('PAYMENT_REVERSED', { method: 'CARD', amountVnd: '1' });
+  bad('INVOICE_CANCELLED_ALERT', { cancelledFrom: 'DRAFT', amountVnd: '1' });
+  bad('REVENUE_DAILY_SUMMARY', { ...summary, paidInvoiceCount: -1 });
+  bad('REVENUE_DAILY_SUMMARY', { ...summary, pendingPaymentCount: 1.5 });
+  bad('REVENUE_DAILY_SUMMARY', { ...summary, businessDate: '2026-13-01' });
+  bad('REVENUE_DAILY_SUMMARY', { ...summary, note: 'Doanh thu' });
 });

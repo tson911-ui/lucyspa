@@ -50,7 +50,7 @@ test('inbox is bounded and projects only own safe fields, with timestamp/UUID pa
   } as unknown as Prisma.TransactionClient;
   const page = await listOwnNotifications(tx, userId, `${now.toISOString()}~${id}`);
   assert.equal(page.unreadCount, 1);
-  assert.deepEqual(page.unreadByCategory, { OPERATIONS: 1, HR: 0 });
+  assert.deepEqual(page.unreadByCategory, { OPERATIONS: 1, HR: 0, FINANCE: 0 });
   assert.equal(Reflect.get(Object(Reflect.get(Object(query), 'where')), 'archivedAt'), null);
   assert.equal(page.nextCursor, null);
   assert.equal(Reflect.get(Object(query), 'take'), 31);

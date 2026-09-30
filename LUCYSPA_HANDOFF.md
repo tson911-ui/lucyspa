@@ -20,7 +20,7 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)       |
 | Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                              |
 | Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                           |
-| **Phase 4 (POS, invoices, payments)**     | **IN PROGRESS: Steps 1-9 CLOSED / OWNER APPROVED; Step 10 blocked on Q8** |
+| **Phase 4 (POS, invoices, payments)**     | **IN PROGRESS: Steps 1-10 CLOSED / OWNER APPROVED** |
 | Phase 5+ (loyalty, payroll, finance)      | NOT started (deferred)                                                 |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
@@ -36,10 +36,10 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | 7    | Cash / split payments / payment states / corrections                 | CLOSED / OWNER APPROVED (no migration)     |
 | 8    | PayOS (Q7 answered)                                                  | CLOSED / OWNER APPROVED                    |
 | 9    | Customer invoice history                                             | CLOSED / OWNER APPROVED                    |
-| 10   | Invoice / revenue notifications                                      | NOT STARTED, **Q8 must be answered first** |
+| 10   | Invoice / revenue notifications                                      | CLOSED / OWNER APPROVED                    |
 | 11   | Final validation (single full gate; no deploy)                       | NOT STARTED                                |
 
-Phase 4 migrations so far: Step 3 (`20261013…`), Step 4 (`20261014000000-04`), Step 6 (`20261015000000`, category snapshot).
+Phase 4 migrations so far: Step 3 (`20261013…`), Step 4 (`20261014000000-04`), Step 6 (`20261015000000`, category snapshot), Step 8 (`20261016000000-01`), Step 10 (`20261017000000`, notifications).
 
 ## Locked Owner decisions (do not reopen; details in the Phase 4 design doc)
 
@@ -63,7 +63,13 @@ Phase 4 migrations so far: Step 3 (`20261013…`), Step 4 (`20261014000000-04`),
 
 ## Open Owner checkpoints (NOT decided; do not decide or implement)
 
-- **Q8 - Invoice / revenue notifications:** answer before Step 10 (recipients, routing, content, policy).
+- None. Q8 was answered before Step 10 (see "Q8 (notifications)" below).
+
+## Q8 (invoice / revenue notifications) - LOCKED
+
+In-app only (no email/Zalo). Payer: notified when invoice becomes PAID and when a finalized invoice is cancelled (no reason); nothing for drafts/partials.
+PayOS request creator: notified on success or anomaly. Management: exceptions only, to `CORRECT_PAYMENTS` holders at the invoice branch (PayOS anomalies, payment reversals, finalized-invoice cancellation).
+Daily revenue summary 21:30 branch-local to `VIEW_REVENUE` holders (total, cash, PayOS, paid count, pending count); revenue totals only to `VIEW_REVENUE`; exception notices show only that invoice's amounts. Routing = invoice branch + permission engine, no role names.
 
 ## Owner instruction for Step 7
 
@@ -84,6 +90,12 @@ Deploy needs `PAYOS_CLIENT_ID/API_KEY/CHECKSUM_KEY` (api + worker), the webhook 
 Step 9 (`docs/PHASE4_STEP9_CUSTOMER_INVOICES.md`): `GET /api/v1/me/invoices[/:id]`, payer = session customer and finalized only, read only; no migration.
 Web `/account/invoices` (VI/EN). CLOSED / OWNER APPROVED.
 Step 9 Owner answers: drafts hidden, cancelled shown as "Đã hủy" (reason hidden); guest-payer invoices never viewable/attached (V1); no customer self-pay (counter payment; online self-pay = separate future feature). Dev DB `lucy_spa_dev` is 12 migrations behind: run integration tests on a scratch DB.
+
+## Step 10 (invoice / revenue notifications)
+
+Step 10 (`docs/PHASE4_STEP10_INVOICE_NOTIFICATIONS.md`): Q8 policy implemented in-app only; migration `20261017000000` (`outbox_consumptions`, notification CHECKs, one summary event per branch/date).
+Worker consumer `notifications` (no `published_at`) + 21:30 branch-local summary scheduler; routing by `resolvePermissionHolders`; web FINANCE tab. No new permission/env.
+Step 10 Owner answers (confirmed): Owner account receives exceptions/summary via the permission engine; managers see their own reversal alerts; summary daily even with zeros (00:00-21:30, catch-up to midnight); no read-time re-check for revoked holders; expired/failed PayOS requests notify nobody. CLOSED / OWNER APPROVED.
 
 ## Production
 

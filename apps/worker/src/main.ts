@@ -10,6 +10,7 @@ import { Worker } from 'bullmq';
 import { parseAuthJobsEnvironment, startAuthJobs } from './auth-jobs.js';
 import { processSystemCheck } from './processor.js';
 import { startBookingJobs } from './booking-jobs.js';
+import { startInvoiceNotifications } from './invoice-notification-jobs.js';
 import { startLeaveNotifications } from './leave-jobs.js';
 import { startPayosReconciliation } from './payos-jobs.js';
 
@@ -26,6 +27,7 @@ async function bootstrap() {
   let bookingJobs: { stop(): Promise<void> } | undefined;
   let leaveJobs: { stop(): Promise<void> } | undefined;
   let payosJobs: { stop(): Promise<void> } | undefined;
+  let invoiceNotifications: { stop(): Promise<void> } | undefined;
   try {
     await database.$queryRaw`SELECT 1`;
     worker = new Worker(SYSTEM_CHECK_QUEUE, async (job) => processSystemCheck(job), {
@@ -53,8 +55,10 @@ async function bootstrap() {
     bookingJobs = startBookingJobs(database, config.redisUrl, logger);
     leaveJobs = startLeaveNotifications(database, logger);
     payosJobs = startPayosReconciliation(database, config.payos, logger);
+    invoiceNotifications = startInvoiceNotifications(database, logger);
     logger.info({ queue: SYSTEM_CHECK_QUEUE }, 'Worker ready');
   } catch (error) {
+    await invoiceNotifications?.stop();
     await payosJobs?.stop();
     await leaveJobs?.stop();
     await bookingJobs?.stop();
@@ -70,6 +74,7 @@ async function bootstrap() {
     const deadline = setTimeout(() => process.exit(1), 15000);
     deadline.unref();
     try {
+      await invoiceNotifications?.stop();
       await payosJobs?.stop();
       await leaveJobs?.stop();
       await bookingJobs?.stop();

@@ -88,13 +88,13 @@ test('notification HTTP enforces exact payloads, own session, CSRF and safe erro
         return {
           items: [],
           unreadCount: 0,
-          unreadByCategory: { OPERATIONS: 0, HR: 0 },
+          unreadByCategory: { OPERATIONS: 0, HR: 0, FINANCE: 0 },
           nextCursor: null,
         };
       },
       count: (value: string) => {
         authenticate(value);
-        return { unreadCount: 0, unreadByCategory: { OPERATIONS: 0, HR: 0 } };
+        return { unreadCount: 0, unreadByCategory: { OPERATIONS: 0, HR: 0, FINANCE: 0 } };
       },
       read: (value: string, id: string) => {
         authenticate(value);
@@ -109,7 +109,11 @@ test('notification HTTP enforces exact payloads, own session, CSRF and safe erro
       readAll: (value: string, category: string | undefined) => {
         authenticate(value);
         readAlls.push(category);
-        return { updated: 0, unreadCount: 0, unreadByCategory: { OPERATIONS: 0, HR: 0 } };
+        return {
+          updated: 0,
+          unreadCount: 0,
+          unreadByCategory: { OPERATIONS: 0, HR: 0, FINANCE: 0 },
+        };
       },
     })
     .compile();
@@ -169,7 +173,7 @@ test('notification HTTP enforces exact payloads, own session, CSRF and safe erro
     assert.deepEqual(listed[0]!.filters, { unread: false, archived: false });
     assert.deepEqual(listed[1]!.filters, { category: 'HR', unread: true, archived: true });
     for (const query of [
-      { category: 'FINANCE' },
+      { category: 'BILLING' },
       { unread: 'maybe' },
       { archived: '1' },
       { recipient: 'someone' },
@@ -205,7 +209,7 @@ test('notification HTTP enforces exact payloads, own session, CSRF and safe erro
       .set({ Cookie: cookie, Origin: headers.Origin })
       .send({})
       .expect(403);
-    for (const body of [{ category: 'FINANCE' }, { recipientUserId: randomUUID() }, { ids: [] }]) {
+    for (const body of [{ category: 'BILLING' }, { recipientUserId: randomUUID() }, { ids: [] }]) {
       await request(server).post(readAllUrl).set(headers).send(body).expect(400);
     }
     assert.equal(readAlls.length, 0);

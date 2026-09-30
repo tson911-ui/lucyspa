@@ -6,10 +6,16 @@ import type { LeaveType } from './index.js';
  * `type`; none of them is stored per row, so they can never drift from the type. Constant
  * data only: no runtime dependency, no delivery or routing logic.
  */
-export const NOTIFICATION_ENTITY_TYPES = ['Booking', 'Visit', 'LeaveRequest'] as const;
+export const NOTIFICATION_ENTITY_TYPES = [
+  'Booking',
+  'Visit',
+  'LeaveRequest',
+  'Invoice',
+  'Branch',
+] as const;
 export type NotificationEntityType = (typeof NOTIFICATION_ENTITY_TYPES)[number];
 
-export const NOTIFICATION_CATEGORIES = ['OPERATIONS', 'HR'] as const;
+export const NOTIFICATION_CATEGORIES = ['OPERATIONS', 'HR', 'FINANCE'] as const;
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
 
 export function isNotificationCategory(value: unknown): value is NotificationCategory {
@@ -17,9 +23,17 @@ export function isNotificationCategory(value: unknown): value is NotificationCat
 }
 export type NotificationSeverity = 'INFO' | 'ATTENTION' | 'WARNING';
 /** Which allowlisted screen an item opens; the destination API still enforces authority. */
-export type NotificationTargetKind = 'BOOKING' | 'VISIT' | 'LEAVE_REQUEST';
+export type NotificationTargetKind = 'BOOKING' | 'VISIT' | 'LEAVE_REQUEST' | 'INVOICE' | 'BRANCH';
 /** Shape of the structured `params` a type carries. Never free text. */
-export type NotificationParamsKind = 'NONE' | 'LEAVE_REQUESTED' | 'LEAVE_DECIDED';
+export type NotificationParamsKind =
+  | 'NONE'
+  | 'LEAVE_REQUESTED'
+  | 'LEAVE_DECIDED'
+  | 'INVOICE_AMOUNT'
+  | 'PAYOS_ANOMALY'
+  | 'PAYMENT_REVERSED'
+  | 'INVOICE_CANCELLED_ALERT'
+  | 'REVENUE_SUMMARY';
 
 export interface NotificationTypeMetadata {
   readonly category: NotificationCategory;
@@ -40,6 +54,8 @@ export const NOTIFICATION_TARGET_BY_ENTITY = {
   Booking: 'BOOKING',
   Visit: 'VISIT',
   LeaveRequest: 'LEAVE_REQUEST',
+  Invoice: 'INVOICE',
+  Branch: 'BRANCH',
 } as const satisfies Record<NotificationEntityType, NotificationTargetKind>;
 
 const operations = (severity: NotificationSeverity, i18nKey: string): NotificationTypeMetadata => ({
@@ -61,6 +77,19 @@ const leave = (
   params,
 });
 
+const finance = (
+  severity: NotificationSeverity,
+  i18nKey: string,
+  params: NotificationParamsKind,
+  entity: 'Invoice' | 'Branch' = 'Invoice',
+): NotificationTypeMetadata => ({
+  category: 'FINANCE',
+  severity,
+  entityTypes: [entity],
+  i18nKey,
+  params,
+});
+
 /**
  * Phase 3 types keep their existing behavior; only metadata is declared for them here.
  * Leave types are added for the Leave notification work.
@@ -78,6 +107,20 @@ export const NOTIFICATION_TYPE_REGISTRY = {
   END_OVERDUE: operations('WARNING', 'END_OVERDUE'),
   LEAVE_REQUESTED: leave('ATTENTION', 'LEAVE_REQUESTED', 'LEAVE_REQUESTED'),
   LEAVE_DECIDED: leave('INFO', 'LEAVE_DECIDED', 'LEAVE_DECIDED'),
+  // Phase 4 Step 10 (Owner answers Q8). Payer (customer): the first two. Request creator: the next two.
+  // Management (CORRECT_PAYMENTS holders): the anomaly, the reversal and the cancellation alert.
+  // Revenue summary (VIEW_REVENUE holders): the last one, the only type that carries totals.
+  INVOICE_PAID: finance('INFO', 'INVOICE_PAID', 'INVOICE_AMOUNT'),
+  INVOICE_CANCELLED: finance('INFO', 'INVOICE_CANCELLED', 'NONE'),
+  PAYOS_PAYMENT_SUCCEEDED: finance('INFO', 'PAYOS_PAYMENT_SUCCEEDED', 'INVOICE_AMOUNT'),
+  PAYOS_PAYMENT_ANOMALY: finance('WARNING', 'PAYOS_PAYMENT_ANOMALY', 'PAYOS_ANOMALY'),
+  PAYMENT_REVERSED: finance('ATTENTION', 'PAYMENT_REVERSED', 'PAYMENT_REVERSED'),
+  INVOICE_CANCELLED_ALERT: finance(
+    'ATTENTION',
+    'INVOICE_CANCELLED_ALERT',
+    'INVOICE_CANCELLED_ALERT',
+  ),
+  REVENUE_DAILY_SUMMARY: finance('INFO', 'REVENUE_DAILY_SUMMARY', 'REVENUE_SUMMARY', 'Branch'),
 } as const satisfies Record<string, NotificationTypeMetadata>;
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPE_REGISTRY;
@@ -120,15 +163,73 @@ export interface LeaveDecidedParams {
   endDate: string;
   leaveType: (typeof LEAVE_TYPES)[number];
 }
-export type NotificationParams = LeaveRequestedParams | LeaveDecidedParams;
+/** Money is integer VND carried as a decimal string (BigInt-safe on the wire, like the financial events). */
+export interface InvoiceAmountParams {
+  amountVnd: string;
+}
+export interface PayosAnomalyParams {
+  anomaly: 'AMOUNT_MISMATCH' | 'INVOICE_NOT_PAYABLE' | 'EXCEEDS_BALANCE';
+  expectedAmountVnd: string | null;
+  receivedAmountVnd: string;
+}
+export interface PaymentReversedParams {
+  method: 'CASH' | 'PAYOS';
+  amountVnd: string;
+}
+export interface InvoiceCancelledAlertParams {
+  cancelledFrom: 'PENDING_PAYMENT' | 'PAID';
+  amountVnd: string;
+}
+/** The only params that carry revenue totals; delivered to VIEW_REVENUE holders only (Q8 item 6). */
+export interface RevenueSummaryParams {
+  businessDate: string;
+  totalVnd: string;
+  cashVnd: string;
+  payosVnd: string;
+  paidInvoiceCount: number;
+  pendingPaymentCount: number;
+}
+export type NotificationParams =
+  | LeaveRequestedParams
+  | LeaveDecidedParams
+  | InvoiceAmountParams
+  | PayosAnomalyParams
+  | PaymentReversedParams
+  | InvoiceCancelledAlertParams
+  | RevenueSummaryParams;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+const VND = /^(0|[1-9]\d{0,14})$/;
+
+const oneOf = <T extends string>(name: string, value: unknown, allowed: readonly T[]): T => {
+  if (typeof value !== 'string' || !(allowed as readonly string[]).includes(value)) {
+    throw new Error(`Notification param ${name} is not an allowed value.`);
+  }
+  return value as T;
+};
+const vnd = (name: string, value: unknown): string => {
+  if (typeof value !== 'string' || !VND.test(value)) {
+    throw new Error(`Notification param ${name} must be integer VND.`);
+  }
+  return value;
+};
+const count = (name: string, value: unknown): number => {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`Notification param ${name} must be a non-negative integer.`);
+  }
+  return value;
+};
+const exactKeys = (type: string, record: Record<string, unknown>, expected: readonly string[]) => {
+  if (Object.keys(record).sort().join() !== [...expected].sort().join()) {
+    throw new Error(`Notification params for ${type} must have exactly: ${expected.join(', ')}.`);
+  }
+};
 
 /**
- * Strict allowlist validator for `params`: exactly the declared keys, ids/dates/enums only,
- * so a notification can never carry free-form or sensitive text. Returns the normalized
- * object, `null` for a type without params, and throws on anything else.
+ * Strict allowlist validator for `params`: exactly the declared keys, and only ids, dates, enums, integer
+ * VND strings and counts, so a notification can never carry free-form or sensitive text (no reason, no
+ * name). Returns the normalized object, `null` for a type without params, and throws on anything else.
  */
 export function parseNotificationParams(
   type: NotificationType,
@@ -143,14 +244,66 @@ export function parseNotificationParams(
     throw new Error(`Notification type ${type} requires structured params.`);
   }
   const record = value as Record<string, unknown>;
+  switch (kind) {
+    case 'INVOICE_AMOUNT':
+      exactKeys(type, record, ['amountVnd']);
+      return { amountVnd: vnd('amountVnd', record['amountVnd']) };
+    case 'PAYOS_ANOMALY':
+      exactKeys(type, record, ['anomaly', 'expectedAmountVnd', 'receivedAmountVnd']);
+      return {
+        anomaly: oneOf('anomaly', record['anomaly'], [
+          'AMOUNT_MISMATCH',
+          'INVOICE_NOT_PAYABLE',
+          'EXCEEDS_BALANCE',
+        ]),
+        expectedAmountVnd:
+          record['expectedAmountVnd'] === null
+            ? null
+            : vnd('expectedAmountVnd', record['expectedAmountVnd']),
+        receivedAmountVnd: vnd('receivedAmountVnd', record['receivedAmountVnd']),
+      };
+    case 'PAYMENT_REVERSED':
+      exactKeys(type, record, ['method', 'amountVnd']);
+      return {
+        method: oneOf('method', record['method'], ['CASH', 'PAYOS']),
+        amountVnd: vnd('amountVnd', record['amountVnd']),
+      };
+    case 'INVOICE_CANCELLED_ALERT':
+      exactKeys(type, record, ['cancelledFrom', 'amountVnd']);
+      return {
+        cancelledFrom: oneOf('cancelledFrom', record['cancelledFrom'], ['PENDING_PAYMENT', 'PAID']),
+        amountVnd: vnd('amountVnd', record['amountVnd']),
+      };
+    case 'REVENUE_SUMMARY': {
+      exactKeys(type, record, [
+        'businessDate',
+        'totalVnd',
+        'cashVnd',
+        'payosVnd',
+        'paidInvoiceCount',
+        'pendingPaymentCount',
+      ]);
+      const businessDate = record['businessDate'];
+      if (typeof businessDate !== 'string' || !DATE.test(businessDate)) {
+        throw new Error('Revenue summary businessDate must be YYYY-MM-DD.');
+      }
+      return {
+        businessDate,
+        totalVnd: vnd('totalVnd', record['totalVnd']),
+        cashVnd: vnd('cashVnd', record['cashVnd']),
+        payosVnd: vnd('payosVnd', record['payosVnd']),
+        paidInvoiceCount: count('paidInvoiceCount', record['paidInvoiceCount']),
+        pendingPaymentCount: count('pendingPaymentCount', record['pendingPaymentCount']),
+      };
+    }
+    default:
+      break;
+  }
   const expected =
     kind === 'LEAVE_REQUESTED'
       ? ['subjectUserId', 'startDate', 'endDate', 'leaveType']
       : ['decision', 'startDate', 'endDate', 'leaveType'];
-  const keys = Object.keys(record).sort();
-  if (keys.join() !== [...expected].sort().join()) {
-    throw new Error(`Notification params for ${type} must have exactly: ${expected.join(', ')}.`);
-  }
+  exactKeys(type, record, expected);
   const text = (key: string) => {
     const entry = record[key];
     if (typeof entry !== 'string') throw new Error(`Notification param ${key} must be a string.`);
