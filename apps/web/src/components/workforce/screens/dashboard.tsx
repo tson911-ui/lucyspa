@@ -8,6 +8,7 @@ import type {
 import Link from 'next/link';
 import { fill } from '../../../i18n/workforce';
 import { formatTime } from '../../../lib/workforce/format';
+import { isManagementItem } from '../../../lib/workforce/nav-groups';
 import { canAnywhere, navigationFor } from '../../../lib/workforce/permissions';
 import { attendanceState } from '../../../lib/workforce/workflows';
 import { branchLabel, useBranches } from '../data';
@@ -44,7 +45,7 @@ export function DashboardScreen() {
     });
     return scoped.requests.filter((request) => request.employeeId !== account.id).length;
   }, [api, approver, account.id]);
-  const management = navigationFor(account).filter((item) => item.group === 'management');
+  const management = navigationFor(account).filter(isManagementItem);
 
   return (
     <>

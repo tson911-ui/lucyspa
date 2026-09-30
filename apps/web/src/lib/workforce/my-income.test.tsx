@@ -109,7 +109,7 @@ test('My Income is in every workforce navigation, Owner included', () => {
   for (const account of [owner, employee()]) {
     assert.deepEqual(
       navigationFor(account).find((item) => item.key === 'myIncome'),
-      { key: 'myIncome', group: 'home', path: '/income' },
+      { key: 'myIncome', group: 'personal', path: '/income' },
     );
   }
   assert.equal(vi.nav.myIncome, 'Thu nhập của tôi');

@@ -1,0 +1,636 @@
+/* App shell, navigation, theme toggle, user menu, breadcrumbs and the auth layout
+   (docs/UXUI_REDESIGN_DESIGN.md sections 4, 12.6 and 13). Tokens only: no color literals.
+   Breakpoints: phone < 640, tablet 640-1023, desktop >= 1024 (auth split from 768). */
+
+/* ---- Shell ---------------------------------------------------------------------------------- */
+.ls-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+}
+
+.ls-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--ls-z-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-3);
+  min-height: var(--ls-topbar-h);
+  padding: var(--ls-space-2) var(--ls-gutter);
+  border-bottom: 1px solid var(--ls-border);
+  background: var(--ls-bg-surface);
+}
+
+.ls-topbar-brand {
+  display: flex;
+  align-items: center;
+  color: var(--ls-brand);
+}
+
+.ls-topbar-brand a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Space for a Phase 8 global search is the flexible gap between the brand and the actions. */
+.ls-topbar-end {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  margin-inline-start: auto;
+}
+
+.ls-topbar-extras {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-3);
+}
+
+@media (min-width: 1024px) {
+  .ls-menu-button {
+    display: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .ls-topbar-extras {
+    display: none;
+  }
+}
+
+.ls-shell-body {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.ls-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.ls-content:focus {
+  outline: none;
+}
+
+/* ---- Sidebar -------------------------------------------------------------------------------- */
+.ls-sidebar-slot {
+  position: sticky;
+  top: var(--ls-topbar-h);
+  flex: none;
+  width: var(--ls-sidebar-w);
+  height: calc(100svh - var(--ls-topbar-h));
+  transition: width var(--ls-dur-base) var(--ls-ease);
+}
+
+.ls-sidebar-slot[data-rail='true'] {
+  width: var(--ls-sidebar-w-collapsed);
+}
+
+.ls-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-inline-end: 1px solid var(--ls-border);
+  background: var(--ls-bg-surface);
+}
+
+.ls-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--ls-space-3);
+}
+
+.ls-nav-group + .ls-nav-group {
+  margin-top: var(--ls-space-4);
+}
+
+.ls-nav-heading {
+  margin: 0 0 var(--ls-space-1);
+  padding-inline: var(--ls-space-3);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-xs);
+  font-weight: 600;
+  line-height: var(--ls-leading-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ls-nav-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-nav-link,
+.ls-sidebar-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-3);
+  width: 100%;
+  min-height: var(--ls-control-h);
+  padding: var(--ls-space-2) var(--ls-space-3);
+  border: 0;
+  border-radius: var(--ls-radius-sm);
+  color: var(--ls-text);
+  background: transparent;
+  font: inherit;
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ls-nav-link svg,
+.ls-sidebar-toggle svg {
+  flex: none;
+}
+
+.ls-nav-link:hover,
+.ls-sidebar-toggle:hover {
+  background: var(--ls-bg-sunken);
+}
+
+.ls-nav-link:focus-visible,
+.ls-sidebar-toggle:focus-visible {
+  outline-offset: -2px;
+}
+
+/* The current page is marked by fill, weight and an edge bar, never by color alone. */
+.ls-nav-link[aria-current='page'] {
+  color: var(--ls-brand-on-soft);
+  background: var(--ls-brand-soft);
+  box-shadow: inset 3px 0 0 var(--ls-brand);
+  font-weight: 600;
+}
+
+.ls-nav-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ls-sidebar-footer {
+  padding: var(--ls-space-3);
+  border-top: 1px solid var(--ls-border);
+}
+
+/* Icon rail: desktop collapsed, and tablet unless expanded. Labels stay for assistive technology. */
+.ls-sidebar[data-rail='true'] .ls-nav-label,
+.ls-sidebar[data-rail='true'] .ls-nav-heading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ls-sidebar[data-rail='true'] .ls-nav-link,
+.ls-sidebar[data-rail='true'] .ls-sidebar-toggle {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.ls-sidebar[data-rail='true'] .ls-nav-group + .ls-nav-group {
+  margin-top: var(--ls-space-2);
+  padding-top: var(--ls-space-2);
+  border-top: 1px solid var(--ls-border);
+}
+
+/* Tablet: always a rail; the menu button expands it as an overlay. Covered in CSS too, so the first
+   paint before hydration already has the right layout. */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .ls-sidebar-slot {
+    width: var(--ls-sidebar-w-collapsed);
+  }
+
+  .ls-sidebar:not([data-overlay]) .ls-nav-label,
+  .ls-sidebar:not([data-overlay]) .ls-nav-heading {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .ls-sidebar:not([data-overlay]) .ls-nav-link {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .ls-sidebar:not([data-overlay]) .ls-nav-group + .ls-nav-group {
+    margin-top: var(--ls-space-2);
+    padding-top: var(--ls-space-2);
+    border-top: 1px solid var(--ls-border);
+  }
+
+  /* The collapse toggle is desktop only (the component omits it on tablet after hydration). */
+  .ls-sidebar-footer {
+    display: none;
+  }
+
+  .ls-sidebar[data-overlay] {
+    position: fixed;
+    top: var(--ls-topbar-h);
+    bottom: 0;
+    inset-inline-start: 0;
+    z-index: var(--ls-z-drawer);
+    width: var(--ls-sidebar-w);
+    height: auto;
+    box-shadow: var(--ls-shadow-lg);
+  }
+}
+
+.ls-sidebar-scrim {
+  position: fixed;
+  inset: var(--ls-topbar-h) 0 0;
+  z-index: calc(var(--ls-z-drawer) - 1);
+  background: var(--ls-overlay);
+}
+
+/* Phone: the sidebar is a drawer (rendered by the component); before hydration it is hidden. */
+@media (max-width: 639px) {
+  .ls-sidebar-slot {
+    display: none;
+  }
+}
+
+.ls-nav-drawer .ls-nav {
+  padding: 0;
+}
+
+/* ---- Theme toggle ----------------------------------------------------------------------------- */
+.ls-theme-toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-sunken);
+}
+
+.ls-theme-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ls-space-2);
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0 var(--ls-space-2);
+  border: 0;
+  border-radius: var(--ls-radius-full);
+  color: var(--ls-text-muted);
+  background: transparent;
+  font: inherit;
+  font-size: var(--ls-text-sm);
+  cursor: pointer;
+}
+
+.ls-theme-option:hover {
+  color: var(--ls-text);
+}
+
+.ls-theme-option-active {
+  color: var(--ls-brand-on-soft);
+  background: var(--ls-brand-soft);
+  box-shadow: inset 0 0 0 1px var(--ls-brand);
+  font-weight: 600;
+}
+
+.ls-theme-toggle-labeled {
+  display: flex;
+  width: 100%;
+  border-radius: var(--ls-radius-md);
+}
+
+.ls-theme-toggle-labeled .ls-theme-option {
+  flex: 1;
+  flex-wrap: wrap;
+  border-radius: var(--ls-radius-sm);
+}
+
+@media (pointer: coarse), (max-width: 1023px) {
+  .ls-theme-option {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+}
+
+/* ---- User menu -------------------------------------------------------------------------------- */
+.ls-usermenu {
+  display: inline-flex;
+}
+
+.ls-usermenu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  min-height: var(--ls-control-h);
+  padding: var(--ls-space-1) var(--ls-space-2);
+  border: 0;
+  border-radius: var(--ls-radius-full);
+  color: var(--ls-text);
+  background: transparent;
+  font: inherit;
+  font-size: var(--ls-text-sm);
+  cursor: pointer;
+}
+
+.ls-usermenu-trigger:hover {
+  background: var(--ls-bg-sunken);
+}
+
+.ls-usermenu-name {
+  display: none;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 1024px) {
+  .ls-usermenu-name {
+    display: inline;
+  }
+}
+
+.ls-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--ls-radius-full);
+  color: var(--ls-on-brand);
+  background: var(--ls-brand-fill);
+  font-size: var(--ls-text-xs);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.ls-avatar-lg {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: var(--ls-text-sm);
+}
+
+.ls-usermenu-panel {
+  width: 20rem;
+  padding: 0;
+}
+
+.ls-usermenu-header {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-3);
+  padding: var(--ls-space-4);
+  border-bottom: 1px solid var(--ls-border);
+}
+
+.ls-usermenu-who {
+  display: grid;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-usermenu-who span {
+  color: var(--ls-text-muted);
+}
+
+.ls-usermenu-section {
+  display: grid;
+  gap: var(--ls-space-1);
+  padding: var(--ls-space-2);
+}
+
+.ls-usermenu-section + .ls-usermenu-section {
+  border-top: 1px solid var(--ls-border);
+}
+
+.ls-usermenu-label {
+  margin: 0;
+  padding: var(--ls-space-1) var(--ls-space-2) 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-xs);
+  font-weight: 600;
+  line-height: var(--ls-leading-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ls-usermenu-link {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-3);
+  width: 100%;
+  min-height: var(--ls-control-h);
+  padding: var(--ls-space-2) var(--ls-space-3);
+  border: 0;
+  border-radius: var(--ls-radius-sm);
+  color: var(--ls-text);
+  background: transparent;
+  font: inherit;
+  font-size: var(--ls-text-sm);
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ls-usermenu-link:hover {
+  background: var(--ls-bg-sunken);
+}
+
+.ls-usermenu-link:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Theme and language are in the topbar from 640 px; on phones they move into the panel. */
+@media (min-width: 640px) {
+  .ls-only-phone {
+    display: none;
+  }
+}
+
+/* ---- Breadcrumbs ------------------------------------------------------------------------------ */
+.ls-crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-1);
+  margin: 0 0 var(--ls-space-2);
+  padding: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+  list-style: none;
+}
+
+.ls-crumbs li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-1);
+  overflow-wrap: anywhere;
+}
+
+.ls-crumbs [aria-current='page'] {
+  color: var(--ls-text);
+  font-weight: 600;
+}
+
+/* ---- Auth layout (contract 12.6, owner feedback: split layout) ----------------------------- */
+.ls-auth {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 100svh;
+  background: var(--ls-bg-page);
+}
+
+.ls-auth-panel {
+  display: none;
+}
+
+.ls-auth-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100svh;
+}
+
+.ls-auth-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ls-space-3);
+  padding: var(--ls-space-4) var(--ls-gutter);
+}
+
+.ls-auth-top-brand {
+  color: var(--ls-brand);
+}
+
+.ls-auth-top-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-3);
+  margin-inline-start: auto;
+}
+
+.ls-auth-main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ls-space-4) var(--ls-gutter) var(--ls-space-9);
+}
+
+.ls-auth-main:focus {
+  outline: none;
+}
+
+.ls-auth-content {
+  display: grid;
+  gap: var(--ls-space-3);
+  width: min(100%, 26rem);
+}
+
+.ls-auth-content h1 {
+  margin: 0;
+  color: var(--ls-text);
+  font-family: var(--ls-font-sans);
+  font-size: var(--ls-text-xl);
+  line-height: var(--ls-leading-xl);
+  letter-spacing: -0.01em;
+}
+
+.ls-auth-content p {
+  margin: 0;
+}
+
+.ls-auth-content form {
+  display: grid;
+  gap: var(--ls-space-4);
+}
+
+.ls-auth-content input:not([type='radio']):not([type='checkbox']) {
+  width: 100%;
+  min-height: var(--ls-control-h);
+  padding: var(--ls-space-2) var(--ls-space-3);
+  border: 1px solid var(--ls-border-control);
+  border-radius: var(--ls-radius-sm);
+  color: var(--ls-text);
+  background: var(--ls-bg-surface);
+  font: inherit;
+}
+
+.ls-auth-content [aria-invalid='true'] {
+  border-color: var(--ls-danger);
+}
+
+@media (min-width: 768px) {
+  .ls-auth {
+    grid-template-columns: minmax(20rem, 5fr) minmax(0, 6fr);
+  }
+
+  .ls-auth-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--ls-space-8);
+    min-height: 100svh;
+    padding: var(--ls-space-9) var(--ls-space-8);
+    overflow: hidden;
+    color: var(--ls-auth-panel-text);
+    background: linear-gradient(155deg, var(--ls-auth-panel-from), var(--ls-auth-panel-to));
+  }
+
+  /* The line art is a texture, not content: very low contrast, strongest at the top right. */
+  .ls-auth-pattern {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    color: var(--ls-auth-panel-line);
+    opacity: 0.09;
+    -webkit-mask-image: linear-gradient(200deg, black 15%, transparent 85%);
+    mask-image: linear-gradient(200deg, black 15%, transparent 85%);
+    pointer-events: none;
+  }
+
+  .ls-auth-panel-brand,
+  .ls-auth-tagline {
+    position: relative;
+  }
+
+  .ls-auth-panel-brand {
+    font-size: var(--ls-text-lg);
+  }
+
+  .ls-auth-tagline {
+    max-width: 22rem;
+    margin: 0;
+    color: var(--ls-auth-panel-text-muted);
+    text-wrap: balance;
+    font-size: var(--ls-text-xl);
+    font-weight: 500;
+    line-height: var(--ls-leading-xl);
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+  }
+
+  .ls-auth-top-brand {
+    display: none;
+  }
+}

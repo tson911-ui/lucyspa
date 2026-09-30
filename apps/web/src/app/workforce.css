@@ -7,90 +7,11 @@
   line-height: 1.5;
 }
 
-.wf-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.5rem 1.25rem;
-  border-bottom: 1px solid var(--ls-border);
-  background: var(--ls-bg-page);
-}
-
-.wf-brand {
-  color: var(--ls-brand);
-  text-decoration: none;
-}
-
-.wf-account {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-left: auto;
-}
-
 .wf-lang {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
   font-size: 0.85rem;
-}
-
-.wf-menu-button {
-  display: none;
-}
-
-.wf-body {
-  display: grid;
-  flex: 1;
-  grid-template-columns: 14rem minmax(0, 1fr);
-}
-
-.wf-nav {
-  padding: 1.25rem 1rem;
-  border-right: 1px solid var(--ls-border);
-}
-
-.wf-nav ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.wf-nav-group + .wf-nav-group {
-  margin-top: 1.25rem;
-}
-
-.wf-nav-heading {
-  margin: 0 0 0.4rem;
-  color: var(--ls-text-muted);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.wf-nav a {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 0.75rem;
-  border-radius: 6px;
-  text-decoration: none;
-}
-
-.wf-nav a:hover {
-  background: var(--ls-bg-sunken);
-}
-
-.wf-nav a[aria-current='page'] {
-  color: var(--ls-on-brand);
-  background: var(--ls-brand-fill);
-  font-weight: 600;
 }
 
 .wf-main {
@@ -267,7 +188,6 @@
 .wf-app input:focus-visible,
 .wf-app select:focus-visible,
 .wf-app textarea:focus-visible,
-.wf-menu-button:focus-visible,
 .wf-login input:focus-visible,
 .wf-login button:focus-visible {
   outline: 2px solid var(--ls-focus);
@@ -768,39 +688,8 @@
 
 /* Tablet and phone */
 @media (max-width: 900px) {
-  .wf-menu-button {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 0 0.9rem;
-    border: 1px solid var(--ls-border);
-    border-radius: 8px;
-    background: var(--ls-bg-surface);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .wf-body {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .wf-nav {
-    display: none;
-    border-right: 0;
-    border-bottom: 1px solid var(--ls-border);
-  }
-
-  .wf-nav[data-open='true'] {
-    display: block;
-  }
-
   .wf-main {
     padding: 1.25rem 1rem 2.5rem;
-  }
-
-  .wf-account-name {
-    display: none;
   }
 }
 

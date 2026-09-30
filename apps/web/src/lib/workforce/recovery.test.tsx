@@ -186,3 +186,43 @@ test('anti-enumeration: one neutral message; code failures are never specific', 
   );
   assert.equal(recoveryErrorMessage(new ApiError(429, 'RATE_LIMITED'), vi), vi.errors.rateLimited);
 });
+
+test('forgot password uses the split auth layout: brand panel with tagline, form in the side column', () => {
+  for (const [dictionary, locale] of [
+    [vi, 'vi'],
+    [en, 'en'],
+  ] as const) {
+    const markup = render(
+      <ForgotPasswordView
+        step="email"
+        email=""
+        code=""
+        password=""
+        confirmation=""
+        problem={null}
+        error={null}
+        pending={false}
+        loginHref={`/${locale}/workforce/login`}
+        onEmail={() => undefined}
+        onCode={() => undefined}
+        onPassword={() => undefined}
+        onConfirmation={() => undefined}
+        onRequest={() => undefined}
+        onComplete={() => undefined}
+        onRestart={() => undefined}
+        brand={<span>LUCY SPA</span>}
+        t={dictionary}
+      />,
+      owner,
+      locale,
+    );
+    assert.match(markup, /<div class="ls-auth-panel" aria-hidden="true">/);
+    assert.ok(markup.includes(dictionary.auth.tagline), 'tagline in the panel');
+    assert.ok(
+      markup.indexOf('ls-auth-side') < markup.indexOf('<h1>'),
+      'the form is in the side column',
+    );
+    assert.doesNotMatch(markup, /wf-login/, 'the old centered card is gone from workforce pages');
+    assert.ok(markup.includes(dictionary.recovery.forgotTitle));
+  }
+});

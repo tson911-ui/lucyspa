@@ -28,6 +28,13 @@
   --ls-brand-on-soft: #782b37;
   --ls-focus: #782b37;
 
+  /* Auth brand panel (docs/UXUI_REDESIGN_DESIGN.md 12.6): a deep brand-red gradient in both themes */
+  --ls-auth-panel-from: #8a3345;
+  --ls-auth-panel-to: #4d1822;
+  --ls-auth-panel-text: #ffffff;
+  --ls-auth-panel-text-muted: #f3dde2;
+  --ls-auth-panel-line: #ffffff;
+
   /* Status (never color-only, see contract 6.4) */
   --ls-danger: #b3261e;
   --ls-danger-bg: #fdecea;
@@ -90,6 +97,7 @@
   --ls-icon-size: 20px;
   --ls-sidebar-w: 264px;
   --ls-sidebar-w-collapsed: 72px;
+  --ls-topbar-h: 3.5rem;
   --ls-content-max: 1280px;
   --ls-form-max: 720px;
 
@@ -157,6 +165,11 @@
   --ls-brand-soft: #3a1b23;
   --ls-brand-on-soft: #f0b3be;
   --ls-focus: #e08a9a;
+  --ls-auth-panel-from: #4a1a24;
+  --ls-auth-panel-to: #1f0b10;
+  --ls-auth-panel-text: #ffffff;
+  --ls-auth-panel-text-muted: #ead0d6;
+  --ls-auth-panel-line: #ffffff;
   --ls-danger: #ff9484;
   --ls-danger-bg: #3d1c1a;
   --ls-on-danger: #2a0f16;
@@ -200,6 +213,11 @@
     --ls-brand-soft: #3a1b23;
     --ls-brand-on-soft: #f0b3be;
     --ls-focus: #e08a9a;
+    --ls-auth-panel-from: #4a1a24;
+    --ls-auth-panel-to: #1f0b10;
+    --ls-auth-panel-text: #ffffff;
+    --ls-auth-panel-text-muted: #ead0d6;
+    --ls-auth-panel-line: #ffffff;
     --ls-danger: #ff9484;
     --ls-danger-bg: #3d1c1a;
     --ls-on-danger: #2a0f16;

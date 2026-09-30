@@ -143,3 +143,20 @@ export {
   totalPages,
 } from './paging-core';
 export type { PageItem, SortDirection, SortState, SortValue } from './paging-core';
+
+// App shell and auth layout (Step 5): shell, sidebar, user menu, breadcrumbs, theme toggle, split auth page.
+export { AppShell, Breadcrumbs, SidebarNav, UserMenu } from './app-shell';
+export type { AppShellLabels, Crumb, ShellLink, ShellLinkProps } from './app-shell';
+export { AuthLayout, BotanicalPattern } from './auth-layout';
+export { ThemeToggle } from './theme-toggle';
+export type { ThemeToggleLabels } from './theme-toggle';
+export {
+  SIDEBAR_COLLAPSED_KEY,
+  TABLET_QUERY,
+  arrangeNav,
+  initials,
+  isPathActive,
+  readSidebarCollapsed,
+  writeSidebarCollapsed,
+} from './shell-core';
+export type { ArrangedNavGroup, ShellNavGroup, ShellNavItem } from './shell-core';

@@ -2,7 +2,7 @@
 
 **Status: Step 1 of 14 (Design Contract), CLOSED / OWNER APPROVED.** The Owner accepted every recommended default in section 17
 (Q-D1 to Q-D6 and Q-CM1 to Q-CM13) as written; they are LOCKED Owner decisions. Documentation only. No code, schema, API, migration or
-runtime change was made. Step 2 (Foundations) is **CLOSED / OWNER APPROVED** (`UXUI_REDESIGN_STEP2_FOUNDATIONS.md`). Step 3 (Core components) is **CLOSED / OWNER APPROVED** (`UXUI_REDESIGN_STEP3_CORE_COMPONENTS.md`; `jsdom` dev dependency approved for interactive tests in later Steps). Step 4 (Data components) is **CLOSED / OWNER APPROVED** (`UXUI_REDESIGN_STEP4_DATA_COMPONENTS.md`; phone "Sort by" select added on the Owner's answer). Nothing was deployed.
+runtime change was made. Step 2 (Foundations) is **CLOSED / OWNER APPROVED** (`UXUI_REDESIGN_STEP2_FOUNDATIONS.md`). Step 3 (Core components) is **CLOSED / OWNER APPROVED** (`UXUI_REDESIGN_STEP3_CORE_COMPONENTS.md`; `jsdom` dev dependency approved for interactive tests in later Steps). Step 4 (Data components) is **CLOSED / OWNER APPROVED** (`UXUI_REDESIGN_STEP4_DATA_COMPONENTS.md`; phone "Sort by" select added on the Owner's answer). Step 5 (App shell, navigation, auth layout) is **CLOSED / OWNER APPROVED** (`UXUI_REDESIGN_STEP5_SHELL_AUTH.md`; split auth layout and tagline approved). Nothing was deployed.
 
 This is the authoritative contract for the UX/UI Redesign track, Part 1 (workforce/admin area plus the website-content
 feature group). `LUCY_SPA_PRD.md` governs where this document is silent (PRD 4.1 was updated for the Owner decisions below).
@@ -27,7 +27,6 @@ Baseline: `main` at `5952992` (Phase 4 closed; PayOS webhook hotfix).
 | 14   | Part 1 final validation                      | 18, 19                      |
 
 Every Step also reads section 0 (rules) and section 17 (Owner decisions) for the answers it depends on.
-
 ---
 
 ## 0. Owner decisions recorded (LOCKED for this track)
@@ -519,7 +518,7 @@ Header (greeting, branch/date scope selector, **Customize** toggle) then the wid
 
 ### 12.6 Auth pages
 
-Login/forgot-password: centered card (max 420 px) on `--ls-bg-page`, wordmark above, language and theme toggles top right, no shell.
+Login/forgot-password (workforce): **split layout** (Owner feedback at Step 5, supersedes the centered card). From 768 px a brand panel on the left (deep brand-red gradient from `--ls-auth-panel-*` tokens, very subtle botanical line art as an inline SVG pattern, wordmark, one-line VI/EN tagline) and the form column on the right (max 26 rem, no card) with the language switch and theme toggle top right; below 768 px only the form, with the wordmark above it. Same in light and dark, no animation, no external image (a photo can replace the panel background later). No shell. Customer auth pages are not part of this track (Part 2).
 
 ---
 

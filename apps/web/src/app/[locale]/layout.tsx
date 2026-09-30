@@ -5,6 +5,7 @@ import { themeInitScript } from '@lucy-spa/ui';
 import '@lucy-spa/ui/tokens.css';
 import '@lucy-spa/ui/base.css';
 import '@lucy-spa/ui/components.css';
+import '@lucy-spa/ui/shell.css';
 import { getDictionary } from '../../i18n/dictionaries';
 import { isLocale, locales } from '../../i18n/locales';
 import '../globals.css';

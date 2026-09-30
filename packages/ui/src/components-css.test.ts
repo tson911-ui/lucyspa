@@ -16,7 +16,10 @@ function sourceFiles(directory: string): string[] {
   });
 }
 
-const css = readFileSync(new URL('components.css', here), 'utf8');
+// The shell stylesheet (Step 5) follows the same rules, so both are checked as one.
+const css = ['components.css', 'shell.css']
+  .map((name) => readFileSync(new URL(name, here), 'utf8'))
+  .join('\n');
 const tokens = readFileSync(new URL('tokens.css', here), 'utf8');
 
 test('components.css uses tokens only: no color literals', () => {

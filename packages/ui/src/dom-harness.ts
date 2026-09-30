@@ -7,6 +7,8 @@ export interface TestDom {
   window: JSDOM['window'];
   /** Makes `matchMedia(query).matches` return `value` for queries containing `max-width: 639px`. */
   setPhone(value: boolean): void;
+  /** Same for queries containing `max-width: 1023px` (the tablet query). */
+  setTablet(value: boolean): void;
 }
 
 export function installDom(url = 'http://localhost/employees'): TestDom {
@@ -16,12 +18,16 @@ export function installDom(url = 'http://localhost/employees'): TestDom {
   });
   const { window } = dom;
   let phone = false;
+  let tablet = false;
   const listeners = new Set<() => void>();
   Object.defineProperty(window, 'matchMedia', {
     configurable: true,
     value: (query: string) => ({
       get matches() {
-        return phone && query.includes('max-width: 639px');
+        return (
+          (phone && query.includes('max-width: 639px')) ||
+          (tablet && query.includes('max-width: 1023px'))
+        );
       },
       media: query,
       addEventListener: (_: string, listener: () => void) => listeners.add(listener),
@@ -58,6 +64,10 @@ export function installDom(url = 'http://localhost/employees'): TestDom {
     window,
     setPhone(value) {
       phone = value;
+      for (const listener of listeners) listener();
+    },
+    setTablet(value) {
+      tablet = value;
       for (const listener of listeners) listener();
     },
   };

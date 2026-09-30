@@ -1,139 +1,93 @@
 'use client';
 
-import { BrandWordmark } from '@lucy-spa/ui';
+import { AppShell, BrandWordmark, Icon, ThemeToggle, UserMenu, isPathActive } from '@lucy-spa/ui';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
-import type { WorkforceDictionary } from '../../i18n/workforce';
-import { navigationFor, type NavItem } from '../../lib/workforce/permissions';
+import { NAV_ICONS, personalEntries, sidebarGroups } from '../../lib/workforce/nav-groups';
+import { navigationFor } from '../../lib/workforce/permissions';
+import { NotificationIndicator } from '../notifications/inbox';
+import { themeLabels } from './auth-actions';
+import { LanguageSwitch } from './language-switch';
 import { useAccount, useSessionNotice, useWorkforce } from './session';
 import { Notice } from './ui';
-import { NotificationIndicator } from '../notifications/inbox';
-
-const GROUPS: NavItem['group'][] = ['home', 'operations', 'management'];
-
-/** Groups the permission-filtered navigation; empty groups are omitted. */
-export function groupedNavigation(items: readonly NavItem[]) {
-  return GROUPS.map((group) => ({
-    group,
-    items: items.filter((item) => item.group === group),
-  })).filter((entry) => entry.items.length > 0);
-}
-
-export function NavigationLinks({
-  items,
-  base,
-  current,
-  t,
-  onNavigate,
-}: {
-  items: readonly NavItem[];
-  base: string;
-  current: string;
-  t: WorkforceDictionary;
-  onNavigate?: () => void;
-}) {
-  return (
-    <>
-      {groupedNavigation(items).map(({ group, items: entries }) => (
-        <div className="wf-nav-group" key={group}>
-          <p className="wf-nav-heading">{t.nav[group]}</p>
-          <ul>
-            {entries.map((item) => {
-              const href = `${base}${item.path}`;
-              const active =
-                item.path === ''
-                  ? current === base
-                  : current === href || current.startsWith(`${href}/`);
-              return (
-                <li key={item.key}>
-                  <Link
-                    href={href}
-                    aria-current={active ? 'page' : undefined}
-                    {...(onNavigate ? { onClick: onNavigate } : {})}
-                  >
-                    {t.nav[item.key]}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
-    </>
-  );
-}
 
 export function WorkforceShell({ children }: { children: ReactNode }) {
   const { t, base, locale, api } = useWorkforce();
   const { account, signOut } = useAccount();
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  // Which entries exist is decided by `navigationFor` (permissions); the shell only presents them.
   const items = navigationFor(account);
-  const other = locale === 'vi' ? 'en' : 'vi';
-  const switchHref = pathname.replace(/^\/(vi|en)(?=\/|$)/, `/${other}`);
+  const title = account.workforceTitle
+    ? t.employees.titles[account.workforceTitle]
+    : account.kind === 'OWNER'
+      ? t.auth.owner
+      : t.auth.employee;
 
   return (
-    <div className="wf-app">
-      <header className="wf-topbar">
-        <button
-          type="button"
-          className="wf-menu-button"
-          aria-expanded={open}
-          aria-controls="wf-nav"
-          onClick={() => setOpen((value) => !value)}
-        >
-          {t.nav.menu}
-        </button>
-        <Link className="wf-brand" href={base} aria-label="Lucy Spa">
+    <AppShell
+      className="wf-app"
+      mainClassName="wf-main"
+      LinkComponent={Link}
+      brand={
+        <Link href={base} aria-label="Lucy Spa">
           <BrandWordmark />
         </Link>
-        <div className="wf-account">
+      }
+      nav={sidebarGroups(items, t, base, (href, exact) => isPathActive(pathname, href, exact))}
+      labels={{
+        nav: t.nav.label,
+        menu: t.nav.menu,
+        closeMenu: t.nav.closeMenu,
+        collapse: t.nav.collapse,
+        expand: t.nav.expand,
+      }}
+      topbarExtras={
+        <>
+          <ThemeToggle labels={themeLabels(t)} />
+          <LanguageSwitch />
+        </>
+      }
+      topbar={
+        <>
           <NotificationIndicator api={api} base={base} locale={locale} />
-          <span className="wf-account-name">
-            {account.displayName}
-            <span className="wf-muted wf-small">
-              {' · '}
-              {account.workforceTitle
-                ? t.employees.titles[account.workforceTitle]
-                : account.kind === 'OWNER'
-                  ? t.auth.owner
-                  : t.auth.employee}
-            </span>
-          </span>
-          <Link href={switchHref} hrefLang={other} lang={other} className="wf-lang">
-            {other === 'vi' ? 'Tiếng Việt' : 'English'}
-          </Link>
-          <button
-            type="button"
-            className="wf-button wf-button-quiet"
-            disabled={signingOut}
-            onClick={() => {
-              setSigningOut(true);
-              void signOut();
-            }}
-          >
-            {signingOut ? t.auth.signingOut : t.auth.signOut}
-          </button>
-        </div>
-      </header>
-      <div className="wf-body">
-        <nav id="wf-nav" className="wf-nav" data-open={open} aria-label={t.nav.label}>
-          <NavigationLinks
-            items={items}
-            base={base}
-            current={pathname}
-            t={t}
-            onNavigate={() => setOpen(false)}
-          />
-        </nav>
-        <main className="wf-main" id="main-content" tabIndex={-1}>
-          <SessionLostNotice />
-          {children}
-        </main>
-      </div>
-    </div>
+          <UserMenu name={account.displayName} subtitle={title} triggerLabel={t.nav.account}>
+            <div className="ls-usermenu-section">
+              {personalEntries(items).map((item) => (
+                <Link key={item.key} className="ls-usermenu-link" href={`${base}${item.path}`}>
+                  <Icon name={NAV_ICONS[item.key]} />
+                  {t.nav[item.key]}
+                </Link>
+              ))}
+            </div>
+            <div className="ls-usermenu-section ls-only-phone">
+              <p className="ls-usermenu-label">{t.nav.appearance}</p>
+              <ThemeToggle labels={themeLabels(t)} withLabels />
+              <p className="ls-usermenu-label">{t.nav.language}</p>
+              <LanguageSwitch className="ls-usermenu-link" />
+            </div>
+            <div className="ls-usermenu-section">
+              <button
+                type="button"
+                className="ls-usermenu-link"
+                disabled={signingOut}
+                onClick={() => {
+                  setSigningOut(true);
+                  void signOut();
+                }}
+              >
+                <Icon name="log-out" />
+                {signingOut ? t.auth.signingOut : t.auth.signOut}
+              </button>
+            </div>
+          </UserMenu>
+        </>
+      }
+    >
+      <SessionLostNotice />
+      {children}
+    </AppShell>
   );
 }
 

@@ -71,7 +71,7 @@ const view = (account: MyAccountResponse, locale: 'vi' | 'en' = 'vi') =>
 test('My Account is in every workforce navigation, Owner included', () => {
   for (const account of [owner, employee(), employee([['VIEW_EMPLOYEES', 'A']])]) {
     const item = navigationFor(account).find((entry) => entry.key === 'myAccount');
-    assert.deepEqual(item, { key: 'myAccount', group: 'home', path: '/account' });
+    assert.deepEqual(item, { key: 'myAccount', group: 'personal', path: '/account' });
   }
   assert.equal(vi.nav.myAccount, 'Tài khoản của tôi');
   assert.equal(en.nav.myAccount, 'My Account');

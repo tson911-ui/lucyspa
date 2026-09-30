@@ -159,3 +159,14 @@ test('brand red and danger red stay distinct in both themes (contract 6.4)', () 
     assert.notEqual(color(theme, 'brand-soft'), color(theme, 'danger-bg'));
   }
 });
+
+test('auth brand panel: text is at least 4.5:1 on both gradient stops in both themes', () => {
+  for (const [themeName, theme] of Object.entries(themes)) {
+    for (const text of ['auth-panel-text', 'auth-panel-text-muted']) {
+      for (const stop of ['auth-panel-from', 'auth-panel-to']) {
+        const value = ratio(color(theme, text), color(theme, stop));
+        assert.ok(value >= 4.5, `${themeName} ${text} on ${stop} = ${value.toFixed(2)}`);
+      }
+    }
+  }
+});

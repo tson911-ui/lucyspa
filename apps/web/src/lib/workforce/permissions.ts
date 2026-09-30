@@ -165,9 +165,13 @@ export type NavKey =
   | 'organization'
   | 'teams';
 
+/** Task-oriented groups (docs/UXUI_REDESIGN_DESIGN.md 4.2). Moving an entry between groups never changes who sees it. */
+export type NavGroupId =
+  'overview' | 'operations' | 'sales' | 'people' | 'catalog' | 'administration' | 'personal';
+
 export interface NavItem {
   key: NavKey;
-  group: 'home' | 'operations' | 'management';
+  group: NavGroupId;
   path: string;
 }
 
@@ -181,19 +185,19 @@ export function navigationFor(account: Account): NavItem[] {
   if (!isWorkforce(account)) return [];
   const employee = account.kind === 'EMPLOYEE';
   const items: (NavItem | false)[] = [
-    { key: 'dashboard', group: 'home', path: '' },
+    { key: 'dashboard', group: 'overview', path: '' },
     // Every workforce account (Owner included) has its own account page.
-    { key: 'myAccount', group: 'home', path: '/account' },
-    { key: 'myIncome', group: 'home', path: '/income' },
+    { key: 'myAccount', group: 'personal', path: '/account' },
+    { key: 'myIncome', group: 'personal', path: '/income' },
     ((employee && account.attendanceRequired !== false) ||
       canAnywhere(account, 'VIEW_ATTENDANCE')) && {
       key: 'attendance',
-      group: 'operations',
+      group: 'people',
       path: '/attendance',
     },
     (employee || canAnywhere(account, 'APPROVE_LEAVE')) && {
       key: 'leave',
-      group: 'operations',
+      group: 'people',
       path: '/leave',
     },
     canAnywhere(account, 'VIEW_BOOKINGS') && {
@@ -219,7 +223,7 @@ export function navigationFor(account: Account): NavItem[] {
     },
     canAnywhere(account, 'VIEW_INVOICES') && {
       key: 'pos',
-      group: 'operations',
+      group: 'sales',
       path: '/pos',
     },
     (canAnywhere(account, 'VIEW_WORK_SCHEDULE') ||
@@ -230,44 +234,44 @@ export function navigationFor(account: Account): NavItem[] {
     },
     canAnywhere(account, 'MANAGE_BRANCHES') && {
       key: 'branches',
-      group: 'management',
+      group: 'catalog',
       path: '/branches',
     },
     (canAnywhere(account, 'MANAGE_SERVICES') || canAnywhere(account, 'MANAGE_SERVICE_PRICES')) && {
       key: 'services',
-      group: 'management',
+      group: 'catalog',
       path: '/services',
     },
     // Discount programs and voucher codes are Owner configuration: GLOBAL_ONLY permissions (Phase 4 Step 6).
     (canGlobal(account, 'MANAGE_DISCOUNTS') || canGlobal(account, 'CREATE_VOUCHERS')) && {
       key: 'discounts',
-      group: 'management',
+      group: 'sales',
       path: '/discounts',
     },
     canAnywhere(account, 'MANAGE_SKILLS') && {
       key: 'skills',
-      group: 'management',
+      group: 'people',
       path: '/skills',
     },
     canAnywhere(account, 'VIEW_EMPLOYEES') && {
       key: 'employees',
-      group: 'management',
+      group: 'people',
       path: '/employees',
     },
     (canAnywhere(account, 'VIEW_ORGANIZATION') || canAnywhere(account, 'MANAGE_ORGANIZATION')) && {
       key: 'organization',
-      group: 'management',
+      group: 'people',
       path: '/organization',
     },
     (canAnywhere(account, 'VIEW_TEAMS') || canAnywhere(account, 'MANAGE_TEAMS')) && {
       key: 'teams',
-      group: 'management',
+      group: 'people',
       path: '/teams',
     },
     // Roles & permissions: readable with MANAGE_PERMISSIONS in some scope (the API rule).
     canAnywhere(account, 'MANAGE_PERMISSIONS') && {
       key: 'roles',
-      group: 'management',
+      group: 'administration',
       path: '/roles',
     },
   ];
