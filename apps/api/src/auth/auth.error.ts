@@ -63,6 +63,10 @@ const errors = {
   VOUCHER_INVALID: [409, 'This voucher code cannot be used'],
   DISCOUNT_STATE_INVALID: [409, 'The discount program does not allow this change'],
   DISCOUNT_CODE_TAKEN: [409, 'This code is already in use'],
+  // Phase 4 Step 7: cash / split payments and corrections.
+  PAYMENT_METHOD_UNAVAILABLE: [400, 'This payment method is not available'],
+  PAYMENT_AMOUNT_INVALID: [409, 'The amount is more than the remaining balance of the invoice'],
+  PAYMENT_STATE_INVALID: [409, 'This payment cannot be reversed'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

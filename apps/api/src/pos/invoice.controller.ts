@@ -7,6 +7,10 @@ import type {
   InvoiceResponse,
   InvoiceVoucherRemoveRequest,
   InvoiceVoucherSupplyRequest,
+  PaymentMethodName,
+  PaymentRecordRequest,
+  PaymentResultResponse,
+  PaymentReverseRequest,
   PosBoardResponse,
   WalkInMemberLookupResponse,
 } from '@lucy-spa/contracts';
@@ -78,6 +82,19 @@ class VoucherRemoveDto implements InvoiceVoucherRemoveRequest {
 
 class VersionDto implements InvoiceFinalizeRequest {
   @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
+}
+
+/** The credited amount, the tendered amount and the idempotency UUID. No time, change or status field. */
+class PaymentRecordDto implements PaymentRecordRequest {
+  // Validated against the method rules by the service, so an unknown or inactive method has its own error.
+  @ApiProperty({ enum: ['CASH'] }) @IsString() @MaxLength(32) method!: PaymentMethodName;
+  @ApiProperty() @IsString() @Matches(VND) amountVnd!: string;
+  @ApiProperty() @IsString() @Matches(VND) tenderedVnd!: string;
+  @ApiProperty() @IsString() @MaxLength(64) idempotencyKey!: string;
+}
+
+class PaymentReverseDto implements PaymentReverseRequest {
+  @ApiProperty() @IsString() @MaxLength(2_048) reason!: string;
 }
 
 class CancelDto implements InvoiceCancelRequest {
@@ -242,6 +259,43 @@ export class InvoiceController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<InvoiceResponse> {
     return this.invoices.cancel(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Post('invoices/:id/payments')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Record a cash payment, credited in full or in part (split) against a PENDING_PAYMENT invoice (COLLECT_PAYMENTS). Idempotent by the client UUID.',
+  })
+  recordPayment(
+    @Param('id') id: string,
+    @Body() body: PaymentRecordDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PaymentResultResponse> {
+    return this.invoices.recordPayment(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Post('invoices/:id/payments/:paymentId/reverse')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Reverse an erroneous cash payment by an append-only correction (CORRECT_PAYMENTS, reason, fresh re-authentication). Not a refund.',
+  })
+  reversePayment(
+    @Param('id') id: string,
+    @Param('paymentId') paymentId: string,
+    @Body() body: PaymentReverseDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PaymentResultResponse> {
+    return this.invoices.reversePayment(
+      this.session(request),
+      id,
+      paymentId,
+      body,
+      this.requestId(response),
+    );
   }
 
   private session(request: Request) {

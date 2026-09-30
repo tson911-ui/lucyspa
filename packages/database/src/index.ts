@@ -24,7 +24,7 @@ export {
   type PermissionCatalogSyncResult,
   type PermissionDefinition,
 } from './permission-catalog.js';
-export type { PermissionCode } from './generated/prisma/enums.js';
+export type { PaymentMethod, PermissionCode } from './generated/prisma/enums.js';
 
 export type DatabaseClient = PrismaClient;
 

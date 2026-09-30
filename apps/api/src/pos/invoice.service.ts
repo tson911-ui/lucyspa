@@ -7,6 +7,9 @@ import type {
   InvoiceResponse,
   InvoiceVoucherRemoveRequest,
   InvoiceVoucherSupplyRequest,
+  PaymentRecordRequest,
+  PaymentResultResponse,
+  PaymentReverseRequest,
   PosBoardResponse,
   WalkInMemberLookupResponse,
 } from '@lucy-spa/contracts';
@@ -20,6 +23,7 @@ import { sqlStateOf } from '../booking/customer-command.js';
 import { normalizeReason } from '../operations/service-execution.service.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import { lookupMember } from '../walkin/walkin.core.js';
+import { parseVnd } from './invoice.calc.js';
 import {
   cancelInvoice,
   finalizeInvoice,
@@ -31,6 +35,8 @@ import {
   setPayer,
   supplyVoucher,
 } from './invoice.core.js';
+import { recordPayment, reversePayment } from './payment.core.js';
+import { resolvePaymentMethod } from './payment.methods.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -179,6 +185,50 @@ export class InvoiceService {
         context,
         id,
         { expectedVersion, reason },
+        this.environment.auth.freshAuthSeconds,
+      ),
+    );
+  }
+
+  /**
+   * Record cash (COLLECT_PAYMENTS). The body carries only the method, the credited amount, the tendered
+   * amount and the client's idempotency UUID: no time, change, status, branch or total can be supplied.
+   */
+  async recordPayment(
+    token: string | undefined,
+    invoiceId: string,
+    body: PaymentRecordRequest,
+    requestId?: string,
+  ): Promise<PaymentResultResponse> {
+    const method = resolvePaymentMethod(body.method);
+    const amountVnd = parseVnd(body.amountVnd, 'amountVnd');
+    if (amountVnd <= 0n) throw new AuthError('VALIDATION_FAILED', 'amountVnd');
+    const tenderedVnd = parseVnd(body.tenderedVnd, 'tenderedVnd');
+    if (typeof body.idempotencyKey !== 'string' || !UUID.test(body.idempotencyKey)) {
+      throw new AuthError('VALIDATION_FAILED', 'idempotencyKey');
+    }
+    const idempotencyKey = body.idempotencyKey.toLowerCase();
+    return this.run(token, invoiceId, requestId, (context, id) =>
+      recordPayment(context, id, { method, amountVnd, tenderedVnd, idempotencyKey }),
+    );
+  }
+
+  /** Reverse an erroneous cash payment (CORRECT_PAYMENTS, reason, fresh re-authentication). */
+  async reversePayment(
+    token: string | undefined,
+    invoiceId: string,
+    paymentId: string,
+    body: PaymentReverseRequest,
+    requestId?: string,
+  ): Promise<PaymentResultResponse> {
+    const reason = normalizeReason(body.reason);
+    if (!UUID.test(paymentId)) throw new AuthError('NOT_FOUND');
+    return this.run(token, invoiceId, requestId, (context, id) =>
+      reversePayment(
+        context,
+        id,
+        paymentId.toLowerCase(),
+        { reason },
         this.environment.auth.freshAuthSeconds,
       ),
     );

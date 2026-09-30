@@ -2202,6 +2202,41 @@ export interface InvoiceLineResponse {
   priceEditable: boolean;
 }
 
+/**
+ * Payment method of a recorded payment. Cash is the only method in Phase 4 Step 7; a CARD / POS-terminal
+ * method is a later, additive widening of this union (the API refuses any other value).
+ */
+export type PaymentMethodName = 'CASH';
+export type PaymentStatusName = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'EXPIRED' | 'CANCELLED';
+
+/**
+ * One payment of an invoice (append-only history). `amountVnd` is what was CREDITED toward the invoice,
+ * `tenderedVnd` what was handed over, `changeVnd` the difference (derived by the server). A payment is
+ * `effective` while it succeeded and has no correction; a reversed payment stays listed with its correction.
+ */
+export interface InvoicePaymentResponse {
+  id: string;
+  method: PaymentMethodName;
+  status: PaymentStatusName;
+  /** The invoice balance at the moment of collection, before this payment. */
+  amountDueVnd: string;
+  amountVnd: string;
+  tenderedVnd: string;
+  changeVnd: string;
+  collectedBy: { id: string; displayName: string };
+  /** Server time; never supplied by a client. */
+  collectedAt: string;
+  businessDate: string;
+  effective: boolean;
+  correction: {
+    reason: string;
+    actor: { id: string; displayName: string };
+    occurredAt: string;
+  } | null;
+  /** The actor may reverse this payment now (CORRECT_PAYMENTS; the API authorizes and re-authenticates again). */
+  reversible: boolean;
+}
+
 export interface InvoiceResponse {
   id: string;
   code: string;
@@ -2229,6 +2264,12 @@ export interface InvoiceResponse {
   lines: InvoiceLineResponse[];
   /** The benefit: a live evaluation while DRAFT, the frozen application once finalized. */
   discount: InvoiceDiscountResponse;
+  /** Every payment ever recorded, oldest first (reversed ones included, with their correction). */
+  payments: InvoicePaymentResponse[];
+  /** Sum of the effective payments (0 for a zero-balance invoice). */
+  paidVnd: string;
+  /** Remaining amount to collect: total - paid while PENDING_PAYMENT, otherwise 0. */
+  balanceVnd: string;
   /** Finalization needs every line priced with a quantity. */
   readiness: { ready: boolean; unpricedLines: number };
   /** Which commands this actor may issue now (the API authorizes each again). */
@@ -2238,6 +2279,8 @@ export interface InvoiceResponse {
     finalize: boolean;
     /** Supply or remove a voucher code (APPLY_DISCOUNTS) while DRAFT. */
     applyVouchers: boolean;
+    /** Record a cash payment (COLLECT_PAYMENTS) while PENDING_PAYMENT. */
+    collectPayment: boolean;
     cancel: boolean;
     /** A finalized invoice needs fresh password re-authentication to be cancelled. */
     cancelNeedsReauth: boolean;
@@ -2275,6 +2318,44 @@ export interface InvoiceFinalizeRequest {
 export interface InvoiceCancelRequest {
   expectedVersion: number;
   reason: string;
+}
+
+/**
+ * POST /api/v1/pos/invoices/:id/payments (COLLECT_PAYMENTS at the invoice's branch). There is no time, change,
+ * status or branch field: the server records the collector, the collection time and the change. `amountVnd`
+ * is credited toward the invoice (a smaller amount than the balance is a split payment); `tenderedVnd` is what
+ * the customer handed over (>= amountVnd). `idempotencyKey` (a client UUID, unique per collector) makes a
+ * retry return the stored payment instead of collecting twice.
+ */
+export interface PaymentRecordRequest {
+  method: PaymentMethodName;
+  amountVnd: string;
+  tenderedVnd: string;
+  idempotencyKey: string;
+}
+
+/** POST /api/v1/pos/invoices/:id/payments/:paymentId/reverse (CORRECT_PAYMENTS, reason, fresh re-authentication). */
+export interface PaymentReverseRequest {
+  reason: string;
+}
+
+/**
+ * The result of recording or reversing a payment: the payment and the invoice's money state only. Reading
+ * the whole invoice needs VIEW_INVOICES (independent of COLLECT_PAYMENTS / CORRECT_PAYMENTS), so a payment
+ * command never returns more than its own effect; the screen re-reads the invoice.
+ */
+export interface PaymentResultResponse {
+  payment: InvoicePaymentResponse;
+  invoice: {
+    id: string;
+    code: string;
+    status: InvoiceStatusName;
+    totalVnd: string;
+    paidVnd: string;
+    balanceVnd: string;
+    paidSeq: number;
+    version: number;
+  };
 }
 
 export interface PosBoardVisit {

@@ -2,6 +2,7 @@ import type {
   InvoiceDiscountResponse,
   InvoiceLineResponse,
   InvoiceOpenedResponse,
+  InvoicePaymentResponse,
   InvoicePersonSummary,
   InvoiceResponse,
   InvoiceStatusName,
@@ -30,6 +31,7 @@ import {
   storedDiscount,
   type InvoiceEvaluation,
 } from './discount.eval.js';
+import { PAYMENT_METHOD_RULES } from './payment.methods.js';
 
 /**
  * Phase 4 Step 5 — Invoice / POS ("Hóa đơn"). Commands run in the admin frame (actor and session locked,
@@ -47,7 +49,7 @@ const userSummary = {
   emailCanonical: true,
 } satisfies Prisma.UserSelect;
 
-const invoiceSelect = {
+export const invoiceSelect = {
   id: true,
   code: true,
   status: true,
@@ -81,7 +83,28 @@ const invoiceSelect = {
   },
   payer: { select: userSummary },
   payments: {
-    select: { id: true, amountVnd: true, status: true, correction: { select: { id: true } } },
+    orderBy: [{ collectedAt: 'asc' }, { id: 'asc' }],
+    select: {
+      id: true,
+      method: true,
+      status: true,
+      amountDueVnd: true,
+      amountVnd: true,
+      tenderedVnd: true,
+      changeVnd: true,
+      collectedAt: true,
+      businessDate: true,
+      collectedBy: { select: { id: true, fullName: true } },
+      correction: {
+        select: {
+          id: true,
+          reason: true,
+          occurredAt: true,
+          actorUserId: true,
+          actor: { select: { id: true, fullName: true } },
+        },
+      },
+    },
   },
   voucherEntries: {
     where: { removedAt: null },
@@ -145,7 +168,7 @@ const invoiceSelect = {
   },
 } satisfies Prisma.InvoiceSelect;
 
-type InvoiceRow = Prisma.InvoiceGetPayload<{ select: typeof invoiceSelect }>;
+export type InvoiceRow = Prisma.InvoiceGetPayload<{ select: typeof invoiceSelect }>;
 
 /** Authority is decided inside the transaction, for the invoice's or visit's own branch. */
 function assertCan(context: AdminContext, permission: string, branchId: string): void {
@@ -166,7 +189,7 @@ function person(user: Prisma.UserGetPayload<{ select: typeof userSummary }> | nu
 
 const day = (value: Date) => value.toISOString().slice(0, 10);
 
-function effectivePaid(row: InvoiceRow): bigint {
+export function effectivePaid(row: InvoiceRow): bigint {
   return row.payments
     .filter((payment) => payment.status === 'SUCCEEDED' && payment.correction === null)
     .reduce((sum, payment) => sum + payment.amountVnd, 0n);
@@ -179,11 +202,55 @@ function zeroBalanceCancellable(row: InvoiceRow): boolean {
   );
 }
 
+/** The invoice's payments as the actor may see them (`reversible` follows CORRECT_PAYMENTS at the branch). */
+export function presentPayments(context: AdminContext, row: InvoiceRow): InvoicePaymentResponse[] {
+  const correct = decide(context.actor.graph, 'CORRECT_PAYMENTS', {
+    kind: 'BRANCH',
+    branchId: row.branchId,
+  });
+  return row.payments.map((payment): InvoicePaymentResponse => {
+    const effective = payment.status === 'SUCCEEDED' && payment.correction === null;
+    return {
+      id: payment.id,
+      method: payment.method,
+      status: payment.status,
+      amountDueVnd: payment.amountDueVnd.toString(),
+      amountVnd: payment.amountVnd.toString(),
+      tenderedVnd: payment.tenderedVnd.toString(),
+      changeVnd: payment.changeVnd.toString(),
+      collectedBy: { id: payment.collectedBy.id, displayName: payment.collectedBy.fullName },
+      collectedAt: payment.collectedAt.toISOString(),
+      businessDate: day(payment.businessDate),
+      effective,
+      correction: payment.correction
+        ? {
+            reason: payment.correction.reason,
+            actor: {
+              id: payment.correction.actor.id,
+              displayName: payment.correction.actor.fullName,
+            },
+            occurredAt: payment.correction.occurredAt.toISOString(),
+          }
+        : null,
+      reversible:
+        correct &&
+        effective &&
+        PAYMENT_METHOD_RULES[payment.method].reversible &&
+        (row.status === 'PENDING_PAYMENT' || row.status === 'PAID'),
+    };
+  });
+}
+
+/** Remaining amount to collect: only a PENDING_PAYMENT invoice has one. */
+export function balanceOf(row: InvoiceRow): bigint {
+  return row.status === 'PENDING_PAYMENT' ? row.totalVnd - effectivePaid(row) : 0n;
+}
+
 /**
  * The response for one invoice. A DRAFT shows the LIVE evaluation (the totals finalization would produce now);
  * a finalized invoice shows its frozen amounts and stored application. Nothing here is client input.
  */
-async function present(context: AdminContext, row: InvoiceRow): Promise<InvoiceResponse> {
+export async function present(context: AdminContext, row: InvoiceRow): Promise<InvoiceResponse> {
   const entries = row.voucherEntries.map((entry) => ({
     id: entry.id,
     voucherId: entry.voucher.id,
@@ -259,6 +326,12 @@ async function present(context: AdminContext, row: InvoiceRow): Promise<InvoiceR
   });
   const unpricedLines = lines.filter((line) => line.grossVnd === null).length;
   const draft = row.status === 'DRAFT';
+  const collect = decide(context.actor.graph, 'COLLECT_PAYMENTS', {
+    kind: 'BRANCH',
+    branchId: row.branchId,
+  });
+  const paidVnd = effectivePaid(row);
+  const payments = presentPayments(context, row);
   const cancellable =
     draft ||
     (row.status === 'PENDING_PAYMENT' && effectivePaid(row) === 0n) ||
@@ -291,19 +364,23 @@ async function present(context: AdminContext, row: InvoiceRow): Promise<InvoiceR
     version: row.rowVersion,
     lines,
     discount,
+    payments,
+    paidVnd: paidVnd.toString(),
+    balanceVnd: balanceOf(row).toString(),
     readiness: { ready: unpricedLines === 0 && lines.length > 0, unpricedLines },
     actions: {
       editPrices: manage && draft,
       setPayer: manage && draft,
       finalize: manage && draft && unpricedLines === 0 && lines.length > 0,
       applyVouchers: apply && draft,
+      collectPayment: collect && row.status === 'PENDING_PAYMENT',
       cancel: cancelPermitted && cancellable,
       cancelNeedsReauth: !draft,
     },
   };
 }
 
-async function load(context: AdminContext, invoiceId: string): Promise<InvoiceResponse> {
+export async function load(context: AdminContext, invoiceId: string): Promise<InvoiceResponse> {
   const row = await context.tx.invoice.findUnique({
     where: { id: invoiceId },
     select: invoiceSelect,
@@ -316,7 +393,7 @@ async function lockInvoice(tx: Prisma.TransactionClient, invoiceId: string): Pro
   await tx.$queryRaw`SELECT id FROM invoices WHERE id = ${invoiceId}::uuid FOR UPDATE`;
 }
 
-async function databaseClock(tx: Prisma.TransactionClient): Promise<Date> {
+export async function databaseClock(tx: Prisma.TransactionClient): Promise<Date> {
   const [clock] = await tx.$queryRaw<
     { now: Date }[]
   >`SELECT clock_timestamp()::timestamptz(3) AS now`;
@@ -342,7 +419,7 @@ async function draftAmounts(
 }
 
 /** Locks the invoice, re-reads it under the lock and checks the caller's version. */
-async function lockedInvoice(
+export async function lockedInvoice(
   context: AdminContext,
   invoiceId: string,
   permission: string,
@@ -361,7 +438,7 @@ async function lockedInvoice(
   };
 }
 
-const eventBase = (row: { id: string; branchId: string; visitId: string }) => ({
+export const eventBase = (row: { id: string; branchId: string; visitId: string }) => ({
   invoiceId: row.id,
   branchId: row.branchId,
   visitId: row.visitId,

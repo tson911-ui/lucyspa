@@ -4,6 +4,9 @@ import type {
   InvoiceLinePriceRequest,
   InvoiceLineResponse,
   InvoiceResponse,
+  PaymentRecordRequest,
+  PaymentResultResponse,
+  PaymentReverseRequest,
   WalkInMemberLookupResponse,
 } from '@lucy-spa/contracts';
 import Link from 'next/link';
@@ -29,16 +32,18 @@ import {
 import { withReauthentication } from '../../../lib/workforce/reauth';
 import { useReauthentication } from '../reauth-dialog';
 import { useWorkforce } from '../session';
+import { PosPaymentsSection } from './pos-payments';
 import { Badge, Empty, Field, Loading, Notice, PageHeader, Section, SubmitButton } from '../ui';
 
 type Feedback = { tone: 'success' | 'error'; text: string } | null;
 
 /**
- * One invoice (Phase 4 Step 5). A DRAFT is edited line by line (a price inside the historical range, a
+ * One invoice (Phase 4 Steps 5-7). A DRAFT is edited line by line (a price inside the historical range, a
  * quantity inside the limit), the payer is chosen, then the invoice is finalized; a cancellation needs a
- * reason (and the actor's password for a finalized invoice). No payment, discount or cash is offered here:
- * those are later steps. The server returns the whole invoice after every command; the browser never
- * computes a bill, and reloads on any conflict.
+ * reason (and the actor's password for a finalized invoice). A finalized invoice takes cash payments (also
+ * partial ones) and an erroneous payment can be reversed with a reason and the actor's password. The server
+ * returns the whole invoice after every command (a payment command returns its own result and the screen
+ * re-reads the invoice); the browser never computes a bill, and reloads on any conflict.
  */
 export function PosInvoiceScreen({ id }: { id: string }) {
   const { api, t, locale, base } = useWorkforce();
@@ -116,6 +121,31 @@ export function PosInvoiceScreen({ id }: { id: string }) {
           payerBody(payerUserId, version),
         ),
       () => t.pos.payerSaved,
+    );
+
+  const reload = () => api.get<InvoiceResponse>(`/api/v1/pos/invoices/${invoice.id}`);
+  const collect = (body: PaymentRecordRequest) =>
+    command(
+      'collect',
+      async () => {
+        await api.post<PaymentResultResponse>(`/api/v1/pos/invoices/${invoice.id}/payments`, body);
+        return reload();
+      },
+      (result) => (result.status === 'PAID' ? t.pos.collectedPaid : t.pos.collected),
+    );
+  const reversePayment = (paymentId: string, body: PaymentReverseRequest) =>
+    command(
+      `reverse-${paymentId}`,
+      // The actor confirms THEIR OWN password when the API asks (every reversal).
+      () =>
+        withReauthentication(async () => {
+          await api.post<PaymentResultResponse>(
+            `/api/v1/pos/invoices/${invoice.id}/payments/${paymentId}/reverse`,
+            body,
+          );
+          return reload();
+        }, confirm),
+      () => t.pos.reverseDone,
     );
 
   async function search(event: FormEvent) {
@@ -488,10 +518,24 @@ export function PosInvoiceScreen({ id }: { id: string }) {
         </Section>
       ) : null}
 
+      {invoice.status !== 'DRAFT' &&
+      (invoice.payments.length > 0 || invoice.status === 'PENDING_PAYMENT') ? (
+        <PosPaymentsSection
+          invoice={invoice}
+          working={working}
+          onCollect={collect}
+          onReverse={reversePayment}
+        />
+      ) : null}
+
       {invoice.status === 'PENDING_PAYMENT' ? (
         <Notice tone="info">{t.pos.pendingNote}</Notice>
       ) : null}
-      {invoice.status === 'PAID' ? <Notice tone="success">{t.pos.paidNote}</Notice> : null}
+      {invoice.status === 'PAID' ? (
+        <Notice tone="success">
+          {invoice.payments.length === 0 ? t.pos.paidNote : t.pos.paidFullNote}
+        </Notice>
+      ) : null}
       {invoice.status === 'CANCELLED' ? (
         <Notice tone="error">
           {fill(t.pos.cancelledInfo, {

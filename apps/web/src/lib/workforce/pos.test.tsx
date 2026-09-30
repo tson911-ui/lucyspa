@@ -1,8 +1,14 @@
-import type { BranchSummary, InvoiceLineResponse } from '@lucy-spa/contracts';
+import type {
+  BranchSummary,
+  InvoiceLineResponse,
+  InvoicePaymentResponse,
+  InvoiceResponse,
+} from '@lucy-spa/contracts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import { PosInvoiceScreen } from '../../components/workforce/screens/pos-invoice';
+import { PosPaymentsSection } from '../../components/workforce/screens/pos-payments';
 import { PosScreen } from '../../components/workforce/screens/pos';
 import { getWorkforceDictionary } from '../../i18n/workforce';
 import { employee, owner, render } from '../../test/support';
@@ -10,15 +16,19 @@ import { ApiError } from './api';
 import { navigationFor } from './permissions';
 import {
   cancelBody,
+  changePreview,
   hasPriceRange,
   hasQuantity,
   invoiceTone,
   lineInput,
   payerBody,
+  paymentBody,
+  paymentInput,
   posBranches,
   posErrorMessage,
   priceBody,
   priceRange,
+  reverseBody,
 } from './pos';
 
 const vi = getWorkforceDictionary('vi');
@@ -174,4 +184,178 @@ test('first paint loads from the server for the board and the invoice', () => {
     ).includes(vi.common.loading),
   );
   assert.ok(render(<PosInvoiceScreen id="i1" />, cashier, 'en').includes(en.common.loading));
+});
+
+const KEY = '7b0f6d4e-3c1a-4c2b-9a54-0d5b3e1f8a10';
+
+test('cash request: method, credited amount, tendered amount and key only; checked against the balance', () => {
+  assert.deepEqual(paymentInput('300000'), { amount: '300000', tendered: '300000' });
+  assert.deepEqual(paymentBody({ amount: '100000', tendered: '200000' }, '300000', KEY), {
+    body: { method: 'CASH', amountVnd: '100000', tenderedVnd: '200000', idempotencyKey: KEY },
+  });
+  // Exactly the balance is allowed; one more is not (the API checks again).
+  assert.ok('body' in paymentBody({ amount: '300000', tendered: '300000' }, '300000', KEY));
+  assert.deepEqual(paymentBody({ amount: '300001', tendered: '400000' }, '300000', KEY), {
+    problem: 'amount',
+  });
+  for (const amount of ['', '0', '-5', '1.5', '1e3', '0100', ' ', 'abc']) {
+    assert.deepEqual(
+      paymentBody({ amount, tendered: '999999' }, '300000', KEY),
+      { problem: 'amount' },
+      amount,
+    );
+  }
+  for (const tendered of ['', '1.5', '-1', 'x']) {
+    assert.deepEqual(
+      paymentBody({ amount: '1000', tendered }, '300000', KEY),
+      { problem: 'tendered' },
+      tendered,
+    );
+  }
+  assert.deepEqual(paymentBody({ amount: '5000', tendered: '4999' }, '300000', KEY), {
+    problem: 'tenderLow',
+  });
+  // No time, change, status, branch or total can be expressed; the only method is CASH.
+  const result = paymentBody({ amount: '1000', tendered: '2000' }, '300000', KEY);
+  assert.ok('body' in result);
+  assert.deepEqual(Object.keys(result.body).sort(), [
+    'amountVnd',
+    'idempotencyKey',
+    'method',
+    'tenderedVnd',
+  ]);
+  // Display-only change preview.
+  assert.equal(changePreview({ amount: '150000', tendered: '200000' }), '50000');
+  assert.equal(changePreview({ amount: '150000', tendered: '100000' }), null);
+  assert.equal(changePreview({ amount: '1.5', tendered: '100000' }), null);
+  // Reversal: a reason and nothing else.
+  assert.equal(reverseBody('   '), null);
+  assert.equal(reverseBody('x'.repeat(501)), null);
+  assert.deepEqual(reverseBody('  Nhập nhầm  '), { reason: 'Nhập nhầm' });
+});
+
+const payment = (change: Partial<InvoicePaymentResponse> = {}): InvoicePaymentResponse => ({
+  id: 'pay1',
+  method: 'CASH',
+  status: 'SUCCEEDED',
+  amountDueVnd: '300000',
+  amountVnd: '100000',
+  tenderedVnd: '150000',
+  changeVnd: '50000',
+  collectedBy: { id: 'u1', displayName: 'Thu ngân An' },
+  collectedAt: '2027-03-01T03:00:00.000Z',
+  businessDate: '2027-03-01',
+  effective: true,
+  correction: null,
+  reversible: false,
+  ...change,
+});
+const invoice = (change: Partial<InvoiceResponse> = {}): InvoiceResponse =>
+  ({
+    id: 'i1',
+    code: 'INV-270301-ABCDEF',
+    status: 'PENDING_PAYMENT',
+    branch: { id: 'A', name: 'Quận 1', timezone: 'Asia/Ho_Chi_Minh' },
+    totalVnd: '300000',
+    paidVnd: '100000',
+    balanceVnd: '200000',
+    payments: [payment()],
+    actions: { collectPayment: true },
+    ...change,
+  }) as InvoiceResponse;
+const noop = () => Promise.resolve(true);
+
+test('payments section: history, balance, the cash form only when permitted, reversal only where offered', () => {
+  const cashier = employee([['VIEW_INVOICES', 'A']]);
+  const html = render(
+    <PosPaymentsSection invoice={invoice()} working={null} onCollect={noop} onReverse={noop} />,
+    cashier,
+    'en',
+  );
+  assert.ok(html.includes(en.pos.paymentTitle));
+  assert.ok(html.includes('Thu ngân An'));
+  assert.ok(html.includes('100,000'), 'credited amount');
+  assert.ok(html.includes('50,000'), 'change');
+  assert.ok(html.includes('200,000'), 'balance due');
+  assert.ok(html.includes(en.pos.collectTitle), 'cash form shown when the API permits');
+  assert.ok(!html.includes(en.pos.reverse), 'no reversal button unless reversible');
+  assert.ok(!/card/i.test(html), 'no CARD anywhere');
+
+  const reversible = render(
+    <PosPaymentsSection
+      invoice={invoice({ payments: [payment({ reversible: true })] })}
+      working={null}
+      onCollect={noop}
+      onReverse={noop}
+    />,
+    cashier,
+    'vi',
+  );
+  assert.ok(reversible.includes(vi.pos.reverse));
+
+  const forbidden = render(
+    <PosPaymentsSection
+      invoice={invoice({ actions: { collectPayment: false } as InvoiceResponse['actions'] })}
+      working={null}
+      onCollect={noop}
+      onReverse={noop}
+    />,
+    cashier,
+    'en',
+  );
+  assert.ok(!forbidden.includes(en.pos.collectTitle), 'no form without COLLECT_PAYMENTS');
+  assert.ok(forbidden.includes('Thu ngân An'), 'history stays readable');
+
+  const paid = render(
+    <PosPaymentsSection
+      invoice={invoice({ status: 'PAID', paidVnd: '300000', balanceVnd: '0' })}
+      working={null}
+      onCollect={noop}
+      onReverse={noop}
+    />,
+    cashier,
+    'en',
+  );
+  assert.ok(!paid.includes(en.pos.collectTitle), 'a paid invoice takes no payment');
+
+  const reversed = render(
+    <PosPaymentsSection
+      invoice={invoice({
+        payments: [
+          payment({
+            effective: false,
+            correction: {
+              reason: 'Nhập nhầm',
+              actor: { id: 'u2', displayName: 'Quản lý Bình' },
+              occurredAt: '2027-03-01T04:00:00.000Z',
+            },
+          }),
+        ],
+        paidVnd: '0',
+        balanceVnd: '300000',
+      })}
+      working={null}
+      onCollect={noop}
+      onReverse={noop}
+    />,
+    cashier,
+    'en',
+  );
+  assert.ok(reversed.includes(en.pos.paymentReversed));
+  assert.ok(reversed.includes('Nhập nhầm') && reversed.includes('Quản lý Bình'));
+});
+
+test('payment texts and errors exist in both languages', () => {
+  for (const code of [
+    'PAYMENT_AMOUNT_INVALID',
+    'PAYMENT_STATE_INVALID',
+    'PAYMENT_METHOD_UNAVAILABLE',
+  ] as const) {
+    const error = new ApiError(409, code);
+    assert.equal(posErrorMessage(error, vi), vi.pos.errors[code]);
+    assert.equal(posErrorMessage(error, en), en.pos.errors[code]);
+    assert.ok(!posErrorMessage(error, en).includes('PAYMENT_'));
+  }
+  assert.deepEqual(Object.keys(vi.pos.methods), ['CASH']);
+  assert.notEqual(vi.pos.collect, en.pos.collect);
 });

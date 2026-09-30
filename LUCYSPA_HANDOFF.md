@@ -20,7 +20,7 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)       |
 | Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                              |
 | Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                           |
-| **Phase 4 (POS, invoices, payments)**     | **IN PROGRESS: Steps 1-6 CLOSED / OWNER APPROVED; Step 7 NOT STARTED** |
+| **Phase 4 (POS, invoices, payments)**     | **IN PROGRESS: Steps 1-7 CLOSED / OWNER APPROVED; Step 8 NOT STARTED** |
 | Phase 5+ (loyalty, payroll, finance)      | NOT started (deferred)                                                 |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
@@ -33,7 +33,7 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | 4    | POS database + permissions foundation (OP-1 quantity limit)          | CLOSED                                     |
 | 5    | Invoice / POS (draft, price/quantity, payer, finalize, cancel, OP-7) | CLOSED                                     |
 | 6    | Discounts / vouchers (+ historical service-category snapshot)        | CLOSED (`f898f2d`)                         |
-| 7    | Cash / split payments / payment states / corrections                 | NOT STARTED                                |
+| 7    | Cash / split payments / payment states / corrections                 | CLOSED / OWNER APPROVED (no migration)     |
 | 8    | PayOS                                                                | NOT STARTED, **Q7 must be answered first** |
 | 9    | Customer invoice history                                             | NOT STARTED                                |
 | 10   | Invoice / revenue notifications                                      | NOT STARTED, **Q8 must be answered first** |
@@ -69,6 +69,9 @@ Phase 4 migrations so far: Step 3 (`20261013…`), Step 4 (`20261014000000-04`),
 
 Keep the payment architecture ready for a future **CARD / POS-terminal** integration, but **do NOT activate CARD**
 (Lucy Spa has no POS terminal yet): no CARD method selectable, accepted or shown in the UI or API.
+Step 7 (`docs/PHASE4_STEP7_PAYMENTS.md`): cash + split + reversal under `/api/v1/pos/invoices/:id/payments`; no migration; CLOSED / OWNER APPROVED.
+Step 7 Owner answers: COLLECT_PAYMENTS + VIEW_INVOICES are granted together via roles (no code change); CARD reversal policy deferred until a real terminal/provider exists (open future decision); paid amount on board rows deferred to the post-Phase 4 UX/UI redesign.
+CARD-ready = the per-method rule table `apps/api/src/pos/payment.methods.ts` (keyed by the DB enum, CASH only); enabling CARD is an additive enum + rule (report 6).
 
 ## Production
 

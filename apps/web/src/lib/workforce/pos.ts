@@ -6,6 +6,8 @@ import type {
   InvoiceLinePriceRequest,
   InvoicePayerRequest,
   InvoiceStatusName,
+  PaymentRecordRequest,
+  PaymentReverseRequest,
 } from '@lucy-spa/contracts';
 import type { Locale } from '../../i18n/locales';
 import type { WorkforceDictionary } from '../../i18n/workforce';
@@ -122,6 +124,57 @@ export function payerBody(
 export function cancelBody(reason: string, expectedVersion: number): InvoiceCancelRequest | null {
   const trimmed = reason.normalize('NFC').trim();
   return trimmed && [...trimmed].length <= 500 ? { expectedVersion, reason: trimmed } : null;
+}
+
+/** A fresh client idempotency key: one per intended payment, kept across retries of the same choice. */
+export function newPaymentKey(): string {
+  return globalThis.crypto.randomUUID();
+}
+
+export type PaymentInput = { amount: string; tendered: string };
+
+/** The form starts at "pay the whole balance, exact tender" (the server balance; the API checks again). */
+export const paymentInput = (balanceVnd: string): PaymentInput => ({
+  amount: balanceVnd,
+  tendered: balanceVnd,
+});
+
+export type PaymentProblem = 'amount' | 'tendered' | 'tenderLow';
+
+/**
+ * The cash request: only the method, the credited amount, what was handed over and the idempotency key.
+ * Pre-checked against the balance the server reported (the API decides again); no time, change, status or
+ * branch can be expressed.
+ */
+export function paymentBody(
+  input: PaymentInput,
+  balanceVnd: string,
+  idempotencyKey: string,
+): { body: PaymentRecordRequest } | { problem: PaymentProblem } {
+  const amount = input.amount.trim();
+  if (!isVndInput(amount) || BigInt(amount) < 1n || BigInt(amount) > BigInt(balanceVnd)) {
+    return { problem: 'amount' };
+  }
+  const tendered = input.tendered.trim();
+  if (!isVndInput(tendered)) return { problem: 'tendered' };
+  if (BigInt(tendered) < BigInt(amount)) return { problem: 'tenderLow' };
+  return { body: { method: 'CASH', amountVnd: amount, tenderedVnd: tendered, idempotencyKey } };
+}
+
+/** A display-only preview of the change; the stored change is derived by the server. */
+export function changePreview(input: PaymentInput): string | null {
+  const amount = input.amount.trim();
+  const tendered = input.tendered.trim();
+  if (!isVndInput(amount) || !isVndInput(tendered) || BigInt(tendered) < BigInt(amount)) {
+    return null;
+  }
+  return (BigInt(tendered) - BigInt(amount)).toString();
+}
+
+/** The reversal body: a reason is required (1–500 characters after trimming). */
+export function reverseBody(reason: string): PaymentReverseRequest | null {
+  const trimmed = reason.normalize('NFC').trim();
+  return trimmed && [...trimmed].length <= 500 ? { reason: trimmed } : null;
 }
 
 /** POS outcomes are shown with their own texts; the rest as elsewhere. */

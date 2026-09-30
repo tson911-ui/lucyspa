@@ -53,3 +53,5 @@ await import('../apps/api/dist/pos/invoice.integration.test.js');
 await import('../apps/api/dist/pos/invoice.race.integration.test.js');
 await import('../apps/api/dist/pos/discount.integration.test.js');
 await import('../apps/api/dist/pos/discount.race.integration.test.js');
+await import('../apps/api/dist/pos/payment.integration.test.js');
+await import('../apps/api/dist/pos/payment.race.integration.test.js');

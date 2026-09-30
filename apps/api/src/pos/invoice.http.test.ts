@@ -95,6 +95,8 @@ test('invoice POS HTTP: strict bodies (no total/state/range/limit/branch), CSRF/
       payer: answer('payer'),
       finalize: answer('finalize'),
       cancel: answer('cancel'),
+      recordPayment: answer('recordPayment'),
+      reversePayment: answer('reversePayment'),
     })
     .compile();
   const app = module.createNestApplication({ logger: false });
@@ -112,6 +114,13 @@ test('invoice POS HTTP: strict bodies (no total/state/range/limit/branch), CSRF/
   const visitId = randomUUID();
   const branchId = randomUUID();
   const base = '/api/v1/pos';
+  const paymentId = randomUUID();
+  const payment = {
+    method: 'CASH',
+    amountVnd: '100000',
+    tenderedVnd: '200000',
+    idempotencyKey: randomUUID(),
+  };
   try {
     // Every mutation needs CSRF and the exact Origin.
     for (const [path, body] of [
@@ -120,6 +129,8 @@ test('invoice POS HTTP: strict bodies (no total/state/range/limit/branch), CSRF/
       [`${base}/invoices/${id}/payer`, { expectedVersion: 1, payerUserId: null }],
       [`${base}/invoices/${id}/finalize`, { expectedVersion: 1 }],
       [`${base}/invoices/${id}/cancel`, { expectedVersion: 1, reason: 'x' }],
+      [`${base}/invoices/${id}/payments`, payment],
+      [`${base}/invoices/${id}/payments/${paymentId}/reverse`, { reason: 'x' }],
     ] as const) {
       await request(server)
         .post(path)
@@ -173,6 +184,29 @@ test('invoice POS HTTP: strict bodies (no total/state/range/limit/branch), CSRF/
       [`${base}/invoices/${id}/cancel`, { expectedVersion: 1 }],
       [`${base}/invoices/${id}/cancel`, { reason: 'x' }],
       [`${base}/invoices/${id}/cancel`, { expectedVersion: 1, reason: 'x', refund: true }],
+      // Payments: only method, credited amount, tendered amount and the idempotency key.
+      [`${base}/invoices/${id}/payments`, {}],
+      [`${base}/invoices/${id}/payments`, { ...payment, method: undefined }],
+      [`${base}/invoices/${id}/payments`, { ...payment, amountVnd: undefined }],
+      [`${base}/invoices/${id}/payments`, { ...payment, tenderedVnd: undefined }],
+      [`${base}/invoices/${id}/payments`, { ...payment, idempotencyKey: undefined }],
+      [`${base}/invoices/${id}/payments`, { ...payment, amountVnd: 100000 }],
+      [`${base}/invoices/${id}/payments`, { ...payment, amountVnd: '-1' }],
+      [`${base}/invoices/${id}/payments`, { ...payment, amountVnd: '1.5' }],
+      [`${base}/invoices/${id}/payments`, { ...payment, tenderedVnd: '1e3' }],
+      [`${base}/invoices/${id}/payments`, { ...payment, tenderedVnd: 200000 }],
+      [`${base}/invoices/${id}/payments`, { ...payment, method: 5 }],
+      [`${base}/invoices/${id}/payments`, { ...payment, collectedAt: '2020-01-01T00:00:00Z' }],
+      [`${base}/invoices/${id}/payments`, { ...payment, changeVnd: '0' }],
+      [`${base}/invoices/${id}/payments`, { ...payment, status: 'SUCCEEDED' }],
+      [`${base}/invoices/${id}/payments`, { ...payment, collectedByUserId: randomUUID() }],
+      [`${base}/invoices/${id}/payments`, { ...payment, branchId }],
+      [`${base}/invoices/${id}/payments`, { ...payment, invoiceId: id }],
+      [`${base}/invoices/${id}/payments`, { ...payment, totalVnd: '1' }],
+      [`${base}/invoices/${id}/payments/${paymentId}/reverse`, {}],
+      [`${base}/invoices/${id}/payments/${paymentId}/reverse`, { reason: 5 }],
+      [`${base}/invoices/${id}/payments/${paymentId}/reverse`, { reason: 'x', refund: true }],
+      [`${base}/invoices/${id}/payments/${paymentId}/reverse`, { reason: 'x', amountVnd: '1' }],
     ];
     for (const [path, body] of rejected) {
       await request(server)
@@ -221,10 +255,42 @@ test('invoice POS HTTP: strict bodies (no total/state/range/limit/branch), CSRF/
       .set(headers)
       .send({ expectedVersion: 3, reason: 'Khách hủy' })
       .expect(200);
+    // Payments: the wire body is exactly the four permitted fields; an unknown METHOD reaches the service,
+    // which owns the method rules (CARD is refused there with its own error).
+    await request(server)
+      .post(`${base}/invoices/${id}/payments`)
+      .set(headers)
+      .send(payment)
+      .expect(200);
+    await request(server)
+      .post(`${base}/invoices/${id}/payments`)
+      .set(headers)
+      .send({ ...payment, method: 'CARD' })
+      .expect(200);
+    await request(server)
+      .post(`${base}/invoices/${id}/payments/${paymentId}/reverse`)
+      .set(headers)
+      .send({ reason: 'Nhập nhầm' })
+      .expect(200);
     assert.deepEqual(
       calls.map((call) => call.action),
-      ['open', 'setPrice', 'payer', 'payer', 'finalize', 'cancel'],
+      [
+        'open',
+        'setPrice',
+        'payer',
+        'payer',
+        'finalize',
+        'cancel',
+        'recordPayment',
+        'recordPayment',
+        'reversePayment',
+      ],
     );
+    assert.equal(calls[6]!.args[0], id);
+    assert.deepEqual(JSON.parse(JSON.stringify(calls[6]!.args[1])), payment);
+    assert.equal(calls[8]!.args[0], id);
+    assert.equal(calls[8]!.args[1], paymentId);
+    assert.deepEqual(JSON.parse(JSON.stringify(calls[8]!.args[2])), { reason: 'Nhập nhầm' });
     const price = calls[1]!.args;
     assert.equal(price[0], id);
     assert.equal(price[1], lineId);
@@ -251,6 +317,9 @@ test('invoice POS HTTP: strict bodies (no total/state/range/limit/branch), CSRF/
       ['INVOICE_STATE_INVALID', 409],
       ['INVOICE_NOT_READY', 409],
       ['INVOICE_CANCEL_NOT_ALLOWED', 409],
+      ['PAYMENT_AMOUNT_INVALID', 409],
+      ['PAYMENT_STATE_INVALID', 409],
+      ['PAYMENT_METHOD_UNAVAILABLE', 400],
       ['CONFLICT', 409],
       ['REAUTHENTICATION_REQUIRED', 403],
       ['FORBIDDEN', 403],
@@ -264,6 +333,19 @@ test('invoice POS HTTP: strict bodies (no total/state/range/limit/branch), CSRF/
         .expect(status);
       assert.equal(response.body.code, code);
       assert.doesNotMatch(JSON.stringify(response.body), /prisma|SELECT|constraint|postgres/i);
+      // The payment routes map the same public errors.
+      const collected = await request(server)
+        .post(`${base}/invoices/${id}/payments`)
+        .set(headers)
+        .send(payment)
+        .expect(status);
+      assert.equal(collected.body.code, code);
+      const reversed = await request(server)
+        .post(`${base}/invoices/${id}/payments/${paymentId}/reverse`)
+        .set(headers)
+        .send({ reason: 'x' })
+        .expect(status);
+      assert.equal(reversed.body.code, code);
     }
   } finally {
     await app.close();
