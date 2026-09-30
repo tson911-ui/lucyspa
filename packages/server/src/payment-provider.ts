@@ -49,6 +49,27 @@ export interface VerifiedProviderNotification {
   readonly payload: Record<string, string | number | boolean | null>;
 }
 
+/** Why a delivery was refused. Internal (logs and tests only); never sent to the caller. */
+export type NotificationRejection =
+  'BODY_NOT_OBJECT' | 'DATA_MISSING' | 'SIGNATURE_MISSING' | 'SIGNATURE_MISMATCH';
+
+/** A sanitized description of a refused delivery: reasons and field NAMES only, never a value or signature. */
+export interface NotificationRejectionDetail {
+  readonly reason: NotificationRejection;
+  readonly signatureLength: number | null;
+  readonly dataFields: readonly string[];
+}
+
+/**
+ * The outcome of checking one webhook delivery. Authenticity (signature over `data`) is decided first and
+ * independently of the payment fields, so an authentic delivery that is not an actionable payment
+ * notification (the PayOS URL-confirmation probe) is UNACTIONABLE, not a forgery.
+ */
+export type NotificationCheck =
+  | { readonly kind: 'REJECTED'; readonly detail: NotificationRejectionDetail }
+  | { readonly kind: 'UNACTIONABLE' }
+  | { readonly kind: 'VERIFIED'; readonly notification: VerifiedProviderNotification };
+
 /**
  * The provider could not be reached or its answer could not be trusted (network, timeout, 5xx, failed
  * response integrity). The outcome of the request is UNKNOWN: callers must not assume it failed.
@@ -78,4 +99,6 @@ export interface PaymentProvider {
   cancelPaymentRequest(orderCode: number, reason: string): Promise<ProviderPaymentSnapshot>;
   /** Null when the body is not an authentic, well-formed notification (nothing is revealed about why). */
   verifyNotification(body: unknown): VerifiedProviderNotification | null;
+  /** Signature first, then interpretation; says why a delivery was refused (for sanitized logs only). */
+  checkNotification(body: unknown): NotificationCheck;
 }

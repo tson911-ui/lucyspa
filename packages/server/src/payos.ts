@@ -3,6 +3,8 @@ import { z } from 'zod';
 import {
   ProviderRejectedError,
   ProviderUnavailableError,
+  type NotificationCheck,
+  type NotificationRejection,
   type PaymentProvider,
   type ProviderCreateInput,
   type ProviderPaymentRequest,
@@ -81,9 +83,10 @@ export function payosDataSignature(data: Record<string, unknown>, checksumKey: s
   return payosSign(payosCanonical(data), checksumKey);
 }
 
+/** Hex digests compare case-insensitively (PayOS's own verify helpers lower-case both sides). */
 function sameSignature(expected: string, supplied: string): boolean {
-  const a = Buffer.from(expected, 'utf8');
-  const b = Buffer.from(supplied, 'utf8');
+  const a = Buffer.from(expected.toLowerCase(), 'utf8');
+  const b = Buffer.from(supplied.toLowerCase(), 'utf8');
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
@@ -115,6 +118,7 @@ const snapshotData = z.object({
     .nullish(),
 });
 
+/** The payment fields of an AUTHENTIC notification (read only after the signature verified). */
 const notificationBody = z.object({
   code: z.union([z.string(), z.number()]).transform(String),
   success: z.boolean(),
@@ -127,8 +131,13 @@ const notificationBody = z.object({
       currency: z.string().max(10).nullish(),
     })
     .passthrough(),
-  signature: z.string().min(1).max(200),
 });
+
+const FIELD_NAME = /^[A-Za-z0-9_]{1,40}$/;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 /** Scalar data fields worth keeping. Counterparty account names/numbers are deliberately not stored. */
 const STORED_FIELDS = [
@@ -224,7 +233,7 @@ export function createPayosProvider(
     };
   }
 
-  return {
+  const provider: PaymentProvider = {
     name: 'PAYOS',
 
     async createPaymentRequest(input: ProviderCreateInput): Promise<ProviderPaymentRequest> {
@@ -277,26 +286,61 @@ export function createPayosProvider(
     },
 
     verifyNotification(body: unknown): VerifiedProviderNotification | null {
+      const checked = provider.checkNotification(body);
+      return checked.kind === 'VERIFIED' ? checked.notification : null;
+    },
+
+    checkNotification(body: unknown): NotificationCheck {
+      const reject = (
+        reason: NotificationRejection,
+        signature?: unknown,
+        data?: unknown,
+      ): NotificationCheck => ({
+        kind: 'REJECTED',
+        detail: {
+          reason,
+          signatureLength: typeof signature === 'string' ? signature.length : null,
+          dataFields: isRecord(data)
+            ? Object.keys(data)
+                .filter((key) => FIELD_NAME.test(key))
+                .slice(0, 40)
+            : [],
+        },
+      });
+      if (!isRecord(body)) return reject('BODY_NOT_OBJECT');
+      const { data, signature } = body;
+      if (!isRecord(data)) return reject('DATA_MISSING', signature);
+      if (typeof signature !== 'string' || signature.length === 0 || signature.length > 200) {
+        return reject('SIGNATURE_MISSING', signature, data);
+      }
+      // Authenticity first, over `data` alone: nothing else in the body decides whether PayOS sent it.
+      if (!sameSignature(payosDataSignature(data, config.checksumKey), signature)) {
+        return reject('SIGNATURE_MISMATCH', signature, data);
+      }
+      // Authentic, but not a payment notification we can act on (e.g. the URL-confirmation probe): accept, apply nothing.
       const parsed = notificationBody.safeParse(body);
-      if (!parsed.success) return null;
-      const { data, signature, success, code } = parsed.data;
-      if (!sameSignature(payosDataSignature(data, config.checksumKey), signature)) return null;
+      if (!parsed.success) return { kind: 'UNACTIONABLE' };
+      const { data: payment, success, code } = parsed.data;
       const payload: Record<string, string | number | boolean | null> = {};
       for (const field of STORED_FIELDS) {
-        const value = (data as Record<string, unknown>)[field];
+        const value = (payment as Record<string, unknown>)[field];
         if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
           payload[field] = typeof value === 'string' ? value.slice(0, 500) : value;
         }
       }
       return {
-        orderCode: data.orderCode,
-        amountVnd: data.amount,
-        reference: data.reference,
-        paymentLinkId: data.paymentLinkId ?? null,
-        currency: data.currency ?? null,
-        success: success && code === '00',
-        payload,
+        kind: 'VERIFIED',
+        notification: {
+          orderCode: payment.orderCode,
+          amountVnd: payment.amount,
+          reference: payment.reference,
+          paymentLinkId: payment.paymentLinkId ?? null,
+          currency: payment.currency ?? null,
+          success: success && code === '00',
+          payload,
+        },
       };
     },
   };
+  return provider;
 }

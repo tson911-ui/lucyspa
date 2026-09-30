@@ -113,3 +113,7 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 - Two `My Income` integration assertions fail only between 15:00 and 17:00 UTC.
 - Worker Step 9 notification tests (`Redis job loss…`, `real Redis delayed-job loss…`) build the visit `serviceDate` from the UTC date and fail
   when the UTC and Vietnam dates differ (roughly 17:00-24:00 UTC).
+
+## Hotfix: PayOS webhook signature (post 82a0862, not deployed)
+- Webhook now verifies the signature over `data` first; authentic non-payment deliveries (URL-confirmation probe) get 200 and apply nothing.
+- Refusals log a sanitized reason (`PayOS webhook refused`: reason, signature length, field names). See `docs/PHASE4_HOTFIX_PAYOS_WEBHOOK_SIGNATURE.md`.

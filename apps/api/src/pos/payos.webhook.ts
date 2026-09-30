@@ -44,19 +44,26 @@ export class PayosWebhookService {
       size = MAX_BODY_CHARACTERS + 1;
     }
     if (size > MAX_BODY_CHARACTERS) throw new AuthError('VALIDATION_FAILED');
-    const verified = provider.verifyNotification(body);
-    if (!verified) {
+    const checked = provider.checkNotification(body);
+    if (checked.kind === 'REJECTED') {
       const now = Date.now();
       if (now - this.windowStartedAt >= 60_000) {
         this.windowStartedAt = now;
         this.invalidInWindow = 0;
       }
       this.invalidInWindow += 1;
-      throw new AuthError(
-        this.invalidInWindow > INVALID_PER_MINUTE ? 'RATE_LIMITED' : 'AUTHENTICATION_FAILED',
-      );
+      const throttled = this.invalidInWindow > INVALID_PER_MINUTE;
+      // Reason and field NAMES only: never a key, signature or payload value (the caller still learns nothing).
+      if (!throttled)
+        this.logger?.warn({ ...checked.detail, bodyCharacters: size }, 'PayOS webhook refused');
+      throw new AuthError(throttled ? 'RATE_LIMITED' : 'AUTHENTICATION_FAILED');
     }
-    await this.apply(verified);
+    // Authentic but not an actionable payment (the PayOS URL-confirmation probe): acknowledge, apply nothing.
+    if (checked.kind === 'UNACTIONABLE') {
+      this.logger?.info({}, 'PayOS webhook acknowledged without action');
+      return { received: true };
+    }
+    await this.apply(checked.notification);
     return { received: true };
   }
 

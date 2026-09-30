@@ -129,6 +129,90 @@ test('notification verification: authentic passes, every tampering fails', () =>
   );
 });
 
+// PayOS's own documented sample (payos.vn "kiểm tra dữ liệu với signature"): checksum key and signature as published.
+const DOC_KEY = '1a54716c8f0efb2744fb28b6e38b25da7f67a925d98bc1c18bd8faaecadd7675';
+const DOC_SIGNATURE = '412e915d2871504ed31be63c8f62a149a4410d34c4c42affc9006ef9917eaa03';
+const docData = () => ({
+  orderCode: 123,
+  amount: 3000,
+  description: 'VQRIO123',
+  accountNumber: '12345678',
+  reference: 'TF230204212323',
+  transactionDateTime: '2023-02-04 18:25:00',
+  currency: 'VND',
+  paymentLinkId: '124c33293c43417ab7879e14c8d9eb18',
+  code: '00',
+  desc: 'Thành công',
+  counterAccountBankId: '',
+  counterAccountBankName: '',
+  counterAccountName: '',
+  counterAccountNumber: '',
+  virtualAccountName: '',
+  virtualAccountNumber: '',
+});
+
+test('webhook signature: PayOS documented vector, null fields as empty, hex case-insensitive', () => {
+  const provider = createPayosProvider({ clientId: 'c', apiKey: 'k', checksumKey: DOC_KEY });
+  const body = {
+    code: '00',
+    desc: 'success',
+    success: true,
+    data: docData(),
+    signature: DOC_SIGNATURE,
+  };
+  assert.equal(payosDataSignature(docData(), DOC_KEY), DOC_SIGNATURE);
+  const verified = provider.verifyNotification(body);
+  assert.equal(verified?.orderCode, 123);
+  assert.equal(verified?.amountVnd, 3000);
+  assert.equal(verified?.success, true);
+  // null and "null" fields sign exactly like empty strings (JSON cannot carry undefined).
+  const nulls = { ...docData(), counterAccountBankId: null, counterAccountName: 'null' };
+  assert.equal(payosDataSignature(nulls, DOC_KEY), DOC_SIGNATURE);
+  assert.equal(
+    provider.checkNotification({ ...body, data: { ...docData(), counterAccountBankId: null } })
+      .kind,
+    'VERIFIED',
+  );
+  assert.equal(
+    provider.checkNotification({ ...body, signature: DOC_SIGNATURE.toUpperCase() }).kind,
+    'VERIFIED',
+  );
+});
+
+test('webhook check: an authentic non-payment delivery is acknowledged, forgeries say why (sanitized)', () => {
+  const provider = createPayosProvider({ clientId: 'c', apiKey: 'k', checksumKey: DOC_KEY });
+  // Authentic (signed over its own data) but without payment fields: the URL-confirmation probe shape.
+  const probeData = { ...docData(), reference: null, orderCode: 0 };
+  const probe = {
+    code: '00',
+    desc: 'success',
+    success: true,
+    data: probeData,
+    signature: payosDataSignature(probeData, DOC_KEY),
+  };
+  assert.deepEqual(provider.checkNotification(probe), { kind: 'UNACTIONABLE' });
+  assert.equal(provider.verifyNotification(probe), null);
+  // Signature valid, `success` / `code` absent: still authentic, still nothing to apply.
+  const bare = { data: docData(), signature: DOC_SIGNATURE };
+  assert.equal(provider.checkNotification(bare).kind, 'UNACTIONABLE');
+
+  const refused = (body: unknown) => {
+    const checked = provider.checkNotification(body);
+    assert.equal(checked.kind, 'REJECTED');
+    return checked.kind === 'REJECTED' ? checked.detail : assert.fail('not rejected');
+  };
+  const tampered = refused({ ...probe, data: { ...probeData, amount: 1 } });
+  assert.equal(tampered.reason, 'SIGNATURE_MISMATCH');
+  assert.equal(tampered.signatureLength, 64);
+  assert.ok(tampered.dataFields.includes('orderCode'));
+  assert.equal(refused({ ...probe, signature: undefined }).reason, 'SIGNATURE_MISSING');
+  assert.equal(refused({ signature: 'x' }).reason, 'DATA_MISSING');
+  assert.equal(refused([]).reason, 'BODY_NOT_OBJECT');
+  // The detail carries field names and a length, never a value, the signature or the key.
+  const text = JSON.stringify(tampered);
+  assert.doesNotMatch(text, new RegExp(`${DOC_KEY}|${DOC_SIGNATURE}|VQRIO123|TF230204212323`));
+});
+
 test('PayOS environment: none disables, all three enable, a partial set fails closed by field name', () => {
   assert.equal(parsePayosEnvironment({}), null);
   assert.equal(

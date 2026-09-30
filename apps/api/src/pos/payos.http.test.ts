@@ -4,7 +4,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import type { Server } from 'node:http';
 import { test } from 'node:test';
 import type { Prisma } from '@lucy-spa/database';
-import { createPayosSimulator, parseApiEnvironment } from '@lucy-spa/server';
+import { createPayosSimulator, parseApiEnvironment, payosDataSignature } from '@lucy-spa/server';
 import { Test } from '@nestjs/testing';
 import { pino } from 'pino';
 import request from 'supertest';
@@ -300,6 +300,27 @@ test('PayOS HTTP: strict bodies, CSRF everywhere but the signed webhook, constan
     }
     assert.equal(bodies.size, 1, 'the refusal never says why');
     assert.equal(transactions, 2, 'nothing unauthentic reaches the database');
+    // A correctly signed delivery that is not an actionable payment (the PayOS URL-confirmation probe, with
+    // null / empty counterparty fields) is acknowledged with 2xx and applies nothing.
+    const probeData = {
+      orderCode: 123,
+      amount: 3000,
+      description: 'VQRIO123',
+      reference: null,
+      counterAccountBankId: null,
+    };
+    const probe = await request(server)
+      .post(hook)
+      .send({
+        code: '00',
+        desc: 'success',
+        success: true,
+        data: probeData,
+        signature: payosDataSignature(probeData, simulator.config.checksumKey),
+      })
+      .expect(200);
+    assert.deepEqual(probe.body, { received: true });
+    assert.equal(transactions, 2, 'the probe never reaches the database');
     // Not JSON: the body is never parsed, so nothing can verify.
     await request(server)
       .post(hook)

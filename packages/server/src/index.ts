@@ -128,6 +128,9 @@ export {
 export {
   ProviderRejectedError,
   ProviderUnavailableError,
+  type NotificationCheck,
+  type NotificationRejection,
+  type NotificationRejectionDetail,
   type PaymentProvider,
   type ProviderCreateInput,
   type ProviderPaymentRequest,
