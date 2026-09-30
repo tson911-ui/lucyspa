@@ -1,16 +1,20 @@
 // Single wordmark used by every shell and auth page. Same look in light and dark (color is inherited
 // from the surrounding link, which uses the brand token). Replace the body with the logo image when
 // the Owner supplies it; callers stay unchanged.
-export function BrandWordmark() {
+export function BrandWordmark({ size = 'md' }: { size?: 'md' | 'display' }) {
   return (
     <span
       style={{
         fontFamily: 'var(--ls-font-sans)',
-        fontSize: '1.25rem',
+        // `display` (twice `md`) is for the auth card, where the brand leads the page.
+        fontSize: size === 'display' ? '2.5rem' : '1.25rem',
         fontWeight: 600,
         letterSpacing: '0.18em',
         textTransform: 'uppercase',
         whiteSpace: 'nowrap',
+        // Centered use: a tight line box, and a leading space equal to the trailing letter-spacing so the
+        // letters (not the letters plus a gap) sit on the center line.
+        ...(size === 'display' ? { lineHeight: 1.2, paddingInlineStart: '0.18em' } : {}),
       }}
     >
       Lucy Spa

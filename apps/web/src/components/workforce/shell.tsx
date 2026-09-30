@@ -49,9 +49,9 @@ export function WorkforceShell({ children }: { children: ReactNode }) {
           <LanguageSwitch />
         </>
       }
-      topbar={
+      topbar={<NotificationIndicator api={api} base={base} locale={locale} />}
+      topbarEnd={
         <>
-          <NotificationIndicator api={api} base={base} locale={locale} />
           <UserMenu name={account.displayName} subtitle={title} triggerLabel={t.nav.account}>
             <div className="ls-usermenu-section">
               {personalEntries(items).map((item) => (

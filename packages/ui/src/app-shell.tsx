@@ -62,6 +62,7 @@ export function AppShell({
   labels,
   topbar,
   topbarExtras,
+  topbarEnd,
   LinkComponent = PlainLink,
   className,
   mainClassName,
@@ -71,10 +72,12 @@ export function AppShell({
   brand: ReactNode;
   nav: readonly ShellNavGroup[];
   labels: AppShellLabels;
-  /** Always shown in the topbar: notifications and the user menu. */
+  /** Always shown in the topbar, first in the action group: notifications. */
   topbar: ReactNode;
-  /** Shown from 640 px up (theme toggle, language); on phones they live in the user menu. */
+  /** Shown from 640 px up, after `topbar` (theme toggle, language); on phones they live in the user menu. */
   topbarExtras?: ReactNode;
+  /** Always shown, last (the user menu). Order is fixed: notifications, theme, language, user (contract 4.1). */
+  topbarEnd?: ReactNode;
   LinkComponent?: ShellLink | undefined;
   className?: string | undefined;
   mainClassName?: string | undefined;
@@ -137,8 +140,9 @@ export function AppShell({
         />
         <div className="ls-topbar-brand">{brand}</div>
         <div className="ls-topbar-end">
-          <div className="ls-topbar-extras">{topbarExtras}</div>
           {topbar}
+          <div className="ls-topbar-extras">{topbarExtras}</div>
+          {topbarEnd}
         </div>
       </header>
       <div className="ls-shell-body">

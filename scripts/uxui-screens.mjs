@@ -4,8 +4,11 @@
 // horizontal page scroll and interactive targets below the minimum size.
 //
 //   node scripts/uxui-screens.mjs <name> <url-or-html-file> [--widths 360,768,1440] [--wait 800] [--top 1000] [--all]
+//                                   [--click <selector[@@text]> ...] [--eval <js>]
 //
-// `--all` also renders dark at every width. Dark mode is the `prefers-color-scheme: dark` emulation, so pages without a `data-theme` attribute
+// `--all` also renders dark at every width. `--click` (repeatable, in order) opens a state before capturing (a menu,
+// drawer, dialog or sheet): the element is the first match of the CSS selector whose text contains `text`; the
+// capture is then the 900 px viewport, not the full page. `--eval` prints the value of a JS expression per render. Dark mode is the `prefers-color-scheme: dark` emulation, so pages without a `data-theme` attribute
 // follow it exactly as a visitor's system would. Needs Node 22+ (global WebSocket) and no dependency.
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -19,6 +22,11 @@ const flag = (name, fallback) => {
   return index >= 0 ? args.splice(index, 2)[1] : fallback;
 };
 const widths = flag('widths', '360,768,1440').split(',').map(Number);
+const clicks = [];
+for (let index = args.indexOf('--click'); index >= 0; index = args.indexOf('--click')) {
+  clicks.push(args.splice(index, 2)[1]);
+}
+const evalExpression = flag('eval', '');
 const all = args.includes('--all');
 if (all) args.splice(args.indexOf('--all'), 1);
 const waitMs = Number(flag('wait', '800'));
@@ -166,12 +174,41 @@ try {
       await send('Page.navigate', { url });
       await loaded;
       await sleep(waitMs);
-      const height = (
-        await send('Runtime.evaluate', {
-          expression: 'document.documentElement.scrollHeight',
-          returnByValue: true,
-        })
-      ).result.value;
+      for (const spec of clicks) {
+        const [selector, text = ''] = spec.split('@@');
+        // A real pointer press at the element's center (so focus and hover behave as for a visitor).
+        const box = (
+          await send('Runtime.evaluate', {
+            expression: `(() => { const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find((node) => (node.textContent || node.getAttribute('aria-label') || '').includes(${JSON.stringify(text)})); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`,
+            returnByValue: true,
+          })
+        ).result.value;
+        const clicked = box !== null;
+        if (box) {
+          for (const type of ['mousePressed', 'mouseReleased']) {
+            await send('Input.dispatchMouseEvent', {
+              type,
+              x: box.x,
+              y: box.y,
+              button: 'left',
+              clickCount: 1,
+            });
+          }
+          await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
+        }
+        if (!clicked)
+          console.log(`CHECK ${name} ${width} ${scheme}: nothing matches --click ${spec}`);
+        await sleep(400);
+      }
+      const height =
+        clicks.length > 0
+          ? 900
+          : (
+              await send('Runtime.evaluate', {
+                expression: 'document.documentElement.scrollHeight',
+                returnByValue: true,
+              })
+            ).result.value;
       await send('Emulation.setDeviceMetricsOverride', {
         width,
         height: Math.min(Math.max(height, 600), 5000),
@@ -205,6 +242,12 @@ try {
             .map((item) => `${item.tag} "${item.label}" ${item.w}x${item.h}`)
             .join('; ')}`,
         );
+      if (evalExpression) {
+        const value = (
+          await send('Runtime.evaluate', { expression: evalExpression, returnByValue: true })
+        ).result.value;
+        console.log(`eval ${name} ${width} ${scheme}: ${JSON.stringify(value)}`);
+      }
       console.log(
         `${problems.length ? 'CHECK' : 'ok   '} ${name} ${width} ${scheme}: ${file}${problems.length ? '\n        ' + problems.join('\n        ') : ''}`,
       );

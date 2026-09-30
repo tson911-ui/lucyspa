@@ -88,8 +88,8 @@ const vi = {
     reference: 'Mã tham chiếu',
   },
   auth: {
-    loginTitle: 'Đăng nhập nhân sự',
-    loginIntro: 'Dành cho nhân viên và quản lý Lucy Spa.',
+    loginTitle: 'Đăng nhập',
+    loginIntro: 'Dành cho nhân viên',
     tagline: 'Chăm sóc từng khách hàng, mỗi ngày.',
     identifierType: 'Đăng nhập bằng',
     byEmployeeId: 'Mã nhân viên',
@@ -1640,8 +1640,8 @@ const en: Dictionary = {
     reference: 'Reference',
   },
   auth: {
-    loginTitle: 'Workforce sign-in',
-    loginIntro: 'For Lucy Spa staff and managers.',
+    loginTitle: 'Sign in',
+    loginIntro: 'For staff',
     tagline: 'Caring for every guest, every day.',
     identifierType: 'Sign in with',
     byEmployeeId: 'Employee ID',

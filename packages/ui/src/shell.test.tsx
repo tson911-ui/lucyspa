@@ -566,6 +566,103 @@ test('RouteFade wraps the page in the fade class (used by template.tsx)', () => 
   );
 });
 
+test('Step 5b UX gate fixes (F1-F12, F14): topbar order, control sizes, brand edge, overlay layer, phone rows', () => {
+  const markup = renderToStaticMarkup(
+    <ui.AppShell
+      brand={<span>Lucy Spa</span>}
+      nav={nav}
+      labels={labels}
+      topbar={<i id="bell" />}
+      topbarExtras={<i id="theme" />}
+      topbarEnd={<i id="user" />}
+    >
+      <p>x</p>
+    </ui.AppShell>,
+  );
+  const order = ['id="bell"', 'id="theme"', 'id="user"'].map((needle) => markup.indexOf(needle));
+  assert.deepEqual(
+    order,
+    [...order].sort((a, b) => a - b),
+    'notifications, theme, user (F7)',
+  );
+  assert.ok(order.every((index) => index > 0));
+  const components = readFileSync(new URL('components.css', import.meta.url), 'utf8');
+  const webCss = readFileSync(
+    new URL('../../../apps/web/src/app/workforce.css', import.meta.url),
+    'utf8',
+  );
+  // F1/F2: the legacy plain-control rule has zero specificity, so `ls-*` controls always win.
+  assert.match(webCss, /:where\(\.wf-app\) :where\(input:not\(/);
+  assert.doesNotMatch(webCss, /^\.wf-app (?:input:not|select)/m, 'no specific legacy control rule');
+  // F3: a badge keeps one line when it can; F12: sort buttons keep a touch-sized width.
+  assert.match(block(components, '.ls-badge'), /width:\s*max-content/);
+  assert.match(block(components, '.ls-th-sort'), /min-width:\s*var\(--ls-control-h\)/);
+  // F4/F5: phone card rows are two columns; titles and actions are full-size targets.
+  assert.match(components, /\.ls-table td\[data-label\] \{[^}]*grid-template-columns/);
+  assert.match(
+    components,
+    /\.ls-table \.ls-cell-title a,[^{]*\{[^}]*min-height:\s*var\(--ls-control-h\)/,
+  );
+  // F6: on a phone the search and the Filters button share a row.
+  assert.match(components, /\.ls-toolbar-row \{[^}]*flex-wrap:\s*nowrap/);
+  // F8/F14: theme options use the control height (40 desktop, 44 touch) in every place.
+  assert.match(block(shellCss, '.ls-theme-option'), /min-height:\s*var\(--ls-control-h\)/);
+  assert.match(block(shellCss, '.ls-theme-option'), /min-width:\s*var\(--ls-control-h\)/);
+  assert.match(block(shellCss, '.ls-topbar'), /height:\s*var\(--ls-topbar-h\)/);
+  // F9: the unread count is brand colored, not amber.
+  assert.match(block(shellCss, '.ls-bell-count'), /background:\s*var\(--ls-brand-fill\)/);
+  // F10: the brand link is a full-size target and starts on the sidebar's icon edge.
+  assert.match(block(shellCss, '.ls-topbar-brand a'), /min-height:\s*var\(--ls-control-h\)/);
+  assert.match(
+    shellCss,
+    /\.ls-topbar \{\s*padding-inline-start:\s*calc\(var\(--ls-space-3\) \* 2\)/,
+  );
+  assert.match(shellCss, /\.ls-topbar > \.ls-tooltip-wrap:has\(> \.ls-menu-button\)/);
+  // F11: page titles come from the type scale and are not lighter than the section titles.
+  assert.match(block(webCss, '.wf-main h1'), /font-size:\s*var\(--ls-text-xl\)/);
+  assert.match(block(webCss, '.wf-main h1'), /font-weight:\s*600/);
+  assert.doesNotMatch(block(webCss, '.wf-main h1'), /clamp\(/);
+});
+
+test('auth header: the wordmark leads (twice the topbar size, centered), then a smaller title and a muted subtitle', () => {
+  const rem = (markup: string) => Number(/font-size:([\d.]+)rem/.exec(markup)?.[1]);
+  const normal = renderToStaticMarkup(<ui.BrandWordmark />);
+  const display = renderToStaticMarkup(<ui.BrandWordmark size="display" />);
+  assert.equal(rem(display), rem(normal) * 2);
+  assert.doesNotMatch(normal, /padding-inline-start/, 'the topbar wordmark is unchanged');
+  assert.match(block(shellCss, '.ls-auth-card-brand'), /text-align:\s*center/);
+  const title = block(shellCss, '.ls-auth-card h1');
+  assert.match(title, /font-size:\s*var\(--ls-text-lg\)/, 'smaller than the wordmark');
+  assert.match(title, /text-align:\s*center/);
+  const subtitle = [...shellCss.matchAll(/\.ls-auth-card > h1 \+ p \{([^}]*)\}/g)]
+    .map((match) => match[1])
+    .join(' ');
+  assert.match(subtitle, /color:\s*var\(--ls-text-muted\)/);
+  assert.match(subtitle, /text-align:\s*center/);
+});
+
+test('open states: tablet overlay above sticky content, nav drawer leaves a strip, menu never clips sign out, filter sheet from the bottom', () => {
+  const components = readFileSync(new URL('components.css', import.meta.url), 'utf8');
+  assert.match(
+    shellCss,
+    /\.ls-sidebar-slot:has\(> \.ls-sidebar\[data-overlay\]\) \{\s*z-index:\s*var\(--ls-z-drawer\)/,
+  );
+  assert.match(block(shellCss, '.ls-drawer.ls-nav-drawer'), /width:\s*min\(20rem, calc\(100% - /);
+  assert.match(block(shellCss, '.ls-usermenu-panel'), /max-height:\s*calc\(100svh/);
+  assert.match(block(components, '.ls-drawer-bottom'), /max-height:\s*85vh/);
+  assert.match(
+    components,
+    /\.ls-tooltip-wrap:has\(:focus-visible\)/,
+    'no tooltip on programmatic focus',
+  );
+  const sheet = renderToStaticMarkup(
+    <ui.Drawer open onClose={() => undefined} side="bottom" title="Bộ lọc" closeLabel="Đóng">
+      x
+    </ui.Drawer>,
+  );
+  assert.match(sheet, /ls-drawer ls-drawer-bottom/);
+});
+
 test('auth card UX: token rhythm, elevation token in every theme block, segmented and password styles', () => {
   const card = block(shellCss, '.ls-auth-card');
   assert.match(card, /box-shadow:\s*var\(--ls-auth-card-shadow\)/);

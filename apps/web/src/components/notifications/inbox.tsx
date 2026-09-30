@@ -7,6 +7,7 @@ import type {
   NotificationPage,
   NotificationReadAllResponse,
 } from '@lucy-spa/contracts';
+import { Icon, buttonClass } from '@lucy-spa/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getNotificationDictionary } from '../../i18n/notifications';
@@ -78,30 +79,17 @@ export function NotificationIndicator({
   return (
     <Link
       href={`${base}/notifications`}
-      className="wf-button wf-button-quiet"
+      className={buttonClass('ghost', 'md', 'ls-btn-icon ls-bell')}
       title={label}
       aria-label={label}
     >
-      <svg
-        aria-hidden="true"
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-        <path d="M13.7 21a2 2 0 0 1-3.4 0" />
-      </svg>
+      <Icon name="bell" />
       {count !== null && count > 0 ? (
-        <span className="wf-badge wf-badge-warning" data-testid="notification-badge">
+        <span className="ls-bell-count" data-testid="notification-badge" aria-hidden="true">
           {count > 99 ? '99+' : count}
         </span>
       ) : null}
-      {failed ? <span aria-hidden="true"> ?</span> : null}
+      {failed ? <span aria-hidden="true">?</span> : null}
     </Link>
   );
 }

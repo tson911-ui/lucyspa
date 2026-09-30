@@ -79,7 +79,7 @@ function LoginForm() {
   }
 
   return (
-    <AuthLayout brand={<BrandWordmark />} topActions={<AuthTopActions />}>
+    <AuthLayout brand={<BrandWordmark size="display" />} topActions={<AuthTopActions />}>
       <h1>{t.auth.loginTitle}</h1>
       <p className="wf-muted">{t.auth.loginIntro}</p>
       {params.get('expired') ? <Notice tone="warning">{t.auth.sessionExpired}</Notice> : null}

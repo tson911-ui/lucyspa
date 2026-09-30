@@ -69,8 +69,16 @@ export function ListToolbar({
         {search ? <div className="ls-toolbar-search">{search}</div> : null}
         {hasFilters && !phone ? <div className="ls-toolbar-filters">{filters}</div> : null}
         {hasFilters && phone ? (
-          <Button variant="secondary" icon="filter" onClick={() => setSheetOpen(true)}>
-            {activeFilters > 0 ? `${labels.filters} (${activeFilters})` : labels.filters}
+          <Button
+            variant="secondary"
+            icon="filter"
+            className="ls-filter-button"
+            aria-label={activeFilters > 0 ? `${labels.filters} (${activeFilters})` : labels.filters}
+            onClick={() => setSheetOpen(true)}
+          >
+            {/* On the narrowest phones the word is hidden (CSS) so the search keeps its room; the count stays. */}
+            <span className="ls-filter-text">{labels.filters}</span>
+            {activeFilters > 0 ? <span className="ls-filter-count">{activeFilters}</span> : null}
           </Button>
         ) : null}
         {!phone ? reset : null}
@@ -86,6 +94,7 @@ export function ListToolbar({
         <Drawer
           open={sheetOpen}
           onClose={() => setSheetOpen(false)}
+          side="bottom"
           title={labels.filters}
           closeLabel={labels.close}
           footer={

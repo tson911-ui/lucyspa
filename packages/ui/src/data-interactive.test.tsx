@@ -284,7 +284,9 @@ test('ListToolbar: on a phone the filters move into a sheet and the count of app
   dom.setPhone(true);
   const phone = mount(node);
   assert.ok(!$(phone.container, 'select'), 'phone: no inline filters');
-  const button = $$(phone.container, 'button').find((b) => b.textContent?.includes('Bộ lọc (2)'));
+  const button = $$(phone.container, 'button').find(
+    (b) => b.getAttribute('aria-label') === 'Bộ lọc (2)',
+  );
   assert.ok(button, 'a Filters button with the number of applied filters');
   click(button!);
   const sheet = $(window.document, '.ls-drawer');

@@ -158,3 +158,9 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - `docs/UXUI_REDESIGN_DESIGN.md` section 21 (checklist, procedure, review of Steps 2-5: findings F1-F14, not fixed) and a short rule in `CLAUDE.md`. Tool: `node scripts/uxui-screens.mjs <name> <url-or-html>` (360/768/1440, light/dark, audit) writing to `.local/uxui-screens/` (git-ignored).
 - Owner decision pending: run a "Step 5b: UX gate fixes" Step before Step 6.
+
+### UX/UI Step 5b (UX gate fixes) - CLOSED / OWNER APPROVED
+- F1-F12, F14 fixed plus open states (overlay, drawer, user menu, filter sheet); F13 stays with Step 8.
+- New auth header: display wordmark, "Đăng nhập"/"Sign in", "Dành cho nhân viên"/"For staff". Report: `docs/UXUI_REDESIGN_STEP5B_UX_FIXES.md`.
+- Motion (15a7783) and gate (34b62e7) commits are pushed; the 5b changes are committed.
+- Known item for Step 14: `employee-detail.test.tsx` fails when run from the repo root ("React is not defined"); it passes from `apps/web`.

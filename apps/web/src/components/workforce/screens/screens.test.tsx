@@ -183,3 +183,10 @@ test('an unchanged week is not submittable (the API rejects no-op hours updates)
     false,
   );
 });
+
+test('workforce auth header: short title and subtitle in both languages, no "and managers"', () => {
+  const vi = getWorkforceDictionary('vi').auth;
+  const en = getWorkforceDictionary('en').auth;
+  assert.deepEqual([vi.loginTitle, vi.loginIntro], ['Đăng nhập', 'Dành cho nhân viên']);
+  assert.deepEqual([en.loginTitle, en.loginIntro], ['Sign in', 'For staff']);
+});

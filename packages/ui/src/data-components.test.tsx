@@ -68,10 +68,28 @@ const columns: DataTableColumn<Person>[] = [
 ];
 
 function names(markup: string): string[] {
-  return [...markup.matchAll(/<td[^>]*data-label="Mã"[^>]*>([^<]*)</g)].map(
-    (match) => match[1] ?? '',
-  );
+  return [
+    ...markup.matchAll(/<td[^>]*data-label="Mã"[^>]*><span class="ls-cell-value">([^<]*)</g),
+  ].map((match) => match[1] ?? '');
 }
+
+test('DataTable: an empty value shows an em dash; the value sits in its own span (phone card rows)', () => {
+  const markup = html(
+    <DataTable
+      mode="server"
+      columns={[
+        { key: 'a', header: 'Mã', cell: () => '' },
+        { key: 'b', header: 'Tên', cell: () => null },
+        { key: 'c', header: 'Chức danh', cell: () => 'Học viên' },
+      ]}
+      rows={[{ id: '1' }]}
+      rowKey={(row) => row.id}
+      caption="t"
+    />,
+  );
+  assert.equal(markup.match(/<span class="ls-cell-value">—<\/span>/g)?.length, 2);
+  assert.match(markup, /<span class="ls-cell-value">Học viên<\/span>/);
+});
 
 test('DataTable: semantic table, labelled cells, hidden actions heading, responsive classes', () => {
   const markup = html(

@@ -242,7 +242,11 @@ export function DataTable<Row>({
                             column.actions || column.mobileTitle ? undefined : column.header
                           }
                         >
-                          {column.cell(row)}
+                          {column.actions || column.mobileTitle ? (
+                            column.cell(row)
+                          ) : (
+                            <span className="ls-cell-value">{valueOrDash(column.cell(row))}</span>
+                          )}
                         </td>
                       ))}
                     </tr>
@@ -268,6 +272,13 @@ export function DataTable<Row>({
       ) : null}
     </div>
   );
+}
+
+/** An empty value reads as an em dash, never as a blank cell (UX gate, section 21.1). */
+function valueOrDash(content: ReactNode): ReactNode {
+  return content === null || content === undefined || content === false || content === ''
+    ? '—'
+    : content;
 }
 
 function cellClass<Row>(column: DataTableColumn<Row>): string {

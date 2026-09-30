@@ -337,13 +337,13 @@
 }
 
 .ls-tooltip-wrap:hover:not([data-dismissed]) > .ls-tooltip,
-.ls-tooltip-wrap:focus-within:not([data-dismissed]) > .ls-tooltip {
+.ls-tooltip-wrap:has(:focus-visible):not([data-dismissed]) > .ls-tooltip {
   display: block;
 }
 
 /* Touch devices have no hover; the label is the accessible name and visible on focus only. */
 @media (pointer: coarse) {
-  .ls-tooltip-wrap:hover:not(:focus-within) > .ls-tooltip {
+  .ls-tooltip-wrap:hover:not(:has(:focus-visible)) > .ls-tooltip {
     display: none;
   }
 }
@@ -353,6 +353,8 @@
   display: inline-flex;
   align-items: center;
   gap: var(--ls-space-1);
+  /* One line when there is room (a status in a table column never wraps); it shrinks and wraps only when the container is narrower. */
+  width: max-content;
   max-width: 100%;
   padding: 2px var(--ls-space-2);
   border: 1px solid currentcolor;
@@ -913,8 +915,13 @@
   min-width: min(100%, 16rem);
 }
 
+/* Room for the icon at the start; room for the clear button at the end only once there is text to clear. */
 .ls-search .ls-input {
-  padding-inline: var(--ls-space-8);
+  padding-inline: var(--ls-space-8) var(--ls-space-3);
+}
+
+.ls-search .ls-input:not(:placeholder-shown) {
+  padding-inline-end: var(--ls-space-8);
 }
 
 .ls-search-icon {
@@ -1018,7 +1025,7 @@
 
 .ls-dialog-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--ls-space-3);
 }
@@ -1103,6 +1110,24 @@
   --ls-drawer-from: -100%;
   justify-self: start;
   border-inline-end: 1px solid var(--ls-border);
+}
+
+/* Bottom sheet: as tall as its content (at most 85% of the screen), rounded top corners, full width. */
+.ls-backdrop-drawer:has(> .ls-drawer-bottom) {
+  align-items: end;
+}
+
+.ls-drawer-bottom {
+  --ls-drawer-from: 0;
+  justify-self: stretch;
+  width: 100%;
+  height: auto;
+  max-height: 85vh;
+  padding-bottom: calc(var(--ls-space-5) + env(safe-area-inset-bottom, 0px));
+  border-block-start: 1px solid var(--ls-border);
+  border-start-start-radius: var(--ls-radius-md);
+  border-start-end-radius: var(--ls-radius-md);
+  animation-name: ls-sheet-in;
 }
 
 .ls-drawer-body {
@@ -1310,10 +1335,18 @@
   text-align: end;
 }
 
+/* A row action never wraps its label onto two lines; on a phone the cell becomes a card footer. */
+@media (min-width: 640px) {
+  .ls-cell-actions {
+    white-space: nowrap;
+  }
+}
+
 .ls-th-sort {
   display: inline-flex;
   align-items: center;
   gap: var(--ls-space-1);
+  min-width: var(--ls-control-h);
   min-height: var(--ls-control-h);
   padding: 0;
   border: 0;
@@ -1404,11 +1437,35 @@
     text-align: end;
   }
 
+  /* Every field is one row of two columns: the label at the start, the value right-aligned at the end,
+     however long it is (a long value wraps inside its own column instead of dropping under the label). */
+  .ls-table td[data-label] {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    align-items: start;
+  }
+
   .ls-table td[data-label]::before {
     content: attr(data-label);
     color: var(--ls-text-muted);
     font-weight: 600;
     text-align: start;
+  }
+
+  .ls-cell-value {
+    justify-self: end;
+    min-width: 0;
+    text-align: end;
+    overflow-wrap: anywhere;
+  }
+
+  /* The card title and its actions are full-size touch targets. */
+  .ls-table .ls-cell-title a,
+  .ls-table .ls-cell-actions a,
+  .ls-table .ls-cell-actions button {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--ls-control-h);
   }
 
   .ls-table tbody tr:hover td,
@@ -1543,6 +1600,10 @@
   margin-inline-start: auto;
 }
 
+.ls-toolbar + .ls-table-block {
+  margin-top: var(--ls-space-4);
+}
+
 .ls-toolbar-count {
   margin: 0;
   color: var(--ls-text-muted);
@@ -1554,9 +1615,49 @@
   gap: var(--ls-space-4);
 }
 
+.ls-filter-button .ls-btn-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+}
+
+.ls-filter-count {
+  min-width: var(--ls-space-5);
+  padding-inline: var(--ls-space-1);
+  border-radius: var(--ls-radius-full);
+  color: var(--ls-on-brand);
+  background: var(--ls-brand-fill);
+  font-size: var(--ls-text-xs);
+  line-height: var(--ls-leading-xs);
+  text-align: center;
+}
+
+/* Narrowest phones: the icon and count carry the button (its accessible name is the full label). */
+@media (max-width: 479px) {
+  .ls-filter-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Phone: search and the Filters button share one row; the search takes what the button leaves. */
 @media (max-width: 639px) {
+  .ls-toolbar-row {
+    flex-wrap: nowrap;
+    align-items: flex-end;
+  }
+
   .ls-toolbar-search {
-    flex-basis: 100%;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .ls-toolbar-row > .ls-btn {
+    flex: none;
   }
 }
 

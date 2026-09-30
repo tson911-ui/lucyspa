@@ -16,8 +16,9 @@
   display: flex;
   align-items: center;
   gap: var(--ls-space-3);
-  min-height: var(--ls-topbar-h);
-  padding: var(--ls-space-2) var(--ls-gutter);
+  /* A fixed height: 40 and 44 px controls both fit, so the sticky offsets below never drift. */
+  height: var(--ls-topbar-h);
+  padding-inline: var(--ls-gutter);
   border-bottom: 1px solid var(--ls-border);
   background: var(--ls-bg-surface);
 }
@@ -29,6 +30,9 @@
 }
 
 .ls-topbar-brand a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
   color: inherit;
   text-decoration: none;
 }
@@ -47,10 +51,37 @@
   gap: var(--ls-space-3);
 }
 
+/* Desktop has no menu button. Its tooltip wrapper is hidden too, or it would still add a flex gap. */
 @media (min-width: 1024px) {
-  .ls-menu-button {
+  .ls-menu-button,
+  .ls-topbar > .ls-tooltip-wrap:has(> .ls-menu-button) {
     display: none;
   }
+
+  /* The brand starts on the sidebar's icon edge (12 px nav padding + 12 px link padding). */
+  .ls-topbar {
+    padding-inline-start: calc(var(--ls-space-3) * 2);
+  }
+}
+
+/* Notification bell: a ghost icon button (same height as its neighbours) with a brand-colored unread count. */
+.ls-bell {
+  position: relative;
+}
+
+.ls-bell-count {
+  position: absolute;
+  inset-block-start: var(--ls-space-1);
+  inset-inline-end: var(--ls-space-1);
+  min-width: var(--ls-space-4);
+  padding-inline: var(--ls-space-1);
+  border-radius: var(--ls-radius-full);
+  color: var(--ls-on-brand);
+  background: var(--ls-brand-fill);
+  font-size: var(--ls-text-xs);
+  font-weight: 600;
+  line-height: var(--ls-leading-xs);
+  text-align: center;
 }
 
 @media (max-width: 639px) {
@@ -244,6 +275,11 @@
     display: none;
   }
 
+  /* The overlay must sit above sticky page content (table headers) and below the popovers and dialogs. */
+  .ls-sidebar-slot:has(> .ls-sidebar[data-overlay]) {
+    z-index: var(--ls-z-drawer);
+  }
+
   .ls-sidebar[data-overlay] {
     position: fixed;
     top: var(--ls-topbar-h);
@@ -273,6 +309,11 @@
   }
 }
 
+/* The navigation drawer leaves a strip of the page and its scrim visible, so it reads as a layer, not a new page. */
+.ls-drawer.ls-nav-drawer {
+  width: min(20rem, calc(100% - var(--ls-space-8)));
+}
+
 .ls-nav-drawer .ls-nav {
   padding: 0;
 }
@@ -280,9 +321,6 @@
 /* ---- Theme toggle ----------------------------------------------------------------------------- */
 .ls-theme-toggle {
   display: inline-flex;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--ls-border);
   border-radius: var(--ls-radius-full);
   background: var(--ls-bg-sunken);
 }
@@ -292,8 +330,8 @@
   align-items: center;
   justify-content: center;
   gap: var(--ls-space-2);
-  min-width: 2.25rem;
-  min-height: 2.25rem;
+  min-width: var(--ls-control-h);
+  min-height: var(--ls-control-h);
   padding: 0 var(--ls-space-2);
   border: 0;
   border-radius: var(--ls-radius-full);
@@ -317,21 +355,19 @@
 
 .ls-theme-toggle-labeled {
   display: flex;
+  gap: var(--ls-space-1);
+  padding: var(--ls-space-1);
   width: 100%;
   border-radius: var(--ls-radius-md);
 }
 
 .ls-theme-toggle-labeled .ls-theme-option {
-  flex: 1;
-  flex-wrap: wrap;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: var(--ls-space-1);
+  padding-block: var(--ls-space-2);
   border-radius: var(--ls-radius-sm);
-}
-
-@media (pointer: coarse), (max-width: 1023px) {
-  .ls-theme-option {
-    min-height: 2.75rem;
-    min-width: 2.75rem;
-  }
+  text-align: center;
 }
 
 /* ---- User menu -------------------------------------------------------------------------------- */
@@ -395,6 +431,8 @@
 
 .ls-usermenu-panel {
   width: 20rem;
+  /* Never shorter than its content on a phone (sign out is the last item); scrolls only on very short screens. */
+  max-height: calc(100svh - var(--ls-topbar-h) - var(--ls-space-4));
   padding: 0;
 }
 
@@ -430,7 +468,8 @@
 
 .ls-usermenu-label {
   margin: 0;
-  padding: var(--ls-space-1) var(--ls-space-2) 0;
+  /* Same inset as the text of the links below it (the link's 12 px padding). */
+  padding: var(--ls-space-1) var(--ls-space-3) 0;
   color: var(--ls-text-muted);
   font-size: var(--ls-text-xs);
   font-weight: 600;
@@ -539,8 +578,14 @@
   outline-color: var(--ls-auth-panel-text);
 }
 
+.ls-auth-top .ls-btn-ghost:hover {
+  background: transparent;
+  text-decoration: underline;
+}
+
+/* The outline is an inset ring, so the toggle keeps the same 40/44 px height as elsewhere. */
 .ls-auth-top .ls-theme-toggle {
-  border-color: var(--ls-auth-panel-text-muted);
+  box-shadow: inset 0 0 0 1px var(--ls-auth-panel-text-muted);
   background: transparent;
 }
 
@@ -609,17 +654,26 @@
   }
 }
 
+/* The brand leads: a large centered wordmark, then a smaller centered title and a muted subtitle. */
 .ls-auth-card-brand {
   color: var(--ls-brand);
+  text-align: center;
 }
 
 .ls-auth-card h1 {
   color: var(--ls-text);
   font-family: var(--ls-font-sans);
-  font-size: var(--ls-text-xl);
+  font-size: var(--ls-text-lg);
   font-weight: 600;
-  line-height: var(--ls-leading-xl);
-  letter-spacing: -0.01em;
+  line-height: var(--ls-leading-lg);
+  text-align: center;
+}
+
+.ls-auth-card > h1 + p {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+  text-align: center;
 }
 
 .ls-auth-card form {

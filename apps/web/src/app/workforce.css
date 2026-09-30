@@ -7,13 +7,6 @@
   line-height: 1.5;
 }
 
-.wf-lang {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  font-size: 0.85rem;
-}
-
 .wf-main {
   width: 100%;
   max-width: 72rem;
@@ -28,19 +21,25 @@
   /* The display serif lacks precomposed Vietnamese glyphs (for example "ấ"). */
   color: var(--ls-text);
   font-family: var(--ls-font-sans);
-  font-size: clamp(1.5rem, 2.5vw, 2rem);
-  letter-spacing: -0.02em;
+  font-size: var(--ls-text-xl);
+  font-weight: 600;
+  line-height: var(--ls-leading-xl);
+  letter-spacing: -0.01em;
   white-space: normal;
 }
 
 .wf-main h2 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--ls-text-lg);
+  font-weight: 600;
+  line-height: var(--ls-leading-lg);
 }
 
 .wf-main h3 {
-  margin: 1.25rem 0 0.5rem;
-  font-size: 1rem;
+  margin: var(--ls-space-5) 0 var(--ls-space-2);
+  font-size: var(--ls-text-md);
+  font-weight: 600;
+  line-height: var(--ls-leading-md);
 }
 
 .wf-page-header {
@@ -185,9 +184,7 @@
 }
 
 .wf-button:focus-visible,
-.wf-app input:focus-visible,
-.wf-app select:focus-visible,
-.wf-app textarea:focus-visible,
+:where(.wf-app) :where(input, select, textarea):focus-visible,
 .wf-login input:focus-visible,
 .wf-login button:focus-visible {
   outline: 2px solid var(--ls-focus);
@@ -346,9 +343,8 @@
   font-size: 0.82rem;
 }
 
-.wf-app input:not([type='checkbox']):not([type='radio']),
-.wf-app select,
-.wf-app textarea,
+/* Zero specificity for the app's plain controls, so a shared `ls-*` control (search, select, ...) always wins. */
+:where(.wf-app) :where(input:not([type='checkbox'], [type='radio']), select, textarea),
 .wf-login input:not([type='radio']) {
   width: 100%;
   min-height: 44px;
@@ -461,10 +457,28 @@
 .wf-disclosure summary {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-height: var(--ls-control-h);
   color: var(--ls-brand);
   font-weight: 600;
   cursor: pointer;
+}
+
+/* In a table row the disclosure trigger looks like the row's other actions: a secondary button. */
+.ls-cell-actions .wf-disclosure > summary {
+  padding: var(--ls-space-2) var(--ls-space-4);
+  border: 1px solid var(--ls-border-control);
+  border-radius: var(--ls-radius-md);
+  color: var(--ls-text);
+  background: var(--ls-bg-surface);
+  font-size: var(--ls-text-sm);
+}
+
+/* Table mode: the trigger sits on the cell's end edge, like the buttons in the other tables. */
+@media (min-width: 640px) {
+  .ls-cell-actions .wf-disclosure > summary {
+    width: fit-content;
+    margin-inline-start: auto;
+  }
 }
 
 .wf-segmented {

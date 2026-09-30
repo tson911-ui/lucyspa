@@ -187,7 +187,8 @@ export function Drawer({
   open: boolean;
   onClose: () => void;
   title: string;
-  side?: 'start' | 'end' | undefined;
+  /** `bottom` is a sheet that rises from the bottom edge (phone filters); `start`/`end` are full-height. */
+  side?: 'start' | 'end' | 'bottom' | undefined;
   closeLabel: string;
   footer?: ReactNode | undefined;
   children?: ReactNode | undefined;

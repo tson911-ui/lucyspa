@@ -1035,7 +1035,10 @@ reported done** until this gate has been run and its result is in the Step repor
    anything deliberately left and why, and the folder `.local/uxui-screens/` so the Owner can open the images. The static render
    does not replace the Owner's check on a real phone.
 
-### 21.3 Review of the already-built work against this gate (2026-09-30; fixes NOT applied)
+### 21.3 Review of the already-built work against this gate (2026-09-30)
+
+**Status: F1-F12 and F14 fixed in Step 5b (`docs/UXUI_REDESIGN_STEP5B_UX_FIXES.md`); F13 stays with Step 8.** The table is the
+record of what was found.
 
 Rendered: the real workforce shell with the Employees and Skills screens (scripted API) at 360, 768 and 1440 px in light and dark (full matrix),
 plus the auth pages. Everything below is a finding; nothing was changed.
