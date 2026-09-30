@@ -977,3 +977,74 @@ Step 5 needs **no rework**. Three small adjustments belong to Step S1, none to S
 | Q-S9  | Permission: reuse `MANAGE_WEBSITE_CONTENT` (rec) or add a separate code?                                                       | **(rec)** reuse (Q-CM1 logic).                                                                                  |
 | Q-S10 | Preview only inside admin frames, no shareable preview link?                                                                   | **(rec)** yes.                                                                                                  |
 | Q-S11 | Overlapping enabled seasons rejected (rec) instead of "newest wins"?                                                           | **(rec)** reject, as popups.                                                                                    |
+
+---
+
+## 21. UX quality gate (MANDATORY for every remaining UI Step)
+
+**Status: Owner rule, recorded 2026-09-30.** It applies to Steps 6-14, the seasonal Steps S1-S5 and Part 2. A UI Step is **not
+reported done** until this gate has been run and its result is in the Step report. Step 14 re-runs it on the key pages.
+
+### 21.1 Layout rules (the checklist)
+
+1. **Spacing:** the 8 px grid, from tokens only (`--ls-space-*`; the 4 px step only between an icon and its text). No px/rem/em
+   literal for `margin`, `padding` or `gap` in screen or component CSS.
+2. **Type:** only the section 5 scale (`--ls-text-*`, `--ls-leading-*`); one `h1` per page; titles of the same level share size and
+   weight (a page title is never lighter than the section titles under it); no ad-hoc `font-size`.
+3. **Vertical rhythm:** inside one container every sibling gap comes from one rule (for example 16 px between form fields, 24 px
+   between cards, the page anatomy of 10.1). No spacer elements, no one-off margins that make one gap different.
+4. **Aligned edges:** blocks in a column share one left edge (brand, sidebar items, page title, cards); form labels, controls and
+   buttons share one width; right-aligned actions share one right edge; controls in a row share one height and one baseline.
+5. **Max widths:** text lines at most 75 characters, forms `--ls-form-max`, content `--ls-content-max`, auth card 26 rem. Nothing
+   stretches across the page by accident (a select or button that fills a row it does not need to is a defect).
+6. **Touch targets:** at least 44 px below 1024 px and on coarse pointers, 40 px on desktop (section 13), for icon buttons, toggles,
+   segments, row and card actions and links used as titles. Only links inside running text are exempt.
+7. **No orphaned or oddly placed elements:** no icon overlapping text, no badge or button label wrapping onto two lines, no
+   single word alone on a line in a heading, no empty labeled cell (show an em dash), no heading followed by a link with the same
+   text, no horizontal page scroll, no clipped text, the primary action in the same place as on sibling pages.
+8. **Both themes and all widths:** status is never color only (6.4), no amber/gold (D1), focus ring visible on every background,
+   and the same layout quality at 360, 768 and 1440 px in light and dark.
+
+### 21.2 Procedure before a Step is reported done
+
+1. **Render** every changed screen with the headless browser: `node scripts/uxui-screens.mjs <name> <url-or-html-file>`. It drives
+   Edge/Chrome through the DevTools protocol at **360, 768 and 1440 px, light and dark** (system color-scheme emulation), saves
+   full-page PNGs plus a readable `-top` crop to **`.local/uxui-screens/`** (ignored by git) and prints an automatic audit:
+   horizontal page scroll and interactive targets under the minimum size. Exit code 1 (`CHECK` lines) means findings to fix or to
+   explain in the report.
+2. Screens that load data are rendered **with data**: the real screens run in a local harness (`.local/uxui-harness/`, machine-local
+   and not committed: an esbuild bundle of the real shell and screens, `next/link` and `next/navigation` stubbed, a scripted
+   `fetch` with realistic Vietnamese fixtures). Recreate it from that description if missing, or point the script at the running
+   app. Open states that the Step changes (menu, dialog, drawer, filter sheet, tablet overlay) are captured too.
+3. **Review** each image against 21.1, fix, and render again until clean. Look at the `-top` crop at full size; a downscaled
+   full-page image hides misalignment.
+4. **Report** in the Step report (a "UX gate" paragraph of at most 5 lines): screens and widths reviewed, issues found and fixed,
+   anything deliberately left and why, and the folder `.local/uxui-screens/` so the Owner can open the images. The static render
+   does not replace the Owner's check on a real phone.
+
+### 21.3 Review of the already-built work against this gate (2026-09-30; fixes NOT applied)
+
+Rendered: the real workforce shell with the Employees and Skills screens (scripted API) at 360, 768 and 1440 px in light and dark,
+plus the auth pages. Everything below is a finding; nothing was changed.
+
+| #   | Where                    | Finding (rule)                                                                                                                                         | Likely cause / fix                                                                               |
+| --- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| F1  | Search input (all lists) | The magnifier icon overlaps the placeholder and typed text at every width (7)                                                                          | Legacy `.wf-app input` padding beats the component's icon padding; scope or drop the legacy rule |
+| F2  | Page-size select         | Stretches the full width under every table (5, 7)                                                                                                      | Legacy `.wf-app select { width: 100% }` overrides `ls-*` controls; same root cause as F1         |
+| F3  | Status badges            | "Đang hoạt động" wraps onto two lines at 768 px, making tall pills and cramped columns (7)                                                             | Badge needs `white-space: nowrap` and the status column a minimum width                          |
+| F4  | Phone card list          | Label/value rows are inconsistent: short values right-aligned, long ones dropped below the label; empty values show blank instead of an em dash (4, 7) | Fixed two-column row layout, em dash for empty                                                   |
+| F5  | Phone card list          | Card title links are 20 px tall and "Sửa" is a bare text link (6)                                                                                      | 44 px hit areas for title and actions                                                            |
+| F6  | Phone list toolbar       | "Bộ lọc" sits alone under the search field, the count and "Sắp xếp theo" crowd below it (4, 7)                                                         | Search and Filters on one row; sort aligned with the same edges                                  |
+| F7  | Topbar order             | Theme toggle and language link come before the bell; contract 4.1 says notifications, theme, language, user menu (7)                                   | Reorder in `WorkforceShell`/`AppShell` slots                                                     |
+| F8  | Topbar controls          | Mixed heights: theme options 36 px (under the 40 px minimum), "English" link 43 px wide at 768, bell in a bordered legacy box (4, 6)                   | One control height; toggle options 40/44 px; quiet button style for the language link            |
+| F9  | Notification badge       | The unread count is a tan/orange circle that reads as amber (8, D1) and the bell box does not match the ghost icon buttons                             | Brand-colored badge on an `IconButton`-style bell                                                |
+| F10 | Topbar brand             | The wordmark link is 30 px tall (6) and its left edge (45 px) matches neither the sidebar items (24 px) nor the gutter (4)                             | Padding to reach the control height; align to the sidebar content edge                           |
+| F11 | Page titles              | `h1` renders regular weight beside bold section titles and uses a `clamp()` size instead of tokens (2)                                                 | `h1` from the type scale, weight 600, in `.wf-main` (and later page templates)                   |
+| F12 | Sort header buttons      | "Mã" sort button is 40 px wide at 768 px (6)                                                                                                           | Minimum width on sort buttons                                                                    |
+| F13 | Skills create card       | A card titled "Thêm kỹ năng" whose only content is a link with the same text (7)                                                                       | Legacy pattern; resolved by the Step 8 migration to the page templates, not a Step 5 fix         |
+| F14 | Auth pages               | Theme toggle options are 36 px on desktop (6)                                                                                                          | Same as F8 (shared `ThemeToggle`)                                                                |
+
+Not reviewed by this render (open states are not captured yet): the user menu panel, the phone drawer, the tablet overlay, the
+filter sheet. Proposed handling: one "Step 5b: UX gate fixes" Step before Step 6 (F1-F12, F14 in `packages/ui`, `workforce.css`
+scoping and `shell.tsx`; F13 stays with Step 8), including captures of those open states. **Owner decision needed** on running
+Step 5b before Step 6.
