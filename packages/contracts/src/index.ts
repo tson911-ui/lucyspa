@@ -2670,3 +2670,68 @@ export interface VoucherActiveRequest {
   expectedVersion: number;
   isActive: boolean;
 }
+
+// ------------------------------------------------------------------ Phase 4 Step 9: customer invoice history
+
+/**
+ * A customer sees an invoice only once it is a finalized document (never a DRAFT, and never a draft that was
+ * cancelled) and only when they are its payer. `CANCELLED` means cancelled after finalization.
+ */
+export type CustomerInvoiceStatus = 'PENDING_PAYMENT' | 'PAID' | 'CANCELLED';
+
+export interface CustomerInvoiceSummary {
+  id: string;
+  /** The only customer-facing identifier (`INV-YYMMDD-XXXXXX`). */
+  code: string;
+  status: CustomerInvoiceStatus;
+  /** Times are shown in the branch's IANA timezone. */
+  branch: { id: string; name: string; timezone: string };
+  /** Branch-local business date, `YYYY-MM-DD`. */
+  businessDate: string;
+  finalizedAt: string;
+  paidAt: string | null;
+  cancelledAt: string | null;
+  totalVnd: string;
+  /** Sum of the payments that still count (0 for a zero-balance invoice). */
+  paidVnd: string;
+  /** Remaining amount while PENDING_PAYMENT, otherwise 0. */
+  balanceVnd: string;
+}
+
+export interface CustomerInvoiceLine {
+  sequence: number;
+  nameVi: string;
+  nameEn: string;
+  quantity: number;
+  unitPriceVnd: string;
+  grossVnd: string;
+  pricingUnit: 'PER_SERVICE' | 'PER_NAIL';
+  /** The service was for the signed-in customer; otherwise `recipientName` is the name given at the desk or booking. */
+  forSelf: boolean;
+  recipientName: string | null;
+}
+
+/** A payment that was recorded; a reversed one stays listed and is flagged (its reason and staff are not shown). */
+export interface CustomerInvoicePayment {
+  id: string;
+  method: 'CASH' | 'PAYOS';
+  amountVnd: string;
+  paidAt: string;
+  reversed: boolean;
+}
+
+export interface CustomerInvoiceDetail extends CustomerInvoiceSummary {
+  visitDate: string;
+  subtotalVnd: string;
+  discountTotalVnd: string;
+  /** The benefit applied at finalization, if any (name and the voucher code the customer used). */
+  discount: { nameVi: string; nameEn: string; voucherCode: string | null; amountVnd: string } | null;
+  lines: CustomerInvoiceLine[];
+  payments: CustomerInvoicePayment[];
+}
+
+/** GET /api/v1/me/invoices?cursor= : newest first; `nextCursor` is passed back as `cursor` for the next page. */
+export interface CustomerInvoiceListResponse {
+  invoices: CustomerInvoiceSummary[];
+  nextCursor: string | null;
+}

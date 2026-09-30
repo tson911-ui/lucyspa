@@ -18,6 +18,7 @@ export function CustomerShell({ children }: { children: ReactNode }) {
     { href: base, label: t.nav.home, exact: true },
     { href: `${base}/book`, label: t.nav.book, exact: false },
     { href: `${base}/bookings`, label: t.nav.bookings, exact: false },
+    { href: `${base}/invoices`, label: t.nav.invoices, exact: false },
   ];
   const current = (href: string, exact: boolean) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);

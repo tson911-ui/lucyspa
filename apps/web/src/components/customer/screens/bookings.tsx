@@ -19,7 +19,7 @@ import {
 import { Badge, Field, Notice, SubmitButton } from '../../workforce/ui';
 import { useCustomer, useCustomerAccount } from '../session';
 
-function useFetch<T>(load: () => Promise<T>, key: string) {
+export function useFetch<T>(load: () => Promise<T>, key: string) {
   const [state, setState] = useState<{ data: T | null; error: unknown }>({
     data: null,
     error: null,
@@ -43,7 +43,7 @@ function useFetch<T>(load: () => Promise<T>, key: string) {
   };
 }
 
-function LoadState({ error, retry }: { error: unknown; retry: () => void }) {
+export function LoadState({ error, retry }: { error: unknown; retry: () => void }) {
   const { t } = useCustomer();
   if (!error) {
     return (

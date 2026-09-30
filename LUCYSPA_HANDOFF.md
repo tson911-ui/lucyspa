@@ -20,7 +20,7 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)       |
 | Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                              |
 | Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                           |
-| **Phase 4 (POS, invoices, payments)**     | **IN PROGRESS: Steps 1-8 CLOSED / OWNER APPROVED; Step 9 NOT STARTED** |
+| **Phase 4 (POS, invoices, payments)**     | **IN PROGRESS: Steps 1-9 CLOSED / OWNER APPROVED; Step 10 blocked on Q8** |
 | Phase 5+ (loyalty, payroll, finance)      | NOT started (deferred)                                                 |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
@@ -35,7 +35,7 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | 6    | Discounts / vouchers (+ historical service-category snapshot)        | CLOSED (`f898f2d`)                         |
 | 7    | Cash / split payments / payment states / corrections                 | CLOSED / OWNER APPROVED (no migration)     |
 | 8    | PayOS (Q7 answered)                                                  | CLOSED / OWNER APPROVED                    |
-| 9    | Customer invoice history                                             | NOT STARTED                                |
+| 9    | Customer invoice history                                             | CLOSED / OWNER APPROVED                    |
 | 10   | Invoice / revenue notifications                                      | NOT STARTED, **Q8 must be answered first** |
 | 11   | Final validation (single full gate; no deploy)                       | NOT STARTED                                |
 
@@ -78,6 +78,12 @@ CARD-ready = the per-method rule table `apps/api/src/pos/payment.methods.ts` (ke
 Step 8 (`docs/PHASE4_STEP8_PAYOS.md`): PayOS QR requests (`COLLECT_PAYMENTS`), signed webhook, settlement core in `packages/server`, worker sweep, anomalies/notes (`CORRECT_PAYMENTS`); 2 migrations; no live call made.
 Step 8 Owner answers: anomaly review and notes stay on `CORRECT_PAYMENTS` (no new permission); anomaly recipients are decided with Q8 in Step 10 (invoice page + API list suffice for now); the short memo `LUCYSPA` is fine because matching uses the PayOS order code only.
 Deploy needs `PAYOS_CLIENT_ID/API_KEY/CHECKSUM_KEY` (api + worker), the webhook URL registered in PayOS, `db:permissions:sync`; then one small real payment.
+
+## Step 9 (customer invoice history)
+
+Step 9 (`docs/PHASE4_STEP9_CUSTOMER_INVOICES.md`): `GET /api/v1/me/invoices[/:id]`, payer = session customer and finalized only, read only; no migration.
+Web `/account/invoices` (VI/EN). CLOSED / OWNER APPROVED.
+Step 9 Owner answers: drafts hidden, cancelled shown as "Đã hủy" (reason hidden); guest-payer invoices never viewable/attached (V1); no customer self-pay (counter payment; online self-pay = separate future feature). Dev DB `lucy_spa_dev` is 12 migrations behind: run integration tests on a scratch DB.
 
 ## Production
 

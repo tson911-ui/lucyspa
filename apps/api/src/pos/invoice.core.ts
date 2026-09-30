@@ -250,7 +250,9 @@ function person(user: Prisma.UserGetPayload<{ select: typeof userSummary }> | nu
 
 const day = (value: Date) => value.toISOString().slice(0, 10);
 
-export function effectivePaid(row: InvoiceRow): bigint {
+export function effectivePaid(row: {
+  payments: readonly { status: string; amountVnd: bigint; correction: unknown }[];
+}): bigint {
   return row.payments
     .filter((payment) => payment.status === 'SUCCEEDED' && payment.correction === null)
     .reduce((sum, payment) => sum + payment.amountVnd, 0n);
@@ -356,7 +358,11 @@ function presentNotes(context: AdminContext, row: InvoiceRow): InvoiceManagement
 }
 
 /** Remaining amount to collect: only a PENDING_PAYMENT invoice has one. */
-export function balanceOf(row: InvoiceRow): bigint {
+export function balanceOf(row: {
+  status: InvoiceStatusName;
+  totalVnd: bigint;
+  payments: readonly { status: string; amountVnd: bigint; correction: unknown }[];
+}): bigint {
   return row.status === 'PENDING_PAYMENT' ? row.totalVnd - effectivePaid(row) : 0n;
 }
 
