@@ -67,6 +67,19 @@ const errors = {
   PAYMENT_METHOD_UNAVAILABLE: [400, 'This payment method is not available'],
   PAYMENT_AMOUNT_INVALID: [409, 'The amount is more than the remaining balance of the invoice'],
   PAYMENT_STATE_INVALID: [409, 'This payment cannot be reversed'],
+  // Phase 4 Step 8: PayOS.
+  PAYMENT_PROVIDER_PENDING: [
+    409,
+    'A PayOS payment request is waiting on this invoice; cancel it or wait for it to end',
+  ],
+  PAYMENT_REQUEST_STATE_INVALID: [409, 'This PayOS payment request is not waiting for payment'],
+  PAYMENT_PROVIDER_UNAVAILABLE: [
+    503,
+    'The payment provider could not be reached; try again shortly',
+  ],
+  PAYMENT_PROVIDER_REJECTED: [502, 'The payment provider refused the request'],
+  PAYMENT_ANOMALY_REVIEWED: [409, 'This payment anomaly was already reviewed'],
+  INVOICE_NOTE_NOT_ALLOWED: [409, 'A management note is only for an invoice settled through PayOS'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

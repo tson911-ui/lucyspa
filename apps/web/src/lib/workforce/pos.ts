@@ -6,6 +6,7 @@ import type {
   InvoiceLinePriceRequest,
   InvoicePayerRequest,
   InvoiceStatusName,
+  PaymentPayosRequest,
   PaymentRecordRequest,
   PaymentReverseRequest,
 } from '@lucy-spa/contracts';
@@ -169,6 +170,39 @@ export function changePreview(input: PaymentInput): string | null {
     return null;
   }
   return (BigInt(tendered) - BigInt(amount)).toString();
+}
+
+/**
+ * The PayOS request: only the amount and the idempotency key (Q7: part or all of the balance). Pre-checked
+ * against the balance the server reported; expiry, order and status are the server's.
+ */
+export function payosBody(
+  amount: string,
+  balanceVnd: string,
+  idempotencyKey: string,
+): { body: PaymentPayosRequest } | { problem: 'amount' } {
+  const trimmed = amount.trim();
+  if (!isVndInput(trimmed) || BigInt(trimmed) < 1n || BigInt(trimmed) > BigInt(balanceVnd)) {
+    return { problem: 'amount' };
+  }
+  return { body: { amountVnd: trimmed, idempotencyKey } };
+}
+
+/** A management note or an anomaly review note: 1-500 characters after trimming. */
+export function noteBody(note: string): { note: string } | null {
+  const trimmed = note.normalize('NFC').trim();
+  return trimmed && [...trimmed].length <= 500 ? { note: trimmed } : null;
+}
+
+/** Milliseconds until a PayOS request stops accepting payment (never negative). */
+export function remainingMs(expiresAtIso: string, nowMs: number): number {
+  return Math.max(0, Date.parse(expiresAtIso) - nowMs);
+}
+
+/** `m:ss` for a countdown. */
+export function formatCountdown(ms: number): string {
+  const seconds = Math.ceil(ms / 1000);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
 /** The reversal body: a reason is required (1–500 characters after trimming). */

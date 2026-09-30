@@ -9,6 +9,7 @@ import {
   eventBase,
   invoiceSelect,
   lockedInvoice,
+  pendingProviderVnd,
   presentPayments,
   type InvoiceRow,
 } from './invoice.core.js';
@@ -52,6 +53,8 @@ async function result(
     },
   };
 }
+
+export { result as paymentResult };
 
 export interface RecordPaymentInput {
   method: PaymentMethod;
@@ -110,6 +113,11 @@ export async function recordPayment(
   const balance = invoice.totalVnd - paidBefore;
   // No overpayment: the credit never exceeds the balance the server sees now (a stale screen is refused).
   if (input.amountVnd > balance) throw new AuthError('PAYMENT_AMOUNT_INVALID');
+  // A live PayOS request holds part of the balance (Q7 items 3 and 7): cash may take only the rest until that
+  // request is cancelled or ends, so the same money is never collected twice.
+  if (input.amountVnd > balance - pendingProviderVnd(invoice.payments, context.now)) {
+    throw new AuthError('PAYMENT_PROVIDER_PENDING');
+  }
   if (rule.tender ? input.tenderedVnd < input.amountVnd : input.tenderedVnd !== input.amountVnd) {
     throw new AuthError('VALIDATION_FAILED', 'tenderedVnd');
   }

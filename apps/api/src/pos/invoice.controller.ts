@@ -7,7 +7,11 @@ import type {
   InvoiceResponse,
   InvoiceVoucherRemoveRequest,
   InvoiceVoucherSupplyRequest,
-  PaymentMethodName,
+  InvoiceManagementNoteRequest,
+  PaymentAnomalyListItem,
+  PaymentAnomalyListResponse,
+  PaymentAnomalyReviewRequest,
+  PaymentPayosRequest,
   PaymentRecordRequest,
   PaymentResultResponse,
   PaymentReverseRequest,
@@ -28,6 +32,7 @@ import {
 } from '@nestjs/common';
 import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
 import {
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -48,6 +53,10 @@ const VND = /^(?:0|[1-9][0-9]{0,17})$/;
 
 class BoardQueryDto {
   @IsOptional() @IsString() @MaxLength(10) date?: string;
+}
+
+class AnomalyQueryDto {
+  @IsOptional() @IsIn(['OPEN', 'REVIEWED']) status?: 'OPEN' | 'REVIEWED';
 }
 
 class MemberQueryDto {
@@ -87,10 +96,24 @@ class VersionDto implements InvoiceFinalizeRequest {
 /** The credited amount, the tendered amount and the idempotency UUID. No time, change or status field. */
 class PaymentRecordDto implements PaymentRecordRequest {
   // Validated against the method rules by the service, so an unknown or inactive method has its own error.
-  @ApiProperty({ enum: ['CASH'] }) @IsString() @MaxLength(32) method!: PaymentMethodName;
+  @ApiProperty({ enum: ['CASH'] }) @IsString() @MaxLength(32) method!: 'CASH';
   @ApiProperty() @IsString() @Matches(VND) amountVnd!: string;
   @ApiProperty() @IsString() @Matches(VND) tenderedVnd!: string;
   @ApiProperty() @IsString() @MaxLength(64) idempotencyKey!: string;
+}
+
+/** A PayOS request: only the amount and the idempotency UUID. The API decides expiry, order and status. */
+class PaymentPayosDto implements PaymentPayosRequest {
+  @ApiProperty() @IsString() @Matches(VND) amountVnd!: string;
+  @ApiProperty() @IsString() @MaxLength(64) idempotencyKey!: string;
+}
+
+class ManagementNoteDto implements InvoiceManagementNoteRequest {
+  @ApiProperty() @IsString() @MaxLength(2_048) note!: string;
+}
+
+class AnomalyReviewDto implements PaymentAnomalyReviewRequest {
+  @ApiProperty() @IsString() @MaxLength(2_048) note!: string;
 }
 
 class PaymentReverseDto implements PaymentReverseRequest {
@@ -296,6 +319,106 @@ export class InvoiceController {
       body,
       this.requestId(response),
     );
+  }
+
+  @Post('invoices/:id/payments/payos')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Create a PayOS QR request for part or all of the balance (COLLECT_PAYMENTS). Pending until PayOS confirms; expires after 15 minutes; one pending request per invoice. Idempotent by the client UUID.',
+  })
+  createPayos(
+    @Param('id') id: string,
+    @Body() body: PaymentPayosDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PaymentResultResponse> {
+    return this.invoices.createPayos(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Post('invoices/:id/payments/:paymentId/cancel')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Cancel a pending PayOS request (COLLECT_PAYMENTS); a new one may then be created.',
+  })
+  cancelPayos(
+    @Param('id') id: string,
+    @Param('paymentId') paymentId: string,
+    @Body() body: unknown,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PaymentResultResponse> {
+    requireEmptyObject(body);
+    return this.invoices.cancelPayos(
+      this.session(request),
+      id,
+      paymentId,
+      this.requestId(response),
+    );
+  }
+
+  @Post('invoices/:id/payments/:paymentId/refresh')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Re-read a pending PayOS request from PayOS now (COLLECT_PAYMENTS); applies a confirmation the webhook missed.',
+  })
+  refreshPayos(
+    @Param('id') id: string,
+    @Param('paymentId') paymentId: string,
+    @Body() body: unknown,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PaymentResultResponse> {
+    requireEmptyObject(body);
+    return this.invoices.refreshPayos(
+      this.session(request),
+      id,
+      paymentId,
+      this.requestId(response),
+    );
+  }
+
+  @Post('invoices/:id/management-notes')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Add an audited management note to an invoice settled through PayOS (CORRECT_PAYMENTS). The only in-system handling of a wrong benefit there.',
+  })
+  addNote(
+    @Param('id') id: string,
+    @Body() body: ManagementNoteDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<InvoiceResponse> {
+    return this.invoices.addNote(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Get('branches/:branchId/payment-anomalies')
+  @ApiOkResponse({
+    description: 'PayOS money that was not applied, awaiting management review (CORRECT_PAYMENTS).',
+  })
+  anomalies(
+    @Param('branchId') branchId: string,
+    @Query() query: AnomalyQueryDto,
+    @Req() request: Request,
+  ): Promise<PaymentAnomalyListResponse> {
+    return this.invoices.anomalies(this.session(request), branchId, query.status);
+  }
+
+  @Post('payment-anomalies/:id/review')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description: 'Record that management reviewed a payment anomaly (CORRECT_PAYMENTS, note).',
+  })
+  reviewAnomaly(
+    @Param('id') id: string,
+    @Body() body: AnomalyReviewDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PaymentAnomalyListItem> {
+    return this.invoices.reviewAnomaly(this.session(request), id, body, this.requestId(response));
   }
 
   private session(request: Request) {

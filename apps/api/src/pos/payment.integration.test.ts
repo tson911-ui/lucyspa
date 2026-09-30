@@ -664,8 +664,8 @@ test(
                 );
                 assert.deepEqual(
                   methods?.values,
-                  ['CASH'],
-                  'CARD is ready by design, not in the enum',
+                  ['CASH', 'PAYOS'],
+                  'CARD is ready by design, not in the enum; PAYOS (Step 8) is never recorded directly',
                 );
                 // Money input is strict integer VND.
                 for (const amount of [

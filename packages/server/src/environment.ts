@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { parseAuthEnvironment } from './auth-environment.js';
+import type { PayosConfig } from './payos.js';
 
 const port = z.coerce.number().int().min(1).max(65535);
 const databaseUrl = z
@@ -40,6 +41,24 @@ function validate<S extends z.ZodType>(schema: S, env: NodeJS.ProcessEnv): z.out
   return parsed.data;
 }
 
+const PAYOS_FIELDS = ['PAYOS_CLIENT_ID', 'PAYOS_API_KEY', 'PAYOS_CHECKSUM_KEY'] as const;
+
+/**
+ * Optional PayOS credentials (Phase 4 Step 8). All three or none: with none the PayOS method is disabled;
+ * a partial configuration fails closed at startup. Only field NAMES are ever reported, never a value.
+ */
+export function parsePayosEnvironment(env: NodeJS.ProcessEnv): PayosConfig | null {
+  const values = PAYOS_FIELDS.map((name) => env[name]?.trim() ?? '');
+  const present = values.filter((value) => value !== '').length;
+  if (present === 0) return null;
+  if (present !== PAYOS_FIELDS.length) {
+    const missing = PAYOS_FIELDS.filter((_, index) => values[index] === '');
+    throw new Error(`Invalid environment configuration: ${missing.join(', ')}`);
+  }
+  const [clientId, apiKey, checksumKey] = values as [string, string, string];
+  return { clientId, apiKey, checksumKey };
+}
+
 export function parseWorkerEnvironment(env: NodeJS.ProcessEnv) {
   const config = validate(shared, env);
   return {
@@ -47,6 +66,7 @@ export function parseWorkerEnvironment(env: NodeJS.ProcessEnv) {
     databaseUrl: config.DATABASE_URL,
     redisUrl: config.REDIS_URL,
     logLevel: config.LOG_LEVEL,
+    payos: parsePayosEnvironment(env),
   };
 }
 
@@ -61,6 +81,7 @@ export function parseApiEnvironment(env: NodeJS.ProcessEnv) {
     port: config.API_PORT,
     webOrigin: config.WEB_ORIGIN,
     auth: parseAuthEnvironment(env, config.NODE_ENV, config.WEB_ORIGIN),
+    payos: parsePayosEnvironment(env),
     swaggerEnabled:
       config.SWAGGER_ENABLED === undefined
         ? config.NODE_ENV !== 'production'

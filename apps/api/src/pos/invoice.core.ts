@@ -1,6 +1,8 @@
 import type {
   InvoiceDiscountResponse,
   InvoiceLineResponse,
+  InvoiceManagementNoteResponse,
+  InvoicePaymentAnomaly,
   InvoiceOpenedResponse,
   InvoicePaymentResponse,
   InvoicePersonSummary,
@@ -9,6 +11,7 @@ import type {
   PosBoardResponse,
 } from '@lucy-spa/contracts';
 import { appendOutboxEvent, generateInvoiceCode, type Prisma } from '@lucy-spa/database';
+import { expireStalePending } from '@lucy-spa/server';
 import { AuthError } from '../auth/auth.error.js';
 import { hasFreshReauthentication } from '../auth/session.policy.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
@@ -48,6 +51,45 @@ const userSummary = {
   phoneCanonical: true,
   emailCanonical: true,
 } satisfies Prisma.UserSelect;
+
+export const anomalySelect = {
+  id: true,
+  kind: true,
+  status: true,
+  paymentId: true,
+  orderCode: true,
+  providerReference: true,
+  expectedAmountVnd: true,
+  receivedAmountVnd: true,
+  invoiceStatus: true,
+  openedAt: true,
+  reviewedAt: true,
+  reviewNote: true,
+  reviewedBy: { select: { id: true, fullName: true } },
+} satisfies Prisma.PaymentAnomalySelect;
+
+export function anomalyResponse(
+  anomaly: Prisma.PaymentAnomalyGetPayload<{ select: typeof anomalySelect }>,
+): InvoicePaymentAnomaly {
+  return {
+    id: anomaly.id,
+    kind: anomaly.kind,
+    status: anomaly.status,
+    paymentId: anomaly.paymentId,
+    orderCode: anomaly.orderCode.toString(),
+    providerReference: anomaly.providerReference,
+    expectedAmountVnd:
+      anomaly.expectedAmountVnd === null ? null : anomaly.expectedAmountVnd.toString(),
+    receivedAmountVnd: anomaly.receivedAmountVnd.toString(),
+    invoiceStatus: anomaly.invoiceStatus,
+    openedAt: anomaly.openedAt.toISOString(),
+    reviewedBy: anomaly.reviewedBy
+      ? { id: anomaly.reviewedBy.id, displayName: anomaly.reviewedBy.fullName }
+      : null,
+    reviewedAt: anomaly.reviewedAt ? anomaly.reviewedAt.toISOString() : null,
+    reviewNote: anomaly.reviewNote,
+  };
+}
 
 export const invoiceSelect = {
   id: true,
@@ -94,6 +136,12 @@ export const invoiceSelect = {
       changeVnd: true,
       collectedAt: true,
       businessDate: true,
+      providerOrderCode: true,
+      checkoutUrl: true,
+      qrCode: true,
+      expiresAt: true,
+      providerReference: true,
+      lateOfPaymentId: true,
       collectedBy: { select: { id: true, fullName: true } },
       correction: {
         select: {
@@ -104,6 +152,19 @@ export const invoiceSelect = {
           actor: { select: { id: true, fullName: true } },
         },
       },
+    },
+  },
+  paymentAnomalies: {
+    orderBy: [{ openedAt: 'desc' }, { id: 'asc' }],
+    select: anomalySelect,
+  },
+  managementNotes: {
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    select: {
+      id: true,
+      note: true,
+      createdAt: true,
+      author: { select: { id: true, fullName: true } },
     },
   },
   voucherEntries: {
@@ -208,8 +269,13 @@ export function presentPayments(context: AdminContext, row: InvoiceRow): Invoice
     kind: 'BRANCH',
     branchId: row.branchId,
   });
+  const collect = decide(context.actor.graph, 'COLLECT_PAYMENTS', {
+    kind: 'BRANCH',
+    branchId: row.branchId,
+  });
   return row.payments.map((payment): InvoicePaymentResponse => {
     const effective = payment.status === 'SUCCEEDED' && payment.correction === null;
+    const pending = payment.status === 'PENDING';
     return {
       id: payment.id,
       method: payment.method,
@@ -237,8 +303,56 @@ export function presentPayments(context: AdminContext, row: InvoiceRow): Invoice
         effective &&
         PAYMENT_METHOD_RULES[payment.method].reversible &&
         (row.status === 'PENDING_PAYMENT' || row.status === 'PAID'),
+      provider:
+        payment.providerOrderCode !== null && payment.expiresAt
+          ? {
+              orderCode: payment.providerOrderCode.toString(),
+              // The payment instrument is shown only to someone who may collect, and only while it can be paid.
+              checkoutUrl: collect && pending ? payment.checkoutUrl : null,
+              qrCode: collect && pending ? payment.qrCode : null,
+              expiresAt: payment.expiresAt.toISOString(),
+              reference: payment.providerReference,
+              late: payment.lateOfPaymentId !== null,
+            }
+          : null,
+      cancellable: collect && pending && payment.providerOrderCode !== null,
     };
   });
+}
+
+/** Part of the balance held by live (unexpired) PayOS requests; cash can only collect the rest meanwhile. */
+export function pendingProviderVnd(
+  payments: readonly { status: string; amountVnd: bigint; expiresAt: Date | null }[],
+  now: Date,
+): bigint {
+  return payments
+    .filter(
+      (payment) => payment.status === 'PENDING' && payment.expiresAt && payment.expiresAt > now,
+    )
+    .reduce((sum, payment) => sum + payment.amountVnd, 0n);
+}
+
+function presentAnomalies(context: AdminContext, row: InvoiceRow): InvoicePaymentAnomaly[] {
+  if (
+    !decide(context.actor.graph, 'CORRECT_PAYMENTS', { kind: 'BRANCH', branchId: row.branchId })
+  ) {
+    return [];
+  }
+  return row.paymentAnomalies.map(anomalyResponse);
+}
+
+function presentNotes(context: AdminContext, row: InvoiceRow): InvoiceManagementNoteResponse[] {
+  if (
+    !decide(context.actor.graph, 'CORRECT_PAYMENTS', { kind: 'BRANCH', branchId: row.branchId })
+  ) {
+    return [];
+  }
+  return row.managementNotes.map((note) => ({
+    id: note.id,
+    note: note.note,
+    author: { id: note.author.id, displayName: note.author.fullName },
+    createdAt: note.createdAt.toISOString(),
+  }));
 }
 
 /** Remaining amount to collect: only a PENDING_PAYMENT invoice has one. */
@@ -332,9 +446,15 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
   });
   const paidVnd = effectivePaid(row);
   const payments = presentPayments(context, row);
+  const heldByProvider = pendingProviderVnd(row.payments, context.now);
+  const anyPending = row.payments.some((payment) => payment.status === 'PENDING');
+  const correct = decide(context.actor.graph, 'CORRECT_PAYMENTS', {
+    kind: 'BRANCH',
+    branchId: row.branchId,
+  });
   const cancellable =
     draft ||
-    (row.status === 'PENDING_PAYMENT' && effectivePaid(row) === 0n) ||
+    (row.status === 'PENDING_PAYMENT' && effectivePaid(row) === 0n && !anyPending) ||
     zeroBalanceCancellable(row);
   return {
     id: row.id,
@@ -367,6 +487,9 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     payments,
     paidVnd: paidVnd.toString(),
     balanceVnd: balanceOf(row).toString(),
+    pendingProviderVnd: heldByProvider.toString(),
+    anomalies: presentAnomalies(context, row),
+    managementNotes: presentNotes(context, row),
     readiness: { ready: unpricedLines === 0 && lines.length > 0, unpricedLines },
     actions: {
       editPrices: manage && draft,
@@ -374,6 +497,16 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
       finalize: manage && draft && unpricedLines === 0 && lines.length > 0,
       applyVouchers: apply && draft,
       collectPayment: collect && row.status === 'PENDING_PAYMENT',
+      collectPayos: collect && row.status === 'PENDING_PAYMENT',
+      manageAnomalies: correct,
+      addManagementNote:
+        correct &&
+        row.payments.some(
+          (payment) =>
+            payment.method === 'PAYOS' &&
+            payment.status === 'SUCCEEDED' &&
+            payment.correction === null,
+        ),
       cancel: cancelPermitted && cancellable,
       cancelNeedsReauth: !draft,
     },
@@ -1102,6 +1235,17 @@ export async function cancelInvoice(
     path = 'DRAFT';
   } else if (invoice.status === 'PENDING_PAYMENT') {
     if (effectivePaid(invoice) !== 0n) throw new AuthError('INVOICE_CANCEL_NOT_ALLOWED');
+    // A PayOS request whose lifetime passed ends first; a live one must be cancelled before the invoice is.
+    const stale = await expireStalePending(
+      tx,
+      { kind: 'USER', userId: context.actor.userId, requestId: context.requestId },
+      invoice,
+      await databaseClock(tx),
+    );
+    const live = stale === 0 ? invoice.payments : (await read()).payments;
+    if (live.some((payment) => payment.status === 'PENDING')) {
+      throw new AuthError('PAYMENT_PROVIDER_PENDING');
+    }
     path = 'UNPAID_FINALIZED';
   } else if (zeroBalanceCancellable(invoice)) {
     path = 'ZERO_BALANCE_CORRECTION';

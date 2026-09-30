@@ -11,6 +11,7 @@ import { parseAuthJobsEnvironment, startAuthJobs } from './auth-jobs.js';
 import { processSystemCheck } from './processor.js';
 import { startBookingJobs } from './booking-jobs.js';
 import { startLeaveNotifications } from './leave-jobs.js';
+import { startPayosReconciliation } from './payos-jobs.js';
 
 const bootstrapLogger = createLogger('worker', 'info');
 
@@ -24,6 +25,7 @@ async function bootstrap() {
   let authJobs: { stop(): Promise<void> } | undefined;
   let bookingJobs: { stop(): Promise<void> } | undefined;
   let leaveJobs: { stop(): Promise<void> } | undefined;
+  let payosJobs: { stop(): Promise<void> } | undefined;
   try {
     await database.$queryRaw`SELECT 1`;
     worker = new Worker(SYSTEM_CHECK_QUEUE, async (job) => processSystemCheck(job), {
@@ -50,8 +52,10 @@ async function bootstrap() {
     authJobs = startAuthJobs(database, authJobsConfig, logger);
     bookingJobs = startBookingJobs(database, config.redisUrl, logger);
     leaveJobs = startLeaveNotifications(database, logger);
+    payosJobs = startPayosReconciliation(database, config.payos, logger);
     logger.info({ queue: SYSTEM_CHECK_QUEUE }, 'Worker ready');
   } catch (error) {
+    await payosJobs?.stop();
     await leaveJobs?.stop();
     await bookingJobs?.stop();
     await authJobs?.stop();
@@ -66,6 +70,7 @@ async function bootstrap() {
     const deadline = setTimeout(() => process.exit(1), 15000);
     deadline.unref();
     try {
+      await payosJobs?.stop();
       await leaveJobs?.stop();
       await bookingJobs?.stop();
       await authJobs?.stop();

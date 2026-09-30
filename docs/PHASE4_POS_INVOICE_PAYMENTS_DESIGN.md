@@ -2,7 +2,7 @@
 
 **Status: Step 1 of 11 (Design Contract) — CLOSED / OWNER APPROVED (revision 3).** Documentation only. No migration,
 schema, API, UI or runtime change was made. Step 2 has **NOT** started. Nothing was deployed. This document is the authoritative
-Phase 4 design contract; Q7 (before Step 8) and Q8 (before Step 10) remain open Owner checkpoints.
+Phase 4 design contract; Q7 was answered before Step 8 (section 16.3); Q8 (before Step 10) remains an open Owner checkpoint.
 
 This document is the authoritative Phase 4 contract that Steps 2–11 must follow. Where it is silent,
 `LUCY_SPA_PRD.md` governs; `LUCYSPA_HANDOFF.md` records the accepted state it builds on. Owner decisions
@@ -71,12 +71,12 @@ speculative Phase 5–8 tables or nullable columns now.
 
 ### 2.2 NOT locked (explicit Owner checkpoints)
 
-| #   | Checkpoint                                                            | Must be answered before | Where it is left open |
-| --- | --------------------------------------------------------------------- | ----------------------- | --------------------- |
-| Q7  | PayOS business choices                                                | **Step 8**              | Section 16.3          |
-| Q8  | Invoice / revenue notification recipients, routing and content policy | **Step 10**             | Section 17            |
+| #   | Checkpoint                                                                  | Must be answered before | Where it is left open |
+| --- | --------------------------------------------------------------------------- | ----------------------- | --------------------- |
+| Q7  | PayOS business choices — **ANSWERED / LOCKED before Step 8** (section 16.3) | Step 8 (done)           | Section 16.3          |
+| Q8  | Invoice / revenue notification recipients, routing and content policy       | **Step 10**             | Section 17            |
 
-Nothing in Steps 1–7 or 9 may depend on an unresolved Q7/Q8 choice.
+Nothing in Steps 1–7 or 9 may depend on an unresolved Q8 choice. Q7 was answered by the Owner before Step 8 (section 16.3).
 
 ### 2.3 Locked technical decisions OP-1 … OP-7 (OWNER-APPROVED; do not reopen)
 
@@ -389,7 +389,7 @@ SUCCEEDED ──(PaymentCorrection, cash only)──► remains SUCCEEDED but is
 
 `FAILED`, `EXPIRED`, `CANCELLED` and `SUCCEEDED` are terminal for `status`; a payment never returns to `PENDING`.
 A `PayOS` payment becomes `SUCCEEDED` **only** through verified provider confirmation (section 16). Who may
-cancel a pending provider payment, and the expiry/regenerate policy, are Q7. A zero-balance invoice never has a Payment,
+cancel a pending provider payment, and the expiry/regenerate policy, are decided by Q7 (section 16.3). A zero-balance invoice never has a Payment,
 and no zero-amount payment can exist (`amount_vnd > 0`).
 
 ### 5.3 Correction/reversal versus refund (Q6)
@@ -796,7 +796,7 @@ Phase 3 relay and the Leave consumer already ignore (they filter by aggregate an
 - Ordering is by `occurred_at, id`; consumers must not assume strict global ordering across aggregates.
 - Retention: events and consumptions are retained (no deletion), consistent with PRD 40.
 
-## 16. PayOS provider boundary (Step 8; provisional, Q7 open)
+## 16. PayOS provider boundary (Step 8; Q7 LOCKED)
 
 ### 16.1 Provider-neutral boundary
 
@@ -819,18 +819,24 @@ existing optional-config pattern in `packages/server/src/environment.ts` with pl
 - The current PayOS documentation must be **re-verified at Step 8 time**; nothing in this document assumes a payload,
   signature scheme, field name, limit or environment behavior.
 
-### 16.3 Explicitly **unresolved** (Q7 — not locked; Owner checkpoint before Step 8)
+### 16.3 Q7 — Owner answers (LOCKED before Step 8; do not reopen)
 
-1. Merchant account/credentials availability and the sandbox/live **acceptance policy** (what is proven before/after deployment).
-2. Payment link/QR **expiry** policy.
-3. **Regenerate/cancel** policy for pending requests.
-4. **Final operator permissions** for provider payments (who may create, cancel, regenerate, view anomalies). OP-6 fixes only the
-   **cash** rule; it does not decide provider-payment permissions.
-5. Whether a partially matching or late confirmation is auto-applied or held for review.
-6. How money already confirmed by the provider but wrongly created is handled outside Lucy Spa (recorded, not modeled here). This
-   includes an invoice whose **content** was wrong (for example a wrong benefit) but which was settled by a confirmed PayOS payment: Q6
-   forbids reversing that payment and OP-7 does not apply (it needs no payment), so no in-system correction path exists until Q7 decides.
-7. Public webhook URL/deployment timing (live verification needs a reachable HTTPS endpoint, i.e. a deployment the Owner requests).
+1. **Acceptance policy:** automated tests use simulated PayOS responses locally. Live verification happens only after deployment, with a
+   small real amount. The webhook goes live with the Phase 4 deployment. Credentials are `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`,
+   `PAYOS_CHECKSUM_KEY` in `.env` (never printed, logged or committed).
+2. **Expiry:** a QR/payment request expires after **15 minutes**.
+3. **Regenerate/cancel:** at most **one pending PayOS request per invoice**. Staff may cancel it and create a new one.
+4. **Operator permission:** creating or cancelling a PayOS request requires `COLLECT_PAYMENTS` in the invoice's branch scope.
+5. **Late confirmation (after expiry/cancel):** recorded if the invoice still has a balance; if the invoice is already fully paid it is
+   **never auto-applied** and an **anomaly** is flagged for management.
+6. **Amount mismatch:** never marks paid; an **anomaly** is flagged for management review.
+7. **Partial/split:** a PayOS request may cover part or all of the remaining balance (split with cash).
+8. **Wrong benefit on a PayOS-settled invoice:** no in-system correction in V1; an **audited management note** only; refunds are Phase 6.
+9. **Staff can never mark a transfer as received;** only a verified PayOS confirmation counts.
+
+Implementation-level consequences (no locked decision changed): anomaly review and the management note are gated by existing
+permissions (see the Step 8 report); the provider payment stays `PENDING` until verified confirmation; expiry is enforced server-side
+(a request is stale after `expires_at`) and by the reconciliation sweep.
 
 ### 16.4 CSRF and session boundary for the public webhook
 
@@ -840,6 +846,15 @@ marker on one controller route, not a path pattern or a relaxed guard) with thes
 or created; authenticity is the provider signature, verified **before** any state change; a small body limit; rate limiting;
 constant, non-revealing responses; only the inbox write and the guarded reconciliation function may run; no workforce or
 customer authority is ever implied. The exemption is designed and tested in Step 8.
+
+### 16.5 Step 8 implementation notes (implementation level; no locked decision changed)
+
+- **Model:** `payments` gains nullable provider columns (order code, link id, checkout URL, QR content, `expires_at`, `provider_reference`, `late_of_payment_id`). A PayOS payment is created `PENDING`, with tender = credited amount and no change; only a verified provider fact makes it `SUCCEEDED`, and then the database guard stamps the collection time (the confirmation instant). New tables: `payment_attempts` (append-only request log), `payment_provider_events` (inbox of authentic notifications, unique dedupe key, counterparty account details not kept), `payment_anomalies` (open until management reviews it once), `invoice_management_notes` (append-only; only for an invoice with a confirmed PayOS payment).
+- **Late confirmation (Q7 item 5):** a terminal request is never reopened; the confirmation is a NEW `SUCCEEDED` row pointing at the ended request (`late_of_payment_id`), allowed only while the invoice awaits payment and the amount fits the balance. One succeeded payment per provider order (unique index).
+- **Reservation:** a live (unexpired) request holds its amount: cash may collect only `balance - held` until the request is cancelled or ends, and an invoice with a pending request cannot be cancelled. One pending request per invoice is a partial unique index.
+- **Anomalies (flagged, never applied):** `AMOUNT_MISMATCH`, `INVOICE_NOT_PAYABLE` (already paid or cancelled), `EXCEEDS_BALANCE`. The request that expected the money ends `FAILED`. Events `PAYMENT_EXPIRED`, `PAYMENT_FAILED`, `PAYMENT_ANOMALY_FLAGGED` are emitted (recipients are Q8).
+- **Permissions:** create, cancel and re-check a request need `COLLECT_PAYMENTS` in the invoice's branch scope. Anomaly review and management notes use the existing `CORRECT_PAYMENTS` (no new permission was invented; open question in the Step 8 report).
+- **Boundaries:** provider calls run between two short transactions, never inside the invoice lock. The webhook is `POST /api/v1/webhooks/payos`, the single `@PublicWebhook()` route (CSRF exemption by route marker); reconciliation runs in the worker and on demand and applies the same settlement rules. Without `PAYOS_*` configuration the method is disabled.
 
 ## 17. Notification prerequisites (Q8 open)
 
@@ -987,10 +1002,9 @@ OWNER-APPROVED** (section 2.3) and are integrated above; none remains open:
 | OP-6 | LOCKED | 2.3, 4.5, 11.1–11.3, 12, 20                           |
 | OP-7 | LOCKED | 2.3, 4.1, 4.4, 5.1, 5.5, 6, 8.3, 9, 11, 12–15, 20, 22 |
 
-**No technical decision remains open.** The only unresolved Owner checkpoints are **Q7** (before Step 8) and **Q8** (before Step 10).
+**No technical decision remains open.** Q7 is answered (section 16.3). The only unresolved Owner checkpoint is **Q8** (before Step 10).
 
-One related ambiguity is **not** invented away and belongs to Q7: an invoice with a wrong benefit that was settled by a confirmed PayOS
-payment has no in-system correction path (section 16.3, item 6).
+Q7 item 8 settles it: an invoice with a wrong benefit settled by a confirmed PayOS payment gets an audited management note only (section 16.3).
 
 ## 24. Verification of this document
 

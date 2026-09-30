@@ -28,6 +28,8 @@ import { DiscountController } from './discounts/discount.controller.js';
 import { DiscountService } from './discounts/discount.service.js';
 import { InvoiceController } from './pos/invoice.controller.js';
 import { InvoiceService } from './pos/invoice.service.js';
+import { PayosWebhookController, PayosWebhookService } from './pos/payos.webhook.js';
+import { createPayosProvider } from '@lucy-spa/server';
 import { WalkInController } from './walkin/walkin.controller.js';
 import { WalkInService } from './walkin/walkin.service.js';
 import { MyAccountService } from './account/my-account.service.js';
@@ -71,7 +73,12 @@ import { TeamController } from './teams/team.controller.js';
 import { TeamService } from './teams/team.service.js';
 import { HealthController } from './health/health.controller.js';
 import { InfrastructureService } from './platform/infrastructure.service.js';
-import { API_ENVIRONMENT, API_LOGGER, type ApiEnvironment } from './platform/tokens.js';
+import {
+  API_ENVIRONMENT,
+  API_LOGGER,
+  PAYMENT_PROVIDER,
+  type ApiEnvironment,
+} from './platform/tokens.js';
 import { PrismaService } from './platform/prisma.service.js';
 
 @Module({})
@@ -108,12 +115,18 @@ export class AppModule {
         WalkInController,
         DiscountController,
         InvoiceController,
+        PayosWebhookController,
         OrganizationController,
         TeamController,
       ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },
         { provide: API_LOGGER, useValue: logger },
+        {
+          // PayOS only when all three credentials are configured; otherwise the method is disabled.
+          provide: PAYMENT_PROVIDER,
+          useValue: environment.payos ? createPayosProvider(environment.payos) : null,
+        },
         InfrastructureService,
         PrismaService,
         SessionService,
@@ -146,6 +159,7 @@ export class AppModule {
         WalkInService,
         DiscountService,
         InvoiceService,
+        PayosWebhookService,
         OrganizationService,
         TeamService,
         { provide: PasswordService, useFactory: () => new PasswordService() },

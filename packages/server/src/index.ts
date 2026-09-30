@@ -1,4 +1,8 @@
-export { parseApiEnvironment, parseWorkerEnvironment } from './environment.js';
+export {
+  parseApiEnvironment,
+  parsePayosEnvironment,
+  parseWorkerEnvironment,
+} from './environment.js';
 export type { ApiEnvironment, WorkerEnvironment } from './environment.js';
 export {
   parseAuthEnvironment,
@@ -108,3 +112,48 @@ export {
   type LeaveEventOutcome,
   type LeaveNotificationDependencies,
 } from './leave-notifications.js';
+export {
+  ProviderRejectedError,
+  ProviderUnavailableError,
+  type PaymentProvider,
+  type ProviderCreateInput,
+  type ProviderPaymentRequest,
+  type ProviderPaymentSnapshot,
+  type ProviderStatus,
+  type VerifiedProviderNotification,
+} from './payment-provider.js';
+export {
+  createPayosProvider,
+  payosCanonical,
+  payosDataSignature,
+  payosSign,
+  type PayosConfig,
+  type PayosOptions,
+} from './payos.js';
+export {
+  createPayosSimulator,
+  type PayosSimulator,
+  type SimulatedOrder,
+  type SimulatorFault,
+} from './payos-simulator.js';
+export {
+  applyProviderConfirmation,
+  applyProviderRead,
+  effectivePaidVnd,
+  endPendingPayment,
+  expireStalePending,
+  lockInvoiceRow,
+  processProviderNotification,
+  PROVIDER_REQUEST_LIFETIME_MS,
+  providerClock,
+  readProvider,
+  reconcilePendingPayments,
+  recordProviderAttempt,
+  type NotificationResult,
+  type ProviderConfirmation,
+  type ProviderRead,
+  type ReadOutcome,
+  type ReconcileSummary,
+  type SettlementActor,
+  type SettlementResult,
+} from './payment-settlement.js';

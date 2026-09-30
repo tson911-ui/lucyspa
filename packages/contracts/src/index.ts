@@ -2203,10 +2203,11 @@ export interface InvoiceLineResponse {
 }
 
 /**
- * Payment method of a recorded payment. Cash is the only method in Phase 4 Step 7; a CARD / POS-terminal
- * method is a later, additive widening of this union (the API refuses any other value).
+ * Payment method of a recorded payment: cash (recorded directly by the cashier) and PayOS (a bank-transfer QR
+ * request that becomes a payment only when PayOS confirms it, Phase 4 Step 8). A CARD / POS-terminal method
+ * is a later, additive widening of this union.
  */
-export type PaymentMethodName = 'CASH';
+export type PaymentMethodName = 'CASH' | 'PAYOS';
 export type PaymentStatusName = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'EXPIRED' | 'CANCELLED';
 
 /**
@@ -2235,6 +2236,55 @@ export interface InvoicePaymentResponse {
   } | null;
   /** The actor may reverse this payment now (CORRECT_PAYMENTS; the API authorizes and re-authenticates again). */
   reversible: boolean;
+  /** PayOS payments only (null for cash). */
+  provider: InvoicePaymentProvider | null;
+  /** A pending PayOS request the actor may cancel or re-check now (COLLECT_PAYMENTS). */
+  cancellable: boolean;
+}
+
+/**
+ * The PayOS side of a payment. `checkoutUrl` and `qrCode` are shown only to an actor holding COLLECT_PAYMENTS,
+ * and only while the request is PENDING. `late` marks money confirmed after its request had already ended.
+ */
+export interface InvoicePaymentProvider {
+  orderCode: string;
+  checkoutUrl: string | null;
+  qrCode: string | null;
+  /** When the request stops accepting payment (15 minutes after it was created). */
+  expiresAt: string;
+  /** The bank transaction reference, once PayOS confirmed the transfer. */
+  reference: string | null;
+  late: boolean;
+}
+
+export type PaymentAnomalyKindName = 'AMOUNT_MISMATCH' | 'INVOICE_NOT_PAYABLE' | 'EXCEEDS_BALANCE';
+
+/**
+ * Money PayOS confirmed that Lucy Spa did NOT apply (amount mismatch, invoice already paid or cancelled, more than
+ * the balance). Flagged for management review; nothing was credited.
+ */
+export interface InvoicePaymentAnomaly {
+  id: string;
+  kind: PaymentAnomalyKindName;
+  status: 'OPEN' | 'REVIEWED';
+  paymentId: string | null;
+  orderCode: string;
+  providerReference: string;
+  expectedAmountVnd: string | null;
+  receivedAmountVnd: string;
+  invoiceStatus: InvoiceStatusName;
+  openedAt: string;
+  reviewedBy: { id: string; displayName: string } | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+}
+
+/** An audited management note on an invoice settled through PayOS (Owner answer Q7 item 8). */
+export interface InvoiceManagementNoteResponse {
+  id: string;
+  note: string;
+  author: { id: string; displayName: string };
+  createdAt: string;
 }
 
 export interface InvoiceResponse {
@@ -2270,6 +2320,12 @@ export interface InvoiceResponse {
   paidVnd: string;
   /** Remaining amount to collect: total - paid while PENDING_PAYMENT, otherwise 0. */
   balanceVnd: string;
+  /** Part of the balance held by a live PayOS request (cash can only collect the rest until it ends). */
+  pendingProviderVnd: string;
+  /** Unapplied PayOS money awaiting management review (only for CORRECT_PAYMENTS holders; else empty). */
+  anomalies: InvoicePaymentAnomaly[];
+  /** Management notes (only for CORRECT_PAYMENTS holders; else empty). */
+  managementNotes: InvoiceManagementNoteResponse[];
   /** Finalization needs every line priced with a quantity. */
   readiness: { ready: boolean; unpricedLines: number };
   /** Which commands this actor may issue now (the API authorizes each again). */
@@ -2281,6 +2337,12 @@ export interface InvoiceResponse {
     applyVouchers: boolean;
     /** Record a cash payment (COLLECT_PAYMENTS) while PENDING_PAYMENT. */
     collectPayment: boolean;
+    /** Start a PayOS QR request (COLLECT_PAYMENTS) while PENDING_PAYMENT; the API also needs PayOS configured. */
+    collectPayos: boolean;
+    /** Review PayOS anomalies and add management notes (CORRECT_PAYMENTS). */
+    manageAnomalies: boolean;
+    /** Add a management note: the invoice was settled through a confirmed PayOS payment. */
+    addManagementNote: boolean;
     cancel: boolean;
     /** A finalized invoice needs fresh password re-authentication to be cancelled. */
     cancelNeedsReauth: boolean;
@@ -2328,10 +2390,41 @@ export interface InvoiceCancelRequest {
  * retry return the stored payment instead of collecting twice.
  */
 export interface PaymentRecordRequest {
-  method: PaymentMethodName;
+  method: 'CASH';
   amountVnd: string;
   tenderedVnd: string;
   idempotencyKey: string;
+}
+
+/**
+ * POST /api/v1/pos/invoices/:id/payments/payos (COLLECT_PAYMENTS at the invoice's branch): asks PayOS for a QR
+ * request for part or all of the remaining balance (Owner answer Q7 items 4 and 7). Only the amount and the
+ * client's idempotency UUID can be supplied; the request expires 15 minutes after it is created and an invoice
+ * has at most one pending request. Staff can never mark a transfer as received: the payment becomes
+ * SUCCEEDED only when PayOS confirms it.
+ */
+export interface PaymentPayosRequest {
+  amountVnd: string;
+  idempotencyKey: string;
+}
+
+/** POST /api/v1/pos/invoices/:id/management-notes (CORRECT_PAYMENTS; PayOS-settled invoices only). */
+export interface InvoiceManagementNoteRequest {
+  note: string;
+}
+
+/** A payment anomaly with the invoice it belongs to (branch list for management). */
+export interface PaymentAnomalyListItem extends InvoicePaymentAnomaly {
+  invoice: { id: string; code: string; status: InvoiceStatusName; totalVnd: string };
+}
+
+export interface PaymentAnomalyListResponse {
+  anomalies: PaymentAnomalyListItem[];
+}
+
+/** POST /api/v1/pos/payment-anomalies/:id/review (CORRECT_PAYMENTS): records that management looked at it. */
+export interface PaymentAnomalyReviewRequest {
+  note: string;
 }
 
 /** POST /api/v1/pos/invoices/:id/payments/:paymentId/reverse (CORRECT_PAYMENTS, reason, fresh re-authentication). */

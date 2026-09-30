@@ -43,6 +43,7 @@ Owner reviews every Step. Work only on the Step you are given.
 - Never touch or commit `apps/web/next-env.d.ts`.
 - No commit/push/deploy unless the Owner explicitly says so.
 - Do not print or edit `.env`; never commit secrets.
+- Windows shell: never use heredocs; write multi-line scripts to a scratch file first.
 - Migrations are additive; never reset the DB, never delete volumes, never `db push`.
 - Authorization is permission + branch scope server-side; never check role names.
 - Money is integer VND. Timestamps are UTC; business dates use the branch timezone.

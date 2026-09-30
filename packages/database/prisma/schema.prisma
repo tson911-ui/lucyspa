@@ -40,6 +40,8 @@ model Branch {
   notifications       Notification[]
   invoices            Invoice[]
   payments            Payment[]
+  paymentAnomalies    PaymentAnomaly[]
+  invoiceNotes        InvoiceManagementNote[]
 
   @@index([areaId], map: "branches_area_idx")
   @@map("branches")
@@ -396,6 +398,9 @@ model User {
   pricedInvoiceLines           InvoiceLine[]                    @relation("InvoiceLinePriceSetBy")
   collectedPayments            Payment[]                        @relation("PaymentCollector")
   paymentCorrections           PaymentCorrection[]              @relation("PaymentCorrectionActor")
+  paymentAttempts              PaymentAttempt[]                 @relation("PaymentAttemptActor")
+  reviewedPaymentAnomalies     PaymentAnomaly[]                 @relation("PaymentAnomalyReviewer")
+  invoiceManagementNotes       InvoiceManagementNote[]          @relation("InvoiceManagementNoteAuthor")
   terminatedDiscounts          Discount[]                       @relation("DiscountTerminatedBy")
   createdDiscountVersions      DiscountVersion[]                @relation("DiscountVersionCreator")
   createdVouchers              Voucher[]                        @relation("VoucherCreator")
@@ -1416,6 +1421,7 @@ enum InvoiceLineKind {
 
 enum PaymentMethod {
   CASH
+  PAYOS
 }
 
 enum PaymentStatus {
@@ -1428,6 +1434,35 @@ enum PaymentStatus {
 
 enum PaymentCorrectionKind {
   REVERSAL
+}
+
+enum PaymentAttemptKind {
+  CREATE
+  CANCEL
+  STATUS_READ
+}
+
+enum PaymentAttemptOutcome {
+  OK
+  REJECTED
+  UNREACHABLE
+}
+
+enum ProviderEventOutcome {
+  APPLIED
+  IGNORED
+  ANOMALY
+}
+
+enum PaymentAnomalyKind {
+  AMOUNT_MISMATCH
+  INVOICE_NOT_PAYABLE
+  EXCEEDS_BALANCE
+}
+
+enum PaymentAnomalyStatus {
+  OPEN
+  REVIEWED
 }
 
 enum DiscountKind {
@@ -1480,6 +1515,8 @@ model Invoice {
   updatedAt           DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   lines               InvoiceLine[]
   payments            Payment[]
+  paymentAnomalies    PaymentAnomaly[]
+  managementNotes     InvoiceManagementNote[]
   voucherEntries      InvoiceVoucherEntry[]
   discountApplication InvoiceDiscountApplication?
   discountRedemption  DiscountRedemption?
@@ -1548,34 +1585,133 @@ model InvoiceLineService {
   @@map("invoice_line_services")
 }
 
-// Cash shape (Step 8 extends it). collectedAt and businessDate defaults are placeholders: SQL
-// always overwrites them with the database clock. A payment is never edited; a reversal is a
-// PaymentCorrection. There is no zero-VND payment and a zero-balance invoice has no payment row.
+// Cash shape extended additively by Phase 4 Step 8 for PayOS (a provider payment). collectedAt and
+// businessDate defaults are placeholders: SQL always overwrites them with the database clock (for a
+// PayOS payment again at the moment the provider confirms it). A payment is never edited beyond the
+// PENDING -> terminal transition; a reversal is a PaymentCorrection (cash only). There is no zero-VND
+// payment and a zero-balance invoice has no payment row. A PayOS request that is confirmed after it
+// expired or was cancelled is recorded as a NEW succeeded row that points at the original (lateOfPaymentId).
 model Payment {
-  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  invoiceId         String             @map("invoice_id") @db.Uuid
-  invoice           Invoice            @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  branchId          String             @map("branch_id") @db.Uuid
-  branch            Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  method            PaymentMethod
-  status            PaymentStatus
-  amountDueVnd      BigInt             @map("amount_due_vnd")
-  amountVnd         BigInt             @map("amount_vnd")
-  tenderedVnd       BigInt             @map("tendered_vnd")
-  changeVnd         BigInt             @map("change_vnd")
-  collectedByUserId String             @map("collected_by_user_id") @db.Uuid
-  collectedBy       User               @relation("PaymentCollector", fields: [collectedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  collectedAt       DateTime           @default(dbgenerated("clock_timestamp()")) @map("collected_at") @db.Timestamptz(3)
-  businessDate      DateTime           @default(dbgenerated("CURRENT_DATE")) @map("business_date") @db.Date
-  idempotencyKey    String             @map("idempotency_key") @db.Uuid
-  rowVersion        Int                @default(1) @map("row_version")
-  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  correction        PaymentCorrection?
+  id                    String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId             String             @map("invoice_id") @db.Uuid
+  invoice               Invoice            @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId              String             @map("branch_id") @db.Uuid
+  branch                Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  method                PaymentMethod
+  status                PaymentStatus
+  amountDueVnd          BigInt             @map("amount_due_vnd")
+  amountVnd             BigInt             @map("amount_vnd")
+  tenderedVnd           BigInt             @map("tendered_vnd")
+  changeVnd             BigInt             @map("change_vnd")
+  collectedByUserId     String             @map("collected_by_user_id") @db.Uuid
+  collectedBy           User               @relation("PaymentCollector", fields: [collectedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  collectedAt           DateTime           @default(dbgenerated("clock_timestamp()")) @map("collected_at") @db.Timestamptz(3)
+  businessDate          DateTime           @default(dbgenerated("CURRENT_DATE")) @map("business_date") @db.Date
+  idempotencyKey        String             @map("idempotency_key") @db.Uuid
+  providerOrderCode     BigInt?            @map("provider_order_code")
+  providerPaymentLinkId String?            @map("provider_payment_link_id")
+  checkoutUrl           String?            @map("checkout_url")
+  qrCode                String?            @map("qr_code")
+  expiresAt             DateTime?          @map("expires_at") @db.Timestamptz(3)
+  providerReference     String?            @map("provider_reference")
+  lateOfPaymentId       String?            @map("late_of_payment_id") @db.Uuid
+  lateOf                Payment?           @relation("PaymentLateConfirmation", fields: [lateOfPaymentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  lateConfirmations     Payment[]          @relation("PaymentLateConfirmation")
+  rowVersion            Int                @default(1) @map("row_version")
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  correction            PaymentCorrection?
+  attempts              PaymentAttempt[]
+  anomalies             PaymentAnomaly[]
 
   @@unique([collectedByUserId, idempotencyKey], map: "payments_collector_idempotency_key")
   @@index([invoiceId], map: "payments_invoice_idx")
   @@map("payments")
+}
+
+// Append-only log of the requests Lucy Spa sent to the provider for one payment (never credentials, never a
+// payload). actorUserId is NULL when the worker or a provider notification caused it.
+model PaymentAttempt {
+  id           String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId    String                @map("payment_id") @db.Uuid
+  payment      Payment               @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  kind         PaymentAttemptKind
+  outcome      PaymentAttemptOutcome
+  providerCode String?               @map("provider_code")
+  actorUserId  String?               @map("actor_user_id") @db.Uuid
+  actor        User?                 @relation("PaymentAttemptActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  occurredAt   DateTime              @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+
+  @@index([paymentId, occurredAt], map: "payment_attempts_payment_idx")
+  @@map("payment_attempts")
+}
+
+// The inbox of AUTHENTIC provider notifications (the signature is verified before anything is stored). The
+// unique dedupe key makes a replay a harmless duplicate. Counterparty bank-account details are not kept.
+model PaymentProviderEvent {
+  id                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  dedupeKey         String               @unique(map: "payment_provider_events_dedupe_key") @map("dedupe_key")
+  signatureValid    Boolean              @map("signature_valid")
+  orderCode         BigInt?              @map("order_code")
+  amountVnd         BigInt?              @map("amount_vnd")
+  providerReference String?              @map("provider_reference")
+  rawPayload        Json                 @map("raw_payload") @db.JsonB
+  outcome           ProviderEventOutcome
+  outcomeDetail     String               @map("outcome_detail")
+  paymentId         String?              @map("payment_id") @db.Uuid
+  receivedAt        DateTime             @default(dbgenerated("clock_timestamp()")) @map("received_at") @db.Timestamptz(3)
+  anomalies         PaymentAnomaly[]
+
+  @@index([orderCode], map: "payment_provider_events_order_idx")
+  @@map("payment_provider_events")
+}
+
+// Confirmed provider money that was NOT applied (amount mismatch, invoice already paid/cancelled, more than
+// the balance). Flagged for management review; a review only records who looked at it, when, and a note.
+model PaymentAnomaly {
+  id                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind              PaymentAnomalyKind
+  status            PaymentAnomalyStatus  @default(OPEN)
+  invoiceId         String                @map("invoice_id") @db.Uuid
+  invoice           Invoice               @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  paymentId         String?               @map("payment_id") @db.Uuid
+  payment           Payment?              @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId          String                @map("branch_id") @db.Uuid
+  branch            Branch                @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  providerEventId   String?               @map("provider_event_id") @db.Uuid
+  providerEvent     PaymentProviderEvent? @relation(fields: [providerEventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  orderCode         BigInt                @map("order_code")
+  providerReference String                @map("provider_reference")
+  expectedAmountVnd BigInt?               @map("expected_amount_vnd")
+  receivedAmountVnd BigInt                @map("received_amount_vnd")
+  invoiceStatus     InvoiceStatus         @map("invoice_status")
+  openedAt          DateTime              @default(dbgenerated("clock_timestamp()")) @map("opened_at") @db.Timestamptz(3)
+  reviewedByUserId  String?               @map("reviewed_by_user_id") @db.Uuid
+  reviewedBy        User?                 @relation("PaymentAnomalyReviewer", fields: [reviewedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reviewedAt        DateTime?             @map("reviewed_at") @db.Timestamptz(3)
+  reviewNote        String?               @map("review_note")
+  rowVersion        Int                   @default(1) @map("row_version")
+
+  @@unique([orderCode, providerReference], map: "payment_anomalies_order_reference_key")
+  @@index([branchId, status, openedAt], map: "payment_anomalies_branch_status_idx")
+  @@index([invoiceId], map: "payment_anomalies_invoice_idx")
+  @@map("payment_anomalies")
+}
+
+// Q7 item 8: the only in-system handling of a wrong benefit on a PayOS-settled invoice. Append-only text.
+model InvoiceManagementNote {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId    String   @map("invoice_id") @db.Uuid
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId     String   @map("branch_id") @db.Uuid
+  branch       Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  authorUserId String   @map("author_user_id") @db.Uuid
+  author       User     @relation("InvoiceManagementNoteAuthor", fields: [authorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  note         String
+  createdAt    DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([invoiceId, createdAt], map: "invoice_management_notes_invoice_idx")
+  @@map("invoice_management_notes")
 }
 
 // Append-only: a payment is reversed at most once; the original payment row is never edited.

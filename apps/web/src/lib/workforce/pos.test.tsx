@@ -19,15 +19,19 @@ import {
   changePreview,
   hasPriceRange,
   hasQuantity,
+  formatCountdown,
   invoiceTone,
   lineInput,
+  noteBody,
   payerBody,
   paymentBody,
   paymentInput,
+  payosBody,
   posBranches,
   posErrorMessage,
   priceBody,
   priceRange,
+  remainingMs,
   reverseBody,
 } from './pos';
 
@@ -248,9 +252,15 @@ const payment = (change: Partial<InvoicePaymentResponse> = {}): InvoicePaymentRe
   effective: true,
   correction: null,
   reversible: false,
+  provider: null,
+  cancellable: false,
   ...change,
 });
-const invoice = (change: Partial<InvoiceResponse> = {}): InvoiceResponse =>
+const invoice = (
+  change: Omit<Partial<InvoiceResponse>, 'actions'> & {
+    actions?: Partial<InvoiceResponse['actions']>;
+  } = {},
+): InvoiceResponse =>
   ({
     id: 'i1',
     code: 'INV-270301-ABCDEF',
@@ -260,15 +270,33 @@ const invoice = (change: Partial<InvoiceResponse> = {}): InvoiceResponse =>
     paidVnd: '100000',
     balanceVnd: '200000',
     payments: [payment()],
-    actions: { collectPayment: true },
+    pendingProviderVnd: '0',
+    anomalies: [],
+    managementNotes: [],
     ...change,
+    actions: {
+      collectPayment: true,
+      collectPayos: false,
+      manageAnomalies: false,
+      addManagementNote: false,
+      ...change.actions,
+    },
   }) as InvoiceResponse;
 const noop = () => Promise.resolve(true);
+const handlers = {
+  onCollect: noop,
+  onReverse: noop,
+  onCreatePayos: noop,
+  onRefreshPayos: noop,
+  onCancelPayos: noop,
+  onReviewAnomaly: noop,
+  onAddNote: noop,
+};
 
 test('payments section: history, balance, the cash form only when permitted, reversal only where offered', () => {
   const cashier = employee([['VIEW_INVOICES', 'A']]);
   const html = render(
-    <PosPaymentsSection invoice={invoice()} working={null} onCollect={noop} onReverse={noop} />,
+    <PosPaymentsSection invoice={invoice()} working={null} {...handlers} />,
     cashier,
     'en',
   );
@@ -285,8 +313,7 @@ test('payments section: history, balance, the cash form only when permitted, rev
     <PosPaymentsSection
       invoice={invoice({ payments: [payment({ reversible: true })] })}
       working={null}
-      onCollect={noop}
-      onReverse={noop}
+      {...handlers}
     />,
     cashier,
     'vi',
@@ -295,10 +322,16 @@ test('payments section: history, balance, the cash form only when permitted, rev
 
   const forbidden = render(
     <PosPaymentsSection
-      invoice={invoice({ actions: { collectPayment: false } as InvoiceResponse['actions'] })}
+      invoice={invoice({
+        actions: {
+          collectPayment: false,
+          collectPayos: false,
+          manageAnomalies: false,
+          addManagementNote: false,
+        },
+      })}
       working={null}
-      onCollect={noop}
-      onReverse={noop}
+      {...handlers}
     />,
     cashier,
     'en',
@@ -310,8 +343,7 @@ test('payments section: history, balance, the cash form only when permitted, rev
     <PosPaymentsSection
       invoice={invoice({ status: 'PAID', paidVnd: '300000', balanceVnd: '0' })}
       working={null}
-      onCollect={noop}
-      onReverse={noop}
+      {...handlers}
     />,
     cashier,
     'en',
@@ -335,8 +367,7 @@ test('payments section: history, balance, the cash form only when permitted, rev
         balanceVnd: '300000',
       })}
       working={null}
-      onCollect={noop}
-      onReverse={noop}
+      {...handlers}
     />,
     cashier,
     'en',
@@ -356,6 +387,285 @@ test('payment texts and errors exist in both languages', () => {
     assert.equal(posErrorMessage(error, en), en.pos.errors[code]);
     assert.ok(!posErrorMessage(error, en).includes('PAYMENT_'));
   }
-  assert.deepEqual(Object.keys(vi.pos.methods), ['CASH']);
+  assert.deepEqual(Object.keys(vi.pos.methods), ['CASH', 'PAYOS']);
   assert.notEqual(vi.pos.collect, en.pos.collect);
+});
+
+const PAYOS_KEY = '0c6f7a52-0b2c-4d0f-9a4e-3f1d2b8c9e11';
+
+test('PayOS request: amount and key only, checked against the balance (part or all)', () => {
+  assert.deepEqual(payosBody('120000', '300000', PAYOS_KEY), {
+    body: { amountVnd: '120000', idempotencyKey: PAYOS_KEY },
+  });
+  assert.ok('body' in payosBody('300000', '300000', PAYOS_KEY));
+  assert.deepEqual(payosBody('300001', '300000', PAYOS_KEY), { problem: 'amount' });
+  for (const amount of ['', '0', '-5', '1.5', '1e3', '0100', ' ', 'abc']) {
+    assert.deepEqual(payosBody(amount, '300000', PAYOS_KEY), { problem: 'amount' }, amount);
+  }
+  const result = payosBody('1000', '300000', PAYOS_KEY);
+  assert.ok('body' in result);
+  // Nothing else about a request can be expressed: no expiry, order, status, method or branch.
+  assert.deepEqual(Object.keys(result.body).sort(), ['amountVnd', 'idempotencyKey']);
+  assert.equal(noteBody('   '), null);
+  assert.equal(noteBody('x'.repeat(501)), null);
+  assert.deepEqual(noteBody('  Sai ưu đãi '), { note: 'Sai ưu đãi' });
+  assert.equal(
+    remainingMs('2027-03-01T00:15:00.000Z', Date.parse('2027-03-01T00:00:00.000Z')),
+    900_000,
+  );
+  assert.equal(remainingMs('2027-03-01T00:15:00.000Z', Date.parse('2027-03-01T01:00:00.000Z')), 0);
+  assert.equal(formatCountdown(900_000), '15:00');
+  assert.equal(formatCountdown(61_500), '1:02');
+  assert.equal(formatCountdown(0), '0:00');
+});
+
+const payos = (change: Partial<InvoicePaymentResponse> = {}): InvoicePaymentResponse =>
+  payment({
+    id: 'pay2',
+    method: 'PAYOS',
+    status: 'PENDING',
+    amountDueVnd: '200000',
+    amountVnd: '120000',
+    tenderedVnd: '120000',
+    changeVnd: '0',
+    effective: false,
+    cancellable: true,
+    provider: {
+      orderCode: '1700000000001',
+      checkoutUrl: 'https://pay.payos.vn/web/abc',
+      qrCode: '00020101021238570010A000000727',
+      expiresAt: '2099-01-01T00:15:00.000Z',
+      reference: null,
+      late: false,
+    },
+    ...change,
+  });
+
+test('PayOS in the payments section: waiting request, form only when none waits, no mark-received control', () => {
+  const cashier = employee([['VIEW_INVOICES', 'A']]);
+  const actions = {
+    collectPayment: true,
+    collectPayos: true,
+    manageAnomalies: false,
+    addManagementNote: false,
+  };
+  // No request waiting: the PayOS form is offered next to the cash form.
+  const form = render(
+    <PosPaymentsSection invoice={invoice({ actions })} working={null} {...handlers} />,
+    cashier,
+    'en',
+  );
+  assert.ok(form.includes(en.pos.payosTitle));
+  assert.ok(form.includes(en.pos.payosCreate));
+  assert.ok(form.includes(en.pos.collectTitle));
+
+  // A waiting request holds its share: the QR, the countdown, re-check and cancel; no second form.
+  const waiting = render(
+    <PosPaymentsSection
+      invoice={invoice({
+        actions,
+        payments: [payment(), payos()],
+        pendingProviderVnd: '120000',
+      })}
+      working={null}
+      {...handlers}
+    />,
+    cashier,
+    'en',
+  );
+  assert.ok(waiting.includes(en.pos.payosWaiting));
+  assert.ok(waiting.includes(en.pos.payosScan));
+  assert.ok(waiting.includes(en.pos.payosRefresh));
+  assert.ok(waiting.includes(en.pos.payosCancel));
+  assert.ok(waiting.includes('https://pay.payos.vn/web/abc'));
+  assert.ok(!waiting.includes(en.pos.payosCreate), 'one waiting request per invoice');
+  assert.ok(waiting.includes('120,000'), 'the held amount');
+  assert.ok(waiting.includes(en.pos.paymentStates.PENDING));
+  // Cash may take only the rest: the cash form starts from balance minus the held amount.
+  assert.ok(waiting.includes('value="80000"'));
+  // A pending request is not effective and there is no "mark received" or reverse button.
+  assert.ok(!waiting.includes(en.pos.reverse));
+  assert.ok(!/received|đã nhận tiền/i.test(waiting.replace(en.pos.payosNote, '')));
+
+  // A viewer without COLLECT_PAYMENTS sees the request but no instrument and no buttons.
+  const viewer = render(
+    <PosPaymentsSection
+      invoice={invoice({
+        actions: { ...actions, collectPayment: false, collectPayos: false },
+        payments: [
+          payos({
+            cancellable: false,
+            provider: { ...payos().provider!, checkoutUrl: null, qrCode: null },
+          }),
+        ],
+        pendingProviderVnd: '120000',
+      })}
+      working={null}
+      {...handlers}
+    />,
+    cashier,
+    'en',
+  );
+  assert.ok(!viewer.includes('https://pay.payos.vn'));
+  assert.ok(!viewer.includes(en.pos.payosCancel));
+  assert.ok(!viewer.includes(en.pos.payosCreate));
+
+  // A request PayOS never answered has no QR: staff are told to cancel and retry.
+  const noQr = render(
+    <PosPaymentsSection
+      invoice={invoice({
+        actions,
+        payments: [payos({ provider: { ...payos().provider!, checkoutUrl: null, qrCode: null } })],
+        pendingProviderVnd: '120000',
+      })}
+      working={null}
+      {...handlers}
+    />,
+    cashier,
+    'vi',
+  );
+  assert.ok(noQr.includes(vi.pos.payosNoQr));
+
+  // A confirmed PayOS payment: reference, provider-final note, never reversible, tender columns blank.
+  const confirmed = render(
+    <PosPaymentsSection
+      invoice={invoice({
+        status: 'PAID',
+        paidVnd: '300000',
+        balanceVnd: '0',
+        payments: [
+          payos({
+            status: 'SUCCEEDED',
+            effective: true,
+            cancellable: false,
+            provider: {
+              ...payos().provider!,
+              checkoutUrl: null,
+              qrCode: null,
+              reference: 'TF-1',
+              late: true,
+            },
+          }),
+        ],
+      })}
+      working={null}
+      {...handlers}
+    />,
+    cashier,
+    'en',
+  );
+  assert.ok(confirmed.includes('TF-1'));
+  assert.ok(confirmed.includes(en.pos.paymentProviderFinal));
+  assert.ok(confirmed.includes(en.pos.paymentLate));
+  assert.ok(!confirmed.includes(en.pos.reverse));
+  assert.ok(!confirmed.includes(en.pos.payosCreate));
+  assert.ok(!/card/i.test(confirmed), 'no CARD anywhere');
+});
+
+test('PayOS management: anomalies and notes only where the API offers them', () => {
+  const boss = employee([['VIEW_INVOICES', 'A']]);
+  const anomaly = {
+    id: 'an1',
+    kind: 'AMOUNT_MISMATCH' as const,
+    status: 'OPEN' as const,
+    paymentId: 'pay2',
+    orderCode: '1700000000001',
+    providerReference: 'TF-9',
+    expectedAmountVnd: '200000',
+    receivedAmountVnd: '150000',
+    invoiceStatus: 'PENDING_PAYMENT' as const,
+    openedAt: '2027-03-01T04:00:00.000Z',
+    reviewedBy: null,
+    reviewedAt: null,
+    reviewNote: null,
+  };
+  const managing = {
+    collectPayment: false,
+    collectPayos: false,
+    manageAnomalies: true,
+    addManagementNote: true,
+  };
+  const html = render(
+    <PosPaymentsSection
+      invoice={invoice({ actions: managing, anomalies: [anomaly], managementNotes: [] })}
+      working={null}
+      {...handlers}
+    />,
+    boss,
+    'en',
+  );
+  assert.ok(html.includes(en.pos.anomalyTitle));
+  assert.ok(html.includes(en.pos.anomalyKinds.AMOUNT_MISMATCH));
+  assert.ok(html.includes('TF-9'));
+  assert.ok(html.includes(en.pos.anomalyReview));
+  assert.ok(html.includes(en.pos.noteTitle));
+  assert.ok(html.includes(en.pos.noteAdd));
+  // A reviewed anomaly shows who looked and when; no review form.
+  const reviewed = render(
+    <PosPaymentsSection
+      invoice={invoice({
+        actions: { ...managing, addManagementNote: false },
+        anomalies: [
+          {
+            ...anomaly,
+            status: 'REVIEWED',
+            reviewedBy: { id: 'u9', displayName: 'Quản lý Bình' },
+            reviewedAt: '2027-03-01T05:00:00.000Z',
+            reviewNote: 'Đã liên hệ khách',
+          },
+        ],
+        managementNotes: [
+          {
+            id: 'n1',
+            note: 'Sai ưu đãi',
+            author: { id: 'u9', displayName: 'Quản lý Bình' },
+            createdAt: '2027-03-01T06:00:00.000Z',
+          },
+        ],
+      })}
+      working={null}
+      {...handlers}
+    />,
+    boss,
+    'vi',
+  );
+  assert.ok(reviewed.includes('Đã liên hệ khách'));
+  assert.ok(reviewed.includes('Sai ưu đãi'));
+  assert.ok(!reviewed.includes(vi.pos.anomalyReview));
+  assert.ok(!reviewed.includes(vi.pos.noteAdd));
+  // Without management authority nothing about anomalies or notes is shown.
+  const plain = render(
+    <PosPaymentsSection invoice={invoice({ anomalies: [anomaly] })} working={null} {...handlers} />,
+    boss,
+    'en',
+  );
+  assert.ok(!plain.includes(en.pos.anomalyTitle));
+  assert.ok(!plain.includes(en.pos.noteTitle));
+});
+
+test('PayOS texts and errors exist in both languages', () => {
+  for (const code of [
+    'PAYMENT_PROVIDER_PENDING',
+    'PAYMENT_REQUEST_STATE_INVALID',
+    'PAYMENT_PROVIDER_UNAVAILABLE',
+    'PAYMENT_PROVIDER_REJECTED',
+    'PAYMENT_ANOMALY_REVIEWED',
+    'INVOICE_NOTE_NOT_ALLOWED',
+    'PAYMENT_METHOD_UNAVAILABLE',
+  ] as const) {
+    const error = new ApiError(409, code);
+    assert.equal(posErrorMessage(error, vi), vi.pos.errors[code]);
+    assert.equal(posErrorMessage(error, en), en.pos.errors[code]);
+    assert.ok(!posErrorMessage(error, en).includes('PAYMENT_'));
+  }
+  assert.deepEqual(
+    Object.keys(vi.pos.paymentStates).sort(),
+    Object.keys(en.pos.paymentStates).sort(),
+  );
+  assert.deepEqual(
+    Object.keys(vi.pos.anomalyKinds).sort(),
+    Object.keys(en.pos.anomalyKinds).sort(),
+  );
+  assert.notEqual(vi.pos.payosCreate, en.pos.payosCreate);
+  assert.notEqual(vi.pos.noteHint, en.pos.noteHint);
 });

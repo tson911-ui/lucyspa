@@ -4,6 +4,7 @@ import type {
   InvoiceLinePriceRequest,
   InvoiceLineResponse,
   InvoiceResponse,
+  PaymentPayosRequest,
   PaymentRecordRequest,
   PaymentResultResponse,
   PaymentReverseRequest,
@@ -70,6 +71,15 @@ export function PosInvoiceScreen({ id }: { id: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+  // While a PayOS request waits, re-read the invoice so a confirmation appears without a manual reload.
+  const waiting = invoice?.payments.some((payment) => payment.status === 'PENDING') ?? false;
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setInterval(() => {
+      if (!busy.current) void load();
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [waiting, load]);
 
   /** One command at a time; the server's answer replaces the invoice, a failure reloads it. */
   async function command(
@@ -146,6 +156,59 @@ export function PosInvoiceScreen({ id }: { id: string }) {
           return reload();
         }, confirm),
       () => t.pos.reverseDone,
+    );
+
+  const createPayos = (body: PaymentPayosRequest) =>
+    command(
+      'payos-create',
+      async () => {
+        await api.post<PaymentResultResponse>(
+          `/api/v1/pos/invoices/${invoice.id}/payments/payos`,
+          body,
+        );
+        return reload();
+      },
+      () => t.pos.payosCreated,
+    );
+  const refreshPayos = (paymentId: string) =>
+    command(
+      `payos-refresh-${paymentId}`,
+      async () => {
+        await api.post<PaymentResultResponse>(
+          `/api/v1/pos/invoices/${invoice.id}/payments/${paymentId}/refresh`,
+          {},
+        );
+        return reload();
+      },
+      () => t.pos.payosRefreshed,
+    );
+  const cancelPayos = (paymentId: string) =>
+    command(
+      `payos-cancel-${paymentId}`,
+      async () => {
+        await api.post<PaymentResultResponse>(
+          `/api/v1/pos/invoices/${invoice.id}/payments/${paymentId}/cancel`,
+          {},
+        );
+        return reload();
+      },
+      () => t.pos.payosCancelled,
+    );
+  const reviewAnomaly = (anomalyId: string, note: string) =>
+    command(
+      `anomaly-${anomalyId}`,
+      async () => {
+        await api.post(`/api/v1/pos/payment-anomalies/${anomalyId}/review`, { note });
+        return reload();
+      },
+      () => t.pos.anomalyDone,
+    );
+  const addNote = (note: string) =>
+    command(
+      'note',
+      () =>
+        api.post<InvoiceResponse>(`/api/v1/pos/invoices/${invoice.id}/management-notes`, { note }),
+      () => t.pos.noteAdded,
     );
 
   async function search(event: FormEvent) {
@@ -525,6 +588,11 @@ export function PosInvoiceScreen({ id }: { id: string }) {
           working={working}
           onCollect={collect}
           onReverse={reversePayment}
+          onCreatePayos={createPayos}
+          onRefreshPayos={refreshPayos}
+          onCancelPayos={cancelPayos}
+          onReviewAnomaly={reviewAnomaly}
+          onAddNote={addNote}
         />
       ) : null}
 

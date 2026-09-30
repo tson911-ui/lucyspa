@@ -33,6 +33,8 @@ const PASSIVE_PATHS = new Set(['/api/v1/auth/context', '/api/v1/auth/me']);
  */
 export function isUserActivity(method: string, path: string, marker: unknown): boolean {
   if (!path.startsWith('/api/v1/') || PASSIVE_PATHS.has(path)) return false;
+  // Provider webhooks are server-to-server: no session or cookie is ever read for them.
+  if (path.startsWith('/api/v1/webhooks/')) return false;
   if (method === 'POST') return true;
   return method === 'GET' && marker === 'user';
 }

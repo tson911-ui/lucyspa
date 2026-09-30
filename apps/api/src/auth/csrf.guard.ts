@@ -1,9 +1,11 @@
 import { Inject, Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import { AuthError } from './auth.error.js';
 import { sessionCookie } from './cookies.js';
 import { verifyCsrfToken } from './crypto.js';
+import { PUBLIC_WEBHOOK } from './public-webhook.js';
 import { SessionService } from './session.service.js';
 
 /** Origin is an exact serialized origin; Referer is a URL whose origin must match. */
@@ -21,11 +23,15 @@ export class CsrfGuard implements CanActivate {
   constructor(
     @Inject(API_ENVIRONMENT) private readonly environment: ApiEnvironment,
     @Inject(SessionService) private readonly sessions: SessionService,
+    @Inject(Reflector) private readonly reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
     if (['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return true;
+    // The one declared exemption (design 16.4): a server-to-server provider webhook. It has no session or
+    // cookie; its authenticity is the provider signature, checked by the handler before any state change.
+    if (this.reflector.get<boolean>(PUBLIC_WEBHOOK, context.getHandler()) === true) return true;
     const contentType = request.headers['content-type'];
     const supplied = request.headers['x-csrf-token'];
     const token = sessionCookie(request.headers.cookie, this.environment.auth.cookieName);
