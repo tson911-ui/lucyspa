@@ -1,5 +1,14 @@
 'use client';
 
+import {
+  Badge as UiBadge,
+  Button,
+  EmptyState,
+  ErrorState as UiErrorState,
+  Field as UiField,
+  Notice as UiNotice,
+  type Tone as UiTone,
+} from '@lucy-spa/ui';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { WorkforceDictionary } from '../../i18n/workforce';
 import { ApiError } from '../../lib/workforce/api';
@@ -47,9 +56,12 @@ export function Section({
 
 export type Tone = 'success' | 'error' | 'info' | 'warning' | 'neutral';
 
+// The shared components in packages/ui use 'danger' where the screens historically said 'error'.
+const uiTone = (tone: Tone) => (tone === 'error' ? 'danger' : tone);
+
 /** Status text always carries the meaning; color only reinforces it. */
 export function Badge({ tone, children }: { tone: Tone; children: ReactNode }) {
-  return <span className={`wf-badge wf-badge-${tone}`}>{children}</span>;
+  return <UiBadge tone={uiTone(tone)}>{children}</UiBadge>;
 }
 
 export function Notice({
@@ -59,11 +71,7 @@ export function Notice({
   tone: Exclude<Tone, 'neutral'>;
   children: ReactNode;
 }) {
-  return (
-    <div className={`wf-notice wf-notice-${tone}`} role={tone === 'error' ? 'alert' : 'status'}>
-      {children}
-    </div>
-  );
+  return <UiNotice tone={uiTone(tone) as Exclude<UiTone, 'neutral'>}>{children}</UiNotice>;
 }
 
 export function Loading({ t }: { t: WorkforceDictionary }) {
@@ -75,7 +83,7 @@ export function Loading({ t }: { t: WorkforceDictionary }) {
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="wf-empty">{children}</p>;
+  return <EmptyState icon={false}>{children}</EmptyState>;
 }
 
 export function ErrorState({
@@ -89,19 +97,12 @@ export function ErrorState({
 }) {
   const reference = error instanceof ApiError ? error.requestId : null;
   return (
-    <Notice tone="error">
-      <p>{errorMessage(error, t)}</p>
-      {reference ? (
-        <p className="wf-small">
-          {t.errors.reference}: {reference}
-        </p>
-      ) : null}
-      {onRetry ? (
-        <button type="button" className="wf-button wf-button-quiet" onClick={onRetry}>
-          {t.common.reload}
-        </button>
-      ) : null}
-    </Notice>
+    <UiErrorState
+      message={errorMessage(error, t)}
+      reference={reference}
+      referenceLabel={t.errors.reference}
+      {...(onRetry ? { onRetry, retryLabel: t.common.reload } : {})}
+    />
   );
 }
 
@@ -118,24 +119,17 @@ export function Field({
   hint?: string;
   children: ReactNode;
 }) {
+  // The wf-field class stays so login and member-form layout rules keep matching until Steps 8-10.
   return (
-    <div className="wf-field">
-      <label htmlFor={id}>
-        {label}
-        {required ? (
-          <span className="wf-required" aria-hidden="true">
-            {' '}
-            *
-          </span>
-        ) : null}
-      </label>
+    <UiField
+      id={id}
+      label={label}
+      className="wf-field"
+      {...(required ? { required } : {})}
+      {...(hint ? { hint } : {})}
+    >
       {children}
-      {hint ? (
-        <p className="wf-hint" id={`${id}-hint`}>
-          {hint}
-        </p>
-      ) : null}
-    </div>
+    </UiField>
   );
 }
 
@@ -152,15 +146,12 @@ export function SubmitButton({
   tone?: 'primary' | 'danger' | 'quiet';
   disabled?: boolean;
 }) {
+  // Solid red is reserved for confirmation dialogs; inline destructive submits are outlined.
+  const variant = tone === 'danger' ? 'danger-outline' : tone === 'quiet' ? 'secondary' : 'primary';
   return (
-    <button
-      type="submit"
-      className={`wf-button wf-button-${tone}`}
-      disabled={pending || disabled}
-      aria-busy={pending}
-    >
+    <Button type="submit" variant={variant} loading={pending} disabled={disabled ?? false}>
       {pending ? pendingLabel : label}
-    </button>
+    </Button>
   );
 }
 
@@ -244,3 +235,35 @@ export function FormFeedback({
   if (success) return <Notice tone="success">{success}</Notice>;
   return null;
 }
+
+// Shared components from packages/ui, re-exported so screens import from one place as they migrate.
+export {
+  ActionBar,
+  Checkbox,
+  Combobox,
+  ConfirmDialog,
+  DateInput,
+  Dialog,
+  Drawer,
+  FormActions,
+  FormSection,
+  IconButton,
+  ImageUploader,
+  Menu,
+  MoneyInput,
+  NumberInput,
+  RadioGroup,
+  RowActions,
+  SearchInput,
+  Select,
+  Skeleton,
+  Spinner,
+  Switch,
+  TextInput,
+  Textarea,
+  TimeInput,
+  ToastProvider,
+  Tooltip,
+  useToast,
+} from '@lucy-spa/ui';
+export { Button, ButtonLink } from '@lucy-spa/ui';

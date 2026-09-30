@@ -31,3 +31,79 @@ export {
 export type { ResolvedTheme, ThemePreference } from './theme-core';
 export { useTheme } from './use-theme';
 export type { ThemeState } from './use-theme';
+
+// Core components (Step 3). Text always comes from props; styles are in `components.css`.
+export { Button, ButtonLink, IconButton, VisuallyHidden, buttonClass } from './button';
+export type {
+  ButtonLinkProps,
+  ButtonProps,
+  ButtonSize,
+  ButtonVariant,
+  IconButtonProps,
+} from './button';
+export { ActionBar, RowActions } from './actions';
+export { Menu, arrangeMenu } from './menu';
+export type { MenuDivider, MenuEntry, MenuItem } from './menu';
+export { Popover, placePanel } from './popover';
+export { nextEnabledIndex, orderActions, trapTarget, typeaheadIndex } from './menu-core';
+export {
+  Badge,
+  EmptyState,
+  ErrorState,
+  Notice,
+  ProgressBar,
+  Skeleton,
+  Spinner,
+  Tooltip,
+} from './feedback';
+export type { BadgeTone, Tone } from './feedback';
+export { ToastProvider, useToast } from './toast';
+export type { ToastInput } from './toast';
+export { MAX_TOASTS, TOAST_DURATION_MS, addToast, removeToast } from './toast-core';
+export type { ToastData, ToastTone } from './toast-core';
+export {
+  Checkbox,
+  Combobox,
+  DateInput,
+  Field,
+  FormActions,
+  FormSection,
+  MoneyInput,
+  NumberInput,
+  RadioGroup,
+  SearchInput,
+  Select,
+  Switch,
+  TextInput,
+  Textarea,
+  TimeInput,
+  focusFirstInvalid,
+  useUnsavedChangesGuard,
+} from './form';
+export type { ControlProps, RadioOption, SelectOption } from './form';
+export {
+  createDebouncer,
+  describedBy,
+  digitsOnly,
+  filterOptions,
+  formatMoney,
+  normalizeSearch,
+  parseMoney,
+} from './form-core';
+export type { ComboOption } from './form-core';
+export { Dialog, Drawer } from './overlay';
+export type { DialogSize } from './overlay';
+export { ConfirmDialog } from './confirm-dialog';
+export type { ConfirmError, ConfirmFact } from './confirm-dialog';
+export { createConfirmController, typingMatches } from './confirm-core';
+export { FileDropzone, ImageUploader } from './image-uploader';
+export type { ImageUploaderLabels } from './image-uploader';
+export {
+  DEFAULT_IMAGE_TYPES,
+  formatBytes,
+  precheckDimensions,
+  precheckFile,
+  uploaderReducer,
+} from './image-core';
+export type { UploadedImage } from './image-core';
+export { cx } from './cx';

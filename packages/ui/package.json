@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.tsx",
     "./tokens.css": "./src/tokens.css",
-    "./base.css": "./src/base.css"
+    "./base.css": "./src/base.css",
+    "./components.css": "./src/components.css"
   },
   "sideEffects": [
     "**/*.css"
@@ -14,7 +15,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test \"src/**/*.test.ts\""
+    "test": "node --import tsx --test \"src/**/*.test.ts\" \"src/**/*.test.tsx\""
   },
   "peerDependencies": {
     "react": "^19.3.0"
@@ -22,7 +23,9 @@
   "devDependencies": {
     "@lucy-spa/config": "workspace:*",
     "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "react": "19.3.0",
+    "react-dom": "19.3.0",
     "typescript": "5.9.3"
   }
 }
