@@ -9,8 +9,19 @@ import type {
   EmployeeStatus,
   InitialEmploymentClassification,
 } from '@lucy-spa/contracts';
+import {
+  DataTable,
+  FilterChips,
+  ListToolbar,
+  SearchInput,
+  Select,
+  buttonClass,
+  useUrlState,
+  type DataTableColumn,
+  type FilterChip,
+} from '@lucy-spa/ui';
 import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import {
   canOfferCreate,
@@ -18,15 +29,16 @@ import {
   directoryTitle,
 } from '../../../lib/workforce/employee-create';
 import {
+  DIRECTORY_PAGE_SIZE,
   directoryPage,
+  EMPLOYEE_LIST_DEFAULTS,
+  EMPLOYEE_PAGE_KEYS,
   filtersActive,
-  FIRST_PAGES,
-  pagerState,
-  totalPages,
-  withGroupPage,
+  GROUP_PAGE_KEY,
+  normalizeEmployeeList,
   type DirectoryFilters,
-  type GroupPages,
 } from '../../../lib/workforce/employee-directory';
+import { paginationLabels, toolbarLabels } from '../../../lib/workforce/list-view';
 import { organizationDictionary } from '../../../i18n/organization';
 import { branchLabel, useBranches } from '../data';
 import { ManagementLevels, useManagementLevelVisible } from './management-levels';
@@ -46,7 +58,6 @@ import {
 import { EmployeeCreateForm } from './employee-create';
 
 const STATUSES: EmployeeStatus[] = ['ACTIVE', 'PENDING_SETUP', 'INACTIVE'];
-const NO_FILTERS: DirectoryFilters = { q: '', branchId: '', status: '' };
 /** Four mutually exclusive sections, managers first; each member appears in exactly one. */
 const GROUPS: EmployeeDirectoryGroup[] = ['MANAGERS', 'EMPLOYEES', 'COLLABORATORS', 'TRAINEES'];
 export const EMPLOYEE_STATUS_TONE: Record<EmployeeStatus, Tone> = {
@@ -60,6 +71,7 @@ export const EMPLOYEE_STATUS_TONE: Record<EmployeeStatus, Tone> = {
  * "Quản lý / Managers" table (members with an active manager-group role) above a
  * "Nhân viên / Employees" table, each with its own server-side pages, and the
  * "Thêm nhân sự / Add employee" action for accounts with CREATE_EMPLOYEES.
+ * Search, filters, page size and each table's page live in the address bar (`useUrlState`).
  */
 export function EmployeesScreen() {
   const { api, t } = useWorkforce();
@@ -68,29 +80,46 @@ export function EmployeesScreen() {
   const offerCreate = canOfferCreate(account);
   const [adding, setAdding] = useState(false);
   const [created, setCreated] = useState<CreatedMember | null>(null);
-  const [filters, setFilters] = useState(NO_FILTERS);
-  const [applied, setApplied] = useState(filters);
+  const [list, updateList] = useUrlState(EMPLOYEE_LIST_DEFAULTS, {
+    normalize: normalizeEmployeeList,
+    resetOnChange: EMPLOYEE_PAGE_KEYS,
+  });
   // Bumped after a creation so both groups reload.
   const [refresh, setRefresh] = useState(0);
-  // Independent pages: changing one group's page never changes the other's.
-  const [pages, setPages] = useState<GroupPages>(FIRST_PAGES);
-
-  function search(event: FormEvent) {
-    event.preventDefault();
-    setApplied(filters);
-    // New filters: both groups start again at their first page.
-    setPages(FIRST_PAGES);
-  }
+  const filters: DirectoryFilters = { q: list.q, branchId: list.branch, status: list.status };
 
   function onCreated(employee: EmployeeResponse, classification: InitialEmploymentClassification) {
     setAdding(false);
     setCreated({ employee, classification });
     // Show the whole directory again so the new member is listed.
-    setFilters(NO_FILTERS);
-    setApplied({ ...NO_FILTERS });
-    setPages(FIRST_PAGES);
+    updateList({ ...EMPLOYEE_LIST_DEFAULTS });
     setRefresh((value) => value + 1);
   }
+
+  const branchList = [...(branches.data?.values() ?? [])];
+  const chips: FilterChip[] = [
+    ...(list.q ? [{ key: 'q', label: `“${list.q}”` }] : []),
+    ...(list.branch
+      ? [
+          {
+            key: 'branch',
+            label: `${t.employees.branchFilter}: ${
+              branchList.find((branch) => branch.id === list.branch)?.name ?? list.branch
+            }`,
+          },
+        ]
+      : []),
+    ...(list.status
+      ? [
+          {
+            key: 'status',
+            label: `${t.employees.statusFilter}: ${
+              t.employees.statuses[list.status as EmployeeStatus]
+            }`,
+          },
+        ]
+      : []),
+  ];
 
   return (
     <>
@@ -129,58 +158,65 @@ export function EmployeesScreen() {
         </div>
       ) : null}
       <Section title={t.common.search}>
-        <form className="wf-filters" role="search" onSubmit={search}>
-          <Field id="emp-q" label={t.employees.search}>
-            <input
+        <ListToolbar
+          labels={toolbarLabels(t)}
+          activeFilters={chips.length}
+          onReset={() => updateList({ q: '', branch: '', status: '' })}
+          search={
+            <SearchInput
               id="emp-q"
-              type="search"
-              maxLength={100}
-              value={filters.q}
-              onChange={(event) => setFilters({ ...filters, q: event.target.value })}
+              value={list.q}
+              label={t.employees.search}
+              placeholder={t.employees.search}
+              clearLabel={t.common.list.clearSearch}
+              onSearch={(q) => updateList({ q }, { replace: true })}
             />
-          </Field>
-          <Field id="emp-branch" label={t.employees.branchFilter}>
-            <select
-              id="emp-branch"
-              value={filters.branchId}
-              onChange={(event) => setFilters({ ...filters, branchId: event.target.value })}
-            >
-              <option value="">{t.common.all}</option>
-              {[...(branches.data?.values() ?? [])].map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {branch.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field id="emp-status" label={t.employees.statusFilter}>
-            <select
-              id="emp-status"
-              value={filters.status}
-              onChange={(event) => setFilters({ ...filters, status: event.target.value })}
-            >
-              <option value="">{t.common.all}</option>
-              {STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {t.employees.statuses[status]}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <button type="submit" className="wf-button">
-            {t.common.search}
-          </button>
-        </form>
+          }
+          filters={
+            <>
+              <Field id="emp-branch" label={t.employees.branchFilter}>
+                <Select
+                  id="emp-branch"
+                  value={list.branch}
+                  placeholder={t.common.all}
+                  options={branchList.map((branch) => ({ value: branch.id, label: branch.name }))}
+                  onChange={(event) => updateList({ branch: event.target.value })}
+                />
+              </Field>
+              <Field id="emp-status" label={t.employees.statusFilter}>
+                <Select
+                  id="emp-status"
+                  value={list.status}
+                  placeholder={t.common.all}
+                  options={STATUSES.map((status) => ({
+                    value: status,
+                    label: t.employees.statuses[status],
+                  }))}
+                  onChange={(event) => updateList({ status: event.target.value })}
+                />
+              </Field>
+            </>
+          }
+          chips={
+            <FilterChips
+              chips={chips}
+              removeLabel={t.common.list.removeFilter}
+              onRemove={(key) => updateList({ [key]: '' })}
+            />
+          }
+        />
       </Section>
       {GROUPS.map((group) => (
         <DirectoryGroupSection
           key={group}
           group={group}
-          filters={applied}
+          filters={filters}
           refresh={refresh}
           branches={branches.data}
-          page={pages[group]}
-          onPage={(page) => setPages((current) => withGroupPage(current, group, page))}
+          page={list[GROUP_PAGE_KEY[group]]}
+          pageSize={list.pageSize}
+          onPage={(page) => updateList({ [GROUP_PAGE_KEY[group]]: page })}
+          onPageSize={(pageSize) => updateList({ pageSize })}
         />
       ))}
     </>
@@ -221,19 +257,23 @@ function DirectoryGroupSection({
   refresh,
   branches,
   page,
+  pageSize,
   onPage,
+  onPageSize,
 }: {
   group: EmployeeDirectoryGroup;
   filters: DirectoryFilters;
   refresh: number;
   branches: ReadonlyMap<string, BranchSummary> | null;
   page: number;
+  pageSize: number;
   onPage: (page: number) => void;
+  onPageSize: (pageSize: number) => void;
 }) {
   const { api } = useWorkforce();
   const result = useResource(
-    () => directoryPage(api, group, filters, page),
-    [api, group, page, refresh, filters.q, filters.branchId, filters.status],
+    () => directoryPage(api, group, filters, page, pageSize),
+    [api, group, page, pageSize, refresh, filters.q, filters.branchId, filters.status],
   );
   return (
     <DirectoryGroupView
@@ -244,7 +284,9 @@ function DirectoryGroupSection({
       filtered={filtersActive(filters)}
       branches={branches}
       page={page}
+      pageSize={pageSize}
       onPage={onPage}
+      onPageSize={onPageSize}
       reload={result.reload}
     />
   );
@@ -270,7 +312,9 @@ export function DirectoryGroupView({
   filtered,
   branches,
   page,
+  pageSize = DIRECTORY_PAGE_SIZE,
   onPage,
+  onPageSize,
   reload,
 }: {
   group: EmployeeDirectoryGroup;
@@ -280,138 +324,108 @@ export function DirectoryGroupView({
   filtered: boolean;
   branches: ReadonlyMap<string, BranchSummary> | null;
   page: number;
+  pageSize?: number;
   onPage: (page: number) => void;
+  onPageSize?: (pageSize: number) => void;
   reload: () => Promise<void>;
 }) {
-  const { t } = useWorkforce();
+  const { t, base, locale } = useWorkforce();
+  const text = organizationDictionary(locale);
   const texts = t.employees.directory;
   const section = SECTION_TEXT[group];
   const title = texts[section.title];
   const items = data?.items ?? [];
-  const pages = totalPages(data?.page?.total ?? 0, data?.page?.size);
   const empty = filtered ? texts[section.filtered] : texts[section.empty];
+  const showLevel = useManagementLevelVisible();
+
+  const columns: DataTableColumn<EmployeeDirectoryEntry>[] = [
+    {
+      key: 'employeeId',
+      header: t.employees.employeeId,
+      cell: (employee) => employee.employeeId,
+    },
+    {
+      key: 'fullName',
+      header: t.employees.fullName,
+      mobileTitle: true,
+      cell: (employee) => (
+        <Link className="ls-link" href={`${base}/employees/${employee.id}`}>
+          {employee.fullName}
+        </Link>
+      ),
+    },
+    {
+      key: 'branch',
+      header: t.common.branch,
+      hideBelow: 'md',
+      cell: (employee) =>
+        employee.branchIds
+          .map((id) => branchLabel(id, branches as Map<string, BranchSummary> | null, t))
+          .join(', ') || '—',
+    },
+    {
+      key: 'title',
+      header: t.employees.titleColumn,
+      hideBelow: 'lg',
+      cell: (employee) => directoryTitle(employee, t, locale),
+    },
+    ...(showLevel
+      ? [
+          {
+            key: 'level',
+            header: text.level,
+            hideBelow: 'lg' as const,
+            cell: (employee: EmployeeDirectoryEntry) => (
+              <ManagementLevels
+                appointments={employee.organizationAppointments}
+                branches={branches}
+              />
+            ),
+          },
+        ]
+      : []),
+    {
+      key: 'status',
+      header: t.common.status,
+      cell: (employee) => (
+        <Badge tone={EMPLOYEE_STATUS_TONE[employee.status]}>
+          {t.employees.statuses[employee.status]}
+        </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      header: t.common.actions,
+      actions: true,
+      cell: (employee) => (
+        <Link className={buttonClass('secondary')} href={`${base}/employees/${employee.id}`}>
+          {t.common.details}
+        </Link>
+      ),
+    },
+  ];
+
   return (
     <Section title={title}>
-      {error ? <ErrorState error={error} t={t} onRetry={() => void reload()} /> : null}
-      {data && !error && items.length === 0 ? <Empty>{empty}</Empty> : null}
-      {items.length > 0 ? <DirectoryTable items={items} branches={branches} /> : null}
-      {loading && !data ? <Loading t={t} /> : null}
-      <Pagination label={title} page={page} pages={pages} onPage={onPage} />
+      <DataTable
+        mode="server"
+        caption={fill(t.common.list.table, { list: title })}
+        columns={columns}
+        rows={items}
+        rowKey={(employee) => employee.id}
+        loading={loading}
+        loadingLabel={t.common.loading}
+        error={error ? <ErrorState error={error} t={t} onRetry={() => void reload()} /> : undefined}
+        empty={data ? <Empty>{empty}</Empty> : undefined}
+        paging={{
+          page,
+          pageSize,
+          total: data?.page?.total ?? items.length,
+          onPageChange: onPage,
+          onPageSizeChange: onPageSize,
+          labels: paginationLabels(t, title),
+        }}
+      />
     </Section>
-  );
-}
-
-function DirectoryTable({
-  items,
-  branches,
-}: {
-  items: EmployeeDirectoryEntry[];
-  branches: ReadonlyMap<string, BranchSummary> | null;
-}) {
-  const { t, base, locale } = useWorkforce();
-  const text = organizationDictionary(locale);
-  const showLevel = useManagementLevelVisible();
-  return (
-    <table className="wf-table">
-      <thead>
-        <tr>
-          <th scope="col">{t.employees.employeeId}</th>
-          <th scope="col">{t.employees.fullName}</th>
-          <th scope="col">{t.common.branch}</th>
-          <th scope="col">{t.employees.titleColumn}</th>
-          {showLevel ? <th scope="col">{text.level}</th> : null}
-          <th scope="col">{t.common.status}</th>
-          <th scope="col">{t.common.actions}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {items.map((employee) => (
-          <tr key={employee.id}>
-            <td data-label={t.employees.employeeId}>{employee.employeeId}</td>
-            <td data-label={t.employees.fullName}>{employee.fullName}</td>
-            <td data-label={t.common.branch}>
-              {employee.branchIds
-                .map((id) => branchLabel(id, branches as Map<string, BranchSummary> | null, t))
-                .join(', ') || '—'}
-            </td>
-            <td data-label={t.employees.titleColumn}>{directoryTitle(employee, t, locale)}</td>
-            {showLevel ? (
-              <td data-label={text.level}>
-                <ManagementLevels
-                  appointments={employee.organizationAppointments}
-                  branches={branches}
-                />
-              </td>
-            ) : null}
-            <td data-label={t.common.status}>
-              <Badge tone={EMPLOYEE_STATUS_TONE[employee.status]}>
-                {t.employees.statuses[employee.status]}
-              </Badge>
-            </td>
-            <td data-label={t.common.actions}>
-              <Link href={`${base}/employees/${employee.id}`}>{t.common.details}</Link>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-/** « 1 2 3 … 8 »: hidden for a single page; previous/next disabled at the ends. */
-export function Pagination({
-  label,
-  page,
-  pages,
-  onPage,
-}: {
-  label: string;
-  page: number;
-  pages: number;
-  onPage: (page: number) => void;
-}) {
-  const { t } = useWorkforce();
-  const texts = t.employees.directory;
-  const state = pagerState(page, pages);
-  if (!state.visible) return null;
-  return (
-    <nav className="wf-pagination" aria-label={fill(texts.pagination, { group: label })}>
-      <button
-        type="button"
-        className="wf-button wf-button-quiet"
-        aria-label={texts.previous}
-        disabled={state.previousDisabled}
-        onClick={() => onPage(page - 1)}
-      >
-        «
-      </button>
-      {state.items.map((item, index) =>
-        item === 'gap' ? (
-          <span key={`gap-${index}`} className="wf-muted" aria-hidden="true">
-            …
-          </span>
-        ) : (
-          <button
-            key={item}
-            type="button"
-            className={`wf-button ${item === page ? 'wf-button-primary' : 'wf-button-quiet'}`}
-            aria-current={item === page ? 'page' : undefined}
-            aria-label={fill(texts.pageNumber, { page: item })}
-            onClick={() => onPage(item)}
-          >
-            {item}
-          </button>
-        ),
-      )}
-      <button
-        type="button"
-        className="wf-button wf-button-quiet"
-        aria-label={texts.next}
-        disabled={state.nextDisabled}
-        onClick={() => onPage(page + 1)}
-      >
-        »
-      </button>
-    </nav>
   );
 }

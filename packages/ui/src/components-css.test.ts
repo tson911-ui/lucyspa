@@ -107,3 +107,50 @@ test('mobile: components adapt at the phone breakpoint', () => {
   assert.match(css, /bottom sheet/i);
   assert.match(css, /\.ls-form-actions[^}]*position:\s*sticky/);
 });
+
+test('data components: text wraps, touch targets are 44 px, the phone gets a card list', () => {
+  for (const selector of [
+    '.ls-chip',
+    '.ls-chip-text',
+    '.ls-tab',
+    '.ls-th-sort',
+    '.ls-dl-term',
+    '.ls-pagination-summary',
+  ]) {
+    const body = rule(selector);
+    assert.doesNotMatch(
+      body,
+      /(?<![-\w])width:\s*\d+(?:px|rem|em|ch)/,
+      `${selector} has a fixed width`,
+    );
+    assert.doesNotMatch(body, /white-space:\s*nowrap/, `${selector} cannot wrap`);
+    assert.doesNotMatch(body, /text-overflow:\s*ellipsis/, `${selector} truncates text`);
+  }
+  for (const selector of ['.ls-page-btn', '.ls-chip-remove', '.ls-tab', '.ls-th-sort']) {
+    assert.match(rule(selector), /min-height:\s*var\(--ls-control-h\)/, `${selector} target size`);
+  }
+  assert.match(rule('.ls-table thead th'), /position:\s*sticky/, 'sticky header');
+  const phone =
+    /@media \(max-width: 639px\) \{([\s\S]*?)\n\}\n\n\/\* Pagination/.exec(css)?.[1] ?? '';
+  assert.match(
+    phone,
+    /\.ls-table td\[data-label\]::before[^}]*content:\s*attr\(data-label\)/,
+    'labels in the card list',
+  );
+  assert.match(phone, /\.ls-table tbody tr[^}]*border:/, 'each row is a card');
+  assert.match(
+    phone,
+    /\.ls-table thead[^}]*clip-path/,
+    'the header row stays for assistive technology',
+  );
+  assert.match(
+    css,
+    /@media \(min-width: 640px\) and \(max-width: 767px\)[^{]*\{\s*\.ls-hide-md/,
+    'tablet hiding',
+  );
+  assert.match(
+    css,
+    /@media \(min-width: 768px\) and \(max-width: 1023px\)[^{]*\{\s*\.ls-hide-lg/,
+    'tablet hiding',
+  );
+});

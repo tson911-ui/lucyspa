@@ -9,15 +9,18 @@ import { test } from 'node:test';
 import { DirectoryGroupView, EmployeesScreen } from '../../components/workforce/screens/employees';
 import { getWorkforceDictionary } from '../../i18n/workforce';
 import { employee, json, owner, render, scriptedFetch } from '../../test/support';
+import { applyUrlPatch, parseUrlState, serializeUrlState } from '@lucy-spa/ui';
 import { WorkforceApi } from './api';
 import {
   DIRECTORY_PAGE_SIZE,
   directoryPage,
-  FIRST_PAGES,
+  EMPLOYEE_LIST_DEFAULTS,
+  EMPLOYEE_PAGE_KEYS,
+  GROUP_PAGE_KEY,
+  normalizeEmployeeList,
   pageItems,
   pagerState,
   totalPages,
-  withGroupPage,
 } from './employee-directory';
 
 const vi = getWorkforceDictionary('vi');
@@ -114,17 +117,35 @@ test('1–6, 16. sections: Managers above Employees; the API decides membership'
 });
 
 test('7–11. pages: independent per group, bounded, current page marked, hidden if one', () => {
-  // 7–8. Changing one group's page leaves the other untouched.
-  const afterManagers = withGroupPage(FIRST_PAGES, 'MANAGERS', 3);
-  assert.deepEqual(afterManagers, { MANAGERS: 3, EMPLOYEES: 1, COLLABORATORS: 1, TRAINEES: 1 });
-  const afterEmployees = withGroupPage(afterManagers, 'EMPLOYEES', 2);
-  assert.deepEqual(afterEmployees, { MANAGERS: 3, EMPLOYEES: 2, COLLABORATORS: 1, TRAINEES: 1 });
-  assert.deepEqual(withGroupPage(afterEmployees, 'MANAGERS', 0), {
-    MANAGERS: 1,
-    EMPLOYEES: 2,
-    COLLABORATORS: 1,
-    TRAINEES: 1,
-  });
+  // 7–8. Changing one group's page leaves the other groups' pages untouched (URL state).
+  const opts = [EMPLOYEE_LIST_DEFAULTS, EMPLOYEE_PAGE_KEYS] as const;
+  const afterManagers = applyUrlPatch(opts[0], { [GROUP_PAGE_KEY.MANAGERS]: 3 }, opts[0], opts[1]);
+  assert.deepEqual(
+    [afterManagers.pageManagers, afterManagers.pageEmployees, afterManagers.pageTrainees],
+    [3, 1, 1],
+  );
+  const afterEmployees = applyUrlPatch(
+    afterManagers,
+    { [GROUP_PAGE_KEY.EMPLOYEES]: 2 },
+    opts[0],
+    opts[1],
+  );
+  assert.deepEqual([afterEmployees.pageManagers, afterEmployees.pageEmployees], [3, 2]);
+  // A search, filter or page-size change sends every group back to page 1.
+  const filtered = applyUrlPatch(afterEmployees, { status: 'ACTIVE' }, opts[0], opts[1]);
+  assert.deepEqual([filtered.pageManagers, filtered.pageEmployees], [1, 1]);
+  // The address bar keeps only what differs from the defaults, and a bad page falls back to 1.
+  assert.equal(serializeUrlState(afterEmployees, opts[0]), '?pageManagers=3&pageEmployees=2');
+  const fromUrl = parseUrlState(
+    '?pageManagers=0&pageEmployees=abc&status=BOGUS&pageSize=7&pageTrainees=4',
+    opts[0],
+    normalizeEmployeeList,
+  );
+  assert.deepEqual(
+    [fromUrl.pageManagers, fromUrl.pageEmployees, fromUrl.status, fromUrl.pageSize],
+    [1, 1, '', 20],
+  );
+  assert.equal(fromUrl.pageTrainees, 4);
   // 9. Boundaries.
   assert.deepEqual(
     [pagerState(1, 8).previousDisabled, pagerState(1, 8).nextDisabled],
@@ -156,7 +177,9 @@ test('7–11. pages: independent per group, bounded, current page marked, hidden
     /<button[^>]*disabled=""[^>]*aria-label="Trang trước"|aria-label="Trang trước"[^>]*disabled=""/,
   );
   // 11. One page: no pager at all.
-  assert.doesNotMatch(view('MANAGERS', page([entry('QL01', 'B', null)], 5)), /wf-pagination/);
+  const single = view('MANAGERS', page([entry('QL01', 'B', null)], 5));
+  assert.doesNotMatch(single, /ls-pagination-nav/);
+  assert.ok(single.includes('Hiển thị 1-5 trong 5'), 'the row count line stays');
 });
 
 test('Step 2. four exclusive sections in order: Quản lý, Nhân viên, CTV, Học viên', () => {
@@ -173,7 +196,7 @@ test('Step 2. four exclusive sections in order: Quản lý, Nhân viên, CTV, H�
     at,
     'sections in the decided order',
   );
-  assert.deepEqual(Object.keys(FIRST_PAGES), [
+  assert.deepEqual(Object.keys(GROUP_PAGE_KEY), [
     'MANAGERS',
     'EMPLOYEES',
     'COLLABORATORS',

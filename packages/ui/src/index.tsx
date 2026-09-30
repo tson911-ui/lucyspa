@@ -107,3 +107,39 @@ export {
 } from './image-core';
 export type { UploadedImage } from './image-core';
 export { cx } from './cx';
+
+// Data components (Step 4): table, pagination, list toolbar, description list, tabs, URL state.
+export { DataTable } from './data-table';
+export type { DataTableColumn, DataTablePaging, DataTableSortLabels } from './data-table';
+export { CursorPagination, Pagination } from './pagination';
+export type { CursorPaginationLabels, PaginationLabels } from './pagination';
+export { FilterChips, ListToolbar } from './list-toolbar';
+export type { FilterChip, ListToolbarLabels } from './list-toolbar';
+export { DescriptionList } from './description-list';
+export type { DescriptionItem } from './description-list';
+export { Tabs } from './tabs';
+export type { TabItem } from './tabs';
+export { useUrlState } from './use-url-state';
+export type { UrlStateChange, UrlStateOptions } from './use-url-state';
+export { PHONE_QUERY, useMediaQuery } from './use-media-query';
+export { applyUrlPatch, parseUrlState, serializeUrlState } from './url-state-core';
+export type { UrlState, UrlValue } from './url-state-core';
+export {
+  DEFAULT_PAGE_SIZE,
+  PAGE_SIZES,
+  ariaSort,
+  clampPage,
+  compareValues,
+  fillTemplate,
+  nextSort,
+  nextTabIndex,
+  pageAfterSizeChange,
+  pageItems,
+  pageRange,
+  pageSizeChoices,
+  pagerState,
+  sliceRows,
+  sortRows,
+  totalPages,
+} from './paging-core';
+export type { PageItem, SortDirection, SortState, SortValue } from './paging-core';
