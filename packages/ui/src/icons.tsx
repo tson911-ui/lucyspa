@@ -61,6 +61,10 @@ const paths = {
   sparkles:
     'M12 4l1.8 4.7 4.7 1.8-4.7 1.8L12 17l-1.8-4.7L5.5 10.5l4.7-1.8L12 4zM18 16l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z',
   'calendar-check': 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M9 15l2 2 4-4',
+  // Chart kit (Step 6)
+  table: 'M4 5h16v14H4zM4 10h16M4 15h16M10 5v14',
+  'bar-chart': 'M5 20V10M12 20V4M19 20v-7',
+  minus: 'M5 12h14',
 } as const;
 
 export type IconName = keyof typeof paths;

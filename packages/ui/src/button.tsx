@@ -74,7 +74,7 @@ export function Button({
       type={type}
       className={buttonClass(variant, size, cx(fullWidth && 'ls-btn-block', className))}
       disabled={loading || (disabled && !blocked) || undefined}
-      aria-disabled={blocked ? true : undefined}
+      aria-disabled={blocked ? true : rest['aria-disabled']}
       aria-busy={loading || undefined}
       aria-describedby={cx(rest['aria-describedby'], blocked && reasonId) || undefined}
       onClick={(event: MouseEvent<HTMLButtonElement>) => {

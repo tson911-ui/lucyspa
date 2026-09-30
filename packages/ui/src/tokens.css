@@ -63,6 +63,8 @@
   --ls-chart-5: #7c4dbd;
   --ls-chart-6: #3f8f3a;
   --ls-chart-other: #6f6164;
+  /* The color of the series being drawn; the `ls-chart-s{slot}` classes set it. */
+  --ls-series: var(--ls-chart-1);
 
   /* Typography (contract 5). The font variable is set by next/font in the root layout. */
   --ls-font-sans: var(--font-be-vietnam-pro), system-ui, 'Segoe UI', Roboto, Arial, sans-serif;

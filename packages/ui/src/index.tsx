@@ -169,3 +169,78 @@ export {
   writeSidebarCollapsed,
 } from './shell-core';
 export type { ArrangedNavGroup, ShellNavGroup, ShellNavItem } from './shell-core';
+
+// Sortable primitives and chart kit (Step 6): drag-and-drop lists/grids, charts, KPI card, date range.
+export { SortableGrid, SortableList } from './sortable';
+export type { SortableItemState, SortableLabels, SortableProps } from './sortable';
+export { SORT_EASING, SORT_TRANSITION_MS, moveBy, reorder } from './sortable-core';
+export { BarChart, DonutChart, LineChart, Sparkline } from './charts';
+export type {
+  BarChartProps,
+  ChartLabels,
+  DonutChartProps,
+  DonutLabels,
+  LineChartProps,
+} from './charts';
+export {
+  ChartFrame,
+  ChartLegend,
+  ChartTable,
+  ChartTooltip,
+  ComparisonToggle,
+  useElementWidth,
+} from './chart-parts';
+export type {
+  ChartFrameLabels,
+  ChartTableModel,
+  ComparisonToggleLabels,
+  LegendItem,
+  TooltipRow,
+} from './chart-parts';
+export { KpiCard } from './kpi-card';
+export type { KpiCardLabels } from './kpi-card';
+export { DateRangePicker } from './date-range-picker';
+export type { DateRangePickerLabels } from './date-range-picker';
+export {
+  DEFAULT_MAX_RANGE_DAYS,
+  PRESET_IDS,
+  addDays,
+  addMonths,
+  addYears,
+  comparisonRange,
+  diffDays,
+  formatDay,
+  formatRange,
+  isIsoDate,
+  matchPreset,
+  monthGrid,
+  presetRange,
+  rangeDays,
+} from './date-range-core';
+export type { CalendarDay, ComparisonMode, DateRange, PresetId } from './date-range-core';
+export {
+  MAX_POINTS,
+  MAX_SERIES,
+  deltaDirection,
+  deltaPercent,
+  deltaText,
+  formatDelta,
+  formatTick,
+  formatValue,
+  formatX,
+  prepareChart,
+  prepareSlices,
+  slotColor,
+} from './chart-core';
+export type {
+  ChartLocale,
+  ChartPoint,
+  Comparison,
+  DeltaDirection,
+  DeltaWords,
+  DonutSlice,
+  Format,
+  Series,
+  SlotIndex,
+  ValueFormat,
+} from './chart-core';

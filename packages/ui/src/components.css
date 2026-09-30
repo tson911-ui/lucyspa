@@ -1935,3 +1935,765 @@
     display: grid;
   }
 }
+
+/* ==== Sortable primitives (Step 6, contract 9.7, 14.2) ==== */
+.ls-sortable {
+  display: grid;
+  gap: var(--ls-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-sortable-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: var(--ls-space-4);
+}
+
+.ls-sortable-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  min-width: 0;
+  padding: var(--ls-space-2) var(--ls-space-3);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-md);
+  background: var(--ls-bg-surface);
+}
+
+.ls-sortable-grid .ls-sortable-item {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.ls-sortable-item[data-dragging='true'] {
+  z-index: var(--ls-z-sticky);
+  border-color: var(--ls-brand);
+  background: var(--ls-bg-raised);
+  box-shadow: var(--ls-shadow-md);
+}
+
+.ls-sortable-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ls-space-2);
+}
+
+.ls-sortable-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ls-sortable-moves {
+  display: flex;
+  align-items: center;
+}
+
+.ls-sortable-handle {
+  cursor: grab;
+  touch-action: none;
+}
+
+.ls-sortable-item[data-dragging='true'] .ls-sortable-handle {
+  cursor: grabbing;
+}
+
+/* ==== Chart kit (Step 6, contract 14.4) ==== */
+.ls-chart-s1 {
+  --ls-series: var(--ls-chart-1);
+}
+
+.ls-chart-s2 {
+  --ls-series: var(--ls-chart-2);
+}
+
+.ls-chart-s3 {
+  --ls-series: var(--ls-chart-3);
+}
+
+.ls-chart-s4 {
+  --ls-series: var(--ls-chart-4);
+}
+
+.ls-chart-s5 {
+  --ls-series: var(--ls-chart-5);
+}
+
+.ls-chart-s6 {
+  --ls-series: var(--ls-chart-6);
+}
+
+.ls-chart-sother {
+  --ls-series: var(--ls-chart-other);
+}
+
+.ls-chart-frame,
+.ls-kpi {
+  display: grid;
+  align-content: start;
+  gap: var(--ls-space-4);
+  min-width: 0;
+  padding: var(--ls-space-4);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-md);
+  background: var(--ls-bg-surface);
+  box-shadow: var(--ls-shadow-sm);
+}
+
+@media (min-width: 640px) {
+  .ls-chart-frame,
+  .ls-kpi {
+    padding: var(--ls-space-5);
+  }
+}
+
+@media (min-width: 1024px) {
+  .ls-chart-frame,
+  .ls-kpi {
+    padding: var(--ls-space-6);
+  }
+}
+
+.ls-chart-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ls-space-3);
+}
+
+.ls-chart-titles {
+  min-width: 0;
+}
+
+.ls-chart-title {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-text-lg);
+  font-weight: 600;
+  line-height: var(--ls-leading-lg);
+}
+
+.ls-chart-subtitle {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-chart-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-2);
+}
+
+.ls-chart-state {
+  display: grid;
+  align-content: center;
+}
+
+.ls-chart {
+  display: grid;
+  gap: var(--ls-space-3);
+  min-width: 0;
+}
+
+.ls-chart-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-2) var(--ls-space-4);
+}
+
+/* The table switch keeps the end edge, on the legend's row or on its own row. */
+.ls-chart-tools > .ls-btn {
+  margin-inline-start: auto;
+}
+
+.ls-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2) var(--ls-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-chart-legend-stacked {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: var(--ls-space-2);
+}
+
+.ls-chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  color: var(--ls-text);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-chart-legend-detail {
+  color: var(--ls-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ls-chart-swatch {
+  flex: none;
+  width: var(--ls-space-3);
+  height: var(--ls-space-3);
+  border-radius: var(--ls-space-1);
+  background: var(--ls-series);
+}
+
+.ls-chart-swatch-previous {
+  width: var(--ls-space-4);
+  height: 0;
+  border-top: 2px dashed var(--ls-text-subtle);
+  border-radius: 0;
+  background: none;
+}
+
+.ls-chart-plot {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--ls-radius-sm);
+}
+
+.ls-chart-plot-donut {
+  flex: none;
+  width: auto;
+}
+
+.ls-chart-svg {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.ls-chart-grid {
+  stroke: var(--ls-chart-grid);
+  stroke-width: 1;
+}
+
+.ls-chart-tick {
+  fill: var(--ls-text-muted);
+  font-family: var(--ls-font-sans);
+  font-size: var(--ls-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.ls-chart-crosshair {
+  stroke: var(--ls-text-subtle);
+  stroke-width: 1;
+}
+
+.ls-chart-line {
+  fill: none;
+  stroke: var(--ls-series);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ls-chart-line-previous {
+  stroke: var(--ls-text-subtle);
+  stroke-dasharray: 6 4;
+}
+
+.ls-chart-area {
+  fill: var(--ls-series);
+  opacity: 0.12;
+}
+
+.ls-chart-marker {
+  fill: var(--ls-series);
+  stroke: var(--ls-chart-surface);
+  stroke-width: 2;
+}
+
+.ls-chart-bar {
+  fill: var(--ls-series);
+}
+
+.ls-chart-bar-stacked {
+  stroke: var(--ls-chart-surface);
+  stroke-width: 2;
+}
+
+.ls-chart-bar-previous {
+  fill: none;
+  stroke: var(--ls-text-subtle);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.ls-chart-band-active {
+  fill: var(--ls-bg-sunken);
+}
+
+.ls-chart-slice {
+  fill: var(--ls-series);
+}
+
+.ls-chart-slice-active {
+  stroke: var(--ls-text);
+  stroke-width: 2;
+}
+
+.ls-chart-center-value {
+  fill: var(--ls-text);
+  font-family: var(--ls-font-sans);
+  font-size: var(--ls-text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ls-chart-center-label {
+  fill: var(--ls-text-muted);
+  font-family: var(--ls-font-sans);
+  font-size: var(--ls-text-xs);
+}
+
+.ls-chart-texture {
+  display: none;
+}
+
+.ls-chart-texture-line {
+  stroke: currentcolor;
+}
+
+/* Where color is not available (forced colors, print) series differ by texture and dash. */
+@media (forced-colors: active), print {
+  .ls-chart-texture {
+    display: inline;
+  }
+
+  .ls-chart-line.ls-chart-s2 {
+    stroke-dasharray: 10 3 2 3;
+  }
+
+  .ls-chart-line.ls-chart-s3 {
+    stroke-dasharray: 3 3;
+  }
+
+  .ls-chart-line.ls-chart-s4 {
+    stroke-dasharray: 14 4;
+  }
+
+  .ls-chart-line.ls-chart-s5 {
+    stroke-dasharray: 8 3 2 3 2 3;
+  }
+
+  .ls-chart-line.ls-chart-s6 {
+    stroke-dasharray: 1 4;
+  }
+}
+
+.ls-chart-donut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-4) var(--ls-space-6);
+}
+
+.ls-chart-tooltip {
+  position: absolute;
+  z-index: var(--ls-z-popover);
+  width: max-content;
+  min-width: 10rem;
+  max-width: 16rem;
+  padding: var(--ls-space-2) var(--ls-space-3);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-raised);
+  box-shadow: var(--ls-shadow-md);
+  pointer-events: none;
+  transform: translateX(var(--ls-space-3));
+}
+
+.ls-chart-tooltip[data-flip='true'] {
+  transform: translateX(calc(-100% - var(--ls-space-3)));
+}
+
+.ls-chart-tooltip-title {
+  margin: 0 0 var(--ls-space-1);
+  color: var(--ls-text);
+  font-size: var(--ls-text-xs);
+  font-weight: 600;
+  line-height: var(--ls-leading-xs);
+}
+
+.ls-chart-tooltip-rows {
+  display: grid;
+  gap: var(--ls-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-chart-tooltip-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0 var(--ls-space-2);
+  color: var(--ls-text);
+  font-size: var(--ls-text-xs);
+  line-height: var(--ls-leading-xs);
+}
+
+.ls-chart-tooltip-label {
+  color: var(--ls-text-muted);
+}
+
+.ls-chart-tooltip-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: end;
+}
+
+.ls-chart-tooltip-delta {
+  grid-column: 2 / -1;
+  color: var(--ls-text-muted);
+}
+
+.ls-chart-table-wrap {
+  max-height: 24rem;
+  overflow: auto;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-sm);
+}
+
+.ls-chart-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ls-text);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-chart-table th,
+.ls-chart-table td {
+  padding: var(--ls-space-2) var(--ls-space-3);
+  border-bottom: 1px solid var(--ls-border);
+  text-align: start;
+}
+
+.ls-chart-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--ls-bg-sunken);
+  font-weight: 600;
+}
+
+.ls-chart-table tbody th {
+  font-weight: 400;
+}
+
+.ls-chart-table .ls-chart-table-num {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.ls-chart-table tbody tr:last-child th,
+.ls-chart-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.ls-comparison-toggle {
+  width: 100%;
+  max-width: 32rem;
+}
+
+/* ---- KPI card ---- */
+.ls-kpi {
+  align-content: start;
+  gap: var(--ls-space-2);
+}
+
+.ls-kpi-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-1);
+  min-height: var(--ls-control-h);
+}
+
+.ls-kpi-label {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  font-weight: 500;
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-kpi-value {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-text-2xl);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: var(--ls-leading-2xl);
+  overflow-wrap: anywhere;
+}
+
+.ls-kpi-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ls-space-3);
+}
+
+.ls-kpi-delta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--ls-space-1);
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-text-sm);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-kpi-delta[data-tone='up'] svg {
+  color: var(--ls-chart-2);
+}
+
+.ls-kpi-delta[data-tone='down'] svg {
+  color: var(--ls-chart-3);
+}
+
+.ls-kpi-delta[data-tone='good'] {
+  color: var(--ls-success);
+}
+
+.ls-kpi-delta[data-tone='bad'] {
+  color: var(--ls-danger);
+}
+
+.ls-kpi-delta[data-tone='neutral'] svg {
+  color: var(--ls-text-subtle);
+}
+
+.ls-kpi-compared {
+  color: var(--ls-text-muted);
+}
+
+.ls-kpi-asof {
+  margin: 0;
+  color: var(--ls-text-subtle);
+  font-size: var(--ls-text-xs);
+  line-height: var(--ls-leading-xs);
+}
+
+.ls-sparkline {
+  flex: none;
+}
+
+.ls-sparkline-line {
+  fill: none;
+  stroke: var(--ls-series);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- Date range picker ---- */
+.ls-daterange {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.ls-daterange-popover {
+  max-width: min(52rem, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  padding: var(--ls-space-4);
+}
+
+.ls-daterange-panel {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  grid-template-areas:
+    'presets calendars'
+    'foot foot';
+  gap: var(--ls-space-4) var(--ls-space-5);
+}
+
+.ls-daterange-presets {
+  display: flex;
+  flex-direction: column;
+  grid-area: presets;
+  gap: var(--ls-space-1);
+}
+
+.ls-daterange-presets .ls-btn {
+  justify-content: flex-start;
+  text-align: start;
+}
+
+.ls-daterange-presets .ls-btn[aria-pressed='true'] {
+  background: var(--ls-brand-soft);
+  color: var(--ls-brand);
+}
+
+.ls-daterange-calendars {
+  display: grid;
+  grid-area: calendars;
+  gap: var(--ls-space-2);
+  min-width: 0;
+}
+
+.ls-daterange-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ls-space-2);
+}
+
+.ls-daterange-months {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-text-sm);
+  font-weight: 600;
+  line-height: var(--ls-leading-sm);
+  text-align: center;
+}
+
+.ls-daterange-grids {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  align-items: start;
+  gap: var(--ls-space-5);
+}
+
+.ls-calendar {
+  width: 100%;
+  min-width: calc(7 * var(--ls-control-h));
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.ls-calendar-weekday {
+  padding: var(--ls-space-1) 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-xs);
+  font-weight: 500;
+  line-height: var(--ls-leading-xs);
+  text-align: center;
+}
+
+.ls-calendar-cell {
+  height: var(--ls-control-h);
+  padding: 0;
+  text-align: center;
+}
+
+.ls-calendar-in-range {
+  background: var(--ls-brand-soft);
+}
+
+.ls-calendar-day {
+  width: 100%;
+  height: var(--ls-control-h);
+  padding: 0;
+  border: 0;
+  border-radius: var(--ls-radius-sm);
+  background: transparent;
+  color: var(--ls-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--ls-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.ls-calendar-day:hover:not([aria-disabled='true']) {
+  background: var(--ls-bg-sunken);
+}
+
+.ls-calendar-day[data-today='true'] {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.ls-calendar-day[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.ls-calendar-edge .ls-calendar-day {
+  background: var(--ls-brand-fill);
+  color: var(--ls-on-brand);
+}
+
+.ls-daterange-foot {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: foot;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ls-space-3);
+}
+
+.ls-daterange-summary {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-daterange-buttons {
+  display: flex;
+  gap: var(--ls-space-2);
+}
+
+@media (max-width: 639px) {
+  .ls-daterange-panel {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'presets'
+      'calendars'
+      'foot';
+  }
+
+  .ls-daterange-presets {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ls-daterange-presets .ls-btn {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .ls-daterange-buttons {
+    width: 100%;
+  }
+
+  .ls-daterange-buttons .ls-btn {
+    flex: 1;
+  }
+}
+
+.ls-chart-legend-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ls-daterange-value {
+  min-width: 0;
+  text-align: start;
+}
+
+.ls-daterange-sheet {
+  width: 100%;
+}
+
+.ls-kpi-spark {
+  margin-block-end: var(--ls-space-1);
+}
