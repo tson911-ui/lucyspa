@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Be_Vietnam_Pro } from 'next/font/google';
 import { notFound } from 'next/navigation';
-import { themeInitScript } from '@lucy-spa/ui';
+import { ThemeInitScript } from '@lucy-spa/ui';
 import '@lucy-spa/ui/tokens.css';
 import '@lucy-spa/ui/base.css';
 import '@lucy-spa/ui/components.css';
@@ -51,7 +51,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
     // The pre-paint script may set data-theme from the ls-theme cookie before hydration.
     <html lang={locale} className={beVietnamPro.variable} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <ThemeInitScript />
       </head>
       <body>
         <a className="skip-link" href="#main-content">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, type KeyboardEvent } from 'react';
+import { useRef, type CSSProperties, type KeyboardEvent } from 'react';
 import { cx } from './cx';
 
 export interface SegmentedOption<T extends string> {
@@ -48,7 +48,21 @@ export function SegmentedControl<T extends string>({
   }
 
   return (
-    <div role="radiogroup" aria-label={label} className={cx('ls-segmented', className)}>
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className={cx('ls-segmented', className)}
+      style={
+        {
+          '--seg-count': options.length,
+          '--seg-index': Math.max(
+            0,
+            options.findIndex((option) => option.value === value),
+          ),
+        } as CSSProperties
+      }
+    >
+      <span className="ls-segmented-thumb" aria-hidden />
       {options.map((option, index) => {
         const checked = option.value === value;
         return (

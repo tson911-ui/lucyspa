@@ -422,6 +422,150 @@ const block = (css: string, selector: string): string => {
   return new RegExp(`${escaped}\\s*\\{([^}]*)\\}`).exec(css)?.[1] ?? '';
 };
 
+test('SegmentedControl: one sliding thumb positioned by the selected index, solid brand fill, no border', () => {
+  const markup = renderToStaticMarkup(
+    <ui.SegmentedControl
+      label="Đăng nhập bằng"
+      value="EMAIL"
+      onChange={() => undefined}
+      options={[
+        { value: 'EMPLOYEE_ID', label: 'Mã nhân viên' },
+        { value: 'EMAIL', label: 'Email' },
+      ]}
+    />,
+  );
+  assert.match(markup, /--seg-count:2/);
+  assert.match(markup, /--seg-index:1/, 'the thumb sits under the selected option');
+  assert.equal(markup.match(/ls-segmented-thumb/g)?.length, 1, 'one thumb, not one per option');
+  const components = readFileSync(new URL('components.css', import.meta.url), 'utf8');
+  const track = block(components, '.ls-segmented');
+  assert.doesNotMatch(track, /border\s*:/, 'no border on the track');
+  assert.match(track, /background:\s*var\(--ls-bg-sunken\)/, 'subtle neutral track');
+  const thumb = block(components, '.ls-segmented-thumb');
+  assert.match(thumb, /background:\s*var\(--ls-brand-fill\)/, 'solid brand fill in both themes');
+  assert.match(
+    thumb,
+    /transition:\s*transform var\(--ls-dur-slow\) var\(--ls-ease-out\)/,
+    'slides',
+  );
+  assert.match(
+    block(components, '.ls-segment-active,\n.ls-segment-active:hover'),
+    /color:\s*var\(--ls-on-brand\)/,
+  );
+});
+
+test('ThemeInitScript: in the server HTML, never created on the client (no React script warning)', () => {
+  assert.match(
+    renderToStaticMarkup(<ui.ThemeInitScript />),
+    /<script>[^<]*ls-theme[^<]*<\/script>/,
+  );
+  const errors: unknown[] = [];
+  const original = console.error;
+  console.error = (...args: unknown[]) => void errors.push(args);
+  try {
+    const view = mount(<ui.ThemeInitScript />);
+    assert.equal($(view.container, 'script'), null, 'a client render creates no script element');
+    view.unmount();
+  } finally {
+    console.error = original;
+  }
+  assert.deepEqual(errors, [], 'nothing logged');
+});
+
+test('motion tokens: 150-250 ms ease-out, used by the micro-interactions, all off for reduced motion', () => {
+  const tokens = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
+  const ms = (name: string) => Number(new RegExp(`${name}:\\s*(\\d+)ms`).exec(tokens)?.[1]);
+  assert.deepEqual(
+    [ms('--ls-dur-fast'), ms('--ls-dur-base'), ms('--ls-dur-slow')],
+    [150, 200, 250],
+  );
+  assert.match(tokens, /--ls-ease-out:\s*cubic-bezier\(0, 0, 0\.2, 1\)/);
+  assert.match(tokens, /--ls-press-scale:\s*0\.9[5-9]/, 'a slight press scale');
+  const reduced =
+    /@media \(prefers-reduced-motion: reduce\) \{\s*:root \{([^}]*)\}/.exec(tokens)?.[1] ?? '';
+  for (const name of [
+    '--ls-dur-fast: 0ms',
+    '--ls-dur-base: 0ms',
+    '--ls-dur-slow: 0ms',
+    '--ls-press-scale: 1',
+  ]) {
+    assert.ok(reduced.includes(name), `reduced motion sets ${name}`);
+  }
+  const components = readFileSync(new URL('components.css', import.meta.url), 'utf8');
+  const all = components + '\n' + shellCss;
+  // Every transition reads the tokens: no millisecond literal, no cinematic properties.
+  for (const match of all.matchAll(/transition:([^;]*);/g)) {
+    assert.doesNotMatch(match[1]!, /\d+m?s\b/, `transition uses tokens: ${match[1]}`);
+  }
+  assert.match(block(components, '.ls-btn'), /transform var\(--ls-dur-fast\) var\(--ls-ease-out\)/);
+  assert.match(
+    components,
+    /\.ls-btn:active:not\(:disabled\)[^{]*\{[^}]*scale\(var\(--ls-press-scale\)\)/,
+    'press scale',
+  );
+  assert.match(
+    block(components, '.ls-input:focus-visible'),
+    /outline-color:\s*var\(--ls-focus\)/,
+    'focus eases in',
+  );
+  assert.match(
+    block(components, '.ls-input'),
+    /outline-color var\(--ls-dur-fast\) var\(--ls-ease-out\)/,
+  );
+  assert.match(
+    block(shellCss, ".ls-auth-card input:not([type='radio']):not([type='checkbox']):focus-visible"),
+    /outline-offset:\s*2px/,
+  );
+});
+
+test('motion (D13): every shared component animates from the tokens; loops are limited to indicators', () => {
+  const components = readFileSync(new URL('components.css', import.meta.url), 'utf8');
+  const all = components + '\n' + shellCss;
+  // Animations read the tokens too. Only the spinner and indeterminate progress (functional indicators) keep a literal.
+  for (const match of all.matchAll(/animation:([^;]*);/g)) {
+    if (/ls-spin|ls-slide/.test(match[1]!)) continue;
+    assert.doesNotMatch(match[1]!, /\d+m?s\b/, `animation uses tokens: ${match[1]}`);
+    assert.match(match[1]!, /var\(--ls-dur-(?:fast|base|slow|loop)\)/, match[1]);
+  }
+  // Repeating animation is the skeleton pulse (and the two indicators) only.
+  const infinite = [...all.matchAll(/animation:([^;]*infinite[^;]*);/g)].map((m) => m[1]!.trim());
+  assert.equal(infinite.length, 3, infinite.join(' | '));
+  assert.match(block(components, '.ls-skeleton'), /ls-pulse var\(--ls-dur-loop\)/);
+  // Each listed component carries a micro-interaction.
+  const wants: [string, RegExp][] = [
+    [components + shellCss, /\.ls-page-btn\s*\{[^}]*transition:/],
+    [components, /\.ls-table td\s*\{[^}]*transition: background-color var\(--ls-dur-fast\)/],
+    [components, /\.ls-table tbody tr\s*\{[^}]*transition:/],
+    [components, /\.ls-menu-item\s*\{[^}]*transition:/],
+    [components, /\.ls-popover\s*\{[^}]*animation: ls-pop-in/],
+    [components, /\.ls-dialog\s*\{[^}]*animation: ls-pop-in var\(--ls-dur-base\)/],
+    [components, /\.ls-backdrop\s*\{[^}]*animation: ls-fade-in/],
+    [components, /\.ls-drawer\s*\{[^}]*animation: ls-drawer-in var\(--ls-dur-slow\)/],
+    [components, /\.ls-toast\s*\{[^}]*animation: ls-toast-in/],
+    [
+      shellCss,
+      /\.ls-sidebar-slot\s*\{[^}]*transition: width var\(--ls-dur-base\) var\(--ls-ease-out\)/,
+    ],
+    [shellCss, /\.ls-route-fade\s*\{[^}]*animation: ls-fade-in var\(--ls-dur-base\)/],
+  ];
+  for (const [text, pattern] of wants) assert.match(text, pattern, String(pattern));
+  // The route fade is opacity only: no keyframe that moves content is used by it.
+  assert.match(components, /@keyframes ls-fade-in \{\s*from \{\s*opacity: 0;\s*\}\s*\}/);
+  const tokens = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
+  assert.match(tokens, /--ls-dur-loop:\s*0ms/, 'the loop token is off for reduced motion');
+});
+
+test('RouteFade wraps the page in the fade class (used by template.tsx)', () => {
+  assert.match(
+    renderToStaticMarkup(
+      <ui.RouteFade>
+        <p>x</p>
+      </ui.RouteFade>,
+    ),
+    /^<div class="ls-route-fade"><p>x<\/p><\/div>$/,
+  );
+});
+
 test('auth card UX: token rhythm, elevation token in every theme block, segmented and password styles', () => {
   const card = block(shellCss, '.ls-auth-card');
   assert.match(card, /box-shadow:\s*var\(--ls-auth-card-shadow\)/);
@@ -497,7 +641,12 @@ test('auth styles: full-screen gradient from tokens, subtle art, card on surface
     block(shellCss, '.ls-auth-top .ls-theme-option-active'),
     /var\(--ls-auth-panel-from\)/,
   );
-  assert.doesNotMatch(shellCss, /@keyframes|animation\s*:/, 'no heavy animation');
+  assert.doesNotMatch(shellCss, /@keyframes/, 'shell keyframes live in components.css (shared)');
+  assert.doesNotMatch(
+    block(shellCss, '.ls-auth-card'),
+    /animation\s*:/,
+    'no decorative animation on the auth screen',
+  );
   assert.doesNotMatch(shellCss, /url\(/, 'no external images');
 });
 

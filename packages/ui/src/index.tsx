@@ -29,6 +29,8 @@ export {
   themeInitScript,
 } from './theme-core';
 export type { ResolvedTheme, ThemePreference } from './theme-core';
+export { ThemeInitScript } from './theme-script';
+export { RouteFade } from './route-fade';
 export { useTheme } from './use-theme';
 export type { ThemeState } from './use-theme';
 

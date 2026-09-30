@@ -104,9 +104,17 @@
   --ls-form-max: 720px;
 
   /* Motion (admin: opacity/transform/background only) and stacking */
-  --ls-dur-fast: 120ms;
-  --ls-dur-base: 180ms;
+  --ls-dur-fast: 150ms;
+  --ls-dur-base: 200ms;
+  --ls-dur-slow: 250ms;
+  /* Skeleton loading pulse: the only repeating animation; 0 under reduced motion */
+  --ls-dur-loop: 1400ms;
   --ls-ease: cubic-bezier(0.2, 0, 0, 1);
+  --ls-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  /* Button press feedback (micro-interaction); 1 = none */
+  --ls-press-scale: 0.98;
+  /* Where a drawer slides in from (start-side drawers override with -100%) */
+  --ls-drawer-from: 100%;
   --ls-z-sticky: 10;
   --ls-z-drawer: 20;
   --ls-z-popover: 30;
@@ -145,6 +153,9 @@
   :root {
     --ls-dur-fast: 0ms;
     --ls-dur-base: 0ms;
+    --ls-dur-slow: 0ms;
+    --ls-dur-loop: 0ms;
+    --ls-press-scale: 1;
   }
 }
 
