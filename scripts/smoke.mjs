@@ -133,11 +133,17 @@ try {
     service: 'api',
   });
   const openapi = await (await get(`${apiUrl}/openapi.json`)).json();
-  assert.deepEqual(Object.keys(openapi.paths).sort(), [
+  // The API documents every controller route, so assert key routes exist rather than an exact list.
+  const documented = Object.keys(openapi.paths);
+  for (const path of [
     '/api/v1/auth/context',
+    '/api/v1/pos/invoices/{id}',
+    '/api/v1/webhooks/payos',
     '/health/live',
     '/health/ready',
-  ]);
+  ]) {
+    assert.ok(documented.includes(path), `OpenAPI is missing ${path}`);
+  }
   const missing = await get(`${apiUrl}/unknown?token=never-echo-this`);
   assert.equal(missing.status, 404);
   assert.doesNotMatch(await missing.text(), /never-echo-this/);

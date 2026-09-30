@@ -13,31 +13,31 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 
 ## Phase status
 
-| Phase                                     | Status                                                                 |
-| ----------------------------------------- | ---------------------------------------------------------------------- |
-| Phase 0                                   | PASS                                                                   |
-| Phase 1 (auth and security)               | COMPLETE                                                               |
-| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)       |
-| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                              |
-| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                           |
-| **Phase 4 (POS, invoices, payments)**     | **IN PROGRESS: Steps 1-10 CLOSED / OWNER APPROVED** |
-| Phase 5+ (loyalty, payroll, finance)      | NOT started (deferred)                                                 |
+| Phase                                     | Status                                                           |
+| ----------------------------------------- | ---------------------------------------------------------------- |
+| Phase 0                                   | PASS                                                             |
+| Phase 1 (auth and security)               | COMPLETE                                                         |
+| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted) |
+| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                        |
+| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                     |
+| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11)**                         |
+| Phase 5+ (loyalty, payroll, finance)      | NOT started (deferred)                                           |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
 
-| Step | Name                                                                 | Status                                     |
-| ---- | -------------------------------------------------------------------- | ------------------------------------------ |
-| 1    | Design contract (`PHASE4_POS_INVOICE_PAYMENTS_DESIGN.md`)            | CLOSED                                     |
-| 2    | Visit completion carryover (manager END, cancel line)                | CLOSED                                     |
-| 3    | Staff-added service                                                  | CLOSED                                     |
-| 4    | POS database + permissions foundation (OP-1 quantity limit)          | CLOSED                                     |
-| 5    | Invoice / POS (draft, price/quantity, payer, finalize, cancel, OP-7) | CLOSED                                     |
-| 6    | Discounts / vouchers (+ historical service-category snapshot)        | CLOSED (`f898f2d`)                         |
-| 7    | Cash / split payments / payment states / corrections                 | CLOSED / OWNER APPROVED (no migration)     |
-| 8    | PayOS (Q7 answered)                                                  | CLOSED / OWNER APPROVED                    |
-| 9    | Customer invoice history                                             | CLOSED / OWNER APPROVED                    |
-| 10   | Invoice / revenue notifications                                      | CLOSED / OWNER APPROVED                    |
-| 11   | Final validation (single full gate; no deploy)                       | NOT STARTED                                |
+| Step | Name                                                                 | Status                                 |
+| ---- | -------------------------------------------------------------------- | -------------------------------------- |
+| 1    | Design contract (`PHASE4_POS_INVOICE_PAYMENTS_DESIGN.md`)            | CLOSED                                 |
+| 2    | Visit completion carryover (manager END, cancel line)                | CLOSED                                 |
+| 3    | Staff-added service                                                  | CLOSED                                 |
+| 4    | POS database + permissions foundation (OP-1 quantity limit)          | CLOSED                                 |
+| 5    | Invoice / POS (draft, price/quantity, payer, finalize, cancel, OP-7) | CLOSED                                 |
+| 6    | Discounts / vouchers (+ historical service-category snapshot)        | CLOSED (`f898f2d`)                     |
+| 7    | Cash / split payments / payment states / corrections                 | CLOSED / OWNER APPROVED (no migration) |
+| 8    | PayOS (Q7 answered)                                                  | CLOSED / OWNER APPROVED                |
+| 9    | Customer invoice history                                             | CLOSED / OWNER APPROVED                |
+| 10   | Invoice / revenue notifications                                      | CLOSED / OWNER APPROVED                |
+| 11   | Final validation (single full gate; no deploy)                       | CLOSED / OWNER APPROVED                |
 
 Phase 4 migrations so far: Step 3 (`20261013…`), Step 4 (`20261014000000-04`), Step 6 (`20261015000000`, category snapshot), Step 8 (`20261016000000-01`), Step 10 (`20261017000000`, notifications).
 
@@ -97,10 +97,16 @@ Step 10 (`docs/PHASE4_STEP10_INVOICE_NOTIFICATIONS.md`): Q8 policy implemented i
 Worker consumer `notifications` (no `published_at`) + 21:30 branch-local summary scheduler; routing by `resolvePermissionHolders`; web FINANCE tab. No new permission/env.
 Step 10 Owner answers (confirmed): Owner account receives exceptions/summary via the permission engine; managers see their own reversal alerts; summary daily even with zeros (00:00-21:30, catch-up to midnight); no read-time re-check for revoked holders; expired/failed PayOS requests notify nobody. CLOSED / OWNER APPROVED.
 
+## Step 11 (final validation)
+
+Step 11 (`docs/PHASE4_FINAL_VALIDATION.md`): full gate on scratch DB `lucy_spa_step11_validation_20260930` (35 migrations): 917 tests pass, web build, smoke pass.
+Fixed only gate-side defects (stale OpenAPI assertion in `scripts/smoke.mjs`, prettier drift). No migration, no product change, not deployed.
+Report has the deployment checklist (10 pending migrations, PayOS env, webhook URL, `db:permissions:sync`, PER_NAIL limits). Step 11 and Phase 4 CLOSED / OWNER APPROVED; scratch DB dropped.
+
 ## Production
 
 Deployed commit `97e0485` (Notification Center final validation); 25 migrations applied; api/web/worker online.
-**Phase 4 (Steps 2-8) is NOT deployed.** Run `pnpm db:permissions:sync` at the next deployment. Deploy only when the Owner asks.
+**Phase 4 (Steps 2-11) is NOT deployed.** Run `pnpm db:permissions:sync` at the next deployment. Deploy only when the Owner asks.
 
 ## Known pre-existing test flakes (unrelated to Phase 4; note in one line, do not investigate)
 

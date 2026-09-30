@@ -2725,7 +2725,12 @@ export interface CustomerInvoiceDetail extends CustomerInvoiceSummary {
   subtotalVnd: string;
   discountTotalVnd: string;
   /** The benefit applied at finalization, if any (name and the voucher code the customer used). */
-  discount: { nameVi: string; nameEn: string; voucherCode: string | null; amountVnd: string } | null;
+  discount: {
+    nameVi: string;
+    nameEn: string;
+    voucherCode: string | null;
+    amountVnd: string;
+  } | null;
   lines: CustomerInvoiceLine[];
   payments: CustomerInvoicePayment[];
 }
