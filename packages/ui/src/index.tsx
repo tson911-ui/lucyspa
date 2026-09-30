@@ -1,15 +1,19 @@
-// Temporary text wordmark; final brand assets can replace this component.
+// Single wordmark used by every shell and auth page. Same look in light and dark (color is inherited
+// from the surrounding link, which uses the brand token). Replace the body with the logo image when
+// the Owner supplies it; callers stay unchanged.
 export function BrandWordmark() {
   return (
     <span
       style={{
-        fontFamily: 'var(--lucy-font-display)',
-        fontSize: '1.75rem',
-        letterSpacing: '-0.04em',
+        fontFamily: 'var(--ls-font-sans)',
+        fontSize: '1.25rem',
+        fontWeight: 600,
+        letterSpacing: '0.18em',
+        textTransform: 'uppercase',
         whiteSpace: 'nowrap',
       }}
     >
-      Lucy <span style={{ fontStyle: 'italic' }}>Spa</span>
+      Lucy Spa
     </span>
   );
 }
