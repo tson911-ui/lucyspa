@@ -165,6 +165,18 @@ earlier "red + gold" direction.
     and drop; a shared chart kit is designed now so Phase 8 analytics plug
     in without redesign.
 
+-   Seasonal/holiday themes (Owner decision, 2026-09-30): a preset theme
+    layer on top of light/dark for the website, the future mobile app and,
+    subtly, the admin area (Lunar New Year, Christmas, Valentine, 8/3,
+    20/10, Mid-Autumn, 30/4-1/5, 2/9; extensible later). Each preset has
+    accent tokens, light decorations, a banner frame and a VI/EN greeting.
+    Brand red stays primary and WCAG AA holds in light and dark. The
+    Owner schedules one active theme at a time with start/end dates
+    (Vietnam time) and a preview; lunar dates are entered by the Owner. A
+    holiday may also switch on a promotional popup and homepage slides.
+    No free-form theme builder. Design only, not yet implemented
+    (`docs/UXUI_REDESIGN_DESIGN.md` section 20).
+
 Design contract: `docs/UXUI_REDESIGN_DESIGN.md`. The final logo, imagery
 and any further design tokens will be supplied later. UI implementation
 must allow branding assets to be replaced without structural changes.
@@ -234,6 +246,11 @@ Rules:
 -   Respect `prefers-reduced-motion` and accessibility (section 54).
 -   Internal workforce/admin dashboards prioritize speed and usability and
     must **not** receive unnecessary cinematic animation.
+-   Seasonal/holiday decorations (section 4.1) follow the same rules:
+    light SVG ornaments and optional particles on the customer side only,
+    never expensive or distracting, nothing when `prefers-reduced-motion`
+    is set, and only a subtle static accent (no animation) in the admin
+    area.
 
 Implementation timing: implement the premium motion system when the
 **customer-facing** website UI/design system is being built and its main

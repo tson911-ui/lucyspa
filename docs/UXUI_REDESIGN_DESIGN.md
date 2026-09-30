@@ -26,24 +26,27 @@ Baseline: `main` at `5952992` (Phase 4 closed; PayOS webhook hotfix).
 | 13   | Content C: homepage slider                   | 16.6-16.9, 17               |
 | 14   | Part 1 final validation                      | 18, 19                      |
 
-Every Step also reads section 0 (rules) and section 17 (Owner decisions) for the answers it depends on.
+Every Step also reads section 0 (rules) and section 17 (Owner decisions) for the answers it depends on. The seasonal-theme Steps
+S1-S5 (decision D12) read sections 0, 6, 16 and 20 and section 20.10 for the open Owner questions.
+
 ---
 
 ## 0. Owner decisions recorded (LOCKED for this track)
 
-| #   | Decision                                                                                                                                                                                                                                                  |
-| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Brand colors: primary red `#782b37` and white `#ffffff`. **No gold anywhere** (also no yellow/amber that reads as gold).                                                                                                                                  |
-| D2  | Light and dark mode with a user toggle; default follows the system.                                                                                                                                                                                       |
-| D3  | Admin (workforce) area first. Customer area and public site are a later part of this track (own contract).                                                                                                                                                |
-| D4  | Admin is modern, luxurious, professional, very easy to use, fast; no cinematic motion (PRD 4.4 applies to the customer side only).                                                                                                                        |
-| D5  | Desktop, tablet and phone; VI/EN; Vietnamese diacritics must render well.                                                                                                                                                                                 |
-| D6  | Clear, consistent layout on every page. Every list has pagination (plus search/filters where useful).                                                                                                                                                     |
-| D7  | Edit and Delete buttons are clear and consistently placed; destructive actions use a confirmation dialog. Where records must never be deleted (financial/operational history) show the allowed action (Cancel, Deactivate, Correct), never a fake Delete. |
-| D8  | Dashboard of widgets, rearrangeable per user by drag and drop. Drag and drop also orders images and slides.                                                                                                                                               |
-| D9  | Design the dashboard and a shared chart kit now so Phase 8 analytics plug in without redesign. Only widgets backed by existing data are built in this track; permission rules (for example `VIEW_REVENUE`) apply to widgets.                              |
-| D10 | Website content management (media library, promotional popup, homepage slider) is planned as separate Steps (11-13) since it needs storage, schema and API. Respect PRD 24.1. No page builder.                                                            |
-| D11 | Apart from the content-management group, **no business logic or API changes** in this track.                                                                                                                                                              |
+| #   | Decision                                                                                                                                                                                                                                                            |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Brand colors: primary red `#782b37` and white `#ffffff`. **No gold anywhere** (also no yellow/amber that reads as gold).                                                                                                                                            |
+| D2  | Light and dark mode with a user toggle; default follows the system.                                                                                                                                                                                                 |
+| D3  | Admin (workforce) area first. Customer area and public site are a later part of this track (own contract).                                                                                                                                                          |
+| D4  | Admin is modern, luxurious, professional, very easy to use, fast; no cinematic motion (PRD 4.4 applies to the customer side only).                                                                                                                                  |
+| D5  | Desktop, tablet and phone; VI/EN; Vietnamese diacritics must render well.                                                                                                                                                                                           |
+| D6  | Clear, consistent layout on every page. Every list has pagination (plus search/filters where useful).                                                                                                                                                               |
+| D7  | Edit and Delete buttons are clear and consistently placed; destructive actions use a confirmation dialog. Where records must never be deleted (financial/operational history) show the allowed action (Cancel, Deactivate, Correct), never a fake Delete.           |
+| D8  | Dashboard of widgets, rearrangeable per user by drag and drop. Drag and drop also orders images and slides.                                                                                                                                                         |
+| D9  | Design the dashboard and a shared chart kit now so Phase 8 analytics plug in without redesign. Only widgets backed by existing data are built in this track; permission rules (for example `VIEW_REVENUE`) apply to widgets.                                        |
+| D10 | Website content management (media library, promotional popup, homepage slider) is planned as separate Steps (11-13) since it needs storage, schema and API. Respect PRD 24.1. No page builder.                                                                      |
+| D11 | Apart from the content-management group, **no business logic or API changes** in this track.                                                                                                                                                                        |
+| D12 | **Seasonal/holiday themes** (Owner decision 2026-09-30): a preset theme layer on top of light/dark for the website, the future mobile app and, subtly, the admin area. Brand red stays primary; scheduled by the Owner; no free-form builder. Design in section 20. |
 
 Standing project rules still apply (CLAUDE.md): authorization is permission + branch scope server-side (never role names),
 money is integer VND, history is never deleted, migrations are additive, no commit/deploy without the Owner.
@@ -822,3 +825,155 @@ decision. Nothing in Part 1 blocks it; Step 2 already removes gold from shared t
 | Local-disk media storage blocks scaling out to multiple servers | storage interface; keys opaque; swap to object storage by config                                                                |
 | Dashboard layout only per device                                | disclosed (Q-D2); server preferences can follow as a small later Step                                                           |
 | Scope creep into analytics/CMS/page builder                     | non-goals in section 2; new widgets/content types need an Owner-approved Step                                                   |
+
+---
+
+## 20. Seasonal and holiday themes (Owner decision D12, design only)
+
+**Status: decision recorded 2026-09-30, documentation only. Nothing in this section is implemented; no code, schema, API or
+migration was changed.** It is planned as its own Steps S1-S5 (20.8), separate from Steps 2-14. It builds on Step 5 (theme
+mechanism, admin shell) and on the website-content group (Steps 11-13).
+
+### 20.1 The decision
+
+- A **seasonal theme layer** sits on top of light/dark. It is a fixed list of **presets**: Lunar New Year (Tet), Christmas,
+  Valentine (14/2), International Women's Day (8/3), Vietnamese Women's Day (20/10), Mid-Autumn, 30/4-1/5, National Day (2/9);
+  extensible later by adding a preset in code (20.2), never by a runtime builder.
+- Each preset has: accent tokens (light and dark), light decorations (inline SVG ornaments, optional particles), a header/banner
+  frame, and a greeting text in VI and EN.
+- **Brand red `#782b37` stays the primary color.** A preset adds an accent beside it; it never replaces brand, text, surface,
+  border, focus or status tokens. WCAG AA holds in light and dark, for every preset (20.3).
+- The Owner **schedules** a theme with start and end dates (Vietnam time), with a preview. It turns on and off automatically.
+  **One theme is active at a time.** Lunar dates are entered by the Owner each year; the system never computes them.
+- **Customer side changes visibly** (website, customer area, future mobile app). **Admin gets only a subtle touch** (20.5).
+- A holiday may activate **theme + promotional popup + homepage slides together** (20.6).
+- **No free-form theme builder**: the Owner picks a preset, dates and greeting text; nothing else is editable (no color pickers,
+  no uploaded ornaments, no custom CSS). This matches D10 (no page builder).
+
+### 20.2 Mechanism (how it layers on Step 5)
+
+- A second, independent attribute: `data-season="<presetKey>"` beside `data-theme`. Theme is a per-device choice from a cookie
+  (Step 2/5); season is decided by the **server** from the schedule, so it is rendered on `<html>` by the root layout (no flash)
+  and never stored by the visitor.
+- The **preset registry is data only** (key, names VI/EN, default greeting VI/EN, accent tokens for light and dark, suggested window
+  for solar holidays, ornament id) in `packages/contracts`, so web and the future mobile app share one source. The web build
+  generates `season.css` from it (a test fails if the generated file is out of date). Adding a preset = registry entry + ornament +
+  tests, in a code change; the database only stores the preset **key**.
+- Tokens a preset may set (and nothing else): `--ls-season-accent`, `--ls-season-accent-soft`, `--ls-season-on-accent`,
+  `--ls-season-frame-from`, `--ls-season-frame-to`, `--ls-season-frame-text`. Defaults in `tokens.css` equal the neutral brand
+  values, so with no season every component looks exactly as today. Only season components and the admin accent line read them.
+- Selectors are **scopable**, not root-only: `[data-season='x']` with dark variants under
+  `:root[data-theme='dark'] [data-season='x']` and the system-preference media query. This lets the admin preview apply a preset
+  to a frame and lets the public site apply it to a header region without touching `<html>`.
+- **Decorations** (customer side only): inline SVG ornaments (`aria-hidden`, `pointer-events: none`, no external image, no
+  request) in the header/banner frame and hero corners; a thin greeting strip; optional **particles** (petals, snowflakes, lanterns,
+  hearts) as a small fixed pool (at most 24 elements, fewer on phones), CSS transform/opacity only, loaded after first paint,
+  paused when the tab is hidden. Particles **render nothing** under `prefers-reduced-motion` (checked in the component, not only by
+  the global duration reset), and a visible "Turn off effects" control stores a per-device cookie `ls-fx=off`. No layout shift, no
+  scroll blocking, no third-party script.
+- Decorations never sit under text that has to be read, never use yellow/gold (D1, Q-S1), never change the popup/slider behavior
+  defined in 16.5-16.6.
+
+### 20.3 Accessibility and colors
+
+- Every preset defines accent tokens for light **and** dark. A test (same style as `tokens.test.ts`) iterates
+  presets x {light, dark}: accent text on each surface at least 4.5:1, `on-accent` on accent and on the frame gradient stops at
+  least 4.5:1, accent used as a UI boundary at least 3:1. A preset that fails cannot ship.
+- Red flag motifs (30/4, 2/9) would collide with error red (6.4): those presets use line-art stars and lotus as ornaments and a
+  rose/coral accent, never flat danger red. Brand red and danger red stay distinct.
+- Indicative accents (final values fixed and verified in S1): Tet peach-blossom pink and deep red; Christmas pine green; Valentine
+  rose; 8/3 and 20/10 orchid/pink; Mid-Autumn plum/indigo with lantern coral; 30/4-1/5 and 2/9 rose/coral with white.
+
+### 20.4 Schedule, data and API (Step S3; additive migration, names indicative)
+
+Table `website_seasons`: `id` uuid, `preset_key` text (validated against the registry by the API, so a new preset needs no
+migration), `label` (internal name, for example "Tet 2027"), `starts_at`, `ends_at` (`timestamptz` UTC; `ends_at > starts_at`;
+**entered in Asia/Ho_Chi_Minh**, Q-CM6; the form takes the last day inclusive and stores the next day 00:00 local as the exclusive
+end), `greeting_vi/en` (nullable: empty = preset default; max 80 chars, plain text), `apply_customer` (default true),
+`apply_admin` (default true), `particles_enabled` (default true), `is_enabled`, `row_version`, audit stamps. Additive
+`campaign`/`season_id` link columns on `website_popups` and `website_slides` (20.6).
+
+- **One active at a time:** saving an **enabled** season whose window overlaps another enabled season is rejected, naming the
+  conflict (transactional check under an advisory lock, exactly the popup rule 16.5). Consecutive windows that touch are fine
+  (end is exclusive).
+- **Automatic on/off:** the active season is derived from `now()` at read time; there is no job and nothing to "turn off".
+  Status shown in admin (text + badge): Draft, Scheduled, Active, Ended.
+- **Public read:** `GET /api/v1/public/website/season?locale=` returns `{ presetKey, greeting, endsAt, particles }` or `204`,
+  cached 60 s. The mobile app uses the same endpoint plus the shared registry for token values and bundles its own native
+  ornaments (Q-S8). No personal data, no cookies, no tracking.
+- **Admin API:** `/api/v1/website/seasons` list (paged), get, create, update (row_version), enable/disable, delete. Permission: the
+  existing GLOBAL_ONLY `MANAGE_WEBSITE_CONTENT` (Q-S9); CSRF and rate limit as all mutations; every write is an `AuditEvent`.
+  Deleting is allowed (marketing content, as 16.8) with `ConfirmDialog` and an extra line when the season is Active.
+- **Lunar dates:** the Owner types real dates each year. For solar holidays the form may prefill a **suggested** window from the
+  registry (for example 8/3: 6-9 March), always editable and never saved unless the Owner confirms (Q-S3).
+
+### 20.5 Surfaces
+
+| Surface                   | What changes                                                                                                                                  | Switch                                  |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Website and customer area | accent tokens, header/banner frame, ornaments, greeting strip, optional particles; visible. Fully styled on Part 2 components (Q-S7)          | `apply_customer`; visitor `ls-fx=off`   |
+| Future mobile app         | same preset key, tokens, greeting and window from the public endpoint; native ornaments                                                       | `apply_customer`                        |
+| Admin (workforce)         | **subtle only**: a 2 px accent line under the topbar and a small greeting chip in the dashboard header. No ornaments, no particles, no motion | `apply_admin`; per-device "hide" cookie |
+
+Admin readability is never affected: tables, forms, status colors, focus ring and the auth panel keep base tokens.
+
+### 20.6 Holiday bundle: theme + popup + slides
+
+One holiday can switch on a theme, a popup and slides together. Recommended model (Q-S2): a popup or slide may reference a
+**season** (`season_id`, nullable). A linked item is visible when it is enabled **and** its season is active (its own schedule
+fields are disabled in the UI and ignored; unlinked items behave exactly as in 16.5-16.6). The popup overlap rule uses the
+season's window. The season form has a "Holiday content" panel: linked popup and slides, plus "Create popup for this holiday" and
+"Add slide" shortcuts that open the normal forms with the link set. A holiday overview shows what goes live and when. Steps 12 and
+13 need no change beyond adding the nullable column, which can be done additively afterwards or folded into those Steps if the
+Owner approves first (Q-S7).
+
+### 20.7 Admin screens (Step S4)
+
+Nav: a fourth tab **Seasons** in the Website entry (16.7), normal templates 12.1-12.3. List: timeline strip of the year, status
+badges, pagination 20, filters (status, year). Form: preset picker as cards (swatch, name, ornament thumbnail), dates (Vietnam
+time, inclusive last day), greeting VI/EN with the preset default as placeholder, toggles (customer, admin, particles, enabled),
+holiday content panel (20.6). **Preview:** desktop and phone frames x light/dark rendering the real public components with the
+preset scoped to the frame (scopable selectors, 20.2); no public preview URL exists, so nothing can leak.
+
+### 20.8 Step plan (own Steps; each: plan first, report, Owner review)
+
+| Step | Scope                                                                                                                                                                                                            | Touches                                    |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| S1   | Registry (data) in contracts, generated `season.css`, scopable selectors, neutral defaults, admin accent line, contrast test presets x themes. No schema/API.                                                    | `packages/contracts`, `packages/ui`, shell |
+| S2   | Decoration kit: ornaments per preset, frame, greeting strip, particles with reduced-motion and `ls-fx` switch; specimen screenshots for Owner review (dev-only route removed).                                   | `packages/ui`, web                         |
+| S3   | Migration `website_seasons` (+ nullable link columns), API, overlap rule, audit, public endpoint, integration tests.                                                                                             | database, api, contracts                   |
+| S4   | Admin Seasons tab: list, form, preview, holiday content panel, delete rule.                                                                                                                                      | web                                        |
+| S5   | Wiring: root layout reads the public endpoint (60 s revalidate, failure = no season), customer/public shells and admin touch, mobile payload note, combined-holiday visibility in public popup/slides endpoints. | web, api                                   |
+
+Order: S1 -> S2; S3 needs Step 11 (permission, Website nav) and is best after 12-13 for the link; S4 needs S1-S3; S5 last. Recommended
+placement: S1-S5 after Step 13 and before the Step 14 final gate, so one validation covers them (Q-S7). S1 may start earlier.
+New dependencies: none (plain SVG and CSS).
+
+### 20.9 Does the Step 5 mechanism need changes? (plan only)
+
+Step 5 needs **no rework**. Three small adjustments belong to Step S1, none to Step 5's code now:
+
+1. Theme tokens are declared on `:root` (light), `:root[data-theme='dark']` and the media query; season tokens must be **scopable**
+   (attribute selector without `:root`) for preview frames, as in 20.2. `useTheme` and `themeInitScript` stay unchanged.
+2. The root layout must read the active season **on the server** and set `data-season` (today it only sets the language and font
+   variable). It is shared by the website and the workforce area, so the lookup must be cached (60 s) and fail closed to "no season".
+3. `tokens.test.ts` asserts the two dark blocks are identical; it is extended to generated season blocks, and a new test iterates
+   presets. `AppShell`/`AuthLayout` need only an optional accent line (a `box-shadow` reading `--ls-season-accent`, whose default is
+   the border color, so nothing changes without a season). `base.css` already removes motion under `prefers-reduced-motion`; the
+   particle component additionally renders nothing.
+
+### 20.10 Owner decisions still needed
+
+| ID    | Question                                                                                                                       | Recommendation                                                                                                  |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Q-S1  | D1 forbids gold and yellow, yet Tet (apricot blossom) and Mid-Autumn are traditionally gold. Keep D1 for seasons?              | **(rec)** yes: peach blossom (pink) for Tet, plum/coral for Mid-Autumn. An exception would reopen D1.           |
+| Q-S2  | Holiday bundle: linked popup/slides follow the season window (rec), or stay independent with shortcuts only?                   | **(rec)** follow the season (20.6).                                                                             |
+| Q-S3  | Prefill suggested dates for solar holidays (8/3, 14/2, 20/10, 30/4-1/5, 2/9, 25/12)? Lunar holidays never prefilled.           | **(rec)** yes, editable, confirm to save.                                                                       |
+| Q-S4  | Admin touch: accent line + greeting chip only, with a per-device "hide"?                                                       | **(rec)** yes.                                                                                                  |
+| Q-S5  | Particles: on by default for the customer side with the visitor "Turn off effects" control, at most 24 (fewer on phones)?      | **(rec)** yes.                                                                                                  |
+| Q-S6  | Default VI/EN greetings per preset are proposals; maximum 80 chars, the Owner may override each schedule.                      | **(rec)** yes; proposals are listed for approval in S1.                                                         |
+| Q-S7  | Sequencing: S1-S5 after Step 13 and before Step 14 (rec), or after Part 2; and the `season_id` link column now (rec) or later? | **(rec)** after Step 13; customer visuals on current public pages, full polish in Part 2; add the column in S3. |
+| Q-S8  | Mobile app: public endpoint + shared registry, app bundles its own ornaments (rec), or the API serves SVG?                     | **(rec)** bundled ornaments.                                                                                    |
+| Q-S9  | Permission: reuse `MANAGE_WEBSITE_CONTENT` (rec) or add a separate code?                                                       | **(rec)** reuse (Q-CM1 logic).                                                                                  |
+| Q-S10 | Preview only inside admin frames, no shareable preview link?                                                                   | **(rec)** yes.                                                                                                  |
+| Q-S11 | Overlapping enabled seasons rejected (rec) instead of "newest wins"?                                                           | **(rec)** reject, as popups.                                                                                    |
