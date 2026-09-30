@@ -1,23 +1,12 @@
 'use client';
 
-import {
-  deltaDirection,
-  deltaPercent,
-  deltaText,
-  formatValue,
-  type DeltaWords,
-  type Format,
-  type SlotIndex,
-} from './chart-core';
+import { formatValue, type Format, type SlotIndex } from './chart-core';
 import { Sparkline } from './charts';
 import { cx } from './cx';
 import { IconButton } from './button';
-import { Icon } from './icons';
+import { DeltaLine, type StatLabels } from './stat';
 
-export interface KpiCardLabels extends DeltaWords {
-  /** What the change is measured against, e.g. "vs previous period". */
-  comparedTo: string;
-}
+export type KpiCardLabels = StatLabels;
 
 /**
  * One headline number: label, value, the change against the previous period (arrow, signed percent
@@ -54,16 +43,6 @@ export function KpiCard({
   labels: KpiCardLabels;
   className?: string | undefined;
 }) {
-  const change = deltaPercent(value, previous);
-  const direction = change === null ? null : deltaDirection(change);
-  const tone =
-    direction === null || direction === 'flat'
-      ? 'neutral'
-      : goodDirection
-        ? direction === goodDirection
-          ? 'good'
-          : 'bad'
-        : direction;
   const hasSpark = Boolean(sparkline && sparkline.length >= 2);
   return (
     <article className={cx('ls-kpi', className)}>
@@ -72,16 +51,13 @@ export function KpiCard({
         {info ? <IconButton icon="info" label={info} /> : null}
       </div>
       <p className="ls-kpi-value">{formatValue(value, format)}</p>
-      {change === null || direction === null ? null : (
-        <p className="ls-kpi-delta" data-tone={tone}>
-          <Icon
-            name={direction === 'up' ? 'arrow-up' : direction === 'down' ? 'arrow-down' : 'minus'}
-            size={16}
-          />
-          <span>{deltaText(change, format.locale, labels)}</span>
-          <span className="ls-kpi-compared">{labels.comparedTo}</span>
-        </p>
-      )}
+      <DeltaLine
+        value={value}
+        previous={previous}
+        format={format}
+        goodDirection={goodDirection}
+        labels={labels}
+      />
       {asOf || hasSpark ? (
         <div className="ls-kpi-foot">
           {asOf ? <p className="ls-kpi-asof">{asOf}</p> : <span />}

@@ -2000,6 +2000,172 @@
   cursor: grabbing;
 }
 
+/* Bare items: the content is a Card, so the item draws no frame; a dashed outline shows only while editing. */
+.ls-sortable-bare .ls-sortable-item {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.ls-sortable-bare .ls-sortable-item:has(> .ls-sortable-bar) {
+  padding: var(--ls-space-2);
+  border: 1px dashed var(--ls-border);
+}
+
+.ls-sortable-bare .ls-sortable-item[data-dragging='true'] {
+  border: 1px dashed var(--ls-brand);
+  background: var(--ls-bg-raised);
+}
+
+/* ---- Widget grid (Step 7, contract 15): 1 column on phones, 6 from 640 px, 12 from 1280 px (the sidebar
+   takes 16 rem, so 12 columns need the wider content area). Widgets flow by order; size = column span. ---- */
+.ls-widget-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ls-space-4);
+}
+
+.ls-widget-grid .ls-sortable-body {
+  display: grid;
+}
+
+.ls-widget-grid .ls-sortable-body > .ls-card {
+  height: 100%;
+}
+
+@media (min-width: 640px) {
+  .ls-widget-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .ls-widget-s {
+    grid-column: span 3;
+  }
+
+  .ls-widget-m,
+  .ls-widget-l,
+  .ls-widget-xl {
+    grid-column: span 6;
+  }
+}
+
+@media (min-width: 1280px) {
+  .ls-widget-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .ls-widget-s {
+    grid-column: span 3;
+  }
+
+  .ls-widget-m {
+    grid-column: span 6;
+  }
+
+  .ls-widget-l {
+    grid-column: span 9;
+  }
+
+  .ls-widget-xl {
+    grid-column: span 12;
+  }
+}
+
+/* Height reserved per size so loading, empty and error states do not shift the layout. */
+.ls-widget {
+  min-height: calc(var(--ls-space-10) * 3);
+}
+
+.ls-widget[data-size='l'],
+.ls-widget[data-size='xl'] {
+  min-height: calc(var(--ls-space-10) * 6);
+}
+
+.ls-widget-body {
+  display: grid;
+  align-content: start;
+  gap: var(--ls-space-3);
+  min-width: 0;
+}
+
+.ls-widget-list {
+  display: grid;
+  gap: var(--ls-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-widget-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ls-space-1) var(--ls-space-3);
+  min-width: 0;
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-widget-row-main {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ls-widget-row-meta {
+  color: var(--ls-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ls-widget-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr));
+  gap: var(--ls-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Customize mode: size and hide controls above a widget. The card takes the remaining height. */
+.ls-widget-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ls-space-2);
+}
+
+.ls-widget-grid .ls-sortable-body:has(> .ls-widget-edit) {
+  grid-template-rows: auto 1fr;
+  gap: var(--ls-space-2);
+}
+
+.ls-widget-links .ls-btn {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: start;
+}
+
+.ls-widget-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2);
+}
+
+.ls-dashboard-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ls-space-3) var(--ls-space-4);
+}
+
+.ls-dashboard-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ls-space-3);
+}
+
 /* ==== Chart kit (Step 6, contract 14.4) ==== */
 .ls-chart-s1 {
   --ls-series: var(--ls-chart-1);
@@ -2029,6 +2195,7 @@
   --ls-series: var(--ls-chart-other);
 }
 
+.ls-card,
 .ls-chart-frame,
 .ls-kpi {
   display: grid;
@@ -2043,6 +2210,7 @@
 }
 
 @media (min-width: 640px) {
+  .ls-card,
   .ls-chart-frame,
   .ls-kpi {
     padding: var(--ls-space-5);
@@ -2050,10 +2218,77 @@
 }
 
 @media (min-width: 1024px) {
+  .ls-card,
   .ls-chart-frame,
   .ls-kpi {
     padding: var(--ls-space-6);
   }
+}
+
+/* ---- Card header and Stat (Step 7, contract 9.4) ---- */
+.ls-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ls-space-3);
+}
+
+.ls-card-titles {
+  min-width: 0;
+}
+
+.ls-card-title {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-text-lg);
+  font-weight: 600;
+  line-height: var(--ls-leading-lg);
+}
+
+.ls-card-description {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-2);
+}
+
+.ls-stat {
+  display: grid;
+  gap: var(--ls-space-1);
+  min-width: 0;
+}
+
+.ls-stat-label {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  font-weight: 500;
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-stat-value {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-text-2xl);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: var(--ls-leading-2xl);
+  overflow-wrap: anywhere;
+}
+
+.ls-stat-note {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
 }
 
 .ls-chart-head {

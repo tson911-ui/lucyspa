@@ -67,6 +67,13 @@ export interface SortableProps<T> {
   /** When true nothing can be dragged or moved and no handles are drawn (outside edit mode). */
   disabled?: boolean | undefined;
   className?: string | undefined;
+  /**
+   * `bare`: the item draws no frame of its own because its content is already a `Card` (the dashboard).
+   * While editing, a dashed outline marks each item instead.
+   */
+  variant?: 'framed' | 'bare' | undefined;
+  /** Layout class per item (for example a column span). */
+  itemClassName?: ((item: T) => string | undefined) | undefined;
 }
 
 type Layout = 'list' | 'grid';
@@ -91,6 +98,8 @@ function SortableCollection<T>({
   ariaLabel,
   disabled = false,
   className,
+  variant = 'framed',
+  itemClassName,
   layout,
 }: SortableProps<T> & { layout: Layout }) {
   const ids = items.map(getId);
@@ -166,13 +175,18 @@ function SortableCollection<T>({
     onReorder(next);
   }
 
-  const listClass = cx('ls-sortable', `ls-sortable-${layout}`, className);
+  const listClass = cx(
+    'ls-sortable',
+    `ls-sortable-${layout}`,
+    variant === 'bare' && 'ls-sortable-bare',
+    className,
+  );
 
   if (disabled) {
     return (
       <ul className={listClass} aria-label={ariaLabel}>
         {items.map((item, index) => (
-          <li key={getId(item)} className="ls-sortable-item">
+          <li key={getId(item)} className={cx('ls-sortable-item', itemClassName?.(item))}>
             <div className="ls-sortable-body">
               {renderItem(item, { index, count: items.length, dragging: false })}
             </div>
@@ -208,6 +222,7 @@ function SortableCollection<T>({
                 layout={layout}
                 labels={labels}
                 reducedMotion={reducedMotion}
+                itemClass={itemClassName?.(item)}
                 onMove={moveByButton}
               >
                 {(dragging) => renderItem(item, { index, count: items.length, dragging })}
@@ -235,6 +250,7 @@ function SortableItem({
   layout,
   labels,
   reducedMotion,
+  itemClass,
   onMove,
   children,
 }: {
@@ -245,6 +261,7 @@ function SortableItem({
   layout: Layout;
   labels: SortableLabels;
   reducedMotion: boolean;
+  itemClass: string | undefined;
   onMove: (id: string, delta: -1 | 1) => void;
   children: (dragging: boolean) => ReactNode;
 }) {
@@ -297,7 +314,7 @@ function SortableItem({
   return (
     <li
       ref={setNodeRef}
-      className="ls-sortable-item"
+      className={cx('ls-sortable-item', itemClass)}
       data-sortable-id={id}
       data-dragging={isDragging ? 'true' : undefined}
       style={{ transform: CSS.Translate.toString(transform), transition: transition ?? undefined }}

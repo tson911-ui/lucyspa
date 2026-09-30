@@ -170,6 +170,11 @@ export {
 } from './shell-core';
 export type { ArrangedNavGroup, ShellNavGroup, ShellNavItem } from './shell-core';
 
+// Card and Stat (Step 7): surface container and label + value + change.
+export { Card, CardHeader } from './card';
+export { DeltaLine, Stat } from './stat';
+export type { StatLabels } from './stat';
+
 // Sortable primitives and chart kit (Step 6): drag-and-drop lists/grids, charts, KPI card, date range.
 export { SortableGrid, SortableList } from './sortable';
 export type { SortableItemState, SortableLabels, SortableProps } from './sortable';
