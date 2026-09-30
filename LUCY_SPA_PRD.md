@@ -3648,7 +3648,7 @@ phase.
 
 When this PRD is provided to Codex or another coding agent:
 
-1.  Read this PRD completely before implementation.
+1.  Read the PRD sections relevant to the requested task before implementation.
 2.  Inspect the existing repository before modifying it.
 3.  Do not rewrite working architecture without a concrete reason.
 4.  Work only on the requested phase/task.
