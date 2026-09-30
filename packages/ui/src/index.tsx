@@ -13,3 +13,17 @@ export function BrandWordmark() {
     </span>
   );
 }
+
+export { Icon, iconNames } from './icons';
+export type { IconName, IconProps } from './icons';
+export {
+  THEME_COOKIE,
+  THEME_COOKIE_MAX_AGE,
+  parseThemeCookie,
+  resolveTheme,
+  serializeThemeCookie,
+  themeInitScript,
+} from './theme-core';
+export type { ResolvedTheme, ThemePreference } from './theme-core';
+export { useTheme } from './use-theme';
+export type { ThemeState } from './use-theme';

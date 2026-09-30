@@ -1,12 +1,226 @@
-/* Provisional branding tokens. Replace after Owner supplies final brand assets. */
+/* Lucy Spa design tokens v2 (docs/UXUI_REDESIGN_DESIGN.md section 6). Semantic names, WCAG-checked
+   by tokens.test.ts. Light values live under :root, dark values are declared twice (explicit
+   toggle and system preference); the test asserts both dark blocks stay identical. */
 :root {
-  --lucy-red: #782b36;
-  --lucy-gold: #b69456;
-  --lucy-gold-light: #e9d6aa;
-  --lucy-ivory: #faf7f1;
-  --lucy-ink: #382c2c;
-  --lucy-muted: #726261;
-  --lucy-border: #e5dcd2;
+  color-scheme: light;
+
+  /* Surfaces */
+  --ls-bg-page: #faf7f7;
+  --ls-bg-surface: #ffffff;
+  --ls-bg-raised: #ffffff;
+  --ls-bg-sunken: #f3eeee;
+
+  /* Text */
+  --ls-text: #221a1c;
+  --ls-text-muted: #5c4e51;
+  --ls-text-subtle: #6f6164;
+
+  /* Lines */
+  --ls-border: #e6dcdd;
+  --ls-border-control: #8c7d80;
+
+  /* Brand */
+  --ls-brand: #782b37;
+  --ls-brand-fill: #782b37;
+  --ls-on-brand: #ffffff;
+  --ls-brand-fill-hover: #632330;
+  --ls-brand-soft: #f8edef;
+  --ls-brand-on-soft: #782b37;
+  --ls-focus: #782b37;
+
+  /* Status (never color-only, see contract 6.4) */
+  --ls-danger: #b3261e;
+  --ls-danger-bg: #fdecea;
+  --ls-on-danger: #ffffff;
+  --ls-success: #1e6b3c;
+  --ls-success-bg: #e6f3ea;
+  --ls-warning: #8f4300;
+  --ls-warning-bg: #fdeedd;
+  --ls-info: #22518a;
+  --ls-info-bg: #e8f0fa;
+
+  --ls-overlay: rgb(34 26 28 / 0.5);
+  --ls-shadow-sm: 0 1px 2px rgb(34 26 28 / 0.06);
+  --ls-shadow-md: 0 4px 16px rgb(34 26 28 / 0.1);
+  --ls-shadow-lg: 0 12px 32px rgb(34 26 28 / 0.16);
+
+  /* Charts (contract 6.5): fixed order, six slots, never cycled */
+  --ls-chart-surface: #ffffff;
+  --ls-chart-grid: #e6dcdd;
+  --ls-chart-1: #a03a4c;
+  --ls-chart-2: #2b6cb0;
+  --ls-chart-3: #d2691e;
+  --ls-chart-4: #0b8f83;
+  --ls-chart-5: #7c4dbd;
+  --ls-chart-6: #3f8f3a;
+  --ls-chart-other: #6f6164;
+
+  /* Typography (contract 5). The font variable is set by next/font in the root layout. */
+  --ls-font-sans: var(--font-be-vietnam-pro), system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+  --ls-text-xs: 0.75rem;
+  --ls-leading-xs: 1rem;
+  --ls-text-sm: 0.875rem;
+  --ls-leading-sm: 1.25rem;
+  --ls-text-md: 1rem;
+  --ls-leading-md: 1.5rem;
+  --ls-text-lg: 1.125rem;
+  --ls-leading-lg: 1.5rem;
+  --ls-text-xl: 1.5rem;
+  --ls-leading-xl: 1.3;
+  --ls-text-2xl: 2rem;
+  --ls-leading-2xl: 1.2;
+
+  /* Spacing (4 px base), radius, sizes */
+  --ls-space-1: 0.25rem;
+  --ls-space-2: 0.5rem;
+  --ls-space-3: 0.75rem;
+  --ls-space-4: 1rem;
+  --ls-space-5: 1.25rem;
+  --ls-space-6: 1.5rem;
+  --ls-space-7: 2rem;
+  --ls-space-8: 2.5rem;
+  --ls-space-9: 3rem;
+  --ls-space-10: 4rem;
+  --ls-gutter: 1rem;
+  --ls-radius-sm: 6px;
+  --ls-radius-md: 10px;
+  --ls-radius-full: 999px;
+  --ls-control-h: 40px;
+  --ls-row-h: 48px;
+  --ls-icon-size: 20px;
+  --ls-sidebar-w: 264px;
+  --ls-sidebar-w-collapsed: 72px;
+  --ls-content-max: 1280px;
+  --ls-form-max: 720px;
+
+  /* Motion (admin: opacity/transform/background only) and stacking */
+  --ls-dur-fast: 120ms;
+  --ls-dur-base: 180ms;
+  --ls-ease: cubic-bezier(0.2, 0, 0, 1);
+  --ls-z-sticky: 10;
+  --ls-z-drawer: 20;
+  --ls-z-popover: 30;
+  --ls-z-dialog: 40;
+  --ls-z-toast: 50;
+
+  /* Legacy aliases kept until Part 2 so customer.css keeps working. */
+  --lucy-red: var(--ls-brand);
+  --lucy-ink: var(--ls-text);
+  --lucy-muted: var(--ls-text-muted);
+  --lucy-border: var(--ls-border);
   --lucy-font-display: Georgia, 'Times New Roman', serif;
-  --lucy-font-body: Arial, Helvetica, sans-serif;
+  --lucy-font-body: var(--ls-font-sans);
+}
+
+@media (min-width: 640px) {
+  :root {
+    --ls-gutter: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --ls-gutter: 2rem;
+  }
+}
+
+@media (pointer: coarse), (max-width: 1023px) {
+  :root {
+    --ls-control-h: 44px;
+    --ls-row-h: 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ls-dur-fast: 0ms;
+    --ls-dur-base: 0ms;
+  }
+}
+
+/* Dark: selected, not inverted. Keep the two blocks below identical (tokens.test.ts). */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --ls-bg-page: #140f10;
+  --ls-bg-surface: #1d1618;
+  --ls-bg-raised: #261d20;
+  --ls-bg-sunken: #100b0c;
+  --ls-text: #f4ecec;
+  --ls-text-muted: #c4b5b8;
+  --ls-text-subtle: #a4949a;
+  --ls-border: #372b2e;
+  --ls-border-control: #7d6c70;
+  --ls-brand: #e08a9a;
+  --ls-brand-fill: #e08a9a;
+  --ls-on-brand: #2a0f16;
+  --ls-brand-fill-hover: #eaa0ae;
+  --ls-brand-soft: #3a1b23;
+  --ls-brand-on-soft: #f0b3be;
+  --ls-focus: #e08a9a;
+  --ls-danger: #ff9484;
+  --ls-danger-bg: #3d1c1a;
+  --ls-on-danger: #2a0f16;
+  --ls-success: #7fd39a;
+  --ls-success-bg: #14301d;
+  --ls-warning: #ffb066;
+  --ls-warning-bg: #3a2410;
+  --ls-info: #8ebcf0;
+  --ls-info-bg: #14283f;
+  --ls-overlay: rgb(0 0 0 / 0.65);
+  --ls-shadow-sm: none;
+  --ls-shadow-md: none;
+  --ls-shadow-lg: none;
+  --ls-chart-surface: #1b1416;
+  --ls-chart-grid: #4a3d40;
+  --ls-chart-1: #c9647a;
+  --ls-chart-2: #4f8fd6;
+  --ls-chart-3: #d1722f;
+  --ls-chart-4: #2aa89b;
+  --ls-chart-5: #9a78d6;
+  --ls-chart-6: #55a648;
+  --ls-chart-other: #a4949a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --ls-bg-page: #140f10;
+    --ls-bg-surface: #1d1618;
+    --ls-bg-raised: #261d20;
+    --ls-bg-sunken: #100b0c;
+    --ls-text: #f4ecec;
+    --ls-text-muted: #c4b5b8;
+    --ls-text-subtle: #a4949a;
+    --ls-border: #372b2e;
+    --ls-border-control: #7d6c70;
+    --ls-brand: #e08a9a;
+    --ls-brand-fill: #e08a9a;
+    --ls-on-brand: #2a0f16;
+    --ls-brand-fill-hover: #eaa0ae;
+    --ls-brand-soft: #3a1b23;
+    --ls-brand-on-soft: #f0b3be;
+    --ls-focus: #e08a9a;
+    --ls-danger: #ff9484;
+    --ls-danger-bg: #3d1c1a;
+    --ls-on-danger: #2a0f16;
+    --ls-success: #7fd39a;
+    --ls-success-bg: #14301d;
+    --ls-warning: #ffb066;
+    --ls-warning-bg: #3a2410;
+    --ls-info: #8ebcf0;
+    --ls-info-bg: #14283f;
+    --ls-overlay: rgb(0 0 0 / 0.65);
+    --ls-shadow-sm: none;
+    --ls-shadow-md: none;
+    --ls-shadow-lg: none;
+    --ls-chart-surface: #1b1416;
+    --ls-chart-grid: #4a3d40;
+    --ls-chart-1: #c9647a;
+    --ls-chart-2: #4f8fd6;
+    --ls-chart-3: #d1722f;
+    --ls-chart-4: #2aa89b;
+    --ls-chart-5: #9a78d6;
+    --ls-chart-6: #55a648;
+    --ls-chart-other: #a4949a;
+  }
 }

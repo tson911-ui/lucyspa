@@ -1,9 +1,20 @@
 import type { Metadata } from 'next';
+import { Be_Vietnam_Pro } from 'next/font/google';
 import { notFound } from 'next/navigation';
+import { themeInitScript } from '@lucy-spa/ui';
 import '@lucy-spa/ui/tokens.css';
+import '@lucy-spa/ui/base.css';
 import { getDictionary } from '../../i18n/dictionaries';
 import { isLocale, locales } from '../../i18n/locales';
 import '../globals.css';
+
+// Designed for Vietnamese (stacked diacritics); self-hosted by next/font at build time.
+const beVietnamPro = Be_Vietnam_Pro({
+  subsets: ['latin', 'vietnamese'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-be-vietnam-pro',
+});
 
 interface LocaleLayoutProps {
   children: React.ReactNode;
@@ -35,7 +46,11 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   const dictionary = getDictionary(locale);
 
   return (
-    <html lang={locale}>
+    // The pre-paint script may set data-theme from the ls-theme cookie before hydration.
+    <html lang={locale} className={beVietnamPro.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body>
         <a className="skip-link" href="#main-content">
           {dictionary.skipToContent}

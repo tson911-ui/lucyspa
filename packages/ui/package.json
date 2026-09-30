@@ -5,14 +5,16 @@
   "type": "module",
   "exports": {
     ".": "./src/index.tsx",
-    "./tokens.css": "./src/tokens.css"
+    "./tokens.css": "./src/tokens.css",
+    "./base.css": "./src/base.css"
   },
   "sideEffects": [
     "**/*.css"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"src/**/*.test.ts\""
   },
   "peerDependencies": {
     "react": "^19.3.0"

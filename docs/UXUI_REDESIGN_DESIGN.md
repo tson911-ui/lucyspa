@@ -2,7 +2,7 @@
 
 **Status: Step 1 of 14 (Design Contract), CLOSED / OWNER APPROVED.** The Owner accepted every recommended default in section 17
 (Q-D1 to Q-D6 and Q-CM1 to Q-CM13) as written; they are LOCKED Owner decisions. Documentation only. No code, schema, API, migration or
-runtime change was made. Step 2 has **NOT** started. Nothing was deployed.
+runtime change was made. Step 2 (Foundations) is **CLOSED / OWNER APPROVED** (`UXUI_REDESIGN_STEP2_FOUNDATIONS.md`). Nothing was deployed.
 
 This is the authoritative contract for the UX/UI Redesign track, Part 1 (workforce/admin area plus the website-content
 feature group). `LUCY_SPA_PRD.md` governs where this document is silent (PRD 4.1 was updated for the Owner decisions below).
@@ -10,21 +10,21 @@ Baseline: `main` at `5952992` (Phase 4 closed; PayOS webhook hotfix).
 
 ## Index: which Step reads which sections
 
-| Step | Title                                       | Sections to read             |
-| ---- | ------------------------------------------- | ---------------------------- |
-| 2    | Foundations: tokens, theme, typography      | 1, 2, 5, 6, 7, 8             |
-| 3    | Core components (buttons, forms, dialogs)   | 1, 2, 5, 7, 9.1-9.3, 10, 11  |
-| 4    | Data components (table, pagination, filters)| 2, 7, 9.4-9.5, 10, 11, 12    |
-| 5    | App shell and navigation                    | 2, 4, 7, 9.6, 12.6, 13       |
-| 6    | Sortable primitives + chart kit             | 2, 6.5, 9.7-9.8, 14.4        |
-| 7    | Dashboard (widgets, drag and drop)          | 4.3, 12.5, 14.1-14.3, 15     |
-| 8    | Migrate People and organization             | 3, 10, 11, 12                |
-| 9    | Migrate Catalog and Finance                 | 3, 10, 11, 12                |
-| 10   | Migrate Operations and personal pages       | 3, 10, 11, 12                |
-| 11   | Content A: storage + media library          | 16.1-16.4, 16.7-16.9, 17     |
-| 12   | Content B: promotional popup                | 16.5, 16.7-16.9, 17          |
-| 13   | Content C: homepage slider                  | 16.6-16.9, 17                |
-| 14   | Part 1 final validation                     | 18, 19                       |
+| Step | Title                                        | Sections to read            |
+| ---- | -------------------------------------------- | --------------------------- |
+| 2    | Foundations: tokens, theme, typography       | 1, 2, 5, 6, 7, 8            |
+| 3    | Core components (buttons, forms, dialogs)    | 1, 2, 5, 7, 9.1-9.3, 10, 11 |
+| 4    | Data components (table, pagination, filters) | 2, 7, 9.4-9.5, 10, 11, 12   |
+| 5    | App shell and navigation                     | 2, 4, 7, 9.6, 12.6, 13      |
+| 6    | Sortable primitives + chart kit              | 2, 6.5, 9.7-9.8, 14.4       |
+| 7    | Dashboard (widgets, drag and drop)           | 4.3, 12.5, 14.1-14.3, 15    |
+| 8    | Migrate People and organization              | 3, 10, 11, 12               |
+| 9    | Migrate Catalog and Finance                  | 3, 10, 11, 12               |
+| 10   | Migrate Operations and personal pages        | 3, 10, 11, 12               |
+| 11   | Content A: storage + media library           | 16.1-16.4, 16.7-16.9, 17    |
+| 12   | Content B: promotional popup                 | 16.5, 16.7-16.9, 17         |
+| 13   | Content C: homepage slider                   | 16.6-16.9, 17               |
+| 14   | Part 1 final validation                      | 18, 19                      |
 
 Every Step also reads section 0 (rules) and section 17 (Owner decisions) for the answers it depends on.
 
@@ -32,19 +32,19 @@ Every Step also reads section 0 (rules) and section 17 (Owner decisions) for the
 
 ## 0. Owner decisions recorded (LOCKED for this track)
 
-| #   | Decision                                                                                                                                  |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Brand colors: primary red `#782b37` and white `#ffffff`. **No gold anywhere** (also no yellow/amber that reads as gold).                    |
-| D2  | Light and dark mode with a user toggle; default follows the system.                                                                        |
-| D3  | Admin (workforce) area first. Customer area and public site are a later part of this track (own contract).                                 |
-| D4  | Admin is modern, luxurious, professional, very easy to use, fast; no cinematic motion (PRD 4.4 applies to the customer side only).        |
-| D5  | Desktop, tablet and phone; VI/EN; Vietnamese diacritics must render well.                                                                  |
-| D6  | Clear, consistent layout on every page. Every list has pagination (plus search/filters where useful).                                      |
+| #   | Decision                                                                                                                                                                                                                                                  |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Brand colors: primary red `#782b37` and white `#ffffff`. **No gold anywhere** (also no yellow/amber that reads as gold).                                                                                                                                  |
+| D2  | Light and dark mode with a user toggle; default follows the system.                                                                                                                                                                                       |
+| D3  | Admin (workforce) area first. Customer area and public site are a later part of this track (own contract).                                                                                                                                                |
+| D4  | Admin is modern, luxurious, professional, very easy to use, fast; no cinematic motion (PRD 4.4 applies to the customer side only).                                                                                                                        |
+| D5  | Desktop, tablet and phone; VI/EN; Vietnamese diacritics must render well.                                                                                                                                                                                 |
+| D6  | Clear, consistent layout on every page. Every list has pagination (plus search/filters where useful).                                                                                                                                                     |
 | D7  | Edit and Delete buttons are clear and consistently placed; destructive actions use a confirmation dialog. Where records must never be deleted (financial/operational history) show the allowed action (Cancel, Deactivate, Correct), never a fake Delete. |
-| D8  | Dashboard of widgets, rearrangeable per user by drag and drop. Drag and drop also orders images and slides.                                |
-| D9  | Design the dashboard and a shared chart kit now so Phase 8 analytics plug in without redesign. Only widgets backed by existing data are built in this track; permission rules (for example `VIEW_REVENUE`) apply to widgets. |
-| D10 | Website content management (media library, promotional popup, homepage slider) is planned as separate Steps (11-13) since it needs storage, schema and API. Respect PRD 24.1. No page builder. |
-| D11 | Apart from the content-management group, **no business logic or API changes** in this track.                                              |
+| D8  | Dashboard of widgets, rearrangeable per user by drag and drop. Drag and drop also orders images and slides.                                                                                                                                               |
+| D9  | Design the dashboard and a shared chart kit now so Phase 8 analytics plug in without redesign. Only widgets backed by existing data are built in this track; permission rules (for example `VIEW_REVENUE`) apply to widgets.                              |
+| D10 | Website content management (media library, promotional popup, homepage slider) is planned as separate Steps (11-13) since it needs storage, schema and API. Respect PRD 24.1. No page builder.                                                            |
+| D11 | Apart from the content-management group, **no business logic or API changes** in this track.                                                                                                                                                              |
 
 Standing project rules still apply (CLAUDE.md): authorization is permission + branch scope server-side (never role names),
 money is integer VND, history is never deleted, migrations are additive, no commit/deploy without the Owner.
@@ -85,29 +85,29 @@ Source: `apps/web/src/app/[locale]/workforce/(app)` routes and `components/workf
 `/{locale}/workforce`. "Template" is the target page template of section 12. "List/paging today" records what Step 4/8-10
 must adapt (API is not changed: see decision Q-D3).
 
-| Route                         | Screen (LOC)                              | Nav permission (UI hint)                       | Template   | Lists / paging today                      | Destructive actions today (target treatment)                                              |
-| ----------------------------- | ----------------------------------------- | ---------------------------------------------- | ---------- | ----------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `/` dashboard                 | dashboard (146)                           | any workforce                                  | Dashboard  | none                                      | none                                                                                      |
-| `/account`                    | my-account (624)                          | any workforce                                  | Form/tabs  | none                                      | none (password/email changes keep re-auth dialogs)                                        |
-| `/income`                     | my-income (193)                           | any workforce                                  | List       | client, unpaged                           | none                                                                                      |
-| `/notifications`              | notifications inbox                       | any workforce                                  | List       | API cursor ("load more")                  | **Archive** (not delete)                                                                  |
-| `/attendance`                 | attendance (430)                          | employee or `VIEW_ATTENDANCE`                  | List+form  | unpaged                                   | none; **Correct** (existing)                                                              |
-| `/leave`                      | leave (423)                               | employee or `APPROVE_LEAVE`                    | List+form  | unpaged                                   | **Cancel** request                                                                        |
-| `/collaborator-schedule`      | collaborator-schedule (585)               | `VIEW/MANAGE_WORK_SCHEDULE`                    | Board      | calendar                                  | cancel occurrence (no delete)                                                             |
-| `/booking-board`              | booking-board (854)                       | `VIEW_BOOKINGS`                                | Board      | day board                                 | **Cancel** line / walk-in, No-show, Resolve end                                           |
-| `/walk-in`                    | walk-in (491)                             | `MANAGE_BOOKINGS`                              | Form       | none                                      | none                                                                                      |
-| `/my-services`                | my-services (245)                         | employee + `PERFORM_SERVICES`                  | Board      | short worklist                            | none                                                                                      |
-| `/reassignment`               | reassignment (384)                        | `REASSIGN_SERVICES`                            | List       | cursor ("load more")                      | none                                                                                      |
-| `/pos`, `/pos/[id]`           | pos (218), invoice (771), payments (727)  | `VIEW_INVOICES`                                | Board+detail | 7-day board, unpaged                    | **Cancel** invoice (re-auth), **Reverse** payment (`CORRECT_PAYMENTS`), never delete      |
-| `/branches`, `/branches/[id]` | branches (154), branch-detail (330)       | `MANAGE_BRANCHES`                              | List+detail| unpaged (few rows)                        | **Deactivate** (status)                                                                   |
-| `/services`, `/services/[id]` | services (563), service-detail (514)      | `MANAGE_SERVICES` / `MANAGE_SERVICE_PRICES`    | List+detail| grouped by category, unpaged              | service and category: **Delete** only where the API allows (never used); else **Deactivate** |
-| `/discounts`, `/discounts/[id]` | discounts (155), detail (368), form (213)| GLOBAL `MANAGE_DISCOUNTS`/`CREATE_VOUCHERS`    | List+detail| unpaged                                   | **Deactivate/Cancel** (no delete: financial history)                                      |
-| `/skills`                     | skills (229)                              | `MANAGE_SKILLS`                                | List       | unpaged                                   | **Deactivate** (status)                                                                   |
-| `/employees`, `/employees/[id]` | employees (417), detail (330), lifecycle (731), roles (301), skills (232), create (476) | `VIEW_EMPLOYEES` | List+detail+form | **server page + keyset** (only paged list today) | **End employment / disable access / revoke assignment** (never delete)                    |
-| `/organization`               | organization (1199)                       | `VIEW/MANAGE_ORGANIZATION`                     | Tree+forms | unpaged tree                              | **End** appointment, deactivate units                                                     |
-| `/teams`, `/teams/[id]`       | teams (905)                               | `VIEW/MANAGE_TEAMS`                            | List+detail| server page (`OrganizationPage`)          | **Delete** team (API supports), otherwise deactivate                                      |
-| `/roles`                      | roles (520), management-levels (51)       | `MANAGE_PERMISSIONS`                           | List+detail| unpaged                                   | none today (API has create, edit, set permissions only): Edit only, no Delete/Deactivate offered |
-| `/login`, `/forgot-password`  | login (160), forgot-password (240)        | public                                         | Auth       | none                                      | none                                                                                      |
+| Route                           | Screen (LOC)                                                                            | Nav permission (UI hint)                    | Template         | Lists / paging today                             | Destructive actions today (target treatment)                                                     |
+| ------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------- | ---------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `/` dashboard                   | dashboard (146)                                                                         | any workforce                               | Dashboard        | none                                             | none                                                                                             |
+| `/account`                      | my-account (624)                                                                        | any workforce                               | Form/tabs        | none                                             | none (password/email changes keep re-auth dialogs)                                               |
+| `/income`                       | my-income (193)                                                                         | any workforce                               | List             | client, unpaged                                  | none                                                                                             |
+| `/notifications`                | notifications inbox                                                                     | any workforce                               | List             | API cursor ("load more")                         | **Archive** (not delete)                                                                         |
+| `/attendance`                   | attendance (430)                                                                        | employee or `VIEW_ATTENDANCE`               | List+form        | unpaged                                          | none; **Correct** (existing)                                                                     |
+| `/leave`                        | leave (423)                                                                             | employee or `APPROVE_LEAVE`                 | List+form        | unpaged                                          | **Cancel** request                                                                               |
+| `/collaborator-schedule`        | collaborator-schedule (585)                                                             | `VIEW/MANAGE_WORK_SCHEDULE`                 | Board            | calendar                                         | cancel occurrence (no delete)                                                                    |
+| `/booking-board`                | booking-board (854)                                                                     | `VIEW_BOOKINGS`                             | Board            | day board                                        | **Cancel** line / walk-in, No-show, Resolve end                                                  |
+| `/walk-in`                      | walk-in (491)                                                                           | `MANAGE_BOOKINGS`                           | Form             | none                                             | none                                                                                             |
+| `/my-services`                  | my-services (245)                                                                       | employee + `PERFORM_SERVICES`               | Board            | short worklist                                   | none                                                                                             |
+| `/reassignment`                 | reassignment (384)                                                                      | `REASSIGN_SERVICES`                         | List             | cursor ("load more")                             | none                                                                                             |
+| `/pos`, `/pos/[id]`             | pos (218), invoice (771), payments (727)                                                | `VIEW_INVOICES`                             | Board+detail     | 7-day board, unpaged                             | **Cancel** invoice (re-auth), **Reverse** payment (`CORRECT_PAYMENTS`), never delete             |
+| `/branches`, `/branches/[id]`   | branches (154), branch-detail (330)                                                     | `MANAGE_BRANCHES`                           | List+detail      | unpaged (few rows)                               | **Deactivate** (status)                                                                          |
+| `/services`, `/services/[id]`   | services (563), service-detail (514)                                                    | `MANAGE_SERVICES` / `MANAGE_SERVICE_PRICES` | List+detail      | grouped by category, unpaged                     | service and category: **Delete** only where the API allows (never used); else **Deactivate**     |
+| `/discounts`, `/discounts/[id]` | discounts (155), detail (368), form (213)                                               | GLOBAL `MANAGE_DISCOUNTS`/`CREATE_VOUCHERS` | List+detail      | unpaged                                          | **Deactivate/Cancel** (no delete: financial history)                                             |
+| `/skills`                       | skills (229)                                                                            | `MANAGE_SKILLS`                             | List             | unpaged                                          | **Deactivate** (status)                                                                          |
+| `/employees`, `/employees/[id]` | employees (417), detail (330), lifecycle (731), roles (301), skills (232), create (476) | `VIEW_EMPLOYEES`                            | List+detail+form | **server page + keyset** (only paged list today) | **End employment / disable access / revoke assignment** (never delete)                           |
+| `/organization`                 | organization (1199)                                                                     | `VIEW/MANAGE_ORGANIZATION`                  | Tree+forms       | unpaged tree                                     | **End** appointment, deactivate units                                                            |
+| `/teams`, `/teams/[id]`         | teams (905)                                                                             | `VIEW/MANAGE_TEAMS`                         | List+detail      | server page (`OrganizationPage`)                 | **Delete** team (API supports), otherwise deactivate                                             |
+| `/roles`                        | roles (520), management-levels (51)                                                     | `MANAGE_PERMISSIONS`                        | List+detail      | unpaged                                          | none today (API has create, edit, set permissions only): Edit only, no Delete/Deactivate offered |
+| `/login`, `/forgot-password`    | login (160), forgot-password (240)                                                      | public                                      | Auth             | none                                             | none                                                                                             |
 
 Facts that drive the design:
 
@@ -141,16 +141,16 @@ The existing three groups (`home`, `operations`, `management`) are too coarse no
 group follows the table. Permission rules are **exactly** the existing `navigationFor` rules: this contract moves entries between
 groups, it does not change who sees what (D11).
 
-| Group (VI / EN)                       | Items (key: rule from `permissions.ts`)                                                                                                                           |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| *(top, ungrouped)* Tổng quan / Overview | `dashboard`                                                                                                                                                     |
-| **Vận hành / Operations**             | `bookingBoard` (`VIEW_BOOKINGS`), `walkIn` (`MANAGE_BOOKINGS`), `myServices` (employee + `PERFORM_SERVICES`), `reassignment` (`REASSIGN_SERVICES`), `collaboratorSchedule` (`VIEW/MANAGE_WORK_SCHEDULE`) |
-| **Thanh toán / Sales & payments**     | `pos` (`VIEW_INVOICES`), `discounts` (GLOBAL `MANAGE_DISCOUNTS` or `CREATE_VOUCHERS`)                                                                              |
-| **Nhân sự / People**                  | `employees` (`VIEW_EMPLOYEES`), `attendance` (employee or `VIEW_ATTENDANCE`), `leave` (employee or `APPROVE_LEAVE`), `teams` (`VIEW/MANAGE_TEAMS`), `organization` (`VIEW/MANAGE_ORGANIZATION`), `skills` (`MANAGE_SKILLS`) |
-| **Danh mục / Catalog**                | `services` (`MANAGE_SERVICES` or `MANAGE_SERVICE_PRICES`), `branches` (`MANAGE_BRANCHES`)                                                                          |
-| **Website** *(new, Steps 11-13)*      | `websiteContent` (media, popup, slider; new GLOBAL permission, Q-CM1)                                                                                             |
-| **Quản trị / Administration**         | `roles` (`MANAGE_PERMISSIONS`)                                                                                                                                    |
-| **Cá nhân / Personal** *(footer of sidebar or user menu)* | `myAccount`, `myIncome`, notifications                                                                                                        |
+| Group (VI / EN)                                           | Items (key: rule from `permissions.ts`)                                                                                                                                                                                     |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| _(top, ungrouped)_ Tổng quan / Overview                   | `dashboard`                                                                                                                                                                                                                 |
+| **Vận hành / Operations**                                 | `bookingBoard` (`VIEW_BOOKINGS`), `walkIn` (`MANAGE_BOOKINGS`), `myServices` (employee + `PERFORM_SERVICES`), `reassignment` (`REASSIGN_SERVICES`), `collaboratorSchedule` (`VIEW/MANAGE_WORK_SCHEDULE`)                    |
+| **Thanh toán / Sales & payments**                         | `pos` (`VIEW_INVOICES`), `discounts` (GLOBAL `MANAGE_DISCOUNTS` or `CREATE_VOUCHERS`)                                                                                                                                       |
+| **Nhân sự / People**                                      | `employees` (`VIEW_EMPLOYEES`), `attendance` (employee or `VIEW_ATTENDANCE`), `leave` (employee or `APPROVE_LEAVE`), `teams` (`VIEW/MANAGE_TEAMS`), `organization` (`VIEW/MANAGE_ORGANIZATION`), `skills` (`MANAGE_SKILLS`) |
+| **Danh mục / Catalog**                                    | `services` (`MANAGE_SERVICES` or `MANAGE_SERVICE_PRICES`), `branches` (`MANAGE_BRANCHES`)                                                                                                                                   |
+| **Website** _(new, Steps 11-13)_                          | `websiteContent` (media, popup, slider; new GLOBAL permission, Q-CM1)                                                                                                                                                       |
+| **Quản trị / Administration**                             | `roles` (`MANAGE_PERMISSIONS`)                                                                                                                                                                                              |
+| **Cá nhân / Personal** _(footer of sidebar or user menu)_ | `myAccount`, `myIncome`, notifications                                                                                                                                                                                      |
 
 Rationale: staff think "what do I do now" (operations, sales), managers "who works here" (people), owners "what do we offer"
 (catalog, website). Personal pages move to the user menu/sidebar footer because they are used rarely and clutter the task list.
@@ -171,21 +171,21 @@ Reserve topbar space so a Phase 8 search can be added without layout change.
 
 ## 5. Typography
 
-- **Family:** *Be Vietnam Pro* (designed for Vietnamese: correctly stacked diacritics) for all admin text, loaded with
+- **Family:** _Be Vietnam Pro_ (designed for Vietnamese: correctly stacked diacritics) for all admin text, loaded with
   `next/font/google` (self-hosted at build time, subsets `latin` and `vietnamese`, weights 400/500/600/700, `display: swap`), with
   fallback `system-ui, "Segoe UI", Roboto, Arial, sans-serif`. Numerals use `font-variant-numeric: tabular-nums` in tables and KPIs.
 - The current display serif (Georgia) stays out of admin: it lacks precomposed Vietnamese glyphs (already noted in
   `workforce.css`). A display face for the customer site is a Part 2 decision.
 - **Scale** (rem, base 16 px; line-height in parentheses; letter-spacing only on headings/eyebrow):
 
-| Token              | Size / line        | Weight | Use                                            |
-| ------------------ | ------------------ | ------ | ---------------------------------------------- |
-| `--ls-text-xs`     | 0.75 / 1.0 (16 px) | 500    | eyebrow, table meta, badges (never body text)  |
-| `--ls-text-sm`     | 0.875 / 1.25       | 400    | table cells, helper text, secondary            |
-| `--ls-text-md`     | 1 / 1.5            | 400    | body, form controls (16 px avoids iOS zoom)    |
-| `--ls-text-lg`     | 1.125 / 1.5        | 600    | card titles, section titles (h2)               |
-| `--ls-text-xl`     | 1.5 / 1.3          | 600    | page title (h1), `-0.01em`                     |
-| `--ls-text-2xl`    | 2 / 1.2            | 600    | dashboard greeting, KPI value                  |
+| Token           | Size / line        | Weight | Use                                           |
+| --------------- | ------------------ | ------ | --------------------------------------------- |
+| `--ls-text-xs`  | 0.75 / 1.0 (16 px) | 500    | eyebrow, table meta, badges (never body text) |
+| `--ls-text-sm`  | 0.875 / 1.25       | 400    | table cells, helper text, secondary           |
+| `--ls-text-md`  | 1 / 1.5            | 400    | body, form controls (16 px avoids iOS zoom)   |
+| `--ls-text-lg`  | 1.125 / 1.5        | 600    | card titles, section titles (h2)              |
+| `--ls-text-xl`  | 1.5 / 1.3          | 600    | page title (h1), `-0.01em`                    |
+| `--ls-text-2xl` | 2 / 1.2            | 600    | dashboard greeting, KPI value                 |
 
 - Body text on tables is `sm`; form inputs are `md`. Minimum text size anywhere is 12 px and only for non-essential meta.
 - Long Vietnamese strings run ~30% longer than English: no fixed-width buttons or badges; allow wrapping, `min-width` not
@@ -210,29 +210,29 @@ Tokens are defined under `:root` (light), `:root[data-theme="dark"]`, and
 
 Text on any surface is at least **4.5:1**; large text and UI boundaries (input borders, focus rings, chart marks) at least **3:1**.
 
-| Token                     | Light       | Dark        | Notes / verified contrast                                                                      |
-| ------------------------- | ----------- | ----------- | ---------------------------------------------------------------------------------------------- |
-| `--ls-bg-page`            | `#faf7f7`   | `#140f10`   | app background (faint wine tint, not cream)                                                    |
-| `--ls-bg-surface`         | `#ffffff`   | `#1d1618`   | cards, tables, dialogs                                                                         |
-| `--ls-bg-raised`          | `#ffffff`   | `#261d20`   | popovers, menus, hovered rows (light uses shadow instead of tint)                              |
-| `--ls-bg-sunken`          | `#f3eeee`   | `#100b0c`   | table header, inset areas                                                                      |
-| `--ls-text`               | `#221a1c`   | `#f4ecec`   | 17.0:1 on surface (L) / 15.3:1 (D)                                                             |
-| `--ls-text-muted`         | `#5c4e51`   | `#c4b5b8`   | 7.9:1 (L) / 9.0:1 (D)                                                                          |
-| `--ls-text-subtle`        | `#6f6164`   | `#a4949a`   | 5.9:1 (L) / 6.2:1 (D); lowest text tone allowed                                                |
-| `--ls-border`             | `#e6dcdd`   | `#372b2e`   | decorative dividers (not a boundary that conveys meaning)                                      |
-| `--ls-border-control`     | `#8c7d80`   | `#7d6c70`   | input/checkbox boundary: 3.9:1 (L) / 3.6:1 (D)                                                 |
-| `--ls-brand`              | `#782b37`   | `#e08a9a`   | brand as text/link/icon/outline: 9.6:1 on white (L) / 7.0:1 on surface (D)                     |
-| `--ls-brand-fill`         | `#782b37`   | `#e08a9a`   | primary button and active nav background                                                       |
-| `--ls-on-brand`           | `#ffffff`   | `#2a0f16`   | text on brand fill: 9.6:1 (L) / 7.0:1 (D)                                                      |
-| `--ls-brand-fill-hover`   | `#632330`   | `#eaa0ae`   | 11.6:1 (L) / 8.6:1 (D)                                                                         |
-| `--ls-brand-soft`         | `#f8edef`   | `#3a1b23`   | selected row, active-nav tint; brand text on it 8.3:1 (L) / `#f0b3be` 8.7:1 (D)                |
-| `--ls-focus`              | `#782b37`   | `#e08a9a`   | 2 px ring + 2 px offset in `--ls-bg-surface`; 3:1 minimum satisfied                            |
-| `--ls-danger`             | `#b3261e`   | `#ff9484`   | text/icon 6.5:1 on white (L), 8.3:1 (D)                                                        |
-| `--ls-danger-bg`          | `#fdecea`   | `#3d1c1a`   | danger text on it 5.7:1 (L) / 7.1:1 (D)                                                        |
-| `--ls-success` / `-bg`    | `#1e6b3c` / `#e6f3ea` | `#7fd39a` / `#14301d` | 5.7:1 (L) / 8.0:1 (D)                                                          |
-| `--ls-warning` / `-bg`    | `#8f4300` / `#fdeedd` | `#ffb066` / `#3a2410` | **orange**, deliberately not amber/yellow (D1); 6.2:1 (L) / 8.1:1 (D)          |
-| `--ls-info` / `-bg`       | `#22518a` / `#e8f0fa` | `#8ebcf0` / `#14283f` | 7.0:1 (L) / 7.6:1 (D)                                                          |
-| `--ls-overlay`            | `rgb(34 26 28 / 0.5)` | `rgb(0 0 0 / 0.65)` | dialog backdrop                                                            |
+| Token                   | Light                 | Dark                  | Notes / verified contrast                                                       |
+| ----------------------- | --------------------- | --------------------- | ------------------------------------------------------------------------------- |
+| `--ls-bg-page`          | `#faf7f7`             | `#140f10`             | app background (faint wine tint, not cream)                                     |
+| `--ls-bg-surface`       | `#ffffff`             | `#1d1618`             | cards, tables, dialogs                                                          |
+| `--ls-bg-raised`        | `#ffffff`             | `#261d20`             | popovers, menus, hovered rows (light uses shadow instead of tint)               |
+| `--ls-bg-sunken`        | `#f3eeee`             | `#100b0c`             | table header, inset areas                                                       |
+| `--ls-text`             | `#221a1c`             | `#f4ecec`             | 17.0:1 on surface (L) / 15.3:1 (D)                                              |
+| `--ls-text-muted`       | `#5c4e51`             | `#c4b5b8`             | 7.9:1 (L) / 9.0:1 (D)                                                           |
+| `--ls-text-subtle`      | `#6f6164`             | `#a4949a`             | 5.9:1 (L) / 6.2:1 (D); lowest text tone allowed                                 |
+| `--ls-border`           | `#e6dcdd`             | `#372b2e`             | decorative dividers (not a boundary that conveys meaning)                       |
+| `--ls-border-control`   | `#8c7d80`             | `#7d6c70`             | input/checkbox boundary: 3.9:1 (L) / 3.6:1 (D)                                  |
+| `--ls-brand`            | `#782b37`             | `#e08a9a`             | brand as text/link/icon/outline: 9.6:1 on white (L) / 7.0:1 on surface (D)      |
+| `--ls-brand-fill`       | `#782b37`             | `#e08a9a`             | primary button and active nav background                                        |
+| `--ls-on-brand`         | `#ffffff`             | `#2a0f16`             | text on brand fill: 9.6:1 (L) / 7.0:1 (D)                                       |
+| `--ls-brand-fill-hover` | `#632330`             | `#eaa0ae`             | 11.6:1 (L) / 8.6:1 (D)                                                          |
+| `--ls-brand-soft`       | `#f8edef`             | `#3a1b23`             | selected row, active-nav tint; brand text on it 8.3:1 (L) / `#f0b3be` 8.7:1 (D) |
+| `--ls-focus`            | `#782b37`             | `#e08a9a`             | 2 px ring + 2 px offset in `--ls-bg-surface`; 3:1 minimum satisfied             |
+| `--ls-danger`           | `#b3261e`             | `#ff9484`             | text/icon 6.5:1 on white (L), 8.3:1 (D)                                         |
+| `--ls-danger-bg`        | `#fdecea`             | `#3d1c1a`             | danger text on it 5.7:1 (L) / 7.1:1 (D)                                         |
+| `--ls-success` / `-bg`  | `#1e6b3c` / `#e6f3ea` | `#7fd39a` / `#14301d` | 5.7:1 (L) / 8.0:1 (D)                                                           |
+| `--ls-warning` / `-bg`  | `#8f4300` / `#fdeedd` | `#ffb066` / `#3a2410` | **orange**, deliberately not amber/yellow (D1); 6.2:1 (L) / 8.1:1 (D)           |
+| `--ls-info` / `-bg`     | `#22518a` / `#e8f0fa` | `#8ebcf0` / `#14283f` | 7.0:1 (L) / 7.6:1 (D)                                                           |
+| `--ls-overlay`          | `rgb(34 26 28 / 0.5)` | `rgb(0 0 0 / 0.65)`   | dialog backdrop                                                                 |
 
 Elevation (light only; dark uses `--ls-bg-raised` plus a 1 px border): `--ls-shadow-sm 0 1px 2px rgb(34 26 28 / .06)`,
 `--ls-shadow-md 0 4px 16px rgb(34 26 28 / .10)`, `--ls-shadow-lg 0 12px 32px rgb(34 26 28 / .16)` (dialogs).
@@ -337,14 +337,14 @@ Existing `wf-*` classes are retired screen by screen in Steps 8-10; old and new 
 
 ### 9.1 Actions
 
-| Component        | Purpose / API notes                                                                                                                                                          |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Button`         | `variant`: `primary` (wine fill), `secondary` (outlined neutral), `ghost`, `danger-outline`, `danger` (solid; **dialogs only**, enforced by lint/test), `loading`, `icon`, `size` md/lg |
-| `IconButton`     | icon-only, requires `label` (aria-label + tooltip), 44 px hit area                                                                                                           |
-| `ButtonLink`     | anchor styled as a button (navigation actions)                                                                                                                               |
-| `ActionBar`      | consistent place for page/record actions (section 10.3)                                                                                                                      |
-| `RowActions`     | table row action cell: **Edit** (icon+text on desktop, icon on phone) then a `...` menu holding secondary/destructive actions; order fixed (section 10.4)                     |
-| `Menu`           | dropdown/popover menu with roving focus, typeahead, Escape closes                                                                                                            |
+| Component    | Purpose / API notes                                                                                                                                                                     |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Button`     | `variant`: `primary` (wine fill), `secondary` (outlined neutral), `ghost`, `danger-outline`, `danger` (solid; **dialogs only**, enforced by lint/test), `loading`, `icon`, `size` md/lg |
+| `IconButton` | icon-only, requires `label` (aria-label + tooltip), 44 px hit area                                                                                                                      |
+| `ButtonLink` | anchor styled as a button (navigation actions)                                                                                                                                          |
+| `ActionBar`  | consistent place for page/record actions (section 10.3)                                                                                                                                 |
+| `RowActions` | table row action cell: **Edit** (icon+text on desktop, icon on phone) then a `...` menu holding secondary/destructive actions; order fixed (section 10.4)                               |
+| `Menu`       | dropdown/popover menu with roving focus, typeahead, Escape closes                                                                                                                       |
 
 ### 9.2 Feedback
 
@@ -361,17 +361,17 @@ Existing `wf-*` classes are retired screen by screen in Steps 8-10; old and new 
 
 ### 9.4 Data display
 
-| Component        | Notes                                                                                                                                                                                           |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DataTable`      | typed columns (`header`, `cell`, `align`, `sortable`, `hideBelow`), sticky header, row hover/selection, optional row link, loading (skeleton), empty, error; **phone = card list** (`mobileTitle` / `mobileMeta` per column); `mode="client" | "server"` paging |
-| `Pagination`     | numbered pages with first/last, prev/next, `aria-label` per page, "Showing 21-40 of 133", **page-size select (10/20/50)**, works for `page`/`total` (server), computed (client) and a cursor variant ("Load more" / next-prev) for keyset APIs |
-| `ListToolbar`    | one row above the table: `SearchInput`, filter controls (`Select`/chips), result count, `Reset filters`, right-aligned primary action; wraps on tablet, collapses filters into a "Filters" sheet on phone |
-| `FilterChips`    | applied filters as removable chips                                                                                                                                                              |
-| `DescriptionList`| label/value pairs for detail pages (replaces `wf-facts`)                                                                                                                                        |
-| `Card`, `CardHeader` | surface container; `Section` maps onto it                                                                                                                                                   |
-| `Tabs`           | URL-synchronised optional; roving focus                                                                                                                                                         |
-| `Avatar`         | initials fallback                                                                                                                                                                               |
-| `Stat`           | label + value + optional delta, used by KPI card (section 14)                                                                                                                                   |
+| Component            | Notes                                                                                                                                                                                                                                          |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DataTable`          | typed columns (`header`, `cell`, `align`, `sortable`, `hideBelow`), sticky header, row hover/selection, optional row link, loading (skeleton), empty, error; **phone = card list** (`mobileTitle` / `mobileMeta` per column); `mode="client"   | "server"` paging |
+| `Pagination`         | numbered pages with first/last, prev/next, `aria-label` per page, "Showing 21-40 of 133", **page-size select (10/20/50)**, works for `page`/`total` (server), computed (client) and a cursor variant ("Load more" / next-prev) for keyset APIs |
+| `ListToolbar`        | one row above the table: `SearchInput`, filter controls (`Select`/chips), result count, `Reset filters`, right-aligned primary action; wraps on tablet, collapses filters into a "Filters" sheet on phone                                      |
+| `FilterChips`        | applied filters as removable chips                                                                                                                                                                                                             |
+| `DescriptionList`    | label/value pairs for detail pages (replaces `wf-facts`)                                                                                                                                                                                       |
+| `Card`, `CardHeader` | surface container; `Section` maps onto it                                                                                                                                                                                                      |
+| `Tabs`               | URL-synchronised optional; roving focus                                                                                                                                                                                                        |
+| `Avatar`             | initials fallback                                                                                                                                                                                                                              |
+| `Stat`               | label + value + optional delta, used by KPI card (section 14)                                                                                                                                                                                  |
 
 ### 9.5 Overlays
 
@@ -443,22 +443,22 @@ danger text with icon. A row also links through its name cell. Bulk actions are 
 Delete appears **only** where the API supports a real delete (today: service, service category, team, and Steps 11-13 content).
 For everything else the UI shows the action the domain allows, with words that say what will happen:
 
-| Entity                              | Button(s) offered                              | Never shown                     | Basis                                              |
-| ----------------------------------- | ---------------------------------------------- | ------------------------------- | -------------------------------------------------- |
-| Service, service category           | Edit, **Delete** (when unused) / Deactivate    |                                 | existing `POST .../delete` and `.../status`        |
-| Team                                | Edit, **Delete** / Deactivate                  |                                 | existing `POST teams/:id/delete`                   |
-| Branch, skill                       | Edit, **Deactivate / Reactivate**              | Delete                          | status endpoints only                              |
-| Role                                | Edit (name, permissions)                       | Delete, Deactivate              | API has no remove/disable; none invented (D11)    |
-| Employee                            | Edit, **End employment**, Disable access       | Delete                          | lifecycle (PRD 40, immutable history)              |
-| Branch assignment, org appointment  | **End / Revoke**                               | Delete                          | history preserved                                  |
-| Booking / visit line                | **Cancel**, No-show, Resolve end               | Delete                          | operational history                                |
-| Leave request                       | **Cancel request**, Approve / Reject           | Delete                          | history                                            |
-| Attendance record                   | **Correct**                                    | Delete                          | correction record                                  |
-| Invoice                             | **Cancel invoice** (re-auth when finalized)    | Delete                          | financial history                                  |
-| Payment                             | **Reverse** (`CORRECT_PAYMENTS`, re-auth)      | Delete                          | explicit correction record                         |
-| Discount / voucher                  | Edit, **Deactivate / Cancel**                  | Delete                          | redemption history                                 |
-| Notification                        | **Archive**                                    | Delete                          | existing                                           |
-| Media, popup, slide (Steps 11-13)   | Edit, **Delete** (with reference rules, 16.8)  |                                 | marketing content, not business history (Q-CM5)    |
+| Entity                             | Button(s) offered                             | Never shown        | Basis                                           |
+| ---------------------------------- | --------------------------------------------- | ------------------ | ----------------------------------------------- |
+| Service, service category          | Edit, **Delete** (when unused) / Deactivate   |                    | existing `POST .../delete` and `.../status`     |
+| Team                               | Edit, **Delete** / Deactivate                 |                    | existing `POST teams/:id/delete`                |
+| Branch, skill                      | Edit, **Deactivate / Reactivate**             | Delete             | status endpoints only                           |
+| Role                               | Edit (name, permissions)                      | Delete, Deactivate | API has no remove/disable; none invented (D11)  |
+| Employee                           | Edit, **End employment**, Disable access      | Delete             | lifecycle (PRD 40, immutable history)           |
+| Branch assignment, org appointment | **End / Revoke**                              | Delete             | history preserved                               |
+| Booking / visit line               | **Cancel**, No-show, Resolve end              | Delete             | operational history                             |
+| Leave request                      | **Cancel request**, Approve / Reject          | Delete             | history                                         |
+| Attendance record                  | **Correct**                                   | Delete             | correction record                               |
+| Invoice                            | **Cancel invoice** (re-auth when finalized)   | Delete             | financial history                               |
+| Payment                            | **Reverse** (`CORRECT_PAYMENTS`, re-auth)     | Delete             | explicit correction record                      |
+| Discount / voucher                 | Edit, **Deactivate / Cancel**                 | Delete             | redemption history                              |
+| Notification                       | **Archive**                                   | Delete             | existing                                        |
+| Media, popup, slide (Steps 11-13)  | Edit, **Delete** (with reference rules, 16.8) |                    | marketing content, not business history (Q-CM5) |
 
 If an action is not permitted or not possible, the button is **hidden** when the user could never do it (permission) and
 **disabled with a visible reason** (text under the button or tooltip that is also in `aria-describedby`) when a state prevents it
@@ -487,21 +487,25 @@ title "Delete service?" / body states consequence and reversibility / button "De
 Each template fixes structure, spacing and responsive behaviour; a screen picks one and fills slots.
 
 ### 12.1 List page
+
 Header (title, description, primary action) then `ListToolbar` then `DataTable` then `Pagination`. Max width: fills content column (up
 to 1280 px). Row click opens the detail page; Edit/menu per 10.4. Phone: card list, filters in a sheet, primary action as a
 full-width button under the title.
 
 ### 12.2 Detail page
+
 Breadcrumbs, header with title + status `Badge` + `ActionBar`, then a two-column layout on desktop (main sections left,
 summary/meta right, 2/3 + 1/3) that stacks on tablet/phone; sections are `Card`s with `CardHeader` (title + section action);
 long detail pages use `Tabs` (Overview, related lists), each related list following 12.1 inside its tab. Facts use `DescriptionList`.
 
 ### 12.3 Form page
+
 Breadcrumbs, title, single column max 720 px (optional right summary `Split` on desktop), grouped `FormSection`s with headings,
 `FormActions` at the end (sticky on phone). Same template for create and edit; create pages say "New ..." in the title. Multi-step
 creation (employee) shows a step indicator but keeps the same anatomy.
 
 ### 12.4 Board page
+
 For booking board, POS board, reassignment, collaborator schedule, my services: header with date/branch controls (`Select`, date
 stepper), a horizontal summary strip (counts as `Stat`s), then columns/lanes (desktop: side-by-side lanes; tablet: two; phone: one
 lane at a time with a segmented control). Cards are compact with a status `Badge`, the customer/participant name first, the time
@@ -509,25 +513,27 @@ second. Board actions live on the card via `Menu`; destructive ones use `Confirm
 (the domain has explicit commands; not requested by the Owner).
 
 ### 12.5 Dashboard page
+
 Header (greeting, branch/date scope selector, **Customize** toggle) then the widget grid (sections 14-15). Same shell; the grid is
 12 columns on desktop, 6 on tablet, 1 on phone.
 
 ### 12.6 Auth pages
+
 Login/forgot-password: centered card (max 420 px) on `--ls-bg-page`, wordmark above, language and theme toggles top right, no shell.
 
 ---
 
 ## 13. Responsive rules
 
-| Aspect       | Phone (< 640)                       | Tablet (640-1023)                   | Desktop (>= 1024)                     |
-| ------------ | ----------------------------------- | ----------------------------------- | ------------------------------------- |
-| Navigation   | drawer                              | icon rail, expands as overlay       | full sidebar (collapsible)            |
-| Tables       | card list                           | table, low-priority columns hidden (`hideBelow`) | full table              |
-| Filters      | in a "Filters" sheet                | inline, wrapping                    | inline                                |
-| Dialogs      | bottom sheet                        | centered                            | centered                              |
-| Forms        | single column, sticky actions       | single column                       | single column (+ optional summary)    |
-| Dashboard    | 1 column                            | 6-col grid                          | 12-col grid                           |
-| Touch target | 44 px                               | 44 px                               | 40 px (44 px on coarse pointer)       |
+| Aspect       | Phone (< 640)                 | Tablet (640-1023)                                | Desktop (>= 1024)                  |
+| ------------ | ----------------------------- | ------------------------------------------------ | ---------------------------------- |
+| Navigation   | drawer                        | icon rail, expands as overlay                    | full sidebar (collapsible)         |
+| Tables       | card list                     | table, low-priority columns hidden (`hideBelow`) | full table                         |
+| Filters      | in a "Filters" sheet          | inline, wrapping                                 | inline                             |
+| Dialogs      | bottom sheet                  | centered                                         | centered                           |
+| Forms        | single column, sticky actions | single column                                    | single column (+ optional summary) |
+| Dashboard    | 1 column                      | 6-col grid                                       | 12-col grid                        |
+| Touch target | 44 px                         | 44 px                                            | 40 px (44 px on coarse pointer)    |
 
 Verified widths in acceptance: 360, 768, 1024, 1440. No horizontal page scroll at any width (tables scroll inside their own
 container only where a card list is not used, such as boards).
@@ -562,20 +568,20 @@ and endpoint, which is outside D11: decision Q-D2 (recommended: accept per-devic
 
 ### 14.3 Widgets built in this track (only backed by existing endpoints)
 
-| Widget                       | Data (existing endpoint)                                              | Shown when (UX hint; API still authorizes)                 | Notes |
-| ---------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------- | ----- |
-| Greeting + recovery email    | `auth/me`, recovery-email section (existing)                          | always                                                     | fixed at top, not movable |
-| Today's bookings             | `GET operations/branches/:id/today` (`bookings`, derived states)      | `VIEW_BOOKINGS` at a branch                                | counts by state + next 5 |
-| Customers in service         | same response (`activeVisits` with running lines, `queue.serving`)    | `VIEW_BOOKINGS`                                            | count + list of participants and KTV |
-| Waiting / queue              | same response (`waitingPool`, `queue.waiting`)                        | `VIEW_BOOKINGS`                                            | count + longest wait |
-| Awaiting invoice             | `GET pos/branches/:id/board` (`awaiting`)                             | `VIEW_INVOICES`                                            | completed visits without invoice |
-| Paid invoices total          | `GET pos/branches/:id/board` (`invoices` trailing 7 days, `totalVnd`) | `VIEW_INVOICES` **and** `VIEW_REVENUE` at that branch      | sum of paid invoice totals per business date, 7-day line/bar chart + KPI "today vs yesterday"; labelled "Paid invoices", **not** "Revenue" until Phase 8 defines it (Q-D5) |
-| Payment alerts               | `GET pos/branches/:id/payment-anomalies`                              | `CORRECT_PAYMENTS` at a branch (the endpoint's rule)       | open anomaly count, link to POS |
-| Pending leave decisions      | `GET leave-requests?status=PENDING` (existing dashboard logic)        | `APPROVE_LEAVE`                                            | count |
-| My attendance today          | `attendance/me`, branch assignments (existing dashboard logic)        | employee                                                   | in/out state per branch |
-| My leave                     | `leave-requests/me` (existing)                                        | employee                                                   | pending count |
-| Notifications                | `GET notifications`, `unread-count` (existing)                        | always                                                     | latest 5 + unread count |
-| Quick links                  | `navigationFor(account)`                                              | always                                                     | replaces the old "Management" grid |
+| Widget                    | Data (existing endpoint)                                              | Shown when (UX hint; API still authorizes)            | Notes                                                                                                                                                                      |
+| ------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Greeting + recovery email | `auth/me`, recovery-email section (existing)                          | always                                                | fixed at top, not movable                                                                                                                                                  |
+| Today's bookings          | `GET operations/branches/:id/today` (`bookings`, derived states)      | `VIEW_BOOKINGS` at a branch                           | counts by state + next 5                                                                                                                                                   |
+| Customers in service      | same response (`activeVisits` with running lines, `queue.serving`)    | `VIEW_BOOKINGS`                                       | count + list of participants and KTV                                                                                                                                       |
+| Waiting / queue           | same response (`waitingPool`, `queue.waiting`)                        | `VIEW_BOOKINGS`                                       | count + longest wait                                                                                                                                                       |
+| Awaiting invoice          | `GET pos/branches/:id/board` (`awaiting`)                             | `VIEW_INVOICES`                                       | completed visits without invoice                                                                                                                                           |
+| Paid invoices total       | `GET pos/branches/:id/board` (`invoices` trailing 7 days, `totalVnd`) | `VIEW_INVOICES` **and** `VIEW_REVENUE` at that branch | sum of paid invoice totals per business date, 7-day line/bar chart + KPI "today vs yesterday"; labelled "Paid invoices", **not** "Revenue" until Phase 8 defines it (Q-D5) |
+| Payment alerts            | `GET pos/branches/:id/payment-anomalies`                              | `CORRECT_PAYMENTS` at a branch (the endpoint's rule)  | open anomaly count, link to POS                                                                                                                                            |
+| Pending leave decisions   | `GET leave-requests?status=PENDING` (existing dashboard logic)        | `APPROVE_LEAVE`                                       | count                                                                                                                                                                      |
+| My attendance today       | `attendance/me`, branch assignments (existing dashboard logic)        | employee                                              | in/out state per branch                                                                                                                                                    |
+| My leave                  | `leave-requests/me` (existing)                                        | employee                                              | pending count                                                                                                                                                              |
+| Notifications             | `GET notifications`, `unread-count` (existing)                        | always                                                | latest 5 + unread count                                                                                                                                                    |
+| Quick links               | `navigationFor(account)`                                              | always                                                | replaces the old "Management" grid                                                                                                                                         |
 
 Not built (no data yet, listed so Phase 8 knows the slots): revenue by service/branch/period, top services, employee performance,
 retention, payroll, inventory. These arrive as new registry entries using the chart kit below.
@@ -647,12 +653,12 @@ reorder/delete writes an `AuditEvent` (actor, entity, before/after summary, no i
 
 ### 16.2 Data model (additive migration; names indicative, final in Step 11)
 
-| Table              | Key fields                                                                                                                                                                        |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `media_assets`     | `id` uuid, `storage_key` (opaque), `original_filename`, `mime`, `bytes`, `width`, `height`, `sha256`, `alt_vi`, `alt_en` (nullable), `created_by`, `created_at`, `row_version`, `deleted_at` null |
-| `media_variants`   | `asset_id`, `kind` (`thumb` 320w, `md` 960w, `lg` 1920w, all WebP), `storage_key`, `width`, `height`, `bytes`                                                                       |
-| `website_popups`   | `id`, `media_id` fk (nullable: text-only allowed), `title_vi/en`, `body_vi/en`, `cta_label_vi/en`, `cta_url` (nullable), `starts_at`, `ends_at`, `is_enabled`, `row_version`, audit stamps |
-| `website_slides`   | `id`, `media_id` fk (required), `mobile_media_id` fk (nullable), `title_vi/en`, `subtitle_vi/en`, `link_url`, `link_label_vi/en`, `sort_order`, `starts_at` null, `ends_at` null, `is_enabled`, `row_version`, audit stamps |
+| Table            | Key fields                                                                                                                                                                                                                  |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `media_assets`   | `id` uuid, `storage_key` (opaque), `original_filename`, `mime`, `bytes`, `width`, `height`, `sha256`, `alt_vi`, `alt_en` (nullable), `created_by`, `created_at`, `row_version`, `deleted_at` null                           |
+| `media_variants` | `asset_id`, `kind` (`thumb` 320w, `md` 960w, `lg` 1920w, all WebP), `storage_key`, `width`, `height`, `bytes`                                                                                                               |
+| `website_popups` | `id`, `media_id` fk (nullable: text-only allowed), `title_vi/en`, `body_vi/en`, `cta_label_vi/en`, `cta_url` (nullable), `starts_at`, `ends_at`, `is_enabled`, `row_version`, audit stamps                                  |
+| `website_slides` | `id`, `media_id` fk (required), `mobile_media_id` fk (nullable), `title_vi/en`, `subtitle_vi/en`, `link_url`, `link_label_vi/en`, `sort_order`, `starts_at` null, `ends_at` null, `is_enabled`, `row_version`, audit stamps |
 
 Constraints: money not involved; timestamps `timestamptz` UTC; `sort_order` dense integers rewritten in one transaction on reorder;
 `ends_at > starts_at`; `cta_url`/`link_url` validated as an internal path (`/vi/...` or `/en/...`, locale token allowed) or `https://`
@@ -713,8 +719,8 @@ choose an existing library image instead of uploading. Recommended-size hint per
   absent the main image is cropped with `object-fit: cover` centered), title VI/EN, subtitle VI/EN (optional), link + label VI/EN
   (optional), `starts_at`/`ends_at` (both optional = always), `is_enabled`, alt text from the media asset (overridable per slide).
 - **Order:** drag and drop in a `SortableList` with thumbnails (plus Move up/down buttons); the order is saved with one `POST
-  /api/v1/website/slides/reorder { orderedIds, expectedVersion? }` call in one transaction, optimistic UI with rollback on error.
-- **Scheduled show/hide:** a slide is *visible* when enabled and now in `[starts_at, ends_at)`; admin shows the derived status
+/api/v1/website/slides/reorder { orderedIds, expectedVersion? }` call in one transaction, optimistic UI with rollback on error.
+- **Scheduled show/hide:** a slide is _visible_ when enabled and now in `[starts_at, ends_at)`; admin shows the derived status
   (Visible, Scheduled, Ended, Hidden). Public `GET /api/v1/public/website/slides?locale=` returns visible slides in order (cached 60 s).
   Max 8 visible at once (Q-CM7); the list stays unbounded but paged (20).
 - **Public rendering (basic, non-cinematic in this track):** full-width slider on the home page with prev/next buttons, dots,
@@ -751,27 +757,27 @@ tracking, no third-party scripts. Business timezone for `starts_at/ends_at` entr
 **The Owner accepted every recommendation (**rec**) below as written: Q-D1 to Q-D6 and Q-CM1 to Q-CM13 are LOCKED and must not be
 reopened.** Where a row says "Question", the answer is its **(rec)** text. Q-D1..Q-D6 govern Steps 2-7; Q-CM* govern Steps 11-13.
 
-| ID     | Question                                                                                                                                                                  | Recommendation and consequence |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| Q-D1   | New web dependencies: `@dnd-kit/core` + `@dnd-kit/sortable`, `d3-scale` + `d3-shape`, Be Vietnam Pro via `next/font/google` (build-time download, self-hosted).             | **(rec)** approve all. Without dnd-kit a hand-made sortable is slower to build and worse for accessibility; d3 modules are optional (hand-written scales otherwise). |
-| Q-D2   | Where do the theme choice and dashboard layout persist? (a) per device: cookie + `localStorage`; (b) per user on the server (needs a small `user_preferences` table and endpoint, outside D11). | **(rec)** (a) now; (b) can be a later small Step if the Owner wants layouts to follow the user across devices. |
-| Q-D3   | Lists whose API is not paginated (most of them): paginate in the browser over the loaded set (page size 20), and add API paging later only where volume demands (POS invoices, attendance, leave, notifications, audit).      | **(rec)** yes, per D11 no API change. Server paging is used where it already exists (employees, reassignment cursor, teams). |
-| Q-D4   | Warning color is a deep **orange** (`#8f4300` on `#fdeedd`), never amber/yellow, to honor "no gold". OK?                                                                   | **(rec)** yes. |
-| Q-D5   | The dashboard money widget is titled **"Paid invoices"** (sum of paid invoice totals per business date from the POS board), not "Revenue", until Phase 8 defines revenue (PRD 61: no invented policy). OK? | **(rec)** yes. Alternative: omit any money widget in this track. |
-| Q-D6   | Navigation regrouping (section 4.2) and moving My account / My income / Notifications into the user area.                                                                  | **(rec)** approve. Permissions unchanged. |
-| Q-CM1  | Permissions: one GLOBAL_ONLY `MANAGE_WEBSITE_CONTENT` for media + popup + slider, or split (`MANAGE_MEDIA`, `MANAGE_POPUPS`, `MANAGE_SLIDER`)?                              | **(rec)** one code. Fewer roles to maintain; Owner grants it to a marketing role if wanted. |
-| Q-CM2  | "One active popup at a time": reject overlapping enabled popups (rec), or allow overlap and let the newest start date win?                                                  | **(rec)** reject overlap with a clear message. |
-| Q-CM3  | Where may the popup appear? Home page only (rec), or the first public page a visitor lands on (any public page)?                                                            | **(rec)** home page only until more public pages exist. |
-| Q-CM4  | "Once per visit" = once per browser session (rec) or once per day / until changed?                                                                                          | **(rec)** per session; reappears when the popup is edited. |
-| Q-CM5  | Media/popup/slide removal: real Delete with reference protection (rec) or archive only?                                                                                    | **(rec)** Delete (16.8). |
-| Q-CM6  | Schedule times entered in Vietnam time (Asia/Ho_Chi_Minh) for the whole website, not per branch?                                                                            | **(rec)** yes. |
-| Q-CM7  | Slider limits: max 8 visible slides, optional phone image, autoplay 6 s with pause; recommended sizes 1920 x 800 (desktop) and 1080 x 1350 (phone).                          | **(rec)** as stated. |
-| Q-CM8  | Upload limits: JPEG/PNG/WebP, 10 MB, 6000 px per side; no SVG/GIF/video.                                                                                                    | **(rec)** as stated. |
-| Q-CM9  | Storage: local directory on the server, `MEDIA_STORAGE_DIR` outside the release folder, included in backups; object storage later. Confirm the production path/owner (Owner/ops action at deployment). | **(rec)** approve; Step 11 documents the env var and permissions. |
-| Q-CM10 | Text fallback: if only one of VI/EN is filled, show it in both languages (rec); alt text required in VI for every image, EN optional.                                        | **(rec)** yes. |
-| Q-CM11 | New API dependency `sharp` (image re-encode, variants, EXIF strip). `multer` already ships with `@nestjs/platform-express`.                                                 | **(rec)** approve. |
-| Q-CM12 | Is ordering images/slides needed anywhere **besides** the homepage slider (for example a gallery on a service or branch page)? None exist today.                             | **(rec)** no; slider only. |
-| Q-CM13 | Sequencing: run Steps 11-13 after the dashboard (Step 7) as listed, or earlier/parallel to the screen migrations (Steps 8-10)?                                              | **(rec)** as listed: the kit (Steps 3-6) is complete by then. |
+| ID     | Question                                                                                                                                                                                                                 | Recommendation and consequence                                                                                                                                       |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q-D1   | New web dependencies: `@dnd-kit/core` + `@dnd-kit/sortable`, `d3-scale` + `d3-shape`, Be Vietnam Pro via `next/font/google` (build-time download, self-hosted).                                                          | **(rec)** approve all. Without dnd-kit a hand-made sortable is slower to build and worse for accessibility; d3 modules are optional (hand-written scales otherwise). |
+| Q-D2   | Where do the theme choice and dashboard layout persist? (a) per device: cookie + `localStorage`; (b) per user on the server (needs a small `user_preferences` table and endpoint, outside D11).                          | **(rec)** (a) now; (b) can be a later small Step if the Owner wants layouts to follow the user across devices.                                                       |
+| Q-D3   | Lists whose API is not paginated (most of them): paginate in the browser over the loaded set (page size 20), and add API paging later only where volume demands (POS invoices, attendance, leave, notifications, audit). | **(rec)** yes, per D11 no API change. Server paging is used where it already exists (employees, reassignment cursor, teams).                                         |
+| Q-D4   | Warning color is a deep **orange** (`#8f4300` on `#fdeedd`), never amber/yellow, to honor "no gold". OK?                                                                                                                 | **(rec)** yes.                                                                                                                                                       |
+| Q-D5   | The dashboard money widget is titled **"Paid invoices"** (sum of paid invoice totals per business date from the POS board), not "Revenue", until Phase 8 defines revenue (PRD 61: no invented policy). OK?               | **(rec)** yes. Alternative: omit any money widget in this track.                                                                                                     |
+| Q-D6   | Navigation regrouping (section 4.2) and moving My account / My income / Notifications into the user area.                                                                                                                | **(rec)** approve. Permissions unchanged.                                                                                                                            |
+| Q-CM1  | Permissions: one GLOBAL_ONLY `MANAGE_WEBSITE_CONTENT` for media + popup + slider, or split (`MANAGE_MEDIA`, `MANAGE_POPUPS`, `MANAGE_SLIDER`)?                                                                           | **(rec)** one code. Fewer roles to maintain; Owner grants it to a marketing role if wanted.                                                                          |
+| Q-CM2  | "One active popup at a time": reject overlapping enabled popups (rec), or allow overlap and let the newest start date win?                                                                                               | **(rec)** reject overlap with a clear message.                                                                                                                       |
+| Q-CM3  | Where may the popup appear? Home page only (rec), or the first public page a visitor lands on (any public page)?                                                                                                         | **(rec)** home page only until more public pages exist.                                                                                                              |
+| Q-CM4  | "Once per visit" = once per browser session (rec) or once per day / until changed?                                                                                                                                       | **(rec)** per session; reappears when the popup is edited.                                                                                                           |
+| Q-CM5  | Media/popup/slide removal: real Delete with reference protection (rec) or archive only?                                                                                                                                  | **(rec)** Delete (16.8).                                                                                                                                             |
+| Q-CM6  | Schedule times entered in Vietnam time (Asia/Ho_Chi_Minh) for the whole website, not per branch?                                                                                                                         | **(rec)** yes.                                                                                                                                                       |
+| Q-CM7  | Slider limits: max 8 visible slides, optional phone image, autoplay 6 s with pause; recommended sizes 1920 x 800 (desktop) and 1080 x 1350 (phone).                                                                      | **(rec)** as stated.                                                                                                                                                 |
+| Q-CM8  | Upload limits: JPEG/PNG/WebP, 10 MB, 6000 px per side; no SVG/GIF/video.                                                                                                                                                 | **(rec)** as stated.                                                                                                                                                 |
+| Q-CM9  | Storage: local directory on the server, `MEDIA_STORAGE_DIR` outside the release folder, included in backups; object storage later. Confirm the production path/owner (Owner/ops action at deployment).                   | **(rec)** approve; Step 11 documents the env var and permissions.                                                                                                    |
+| Q-CM10 | Text fallback: if only one of VI/EN is filled, show it in both languages (rec); alt text required in VI for every image, EN optional.                                                                                    | **(rec)** yes.                                                                                                                                                       |
+| Q-CM11 | New API dependency `sharp` (image re-encode, variants, EXIF strip). `multer` already ships with `@nestjs/platform-express`.                                                                                              | **(rec)** approve.                                                                                                                                                   |
+| Q-CM12 | Is ordering images/slides needed anywhere **besides** the homepage slider (for example a gallery on a service or branch page)? None exist today.                                                                         | **(rec)** no; slider only.                                                                                                                                           |
+| Q-CM13 | Sequencing: run Steps 11-13 after the dashboard (Step 7) as listed, or earlier/parallel to the screen migrations (Steps 8-10)?                                                                                           | **(rec)** as listed: the kit (Steps 3-6) is complete by then.                                                                                                        |
 
 ---
 
@@ -781,22 +787,22 @@ Each Step: plan first, implement only that Step, targeted tests, short report in
 `git diff --stat`, stop for Owner review. Full regression, build and smoke run **only** at Step 14. No Step commits or deploys
 without the Owner. Nothing in Steps 2-10 touches `apps/api`, `packages/database` or `packages/contracts`.
 
-| Step | Scope                                                                                                                                                                                              | Touches                                   | Key tests / acceptance |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ---------------------- |
-| 1    | This contract; PRD 4.1 updated; handoff line.                                                                                                                                                       | docs, PRD                                 | Owner review |
-| 2    | Foundations (section 8): tokens v2, theme + pre-paint script, font, base CSS, icons, gold removed, `workforce.css` literals to tokens.                                                              | `packages/ui`, `apps/web` css/layout      | token contrast test; both themes render; no gold/hex leftovers |
-| 3    | Core components 9.1-9.3, 9.5 (Button family, feedback, forms, Dialog, ConfirmDialog, Drawer, Menu), `ImageUploader` shell; `ui.tsx` re-exports mapped onto them.                                     | `packages/ui`, `apps/web` ui.tsx          | component tests (keyboard, ARIA, longest VI label); ConfirmDialog parity with existing delete tests |
-| 4    | Data components 9.4: `DataTable` (client/server/cursor), `Pagination`, `ListToolbar`, `DescriptionList`, `Tabs`, card-list phone mode, URL-state hook; **pilot on Employees and Skills**.        | `packages/ui`, employees + skills screens | paging math, URL state, phone layout, a11y |
-| 5    | App shell and navigation (section 4): `AppShell`, sidebar/drawer/rail, topbar, theme toggle, user menu, breadcrumbs, regrouped `navigationFor` groups (rules unchanged), auth page template.       | `packages/ui`, `shell.tsx`, `permissions.ts` (groups only), i18n | `permissions.test.ts` still green (visibility unchanged); nav per role; 4 widths |
-| 6    | `SortableList/Grid` + chart kit + `DateRangePicker` + `KpiCard` + comparison (section 14.4); dev-only demo route removed before review or behind a test file; unit tests with fixtures.          | `packages/ui`                             | palette validator re-run in a test; keyboard reorder; chart a11y table; formatting |
-| 7    | Dashboard (section 14, 15): widget registry, grid, customize mode, persistence, widgets of 14.3, permission gating, per-widget states.                                                              | `apps/web` dashboard                      | layout derivation per permission set; persistence; widget states; keyboard reorder |
-| 8    | Migrate **People and organization**: employees (detail, lifecycle, roles, skills, create), teams, organization, skills, roles to templates 12.1-12.3 and 10.x action rules.                          | `apps/web` screens                        | existing screen tests kept green + new ones for paging/actions |
-| 9    | Migrate **Catalog and Sales**: services (+detail), branches (+detail), discounts (+detail/form), POS list/invoice/payments.                                                                          | `apps/web` screens                        | same; destructive-action matrix (10.5) asserted |
-| 10   | Migrate **Operations and personal**: booking board, walk-in, reassignment, my-services, collaborator schedule, attendance, leave, my account, my income, notifications, login/forgot pages (board template 12.4). | `apps/web` screens                        | same; `wf-*` legacy CSS deleted at the end of this Step |
-| 11   | **Content A**: migration (`media_assets`, `media_variants`, permission enum), `MediaStorage` + local implementation, upload/serve/list/update/delete API, audit, media library UI, `ImageUploader` wired. New env `MEDIA_STORAGE_DIR`. | api, database, server, contracts, web     | integration: upload validation (type/size/magic bytes), variants, dedupe, delete-if-referenced refusal, permission, audit; UI tests |
-| 12   | **Content B**: `website_popups`, admin CRUD with overlap rule, status derivation, preview, public popup endpoint and public-site component (once per session).                                        | api, database, contracts, web             | integration: overlap, schedule window, public visibility; web: once-per-session, focus trap, Escape |
-| 13   | **Content C**: `website_slides`, admin list with drag-and-drop reorder, schedule, public slides endpoint and basic slider component.                                                                 | api, database, contracts, web             | integration: reorder transaction, visibility window, max visible; web: keyboard reorder, pause, reduced motion |
-| 14   | **Part 1 final validation**: `pnpm check`, full tests including integration on a scratch DB, build, smoke; axe/a11y pass on key pages in light+dark at 360/768/1440; deployment checklist (env var, `db:permissions:sync`, media dir permissions, backup scope). | all                                       | full gate; report with deployment checklist |
+| Step | Scope                                                                                                                                                                                                                                                            | Touches                                                          | Key tests / acceptance                                                                                                              |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | This contract; PRD 4.1 updated; handoff line.                                                                                                                                                                                                                    | docs, PRD                                                        | Owner review                                                                                                                        |
+| 2    | Foundations (section 8): tokens v2, theme + pre-paint script, font, base CSS, icons, gold removed, `workforce.css` literals to tokens.                                                                                                                           | `packages/ui`, `apps/web` css/layout                             | token contrast test; both themes render; no gold/hex leftovers                                                                      |
+| 3    | Core components 9.1-9.3, 9.5 (Button family, feedback, forms, Dialog, ConfirmDialog, Drawer, Menu), `ImageUploader` shell; `ui.tsx` re-exports mapped onto them.                                                                                                 | `packages/ui`, `apps/web` ui.tsx                                 | component tests (keyboard, ARIA, longest VI label); ConfirmDialog parity with existing delete tests                                 |
+| 4    | Data components 9.4: `DataTable` (client/server/cursor), `Pagination`, `ListToolbar`, `DescriptionList`, `Tabs`, card-list phone mode, URL-state hook; **pilot on Employees and Skills**.                                                                        | `packages/ui`, employees + skills screens                        | paging math, URL state, phone layout, a11y                                                                                          |
+| 5    | App shell and navigation (section 4): `AppShell`, sidebar/drawer/rail, topbar, theme toggle, user menu, breadcrumbs, regrouped `navigationFor` groups (rules unchanged), auth page template.                                                                     | `packages/ui`, `shell.tsx`, `permissions.ts` (groups only), i18n | `permissions.test.ts` still green (visibility unchanged); nav per role; 4 widths                                                    |
+| 6    | `SortableList/Grid` + chart kit + `DateRangePicker` + `KpiCard` + comparison (section 14.4); dev-only demo route removed before review or behind a test file; unit tests with fixtures.                                                                          | `packages/ui`                                                    | palette validator re-run in a test; keyboard reorder; chart a11y table; formatting                                                  |
+| 7    | Dashboard (section 14, 15): widget registry, grid, customize mode, persistence, widgets of 14.3, permission gating, per-widget states.                                                                                                                           | `apps/web` dashboard                                             | layout derivation per permission set; persistence; widget states; keyboard reorder                                                  |
+| 8    | Migrate **People and organization**: employees (detail, lifecycle, roles, skills, create), teams, organization, skills, roles to templates 12.1-12.3 and 10.x action rules.                                                                                      | `apps/web` screens                                               | existing screen tests kept green + new ones for paging/actions                                                                      |
+| 9    | Migrate **Catalog and Sales**: services (+detail), branches (+detail), discounts (+detail/form), POS list/invoice/payments.                                                                                                                                      | `apps/web` screens                                               | same; destructive-action matrix (10.5) asserted                                                                                     |
+| 10   | Migrate **Operations and personal**: booking board, walk-in, reassignment, my-services, collaborator schedule, attendance, leave, my account, my income, notifications, login/forgot pages (board template 12.4).                                                | `apps/web` screens                                               | same; `wf-*` legacy CSS deleted at the end of this Step                                                                             |
+| 11   | **Content A**: migration (`media_assets`, `media_variants`, permission enum), `MediaStorage` + local implementation, upload/serve/list/update/delete API, audit, media library UI, `ImageUploader` wired. New env `MEDIA_STORAGE_DIR`.                           | api, database, server, contracts, web                            | integration: upload validation (type/size/magic bytes), variants, dedupe, delete-if-referenced refusal, permission, audit; UI tests |
+| 12   | **Content B**: `website_popups`, admin CRUD with overlap rule, status derivation, preview, public popup endpoint and public-site component (once per session).                                                                                                   | api, database, contracts, web                                    | integration: overlap, schedule window, public visibility; web: once-per-session, focus trap, Escape                                 |
+| 13   | **Content C**: `website_slides`, admin list with drag-and-drop reorder, schedule, public slides endpoint and basic slider component.                                                                                                                             | api, database, contracts, web                                    | integration: reorder transaction, visibility window, max visible; web: keyboard reorder, pause, reduced motion                      |
+| 14   | **Part 1 final validation**: `pnpm check`, full tests including integration on a scratch DB, build, smoke; axe/a11y pass on key pages in light+dark at 360/768/1440; deployment checklist (env var, `db:permissions:sync`, media dir permissions, backup scope). | all                                                              | full gate; report with deployment checklist                                                                                         |
 
 Ordering constraints: 2 -> 3 -> 4 -> 5; 6 needs 3; 7 needs 5 and 6; 8-10 need 4 and 5; 11 needs 3-5 (may start its backend half
 earlier if the Owner asks); 12 needs 11; 13 needs 6 and 11; 14 last. Steps 8-10 may swap order.
@@ -807,13 +813,13 @@ decision. Nothing in Part 1 blocks it; Step 2 already removes gold from shared t
 
 ## 19. Risks and mitigations
 
-| Risk                                                                            | Mitigation |
-| ------------------------------------------------------------------------------- | ---------- |
-| Big-bang restyle breaks screens (15.7k lines of screen code)                    | components land first; screens migrate in three reviewed Steps; old and new CSS coexist; existing screen tests must stay green |
-| Long Vietnamese labels overflow controls                                        | wrap-first components; longest-VI-string test rule in Step 3 |
-| Brand red confused with error red                                               | rules in 6.4 enforced by component variants (solid danger only in `ConfirmDialog`) and reviewed on screenshots each Step |
-| Client-side paging hides scale problems                                         | table shows total; Q-D3 records which lists need API paging when volumes grow |
-| Uploads: abuse, malicious files, disk loss                                      | magic-byte sniffing, re-encode, no SVG, rate limit, permission + CSRF, opaque keys, backups, public serve only for live content |
-| Local-disk media storage blocks scaling out to multiple servers                 | storage interface; keys opaque; swap to object storage by config |
-| Dashboard layout only per device                                                | disclosed (Q-D2); server preferences can follow as a small later Step |
-| Scope creep into analytics/CMS/page builder                                     | non-goals in section 2; new widgets/content types need an Owner-approved Step |
+| Risk                                                            | Mitigation                                                                                                                      |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Big-bang restyle breaks screens (15.7k lines of screen code)    | components land first; screens migrate in three reviewed Steps; old and new CSS coexist; existing screen tests must stay green  |
+| Long Vietnamese labels overflow controls                        | wrap-first components; longest-VI-string test rule in Step 3                                                                    |
+| Brand red confused with error red                               | rules in 6.4 enforced by component variants (solid danger only in `ConfirmDialog`) and reviewed on screenshots each Step        |
+| Client-side paging hides scale problems                         | table shows total; Q-D3 records which lists need API paging when volumes grow                                                   |
+| Uploads: abuse, malicious files, disk loss                      | magic-byte sniffing, re-encode, no SVG, rate limit, permission + CSRF, opaque keys, backups, public serve only for live content |
+| Local-disk media storage blocks scaling out to multiple servers | storage interface; keys opaque; swap to object storage by config                                                                |
+| Dashboard layout only per device                                | disclosed (Q-D2); server preferences can follow as a small later Step                                                           |
+| Scope creep into analytics/CMS/page builder                     | non-goals in section 2; new widgets/content types need an Owner-approved Step                                                   |

@@ -1,0 +1,60 @@
+/* Base layer (docs/UXUI_REDESIGN_DESIGN.md sections 5-7): reset, typography, focus, reduced motion.
+   Component and layout styles live elsewhere; this file only sets page-level defaults. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  accent-color: var(--ls-brand-fill);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--ls-text);
+  background: var(--ls-bg-page);
+  font-family: var(--ls-font-sans);
+  font-size: var(--ls-text-md);
+  line-height: var(--ls-leading-md);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+}
+
+img,
+svg,
+video {
+  max-width: 100%;
+}
+
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+/* One focus ring for every interactive element: 2 px, offset 2 px, 3:1 on all surfaces. */
+:focus-visible {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: 2px;
+}
+
+::selection {
+  color: var(--ls-on-brand);
+  background: var(--ls-brand-fill);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

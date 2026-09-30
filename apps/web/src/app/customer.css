@@ -15,8 +15,8 @@
   align-items: center;
   gap: 0.5rem 1.25rem;
   padding: 0.5rem 1rem;
-  border-bottom: 1px solid var(--lucy-border);
-  background: var(--lucy-ivory);
+  border-bottom: 1px solid var(--ls-border);
+  background: var(--ls-bg-page);
 }
 
 .cu-brand {
@@ -42,9 +42,9 @@
 }
 
 .cu-nav a[aria-current='page'] {
-  background: #ffffff;
+  background: var(--ls-bg-surface);
   font-weight: 600;
-  box-shadow: inset 0 -2px 0 var(--lucy-red);
+  box-shadow: inset 0 -2px 0 var(--ls-brand);
 }
 
 .cu-header-actions {
@@ -97,18 +97,18 @@
 
 .cu-steps li {
   padding: 0.25rem 0.6rem;
-  border: 1px solid var(--lucy-border);
+  border: 1px solid var(--ls-border);
   border-radius: 999px;
-  color: var(--lucy-muted);
+  color: var(--ls-text-muted);
 }
 
 .cu-steps li.cu-done {
-  color: var(--lucy-ink);
+  color: var(--ls-text);
 }
 
 .cu-steps li[aria-current='step'] {
-  border-color: var(--lucy-red);
-  color: var(--lucy-ink);
+  border-color: var(--ls-brand);
+  color: var(--ls-text);
   font-weight: 600;
 }
 
@@ -130,9 +130,9 @@
 
 .cu-person {
   padding: 0.9rem;
-  border: 1px solid var(--lucy-border);
+  border: 1px solid var(--ls-border);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--ls-bg-surface);
 }
 
 .cu-choice {
@@ -141,9 +141,9 @@
   align-items: flex-start;
   min-height: 44px;
   padding: 0.75rem;
-  border: 1px solid var(--lucy-border);
+  border: 1px solid var(--ls-border);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--ls-bg-surface);
   cursor: pointer;
 }
 
@@ -155,7 +155,7 @@
 }
 
 .cu-choice:has(input:checked) {
-  border-color: var(--lucy-red);
+  border-color: var(--ls-brand);
 }
 
 .cu-order ol,
@@ -200,21 +200,21 @@
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  border: 1px solid var(--lucy-border);
+  border: 1px solid var(--ls-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ls-bg-surface);
   cursor: pointer;
 }
 
 .cu-time input:checked + span {
-  border-color: var(--lucy-red);
-  background: var(--lucy-red);
-  color: var(--lucy-ivory);
+  border-color: var(--ls-brand);
+  background: var(--ls-brand-fill);
+  color: var(--ls-on-brand);
   font-weight: 600;
 }
 
 .cu-time input:focus-visible + span {
-  outline: 2px solid var(--lucy-red);
+  outline: 2px solid var(--ls-focus);
   outline-offset: 2px;
 }
 
@@ -226,7 +226,7 @@
 }
 
 .cu-summary dt {
-  color: var(--lucy-muted);
+  color: var(--ls-text-muted);
 }
 
 .cu-summary dd {
@@ -245,9 +245,9 @@
   display: grid;
   gap: 0.35rem;
   padding: 1rem;
-  border: 1px solid var(--lucy-border);
+  border: 1px solid var(--ls-border);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--ls-bg-surface);
 }
 
 .cu-card p {
@@ -266,9 +266,9 @@
   display: grid;
   gap: 0.75rem;
   padding: 1rem;
-  border: 1px solid var(--wf-error);
+  border: 1px solid var(--ls-danger);
   border-radius: 12px;
-  background: var(--wf-error-bg);
+  background: var(--ls-danger-bg);
 }
 
 @media (max-width: 560px) {
