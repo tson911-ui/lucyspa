@@ -66,41 +66,34 @@ export function BotanicalPattern({ className }: { className?: string | undefined
 }
 
 /**
- * Sign-in and recovery pages (contract 12.6): a brand panel on the left (deep brand-red gradient,
- * botanical line art, wordmark, tagline) and the form on the right. Below 768 px only the form is
- * shown, with the wordmark above it. The panel is decoration; its content repeats the page brand, so
- * it is hidden from assistive technology. A photo can replace `ls-auth-panel`'s background later.
+ * Sign-in and recovery pages (contract 12.6, Owner correction after Step 5): the centered card of
+ * before, on a full-screen brand background (deep brand-red gradient plus botanical line art, the same
+ * in light and dark). The wordmark sits at the top inside the card; the language switch and theme
+ * toggle sit at the top right of the page, styled for the red background. The card keeps the normal
+ * surface tokens (light card in light mode, dark card in dark mode). The background is decoration and
+ * hidden from assistive technology; a photo can replace it later.
  */
 export function AuthLayout({
   brand,
-  tagline,
   topActions,
   children,
 }: {
-  /** The wordmark; rendered in the panel and, on phones, above the form. */
+  /** The wordmark, rendered at the top of the card. */
   brand: ReactNode;
-  /** One short line in the current language. */
-  tagline: string;
-  /** Language switch and theme toggle, top right. */
+  /** Language switch and theme toggle, top right of the page. */
   topActions?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div className="ls-auth">
-      <div className="ls-auth-panel" aria-hidden>
-        <BotanicalPattern className="ls-auth-pattern" />
-        <div className="ls-auth-panel-brand">{brand}</div>
-        <p className="ls-auth-tagline">{tagline}</p>
-      </div>
-      <div className="ls-auth-side">
-        <div className="ls-auth-top">
-          <div className="ls-auth-top-brand">{brand}</div>
-          <div className="ls-auth-top-actions">{topActions}</div>
+      <BotanicalPattern className="ls-auth-pattern" />
+      <div className="ls-auth-top">{topActions}</div>
+      <main className="ls-auth-main" id="main-content" tabIndex={-1}>
+        <div className="ls-auth-card">
+          <div className="ls-auth-card-brand">{brand}</div>
+          {children}
         </div>
-        <main className="ls-auth-main" id="main-content" tabIndex={-1}>
-          <div className="ls-auth-content">{children}</div>
-        </main>
-      </div>
+      </main>
     </div>
   );
 }

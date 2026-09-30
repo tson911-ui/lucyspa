@@ -151,7 +151,10 @@ test('forgot password: WORKFORCE request and completion over the existing endpoi
   assert.ok(first.includes('href="/vi/workforce/login"'));
   const second = forgotView('code');
   assert.match(second, /id="forgot-code"[^>]*autoComplete="one-time-code"/);
-  assert.match(second, /id="forgot-password" type="password"[^>]*minLength="8"/);
+  const newPassword = /<input id="forgot-password"[^>]*>/.exec(second)?.[0] ?? '';
+  assert.match(newPassword, /type="password"/);
+  assert.match(newPassword, /minLength="8"/);
+  assert.ok(second.includes(vi.auth.showPassword), 'show/hide password button');
   assert.ok(second.includes(vi.recovery.confirmPassword));
   assert.ok(forgotView('done').includes(vi.recovery.done));
   assert.ok(forgotView('code', { problem: 'mismatch' }).includes(vi.recovery.passwordMismatch));
@@ -187,7 +190,7 @@ test('anti-enumeration: one neutral message; code failures are never specific', 
   assert.equal(recoveryErrorMessage(new ApiError(429, 'RATE_LIMITED'), vi), vi.errors.rateLimited);
 });
 
-test('forgot password uses the split auth layout: brand panel with tagline, form in the side column', () => {
+test('forgot password: centered card with the wordmark inside, on the brand background', () => {
   for (const [dictionary, locale] of [
     [vi, 'vi'],
     [en, 'en'],
@@ -216,13 +219,15 @@ test('forgot password uses the split auth layout: brand panel with tagline, form
       owner,
       locale,
     );
-    assert.match(markup, /<div class="ls-auth-panel" aria-hidden="true">/);
-    assert.ok(markup.includes(dictionary.auth.tagline), 'tagline in the panel');
+    assert.match(markup, /<svg class="ls-auth-pattern"/, 'botanical background');
+    assert.doesNotMatch(markup, /ls-auth-panel|ls-auth-side/, 'no split layout');
+    const card = markup.indexOf('class="ls-auth-card"');
     assert.ok(
-      markup.indexOf('ls-auth-side') < markup.indexOf('<h1>'),
-      'the form is in the side column',
+      card > 0 &&
+        card < markup.indexOf('LUCY SPA') &&
+        markup.indexOf('LUCY SPA') < markup.indexOf('<h1>'),
     );
-    assert.doesNotMatch(markup, /wf-login/, 'the old centered card is gone from workforce pages');
+    assert.doesNotMatch(markup, /wf-login/, 'workforce pages no longer use the legacy login card');
     assert.ok(markup.includes(dictionary.recovery.forgotTitle));
   }
 });

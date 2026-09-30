@@ -1,6 +1,6 @@
 /* App shell, navigation, theme toggle, user menu, breadcrumbs and the auth layout
    (docs/UXUI_REDESIGN_DESIGN.md sections 4, 12.6 and 13). Tokens only: no color literals.
-   Breakpoints: phone < 640, tablet 640-1023, desktop >= 1024 (auth split from 768). */
+   Breakpoints: phone < 640, tablet 640-1023, desktop >= 1024 (auth: one centered card). */
 
 /* ---- Shell ---------------------------------------------------------------------------------- */
 .ls-shell {
@@ -489,64 +489,122 @@
   font-weight: 600;
 }
 
-/* ---- Auth layout (contract 12.6, owner feedback: split layout) ----------------------------- */
+/* ---- Auth layout (contract 12.6): centered card on a full-screen brand background --------- */
 .ls-auth {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  min-height: 100svh;
-  background: var(--ls-bg-page);
-}
-
-.ls-auth-panel {
-  display: none;
-}
-
-.ls-auth-side {
+  position: relative;
   display: flex;
   flex-direction: column;
-  min-width: 0;
   min-height: 100svh;
+  overflow: hidden;
+  color: var(--ls-auth-panel-text);
+  background: linear-gradient(155deg, var(--ls-auth-panel-from), var(--ls-auth-panel-to));
 }
 
+/* The line art is a texture, not content: very low contrast, edge to edge. */
+.ls-auth-pattern {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--ls-auth-panel-line);
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+/* Top right of the page; its controls are restyled below for the red background. */
 .ls-auth-top {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--ls-space-3);
   padding: var(--ls-space-4) var(--ls-gutter);
 }
 
-.ls-auth-top-brand {
-  color: var(--ls-brand);
+.ls-auth-top a {
+  color: var(--ls-auth-panel-text);
+  font-size: var(--ls-text-sm);
 }
 
-.ls-auth-top-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--ls-space-3);
-  margin-inline-start: auto;
+.ls-auth-top :focus-visible {
+  outline-color: var(--ls-auth-panel-text);
+}
+
+.ls-auth-top .ls-theme-toggle {
+  border-color: var(--ls-auth-panel-text-muted);
+  background: transparent;
+}
+
+.ls-auth-top .ls-theme-option {
+  color: var(--ls-auth-panel-text-muted);
+}
+
+.ls-auth-top .ls-theme-option:hover {
+  color: var(--ls-auth-panel-text);
+}
+
+.ls-auth-top .ls-theme-option-active {
+  color: var(--ls-auth-panel-from);
+  background: var(--ls-auth-panel-text);
+  box-shadow: none;
 }
 
 .ls-auth-main {
+  position: relative;
   display: flex;
   flex: 1;
   align-items: center;
   justify-content: center;
-  padding: var(--ls-space-4) var(--ls-gutter) var(--ls-space-9);
+  padding: var(--ls-space-4) var(--ls-space-4) var(--ls-space-9);
 }
 
 .ls-auth-main:focus {
   outline: none;
 }
 
-.ls-auth-content {
-  display: grid;
-  gap: var(--ls-space-3);
+.ls-auth-card {
   width: min(100%, 26rem);
+  padding: var(--ls-space-6);
+  border: 1px solid var(--ls-border);
+  border-radius: 12px;
+  color: var(--ls-text);
+  background: var(--ls-bg-surface);
+  box-shadow: var(--ls-auth-card-shadow);
 }
 
-.ls-auth-content h1 {
+/* Vertical rhythm, spacing tokens only: 16 px between blocks, 24 px after the wordmark, 8 px from the
+   title to its intro, 20 px from the intro to the form. No margin lives on the children themselves. */
+.ls-auth-card > * {
   margin: 0;
+}
+
+.ls-auth-card > * + * {
+  margin-top: var(--ls-space-4);
+}
+
+.ls-auth-card > .ls-auth-card-brand + * {
+  margin-top: var(--ls-space-6);
+}
+
+.ls-auth-card > h1 + p {
+  margin-top: var(--ls-space-2);
+}
+
+.ls-auth-card > p + form {
+  margin-top: var(--ls-space-5);
+}
+
+@media (min-width: 640px) {
+  .ls-auth-card {
+    padding: var(--ls-space-7);
+  }
+}
+
+.ls-auth-card-brand {
+  color: var(--ls-brand);
+}
+
+.ls-auth-card h1 {
   color: var(--ls-text);
   font-family: var(--ls-font-sans);
   font-size: var(--ls-text-xl);
@@ -554,16 +612,12 @@
   letter-spacing: -0.01em;
 }
 
-.ls-auth-content p {
-  margin: 0;
-}
-
-.ls-auth-content form {
+.ls-auth-card form {
   display: grid;
   gap: var(--ls-space-4);
 }
 
-.ls-auth-content input:not([type='radio']):not([type='checkbox']) {
+.ls-auth-card input:not([type='radio']):not([type='checkbox']) {
   width: 100%;
   min-height: var(--ls-control-h);
   padding: var(--ls-space-2) var(--ls-space-3);
@@ -574,63 +628,11 @@
   font: inherit;
 }
 
-.ls-auth-content [aria-invalid='true'] {
-  border-color: var(--ls-danger);
+/* Room for the show/hide button; beats the generic card input rule above. */
+.ls-auth-card .ls-password input:not([type='radio']):not([type='checkbox']) {
+  padding-inline-end: var(--ls-space-9);
 }
 
-@media (min-width: 768px) {
-  .ls-auth {
-    grid-template-columns: minmax(20rem, 5fr) minmax(0, 6fr);
-  }
-
-  .ls-auth-panel {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    gap: var(--ls-space-8);
-    min-height: 100svh;
-    padding: var(--ls-space-9) var(--ls-space-8);
-    overflow: hidden;
-    color: var(--ls-auth-panel-text);
-    background: linear-gradient(155deg, var(--ls-auth-panel-from), var(--ls-auth-panel-to));
-  }
-
-  /* The line art is a texture, not content: very low contrast, strongest at the top right. */
-  .ls-auth-pattern {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    color: var(--ls-auth-panel-line);
-    opacity: 0.09;
-    -webkit-mask-image: linear-gradient(200deg, black 15%, transparent 85%);
-    mask-image: linear-gradient(200deg, black 15%, transparent 85%);
-    pointer-events: none;
-  }
-
-  .ls-auth-panel-brand,
-  .ls-auth-tagline {
-    position: relative;
-  }
-
-  .ls-auth-panel-brand {
-    font-size: var(--ls-text-lg);
-  }
-
-  .ls-auth-tagline {
-    max-width: 22rem;
-    margin: 0;
-    color: var(--ls-auth-panel-text-muted);
-    text-wrap: balance;
-    font-size: var(--ls-text-xl);
-    font-weight: 500;
-    line-height: var(--ls-leading-xl);
-    letter-spacing: -0.01em;
-    overflow-wrap: anywhere;
-  }
-
-  .ls-auth-top-brand {
-    display: none;
-  }
+.ls-auth-card [aria-invalid='true'] {
+  border-color: var(--ls-danger);
 }

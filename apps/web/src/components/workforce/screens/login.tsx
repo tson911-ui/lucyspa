@@ -1,6 +1,6 @@
 'use client';
 
-import { AuthLayout, BrandWordmark } from '@lucy-spa/ui';
+import { AuthLayout, BrandWordmark, PasswordInput, SegmentedControl } from '@lucy-spa/ui';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState, type FormEvent } from 'react';
@@ -79,28 +79,22 @@ function LoginForm() {
   }
 
   return (
-    <AuthLayout brand={<BrandWordmark />} tagline={t.auth.tagline} topActions={<AuthTopActions />}>
+    <AuthLayout brand={<BrandWordmark />} topActions={<AuthTopActions />}>
       <h1>{t.auth.loginTitle}</h1>
       <p className="wf-muted">{t.auth.loginIntro}</p>
       {params.get('expired') ? <Notice tone="warning">{t.auth.sessionExpired}</Notice> : null}
       {params.get('signedOut') ? <Notice tone="info">{t.auth.signedOut}</Notice> : null}
       {message ? <Notice tone="error">{message}</Notice> : null}
       <form onSubmit={(event) => void submit(event)} noValidate={false}>
-        <fieldset className="wf-segmented">
-          <legend>{t.auth.identifierType}</legend>
-          {(['EMPLOYEE_ID', 'EMAIL'] as const).map((type) => (
-            <label key={type}>
-              <input
-                type="radio"
-                name="identifierType"
-                value={type}
-                checked={identifierType === type}
-                onChange={() => setIdentifierType(type)}
-              />
-              {type === 'EMAIL' ? t.auth.byEmail : t.auth.byEmployeeId}
-            </label>
-          ))}
-        </fieldset>
+        <SegmentedControl
+          label={t.auth.identifierType}
+          value={identifierType}
+          onChange={setIdentifierType}
+          options={[
+            { value: 'EMPLOYEE_ID', label: t.auth.byEmployeeId },
+            { value: 'EMAIL', label: t.auth.byEmail },
+          ]}
+        />
         <Field
           id="identifier"
           label={identifierType === 'EMAIL' ? t.auth.email : t.auth.employeeId}
@@ -117,11 +111,17 @@ function LoginForm() {
             onChange={(event) => setIdentifier(event.target.value)}
           />
         </Field>
-        <Field id="password" label={t.auth.password} required>
-          <input
+        <Field
+          id="password"
+          label={t.auth.password}
+          required
+          labelAction={<Link href={`${base}/forgot-password`}>{t.auth.forgotPassword}</Link>}
+        >
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
+            showLabel={t.auth.showPassword}
+            hideLabel={t.auth.hidePassword}
             autoComplete="current-password"
             required
             maxLength={1024}
@@ -131,9 +131,6 @@ function LoginForm() {
         </Field>
         <SubmitButton pending={pending} label={t.auth.signIn} pendingLabel={t.auth.signingIn} />
       </form>
-      <p>
-        <Link href={`${base}/forgot-password`}>{t.auth.forgotPassword}</Link>
-      </p>
     </AuthLayout>
   );
 }

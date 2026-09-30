@@ -111,12 +111,15 @@ export function Field({
   label,
   required,
   hint,
+  labelAction,
   children,
 }: {
   id: string;
   label: string;
   required?: boolean;
   hint?: string;
+  /** Link or button at the right end of the label row. */
+  labelAction?: ReactNode;
   children: ReactNode;
 }) {
   // The wf-field class stays so login and member-form layout rules keep matching until Steps 8-10.
@@ -127,6 +130,7 @@ export function Field({
       className="wf-field"
       {...(required ? { required } : {})}
       {...(hint ? { hint } : {})}
+      {...(labelAction ? { labelAction } : {})}
     >
       {children}
     </UiField>

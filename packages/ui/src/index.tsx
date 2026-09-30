@@ -70,6 +70,7 @@ export {
   FormSection,
   MoneyInput,
   NumberInput,
+  PasswordInput,
   RadioGroup,
   SearchInput,
   Select,
@@ -148,6 +149,8 @@ export type { PageItem, SortDirection, SortState, SortValue } from './paging-cor
 export { AppShell, Breadcrumbs, SidebarNav, UserMenu } from './app-shell';
 export type { AppShellLabels, Crumb, ShellLink, ShellLinkProps } from './app-shell';
 export { AuthLayout, BotanicalPattern } from './auth-layout';
+export { SegmentedControl, segmentedTarget } from './segmented';
+export type { SegmentedOption } from './segmented';
 export { ThemeToggle } from './theme-toggle';
 export type { ThemeToggleLabels } from './theme-toggle';
 export {

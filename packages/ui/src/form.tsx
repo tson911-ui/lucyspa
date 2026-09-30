@@ -46,11 +46,14 @@ export function Field({
   requiredLabel,
   hint,
   error,
+  labelAction,
   className,
   children,
 }: {
   id?: string | undefined;
   label: string;
+  /** A small link or button at the right end of the label row (for example "Forgot password?"). */
+  labelAction?: ReactNode | undefined;
   required?: boolean | undefined;
   /** Required in words, e.g. "required" / "bắt buộc". Without it only a decorative `*` is drawn. */
   requiredLabel?: string | undefined;
@@ -70,21 +73,31 @@ export function Field({
     ...(error ? { 'aria-invalid': true as const } : {}),
     ...(required ? { required: true } : {}),
   };
+  const labelElement = (
+    <label htmlFor={controlId} className="ls-label">
+      {label}
+      {required ? (
+        requiredLabel ? (
+          <span className="ls-required"> ({requiredLabel})</span>
+        ) : (
+          <span className="ls-required" aria-hidden="true">
+            {' '}
+            *
+          </span>
+        )
+      ) : null}
+    </label>
+  );
   return (
     <div className={cx('ls-field', className)}>
-      <label htmlFor={controlId} className="ls-label">
-        {label}
-        {required ? (
-          requiredLabel ? (
-            <span className="ls-required"> ({requiredLabel})</span>
-          ) : (
-            <span className="ls-required" aria-hidden="true">
-              {' '}
-              *
-            </span>
-          )
-        ) : null}
-      </label>
+      {labelAction ? (
+        <div className="ls-label-row">
+          {labelElement}
+          <span className="ls-label-action">{labelAction}</span>
+        </div>
+      ) : (
+        labelElement
+      )}
       {typeof children === 'function' ? children(control) : children}
       {hint ? (
         <p className="ls-hint" id={hintId}>
@@ -118,6 +131,46 @@ export function TextInput({ invalid, className, type = 'text', ...rest }: InputB
       className={cx('ls-input', className)}
       aria-invalid={invalid || rest['aria-invalid'] || undefined}
     />
+  );
+}
+
+/**
+ * Password field with a show/hide button inside the field. The button is a real button with a text
+ * name that says what it will do ("Show password" / "Hide password"); the value stays in the input.
+ */
+export function PasswordInput({
+  showLabel,
+  hideLabel,
+  invalid,
+  className,
+  ...rest
+}: Omit<InputBase, 'type'> & {
+  /** Name of the button while the password is hidden, for example "Hiện mật khẩu". */
+  showLabel: string;
+  /** Name of the button while the password is shown, for example "Ẩn mật khẩu". */
+  hideLabel: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  const label = visible ? hideLabel : showLabel;
+  return (
+    <span className="ls-password">
+      <TextInput
+        {...rest}
+        type={visible ? 'text' : 'password'}
+        invalid={invalid}
+        className={cx('ls-password-input', className)}
+      />
+      <button
+        type="button"
+        className="ls-password-toggle"
+        aria-label={label}
+        title={label}
+        disabled={rest.disabled}
+        onClick={() => setVisible((value) => !value)}
+      >
+        <Icon name={visible ? 'eye-off' : 'eye'} />
+      </button>
+    </span>
   );
 }
 

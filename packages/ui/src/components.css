@@ -1610,6 +1610,120 @@
   color: var(--ls-brand-fill-hover);
 }
 
+/* ---- Label row, segmented control, password field ---------------------------------------- */
+.ls-label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ls-space-1) var(--ls-space-3);
+}
+
+.ls-label-action {
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-label-action a,
+.ls-label-action button {
+  color: var(--ls-brand);
+  font: inherit;
+  font-weight: 500;
+  text-underline-offset: 0.2em;
+}
+
+.ls-label-action button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ls-label-action a:hover,
+.ls-label-action button:hover {
+  color: var(--ls-brand-fill-hover);
+}
+
+/* Joined choices, equal width; labels wrap. The active segment is marked by fill, weight and ring. */
+.ls-segmented {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--ls-border-control);
+  border-radius: var(--ls-radius-md);
+  background: var(--ls-bg-sunken);
+}
+
+.ls-segment {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--ls-control-h);
+  padding: var(--ls-space-2) var(--ls-space-3);
+  border: 0;
+  border-radius: var(--ls-radius-sm);
+  color: var(--ls-text-muted);
+  background: transparent;
+  font: inherit;
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+  text-align: center;
+  cursor: pointer;
+}
+
+.ls-segment:hover {
+  color: var(--ls-text);
+}
+
+.ls-segment-active {
+  color: var(--ls-brand-on-soft);
+  background: var(--ls-brand-soft);
+  box-shadow: inset 0 0 0 1px var(--ls-brand);
+  font-weight: 600;
+}
+
+.ls-segment:focus-visible {
+  outline-offset: 0;
+}
+
+.ls-password {
+  position: relative;
+  display: block;
+}
+
+.ls-password-input {
+  padding-inline-end: var(--ls-space-9);
+}
+
+.ls-password-toggle {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ls-control-h);
+  padding: 0;
+  border: 0;
+  border-radius: var(--ls-radius-sm);
+  color: var(--ls-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.ls-password-toggle:hover {
+  color: var(--ls-text);
+}
+
+.ls-password-toggle:focus-visible {
+  outline-offset: -2px;
+}
+
+.ls-password-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* Phone-only "Sort by" (the card list hides the header row). */
 .ls-sortby {
   display: none;

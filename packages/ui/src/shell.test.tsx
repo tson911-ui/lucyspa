@@ -8,7 +8,7 @@ import type { ShellNavGroup } from './index';
 const dom = installDom('http://localhost/vi/workforce');
 const { window } = dom;
 after(() => window.close());
-const { act } = await import('react');
+const { act, useState } = await import('react');
 const { createRoot } = await import('react-dom/client');
 const { renderToStaticMarkup } = await import('react-dom/server');
 const ui = await import('./index');
@@ -267,32 +267,30 @@ test('Breadcrumbs: the last crumb is the current page and is not a link', () => 
   assert.ok(markup.includes('aria-current="page">Vai trò</span>'));
 });
 
-test('AuthLayout: brand panel for wide screens, form column, decoration hidden from assistive tech', () => {
+test('AuthLayout: centered card with the wordmark inside, controls top right, art behind', () => {
   const markup = renderToStaticMarkup(
-    <ui.AuthLayout
-      brand={<span>LUCY SPA</span>}
-      tagline="Chăm sóc từng khách hàng, mỗi ngày."
-      topActions={<a href="#en">English</a>}
-    >
+    <ui.AuthLayout brand={<span>LUCY SPA</span>} topActions={<a href="#en">English</a>}>
       <h1>Đăng nhập nhân sự</h1>
       <form />
     </ui.AuthLayout>,
   );
-  const panel =
-    /<div class="ls-auth-panel" aria-hidden="true">([\s\S]*?)<\/div><div class="ls-auth-side">/.exec(
-      markup,
-    );
-  assert.ok(panel, 'the panel is decorative and aria-hidden');
-  assert.ok(panel[1]!.includes('Chăm sóc từng khách hàng, mỗi ngày.'), 'tagline');
-  assert.ok(panel[1]!.includes('LUCY SPA'), 'wordmark');
-  assert.ok(panel[1]!.includes('<svg') && panel[1]!.includes('<pattern'), 'botanical SVG pattern');
+  assert.doesNotMatch(markup, /ls-auth-panel|ls-auth-side|ls-auth-tagline/, 'no split layout');
+  const svg = /<svg class="ls-auth-pattern"[^>]*aria-hidden="true"/.exec(markup);
+  assert.ok(svg && markup.includes('<pattern'), 'botanical SVG, hidden from assistive tech');
   assert.doesNotMatch(markup, /<img|url\((?!#)|https?:/, 'no external or raster image');
   assert.match(markup, /<main class="ls-auth-main" id="main-content" tabindex="-1">/);
+  const card = markup.indexOf('class="ls-auth-card"');
+  assert.ok(card > 0);
   assert.ok(
-    markup.indexOf('ls-auth-side') < markup.indexOf('<h1>'),
-    'the form is in the side column',
+    card < markup.indexOf('LUCY SPA', card) &&
+      markup.indexOf('LUCY SPA', card) < markup.indexOf('<h1>'),
+    'the wordmark is at the top inside the card, above the title',
   );
-  assert.ok(markup.includes('English'), 'language and theme controls are top right');
+  assert.ok(
+    markup.indexOf('class="ls-auth-top"') < markup.indexOf('English') &&
+      markup.indexOf('English') < card,
+    'language and theme controls sit in the top strip, before the card',
+  );
 });
 
 test('BotanicalPattern: two instances on one page never share ids', () => {
@@ -311,29 +309,194 @@ test('BotanicalPattern: two instances on one page never share ids', () => {
   );
 });
 
+test('segmentedTarget: arrows wrap, Home/End jump, other keys are ignored', () => {
+  assert.equal(ui.segmentedTarget('ArrowRight', 0, 2), 1);
+  assert.equal(ui.segmentedTarget('ArrowRight', 1, 2), 0);
+  assert.equal(ui.segmentedTarget('ArrowLeft', 0, 2), 1);
+  assert.equal(ui.segmentedTarget('ArrowUp', 1, 3), 0);
+  assert.equal(ui.segmentedTarget('Home', 2, 3), 0);
+  assert.equal(ui.segmentedTarget('End', 0, 3), 2);
+  assert.equal(ui.segmentedTarget('a', 0, 2), null);
+  assert.equal(ui.segmentedTarget('ArrowRight', 0, 0), null);
+});
+
+test('SegmentedControl: two-option radio group, one tab stop, arrows and clicks select', () => {
+  const seen: string[] = [];
+  function Harness() {
+    const [value, setValue] = useState<'EMPLOYEE_ID' | 'EMAIL'>('EMPLOYEE_ID');
+    return (
+      <ui.SegmentedControl
+        label="Đăng nhập bằng"
+        value={value}
+        onChange={(next) => {
+          seen.push(next);
+          setValue(next);
+        }}
+        options={[
+          { value: 'EMPLOYEE_ID', label: 'Mã nhân viên' },
+          { value: 'EMAIL', label: 'Email' },
+        ]}
+      />
+    );
+  }
+  const view = mount(<Harness />);
+  const group = $(view.container, '[role="radiogroup"]')!;
+  assert.equal(group.getAttribute('aria-label'), 'Đăng nhập bằng');
+  const radios = $$(group, '[role="radio"]') as HTMLElement[];
+  assert.deepEqual(
+    radios.map((radio) => [radio.textContent, radio.getAttribute('aria-checked')]),
+    [
+      ['Mã nhân viên', 'true'],
+      ['Email', 'false'],
+    ],
+  );
+  assert.deepEqual(
+    radios.map((radio) => radio.getAttribute('tabindex')),
+    ['0', '-1'],
+    'one tab stop',
+  );
+  radios[0]!.focus();
+  press(radios[0]!, 'ArrowRight');
+  assert.equal(window.document.activeElement, radios[1], 'focus follows the selection');
+  assert.equal(radios[1]!.getAttribute('aria-checked'), 'true');
+  press(radios[1]!, 'Home');
+  assert.equal(radios[0]!.getAttribute('aria-checked'), 'true');
+  click(radios[1]!);
+  assert.deepEqual(seen, ['EMAIL', 'EMPLOYEE_ID', 'EMAIL']);
+  assert.ok(
+    radios.every((radio) => radio.getAttribute('type') === 'button'),
+    'never submits a form',
+  );
+  view.unmount();
+});
+
+test('PasswordInput: hidden by default, a named button shows and hides it, the value is kept', () => {
+  const view = mount(
+    <ui.PasswordInput
+      id="pw"
+      name="password"
+      showLabel="Hiện mật khẩu"
+      hideLabel="Ẩn mật khẩu"
+      autoComplete="current-password"
+      defaultValue="bí mật"
+    />,
+  );
+  const input = $(view.container, 'input') as HTMLInputElement;
+  const button = $(view.container, 'button.ls-password-toggle') as HTMLButtonElement;
+  assert.equal(input.type, 'password');
+  assert.equal(input.getAttribute('autocomplete'), 'current-password');
+  assert.equal(button.getAttribute('aria-label'), 'Hiện mật khẩu');
+  assert.equal(button.getAttribute('type'), 'button', 'does not submit the form');
+  assert.ok($(button, 'svg'), 'eye icon');
+  click(button);
+  assert.equal(input.type, 'text');
+  assert.equal(input.value, 'bí mật');
+  assert.equal(button.getAttribute('aria-label'), 'Ẩn mật khẩu');
+  click(button);
+  assert.equal(input.type, 'password');
+  view.unmount();
+});
+
+test('Field: labelAction sits at the right end of the label row, outside the label', () => {
+  const markup = renderToStaticMarkup(
+    <ui.Field id="p" label="Mật khẩu" required labelAction={<a href="#f">Quên mật khẩu?</a>}>
+      <input id="p" />
+    </ui.Field>,
+  );
+  assert.match(
+    markup,
+    /<div class="ls-label-row"><label[^>]*>Mật khẩu[\s\S]*?<\/label><span class="ls-label-action"><a href="#f">Quên mật khẩu\?<\/a><\/span><\/div>/,
+  );
+  const plain = renderToStaticMarkup(
+    <ui.Field id="p" label="Mật khẩu">
+      <input id="p" />
+    </ui.Field>,
+  );
+  assert.doesNotMatch(plain, /ls-label-row/, 'no row without an action');
+});
+
 // ---- Stylesheet contract ---------------------------------------------------------------------------
 const shellCss = readFileSync(new URL('shell.css', import.meta.url), 'utf8');
 const block = (css: string, selector: string): string => {
-  const escaped = selector.replace(/[.[\]()]/g, '\\$&');
+  const escaped = selector.replace(/[.[\]()*+?]/g, '\\$&');
   return new RegExp(`${escaped}\\s*\\{([^}]*)\\}`).exec(css)?.[1] ?? '';
 };
 
-test('auth styles: form only on phones, split from 768 px, gradient from tokens, subtle art, no motion', () => {
-  assert.match(block(shellCss, '.ls-auth-panel'), /display:\s*none/, 'phone shows the form only');
-  const wide = /@media \(min-width: 768px\) \{([\s\S]*)\n\}\n?$/.exec(shellCss)?.[1] ?? '';
-  assert.match(
-    wide,
-    /\.ls-auth \{[^}]*grid-template-columns:\s*minmax\(20rem, 5fr\) minmax\(0, 6fr\)/,
+test('auth card UX: token rhythm, elevation token in every theme block, segmented and password styles', () => {
+  const card = block(shellCss, '.ls-auth-card');
+  assert.match(card, /box-shadow:\s*var\(--ls-auth-card-shadow\)/);
+  const tokens = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
+  assert.equal(
+    tokens.match(/--ls-auth-card-shadow:/g)?.length,
+    3,
+    'defined for light, dark toggle and dark system preference',
   );
-  assert.match(wide, /\.ls-auth-panel \{[^}]*display:\s*flex/, 'panel appears on wide screens');
+  // Spacing between blocks comes from spacing tokens only (no px/rem literals on margins or gaps).
+  const rhythm = [...shellCss.matchAll(/\.ls-auth-card > [^{]*\{([^}]*)\}/g)].map((m) => m[1]!);
+  assert.ok(rhythm.length >= 4, 'rhythm rules exist');
+  for (const body of rhythm)
+    assert.doesNotMatch(body, /margin[-a-z]*:\s*-?(?:0?\.\d|[1-9])/, 'no spacing literal');
   assert.match(
-    wide,
-    /linear-gradient\([^)]*var\(--ls-auth-panel-from\)[^)]*var\(--ls-auth-panel-to\)\)/,
-    'gradient uses the theme tokens, so light and dark both work',
+    block(shellCss, '.ls-auth-card > .ls-auth-card-brand + *'),
+    /var\(--ls-space-6\)/,
+    'wordmark-to-title gap',
   );
-  const opacity = Number(/\.ls-auth-pattern \{[^}]*opacity:\s*([\d.]+)/.exec(wide)?.[1]);
+  assert.match(block(shellCss, '.ls-auth-card > * + *'), /var\(--ls-space-4\)/);
+  const components = readFileSync(new URL('components.css', import.meta.url), 'utf8');
+  assert.match(
+    block(components, '.ls-label-row'),
+    /justify-content:\s*space-between/,
+    'link at the right end',
+  );
+  assert.match(block(components, '.ls-segment'), /flex:\s*1 1 0/, 'equal segments');
+  assert.match(
+    block(components, '.ls-segment'),
+    /min-height:\s*var\(--ls-control-h\)/,
+    '44 px target',
+  );
+  assert.match(
+    block(components, '.ls-password-toggle'),
+    /width:\s*var\(--ls-control-h\)/,
+    '44 px target',
+  );
+});
+
+test('auth styles: full-screen gradient from tokens, subtle art, card on surface tokens, readable controls', () => {
+  assert.match(
+    block(shellCss, '.ls-auth'),
+    /min-height:\s*100svh[\s\S]*linear-gradient\([^)]*var\(--ls-auth-panel-from\)[^)]*var\(--ls-auth-panel-to\)\)/,
+    'the whole screen is the brand gradient, from theme tokens (light and dark)',
+  );
+  const opacity = Number(/\.ls-auth-pattern \{[^}]*opacity:\s*([\d.]+)/.exec(shellCss)?.[1]);
   assert.ok(opacity > 0 && opacity <= 0.15, `line art is very subtle (opacity ${opacity})`);
-  assert.match(wide, /\.ls-auth-top-brand \{[^}]*display:\s*none/, 'wordmark is not doubled');
+  const card = block(shellCss, '.ls-auth-card');
+  assert.match(
+    card,
+    /background:\s*var\(--ls-bg-surface\)/,
+    'light card in light, dark card in dark',
+  );
+  assert.match(card, /color:\s*var\(--ls-text\)/);
+  assert.match(card, /width:\s*min\(100%, 26rem\)/, 'the card width of before');
+  assert.doesNotMatch(
+    shellCss,
+    /ls-auth-panel\s*\{|grid-template-columns:\s*minmax\(20rem/,
+    'no split',
+  );
+  assert.match(
+    block(shellCss, '.ls-auth-main'),
+    /padding:\s*var\(--ls-space-4\)/,
+    'side margins on phones',
+  );
+  // Top-right controls use the on-red tokens, including the focus ring.
+  assert.match(block(shellCss, '.ls-auth-top a'), /color:\s*var\(--ls-auth-panel-text\)/);
+  assert.match(
+    block(shellCss, '.ls-auth-top :focus-visible'),
+    /outline-color:\s*var\(--ls-auth-panel-text\)/,
+  );
+  assert.match(
+    block(shellCss, '.ls-auth-top .ls-theme-option-active'),
+    /var\(--ls-auth-panel-from\)/,
+  );
   assert.doesNotMatch(shellCss, /@keyframes|animation\s*:/, 'no heavy animation');
   assert.doesNotMatch(shellCss, /url\(/, 'no external images');
 });

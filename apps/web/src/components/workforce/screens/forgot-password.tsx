@@ -1,6 +1,6 @@
 'use client';
 
-import { AuthLayout, BrandWordmark } from '@lucy-spa/ui';
+import { AuthLayout, BrandWordmark, PasswordInput } from '@lucy-spa/ui';
 import Link from 'next/link';
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { oneAtATime, PASSWORD_LENGTH } from '../../../lib/workforce/employee-create';
@@ -142,12 +142,12 @@ export function ForgotPasswordView(props: {
   const { t } = props;
   const texts = t.recovery;
   return (
-    <AuthLayout brand={props.brand} tagline={t.auth.tagline} topActions={props.topActions}>
+    <AuthLayout brand={props.brand} topActions={props.topActions}>
       <h1>{texts.forgotTitle}</h1>
       {props.error ? <Notice tone="error">{props.error}</Notice> : null}
+      {props.step === 'email' ? <p className="wf-muted">{texts.forgotIntro}</p> : null}
       {props.step === 'email' ? (
         <form onSubmit={props.onRequest}>
-          <p className="wf-muted">{texts.forgotIntro}</p>
           <Field id="forgot-email" label={texts.email} required>
             <input
               id="forgot-email"
@@ -184,9 +184,10 @@ export function ForgotPasswordView(props: {
             />
           </Field>
           <Field id="forgot-password" label={texts.newPassword} required hint={texts.passwordHint}>
-            <input
+            <PasswordInput
               id="forgot-password"
-              type="password"
+              showLabel={t.auth.showPassword}
+              hideLabel={t.auth.hidePassword}
               autoComplete="new-password"
               required
               minLength={PASSWORD_LENGTH.min}
@@ -198,9 +199,10 @@ export function ForgotPasswordView(props: {
             />
           </Field>
           <Field id="forgot-confirm" label={texts.confirmPassword} required>
-            <input
+            <PasswordInput
               id="forgot-confirm"
-              type="password"
+              showLabel={t.auth.showPassword}
+              hideLabel={t.auth.hidePassword}
               autoComplete="new-password"
               required
               aria-invalid={props.problem === 'mismatch' || undefined}

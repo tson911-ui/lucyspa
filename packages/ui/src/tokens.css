@@ -34,6 +34,8 @@
   --ls-auth-panel-text: #ffffff;
   --ls-auth-panel-text-muted: #f3dde2;
   --ls-auth-panel-line: #ffffff;
+  /* Card elevation on the red background: a dark, warm shadow that is visible on red in both themes */
+  --ls-auth-card-shadow: 0 2px 6px rgb(40 8 14 / 0.25), 0 20px 48px rgb(40 8 14 / 0.4);
 
   /* Status (never color-only, see contract 6.4) */
   --ls-danger: #b3261e;
@@ -170,6 +172,7 @@
   --ls-auth-panel-text: #ffffff;
   --ls-auth-panel-text-muted: #ead0d6;
   --ls-auth-panel-line: #ffffff;
+  --ls-auth-card-shadow: 0 2px 6px rgb(0 0 0 / 0.45), 0 20px 48px rgb(0 0 0 / 0.6);
   --ls-danger: #ff9484;
   --ls-danger-bg: #3d1c1a;
   --ls-on-danger: #2a0f16;
@@ -218,6 +221,7 @@
     --ls-auth-panel-text: #ffffff;
     --ls-auth-panel-text-muted: #ead0d6;
     --ls-auth-panel-line: #ffffff;
+    --ls-auth-card-shadow: 0 2px 6px rgb(0 0 0 / 0.45), 0 20px 48px rgb(0 0 0 / 0.6);
     --ls-danger: #ff9484;
     --ls-danger-bg: #3d1c1a;
     --ls-on-danger: #2a0f16;
