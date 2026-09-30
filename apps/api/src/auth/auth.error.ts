@@ -59,6 +59,10 @@ const errors = {
     'Every service needs a price and a quantity before the invoice is finalized',
   ],
   INVOICE_CANCEL_NOT_ALLOWED: [409, 'This invoice cannot be cancelled here'],
+  // Phase 4 Step 6: discounts / vouchers.
+  VOUCHER_INVALID: [409, 'This voucher code cannot be used'],
+  DISCOUNT_STATE_INVALID: [409, 'The discount program does not allow this change'],
+  DISCOUNT_CODE_TAKEN: [409, 'This code is already in use'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

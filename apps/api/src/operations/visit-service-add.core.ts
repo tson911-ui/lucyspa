@@ -205,6 +205,7 @@ export async function addVisitServiceLine(
       priceMaxVnd: true,
       pricingUnit: true,
       maxQuantity: true,
+      categoryId: true,
     },
   });
   if (!service) throw new AuthError('BOOKING_SERVICE_UNAVAILABLE');
@@ -241,6 +242,8 @@ export async function addVisitServiceLine(
       // OP-1: the per-service quantity limit is snapshotted with the other pricing inputs. The
       // visit line itself still has no quantity: one line is one performed service.
       maxQuantitySnapshot: service.maxQuantity,
+      // Phase 4 Step 6: the category at this moment, for discount scope.
+      serviceCategoryId: service.categoryId,
       addedOnBehalf: true,
       addedByUserId: actor.userId,
       addedAt: now,
@@ -273,6 +276,7 @@ export async function addVisitServiceLine(
       catalogPriceMaxVnd: service.priceMaxVnd.toString(),
       catalogPricingUnit: service.pricingUnit,
       maxQuantitySnapshot: service.maxQuantity,
+      serviceCategoryId: service.categoryId,
       addedOnBehalf: true,
       via: authority,
       visitStatus: visit.status,

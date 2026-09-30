@@ -30,6 +30,8 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'collaboratorSchedule',
     'branches',
     'services',
+    // Phase 4 Step 6: discount programs and voucher codes (GLOBAL MANAGE_DISCOUNTS / CREATE_VOUCHERS).
+    'discounts',
     'skills',
     'employees',
     // Organization hierarchy + teams (VIEW/MANAGE_ORGANIZATION, VIEW/MANAGE_TEAMS; Owner holds all).

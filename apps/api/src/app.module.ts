@@ -24,6 +24,8 @@ import { ReassignmentController } from './operations/reassignment.controller.js'
 import { ReassignmentService } from './operations/reassignment.service.js';
 import { NotificationController } from './notifications/notification.controller.js';
 import { NotificationService } from './notifications/notification.service.js';
+import { DiscountController } from './discounts/discount.controller.js';
+import { DiscountService } from './discounts/discount.service.js';
 import { InvoiceController } from './pos/invoice.controller.js';
 import { InvoiceService } from './pos/invoice.service.js';
 import { WalkInController } from './walkin/walkin.controller.js';
@@ -104,6 +106,7 @@ export class AppModule {
         ReassignmentController,
         NotificationController,
         WalkInController,
+        DiscountController,
         InvoiceController,
         OrganizationController,
         TeamController,
@@ -141,6 +144,7 @@ export class AppModule {
         ReassignmentService,
         NotificationService,
         WalkInService,
+        DiscountService,
         InvoiceService,
         OrganizationService,
         TeamService,

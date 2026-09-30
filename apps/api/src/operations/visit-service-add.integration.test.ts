@@ -310,6 +310,32 @@ test(
                 assert.equal(stored.catalogPriceMaxVnd, 130_000n);
                 assert.equal(stored.catalogPricingUnit, 'PER_SERVICE');
                 assert.equal(stored.maxQuantitySnapshot, 1, 'a flat service is exactly one unit');
+                // Phase 4 Step 6: the service category is snapshotted too, and a later category move never alters it.
+                const categoryThen = (
+                  await tx.service.findUniqueOrThrow({ where: { id: extra.id } })
+                ).categoryId;
+                assert.equal(stored.serviceCategoryId, categoryThen);
+                const movedTo = await tx.serviceCategory.create({
+                  data: {
+                    code: `MV_${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
+                    nameVi: 'Chuyển',
+                    nameEn: 'Moved',
+                  },
+                });
+                await tx.service.update({
+                  where: { id: extra.id },
+                  data: { categoryId: movedTo.id, rowVersion: { increment: 1 } },
+                });
+                assert.equal(
+                  (await tx.visitServiceLine.findUniqueOrThrow({ where: { id: stored.id } }))
+                    .serviceCategoryId,
+                  categoryThen,
+                  'a later category move never alters the historical category',
+                );
+                await tx.service.update({
+                  where: { id: extra.id },
+                  data: { categoryId: categoryThen, rowVersion: { increment: 1 } },
+                });
                 assert.equal(await claims(added.lineId), 1);
                 assert.equal(
                   await tx.visitLineAddRequest.count({

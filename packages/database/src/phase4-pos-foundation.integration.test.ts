@@ -870,6 +870,247 @@ test('Phase 4 Step 4 POS database foundation invariants (all fixtures roll back)
             },
           );
 
+          // ================================================== service category snapshot (Step 6 follow-up)
+
+          await context.test(
+            'the service category is snapshotted once, copied downstream and immutable (historical discount scope)',
+            async () => {
+              const categoryNow = async () =>
+                (await tx.service.findUniqueOrThrow({ where: { id: nail.id } })).categoryId;
+              const original = await categoryNow();
+              const elsewhere = await tx.serviceCategory.create({
+                data: { code: `SC_${run}_A`, nameVi: 'Nhóm khác', nameEn: 'Other group' },
+                select: { id: true },
+              });
+              const moveTo = (categoryId: string) =>
+                tx.service.update({
+                  where: { id: nail.id },
+                  data: { categoryId, rowVersion: { increment: 1 } },
+                });
+
+              // Booking line: an unset category is filled from the service AT CREATION.
+              const ktvBooking = await user('EMPLOYEE');
+              const booking = await tx.booking.create({
+                data: {
+                  code: `BK-P4-${run}-CAT`,
+                  branchId: branch,
+                  ownerUserId: customer,
+                  channel: 'ONLINE',
+                  startsAt: new Date('2027-03-01T09:00:00+07:00'),
+                  endsAt: new Date('2027-03-01T09:10:00+07:00'),
+                  serviceDate: DAY,
+                  idempotencyKey: randomUUID(),
+                  createdByUserId: customer,
+                },
+                select: { id: true },
+              });
+              const recipient = await tx.bookingRecipient.create({
+                data: { bookingId: booking.id, relation: 'SELF' },
+                select: { id: true },
+              });
+              const bookingLine = await tx.bookingServiceLine.create({
+                data: {
+                  bookingId: booking.id,
+                  recipientId: recipient.id,
+                  sequence: 1,
+                  serviceId: nail.id,
+                  employeeUserId: ktvBooking,
+                  assignmentMode: 'ANY',
+                  plannedStartAt: new Date('2027-03-01T09:00:00+07:00'),
+                  plannedEndAt: new Date('2027-03-01T09:10:00+07:00'),
+                  durationMinutes: 10,
+                  bufferMinutes: 0,
+                  ...snapshotOf(nail),
+                },
+                select: { id: true, serviceCategoryId: true },
+              });
+              assert.equal(bookingLine.serviceCategoryId, original);
+              // Moving the live service afterwards never rewrites the snapshot, and the snapshot cannot be changed.
+              await moveTo(elsewhere.id);
+              assert.equal(
+                (await tx.bookingServiceLine.findUniqueOrThrow({ where: { id: bookingLine.id } }))
+                  .serviceCategoryId,
+                original,
+                'a later category move never alters the booking line',
+              );
+              await rejects(
+                () =>
+                  tx.bookingServiceLine.update({
+                    where: { id: bookingLine.id },
+                    data: { serviceCategoryId: elsewhere.id, rowVersion: { increment: 1 } },
+                  }),
+                /snapshot, order and version cannot be rewritten/,
+              );
+              await rejects(
+                () =>
+                  tx.$executeRawUnsafe(
+                    `UPDATE booking_service_lines SET service_category_id = NULL WHERE id = '${bookingLine.id}'`,
+                  ),
+                /snapshot, order and version cannot be rewritten/,
+              );
+
+              // Visit line (walk-in / staff-added shape): filled from the service at that moment.
+              const openVisit = await tx.visit.create({
+                data: {
+                  code: `VS-P4-${run}-CAT`,
+                  branchId: branch,
+                  origin: 'WALK_IN',
+                  serviceDate: DAY,
+                  arrivedAt: new Date('2027-03-01T05:30:00+07:00'),
+                  createdByUserId: staff,
+                  idempotencyKey: randomUUID(),
+                },
+                select: { id: true },
+              });
+              const participant = await tx.visitParticipant.create({
+                data: { visitId: openVisit.id, kind: 'GUEST', displayName: 'Khách' },
+                select: { id: true },
+              });
+              const visitLine = await tx.visitServiceLine.create({
+                data: {
+                  visitId: openVisit.id,
+                  participantId: participant.id,
+                  sequence: 1,
+                  serviceId: nail.id,
+                  status: 'WAITING',
+                  assignmentMode: 'ANY',
+                  durationMinutes: 10,
+                  ...snapshotOf(nail),
+                },
+                select: { id: true, serviceCategoryId: true },
+              });
+              assert.equal(
+                visitLine.serviceCategoryId,
+                elsewhere.id,
+                'the category at THIS moment',
+              );
+              await moveTo(original);
+              assert.equal(
+                (await tx.visitServiceLine.findUniqueOrThrow({ where: { id: visitLine.id } }))
+                  .serviceCategoryId,
+                elsewhere.id,
+                'a later category move never alters the visit line',
+              );
+              await rejects(
+                () =>
+                  tx.visitServiceLine.update({
+                    where: { id: visitLine.id },
+                    data: { serviceCategoryId: original, rowVersion: { increment: 1 } },
+                  }),
+                /cannot be rewritten/,
+              );
+
+              // A carried visit line copies its booking line's snapshot exactly (never the live catalog).
+              const arrived = await tx.visit.create({
+                data: {
+                  code: `VS-P4-${run}-CAT2`,
+                  branchId: branch,
+                  bookingId: booking.id,
+                  ownerUserId: customer,
+                  origin: 'BOOKING',
+                  serviceDate: DAY,
+                  arrivedAt: new Date('2027-03-01T05:30:00+07:00'),
+                  createdByUserId: staff,
+                  idempotencyKey: randomUUID(),
+                },
+                select: { id: true },
+              });
+              const arrivedParticipant = await tx.visitParticipant.create({
+                data: { visitId: arrived.id, kind: 'GUEST', displayName: 'Khách' },
+                select: { id: true },
+              });
+              const carry = (
+                overrides: Partial<Prisma.VisitServiceLineUncheckedCreateInput> = {},
+              ) =>
+                tx.visitServiceLine.create({
+                  data: {
+                    visitId: arrived.id,
+                    participantId: arrivedParticipant.id,
+                    sequence: 1,
+                    bookingServiceLineId: bookingLine.id,
+                    serviceId: nail.id,
+                    status: 'PLANNED',
+                    assignmentMode: 'ANY',
+                    employeeUserId: ktvBooking,
+                    plannedStartAt: new Date('2027-03-01T09:00:00+07:00'),
+                    plannedEndAt: new Date('2027-03-01T09:10:00+07:00'),
+                    bufferMinutes: 0,
+                    durationMinutes: 10,
+                    ...snapshotOf(nail),
+                    ...overrides,
+                  },
+                  select: { id: true, serviceCategoryId: true },
+                });
+              await rejects(
+                () => carry({ serviceCategoryId: elsewhere.id }),
+                /copies the historical category of its booking line/,
+              );
+              const carried = await carry();
+              assert.equal(
+                carried.serviceCategoryId,
+                original,
+                'the booking line snapshot, not the live catalog',
+              );
+              assert.notEqual(await categoryNow(), elsewhere.id);
+
+              // Invoice detail: copies the visit line snapshot; a different category is refused.
+              const visit = await completedVisit([nail]);
+              const doneLine = await tx.visitServiceLine.findUniqueOrThrow({
+                where: { id: visit.done[0]!.id },
+                select: { serviceCategoryId: true },
+              });
+              assert.equal(doneLine.serviceCategoryId, original);
+              await moveTo(elsewhere.id);
+              const invoice = await draft(visit);
+              const detail = await tx.invoiceLineService.findFirstOrThrow({
+                where: { invoiceId: invoice.id },
+              });
+              assert.equal(
+                detail.serviceCategoryId,
+                original,
+                'copied from the visit line, not from the live service (now elsewhere)',
+              );
+              await rejects(
+                () =>
+                  tx.invoiceLineService.update({
+                    where: { invoiceLineId: detail.invoiceLineId },
+                    data: { serviceCategoryId: elsewhere.id },
+                  }),
+                /recorded once/,
+              );
+              await rejects(async () => {
+                const spare = await tx.invoiceLine.create({
+                  data: {
+                    invoiceId: invoice.id,
+                    sequence: 9,
+                    itemCode: nail.code,
+                    nameVi: nail.nameVi,
+                    nameEn: nail.nameEn,
+                  },
+                  select: { id: true },
+                });
+                await tx.invoiceLineService.create({
+                  data: {
+                    invoiceLineId: spare.id,
+                    invoiceId: invoice.id,
+                    visitServiceLineId: visit.done[0]!.id,
+                    serviceId: nail.id,
+                    participantId: visit.participantId,
+                    employeeUserId: ktv,
+                    pricingUnit: nail.pricingUnit,
+                    catalogPriceMinVnd: nail.priceVnd,
+                    catalogPriceMaxVnd: nail.priceMaxVnd,
+                    quantityLimit: nail.maxQuantity,
+                    addedOnBehalf: false,
+                    serviceCategoryId: elsewhere.id,
+                  },
+                });
+              }, /copy the visit line snapshot/);
+              await moveTo(original);
+              await settle();
+            },
+          );
+
           // ================================================================ invoice header
 
           await context.test(

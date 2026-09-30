@@ -51,3 +51,5 @@ await import('../apps/api/dist/leave/leave-notifications.integration.test.js');
 await import('../apps/api/dist/notifications/notification-inbox.integration.test.js');
 await import('../apps/api/dist/pos/invoice.integration.test.js');
 await import('../apps/api/dist/pos/invoice.race.integration.test.js');
+await import('../apps/api/dist/pos/discount.integration.test.js');
+await import('../apps/api/dist/pos/discount.race.integration.test.js');

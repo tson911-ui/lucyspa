@@ -268,6 +268,7 @@ export async function createCustomerBooking(
       priceMaxVnd: true,
       pricingUnit: true,
       maxQuantity: true,
+      categoryId: true,
     },
   });
   const serviceById = new Map(services.map((row) => [row.id, row]));
@@ -329,6 +330,8 @@ export async function createCustomerBooking(
         catalogPricingUnit: service.pricingUnit,
         // OP-1: the per-service quantity limit is snapshotted with the other pricing inputs.
         maxQuantitySnapshot: service.maxQuantity,
+        // Phase 4 Step 6: the category at this moment, for discount scope (never re-read from the live service).
+        serviceCategoryId: service.categoryId,
       },
       select: { id: true },
     });

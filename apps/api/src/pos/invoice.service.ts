@@ -5,6 +5,8 @@ import type {
   InvoiceOpenedResponse,
   InvoicePayerRequest,
   InvoiceResponse,
+  InvoiceVoucherRemoveRequest,
+  InvoiceVoucherSupplyRequest,
   PosBoardResponse,
   WalkInMemberLookupResponse,
 } from '@lucy-spa/contracts';
@@ -24,8 +26,10 @@ import {
   getInvoice,
   openInvoice,
   posBoard,
+  removeVoucher,
   setLinePrice,
   setPayer,
+  supplyVoucher,
 } from './invoice.core.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -121,6 +125,32 @@ export class InvoiceService {
     }
     return this.run(token, invoiceId, requestId, (context, id) =>
       setPayer(context, id, { expectedVersion, payerUserId }),
+    );
+  }
+
+  async supplyVoucher(
+    token: string | undefined,
+    invoiceId: string,
+    body: InvoiceVoucherSupplyRequest,
+    requestId?: string,
+  ): Promise<InvoiceResponse> {
+    const expectedVersion = this.version(body.expectedVersion);
+    return this.run(token, invoiceId, requestId, (context, id) =>
+      supplyVoucher(context, id, { expectedVersion, code: body.code }),
+    );
+  }
+
+  async removeVoucher(
+    token: string | undefined,
+    invoiceId: string,
+    entryId: string,
+    body: InvoiceVoucherRemoveRequest,
+    requestId?: string,
+  ): Promise<InvoiceResponse> {
+    const expectedVersion = this.version(body.expectedVersion);
+    if (!UUID.test(entryId)) throw new AuthError('NOT_FOUND');
+    return this.run(token, invoiceId, requestId, (context, id) =>
+      removeVoucher(context, id, entryId.toLowerCase(), { expectedVersion }),
     );
   }
 

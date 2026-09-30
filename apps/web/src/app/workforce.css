@@ -898,3 +898,9 @@
 .wf-summary dd {
   margin: 0;
 }
+
+/* Discount scope pickers: one checkbox per line. */
+.wf-check {
+  display: block;
+  padding: 0.15rem 0;
+}

@@ -504,6 +504,15 @@ test(
                   [6, 7, 8],
                   'not the live catalog limit',
                 );
+                assert.deepEqual(
+                  visit.lines.map((l) => l.serviceCategoryId),
+                  bookingLines.map((l) => l.serviceCategoryId),
+                  'Phase 4 Step 6: the booking line category snapshot is carried to the visit line',
+                );
+                assert.ok(
+                  visit.lines.every((l) => l.serviceCategoryId !== null),
+                  'the historical category is known for lines created through the application',
+                );
                 assert.equal(
                   await tx.serviceExecution.count({
                     where: { visitServiceLineId: { in: visit.lines.map((l) => l.id) } },

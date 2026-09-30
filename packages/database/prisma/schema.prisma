@@ -756,6 +756,9 @@ model ServiceCategory {
   updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   services   Service[]
   discountVersionCategories DiscountVersionCategory[]
+  bookingLines              BookingServiceLine[]        @relation("BookingLineCategory")
+  visitLines                VisitServiceLine[]          @relation("VisitLineCategory")
+  invoiceLineDetails        InvoiceLineService[]        @relation("InvoiceLineCategory")
 
   @@index([isActive, sortOrder, id], map: "service_categories_active_order_idx")
   @@map("service_categories")
@@ -1150,6 +1153,9 @@ model BookingServiceLine {
   catalogPricingUnit ServicePricingUnit            @map("catalog_pricing_unit")
   /// Phase 4 OP-1: the service's quantity limit when the line was established (immutable snapshot).
   maxQuantitySnapshot Int                          @default(1) @map("max_quantity_snapshot")
+  /// Phase 4 Step 6: the service's category when the line was established (immutable snapshot; NULL = unknown, never guessed).
+  serviceCategoryId   String?                       @map("service_category_id") @db.Uuid
+  serviceCategory     ServiceCategory?              @relation("BookingLineCategory", fields: [serviceCategoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   assignmentConflict AssignmentConflict?           @map("assignment_conflict")
   rowVersion         Int                           @default(1) @map("row_version")
   createdAt          DateTime                      @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -1264,6 +1270,9 @@ model VisitServiceLine {
   /// Phase 4 OP-1: the service's quantity limit when the line was established (immutable snapshot).
   /// The line itself has NO quantity: one line is one performed service.
   maxQuantitySnapshot     Int                           @default(1) @map("max_quantity_snapshot")
+  /// Phase 4 Step 6: copied from the booking line, or taken from the catalog for a walk-in / staff-added line (immutable; NULL = unknown).
+  serviceCategoryId       String?                       @map("service_category_id") @db.Uuid
+  serviceCategory         ServiceCategory?              @relation("VisitLineCategory", fields: [serviceCategoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   addedOnBehalf           Boolean                       @default(false) @map("added_on_behalf")
   addedByUserId           String?                       @map("added_by_user_id") @db.Uuid
   addedBy                 User?                         @relation("VisitLineAddedBy", fields: [addedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -1512,6 +1521,9 @@ model InvoiceLine {
 // limit snapshotted when that line was established, OP-1). One VisitServiceLine stays one
 // operational performance; it appears at most once per invoice.
 model InvoiceLineService {
+  /// Phase 4 Step 6: the historical category copied from the visit line; discount category scope reads this, never the live service.
+  serviceCategoryId  String?            @map("service_category_id") @db.Uuid
+  serviceCategory    ServiceCategory?   @relation("InvoiceLineCategory", fields: [serviceCategoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   invoiceLineId      String             @id @map("invoice_line_id") @db.Uuid
   invoiceId          String             @map("invoice_id") @db.Uuid
   line               InvoiceLine        @relation(fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_line_services_line_fkey")

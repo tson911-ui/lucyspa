@@ -1,4 +1,5 @@
 import type {
+  InvoiceDiscountResponse,
   InvoiceLineResponse,
   InvoiceOpenedResponse,
   InvoicePersonSummary,
@@ -22,6 +23,13 @@ import {
   initialPricing,
   parseVnd,
 } from './invoice.calc.js';
+import {
+  candidatesJson,
+  evaluateInvoice,
+  previewDiscount,
+  storedDiscount,
+  type InvoiceEvaluation,
+} from './discount.eval.js';
 
 /**
  * Phase 4 Step 5 — Invoice / POS ("Hóa đơn"). Commands run in the admin frame (actor and session locked,
@@ -74,6 +82,33 @@ const invoiceSelect = {
   payer: { select: userSummary },
   payments: {
     select: { id: true, amountVnd: true, status: true, correction: { select: { id: true } } },
+  },
+  voucherEntries: {
+    where: { removedAt: null },
+    orderBy: [{ suppliedAt: 'asc' }, { id: 'asc' }],
+    select: {
+      id: true,
+      suppliedAt: true,
+      voucher: {
+        select: {
+          id: true,
+          code: true,
+          discount: { select: { nameVi: true, nameEn: true } },
+        },
+      },
+    },
+  },
+  discountApplication: {
+    select: {
+      voucherId: true,
+      discountId: true,
+      candidates: true,
+      selectionReason: true,
+      appliedAt: true,
+    },
+  },
+  discountRedemption: {
+    select: { id: true, discountId: true, release: { select: { id: true } } },
   },
   lines: {
     orderBy: { sequence: 'asc' },
@@ -144,7 +179,47 @@ function zeroBalanceCancellable(row: InvoiceRow): boolean {
   );
 }
 
-function present(context: AdminContext, row: InvoiceRow): InvoiceResponse {
+/**
+ * The response for one invoice. A DRAFT shows the LIVE evaluation (the totals finalization would produce now);
+ * a finalized invoice shows its frozen amounts and stored application. Nothing here is client input.
+ */
+async function present(context: AdminContext, row: InvoiceRow): Promise<InvoiceResponse> {
+  const entries = row.voucherEntries.map((entry) => ({
+    id: entry.id,
+    voucherId: entry.voucher.id,
+    code: entry.voucher.code,
+    nameVi: entry.voucher.discount.nameVi,
+    nameEn: entry.voucher.discount.nameEn,
+    suppliedAt: entry.suppliedAt.toISOString(),
+  }));
+  let evaluation: InvoiceEvaluation | null = null;
+  let discount: InvoiceDiscountResponse;
+  if (row.status === 'DRAFT') {
+    evaluation = await evaluateInvoice(
+      context.tx,
+      { id: row.id, payerUserId: row.payerUserId },
+      context.now,
+      { lockPrograms: false },
+    );
+    discount = previewDiscount(evaluation, entries);
+  } else if (row.discountApplication) {
+    discount = storedDiscount(row.discountApplication, entries);
+  } else {
+    discount = {
+      preview: false,
+      candidates: [],
+      winner: null,
+      selectionReason: null,
+      vouchers: entries,
+      appliedAt: null,
+    };
+  }
+  const discountTotalVnd = evaluation ? evaluation.result.discountTotalVnd : row.discountTotalVnd;
+  const totalVnd = evaluation ? row.subtotalVnd - discountTotalVnd : row.totalVnd;
+  const apply = decide(context.actor.graph, 'APPLY_DISCOUNTS', {
+    kind: 'BRANCH',
+    branchId: row.branchId,
+  });
   const manage = decide(context.actor.graph, 'MANAGE_INVOICES', {
     kind: 'BRANCH',
     branchId: row.branchId,
@@ -204,8 +279,8 @@ function present(context: AdminContext, row: InvoiceRow): InvoiceResponse {
     businessDate: day(row.businessDate),
     calculationVersion: row.calculationVersion,
     subtotalVnd: row.subtotalVnd.toString(),
-    discountTotalVnd: row.discountTotalVnd.toString(),
-    totalVnd: row.totalVnd.toString(),
+    discountTotalVnd: discountTotalVnd.toString(),
+    totalVnd: totalVnd.toString(),
     createdAt: row.createdAt.toISOString(),
     finalizedAt: row.finalizedAt ? row.finalizedAt.toISOString() : null,
     paidAt: row.paidAt ? row.paidAt.toISOString() : null,
@@ -215,11 +290,13 @@ function present(context: AdminContext, row: InvoiceRow): InvoiceResponse {
     cancelReason: row.cancelReason,
     version: row.rowVersion,
     lines,
+    discount,
     readiness: { ready: unpricedLines === 0 && lines.length > 0, unpricedLines },
     actions: {
       editPrices: manage && draft,
       setPayer: manage && draft,
       finalize: manage && draft && unpricedLines === 0 && lines.length > 0,
+      applyVouchers: apply && draft,
       cancel: cancelPermitted && cancellable,
       cancelNeedsReauth: !draft,
     },
@@ -245,6 +322,23 @@ async function databaseClock(tx: Prisma.TransactionClient): Promise<Date> {
   >`SELECT clock_timestamp()::timestamptz(3) AS now`;
   if (!clock) throw new AuthError('SERVICE_UNAVAILABLE');
   return clock.now;
+}
+
+/**
+ * The header amounts of a DRAFT as the engine computes them NOW (subtotal of the priced lines, the winning
+ * benefit, total). Refreshed with every draft mutation; finalization recomputes them under the program locks.
+ */
+async function draftAmounts(
+  tx: Prisma.TransactionClient,
+  invoice: { id: string; payerUserId: string | null },
+  now: Date,
+) {
+  const { result } = await evaluateInvoice(tx, invoice, now, { lockPrograms: false });
+  return {
+    subtotalVnd: result.subtotalVnd,
+    discountTotalVnd: result.discountTotalVnd,
+    totalVnd: result.totalVnd,
+  };
 }
 
 /** Locks the invoice, re-reads it under the lock and checks the caller's version. */
@@ -446,6 +540,7 @@ export async function openInvoice(
       catalogPriceMaxVnd: true,
       catalogPricingUnit: true,
       maxQuantitySnapshot: true,
+      serviceCategoryId: true,
       addedOnBehalf: true,
       participant: { select: { createdAt: true } },
     },
@@ -524,6 +619,8 @@ export async function openInvoice(
         catalogPriceMinVnd: line.catalogPriceMinVnd,
         catalogPriceMaxVnd: line.catalogPriceMaxVnd,
         quantityLimit: line.maxQuantitySnapshot,
+        // Phase 4 Step 6: the historical category, copied snapshot-to-snapshot (never the live service).
+        serviceCategoryId: line.serviceCategoryId,
         addedOnBehalf: line.addedOnBehalf,
       },
     });
@@ -607,15 +704,12 @@ export async function setLinePrice(
     },
     select: { id: true },
   });
-  const lines = await tx.invoiceLine.findMany({
-    where: { invoiceId },
-    select: { quantity: true, unitPriceVnd: true },
-  });
-  const totals = calculateTotals(lines, invoice.discountTotalVnd);
+  const totals = await draftAmounts(tx, invoice, now);
   await tx.invoice.update({
     where: { id: invoiceId },
     data: {
       subtotalVnd: totals.subtotalVnd,
+      discountTotalVnd: totals.discountTotalVnd,
       totalVnd: totals.totalVnd,
       rowVersion: { increment: 1 },
     },
@@ -645,6 +739,8 @@ export async function setLinePrice(
         visitServiceLineId: detail.visitServiceLineId,
         ...facts(quantity, unitPriceVnd),
         subtotalVnd: totals.subtotalVnd.toString(),
+        discountTotalVnd: totals.discountTotalVnd.toString(),
+        totalVnd: totals.totalVnd.toString(),
         priceRangeMinVnd: detail.catalogPriceMinVnd.toString(),
         priceRangeMaxVnd: detail.catalogPriceMaxVnd.toString(),
         quantityLimit: detail.quantityLimit,
@@ -678,9 +774,16 @@ export async function setPayer(
   }
   if (input.payerUserId === invoice.payerUserId) return present(context, invoice);
   const now = await databaseClock(tx);
+  // A per-customer-limited benefit depends on the payer (OP-3): the header follows the new payer.
+  const amounts = await draftAmounts(tx, { id: invoiceId, payerUserId: input.payerUserId }, now);
   await tx.invoice.update({
     where: { id: invoiceId },
-    data: { payerUserId: input.payerUserId, rowVersion: { increment: 1 } },
+    data: {
+      payerUserId: input.payerUserId,
+      discountTotalVnd: amounts.discountTotalVnd,
+      totalVnd: amounts.totalVnd,
+      rowVersion: { increment: 1 },
+    },
     select: { id: true },
   });
   const kind = (id: string | null) => (id === null ? 'GUEST' : 'MEMBER');
@@ -693,8 +796,16 @@ export async function setPayer(
       subjectUserId: input.payerUserId ?? invoice.payerUserId,
       branchId: hint.branchId,
       classification: 'FINANCIAL',
-      before: { payerUserId: invoice.payerUserId, payerKind: kind(invoice.payerUserId) },
-      after: { payerUserId: input.payerUserId, payerKind: kind(input.payerUserId) },
+      before: {
+        payerUserId: invoice.payerUserId,
+        payerKind: kind(invoice.payerUserId),
+        discountTotalVnd: invoice.discountTotalVnd.toString(),
+      },
+      after: {
+        payerUserId: input.payerUserId,
+        payerKind: kind(input.payerUserId),
+        discountTotalVnd: amounts.discountTotalVnd.toString(),
+      },
     },
   );
   return load(context, invoiceId);
@@ -707,8 +818,10 @@ export async function setPayer(
  * exactly 0 (OP-2: no Payment row, `paid_seq = 1`, `paid_at = finalized_at`). `MANAGE_INVOICES`.
  *
  * - The server recomputes the totals from the stored lines (a client never supplies any); every line
- *   must be priced with a quantity, else 409 INVOICE_NOT_READY. Step 5 has no benefit, so the discount
- *   total is 0; the Step 4 guards then freeze payer, lines, prices, amounts and version.
+ *   must be priced with a quantity, else 409 INVOICE_NOT_READY. Step 6: under the invoice lock and every
+ *   candidate program's row lock the engine runs a final time at the database clock, the ONE winning benefit
+ *   (if any) is written as the immutable application plus its redemption, and the discount total is the
+ *   applied amount; the Step 4 guards then freeze payer, lines, prices, amounts and version.
  * - Events: `INVOICE_FINALIZED`, then `INVOICE_PAID` (settlement ZERO_BALANCE) for a zero balance, in the
  *   same transaction; financial events never use `published_at` as consumption state.
  * - Replay: repeating the finalization the same actor just made (version = expected + 1, already
@@ -731,15 +844,58 @@ export async function finalizeInvoice(
   }
   if (invoice.rowVersion !== input.expectedVersion) throw new AuthError('CONFLICT');
   if (invoice.status !== 'DRAFT') throw new AuthError('INVOICE_STATE_INVALID');
-  const totals = calculateTotals(
+  const priced = calculateTotals(
     invoice.lines.map((line) => ({ quantity: line.quantity, unitPriceVnd: line.unitPriceVnd })),
     0n,
   );
-  if (invoice.lines.length === 0 || totals.unpricedLines > 0)
+  if (invoice.lines.length === 0 || priced.unpricedLines > 0)
     throw new AuthError('INVOICE_NOT_READY');
 
   const now = await databaseClock(tx);
+  const { result } = await evaluateInvoice(
+    tx,
+    { id: invoiceId, payerUserId: invoice.payerUserId },
+    now,
+    { lockPrograms: true },
+  );
+  const winner = result.winner;
+  const totals = calculateTotals(
+    invoice.lines.map((line) => ({ quantity: line.quantity, unitPriceVnd: line.unitPriceVnd })),
+    result.discountTotalVnd,
+  );
   const zeroBalance = totals.totalVnd === 0n;
+  if (winner) {
+    const version = winner.program.version;
+    await tx.invoiceDiscountApplication.create({
+      data: {
+        invoiceId,
+        discountId: winner.program.id,
+        versionId: version.id,
+        voucherId: winner.voucher?.id ?? null,
+        kind: version.kind,
+        percentBp: version.percentBp,
+        fixedAmountVnd: version.fixedAmountVnd,
+        eligibleSubtotalVnd: winner.eligibleSubtotalVnd,
+        computedAmountVnd: winner.amountVnd,
+        candidates: candidatesJson(result),
+        selectionReason: result.selectionReason ?? 'ONLY_ELIGIBLE',
+        finalizedByUserId: context.actor.userId,
+        appliedAt: now,
+      },
+      select: { id: true },
+    });
+    await tx.discountRedemption.create({
+      data: {
+        invoiceId,
+        discountId: winner.program.id,
+        versionId: version.id,
+        voucherId: winner.voucher?.id ?? null,
+        payerUserId: invoice.payerUserId,
+        redeemedAt: now,
+      },
+      select: { id: true },
+    });
+  }
   await tx.invoice.update({
     where: { id: invoiceId },
     data: {
@@ -766,11 +922,21 @@ export async function finalizeInvoice(
     after: {
       status: zeroBalance ? 'PAID' : 'PENDING_PAYMENT',
       subtotalVnd: totals.subtotalVnd.toString(),
-      discountTotalVnd: '0',
+      discountTotalVnd: totals.discountTotalVnd.toString(),
       totalVnd: totals.totalVnd.toString(),
       calculationVersion: CALCULATION_VERSION,
-      benefit: null,
-      candidates: [],
+      benefit: winner
+        ? {
+            discountId: winner.program.id,
+            discountCode: winner.program.code,
+            versionNo: winner.program.version.versionNo,
+            voucherCode: winner.voucher?.code ?? null,
+            eligibleSubtotalVnd: winner.eligibleSubtotalVnd.toString(),
+            amountVnd: winner.amountVnd.toString(),
+            selectionReason: result.selectionReason,
+          }
+        : null,
+      candidates: candidatesJson(result),
       zeroBalance,
       payerUserId: invoice.payerUserId,
       lines: invoice.lines.map((line) => ({
@@ -791,6 +957,7 @@ export async function finalizeInvoice(
     payload: {
       ...eventBase(invoice),
       totalVnd: totals.totalVnd.toString(),
+      discountTotalVnd: totals.discountTotalVnd.toString(),
       calculationVersion: CALCULATION_VERSION,
     },
   });
@@ -832,9 +999,11 @@ export async function finalizeInvoice(
  *   one ever exists, is Step 7 and must come first);
  * - `PAID` ONLY as the OP-7 zero-balance correction (`total = 0`, no Payment row at all): fresh
  *   re-authentication. A `PAID` invoice with a payment is refused here (Step 7, Q6).
- * The invoice keeps every fact; a new invoice may be created for the visit afterwards. No redemption
- * exists before Step 6, so nothing is released. Repeating a cancellation the same actor already made
- * returns the current state quietly (no second audit or event).
+ * The invoice keeps every fact; a new invoice may be created for the visit afterwards. Step 6: the
+ * redemption the finalization consumed (if any) is RELEASED by an append-only release row in the same
+ * transaction (cause by path), after the invoice update and under the program row lock; the redemption row
+ * itself stays. Repeating a cancellation the same actor already made returns the current state quietly (no
+ * second release, audit or event).
  */
 export async function cancelInvoice(
   context: AdminContext,
@@ -884,6 +1053,42 @@ export async function cancelInvoice(
     select: { id: true },
   });
   const voidedPaidSeq = path === 'ZERO_BALANCE_CORRECTION' ? invoice.paidSeq : null;
+  const redemption = invoice.discountRedemption;
+  let releasedRedemptionId: string | null = null;
+  if (redemption && !redemption.release) {
+    // Lock order: invoice (held) -> the redemption's program row, as finalization; capacity returns once.
+    await tx.$queryRaw`SELECT id FROM discounts WHERE id = ${redemption.discountId}::uuid FOR UPDATE`;
+    const cause =
+      path === 'ZERO_BALANCE_CORRECTION' ? 'ZERO_BALANCE_CORRECTION' : 'INVOICE_CANCELLED_UNPAID';
+    const release = await tx.discountRedemptionRelease.create({
+      data: {
+        redemptionId: redemption.id,
+        releasedByUserId: context.actor.userId,
+        cause,
+        reason: input.reason,
+        releasedAt: now,
+      },
+      select: { id: true },
+    });
+    releasedRedemptionId = redemption.id;
+    await appendAdminAudit(
+      { ...context, now },
+      {
+        action: 'DISCOUNT_REDEMPTION_RELEASED',
+        entityType: 'Invoice',
+        entityId: invoiceId,
+        branchId: hint.branchId,
+        classification: 'FINANCIAL',
+        reason: input.reason,
+        after: {
+          redemptionId: redemption.id,
+          releaseId: release.id,
+          discountId: redemption.discountId,
+          cause,
+        },
+      },
+    );
+  }
   await appendAdminAudit(
     { ...context, now },
     {
@@ -899,7 +1104,7 @@ export async function cancelInvoice(
         cancelledFrom,
         cancellationPath: path,
         voidedPaidSeq,
-        redemptionReleased: null,
+        redemptionReleased: releasedRedemptionId,
         reauthenticatedAt:
           path === 'DRAFT'
             ? null
@@ -919,8 +1124,167 @@ export async function cancelInvoice(
       cancelledFrom,
       zeroBalanceCorrection: path === 'ZERO_BALANCE_CORRECTION',
       voidedPaidSeq,
-      redemptionReleased: false,
+      redemptionReleased: releasedRedemptionId !== null,
     },
   });
+  return load(context, invoiceId);
+}
+
+// ----------------------------------------------------------------- vouchers (DRAFT only, Step 6)
+
+const VOUCHER_CODE = /^[A-Z0-9][A-Z0-9_-]{0,63}$/;
+
+/** Voucher codes are stored canonical: NFC, trimmed, upper-case (the Step 4 CHECK is the backstop). */
+export function canonicalVoucherCode(value: unknown): string {
+  if (typeof value !== 'string') throw new AuthError('VOUCHER_INVALID');
+  const code = value.normalize('NFC').trim().toUpperCase();
+  if (!VOUCHER_CODE.test(code)) throw new AuthError('VOUCHER_INVALID');
+  return code;
+}
+
+/**
+ * Supplies a voucher code to a DRAFT (`APPLY_DISCOUNTS` at the invoice's branch). The code must belong to an
+ * active voucher of an active, non-terminated program whose current version is inside its validity window;
+ * otherwise ONE stable error (`VOUCHER_INVALID`, no hint which rule failed and nothing changes). Supplying is
+ * NOT a guarantee of eligibility: the engine re-evaluates on every recalculation and at finalization. A repeat
+ * of an already supplied code is a quiet no-op. Nothing about a percentage or amount can be typed here.
+ */
+export async function supplyVoucher(
+  context: AdminContext,
+  invoiceId: string,
+  input: { expectedVersion: number; code: unknown },
+): Promise<InvoiceResponse> {
+  const code = canonicalVoucherCode(input.code);
+  const { hint, row: read } = await lockedInvoice(context, invoiceId, 'APPLY_DISCOUNTS');
+  const { tx } = context;
+  const invoice = await read();
+  if (invoice.rowVersion !== input.expectedVersion) throw new AuthError('CONFLICT');
+  if (invoice.status !== 'DRAFT') throw new AuthError('INVOICE_STATE_INVALID');
+  const now = await databaseClock(tx);
+  const voucher = await tx.voucher.findUnique({
+    where: { code },
+    select: {
+      id: true,
+      code: true,
+      isActive: true,
+      discount: {
+        select: {
+          id: true,
+          code: true,
+          isActive: true,
+          terminatedAt: true,
+          versions: {
+            orderBy: { versionNo: 'desc' },
+            take: 1,
+            select: { validFrom: true, validUntil: true },
+          },
+        },
+      },
+    },
+  });
+  const version = voucher?.discount.versions[0];
+  if (
+    !voucher ||
+    !version ||
+    !voucher.isActive ||
+    !voucher.discount.isActive ||
+    voucher.discount.terminatedAt !== null ||
+    now < version.validFrom ||
+    now >= version.validUntil
+  ) {
+    throw new AuthError('VOUCHER_INVALID');
+  }
+  if (invoice.voucherEntries.some((entry) => entry.voucher.id === voucher.id)) {
+    return present(context, invoice);
+  }
+  await tx.invoiceVoucherEntry.create({
+    data: {
+      invoiceId,
+      voucherId: voucher.id,
+      suppliedByUserId: context.actor.userId,
+      suppliedAt: now,
+    },
+    select: { id: true },
+  });
+  const amounts = await draftAmounts(tx, invoice, now);
+  await tx.invoice.update({
+    where: { id: invoiceId },
+    data: {
+      discountTotalVnd: amounts.discountTotalVnd,
+      totalVnd: amounts.totalVnd,
+      rowVersion: { increment: 1 },
+    },
+    select: { id: true },
+  });
+  await appendAdminAudit(
+    { ...context, now },
+    {
+      action: 'INVOICE_VOUCHER_SUPPLIED',
+      entityType: 'Invoice',
+      entityId: invoiceId,
+      branchId: hint.branchId,
+      classification: 'FINANCIAL',
+      before: { discountTotalVnd: invoice.discountTotalVnd.toString() },
+      after: {
+        voucherId: voucher.id,
+        voucherCode: voucher.code,
+        discountCode: voucher.discount.code,
+        discountTotalVnd: amounts.discountTotalVnd.toString(),
+      },
+    },
+  );
+  return load(context, invoiceId);
+}
+
+/**
+ * Withdraws a supplied code from a DRAFT (`APPLY_DISCOUNTS`). It removes only that candidate: an automatic
+ * code-less promotion can never be removed by staff (PRD 16.1). The entry keeps its history (one removal
+ * transition); a repeat of an applied removal carries a stale version and is a 409 CONFLICT.
+ */
+export async function removeVoucher(
+  context: AdminContext,
+  invoiceId: string,
+  entryId: string,
+  input: { expectedVersion: number },
+): Promise<InvoiceResponse> {
+  const { hint, row: read } = await lockedInvoice(context, invoiceId, 'APPLY_DISCOUNTS');
+  const { tx } = context;
+  const invoice = await read();
+  if (invoice.rowVersion !== input.expectedVersion) throw new AuthError('CONFLICT');
+  if (invoice.status !== 'DRAFT') throw new AuthError('INVOICE_STATE_INVALID');
+  const entry = invoice.voucherEntries.find((candidate) => candidate.id === entryId);
+  if (!entry) throw new AuthError('NOT_FOUND');
+  const now = await databaseClock(tx);
+  await tx.invoiceVoucherEntry.update({
+    where: { id: entryId },
+    data: { removedAt: now, removedByUserId: context.actor.userId },
+    select: { id: true },
+  });
+  const amounts = await draftAmounts(tx, invoice, now);
+  await tx.invoice.update({
+    where: { id: invoiceId },
+    data: {
+      discountTotalVnd: amounts.discountTotalVnd,
+      totalVnd: amounts.totalVnd,
+      rowVersion: { increment: 1 },
+    },
+    select: { id: true },
+  });
+  await appendAdminAudit(
+    { ...context, now },
+    {
+      action: 'INVOICE_VOUCHER_REMOVED',
+      entityType: 'Invoice',
+      entityId: invoiceId,
+      branchId: hint.branchId,
+      classification: 'FINANCIAL',
+      before: {
+        voucherId: entry.voucher.id,
+        voucherCode: entry.voucher.code,
+        discountTotalVnd: invoice.discountTotalVnd.toString(),
+      },
+      after: { discountTotalVnd: amounts.discountTotalVnd.toString() },
+    },
+  );
   return load(context, invoiceId);
 }

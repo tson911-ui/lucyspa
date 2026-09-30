@@ -144,7 +144,7 @@ test('amounts and ranges are shown in the locale without floating point', () => 
   assert.equal(invoiceTone('DRAFT'), 'neutral');
 });
 
-test('errors are localized; POS texts exist in both languages and never mention payment or discounts', () => {
+test('errors are localized; POS texts exist in both languages', () => {
   for (const code of [
     'INVOICE_VISIT_NOT_COMPLETED',
     'INVOICE_STATE_INVALID',

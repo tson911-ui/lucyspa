@@ -5,6 +5,8 @@ import type {
   InvoiceOpenedResponse,
   InvoicePayerRequest,
   InvoiceResponse,
+  InvoiceVoucherRemoveRequest,
+  InvoiceVoucherSupplyRequest,
   PosBoardResponse,
   WalkInMemberLookupResponse,
 } from '@lucy-spa/contracts';
@@ -63,6 +65,15 @@ class PayerDto implements InvoicePayerRequest {
   @IsString()
   @MaxLength(64)
   payerUserId!: string | null;
+}
+
+class VoucherSupplyDto implements InvoiceVoucherSupplyRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
+  @ApiProperty() @IsString() @MaxLength(128) code!: string;
+}
+
+class VoucherRemoveDto implements InvoiceVoucherRemoveRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
 }
 
 class VersionDto implements InvoiceFinalizeRequest {
@@ -165,6 +176,42 @@ export class InvoiceController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<InvoiceResponse> {
     return this.invoices.payer(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Post('invoices/:id/vouchers')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Supply a voucher code to a DRAFT (APPLY_DISCOUNTS). Only the code: a percentage or amount can never be typed.',
+  })
+  supplyVoucher(
+    @Param('id') id: string,
+    @Body() body: VoucherSupplyDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<InvoiceResponse> {
+    return this.invoices.supplyVoucher(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Post('invoices/:id/vouchers/:entryId/remove')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description: 'Withdraw a supplied voucher code from a DRAFT (APPLY_DISCOUNTS).',
+  })
+  removeVoucher(
+    @Param('id') id: string,
+    @Param('entryId') entryId: string,
+    @Body() body: VoucherRemoveDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<InvoiceResponse> {
+    return this.invoices.removeVoucher(
+      this.session(request),
+      id,
+      entryId,
+      body,
+      this.requestId(response),
+    );
   }
 
   @Post('invoices/:id/finalize')

@@ -158,6 +158,7 @@ export type NavKey =
   | 'reassignment'
   | 'branches'
   | 'services'
+  | 'discounts'
   | 'skills'
   | 'employees'
   | 'roles'
@@ -236,6 +237,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'services',
       group: 'management',
       path: '/services',
+    },
+    // Discount programs and voucher codes are Owner configuration: GLOBAL_ONLY permissions (Phase 4 Step 6).
+    (canGlobal(account, 'MANAGE_DISCOUNTS') || canGlobal(account, 'CREATE_VOUCHERS')) && {
+      key: 'discounts',
+      group: 'management',
+      path: '/discounts',
     },
     canAnywhere(account, 'MANAGE_SKILLS') && {
       key: 'skills',

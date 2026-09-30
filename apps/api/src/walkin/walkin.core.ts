@@ -265,6 +265,7 @@ export async function createWalkIn(
       priceMaxVnd: true,
       pricingUnit: true,
       maxQuantity: true,
+      categoryId: true,
     },
   });
   if (services.length !== serviceIds.length) throw new AuthError('BOOKING_SERVICE_UNAVAILABLE');
@@ -335,6 +336,8 @@ export async function createWalkIn(
         catalogPricingUnit: service.pricingUnit,
         // OP-1: the per-service quantity limit is snapshotted with the other pricing inputs.
         maxQuantitySnapshot: service.maxQuantity,
+        // Phase 4 Step 6: the category at this moment, for discount scope.
+        serviceCategoryId: service.categoryId,
       },
       select: { id: true },
     });

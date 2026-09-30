@@ -196,7 +196,10 @@ export function PosScreen() {
                         </Badge>
                       </td>
                       <td data-label={t.pos.payer}>{invoice.payerName ?? t.pos.guestPayer}</td>
-                      <td data-label={t.pos.total}>{formatVnd(invoice.totalVnd, locale)}</td>
+                      <td data-label={t.pos.total}>
+                        {/* A draft total follows the live benefit evaluation shown on the invoice itself. */}
+                        {invoice.status === 'DRAFT' ? '—' : formatVnd(invoice.totalVnd, locale)}
+                      </td>
                       <td>
                         <Link className="wf-button" href={`${base}/pos/${invoice.id}`}>
                           {t.pos.view}

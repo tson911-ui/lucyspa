@@ -9,6 +9,11 @@ import type {
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { fill } from '../../../i18n/workforce';
+import {
+  candidateBenefitLabel,
+  ineligibleText,
+  voucherCodeOf,
+} from '../../../lib/workforce/discounts';
 import { formatDate, formatDateTime, formatVnd } from '../../../lib/workforce/format';
 import {
   cancelBody,
@@ -47,6 +52,7 @@ export function PosInvoiceScreen({ id }: { id: string }) {
   const [lookupBy, setLookupBy] = useState<'phone' | 'email'>('phone');
   const [lookupValue, setLookupValue] = useState('');
   const [lookup, setLookup] = useState<WalkInMemberLookupResponse | null>(null);
+  const [voucherText, setVoucherText] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -132,6 +138,25 @@ export function PosInvoiceScreen({ id }: { id: string }) {
     }
   }
 
+  async function supplyVoucher(event: FormEvent) {
+    event.preventDefault();
+    const code = voucherCodeOf(voucherText);
+    if (!code) {
+      setFeedback({ tone: 'error', text: t.pos.voucherNeedCode });
+      return;
+    }
+    const done = await command(
+      'voucher',
+      () =>
+        api.post<InvoiceResponse>(`/api/v1/pos/invoices/${invoice!.id}/vouchers`, {
+          expectedVersion: invoice!.version,
+          code,
+        }),
+      () => t.pos.voucherSupplied,
+    );
+    if (done) setVoucherText('');
+  }
+
   async function cancel(event: FormEvent) {
     event.preventDefault();
     const body = cancelBody(reason, version);
@@ -214,6 +239,12 @@ export function PosInvoiceScreen({ id }: { id: string }) {
             <dt>{t.pos.subtotal}</dt>
             <dd>{formatVnd(invoice.subtotalVnd, locale)}</dd>
           </div>
+          {invoice.discountTotalVnd !== '0' ? (
+            <div>
+              <dt>{t.pos.discountRow}</dt>
+              <dd>− {formatVnd(invoice.discountTotalVnd, locale)}</dd>
+            </div>
+          ) : null}
           <div>
             <dt>
               <strong>{t.pos.total}</strong>
@@ -223,6 +254,115 @@ export function PosInvoiceScreen({ id }: { id: string }) {
             </dd>
           </div>
         </dl>
+      </Section>
+
+      <Section title={t.pos.discountTitle}>
+        <p className="wf-small">{t.pos.discountNote}</p>
+        {invoice.discount.winner ? (
+          <Notice tone="success">
+            <p>
+              <strong>
+                {fill(t.pos.discountApplied, {
+                  name:
+                    locale === 'vi'
+                      ? invoice.discount.winner.nameVi
+                      : invoice.discount.winner.nameEn,
+                })}
+              </strong>{' '}
+              · {candidateBenefitLabel(invoice.discount.winner, locale)} ·{' '}
+              {fill(t.pos.candidateAmount, {
+                amount: formatVnd(invoice.discount.winner.amountVnd, locale),
+              })}
+            </p>
+            {invoice.discount.selectionReason ? (
+              <p className="wf-small">
+                {t.pos.selectionReasons[
+                  invoice.discount.selectionReason as keyof typeof t.pos.selectionReasons
+                ] ?? invoice.discount.selectionReason}
+              </p>
+            ) : null}
+          </Notice>
+        ) : (
+          <Empty>{t.pos.discountNone}</Empty>
+        )}
+        {invoice.discount.candidates.length > 0 ? (
+          <>
+            <h3>{t.pos.candidatesTitle}</h3>
+            <ul className="wf-plain-list">
+              {invoice.discount.candidates.map((candidate) => (
+                <li key={`${candidate.discountId}:${candidate.voucherId ?? ''}`}>
+                  {locale === 'vi' ? candidate.nameVi : candidate.nameEn} ·{' '}
+                  {candidateBenefitLabel(candidate, locale)} ·{' '}
+                  {candidate.voucherCode
+                    ? fill(t.pos.candidateCode, { code: candidate.voucherCode })
+                    : t.pos.candidateAuto}{' '}
+                  {candidate.winner ? (
+                    <Badge tone="success">{t.pos.candidateWinner}</Badge>
+                  ) : candidate.eligible ? (
+                    <Badge tone="neutral">{t.pos.candidateEligible}</Badge>
+                  ) : (
+                    <Badge tone="warning">
+                      {candidate.reason ? ineligibleText(candidate.reason, t) : '—'}
+                    </Badge>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+        <h3>{t.pos.voucherTitle}</h3>
+        {invoice.discount.vouchers.length === 0 ? (
+          <p className="wf-muted">{t.pos.voucherNone}</p>
+        ) : (
+          <ul className="wf-plain-list">
+            {invoice.discount.vouchers.map((entry) => (
+              <li key={entry.id}>
+                <code>{entry.code}</code> · {locale === 'vi' ? entry.nameVi : entry.nameEn}{' '}
+                {draft && invoice.actions.applyVouchers ? (
+                  <button
+                    type="button"
+                    className="wf-button wf-button-quiet"
+                    disabled={working !== null}
+                    onClick={() =>
+                      void command(
+                        `voucher-${entry.id}`,
+                        () =>
+                          api.post<InvoiceResponse>(
+                            `/api/v1/pos/invoices/${invoice.id}/vouchers/${entry.id}/remove`,
+                            { expectedVersion: version },
+                          ),
+                        () => t.pos.voucherRemoved,
+                      )
+                    }
+                  >
+                    {t.pos.voucherRemove}
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+        {draft && invoice.actions.applyVouchers ? (
+          <form className="wf-inline-form" onSubmit={(event) => void supplyVoucher(event)}>
+            <Field id="pos-voucher" label={t.pos.voucherCode} hint={t.pos.voucherHint}>
+              <input
+                id="pos-voucher"
+                autoComplete="off"
+                autoCapitalize="characters"
+                maxLength={64}
+                value={voucherText}
+                onChange={(event) => setVoucherText(event.target.value.toUpperCase())}
+              />
+            </Field>
+            <SubmitButton
+              pending={working === 'voucher'}
+              label={t.pos.voucherApply}
+              pendingLabel={t.pos.voucherApplying}
+              tone="quiet"
+              disabled={working !== null}
+            />
+          </form>
+        ) : null}
       </Section>
 
       <Section title={t.pos.payerTitle}>

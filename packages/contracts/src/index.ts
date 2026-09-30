@@ -2227,6 +2227,8 @@ export interface InvoiceResponse {
   /** Optimistic-concurrency version: send it back as `expectedVersion` with every command. */
   version: number;
   lines: InvoiceLineResponse[];
+  /** The benefit: a live evaluation while DRAFT, the frozen application once finalized. */
+  discount: InvoiceDiscountResponse;
   /** Finalization needs every line priced with a quantity. */
   readiness: { ready: boolean; unpricedLines: number };
   /** Which commands this actor may issue now (the API authorizes each again). */
@@ -2234,6 +2236,8 @@ export interface InvoiceResponse {
     editPrices: boolean;
     setPayer: boolean;
     finalize: boolean;
+    /** Supply or remove a voucher code (APPLY_DISCOUNTS) while DRAFT. */
+    applyVouchers: boolean;
     cancel: boolean;
     /** A finalized invoice needs fresh password re-authentication to be cancelled. */
     cancelNeedsReauth: boolean;
@@ -2307,4 +2311,188 @@ export interface PosBoardResponse {
   invoices: PosBoardInvoice[];
   /** MANAGE_INVOICES here: the "open invoice" action is offered. */
   canManage: boolean;
+}
+
+// ------------------------------------------------------------------ Phase 4 Step 6: discounts / vouchers
+
+export type DiscountKindName = 'PERCENT' | 'FIXED_AMOUNT';
+export type DiscountScopeModeName = 'ALL_SERVICES' | 'SELECTED';
+
+/** Why a candidate benefit is not eligible (a stable code; the UI shows a localized text). */
+export type DiscountIneligibleReason =
+  | 'NOT_ACTIVE'
+  | 'NOT_STARTED'
+  | 'EXPIRED'
+  | 'VOUCHER_INACTIVE'
+  | 'NO_ELIGIBLE_LINES'
+  | 'BELOW_MIN_SPEND'
+  | 'TOTAL_LIMIT_REACHED'
+  | 'MEMBER_REQUIRED'
+  | 'CUSTOMER_LIMIT_REACHED';
+
+export interface InvoiceDiscountCandidate {
+  source: 'PROMOTION' | 'VOUCHER';
+  discountId: string;
+  discountCode: string;
+  nameVi: string;
+  nameEn: string;
+  versionId: string;
+  versionNo: number;
+  voucherId: string | null;
+  voucherCode: string | null;
+  kind: DiscountKindName;
+  percentBp: number | null;
+  fixedAmountVnd: string | null;
+  /** In-scope lines' gross before any benefit (design OP-4); 0 when nothing is in scope. */
+  eligibleSubtotalVnd: string;
+  eligible: boolean;
+  reason: DiscountIneligibleReason | null;
+  /** The computed benefit; 0 when not eligible. */
+  amountVnd: string;
+  winner: boolean;
+}
+
+export interface InvoiceVoucherEntryResponse {
+  id: string;
+  voucherId: string;
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  suppliedAt: string;
+}
+
+export interface InvoiceDiscountResponse {
+  /** True while DRAFT: candidates are re-evaluated now; false once finalized (the stored application). */
+  preview: boolean;
+  candidates: InvoiceDiscountCandidate[];
+  /** The one winning benefit, or null when none is eligible/worth more than 0. */
+  winner: InvoiceDiscountCandidate | null;
+  /** Why this benefit won (or null when there is none). */
+  selectionReason: string | null;
+  /** Codes supplied to the draft (kept as history after finalization). */
+  vouchers: InvoiceVoucherEntryResponse[];
+  appliedAt: string | null;
+}
+
+/** POST /api/v1/pos/invoices/:id/vouchers: supply a voucher code to a DRAFT (APPLY_DISCOUNTS). */
+export interface InvoiceVoucherSupplyRequest {
+  expectedVersion: number;
+  code: string;
+}
+
+/** POST /api/v1/pos/invoices/:id/vouchers/:entryId/remove: withdraw a supplied code from a DRAFT. */
+export interface InvoiceVoucherRemoveRequest {
+  expectedVersion: number;
+}
+
+export interface DiscountVersionResponse {
+  id: string;
+  versionNo: number;
+  kind: DiscountKindName;
+  /** Basis points (1–10000); PERCENT only. */
+  percentBp: number | null;
+  /** Integer VND decimal string; FIXED_AMOUNT only. */
+  fixedAmountVnd: string | null;
+  validFrom: string;
+  validUntil: string;
+  minSpendVnd: string;
+  scopeMode: DiscountScopeModeName;
+  serviceIds: string[];
+  categoryIds: string[];
+  usageLimitTotal: number | null;
+  usageLimitPerCustomer: number | null;
+  createdAt: string;
+}
+
+export interface VoucherResponse {
+  id: string;
+  code: string;
+  isActive: boolean;
+  createdAt: string;
+  version: number;
+  /** Active (unreleased) redemptions of this code. */
+  redemptions: number;
+}
+
+export type DiscountStatusName = 'ACTIVE' | 'SCHEDULED' | 'EXPIRED' | 'PAUSED' | 'TERMINATED';
+
+export interface DiscountSummaryResponse {
+  id: string;
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  requiresCode: boolean;
+  isActive: boolean;
+  terminatedAt: string | null;
+  /** Derived now from the active flag, termination and the current version's validity window. */
+  status: DiscountStatusName;
+  current: DiscountVersionResponse;
+  /** Active (unreleased) redemptions of the program. */
+  redemptions: number;
+  voucherCount: number;
+  version: number;
+}
+
+export interface DiscountListResponse {
+  discounts: DiscountSummaryResponse[];
+  permissions: { manage: boolean; createVouchers: boolean };
+}
+
+export interface DiscountDetailResponse extends DiscountSummaryResponse {
+  terminatedReason: string | null;
+  versions: DiscountVersionResponse[];
+  vouchers: VoucherResponse[];
+  permissions: { manage: boolean; createVouchers: boolean };
+}
+
+/** The configuration of one version. Owner-defined only; staff can never type a percentage or amount. */
+export interface DiscountVersionInput {
+  kind: DiscountKindName;
+  percentBp?: number;
+  fixedAmountVnd?: string;
+  validFrom: string;
+  validUntil: string;
+  minSpendVnd: string;
+  scopeMode: DiscountScopeModeName;
+  serviceIds: string[];
+  categoryIds: string[];
+  usageLimitTotal: number | null;
+  usageLimitPerCustomer: number | null;
+}
+
+/** POST /api/v1/discounts (MANAGE_DISCOUNTS, GLOBAL only). */
+export interface DiscountCreateRequest {
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  requiresCode: boolean;
+  version: DiscountVersionInput;
+}
+
+/** POST /api/v1/discounts/:id/versions: append a version (existing versions are never edited). */
+export interface DiscountVersionRequest {
+  expectedVersion: number;
+  nameVi?: string;
+  nameEn?: string;
+  version: DiscountVersionInput;
+}
+
+export interface DiscountActiveRequest {
+  expectedVersion: number;
+  isActive: boolean;
+}
+
+export interface DiscountTerminateRequest {
+  expectedVersion: number;
+  reason: string;
+}
+
+/** POST /api/v1/discounts/:id/vouchers (CREATE_VOUCHERS, GLOBAL only); a code is generated when omitted. */
+export interface VoucherCreateRequest {
+  code?: string;
+}
+
+export interface VoucherActiveRequest {
+  expectedVersion: number;
+  isActive: boolean;
 }

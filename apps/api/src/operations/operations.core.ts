@@ -164,6 +164,8 @@ export async function arriveBooking(
         catalogPricingUnit: line.catalogPricingUnit,
         // OP-1: arrival carries the booking line's snapshot; the catalog is not read again.
         maxQuantitySnapshot: line.maxQuantitySnapshot,
+        // Phase 4 Step 6: the historical category is copied too (NULL stays NULL: unknown, never guessed).
+        serviceCategoryId: line.serviceCategoryId,
         assignmentConflict: line.assignmentConflict,
       },
       select: { id: true },

@@ -846,8 +846,16 @@ test(
                 const trail = await audits(invoice.id, 'INVOICE_PAYER_SET');
                 assert.equal(trail.length, 2);
                 assert.ok(trail.every((event) => event.dataClassification === 'FINANCIAL'));
-                assert.deepEqual(trail[0]!.after, { payerUserId: other.id, payerKind: 'MEMBER' });
-                assert.deepEqual(trail[1]!.after, { payerUserId: null, payerKind: 'GUEST' });
+                assert.deepEqual(trail[0]!.after, {
+                  payerUserId: other.id,
+                  payerKind: 'MEMBER',
+                  discountTotalVnd: '0',
+                });
+                assert.deepEqual(trail[1]!.after, {
+                  payerUserId: null,
+                  payerKind: 'GUEST',
+                  discountTotalVnd: '0',
+                });
                 // Frozen at finalization.
                 invoice = await priceAll(invoice);
                 invoice = await ok(() =>
@@ -951,6 +959,7 @@ test(
                   branchId: branch.id,
                   visitId: visit.id,
                   totalVnd: '145000',
+                  discountTotalVnd: '0',
                   calculationVersion: 1,
                 });
                 // Replay by the same actor: the current state, no second audit or event.
