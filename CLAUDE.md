@@ -35,9 +35,10 @@ Owner reviews every Step. Work only on the Step you are given.
 
 - Layout: 8px grid via spacing tokens only, the fixed type scale, one vertical rhythm, aligned edges,
   sensible max widths, 44px touch targets (40px desktop), no orphaned or oddly placed elements.
-- Before reporting a UI Step done: render the changed screens at 360, 768 and 1440 px in light and dark
-  with `node scripts/uxui-screens.mjs <name> <url-or-html>`, review them against the checklist, fix,
-  re-render. Screenshots go to `.local/uxui-screens/` (git-ignored). Add a 5-line "UX gate" note to the
+- All UI uses the shared `packages/ui` components and motion tokens, never ad-hoc styles or animations.
+- Before reporting a UI Step done: render only the screens changed in that Step at 360, 768 and 1440 px
+  in light plus 1440 px in dark with `node scripts/uxui-screens.mjs <name> <url-or-html>`, review them
+  against the checklist, fix, re-render. Screenshots go to `.local/uxui-screens/` (git-ignored). Add a 5-line "UX gate" note to the
   Step report. Do not report a UI Step done without it.
 
 ## Reporting (keep it short)

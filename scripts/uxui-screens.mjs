@@ -1,11 +1,11 @@
 // UX quality gate helper (docs/UXUI_REDESIGN_DESIGN.md section 21): renders a page in a headless
-// Chromium browser (Edge or Chrome) at 360, 768 and 1440 px in light and dark, saves full-page
+// Chromium browser (Edge or Chrome) at 360, 768 and 1440 px in light plus 1440 px in dark, saves full-page
 // screenshots under .local/uxui-screens/ (ignored by git) and prints an automatic audit:
 // horizontal page scroll and interactive targets below the minimum size.
 //
-//   node scripts/uxui-screens.mjs <name> <url-or-html-file> [--widths 360,768,1440] [--wait 800] [--top 1000]
+//   node scripts/uxui-screens.mjs <name> <url-or-html-file> [--widths 360,768,1440] [--wait 800] [--top 1000] [--all]
 //
-// Dark mode is the `prefers-color-scheme: dark` emulation, so pages without a `data-theme` attribute
+// `--all` also renders dark at every width. Dark mode is the `prefers-color-scheme: dark` emulation, so pages without a `data-theme` attribute
 // follow it exactly as a visitor's system would. Needs Node 22+ (global WebSocket) and no dependency.
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -19,12 +19,14 @@ const flag = (name, fallback) => {
   return index >= 0 ? args.splice(index, 2)[1] : fallback;
 };
 const widths = flag('widths', '360,768,1440').split(',').map(Number);
+const all = args.includes('--all');
+if (all) args.splice(args.indexOf('--all'), 1);
 const waitMs = Number(flag('wait', '800'));
 const topHeight = Number(flag('top', '1000'));
 const [name, target] = args;
 if (!name || !target) {
   console.error(
-    'usage: node scripts/uxui-screens.mjs <name> <url-or-html-file> [--widths 360,768,1440] [--wait 800]',
+    'usage: node scripts/uxui-screens.mjs <name> <url-or-html-file> [--widths 360,768,1440] [--wait 800] [--all]',
   );
   process.exit(2);
 }
@@ -149,6 +151,8 @@ try {
   await send('Page.enable');
   for (const scheme of ['light', 'dark']) {
     for (const width of widths) {
+      // Gate matrix: light at every width, dark at the widest only (`--all` renders every combination).
+      if (!all && scheme === 'dark' && width !== Math.max(...widths)) continue;
       await send('Emulation.setDeviceMetricsOverride', {
         width,
         height: 900,

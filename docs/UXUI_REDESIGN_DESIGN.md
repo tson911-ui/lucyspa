@@ -1014,13 +1014,15 @@ reported done** until this gate has been run and its result is in the Step repor
    single word alone on a line in a heading, no empty labeled cell (show an em dash), no heading followed by a link with the same
    text, no horizontal page scroll, no clipped text, the primary action in the same place as on sibling pages.
 8. **Both themes and all widths:** status is never color only (6.4), no amber/gold (D1), focus ring visible on every background,
-   and the same layout quality at 360, 768 and 1440 px in light and dark.
+   and the same layout quality at 360, 768 and 1440 px in light and at 1440 px in dark.
+9. **Shared components and motion only:** every screen is built from the `packages/ui` components and reads the motion tokens
+   (6.6, D13). No ad-hoc styles that re-implement a component, no literal durations, no one-off animation or transition.
 
 ### 21.2 Procedure before a Step is reported done
 
-1. **Render** every changed screen with the headless browser: `node scripts/uxui-screens.mjs <name> <url-or-html-file>`. It drives
-   Edge/Chrome through the DevTools protocol at **360, 768 and 1440 px, light and dark** (system color-scheme emulation), saves
-   full-page PNGs plus a readable `-top` crop to **`.local/uxui-screens/`** (ignored by git) and prints an automatic audit:
+1. **Render** only the screens changed in the Step with the headless browser: `node scripts/uxui-screens.mjs <name> <url-or-html-file>`. It drives
+   Edge/Chrome through the DevTools protocol at **360, 768 and 1440 px in light plus 1440 px in dark** (system color-scheme
+   emulation; `--all` adds dark at 360 and 768), saves full-page PNGs plus a readable `-top` crop to **`.local/uxui-screens/`** (ignored by git) and prints an automatic audit:
    horizontal page scroll and interactive targets under the minimum size. Exit code 1 (`CHECK` lines) means findings to fix or to
    explain in the report.
 2. Screens that load data are rendered **with data**: the real screens run in a local harness (`.local/uxui-harness/`, machine-local
@@ -1035,7 +1037,7 @@ reported done** until this gate has been run and its result is in the Step repor
 
 ### 21.3 Review of the already-built work against this gate (2026-09-30; fixes NOT applied)
 
-Rendered: the real workforce shell with the Employees and Skills screens (scripted API) at 360, 768 and 1440 px in light and dark,
+Rendered: the real workforce shell with the Employees and Skills screens (scripted API) at 360, 768 and 1440 px in light and dark (full matrix),
 plus the auth pages. Everything below is a finding; nothing was changed.
 
 | #   | Where                    | Finding (rule)                                                                                                                                         | Likely cause / fix                                                                               |
