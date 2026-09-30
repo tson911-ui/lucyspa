@@ -145,11 +145,29 @@ Lucy Spa should feel:
 -   Warm.
 -   Simple and easy to operate.
 
-Primary visual direction: **red + gold**.
+Primary visual direction (Owner decision, UX/UI Redesign track): **brand
+red `#782b37` and white `#ffffff`. No gold anywhere.** This supersedes the
+earlier "red + gold" direction.
 
-The final logo, imagery and exact design tokens will be supplied later.
-UI implementation must allow branding assets to be replaced without
-structural changes.
+-   Light and dark mode with a user toggle; the default follows the
+    system setting.
+-   The workforce (admin) area is redesigned first; the customer area and
+    public site follow in a later part of the same track. The admin area
+    is modern, luxurious, professional, very easy to use and fast, with no
+    cinematic motion (section 4.4 applies to the customer side only).
+-   Desktop, tablet and phone; Vietnamese/English; Vietnamese diacritics
+    must render well.
+-   Every list has pagination (plus search/filters where useful); Edit and
+    Delete are consistently placed with a confirmation dialog for
+    destructive actions; where records must never be deleted, the allowed
+    action (Cancel, Deactivate, Correct) is shown instead.
+-   The admin dashboard is made of widgets each user can rearrange by drag
+    and drop; a shared chart kit is designed now so Phase 8 analytics plug
+    in without redesign.
+
+Design contract: `docs/UXUI_REDESIGN_DESIGN.md`. The final logo, imagery
+and any further design tokens will be supplied later. UI implementation
+must allow branding assets to be replaced without structural changes.
 
 ### 4.2 Public Website
 
@@ -158,7 +176,9 @@ Provide:
 -   Home page.
 -   Service discovery.
 -   Product discovery/catalog foundation.
--   Promotional popup on entry; user can dismiss it.
+-   Promotional popup on entry; user can dismiss it. Homepage slider.
+    Both, plus the media library, are managed by authorized users
+    (design: `docs/UXUI_REDESIGN_DESIGN.md` section 16).
 -   Vietnamese/English language selector.
 -   Contact/business information area.
 -   Member registration/login entry points.
