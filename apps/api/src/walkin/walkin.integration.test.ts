@@ -497,10 +497,13 @@ test(
                   0,
                   'no account for a guest or child',
                 );
-                const [guest, child] = result.participants;
-                assert.equal(guest!.kind, 'GUEST');
+                // Participants created in one transaction can share a createdAt, so response order is not
+                // guaranteed: pick them by kind.
+                const guest = result.participants.find((p) => p.kind === 'GUEST');
+                const child = result.participants.find((p) => p.kind === 'CHILD');
+                assert.equal(result.participants.length, 2);
                 assert.equal(guest!.displayName, 'Chị Hoa');
-                assert.equal(child!.kind, 'CHILD');
+                assert.equal(child!.displayName, 'Bé Bin');
                 const participants = await tx.visitParticipant.findMany({
                   where: { visitId: result.visitId },
                 });
@@ -528,7 +531,7 @@ test(
                   'lines follow each other',
                 );
                 assert.deepEqual(
-                  [lineOf(result, 1).status, lineOf(result, 1).employee?.id],
+                  [child!.lines[0]!.status, child!.lines[0]!.employee?.id],
                   ['PLANNED', k3],
                 );
                 await fails(

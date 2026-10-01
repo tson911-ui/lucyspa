@@ -456,15 +456,21 @@ test(
                 assert.equal(visit.origin, 'BOOKING');
                 assert.equal(visit.branchId, B);
                 assert.equal(visit.ownerUserId, customer);
-                const kinds = visit.participants.map((p) => [p.kind, p.displayName, p.phone]);
+                // Participants created in one transaction can share a createdAt, so the order is not
+                // guaranteed: compare in a fixed kind order and pick them by kind.
+                const kindRank = { MEMBER: 0, CHILD: 1, GUEST: 2 } as const;
+                const participants = [...visit.participants].sort(
+                  (a, b) => kindRank[a.kind] - kindRank[b.kind],
+                );
+                const kinds = participants.map((p) => [p.kind, p.displayName, p.phone]);
                 assert.deepEqual(kinds, [
                   ['MEMBER', null, null],
                   ['CHILD', 'Bé Na', null],
                   ['GUEST', 'Dì Lan', '0905111222'],
                 ]);
-                const member = visit.participants[0]!;
+                const member = participants[0]!;
                 assert.equal(member.customerUserId, customer);
-                assert.equal(visit.participants[1]!.guardianParticipantId, member.id);
+                assert.equal(participants[1]!.guardianParticipantId, member.id);
                 const bookingLines = await tx.bookingServiceLine.findMany({
                   where: { bookingId: target.id },
                   orderBy: { sequence: 'asc' },
