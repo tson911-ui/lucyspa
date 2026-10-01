@@ -1,6 +1,7 @@
 'use client';
 
 import type { AddedServiceLineResponse, WalkInOptionsResponse } from '@lucy-spa/contracts';
+import { Field as KitField, FormDialog, FormGrid, Select as KitSelect } from '@lucy-spa/ui';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { fill } from '../../../i18n/workforce';
 import {
@@ -11,8 +12,11 @@ import {
   type StaffChoice,
 } from '../../../lib/workforce/add-service';
 import { boardErrorMessage, branchTime } from '../../../lib/workforce/booking-board';
+import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { useAccount, useWorkforce } from '../session';
 import { Field, Loading, Notice, SubmitButton } from '../ui';
+
+type Participant = { id: string; name: string | null };
 
 /**
  * Phase 4 Step 3: add ONE catalog service to an open visit, on behalf of the customer. Only a
@@ -20,17 +24,13 @@ import { Field, Loading, Notice, SubmitButton } from '../ui';
  * service, price, quantity or time. The API decides authority and eligibility again; this form only
  * loads what the actor may add. The idempotency key stays the same across retries of the same choice.
  */
-export function AddServiceForm({
+function useAddService({
   visitId,
-  visitCode,
   participants,
-  onCancel,
   onAdded,
 }: {
   visitId: string;
-  visitCode: string;
-  participants: { id: string; name: string | null }[];
-  onCancel: () => void;
+  participants: Participant[];
   onAdded: (text: string) => void;
 }) {
   const { api, t, locale } = useWorkforce();
@@ -67,8 +67,8 @@ export function AddServiceForm({
       setter(value);
     };
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
+  /** Resolves true when the service was added, so a dialog can close itself. */
+  async function submit(): Promise<boolean> {
     const body = addServiceBody({
       participantId,
       serviceId,
@@ -76,7 +76,7 @@ export function AddServiceForm({
       myUserId: account.id,
       idempotencyKey: key.current,
     });
-    if (!body || working) return;
+    if (!body || working) return false;
     setWorking(true);
     setError(null);
     try {
@@ -94,15 +94,57 @@ export function AddServiceForm({
             })
           : t.bookingBoard.lineAddedWaiting,
       );
+      return true;
     } catch (cause) {
       setError(cause);
+      return false;
     } finally {
       setWorking(false);
     }
   }
 
+  return {
+    options,
+    loadError,
+    chosen,
+    participantId,
+    serviceId,
+    staff,
+    working,
+    error,
+    change,
+    setParticipantId,
+    setServiceId,
+    setStaff,
+    submit,
+  };
+}
+
+/** The inline form My services still uses (migrated in Step 10b). */
+export function AddServiceForm({
+  visitId,
+  visitCode,
+  participants,
+  onCancel,
+  onAdded,
+}: {
+  visitId: string;
+  visitCode: string;
+  participants: Participant[];
+  onCancel: () => void;
+  onAdded: (text: string) => void;
+}) {
+  const { t, locale } = useWorkforce();
+  const { account } = useAccount();
+  const add = useAddService({ visitId, participants, onAdded });
+  const { options, loadError, chosen, participantId, serviceId, staff, working, error, change } =
+    add;
+
   return (
-    <form className="wf-card wf-form" onSubmit={(event) => void submit(event)}>
+    <form
+      className="wf-card wf-form"
+      onSubmit={(event: FormEvent) => (event.preventDefault(), void add.submit())}
+    >
       <h4>{t.bookingBoard.addService}</h4>
       <p className="wf-small">{fill(t.bookingBoard.addServiceIntro, { code: visitCode })}</p>
       {!options && !loadError ? <Loading t={t} /> : null}
@@ -116,7 +158,7 @@ export function AddServiceForm({
             <select
               id={`add-participant-${visitId}`}
               value={participantId}
-              onChange={(event) => change(setParticipantId)(event.target.value)}
+              onChange={(event) => change(add.setParticipantId)(event.target.value)}
             >
               {participants.map((participant) => (
                 <option key={participant.id} value={participant.id}>
@@ -129,7 +171,7 @@ export function AddServiceForm({
             <select
               id={`add-service-${visitId}`}
               value={serviceId}
-              onChange={(event) => change(setServiceId)(event.target.value)}
+              onChange={(event) => change(add.setServiceId)(event.target.value)}
             >
               <option value="" />
               {options.services.map((service) => (
@@ -148,7 +190,7 @@ export function AddServiceForm({
             <select
               id={`add-staff-${visitId}`}
               value={staff}
-              onChange={(event) => change(setStaff)(event.target.value)}
+              onChange={(event) => change(add.setStaff)(event.target.value)}
             >
               <option value="">{t.bookingBoard.addStaffAny}</option>
               <option value="me">{t.bookingBoard.addStaffMe}</option>
@@ -176,5 +218,113 @@ export function AddServiceForm({
         />
       </div>
     </form>
+  );
+}
+
+/** The same choices in a `FormDialog` (Booking board, Step 10a): participant, catalog service, optional staff. */
+export function AddServiceDialog({
+  visitId,
+  visitCode,
+  participants,
+  onClose,
+  onAdded,
+}: {
+  visitId: string;
+  visitCode: string;
+  participants: Participant[];
+  onClose: () => void;
+  onAdded: (text: string) => void;
+}) {
+  const { t, locale } = useWorkforce();
+  const { account } = useAccount();
+  const add = useAddService({ visitId, participants, onAdded });
+  const { options, loadError, chosen, participantId, serviceId, staff, working, error, change } =
+    add;
+  const ready = Boolean(options && options.services.length > 0);
+
+  return (
+    <FormDialog
+      title={t.bookingBoard.addService}
+      description={fill(t.bookingBoard.addServiceIntro, { code: visitCode })}
+      labels={{
+        ...formOverlayLabels(t, t.bookingBoard.addSubmit),
+        submitting: t.bookingBoard.addWorking,
+      }}
+      busy={working}
+      dirty={serviceId !== ''}
+      submitDisabled={!ready || !participantId || !serviceId}
+      error={
+        loadError || error ? (
+          <Notice tone="error">{boardErrorMessage(loadError ?? error, t)}</Notice>
+        ) : undefined
+      }
+      onClose={onClose}
+      onSubmit={async () => {
+        if (await add.submit()) onClose();
+      }}
+    >
+      {!options && !loadError ? <Loading t={t} /> : null}
+      {options && options.services.length === 0 ? (
+        <Notice tone="info">{t.bookingBoard.addNoServices}</Notice>
+      ) : null}
+      {ready && options ? (
+        <FormGrid>
+          <KitField
+            label={t.bookingBoard.addParticipant}
+            required
+            requiredLabel={t.common.required}
+          >
+            {(control) => (
+              <KitSelect
+                {...control}
+                value={participantId}
+                options={participants.map((participant) => ({
+                  value: participant.id,
+                  label: participant.name ?? t.bookingBoard.self,
+                }))}
+                onChange={(event) => change(add.setParticipantId)(event.target.value)}
+              />
+            )}
+          </KitField>
+          <KitField
+            label={t.bookingBoard.addServiceField}
+            required
+            requiredLabel={t.common.required}
+            {...(chosen
+              ? { hint: fill(t.bookingBoard.addPrice, { range: referenceRange(chosen, locale) }) }
+              : {})}
+          >
+            {(control) => (
+              <KitSelect
+                {...control}
+                value={serviceId}
+                placeholder="—"
+                options={options.services.map((service) => ({
+                  value: service.id,
+                  label: locale === 'vi' ? service.nameVi : service.nameEn,
+                }))}
+                onChange={(event) => change(add.setServiceId)(event.target.value)}
+              />
+            )}
+          </KitField>
+          <KitField label={t.bookingBoard.addStaff}>
+            {(control) => (
+              <KitSelect
+                {...control}
+                value={staff}
+                options={[
+                  { value: '', label: t.bookingBoard.addStaffAny },
+                  { value: 'me', label: t.bookingBoard.addStaffMe },
+                  ...(chosen?.employees ?? [])
+                    .filter((employee) => employee.id !== account.id)
+                    .map((employee) => ({ value: employee.id, label: employee.displayName })),
+                ]}
+                onChange={(event) => change(add.setStaff)(event.target.value)}
+              />
+            )}
+          </KitField>
+        </FormGrid>
+      ) : null}
+    </FormDialog>
   );
 }

@@ -252,3 +252,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Kit only: Badge 4/8 padding, Notice 1 px border + card radius, phone card title 2-line clamp with reserved height + `minmax(0,1fr)` tracks (overflow 98 -> 2), `ReauthDialog` on `FormDialog` with neutral text (VI/EN). Audit script: hidden-text and docked-chrome false positives fixed.
 - Ratchet wf 325, css literals 6. Tests ui 238 + web targeted 8 green. DOM audit: no type rose, off-grid 1202 -> 24. Report: docs/UXUI_REDESIGN_KIT_POLISH.md. Next: 10a.
+
+### UX/UI Step 10a (Booking board, walk-in, reassignment) - Owner reviewed, committed (base 8f1d353)
+
+- UI only. Board = toolbar + DataTables (bookings, open-visit lines, pool) + equal-height queue cards; check-in is a row button (short confirm; no undo in the API), other decisions in the row `⋮`; walk-in = form page + member-lookup dialog; reassignment = toolbar + DataTable + dialog. Tablet fit measured (0 px over at 768/1024/1280). Real flows on scratch DB (bookings via API): arrive, late arrival, priority, KTV start/end, forgotten END, change staff, no-show all PASS.
+- Ratchet wf 237, raw tables 5, fieldsets 5, checkboxes 2, solid danger 3. Web 275 + ui 238 green. DOM audit board 123 -> 6, walk-in 62 -> 2, reassignment 58 -> 2 (phone card row-height-uneven +2, Owner-approved exception). Report: docs/UXUI_REDESIGN_STEP10A_BOOKING_WALKIN_REASSIGN.md. Next: 10b.

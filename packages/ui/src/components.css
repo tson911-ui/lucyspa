@@ -1014,6 +1014,65 @@
   line-height: var(--ls-leading-lg);
 }
 
+.ls-form-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ls-space-3);
+  min-width: 0;
+}
+
+.ls-form-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-2);
+}
+
+/* A repeated block of fields (for example one service of a person): two fields and the action that removes the row. */
+.ls-repeat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ls-space-4);
+  align-items: end;
+}
+
+.ls-repeat-row > :not(:last-child) {
+  grid-column: 1;
+}
+
+.ls-repeat-row > :last-child {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+@media (min-width: 640px) {
+  .ls-repeat-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  }
+
+  .ls-repeat-row > :not(:last-child) {
+    grid-column: auto;
+  }
+
+  .ls-repeat-row > :last-child {
+    grid-column: auto;
+    grid-row: auto;
+    align-self: end;
+  }
+}
+
+/* Plain lines inside a card (no bullets, one gap). */
+.ls-list-plain {
+  display: grid;
+  gap: var(--ls-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 /* Disclosure: one button, a turning chevron, a plain panel. */
 .ls-disclosure {
   min-width: 0;
@@ -1403,6 +1462,13 @@
   }
 }
 
+/* The compact twin of something hidden by `.ls-hide-xl`: shown only where that one is hidden. */
+@media (min-width: 1280px), (max-width: 639px) {
+  .ls-show-below-xl {
+    display: none;
+  }
+}
+
 .ls-table {
   width: 100%;
   border-collapse: separate;
@@ -1463,6 +1529,51 @@
 
 .ls-cell-numeric {
   font-variant-numeric: tabular-nums;
+}
+
+/* A two-line cell: the value, then a muted detail (every row of the column has both lines, so rows stay one height). */
+.ls-cell-stack {
+  display: grid;
+  gap: var(--ls-space-1);
+  min-width: 0;
+  max-width: var(--ls-col-w, none);
+}
+
+.ls-cell-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Free text that may be long (services of a booking): two lines, then cut; narrower on a tablet. The full text is the title. */
+.ls-cell-clamp {
+  display: -webkit-box;
+  max-width: 14rem;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 640px) and (max-width: 1279px) {
+  .ls-cell-clamp {
+    max-width: 8rem;
+  }
+}
+
+.ls-cell-sub {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  white-space: nowrap;
+}
+
+.ls-cell-main {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--ls-space-2);
+  white-space: nowrap;
 }
 
 .ls-table thead th {
@@ -1836,6 +1947,13 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--ls-space-2);
+}
+
+/* Bare select and date controls take their natural width, so several fit one row. */
+.ls-toolbar-filters > .ls-input {
+  width: auto;
+  max-width: 20rem;
+  height: var(--ls-control-h);
 }
 
 /* Trailing end: result count, reload icon button, secondary list actions. */

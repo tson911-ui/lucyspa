@@ -1,10 +1,10 @@
 {
-  "rawTables": 6,
-  "wfClassUses": 325,
+  "rawTables": 5,
+  "wfClassUses": 237,
   "detailsDisclosures": 4,
-  "nativeFieldsets": 7,
-  "nativeCheckboxes": 4,
-  "solidDangerButtons": 6,
+  "nativeFieldsets": 5,
+  "nativeCheckboxes": 2,
+  "solidDangerButtons": 3,
   "workforceCssSpacingLiterals": 0,
   "componentsCssSpacingLiterals": 6,
   "shellCssSpacingLiterals": 0

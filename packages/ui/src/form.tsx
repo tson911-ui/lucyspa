@@ -717,20 +717,33 @@ export function SearchInput({
 export function FormSection({
   title,
   description,
+  actions,
   children,
   className,
 }: {
   title: string;
   description?: string | undefined;
+  /** The action of this group only (for example removing one repeated block), at the trailing edge of the title row. */
+  actions?: ReactNode | undefined;
   children: ReactNode;
   className?: string | undefined;
 }) {
   const titleId = useId();
+  const heading = (
+    <h3 className="ls-form-section-title" id={titleId}>
+      {title}
+    </h3>
+  );
   return (
     <section aria-labelledby={titleId} className={cx('ls-form-section', className)}>
-      <h3 className="ls-form-section-title" id={titleId}>
-        {title}
-      </h3>
+      {actions ? (
+        <div className="ls-form-section-head">
+          {heading}
+          <div className="ls-form-section-actions">{actions}</div>
+        </div>
+      ) : (
+        heading
+      )}
       {description ? <p className="ls-hint">{description}</p> : null}
       <div className="ls-form-section-body">{children}</div>
     </section>
