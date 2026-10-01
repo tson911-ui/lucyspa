@@ -28,6 +28,7 @@ Owner reviews every Step. Work only on the Step you are given.
 - Integration tests: run only the relevant suite file(s), not the whole package.
 - Full regression, full build and smoke (`pnpm check`, `pnpm test:integration`, `pnpm smoke`)
   run ONLY at the Final Validation Step or when the Owner asks.
+- Before every commit run `pnpm format:check` on the whole repo; it must be clean (CI fails otherwise).
 - If a test fails for an unrelated, known reason (e.g. time-of-day fixtures), note it in one line
   and move on; do not investigate.
 

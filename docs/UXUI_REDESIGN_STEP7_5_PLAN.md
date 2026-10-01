@@ -276,3 +276,5 @@ Shared defects the DOM audit keeps reporting on every migrated page. They are no
 | `Notice` has a 4 px left border among 1 px borders                      | `Notice`               | `border-width-mix`                                                           |
 | Phone card list: cards of one table have different heights (names wrap) | `DataTable` phone mode | `row-height-uneven` at 360 px                                                |
 | Icon-only phone Filter button flagged                                   | `ListToolbar`          | `icon-text-misaligned`, accepted false positive; fix the check or the button |
+
+**Order (Owner decision 2026-10-01 at 9c approval):** the next Step after 9c is this Kit polish, done immediately, before 10a. It also changes the wording of the password-confirmation dialog (`ReauthDialog`, `reauth.body` in both languages) to a neutral text that does not mention staff ("nhân sự"), and re-skins that dialog onto the kit `FormDialog`.
