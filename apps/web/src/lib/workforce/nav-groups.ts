@@ -18,7 +18,7 @@ const SIDEBAR_LAYOUT: ReadonlyArray<{ group: NavGroupId; order: readonly NavKey[
     order: ['employees', 'attendance', 'leave', 'teams', 'organization', 'skills'],
   },
   { group: 'catalog', order: ['services', 'branches'] },
-  { group: 'administration', order: ['roles'] },
+  { group: 'administration', order: ['roles', 'websiteContent'] },
 ];
 
 /** Personal pages live in the user menu, not in the sidebar (contract 4.2). */
@@ -42,6 +42,7 @@ export const NAV_ICONS: Record<NavKey, IconName> = {
   services: 'sparkles',
   branches: 'map-pin',
   roles: 'shield',
+  websiteContent: 'image',
   myAccount: 'user',
   myIncome: 'wallet',
 };

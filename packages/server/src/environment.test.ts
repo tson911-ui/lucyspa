@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
+import path from 'node:path';
 import { test } from 'node:test';
 import { parseApiEnvironment, parseWorkerEnvironment } from './environment.js';
 import { redisConnectionOptions } from './redis.js';
@@ -36,7 +37,21 @@ test('only PostgreSQL and Redis protocols are accepted', () => {
 });
 
 test('production docs are disabled by default and explicit false is not truthy', () => {
-  assert.equal(parseApiEnvironment({ ...valid, NODE_ENV: 'production' }).swaggerEnabled, false);
+  const production = {
+    ...valid,
+    NODE_ENV: 'production',
+    MEDIA_STORAGE_DIR: '/var/lib/lucy-spa/media',
+  };
+  assert.equal(parseApiEnvironment(production).swaggerEnabled, false);
+  // UX/UI Step 11: production names an absolute media directory; the error names only the variable.
+  assert.throws(
+    () => parseApiEnvironment({ ...valid, NODE_ENV: 'production' }),
+    /MEDIA_STORAGE_DIR$/,
+  );
+  assert.equal(
+    parseApiEnvironment(production).mediaStorageDir,
+    path.resolve('/var/lib/lucy-spa/media'),
+  );
   assert.equal(parseApiEnvironment({ ...valid, SWAGGER_ENABLED: 'false' }).swaggerEnabled, false);
   assert.throws(() => parseApiEnvironment({ ...valid, SWAGGER_ENABLED: 'yes' }));
 });

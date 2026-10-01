@@ -48,7 +48,7 @@ test('the Owner sees the contract groups in the contract order', () => {
     sales: ['pos', 'discounts'],
     people: ['employees', 'attendance', 'leave', 'teams', 'organization', 'skills'],
     catalog: ['services', 'branches'],
-    administration: ['roles'],
+    administration: ['roles', 'websiteContent'],
   });
   assert.deepEqual(
     personalEntries(navigationFor(owner)).map((item) => item.key),

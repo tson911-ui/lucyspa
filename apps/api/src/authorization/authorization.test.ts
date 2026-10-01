@@ -414,6 +414,8 @@ test('the code-owned catalog is exactly the Phase 1, Phase 2 and follow-up Step 
       ['CANCEL_INVOICES', 'BRANCH_CAPABLE', 'FINANCIAL'],
       ['CORRECT_PAYMENTS', 'BRANCH_CAPABLE', 'FINANCIAL'],
       ['VIEW_REVENUE', 'BRANCH_CAPABLE', 'FINANCIAL'],
+      // UX/UI Step 11 (design 16.1, Q-CM1): one GLOBAL_ONLY code for media, popup and slider.
+      ['MANAGE_WEBSITE_CONTENT', 'GLOBAL_ONLY', 'STANDARD'],
     ],
   );
 });

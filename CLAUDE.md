@@ -29,6 +29,8 @@ Owner reviews every Step. Work only on the Step you are given.
 - Full regression, full build and smoke (`pnpm check`, `pnpm test:integration`, `pnpm smoke`)
   run ONLY at the Final Validation Step or when the Owner asks.
 - Before every commit run `pnpm format:check` on the whole repo; it must be clean (CI fails otherwise).
+- Before every push run `pnpm test` for the whole repo (every package), not only the tests touched in the Step.
+  This is the one exception to "targeted only"; it does not include `pnpm test:integration`/`pnpm smoke`.
 - If a test fails for an unrelated, known reason (e.g. time-of-day fixtures), note it in one line
   and move on; do not investigate.
 

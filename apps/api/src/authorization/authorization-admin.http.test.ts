@@ -27,6 +27,7 @@ const ring = () => JSON.stringify({ 1: randomBytes(32).toString('base64url') });
 async function application(roles: Partial<RoleAdminService>, audit: Partial<AuditReadService>) {
   const environment = parseApiEnvironment({
     NODE_ENV: 'production',
+    MEDIA_STORAGE_DIR: '/var/lib/lucy-spa/media',
     DATABASE_URL: 'postgresql://localhost/test',
     REDIS_URL: 'redis://localhost:6379',
     WEB_ORIGIN: 'https://spa.example',

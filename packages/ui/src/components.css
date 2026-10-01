@@ -1419,6 +1419,141 @@
   gap: var(--ls-space-2);
 }
 
+/* ---- Media grid (Step 11, section 16.3): image tiles; the grid has no outer card ------------- */
+.ls-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--ls-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Two columns on a phone; the tile text is clipped with an ellipsis rather than wrapped (equal tile heights). */
+@media (max-width: 639px) {
+  .ls-media-grid {
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    gap: var(--ls-space-3);
+  }
+}
+
+.ls-media-item {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+
+/* The tile's menu button sits on the thumbnail's top corner, on its own surface so it reads over any image. */
+.ls-media-actions {
+  z-index: 1;
+  position: absolute;
+  inset-block-start: var(--ls-space-3);
+  inset-inline-end: var(--ls-space-3);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-surface);
+}
+
+/* Fixed rows (thumbnail, title, meta, badges) so every tile in a row is the same height. */
+.ls-media-tile {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(var(--ls-space-6), auto);
+  gap: var(--ls-space-1);
+  align-content: start;
+  width: 100%;
+  min-width: 0;
+  padding: var(--ls-space-2);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-md);
+  color: var(--ls-text);
+  background: var(--ls-bg-surface);
+}
+
+.ls-media-tile:hover {
+  border-color: var(--ls-brand);
+}
+
+/* The focus ring goes around the whole tile, not just the name. */
+.ls-media-tile:focus-within {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: 2px;
+}
+
+.ls-media-thumb {
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-sunken);
+}
+
+.ls-media-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ls-media-preview {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-sunken);
+}
+
+.ls-media-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 20rem;
+  object-fit: contain;
+}
+
+.ls-media-title {
+  display: block;
+  width: 100%;
+  min-height: var(--ls-control-h);
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  color: inherit;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  line-height: var(--ls-leading-md);
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ls-media-title:focus-visible {
+  outline: none;
+}
+
+/* Stretched click area: the name's button covers the whole tile; the menu sits above it. */
+.ls-media-title::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+}
+
+.ls-media-meta {
+  overflow: hidden;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ls-media-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-1);
+  align-items: center;
+}
+
 /* ---- Data table, pagination, toolbar, description list, tabs (Step 4, sections 9.4, 10, 13) ---- */
 .ls-table-block {
   display: grid;

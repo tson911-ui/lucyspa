@@ -59,3 +59,4 @@ await import('../apps/api/dist/pos/payos.integration.test.js');
 await import('../apps/api/dist/pos/payos.race.integration.test.js');
 await import('../apps/api/dist/pos/customer-invoice.integration.test.js');
 await import('../apps/api/dist/pos/invoice-notifications.integration.test.js');
+await import('../apps/api/dist/website/media.integration.test.js');

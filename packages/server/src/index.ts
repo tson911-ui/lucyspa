@@ -1,4 +1,12 @@
 export {
+  isMediaKey,
+  LocalDiskMediaStorage,
+  MediaNotFoundError,
+  newMediaKey,
+  parseMediaStorageDirectory,
+  type MediaStorage,
+} from './media-storage.js';
+export {
   parseApiEnvironment,
   parsePayosEnvironment,
   parseWorkerEnvironment,

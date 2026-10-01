@@ -263,3 +263,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 - UI only. Cards for My services; DataTables + toolbars for schedule, attendance, leave, notifications; every create/edit/decision is a dialog or drawer, destructive ones a `ConfirmDialog`; leave tablet overflow fixed. `workforce.css` deleted: the rules the member area still uses moved unchanged into `customer.css` (Part 2 removes them).
 - Ratchet: raw tables 0, details 0, wf uses 80, fieldsets 4, checkboxes 1, solid danger 1 (all member area). Web 275 + ui 11 css tests green. Scratch-DB flows 65/65 (leave, attendance check-in/out, profile, collaborator schedule, KTV Start/End/Add service). Report: docs/UXUI_REDESIGN_STEP10B_PERSONAL_PAGES.md.
 - Open for the Owner: "Nhận khách" icon-only below 1280 px (check on the counter machine). Cards, phone exception and merged filter approved. Next: 11 (website content).
+
+### UX/UI Step 11 (website media library) - implemented locally 2026-10-01, awaiting Owner review (uncommitted, not deployed; base a58c5fc)
+
+- First Step with API + DB since the redesign started: 2 additive migrations (`MANAGE_WEBSITE_CONTENT` GLOBAL_ONLY, `media_assets` + `media_variants`), `sharp`, `MediaStorage` (local disk), upload/list/alt/delete/serve API with audit, library page `/website` (grid, upload queue, drawer, delete). **Deploy needs**: env `MEDIA_STORAGE_DIR` (required in production, outside the release folder, in backups), `db:deploy`, `db:permissions:sync`.
+- Public serving and "used in" arrive with Steps 12/13. CLAUDE.md now requires `pnpm test` (whole repo) before every push. Report: docs/UXUI_REDESIGN_STEP11_MEDIA_LIBRARY.md. Next: 12 (popup).

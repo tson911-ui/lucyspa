@@ -716,7 +716,8 @@ export type PermissionCodeName =
   | 'CREATE_VOUCHERS'
   | 'CANCEL_INVOICES'
   | 'CORRECT_PAYMENTS'
-  | 'VIEW_REVENUE';
+  | 'VIEW_REVENUE'
+  | 'MANAGE_WEBSITE_CONTENT';
 
 /** A named permission bundle. OWNER is virtual and never a role. */
 export interface RoleResponse {
@@ -2741,4 +2742,56 @@ export interface CustomerInvoiceDetail extends CustomerInvoiceSummary {
 export interface CustomerInvoiceListResponse {
   invoices: CustomerInvoiceSummary[];
   nextCursor: string | null;
+}
+
+// ---------------------------------------------------------------------------------------------
+// UX/UI Step 11: website media library (design 16.3). MANAGE_WEBSITE_CONTENT, GLOBAL only.
+// ---------------------------------------------------------------------------------------------
+
+export type MediaVariantName = 'thumb' | 'md' | 'lg';
+
+/** One library image. The original is kept but never served; renditions are WebP (thumb 320w, md 960w, lg 1920w). */
+export interface MediaAssetSummary {
+  id: string;
+  originalFilename: string;
+  mime: 'image/jpeg' | 'image/png' | 'image/webp';
+  bytes: number;
+  width: number;
+  height: number;
+  altVi: string | null;
+  altEn: string | null;
+  createdAt: string;
+  rowVersion: number;
+}
+
+/** Where an image is used (filled by the popup and slider Steps); an image with any usage cannot be deleted. */
+export interface MediaUsage {
+  kind: 'POPUP' | 'SLIDE';
+  id: string;
+  title: string;
+}
+
+export interface MediaAssetDetail extends MediaAssetSummary {
+  usedIn: MediaUsage[];
+}
+
+/** GET /api/v1/website/media?search=&page=  (24 per page, newest first). */
+export interface MediaListResponse {
+  items: MediaAssetSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** POST /api/v1/website/media (multipart: file, altVi?, altEn?). The same bytes again return the existing asset. */
+export interface MediaUploadResponse {
+  asset: MediaAssetDetail;
+  duplicate: boolean;
+}
+
+/** POST /api/v1/website/media/:id/alt : alt text only (never the file). VI alt is required before an image is used. */
+export interface MediaUpdateRequest {
+  expectedVersion: number;
+  altVi: string | null;
+  altEn: string | null;
 }

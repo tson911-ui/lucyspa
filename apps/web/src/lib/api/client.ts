@@ -26,6 +26,16 @@ function fieldOf(message: unknown): string | null {
   return match?.[1] ?? null;
 }
 
+function errorFromBody(status: number, body: Partial<ApiErrorResponse> | null): ApiError {
+  return new ApiError(
+    status,
+    typeof body?.code === 'string' ? body.code : `HTTP_${status}`,
+    fieldOf(body?.message),
+    typeof body?.requestId === 'string' ? body.requestId : null,
+    typeof body?.reason === 'string' ? body.reason : null,
+  );
+}
+
 async function toError(response: Response): Promise<ApiError> {
   let body: Partial<ApiErrorResponse> | null;
   try {
@@ -33,13 +43,14 @@ async function toError(response: Response): Promise<ApiError> {
   } catch {
     body = null;
   }
-  return new ApiError(
-    response.status,
-    typeof body?.code === 'string' ? body.code : `HTTP_${response.status}`,
-    fieldOf(body?.message),
-    typeof body?.requestId === 'string' ? body.requestId : null,
-    typeof body?.reason === 'string' ? body.reason : null,
-  );
+  return errorFromBody(response.status, body);
+}
+
+/** Progress and cancellation of one file upload. */
+export interface UploadControl {
+  /** 0-100, as the browser sends the body. */
+  readonly onProgress?: (percent: number) => void;
+  readonly signal?: AbortSignal;
 }
 
 export type Query = Record<string, string | number | undefined>;
@@ -67,6 +78,8 @@ export interface ApiClientOptions {
   readonly onUnauthenticated?: (method: 'GET' | 'POST', reason: string | null) => void;
   /** Called after every successful response (the session is valid again). */
   readonly onAuthenticatedResponse?: () => void;
+  /** Injected in tests; `fetch` cannot report upload progress, so uploads use XMLHttpRequest. */
+  readonly xhr?: () => XMLHttpRequest;
 }
 
 /**
@@ -115,6 +128,73 @@ export class ApiClient {
       }
       throw error;
     }
+  }
+
+  /**
+   * One multipart upload (the browser sets the boundary, so no Content-Type is sent). Same CSRF token,
+   * one retry on a rotated session and the same 401 handling as `post`; reports progress and can be aborted.
+   */
+  async upload<T>(path: string, form: FormData, control: UploadControl = {}): Promise<T> {
+    if (this.csrfToken === null) await this.context();
+    try {
+      return await this.sendForm<T>(path, form, control);
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'REQUEST_NOT_ALLOWED') {
+        await this.context();
+        return this.sendForm<T>(path, form, control);
+      }
+      throw error;
+    }
+  }
+
+  private sendForm<T>(path: string, form: FormData, control: UploadControl): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const xhr = this.options.xhr?.() ?? new XMLHttpRequest();
+      const abort = () => xhr.abort();
+      xhr.open('POST', path);
+      xhr.setRequestHeader('Accept', 'application/json');
+      if (this.csrfToken) xhr.setRequestHeader('X-CSRF-Token', this.csrfToken);
+      xhr.withCredentials = true;
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && event.total > 0) {
+          control.onProgress?.(Math.round((event.loaded / event.total) * 100));
+        }
+      };
+      const done = () => control.signal?.removeEventListener('abort', abort);
+      xhr.onerror = () => {
+        done();
+        reject(new ApiError(0, 'NETWORK'));
+      };
+      xhr.onabort = () => {
+        done();
+        reject(new DOMException('Upload cancelled', 'AbortError'));
+      };
+      xhr.onload = () => {
+        done();
+        let body: unknown;
+        try {
+          body = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+        } catch {
+          body = null;
+        }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          this.options.onAuthenticatedResponse?.();
+          resolve(body as T);
+          return;
+        }
+        const error = errorFromBody(xhr.status, body as Partial<ApiErrorResponse> | null);
+        if (error.status === 401 && error.code === 'AUTHENTICATION_REQUIRED') {
+          this.options.onUnauthenticated?.('POST', error.reason);
+        }
+        reject(error);
+      };
+      if (control.signal?.aborted) {
+        reject(new DOMException('Upload cancelled', 'AbortError'));
+        return;
+      }
+      control.signal?.addEventListener('abort', abort, { once: true });
+      xhr.send(form);
+    });
   }
 
   /** Forget the token (after logout the anonymous session gets a new one). */

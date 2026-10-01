@@ -106,6 +106,18 @@ export function errorMessage(error: unknown, t: WorkforceDictionary): string {
       return t.errors.unavailable;
     case 'NETWORK':
       return t.errors.network;
+    // Website media (UX/UI Step 11). HTTP_413 is the body limit refusing an oversize file before the API reads it.
+    case 'MEDIA_TYPE_UNSUPPORTED':
+      return t.errors.mediaType;
+    case 'MEDIA_TOO_LARGE':
+    case 'HTTP_413':
+      return t.errors.mediaTooLarge;
+    case 'MEDIA_DIMENSIONS_TOO_LARGE':
+      return t.errors.mediaDimensions;
+    case 'MEDIA_INVALID_IMAGE':
+      return t.errors.mediaInvalid;
+    case 'MEDIA_IN_USE':
+      return t.errors.mediaInUse;
     default:
       return t.errors.unexpected;
   }

@@ -316,7 +316,7 @@ test(
                 );
                 const listed = await roles.listRoles(ownerSession);
                 assert.ok(listed.roles.some((entry) => entry.id === role.id));
-                assert.equal(listed.permissions.length, 40);
+                assert.equal(listed.permissions.length, 41);
                 // Scope capability comes from the code-owned catalog (Step 4B role UI).
                 assert.deepEqual(
                   listed.permissionCatalog.map((entry) => entry.code),
@@ -331,6 +331,7 @@ test(
                     'MANAGE_BOOKING_SETTINGS',
                     'MANAGE_DISCOUNTS',
                     'CREATE_VOUCHERS',
+                    'MANAGE_WEBSITE_CONTENT',
                   ],
                 );
                 const events = await tx.auditEvent.findMany({

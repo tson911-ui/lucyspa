@@ -38,6 +38,8 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'organization',
     'teams',
     'roles',
+    // UX/UI Step 11: the website media library (GLOBAL MANAGE_WEBSITE_CONTENT; the Owner holds all).
+    'websiteContent',
   ]);
   assert.deepEqual(
     keys(
@@ -53,6 +55,11 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
   assert.ok(keys(employee([['MANAGE_PERMISSIONS', 'A']])).includes('roles'));
   assert.ok(!keys(employee([['VIEW_EMPLOYEES']])).includes('roles'));
   assert.ok(!keys(employee([['APPROVE_LEAVE', 'A']])).includes('employees'));
+  // Website content is GLOBAL_ONLY: a global grant opens it; a branch grant or no grant never does.
+  assert.ok(keys(employee([['MANAGE_WEBSITE_CONTENT']])).includes('websiteContent'));
+  assert.ok(!keys(employee([['MANAGE_WEBSITE_CONTENT', 'A']])).includes('websiteContent'));
+  assert.ok(!keys(employee([['VIEW_EMPLOYEES']])).includes('websiteContent'));
+  assert.ok(!keys(customer).includes('websiteContent'));
   assert.ok(keys(employee([['VIEW_ORGANIZATION', 'A']])).includes('organization'));
   assert.ok(keys(employee([['VIEW_TEAMS', 'A']])).includes('teams'));
   assert.ok(!keys(employee([['VIEW_TEAMS', 'A']])).includes('organization'));

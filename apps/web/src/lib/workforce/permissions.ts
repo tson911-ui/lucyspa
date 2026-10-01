@@ -163,7 +163,8 @@ export type NavKey =
   | 'employees'
   | 'roles'
   | 'organization'
-  | 'teams';
+  | 'teams'
+  | 'websiteContent';
 
 /** Task-oriented groups (docs/UXUI_REDESIGN_DESIGN.md 4.2). Moving an entry between groups never changes who sees it. */
 export type NavGroupId =
@@ -273,6 +274,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'roles',
       group: 'administration',
       path: '/roles',
+    },
+    // Website content (media library, popup, slider) is a GLOBAL_ONLY permission (UX/UI Step 11).
+    canGlobal(account, 'MANAGE_WEBSITE_CONTENT') && {
+      key: 'websiteContent',
+      group: 'administration',
+      path: '/website',
     },
   ];
   return items.filter((item): item is NavItem => item !== false);

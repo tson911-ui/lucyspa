@@ -5,6 +5,7 @@ import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import { AuthError } from './auth.error.js';
 import { sessionCookie } from './cookies.js';
 import { verifyCsrfToken } from './crypto.js';
+import { isMultipartContentType, MULTIPART_UPLOAD } from './multipart-upload.js';
 import { PUBLIC_WEBHOOK } from './public-webhook.js';
 import { SessionService } from './session.service.js';
 
@@ -35,11 +36,15 @@ export class CsrfGuard implements CanActivate {
     const contentType = request.headers['content-type'];
     const supplied = request.headers['x-csrf-token'];
     const token = sessionCookie(request.headers.cookie, this.environment.auth.cookieName);
+    // A declared upload route takes multipart instead of JSON; every other check below still applies.
+    const upload = this.reflector.get<boolean>(MULTIPART_UPLOAD, context.getHandler()) === true;
     if (
       !allowedRequestOrigin(request, this.environment.webOrigin) ||
       request.headers['sec-fetch-site'] === 'cross-site' ||
       typeof contentType !== 'string' ||
-      !/^application\/json(?:\s*;\s*charset=utf-8)?\s*$/i.test(contentType) ||
+      !(upload
+        ? isMultipartContentType(contentType)
+        : /^application\/json(?:\s*;\s*charset=utf-8)?\s*$/i.test(contentType)) ||
       token === undefined
     )
       throw new AuthError('REQUEST_NOT_ALLOWED');

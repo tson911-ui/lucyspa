@@ -45,6 +45,7 @@ const account: MyAccountResponse = {
 test('My Account: session-only identity, CSRF on the write, strict allowlisted DTO', async () => {
   const environment = parseApiEnvironment({
     NODE_ENV: 'production',
+    MEDIA_STORAGE_DIR: '/var/lib/lucy-spa/media',
     DATABASE_URL: 'postgresql://localhost/test',
     REDIS_URL: 'redis://localhost:6379',
     WEB_ORIGIN: 'https://spa.example',

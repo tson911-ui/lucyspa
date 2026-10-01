@@ -13,8 +13,8 @@ export interface PermissionDefinition {
 
 /**
  * Code-owned catalog (Phase 1 design section 7, extended in Phase 2). Every permission
- * is branch-capable except MANAGE_SERVICE_PRICES, MANAGE_BOOKING_SETTINGS, MANAGE_DISCOUNTS and
- * CREATE_VOUCHERS (GLOBAL_ONLY); the two pay permissions are EMPLOYEE_PAY data and the nine Phase 4
+ * is branch-capable except MANAGE_SERVICE_PRICES, MANAGE_BOOKING_SETTINGS, MANAGE_DISCOUNTS,
+ * CREATE_VOUCHERS and MANAGE_WEBSITE_CONTENT (GLOBAL_ONLY); the two pay permissions are EMPLOYEE_PAY data and the nine Phase 4
  * financial permissions are FINANCIAL data. Semantics are immutable in SQL.
  */
 export const PERMISSION_CATALOG = Object.freeze([
@@ -119,6 +119,11 @@ export const PERMISSION_CATALOG = Object.freeze([
   { code: 'CANCEL_INVOICES', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'FINANCIAL' },
   { code: 'CORRECT_PAYMENTS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'FINANCIAL' },
   { code: 'VIEW_REVENUE', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'FINANCIAL' },
+  {
+    code: 'MANAGE_WEBSITE_CONTENT',
+    scopeCapability: 'GLOBAL_ONLY',
+    dataClassification: 'STANDARD',
+  },
 ] as const satisfies readonly PermissionDefinition[]);
 
 export interface PermissionCatalogSyncResult {

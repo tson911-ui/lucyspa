@@ -336,6 +336,7 @@ enum PermissionCode {
   CANCEL_INVOICES
   CORRECT_PAYMENTS
   VIEW_REVENUE
+  MANAGE_WEBSITE_CONTENT
 }
 
 enum LeaveStatus {
@@ -394,6 +395,7 @@ model User {
   cancelledCollaboratorWork    CollaboratorWorkOccurrence[]     @relation("CollaboratorWorkCanceller")
   ownedBookings                Booking[]                        @relation("BookingOwner")
   createdBookings              Booking[]                        @relation("BookingCreator")
+  createdMediaAssets           MediaAsset[]                     @relation("MediaAssetCreator")
   checkedInBookings            Booking[]                        @relation("BookingCheckedInBy")
   cancelledBookings            Booking[]                        @relation("BookingCancelledBy")
   noShowBookings               Booking[]                        @relation("BookingNoShowBy")
@@ -1911,4 +1913,48 @@ model DiscountRedemptionRelease {
   reason           String
 
   @@map("discount_redemption_releases")
+}
+
+enum MediaVariantKind {
+  THUMB
+  MD
+  LG
+}
+
+// UX/UI Step 11: website media library (design 16.2/16.3). Marketing content, not history: a real delete is
+// allowed while nothing references the asset. `storageKey` and variant keys are opaque random keys, never
+// paths or URLs; the original is kept (PRD 53) and three WebP variants are derived from it.
+model MediaAsset {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storageKey       String         @unique(map: "media_assets_storage_key_key") @map("storage_key")
+  originalFilename String         @map("original_filename")
+  mime             String
+  bytes            Int
+  width            Int
+  height           Int
+  sha256           String         @unique(map: "media_assets_sha256_key")
+  altVi            String?        @map("alt_vi")
+  altEn            String?        @map("alt_en")
+  createdByUserId  String         @map("created_by_user_id") @db.Uuid
+  createdBy        User           @relation("MediaAssetCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion       Int            @default(1) @map("row_version")
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  variants         MediaVariant[]
+
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "media_assets_created_idx")
+  @@map("media_assets")
+}
+
+model MediaVariant {
+  assetId    String           @map("asset_id") @db.Uuid
+  asset      MediaAsset       @relation(fields: [assetId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  kind       MediaVariantKind
+  storageKey String           @unique(map: "media_variants_storage_key_key") @map("storage_key")
+  width      Int
+  height     Int
+  bytes      Int
+
+  @@id([assetId, kind], map: "media_variants_pkey")
+  @@map("media_variants")
 }

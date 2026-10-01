@@ -80,6 +80,12 @@ const errors = {
   PAYMENT_PROVIDER_REJECTED: [502, 'The payment provider refused the request'],
   PAYMENT_ANOMALY_REVIEWED: [409, 'This payment anomaly was already reviewed'],
   INVOICE_NOTE_NOT_ALLOWED: [409, 'A management note is only for an invoice settled through PayOS'],
+  // UX/UI Step 11: website media library (design 16.3). Shown verbatim by the uploader.
+  MEDIA_TYPE_UNSUPPORTED: [415, 'Only JPEG, PNG or WebP images are accepted'],
+  MEDIA_TOO_LARGE: [413, 'The image is larger than 10 MB'],
+  MEDIA_DIMENSIONS_TOO_LARGE: [400, 'The image is larger than 6000 pixels on one side'],
+  MEDIA_INVALID_IMAGE: [400, 'The file is not a valid still image'],
+  MEDIA_IN_USE: [409, 'This image is used on the website and cannot be deleted'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

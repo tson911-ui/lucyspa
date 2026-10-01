@@ -90,6 +90,7 @@ const GROUP_OF: Readonly<Record<string, PermissionGroup>> = {
   VIEW_REVENUE: 'finance',
   MANAGE_PERMISSIONS: 'admin',
   VIEW_AUDIT_LOG: 'admin',
+  MANAGE_WEBSITE_CONTENT: 'admin',
 };
 const GROUP_ORDER: PermissionGroup[] = [
   'employees',

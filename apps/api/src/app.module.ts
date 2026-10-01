@@ -31,7 +31,7 @@ import { CustomerInvoiceService } from './pos/customer-invoice.service.js';
 import { InvoiceController } from './pos/invoice.controller.js';
 import { InvoiceService } from './pos/invoice.service.js';
 import { PayosWebhookController, PayosWebhookService } from './pos/payos.webhook.js';
-import { createPayosProvider } from '@lucy-spa/server';
+import { createPayosProvider, LocalDiskMediaStorage } from '@lucy-spa/server';
 import { WalkInController } from './walkin/walkin.controller.js';
 import { WalkInService } from './walkin/walkin.service.js';
 import { MyAccountService } from './account/my-account.service.js';
@@ -73,11 +73,14 @@ import { OrganizationController } from './organization/organization.controller.j
 import { OrganizationService } from './organization/organization.service.js';
 import { TeamController } from './teams/team.controller.js';
 import { TeamService } from './teams/team.service.js';
+import { MediaController } from './website/media.controller.js';
+import { MediaService } from './website/media.service.js';
 import { HealthController } from './health/health.controller.js';
 import { InfrastructureService } from './platform/infrastructure.service.js';
 import {
   API_ENVIRONMENT,
   API_LOGGER,
+  MEDIA_STORAGE,
   PAYMENT_PROVIDER,
   type ApiEnvironment,
 } from './platform/tokens.js';
@@ -121,6 +124,7 @@ export class AppModule {
         PayosWebhookController,
         OrganizationController,
         TeamController,
+        MediaController,
       ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },
@@ -129,6 +133,11 @@ export class AppModule {
           // PayOS only when all three credentials are configured; otherwise the method is disabled.
           provide: PAYMENT_PROVIDER,
           useValue: environment.payos ? createPayosProvider(environment.payos) : null,
+        },
+        // Website media objects live under MEDIA_STORAGE_DIR (outside the release folder; in the backup scope).
+        {
+          provide: MEDIA_STORAGE,
+          useValue: new LocalDiskMediaStorage(environment.mediaStorageDir),
         },
         InfrastructureService,
         PrismaService,
@@ -166,6 +175,7 @@ export class AppModule {
         PayosWebhookService,
         OrganizationService,
         TeamService,
+        MediaService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
         { provide: APP_INTERCEPTOR, useClass: SessionActivityInterceptor },

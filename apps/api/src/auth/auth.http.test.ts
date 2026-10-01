@@ -37,6 +37,7 @@ class MutationFixture {
 test('HTTP authentication context and global CSRF contract', async (t) => {
   const environment = parseApiEnvironment({
     NODE_ENV: 'production',
+    MEDIA_STORAGE_DIR: '/var/lib/lucy-spa/media',
     DATABASE_URL: 'postgresql://localhost/test',
     REDIS_URL: 'redis://localhost:6379',
     WEB_ORIGIN: 'https://spa.example',

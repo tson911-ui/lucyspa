@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { parseAuthEnvironment } from './auth-environment.js';
+import { parseMediaStorageDirectory } from './media-storage.js';
 import type { PayosConfig } from './payos.js';
 
 const port = z.coerce.number().int().min(1).max(65535);
@@ -82,6 +83,7 @@ export function parseApiEnvironment(env: NodeJS.ProcessEnv) {
     webOrigin: config.WEB_ORIGIN,
     auth: parseAuthEnvironment(env, config.NODE_ENV, config.WEB_ORIGIN),
     payos: parsePayosEnvironment(env),
+    mediaStorageDir: parseMediaStorageDirectory(env, config.NODE_ENV),
     swaggerEnabled:
       config.SWAGGER_ENABLED === undefined
         ? config.NODE_ENV !== 'production'

@@ -106,6 +106,7 @@ export type { DialogSize } from './overlay';
 export { ConfirmDialog } from './confirm-dialog';
 export type { ConfirmError, ConfirmFact } from './confirm-dialog';
 export { createConfirmController, typingMatches } from './confirm-core';
+export { MediaGrid, MediaPreview, MediaTile } from './media-grid';
 export { FileDropzone, ImageUploader } from './image-uploader';
 export type { ImageUploaderLabels } from './image-uploader';
 export {

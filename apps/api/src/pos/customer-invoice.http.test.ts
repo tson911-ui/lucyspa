@@ -25,6 +25,7 @@ const ring = () => JSON.stringify({ 1: randomBytes(32).toString('base64url') });
 test('customer invoice HTTP: read only, session identity, no browser-chosen customer, stable codes', async () => {
   const environment = parseApiEnvironment({
     NODE_ENV: 'production',
+    MEDIA_STORAGE_DIR: '/var/lib/lucy-spa/media',
     DATABASE_URL: 'postgresql://localhost/test',
     REDIS_URL: 'redis://localhost:6379',
     WEB_ORIGIN: 'https://spa.example',

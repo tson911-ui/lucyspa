@@ -236,6 +236,8 @@ gate and Owner review, and the last one of each group sets its ratchet counters 
 | 11-13  | Website content: media library, popup, slider are built on `DataTable`, `FormDrawer`, `SortableGrid`, `ImageUploader` with the rules of section 4; no layout CSS of their own.                                                                                                                                                                                     | unchanged scope                                    |
 | 14     | Final validation as before, **plus** the full audit matrix with zero unexplained `CHECK`, ratchet all 0, reference comparison on key pages, axe pass.                                                                                                                                                                                                              | —                                                  |
 
+**Carry-over from Step 11 (Owner, 2026-10-01) for Steps 12 and 13:** an image that a popup or slide uses cannot be deleted. Each Step adds its table with `media_id ... ON DELETE RESTRICT`, fills its lookup in `mediaUsages` (`apps/api/src/website/media.core.ts`) so `deleteMedia` answers `MEDIA_IN_USE`, shows where the image is used in the delete dialog (no destructive button), and tests "delete refused while referenced". Both also require Vietnamese alt text at the moment an image is picked, and 12 adds the public serve route for images referenced by an enabled, in-window popup or slide.
+
 Part 2 (customer area and public site) later reuses `Page`, `PageHeader`, `Card` and the same tokens; `customer.css` is out of scope
 here. Rough size: 7.5 = 6 sessions, 8 = 3, 9 = 4 (with 9a), 10 = 2, 11-13 and 14 unchanged.
 
