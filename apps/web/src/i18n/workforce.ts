@@ -859,7 +859,7 @@ const vi = {
   },
   reauth: {
     title: 'Xác nhận lại mật khẩu của bạn',
-    body: 'Thao tác này thay đổi quyền đăng nhập của nhân sự. Hãy nhập mật khẩu của chính bạn (tài khoản đang đăng nhập) để tiếp tục — không phải mật khẩu của nhân viên.',
+    body: 'Để tiếp tục, hãy nhập mật khẩu của chính bạn (tài khoản đang đăng nhập).',
     password: 'Mật khẩu của bạn',
     confirm: 'Xác nhận',
     confirming: 'Đang xác nhận…',
@@ -2615,7 +2615,7 @@ const en: Dictionary = {
   },
   reauth: {
     title: 'Confirm your password',
-    body: "This action changes a workforce member's sign-in access. Enter your own password (the account signed in now) to continue — not the employee's password.",
+    body: 'To continue, enter your own password (the account signed in now).',
     password: 'Your password',
     confirm: 'Confirm',
     confirming: 'Confirming…',

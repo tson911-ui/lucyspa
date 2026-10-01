@@ -1,8 +1,10 @@
 'use client';
 
-import { useCallback, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { Field, FormDialog, TextInput } from '@lucy-spa/ui';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
 import type { WorkforceDictionary } from '../../i18n/workforce';
 import type { WorkforceApi } from '../../lib/workforce/api';
+import { formOverlayLabels } from '../../lib/workforce/form-labels';
 import { reauthenticate, reauthErrorMessage } from '../../lib/workforce/reauth';
 import { useWorkforce } from './session';
 import { Notice } from './ui';
@@ -51,8 +53,7 @@ export function ReauthDialog({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
+  async function submit() {
     if (pending || password.length === 0) return;
     setPending(true);
     setError(null);
@@ -68,49 +69,31 @@ export function ReauthDialog({
   }
 
   return (
-    <div
-      className="wf-dialog-backdrop"
-      onKeyDown={(event) => {
-        if (event.key === 'Escape' && !pending) onCancel();
+    <FormDialog
+      size="sm"
+      title={t.reauth.title}
+      description={t.reauth.body}
+      labels={{
+        ...formOverlayLabels(t, t.reauth.confirm),
+        submitting: t.reauth.confirming,
       }}
+      busy={pending}
+      submitDisabled={password.length === 0}
+      error={error ? <Notice tone="error">{error}</Notice> : undefined}
+      onClose={onCancel}
+      onSubmit={submit}
     >
-      <div className="wf-dialog" role="dialog" aria-modal="true" aria-labelledby="reauth-title">
-        <h2 id="reauth-title">{t.reauth.title}</h2>
-        <p>{t.reauth.body}</p>
-        <form className="wf-form" onSubmit={(event) => void submit(event)}>
-          <div className="wf-field">
-            <label htmlFor="reauth-password">{t.reauth.password}</label>
-            <input
-              id="reauth-password"
-              type="password"
-              autoComplete="current-password"
-              required
-              autoFocus
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </div>
-          {error ? <Notice tone="error">{error}</Notice> : null}
-          <div className="wf-form-actions">
-            <button
-              type="submit"
-              className="wf-button wf-button-primary"
-              disabled={pending}
-              aria-busy={pending}
-            >
-              {pending ? t.reauth.confirming : t.reauth.confirm}
-            </button>
-            <button
-              type="button"
-              className="wf-button wf-button-quiet"
-              onClick={onCancel}
-              disabled={pending}
-            >
-              {t.common.cancel}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      <Field label={t.reauth.password} required>
+        {(control) => (
+          <TextInput
+            {...control}
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        )}
+      </Field>
+    </FormDialog>
   );
 }

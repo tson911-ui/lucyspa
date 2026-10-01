@@ -22,6 +22,20 @@ const css = ['components.css', 'shell.css']
   .join('\n');
 const tokens = readFileSync(new URL('tokens.css', here), 'utf8');
 
+test('kit polish: badge padding on the grid, flat notice with the card radius, phone title two lines', () => {
+  assert.match(rule('.ls-badge'), /padding:\s*var\(--ls-space-1\) var\(--ls-space-2\)/);
+  const notice = rule('.ls-notice');
+  assert.match(notice, /\n\s*border:\s*1px solid currentcolor/);
+  assert.doesNotMatch(notice, /border-inline-start/);
+  assert.match(notice, /border-radius:\s*var\(--ls-radius-md\)/);
+  assert.match(notice, /box-shadow:\s*none/);
+  assert.match(css, /\.ls-table td\.ls-cell-title > \*,[^{]*\{[^}]*-webkit-line-clamp:\s*2/);
+  assert.match(
+    css,
+    /\.ls-table td\.ls-cell-title > \*,[^{]*\{[^}]*min-height:\s*calc\(2 \* var\(--ls-leading-md\)\)/,
+  );
+});
+
 test('components.css uses tokens only: no color literals', () => {
   assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b/i);
   assert.doesNotMatch(css, /\b(?:rgb|rgba|hsl|hsla)\(/i);
@@ -133,7 +147,7 @@ test('dashboard frame: clamped widget titles, flush notices in cards, a 280 px b
   assert.match(rule('.ls-card-header-clamp'), /flex-wrap:\s*nowrap/);
   const notice = rule('.ls-card .ls-notice');
   assert.match(notice, /margin:\s*0/);
-  assert.match(notice, /border-inline-start:\s*0/);
+  assert.match(notice, /border:\s*0/);
   assert.match(rule('.ls-dashboard-tools .ls-select'), /width:\s*var\(--ls-field-md\)/);
   assert.match(rule('.ls-tab'), /flex:\s*none/, 'tabs scroll in their strip instead of squeezing');
 });

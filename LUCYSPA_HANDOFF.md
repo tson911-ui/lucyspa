@@ -247,3 +247,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - UI only. Board = toolbar + two DataTables; invoice = breadcrumbs, header `⋮` cancel + primary Finalize, cards (lines+totals, discount, promo codes, payer, payments, PayOS wait, anomalies, notes); every form is a FormDialog, reversal/cancel are ConfirmDialog with reason, re-auth unchanged. `DescriptionList layout="totals"` added. No API/DB/permission change; behavior differences listed in the report.
 - Ratchet: raw tables 6, wf uses 334. Tests 39 web + 21 ui green. Scratch-DB money flow 29/29 (open, price, promo, finalize, cash, PayOS QR via simulator, PAID, reversal, cancel). Report: docs/UXUI_REDESIGN_STEP9C_POS_INVOICES.md. Next: Kit polish (plan section 11, incl. neutral password-dialog wording), then 10a.
+
+### UX/UI Kit polish (plan section 11) - approved by Owner 2026-10-01 (base 54a110d)
+
+- Kit only: Badge 4/8 padding, Notice 1 px border + card radius, phone card title 2-line clamp with reserved height + `minmax(0,1fr)` tracks (overflow 98 -> 2), `ReauthDialog` on `FormDialog` with neutral text (VI/EN). Audit script: hidden-text and docked-chrome false positives fixed.
+- Ratchet wf 325, css literals 6. Tests ui 238 + web targeted 8 green. DOM audit: no type rose, off-grid 1202 -> 24. Report: docs/UXUI_REDESIGN_KIT_POLISH.md. Next: 10a.

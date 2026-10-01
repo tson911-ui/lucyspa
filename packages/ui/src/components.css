@@ -352,7 +352,7 @@
   /* One line when there is room (a status in a table column never wraps); it shrinks and wraps only when the container is narrower. */
   width: max-content;
   max-width: 100%;
-  padding: 2px var(--ls-space-2);
+  padding: var(--ls-space-1) var(--ls-space-2);
   border: 1px solid currentcolor;
   border-radius: var(--ls-radius-full);
   font-size: var(--ls-text-xs);
@@ -397,8 +397,9 @@
   gap: var(--ls-space-3);
   margin: var(--ls-space-3) 0;
   padding: var(--ls-space-3) var(--ls-space-4);
-  border-inline-start: 4px solid currentcolor;
-  border-radius: var(--ls-radius-sm);
+  border: 1px solid currentcolor;
+  border-radius: var(--ls-radius-md);
+  box-shadow: none;
   font-size: var(--ls-text-sm);
   line-height: var(--ls-leading-sm);
 }
@@ -1362,6 +1363,7 @@
 /* ---- Data table, pagination, toolbar, description list, tabs (Step 4, sections 9.4, 10, 13) ---- */
 .ls-table-block {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--ls-space-4);
 }
 
@@ -1577,6 +1579,7 @@
 
   .ls-table tbody {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--ls-space-3);
   }
 
@@ -1657,6 +1660,27 @@
     display: inline-flex;
     align-items: center;
     min-height: var(--ls-control-h);
+  }
+
+  /* The title is clamped to two lines and always reserves two lines (48 px, also the touch target), so the
+     cards of one table share a height; a tooltip does not exist on a phone, the full name is on the detail page. */
+  .ls-table .ls-cell-title {
+    flex-wrap: nowrap;
+  }
+
+  .ls-table td.ls-cell-title > *,
+  .ls-table td.ls-cell-title a {
+    display: -webkit-box;
+    min-width: 0;
+    max-width: 100%;
+    min-height: calc(2 * var(--ls-leading-md));
+    overflow: hidden;
+    line-height: var(--ls-leading-md);
+    overflow-wrap: anywhere;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 
   .ls-table tbody tr:hover td,
@@ -2367,8 +2391,10 @@
 }
 
 @media (max-width: 639px) {
+  /* One shrinkable track: the select's longest option must not widen the table block past the page. */
   .ls-sortby {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -2707,7 +2733,7 @@
 /* A notice inside a card is a tint, not a second bordered box (FR3), and the card's gap spaces it. */
 .ls-card .ls-notice {
   margin: 0;
-  border-inline-start: 0;
+  border: 0;
 }
 
 .ls-card-description {

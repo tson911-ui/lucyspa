@@ -200,6 +200,8 @@
   for (const { el } of rects) {
     const s = getComputedStyle(el);
     if (px(s.borderTopLeftRadius) === 0 && !s.boxShadow) continue;
+    // Docked shell chrome runs edge to edge with one border toward the content; it is not a content surface.
+    if (el.matches('aside.ls-sidebar, header.ls-topbar')) continue;
     if (s.backgroundColor === 'rgba(0, 0, 0, 0)') continue;
     const r = el.getBoundingClientRect();
     if (r.width < 160 || r.height < 60) continue;
@@ -344,6 +346,9 @@
       .flatMap((n) => [...n.childNodes])
       .find((n) => n.nodeType === 3 && n.textContent.trim());
     if (!textNode) continue;
+    // Visually hidden text (the phone Filter button keeps its word for screen readers only) is not on the line.
+    const holder = textNode.parentElement?.getBoundingClientRect();
+    if (holder && holder.width <= 2 && holder.height <= 2) continue;
     const range = document.createRange();
     range.selectNodeContents(textNode);
     const tr = range.getBoundingClientRect();
@@ -625,10 +630,17 @@
     // The phone card list hides the header row visually (clip-path) but keeps it for assistive technology.
     const header = el.closest('thead');
     if (header && getComputedStyle(header).clipPath !== 'none') continue;
-    const range = document.createRange();
-    range.selectNodeContents(el);
     // Two lines differ by a line height (at least 16 px); a bordered pill inside a button differs by only a few px.
-    const tops = [...range.getClientRects()].filter((r) => r.width > 2).map((r) => r.top);
+    // Visually hidden text (a phone icon button keeps its word for screen readers) is not on a line.
+    const tops = [];
+    const walker = document.createTreeWalker(el, 4);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const holder = node.parentElement?.getBoundingClientRect();
+      if (!node.textContent.trim() || (holder && holder.width <= 2 && holder.height <= 2)) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      for (const r of range.getClientRects()) if (r.width > 2) tops.push(r.top);
+    }
     if (tops.length > 1 && Math.max(...tops) - Math.min(...tops) >= 10) {
       const key = `${desc(el)}|${norm(el.textContent).slice(0, 28)}`;
       wrapped.set(key, (wrapped.get(key) ?? 0) + 1);

@@ -258,10 +258,11 @@ test("the dialog asks for the actor's own password and never renders it", () => 
     />,
   );
   assert.match(markup, /role="dialog"/);
-  assert.match(markup, /id="reauth-password" type="password" autoComplete="current-password"/);
+  assert.match(markup, /type="password"/);
+  assert.match(markup, /autoComplete="current-password"/);
   assert.ok(markup.includes(vi.reauth.title));
   assert.ok(markup.includes('mật khẩu của chính bạn'));
-  assert.ok(markup.includes('không phải mật khẩu của nhân viên'));
+  assert.ok(!/nhân sự|nhân viên/.test(markup), 'the body does not mention staff');
 });
 
 test('success says the member can sign in with the employee code; errors are specific', () => {

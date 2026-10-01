@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo, useState, type ReactNode } from 'react';
+import { isValidElement, useId, useMemo, useState, type ReactNode } from 'react';
 import { cx } from './cx';
 import { Select } from './form';
 import { Icon } from './icons';
@@ -274,6 +274,8 @@ export function DataTable<Row>({
                           data-label={
                             column.actions || column.mobileTitle ? undefined : column.header
                           }
+                          // The phone card shows the title on one line; the full name stays in the tooltip.
+                          title={column.mobileTitle ? nodeText(column.cell(row)) : undefined}
                         >
                           {renderCell(column, row)}
                         </td>
@@ -323,6 +325,19 @@ function renderCell<Row>(column: DataTableColumn<Row>, row: Row): ReactNode {
       {value}
     </span>
   );
+}
+
+/** The text a node renders (strings and numbers through elements and fragments), for a tooltip. */
+function nodeText(node: ReactNode): string | undefined {
+  const parts: string[] = [];
+  const walk = (child: ReactNode): void => {
+    if (typeof child === 'string' || typeof child === 'number') parts.push(String(child));
+    else if (Array.isArray(child)) child.forEach(walk);
+    else if (isValidElement<{ children?: ReactNode }>(child)) walk(child.props.children);
+  };
+  walk(node);
+  const text = parts.join('').trim();
+  return text === '' ? undefined : text;
 }
 
 /** The `title` of a clipped cell: only plain text can be repeated as a tooltip. */
