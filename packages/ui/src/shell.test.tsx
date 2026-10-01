@@ -587,8 +587,9 @@ test('Step 5b UX gate fixes (F1-F12, F14): topbar order, control sizes, brand ed
   );
   assert.ok(order.every((index) => index > 0));
   const components = readFileSync(new URL('components.css', import.meta.url), 'utf8');
+  // The legacy plain-control rules now live in the member area's stylesheet (workforce.css was deleted in Step 10b).
   const webCss = readFileSync(
-    new URL('../../../apps/web/src/app/workforce.css', import.meta.url),
+    new URL('../../../apps/web/src/app/customer.css', import.meta.url),
     'utf8',
   );
   // F1/F2: the legacy plain-control rule has zero specificity, so `ls-*` controls always win.
@@ -619,9 +620,9 @@ test('Step 5b UX gate fixes (F1-F12, F14): topbar order, control sizes, brand ed
   );
   assert.match(shellCss, /\.ls-topbar > \.ls-tooltip-wrap:has\(> \.ls-menu-button\)/);
   // F11: page titles come from the type scale and are not lighter than the section titles.
-  assert.match(block(webCss, '.wf-main h1'), /font-size:\s*var\(--ls-text-xl\)/);
-  assert.match(block(webCss, '.wf-main h1'), /font-weight:\s*600/);
-  assert.doesNotMatch(block(webCss, '.wf-main h1'), /clamp\(/);
+  assert.match(block(components, '.ls-page-title'), /font-size:\s*var\(--ls-text-xl\)/);
+  assert.match(block(components, '.ls-page-title'), /font-weight:\s*600/);
+  assert.doesNotMatch(block(components, '.ls-page-title'), /clamp\(/);
 });
 
 test('auth header: the wordmark leads (twice the topbar size, centered), then a smaller title and a muted subtitle', () => {
