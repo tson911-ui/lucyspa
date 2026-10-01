@@ -458,6 +458,17 @@ test(
                 assert.equal(visit.ownerUserId, customer);
                 // Participants created in one transaction can share a createdAt, so the order is not
                 // guaranteed: compare in a fixed kind order and pick them by kind.
+                // Arrival creates the owner first, then the other recipients in booking order, with a
+                // strictly increasing createdAt: the unsorted order is the creation order.
+                assert.deepEqual(
+                  visit.participants.map((p) => p.kind),
+                  ['MEMBER', 'CHILD', 'GUEST'],
+                );
+                const stamps = visit.participants.map((p) => p.createdAt.getTime());
+                assert.ok(
+                  stamps.every((stamp, index) => index === 0 || stamp > stamps[index - 1]!),
+                  'strictly increasing',
+                );
                 const kindRank = { MEMBER: 0, CHILD: 1, GUEST: 2 } as const;
                 const participants = [...visit.participants].sort(
                   (a, b) => kindRank[a.kind] - kindRank[b.kind],

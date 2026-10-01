@@ -499,6 +499,22 @@ test(
                 );
                 // Participants created in one transaction can share a createdAt, so response order is not
                 // guaranteed: pick them by kind.
+                // Creation order is stable: adults first (request order), then children; createdAt strictly
+                // increases, so every (createdAt, id) reader returns exactly this order.
+                assert.deepEqual(
+                  result.participants.map((p) => p.kind),
+                  ['GUEST', 'CHILD'],
+                );
+                const created = await tx.visitParticipant.findMany({
+                  where: { visitId: result.visitId },
+                  orderBy: { createdAt: 'asc' },
+                  select: { kind: true, createdAt: true },
+                });
+                assert.deepEqual(
+                  created.map((row) => row.kind),
+                  ['GUEST', 'CHILD'],
+                );
+                assert.ok(created[0]!.createdAt < created[1]!.createdAt, 'strictly increasing');
                 const guest = result.participants.find((p) => p.kind === 'GUEST');
                 const child = result.participants.find((p) => p.kind === 'CHILD');
                 assert.equal(result.participants.length, 2);

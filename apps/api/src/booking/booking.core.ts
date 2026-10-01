@@ -291,10 +291,13 @@ export async function createCustomerBooking(
     select: { id: true, branchId: true },
   });
   const recipientIds = new Map<string, string>();
-  for (const recipient of request.recipients) {
+  for (const [ordinal, recipient] of request.recipients.entries()) {
     const row = await tx.bookingRecipient.create({
       data: {
         bookingId: booking.id,
+        // Strictly increasing: readers order by (createdAt, id), which must be the request order and
+        // not a random UUID order when two rows would share a millisecond.
+        createdAt: new Date(now.getTime() + ordinal),
         relation: recipient.relation,
         displayName: recipient.displayName,
         phone: recipient.phone,

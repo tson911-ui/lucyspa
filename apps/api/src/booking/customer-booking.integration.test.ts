@@ -528,6 +528,17 @@ test(
                   [e2, e3],
                 );
                 assert.equal(await tx.user.count(), users, 'no account for a recipient (O11)');
+                // Recipients keep the request order: a strictly increasing createdAt, never a UUID tie-break.
+                const stored = await tx.bookingRecipient.findMany({
+                  where: { bookingId: split.id },
+                  orderBy: { createdAt: 'asc' },
+                  select: { relation: true, createdAt: true },
+                });
+                assert.deepEqual(
+                  stored.map((row) => row.relation),
+                  ['SELF', 'CHILD'],
+                );
+                assert.ok(stored[0]!.createdAt < stored[1]!.createdAt, 'strictly increasing');
                 const kid = split.recipients.find((recipient) => recipient.relation === 'CHILD');
                 assert.equal(kid?.displayName, 'Bé Na');
                 assert.equal(split.lines[1]!.recipientKey, kid?.key);

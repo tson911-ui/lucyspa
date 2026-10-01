@@ -110,7 +110,8 @@ export async function arriveBooking(
   const participantOf = new Map<string, string>();
   const self = recipients.find((recipient) => recipient.relation === 'SELF');
   // The owner first, so a child can name them as guardian.
-  for (const recipient of [...(self ? [self] : []), ...recipients.filter((r) => r !== self)]) {
+  const arrivalOrder = [...(self ? [self] : []), ...recipients.filter((r) => r !== self)];
+  for (const [ordinal, recipient] of arrivalOrder.entries()) {
     const guardian = self ? participantOf.get(self.id) : undefined;
     const kind =
       recipient.relation === 'SELF'
@@ -121,6 +122,9 @@ export async function arriveBooking(
     const row = await tx.visitParticipant.create({
       data: {
         visitId: visit.id,
+        // Strictly increasing: readers order by (createdAt, id), which must be the creation order and
+        // not a random UUID order when two rows would share a millisecond.
+        createdAt: new Date(now.getTime() + ordinal),
         kind,
         bookingRecipientId: recipient.id,
         ...(kind === 'MEMBER'

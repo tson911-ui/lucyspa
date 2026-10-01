@@ -296,10 +296,13 @@ export async function createWalkIn(
     ...request.participants.filter((p) => p.kind !== 'CHILD'),
     ...request.participants.filter((p) => p.kind === 'CHILD'),
   ];
-  for (const participant of ordered) {
+  for (const [ordinal, participant] of ordered.entries()) {
     const row = await tx.visitParticipant.create({
       data: {
         visitId: visit.id,
+        // Strictly increasing, so the (createdAt, id) order every reader uses is the creation order
+        // instead of a random UUID order when two rows would share a millisecond.
+        createdAt: new Date(now.getTime() + ordinal),
         kind: participant.kind,
         customerUserId: participant.customerUserId,
         displayName: participant.displayName,
