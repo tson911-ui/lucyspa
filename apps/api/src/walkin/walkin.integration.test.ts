@@ -103,7 +103,10 @@ test(
             const today = localDay(now);
 
             let sequence = 0;
-            const phoneBase = String(Math.floor(Math.random() * 100_000)).padStart(5, '0');
+            // 0992xxxxxx is not an allocated VN mobile range, so normalizePhone rejects it (1% of runs).
+            const phoneBase = String(Math.floor(Math.random() * 100_000))
+              .padStart(5, '0')
+              .replace(/^92/, '93');
             const phoneOf = (n: number) => `+849${phoneBase}${String(n).padStart(3, '0')}`;
             const user = async (kind: 'CUSTOMER' | 'EMPLOYEE') => {
               sequence += 1;
