@@ -190,7 +190,7 @@ pnpm build
 
 **Mong đợi:** chạy hết, không có chữ `ERR` hay `error` ở cuối. **Nếu lỗi: DỪNG** (bản đang chạy vẫn chưa bị đụng tới vì chưa khởi động lại; cơ sở dữ liệu đã có bảng mới nhưng bản cũ bỏ qua chúng).
 
-> Lưu ý: trang web ghi nhớ địa chỉ API ngay lúc build (`API_UPSTREAM_ORIGIN`). Hãy build **giống hệt các lần deploy trước** (cùng cửa sổ/cách đã làm). Nếu sau này mọi trang báo "hệ thống không phản hồi", nguyên nhân thường là chỗ này: báo kỹ thuật viên.
+> Lưu ý: trang web ghi nhớ địa chỉ API ngay lúc build (biến `API_UPSTREAM_ORIGIN`). **Không cần làm gì thêm:** trên máy chủ biến này không được đặt (trong `.env` chỉ là dòng ghi chú), và khi trống code dùng sẵn `http://127.0.0.1:3001`, đúng cổng API thật. **Đừng đặt biến này** trong cửa sổ terminal khi build (hãy build như các lần trước). Nếu sau này mọi trang báo "hệ thống không phản hồi", báo kỹ thuật viên.
 
 4.7. Khởi động lại 3 tiến trình, nạp lại cấu hình mới:
 
