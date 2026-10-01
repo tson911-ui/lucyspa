@@ -75,6 +75,8 @@ import { TeamController } from './teams/team.controller.js';
 import { TeamService } from './teams/team.service.js';
 import { MediaController } from './website/media.controller.js';
 import { MediaService } from './website/media.service.js';
+import { PopupController, PublicWebsiteController } from './website/popup.controller.js';
+import { PopupService, PublicWebsiteService } from './website/popup.service.js';
 import { HealthController } from './health/health.controller.js';
 import { InfrastructureService } from './platform/infrastructure.service.js';
 import {
@@ -125,6 +127,8 @@ export class AppModule {
         OrganizationController,
         TeamController,
         MediaController,
+        PopupController,
+        PublicWebsiteController,
       ],
       providers: [
         { provide: API_ENVIRONMENT, useValue: environment },
@@ -176,6 +180,8 @@ export class AppModule {
         OrganizationService,
         TeamService,
         MediaService,
+        PopupService,
+        PublicWebsiteService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },
         { provide: APP_INTERCEPTOR, useClass: SessionActivityInterceptor },

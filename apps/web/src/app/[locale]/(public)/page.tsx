@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { PromoPopup } from '../../../components/public/promo-popup';
 import { getDictionary } from '../../../i18n/dictionaries';
 import { isLocale } from '../../../i18n/locales';
 
@@ -35,6 +36,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <span className="art-caption">Lucy Spa</span>
         </div>
       </div>
+      <PromoPopup locale={locale} />
     </main>
   );
 }

@@ -11,6 +11,7 @@ import {
   DataTable,
   type DataTableColumn,
   DescriptionList,
+  Dialog,
   FileDropzone,
   Field,
   FormDrawer,
@@ -25,6 +26,7 @@ import {
   RowActions,
   SearchInput,
   Spinner,
+  Tabs,
   TextInput,
   useUrlState,
 } from '@lucy-spa/ui';
@@ -64,6 +66,7 @@ import {
   useSubmit,
   useSuccessToast,
 } from '../ui';
+import { PopupsPanel } from './website-popups';
 
 const QUEUE_PAGE_SIZE = 20;
 
@@ -89,10 +92,11 @@ function uploadErrorText(error: unknown, t: WorkforceDictionary): string {
 }
 
 /**
- * Website media library (design 16.3): images for the popup and slider. The API pages (24 per page,
- * newest first) and searches filename and alt text, so the page and search live in the address bar.
- * Upload is multi-file (button, drop on the empty state or anywhere on the page) with a progress queue;
- * each tile opens a detail drawer for the alt text, and its menu deletes an unused image.
+ * Website content (design 16.7): the media library tab and the popup tab (the slider joins in Step 13).
+ * The library (design 16.3) is paged by the API (24 per page, newest first) and searched by filename and
+ * alt text, so the page, search and tab live in the address bar. Upload is multi-file (button, drop on the
+ * empty state or anywhere on the library tab) with a progress queue that keeps running while the other tab
+ * is open; each tile opens a detail drawer for the alt text, and its menu deletes an unused image.
  */
 export function MediaLibraryScreen() {
   const { t } = useWorkforce();
@@ -101,7 +105,7 @@ export function MediaLibraryScreen() {
   if (!canGlobal(account, 'MANAGE_WEBSITE_CONTENT')) {
     return (
       <>
-        <PageHeader title={t.media.title} />
+        <PageHeader title={t.website.title} />
         <Empty>{t.media.noAccess}</Empty>
       </>
     );
@@ -110,12 +114,15 @@ export function MediaLibraryScreen() {
 }
 
 function MediaLibrary() {
-  const { api, t, locale } = useWorkforce();
+  const { api, t, locale, base, navigate } = useWorkforce();
   const notify = useSuccessToast();
   const [list, updateList] = useUrlState(MEDIA_LIST_DEFAULTS, {
     normalize: normalizeMediaList,
     resetOnChange: MEDIA_PAGE_KEYS,
   });
+  // Files are only taken on the library tab: a drop on the popup tab is not an upload.
+  const onLibrary = useRef(list.tab !== 'popup');
+  onLibrary.current = list.tab !== 'popup';
   const library = useResource(
     () => api.get<MediaListResponse>('/api/v1/website/media', { search: list.q, page: list.page }),
     [api, list.q, list.page],
@@ -157,7 +164,7 @@ function MediaLibrary() {
     const over = (event: globalThis.DragEvent) => {
       if (!carriesFiles(event)) return;
       event.preventDefault();
-      setDragging(true);
+      setDragging(onLibrary.current);
     };
     const leave = (event: globalThis.DragEvent) => {
       if (event.relatedTarget === null) setDragging(false);
@@ -166,7 +173,8 @@ function MediaLibrary() {
       if (!carriesFiles(event)) return;
       event.preventDefault();
       setDragging(false);
-      enqueueRef.current(Array.from(event.dataTransfer?.files ?? []));
+      // Never opened by the browser anywhere, but only the library tab takes it as an upload.
+      if (onLibrary.current) enqueueRef.current(Array.from(event.dataTransfer?.files ?? []));
     };
     window.addEventListener('dragover', over);
     window.addEventListener('dragleave', leave);
@@ -236,31 +244,9 @@ function MediaLibrary() {
   const searching = list.q !== '';
   const separator = decimalSeparator(locale);
 
-  return (
+  const onPopups = list.tab === 'popup';
+  const mediaPanel = (
     <>
-      <PageHeader title={t.media.title} intro={t.media.intro}>
-        {finished ? (
-          <Button variant="secondary" onClick={() => dispatch({ type: 'clear-finished' })}>
-            {t.media.clearFinished}
-          </Button>
-        ) : null}
-        <Button variant="primary" icon="upload" onClick={() => picker.current?.click()}>
-          {t.media.upload}
-        </Button>
-      </PageHeader>
-      <input
-        ref={picker}
-        type="file"
-        hidden
-        multiple
-        tabIndex={-1}
-        accept={MEDIA_TYPES.join(',')}
-        onChange={(event) => {
-          const files = Array.from(event.target.files ?? []);
-          event.target.value = '';
-          if (files.length > 0) enqueue(files);
-        }}
-      />
       {dragging ? <Notice tone="info">{t.media.dropOverlay}</Notice> : null}
       {queue.length > 0 ? (
         <DataTable
@@ -358,6 +344,55 @@ function MediaLibrary() {
           labels={paginationLabels(t, t.media.title)}
         />
       ) : null}
+    </>
+  );
+
+  return (
+    <>
+      <PageHeader title={t.website.title} intro={onPopups ? t.popups.intro : t.media.intro}>
+        {onPopups ? (
+          <Button
+            variant="primary"
+            icon="plus"
+            onClick={() => navigate?.(`${base}/website/popups/new`)}
+          >
+            {t.popups.create}
+          </Button>
+        ) : (
+          <>
+            {finished ? (
+              <Button variant="secondary" onClick={() => dispatch({ type: 'clear-finished' })}>
+                {t.media.clearFinished}
+              </Button>
+            ) : null}
+            <Button variant="primary" icon="upload" onClick={() => picker.current?.click()}>
+              {t.media.upload}
+            </Button>
+          </>
+        )}
+      </PageHeader>
+      <input
+        ref={picker}
+        type="file"
+        hidden
+        multiple
+        tabIndex={-1}
+        accept={MEDIA_TYPES.join(',')}
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          event.target.value = '';
+          if (files.length > 0) enqueue(files);
+        }}
+      />
+      <Tabs
+        label={t.website.title}
+        value={list.tab}
+        onChange={(tab) => updateList({ tab })}
+        tabs={[
+          { id: 'media', label: t.website.media, panel: mediaPanel },
+          { id: 'popup', label: t.website.popup, panel: <PopupsPanel /> },
+        ]}
+      />
       {overlay?.kind === 'detail' ? (
         <MediaDetail
           key={overlay.id}
@@ -372,24 +407,11 @@ function MediaLibrary() {
         />
       ) : null}
       {overlay?.kind === 'remove' ? (
-        <ConfirmDialog
-          title={t.media.remove.title}
-          description={t.media.remove.body}
-          facts={[{ label: t.media.remove.fileFact, value: overlay.asset.originalFilename }]}
-          tone="danger"
-          confirmLabel={t.media.remove.confirm}
-          busyLabel={t.common.saving}
-          cancelLabel={t.common.cancel}
-          referenceLabel={t.errors.reference}
-          describeError={confirmError(t)}
-          onCancel={() => setOverlay(null)}
-          onConfirm={async () => {
-            const asset = overlay.asset;
-            const outcome = await runMutation(
-              () => api.post(`/api/v1/website/media/${asset.id}/delete`, {}),
-              () => library.reload(),
-            );
-            if (!outcome.ok) throw outcome.error;
+        <RemoveMedia
+          key={overlay.asset.id}
+          asset={overlay.asset}
+          onClose={() => setOverlay(null)}
+          onRemoved={async () => {
             await library.reload();
             setOverlay(null);
             notify(t.media.remove.deleted);
@@ -397,6 +419,85 @@ function MediaLibrary() {
         />
       ) : null}
     </>
+  );
+}
+
+/**
+ * Delete one image (design 16.8). Where the image is used is looked up first: an image a popup or slide
+ * shows cannot be deleted, so the dialog lists those places and offers nothing destructive. An unused image
+ * gets the usual confirmation.
+ */
+function RemoveMedia({
+  asset,
+  onClose,
+  onRemoved,
+}: {
+  asset: MediaAssetSummary;
+  onClose: () => void;
+  onRemoved: () => Promise<void>;
+}) {
+  const { api, t } = useWorkforce();
+  const detail = useResource(
+    () => api.get<MediaAssetDetail>(`/api/v1/website/media/${asset.id}`),
+    [api, asset.id],
+  );
+  const usedIn = detail.data?.usedIn ?? [];
+  const place = (usage: MediaUsage) => ({
+    label: usage.kind === 'POPUP' ? t.media.detail.usagePopup : t.media.detail.usageSlide,
+    value: usage.title === '' ? t.popups.untitled : usage.title,
+  });
+
+  if (detail.data && usedIn.length === 0) {
+    return (
+      <ConfirmDialog
+        title={t.media.remove.title}
+        description={t.media.remove.body}
+        facts={[{ label: t.media.remove.fileFact, value: asset.originalFilename }]}
+        tone="danger"
+        confirmLabel={t.media.remove.confirm}
+        busyLabel={t.common.saving}
+        cancelLabel={t.common.cancel}
+        referenceLabel={t.errors.reference}
+        describeError={confirmError(t)}
+        onCancel={onClose}
+        onConfirm={async () => {
+          const outcome = await runMutation(
+            () => api.post(`/api/v1/website/media/${asset.id}/delete`, {}),
+            () => undefined,
+          );
+          if (!outcome.ok) throw outcome.error;
+          await onRemoved();
+        }}
+      />
+    );
+  }
+  return (
+    <Dialog
+      open
+      title={usedIn.length > 0 ? t.media.remove.inUseTitle : t.media.remove.title}
+      description={usedIn.length > 0 ? t.media.remove.inUseBody : undefined}
+      closeLabel={t.common.close}
+      onClose={onClose}
+      footer={
+        <Button variant="secondary" onClick={onClose}>
+          {usedIn.length > 0 ? t.media.remove.inUseClose : t.common.cancel}
+        </Button>
+      }
+    >
+      {detail.error ? (
+        <ErrorState error={detail.error} t={t} onRetry={() => void detail.reload()} />
+      ) : usedIn.length > 0 ? (
+        <DescriptionList
+          columns={1}
+          items={[
+            { label: t.media.remove.fileFact, value: asset.originalFilename },
+            ...usedIn.map(place),
+          ]}
+        />
+      ) : (
+        <Spinner label={t.media.remove.checking} />
+      )}
+    </Dialog>
   );
 }
 
@@ -447,7 +548,7 @@ function MediaDetail({
   }
 
   const usageLabel = (usage: MediaUsage) =>
-    `${usage.kind === 'POPUP' ? t.media.detail.usagePopup : t.media.detail.usageSlide}: ${usage.title}`;
+    `${usage.kind === 'POPUP' ? t.media.detail.usagePopup : t.media.detail.usageSlide}: ${usage.title === '' ? t.popups.untitled : usage.title}`;
 
   return (
     <FormDrawer

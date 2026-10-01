@@ -13,6 +13,9 @@ interface Dictionary {
   book: string;
   signIn: string;
   register: string;
+  /** The promotional popup's name when it has no title, and its close button. */
+  promoLabel: string;
+  promoClose: string;
 }
 
 const dictionaries = {
@@ -29,6 +32,8 @@ const dictionaries = {
     book: 'Đặt lịch hẹn',
     signIn: 'Đăng nhập thành viên',
     register: 'Đăng ký thành viên',
+    promoLabel: 'Ưu đãi từ Lucy Spa',
+    promoClose: 'Đóng thông báo',
   },
   en: {
     title: 'Lucy Spa — A moment just for you',
@@ -43,6 +48,8 @@ const dictionaries = {
     book: 'Book an appointment',
     signIn: 'Member sign in',
     register: 'Become a member',
+    promoLabel: 'Offer from Lucy Spa',
+    promoClose: 'Close notice',
   },
 } satisfies Record<Locale, Dictionary>;
 

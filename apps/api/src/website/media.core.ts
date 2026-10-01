@@ -61,15 +61,27 @@ function summary(row: SummaryRow): MediaAssetSummary {
 }
 
 /**
- * Where an image is used. The popup (Step 12) and slider (Step 13) add their lookups here; until those
- * tables exist nothing can reference an asset. Delete protection and the public-serving rule both read this.
+ * Where an image is used. The popup (Step 12) is looked up here; the slider (Step 13) adds its own lookup
+ * next to it. Delete protection and the alt-text rule both read this; the public-serving rule reads the
+ * same tables through `isPubliclyServed` (popup.core.ts).
  */
 export type MediaUsageLookup = (
   tx: Prisma.TransactionClient,
   assetId: string,
 ) => Promise<MediaUsage[]>;
 
-export const mediaUsages: MediaUsageLookup = async () => [];
+export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
+  const popups = await tx.websitePopup.findMany({
+    where: { mediaId: assetId },
+    orderBy: [{ startsAt: 'desc' }, { id: 'asc' }],
+    select: { id: true, titleVi: true, titleEn: true },
+  });
+  return popups.map((popup) => ({
+    kind: 'POPUP' as const,
+    id: popup.id,
+    title: popup.titleVi ?? popup.titleEn ?? '',
+  }));
+};
 
 async function detail(tx: Prisma.TransactionClient, row: SummaryRow): Promise<MediaAssetDetail> {
   return { ...summary(row), usedIn: await mediaUsages(tx, row.id) };
@@ -237,6 +249,10 @@ export async function updateMediaAlt(
   });
   if (before.altVi === altVi && before.altEn === altEn) {
     return getMedia(context, id);
+  }
+  // Vietnamese alt text is required before an image is used: it cannot be removed while a popup shows it.
+  if (altVi === null && before.altVi !== null && (await mediaUsages(context.tx, id)).length > 0) {
+    throw new AuthError('MEDIA_ALT_REQUIRED', 'altVi');
   }
   const updated = await context.tx.mediaAsset.update({
     where: { id },

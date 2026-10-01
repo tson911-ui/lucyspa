@@ -86,6 +86,9 @@ const errors = {
   MEDIA_DIMENSIONS_TOO_LARGE: [400, 'The image is larger than 6000 pixels on one side'],
   MEDIA_INVALID_IMAGE: [400, 'The file is not a valid still image'],
   MEDIA_IN_USE: [409, 'This image is used on the website and cannot be deleted'],
+  // UX/UI Step 12: promotional popup (design 16.5). `POPUP_OVERLAP` names the conflicting popup's id as the field.
+  MEDIA_ALT_REQUIRED: [409, 'Add a Vietnamese description to the image before using it'],
+  POPUP_OVERLAP: [409, 'Another enabled popup already covers part of this time'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

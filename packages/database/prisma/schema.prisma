@@ -396,6 +396,8 @@ model User {
   ownedBookings                Booking[]                        @relation("BookingOwner")
   createdBookings              Booking[]                        @relation("BookingCreator")
   createdMediaAssets           MediaAsset[]                     @relation("MediaAssetCreator")
+  createdWebsitePopups         WebsitePopup[]                   @relation("WebsitePopupCreator")
+  updatedWebsitePopups         WebsitePopup[]                   @relation("WebsitePopupUpdater")
   checkedInBookings            Booking[]                        @relation("BookingCheckedInBy")
   cancelledBookings            Booking[]                        @relation("BookingCancelledBy")
   noShowBookings               Booking[]                        @relation("BookingNoShowBy")
@@ -1941,6 +1943,7 @@ model MediaAsset {
   createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   variants         MediaVariant[]
+  popups           WebsitePopup[]
 
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "media_assets_created_idx")
   @@map("media_assets")
@@ -1957,4 +1960,34 @@ model MediaVariant {
 
   @@id([assetId, kind], map: "media_variants_pkey")
   @@map("media_variants")
+}
+
+// UX/UI Step 12: the promotional popup (design 16.5). Marketing content, not history: a real delete is
+// allowed. `mediaId` is ON DELETE RESTRICT, so an image a popup uses cannot be removed. At most one ENABLED
+// popup may cover any instant; the API enforces that under an advisory lock (no DB extension).
+model WebsitePopup {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mediaId         String?     @map("media_id") @db.Uuid
+  media           MediaAsset? @relation(fields: [mediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  titleVi         String?     @map("title_vi")
+  titleEn         String?     @map("title_en")
+  bodyVi          String?     @map("body_vi")
+  bodyEn          String?     @map("body_en")
+  ctaLabelVi      String?     @map("cta_label_vi")
+  ctaLabelEn      String?     @map("cta_label_en")
+  ctaUrl          String?     @map("cta_url")
+  startsAt        DateTime    @map("starts_at") @db.Timestamptz(3)
+  endsAt          DateTime    @map("ends_at") @db.Timestamptz(3)
+  isEnabled       Boolean     @default(false) @map("is_enabled")
+  rowVersion      Int         @default(1) @map("row_version")
+  createdByUserId String      @map("created_by_user_id") @db.Uuid
+  createdBy       User        @relation("WebsitePopupCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  updatedByUserId String      @map("updated_by_user_id") @db.Uuid
+  updatedBy       User        @relation("WebsitePopupUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([startsAt(sort: Desc), id], map: "website_popups_starts_idx")
+  @@index([mediaId], map: "website_popups_media_idx")
+  @@map("website_popups")
 }

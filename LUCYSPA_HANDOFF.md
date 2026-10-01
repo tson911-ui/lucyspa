@@ -268,3 +268,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - First Step with API + DB since the redesign started: 2 additive migrations (`MANAGE_WEBSITE_CONTENT` GLOBAL_ONLY, `media_assets` + `media_variants`), `sharp`, `MediaStorage` (local disk), upload/list/alt/delete/serve API with audit, library page `/website` (grid, upload queue, drawer, delete). **Deploy needs**: env `MEDIA_STORAGE_DIR` (required in production, outside the release folder, in backups), `db:deploy`, `db:permissions:sync`.
 - Public serving and "used in" arrive with Steps 12/13. CLAUDE.md now requires `pnpm test` (whole repo) before every push. Report: docs/UXUI_REDESIGN_STEP11_MEDIA_LIBRARY.md. Next: 12 (popup).
+
+### UX/UI Step 12 (promotional popup) - implemented locally 2026-10-02, awaiting Owner review (uncommitted, not deployed; base 4262b0d)
+
+- 1 additive migration (`website_popups`), no new permission or env. Admin API (`/api/v1/website/popups`, audit, versions), one enabled popup per instant (advisory lock, `POPUP_OVERLAP` names the other popup), image needs Vietnamese alt, media delete now refused while a popup uses the image. Public anonymous `GET /api/v1/public/website/popup` and `/api/v1/public/media/:id/:variant` (only live-popup images).
+- Web: `/website` tabs Media | Popup, popup list + schedule strip, form pages `/website/popups/new|:id` with live preview, `MediaPicker`; public home page shows the popup once per session. Kit: `PromoCard/PromoDialog/PromoPreview/ScheduleStrip`. Quality gate (screenshots, DOM audit, browser flow) deferred to Step 14 by Owner decision. Report: docs/UXUI_REDESIGN_STEP12_POPUP.md. Next: 13 (slider).

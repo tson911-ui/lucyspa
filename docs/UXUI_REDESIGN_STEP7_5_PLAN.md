@@ -238,6 +238,8 @@ gate and Owner review, and the last one of each group sets its ratchet counters 
 
 **Carry-over from Step 11 (Owner, 2026-10-01) for Steps 12 and 13:** an image that a popup or slide uses cannot be deleted. Each Step adds its table with `media_id ... ON DELETE RESTRICT`, fills its lookup in `mediaUsages` (`apps/api/src/website/media.core.ts`) so `deleteMedia` answers `MEDIA_IN_USE`, shows where the image is used in the delete dialog (no destructive button), and tests "delete refused while referenced". Both also require Vietnamese alt text at the moment an image is picked, and 12 adds the public serve route for images referenced by an enabled, in-window popup or slide.
 
+**Note for Step 14 (Owner, 2026-10-02, from Step 12):** a full `pnpm test` run once showed 5 unrelated API test files failing under load (`password.test.js`, `customer-booking.http`, `branch.http`, `branch.integration`, `catalog-delete.http`: password-hashing timeouts, one at 23 s). They pass alone and on a rerun. Step 14 investigates this flake (per-file timeouts or limited concurrency for the hashing tests) so the final full suite is not intermittently red.
+
 Part 2 (customer area and public site) later reuses `Page`, `PageHeader`, `Card` and the same tokens; `customer.css` is out of scope
 here. Rough size: 7.5 = 6 sessions, 8 = 3, 9 = 4 (with 9a), 10 = 2, 11-13 and 14 unchanged.
 

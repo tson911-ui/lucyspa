@@ -24,13 +24,23 @@ import { errorMessage } from './workflows';
 const vi = getWorkforceDictionary('vi');
 const en = getWorkforceDictionary('en');
 
-test('list state: search is bounded, page is a positive integer', () => {
-  assert.deepEqual(normalizeMediaList({ q: 'x'.repeat(300), page: 3 }), {
+test('list state: search is bounded, page is a positive integer, the tab is one of the two', () => {
+  assert.deepEqual(normalizeMediaList({ q: 'x'.repeat(300), page: 3, tab: 'media' }), {
     q: 'x'.repeat(100),
     page: 3,
+    tab: 'media',
   });
-  assert.deepEqual(normalizeMediaList({ q: 'hero', page: 0 }), { q: 'hero', page: 1 });
-  assert.deepEqual(normalizeMediaList({ q: '', page: Number.NaN }), MEDIA_LIST_DEFAULTS);
+  assert.deepEqual(normalizeMediaList({ q: 'hero', page: 0, tab: 'media' }), {
+    q: 'hero',
+    page: 1,
+    tab: 'media',
+  });
+  assert.deepEqual(
+    normalizeMediaList({ q: '', page: Number.NaN, tab: 'media' }),
+    MEDIA_LIST_DEFAULTS,
+  );
+  assert.equal(normalizeMediaList({ q: '', page: 1, tab: 'popup' }).tab, 'popup');
+  assert.equal(normalizeMediaList({ q: '', page: 1, tab: 'slider' }).tab, 'media', 'unknown tab');
 });
 
 test('thumbnails come from the authenticated admin route; meta uses the locale separator', () => {

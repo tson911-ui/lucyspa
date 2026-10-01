@@ -2795,3 +2795,81 @@ export interface MediaUpdateRequest {
   altVi: string | null;
   altEn: string | null;
 }
+
+// ---------------------------------------------------------------------------------------------
+// UX/UI Step 12: the promotional popup (design 16.5). MANAGE_WEBSITE_CONTENT, GLOBAL only.
+// ---------------------------------------------------------------------------------------------
+
+/** Derived, never stored: Draft (disabled), Scheduled (enabled, not started), Active (live now), Ended. */
+export type WebsitePopupStatus = 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'ENDED';
+
+/** The fields an admin writes. `startsAt`/`endsAt` are ISO instants (the form enters them in Vietnam time). */
+export interface WebsitePopupInput {
+  mediaId: string | null;
+  titleVi: string | null;
+  titleEn: string | null;
+  /** Plain text, at most 300 characters. */
+  bodyVi: string | null;
+  bodyEn: string | null;
+  ctaLabelVi: string | null;
+  ctaLabelEn: string | null;
+  /** An internal path (`/vi/...`, `/en/...`, `/{locale}/...`) or an `https://` URL; a link needs a label. */
+  ctaUrl: string | null;
+  startsAt: string;
+  endsAt: string;
+  isEnabled: boolean;
+}
+
+/** The library image a popup shows, as much of it as a list or the form's preview needs. */
+export interface WebsitePopupMedia {
+  id: string;
+  filename: string;
+  width: number;
+  height: number;
+  altVi: string | null;
+  altEn: string | null;
+}
+
+export interface WebsitePopupResponse extends WebsitePopupInput {
+  id: string;
+  media: WebsitePopupMedia | null;
+  status: WebsitePopupStatus;
+  rowVersion: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** GET /api/v1/website/popups : every popup, newest start first; `now` is the server clock the statuses use. */
+export interface WebsitePopupListResponse {
+  items: WebsitePopupResponse[];
+  now: string;
+}
+
+/** POST /api/v1/website/popups/:id/update */
+export interface WebsitePopupUpdateRequest extends WebsitePopupInput {
+  expectedVersion: number;
+}
+
+/** POST /api/v1/website/popups/:id/enabled : publish or unpublish without touching the content. */
+export interface WebsitePopupEnabledRequest {
+  expectedVersion: number;
+  isEnabled: boolean;
+}
+
+/** GET /api/v1/public/website/popup?locale=vi|en : the one live popup in the visitor's language, or 204. */
+export interface PublicPopupResponse {
+  id: string;
+  /** Part of the "seen" key: an edited popup shows again. */
+  rowVersion: number;
+  title: string | null;
+  body: string | null;
+  ctaLabel: string | null;
+  ctaUrl: string | null;
+  image: {
+    alt: string;
+    width: number;
+    height: number;
+    /** Public renditions, narrowest first. */
+    sources: { url: string; width: number }[];
+  } | null;
+}

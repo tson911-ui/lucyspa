@@ -11,6 +11,7 @@ import {
 import { IconButton } from './button';
 import { cx } from './cx';
 import { trapTarget } from './menu-core';
+import { PromoCard, type PromoContent, type PromoLink } from './promo';
 
 // Modal surfaces (docs/UXUI_REDESIGN_DESIGN.md 9.5): focus is trapped, Escape and a press on the
 // backdrop close unless the surface is busy, and focus returns to what opened it.
@@ -168,6 +169,56 @@ export function Dialog({
         ) : null}
         {children ? <div className="ls-dialog-body">{children}</div> : null}
         {footer ? <footer className="ls-dialog-footer">{footer}</footer> : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The public promotional popup as a modal (design 16.5): `role=dialog`, focus trapped, Escape and a press
+ * on the backdrop close it, the close button is a full-size target, and focus returns to the page. It shows
+ * what it is given; whether and when it appears is the caller's rule.
+ */
+export function PromoDialog({
+  content,
+  label,
+  closeLabel,
+  onClose,
+  LinkComponent,
+}: {
+  content: PromoContent;
+  /** The dialog's name when the popup has no title. */
+  label: string;
+  closeLabel: string;
+  onClose: () => void;
+  LinkComponent?: PromoLink | undefined;
+}) {
+  const titleId = useId();
+  const { panelRef, onKeyDown, onBackdropMouseDown } = useModal({
+    open: true,
+    busy: false,
+    onClose,
+  });
+  return (
+    <div className="ls-backdrop" onMouseDown={onBackdropMouseDown}>
+      <div
+        ref={panelRef}
+        className="ls-promo-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={content.title ? titleId : undefined}
+        aria-label={content.title ? undefined : label}
+        tabIndex={-1}
+        onKeyDown={onKeyDown}
+      >
+        <PromoCard
+          content={content}
+          titleId={titleId}
+          closeLabel={closeLabel}
+          onClose={onClose}
+          onNavigate={onClose}
+          LinkComponent={LinkComponent}
+        />
       </div>
     </div>
   );

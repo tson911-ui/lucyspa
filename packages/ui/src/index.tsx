@@ -101,8 +101,12 @@ export {
   parseMoney,
 } from './form-core';
 export type { ComboOption } from './form-core';
-export { Dialog, Drawer } from './overlay';
+export { Dialog, Drawer, PromoDialog } from './overlay';
 export type { DialogSize } from './overlay';
+export { PromoCard, PromoPreview } from './promo';
+export type { PromoContent, PromoImage, PromoLink } from './promo';
+export { ScheduleStrip, scheduleLayout } from './schedule-strip';
+export type { ScheduleItem, ScheduleLayout, ScheduleTone } from './schedule-strip';
 export { ConfirmDialog } from './confirm-dialog';
 export type { ConfirmError, ConfirmFact } from './confirm-dialog';
 export { createConfirmController, typingMatches } from './confirm-core';

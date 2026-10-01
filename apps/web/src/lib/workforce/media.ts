@@ -16,13 +16,24 @@ export const MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export const MEDIA_UPLOAD_CONCURRENCY = 3;
 export const MEDIA_ALT_MAX = 300;
 
-export const MEDIA_LIST_DEFAULTS = { q: '', page: 1 };
+/** The website content page: `tab` is the library (default) or the popup list (Step 12). */
+export type WebsiteTab = 'media' | 'popup';
+
+export const MEDIA_LIST_DEFAULTS: { q: string; page: number; tab: string } = {
+  q: '',
+  page: 1,
+  tab: 'media',
+};
 export type MediaListState = typeof MEDIA_LIST_DEFAULTS;
 /** Keys that return to page 1 when the search changes. */
 export const MEDIA_PAGE_KEYS: readonly string[] = ['page'];
 
 export function normalizeMediaList(state: MediaListState): MediaListState {
-  return { q: state.q.slice(0, 100), page: normalizePage(state.page) };
+  return {
+    q: state.q.slice(0, 100),
+    page: normalizePage(state.page),
+    tab: state.tab === 'popup' ? 'popup' : 'media',
+  };
 }
 
 export const mediaVariantUrl = (id: string, variant: MediaVariantName) =>

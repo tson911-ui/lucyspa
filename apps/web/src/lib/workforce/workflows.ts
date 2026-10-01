@@ -118,6 +118,11 @@ export function errorMessage(error: unknown, t: WorkforceDictionary): string {
       return t.errors.mediaInvalid;
     case 'MEDIA_IN_USE':
       return t.errors.mediaInUse;
+    // Promotional popup (UX/UI Step 12).
+    case 'MEDIA_ALT_REQUIRED':
+      return t.errors.mediaAltRequired;
+    case 'POPUP_OVERLAP':
+      return t.errors.popupOverlap;
     default:
       return t.errors.unexpected;
   }

@@ -1547,6 +1547,167 @@
   white-space: nowrap;
 }
 
+/* ---- Promotional popup (design 16.5) -------------------------------------------------------- */
+/* One card, drawn live in `.ls-promo-dialog` on the public site and as a static copy in the admin preview. */
+.ls-promo-dialog {
+  animation: ls-pop-in var(--ls-dur-base) var(--ls-ease-out) backwards;
+  width: min(100%, var(--ls-dialog-sm));
+  max-height: calc(100vh - 2 * var(--ls-space-4));
+  overflow-y: auto;
+  border-radius: var(--ls-radius-md);
+}
+
+.ls-promo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-md);
+  background: var(--ls-bg-raised);
+  box-shadow: var(--ls-shadow-lg);
+}
+
+.ls-promo-close {
+  position: absolute;
+  z-index: 1;
+  top: var(--ls-space-2);
+  inset-inline-end: var(--ls-space-2);
+  display: grid;
+  place-items: center;
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-raised);
+  box-shadow: var(--ls-shadow-sm);
+}
+
+/* Contained, never cropped: a promotional image often carries its own text. */
+.ls-promo-media {
+  background: var(--ls-bg-sunken);
+}
+
+.ls-promo-media img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(24rem, 50vh);
+  object-fit: contain;
+}
+
+.ls-promo-body {
+  display: grid;
+  gap: var(--ls-space-3);
+  padding: var(--ls-space-6);
+}
+
+/* Without an image the text starts at the card's top edge: keep it clear of the close button. */
+.ls-promo-close + .ls-promo-body {
+  padding-inline-end: calc(var(--ls-control-h) + var(--ls-space-4));
+}
+
+.ls-promo-title {
+  margin: 0;
+  font-size: var(--ls-text-xl);
+  font-weight: 600;
+  line-height: var(--ls-leading-xl);
+  overflow-wrap: anywhere;
+}
+
+.ls-promo-text {
+  margin: 0;
+  color: var(--ls-text-muted);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.ls-promo-body > .ls-btn {
+  justify-self: start;
+}
+
+.ls-promo-previews {
+  display: grid;
+  gap: var(--ls-space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  align-items: start;
+}
+
+.ls-promo-frame {
+  display: grid;
+  gap: var(--ls-space-2);
+  margin: 0;
+}
+
+.ls-promo-caption {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-promo-stage {
+  display: grid;
+  justify-items: center;
+  padding: var(--ls-space-4);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-sunken);
+}
+
+.ls-promo-stage .ls-promo {
+  width: min(100%, var(--ls-dialog-sm));
+}
+
+.ls-promo-frame-phone .ls-promo-stage .ls-promo {
+  width: min(100%, 20rem);
+}
+
+/* ---- Schedule strip: one lane of windows and a "now" marker --------------------------------- */
+.ls-schedule {
+  display: grid;
+  gap: var(--ls-space-1);
+}
+
+.ls-schedule-track {
+  position: relative;
+  height: var(--ls-space-4);
+  overflow: hidden;
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-sunken);
+}
+
+.ls-schedule-seg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--ls-radius-full);
+}
+
+.ls-schedule-seg-success {
+  background: var(--ls-success);
+}
+
+.ls-schedule-seg-info {
+  background: var(--ls-info);
+}
+
+.ls-schedule-seg-neutral {
+  background: var(--ls-border-control);
+}
+
+.ls-schedule-now {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--ls-text);
+}
+
+.ls-schedule-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ls-space-2);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
 .ls-media-badges {
   display: flex;
   flex-wrap: wrap;

@@ -19,10 +19,13 @@ export class ApiError extends Error {
   }
 }
 
-/** The backend reports a named field as `"<Message>: <field>"`. */
+/**
+ * The backend reports a named field as `"<Message>: <field>"`. A field is a camelCase name, or (for a
+ * conflict that names the other record, like `POPUP_OVERLAP`) that record's id.
+ */
 function fieldOf(message: unknown): string | null {
   if (typeof message !== 'string') return null;
-  const match = /: ([A-Za-z][A-Za-z0-9]*)$/.exec(message);
+  const match = /: ([A-Za-z][A-Za-z0-9]*|[0-9a-f]{8}-[0-9a-f-]{27})$/.exec(message);
   return match?.[1] ?? null;
 }
 
