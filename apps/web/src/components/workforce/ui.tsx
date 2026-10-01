@@ -3,17 +3,21 @@
 import {
   Badge as UiBadge,
   Button,
+  Card,
+  CardHeader,
   EmptyState,
   ErrorState as UiErrorState,
   Field as UiField,
   Notice as UiNotice,
+  PageHeader as UiPageHeader,
   type Tone as UiTone,
 } from '@lucy-spa/ui';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { WorkforceDictionary } from '../../i18n/workforce';
 import { ApiError } from '../../lib/workforce/api';
 import { errorMessage } from '../../lib/workforce/workflows';
 
+/** Screen title row: the shared `PageHeader`; `children` are the page actions (primary last). */
 export function PageHeader({
   title,
   intro,
@@ -24,16 +28,15 @@ export function PageHeader({
   children?: ReactNode;
 }) {
   return (
-    <header className="wf-page-header">
-      <div>
-        <h1>{title}</h1>
-        {intro ? <p className="wf-muted">{intro}</p> : null}
-      </div>
-      {children ? <div className="wf-page-actions">{children}</div> : null}
-    </header>
+    <UiPageHeader
+      title={title}
+      {...(intro ? { description: intro } : {})}
+      {...(children ? { actions: children } : {})}
+    />
   );
 }
 
+/** One card with a heading and optional header actions: the single container surface of a screen. */
 export function Section({
   title,
   children,
@@ -43,14 +46,12 @@ export function Section({
   children: ReactNode;
   actions?: ReactNode;
 }) {
+  const headingId = useId();
   return (
-    <section className="wf-section" aria-label={title}>
-      <div className="wf-section-header">
-        <h2>{title}</h2>
-        {actions}
-      </div>
+    <Card as="section" aria-labelledby={headingId}>
+      <CardHeader id={headingId} title={title} {...(actions ? { actions } : {})} />
       {children}
-    </section>
+    </Card>
   );
 }
 
@@ -243,6 +244,7 @@ export function FormFeedback({
 // Shared components from packages/ui, re-exported so screens import from one place as they migrate.
 export {
   ActionBar,
+  Card,
   Checkbox,
   Combobox,
   ConfirmDialog,

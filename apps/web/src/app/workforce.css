@@ -1,24 +1,16 @@
-/* Workforce application: operational, readable, responsive. Uses the shared Lucy tokens. */
+﻿/* Workforce application: operational, readable, responsive. Uses the shared Lucy tokens only.
+   Page frame, cards, headers and notices come from packages/ui (Page, PageHeader, Card); what is left here
+   is legacy screen markup that Steps 8-10 migrate (docs/UXUI_REDESIGN_STEP7_5_PLAN.md). No new `wf-*` class. */
 .wf-app {
   display: flex;
   flex-direction: column;
   min-height: 100svh;
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
-.wf-main {
-  width: 100%;
-  max-width: 72rem;
-  padding: 1.5rem 2rem 3rem;
-}
-
-.wf-main:focus {
-  outline: none;
+  font-size: var(--ls-text-md);
+  line-height: var(--ls-leading-md);
 }
 
 .wf-main h1 {
-  /* The display serif lacks precomposed Vietnamese glyphs (for example "ấ"). */
+  /* The display serif lacks precomposed Vietnamese glyphs (for example "áº¥"). */
   color: var(--ls-text);
   font-family: var(--ls-font-sans);
   font-size: var(--ls-text-xl);
@@ -36,58 +28,22 @@
 }
 
 .wf-main h3 {
-  margin: var(--ls-space-5) 0 var(--ls-space-2);
+  margin: 0;
   font-size: var(--ls-text-md);
   font-weight: 600;
   line-height: var(--ls-leading-md);
 }
 
-.wf-page-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-
-.wf-page-header p {
-  margin: 0.35rem 0 0;
-}
-
-.wf-section {
-  margin-bottom: 1.25rem;
-  padding: 1.25rem;
-  border: 1px solid var(--ls-border);
-  border-radius: 10px;
-  background: var(--ls-bg-surface);
-}
-
-.wf-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.wf-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: 1.25rem;
-}
-
 .wf-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-  gap: 1rem;
-  margin: 1rem 0;
+  gap: var(--ls-space-4);
 }
 
 .wf-card {
-  padding: 1rem;
+  padding: var(--ls-space-4);
   border: 1px solid var(--ls-border);
-  border-radius: 10px;
+  border-radius: var(--ls-radius-md);
 }
 
 .wf-card h3 {
@@ -99,7 +55,7 @@
 }
 
 .wf-small {
-  font-size: 0.82rem;
+  font-size: var(--ls-text-sm);
 }
 
 .wf-block {
@@ -107,14 +63,14 @@
 }
 
 .wf-emphasis {
-  font-size: 1.35rem;
+  font-size: var(--ls-text-lg);
   font-weight: 600;
 }
 
 .wf-empty {
-  padding: 1rem;
+  padding: var(--ls-space-4);
   border: 1px dashed var(--ls-border);
-  border-radius: 8px;
+  border-radius: var(--ls-radius-md);
   color: var(--ls-text-muted);
   text-align: center;
 }
@@ -122,10 +78,10 @@
 .wf-center {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 1rem;
+  gap: var(--ls-space-4);
   place-items: center;
   min-height: 60svh;
-  padding: 2rem;
+  padding: var(--ls-space-7);
   text-align: center;
 }
 
@@ -143,10 +99,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  padding: 0 1rem;
+  min-height: var(--ls-control-h);
+  padding: 0 var(--ls-space-4);
   border: 1px solid var(--ls-brand);
-  border-radius: 8px;
+  border-radius: var(--ls-radius-md);
   color: var(--ls-brand);
   background: transparent;
   font: inherit;
@@ -174,8 +130,8 @@
 
 .wf-button-large {
   width: 100%;
-  min-height: 52px;
-  font-size: 1.05rem;
+  min-height: calc(var(--ls-control-h) + var(--ls-space-2));
+  font-size: var(--ls-text-md);
 }
 
 .wf-button:disabled {
@@ -194,15 +150,15 @@
 /* Forms */
 .wf-form {
   display: grid;
-  gap: 0.9rem;
-  max-width: 44rem;
+  gap: var(--ls-space-4);
+  max-width: var(--ls-form-max);
 }
 
 .wf-row-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: var(--ls-space-2);
 }
 
 .wf-danger-text {
@@ -214,33 +170,33 @@
 .wf-dialog-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: var(--ls-z-dialog);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  padding: 1rem;
+  padding: var(--ls-space-4);
   place-items: center;
   background: var(--ls-overlay);
 }
 
 .wf-dialog {
   width: min(100%, 30rem);
-  padding: 1.5rem;
+  padding: var(--ls-space-6);
   border: 1px solid var(--ls-border);
-  border-radius: 12px;
+  border-radius: var(--ls-radius-md);
   background: var(--ls-bg-surface);
   box-shadow: var(--ls-shadow-lg);
 }
 
 .wf-dialog h2 {
-  margin: 0 0 1rem;
-  font-size: 1.2rem;
+  margin: 0 0 var(--ls-space-4);
+  font-size: var(--ls-text-lg);
 }
 
 .wf-dialog-facts {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 0.35rem 1rem;
-  margin: 0 0 1rem;
+  gap: var(--ls-space-1) var(--ls-space-4);
+  margin: 0 0 var(--ls-space-4);
 }
 
 .wf-dialog-facts dt {
@@ -253,26 +209,12 @@
   overflow-wrap: anywhere;
 }
 
-/* Directory pagination: « 1 2 3 … 8 » */
-.wf-pagination {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.75rem;
-}
-
-.wf-pagination .wf-button {
-  min-width: 44px;
-  padding: 0 0.6rem;
-}
-
 /* Employee detail facts: label/value pairs that stack on narrow screens. */
 .wf-facts {
   display: grid;
   grid-template-columns: minmax(9rem, max-content) 1fr;
-  gap: 0.35rem 1rem;
-  margin: 0 0 1rem;
+  gap: var(--ls-space-1) var(--ls-space-4);
+  margin: 0;
 }
 
 .wf-facts dt {
@@ -289,44 +231,43 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.6rem;
+  gap: var(--ls-space-1) var(--ls-space-2);
 }
 
 @media (max-width: 560px) {
   .wf-facts {
     grid-template-columns: 1fr;
-    gap: 0.1rem;
+    gap: var(--ls-space-1);
   }
 
   .wf-facts dd {
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--ls-space-2);
   }
 }
 
 .wf-inline-form {
   display: grid;
-  gap: 0.6rem;
+  gap: var(--ls-space-2);
   min-width: min(100%, 18rem);
-  margin-top: 0.5rem;
+  margin-top: var(--ls-space-2);
 }
 
 .wf-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: 0.9rem;
+  gap: var(--ls-space-4);
 }
 
 .wf-filters {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: var(--ls-space-3);
 }
 
 .wf-field {
   display: grid;
-  gap: 0.3rem;
+  gap: var(--ls-space-1);
 }
 
 .wf-field label {
@@ -340,17 +281,17 @@
 .wf-hint {
   margin: 0;
   color: var(--ls-text-muted);
-  font-size: 0.82rem;
+  font-size: var(--ls-text-sm);
 }
 
 /* Zero specificity for the app's plain controls, so a shared `ls-*` control (search, select, ...) always wins. */
 :where(.wf-app) :where(input:not([type='checkbox'], [type='radio']), select, textarea),
 .wf-login input:not([type='radio']) {
   width: 100%;
-  min-height: 44px;
-  padding: 0.5rem 0.65rem;
+  min-height: var(--ls-control-h);
+  padding: var(--ls-space-2) var(--ls-space-3);
   border: 1px solid var(--ls-border-control);
-  border-radius: 8px;
+  border-radius: var(--ls-radius-md);
   color: var(--ls-text);
   background: var(--ls-bg-surface);
   font: inherit;
@@ -366,13 +307,13 @@
 }
 
 .wf-app input[type='checkbox'] {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: var(--ls-space-5);
+  height: var(--ls-space-5);
 }
 
 .wf-fieldset {
   display: grid;
-  gap: 0.9rem;
+  gap: var(--ls-space-4);
   margin: 0;
   padding: 0;
   border: 0;
@@ -384,32 +325,32 @@
 }
 
 .wf-legend {
-  margin-bottom: 0.4rem;
+  margin-bottom: var(--ls-space-2);
   padding: 0;
   font-weight: 600;
 }
 
 .wf-choices {
   display: grid;
-  gap: 0.5rem;
+  gap: var(--ls-space-2);
   margin: 0;
   padding: 0;
   border: 0;
 }
 
 .wf-choices legend {
-  margin-bottom: 0.4rem;
+  margin-bottom: var(--ls-space-2);
   font-weight: 600;
 }
 
 .wf-choices label {
   display: flex;
   align-items: flex-start;
-  gap: 0.6rem;
-  min-height: 44px;
-  padding: 0.6rem 0.75rem;
+  gap: var(--ls-space-3);
+  min-height: var(--ls-control-h);
+  padding: var(--ls-space-3);
   border: 1px solid var(--ls-border);
-  border-radius: 8px;
+  border-radius: var(--ls-radius-md);
   background: var(--ls-bg-surface);
 }
 
@@ -422,21 +363,21 @@
 }
 
 .wf-choices input[type='radio'] {
-  width: 1.25rem;
-  height: 1.25rem;
-  margin-top: 0.15rem;
+  width: var(--ls-space-5);
+  height: var(--ls-space-5);
+  margin-top: var(--ls-space-1);
   flex: none;
 }
 
 .wf-choices label > span {
   display: grid;
-  gap: 0.1rem;
+  gap: var(--ls-space-1);
 }
 
 .wf-checklist {
   display: grid;
-  gap: 0.5rem;
-  margin: 0 0 1rem;
+  gap: var(--ls-space-2);
+  margin: 0;
   padding: 0;
   border: 0;
 }
@@ -444,14 +385,14 @@
 .wf-checklist label {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  min-height: 44px;
+  gap: var(--ls-space-2);
+  min-height: var(--ls-control-h);
 }
 
 .wf-form-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--ls-space-2);
 }
 
 .wf-disclosure summary {
@@ -481,104 +422,11 @@
   }
 }
 
-.wf-segmented {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin: 0 0 1rem;
-  padding: 0;
-  border: 0;
-}
-
-.wf-segmented legend {
-  margin-bottom: 0.4rem;
-  font-weight: 600;
-}
-
-.wf-segmented label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-height: 44px;
-}
-
-/* Status */
-.wf-badge {
-  display: inline-block;
-  padding: 0.15rem 0.55rem;
-  border: 1px solid currentcolor;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  line-height: 1.5;
-}
-
-.wf-badge-success {
-  color: var(--ls-success);
-  background: var(--ls-success-bg);
-}
-
-.wf-badge-warning {
-  color: var(--ls-warning);
-  background: var(--ls-warning-bg);
-}
-
-.wf-badge-error {
-  color: var(--ls-danger);
-  background: var(--ls-danger-bg);
-}
-
-.wf-badge-info {
-  color: var(--ls-info);
-  background: var(--ls-info-bg);
-}
-
-.wf-badge-neutral {
-  color: var(--ls-text-muted);
-  background: var(--ls-bg-sunken);
-}
-
-.wf-notice {
-  margin: 0.75rem 0;
-  padding: 0.75rem 1rem;
-  border-left: 4px solid currentcolor;
-  border-radius: 6px;
-}
-
-.wf-notice p {
-  margin: 0;
-}
-
-.wf-notice p + p,
-.wf-notice p + button {
-  margin-top: 0.5rem;
-}
-
-.wf-notice-success {
-  color: var(--ls-success);
-  background: var(--ls-success-bg);
-}
-
-.wf-notice-error {
-  color: var(--ls-danger);
-  background: var(--ls-danger-bg);
-}
-
-.wf-notice-warning {
-  color: var(--ls-warning);
-  background: var(--ls-warning-bg);
-}
-
-.wf-notice-info {
-  color: var(--ls-info);
-  background: var(--ls-info-bg);
-}
-
 /* Lists and tables */
 .wf-plain-list {
   display: grid;
-  gap: 0.5rem;
-  margin: 0 0 1rem;
+  gap: var(--ls-space-2);
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -588,28 +436,9 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
+  gap: var(--ls-space-2);
+  padding: var(--ls-space-2) 0;
   border-bottom: 1px solid var(--ls-border);
-}
-
-.wf-link-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.wf-link-grid a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 1rem;
-  border: 1px solid var(--ls-border);
-  border-radius: 8px;
-  text-decoration: none;
 }
 
 .wf-table {
@@ -619,7 +448,7 @@
 
 .wf-table th,
 .wf-table td {
-  padding: 0.6rem 0.5rem;
+  padding: var(--ls-space-3) var(--ls-space-2);
   border-bottom: 1px solid var(--ls-border);
   text-align: left;
   vertical-align: top;
@@ -627,7 +456,7 @@
 
 .wf-table thead th {
   color: var(--ls-text-muted);
-  font-size: 0.8rem;
+  font-size: var(--ls-text-xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -638,7 +467,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   min-height: 100svh;
-  padding: 1.5rem 1rem;
+  padding: var(--ls-space-6) var(--ls-space-4);
   place-items: center;
   background: var(--ls-bg-page);
 }
@@ -649,24 +478,24 @@
 
 .wf-login-card {
   display: grid;
-  gap: 0.75rem;
+  gap: var(--ls-space-3);
   width: min(100%, 26rem);
-  padding: 2rem;
+  padding: var(--ls-space-7);
   border: 1px solid var(--ls-border);
-  border-radius: 12px;
+  border-radius: var(--ls-radius-md);
   background: var(--ls-bg-surface);
 }
 
 .wf-login-card h1 {
   color: var(--ls-text);
   font-family: var(--ls-font-sans);
-  font-size: 1.5rem;
+  font-size: var(--ls-text-xl);
   letter-spacing: -0.01em;
 }
 
 .wf-login-card form {
   display: grid;
-  gap: 0.9rem;
+  gap: var(--ls-space-4);
 }
 
 .wf-login-brand {
@@ -684,27 +513,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 48px;
+  min-height: calc(var(--ls-control-h) + var(--ls-space-2));
   border: 1px solid var(--ls-brand);
-  border-radius: 8px;
+  border-radius: var(--ls-radius-md);
   color: var(--ls-on-brand);
   background: var(--ls-brand-fill);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
-}
-
-.wf-login .wf-notice {
-  margin: 0;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-}
-
-/* Tablet and phone */
-@media (max-width: 900px) {
-  .wf-main {
-    padding: 1.25rem 1rem 2.5rem;
-  }
 }
 
 /* Phones: tables become labelled cards instead of scrolling sideways. */
@@ -727,31 +543,33 @@
   }
 
   .wf-table tr {
-    margin-bottom: 0.75rem;
-    padding: 0.5rem 0.75rem;
+    margin-bottom: var(--ls-space-3);
+    padding: var(--ls-space-2) var(--ls-space-3);
     border: 1px solid var(--ls-border);
-    border-radius: 8px;
+    border-radius: var(--ls-radius-md);
   }
 
   .wf-table td,
   .wf-table tbody th {
     display: grid;
     grid-template-columns: minmax(6.5rem, 38%) 1fr;
-    gap: 0.5rem;
-    padding: 0.35rem 0;
+    gap: var(--ls-space-2);
+    padding: var(--ls-space-1) 0;
     border-bottom: 0;
+  }
+
+  .wf-table td a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--ls-control-h);
   }
 
   .wf-table td::before,
   .wf-table tbody th::before {
     content: attr(data-label);
     color: var(--ls-text-muted);
-    font-size: 0.8rem;
+    font-size: var(--ls-text-xs);
     font-weight: 600;
-  }
-
-  .wf-section {
-    padding: 1rem;
   }
 
   .wf-filters > * {
@@ -762,15 +580,15 @@
 /* Invoice totals (POS): label/amount pairs aligned to the right. */
 .wf-summary {
   display: grid;
-  gap: 0.35rem;
+  gap: var(--ls-space-1);
   max-width: 24rem;
-  margin: 1rem 0 0 auto;
+  margin: 0 0 0 auto;
 }
 
 .wf-summary > div {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--ls-space-4);
 }
 
 .wf-summary dt,
@@ -781,5 +599,5 @@
 /* Discount scope pickers: one checkbox per line. */
 .wf-check {
   display: block;
-  padding: 0.15rem 0;
+  padding: var(--ls-space-1) 0;
 }

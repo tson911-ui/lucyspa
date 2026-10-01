@@ -21,6 +21,7 @@ import { runMutation } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
+  Card,
   Empty,
   ErrorState,
   Field,
@@ -74,7 +75,7 @@ export function RolesAdminView({
       {notice ? <Notice tone="success">{notice}</Notice> : null}
       {!editable ? <Notice tone="info">{texts.readOnlyNote}</Notice> : null}
       {editable && catalog ? (
-        <section className="wf-section" aria-label={texts.create}>
+        <Card as="section" aria-label={texts.create}>
           <CreateRoleForm
             catalog={catalog}
             onCreated={async (role) => {
@@ -82,7 +83,7 @@ export function RolesAdminView({
               await reload();
             }}
           />
-        </section>
+        </Card>
       ) : null}
       <Section title={t.nav.roles}>
         {loading && !catalog ? <Loading t={t} /> : null}

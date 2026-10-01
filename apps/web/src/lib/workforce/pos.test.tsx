@@ -307,7 +307,8 @@ test('payments section: history, balance, the cash form only when permitted, rev
   assert.ok(html.includes('200,000'), 'balance due');
   assert.ok(html.includes(en.pos.collectTitle), 'cash form shown when the API permits');
   assert.ok(!html.includes(en.pos.reverse), 'no reversal button unless reversible');
-  assert.ok(!/card/i.test(html), 'no CARD anywhere');
+  // The `ls-card` surface class is styling, not a payment method.
+  assert.ok(!/card/i.test(html.replace(/class="[^"]*"/g, '')), 'no CARD anywhere');
 
   const reversible = render(
     <PosPaymentsSection
@@ -559,7 +560,7 @@ test('PayOS in the payments section: waiting request, form only when none waits,
   assert.ok(confirmed.includes(en.pos.paymentLate));
   assert.ok(!confirmed.includes(en.pos.reverse));
   assert.ok(!confirmed.includes(en.pos.payosCreate));
-  assert.ok(!/card/i.test(confirmed), 'no CARD anywhere');
+  assert.ok(!/card/i.test(confirmed.replace(/class="[^"]*"/g, '')), 'no CARD anywhere');
 });
 
 test('PayOS management: anomalies and notes only where the API offers them', () => {

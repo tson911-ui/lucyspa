@@ -84,11 +84,11 @@ const view = (
 
 test('1–6, 16. sections: Managers above Employees; the API decides membership', async () => {
   const screen = render(<EmployeesScreen />, owner);
-  const managersAt = screen.indexOf(`<h2>${vi.employees.directory.managers}</h2>`);
-  const employeesAt = screen.indexOf(`<h2>${vi.employees.directory.employees}</h2>`);
+  const managersAt = screen.indexOf(`>${vi.employees.directory.managers}</h2>`);
+  const employeesAt = screen.indexOf(`>${vi.employees.directory.employees}</h2>`);
   assert.ok(managersAt > 0 && employeesAt > managersAt, 'Quản lý above Nhân viên');
   const english = render(<EmployeesScreen />, owner, 'en');
-  assert.ok(english.indexOf('<h2>Managers</h2>') < english.indexOf('<h2>Employees</h2>'));
+  assert.ok(english.indexOf('>Managers</h2>') < english.indexOf('>Employees</h2>'));
   // Each group is its own server query: group + page, never a role name.
   const { fetcher, calls } = scriptedFetch([
     () => json(200, page([entry('QL01', 'Trần Quản Lý', 'OFFICIAL_EMPLOYEE')])),
@@ -189,7 +189,7 @@ test('Step 2. four exclusive sections in order: Quản lý, Nhân viên, CTV, H�
     vi.employees.directory.employees,
     vi.employees.directory.collaborators,
     vi.employees.directory.trainees,
-  ].map((title) => screen.indexOf(`<h2>${title}</h2>`));
+  ].map((title) => screen.indexOf(`>${title}</h2>`));
   assert.ok(at.every((index) => index > 0));
   assert.deepEqual(
     [...at].sort((a, b) => a - b),

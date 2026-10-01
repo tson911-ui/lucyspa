@@ -159,7 +159,7 @@
 
 .ls-nav-list {
   display: grid;
-  gap: 2px;
+  gap: var(--ls-space-1);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -205,7 +205,7 @@
 .ls-nav-link[aria-current='page'] {
   color: var(--ls-brand-on-soft);
   background: var(--ls-brand-soft);
-  box-shadow: inset 3px 0 0 var(--ls-brand);
+  box-shadow: inset 4px 0 0 var(--ls-brand);
   font-weight: 600;
 }
 

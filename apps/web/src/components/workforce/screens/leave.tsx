@@ -243,46 +243,49 @@ export function LeaveTable({
   employee?: (id: string) => string;
   action?: (request: LeaveRequestResponse) => ReactNode;
 }) {
+  // The wrapper scrolls a wide table inside the card instead of widening the page (tablet widths).
   return (
-    <table className="wf-table">
-      <thead>
-        <tr>
-          {employee ? <th scope="col">{t.leave.employee}</th> : null}
-          <th scope="col">{t.leave.type}</th>
-          <th scope="col">{t.leave.startDate}</th>
-          <th scope="col">{t.leave.endDate}</th>
-          <th scope="col">{t.leave.days}</th>
-          <th scope="col">{t.leave.reason}</th>
-          <th scope="col">{t.common.status}</th>
-          {action ? <th scope="col">{t.common.actions}</th> : null}
-        </tr>
-      </thead>
-      <tbody>
-        {requests.map((request) => (
-          <tr key={request.id}>
-            {employee ? (
-              <td data-label={t.leave.employee}>{employee(request.employeeId)}</td>
-            ) : null}
-            <td data-label={t.leave.type}>{t.leave.types[request.leaveType]}</td>
-            <td data-label={t.leave.startDate}>{formatDate(request.startDate, locale)}</td>
-            <td data-label={t.leave.endDate}>{formatDate(request.endDate, locale)}</td>
-            <td data-label={t.leave.days}>{request.days}</td>
-            <td data-label={t.leave.reason}>
-              {request.reason}
-              {request.decisionReason ? (
-                <span className="wf-small wf-muted wf-block">
-                  {t.leave.decisionReason}: {request.decisionReason}
-                </span>
-              ) : null}
-            </td>
-            <td data-label={t.common.status}>
-              <LeaveStatusBadge status={request.status} t={t} />
-            </td>
-            {action ? <td data-label={t.common.actions}>{action(request)}</td> : null}
+    <div className="ls-table-wrap">
+      <table className="wf-table">
+        <thead>
+          <tr>
+            {employee ? <th scope="col">{t.leave.employee}</th> : null}
+            <th scope="col">{t.leave.type}</th>
+            <th scope="col">{t.leave.startDate}</th>
+            <th scope="col">{t.leave.endDate}</th>
+            <th scope="col">{t.leave.days}</th>
+            <th scope="col">{t.leave.reason}</th>
+            <th scope="col">{t.common.status}</th>
+            {action ? <th scope="col">{t.common.actions}</th> : null}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {requests.map((request) => (
+            <tr key={request.id}>
+              {employee ? (
+                <td data-label={t.leave.employee}>{employee(request.employeeId)}</td>
+              ) : null}
+              <td data-label={t.leave.type}>{t.leave.types[request.leaveType]}</td>
+              <td data-label={t.leave.startDate}>{formatDate(request.startDate, locale)}</td>
+              <td data-label={t.leave.endDate}>{formatDate(request.endDate, locale)}</td>
+              <td data-label={t.leave.days}>{request.days}</td>
+              <td data-label={t.leave.reason}>
+                {request.reason}
+                {request.decisionReason ? (
+                  <span className="wf-small wf-muted wf-block">
+                    {t.leave.decisionReason}: {request.decisionReason}
+                  </span>
+                ) : null}
+              </td>
+              <td data-label={t.common.status}>
+                <LeaveStatusBadge status={request.status} t={t} />
+              </td>
+              {action ? <td data-label={t.common.actions}>{action(request)}</td> : null}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

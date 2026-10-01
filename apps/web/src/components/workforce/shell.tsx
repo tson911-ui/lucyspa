@@ -1,6 +1,14 @@
 'use client';
 
-import { AppShell, BrandWordmark, Icon, ThemeToggle, UserMenu, isPathActive } from '@lucy-spa/ui';
+import {
+  AppShell,
+  BrandWordmark,
+  Icon,
+  Page,
+  ThemeToggle,
+  UserMenu,
+  isPathActive,
+} from '@lucy-spa/ui';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
@@ -85,8 +93,10 @@ export function WorkforceShell({ children }: { children: ReactNode }) {
         </>
       }
     >
-      <SessionLostNotice />
-      {children}
+      <Page>
+        <SessionLostNotice />
+        {children}
+      </Page>
     </AppShell>
   );
 }

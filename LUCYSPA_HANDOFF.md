@@ -180,3 +180,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 - Tooling: scripts/uxui-page-audit.js (DOM audit, rule-tagged), scripts/uxui-audit-summary.mjs (--write/--compare), apps/web/src/test/ui-ratchet.test.ts (counters only go down).
 - Baseline: 26 pages x 3 widths on scratch DB lucy_spa_uxaudit_20261001 in docs/uxui-audit-baseline.json and docs/UXUI_AUDIT_BASELINE_7_5A.md. Report: docs/UXUI_REDESIGN_STEP7_5A_RULES_GATE.md. Also a PreToolUse hook (.claude/settings.json) blocks Bash heredocs.
 - Next: 7.5b (page frame); after 7.5b and 7.5d the Owner deploys and reviews before the next session.
+
+### UX/UI Step 7.5b (page frame) - implemented locally 2026-10-01, awaiting Owner deploy check
+- packages/ui: Page, PageHeader, Stack/Cluster/Grid; Card flush context (table/empty inside a card lose their border; nested Card logs in dev); RouteFade stack. Workforce shell wraps in Page; ui.tsx PageHeader/Section are kit components; workforce.css remapped to tokens (0 spacing literals).
+- Nav gap/active bar on the 4 px grid; Leave table scrolls inside its card. Ratchet lowered (wf uses 720, spacing literals 0). No API/DB change.
+- 207 ui + 233 web tests pass; DOM audit of Dashboard/Employees/Skills/Branches/Leave: no count rose. Report: docs/UXUI_REDESIGN_STEP7_5B_PAGE_FRAME.md. Next: Owner deploy check, then 7.5c.

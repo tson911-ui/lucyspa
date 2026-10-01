@@ -172,6 +172,11 @@ export type { ArrangedNavGroup, ShellNavGroup, ShellNavItem } from './shell-core
 
 // Card and Stat (Step 7): surface container and label + value + change.
 export { Card, CardHeader } from './card';
+
+// Page frame (Step 7.5b): page container, page header and the layout primitives that own every gap.
+export { Page, PageHeader } from './page';
+export { Cluster, Grid, Stack } from './layout';
+export type { ClusterGap, GridMin, StackGap } from './layout';
 export { DeltaLine, Stat } from './stat';
 export type { StatLabels } from './stat';
 

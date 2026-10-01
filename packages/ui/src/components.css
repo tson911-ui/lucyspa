@@ -2932,3 +2932,150 @@
 .ls-kpi-spark {
   margin-block-end: var(--ls-space-1);
 }
+
+/* ---- Page frame (Step 7.5b, contract 9.6 and 21.4): Page, PageHeader, Stack, Cluster, Grid ---- */
+.ls-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ls-space-6);
+  align-content: start;
+  width: 100%;
+  min-width: 0;
+  max-width: var(--ls-content-max);
+  margin-inline: auto;
+  padding: var(--ls-space-6) var(--ls-gutter) var(--ls-space-9);
+}
+
+.ls-page-form {
+  max-width: var(--ls-form-max);
+}
+
+.ls-page-full {
+  max-width: none;
+}
+
+/* Gaps come from the container: a child never adds its own outer margin (listed after the legacy margins it overrides). */
+.ls-page > *,
+.ls-stack > *,
+.ls-cluster > *,
+.ls-grid > *,
+.ls-card > * {
+  min-width: 0;
+  margin-block: 0;
+}
+
+.ls-page-header {
+  display: grid;
+  gap: var(--ls-space-2);
+}
+
+.ls-page-crumbs {
+  min-width: 0;
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-page-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ls-space-4);
+}
+
+.ls-page-titles {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.ls-page-title {
+  margin: 0;
+  color: var(--ls-text);
+  font-family: var(--ls-font-sans);
+  font-size: var(--ls-text-xl);
+  font-weight: 600;
+  line-height: var(--ls-leading-xl);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.ls-page-description {
+  margin: var(--ls-space-1) 0 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-2);
+  margin-inline-start: auto;
+}
+
+.ls-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+
+.ls-cluster {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.ls-align-start {
+  align-items: flex-start;
+}
+
+.ls-align-center {
+  align-items: center;
+}
+
+.ls-align-end {
+  align-items: flex-end;
+}
+
+.ls-grid {
+  display: grid;
+  align-items: stretch;
+}
+
+.ls-grid-sm {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+}
+
+.ls-grid-md {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}
+
+.ls-grid-lg {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+}
+
+.ls-gap-page {
+  gap: var(--ls-space-6);
+}
+
+.ls-gap-block,
+.ls-gap-field {
+  gap: var(--ls-space-4);
+}
+
+.ls-gap-inline {
+  gap: var(--ls-space-2);
+}
+
+.ls-gap-tight {
+  gap: var(--ls-space-1);
+}
+
+/* Inside a card the card is the only bordered surface: tables, empty states and notices render flush. */
+.ls-card .ls-table-wrap,
+.ls-card .ls-empty {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
