@@ -256,10 +256,13 @@ test('useUrlState: reads the address bar, writes history entries, follows Back',
   act(() => update({ page: 2 }));
   assert.equal(window.history.length, before, 'no change, no new entry');
 
-  // jsdom dispatches popstate asynchronously.
+  // jsdom dispatches popstate asynchronously: wait for it (up to 2 s) instead of a fixed pause, which
+  // is too short when the machine is busy (the whole-repo run shares the CPU with the API tests).
   await act(async () => {
     window.history.back();
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    for (let waited = 0; state.page !== 1 && waited < 2000; waited += 20) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
   });
   assert.equal(state.page, 1, 'Back returns to the previous state');
   view.unmount();
