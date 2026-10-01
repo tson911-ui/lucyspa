@@ -2,17 +2,22 @@
 
 import type { SkillListResponse, SkillResponse } from '@lucy-spa/contracts';
 import {
+  ConfirmDialog,
   DataTable,
-  Dialog,
   FacetedFilter,
+  Field,
+  FormDialog,
+  FormGrid,
   ListToolbar,
   RowActions,
   SearchInput,
+  TextInput,
   useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { fill } from '../../../i18n/workforce';
+import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
 import {
   paginationLabels,
   resultsText,
@@ -34,11 +39,8 @@ import {
   Button,
   Empty,
   ErrorState,
-  Field,
-  FormFeedback,
+  Notice,
   PageHeader,
-  Section,
-  SubmitButton,
   useResource,
   useSubmit,
 } from '../ui';
@@ -58,7 +60,19 @@ export function SkillsScreen() {
     resetOnChange: SKILL_PAGE_KEYS,
   });
 
-  const [editing, setEditing] = useState<SkillResponse | null>(null);
+  type Overlay =
+    | { kind: 'create' }
+    | { kind: 'edit'; skill: SkillResponse }
+    | { kind: 'status'; skill: SkillResponse };
+  const [overlay, setOverlay] = useState<Overlay | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  /** After a successful save: refresh the list, close the overlay and say what happened. */
+  const finish = (message: string) => async () => {
+    await skills.reload();
+    setOverlay(null);
+    setNotice(message);
+  };
 
   const all = skills.data?.skills ?? [];
   const rows = filterSkills(all, list);
@@ -116,7 +130,13 @@ export function SkillsScreen() {
                     id: 'edit',
                     label: t.common.edit,
                     icon: 'edit',
-                    onSelect: () => setEditing(skill),
+                    onSelect: () => setOverlay({ kind: 'edit', skill }),
+                  },
+                  {
+                    id: 'status',
+                    label: skill.isActive ? t.common.deactivate : t.common.activate,
+                    tone: skill.isActive ? 'danger' : 'default',
+                    onSelect: () => setOverlay({ kind: 'status', skill }),
                   },
                 ]}
               />
@@ -128,8 +148,14 @@ export function SkillsScreen() {
 
   return (
     <>
-      <PageHeader title={t.skills.title} />
-      {manage ? <SkillCreate reload={skills.reload} /> : null}
+      <PageHeader title={t.skills.title}>
+        {manage ? (
+          <Button variant="primary" icon="plus" onClick={() => setOverlay({ kind: 'create' })}>
+            {t.skills.create}
+          </Button>
+        ) : null}
+      </PageHeader>
+      {notice ? <Notice tone="success">{notice}</Notice> : null}
       {skills.data && all.length > 0 ? (
         <ListToolbar
           labels={toolbarLabels(t)}
@@ -190,99 +216,111 @@ export function SkillsScreen() {
           labels: paginationLabels(t, t.skills.title),
         }}
       />
-      {editing ? (
+      {overlay?.kind === 'create' ? (
+        <SkillCreate onClose={() => setOverlay(null)} onCreated={finish(t.skills.created)} />
+      ) : null}
+      {overlay?.kind === 'edit' ? (
         <SkillEdit
-          key={editing.id}
-          skill={editing}
-          reload={skills.reload}
-          onClose={() => setEditing(null)}
+          key={overlay.skill.id}
+          skill={overlay.skill}
+          onClose={() => setOverlay(null)}
+          onSaved={finish(t.common.saved)}
+        />
+      ) : null}
+      {overlay?.kind === 'status' ? (
+        <SkillStatus
+          key={overlay.skill.id}
+          skill={overlay.skill}
+          onClose={() => setOverlay(null)}
+          onChanged={finish(t.common.saved)}
         />
       ) : null}
     </>
   );
 }
 
-function SkillCreate({ reload }: { reload: () => Promise<void> }) {
+/** Short form (3 fields): a dialog opened from the page header. Mounted only while open, so it resets on close. */
+function SkillCreate({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => Promise<void>;
+}) {
   const { api, t } = useWorkforce();
-  const empty = { code: '', nameVi: '', nameEn: '' };
-  const [form, setForm] = useState(empty);
+  const [form, setForm] = useState({ code: '', nameVi: '', nameEn: '' });
   const submit = useSubmit();
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  async function save() {
     const ok = await submit.run(
-      () => runMutation(() => api.post('/api/v1/skills', form), reload),
+      () => runMutation(() => api.post('/api/v1/skills', form), onCreated),
       t.skills.created,
     );
-    if (ok) {
-      setForm(empty);
-      await reload();
-    }
+    if (ok) await onCreated();
   }
 
   return (
-    <Section title={t.skills.create}>
-      <details className="wf-disclosure">
-        <summary>{t.skills.create}</summary>
-        <form className="wf-form" onSubmit={(event) => void save(event)}>
-          <Field id="skill-code" label={t.common.code} required>
-            <input
-              id="skill-code"
-              required
+    <FormDialog
+      title={t.skills.create}
+      labels={formOverlayLabels(t, t.common.create)}
+      busy={submit.pending}
+      dirty={form.code !== '' || form.nameVi !== '' || form.nameEn !== ''}
+      error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
+      onClose={onClose}
+      onSubmit={save}
+    >
+      <FormGrid>
+        <Field label={t.common.code} required width="md">
+          {(control) => (
+            <TextInput
+              {...control}
               maxLength={64}
               value={form.code}
               onChange={(event) => setForm({ ...form, code: event.target.value })}
             />
-          </Field>
-          <div className="wf-row">
-            <Field id="skill-vi" label={t.skills.nameVi} required>
-              <input
-                id="skill-vi"
-                required
-                maxLength={200}
-                value={form.nameVi}
-                onChange={(event) => setForm({ ...form, nameVi: event.target.value })}
-              />
-            </Field>
-            <Field id="skill-en" label={t.skills.nameEn} required>
-              <input
-                id="skill-en"
-                required
-                maxLength={200}
-                value={form.nameEn}
-                onChange={(event) => setForm({ ...form, nameEn: event.target.value })}
-              />
-            </Field>
-          </div>
-          <FormFeedback error={submit.error} success={submit.success} t={t} />
-          <SubmitButton
-            pending={submit.pending}
-            label={t.common.create}
-            pendingLabel={t.common.saving}
-          />
-        </form>
-      </details>
-    </Section>
+          )}
+        </Field>
+        <Field label={t.skills.nameVi} required>
+          {(control) => (
+            <TextInput
+              {...control}
+              maxLength={200}
+              value={form.nameVi}
+              onChange={(event) => setForm({ ...form, nameVi: event.target.value })}
+            />
+          )}
+        </Field>
+        <Field label={t.skills.nameEn} required>
+          {(control) => (
+            <TextInput
+              {...control}
+              maxLength={200}
+              value={form.nameEn}
+              onChange={(event) => setForm({ ...form, nameEn: event.target.value })}
+            />
+          )}
+        </Field>
+      </FormGrid>
+    </FormDialog>
   );
 }
 
-/** Edit and (de)activate one skill. Opened from the row menu; 7.5d moves it onto `FormDialog`. */
+/** Rename one skill. Opened from the row menu. */
 function SkillEdit({
   skill,
-  reload,
   onClose,
+  onSaved,
 }: {
   skill: SkillResponse;
-  reload: () => Promise<void>;
   onClose: () => void;
+  onSaved: () => Promise<void>;
 }) {
   const { api, t } = useWorkforce();
-  const [form, setForm] = useState({ nameVi: skill.nameVi, nameEn: skill.nameEn, reason: '' });
+  const [form, setForm] = useState({ nameVi: skill.nameVi, nameEn: skill.nameEn });
   const submit = useSubmit();
-  const id = `skill-${skill.id}`;
+  const changed = form.nameVi !== skill.nameVi || form.nameEn !== skill.nameEn;
 
-  async function rename(event: FormEvent) {
-    event.preventDefault();
+  async function save() {
     const ok = await submit.run(
       () =>
         runMutation(
@@ -292,97 +330,93 @@ function SkillEdit({
               ...(form.nameVi !== skill.nameVi ? { nameVi: form.nameVi } : {}),
               ...(form.nameEn !== skill.nameEn ? { nameEn: form.nameEn } : {}),
             }),
-          reload,
+          onSaved,
         ),
       t.common.saved,
     );
-    if (ok) {
-      await reload();
-      onClose();
-    }
+    if (ok) await onSaved();
   }
 
-  async function toggle() {
-    const ok = await submit.run(
-      () =>
-        runMutation(
+  return (
+    <FormDialog
+      title={`${t.common.edit}: ${skill.code}`}
+      labels={formOverlayLabels(t, t.common.save)}
+      busy={submit.pending}
+      dirty={changed}
+      submitDisabled={!changed}
+      error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
+      onClose={onClose}
+      onSubmit={save}
+    >
+      <FormGrid>
+        <Field label={t.skills.nameVi} required>
+          {(control) => (
+            <TextInput
+              {...control}
+              maxLength={200}
+              value={form.nameVi}
+              onChange={(event) => setForm({ ...form, nameVi: event.target.value })}
+            />
+          )}
+        </Field>
+        <Field label={t.skills.nameEn} required>
+          {(control) => (
+            <TextInput
+              {...control}
+              maxLength={200}
+              value={form.nameEn}
+              onChange={(event) => setForm({ ...form, nameEn: event.target.value })}
+            />
+          )}
+        </Field>
+      </FormGrid>
+    </FormDialog>
+  );
+}
+
+/** Activate or deactivate: a confirmation with a required reason, opened from the row menu. */
+function SkillStatus({
+  skill,
+  onClose,
+  onChanged,
+}: {
+  skill: SkillResponse;
+  onClose: () => void;
+  onChanged: () => Promise<void>;
+}) {
+  const { api, t } = useWorkforce();
+  const deactivating = skill.isActive;
+  return (
+    <ConfirmDialog
+      title={deactivating ? t.skills.deactivateTitle : t.skills.activateTitle}
+      description={deactivating ? t.skills.deactivateBody : t.skills.activateBody}
+      facts={[{ label: t.common.code, value: `${skill.code} · ${skill.nameVi}` }]}
+      tone={deactivating ? 'danger' : 'neutral'}
+      confirmLabel={deactivating ? t.common.deactivate : t.common.activate}
+      busyLabel={t.common.saving}
+      cancelLabel={t.common.cancel}
+      referenceLabel={t.errors.reference}
+      reasonField={{
+        label: t.common.reason,
+        required: true,
+        requiredLabel: t.common.required,
+        requiredMessage: t.common.form.reasonRequired,
+      }}
+      describeError={confirmError(t)}
+      onCancel={onClose}
+      onConfirm={async (reason) => {
+        const outcome = await runMutation(
           () =>
             api.post(`/api/v1/skills/${skill.id}/status`, {
               expectedVersion: skill.version,
               isActive: !skill.isActive,
-              reason: form.reason,
+              reason: reason ?? '',
             }),
-          reload,
-        ),
-      t.common.saved,
-    );
-    if (ok) {
-      await reload();
-      onClose();
-    }
-  }
-
-  return (
-    <Dialog
-      onClose={onClose}
-      title={`${t.common.edit}: ${skill.code}`}
-      closeLabel={t.common.close}
-      busy={submit.pending}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose} disabled={submit.pending}>
-            {t.common.cancel}
-          </Button>
-          <Button
-            type="submit"
-            form={`${id}-form`}
-            variant="primary"
-            loading={submit.pending}
-            disabled={form.nameVi === skill.nameVi && form.nameEn === skill.nameEn}
-          >
-            {submit.pending ? t.common.saving : t.common.save}
-          </Button>
-        </>
-      }
-    >
-      <form id={`${id}-form`} className="wf-form" onSubmit={(event) => void rename(event)}>
-        <Field id={`${id}-vi`} label={t.skills.nameVi} required>
-          <input
-            id={`${id}-vi`}
-            required
-            maxLength={200}
-            value={form.nameVi}
-            onChange={(event) => setForm({ ...form, nameVi: event.target.value })}
-          />
-        </Field>
-        <Field id={`${id}-en`} label={t.skills.nameEn} required>
-          <input
-            id={`${id}-en`}
-            required
-            maxLength={200}
-            value={form.nameEn}
-            onChange={(event) => setForm({ ...form, nameEn: event.target.value })}
-          />
-        </Field>
-        <Field id={`${id}-reason`} label={t.common.reason}>
-          <input
-            id={`${id}-reason`}
-            maxLength={500}
-            value={form.reason}
-            onChange={(event) => setForm({ ...form, reason: event.target.value })}
-          />
-        </Field>
-        <FormFeedback error={submit.error} success={submit.success} t={t} />
-        <div>
-          <Button
-            variant={skill.isActive ? 'danger-outline' : 'secondary'}
-            disabled={submit.pending || form.reason.trim() === ''}
-            onClick={() => void toggle()}
-          >
-            {skill.isActive ? t.common.deactivate : t.common.activate}
-          </Button>
-        </div>
-      </form>
-    </Dialog>
+          onChanged,
+        );
+        if (!outcome.ok) throw outcome.error;
+        await onChanged();
+      }}
+    />
   );
 }

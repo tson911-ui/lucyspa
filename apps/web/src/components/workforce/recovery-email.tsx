@@ -13,7 +13,7 @@ import {
 } from '../../lib/workforce/recovery';
 import { useReauthentication } from './reauth-dialog';
 import { useWorkforce } from './session';
-import { Badge, Field, Notice, Section, SubmitButton, useResource, useSubmit } from './ui';
+import { Badge, Button, Field, Notice, Section, SubmitButton, useResource, useSubmit } from './ui';
 
 /**
  * "Email khôi phục" for the signed-in Owner or employee: shows whether the stored recovery
@@ -84,7 +84,21 @@ export function RecoveryEmailView({
   }
 
   return (
-    <Section title={texts.title}>
+    <Section
+      title={texts.title}
+      actions={
+        state === 'unverified' ? (
+          <Button
+            variant={flowToken ? 'secondary' : 'primary'}
+            loading={submit.pending && !flowToken}
+            disabled={submit.pending}
+            onClick={() => void send()}
+          >
+            {submit.pending && !flowToken ? texts.sending : texts.sendCode}
+          </Button>
+        ) : undefined
+      }
+    >
       {dialog}
       <p className="wf-muted">{texts.intro}</p>
       {state === 'missing' ? (
@@ -127,14 +141,6 @@ export function RecoveryEmailView({
               />
             </form>
           ) : null}
-          <button
-            type="button"
-            className={`wf-button ${flowToken ? 'wf-button-quiet' : 'wf-button-primary'}`}
-            disabled={submit.pending}
-            onClick={() => void send()}
-          >
-            {submit.pending && !flowToken ? texts.sending : texts.sendCode}
-          </button>
         </>
       ) : null}
       {state === 'verified' && submit.success ? (

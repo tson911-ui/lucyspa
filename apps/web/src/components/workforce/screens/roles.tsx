@@ -21,6 +21,7 @@ import { runMutation } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
+  CheckField,
   Card,
   Empty,
   ErrorState,
@@ -138,32 +139,32 @@ export function PermissionChecklist({
             const blocked =
               !checked && !original.includes(entry.code) && !canBundle(account, entry.code);
             return (
-              <label key={entry.code}>
-                <input
-                  type="checkbox"
-                  name={`${idPrefix}-permission`}
-                  value={entry.code}
-                  checked={checked}
-                  disabled={blocked}
-                  onChange={(event) =>
-                    onChange(
-                      event.target.checked
-                        ? [...selected, entry.code]
-                        : selected.filter((code) => code !== entry.code),
-                    )
-                  }
-                />
-                <span>
-                  {permissionLabel(entry.code, t)}{' '}
-                  {entry.scopeCapability === 'GLOBAL_ONLY' ? (
-                    <Badge tone="warning">{texts.scope.GLOBAL_ONLY}</Badge>
-                  ) : null}{' '}
-                  <span className="wf-muted wf-small">
-                    ({entry.code}
-                    {blocked ? ` · ${texts.notHeld}` : ''})
+              <CheckField
+                key={entry.code}
+                name={`${idPrefix}-permission`}
+                value={entry.code}
+                checked={checked}
+                disabled={blocked}
+                onChange={(event) =>
+                  onChange(
+                    event.target.checked
+                      ? [...selected, entry.code]
+                      : selected.filter((code) => code !== entry.code),
+                  )
+                }
+                label={
+                  <span>
+                    {permissionLabel(entry.code, t)}{' '}
+                    {entry.scopeCapability === 'GLOBAL_ONLY' ? (
+                      <Badge tone="warning">{texts.scope.GLOBAL_ONLY}</Badge>
+                    ) : null}{' '}
+                    <span className="wf-muted wf-small">
+                      ({entry.code}
+                      {blocked ? ` · ${texts.notHeld}` : ''})
+                    </span>
                   </span>
-                </span>
-              </label>
+                }
+              />
             );
           })}
         </fieldset>
@@ -505,17 +506,16 @@ function ManagerGroupField({
   const texts = t.roleAdmin;
   return (
     <div className="wf-checklist">
-      <label htmlFor={id}>
-        <input
-          id={id}
-          type="checkbox"
-          checked={checked}
-          onChange={(event) => onChange(event.target.checked)}
-        />
-        <span>
-          {texts.managerGroup} <span className="wf-muted wf-small">{texts.managerGroupHint}</span>
-        </span>
-      </label>
+      <CheckField
+        id={id}
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        label={
+          <span>
+            {texts.managerGroup} <span className="wf-muted wf-small">{texts.managerGroupHint}</span>
+          </span>
+        }
+      />
     </div>
   );
 }

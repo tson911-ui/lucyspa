@@ -1,83 +1,165 @@
 'use client';
 
-import type { BranchCreateRequest, BranchListResponse } from '@lucy-spa/contracts';
+import type { BranchCreateRequest, BranchListResponse, BranchSummary } from '@lucy-spa/contracts';
+import {
+  DataTable,
+  DEFAULT_PAGE_SIZE,
+  Field,
+  FormDialog,
+  FormGrid,
+  RowActions,
+  TextInput,
+  type DataTableColumn,
+} from '@lucy-spa/ui';
 import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
+import { fill } from '../../../i18n/workforce';
+import { formOverlayLabels } from '../../../lib/workforce/form-labels';
+import { paginationLabels } from '../../../lib/workforce/list-view';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
+  Button,
   Empty,
   ErrorState,
-  Field,
-  FormFeedback,
-  Loading,
+  Notice,
   PageHeader,
-  Section,
-  SubmitButton,
   useResource,
   useSubmit,
 } from '../ui';
 
+/**
+ * Branch list: `DataTable` (client paging, 20 per page), the name is the link to the detail page and
+ * the row `⋮` menu repeats it. Creating a branch (4 fields) is a dialog opened from the page header.
+ */
 export function BranchesScreen() {
-  const { api, t, base } = useWorkforce();
+  const { api, t, base, navigate } = useWorkforce();
   const { account } = useAccount();
   const list = useResource(() => api.get<BranchListResponse>('/api/v1/branches'), [api]);
+  const [creating, setCreating] = useState(false);
+  const [created, setCreated] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const manage = canGlobal(account, 'MANAGE_BRANCHES');
+
+  const columns: DataTableColumn<BranchSummary>[] = [
+    { key: 'code', header: t.common.code, cell: (branch) => branch.code },
+    {
+      key: 'name',
+      header: t.common.name,
+      mobileTitle: true,
+      truncate: true,
+      width: 'lg',
+      cell: (branch) => (
+        <Link className="ls-link" href={`${base}/branches/${branch.id}`} title={branch.name}>
+          {branch.name}
+        </Link>
+      ),
+    },
+    {
+      key: 'timezone',
+      header: t.branches.timezone,
+      hideBelow: 'md',
+      cell: (branch) => branch.timezone,
+    },
+    {
+      key: 'status',
+      header: t.common.status,
+      cell: (branch) => (
+        <Badge tone={branch.isActive ? 'success' : 'neutral'}>
+          {branch.isActive ? t.common.active : t.common.inactive}
+        </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      header: t.common.actions,
+      actions: true,
+      cell: (branch) => (
+        <RowActions
+          menuLabel={fill(t.common.list.actionsFor, { name: branch.name })}
+          items={[
+            {
+              id: 'details',
+              label: t.common.details,
+              icon: 'eye',
+              onSelect: () => navigate?.(`${base}/branches/${branch.id}`),
+            },
+          ]}
+        />
+      ),
+    },
+  ];
 
   return (
     <>
-      <PageHeader title={t.branches.title} />
-      {canGlobal(account, 'MANAGE_BRANCHES') ? <CreateBranch onCreated={list.reload} /> : null}
-      <Section title={t.branches.title}>
-        {list.loading ? <Loading t={t} /> : null}
-        {list.error ? (
-          <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
+      <PageHeader title={t.branches.title}>
+        {manage ? (
+          <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
+            {t.branches.create}
+          </Button>
         ) : null}
-        {list.data && list.data.branches.length === 0 ? <Empty>{t.common.empty}</Empty> : null}
-        {list.data && list.data.branches.length > 0 ? (
-          <table className="wf-table">
-            <thead>
-              <tr>
-                <th scope="col">{t.common.code}</th>
-                <th scope="col">{t.common.name}</th>
-                <th scope="col">{t.branches.timezone}</th>
-                <th scope="col">{t.common.status}</th>
-                <th scope="col">{t.common.actions}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.data.branches.map((branch) => (
-                <tr key={branch.id}>
-                  <td data-label={t.common.code}>{branch.code}</td>
-                  <td data-label={t.common.name}>{branch.name}</td>
-                  <td data-label={t.branches.timezone}>{branch.timezone}</td>
-                  <td data-label={t.common.status}>
-                    <Badge tone={branch.isActive ? 'success' : 'neutral'}>
-                      {branch.isActive ? t.common.active : t.common.inactive}
-                    </Badge>
-                  </td>
-                  <td data-label={t.common.actions}>
-                    <Link href={`${base}/branches/${branch.id}`}>{t.common.details}</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : null}
-      </Section>
+      </PageHeader>
+      {created ? <Notice tone="success">{t.branches.created}</Notice> : null}
+      <DataTable
+        mode="client"
+        caption={fill(t.common.list.table, { list: t.branches.title })}
+        columns={columns}
+        rows={list.data?.branches ?? []}
+        rowKey={(branch) => branch.id}
+        loading={list.loading}
+        loadingLabel={t.common.loading}
+        error={
+          list.error ? (
+            <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
+          ) : undefined
+        }
+        empty={list.data ? <Empty>{t.common.empty}</Empty> : undefined}
+        paging={{
+          page,
+          pageSize,
+          onPageChange: setPage,
+          onPageSizeChange: (size) => {
+            setPageSize(size);
+            setPage(1);
+          },
+          labels: paginationLabels(t, t.branches.title),
+        }}
+      />
+      {creating ? (
+        <CreateBranch
+          onClose={() => setCreating(false)}
+          onCreated={async () => {
+            await list.reload();
+            setCreating(false);
+            setCreated(true);
+          }}
+        />
+      ) : null}
     </>
   );
 }
 
-function CreateBranch({ onCreated }: { onCreated: () => Promise<void> }) {
+/** Short form (4 fields): a dialog, mounted only while open so it resets on close. */
+function CreateBranch({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => Promise<void>;
+}) {
   const { api, t } = useWorkforce();
-  const empty = { code: '', name: '', timezone: 'Asia/Ho_Chi_Minh', reason: '' };
-  const [form, setForm] = useState(empty);
+  const [form, setForm] = useState({
+    code: '',
+    name: '',
+    timezone: 'Asia/Ho_Chi_Minh',
+    reason: '',
+  });
   const submit = useSubmit();
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  async function save() {
     const body: BranchCreateRequest = {
       code: form.code,
       name: form.name,
@@ -88,67 +170,61 @@ function CreateBranch({ onCreated }: { onCreated: () => Promise<void> }) {
       () => runMutation(() => api.post('/api/v1/branches', body), onCreated),
       t.branches.created,
     );
-    if (ok) {
-      setForm(empty);
-      await onCreated();
-    }
+    if (ok) await onCreated();
   }
 
   return (
-    <Section title={t.branches.create}>
-      <details className="wf-disclosure">
-        <summary>{t.branches.create}</summary>
-        <form className="wf-form" onSubmit={(event) => void save(event)}>
-          <div className="wf-row">
-            <Field id="branch-code" label={t.common.code} required>
-              <input
-                id="branch-code"
-                required
-                maxLength={64}
-                value={form.code}
-                onChange={(event) => setForm({ ...form, code: event.target.value })}
-              />
-            </Field>
-            <Field id="branch-name" label={t.common.name} required>
-              <input
-                id="branch-name"
-                required
-                maxLength={200}
-                value={form.name}
-                onChange={(event) => setForm({ ...form, name: event.target.value })}
-              />
-            </Field>
-          </div>
-          <Field
-            id="branch-timezone"
-            label={t.branches.timezone}
-            required
-            hint={t.branches.timezoneHint}
-          >
-            <input
-              id="branch-timezone"
-              required
+    <FormDialog
+      title={t.branches.create}
+      labels={formOverlayLabels(t, t.common.create)}
+      busy={submit.pending}
+      dirty={form.code !== '' || form.name !== '' || form.reason !== ''}
+      error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
+      onClose={onClose}
+      onSubmit={save}
+    >
+      <FormGrid cols={2}>
+        <Field label={t.common.code} required>
+          {(control) => (
+            <TextInput
+              {...control}
+              maxLength={64}
+              value={form.code}
+              onChange={(event) => setForm({ ...form, code: event.target.value })}
+            />
+          )}
+        </Field>
+        <Field label={t.common.name} required>
+          {(control) => (
+            <TextInput
+              {...control}
+              maxLength={200}
+              value={form.name}
+              onChange={(event) => setForm({ ...form, name: event.target.value })}
+            />
+          )}
+        </Field>
+        <Field label={t.branches.timezone} required hint={t.branches.timezoneHint} full>
+          {(control) => (
+            <TextInput
+              {...control}
               maxLength={64}
               value={form.timezone}
               onChange={(event) => setForm({ ...form, timezone: event.target.value })}
             />
-          </Field>
-          <Field id="branch-reason" label={t.common.reasonOptional}>
-            <input
-              id="branch-reason"
+          )}
+        </Field>
+        <Field label={t.common.reasonOptional} full>
+          {(control) => (
+            <TextInput
+              {...control}
               maxLength={500}
               value={form.reason}
               onChange={(event) => setForm({ ...form, reason: event.target.value })}
             />
-          </Field>
-          <FormFeedback error={submit.error} success={submit.success} t={t} />
-          <SubmitButton
-            pending={submit.pending}
-            label={t.common.create}
-            pendingLabel={t.common.saving}
-          />
-        </form>
-      </details>
-    </Section>
+          )}
+        </Field>
+      </FormGrid>
+    </FormDialog>
   );
 }

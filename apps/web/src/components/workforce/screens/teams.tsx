@@ -29,6 +29,7 @@ import { runMutation } from '../../../lib/workforce/workflows';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import {
+  CheckField,
   Empty,
   ErrorState,
   Field,
@@ -40,6 +41,7 @@ import {
   SubmitButton,
   useResource,
   useSubmit,
+  VisuallyHidden,
 } from '../ui';
 
 export function OrganizationPager({
@@ -352,14 +354,11 @@ function TeamSettings({ team, reload }: { team: TeamSummary; reload: () => Promi
             disabled={!reason.trim() || !name.trim()}
           />
           <Notice tone="warning">{text.deleteWarning}</Notice>
-          <label>
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={(event) => setConfirmed(event.target.checked)}
-            />{' '}
-            {text.confirmDelete}
-          </label>
+          <CheckField
+            checked={confirmed}
+            onChange={(event) => setConfirmed(event.target.checked)}
+            label={text.confirmDelete}
+          />
           <button
             className="wf-button wf-button-danger"
             type="button"
@@ -586,9 +585,10 @@ export function TeamMemberTable({
           <tr key={employee.userId}>
             {selectable ? (
               <td data-label={text.selection}>
-                <input
-                  type="checkbox"
-                  aria-label={`${text.selection}: ${employee.fullName}`}
+                <CheckField
+                  label={
+                    <VisuallyHidden>{`${text.selection}: ${employee.fullName}`}</VisuallyHidden>
+                  }
                   disabled={
                     disabled ||
                     (selection.kind === 'explicit' &&
@@ -873,15 +873,12 @@ function TeamMembers({ team, reload }: { team: TeamSummary; reload: () => Promis
               onChange={(event) => setReason(event.target.value)}
             />
           </Field>
-          <label>
-            <input
-              type="checkbox"
-              checked={confirmed}
-              disabled={submit.pending}
-              onChange={(event) => setConfirmed(event.target.checked)}
-            />{' '}
-            {text.confirmBulk}
-          </label>
+          <CheckField
+            checked={confirmed}
+            disabled={submit.pending}
+            onChange={(event) => setConfirmed(event.target.checked)}
+            label={text.confirmBulk}
+          />
           <p role="status">
             {text.progress}: {progress.processed} · {text.changed}: {progress.changed}
           </p>

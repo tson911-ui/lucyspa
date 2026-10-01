@@ -36,7 +36,7 @@ test('every token the component styles read is defined', () => {
 });
 
 function rule(selector: string): string {
-  const escaped = selector.replace(/[.[\]]/g, '\\$&');
+  const escaped = selector.replace(/[.[\]()]/g, '\\$&');
   const match = new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]*)\\}`).exec(css);
   assert.ok(match, `rule ${selector} exists`);
   return match[1] ?? '';
@@ -103,6 +103,69 @@ test('the solid danger button is used in confirmation dialogs only', () => {
     if (/variant\s*[=:]\s*\{?\s*(?:[^}\n]*\?\s*)?['"]danger['"]/.test(text)) offenders.push(file);
   }
   assert.deepEqual(offenders, [], 'variant "danger" outside ConfirmDialog');
+});
+
+test('form frame: field and dialog widths come from tokens, row-wide checks and the disclosure exist', () => {
+  assert.match(rule('.ls-field-sm'), /max-width:\s*var\(--ls-field-sm\)/);
+  assert.match(rule('.ls-field-md'), /max-width:\s*var\(--ls-field-md\)/);
+  assert.match(rule('.ls-field-lg'), /max-width:\s*var\(--ls-field-lg\)/);
+  assert.match(
+    tokens,
+    /--ls-field-sm:\s*10rem[\s\S]*--ls-field-md:\s*17\.5rem[\s\S]*--ls-field-lg:\s*30rem/,
+  );
+  assert.match(
+    tokens,
+    /--ls-dialog-sm:\s*25rem[\s\S]*--ls-dialog-md:\s*35rem[\s\S]*--ls-dialog-lg:\s*45rem/,
+  );
+  assert.match(rule('.ls-dialog-sm'), /var\(--ls-dialog-sm\)/);
+  assert.match(rule('.ls-dialog-lg'), /var\(--ls-dialog-lg\)/);
+  assert.match(rule('.ls-check'), /min-height:\s*var\(--ls-control-h\)/, '40/44 px row');
+  assert.match(rule('.ls-check-field'), /width:\s*100%/, 'the whole row is the target');
+  assert.match(rule('.ls-disclosure-chevron'), /transition:\s*transform var\(--ls-dur-fast\)/);
+  assert.match(rule('.ls-disclosure-trigger'), /min-height:\s*var\(--ls-control-h\)/);
+  assert.match(rule('.ls-form-actions'), /justify-content:\s*flex-end/, 'trailing edge');
+});
+
+test('dashboard frame: clamped widget titles, flush notices in cards, a 280 px branch select', () => {
+  const clamp = rule('.ls-card-title-clamp');
+  assert.match(clamp, /white-space:\s*nowrap/);
+  assert.match(clamp, /text-overflow:\s*ellipsis/);
+  assert.match(rule('.ls-card-header-clamp'), /flex-wrap:\s*nowrap/);
+  const notice = rule('.ls-card .ls-notice');
+  assert.match(notice, /margin:\s*0/);
+  assert.match(notice, /border-inline-start:\s*0/);
+  assert.match(rule('.ls-dashboard-tools .ls-select'), /width:\s*var\(--ls-field-md\)/);
+  assert.match(rule('.ls-tab'), /flex:\s*none/, 'tabs scroll in their strip instead of squeezing');
+});
+
+test('hover is one theme: row, nav, menu, outline and ghost hovers read the hover tokens', () => {
+  for (const selector of [
+    '.ls-nav-link:hover,\n.ls-sidebar-toggle:hover',
+    '.ls-table tbody tr:hover td',
+    ".ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled)",
+    ".ls-btn-ghost:hover:not([aria-disabled='true']):not(:disabled)",
+    '.ls-menu-item:hover,\n.ls-menu-item:focus-visible',
+  ]) {
+    const body = rule(selector);
+    assert.match(body, /background:\s*var\(--ls-hover-bg\)/, `${selector} fill`);
+  }
+  for (const selector of [
+    '.ls-table tbody tr:hover td',
+    ".ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled)",
+  ]) {
+    assert.match(rule(selector), /color:\s*var\(--ls-hover-text\)/, `${selector} text`);
+  }
+  assert.match(
+    rule(".ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled)"),
+    /border-color:\s*var\(--ls-hover-border\)/,
+  );
+  // Solid red keeps a deeper red on hover; it does not turn pale.
+  assert.match(
+    rule(".ls-btn-primary:hover:not([aria-disabled='true']):not(:disabled)"),
+    /var\(--ls-brand-fill-hover\)/,
+  );
+  // No hover rule falls back to the neutral sunken fill any more.
+  assert.doesNotMatch(css, /:hover[^{]*\{[^}]*background:\s*var\(--ls-bg-sunken\)/);
 });
 
 test('mobile: components adapt at the phone breakpoint', () => {

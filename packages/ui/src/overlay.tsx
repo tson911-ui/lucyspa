@@ -180,6 +180,8 @@ export function Drawer({
   title,
   side = 'end',
   closeLabel,
+  busy = false,
+  initialFocus,
   footer,
   children,
   className,
@@ -190,12 +192,21 @@ export function Drawer({
   /** `bottom` is a sheet that rises from the bottom edge (phone filters); `start`/`end` are full-height. */
   side?: 'start' | 'end' | 'bottom' | undefined;
   closeLabel: string;
+  /** While busy, Escape, the backdrop and the close button do nothing. */
+  busy?: boolean | undefined;
+  /** Element to focus first; defaults to the first focusable element. */
+  initialFocus?: RefObject<HTMLElement | null> | undefined;
   footer?: ReactNode | undefined;
   children?: ReactNode | undefined;
   className?: string | undefined;
 }) {
   const titleId = useId();
-  const { panelRef, onKeyDown, onBackdropMouseDown } = useModal({ open, busy: false, onClose });
+  const { panelRef, onKeyDown, onBackdropMouseDown } = useModal({
+    open,
+    busy,
+    onClose,
+    initialFocus,
+  });
   if (!open) return null;
   return (
     <div className="ls-backdrop ls-backdrop-drawer" onMouseDown={onBackdropMouseDown}>
@@ -205,6 +216,7 @@ export function Drawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-busy={busy || undefined}
         tabIndex={-1}
         onKeyDown={onKeyDown}
       >
@@ -212,7 +224,7 @@ export function Drawer({
           <h2 className="ls-dialog-title" id={titleId}>
             {title}
           </h2>
-          <IconButton icon="close" label={closeLabel} onClick={onClose} />
+          <IconButton icon="close" label={closeLabel} onClick={onClose} disabled={busy} />
         </header>
         <div className="ls-drawer-body">{children}</div>
         {footer ? <footer className="ls-dialog-footer">{footer}</footer> : null}

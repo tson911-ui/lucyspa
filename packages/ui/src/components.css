@@ -73,7 +73,9 @@
 }
 
 .ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled) {
-  background: var(--ls-bg-sunken);
+  border-color: var(--ls-hover-border);
+  color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
 }
 
 .ls-btn-ghost {
@@ -81,7 +83,9 @@
 }
 
 .ls-btn-ghost:hover:not([aria-disabled='true']):not(:disabled) {
-  background: var(--ls-bg-sunken);
+  border-color: var(--ls-hover-ghost-border);
+  color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
 }
 
 .ls-btn-danger-outline {
@@ -261,7 +265,11 @@
 
 .ls-menu-item:hover,
 .ls-menu-item:focus-visible {
-  background: var(--ls-bg-sunken);
+  background: var(--ls-hover-bg);
+}
+
+.ls-menu-item:hover:not(.ls-menu-item-danger):not(.ls-menu-item-disabled) {
+  color: var(--ls-hover-text);
 }
 
 .ls-menu-item:focus-visible {
@@ -624,6 +632,18 @@
   min-width: 0;
 }
 
+.ls-field-sm {
+  max-width: var(--ls-field-sm);
+}
+
+.ls-field-md {
+  max-width: var(--ls-field-md);
+}
+
+.ls-field-lg {
+  max-width: var(--ls-field-lg);
+}
+
 .ls-label {
   padding: 0;
   font-size: var(--ls-text-sm);
@@ -822,6 +842,23 @@
   overflow-wrap: anywhere;
 }
 
+/* Row-wide target: the whole row (not only the 20 px box) toggles, 40 px desktop and 44 px touch. */
+.ls-check-field {
+  width: 100%;
+  padding-inline: var(--ls-space-3);
+  border-radius: var(--ls-radius-sm);
+  align-items: center;
+}
+
+.ls-check-field input {
+  margin: 0;
+}
+
+.ls-check-field:hover {
+  color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
+}
+
 .ls-radios {
   display: grid;
   gap: var(--ls-space-1);
@@ -928,6 +965,28 @@
 }
 
 /* Form structure */
+.ls-form,
+.ls-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ls-space-4);
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .ls-form-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ls-form-grid-2 > .ls-field-full {
+    grid-column: 1 / -1;
+  }
+}
+
+.ls-form-error {
+  min-width: 0;
+}
+
 .ls-form-section {
   display: grid;
   gap: var(--ls-space-3);
@@ -938,11 +997,56 @@
 }
 
 .ls-form-section-title {
-  margin-bottom: var(--ls-space-2);
+  margin: 0;
   padding: 0;
   font-size: var(--ls-text-lg);
   font-weight: 600;
   line-height: var(--ls-leading-lg);
+}
+
+/* Disclosure: one button, a turning chevron, a plain panel. */
+.ls-disclosure {
+  min-width: 0;
+}
+
+.ls-disclosure-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  min-height: var(--ls-control-h);
+  padding: var(--ls-space-2) var(--ls-space-3);
+  border: 0;
+  border-radius: var(--ls-radius-sm);
+  color: var(--ls-text);
+  background: transparent;
+  font: inherit;
+  font-size: var(--ls-text-sm);
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+}
+
+.ls-disclosure-trigger:hover {
+  color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
+}
+
+.ls-disclosure-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ls-disclosure-chevron {
+  flex: none;
+  transition: transform var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+.ls-disclosure-open .ls-disclosure-chevron {
+  transform: rotate(180deg);
+}
+
+.ls-disclosure-panel {
+  padding-top: var(--ls-space-3);
 }
 
 .ls-form-section-body {
@@ -954,11 +1058,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--ls-space-2);
   padding-top: var(--ls-space-4);
 }
 
 .ls-form-actions-note {
+  margin-inline-end: auto;
   color: var(--ls-text-muted);
   font-size: var(--ls-text-sm);
 }
@@ -993,7 +1099,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--ls-space-3);
-  width: min(100%, 30rem);
+  width: min(100%, var(--ls-dialog-md));
   max-height: calc(100vh - 2 * var(--ls-space-4));
   padding: var(--ls-space-6);
   overflow-y: auto;
@@ -1004,11 +1110,11 @@
 }
 
 .ls-dialog-sm {
-  width: min(100%, 26rem);
+  width: min(100%, var(--ls-dialog-sm));
 }
 
 .ls-dialog-lg {
-  width: min(100%, 44rem);
+  width: min(100%, var(--ls-dialog-lg));
 }
 
 .ls-dialog-header {
@@ -1087,6 +1193,10 @@
   background: var(--ls-bg-raised);
   box-shadow: var(--ls-shadow-lg);
   animation: ls-drawer-in var(--ls-dur-slow) var(--ls-ease-out) backwards;
+}
+
+.ls-drawer-form:not(.ls-drawer-bottom) {
+  width: min(100%, var(--ls-drawer-form));
 }
 
 .ls-drawer-end {
@@ -1362,7 +1472,8 @@
 }
 
 .ls-table tbody tr:hover td {
-  background: var(--ls-bg-sunken);
+  color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
 }
 
 .ls-table .ls-tr-selected td {
@@ -1473,7 +1584,8 @@
   }
 
   .ls-table tbody tr:hover {
-    background: var(--ls-bg-sunken);
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
   }
 
   .ls-table td,
@@ -1639,7 +1751,9 @@
 }
 
 .ls-page-btn:hover:not(:disabled) {
-  background: var(--ls-bg-sunken);
+  border-color: var(--ls-hover-border);
+  color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
 }
 
 .ls-page-btn:disabled {
@@ -1655,6 +1769,8 @@
 }
 
 .ls-page-current:hover:not(:disabled) {
+  border-color: var(--ls-brand-fill-hover);
+  color: var(--ls-on-brand);
   background: var(--ls-brand-fill-hover);
 }
 
@@ -1796,7 +1912,8 @@
 }
 
 .ls-facet-option:hover {
-  background: var(--ls-bg-sunken);
+  color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
 }
 
 .ls-facet-option .ls-check-text {
@@ -1942,7 +2059,8 @@
 }
 
 .ls-chip-remove:hover {
-  background: var(--ls-bg-sunken);
+  color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
 }
 
 /* Description list */
@@ -1993,6 +2111,8 @@
 }
 
 .ls-tab {
+  /* Tabs keep their own width and the strip scrolls, rather than squeezing four labels into two lines each. */
+  flex: none;
   min-height: var(--ls-control-h);
   padding: var(--ls-space-2) var(--ls-space-4);
   border: 0;
@@ -2009,7 +2129,7 @@
 }
 
 .ls-tab:hover:not(:disabled) {
-  color: var(--ls-text);
+  color: var(--ls-hover-text);
 }
 
 .ls-tab:disabled {
@@ -2116,7 +2236,7 @@
 }
 
 .ls-segment:hover {
-  color: var(--ls-text);
+  color: var(--ls-hover-text);
 }
 
 .ls-segment-active,
@@ -2154,7 +2274,7 @@
 }
 
 .ls-password-toggle:hover {
-  color: var(--ls-text);
+  color: var(--ls-hover-text);
 }
 
 .ls-password-toggle:focus-visible {
@@ -2404,8 +2524,15 @@
 .ls-dashboard-tools {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--ls-space-3);
+}
+
+/* The branch select never grows with a 66-character branch name: 280 px, text cut with an ellipsis. */
+.ls-dashboard-tools .ls-select {
+  width: var(--ls-field-md);
+  max-width: 100%;
+  text-overflow: ellipsis;
 }
 
 /* ==== Chart kit (Step 6, contract 14.4) ==== */
@@ -2486,6 +2613,27 @@
   font-size: var(--ls-text-lg);
   font-weight: 600;
   line-height: var(--ls-leading-lg);
+}
+
+/* Widget titles: one line, so a title that wraps never pushes the value row of its neighbours down. */
+.ls-card-header-clamp {
+  flex-wrap: nowrap;
+}
+
+.ls-card-header-clamp .ls-card-titles {
+  flex: 1 1 0;
+}
+
+.ls-card-title-clamp {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A notice inside a card is a tint, not a second bordered box (FR3), and the card's gap spaces it. */
+.ls-card .ls-notice {
+  margin: 0;
+  border-inline-start: 0;
 }
 
 .ls-card-description {
@@ -3090,7 +3238,8 @@
 }
 
 .ls-calendar-day:hover:not([aria-disabled='true']) {
-  background: var(--ls-bg-sunken);
+  color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
 }
 
 .ls-calendar-day[data-today='true'] {

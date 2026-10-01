@@ -1,7 +1,14 @@
 'use client';
 
 import type { PaymentAnomalyListResponse } from '@lucy-spa/contracts';
-import { ComparisonToggle, LineChart, Notice, Stat, type ComparisonMode } from '@lucy-spa/ui';
+import {
+  ComparisonToggle,
+  EmptyState,
+  LineChart,
+  Notice,
+  Stat,
+  type ComparisonMode,
+} from '@lucy-spa/ui';
 import { useState } from 'react';
 import {
   AWAITING_LIMIT,
@@ -105,6 +112,8 @@ export function PaidInvoicesWidget({ branchId, size, title }: WidgetProps) {
           previous: kit.previous,
         });
         const { today, yesterday } = todayVersusYesterday(data.totals);
+        // No payments and nothing to compare with: say so instead of drawing a flat 0-1 axis.
+        const noPayments = mode === 'none' && data.totals.every((total) => total === 0);
         return (
           <>
             {mayBeIncomplete(board) ? <Notice tone="warning">{copy.incomplete}</Notice> : null}
@@ -128,23 +137,24 @@ export function PaidInvoicesWidget({ branchId, size, title }: WidgetProps) {
             {window && previous.error && !previous.data ? (
               <ErrorState error={previous.error} t={t} onRetry={() => void previous.reload()} />
             ) : null}
-            <LineChart
-              title={`${title}. ${copy.subtitle}`}
-              data={data.series}
-              format={format}
-              area
-              labels={{
-                ...words,
-                xHeader: kit.xHeader,
-                previous: kit.previous,
-                showTable: kit.showTable,
-                showChart: kit.showChart,
-                plotHint: kit.plotHint,
-              }}
-            />
-            {data.totals.every((total) => total === 0) ? (
-              <p className="ls-stat-note">{copy.empty}</p>
-            ) : null}
+            {noPayments ? (
+              <EmptyState icon="info">{copy.empty}</EmptyState>
+            ) : (
+              <LineChart
+                title={`${title}. ${copy.subtitle}`}
+                data={data.series}
+                format={format}
+                area
+                labels={{
+                  ...words,
+                  xHeader: kit.xHeader,
+                  previous: kit.previous,
+                  showTable: kit.showTable,
+                  showChart: kit.showChart,
+                  plotHint: kit.plotHint,
+                }}
+              />
+            )}
           </>
         );
       }}

@@ -24,6 +24,7 @@ import { DurationFields } from './service-durations';
 import { PriceFields } from './service-price-fields';
 import {
   Badge,
+  CheckField,
   ErrorState,
   Field,
   FormFeedback,
@@ -424,21 +425,23 @@ function EligibleSkills({
         <fieldset className="wf-checklist" disabled={!editable}>
           <legend className="wf-visually-hidden">{t.services.eligibleSkills}</legend>
           {options.map((skill) => (
-            <label key={skill.id}>
-              <input
-                type="checkbox"
-                checked={selected.has(skill.id)}
-                onChange={(event) => {
-                  const next = new Set(selected);
-                  if (event.target.checked) next.add(skill.id);
-                  else next.delete(skill.id);
-                  setSelected(next);
-                }}
-              />
-              {locale === 'vi' ? skill.nameVi : skill.nameEn}{' '}
-              <span className="wf-muted wf-small">({skill.code})</span>
-              {!skill.isActive ? <Badge tone="neutral">{t.common.inactive}</Badge> : null}
-            </label>
+            <CheckField
+              key={skill.id}
+              checked={selected.has(skill.id)}
+              onChange={(event) => {
+                const next = new Set(selected);
+                if (event.target.checked) next.add(skill.id);
+                else next.delete(skill.id);
+                setSelected(next);
+              }}
+              label={
+                <span>
+                  {locale === 'vi' ? skill.nameVi : skill.nameEn}{' '}
+                  <span className="wf-muted wf-small">({skill.code})</span>{' '}
+                  {!skill.isActive ? <Badge tone="neutral">{t.common.inactive}</Badge> : null}
+                </span>
+              }
+            />
           ))}
         </fieldset>
         {editable ? (

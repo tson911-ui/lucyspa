@@ -68,6 +68,26 @@ test('size classes come from the layout: the paid invoices widget is wide by def
   assert.match(html, /ls-sortable-item ls-widget-s/);
 });
 
+test('widget titles are one clamped line with the full text as title, so a long title never shifts the value row', () => {
+  const html = render(<DashboardScreen />, owner);
+  const headings = [
+    ...html.matchAll(/<h2 class="ls-card-title ls-card-title-clamp"([^>]*)>([^<]*)<\/h2>/g),
+  ];
+  assert.ok(headings.length >= 4, 'every widget heading is clamped');
+  for (const [, attributes, text] of headings) {
+    assert.ok(attributes!.includes(`title="${text}"`), `title carries "${text}"`);
+  }
+  assert.match(html, /ls-card-header ls-card-header-clamp/);
+});
+
+test('the Owner note is a notice, not loose text, and the layout button says what it does', () => {
+  const html = render(<DashboardScreen />, owner);
+  assert.match(html, /class="ls-notice ls-notice-info"[\s\S]*Tài khoản chủ spa không có chấm công/);
+  assert.equal(vi.dashboard.customize, 'Sắp xếp bố cục');
+  assert.match(vi.dashboard.customizeHelp, /Kéo thẻ để sắp xếp/);
+  assert.match(en.dashboard.customizeHelp, /Drag a card/);
+});
+
 test('English dictionary has every widget title and the same structure as Vietnamese', () => {
   const html = render(<DashboardScreen />, employee(), 'en');
   assert.match(html, /Hello, Lan/);

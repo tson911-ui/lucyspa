@@ -41,6 +41,7 @@ export function CardHeader({
   actions,
   headingLevel = 2,
   id,
+  clamp = false,
 }: {
   title: string;
   description?: string | undefined;
@@ -48,12 +49,18 @@ export function CardHeader({
   headingLevel?: 2 | 3 | undefined;
   /** Id of the heading, for `aria-labelledby` on the card. */
   id?: string | undefined;
+  /** One line, cut with an ellipsis; the full text is the `title`. Cards in a row then align (widgets). */
+  clamp?: boolean | undefined;
 }) {
   const Heading = `h${headingLevel}` as 'h2' | 'h3';
   return (
-    <header className="ls-card-header">
+    <header className={cx('ls-card-header', clamp && 'ls-card-header-clamp')}>
       <div className="ls-card-titles">
-        <Heading className="ls-card-title" id={id}>
+        <Heading
+          className={cx('ls-card-title', clamp && 'ls-card-title-clamp')}
+          id={id}
+          title={clamp ? title : undefined}
+        >
           {title}
         </Heading>
         {description ? <p className="ls-card-description">{description}</p> : null}

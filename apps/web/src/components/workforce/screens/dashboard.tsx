@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Card, IconButton, SegmentedControl, SortableGrid } from '@lucy-spa/ui';
+import { Button, Card, CardHeader, IconButton, SegmentedControl, SortableGrid } from '@lucy-spa/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import {
@@ -20,7 +20,7 @@ import { useBranchMap, DashboardDataProvider } from '../dashboard/data';
 import { WidgetHost } from '../dashboard/widget-host';
 import { RecoveryEmailSection } from '../recovery-email';
 import { useAccount, useWorkforce } from '../session';
-import { Field, PageHeader, Select } from '../ui';
+import { Notice, PageHeader, Select } from '../ui';
 
 /**
  * Dashboard (UX/UI redesign Step 7, docs/UXUI_REDESIGN_DESIGN.md 14, 15): a greeting, the branch scope
@@ -96,14 +96,14 @@ function Dashboard() {
       <PageHeader title={fill(copy.greeting, { name: account.displayName })} intro={copy.intro}>
         <div className="ls-dashboard-tools">
           {showBranchWidgets && branchChoices.length > 1 ? (
-            <Field id="dashboard-branch" label={copy.scope}>
-              <Select
-                id="dashboard-branch"
-                value={branchId ?? ''}
-                onChange={(event) => setBranchId(event.target.value)}
-                options={branchChoices.map((branch) => ({ value: branch.id, label: branch.name }))}
-              />
-            </Field>
+            <Select
+              id="dashboard-branch"
+              aria-label={copy.scope}
+              title={branchChoices.find((branch) => branch.id === branchId)?.name}
+              value={branchId ?? ''}
+              onChange={(event) => setBranchId(event.target.value)}
+              options={branchChoices.map((branch) => ({ value: branch.id, label: branch.name }))}
+            />
           ) : null}
           <Button
             variant={editing ? 'primary' : 'secondary'}
@@ -115,16 +115,24 @@ function Dashboard() {
           </Button>
         </div>
       </PageHeader>
-      {!employee ? <p className="wf-muted">{copy.ownerNote}</p> : null}
+      {!employee ? <Notice tone="info">{copy.ownerNote}</Notice> : null}
       {/* Account recovery: verify the recovery email while still signed in. */}
       <RecoveryEmailSection />
       {editing ? (
         <Card as="section" aria-label={copy.customize}>
-          <p className="ls-card-description">{copy.customizeHelp}</p>
-          <h2 className="ls-card-title">{copy.hiddenTitle}</h2>
-          {layout.hidden.length === 0 ? (
-            <p className="ls-stat-note">{copy.hiddenNone}</p>
-          ) : (
+          <CardHeader
+            title={copy.customize}
+            description={copy.customizeHelp}
+            actions={
+              <Button variant="secondary" onClick={reset}>
+                {copy.customizeReset}
+              </Button>
+            }
+          />
+          <p className="ls-stat-note">
+            {layout.hidden.length === 0 ? copy.hiddenNone : copy.hiddenTitle}
+          </p>
+          {layout.hidden.length > 0 ? (
             <ul className="ls-widget-footer">
               {layout.hidden.map((meta) => (
                 <li key={meta.id}>
@@ -138,12 +146,7 @@ function Dashboard() {
                 </li>
               ))}
             </ul>
-          )}
-          <div className="ls-widget-footer">
-            <Button variant="secondary" onClick={reset}>
-              {copy.customizeReset}
-            </Button>
-          </div>
+          ) : null}
         </Card>
       ) : null}
       <SortableGrid<PlacedWidget>

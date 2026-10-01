@@ -193,7 +193,8 @@
 
 .ls-nav-link:hover,
 .ls-sidebar-toggle:hover {
-  background: var(--ls-bg-sunken);
+  color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
 }
 
 .ls-nav-link:focus-visible,
@@ -343,7 +344,7 @@
 }
 
 .ls-theme-option:hover {
-  color: var(--ls-text);
+  color: var(--ls-hover-text);
 }
 
 .ls-theme-option-active {
@@ -391,7 +392,8 @@
 }
 
 .ls-usermenu-trigger:hover {
-  background: var(--ls-bg-sunken);
+  color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
 }
 
 .ls-usermenu-name {
@@ -497,7 +499,8 @@
 }
 
 .ls-usermenu-link:hover {
-  background: var(--ls-bg-sunken);
+  color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
 }
 
 .ls-usermenu-link:focus-visible {
@@ -578,7 +581,9 @@
   outline-color: var(--ls-auth-panel-text);
 }
 
-.ls-auth-top .ls-btn-ghost:hover {
+.ls-auth-top .ls-btn-ghost:hover:not([aria-disabled='true']):not(:disabled) {
+  border-color: transparent;
+  color: var(--ls-auth-panel-text);
   background: transparent;
   text-decoration: underline;
 }

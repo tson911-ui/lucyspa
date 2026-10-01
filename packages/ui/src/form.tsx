@@ -47,11 +47,17 @@ export function Field({
   hint,
   error,
   labelAction,
+  width,
+  full,
   className,
   children,
 }: {
   id?: string | undefined;
   label: string;
+  /** Caps the field at `--ls-field-sm/md/lg` (160/280/480 px). Omit to fill its grid cell. */
+  width?: 'sm' | 'md' | 'lg' | undefined;
+  /** In a two-column `FormGrid`: span both columns. */
+  full?: boolean | undefined;
   /** A small link or button at the right end of the label row (for example "Forgot password?"). */
   labelAction?: ReactNode | undefined;
   required?: boolean | undefined;
@@ -89,7 +95,9 @@ export function Field({
     </label>
   );
   return (
-    <div className={cx('ls-field', className)}>
+    <div
+      className={cx('ls-field', width && `ls-field-${width}`, full && 'ls-field-full', className)}
+    >
       {labelAction ? (
         <div className="ls-label-row">
           {labelElement}
@@ -702,6 +710,10 @@ export function SearchInput({
 // ---------------------------------------------------------------------------------------------
 // Structure
 
+/**
+ * A titled group of fields: heading, optional one-line description, then the fields. A named
+ * region, not a native `fieldset` (no border or legend chrome); use `RadioGroup` for real radio sets.
+ */
 export function FormSection({
   title,
   description,
@@ -713,34 +725,37 @@ export function FormSection({
   children: ReactNode;
   className?: string | undefined;
 }) {
+  const titleId = useId();
   return (
-    <fieldset className={cx('ls-form-section', className)}>
-      <legend className="ls-form-section-title">{title}</legend>
+    <section aria-labelledby={titleId} className={cx('ls-form-section', className)}>
+      <h3 className="ls-form-section-title" id={titleId}>
+        {title}
+      </h3>
       {description ? <p className="ls-hint">{description}</p> : null}
       <div className="ls-form-section-body">{children}</div>
-    </fieldset>
+    </section>
   );
 }
 
-/** Save then Cancel, left to right; sticky at the bottom of the screen on a phone. */
+/** Cancel then Save at the trailing edge (primary last); sticky at the bottom of the screen on a phone. */
 export function FormActions({
   primary,
   cancel,
   note,
   className,
 }: {
-  /** Usually `<Button type="submit" variant="primary" loading={pending}>`. */
+  /** Usually `<Button type="submit" variant="primary" loading={pending}>`. Rendered last. */
   primary: ReactNode;
   cancel?: ReactNode | undefined;
-  /** Short status text next to the buttons, e.g. "Unsaved changes". */
+  /** Short status text at the leading edge, e.g. "Unsaved changes". */
   note?: ReactNode | undefined;
   className?: string | undefined;
 }) {
   return (
     <div className={cx('ls-form-actions', className)}>
-      {primary}
-      {cancel}
       {note ? <span className="ls-form-actions-note">{note}</span> : null}
+      {cancel}
+      {primary}
     </div>
   );
 }

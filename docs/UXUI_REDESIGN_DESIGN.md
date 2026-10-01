@@ -248,6 +248,12 @@ on dark surfaces); surfaces are warm near-black with separation by lightness ste
 (`#fff`) and pure black (`#000`) text/backgrounds are not used. Images keep their look (no filter); a decorative brand image may
 get `filter: brightness(.9)` only if it glares. Charts use their own dark-selected steps (section 15).
 
+**Hover (Owner, Step 7.5d).** One theme through tokens `--ls-hover-bg/-text/-border/-ghost-border`, never per screen. Light: a
+very light brand tint (`#fbf1f3`) with brand text and border (`#782b37`) for sidebar items, table rows, `⋮` menu items, facet
+options, tabs, pager buttons and outline/ghost buttons; the solid primary darkens to `--ls-brand-fill-hover`. Dark keeps its
+neutral hover (sunken fill, unchanged text and border), asserted in `tokens.test.ts`. Hover text meets 4.5:1 on the hover fill and
+every surface, and the hover border 3:1, in both themes (tested).
+
 ### 6.4 Brand red versus error red (must stay distinct)
 
 The wine `#782b37` (hue ~352°, dark, muted) and the danger red `#b3261e` (hue ~4°, brighter, more saturated) are close relatives, so
@@ -821,6 +827,21 @@ without the Owner. Nothing in Steps 2-10 touches `apps/api`, `packages/database`
 | 12   | **Content B**: `website_popups`, admin CRUD with overlap rule, status derivation, preview, public popup endpoint and public-site component (once per session).                                                                                                                                                                                                                                                    | api, database, contracts, web                                    | integration: overlap, schedule window, public visibility; web: once-per-session, focus trap, Escape                                 |
 | 13   | **Content C**: `website_slides`, admin list with drag-and-drop reorder, schedule, public slides endpoint and basic slider component.                                                                                                                                                                                                                                                                              | api, database, contracts, web                                    | integration: reorder transaction, visibility window, max visible; web: keyboard reorder, pause, reduced motion                      |
 | 14   | **Part 1 final validation**: `pnpm check`, full tests including integration on a scratch DB, build, smoke; axe/a11y pass on key pages in light+dark at 360/768/1440; deployment checklist (env var, `db:permissions:sync`, media dir permissions, backup scope).                                                                                                                                                  | all                                                              | full gate; report with deployment checklist                                                                                         |
+
+**Remap of Steps 8-10 after 7.5 (Owner-approved 2026-10-01; detail in `UXUI_REDESIGN_STEP7_5_PLAN.md` section 8).** The frame, list
+and form primitives now exist, so each Step is split and screens are assembled from them with no new `wf-*` CSS. Each sub-step
+ends with the gate and Owner review; the last of each group sets its ratchet counters to 0. Delete/Cancel/Deactivate wording
+follows 10.5.
+
+- **9a** Services first: `DataTable` client mode, toolbar filters, category column, `⋮` menu, create in `FormDrawer`.
+- **8a** Skills (finish), Roles (permission matrix with `CheckField`), Teams list and detail. **8b** Employee detail, lifecycle,
+  roles, skills, create (page form). **8c** Organization (tab panels to `DataTable` and forms).
+- **9b** Service detail, Branch detail, Discounts. **9c** POS board, invoice, payments (financial actions stay in `ConfirmDialog`).
+- **10a** Booking board, walk-in, reassignment. **10b** My services, collaborator schedule, attendance, leave, my account, my
+  income, notifications; delete the remaining `wf-*` CSS.
+
+Done in 7.5: Skills and Branches (7.5d) and Employees (7.5c) are already on the new frame; Dashboard and the Organization tab strip
+(7.5e); hover theme by tokens (7.5d).
 
 Ordering constraints: 2 -> 3 -> 4 -> 5; 6 needs 3; 7 needs 5 and 6; 8-10 need 4 and 5; 11 needs 3-5 (may start its backend half
 earlier if the Owner asks); 12 needs 11; 13 needs 6 and 11; 14 last. Steps 8-10 may swap order.

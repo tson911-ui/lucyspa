@@ -27,6 +27,12 @@
   --ls-brand-soft: #f8edef;
   --ls-brand-on-soft: #782b37;
   --ls-focus: #782b37;
+  /* Hover (one theme for nav, rows, menus, outline/ghost buttons, pager, tabs): a very light brand
+     tint with brand text and border. Dark keeps the neutral sunken hover it always had. */
+  --ls-hover-bg: #fbf1f3;
+  --ls-hover-text: #782b37;
+  --ls-hover-border: #782b37;
+  --ls-hover-ghost-border: #782b37;
 
   /* Auth brand panel (docs/UXUI_REDESIGN_DESIGN.md 12.6): a deep brand-red gradient in both themes */
   --ls-auth-panel-from: #8a3345;
@@ -106,6 +112,15 @@
   /* Widest a clipped table cell grows; a `.ls-col-*` class narrows it, otherwise the cell's own width. */
   --ls-col-w: 100%;
   --ls-form-max: 720px;
+  /* Field widths (FR7): short value, normal, long text. A field without a width fills its cell. */
+  --ls-field-sm: 10rem;
+  --ls-field-md: 17.5rem;
+  --ls-field-lg: 30rem;
+  /* Dialog widths: sm 400, md 560, lg 720; form drawer 512 */
+  --ls-dialog-sm: 25rem;
+  --ls-dialog-md: 35rem;
+  --ls-dialog-lg: 45rem;
+  --ls-drawer-form: 32rem;
 
   /* Motion (admin: opacity/transform/background only) and stacking */
   --ls-dur-fast: 150ms;
@@ -182,6 +197,10 @@
   --ls-brand-soft: #3a1b23;
   --ls-brand-on-soft: #f0b3be;
   --ls-focus: #e08a9a;
+  --ls-hover-bg: #100b0c;
+  --ls-hover-text: #f4ecec;
+  --ls-hover-border: #7d6c70;
+  --ls-hover-ghost-border: transparent;
   --ls-auth-panel-from: #4a1a24;
   --ls-auth-panel-to: #1f0b10;
   --ls-auth-panel-text: #ffffff;
@@ -231,6 +250,10 @@
     --ls-brand-soft: #3a1b23;
     --ls-brand-on-soft: #f0b3be;
     --ls-focus: #e08a9a;
+    --ls-hover-bg: #100b0c;
+    --ls-hover-text: #f4ecec;
+    --ls-hover-border: #7d6c70;
+    --ls-hover-ghost-border: transparent;
     --ls-auth-panel-from: #4a1a24;
     --ls-auth-panel-to: #1f0b10;
     --ls-auth-panel-text: #ffffff;

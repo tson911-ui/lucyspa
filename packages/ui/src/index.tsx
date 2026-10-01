@@ -88,6 +88,9 @@ export {
   useUnsavedChangesGuard,
 } from './form';
 export type { ControlProps, RadioOption, SelectOption } from './form';
+export { CheckField, Disclosure, FormGrid } from './form-frame';
+export { FormDialog, FormDrawer } from './form-overlay';
+export type { FormOverlayLabels } from './form-overlay';
 export {
   createDebouncer,
   describedBy,

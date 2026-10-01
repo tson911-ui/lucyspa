@@ -245,6 +245,7 @@ export function FormFeedback({
 export {
   ActionBar,
   Card,
+  CheckField,
   Checkbox,
   Combobox,
   ConfirmDialog,
@@ -271,5 +272,6 @@ export {
   ToastProvider,
   Tooltip,
   useToast,
+  VisuallyHidden,
 } from '@lucy-spa/ui';
 export { Button, ButtonLink } from '@lucy-spa/ui';

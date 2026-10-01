@@ -11,6 +11,7 @@ import type {
   OrganizationRegion,
   OrganizationSnapshotResponse,
 } from '@lucy-spa/contracts';
+import { Tabs } from '@lucy-spa/ui';
 import { useEffect, useState, type FormEvent } from 'react';
 import { organizationDictionary } from '../../../i18n/organization';
 import { canAnywhere } from '../../../lib/workforce/permissions';
@@ -75,45 +76,6 @@ export function OrganizationScreen() {
       <Notice tone="info">{text.ownerNote}</Notice>
       <Notice tone="info">{text.attendanceNote}</Notice>
 
-      <div className="wf-form-actions" role="tablist" aria-label={text.title}>
-        <button
-          type="button"
-          className="wf-button"
-          role="tab"
-          aria-selected={tab === 'regions'}
-          onClick={() => setTab('regions')}
-        >
-          {text.regions} ({snapshot.data?.regions.length ?? 0})
-        </button>
-        <button
-          type="button"
-          className="wf-button"
-          role="tab"
-          aria-selected={tab === 'areas'}
-          onClick={() => setTab('areas')}
-        >
-          {text.areas} ({snapshot.data?.areas.length ?? 0})
-        </button>
-        <button
-          type="button"
-          className="wf-button"
-          role="tab"
-          aria-selected={tab === 'branches'}
-          onClick={() => setTab('branches')}
-        >
-          {text.branches} ({snapshot.data?.branches.length ?? 0})
-        </button>
-        <button
-          type="button"
-          className="wf-button"
-          role="tab"
-          aria-selected={tab === 'appointments'}
-          onClick={() => setTab('appointments')}
-        >
-          {text.appointments} ({appointments.data?.items.length ?? 0})
-        </button>
-      </div>
-
       {snapshot.loading || appointments.loading ? <Loading t={t} /> : null}
       {snapshot.error ? (
         <ErrorState error={snapshot.error} t={t} onRetry={() => void snapshot.reload()} />
@@ -122,41 +84,61 @@ export function OrganizationScreen() {
         <ErrorState error={appointments.error} t={t} onRetry={() => void appointments.reload()} />
       ) : null}
 
-      {snapshot.data ? (
-        <>
-          {tab === 'regions' ? (
-            <RegionsView
-              regions={snapshot.data.regions}
-              canManage={canAnywhere(account, 'MANAGE_ORGANIZATION')}
-              onReload={reloadAll}
-            />
-          ) : null}
-          {tab === 'areas' ? (
-            <AreasView
-              regions={snapshot.data.regions}
-              areas={snapshot.data.areas}
-              canManage={canAnywhere(account, 'MANAGE_ORGANIZATION')}
-              onReload={reloadAll}
-            />
-          ) : null}
-          {tab === 'branches' ? (
-            <BranchesPlacementView
-              areas={snapshot.data.areas}
-              branches={snapshot.data.branches}
-              canManage={canAnywhere(account, 'MANAGE_ORGANIZATION')}
-              onReload={reloadAll}
-            />
-          ) : null}
-          {tab === 'appointments' && appointments.data ? (
-            <AppointmentsView
-              appointments={appointments.data.items}
-              snapshot={snapshot.data}
-              canManage={canAnywhere(account, 'MANAGE_ORG_ASSIGNMENTS')}
-              onReload={reloadAll}
-            />
-          ) : null}
-        </>
-      ) : null}
+      <Tabs
+        label={text.title}
+        value={tab}
+        onChange={(id) => setTab(id as OrgTab)}
+        tabs={[
+          {
+            id: 'regions',
+            label: `${text.regions} (${snapshot.data?.regions.length ?? 0})`,
+            panel: snapshot.data ? (
+              <RegionsView
+                regions={snapshot.data.regions}
+                canManage={canAnywhere(account, 'MANAGE_ORGANIZATION')}
+                onReload={reloadAll}
+              />
+            ) : null,
+          },
+          {
+            id: 'areas',
+            label: `${text.areas} (${snapshot.data?.areas.length ?? 0})`,
+            panel: snapshot.data ? (
+              <AreasView
+                regions={snapshot.data.regions}
+                areas={snapshot.data.areas}
+                canManage={canAnywhere(account, 'MANAGE_ORGANIZATION')}
+                onReload={reloadAll}
+              />
+            ) : null,
+          },
+          {
+            id: 'branches',
+            label: `${text.branches} (${snapshot.data?.branches.length ?? 0})`,
+            panel: snapshot.data ? (
+              <BranchesPlacementView
+                areas={snapshot.data.areas}
+                branches={snapshot.data.branches}
+                canManage={canAnywhere(account, 'MANAGE_ORGANIZATION')}
+                onReload={reloadAll}
+              />
+            ) : null,
+          },
+          {
+            id: 'appointments',
+            label: `${text.appointments} (${appointments.data?.items.length ?? 0})`,
+            panel:
+              snapshot.data && appointments.data ? (
+                <AppointmentsView
+                  appointments={appointments.data.items}
+                  snapshot={snapshot.data}
+                  canManage={canAnywhere(account, 'MANAGE_ORG_ASSIGNMENTS')}
+                  onReload={reloadAll}
+                />
+              ) : null,
+          },
+        ]}
+      />
     </>
   );
 }

@@ -111,6 +111,17 @@ for (const [themeName, theme] of Object.entries(themes)) {
     }
   });
 
+  test(`${themeName}: hover text is at least 4.5:1 on the hover fill and on the surfaces it sits on`, () => {
+    for (const surface of ['hover-bg', 'bg-surface', 'bg-page', 'bg-sunken']) {
+      const value = ratio(color(theme, 'hover-text'), color(theme, surface));
+      assert.ok(value >= 4.5, `${themeName} hover-text on ${surface} = ${value.toFixed(2)}`);
+    }
+    // Danger text keeps its own color inside a hovered menu item, so it must read on the hover fill too.
+    assert.ok(ratio(color(theme, 'danger'), color(theme, 'hover-bg')) >= 4.5);
+    // The hover border is a control boundary: 3:1 against the hover fill.
+    assert.ok(ratio(color(theme, 'hover-border'), color(theme, 'hover-bg')) >= 3);
+  });
+
   test(`${themeName}: the six chart series clear 3:1 on the chart surface`, () => {
     const surface = color(theme, 'chart-surface');
     for (let slot = 1; slot <= 6; slot++) {
@@ -151,6 +162,16 @@ test('contract 6.2 ratios are reproduced (one decimal, as published)', () => {
       `${foreground} on ${background}: expected ${expected}, got ${actual.toFixed(2)}`,
     );
   }
+});
+
+test('hover: light is the brand tint, dark keeps the neutral hover it always had (Owner, 7.5d)', () => {
+  assert.equal(light['--ls-hover-text'], light['--ls-brand']);
+  assert.equal(light['--ls-hover-border'], light['--ls-brand']);
+  assert.notEqual(light['--ls-hover-bg'], light['--ls-bg-sunken'], 'a red tint, not the grey one');
+  assert.equal(dark['--ls-hover-bg'], dark['--ls-bg-sunken']);
+  assert.equal(dark['--ls-hover-text'], dark['--ls-text']);
+  assert.equal(dark['--ls-hover-border'], dark['--ls-border-control']);
+  assert.equal(dark['--ls-hover-ghost-border'], 'transparent');
 });
 
 test('brand red and danger red stay distinct in both themes (contract 6.4)', () => {

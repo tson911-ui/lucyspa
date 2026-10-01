@@ -279,13 +279,14 @@ test('SearchInput has an accessible name and no clear button while empty', () =>
   assert.match(filled, /aria-label="Xóa tìm kiếm"/);
 });
 
-test('FormSection and FormActions keep Save before Cancel', () => {
+test('FormSection is a named region and FormActions put Save (primary) last', () => {
   const section = html(
     <FormSection title="Thông tin liên hệ" description="Hiển thị cho khách">
       <span>x</span>
     </FormSection>,
   );
-  assert.match(section, /<fieldset[^>]*>.*<legend[^>]*>Thông tin liên hệ<\/legend>/);
+  assert.match(section, /<section[^>]*aria-labelledby[^>]*>.*<h3[^>]*>Thông tin liên hệ<\/h3>/);
+  assert.doesNotMatch(section, /<fieldset|<legend/);
   const actions = html(
     <FormActions
       primary={
@@ -296,7 +297,7 @@ test('FormSection and FormActions keep Save before Cancel', () => {
       cancel={<Button variant="ghost">Hủy</Button>}
     />,
   );
-  assert.ok(actions.indexOf('Lưu') < actions.indexOf('Hủy'));
+  assert.ok(actions.indexOf('Hủy') < actions.indexOf('Lưu'));
 });
 
 test('Dialog is a labelled modal and renders nothing when closed', () => {

@@ -261,6 +261,9 @@
   // 9. Touch targets.
   const min = window.innerWidth < 1024 ? 44 : 40;
   const small = all.filter((el) => el.matches('a[href], button, input:not([type=hidden]), select, textarea, [role=button], [role=radio], [role=tab], [role=menuitem]')).filter((el) => !(el.tagName === 'A' && getComputedStyle(el).display === 'inline')).filter((el) => !el.closest('.skip-link')).filter((el) => {
+    // A kit CheckField is a row-wide target: the whole label toggles, so the row is measured, not the 20 px box (design contract 21.4 FR9).
+    const row = el.closest('.ls-check-field');
+    if (row) { const b = row.getBoundingClientRect(); return b.height < min - 0.5 || b.width < min - 0.5; }
     const r = el.getBoundingClientRect();
     return r.height < min - 0.5 || r.width < min - 0.5;
   });

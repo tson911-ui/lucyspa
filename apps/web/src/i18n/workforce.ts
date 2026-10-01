@@ -75,6 +75,14 @@ const vi = {
       showAllValues: 'Xem cả {count} mục',
       actionsFor: 'Thao tác cho {name}',
     },
+    // Create/edit dialogs and drawers (`FormDialog`, `FormDrawer`) and reason-required confirmations.
+    form: {
+      discardTitle: 'Bỏ thay đổi?',
+      discardBody: 'Những gì bạn đã nhập sẽ không được lưu.',
+      discardConfirm: 'Bỏ thay đổi',
+      discardKeep: 'Tiếp tục chỉnh sửa',
+      reasonRequired: 'Vui lòng nhập lý do.',
+    },
   },
   errors: {
     validation: 'Dữ liệu chưa hợp lệ. Vui lòng kiểm tra lại.',
@@ -174,11 +182,11 @@ const vi = {
     ownerNote: 'Tài khoản chủ spa không có chấm công hay nghỉ phép cá nhân.',
     // Widget dashboard (UX/UI redesign Step 7).
     scope: 'Chi nhánh',
-    customize: 'Tùy chỉnh',
+    customize: 'Sắp xếp bố cục',
     customizeDone: 'Xong',
     customizeReset: 'Đặt lại mặc định',
     customizeHelp:
-      'Kéo tay nắm để sắp xếp, hoặc dùng nút chuyển trước / chuyển sau. Bố cục được lưu trên thiết bị này.',
+      'Kéo thẻ để sắp xếp, hoặc dùng nút chuyển trước / chuyển sau. Bố cục được lưu trên thiết bị này.',
     hiddenTitle: 'Tiện ích đã ẩn',
     hiddenNone: 'Không có tiện ích nào bị ẩn.',
     hide: 'Ẩn {name}',
@@ -469,6 +477,10 @@ const vi = {
     nameVi: 'Tên tiếng Việt',
     nameEn: 'Tên tiếng Anh',
     created: 'Đã tạo kỹ năng.',
+    deactivateTitle: 'Ngừng hoạt động kỹ năng?',
+    deactivateBody: 'Kỹ năng chuyển sang ngừng hoạt động. Bạn có thể kích hoạt lại sau.',
+    activateTitle: 'Kích hoạt lại kỹ năng?',
+    activateBody: 'Kỹ năng chuyển sang đang hoạt động.',
     search: 'Tìm theo mã hoặc tên',
     noMatch: 'Không có kỹ năng phù hợp với tìm kiếm hoặc bộ lọc.',
   },
@@ -1744,6 +1756,13 @@ const en: Dictionary = {
       showAllValues: 'Show all {count}',
       actionsFor: 'Actions for {name}',
     },
+    form: {
+      discardTitle: 'Discard changes?',
+      discardBody: 'What you entered will not be saved.',
+      discardConfirm: 'Discard changes',
+      discardKeep: 'Keep editing',
+      reasonRequired: 'Please enter a reason.',
+    },
   },
   errors: {
     validation: 'Some details are not valid. Please check and try again.',
@@ -1843,11 +1862,11 @@ const en: Dictionary = {
     ownerNote: 'The Owner account has no personal attendance or leave.',
     // Widget dashboard (UX/UI redesign Step 7).
     scope: 'Branch',
-    customize: 'Customize',
+    customize: 'Arrange layout',
     customizeDone: 'Done',
     customizeReset: 'Reset to default',
     customizeHelp:
-      'Drag the handle to reorder, or use the move earlier / move later buttons. The layout is saved on this device.',
+      'Drag a card to reorder, or use the move earlier / move later buttons. The layout is saved on this device.',
     hiddenTitle: 'Hidden widgets',
     hiddenNone: 'No widgets are hidden.',
     hide: 'Hide {name}',
@@ -2135,6 +2154,10 @@ const en: Dictionary = {
     nameVi: 'Vietnamese name',
     nameEn: 'English name',
     created: 'Skill created.',
+    deactivateTitle: 'Deactivate this skill?',
+    deactivateBody: 'The skill becomes inactive. You can reactivate it later.',
+    activateTitle: 'Reactivate this skill?',
+    activateBody: 'The skill becomes active.',
     search: 'Search by code or name',
     noMatch: 'No skills match the search or filter.',
   },

@@ -30,7 +30,7 @@ export function WidgetSkeleton({ title, size }: { title: string; size: WidgetSiz
   const { t } = useWorkforce();
   return (
     <Card as="section" className="ls-widget" data-size={size} aria-busy="true">
-      <CardHeader title={title} />
+      <CardHeader title={title} clamp />
       <div role="status">
         <span className="ls-visually-hidden">{t.dashboard.widgetLoading}</span>
         <Skeleton lines={3} />
@@ -71,6 +71,7 @@ export function WidgetFrame<T>({
     <Card as="section" className="ls-widget" data-size={size} aria-labelledby={headingId}>
       <CardHeader
         title={title}
+        clamp
         id={headingId}
         actions={info ? <IconButton icon="info" label={info} /> : undefined}
       />
@@ -100,7 +101,7 @@ export function WidgetMessage({
 }) {
   return (
     <Card as="section" className="ls-widget" data-size={size}>
-      <CardHeader title={title} />
+      <CardHeader title={title} clamp />
       <EmptyState icon={icon}>{message}</EmptyState>
     </Card>
   );
@@ -139,7 +140,7 @@ function BoundaryFallback({
   const { t } = useWorkforce();
   return (
     <Card as="section" className="ls-widget" data-size={size}>
-      <CardHeader title={title} />
+      <CardHeader title={title} clamp />
       <ErrorState error={new Error('widget')} t={t} onRetry={onRetry} />
     </Card>
   );
