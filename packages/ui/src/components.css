@@ -2139,6 +2139,32 @@
   overflow-wrap: anywhere;
 }
 
+/* Totals under a table: label at the start, amount at the trailing edge on one line. */
+.ls-dl-totals {
+  gap: var(--ls-space-2);
+}
+
+.ls-dl-totals .ls-dl-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ls-space-4);
+}
+
+.ls-dl-totals .ls-dl-value {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.ls-dl-totals .ls-dl-row-strong .ls-dl-term,
+.ls-dl-totals .ls-dl-row-strong .ls-dl-value {
+  color: var(--ls-text);
+  font-size: var(--ls-text-md);
+  font-weight: 600;
+}
+
 @media (max-width: 639px) {
   .ls-dl-2 {
     grid-template-columns: minmax(0, 1fr);

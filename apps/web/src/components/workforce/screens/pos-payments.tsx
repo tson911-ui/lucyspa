@@ -4,42 +4,59 @@ import type {
   InvoicePaymentAnomaly,
   InvoicePaymentResponse,
   InvoiceResponse,
-  PaymentPayosRequest,
-  PaymentRecordRequest,
-  PaymentReverseRequest,
 } from '@lucy-spa/contracts';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  Button,
+  ButtonLink,
+  Card,
+  CardHeader,
+  DataTable,
+  DescriptionList,
+  RowActions,
+  Stack,
+  type DataTableColumn,
+} from '@lucy-spa/ui';
+import { useEffect, useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { formatDateTime, formatVnd } from '../../../lib/workforce/format';
-import {
-  changePreview,
-  formatCountdown,
-  newPaymentKey,
-  noteBody,
-  paymentBody,
-  paymentInput,
-  payosBody,
-  remainingMs,
-  reverseBody,
-  type PaymentInput,
-  type PaymentProblem,
-} from '../../../lib/workforce/pos';
+import { paginationLabels } from '../../../lib/workforce/list-view';
+import { formatCountdown, remainingMs } from '../../../lib/workforce/pos';
 import { useWorkforce } from '../session';
-import { Badge, Empty, Field, Notice, Section, SubmitButton, type Tone } from '../ui';
+import { Badge, Empty, Notice, type Tone } from '../ui';
+
+type Note = InvoiceResponse['managementNotes'][number];
+
+/**
+ * What the cash form may take: no live PayOS request holds the rest of the balance (the API enforces the
+ * same rule). Shared by the card and the dialog that the screen opens.
+ */
+export function cashBalanceOf(invoice: InvoiceResponse): bigint {
+  return BigInt(invoice.balanceVnd) - BigInt(invoice.pendingProviderVnd);
+}
+
+function usePaging() {
+  const [paging, setPaging] = useState({ page: 1, pageSize: 20 });
+  return {
+    ...paging,
+    onPageChange: (page: number) => setPaging((current) => ({ ...current, page })),
+    onPageSizeChange: (pageSize: number) => setPaging({ page: 1, pageSize }),
+  };
+}
 
 /**
  * Payments of one invoice (Phase 4 Steps 7 and 8): the history (a reversed payment stays listed with its
- * correction), a cash form, a PayOS QR request, the reversal of an erroneous CASH payment and, for management,
- * the PayOS money that was not applied plus audited notes. The browser never decides a balance or a status:
- * it shows the server's numbers and sends only choices (amounts, keys, notes). A PayOS payment becomes paid
- * only when PayOS confirms it; there is no "mark as received" control anywhere.
+ * correction), the cash and PayOS actions in the card header, the waiting PayOS request and, for
+ * management, the PayOS money that was not applied plus audited notes. The browser never decides a
+ * balance or a status: it shows the server's numbers and sends only choices (amounts, keys, notes). A PayOS
+ * payment becomes paid only when PayOS confirms it; there is no "mark as received" control anywhere. The
+ * dialogs themselves (cash, PayOS, reversal, notes) are opened by the screen.
  */
 export function PosPaymentsSection({
   invoice,
   working,
   onCollect,
-  onReverse,
   onCreatePayos,
+  onReverse,
   onRefreshPayos,
   onCancelPayos,
   onReviewAnomaly,
@@ -47,139 +64,145 @@ export function PosPaymentsSection({
 }: {
   invoice: InvoiceResponse;
   working: string | null;
-  onCollect: (body: PaymentRecordRequest) => Promise<boolean>;
-  onReverse: (paymentId: string, body: PaymentReverseRequest) => Promise<boolean>;
-  onCreatePayos: (body: PaymentPayosRequest) => Promise<boolean>;
-  onRefreshPayos: (paymentId: string) => Promise<boolean>;
-  onCancelPayos: (paymentId: string) => Promise<boolean>;
-  onReviewAnomaly: (anomalyId: string, note: string) => Promise<boolean>;
-  onAddNote: (note: string) => Promise<boolean>;
+  onCollect: () => void;
+  onCreatePayos: () => void;
+  onReverse: (paymentId: string) => void;
+  onRefreshPayos: (paymentId: string) => void;
+  onCancelPayos: (paymentId: string) => void;
+  onReviewAnomaly: (anomalyId: string) => void;
+  onAddNote: () => void;
 }) {
   const { t, locale } = useWorkforce();
   const zone = invoice.branch.timezone;
-  const [reversing, setReversing] = useState<string | null>(null);
-  const [reason, setReason] = useState('');
-  const [reasonProblem, setReasonProblem] = useState(false);
-  const target = invoice.payments.find((payment) => payment.id === reversing) ?? null;
+  const paging = usePaging();
   const pendingPayment = invoice.payments.find((payment) => payment.status === 'PENDING') ?? null;
   const balance = BigInt(invoice.balanceVnd);
   const held = BigInt(invoice.pendingProviderVnd);
-  // Cash can only take what no live PayOS request holds (the API enforces the same rule).
-  const cashBalance = balance - held;
-  const canCollect = invoice.actions.collectPayment && cashBalance > 0n;
+  const canCollect = invoice.actions.collectPayment && cashBalanceOf(invoice) > 0n;
   const canCreatePayos = invoice.actions.collectPayos && balance > 0n && pendingPayment === null;
+  const idle = working === null;
 
-  async function submitReverse(event: FormEvent) {
-    event.preventDefault();
-    if (!target) return;
-    const body = reverseBody(reason);
-    if (!body) {
-      setReasonProblem(true);
-      return;
-    }
-    setReasonProblem(false);
-    if (await onReverse(target.id, body)) {
-      setReversing(null);
-      setReason('');
-    }
-  }
+  const columns: DataTableColumn<InvoicePaymentResponse>[] = [
+    {
+      key: 'time',
+      header: t.pos.colTime,
+      mobileTitle: true,
+      cell: (payment) => formatDateTime(payment.collectedAt, zone, locale),
+    },
+    {
+      key: 'collector',
+      header: t.pos.colCollector,
+      hideBelow: 'lg',
+      truncate: true,
+      cell: (payment) => payment.collectedBy.displayName,
+    },
+    { key: 'method', header: t.pos.colMethod, cell: (payment) => t.pos.methods[payment.method] },
+    {
+      key: 'credited',
+      header: t.pos.colCredited,
+      numeric: true,
+      cell: (payment) => formatVnd(payment.amountVnd, locale),
+    },
+    {
+      key: 'tendered',
+      header: t.pos.colTendered,
+      numeric: true,
+      hideBelow: 'md',
+      cell: (payment) =>
+        payment.method === 'PAYOS' ? '—' : formatVnd(payment.tenderedVnd, locale),
+    },
+    {
+      key: 'change',
+      header: t.pos.colChange,
+      numeric: true,
+      hideBelow: 'md',
+      cell: (payment) => (payment.method === 'PAYOS' ? '—' : formatVnd(payment.changeVnd, locale)),
+    },
+    { key: 'state', header: t.pos.colState, cell: (payment) => <PaymentState payment={payment} /> },
+    {
+      key: 'details',
+      header: t.pos.colNote,
+      hideBelow: 'xl',
+      wrap: true,
+      width: 'lg',
+      cell: (payment) => paymentDetails(payment, zone, t, locale),
+    },
+    {
+      key: 'actions',
+      header: t.common.actions,
+      actions: true,
+      cell: (payment) => (
+        <RowActions
+          menuLabel={fill(t.common.list.actionsFor, {
+            name: formatDateTime(payment.collectedAt, zone, locale),
+          })}
+          items={
+            payment.reversible
+              ? [
+                  {
+                    id: 'reverse',
+                    label: t.pos.reverse,
+                    tone: 'danger' as const,
+                    disabled: !idle,
+                    onSelect: () => onReverse(payment.id),
+                  },
+                ]
+              : []
+          }
+        />
+      ),
+    },
+  ];
 
   return (
-    <Section title={t.pos.paymentTitle}>
-      <p className="wf-small">{t.pos.paymentNote}</p>
-      <dl className="wf-summary">
-        <div>
-          <dt>{t.pos.paidLabel}</dt>
-          <dd>{formatVnd(invoice.paidVnd, locale)}</dd>
-        </div>
-        <div>
-          <dt>
-            <strong>{t.pos.balanceLabel}</strong>
-          </dt>
-          <dd>
-            <strong>{formatVnd(invoice.balanceVnd, locale)}</strong>
-          </dd>
-        </div>
-      </dl>
-      {held > 0n ? (
-        <p className="wf-small">
-          {fill(t.pos.payosHeld, { amount: formatVnd(invoice.pendingProviderVnd, locale) })}
-        </p>
-      ) : null}
-
-      {invoice.payments.length === 0 ? (
-        <Empty>{t.pos.noPayments}</Empty>
-      ) : (
-        <table className="wf-table">
-          <thead>
-            <tr>
-              <th>{t.pos.colTime}</th>
-              <th>{t.pos.colCollector}</th>
-              <th>{t.pos.colMethod}</th>
-              <th>{t.pos.colCredited}</th>
-              <th>{t.pos.colTendered}</th>
-              <th>{t.pos.colChange}</th>
-              <th>{t.pos.colState}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoice.payments.map((payment) => (
-              <PaymentRow
-                key={payment.id}
-                payment={payment}
-                zone={zone}
-                working={working !== null}
-                onReverse={() => {
-                  setReversing(payment.id);
-                  setReason('');
-                  setReasonProblem(false);
-                }}
-              />
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {target ? (
-        <form onSubmit={(event) => void submitReverse(event)}>
-          <h3>{t.pos.reverseTitle}</h3>
-          <p className="wf-small">
-            {formatVnd(target.amountVnd, locale)} · {target.collectedBy.displayName}
-          </p>
-          <p className="wf-small">{t.pos.reverseHint}</p>
-          <Field id="pos-reverse-reason" label={t.pos.reverseReason} required>
-            <textarea
-              id="pos-reverse-reason"
-              rows={2}
-              maxLength={500}
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </Field>
-          {reasonProblem ? (
-            <p className="wf-hint" role="alert">
-              {t.pos.needReverseReason}
-            </p>
-          ) : null}
-          <div className="wf-row-actions">
-            <SubmitButton
-              pending={working === `reverse-${target.id}`}
-              label={t.pos.reverse}
-              pendingLabel={t.pos.reversing}
-              tone="danger"
-              disabled={working !== null}
-            />
-            <button
-              type="button"
-              className="wf-button"
-              disabled={working !== null}
-              onClick={() => setReversing(null)}
-            >
-              {t.pos.reverseKeep}
-            </button>
-          </div>
-        </form>
-      ) : null}
+    <>
+      <Card as="section">
+        <CardHeader
+          title={t.pos.paymentTitle}
+          description={t.pos.paymentNote}
+          actions={
+            canCreatePayos || canCollect ? (
+              <>
+                {canCreatePayos ? (
+                  <Button variant="secondary" disabled={!idle} onClick={onCreatePayos}>
+                    {t.pos.payosCreate}
+                  </Button>
+                ) : null}
+                {canCollect ? (
+                  <Button variant="primary" icon="plus" disabled={!idle} onClick={onCollect}>
+                    {t.pos.collectTitle}
+                  </Button>
+                ) : null}
+              </>
+            ) : undefined
+          }
+        />
+        <DescriptionList
+          layout="totals"
+          items={[
+            { label: t.pos.paidLabel, value: formatVnd(invoice.paidVnd, locale) },
+            {
+              label: t.pos.balanceLabel,
+              value: formatVnd(invoice.balanceVnd, locale),
+              strong: true,
+            },
+          ]}
+        />
+        {held > 0n ? (
+          <Notice tone="info">
+            {fill(t.pos.payosHeld, { amount: formatVnd(invoice.pendingProviderVnd, locale) })}
+          </Notice>
+        ) : null}
+        <DataTable
+          mode="client"
+          caption={fill(t.common.list.table, { list: t.pos.paymentTitle })}
+          columns={columns}
+          rows={invoice.payments}
+          rowKey={(payment) => payment.id}
+          empty={<Empty>{t.pos.noPayments}</Empty>}
+          paging={{ ...paging, labels: paginationLabels(t, t.pos.paymentTitle) }}
+        />
+      </Card>
 
       {pendingPayment ? (
         <PayosPending
@@ -191,38 +214,29 @@ export function PosPaymentsSection({
         />
       ) : null}
 
-      {canCollect ? (
-        <CollectForm
-          // A new balance (after a payment or a reversal) restarts the form from that balance.
-          key={`${invoice.id}:${cashBalance.toString()}`}
-          balance={cashBalance.toString()}
-          working={working}
-          onCollect={onCollect}
-        />
-      ) : null}
-
-      {canCreatePayos ? (
-        <PayosForm
-          key={`${invoice.id}:${invoice.balanceVnd}:payos`}
-          balance={invoice.balanceVnd}
-          working={working}
-          onCreate={onCreatePayos}
-        />
-      ) : null}
-
       {invoice.actions.manageAnomalies &&
       (invoice.anomalies.length > 0 ||
         invoice.managementNotes.length > 0 ||
         invoice.actions.addManagementNote) ? (
-        <ManagementSection
-          invoice={invoice}
-          zone={zone}
-          working={working}
-          onReview={onReviewAnomaly}
-          onAddNote={onAddNote}
-        />
+        <>
+          {invoice.anomalies.length > 0 ? (
+            <AnomaliesCard
+              anomalies={invoice.anomalies}
+              zone={zone}
+              working={!idle}
+              onReview={onReviewAnomaly}
+            />
+          ) : null}
+          <NotesCard
+            notes={invoice.managementNotes}
+            zone={zone}
+            canAdd={invoice.actions.addManagementNote}
+            working={!idle}
+            onAdd={onAddNote}
+          />
+        </>
       ) : null}
-    </Section>
+    </>
   );
 }
 
@@ -233,74 +247,43 @@ function stateTone(payment: InvoicePaymentResponse): Tone {
   return 'neutral';
 }
 
-function PaymentRow({
-  payment,
-  zone,
-  working,
-  onReverse,
-}: {
-  payment: InvoicePaymentResponse;
-  zone: string;
-  working: boolean;
-  onReverse: () => void;
-}) {
-  const { t, locale } = useWorkforce();
+function PaymentState({ payment }: { payment: InvoicePaymentResponse }) {
+  const { t } = useWorkforce();
   const provider = payment.method === 'PAYOS';
-  return (
-    <tr>
-      <td data-label={t.pos.colTime}>{formatDateTime(payment.collectedAt, zone, locale)}</td>
-      <td data-label={t.pos.colCollector}>{payment.collectedBy.displayName}</td>
-      <td data-label={t.pos.colMethod}>{t.pos.methods[payment.method]}</td>
-      <td data-label={t.pos.colCredited}>{formatVnd(payment.amountVnd, locale)}</td>
-      <td data-label={t.pos.colTendered}>
-        {provider ? '—' : formatVnd(payment.tenderedVnd, locale)}
-      </td>
-      <td data-label={t.pos.colChange}>{provider ? '—' : formatVnd(payment.changeVnd, locale)}</td>
-      <td data-label={t.pos.colState}>
-        {payment.correction ? (
-          <>
-            <Badge tone="warning">{t.pos.paymentReversed}</Badge>
-            <br />
-            <span className="wf-small">
-              {fill(t.pos.reversedInfo, {
-                time: formatDateTime(payment.correction.occurredAt, zone, locale),
-                name: payment.correction.actor.displayName,
-                reason: payment.correction.reason,
-              })}
-            </span>
-          </>
-        ) : provider && payment.status !== 'SUCCEEDED' ? (
-          <Badge tone={stateTone(payment)}>{t.pos.paymentStates[payment.status as never]}</Badge>
-        ) : (
-          <Badge tone={stateTone(payment)}>{t.pos.paymentEffective}</Badge>
-        )}
-        {provider && payment.status === 'SUCCEEDED' && payment.provider ? (
-          <>
-            <br />
-            <span className="wf-small">
-              {payment.provider.reference
-                ? fill(t.pos.paymentReference, { reference: payment.provider.reference })
-                : null}
-              {payment.provider.late ? ` ${t.pos.paymentLate}` : ''} {t.pos.paymentProviderFinal}
-            </span>
-          </>
-        ) : null}
-        {payment.reversible ? (
-          <>
-            {' '}
-            <button
-              type="button"
-              className="wf-button wf-button-quiet"
-              disabled={working}
-              onClick={onReverse}
-            >
-              {t.pos.reverse}
-            </button>
-          </>
-        ) : null}
-      </td>
-    </tr>
-  );
+  if (payment.correction) return <Badge tone="warning">{t.pos.paymentReversed}</Badge>;
+  if (provider && payment.status !== 'SUCCEEDED') {
+    return <Badge tone={stateTone(payment)}>{t.pos.paymentStates[payment.status as never]}</Badge>;
+  }
+  return <Badge tone={stateTone(payment)}>{t.pos.paymentEffective}</Badge>;
+}
+
+/** The correction of a reversed payment, or the PayOS reference of a confirmed one: one muted sentence. */
+function paymentDetails(
+  payment: InvoicePaymentResponse,
+  zone: string,
+  t: ReturnType<typeof useWorkforce>['t'],
+  locale: 'vi' | 'en',
+): string {
+  const parts: string[] = [];
+  if (payment.correction) {
+    parts.push(
+      fill(t.pos.reversedInfo, {
+        time: formatDateTime(payment.correction.occurredAt, zone, locale),
+        name: payment.correction.actor.displayName,
+        reason: payment.correction.reason,
+      }),
+    );
+  }
+  if (payment.method === 'PAYOS' && payment.status === 'SUCCEEDED' && payment.provider) {
+    parts.push(
+      `${
+        payment.provider.reference
+          ? fill(t.pos.paymentReference, { reference: payment.provider.reference })
+          : ''
+      }${payment.provider.late ? ` ${t.pos.paymentLate}` : ''} ${t.pos.paymentProviderFinal}`.trim(),
+    );
+  }
+  return parts.join(' ') || '—';
 }
 
 /** The QR image, generated in the browser from the PayOS QR content (no third-party image service). */
@@ -338,8 +321,8 @@ function PayosPending({
 }: {
   payment: InvoicePaymentResponse;
   working: string | null;
-  onRefresh: (paymentId: string) => Promise<boolean>;
-  onCancel: (paymentId: string) => Promise<boolean>;
+  onRefresh: (paymentId: string) => void;
+  onCancel: (paymentId: string) => void;
 }) {
   const { t, locale } = useWorkforce();
   const [now, setNow] = useState(() => Date.now());
@@ -352,376 +335,245 @@ function PayosPending({
   if (!provider) return null;
   const left = remainingMs(provider.expiresAt, now);
   return (
-    <div className="wf-card">
-      <h3>{t.pos.payosWaiting}</h3>
-      <p>
-        <strong>{formatVnd(payment.amountVnd, locale)}</strong> ·{' '}
+    <Card as="section">
+      <CardHeader
+        title={t.pos.payosWaiting}
+        actions={
+          <>
+            {provider.qrCode && provider.checkoutUrl ? (
+              <ButtonLink
+                variant="secondary"
+                href={provider.checkoutUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t.pos.payosOpenLink}
+              </ButtonLink>
+            ) : null}
+            {payment.cancellable ? (
+              <>
+                <Button
+                  variant="secondary"
+                  disabled={working !== null}
+                  loading={working === `payos-refresh-${payment.id}`}
+                  onClick={() => onRefresh(payment.id)}
+                >
+                  {working === `payos-refresh-${payment.id}`
+                    ? t.pos.payosRefreshing
+                    : t.pos.payosRefresh}
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={working !== null}
+                  loading={working === `payos-cancel-${payment.id}`}
+                  onClick={() => onCancel(payment.id)}
+                >
+                  {working === `payos-cancel-${payment.id}`
+                    ? t.pos.payosCancelling
+                    : t.pos.payosCancel}
+                </Button>
+              </>
+            ) : null}
+          </>
+        }
+      />
+      <DescriptionList
+        layout="totals"
+        items={[
+          { label: t.pos.colCredited, value: formatVnd(payment.amountVnd, locale), strong: true },
+        ]}
+      />
+      <Notice tone={left > 0 ? 'info' : 'warning'}>
         {left > 0
           ? fill(t.pos.payosExpiresIn, { time: formatCountdown(left) })
           : t.pos.payosExpired}
-      </p>
+      </Notice>
       {provider.qrCode ? (
-        <>
+        <Stack>
           {image ? (
             // A data URL generated here from the QR content; not a remote image.
             // eslint-disable-next-line @next/next/no-img-element
             <img src={image} alt="PayOS QR" width={240} height={240} />
           ) : null}
-          <p className="wf-small">{t.pos.payosScan}</p>
-          {provider.checkoutUrl ? (
-            <p>
-              <a href={provider.checkoutUrl} target="_blank" rel="noopener noreferrer">
-                {t.pos.payosOpenLink}
-              </a>
-            </p>
-          ) : null}
-        </>
+          <p className="ls-hint">{t.pos.payosScan}</p>
+        </Stack>
       ) : (
         <Notice tone="warning">{t.pos.payosNoQr}</Notice>
       )}
-      {payment.cancellable ? (
-        <div className="wf-row-actions">
-          <button
-            type="button"
-            className="wf-button"
-            disabled={working !== null}
-            onClick={() => void onRefresh(payment.id)}
-          >
-            {working === `payos-refresh-${payment.id}` ? t.pos.payosRefreshing : t.pos.payosRefresh}
-          </button>
-          <button
-            type="button"
-            className="wf-button"
-            disabled={working !== null}
-            onClick={() => void onCancel(payment.id)}
-          >
-            {working === `payos-cancel-${payment.id}` ? t.pos.payosCancelling : t.pos.payosCancel}
-          </button>
-        </div>
-      ) : null}
-    </div>
+    </Card>
   );
 }
 
-/** PayOS: the amount (default the whole balance; less is a split with cash). One idempotency key per choice. */
-function PayosForm({
-  balance,
-  working,
-  onCreate,
-}: {
-  balance: string;
-  working: string | null;
-  onCreate: (body: PaymentPayosRequest) => Promise<boolean>;
-}) {
-  const { t } = useWorkforce();
-  const [amount, setAmount] = useState(balance);
-  const [problem, setProblem] = useState(false);
-  const attempt = useRef<{ key: string; amount: string } | null>(null);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!attempt.current || attempt.current.amount !== amount) {
-      attempt.current = { key: newPaymentKey(), amount };
-    }
-    const result = payosBody(amount, balance, attempt.current.key);
-    if ('problem' in result) {
-      setProblem(true);
-      return;
-    }
-    setProblem(false);
-    if (await onCreate(result.body)) attempt.current = null;
-  }
-
-  return (
-    <form onSubmit={(event) => void submit(event)}>
-      <h3>{t.pos.payosTitle}</h3>
-      <p className="wf-small">{t.pos.payosNote}</p>
-      <Field id="pos-payos-amount" label={t.pos.amountLabel} hint={t.pos.amountHint}>
-        <input
-          id="pos-payos-amount"
-          inputMode="numeric"
-          autoComplete="off"
-          maxLength={18}
-          value={amount}
-          onChange={(event) => setAmount(event.target.value)}
-        />
-      </Field>
-      {problem ? <Notice tone="error">{t.pos.invalidAmount}</Notice> : null}
-      <SubmitButton
-        pending={working === 'payos-create'}
-        label={t.pos.payosCreate}
-        pendingLabel={t.pos.payosCreating}
-        tone="primary"
-        disabled={working !== null}
-      />
-    </form>
-  );
-}
-
-/** Management: PayOS money that was not applied, and audited notes (CORRECT_PAYMENTS; the API checks again). */
-function ManagementSection({
-  invoice,
+/** PayOS money that was not applied (CORRECT_PAYMENTS; the API checks again). */
+function AnomaliesCard({
+  anomalies,
   zone,
   working,
   onReview,
-  onAddNote,
 }: {
-  invoice: InvoiceResponse;
+  anomalies: readonly InvoicePaymentAnomaly[];
   zone: string;
-  working: string | null;
-  onReview: (anomalyId: string, note: string) => Promise<boolean>;
-  onAddNote: (note: string) => Promise<boolean>;
+  working: boolean;
+  onReview: (anomalyId: string) => void;
 }) {
   const { t, locale } = useWorkforce();
-  const [text, setText] = useState('');
-  const [noteProblem, setNoteProblem] = useState(false);
-
-  async function submitNote(event: FormEvent) {
-    event.preventDefault();
-    const body = noteBody(text);
-    if (!body) {
-      setNoteProblem(true);
-      return;
-    }
-    setNoteProblem(false);
-    if (await onAddNote(body.note)) setText('');
-  }
-
-  return (
-    <>
-      {invoice.anomalies.length > 0 ? (
-        <div>
-          <h3>{t.pos.anomalyTitle}</h3>
-          <p className="wf-small">{t.pos.anomalyHint}</p>
-          {invoice.anomalies.map((anomaly) => (
-            <AnomalyCard
-              key={anomaly.id}
-              anomaly={anomaly}
-              zone={zone}
-              working={working}
-              onReview={onReview}
-            />
-          ))}
-        </div>
-      ) : null}
-      <div>
-        <h3>{t.pos.noteTitle}</h3>
-        <p className="wf-small">{t.pos.noteHint}</p>
-        {invoice.managementNotes.length === 0 ? (
-          <Empty>{t.pos.noNotes}</Empty>
+  const paging = usePaging();
+  const columns: DataTableColumn<InvoicePaymentAnomaly>[] = [
+    {
+      key: 'kind',
+      header: t.pos.colKind,
+      mobileTitle: true,
+      cell: (anomaly) => t.pos.anomalyKinds[anomaly.kind],
+    },
+    {
+      key: 'opened',
+      header: t.pos.colTime,
+      hideBelow: 'md',
+      cell: (anomaly) => formatDateTime(anomaly.openedAt, zone, locale),
+    },
+    {
+      key: 'expected',
+      header: t.pos.colExpected,
+      numeric: true,
+      cell: (anomaly) =>
+        anomaly.expectedAmountVnd ? formatVnd(anomaly.expectedAmountVnd, locale) : '—',
+    },
+    {
+      key: 'received',
+      header: t.pos.colReceived,
+      numeric: true,
+      cell: (anomaly) => formatVnd(anomaly.receivedAmountVnd, locale),
+    },
+    {
+      key: 'reference',
+      header: t.pos.colReference,
+      hideBelow: 'lg',
+      truncate: true,
+      cell: (anomaly) => anomaly.providerReference,
+    },
+    {
+      key: 'status',
+      header: t.pos.colState,
+      cell: (anomaly) =>
+        anomaly.status === 'OPEN' ? (
+          <Badge tone="warning">{t.pos.anomalyOpen}</Badge>
         ) : (
-          <ul>
-            {invoice.managementNotes.map((note) => (
-              <li key={note.id}>
-                {note.note}
-                <br />
-                <span className="wf-small">
-                  {fill(t.pos.noteBy, {
-                    name: note.author.displayName,
-                    time: formatDateTime(note.createdAt, zone, locale),
-                  })}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {invoice.actions.addManagementNote ? (
-          <form onSubmit={(event) => void submitNote(event)}>
-            <Field id="pos-note" label={t.pos.noteLabel} required>
-              <textarea
-                id="pos-note"
-                rows={2}
-                maxLength={500}
-                value={text}
-                onChange={(event) => setText(event.target.value)}
-              />
-            </Field>
-            {noteProblem ? (
-              <p className="wf-hint" role="alert">
-                {t.pos.noteNeed}
-              </p>
-            ) : null}
-            <SubmitButton
-              pending={working === 'note'}
-              label={t.pos.noteAdd}
-              pendingLabel={t.pos.noteAdding}
-              tone="primary"
-              disabled={working !== null}
-            />
-          </form>
-        ) : null}
-      </div>
-    </>
-  );
-}
-
-function AnomalyCard({
-  anomaly,
-  zone,
-  working,
-  onReview,
-}: {
-  anomaly: InvoicePaymentAnomaly;
-  zone: string;
-  working: string | null;
-  onReview: (anomalyId: string, note: string) => Promise<boolean>;
-}) {
-  const { t, locale } = useWorkforce();
-  const [text, setText] = useState('');
-  const [problem, setProblem] = useState(false);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    const body = noteBody(text);
-    if (!body) {
-      setProblem(true);
-      return;
-    }
-    setProblem(false);
-    if (await onReview(anomaly.id, body.note)) setText('');
-  }
-
+          <Badge tone="neutral">{t.pos.anomalyReviewed}</Badge>
+        ),
+    },
+    {
+      key: 'review',
+      header: t.pos.colNote,
+      hideBelow: 'xl',
+      wrap: true,
+      width: 'lg',
+      cell: (anomaly) =>
+        anomaly.status === 'REVIEWED' && anomaly.reviewedAt && anomaly.reviewedBy
+          ? fill(t.pos.anomalyReviewedInfo, {
+              time: formatDateTime(anomaly.reviewedAt, zone, locale),
+              name: anomaly.reviewedBy.displayName,
+              note: anomaly.reviewNote ?? '—',
+            })
+          : '—',
+    },
+    {
+      key: 'actions',
+      header: t.common.actions,
+      actions: true,
+      cell: (anomaly) => (
+        <RowActions
+          menuLabel={fill(t.common.list.actionsFor, { name: anomaly.providerReference })}
+          items={
+            anomaly.status === 'REVIEWED'
+              ? []
+              : [
+                  {
+                    id: 'review',
+                    label: t.pos.anomalyReview,
+                    disabled: working,
+                    onSelect: () => onReview(anomaly.id),
+                  },
+                ]
+          }
+        />
+      ),
+    },
+  ];
   return (
-    <div className="wf-card">
-      <p>
-        {anomaly.status === 'OPEN' ? <Badge tone="warning">{t.pos.anomalyOpen}</Badge> : null}{' '}
-        <strong>{t.pos.anomalyKinds[anomaly.kind]}</strong> ·{' '}
-        {formatDateTime(anomaly.openedAt, zone, locale)}
-      </p>
-      <p className="wf-small">
-        {fill(t.pos.anomalyDetail, {
-          expected: anomaly.expectedAmountVnd ? formatVnd(anomaly.expectedAmountVnd, locale) : '—',
-          received: formatVnd(anomaly.receivedAmountVnd, locale),
-          reference: anomaly.providerReference,
-        })}
-      </p>
-      {anomaly.status === 'REVIEWED' && anomaly.reviewedAt && anomaly.reviewedBy ? (
-        <p className="wf-small">
-          {fill(t.pos.anomalyReviewedInfo, {
-            time: formatDateTime(anomaly.reviewedAt, zone, locale),
-            name: anomaly.reviewedBy.displayName,
-            note: anomaly.reviewNote ?? '—',
-          })}
-        </p>
-      ) : (
-        <form onSubmit={(event) => void submit(event)}>
-          <Field id={`pos-anomaly-${anomaly.id}`} label={t.pos.anomalyNoteLabel} required>
-            <textarea
-              id={`pos-anomaly-${anomaly.id}`}
-              rows={2}
-              maxLength={500}
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-            />
-          </Field>
-          {problem ? (
-            <p className="wf-hint" role="alert">
-              {t.pos.anomalyNeedNote}
-            </p>
-          ) : null}
-          <SubmitButton
-            pending={working === `anomaly-${anomaly.id}`}
-            label={t.pos.anomalyReview}
-            pendingLabel={t.pos.anomalyReviewing}
-            tone="primary"
-            disabled={working !== null}
-          />
-        </form>
-      )}
-    </div>
-  );
-}
-
-/** Cash: the credited amount (default the whole cash-collectable balance) and what was handed over. */
-function CollectForm({
-  balance,
-  working,
-  onCollect,
-}: {
-  balance: string;
-  working: string | null;
-  onCollect: (body: PaymentRecordRequest) => Promise<boolean>;
-}) {
-  const { t, locale } = useWorkforce();
-  const [input, setInput] = useState<PaymentInput>(() => paymentInput(balance));
-  const [problem, setProblem] = useState<PaymentProblem | null>(null);
-  // One idempotency key per intended payment: a retry of the same choice reuses it (the server then
-  // returns the stored payment instead of collecting twice); another choice gets a new one.
-  const attempt = useRef<{ key: string; amount: string; tendered: string } | null>(null);
-  const change = changePreview(input);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (
-      !attempt.current ||
-      attempt.current.amount !== input.amount ||
-      attempt.current.tendered !== input.tendered
-    ) {
-      attempt.current = { key: newPaymentKey(), amount: input.amount, tendered: input.tendered };
-    }
-    const result = paymentBody(input, balance, attempt.current.key);
-    if ('problem' in result) {
-      setProblem(result.problem);
-      return;
-    }
-    setProblem(null);
-    if (await onCollect(result.body)) attempt.current = null;
-  }
-
-  const message =
-    problem === 'amount'
-      ? t.pos.invalidAmount
-      : problem === 'tendered'
-        ? t.pos.invalidTendered
-        : problem === 'tenderLow'
-          ? t.pos.tenderTooLow
-          : null;
-
-  return (
-    <form onSubmit={(event) => void submit(event)}>
-      <h3>{t.pos.collectTitle}</h3>
-      <div className="wf-inline-form">
-        <Field id="pos-pay-amount" label={t.pos.amountLabel} hint={t.pos.amountHint}>
-          <input
-            id="pos-pay-amount"
-            inputMode="numeric"
-            autoComplete="off"
-            maxLength={18}
-            value={input.amount}
-            onChange={(event) => {
-              const amount = event.target.value;
-              // Keep "exact tender" while the cashier has not typed a different tender.
-              setInput((current) => ({
-                amount,
-                tendered: current.tendered === current.amount ? amount : current.tendered,
-              }));
-            }}
-          />
-        </Field>
-        <Field id="pos-pay-tendered" label={t.pos.tenderedLabel}>
-          <input
-            id="pos-pay-tendered"
-            inputMode="numeric"
-            autoComplete="off"
-            maxLength={18}
-            value={input.tendered}
-            onChange={(event) => setInput({ ...input, tendered: event.target.value })}
-          />
-        </Field>
-      </div>
-      {change !== null ? (
-        <p className="wf-small">
-          {fill(t.pos.changePreview, { amount: formatVnd(change, locale) })}
-        </p>
-      ) : null}
-      {message ? <Notice tone="error">{message}</Notice> : null}
-      <SubmitButton
-        pending={working === 'collect'}
-        label={t.pos.collect}
-        pendingLabel={t.pos.collecting}
-        tone="primary"
-        disabled={working !== null}
+    <Card as="section">
+      <CardHeader title={t.pos.anomalyTitle} description={t.pos.anomalyHint} />
+      <DataTable
+        mode="client"
+        caption={fill(t.common.list.table, { list: t.pos.anomalyTitle })}
+        columns={columns}
+        rows={anomalies}
+        rowKey={(anomaly) => anomaly.id}
+        paging={{ ...paging, labels: paginationLabels(t, t.pos.anomalyTitle) }}
       />
-    </form>
+    </Card>
+  );
+}
+
+/** Audited management notes (a paid PayOS invoice is not editable in this version). */
+function NotesCard({
+  notes,
+  zone,
+  canAdd,
+  working,
+  onAdd,
+}: {
+  notes: readonly Note[];
+  zone: string;
+  canAdd: boolean;
+  working: boolean;
+  onAdd: () => void;
+}) {
+  const { t, locale } = useWorkforce();
+  const paging = usePaging();
+  const columns: DataTableColumn<Note>[] = [
+    {
+      key: 'note',
+      header: t.pos.colNote,
+      mobileTitle: true,
+      wrap: true,
+      width: 'lg',
+      cell: (note) => note.note,
+    },
+    {
+      key: 'author',
+      header: t.pos.colAuthor,
+      hideBelow: 'md',
+      truncate: true,
+      cell: (note) => note.author.displayName,
+    },
+    {
+      key: 'time',
+      header: t.pos.colTime,
+      cell: (note) => formatDateTime(note.createdAt, zone, locale),
+    },
+  ];
+  return (
+    <Card as="section">
+      <CardHeader
+        title={t.pos.noteTitle}
+        description={t.pos.noteHint}
+        actions={
+          canAdd ? (
+            <Button variant="secondary" icon="plus" disabled={working} onClick={onAdd}>
+              {t.pos.noteAdd}
+            </Button>
+          ) : undefined
+        }
+      />
+      <DataTable
+        mode="client"
+        caption={fill(t.common.list.table, { list: t.pos.noteTitle })}
+        columns={columns}
+        rows={notes}
+        rowKey={(note) => note.id}
+        empty={<Empty>{t.pos.noNotes}</Empty>}
+        paging={{ ...paging, labels: paginationLabels(t, t.pos.noteTitle) }}
+      />
+    </Card>
   );
 }

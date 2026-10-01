@@ -7,13 +7,21 @@ import type {
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime';
+import {
+  CancelConfirm,
+  CashDialog,
+  LineDialog,
+  PayosDialog,
+  VoucherDialog,
+} from '../../components/workforce/screens/pos-dialogs';
 import { PosInvoiceScreen } from '../../components/workforce/screens/pos-invoice';
-import { PosPaymentsSection } from '../../components/workforce/screens/pos-payments';
+import { cashBalanceOf, PosPaymentsSection } from '../../components/workforce/screens/pos-payments';
 import { PosScreen } from '../../components/workforce/screens/pos';
 import { getWorkforceDictionary } from '../../i18n/workforce';
 import { employee, owner, render } from '../../test/support';
 import { ApiError } from './api';
 import { navigationFor } from './permissions';
+import { ReauthenticationCancelled } from './reauth';
 import {
   cancelBody,
   changePreview,
@@ -282,7 +290,7 @@ const invoice = (
       ...change.actions,
     },
   }) as InvoiceResponse;
-const noop = () => Promise.resolve(true);
+const noop = () => undefined;
 const handlers = {
   onCollect: noop,
   onReverse: noop,
@@ -292,6 +300,8 @@ const handlers = {
   onReviewAnomaly: noop,
   onAddNote: noop,
 };
+/** Row `⋮` buttons in the markup: a table row offers one only when it has an action. */
+const rowMenus = (markup: string) => (markup.match(/aria-haspopup="menu"/g) ?? []).length;
 
 test('payments section: history, balance, the cash form only when permitted, reversal only where offered', () => {
   const cashier = employee([['VIEW_INVOICES', 'A']]);
@@ -305,8 +315,9 @@ test('payments section: history, balance, the cash form only when permitted, rev
   assert.ok(html.includes('100,000'), 'credited amount');
   assert.ok(html.includes('50,000'), 'change');
   assert.ok(html.includes('200,000'), 'balance due');
-  assert.ok(html.includes(en.pos.collectTitle), 'cash form shown when the API permits');
-  assert.ok(!html.includes(en.pos.reverse), 'no reversal button unless reversible');
+  assert.ok(html.includes(en.pos.collectTitle), 'cash action shown when the API permits');
+  assert.equal(rowMenus(html), 0, 'no reversal menu unless reversible');
+  assert.ok(!html.includes('wf-'), 'kit components only, no legacy markup');
   // The `ls-card` surface class is styling, not a payment method.
   assert.ok(!/card/i.test(html.replace(/class="[^"]*"/g, '')), 'no CARD anywhere');
 
@@ -319,7 +330,7 @@ test('payments section: history, balance, the cash form only when permitted, rev
     cashier,
     'vi',
   );
-  assert.ok(reversible.includes(vi.pos.reverse));
+  assert.equal(rowMenus(reversible), 1, 'the reversal is offered in the row menu');
 
   const forbidden = render(
     <PosPaymentsSection
@@ -450,15 +461,18 @@ test('PayOS in the payments section: waiting request, form only when none waits,
     manageAnomalies: false,
     addManagementNote: false,
   };
-  // No request waiting: the PayOS form is offered next to the cash form.
+  // No request waiting: PayOS is offered next to the cash action (both open a dialog).
   const form = render(
     <PosPaymentsSection invoice={invoice({ actions })} working={null} {...handlers} />,
     cashier,
     'en',
   );
-  assert.ok(form.includes(en.pos.payosTitle));
   assert.ok(form.includes(en.pos.payosCreate));
   assert.ok(form.includes(en.pos.collectTitle));
+  assert.ok(
+    form.indexOf(en.pos.payosCreate) < form.indexOf(en.pos.collectTitle),
+    'the primary action (cash) comes last',
+  );
 
   // A waiting request holds its share: the QR, the countdown, re-check and cancel; no second form.
   const waiting = render(
@@ -482,9 +496,10 @@ test('PayOS in the payments section: waiting request, form only when none waits,
   assert.ok(!waiting.includes(en.pos.payosCreate), 'one waiting request per invoice');
   assert.ok(waiting.includes('120,000'), 'the held amount');
   assert.ok(waiting.includes(en.pos.paymentStates.PENDING));
-  // Cash may take only the rest: the cash form starts from balance minus the held amount.
-  assert.ok(waiting.includes('value="80000"'));
-  // A pending request is not effective and there is no "mark received" or reverse button.
+  // Cash may take only the rest: the cash dialog starts from balance minus the held amount.
+  assert.equal(cashBalanceOf(invoice({ pendingProviderVnd: '120000' })).toString(), '80000');
+  // A pending request is not effective and there is no "mark received" or reverse action.
+  assert.equal(rowMenus(waiting), 0);
   assert.ok(!waiting.includes(en.pos.reverse));
   assert.ok(!/received|đã nhận tiền/i.test(waiting.replace(en.pos.payosNote, '')));
 
@@ -598,7 +613,7 @@ test('PayOS management: anomalies and notes only where the API offers them', () 
   assert.ok(html.includes(en.pos.anomalyTitle));
   assert.ok(html.includes(en.pos.anomalyKinds.AMOUNT_MISMATCH));
   assert.ok(html.includes('TF-9'));
-  assert.ok(html.includes(en.pos.anomalyReview));
+  assert.equal(rowMenus(html), 1, 'an open anomaly is reviewed from its row menu');
   assert.ok(html.includes(en.pos.noteTitle));
   assert.ok(html.includes(en.pos.noteAdd));
   // A reviewed anomaly shows who looked and when; no review form.
@@ -632,7 +647,7 @@ test('PayOS management: anomalies and notes only where the API offers them', () 
   );
   assert.ok(reviewed.includes('Đã liên hệ khách'));
   assert.ok(reviewed.includes('Sai ưu đãi'));
-  assert.ok(!reviewed.includes(vi.pos.anomalyReview));
+  assert.equal(rowMenus(reviewed), 0, 'a reviewed anomaly has no review action');
   assert.ok(!reviewed.includes(vi.pos.noteAdd));
   // Without management authority nothing about anomalies or notes is shown.
   const plain = render(
@@ -669,4 +684,87 @@ test('PayOS texts and errors exist in both languages', () => {
   );
   assert.notEqual(vi.pos.payosCreate, en.pos.payosCreate);
   assert.notEqual(vi.pos.noteHint, en.pos.noteHint);
+});
+
+// ---- Step 9c: the money forms are dialogs now; what they send and show must not change ----
+
+const attempt = () => ({ current: null });
+const dialogHandlers = { working: false, error: null, onClose: noop };
+
+test('cash dialog: starts from the cash balance with exact tender, one Cancel then the action', () => {
+  const html = render(
+    <CashDialog
+      balance="80000"
+      attempt={attempt()}
+      {...dialogHandlers}
+      onCollect={() => Promise.resolve(true)}
+    />,
+    employee([['VIEW_INVOICES', 'A']]),
+    'en',
+  );
+  assert.equal(html.match(/value="80000"/g)?.length, 2, 'amount and tendered start at the balance');
+  assert.ok(html.includes(en.pos.collectTitle));
+  assert.ok(html.indexOf(en.common.cancel) < html.indexOf(en.pos.collect), 'primary last');
+  assert.ok(html.includes('inputMode="numeric"') || html.includes('inputmode="numeric"'));
+  assert.ok(!html.includes('wf-'));
+});
+
+test('PayOS dialog: the amount defaults to the whole balance and the rules are said once', () => {
+  const html = render(
+    <PayosDialog
+      balance="200000"
+      attempt={attempt()}
+      {...dialogHandlers}
+      onCreate={() => Promise.resolve(true)}
+    />,
+    employee([['VIEW_INVOICES', 'A']]),
+    'en',
+  );
+  assert.ok(html.includes('value="200000"'));
+  assert.ok(html.includes(en.pos.payosNote));
+  assert.ok(html.includes(en.pos.payosCreate));
+});
+
+test('line dialog: a price field only for a range, a quantity field only for PER_NAIL', () => {
+  const cashier = employee([['VIEW_INVOICES', 'A']]);
+  const common = { version: 3, ...dialogHandlers, onSave: () => Promise.resolve(true) };
+  const ranged = render(<LineDialog line={line()} {...common} />, cashier, 'en');
+  assert.ok(ranged.includes(en.pos.priceLabel));
+  assert.ok(!ranged.includes(en.pos.quantityLabel));
+  const nails = render(
+    <LineDialog line={nail({ quantity: 2, unitPriceVnd: '10000' })} {...common} />,
+    cashier,
+    'en',
+  );
+  assert.ok(nails.includes(en.pos.quantityLabel));
+  assert.ok(!nails.includes(en.pos.priceLabel));
+});
+
+test('voucher dialog and cancel confirmation carry the same rules as before', () => {
+  const cashier = employee([['VIEW_INVOICES', 'A']]);
+  const voucher = render(
+    <VoucherDialog {...dialogHandlers} onApply={() => Promise.resolve(true)} />,
+    cashier,
+    'en',
+  );
+  assert.ok(voucher.includes(en.pos.voucherHint));
+  assert.ok(voucher.includes('maxLength="64"') || voucher.includes('maxlength="64"'));
+  // A finalized invoice says that the password is asked again; a reason is required either way.
+  const cancel = render(
+    <CancelConfirm
+      invoice={invoice({ actions: { cancelNeedsReauth: true } })}
+      onCancelInvoice={() => Promise.resolve()}
+      onClose={noop}
+    />,
+    cashier,
+    'en',
+  );
+  assert.ok(cancel.includes(en.pos.cancelNeedsReauth));
+  assert.ok(cancel.includes(en.pos.cancelReason));
+  assert.ok(cancel.includes('role="alertdialog"'));
+});
+
+test('a cancelled password confirmation is explained, not a generic failure', () => {
+  assert.equal(posErrorMessage(new ReauthenticationCancelled(), vi), vi.reauth.cancelled);
+  assert.equal(posErrorMessage(new ReauthenticationCancelled(), en), en.reauth.cancelled);
 });

@@ -242,3 +242,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Service/Branch/Discount details = breadcrumbs, `⋮` menu + primary action, read-only `DescriptionList` cards or Tabs; edits are FormDrawer/FormDialog, status/terminate are ConfirmDialog with required reason. Discounts list = client DataTable + toolbar (URL state); create = own page `/discounts/new`, new version = own page `/discounts/[id]/versions/new` (Owner approved 9b). No API/DB/permission change.
 - Ratchet: raw tables 10, wf uses 397, fieldsets 7, checkboxes 4. Tests: 46 targeted green. DOM audit service-detail 135 -> 14, branch-detail 89 -> 14, discount-detail 78 -> 14, discounts 56 -> 36. Report: docs/UXUI_REDESIGN_STEP9B_DETAILS_DISCOUNTS.md. Next: 9c (POS, invoice, payments).
+
+### UX/UI Step 9c (POS board, invoice, payments) - Owner approved 2026-10-01 (base 1377faf)
+
+- UI only. Board = toolbar + two DataTables; invoice = breadcrumbs, header `⋮` cancel + primary Finalize, cards (lines+totals, discount, promo codes, payer, payments, PayOS wait, anomalies, notes); every form is a FormDialog, reversal/cancel are ConfirmDialog with reason, re-auth unchanged. `DescriptionList layout="totals"` added. No API/DB/permission change; behavior differences listed in the report.
+- Ratchet: raw tables 6, wf uses 334. Tests 39 web + 21 ui green. Scratch-DB money flow 29/29 (open, price, promo, finalize, cash, PayOS QR via simulator, PAID, reversal, cancel). Report: docs/UXUI_REDESIGN_STEP9C_POS_INVOICES.md. Next: Kit polish (plan section 11, incl. neutral password-dialog wording), then 10a.

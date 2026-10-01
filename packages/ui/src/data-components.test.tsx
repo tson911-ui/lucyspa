@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
@@ -18,6 +19,7 @@ const LONG =
   'Xác nhận hủy lịch hẹn của khách hàng đã đặt trước qua điện thoại và ghi chú thêm yêu cầu đặc biệt';
 
 const html = renderToStaticMarkup;
+const css = readFileSync(new URL('components.css', import.meta.url), 'utf8');
 
 const labels: PaginationLabels = {
   nav: 'Trang của danh sách Nhân viên',
@@ -432,6 +434,23 @@ test('DescriptionList: real dl markup, empty values, long values', () => {
   assert.equal((markup.match(/<dd /g) ?? []).length, 4);
   assert.ok(markup.includes(LONG));
   assert.equal((markup.match(/>—</g) ?? []).length, 2, 'empty values show a dash');
+});
+
+test('DescriptionList totals: amounts at the trailing edge, the closing line is strong', () => {
+  const markup = html(
+    <DescriptionList
+      layout="totals"
+      columns={2}
+      items={[
+        { label: 'Tạm tính', value: '500.000 ₫' },
+        { label: 'Tổng tiền', value: '450.000 ₫', strong: true },
+      ]}
+    />,
+  );
+  assert.match(markup, /^<dl class="ls-dl ls-dl-totals">/, 'totals ignore the two-column grid');
+  assert.equal((markup.match(/ls-dl-row-strong/g) ?? []).length, 1);
+  assert.match(css, /\.ls-dl-totals \.ls-dl-value \{[^}]*white-space: nowrap/);
+  assert.match(css, /\.ls-dl-totals \.ls-dl-value \{[^}]*text-align: end/);
 });
 
 test('Tabs: tablist semantics, roving tabindex, only the selected panel renders', () => {

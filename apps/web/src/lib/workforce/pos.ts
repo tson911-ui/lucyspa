@@ -15,6 +15,7 @@ import type { WorkforceDictionary } from '../../i18n/workforce';
 import { ApiError } from './api';
 import { formatVnd, isVndInput } from './format';
 import { canAt } from './permissions';
+import { ReauthenticationCancelled } from './reauth';
 import { errorMessage } from './workflows';
 
 /**
@@ -214,6 +215,7 @@ export function reverseBody(reason: string): PaymentReverseRequest | null {
 /** POS outcomes are shown with their own texts; the rest as elsewhere. */
 export function posErrorMessage(error: unknown, t: WorkforceDictionary): string {
   const texts = t.pos.errors as Record<string, string>;
+  if (error instanceof ReauthenticationCancelled) return t.reauth.cancelled;
   if (error instanceof ApiError && error.code in texts) return texts[error.code] as string;
   return errorMessage(error, t);
 }
