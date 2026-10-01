@@ -94,7 +94,9 @@ export class LoginService implements OnModuleInit {
       | 'resolve'
       | 'resolveForMutation'
       | 'continueAfterCredentialChange'
-    >,
+    > &
+      /** Optional so narrow test facades keep working; production passes the real service. */
+      Partial<Pick<SessionService, 'authorizationChanged'>>,
     @Inject(PasswordService)
     private readonly passwords: Pick<
       PasswordService,
@@ -176,7 +178,14 @@ export class LoginService implements OnModuleInit {
   async currentAccount(sessionToken: string | undefined): Promise<CurrentAccountResponse> {
     const principal = await this.guard(() => this.sessions.resolve(sessionToken));
     if (principal?.kind !== 'AUTHENTICATED' || principal.userId === null) {
-      throw new AuthError('AUTHENTICATION_REQUIRED');
+      const changed =
+        principal === null &&
+        (await this.guard(
+          async () => (await this.sessions.authorizationChanged?.(sessionToken)) === true,
+        ));
+      throw changed
+        ? new AuthError('AUTHENTICATION_REQUIRED', undefined, 'AUTHORIZATION_CHANGED')
+        : new AuthError('AUTHENTICATION_REQUIRED');
     }
     return this.account(principal.userId);
   }

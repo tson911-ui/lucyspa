@@ -63,7 +63,7 @@ export {
   Tooltip,
 } from './feedback';
 export type { BadgeTone, Tone } from './feedback';
-export { ToastProvider, useToast } from './toast';
+export { ToastProvider, useOptionalToast, useToast } from './toast';
 export type { ToastInput } from './toast';
 export { MAX_TOASTS, TOAST_DURATION_MS, addToast, removeToast } from './toast-core';
 export type { ToastData, ToastTone } from './toast-core';
@@ -132,6 +132,7 @@ export type { FacetOption } from './faceted-filter';
 export { CursorPagination, Pagination } from './pagination';
 export type { CursorPaginationLabels, PaginationLabels } from './pagination';
 export { FilterChips, ListToolbar } from './list-toolbar';
+export { SelectionBar } from './selection-bar';
 export type { FilterChip, ListToolbarLabels } from './list-toolbar';
 export { DescriptionList } from './description-list';
 export type { DescriptionItem } from './description-list';

@@ -186,6 +186,14 @@ test('workforce login, /me, reauthenticate and logout-all HTTP contracts', async
       .send({})
       .expect(401);
     assert.equal(refused.headers['set-cookie'], undefined);
+
+    // A session ended by a permission change says so; every other 401 carries no reason.
+    const plain = await request(server).get('/api/v1/auth/me').expect(401);
+    assert.equal(Object.hasOwn(plain.body as object, 'reason'), false);
+    failure = new AuthError('AUTHENTICATION_REQUIRED', undefined, 'AUTHORIZATION_CHANGED');
+    const changed = await request(server).get('/api/v1/auth/me').expect(401);
+    assert.equal((changed.body as ApiErrorResponse).code, 'AUTHENTICATION_REQUIRED');
+    assert.equal((changed.body as ApiErrorResponse).reason, 'AUTHORIZATION_CHANGED');
   } finally {
     await app.close();
   }

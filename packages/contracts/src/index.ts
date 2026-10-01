@@ -170,6 +170,8 @@ export interface ApiErrorResponse {
   statusCode: number;
   code: string;
   message: string | string[];
+  /** Only on a 401: the session ended because the person's permissions changed. */
+  reason?: 'AUTHORIZATION_CHANGED';
   requestId: string;
 }
 

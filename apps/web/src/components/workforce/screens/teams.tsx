@@ -3,16 +3,42 @@
 import type {
   EmployeeStatus,
   EmploymentClassification,
-  OrganizationPage,
   TeamEmployee,
   TeamEmployeeFilters,
   TeamListResponse,
   TeamMembershipFilter,
   TeamSummary,
 } from '@lucy-spa/contracts';
+import {
+  Breadcrumbs,
+  Combobox,
+  ConfirmDialog,
+  DataTable,
+  DescriptionList,
+  FacetedFilter,
+  Field,
+  FormDialog,
+  FormGrid,
+  ListSection,
+  ListToolbar,
+  Menu,
+  RowActions,
+  SearchInput,
+  SelectionBar,
+  Select,
+  Tabs,
+  Textarea,
+  TextInput,
+  useUrlState,
+  type DataTableColumn,
+  type MenuItem,
+} from '@lucy-spa/ui';
 import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
+import { fill } from '../../../i18n/workforce';
 import { organizationDictionary } from '../../../i18n/organization';
+import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
+import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
 import { canAnywhere, canAt } from '../../../lib/workforce/permissions';
 import {
   bulkSelection,
@@ -25,360 +51,472 @@ import {
   toggleMember,
   type MemberSelection,
 } from '../../../lib/workforce/teams';
+import {
+  normalizeTeamList,
+  TEAM_LIST_DEFAULTS,
+  TEAM_PAGE_KEYS,
+  teamListQuery,
+} from '../../../lib/workforce/teams-list';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import {
+  Badge,
+  Button,
   CheckField,
+  Card,
   Empty,
   ErrorState,
-  Field,
-  FormFeedback,
   Loading,
   Notice,
   PageHeader,
-  Section,
-  SubmitButton,
   useResource,
   useSubmit,
-  VisuallyHidden,
+  useSuccessToast,
 } from '../ui';
 
-export function OrganizationPager({
-  page,
-  onChange,
-  disabled = false,
-}: {
-  page: OrganizationPage;
-  onChange: (page: number) => void;
-  disabled?: boolean;
-}) {
-  const { locale } = useWorkforce();
-  const text = organizationDictionary(locale);
-  const pages = Math.max(1, Math.ceil(page.total / page.size));
-  return (
-    <div className="wf-form-actions" aria-label={text.page}>
-      <button
-        type="button"
-        className="wf-button"
-        disabled={disabled || page.number <= 1}
-        onClick={() => onChange(page.number - 1)}
-      >
-        {text.previous}
-      </button>
-      <span>
-        {text.page} {page.number} / {pages} · {text.total} {page.total}
-      </span>
-      <button
-        type="button"
-        className="wf-button"
-        disabled={disabled || page.number >= pages}
-        onClick={() => onChange(page.number + 1)}
-      >
-        {text.next}
-      </button>
-    </div>
-  );
-}
-
+/** Teams: a paged, searchable list (server mode, 20/page); a team opens its own page. */
 export function TeamsScreen() {
   const { api, t, locale, base } = useWorkforce();
   const { account } = useAccount();
   const text = organizationDictionary(locale);
   const allowed = canAnywhere(account, 'VIEW_TEAMS') || canAnywhere(account, 'MANAGE_TEAMS');
+  const manage = canAnywhere(account, 'MANAGE_TEAMS');
+  const notify = useSuccessToast();
   const branches = useBranches(api);
-  const [branchId, setBranchId] = useState('');
-  const [q, setQ] = useState('');
-  const [page, setPage] = useState(1);
-  const list = useResource(
+  const [list, updateList] = useUrlState(TEAM_LIST_DEFAULTS, {
+    normalize: normalizeTeamList,
+    resetOnChange: TEAM_PAGE_KEYS,
+  });
+  const [creating, setCreating] = useState(false);
+  const teams = useResource(
     () =>
       allowed
-        ? api.get<TeamListResponse>('/api/v1/teams', { branchId, q, page, limit: 50 })
+        ? api.get<TeamListResponse>('/api/v1/teams', teamListQuery(list))
         : Promise.resolve(null),
-    [api, allowed, branchId, q, page],
+    [api, allowed, list.branch, list.q, list.page, list.pageSize],
   );
   if (!allowed) return <Notice tone="warning">{text.noAccess}</Notice>;
+
+  const active = (list.q ? 1 : 0) + (list.branch ? 1 : 0);
+  const columns: DataTableColumn<TeamSummary>[] = [
+    {
+      key: 'name',
+      header: t.common.name,
+      mobileTitle: true,
+      wrap: true,
+      width: 'lg',
+      cell: (team) => (
+        <>
+          <Link className="ls-link" href={`${base}/teams/${team.id}`}>
+            {team.name}
+          </Link>{' '}
+          {!team.isActive ? <Badge tone="neutral">{text.inactive}</Badge> : null}
+        </>
+      ),
+    },
+    { key: 'code', header: t.common.code, cell: (team) => team.code },
+    {
+      key: 'branch',
+      header: t.common.branch,
+      hideBelow: 'md',
+      wrap: true,
+      cell: (team) => branches.data?.get(team.branchId)?.name ?? t.common.unknownBranch,
+    },
+    {
+      key: 'leader',
+      header: text.leader,
+      hideBelow: 'lg',
+      truncate: true,
+      cell: (team) => team.leader?.fullName ?? text.noLeader,
+    },
+    {
+      key: 'members',
+      header: text.members,
+      numeric: true,
+      cell: (team) => team.memberCount,
+    },
+  ];
+
   return (
     <>
-      <PageHeader title={text.teams} />
-      <p className="wf-muted">{text.noLimit}</p>
-      <div className="wf-filters">
-        <Field id="teams-branch" label={t.common.branch}>
-          <select
-            id="teams-branch"
-            value={branchId}
-            onChange={(event) => {
-              setBranchId(event.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="">{t.common.all}</option>
-            {[...(branches.data?.values() ?? [])].map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field id="teams-search" label={t.common.search}>
-          <input
-            id="teams-search"
-            value={q}
-            maxLength={100}
-            onChange={(event) => {
-              setQ(event.target.value);
-              setPage(1);
-            }}
+      <PageHeader title={text.teams} intro={text.noLimit}>
+        {manage ? (
+          <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
+            {text.createTeam}
+          </Button>
+        ) : null}
+      </PageHeader>
+      <ListToolbar
+        labels={toolbarLabels(t)}
+        activeFilters={active}
+        resultCount={teams.data ? resultsText(t, teams.data.page.total) : undefined}
+        onReset={() => updateList({ q: '', branch: '' })}
+        reload={{ label: t.common.reload, onClick: () => void teams.reload() }}
+        search={
+          <SearchInput
+            id="team-q"
+            value={list.q}
+            label={text.searchTeams}
+            placeholder={text.searchTeams}
+            clearLabel={t.common.list.clearSearch}
+            onSearch={(q) => updateList({ q }, { replace: true })}
           />
-        </Field>
-      </div>
-      {canAnywhere(account, 'MANAGE_TEAMS') ? <CreateTeam onSaved={list.reload} /> : null}
-      {list.loading ? <Loading t={t} /> : null}
-      {list.error ? (
-        <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
-      ) : null}
-      {list.data ? (
-        <Section title={text.teams}>
-          {!list.data.items.length ? (
-            <Empty>{text.noRows}</Empty>
-          ) : (
-            <table className="wf-table">
-              <thead>
-                <tr>
-                  <th>{t.common.name}</th>
-                  <th>{t.common.branch}</th>
-                  <th>{text.leader}</th>
-                  <th>{text.members}</th>
-                  <th>{t.common.actions}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.data.items.map((team) => (
-                  <tr key={team.id}>
-                    <td data-label={t.common.name}>
-                      {team.name} <small>{team.code}</small>
-                    </td>
-                    <td data-label={t.common.branch}>
-                      {branches.data?.get(team.branchId)?.name ?? t.common.unknownBranch}
-                    </td>
-                    <td data-label={text.leader}>{team.leader?.fullName ?? text.noLeader}</td>
-                    <td data-label={text.members}>{team.memberCount}</td>
-                    <td data-label={t.common.actions}>
-                      <Link href={`${base}/teams/${team.id}`}>{t.common.details}</Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          <OrganizationPager page={list.data.page} onChange={setPage} disabled={list.loading} />
-        </Section>
+        }
+        filters={
+          <FacetedFilter
+            label={t.common.branch}
+            clearLabel={t.common.list.clearChoice}
+            options={[...(branches.data?.values() ?? [])].map((branch) => ({
+              value: branch.id,
+              label: branch.name,
+            }))}
+            selected={list.branch ? [list.branch] : []}
+            onChange={([branch]) => updateList({ branch: branch ?? '' })}
+          />
+        }
+      />
+      <DataTable
+        mode="server"
+        caption={fill(t.common.list.table, { list: text.teams })}
+        columns={columns}
+        rows={teams.data?.items ?? []}
+        rowKey={(team) => team.id}
+        loading={teams.loading}
+        loadingLabel={t.common.loading}
+        error={
+          teams.error ? (
+            <ErrorState error={teams.error} t={t} onRetry={() => void teams.reload()} />
+          ) : undefined
+        }
+        empty={teams.data ? <Empty>{text.noRows}</Empty> : undefined}
+        paging={{
+          page: list.page,
+          pageSize: list.pageSize,
+          total: teams.data?.page.total ?? 0,
+          onPageChange: (page) => updateList({ page }),
+          onPageSizeChange: (pageSize) => updateList({ pageSize }),
+          labels: paginationLabels(t, text.teams),
+        }}
+      />
+      {creating ? (
+        <TeamCreate
+          onClose={() => setCreating(false)}
+          onCreated={async () => {
+            await teams.reload();
+            setCreating(false);
+            notify(text.created);
+          }}
+        />
       ) : null}
     </>
   );
 }
 
-function CreateTeam({ onSaved }: { onSaved: () => Promise<void> }) {
+/** Short form (4 fields): a dialog opened from the page header. Mounted only while open. */
+function TeamCreate({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => Promise<void>;
+}) {
   const { api, t, locale } = useWorkforce();
   const { account } = useAccount();
   const text = organizationDictionary(locale);
   const branches = useBranches(api);
   const [form, setForm] = useState({ branchId: '', code: '', name: '', reason: '' });
   const submit = useSubmit();
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  const ready =
+    form.branchId !== '' &&
+    form.code.trim() !== '' &&
+    form.name.trim() !== '' &&
+    form.reason.trim() !== '';
+
+  async function save() {
+    if (!ready) return;
     const ok = await submit.run(
-      () => runMutation(() => api.post('/api/v1/teams', form), onSaved),
-      text.saved,
+      () => runMutation(() => api.post('/api/v1/teams', form), onCreated),
+      '',
     );
-    if (ok) {
-      setForm({ ...form, code: '', name: '', reason: '' });
-      await onSaved();
-    }
+    if (ok) await onCreated();
   }
+
   return (
-    <Section title={text.createTeam}>
-      <details>
-        <summary>{text.createTeam}</summary>
-        <form className="wf-form" onSubmit={(event) => void save(event)}>
-          <Field id="new-team-branch" label={t.common.branch} required>
-            <select
-              id="new-team-branch"
-              required
+    <FormDialog
+      title={text.createTeam}
+      labels={formOverlayLabels(t, t.common.create)}
+      busy={submit.pending}
+      dirty={form.code !== '' || form.name !== '' || form.reason !== '' || form.branchId !== ''}
+      submitDisabled={!ready}
+      error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
+      onClose={onClose}
+      onSubmit={save}
+    >
+      <FormGrid>
+        <Field label={t.common.branch} required>
+          {(control) => (
+            <Select
+              {...control}
+              placeholder={text.choose}
               value={form.branchId}
               onChange={(event) => setForm({ ...form, branchId: event.target.value })}
-            >
-              <option value="">{text.choose}</option>
-              {[...(branches.data?.values() ?? [])]
+              options={[...(branches.data?.values() ?? [])]
                 .filter((branch) => branch.isActive && canAt(account, 'MANAGE_TEAMS', branch.id))
-                .map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </option>
-                ))}
-            </select>
-          </Field>
-          <Field id="new-team-code" label={t.common.code} required>
-            <input
-              id="new-team-code"
-              required
+                .map((branch) => ({ value: branch.id, label: branch.name }))}
+            />
+          )}
+        </Field>
+        <Field label={t.common.code} required width="md">
+          {(control) => (
+            <TextInput
+              {...control}
               maxLength={64}
               value={form.code}
               onChange={(event) => setForm({ ...form, code: event.target.value })}
             />
-          </Field>
-          <Field id="new-team-name" label={t.common.name} required>
-            <input
-              id="new-team-name"
-              required
+          )}
+        </Field>
+        <Field label={t.common.name} required>
+          {(control) => (
+            <TextInput
+              {...control}
               maxLength={200}
               value={form.name}
               onChange={(event) => setForm({ ...form, name: event.target.value })}
             />
-          </Field>
-          <Field id="new-team-reason" label={t.common.reason} required>
-            <input
-              id="new-team-reason"
-              required
+          )}
+        </Field>
+        <Field label={t.common.reason} required>
+          {(control) => (
+            <TextInput
+              {...control}
               maxLength={500}
               value={form.reason}
               onChange={(event) => setForm({ ...form, reason: event.target.value })}
             />
-          </Field>
-          <FormFeedback error={submit.error} success={submit.success} t={t} />
-          <SubmitButton
-            pending={submit.pending}
-            label={t.common.create}
-            pendingLabel={t.common.saving}
-            disabled={!form.reason.trim()}
-          />
-        </form>
-      </details>
-    </Section>
+          )}
+        </Field>
+      </FormGrid>
+    </FormDialog>
   );
 }
 
+type TeamOverlay = 'edit' | 'leader' | 'removeLeader' | 'delete';
+
+/**
+ * One team on its own page: summary, header actions (edit, change leader, a `⋮` menu with
+ * remove leader and delete) and the members table with bulk add / remove / transfer.
+ */
 export function TeamDetailScreen({ id }: { id: string }) {
-  const { api, t, locale, base } = useWorkforce();
+  const { api, t, locale, base, navigate } = useWorkforce();
   const text = organizationDictionary(locale);
+  const notify = useSuccessToast();
+  const branches = useBranches(api);
   const team = useResource(() => api.get<TeamSummary>(`/api/v1/teams/${id}`), [api, id]);
+  const [overlay, setOverlay] = useState<TeamOverlay | null>(null);
+
+  if (team.error && !team.data) {
+    return <ErrorState error={team.error} t={t} onRetry={() => void team.reload()} />;
+  }
+  if (!team.data) return <Loading t={t} />;
+  const current = team.data;
+
+  /** After a successful change: refresh, close the overlay and say what happened. */
+  const finish = (message: string) => async () => {
+    await team.reload();
+    setOverlay(null);
+    notify(message);
+  };
+  const menu: MenuItem[] = [
+    ...(current.isActive && current.canAssignLeader && current.leader
+      ? [
+          {
+            id: 'removeLeader',
+            label: text.removeLeader,
+            icon: 'user' as const,
+            onSelect: () => setOverlay('removeLeader'),
+          },
+        ]
+      : []),
+    ...(current.isActive && current.canManage
+      ? [
+          {
+            id: 'delete',
+            label: text.deleteTeam,
+            icon: 'trash' as const,
+            tone: 'danger' as const,
+            onSelect: () => setOverlay('delete'),
+          },
+        ]
+      : []),
+  ];
   return (
     <>
-      <Link href={`${base}/teams`}>← {text.teams}</Link>
-      {team.loading ? <Loading t={t} /> : null}
-      {team.error ? (
-        <ErrorState error={team.error} t={t} onRetry={() => void team.reload()} />
+      <PageHeader
+        title={current.name}
+        breadcrumbs={
+          <Breadcrumbs
+            label={text.breadcrumbs}
+            LinkComponent={Link}
+            items={[{ label: text.teams, href: `${base}/teams` }, { label: current.name }]}
+          />
+        }
+      >
+        {menu.length > 0 ? <RowActions menuLabel={text.moreActions} items={menu} /> : null}
+        {current.isActive && current.canAssignLeader ? (
+          <Button variant="secondary" onClick={() => setOverlay('leader')}>
+            {text.changeLeader}
+          </Button>
+        ) : null}
+        {current.isActive && current.canManage ? (
+          <Button variant="primary" icon="edit" onClick={() => setOverlay('edit')}>
+            {text.editTeam}
+          </Button>
+        ) : null}
+      </PageHeader>
+      {!current.isActive ? <Notice tone="info">{text.inactive}</Notice> : null}
+      <Card as="section" aria-label={current.name}>
+        <DescriptionList
+          columns={2}
+          items={[
+            {
+              label: t.common.branch,
+              value: branches.data?.get(current.branchId)?.name ?? t.common.unknownBranch,
+            },
+            { label: t.common.code, value: current.code },
+            { label: text.leader, value: current.leader?.fullName ?? text.noLeader },
+            { label: text.members, value: current.memberCount },
+          ]}
+        />
+      </Card>
+      {current.isActive ? <TeamMembers team={current} reload={team.reload} /> : null}
+      {overlay === 'edit' ? (
+        <TeamEdit
+          team={current}
+          reload={team.reload}
+          onClose={() => setOverlay(null)}
+          onSaved={finish(text.saved)}
+        />
       ) : null}
-      {team.data ? (
-        <>
-          <PageHeader title={team.data.name} />
-          <p>
-            {text.leader}: {team.data.leader?.fullName ?? text.noLeader} · {text.members}:{' '}
-            {team.data.memberCount}
-          </p>
-          {!team.data.isActive ? <Notice tone="info">{text.inactive}</Notice> : null}
-          {team.data.canManage && team.data.isActive ? (
-            <TeamSettings team={team.data} reload={team.reload} />
-          ) : null}
-          {team.data.canAssignLeader && team.data.isActive ? (
-            <LeaderEditor team={team.data} reload={team.reload} />
-          ) : null}
-          {team.data.isActive ? <TeamMembers team={team.data} reload={team.reload} /> : null}
-        </>
+      {overlay === 'leader' ? (
+        <LeaderDialog
+          team={current}
+          reload={team.reload}
+          onClose={() => setOverlay(null)}
+          onSaved={finish(text.saved)}
+        />
+      ) : null}
+      {overlay === 'removeLeader' ? (
+        <TeamConfirm
+          kind="removeLeader"
+          team={current}
+          reload={team.reload}
+          onClose={() => setOverlay(null)}
+          onDone={finish(text.leaderRemoved)}
+        />
+      ) : null}
+      {overlay === 'delete' ? (
+        <TeamConfirm
+          kind="delete"
+          team={current}
+          reload={team.reload}
+          onClose={() => setOverlay(null)}
+          onDone={async () => {
+            notify(text.deleted);
+            navigate?.(`${base}/teams`);
+          }}
+        />
       ) : null}
     </>
   );
 }
 
-function TeamSettings({ team, reload }: { team: TeamSummary; reload: () => Promise<void> }) {
+/** Rename the team: a short form in a dialog. */
+function TeamEdit({
+  team,
+  reload,
+  onClose,
+  onSaved,
+}: {
+  team: TeamSummary;
+  reload: () => Promise<void>;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
   const { api, t, locale } = useWorkforce();
   const text = organizationDictionary(locale);
   const [name, setName] = useState(team.name);
   const [reason, setReason] = useState('');
-  const [confirmed, setConfirmed] = useState(false);
   const submit = useSubmit();
-  async function save(remove: boolean) {
+  const changed = name.trim() !== team.name;
+
+  async function save() {
     const ok = await submit.run(
       () =>
         runMutation(
           () =>
-            api.post(`/api/v1/teams/${team.id}${remove ? '/delete' : ''}`, {
-              expectedVersion: team.version,
-              reason,
-              ...(remove ? { confirmed: true } : { name }),
-            }),
+            api.post(`/api/v1/teams/${team.id}`, { expectedVersion: team.version, reason, name }),
           reload,
         ),
-      text.saved,
+      '',
     );
-    if (ok) {
-      setReason('');
-      setConfirmed(false);
-      await reload();
-    }
+    if (ok) await onSaved();
   }
+
   return (
-    <Section title={text.editTeam}>
-      <details>
-        <summary>{text.editTeam}</summary>
-        <form
-          className="wf-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void save(false);
-          }}
-        >
-          <Field id="team-name" label={t.common.name} required>
-            <input
-              id="team-name"
-              required
+    <FormDialog
+      title={text.editTeam}
+      labels={formOverlayLabels(t, t.common.save)}
+      busy={submit.pending}
+      dirty={changed || reason !== ''}
+      submitDisabled={!changed || name.trim() === '' || reason.trim() === ''}
+      error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
+      onClose={onClose}
+      onSubmit={save}
+    >
+      <FormGrid>
+        <Field label={t.common.name} required>
+          {(control) => (
+            <TextInput
+              {...control}
               maxLength={200}
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
-          </Field>
-          <Field id="team-reason" label={t.common.reason} required>
-            <input
-              id="team-reason"
-              required
+          )}
+        </Field>
+        <Field label={t.common.reason} required>
+          {(control) => (
+            <TextInput
+              {...control}
               maxLength={500}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
             />
-          </Field>
-          <FormFeedback error={submit.error} success={submit.success} t={t} />
-          <SubmitButton
-            pending={submit.pending}
-            label={t.common.save}
-            pendingLabel={t.common.saving}
-            disabled={!reason.trim() || !name.trim()}
-          />
-          <Notice tone="warning">{text.deleteWarning}</Notice>
-          <CheckField
-            checked={confirmed}
-            onChange={(event) => setConfirmed(event.target.checked)}
-            label={text.confirmDelete}
-          />
-          <button
-            className="wf-button wf-button-danger"
-            type="button"
-            disabled={submit.pending || !confirmed || !reason.trim()}
-            onClick={() => void save(true)}
-          >
-            {text.deleteTeam}
-          </button>
-        </form>
-      </details>
-    </Section>
+          )}
+        </Field>
+      </FormGrid>
+    </FormDialog>
   );
 }
 
-function LeaderEditor({ team, reload }: { team: TeamSummary; reload: () => Promise<void> }) {
+/** Pick the new leader among eligible employees (searched on the server) and say why. */
+function LeaderDialog({
+  team,
+  reload,
+  onClose,
+  onSaved,
+}: {
+  team: TeamSummary;
+  reload: () => Promise<void>;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
   const { api, t, locale } = useWorkforce();
   const text = organizationDictionary(locale);
   const [q, setQ] = useState('');
-  const [page, setPage] = useState(1);
-  const [leader, setLeader] = useState<TeamEmployee | null>(null);
+  const [leader, setLeader] = useState<{ value: string; label: string } | null>(null);
   const [reason, setReason] = useState('');
   const candidates = useResource(
     () =>
@@ -386,269 +524,505 @@ function LeaderEditor({ team, reload }: { team: TeamSummary; reload: () => Promi
         api,
         team.id,
         { q, membership: 'ALL', classification: 'OFFICIAL_EMPLOYEE', status: 'ACTIVE' },
-        page,
+        1,
+        20,
       ),
-    [api, team.id, q, page],
+    [api, team.id, q],
   );
   const submit = useSubmit();
-  async function save(userId: string | null) {
+
+  async function save() {
     const ok = await submit.run(
       () =>
         runMutation(
           () =>
             api.post(`/api/v1/teams/${team.id}/leader`, {
-              userId,
+              userId: leader?.value ?? null,
               expectedVersion: team.version,
               reason,
             }),
           reload,
         ),
-      text.saved,
+      '',
     );
-    if (ok) {
-      setLeader(null);
-      setReason('');
-      await Promise.all([reload(), candidates.reload()]);
-    }
+    if (ok) await onSaved();
+  }
+
+  const fetched = (candidates.data?.items ?? []).map((employee) => ({
+    value: employee.userId,
+    label: `${employee.fullName} (${employee.employeeCode})`,
+  }));
+  // The chosen person stays in the list while the search text narrows it.
+  const options = leader ? [leader, ...fetched.filter((o) => o.value !== leader.value)] : fetched;
+  return (
+    <FormDialog
+      title={text.changeLeader}
+      labels={formOverlayLabels(t, t.common.save)}
+      busy={submit.pending}
+      dirty={leader !== null || reason !== ''}
+      submitDisabled={leader === null || reason.trim() === ''}
+      error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
+      onClose={onClose}
+      onSubmit={save}
+    >
+      <FormGrid>
+        <Field label={text.leaderField} required>
+          {(control) => (
+            <Combobox
+              {...control}
+              options={options}
+              value={leader?.value ?? null}
+              onValueChange={(value) => setLeader(options.find((o) => o.value === value) ?? null)}
+              onQueryChange={setQ}
+              loading={candidates.loading}
+              loadingLabel={t.common.loading}
+              emptyLabel={text.noRows}
+              placeholder={text.leaderPlaceholder}
+              resultsLabel={(count) => resultsText(t, count)}
+            />
+          )}
+        </Field>
+        <Field label={t.common.reason} required>
+          {(control) => (
+            <TextInput
+              {...control}
+              maxLength={500}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          )}
+        </Field>
+      </FormGrid>
+    </FormDialog>
+  );
+}
+
+/** Remove the leader or delete the team: a confirmation with a required reason. */
+function TeamConfirm({
+  kind,
+  team,
+  reload,
+  onClose,
+  onDone,
+}: {
+  kind: 'removeLeader' | 'delete';
+  team: TeamSummary;
+  reload: () => Promise<void>;
+  onClose: () => void;
+  onDone: () => Promise<void>;
+}) {
+  const { api, t, locale } = useWorkforce();
+  const text = organizationDictionary(locale);
+  const removing = kind === 'removeLeader';
+  return (
+    <ConfirmDialog
+      title={removing ? text.removeLeaderTitle : text.deleteTitle}
+      description={removing ? text.removeLeaderBody : text.deleteWarning}
+      facts={[{ label: text.teams, value: `${team.name} · ${team.code}` }]}
+      tone="danger"
+      confirmLabel={removing ? text.removeLeader : text.deleteTeam}
+      busyLabel={t.common.saving}
+      cancelLabel={t.common.cancel}
+      referenceLabel={t.errors.reference}
+      reasonField={{
+        label: t.common.reason,
+        required: true,
+        requiredLabel: t.common.required,
+        requiredMessage: t.common.form.reasonRequired,
+      }}
+      describeError={confirmError(t)}
+      onCancel={onClose}
+      onConfirm={async (reason) => {
+        const outcome = await runMutation(
+          () =>
+            removing
+              ? api.post(`/api/v1/teams/${team.id}/leader`, {
+                  userId: null,
+                  expectedVersion: team.version,
+                  reason: reason ?? '',
+                })
+              : api.post(`/api/v1/teams/${team.id}/delete`, {
+                  expectedVersion: team.version,
+                  reason: reason ?? '',
+                  confirmed: true,
+                }),
+          reload,
+        );
+        if (!outcome.ok) throw outcome.error;
+        await onDone();
+      }}
+    />
+  );
+}
+
+type BulkAction = 'ADD' | 'REMOVE' | 'TRANSFER';
+type MemberMode = 'members' | 'add' | 'view';
+
+/**
+ * Members of one team. Managers get two tabs: the current members (select some to remove or
+ * transfer them) and the employees without a team (select some to add them). Everyone else sees
+ * one read-only list with a "current team" filter.
+ */
+function TeamMembers({ team, reload }: { team: TeamSummary; reload: () => Promise<void> }) {
+  const { locale } = useWorkforce();
+  const text = organizationDictionary(locale);
+  const [tab, setTab] = useState<'members' | 'add'>('members');
+  if (!team.canManage) {
+    return (
+      <ListSection title={text.members} count={team.memberCount}>
+        <MemberList team={team} reload={reload} mode="view" />
+      </ListSection>
+    );
   }
   return (
-    <Section title={text.leader}>
-      <details>
-        <summary>{text.leader}</summary>
-        <Field id="leader-search" label={text.leaderSearch}>
-          <input
-            id="leader-search"
-            value={q}
-            maxLength={100}
-            onChange={(event) => {
-              setQ(event.target.value);
-              setPage(1);
-            }}
-          />
-        </Field>
-        {candidates.loading ? <Loading t={t} /> : null}
-        {candidates.error ? (
-          <ErrorState error={candidates.error} t={t} onRetry={() => void candidates.reload()} />
-        ) : null}
-        {candidates.data ? (
-          <>
-            {!candidates.data.items.length ? (
-              <Empty>{text.noRows}</Empty>
-            ) : (
-              <ul>
-                {candidates.data.items.map((employee) => (
-                  <li key={employee.userId}>
-                    <label>
-                      <input
-                        type="radio"
-                        name="team-leader"
-                        checked={leader?.userId === employee.userId}
-                        onChange={() => setLeader(employee)}
-                      />{' '}
-                      {employee.fullName} ({employee.employeeCode})
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <OrganizationPager page={candidates.data.page} onChange={setPage} />
-          </>
-        ) : null}
-        {leader ? (
-          <p>
-            {text.selection}: {leader.fullName}
-          </p>
-        ) : null}
-        <Field id="leader-reason" label={t.common.reason} required>
-          <input
-            id="leader-reason"
-            maxLength={500}
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-          />
-        </Field>
-        <FormFeedback error={submit.error} success={submit.success} t={t} />
-        <div className="wf-form-actions">
-          <button
-            type="button"
-            className="wf-button wf-button-primary"
-            disabled={submit.pending || !leader || !reason.trim()}
-            onClick={() => void save(leader!.userId)}
-          >
-            {text.saveLeader}
-          </button>
-          <button
-            type="button"
-            className="wf-button wf-button-danger"
-            disabled={submit.pending || !team.leader || !reason.trim()}
-            onClick={() => void save(null)}
-          >
-            {text.removeLeader}
-          </button>
-        </div>
-      </details>
-    </Section>
+    <Tabs
+      label={text.members}
+      value={tab}
+      onChange={(id) => setTab(id === 'add' ? 'add' : 'members')}
+      tabs={[
+        {
+          id: 'members',
+          label: `${text.members} (${team.memberCount})`,
+          panel: <MemberList team={team} reload={reload} mode="members" />,
+        },
+        {
+          id: 'add',
+          label: text.addTab,
+          panel: <MemberList team={team} reload={reload} mode="add" />,
+        },
+      ]}
+    />
   );
 }
 
-function TransferTarget({
+/** One members table: filters, row selection and the bulk actions that fit the mode. */
+function MemberList({
   team,
-  value,
-  onChange,
-  disabled,
+  reload,
+  mode,
 }: {
   team: TeamSummary;
-  value: string;
-  onChange: (id: string) => void;
-  disabled: boolean;
+  reload: () => Promise<void>;
+  mode: MemberMode;
 }) {
   const { api, t, locale } = useWorkforce();
   const text = organizationDictionary(locale);
-  const [q, setQ] = useState('');
+  const notify = useSuccessToast();
+  const [filters, setFilters] = useState<TeamEmployeeFilters>({
+    membership: mode === 'add' ? 'UNASSIGNED' : 'MEMBERS',
+  });
   const [page, setPage] = useState(1);
-  const list = useResource(
-    () =>
-      api.get<TeamListResponse>('/api/v1/teams', { branchId: team.branchId, q, page, limit: 50 }),
-    [api, team.branchId, q, page],
-  );
-  return (
-    <fieldset disabled={disabled}>
-      <legend>{text.target}</legend>
-      <Field id="target-team-search" label={t.common.search}>
-        <input
-          id="target-team-search"
-          value={q}
-          onChange={(event) => {
-            setQ(event.target.value);
-            setPage(1);
-          }}
-        />
-      </Field>
-      {list.loading ? <Loading t={t} /> : null}
-      {list.error ? (
-        <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
-      ) : null}
-      {list.data ? (
-        <>
-          <ul>
-            {list.data.items
-              .filter((entry) => entry.id !== team.id && entry.isActive && entry.canManage)
-              .map((entry) => (
-                <li key={entry.id}>
-                  <label>
-                    <input
-                      type="radio"
-                      name="transfer-team"
-                      checked={value === entry.id}
-                      onChange={() => onChange(entry.id)}
-                    />{' '}
-                    {entry.name}
-                  </label>
-                </li>
-              ))}
-          </ul>
-          <OrganizationPager page={list.data.page} onChange={setPage} />
-        </>
-      ) : null}
-    </fieldset>
-  );
-}
-
-export function TeamMemberTable({
-  employees,
-  selection,
-  onToggle,
-  disabled,
-  selectable,
-}: {
-  employees: readonly TeamEmployee[];
-  selection: MemberSelection;
-  onToggle: (id: string) => void;
-  disabled: boolean;
-  selectable: boolean;
-}) {
-  const { t, locale } = useWorkforce();
-  const text = organizationDictionary(locale);
-  return (
-    <table className="wf-table">
-      <thead>
-        <tr>
-          {selectable ? <th>{text.selection}</th> : null}
-          <th>{text.employee}</th>
-          <th>{t.common.status}</th>
-          <th>{text.classification}</th>
-          <th>{text.currentTeam}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {employees.map((employee) => (
-          <tr key={employee.userId}>
-            {selectable ? (
-              <td data-label={text.selection}>
-                <CheckField
-                  label={
-                    <VisuallyHidden>{`${text.selection}: ${employee.fullName}`}</VisuallyHidden>
-                  }
-                  disabled={
-                    disabled ||
-                    (selection.kind === 'explicit' &&
-                      selection.ids.length >= 100 &&
-                      !selected(selection, employee.userId)) ||
-                    (selection.kind === 'matching' &&
-                      selection.excluded.length >= 100 &&
-                      selected(selection, employee.userId))
-                  }
-                  checked={selected(selection, employee.userId)}
-                  onChange={() => onToggle(employee.userId)}
-                />
-              </td>
-            ) : null}
-            <td data-label={text.employee}>
-              {employee.fullName} <small>({employee.employeeCode})</small>
-            </td>
-            <td data-label={t.common.status}>{t.employees.statuses[employee.status]}</td>
-            <td data-label={text.classification}>
-              {employee.classification ? t.employees.classifications[employee.classification] : '—'}
-            </td>
-            <td data-label={text.currentTeam}>{employee.teamName ?? text.unassigned}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-function TeamMembers({ team, reload }: { team: TeamSummary; reload: () => Promise<void> }) {
-  const { api, t, locale } = useWorkforce();
-  const text = organizationDictionary(locale);
-  const [filters, setFilters] = useState<TeamEmployeeFilters>({ membership: 'MEMBERS' });
-  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [selection, setSelection] = useState<MemberSelection>(EMPTY_SELECTION);
-  const [action, setAction] = useState<'ADD' | 'REMOVE' | 'TRANSFER'>('REMOVE');
-  const [targetTeamId, setTargetTeamId] = useState('');
-  const [reason, setReason] = useState('');
-  const [confirmed, setConfirmed] = useState(false);
-  const [progress, setProgress] = useState({ processed: 0, changed: 0 });
-  const submit = useSubmit();
+  const [bulk, setBulk] = useState<{ action: BulkAction; count: number } | null>(null);
+  const selectable = mode !== 'view';
   const candidates = useResource(
-    () => teamEmployees(api, team.id, filters, page),
-    [api, team.id, filters, page],
+    () => teamEmployees(api, team.id, filters, page, pageSize),
+    [api, team.id, filters, page, pageSize],
   );
-  const count = selectionCount(selection, candidates.data?.page.total ?? 0);
+  const total = candidates.data?.page.total ?? 0;
+  const count = selectionCount(selection, total);
+
   function filter(next: TeamEmployeeFilters) {
     setFilters(next);
     setPage(1);
     setSelection(EMPTY_SELECTION);
-    setConfirmed(false);
   }
-  function chooseAction(next: 'ADD' | 'REMOVE' | 'TRANSFER') {
-    setAction(next);
-    setTargetTeamId('');
-    filter({ ...filters, membership: next === 'ADD' ? 'UNASSIGNED' : 'MEMBERS' });
-  }
-  async function save(event: FormEvent) {
-    event.preventDefault();
-    if (!confirmed || !count) return;
+
+  const items = candidates.data?.items ?? [];
+  const limitReached = (id: string) =>
+    (selection.kind === 'explicit' && selection.ids.length >= 100 && !selected(selection, id)) ||
+    (selection.kind === 'matching' && selection.excluded.length >= 100 && selected(selection, id));
+  const columns: DataTableColumn<TeamEmployee>[] = [
+    {
+      key: 'employee',
+      header: text.employee,
+      mobileTitle: true,
+      wrap: true,
+      width: 'lg',
+      cell: (employee) => {
+        const name = employee.fullName + ' (' + employee.employeeCode + ')';
+        // The name is the label of its checkbox: one row-wide target, and the phone card title.
+        return selectable ? (
+          <CheckField
+            label={name}
+            disabled={limitReached(employee.userId)}
+            checked={selected(selection, employee.userId)}
+            onChange={() => setSelection(toggleMember(selection, employee.userId))}
+          />
+        ) : (
+          name
+        );
+      },
+    },
+    {
+      key: 'status',
+      header: t.common.status,
+      cell: (employee) => t.employees.statuses[employee.status],
+    },
+    {
+      key: 'classification',
+      header: text.classification,
+      hideBelow: 'lg',
+      cell: (employee) =>
+        employee.classification ? t.employees.classifications[employee.classification] : '—',
+    },
+    {
+      key: 'team',
+      header: text.currentTeam,
+      hideBelow: 'md',
+      wrap: true,
+      cell: (employee) => employee.teamName ?? text.unassigned,
+    },
+  ];
+  const activeFilters =
+    (filters.q ? 1 : 0) + (filters.status ? 1 : 0) + (filters.classification ? 1 : 0);
+  const allMatching = selection.kind === 'matching';
+
+  return (
+    <>
+      {selectable && count > 0 ? (
+        <SelectionBar label={text.selectionActions} summary={`${text.selection}: ${count}`}>
+          {!allMatching && count < total ? (
+            <Button
+              variant="ghost"
+              onClick={() => setSelection({ kind: 'matching', excluded: [] })}
+            >
+              {fill(text.selectAllCount, { count: total })}
+            </Button>
+          ) : null}
+          <Button variant="ghost" onClick={() => setSelection(EMPTY_SELECTION)}>
+            {text.clear}
+          </Button>
+          {mode === 'members' ? (
+            <>
+              <Button variant="secondary" onClick={() => setBulk({ action: 'TRANSFER', count })}>
+                {text.transfer}
+              </Button>
+              <Button variant="danger-outline" onClick={() => setBulk({ action: 'REMOVE', count })}>
+                {text.remove}
+              </Button>
+            </>
+          ) : (
+            <Button variant="primary" onClick={() => setBulk({ action: 'ADD', count })}>
+              {text.add}
+            </Button>
+          )}
+        </SelectionBar>
+      ) : (
+        <ListToolbar
+          labels={toolbarLabels(t)}
+          activeFilters={activeFilters}
+          resultCount={resultsText(t, total)}
+          onReset={() => filter({ membership: filters.membership ?? 'MEMBERS' })}
+          reload={{ label: t.common.reload, onClick: () => void candidates.reload() }}
+          search={
+            <SearchInput
+              id={`member-q-${mode}`}
+              value={filters.q ?? ''}
+              label={text.search}
+              placeholder={text.search}
+              clearLabel={t.common.list.clearSearch}
+              onSearch={(q) => filter({ ...filters, q })}
+            />
+          }
+          filters={
+            <>
+              <FacetedFilter
+                label={t.common.status}
+                clearLabel={t.common.list.clearChoice}
+                options={(['ACTIVE', 'INACTIVE', 'PENDING_SETUP'] as const).map((status) => ({
+                  value: status,
+                  label: t.employees.statuses[status],
+                }))}
+                selected={filters.status ? [filters.status] : []}
+                onChange={([status]) => {
+                  const rest = { ...filters };
+                  delete rest.status;
+                  filter(status ? { ...rest, status: status as EmployeeStatus } : rest);
+                }}
+              />
+              <FacetedFilter
+                label={text.classification}
+                clearLabel={t.common.list.clearChoice}
+                options={(['OFFICIAL_EMPLOYEE', 'COLLABORATOR', 'TRAINEE'] as const).map(
+                  (classification) => ({
+                    value: classification,
+                    label: t.employees.classifications[classification],
+                  }),
+                )}
+                selected={filters.classification ? [filters.classification] : []}
+                onChange={([classification]) => {
+                  const rest = { ...filters };
+                  delete rest.classification;
+                  filter(
+                    classification
+                      ? {
+                          ...rest,
+                          classification: classification as Exclude<
+                            EmploymentClassification,
+                            'ENDED'
+                          >,
+                        }
+                      : rest,
+                  );
+                }}
+              />
+              {mode === 'view' ? (
+                <FacetedFilter
+                  label={text.currentTeam}
+                  clearLabel={t.common.list.clearChoice}
+                  options={[
+                    { value: 'MEMBERS', label: text.currentMembers },
+                    { value: 'ALL', label: text.allEmployees },
+                    { value: 'UNASSIGNED', label: text.unassigned },
+                    { value: 'OTHER_TEAM', label: text.otherTeam },
+                  ]}
+                  selected={[filters.membership ?? 'MEMBERS']}
+                  onChange={([membership]) =>
+                    filter({
+                      ...filters,
+                      membership: (membership ?? 'MEMBERS') as TeamMembershipFilter,
+                    })
+                  }
+                />
+              ) : null}
+            </>
+          }
+          actions={
+            selectable ? (
+              <Menu
+                label={text.select}
+                icon="check"
+                items={[
+                  {
+                    id: 'page',
+                    label: text.selectPage,
+                    disabled: candidates.loading || items.length === 0,
+                    onSelect: () =>
+                      setSelection(
+                        selectPage(
+                          selection,
+                          items.map((entry) => entry.userId),
+                        ),
+                      ),
+                  },
+                  {
+                    id: 'all',
+                    label: text.selectAll,
+                    disabled: candidates.loading || total === 0,
+                    onSelect: () => setSelection({ kind: 'matching', excluded: [] }),
+                  },
+                ]}
+              />
+            ) : undefined
+          }
+        />
+      )}
+      {allMatching ? <Notice tone="info">{text.allSelected}</Notice> : null}
+      <DataTable
+        mode="server"
+        caption={fill(t.common.list.table, { list: text.members })}
+        columns={columns}
+        rows={items}
+        rowKey={(employee) => employee.userId}
+        loading={candidates.loading}
+        loadingLabel={t.common.loading}
+        error={
+          candidates.error ? (
+            <ErrorState error={candidates.error} t={t} onRetry={() => void candidates.reload()} />
+          ) : undefined
+        }
+        empty={candidates.data ? <Empty>{text.noRows}</Empty> : undefined}
+        paging={{
+          page,
+          pageSize,
+          total,
+          onPageChange: (next) => setPage(next),
+          onPageSizeChange: (size) => {
+            setPageSize(size);
+            setPage(1);
+          },
+          labels: paginationLabels(t, text.members),
+        }}
+      />
+      {bulk !== null ? (
+        <BulkDialog
+          team={team}
+          action={bulk.action}
+          count={bulk.count}
+          label={
+            bulk.action === 'ADD'
+              ? text.add
+              : bulk.action === 'REMOVE'
+                ? text.remove
+                : text.transfer
+          }
+          selection={selection}
+          filters={filters}
+          onClose={() => setBulk(null)}
+          onFinished={async (ok) => {
+            setSelection(EMPTY_SELECTION);
+            await Promise.all([reload(), candidates.reload()]);
+            if (ok) {
+              setBulk(null);
+              notify(text.saved);
+            }
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/** Confirm a bulk change: batches run on the server; a failure keeps the completed batches. */
+function BulkDialog({
+  team,
+  action,
+  count,
+  label,
+  selection,
+  filters,
+  onClose,
+  onFinished,
+}: {
+  team: TeamSummary;
+  action: BulkAction;
+  count: number;
+  label: string;
+  selection: MemberSelection;
+  filters: TeamEmployeeFilters;
+  onClose: () => void;
+  onFinished: (ok: boolean) => Promise<void>;
+}) {
+  const { api, t, locale } = useWorkforce();
+  const text = organizationDictionary(locale);
+  const [reason, setReason] = useState('');
+  const [target, setTarget] = useState<{ value: string; label: string } | null>(null);
+  const [targetQuery, setTargetQuery] = useState('');
+  const [progress, setProgress] = useState({ processed: 0, changed: 0 });
+  const submit = useSubmit();
+  const targets = useResource(
+    () =>
+      action === 'TRANSFER'
+        ? api.get<TeamListResponse>('/api/v1/teams', {
+            branchId: team.branchId,
+            q: targetQuery,
+            page: 1,
+            limit: 20,
+          })
+        : Promise.resolve(null),
+    [api, action, team.branchId, targetQuery],
+  );
+  const needsTarget = action === 'TRANSFER';
+  const fetchedTargets = (targets.data?.items ?? [])
+    .filter((entry) => entry.id !== team.id && entry.isActive && entry.canManage)
+    .map((entry) => ({ value: entry.id, label: entry.name }));
+  const targetOptions = target
+    ? [target, ...fetchedTargets.filter((o) => o.value !== target.value)]
+    : fetchedTargets;
+
+  async function save() {
     setProgress({ processed: 0, changed: 0 });
     const ok = await submit.run(
       () =>
@@ -659,244 +1033,70 @@ function TeamMembers({ team, reload }: { team: TeamSummary; reload: () => Promis
               team.id,
               {
                 action,
-                ...(action === 'TRANSFER' ? { targetTeamId } : {}),
+                ...(needsTarget && target ? { targetTeamId: target.value } : {}),
                 expectedVersion: team.version,
                 reason,
                 selection: bulkSelection(selection, filters),
               },
               setProgress,
             ),
-          async () => {
-            await Promise.all([reload(), candidates.reload()]);
-          },
+          () => undefined,
         ),
-      text.saved,
+      '',
     );
-    setConfirmed(false);
-    setSelection(EMPTY_SELECTION);
-    if (ok) setReason('');
-    await Promise.all([reload(), candidates.reload()]);
+    await onFinished(ok);
   }
+
   return (
-    <Section title={text.members}>
-      {team.canManage ? (
-        <div className="wf-form-actions">
-          {(['ADD', 'REMOVE', 'TRANSFER'] as const).map((entry) => (
-            <button
-              key={entry}
-              type="button"
-              className="wf-button"
-              aria-pressed={action === entry}
-              disabled={submit.pending}
-              onClick={() => chooseAction(entry)}
-            >
-              {entry === 'ADD' ? text.add : entry === 'REMOVE' ? text.remove : text.transfer}
-            </button>
-          ))}
-        </div>
-      ) : null}
-      <fieldset disabled={submit.pending}>
-        <legend>{t.common.search}</legend>
-        <div className="wf-filters">
-          <Field id="member-search" label={text.search}>
-            <input
-              id="member-search"
-              value={filters.q ?? ''}
-              maxLength={100}
-              onChange={(event) => filter({ ...filters, q: event.target.value })}
-            />
-          </Field>
-          <Field id="member-status" label={t.common.status}>
-            <select
-              id="member-status"
-              value={filters.status ?? ''}
-              onChange={(event) => {
-                const rest = { ...filters };
-                delete rest.status;
-                filter(
-                  event.target.value
-                    ? { ...rest, status: event.target.value as EmployeeStatus }
-                    : rest,
-                );
-              }}
-            >
-              <option value="">{t.common.all}</option>
-              {(['ACTIVE', 'INACTIVE', 'PENDING_SETUP'] as const).map((status) => (
-                <option key={status} value={status}>
-                  {t.employees.statuses[status]}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field id="member-classification" label={text.classification}>
-            <select
-              id="member-classification"
-              value={filters.classification ?? ''}
-              onChange={(event) => {
-                const rest = { ...filters };
-                delete rest.classification;
-                filter(
-                  event.target.value
-                    ? {
-                        ...rest,
-                        classification: event.target.value as Exclude<
-                          EmploymentClassification,
-                          'ENDED'
-                        >,
-                      }
-                    : rest,
-                );
-              }}
-            >
-              <option value="">{t.common.all}</option>
-              {(['OFFICIAL_EMPLOYEE', 'COLLABORATOR', 'TRAINEE'] as const).map((classification) => (
-                <option key={classification} value={classification}>
-                  {t.employees.classifications[classification]}
-                </option>
-              ))}
-            </select>
-          </Field>
-          {!team.canManage ? (
-            <Field id="member-membership" label={text.currentTeam}>
-              <select
-                id="member-membership"
-                value={filters.membership ?? 'MEMBERS'}
-                onChange={(event) =>
-                  filter({ ...filters, membership: event.target.value as TeamMembershipFilter })
+    <FormDialog
+      title={label}
+      description={`${fill(text.bulkBody, { count })} ${text.bulkHint}`}
+      labels={formOverlayLabels(t, label)}
+      busy={submit.pending}
+      dirty={reason !== '' || target !== null}
+      submitDisabled={reason.trim() === '' || (needsTarget && target === null)}
+      error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
+      onClose={onClose}
+      onSubmit={save}
+    >
+      <FormGrid>
+        {needsTarget ? (
+          <Field label={text.target} required>
+            {(control) => (
+              <Combobox
+                {...control}
+                options={targetOptions}
+                value={target?.value ?? null}
+                onValueChange={(value) =>
+                  setTarget(targetOptions.find((o) => o.value === value) ?? null)
                 }
-              >
-                <option value="MEMBERS">{text.currentMembers}</option>
-                <option value="ALL">{text.allEmployees}</option>
-                <option value="UNASSIGNED">{text.unassigned}</option>
-                <option value="OTHER_TEAM">{text.otherTeam}</option>
-              </select>
-            </Field>
-          ) : null}
-        </div>
-      </fieldset>
-      <p className="wf-muted">{text.selectionCleared}</p>
-      {candidates.loading ? <Loading t={t} /> : null}
-      {candidates.error ? (
-        <ErrorState error={candidates.error} t={t} onRetry={() => void candidates.reload()} />
-      ) : null}
-      {candidates.data ? (
-        <>
-          {team.canManage ? (
-            <div className="wf-form-actions">
-              <button
-                type="button"
-                className="wf-button"
-                disabled={submit.pending || candidates.loading}
-                onClick={() => {
-                  setSelection(
-                    selectPage(
-                      selection,
-                      candidates.data!.items.map((entry) => entry.userId),
-                    ),
-                  );
-                  setConfirmed(false);
-                }}
-              >
-                {text.selectPage}
-              </button>
-              <button
-                type="button"
-                className="wf-button"
-                disabled={submit.pending || candidates.loading || !candidates.data.page.total}
-                onClick={() => {
-                  setSelection({ kind: 'matching', excluded: [] });
-                  setConfirmed(false);
-                }}
-              >
-                {text.selectAll}
-              </button>
-              <button
-                type="button"
-                className="wf-button"
-                disabled={submit.pending}
-                onClick={() => {
-                  setSelection(EMPTY_SELECTION);
-                  setConfirmed(false);
-                }}
-              >
-                {text.clear}
-              </button>
-              <span aria-live="polite">
-                {text.selection}: {count}
-              </span>
-            </div>
-          ) : null}
-          {selection.kind === 'matching' ? <Notice tone="info">{text.allSelected}</Notice> : null}
-          {!candidates.data.items.length ? (
-            <Empty>{text.noRows}</Empty>
-          ) : (
-            <TeamMemberTable
-              employees={candidates.data.items}
-              selection={selection}
-              selectable={team.canManage}
-              disabled={submit.pending || candidates.loading}
-              onToggle={(id) => {
-                setSelection(toggleMember(selection, id));
-                setConfirmed(false);
-              }}
-            />
-          )}
-          <OrganizationPager
-            page={candidates.data.page}
-            onChange={setPage}
-            disabled={submit.pending || candidates.loading}
-          />
-        </>
-      ) : null}
-      {team.canManage ? (
-        <form className="wf-form" onSubmit={(event) => void save(event)}>
-          <p className="wf-muted">{text.selectionLimit}</p>
-          <p className="wf-muted">{text.bulkHint}</p>
-          {action === 'TRANSFER' ? (
-            <TransferTarget
-              team={team}
-              value={targetTeamId}
-              onChange={(id) => {
-                setTargetTeamId(id);
-                setConfirmed(false);
-              }}
-              disabled={submit.pending}
-            />
-          ) : null}
-          <Field id="members-reason" label={t.common.reason} required>
-            <textarea
-              id="members-reason"
-              required
+                onQueryChange={setTargetQuery}
+                loading={targets.loading}
+                loadingLabel={t.common.loading}
+                emptyLabel={text.noRows}
+                placeholder={text.targetPlaceholder}
+                resultsLabel={(n) => resultsText(t, n)}
+              />
+            )}
+          </Field>
+        ) : null}
+        <Field label={t.common.reason} required>
+          {(control) => (
+            <Textarea
+              {...control}
               maxLength={500}
-              disabled={submit.pending}
+              rows={3}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
             />
-          </Field>
-          <CheckField
-            checked={confirmed}
-            disabled={submit.pending}
-            onChange={(event) => setConfirmed(event.target.checked)}
-            label={text.confirmBulk}
-          />
-          <p role="status">
-            {text.progress}: {progress.processed} · {text.changed}: {progress.changed}
-          </p>
-          <FormFeedback error={submit.error} success={submit.success} t={t} />
-          <SubmitButton
-            pending={submit.pending}
-            label={action === 'ADD' ? text.add : action === 'REMOVE' ? text.remove : text.transfer}
-            pendingLabel={t.common.saving}
-            disabled={
-              !confirmed ||
-              !count ||
-              !reason.trim() ||
-              candidates.loading ||
-              (action === 'TRANSFER' && !targetTeamId)
-            }
-          />
-        </form>
+          )}
+        </Field>
+      </FormGrid>
+      {submit.pending ? (
+        <p role="status" className="ls-hint">
+          {text.progress}: {progress.processed} · {text.changed}: {progress.changed}
+        </p>
       ) : null}
-    </Section>
+    </FormDialog>
   );
 }

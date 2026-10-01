@@ -25,6 +25,7 @@ const vi = {
     create: 'Tạo mới',
     edit: 'Sửa',
     close: 'Đóng',
+    toastRegion: 'Thông báo nhanh',
     reload: 'Tải lại',
     reason: 'Lý do',
     reasonOptional: 'Lý do (không bắt buộc)',
@@ -124,6 +125,9 @@ const vi = {
     sessionLost:
       'Phiên đăng nhập đã hết hạn. Thông tin bạn đã nhập vẫn còn trên trang này nhưng chưa được lưu. Hãy đăng nhập lại trong thẻ mới, rồi quay lại đây và lưu lại.',
     signInNewTab: 'Đăng nhập lại trong thẻ mới',
+    permissionsChanged: 'Quyền của bạn đã thay đổi, vui lòng đăng nhập lại.',
+    permissionsChangedLost:
+      'Quyền của bạn đã thay đổi, vui lòng đăng nhập lại. Thông tin bạn đã nhập vẫn còn trên trang này nhưng chưa được lưu. Hãy đăng nhập lại trong thẻ mới, rồi quay lại đây và lưu lại.',
     owner: 'Chủ spa',
     employee: 'Nhân viên',
   },
@@ -524,6 +528,14 @@ const vi = {
     created: 'Đã tạo vai trò {name}. Có thể gán vai trò này cho nhân sự ở trang chi tiết nhân sự.',
     saved: 'Đã lưu vai trò.',
     toggled: 'Đã cập nhật trạng thái vai trò.',
+    search: 'Tìm theo mã hoặc tên vai trò',
+    noMatch: 'Không có vai trò phù hợp với tìm kiếm hoặc bộ lọc.',
+    permissionsColumn: 'Quyền',
+    view: 'Xem quyền',
+    viewTitle: 'Vai trò',
+    deactivateTitle: 'Tắt vai trò này?',
+    activateTitle: 'Bật lại vai trò này?',
+    permissionsSelected: '{count} quyền đã chọn',
     noChanges: 'Không có thay đổi nào để lưu.',
     notHeld: 'bạn không có quyền này trên toàn hệ thống',
     changeNote:
@@ -532,7 +544,7 @@ const vi = {
       'Bạn chỉ xem được vai trò; tạo và sửa vai trò cần quyền quản lý vai trò trên toàn hệ thống.',
     managerGroup: 'Nhóm quản lý',
     managerGroupHint:
-      '— người có vai trò này hiển thị trong mục “Quản lý” của danh sách nhân sự. Chỉ để phân nhóm hiển thị, không cấp thêm quyền.',
+      'Người có vai trò này hiển thị trong mục “Quản lý” của danh sách nhân sự. Chỉ để phân nhóm hiển thị, không cấp thêm quyền.',
     scopeTitle: 'Phạm vi áp dụng',
     scopeLegend:
       'Mỗi quyền áp dụng được theo chi nhánh hoặc toàn hệ thống (chọn khi gán vai trò), trừ quyền ghi “Chỉ toàn hệ thống”.',
@@ -1720,6 +1732,7 @@ const en: Dictionary = {
     create: 'Create',
     edit: 'Edit',
     close: 'Close',
+    toastRegion: 'Quick notifications',
     reload: 'Reload',
     reason: 'Reason',
     reasonOptional: 'Reason (optional)',
@@ -1817,6 +1830,9 @@ const en: Dictionary = {
     sessionLost:
       'Your session has expired. What you entered is still on this page but has not been saved. Sign in again in a new tab, then come back here and save again.',
     signInNewTab: 'Sign in again in a new tab',
+    permissionsChanged: 'Your permissions have changed. Please sign in again.',
+    permissionsChangedLost:
+      'Your permissions have changed. Please sign in again. What you entered is still on this page but has not been saved. Sign in again in a new tab, then come back here and save again.',
     owner: 'Owner',
     employee: 'Employee',
   },
@@ -2213,6 +2229,14 @@ const en: Dictionary = {
     created: 'Role {name} created. Assign it to members on the employee detail page.',
     saved: 'Role saved.',
     toggled: 'Role status updated.',
+    search: 'Search by role code or name',
+    noMatch: 'No roles match the search or filter.',
+    permissionsColumn: 'Permissions',
+    view: 'View permissions',
+    viewTitle: 'Role',
+    deactivateTitle: 'Switch this role off?',
+    activateTitle: 'Switch this role on again?',
+    permissionsSelected: '{count} permissions selected',
     noChanges: 'There are no changes to save.',
     notHeld: 'you do not hold this permission globally',
     changeNote:
@@ -2221,7 +2245,7 @@ const en: Dictionary = {
       'You can view roles only; creating and editing roles needs global role management.',
     managerGroup: 'Manager group',
     managerGroupHint:
-      '— members with this role are listed under “Managers” in the workforce directory. Display grouping only; it grants no permission.',
+      'Members with this role are listed under “Managers” in the workforce directory. Display grouping only; it grants no permission.',
     scopeTitle: 'Where it can apply',
     scopeLegend:
       'Each permission can apply per branch or to all branches (chosen when the role is assigned), except those marked “All branches only”.',

@@ -26,6 +26,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
           : statusCode >= 500
             ? 'Internal server error'
             : (STATUS_CODES[statusCode] ?? 'Request failed'),
+      ...(exception instanceof AuthError && exception.reason ? { reason: exception.reason } : {}),
       requestId,
     };
     if (statusCode >= 500) {

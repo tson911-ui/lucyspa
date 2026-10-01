@@ -45,6 +45,48 @@ export function hasActiveCredential(user: SessionRecord['user']): boolean {
   );
 }
 
+/**
+ * True when an otherwise live authenticated session was ended only because the user's
+ * permissions changed (`invalidateAuthorization` bumps `authzVersion` and revokes the session).
+ * Expired, idle, credential-changed or inactive sessions are not "permissions changed".
+ */
+export function authorizationChanged(
+  record: SessionRecord | null,
+  now: Date,
+  policy: SessionPolicy,
+): boolean {
+  return (
+    record !== null &&
+    record.kind === 'AUTHENTICATED' &&
+    record.userId !== null &&
+    record.createdAt <= now &&
+    record.absoluteExpiresAt > now &&
+    policy.csrfKeys.has(record.csrfKeyVersion) &&
+    hasActiveCredential(record.user) &&
+    record.lastActivityAt.getTime() + policy.idleTtlSeconds * 1_000 > now.getTime() &&
+    record.credentialVersion === record.user?.credentialVersion &&
+    record.authzVersion !== record.user?.authzVersion
+  );
+}
+
+/**
+ * True when the record is an AUTHENTICATED session (a person was signed in) that no longer
+ * resolves: revoked, expired, idle, or ended by a credential/permission change. Anonymous and
+ * unknown tokens are not "ended" (they keep the plain 403 path and a fresh context).
+ */
+export function endedAuthenticatedSession(
+  record: SessionRecord | null,
+  now: Date,
+  policy: SessionPolicy,
+): boolean {
+  return (
+    record !== null &&
+    record.kind === 'AUTHENTICATED' &&
+    record.userId !== null &&
+    sessionPrincipal(record, now, policy) === null
+  );
+}
+
 /** Returns only the minimum authority needed by guards; never a database record. */
 export function sessionPrincipal(
   record: SessionRecord | null,

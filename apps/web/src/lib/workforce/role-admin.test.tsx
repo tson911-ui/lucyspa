@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { RolesAdminView } from '../../components/workforce/screens/roles';
+import {
+  PermissionMatrix,
+  RoleForm,
+  RolesAdminView,
+} from '../../components/workforce/screens/roles';
 import { getWorkforceDictionary } from '../../i18n/workforce';
 import { context, employee, json, owner, render, scriptedFetch } from '../../test/support';
 import { ApiError, WorkforceApi } from './api';
@@ -55,6 +59,33 @@ const view = (data: RoleListResponse, account = owner, locale: 'vi' | 'en' = 'vi
     account,
     locale,
   );
+const noop = () => undefined;
+// The overlays are mounted only while open, so their content is rendered directly.
+const matrix = (
+  data: RoleListResponse,
+  account = owner,
+  selected: RoleResponse['permissions'] = [],
+) =>
+  render(
+    <PermissionMatrix
+      idPrefix="role-new"
+      catalog={data}
+      selected={selected}
+      original={selected}
+      onChange={noop}
+    />,
+    account,
+  );
+const roleForm = (data: RoleListResponse, account = owner, existing?: RoleResponse) =>
+  render(
+    <RoleForm
+      catalog={data}
+      {...(existing ? { role: existing } : {})}
+      onClose={noop}
+      onDone={() => Promise.resolve()}
+    />,
+    account,
+  );
 // A global permission administrator who is not the Owner and holds only some powers.
 const admin = employee([
   ['MANAGE_PERMISSIONS'],
@@ -71,20 +102,26 @@ test('1. an empty catalog explains how to start', () => {
 });
 
 test('2–4, 15. roles, permission labels and scope capability come from the loaded catalog', () => {
-  const markup = view(catalog([role, { ...role, id: 'other', code: 'OLD', isActive: false }]));
-  assert.ok(markup.includes('Kỹ thuật viên') && markup.includes('(TECHNICIAN)'));
-  assert.ok(markup.includes(vi.roleAdmin.active) && markup.includes(vi.roleAdmin.inactive));
+  // The list: one row per role with its name, code, permission count and status.
+  const list = view(catalog([role, { ...role, id: 'other', code: 'OLD', isActive: false }]));
+  assert.ok(list.includes('Kỹ thuật viên') && list.includes('TECHNICIAN') && list.includes('OLD'));
+  assert.ok(list.includes(vi.roleAdmin.active) && list.includes(vi.roleAdmin.inactive));
+  assert.ok(list.includes('<table'), 'one DataTable, not a card per role');
+  // The matrix: labels, codes and the global-only mark come from the loaded catalog.
+  const markup = matrix(catalog([]));
   assert.ok(markup.includes('Duyệt nghỉ phép') && markup.includes('APPROVE_LEAVE'));
   assert.ok(markup.includes(vi.roleAdmin.scope.GLOBAL_ONLY), 'service prices: global only');
   // Branch-capable is the rule, stated once; only the exception is marked per permission.
   assert.ok(markup.includes(vi.roleAdmin.scopeLegend));
   assert.equal(
     (markup.match(new RegExp(`>${vi.roleAdmin.scope.GLOBAL_ONLY}<`, 'g')) ?? []).length,
-    3,
-    'only MANAGE_SERVICE_PRICES, once per checklist (create + two edit forms)',
+    1,
+    'only MANAGE_SERVICE_PRICES, once',
   );
-  // IDs come from the API: edit inputs are keyed by the loaded role id.
-  assert.match(markup, new RegExp(`id="role-${ROLE_ID}-vi"`));
+  // One section per group (no native fieldset), one 40 px CheckField per permission.
+  assert.equal((markup.match(/class="ls-form-section"/g) ?? []).length, 6);
+  assert.doesNotMatch(markup, /<fieldset/);
+  assert.equal((markup.match(/ls-check-field/g) ?? []).length, permissionCatalog.length);
   // Checklist order and grouping follow the API catalog; unknown codes stay visible.
   const groups = groupedCatalog(catalog([]));
   assert.deepEqual(
@@ -172,10 +209,17 @@ test('5–8. create and edit use the existing role API; the code never changes',
     calls.slice(1).map((call) => call.url),
     ['/api/v1/roles', `/api/v1/roles/${ROLE_ID}`, `/api/v1/roles/${ROLE_ID}/permissions`],
   );
-  // The edit form shows the code as text, never as an input.
-  const markup = view(catalog([role]));
-  assert.ok(markup.includes(vi.roleAdmin.codeReadonly));
-  assert.doesNotMatch(markup, /<input[^>]*value="TECHNICIAN"/);
+  // The edit form shows the code as text, never as an input; the create form asks for it.
+  const edit = roleForm(catalog([role]), owner, role);
+  assert.ok(edit.includes(vi.roleAdmin.codeReadonly));
+  assert.doesNotMatch(edit, /<input[^>]*value="TECHNICIAN"/);
+  assert.ok(!edit.includes(vi.roleAdmin.codeHint));
+  assert.ok(roleForm(catalog([])).includes(vi.roleAdmin.codeHint));
+  // The edit drawer starts from the role's own permissions.
+  const checked = (
+    edit.match(/<input[^>]*name="role-[^"]*-permission"[^>]*checked=""[^>]*>/g) ?? []
+  ).length;
+  assert.equal(checked, role.permissions.length);
 });
 
 test('9–11. containment hints; the API refusal is explained; no Owner role', () => {
@@ -187,7 +231,7 @@ test('9–11. containment hints; the API refusal is explained; no Owner role', (
     [['VIEW_ATTENDANCE', 'A']],
   );
   assert.equal(canBundle(denied, 'VIEW_ATTENDANCE'), false, 'not unrestricted');
-  const markup = view(catalog([role]), admin);
+  const markup = matrix(catalog([]), admin);
   const tag = (code: string) =>
     markup.match(
       new RegExp(`<input[^>]*name="role-new-permission"[^>]*value="${code}"[^>]*>`),
@@ -196,7 +240,8 @@ test('9–11. containment hints; the API refusal is explained; no Owner role', (
   assert.doesNotMatch(tag('VIEW_ATTENDANCE'), /disabled/);
   assert.ok(markup.includes(vi.roleAdmin.notHeld));
   // Already in a role: removing it is never blocked, even if the actor lacks it.
-  const held = view(catalog([{ ...role, permissions: ['MANAGE_EMPLOYEE_PAY'] }]), admin);
+  const heldRole = { ...role, permissions: ['MANAGE_EMPLOYEE_PAY' as const] };
+  const held = roleForm(catalog([heldRole]), admin, heldRole);
   const editTag =
     held.match(
       new RegExp(
@@ -224,7 +269,9 @@ test('who may see and change roles', () => {
   assert.equal(canViewRoles(employee([['VIEW_EMPLOYEES']])), false);
   const readOnly = view(catalog([role]), branchAdmin);
   assert.ok(readOnly.includes(vi.roleAdmin.readOnlyNote));
-  assert.doesNotMatch(readOnly, /id="role-new-code"|<summary>Sửa vai trò<\/summary>/);
+  // No create action for people who may only look; the owner has it in the page header.
+  assert.ok(!readOnly.includes(`>${vi.roleAdmin.create}<`));
+  assert.ok(view(catalog([role])).includes(`>${vi.roleAdmin.create}<`));
 });
 
 test('12, 14–17. roles are bundles; assignment decides the scope; nothing is seeded', () => {
@@ -240,7 +287,7 @@ test('12, 14–17. roles are bundles; assignment decides the scope; nothing is s
   assert.ok(markup.includes(vi.roleAdmin.intro));
   assert.match(vi.roleAdmin.intro, /khi gán cho từng nhân sự: toàn hệ thống hoặc một chi nhánh/);
   assert.match(vi.roleAdmin.intro, /không phải phân loại nhân sự/);
-  assert.ok(markup.includes(vi.roleAdmin.scopeHelp));
+  assert.ok(matrix(catalog([])).includes(vi.roleAdmin.scopeHelp));
   // The role payload has no branch or scope field.
   assert.deepEqual(Object.keys(createRequest({ ...role, permissions: [], reason: 'r' })).sort(), [
     'code',
@@ -251,7 +298,8 @@ test('12, 14–17. roles are bundles; assignment decides the scope; nothing is s
     'reason',
   ]);
   // The create form starts with no permission selected (no default bundle).
-  const tags = markup.match(/<input[^>]*name="role-new-permission"[^>]*>/g) ?? [];
+  const tags =
+    roleForm(catalog([role])).match(/<input[^>]*name="role-new-permission"[^>]*>/g) ?? [];
   assert.ok(tags.length > 0);
   assert.ok(tags.every((tag) => !/checked/.test(tag)));
 });

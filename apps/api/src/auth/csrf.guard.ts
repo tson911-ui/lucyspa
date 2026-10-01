@@ -40,14 +40,29 @@ export class CsrfGuard implements CanActivate {
       request.headers['sec-fetch-site'] === 'cross-site' ||
       typeof contentType !== 'string' ||
       !/^application\/json(?:\s*;\s*charset=utf-8)?\s*$/i.test(contentType) ||
-      typeof supplied !== 'string' ||
       token === undefined
     )
       throw new AuthError('REQUEST_NOT_ALLOWED');
     try {
       const session = await this.sessions.resolve(token);
-      const key = session && this.environment.auth.csrfKeys.get(session.csrfKeyVersion);
-      if (!session || !key || !verifyCsrfToken(supplied, session.id, token, key)) {
+      if (!session) {
+        // A signed-in session that ended (revoked, expired, permissions changed) is a 401 with the
+        // reason, decided before the CSRF token is looked at; anything else keeps the plain 403.
+        // Optional: narrow test doubles of SessionService may not implement it.
+        const ended = await (this.sessions as Partial<SessionService>).endedSession?.(token);
+        if (ended) {
+          throw ended === 'AUTHORIZATION_CHANGED'
+            ? new AuthError('AUTHENTICATION_REQUIRED', undefined, 'AUTHORIZATION_CHANGED')
+            : new AuthError('AUTHENTICATION_REQUIRED');
+        }
+        throw new AuthError('REQUEST_NOT_ALLOWED');
+      }
+      const key = this.environment.auth.csrfKeys.get(session.csrfKeyVersion);
+      if (
+        typeof supplied !== 'string' ||
+        !key ||
+        !verifyCsrfToken(supplied, session.id, token, key)
+      ) {
         throw new AuthError('REQUEST_NOT_ALLOWED');
       }
       return true;

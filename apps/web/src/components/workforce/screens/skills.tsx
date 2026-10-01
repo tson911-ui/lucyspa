@@ -39,10 +39,10 @@ import {
   Button,
   Empty,
   ErrorState,
-  Notice,
   PageHeader,
   useResource,
   useSubmit,
+  useSuccessToast,
 } from '../ui';
 
 /**
@@ -65,13 +65,13 @@ export function SkillsScreen() {
     | { kind: 'edit'; skill: SkillResponse }
     | { kind: 'status'; skill: SkillResponse };
   const [overlay, setOverlay] = useState<Overlay | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const notify = useSuccessToast();
 
   /** After a successful save: refresh the list, close the overlay and say what happened. */
   const finish = (message: string) => async () => {
     await skills.reload();
     setOverlay(null);
-    setNotice(message);
+    notify(message);
   };
 
   const all = skills.data?.skills ?? [];
@@ -155,7 +155,6 @@ export function SkillsScreen() {
           </Button>
         ) : null}
       </PageHeader>
-      {notice ? <Notice tone="success">{notice}</Notice> : null}
       {skills.data && all.length > 0 ? (
         <ListToolbar
           labels={toolbarLabels(t)}
@@ -254,7 +253,7 @@ function SkillCreate({
   async function save() {
     const ok = await submit.run(
       () => runMutation(() => api.post('/api/v1/skills', form), onCreated),
-      t.skills.created,
+      '',
     );
     if (ok) await onCreated();
   }
@@ -332,7 +331,7 @@ function SkillEdit({
             }),
           onSaved,
         ),
-      t.common.saved,
+      '',
     );
     if (ok) await onSaved();
   }

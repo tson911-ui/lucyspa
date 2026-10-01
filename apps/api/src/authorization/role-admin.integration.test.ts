@@ -117,6 +117,7 @@ test(
                   return work(tx);
                 }),
               resolveForMutation: (token: string) => sessions.resolveForMutation(token, tx),
+              authorizationChanged: (token: string) => sessions.authorizationChanged(token, tx),
             };
             const throttle = new AuthThrottleService(environment);
             const roles = new RoleAdminService(runner, throttle);
@@ -359,6 +360,18 @@ test(
                   const assigned = await assign(ownerSession, manager, managerRole.id, A);
                   assert.equal(assigned.version, 2);
                   assert.equal(await sessions.resolve(managerOld, tx), null, 'sessions revoked');
+                  // The admin frame says why: the permissions changed (not an expiry).
+                  await assert.rejects(
+                    roles.listRoles(managerOld),
+                    (error: unknown) =>
+                      error instanceof AuthError &&
+                      error.code === 'AUTHENTICATION_REQUIRED' &&
+                      error.reason === 'AUTHORIZATION_CHANGED',
+                  );
+                  await assert.rejects(
+                    roles.listRoles(undefined),
+                    (error: unknown) => error instanceof AuthError && error.reason === undefined,
+                  );
                   const [event] = await tx.auditEvent.findMany({
                     where: { subjectUserId: manager, action: 'ROLE_ASSIGNED' },
                   });

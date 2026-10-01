@@ -26,12 +26,14 @@ import {
   RowActions,
   SearchInput,
   Select,
+  SelectionBar,
   Skeleton,
   Spinner,
   Switch,
   TextInput,
   Textarea,
   ToastProvider,
+  useOptionalToast,
   Tooltip,
   arrangeMenu,
   type MenuItem,
@@ -463,6 +465,34 @@ test('RowActions: one ⋮ button and no second visible button; ActionBar: safe, 
   );
   assert.match(inline, /ls-btn-danger-outline/, 'destructive outside dialogs is outlined');
   assert.ok(bar.lastIndexOf('Lưu thay đổi') > bar.indexOf('ls-actionbar-compact'), 'primary last');
+});
+
+test('SelectionBar is a named toolbar whose count is a live region, actions after it', () => {
+  const markup = html(
+    <SelectionBar label="Hành động với lựa chọn" summary="Đã chọn 3">
+      <button type="button">Bỏ chọn</button>
+      <button type="button">Gỡ khỏi nhóm</button>
+    </SelectionBar>,
+  );
+  assert.match(markup, /role="toolbar"[^>]*aria-label="Hành động với lựa chọn"/);
+  assert.match(markup, /<p class="ls-selection-summary" role="status">Đã chọn 3<\/p>/);
+  assert.ok(markup.indexOf('Đã chọn 3') < markup.indexOf('Bỏ chọn'));
+  assert.ok(markup.indexOf('Bỏ chọn') < markup.indexOf('Gỡ khỏi nhóm'), 'primary last');
+});
+
+test('useOptionalToast is null without a provider and the api inside one', () => {
+  function Probe() {
+    return <p>{useOptionalToast() === null ? 'none' : 'api'}</p>;
+  }
+  assert.match(html(<Probe />), /none/);
+  assert.match(
+    html(
+      <ToastProvider regionLabel="Thông báo" dismissLabel="Đóng">
+        <Probe />
+      </ToastProvider>,
+    ),
+    /api/,
+  );
 });
 
 test('ToastProvider renders a named live region', () => {

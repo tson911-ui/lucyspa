@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState, type FormEvent } from 'react';
 import { ApiError } from '../../../lib/workforce/api';
+import { PERMISSIONS_CHANGED_PARAM } from '../../../lib/workforce/expiry';
 import { isWorkforce } from '../../../lib/workforce/permissions';
 import {
   errorMessage,
@@ -82,7 +83,13 @@ function LoginForm() {
     <AuthLayout brand={<BrandWordmark size="display" />} topActions={<AuthTopActions />}>
       <h1>{t.auth.loginTitle}</h1>
       <p className="wf-muted">{t.auth.loginIntro}</p>
-      {params.get('expired') ? <Notice tone="warning">{t.auth.sessionExpired}</Notice> : null}
+      {params.get('expired') ? (
+        <Notice tone="warning">
+          {params.get('reason') === PERMISSIONS_CHANGED_PARAM
+            ? t.auth.permissionsChanged
+            : t.auth.sessionExpired}
+        </Notice>
+      ) : null}
       {params.get('signedOut') ? <Notice tone="info">{t.auth.signedOut}</Notice> : null}
       {message ? <Notice tone="error">{message}</Notice> : null}
       <form onSubmit={(event) => void submit(event)} noValidate={false}>

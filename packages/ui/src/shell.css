@@ -520,7 +520,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--ls-space-1);
-  margin: 0 0 var(--ls-space-2);
+  margin: 0;
   padding: 0;
   color: var(--ls-text-muted);
   font-size: var(--ls-text-sm);
@@ -533,6 +533,13 @@
   align-items: center;
   gap: var(--ls-space-1);
   overflow-wrap: anywhere;
+}
+
+/* A link is a full-height target (40 px desktop, 44 px touch) even though it reads as small text. */
+.ls-crumbs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
 }
 
 .ls-crumbs [aria-current='page'] {

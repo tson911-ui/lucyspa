@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { test } from 'node:test';
 import {
+  authorizationChanged,
+  endedAuthenticatedSession,
   hasFreshReauthentication,
   sessionPrincipal,
   type SessionPolicy,
@@ -86,6 +88,61 @@ test('every read requires current ACTIVE User credential and both current versio
   );
   // Owner bootstrap does not pretend the recovery email has been verified.
   assert.ok(sessionPrincipal(record({ user: { ...base.user, kind: 'OWNER' } }), now, policy));
+});
+
+test('only a live session that ended through a permission change reports AUTHORIZATION_CHANGED', () => {
+  const base = record();
+  assert.ok(base.user);
+  const changed = record({ revokedAt: now, user: { ...base.user, authzVersion: 6 } });
+  assert.equal(sessionPrincipal(changed, now, policy), null);
+  assert.equal(authorizationChanged(changed, now, policy), true);
+  // Not a permission change: unknown token, healthy session, anonymous, or any other reason it ended.
+  for (const other of [
+    null,
+    record(),
+    record({ revokedAt: now }),
+    record({
+      kind: 'ANONYMOUS',
+      userId: null,
+      credentialVersion: null,
+      authzVersion: null,
+      user: null,
+    }),
+    record({ user: { ...base.user, authzVersion: 6 }, absoluteExpiresAt: now }),
+    record({
+      user: { ...base.user, authzVersion: 6 },
+      lastActivityAt: new Date(now.getTime() - 1_800_000),
+    }),
+    record({ user: { ...base.user, authzVersion: 6, credentialVersion: 4 } }),
+    record({ user: { ...base.user, authzVersion: 6, status: 'INACTIVE' } }),
+    record({ user: { ...base.user, authzVersion: 6 }, csrfKeyVersion: 2 }),
+  ]) {
+    assert.equal(authorizationChanged(other, now, policy), false);
+  }
+});
+
+test('only a signed-in session that no longer resolves counts as ended', () => {
+  const base = record();
+  assert.ok(base.user);
+  for (const gone of [
+    record({ revokedAt: now }),
+    record({ absoluteExpiresAt: now }),
+    record({ lastActivityAt: new Date(now.getTime() - 1_800_000) }),
+    record({ user: { ...base.user, authzVersion: 6 } }),
+  ]) {
+    assert.equal(endedAuthenticatedSession(gone, now, policy), true);
+  }
+  const anonymous = record({
+    kind: 'ANONYMOUS',
+    userId: null,
+    credentialVersion: null,
+    authzVersion: null,
+    user: null,
+    revokedAt: now,
+  });
+  for (const live of [null, record(), anonymous]) {
+    assert.equal(endedAuthenticatedSession(live, now, policy), false);
+  }
 });
 
 test('anonymous sessions carry no identity and expire absolutely without idle refresh', () => {

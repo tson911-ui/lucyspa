@@ -7,6 +7,8 @@ import { AuthError } from './auth.error.js';
 import { capabilityDigest, constantTimeEqual, generateCapability } from './crypto.js';
 import {
   activityWriteDue,
+  authorizationChanged,
+  endedAuthenticatedSession,
   hasActiveCredential,
   sessionPrincipal,
   sessionSelect,
@@ -76,6 +78,41 @@ export class SessionService {
       select: sessionSelect,
     });
     return sessionPrincipal(record, new Date(), this.environment.auth);
+  }
+
+  /**
+   * Read-only: whether this (no longer valid) token belonged to a live session that ended only
+   * because the person's permissions changed. Used to give the 401 an AUTHORIZATION_CHANGED reason.
+   */
+  async authorizationChanged(
+    token: string | undefined,
+    transaction?: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const digest = token === undefined ? null : capabilityDigest(token);
+    if (digest === null) return false;
+    const client = transaction ?? this.prisma.client;
+    const record = await client.session.findUnique({
+      where: { tokenHash: new Uint8Array(digest) },
+      select: sessionSelect,
+    });
+    return authorizationChanged(record, new Date(), this.environment.auth);
+  }
+
+  /**
+   * Read-only: for a token that no longer resolves, whether it was a signed-in session that ended
+   * (`'AUTHORIZATION_CHANGED'` when only the permissions changed, else `'ENDED'`); `null` for an
+   * anonymous, unknown or still valid token. Lets the CSRF guard answer 401 before the CSRF check.
+   */
+  async endedSession(token: string): Promise<'AUTHORIZATION_CHANGED' | 'ENDED' | null> {
+    const digest = capabilityDigest(token);
+    if (digest === null) return null;
+    const record = await this.prisma.client.session.findUnique({
+      where: { tokenHash: new Uint8Array(digest) },
+      select: sessionSelect,
+    });
+    const now = new Date();
+    if (authorizationChanged(record, now, this.environment.auth)) return 'AUTHORIZATION_CHANGED';
+    return endedAuthenticatedSession(record, now, this.environment.auth) ? 'ENDED' : null;
   }
 
   /** Caller must take the shared graph lock before any throttle/identity locks. */

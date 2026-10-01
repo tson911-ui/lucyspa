@@ -126,6 +126,11 @@ function ToastItem({
   );
 }
 
+/** For shared code that also runs where no provider is mounted: `null` instead of throwing. */
+export function useOptionalToast(): ToastApi | null {
+  return useContext(ToastContext);
+}
+
 export function useToast(): ToastApi {
   const api = useContext(ToastContext);
   if (!api) throw new Error('useToast must be used inside <ToastProvider>');

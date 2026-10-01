@@ -88,6 +88,8 @@ export class AuthError extends HttpException {
     readonly code: keyof typeof errors,
     /** Safe field identifier only, never the submitted value. */
     readonly field?: string,
+    /** Safe 401 detail: the session ended because the person's permissions changed. */
+    readonly reason?: 'AUTHORIZATION_CHANGED',
   ) {
     super(field ? `${errors[code][1]}: ${field}` : errors[code][1], errors[code][0]);
   }

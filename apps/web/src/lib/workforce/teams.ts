@@ -53,11 +53,12 @@ export function teamEmployees(
   id: string,
   filters: TeamEmployeeFilters,
   page: number,
+  limit = 50,
 ) {
   return api.get<TeamEmployeesResponse>(`/api/v1/teams/${id}/employees`, {
     ...filters,
     page,
-    limit: 50,
+    limit,
   });
 }
 /** Process bounded server batches; version/cursor advance only after a committed response. */

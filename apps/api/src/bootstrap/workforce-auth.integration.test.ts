@@ -13,6 +13,7 @@ import { LOGIN_POLICY, LoginService, type LoginPrincipal } from '../auth/login.s
 import { PasswordService } from '../auth/password.service.js';
 import { RateLimitedError } from '../auth/registration.service.js';
 import { SessionService } from '../auth/session.service.js';
+import { invalidateAuthorization } from '../authorization/authorization.store.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { bootstrapOwner, type OwnerBootstrapInput } from './owner-bootstrap.js';
 
@@ -67,6 +68,7 @@ test(
                   sessions.rotateAuthenticated(token, evidence, options, tx),
                 resolve: (token) => sessions.resolve(token, tx),
                 resolveForMutation: (token) => sessions.resolveForMutation(token, tx),
+                authorizationChanged: (token) => sessions.authorizationChanged(token, tx),
                 continueAfterCredentialChange: (t, previous, requestId, reason) =>
                   sessions.continueAfterCredentialChange(t, previous, requestId, reason),
               },
@@ -430,6 +432,30 @@ test(
                 assert.equal(Reflect.get(Object(revokedAudit.after), 'reason'), 'LOGOUT_ALL');
                 await fails(service.logoutAll(fresh), 'AUTHENTICATION_REQUIRED');
                 await fails(service.logoutAll(await anonymous()), 'AUTHENTICATION_REQUIRED');
+
+                // Only a permission change gives the 401 its AUTHORIZATION_CHANGED reason.
+                const reasonOf = (token: string | undefined) =>
+                  service.currentAccount(token).then(
+                    () => 'SIGNED_IN',
+                    (error: unknown) => (error instanceof AuthError ? error.reason : 'OTHER'),
+                  );
+                assert.equal(
+                  await reasonOf(fresh),
+                  undefined,
+                  'logout-all is not a permission change',
+                );
+                assert.equal(await reasonOf(undefined), undefined);
+                const again = await service.login(
+                  active.code,
+                  PASSWORD,
+                  await anonymous(),
+                  peer,
+                  undefined,
+                  EMPLOYEE_ID,
+                );
+                assert.equal(await reasonOf(again.token), 'SIGNED_IN');
+                await invalidateAuthorization(tx, [active.id], new Date());
+                assert.equal(await reasonOf(again.token), 'AUTHORIZATION_CHANGED');
               },
             );
 

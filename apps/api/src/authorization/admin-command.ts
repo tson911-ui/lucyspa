@@ -25,7 +25,9 @@ export interface AdminCommandDependencies {
   readonly sessions: Pick<
     SessionService,
     'withTransaction' | 'withExclusiveTransaction' | 'resolveForMutation'
-  >;
+  > &
+    /** Optional so narrow test facades keep working; production passes the real service. */
+    Partial<Pick<SessionService, 'authorizationChanged'>>;
   readonly throttle: Pick<AuthThrottleService, 'now'>;
 }
 
@@ -82,7 +84,9 @@ export async function runAdminCommand<T>(
         principal.userId === null ||
         principal.userId !== hint.userId
       ) {
-        throw new AuthError('AUTHENTICATION_REQUIRED');
+        throw principal === null && (await sessions.authorizationChanged?.(sessionToken, tx))
+          ? new AuthError('AUTHENTICATION_REQUIRED', undefined, 'AUTHORIZATION_CHANGED')
+          : new AuthError('AUTHENTICATION_REQUIRED');
       }
       // Customers never reach workforce administration.
       if (principal.userKind !== 'OWNER' && principal.userKind !== 'EMPLOYEE') {

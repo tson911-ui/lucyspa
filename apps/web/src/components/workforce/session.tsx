@@ -15,7 +15,12 @@ import {
 import type { Locale } from '../../i18n/locales';
 import { getWorkforceDictionary, type WorkforceDictionary } from '../../i18n/workforce';
 import { WorkforceApi } from '../../lib/workforce/api';
-import { expiredLoginPath, expiryAction } from '../../lib/workforce/expiry';
+import {
+  expiredLoginPath,
+  expiryAction,
+  sessionEndReason,
+  type SessionEndReason,
+} from '../../lib/workforce/expiry';
 import { loadSession, workforceLogout } from '../../lib/workforce/workflows';
 
 export interface WorkforceContextValue {
@@ -34,13 +39,19 @@ export const WorkforceContext = createContext<WorkforceContextValue | null>(null
 /** Set while a submission failed because the session expired and the page was kept. */
 export interface SessionNoticeValue {
   lost: boolean;
+  /** `AUTHORIZATION_CHANGED` when the person's permissions changed; otherwise a plain expiry. */
+  reason: SessionEndReason;
   dismiss: () => void;
+  /** The session ended (found by the shell's passive check): keep the page and say so. */
+  report: (reason: SessionEndReason) => void;
 }
 
 /** Exported for component tests; application code uses `WorkforceProvider`. */
 export const SessionNoticeContext = createContext<SessionNoticeValue>({
   lost: false,
+  reason: null,
   dismiss: () => undefined,
+  report: () => undefined,
 });
 
 export function useSessionNotice(): SessionNoticeValue {
@@ -50,26 +61,27 @@ export function useSessionNotice(): SessionNoticeValue {
 export function WorkforceProvider({ locale, children }: { locale: Locale; children: ReactNode }) {
   const router = useRouter();
   const base = `/${locale}/workforce`;
-  const [lost, setLost] = useState(false);
+  const [ended, setEnded] = useState<{ reason: SessionEndReason } | null>(null);
   // Any 401 means the session ended (idle or absolute expiry, revocation, sign-out
-  // elsewhere). See `expiryAction`: a failed submission keeps the page and its entries; a
-  // failed read returns to login with this page as the return path.
+  // elsewhere, a permission change). See `expiryAction`: a failed submission keeps the page and
+  // its entries; a failed read returns to login with this page as the return path.
   const redirecting = useRef(false);
   const api = useMemo(
     () =>
       new WorkforceApi({
-        onUnauthenticated: (method) => {
+        onUnauthenticated: (method, apiReason) => {
+          const reason = sessionEndReason(apiReason);
           if (expiryAction(method) === 'keep') {
-            setLost(true);
+            setEnded({ reason });
             return;
           }
           if (redirecting.current) return;
           redirecting.current = true;
           router.replace(
-            expiredLoginPath(base, `${window.location.pathname}${window.location.search}`),
+            expiredLoginPath(base, `${window.location.pathname}${window.location.search}`, reason),
           );
         },
-        onAuthenticatedResponse: () => setLost(false),
+        onAuthenticatedResponse: () => setEnded(null),
       }),
     [router, base],
   );
@@ -83,7 +95,13 @@ export function WorkforceProvider({ locale, children }: { locale: Locale; childr
     }),
     [locale, api, base, router],
   );
-  const notice = useMemo(() => ({ lost, dismiss: () => setLost(false) }), [lost]);
+  // Stable callbacks: the shell's session watch depends on `report` and must not restart when the notice changes.
+  const dismiss = useCallback(() => setEnded(null), []);
+  const report = useCallback((reason: SessionEndReason) => setEnded({ reason }), []);
+  const notice = useMemo(
+    () => ({ lost: ended !== null, reason: ended?.reason ?? null, dismiss, report }),
+    [ended, dismiss, report],
+  );
   return (
     <WorkforceContext.Provider value={value}>
       <SessionNoticeContext.Provider value={notice}>{children}</SessionNoticeContext.Provider>

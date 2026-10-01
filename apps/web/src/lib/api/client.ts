@@ -11,6 +11,8 @@ export class ApiError extends Error {
     readonly code: string,
     readonly field: string | null = null,
     readonly requestId: string | null = null,
+    /** On a 401: why the session ended, when the API says (`AUTHORIZATION_CHANGED`). */
+    readonly reason: string | null = null,
   ) {
     super(code);
     this.name = 'ApiError';
@@ -36,6 +38,7 @@ async function toError(response: Response): Promise<ApiError> {
     typeof body?.code === 'string' ? body.code : `HTTP_${response.status}`,
     fieldOf(body?.message),
     typeof body?.requestId === 'string' ? body.requestId : null,
+    typeof body?.reason === 'string' ? body.reason : null,
   );
 }
 
@@ -53,13 +56,15 @@ export interface RequestOptions {
    * refresh). It must never keep the session alive, so it carries no activity marker.
    */
   readonly passive?: boolean;
+  /** The caller handles a 401 itself (the session watch); `onUnauthenticated` is not called. */
+  readonly skipExpiryHook?: boolean;
 }
 
 export interface ApiClientOptions {
   /** Injected in tests; the browser's fetch otherwise. */
   readonly fetch?: typeof fetch;
-  /** Called on every 401 with the method, so the shell can keep or leave the page. */
-  readonly onUnauthenticated?: (method: 'GET' | 'POST') => void;
+  /** Called on every 401 with the method and the API's reason, so the shell can keep or leave the page. */
+  readonly onUnauthenticated?: (method: 'GET' | 'POST', reason: string | null) => void;
   /** Called after every successful response (the session is valid again). */
   readonly onAuthenticatedResponse?: () => void;
 }
@@ -143,8 +148,12 @@ export class ApiClient {
     }
     if (!response.ok) {
       const error = await toError(response);
-      if (error.status === 401 && error.code === 'AUTHENTICATION_REQUIRED') {
-        this.options.onUnauthenticated?.(method);
+      if (
+        error.status === 401 &&
+        error.code === 'AUTHENTICATION_REQUIRED' &&
+        !options.skipExpiryHook
+      ) {
+        this.options.onUnauthenticated?.(method, error.reason);
       }
       throw error;
     }

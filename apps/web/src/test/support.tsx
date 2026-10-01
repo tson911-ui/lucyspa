@@ -105,6 +105,6 @@ export const context =
     json(200, { csrfToken: token, authenticated });
 
 export const failure =
-  (status: number, code: string, message = code) =>
+  (status: number, code: string, message = code, extra: Record<string, string> = {}) =>
   () =>
-    json(status, { statusCode: status, code, message, requestId: 'req-1' });
+    json(status, { statusCode: status, code, message, ...extra, requestId: 'req-1' });
