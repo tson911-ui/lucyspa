@@ -61,3 +61,4 @@ await import('../apps/api/dist/pos/customer-invoice.integration.test.js');
 await import('../apps/api/dist/pos/invoice-notifications.integration.test.js');
 await import('../apps/api/dist/website/media.integration.test.js');
 await import('../apps/api/dist/website/popup.integration.test.js');
+await import('../apps/api/dist/website/slide.integration.test.js');

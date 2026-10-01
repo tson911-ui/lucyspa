@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { HomeSlider } from '../../../components/public/home-slider';
 import { PromoPopup } from '../../../components/public/promo-popup';
 import { getDictionary } from '../../../i18n/dictionaries';
 import { isLocale } from '../../../i18n/locales';
@@ -12,6 +13,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
   return (
     <main className="welcome" id="main-content" tabIndex={-1}>
+      <HomeSlider locale={locale} />
       <div className="welcome-copy">
         <p className="eyebrow">{dictionary.eyebrow}</p>
         <h1>{dictionary.heading}</h1>

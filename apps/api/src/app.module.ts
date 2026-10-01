@@ -77,6 +77,8 @@ import { MediaController } from './website/media.controller.js';
 import { MediaService } from './website/media.service.js';
 import { PopupController, PublicWebsiteController } from './website/popup.controller.js';
 import { PopupService, PublicWebsiteService } from './website/popup.service.js';
+import { SlideController } from './website/slide.controller.js';
+import { SlideService } from './website/slide.service.js';
 import { HealthController } from './health/health.controller.js';
 import { InfrastructureService } from './platform/infrastructure.service.js';
 import {
@@ -128,6 +130,7 @@ export class AppModule {
         TeamController,
         MediaController,
         PopupController,
+        SlideController,
         PublicWebsiteController,
       ],
       providers: [
@@ -181,6 +184,7 @@ export class AppModule {
         TeamService,
         MediaService,
         PopupService,
+        SlideService,
         PublicWebsiteService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },

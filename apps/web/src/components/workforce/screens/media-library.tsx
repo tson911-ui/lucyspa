@@ -67,6 +67,7 @@ import {
   useSuccessToast,
 } from '../ui';
 import { PopupsPanel } from './website-popups';
+import { SlidesPanel, type SlideEditing } from './website-slides';
 
 const QUEUE_PAGE_SIZE = 20;
 
@@ -120,9 +121,11 @@ function MediaLibrary() {
     normalize: normalizeMediaList,
     resetOnChange: MEDIA_PAGE_KEYS,
   });
-  // Files are only taken on the library tab: a drop on the popup tab is not an upload.
-  const onLibrary = useRef(list.tab !== 'popup');
-  onLibrary.current = list.tab !== 'popup';
+  // Files are only taken on the library tab: a drop on the popup or slider tab is not an upload.
+  const onLibrary = useRef(list.tab === 'media');
+  onLibrary.current = list.tab === 'media';
+  // The slider tab's drawer (add or edit one slide); the add button is in the page header.
+  const [slideEditing, setSlideEditing] = useState<SlideEditing>(null);
   const library = useResource(
     () => api.get<MediaListResponse>('/api/v1/website/media', { search: list.q, page: list.page }),
     [api, list.q, list.page],
@@ -245,6 +248,7 @@ function MediaLibrary() {
   const separator = decimalSeparator(locale);
 
   const onPopups = list.tab === 'popup';
+  const onSlider = list.tab === 'slider';
   const mediaPanel = (
     <>
       {dragging ? <Notice tone="info">{t.media.dropOverlay}</Notice> : null}
@@ -349,8 +353,15 @@ function MediaLibrary() {
 
   return (
     <>
-      <PageHeader title={t.website.title} intro={onPopups ? t.popups.intro : t.media.intro}>
-        {onPopups ? (
+      <PageHeader
+        title={t.website.title}
+        intro={onPopups ? t.popups.intro : onSlider ? t.slides.intro : t.media.intro}
+      >
+        {onSlider ? (
+          <Button variant="primary" icon="plus" onClick={() => setSlideEditing({ id: null })}>
+            {t.slides.create}
+          </Button>
+        ) : onPopups ? (
           <Button
             variant="primary"
             icon="plus"
@@ -391,6 +402,11 @@ function MediaLibrary() {
         tabs={[
           { id: 'media', label: t.website.media, panel: mediaPanel },
           { id: 'popup', label: t.website.popup, panel: <PopupsPanel /> },
+          {
+            id: 'slider',
+            label: t.website.slider,
+            panel: <SlidesPanel editing={slideEditing} onEditing={setSlideEditing} />,
+          },
         ]}
       />
       {overlay?.kind === 'detail' ? (

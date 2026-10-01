@@ -65,6 +65,42 @@ test('MediaGrid lists tiles; each tile is a labelled button with a decorative la
   container.remove();
 });
 
+test('MediaRow: a decorative thumbnail, the title is the only button, meta, badges and the menu slot', () => {
+  const container = window.document.createElement('div');
+  window.document.body.appendChild(container);
+  const root = createRoot(container);
+  const opened: string[] = [];
+  act(() =>
+    root.render(
+      <ui.MediaRow
+        src="/thumb/a.png"
+        title="Khuyến mãi Tết"
+        meta="Vị trí 1 · Luôn hiển thị"
+        badge={<ui.Badge tone="success">Đang hiển thị</ui.Badge>}
+        actions={<span data-menu="">⋮</span>}
+        actionLabel="Sửa Khuyến mãi Tết"
+        onSelect={() => opened.push('open')}
+      />,
+    ),
+  );
+  assert.equal(container.querySelectorAll('button').length, 1);
+  const title = container.querySelector<HTMLButtonElement>('button.ls-media-row-title');
+  assert.equal(title?.getAttribute('aria-label'), 'Sửa Khuyến mãi Tết');
+  assert.equal(title?.textContent, 'Khuyến mãi Tết');
+  const image = container.querySelector('img');
+  assert.equal(image?.getAttribute('alt'), '', 'decorative: the title is the text');
+  assert.equal(image?.getAttribute('loading'), 'lazy');
+  assert.equal(container.querySelector('.ls-media-meta')?.textContent, 'Vị trí 1 · Luôn hiển thị');
+  assert.equal(container.querySelector('.ls-media-badges')?.textContent, 'Đang hiển thị');
+  assert.ok(container.querySelector('.ls-media-row-actions [data-menu]'));
+  act(() => {
+    title!.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  });
+  assert.deepEqual(opened, ['open']);
+  act(() => root.unmount());
+  container.remove();
+});
+
 test('media grid styles: tokens only, one border per tile, fixed rows, one-line title and meta', () => {
   const css = readFileSync(new URL('components.css', import.meta.url), 'utf8');
   const block = (selector: string) => {

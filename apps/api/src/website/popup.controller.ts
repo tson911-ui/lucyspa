@@ -1,5 +1,6 @@
 import type {
   PublicPopupResponse,
+  PublicSlidesResponse,
   WebsitePopupEnabledRequest,
   WebsitePopupInput,
   WebsitePopupListResponse,
@@ -183,6 +184,22 @@ export class PublicWebsiteController {
       return undefined;
     }
     return popup;
+  }
+
+  @Get('website/slides')
+  @ApiOkResponse({
+    description:
+      'The slides that are visible now, in order and in the visitor language (`locale=vi|en`, at most 8, possibly none). Cached for 60 seconds.',
+  })
+  async slides(
+    @Query('locale') locale: string | undefined,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PublicSlidesResponse> {
+    if (locale !== 'vi' && locale !== 'en') throw new AuthError('VALIDATION_FAILED', 'locale');
+    const items = await this.website.slides(locale);
+    response.setHeader('cache-control', 'public, max-age=60');
+    response.setHeader('vary', 'Accept-Encoding');
+    return { items };
   }
 
   @Get('media/:id/:variant')

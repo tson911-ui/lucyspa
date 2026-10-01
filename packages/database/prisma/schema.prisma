@@ -398,6 +398,8 @@ model User {
   createdMediaAssets           MediaAsset[]                     @relation("MediaAssetCreator")
   createdWebsitePopups         WebsitePopup[]                   @relation("WebsitePopupCreator")
   updatedWebsitePopups         WebsitePopup[]                   @relation("WebsitePopupUpdater")
+  createdWebsiteSlides         WebsiteSlide[]                   @relation("WebsiteSlideCreator")
+  updatedWebsiteSlides         WebsiteSlide[]                   @relation("WebsiteSlideUpdater")
   checkedInBookings            Booking[]                        @relation("BookingCheckedInBy")
   cancelledBookings            Booking[]                        @relation("BookingCancelledBy")
   noShowBookings               Booking[]                        @relation("BookingNoShowBy")
@@ -1944,6 +1946,8 @@ model MediaAsset {
   updatedAt        DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   variants         MediaVariant[]
   popups           WebsitePopup[]
+  slides           WebsiteSlide[] @relation("WebsiteSlideImage")
+  mobileSlides     WebsiteSlide[] @relation("WebsiteSlideMobileImage")
 
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "media_assets_created_idx")
   @@map("media_assets")
@@ -1990,4 +1994,40 @@ model WebsitePopup {
   @@index([startsAt(sort: Desc), id], map: "website_popups_starts_idx")
   @@index([mediaId], map: "website_popups_media_idx")
   @@map("website_popups")
+}
+
+// UX/UI Step 13: the homepage slider (design 16.6). Marketing content, not history: a real delete is allowed.
+// Both image keys are ON DELETE RESTRICT. `sortOrder` is dense and rewritten by the API in one transaction;
+// at most 8 slides may be visible at once, which the API enforces under an advisory lock.
+model WebsiteSlide {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mediaId         String      @map("media_id") @db.Uuid
+  media           MediaAsset  @relation("WebsiteSlideImage", fields: [mediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  mobileMediaId   String?     @map("mobile_media_id") @db.Uuid
+  mobileMedia     MediaAsset? @relation("WebsiteSlideMobileImage", fields: [mobileMediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  titleVi         String?     @map("title_vi")
+  titleEn         String?     @map("title_en")
+  subtitleVi      String?     @map("subtitle_vi")
+  subtitleEn      String?     @map("subtitle_en")
+  linkUrl         String?     @map("link_url")
+  linkLabelVi     String?     @map("link_label_vi")
+  linkLabelEn     String?     @map("link_label_en")
+  altVi           String?     @map("alt_vi")
+  altEn           String?     @map("alt_en")
+  sortOrder       Int         @map("sort_order")
+  startsAt        DateTime?   @map("starts_at") @db.Timestamptz(3)
+  endsAt          DateTime?   @map("ends_at") @db.Timestamptz(3)
+  isEnabled       Boolean     @default(false) @map("is_enabled")
+  rowVersion      Int         @default(1) @map("row_version")
+  createdByUserId String      @map("created_by_user_id") @db.Uuid
+  createdBy       User        @relation("WebsiteSlideCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  updatedByUserId String      @map("updated_by_user_id") @db.Uuid
+  updatedBy       User        @relation("WebsiteSlideUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([sortOrder, id], map: "website_slides_order_idx")
+  @@index([mediaId], map: "website_slides_media_idx")
+  @@index([mobileMediaId], map: "website_slides_mobile_media_idx")
+  @@map("website_slides")
 }

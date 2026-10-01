@@ -21,7 +21,7 @@ import { requireWebsiteContent } from './media.core.js';
 export const POPUP_LIMITS = Object.freeze({ title: 120, body: 300, ctaLabel: 40, ctaUrl: 500 });
 /** One fixed key serializes every save that enables a popup, so two saves cannot both pass the overlap check. */
 const POPUP_LOCK = 4_120_016_501n;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const INTERNAL_URL = /^\/(vi|en|\{locale\})(\/[^\s<>"'\\]*)?$/;
 const MAX_VERSION = 2_147_483_647;
 
@@ -54,7 +54,12 @@ export function validPopupUrl(value: string): boolean {
 }
 
 /** Plain text only: NFC, trimmed, empty becomes null. Single-line fields collapse whitespace; the body keeps line breaks. */
-function textField(value: unknown, field: string, max: number, multiline = false): string | null {
+export function textField(
+  value: unknown,
+  field: string,
+  max: number,
+  multiline = false,
+): string | null {
   if (value === null || value === undefined) return null;
   if (typeof value !== 'string') throw new AuthError('VALIDATION_FAILED', field);
   let text = value.normalize('NFC').replace(/\r\n?/g, '\n');
@@ -73,7 +78,7 @@ function textField(value: unknown, field: string, max: number, multiline = false
   return text;
 }
 
-function instant(value: unknown, field: string): Date {
+export function instant(value: unknown, field: string): Date {
   if (typeof value !== 'string' || value.length > 40 || !/^\d{4}-\d{2}-\d{2}T/.test(value)) {
     throw new AuthError('VALIDATION_FAILED', field);
   }
@@ -238,7 +243,10 @@ const fieldsOf = (row: PopupRow): PopupFields => ({
  * The picked image must exist and carry Vietnamese alt text (Q-CM10: "required before use"). The row is
  * locked `FOR SHARE`, so a concurrent delete of the image waits for this save instead of racing it.
  */
-async function requireUsableMedia(tx: Prisma.TransactionClient, mediaId: string): Promise<void> {
+export async function requireUsableMedia(
+  tx: Prisma.TransactionClient,
+  mediaId: string,
+): Promise<void> {
   const [asset] = await tx.$queryRaw<{ alt_vi: string | null }[]>`
     SELECT alt_vi FROM media_assets WHERE id = ${mediaId}::uuid FOR SHARE`;
   if (!asset) throw new AuthError('VALIDATION_FAILED', 'mediaId');
@@ -410,7 +418,7 @@ export async function deletePopup(context: AdminContext, id: string): Promise<vo
 export type PublicLocale = 'vi' | 'en';
 
 /** The visitor's language, then the other one, then nothing (design 16.5). */
-const pick = (vi: string | null, en: string | null, locale: PublicLocale): string | null =>
+export const pick = (vi: string | null, en: string | null, locale: PublicLocale): string | null =>
   (locale === 'vi' ? (vi ?? en) : (en ?? vi)) ?? null;
 
 export const publicMediaUrl = (id: string, variant: 'thumb' | 'md' | 'lg') =>
@@ -469,29 +477,51 @@ export async function activePopup(
           alt: pick(media.altVi, media.altEn, locale) ?? '',
           width: media.width,
           height: media.height,
-          // Narrowest first; a small image has the same width in both renditions, so keep only the first.
-          sources: media.variants
-            .slice()
-            .sort((a, b) => a.width - b.width || (a.kind === 'MD' ? -1 : 1))
-            .filter((variant, index, all) => index === 0 || variant.width !== all[index - 1]?.width)
-            .map((variant) => ({
-              url: publicMediaUrl(media.id, variant.kind === 'MD' ? 'md' : 'lg'),
-              width: variant.width,
-            })),
+          sources: publicImageSources(media.id, media.variants),
         }
       : null,
   };
 }
 
-/** Is this image shown on the public site right now? (Slides join this check in Step 13.) */
+/**
+ * The public renditions of an image, narrowest first. A small image has the same width in both renditions,
+ * so only the first is kept. Shared by the popup and the slider.
+ */
+export function publicImageSources(
+  assetId: string,
+  variants: readonly { kind: string; width: number }[],
+): { url: string; width: number }[] {
+  return variants
+    .slice()
+    .sort((a, b) => a.width - b.width || (a.kind === 'MD' ? -1 : 1))
+    .filter((variant, index, all) => index === 0 || variant.width !== all[index - 1]?.width)
+    .map((variant) => ({
+      url: publicMediaUrl(assetId, variant.kind === 'MD' ? 'md' : 'lg'),
+      width: variant.width,
+    }));
+}
+
+/** Is this image shown on the public site right now, by a live popup or a visible slide? */
 export async function isPubliclyServed(
   tx: Prisma.TransactionClient,
   assetId: string,
   now: Date,
 ): Promise<boolean> {
-  const live = await tx.websitePopup.findFirst({
+  const popup = await tx.websitePopup.findFirst({
     where: { mediaId: assetId, isEnabled: true, startsAt: { lte: now }, endsAt: { gt: now } },
     select: { id: true },
   });
-  return live !== null;
+  if (popup !== null) return true;
+  const slide = await tx.websiteSlide.findFirst({
+    where: {
+      isEnabled: true,
+      OR: [{ mediaId: assetId }, { mobileMediaId: assetId }],
+      AND: [
+        { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+        { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
+      ],
+    },
+    select: { id: true },
+  });
+  return slide !== null;
 }

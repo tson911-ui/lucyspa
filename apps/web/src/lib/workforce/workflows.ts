@@ -123,6 +123,9 @@ export function errorMessage(error: unknown, t: WorkforceDictionary): string {
       return t.errors.mediaAltRequired;
     case 'POPUP_OVERLAP':
       return t.errors.popupOverlap;
+    // Homepage slider (UX/UI Step 13).
+    case 'SLIDE_LIMIT':
+      return t.errors.slideLimit;
     default:
       return t.errors.unexpected;
   }

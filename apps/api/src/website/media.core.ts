@@ -61,8 +61,7 @@ function summary(row: SummaryRow): MediaAssetSummary {
 }
 
 /**
- * Where an image is used. The popup (Step 12) is looked up here; the slider (Step 13) adds its own lookup
- * next to it. Delete protection and the alt-text rule both read this; the public-serving rule reads the
+ * Where an image is used: popups (Step 12) and slides, desktop or phone image (Step 13). Delete protection and the alt-text rule both read this; the public-serving rule reads the
  * same tables through `isPubliclyServed` (popup.core.ts).
  */
 export type MediaUsageLookup = (
@@ -76,11 +75,23 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
     orderBy: [{ startsAt: 'desc' }, { id: 'asc' }],
     select: { id: true, titleVi: true, titleEn: true },
   });
-  return popups.map((popup) => ({
-    kind: 'POPUP' as const,
-    id: popup.id,
-    title: popup.titleVi ?? popup.titleEn ?? '',
-  }));
+  const slides = await tx.websiteSlide.findMany({
+    where: { OR: [{ mediaId: assetId }, { mobileMediaId: assetId }] },
+    orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+    select: { id: true, titleVi: true, titleEn: true },
+  });
+  return [
+    ...popups.map((popup) => ({
+      kind: 'POPUP' as const,
+      id: popup.id,
+      title: popup.titleVi ?? popup.titleEn ?? '',
+    })),
+    ...slides.map((slide) => ({
+      kind: 'SLIDE' as const,
+      id: slide.id,
+      title: slide.titleVi ?? slide.titleEn ?? '',
+    })),
+  ];
 };
 
 async function detail(tx: Prisma.TransactionClient, row: SummaryRow): Promise<MediaAssetDetail> {

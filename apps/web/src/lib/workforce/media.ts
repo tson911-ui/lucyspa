@@ -16,8 +16,8 @@ export const MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export const MEDIA_UPLOAD_CONCURRENCY = 3;
 export const MEDIA_ALT_MAX = 300;
 
-/** The website content page: `tab` is the library (default) or the popup list (Step 12). */
-export type WebsiteTab = 'media' | 'popup';
+/** The website content page: `tab` is the library (default), the popup list (Step 12) or the slider (Step 13). */
+export type WebsiteTab = 'media' | 'popup' | 'slider';
 
 export const MEDIA_LIST_DEFAULTS: { q: string; page: number; tab: string } = {
   q: '',
@@ -32,7 +32,7 @@ export function normalizeMediaList(state: MediaListState): MediaListState {
   return {
     q: state.q.slice(0, 100),
     page: normalizePage(state.page),
-    tab: state.tab === 'popup' ? 'popup' : 'media',
+    tab: state.tab === 'popup' || state.tab === 'slider' ? state.tab : 'media',
   };
 }
 

@@ -2873,3 +2873,95 @@ export interface PublicPopupResponse {
     sources: { url: string; width: number }[];
   } | null;
 }
+
+// ---------------------------------------------------------------------------------------------
+// UX/UI Step 13: the homepage slider (design 16.6). MANAGE_WEBSITE_CONTENT, GLOBAL only.
+// ---------------------------------------------------------------------------------------------
+
+/** Derived, never stored: Hidden (disabled), Scheduled (enabled, not started), Visible (live now), Ended. */
+export type WebsiteSlideStatus = 'HIDDEN' | 'SCHEDULED' | 'VISIBLE' | 'ENDED';
+
+/** The fields an admin writes. `startsAt`/`endsAt` are optional ISO instants (the form enters Vietnam time). */
+export interface WebsiteSlideInput {
+  /** The desktop image (required, recommended 1920 x 800). */
+  mediaId: string;
+  /** The phone image (optional, recommended 1080 x 1350); without it the main image is cropped to fit. */
+  mobileMediaId: string | null;
+  titleVi: string | null;
+  titleEn: string | null;
+  subtitleVi: string | null;
+  subtitleEn: string | null;
+  /** An internal path (`/vi/...`, `/en/...`, `/{locale}/...`) or an `https://` URL; a link needs a label. */
+  linkUrl: string | null;
+  linkLabelVi: string | null;
+  linkLabelEn: string | null;
+  /** Overrides the image's own description for this slide; empty means "use the image's". */
+  altVi: string | null;
+  altEn: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  isEnabled: boolean;
+}
+
+export interface WebsiteSlideResponse extends WebsiteSlideInput {
+  id: string;
+  media: WebsitePopupMedia;
+  mobileMedia: WebsitePopupMedia | null;
+  /** 1-based place in the slider; dense. */
+  position: number;
+  status: WebsiteSlideStatus;
+  rowVersion: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** GET /api/v1/website/slides : every slide in slider order; `now` is the server clock the statuses use. */
+export interface WebsiteSlideListResponse {
+  items: WebsiteSlideResponse[];
+  now: string;
+  /** At most this many slides may be visible at once. */
+  maxVisible: number;
+}
+
+/** POST /api/v1/website/slides/:id/update */
+export interface WebsiteSlideUpdateRequest extends WebsiteSlideInput {
+  expectedVersion: number;
+}
+
+/** POST /api/v1/website/slides/:id/enabled : show or hide without touching the content. */
+export interface WebsiteSlideEnabledRequest {
+  expectedVersion: number;
+  isEnabled: boolean;
+}
+
+/**
+ * POST /api/v1/website/slides/reorder : every slide id in the new order, in one call. The list must be exactly
+ * the slides that exist (a slide added or deleted meanwhile is `CONFLICT`: reload and arrange again).
+ */
+export interface WebsiteSlideReorderRequest {
+  orderedIds: string[];
+}
+
+export interface PublicSlideImage {
+  alt: string;
+  width: number;
+  height: number;
+  /** Public renditions, narrowest first. */
+  sources: { url: string; width: number }[];
+}
+
+export interface PublicSlide {
+  id: string;
+  title: string | null;
+  subtitle: string | null;
+  linkLabel: string | null;
+  linkUrl: string | null;
+  image: PublicSlideImage;
+  /** The phone image, when the slide has one. */
+  mobileImage: PublicSlideImage | null;
+}
+
+/** GET /api/v1/public/website/slides?locale=vi|en : the visible slides in order (at most 8), possibly none. */
+export interface PublicSlidesResponse {
+  items: PublicSlide[];
+}

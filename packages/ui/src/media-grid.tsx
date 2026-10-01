@@ -36,6 +36,58 @@ export function MediaPreview({ src, alt }: { src: string; alt: string }) {
 }
 
 /**
+ * One image as a row of a list the order of which matters (the homepage slider, design 16.6): a wide
+ * thumbnail, the title as the button that opens the item, one meta line, badges, and the row's `⋮` menu at
+ * the trailing edge. It draws no frame of its own: the sortable list item around it is the frame. On a phone
+ * the thumbnail takes its own line above the text.
+ */
+export function MediaRow({
+  src,
+  title,
+  meta,
+  badge,
+  actions,
+  actionLabel,
+  onSelect,
+}: {
+  /** The thumbnail rendition. */
+  src: string;
+  title: string;
+  /** One short line, e.g. "Position 2 · Always shown". */
+  meta: string;
+  /** Optional status badge(s). */
+  badge?: ReactNode;
+  /** The row's `⋮` menu (a `RowActions`). */
+  actions?: ReactNode;
+  /** Accessible name of the title button, e.g. "Edit Tet offer". */
+  actionLabel: string;
+  onSelect: () => void;
+}) {
+  return (
+    <div className="ls-media-row">
+      <span className="ls-media-row-thumb">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt="" loading="lazy" decoding="async" />
+      </span>
+      <div className="ls-media-row-text">
+        <button
+          type="button"
+          className="ls-media-row-title"
+          title={title}
+          aria-label={actionLabel}
+          onClick={onSelect}
+        >
+          {title}
+        </button>
+        <span className="ls-media-meta">{meta}</span>
+        <span className="ls-media-badges">{badge}</span>
+      </div>
+      {actions ? <div className="ls-media-row-actions">{actions}</div> : null}
+    </div>
+  );
+}
+
+/**
  * One image. The title is the button that opens the detail, and it covers the whole tile (a 40/44px
  * target at least); the thumbnail is decorative because the title is text next to it. Library images are already resized, and this package cannot use
  * next/image.

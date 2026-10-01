@@ -273,3 +273,9 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - 1 additive migration (`website_popups`), no new permission or env. Admin API (`/api/v1/website/popups`, audit, versions), one enabled popup per instant (advisory lock, `POPUP_OVERLAP` names the other popup), image needs Vietnamese alt, media delete now refused while a popup uses the image. Public anonymous `GET /api/v1/public/website/popup` and `/api/v1/public/media/:id/:variant` (only live-popup images).
 - Web: `/website` tabs Media | Popup, popup list + schedule strip, form pages `/website/popups/new|:id` with live preview, `MediaPicker`; public home page shows the popup once per session. Kit: `PromoCard/PromoDialog/PromoPreview/ScheduleStrip`. Quality gate (screenshots, DOM audit, browser flow) deferred to Step 14 by Owner decision. Report: docs/UXUI_REDESIGN_STEP12_POPUP.md. Next: 13 (slider).
+
+### UX/UI Step 13 (homepage slider) - implemented locally 2026-10-02, awaiting Owner review (uncommitted, not deployed; base 2526a51)
+
+- 1 additive migration (`website_slides`), no new permission or env. Admin API (`/api/v1/website/slides`, audit, versions, `POST reorder` in one transaction, max 8 visible at once: `SLIDE_LIMIT`), media delete/alt rules and public image serving now include slides; public `GET /api/v1/public/website/slides`.
+- Web: `/website?tab=slider` (sortable list, status, schedule, row menu, add/edit drawer); public home page shows the slider (autoplay 6 s, pause on hover/focus/touch + Pause button, none under reduced motion). Kit: `Slider`, `MediaRow`. Quality gate (screenshots, DOM audit, browser flow) deferred to Step 14 by Owner decision.
+- Whole-repo `pnpm test`, lint, format, typecheck green; scratch-DB integration green. Report: docs/UXUI_REDESIGN_STEP13_SLIDER.md. Next: 14 (final gate).

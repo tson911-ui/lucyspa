@@ -16,6 +16,16 @@ interface Dictionary {
   /** The promotional popup's name when it has no title, and its close button. */
   promoLabel: string;
   promoClose: string;
+  /** The homepage slider: its name and controls. */
+  sliderLabel: string;
+  sliderPrevious: string;
+  sliderNext: string;
+  sliderPause: string;
+  sliderPlay: string;
+  /** With {position} and {count}. */
+  sliderSlide: string;
+  /** With {position}. */
+  sliderGoTo: string;
 }
 
 const dictionaries = {
@@ -34,6 +44,13 @@ const dictionaries = {
     register: 'Đăng ký thành viên',
     promoLabel: 'Ưu đãi từ Lucy Spa',
     promoClose: 'Đóng thông báo',
+    sliderLabel: 'Ưu đãi nổi bật',
+    sliderPrevious: 'Slide trước',
+    sliderNext: 'Slide sau',
+    sliderPause: 'Tạm dừng tự chuyển slide',
+    sliderPlay: 'Tiếp tục tự chuyển slide',
+    sliderSlide: 'Slide {position} / {count}',
+    sliderGoTo: 'Đến slide {position}',
   },
   en: {
     title: 'Lucy Spa — A moment just for you',
@@ -50,6 +67,13 @@ const dictionaries = {
     register: 'Become a member',
     promoLabel: 'Offer from Lucy Spa',
     promoClose: 'Close notice',
+    sliderLabel: 'Featured offers',
+    sliderPrevious: 'Previous slide',
+    sliderNext: 'Next slide',
+    sliderPause: 'Pause automatic slides',
+    sliderPlay: 'Resume automatic slides',
+    sliderSlide: 'Slide {position} of {count}',
+    sliderGoTo: 'Go to slide {position}',
   },
 } satisfies Record<Locale, Dictionary>;
 

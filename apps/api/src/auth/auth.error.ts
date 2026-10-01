@@ -89,6 +89,8 @@ const errors = {
   // UX/UI Step 12: promotional popup (design 16.5). `POPUP_OVERLAP` names the conflicting popup's id as the field.
   MEDIA_ALT_REQUIRED: [409, 'Add a Vietnamese description to the image before using it'],
   POPUP_OVERLAP: [409, 'Another enabled popup already covers part of this time'],
+  // UX/UI Step 13: homepage slider (design 16.6, Q-CM7).
+  SLIDE_LIMIT: [409, 'At most 8 slides can be visible at the same time'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

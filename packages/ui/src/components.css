@@ -1547,6 +1547,80 @@
   white-space: nowrap;
 }
 
+/* A row of an ordered image list (homepage slider, design 16.6): thumbnail, text, menu. The sortable item
+   around it is the frame. On a phone the thumbnail takes the first line. */
+.ls-media-row {
+  display: grid;
+  grid-template-columns: var(--ls-field-sm) minmax(0, 1fr) auto;
+  gap: var(--ls-space-3);
+  align-items: center;
+  min-width: 0;
+}
+
+.ls-media-row-thumb {
+  display: block;
+  aspect-ratio: 12 / 5;
+  overflow: hidden;
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-sunken);
+}
+
+.ls-media-row-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ls-media-row-text {
+  display: grid;
+  gap: var(--ls-space-1);
+  min-width: 0;
+}
+
+.ls-media-row-title {
+  display: block;
+  width: 100%;
+  min-height: var(--ls-control-h);
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  color: inherit;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  line-height: var(--ls-leading-md);
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ls-media-row-actions {
+  display: flex;
+  align-items: center;
+}
+
+.ls-media-row-title:hover {
+  color: var(--ls-hover-text);
+}
+
+.ls-media-row-title:focus-visible {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: 2px;
+  border-radius: var(--ls-radius-sm);
+}
+
+@media (max-width: 639px) {
+  .ls-media-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .ls-media-row-thumb {
+    grid-column: 1 / -1;
+  }
+}
+
 /* ---- Promotional popup (design 16.5) -------------------------------------------------------- */
 /* One card, drawn live in `.ls-promo-dialog` on the public site and as a static copy in the admin preview. */
 .ls-promo-dialog {
@@ -1706,6 +1780,136 @@
   color: var(--ls-text-muted);
   font-size: var(--ls-text-sm);
   line-height: var(--ls-leading-sm);
+}
+
+/* ---- Homepage slider (design 16.6) ---------------------------------------------------------- */
+/* A fixed-ratio picture over a caption, so the page never shifts while images load. The track is as high as
+   its tallest slide (the slides stretch), which keeps the controls from jumping between slides. */
+.ls-slider {
+  display: grid;
+  gap: var(--ls-space-3);
+  min-width: 0;
+}
+
+.ls-slider-viewport {
+  overflow: hidden;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-md);
+  background: var(--ls-bg-surface);
+}
+
+.ls-slider-track {
+  display: flex;
+  align-items: stretch;
+  transition: transform var(--ls-dur-slow) var(--ls-ease);
+}
+
+.ls-slider-slide {
+  display: flex;
+  flex: 0 0 100%;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ls-slider-media {
+  display: block;
+  aspect-ratio: 12 / 5;
+  background: var(--ls-bg-sunken);
+}
+
+.ls-slider-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.ls-slider-caption {
+  display: grid;
+  gap: var(--ls-space-2);
+  justify-items: start;
+  padding: var(--ls-space-4) var(--ls-space-6) var(--ls-space-6);
+}
+
+.ls-slider-title {
+  margin: 0;
+  font-size: var(--ls-text-xl);
+  font-weight: 600;
+  line-height: var(--ls-leading-xl);
+  overflow-wrap: anywhere;
+}
+
+.ls-slider-text {
+  margin: 0;
+  color: var(--ls-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.ls-slider-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2);
+  align-items: center;
+  justify-content: center;
+}
+
+.ls-slider-dots {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The visible dot is small; the button around it keeps the full touch target. */
+.ls-slider-dot {
+  display: grid;
+  place-items: center;
+  width: var(--ls-control-h);
+  height: var(--ls-control-h);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ls-slider-dot::before {
+  content: '';
+  width: var(--ls-space-3);
+  height: var(--ls-space-3);
+  border: 1px solid var(--ls-border-control);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-surface);
+}
+
+.ls-slider-dot[aria-current='true']::before {
+  border-color: var(--ls-brand-fill);
+  background: var(--ls-brand-fill);
+}
+
+.ls-slider-dot:hover::before {
+  border-color: var(--ls-hover-border);
+}
+
+.ls-slider-dot:focus-visible {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: -2px;
+  border-radius: var(--ls-radius-full);
+}
+
+@media (max-width: 639px) {
+  .ls-slider-media {
+    aspect-ratio: 16 / 9;
+  }
+
+  /* Some slide has a phone image: the whole slider uses the portrait frame so the pictures are not cropped. */
+  .ls-slider-tall .ls-slider-media {
+    aspect-ratio: 4 / 5;
+  }
+
+  .ls-slider-caption {
+    padding: var(--ls-space-4);
+  }
 }
 
 .ls-media-badges {

@@ -67,6 +67,9 @@ const paths = {
   table: 'M4 5h16v14H4zM4 10h16M4 15h16M10 5v14',
   'bar-chart': 'M5 20V10M12 20V4M19 20v-7',
   minus: 'M5 12h14',
+  // Homepage slider (Step 13)
+  pause: 'M9 5v14M15 5v14',
+  play: 'M8 5l11 7-11 7V5z',
 } as const;
 
 export type IconName = keyof typeof paths;

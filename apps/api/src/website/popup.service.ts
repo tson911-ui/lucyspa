@@ -1,5 +1,6 @@
 import type {
   PublicPopupResponse,
+  PublicSlide,
   WebsitePopupEnabledRequest,
   WebsitePopupInput,
   WebsitePopupListResponse,
@@ -28,6 +29,7 @@ import {
   updatePopup,
   type PublicLocale,
 } from './popup.core.js';
+import { visibleSlides } from './slide.core.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -115,7 +117,7 @@ export class PopupService {
 /**
  * The public, anonymous reads of the website content (design 16.3, 16.5): the live popup and the images
  * that live content shows. Nothing here needs a session and nothing here reveals a draft: an image is served
- * only while an enabled, in-window popup references it (Step 13 adds slides to the same rule).
+ * only while an enabled, in-window popup or slide references it.
  */
 @Injectable()
 export class PublicWebsiteService {
@@ -128,6 +130,11 @@ export class PublicWebsiteService {
   /** The popup that is live now in the visitor's language, or null (the caller answers 204). */
   popup(locale: PublicLocale): Promise<PublicPopupResponse | null> {
     return this.read(async (tx) => activePopup(tx, await this.throttle.now(tx), locale));
+  }
+
+  /** The slides that are visible now, in slider order and in the visitor's language (possibly none). */
+  slides(locale: PublicLocale): Promise<PublicSlide[]> {
+    return this.read(async (tx) => visibleSlides(tx, await this.throttle.now(tx), locale));
   }
 
   /** One rendition of an image that live content uses. Anything else is 404, never a hint that it exists. */

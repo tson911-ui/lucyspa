@@ -105,12 +105,22 @@ export { Dialog, Drawer, PromoDialog } from './overlay';
 export type { DialogSize } from './overlay';
 export { PromoCard, PromoPreview } from './promo';
 export type { PromoContent, PromoImage, PromoLink } from './promo';
+export { Slider } from './slider';
+export type { SliderLabels, SliderSlide } from './slider';
+export {
+  SLIDER_AUTOPLAY_MS,
+  SLIDER_IMAGE_HINT,
+  SWIPE_MIN_PX,
+  isAutoplaying,
+  stepIndex,
+  swipeDelta,
+} from './slider-core';
 export { ScheduleStrip, scheduleLayout } from './schedule-strip';
 export type { ScheduleItem, ScheduleLayout, ScheduleTone } from './schedule-strip';
 export { ConfirmDialog } from './confirm-dialog';
 export type { ConfirmError, ConfirmFact } from './confirm-dialog';
 export { createConfirmController, typingMatches } from './confirm-core';
-export { MediaGrid, MediaPreview, MediaTile } from './media-grid';
+export { MediaGrid, MediaPreview, MediaRow, MediaTile } from './media-grid';
 export { FileDropzone, ImageUploader } from './image-uploader';
 export type { ImageUploaderLabels } from './image-uploader';
 export {

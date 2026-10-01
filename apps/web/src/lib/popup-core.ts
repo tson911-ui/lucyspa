@@ -59,6 +59,28 @@ export function publicPopupContent(popup: PublicPopupResponse): PromoContent {
 const text = (value: unknown): string | null =>
   typeof value === 'string' && value !== '' ? value : null;
 
+/**
+ * Narrow an untrusted JSON image to what the page may draw, or null. Only the API's own public image route is
+ * accepted: public content never points the page at another origin. Shared by the popup and the slider.
+ */
+export function asPublicImage(raw: unknown): NonNullable<PublicPopupResponse['image']> | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const i = raw as Record<string, unknown>;
+  const sources = Array.isArray(i['sources'])
+    ? (i['sources'] as unknown[]).flatMap((source) => {
+        const s = (typeof source === 'object' ? source : null) as Record<string, unknown> | null;
+        const url = text(s?.['url']);
+        const width = s?.['width'];
+        return url !== null && url.startsWith('/api/v1/public/media/') && typeof width === 'number'
+          ? [{ url, width }]
+          : [];
+      })
+    : [];
+  const { width, height } = i;
+  if (sources.length === 0 || typeof width !== 'number' || typeof height !== 'number') return null;
+  return { alt: typeof i['alt'] === 'string' ? i['alt'] : '', width, height, sources };
+}
+
 /** Narrow an untrusted JSON body to the popup the page may show; anything else is "no popup". */
 export function asPublicPopup(value: unknown): PublicPopupResponse | null {
   if (typeof value !== 'object' || value === null) return null;
@@ -68,28 +90,7 @@ export function asPublicPopup(value: unknown): PublicPopupResponse | null {
   if (id === null || typeof rowVersion !== 'number' || !Number.isSafeInteger(rowVersion)) {
     return null;
   }
-  let image: PublicPopupResponse['image'] = null;
-  const raw = v['image'];
-  if (typeof raw === 'object' && raw !== null) {
-    const i = raw as Record<string, unknown>;
-    const sources = Array.isArray(i['sources'])
-      ? (i['sources'] as unknown[]).flatMap((source) => {
-          const s = (typeof source === 'object' ? source : null) as Record<string, unknown> | null;
-          const url = text(s?.['url']);
-          const width = s?.['width'];
-          // Only the API's own public image route: a popup never points the page at another origin.
-          return url !== null &&
-            url.startsWith('/api/v1/public/media/') &&
-            typeof width === 'number'
-            ? [{ url, width }]
-            : [];
-        })
-      : [];
-    const { width, height } = i;
-    if (sources.length > 0 && typeof width === 'number' && typeof height === 'number') {
-      image = { alt: typeof i['alt'] === 'string' ? i['alt'] : '', width, height, sources };
-    }
-  }
+  const image = asPublicImage(v['image']);
   const ctaUrl = text(v['ctaUrl']);
   const ctaLabel = text(v['ctaLabel']);
   const link = ctaUrl !== null && ctaLabel !== null && validPopupUrl(ctaUrl);

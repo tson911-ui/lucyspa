@@ -76,6 +76,11 @@ a:focus-visible {
   outline: none;
 }
 
+/* The slider spans both columns above the welcome copy; with no slides it renders nothing. */
+.home-slider {
+  grid-column: 1 / -1;
+}
+
 .eyebrow {
   margin: 0 0 1.75rem;
   color: var(--ls-brand);
