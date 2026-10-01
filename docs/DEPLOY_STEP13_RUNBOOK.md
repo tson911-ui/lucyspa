@@ -173,7 +173,15 @@ pnpm db:status
 
 **Mong đợi:** lần 1 liệt kê 4 migration và kết thúc `All migrations have been successfully applied.`; lần 2 báo `Database schema is up to date!`. **Nếu có lỗi: DỪNG, không chạy lại, không sửa tay**; làm theo Bước 6 nếu cần.
 
-4.5. Đồng bộ danh sách quyền (thêm quyền "Quản lý nội dung website"). Lệnh tự build phần cần thiết, mất 1 đến 2 phút:
+4.5. Tạo lại Prisma client (bắt buộc trước khi đồng bộ quyền: nếu bỏ qua, `permissions:sync` build gói database với client cũ và báo lỗi TypeScript):
+
+```
+pnpm db:generate
+```
+
+**Mong đợi:** kết thúc với dòng `Generated Prisma Client`. **Nếu lỗi: DỪNG.**
+
+4.5b. Đồng bộ danh sách quyền (thêm quyền "Quản lý nội dung website"). Lệnh tự build phần cần thiết, mất 1 đến 2 phút:
 
 ```
 pnpm db:permissions:sync
