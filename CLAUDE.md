@@ -33,13 +33,26 @@ Owner reviews every Step. Work only on the Step you are given.
 
 ## UX quality gate (mandatory for every UI Step; `docs/UXUI_REDESIGN_DESIGN.md` section 21)
 
-- Layout: 8px grid via spacing tokens only, the fixed type scale, one vertical rhythm, aligned edges,
-  sensible max widths, 44px touch targets (40px desktop), no orphaned or oddly placed elements.
+- Layout: spacing tokens only (multiples of 4; gaps between blocks 8/16/24/32/48), the fixed type scale, one vertical
+  rhythm, aligned edges, sensible max widths, 44px touch targets (40px desktop), no orphaned or oddly placed elements.
 - All UI uses the shared `packages/ui` components and motion tokens, never ad-hoc styles or animations.
+- Frontend rules FR1-FR15 (section 21.4) bind every Step after 7.5. Digest:
+  - One `Card` surface; nothing bordered inside a card; lists have no outer card (the table is one single-border surface).
+  - Page = `Page` + `PageHeader` (one h1, one primary action, last at the trailing edge); footers are Cancel then Save, primary last.
+  - Actions live in fixed places: page header, list toolbar, row `⋮` menu, card header, form/dialog footer. No stray buttons, no text-link actions.
+  - Any list that can exceed 20 rows is `DataTable` + `Pagination` (20/page); no raw `<table>`; one row height; numeric columns nowrap.
+  - Create/edit: short form = Dialog, medium = Drawer, long = its own page. Never `<details>`, inline expanding cards or native `fieldset`.
+  - A heading never repeats the label of its own control; no horizontal page scroll; toolbar controls have no labels above.
+  - No new `wf-*` class, no px/rem spacing literal, no hex color. `apps/web/src/test/ui-ratchet.test.ts` pins these counters (only down).
+- Radix primitives are allowed as headless behavior inside `packages/ui` only, when the kit lacks the behavior (plan section 1.1); no Tailwind.
 - Before reporting a UI Step done: render only the screens changed in that Step at 360, 768 and 1440 px
   in light plus 1440 px in dark with `node scripts/uxui-screens.mjs <name> <url-or-html>`, review them
   against the checklist, fix, re-render. Screenshots go to `.local/uxui-screens/` (git-ignored). Add a 5-line "UX gate" note to the
   Step report. Do not report a UI Step done without it.
+- Also run the DOM audit on the changed pages against the real app (section 21.5): scratch DB
+  `lucy_spa_uxaudit_20261001` (never the dev DB), `node .local/uxui-audit/capture.mjs <page...>`, then
+  `node scripts/uxui-audit-summary.mjs --compare docs/uxui-audit-baseline.json`. No count may rise; lower the ratchet
+  (`UPDATE_RATCHET=1`) for what the Step retired. Compare migrated pages with `docs/references/` (8 questions, 21.5).
 
 ## Reporting (keep it short)
 
