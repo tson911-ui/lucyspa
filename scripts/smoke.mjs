@@ -2,13 +2,18 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const children = [];
+// The production API requires an absolute media directory (UX/UI Step 11); the probe uses a throwaway one.
+const mediaDirectory = await mkdtemp(join(tmpdir(), 'lucy-spa-smoke-media-'));
 
 async function availablePort() {
   const server = createServer();
@@ -86,6 +91,7 @@ try {
     new URL('../apps/api/', import.meta.url),
     {
       NODE_ENV: 'production',
+      MEDIA_STORAGE_DIR: mediaDirectory,
       API_HOST: '127.0.0.1',
       API_PORT: String(apiPort),
       // The production API requires an HTTPS public origin, even while this
@@ -139,11 +145,14 @@ try {
     '/api/v1/auth/context',
     '/api/v1/pos/invoices/{id}',
     '/api/v1/webhooks/payos',
+    '/api/v1/website/media',
     '/health/live',
     '/health/ready',
   ]) {
     assert.ok(documented.includes(path), `OpenAPI is missing ${path}`);
   }
+  // The media library is behind a session: no cookie, no answer.
+  assert.equal((await get(`${apiUrl}/api/v1/website/media`)).status, 401);
   const missing = await get(`${apiUrl}/unknown?token=never-echo-this`);
   assert.equal(missing.status, 404);
   assert.doesNotMatch(await missing.text(), /never-echo-this/);
@@ -165,6 +174,7 @@ try {
   for (const state of children) console.error(`${state.name}:\n${state.output}`);
   process.exitCode = 1;
 } finally {
+  await rm(mediaDirectory, { recursive: true, force: true });
   await Promise.all(
     children.map(async ({ child }) => {
       if (child.exitCode !== null || child.signalCode !== null) return;
