@@ -271,19 +271,28 @@ test(
               });
               const recipients = new Map<string, string>();
               const needed = [...new Set(input.lines.map((line) => line.recipient))];
-              for (const key of needed) {
+              // Like the real booking flow, each recipient gets a strictly increasing createdAt: rows created in
+              // one transaction otherwise share a millisecond and the (createdAt, id) read order is a UUID order.
+              const stamp = Date.now();
+              for (const [ordinal, key] of needed.entries()) {
                 const row = await tx.bookingRecipient.create({
-                  data:
-                    key === 'self'
-                      ? { bookingId: created.id, relation: 'SELF' }
+                  data: {
+                    createdAt: new Date(stamp + ordinal),
+                    ...(key === 'self'
+                      ? { bookingId: created.id, relation: 'SELF' as const }
                       : key === 'kid'
-                        ? { bookingId: created.id, relation: 'CHILD', displayName: 'Bé Na' }
+                        ? {
+                            bookingId: created.id,
+                            relation: 'CHILD' as const,
+                            displayName: 'Bé Na',
+                          }
                         : {
                             bookingId: created.id,
-                            relation: 'FAMILY',
+                            relation: 'FAMILY' as const,
                             displayName: 'Dì Lan',
                             phone: '0905111222',
-                          },
+                          }),
+                  },
                   select: { id: true },
                 });
                 recipients.set(key, row.id);
@@ -456,8 +465,6 @@ test(
                 assert.equal(visit.origin, 'BOOKING');
                 assert.equal(visit.branchId, B);
                 assert.equal(visit.ownerUserId, customer);
-                // Participants created in one transaction can share a createdAt, so the order is not
-                // guaranteed: compare in a fixed kind order and pick them by kind.
                 // Arrival creates the owner first, then the other recipients in booking order, with a
                 // strictly increasing createdAt: the unsorted order is the creation order.
                 assert.deepEqual(
@@ -469,6 +476,7 @@ test(
                   stamps.every((stamp, index) => index === 0 || stamp > stamps[index - 1]!),
                   'strictly increasing',
                 );
+                // The rest of the checks pick participants by kind.
                 const kindRank = { MEMBER: 0, CHILD: 1, GUEST: 2 } as const;
                 const participants = [...visit.participants].sort(
                   (a, b) => kindRank[a.kind] - kindRank[b.kind],
