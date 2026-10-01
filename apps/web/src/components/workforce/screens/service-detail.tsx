@@ -1,14 +1,40 @@
 'use client';
 
 import type {
+  BranchSummary,
   ServiceCategoryListResponse,
   ServiceResponse,
   ServiceUpdateRequest,
   SkillListResponse,
 } from '@lucy-spa/contracts';
+import {
+  Breadcrumbs,
+  CheckField,
+  Cluster,
+  DataTable,
+  DescriptionList,
+  Field,
+  FormActions,
+  FormDialog,
+  FormDrawer,
+  FormGrid,
+  ListSection,
+  RowActions,
+  Select,
+  Stack,
+  Tabs,
+  Textarea,
+  TextInput,
+  type DataTableColumn,
+  type MenuItem,
+} from '@lucy-spa/ui';
 import Link from 'next/link';
-import { useEffect, useState, type FormEvent } from 'react';
-import { durationNumbers, durationProblem } from '../../../lib/workforce/durations';
+import { useEffect, useState } from 'react';
+import { fill } from '../../../i18n/workforce';
+import { organizationDictionary } from '../../../i18n/organization';
+import { durationNumbers, durationProblem, formatEstimate } from '../../../lib/workforce/durations';
+import { formOverlayLabels } from '../../../lib/workforce/form-labels';
+import { canAt, canGlobal } from '../../../lib/workforce/permissions';
 import {
   formatServicePrice,
   maxQuantityBody,
@@ -16,83 +42,247 @@ import {
   quantityProblem,
   type PriceForm,
 } from '../../../lib/workforce/pricing';
-import { canAt, canGlobal } from '../../../lib/workforce/permissions';
+import { localizedName } from '../../../lib/workforce/services-list';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import { DurationFields } from './service-durations';
 import { PriceFields } from './service-price-fields';
+import { StatusConfirm } from './services';
 import {
   Badge,
-  CheckField,
+  Button,
+  Empty,
   ErrorState,
-  Field,
-  FormFeedback,
   Loading,
   PageHeader,
   Section,
-  SubmitButton,
   useResource,
   useSubmit,
+  useSuccessToast,
 } from '../ui';
 
 /**
- * One service, in three clearly separate parts: master data (GLOBAL MANAGE_SERVICES),
- * price (GLOBAL MANAGE_SERVICE_PRICES, always with a reason) and branch availability
- * (MANAGE_SERVICES for that branch). Eligible skills are part of the master data.
+ * One service: an Overview tab (master data and price, each with its own edit action), the branch
+ * availability and the eligible skills. Master data needs GLOBAL MANAGE_SERVICES, a price change
+ * GLOBAL MANAGE_SERVICE_PRICES (always with a reason), availability MANAGE_SERVICES for that branch.
+ * Edit opens a drawer (8 fields), the price a dialog, (de)activation a confirmation with a reason.
  */
 export function ServiceDetailScreen({ id }: { id: string }) {
-  const { api, t, base, locale } = useWorkforce();
-  const { account } = useAccount();
+  const { api, t } = useWorkforce();
   const service = useResource(() => api.get<ServiceResponse>(`/api/v1/services/${id}`), [api, id]);
+  if (service.error && !service.data) {
+    return <ErrorState error={service.error} t={t} onRetry={() => void service.reload()} />;
+  }
+  if (!service.data) return <Loading t={t} />;
+  return <ServiceDetail service={service.data} reload={service.reload} />;
+}
+
+type TabId = 'overview' | 'branches' | 'skills';
+type Overlay = 'edit' | 'price' | 'status';
+
+function ServiceDetail({
+  service,
+  reload,
+}: {
+  service: ServiceResponse;
+  reload: () => Promise<void>;
+}) {
+  const { t, locale, base } = useWorkforce();
+  const { account } = useAccount();
+  const notify = useSuccessToast();
+  const text = organizationDictionary(locale);
   const manage = canGlobal(account, 'MANAGE_SERVICES');
   const prices = canGlobal(account, 'MANAGE_SERVICE_PRICES');
+  const [tab, setTab] = useState<TabId>('overview');
+  const [overlay, setOverlay] = useState<Overlay | null>(null);
+  const name = localizedName(service, locale);
+
+  /** After a successful change: close the overlay and say what happened (the data was reloaded first). */
+  const finish = (message: string) => {
+    setOverlay(null);
+    notify(message);
+  };
+  const menu: MenuItem[] = manage
+    ? [
+        {
+          id: 'status',
+          label: service.isActive ? t.common.deactivate : t.common.activate,
+          ...(service.isActive ? { tone: 'danger' as const } : {}),
+          onSelect: () => setOverlay('status'),
+        },
+      ]
+    : [];
 
   return (
     <>
-      <p>
-        <Link href={`${base}/services`}>← {t.common.back}</Link>
-      </p>
-      {service.loading && !service.data ? <Loading t={t} /> : null}
-      {service.error ? (
-        <ErrorState error={service.error} t={t} onRetry={() => void service.reload()} />
+      <PageHeader
+        title={name}
+        intro={`${service.code} · ${formatServicePrice(service, t, locale)}`}
+        breadcrumbs={
+          <Breadcrumbs
+            label={text.breadcrumbs}
+            LinkComponent={Link}
+            items={[{ label: t.services.title, href: `${base}/services` }, { label: name }]}
+          />
+        }
+      >
+        {menu.length > 0 ? <RowActions menuLabel={text.moreActions} items={menu} /> : null}
+        {manage ? (
+          <Button variant="primary" icon="edit" onClick={() => setOverlay('edit')}>
+            {t.services.editService}
+          </Button>
+        ) : null}
+      </PageHeader>
+      <Cluster gap="inline">
+        <span className="ls-hint">{t.common.status}:</span>
+        <Badge tone={service.isActive ? 'success' : 'neutral'}>
+          {service.isActive ? t.common.active : t.common.inactive}
+        </Badge>
+      </Cluster>
+      <Tabs
+        label={t.services.tabsLabel}
+        value={tab}
+        onChange={(id) => setTab(id as TabId)}
+        tabs={[
+          {
+            id: 'overview',
+            label: t.services.tabOverview,
+            panel: (
+              <Stack gap="page">
+                <MasterData service={service} />
+                <Price service={service} editable={prices} onEdit={() => setOverlay('price')} />
+              </Stack>
+            ),
+          },
+          {
+            id: 'branches',
+            label: t.services.tabBranches,
+            panel: <Availability service={service} reload={reload} />,
+          },
+          {
+            id: 'skills',
+            label: t.services.tabSkills,
+            panel: <EligibleSkills service={service} editable={manage} reload={reload} />,
+          },
+        ]}
+      />
+      {overlay === 'edit' ? (
+        <ServiceEdit
+          service={service}
+          reload={reload}
+          onClose={() => setOverlay(null)}
+          onDone={finish}
+        />
       ) : null}
-      {service.data ? (
-        <>
-          <PageHeader
-            title={locale === 'vi' ? service.data.nameVi : service.data.nameEn}
-            intro={`${service.data.code} · ${formatServicePrice(service.data, t, locale)}`}
-          >
-            <Badge tone={service.data.isActive ? 'success' : 'neutral'}>
-              {service.data.isActive ? t.common.active : t.common.inactive}
-            </Badge>
-          </PageHeader>
-          <MasterData service={service.data} editable={manage} reload={service.reload} />
-          <Price service={service.data} editable={prices} reload={service.reload} />
-          <Availability service={service.data} reload={service.reload} />
-          <EligibleSkills service={service.data} editable={manage} reload={service.reload} />
-          {manage ? <ServiceStatus service={service.data} reload={service.reload} /> : null}
-        </>
+      {overlay === 'price' ? (
+        <PriceDialog
+          service={service}
+          reload={reload}
+          onClose={() => setOverlay(null)}
+          onDone={finish}
+        />
+      ) : null}
+      {overlay === 'status' ? (
+        <StatusConfirm
+          kind="service"
+          record={service}
+          onClose={() => setOverlay(null)}
+          onChanged={reload}
+          onDone={() => finish(t.common.saved)}
+        />
       ) : null}
     </>
   );
 }
 
-function MasterData({
+function MasterData({ service }: { service: ServiceResponse }) {
+  const { api, t, locale } = useWorkforce();
+  const categories = useResource(
+    () => api.get<ServiceCategoryListResponse>('/api/v1/service-categories'),
+    [api],
+  );
+  const category = categories.data?.categories.find((entry) => entry.id === service.categoryId);
+  return (
+    <Section title={t.services.master}>
+      <DescriptionList
+        columns={2}
+        items={[
+          { label: t.common.code, value: service.code },
+          {
+            label: t.services.category,
+            value: category ? localizedName(category, locale) : null,
+          },
+          { label: t.services.nameVi, value: service.nameVi },
+          { label: t.services.nameEn, value: service.nameEn },
+          { label: t.services.descriptionVi, value: service.descriptionVi },
+          { label: t.services.descriptionEn, value: service.descriptionEn },
+          {
+            label: t.services.estimate,
+            value: formatEstimate(service.estimatedMinMinutes, service.estimatedMaxMinutes, t),
+          },
+          { label: t.services.duration, value: service.durationMinutes },
+        ]}
+      />
+    </Section>
+  );
+}
+
+function Price({
   service,
   editable,
-  reload,
+  onEdit,
 }: {
   service: ServiceResponse;
   editable: boolean;
+  onEdit: () => void;
+}) {
+  const { t, locale } = useWorkforce();
+  return (
+    <Section
+      title={t.services.priceSection}
+      actions={
+        editable ? (
+          <Button variant="secondary" icon="edit" onClick={onEdit}>
+            {t.services.changePrice}
+          </Button>
+        ) : undefined
+      }
+    >
+      <DescriptionList
+        columns={2}
+        items={[
+          { label: t.services.price, value: formatServicePrice(service, t, locale) },
+          { label: t.services.pricingUnit, value: t.services.pricingUnits[service.pricingUnit] },
+          ...(service.pricingUnit === 'PER_NAIL'
+            ? [{ label: t.services.maxQuantity, value: service.maxQuantity }]
+            : []),
+        ]}
+      />
+    </Section>
+  );
+}
+
+type Done = (message: string) => void;
+
+/** Master data (8 fields, a medium form): only the changed fields are sent. */
+function ServiceEdit({
+  service,
+  reload,
+  onClose,
+  onDone,
+}: {
+  service: ServiceResponse;
   reload: () => Promise<void>;
+  onClose: () => void;
+  onDone: Done;
 }) {
   const { api, t, locale } = useWorkforce();
   const categories = useResource(
     () => api.get<ServiceCategoryListResponse>('/api/v1/service-categories'),
     [api],
   );
-  const initial = () => ({
+  const initial = {
     categoryId: service.categoryId,
     nameVi: service.nameVi,
     nameEn: service.nameEn,
@@ -101,16 +291,16 @@ function MasterData({
     durationMinutes: String(service.durationMinutes),
     estimatedMinMinutes: String(service.estimatedMinMinutes),
     estimatedMaxMinutes: String(service.estimatedMaxMinutes),
-  });
+  };
   const [form, setForm] = useState(initial);
   const submit = useSubmit();
-  useEffect(() => setForm(initial()), [service.version]);
-
+  const dirty = (Object.keys(initial) as Array<keyof typeof initial>).some(
+    (key) => form[key] !== initial[key],
+  );
   const durationsValid = durationProblem(form) === null;
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
-    if (!durationsValid) return;
+  async function save() {
+    if (!durationsValid || !dirty) return;
     const text = (value: string) => (value.trim() === '' ? null : value);
     const durations = durationNumbers(form);
     const body: ServiceUpdateRequest = {
@@ -137,109 +327,112 @@ function MasterData({
     };
     const ok = await submit.run(
       () => runMutation(() => api.post(`/api/v1/services/${service.id}`, body), reload),
-      t.common.saved,
+      '',
     );
-    if (ok) await reload();
+    if (ok) {
+      await reload();
+      onDone(t.common.saved);
+    }
   }
 
   return (
-    <Section title={t.services.master}>
-      <form className="wf-form" onSubmit={(event) => void save(event)}>
-        <fieldset disabled={!editable} className="wf-fieldset">
-          <Field id="sd-category" label={t.services.category} required>
-            <select
-              id="sd-category"
+    <FormDrawer
+      title={t.services.editService}
+      labels={formOverlayLabels(t, t.common.save)}
+      busy={submit.pending}
+      dirty={dirty}
+      submitDisabled={!dirty || !durationsValid || !form.nameVi.trim() || !form.nameEn.trim()}
+      error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
+      onClose={onClose}
+      onSubmit={save}
+    >
+      <FormGrid cols={2}>
+        <Field label={t.services.category} required full>
+          {(control) => (
+            <Select
+              {...control}
               value={form.categoryId}
+              options={(categories.data?.categories ?? []).map((category) => ({
+                value: category.id,
+                label: localizedName(category, locale),
+              }))}
               onChange={(event) => setForm({ ...form, categoryId: event.target.value })}
-            >
-              {(categories.data?.categories ?? []).map((category) => (
-                <option key={category.id} value={category.id}>
-                  {locale === 'vi' ? category.nameVi : category.nameEn}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <div className="wf-row">
-            <Field id="sd-vi" label={t.services.nameVi} required>
-              <input
-                id="sd-vi"
-                required
-                maxLength={200}
-                value={form.nameVi}
-                onChange={(event) => setForm({ ...form, nameVi: event.target.value })}
-              />
-            </Field>
-            <Field id="sd-en" label={t.services.nameEn} required>
-              <input
-                id="sd-en"
-                required
-                maxLength={200}
-                value={form.nameEn}
-                onChange={(event) => setForm({ ...form, nameEn: event.target.value })}
-              />
-            </Field>
-          </div>
-          <div className="wf-row">
-            <Field id="sd-dvi" label={t.services.descriptionVi}>
-              <textarea
-                id="sd-dvi"
-                maxLength={2000}
-                value={form.descriptionVi}
-                onChange={(event) => setForm({ ...form, descriptionVi: event.target.value })}
-              />
-            </Field>
-            <Field id="sd-den" label={t.services.descriptionEn}>
-              <textarea
-                id="sd-den"
-                maxLength={2000}
-                value={form.descriptionEn}
-                onChange={(event) => setForm({ ...form, descriptionEn: event.target.value })}
-              />
-            </Field>
-          </div>
-          <DurationFields
-            idPrefix="sd"
-            value={form}
-            onChange={(next) => setForm({ ...form, ...next })}
-            t={t}
-          />
-        </fieldset>
-        {editable ? (
-          <>
-            <FormFeedback error={submit.error} success={submit.success} t={t} />
-            <SubmitButton
-              pending={submit.pending}
-              label={t.common.save}
-              pendingLabel={t.common.saving}
-              disabled={!durationsValid}
             />
-          </>
-        ) : null}
-      </form>
-    </Section>
+          )}
+        </Field>
+        <Field label={t.services.nameVi} required>
+          {(control) => (
+            <TextInput
+              {...control}
+              maxLength={200}
+              value={form.nameVi}
+              onChange={(event) => setForm({ ...form, nameVi: event.target.value })}
+            />
+          )}
+        </Field>
+        <Field label={t.services.nameEn} required>
+          {(control) => (
+            <TextInput
+              {...control}
+              maxLength={200}
+              value={form.nameEn}
+              onChange={(event) => setForm({ ...form, nameEn: event.target.value })}
+            />
+          )}
+        </Field>
+        <Field label={t.services.descriptionVi}>
+          {(control) => (
+            <Textarea
+              {...control}
+              maxLength={2000}
+              value={form.descriptionVi}
+              onChange={(event) => setForm({ ...form, descriptionVi: event.target.value })}
+            />
+          )}
+        </Field>
+        <Field label={t.services.descriptionEn}>
+          {(control) => (
+            <Textarea
+              {...control}
+              maxLength={2000}
+              value={form.descriptionEn}
+              onChange={(event) => setForm({ ...form, descriptionEn: event.target.value })}
+            />
+          )}
+        </Field>
+      </FormGrid>
+      <DurationFields
+        idPrefix="sd"
+        value={form}
+        onChange={(next) => setForm({ ...form, ...next })}
+        t={t}
+      />
+    </FormDrawer>
   );
 }
 
-function Price({
+/** The price command: new price, unit and limit plus the reason that is always required. */
+function PriceDialog({
   service,
-  editable,
   reload,
+  onClose,
+  onDone,
 }: {
   service: ServiceResponse;
-  editable: boolean;
   reload: () => Promise<void>;
+  onClose: () => void;
+  onDone: Done;
 }) {
   const { api, t, locale } = useWorkforce();
-  const current = (): PriceForm => ({
+  const initial: PriceForm = {
     priceVnd: service.priceVnd,
     priceMaxVnd: service.priceMaxVnd,
     pricingUnit: service.pricingUnit,
     maxQuantity: String(service.maxQuantity),
-  });
-  const [price, setPrice] = useState<PriceForm>(current);
+  };
+  const [price, setPrice] = useState<PriceForm>(initial);
   const [reason, setReason] = useState('');
   const submit = useSubmit();
-  useEffect(() => setPrice(current()), [service.version]);
   const valid = priceProblem(price) === null && quantityProblem(price) === null;
   // A PER_SERVICE limit is always 1, so only a PER_NAIL limit counts as a change.
   const changed =
@@ -248,9 +441,8 @@ function Price({
     price.pricingUnit !== service.pricingUnit ||
     (price.pricingUnit === 'PER_NAIL' && price.maxQuantity !== String(service.maxQuantity));
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
-    if (!valid || !changed) return;
+  async function save() {
+    if (!valid || !changed || reason.trim() === '') return;
     const ok = await submit.run(
       () =>
         runMutation(
@@ -265,48 +457,44 @@ function Price({
             }),
           reload,
         ),
-      t.common.saved,
+      '',
     );
     if (ok) {
-      setReason('');
       await reload();
+      onDone(t.common.saved);
     }
   }
 
   return (
-    <Section title={t.services.priceSection}>
-      <p className="wf-emphasis">{formatServicePrice(service, t, locale)}</p>
-      {editable ? (
-        <form className="wf-form" onSubmit={(event) => void save(event)}>
-          <PriceFields
-            idPrefix="price-new"
-            value={price}
-            onChange={setPrice}
-            t={t}
-            locale={locale}
-          />
-          <Field id="price-reason" label={t.services.priceReason} required>
-            <input
-              id="price-reason"
-              required
+    <FormDialog
+      title={t.services.changePrice}
+      size="lg"
+      labels={formOverlayLabels(t, t.common.save)}
+      busy={submit.pending}
+      dirty={changed || reason !== ''}
+      submitDisabled={!valid || !changed || reason.trim() === ''}
+      error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
+      onClose={onClose}
+      onSubmit={save}
+    >
+      <PriceFields idPrefix="price-new" value={price} onChange={setPrice} t={t} locale={locale} />
+      <FormGrid>
+        <Field label={t.services.priceReason} required>
+          {(control) => (
+            <TextInput
+              {...control}
               maxLength={500}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
             />
-          </Field>
-          <FormFeedback error={submit.error} success={submit.success} t={t} />
-          <SubmitButton
-            pending={submit.pending}
-            label={t.services.changePrice}
-            pendingLabel={t.common.saving}
-            disabled={!valid || !changed || reason.trim() === ''}
-          />
-        </form>
-      ) : null}
-    </Section>
+          )}
+        </Field>
+      </FormGrid>
+    </FormDialog>
   );
 }
 
+/** Branch availability: one row per visible branch, the `⋮` menu offers or withdraws the service there. */
 function Availability({
   service,
   reload,
@@ -318,6 +506,8 @@ function Availability({
   const { account } = useAccount();
   const branches = useBranches(api);
   const submit = useSubmit();
+  const rows = [...(branches.data?.values() ?? [])];
+  const canToggle = rows.some((branch) => canAt(account, 'MANAGE_SERVICES', branch.id));
 
   async function toggle(branchId: string, isActive: boolean, expectedVersion: number | null) {
     const ok = await submit.run(
@@ -335,51 +525,76 @@ function Availability({
     if (ok) await reload();
   }
 
+  const offered = (branch: BranchSummary) =>
+    service.availability.find((row) => row.branchId === branch.id)?.isActive === true;
+  const columns: DataTableColumn<BranchSummary>[] = [
+    {
+      key: 'name',
+      header: t.common.branch,
+      mobileTitle: true,
+      truncate: true,
+      width: 'lg',
+      cell: (branch) => branch.name,
+    },
+    {
+      key: 'status',
+      header: t.common.status,
+      cell: (branch) => (
+        <Badge tone={offered(branch) ? 'success' : 'neutral'}>
+          {offered(branch) ? t.services.offered : t.services.notOffered}
+        </Badge>
+      ),
+    },
+    ...(canToggle
+      ? [
+          {
+            key: 'actions',
+            header: t.common.actions,
+            actions: true,
+            cell: (branch: BranchSummary) =>
+              canAt(account, 'MANAGE_SERVICES', branch.id) ? (
+                <RowActions
+                  menuLabel={fill(t.common.list.actionsFor, { name: branch.name })}
+                  items={[
+                    {
+                      id: 'toggle',
+                      label: offered(branch) ? t.services.withdraw : t.services.offer,
+                      disabled: submit.pending,
+                      onSelect: () =>
+                        void toggle(
+                          branch.id,
+                          !offered(branch),
+                          service.availability.find((row) => row.branchId === branch.id)?.version ??
+                            null,
+                        ),
+                    },
+                  ]}
+                />
+              ) : null,
+          },
+        ]
+      : []),
+  ];
+
   return (
-    <Section title={t.services.availability}>
-      {branches.loading ? <Loading t={t} /> : null}
-      <FormFeedback error={submit.error} success={submit.success} t={t} />
-      <table className="wf-table">
-        <thead>
-          <tr>
-            <th scope="col">{t.common.branch}</th>
-            <th scope="col">{t.common.status}</th>
-            <th scope="col">{t.common.actions}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {[...(branches.data?.values() ?? [])].map((branch) => {
-            const entry = service.availability.find((row) => row.branchId === branch.id);
-            const offered = entry?.isActive === true;
-            return (
-              <tr key={branch.id}>
-                <td data-label={t.common.branch}>{branch.name}</td>
-                <td data-label={t.common.status}>
-                  <Badge tone={offered ? 'success' : 'neutral'}>
-                    {offered ? t.services.offered : t.services.notOffered}
-                  </Badge>
-                </td>
-                <td data-label={t.common.actions}>
-                  {canAt(account, 'MANAGE_SERVICES', branch.id) ? (
-                    <button
-                      type="button"
-                      className="wf-button wf-button-quiet"
-                      disabled={submit.pending}
-                      onClick={() => void toggle(branch.id, !offered, entry?.version ?? null)}
-                    >
-                      {offered ? t.services.withdraw : t.services.offer}
-                    </button>
-                  ) : null}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </Section>
+    <ListSection title={t.services.availability} count={rows.length}>
+      {submit.error ? <ErrorState error={submit.error} t={t} /> : null}
+      <DataTable
+        mode="client"
+        caption={fill(t.common.list.table, { list: t.services.availability })}
+        columns={columns}
+        rows={rows}
+        rowKey={(branch) => branch.id}
+        loading={branches.loading && !branches.data}
+        loadingLabel={t.common.loading}
+        empty={branches.data ? <Empty>{t.common.empty}</Empty> : undefined}
+        paging={{ off: 'A salon runs a handful of branches: the list is the branch count.' }}
+      />
+    </ListSection>
   );
 }
 
+/** Skills that qualify an employee for the service (any one is enough). */
 function EligibleSkills({
   service,
   editable,
@@ -391,17 +606,14 @@ function EligibleSkills({
 }) {
   const { api, t, locale } = useWorkforce();
   const skills = useResource(() => api.get<SkillListResponse>('/api/v1/skills'), [api]);
-  const [selected, setSelected] = useState(
-    () => new Set(service.eligibleSkills.map((skill) => skill.id)),
-  );
+  const initial = service.eligibleSkills.map((skill) => skill.id);
+  const [selected, setSelected] = useState(() => new Set(initial));
   const submit = useSubmit();
-  useEffect(
-    () => setSelected(new Set(service.eligibleSkills.map((skill) => skill.id))),
-    [service.version],
-  );
+  useEffect(() => setSelected(new Set(initial)), [service.version]);
+  const dirty =
+    selected.size !== initial.length || initial.some((skillId) => !selected.has(skillId));
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  async function save() {
     const ok = await submit.run(
       () =>
         runMutation(
@@ -420,97 +632,51 @@ function EligibleSkills({
   const options = skills.data?.skills ?? service.eligibleSkills;
   return (
     <Section title={t.services.eligibleSkills}>
-      <p className="wf-muted">{t.services.eligibleHint}</p>
-      <form onSubmit={(event) => void save(event)}>
-        <fieldset className="wf-checklist" disabled={!editable}>
-          <legend className="wf-visually-hidden">{t.services.eligibleSkills}</legend>
-          {options.map((skill) => (
-            <CheckField
-              key={skill.id}
-              checked={selected.has(skill.id)}
-              onChange={(event) => {
-                const next = new Set(selected);
-                if (event.target.checked) next.add(skill.id);
-                else next.delete(skill.id);
-                setSelected(next);
-              }}
-              label={
-                <span>
-                  {locale === 'vi' ? skill.nameVi : skill.nameEn}{' '}
-                  <span className="wf-muted wf-small">({skill.code})</span>{' '}
-                  {!skill.isActive ? <Badge tone="neutral">{t.common.inactive}</Badge> : null}
-                </span>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void save();
+        }}
+      >
+        <Stack gap="block">
+          <p className="ls-hint">{t.services.eligibleHint}</p>
+          {submit.error ? <ErrorState error={submit.error} t={t} /> : null}
+          {options.length === 0 ? (
+            <Empty>{t.services.noEligibleSkills}</Empty>
+          ) : (
+            <div role="group" aria-label={t.services.eligibleSkills}>
+              {options.map((skill) => (
+                <CheckField
+                  key={skill.id}
+                  checked={selected.has(skill.id)}
+                  disabled={!editable}
+                  onChange={(event) => {
+                    const next = new Set(selected);
+                    if (event.target.checked) next.add(skill.id);
+                    else next.delete(skill.id);
+                    setSelected(next);
+                  }}
+                  label={
+                    <span>
+                      {locale === 'vi' ? skill.nameVi : skill.nameEn}{' '}
+                      <span className="ls-hint">({skill.code})</span>{' '}
+                      {!skill.isActive ? <Badge tone="neutral">{t.common.inactive}</Badge> : null}
+                    </span>
+                  }
+                />
+              ))}
+            </div>
+          )}
+          {editable ? (
+            <FormActions
+              primary={
+                <Button type="submit" variant="primary" loading={submit.pending} disabled={!dirty}>
+                  {submit.pending ? t.common.saving : t.services.saveSkills}
+                </Button>
               }
             />
-          ))}
-        </fieldset>
-        {editable ? (
-          <>
-            <FormFeedback error={submit.error} success={submit.success} t={t} />
-            <SubmitButton
-              pending={submit.pending}
-              label={t.services.saveSkills}
-              pendingLabel={t.common.saving}
-            />
-          </>
-        ) : null}
-      </form>
-    </Section>
-  );
-}
-
-function ServiceStatus({
-  service,
-  reload,
-}: {
-  service: ServiceResponse;
-  reload: () => Promise<void>;
-}) {
-  const { api, t } = useWorkforce();
-  const [reason, setReason] = useState('');
-  const submit = useSubmit();
-
-  async function save(event: FormEvent) {
-    event.preventDefault();
-    const ok = await submit.run(
-      () =>
-        runMutation(
-          () =>
-            api.post(`/api/v1/services/${service.id}/status`, {
-              expectedVersion: service.version,
-              isActive: !service.isActive,
-              reason,
-            }),
-          reload,
-        ),
-      t.common.saved,
-    );
-    if (ok) {
-      setReason('');
-      await reload();
-    }
-  }
-
-  return (
-    <Section title={t.common.status}>
-      <form className="wf-form" onSubmit={(event) => void save(event)}>
-        <Field id="svc-status-reason" label={t.common.reason} required>
-          <input
-            id="svc-status-reason"
-            required
-            maxLength={500}
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-          />
-        </Field>
-        <FormFeedback error={submit.error} success={submit.success} t={t} />
-        <SubmitButton
-          pending={submit.pending}
-          label={service.isActive ? t.common.deactivate : t.common.activate}
-          pendingLabel={t.common.saving}
-          tone={service.isActive ? 'danger' : 'primary'}
-          disabled={reason.trim() === ''}
-        />
+          ) : null}
+        </Stack>
       </form>
     </Section>
   );

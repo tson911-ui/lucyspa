@@ -561,16 +561,19 @@ export function ServicesScreen() {
 }
 
 /** Activate or deactivate a service or category: a confirmation with a required reason. */
-function StatusConfirm({
+export function StatusConfirm({
   kind,
   record,
   onClose,
   onChanged,
+  onDone,
 }: {
   kind: 'service' | 'category';
   record: ServiceResponse | ServiceCategoryResponse;
   onClose: () => void;
   onChanged: () => Promise<void>;
+  /** Called once the change was saved and `onChanged` finished (the list screen closes in `onChanged`). */
+  onDone?: () => void;
 }) {
   const { api, t, locale } = useWorkforce();
   const deactivating = record.isActive;
@@ -617,6 +620,7 @@ function StatusConfirm({
         );
         if (!outcome.ok) throw outcome.error;
         await onChanged();
+        onDone?.();
       }}
     />
   );

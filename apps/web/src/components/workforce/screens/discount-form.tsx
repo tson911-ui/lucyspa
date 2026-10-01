@@ -1,26 +1,29 @@
 'use client';
 
 import type { ServiceCategoryListResponse, ServiceListResponse } from '@lucy-spa/contracts';
-import type { Dispatch, SetStateAction } from 'react';
+import { CheckField, Field, FormGrid, FormSection, Select, Stack, TextInput } from '@lucy-spa/ui';
+import { useId, type Dispatch, type SetStateAction } from 'react';
 import type { DiscountForm } from '../../../lib/workforce/discounts';
 import { useWorkforce } from '../session';
-import { Field, Loading, useResource } from '../ui';
+import { Empty, Loading, useResource } from '../ui';
 
 /**
- * The configuration fields of one discount program version (create and "new version" share them). Amounts are
- * plain digits, the percentage is a decimal percent, the validity is entered in Vietnam time. Nothing is
- * calculated here: the API validates every field again and the database has its own CHECKs.
+ * The configuration fields of one discount program version, grouped in sections (program, discount,
+ * validity, scope, limits). Create (its own page, `columns={2}`) and "new version" (a drawer,
+ * `columns={1}`) share them. Amounts are plain digits, the percentage is a decimal percent, the validity
+ * is entered in Vietnam time. Nothing is calculated here: the API validates every field again and the
+ * database has its own CHECKs.
  */
 export function DiscountFormFields({
   form,
   setForm,
   mode,
-  idPrefix,
+  columns = 1,
 }: {
   form: DiscountForm;
   setForm: Dispatch<SetStateAction<DiscountForm>>;
   mode: 'create' | 'version';
-  idPrefix: string;
+  columns?: 1 | 2;
 }) {
   const { api, t, locale } = useWorkforce();
   const services = useResource(() => api.get<ServiceListResponse>('/api/v1/services'), [api]);
@@ -38,176 +41,251 @@ export function DiscountFormFields({
         : [...current[key], id],
     }));
   const name = (vi: string, en: string) => (locale === 'vi' ? vi : en);
-  const id = (field: string) => `${idPrefix}-${field}`;
 
   return (
-    <>
-      {mode === 'create' ? (
-        <>
-          <Field id={id('code')} label={d.code} hint={d.codeHint} required>
-            <input
-              id={id('code')}
-              required
-              maxLength={64}
-              autoComplete="off"
-              value={form.code}
-              onChange={(event) => change({ code: event.target.value.toUpperCase() })}
-            />
+    <Stack gap="page">
+      <FormSection title={d.sectionProgram}>
+        <FormGrid cols={columns}>
+          {mode === 'create' ? (
+            <>
+              <Field label={d.code} hint={d.codeHint} required width="lg" full>
+                {(control) => (
+                  <TextInput
+                    {...control}
+                    maxLength={64}
+                    autoComplete="off"
+                    value={form.code}
+                    onChange={(event) => change({ code: event.target.value.toUpperCase() })}
+                  />
+                )}
+              </Field>
+              <div className="ls-field-full">
+                <CheckField
+                  checked={form.requiresCode}
+                  onChange={(event) => change({ requiresCode: event.target.checked })}
+                  label={d.requiresCode}
+                  hint={d.requiresCodeHint}
+                />
+              </div>
+            </>
+          ) : null}
+          <Field label={d.nameVi} required>
+            {(control) => (
+              <TextInput
+                {...control}
+                maxLength={200}
+                value={form.nameVi}
+                onChange={(event) => change({ nameVi: event.target.value })}
+              />
+            )}
           </Field>
-          <div className="wf-field">
-            <label htmlFor={id('requires')}>
-              <input
-                id={id('requires')}
-                type="checkbox"
-                checked={form.requiresCode}
-                onChange={(event) => change({ requiresCode: event.target.checked })}
-              />{' '}
-              {d.requiresCode}
-            </label>
-            <p className="wf-hint">{d.requiresCodeHint}</p>
-          </div>
-        </>
-      ) : null}
-      <Field id={id('nameVi')} label={d.nameVi} required>
-        <input
-          id={id('nameVi')}
-          required
-          maxLength={200}
-          value={form.nameVi}
-          onChange={(event) => change({ nameVi: event.target.value })}
-        />
-      </Field>
-      <Field id={id('nameEn')} label={d.nameEn} required>
-        <input
-          id={id('nameEn')}
-          required
-          maxLength={200}
-          value={form.nameEn}
-          onChange={(event) => change({ nameEn: event.target.value })}
-        />
-      </Field>
-      <Field id={id('kind')} label={d.kind}>
-        <select
-          id={id('kind')}
-          value={form.kind}
-          onChange={(event) => change({ kind: event.target.value as DiscountForm['kind'] })}
-        >
-          <option value="PERCENT">{d.kinds.PERCENT}</option>
-          <option value="FIXED_AMOUNT">{d.kinds.FIXED_AMOUNT}</option>
-        </select>
-      </Field>
-      {form.kind === 'PERCENT' ? (
-        <Field id={id('percent')} label={d.percent} hint={d.percentHint} required>
-          <input
-            id={id('percent')}
-            inputMode="decimal"
-            autoComplete="off"
-            maxLength={6}
-            value={form.percent}
-            onChange={(event) => change({ percent: event.target.value.replace(',', '.') })}
-          />
-        </Field>
+          <Field label={d.nameEn} required>
+            {(control) => (
+              <TextInput
+                {...control}
+                maxLength={200}
+                value={form.nameEn}
+                onChange={(event) => change({ nameEn: event.target.value })}
+              />
+            )}
+          </Field>
+        </FormGrid>
+      </FormSection>
+
+      <FormSection title={d.sectionBenefit}>
+        <FormGrid cols={columns}>
+          <Field label={d.kind}>
+            {(control) => (
+              <Select
+                {...control}
+                value={form.kind}
+                options={[
+                  { value: 'PERCENT', label: d.kinds.PERCENT },
+                  { value: 'FIXED_AMOUNT', label: d.kinds.FIXED_AMOUNT },
+                ]}
+                onChange={(event) => change({ kind: event.target.value as DiscountForm['kind'] })}
+              />
+            )}
+          </Field>
+          {form.kind === 'PERCENT' ? (
+            <Field label={d.percent} hint={d.percentHint} required>
+              {(control) => (
+                <TextInput
+                  {...control}
+                  inputMode="decimal"
+                  autoComplete="off"
+                  maxLength={6}
+                  value={form.percent}
+                  onChange={(event) => change({ percent: event.target.value.replace(',', '.') })}
+                />
+              )}
+            </Field>
+          ) : (
+            <Field label={d.fixedAmount} required>
+              {(control) => (
+                <TextInput
+                  {...control}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={18}
+                  value={form.fixedAmount}
+                  onChange={(event) => change({ fixedAmount: event.target.value })}
+                />
+              )}
+            </Field>
+          )}
+          <Field label={d.minSpend} hint={d.minSpendHint}>
+            {(control) => (
+              <TextInput
+                {...control}
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={18}
+                value={form.minSpend}
+                onChange={(event) => change({ minSpend: event.target.value })}
+              />
+            )}
+          </Field>
+        </FormGrid>
+      </FormSection>
+
+      <FormSection title={d.sectionWindow} description={d.timeNote}>
+        <FormGrid cols={columns}>
+          <Field label={d.validFrom} required>
+            {(control) => (
+              <TextInput
+                {...control}
+                type="datetime-local"
+                value={form.validFrom}
+                onChange={(event) => change({ validFrom: event.target.value })}
+              />
+            )}
+          </Field>
+          <Field label={d.validUntil} required>
+            {(control) => (
+              <TextInput
+                {...control}
+                type="datetime-local"
+                value={form.validUntil}
+                onChange={(event) => change({ validUntil: event.target.value })}
+              />
+            )}
+          </Field>
+        </FormGrid>
+      </FormSection>
+
+      <FormSection title={d.sectionScope}>
+        <FormGrid cols={columns}>
+          <Field label={d.scope}>
+            {(control) => (
+              <Select
+                {...control}
+                value={form.scopeMode}
+                options={[
+                  { value: 'ALL_SERVICES', label: d.scopes.ALL_SERVICES },
+                  { value: 'SELECTED', label: d.scopes.SELECTED },
+                ]}
+                onChange={(event) =>
+                  change({ scopeMode: event.target.value as DiscountForm['scopeMode'] })
+                }
+              />
+            )}
+          </Field>
+        </FormGrid>
+        {form.scopeMode === 'SELECTED' ? (
+          services.loading || categories.loading ? (
+            <Loading t={t} />
+          ) : (
+            <FormGrid cols={columns}>
+              <PickerGroup
+                title={d.categories}
+                empty={d.pickerNone}
+                options={(categories.data?.categories ?? []).map((category) => ({
+                  id: category.id,
+                  label: name(category.nameVi, category.nameEn),
+                }))}
+                selected={form.categoryIds}
+                onToggle={(id) => toggle('categoryIds', id)}
+              />
+              <PickerGroup
+                title={d.services}
+                empty={d.pickerNone}
+                options={(services.data?.services ?? []).map((service) => ({
+                  id: service.id,
+                  label: name(service.nameVi, service.nameEn),
+                }))}
+                selected={form.serviceIds}
+                onToggle={(id) => toggle('serviceIds', id)}
+              />
+            </FormGrid>
+          )
+        ) : null}
+      </FormSection>
+
+      <FormSection title={d.sectionLimits} description={d.limitHint}>
+        <FormGrid cols={columns}>
+          <Field label={d.limitTotal}>
+            {(control) => (
+              <TextInput
+                {...control}
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={10}
+                value={form.limitTotal}
+                onChange={(event) => change({ limitTotal: event.target.value })}
+              />
+            )}
+          </Field>
+          <Field label={d.limitPerCustomer}>
+            {(control) => (
+              <TextInput
+                {...control}
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={10}
+                value={form.limitPerCustomer}
+                onChange={(event) => change({ limitPerCustomer: event.target.value })}
+              />
+            )}
+          </Field>
+        </FormGrid>
+      </FormSection>
+    </Stack>
+  );
+}
+
+/** A labelled group of checkboxes (categories or services) of the "selected" scope. */
+function PickerGroup({
+  title,
+  empty,
+  options,
+  selected,
+  onToggle,
+}: {
+  title: string;
+  empty: string;
+  options: readonly { id: string; label: string }[];
+  selected: readonly string[];
+  onToggle: (id: string) => void;
+}) {
+  const labelId = useId();
+  return (
+    <div className="ls-field" role="group" aria-labelledby={labelId}>
+      <span className="ls-label" id={labelId}>
+        {title}
+      </span>
+      {options.length === 0 ? (
+        <Empty>{empty}</Empty>
       ) : (
-        <Field id={id('amount')} label={d.fixedAmount} required>
-          <input
-            id={id('amount')}
-            inputMode="numeric"
-            autoComplete="off"
-            maxLength={18}
-            value={form.fixedAmount}
-            onChange={(event) => change({ fixedAmount: event.target.value })}
+        options.map((option) => (
+          <CheckField
+            key={option.id}
+            checked={selected.includes(option.id)}
+            onChange={() => onToggle(option.id)}
+            label={option.label}
           />
-        </Field>
+        ))
       )}
-      <Field id={id('from')} label={d.validFrom} hint={d.timeNote} required>
-        <input
-          id={id('from')}
-          type="datetime-local"
-          value={form.validFrom}
-          onChange={(event) => change({ validFrom: event.target.value })}
-        />
-      </Field>
-      <Field id={id('until')} label={d.validUntil} hint={d.timeNote} required>
-        <input
-          id={id('until')}
-          type="datetime-local"
-          value={form.validUntil}
-          onChange={(event) => change({ validUntil: event.target.value })}
-        />
-      </Field>
-      <Field id={id('min')} label={d.minSpend} hint={d.minSpendHint}>
-        <input
-          id={id('min')}
-          inputMode="numeric"
-          autoComplete="off"
-          maxLength={18}
-          value={form.minSpend}
-          onChange={(event) => change({ minSpend: event.target.value })}
-        />
-      </Field>
-      <Field id={id('scope')} label={d.scope}>
-        <select
-          id={id('scope')}
-          value={form.scopeMode}
-          onChange={(event) =>
-            change({ scopeMode: event.target.value as DiscountForm['scopeMode'] })
-          }
-        >
-          <option value="ALL_SERVICES">{d.scopes.ALL_SERVICES}</option>
-          <option value="SELECTED">{d.scopes.SELECTED}</option>
-        </select>
-      </Field>
-      {form.scopeMode === 'SELECTED' ? (
-        <>
-          {services.loading || categories.loading ? <Loading t={t} /> : null}
-          <fieldset className="wf-fieldset">
-            <legend>{d.categories}</legend>
-            {categories.data?.categories.map((category) => (
-              <label key={category.id} className="wf-check">
-                <input
-                  type="checkbox"
-                  checked={form.categoryIds.includes(category.id)}
-                  onChange={() => toggle('categoryIds', category.id)}
-                />{' '}
-                {name(category.nameVi, category.nameEn)}
-              </label>
-            ))}
-          </fieldset>
-          <fieldset className="wf-fieldset">
-            <legend>{d.services}</legend>
-            {services.data?.services.map((service) => (
-              <label key={service.id} className="wf-check">
-                <input
-                  type="checkbox"
-                  checked={form.serviceIds.includes(service.id)}
-                  onChange={() => toggle('serviceIds', service.id)}
-                />{' '}
-                {name(service.nameVi, service.nameEn)}
-              </label>
-            ))}
-          </fieldset>
-        </>
-      ) : null}
-      <Field id={id('limitTotal')} label={d.limitTotal}>
-        <input
-          id={id('limitTotal')}
-          inputMode="numeric"
-          autoComplete="off"
-          maxLength={10}
-          value={form.limitTotal}
-          onChange={(event) => change({ limitTotal: event.target.value })}
-        />
-      </Field>
-      <Field id={id('limitCustomer')} label={d.limitPerCustomer} hint={d.limitHint}>
-        <input
-          id={id('limitCustomer')}
-          inputMode="numeric"
-          autoComplete="off"
-          maxLength={10}
-          value={form.limitPerCustomer}
-          onChange={(event) => change({ limitPerCustomer: event.target.value })}
-        />
-      </Field>
-    </>
+    </div>
   );
 }
