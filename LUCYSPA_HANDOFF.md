@@ -160,71 +160,85 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 - Owner decision pending: run a "Step 5b: UX gate fixes" Step before Step 6.
 
 ### UX/UI Step 5b (UX gate fixes) - CLOSED / OWNER APPROVED
+
 - F1-F12, F14 fixed plus open states (overlay, drawer, user menu, filter sheet); F13 stays with Step 8.
 - New auth header: display wordmark, "Đăng nhập"/"Sign in", "Dành cho nhân viên"/"For staff". Report: `docs/UXUI_REDESIGN_STEP5B_UX_FIXES.md`.
 - Motion (15a7783) and gate (34b62e7) commits are pushed; the 5b changes are committed.
 - Known item for Step 14: `employee-detail.test.tsx` fails when run from the repo root ("React is not defined"); it passes from `apps/web`.
 
 ### UX/UI Step 6 (sortable primitives + chart kit) - IMPLEMENTED, awaiting Owner review
+
 - `packages/ui`: SortableList/Grid (dnd-kit, keyboard + Move buttons), LineChart/BarChart/DonutChart/Sparkline/KpiCard/ChartFrame, DateRangePicker + ComparisonToggle; new deps dnd-kit, d3-scale, d3-shape (Q-D1).
 - No API, DB, permission or screen change; the dashboard (Step 7) is the first user. 195 ui tests pass; palette validator runs in a test.
 - Report: `docs/UXUI_REDESIGN_STEP6_SORTABLE_CHARTS.md` (UX gate images in `.local/uxui-screens/6-*`). Not committed.
 
 ### UX/UI Step 7 (dashboard) - CLOSED / OWNER APPROVED
+
 - Widget dashboard on the kit: shared `Card`/`Stat` in `packages/ui`, 11 permission-gated widgets, customize mode (drag, keyboard, Move buttons, size, hide), layout in localStorage per user and device.
 - Comparison loader requests exactly as many previous days as current days (`previousWindow`/`loadPreviousBoard`); requests are de-duplicated and refreshed on focus and every 5 min.
 - No API, DB or permission change. 199 ui + 57 targeted web tests pass. Report: `docs/UXUI_REDESIGN_STEP7_DASHBOARD.md`. Owner accepted: branch-only scope, 12 columns from 1280 px, 200-invoice cap warning.
 
 ### UX/UI Step 7.5a (frontend rules + gate v2) - CLOSED / OWNER APPROVED
+
 - Design contract 21.4 (FR1-FR15) and 21.5 (gate v2) written; 9.1/10.3/10.4/21.1-1 amended as the Owner approved; CLAUDE.md digest added. No UI, API or DB change.
 - Tooling: scripts/uxui-page-audit.js (DOM audit, rule-tagged), scripts/uxui-audit-summary.mjs (--write/--compare), apps/web/src/test/ui-ratchet.test.ts (counters only go down).
 - Baseline: 26 pages x 3 widths on scratch DB lucy_spa_uxaudit_20261001 in docs/uxui-audit-baseline.json and docs/UXUI_AUDIT_BASELINE_7_5A.md. Report: docs/UXUI_REDESIGN_STEP7_5A_RULES_GATE.md. Also a PreToolUse hook (.claude/settings.json) blocks Bash heredocs.
 - Next: 7.5b (page frame); after 7.5b and 7.5d the Owner deploys and reviews before the next session.
 
 ### UX/UI Step 7.5b (page frame) - implemented locally 2026-10-01, awaiting Owner deploy check
+
 - packages/ui: Page, PageHeader, Stack/Cluster/Grid; Card flush context (table/empty inside a card lose their border; nested Card logs in dev); RouteFade stack. Workforce shell wraps in Page; ui.tsx PageHeader/Section are kit components; workforce.css remapped to tokens (0 spacing literals).
 - Nav gap/active bar on the 4 px grid; Leave table scrolls inside its card. Ratchet lowered (wf uses 720, spacing literals 0). No API/DB change.
 - 207 ui + 233 web tests pass; DOM audit of Dashboard/Employees/Skills/Branches/Leave: no count rose. Report: docs/UXUI_REDESIGN_STEP7_5B_PAGE_FRAME.md. Next: Owner deploy check, then 7.5c.
 
 ### UX/UI Step 7.5c (data frame) - implemented locally 2026-10-01, awaiting Owner review
+
 - packages/ui: DataTable column policy + required paging (dev guard), RowActions = single menu, FacetedFilter, MultiValue, ListSection, ListToolbar/Pagination layout, single-border table surface. Employees and Skills re-fitted (Skills edit now a row-menu dialog).
 - 217 ui + 233 web tests pass; DOM audit employees 54->18, skills 142->21, no type rose. Radix not needed (spike found no gap). No API/DB change.
 - Review 1 applied: columns hide by width (no page scroll 360-1920), audit script false positives only. Header not sticky on desktop. Report: docs/UXUI_REDESIGN_STEP7_5C_DATA_FRAME.md. Next: Owner review, then 7.5d (forms/overlays) + deploy check.
 
 ### UX/UI Step 7.5d (forms and overlays + hover theme) - implemented locally 2026-10-01
+
 - packages/ui: FormGrid, CheckField, Disclosure, FormDialog, FormDrawer (discard guard, busy, error focus), FormSection without fieldset, FormActions Cancel then Save, field/dialog width tokens. Skills (create/edit dialog, status confirm in row menu) and Branches (DataTable + create dialog) migrated.
 - Hover theme by tokens (--ls-hover-*): light = very light brand red + #782b37, dark unchanged; WCAG tests in tokens.test.ts. 232 ui + 233 web tests pass; ratchet lowered. Report: docs/UXUI_REDESIGN_STEP7_5D_FORMS_OVERLAYS.md.
 - Owner chose to run 7.5d-7.5f back to back, then deploy and review once.
 
 ### UX/UI Step 7.5e (dashboard and tabs) - implemented locally 2026-10-01
+
 - Widget titles clamp to one line (value rows align), branch select 280 px without label, layout button "Sắp xếp bố cục" + banner card, recovery email action in the card header, notices inside cards are flush, empty paid chart = EmptyState, Organization tabs on the kit Tabs.
 - 233 ui + 235 web tests pass; dashboard audit 86->15 findings. Report: docs/UXUI_REDESIGN_STEP7_5E_DASHBOARD_TABS.md.
 
 ### UX/UI Step 7.5f (closing verification) - done locally 2026-10-01, awaiting Owner deploy + final review of 7.5d-7.5f
+
 - Full DOM audit 26 pages x 3 widths: 2296 -> 529 findings (docs/UXUI_AUDIT_AFTER_7_5.md, snapshot docs/uxui-audit-after-7_5.json); ratchet lowered (wf uses 698, details 20, raw tables 23). Design contract 6.3 (hover) and 18 (Steps 8-10 remap) updated.
 - Report: docs/UXUI_REDESIGN_STEP7_5F_CLOSING.md. Next after the Owner check: Step 9a Services (then 8a-8c, 9b-9c, 10a-10b).
 - Owner review of 7.5d-f: raw checkboxes of Roles, Service detail and Team detail now CheckField (small-target 43 -> 23, no check above baseline; audit script measures a kit .ls-check-field row); toasts to be mounted in Step 8a (success = toast, errors in place); Skills deactivate-with-reason wording approved.
 
 ### UX/UI Step 9a (Services) - implemented locally 2026-10-01, awaiting Owner review (uncommitted, not deployed)
+
 - Services/Categories in `Tabs`; `DataTable` client mode (search, category + status filters, sort, 20/page), row `⋮` (Details, (De)activate with reason, Delete), create = `FormDrawer`, category create/edit = `FormDialog`; `ConfirmDeleteDialog` removed. No API change.
 - Ratchet: raw tables 23 -> 21, wf uses 698 -> 664, details 20 -> 17. Web targeted tests 23/23; DOM audit services 128 -> 36 (only the known icon-only phone Filter false positive rose).
 - Build for the audit needs API_UPSTREAM_ORIGIN at build time. Report: docs/UXUI_REDESIGN_STEP9A_SERVICES.md. Owner said 7.5 "chua on lam"; specific notes pending.
 
 ### UX/UI Step 8a (Skills, Roles, Teams, toasts, permission-change notice) - implemented locally 2026-10-01, awaiting Owner review (uncommitted, not deployed)
+
 - Toast provider in the workforce shell (success = toast, errors in place); API 401 `reason: AUTHORIZATION_CHANGED` (tested) + web passive `/auth/me` check on focus and every 3 min, wording "Quyền của bạn đã thay đổi, vui lòng đăng nhập lại". No in-session permission refresh.
 - Roles = DataTable + FormDrawer with grouped permission matrix; Teams list = server DataTable; Team detail = breadcrumbs, header actions, Tabs, kit `SelectionBar` for bulk members. Kit: numeric/end alignment specificity fix, breadcrumb targets, `useOptionalToast`.
 - Ratchet: raw tables 19, wf uses 604, details 12, fieldsets 17, solid danger 8. Tests: web 246, ui 235, api targeted + 2 integration files on the scratch DB. Report: docs/UXUI_REDESIGN_STEP8A_PEOPLE.md.
 - Owner approved 8a: bulk member actions via SelectionBar = approved exception to contract 10.4; CSRF guard answers 401 (+ AUTHORIZATION_CHANGED reason) for an ended signed-in session before checking CSRF (wrong CSRF on a valid session stays 403).
 
 ### UX/UI Step 8b (Employees: detail, lifecycle, roles, skills, create) - implemented locally 2026-10-01, awaiting Owner review (uncommitted, not deployed; base 390b355)
+
 - Employee detail = breadcrumbs, `⋮` menu + primary Edit profile, 4 Tabs (profile + account, employment history, roles and branches, skills); promote/end/password/profile = FormDialog, disable/re-enable sign-in and removals = ConfirmDialog; all `<details>` forms gone. Create = own page `/employees/new` (toast + member page after success).
 - Kit: `ListSection actions`, `.ls-field` no longer stretches controls in a grid row, `RadioGroup` row-wide targets. Ratchet: raw tables 18, wf uses 483, details 7, fieldsets 11, checkboxes 9.
 - Tests: web 246, ui 236. DOM audit employee-detail 238 -> 13. Report: docs/UXUI_REDESIGN_STEP8B_EMPLOYEES.md. Next: 8c (Organization).
 
 ### UX/UI Step 8c (Organization: regions, areas, branch placement, appointments) - implemented locally 2026-10-01, awaiting Owner review (uncommitted, not deployed; base 3459413)
+
 - Page = header action per tab + one Notice + 4 Tabs (`?tab=`), each a client DataTable (20/page, sort, `⋮`) with ListToolbar (search + 1 filter); all forms are FormDialog (create/rename/edit/placement/appoint with employee Combobox), activate/deactivate and end appointment are ConfirmDialog with required reason; `<details>`, inline row editing and `window.prompt` removed. No API/DB/permission change.
 - Ratchet: raw tables 14, wf uses 439, details 4, checkboxes 8, solid danger 6. Tests: new organization-list + screen tests, 25/25 targeted. DOM audit organization 67 -> 40 (rest = kit polish, plan section 11). Report: docs/UXUI_REDESIGN_STEP8C_ORGANIZATION.md. Next: 9b (Service detail, Branches detail, Discounts).
 
 ### UX/UI Step 9b (Service detail, Branch detail, Discounts list/detail/create) - implemented locally 2026-10-01, awaiting Owner review (uncommitted, not deployed; base a9887ba)
+
 - Service/Branch/Discount details = breadcrumbs, `⋮` menu + primary action, read-only `DescriptionList` cards or Tabs; edits are FormDrawer/FormDialog, status/terminate are ConfirmDialog with required reason. Discounts list = client DataTable + toolbar (URL state); create = own page `/discounts/new`, new version = own page `/discounts/[id]/versions/new` (Owner approved 9b). No API/DB/permission change.
 - Ratchet: raw tables 10, wf uses 397, fieldsets 7, checkboxes 4. Tests: 46 targeted green. DOM audit service-detail 135 -> 14, branch-detail 89 -> 14, discount-detail 78 -> 14, discounts 56 -> 36. Report: docs/UXUI_REDESIGN_STEP9B_DETAILS_DISCOUNTS.md. Next: 9c (POS, invoice, payments).
