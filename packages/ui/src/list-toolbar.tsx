@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { Button } from './button';
+import { Button, IconButton } from './button';
 import { cx } from './cx';
 import { Icon } from './icons';
 import { Drawer } from './overlay';
@@ -22,10 +22,12 @@ export interface ListToolbarLabels {
 }
 
 /**
- * One row above a table (docs/UXUI_REDESIGN_DESIGN.md 9.4, 10.1): search, filter controls, the
- * result count, "Reset filters" and the page's list action. Wraps on tablets; on a phone the
- * `filters` move into a "Filters" sheet so the search stays one line. The result count is a
- * live region so a screen reader hears the effect of a filter.
+ * One row above a table (docs/UXUI_REDESIGN_DESIGN.md 9.4, 10.1; frontend rule 6): search, filter
+ * controls, "Reset" while a filter applies, and at the trailing end the result count, the reload
+ * icon button and secondary list actions. Every control is one height and none has a label above
+ * (a filter names itself: placeholder, `FacetedFilter` button or `aria-label`). Wraps on tablets;
+ * on a phone the `filters` move into a "Filters" sheet so the search stays one line and the count
+ * drops under the row. The result count is a live region so a screen reader hears a filter's effect.
  */
 export function ListToolbar({
   search,
@@ -33,6 +35,7 @@ export function ListToolbar({
   activeFilters = 0,
   resultCount,
   onReset,
+  reload,
   actions,
   chips,
   labels,
@@ -40,13 +43,15 @@ export function ListToolbar({
 }: {
   /** Usually a `SearchInput`. */
   search?: ReactNode | undefined;
-  /** `Field`-wrapped selects or other controls. */
+  /** Bare controls: `FacetedFilter`s or `Select`s with a placeholder. No `Field` labels. */
   filters?: ReactNode | undefined;
   /** How many filters are applied; drives the reset button and the phone button's count. */
   activeFilters?: number | undefined;
   /** e.g. "12 results". */
   resultCount?: string | undefined;
   onReset?: (() => void) | undefined;
+  /** Reload as an icon button at the trailing end (never a stray page button). */
+  reload?: { label: string; onClick: () => void; busy?: boolean | undefined } | undefined;
   /** Secondary list actions, right aligned. The page's primary action stays in the page header. */
   actions?: ReactNode | undefined;
   /** Applied filters as removable chips (`FilterChips`), drawn under the row. */
@@ -82,9 +87,27 @@ export function ListToolbar({
           </Button>
         ) : null}
         {!phone ? reset : null}
-        {actions ? <div className="ls-toolbar-actions">{actions}</div> : null}
+        {reload || actions || (resultCount !== undefined && !phone) ? (
+          <div className="ls-toolbar-end">
+            {resultCount !== undefined && !phone ? (
+              <p className="ls-toolbar-count" role="status">
+                {resultCount}
+              </p>
+            ) : null}
+            {reload ? (
+              <IconButton
+                icon="refresh"
+                label={reload.label}
+                disabled={reload.busy}
+                aria-busy={reload.busy || undefined}
+                onClick={reload.onClick}
+              />
+            ) : null}
+            {actions}
+          </div>
+        ) : null}
       </div>
-      {resultCount !== undefined ? (
+      {resultCount !== undefined && phone ? (
         <p className="ls-toolbar-count" role="status">
           {resultCount}
         </p>

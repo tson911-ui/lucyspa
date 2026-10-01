@@ -179,20 +179,8 @@
   gap: var(--ls-space-2);
 }
 
-@media (max-width: 639px) {
-  /* Icon only on a phone; the text stays available to assistive technology. */
-  .ls-row-edit .ls-btn-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  .ls-row-edit {
-    padding: 0;
-  }
+.ls-row-actions .ls-btn {
+  color: var(--ls-text);
 }
 
 /* ---- Menu and popover ----------------------------------------------------------------------- */
@@ -1258,21 +1246,39 @@
   gap: var(--ls-space-4);
 }
 
+/* Empty and error replace the table inside the same single-border surface; the state is flush in it. */
 .ls-table-state {
-  padding-block: var(--ls-space-4);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-md);
+  background: var(--ls-bg-surface);
+  box-shadow: var(--ls-shadow-sm);
+}
+
+.ls-table-state .ls-empty {
+  border: 0;
+  border-radius: 0;
+}
+
+.ls-card .ls-table-state {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .ls-table-wrap {
   border: 1px solid var(--ls-border);
   border-radius: var(--ls-radius-md);
   background: var(--ls-bg-surface);
+  box-shadow: var(--ls-shadow-sm);
   overflow-x: auto;
 }
 
-/* On desktop the wrapper does not scroll, so the sticky header follows the page scroll. */
-@media (min-width: 1024px) {
-  .ls-table-wrap {
-    overflow: visible;
+/* A table that is wider than its column scrolls inside this wrapper, never the page (rule 11); the
+   rows are one line each, so columns of low priority are hidden by width (`hideBelow`) instead. */
+@media (min-width: 640px) and (max-width: 1279px) {
+  .ls-hide-xl {
+    display: none;
   }
 }
 
@@ -1284,14 +1290,58 @@
   line-height: var(--ls-leading-sm);
 }
 
+/* One row height for the whole table (48 px, 56 on touch): a cell is one line unless its column
+   opts into `wrap` (two lines), so no row grows past the others. Headers never wrap. */
 .ls-table th,
 .ls-table td {
-  min-height: var(--ls-row-h);
-  padding: var(--ls-space-3) var(--ls-space-4);
+  height: var(--ls-row-h);
+  padding: var(--ls-space-1) var(--ls-space-3);
   border-bottom: 1px solid var(--ls-border);
   text-align: start;
   vertical-align: middle;
-  overflow-wrap: break-word;
+  white-space: nowrap;
+}
+
+/* Widest a clipped cell grows: xs 96, sm 144, md 224, lg 320 px. */
+.ls-col-xs {
+  --ls-col-w: 6rem;
+}
+
+.ls-col-sm {
+  --ls-col-w: 9rem;
+}
+
+.ls-col-md {
+  --ls-col-w: 14rem;
+}
+
+.ls-col-lg {
+  --ls-col-w: 20rem;
+}
+
+.ls-cell-truncate,
+.ls-cell-wrap {
+  display: block;
+  max-width: var(--ls-col-w, 100%);
+  overflow: hidden;
+}
+
+.ls-cell-truncate {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ls-cell-wrap {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.ls-cell-numeric {
+  font-variant-numeric: tabular-nums;
 }
 
 .ls-table thead th {
@@ -1386,6 +1436,7 @@
     overflow: visible;
     border: 0;
     background: transparent;
+    box-shadow: none;
   }
 
   .ls-table,
@@ -1459,6 +1510,25 @@
     overflow-wrap: anywhere;
   }
 
+  /* A card shows every value in full, however long. */
+  .ls-table th,
+  .ls-table td {
+    height: auto;
+    white-space: normal;
+  }
+
+  .ls-cell-truncate,
+  .ls-cell-wrap {
+    display: block;
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+  }
+
   /* The card title and its actions are full-size touch targets. */
   .ls-table .ls-cell-title a,
   .ls-table .ls-cell-actions a,
@@ -1481,10 +1551,22 @@
     text-align: start;
   }
 
+  /* The row menu sits at the top right of the card, beside the title. */
+  .ls-table tbody tr {
+    position: relative;
+  }
+
   .ls-table .ls-cell-actions {
-    justify-content: flex-end;
-    padding-top: var(--ls-space-3);
-    border-top: 1px solid var(--ls-border);
+    position: absolute;
+    inset-block-start: var(--ls-space-2);
+    inset-inline-end: var(--ls-space-2);
+    width: auto;
+    padding: 0;
+    border-top: 0;
+  }
+
+  .ls-table tbody tr:has(.ls-cell-actions) .ls-cell-title {
+    padding-inline-end: var(--ls-control-h);
   }
 
   .ls-table .ls-tr-skeleton td::before {
@@ -1497,14 +1579,26 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--ls-space-3) var(--ls-space-4);
 }
 
+/* One footer row: the count at the start, page size and pages at the end; on a phone two rows. */
 .ls-pagination-summary {
   margin: 0;
+  margin-inline-end: auto;
   color: var(--ls-text-muted);
   font-size: var(--ls-text-sm);
+}
+
+@media (max-width: 639px) {
+  .ls-pagination {
+    justify-content: space-between;
+  }
+
+  .ls-pagination-summary {
+    flex: 1 1 100%;
+  }
 }
 
 .ls-pagination-size {
@@ -1574,34 +1668,34 @@
   gap: var(--ls-space-3);
 }
 
+/* Every control is one height and none has a label above, so the row centers on one baseline. */
 .ls-toolbar-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--ls-space-3);
+  align-items: center;
+  gap: var(--ls-space-2);
 }
 
 .ls-toolbar-search {
-  flex: 1 1 16rem;
-  min-width: min(100%, 12rem);
+  flex: 1 1 15rem;
+  max-width: 20rem;
+  min-width: min(100%, 15rem);
 }
 
 .ls-toolbar-filters {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--ls-space-3);
+  align-items: center;
+  gap: var(--ls-space-2);
 }
 
-.ls-toolbar-actions {
+/* Trailing end: result count, reload icon button, secondary list actions. */
+.ls-toolbar-end {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--ls-space-2);
   margin-inline-start: auto;
-}
-
-.ls-toolbar + .ls-table-block {
-  margin-top: var(--ls-space-4);
 }
 
 .ls-toolbar-count {
@@ -1648,17 +1742,165 @@
 @media (max-width: 639px) {
   .ls-toolbar-row {
     flex-wrap: nowrap;
-    align-items: flex-end;
   }
 
   .ls-toolbar-search {
     flex: 1 1 0;
+    max-width: none;
     min-width: 0;
   }
 
-  .ls-toolbar-row > .ls-btn {
+  .ls-toolbar-row > .ls-btn,
+  .ls-toolbar-end {
     flex: none;
   }
+}
+
+/* Faceted filter: a button that names itself, the chosen value beside it, a checklist panel. */
+.ls-facet {
+  display: inline-flex;
+  flex: none;
+}
+
+/* A filter names itself on one line; the row wraps before the button does. */
+.ls-facet > .ls-btn {
+  white-space: nowrap;
+}
+
+.ls-facet-summary {
+  max-width: 10rem;
+  margin-inline-start: var(--ls-space-2);
+  padding-inline: var(--ls-space-2);
+  overflow: hidden;
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-brand-soft);
+  color: var(--ls-brand-on-soft);
+  font-size: var(--ls-text-xs);
+  line-height: var(--ls-leading-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ls-facet-panel {
+  min-width: 14rem;
+}
+
+.ls-facet-options {
+  display: grid;
+}
+
+.ls-facet-option {
+  gap: var(--ls-space-3);
+  padding-inline: var(--ls-space-2);
+  border-radius: var(--ls-radius-sm);
+}
+
+.ls-facet-option:hover {
+  background: var(--ls-bg-sunken);
+}
+
+.ls-facet-option .ls-check-text {
+  flex: 1 1 auto;
+}
+
+.ls-facet-count {
+  margin-inline-start: auto;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.ls-facet-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--ls-space-1);
+  border-top: 1px solid var(--ls-border);
+}
+
+/* "First value +N": one line, the badge opens the full list. */
+.ls-multi {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  max-width: 100%;
+}
+
+.ls-multi-first {
+  min-width: 0;
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The button is the full touch target; the visible pill inside it is smaller. */
+.ls-multi-more {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--ls-control-h);
+  min-height: var(--ls-control-h);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ls-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ls-multi-pill {
+  min-width: var(--ls-space-6);
+  white-space: nowrap;
+  padding: 0 var(--ls-space-2);
+  border: 1px solid var(--ls-border-control);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-sunken);
+  font-size: var(--ls-text-xs);
+  font-weight: 600;
+  line-height: var(--ls-leading-sm);
+  text-align: center;
+}
+
+.ls-multi-more:hover .ls-multi-pill {
+  background: var(--ls-bg-raised);
+}
+
+.ls-multi-panel {
+  padding: var(--ls-space-2);
+}
+
+.ls-multi-list {
+  display: grid;
+  gap: var(--ls-space-2);
+  margin: 0;
+  padding: var(--ls-space-1) var(--ls-space-2);
+  list-style: none;
+  font-size: var(--ls-text-sm);
+  overflow-wrap: anywhere;
+}
+
+/* A titled page block that is not a card (a list with its heading). */
+.ls-list-section {
+  display: grid;
+  gap: var(--ls-space-4);
+  min-width: 0;
+}
+
+.ls-list-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  margin: 0;
+  font-size: var(--ls-text-lg);
+  line-height: var(--ls-leading-lg);
+  font-weight: 600;
+}
+
+.ls-list-section-count {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  font-weight: 400;
 }
 
 /* Filter chips */

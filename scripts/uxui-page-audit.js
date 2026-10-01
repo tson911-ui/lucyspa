@@ -247,6 +247,11 @@
     if (el instanceof SVGElement || ['HTML', 'BODY'].includes(el.tagName)) continue;
     const s = getComputedStyle(el);
     if (el.scrollWidth > el.clientWidth + 1 && el.clientWidth > 0) {
+      // Rule 7: a value clamped on purpose (ellipsis or line clamp) whose title repeats its whole text is the pattern, not a defect.
+      const clamped = s.textOverflow === 'ellipsis' || (s.webkitLineClamp && s.webkitLineClamp !== 'none');
+      const squash = (text) => (text || '').replace(/[\s\xa0]+/g, ' ').trim();
+      const full = squash(el.textContent);
+      if (clamped && full && [el.closest('[title]'), ...el.querySelectorAll('[title]')].some((holder) => holder && squash(holder.getAttribute('title')) === full)) continue;
       if (s.overflowX === 'hidden' || s.textOverflow === 'ellipsis') add('text-clipped', `${region(el)}:${desc(el)}`, `"${(el.textContent || '').trim().slice(0, 40)}" (${el.scrollWidth} > ${el.clientWidth})`);
       else if (s.overflowX === 'visible' && !el.closest('[style*="overflow"], .ls-table-scroll')) add('content-overflow', `${region(el)}:${desc(el)}`, `content ${el.scrollWidth} wider than box ${el.clientWidth}`);
     }
@@ -364,10 +369,14 @@
   const wrapped = new Map();
   for (const el of scope.querySelectorAll('.ls-badge, button, a.ls-btn, a.wf-button, [role=tab], th')) {
     if (!vis(el) || inDialog(el)) continue;
+    // The phone card list hides the header row visually (clip-path) but keeps it for assistive technology.
+    const header = el.closest('thead');
+    if (header && getComputedStyle(header).clipPath !== 'none') continue;
     const range = document.createRange();
     range.selectNodeContents(el);
-    const tops = [...new Set([...range.getClientRects()].filter((r) => r.width > 2).map((r) => Math.round(r.top / 4)))];
-    if (tops.length > 1) {
+    // Two lines differ by a line height (at least 16 px); a bordered pill inside a button differs by only a few px.
+    const tops = [...range.getClientRects()].filter((r) => r.width > 2).map((r) => r.top);
+    if (tops.length > 1 && Math.max(...tops) - Math.min(...tops) >= 10) {
       const key = `${desc(el)}|${norm(el.textContent).slice(0, 28)}`;
       wrapped.set(key, (wrapped.get(key) ?? 0) + 1);
     }

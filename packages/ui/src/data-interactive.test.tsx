@@ -159,7 +159,13 @@ const cellTexts = (container: Element) => $$(container, 'tbody td').map((cell) =
 
 test('DataTable: header click sorts in the browser and toggles the direction', () => {
   const view = mount(
-    <ui.DataTable columns={cols} rows={rows} rowKey={(row) => row.id} caption="t" />,
+    <ui.DataTable
+      paging={{ off: 'test' }}
+      columns={cols}
+      rows={rows}
+      rowKey={(row) => row.id}
+      caption="t"
+    />,
   );
   assert.deepEqual(
     cellTexts(view.container),
@@ -180,6 +186,7 @@ test('DataTable: server mode reports the sort and does not reorder rows itself',
   const requested: string[] = [];
   const view = mount(
     <ui.DataTable
+      paging={{ off: 'test' }}
       mode="server"
       columns={cols}
       rows={rows}

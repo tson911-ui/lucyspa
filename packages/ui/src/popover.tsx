@@ -41,6 +41,7 @@ export function Popover({
   align = 'end',
   role,
   id,
+  label,
   className,
   children,
   onKeyDown,
@@ -52,6 +53,8 @@ export function Popover({
   align?: 'start' | 'end' | undefined;
   role?: string | undefined;
   id?: string | undefined;
+  /** Accessible name of the panel (for `role="dialog"`). */
+  label?: string | undefined;
   className?: string | undefined;
   children: ReactNode;
   onKeyDown?: ((event: ReactKeyboardEvent<HTMLDivElement>) => void) | undefined;
@@ -113,6 +116,7 @@ export function Popover({
       ref={panelRef}
       id={id}
       role={role}
+      aria-label={label}
       className={cx('ls-popover', className)}
       style={style}
       onKeyDown={onKeyDown}

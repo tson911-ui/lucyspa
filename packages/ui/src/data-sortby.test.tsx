@@ -53,6 +53,7 @@ function mount(node: React.ReactNode) {
 test('Sort by: one option per sortable column and direction, current sort selected', () => {
   const view = mount(
     <DataTable
+      paging={{ off: 'test' }}
       columns={columns}
       rows={rows}
       rowKey={(row) => row.id}
@@ -82,6 +83,7 @@ test('Sort by: choosing an option sorts (client) and reports the change', () => 
   const seen: string[] = [];
   const view = mount(
     <DataTable
+      paging={{ off: 'test' }}
       columns={columns}
       rows={rows}
       rowKey={(row) => row.id}
@@ -105,12 +107,19 @@ test('Sort by: choosing an option sorts (client) and reports the change', () => 
 
 test('Sort by: absent without labels or without a sortable column', () => {
   const plain = mount(
-    <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} caption="t" />,
+    <DataTable
+      paging={{ off: 'test' }}
+      columns={columns}
+      rows={rows}
+      rowKey={(row) => row.id}
+      caption="t"
+    />,
   );
   assert.equal(plain.container.querySelector('.ls-sortby'), null);
   plain.unmount();
   const fixed = mount(
     <DataTable
+      paging={{ off: 'test' }}
       columns={[{ key: 'note', header: 'Ghi chú', cell: () => '-' }]}
       rows={rows}
       rowKey={(row) => row.id}

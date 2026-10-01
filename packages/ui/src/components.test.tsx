@@ -435,15 +435,13 @@ test('Menu: closed trigger announces a popup; entries are arranged safe-first wi
   );
 });
 
-test('RowActions: Edit first, then the menu; ActionBar: safe, destructive, primary last', () => {
-  const row = html(
-    <RowActions editLabel="Sửa" onEdit={() => undefined} menuLabel="Thêm thao tác" items={items} />,
-  );
-  assert.ok(row.indexOf('Sửa') < row.indexOf('aria-haspopup'));
-  assert.equal(
-    html(<RowActions editLabel="Xem" editHref="/x" menuLabel="m" />).includes('aria-haspopup'),
-    false,
-  );
+test('RowActions: one ⋮ button and no second visible button; ActionBar: safe, destructive, primary last', () => {
+  const row = html(<RowActions menuLabel="Thao tác cho Nguyễn Thị Lan" items={items} />);
+  assert.equal(row.match(/<button/g)?.length, 1, 'a single trigger');
+  assert.match(row, /aria-haspopup="menu"/);
+  assert.match(row, /aria-label="Thao tác cho Nguyễn Thị Lan"/);
+  assert.match(row, /M12 5\.25v1\.5M12 11\.25v1\.5M12 17\.25v1\.5/, 'vertical ellipsis icon');
+  assert.equal(html(<RowActions menuLabel="m" items={[]} />), '', 'nothing without items');
 
   const bar = html(
     <ActionBar

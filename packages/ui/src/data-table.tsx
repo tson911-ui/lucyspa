@@ -28,11 +28,22 @@ export interface DataTableColumn<Row> {
   /** What `mode="client"` sorts by; without it the column cannot be sorted in the browser. */
   sortValue?: ((row: Row) => SortValue) | undefined;
   /** Hidden on tablets narrower than this (contract section 13); a phone card list shows every field. */
-  hideBelow?: 'md' | 'lg' | undefined;
+  hideBelow?: 'md' | 'lg' | 'xl' | undefined;
   /** The card title on a phone: shown first, larger, without its label. */
   mobileTitle?: boolean | undefined;
   /** The trailing "Actions" column: heading visually hidden but present, cells right aligned. */
   actions?: boolean | undefined;
+  /**
+   * Widest the column's content may grow (`xs` 96, `sm` 144, `md` 224, `lg` 320 px). Only `truncate`
+   * and `wrap` cells are held to it; a column without either stays on one line at its natural width.
+   */
+  width?: 'xs' | 'sm' | 'md' | 'lg' | undefined;
+  /** One line, cut with an ellipsis at `width` (default `md`); the full text is the `title`. */
+  truncate?: boolean | undefined;
+  /** Up to two lines at `width` (default `md`), then cut; the full text is the `title`. */
+  wrap?: boolean | undefined;
+  /** Right aligned, one line, tabular digits (money, counts, durations). */
+  numeric?: boolean | undefined;
 }
 
 export interface DataTableSortLabels {
@@ -54,15 +65,27 @@ export interface DataTablePaging {
   labels: PaginationLabels;
 }
 
+/** A list that is never paged says why (for example a fixed short list, or `CursorPagination` below). */
+export interface DataTablePagingOff {
+  off: string;
+}
+
+/** More rows than this on one page without paging is a mistake (frontend rule 8). */
+export const MAX_UNPAGED_ROWS = 20;
+
 /**
- * Data table (docs/UXUI_REDESIGN_DESIGN.md 9.4, 10.2, 10.4).
+ * Data table (docs/UXUI_REDESIGN_DESIGN.md 9.4, 10.2, 10.4; plan 7.5c).
  *
  * - `mode="client"`: `rows` is the whole loaded list; the table sorts and pages it in the browser.
  * - `mode="server"`: `rows` is the current page; the caller pages and (optionally) sorts by
  *   `sort` / `onSortChange` and passes `paging.total`.
+ * - `paging` is required: pass the pager, or `{ off: 'reason' }`. In development more than 20 rows
+ *   with paging off logs an error.
  *
- * Loading shows skeleton rows in the final layout, `error` and `empty` replace the table, and below
- * 640 px the same markup becomes a stacked card list (CSS), keeping the row actions.
+ * Every row has one height; a cell is one line unless its column opts into `wrap` (two lines) and
+ * long text uses `truncate`; numbers use `numeric`. Loading shows skeleton rows in the final layout,
+ * `error` and `empty` replace the table inside the same single-border surface, and below 640 px the
+ * same markup becomes a stacked card list (CSS), keeping the row actions.
  */
 export function DataTable<Row>({
   columns,
@@ -93,7 +116,7 @@ export function DataTable<Row>({
   sort?: SortState | null | undefined;
   defaultSort?: SortState | null | undefined;
   onSortChange?: ((sort: SortState) => void) | undefined;
-  paging?: DataTablePaging | undefined;
+  paging: DataTablePaging | DataTablePagingOff;
   loading?: boolean | undefined;
   /** Announced while loading, e.g. "Loading…". */
   loadingLabel?: string | undefined;
@@ -134,8 +157,18 @@ export function DataTable<Row>({
     () => (client ? sortRows(rows, activeSort, sortByKey) : [...rows]),
     [client, rows, activeSort, sortByKey],
   );
-  const total = client ? rows.length : (paging?.total ?? rows.length);
-  const visible = client && paging ? sliceRows(ordered, paging.page, paging.pageSize) : ordered;
+  const pager = 'off' in paging ? undefined : paging;
+  const total = client ? rows.length : (pager?.total ?? rows.length);
+  const visible = client && pager ? sliceRows(ordered, pager.page, pager.pageSize) : ordered;
+
+  if (process.env.NODE_ENV !== 'production' && 'off' in paging) {
+    if (paging.off.trim() === '') console.error('DataTable: paging off needs a written reason.');
+    if (visible.length > MAX_UNPAGED_ROWS) {
+      console.error(
+        `DataTable: ${visible.length} rows without paging (limit ${MAX_UNPAGED_ROWS}); use paging.`,
+      );
+    }
+  }
 
   const showSkeleton = loading && rows.length === 0;
   const isEmpty = !loading && !error && rows.length === 0;
@@ -242,11 +275,7 @@ export function DataTable<Row>({
                             column.actions || column.mobileTitle ? undefined : column.header
                           }
                         >
-                          {column.actions || column.mobileTitle ? (
-                            column.cell(row)
-                          ) : (
-                            <span className="ls-cell-value">{valueOrDash(column.cell(row))}</span>
-                          )}
+                          {renderCell(column, row)}
                         </td>
                       ))}
                     </tr>
@@ -260,18 +289,45 @@ export function DataTable<Row>({
           {loadingLabel}
         </p>
       ) : null}
-      {paging && total > 0 ? (
+      {pager && total > 0 ? (
         <Pagination
-          page={clampPage(paging.page, totalPages(total, paging.pageSize))}
-          pageSize={paging.pageSize}
+          page={clampPage(pager.page, totalPages(total, pager.pageSize))}
+          pageSize={pager.pageSize}
           total={total}
-          onPageChange={paging.onPageChange}
-          onPageSizeChange={paging.onPageSizeChange}
-          labels={paging.labels}
+          onPageChange={pager.onPageChange}
+          onPageSizeChange={pager.onPageSizeChange}
+          labels={pager.labels}
         />
       ) : null}
     </div>
   );
+}
+
+function renderCell<Row>(column: DataTableColumn<Row>, row: Row): ReactNode {
+  const clipped = column.truncate || column.wrap;
+  const content = column.cell(row);
+  if (column.actions) return content;
+  const clip = cx(column.truncate ? 'ls-cell-truncate' : column.wrap && 'ls-cell-wrap');
+  if (column.mobileTitle) {
+    return clipped ? (
+      <span className={clip} title={plainText(content)}>
+        {content}
+      </span>
+    ) : (
+      content
+    );
+  }
+  const value = valueOrDash(content);
+  return (
+    <span className={cx('ls-cell-value', clip)} title={clipped ? plainText(value) : undefined}>
+      {value}
+    </span>
+  );
+}
+
+/** The `title` of a clipped cell: only plain text can be repeated as a tooltip. */
+function plainText(content: ReactNode): string | undefined {
+  return typeof content === 'string' || typeof content === 'number' ? String(content) : undefined;
 }
 
 /** An empty value reads as an em dash, never as a blank cell (UX gate, section 21.1). */
@@ -282,12 +338,16 @@ function valueOrDash(content: ReactNode): ReactNode {
 }
 
 function cellClass<Row>(column: DataTableColumn<Row>): string {
+  const width = column.width ?? (column.truncate || column.wrap ? 'md' : undefined);
   return cx(
-    column.align === 'end' && 'ls-cell-end',
+    width && `ls-col-${width}`,
+    column.numeric && 'ls-cell-numeric',
+    (column.align === 'end' || column.numeric) && 'ls-cell-end',
     column.align === 'center' && 'ls-cell-center',
     column.actions && 'ls-cell-actions',
     column.mobileTitle && 'ls-cell-title',
     column.hideBelow === 'md' && 'ls-hide-md',
     column.hideBelow === 'lg' && 'ls-hide-lg',
+    column.hideBelow === 'xl' && 'ls-hide-xl',
   );
 }

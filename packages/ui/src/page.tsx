@@ -19,6 +19,33 @@ export function Page({
 }
 
 /**
+ * A titled block of a page that is not a card, typically one list (the table is its own surface).
+ * `h2`, 16 px between the heading and its content; `count` reads after the title ("Managers 3").
+ */
+export function ListSection({
+  title,
+  count,
+  headingId,
+  children,
+}: {
+  title: string;
+  count?: number | undefined;
+  /** Optional id of the heading, used as the section's accessible name. */
+  headingId?: string | undefined;
+  children: ReactNode;
+}) {
+  return (
+    <section className="ls-list-section" aria-labelledby={headingId}>
+      <h2 className="ls-list-section-title" id={headingId}>
+        {title}
+        {count !== undefined ? <span className="ls-list-section-count">{count}</span> : null}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+/**
  * Page title row: optional breadcrumbs, one `h1`, a one-line description and the page actions at the
  * trailing edge (the primary action last). Actions wrap under the title on a narrow screen.
  */

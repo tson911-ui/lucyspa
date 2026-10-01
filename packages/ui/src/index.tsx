@@ -116,8 +116,16 @@ export type { UploadedImage } from './image-core';
 export { cx } from './cx';
 
 // Data components (Step 4): table, pagination, list toolbar, description list, tabs, URL state.
-export { DataTable } from './data-table';
-export type { DataTableColumn, DataTablePaging, DataTableSortLabels } from './data-table';
+export { DataTable, MAX_UNPAGED_ROWS } from './data-table';
+export type {
+  DataTableColumn,
+  DataTablePaging,
+  DataTablePagingOff,
+  DataTableSortLabels,
+} from './data-table';
+export { MultiValue } from './multi-value';
+export { FacetedFilter } from './faceted-filter';
+export type { FacetOption } from './faceted-filter';
 export { CursorPagination, Pagination } from './pagination';
 export type { CursorPaginationLabels, PaginationLabels } from './pagination';
 export { FilterChips, ListToolbar } from './list-toolbar';
@@ -174,7 +182,7 @@ export type { ArrangedNavGroup, ShellNavGroup, ShellNavItem } from './shell-core
 export { Card, CardHeader } from './card';
 
 // Page frame (Step 7.5b): page container, page header and the layout primitives that own every gap.
-export { Page, PageHeader } from './page';
+export { ListSection, Page, PageHeader } from './page';
 export { Cluster, Grid, Stack } from './layout';
 export type { ClusterGap, GridMin, StackGap } from './layout';
 export { DeltaLine, Stat } from './stat';

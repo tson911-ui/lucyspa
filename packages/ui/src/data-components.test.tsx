@@ -76,6 +76,7 @@ function names(markup: string): string[] {
 test('DataTable: an empty value shows an em dash; the value sits in its own span (phone card rows)', () => {
   const markup = html(
     <DataTable
+      paging={{ off: 'test' }}
       mode="server"
       columns={[
         { key: 'a', header: 'Mã', cell: () => '' },
@@ -93,7 +94,13 @@ test('DataTable: an empty value shows an em dash; the value sits in its own span
 
 test('DataTable: semantic table, labelled cells, hidden actions heading, responsive classes', () => {
   const markup = html(
-    <DataTable columns={columns} rows={people} rowKey={(row) => row.id} caption="Bảng Nhân viên" />,
+    <DataTable
+      paging={{ off: 'test' }}
+      columns={columns}
+      rows={people}
+      rowKey={(row) => row.id}
+      caption="Bảng Nhân viên"
+    />,
   );
   assert.match(markup, /<table class="ls-table">/);
   assert.match(markup, /<caption class="ls-visually-hidden">Bảng Nhân viên<\/caption>/);
@@ -120,6 +127,7 @@ test('DataTable: semantic table, labelled cells, hidden actions heading, respons
 test('DataTable client mode: sorts by the column value, exposes aria-sort, pages the loaded rows', () => {
   const sorted = html(
     <DataTable
+      paging={{ off: 'test' }}
       columns={columns}
       rows={people}
       rowKey={(row) => row.id}
@@ -133,6 +141,7 @@ test('DataTable client mode: sorts by the column value, exposes aria-sort, pages
   assert.equal((sorted.match(/aria-sort=/g) ?? []).length, 2, 'only sortable columns');
   const desc = html(
     <DataTable
+      paging={{ off: 'test' }}
       columns={columns}
       rows={people}
       rowKey={(row) => row.id}
@@ -183,6 +192,7 @@ test('DataTable server mode: shows the given page and the server total', () => {
 test('DataTable states: skeleton rows while loading, error and empty replace the table', () => {
   const loading = html(
     <DataTable
+      paging={{ off: 'test' }}
       columns={columns}
       rows={[]}
       rowKey={(row) => row.id}
@@ -197,7 +207,14 @@ test('DataTable states: skeleton rows while loading, error and empty replace the
   assert.match(loading, /<tr[^>]*ls-tr-skeleton[^>]*aria-hidden="true"/, 'skeleton is decorative');
 
   const refreshing = html(
-    <DataTable columns={columns} rows={people} rowKey={(row) => row.id} caption="t" loading />,
+    <DataTable
+      paging={{ off: 'test' }}
+      columns={columns}
+      rows={people}
+      rowKey={(row) => row.id}
+      caption="t"
+      loading
+    />,
   );
   assert.equal(
     (refreshing.match(/ls-tr-skeleton/g) ?? []).length,
@@ -208,6 +225,7 @@ test('DataTable states: skeleton rows while loading, error and empty replace the
 
   const failed = html(
     <DataTable
+      paging={{ off: 'test' }}
       columns={columns}
       rows={[]}
       rowKey={(row) => row.id}
@@ -220,6 +238,7 @@ test('DataTable states: skeleton rows while loading, error and empty replace the
 
   const empty = html(
     <DataTable
+      paging={{ off: 'test' }}
       columns={columns}
       rows={[]}
       rowKey={(row) => row.id}

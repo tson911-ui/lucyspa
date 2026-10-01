@@ -3,10 +3,11 @@
 import type { SkillListResponse, SkillResponse } from '@lucy-spa/contracts';
 import {
   DataTable,
-  FilterChips,
+  Dialog,
+  FacetedFilter,
   ListToolbar,
+  RowActions,
   SearchInput,
-  Select,
   useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
@@ -30,6 +31,7 @@ import { runMutation } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
+  Button,
   Empty,
   ErrorState,
   Field,
@@ -56,22 +58,11 @@ export function SkillsScreen() {
     resetOnChange: SKILL_PAGE_KEYS,
   });
 
+  const [editing, setEditing] = useState<SkillResponse | null>(null);
+
   const all = skills.data?.skills ?? [];
   const rows = filterSkills(all, list);
   const active = (list.q ? 1 : 0) + (list.status ? 1 : 0);
-  const chips = [
-    ...(list.q ? [{ key: 'q', label: `“${list.q}”` }] : []),
-    ...(list.status
-      ? [
-          {
-            key: 'status',
-            label: `${t.common.status}: ${
-              list.status === 'active' ? t.common.active : t.common.inactive
-            }`,
-          },
-        ]
-      : []),
-  ];
   const columns: DataTableColumn<SkillResponse>[] = [
     {
       key: 'code',
@@ -84,6 +75,8 @@ export function SkillsScreen() {
       key: 'nameVi',
       header: t.skills.nameVi,
       mobileTitle: true,
+      truncate: true,
+      width: 'lg',
       sortable: true,
       sortValue: (skill) => skillSortValue(skill, 'nameVi'),
       cell: (skill) => skill.nameVi,
@@ -91,7 +84,9 @@ export function SkillsScreen() {
     {
       key: 'nameEn',
       header: t.skills.nameEn,
-      hideBelow: 'md',
+      hideBelow: 'xl',
+      truncate: true,
+      width: 'lg',
       sortable: true,
       sortValue: (skill) => skillSortValue(skill, 'nameEn'),
       cell: (skill) => skill.nameEn,
@@ -113,7 +108,19 @@ export function SkillsScreen() {
             key: 'actions',
             header: t.common.actions,
             actions: true,
-            cell: (skill: SkillResponse) => <SkillEdit skill={skill} reload={skills.reload} />,
+            cell: (skill: SkillResponse) => (
+              <RowActions
+                menuLabel={fill(t.common.list.actionsFor, { name: skill.nameVi })}
+                items={[
+                  {
+                    id: 'edit',
+                    label: t.common.edit,
+                    icon: 'edit',
+                    onSelect: () => setEditing(skill),
+                  },
+                ]}
+              />
+            ),
           },
         ]
       : []),
@@ -123,76 +130,74 @@ export function SkillsScreen() {
     <>
       <PageHeader title={t.skills.title} />
       {manage ? <SkillCreate reload={skills.reload} /> : null}
-      <Section title={t.skills.title}>
-        {skills.data && all.length > 0 ? (
-          <ListToolbar
-            labels={toolbarLabels(t)}
-            activeFilters={active}
-            resultCount={resultsText(t, rows.length)}
-            onReset={() => updateList({ q: '', status: '' })}
-            search={
-              <SearchInput
-                id="skill-q"
-                value={list.q}
-                label={t.skills.search}
-                placeholder={t.skills.search}
-                clearLabel={t.common.list.clearSearch}
-                onSearch={(q) => updateList({ q }, { replace: true })}
-              />
-            }
-            filters={
-              <Field id="skill-status" label={t.common.status}>
-                <Select
-                  id="skill-status"
-                  value={list.status}
-                  placeholder={t.common.all}
-                  options={[
-                    { value: 'active', label: t.common.active },
-                    { value: 'inactive', label: t.common.inactive },
-                  ]}
-                  onChange={(event) => updateList({ status: event.target.value })}
-                />
-              </Field>
-            }
-            chips={
-              <FilterChips
-                chips={chips}
-                removeLabel={t.common.list.removeFilter}
-                onRemove={(key) => updateList(key === 'q' ? { q: '' } : { status: '' })}
-              />
-            }
-          />
-        ) : null}
-        <DataTable
-          mode="client"
-          caption={fill(t.common.list.table, { list: t.skills.title })}
-          columns={columns}
-          rows={rows}
-          rowKey={(skill) => skill.id}
-          sort={{ key: list.sort, direction: list.dir === 'desc' ? 'desc' : 'asc' }}
-          onSortChange={(sort) => updateList({ sort: sort.key, dir: sort.direction })}
-          sortLabels={sortLabels(t)}
-          loading={skills.loading}
-          loadingLabel={t.common.loading}
-          error={
-            skills.error ? (
-              <ErrorState error={skills.error} t={t} onRetry={() => void skills.reload()} />
-            ) : undefined
+      {skills.data && all.length > 0 ? (
+        <ListToolbar
+          labels={toolbarLabels(t)}
+          activeFilters={active}
+          resultCount={resultsText(t, rows.length)}
+          onReset={() => updateList({ q: '', status: '' })}
+          reload={{ label: t.common.reload, onClick: () => void skills.reload() }}
+          search={
+            <SearchInput
+              id="skill-q"
+              value={list.q}
+              label={t.skills.search}
+              placeholder={t.skills.search}
+              clearLabel={t.common.list.clearSearch}
+              onSearch={(q) => updateList({ q }, { replace: true })}
+            />
           }
-          empty={
-            skills.data ? (
-              <Empty>{all.length === 0 ? t.common.empty : t.skills.noMatch}</Empty>
-            ) : undefined
+          filters={
+            <FacetedFilter
+              label={t.common.status}
+              clearLabel={t.common.list.clearChoice}
+              options={[
+                { value: 'active', label: t.common.active },
+                { value: 'inactive', label: t.common.inactive },
+              ]}
+              selected={list.status ? [list.status] : []}
+              onChange={([status]) => updateList({ status: status ?? '' })}
+            />
           }
-          paging={{
-            page: list.page,
-            pageSize: list.pageSize,
-            onPageChange: (page) => updateList({ page }),
-            onPageSizeChange: (pageSize) => updateList({ pageSize }),
-            labels: paginationLabels(t, t.skills.title),
-          }}
         />
-      </Section>
+      ) : null}
+      <DataTable
+        mode="client"
+        caption={fill(t.common.list.table, { list: t.skills.title })}
+        columns={columns}
+        rows={rows}
+        rowKey={(skill) => skill.id}
+        sort={{ key: list.sort, direction: list.dir === 'desc' ? 'desc' : 'asc' }}
+        onSortChange={(sort) => updateList({ sort: sort.key, dir: sort.direction })}
+        sortLabels={sortLabels(t)}
+        loading={skills.loading}
+        loadingLabel={t.common.loading}
+        error={
+          skills.error ? (
+            <ErrorState error={skills.error} t={t} onRetry={() => void skills.reload()} />
+          ) : undefined
+        }
+        empty={
+          skills.data ? (
+            <Empty>{all.length === 0 ? t.common.empty : t.skills.noMatch}</Empty>
+          ) : undefined
+        }
+        paging={{
+          page: list.page,
+          pageSize: list.pageSize,
+          onPageChange: (page) => updateList({ page }),
+          onPageSizeChange: (pageSize) => updateList({ pageSize }),
+          labels: paginationLabels(t, t.skills.title),
+        }}
+      />
+      {editing ? (
+        <SkillEdit
+          key={editing.id}
+          skill={editing}
+          reload={skills.reload}
+          onClose={() => setEditing(null)}
+        />
+      ) : null}
     </>
   );
 }
@@ -261,7 +266,16 @@ function SkillCreate({ reload }: { reload: () => Promise<void> }) {
   );
 }
 
-function SkillEdit({ skill, reload }: { skill: SkillResponse; reload: () => Promise<void> }) {
+/** Edit and (de)activate one skill. Opened from the row menu; 7.5d moves it onto `FormDialog`. */
+function SkillEdit({
+  skill,
+  reload,
+  onClose,
+}: {
+  skill: SkillResponse;
+  reload: () => Promise<void>;
+  onClose: () => void;
+}) {
   const { api, t } = useWorkforce();
   const [form, setForm] = useState({ nameVi: skill.nameVi, nameEn: skill.nameEn, reason: '' });
   const submit = useSubmit();
@@ -282,7 +296,10 @@ function SkillEdit({ skill, reload }: { skill: SkillResponse; reload: () => Prom
         ),
       t.common.saved,
     );
-    if (ok) await reload();
+    if (ok) {
+      await reload();
+      onClose();
+    }
   }
 
   async function toggle() {
@@ -299,13 +316,36 @@ function SkillEdit({ skill, reload }: { skill: SkillResponse; reload: () => Prom
         ),
       t.common.saved,
     );
-    if (ok) await reload();
+    if (ok) {
+      await reload();
+      onClose();
+    }
   }
 
   return (
-    <details className="wf-disclosure">
-      <summary>{t.common.edit}</summary>
-      <form className="wf-inline-form" onSubmit={(event) => void rename(event)}>
+    <Dialog
+      onClose={onClose}
+      title={`${t.common.edit}: ${skill.code}`}
+      closeLabel={t.common.close}
+      busy={submit.pending}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={submit.pending}>
+            {t.common.cancel}
+          </Button>
+          <Button
+            type="submit"
+            form={`${id}-form`}
+            variant="primary"
+            loading={submit.pending}
+            disabled={form.nameVi === skill.nameVi && form.nameEn === skill.nameEn}
+          >
+            {submit.pending ? t.common.saving : t.common.save}
+          </Button>
+        </>
+      }
+    >
+      <form id={`${id}-form`} className="wf-form" onSubmit={(event) => void rename(event)}>
         <Field id={`${id}-vi`} label={t.skills.nameVi} required>
           <input
             id={`${id}-vi`}
@@ -324,12 +364,6 @@ function SkillEdit({ skill, reload }: { skill: SkillResponse; reload: () => Prom
             onChange={(event) => setForm({ ...form, nameEn: event.target.value })}
           />
         </Field>
-        <SubmitButton
-          pending={submit.pending}
-          label={t.common.save}
-          pendingLabel={t.common.saving}
-          disabled={form.nameVi === skill.nameVi && form.nameEn === skill.nameEn}
-        />
         <Field id={`${id}-reason`} label={t.common.reason}>
           <input
             id={`${id}-reason`}
@@ -338,16 +372,17 @@ function SkillEdit({ skill, reload }: { skill: SkillResponse; reload: () => Prom
             onChange={(event) => setForm({ ...form, reason: event.target.value })}
           />
         </Field>
-        <button
-          type="button"
-          className="wf-button wf-button-quiet"
-          disabled={submit.pending || form.reason.trim() === ''}
-          onClick={() => void toggle()}
-        >
-          {skill.isActive ? t.common.deactivate : t.common.activate}
-        </button>
         <FormFeedback error={submit.error} success={submit.success} t={t} />
+        <div>
+          <Button
+            variant={skill.isActive ? 'danger-outline' : 'secondary'}
+            disabled={submit.pending || form.reason.trim() === ''}
+            onClick={() => void toggle()}
+          >
+            {skill.isActive ? t.common.deactivate : t.common.activate}
+          </Button>
+        </div>
       </form>
-    </details>
+    </Dialog>
   );
 }

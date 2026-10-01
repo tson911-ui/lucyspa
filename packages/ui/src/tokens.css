@@ -103,6 +103,8 @@
   --ls-sidebar-w-collapsed: 72px;
   --ls-topbar-h: 3.5rem;
   --ls-content-max: 1280px;
+  /* Widest a clipped table cell grows; a `.ls-col-*` class narrows it, otherwise the cell's own width. */
+  --ls-col-w: 100%;
   --ls-form-max: 720px;
 
   /* Motion (admin: opacity/transform/background only) and stacking */

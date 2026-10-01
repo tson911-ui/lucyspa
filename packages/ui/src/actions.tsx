@@ -5,7 +5,6 @@ import { Button, ButtonLink } from './button';
 import { cx } from './cx';
 import { arrangeMenu, Menu, type MenuItem } from './menu';
 import { orderActions } from './menu-core';
-import type { IconName } from './icons';
 
 // Where record actions live (docs/UXUI_REDESIGN_DESIGN.md 10.3 and 10.4). The order is fixed by the
 // component, so a screen cannot place Delete before Edit.
@@ -71,38 +70,23 @@ export function ActionBar({
 }
 
 /**
- * Last cell of a table row: `Edit` (or `View` for read-only authority), then a `...` menu with the
- * secondary actions and, after a divider, the destructive one. Edit shows icon and text on wide
- * screens and only the icon on a phone (the text stays available to assistive technology).
+ * Last cell of a table row (plan 7.5c, contract 10.4): one `⋮` button that opens the row's menu.
+ * Edit (or View for read-only authority) comes first, then the safe actions, then, after a divider,
+ * the destructive one in danger text; the order is fixed by `arrangeMenu`. The name cell is the link
+ * to the detail page, so there is no second visible button. No items renders nothing.
  */
 export function RowActions({
-  editLabel,
-  editIcon = 'edit',
-  onEdit,
-  editHref,
   menuLabel,
-  items = [],
+  items,
 }: {
-  editLabel: string;
-  editIcon?: IconName | undefined;
-  onEdit?: (() => void) | undefined;
-  editHref?: string | undefined;
-  /** Accessible name of the `...` menu, e.g. "More actions for Nail Gel". */
+  /** Accessible name of the `⋮` button, e.g. "Actions for Nail Gel". */
   menuLabel: string;
-  items?: readonly MenuItem[] | undefined;
+  items: readonly MenuItem[];
 }) {
+  if (items.length === 0) return null;
   return (
     <div className="ls-row-actions">
-      {editHref ? (
-        <ButtonLink href={editHref} variant="ghost" icon={editIcon} className="ls-row-edit">
-          {editLabel}
-        </ButtonLink>
-      ) : onEdit ? (
-        <Button variant="ghost" icon={editIcon} onClick={onEdit} className="ls-row-edit">
-          {editLabel}
-        </Button>
-      ) : null}
-      {items.length > 0 ? <Menu label={menuLabel} items={arrangeMenu(items)} /> : null}
+      <Menu label={menuLabel} items={arrangeMenu(items)} icon="more-vertical" />
     </div>
   );
 }

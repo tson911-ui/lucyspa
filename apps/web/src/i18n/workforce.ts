@@ -70,6 +70,10 @@ const vi = {
       sortDesc: '{column} (giảm dần)',
       pagesOf: 'Trang của danh sách {list}',
       table: 'Bảng {list}',
+      clearChoice: 'Bỏ chọn',
+      selectedCount: '{count} đã chọn',
+      showAllValues: 'Xem cả {count} mục',
+      actionsFor: 'Thao tác cho {name}',
     },
   },
   errors: {
@@ -1735,6 +1739,10 @@ const en: Dictionary = {
       sortDesc: '{column} (descending)',
       pagesOf: '{list} pages',
       table: '{list} table',
+      clearChoice: 'Clear',
+      selectedCount: '{count} selected',
+      showAllValues: 'Show all {count}',
+      actionsFor: 'Actions for {name}',
     },
   },
   errors: {

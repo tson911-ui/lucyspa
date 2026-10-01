@@ -253,23 +253,24 @@ test('12–14. empty and filtered states per section', () => {
     calls[0]?.url,
     `/api/v1/employees?group=EMPLOYEES&page=2&limit=${DIRECTORY_PAGE_SIZE}&q=hoa&branchId=${A}&status=INACTIVE`,
   );
-  // The search form and status filter (incl. INACTIVE) are unchanged.
+  // The search box and the two filter buttons exist; the status options (incl. INACTIVE) are the
+  // panel of the status button (rendered when it opens, see data-frame tests in packages/ui).
   const screen = render(<EmployeesScreen />, owner);
-  for (const id of ['emp-q', 'emp-branch', 'emp-status']) assert.ok(screen.includes(`id="${id}"`));
-  assert.ok(screen.includes(`value="INACTIVE"`));
+  assert.ok(screen.includes('id="emp-q"'));
+  assert.ok(
+    screen.includes(vi.employees.branchFilter) && screen.includes(vi.employees.statusFilter),
+  );
+  assert.ok(Object.keys(vi.employees.statuses).includes('INACTIVE'));
 });
 
 test('15. the Owner has a reachable "Thêm nhân sự / Add employee" action', () => {
   const vi_ = render(<EmployeesScreen />, owner);
   assert.match(
     vi_,
-    /<button type="button" class="wf-button wf-button-primary"[^>]*>Thêm nhân sự<\/button>/,
+    /aria-controls="add-workforce-member"[^>]*ls-btn-primary[^>]*>.*?Thêm nhân sự<\/span><\/button>/,
   );
   const en_ = render(<EmployeesScreen />, owner, 'en');
-  assert.match(
-    en_,
-    /<button type="button" class="wf-button wf-button-primary"[^>]*>Add employee<\/button>/,
-  );
+  assert.match(en_, /aria-controls="add-workforce-member"[^>]*>.*?Add employee<\/span><\/button>/);
   assert.equal(en.employees.add, 'Add employee');
   // Not for readers without CREATE_EMPLOYEES.
   assert.doesNotMatch(

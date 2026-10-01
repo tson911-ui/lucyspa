@@ -24,6 +24,8 @@ export interface WorkforceContextValue {
   api: WorkforceApi;
   /** Base path of the workforce area for this locale, e.g. `/vi/workforce`. */
   base: string;
+  /** Client-side navigation for row menus (a menu item is not a link); absent in component tests. */
+  navigate?: ((path: string) => void) | undefined;
 }
 
 /** Exported for component tests; application code uses `WorkforceProvider`. */
@@ -72,8 +74,14 @@ export function WorkforceProvider({ locale, children }: { locale: Locale; childr
     [router, base],
   );
   const value = useMemo(
-    () => ({ locale, t: getWorkforceDictionary(locale), api, base }),
-    [locale, api, base],
+    () => ({
+      locale,
+      t: getWorkforceDictionary(locale),
+      api,
+      base,
+      navigate: (path: string) => router.push(path),
+    }),
+    [locale, api, base, router],
   );
   const notice = useMemo(() => ({ lost, dismiss: () => setLost(false) }), [lost]);
   return (

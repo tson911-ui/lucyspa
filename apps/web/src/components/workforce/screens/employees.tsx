@@ -11,14 +11,14 @@ import type {
 } from '@lucy-spa/contracts';
 import {
   DataTable,
-  FilterChips,
+  FacetedFilter,
+  ListSection,
   ListToolbar,
+  MultiValue,
+  RowActions,
   SearchInput,
-  Select,
-  buttonClass,
   useUrlState,
   type DataTableColumn,
-  type FilterChip,
 } from '@lucy-spa/ui';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -45,9 +45,9 @@ import { ManagementLevels, useManagementLevelVisible } from './management-levels
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
+  Button,
   Empty,
   ErrorState,
-  Field,
   Loading,
   Notice,
   PageHeader,
@@ -97,37 +97,15 @@ export function EmployeesScreen() {
   }
 
   const branchList = [...(branches.data?.values() ?? [])];
-  const chips: FilterChip[] = [
-    ...(list.q ? [{ key: 'q', label: `“${list.q}”` }] : []),
-    ...(list.branch
-      ? [
-          {
-            key: 'branch',
-            label: `${t.employees.branchFilter}: ${
-              branchList.find((branch) => branch.id === list.branch)?.name ?? list.branch
-            }`,
-          },
-        ]
-      : []),
-    ...(list.status
-      ? [
-          {
-            key: 'status',
-            label: `${t.employees.statusFilter}: ${
-              t.employees.statuses[list.status as EmployeeStatus]
-            }`,
-          },
-        ]
-      : []),
-  ];
+  const activeFilters = (list.q ? 1 : 0) + (list.branch ? 1 : 0) + (list.status ? 1 : 0);
 
   return (
     <>
       <PageHeader title={t.employees.title}>
         {offerCreate && !adding ? (
-          <button
-            type="button"
-            className="wf-button wf-button-primary"
+          <Button
+            variant="primary"
+            icon="plus"
             aria-controls="add-workforce-member"
             aria-expanded={false}
             onClick={() => {
@@ -136,7 +114,7 @@ export function EmployeesScreen() {
             }}
           >
             {t.employees.add}
-          </button>
+          </Button>
         ) : null}
       </PageHeader>
       {created ? <CreatedNotice {...created} /> : null}
@@ -157,55 +135,43 @@ export function EmployeesScreen() {
           </Section>
         </div>
       ) : null}
-      <Section title={t.common.search}>
-        <ListToolbar
-          labels={toolbarLabels(t)}
-          activeFilters={chips.length}
-          onReset={() => updateList({ q: '', branch: '', status: '' })}
-          search={
-            <SearchInput
-              id="emp-q"
-              value={list.q}
-              label={t.employees.search}
-              placeholder={t.employees.search}
-              clearLabel={t.common.list.clearSearch}
-              onSearch={(q) => updateList({ q }, { replace: true })}
+      <ListToolbar
+        labels={toolbarLabels(t)}
+        activeFilters={activeFilters}
+        onReset={() => updateList({ q: '', branch: '', status: '' })}
+        reload={{ label: t.common.reload, onClick: () => setRefresh((value) => value + 1) }}
+        search={
+          <SearchInput
+            id="emp-q"
+            value={list.q}
+            label={t.employees.search}
+            placeholder={t.employees.search}
+            clearLabel={t.common.list.clearSearch}
+            onSearch={(q) => updateList({ q }, { replace: true })}
+          />
+        }
+        filters={
+          <>
+            <FacetedFilter
+              label={t.employees.branchFilter}
+              clearLabel={t.common.list.clearChoice}
+              options={branchList.map((branch) => ({ value: branch.id, label: branch.name }))}
+              selected={list.branch ? [list.branch] : []}
+              onChange={([branch]) => updateList({ branch: branch ?? '' })}
             />
-          }
-          filters={
-            <>
-              <Field id="emp-branch" label={t.employees.branchFilter}>
-                <Select
-                  id="emp-branch"
-                  value={list.branch}
-                  placeholder={t.common.all}
-                  options={branchList.map((branch) => ({ value: branch.id, label: branch.name }))}
-                  onChange={(event) => updateList({ branch: event.target.value })}
-                />
-              </Field>
-              <Field id="emp-status" label={t.employees.statusFilter}>
-                <Select
-                  id="emp-status"
-                  value={list.status}
-                  placeholder={t.common.all}
-                  options={STATUSES.map((status) => ({
-                    value: status,
-                    label: t.employees.statuses[status],
-                  }))}
-                  onChange={(event) => updateList({ status: event.target.value })}
-                />
-              </Field>
-            </>
-          }
-          chips={
-            <FilterChips
-              chips={chips}
-              removeLabel={t.common.list.removeFilter}
-              onRemove={(key) => updateList({ [key]: '' })}
+            <FacetedFilter
+              label={t.employees.statusFilter}
+              clearLabel={t.common.list.clearChoice}
+              options={STATUSES.map((status) => ({
+                value: status,
+                label: t.employees.statuses[status],
+              }))}
+              selected={list.status ? [list.status] : []}
+              onChange={([status]) => updateList({ status: status ?? '' })}
             />
-          }
-        />
-      </Section>
+          </>
+        }
+      />
       {GROUPS.map((group) => (
         <DirectoryGroupSection
           key={group}
@@ -329,7 +295,7 @@ export function DirectoryGroupView({
   onPageSize?: (pageSize: number) => void;
   reload: () => Promise<void>;
 }) {
-  const { t, base, locale } = useWorkforce();
+  const { t, base, locale, navigate } = useWorkforce();
   const text = organizationDictionary(locale);
   const texts = t.employees.directory;
   const section = SECTION_TEXT[group];
@@ -348,8 +314,14 @@ export function DirectoryGroupView({
       key: 'fullName',
       header: t.employees.fullName,
       mobileTitle: true,
+      truncate: true,
+      width: 'md',
       cell: (employee) => (
-        <Link className="ls-link" href={`${base}/employees/${employee.id}`}>
+        <Link
+          className="ls-link"
+          href={`${base}/employees/${employee.id}`}
+          title={employee.fullName}
+        >
           {employee.fullName}
         </Link>
       ),
@@ -357,16 +329,23 @@ export function DirectoryGroupView({
     {
       key: 'branch',
       header: t.common.branch,
-      hideBelow: 'md',
-      cell: (employee) =>
-        employee.branchIds
-          .map((id) => branchLabel(id, branches as Map<string, BranchSummary> | null, t))
-          .join(', ') || '—',
+      hideBelow: 'xl',
+      cell: (employee) => (
+        <MultiValue
+          values={employee.branchIds.map((id) =>
+            branchLabel(id, branches as Map<string, BranchSummary> | null, t),
+          )}
+          moreLabel={t.common.list.showAllValues}
+          listLabel={t.common.branch}
+        />
+      ),
     },
     {
       key: 'title',
       header: t.employees.titleColumn,
-      hideBelow: 'lg',
+      hideBelow: 'xl',
+      truncate: true,
+      width: 'sm',
       cell: (employee) => directoryTitle(employee, t, locale),
     },
     ...(showLevel
@@ -374,7 +353,7 @@ export function DirectoryGroupView({
           {
             key: 'level',
             header: text.level,
-            hideBelow: 'lg' as const,
+            hideBelow: 'xl' as const,
             cell: (employee: EmployeeDirectoryEntry) => (
               <ManagementLevels
                 appointments={employee.organizationAppointments}
@@ -398,15 +377,23 @@ export function DirectoryGroupView({
       header: t.common.actions,
       actions: true,
       cell: (employee) => (
-        <Link className={buttonClass('secondary')} href={`${base}/employees/${employee.id}`}>
-          {t.common.details}
-        </Link>
+        <RowActions
+          menuLabel={fill(t.common.list.actionsFor, { name: employee.fullName })}
+          items={[
+            {
+              id: 'view',
+              label: t.common.details,
+              icon: 'eye',
+              onSelect: () => navigate?.(`${base}/employees/${employee.id}`),
+            },
+          ]}
+        />
       ),
     },
   ];
 
   return (
-    <Section title={title}>
+    <ListSection title={title}>
       <DataTable
         mode="server"
         caption={fill(t.common.list.table, { list: title })}
@@ -426,6 +413,6 @@ export function DirectoryGroupView({
           labels: paginationLabels(t, title),
         }}
       />
-    </Section>
+    </ListSection>
   );
 }

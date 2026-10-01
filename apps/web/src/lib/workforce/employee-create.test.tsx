@@ -333,8 +333,14 @@ test('12. without MANAGE_EMPLOYEE_PAY the official choice is unavailable', () =>
 
 test('14. the directory search and list controls are unchanged', () => {
   const markup = render(<EmployeesScreen />, employee([['VIEW_EMPLOYEES', 'A']]));
-  for (const id of ['emp-q', 'emp-branch', 'emp-status'])
-    assert.ok(markup.includes(`id="${id}"`), id);
+  assert.ok(markup.includes('id="emp-q"'), 'search box');
+  // The filters are buttons that name themselves (no label above), plus a reload icon button.
+  for (const label of [vi.employees.branchFilter, vi.employees.statusFilter])
+    assert.match(
+      markup,
+      new RegExp(`aria-haspopup="dialog"[^>]*>(?:<svg.*?</svg>)?<span[^>]*>${label}<`),
+    );
+  assert.ok(markup.includes(`aria-label="${vi.common.reload}"`));
   assert.match(markup, /role="search"/);
   assert.ok(markup.includes(vi.employees.title));
   const none = render(
