@@ -17,10 +17,14 @@ import { Popover } from './popover';
 import {
   TABLET_QUERY,
   arrangeNav,
+  currentGroupId,
   initials,
+  readNavGroupState,
   readSidebarCollapsed,
+  writeNavGroupState,
   writeSidebarCollapsed,
   type ArrangedNavGroup,
+  type NavGroupState,
   type ShellNavGroup,
 } from './shell-core';
 import { PHONE_QUERY, useMediaQuery } from './use-media-query';
@@ -213,18 +217,69 @@ export function SidebarNav({
   onNavigate?: (() => void) | undefined;
 }) {
   const prefix = useId();
+  const currentId = currentGroupId(groups);
+  // Stored state is read after hydration so the server and first client render agree: until then only
+  // the group with the current page is open.
+  const [stored, setStored] = useState<NavGroupState>({});
+  const loaded = useRef(false);
+
+  useEffect(() => {
+    setStored((previous) => ({
+      ...readNavGroupState(),
+      ...previous,
+      ...(currentId ? { [currentId]: true } : {}),
+    }));
+    loaded.current = true;
+    // Only on mount; later page changes are handled by the next effect.
+  }, []);
+
+  // The group holding the current page opens itself when the page changes.
+  useEffect(() => {
+    if (!currentId) return;
+    setStored((previous) =>
+      previous[currentId] === true ? previous : { ...previous, [currentId]: true },
+    );
+  }, [currentId]);
+
+  useEffect(() => {
+    if (loaded.current) writeNavGroupState(stored);
+  }, [stored]);
+
+  const toggle = (id: string, open: boolean) =>
+    setStored((previous) => ({ ...previous, [id]: !open }));
+
   return (
     <nav className="ls-nav" aria-label={label} data-rail={rail}>
       {groups.map((group) => {
         const headingId = `${prefix}-${group.id}`;
+        const panelId = `${prefix}-${group.id}-items`;
+        const open = group.flat || (stored[group.id] ?? group.id === currentId);
         return (
           <div className="ls-nav-group" key={group.id}>
-            {group.flat ? null : (
+            {group.flat ? null : rail ? (
+              // The icon rail has no headers; the name stays for assistive technology.
               <p className="ls-nav-heading" id={headingId}>
                 {group.label}
               </p>
+            ) : (
+              <button
+                type="button"
+                className="ls-nav-heading ls-nav-heading-button"
+                id={headingId}
+                aria-expanded={open}
+                aria-controls={panelId}
+                onClick={() => toggle(group.id, open)}
+              >
+                <span className="ls-nav-heading-text">{group.label}</span>
+                <Icon name="chevron-down" size={16} className="ls-nav-chevron" />
+              </button>
             )}
-            <ul className="ls-nav-list" {...(group.flat ? {} : { 'aria-labelledby': headingId })}>
+            <ul
+              className="ls-nav-list"
+              id={panelId}
+              data-open={open}
+              {...(group.flat ? {} : { 'aria-labelledby': headingId })}
+            >
               {group.items.map((item) => (
                 <li key={item.id}>
                   <LinkComponent

@@ -98,6 +98,99 @@ test('desktop: grouped sidebar, hidden empty group, flat single item, current pa
   view.unmount();
 });
 
+const accordionNav: ShellNavGroup[] = [
+  {
+    id: 'operations',
+    label: 'Vận hành',
+    items: [
+      { id: 'board', label: 'Lịch hẹn', href: '/w/board', icon: 'calendar' },
+      { id: 'walkin', label: 'Khách vãng lai', href: '/w/walk-in', icon: 'user-plus' },
+    ],
+  },
+  {
+    id: 'people',
+    label: 'Nhân sự',
+    items: [
+      { id: 'employees', label: 'Nhân viên', href: '/w/employees', icon: 'users', current: true },
+      { id: 'teams', label: 'Đội nhóm', href: '/w/teams', icon: 'users' },
+    ],
+  },
+];
+
+test('sidebar groups: accordion buttons, the current group opens, several stay open, state is remembered', () => {
+  window.localStorage.clear();
+  const view = mount(
+    <ui.SidebarNav groups={ui.arrangeNav(accordionNav)} label="Điều hướng nhân sự" />,
+  );
+  const headers = () => $$(view.container, 'button.ls-nav-heading') as HTMLElement[];
+  const [operations, people] = headers();
+  assert.equal(headers().length, 2, 'every multi-item group has a header button');
+  assert.equal(operations!.getAttribute('aria-expanded'), 'false', 'other groups start closed');
+  assert.equal(
+    people!.getAttribute('aria-expanded'),
+    'true',
+    'the group with the current page is open',
+  );
+  assert.equal(
+    $(view.container, '.ls-nav-list[data-open="true"]')!.id,
+    people!.getAttribute('aria-controls'),
+    'the button controls its list',
+  );
+  assert.equal(
+    $$(view.container, '.ls-nav-list')
+      .map((list) => list.getAttribute('data-open'))
+      .join(),
+    'false,true',
+  );
+  assert.ok($(view.container, '.ls-nav-chevron'), 'a chevron on each header');
+
+  click(operations!);
+  assert.deepEqual(
+    headers().map((header) => header.getAttribute('aria-expanded')),
+    ['true', 'true'],
+    'several groups may be open at once',
+  );
+  assert.deepEqual(JSON.parse(window.localStorage.getItem(ui.SIDEBAR_GROUPS_KEY)!), {
+    operations: true,
+    people: true,
+  });
+  click(people!);
+  assert.equal(
+    headers()[1]!.getAttribute('aria-expanded'),
+    'false',
+    'the current group can be closed',
+  );
+  view.unmount();
+
+  // A new visit restores what was remembered, and the current group opens itself again.
+  window.localStorage.setItem(
+    ui.SIDEBAR_GROUPS_KEY,
+    JSON.stringify({ operations: true, people: false }),
+  );
+  const again = mount(
+    <ui.SidebarNav groups={ui.arrangeNav(accordionNav)} label="Điều hướng nhân sự" />,
+  );
+  assert.deepEqual(
+    ($$(again.container, 'button.ls-nav-heading') as HTMLElement[]).map((header) =>
+      header.getAttribute('aria-expanded'),
+    ),
+    ['true', 'true'],
+    'remembered open group, and the current page forces its own group open',
+  );
+  again.unmount();
+});
+
+test('sidebar groups: the icon rail has no header buttons and shows every item', () => {
+  window.localStorage.clear();
+  const view = mount(
+    <ui.SidebarNav groups={ui.arrangeNav(accordionNav)} label="Điều hướng nhân sự" rail />,
+  );
+  assert.equal($$(view.container, 'button').length, 0);
+  assert.equal($$(view.container, 'p.ls-nav-heading').length, 2, 'names stay for assistive tech');
+  assert.equal($$(view.container, 'a.ls-nav-link').length, 4);
+  view.unmount();
+});
+
 test('desktop: the sidebar collapses to an icon rail, keeps labels for assistive tech and remembers it', () => {
   window.localStorage.clear();
   const view = mount(shell());
@@ -173,20 +266,20 @@ test('tablet: an icon rail that expands as an overlay; Escape and the scrim clos
 
 test('ThemeToggle: one tab stop, arrows select, the choice is stored in the cookie', () => {
   window.document.cookie = 'ls-theme=; Max-Age=0; Path=/';
-  const toggleLabels = { group: 'Giao diện', light: 'Sáng', dark: 'Tối', system: 'Theo hệ thống' };
+  const toggleLabels = { group: 'Giao diện', light: 'Sáng', dark: 'Tối', auto: 'Tự động theo giờ' };
   const view = mount(<ui.ThemeToggle labels={toggleLabels} />);
   const group = $(view.container, '[role="radiogroup"]')!;
   assert.equal(group.getAttribute('aria-label'), 'Giao diện');
   const radios = $$(group, '[role="radio"]') as HTMLElement[];
   assert.deepEqual(
     radios.map((radio) => radio.getAttribute('aria-label')),
-    ['Sáng', 'Tối', 'Theo hệ thống'],
+    ['Sáng', 'Tối', 'Tự động theo giờ'],
     'icon-only options still have names',
   );
   assert.deepEqual(
     radios.map((radio) => radio.getAttribute('aria-checked')),
     ['false', 'false', 'true'],
-    'no cookie means System',
+    'no cookie means Auto by time',
   );
   assert.deepEqual(
     radios.map((radio) => radio.getAttribute('tabindex')),
@@ -203,8 +296,8 @@ test('ThemeToggle: one tab stop, arrows select, the choice is stored in the cook
   click(radios[2]!);
   assert.equal(
     window.document.documentElement.getAttribute('data-theme'),
-    null,
-    'System clears it',
+    ui.resolveTheme('auto', new Date()),
+    'Auto by time follows the local hour',
   );
   assert.doesNotMatch(window.document.cookie, /ls-theme=/);
   view.unmount();
@@ -214,10 +307,10 @@ test('ThemeToggle with labels shows the text (user menu on phones)', () => {
   const markup = renderToStaticMarkup(
     <ui.ThemeToggle
       withLabels
-      labels={{ group: 'Giao diện', light: 'Sáng', dark: 'Tối', system: 'Theo hệ thống' }}
+      labels={{ group: 'Giao diện', light: 'Sáng', dark: 'Tối', auto: 'Tự động theo giờ' }}
     />,
   );
-  assert.ok(markup.includes('Theo hệ thống') && markup.includes('ls-theme-toggle-labeled'));
+  assert.ok(markup.includes('Tự động theo giờ') && markup.includes('ls-theme-toggle-labeled'));
 });
 
 test('UserMenu: opens on click, shows name and title, closes on Escape and when a link is chosen', () => {
@@ -766,4 +859,29 @@ test('shell styles: tokens only, rail and overlay on tablet, phone hides the sid
     /box-shadow:\s*inset/,
     'edge bar, not color only',
   );
+});
+
+test('sidebar styles: solid red hover and current page, accordion header, rail shows every item, ring outside', () => {
+  const hover = block(shellCss, '.ls-nav-link:hover,\n.ls-sidebar-toggle:hover');
+  assert.match(hover, /color:\s*var\(--ls-nav-hover-text\)/);
+  assert.match(hover, /background:\s*var\(--ls-nav-hover-bg\)/);
+  const active = block(shellCss, ".ls-nav-link[aria-current='page']");
+  assert.match(active, /background:\s*var\(--ls-nav-active-bg\)/);
+  assert.match(active, /font-weight:\s*600/);
+  const heading = block(shellCss, '.ls-nav-heading');
+  assert.match(heading, /color:\s*var\(--ls-brand\)/);
+  assert.match(heading, /font-weight:\s*600/);
+  assert.match(heading, /text-transform:\s*uppercase/);
+  assert.match(block(shellCss, '.ls-nav-heading-button'), /min-height:\s*var\(--ls-control-h\)/);
+  assert.match(
+    block(shellCss, ".ls-nav-heading-button[aria-expanded='false'] .ls-nav-chevron"),
+    /rotate\(-90deg\)/,
+  );
+  assert.match(block(shellCss, '.ls-nav-chevron'), /transition:[^;]*var\(--ls-dur-fast\)/);
+  assert.match(block(shellCss, ".ls-nav-list[data-open='false']"), /display:\s*none/);
+  assert.match(
+    shellCss,
+    /\.ls-sidebar\[data-rail='true'\] \.ls-nav-list\[data-open='false'\] \{\s*display:\s*grid/,
+  );
+  assert.match(shellCss, /\.ls-nav-heading-button:focus-visible \{\s*outline-offset:\s*2px/);
 });

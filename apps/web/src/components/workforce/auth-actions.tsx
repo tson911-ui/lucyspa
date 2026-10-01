@@ -10,7 +10,7 @@ export function themeLabels(t: WorkforceDictionary): ThemeToggleLabels {
     group: t.nav.appearance,
     light: t.nav.themeLight,
     dark: t.nav.themeDark,
-    system: t.nav.themeSystem,
+    auto: t.nav.themeAuto,
   };
 }
 

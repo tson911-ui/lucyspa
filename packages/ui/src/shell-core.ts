@@ -80,6 +80,43 @@ export function writeSidebarCollapsed(
   }
 }
 
+/** Per-viewer convenience: which sidebar groups the person opened or closed (id -> open). */
+export const SIDEBAR_GROUPS_KEY = 'ls.sidebar.groups';
+
+export type NavGroupState = Readonly<Record<string, boolean>>;
+
+/** The group (with a heading) that holds the current page, so it can open itself. */
+export function currentGroupId(groups: readonly ArrangedNavGroup[]): string | undefined {
+  return groups.find((group) => !group.flat && group.items.some((item) => item.current))?.id;
+}
+
+export function readNavGroupState(
+  storage: Pick<Storage, 'getItem'> | undefined = safeStorage(),
+): NavGroupState {
+  try {
+    const parsed: unknown = JSON.parse(storage?.getItem(SIDEBAR_GROUPS_KEY) ?? '{}');
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        (entry): entry is [string, boolean] => typeof entry[1] === 'boolean',
+      ),
+    );
+  } catch {
+    return {};
+  }
+}
+
+export function writeNavGroupState(
+  state: NavGroupState,
+  storage: Pick<Storage, 'setItem'> | undefined = safeStorage(),
+): void {
+  try {
+    storage?.setItem(SIDEBAR_GROUPS_KEY, JSON.stringify(state));
+  } catch {
+    // Private mode or blocked storage: groups simply start closed (except the current one) next time.
+  }
+}
+
 function safeStorage(): Storage | undefined {
   try {
     return typeof window === 'undefined' ? undefined : window.localStorage;

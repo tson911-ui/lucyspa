@@ -33,6 +33,12 @@
   --ls-hover-text: #782b37;
   --ls-hover-border: #782b37;
   --ls-hover-ghost-border: #782b37;
+  /* Sidebar items (Owner rule): solid brand red with white text on hover and for the current page. */
+  --ls-nav-hover-bg: #782b37;
+  --ls-nav-hover-text: #ffffff;
+  --ls-nav-active-bg: #782b37;
+  --ls-nav-active-text: #ffffff;
+  --ls-nav-active-bar: transparent;
 
   /* Auth brand panel (docs/UXUI_REDESIGN_DESIGN.md 12.6): a deep brand-red gradient in both themes */
   --ls-auth-panel-from: #8a3345;
@@ -201,6 +207,11 @@
   --ls-hover-text: #f4ecec;
   --ls-hover-border: #7d6c70;
   --ls-hover-ghost-border: transparent;
+  --ls-nav-hover-bg: #100b0c;
+  --ls-nav-hover-text: #f4ecec;
+  --ls-nav-active-bg: #3a1b23;
+  --ls-nav-active-text: #f0b3be;
+  --ls-nav-active-bar: #e08a9a;
   --ls-auth-panel-from: #4a1a24;
   --ls-auth-panel-to: #1f0b10;
   --ls-auth-panel-text: #ffffff;
@@ -254,6 +265,11 @@
     --ls-hover-text: #f4ecec;
     --ls-hover-border: #7d6c70;
     --ls-hover-ghost-border: transparent;
+    --ls-nav-hover-bg: #100b0c;
+    --ls-nav-hover-text: #f4ecec;
+    --ls-nav-active-bg: #3a1b23;
+    --ls-nav-active-text: #f0b3be;
+    --ls-nav-active-bar: #e08a9a;
     --ls-auth-panel-from: #4a1a24;
     --ls-auth-panel-to: #1f0b10;
     --ls-auth-panel-text: #ffffff;

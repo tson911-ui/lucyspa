@@ -174,6 +174,31 @@ test('hover: light is the brand tint, dark keeps the neutral hover it always had
   assert.equal(dark['--ls-hover-ghost-border'], 'transparent');
 });
 
+test('sidebar items: light is solid brand red with white text; dark keeps its neutral hover and soft current page', () => {
+  assert.equal(light['--ls-nav-hover-bg'], '#782b37', 'the Owner brand red');
+  assert.equal(light['--ls-nav-hover-text'], '#ffffff');
+  assert.equal(light['--ls-nav-active-bg'], light['--ls-nav-hover-bg']);
+  assert.equal(light['--ls-nav-active-text'], '#ffffff');
+  assert.equal(dark['--ls-nav-hover-bg'], dark['--ls-hover-bg']);
+  assert.equal(dark['--ls-nav-hover-text'], dark['--ls-hover-text']);
+  assert.equal(dark['--ls-nav-active-bg'], dark['--ls-brand-soft']);
+  assert.equal(dark['--ls-nav-active-text'], dark['--ls-brand-on-soft']);
+  for (const [name, theme] of Object.entries(themes)) {
+    for (const state of ['hover', 'active']) {
+      const value = ratio(color(theme, `nav-${state}-text`), color(theme, `nav-${state}-bg`));
+      assert.ok(value >= 4.5, `${name} nav ${state} = ${value.toFixed(2)}`);
+    }
+    // The group header (brand text) reads on the sidebar surface, and on its own hover fill.
+    for (const surface of ['bg-surface', 'nav-hover-bg']) {
+      const text = surface === 'nav-hover-bg' ? 'nav-hover-text' : 'brand';
+      assert.ok(
+        ratio(color(theme, text), color(theme, surface)) >= 4.5,
+        `${name} ${text}/${surface}`,
+      );
+    }
+  }
+});
+
 test('brand red and danger red stay distinct in both themes (contract 6.4)', () => {
   for (const theme of [light, dark]) {
     assert.notEqual(color(theme, 'brand'), color(theme, 'danger'));

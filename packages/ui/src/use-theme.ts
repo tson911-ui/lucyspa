@@ -9,41 +9,41 @@ import {
   type ThemePreference,
 } from './theme-core';
 
-const DARK_QUERY = '(prefers-color-scheme: dark)';
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
-  const media = window.matchMedia(DARK_QUERY);
-  media.addEventListener('change', listener);
+  // The pre-paint script flips `data-theme` at the 06:00 / 18:00 boundary; follow it live.
+  const observer = new MutationObserver(listener);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   return () => {
     listeners.delete(listener);
-    media.removeEventListener('change', listener);
+    observer.disconnect();
   };
 }
 
 const readPreference = () => parseThemeCookie(document.cookie);
-const readSystemDark = () => window.matchMedia(DARK_QUERY).matches;
+const readResolved = (): ResolvedTheme =>
+  document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
 
 export interface ThemeState {
-  /** What the user chose; "system" until they toggle. */
+  /** What the user chose; "auto" (by local time) until they pick Light or Dark. */
   preference: ThemePreference;
   /** What is actually shown. */
   resolved: ResolvedTheme;
   setPreference: (preference: ThemePreference) => void;
 }
 
-/** Client hook behind the theme toggle. The server render assumes "system" and light. */
+/** Client hook behind the theme toggle. The server render assumes "auto" and light. */
 export function useTheme(): ThemeState {
-  const preference = useSyncExternalStore(subscribe, readPreference, () => 'system' as const);
-  const systemDark = useSyncExternalStore(subscribe, readSystemDark, () => false);
+  const preference = useSyncExternalStore(subscribe, readPreference, () => 'auto' as const);
+  const resolved = useSyncExternalStore(subscribe, readResolved, () => 'light' as const);
 
   const setPreference = useCallback((next: ThemePreference) => {
     document.cookie = serializeThemeCookie(next);
-    if (next === 'system') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme', next);
+    document.documentElement.setAttribute('data-theme', resolveTheme(next, new Date()));
     listeners.forEach((listener) => listener());
   }, []);
 
-  return { preference, resolved: resolveTheme(preference, systemDark), setPreference };
+  return { preference, resolved, setPreference };
 }

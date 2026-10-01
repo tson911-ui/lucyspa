@@ -37,7 +37,7 @@ S1-S5 (decision D12) read sections 0, 6, 16 and 20 and section 20.10 for the ope
 | #   | Decision                                                                                                                                                                                                                                                                                                                                                                                       |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | D1  | Brand colors: primary red `#782b37` and white `#ffffff`. **No gold anywhere** (also no yellow/amber that reads as gold).                                                                                                                                                                                                                                                                       |
-| D2  | Light and dark mode with a user toggle; default follows the system.                                                                                                                                                                                                                                                                                                                            |
+| D2  | Light and dark mode with a user toggle; default is Auto by time (light 06:00-17:59, dark 18:00-05:59, local device time; Owner 2026-10-02, replaces "follows the system").                                                                                                                                                                                                                     |
 | D3  | Admin (workforce) area first. Customer area and public site are a later part of this track (own contract).                                                                                                                                                                                                                                                                                     |
 | D4  | Admin is modern, luxurious, professional, very easy to use, fast; no cinematic motion (PRD 4.4 applies to the customer side only).                                                                                                                                                                                                                                                             |
 | D5  | Desktop, tablet and phone; VI/EN; Vietnamese diacritics must render well.                                                                                                                                                                                                                                                                                                                      |
@@ -135,7 +135,7 @@ opened from a menu button; topbar keeps brand, notifications and the user menu. 
 large and permission-dependent).
 
 Topbar (left to right): menu button (tablet/phone), brand wordmark, spacer, **notifications** (existing indicator), **theme
-toggle** (Light / Dark / System), **language switch** (VI/EN, existing behavior), **user menu** (name, title, My account, Sign out).
+toggle** (Light / Dark / Auto by time), **language switch** (VI/EN, existing behavior), **user menu** (name, title, My account, Sign out).
 Breadcrumbs sit above the page title on detail pages only.
 
 ### 4.2 Navigation grouped by task
@@ -159,6 +159,15 @@ groups, it does not change who sees what (D11).
 Rationale: staff think "what do I do now" (operations, sales), managers "who works here" (people), owners "what do we offer"
 (catalog, website). Personal pages move to the user menu/sidebar footer because they are used rarely and clutter the task list.
 The dashboard's old "Management" link grid is removed (the sidebar already provides it).
+
+**Group headers are accordions (Owner, 2026-10-02).** A group with a heading renders it as a `<button aria-expanded
+aria-controls>`: uppercase, brand red, semibold, with a chevron that rotates (down open, right closed; the 150 ms motion token,
+so it is instant under reduced motion). Its items are indented one step (16 px) under it. Several groups may be open at once.
+The group holding the current page opens itself (on load and whenever the page changes, even if it was closed); the other groups
+start closed. Open/closed state is remembered per browser in `localStorage` (`ls.sidebar.groups`, a convenience only; blocked
+storage just means the default). The **icon rail** (collapsed sidebar, tablet rail) keeps its behavior: no headers, every item
+shown, the group name kept for assistive technology. Flat single-item groups have no header. Enter/Space operate the button;
+a closed group's items are not rendered, so they are not in the tab order.
 
 ### 4.3 Permissions in navigation and widgets
 
@@ -205,8 +214,13 @@ re-pointed to brand/neutral tokens in Step 2 (no customer redesign) so no gold r
 ### 6.1 Theme mechanism
 
 `<html data-theme="light|dark">` set by an inline script in the root layout **before paint** (no flash), from a `ls-theme` cookie
-(`light`, `dark`, or absent = system via `prefers-color-scheme`). The toggle writes the cookie (1 year, `SameSite=Lax`, not
-`HttpOnly`, no personal data) and updates the attribute. `color-scheme` follows the theme so native controls and scrollbars match.
+(`light`, `dark`, or absent = **Auto by time**, the default). Auto by time (Owner, 2026-10-02, replaces "System"): **light from
+06:00 to 17:59, dark from 18:00 to 05:59**, by the viewer's local device clock. The same script schedules itself for the next
+06:00 / 18:00 and re-checks when the tab becomes visible again, so the theme flips live at the boundary without a reload (no
+flash on first load: the attribute is set before paint). The toggle has three options, **Light**, **Dark** (manual overrides) and
+**Auto by time** (clock icon; VI "Tự động theo giờ" / EN "Auto by time"). It writes the cookie for Light/Dark (1 year,
+`SameSite=Lax`, not `HttpOnly`, no personal data) and clears it for Auto, then updates the attribute. `color-scheme` follows the
+theme so native controls and scrollbars match. An old `system` choice was never stored, so existing users land on Auto.
 Tokens are defined under `:root` (light), `:root[data-theme="dark"]`, and
 `@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { ... } }`.
 
@@ -249,10 +263,16 @@ on dark surfaces); surfaces are warm near-black with separation by lightness ste
 get `filter: brightness(.9)` only if it glares. Charts use their own dark-selected steps (section 15).
 
 **Hover (Owner, Step 7.5d).** One theme through tokens `--ls-hover-bg/-text/-border/-ghost-border`, never per screen. Light: a
-very light brand tint (`#fbf1f3`) with brand text and border (`#782b37`) for sidebar items, table rows, `⋮` menu items, facet
+very light brand tint (`#fbf1f3`) with brand text and border (`#782b37`) for table rows, `⋮` menu items, facet
 options, tabs, pager buttons and outline/ghost buttons; the solid primary darkens to `--ls-brand-fill-hover`. Dark keeps its
 neutral hover (sunken fill, unchanged text and border), asserted in `tokens.test.ts`. Hover text meets 4.5:1 on the hover fill and
 every surface, and the hover border 3:1, in both themes (tested).
+
+**Sidebar items (Owner, workforce shell feedback 2026-10-02).** Their own tokens `--ls-nav-hover-bg/-text` and
+`--ls-nav-active-bg/-text/-bar`. Light: hover and the current page are **solid brand red `#782b37` with white text and icon**
+(current page also semibold; no edge bar, the fill carries it). Dark is unchanged (neutral hover; soft brand fill, brand text and
+edge bar for the current page). The keyboard focus ring is drawn **outside** the item (2 px offset), because inside it would
+vanish on the red fill. Group headers use the same fill on hover.
 
 ### 6.4 Brand red versus error red (must stay distinct)
 

@@ -11,17 +11,17 @@ export interface ThemeToggleLabels {
   group: string;
   light: string;
   dark: string;
-  system: string;
+  auto: string;
 }
 
 const OPTIONS: ReadonlyArray<{ value: ThemePreference; icon: IconName }> = [
   { value: 'light', icon: 'sun' },
   { value: 'dark', icon: 'moon' },
-  { value: 'system', icon: 'monitor' },
+  { value: 'auto', icon: 'clock' },
 ];
 
 /**
- * Light / Dark / System as a radio group (contract 4.1): one tab stop, arrow keys move and select.
+ * Light / Dark / Auto by time as a radio group (contract 4.1): one tab stop, arrow keys move and select.
  * The choice is stored by `useTheme` in the `ls-theme` cookie, so the next page loads in it.
  */
 export function ThemeToggle({

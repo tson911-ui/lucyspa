@@ -172,7 +172,7 @@ const vi = {
     appearance: 'Giao diện',
     themeLight: 'Sáng',
     themeDark: 'Tối',
-    themeSystem: 'Theo hệ thống',
+    themeAuto: 'Tự động theo giờ',
     groups: {
       overview: 'Tổng quan',
       operations: 'Vận hành',
@@ -2276,7 +2276,7 @@ const en: Dictionary = {
     appearance: 'Appearance',
     themeLight: 'Light',
     themeDark: 'Dark',
-    themeSystem: 'System',
+    themeAuto: 'Auto by time',
     groups: {
       overview: 'Overview',
       operations: 'Operations',

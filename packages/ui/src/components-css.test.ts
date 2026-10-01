@@ -154,7 +154,6 @@ test('dashboard frame: clamped widget titles, flush notices in cards, a 280 px b
 
 test('hover is one theme: row, nav, menu, outline and ghost hovers read the hover tokens', () => {
   for (const selector of [
-    '.ls-nav-link:hover,\n.ls-sidebar-toggle:hover',
     '.ls-table tbody tr:hover td',
     ".ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled)",
     ".ls-btn-ghost:hover:not([aria-disabled='true']):not(:disabled)",
@@ -172,6 +171,11 @@ test('hover is one theme: row, nav, menu, outline and ghost hovers read the hove
   assert.match(
     rule(".ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled)"),
     /border-color:\s*var\(--ls-hover-border\)/,
+  );
+  // The sidebar has its own hover (solid brand red, white text in light; the neutral hover in dark).
+  assert.match(
+    rule('.ls-nav-link:hover,\n.ls-sidebar-toggle:hover'),
+    /background:\s*var\(--ls-nav-hover-bg\)/,
   );
   // Solid red keeps a deeper red on hover; it does not turn pale.
   assert.match(

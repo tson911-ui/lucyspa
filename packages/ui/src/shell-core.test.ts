@@ -2,10 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   SIDEBAR_COLLAPSED_KEY,
+  SIDEBAR_GROUPS_KEY,
   arrangeNav,
+  currentGroupId,
   initials,
   isPathActive,
+  readNavGroupState,
   readSidebarCollapsed,
+  writeNavGroupState,
   writeSidebarCollapsed,
   type ShellNavItem,
 } from './shell-core';
@@ -74,4 +78,48 @@ test('sidebar state is stored as a convenience and survives unusable storage', (
   };
   assert.equal(readSidebarCollapsed(blocked), false);
   assert.doesNotThrow(() => writeSidebarCollapsed(true, blocked));
+});
+
+test('currentGroupId is the headed group holding the current page; a flat group never counts', () => {
+  const groups = arrangeNav([
+    { id: 'overview', label: 'Tổng quan', items: [{ ...item('dashboard'), current: true }] },
+    {
+      id: 'people',
+      label: 'Nhân sự',
+      items: [item('employees'), { ...item('teams'), current: true }],
+    },
+  ]);
+  assert.equal(currentGroupId(groups), 'people');
+  assert.equal(
+    currentGroupId(arrangeNav([{ id: 'a', label: 'A', items: [item('x'), item('y')] }])),
+    undefined,
+  );
+});
+
+test('sidebar group state round-trips, ignores junk and survives unusable storage', () => {
+  const data = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: string) => void data.set(key, value),
+  };
+  assert.deepEqual(readNavGroupState(storage), {});
+  writeNavGroupState({ people: true, sales: false }, storage);
+  assert.equal(data.has(SIDEBAR_GROUPS_KEY), true);
+  assert.deepEqual(readNavGroupState(storage), { people: true, sales: false });
+  data.set(SIDEBAR_GROUPS_KEY, '{"people":true,"x":"yes"}');
+  assert.deepEqual(readNavGroupState(storage), { people: true }, 'non-boolean values are dropped');
+  for (const junk of ['not json', '[1,2]', 'null', '7']) {
+    data.set(SIDEBAR_GROUPS_KEY, junk);
+    assert.deepEqual(readNavGroupState(storage), {}, junk);
+  }
+  const blocked = {
+    getItem: () => {
+      throw new Error('blocked');
+    },
+    setItem: () => {
+      throw new Error('blocked');
+    },
+  };
+  assert.deepEqual(readNavGroupState(blocked), {});
+  assert.doesNotThrow(() => writeNavGroupState({ people: true }, blocked));
 });

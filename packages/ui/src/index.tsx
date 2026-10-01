@@ -188,11 +188,15 @@ export { ThemeToggle } from './theme-toggle';
 export type { ThemeToggleLabels } from './theme-toggle';
 export {
   SIDEBAR_COLLAPSED_KEY,
+  SIDEBAR_GROUPS_KEY,
   TABLET_QUERY,
   arrangeNav,
+  currentGroupId,
   initials,
   isPathActive,
+  readNavGroupState,
   readSidebarCollapsed,
+  writeNavGroupState,
   writeSidebarCollapsed,
 } from './shell-core';
 export type { ArrangedNavGroup, ShellNavGroup, ShellNavItem } from './shell-core';
