@@ -7,7 +7,7 @@ import { employee, owner, render } from '../../../test/support';
 import { AttendanceScreen } from './attendance';
 import { editableHours, hoursChanged } from './branch-detail';
 import { BranchesScreen } from './branches';
-import { LeaveScreen, LeaveTable, LeaveTypeOptions } from './leave';
+import { LeaveScreen, LeaveTable, leaveTypeOptions } from './leave';
 import { safeNext } from './login';
 import { ServicesScreen } from './services';
 import { SkillsScreen } from './skills';
@@ -56,13 +56,12 @@ test('leave: request form for employees; approvals only with APPROVE_LEAVE', () 
 });
 
 test('leave types and statuses are shown with localized labels, not raw codes', () => {
-  const options = renderToStaticMarkup(
-    <select>
-      <LeaveTypeOptions t={vi} />
-    </select>,
+  const options = leaveTypeOptions(vi);
+  assert.deepEqual(
+    options.find((option) => option.value === 'FAMILY_EVENT'),
+    { value: 'FAMILY_EVENT', label: 'Hiếu hỷ / sự kiện gia đình' },
   );
-  assert.match(options, /value="FAMILY_EVENT">Hiếu hỷ \/ sự kiện gia đình</);
-  assert.match(options, /value="MATERNITY">Thai sản</);
+  assert.equal(options.find((option) => option.value === 'MATERNITY')?.label, 'Thai sản');
   const request: LeaveRequestResponse = {
     id: 'l1',
     employeeId: 'emp-1',

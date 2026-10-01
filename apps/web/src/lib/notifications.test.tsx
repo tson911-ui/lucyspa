@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { NotificationItem } from '@lucy-spa/contracts';
-import { NotificationCard } from '../components/notifications/inbox';
+import { NotificationTable, notificationMenu } from '../components/notifications/inbox';
 import { WorkforceNotificationsScreen } from '../components/workforce/screens/notifications';
 import { getNotificationDictionary } from '../i18n/notifications';
 import { customer, employee, render } from '../test/support';
@@ -19,41 +19,44 @@ const item: NotificationItem = {
   archivedAt: null,
   params: null,
 };
+const table = (items: NotificationItem[], locale: 'vi' | 'en') =>
+  renderToStaticMarkup(
+    <NotificationTable
+      items={items}
+      locale={locale}
+      hrefFor={() => null}
+      pendingId={null}
+      onRead={() => undefined}
+    />,
+  );
 test('workforce inbox and operational warnings render VI/EN without exposing event codes', () => {
   for (const locale of ['vi', 'en'] as const) {
     const t = getNotificationDictionary(locale);
     assert.ok(render(<WorkforceNotificationsScreen />, employee(), locale).includes(t.title));
     for (const type of Object.keys(t.types) as NotificationItem['type'][]) {
-      const html = renderToStaticMarkup(
-        <NotificationCard
-          item={{ ...item, type }}
-          locale={locale}
-          href={null}
-          busy={false}
-          onRead={() => undefined}
-        />,
-      );
+      const html = table([{ ...item, type }], locale);
       assert.ok(html.includes(t.types[type]));
       assert.ok(html.includes(t.unread));
       assert.ok(!html.includes(type));
-      assert.ok(html.includes(t.markRead));
+      const menu = notificationMenu({ ...item, type }, t, {
+        pendingId: null,
+        onRead: () => undefined,
+      });
+      assert.deepEqual(
+        menu.map((entry) => [entry.id, entry.label]),
+        [['read', t.markRead]],
+      );
     }
-    const read = renderToStaticMarkup(
-      <NotificationCard
-        item={{ ...item, readAt: item.createdAt }}
-        locale={locale}
-        href={null}
-        busy={false}
-        onRead={() => undefined}
-      />,
-    );
+    const readItem = { ...item, readAt: item.createdAt };
+    const read = table([readItem], locale);
     assert.ok(read.includes(t.read));
-    assert.ok(!read.includes(t.markRead));
-    const busy = renderToStaticMarkup(
-      <NotificationCard item={item} locale={locale} href={null} busy onRead={() => undefined} />,
+    assert.deepEqual(
+      notificationMenu(readItem, t, { pendingId: null, onRead: () => undefined }),
+      [],
     );
-    assert.ok(busy.includes('disabled'));
-    assert.ok(busy.includes(t.working));
+    const busy = notificationMenu(item, t, { pendingId: item.id, onRead: () => undefined });
+    assert.equal(busy[0]?.disabled, true);
+    assert.equal(busy[0]?.label, t.working);
   }
 });
 test('notification links use permission hints and internal routes; server read results replace unread rows', () => {

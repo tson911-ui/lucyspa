@@ -3,6 +3,7 @@
 import {
   AppShell,
   BrandWordmark,
+  Button,
   Icon,
   Page,
   ThemeToggle,
@@ -39,8 +40,6 @@ export function WorkforceShell({ children }: { children: ReactNode }) {
     <WorkforceToasts>
       <SessionWatch />
       <AppShell
-        className="wf-app"
-        mainClassName="wf-main"
         LinkComponent={Link}
         brand={
           <Link href={base} aria-label="Lucy Spa">
@@ -159,9 +158,9 @@ export function SessionLostNotice() {
         <a href={`${base}/login?next=${encodeURIComponent(base)}`} target="_blank" rel="noopener">
           {t.auth.signInNewTab}
         </a>{' '}
-        <button type="button" className="wf-button wf-button-quiet" onClick={dismiss}>
+        <Button variant="secondary" onClick={dismiss}>
           {t.common.close}
-        </button>
+        </Button>
       </p>
     </Notice>
   );

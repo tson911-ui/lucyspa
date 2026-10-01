@@ -1,22 +1,40 @@
 'use client';
 
 import type { MyServiceWorkResponse, ServiceExecutionWork } from '@lucy-spa/contracts';
+import {
+  Button,
+  Card,
+  CardHeader,
+  DescriptionList,
+  Grid,
+  ListToolbar,
+  RowActions,
+  Select,
+  type DescriptionItem,
+} from '@lucy-spa/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { BOARD_REFRESH_MS } from '../../../lib/workforce/booking-board';
+import { resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
 import {
   executionActionAllowed,
   executionBranches,
   executionErrorMessage,
 } from '../../../lib/workforce/service-execution';
-import { AddServiceForm } from './add-service';
+import { AddServiceDialog } from './add-service';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
-import { Badge, Empty, Field, Loading, Notice, PageHeader, Section } from '../ui';
+import { Badge, Empty, Loading, Notice, PageHeader, useSuccessToast } from '../ui';
 
+/**
+ * "Dịch vụ của tôi": the work the signed-in staff member is assigned today. One card per service
+ * line (a staff member has a handful of lines at a time, and Start/End must stay one clear tap on a
+ * phone), equal heights, the primary action last in the card, "Add service" in the card's menu.
+ */
 export function MyServicesScreen() {
   const { api, t, locale } = useWorkforce();
   const { account } = useAccount();
+  const notify = useSuccessToast();
   const branches = useBranches(api);
   const allowed = useMemo(
     () => executionBranches(account, branches.data),
@@ -27,7 +45,7 @@ export function MyServicesScreen() {
   const [error, setError] = useState<unknown>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
-  const [adding, setAdding] = useState<string | null>(null);
+  const [adding, setAdding] = useState<ServiceExecutionWork | null>(null);
   const [loading, setLoading] = useState(false);
   const generation = useRef(0);
   const mutating = useRef(false);
@@ -72,6 +90,8 @@ export function MyServicesScreen() {
     };
   }, [load]);
 
+  const success = (text: string) => notify(text, () => setMessage(text));
+
   async function act(line: ServiceExecutionWork, action: 'start' | 'end') {
     if (mutating.current || loading || error || !executionActionAllowed(line, action)) return;
     mutating.current = true;
@@ -95,7 +115,7 @@ export function MyServicesScreen() {
             }
           : previous,
       );
-      setMessage(action === 'start' ? t.execution.started : t.execution.ended);
+      success(action === 'start' ? t.execution.started : t.execution.ended);
       succeeded = true;
     } catch (cause) {
       setError(cause);
@@ -117,129 +137,161 @@ export function MyServicesScreen() {
       second: '2-digit',
     }).format(new Date(iso));
 
+  // The planned slot is read as hours of the day; the actual times keep the date and the seconds.
+  const clock = (iso: string) =>
+    new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
+      timeZone: board?.branch.timezone ?? 'UTC',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(iso));
+  const lines = board?.branch.id === branchId ? board.lines : [];
+
+  function details(line: ServiceExecutionWork): DescriptionItem[] {
+    const e = t.execution;
+    return [
+      { label: e.participant, value: line.participantName },
+      ...(line.plannedStartAt && line.plannedEndAt
+        ? [
+            {
+              label: e.planned,
+              value: `${clock(line.plannedStartAt)} – ${clock(line.plannedEndAt)}`,
+            },
+          ]
+        : []),
+      ...(line.execution
+        ? [
+            { label: e.actualStart, value: timestamp(line.execution.startedAt) },
+            { label: e.expectedEnd, value: timestamp(line.execution.expectedEndAt) },
+            ...(line.execution.endedAt
+              ? [{ label: e.actualEnd, value: timestamp(line.execution.endedAt) }]
+              : []),
+          ]
+        : []),
+    ];
+  }
+
+  function primaryAction(line: ServiceExecutionWork) {
+    if (line.status !== 'PLANNED' && line.status !== 'IN_PROGRESS') return null;
+    const action = line.status === 'PLANNED' ? 'start' : 'end';
+    const allowedNow = executionActionAllowed(line, action);
+    const reason =
+      !allowedNow && line.status === 'PLANNED' && line.actions.startBlockedBy
+        ? t.execution.errors[line.actions.startBlockedBy]
+        : undefined;
+    return (
+      <Button
+        variant="primary"
+        size="lg"
+        fullWidth
+        loading={pending === line.lineId}
+        disabled={pending !== null || loading || Boolean(error) || !allowedNow}
+        {...(reason ? { disabledReason: reason } : {})}
+        onClick={() => void act(line, action)}
+      >
+        {pending === line.lineId
+          ? t.execution.working
+          : line.status === 'PLANNED'
+            ? t.execution.start
+            : t.execution.end}
+      </Button>
+    );
+  }
+
   return (
     <>
-      <PageHeader title={t.execution.title} intro={t.execution.intro}>
-        <button
-          className="wf-button"
-          type="button"
-          disabled={pending !== null || loading}
-          onClick={() => void load(false)}
-        >
-          {t.bookingBoard.refresh}
-        </button>
-      </PageHeader>
+      <PageHeader title={t.execution.title} intro={t.execution.intro} />
       {branches.loading && !branches.data ? <Loading t={t} /> : null}
       {branches.error ? (
         <Notice tone="error">{executionErrorMessage(branches.error, t)}</Notice>
       ) : null}
       {!branches.loading && allowed.length === 0 ? <Empty>{t.execution.noBranch}</Empty> : null}
       {allowed.length > 0 ? (
-        <Field id="execution-branch" label={t.bookingBoard.branch}>
-          <select
-            id="execution-branch"
-            value={branchId}
-            disabled={pending !== null}
-            onChange={(event) => setBranchId(event.target.value)}
-          >
-            {allowed.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <ListToolbar
+          labels={toolbarLabels(t)}
+          resultCount={board ? resultsText(t, lines.length) : undefined}
+          reload={{ label: t.bookingBoard.refresh, onClick: () => void load(false), busy: loading }}
+          search={
+            <Select
+              id="execution-branch"
+              aria-label={t.bookingBoard.branch}
+              value={branchId}
+              disabled={pending !== null}
+              options={allowed.map((branch) => ({ value: branch.id, label: branch.name }))}
+              onChange={(event) => setBranchId(event.target.value)}
+            />
+          }
+        />
       ) : null}
       {error ? <Notice tone="error">{executionErrorMessage(error, t)}</Notice> : null}
       {message ? <Notice tone="success">{message}</Notice> : null}
       {loading && !board ? <Loading t={t} /> : null}
-      {board?.lines.length === 0 ? <Empty>{t.execution.empty}</Empty> : null}
-      {board?.branch.id === branchId
-        ? board.lines.map((line) => (
-            <Section
-              key={line.lineId}
-              title={`${locale === 'vi' ? line.service.nameVi : line.service.nameEn} · ${line.visitCode}`}
-            >
-              <Badge
-                tone={
-                  line.status === 'IN_PROGRESS'
-                    ? 'info'
-                    : line.status === 'DONE'
-                      ? 'success'
-                      : 'neutral'
-                }
-              >
-                {t.execution.states[line.status]}
-              </Badge>
-              <p>
-                {line.participantName ?? t.execution.participant} ·{' '}
-                {fill(t.execution.sequence, { number: line.sequence })}
-              </p>
-              {line.plannedStartAt && line.plannedEndAt ? (
-                <p className="wf-small">
-                  {t.execution.planned}: {timestamp(line.plannedStartAt)} –{' '}
-                  {timestamp(line.plannedEndAt)}
-                </p>
-              ) : null}
-              {line.execution ? (
-                <>
-                  <p>
-                    {t.execution.actualStart}: {timestamp(line.execution.startedAt)}
-                  </p>
-                  <p className="wf-small">
-                    {t.execution.expectedEnd}: {timestamp(line.execution.expectedEndAt)}
-                  </p>
-                  {line.execution.endedAt ? (
-                    <p>
-                      {t.execution.actualEnd}: {timestamp(line.execution.endedAt)}
-                    </p>
-                  ) : null}
-                </>
-              ) : null}
-              {line.visitStatus === 'COMPLETED' ? <p>{t.execution.visitCompleted}</p> : null}
-              {line.status === 'PLANNED' && line.actions.startBlockedBy ? (
-                <p className="wf-small">{t.execution.errors[line.actions.startBlockedBy]}</p>
-              ) : null}
-              {line.status === 'PLANNED' || line.status === 'IN_PROGRESS' ? (
-                <button
-                  type="button"
-                  className="wf-button wf-button-primary"
-                  disabled={
-                    pending !== null ||
-                    loading ||
-                    Boolean(error) ||
-                    !executionActionAllowed(line, line.status === 'PLANNED' ? 'start' : 'end')
+      {board?.branch.id === branchId && lines.length === 0 ? (
+        <Empty>{t.execution.empty}</Empty>
+      ) : null}
+      {lines.length > 0 ? (
+        <Grid min="lg" gap="block">
+          {lines.map((line) => {
+            const name = locale === 'vi' ? line.service.nameVi : line.service.nameEn;
+            return (
+              <Card as="article" key={line.lineId} aria-label={`${name} · ${line.visitCode}`}>
+                <CardHeader
+                  title={name}
+                  description={`${line.visitCode} · ${fill(t.execution.sequence, { number: line.sequence })}`}
+                  headingLevel={3}
+                  clamp
+                  actions={
+                    line.actions.addService ? (
+                      <RowActions
+                        menuLabel={fill(t.common.list.actionsFor, { name: line.visitCode })}
+                        items={[
+                          {
+                            id: 'add',
+                            label: t.bookingBoard.addService,
+                            icon: 'plus',
+                            disabled: pending !== null,
+                            onSelect: () => setAdding(line),
+                          },
+                        ]}
+                      />
+                    ) : undefined
                   }
-                  onClick={() => void act(line, line.status === 'PLANNED' ? 'start' : 'end')}
-                >
-                  {pending === line.lineId
-                    ? t.execution.working
-                    : line.status === 'PLANNED'
-                      ? t.execution.start
-                      : t.execution.end}
-                </button>
-              ) : null}
-              {line.actions.addService && adding !== line.lineId ? (
-                <button type="button" className="wf-button" onClick={() => setAdding(line.lineId)}>
-                  {t.bookingBoard.addService}
-                </button>
-              ) : null}
-              {adding === line.lineId ? (
-                <AddServiceForm
-                  visitId={line.visitId}
-                  visitCode={line.visitCode}
-                  participants={[{ id: line.participantId, name: line.participantName }]}
-                  onCancel={() => setAdding(null)}
-                  onAdded={(text) => {
-                    setAdding(null);
-                    setMessage(text);
-                    void load(false);
-                  }}
                 />
-              ) : null}
-            </Section>
-          ))
-        : null}
+                <div>
+                  <Badge
+                    tone={
+                      line.status === 'IN_PROGRESS'
+                        ? 'info'
+                        : line.status === 'DONE'
+                          ? 'success'
+                          : 'neutral'
+                    }
+                  >
+                    {t.execution.states[line.status]}
+                  </Badge>
+                </div>
+                <DescriptionList items={details(line)} />
+                {line.visitStatus === 'COMPLETED' ? (
+                  <p className="ls-hint">{t.execution.visitCompleted}</p>
+                ) : null}
+                {primaryAction(line)}
+              </Card>
+            );
+          })}
+        </Grid>
+      ) : null}
+      {adding ? (
+        <AddServiceDialog
+          visitId={adding.visitId}
+          visitCode={adding.visitCode}
+          participants={[{ id: adding.participantId, name: adding.participantName }]}
+          onClose={() => setAdding(null)}
+          onAdded={(text) => {
+            setAdding(null);
+            success(text);
+            void load(false);
+          }}
+        />
+      ) : null}
     </>
   );
 }

@@ -82,7 +82,7 @@ function LoginForm() {
   return (
     <AuthLayout brand={<BrandWordmark size="display" />} topActions={<AuthTopActions />}>
       <h1>{t.auth.loginTitle}</h1>
-      <p className="wf-muted">{t.auth.loginIntro}</p>
+      <p>{t.auth.loginIntro}</p>
       {params.get('expired') ? (
         <Notice tone="warning">
           {params.get('reason') === PERMISSIONS_CHANGED_PARAM

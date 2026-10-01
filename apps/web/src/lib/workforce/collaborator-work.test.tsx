@@ -1,7 +1,10 @@
 import type { BranchSummary, CollaboratorWorkOccurrence } from '@lucy-spa/contracts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ScheduleTable } from '../../components/workforce/screens/collaborator-schedule';
+import {
+  ScheduleTable,
+  WorkDrawer,
+} from '../../components/workforce/screens/collaborator-schedule';
 import { MyScheduleView } from '../../components/workforce/screens/my-account';
 import { getWorkforceDictionary } from '../../i18n/workforce';
 import { employee, json, owner, render, scriptedFetch, context } from '../../test/support';
@@ -93,7 +96,7 @@ test('schedule table: CTV, date, branch, mode, hours, agreed pay, status', () =>
     '80.000 ₫',
     '150.000 ₫',
     vi.collaboratorWork.statuses.SCHEDULED,
-    vi.collaboratorWork.pay,
+    vi.collaboratorWork.payShort,
   ]) {
     assert.ok(markup.includes(text), text);
   }
@@ -112,25 +115,36 @@ test('schedule actions follow MANAGE_WORK_SCHEDULE at the branch; pay needs the 
     ['MANAGE_WORK_SCHEDULE', A],
     ['VIEW_WORK_SCHEDULE', A],
   ]);
-  const managed = table([shift], manager);
-  assert.ok(managed.includes(`<summary>${vi.collaboratorWork.edit}</summary>`));
+  const rowMenu = (markup: string) =>
+    markup.includes(vi.common.list.actionsFor.replace('{name}', 'Lê Cộng Tác'));
+  assert.ok(rowMenu(table([shift], manager)), 'managers get the row menu');
+  const drawer = (account: typeof owner, row: CollaboratorWorkOccurrence | null = shift) =>
+    render(
+      <WorkDrawer
+        row={row}
+        branches={branches}
+        today="2026-09-20"
+        onClose={() => undefined}
+        onDone={() => Promise.resolve()}
+      />,
+      account,
+    );
+  const managed = drawer(manager);
+  assert.ok(managed.includes(vi.collaboratorWork.editTitle));
   assert.ok(
     managed.includes(vi.collaboratorWork.payNoPermission),
     'no pay field without pay permission',
   );
-  assert.doesNotMatch(managed, /id="edit-w1-pay"/);
+  assert.doesNotMatch(managed, /id="edit-w1-pay"|inputMode="numeric"/);
   const payManager = employee([
     ['MANAGE_WORK_SCHEDULE', A],
     ['MANAGE_EMPLOYEE_PAY', A],
   ]);
-  assert.match(table([shift], payManager), /id="edit-w1-pay"/);
+  assert.match(drawer(payManager), /inputMode="numeric"/);
+  assert.ok(drawer(payManager, null).includes(vi.collaboratorWork.create), 'new occurrence');
   const viewer = employee([['VIEW_WORK_SCHEDULE', A]]);
-  assert.ok(!table([shift], viewer).includes(`<summary>${vi.collaboratorWork.edit}</summary>`));
-  assert.ok(
-    !table([{ ...shift, status: 'CANCELLED', cancelReason: 'Khách hủy' }]).includes(
-      `<summary>${vi.collaboratorWork.edit}</summary>`,
-    ),
-  );
+  assert.ok(!rowMenu(table([shift], viewer)));
+  assert.ok(!rowMenu(table([{ ...shift, status: 'CANCELLED', cancelReason: 'Khách hủy' }])));
   // Navigation: only with a schedule permission.
   const has = (account: typeof owner) =>
     navigationFor(account).some((item) => item.key === 'collaboratorSchedule');
@@ -226,7 +240,8 @@ test('My Account: a CTV sees their own schedule and agreed pay, read-only', () =
   ]) {
     assert.ok(view.includes(text), text);
   }
-  assert.doesNotMatch(view, /<form|<input|<button/, 'no edit controls');
+  assert.doesNotMatch(view, /<form|<input|<textarea/, 'no edit controls');
+  assert.doesNotMatch(view, /Thao tác cho/, 'no row menu');
   assert.ok(
     render(<MyScheduleView items={[]} branches={branches} />, employee()).includes(
       vi.myAccount.schedule.empty,

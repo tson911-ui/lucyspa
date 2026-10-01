@@ -7,9 +7,10 @@ import {
   type NotificationPage,
 } from '@lucy-spa/contracts';
 import {
-  NotificationCard,
   NotificationIndicator,
   NotificationInbox,
+  NotificationTable,
+  notificationMenu,
 } from '../components/notifications/inbox';
 import { getNotificationDictionary } from '../i18n/notifications';
 import { customer, employee } from '../test/support';
@@ -58,6 +59,23 @@ const decided = (decision: 'APPROVED' | 'REJECTED'): NotificationItem => ({
   params: { decision, startDate: '2030-03-10', endDate: '2030-03-12', leaveType: 'SICK' },
 });
 const noop = () => undefined;
+const table = (item: NotificationItem, locale: 'vi' | 'en', href: string | null = null) =>
+  renderToStaticMarkup(
+    <NotificationTable
+      items={[item]}
+      locale={locale}
+      hrefFor={() => href}
+      pendingId={null}
+      onRead={noop}
+      onArchive={noop}
+    />,
+  );
+const menuIds = (item: NotificationItem, locale: 'vi' | 'en', archivable = true) =>
+  notificationMenu(item, getNotificationDictionary(locale), {
+    pendingId: null,
+    onRead: noop,
+    ...(archivable ? { onArchive: noop } : {}),
+  }).map((entry) => entry.id);
 
 test('Leave notifications render from structured params in VI and EN, never from free text', () => {
   const vi = getNotificationDictionary('vi');
@@ -88,20 +106,12 @@ test('Leave notifications render from structured params in VI and EN, never from
   assert.equal(notificationMessage(phase3, 'en'), en.types.END_OVERDUE);
   for (const locale of ['vi', 'en'] as const) {
     const t = getNotificationDictionary(locale);
-    const html = renderToStaticMarkup(
-      <NotificationCard
-        item={decided('REJECTED')}
-        locale={locale}
-        href="/x/leave"
-        busy={false}
-        onRead={noop}
-        onArchive={noop}
-      />,
-    );
+    const html = table(decided('REJECTED'), locale, '/x/leave');
     assert.ok(html.includes(notificationMessage(decided('REJECTED'), locale)));
     assert.ok(html.includes('LVN-1'));
     assert.ok(html.includes(t.openLeave));
-    assert.ok(html.includes(`>${t.archive}</button>`));
+    assert.ok(html.includes('href="/x/leave"'));
+    assert.deepEqual(menuIds(decided('REJECTED'), locale), ['read', 'archive']);
     assert.ok(!html.includes('LEAVE_DECIDED'), 'no raw event code');
   }
 });
@@ -121,23 +131,11 @@ test('Leave links target the existing leave page for workforce accounts only', (
 test('archived items show their badge and no archive action', () => {
   for (const locale of ['vi', 'en'] as const) {
     const t = getNotificationDictionary(locale);
-    const archived = renderToStaticMarkup(
-      <NotificationCard
-        item={{ ...phase3, archivedAt: phase3.createdAt, readAt: phase3.createdAt }}
-        locale={locale}
-        href={null}
-        busy={false}
-        onRead={noop}
-        onArchive={noop}
-      />,
-    );
-    assert.ok(archived.includes(t.archivedBadge));
-    assert.ok(!archived.includes(`>${t.archive}</button>`));
+    const archivedItem = { ...phase3, archivedAt: phase3.createdAt, readAt: phase3.createdAt };
+    assert.ok(table(archivedItem, locale).includes(t.archivedBadge));
+    assert.deepEqual(menuIds(archivedItem, locale), [], 'nothing left to do');
     // Without an archive handler (older callers) no archive action is offered.
-    const plain = renderToStaticMarkup(
-      <NotificationCard item={phase3} locale={locale} href={null} busy={false} onRead={noop} />,
-    );
-    assert.ok(!plain.includes(`>${t.archive}</button>`));
+    assert.deepEqual(menuIds(phase3, locale, false), ['read']);
   }
 });
 
@@ -322,16 +320,7 @@ test('a finance card shows the invoice code, the VI/EN message and the invoice a
   for (const locale of ['vi', 'en'] as const) {
     const t = getNotificationDictionary(locale);
     const item = finance('INVOICE_PAID', { amountVnd: '200000' });
-    const html = renderToStaticMarkup(
-      <NotificationCard
-        item={item}
-        locale={locale}
-        href="/x/invoices/inv-1"
-        busy={false}
-        onRead={noop}
-        onArchive={noop}
-      />,
-    );
+    const html = table(item, locale, '/x/invoices/inv-1');
     assert.ok(html.includes('INV-260930-ABCDEF'));
     assert.ok(html.includes(t.finance.openInvoice));
     assert.ok(html.includes(locale === 'vi' ? '200.000' : '200,000'), 'the amount is rendered');

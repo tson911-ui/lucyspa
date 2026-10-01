@@ -1,6 +1,6 @@
 /* Core components (docs/UXUI_REDESIGN_DESIGN.md sections 9.1-9.3, 9.5, 10, 11). Tokens only: no color
    literals, no fixed widths on text-bearing controls (Vietnamese labels run ~30% longer, so labels
-   wrap and controls use min-width). Old `wf-*` classes coexist until Steps 8-10. */
+   wrap and controls use min-width). The staff app uses no `wf-*` class; the last ones live in customer.css until Part 2. */
 
 .ls-visually-hidden {
   position: absolute;

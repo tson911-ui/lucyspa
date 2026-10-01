@@ -257,3 +257,9 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - UI only. Board = toolbar + DataTables (bookings, open-visit lines, pool) + equal-height queue cards; check-in is a row button (short confirm; no undo in the API), other decisions in the row `⋮`; walk-in = form page + member-lookup dialog; reassignment = toolbar + DataTable + dialog. Tablet fit measured (0 px over at 768/1024/1280). Real flows on scratch DB (bookings via API): arrive, late arrival, priority, KTV start/end, forgotten END, change staff, no-show all PASS.
 - Ratchet wf 237, raw tables 5, fieldsets 5, checkboxes 2, solid danger 3. Web 275 + ui 238 green. DOM audit board 123 -> 6, walk-in 62 -> 2, reassignment 58 -> 2 (phone card row-height-uneven +2, Owner-approved exception). Report: docs/UXUI_REDESIGN_STEP10A_BOOKING_WALKIN_REASSIGN.md. Next: 10b.
+
+### UX/UI Step 10b (My services, schedule, attendance, leave, account, income, notifications) - Owner reviewed, committed (base c65e48b)
+
+- UI only. Cards for My services; DataTables + toolbars for schedule, attendance, leave, notifications; every create/edit/decision is a dialog or drawer, destructive ones a `ConfirmDialog`; leave tablet overflow fixed. `workforce.css` deleted: the rules the member area still uses moved unchanged into `customer.css` (Part 2 removes them).
+- Ratchet: raw tables 0, details 0, wf uses 80, fieldsets 4, checkboxes 1, solid danger 1 (all member area). Web 275 + ui 11 css tests green. Scratch-DB flows 65/65 (leave, attendance check-in/out, profile, collaborator schedule, KTV Start/End/Add service). Report: docs/UXUI_REDESIGN_STEP10B_PERSONAL_PAGES.md.
+- Open for the Owner: "Nhận khách" icon-only below 1280 px (check on the counter machine). Cards, phone exception and merged filter approved. Next: 11 (website content).

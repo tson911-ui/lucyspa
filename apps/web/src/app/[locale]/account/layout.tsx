@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 import { CustomerProvider } from '../../../components/customer/session';
 import { getCustomerDictionary } from '../../../i18n/customer';
 import { isLocale } from '../../../i18n/locales';
-import '../../workforce.css';
 import '../../customer.css';
 
 interface AccountLayoutProps {

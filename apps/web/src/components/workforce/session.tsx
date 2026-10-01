@@ -1,6 +1,7 @@
 'use client';
 
 import type { CurrentAccountResponse } from '@lucy-spa/contracts';
+import { Button, Cluster, ErrorState, Notice, Page, Spinner, Stack } from '@lucy-spa/ui';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   createContext,
@@ -176,29 +177,37 @@ export function RequireWorkforce({ children }: { children: ReactNode }) {
 
   if (state.kind === 'loading') {
     return (
-      <p className="wf-center" role="status">
-        {t.auth.checking}
-      </p>
+      <Page width="form">
+        <Cluster>
+          <Spinner />
+          <p role="status">{t.auth.checking}</p>
+        </Cluster>
+      </Page>
     );
   }
   if (state.kind === 'error') {
     return (
-      <div className="wf-center">
-        <p role="alert">{t.errors.unavailable}</p>
-        <button type="button" className="wf-button" onClick={() => window.location.reload()}>
-          {t.common.reload}
-        </button>
-      </div>
+      <Page width="form">
+        <ErrorState
+          message={t.errors.unavailable}
+          onRetry={() => window.location.reload()}
+          retryLabel={t.common.reload}
+        />
+      </Page>
     );
   }
   if (state.kind === 'customer') {
     return (
-      <div className="wf-center">
-        <p role="alert">{t.auth.customerNotAllowed}</p>
-        <button type="button" className="wf-button" onClick={() => void signOut()}>
-          {t.auth.signOut}
-        </button>
-      </div>
+      <Page width="form">
+        <Stack>
+          <Notice tone="warning">{t.auth.customerNotAllowed}</Notice>
+          <div>
+            <Button variant="secondary" onClick={() => void signOut()}>
+              {t.auth.signOut}
+            </Button>
+          </div>
+        </Stack>
+      </Page>
     );
   }
   return (

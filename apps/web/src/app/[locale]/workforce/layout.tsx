@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 import { WorkforceProvider } from '../../../components/workforce/session';
 import { isLocale } from '../../../i18n/locales';
 import { getWorkforceDictionary } from '../../../i18n/workforce';
-import '../../workforce.css';
 
 interface WorkforceLayoutProps {
   children: React.ReactNode;

@@ -13,7 +13,7 @@ import {
 } from '../../../lib/workforce/recovery';
 import { AuthTopActions } from '../auth-actions';
 import { useWorkforce } from '../session';
-import { Field, Notice, SubmitButton } from '../ui';
+import { Button, Field, Notice, SubmitButton } from '../ui';
 
 export type ForgotStep = 'email' | 'code' | 'done';
 
@@ -145,7 +145,7 @@ export function ForgotPasswordView(props: {
     <AuthLayout brand={props.brand} topActions={props.topActions}>
       <h1>{texts.forgotTitle}</h1>
       {props.error ? <Notice tone="error">{props.error}</Notice> : null}
-      {props.step === 'email' ? <p className="wf-muted">{texts.forgotIntro}</p> : null}
+      {props.step === 'email' ? <p>{texts.forgotIntro}</p> : null}
       {props.step === 'email' ? (
         <form onSubmit={props.onRequest}>
           <Field id="forgot-email" label={texts.email} required>
@@ -221,9 +221,9 @@ export function ForgotPasswordView(props: {
             pendingLabel={texts.completing}
           />
           <p>
-            <button type="button" className="wf-button wf-button-quiet" onClick={props.onRestart}>
+            <Button variant="ghost" onClick={props.onRestart}>
               {texts.otherEmail}
-            </button>
+            </Button>
           </p>
         </form>
       ) : null}

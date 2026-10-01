@@ -1,13 +1,26 @@
 'use client';
 
 import type { BranchSummary, IncomePeriod, MyIncomeResponse } from '@lucy-spa/contracts';
+import {
+  Cluster,
+  DataTable,
+  DateInput,
+  DescriptionList,
+  IconButton,
+  ListSection,
+  Select,
+  type DataTableColumn,
+} from '@lucy-spa/ui';
 import { useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { formatDate, formatVnd } from '../../../lib/workforce/format';
 import { loadMyIncome, shiftAnchor } from '../../../lib/workforce/my-income';
+import { useClientPaging } from '../../../lib/workforce/use-client-paging';
 import { useBranches } from '../data';
 import { useWorkforce } from '../session';
-import { Empty, ErrorState, Field, Loading, PageHeader, Section, useResource } from '../ui';
+import { Empty, ErrorState, Loading, PageHeader, Section, useResource } from '../ui';
+
+type IncomeItem = NonNullable<MyIncomeResponse['collaboratorWork']>['items'][number];
 
 const PERIODS: IncomePeriod[] = ['DAY', 'WEEK', 'MONTH'];
 
@@ -27,42 +40,35 @@ export function MyIncomeScreen() {
   return (
     <>
       <PageHeader title={texts.title} intro={texts.intro} />
-      <div className="wf-filters" role="group" aria-label={texts.title}>
-        {PERIODS.map((option) => (
-          <button
-            key={option}
-            type="button"
-            className={`wf-button ${option === period ? 'wf-button-primary' : 'wf-button-quiet'}`}
-            aria-pressed={option === period}
-            onClick={() => setPeriod(option)}
-          >
-            {texts.periods[option]}
-          </button>
-        ))}
-        <Field id="income-date" label={texts.date}>
-          <input
+      <div role="toolbar" aria-label={texts.period}>
+        <Cluster gap="inline" className="ls-toolbar-filters">
+          <Select
+            id="income-period"
+            aria-label={texts.period}
+            value={period}
+            options={PERIODS.map((option) => ({ value: option, label: texts.periods[option] }))}
+            onChange={(event) => setPeriod(event.target.value as IncomePeriod)}
+          />
+          <IconButton
+            icon="chevron-left"
+            label={texts.previous}
+            disabled={!anchor}
+            onClick={() => anchor && setDate(shiftAnchor(anchor, period, -1))}
+          />
+          <DateInput
             id="income-date"
-            type="date"
+            aria-label={texts.date}
+            title={texts.date}
             value={anchor ?? ''}
             onChange={(event) => setDate(event.target.value === '' ? null : event.target.value)}
           />
-        </Field>
-        <button
-          type="button"
-          className="wf-button wf-button-quiet"
-          disabled={!anchor}
-          onClick={() => anchor && setDate(shiftAnchor(anchor, period, -1))}
-        >
-          {texts.previous}
-        </button>
-        <button
-          type="button"
-          className="wf-button wf-button-quiet"
-          disabled={!anchor}
-          onClick={() => anchor && setDate(shiftAnchor(anchor, period, 1))}
-        >
-          {texts.next}
-        </button>
+          <IconButton
+            icon="chevron-right"
+            label={texts.next}
+            disabled={!anchor}
+            onClick={() => anchor && setDate(shiftAnchor(anchor, period, 1))}
+          />
+        </Cluster>
       </div>
       {income.loading && !income.data ? <Loading t={t} /> : null}
       {income.error ? (
@@ -84,104 +90,132 @@ export function MyIncomeView({
   const { t, locale } = useWorkforce();
   const texts = t.myIncome;
   const work = t.collaboratorWork;
+  const detailsPaging = useClientPaging(t, texts.details);
   const branchName = (id: string) => branches?.get(id)?.name ?? '—';
   const nothing =
     income.baseSalary === null &&
     income.collaboratorWork === null &&
     income.unavailableSources.length === 0;
+  const items = income.collaboratorWork?.items ?? [];
+  const byBranch = income.collaboratorWork?.byBranch ?? [];
+
+  const itemColumns: DataTableColumn<IncomeItem>[] = [
+    {
+      key: 'date',
+      header: work.workDate,
+      mobileTitle: true,
+      cell: (item) => formatDate(item.workDate, locale),
+    },
+    {
+      key: 'branch',
+      header: work.branch,
+      truncate: true,
+      cell: (item) => branchName(item.branchId),
+    },
+    { key: 'mode', header: work.mode, cell: (item) => work.modes[item.mode] },
+    {
+      key: 'time',
+      header: work.time,
+      numeric: true,
+      cell: (item) => `${item.startTime}–${item.endTime}`,
+    },
+    {
+      key: 'pay',
+      header: work.pay,
+      numeric: true,
+      cell: (item) =>
+        item.agreedPayVnd === null ? texts.unagreedValue : formatVnd(item.agreedPayVnd, locale),
+    },
+  ];
+  type BranchRow = (typeof byBranch)[number];
+  const branchColumns: DataTableColumn<BranchRow>[] = [
+    {
+      key: 'branch',
+      header: work.branch,
+      mobileTitle: true,
+      truncate: true,
+      cell: (row) => branchName(row.branchId),
+    },
+    { key: 'count', header: texts.count, numeric: true, cell: (row) => row.occurrenceCount },
+    {
+      key: 'total',
+      header: texts.total,
+      numeric: true,
+      cell: (row) => formatVnd(row.totalAgreedPayVnd, locale),
+    },
+  ];
+
   return (
     <>
-      <p className="wf-muted">
+      <p className="ls-hint">
         {fill(texts.range, {
           from: formatDate(income.period.from, locale),
           to: formatDate(income.period.to, locale),
         })}
-        {income.period.kind === 'WEEK' ? <span className="wf-hint"> {texts.weekNote}</span> : null}
+        {income.period.kind === 'WEEK' ? ` ${texts.weekNote}` : null}
       </p>
       {income.kind === 'OWNER' ? <Empty>{texts.ownerNote}</Empty> : null}
       {income.kind === 'EMPLOYEE' && nothing ? <Empty>{texts.empty}</Empty> : null}
       {income.baseSalary ? (
         <Section title={texts.baseSalary}>
-          <p>
-            <strong>
-              {income.baseSalary.amountVnd === null
-                ? texts.baseSalaryNotSet
-                : `${formatVnd(income.baseSalary.amountVnd, locale)} ${texts.perMonth}`}
-            </strong>
+          <p className="ls-stat-value">
+            {income.baseSalary.amountVnd === null
+              ? texts.baseSalaryNotSet
+              : `${formatVnd(income.baseSalary.amountVnd, locale)} ${texts.perMonth}`}
           </p>
-          <p className="wf-hint">{texts.baseSalaryNote}</p>
+          <p className="ls-hint">{texts.baseSalaryNote}</p>
         </Section>
       ) : null}
       {income.collaboratorWork ? (
-        <Section title={texts.ctvTitle}>
-          <dl className="wf-facts">
-            <dt>{texts.total}</dt>
-            <dd>
-              <strong>{formatVnd(income.collaboratorWork.totalAgreedPayVnd, locale)}</strong>
-            </dd>
-            <dt>{texts.count}</dt>
-            <dd>{income.collaboratorWork.occurrenceCount}</dd>
-            {income.collaboratorWork.unagreedCount > 0 ? (
-              <>
-                <dt>{texts.unagreed}</dt>
-                <dd>{income.collaboratorWork.unagreedCount}</dd>
-              </>
-            ) : null}
-          </dl>
-          <p className="wf-hint">{texts.totalNote}</p>
-          {income.collaboratorWork.items.length === 0 ? <Empty>{texts.noWork}</Empty> : null}
-          {income.collaboratorWork.byBranch.length > 1 ? (
-            <>
-              <h3>{texts.byBranch}</h3>
-              <ul className="wf-plain-list">
-                {income.collaboratorWork.byBranch.map((row) => (
-                  <li key={row.branchId}>
-                    {branchName(row.branchId)}: {formatVnd(row.totalAgreedPayVnd, locale)} ·{' '}
-                    {row.occurrenceCount} {texts.count.toLowerCase()}
-                  </li>
-                ))}
-              </ul>
-            </>
+        <>
+          <Section title={texts.ctvTitle}>
+            <DescriptionList
+              items={[
+                {
+                  label: texts.total,
+                  value: (
+                    <strong>{formatVnd(income.collaboratorWork.totalAgreedPayVnd, locale)}</strong>
+                  ),
+                },
+                { label: texts.count, value: income.collaboratorWork.occurrenceCount },
+                ...(income.collaboratorWork.unagreedCount > 0
+                  ? [{ label: texts.unagreed, value: income.collaboratorWork.unagreedCount }]
+                  : []),
+              ]}
+            />
+            <p className="ls-hint">{texts.totalNote}</p>
+            {items.length === 0 ? <Empty>{texts.noWork}</Empty> : null}
+          </Section>
+          {byBranch.length > 1 ? (
+            <ListSection title={texts.byBranch}>
+              <DataTable
+                mode="client"
+                caption={fill(t.common.list.table, { list: texts.byBranch })}
+                columns={branchColumns}
+                rows={byBranch}
+                rowKey={(row) => row.branchId}
+                paging={{ off: 'One row per branch the collaborator worked at in the period.' }}
+              />
+            </ListSection>
           ) : null}
-          {income.collaboratorWork.items.length > 0 ? (
-            <>
-              <h3>{texts.details}</h3>
-              <table className="wf-table">
-                <thead>
-                  <tr>
-                    <th scope="col">{work.workDate}</th>
-                    <th scope="col">{work.branch}</th>
-                    <th scope="col">{work.mode}</th>
-                    <th scope="col">{work.time}</th>
-                    <th scope="col">{work.pay}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {income.collaboratorWork.items.map((item) => (
-                    <tr key={item.id}>
-                      <td data-label={work.workDate}>{formatDate(item.workDate, locale)}</td>
-                      <td data-label={work.branch}>{branchName(item.branchId)}</td>
-                      <td data-label={work.mode}>{work.modes[item.mode]}</td>
-                      <td data-label={work.time}>
-                        {item.startTime}–{item.endTime}
-                      </td>
-                      <td data-label={work.pay}>
-                        {item.agreedPayVnd === null
-                          ? texts.unagreedValue
-                          : formatVnd(item.agreedPayVnd, locale)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
+          {items.length > 0 ? (
+            <ListSection title={texts.details} count={items.length}>
+              <DataTable
+                mode="client"
+                caption={fill(t.common.list.table, { list: texts.details })}
+                columns={itemColumns}
+                rows={items}
+                rowKey={(item) => item.id}
+                paging={detailsPaging}
+              />
+            </ListSection>
           ) : null}
-        </Section>
+        </>
       ) : null}
       {income.unavailableSources.length > 0 ? (
         <Section title={texts.unavailableTitle}>
-          <p className="wf-hint">{texts.unavailableNote}</p>
-          <ul className="wf-plain-list">
+          <p className="ls-hint">{texts.unavailableNote}</p>
+          <ul className="ls-list-plain">
             {income.unavailableSources.map((source) => (
               <li key={source}>{texts.sources[source]}</li>
             ))}

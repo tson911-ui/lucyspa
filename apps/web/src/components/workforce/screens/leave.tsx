@@ -7,27 +7,45 @@ import type {
   LeaveStatus,
   LeaveType,
 } from '@lucy-spa/contracts';
-import { useState, type FormEvent, type ReactNode } from 'react';
+import {
+  Button,
+  ConfirmDialog,
+  DataTable,
+  DateInput,
+  DescriptionList,
+  Field as KitField,
+  FormDialog,
+  FormGrid,
+  ListSection,
+  ListToolbar,
+  RowActions,
+  Select,
+  Textarea,
+  type DataTableColumn,
+  type MenuItem,
+  type SelectOption,
+} from '@lucy-spa/ui';
+import { useState } from 'react';
 import { fill, type WorkforceDictionary } from '../../../i18n/workforce';
 import type { Locale } from '../../../i18n/locales';
+import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { formatDate, inclusiveDays } from '../../../lib/workforce/format';
+import { resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
 import { canAnywhere } from '../../../lib/workforce/permissions';
-import { leaveActions, runMutation } from '../../../lib/workforce/workflows';
+import { useClientPaging } from '../../../lib/workforce/use-client-paging';
+import { errorMessage, leaveActions, runMutation } from '../../../lib/workforce/workflows';
 import { employeeLabel, useEmployeeNames } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
   Empty,
   ErrorState,
-  Field,
-  FormFeedback,
   Loading,
   Notice,
   PageHeader,
-  Section,
-  SubmitButton,
   useResource,
   useSubmit,
+  useSuccessToast,
   type Tone,
 } from '../ui';
 
@@ -54,15 +72,24 @@ export function LeaveStatusBadge({ status, t }: { status: LeaveStatus; t: Workfo
 export function LeaveScreen() {
   const { t } = useWorkforce();
   const { account } = useAccount();
+  const [creating, setCreating] = useState(false);
+  // Collaborators work by schedule and never use leave (Owner decision Q15).
+  const collaborator = account.workforceTitle === 'COLLABORATOR';
+  const ownLeave = account.kind === 'EMPLOYEE' && !collaborator;
   return (
     <>
-      <PageHeader title={t.leave.title} intro={t.leave.wholeDays} />
+      <PageHeader title={t.leave.title} intro={t.leave.wholeDays}>
+        {ownLeave ? (
+          <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
+            {t.leave.newRequest}
+          </Button>
+        ) : null}
+      </PageHeader>
       {account.kind === 'EMPLOYEE' ? (
-        // Collaborators work by schedule and never use leave (Owner decision Q15).
-        account.workforceTitle === 'COLLABORATOR' ? (
+        collaborator ? (
           <Notice tone="info">{t.leave.collaboratorNoLeave}</Notice>
         ) : (
-          <OwnLeave />
+          <OwnLeave creating={creating} onClose={() => setCreating(false)} />
         )
       ) : null}
       {canAnywhere(account, 'APPROVE_LEAVE') ? <LeaveDecisions /> : null}
@@ -71,25 +98,103 @@ export function LeaveScreen() {
 }
 
 /** Localized leave-type options; stable codes are the submitted values. */
-export function LeaveTypeOptions({ t }: { t: WorkforceDictionary }) {
-  return (
-    <>
-      {LEAVE_TYPE_ORDER.map((type) => (
-        <option key={type} value={type}>
-          {t.leave.types[type]}
-        </option>
-      ))}
-    </>
-  );
+export function leaveTypeOptions(t: WorkforceDictionary): SelectOption[] {
+  return LEAVE_TYPE_ORDER.map((type) => ({ value: type, label: t.leave.types[type] }));
 }
 
-function OwnLeave() {
+function OwnLeave({ creating, onClose }: { creating: boolean; onClose: () => void }) {
   const { api, t, locale } = useWorkforce();
   const { account } = useAccount();
+  const notify = useSuccessToast();
   const own = useResource(
     () => api.get<LeaveRequestListResponse>('/api/v1/leave-requests/me'),
     [api],
   );
+  const [cancelling, setCancelling] = useState<LeaveRequestResponse | null>(null);
+  const [cancelled, setCancelled] = useState(false);
+  const requests = own.data?.requests ?? [];
+
+  return (
+    <>
+      <Notice tone="info">{t.leave.baseline}</Notice>
+      <ListSection title={t.leave.mine}>
+        {own.loading && !own.data ? <Loading t={t} /> : null}
+        {own.error ? (
+          <ErrorState error={own.error} t={t} onRetry={() => void own.reload()} />
+        ) : null}
+        {cancelled ? <Notice tone="success">{t.leave.cancelled}</Notice> : null}
+        {own.data && requests.length === 0 ? <Empty>{t.common.empty}</Empty> : null}
+        {requests.length > 0 ? (
+          <>
+            <LeaveTable
+              requests={requests}
+              t={t}
+              locale={locale}
+              list={t.leave.mine}
+              menu={(request) =>
+                leaveActions(request, account.id, false).cancel
+                  ? [
+                      {
+                        id: 'cancel',
+                        label: t.leave.cancelRequest,
+                        icon: 'x-circle',
+                        tone: 'danger',
+                        onSelect: () => setCancelling(request),
+                      },
+                    ]
+                  : []
+              }
+            />
+            {requests.some((request) => request.status === 'APPROVED') ? (
+              <p className="ls-hint">{t.leave.approvedNote}</p>
+            ) : null}
+          </>
+        ) : null}
+      </ListSection>
+      {creating ? <LeaveRequestDialog reload={own.reload} onClose={onClose} /> : null}
+      {cancelling ? (
+        <ConfirmDialog
+          title={t.leave.cancelTitle}
+          description={t.leave.cancelBody}
+          tone="warning"
+          confirmLabel={t.leave.cancelRequest}
+          cancelLabel={t.leave.keepRequest}
+          facts={[
+            {
+              label: t.leave.period,
+              value: `${formatDate(cancelling.startDate, locale)} – ${formatDate(cancelling.endDate, locale)}`,
+            },
+          ]}
+          describeError={confirmError(t)}
+          onCancel={() => setCancelling(null)}
+          onConfirm={async () => {
+            const outcome = await runMutation(
+              () =>
+                api.post(`/api/v1/leave-requests/${cancelling.id}/cancel`, {
+                  expectedVersion: cancelling.version,
+                }),
+              own.reload,
+            );
+            if (!outcome.ok) throw outcome.error;
+            setCancelling(null);
+            notify(t.leave.cancelled, () => setCancelled(true));
+            await own.reload();
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/** "Tạo đơn nghỉ phép": type, whole-day range and reason; the API decides everything else. */
+function LeaveRequestDialog({
+  reload,
+  onClose,
+}: {
+  reload: () => Promise<void>;
+  onClose: () => void;
+}) {
+  const { api, t } = useWorkforce();
   const [form, setForm] = useState<LeaveRequestCreateRequest>({
     leaveType: 'ANNUAL',
     startDate: '',
@@ -97,136 +202,94 @@ function OwnLeave() {
     reason: '',
   });
   const create = useSubmit();
-  const cancel = useSubmit();
   const days = inclusiveDays(form.startDate, form.endDate);
   const invalidRange = form.startDate !== '' && form.endDate !== '' && days === null;
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
+  async function submit() {
     if (invalidRange) return;
     const ok = await create.run(
-      () => runMutation(() => api.post('/api/v1/leave-requests', form), own.reload),
+      () => runMutation(() => api.post('/api/v1/leave-requests', form), reload),
       t.leave.submitted,
     );
     if (ok) {
-      setForm({ leaveType: form.leaveType, startDate: '', endDate: '', reason: '' });
-      await own.reload();
+      onClose();
+      await reload();
     }
   }
 
   return (
-    <>
-      <Section title={t.leave.newRequest}>
-        <Notice tone="info">{t.leave.baseline}</Notice>
-        <form className="wf-form" onSubmit={(event) => void submit(event)}>
-          <Field id="leave-type" label={t.leave.type} required>
-            <select
-              id="leave-type"
-              required
+    <FormDialog
+      title={t.leave.newRequest}
+      labels={formOverlayLabels(t, t.leave.submit)}
+      busy={create.pending}
+      dirty={form.startDate !== '' || form.endDate !== '' || form.reason !== ''}
+      submitDisabled={
+        invalidRange || form.startDate === '' || form.endDate === '' || form.reason.trim() === ''
+      }
+      error={
+        create.error ? <Notice tone="error">{errorMessage(create.error, t)}</Notice> : undefined
+      }
+      onClose={onClose}
+      onSubmit={submit}
+    >
+      <FormGrid cols={2}>
+        <KitField label={t.leave.type} required requiredLabel={t.common.required} full>
+          {(control) => (
+            <Select
+              {...control}
               value={form.leaveType}
+              options={leaveTypeOptions(t)}
               onChange={(event) => setForm({ ...form, leaveType: event.target.value as LeaveType })}
-            >
-              <LeaveTypeOptions t={t} />
-            </select>
-          </Field>
-          <div className="wf-row">
-            <Field id="leave-start" label={t.leave.startDate} required>
-              <input
-                id="leave-start"
-                type="date"
-                required
-                value={form.startDate}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    startDate: event.target.value,
-                    endDate: form.endDate === '' ? event.target.value : form.endDate,
-                  })
-                }
-              />
-            </Field>
-            <Field id="leave-end" label={t.leave.endDate} required>
-              <input
-                id="leave-end"
-                type="date"
-                required
-                min={form.startDate || undefined}
-                value={form.endDate}
-                aria-invalid={invalidRange}
-                onChange={(event) => setForm({ ...form, endDate: event.target.value })}
-              />
-            </Field>
-          </div>
-          {invalidRange ? <Notice tone="error">{t.leave.endBeforeStart}</Notice> : null}
-          {days !== null ? (
-            <p className="wf-muted">
-              {t.leave.days}: {fill(t.leave.daysValue, { count: days })}
-            </p>
-          ) : null}
-          <Field id="leave-reason" label={t.leave.reason} required>
-            <textarea
-              id="leave-reason"
-              required
+            />
+          )}
+        </KitField>
+        <KitField label={t.leave.startDate} required requiredLabel={t.common.required}>
+          {(control) => (
+            <DateInput
+              {...control}
+              value={form.startDate}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  startDate: event.target.value,
+                  endDate: form.endDate === '' ? event.target.value : form.endDate,
+                })
+              }
+            />
+          )}
+        </KitField>
+        <KitField
+          label={t.leave.endDate}
+          required
+          requiredLabel={t.common.required}
+          {...(invalidRange
+            ? { error: t.leave.endBeforeStart }
+            : days !== null
+              ? { hint: `${t.leave.days}: ${fill(t.leave.daysValue, { count: days })}` }
+              : {})}
+        >
+          {(control) => (
+            <DateInput
+              {...control}
+              min={form.startDate || undefined}
+              value={form.endDate}
+              invalid={invalidRange}
+              onChange={(event) => setForm({ ...form, endDate: event.target.value })}
+            />
+          )}
+        </KitField>
+        <KitField label={t.leave.reason} required requiredLabel={t.common.required} full>
+          {(control) => (
+            <Textarea
+              {...control}
               maxLength={1000}
               value={form.reason}
               onChange={(event) => setForm({ ...form, reason: event.target.value })}
             />
-          </Field>
-          <FormFeedback error={create.error} success={create.success} t={t} />
-          <SubmitButton
-            pending={create.pending}
-            label={t.leave.submit}
-            pendingLabel={t.common.saving}
-            disabled={invalidRange || form.reason.trim() === ''}
-          />
-        </form>
-      </Section>
-      <Section title={t.leave.mine}>
-        {own.loading ? <Loading t={t} /> : null}
-        {own.error ? (
-          <ErrorState error={own.error} t={t} onRetry={() => void own.reload()} />
-        ) : null}
-        <FormFeedback error={cancel.error} success={cancel.success} t={t} />
-        {own.data && own.data.requests.length === 0 ? <Empty>{t.common.empty}</Empty> : null}
-        {own.data && own.data.requests.length > 0 ? (
-          <LeaveTable
-            requests={own.data.requests}
-            t={t}
-            locale={locale}
-            action={(request) => {
-              const actions = leaveActions(request, account.id, false);
-              if (actions.cancel) {
-                return (
-                  <button
-                    type="button"
-                    className="wf-button wf-button-quiet"
-                    disabled={cancel.pending}
-                    onClick={() =>
-                      void cancel.run(async () => {
-                        const outcome = await runMutation(
-                          () =>
-                            api.post(`/api/v1/leave-requests/${request.id}/cancel`, {
-                              expectedVersion: request.version,
-                            }),
-                          own.reload,
-                        );
-                        if (outcome.ok) await own.reload();
-                        return outcome;
-                      }, t.leave.cancelled)
-                    }
-                  >
-                    {t.leave.cancelRequest}
-                  </button>
-                );
-              }
-              return request.status === 'APPROVED' ? (
-                <span className="wf-small wf-muted">{t.leave.approvedNote}</span>
-              ) : null;
-            }}
-          />
-        ) : null}
-      </Section>
-    </>
+          )}
+        </KitField>
+      </FormGrid>
+    </FormDialog>
   );
 }
 
@@ -234,193 +297,259 @@ export function LeaveTable({
   requests,
   t,
   locale,
+  list,
   employee,
-  action,
+  menu,
 }: {
   requests: readonly LeaveRequestResponse[];
   t: WorkforceDictionary;
   locale: Locale;
+  /** Visible name of the list (accessible name of the table and its pager). */
+  list?: string;
   employee?: (id: string) => string;
-  action?: (request: LeaveRequestResponse) => ReactNode;
+  /** Row menu items for one request; an empty list shows no menu. */
+  menu?: (request: LeaveRequestResponse) => MenuItem[];
 }) {
-  // The wrapper scrolls a wide table inside the card instead of widening the page (tablet widths).
+  const name = list ?? t.leave.title;
+  const paging = useClientPaging(t, name);
+  const columns: DataTableColumn<LeaveRequestResponse>[] = [
+    ...(employee
+      ? [
+          {
+            key: 'employee',
+            header: t.leave.employee,
+            mobileTitle: true,
+            truncate: true,
+            cell: (request: LeaveRequestResponse) => employee(request.employeeId),
+          },
+        ]
+      : []),
+    {
+      key: 'type',
+      header: t.leave.type,
+      // The approval list drops the type on a tablet (the decision dialog shows it); my own list keeps it.
+      ...(employee ? { hideBelow: 'lg' as const } : { mobileTitle: true }),
+      cell: (request) => t.leave.types[request.leaveType],
+    },
+    {
+      key: 'period',
+      header: t.leave.period,
+      cell: (request) => (
+        <span className="ls-cell-stack">
+          <span className="ls-cell-main">
+            {formatDate(request.startDate, locale)} – {formatDate(request.endDate, locale)}
+          </span>
+          <span className="ls-cell-sub">{fill(t.leave.daysValue, { count: request.days })}</span>
+        </span>
+      ),
+    },
+    {
+      key: 'reason',
+      header: t.leave.reason,
+      hideBelow: 'lg',
+      wrap: true,
+      width: 'lg',
+      cell: (request) =>
+        request.decisionReason
+          ? `${request.reason} · ${t.leave.decisionReason}: ${request.decisionReason}`
+          : request.reason,
+    },
+    {
+      key: 'status',
+      header: t.common.status,
+      cell: (request) => <LeaveStatusBadge status={request.status} t={t} />,
+    },
+    ...(menu
+      ? [
+          {
+            key: 'actions',
+            header: t.common.actions,
+            actions: true,
+            cell: (request: LeaveRequestResponse) => {
+              const items = menu(request);
+              return items.length > 0 ? (
+                <RowActions
+                  menuLabel={fill(t.common.list.actionsFor, {
+                    name: employee
+                      ? employee(request.employeeId)
+                      : `${formatDate(request.startDate, locale)}`,
+                  })}
+                  items={items}
+                />
+              ) : null;
+            },
+          },
+        ]
+      : []),
+  ];
   return (
-    <div className="ls-table-wrap">
-      <table className="wf-table">
-        <thead>
-          <tr>
-            {employee ? <th scope="col">{t.leave.employee}</th> : null}
-            <th scope="col">{t.leave.type}</th>
-            <th scope="col">{t.leave.startDate}</th>
-            <th scope="col">{t.leave.endDate}</th>
-            <th scope="col">{t.leave.days}</th>
-            <th scope="col">{t.leave.reason}</th>
-            <th scope="col">{t.common.status}</th>
-            {action ? <th scope="col">{t.common.actions}</th> : null}
-          </tr>
-        </thead>
-        <tbody>
-          {requests.map((request) => (
-            <tr key={request.id}>
-              {employee ? (
-                <td data-label={t.leave.employee}>{employee(request.employeeId)}</td>
-              ) : null}
-              <td data-label={t.leave.type}>{t.leave.types[request.leaveType]}</td>
-              <td data-label={t.leave.startDate}>{formatDate(request.startDate, locale)}</td>
-              <td data-label={t.leave.endDate}>{formatDate(request.endDate, locale)}</td>
-              <td data-label={t.leave.days}>{request.days}</td>
-              <td data-label={t.leave.reason}>
-                {request.reason}
-                {request.decisionReason ? (
-                  <span className="wf-small wf-muted wf-block">
-                    {t.leave.decisionReason}: {request.decisionReason}
-                  </span>
-                ) : null}
-              </td>
-              <td data-label={t.common.status}>
-                <LeaveStatusBadge status={request.status} t={t} />
-              </td>
-              {action ? <td data-label={t.common.actions}>{action(request)}</td> : null}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      mode="client"
+      caption={fill(t.common.list.table, { list: name })}
+      columns={columns}
+      rows={requests}
+      rowKey={(request) => request.id}
+      paging={paging}
+    />
   );
 }
+
+type Decision = { request: LeaveRequestResponse; kind: 'approve' | 'reject' };
 
 function LeaveDecisions() {
   const { api, t, locale } = useWorkforce();
   const { account } = useAccount();
   const names = useEmployeeNames(api, account);
   const [status, setStatus] = useState<LeaveStatus | ''>('PENDING');
-  const [deciding, setDeciding] = useState<string | null>(null);
+  const [deciding, setDeciding] = useState<Decision | null>(null);
   const list = useResource(
     () =>
       api.get<LeaveRequestListResponse>('/api/v1/leave-requests', { status: status || undefined }),
     [api, status],
   );
+  const requests = list.data?.requests ?? [];
+  const nameOf = (id: string) => employeeLabel(id, names.data, account, t);
 
   return (
-    <Section title={t.leave.decisions}>
-      <div className="wf-filters">
-        <Field id="leave-status" label={t.leave.statusFilter}>
-          <select
+    <ListSection title={t.leave.decisions}>
+      <ListToolbar
+        labels={toolbarLabels(t)}
+        activeFilters={status === 'PENDING' ? 0 : 1}
+        resultCount={list.data ? resultsText(t, requests.length) : undefined}
+        onReset={() => setStatus('PENDING')}
+        reload={{ label: t.common.reload, onClick: () => void list.reload(), busy: list.loading }}
+        search={
+          <Select
             id="leave-status"
+            aria-label={t.leave.statusFilter}
             value={status}
+            options={[
+              { value: '', label: t.common.all },
+              ...STATUSES.map((value) => ({ value, label: t.leave.statuses[value] })),
+            ]}
             onChange={(event) => setStatus(event.target.value as LeaveStatus | '')}
-          >
-            <option value="">{t.common.all}</option>
-            {STATUSES.map((value) => (
-              <option key={value} value={value}>
-                {t.leave.statuses[value]}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
-      {list.loading ? <Loading t={t} /> : null}
+          />
+        }
+      />
+      {list.loading && !list.data ? <Loading t={t} /> : null}
       {list.error ? (
         <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
       ) : null}
-      {list.data && list.data.requests.length === 0 ? <Empty>{t.common.empty}</Empty> : null}
-      {list.data && list.data.requests.length > 0 ? (
+      {list.data && requests.length === 0 ? <Empty>{t.common.empty}</Empty> : null}
+      {requests.length > 0 ? (
         <LeaveTable
-          requests={list.data.requests}
+          requests={requests}
           t={t}
           locale={locale}
-          employee={(id) => employeeLabel(id, names.data, account, t)}
-          action={(request) =>
+          list={t.leave.decisions}
+          employee={nameOf}
+          menu={(request) =>
             // Every listed request is inside the caller's APPROVE_LEAVE scope (server-filtered).
-            leaveActions(request, account.id, true).decide ? (
-              deciding === request.id ? (
-                <DecisionForm
-                  request={request}
-                  reload={list.reload}
-                  onDone={async () => {
-                    setDeciding(null);
-                    await list.reload();
-                  }}
-                  onCancel={() => setDeciding(null)}
-                />
-              ) : (
-                <button type="button" className="wf-button" onClick={() => setDeciding(request.id)}>
-                  {t.leave.approve} / {t.leave.reject}
-                </button>
-              )
-            ) : null
+            leaveActions(request, account.id, true).decide
+              ? [
+                  {
+                    id: 'approve',
+                    label: t.leave.approve,
+                    icon: 'check-circle',
+                    onSelect: () => setDeciding({ request, kind: 'approve' }),
+                  },
+                  {
+                    id: 'reject',
+                    label: t.leave.reject,
+                    icon: 'x-circle',
+                    tone: 'danger',
+                    onSelect: () => setDeciding({ request, kind: 'reject' }),
+                  },
+                ]
+              : []
           }
         />
       ) : null}
-    </Section>
+      {deciding ? (
+        <DecisionDialog
+          request={deciding.request}
+          kind={deciding.kind}
+          employee={nameOf(deciding.request.employeeId)}
+          reload={list.reload}
+          onDone={async () => {
+            setDeciding(null);
+            await list.reload();
+          }}
+          onClose={() => setDeciding(null)}
+        />
+      ) : null}
+    </ListSection>
   );
 }
 
 /** Approve (optional note) or reject (reason required by the API); versioned. */
-export function DecisionForm({
+export function DecisionDialog({
   request,
+  kind,
+  employee,
   reload,
   onDone,
-  onCancel,
+  onClose,
 }: {
   request: LeaveRequestResponse;
+  kind: 'approve' | 'reject';
+  employee: string;
   reload: () => Promise<void>;
   onDone: () => Promise<void>;
-  onCancel: () => void;
+  onClose: () => void;
 }) {
-  const { api, t } = useWorkforce();
+  const { api, t, locale } = useWorkforce();
   const [reason, setReason] = useState('');
   const submit = useSubmit();
-  const id = `decide-${request.id}`;
+  const reject = kind === 'reject';
 
-  async function decide(kind: 'approve' | 'reject') {
+  async function decide() {
     const trimmed = reason.trim();
     const body = { expectedVersion: request.version, ...(trimmed ? { reason: trimmed } : {}) };
     const ok = await submit.run(
       () =>
         runMutation(() => api.post(`/api/v1/leave-requests/${request.id}/${kind}`, body), reload),
-      kind === 'approve' ? t.leave.approved : t.leave.rejected,
+      reject ? t.leave.rejected : t.leave.approved,
     );
     if (ok) await onDone();
   }
 
   return (
-    <form
-      className="wf-inline-form"
-      aria-label={t.leave.decisions}
-      onSubmit={(event) => {
-        event.preventDefault();
-        void decide('approve');
-      }}
+    <FormDialog
+      title={reject ? t.leave.rejectTitle : t.leave.approveTitle}
+      description={`${employee} · ${formatDate(request.startDate, locale)} – ${formatDate(request.endDate, locale)}`}
+      labels={formOverlayLabels(t, reject ? t.leave.reject : t.leave.approve)}
+      busy={submit.pending}
+      dirty={reason !== ''}
+      submitDisabled={reject && reason.trim() === ''}
+      error={
+        submit.error ? <Notice tone="error">{errorMessage(submit.error, t)}</Notice> : undefined
+      }
+      onClose={onClose}
+      onSubmit={decide}
     >
-      <Field id={`${id}-reason`} label={`${t.leave.rejectReason} / ${t.leave.approveReason}`}>
-        <textarea
-          id={`${id}-reason`}
-          maxLength={1000}
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
+      <FormGrid>
+        <DescriptionList
+          items={[
+            { label: t.leave.type, value: t.leave.types[request.leaveType] },
+            { label: t.leave.days, value: fill(t.leave.daysValue, { count: request.days }) },
+            { label: t.leave.reason, value: request.reason },
+          ]}
         />
-      </Field>
-      <FormFeedback error={submit.error} success={null} t={t} />
-      <div className="wf-form-actions">
-        <SubmitButton
-          pending={submit.pending}
-          label={t.leave.approve}
-          pendingLabel={t.common.saving}
-        />
-        <button
-          type="button"
-          className="wf-button wf-button-danger"
-          disabled={submit.pending || reason.trim() === ''}
-          title={t.leave.rejectReason}
-          onClick={() => void decide('reject')}
+        <KitField
+          label={reject ? t.leave.rejectReason : t.leave.approveReason}
+          {...(reject ? { required: true, requiredLabel: t.common.required } : {})}
         >
-          {t.leave.reject}
-        </button>
-        <button type="button" className="wf-button wf-button-quiet" onClick={onCancel}>
-          {t.common.cancel}
-        </button>
-      </div>
-    </form>
+          {(control) => (
+            <Textarea
+              {...control}
+              maxLength={1000}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          )}
+        </KitField>
+      </FormGrid>
+    </FormDialog>
   );
 }

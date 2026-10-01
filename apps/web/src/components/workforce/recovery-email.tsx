@@ -1,6 +1,7 @@
 'use client';
 
 import type { CurrentAccountResponse } from '@lucy-spa/contracts';
+import { Cluster, Field as KitField, TextInput } from '@lucy-spa/ui';
 import { useState, type FormEvent } from 'react';
 import { fill } from '../../i18n/workforce';
 import { withReauthentication } from '../../lib/workforce/reauth';
@@ -13,7 +14,7 @@ import {
 } from '../../lib/workforce/recovery';
 import { useReauthentication } from './reauth-dialog';
 import { useWorkforce } from './session';
-import { Badge, Button, Field, Notice, Section, SubmitButton, useResource, useSubmit } from './ui';
+import { Badge, Button, Notice, Section, SubmitButton, useResource, useSubmit } from './ui';
 
 /**
  * "Email khôi phục" for the signed-in Owner or employee: shows whether the stored recovery
@@ -100,7 +101,7 @@ export function RecoveryEmailView({
       }
     >
       {dialog}
-      <p className="wf-muted">{texts.intro}</p>
+      <p className="ls-hint">{texts.intro}</p>
       {state === 'missing' ? (
         <Notice tone="info">{texts.missing}</Notice>
       ) : (
@@ -121,24 +122,33 @@ export function RecoveryEmailView({
           ) : null}
           {submit.success && flowToken ? <Notice tone="info">{submit.success}</Notice> : null}
           {flowToken ? (
-            <form className="wf-filters" onSubmit={(event) => void verify(event)}>
-              <Field id="recovery-code" label={texts.code} required>
-                <input
+            <form onSubmit={(event) => void verify(event)}>
+              <Cluster align="end">
+                <KitField
                   id="recovery-code"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
+                  label={texts.code}
                   required
-                  value={code}
-                  onChange={(event) => setCode(event.target.value)}
+                  requiredLabel={t.common.required}
+                  width="sm"
+                >
+                  {(control) => (
+                    <TextInput
+                      {...control}
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      value={code}
+                      onChange={(event) => setCode(event.target.value)}
+                    />
+                  )}
+                </KitField>
+                <SubmitButton
+                  pending={submit.pending}
+                  label={texts.verify}
+                  pendingLabel={texts.verifying}
                 />
-              </Field>
-              <SubmitButton
-                pending={submit.pending}
-                label={texts.verify}
-                pendingLabel={texts.verifying}
-              />
+              </Cluster>
             </form>
           ) : null}
         </>

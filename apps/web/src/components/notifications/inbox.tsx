@@ -7,12 +7,26 @@ import type {
   NotificationPage,
   NotificationReadAllResponse,
 } from '@lucy-spa/contracts';
-import { Icon, buttonClass } from '@lucy-spa/ui';
+import {
+  Button,
+  CursorPagination,
+  DataTable,
+  Icon,
+  ListToolbar,
+  RowActions,
+  Select,
+  buttonClass,
+  type DataTableColumn,
+  type MenuItem,
+} from '@lucy-spa/ui';
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { fill, getWorkforceDictionary } from '../../i18n/workforce';
 import { getNotificationDictionary } from '../../i18n/notifications';
 import type { Locale } from '../../i18n/locales';
 import type { ApiClient } from '../../lib/api/client';
+import { cursorLabels, toolbarLabels } from '../../lib/workforce/list-view';
+import { useClientPaging } from '../../lib/workforce/use-client-paging';
 import {
   applyItemUpdate,
   DEFAULT_INBOX_FILTERS,
@@ -23,10 +37,12 @@ import {
   notificationQuery,
   type InboxFilters,
 } from '../../lib/notifications';
-import { Badge, Empty, Notice, PageHeader, Section } from '../workforce/ui';
+import { Badge, Empty, Notice, PageHeader } from '../workforce/ui';
 
 const CHANGED = 'lucy-notifications-changed';
 const REFRESH_MS = 30_000;
+
+type NotificationTexts = ReturnType<typeof getNotificationDictionary>;
 
 /** Bell with the unread badge (archived items are never counted by the API). */
 export function NotificationIndicator({
@@ -94,64 +110,174 @@ export function NotificationIndicator({
   );
 }
 
-export function NotificationCard({
-  item,
+/**
+ * Row menu of one notification: mark read while unread, archive until archived (only where the caller
+ * offers archiving). Empty when nothing is left to do, so the row shows no menu.
+ */
+export function notificationMenu(
+  item: NotificationItem,
+  t: NotificationTexts,
+  options: {
+    pendingId: string | null;
+    onRead: () => void;
+    /** Omitted where archiving is not offered. */
+    onArchive?: (() => void) | undefined;
+  },
+): MenuItem[] {
+  const working = options.pendingId === item.id;
+  const disabled = options.pendingId !== null;
+  return [
+    ...(!item.readAt
+      ? [
+          {
+            id: 'read',
+            label: working ? t.working : t.markRead,
+            icon: 'check' as const,
+            disabled,
+            onSelect: options.onRead,
+          },
+        ]
+      : []),
+    ...(options.onArchive && !item.archivedAt
+      ? [
+          {
+            id: 'archive',
+            label: working ? t.working : t.archive,
+            icon: 'download' as const,
+            disabled,
+            onSelect: options.onArchive,
+          },
+        ]
+      : []),
+  ];
+}
+
+function timestampParts(item: NotificationItem, locale: Locale) {
+  // A person-level notification (leave) has no branch; use the viewer's own time zone.
+  const zone = item.branch ? { timeZone: item.branch.timezone } : {};
+  const tag = locale === 'vi' ? 'vi-VN' : 'en-GB';
+  const at = new Date(item.actionAt);
+  return {
+    date: new Intl.DateTimeFormat(tag, { ...zone, dateStyle: 'medium' }).format(at),
+    time: new Intl.DateTimeFormat(tag, { ...zone, timeStyle: 'short' }).format(at),
+  };
+}
+
+/**
+ * The inbox as one table: message (the link to its page when there is one), time, source, status and a
+ * row menu. Every row has the two-line time cell, so rows keep one height whatever the message length.
+ */
+export function NotificationTable({
+  items,
   locale,
-  href,
-  busy,
+  hrefFor,
+  pendingId,
+  loading = false,
+  empty,
   onRead,
   onArchive,
 }: {
-  item: NotificationItem;
+  items: readonly NotificationItem[];
   locale: Locale;
-  href: string | null;
-  busy: boolean;
-  onRead: () => void;
-  /** Omitted where archiving is not offered. Archived items never show the action. */
-  onArchive?: () => void;
+  hrefFor: (item: NotificationItem) => string | null;
+  pendingId: string | null;
+  loading?: boolean | undefined;
+  empty?: ReactNode;
+  onRead: (id: string) => void;
+  onArchive?: ((id: string) => void) | undefined;
 }) {
   const t = getNotificationDictionary(locale);
-  const timestamp = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
-    // A person-level notification (leave) has no branch; use the viewer's own time zone.
-    ...(item.branch ? { timeZone: item.branch.timezone } : {}),
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(item.actionAt));
-  return (
-    <Section title={item.branch ? `${item.source.code} · ${item.branch.name}` : item.source.code}>
-      <Badge tone={item.readAt ? 'neutral' : 'info'}>{item.readAt ? t.read : t.unread}</Badge>
-      {item.archivedAt ? <Badge tone="neutral">{t.archivedBadge}</Badge> : null}
-      <p>{notificationMessage(item, locale)}</p>
-      <p className="wf-small">
-        <time dateTime={item.actionAt}>{timestamp}</time>
-      </p>
-      <div className="wf-actions">
-        {href ? (
-          <Link className="wf-button" href={href}>
-            {item.source.type === 'LeaveRequest'
-              ? t.openLeave
-              : item.source.type === 'Invoice'
-                ? t.finance.openInvoice
-                : t.open}
+  const w = getWorkforceDictionary(locale);
+  const paging = useClientPaging(w, t.title);
+  const columns: DataTableColumn<NotificationItem>[] = [
+    {
+      key: 'message',
+      header: t.columnMessage,
+      mobileTitle: true,
+      wrap: true,
+      width: 'lg',
+      cell: (item) => {
+        const message = notificationMessage(item, locale);
+        const href = hrefFor(item);
+        const open =
+          item.source.type === 'LeaveRequest'
+            ? t.openLeave
+            : item.source.type === 'Invoice'
+              ? t.finance.openInvoice
+              : t.open;
+        return href ? (
+          <Link className="ls-link" href={href} title={`${open}: ${message}`}>
+            {message}
           </Link>
-        ) : null}
-        {!item.readAt ? (
-          <button className="wf-button" type="button" disabled={busy} onClick={onRead}>
-            {busy ? t.working : t.markRead}
-          </button>
-        ) : null}
-        {onArchive && !item.archivedAt ? (
-          <button
-            className="wf-button wf-button-quiet"
-            type="button"
-            disabled={busy}
-            onClick={onArchive}
-          >
-            {busy ? t.working : t.archive}
-          </button>
-        ) : null}
-      </div>
-    </Section>
+        ) : (
+          message
+        );
+      },
+    },
+    {
+      key: 'time',
+      header: t.columnTime,
+      cell: (item) => {
+        const { date, time } = timestampParts(item, locale);
+        return (
+          <time dateTime={item.actionAt} className="ls-cell-stack">
+            <span className="ls-cell-main">{date}</span>
+            <span className="ls-cell-sub">{time}</span>
+          </time>
+        );
+      },
+    },
+    {
+      key: 'source',
+      header: t.columnSource,
+      hideBelow: 'lg',
+      cell: (item) => (
+        <span className="ls-cell-stack">
+          <span className="ls-cell-main">{item.source.code}</span>
+          <span className="ls-cell-sub ls-cell-title" title={item.branch?.name}>
+            {item.branch?.name ?? '—'}
+          </span>
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: t.columnStatus,
+      cell: (item) => (
+        <>
+          <Badge tone={item.readAt ? 'neutral' : 'info'}>{item.readAt ? t.read : t.unread}</Badge>
+          {item.archivedAt ? <Badge tone="neutral">{t.archivedBadge}</Badge> : null}
+        </>
+      ),
+    },
+    {
+      key: 'actions',
+      header: t.columnActions,
+      actions: true,
+      cell: (item) => {
+        const menu = notificationMenu(item, t, {
+          pendingId,
+          onRead: () => onRead(item.id),
+          ...(onArchive ? { onArchive: () => onArchive(item.id) } : {}),
+        });
+        return menu.length > 0 ? (
+          <RowActions menuLabel={fill(t.actionsFor, { code: item.source.code })} items={menu} />
+        ) : null;
+      },
+    },
+  ];
+  return (
+    <DataTable
+      mode="client"
+      caption={fill(w.common.list.table, { list: t.title })}
+      columns={columns}
+      rows={items}
+      rowKey={(item) => item.id}
+      loading={loading}
+      loadingLabel={t.loading}
+      empty={empty}
+      paging={paging}
+    />
   );
 }
 
@@ -167,6 +293,7 @@ export function NotificationInbox({
   locale: Locale;
 }) {
   const t = getNotificationDictionary(locale);
+  const w = getWorkforceDictionary(locale);
   const categories = inboxCategories(account);
   const [filters, setFilters] = useState<InboxFilters>(DEFAULT_INBOX_FILTERS);
   const [page, setPage] = useState<NotificationPage | null>(null);
@@ -265,98 +392,97 @@ export function NotificationInbox({
     : filters.category !== 'ALL' || filters.unreadOnly
       ? t.emptyFiltered
       : t.empty;
+  const counted = page && !filters.archived;
+  const activeFilters =
+    (filters.category !== 'ALL' ? 1 : 0) +
+    (filters.unreadOnly ? 1 : 0) +
+    (filters.archived ? 1 : 0);
+  const items = page?.items ?? [];
+
   return (
     <>
       <PageHeader title={t.title} intro={t.intro}>
-        <button
-          type="button"
-          className="wf-button"
-          disabled={loading || busy}
-          onClick={() => void load()}
-        >
-          {t.refresh}
-        </button>
-      </PageHeader>
-      <div className="wf-filters" role="group" aria-label={t.filters}>
-        {categories.length > 0 ? (
-          <>
-            <button
-              type="button"
-              className="wf-button wf-button-quiet"
-              aria-pressed={filters.category === 'ALL'}
-              disabled={busy}
-              onClick={() => setFilters({ ...filters, category: 'ALL' })}
-            >
-              {t.allCategories}
-              {page && !filters.archived ? ` (${unread})` : ''}
-            </button>
-            {categories.map((category) => (
-              <button
-                key={category}
-                type="button"
-                className="wf-button wf-button-quiet"
-                aria-pressed={filters.category === category}
-                disabled={busy}
-                onClick={() => setFilters({ ...filters, category })}
-              >
-                {t.categories[category]}
-                {page && !filters.archived ? ` (${page.unreadByCategory[category]})` : ''}
-              </button>
-            ))}
-          </>
-        ) : null}
-        <label>
-          <input
-            type="checkbox"
-            checked={filters.unreadOnly}
-            disabled={busy}
-            onChange={(event) => setFilters({ ...filters, unreadOnly: event.target.checked })}
-          />{' '}
-          {t.unreadOnly}
-        </label>
-        <button
-          type="button"
-          className="wf-button wf-button-quiet"
-          aria-pressed={filters.archived}
-          disabled={busy}
-          onClick={() => setFilters({ ...filters, archived: !filters.archived })}
-        >
-          {filters.archived ? t.showInbox : t.showArchived}
-        </button>
         {!filters.archived ? (
-          <button
-            type="button"
-            className="wf-button"
+          <Button
+            variant="secondary"
+            icon="check-circle"
+            loading={pending === 'all'}
             disabled={busy || loading || unread === 0}
             onClick={() => void readAll()}
           >
             {pending === 'all' ? t.working : t.markAllRead}
-          </button>
+          </Button>
         ) : null}
-      </div>
+      </PageHeader>
+      <ListToolbar
+        labels={toolbarLabels(w)}
+        activeFilters={activeFilters}
+        onReset={() => setFilters(DEFAULT_INBOX_FILTERS)}
+        reload={{ label: t.refresh, onClick: () => void load(), busy: loading || busy }}
+        search={
+          categories.length > 0 ? (
+            <Select
+              id="notification-category"
+              aria-label={t.category}
+              value={filters.category}
+              disabled={busy}
+              options={[
+                { value: 'ALL', label: `${t.allCategories}${counted ? ` (${unread})` : ''}` },
+                ...categories.map((category) => ({
+                  value: category,
+                  label: `${t.categories[category]}${counted ? ` (${page.unreadByCategory[category]})` : ''}`,
+                })),
+              ]}
+              onChange={(event) =>
+                setFilters({
+                  ...filters,
+                  category: event.target.value as InboxFilters['category'],
+                })
+              }
+            />
+          ) : undefined
+        }
+        filters={
+          <>
+            <Select
+              id="notification-view"
+              aria-label={t.view}
+              value={filters.archived ? 'archived' : filters.unreadOnly ? 'unread' : 'inbox'}
+              disabled={busy}
+              options={[
+                { value: 'inbox', label: t.showInbox },
+                { value: 'unread', label: t.unreadOnly },
+                { value: 'archived', label: t.showArchived },
+              ]}
+              onChange={(event) =>
+                setFilters({
+                  ...filters,
+                  archived: event.target.value === 'archived',
+                  unreadOnly: event.target.value === 'unread',
+                })
+              }
+            />
+          </>
+        }
+      />
       {error ? <Notice tone="error">{t.error}</Notice> : null}
-      {loading ? <p role="status">{t.loading}</p> : null}
-      {page?.items.length === 0 && !loading ? <Empty>{emptyText}</Empty> : null}
-      {page?.items.map((item) => (
-        <NotificationCard
-          key={item.id}
-          item={item}
-          locale={locale}
-          href={notificationHref(item, account, base)}
-          busy={busy}
-          onRead={() => void read(item.id)}
-          onArchive={() => void archive(item.id)}
-        />
-      ))}
+      <NotificationTable
+        items={items}
+        locale={locale}
+        hrefFor={(item) => notificationHref(item, account, base)}
+        pendingId={pending}
+        loading={loading && items.length === 0}
+        empty={page ? <Empty>{emptyText}</Empty> : undefined}
+        onRead={(id) => void read(id)}
+        onArchive={(id) => void archive(id)}
+      />
       {page?.nextCursor ? (
-        <button
-          type="button"
-          className="wf-button"
-          disabled={loading || busy}
-          onClick={() => void load(page.nextCursor ?? undefined)}
-        >
-          {t.more}
-        </button>
+        <CursorPagination
+          hasNext
+          loading={loading || busy}
+          onNext={() => void load(page.nextCursor ?? undefined)}
+          labels={{ ...cursorLabels(w, t.title), loadMore: t.more }}
+        />
       ) : null}
     </>
   );

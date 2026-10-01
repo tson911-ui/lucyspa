@@ -2,9 +2,10 @@ import type { MyAccountResponse } from '@lucy-spa/contracts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  ChangeEmailSection,
-  ChangePasswordSection,
+  ChangeEmailDialog,
+  ChangePasswordDialog,
   MyAccountView,
+  ProfileDialog,
 } from '../../components/workforce/screens/my-account';
 import { getWorkforceDictionary } from '../../i18n/workforce';
 import { context, employee, json, owner, render, scriptedFetch } from '../../test/support';
@@ -61,6 +62,21 @@ const ownerAccount: MyAccountResponse = {
   employee: null,
   version: 2,
 };
+const noop = () => undefined;
+const inputTag = (html: string, id: string) =>
+  new RegExp(`<input[^>]*id="${id}"[^>]*>`).exec(html)?.[0] ?? '';
+const profile = (account: MyAccountResponse) =>
+  render(
+    <ProfileDialog
+      account={account}
+      reload={() => Promise.resolve()}
+      onClose={noop}
+      onDone={noop}
+    />,
+    account.kind === 'OWNER' ? owner : employee(),
+  );
+const passwordDialog = (account: typeof owner, locale: 'vi' | 'en' = 'vi') =>
+  render(<ChangePasswordDialog onClose={noop} onDone={noop} />, account, locale);
 const view = (account: MyAccountResponse, locale: 'vi' | 'en' = 'vi') =>
   render(
     <MyAccountView account={account} reload={() => Promise.resolve()} />,
@@ -94,6 +110,7 @@ test('the view shows the authoritative profile, title, work and security, read-o
     vi.myAccount.emailUnverified,
     vi.myAccount.workReadonly,
     vi.myAccount.changeEmail.title,
+    vi.myAccount.changePassword.title,
   ]) {
     assert.ok(markup.includes(text), text);
   }
@@ -102,10 +119,12 @@ test('the view shows the authoritative profile, title, work and security, read-o
   assert.ok(view({ ...mine, title: 'MANAGER' }).includes(`>${vi.employees.titles.MANAGER}<`));
   // Only the self-editable fields are inputs; code, classification, branches, skills,
   // status and email never are.
+  const editor = profile(mine);
   for (const id of ['my-name', 'my-phone', 'my-dob', 'my-address', 'my-locale']) {
-    assert.match(markup, new RegExp(`id="${id}"`), id);
+    assert.match(editor, new RegExp(`id="${id}"`), id);
   }
-  assert.doesNotMatch(markup, /id="my-(code|email|classification|branch|skill|status|salary)/);
+  assert.doesNotMatch(markup, /<input/, 'the page itself has no inputs; editing opens a dialog');
+  assert.doesNotMatch(editor, /id="my-(code|email|classification|branch|skill|status|salary)/);
   assert.doesNotMatch(markup, /lương|salary/i, 'no pay data');
   assert.ok(view(mine, 'en').includes('Hair wash'));
   assert.ok(
@@ -121,8 +140,9 @@ test('the Owner sees only fields that exist for them (no employee profile)', () 
   const markup = view(ownerAccount);
   assert.ok(markup.includes(`>${vi.employees.titles.OWNER}<`));
   assert.ok(markup.includes('owner@example.com') && markup.includes(vi.myAccount.emailVerified));
-  assert.ok(markup.includes(vi.myAccount.ownerEditNote));
-  assert.doesNotMatch(markup, /id="my-(dob|address)"/);
+  const editor = profile(ownerAccount);
+  assert.ok(editor.includes(vi.myAccount.ownerEditNote));
+  assert.doesNotMatch(editor, /id="my-(dob|address)"/);
   assert.ok(!markup.includes(vi.myAccount.work), 'no work section');
   assert.ok(!markup.includes(vi.employees.detail.loginId), 'no employee code');
 });
@@ -182,24 +202,22 @@ test('change password: a form under Account & Security with password fields only
   const markup = view(mine);
   const security = markup.slice(markup.indexOf(vi.myAccount.security.replace('&', '&amp;')));
   assert.ok(security.includes(vi.myAccount.changePassword.title), 'inside Account & Security');
-  const form = render(<ChangePasswordSection />, employee());
+  const form = passwordDialog(employee());
   for (const [id, label, autocomplete] of [
     ['change-current', 'Mật khẩu hiện tại', 'current-password'],
     ['change-next', 'Mật khẩu mới', 'new-password'],
     ['change-confirm', 'Xác nhận mật khẩu mới', 'new-password'],
   ] as const) {
-    assert.ok(form.includes(`>${label}<`), label);
-    assert.match(
-      form,
-      new RegExp(`<input id="${id}" type="password"[^>]*autoComplete="${autocomplete}"`),
-      id,
-    );
+    assert.ok(form.includes(label), label);
+    const tag = inputTag(form, id);
+    assert.match(tag, /type="password"/, id);
+    assert.match(tag, new RegExp(`autoComplete="${autocomplete}"`), id);
   }
-  assert.ok(form.includes(`>${vi.myAccount.changePassword.submit}<`));
+  assert.ok(form.includes(vi.myAccount.changePassword.submit));
   assert.doesNotMatch(form, /value="[^"]+"/, 'no password value is ever pre-filled');
-  const english = render(<ChangePasswordSection />, owner, 'en');
+  const english = passwordDialog(owner, 'en');
   for (const label of ['Current password', 'New password', 'Confirm new password']) {
-    assert.ok(english.includes(`>${label}<`), label);
+    assert.ok(english.includes(label), label);
   }
   assert.ok(view(ownerAccount).includes(vi.myAccount.changePassword.title), 'Owner too');
 });
@@ -254,23 +272,32 @@ test('change password: client checks help; the server stays authoritative', asyn
 test('change email: a real form in Account & Security; the code step comes later', () => {
   const markup = view(mine);
   const security = markup.slice(markup.indexOf(vi.myAccount.security.replace('&', '&amp;')));
-  assert.ok(security.includes(`<summary>${vi.myAccount.changeEmail.title}</summary>`));
+  assert.ok(security.includes(vi.myAccount.changeEmail.title));
   assert.ok(!markup.includes('Email không đổi được ở đây'), 'the static note is gone');
   const form = render(
-    <ChangeEmailSection account={mine} reload={() => Promise.resolve()} />,
+    <ChangeEmailDialog
+      account={mine}
+      reload={() => Promise.resolve()}
+      onClose={noop}
+      onDone={noop}
+    />,
     employee(),
   );
-  assert.match(
-    form,
-    /<input id="email-current-password" type="password"[^>]*autoComplete="current-password"/,
-  );
-  assert.match(form, /<input id="email-new" type="email"/);
-  assert.ok(form.includes(`>${vi.myAccount.changeEmail.send}<`));
+  const password = inputTag(form, 'email-current-password');
+  assert.match(password, /type="password"/);
+  assert.match(password, /autoComplete="current-password"/);
+  assert.match(inputTag(form, 'email-new'), /type="email"/);
+  assert.ok(form.includes(vi.myAccount.changeEmail.send));
   assert.ok(form.includes(vi.myAccount.changeEmail.intro));
   assert.doesNotMatch(form, /id="email-code"/, 'no code field before a code was sent');
   assert.doesNotMatch(form, /value="[^"]+"/, 'nothing pre-filled');
   const english = render(
-    <ChangeEmailSection account={ownerAccount} reload={() => Promise.resolve()} />,
+    <ChangeEmailDialog
+      account={ownerAccount}
+      reload={() => Promise.resolve()}
+      onClose={noop}
+      onDone={noop}
+    />,
     owner,
     'en',
   );
@@ -338,8 +365,8 @@ test('Step 6: no password text or input still requires 15 characters', () => {
   for (const stale of ['15 ký tự', '15 characters', '15–128', '15 đến 128', '15 to 128']) {
     assert.ok(!texts.includes(stale), stale);
   }
-  const form = render(<ChangePasswordSection />, employee());
-  assert.match(form, /id="change-next" type="password"[^>]*minLength="8"[^>]*maxLength="128"/);
+  const form = passwordDialog(employee());
+  assert.match(inputTag(form, 'change-next'), /minLength="8"[^>]*maxLength="128"/);
   assert.ok(form.includes('Từ 8 ký tự trở lên'));
   assert.equal(
     changePasswordProblem({ current: 'x', next: 'Lotus#7', confirm: 'Lotus#7' }),

@@ -5,7 +5,22 @@ import type {
   CollaboratorWorkOccurrence,
   MyAccountResponse,
 } from '@lucy-spa/contracts';
-import { useState, type FormEvent } from 'react';
+import {
+  Button,
+  DataTable,
+  DateInput,
+  DescriptionList,
+  Field as KitField,
+  FormDialog,
+  FormGrid,
+  ListSection,
+  PasswordInput,
+  Select,
+  TextInput,
+  type DataTableColumn,
+  type DescriptionItem,
+} from '@lucy-spa/ui';
+import { useState } from 'react';
 import { detailErrorMessage } from '../../../lib/workforce/employee-detail';
 import { formatDate } from '../../../lib/workforce/format';
 import { fill } from '../../../i18n/workforce';
@@ -15,6 +30,8 @@ import {
   scheduleRange,
 } from '../../../lib/workforce/collaborator-work';
 import { businessToday, PASSWORD_LENGTH } from '../../../lib/workforce/employee-create';
+import { formOverlayLabels } from '../../../lib/workforce/form-labels';
+import { useClientPaging } from '../../../lib/workforce/use-client-paging';
 import { useBranches } from '../data';
 import { OTP_PATTERN } from '../../../lib/workforce/recovery';
 import {
@@ -40,12 +57,10 @@ import {
   Badge,
   Empty,
   ErrorState,
-  Field,
   Loading,
   Notice,
   PageHeader,
   Section,
-  SubmitButton,
   useResource,
   useSubmit,
 } from '../ui';
@@ -75,6 +90,8 @@ export function MyAccountScreen() {
   );
 }
 
+type Overlay = 'profile' | 'email' | 'password';
+
 /** The loaded account (separated so it renders without a network in tests). */
 export function MyAccountView({
   account,
@@ -87,109 +104,172 @@ export function MyAccountView({
   const texts = t.myAccount;
   const detail = t.employees.detail;
   const employee = account.employee;
+  const [overlay, setOverlay] = useState<Overlay | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  const finish = (message: string) => {
+    setOverlay(null);
+    setDone(message);
+  };
+
+  const personal: DescriptionItem[] = [
+    { label: t.employees.fullName, value: <strong>{account.fullName}</strong> },
+    {
+      label: t.employees.titleColumn,
+      value: (
+        <Badge tone={TITLE_TONE[account.title] ?? 'neutral'}>
+          {t.employees.titles[account.title]}
+        </Badge>
+      ),
+    },
+    ...(employee
+      ? [
+          {
+            label: t.employees.classification,
+            value: employee.classification
+              ? t.employees.classifications[employee.classification]
+              : texts.notStarted,
+          },
+          { label: detail.loginId, value: <strong id="my-login-id">{employee.employeeId}</strong> },
+        ]
+      : []),
+    { label: detail.phone, value: account.phone },
+    ...(employee
+      ? [
+          { label: detail.dateOfBirth, value: formatDate(employee.dateOfBirth, locale) },
+          { label: detail.address, value: employee.address },
+        ]
+      : []),
+    { label: detail.locale, value: detail.locales[account.locale] },
+  ];
+
   return (
     <>
-      <Section title={texts.personal}>
-        <dl className="wf-facts">
-          <dt>{t.employees.fullName}</dt>
-          <dd>
-            <strong>{account.fullName}</strong>
-          </dd>
-          <dt>{t.employees.titleColumn}</dt>
-          <dd>
-            <Badge tone={TITLE_TONE[account.title] ?? 'neutral'}>
-              {t.employees.titles[account.title]}
-            </Badge>
-          </dd>
-          {employee ? (
-            <>
-              <dt>{t.employees.classification}</dt>
-              <dd>
-                {employee.classification
-                  ? t.employees.classifications[employee.classification]
-                  : texts.notStarted}
-              </dd>
-              <dt>{detail.loginId}</dt>
-              <dd>
-                <strong id="my-login-id">{employee.employeeId}</strong>
-              </dd>
-            </>
-          ) : null}
-          <dt>{detail.phone}</dt>
-          <dd>{account.phone ?? '—'}</dd>
-          {employee ? (
-            <>
-              <dt>{detail.dateOfBirth}</dt>
-              <dd>{formatDate(employee.dateOfBirth, locale)}</dd>
-              <dt>{detail.address}</dt>
-              <dd>{employee.address}</dd>
-            </>
-          ) : null}
-          <dt>{detail.locale}</dt>
-          <dd>{detail.locales[account.locale]}</dd>
-        </dl>
-        <ProfileEditor key={account.version} account={account} reload={reload} />
+      {done ? <Notice tone="success">{done}</Notice> : null}
+      <Section
+        title={texts.personal}
+        actions={
+          <Button variant="secondary" icon="edit" onClick={() => setOverlay('profile')}>
+            {t.common.edit}
+          </Button>
+        }
+      >
+        <DescriptionList items={personal} columns={2} />
       </Section>
       {employee ? (
         <Section title={texts.work}>
-          <p className="wf-hint">{texts.workReadonly}</p>
-          <h3>{texts.branches}</h3>
-          {employee.branches.length === 0 ? <Empty>{texts.noBranches}</Empty> : null}
-          <ul className="wf-plain-list">
-            {employee.branches.map((branch) => (
-              <li key={branch.id}>
-                {branch.name} <span className="wf-muted wf-small">({branch.code})</span>
-              </li>
-            ))}
-          </ul>
-          <h3>{texts.skills}</h3>
-          {employee.skills.length === 0 ? <Empty>{texts.noSkills}</Empty> : null}
-          <ul className="wf-plain-list">
-            {employee.skills.map((skill) => (
-              <li key={skill.id}>{locale === 'vi' ? skill.nameVi : skill.nameEn}</li>
-            ))}
-          </ul>
+          <p className="ls-hint">{texts.workReadonly}</p>
+          <DescriptionList
+            items={[
+              {
+                label: texts.branches,
+                value:
+                  employee.branches.length === 0 ? (
+                    <span className="ls-hint">{texts.noBranches}</span>
+                  ) : (
+                    <ul className="ls-list-plain">
+                      {employee.branches.map((branch) => (
+                        <li key={branch.id}>
+                          {branch.name} <span className="ls-hint">({branch.code})</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ),
+              },
+              {
+                label: texts.skills,
+                value:
+                  employee.skills.length === 0 ? (
+                    <span className="ls-hint">{texts.noSkills}</span>
+                  ) : (
+                    <ul className="ls-list-plain">
+                      {employee.skills.map((skill) => (
+                        <li key={skill.id}>{locale === 'vi' ? skill.nameVi : skill.nameEn}</li>
+                      ))}
+                    </ul>
+                  ),
+              },
+            ]}
+          />
         </Section>
       ) : null}
       {account.title === 'COLLABORATOR' || employee?.classification === 'COLLABORATOR' ? (
         <MySchedule account={account} />
       ) : null}
-      <Section title={texts.security}>
-        <dl className="wf-facts">
-          <dt>{texts.email}</dt>
-          <dd>
-            {account.email ? (
-              <>
-                {account.email.address}{' '}
-                <Badge tone={account.email.verified ? 'success' : 'warning'}>
-                  {account.email.verified ? texts.emailVerified : texts.emailUnverified}
-                </Badge>
-              </>
-            ) : (
-              texts.noEmail
-            )}
-          </dd>
-          <dt>{texts.status}</dt>
-          <dd>{employee ? t.employees.statuses[account.status] : texts.ownerStatus}</dd>
-        </dl>
-        <ChangeEmailSection account={account} reload={reload} />
-        <ChangePasswordSection />
+      <Section
+        title={texts.security}
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setOverlay('email')}>
+              {texts.changeEmail.title}
+            </Button>
+            <Button variant="secondary" onClick={() => setOverlay('password')}>
+              {texts.changePassword.title}
+            </Button>
+          </>
+        }
+      >
+        <DescriptionList
+          items={[
+            {
+              label: texts.email,
+              value: account.email ? (
+                <>
+                  {account.email.address}{' '}
+                  <Badge tone={account.email.verified ? 'success' : 'warning'}>
+                    {account.email.verified ? texts.emailVerified : texts.emailUnverified}
+                  </Badge>
+                </>
+              ) : (
+                texts.noEmail
+              ),
+            },
+            {
+              label: texts.status,
+              value: employee ? t.employees.statuses[account.status] : texts.ownerStatus,
+            },
+          ]}
+        />
       </Section>
+      {overlay === 'profile' ? (
+        <ProfileDialog
+          account={account}
+          reload={reload}
+          onClose={() => setOverlay(null)}
+          onDone={finish}
+        />
+      ) : null}
+      {overlay === 'email' ? (
+        <ChangeEmailDialog
+          account={account}
+          reload={reload}
+          onClose={() => setOverlay(null)}
+          onDone={finish}
+        />
+      ) : null}
+      {overlay === 'password' ? (
+        <ChangePasswordDialog onClose={() => setOverlay(null)} onDone={finish} />
+      ) : null}
     </>
   );
 }
 
-function ProfileEditor({
+/** Edit the self-editable fields (name, phone, language; employees also date of birth and address). */
+export function ProfileDialog({
   account,
   reload,
+  onClose,
+  onDone,
 }: {
   account: MyAccountResponse;
   reload: () => Promise<void>;
+  onClose: () => void;
+  onDone: (message: string) => void;
 }) {
   const { api, t } = useWorkforce();
   const texts = t.myAccount;
   const detail = t.employees.detail;
-  const [form, setForm] = useState<MyProfileForm>(() => myProfileForm(account));
+  const [initial] = useState(() => myProfileForm(account));
+  const [form, setForm] = useState<MyProfileForm>(initial);
   const [unchanged, setUnchanged] = useState(false);
   const submit = useSubmit();
   const set = <K extends keyof MyProfileForm>(key: K, value: MyProfileForm[K]) => {
@@ -197,8 +277,7 @@ function ProfileEditor({
     setForm((current) => ({ ...current, [key]: value }));
   };
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  async function save() {
     const patch = myProfilePatch(account, form);
     if (patch === null) {
       setUnchanged(true);
@@ -206,84 +285,114 @@ function ProfileEditor({
     }
     const ok = await submit.run(
       () => runMutation(() => myAccountCommands.updateProfile(api, patch), reload),
-      t.common.saved,
+      '',
     );
-    if (ok) await reload();
+    if (ok) {
+      await reload();
+      onDone(`${t.common.saved} ${texts.savedNote}`);
+    }
   }
 
   return (
-    <details className="wf-disclosure">
-      <summary>{texts.edit}</summary>
-      <form className="wf-form wf-member-form" onSubmit={(event) => void save(event)}>
-        <p className="wf-hint">{account.employee ? texts.editNote : texts.ownerEditNote}</p>
-        <div className="wf-row">
-          <Field id="my-name" label={t.employees.fullName} required>
-            <input
-              id="my-name"
-              required
+    <FormDialog
+      title={texts.edit}
+      description={account.employee ? texts.editNote : texts.ownerEditNote}
+      size="lg"
+      labels={formOverlayLabels(t, t.common.save)}
+      busy={submit.pending}
+      dirty={(Object.keys(form) as (keyof MyProfileForm)[]).some(
+        (key) => form[key] !== initial[key],
+      )}
+      error={
+        unchanged ? (
+          <Notice tone="info">{detail.noChanges}</Notice>
+        ) : submit.error ? (
+          <Notice tone="error">{detailErrorMessage(submit.error, t)}</Notice>
+        ) : undefined
+      }
+      onClose={onClose}
+      onSubmit={save}
+    >
+      <FormGrid cols={2}>
+        <KitField
+          id="my-name"
+          label={t.employees.fullName}
+          required
+          requiredLabel={t.common.required}
+        >
+          {(control) => (
+            <TextInput
+              {...control}
               maxLength={200}
               value={form.fullName}
               onChange={(event) => set('fullName', event.target.value)}
             />
-          </Field>
-          <Field id="my-phone" label={detail.phone} required={account.employee !== null}>
-            <input
-              id="my-phone"
+          )}
+        </KitField>
+        <KitField
+          id="my-phone"
+          label={detail.phone}
+          {...(account.employee ? { required: true, requiredLabel: t.common.required } : {})}
+        >
+          {(control) => (
+            <TextInput
+              {...control}
               type="tel"
               maxLength={32}
               autoComplete="tel"
-              required={account.employee !== null}
               value={form.phone}
               onChange={(event) => set('phone', event.target.value)}
             />
-          </Field>
-        </div>
+          )}
+        </KitField>
         {account.employee ? (
-          <div className="wf-row">
-            <Field id="my-dob" label={detail.dateOfBirth} required>
-              <input
-                id="my-dob"
-                type="date"
-                required
-                value={form.dateOfBirth}
-                onChange={(event) => set('dateOfBirth', event.target.value)}
-              />
-            </Field>
-            <Field id="my-address" label={detail.address} required>
-              <input
-                id="my-address"
-                required
-                maxLength={500}
-                value={form.address}
-                onChange={(event) => set('address', event.target.value)}
-              />
-            </Field>
-          </div>
+          <>
+            <KitField
+              id="my-dob"
+              label={detail.dateOfBirth}
+              required
+              requiredLabel={t.common.required}
+            >
+              {(control) => (
+                <DateInput
+                  {...control}
+                  value={form.dateOfBirth}
+                  onChange={(event) => set('dateOfBirth', event.target.value)}
+                />
+              )}
+            </KitField>
+            <KitField
+              id="my-address"
+              label={detail.address}
+              required
+              requiredLabel={t.common.required}
+            >
+              {(control) => (
+                <TextInput
+                  {...control}
+                  maxLength={500}
+                  value={form.address}
+                  onChange={(event) => set('address', event.target.value)}
+                />
+              )}
+            </KitField>
+          </>
         ) : null}
-        <Field id="my-locale" label={detail.locale} required>
-          <select
-            id="my-locale"
-            value={form.locale}
-            onChange={(event) => set('locale', event.target.value === 'en' ? 'en' : 'vi')}
-          >
-            <option value="vi">{detail.locales.vi}</option>
-            <option value="en">{detail.locales.en}</option>
-          </select>
-        </Field>
-        {unchanged ? <Notice tone="info">{detail.noChanges}</Notice> : null}
-        {submit.error ? <Notice tone="error">{detailErrorMessage(submit.error, t)}</Notice> : null}
-        {submit.success ? (
-          <Notice tone="success">
-            {submit.success} {texts.savedNote}
-          </Notice>
-        ) : null}
-        <SubmitButton
-          pending={submit.pending}
-          label={t.common.save}
-          pendingLabel={t.common.saving}
-        />
-      </form>
-    </details>
+        <KitField id="my-locale" label={detail.locale} required requiredLabel={t.common.required}>
+          {(control) => (
+            <Select
+              {...control}
+              value={form.locale}
+              options={[
+                { value: 'vi', label: detail.locales.vi },
+                { value: 'en', label: detail.locales.en },
+              ]}
+              onChange={(event) => set('locale', event.target.value === 'en' ? 'en' : 'vi')}
+            />
+          )}
+        </KitField>
+      </FormGrid>
+    </FormDialog>
   );
 }
 
@@ -292,7 +401,13 @@ function ProfileEditor({
  * current password (not forgot-password). Passwords live only in this form's state and are
  * cleared after success; this device stays signed in, every other session is signed out.
  */
-export function ChangePasswordSection() {
+export function ChangePasswordDialog({
+  onClose,
+  onDone,
+}: {
+  onClose: () => void;
+  onDone: (message: string) => void;
+}) {
   const { api, t } = useWorkforce();
   const texts = t.myAccount.changePassword;
   const [form, setForm] = useState<ChangePasswordForm>(EMPTY_CHANGE_PASSWORD);
@@ -304,8 +419,7 @@ export function ChangePasswordSection() {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
-  async function change(event: FormEvent) {
-    event.preventDefault();
+  async function change() {
     if (problem !== null) {
       setShown(true);
       return;
@@ -317,65 +431,89 @@ export function ChangePasswordSection() {
       } catch (error) {
         return { ok: false, error };
       }
-    }, texts.done);
+    }, '');
     // Never keep passwords around: cleared after success, current one cleared after a refusal.
-    if (ok) setForm(EMPTY_CHANGE_PASSWORD);
-    else setForm((current) => ({ ...current, current: '' }));
+    if (ok) {
+      setForm(EMPTY_CHANGE_PASSWORD);
+      onDone(texts.done);
+    } else setForm((current) => ({ ...current, current: '' }));
   }
 
   return (
-    <details className="wf-disclosure">
-      <summary>{texts.title}</summary>
-      <form
-        className="wf-form wf-member-form"
-        autoComplete="off"
-        onSubmit={(event) => void change(event)}
-      >
-        <p className="wf-hint">{texts.intro}</p>
-        <Field id="change-current" label={texts.current} required>
-          <input
-            id="change-current"
-            type="password"
-            required
-            maxLength={1024}
-            autoComplete="current-password"
-            value={form.current}
-            onChange={(event) => set('current', event.target.value)}
-          />
-        </Field>
-        <div className="wf-row">
-          <Field id="change-next" label={texts.next} required hint={texts.hint}>
-            <input
-              id="change-next"
-              type="password"
-              required
+    <FormDialog
+      title={texts.title}
+      description={texts.intro}
+      labels={{ ...formOverlayLabels(t, texts.submit), submitting: texts.pending }}
+      busy={submit.pending}
+      dirty={form.current !== '' || form.next !== '' || form.confirm !== ''}
+      error={
+        shown && problem !== null ? (
+          <Notice tone="error">{texts[problem]}</Notice>
+        ) : submit.error ? (
+          <Notice tone="error">{changePasswordErrorMessage(submit.error, t)}</Notice>
+        ) : undefined
+      }
+      onClose={onClose}
+      onSubmit={change}
+    >
+      <FormGrid>
+        <KitField
+          id="change-current"
+          label={texts.current}
+          required
+          requiredLabel={t.common.required}
+        >
+          {(control) => (
+            <PasswordInput
+              {...control}
+              showLabel={t.auth.showPassword}
+              hideLabel={t.auth.hidePassword}
+              maxLength={1024}
+              autoComplete="current-password"
+              value={form.current}
+              onChange={(event) => set('current', event.target.value)}
+            />
+          )}
+        </KitField>
+        <KitField
+          id="change-next"
+          label={texts.next}
+          required
+          requiredLabel={t.common.required}
+          hint={texts.hint}
+        >
+          {(control) => (
+            <PasswordInput
+              {...control}
+              showLabel={t.auth.showPassword}
+              hideLabel={t.auth.hidePassword}
               minLength={PASSWORD_LENGTH.min}
               maxLength={PASSWORD_LENGTH.max}
               autoComplete="new-password"
-              aria-describedby="change-next-hint"
               value={form.next}
               onChange={(event) => set('next', event.target.value)}
             />
-          </Field>
-          <Field id="change-confirm" label={texts.confirm} required>
-            <input
-              id="change-confirm"
-              type="password"
-              required
+          )}
+        </KitField>
+        <KitField
+          id="change-confirm"
+          label={texts.confirm}
+          required
+          requiredLabel={t.common.required}
+        >
+          {(control) => (
+            <PasswordInput
+              {...control}
+              showLabel={t.auth.showPassword}
+              hideLabel={t.auth.hidePassword}
               autoComplete="new-password"
               value={form.confirm}
               onChange={(event) => set('confirm', event.target.value)}
             />
-          </Field>
-        </div>
-        {shown && problem !== null ? <Notice tone="error">{texts[problem]}</Notice> : null}
-        {submit.error ? (
-          <Notice tone="error">{changePasswordErrorMessage(submit.error, t)}</Notice>
-        ) : null}
-        {submit.success ? <Notice tone="success">{submit.success}</Notice> : null}
-        <SubmitButton pending={submit.pending} label={texts.submit} pendingLabel={texts.pending} />
-      </form>
-    </details>
+          )}
+        </KitField>
+      </FormGrid>
+    </FormDialog>
   );
 }
 
@@ -386,12 +524,16 @@ type EmailStep = { kind: 'form' } | { kind: 'code'; flowToken: string; email: st
  * to the NEW address; the account email changes only when that code is verified. The
  * password lives only in this form's state and is cleared after every request.
  */
-export function ChangeEmailSection({
+export function ChangeEmailDialog({
   account,
   reload,
+  onClose,
+  onDone,
 }: {
   account: MyAccountResponse;
   reload: () => Promise<void>;
+  onClose: () => void;
+  onDone: (message: string) => void;
 }) {
   const { api, t } = useWorkforce();
   const texts = t.myAccount.changeEmail;
@@ -400,160 +542,156 @@ export function ChangeEmailSection({
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [shown, setShown] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
   const submit = useSubmit();
   const problem = emailChangeProblem(password, email, account.email?.address ?? null);
 
-  async function send(event: FormEvent) {
-    event.preventDefault();
+  async function send() {
     if (problem !== null) {
       setShown(true);
       return;
     }
     const target = email.trim();
     const result: { flowToken?: string } = {};
-    await submit.run(
-      async () => {
-        try {
-          result.flowToken = (await requestEmailChange(api, password, target)).flowToken;
-          return { ok: true };
-        } catch (error) {
-          return { ok: false, error };
-        }
-      },
-      fill(texts.codeSent, { email: target }),
-    );
+    await submit.run(async () => {
+      try {
+        result.flowToken = (await requestEmailChange(api, password, target)).flowToken;
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error };
+      }
+    }, '');
     setPassword('');
     if (result.flowToken) {
       setStep({ kind: 'code', flowToken: result.flowToken, email: target });
+      setInfo(fill(texts.codeSent, { email: target }));
       setCode('');
     }
   }
 
   async function resend() {
     if (step.kind !== 'code') return;
-    await submit.run(
-      async () => {
-        try {
-          await resendEmailChange(api, step.flowToken);
-          return { ok: true };
-        } catch (error) {
-          return { ok: false, error };
-        }
-      },
-      fill(texts.resent, { email: step.email }),
-    );
+    const ok = await submit.run(async () => {
+      try {
+        await resendEmailChange(api, step.flowToken);
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error };
+      }
+    }, '');
+    if (ok) setInfo(fill(texts.resent, { email: step.email }));
   }
 
-  async function verify(event: FormEvent) {
-    event.preventDefault();
+  async function verify() {
     if (step.kind !== 'code' || !OTP_PATTERN.test(code.trim())) return;
-    const ok = await submit.run(
-      async () => {
-        try {
-          await verifyEmailChange(api, step.flowToken, code);
-          return { ok: true };
-        } catch (error) {
-          return { ok: false, error };
-        }
-      },
-      fill(texts.done, { email: step.email }),
-    );
+    const ok = await submit.run(async () => {
+      try {
+        await verifyEmailChange(api, step.flowToken, code);
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error };
+      }
+    }, '');
     if (ok) {
-      setStep({ kind: 'form' });
-      setEmail('');
-      setCode('');
       await reload();
+      onDone(fill(texts.done, { email: step.email }));
     }
   }
 
-  function cancel() {
-    setStep({ kind: 'form' });
-    setCode('');
-    submit.clear();
-  }
-
+  const coding = step.kind === 'code';
   return (
-    <details className="wf-disclosure" open={step.kind === 'code' || undefined}>
-      <summary>{texts.title}</summary>
-      <p className="wf-hint">{texts.intro}</p>
-      {submit.error ? (
-        <Notice tone="error">{emailChangeErrorMessage(submit.error, t)}</Notice>
-      ) : null}
-      {submit.success ? (
-        <Notice tone={step.kind === 'code' ? 'info' : 'success'}>{submit.success}</Notice>
-      ) : null}
-      {step.kind === 'form' ? (
-        <form
-          className="wf-form wf-member-form"
-          autoComplete="off"
-          onSubmit={(event) => void send(event)}
-        >
-          <Field id="email-current-password" label={texts.current} required>
-            <input
+    <FormDialog
+      title={texts.title}
+      description={texts.intro}
+      labels={{
+        ...formOverlayLabels(t, coding ? texts.verify : texts.send),
+        submitting: coding ? texts.verifying : texts.sending,
+      }}
+      busy={submit.pending}
+      dirty={password !== '' || email !== '' || code !== '' || coding}
+      error={
+        submit.error ? (
+          <Notice tone="error">{emailChangeErrorMessage(submit.error, t)}</Notice>
+        ) : shown && problem !== null ? (
+          <Notice tone="error">{texts[problem]}</Notice>
+        ) : undefined
+      }
+      onClose={onClose}
+      onSubmit={coding ? verify : send}
+    >
+      <FormGrid>
+        {info ? <Notice tone="info">{info}</Notice> : null}
+        {!coding ? (
+          <>
+            <KitField
               id="email-current-password"
-              type="password"
+              label={texts.current}
               required
-              maxLength={1024}
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => {
-                setShown(false);
-                setPassword(event.target.value);
-              }}
-            />
-          </Field>
-          <Field id="email-new" label={texts.newEmail} required>
-            <input
-              id="email-new"
-              type="email"
-              required
-              maxLength={254}
-              autoComplete="email"
-              value={email}
-              onChange={(event) => {
-                setShown(false);
-                setEmail(event.target.value);
-              }}
-            />
-          </Field>
-          {shown && problem !== null ? <Notice tone="error">{texts[problem]}</Notice> : null}
-          <SubmitButton pending={submit.pending} label={texts.send} pendingLabel={texts.sending} />
-        </form>
-      ) : (
-        <form className="wf-form wf-member-form" onSubmit={(event) => void verify(event)}>
-          <Field id="email-code" label={texts.code} required>
-            <input
-              id="email-code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              required
-              value={code}
-              onChange={(event) => setCode(event.target.value)}
-            />
-          </Field>
-          <div className="wf-form-actions">
-            <SubmitButton
-              pending={submit.pending}
-              label={texts.verify}
-              pendingLabel={texts.verifying}
-            />
-            <button
-              type="button"
-              className="wf-button wf-button-quiet"
-              disabled={submit.pending}
-              onClick={() => void resend()}
+              requiredLabel={t.common.required}
             >
-              {texts.resend}
-            </button>
-            <button type="button" className="wf-button" disabled={submit.pending} onClick={cancel}>
-              {texts.cancel}
-            </button>
-          </div>
-        </form>
-      )}
-    </details>
+              {(control) => (
+                <PasswordInput
+                  {...control}
+                  showLabel={t.auth.showPassword}
+                  hideLabel={t.auth.hidePassword}
+                  maxLength={1024}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => {
+                    setShown(false);
+                    setPassword(event.target.value);
+                  }}
+                />
+              )}
+            </KitField>
+            <KitField
+              id="email-new"
+              label={texts.newEmail}
+              required
+              requiredLabel={t.common.required}
+            >
+              {(control) => (
+                <TextInput
+                  {...control}
+                  type="email"
+                  maxLength={254}
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => {
+                    setShown(false);
+                    setEmail(event.target.value);
+                  }}
+                />
+              )}
+            </KitField>
+          </>
+        ) : (
+          <KitField
+            id="email-code"
+            label={texts.code}
+            required
+            requiredLabel={t.common.required}
+            labelAction={
+              <Button variant="ghost" disabled={submit.pending} onClick={() => void resend()}>
+                {texts.resend}
+              </Button>
+            }
+          >
+            {(control) => (
+              <TextInput
+                {...control}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+              />
+            )}
+          </KitField>
+        )}
+      </FormGrid>
+    </FormDialog>
   );
 }
 
@@ -586,39 +724,45 @@ export function MyScheduleView({
   const { t, locale } = useWorkforce();
   const texts = t.myAccount.schedule;
   const work = t.collaboratorWork;
+  const paging = useClientPaging(t, texts.title);
+  const columns: DataTableColumn<CollaboratorWorkOccurrence>[] = [
+    {
+      key: 'date',
+      header: work.workDate,
+      mobileTitle: true,
+      cell: (row) => formatDate(row.workDate, locale),
+    },
+    {
+      key: 'branch',
+      header: work.branch,
+      truncate: true,
+      cell: (row) => branches?.get(row.branchId)?.name ?? '—',
+    },
+    { key: 'mode', header: work.mode, cell: (row) => work.modes[row.mode] },
+    {
+      key: 'time',
+      header: work.time,
+      numeric: true,
+      cell: (row) => `${row.startTime}–${row.endTime}`,
+    },
+    { key: 'pay', header: work.pay, numeric: true, cell: (row) => payLabel(row, t, locale) },
+    { key: 'status', header: work.status, cell: (row) => work.statuses[row.status] },
+  ];
   return (
-    <Section title={texts.title}>
-      <p className="wf-hint">{texts.intro}</p>
+    <ListSection title={texts.title}>
+      <p className="ls-hint">{texts.intro}</p>
       {items === null ? <Loading t={t} /> : null}
       {items !== null && items.length === 0 ? <Empty>{texts.empty}</Empty> : null}
       {items !== null && items.length > 0 ? (
-        <table className="wf-table">
-          <thead>
-            <tr>
-              <th scope="col">{work.workDate}</th>
-              <th scope="col">{work.branch}</th>
-              <th scope="col">{work.mode}</th>
-              <th scope="col">{work.time}</th>
-              <th scope="col">{work.pay}</th>
-              <th scope="col">{work.status}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((row) => (
-              <tr key={row.id}>
-                <td data-label={work.workDate}>{formatDate(row.workDate, locale)}</td>
-                <td data-label={work.branch}>{branches?.get(row.branchId)?.name ?? '—'}</td>
-                <td data-label={work.mode}>{work.modes[row.mode]}</td>
-                <td data-label={work.time}>
-                  {row.startTime}–{row.endTime}
-                </td>
-                <td data-label={work.pay}>{payLabel(row, t, locale)}</td>
-                <td data-label={work.status}>{work.statuses[row.status]}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          mode="client"
+          caption={fill(t.common.list.table, { list: texts.title })}
+          columns={columns}
+          rows={items}
+          rowKey={(row) => row.id}
+          paging={paging}
+        />
       ) : null}
-    </Section>
+    </ListSection>
   );
 }

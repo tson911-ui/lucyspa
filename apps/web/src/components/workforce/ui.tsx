@@ -82,7 +82,7 @@ export function Notice({
 
 export function Loading({ t }: { t: WorkforceDictionary }) {
   return (
-    <p className="wf-muted" role="status">
+    <p className="ls-hint" role="status">
       {t.common.loading}
     </p>
   );
@@ -128,7 +128,7 @@ export function Field({
   labelAction?: ReactNode;
   children: ReactNode;
 }) {
-  // The wf-field class stays so login and member-form layout rules keep matching until Steps 8-10.
+  // The wf-field class stays for the member area (customer.css) until Part 2 replaces its screens.
   return (
     <UiField
       id={id}
