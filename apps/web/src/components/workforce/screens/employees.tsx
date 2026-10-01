@@ -5,9 +5,7 @@ import type {
   EmployeeDirectoryEntry,
   EmployeeDirectoryGroup,
   EmployeeDirectoryResponse,
-  EmployeeResponse,
   EmployeeStatus,
-  InitialEmploymentClassification,
 } from '@lucy-spa/contracts';
 import {
   DataTable,
@@ -23,11 +21,7 @@ import {
 import Link from 'next/link';
 import { useState } from 'react';
 import { fill } from '../../../i18n/workforce';
-import {
-  canOfferCreate,
-  classificationText,
-  directoryTitle,
-} from '../../../lib/workforce/employee-create';
+import { canOfferCreate, directoryTitle } from '../../../lib/workforce/employee-create';
 import {
   DIRECTORY_PAGE_SIZE,
   directoryPage,
@@ -43,19 +37,7 @@ import { organizationDictionary } from '../../../i18n/organization';
 import { branchLabel, useBranches } from '../data';
 import { ManagementLevels, useManagementLevelVisible } from './management-levels';
 import { useAccount, useWorkforce } from '../session';
-import {
-  Badge,
-  Button,
-  Empty,
-  ErrorState,
-  Loading,
-  Notice,
-  PageHeader,
-  Section,
-  useResource,
-  type Tone,
-} from '../ui';
-import { EmployeeCreateForm } from './employee-create';
+import { Badge, Button, Empty, ErrorState, PageHeader, useResource, type Tone } from '../ui';
 
 const STATUSES: EmployeeStatus[] = ['ACTIVE', 'PENDING_SETUP', 'INACTIVE'];
 /** Four mutually exclusive sections, managers first; each member appears in exactly one. */
@@ -74,27 +56,17 @@ export const EMPLOYEE_STATUS_TONE: Record<EmployeeStatus, Tone> = {
  * Search, filters, page size and each table's page live in the address bar (`useUrlState`).
  */
 export function EmployeesScreen() {
-  const { api, t } = useWorkforce();
+  const { api, t, base, navigate } = useWorkforce();
   const { account } = useAccount();
   const branches = useBranches(api);
   const offerCreate = canOfferCreate(account);
-  const [adding, setAdding] = useState(false);
-  const [created, setCreated] = useState<CreatedMember | null>(null);
   const [list, updateList] = useUrlState(EMPLOYEE_LIST_DEFAULTS, {
     normalize: normalizeEmployeeList,
     resetOnChange: EMPLOYEE_PAGE_KEYS,
   });
-  // Bumped after a creation so both groups reload.
+  // Bumped by the toolbar reload so every group reloads.
   const [refresh, setRefresh] = useState(0);
   const filters: DirectoryFilters = { q: list.q, branchId: list.branch, status: list.status };
-
-  function onCreated(employee: EmployeeResponse, classification: InitialEmploymentClassification) {
-    setAdding(false);
-    setCreated({ employee, classification });
-    // Show the whole directory again so the new member is listed.
-    updateList({ ...EMPLOYEE_LIST_DEFAULTS });
-    setRefresh((value) => value + 1);
-  }
 
   const branchList = [...(branches.data?.values() ?? [])];
   const activeFilters = (list.q ? 1 : 0) + (list.branch ? 1 : 0) + (list.status ? 1 : 0);
@@ -102,39 +74,12 @@ export function EmployeesScreen() {
   return (
     <>
       <PageHeader title={t.employees.title}>
-        {offerCreate && !adding ? (
-          <Button
-            variant="primary"
-            icon="plus"
-            aria-controls="add-workforce-member"
-            aria-expanded={false}
-            onClick={() => {
-              setCreated(null);
-              setAdding(true);
-            }}
-          >
+        {offerCreate ? (
+          <Button variant="primary" icon="plus" onClick={() => navigate?.(`${base}/employees/new`)}>
             {t.employees.add}
           </Button>
         ) : null}
       </PageHeader>
-      {created ? <CreatedNotice {...created} /> : null}
-      {offerCreate && adding ? (
-        <div id="add-workforce-member">
-          <Section title={t.employees.create.title}>
-            {branches.error ? (
-              <ErrorState error={branches.error} t={t} onRetry={() => void branches.reload()} />
-            ) : branches.data ? (
-              <EmployeeCreateForm
-                branches={branches.data}
-                onCreated={onCreated}
-                onCancel={() => setAdding(false)}
-              />
-            ) : (
-              <Loading t={t} />
-            )}
-          </Section>
-        </div>
-      ) : null}
       <ListToolbar
         labels={toolbarLabels(t)}
         activeFilters={activeFilters}
@@ -186,33 +131,6 @@ export function EmployeesScreen() {
         />
       ))}
     </>
-  );
-}
-
-interface CreatedMember {
-  employee: EmployeeResponse;
-  classification: InitialEmploymentClassification;
-}
-
-/** Success after creation: who was created, as what, and that sign-in is not yet granted. */
-export function CreatedNotice({ employee, classification }: CreatedMember) {
-  const { t, base } = useWorkforce();
-  return (
-    <Notice tone="success">
-      <p>
-        {fill(
-          employee.status === 'ACTIVE'
-            ? t.employees.create.createdWithAccess
-            : t.employees.create.created,
-          {
-            name: employee.fullName,
-            code: employee.employeeId,
-            classification: classificationText(classification, t),
-          },
-        )}
-      </p>
-      <Link href={`${base}/employees/${employee.id}`}>{t.employees.create.viewCreated}</Link>
-    </Notice>
   );
 }
 

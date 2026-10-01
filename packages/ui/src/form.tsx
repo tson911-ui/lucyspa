@@ -571,7 +571,7 @@ export function RadioGroup({
     >
       <legend className="ls-label">{legend}</legend>
       {options.map((option) => (
-        <label key={option.value} className="ls-check">
+        <label key={option.value} className="ls-check ls-check-field">
           <input
             type="radio"
             name={name}

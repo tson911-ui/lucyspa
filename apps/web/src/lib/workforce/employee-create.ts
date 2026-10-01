@@ -304,6 +304,24 @@ export function classificationText(
   return t.employees.classifications[classification];
 }
 
+/** The toast after a creation: who was created, as what, and whether they can sign in yet. */
+export function createdMessage(
+  employee: Pick<EmployeeResponse, 'status' | 'fullName' | 'employeeId'>,
+  classification: EmploymentClassification,
+  t: WorkforceDictionary,
+): string {
+  return fill(
+    employee.status === 'ACTIVE'
+      ? t.employees.create.createdWithAccess
+      : t.employees.create.created,
+    {
+      name: employee.fullName,
+      code: employee.employeeId,
+      classification: classificationText(classification, t),
+    },
+  );
+}
+
 /**
  * Directory label: the authoritative server title. A member whose start date is still ahead
  * shows from when ("Chưa bắt đầu (từ 01/10/2026)").

@@ -368,8 +368,19 @@ test('ListSection: a heading and its content, 16 px apart, not a card', () => {
   );
   assert.match(
     markup,
-    /<section class="ls-list-section" aria-labelledby="mgr"><h2 [^>]*id="mgr">Quản lý<span [^>]*>3<\/span><\/h2><p>bảng<\/p>/,
+    /<section class="ls-list-section" aria-labelledby="mgr"><div class="ls-list-section-head"><h2 [^>]*id="mgr">Quản lý<span [^>]*>3<\/span><\/h2><\/div><p>bảng<\/p>/,
   );
   assert.doesNotMatch(markup, /ls-card/);
   assert.match(css, /\.ls-list-section\s*\{[^}]*gap:\s*var\(--ls-space-4\)/s);
+  // The action of this list only sits at the trailing edge of the title row.
+  const withAction = html(
+    <ListSection title="Vai trò" actions={<button type="button">Gán vai trò</button>}>
+      <p>bảng</p>
+    </ListSection>,
+  );
+  assert.match(
+    withAction,
+    /<\/h2><div class="ls-list-section-actions"><button type="button">Gán vai trò<\/button><\/div><\/div>/,
+  );
+  assert.match(css, /\.ls-list-section-head\s*\{[^}]*justify-content:\s*space-between/s);
 });

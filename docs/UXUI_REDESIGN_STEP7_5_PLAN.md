@@ -264,3 +264,15 @@ First session: **7.5a**, started only when the Owner says so.
 | Ratchet baseline drifts when screens are edited outside Steps            | Test lives with the code; a failing count blocks the Step report                                               |
 | Reference details misread from summarized source                         | Read the full file before porting; screenshots are the source of truth for anatomy                             |
 | Audit DB missing or stale                                                | 7.5a verifies first and rebuilds under the same name with the existing scripts                                 |
+
+## 11. Kit polish (batched before Step 14; Owner decision 2026-10-01 at 8b review)
+
+Shared defects the DOM audit keeps reporting on every migrated page. They are not fixed per Step; one kit session fixes them together before Step 14 and the audit counts drop on all pages at once.
+
+| Defect                                                                  | Where                  | Note                                                                         |
+| ----------------------------------------------------------------------- | ---------------------- | ---------------------------------------------------------------------------- |
+| `Badge` padding is 2 px (off the 4 px grid)                             | `packages/ui` badge    | `off-grid-spacing`, the largest remaining count                              |
+| Sidebar (no radius, no shadow) next to a Card (radius, shadow)          | shell vs `Card`        | `surface-style-mix` on every page                                            |
+| `Notice` has a 4 px left border among 1 px borders                      | `Notice`               | `border-width-mix`                                                           |
+| Phone card list: cards of one table have different heights (names wrap) | `DataTable` phone mode | `row-height-uneven` at 360 px                                                |
+| Icon-only phone Filter button flagged                                   | `ListToolbar`          | `icon-text-misaligned`, accepted false positive; fix the check or the button |

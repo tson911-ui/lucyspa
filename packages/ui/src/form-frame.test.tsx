@@ -311,3 +311,22 @@ test('FormGrid, Field width and FormSection: classes carry the layout, no fields
   );
   view.unmount();
 });
+
+test('RadioGroup options are row-wide targets and a field never stretches its control', async () => {
+  const { readFileSync } = await import('node:fs');
+  const css = readFileSync(new URL('./components.css', import.meta.url), 'utf8');
+  const view = mount(
+    <ui.RadioGroup
+      legend="Phân loại"
+      name="c"
+      value={null}
+      onValueChange={() => undefined}
+      options={[{ value: 'a', label: 'A', hint: 'gợi ý' }]}
+    />,
+  );
+  assert.ok(view.container.querySelector('label.ls-check.ls-check-field'));
+  view.unmount();
+  // In a two-column grid a taller sibling must not stretch this field's control (inputs stay 40 px).
+  assert.match(css, /\.ls-field\s*\{[^}]*align-content:\s*start/s);
+  assert.match(css, /\.ls-radios > legend\s*\{[^}]*margin-block-end:\s*var\(--ls-space-1\)/s);
+});

@@ -7,12 +7,12 @@ import {
   AccessFields,
   EmployeeCreateForm,
 } from '../../components/workforce/screens/employee-create';
-import { CreatedNotice } from '../../components/workforce/screens/employees';
 import { getWorkforceDictionary } from '../../i18n/workforce';
 import { context, employee, failure, json, owner, render, scriptedFetch } from '../../test/support';
 import { ApiError, WorkforceApi } from './api';
 import {
   canProvisionAccess,
+  createdMessage,
   createEmployee,
   createErrorMessage,
   createProblems,
@@ -121,7 +121,7 @@ test('the account section shows the employee code as login ID and the password p
     />,
   );
   assert.match(markup, /<output id="new-login-id"[^>]*>NV0001<\/output>/);
-  assert.match(markup, /id="new-password" type="password"[^>]*minLength="8"/);
+  assert.match(markup, /minLength="8"[^>]*type="password"/);
   assert.match(markup, /autoComplete="new-password"/);
   assert.ok(markup.includes(vi.employees.create.fields.confirmPassword));
   assert.ok(markup.includes('Từ 8 ký tự trở lên'));
@@ -265,12 +265,9 @@ test("the dialog asks for the actor's own password and never renders it", () => 
 });
 
 test('success says the member can sign in with the employee code; errors are specific', () => {
-  const notice = render(<CreatedNotice employee={active} classification="TRAINEE" />, owner);
+  const notice = createdMessage(active, 'TRAINEE', vi);
   assert.ok(notice.includes('có thể đăng nhập ngay bằng mã nhân viên NV0001'));
-  const pending = render(
-    <CreatedNotice employee={{ ...active, status: 'PENDING_SETUP' }} classification="TRAINEE" />,
-    owner,
-  );
+  const pending = createdMessage({ ...active, status: 'PENDING_SETUP' }, 'TRAINEE', vi);
   assert.ok(pending.includes('chưa thể đăng nhập'));
   assert.equal(
     createErrorMessage(new ApiError(400, 'VALIDATION_FAILED', 'initialPassword'), vi),

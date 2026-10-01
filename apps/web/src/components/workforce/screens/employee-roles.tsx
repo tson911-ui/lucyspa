@@ -6,7 +6,20 @@ import type {
   EmployeeResponse,
   RoleListResponse,
 } from '@lucy-spa/contracts';
-import { useState, type FormEvent } from 'react';
+import {
+  ConfirmDialog,
+  DataTable,
+  Field,
+  FormDialog,
+  FormGrid,
+  ListSection,
+  RowActions,
+  Select,
+  Stack,
+  TextInput,
+  type DataTableColumn,
+} from '@lucy-spa/ui';
+import { useState } from 'react';
 import {
   assignableRoles,
   assignRequest,
@@ -23,19 +36,21 @@ import {
   scopeLabel,
   scopeOptions,
 } from '../../../lib/workforce/employee-roles';
+import { ApiError } from '../../../lib/workforce/api';
+import { fill } from '../../../i18n/workforce';
+import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
+  Button,
   Empty,
   ErrorState,
-  Field,
   Loading,
   Notice,
-  Section,
-  SubmitButton,
   useResource,
   useSubmit,
+  useSuccessToast,
 } from '../ui';
 
 /**
@@ -96,6 +111,10 @@ function RolesPanel({
   );
 }
 
+type RoleAssignment = EmployeeAuthorizationResponse['roleAssignments'][number];
+
+type Overlay = { kind: 'assign' } | { kind: 'revoke'; assignment: RoleAssignment };
+
 /** The roles view for loaded data (separated so it renders without a network). */
 export function RolesView({
   employee,
@@ -119,22 +138,177 @@ export function RolesView({
   error: unknown;
   reload: () => Promise<void>;
 }) {
-  const { api, t, locale } = useWorkforce();
+  const { t, locale } = useWorkforce();
   const { account } = useAccount();
+  const notify = useSuccessToast();
   const texts = t.roles;
   const self = isSelf(account, employee);
   const scopes = scopeOptions(account, employee, branches);
   const roles = assignableRoles(catalog);
+  const [overlay, setOverlay] = useState<Overlay | null>(null);
+  const inactive = new Set(catalog?.roles.filter((role) => !role.isActive).map((role) => role.id));
+  const canAssign =
+    !self && !ended && authorization !== null && roles.length > 0 && scopes.length > 0;
+
+  const finish = (message: string) => {
+    setOverlay(null);
+    notify(message);
+  };
+
+  const columns: DataTableColumn<RoleAssignment>[] = [
+    {
+      key: 'role',
+      header: texts.role,
+      mobileTitle: true,
+      truncate: true,
+      width: 'lg',
+      cell: (assignment) => (
+        <>
+          <strong>{roleName(assignment, catalog, locale)}</strong>{' '}
+          <span className="ls-hint">({assignment.roleCode})</span>
+          {inactive.has(assignment.roleId) ? (
+            <span className="ls-hint"> {texts.inactiveRole}</span>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      key: 'scope',
+      header: texts.scope,
+      cell: (assignment) => (
+        <Badge tone={assignment.scope.kind === 'GLOBAL' ? 'warning' : 'info'}>
+          {scopeLabel(assignment.scope, branches, t, account.organization)}
+        </Badge>
+      ),
+    },
+    ...(!self
+      ? [
+          {
+            key: 'actions',
+            header: t.common.actions,
+            actions: true,
+            cell: (assignment: RoleAssignment) =>
+              canRevokeAt(account, assignment.scope) ? (
+                <RowActions
+                  menuLabel={fill(t.common.list.actionsFor, {
+                    name: roleName(assignment, catalog, locale),
+                  })}
+                  items={[
+                    {
+                      id: 'revoke',
+                      label: texts.revoke,
+                      tone: 'danger',
+                      onSelect: () => setOverlay({ kind: 'revoke', assignment }),
+                    },
+                  ]}
+                />
+              ) : null,
+          },
+        ]
+      : []),
+  ];
+
+  return (
+    <>
+      <Stack gap="page">
+        {error ? <ErrorState error={error} t={t} onRetry={() => void reload()} /> : null}
+        {ended ? <Notice tone="warning">{texts.endedNoNewRoles}</Notice> : null}
+        {!ended && catalog && roles.length === 0 ? (
+          <Notice tone="info">{texts.emptyCatalog}</Notice>
+        ) : null}
+        {!ended && !self && roles.length > 0 && scopes.length === 0 ? (
+          <Notice tone="info">{texts.noScope}</Notice>
+        ) : null}
+        <ListSection
+          title={texts.title}
+          actions={
+            canAssign ? (
+              <Button
+                variant="secondary"
+                icon="plus"
+                onClick={() => setOverlay({ kind: 'assign' })}
+              >
+                {texts.assign}
+              </Button>
+            ) : undefined
+          }
+        >
+          <p className="ls-hint">{self ? texts.selfNote : texts.intro}</p>
+          {loading && !authorization ? <Loading t={t} /> : null}
+          <DataTable
+            mode="client"
+            caption={texts.title}
+            columns={columns}
+            rows={authorization?.roleAssignments ?? []}
+            rowKey={(assignment) => assignment.id}
+            empty={authorization ? <Empty>{texts.none}</Empty> : undefined}
+            paging={{ off: 'A member holds a handful of roles; the API caps the assignments.' }}
+          />
+          <p className="ls-hint">{texts.history}</p>
+        </ListSection>
+      </Stack>
+      {overlay?.kind === 'assign' && authorization ? (
+        <AssignRoleDialog
+          employee={employee}
+          authorization={authorization}
+          roles={roles}
+          scopes={scopes}
+          official={official}
+          branches={branches}
+          reload={reload}
+          onClose={() => setOverlay(null)}
+          onDone={finish}
+        />
+      ) : null}
+      {overlay?.kind === 'revoke' && authorization ? (
+        <RevokeRoleDialog
+          employee={employee}
+          authorization={authorization}
+          assignment={overlay.assignment}
+          catalog={catalog}
+          reload={reload}
+          onClose={() => setOverlay(null)}
+          onDone={finish}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/** Assign one role at one scope: scope first (it decides which roles are grantable), then role. */
+export function AssignRoleDialog({
+  employee,
+  authorization,
+  roles,
+  scopes,
+  official,
+  branches,
+  reload,
+  onClose,
+  onDone,
+}: {
+  employee: EmployeeResponse;
+  authorization: EmployeeAuthorizationResponse;
+  roles: ReturnType<typeof assignableRoles>;
+  scopes: ReturnType<typeof scopeOptions>;
+  official: boolean;
+  branches: ReadonlyMap<string, BranchSummary> | null;
+  reload: () => Promise<void>;
+  onClose: () => void;
+  onDone: (message: string) => void;
+}) {
+  const { api, t, locale } = useWorkforce();
+  const { account } = useAccount();
+  const texts = t.roles;
   const [roleId, setRoleId] = useState('');
   const [scope, setScope] = useState('');
   const [reason, setReason] = useState('');
   const submit = useSubmit();
   const selectedScope = scopeFromKey(scope);
-  const inactive = new Set(catalog?.roles.filter((role) => !role.isActive).map((role) => role.id));
+  const ready = selectedScope !== null && roleId !== '' && reason.trim() !== '';
 
-  async function assign(event: FormEvent) {
-    event.preventDefault();
-    if (!authorization || !selectedScope || roleId === '' || reason.trim() === '') return;
+  async function save() {
+    if (!selectedScope || !ready) return;
     const ok = await submit.run(
       () =>
         runMutation(
@@ -146,156 +320,148 @@ export function RolesView({
             ),
           reload,
         ),
-      texts.assigned,
+      '',
     );
     if (ok) {
-      setRoleId('');
-      setReason('');
       await reload();
-    }
-  }
-
-  async function revoke(assignmentId: string) {
-    if (!authorization || reason.trim() === '') return;
-    const ok = await submit.run(
-      () =>
-        runMutation(
-          () =>
-            roleCommands.revoke(
-              api,
-              employee.id,
-              revokeRequest(authorization.version, assignmentId, reason),
-            ),
-          reload,
-        ),
-      texts.revoked,
-    );
-    if (ok) {
-      setReason('');
-      await reload();
+      onDone(texts.assigned);
     }
   }
 
   return (
-    <Section title={texts.title}>
-      <p className="wf-muted">{texts.intro}</p>
-      {loading && !authorization ? <Loading t={t} /> : null}
-      {error ? <ErrorState error={error} t={t} onRetry={() => void reload()} /> : null}
-      {submit.error ? <Notice tone="error">{roleErrorMessage(submit.error, t)}</Notice> : null}
-      {submit.success ? <Notice tone="success">{submit.success}</Notice> : null}
-      {authorization && authorization.roleAssignments.length === 0 ? (
-        <Empty>{texts.none}</Empty>
-      ) : null}
-      <ul className="wf-plain-list">
-        {authorization?.roleAssignments.map((assignment) => (
-          <li key={assignment.id} className="wf-list-row">
-            <span>
-              <strong>{roleName(assignment, catalog, locale)}</strong>{' '}
-              <span className="wf-muted wf-small">({assignment.roleCode})</span>{' '}
-              <Badge tone={assignment.scope.kind === 'GLOBAL' ? 'warning' : 'info'}>
-                {scopeLabel(assignment.scope, branches, t, account.organization)}
-              </Badge>
-              {inactive.has(assignment.roleId) ? (
-                <span className="wf-muted wf-small"> {texts.inactiveRole}</span>
-              ) : null}
-            </span>
-            {!self && canRevokeAt(account, assignment.scope) ? (
-              <button
-                type="button"
-                className="wf-button wf-button-quiet"
-                disabled={submit.pending || reason.trim() === ''}
-                title={texts.reasonHint}
-                onClick={() => void revoke(assignment.id)}
-              >
-                {texts.revoke}
-              </button>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-      {self ? <p className="wf-hint">{texts.selfNote}</p> : null}
-      {ended ? <Notice tone="warning">{texts.endedNoNewRoles}</Notice> : null}
-      {!self && authorization ? (
-        <form className="wf-form wf-member-form" onSubmit={(event) => void assign(event)}>
-          <Field id="role-reason" label={t.common.reason} required hint={texts.reasonHint}>
-            <input
-              id="role-reason"
-              required
+    <FormDialog
+      title={texts.assign}
+      labels={formOverlayLabels(t, texts.assign)}
+      busy={submit.pending}
+      dirty={scope !== '' || roleId !== '' || reason !== ''}
+      submitDisabled={!ready}
+      error={
+        submit.error ? <Notice tone="error">{roleErrorMessage(submit.error, t)}</Notice> : undefined
+      }
+      onClose={onClose}
+      onSubmit={save}
+    >
+      <FormGrid>
+        <Field label={texts.scope} required>
+          {(control) => (
+            <Select
+              {...control}
+              placeholder="—"
+              value={scope}
+              onChange={(event) => {
+                setScope(event.target.value);
+                setRoleId('');
+              }}
+              options={scopes.map((option) => ({
+                value: scopeKey(option),
+                label: scopeLabel(option, branches, t, account.organization),
+              }))}
+            />
+          )}
+        </Field>
+        <Field label={texts.role} required>
+          {(control) => (
+            <Select
+              {...control}
+              placeholder="—"
+              value={roleId}
+              disabled={!selectedScope}
+              onChange={(event) => setRoleId(event.target.value)}
+              options={roles.map((role) => {
+                const managerBlocked = role.isManagerGroup && !official;
+                const allowed =
+                  !managerBlocked && (!selectedScope || grantable(account, role, selectedScope));
+                const name = locale === 'vi' ? role.displayNameVi : role.displayNameEn;
+                return {
+                  value: role.id,
+                  disabled: !allowed,
+                  label: `${name} (${role.code})${
+                    managerBlocked
+                      ? ` — ${texts.managerOfficialOnly}`
+                      : allowed
+                        ? ''
+                        : ` — ${texts.exceeds}`
+                  }`,
+                };
+              })}
+            />
+          )}
+        </Field>
+        <Field label={t.common.reason} required hint={texts.reasonHint}>
+          {(control) => (
+            <TextInput
+              {...control}
               maxLength={500}
-              aria-describedby="role-reason-hint"
               value={reason}
               onChange={(event) => setReason(event.target.value)}
             />
-          </Field>
-          {!ended && catalog && roles.length === 0 ? (
-            <Notice tone="info">{texts.emptyCatalog}</Notice>
-          ) : null}
-          {!ended && scopes.length === 0 ? <p className="wf-hint">{texts.noScope}</p> : null}
-          {!ended && roles.length > 0 && scopes.length > 0 ? (
-            <>
-              <div className="wf-row">
-                <Field id="role-scope" label={texts.scope} required>
-                  <select
-                    id="role-scope"
-                    required
-                    value={scope}
-                    onChange={(event) => {
-                      setScope(event.target.value);
-                      setRoleId('');
-                    }}
-                  >
-                    <option value="" disabled>
-                      —
-                    </option>
-                    {scopes.map((option) => (
-                      <option key={scopeKey(option)} value={scopeKey(option)}>
-                        {scopeLabel(option, branches, t, account.organization)}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field id="role-id" label={texts.role} required>
-                  <select
-                    id="role-id"
-                    required
-                    value={roleId}
-                    disabled={!selectedScope}
-                    onChange={(event) => setRoleId(event.target.value)}
-                  >
-                    <option value="" disabled>
-                      —
-                    </option>
-                    {roles.map((role) => {
-                      const managerBlocked = role.isManagerGroup && !official;
-                      const allowed =
-                        !managerBlocked &&
-                        (!selectedScope || grantable(account, role, selectedScope));
-                      return (
-                        <option key={role.id} value={role.id} disabled={!allowed}>
-                          {locale === 'vi' ? role.displayNameVi : role.displayNameEn} ({role.code})
-                          {managerBlocked
-                            ? ` — ${texts.managerOfficialOnly}`
-                            : allowed
-                              ? ''
-                              : ` — ${texts.exceeds}`}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </Field>
-              </div>
-              <p className="wf-hint">{texts.signOutNote}</p>
-              <SubmitButton
-                pending={submit.pending}
-                label={texts.assign}
-                pendingLabel={t.common.saving}
-                disabled={roleId === '' || !selectedScope || reason.trim() === ''}
-              />
-            </>
-          ) : null}
-        </form>
-      ) : null}
-      <p className="wf-hint">{texts.history}</p>
-    </Section>
+          )}
+        </Field>
+        <p className="ls-hint">{texts.signOutNote}</p>
+      </FormGrid>
+    </FormDialog>
+  );
+}
+
+/** Remove one role assignment: a confirmation with a required reason. */
+export function RevokeRoleDialog({
+  employee,
+  authorization,
+  assignment,
+  catalog,
+  reload,
+  onClose,
+  onDone,
+}: {
+  employee: EmployeeResponse;
+  authorization: EmployeeAuthorizationResponse;
+  assignment: RoleAssignment;
+  catalog: RoleListResponse | null;
+  reload: () => Promise<void>;
+  onClose: () => void;
+  onDone: (message: string) => void;
+}) {
+  const { api, t, locale } = useWorkforce();
+  const texts = t.roles;
+  return (
+    <ConfirmDialog
+      title={t.employees.detail.revokeRoleTitle}
+      description={texts.signOutNote}
+      facts={[
+        { label: texts.role, value: roleName(assignment, catalog, locale) },
+        { label: t.common.name, value: employee.fullName },
+      ]}
+      tone="danger"
+      confirmLabel={texts.revoke}
+      busyLabel={t.common.saving}
+      cancelLabel={t.common.cancel}
+      referenceLabel={t.errors.reference}
+      reasonField={{
+        label: t.common.reason,
+        required: true,
+        requiredLabel: t.common.required,
+        requiredMessage: t.common.form.reasonRequired,
+        hint: texts.reasonHint,
+      }}
+      describeError={(error) => ({
+        message: roleErrorMessage(error, t),
+        reference: error instanceof ApiError ? error.requestId : null,
+      })}
+      onCancel={onClose}
+      onConfirm={async (reason) => {
+        const outcome = await runMutation(
+          () =>
+            roleCommands.revoke(
+              api,
+              employee.id,
+              revokeRequest(authorization.version, assignment.id, reason ?? ''),
+            ),
+          reload,
+        );
+        if (!outcome.ok) throw outcome.error;
+        await reload();
+        onDone(texts.revoked);
+      }}
+    />
   );
 }

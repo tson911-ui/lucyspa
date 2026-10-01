@@ -71,6 +71,19 @@ export function detailActions(
   };
 }
 
+/** Dialogs opened from the detail page header (edit profile is the primary action, the rest a `⋮` menu). */
+export type DetailOverlay = 'profile' | 'promote' | 'end' | 'password' | 'status';
+
+/** The `⋮` menu entries in display order; empty when the account may change nothing but the profile. */
+export function menuOverlays(actions: DetailActions): Exclude<DetailOverlay, 'profile'>[] {
+  return [
+    ...(actions.promote ? (['promote'] as const) : []),
+    ...(actions.resetPassword ? (['password'] as const) : []),
+    ...(actions.deactivate || actions.reactivate ? (['status'] as const) : []),
+    ...(actions.end ? (['end'] as const) : []),
+  ];
+}
+
 // ------------------------------------------------------------------ profile
 
 export interface ProfileForm {

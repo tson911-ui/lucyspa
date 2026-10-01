@@ -1,7 +1,28 @@
 'use client';
 
-import type { EmployeeResponse, EmploymentResponse } from '@lucy-spa/contracts';
-import { useState, type FormEvent } from 'react';
+import type {
+  EmployeeResponse,
+  EmploymentClassificationEntry,
+  EmploymentResponse,
+} from '@lucy-spa/contracts';
+import {
+  CheckField,
+  ConfirmDialog,
+  DataTable,
+  DateInput,
+  DescriptionList,
+  Field,
+  FormDialog,
+  FormGrid,
+  ListSection,
+  PasswordInput,
+  RadioGroup,
+  Select,
+  Stack,
+  TextInput,
+  type DataTableColumn,
+} from '@lucy-spa/ui';
+import { useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import {
   backdatedForNonOwner,
@@ -19,22 +40,23 @@ import {
   latestClassification,
   promotionRequest,
   statusRequest,
-  type DetailActions,
   type ProfileForm,
 } from '../../../lib/workforce/employee-detail';
 import { isCalendarDate, PASSWORD_LENGTH } from '../../../lib/workforce/employee-create';
+import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { formatDate, formatDateTime } from '../../../lib/workforce/format';
 import { withReauthentication } from '../../../lib/workforce/reauth';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { useReauthentication } from '../reauth-dialog';
 import { useAccount, useWorkforce } from '../session';
-import { Badge, Field, Notice, Section, SubmitButton, useSubmit, type Tone } from '../ui';
+import { Badge, Notice, Section, useSubmit, type Tone } from '../ui';
 import { EMPLOYEE_STATUS_TONE } from './employees';
 
 /**
- * Employee lifecycle sections of the detail screen (Employee management Step 3): profile,
+ * Employee lifecycle pieces of the detail screen (Employee management Step 3): profile,
  * employment classification (promotion, ending) and sign-in account (password reset,
- * status). Each action calls the existing command; the API authorizes every one again.
+ * status). The cards only show data; every change is a dialog opened from the page header
+ * menu and calls the existing command. The API authorizes every command again.
  */
 
 const CLASSIFICATION_TONE: Record<string, Tone> = {
@@ -44,147 +66,156 @@ const CLASSIFICATION_TONE: Record<string, Tone> = {
   ENDED: 'neutral',
 };
 
-type Submit = ReturnType<typeof useSubmit>;
-
-function Feedback({ submit }: { submit: Submit }) {
-  const { t } = useWorkforce();
-  if (submit.error) return <Notice tone="error">{detailErrorMessage(submit.error, t)}</Notice>;
-  if (submit.success) return <Notice tone="success">{submit.success}</Notice>;
-  return null;
-}
+/** What a dialog calls when it succeeded: the page reloads, closes the dialog and shows a toast. */
+type Done = (message: string) => void;
 
 // ------------------------------------------------------------------ profile
 
-export function ProfileSection({
+export function ProfileSection({ employee }: { employee: EmployeeResponse }) {
+  const { t, locale } = useWorkforce();
+  const texts = t.employees.detail;
+  return (
+    <Section title={texts.profile}>
+      <DescriptionList
+        columns={2}
+        items={[
+          {
+            label: texts.loginId,
+            value: (
+              <>
+                <strong id="employee-login-id">{employee.employeeId}</strong>{' '}
+                <span className="ls-hint">{texts.loginIdHint}</span>
+              </>
+            ),
+          },
+          { label: t.employees.fullName, value: employee.fullName },
+          { label: texts.phone, value: employee.phone },
+          {
+            label: texts.email,
+            value: employee.email ? (
+              <>
+                {employee.email}
+                {!employee.emailVerified ? (
+                  <span className="ls-hint"> ({texts.emailUnverified})</span>
+                ) : null}
+              </>
+            ) : null,
+          },
+          { label: texts.dateOfBirth, value: formatDate(employee.dateOfBirth, locale) },
+          { label: texts.address, value: employee.address },
+          { label: texts.locale, value: texts.locales[employee.locale] },
+        ]}
+      />
+    </Section>
+  );
+}
+
+/** Edit the profile: only the fields the profile command supports, only those that changed. */
+export function ProfileDialog({
   employee,
-  actions,
-  onChanged,
+  onClose,
+  onDone,
+  reload,
 }: {
   employee: EmployeeResponse;
-  actions: DetailActions;
-  onChanged: () => Promise<void>;
+  onClose: () => void;
+  onDone: Done;
+  reload: () => Promise<void>;
 }) {
-  const { api, t, locale } = useWorkforce();
+  const { api, t } = useWorkforce();
   const texts = t.employees.detail;
   const [form, setForm] = useState<ProfileForm>(() => profileForm(employee));
-  const [unchanged, setUnchanged] = useState(false);
   const submit = useSubmit();
-  const set = <K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) => {
-    setUnchanged(false);
+  const patch = profilePatch(employee, form);
+  const set = <K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
-  };
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
-    const patch = profilePatch(employee, form);
-    if (patch === null) {
-      setUnchanged(true);
-      return;
-    }
+  async function save() {
+    if (patch === null) return;
     const ok = await submit.run(
-      () => runMutation(() => employeeCommands.updateProfile(api, employee.id, patch), onChanged),
-      t.common.saved,
+      () => runMutation(() => employeeCommands.updateProfile(api, employee.id, patch), reload),
+      '',
     );
-    if (ok) await onChanged();
+    if (ok) {
+      await reload();
+      onDone(t.common.saved);
+    }
   }
 
   return (
-    <Section title={texts.profile}>
-      <dl className="wf-facts">
-        <dt>{texts.loginId}</dt>
-        <dd>
-          <strong id="employee-login-id">{employee.employeeId}</strong>{' '}
-          <span className="wf-muted wf-small">{texts.loginIdHint}</span>
-        </dd>
-        <dt>{t.employees.fullName}</dt>
-        <dd>{employee.fullName}</dd>
-        <dt>{texts.phone}</dt>
-        <dd>{employee.phone}</dd>
-        <dt>{texts.email}</dt>
-        <dd>
-          {employee.email ?? '—'}
-          {employee.email && !employee.emailVerified ? (
-            <span className="wf-muted wf-small"> ({texts.emailUnverified})</span>
-          ) : null}
-        </dd>
-        <dt>{texts.dateOfBirth}</dt>
-        <dd>{formatDate(employee.dateOfBirth, locale)}</dd>
-        <dt>{texts.address}</dt>
-        <dd>{employee.address}</dd>
-        <dt>{texts.locale}</dt>
-        <dd>{texts.locales[employee.locale]}</dd>
-      </dl>
-      {actions.editProfile ? (
-        <details className="wf-disclosure">
-          <summary>{texts.editProfile}</summary>
-          <form className="wf-form wf-member-form" onSubmit={(event) => void save(event)}>
-            <p className="wf-hint">{texts.profileReadonlyNote}</p>
-            <div className="wf-row">
-              <Field id="profile-name" label={t.employees.fullName} required>
-                <input
-                  id="profile-name"
-                  required
-                  maxLength={200}
-                  value={form.fullName}
-                  onChange={(event) => set('fullName', event.target.value)}
-                />
-              </Field>
-              <Field id="profile-phone" label={texts.phone} required>
-                <input
-                  id="profile-phone"
-                  type="tel"
-                  required
-                  maxLength={32}
-                  autoComplete="off"
-                  value={form.phone}
-                  onChange={(event) => set('phone', event.target.value)}
-                />
-              </Field>
-            </div>
-            <div className="wf-row">
-              <Field id="profile-dob" label={texts.dateOfBirth} required>
-                <input
-                  id="profile-dob"
-                  type="date"
-                  required
-                  value={form.dateOfBirth}
-                  onChange={(event) => set('dateOfBirth', event.target.value)}
-                />
-              </Field>
-            </div>
-            <div className="wf-row">
-              <Field id="profile-address" label={texts.address} required>
-                <input
-                  id="profile-address"
-                  required
-                  maxLength={500}
-                  value={form.address}
-                  onChange={(event) => set('address', event.target.value)}
-                />
-              </Field>
-              <Field id="profile-locale" label={texts.locale} required>
-                <select
-                  id="profile-locale"
-                  value={form.locale}
-                  onChange={(event) => set('locale', event.target.value === 'en' ? 'en' : 'vi')}
-                >
-                  <option value="vi">{texts.locales.vi}</option>
-                  <option value="en">{texts.locales.en}</option>
-                </select>
-              </Field>
-            </div>
-            {unchanged ? <Notice tone="info">{texts.noChanges}</Notice> : null}
-            <Feedback submit={submit} />
-            <SubmitButton
-              pending={submit.pending}
-              label={t.common.save}
-              pendingLabel={t.common.saving}
+    <FormDialog
+      title={texts.editProfile}
+      labels={formOverlayLabels(t, t.common.save)}
+      busy={submit.pending}
+      dirty={patch !== null}
+      submitDisabled={patch === null}
+      error={submitError(submit.error, t)}
+      onClose={onClose}
+      onSubmit={save}
+    >
+      <FormGrid cols={2}>
+        <Field label={t.employees.fullName} required>
+          {(control) => (
+            <TextInput
+              {...control}
+              maxLength={200}
+              value={form.fullName}
+              onChange={(event) => set('fullName', event.target.value)}
             />
-          </form>
-        </details>
-      ) : null}
-    </Section>
+          )}
+        </Field>
+        <Field label={texts.phone} required>
+          {(control) => (
+            <TextInput
+              {...control}
+              type="tel"
+              maxLength={32}
+              autoComplete="off"
+              value={form.phone}
+              onChange={(event) => set('phone', event.target.value)}
+            />
+          )}
+        </Field>
+        <Field label={texts.dateOfBirth} required>
+          {(control) => (
+            <DateInput
+              {...control}
+              value={form.dateOfBirth}
+              onChange={(event) => set('dateOfBirth', event.target.value)}
+            />
+          )}
+        </Field>
+        <Field label={texts.locale} required>
+          {(control) => (
+            <Select
+              {...control}
+              value={form.locale}
+              onChange={(event) => set('locale', event.target.value === 'en' ? 'en' : 'vi')}
+              options={[
+                { value: 'vi', label: texts.locales.vi },
+                { value: 'en', label: texts.locales.en },
+              ]}
+            />
+          )}
+        </Field>
+        <Field label={texts.address} required full hint={texts.profileReadonlyNote}>
+          {(control) => (
+            <TextInput
+              {...control}
+              maxLength={500}
+              value={form.address}
+              onChange={(event) => set('address', event.target.value)}
+            />
+          )}
+        </Field>
+      </FormGrid>
+    </FormDialog>
   );
+}
+
+/** The failed request as the dialog's error summary (null while there is none). */
+function submitError(error: unknown, t: ReturnType<typeof useWorkforce>['t']) {
+  return error ? <Notice tone="error">{detailErrorMessage(error, t)}</Notice> : undefined;
 }
 
 // ------------------------------------------------------------------ employment
@@ -221,40 +252,47 @@ export function ClassificationBadge({ employment }: { employment: EmploymentResp
   );
 }
 
+/** Current classification in a card, the recorded notices and the classification history table. */
 export function EmploymentSection({
-  employee,
   employment,
-  actions,
   timeZone,
-  onChanged,
 }: {
-  employee: EmployeeResponse;
   employment: EmploymentResponse;
-  actions: DetailActions;
   /** Recording times are shown in the employee's (first) branch timezone. */
   timeZone: string;
-  onChanged: () => Promise<void>;
 }) {
   const { t, locale } = useWorkforce();
   const texts = t.employees.detail;
   const current = employment.current;
   const upcoming = employment.history.filter((entry) => entry.effectiveDate > employment.today);
-  const ended = employmentEnded(employment);
-  // Kept here: after a promotion or ending the action itself is no longer offered.
-  const [notice, setNotice] = useState<string | null>(null);
-
+  const columns: DataTableColumn<EmploymentClassificationEntry>[] = [
+    {
+      key: 'effectiveFrom',
+      header: texts.effectiveFrom,
+      mobileTitle: true,
+      cell: (entry) => formatDate(entry.effectiveDate, locale),
+    },
+    {
+      key: 'classification',
+      header: t.employees.classification,
+      cell: (entry) => t.employees.classifications[entry.classification],
+    },
+    {
+      key: 'reason',
+      header: texts.historyReason,
+      truncate: true,
+      width: 'lg',
+      cell: (entry) => entry.reason ?? '—',
+    },
+    {
+      key: 'recordedAt',
+      header: texts.recordedAt,
+      hideBelow: 'md',
+      cell: (entry) => formatDateTime(entry.recordedAt, timeZone, locale),
+    },
+  ];
   return (
-    <Section title={texts.employment}>
-      <dl className="wf-facts">
-        <dt>{texts.currentClassification}</dt>
-        <dd>
-          <ClassificationBadge employment={employment} />
-        </dd>
-        <dt>{texts.effectiveFrom}</dt>
-        <dd>{current ? formatDate(current.effectiveDate, locale) : '—'}</dd>
-        <dt>{texts.payrollEligible}</dt>
-        <dd>{employment.payrollEligibleToday ? texts.yes : texts.no}</dd>
-      </dl>
+    <Stack gap="page">
       {upcoming.map((entry) => (
         <Notice key={entry.effectiveDate} tone="info">
           {fill(texts.upcoming, {
@@ -263,68 +301,57 @@ export function EmploymentSection({
           })}
         </Notice>
       ))}
-      {ended && current ? (
+      {employmentEnded(employment) && current ? (
         <Notice tone="warning">
           {fill(texts.endedNotice, { date: formatDate(current.effectiveDate, locale) })}
         </Notice>
       ) : null}
-      {notice ? <Notice tone="success">{notice}</Notice> : null}
-      <h3>{texts.history}</h3>
-      <table className="wf-table">
-        <thead>
-          <tr>
-            <th scope="col">{texts.effectiveFrom}</th>
-            <th scope="col">{t.employees.classification}</th>
-            <th scope="col">{texts.historyReason}</th>
-            <th scope="col">{texts.recordedAt}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {[...employment.history].reverse().map((entry) => (
-            <tr key={entry.effectiveDate}>
-              <td data-label={texts.effectiveFrom}>{formatDate(entry.effectiveDate, locale)}</td>
-              <td data-label={t.employees.classification}>
-                {t.employees.classifications[entry.classification]}
-              </td>
-              <td data-label={texts.historyReason}>{entry.reason ?? '—'}</td>
-              <td data-label={texts.recordedAt}>
-                {formatDateTime(entry.recordedAt, timeZone, locale)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {actions.promote ? (
-        <PromoteForm
-          employee={employee}
-          employment={employment}
-          onDone={setNotice}
-          onChanged={onChanged}
+      <Section title={texts.employment}>
+        <DescriptionList
+          columns={2}
+          items={[
+            {
+              label: texts.currentClassification,
+              value: <ClassificationBadge employment={employment} />,
+            },
+            {
+              label: texts.effectiveFrom,
+              value: current ? formatDate(current.effectiveDate, locale) : null,
+            },
+            {
+              label: texts.payrollEligible,
+              value: employment.payrollEligibleToday ? texts.yes : texts.no,
+            },
+          ]}
         />
-      ) : null}
-      {actions.end ? (
-        <EndForm
-          employee={employee}
-          employment={employment}
-          canDisable={actions.disableWhenEnding}
-          onDone={setNotice}
-          onChanged={onChanged}
+      </Section>
+      <ListSection title={texts.history}>
+        <DataTable
+          mode="client"
+          caption={texts.history}
+          columns={columns}
+          rows={[...employment.history].reverse()}
+          rowKey={(entry) => entry.effectiveDate}
+          paging={{ off: 'Classification only moves forward: a member has a handful of entries.' }}
         />
-      ) : null}
-    </Section>
+      </ListSection>
+    </Stack>
   );
 }
 
-function PromoteForm({
+/** Move the classification forward (never back, never after ENDED). */
+export function PromoteDialog({
   employee,
   employment,
+  onClose,
   onDone,
-  onChanged,
+  reload,
 }: {
   employee: EmployeeResponse;
   employment: EmploymentResponse;
-  onDone: (message: string) => void;
-  onChanged: () => Promise<void>;
+  onClose: () => void;
+  onDone: Done;
+  reload: () => Promise<void>;
 }) {
   const { api, t, locale } = useWorkforce();
   const { account } = useAccount();
@@ -339,8 +366,7 @@ function PromoteForm({
   const submit = useSubmit();
   const ownerOnly = backdatedForNonOwner(account, date, employment.today);
 
-  async function promote(event: FormEvent) {
-    event.preventDefault();
+  async function save() {
     if (target === '' || !isCalendarDate(date) || reason.trim() === '' || ownerOnly) return;
     const ok = await submit.run(
       () =>
@@ -351,89 +377,89 @@ function PromoteForm({
               employee.id,
               promotionRequest(employment.version, target, date, reason),
             ),
-          onChanged,
+          reload,
         ),
       '',
     );
     if (ok) {
+      await reload();
       onDone(
         fill(texts.promoted, {
           label: t.employees.classifications[target],
           date: formatDate(date, locale),
         }),
       );
-      await onChanged();
     }
   }
 
   return (
-    <details className="wf-disclosure">
-      <summary>{texts.promote}</summary>
-      <form className="wf-form wf-member-form" onSubmit={(event) => void promote(event)}>
-        <p className="wf-hint">{texts.promoteHint}</p>
-        <fieldset className="wf-choices">
-          <legend>{texts.changeTo}</legend>
-          {options.map((option) => (
-            <label key={option}>
-              <input
-                type="radio"
-                name="promote-target"
-                value={option}
-                checked={target === option}
-                onChange={() => setTarget(option)}
-              />
-              <span>
-                <strong>{t.employees.classifications[option]}</strong>
-              </span>
-            </label>
-          ))}
-        </fieldset>
-        <div className="wf-row">
-          <Field id="promote-date" label={texts.effectiveDate} required>
-            <input
-              id="promote-date"
-              type="date"
-              required
+    <FormDialog
+      title={texts.promote}
+      labels={formOverlayLabels(t, texts.promote)}
+      busy={submit.pending}
+      dirty={reason !== '' || date !== employment.today}
+      submitDisabled={target === '' || ownerOnly || reason.trim() === ''}
+      error={submitError(submit.error, t)}
+      onClose={onClose}
+      onSubmit={save}
+    >
+      <FormGrid>
+        <p className="ls-hint">{texts.promoteHint}</p>
+        <RadioGroup
+          legend={texts.changeTo}
+          name="promote-target"
+          required
+          value={target === '' ? null : target}
+          onValueChange={(value) => setTarget(options.find((option) => option === value) ?? '')}
+          options={options.map((option) => ({
+            value: option,
+            label: t.employees.classifications[option],
+          }))}
+        />
+        <Field
+          label={texts.effectiveDate}
+          required
+          width="md"
+          {...(ownerOnly ? { error: texts.backdateOwnerOnly } : {})}
+        >
+          {(control) => (
+            <DateInput
+              {...control}
               value={date}
-              aria-invalid={ownerOnly || undefined}
               onChange={(event) => setDate(event.target.value)}
             />
-          </Field>
-          <Field id="promote-reason" label={t.common.reason} required>
-            <input
-              id="promote-reason"
-              required
+          )}
+        </Field>
+        <Field label={t.common.reason} required>
+          {(control) => (
+            <TextInput
+              {...control}
               maxLength={500}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
             />
-          </Field>
-        </div>
-        {ownerOnly ? <Notice tone="warning">{texts.backdateOwnerOnly}</Notice> : null}
-        <Feedback submit={submit} />
-        <SubmitButton
-          pending={submit.pending}
-          label={texts.promote}
-          pendingLabel={t.common.saving}
-          disabled={target === '' || ownerOnly || reason.trim() === ''}
-        />
-      </form>
-    </details>
+          )}
+        </Field>
+      </FormGrid>
+    </FormDialog>
   );
 }
 
-export function EndForm({
+/** End employment: states the access consequence before confirmation; nothing is deleted. */
+export function EndDialog({
   employee,
   employment,
   canDisable,
+  onClose,
   onDone,
-  onChanged,
+  reload,
 }: {
   employee: EmployeeResponse;
   employment: EmploymentResponse;
   canDisable: boolean;
-  onDone: (message: string) => void;
-  onChanged: () => Promise<void>;
+  onClose: () => void;
+  onDone: Done;
+  reload: () => Promise<void>;
 }) {
   const { api, t } = useWorkforce();
   const { account } = useAccount();
@@ -445,83 +471,79 @@ export function EndForm({
   const ownerOnly = backdatedForNonOwner(account, date, employment.today);
   const outcome = endingOutcome(date, employment.today, disableAccess, employee.status);
 
-  async function end(event: FormEvent) {
-    event.preventDefault();
+  async function save() {
     if (!isCalendarDate(date) || reason.trim() === '' || ownerOnly) return;
     let message = '';
     const ok = await submit.run(async () => {
-      const outcome = await runMutation(
+      const result = await runMutation(
         () =>
           employeeCommands.endEmployment(
             api,
             employee.id,
             endRequest(employment.version, date, reason, disableAccess),
           ),
-        onChanged,
+        reload,
       );
-      if (outcome.ok) message = endAccessMessage(outcome.value.access, t);
-      return outcome;
+      if (result.ok) message = endAccessMessage(result.value.access, t);
+      return result;
     }, '');
     if (ok) {
+      await reload();
       onDone(message);
-      await onChanged();
     }
   }
 
   return (
-    <details className="wf-disclosure">
-      <summary>{texts.end}</summary>
-      <form className="wf-form wf-member-form" onSubmit={(event) => void end(event)}>
-        <p className="wf-hint">{texts.endHint}</p>
-        <div className="wf-row">
-          <Field id="end-date" label={texts.effectiveDate} required>
-            <input
-              id="end-date"
-              type="date"
-              required
+    <FormDialog
+      title={texts.end}
+      labels={formOverlayLabels(t, texts.endConfirm)}
+      busy={submit.pending}
+      dirty={reason !== ''}
+      submitDisabled={ownerOnly || reason.trim() === ''}
+      error={submitError(submit.error, t)}
+      onClose={onClose}
+      onSubmit={save}
+    >
+      <FormGrid>
+        <p className="ls-hint">{texts.endHint}</p>
+        <Field
+          label={texts.effectiveDate}
+          required
+          width="md"
+          {...(ownerOnly ? { error: texts.backdateOwnerOnly } : {})}
+        >
+          {(control) => (
+            <DateInput
+              {...control}
               value={date}
-              aria-invalid={ownerOnly || undefined}
               onChange={(event) => setDate(event.target.value)}
             />
-          </Field>
-          <Field id="end-reason" label={t.common.reason} required>
-            <input
-              id="end-reason"
-              required
+          )}
+        </Field>
+        <Field label={t.common.reason} required>
+          {(control) => (
+            <TextInput
+              {...control}
               maxLength={500}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
             />
-          </Field>
-        </div>
-        <div className="wf-checklist">
-          <label>
-            <input
-              type="checkbox"
-              name="end-disable-access"
-              checked={disableAccess}
-              disabled={!canDisable}
-              onChange={(event) => setDisableAccess(event.target.checked)}
-            />
-            {texts.disableAccess}
-          </label>
-        </div>
-        {!canDisable ? <p className="wf-hint">{texts.noStatusPermission}</p> : null}
+          )}
+        </Field>
+        <CheckField
+          name="end-disable-access"
+          label={texts.disableAccess}
+          checked={disableAccess}
+          disabled={!canDisable}
+          onChange={(event) => setDisableAccess(event.target.checked)}
+          {...(!canDisable ? { hint: texts.noStatusPermission } : {})}
+        />
         {/* The exact consequence, before confirmation (no scheduler for future dates). */}
         <Notice tone={outcome === 'FUTURE_NO_AUTO_DISABLE' ? 'warning' : 'info'}>
           {texts.outcome[outcome]}
         </Notice>
-        {ownerOnly ? <Notice tone="warning">{texts.backdateOwnerOnly}</Notice> : null}
-        <Feedback submit={submit} />
-        <SubmitButton
-          pending={submit.pending}
-          label={texts.endConfirm}
-          pendingLabel={t.common.saving}
-          tone="danger"
-          disabled={ownerOnly || reason.trim() === ''}
-        />
-      </form>
-    </details>
+      </FormGrid>
+    </FormDialog>
   );
 }
 
@@ -530,47 +552,48 @@ export function EndForm({
 export function AccessSection({
   employee,
   employment,
-  actions,
-  onChanged,
 }: {
   employee: EmployeeResponse;
   employment: EmploymentResponse | null;
-  actions: DetailActions;
-  onChanged: () => Promise<void>;
 }) {
   const { t } = useWorkforce();
   const texts = t.employees.detail;
   const ended = employment ? employmentEnded(employment) : false;
   return (
     <Section title={texts.account}>
-      <dl className="wf-facts">
-        <dt>{texts.loginId}</dt>
-        <dd>
-          <strong>{employee.employeeId}</strong>
-        </dd>
-        <dt>{texts.accountStatus}</dt>
-        <dd>
-          <Badge tone={EMPLOYEE_STATUS_TONE[employee.status]}>
-            {t.employees.statuses[employee.status]}
-          </Badge>{' '}
-          <span className="wf-muted wf-small">{texts.statusHelp[employee.status]}</span>
-        </dd>
-      </dl>
-      {ended ? <p className="wf-hint">{texts.endedNoAccessChanges}</p> : null}
-      {actions.resetPassword ? <PasswordForm employee={employee} onChanged={onChanged} /> : null}
-      {actions.deactivate || actions.reactivate ? (
-        <StatusForm employee={employee} onChanged={onChanged} />
-      ) : null}
+      <DescriptionList
+        columns={2}
+        items={[
+          { label: texts.loginId, value: <strong>{employee.employeeId}</strong> },
+          {
+            label: texts.accountStatus,
+            value: (
+              <>
+                <Badge tone={EMPLOYEE_STATUS_TONE[employee.status]}>
+                  {t.employees.statuses[employee.status]}
+                </Badge>{' '}
+                <span className="ls-hint">{texts.statusHelp[employee.status]}</span>
+              </>
+            ),
+          },
+        ]}
+      />
+      {ended ? <p className="ls-hint">{texts.endedNoAccessChanges}</p> : null}
     </Section>
   );
 }
 
-export function PasswordForm({
+/** Set or reset the sign-in password; the actor confirms their own password when the API asks. */
+export function PasswordDialog({
   employee,
-  onChanged,
+  onClose,
+  onDone,
+  reload,
 }: {
   employee: EmployeeResponse;
-  onChanged: () => Promise<void>;
+  onClose: () => void;
+  onDone: Done;
+  reload: () => Promise<void>;
 }) {
   const { api, t } = useWorkforce();
   const texts = t.employees.detail;
@@ -582,8 +605,7 @@ export function PasswordForm({
   const submit = useSubmit();
   const title = employee.status === 'PENDING_SETUP' ? texts.setPassword : texts.resetPassword;
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  async function save() {
     const found = passwordProblem(password, confirmation);
     setProblem(found);
     if (found !== null || reason.trim() === '') return;
@@ -597,135 +619,135 @@ export function PasswordForm({
               () => employeeCommands.setCredentials(api, employee.id, request),
               confirm,
             ),
-          onChanged,
+          reload,
         ),
-      fill(texts.passwordSet, { code: employee.employeeId }),
+      '',
     );
     // The password is never kept or shown again.
     setPassword('');
     setConfirmation('');
     if (ok) {
-      setReason('');
-      await onChanged();
+      await reload();
+      onDone(fill(texts.passwordSet, { code: employee.employeeId }));
     }
   }
+
+  const problems =
+    problem === 'length' ? (
+      <Notice tone="error">{texts.passwordLength}</Notice>
+    ) : problem === 'mismatch' ? (
+      <Notice tone="error">{texts.passwordMismatch}</Notice>
+    ) : (
+      submitError(submit.error, t)
+    );
 
   return (
     <>
       {dialog}
-      <details className="wf-disclosure">
-        <summary>{title}</summary>
-        <form className="wf-form wf-member-form" onSubmit={(event) => void save(event)}>
-          <p className="wf-hint">{fill(texts.resetHint, { code: employee.employeeId })}</p>
-          <div className="wf-row">
-            <Field id="reset-password" label={texts.newPassword} required hint={texts.passwordHint}>
-              <input
-                id="reset-password"
-                type="password"
-                required
+      <FormDialog
+        title={title}
+        labels={formOverlayLabels(t, title)}
+        busy={submit.pending}
+        dirty={password !== '' || confirmation !== '' || reason !== ''}
+        submitDisabled={reason.trim() === ''}
+        error={problems}
+        onClose={onClose}
+        onSubmit={save}
+      >
+        <FormGrid>
+          <p className="ls-hint">{fill(texts.resetHint, { code: employee.employeeId })}</p>
+          <Field label={texts.newPassword} required hint={texts.passwordHint}>
+            {(control) => (
+              <PasswordInput
+                {...control}
+                showLabel={t.auth.showPassword}
+                hideLabel={t.auth.hidePassword}
                 minLength={PASSWORD_LENGTH.min}
                 maxLength={PASSWORD_LENGTH.max}
                 autoComplete="new-password"
-                aria-invalid={problem === 'length' || undefined}
-                aria-describedby="reset-password-hint"
+                invalid={problem === 'length'}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
               />
-            </Field>
-            <Field id="reset-password-confirm" label={texts.confirmPassword} required>
-              <input
-                id="reset-password-confirm"
-                type="password"
-                required
+            )}
+          </Field>
+          <Field label={texts.confirmPassword} required>
+            {(control) => (
+              <PasswordInput
+                {...control}
+                showLabel={t.auth.showPassword}
+                hideLabel={t.auth.hidePassword}
                 autoComplete="new-password"
-                aria-invalid={problem === 'mismatch' || undefined}
+                invalid={problem === 'mismatch'}
                 value={confirmation}
                 onChange={(event) => setConfirmation(event.target.value)}
               />
-            </Field>
-          </div>
-          <Field id="reset-reason" label={t.common.reason} required>
-            <input
-              id="reset-reason"
-              required
-              maxLength={500}
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-            />
+            )}
           </Field>
-          {problem === 'length' ? <Notice tone="error">{texts.passwordLength}</Notice> : null}
-          {problem === 'mismatch' ? <Notice tone="error">{texts.passwordMismatch}</Notice> : null}
-          <Feedback submit={submit} />
-          <SubmitButton
-            pending={submit.pending}
-            label={title}
-            pendingLabel={t.common.saving}
-            disabled={reason.trim() === ''}
-          />
-        </form>
-      </details>
+          <Field label={t.common.reason} required>
+            {(control) => (
+              <TextInput
+                {...control}
+                maxLength={500}
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+              />
+            )}
+          </Field>
+        </FormGrid>
+      </FormDialog>
     </>
   );
 }
 
-function StatusForm({
+/** Disable or re-enable sign-in: a confirmation with a required reason. */
+export function StatusDialog({
   employee,
-  onChanged,
+  onClose,
+  onDone,
+  reload,
 }: {
   employee: EmployeeResponse;
-  onChanged: () => Promise<void>;
+  onClose: () => void;
+  onDone: Done;
+  reload: () => Promise<void>;
 }) {
   const { api, t } = useWorkforce();
   const texts = t.employees.detail;
-  const [reason, setReason] = useState('');
-  const submit = useSubmit();
   const next = employee.status === 'INACTIVE' ? 'ACTIVE' : 'INACTIVE';
-  const label = next === 'INACTIVE' ? texts.deactivate : texts.reactivate;
-
-  async function save(event: FormEvent) {
-    event.preventDefault();
-    if (reason.trim() === '') return;
-    const ok = await submit.run(
-      () =>
-        runMutation(
+  const disabling = next === 'INACTIVE';
+  return (
+    <ConfirmDialog
+      title={disabling ? texts.deactivateTitle : texts.reactivateTitle}
+      description={texts.statusHelp[next]}
+      facts={[{ label: texts.loginId, value: `${employee.fullName} · ${employee.employeeId}` }]}
+      tone={disabling ? 'danger' : 'neutral'}
+      confirmLabel={disabling ? texts.deactivate : texts.reactivate}
+      busyLabel={t.common.saving}
+      cancelLabel={t.common.cancel}
+      referenceLabel={t.errors.reference}
+      reasonField={{
+        label: t.common.reason,
+        required: true,
+        requiredLabel: t.common.required,
+        requiredMessage: t.common.form.reasonRequired,
+      }}
+      describeError={confirmError(t)}
+      onCancel={onClose}
+      onConfirm={async (reason) => {
+        const outcome = await runMutation(
           () =>
             employeeCommands.changeStatus(
               api,
               employee.id,
-              statusRequest(employee.version, next, reason),
+              statusRequest(employee.version, next, reason ?? ''),
             ),
-          onChanged,
-        ),
-      next === 'INACTIVE' ? texts.deactivated : texts.reactivated,
-    );
-    if (ok) {
-      setReason('');
-      await onChanged();
-    }
-  }
-
-  return (
-    <details className="wf-disclosure">
-      <summary>{label}</summary>
-      <form className="wf-form wf-member-form" onSubmit={(event) => void save(event)}>
-        <Field id="status-reason" label={t.common.reason} required>
-          <input
-            id="status-reason"
-            required
-            maxLength={500}
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-          />
-        </Field>
-        <Feedback submit={submit} />
-        <SubmitButton
-          pending={submit.pending}
-          label={label}
-          pendingLabel={t.common.saving}
-          tone={next === 'INACTIVE' ? 'danger' : 'primary'}
-          disabled={reason.trim() === ''}
-        />
-      </form>
-    </details>
+          reload,
+        );
+        if (!outcome.ok) throw outcome.error;
+        await reload();
+        onDone(disabling ? texts.deactivated : texts.reactivated);
+      }}
+    />
   );
 }

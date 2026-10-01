@@ -2,7 +2,7 @@ import type { BranchSummary, EmployeeResponse } from '@lucy-spa/contracts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { EmployeeCreateForm } from '../../components/workforce/screens/employee-create';
-import { CreatedNotice, EmployeesScreen } from '../../components/workforce/screens/employees';
+import { EmployeesScreen } from '../../components/workforce/screens/employees';
 import { getWorkforceDictionary } from '../../i18n/workforce';
 import {
   context,
@@ -18,6 +18,7 @@ import { WorkforceApi } from './api';
 import {
   businessToday,
   canOfferCreate,
+  createdMessage,
   createEmployee,
   createErrorMessage,
   createProblems,
@@ -231,21 +232,23 @@ test('7–8, 13. the request: start date, branches, no salary or account fields'
   )) {
     assert.ok(markup.includes(label), label);
   }
-  assert.match(markup, /id="new-start" type="date" required=""/);
+  assert.match(markup, /min="2000-01-01"[^>]*type="date"/);
   assert.match(inputTag(markup, 'new-branches', 'A'), /type="checkbox"/);
   assert.match(inputTag(markup, 'new-branches', 'B'), /type="checkbox"/);
   assert.doesNotMatch(markup, /value="C"/, 'inactive branches are not offered');
 });
 
 test('9. the created member is confirmed and listed with its classification', () => {
-  const notice = render(
-    <CreatedNotice employee={createdEmployee} classification="OFFICIAL_EMPLOYEE" />,
-    owner,
-  );
+  // A toast on the new member's page: who, as what, and whether they can sign in yet.
+  const notice = createdMessage(createdEmployee, 'OFFICIAL_EMPLOYEE', vi);
   assert.ok(notice.includes('Nguyễn Thị Hoa') && notice.includes('KTV-07'));
   assert.ok(notice.includes(vi.employees.classifications.OFFICIAL_EMPLOYEE));
   assert.ok(notice.includes('chưa thể đăng nhập'), 'no claim that the member can sign in');
-  assert.ok(notice.includes(`href="/vi/workforce/employees/${createdEmployee.id}"`));
+  assert.ok(
+    createdMessage({ ...createdEmployee, status: 'ACTIVE' }, 'TRAINEE', vi).includes(
+      'đăng nhập ngay',
+    ),
+  );
   // The directory shows the authoritative server title; a future start shows from when.
   assert.equal(
     directoryTitle({ title: 'TRAINEE', classificationEffectiveDate: '2026-09-01' }, vi, 'vi'),

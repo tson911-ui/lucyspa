@@ -253,6 +253,8 @@
       const full = squash(el.textContent);
       if (clamped && full && [el.closest('[title]'), ...el.querySelectorAll('[title]')].some((holder) => holder && squash(holder.getAttribute('title')) === full)) continue;
       if (s.overflowX === 'hidden' || s.textOverflow === 'ellipsis') add('text-clipped', `${region(el)}:${desc(el)}`, `"${(el.textContent || '').trim().slice(0, 40)}" (${el.scrollWidth} > ${el.clientWidth})`);
+      // The sticky phone form bar bleeds into the page gutter on purpose (one gutter, still inside the viewport).
+      else if (el.querySelector('.ls-form-actions') && el.scrollWidth - el.clientWidth <= 17) continue;
       else if (s.overflowX === 'visible' && !el.closest('[style*="overflow"], .ls-table-scroll')) add('content-overflow', `${region(el)}:${desc(el)}`, `content ${el.scrollWidth} wider than box ${el.clientWidth}`);
     }
   }
@@ -327,7 +329,7 @@
   }
 
   // 10d. FR5: a button alone in its row (or a row of only buttons) outside the places actions belong. Heuristic: review each hit.
-  const ACTION_PLACES = 'form, [role=dialog], dialog, header, nav, aside, li, td, th, tr, [role=toolbar], [role=menu], [role=tablist], .ls-toolbar, .ls-toolbar-row, .ls-toolbar-actions, .ls-card-header, .wf-section-header, .wf-page-header, .wf-page-actions, .ls-page-header, .ls-row-actions, .wf-row-actions, .wf-form-actions, .ls-action-bar, .ls-dialog, .ls-drawer, .ls-notice, .ls-empty, .wf-empty, .ls-pagination, .ls-stat, .ls-kpi, .ls-widget, .ls-auth-card, .ls-segmented, .ls-table-state';
+  const ACTION_PLACES = 'form, [role=dialog], dialog, header, nav, aside, li, td, th, tr, [role=toolbar], [role=menu], [role=tablist], .ls-toolbar, .ls-toolbar-row, .ls-toolbar-actions, .ls-card-header, .ls-list-section-head, .wf-section-header, .wf-page-header, .wf-page-actions, .ls-page-header, .ls-row-actions, .wf-row-actions, .wf-form-actions, .ls-action-bar, .ls-dialog, .ls-drawer, .ls-notice, .ls-empty, .wf-empty, .ls-pagination, .ls-stat, .ls-kpi, .ls-widget, .ls-auth-card, .ls-segmented, .ls-table-state';
   const seenRows = new Set();
   for (const button of scope.querySelectorAll('button, a.ls-btn, a.wf-button')) {
     if (!vis(button) || button.closest(ACTION_PLACES) || button.closest('summary')) continue;

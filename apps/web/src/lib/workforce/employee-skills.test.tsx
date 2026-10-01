@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { SkillsView } from '../../components/workforce/screens/employee-skills';
+import { GrantSkillDialog, SkillsView } from '../../components/workforce/screens/employee-skills';
 import { getWorkforceDictionary } from '../../i18n/workforce';
 import { context, employee, json, owner, render, scriptedFetch } from '../../test/support';
 import { ApiError, WorkforceApi } from './api';
@@ -110,24 +110,37 @@ const view = (
     account,
     locale,
   );
+const grantDialog = (available = assignableSkills(catalog, held)) =>
+  render(
+    <GrantSkillDialog
+      employee={member}
+      available={available}
+      reload={() => Promise.resolve()}
+      onClose={() => undefined}
+      onDone={() => undefined}
+    />,
+    owner,
+  );
 const optionValues = (markup: string) =>
-  [
-    ...(markup.match(/<select id="grant-skill"[\s\S]*?<\/select>/)?.[0] ?? '').matchAll(
-      /value="([^"]*)"/g,
-    ),
-  ].map((match) => match[1]);
+  [...(markup.match(/<select[\s\S]*?<\/select>/)?.[0] ?? '').matchAll(/value="([^"]*)"/g)].map(
+    (match) => match[1],
+  );
 
 test('1, 5. current skills and removed-skill history display separately', () => {
   const markup = view();
-  assert.ok(markup.includes(vi.employees.skillsSection.current));
+  assert.ok(markup.includes(vi.employees.skills));
   assert.ok(markup.includes('<strong>Gội đầu</strong>') && markup.includes('(HAIR_WASH)'));
   assert.ok(markup.includes(vi.employees.skillsSection.active));
   assert.ok(markup.includes('09:00 01/09/2026'), 'grant time in the branch timezone');
   assert.ok(markup.includes(vi.employees.skillsSection.history));
-  assert.match(markup, /Làm móng \(NAIL\) · 09:00 01\/08\/2026 – 10:00 20\/08\/2026/);
+  assert.ok(
+    markup.includes('Làm móng') &&
+      markup.includes('09:00 01/08/2026') &&
+      markup.includes('10:00 20/08/2026'),
+  );
   assert.ok(markup.includes(vi.employees.skillsSection.intro));
   const english = view(owner, {}, 'en');
-  for (const text of ['Current skills', 'Hair wash', 'Removed skills (history)', 'Assign skill']) {
+  for (const text of ['Skills', 'Hair wash', 'Removed skills (history)', 'Assign skill']) {
     assert.ok(english.includes(text), text);
   }
 });
@@ -138,7 +151,7 @@ test('2. the catalog comes from the API; nothing is hard-coded', () => {
     [NAIL, FACIAL],
     'active catalog skills not already held',
   );
-  assert.deepEqual(optionValues(view()), ['', NAIL, FACIAL]);
+  assert.deepEqual(optionValues(grantDialog()), ['', NAIL, FACIAL]);
   for (const file of [
     '../../components/workforce/screens/employee-skills.tsx',
     './employee-skills.ts',
@@ -149,7 +162,7 @@ test('2. the catalog comes from the API; nothing is hard-coded', () => {
   }
   const empty = view(owner, { catalog: { skills: [skill(OLD, 'OLD', 'x', 'x', false)] } });
   assert.ok(empty.includes(vi.employees.skillsSection.emptyCatalog));
-  assert.doesNotMatch(empty, /id="grant-skill"/);
+  assert.ok(!empty.includes(`>${vi.employees.skillsSection.assign}<`));
 });
 
 test('3–4. assign and remove use the existing commands; the reason is optional', async () => {
@@ -185,10 +198,10 @@ test('6, 15–16. trainees may get skills; ended employment keeps skills but get
   assert.equal(assignBlocker({ ...member, status: 'INACTIVE' }, false), 'inactive');
   const ended = view(owner, { ended: true });
   assert.ok(ended.includes(vi.employees.skillsSection.ended));
-  assert.doesNotMatch(ended, /id="grant-skill"/);
+  assert.ok(!ended.includes(`>${vi.employees.skillsSection.assign}<`));
   assert.ok(ended.includes('<strong>Gội đầu</strong>'), 'current skills stay visible');
   assert.ok(ended.includes(vi.employees.skillsSection.history), 'history stays visible');
-  assert.ok(ended.includes(`>${vi.employees.revokeSkill}<`), 'removal still possible');
+  assert.ok(ended.includes('aria-label="Thao tác cho'), 'removal still possible');
   const disabled = view(owner, { employee: { ...member, status: 'INACTIVE' } });
   assert.ok(disabled.includes(vi.employees.skillsSection.inactive));
   assert.equal(
@@ -209,8 +222,8 @@ test('17. controls follow MANAGE_SKILLS over every branch, never on oneself', ()
   assert.equal(canManageSkills(employee([['MANAGE_SKILLS', A]], [], member.id), member), false);
   const viewer = view(employee([['VIEW_EMPLOYEES', A]]));
   assert.ok(viewer.includes('<strong>Gội đầu</strong>'), 'readers still see the skills');
-  assert.doesNotMatch(viewer, /id="grant-skill"|id="skill-reason"/);
-  assert.ok(!viewer.includes(`>${vi.employees.revokeSkill}<`));
+  assert.ok(!viewer.includes(`>${vi.employees.skillsSection.assign}<`));
+  assert.ok(!viewer.includes('Thao tác cho'));
   const allHeld = view(owner, {
     catalog: { skills: [catalog.skills[0]!] },
   });

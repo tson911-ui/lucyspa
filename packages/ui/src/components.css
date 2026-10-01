@@ -628,6 +628,7 @@
 /* ---- Form controls -------------------------------------------------------------------------- */
 .ls-field {
   display: grid;
+  align-content: start;
   gap: var(--ls-space-1);
   min-width: 0;
 }
@@ -867,6 +868,10 @@
   border: 0;
 }
 
+.ls-radios > legend {
+  margin-block-end: var(--ls-space-1);
+}
+
 .ls-radios-inline {
   display: flex;
   flex-wrap: wrap;
@@ -875,6 +880,10 @@
 
 .ls-radios-inline .ls-label {
   flex-basis: 100%;
+}
+
+.ls-radios-inline .ls-check-field {
+  width: auto;
 }
 
 .ls-switch {
@@ -2027,6 +2036,20 @@
   display: grid;
   gap: var(--ls-space-4);
   min-width: 0;
+}
+
+.ls-list-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ls-space-2) var(--ls-space-4);
+}
+
+.ls-list-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2);
 }
 
 .ls-list-section-title {

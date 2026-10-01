@@ -7,6 +7,15 @@ import type {
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { EmployeeDetail } from '../../components/workforce/screens/employee-detail';
+import {
+  AccessSection,
+  EmploymentSection,
+  EndDialog,
+  PasswordDialog,
+  ProfileDialog,
+  PromoteDialog,
+} from '../../components/workforce/screens/employee-lifecycle';
+import { organizationDictionary } from '../../i18n/organization';
 import { getWorkforceDictionary } from '../../i18n/workforce';
 import { context, employee, failure, json, owner, render, scriptedFetch } from '../../test/support';
 import { WorkforceApi } from './api';
@@ -19,6 +28,7 @@ import {
   endAccessMessage,
   endingOutcome,
   endRequest,
+  menuOverlays,
   passwordProblem,
   profileForm,
   profilePatch,
@@ -29,6 +39,7 @@ import { ApiError } from './api';
 import { reauthenticate, withReauthentication } from './reauth';
 
 const vi = getWorkforceDictionary('vi');
+const organizationMoreActions = organizationDictionary('vi').moreActions;
 const en = getWorkforceDictionary('en');
 const TODAY = '2026-09-26';
 const PASSWORD = 'hoa sen xanh buổi sáng 2026';
@@ -114,6 +125,47 @@ const detail = (
     account,
     locale,
   );
+const noop = () => Promise.resolve();
+const ignore = () => undefined;
+const lifecycle = {
+  profile: (person = member, account = owner) =>
+    render(
+      <ProfileDialog employee={person} reload={noop} onClose={ignore} onDone={ignore} />,
+      account,
+    ),
+  employment: (data: EmploymentResponse, locale: 'vi' | 'en' = 'vi') =>
+    render(<EmploymentSection employment={data} timeZone="Asia/Ho_Chi_Minh" />, owner, locale),
+  account: (data: EmploymentResponse | null, person = member, locale: 'vi' | 'en' = 'vi') =>
+    render(<AccessSection employee={person} employment={data} />, owner, locale),
+  promote: (data: EmploymentResponse) =>
+    render(
+      <PromoteDialog
+        employee={member}
+        employment={data}
+        reload={noop}
+        onClose={ignore}
+        onDone={ignore}
+      />,
+      owner,
+    ),
+  end: (data: EmploymentResponse, canDisable = true, account = owner) =>
+    render(
+      <EndDialog
+        employee={member}
+        employment={data}
+        canDisable={canDisable}
+        reload={noop}
+        onClose={ignore}
+        onDone={ignore}
+      />,
+      account,
+    ),
+  password: (person: EmployeeResponse) =>
+    render(
+      <PasswordDialog employee={person} reload={noop} onClose={ignore} onDone={ignore} />,
+      owner,
+    ),
+};
 const manager = employee([
   ['VIEW_EMPLOYEES', 'A'],
   ['UPDATE_EMPLOYEES', 'A'],
@@ -146,19 +198,22 @@ test('1–2, 15, 19. detail shows profile, read-only login ID, separate status a
   assert.ok(markup.includes(vi.employees.classifications.TRAINEE));
   assert.ok(markup.includes(vi.employees.statuses.ACTIVE));
   const english = detail(official, owner, member, 'en');
-  for (const text of [
-    'Employee ID (login ID)',
-    'Employee',
-    'Classification history',
-    'Reset password',
-    'End employment',
-    'Sign-in account',
-  ]) {
+  for (const text of ['Employee ID (login ID)', 'Employee', 'Sign-in account']) {
     assert.ok(english.includes(text), text);
   }
-  // Branch assignments and (unchanged) skills sections are still part of the page.
-  assert.ok(markup.includes(vi.employees.assignments));
-  assert.ok(markup.includes(vi.employees.skills));
+  assert.ok(lifecycle.employment(official, 'en').includes('Classification history'));
+  // One page with tabs: profile, employment, roles and branches, skills (only the first is painted).
+  assert.equal((markup.match(/role="tab"/g) ?? []).length, 4);
+  for (const label of [
+    vi.employees.detail.profile,
+    vi.employees.detail.employment,
+    vi.employees.detail.accessTab,
+    vi.employees.skills,
+  ]) {
+    assert.ok(markup.includes(`>${label}</button>`), label);
+  }
+  assert.equal((markup.match(/<h1/g) ?? []).length, 1, 'one page title');
+  assert.doesNotMatch(markup, /<details|<fieldset|wf-/);
 });
 
 test('3. profile edits send only supported, changed fields to the existing command', async () => {
@@ -183,18 +238,24 @@ test('3. profile edits send only supported, changed fields to the existing comma
   await employeeCommands.updateProfile(new WorkforceApi({ fetch: fetcher }), member.id, patch);
   assert.equal(calls[1]?.url, `/api/v1/employees/${member.id}/profile`);
   assert.deepEqual(calls[1]?.body, patch);
-  const markup = detail(trainee);
+  // The dialog offers exactly these fields; email and the employee code are never inputs.
+  const markup = lifecycle.profile();
   assert.ok(markup.includes(vi.employees.detail.profileReadonlyNote));
-  for (const id of [
-    'profile-name',
-    'profile-phone',
-    'profile-dob',
-    'profile-address',
-    'profile-locale',
+  for (const label of [
+    vi.employees.fullName,
+    vi.employees.detail.phone,
+    vi.employees.detail.dateOfBirth,
+    vi.employees.detail.address,
+    vi.employees.detail.locale,
   ]) {
-    assert.match(markup, new RegExp(`id="${id}"`), id);
+    assert.ok(markup.includes(label), label);
   }
-  assert.doesNotMatch(markup, /id="profile-(email|code)"/);
+  assert.doesNotMatch(markup, /type="email"|value="NV0021"/);
+  assert.match(
+    markup,
+    /disabled=""[^>]*><span class="ls-btn-label">Lưu/,
+    'nothing changed: Save is off',
+  );
   assert.equal(
     detailErrorMessage(new ApiError(409, 'CONFLICT', 'phone'), vi),
     vi.employees.create.duplicatePhone,
@@ -202,14 +263,18 @@ test('3. profile edits send only supported, changed fields to the existing comma
 });
 
 test('4. classification, effective date, upcoming entries and history are shown', () => {
-  const markup = detail(endingLater);
+  const markup = lifecycle.employment(endingLater);
   assert.ok(markup.includes(vi.employees.detail.history));
   assert.ok(markup.includes('01/08/2026'));
   assert.ok(markup.includes('Đã ghi nhận trước: Đã nghỉ từ 31/10/2026.'));
-  assert.ok(markup.includes(`<dd>${vi.employees.detail.no}</dd>`), 'trainee: not payroll-eligible');
-  const historyRows = detail(official).match(/<tr><td data-label="Hiệu lực từ">/g) ?? [];
-  assert.equal(historyRows.length, 2);
-  assert.ok(detail(official).includes(`<dd>${vi.employees.detail.yes}</dd>`));
+  assert.match(
+    markup,
+    new RegExp(`>${vi.employees.detail.no}</dd>`),
+    'trainee: not payroll-eligible',
+  );
+  const body = lifecycle.employment(official).match(/<tbody[\s\S]*<\/tbody>/)?.[0] ?? '';
+  assert.equal((body.match(/<tr\b/g) ?? []).length, 2, 'one row per recorded classification');
+  assert.match(lifecycle.employment(official), new RegExp(`>${vi.employees.detail.yes}</dd>`));
 });
 
 test('5–7. classification change: forward only, only the classification changes', async () => {
@@ -217,8 +282,17 @@ test('5–7. classification change: forward only, only the classification change
   assert.equal(detailActions(owner, member, official).promote, false);
   assert.equal(detailActions(owner, member, ended).promote, false);
   assert.equal(detailActions(owner, member, endingLater).promote, false, 'ENDED recorded');
-  assert.ok(detail(trainee).includes(vi.employees.detail.promote));
-  assert.ok(!detail(official).includes(vi.employees.detail.promote));
+  assert.ok(menuOverlays(detailActions(owner, member, trainee)).includes('promote'));
+  assert.ok(!menuOverlays(detailActions(owner, member, official)).includes('promote'));
+  // Targets are an explicit radio choice (a trainee may become CTV or Nhân viên).
+  const dialog = lifecycle.promote(trainee);
+  for (const label of [
+    vi.employees.classifications.COLLABORATOR,
+    vi.employees.classifications.OFFICIAL_EMPLOYEE,
+  ]) {
+    assert.ok(dialog.includes(label), label);
+  }
+  assert.ok(dialog.includes(vi.employees.detail.promoteHint));
   const request = promotionRequest(4, 'OFFICIAL_EMPLOYEE', '2026-10-01', ' Hoàn thành học việc ');
   assert.deepEqual(request, {
     expectedVersion: 4,
@@ -308,14 +382,14 @@ test('8–10. password reset: policy, confirmation, credential command with reau
       `POST /api/v1/employees/${member.id}/credentials`,
     ],
   );
-  const markup = detail(trainee);
+  const markup = lifecycle.password(member);
   assert.ok(markup.includes(vi.employees.detail.resetPassword));
-  assert.match(markup, /id="reset-password" type="password"[^>]*minLength="8"/);
+  assert.match(markup, /type="password"[^>]*minLength="8"|minLength="8"[^>]*type="password"/);
   assert.ok(markup.includes(vi.employees.detail.passwordHint));
   assert.ok(
-    detail(trainee, owner, { ...member, status: 'PENDING_SETUP' }).includes(
-      vi.employees.detail.setPassword,
-    ),
+    lifecycle
+      .password({ ...member, status: 'PENDING_SETUP' })
+      .includes(vi.employees.detail.setPassword),
   );
   assert.equal(
     detailErrorMessage(new ApiError(400, 'VALIDATION_FAILED', 'newPassword'), vi),
@@ -329,16 +403,17 @@ test('11. ended employment: no promotion, reset or reactivation controls', () =>
     [actions.promote, actions.end, actions.resetPassword, actions.reactivate, actions.deactivate],
     [false, false, false, false, false],
   );
+  assert.ok(lifecycle.employment(ended).includes('Đã kết thúc làm việc từ 20/09/2026'));
+  assert.ok(
+    lifecycle
+      .account(ended, { ...member, status: 'INACTIVE' })
+      .includes(vi.employees.detail.endedNoAccessChanges),
+  );
+  // No header menu at all: nothing can be promoted, reset, reactivated or ended.
+  assert.deepEqual(menuOverlays(actions), []);
   const markup = detail(ended, owner, { ...member, status: 'INACTIVE' });
-  assert.ok(markup.includes('Đã kết thúc làm việc từ 20/09/2026'));
-  for (const label of [
-    vi.employees.detail.promote,
-    vi.employees.detail.resetPassword,
-    vi.employees.detail.reactivate,
-    vi.employees.detail.end,
-  ]) {
-    assert.ok(!markup.includes(`<summary>${label}</summary>`), label);
-  }
+  assert.ok(!markup.includes(vi.employees.titles.OWNER));
+  assert.ok(!markup.includes(`aria-label="${organizationMoreActions}"`));
   // Ended but still ACTIVE (access kept on purpose): only disabling sign-in is offered.
   const kept = detailActions(owner, member, ended);
   assert.deepEqual([kept.resetPassword, kept.deactivate], [false, true]);
@@ -378,7 +453,7 @@ test('12–14. ending uses the existing command and states the access outcome ho
   assert.match(en.employees.detail.outcome.FUTURE_NO_AUTO_DISABLE, /NOT disabled automatically/);
   assert.match(vi.employees.detail.endedAccess.UNCHANGED_FUTURE_DATE, /vô hiệu hóa thủ công/);
   // The form states the consequence before confirmation and says nothing is deleted.
-  const markup = detail(trainee);
+  const markup = lifecycle.end(trainee);
   assert.ok(markup.includes(vi.employees.detail.endHint));
   assert.ok(markup.includes(vi.employees.detail.outcome.DISABLE_NOW));
   assert.ok(markup.includes(vi.employees.detail.endConfirm));
@@ -387,7 +462,9 @@ test('12–14. ending uses the existing command and states the access outcome ho
     ['VIEW_EMPLOYEES', 'A'],
     ['MANAGE_EMPLOYEE_PAY', 'A'],
   ]);
-  const limited = detail(trainee, payOnly);
+  const canDisable = detailActions(payOnly, member, trainee).disableWhenEnding;
+  assert.equal(canDisable, false);
+  const limited = lifecycle.end(trainee, canDisable, payOnly);
   const checkbox = limited.match(/<input[^>]*name="end-disable-access"[^>]*>/)?.[0] ?? '';
   assert.match(checkbox, /disabled=""/);
   assert.doesNotMatch(checkbox, /checked/);
@@ -400,15 +477,19 @@ test('18. controls follow the permission hints; self and viewers get none', () =
   const none = detailActions(viewer, member, trainee);
   assert.deepEqual(Object.values(none), [false, false, false, false, false, false, false]);
   const viewMarkup = detail(trainee, viewer);
-  for (const label of [
-    vi.employees.detail.editProfile,
-    vi.employees.detail.promote,
-    vi.employees.detail.end,
-    vi.employees.detail.resetPassword,
-    vi.employees.detail.deactivate,
-  ]) {
-    assert.ok(!viewMarkup.includes(`<summary>${label}</summary>`), label);
-  }
+  assert.deepEqual(menuOverlays(none), []);
+  assert.ok(!viewMarkup.includes(`>${vi.employees.detail.editProfile}<`), 'no primary action');
+  assert.ok(!viewMarkup.includes(`aria-label="${organizationMoreActions}"`), 'no ⋮ menu');
+  // The owner sees the primary action and the menu; the menu order is fixed.
+  const ownerMarkup = detail(trainee);
+  assert.ok(ownerMarkup.includes(`>${vi.employees.detail.editProfile}<`));
+  assert.ok(ownerMarkup.includes(`aria-label="${organizationMoreActions}"`));
+  assert.deepEqual(menuOverlays(detailActions(owner, member, trainee)), [
+    'promote',
+    'password',
+    'status',
+    'end',
+  ]);
   const full = detailActions(manager, member, trainee);
   assert.deepEqual(
     [full.editProfile, full.promote, full.end, full.resetPassword, full.deactivate],
