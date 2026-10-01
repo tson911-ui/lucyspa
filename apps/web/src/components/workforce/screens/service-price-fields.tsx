@@ -1,6 +1,7 @@
 'use client';
 
 import type { ServicePricingUnit } from '@lucy-spa/contracts';
+import { Field, FormGrid, Select, TextInput } from '@lucy-spa/ui';
 import type { Locale } from '../../../i18n/locales';
 import type { WorkforceDictionary } from '../../../i18n/workforce';
 import {
@@ -10,11 +11,12 @@ import {
   quantityProblem,
   type PriceForm,
 } from '../../../lib/workforce/pricing';
-import { Field, Notice } from '../ui';
+import { Notice } from '../ui';
 
 /**
  * Minimum price, maximum price and pricing unit, shared by the create form and the price
- * command. An exact price uses the same amount twice.
+ * command. An exact price uses the same amount twice. Renders its own `FormGrid`, so it can sit
+ * directly in a form.
  */
 export function PriceFields({
   idPrefix,
@@ -30,62 +32,66 @@ export function PriceFields({
   locale: Locale;
 }) {
   const problem = priceProblem(value);
-  const amount = (key: 'priceVnd' | 'priceMaxVnd', label: string, hint?: string) => (
-    <Field id={`${idPrefix}-${key}`} label={label} required {...(hint ? { hint } : {})}>
-      <input
-        id={`${idPrefix}-${key}`}
-        required
-        inputMode="numeric"
-        pattern="0|[1-9][0-9]{0,17}"
-        aria-invalid={problem !== null}
-        value={value[key]}
-        onChange={(event) => onChange({ ...value, [key]: event.target.value.trim() })}
-      />
+  // An untouched form is not an error: the fields turn red only once something was typed.
+  const typed = value.priceVnd !== '' || value.priceMaxVnd !== '';
+  const amount = (key: 'priceVnd' | 'priceMaxVnd', label: string, hint: string) => (
+    <Field id={`${idPrefix}-${key}`} label={label} required hint={hint}>
+      {(control) => (
+        <TextInput
+          {...control}
+          inputMode="numeric"
+          pattern="0|[1-9][0-9]{0,17}"
+          invalid={problem !== null && typed}
+          value={value[key]}
+          onChange={(event) => onChange({ ...value, [key]: event.target.value.trim() })}
+        />
+      )}
     </Field>
   );
   return (
     <>
-      <div className="wf-row">
+      <FormGrid cols={2}>
         {amount('priceVnd', t.services.priceMin, t.services.priceHint)}
         {amount('priceMaxVnd', t.services.priceMax, t.services.priceRangeHint)}
         <Field id={`${idPrefix}-unit`} label={t.services.pricingUnit} required>
-          <select
-            id={`${idPrefix}-unit`}
-            required
-            value={value.pricingUnit}
-            onChange={(event) =>
-              onChange({ ...value, pricingUnit: event.target.value as ServicePricingUnit })
-            }
-          >
-            {PRICING_UNITS.map((unit) => (
-              <option key={unit} value={unit}>
-                {t.services.pricingUnits[unit]}
-              </option>
-            ))}
-          </select>
+          {(control) => (
+            <Select
+              {...control}
+              value={value.pricingUnit}
+              options={PRICING_UNITS.map((unit) => ({
+                value: unit,
+                label: t.services.pricingUnits[unit],
+              }))}
+              onChange={(event) =>
+                onChange({ ...value, pricingUnit: event.target.value as ServicePricingUnit })
+              }
+            />
+          )}
         </Field>
-      </div>
-      {value.pricingUnit === 'PER_NAIL' ? (
-        <Field
-          id={`${idPrefix}-maxQuantity`}
-          label={t.services.maxQuantity}
-          hint={t.services.maxQuantityHint}
-          required
-        >
-          <input
+        {value.pricingUnit === 'PER_NAIL' ? (
+          <Field
             id={`${idPrefix}-maxQuantity`}
+            label={t.services.maxQuantity}
+            hint={t.services.maxQuantityHint}
             required
-            inputMode="numeric"
-            pattern="[1-9][0-9]{0,9}"
-            aria-invalid={quantityProblem(value) !== null}
-            value={value.maxQuantity}
-            onChange={(event) => onChange({ ...value, maxQuantity: event.target.value.trim() })}
-          />
-        </Field>
-      ) : null}
+            full
+          >
+            {(control) => (
+              <TextInput
+                {...control}
+                inputMode="numeric"
+                pattern="[1-9][0-9]{0,9}"
+                invalid={quantityProblem(value) !== null}
+                value={value.maxQuantity}
+                onChange={(event) => onChange({ ...value, maxQuantity: event.target.value.trim() })}
+              />
+            )}
+          </Field>
+        ) : null}
+      </FormGrid>
       {problem === null ? (
-        <p className="wf-muted">{formatServicePrice(value, t, locale)}</p>
-      ) : value.priceVnd !== '' || value.priceMaxVnd !== '' ? (
+        <p className="ls-hint">{formatServicePrice(value, t, locale)}</p>
+      ) : typed ? (
         <Notice tone="error">
           {problem === 'maxBeforeMin' ? t.services.priceMaxBeforeMin : t.services.priceInvalid}
         </Notice>

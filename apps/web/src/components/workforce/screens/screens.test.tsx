@@ -109,21 +109,22 @@ test('management pages offer create actions only with the matching GLOBAL permis
     render(<SkillsScreen />, employee([['MANAGE_SKILLS', 'A']])),
     new RegExp(vi.skills.create),
   );
+  // The first paint is the services tab: its one primary action is "add service", which also needs
+  // the price permission (the categories tab, with "add category", is reached through the URL).
   const services = render(<ServicesScreen />, employee([['MANAGE_SERVICES']]));
-  assert.match(services, new RegExp(vi.services.createCategory));
   assert.doesNotMatch(
     services,
-    new RegExp(vi.services.noCategories),
+    new RegExp(vi.services.createService),
     'service creation also needs the price permission',
   );
   const pricing = render(
     <ServicesScreen />,
     employee([['MANAGE_SERVICES'], ['MANAGE_SERVICE_PRICES']]),
   );
-  assert.match(pricing, new RegExp(vi.services.noCategories));
+  assert.match(pricing, new RegExp(vi.services.createService));
   assert.doesNotMatch(
     render(<ServicesScreen />, employee([['MANAGE_SERVICES', 'A']])),
-    new RegExp(vi.services.createCategory),
+    new RegExp(vi.services.createService),
   );
 });
 

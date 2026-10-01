@@ -55,6 +55,20 @@ export function deletedMessage(target: DeleteTarget, t: WorkforceDictionary): st
   });
 }
 
+/** The texts of the delete confirmation (`ConfirmDialog`): what will happen and the exact action. */
+export function deleteConfirmation(target: DeleteTarget, t: WorkforceDictionary) {
+  const service = target.kind === 'service';
+  return {
+    title: service ? t.services.deleteServiceTitle : t.services.deleteCategoryTitle,
+    description: service ? t.services.deleteServiceBody : t.services.deleteCategoryBody,
+    confirmLabel: service ? t.services.deleteServiceConfirm : t.services.deleteCategoryConfirm,
+    facts: [
+      { label: t.common.name, value: target.name },
+      { label: t.common.code, value: target.code },
+    ],
+  };
+}
+
 /** Removes a deleted record from a displayed list immediately, before the list reloads. */
 export function withoutDeleted<T extends { id: string }>(
   rows: readonly T[],

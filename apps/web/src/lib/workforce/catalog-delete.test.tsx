@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { ConfirmDeleteDialog } from '../../components/workforce/confirm-delete';
 import { getWorkforceDictionary } from '../../i18n/workforce';
 import { context, json, scriptedFetch } from '../../test/support';
 import { ApiError, WorkforceApi } from './api';
 import {
+  deleteConfirmation,
   deletedMessage,
   deleteErrorMessage,
   deletePath,
@@ -30,38 +29,18 @@ const category: DeleteTarget = {
   version: 2,
 };
 
-test('the confirmation shows name and code, and opening it sends nothing', () => {
-  let requests = 0;
-  const api = new WorkforceApi({
-    fetch: () => {
-      requests += 1;
-      return new Promise<Response>(() => undefined);
-    },
-  });
-  const markup = renderToStaticMarkup(
-    <ConfirmDeleteDialog
-      target={service}
-      t={vi}
-      onCancel={() => undefined}
-      onConfirm={() => requestDelete(api, service).then(() => undefined)}
-    />,
+test('the confirmation names the record and the exact action, in both kinds', () => {
+  const forService = deleteConfirmation(service, vi);
+  assert.equal(forService.title, vi.services.deleteServiceTitle);
+  assert.equal(forService.confirmLabel, vi.services.deleteServiceConfirm);
+  assert.deepEqual(
+    forService.facts.map((fact) => fact.value),
+    ['Sơn gel', 'NAIL_GEL'],
   );
-  assert.ok(markup.includes('role="alertdialog"'));
-  assert.ok(markup.includes(vi.services.deleteServiceTitle));
-  assert.ok(markup.includes('Sơn gel') && markup.includes('NAIL_GEL'));
-  assert.ok(markup.includes(vi.common.cancel));
-  assert.match(markup, new RegExp(`wf-button-danger"[^>]*>${vi.services.deleteServiceConfirm}<`));
-  assert.equal(requests, 0, 'no request until the destructive button is pressed');
-  const forCategory = renderToStaticMarkup(
-    <ConfirmDeleteDialog
-      target={category}
-      t={vi}
-      onCancel={() => undefined}
-      onConfirm={() => Promise.resolve()}
-    />,
-  );
-  assert.ok(forCategory.includes(vi.services.deleteCategoryTitle));
-  assert.ok(forCategory.includes(vi.services.deleteCategoryConfirm));
+  assert.ok(forService.description.includes('Ngừng hoạt động'), 'points to deactivation instead');
+  const forCategory = deleteConfirmation(category, vi);
+  assert.equal(forCategory.title, vi.services.deleteCategoryTitle);
+  assert.equal(forCategory.confirmLabel, vi.services.deleteCategoryConfirm);
 });
 
 test('a confirmed deletion is one CSRF-protected POST with the current version only', async () => {
