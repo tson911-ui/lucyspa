@@ -11,10 +11,10 @@
 // capture is then the 900 px viewport, not the full page. `--eval` prints the value of a JS expression per render. Dark mode is the `prefers-color-scheme: dark` emulation, so pages without a `data-theme` attribute
 // follow it exactly as a visitor's system would. Needs Node 22+ (global WebSocket) and no dependency.
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { createProfile, disposeProfile } from './uxui-browser-profile.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -57,7 +57,7 @@ if (!browser) {
 
 const outDir = resolve('.local/uxui-screens');
 mkdirSync(outDir, { recursive: true });
-const profile = mkdtempSync(join(tmpdir(), 'uxui-'));
+const profile = createProfile('uxui-');
 const port = 9300 + Math.floor(Math.random() * 500);
 const child = spawn(
   browser,
@@ -256,12 +256,6 @@ try {
   }
   socket.close();
 } finally {
-  child.kill();
-  await sleep(300);
-  try {
-    rmSync(profile, { recursive: true, force: true });
-  } catch {
-    // The browser may still hold the profile; it is in the temp folder.
-  }
+  await disposeProfile(profile, child);
 }
 process.exit(exitCode);

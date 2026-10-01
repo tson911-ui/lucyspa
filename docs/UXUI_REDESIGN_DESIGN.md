@@ -1118,7 +1118,7 @@ Kit dependencies: Radix primitives are allowed as headless behavior inside `pack
 
 ### 21.5 Quality gate v2 (Step 7.5a; replaces "render and look" alone)
 
-**Tooling (committed).** `scripts/uxui-screens.mjs` (render at 360/768/1440 light + 1440 dark, 21.2), `scripts/uxui-page-audit.js` (the
+**Tooling (committed).** `scripts/uxui-screens.mjs` (render at 360/768/1440 light + 1440 dark, 21.2; its throw-away browser profile comes from `scripts/uxui-browser-profile.mjs`, which deletes it in `finally` and on exit and sweeps stale `uxui-*`/`uxaudit-*` folders from TEMP, also used by the local capture scripts), `scripts/uxui-page-audit.js` (the
 DOM audit evaluated in a rendered page; every finding carries its rule `FR*`), `scripts/uxui-audit-summary.mjs` (table, `--write`,
 `--compare`, `--page`), `apps/web/src/test/ui-ratchet.test.ts` + `ui-ratchet-baseline.json` (static counters), `docs/uxui-audit-baseline.json`
 (Step 7.5a DOM baseline, 26 pages). **Machine-local, not committed** (credentials and seed data): `.local/uxui-audit/` holds the real-app
