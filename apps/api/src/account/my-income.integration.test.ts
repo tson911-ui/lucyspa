@@ -90,7 +90,11 @@ test(
               ).id;
             const A = await branch('A', 'Asia/Ho_Chi_Minh');
             const T = await branch('T', 'Asia/Tokyo');
-            const today = day(await businessToday(tx, [A]));
+            // Every member below is assigned to both branches, and the service takes the LATEST business date
+            // across a member's branches. Computing "today" for A alone made the test fail every day while
+            // Tokyo (UTC+9) was already on the next date but Ho Chi Minh (UTC+7) was not: 22:00-24:00 in
+            // Vietnam, 15:00-17:00 UTC. `now()` is frozen per transaction, so one value is stable all test.
+            const today = day(await businessToday(tx, [A, T]));
             const phone = () => `+84914${randomInt(0, 1_000_000).toString().padStart(6, '0')}`;
             const principal = async (
               kind: 'EMPLOYEE' | 'OWNER' | 'CUSTOMER',
