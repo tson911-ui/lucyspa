@@ -2820,6 +2820,11 @@ export interface WebsitePopupInput {
   startsAt: string;
   endsAt: string;
   isEnabled: boolean;
+  /**
+   * Follow a season (design 20.6): the API then stores the season's window in place of `startsAt`/`endsAt` (what is
+   * sent is ignored) and the popup is public only while its season is enabled. Absent or null = independent.
+   */
+  seasonId?: string | null;
 }
 
 /** The library image a popup shows, as much of it as a list or the form's preview needs. */
@@ -2834,6 +2839,7 @@ export interface WebsitePopupMedia {
 
 export interface WebsitePopupResponse extends WebsitePopupInput {
   id: string;
+  seasonId: string | null;
   media: WebsitePopupMedia | null;
   status: WebsitePopupStatus;
   rowVersion: number;
@@ -2903,10 +2909,13 @@ export interface WebsiteSlideInput {
   startsAt: string | null;
   endsAt: string | null;
   isEnabled: boolean;
+  /** Follow a season (design 20.6): same rule as the popup, the season window replaces `startsAt`/`endsAt`. */
+  seasonId?: string | null;
 }
 
 export interface WebsiteSlideResponse extends WebsiteSlideInput {
   id: string;
+  seasonId: string | null;
   media: WebsitePopupMedia;
   mobileMedia: WebsitePopupMedia | null;
   /** 1-based place in the slider; dense. */
@@ -2966,4 +2975,74 @@ export interface PublicSlide {
 /** GET /api/v1/public/website/slides?locale=vi|en : the visible slides in order (at most 8), possibly none. */
 export interface PublicSlidesResponse {
   items: PublicSlide[];
+}
+
+// ---------------------------------------------------------------------------------------------
+// UX/UI Step S3: scheduled seasonal themes (design 20.4). MANAGE_WEBSITE_CONTENT, GLOBAL only.
+// ---------------------------------------------------------------------------------------------
+
+/** Derived, never stored: Draft (disabled), Scheduled (enabled, not started), Active (live now), Ended. */
+export type WebsiteSeasonStatus = 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'ENDED';
+
+/** The fields an admin writes. `startsAt`/`endsAt` are ISO instants; the end is exclusive. */
+export interface WebsiteSeasonInput {
+  /** One of `SEASON_PRESET_KEYS`. */
+  presetKey: string;
+  /** Internal name, 1-80 characters (for example "Tet 2027"). */
+  label: string;
+  startsAt: string;
+  endsAt: string;
+  /** Plain text, at most 80 characters; empty (null) means the preset default. */
+  greetingVi: string | null;
+  greetingEn: string | null;
+  applyCustomer: boolean;
+  applyAdmin: boolean;
+  particlesEnabled: boolean;
+  isEnabled: boolean;
+}
+
+export interface WebsiteSeasonResponse extends WebsiteSeasonInput {
+  id: string;
+  status: WebsiteSeasonStatus;
+  /** Ids of the popups and slides that follow this season. */
+  popupIds: string[];
+  slideIds: string[];
+  rowVersion: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** GET /api/v1/website/seasons : every season, newest start first; `now` is the server clock the statuses use. */
+export interface WebsiteSeasonListResponse {
+  items: WebsiteSeasonResponse[];
+  now: string;
+}
+
+/** POST /api/v1/website/seasons/:id/update */
+export interface WebsiteSeasonUpdateRequest extends WebsiteSeasonInput {
+  expectedVersion: number;
+}
+
+/** POST /api/v1/website/seasons/:id/enabled : switch on or off without touching the content. */
+export interface WebsiteSeasonEnabledRequest {
+  expectedVersion: number;
+  isEnabled: boolean;
+}
+
+/**
+ * GET /api/v1/public/website/season?locale=vi|en : the one active season in the visitor's language, or 204
+ * (none active, or both `customer` and `admin` are off). No personal data, no cookie. The mobile app reads the
+ * same answer plus the shared registry.
+ */
+export interface PublicSeasonResponse {
+  presetKey: string;
+  /** The schedule's greeting in the locale, else the preset default. */
+  greeting: string;
+  /** Exclusive end, ISO instant. */
+  endsAt: string;
+  particles: boolean;
+  /** The customer side (website, customer area, app) wears the season. */
+  customer: boolean;
+  /** The admin side gets its subtle touch. */
+  admin: boolean;
 }

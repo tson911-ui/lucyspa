@@ -54,6 +54,7 @@ const problemOf = (patch: Partial<SlideForm>): SlideProblem | null => {
 
 const response: WebsiteSlideResponse = {
   id: 's-1',
+  seasonId: null,
   mediaId: 'm-1',
   media,
   mobileMediaId: 'm-2',

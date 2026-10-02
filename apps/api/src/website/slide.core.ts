@@ -23,6 +23,13 @@ import {
   validPopupUrl,
   type PublicLocale,
 } from './popup.core.js';
+import {
+  effectivelyEnabled,
+  followsEnabledSeason,
+  lockSeasons,
+  parseSeasonId,
+  requireSeason,
+} from './season.link.js';
 
 /**
  * UX/UI Step 13: the homepage slider (design 16.6). `MANAGE_WEBSITE_CONTENT` is GLOBAL_ONLY, decided inside
@@ -43,7 +50,7 @@ export const MAX_VISIBLE_SLIDES = 8;
  * One fixed key serializes every slider command (order, count and the visible limit all depend on the whole
  * set). It is always taken FIRST, before any row lock, so two commands can never wait on each other.
  */
-const SLIDE_LOCK = 4_120_016_502n;
+export const SLIDE_LOCK = 4_120_016_502n;
 const MAX_VERSION = 2_147_483_647;
 
 /** Hidden is "not enabled"; an enabled slide is Scheduled until it starts, Visible while live, then Ended. */
@@ -102,6 +109,7 @@ interface SlideFields {
   startsAt: Date | null;
   endsAt: Date | null;
   isEnabled: boolean;
+  seasonId: string | null;
 }
 
 function uuid(value: unknown, field: string): string {
@@ -139,6 +147,7 @@ export function parseSlideFields(input: WebsiteSlideInput): SlideFields {
     startsAt: optionalInstant(input.startsAt, 'startsAt'),
     endsAt: optionalInstant(input.endsAt, 'endsAt'),
     isEnabled: input.isEnabled,
+    seasonId: parseSeasonId(input.seasonId),
   };
   if (typeof input.isEnabled !== 'boolean') throw new AuthError('VALIDATION_FAILED', 'isEnabled');
   if (input.linkUrl !== null && input.linkUrl !== undefined) {
@@ -188,9 +197,11 @@ const selectSlide = {
   startsAt: true,
   endsAt: true,
   isEnabled: true,
+  seasonId: true,
   rowVersion: true,
   createdAt: true,
   updatedAt: true,
+  season: { select: { isEnabled: true } },
   media: { select: selectMedia },
   mobileMedia: { select: selectMedia },
 } as const;
@@ -226,8 +237,15 @@ function response(row: SlideRow, now: Date): WebsiteSlideResponse {
     startsAt: row.startsAt?.toISOString() ?? null,
     endsAt: row.endsAt?.toISOString() ?? null,
     isEnabled: row.isEnabled,
+    seasonId: row.seasonId,
     position: row.sortOrder + 1,
-    status: slideStatus(row.isEnabled, row.startsAt, row.endsAt, now),
+    // A slide that follows a switched-off season is not shown, so it reads as hidden.
+    status: slideStatus(
+      effectivelyEnabled(row.isEnabled, row.season),
+      row.startsAt,
+      row.endsAt,
+      now,
+    ),
     rowVersion: row.rowVersion,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -251,6 +269,7 @@ function summary(fields: SlideFields, position?: number): Prisma.InputJsonObject
     startsAt: fields.startsAt?.toISOString() ?? null,
     endsAt: fields.endsAt?.toISOString() ?? null,
     isEnabled: fields.isEnabled,
+    seasonId: fields.seasonId,
     ...(position === undefined ? {} : { position }),
   };
 }
@@ -270,10 +289,23 @@ const fieldsOf = (row: SlideRow): SlideFields => ({
   startsAt: row.startsAt,
   endsAt: row.endsAt,
   isEnabled: row.isEnabled,
+  seasonId: row.seasonId,
 });
 
-async function lockSlides(tx: Prisma.TransactionClient): Promise<void> {
+export async function lockSlides(tx: Prisma.TransactionClient): Promise<void> {
   await tx.$queryRaw`SELECT pg_advisory_xact_lock(${SLIDE_LOCK}::bigint)::text`;
+}
+
+/**
+ * Applies the season a slide follows: its window replaces whatever dates were sent (design 20.6). Needs
+ * `lockSeasons` first. Returns the season, or null for an independent slide.
+ */
+async function followSeason(tx: Prisma.TransactionClient, fields: SlideFields) {
+  if (fields.seasonId === null) return null;
+  const season = await requireSeason(tx, fields.seasonId);
+  fields.startsAt = season.startsAt;
+  fields.endsAt = season.endsAt;
+  return season;
 }
 
 /** Both images must exist and carry Vietnamese alt text (Q-CM10), locked against a concurrent delete. */
@@ -290,13 +322,30 @@ async function requireVisibleLimit(
   context: AdminContext,
   self: string | null,
   fields: Pick<SlideFields, 'isEnabled' | 'startsAt' | 'endsAt'>,
+  season: { isEnabled: boolean } | null,
 ): Promise<void> {
-  if (!fields.isEnabled) return;
+  // A slide that follows a switched-off season is not shown, so it does not count.
+  if (!effectivelyEnabled(fields.isEnabled, season)) return;
   const others = await context.tx.websiteSlide.findMany({
-    where: { isEnabled: true, ...(self === null ? {} : { id: { not: self } }) },
+    where: {
+      isEnabled: true,
+      ...followsEnabledSeason,
+      ...(self === null ? {} : { id: { not: self } }),
+    },
     select: { startsAt: true, endsAt: true },
   });
   if (maxConcurrentSlides([...others, fields], context.now) > MAX_VISIBLE_SLIDES) {
+    throw new AuthError('SLIDE_LIMIT');
+  }
+}
+
+/** The same limit, checked over every slide that is shown (after a season changed under its slides). */
+export async function requireVisibleLimitAll(context: AdminContext): Promise<void> {
+  const shown = await context.tx.websiteSlide.findMany({
+    where: { isEnabled: true, ...followsEnabledSeason },
+    select: { startsAt: true, endsAt: true },
+  });
+  if (maxConcurrentSlides(shown, context.now) > MAX_VISIBLE_SLIDES) {
     throw new AuthError('SLIDE_LIMIT');
   }
 }
@@ -327,9 +376,11 @@ export async function createSlide(
 ): Promise<WebsiteSlideResponse> {
   requireWebsiteContent(context);
   const fields = parseSlideFields(input);
+  await lockSeasons(context.tx);
+  const season = await followSeason(context.tx, fields);
   await lockSlides(context.tx);
   await requireUsableImages(context.tx, fields);
-  await requireVisibleLimit(context, null, fields);
+  await requireVisibleLimit(context, null, fields, season);
   const last = await context.tx.websiteSlide.aggregate({ _max: { sortOrder: true } });
   const sortOrder = (last._max.sortOrder ?? -1) + 1;
   const created = await context.tx.websiteSlide.create({
@@ -373,6 +424,8 @@ export async function updateSlide(
 ): Promise<WebsiteSlideResponse> {
   requireWebsiteContent(context);
   const fields = parseSlideFields(request);
+  await lockSeasons(context.tx);
+  const season = await followSeason(context.tx, fields);
   await lockSlides(context.tx);
   const before = await lockSlide(context, id, request.expectedVersion);
   // The image check only matters for an image that changes: a slide keeps working if an image's alt was
@@ -381,7 +434,7 @@ export async function updateSlide(
   if (fields.mobileMediaId !== null && fields.mobileMediaId !== before.mobileMediaId) {
     await requireUsableMedia(context.tx, fields.mobileMediaId);
   }
-  await requireVisibleLimit(context, id, fields);
+  await requireVisibleLimit(context, id, fields, season);
   const updated = await context.tx.websiteSlide.update({
     where: { id },
     data: { ...fields, updatedByUserId: context.actor.userId, rowVersion: { increment: 1 } },
@@ -404,10 +457,17 @@ export async function setSlideEnabled(
 ): Promise<WebsiteSlideResponse> {
   requireWebsiteContent(context);
   if (typeof request.isEnabled !== 'boolean') throw new AuthError('VALIDATION_FAILED', 'isEnabled');
+  await lockSeasons(context.tx);
   await lockSlides(context.tx);
   const before = await lockSlide(context, id, request.expectedVersion);
   if (before.isEnabled === request.isEnabled) return response(before, context.now);
-  await requireVisibleLimit(context, id, { ...fieldsOf(before), isEnabled: request.isEnabled });
+  const season = before.seasonId === null ? null : await requireSeason(context.tx, before.seasonId);
+  await requireVisibleLimit(
+    context,
+    id,
+    { ...fieldsOf(before), isEnabled: request.isEnabled },
+    season,
+  );
   const updated = await context.tx.websiteSlide.update({
     where: { id },
     data: {
@@ -543,6 +603,7 @@ export async function visibleSlides(
     where: {
       isEnabled: true,
       AND: [
+        followsEnabledSeason,
         { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
         { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
       ],

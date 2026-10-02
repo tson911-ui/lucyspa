@@ -155,13 +155,16 @@ test('slide HTTP: strict admin bodies, CSRF/Origin, reorder route, anonymous pub
 
     // A valid create reaches the service with exactly the declared fields.
     await request(server).post(base).set(headers).send(body).expect(200);
-    assert.deepEqual({ ...(calls.pop()?.args[0] as object) }, body);
+    assert.deepEqual({ ...(calls.pop()?.args[0] as object) }, { ...body, seasonId: undefined });
     await request(server)
       .post(`${base}/${id}/update`)
       .set(headers)
       .send({ ...body, expectedVersion: 3 })
       .expect(200);
-    assert.deepEqual({ ...(calls.pop()?.args[1] as object) }, { ...body, expectedVersion: 3 });
+    assert.deepEqual(
+      { ...(calls.pop()?.args[1] as object) },
+      { ...body, expectedVersion: 3, seasonId: undefined },
+    );
     await request(server)
       .post(`${base}/${id}/enabled`)
       .set(headers)

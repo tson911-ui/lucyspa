@@ -1,5 +1,6 @@
 import type {
   PublicPopupResponse,
+  PublicSeasonResponse,
   PublicSlide,
   WebsitePopupEnabledRequest,
   WebsitePopupInput,
@@ -29,6 +30,7 @@ import {
   updatePopup,
   type PublicLocale,
 } from './popup.core.js';
+import { activeSeason } from './season.core.js';
 import { visibleSlides } from './slide.core.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -130,6 +132,11 @@ export class PublicWebsiteService {
   /** The popup that is live now in the visitor's language, or null (the caller answers 204). */
   popup(locale: PublicLocale): Promise<PublicPopupResponse | null> {
     return this.read(async (tx) => activePopup(tx, await this.throttle.now(tx), locale));
+  }
+
+  /** The season that is live now in the visitor's language, or null (the caller answers 204). */
+  season(locale: PublicLocale): Promise<PublicSeasonResponse | null> {
+    return this.read(async (tx) => activeSeason(tx, await this.throttle.now(tx), locale));
   }
 
   /** The slides that are visible now, in slider order and in the visitor's language (possibly none). */

@@ -11,6 +11,16 @@ import type { Prisma } from '@lucy-spa/database';
 import { AuthError } from '../auth/auth.error.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
 import { requireWebsiteContent } from './media.core.js';
+import {
+  effectivelyEnabled,
+  followsEnabledSeason,
+  lockSeasons,
+  parseSeasonId,
+  requireSeason,
+  UUID,
+} from './season.link.js';
+
+export { UUID };
 
 /**
  * UX/UI Step 12: the promotional popup (design 16.5). `MANAGE_WEBSITE_CONTENT` is GLOBAL_ONLY, decided inside
@@ -20,8 +30,7 @@ import { requireWebsiteContent } from './media.core.js';
 
 export const POPUP_LIMITS = Object.freeze({ title: 120, body: 300, ctaLabel: 40, ctaUrl: 500 });
 /** One fixed key serializes every save that enables a popup, so two saves cannot both pass the overlap check. */
-const POPUP_LOCK = 4_120_016_501n;
-export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const POPUP_LOCK = 4_120_016_501n;
 const INTERNAL_URL = /^\/(vi|en|\{locale\})(\/[^\s<>"'\\]*)?$/;
 const MAX_VERSION = 2_147_483_647;
 
@@ -101,6 +110,7 @@ interface PopupFields {
   startsAt: Date;
   endsAt: Date;
   isEnabled: boolean;
+  seasonId: string | null;
 }
 
 /** Everything the DB would refuse, refused first with a field name the form can show. */
@@ -125,6 +135,7 @@ export function parsePopupFields(input: WebsitePopupInput): PopupFields {
     startsAt: instant(input.startsAt, 'startsAt'),
     endsAt: instant(input.endsAt, 'endsAt'),
     isEnabled: input.isEnabled,
+    seasonId: parseSeasonId(input.seasonId),
   };
   if (typeof input.isEnabled !== 'boolean') throw new AuthError('VALIDATION_FAILED', 'isEnabled');
   if (input.ctaUrl !== null && input.ctaUrl !== undefined) {
@@ -160,9 +171,11 @@ const selectPopup = {
   startsAt: true,
   endsAt: true,
   isEnabled: true,
+  seasonId: true,
   rowVersion: true,
   createdAt: true,
   updatedAt: true,
+  season: { select: { isEnabled: true } },
   media: {
     select: {
       id: true,
@@ -201,7 +214,14 @@ function response(row: PopupRow, now: Date): WebsitePopupResponse {
     startsAt: row.startsAt.toISOString(),
     endsAt: row.endsAt.toISOString(),
     isEnabled: row.isEnabled,
-    status: popupStatus(row.isEnabled, row.startsAt, row.endsAt, now),
+    seasonId: row.seasonId,
+    // A popup that follows a switched-off season is not live, so it reads as a draft.
+    status: popupStatus(
+      effectivelyEnabled(row.isEnabled, row.season),
+      row.startsAt,
+      row.endsAt,
+      now,
+    ),
     rowVersion: row.rowVersion,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -222,6 +242,7 @@ function summary(fields: PopupFields): Prisma.InputJsonObject {
     startsAt: fields.startsAt.toISOString(),
     endsAt: fields.endsAt.toISOString(),
     isEnabled: fields.isEnabled,
+    seasonId: fields.seasonId,
   };
 }
 
@@ -237,6 +258,7 @@ const fieldsOf = (row: PopupRow): PopupFields => ({
   startsAt: row.startsAt,
   endsAt: row.endsAt,
   isEnabled: row.isEnabled,
+  seasonId: row.seasonId,
 });
 
 /**
@@ -253,21 +275,40 @@ export async function requireUsableMedia(
   if (asset.alt_vi === null) throw new AuthError('MEDIA_ALT_REQUIRED', 'mediaId');
 }
 
+export async function lockPopups(tx: Prisma.TransactionClient): Promise<void> {
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(${POPUP_LOCK}::bigint)::text`;
+}
+
+/**
+ * Applies the season a popup follows: its window replaces whatever dates were sent (design 20.6). Needs
+ * `lockSeasons` first. Returns the season, or null for an independent popup.
+ */
+async function followSeason(tx: Prisma.TransactionClient, fields: PopupFields) {
+  if (fields.seasonId === null) return null;
+  const season = await requireSeason(tx, fields.seasonId);
+  fields.startsAt = season.startsAt;
+  fields.endsAt = season.endsAt;
+  return season;
+}
+
 /**
  * Refuses an enabled popup whose `[startsAt, endsAt)` overlaps another enabled popup (Q-CM2), naming the
  * other popup by id. Windows that only touch (one ends when the next starts) are fine. The lock is held to
  * the end of the transaction, so a second enabling save sees this one.
  */
-async function requireNoOverlap(
+export async function requireNoOverlap(
   tx: Prisma.TransactionClient,
   self: string | null,
-  fields: PopupFields,
+  fields: Pick<PopupFields, 'isEnabled' | 'startsAt' | 'endsAt'>,
+  season: { isEnabled: boolean } | null,
 ): Promise<void> {
-  if (!fields.isEnabled) return;
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(${POPUP_LOCK}::bigint)::text`;
+  // A popup that follows a switched-off season is not live, so it neither conflicts nor is conflicted with.
+  if (!effectivelyEnabled(fields.isEnabled, season)) return;
+  await lockPopups(tx);
   const other = await tx.websitePopup.findFirst({
     where: {
       isEnabled: true,
+      ...followsEnabledSeason,
       ...(self === null ? {} : { id: { not: self } }),
       startsAt: { lt: fields.endsAt },
       endsAt: { gt: fields.startsAt },
@@ -300,8 +341,10 @@ export async function createPopup(
 ): Promise<WebsitePopupResponse> {
   requireWebsiteContent(context);
   const fields = parsePopupFields(input);
+  await lockSeasons(context.tx);
+  const season = await followSeason(context.tx, fields);
   if (fields.mediaId !== null) await requireUsableMedia(context.tx, fields.mediaId);
-  await requireNoOverlap(context.tx, null, fields);
+  await requireNoOverlap(context.tx, null, fields, season);
   const created = await context.tx.websitePopup.create({
     data: {
       ...fields,
@@ -342,13 +385,15 @@ export async function updatePopup(
 ): Promise<WebsitePopupResponse> {
   requireWebsiteContent(context);
   const fields = parsePopupFields(request);
+  await lockSeasons(context.tx);
+  const season = await followSeason(context.tx, fields);
   const before = await lockPopup(context, id, request.expectedVersion);
   // The image check only matters when the image changes: a popup keeps working if its image's alt was
   // removed meanwhile (the media API refuses that while the image is in use anyway).
   if (fields.mediaId !== null && fields.mediaId !== before.mediaId) {
     await requireUsableMedia(context.tx, fields.mediaId);
   }
-  await requireNoOverlap(context.tx, id, fields);
+  await requireNoOverlap(context.tx, id, fields, season);
   const updated = await context.tx.websitePopup.update({
     where: { id },
     data: { ...fields, updatedByUserId: context.actor.userId, rowVersion: { increment: 1 } },
@@ -371,10 +416,12 @@ export async function setPopupEnabled(
 ): Promise<WebsitePopupResponse> {
   requireWebsiteContent(context);
   if (typeof request.isEnabled !== 'boolean') throw new AuthError('VALIDATION_FAILED', 'isEnabled');
+  await lockSeasons(context.tx);
   const before = await lockPopup(context, id, request.expectedVersion);
   if (before.isEnabled === request.isEnabled) return response(before, context.now);
   const fields = { ...fieldsOf(before), isEnabled: request.isEnabled };
-  await requireNoOverlap(context.tx, id, fields);
+  const season = before.seasonId === null ? null : await requireSeason(context.tx, before.seasonId);
+  await requireNoOverlap(context.tx, id, fields, season);
   const updated = await context.tx.websitePopup.update({
     where: { id },
     data: {
@@ -434,7 +481,12 @@ export async function activePopup(
   locale: PublicLocale,
 ): Promise<PublicPopupResponse | null> {
   const row = await tx.websitePopup.findFirst({
-    where: { isEnabled: true, startsAt: { lte: now }, endsAt: { gt: now } },
+    where: {
+      isEnabled: true,
+      ...followsEnabledSeason,
+      startsAt: { lte: now },
+      endsAt: { gt: now },
+    },
     orderBy: [{ startsAt: 'desc' }, { id: 'asc' }],
     select: {
       id: true,
@@ -508,7 +560,13 @@ export async function isPubliclyServed(
   now: Date,
 ): Promise<boolean> {
   const popup = await tx.websitePopup.findFirst({
-    where: { mediaId: assetId, isEnabled: true, startsAt: { lte: now }, endsAt: { gt: now } },
+    where: {
+      mediaId: assetId,
+      isEnabled: true,
+      ...followsEnabledSeason,
+      startsAt: { lte: now },
+      endsAt: { gt: now },
+    },
     select: { id: true },
   });
   if (popup !== null) return true;
@@ -517,6 +575,7 @@ export async function isPubliclyServed(
       isEnabled: true,
       OR: [{ mediaId: assetId }, { mobileMediaId: assetId }],
       AND: [
+        followsEnabledSeason,
         { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
         { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
       ],

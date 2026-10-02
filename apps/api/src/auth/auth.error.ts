@@ -91,6 +91,8 @@ const errors = {
   POPUP_OVERLAP: [409, 'Another enabled popup already covers part of this time'],
   // UX/UI Step 13: homepage slider (design 16.6, Q-CM7).
   SLIDE_LIMIT: [409, 'At most 8 slides can be visible at the same time'],
+  // UX/UI Step S3: seasonal themes (design 20.4). `SEASON_OVERLAP` names the conflicting season's id as the field.
+  SEASON_OVERLAP: [409, 'Another enabled season already covers part of this time'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

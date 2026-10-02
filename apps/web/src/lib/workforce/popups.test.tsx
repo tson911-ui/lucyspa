@@ -47,6 +47,7 @@ const problemOf = (patch: Partial<PopupForm>): PopupProblem | null => {
 
 const response: WebsitePopupResponse = {
   id: 'p-1',
+  seasonId: null,
   mediaId: 'm-1',
   media,
   titleVi: 'Khuyến mãi Tết',

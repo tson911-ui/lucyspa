@@ -52,6 +52,12 @@ class SlideDto implements WebsiteSlideInput {
   @NullableText(40) @Matches(/^\d{4}-\d{2}-\d{2}T/) startsAt!: string | null;
   @NullableText(40) @Matches(/^\d{4}-\d{2}-\d{2}T/) endsAt!: string | null;
   @ApiProperty() @IsBoolean() isEnabled!: boolean;
+  /** Optional: a client that knows nothing of seasons may leave it out. */
+  @ApiProperty({ nullable: true, required: false, type: String })
+  @ValidateIf((_object: unknown, value: unknown) => value !== null && value !== undefined)
+  @IsString()
+  @MaxLength(36)
+  seasonId?: string | null;
 }
 
 class SlideUpdateDto extends SlideDto implements WebsiteSlideUpdateRequest {

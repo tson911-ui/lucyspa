@@ -27,7 +27,7 @@
     "precheck:collaborator": "pnpm build && node dist/precheck-collaborator.js",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:integration": "node --test dist/database.integration.test.js dist/auth-schema.integration.test.js dist/phase2-schema.integration.test.js dist/phase3-foundation.integration.test.js dist/organization-foundation.integration.test.js dist/notification-foundation.integration.test.js dist/phase4-visit-line-add-requests.integration.test.js dist/phase4-pos-foundation.integration.test.js dist/website-media-foundation.integration.test.js dist/website-popup-foundation.integration.test.js dist/website-slide-foundation.integration.test.js && node --test dist/phase4-pos-races.integration.test.js"
+    "test:integration": "node --test dist/database.integration.test.js dist/auth-schema.integration.test.js dist/phase2-schema.integration.test.js dist/phase3-foundation.integration.test.js dist/organization-foundation.integration.test.js dist/notification-foundation.integration.test.js dist/phase4-visit-line-add-requests.integration.test.js dist/phase4-pos-foundation.integration.test.js dist/website-media-foundation.integration.test.js dist/website-popup-foundation.integration.test.js dist/website-slide-foundation.integration.test.js dist/website-season-foundation.integration.test.js && node --test dist/phase4-pos-races.integration.test.js"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",

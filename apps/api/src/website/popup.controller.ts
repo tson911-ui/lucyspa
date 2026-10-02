@@ -1,5 +1,6 @@
 import type {
   PublicPopupResponse,
+  PublicSeasonResponse,
   PublicSlidesResponse,
   WebsitePopupEnabledRequest,
   WebsitePopupInput,
@@ -62,6 +63,12 @@ class PopupDto implements WebsitePopupInput {
   @ApiProperty() @IsString() @MaxLength(40) @Matches(/^\d{4}-\d{2}-\d{2}T/) startsAt!: string;
   @ApiProperty() @IsString() @MaxLength(40) @Matches(/^\d{4}-\d{2}-\d{2}T/) endsAt!: string;
   @ApiProperty() @IsBoolean() isEnabled!: boolean;
+  /** Optional: a client that knows nothing of seasons may leave it out. */
+  @ApiProperty({ nullable: true, required: false, type: String })
+  @ValidateIf((_object: unknown, value: unknown) => value !== null && value !== undefined)
+  @IsString()
+  @MaxLength(36)
+  seasonId?: string | null;
 }
 
 class PopupUpdateDto extends PopupDto implements WebsitePopupUpdateRequest {
@@ -184,6 +191,26 @@ export class PublicWebsiteController {
       return undefined;
     }
     return popup;
+  }
+
+  @Get('website/season')
+  @ApiOkResponse({
+    description:
+      'The one season that is live now in the visitor language (`locale=vi|en`), or 204. No cookie, no personal data. Cached for 60 seconds.',
+  })
+  async season(
+    @Query('locale') locale: string | undefined,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PublicSeasonResponse | undefined> {
+    if (locale !== 'vi' && locale !== 'en') throw new AuthError('VALIDATION_FAILED', 'locale');
+    const season = await this.website.season(locale);
+    response.setHeader('cache-control', 'public, max-age=60');
+    response.setHeader('vary', 'Accept-Encoding');
+    if (!season) {
+      response.status(204);
+      return undefined;
+    }
+    return season;
   }
 
   @Get('website/slides')

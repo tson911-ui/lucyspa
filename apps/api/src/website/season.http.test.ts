@@ -2,7 +2,6 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import type { Server } from 'node:http';
-import { Readable } from 'node:stream';
 import { test } from 'node:test';
 import type { Prisma } from '@lucy-spa/database';
 import { parseApiEnvironment } from '@lucy-spa/server';
@@ -20,10 +19,13 @@ import { SessionService } from '../auth/session.service.js';
 import { configureHttp } from '../platform/configure-http.js';
 import { InfrastructureService } from '../platform/infrastructure.service.js';
 import { PopupService, PublicWebsiteService } from './popup.service.js';
+import { SeasonService } from './season.service.js';
+import { SlideService } from './slide.service.js';
 
-// UX/UI Step 12 transport contract: strict JSON for the admin popup routes (Origin + CSRF as every mutation),
-// anonymous read-only public routes with the right cache headers, safe typed errors.
-test('popup HTTP: strict admin bodies, CSRF/Origin, anonymous public popup and public image headers', async () => {
+// UX/UI Step S3 transport contract: strict JSON for the admin season routes (Origin + CSRF as every mutation),
+// an anonymous cookie-free public season with the right cache headers, safe typed errors, and the optional
+// `seasonId` on the popup and slide bodies.
+test('season HTTP: strict admin bodies, CSRF/Origin, anonymous public season, seasonId on popups and slides', async () => {
   const ring = () => JSON.stringify({ 1: randomBytes(32).toString('base64url') });
   const environment = parseApiEnvironment({
     NODE_ENV: 'production',
@@ -62,12 +64,11 @@ test('popup HTTP: strict admin bodies, CSRF/Origin, anonymous public popup and p
   const calls: { action: string; args: unknown[] }[] = [];
   let outcome: AuthError | null = null;
   let live: object | null = null;
-  const popup = { id: randomUUID(), status: 'DRAFT' };
   const answer =
     (action: string) =>
     (_token: unknown, ...args: unknown[]) => {
       calls.push({ action, args });
-      return outcome ? Promise.reject(outcome) : Promise.resolve(popup);
+      return outcome ? Promise.reject(outcome) : Promise.resolve({ id: randomUUID() });
     };
   const module = await Test.createTestingModule({
     imports: [AppModule.forRoot(environment, pino({ level: 'silent' }))],
@@ -89,7 +90,7 @@ test('popup HTTP: strict admin bodies, CSRF/Origin, anonymous public popup and p
     .useValue({})
     .overrideProvider(LoginService)
     .useValue({})
-    .overrideProvider(PopupService)
+    .overrideProvider(SeasonService)
     .useValue({
       list: answer('list'),
       get: answer('get'),
@@ -98,20 +99,15 @@ test('popup HTTP: strict admin bodies, CSRF/Origin, anonymous public popup and p
       setEnabled: answer('setEnabled'),
       remove: answer('remove'),
     })
+    .overrideProvider(PopupService)
+    .useValue({ create: answer('popup-create'), update: answer('popup-update') })
+    .overrideProvider(SlideService)
+    .useValue({ create: answer('slide-create'), update: answer('slide-update') })
     .overrideProvider(PublicWebsiteService)
     .useValue({
-      popup: (locale: string) => {
-        calls.push({ action: 'public-popup', args: [locale] });
-        return Promise.resolve(live);
-      },
-      variant: (id: string, kind: string) => {
-        calls.push({ action: 'public-variant', args: [id, kind] });
-        if (outcome) return Promise.reject(outcome);
-        return Promise.resolve({
-          stream: Readable.from([Buffer.from('webp!')]),
-          bytes: 5,
-          etag: '"abc-md"',
-        });
+      season: (locale: string) => {
+        calls.push({ action: 'public-season', args: [locale] });
+        return outcome ? Promise.reject(outcome) : Promise.resolve(live);
       },
     })
     .compile();
@@ -126,18 +122,17 @@ test('popup HTTP: strict admin bodies, CSRF/Origin, anonymous public popup and p
     'X-CSRF-Token': csrfToken(record.id, token, environment.auth.csrfKeys.get(1)!),
   };
   const id = randomUUID();
-  const base = '/api/v1/website/popups';
+  const base = '/api/v1/website/seasons';
   const body = {
-    mediaId: null,
-    titleVi: 'Tết',
-    titleEn: null,
-    bodyVi: null,
-    bodyEn: null,
-    ctaLabelVi: 'Đặt lịch',
-    ctaLabelEn: null,
-    ctaUrl: '/vi/account/book',
+    presetKey: 'tet',
+    label: 'Tết 2090',
     startsAt: '2090-01-01T00:00:00.000Z',
-    endsAt: '2090-01-02T00:00:00.000Z',
+    endsAt: '2090-01-08T00:00:00.000Z',
+    greetingVi: 'Chúc mừng năm mới',
+    greetingEn: null,
+    applyCustomer: true,
+    applyAdmin: true,
+    particlesEnabled: true,
     isEnabled: false,
   };
   try {
@@ -161,16 +156,13 @@ test('popup HTTP: strict admin bodies, CSRF/Origin, anonymous public popup and p
 
     // A valid create reaches the service with exactly the declared fields.
     await request(server).post(base).set(headers).send(body).expect(200);
-    assert.deepEqual({ ...(calls.pop()?.args[0] as object) }, { ...body, seasonId: undefined });
+    assert.deepEqual({ ...(calls.pop()?.args[0] as object) }, body);
     await request(server)
       .post(`${base}/${id}/update`)
       .set(headers)
       .send({ ...body, expectedVersion: 3 })
       .expect(200);
-    assert.deepEqual(
-      { ...(calls.pop()?.args[1] as object) },
-      { ...body, expectedVersion: 3, seasonId: undefined },
-    );
+    assert.deepEqual({ ...(calls.pop()?.args[1] as object) }, { ...body, expectedVersion: 3 });
     await request(server)
       .post(`${base}/${id}/enabled`)
       .set(headers)
@@ -188,14 +180,19 @@ test('popup HTTP: strict admin bodies, CSRF/Origin, anonymous public popup and p
     const strict: unknown[] = [
       {},
       { ...body, isEnabled: 'yes' },
-      { ...body, isEnabled: undefined },
-      { ...body, titleVi: 5 },
-      { ...body, titleVi: undefined },
+      { ...body, applyCustomer: undefined },
+      { ...body, applyAdmin: 1 },
+      { ...body, particlesEnabled: null },
+      { ...body, presetKey: 5 },
+      { ...body, presetKey: 'x'.repeat(41) },
+      { ...body, label: undefined },
+      { ...body, label: 'x'.repeat(401) },
+      { ...body, greetingVi: 5 },
+      { ...body, greetingVi: undefined },
+      { ...body, greetingEn: 'x'.repeat(401) },
       { ...body, startsAt: 'tomorrow' },
-      { ...body, startsAt: undefined },
+      { ...body, endsAt: undefined },
       { ...body, extra: 1 },
-      { ...body, bodyVi: 'a'.repeat(1_201) },
-      { ...body, mediaId: 'x'.repeat(37) },
     ];
     for (const bad of strict) {
       await request(server)
@@ -217,13 +214,17 @@ test('popup HTTP: strict admin bodies, CSRF/Origin, anonymous public popup and p
     }
     assert.equal(calls.length, 0);
 
-    // Typed domain errors reach the client verbatim.
-    outcome = new AuthError('POPUP_OVERLAP', id);
+    // Typed domain errors reach the client verbatim, naming the conflicting season.
+    outcome = new AuthError('SEASON_OVERLAP', id);
     const overlap = await request(server).post(base).set(headers).send(body).expect(409);
-    assert.equal(overlap.body.code, 'POPUP_OVERLAP');
-    outcome = new AuthError('MEDIA_ALT_REQUIRED', 'mediaId');
-    const alt = await request(server).post(base).set(headers).send(body).expect(409);
-    assert.equal(alt.body.code, 'MEDIA_ALT_REQUIRED');
+    assert.equal(overlap.body.code, 'SEASON_OVERLAP');
+    outcome = new AuthError('POPUP_OVERLAP', id);
+    const popupOverlap = await request(server)
+      .post(`${base}/${id}/enabled`)
+      .set(headers)
+      .send({ expectedVersion: 1, isEnabled: true })
+      .expect(409);
+    assert.equal(popupOverlap.body.code, 'POPUP_OVERLAP');
     outcome = null;
     calls.length = 0;
 
@@ -236,46 +237,90 @@ test('popup HTTP: strict admin bodies, CSRF/Origin, anonymous public popup and p
     );
     calls.length = 0;
 
-    // The public popup needs no session: only a known locale, cached for 60 seconds, 204 when none is live.
-    await request(server).get('/api/v1/public/website/popup').expect(400);
-    await request(server).get('/api/v1/public/website/popup?locale=fr').expect(400);
-    await request(server).get('/api/v1/public/website/popup?locale=vi,en').expect(400);
+    // The public season needs no session: only a known locale, cached for 60 seconds, 204 when none is live.
+    await request(server).get('/api/v1/public/website/season').expect(400);
+    await request(server).get('/api/v1/public/website/season?locale=fr').expect(400);
+    await request(server).get('/api/v1/public/website/season?locale=vi,en').expect(400);
     assert.equal(calls.length, 0);
-    const none = await request(server).get('/api/v1/public/website/popup?locale=vi').expect(204);
+    const none = await request(server).get('/api/v1/public/website/season?locale=vi').expect(204);
     assert.equal(none.headers['cache-control'], 'public, max-age=60');
+    assert.equal(none.headers['set-cookie'], undefined);
     assert.deepEqual(calls.pop()?.args, ['vi']);
     live = {
-      id,
-      rowVersion: 2,
-      title: 'Tết',
-      body: null,
-      ctaLabel: null,
-      ctaUrl: null,
-      image: null,
+      presetKey: 'tet',
+      greeting: 'Chúc mừng năm mới',
+      endsAt: '2090-01-08T00:00:00.000Z',
+      particles: true,
+      customer: true,
+      admin: false,
     };
-    const shown = await request(server).get('/api/v1/public/website/popup?locale=en').expect(200);
-    assert.equal(shown.body.title, 'Tết');
+    const shown = await request(server).get('/api/v1/public/website/season?locale=en').expect(200);
+    assert.deepEqual(shown.body, live);
     assert.equal(shown.headers['cache-control'], 'public, max-age=60');
     assert.equal(shown.headers['set-cookie'], undefined, 'anonymous and cookie-free');
     assert.deepEqual(calls.pop()?.args, ['en']);
+    outcome = new AuthError('SERVICE_UNAVAILABLE');
+    await request(server).get('/api/v1/public/website/season?locale=vi').expect(503);
+    outcome = null;
+    calls.length = 0;
 
-    // A public image: anonymous, immutable, nosniff, revalidated by ETag; only the three known renditions exist.
-    await request(server).get(`/api/v1/public/media/${id}/original`).expect(404);
-    await request(server).get(`/api/v1/public/media/${id}/constructor`).expect(404);
+    // A popup or slide body may carry `seasonId` (a string or null) and may also leave it out.
+    const popupBody = {
+      mediaId: null,
+      titleVi: 'Tết',
+      titleEn: null,
+      bodyVi: null,
+      bodyEn: null,
+      ctaLabelVi: null,
+      ctaLabelEn: null,
+      ctaUrl: null,
+      startsAt: '2090-01-01T00:00:00.000Z',
+      endsAt: '2090-01-02T00:00:00.000Z',
+      isEnabled: false,
+    };
+    const slideBody = {
+      mediaId: randomUUID(),
+      mobileMediaId: null,
+      titleVi: null,
+      titleEn: null,
+      subtitleVi: null,
+      subtitleEn: null,
+      linkUrl: null,
+      linkLabelVi: null,
+      linkLabelEn: null,
+      altVi: null,
+      altEn: null,
+      startsAt: null,
+      endsAt: null,
+      isEnabled: false,
+    };
+    for (const [route, content, action] of [
+      ['/api/v1/website/popups', popupBody, 'popup-create'],
+      ['/api/v1/website/slides', slideBody, 'slide-create'],
+    ] as const) {
+      await request(server).post(route).set(headers).send(content).expect(200);
+      assert.equal((calls.pop()?.args[0] as { seasonId?: unknown }).seasonId, undefined);
+      await request(server)
+        .post(route)
+        .set(headers)
+        .send({ ...content, seasonId: id })
+        .expect(200);
+      assert.equal(calls.pop()?.action, action);
+      await request(server)
+        .post(route)
+        .set(headers)
+        .send({ ...content, seasonId: null })
+        .expect(200);
+      assert.equal((calls.pop()?.args[0] as { seasonId?: unknown }).seasonId, null);
+      for (const seasonId of [5, true, 'x'.repeat(37), {}]) {
+        await request(server)
+          .post(route)
+          .set(headers)
+          .send({ ...content, seasonId })
+          .expect(400);
+      }
+    }
     assert.equal(calls.length, 0);
-    const image = await request(server).get(`/api/v1/public/media/${id}/md`).expect(200);
-    assert.equal(image.headers['content-type'], 'image/webp');
-    assert.equal(image.headers['x-content-type-options'], 'nosniff');
-    assert.equal(image.headers['cache-control'], 'public, max-age=31536000, immutable');
-    assert.equal(image.headers.etag, '"abc-md"');
-    assert.equal(image.headers['set-cookie'], undefined);
-    await request(server)
-      .get(`/api/v1/public/media/${id}/md`)
-      .set({ 'If-None-Match': '"abc-md"' })
-      .expect(304);
-    assert.deepEqual(calls.filter((call) => call.action === 'public-variant')[0]?.args, [id, 'MD']);
-    outcome = new AuthError('NOT_FOUND');
-    await request(server).get(`/api/v1/public/media/${id}/lg`).expect(404);
   } finally {
     await app.close();
   }

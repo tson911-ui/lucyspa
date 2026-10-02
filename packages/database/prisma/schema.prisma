@@ -13,35 +13,35 @@ datasource db {
 
 // Phase 0 branch identity, extended only with Phase 1 authorization relations.
 model Branch {
-  id                  String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code                String                       @unique
-  name                String
-  timezone            String                       @default("Asia/Ho_Chi_Minh")
-  isActive            Boolean                      @default(true) @map("is_active")
-  rowVersion          Int                          @default(1) @map("row_version")
-  areaId              String?                      @map("area_id") @db.Uuid
-  area                Area?                        @relation(fields: [areaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  teams               Team[]
-  teamMemberships     TeamMembership[]
+  id                      String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                    String                       @unique
+  name                    String
+  timezone                String                       @default("Asia/Ho_Chi_Minh")
+  isActive                Boolean                      @default(true) @map("is_active")
+  rowVersion              Int                          @default(1) @map("row_version")
+  areaId                  String?                      @map("area_id") @db.Uuid
+  area                    Area?                        @relation(fields: [areaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  teams                   Team[]
+  teamMemberships         TeamMembership[]
   organizationAssignments OrganizationAssignment[]
-  createdAt           DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  outboxEvents        OutboxEvent[]
-  employeeAssignments EmployeeBranchAssignment[]
-  roleAssignments     UserRoleAssignment[]
-  permissionOverrides UserPermissionOverride[]
-  auditEvents         AuditEvent[]
-  serviceAvailability ServiceBranchAvailability[]
-  operatingHours      BranchOperatingHours[]
-  attendanceRecords   AttendanceRecord[]
-  collaboratorWork    CollaboratorWorkOccurrence[]
-  bookings            Booking[]
-  visits              Visit[]
-  notifications       Notification[]
-  invoices            Invoice[]
-  payments            Payment[]
-  paymentAnomalies    PaymentAnomaly[]
-  invoiceNotes        InvoiceManagementNote[]
+  createdAt               DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  outboxEvents            OutboxEvent[]
+  employeeAssignments     EmployeeBranchAssignment[]
+  roleAssignments         UserRoleAssignment[]
+  permissionOverrides     UserPermissionOverride[]
+  auditEvents             AuditEvent[]
+  serviceAvailability     ServiceBranchAvailability[]
+  operatingHours          BranchOperatingHours[]
+  attendanceRecords       AttendanceRecord[]
+  collaboratorWork        CollaboratorWorkOccurrence[]
+  bookings                Booking[]
+  visits                  Visit[]
+  notifications           Notification[]
+  invoices                Invoice[]
+  payments                Payment[]
+  paymentAnomalies        PaymentAnomaly[]
+  invoiceNotes            InvoiceManagementNote[]
 
   @@index([areaId], map: "branches_area_idx")
   @@map("branches")
@@ -50,16 +50,16 @@ model Branch {
 // Durable event envelope, written in the originating business transaction.
 // Publication/consumer behavior is deliberately deferred. Retain event history.
 model OutboxEvent {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  branchId      String?   @map("branch_id") @db.Uuid
-  branch        Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  aggregateType String    @map("aggregate_type")
-  aggregateId   String    @map("aggregate_id")
-  eventType     String    @map("event_type")
-  schemaVersion Int       @default(1) @map("schema_version")
-  payload       Json      @db.JsonB
-  occurredAt    DateTime  @default(now()) @map("occurred_at") @db.Timestamptz(3)
-  publishedAt   DateTime? @map("published_at") @db.Timestamptz(3)
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId      String?             @map("branch_id") @db.Uuid
+  branch        Branch?             @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  aggregateType String              @map("aggregate_type")
+  aggregateId   String              @map("aggregate_id")
+  eventType     String              @map("event_type")
+  schemaVersion Int                 @default(1) @map("schema_version")
+  payload       Json                @db.JsonB
+  occurredAt    DateTime            @default(now()) @map("occurred_at") @db.Timestamptz(3)
+  publishedAt   DateTime?           @map("published_at") @db.Timestamptz(3)
   notifications Notification[]
   consumptions  OutboxConsumption[]
 
@@ -85,23 +85,23 @@ model OutboxConsumption {
 
 // Durable in-app inbox. Delivery retries never overwrite read state.
 model Notification {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  recipientUserId String    @map("recipient_user_id") @db.Uuid
-  recipient       User      @relation(fields: [recipientUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  branchId        String?   @map("branch_id") @db.Uuid
-  branch          Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  sourceEventId   String    @map("source_event_id") @db.Uuid
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recipientUserId String      @map("recipient_user_id") @db.Uuid
+  recipient       User        @relation(fields: [recipientUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId        String?     @map("branch_id") @db.Uuid
+  branch          Branch?     @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sourceEventId   String      @map("source_event_id") @db.Uuid
   sourceEvent     OutboxEvent @relation(fields: [sourceEventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   type            String
-  entityType      String    @map("entity_type")
-  entityId        String    @map("entity_id") @db.Uuid
-  contextCode     String    @map("context_code")
-  actionAt        DateTime  @map("action_at") @db.Timestamptz(3)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  readAt          DateTime? @map("read_at") @db.Timestamptz(3)
+  entityType      String      @map("entity_type")
+  entityId        String      @map("entity_id") @db.Uuid
+  contextCode     String      @map("context_code")
+  actionAt        DateTime    @map("action_at") @db.Timestamptz(3)
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  readAt          DateTime?   @map("read_at") @db.Timestamptz(3)
   /// Structured ids/dates/enums only (validated by parseNotificationParams); never free text.
-  params          Json?     @db.JsonB
-  archivedAt      DateTime? @map("archived_at") @db.Timestamptz(3)
+  params          Json?       @db.JsonB
+  archivedAt      DateTime?   @map("archived_at") @db.Timestamptz(3)
 
   @@unique([sourceEventId, recipientUserId], map: "notifications_event_recipient_key")
   @@index([recipientUserId, createdAt(sort: Desc), id(sort: Desc)], map: "notifications_inbox_idx")
@@ -179,50 +179,53 @@ enum OrganizationLevel {
 }
 
 model Region {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code String @unique
-  name String
-  isActive Boolean @default(true) @map("is_active")
-  rowVersion Int @default(1) @map("row_version")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  areas Area[]
-  roleAssignments UserRoleAssignment[]
-  permissionOverrides UserPermissionOverride[]
+  id                      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                    String                   @unique
+  name                    String
+  isActive                Boolean                  @default(true) @map("is_active")
+  rowVersion              Int                      @default(1) @map("row_version")
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  areas                   Area[]
+  roleAssignments         UserRoleAssignment[]
+  permissionOverrides     UserPermissionOverride[]
   organizationAssignments OrganizationAssignment[]
+
   @@map("regions")
 }
 
 model Area {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  regionId String @map("region_id") @db.Uuid
-  region Region @relation(fields: [regionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  code String @unique
-  name String
-  isActive Boolean @default(true) @map("is_active")
-  rowVersion Int @default(1) @map("row_version")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  branches Branch[]
-  roleAssignments UserRoleAssignment[]
-  permissionOverrides UserPermissionOverride[]
+  id                      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  regionId                String                   @map("region_id") @db.Uuid
+  region                  Region                   @relation(fields: [regionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  code                    String                   @unique
+  name                    String
+  isActive                Boolean                  @default(true) @map("is_active")
+  rowVersion              Int                      @default(1) @map("row_version")
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  branches                Branch[]
+  roleAssignments         UserRoleAssignment[]
+  permissionOverrides     UserPermissionOverride[]
   organizationAssignments OrganizationAssignment[]
+
   @@index([regionId, isActive], map: "areas_region_active_idx")
   @@map("areas")
 }
 
 model Team {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  branchId String @map("branch_id") @db.Uuid
-  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  code String
-  name String
-  isActive Boolean @default(true) @map("is_active")
-  rowVersion Int @default(1) @map("row_version")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  memberships TeamMembership[]
+  id                      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId                String                   @map("branch_id") @db.Uuid
+  branch                  Branch                   @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  code                    String
+  name                    String
+  isActive                Boolean                  @default(true) @map("is_active")
+  rowVersion              Int                      @default(1) @map("row_version")
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  memberships             TeamMembership[]
   organizationAssignments OrganizationAssignment[]
+
   @@unique([branchId, code], map: "teams_branch_code_key")
   @@unique([id, branchId], map: "teams_id_branch_key")
   @@index([branchId, isActive, id], map: "teams_branch_active_idx")
@@ -231,24 +234,25 @@ model Team {
 
 // Appointments are ended, never overwritten/deleted. Owner has no employee appointment.
 model OrganizationAssignment {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  employeeUserId String @map("employee_user_id") @db.Uuid
-  employee EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
-  level OrganizationLevel
-  scopeKind ScopeKind @map("scope_kind")
-  regionId String? @map("region_id") @db.Uuid
-  region Region? @relation(fields: [regionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  areaId String? @map("area_id") @db.Uuid
-  area Area? @relation(fields: [areaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  branchId String? @map("branch_id") @db.Uuid
-  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  teamId String? @map("team_id") @db.Uuid
-  team Team? @relation(fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz(3)
-  endedAt DateTime? @map("ended_at") @db.Timestamptz(3)
-  assignedByUserId String @map("assigned_by_user_id") @db.Uuid
-  assignedBy User @relation("OrganizationAssignmentGrantor", fields: [assignedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  rowVersion Int @default(1) @map("row_version")
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeUserId   String            @map("employee_user_id") @db.Uuid
+  employee         EmployeeProfile   @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  level            OrganizationLevel
+  scopeKind        ScopeKind         @map("scope_kind")
+  regionId         String?           @map("region_id") @db.Uuid
+  region           Region?           @relation(fields: [regionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  areaId           String?           @map("area_id") @db.Uuid
+  area             Area?             @relation(fields: [areaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId         String?           @map("branch_id") @db.Uuid
+  branch           Branch?           @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  teamId           String?           @map("team_id") @db.Uuid
+  team             Team?             @relation(fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  assignedAt       DateTime          @default(now()) @map("assigned_at") @db.Timestamptz(3)
+  endedAt          DateTime?         @map("ended_at") @db.Timestamptz(3)
+  assignedByUserId String            @map("assigned_by_user_id") @db.Uuid
+  assignedBy       User              @relation("OrganizationAssignmentGrantor", fields: [assignedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion       Int               @default(1) @map("row_version")
+
   @@index([employeeUserId, endedAt], map: "organization_assignments_employee_active_idx")
   @@index([scopeKind, regionId, areaId, branchId, endedAt], map: "organization_assignments_scope_idx")
   @@index([teamId, endedAt], map: "organization_assignments_team_idx")
@@ -256,17 +260,18 @@ model OrganizationAssignment {
 }
 
 model TeamMembership {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  teamId String @map("team_id") @db.Uuid
-  team Team @relation(fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  branchId String @map("branch_id") @db.Uuid
-  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  employeeUserId String @map("employee_user_id") @db.Uuid
-  employee EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
-  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz(3)
-  endedAt DateTime? @map("ended_at") @db.Timestamptz(3)
-  assignedByUserId String @map("assigned_by_user_id") @db.Uuid
-  assignedBy User @relation("TeamMembershipGrantor", fields: [assignedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teamId           String          @map("team_id") @db.Uuid
+  team             Team            @relation(fields: [teamId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId         String          @map("branch_id") @db.Uuid
+  branch           Branch          @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId   String          @map("employee_user_id") @db.Uuid
+  employee         EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  joinedAt         DateTime        @default(now()) @map("joined_at") @db.Timestamptz(3)
+  endedAt          DateTime?       @map("ended_at") @db.Timestamptz(3)
+  assignedByUserId String          @map("assigned_by_user_id") @db.Uuid
+  assignedBy       User            @relation("TeamMembershipGrantor", fields: [assignedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
   @@index([teamId, endedAt, employeeUserId], map: "team_memberships_team_active_idx")
   @@index([employeeUserId, branchId, endedAt], map: "team_memberships_employee_active_idx")
   @@map("team_memberships")
@@ -359,81 +364,83 @@ enum LeaveType {
 // SQL additionally enforces kind/profile consistency at transaction commit,
 // canonical identities, credential state and protected sole-Owner invariants.
 model User {
-  id                           String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  kind                         UserKind
-  status                       UserStatus
-  fullName                     String                           @map("full_name")
-  preferredLocale              PreferredLocale                  @map("preferred_locale")
-  emailCanonical               String?                          @unique(map: "users_email_canonical_key") @map("email_canonical") @db.VarChar(254)
-  emailDelivery                String?                          @map("email_delivery") @db.VarChar(254)
-  emailVerifiedAt              DateTime?                        @map("email_verified_at") @db.Timestamptz(3)
-  phoneCanonical               String?                          @unique(map: "users_phone_canonical_key") @map("phone_canonical") @db.VarChar(16)
-  normalizationVersion         Int                              @map("normalization_version")
-  passwordHash                 String?                          @map("password_hash")
-  credentialVersion            Int                              @default(1) @map("credential_version")
-  authzVersion                 Int                              @default(1) @map("authz_version")
-  rowVersion                   Int                              @default(1) @map("row_version")
-  createdAt                    DateTime                         @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                    DateTime                         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  customerProfile              CustomerProfile?
-  notifications                Notification[]
-  employeeProfile              EmployeeProfile?
-  grantedBranchAssignments     EmployeeBranchAssignment[]       @relation("BranchAssignmentGrantor")
-  completedRegistrationIntents RegistrationIntent[]
-  authChallenges               AuthChallenge[]
-  sessions                     Session[]
-  roleAssignments              UserRoleAssignment[]
-  permissionOverrides          UserPermissionOverride[]
-  actorAuditEvents             AuditEvent[]                     @relation("AuditActor")
-  subjectAuditEvents           AuditEvent[]                     @relation("AuditSubject")
-  grantedEmployeeSkills        EmployeeSkill[]                  @relation("EmployeeSkillGrantor")
-  decidedLeaveRequests         LeaveRequest[]                   @relation("LeaveDecider")
-  cancelledLeaveRequests       LeaveRequest[]                   @relation("LeaveCanceller")
-  recordedClassifications      EmploymentClassificationChange[] @relation("ClassificationRecorder")
-  createdCollaboratorWork      CollaboratorWorkOccurrence[]     @relation("CollaboratorWorkCreator")
-  updatedCollaboratorWork      CollaboratorWorkOccurrence[]     @relation("CollaboratorWorkUpdater")
-  cancelledCollaboratorWork    CollaboratorWorkOccurrence[]     @relation("CollaboratorWorkCanceller")
-  ownedBookings                Booking[]                        @relation("BookingOwner")
-  createdBookings              Booking[]                        @relation("BookingCreator")
-  createdMediaAssets           MediaAsset[]                     @relation("MediaAssetCreator")
-  createdWebsitePopups         WebsitePopup[]                   @relation("WebsitePopupCreator")
-  updatedWebsitePopups         WebsitePopup[]                   @relation("WebsitePopupUpdater")
-  createdWebsiteSlides         WebsiteSlide[]                   @relation("WebsiteSlideCreator")
-  updatedWebsiteSlides         WebsiteSlide[]                   @relation("WebsiteSlideUpdater")
-  checkedInBookings            Booking[]                        @relation("BookingCheckedInBy")
-  cancelledBookings            Booking[]                        @relation("BookingCancelledBy")
-  noShowBookings               Booking[]                        @relation("BookingNoShowBy")
-  ownedVisits                  Visit[]                          @relation("VisitOwner")
-  createdVisits                Visit[]                          @relation("VisitCreator")
-  cancelledVisits              Visit[]                          @relation("VisitCancelledBy")
-  queueOverriddenVisits        Visit[]                          @relation("VisitQueueOverrideBy")
-  visitParticipations          VisitParticipant[]
-  addedVisitLines              VisitServiceLine[]               @relation("VisitLineAddedBy")
-  cancelledVisitLines          VisitServiceLine[]               @relation("VisitLineCancelledBy")
-  endedServiceExecutions       ServiceExecution[]               @relation("ExecutionEndedBy")
-  assignmentChanges            ServiceLineAssignmentChange[]    @relation("AssignmentActor")
-  visitLineAddRequests         VisitLineAddRequest[]
-  payerInvoices                Invoice[]                        @relation("InvoicePayer")
-  createdInvoices              Invoice[]                        @relation("InvoiceCreator")
-  finalizedInvoices            Invoice[]                        @relation("InvoiceFinalizedBy")
-  cancelledInvoices            Invoice[]                        @relation("InvoiceCancelledBy")
-  pricedInvoiceLines           InvoiceLine[]                    @relation("InvoiceLinePriceSetBy")
-  collectedPayments            Payment[]                        @relation("PaymentCollector")
-  paymentCorrections           PaymentCorrection[]              @relation("PaymentCorrectionActor")
-  paymentAttempts              PaymentAttempt[]                 @relation("PaymentAttemptActor")
-  reviewedPaymentAnomalies     PaymentAnomaly[]                 @relation("PaymentAnomalyReviewer")
-  invoiceManagementNotes       InvoiceManagementNote[]          @relation("InvoiceManagementNoteAuthor")
-  terminatedDiscounts          Discount[]                       @relation("DiscountTerminatedBy")
-  createdDiscountVersions      DiscountVersion[]                @relation("DiscountVersionCreator")
-  createdVouchers              Voucher[]                        @relation("VoucherCreator")
-  suppliedVoucherEntries       InvoiceVoucherEntry[]            @relation("VoucherEntrySuppliedBy")
-  removedVoucherEntries        InvoiceVoucherEntry[]            @relation("VoucherEntryRemovedBy")
-  finalizedDiscountApplications InvoiceDiscountApplication[]    @relation("DiscountApplicationFinalizer")
-  discountRedemptions          DiscountRedemption[]             @relation("DiscountRedemptionPayer")
-  releasedDiscountRedemptions  DiscountRedemptionRelease[]      @relation("DiscountReleaseActor")
-  updatedSettings              AppSetting[]
-  grantedOrganizationAssignments OrganizationAssignment[] @relation("OrganizationAssignmentGrantor")
-  grantedTeamMemberships       TeamMembership[] @relation("TeamMembershipGrantor")
+  id                             String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind                           UserKind
+  status                         UserStatus
+  fullName                       String                           @map("full_name")
+  preferredLocale                PreferredLocale                  @map("preferred_locale")
+  emailCanonical                 String?                          @unique(map: "users_email_canonical_key") @map("email_canonical") @db.VarChar(254)
+  emailDelivery                  String?                          @map("email_delivery") @db.VarChar(254)
+  emailVerifiedAt                DateTime?                        @map("email_verified_at") @db.Timestamptz(3)
+  phoneCanonical                 String?                          @unique(map: "users_phone_canonical_key") @map("phone_canonical") @db.VarChar(16)
+  normalizationVersion           Int                              @map("normalization_version")
+  passwordHash                   String?                          @map("password_hash")
+  credentialVersion              Int                              @default(1) @map("credential_version")
+  authzVersion                   Int                              @default(1) @map("authz_version")
+  rowVersion                     Int                              @default(1) @map("row_version")
+  createdAt                      DateTime                         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                      DateTime                         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  customerProfile                CustomerProfile?
+  notifications                  Notification[]
+  employeeProfile                EmployeeProfile?
+  grantedBranchAssignments       EmployeeBranchAssignment[]       @relation("BranchAssignmentGrantor")
+  completedRegistrationIntents   RegistrationIntent[]
+  authChallenges                 AuthChallenge[]
+  sessions                       Session[]
+  roleAssignments                UserRoleAssignment[]
+  permissionOverrides            UserPermissionOverride[]
+  actorAuditEvents               AuditEvent[]                     @relation("AuditActor")
+  subjectAuditEvents             AuditEvent[]                     @relation("AuditSubject")
+  grantedEmployeeSkills          EmployeeSkill[]                  @relation("EmployeeSkillGrantor")
+  decidedLeaveRequests           LeaveRequest[]                   @relation("LeaveDecider")
+  cancelledLeaveRequests         LeaveRequest[]                   @relation("LeaveCanceller")
+  recordedClassifications        EmploymentClassificationChange[] @relation("ClassificationRecorder")
+  createdCollaboratorWork        CollaboratorWorkOccurrence[]     @relation("CollaboratorWorkCreator")
+  updatedCollaboratorWork        CollaboratorWorkOccurrence[]     @relation("CollaboratorWorkUpdater")
+  cancelledCollaboratorWork      CollaboratorWorkOccurrence[]     @relation("CollaboratorWorkCanceller")
+  ownedBookings                  Booking[]                        @relation("BookingOwner")
+  createdBookings                Booking[]                        @relation("BookingCreator")
+  createdMediaAssets             MediaAsset[]                     @relation("MediaAssetCreator")
+  createdWebsitePopups           WebsitePopup[]                   @relation("WebsitePopupCreator")
+  updatedWebsitePopups           WebsitePopup[]                   @relation("WebsitePopupUpdater")
+  createdWebsiteSlides           WebsiteSlide[]                   @relation("WebsiteSlideCreator")
+  updatedWebsiteSlides           WebsiteSlide[]                   @relation("WebsiteSlideUpdater")
+  createdWebsiteSeasons          WebsiteSeason[]                  @relation("WebsiteSeasonCreator")
+  updatedWebsiteSeasons          WebsiteSeason[]                  @relation("WebsiteSeasonUpdater")
+  checkedInBookings              Booking[]                        @relation("BookingCheckedInBy")
+  cancelledBookings              Booking[]                        @relation("BookingCancelledBy")
+  noShowBookings                 Booking[]                        @relation("BookingNoShowBy")
+  ownedVisits                    Visit[]                          @relation("VisitOwner")
+  createdVisits                  Visit[]                          @relation("VisitCreator")
+  cancelledVisits                Visit[]                          @relation("VisitCancelledBy")
+  queueOverriddenVisits          Visit[]                          @relation("VisitQueueOverrideBy")
+  visitParticipations            VisitParticipant[]
+  addedVisitLines                VisitServiceLine[]               @relation("VisitLineAddedBy")
+  cancelledVisitLines            VisitServiceLine[]               @relation("VisitLineCancelledBy")
+  endedServiceExecutions         ServiceExecution[]               @relation("ExecutionEndedBy")
+  assignmentChanges              ServiceLineAssignmentChange[]    @relation("AssignmentActor")
+  visitLineAddRequests           VisitLineAddRequest[]
+  payerInvoices                  Invoice[]                        @relation("InvoicePayer")
+  createdInvoices                Invoice[]                        @relation("InvoiceCreator")
+  finalizedInvoices              Invoice[]                        @relation("InvoiceFinalizedBy")
+  cancelledInvoices              Invoice[]                        @relation("InvoiceCancelledBy")
+  pricedInvoiceLines             InvoiceLine[]                    @relation("InvoiceLinePriceSetBy")
+  collectedPayments              Payment[]                        @relation("PaymentCollector")
+  paymentCorrections             PaymentCorrection[]              @relation("PaymentCorrectionActor")
+  paymentAttempts                PaymentAttempt[]                 @relation("PaymentAttemptActor")
+  reviewedPaymentAnomalies       PaymentAnomaly[]                 @relation("PaymentAnomalyReviewer")
+  invoiceManagementNotes         InvoiceManagementNote[]          @relation("InvoiceManagementNoteAuthor")
+  terminatedDiscounts            Discount[]                       @relation("DiscountTerminatedBy")
+  createdDiscountVersions        DiscountVersion[]                @relation("DiscountVersionCreator")
+  createdVouchers                Voucher[]                        @relation("VoucherCreator")
+  suppliedVoucherEntries         InvoiceVoucherEntry[]            @relation("VoucherEntrySuppliedBy")
+  removedVoucherEntries          InvoiceVoucherEntry[]            @relation("VoucherEntryRemovedBy")
+  finalizedDiscountApplications  InvoiceDiscountApplication[]     @relation("DiscountApplicationFinalizer")
+  discountRedemptions            DiscountRedemption[]             @relation("DiscountRedemptionPayer")
+  releasedDiscountRedemptions    DiscountRedemptionRelease[]      @relation("DiscountReleaseActor")
+  updatedSettings                AppSetting[]
+  grantedOrganizationAssignments OrganizationAssignment[]         @relation("OrganizationAssignmentGrantor")
+  grantedTeamMemberships         TeamMembership[]                 @relation("TeamMembershipGrantor")
 
   @@index([kind, status, id], map: "users_kind_status_idx")
   @@map("users")
@@ -449,27 +456,27 @@ model CustomerProfile {
 }
 
 model EmployeeProfile {
-  userId                String                           @id @map("user_id") @db.Uuid
-  user                  User                             @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  employeeCodeCanonical String                           @unique(map: "employee_profiles_employee_code_canonical_key") @map("employee_code_canonical") @db.VarChar(64)
-  dateOfBirth           DateTime                         @map("date_of_birth") @db.Date
-  address               String
-  baseSalaryVnd         BigInt?                          @map("base_salary_vnd")
-  branchAssignments     EmployeeBranchAssignment[]
+  userId                  String                           @id @map("user_id") @db.Uuid
+  user                    User                             @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeCodeCanonical   String                           @unique(map: "employee_profiles_employee_code_canonical_key") @map("employee_code_canonical") @db.VarChar(64)
+  dateOfBirth             DateTime                         @map("date_of_birth") @db.Date
+  address                 String
+  baseSalaryVnd           BigInt?                          @map("base_salary_vnd")
+  branchAssignments       EmployeeBranchAssignment[]
   organizationAssignments OrganizationAssignment[]
-  teamMemberships       TeamMembership[]
-  skills                EmployeeSkill[]
-  attendanceRecords     AttendanceRecord[]
-  leaveRequests         LeaveRequest[]
-  classificationChanges EmploymentClassificationChange[]
-  collaboratorWork      CollaboratorWorkOccurrence[]
-  bookingLines          BookingServiceLine[]
-  visitLines            VisitServiceLine[]               @relation("VisitLineEmployee")
-  requestedVisitLines   VisitServiceLine[]               @relation("VisitLineRequestedEmployee")
-  serviceExecutions     ServiceExecution[]
-  invoiceLineServices   InvoiceLineService[]
-  assignmentsFrom       ServiceLineAssignmentChange[]    @relation("AssignmentFrom")
-  assignmentsTo         ServiceLineAssignmentChange[]    @relation("AssignmentTo")
+  teamMemberships         TeamMembership[]
+  skills                  EmployeeSkill[]
+  attendanceRecords       AttendanceRecord[]
+  leaveRequests           LeaveRequest[]
+  classificationChanges   EmploymentClassificationChange[]
+  collaboratorWork        CollaboratorWorkOccurrence[]
+  bookingLines            BookingServiceLine[]
+  visitLines              VisitServiceLine[]               @relation("VisitLineEmployee")
+  requestedVisitLines     VisitServiceLine[]               @relation("VisitLineRequestedEmployee")
+  serviceExecutions       ServiceExecution[]
+  invoiceLineServices     InvoiceLineService[]
+  assignmentsFrom         ServiceLineAssignmentChange[]    @relation("AssignmentFrom")
+  assignmentsTo           ServiceLineAssignmentChange[]    @relation("AssignmentTo")
 
   @@map("employee_profiles")
 }
@@ -696,9 +703,9 @@ model UserRoleAssignment {
   role       Role      @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   scopeKind  ScopeKind @map("scope_kind")
   regionId   String?   @map("region_id") @db.Uuid
-  region     Region?  @relation(fields: [regionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  region     Region?   @relation(fields: [regionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   areaId     String?   @map("area_id") @db.Uuid
-  area       Area?    @relation(fields: [areaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  area       Area?     @relation(fields: [areaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   branchId   String?   @map("branch_id") @db.Uuid
   branch     Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   rowVersion Int       @default(1) @map("row_version")
@@ -772,20 +779,20 @@ model AuditEvent {
 // and state-transition guards that Prisma cannot express.
 
 model ServiceCategory {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code       String    @unique(map: "service_categories_code_key")
-  nameVi     String    @map("name_vi")
-  nameEn     String    @map("name_en")
-  sortOrder  Int       @default(0) @map("sort_order")
-  isActive   Boolean   @default(true) @map("is_active")
-  rowVersion Int       @default(1) @map("row_version")
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  services   Service[]
+  id                        String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                      String                    @unique(map: "service_categories_code_key")
+  nameVi                    String                    @map("name_vi")
+  nameEn                    String                    @map("name_en")
+  sortOrder                 Int                       @default(0) @map("sort_order")
+  isActive                  Boolean                   @default(true) @map("is_active")
+  rowVersion                Int                       @default(1) @map("row_version")
+  createdAt                 DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  services                  Service[]
   discountVersionCategories DiscountVersionCategory[]
-  bookingLines              BookingServiceLine[]        @relation("BookingLineCategory")
-  visitLines                VisitServiceLine[]          @relation("VisitLineCategory")
-  invoiceLineDetails        InvoiceLineService[]        @relation("InvoiceLineCategory")
+  bookingLines              BookingServiceLine[]      @relation("BookingLineCategory")
+  visitLines                VisitServiceLine[]        @relation("VisitLineCategory")
+  invoiceLineDetails        InvoiceLineService[]      @relation("InvoiceLineCategory")
 
   @@index([isActive, sortOrder, id], map: "service_categories_active_order_idx")
   @@map("service_categories")
@@ -800,35 +807,35 @@ enum ServicePricingUnit {
 }
 
 model Service {
-  id                  String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code                String                      @unique(map: "services_code_key")
-  categoryId          String                      @map("category_id") @db.Uuid
-  category            ServiceCategory             @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  nameVi              String                      @map("name_vi")
-  nameEn              String                      @map("name_en")
-  descriptionVi       String?                     @map("description_vi")
-  descriptionEn       String?                     @map("description_en")
+  id                      String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                    String                      @unique(map: "services_code_key")
+  categoryId              String                      @map("category_id") @db.Uuid
+  category                ServiceCategory             @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  nameVi                  String                      @map("name_vi")
+  nameEn                  String                      @map("name_en")
+  descriptionVi           String?                     @map("description_vi")
+  descriptionEn           String?                     @map("description_en")
   /// Minimum price per pricing unit (the price itself when exact); SQL: 0 <= min <= max.
-  priceVnd            BigInt                      @map("price_vnd")
-  priceMaxVnd         BigInt                      @map("price_max_vnd")
-  pricingUnit         ServicePricingUnit          @default(PER_SERVICE) @map("pricing_unit")
+  priceVnd                BigInt                      @map("price_vnd")
+  priceMaxVnd             BigInt                      @map("price_max_vnd")
+  pricingUnit             ServicePricingUnit          @default(PER_SERVICE) @map("pricing_unit")
   /// Phase 4 OP-1: the per-service limit of the invoice-line quantity (1 for PER_SERVICE; the Owner
   /// raises it for PER_NAIL). Snapshotted on booking and visit lines when they are established.
-  maxQuantity         Int                         @default(1) @map("max_quantity")
+  maxQuantity             Int                         @default(1) @map("max_quantity")
   /// Internal scheduling duration: the one deterministic duration booking reserves.
-  durationMinutes     Int                         @map("duration_minutes")
+  durationMinutes         Int                         @map("duration_minutes")
   /// Customer-facing estimate; SQL enforces 1 <= min <= max <= durationMinutes.
-  estimatedMinMinutes Int                         @map("estimated_min_minutes")
-  estimatedMaxMinutes Int                         @map("estimated_max_minutes")
-  isActive            Boolean                     @default(true) @map("is_active")
-  rowVersion          Int                         @default(1) @map("row_version")
-  createdAt           DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  eligibleSkills      ServiceSkill[]
-  branches            ServiceBranchAvailability[]
-  bookingLines        BookingServiceLine[]
-  visitLines          VisitServiceLine[]
-  invoiceLineServices InvoiceLineService[]
+  estimatedMinMinutes     Int                         @map("estimated_min_minutes")
+  estimatedMaxMinutes     Int                         @map("estimated_max_minutes")
+  isActive                Boolean                     @default(true) @map("is_active")
+  rowVersion              Int                         @default(1) @map("row_version")
+  createdAt               DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  eligibleSkills          ServiceSkill[]
+  branches                ServiceBranchAvailability[]
+  bookingLines            BookingServiceLine[]
+  visitLines              VisitServiceLine[]
+  invoiceLineServices     InvoiceLineService[]
   discountVersionServices DiscountVersionService[]
 
   @@index([categoryId, isActive, id], map: "services_category_idx")
@@ -1157,38 +1164,38 @@ model BookingRecipient {
 // One requested service: KTV per line (Q3), duration and buffer snapshots (O7) and the
 // catalog reference snapshot (O5, historical reference only; no billing).
 model BookingServiceLine {
-  id                 String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  bookingId          String                        @map("booking_id") @db.Uuid
-  booking            Booking                       @relation(fields: [bookingId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  sequence           Int                           @db.SmallInt
-  recipientId        String                        @map("recipient_id") @db.Uuid
-  recipient          BookingRecipient              @relation(fields: [bookingId, recipientId], references: [bookingId, id], onDelete: Restrict, onUpdate: Restrict)
-  serviceId          String                        @map("service_id") @db.Uuid
-  service            Service                       @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  employeeUserId     String                        @map("employee_user_id") @db.Uuid
-  employee           EmployeeProfile               @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
-  assignmentMode     KtvAssignmentMode             @map("assignment_mode")
-  plannedStartAt     DateTime                      @map("planned_start_at") @db.Timestamptz(3)
-  plannedEndAt       DateTime                      @map("planned_end_at") @db.Timestamptz(3)
-  durationMinutes    Int                           @map("duration_minutes")
-  bufferMinutes      Int                           @map("buffer_minutes")
-  serviceCode        String                        @map("service_code")
-  serviceNameVi      String                        @map("service_name_vi")
-  serviceNameEn      String                        @map("service_name_en")
-  catalogPriceMinVnd BigInt                        @map("catalog_price_min_vnd")
-  catalogPriceMaxVnd BigInt                        @map("catalog_price_max_vnd")
-  catalogPricingUnit ServicePricingUnit            @map("catalog_pricing_unit")
+  id                  String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId           String                        @map("booking_id") @db.Uuid
+  booking             Booking                       @relation(fields: [bookingId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sequence            Int                           @db.SmallInt
+  recipientId         String                        @map("recipient_id") @db.Uuid
+  recipient           BookingRecipient              @relation(fields: [bookingId, recipientId], references: [bookingId, id], onDelete: Restrict, onUpdate: Restrict)
+  serviceId           String                        @map("service_id") @db.Uuid
+  service             Service                       @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId      String                        @map("employee_user_id") @db.Uuid
+  employee            EmployeeProfile               @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  assignmentMode      KtvAssignmentMode             @map("assignment_mode")
+  plannedStartAt      DateTime                      @map("planned_start_at") @db.Timestamptz(3)
+  plannedEndAt        DateTime                      @map("planned_end_at") @db.Timestamptz(3)
+  durationMinutes     Int                           @map("duration_minutes")
+  bufferMinutes       Int                           @map("buffer_minutes")
+  serviceCode         String                        @map("service_code")
+  serviceNameVi       String                        @map("service_name_vi")
+  serviceNameEn       String                        @map("service_name_en")
+  catalogPriceMinVnd  BigInt                        @map("catalog_price_min_vnd")
+  catalogPriceMaxVnd  BigInt                        @map("catalog_price_max_vnd")
+  catalogPricingUnit  ServicePricingUnit            @map("catalog_pricing_unit")
   /// Phase 4 OP-1: the service's quantity limit when the line was established (immutable snapshot).
-  maxQuantitySnapshot Int                          @default(1) @map("max_quantity_snapshot")
+  maxQuantitySnapshot Int                           @default(1) @map("max_quantity_snapshot")
   /// Phase 4 Step 6: the service's category when the line was established (immutable snapshot; NULL = unknown, never guessed).
   serviceCategoryId   String?                       @map("service_category_id") @db.Uuid
   serviceCategory     ServiceCategory?              @relation("BookingLineCategory", fields: [serviceCategoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  assignmentConflict AssignmentConflict?           @map("assignment_conflict")
-  rowVersion         Int                           @default(1) @map("row_version")
-  createdAt          DateTime                      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt          DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  visitLine          VisitServiceLine?
-  assignmentChanges  ServiceLineAssignmentChange[]
+  assignmentConflict  AssignmentConflict?           @map("assignment_conflict")
+  rowVersion          Int                           @default(1) @map("row_version")
+  createdAt           DateTime                      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  visitLine           VisitServiceLine?
+  assignmentChanges   ServiceLineAssignmentChange[]
 
   @@unique([bookingId, sequence], map: "booking_service_lines_booking_sequence_key")
   @@index([employeeUserId, plannedStartAt], map: "booking_service_lines_employee_idx")
@@ -1506,35 +1513,35 @@ enum DiscountReleaseCause {
 // customer account or NULL (guest). Amounts are integer VND; total = subtotal - discountTotal is
 // the receivable and may be 0. Status transitions and freezing are guarded in SQL.
 model Invoice {
-  id                  String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code                String                        @unique(map: "invoices_code_key")
-  branchId            String                        @map("branch_id") @db.Uuid
-  branch              Branch                        @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  visitId             String                        @map("visit_id") @db.Uuid
-  visit               Visit                         @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  status              InvoiceStatus                 @default(DRAFT)
-  payerUserId         String?                       @map("payer_user_id") @db.Uuid
-  payer               User?                         @relation("InvoicePayer", fields: [payerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  businessDate        DateTime                      @map("business_date") @db.Date
-  calculationVersion  Int                           @map("calculation_version")
-  subtotalVnd         BigInt                        @default(0) @map("subtotal_vnd")
-  discountTotalVnd    BigInt                        @default(0) @map("discount_total_vnd")
-  totalVnd            BigInt                        @default(0) @map("total_vnd")
-  finalizedAt         DateTime?                     @map("finalized_at") @db.Timestamptz(3)
-  finalizedByUserId   String?                       @map("finalized_by_user_id") @db.Uuid
-  finalizedBy         User?                         @relation("InvoiceFinalizedBy", fields: [finalizedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  cancelledAt         DateTime?                     @map("cancelled_at") @db.Timestamptz(3)
-  cancelledByUserId   String?                       @map("cancelled_by_user_id") @db.Uuid
-  cancelledBy         User?                         @relation("InvoiceCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  cancelledFromStatus InvoiceStatus?                @map("cancelled_from_status")
-  cancelReason        String?                       @map("cancel_reason")
-  paidAt              DateTime?                     @map("paid_at") @db.Timestamptz(3)
-  paidSeq             Int                           @default(0) @map("paid_seq")
-  createdByUserId     String                        @map("created_by_user_id") @db.Uuid
-  createdBy           User                          @relation("InvoiceCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  rowVersion          Int                           @default(1) @map("row_version")
-  createdAt           DateTime                      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                  String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                String                      @unique(map: "invoices_code_key")
+  branchId            String                      @map("branch_id") @db.Uuid
+  branch              Branch                      @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  visitId             String                      @map("visit_id") @db.Uuid
+  visit               Visit                       @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  status              InvoiceStatus               @default(DRAFT)
+  payerUserId         String?                     @map("payer_user_id") @db.Uuid
+  payer               User?                       @relation("InvoicePayer", fields: [payerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  businessDate        DateTime                    @map("business_date") @db.Date
+  calculationVersion  Int                         @map("calculation_version")
+  subtotalVnd         BigInt                      @default(0) @map("subtotal_vnd")
+  discountTotalVnd    BigInt                      @default(0) @map("discount_total_vnd")
+  totalVnd            BigInt                      @default(0) @map("total_vnd")
+  finalizedAt         DateTime?                   @map("finalized_at") @db.Timestamptz(3)
+  finalizedByUserId   String?                     @map("finalized_by_user_id") @db.Uuid
+  finalizedBy         User?                       @relation("InvoiceFinalizedBy", fields: [finalizedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelledAt         DateTime?                   @map("cancelled_at") @db.Timestamptz(3)
+  cancelledByUserId   String?                     @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy         User?                       @relation("InvoiceCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelledFromStatus InvoiceStatus?              @map("cancelled_from_status")
+  cancelReason        String?                     @map("cancel_reason")
+  paidAt              DateTime?                   @map("paid_at") @db.Timestamptz(3)
+  paidSeq             Int                         @default(0) @map("paid_seq")
+  createdByUserId     String                      @map("created_by_user_id") @db.Uuid
+  createdBy           User                        @relation("InvoiceCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion          Int                         @default(1) @map("row_version")
+  createdAt           DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   lines               InvoiceLine[]
   payments            Payment[]
   paymentAnomalies    PaymentAnomaly[]
@@ -1970,29 +1977,32 @@ model MediaVariant {
 // allowed. `mediaId` is ON DELETE RESTRICT, so an image a popup uses cannot be removed. At most one ENABLED
 // popup may cover any instant; the API enforces that under an advisory lock (no DB extension).
 model WebsitePopup {
-  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  mediaId         String?     @map("media_id") @db.Uuid
-  media           MediaAsset? @relation(fields: [mediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  titleVi         String?     @map("title_vi")
-  titleEn         String?     @map("title_en")
-  bodyVi          String?     @map("body_vi")
-  bodyEn          String?     @map("body_en")
-  ctaLabelVi      String?     @map("cta_label_vi")
-  ctaLabelEn      String?     @map("cta_label_en")
-  ctaUrl          String?     @map("cta_url")
-  startsAt        DateTime    @map("starts_at") @db.Timestamptz(3)
-  endsAt          DateTime    @map("ends_at") @db.Timestamptz(3)
-  isEnabled       Boolean     @default(false) @map("is_enabled")
-  rowVersion      Int         @default(1) @map("row_version")
-  createdByUserId String      @map("created_by_user_id") @db.Uuid
-  createdBy       User        @relation("WebsitePopupCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  updatedByUserId String      @map("updated_by_user_id") @db.Uuid
-  updatedBy       User        @relation("WebsitePopupUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mediaId         String?        @map("media_id") @db.Uuid
+  media           MediaAsset?    @relation(fields: [mediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  titleVi         String?        @map("title_vi")
+  titleEn         String?        @map("title_en")
+  bodyVi          String?        @map("body_vi")
+  bodyEn          String?        @map("body_en")
+  ctaLabelVi      String?        @map("cta_label_vi")
+  ctaLabelEn      String?        @map("cta_label_en")
+  ctaUrl          String?        @map("cta_url")
+  startsAt        DateTime       @map("starts_at") @db.Timestamptz(3)
+  endsAt          DateTime       @map("ends_at") @db.Timestamptz(3)
+  isEnabled       Boolean        @default(false) @map("is_enabled")
+  rowVersion      Int            @default(1) @map("row_version")
+  createdByUserId String         @map("created_by_user_id") @db.Uuid
+  createdBy       User           @relation("WebsitePopupCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  updatedByUserId String         @map("updated_by_user_id") @db.Uuid
+  updatedBy       User           @relation("WebsitePopupUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  seasonId        String?        @map("season_id") @db.Uuid
+  season          WebsiteSeason? @relation(fields: [seasonId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@index([startsAt(sort: Desc), id], map: "website_popups_starts_idx")
   @@index([mediaId], map: "website_popups_media_idx")
+  @@index([seasonId], map: "website_popups_season_idx")
   @@map("website_popups")
 }
 
@@ -2000,34 +2010,67 @@ model WebsitePopup {
 // Both image keys are ON DELETE RESTRICT. `sortOrder` is dense and rewritten by the API in one transaction;
 // at most 8 slides may be visible at once, which the API enforces under an advisory lock.
 model WebsiteSlide {
-  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  mediaId         String      @map("media_id") @db.Uuid
-  media           MediaAsset  @relation("WebsiteSlideImage", fields: [mediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  mobileMediaId   String?     @map("mobile_media_id") @db.Uuid
-  mobileMedia     MediaAsset? @relation("WebsiteSlideMobileImage", fields: [mobileMediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  titleVi         String?     @map("title_vi")
-  titleEn         String?     @map("title_en")
-  subtitleVi      String?     @map("subtitle_vi")
-  subtitleEn      String?     @map("subtitle_en")
-  linkUrl         String?     @map("link_url")
-  linkLabelVi     String?     @map("link_label_vi")
-  linkLabelEn     String?     @map("link_label_en")
-  altVi           String?     @map("alt_vi")
-  altEn           String?     @map("alt_en")
-  sortOrder       Int         @map("sort_order")
-  startsAt        DateTime?   @map("starts_at") @db.Timestamptz(3)
-  endsAt          DateTime?   @map("ends_at") @db.Timestamptz(3)
-  isEnabled       Boolean     @default(false) @map("is_enabled")
-  rowVersion      Int         @default(1) @map("row_version")
-  createdByUserId String      @map("created_by_user_id") @db.Uuid
-  createdBy       User        @relation("WebsiteSlideCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  updatedByUserId String      @map("updated_by_user_id") @db.Uuid
-  updatedBy       User        @relation("WebsiteSlideUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mediaId         String         @map("media_id") @db.Uuid
+  media           MediaAsset     @relation("WebsiteSlideImage", fields: [mediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  mobileMediaId   String?        @map("mobile_media_id") @db.Uuid
+  mobileMedia     MediaAsset?    @relation("WebsiteSlideMobileImage", fields: [mobileMediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  titleVi         String?        @map("title_vi")
+  titleEn         String?        @map("title_en")
+  subtitleVi      String?        @map("subtitle_vi")
+  subtitleEn      String?        @map("subtitle_en")
+  linkUrl         String?        @map("link_url")
+  linkLabelVi     String?        @map("link_label_vi")
+  linkLabelEn     String?        @map("link_label_en")
+  altVi           String?        @map("alt_vi")
+  altEn           String?        @map("alt_en")
+  sortOrder       Int            @map("sort_order")
+  startsAt        DateTime?      @map("starts_at") @db.Timestamptz(3)
+  endsAt          DateTime?      @map("ends_at") @db.Timestamptz(3)
+  isEnabled       Boolean        @default(false) @map("is_enabled")
+  rowVersion      Int            @default(1) @map("row_version")
+  createdByUserId String         @map("created_by_user_id") @db.Uuid
+  createdBy       User           @relation("WebsiteSlideCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  updatedByUserId String         @map("updated_by_user_id") @db.Uuid
+  updatedBy       User           @relation("WebsiteSlideUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  seasonId        String?        @map("season_id") @db.Uuid
+  season          WebsiteSeason? @relation(fields: [seasonId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  updatedAt       DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@index([sortOrder, id], map: "website_slides_order_idx")
   @@index([mediaId], map: "website_slides_media_idx")
   @@index([mobileMediaId], map: "website_slides_mobile_media_idx")
+  @@index([seasonId], map: "website_slides_season_idx")
   @@map("website_slides")
+}
+
+// UX/UI Step S3: a scheduled seasonal theme (design 20.4). Marketing content, not history: a real delete is
+// allowed (the API unlinks and hides the popups and slides that follow it first). `presetKey` is validated
+// against the registry in packages/contracts by the API; at most one ENABLED season may cover any instant,
+// which the API enforces under an advisory lock.
+model WebsiteSeason {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  presetKey        String         @map("preset_key")
+  label            String
+  startsAt         DateTime       @map("starts_at") @db.Timestamptz(3)
+  endsAt           DateTime       @map("ends_at") @db.Timestamptz(3)
+  greetingVi       String?        @map("greeting_vi")
+  greetingEn       String?        @map("greeting_en")
+  applyCustomer    Boolean        @default(true) @map("apply_customer")
+  applyAdmin       Boolean        @default(true) @map("apply_admin")
+  particlesEnabled Boolean        @default(true) @map("particles_enabled")
+  isEnabled        Boolean        @default(false) @map("is_enabled")
+  rowVersion       Int            @default(1) @map("row_version")
+  createdByUserId  String         @map("created_by_user_id") @db.Uuid
+  createdBy        User           @relation("WebsiteSeasonCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  updatedByUserId  String         @map("updated_by_user_id") @db.Uuid
+  updatedBy        User           @relation("WebsiteSeasonUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  popups           WebsitePopup[]
+  slides           WebsiteSlide[]
+
+  @@index([startsAt(sort: Desc), id], map: "website_seasons_starts_idx")
+  @@map("website_seasons")
 }
