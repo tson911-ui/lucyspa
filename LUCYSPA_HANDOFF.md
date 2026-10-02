@@ -294,4 +294,4 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Kit in `packages/ui`: 8 inline-SVG ornaments, `SeasonFrame`/`GreetingStrip`, `SeasonParticles` (max 24, 12 on phones, only in the band gutters, none under reduced motion or `ls-fx=off`, paused in a hidden tab), `SeasonFxToggle`, `season-decor.css`. Registry gains `particle` per preset; S1 ornament colors re-chosen (3:1 on the frame, yellow only Tet and Mid-Autumn). Inert until S5.
 - No API, DB, permission or migration change. New jsdom, css, fx-core and registry tests; whole-repo `pnpm test`, lint, format green. DOM audit dashboard 86 -> 10, login 11 -> 10. Specimens (Owner review of the art): `.local/season-s2-specimens/`.
-- Report: docs/UXUI_REDESIGN_S2_DECORATION_KIT.md. Next: S3 (`website_seasons` migration and API).
+- Art revision after Owner review: Christmas tree/star/baubles/bell, Mid-Autumn star lantern + moon, 30/4 and 2/9 red banner + solid yellow star + fireworks; yellow exception now covers those four presets (ornaments only). Report: docs/UXUI_REDESIGN_S2_DECORATION_KIT.md. Next: S3 (`website_seasons` migration and API).

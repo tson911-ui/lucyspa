@@ -36,7 +36,7 @@ S1-S5 (decision D12) read sections 0, 6, 16 and 20 and section 20.10 for the ope
 
 | #   | Decision                                                                                                                                                                                                                                                                                                                                                                                       |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Brand colors: primary red `#782b37` and white `#ffffff`. **No gold anywhere** (also no yellow/amber that reads as gold), with one scoped exception (Owner 2026-10-02, 20.10 Q-S1): seasonal ornaments of Tet and Mid-Autumn only.                                                                                                                                                              |
+| D1  | Brand colors: primary red `#782b37` and white `#ffffff`. **No gold anywhere** (also no yellow/amber that reads as gold), with one scoped exception (Owner 2026-10-02, 20.10 Q-S1): seasonal ornaments of Tet, Mid-Autumn, 30/4-1/5 and 2/9 only.                                                                                                                                               |
 | D2  | Light and dark mode with a user toggle; default is Auto by time (light 06:00-17:59, dark 18:00-05:59, local device time; Owner 2026-10-02, replaces "follows the system").                                                                                                                                                                                                                     |
 | D3  | Admin (workforce) area first. Customer area and public site are a later part of this track (own contract).                                                                                                                                                                                                                                                                                     |
 | D4  | Admin is modern, luxurious, professional, very easy to use, fast; no cinematic motion (PRD 4.4 applies to the customer side only).                                                                                                                                                                                                                                                             |
@@ -936,16 +936,16 @@ mechanism, admin shell) and on the website-content group (Steps 11-13).
   paused when the tab is hidden. Particles **render nothing** under `prefers-reduced-motion` (checked in the component, not only by
   the global duration reset), and a visible "Turn off effects" control stores a per-device cookie `ls-fx=off`. No layout shift, no
   scroll blocking, no third-party script.
-- Decorations never sit under text that has to be read, never use yellow/gold except the scoped Tet and Mid-Autumn ornament
-  exception (D1, Q-S1), never change the popup/slider behavior defined in 16.5-16.6.
+- Decorations never sit under text that has to be read, never use yellow/gold except the scoped ornament
+  exception of Tet, Mid-Autumn, 30/4-1/5 and 2/9 (D1, Q-S1), never change the popup/slider behavior defined in 16.5-16.6.
 
 ### 20.3 Accessibility and colors
 
 - Every preset defines accent tokens for light **and** dark. A test (same style as `tokens.test.ts`) iterates
   presets x {light, dark}: accent text on each surface at least 4.5:1, `on-accent` on accent and on the frame gradient stops at
   least 4.5:1, accent used as a UI boundary at least 3:1. A preset that fails cannot ship.
-- Red flag motifs (30/4, 2/9) would collide with error red (6.4): those presets use line-art stars and lotus as ornaments and a
-  rose/coral accent, never flat danger red. Brand red and danger red stay distinct.
+- Flag-day presets (30/4-1/5, 2/9; Owner revision 2026-10-02): a brighter red banner with a solid yellow five-point star and static firework bursts. The red banner is decoration only, so it never reads as the error status (6.4, status is never color only); their accent, text and admin line stay a
+  rose accent at least 20 degrees of hue away from danger red, and buttons, text and brand tokens stay brand red. Brand red and danger red stay distinct.
 - Indicative accents (final values fixed and verified in S1): Tet peach-blossom pink and deep red; Christmas pine green; Valentine
   rose; 8/3 and 20/10 orchid/pink; Mid-Autumn plum/indigo with lantern coral; 30/4-1/5 and 2/9 rose/coral with white.
 
@@ -1045,18 +1045,22 @@ Step 5 needs **no rework**. Three small adjustments belong to Step S1, none to S
 
 **Owner decisions, recorded 2026-10-02 (LOCKED; do not reopen):**
 
-- **Q-S1 = scoped exception to D1.** Yellow/gold is allowed **only** inside the decorative SVG ornaments of two presets: Tet (hoa mai
-  vang, apricot blossom) and Mid-Autumn (lanterns). Buttons, text, accents, frames, badges and every brand/status token stay brand red
+- **Q-S1 = scoped exception to D1.** Yellow/gold is allowed **only** inside the decorative SVG ornaments of four presets: Tet (hoa mai
+  vang, apricot blossom), Mid-Autumn (star lantern and moon), 30/4-1/5 and 2/9 (solid five-point star; extended by the Owner on 2026-10-02). Buttons, text, accents, badges and every brand/status token stay brand red
   `#782b37` and the neutral palette. Accent tokens (`--ls-season-accent*`, `--ls-season-frame-*`) are never gold or yellow in any preset.
   The ornament colors live in their own tokens (`--ls-season-ornament-*`), read only by ornament SVG, never by text, buttons, borders
-  or charts. Contrast rules (20.3) are unchanged; ornaments stay `aria-hidden`, never under readable text. Only Tet and Mid-Autumn
-  may carry a gold-hue ornament color; a test fails for any other preset or token.
+  or charts. Contrast rules (20.3) are unchanged; ornaments stay `aria-hidden`, never under readable text. Only those four
+  presets may carry a gold-hue ornament color; a test fails for any other preset or token. Frame colors are never gold; the two flag-day banners are a brighter red (decoration).
 - **Q-S2 = A** (linked popup/slides follow the season window). **Q-S3 = A** (suggested dates for solar holidays, editable, confirm to
   save). **Q-S4 and Q-S5 = A** (admin: accent line + greeting chip with per-device hide; customer particles on, max 24, fewer on
   phones, "Turn off effects"). **Q-S6 = A** (the 8 presets; VI/EN greeting proposals approved in S1, max 80 chars, overridable per
   schedule). **Q-S7 = A** (S1-S5 after Step 13 and before Step 14; `season_id` column added in S3). **Q-S8, Q-S9, Q-S10 = defaults
   accepted** (mobile bundles its own ornaments; reuse `MANAGE_WEBSITE_CONTENT`; preview only inside admin frames, no shareable link).
   **Q-S11 = reject** overlapping enabled seasons, as popups.
+- **Ornament art, Owner review of the S2 specimens (2026-10-02, LOCKED):** Tet, Valentine, 8/3 and 20/10 stay as drawn.
+  Christmas: a pine tree with star, baubles and a bell (no branches). Mid-Autumn: a five-point star lantern (den ong sao) and a
+  moon, and the rising particle is a star lantern. 30/4-1/5 and 2/9: a brighter red banner with a solid yellow five-point star and
+  static firework bursts (2/9 adds a lotus outline); the yellow exception of Q-S1 covers their ornaments only.
 
 ---
 

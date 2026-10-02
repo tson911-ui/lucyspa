@@ -75,6 +75,37 @@ test('every registry preset renders its motif', () => {
   }
 });
 
+test('the motifs are recognizable (Owner review 2026-10-02): tree, star, baubles and bell; star lantern and moon; solid star and fireworks', () => {
+  const html = (id: (typeof SEASON_ORNAMENT_IDS)[number]) =>
+    renderToStaticMarkup(<ui.SeasonOrnament id={id} />);
+  const stars = (markup: string) =>
+    [...markup.matchAll(/<polygon points="([^"]+)" class="(ls-o\d)"/g)].filter(
+      (match) => match[1]!.trim().split(' ').length === 10,
+    );
+  const bursts = (markup: string) => markup.match(/<circle r="2" class="ls-o1"/g)?.length ?? 0;
+
+  const christmas = html('christmas-ornaments');
+  assert.equal(
+    christmas.match(/<polygon points="[^"]+" class="ls-o1"/g)?.length,
+    3,
+    'three tree tiers',
+  );
+  assert.equal(stars(christmas).length, 1, 'a star on top');
+  assert.ok((christmas.match(/<circle /g)?.length ?? 0) >= 6, 'baubles and the bell loop');
+  assert.match(christmas, /<path d="M50 47C[^"]+Z" class="ls-o2"/, 'a bell');
+
+  const lantern = html('star-lantern-moon');
+  assert.equal(stars(lantern).length, 2, 'a star lantern with an inner star');
+  assert.match(lantern, /<path d="M60 2A13 13[^"]+" class="ls-o3"/, 'a crescent moon');
+
+  for (const id of ['star-fireworks', 'star-lotus'] as const) {
+    const markup = html(id);
+    const solid = stars(markup).filter((match) => match[2] === 'ls-o1');
+    assert.equal(solid.length, 1, `${id}: one solid five-point star`);
+    assert.ok(bursts(markup) >= 2, `${id}: static firework bursts`);
+  }
+});
+
 test('SeasonFrame scopes a preview with data-season, reserves gutters for both ornaments, and keeps text in the body', () => {
   const scoped = renderToStaticMarkup(
     <ui.SeasonFrame presetKey="tet" ornamentId="mai-blossom">
@@ -87,7 +118,7 @@ test('SeasonFrame scopes a preview with data-season, reserves gutters for both o
   assert.match(scoped, /ls-season-orn-end/);
   assert.match(scoped, /<div class="ls-season-frame-body"><p>Nội dung<\/p><\/div>/);
   const inherited = renderToStaticMarkup(
-    <ui.SeasonFrame ornamentId="lantern">
+    <ui.SeasonFrame ornamentId="star-lantern-moon">
       <p>x</p>
     </ui.SeasonFrame>,
   );
@@ -233,7 +264,7 @@ test('particles stay inside a frame: the frame renders them in its own band, aft
   const view = mount(
     <ui.SeasonFrame
       presetKey="mid-autumn"
-      ornamentId="lantern"
+      ornamentId="star-lantern-moon"
       effects={<ui.SeasonParticles kind="lantern" />}
     >
       <p>Trung thu vui vẻ!</p>

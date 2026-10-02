@@ -18,6 +18,7 @@ import {
   serializeFxCookie,
   type ParticleSpec,
 } from './season-fx-core';
+import { starPoints } from './season-ornaments';
 import { PHONE_QUERY, useMediaQuery } from './use-media-query';
 
 // Seasonal particles (docs/UXUI_REDESIGN_DESIGN.md 20.2, Q-S5): a small fixed pool of petals, snowflakes, lanterns or
@@ -57,8 +58,9 @@ function Glyph({ kind }: { kind: Exclude<SeasonParticleKind, 'none'> }) {
       {kind === 'snow' ? <path d="M8 1V15M2 4.5L14 11.5M14 4.5L2 11.5" /> : null}
       {kind === 'lantern' ? (
         <>
-          <rect x="3" y="4" width="10" height="10" rx="4" />
-          <rect x="5" y="1" width="6" height="3" rx="1" />
+          {/* A five-point star lantern (đèn ông sao) with a tassel. */}
+          <polygon points={starPoints(8, 7, 7.4, 3.1)} />
+          <rect x="7.4" y="12.6" width="1.2" height="3.4" />
         </>
       ) : null}
       {kind === 'heart' ? (

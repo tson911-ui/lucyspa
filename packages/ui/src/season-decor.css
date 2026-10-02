@@ -116,6 +116,10 @@
   stroke-width: 1.5;
 }
 
+.ls-mid {
+  stroke-width: 2.2;
+}
+
 /* ---- Particles --------------------------------------------------------------------------------- */
 /* A pool of at most 24 (12 on phones) inside the banner. Each particle is a full-height lane that is translated by
    its own height, so only transform and opacity animate; the glyph sits at the lane's start. */

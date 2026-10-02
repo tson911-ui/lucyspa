@@ -27,6 +27,12 @@ None. No API, DB or permission change.
 - Deviations from the plan: no `--ls-z-fx` token (the layer is clipped inside the band) and the switch uses a changing label instead of `aria-pressed`.
 - DOM audit on the real app (scratch DB, servers stopped): dashboard 86 -> 10, login 11 -> 10; no count rose.
 
+## Revision 2 (Owner art review of the specimens, 2026-10-02)
+
+- Tet, Valentine, 8/3 and 20/10 unchanged. **Christmas** `christmas-ornaments`: pine tree with star, baubles and a bell (replaces the branch). **Mid-Autumn** `star-lantern-moon`: five-point star lantern (đèn ông sao) and a crescent moon; the rising particle is now a star lantern too. **30/4-1/5** `star-fireworks` and **2/9** `star-lotus`: brighter red banner, solid yellow five-point star, static firework bursts (2/9 also a lotus outline).
+- The scoped yellow exception now covers the ornaments of Tet, Mid-Autumn, 30/4-1/5 and 2/9 (design 20.2, 20.3, 20.10, D1 updated; accent, frame text and buttons never yellow). The two flag-day presets keep a rose accent (at least 20 degrees from danger red) with a red decorative banner; tests for hue, contrast (ornaments 3:1 on the banner) and the motif shapes were updated.
+- Ornament ids renamed (`pine-branch`, `lantern`, `line-star`, `lotus` are gone); nothing stores them yet. `season.css` regenerated. Re-rendered specimens: `.local/season-s2-specimens/rev2-all-8-presets-1440-light.png` and `-dark.png` (temporary route deleted again).
+
 ## Open questions
 
 None. Next: S3 (migration `website_seasons`, API), after Owner review of the specimens.

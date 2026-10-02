@@ -89,7 +89,9 @@ const tokenColor = (theme: Record<string, string>, name: string): string => {
   return value!;
 };
 const accentValues = (tokens: SeasonAccentTokens): string[] => Object.values(tokens);
-const GOLD_ORNAMENT_PRESETS = ['tet', 'mid-autumn'];
+// The scoped yellow exception (Q-S1, extended 2026-10-02): ornaments of these four presets only.
+const GOLD_ORNAMENT_PRESETS = ['tet', 'mid-autumn', 'reunification-labour', 'national-day'];
+const FLAG_DAY_PRESETS = ['reunification-labour', 'national-day'];
 
 test('the registry is exactly the eight approved presets, in order, with unique keys', () => {
   assert.deepEqual(
@@ -171,7 +173,7 @@ for (const [themeName, theme] of Object.entries(themes) as [
   });
 }
 
-test('accent and frame colors are never yellow or gold; yellow ornaments exist only for Tet and Mid-Autumn (Q-S1)', () => {
+test('accent and frame colors are never yellow or gold; yellow ornaments exist only for Tet, Mid-Autumn, 30/4-1/5 and 2/9 (Q-S1)', () => {
   for (const preset of SEASON_PRESETS) {
     for (const value of [...accentValues(preset.light), ...accentValues(preset.dark)]) {
       assert.equal(isGoldHue(value), false, `${preset.key}: ${value} is a gold-hue accent token`);
@@ -187,17 +189,35 @@ test('accent and frame colors are never yellow or gold; yellow ornaments exist o
   }
 });
 
-test('flag-day presets use rose, clearly apart from danger red (20.3)', () => {
-  for (const key of ['reunification-labour', 'national-day']) {
+test('flag-day presets: a brighter red banner with a solid yellow star, while accent and line stay rose apart from danger red (20.3)', () => {
+  for (const key of FLAG_DAY_PRESETS) {
     const preset: SeasonPreset = SEASON_PRESETS.find((candidate) => candidate.key === key)!;
     for (const [themeName, theme] of Object.entries(themes)) {
+      const tokens = preset[themeName as 'light' | 'dark'];
+      // The accent (text, boundary, admin line) is never confusable with the danger status color.
       const danger = hsv(tokenColor(theme, 'danger')).hue;
-      const accent = hsv(preset[themeName as 'light' | 'dark'].accent).hue;
+      const accent = hsv(tokens.accent).hue;
       assert.ok(
         hueGap(accent, danger) >= 20,
         `${key} ${themeName}: accent hue ${accent} vs danger ${danger}`,
       );
+      // The banner is decoration: red, and brighter than the brand red in light (the brand fill is #782b37).
+      for (const stop of [tokens.frameFrom, tokens.frameTo]) {
+        const { hue, saturation } = hsv(stop);
+        assert.ok(
+          hueGap(hue, 355) <= 12 && saturation >= 0.6,
+          `${key} ${themeName}: ${stop} is red`,
+        );
+      }
+      if (themeName === 'light') {
+        assert.ok(
+          luminance(tokens.frameFrom) > luminance(tokenColor(theme, 'brand-fill')),
+          `${key}: the light banner is brighter than the brand red`,
+        );
+      }
     }
+    // A solid yellow star: the first ornament color is yellow in both themes.
+    assert.ok(isGoldHue(preset.ornament.light[0]) && isGoldHue(preset.ornament.dark[0]), key);
   }
 });
 

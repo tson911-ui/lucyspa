@@ -4,8 +4,10 @@
  * so a new preset is a registry entry plus ornaments and tests, never a migration.
  *
  * Brand red stays the primary color. A preset adds an accent beside it and never replaces brand, text, surface,
- * border, focus or status tokens. Yellow is allowed only in the decorative ornament colors of `tet` and `mid-autumn`
- * (Owner decision Q-S1, 2026-10-02); accent and frame colors are never yellow in any preset.
+ * border, focus or status tokens. Yellow is allowed only in the decorative ornament colors of `tet`, `mid-autumn`,
+ * `reunification-labour` and `national-day` (Owner decision Q-S1, 2026-10-02, extended the same day); accent and
+ * frame colors are never yellow in any preset. The two flag-day presets have a brighter red banner (frame) but keep a
+ * rose accent: the banner is decoration, never a status color.
  */
 export const SEASON_PRESET_KEYS = [
   'tet',
@@ -46,13 +48,13 @@ export type SeasonOrnamentColors = readonly [string, string, string];
 /** One inline-SVG motif per preset (packages/ui `SeasonOrnament`). */
 export const SEASON_ORNAMENT_IDS = [
   'mai-blossom',
-  'pine-branch',
+  'christmas-ornaments',
   'hearts',
   'orchid',
   'pink-lotus',
-  'lantern',
-  'line-star',
-  'lotus',
+  'star-lantern-moon',
+  'star-fireworks',
+  'star-lotus',
 ] as const;
 export type SeasonOrnamentId = (typeof SEASON_ORNAMENT_IDS)[number];
 
@@ -138,7 +140,7 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
       frameText: '#e6f6ec',
     },
     ornament: {
-      id: 'pine-branch',
+      id: 'christmas-ornaments',
       particle: 'snow',
       light: ['#bfe8cf', '#e6f6ec', '#ffc9d1'],
       dark: ['#86d6a6', '#4fa072', '#e08a9a'],
@@ -262,7 +264,7 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
       frameText: '#ececff',
     },
     ornament: {
-      id: 'lantern',
+      id: 'star-lantern-moon',
       particle: 'lantern',
       light: ['#f5c518', '#ffb199', '#d3d2ff'],
       dark: ['#f6c85f', '#f08a74', '#b0aef4'],
@@ -280,23 +282,23 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
       accent: '#a63a62',
       accentSoft: '#fae8ee',
       onAccent: '#ffffff',
-      frameFrom: '#b64a72',
-      frameTo: '#8a2a50',
+      frameFrom: '#d62d3a',
+      frameTo: '#a81d2b',
       frameText: '#ffffff',
     },
     dark: {
       accent: '#f09ab7',
       accentSoft: '#3b1a28',
       onAccent: '#280f19',
-      frameFrom: '#5c2038',
-      frameTo: '#3a1124',
-      frameText: '#ffe9f0',
+      frameFrom: '#9c1f2c',
+      frameTo: '#5e121c',
+      frameText: '#fff1f2',
     },
     ornament: {
-      id: 'line-star',
+      id: 'star-fireworks',
       particle: 'none',
-      light: ['#ffd0df', '#fff0f5', '#ffbad0'],
-      dark: ['#f09ab7', '#d77a98', '#ffd0df'],
+      light: ['#ffd23f', '#fff4f4', '#ffc7cb'],
+      dark: ['#ffd84d', '#fff1f2', '#ff9aa3'],
     },
     suggestedWindow: { start: { month: 4, day: 28 }, end: { month: 5, day: 2 } },
   },
@@ -311,23 +313,23 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
       accent: '#9e3463',
       accentSoft: '#f9e7ef',
       onAccent: '#ffffff',
-      frameFrom: '#ae4472',
-      frameTo: '#82284d',
+      frameFrom: '#da323f',
+      frameTo: '#aa202e',
       frameText: '#ffffff',
     },
     dark: {
       accent: '#ee9ab9',
       accentSoft: '#3a1a2a',
       onAccent: '#270f1a',
-      frameFrom: '#5a2039',
-      frameTo: '#391125',
-      frameText: '#ffe8f1',
+      frameFrom: '#a2222f',
+      frameTo: '#621520',
+      frameText: '#fff1f2',
     },
     ornament: {
-      id: 'lotus',
+      id: 'star-lotus',
       particle: 'none',
-      light: ['#ffd0e0', '#fff0f5', '#f6b0c8'],
-      dark: ['#ee9ab9', '#d6789c', '#ffd0e0'],
+      light: ['#ffd23f', '#fff4f4', '#ffc7cb'],
+      dark: ['#ffd84d', '#fff1f2', '#ff9aa3'],
     },
     suggestedWindow: { start: { month: 8, day: 31 }, end: { month: 9, day: 3 } },
   },

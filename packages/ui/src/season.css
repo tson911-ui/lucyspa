@@ -245,12 +245,12 @@
   --ls-season-accent: #a63a62;
   --ls-season-accent-soft: #fae8ee;
   --ls-season-on-accent: #ffffff;
-  --ls-season-frame-from: #b64a72;
-  --ls-season-frame-to: #8a2a50;
+  --ls-season-frame-from: #d62d3a;
+  --ls-season-frame-to: #a81d2b;
   --ls-season-frame-text: #ffffff;
-  --ls-season-ornament-1: #ffd0df;
-  --ls-season-ornament-2: #fff0f5;
-  --ls-season-ornament-3: #ffbad0;
+  --ls-season-ornament-1: #ffd23f;
+  --ls-season-ornament-2: #fff4f4;
+  --ls-season-ornament-3: #ffc7cb;
   --ls-season-line: var(--ls-season-accent);
 }
 :root[data-theme='dark'] [data-season='reunification-labour'],
@@ -258,12 +258,12 @@
   --ls-season-accent: #f09ab7;
   --ls-season-accent-soft: #3b1a28;
   --ls-season-on-accent: #280f19;
-  --ls-season-frame-from: #5c2038;
-  --ls-season-frame-to: #3a1124;
-  --ls-season-frame-text: #ffe9f0;
-  --ls-season-ornament-1: #f09ab7;
-  --ls-season-ornament-2: #d77a98;
-  --ls-season-ornament-3: #ffd0df;
+  --ls-season-frame-from: #9c1f2c;
+  --ls-season-frame-to: #5e121c;
+  --ls-season-frame-text: #fff1f2;
+  --ls-season-ornament-1: #ffd84d;
+  --ls-season-ornament-2: #fff1f2;
+  --ls-season-ornament-3: #ff9aa3;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) [data-season='reunification-labour'],
@@ -271,12 +271,12 @@
     --ls-season-accent: #f09ab7;
     --ls-season-accent-soft: #3b1a28;
     --ls-season-on-accent: #280f19;
-    --ls-season-frame-from: #5c2038;
-    --ls-season-frame-to: #3a1124;
-    --ls-season-frame-text: #ffe9f0;
-    --ls-season-ornament-1: #f09ab7;
-    --ls-season-ornament-2: #d77a98;
-    --ls-season-ornament-3: #ffd0df;
+    --ls-season-frame-from: #9c1f2c;
+    --ls-season-frame-to: #5e121c;
+    --ls-season-frame-text: #fff1f2;
+    --ls-season-ornament-1: #ffd84d;
+    --ls-season-ornament-2: #fff1f2;
+    --ls-season-ornament-3: #ff9aa3;
   }
 }
 
@@ -285,12 +285,12 @@
   --ls-season-accent: #9e3463;
   --ls-season-accent-soft: #f9e7ef;
   --ls-season-on-accent: #ffffff;
-  --ls-season-frame-from: #ae4472;
-  --ls-season-frame-to: #82284d;
+  --ls-season-frame-from: #da323f;
+  --ls-season-frame-to: #aa202e;
   --ls-season-frame-text: #ffffff;
-  --ls-season-ornament-1: #ffd0e0;
-  --ls-season-ornament-2: #fff0f5;
-  --ls-season-ornament-3: #f6b0c8;
+  --ls-season-ornament-1: #ffd23f;
+  --ls-season-ornament-2: #fff4f4;
+  --ls-season-ornament-3: #ffc7cb;
   --ls-season-line: var(--ls-season-accent);
 }
 :root[data-theme='dark'] [data-season='national-day'],
@@ -298,12 +298,12 @@
   --ls-season-accent: #ee9ab9;
   --ls-season-accent-soft: #3a1a2a;
   --ls-season-on-accent: #270f1a;
-  --ls-season-frame-from: #5a2039;
-  --ls-season-frame-to: #391125;
-  --ls-season-frame-text: #ffe8f1;
-  --ls-season-ornament-1: #ee9ab9;
-  --ls-season-ornament-2: #d6789c;
-  --ls-season-ornament-3: #ffd0e0;
+  --ls-season-frame-from: #a2222f;
+  --ls-season-frame-to: #621520;
+  --ls-season-frame-text: #fff1f2;
+  --ls-season-ornament-1: #ffd84d;
+  --ls-season-ornament-2: #fff1f2;
+  --ls-season-ornament-3: #ff9aa3;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) [data-season='national-day'],
@@ -311,12 +311,12 @@
     --ls-season-accent: #ee9ab9;
     --ls-season-accent-soft: #3a1a2a;
     --ls-season-on-accent: #270f1a;
-    --ls-season-frame-from: #5a2039;
-    --ls-season-frame-to: #391125;
-    --ls-season-frame-text: #ffe8f1;
-    --ls-season-ornament-1: #ee9ab9;
-    --ls-season-ornament-2: #d6789c;
-    --ls-season-ornament-3: #ffd0e0;
+    --ls-season-frame-from: #a2222f;
+    --ls-season-frame-to: #621520;
+    --ls-season-frame-text: #fff1f2;
+    --ls-season-ornament-1: #ffd84d;
+    --ls-season-ornament-2: #fff1f2;
+    --ls-season-ornament-3: #ff9aa3;
   }
 }
 

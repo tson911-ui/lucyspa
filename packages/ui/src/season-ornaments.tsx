@@ -5,9 +5,18 @@ import { cx } from './cx';
 // Seasonal ornaments (docs/UXUI_REDESIGN_DESIGN.md 20.2): one small flat motif per preset, drawn inline in a 64 x 64
 // box. Decorative only: `aria-hidden`, no focusable child, no image, no request. Colors come from the classes
 // `ls-o1..3` (fill) and `ls-ol1..3` (line), which read `--ls-season-ornament-1..3` in season-decor.css, so a motif never
-// carries a color of its own. Yellow exists only in the Tet and Mid-Autumn token values (Q-S1).
+// carries a color of its own. Yellow exists only in the Tet, Mid-Autumn, 30/4-1/5 and 2/9 token values (Q-S1).
 
 const n = (value: number): string => value.toFixed(2).replace(/\.?0+$/, '');
+
+/** Points of a five-point star centred on (cx, cy): outer radius `outer`, inner radius `inner`, one point up. */
+export function starPoints(cx: number, cy: number, outer: number, inner: number): string {
+  return Array.from({ length: 10 }, (_, index) => {
+    const angle = (Math.PI * index) / 5 - Math.PI / 2;
+    const radius = index % 2 === 0 ? outer : inner;
+    return `${n(cx + radius * Math.cos(angle))},${n(cy + radius * Math.sin(angle))}`;
+  }).join(' ');
+}
 
 function Flower({
   x,
@@ -49,16 +58,33 @@ function Heart({ x, y, s, tone }: { x: number; y: number; s: number; tone: strin
   return <path transform={`translate(${x} ${y})`} d={d} className={tone} />;
 }
 
-function Leaf({ x, y, angle, tone }: { x: number; y: number; angle: number; tone: string }) {
+/** A static firework burst: rays around a centre, a bead at the end of every other ray. */
+function Burst({ x, y, reach = 10 }: { x: number; y: number; reach?: number }) {
+  const rays = 8;
   return (
-    <ellipse
-      cx="0"
-      cy="-7"
-      rx="2.8"
-      ry="8"
-      transform={`translate(${x} ${y}) rotate(${angle})`}
-      className={tone}
-    />
+    <g transform={`translate(${x} ${y})`}>
+      {Array.from({ length: rays }, (_, index) => {
+        const angle = (Math.PI * 2 * index) / rays;
+        const [cos, sin] = [Math.cos(angle), Math.sin(angle)];
+        return (
+          <g key={index}>
+            <path
+              d={`M${n(cos * reach * 0.4)} ${n(sin * reach * 0.4)}L${n(cos * reach)} ${n(sin * reach)}`}
+              className="ls-ol2 ls-mid"
+            />
+            {index % 2 === 0 ? (
+              <circle
+                cx={n(cos * (reach + 2.6))}
+                cy={n(sin * (reach + 2.6))}
+                r="1.6"
+                className="ls-o3"
+              />
+            ) : null}
+          </g>
+        );
+      })}
+      <circle r="2" className="ls-o1" />
+    </g>
   );
 }
 
@@ -74,18 +100,22 @@ const MaiBlossom = () => (
   </>
 );
 
-const PineBranch = () => (
+// A pine tree with a star and baubles, and a bell beside it.
+const ChristmasOrnaments = () => (
   <>
-    <path d="M8 56L56 8" className="ls-ol1" />
-    {[0, 1, 2, 3, 4].map((step) => (
-      <g key={step}>
-        <Leaf x={14 + step * 9} y={50 - step * 9} angle={100} tone={step % 2 ? 'ls-o2' : 'ls-o1'} />
-        <Leaf x={14 + step * 9} y={50 - step * 9} angle={-10} tone={step % 2 ? 'ls-o1' : 'ls-o2'} />
-      </g>
-    ))}
-    <circle cx="24" cy="46" r="3.2" className="ls-o3" />
-    <circle cx="40" cy="30" r="3.2" className="ls-o3" />
-    <circle cx="50" cy="20" r="3.2" className="ls-o3" />
+    <polygon points="30,10 20,24 40,24" className="ls-o1" />
+    <polygon points="30,18 15,38 45,38" className="ls-o1" />
+    <polygon points="30,30 11,52 49,52" className="ls-o1" />
+    <rect x="26" y="52" width="8" height="7" rx="1" className="ls-o2" />
+    <polygon points={starPoints(30, 7, 6.5, 2.7)} className="ls-o2" />
+    <circle cx="26" cy="36" r="3.2" className="ls-o3" />
+    <circle cx="35" cy="28" r="2.8" className="ls-o3" />
+    <circle cx="22" cy="47" r="3.2" className="ls-o3" />
+    <circle cx="38" cy="45" r="3.2" className="ls-o2" />
+    <path d="M50 47C50 39 52 34 56 34C60 34 62 39 62 47Z" className="ls-o2" />
+    <rect x="48" y="47" width="16" height="3.4" rx="1.7" className="ls-o2" />
+    <circle cx="56" cy="54" r="2.6" className="ls-o3" />
+    <circle cx="56" cy="31.5" r="2" className="ls-o3" />
   </>
 );
 
@@ -124,51 +154,48 @@ const PinkLotus = () => (
   </>
 );
 
-const Lantern = () => (
+// A five-point star lantern (đèn ông sao) with a tassel, and a crescent moon.
+const StarLanternMoon = () => (
   <>
-    <path d="M32 4V12" className="ls-ol3" />
-    <rect x="22" y="12" width="20" height="5" rx="2" className="ls-o3" />
-    <rect x="14" y="17" width="36" height="28" rx="14" className="ls-o1" />
-    <ellipse cx="32" cy="31" rx="9" ry="14" className="ls-ol3 ls-thin" />
-    <path d="M32 17V45" className="ls-ol3 ls-thin" />
-    <rect x="22" y="45" width="20" height="5" rx="2" className="ls-o3" />
-    <path d="M32 50V58" className="ls-ol2" />
-    <circle cx="32" cy="59" r="2.5" className="ls-o2" />
+    <polygon points={starPoints(22, 34, 20, 8.6)} className="ls-o1" />
+    <polygon points={starPoints(22, 34, 10, 4.4)} className="ls-o2" />
+    <path d="M22 46V57" className="ls-ol2" />
+    <circle cx="22" cy="59" r="2.4" className="ls-o2" />
+    <path d="M60 2A13 13 0 1 0 60 28A30 30 0 0 1 60 2Z" className="ls-o3" />
   </>
 );
 
-const starPoints = Array.from({ length: 10 }, (_, index) => {
-  const angle = (Math.PI * index) / 5 - Math.PI / 2;
-  const radius = index % 2 === 0 ? 22 : 9;
-  return `${n(32 + radius * Math.cos(angle))},${n(32 + radius * Math.sin(angle))}`;
-}).join(' ');
-
-const LineStar = () => (
+// 30/4 - 1/5: a solid five-point star and static firework bursts.
+const StarFireworks = () => (
   <>
-    <polygon points={starPoints} className="ls-ol1" />
-    <circle cx="32" cy="32" r="28" className="ls-ol2 ls-thin" />
-    <circle cx="32" cy="32" r="3" className="ls-ol3 ls-thin" />
+    <Burst x={13} y={13} reach={8} />
+    <Burst x={53} y={11} reach={7} />
+    <Burst x={52} y={52} reach={8} />
+    <polygon points={starPoints(30, 36, 22, 9)} className="ls-o1" />
   </>
 );
 
-const Lotus = () => (
+// 2/9: a solid five-point star over a lotus outline, with firework bursts.
+const StarLotus = () => (
   <>
-    <path d="M32 10C24 22 24 36 32 46C40 36 40 22 32 10Z" className="ls-ol1" />
-    <path d="M32 46C18 44 10 32 10 24C20 26 28 34 32 46Z" className="ls-ol1" />
-    <path d="M32 46C46 44 54 32 54 24C44 26 36 34 32 46Z" className="ls-ol1" />
-    <path d="M12 54Q22 48 32 54T52 54" className="ls-ol2" />
+    <Burst x={12} y={12} reach={8} />
+    <Burst x={54} y={12} reach={8} />
+    <polygon points={starPoints(32, 26, 18, 7.4)} className="ls-o1" />
+    <path d="M32 58C25 54 25 48 32 43C39 48 39 54 32 58Z" className="ls-ol2 ls-mid" />
+    <path d="M32 58C22 58 16 52 15 46C23 46 29 51 32 58Z" className="ls-ol2 ls-mid" />
+    <path d="M32 58C42 58 48 52 49 46C41 46 35 51 32 58Z" className="ls-ol2 ls-mid" />
   </>
 );
 
 const MOTIFS: Record<SeasonOrnamentId, () => ReactElement> = {
   'mai-blossom': MaiBlossom,
-  'pine-branch': PineBranch,
+  'christmas-ornaments': ChristmasOrnaments,
   hearts: Hearts,
   orchid: Orchid,
   'pink-lotus': PinkLotus,
-  lantern: Lantern,
-  'line-star': LineStar,
-  lotus: Lotus,
+  'star-lantern-moon': StarLanternMoon,
+  'star-fireworks': StarFireworks,
+  'star-lotus': StarLotus,
 };
 
 /** A corner motif, or a row of up to three of them (`count`). The box is fixed, so nothing shifts. */
