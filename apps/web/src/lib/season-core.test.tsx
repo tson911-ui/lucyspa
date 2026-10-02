@@ -173,13 +173,13 @@ test('the per-device hide is a one-year Lax cookie that the server can read', ()
 test('the customer band: only when the schedule is for customers; particles only when asked and the preset has them', () => {
   assert.equal(seasonBandSpec(null), null);
   assert.equal(seasonBandSpec(season({ customer: false })), null);
-  // Valentine has no site-wide art yet, so it keeps the S5 band; Tet and Christmas draw the S6 decoration instead.
-  const valentine = seasonBandSpec(season({ presetKey: 'valentine' }));
-  assert.equal(valentine?.ornamentId, getSeasonPreset('valentine').ornament.id);
-  assert.equal(valentine?.greeting, 'Chúc mừng năm mới');
-  assert.equal(valentine?.particle, getSeasonPreset('valentine').ornament.particle);
+  // Mid-Autumn has no site-wide art yet (S6e), so it keeps the S5 band; Tet and Christmas draw the S6 decoration instead.
+  const autumn = seasonBandSpec(season({ presetKey: 'mid-autumn' }));
+  assert.equal(autumn?.ornamentId, getSeasonPreset('mid-autumn').ornament.id);
+  assert.equal(autumn?.greeting, 'Chúc mừng năm mới');
+  assert.equal(autumn?.particle, getSeasonPreset('mid-autumn').ornament.particle);
   assert.equal(
-    seasonBandSpec(season({ presetKey: 'valentine', particles: false }))?.particle,
+    seasonBandSpec(season({ presetKey: 'mid-autumn', particles: false }))?.particle,
     'none',
   );
   assert.equal(seasonBandSpec(season({ presetKey: 'retired' })), null);
@@ -196,7 +196,7 @@ test('the band renders on the server with the greeting, hidden ornaments, and th
       globalThis.fetch = original;
     };
   };
-  let restore = live({ presetKey: 'valentine', greeting: 'Giáng sinh an lành' });
+  let restore = live({ presetKey: 'mid-autumn', greeting: 'Giáng sinh an lành' });
   try {
     const html = renderToStaticMarkup(await SeasonBand({ locale: 'vi' }));
     assert.match(html, /<section class="ls-season-band" aria-label="Lời chúc theo mùa lễ">/);
@@ -206,7 +206,7 @@ test('the band renders on the server with the greeting, hidden ornaments, and th
     assert.ok(html.includes(seasonText('vi').fxOff), 'the per-device effects switch');
     assert.doesNotMatch(html, /ls-fx-particle/, 'particles never render on the server');
     restore();
-    restore = live({ presetKey: 'valentine', particles: false });
+    restore = live({ presetKey: 'mid-autumn', particles: false });
     const still = renderToStaticMarkup(await SeasonBand({ locale: 'en' }));
     assert.ok(still.includes('Chúc mừng năm mới'));
     assert.ok(!still.includes(seasonText('en').fxOff), 'nothing to switch off');

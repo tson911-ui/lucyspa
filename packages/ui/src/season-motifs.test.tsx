@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { SEASON_MOTIFS, SEASON_PRESETS } from '@lucy-spa/contracts';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
+  SEASON_ART_KITS,
   SeasonDivider,
   SeasonFooterScene,
   SeasonHeaderRow,
@@ -63,6 +64,29 @@ test('Celebration draws balloons, confetti, ribbons and a cake', () => {
   const drawn = motifsOf('celebration', null);
   for (const motif of SEASON_MOTIFS['celebration']!) {
     assert.ok(drawn.has(motif), `celebration lacks ${motif}`);
+  }
+});
+
+test('every shipped kit draws every motif of its list: Valentine, 8/3 and 20/10 too', () => {
+  for (const kit of SEASON_ART_KITS) {
+    const drawn = motifsOf(kit, kit === 'tet' ? 'mui' : null);
+    for (const motif of SEASON_MOTIFS[kit]!) assert.ok(drawn.has(motif), `${kit} lacks ${motif}`);
+  }
+});
+
+test('the header rails of the S6d kits hang nine pieces, keep a subset on tablets and fewer on phones', () => {
+  const railKits = SEASON_ART_KITS.filter(
+    (kit) => !['tet', 'christmas', 'celebration'].includes(kit),
+  );
+  assert.equal(railKits.length, 3);
+  for (const kit of railKits) {
+    const html = renderToStaticMarkup(<SeasonHeaderRow kit={kit} />);
+    const cells = [...html.matchAll(/class="ls-art-rail-cell([^"]*)"/g)].map((match) => match[1]!);
+    assert.equal(cells.length, 9, `${kit}: nine cells`);
+    const phone = cells.filter((cell) => !cell.includes('ls-art-hide')).length;
+    const tablet = cells.filter((cell) => !cell.includes('ls-art-hide-medium')).length;
+    assert.ok(phone >= 3 && phone <= 4, `${kit}: ${phone} pieces on a phone`);
+    assert.ok(tablet >= 5 && tablet <= 7, `${kit}: ${tablet} pieces on a tablet`);
   }
 });
 

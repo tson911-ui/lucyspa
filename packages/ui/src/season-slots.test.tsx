@@ -8,6 +8,7 @@ import {
   SeasonLogoAccent,
   SeasonStrip,
   SeasonTintImage,
+  SEASON_ART_KITS,
   safeImageUrl,
 } from './season-scene';
 import { previewScale, SEASON_PREVIEW_WIDTH } from './season-live-preview';
@@ -16,7 +17,7 @@ import { previewScale, SEASON_PREVIEW_WIDTH } from './season-live-preview';
 // room, a media-library image replaces a slot's drawing, and a bad address never becomes a request.
 const id = '2f1b2d8e-5c3a-4b7a-9d2e-1a2b3c4d5e6f';
 const url = (variant: string) => `/api/v1/public/media/${id}/${variant}`;
-const kits = ['tet', 'christmas', 'celebration'] as const;
+const kits = SEASON_ART_KITS;
 
 test('safeImageUrl accepts only a same-origin path of plain URL characters', () => {
   assert.equal(safeImageUrl(url('lg')), url('lg'));
@@ -191,7 +192,7 @@ test('the tint image is a decorative background; a bad address draws nothing', (
   assert.equal(renderToStaticMarkup(<SeasonTintImage />), '');
 });
 
-test('every drawing of the three kits stays decorative: aria-hidden, nothing focusable, no link or script', () => {
+test('every drawing of every kit stays decorative: aria-hidden, nothing focusable, no link or script', () => {
   for (const kit of kits) {
     const html = renderToStaticMarkup(
       <>

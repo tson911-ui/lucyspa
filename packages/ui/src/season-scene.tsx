@@ -40,6 +40,7 @@ import {
   TetSprig,
   ZODIAC_ART,
 } from './season-art-tet';
+import { KIT_ART } from './season-kits';
 import { cx } from './cx';
 
 // The decoration slots of the customer site (docs/UXUI_REDESIGN_S6_PLAN.md section 3), server-renderable pieces the
@@ -49,7 +50,14 @@ import { cx } from './cx';
 // Each slot can be switched off per event and can show one media-library image instead of its drawn art (S6b).
 
 /** Kits that have site-wide art (a preset gains one when its own Step ships). */
-export const SEASON_ART_KITS = ['tet', 'christmas', 'celebration'] as const;
+export const SEASON_ART_KITS = [
+  'tet',
+  'christmas',
+  'valentine',
+  'womens-day',
+  'vn-womens-day',
+  'celebration',
+] as const;
 export type SeasonArtKit = (typeof SEASON_ART_KITS)[number];
 
 export function isSeasonArtKit(key: string | null | undefined): key is SeasonArtKit {
@@ -93,7 +101,8 @@ const PHONE_LANTERNS: readonly number[] = [2, 6];
 
 function CornerPair({ kit }: { kit: SeasonArtKit }) {
   const Corner =
-    kit === 'tet' ? TetMaiBranch : kit === 'christmas' ? ChristmasGarland : CelebrationCorner;
+    KIT_ART[kit]?.Corner ??
+    (kit === 'tet' ? TetMaiBranch : kit === 'christmas' ? ChristmasGarland : CelebrationCorner);
   return (
     <>
       <Corner className="ls-art-corner ls-art-corner-start" />
@@ -103,6 +112,8 @@ function CornerPair({ kit }: { kit: SeasonArtKit }) {
 }
 
 function HeaderRail({ kit }: { kit: SeasonArtKit }) {
+  const { Rail } = KIT_ART[kit] ?? {};
+  if (Rail) return <Rail />;
   if (kit === 'tet') {
     return (
       <>
@@ -220,6 +231,7 @@ export function SeasonLogoAccent({
 }) {
   if (!enabled) return children;
   const url = safeImageUrl(image);
+  const { Logo } = KIT_ART[kit] ?? {};
   return (
     <span className="ls-art-logo" data-kit={kit} data-image={url ? 'true' : undefined}>
       {children}
@@ -227,6 +239,8 @@ export function SeasonLogoAccent({
         {url ? (
           // eslint-disable-next-line @next/next/no-img-element -- decoration from the API, sized by CSS
           <img className="ls-art-logo-image" src={url} alt="" loading="lazy" decoding="async" />
+        ) : Logo ? (
+          <Logo />
         ) : kit === 'tet' ? (
           <TetSprig />
         ) : kit === 'christmas' ? (
@@ -253,6 +267,7 @@ export function SeasonDivider({
   image?: string | undefined;
 }) {
   const url = plain ? undefined : safeImageUrl(image);
+  const { Divider } = KIT_ART[kit] ?? {};
   return (
     <div
       className="ls-art-divider"
@@ -267,7 +282,9 @@ export function SeasonDivider({
       ) : (
         <>
           <span className="ls-art-divider-line" />
-          {kit === 'tet' ? (
+          {Divider ? (
+            <Divider className="ls-art-divider-art" />
+          ) : kit === 'tet' ? (
             <TetDividerArt className="ls-art-divider-art" />
           ) : kit === 'christmas' ? (
             <ChristmasDividerArt className="ls-art-divider-art" />
@@ -313,6 +330,8 @@ function FooterArt({
   kit: SeasonArtKit;
   Animal: (typeof ZODIAC_ART)[string] | null;
 }) {
+  const { Scene } = KIT_ART[kit] ?? {};
+  if (Scene) return <Scene className="ls-art-scene" />;
   if (kit === 'tet') {
     return (
       <>

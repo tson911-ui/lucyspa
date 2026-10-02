@@ -12,6 +12,11 @@ export const art = (key: string): string =>
 /** Two decimals, no trailing zeros: stable SVG numbers on the server and the client. */
 export const n = (value: number): string => value.toFixed(2).replace(/\.?0+$/, '');
 
+/** The one prop of a placed drawing: the class that positions it (season-art.css). */
+export interface ArtProps {
+  className?: string | undefined;
+}
+
 /** A decorative SVG: hidden from assistive technology, never focusable, never takes the pointer. */
 export function ArtSvg({
   viewBox,

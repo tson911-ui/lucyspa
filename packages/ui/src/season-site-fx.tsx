@@ -13,6 +13,7 @@ import { useSeasonFx } from './season-particles';
 import { CelebrationConfettiPiece } from './season-art-celebration';
 import { ChristmasFlake } from './season-art-christmas';
 import { TetPetal } from './season-art-tet';
+import { KIT_ART } from './season-kits';
 import { safeImageUrl, type SeasonArtKit } from './season-scene';
 import { PHONE_QUERY, useMediaQuery } from './use-media-query';
 
@@ -109,6 +110,7 @@ export function SeasonSiteParticles({
   sprite?: string | undefined;
 }) {
   const spriteUrl = safeImageUrl(sprite);
+  const { Particle, motion } = KIT_ART[kit] ?? {};
   const phone = useMediaQuery(PHONE_QUERY);
   const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY);
   const { enabled } = useSeasonFx();
@@ -195,6 +197,8 @@ export function SeasonSiteParticles({
     <div
       ref={layerRef}
       className="ls-fx-site"
+      data-kit={kit}
+      data-motion={motion}
       data-paused={paused ? 'true' : undefined}
       data-clear-top={clearHeaderRow && kit === 'christmas' ? 'true' : undefined}
       aria-hidden="true"
@@ -224,6 +228,8 @@ export function SeasonSiteParticles({
                   loading="lazy"
                   decoding="async"
                 />
+              ) : Particle ? (
+                <Particle index={spec.index} />
               ) : kit === 'tet' ? (
                 <TetPetal index={spec.index} />
               ) : kit === 'christmas' ? (

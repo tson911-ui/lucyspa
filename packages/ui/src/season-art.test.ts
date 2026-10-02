@@ -41,14 +41,18 @@ function isGoldHue(hex: string): boolean {
   return hue >= 35 && hue <= 70 && delta / max >= 0.35 && max >= 0.55;
 }
 
-test('Tet, Christmas and Celebration have site art; the registry and the scene agree on the kits', () => {
+const ALL_KITS = ['tet', 'christmas', 'valentine', 'womens-day', 'vn-womens-day', 'celebration'];
+
+test('the six shipped kits have site art; the registry and the scene agree on the kits', () => {
   assert.deepEqual(
     withArt.map((preset) => preset.key),
-    ['tet', 'christmas', 'celebration'],
+    ALL_KITS,
   );
-  assert.deepEqual([...SEASON_ART_KITS], ['tet', 'christmas', 'celebration']);
+  assert.deepEqual([...SEASON_ART_KITS], ALL_KITS);
   assert.equal(isSeasonArtKit('tet'), true);
-  assert.equal(isSeasonArtKit('valentine'), false);
+  assert.equal(isSeasonArtKit('valentine'), true);
+  assert.equal(isSeasonArtKit('mid-autumn'), false);
+  assert.equal(isSeasonArtKit('not-a-kit'), false);
   assert.equal(isSeasonArtKit(null), false);
 });
 
@@ -70,6 +74,9 @@ test('every color the art reads is defined by its kit, and none is left unused',
     tet: ['./season-art-tet.tsx', './season-scene.tsx'],
     christmas: ['./season-art-christmas.tsx', './season-scene.tsx'],
     celebration: ['./season-art-celebration.tsx', './season-scene.tsx'],
+    valentine: ['./season-art-valentine.tsx', './season-art-shapes.tsx', './season-scene.tsx'],
+    'womens-day': ['./season-art-women.tsx', './season-art-shapes.tsx', './season-scene.tsx'],
+    'vn-womens-day': ['./season-art-women.tsx', './season-art-shapes.tsx', './season-scene.tsx'],
   };
   for (const preset of withArt) {
     const text = sources[preset.key]!.map(read).join('\n');
@@ -96,11 +103,14 @@ test('every color the art reads is defined by its kit, and none is left unused',
   }
 });
 
-test('yellow art exists only in the Q-S1 presets: Tet has it, Christmas and Celebration have none', () => {
-  const tet = withArt.find((preset) => preset.key === 'tet')!;
-  assert.ok(Object.values(tet.art.light).some(isGoldHue), 'tet light keeps its yellow');
-  assert.ok(Object.values(tet.art.dark).some(isGoldHue), 'tet dark keeps its yellow');
-  for (const key of ['christmas', 'celebration']) {
+test('yellow art exists only in the Q-S1 presets (so far Tet); every other shipped kit has none', () => {
+  const yellowKits = ['tet'];
+  for (const key of yellowKits) {
+    const preset = withArt.find((candidate) => candidate.key === key)!;
+    assert.ok(Object.values(preset.art.light).some(isGoldHue), `${key} light keeps its yellow`);
+    assert.ok(Object.values(preset.art.dark).some(isGoldHue), `${key} dark keeps its yellow`);
+  }
+  for (const key of ALL_KITS.filter((kit) => !yellowKits.includes(kit))) {
     const preset = withArt.find((candidate) => candidate.key === key)!;
     for (const theme of ['light', 'dark'] as const) {
       assert.deepEqual(
@@ -169,6 +179,18 @@ test('the registry footer lines fit a plaque (short) in both languages', () => {
     for (const locale of ['vi', 'en'] as const) {
       assert.ok(preset.art.footer.line[locale].length <= 40, `${preset.key} ${locale} line`);
       if (preset.art.footer.sub) assert.ok(preset.art.footer.sub[locale].length <= 60);
+    }
+  }
+});
+
+test('the plaque line avoids letters the Windows display font (Georgia italic) cannot stack: no circumflex with a tone mark', () => {
+  // a, e or o with a circumflex (U+0302) and then an acute or grave tone (U+0301, U+0300), in decomposed form, draw
+  // their accent detached in Georgia on Windows; the sub line uses the body font and is free of this rule.
+  const stacked = /[aeoAEO]̂[̀́]/;
+  for (const preset of withArt) {
+    for (const locale of ['vi', 'en'] as const) {
+      const line = preset.art.footer.line[locale].normalize('NFD');
+      assert.doesNotMatch(line, stacked, `${preset.key} ${locale}: ${line}`);
     }
   }
 });

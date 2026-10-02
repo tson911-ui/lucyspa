@@ -321,3 +321,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 - Migration 20261022000000 (9 season columns + website_season_slot_media); API: per-slot switches, density, greeting switches, image per slot (media usage kind SEASON, public serving while live); public season payload gained slots/density/media.
 - Admin form: Event name first, base kit, computed Tet year name, Decoration section; full-page preview route /:locale/season-preview (session-guarded 404, SAMEORIGIN, postMessage draft). Celebration kit (balloons, confetti, ribbons, cake).
 - Report: docs/UXUI_REDESIGN_S6B_DECORATION.md. Next: S6d (Valentine, 8/3, 20/10 kits), S6e (Mid-Autumn, Vu Lan, 30/4-1/5, 2/9).
+
+### UX/UI Step S6d (Valentine, 8/3, 20/10 kits + shared kit engine) - implemented 2026-10-03 on d3ac883
+
+- `season-kits.tsx` table (rail, corner, logo, divider, one-SVG footer scene cropped to its centre, particle glyph) shared by all new kits; Valentine (roses, chocolates, love letters, cupid), 8/3 and 20/10 (bouquets, ao dai, non la, gift boxes; orchid/tulip and lotus variants). Plaque lines avoid circumflex+tone (Georgia on Windows).
+- Web UI only, no migration. Report: docs/UXUI_REDESIGN_S6D_KITS.md. Next: S6e (Mid-Autumn, 30/4-1/5, 2/9, Vu Lan).

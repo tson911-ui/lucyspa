@@ -1097,6 +1097,104 @@
   }
 }
 
+/* ---- S6d/S6e kits (Valentine, 8/3, 20/10, Mid-Autumn, 30/4-1/5, 2/9, Vu Lan) ------------------------- */
+/* The header rail: a grid of equal columns whose cells hold one hanging piece each; cells that a smaller screen drops
+   carry .ls-art-hide-narrow or .ls-art-hide-medium, so the remaining ones spread evenly. */
+.ls-art-rail {
+  /* The share of the row each hanging piece takes; the component sets its own value inline. */
+  --ls-art-rail-h: 0.8;
+  position: absolute;
+  top: 0;
+  right: var(--ls-art-inset);
+  left: var(--ls-art-inset);
+  height: 100%;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.ls-art-rail[data-align='bottom'] {
+  align-items: end;
+}
+
+.ls-art-rail-cell .ls-art {
+  width: auto;
+  height: calc(var(--ls-art-header-h) * var(--ls-art-rail-h));
+  margin-inline: auto;
+}
+
+/* The footer scene is one picture the width of the row, cropped to its centre on narrow screens. */
+.ls-art-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ls-art-logo:is(
+    [data-kit='valentine'],
+    [data-kit='womens-day'],
+    [data-kit='vn-womens-day'],
+    [data-kit='mid-autumn'],
+    [data-kit='reunification-labour'],
+    [data-kit='national-day'],
+    [data-kit='vu-lan']
+  )
+  .ls-art-logo-art {
+  top: calc(var(--ls-art-u) * -6);
+  left: 100%;
+  width: calc(var(--ls-art-u) * 12);
+}
+
+/* Particles of these kits do not spin (a heart or a lantern turning in the air looks wrong); lanterns rise. */
+.ls-fx-site:is([data-kit='valentine'], [data-kit='womens-day'], [data-kit='vn-womens-day'])
+  .ls-fx-site-glyph {
+  animation: none;
+}
+
+@media (max-width: 760px) {
+  .ls-art-logo:is(
+      [data-kit='valentine'],
+      [data-kit='womens-day'],
+      [data-kit='vn-womens-day'],
+      [data-kit='mid-autumn'],
+      [data-kit='reunification-labour'],
+      [data-kit='national-day'],
+      [data-kit='vu-lan']
+    )
+    .ls-art-logo-art {
+    top: calc(var(--ls-art-u) * -4);
+    width: calc(var(--ls-art-u) * 8);
+  }
+
+  .ls-art-footer:is(
+      [data-kit='valentine'],
+      [data-kit='womens-day'],
+      [data-kit='vn-womens-day'],
+      [data-kit='mid-autumn'],
+      [data-kit='reunification-labour'],
+      [data-kit='national-day'],
+      [data-kit='vu-lan']
+    )
+    .ls-art-footer-text {
+    padding-inline: calc(var(--ls-art-u) * 16);
+  }
+
+  .ls-art-footer:is(
+      [data-kit='valentine'],
+      [data-kit='womens-day'],
+      [data-kit='vn-womens-day'],
+      [data-kit='mid-autumn'],
+      [data-kit='reunification-labour'],
+      [data-kit='national-day'],
+      [data-kit='vu-lan']
+    )
+    .ls-art-plaque-line {
+    font-size: var(--ls-text-md);
+  }
+}
+
 /* The component also renders nothing under reduced motion; this keeps a stray element still. */
 @media (prefers-reduced-motion: reduce) {
   .ls-fx-site-p,

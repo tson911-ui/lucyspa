@@ -27,7 +27,7 @@ test('only a customer season whose preset has site art gets the decoration', () 
   assert.equal(siteDecorSpec(null, 'vi'), null);
   assert.equal(siteDecorSpec(season({ customer: false }), 'vi'), null);
   assert.equal(
-    siteDecorSpec(season({ presetKey: 'valentine' }), 'vi'),
+    siteDecorSpec(season({ presetKey: 'mid-autumn' }), 'vi'),
     null,
     'no art yet: the band',
   );
