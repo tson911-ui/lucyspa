@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { Be_Vietnam_Pro } from 'next/font/google';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { ThemeInitScript } from '@lucy-spa/ui';
 import '@lucy-spa/ui/tokens.css';
-// Seasonal presets (docs/UXUI_REDESIGN_DESIGN.md 20): inert until an element carries data-season (wired in S5).
+// Seasonal presets (docs/UXUI_REDESIGN_DESIGN.md 20): inert until an element carries data-season (set below, S5).
 import '@lucy-spa/ui/season.css';
 import '@lucy-spa/ui/season-decor.css';
 import '@lucy-spa/ui/season-preview.css';
@@ -12,6 +13,8 @@ import '@lucy-spa/ui/components.css';
 import '@lucy-spa/ui/shell.css';
 import { getDictionary } from '../../i18n/dictionaries';
 import { isLocale, locales } from '../../i18n/locales';
+import { ADMIN_HIDE_COOKIE, seasonRootAttributes } from '../../lib/season-core';
+import { fetchActiveSeason } from '../../lib/season-server';
 import '../globals.css';
 
 // Designed for Vietnamese (stacked diacritics); self-hosted by next/font at build time.
@@ -50,10 +53,18 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   if (!isLocale(locale)) notFound();
 
   const dictionary = getDictionary(locale);
+  // The active season (cached 60 s, fail closed) and this device's choice to hide the admin touch.
+  const season = await fetchActiveSeason(locale);
+  const adminHidden = (await cookies()).get(ADMIN_HIDE_COOKIE)?.value === 'off';
 
   return (
     // The pre-paint script may set data-theme from the ls-theme cookie before hydration.
-    <html lang={locale} className={beVietnamPro.variable} suppressHydrationWarning>
+    <html
+      lang={locale}
+      className={beVietnamPro.variable}
+      suppressHydrationWarning
+      {...seasonRootAttributes(season, adminHidden)}
+    >
       <head>
         <ThemeInitScript />
       </head>

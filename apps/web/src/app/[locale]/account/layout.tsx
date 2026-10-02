@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { SeasonBand } from '../../../components/season/season-band';
 import { CustomerProvider } from '../../../components/customer/session';
 import { getCustomerDictionary } from '../../../i18n/customer';
 import { isLocale } from '../../../i18n/locales';
@@ -26,6 +27,7 @@ export default async function AccountLayout({ children, params }: AccountLayoutP
   if (!isLocale(locale)) notFound();
   return (
     <div className="wf-app cu-app">
+      <SeasonBand locale={locale} />
       <CustomerProvider locale={locale}>{children}</CustomerProvider>
     </div>
   );

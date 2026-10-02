@@ -305,3 +305,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Website tab "Mùa lễ" (?tab=season): DataTable + schedule strip + status/year filters; form pages /website/seasons/new and /:id (theme picker, inclusive last day in Vietnam time, suggested days for solar holidays, greeting VI/EN, switches, preview, holiday content). Kit: SeasonPreview (desktop/phone x light/dark via data-preview-theme scope in tokens.css + forced rules in season.css), SeasonPresetPicker, season-preview.css.
 - Popup form and slide drawer got a Follow-a-season select (dates disabled, seasonId always sent). Web only, no API change. Report: docs/UXUI_REDESIGN_S4_SEASONS_TAB.md. Next: S5 (wiring).
+
+### UX/UI Step S5 (season wiring) - implemented 2026-10-02 on 5375b0a
+
+- Root layout reads the public season (server, 60 s cache, 1.5 s timeout, fail closed) and sets html data-season and data-season-admin (cookie ls-season-admin for the per-device hide). Customer public shell and member area get SeasonBand (frame, greeting, particles, Turn off effects); dashboard gets the admin greeting chip with Hide/Show. Web only, no API change; mobile reads the same endpoint plus the shared registry and bundles its own ornaments.
+- Report: docs/UXUI_REDESIGN_S5_WIRING.md. S1-S5 complete; deploy runbook: docs/DEPLOY_S1_S5_RUNBOOK.md. Next: Step 14 final gate, Part 2.

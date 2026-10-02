@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BrandWordmark } from '@lucy-spa/ui';
+import { SeasonBand } from '../../../components/season/season-band';
 import { getDictionary } from '../../../i18n/dictionaries';
 import { isLocale } from '../../../i18n/locales';
 
@@ -41,6 +42,7 @@ export default async function PublicLayout({ children, params }: PublicLayoutPro
           </Link>
         </nav>
       </header>
+      <SeasonBand locale={locale} />
       {children}
       <footer className="site-footer">
         <span>Lucy Spa</span>

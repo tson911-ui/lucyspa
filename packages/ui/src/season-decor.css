@@ -251,6 +251,26 @@
   }
 }
 
+/* ---- Wiring (S5): the customer band under the site header, and the admin touch ---------------------- */
+.ls-season-band {
+  display: grid;
+  gap: var(--ls-space-2);
+  margin-block: var(--ls-space-4);
+}
+
+.ls-season-band-tools {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* The admin chip and its hide button sit on one line and never push the page header around. */
+.ls-season-admin {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-3);
+}
+
 /* The component also renders nothing under reduced motion; this keeps a stray element still. */
 @media (prefers-reduced-motion: reduce) {
   .ls-fx-particle,

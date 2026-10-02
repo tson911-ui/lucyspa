@@ -1,6 +1,6 @@
 # UX/UI Step S5 plan: wiring the active season into the app
 
-Status: PLAN, written under the Owner's standing instruction (2026-10-02: continue S3 -> S4 -> S5 without stopping for plan approval; stop only for an Owner decision or red CI). Base: S4 commit. Contract: `UXUI_REDESIGN_DESIGN.md` 20.2, 20.5, 20.9, 21. Web only; no API, schema or migration change (the combined-holiday visibility of public popups and slides already shipped in S3).
+Status: IMPLEMENTED (report `UXUI_REDESIGN_S5_WIRING.md`); plan written under the Owner's standing instruction (2026-10-02: continue S3 -> S4 -> S5 without stopping for plan approval; stop only for an Owner decision or red CI). Base: S4 commit. Contract: `UXUI_REDESIGN_DESIGN.md` 20.2, 20.5, 20.9, 21. Web only; no API, schema or migration change (the combined-holiday visibility of public popups and slides already shipped in S3).
 
 ## Scope
 

@@ -58,6 +58,8 @@
         el.tagName.toUpperCase(),
       ) &&
       !(el instanceof SVGElement && el.tagName.toLowerCase() !== 'svg') &&
+      // The seasonal particle layer is decoration (aria-hidden, no pointer events) clipped by its band on purpose.
+      !el.closest('.ls-fx') &&
       vis(el),
   );
   const findings = [];

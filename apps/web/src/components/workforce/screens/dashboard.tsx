@@ -20,6 +20,7 @@ import { useBranchMap, DashboardDataProvider } from '../dashboard/data';
 import { WidgetHost } from '../dashboard/widget-host';
 import { RecoveryEmailSection } from '../recovery-email';
 import { useAccount, useWorkforce } from '../session';
+import { AdminSeasonChip } from '../../season/admin-season-chip';
 import { Notice, PageHeader, Select } from '../ui';
 
 /**
@@ -45,7 +46,7 @@ function storage(): Storage | null {
 }
 
 function Dashboard() {
-  const { t } = useWorkforce();
+  const { t, locale } = useWorkforce();
   const { account } = useAccount();
   const employee = account.kind === 'EMPLOYEE';
   const branches = useBranchMap();
@@ -115,6 +116,7 @@ function Dashboard() {
           </Button>
         </div>
       </PageHeader>
+      <AdminSeasonChip locale={locale} />
       {!employee ? <Notice tone="info">{copy.ownerNote}</Notice> : null}
       {/* Account recovery: verify the recovery email while still signed in. */}
       <RecoveryEmailSection />
