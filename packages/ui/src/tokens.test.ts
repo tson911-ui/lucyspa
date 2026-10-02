@@ -174,15 +174,17 @@ test('hover: light is the brand tint, dark keeps the neutral hover it always had
   assert.equal(dark['--ls-hover-ghost-border'], 'transparent');
 });
 
-test('sidebar items: light is solid brand red with white text; dark keeps its neutral hover and soft current page', () => {
+test('sidebar items: solid brand fill with its on-brand text in both themes (light red + white, dark primary fill + on-primary)', () => {
   assert.equal(light['--ls-nav-hover-bg'], '#782b37', 'the Owner brand red');
   assert.equal(light['--ls-nav-hover-text'], '#ffffff');
   assert.equal(light['--ls-nav-active-bg'], light['--ls-nav-hover-bg']);
   assert.equal(light['--ls-nav-active-text'], '#ffffff');
-  assert.equal(dark['--ls-nav-hover-bg'], dark['--ls-hover-bg']);
-  assert.equal(dark['--ls-nav-hover-text'], dark['--ls-hover-text']);
-  assert.equal(dark['--ls-nav-active-bg'], dark['--ls-brand-soft']);
-  assert.equal(dark['--ls-nav-active-text'], dark['--ls-brand-on-soft']);
+  assert.equal(dark['--ls-nav-hover-bg'], dark['--ls-brand-fill'], 'the primary button fill');
+  assert.equal(dark['--ls-nav-hover-text'], dark['--ls-on-brand'], 'the primary button text');
+  assert.equal(dark['--ls-nav-active-bg'], dark['--ls-nav-hover-bg']);
+  assert.equal(dark['--ls-nav-active-text'], dark['--ls-nav-hover-text']);
+  assert.equal(dark['--ls-nav-active-bar'], 'transparent', 'the fill carries it');
+  assert.deepEqual(darkSystem, darkAttribute);
   for (const [name, theme] of Object.entries(themes)) {
     for (const state of ['hover', 'active']) {
       const value = ratio(color(theme, `nav-${state}-text`), color(theme, `nav-${state}-bg`));

@@ -270,9 +270,10 @@ every surface, and the hover border 3:1, in both themes (tested).
 
 **Sidebar items (Owner, workforce shell feedback 2026-10-02).** Their own tokens `--ls-nav-hover-bg/-text` and
 `--ls-nav-active-bg/-text/-bar`. Light: hover and the current page are **solid brand red `#782b37` with white text and icon**
-(current page also semibold; no edge bar, the fill carries it). Dark is unchanged (neutral hover; soft brand fill, brand text and
-edge bar for the current page). The keyboard focus ring is drawn **outside** the item (2 px offset), because inside it would
-vanish on the red fill. Group headers use the same fill on hover.
+(current page also semibold; no edge bar, the fill carries it). Dark (Owner, 2026-10-02): hover and the current page are the
+**solid dark primary fill `--ls-brand-fill` with `--ls-on-brand` text and icon**, the same as the primary button (current page
+also semibold, no edge bar). The keyboard focus ring is drawn **outside** the item (2 px offset), because inside it would
+vanish on the fill. Group headers use the same fill on hover.
 
 ### 6.4 Brand red versus error red (must stay distinct)
 

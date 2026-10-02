@@ -237,7 +237,7 @@
   flex: none;
 }
 
-/* Hover: solid brand red with white text in light mode (Owner rule); dark keeps its neutral hover. */
+/* Hover: the solid brand fill with its on-brand text in both themes (Owner rule); dark uses the primary button fill. */
 .ls-nav-link:hover,
 .ls-sidebar-toggle:hover {
   color: var(--ls-nav-hover-text);
@@ -251,7 +251,7 @@
   outline-offset: 2px;
 }
 
-/* The current page is marked by fill and weight (plus an edge bar in dark), never by color alone. */
+/* The current page is marked by fill and weight, never by color alone. */
 .ls-nav-link[aria-current='page'] {
   color: var(--ls-nav-active-text);
   background: var(--ls-nav-active-bg);
@@ -381,8 +381,9 @@
   width: min(20rem, calc(100% - var(--ls-space-8)));
 }
 
+/* The 4 px inline padding leaves room for the focus ring (2 px offset + 2 px line) the scroll box would clip. */
 .ls-nav-drawer .ls-nav {
-  padding: 0;
+  padding: 0 var(--ls-space-1);
 }
 
 /* ---- Theme toggle ----------------------------------------------------------------------------- */
