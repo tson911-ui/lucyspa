@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { getSeasonPreset, SEASON_PRESETS, type PublicSeasonResponse } from '@lucy-spa/contracts';
+import {
+  ALL_SEASON_SLOTS_ON,
+  getSeasonPreset,
+  SEASON_PRESETS,
+  type PublicSeasonResponse,
+} from '@lucy-spa/contracts';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { SeasonBand } from '../components/season/season-band';
 import { seasonText } from '../i18n/season';
@@ -24,6 +29,19 @@ const body = (patch: Record<string, unknown> = {}): Record<string, unknown> => (
   particles: true,
   customer: true,
   admin: true,
+  slots: {
+    particles: true,
+    header: true,
+    logo: true,
+    corners: true,
+    dividers: true,
+    footer: true,
+    tint: true,
+  },
+  density: 'medium',
+  greetingStrip: true,
+  greetingFooter: true,
+  media: {},
   ...patch,
 });
 const season = (patch: Partial<PublicSeasonResponse> = {}): PublicSeasonResponse => ({
@@ -55,6 +73,40 @@ test('the public season answer is checked: a known preset, a short greeting, a r
     assert.equal(parsePublicSeason(value), null);
   }
   assert.equal(publicSeasonUrl('en'), '/api/v1/public/website/season?locale=en');
+});
+
+test('the S6b decoration is optional (an older API), and a present-but-odd value is no season', () => {
+  const { slots, density, greetingStrip, greetingFooter, media, ...old } = body() as Record<
+    string,
+    unknown
+  >;
+  void [slots, density, greetingStrip, greetingFooter, media];
+  const parsed = parsePublicSeason(old)!;
+  assert.deepEqual(parsed.slots, ALL_SEASON_SLOTS_ON, 'an older API means everything on');
+  assert.equal(parsed.density, 'medium');
+  assert.equal(parsed.greetingStrip && parsed.greetingFooter, true);
+  assert.deepEqual(parsed.media, {});
+  // The particles slot follows the answer's own `particles` field.
+  assert.equal(parsePublicSeason({ ...old, particles: false })!.slots.particles, false);
+  const id = '2f1b2d8e-5c3a-4b7a-9d2e-1a2b3c4d5e6f';
+  const url = `/api/v1/public/media/${id}/lg`;
+  assert.deepEqual(parsePublicSeason(body({ media: { header: url } }))!.media, { header: url });
+  for (const patch of [
+    { slots: 'all' },
+    { slots: { header: 'yes' } },
+    { density: 'huge' },
+    { greetingStrip: 'no' },
+    { greetingFooter: 1 },
+    { media: [] },
+    { media: { header: 'https://evil.example/x.png' } },
+    { media: { header: '//evil.example/x.png' } },
+    { media: { header: `/api/v1/public/media/${id}/original` } },
+    { media: { header: `/api/v1/website/media/${id}/lg` } },
+    { media: { nowhere: url } },
+    { media: { header: 5 } },
+  ]) {
+    assert.equal(parsePublicSeason(body(patch)), null, JSON.stringify(patch));
+  }
 });
 
 test('the server read fails closed: a 204, an error status, a bad body, a network failure or a timeout is no season', async () => {

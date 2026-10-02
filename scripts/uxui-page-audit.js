@@ -403,6 +403,9 @@
     if (el instanceof SVGElement || ['HTML', 'BODY'].includes(el.tagName)) continue;
     const s = getComputedStyle(el);
     if (el.scrollWidth > el.clientWidth + 1 && el.clientWidth > 0) {
+      // The season preview stage holds a frame laid out at its true width (1440 or 390) and scaled down to fit: the
+      // overflow is the design (S6b), the stage clips it and has the scaled size.
+      if (el.querySelector(':scope > .ls-season-live-frame')) continue;
       // Rule 7: a value clamped on purpose (ellipsis or line clamp) whose title repeats its whole text is the pattern, not a defect.
       const clamped =
         s.textOverflow === 'ellipsis' || (s.webkitLineClamp && s.webkitLineClamp !== 'none');

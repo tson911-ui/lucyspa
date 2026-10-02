@@ -73,14 +73,17 @@ test('season preview css: tokens only, no hex, no px/rem/em length, no motion', 
   assert.doesNotMatch(code, /#[0-9a-f]{3,8}\b/i);
   assert.doesNotMatch(code, /animation|transition|@keyframes/);
   assert.doesNotMatch(
-    // Allowed: the picker's minimum card width and the 2px outline of the selected / focused card.
-    code.replace(/min\(100%, \d+rem\)/g, '').replace(/outline(-offset)?: 2px/g, ''),
+    // Allowed: the picker's minimum card width, the 2px outline of the selected / focused card, the phone breakpoint.
+    code
+      .replace(/min\(100%, \d+rem\)/g, '')
+      .replace(/outline(-offset)?: 2px/g, '')
+      .replace(/@media \(max-width: \d+px\)/g, ''),
     /(^|[\s(,+\-*/])-?\d*\.?\d+(px|rem|em)\b/,
   );
   for (const name of new Set([...code.matchAll(/var\((--[\w-]+)/g)].map((match) => match[1]!))) {
     assert.match(
       name,
-      /^--ls-(season-|space-|text|radius-|bg-sunken$|brand$|brand-soft$|focus$|control-h$|leading-sm$)/,
+      /^--ls-(season-|space-|text|radius-|live-|bg-page$|bg-sunken$|brand$|brand-soft$|focus$|control-h$|leading-sm$)/,
       `${name} is not an allowed token`,
     );
   }

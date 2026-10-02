@@ -457,6 +457,14 @@ function MediaLibrary() {
   );
 }
 
+/** The place a usage names: a popup, a slider slide or a season's decoration slot. */
+const usageKindLabel = (t: ReturnType<typeof useWorkforce>['t'], kind: MediaUsage['kind']) =>
+  kind === 'POPUP'
+    ? t.media.detail.usagePopup
+    : kind === 'SLIDE'
+      ? t.media.detail.usageSlide
+      : t.media.detail.usageSeason;
+
 /**
  * Delete one image (design 16.8). Where the image is used is looked up first: an image a popup or slide
  * shows cannot be deleted, so the dialog lists those places and offers nothing destructive. An unused image
@@ -478,7 +486,7 @@ function RemoveMedia({
   );
   const usedIn = detail.data?.usedIn ?? [];
   const place = (usage: MediaUsage) => ({
-    label: usage.kind === 'POPUP' ? t.media.detail.usagePopup : t.media.detail.usageSlide,
+    label: usageKindLabel(t, usage.kind),
     value: usage.title === '' ? t.popups.untitled : usage.title,
   });
 
@@ -583,7 +591,7 @@ function MediaDetail({
   }
 
   const usageLabel = (usage: MediaUsage) =>
-    `${usage.kind === 'POPUP' ? t.media.detail.usagePopup : t.media.detail.usageSlide}: ${usage.title === '' ? t.popups.untitled : usage.title}`;
+    `${usageKindLabel(t, usage.kind)}: ${usage.title === '' ? t.popups.untitled : usage.title}`;
 
   return (
     <FormDrawer

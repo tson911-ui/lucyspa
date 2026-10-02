@@ -1,8 +1,14 @@
 import {
+  DEFAULT_SEASON_DENSITY,
   getSeasonPreset,
+  isSeasonDensity,
   isSeasonPresetKey,
+  isSeasonSlot,
   SEASON_GREETING_MAX_LENGTH,
   type PublicSeasonResponse,
+  type SeasonDecorationFields,
+  type SeasonDensity,
+  type SeasonSlot,
   type WebsiteSeasonEnabledRequest,
   type WebsiteSeasonInput,
   type WebsiteSeasonListResponse,
@@ -17,11 +23,12 @@ import { requireWebsiteContent } from './media.core.js';
 import {
   instant,
   lockPopups,
+  publicMediaUrl,
   requireNoOverlap as requireNoPopupOverlap,
   textField,
   type PublicLocale,
 } from './popup.core.js';
-import { lockSeasons } from './season.link.js';
+import { lockSeasons, UUID } from './season.link.js';
 import { lockSlides, requireVisibleLimitAll } from './slide.core.js';
 
 /**
@@ -49,6 +56,11 @@ export function seasonStatus(
   return 'ACTIVE';
 }
 
+type SlotMedia = Partial<Record<SeasonSlot, string>>;
+
+/** The decoration columns a save may carry; a field left out is not written (create: the column default). */
+type DecorationColumns = Partial<Omit<SeasonDecorationFields, 'slotMedia'>>;
+
 interface SeasonFields {
   presetKey: string;
   label: string;
@@ -60,11 +72,55 @@ interface SeasonFields {
   applyAdmin: boolean;
   particlesEnabled: boolean;
   isEnabled: boolean;
+  decoration: DecorationColumns;
+  /** The images per slot; undefined = not sent (create: none, update: unchanged). */
+  slotMedia: SlotMedia | undefined;
 }
 
 function flag(value: unknown, field: string): boolean {
   if (typeof value !== 'boolean') throw new AuthError('VALIDATION_FAILED', field);
   return value;
+}
+
+const DECORATION_FLAGS = [
+  'slotHeader',
+  'slotLogo',
+  'slotCorners',
+  'slotDividers',
+  'slotFooter',
+  'slotTint',
+  'greetingStrip',
+  'greetingFooter',
+] as const;
+
+/** `slotMedia`: slot name -> media asset id, nothing else; ids are lower-cased. */
+function slotMediaField(value: unknown): SlotMedia | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new AuthError('VALIDATION_FAILED', 'slotMedia');
+  }
+  const media: SlotMedia = {};
+  for (const [slot, id] of Object.entries(value)) {
+    if (!isSeasonSlot(slot) || typeof id !== 'string' || !UUID.test(id)) {
+      throw new AuthError('VALIDATION_FAILED', 'slotMedia');
+    }
+    media[slot] = id.toLowerCase();
+  }
+  return media;
+}
+
+function decorationOf(input: WebsiteSeasonInput): DecorationColumns {
+  const decoration: DecorationColumns = {};
+  for (const field of DECORATION_FLAGS) {
+    if (input[field] !== undefined) decoration[field] = flag(input[field], field);
+  }
+  if (input.particleDensity !== undefined) {
+    if (!isSeasonDensity(input.particleDensity)) {
+      throw new AuthError('VALIDATION_FAILED', 'particleDensity');
+    }
+    decoration.particleDensity = input.particleDensity;
+  }
+  return decoration;
 }
 
 /** Everything the DB would refuse, refused first with a field name the form can show. */
@@ -83,11 +139,51 @@ export function parseSeasonFields(input: WebsiteSeasonInput): SeasonFields {
     applyAdmin: flag(input.applyAdmin, 'applyAdmin'),
     particlesEnabled: flag(input.particlesEnabled, 'particlesEnabled'),
     isEnabled: flag(input.isEnabled, 'isEnabled'),
+    decoration: decorationOf(input),
+    slotMedia: slotMediaField(input.slotMedia),
   };
   if (fields.endsAt.getTime() <= fields.startsAt.getTime()) {
     throw new AuthError('VALIDATION_FAILED', 'endsAt');
   }
   return fields;
+}
+
+/** The season columns of a save (everything but the slot images, which live in their own table). */
+const columnsOf = (fields: SeasonFields) => ({
+  presetKey: fields.presetKey,
+  label: fields.label,
+  startsAt: fields.startsAt,
+  endsAt: fields.endsAt,
+  greetingVi: fields.greetingVi,
+  greetingEn: fields.greetingEn,
+  applyCustomer: fields.applyCustomer,
+  applyAdmin: fields.applyAdmin,
+  particlesEnabled: fields.particlesEnabled,
+  isEnabled: fields.isEnabled,
+  ...fields.decoration,
+});
+
+/**
+ * Every image a save names must exist; each is locked `FOR SHARE`, so a concurrent delete of the image waits for
+ * this save instead of racing it. A decoration image needs no alt text (it is `aria-hidden`).
+ */
+async function requireSlotImages(tx: Prisma.TransactionClient, media: SlotMedia): Promise<void> {
+  const ids = [...new Set(Object.values(media))];
+  if (ids.length === 0) return;
+  const found = await tx.$queryRaw<{ id: string }[]>`
+    SELECT id FROM media_assets WHERE id = ANY(${ids}::uuid[]) FOR SHARE`;
+  if (found.length !== ids.length) throw new AuthError('VALIDATION_FAILED', 'slotMedia');
+}
+
+/** Replaces the images of a season with exactly `media` (a missing slot has no image). */
+async function writeSlotImages(
+  tx: Prisma.TransactionClient,
+  seasonId: string,
+  media: SlotMedia,
+): Promise<void> {
+  await tx.websiteSeasonSlotMedia.deleteMany({ where: { seasonId } });
+  const rows = Object.entries(media).map(([slot, mediaId]) => ({ seasonId, slot, mediaId }));
+  if (rows.length > 0) await tx.websiteSeasonSlotMedia.createMany({ data: rows });
 }
 
 const selectSeason = {
@@ -101,10 +197,20 @@ const selectSeason = {
   applyCustomer: true,
   applyAdmin: true,
   particlesEnabled: true,
+  slotHeader: true,
+  slotLogo: true,
+  slotCorners: true,
+  slotDividers: true,
+  slotFooter: true,
+  slotTint: true,
+  greetingStrip: true,
+  greetingFooter: true,
+  particleDensity: true,
   isEnabled: true,
   rowVersion: true,
   createdAt: true,
   updatedAt: true,
+  slotMedia: { select: { slot: true, mediaId: true }, orderBy: { slot: 'asc' } },
   popups: { select: { id: true, isEnabled: true, startsAt: true, endsAt: true, rowVersion: true } },
   slides: { select: { id: true, isEnabled: true, startsAt: true, endsAt: true, rowVersion: true } },
 } as const;
@@ -112,6 +218,17 @@ const selectSeason = {
 type SeasonRow = Prisma.WebsiteSeasonGetPayload<{ select: typeof selectSeason }>;
 
 const byId = <T extends { id: string }>(items: readonly T[]) => items.map((item) => item.id).sort();
+
+/** Stored rows to the `slot -> media id` map; a row whose slot the registry no longer knows is left out. */
+function slotMediaOf(rows: readonly { slot: string; mediaId: string }[]): SlotMedia {
+  const media: SlotMedia = {};
+  for (const row of rows) if (isSeasonSlot(row.slot)) media[row.slot] = row.mediaId;
+  return media;
+}
+
+/** A stored density the registry does not know (bad data) reads as the default. */
+const densityOf = (value: string): SeasonDensity =>
+  isSeasonDensity(value) ? value : DEFAULT_SEASON_DENSITY;
 
 function response(row: SeasonRow, now: Date): WebsiteSeasonResponse {
   return {
@@ -125,6 +242,16 @@ function response(row: SeasonRow, now: Date): WebsiteSeasonResponse {
     applyCustomer: row.applyCustomer,
     applyAdmin: row.applyAdmin,
     particlesEnabled: row.particlesEnabled,
+    slotHeader: row.slotHeader,
+    slotLogo: row.slotLogo,
+    slotCorners: row.slotCorners,
+    slotDividers: row.slotDividers,
+    slotFooter: row.slotFooter,
+    slotTint: row.slotTint,
+    greetingStrip: row.greetingStrip,
+    greetingFooter: row.greetingFooter,
+    particleDensity: densityOf(row.particleDensity),
+    slotMedia: slotMediaOf(row.slotMedia),
     isEnabled: row.isEnabled,
     status: seasonStatus(row.isEnabled, row.startsAt, row.endsAt, now),
     popupIds: byId(row.popups),
@@ -148,9 +275,12 @@ function summary(fields: SeasonFields): Prisma.InputJsonObject {
     applyAdmin: fields.applyAdmin,
     particlesEnabled: fields.particlesEnabled,
     isEnabled: fields.isEnabled,
+    ...fields.decoration,
+    ...(fields.slotMedia === undefined ? {} : { slotMedia: fields.slotMedia }),
   };
 }
 
+/** A stored season as a full set of fields (every decoration value present), for audit and comparisons. */
 const fieldsOf = (row: SeasonRow): SeasonFields => ({
   presetKey: row.presetKey,
   label: row.label,
@@ -162,6 +292,18 @@ const fieldsOf = (row: SeasonRow): SeasonFields => ({
   applyAdmin: row.applyAdmin,
   particlesEnabled: row.particlesEnabled,
   isEnabled: row.isEnabled,
+  decoration: {
+    slotHeader: row.slotHeader,
+    slotLogo: row.slotLogo,
+    slotCorners: row.slotCorners,
+    slotDividers: row.slotDividers,
+    slotFooter: row.slotFooter,
+    slotTint: row.slotTint,
+    greetingStrip: row.greetingStrip,
+    greetingFooter: row.greetingFooter,
+    particleDensity: densityOf(row.particleDensity),
+  },
+  slotMedia: slotMediaOf(row.slotMedia),
 });
 
 /**
@@ -212,19 +354,25 @@ export async function createSeason(
   const fields = parseSeasonFields(input);
   await lockSeasons(context.tx);
   await requireNoOverlap(context.tx, null, fields);
-  const created = await context.tx.websiteSeason.create({
+  if (fields.slotMedia) await requireSlotImages(context.tx, fields.slotMedia);
+  const { id } = await context.tx.websiteSeason.create({
     data: {
-      ...fields,
+      ...columnsOf(fields),
       createdByUserId: context.actor.userId,
       updatedByUserId: context.actor.userId,
     },
+    select: { id: true },
+  });
+  if (fields.slotMedia) await writeSlotImages(context.tx, id, fields.slotMedia);
+  const created = await context.tx.websiteSeason.findUniqueOrThrow({
+    where: { id },
     select: selectSeason,
   });
   await appendAdminAudit(context, {
     action: 'SEASON_CREATED',
     entityType: 'WebsiteSeason',
-    entityId: created.id,
-    after: summary(fields),
+    entityId: id,
+    after: summary(fieldsOf(created)),
   });
   return response(created, context.now);
 }
@@ -301,10 +449,16 @@ export async function updateSeason(
   await lockSeasons(context.tx);
   const before = await lockSeason(context, id, request.expectedVersion);
   await requireNoOverlap(context.tx, id, fields);
+  if (fields.slotMedia) await requireSlotImages(context.tx, fields.slotMedia);
   await context.tx.websiteSeason.update({
     where: { id },
-    data: { ...fields, updatedByUserId: context.actor.userId, rowVersion: { increment: 1 } },
+    data: {
+      ...columnsOf(fields),
+      updatedByUserId: context.actor.userId,
+      rowVersion: { increment: 1 },
+    },
   });
+  if (fields.slotMedia) await writeSlotImages(context.tx, id, fields.slotMedia);
   const updated = await context.tx.websiteSeason.findUniqueOrThrow({
     where: { id },
     select: selectSeason,
@@ -315,7 +469,7 @@ export async function updateSeason(
     entityType: 'WebsiteSeason',
     entityId: id,
     before: summary(fieldsOf(before)),
-    after: { ...summary(fields), ...followersNote(moved) },
+    after: { ...summary(fieldsOf(updated)), ...followersNote(moved) },
   });
   return response(updated, context.now);
 }
@@ -445,19 +599,62 @@ export async function activeSeason(
       applyCustomer: true,
       applyAdmin: true,
       particlesEnabled: true,
+      slotHeader: true,
+      slotLogo: true,
+      slotCorners: true,
+      slotDividers: true,
+      slotFooter: true,
+      slotTint: true,
+      greetingStrip: true,
+      greetingFooter: true,
+      particleDensity: true,
+      slotMedia: { select: { slot: true, mediaId: true } },
     },
   });
   if (!row || !isSeasonPresetKey(row.presetKey)) return null;
   if (!row.applyCustomer && !row.applyAdmin) return null;
   const preset = getSeasonPreset(row.presetKey);
   const own = locale === 'vi' ? row.greetingVi : row.greetingEn;
+  // Particles are customer decoration only: the admin side never has any.
+  const particles = row.particlesEnabled && row.applyCustomer;
+  // The images are decoration of the customer side only; the admin side never gets a URL.
+  const media: Partial<Record<SeasonSlot, string>> = {};
+  if (row.applyCustomer) {
+    for (const item of row.slotMedia) {
+      if (isSeasonSlot(item.slot))
+        media[item.slot] = publicMediaUrl(item.mediaId, SLOT_VARIANT[item.slot]);
+    }
+  }
   return {
     presetKey: row.presetKey,
     greeting: own ?? preset.greeting[locale],
     endsAt: row.endsAt.toISOString(),
-    // Particles are customer decoration only: the admin side never has any.
-    particles: row.particlesEnabled && row.applyCustomer,
+    particles,
     customer: row.applyCustomer,
     admin: row.applyAdmin,
+    slots: {
+      particles,
+      header: row.slotHeader,
+      logo: row.slotLogo,
+      corners: row.slotCorners,
+      dividers: row.slotDividers,
+      footer: row.slotFooter,
+      tint: row.slotTint,
+    },
+    density: densityOf(row.particleDensity),
+    greetingStrip: row.greetingStrip,
+    greetingFooter: row.greetingFooter,
+    media,
   };
 }
+
+/** The rendition each slot's image is served in: wide strips and scenes get the large one, small pieces the medium. */
+const SLOT_VARIANT: Record<SeasonSlot, 'md' | 'lg'> = {
+  particles: 'md',
+  header: 'lg',
+  logo: 'md',
+  corners: 'md',
+  dividers: 'lg',
+  footer: 'lg',
+  tint: 'lg',
+};

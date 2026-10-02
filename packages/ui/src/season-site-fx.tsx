@@ -10,9 +10,10 @@ import {
   type ParticleDensity,
 } from './season-fx-core';
 import { useSeasonFx } from './season-particles';
+import { CelebrationConfettiPiece } from './season-art-celebration';
 import { ChristmasFlake } from './season-art-christmas';
 import { TetPetal } from './season-art-tet';
-import type { SeasonArtKit } from './season-scene';
+import { safeImageUrl, type SeasonArtKit } from './season-scene';
 import { PHONE_QUERY, useMediaQuery } from './use-media-query';
 
 // Site-wide particles (docs/UXUI_REDESIGN_S6_PLAN.md section 3, rules 1 and 7). One layer behind the page content
@@ -98,12 +99,16 @@ export function SeasonSiteParticles({
   kit,
   density = 'medium',
   clearHeaderRow = false,
+  sprite,
 }: {
   kit: SeasonArtKit;
   density?: ParticleDensity;
   /** The page has a decor row above its header: Christmas keeps its snow out of that band. */
   clearHeaderRow?: boolean;
+  /** A media-library image that replaces the kit's drawn particle (a path the API serves). */
+  sprite?: string | undefined;
 }) {
+  const spriteUrl = safeImageUrl(sprite);
   const phone = useMediaQuery(PHONE_QUERY);
   const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY);
   const { enabled } = useSeasonFx();
@@ -210,7 +215,22 @@ export function SeasonSiteParticles({
                 } as CSSProperties
               }
             >
-              {kit === 'tet' ? <TetPetal index={spec.index} /> : <ChristmasFlake />}
+              {spriteUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- decoration from the API, sized by CSS
+                <img
+                  className="ls-fx-site-glyph"
+                  src={spriteUrl}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : kit === 'tet' ? (
+                <TetPetal index={spec.index} />
+              ) : kit === 'christmas' ? (
+                <ChristmasFlake />
+              ) : (
+                <CelebrationConfettiPiece index={spec.index} />
+              )}
             </span>
           ))
         : null}

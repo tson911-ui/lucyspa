@@ -5,6 +5,8 @@ import {
   isSeasonPresetKey,
   SEASON_GREETING_MAX_LENGTH,
   SEASON_PRESETS,
+  type SeasonDensity,
+  type SeasonSlot,
   type WebsitePopupListResponse,
   type WebsiteSeasonListResponse,
   type WebsiteSeasonResponse,
@@ -20,9 +22,12 @@ import {
   FormActions,
   FormGrid,
   FormSection,
+  isSeasonArtKit,
   Page,
   SeasonPresetPicker,
-  SeasonPreview,
+  SeasonSlotRow,
+  SeasonSlotThumb,
+  SegmentedControl,
   Spinner,
   Stack,
   Switch,
@@ -30,16 +35,17 @@ import {
   useUnsavedChangesGuard,
 } from '@lucy-spa/ui';
 import Link from 'next/link';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react';
 import { organizationDictionary } from '../../../i18n/organization';
 import { fill } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/api/client';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { popupName, popupTone } from '../../../lib/workforce/popups';
+import { mediaVariantUrl } from '../../../lib/workforce/media';
 import {
+  computedYearName,
   emptySeasonForm,
   formOfSeason,
-  previewGreeting,
   problemField,
   seasonFormChanged,
   seasonInputOf,
@@ -60,6 +66,8 @@ import {
   useResource,
   useSuccessToast,
 } from '../ui';
+import { MediaPicker } from './media-picker';
+import { SeasonPreviewPanel } from './season-preview-panel';
 import { SlideDrawer } from './website-slide-drawer';
 
 const PROBLEMS: ReadonlySet<string> = new Set<SeasonProblem>([
@@ -129,6 +137,7 @@ function SeasonFormBody({ id, back }: { id: string | null; back: string }) {
   const [problem, setProblem] = useState<SeasonProblem | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [picking, setPicking] = useState<SeasonSlot | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
 
   useEffect(() => {
@@ -235,36 +244,86 @@ function SeasonFormBody({ id, back }: { id: string | null; back: string }) {
 
   const known = isSeasonPresetKey(form.presetKey) ? getSeasonPreset(form.presetKey) : null;
   const left = (value: string) => SEASON_GREETING_MAX_LENGTH - [...value.trim()].length;
-  const scheduleNote = id
-    ? known?.suggestedWindow === null
-      ? text.lunar
-      : undefined
+  const scheduleNote = known?.customEvent
+    ? text.custom
     : known?.suggestedWindow === null
       ? text.lunar
-      : known
+      : !id && known
         ? text.suggested
         : undefined;
+  const year = computedYearName(form, locale);
   const heading = id ? t.seasons.editTitle : t.seasons.createTitle;
+  const siteArt = known !== null && isSeasonArtKit(known.key);
+
+  const slots: ReadonlyArray<{
+    slot: SeasonSlot;
+    name: string;
+    hint: string;
+    on: boolean;
+    set: (on: boolean) => void;
+  }> = [
+    {
+      slot: 'particles',
+      name: text.slotParticles,
+      hint: text.slotParticlesHint,
+      on: form.particlesEnabled,
+      set: (particlesEnabled) => change({ particlesEnabled }),
+    },
+    {
+      slot: 'header',
+      name: text.slotHeader,
+      hint: text.slotHeaderHint,
+      on: form.slotHeader,
+      set: (slotHeader) => change({ slotHeader }),
+    },
+    {
+      slot: 'logo',
+      name: text.slotLogo,
+      hint: text.slotLogoHint,
+      on: form.slotLogo,
+      set: (slotLogo) => change({ slotLogo }),
+    },
+    {
+      slot: 'corners',
+      name: text.slotCorners,
+      hint: text.slotCornersHint,
+      on: form.slotCorners,
+      set: (slotCorners) => change({ slotCorners }),
+    },
+    {
+      slot: 'dividers',
+      name: text.slotDividers,
+      hint: text.slotDividersHint,
+      on: form.slotDividers,
+      set: (slotDividers) => change({ slotDividers }),
+    },
+    {
+      slot: 'footer',
+      name: text.slotFooter,
+      hint: text.slotFooterHint,
+      on: form.slotFooter,
+      set: (slotFooter) => change({ slotFooter }),
+    },
+    {
+      slot: 'tint',
+      name: text.slotTint,
+      hint: text.slotTintHint,
+      on: form.slotTint,
+      set: (slotTint) => change({ slotTint }),
+    },
+  ];
+  const setImage = (slot: SeasonSlot, mediaId: string | null) => {
+    const slotMedia = { ...form.slotMedia };
+    if (mediaId === null) delete slotMedia[slot];
+    else slotMedia[slot] = mediaId;
+    change({ slotMedia });
+  };
 
   return (
     <form ref={formRef} noValidate onSubmit={(event) => void submit(event)} aria-label={heading}>
       <Stack gap="block">
         <Card as="section" aria-label={heading}>
           <Stack gap="page">
-            <FormSection title={text.presetSection} description={text.presetHint}>
-              <SeasonPresetPicker
-                name="season-preset"
-                label={text.presetLabel}
-                options={SEASON_PRESETS.map((preset) => ({
-                  key: preset.key,
-                  name: preset.name[locale],
-                  ornamentId: preset.ornament.id,
-                }))}
-                value={form.presetKey}
-                onChange={choosePreset}
-              />
-              {error('presetKey') ? <Notice tone="error">{error('presetKey')}</Notice> : null}
-            </FormSection>
             <FormSection title={text.detailsSection}>
               <FormGrid cols={2}>
                 <Field
@@ -284,6 +343,20 @@ function SeasonFormBody({ id, back }: { id: string | null; back: string }) {
                   )}
                 </Field>
               </FormGrid>
+            </FormSection>
+            <FormSection title={text.presetSection} description={text.presetHint}>
+              <SeasonPresetPicker
+                name="season-preset"
+                label={text.presetLabel}
+                options={SEASON_PRESETS.map((preset) => ({
+                  key: preset.key,
+                  name: preset.name[locale],
+                  ornamentId: preset.ornament.id,
+                }))}
+                value={form.presetKey}
+                onChange={choosePreset}
+              />
+              {error('presetKey') ? <Notice tone="error">{error('presetKey')}</Notice> : null}
             </FormSection>
             <FormSection
               title={text.scheduleSection}
@@ -321,6 +394,12 @@ function SeasonFormBody({ id, back }: { id: string | null; back: string }) {
                   )}
                 </Field>
               </FormGrid>
+              {year ? (
+                <Notice tone="info">
+                  {fill(text.yearName, { name: year.name, animal: year.animal })}
+                  {year.hasArt ? '' : ` ${text.yearNoArt}`}
+                </Notice>
+              ) : null}
             </FormSection>
             <FormSection
               title={text.greetingSection}
@@ -356,6 +435,20 @@ function SeasonFormBody({ id, back }: { id: string | null; back: string }) {
                   )}
                 </Field>
               </FormGrid>
+              {siteArt ? (
+                <Stack gap="field">
+                  <Switch
+                    checked={form.greetingStrip}
+                    onCheckedChange={(greetingStrip) => change({ greetingStrip })}
+                    label={text.greetingStrip}
+                  />
+                  <Switch
+                    checked={form.greetingFooter}
+                    onCheckedChange={(greetingFooter) => change({ greetingFooter })}
+                    label={text.greetingFooter}
+                  />
+                </Stack>
+              ) : null}
             </FormSection>
             <FormSection title={text.optionsSection} description={text.optionsHint}>
               <Stack gap="field">
@@ -369,12 +462,65 @@ function SeasonFormBody({ id, back }: { id: string | null; back: string }) {
                   onCheckedChange={(applyAdmin) => change({ applyAdmin })}
                   label={text.admin}
                 />
-                <Switch
-                  checked={form.particlesEnabled}
-                  onCheckedChange={(particlesEnabled) => change({ particlesEnabled })}
-                  label={text.particles}
-                />
+                {siteArt ? null : (
+                  <Switch
+                    checked={form.particlesEnabled}
+                    onCheckedChange={(particlesEnabled) => change({ particlesEnabled })}
+                    label={text.particles}
+                  />
+                )}
               </Stack>
+            </FormSection>
+            <FormSection
+              title={text.decorationSection}
+              description={siteArt ? text.decorationHint : text.decorationNoArt}
+            >
+              {siteArt ? (
+                <Stack gap="field">
+                  {slots.map(({ slot, name, hint, on, set }) => {
+                    const mediaId = form.slotMedia[slot];
+                    return (
+                      <Fragment key={slot}>
+                        <SeasonSlotRow
+                          hint={mediaId ? text.imageChosen : hint}
+                          control={<Switch checked={on} onCheckedChange={set} label={name} />}
+                          image={
+                            <>
+                              {mediaId ? (
+                                <SeasonSlotThumb src={mediaVariantUrl(mediaId, 'thumb')} />
+                              ) : null}
+                              <Button variant="secondary" onClick={() => setPicking(slot)}>
+                                {mediaId ? text.imageChange : text.imageChoose}
+                              </Button>
+                              {mediaId ? (
+                                <Button variant="secondary" onClick={() => setImage(slot, null)}>
+                                  {text.imageRemove}
+                                </Button>
+                              ) : null}
+                            </>
+                          }
+                        />
+                        {slot === 'particles' && form.particlesEnabled ? (
+                          <Field label={text.density}>
+                            {() => (
+                              <SegmentedControl<SeasonDensity>
+                                label={text.density}
+                                options={[
+                                  { value: 'low', label: text.densityLow },
+                                  { value: 'medium', label: text.densityMedium },
+                                  { value: 'high', label: text.densityHigh },
+                                ]}
+                                value={form.particleDensity}
+                                onChange={(particleDensity) => change({ particleDensity })}
+                              />
+                            )}
+                          </Field>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })}
+                </Stack>
+              ) : null}
             </FormSection>
             <FormSection title={text.statusSection}>
               <Switch
@@ -387,27 +533,13 @@ function SeasonFormBody({ id, back }: { id: string | null; back: string }) {
             {message ? <Notice tone="error">{message}</Notice> : null}
           </Stack>
         </Card>
-        <FormSection title={text.previewSection} description={text.previewHint}>
-          {known ? (
-            <SeasonPreview
-              presetKey={known.key}
-              ornamentId={known.ornament.id}
-              title={text.previewBrand}
-              greeting={previewGreeting(form, locale)}
-              labels={{
-                desktop: text.previewDesktop,
-                phone: text.previewPhone,
-                light: text.previewLight,
-                dark: text.previewDark,
-                frame: (device, theme) => fill(text.previewFrame, { device, theme }),
-                accentSample: text.previewAccent,
-                buttonSample: text.previewButton,
-              }}
-            />
-          ) : (
+        {known ? (
+          <SeasonPreviewPanel form={form} />
+        ) : (
+          <FormSection title={text.previewSection}>
             <Empty>{text.problems.presetKey}</Empty>
-          )}
-        </FormSection>
+          </FormSection>
+        )}
         {id ? <HolidayContent seasonId={id} season={loaded.data} /> : null}
         <FormActions
           cancel={
@@ -422,6 +554,16 @@ function SeasonFormBody({ id, back }: { id: string | null; back: string }) {
           }
         />
       </Stack>
+      {picking ? (
+        <MediaPicker
+          decorative
+          onPick={(asset) => {
+            setImage(picking, asset.id);
+            setPicking(null);
+          }}
+          onClose={() => setPicking(null)}
+        />
+      ) : null}
     </form>
   );
 }

@@ -528,6 +528,20 @@ test(
                   particles: true,
                   customer: true,
                   admin: true,
+                  // The S6b decoration of a season saved without any: everything on, medium, no images.
+                  slots: {
+                    particles: true,
+                    header: true,
+                    logo: true,
+                    corners: true,
+                    dividers: true,
+                    footer: true,
+                    tint: true,
+                  },
+                  density: 'medium',
+                  greetingStrip: true,
+                  greetingFooter: true,
+                  media: {},
                 });
                 assert.equal((await site.season('en'))?.greeting, preset.greeting.en);
 
@@ -952,6 +966,207 @@ test(
                 await seasons.remove(editor.session, ended.id);
                 const idle = await seasons.create(editor.session, draft(far(700, 701)));
                 await seasons.remove(editor.session, idle.id);
+              },
+            );
+
+            await context.test(
+              'decoration (S6b): defaults, per-slot switches, density, images per slot, audit, protection and public serving',
+              async () => {
+                // A season saved without any decoration field means everything on, medium, no images.
+                const plain = await seasons.create(editor.session, draft(far(800, 802)));
+                assert.deepEqual(
+                  [
+                    plain.slotHeader,
+                    plain.slotLogo,
+                    plain.slotCorners,
+                    plain.slotDividers,
+                    plain.slotFooter,
+                    plain.slotTint,
+                    plain.greetingStrip,
+                    plain.greetingFooter,
+                    plain.particleDensity,
+                  ],
+                  [true, true, true, true, true, true, true, true, 'medium'],
+                );
+                assert.deepEqual(plain.slotMedia, {});
+
+                // The celebration kit is a base kit like any other.
+                const party = await seasons.create(
+                  editor.session,
+                  draft({
+                    ...far(810, 812),
+                    presetKey: 'celebration',
+                    label: 'Khai trương',
+                    slotHeader: false,
+                    slotTint: false,
+                    greetingFooter: false,
+                    particleDensity: 'high',
+                    slotMedia: { header: picture.id, logo: picture.id.toUpperCase() },
+                  }),
+                );
+                assert.equal(party.presetKey, 'celebration');
+                assert.deepEqual(
+                  [party.slotHeader, party.slotTint, party.greetingFooter, party.particleDensity],
+                  [false, false, false, 'high'],
+                );
+                assert.deepEqual(party.slotMedia, { header: picture.id, logo: picture.id });
+                const [created] = await audit(party.id, 'SEASON_CREATED');
+                const recorded = created?.after as Record<string, unknown>;
+                assert.equal(recorded['particleDensity'], 'high');
+                assert.equal(recorded['slotHeader'], false);
+                assert.deepEqual(recorded['slotMedia'], { header: picture.id, logo: picture.id });
+
+                // An update that leaves the decoration out keeps it; one that sends it replaces it.
+                const kept = await seasons.update(editor.session, party.id, {
+                  ...draft({ ...far(810, 812), presetKey: 'celebration', label: 'Khai trương 2' }),
+                  expectedVersion: party.rowVersion,
+                });
+                assert.equal(kept.label, 'Khai trương 2');
+                assert.deepEqual(kept.slotMedia, party.slotMedia);
+                assert.equal(kept.particleDensity, 'high');
+                const changed = await seasons.update(editor.session, party.id, {
+                  ...draft({
+                    ...far(810, 812),
+                    presetKey: 'celebration',
+                    label: 'Khai trương 2',
+                    slotFooter: false,
+                    particleDensity: 'low',
+                    slotMedia: { footer: picture.id },
+                  }),
+                  expectedVersion: kept.rowVersion,
+                });
+                assert.deepEqual(changed.slotMedia, { footer: picture.id });
+                assert.deepEqual([changed.slotFooter, changed.particleDensity], [false, 'low']);
+                const [updated] = await audit(party.id, 'SEASON_UPDATED');
+                assert.deepEqual(
+                  (updated?.before as Record<string, unknown>)['slotMedia'],
+                  { header: picture.id, logo: picture.id },
+                  'the audit keeps what the images were',
+                );
+                const cleared = await seasons.update(editor.session, party.id, {
+                  ...draft({
+                    ...far(810, 812),
+                    presetKey: 'celebration',
+                    label: 'Khai trương 2',
+                    slotMedia: {},
+                  }),
+                  expectedVersion: changed.rowVersion,
+                });
+                assert.deepEqual(cleared.slotMedia, {}, 'an empty map removes every image');
+
+                // Bad decoration never reaches the database.
+                for (const [patch, field] of [
+                  [{ slotMedia: { header: randomUUID() } }, 'slotMedia'],
+                  [{ slotMedia: { nowhere: picture.id } }, 'slotMedia'],
+                  [{ slotMedia: { header: 'x' } }, 'slotMedia'],
+                  [{ particleDensity: 'huge' }, 'particleDensity'],
+                  [{ slotLogo: 'no' }, 'slotLogo'],
+                ] as const) {
+                  await fails(
+                    seasons.create(
+                      editor.session,
+                      draft({
+                        ...far(820, 821),
+                        ...(patch as unknown as Partial<WebsiteSeasonInput>),
+                      }),
+                    ),
+                    'VALIDATION_FAILED',
+                    field,
+                  );
+                }
+                assert.equal(
+                  await tx.websiteSeason.count({
+                    where: { label: 'Tết thử', startsAt: new Date(far(820, 821).startsAt) },
+                  }),
+                  0,
+                );
+
+                // The image is protected while a season uses it, and the media detail names the season.
+                const using = await seasons.update(editor.session, party.id, {
+                  ...draft({
+                    ...far(810, 812),
+                    presetKey: 'celebration',
+                    label: 'Khai trương 2',
+                    slotMedia: { header: picture.id },
+                  }),
+                  expectedVersion: cleared.rowVersion,
+                });
+                const detail = await media.get(editor.session, picture.id);
+                assert.ok(
+                  detail.usedIn.some((use) => use.kind === 'SEASON' && use.id === using.id),
+                  'the library lists the season as a place the image is used',
+                );
+                await fails(media.remove(editor.session, picture.id), 'MEDIA_IN_USE');
+
+                // Public serving: the live, enabled, customer-side season shows its images; nobody else does.
+                const live = await seasons.create(
+                  editor.session,
+                  draft({
+                    presetKey: 'celebration',
+                    label: 'Đang diễn ra',
+                    isEnabled: true,
+                    slotCorners: false,
+                    slotMedia: { footer: picture.id, particles: picture.id },
+                  }),
+                );
+                const shown = await site.season('vi');
+                assert.ok(shown);
+                assert.equal(shown.presetKey, 'celebration');
+                assert.deepEqual(shown.slots, {
+                  particles: true,
+                  header: true,
+                  logo: true,
+                  corners: false,
+                  dividers: true,
+                  footer: true,
+                  tint: true,
+                });
+                assert.equal(shown.density, 'medium');
+                assert.deepEqual(shown.media, {
+                  footer: `/api/v1/public/media/${picture.id}/lg`,
+                  particles: `/api/v1/public/media/${picture.id}/md`,
+                });
+                const served = await site.variant(picture.id, 'LG');
+                assert.ok(served.bytes > 0);
+                served.stream.destroy();
+                await seasons.setEnabled(editor.session, live.id, {
+                  expectedVersion: live.rowVersion,
+                  isEnabled: false,
+                });
+                await fails(site.variant(picture.id, 'LG'), 'NOT_FOUND');
+                const hidden = await seasons.update(editor.session, live.id, {
+                  ...draft({
+                    presetKey: 'celebration',
+                    label: 'Đang diễn ra',
+                    slotMedia: { footer: picture.id },
+                    isEnabled: true,
+                    applyCustomer: false,
+                  }),
+                  expectedVersion: live.rowVersion + 1,
+                });
+                assert.equal(hidden.applyCustomer, false);
+                const adminOnly = await site.season('vi');
+                assert.deepEqual(
+                  adminOnly?.media,
+                  {},
+                  'the admin-side touch never carries image URLs',
+                );
+                await fails(site.variant(picture.id, 'LG'), 'NOT_FOUND');
+
+                // Deleting a season removes its image rows and frees the image.
+                await seasons.remove(editor.session, live.id);
+                await seasons.remove(editor.session, party.id);
+                await seasons.remove(editor.session, plain.id);
+                assert.equal(
+                  await tx.websiteSeasonSlotMedia.count({ where: { mediaId: picture.id } }),
+                  0,
+                );
+                assert.equal(
+                  (await media.get(editor.session, picture.id)).usedIn.some(
+                    (use) => use.kind === 'SEASON',
+                  ),
+                  false,
+                );
               },
             );
 

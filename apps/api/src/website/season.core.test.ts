@@ -91,6 +91,76 @@ test('season fields: the switches must be real booleans', () => {
   assert.equal(parseSeasonFields(input({ applyAdmin: false })).applyAdmin, false);
 });
 
+test('season decoration: omitted means not sent; every value is checked; media ids are lower-cased UUIDs', () => {
+  const none = parseSeasonFields(input());
+  assert.deepEqual(none.decoration, {}, 'an older client sends none of it');
+  assert.equal(
+    none.slotMedia,
+    undefined,
+    'omitted images mean unchanged (update) or none (create)',
+  );
+  const id = '2F1B2D8E-5C3A-4B7A-9D2E-1A2B3C4D5E6F';
+  const fields = parseSeasonFields(
+    input({
+      slotHeader: false,
+      slotLogo: true,
+      slotCorners: false,
+      slotDividers: true,
+      slotFooter: false,
+      slotTint: true,
+      greetingStrip: false,
+      greetingFooter: true,
+      particleDensity: 'low',
+      slotMedia: { header: id, footer: id.toLowerCase() },
+    }),
+  );
+  assert.deepEqual(fields.decoration, {
+    slotHeader: false,
+    slotLogo: true,
+    slotCorners: false,
+    slotDividers: true,
+    slotFooter: false,
+    slotTint: true,
+    greetingStrip: false,
+    greetingFooter: true,
+    particleDensity: 'low',
+  });
+  assert.deepEqual(fields.slotMedia, { header: id.toLowerCase(), footer: id.toLowerCase() });
+  assert.deepEqual(
+    parseSeasonFields(input({ slotMedia: {} })).slotMedia,
+    {},
+    'an empty map clears',
+  );
+  for (const field of [
+    'slotHeader',
+    'slotLogo',
+    'slotCorners',
+    'slotDividers',
+    'slotFooter',
+    'slotTint',
+    'greetingStrip',
+    'greetingFooter',
+  ] as const) {
+    refused({ [field]: 'yes' } as Partial<WebsiteSeasonInput>, field);
+    refused({ [field]: null } as unknown as Partial<WebsiteSeasonInput>, field);
+  }
+  for (const particleDensity of ['huge', '', 5, null]) {
+    refused({ particleDensity } as unknown as Partial<WebsiteSeasonInput>, 'particleDensity');
+  }
+  for (const slotMedia of [
+    null,
+    'header',
+    ['x'],
+    { nowhere: id },
+    { header: 'not-a-uuid' },
+    { header: 5 },
+    { header: null },
+    { __proto__: id, header: id.slice(1) },
+  ]) {
+    refused({ slotMedia } as unknown as Partial<WebsiteSeasonInput>, 'slotMedia');
+  }
+});
+
 test('season link: seasonId is a UUID or absent; a linked item is live only while its season is enabled', () => {
   const id = '3f0a4f0e-8f5e-4a52-9c1f-6c1f0e0c9b11';
   assert.equal(parseSeasonId(undefined), null);

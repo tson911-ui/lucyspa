@@ -137,3 +137,97 @@
   align-items: center;
   min-height: var(--ls-control-h);
 }
+
+/* ---- Decoration slot rows (S6b): switch and hint on the leading side, the image control on the trailing side ---- */
+.ls-season-slot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ls-space-3);
+  align-items: center;
+}
+
+.ls-season-slot-main {
+  display: grid;
+  gap: var(--ls-space-1);
+  min-width: 0;
+}
+
+.ls-season-slot-image {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ls-space-2);
+}
+
+.ls-season-slot-thumb {
+  display: block;
+  width: var(--ls-space-9);
+  height: var(--ls-space-7);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-sunken);
+  object-fit: contain;
+}
+
+@media (max-width: 639px) {
+  .ls-season-slot {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ls-season-slot-image {
+    justify-content: flex-start;
+  }
+}
+
+/* ---- Full-page live preview (S6b): the real page in a frame at its true width, scaled to fit ---------------- */
+.ls-season-live {
+  /* Set inline by the component to real lengths (frame at true size, stage at scaled size); these are the fallbacks. */
+  --ls-live-w: 100%;
+  --ls-live-h: auto;
+  --ls-live-sw: 100%;
+  --ls-live-sh: auto;
+  --ls-live-scale: 1;
+  display: grid;
+  gap: var(--ls-space-3);
+  min-width: 0;
+}
+
+.ls-season-live-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-3);
+}
+
+.ls-season-live-bar .ls-segmented {
+  min-width: calc(var(--ls-space-9) * 5);
+}
+
+.ls-season-live-actions {
+  margin-inline-start: auto;
+}
+
+/* The stage is as tall as the scaled frame, so the page below it never jumps. */
+.ls-season-live-stage {
+  position: relative;
+  width: 100%;
+  height: var(--ls-live-sh);
+  overflow: hidden;
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-sunken);
+}
+
+.ls-season-live[data-device='phone'] .ls-season-live-stage {
+  width: var(--ls-live-sw);
+  max-width: 100%;
+}
+
+.ls-season-live-frame {
+  display: block;
+  width: var(--ls-live-w);
+  height: var(--ls-live-h);
+  border-style: none;
+  background: var(--ls-bg-page);
+  transform: scale(var(--ls-live-scale));
+  transform-origin: top left;
+}

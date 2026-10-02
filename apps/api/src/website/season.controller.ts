@@ -1,15 +1,20 @@
-import type {
-  WebsiteSeasonEnabledRequest,
-  WebsiteSeasonInput,
-  WebsiteSeasonListResponse,
-  WebsiteSeasonResponse,
-  WebsiteSeasonUpdateRequest,
+import {
+  SEASON_DENSITIES,
+  type SeasonDensity,
+  type SeasonSlot,
+  type WebsiteSeasonEnabledRequest,
+  type WebsiteSeasonInput,
+  type WebsiteSeasonListResponse,
+  type WebsiteSeasonResponse,
+  type WebsiteSeasonUpdateRequest,
 } from '@lucy-spa/contracts';
 import { Body, Controller, Get, HttpCode, Inject, Param, Post, Req, Res } from '@nestjs/common';
 import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
 import {
   IsBoolean,
+  IsIn,
   IsInt,
+  IsObject,
   IsString,
   Matches,
   Max,
@@ -34,6 +39,18 @@ const NullableText = (max: number) => (target: object, key: string) => {
   MaxLength(max)(target, key);
 };
 
+/**
+ * Optional means absent (`undefined`), never `null`: the core keeps the stored value or the default for a field that
+ * was not sent, and a `null` is a mistyped value like any other (`IsOptional` would let it through).
+ */
+const Sent = ValidateIf((_object: unknown, value: unknown) => value !== undefined);
+
+const OptionalFlag = (target: object, key: string) => {
+  ApiProperty({ required: false, type: Boolean })(target, key);
+  Sent(target, key);
+  IsBoolean()(target, key);
+};
+
 class SeasonDto implements WebsiteSeasonInput {
   @ApiProperty() @IsString() @MaxLength(40) presetKey!: string;
   @ApiProperty() @IsString() @MaxLength(TEXT_BOUND) label!: string;
@@ -45,6 +62,23 @@ class SeasonDto implements WebsiteSeasonInput {
   @ApiProperty() @IsBoolean() applyAdmin!: boolean;
   @ApiProperty() @IsBoolean() particlesEnabled!: boolean;
   @ApiProperty() @IsBoolean() isEnabled!: boolean;
+  // Decoration (S6b). The core checks the density name and the slot names and ids.
+  @OptionalFlag slotHeader?: boolean;
+  @OptionalFlag slotLogo?: boolean;
+  @OptionalFlag slotCorners?: boolean;
+  @OptionalFlag slotDividers?: boolean;
+  @OptionalFlag slotFooter?: boolean;
+  @OptionalFlag slotTint?: boolean;
+  @OptionalFlag greetingStrip?: boolean;
+  @OptionalFlag greetingFooter?: boolean;
+  @ApiProperty({ required: false, enum: SEASON_DENSITIES })
+  @Sent
+  @IsIn(SEASON_DENSITIES)
+  particleDensity?: SeasonDensity;
+  @ApiProperty({ required: false, type: Object, additionalProperties: { type: 'string' } })
+  @Sent
+  @IsObject()
+  slotMedia?: Partial<Record<SeasonSlot, string>>;
 }
 
 class SeasonUpdateDto extends SeasonDto implements WebsiteSeasonUpdateRequest {

@@ -553,7 +553,7 @@ export function publicImageSources(
     }));
 }
 
-/** Is this image shown on the public site right now, by a live popup or a visible slide? */
+/** Is this image shown on the public site right now, by a live popup, a visible slide or the live season? */
 export async function isPubliclyServed(
   tx: Prisma.TransactionClient,
   assetId: string,
@@ -582,5 +582,16 @@ export async function isPubliclyServed(
     },
     select: { id: true },
   });
-  return slide !== null;
+  if (slide !== null) return true;
+  // A decoration image of the season that is live now (customer side only; the admin side never shows one).
+  const decoration = await tx.websiteSeasonSlotMedia.findFirst({
+    where: {
+      mediaId: assetId,
+      season: {
+        is: { isEnabled: true, applyCustomer: true, startsAt: { lte: now }, endsAt: { gt: now } },
+      },
+    },
+    select: { slot: true },
+  });
+  return decoration !== null;
 }

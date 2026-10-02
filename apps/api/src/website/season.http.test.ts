@@ -123,6 +123,8 @@ test('season HTTP: strict admin bodies, CSRF/Origin, anonymous public season, se
   };
   const id = randomUUID();
   const base = '/api/v1/website/seasons';
+  // The decoration fields (S6b) are optional, so the transformed DTO carries them as undefined when not sent.
+  const sent = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
   const body = {
     presetKey: 'tet',
     label: 'Tết 2090',
@@ -156,13 +158,13 @@ test('season HTTP: strict admin bodies, CSRF/Origin, anonymous public season, se
 
     // A valid create reaches the service with exactly the declared fields.
     await request(server).post(base).set(headers).send(body).expect(200);
-    assert.deepEqual({ ...(calls.pop()?.args[0] as object) }, body);
+    assert.deepEqual(sent(calls.pop()?.args[0]), body);
     await request(server)
       .post(`${base}/${id}/update`)
       .set(headers)
       .send({ ...body, expectedVersion: 3 })
       .expect(200);
-    assert.deepEqual({ ...(calls.pop()?.args[1] as object) }, { ...body, expectedVersion: 3 });
+    assert.deepEqual(sent(calls.pop()?.args[1]), { ...body, expectedVersion: 3 });
     await request(server)
       .post(`${base}/${id}/enabled`)
       .set(headers)
@@ -201,6 +203,44 @@ test('season HTTP: strict admin bodies, CSRF/Origin, anonymous public season, se
         .send(bad as object)
         .expect(400);
     }
+    // The decoration (S6b) travels with the same strict body: valid values reach the service unchanged...
+    const decoration = {
+      slotHeader: false,
+      slotLogo: true,
+      slotCorners: true,
+      slotDividers: false,
+      slotFooter: true,
+      slotTint: false,
+      greetingStrip: false,
+      greetingFooter: true,
+      particleDensity: 'high',
+      slotMedia: { header: '2f1b2d8e-5c3a-4b7a-9d2e-1a2b3c4d5e6f' },
+    };
+    await request(server)
+      .post(base)
+      .set(headers)
+      .send({ ...body, ...decoration })
+      .expect(200);
+    assert.deepEqual(sent(calls.pop()?.args[0]), { ...body, ...decoration });
+    // ...and a mistyped or unknown decoration value never does.
+    for (const bad of [
+      { ...body, slotHeader: 'yes' },
+      { ...body, slotTint: null },
+      { ...body, greetingStrip: 1 },
+      { ...body, particleDensity: 'huge' },
+      { ...body, particleDensity: 5 },
+      { ...body, slotMedia: 'header' },
+      { ...body, slotMedia: null },
+      { ...body, slotMedia: ['x'] },
+      { ...body, slotParticles: true },
+    ]) {
+      await request(server)
+        .post(base)
+        .set(headers)
+        .send(bad as object)
+        .expect(400);
+    }
+    assert.equal(calls.length, 0);
     for (const bad of [
       { ...body },
       { ...body, expectedVersion: 0 },
@@ -253,6 +293,19 @@ test('season HTTP: strict admin bodies, CSRF/Origin, anonymous public season, se
       particles: true,
       customer: true,
       admin: false,
+      slots: {
+        particles: true,
+        header: true,
+        logo: true,
+        corners: true,
+        dividers: true,
+        footer: true,
+        tint: true,
+      },
+      density: 'medium',
+      greetingStrip: true,
+      greetingFooter: true,
+      media: {},
     };
     const shown = await request(server).get('/api/v1/public/website/season?locale=en').expect(200);
     assert.deepEqual(shown.body, live);

@@ -315,3 +315,9 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Site-wide season art: slots (header row, logo accent, corners, dividers, strip, footer scene, tint) and particles behind content with a text keep-out mask; Tet (computed lunar year, goat art for 2027 only) and Christmas kits. Registry gained art palettes; lunar-year.ts in contracts.
 - Screenshot gate fails hard (exit 3) on errors; CLAUDE.md: open every screenshot. Report: docs/UXUI_REDESIGN_S6A_ENGINE.md. Next: S6b (migration, admin Decoration section, custom events, Celebration kit).
+
+### UX/UI Step S6b+S6c (decoration options, custom events, Celebration kit, full-page preview) - implemented 2026-10-02 on 7ac7476
+
+- Migration 20261022000000 (9 season columns + website_season_slot_media); API: per-slot switches, density, greeting switches, image per slot (media usage kind SEASON, public serving while live); public season payload gained slots/density/media.
+- Admin form: Event name first, base kit, computed Tet year name, Decoration section; full-page preview route /:locale/season-preview (session-guarded 404, SAMEORIGIN, postMessage draft). Celebration kit (balloons, confetti, ribbons, cake).
+- Report: docs/UXUI_REDESIGN_S6B_DECORATION.md. Next: S6d (Valentine, 8/3, 20/10 kits), S6e (Mid-Autumn, Vu Lan, 30/4-1/5, 2/9).

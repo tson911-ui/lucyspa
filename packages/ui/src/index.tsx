@@ -111,6 +111,13 @@ export type { SliderLabels, SliderSlide } from './slider';
 export { SeasonOrnament } from './season-ornaments';
 export { GreetingStrip, SeasonFrame } from './season-frame';
 export { SeasonPresetPicker, SeasonPreview } from './season-preview';
+export { SeasonSlotRow, SeasonSlotThumb } from './season-slot-row';
+export { SEASON_PREVIEW_WIDTH, SeasonLivePreview, previewScale } from './season-live-preview';
+export type {
+  SeasonLivePreviewLabels,
+  SeasonPreviewDevice,
+  SeasonPreviewTheme,
+} from './season-live-preview';
 export type { SeasonPresetChoice, SeasonPreviewLabels } from './season-preview';
 export { SeasonFxToggle, SeasonParticles, useSeasonFx } from './season-particles';
 // Site-wide season art (Step S6, docs/UXUI_REDESIGN_S6_PLAN.md): slots around the customer pages and their particles.
@@ -121,10 +128,12 @@ export {
   SeasonHeaderRow,
   SeasonLogoAccent,
   SeasonStrip,
+  SeasonTintImage,
   hasZodiacArt,
   isSeasonArtKit,
+  safeImageUrl,
 } from './season-scene';
-export type { SeasonArtKit } from './season-scene';
+export type { SeasonArtKit, SeasonSlotImages } from './season-scene';
 export { SeasonFxSwitch, SeasonSiteParticles } from './season-site-fx';
 export type { ParticleDensity } from './season-fx-core';
 export {

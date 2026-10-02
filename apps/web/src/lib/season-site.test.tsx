@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { PublicSeasonResponse } from '@lucy-spa/contracts';
+import { ALL_SEASON_SLOTS_ON, type PublicSeasonResponse } from '@lucy-spa/contracts';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { SeasonSiteFrame, SiteLogo } from '../components/season/site-frame';
 import { siteDecorSpec } from './season-core';
@@ -15,6 +15,11 @@ const season = (patch: Partial<PublicSeasonResponse> = {}): PublicSeasonResponse
   particles: true,
   customer: true,
   admin: true,
+  slots: { ...ALL_SEASON_SLOTS_ON },
+  density: 'medium',
+  greetingStrip: true,
+  greetingFooter: true,
+  media: {},
   ...patch,
 });
 
@@ -139,4 +144,83 @@ test('Christmas has lights, garlands, trees and gifts and no yellow art token', 
 test('the effects switch lives inside the strip, only when effects exist', () => {
   assert.match(page(), /ls-art-strip-tools/);
   assert.doesNotMatch(page({ particles: false }), /ls-art-strip-tools/);
+});
+
+const slots = (patch: Partial<PublicSeasonResponse['slots']>) => ({
+  slots: { ...ALL_SEASON_SLOTS_ON, ...patch },
+});
+
+test('Celebration (a custom event kit) has the bunting, balloons, cake and its own greeting lines', () => {
+  const html = page({ presetKey: 'celebration' });
+  for (const marker of [
+    'ls-art-bunting',
+    'ls-art-ball',
+    'ls-art-cake',
+    'ls-art-bunch',
+    'ls-art-floor',
+    'data-plaque="card"',
+    'Một ngày đáng nhớ cùng Lucy Spa',
+  ]) {
+    assert.ok(html.includes(marker), marker);
+  }
+  assert.doesNotMatch(html, /ls-art-animal/);
+  assert.equal(siteDecorSpec(season({ presetKey: 'celebration' }), 'vi')!.zodiac, null);
+});
+
+test('a slot the event switched off draws nothing, and the page keeps its rhythm', () => {
+  const noHeader = page(slots({ header: false, corners: false }));
+  assert.doesNotMatch(noHeader, /ls-art-header|ls-art-lanterns/, 'no header row, no height');
+  const noDividers = page(slots({ dividers: false }));
+  assert.equal([...noDividers.matchAll(/data-plain="true"/g)].length, 2, 'both rules stay, plain');
+  assert.doesNotMatch(noDividers, /ls-art-divider-art/);
+  const noTint = page(slots({ tint: false }));
+  assert.match(noTint, /data-tint="off"/);
+  assert.doesNotMatch(page(), /data-tint/);
+  const noFooter = page(slots({ footer: false }));
+  assert.match(noFooter, /data-compact="true"/, 'the greeting line stays, compact');
+  assert.doesNotMatch(noFooter, /ls-art-footer-art/);
+  const noLogo = page(slots({ logo: false }));
+  assert.doesNotMatch(noLogo, /ls-art-logo/);
+  assert.ok(noLogo.includes('<span>Lucy Spa</span>'));
+  // Particles are their own slot: the switch also removes the effects switch from the strip.
+  assert.doesNotMatch(
+    page({ particles: true, ...slots({ particles: false }) }),
+    /ls-art-strip-tools/,
+  );
+});
+
+test('the two greetings are each switchable; the effects switch survives a hidden strip greeting', () => {
+  const noStrip = page({ greetingStrip: false });
+  assert.doesNotMatch(noStrip, /ls-art-strip"/);
+  assert.doesNotMatch(noStrip, /ls-season-greeting/, 'the strip greeting is gone');
+  assert.match(noStrip, /ls-art-strip-bare/, 'the visitor can still turn effects off');
+  assert.match(noStrip, /Chúc mừng năm mới/, 'the footer line stays');
+  const noFooter = page({ greetingFooter: false });
+  assert.doesNotMatch(noFooter, /ls-art-plaque/);
+  assert.match(noFooter, /ls-art-strip"/);
+  const neither = page({ greetingStrip: false, greetingFooter: false, particles: false });
+  assert.doesNotMatch(neither, /ls-art-strip|ls-art-plaque/);
+});
+
+test('slot images are decoration: aria-hidden, lazy, same-origin paths only', () => {
+  const id = '2f1b2d8e-5c3a-4b7a-9d2e-1a2b3c4d5e6f';
+  const url = (variant: string) => `/api/v1/public/media/${id}/${variant}`;
+  const html = page({
+    media: {
+      header: url('lg'),
+      logo: url('md'),
+      corners: url('md'),
+      footer: url('lg'),
+      tint: url('lg'),
+    },
+  });
+  assert.match(html, new RegExp(`background-image:url\\(&quot;${url('lg')}&quot;\\)`));
+  const images = html.match(/<img\b[^>]*>/g) ?? [];
+  assert.ok(images.length >= 4, 'logo, footer and the corner pictures');
+  for (const image of images) {
+    assert.match(image, /alt=""/);
+    assert.match(image, /loading="lazy"/);
+    assert.match(image, new RegExp(`src="${url('(md|lg)')}"`));
+  }
+  assert.doesNotMatch(html, /https?:\/\//);
 });

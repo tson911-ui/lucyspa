@@ -46,9 +46,12 @@ type Step = { kind: 'list' } | { kind: 'describe'; asset: MediaAssetSummary };
 export function MediaPicker({
   onPick,
   onClose,
+  decorative = false,
 }: {
   onPick: (asset: MediaAssetSummary) => void;
   onClose: () => void;
+  /** The image is decoration (a season slot): it is aria-hidden, so no description is asked for. */
+  decorative?: boolean;
 }) {
   const { api, t, locale } = useWorkforce();
   const [step, setStep] = useState<Step>({ kind: 'list' });
@@ -68,7 +71,7 @@ export function MediaPicker({
 
   /** An image with a Vietnamese description is used straight away; otherwise it is described first. */
   const choose = (asset: MediaAssetSummary) => {
-    if (missingAlt(asset)) setStep({ kind: 'describe', asset });
+    if (!decorative && missingAlt(asset)) setStep({ kind: 'describe', asset });
     else onPick(asset);
   };
 
@@ -166,7 +169,9 @@ export function MediaPicker({
               title={asset.originalFilename}
               meta={mediaMeta(asset, separator)}
               badge={
-                missingAlt(asset) ? <Badge tone="warning">{t.media.missingAlt}</Badge> : undefined
+                !decorative && missingAlt(asset) ? (
+                  <Badge tone="warning">{t.media.missingAlt}</Badge>
+                ) : undefined
               }
               actionLabel={fill(text.use, { name: asset.originalFilename })}
               onSelect={() => choose(asset)}

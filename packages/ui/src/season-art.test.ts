@@ -41,12 +41,12 @@ function isGoldHue(hex: string): boolean {
   return hue >= 35 && hue <= 70 && delta / max >= 0.35 && max >= 0.55;
 }
 
-test('Tet and Christmas have site art; the registry and the scene agree on the kits', () => {
+test('Tet, Christmas and Celebration have site art; the registry and the scene agree on the kits', () => {
   assert.deepEqual(
     withArt.map((preset) => preset.key),
-    ['tet', 'christmas'],
+    ['tet', 'christmas', 'celebration'],
   );
-  assert.deepEqual([...SEASON_ART_KITS], ['tet', 'christmas']);
+  assert.deepEqual([...SEASON_ART_KITS], ['tet', 'christmas', 'celebration']);
   assert.equal(isSeasonArtKit('tet'), true);
   assert.equal(isSeasonArtKit('valentine'), false);
   assert.equal(isSeasonArtKit(null), false);
@@ -69,6 +69,7 @@ test('every color the art reads is defined by its kit, and none is left unused',
   const sources: Record<string, string[]> = {
     tet: ['./season-art-tet.tsx', './season-scene.tsx'],
     christmas: ['./season-art-christmas.tsx', './season-scene.tsx'],
+    celebration: ['./season-art-celebration.tsx', './season-scene.tsx'],
   };
   for (const preset of withArt) {
     const text = sources[preset.key]!.map(read).join('\n');
@@ -81,10 +82,12 @@ test('every color the art reads is defined by its kit, and none is left unused',
     // Colors are also passed by name to helpers (`color="bulb1"`, `body="pink"`): a quoted palette key counts.
     for (const name of defined) if (new RegExp(`['"]${name}['"]`).test(text)) used.add(name);
     const ownTokens = [...used].filter((name) => !defined.has(name));
-    // The scene file is shared by both kits: names that only the other kit defines are fine there.
-    const other = withArt.find((candidate) => candidate.key !== preset.key)!;
+    // The scene file is shared by all kits: names that only another kit defines are fine there.
+    const others = withArt.filter((candidate) => candidate.key !== preset.key);
     // `--ls-art-u` is the 4 px unit of the stylesheet, not a color.
-    const reallyMissing = ownTokens.filter((name) => !(name in other.art.light) && name !== 'u');
+    const reallyMissing = ownTokens.filter(
+      (name) => !others.some((other) => name in other.art.light) && name !== 'u',
+    );
     assert.deepEqual(reallyMissing, [], `${preset.key}: art colors with no token`);
     const unused = [...defined].filter(
       (name) => !used.has(name) && !['panel', 'panelText', 'tint1', 'tint2'].includes(name),
@@ -93,16 +96,19 @@ test('every color the art reads is defined by its kit, and none is left unused',
   }
 });
 
-test('yellow art exists only in the Q-S1 presets: Tet has it, Christmas has none', () => {
+test('yellow art exists only in the Q-S1 presets: Tet has it, Christmas and Celebration have none', () => {
   const tet = withArt.find((preset) => preset.key === 'tet')!;
-  const christmas = withArt.find((preset) => preset.key === 'christmas')!;
-  for (const theme of ['light', 'dark'] as const) {
-    assert.ok(Object.values(tet.art[theme]).some(isGoldHue), `tet ${theme} keeps its yellow`);
-    assert.deepEqual(
-      Object.entries(christmas.art[theme]).filter(([, value]) => isGoldHue(value)),
-      [],
-      `christmas ${theme}: no yellow-hue art color`,
-    );
+  assert.ok(Object.values(tet.art.light).some(isGoldHue), 'tet light keeps its yellow');
+  assert.ok(Object.values(tet.art.dark).some(isGoldHue), 'tet dark keeps its yellow');
+  for (const key of ['christmas', 'celebration']) {
+    const preset = withArt.find((candidate) => candidate.key === key)!;
+    for (const theme of ['light', 'dark'] as const) {
+      assert.deepEqual(
+        Object.entries(preset.art[theme]).filter(([, value]) => isGoldHue(value)),
+        [],
+        `${key} ${theme}: no yellow-hue art color`,
+      );
+    }
   }
 });
 

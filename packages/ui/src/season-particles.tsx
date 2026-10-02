@@ -63,6 +63,7 @@ function Glyph({ kind }: { kind: Exclude<SeasonParticleKind, 'none'> }) {
           <rect x="7.4" y="12.6" width="1.2" height="3.4" />
         </>
       ) : null}
+      {kind === 'confetti' ? <rect x="2" y="5.6" width="12" height="4.8" rx="1.2" /> : null}
       {kind === 'heart' ? (
         <path d="M8 14C2 10 1 6 3.5 4C5.5 2.5 7.5 3.5 8 5C8.5 3.5 10.5 2.5 12.5 4C15 6 14 10 8 14Z" />
       ) : null}

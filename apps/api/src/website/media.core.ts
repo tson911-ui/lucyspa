@@ -61,7 +61,8 @@ function summary(row: SummaryRow): MediaAssetSummary {
 }
 
 /**
- * Where an image is used: popups (Step 12) and slides, desktop or phone image (Step 13). Delete protection and the alt-text rule both read this; the public-serving rule reads the
+ * Where an image is used: popups (Step 12), slides, desktop or phone image (Step 13), and season decoration slots
+ * (S6b). Delete protection and the alt-text rule both read this; the public-serving rule reads the
  * same tables through `isPubliclyServed` (popup.core.ts).
  */
 export type MediaUsageLookup = (
@@ -80,6 +81,11 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
     orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     select: { id: true, titleVi: true, titleEn: true },
   });
+  const seasons = await tx.websiteSeason.findMany({
+    where: { slotMedia: { some: { mediaId: assetId } } },
+    orderBy: [{ startsAt: 'desc' }, { id: 'asc' }],
+    select: { id: true, label: true },
+  });
   return [
     ...popups.map((popup) => ({
       kind: 'POPUP' as const,
@@ -91,6 +97,7 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
       id: slide.id,
       title: slide.titleVi ?? slide.titleEn ?? '',
     })),
+    ...seasons.map((season) => ({ kind: 'SEASON' as const, id: season.id, title: season.label })),
   ];
 };
 
@@ -262,7 +269,12 @@ export async function updateMediaAlt(
     return getMedia(context, id);
   }
   // Vietnamese alt text is required before an image is used: it cannot be removed while a popup shows it.
-  if (altVi === null && before.altVi !== null && (await mediaUsages(context.tx, id)).length > 0) {
+  // A season decoration image is aria-hidden, so only popups and slides need the text.
+  if (
+    altVi === null &&
+    before.altVi !== null &&
+    (await mediaUsages(context.tx, id)).some((usage) => usage.kind !== 'SEASON')
+  ) {
     throw new AuthError('MEDIA_ALT_REQUIRED', 'altVi');
   }
   const updated = await context.tx.mediaAsset.update({

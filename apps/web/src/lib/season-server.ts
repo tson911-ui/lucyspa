@@ -3,7 +3,7 @@ import type { Locale } from '../i18n/locales';
 import { parsePublicSeason, publicSeasonUrl } from './season-core';
 
 /** Where the API listens for the server (the same setting the rewrites use); never taken from a request. */
-const apiOrigin = () => process.env['API_UPSTREAM_ORIGIN'] ?? 'http://127.0.0.1:3001';
+export const apiOrigin = () => process.env['API_UPSTREAM_ORIGIN'] ?? 'http://127.0.0.1:3001';
 
 /** A slow API must never slow a page down: past this the answer is "no season". */
 export const SEASON_FETCH_TIMEOUT_MS = 1_500;

@@ -59,6 +59,13 @@ test('Christmas draws Santa, snowman, sleigh with reindeer, gifts, stockings, ca
   }
 });
 
+test('Celebration draws balloons, confetti, ribbons and a cake', () => {
+  const drawn = motifsOf('celebration', null);
+  for (const motif of SEASON_MOTIFS['celebration']!) {
+    assert.ok(drawn.has(motif), `celebration lacks ${motif}`);
+  }
+});
+
 test('the phone and tablet tiers keep a subset: hidden pieces are hidden by class, never absent from the markup', () => {
   const html = renderToStaticMarkup(<SeasonFooterScene kit="tet" line="x" zodiac="mui" />);
   for (const cls of ['ls-art-couplet', 'ls-art-tray', 'ls-art-cakes', 'ls-art-melons']) {

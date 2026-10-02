@@ -165,6 +165,7 @@
 }
 
 .ls-fx-petal,
+.ls-fx-confetti,
 .ls-fx-heart {
   fill: var(--ls-season-ornament-2);
 }

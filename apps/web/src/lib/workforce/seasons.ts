@@ -1,14 +1,21 @@
 import {
+  ALL_SEASON_SLOTS_ON,
+  DEFAULT_SEASON_DENSITY,
   getSeasonPreset,
   isSeasonPresetKey,
+  lunarYearForSeasonEnd,
   SEASON_GREETING_MAX_LENGTH,
+  type SeasonDensity,
   type SeasonPreset,
+  type SeasonSlot,
   type WebsiteSeasonInput,
   type WebsiteSeasonResponse,
   type WebsiteSeasonStatus,
 } from '@lucy-spa/contracts';
+import { hasZodiacArt } from '@lucy-spa/ui';
 import type { Locale } from '../../i18n/locales';
 import { ApiError } from '../api/client';
+import type { SeasonPreviewDraft } from '../season-preview';
 import { isoToVnLocal, vnLocalToIso } from './discounts';
 
 /**
@@ -108,7 +115,21 @@ export interface SeasonForm {
   greetingEn: string;
   applyCustomer: boolean;
   applyAdmin: boolean;
+  /** Slot 1 (particles). */
   particlesEnabled: boolean;
+  /** Slots 2 to 7 (S6b). */
+  slotHeader: boolean;
+  slotLogo: boolean;
+  slotCorners: boolean;
+  slotDividers: boolean;
+  slotFooter: boolean;
+  slotTint: boolean;
+  /** Greeting in the strip under the header and in the footer scene. */
+  greetingStrip: boolean;
+  greetingFooter: boolean;
+  particleDensity: SeasonDensity;
+  /** Media-library image per slot: slot name -> media asset id. */
+  slotMedia: Partial<Record<SeasonSlot, string>>;
   isEnabled: boolean;
 }
 
@@ -127,6 +148,16 @@ export function emptySeasonForm(presetKey: string = 'tet', now: Date = new Date(
     applyCustomer: true,
     applyAdmin: true,
     particlesEnabled: true,
+    slotHeader: ALL_SEASON_SLOTS_ON.header,
+    slotLogo: ALL_SEASON_SLOTS_ON.logo,
+    slotCorners: ALL_SEASON_SLOTS_ON.corners,
+    slotDividers: ALL_SEASON_SLOTS_ON.dividers,
+    slotFooter: ALL_SEASON_SLOTS_ON.footer,
+    slotTint: ALL_SEASON_SLOTS_ON.tint,
+    greetingStrip: true,
+    greetingFooter: true,
+    particleDensity: DEFAULT_SEASON_DENSITY,
+    slotMedia: {},
     isEnabled: false,
   };
 }
@@ -143,6 +174,16 @@ export function formOfSeason(season: WebsiteSeasonResponse): SeasonForm {
     applyCustomer: season.applyCustomer,
     applyAdmin: season.applyAdmin,
     particlesEnabled: season.particlesEnabled,
+    slotHeader: season.slotHeader,
+    slotLogo: season.slotLogo,
+    slotCorners: season.slotCorners,
+    slotDividers: season.slotDividers,
+    slotFooter: season.slotFooter,
+    slotTint: season.slotTint,
+    greetingStrip: season.greetingStrip,
+    greetingFooter: season.greetingFooter,
+    particleDensity: season.particleDensity,
+    slotMedia: { ...season.slotMedia },
     isEnabled: season.isEnabled,
   };
 }
@@ -188,6 +229,16 @@ export function seasonInputOf(
       applyCustomer: form.applyCustomer,
       applyAdmin: form.applyAdmin,
       particlesEnabled: form.particlesEnabled,
+      slotHeader: form.slotHeader,
+      slotLogo: form.slotLogo,
+      slotCorners: form.slotCorners,
+      slotDividers: form.slotDividers,
+      slotFooter: form.slotFooter,
+      slotTint: form.slotTint,
+      greetingStrip: form.greetingStrip,
+      greetingFooter: form.greetingFooter,
+      particleDensity: form.particleDensity,
+      slotMedia: form.slotMedia,
       isEnabled: form.isEnabled,
     },
   };
@@ -224,6 +275,63 @@ export function previewGreeting(form: SeasonForm, locale: Locale): string {
   const own = text(locale === 'vi' ? form.greetingVi : form.greetingEn);
   if (own !== null) return own;
   return isSeasonPresetKey(form.presetKey) ? getSeasonPreset(form.presetKey).greeting[locale] : '';
+}
+
+/**
+ * What the full-page preview draws for the form as it stands, saved or not (S6b). The exclusive end comes from the
+ * last day (so the Tet year name follows it); an unreadable day falls back to the day after today, which only
+ * affects the computed Tet year name, never anything saved.
+ */
+export function draftOfForm(
+  form: SeasonForm,
+  locale: Locale,
+  now: Date = new Date(),
+): SeasonPreviewDraft {
+  const after = nextDay(form.lastDate);
+  const endsAt = (after === null ? null : vnLocalToIso(`${after}T00:00`)) ?? nextDayIso(now);
+  return {
+    presetKey: form.presetKey,
+    greeting: previewGreeting(form, locale),
+    endsAt,
+    customer: form.applyCustomer,
+    particles: form.particlesEnabled,
+    slots: {
+      particles: form.particlesEnabled,
+      header: form.slotHeader,
+      logo: form.slotLogo,
+      corners: form.slotCorners,
+      dividers: form.slotDividers,
+      footer: form.slotFooter,
+      tint: form.slotTint,
+    },
+    density: form.particleDensity,
+    greetingStrip: form.greetingStrip,
+    greetingFooter: form.greetingFooter,
+    mediaIds: form.slotMedia,
+  };
+}
+
+const nextDayIso = (now: Date): string => new Date(now.getTime() + DAY_MS).toISOString();
+
+/**
+ * The year name the Tet kit computes from the last day (never typed, Owner decision 4): the Vietnamese can-chi name
+ * and Gregorian year, the animal, and whether the kit has art for that animal. Null for any other kit.
+ */
+export function computedYearName(
+  form: Pick<SeasonForm, 'presetKey' | 'lastDate'>,
+  locale: Locale,
+): { name: string; animal: string; animalKey: string; hasArt: boolean } | null {
+  if (form.presetKey !== 'tet') return null;
+  const after = nextDay(form.lastDate);
+  const endsAt = after === null ? null : vnLocalToIso(`${after}T00:00`);
+  const year = endsAt === null ? null : lunarYearForSeasonEnd(endsAt);
+  if (year === null) return null;
+  return {
+    name: `${year.canChi} ${year.year}`,
+    animal: year.animalName[locale],
+    animalKey: year.animal,
+    hasArt: hasZodiacArt(year.animal),
+  };
 }
 
 /** The year a season belongs to in the year filter: the year of its first day in Vietnam. */

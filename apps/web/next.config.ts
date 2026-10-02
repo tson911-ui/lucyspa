@@ -30,6 +30,16 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
         ],
       },
+      {
+        // The admin's season preview draws this one page in a frame of its own origin (S6b); every other page stays
+        // unframeable. The page itself answers 404 unless the session holds MANAGE_WEBSITE_CONTENT.
+        source: '/:locale/season-preview',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+          { key: 'Cache-Control', value: 'private, no-store' },
+        ],
+      },
     ];
   },
 };

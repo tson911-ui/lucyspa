@@ -187,7 +187,38 @@ const StarLotus = () => (
   </>
 );
 
+/** Two balloons with strings, a bow and a few confetti pieces (Celebration). */
+const BalloonsConfetti = () => (
+  <>
+    <ellipse cx="22" cy="22" rx="12" ry="15" className="ls-o1" />
+    <ellipse cx="42" cy="26" rx="11" ry="14" className="ls-o2" />
+    <path d="M22 37C26 46 30 50 32 54M42 40C38 48 34 50 32 54" className="ls-ol3 ls-thin" />
+    <path d="M32 54C26 48 24 56 30 58ZM32 54C38 48 40 56 34 58Z" className="ls-o3" />
+    <rect
+      x="8"
+      y="46"
+      width="6"
+      height="3"
+      rx="1"
+      className="ls-o3"
+      transform="rotate(30 11 47.5)"
+    />
+    <circle cx="54" cy="10" r="2.4" className="ls-o3" />
+    <rect
+      x="50"
+      y="46"
+      width="6"
+      height="3"
+      rx="1"
+      className="ls-o1"
+      transform="rotate(-25 53 47.5)"
+    />
+    <circle cx="10" cy="8" r="2.2" className="ls-o2" />
+  </>
+);
+
 const MOTIFS: Record<SeasonOrnamentId, () => ReactElement> = {
+  'balloons-confetti': BalloonsConfetti,
   'mai-blossom': MaiBlossom,
   'christmas-ornaments': ChristmasOrnaments,
   hearts: Hearts,

@@ -1,10 +1,22 @@
 import {
+  ALL_SEASON_SLOTS_ON,
+  DEFAULT_SEASON_DENSITY,
   getSeasonPreset,
+  isSeasonDensity,
   isSeasonPresetKey,
+  isSeasonSlot,
   lunarYearForSeasonEnd,
+  SEASON_SLOTS,
   type PublicSeasonResponse,
+  type SeasonSlot,
+  type SeasonSlotSwitches,
 } from '@lucy-spa/contracts';
-import { isSeasonArtKit, type ParticleDensity, type SeasonArtKit } from '@lucy-spa/ui';
+import {
+  isSeasonArtKit,
+  type ParticleDensity,
+  type SeasonArtKit,
+  type SeasonSlotImages,
+} from '@lucy-spa/ui';
 import type { Locale } from '../i18n/locales';
 
 /**
@@ -40,7 +52,61 @@ export function parsePublicSeason(value: unknown): PublicSeasonResponse | null {
     return null;
   }
   if (!customer && !admin) return null;
-  return { presetKey, greeting, endsAt, particles, customer, admin };
+  const decoration = parseDecoration(body, particles);
+  if (decoration === null) return null;
+  return { presetKey, greeting, endsAt, particles, customer, admin, ...decoration };
+}
+
+/** The addresses the API serves decoration images at; nothing else is ever put in `src` or a CSS url. */
+const MEDIA_URL =
+  /^\/api\/v1\/public\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(thumb|md|lg)$/;
+
+/**
+ * The S6b decoration of the body. An older API sends none of it, which means "everything on, medium, no images"
+ * (the S6a look); a field that is present but odd makes the whole answer "no season" like any other bad field.
+ */
+function parseDecoration(
+  body: Record<string, unknown>,
+  particles: boolean,
+): Pick<
+  PublicSeasonResponse,
+  'slots' | 'density' | 'greetingStrip' | 'greetingFooter' | 'media'
+> | null {
+  const slots: SeasonSlotSwitches = { ...ALL_SEASON_SLOTS_ON, particles };
+  const rawSlots = body['slots'];
+  if (rawSlots !== undefined) {
+    if (typeof rawSlots !== 'object' || rawSlots === null) return null;
+    for (const slot of SEASON_SLOTS) {
+      const value = (rawSlots as Record<string, unknown>)[slot];
+      if (value === undefined) continue;
+      if (typeof value !== 'boolean') return null;
+      slots[slot] = value;
+    }
+    // The particles slot is the `particles` field the admin side also reads; both must agree.
+    slots.particles = particles && slots.particles;
+  }
+  const density = body['density'] ?? DEFAULT_SEASON_DENSITY;
+  if (!isSeasonDensity(density)) return null;
+  const flags: Record<'greetingStrip' | 'greetingFooter', boolean> = {
+    greetingStrip: true,
+    greetingFooter: true,
+  };
+  for (const key of ['greetingStrip', 'greetingFooter'] as const) {
+    const value = body[key];
+    if (value === undefined) continue;
+    if (typeof value !== 'boolean') return null;
+    flags[key] = value;
+  }
+  const media: Partial<Record<SeasonSlot, string>> = {};
+  const rawMedia = body['media'];
+  if (rawMedia !== undefined) {
+    if (typeof rawMedia !== 'object' || rawMedia === null || Array.isArray(rawMedia)) return null;
+    for (const [slot, url] of Object.entries(rawMedia)) {
+      if (!isSeasonSlot(slot) || typeof url !== 'string' || !MEDIA_URL.test(url)) return null;
+      media[slot] = url;
+    }
+  }
+  return { slots, density, ...flags, media };
 }
 
 // ------------------------------------------------------------------ admin hide
@@ -107,6 +173,12 @@ export interface SiteDecorSpec {
   /** Whether particles drift (the schedule allows them and the kit has any). */
   particles: boolean;
   density: ParticleDensity;
+  /** Which slots draw (`particles` equals the field above) and the images that replace slots (S6b). */
+  slots: SeasonSlotSwitches;
+  images: SeasonSlotImages;
+  /** The greeting in the strip under the header and in the footer scene, each switchable per event. */
+  greetingStrip: boolean;
+  greetingFooter: boolean;
   /** The footer scene's greeting line and optional second line. */
   footer: { line: string; sub?: string };
   /** The Tet year's zodiac animal key, or null; art is drawn only when it exists for that animal. */
@@ -136,8 +208,12 @@ export function siteDecorSpec(
   return {
     kit: preset.key,
     greeting: season.greeting,
-    particles: season.particles && preset.ornament.particle !== 'none',
-    density: 'medium',
+    particles: season.particles && season.slots.particles && preset.ornament.particle !== 'none',
+    density: season.density,
+    slots: season.slots,
+    images: season.media,
+    greetingStrip: season.greetingStrip,
+    greetingFooter: season.greetingFooter,
     footer: { line: preset.art.footer.line[locale], ...(sub ? { sub } : {}) },
     zodiac: lunar ? lunar.animal : null,
     lunar: lunar ? { canChi: lunar.canChi, year: lunar.year, animal: lunar.animalName } : null,

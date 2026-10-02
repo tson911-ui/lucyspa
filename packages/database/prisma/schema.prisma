@@ -1955,6 +1955,7 @@ model MediaAsset {
   popups           WebsitePopup[]
   slides           WebsiteSlide[] @relation("WebsiteSlideImage")
   mobileSlides     WebsiteSlide[] @relation("WebsiteSlideMobileImage")
+  seasonSlots      WebsiteSeasonSlotMedia[]
 
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "media_assets_created_idx")
   @@map("media_assets")
@@ -2060,6 +2061,17 @@ model WebsiteSeason {
   applyCustomer    Boolean        @default(true) @map("apply_customer")
   applyAdmin       Boolean        @default(true) @map("apply_admin")
   particlesEnabled Boolean        @default(true) @map("particles_enabled")
+  // S6b decoration: one switch per slot (particles is `particlesEnabled`), the greeting in the strip and in the
+  // footer scene, the particle density (low, medium, high) and one image per slot.
+  slotHeader       Boolean        @default(true) @map("slot_header")
+  slotLogo         Boolean        @default(true) @map("slot_logo")
+  slotCorners      Boolean        @default(true) @map("slot_corners")
+  slotDividers     Boolean        @default(true) @map("slot_dividers")
+  slotFooter       Boolean        @default(true) @map("slot_footer")
+  slotTint         Boolean        @default(true) @map("slot_tint")
+  greetingStrip    Boolean        @default(true) @map("greeting_strip")
+  greetingFooter   Boolean        @default(true) @map("greeting_footer")
+  particleDensity  String         @default("medium") @map("particle_density")
   isEnabled        Boolean        @default(false) @map("is_enabled")
   rowVersion       Int            @default(1) @map("row_version")
   createdByUserId  String         @map("created_by_user_id") @db.Uuid
@@ -2070,7 +2082,23 @@ model WebsiteSeason {
   updatedAt        DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   popups           WebsitePopup[]
   slides           WebsiteSlide[]
+  slotMedia        WebsiteSeasonSlotMedia[]
 
   @@index([startsAt(sort: Desc), id], map: "website_seasons_starts_idx")
   @@map("website_seasons")
+}
+
+// UX/UI Step S6b: the media-library image that replaces one decoration slot of a season. The image is RESTRICT (an
+// image a season uses cannot be deleted); deleting the season removes its rows. `slot` is one of the seven slot names
+// (a CHECK in the migration; the registry in packages/contracts is the source of truth).
+model WebsiteSeasonSlotMedia {
+  seasonId String        @map("season_id") @db.Uuid
+  season   WebsiteSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  slot     String
+  mediaId  String        @map("media_id") @db.Uuid
+  media    MediaAsset    @relation(fields: [mediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([seasonId, slot])
+  @@index([mediaId], map: "website_season_slot_media_media_idx")
+  @@map("website_season_slot_media")
 }

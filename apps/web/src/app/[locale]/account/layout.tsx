@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { SeasonSiteParticles } from '@lucy-spa/ui';
 import { SeasonBand } from '../../../components/season/season-band';
-import { loadSiteDecor, SiteSeasonStrip } from '../../../components/season/site-frame';
+import {
+  loadSiteDecor,
+  SiteParticles,
+  SiteSeasonStrip,
+} from '../../../components/season/site-frame';
 import { CustomerProvider } from '../../../components/customer/session';
 import { getCustomerDictionary } from '../../../i18n/customer';
 import { isLocale } from '../../../i18n/locales';
@@ -34,7 +37,7 @@ export default async function AccountLayout({ children, params }: AccountLayoutP
   const decor = await loadSiteDecor(locale);
   return (
     <div className={decor ? `${appClass} ls-site-page` : appClass}>
-      {decor?.particles ? <SeasonSiteParticles kit={decor.kit} density={decor.density} /> : null}
+      {decor ? <SiteParticles decor={decor} /> : null}
       {decor ? <SiteSeasonStrip decor={decor} locale={locale} /> : <SeasonBand locale={locale} />}
       <CustomerProvider locale={locale}>{children}</CustomerProvider>
     </div>

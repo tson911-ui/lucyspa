@@ -373,7 +373,7 @@
   padding: var(--ls-space-3) var(--ls-space-7) var(--ls-space-3);
   border-radius: calc(var(--ls-radius-md) * 2);
   background: var(--ls-art-panel);
-  box-shadow: 0 calc(var(--ls-art-u) / 2) 0 var(--ls-art-snow-2);
+  box-shadow: 0 calc(var(--ls-art-u) / 2) 0 var(--ls-art-snow-2, var(--ls-art-cream-2, transparent));
 }
 
 .ls-art-plaque-line {
@@ -800,6 +800,300 @@
   .ls-art-gifts-end {
     right: calc(var(--ls-art-u) * 9.5);
     width: calc(var(--ls-art-u) * 10);
+  }
+}
+
+/* ---- Celebration kit (S6b) ----------------------------------------------------------------------- */
+.ls-art-header[data-kit='celebration'] .ls-art-corner {
+  width: calc(var(--ls-art-u) * 58);
+}
+
+/* A ribbon in swags with balloons tied to it and curly streamers below, placed by percent like the string lights. */
+.ls-art-bunting {
+  position: absolute;
+  top: 0;
+  right: var(--ls-art-inset);
+  left: var(--ls-art-inset);
+}
+
+.ls-art-bunting-narrow {
+  display: none;
+}
+
+.ls-art-ribbon {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ls-art-streamer {
+  position: absolute;
+  width: calc(var(--ls-art-u) * 3);
+  transform: translateX(-50%);
+}
+
+.ls-art-ball {
+  position: absolute;
+  top: 0;
+  height: auto;
+  transform: translateX(-50%);
+}
+
+.ls-art-logo[data-kit='celebration'] .ls-art-logo-art {
+  top: calc(var(--ls-art-u) * -6);
+  left: 100%;
+  width: calc(var(--ls-art-u) * 12);
+}
+
+.ls-art-floor,
+.ls-art-floor-confetti {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ls-art-cake {
+  position: absolute;
+  top: calc(var(--ls-art-u) * 2);
+  left: 50%;
+  width: calc(var(--ls-art-u) * 44);
+  height: auto;
+  transform: translateX(-50%);
+}
+
+.ls-art-bunch,
+.ls-art-party-gifts {
+  position: absolute;
+  bottom: calc(var(--ls-art-u) * 8);
+  height: auto;
+}
+
+.ls-art-bunch {
+  width: calc(var(--ls-art-u) * 28);
+}
+
+.ls-art-bunch-start {
+  left: calc(var(--ls-art-u) * 22);
+}
+
+.ls-art-bunch-end {
+  right: calc(var(--ls-art-u) * 22);
+}
+
+.ls-art-party-gifts {
+  width: calc(var(--ls-art-u) * 28);
+}
+
+.ls-art-party-gifts-start {
+  left: calc(var(--ls-art-u) * 56);
+}
+
+.ls-art-party-gifts-end {
+  right: calc(var(--ls-art-u) * 56);
+  transform: scaleX(-1);
+}
+
+/* ---- Slot options (S6b): switched-off slots and media-library images ----------------------------- */
+/* Slot 7 off: no wash. With an image: a soft picture behind everything, under the particle layer. */
+.ls-site-page[data-tint='off'] {
+  background: none;
+}
+
+.ls-site-page > .ls-art-tint-image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-position: center top;
+  background-size: cover;
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+/* Header image: a strip that repeats along the row at the row's own height. */
+.ls-art-header-image {
+  position: absolute;
+  inset: 0;
+  background-position: center top;
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+}
+
+/* Corner image: one picture in a fixed box, mirrored on the right (top) and flipped on the bottom. */
+.ls-art-corner-image {
+  position: absolute;
+  width: calc(var(--ls-art-u) * 40);
+  height: calc(var(--ls-art-u) * 24);
+  object-fit: contain;
+  object-position: left top;
+  pointer-events: none;
+}
+
+.ls-art-corner-image-top-start {
+  top: 0;
+  left: 0;
+}
+
+.ls-art-corner-image-top-end {
+  top: 0;
+  right: 0;
+  transform: scaleX(-1);
+}
+
+.ls-art-corner-image-bottom-start {
+  bottom: 0;
+  left: 0;
+  transform: scaleY(-1);
+}
+
+.ls-art-corner-image-bottom-end {
+  right: 0;
+  bottom: 0;
+  transform: scale(-1, -1);
+}
+
+/* Logo image: a fixed box beside the wordmark. */
+.ls-art-logo[data-image='true'] .ls-art-logo-art {
+  top: calc(var(--ls-art-u) * -6);
+  left: 100%;
+  width: calc(var(--ls-art-u) * 12);
+  height: calc(var(--ls-art-u) * 12);
+}
+
+.ls-art-logo-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Divider image: repeats along the rule at the divider's height. */
+.ls-art-divider-image {
+  flex: 1 1 0;
+  align-self: stretch;
+  background-position: center;
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+}
+
+/* Footer image: centred in the scene. */
+.ls-art-footer-image {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transform: translateX(-50%);
+}
+
+/* No strip greeting: only the effects switch stays, as a small pill on the frame gradient (frame text on frame). */
+.ls-art-strip-bare {
+  display: flex;
+  justify-content: flex-end;
+  margin-block: var(--ls-space-2);
+}
+
+.ls-art-strip-bare .ls-art-fx-switch {
+  background: linear-gradient(90deg, var(--ls-season-frame-from), var(--ls-season-frame-to));
+  border-radius: var(--ls-radius-md);
+}
+
+/* No footer scene: the greeting line alone, on its panel, in the flow. */
+.ls-art-footer[data-compact='true'] {
+  height: auto;
+  margin-top: var(--ls-space-6);
+}
+
+.ls-art-footer[data-compact='true'] .ls-art-footer-text {
+  position: static;
+  padding-block: var(--ls-space-2);
+}
+
+/* ---- Celebration on tablets and phones ------------------------------------------------------------ */
+@media (max-width: 1023px) {
+  .ls-art-bunting-wide {
+    display: none;
+  }
+
+  .ls-art-bunting-narrow {
+    display: block;
+  }
+
+  .ls-art-header[data-kit='celebration'] .ls-art-corner {
+    width: calc(var(--ls-art-u) * 42);
+  }
+
+  .ls-art-cake {
+    width: calc(var(--ls-art-u) * 40);
+  }
+
+  .ls-art-bunch-start {
+    left: calc(var(--ls-art-u) * 6);
+  }
+
+  .ls-art-bunch-end {
+    right: calc(var(--ls-art-u) * 6);
+  }
+
+  .ls-art-corner-image {
+    width: calc(var(--ls-art-u) * 30);
+  }
+}
+
+@media (max-width: 760px) {
+  .ls-art-header[data-kit='celebration'] .ls-art-corner {
+    width: calc(var(--ls-art-u) * 28);
+  }
+
+  .ls-art-logo[data-kit='celebration'] .ls-art-logo-art {
+    top: calc(var(--ls-art-u) * -4);
+    width: calc(var(--ls-art-u) * 8);
+  }
+
+  .ls-art-logo[data-image='true'] .ls-art-logo-art {
+    top: calc(var(--ls-art-u) * -4);
+    width: calc(var(--ls-art-u) * 8);
+    height: calc(var(--ls-art-u) * 8);
+  }
+
+  .ls-art-cake {
+    top: calc(var(--ls-art-u) * 1);
+    width: calc(var(--ls-art-u) * 34);
+  }
+
+  .ls-art-bunch {
+    bottom: calc(var(--ls-art-u) * 7);
+    width: calc(var(--ls-art-u) * 20);
+  }
+
+  .ls-art-bunch-start {
+    left: 0;
+  }
+
+  .ls-art-bunch-end {
+    right: 0;
+  }
+
+  .ls-art-corner-image {
+    width: calc(var(--ls-art-u) * 20);
+    height: calc(var(--ls-art-u) * 16);
+  }
+
+  .ls-art-footer[data-kit='celebration'] {
+    --ls-art-footer-h: calc(var(--ls-art-u) * 64);
+  }
+
+  .ls-art-footer[data-kit='celebration'] .ls-art-footer-text {
+    padding-inline: calc(var(--ls-art-u) * 24);
+  }
+
+  .ls-art-footer[data-kit='celebration'] .ls-art-plaque-line {
+    font-size: var(--ls-text-md);
   }
 }
 

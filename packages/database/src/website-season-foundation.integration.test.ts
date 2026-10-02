@@ -187,6 +187,65 @@ test('website season foundation: constrained seasons, restricted links from popu
           await tx.websitePopup.update({ where: { id: popup.id }, data: { seasonId: null } });
           await tx.websiteSlide.update({ where: { id: slide.id }, data: { seasonId: null } });
           await tx.websiteSeason.delete({ where: { id: created.id } });
+
+          // S6b decoration: a season saved without it means everything on, medium density, no images.
+          const decorated = await tx.websiteSeason.create({ data: season() });
+          assert.deepEqual(
+            [
+              decorated.slotHeader,
+              decorated.slotLogo,
+              decorated.slotCorners,
+              decorated.slotDividers,
+              decorated.slotFooter,
+              decorated.slotTint,
+              decorated.greetingStrip,
+              decorated.greetingFooter,
+              decorated.particleDensity,
+            ],
+            [true, true, true, true, true, true, true, true, 'medium'],
+          );
+          for (const particleDensity of ['', 'huge', 'LOW', 'medium ']) {
+            await rejects(
+              () => tx.websiteSeason.create({ data: season({ particleDensity }) }),
+              /website_seasons_particle_density/,
+            );
+          }
+          await tx.websiteSeason.create({ data: season({ particleDensity: 'high' }) });
+          // One image per slot per season; the slot is one of the seven names; the image is restricted.
+          await tx.websiteSeasonSlotMedia.create({
+            data: { seasonId: decorated.id, slot: 'header', mediaId: asset.id },
+          });
+          await rejects(
+            () =>
+              tx.websiteSeasonSlotMedia.create({
+                data: { seasonId: decorated.id, slot: 'header', mediaId: asset.id },
+              }),
+            /Unique constraint|website_season_slot_media_pkey/,
+          );
+          await rejects(
+            () =>
+              tx.websiteSeasonSlotMedia.create({
+                data: { seasonId: decorated.id, slot: 'nowhere', mediaId: asset.id },
+              }),
+            /website_season_slot_media_slot/,
+          );
+          await rejects(
+            () =>
+              tx.websiteSeasonSlotMedia.create({
+                data: { seasonId: decorated.id, slot: 'footer', mediaId: randomUUID() },
+              }),
+            /website_season_slot_media_media_id_fkey|foreign key/,
+          );
+          await rejects(
+            () => tx.mediaAsset.delete({ where: { id: asset.id } }),
+            /website_season_slot_media_media_id_fkey|website_slides_media_id_fkey|foreign key/,
+          );
+          // Deleting the season removes its image rows (cascade) and frees the image.
+          await tx.websiteSeason.delete({ where: { id: decorated.id } });
+          assert.equal(
+            await tx.websiteSeasonSlotMedia.count({ where: { seasonId: decorated.id } }),
+            0,
+          );
           await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
           throw rollback;
         },

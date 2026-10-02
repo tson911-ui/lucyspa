@@ -18,6 +18,7 @@ export const SEASON_PRESET_KEYS = [
   'mid-autumn',
   'reunification-labour',
   'national-day',
+  'celebration',
 ] as const;
 export type SeasonPresetKey = (typeof SEASON_PRESET_KEYS)[number];
 
@@ -55,11 +56,19 @@ export const SEASON_ORNAMENT_IDS = [
   'star-lantern-moon',
   'star-fireworks',
   'star-lotus',
+  'balloons-confetti',
 ] as const;
 export type SeasonOrnamentId = (typeof SEASON_ORNAMENT_IDS)[number];
 
 /** What drifts inside the banner (S2): falling petals or snow, rising lanterns or hearts, or nothing. */
-export const SEASON_PARTICLE_KINDS = ['petal', 'snow', 'lantern', 'heart', 'none'] as const;
+export const SEASON_PARTICLE_KINDS = [
+  'petal',
+  'snow',
+  'lantern',
+  'heart',
+  'confetti',
+  'none',
+] as const;
 export type SeasonParticleKind = (typeof SEASON_PARTICLE_KINDS)[number];
 
 export interface SeasonPreset {
@@ -82,7 +91,54 @@ export interface SeasonPreset {
   } | null;
   /** Site-wide art (S6); absent until the preset's kit ships. */
   art?: SeasonArt;
+  /**
+   * A base kit for custom events (S6b): it has no calendar date of its own, so the form asks for the event name and
+   * the days instead of prefilling them (solar holidays) or noting that they are lunar.
+   */
+  customEvent?: true;
 }
+
+/**
+ * The seven decoration slots of a season (S6, plan section 3). Every one can be switched off per event, and every
+ * one can be replaced by one image from the media library (S6b).
+ */
+export const SEASON_SLOTS = [
+  'particles',
+  'header',
+  'logo',
+  'corners',
+  'dividers',
+  'footer',
+  'tint',
+] as const;
+export type SeasonSlot = (typeof SEASON_SLOTS)[number];
+
+export function isSeasonSlot(value: unknown): value is SeasonSlot {
+  return (SEASON_SLOTS as readonly unknown[]).includes(value);
+}
+
+/** How many particles drift: low / medium / high is 12 / 24 / 40 on a desktop and 6 / 12 / 20 on a phone. */
+export const SEASON_DENSITIES = ['low', 'medium', 'high'] as const;
+export type SeasonDensity = (typeof SEASON_DENSITIES)[number];
+export const DEFAULT_SEASON_DENSITY: SeasonDensity = 'medium';
+
+export function isSeasonDensity(value: unknown): value is SeasonDensity {
+  return (SEASON_DENSITIES as readonly unknown[]).includes(value);
+}
+
+/** Slot name -> on or off. A kit without a slot ignores its switch. */
+export type SeasonSlotSwitches = Record<SeasonSlot, boolean>;
+
+/** Everything on: what a new season and the rows saved before S6b mean. */
+export const ALL_SEASON_SLOTS_ON: Readonly<SeasonSlotSwitches> = Object.freeze({
+  particles: true,
+  header: true,
+  logo: true,
+  corners: true,
+  dividers: true,
+  footer: true,
+  tint: true,
+});
 
 /**
  * The site-wide decoration kit of a preset (Step S6, docs/UXUI_REDESIGN_S6_PLAN.md): the colors its drawn art reads,
@@ -513,6 +569,85 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
       dark: ['#ffd84d', '#fff1f2', '#ff9aa3'],
     },
     suggestedWindow: { start: { month: 8, day: 31 }, end: { month: 9, day: 3 } },
+  },
+  {
+    key: 'celebration',
+    name: { vi: 'Sự kiện, chúc mừng', en: 'Celebration' },
+    greeting: {
+      vi: 'Chúc mừng! Lucy Spa vui cùng quý khách trong ngày đặc biệt này.',
+      en: 'Celebrate with us! Lucy Spa is happy to share this special day with you.',
+    },
+    light: {
+      accent: '#6a3fa8',
+      accentSoft: '#f0e8fa',
+      onAccent: '#ffffff',
+      frameFrom: '#7c4cc0',
+      frameTo: '#5a2f96',
+      frameText: '#ffffff',
+    },
+    dark: {
+      accent: '#c4a5f2',
+      accentSoft: '#2b1a48',
+      onAccent: '#1d0f33',
+      frameFrom: '#4d2c84',
+      frameTo: '#311b58',
+      frameText: '#f3ebff',
+    },
+    ornament: {
+      id: 'balloons-confetti',
+      particle: 'confetti',
+      light: ['#ffb3d1', '#b8f0e6', '#d9c7ff'],
+      dark: ['#f9b4cd', '#8adfd5', '#cdb8f6'],
+    },
+    // A custom event has no calendar date: the Owner types the name and the days.
+    suggestedWindow: null,
+    customEvent: true,
+    art: {
+      light: {
+        pink: '#ec5f94',
+        pink2: '#f8a3c3',
+        violet: '#8a5cd6',
+        violet2: '#c3a9f2',
+        teal: '#1fa39a',
+        teal2: '#7fd8cd',
+        sky: '#4b9fe0',
+        coral: '#f2705a',
+        mint: '#9fe0c0',
+        cream: '#fff4f0',
+        cream2: '#f6d9e2',
+        string: '#8d7f99',
+        white: '#ffffff',
+        ink: '#3a2b4a',
+        panel: '#ffffff',
+        panelText: '#2d1f40',
+        tint1: '#c9a8f2',
+        tint2: '#f4a1c4',
+      },
+      dark: {
+        pink: '#f27aa8',
+        pink2: '#f9b4cd',
+        violet: '#a47ae8',
+        violet2: '#cdb8f6',
+        teal: '#3cbfb4',
+        teal2: '#8adfd5',
+        sky: '#6db4ec',
+        coral: '#f58a74',
+        mint: '#8bd5b0',
+        cream: '#46325c',
+        cream2: '#62467a',
+        string: '#b7a9c4',
+        white: '#ffffff',
+        ink: '#3a2b4a',
+        panel: '#f5eefb',
+        panelText: '#2d1f40',
+        tint1: '#6a3fa8',
+        tint2: '#b84d86',
+      },
+      footer: {
+        line: { vi: 'Chúc mừng', en: 'Congratulations' },
+        sub: { vi: 'Một ngày đáng nhớ cùng Lucy Spa', en: 'A day to remember at Lucy Spa' },
+      },
+    },
   },
 ];
 

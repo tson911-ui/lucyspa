@@ -5,6 +5,7 @@ import type {
   NotificationParams,
   NotificationType,
 } from './notification-registry.js';
+import type { SeasonDensity, SeasonSlot, SeasonSlotSwitches } from './season-registry.js';
 export type OrganizationLevel =
   | 'CEO'
   | 'REGIONAL_MANAGER'
@@ -2769,7 +2770,7 @@ export interface MediaAssetSummary {
 
 /** Where an image is used (filled by the popup and slider Steps); an image with any usage cannot be deleted. */
 export interface MediaUsage {
-  kind: 'POPUP' | 'SLIDE';
+  kind: 'POPUP' | 'SLIDE' | 'SEASON';
   id: string;
   title: string;
 }
@@ -2985,11 +2986,33 @@ export interface PublicSlidesResponse {
 /** Derived, never stored: Draft (disabled), Scheduled (enabled, not started), Active (live now), Ended. */
 export type WebsiteSeasonStatus = 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'ENDED';
 
-/** The fields an admin writes. `startsAt`/`endsAt` are ISO instants; the end is exclusive. */
-export interface WebsiteSeasonInput {
+/**
+ * The decoration of a season (S6b): which of the seven slots draw (`particlesEnabled` is the particles slot), how
+ * many particles, whether the greeting shows in the strip and in the footer scene, and the media-library image
+ * that replaces a slot's drawn art (`slotMedia`: slot name -> media asset id).
+ */
+export interface SeasonDecorationFields {
+  slotHeader: boolean;
+  slotLogo: boolean;
+  slotCorners: boolean;
+  slotDividers: boolean;
+  slotFooter: boolean;
+  slotTint: boolean;
+  greetingStrip: boolean;
+  greetingFooter: boolean;
+  particleDensity: SeasonDensity;
+  slotMedia: Partial<Record<SeasonSlot, string>>;
+}
+
+/**
+ * The fields an admin writes. `startsAt`/`endsAt` are ISO instants; the end is exclusive. The decoration fields are
+ * optional so an older client keeps working: omitted on create means all on, medium, no images; omitted on update
+ * means unchanged.
+ */
+export interface WebsiteSeasonInput extends Partial<SeasonDecorationFields> {
   /** One of `SEASON_PRESET_KEYS`. */
   presetKey: string;
-  /** Internal name, 1-80 characters (for example "Tet 2027"). */
+  /** The event name, 1-80 characters (for example "Tet 2027" or "Grand opening"). */
   label: string;
   startsAt: string;
   endsAt: string;
@@ -3002,7 +3025,8 @@ export interface WebsiteSeasonInput {
   isEnabled: boolean;
 }
 
-export interface WebsiteSeasonResponse extends WebsiteSeasonInput {
+export interface WebsiteSeasonResponse
+  extends Omit<WebsiteSeasonInput, keyof SeasonDecorationFields>, SeasonDecorationFields {
   id: string;
   status: WebsiteSeasonStatus;
   /** Ids of the popups and slides that follow this season. */
@@ -3046,4 +3070,12 @@ export interface PublicSeasonResponse {
   customer: boolean;
   /** The admin side gets its subtle touch. */
   admin: boolean;
+  /** The seven decoration slots (S6b); `particles` equals the field above. A kit without a slot ignores it. */
+  slots: SeasonSlotSwitches;
+  density: SeasonDensity;
+  /** Whether the greeting shows in the strip under the header and in the footer scene. */
+  greetingStrip: boolean;
+  greetingFooter: boolean;
+  /** Images that replace a slot's drawn art: slot name -> public URL. */
+  media: Partial<Record<SeasonSlot, string>>;
 }

@@ -30,6 +30,20 @@ import {
 import { emptySlideForm, slideInputOf } from './slides';
 import { errorMessage } from './workflows';
 
+/** The S6b decoration of a season saved with everything on, medium density and no image. */
+const DECORATION = {
+  slotHeader: true,
+  slotLogo: true,
+  slotCorners: true,
+  slotDividers: true,
+  slotFooter: true,
+  slotTint: true,
+  greetingStrip: true,
+  greetingFooter: true,
+  particleDensity: 'medium' as const,
+  slotMedia: {},
+};
+
 const vi = getWorkforceDictionary('vi');
 const en = getWorkforceDictionary('en');
 
@@ -74,6 +88,7 @@ test('a saved season comes back as the same first and last day', () => {
   assert.ok('body' in season);
   const response: WebsiteSeasonResponse = {
     ...season.body,
+    ...DECORATION,
     id: 's-1',
     status: 'DRAFT',
     popupIds: [],
@@ -173,6 +188,7 @@ test('preview greeting: the Owner’s text in the language, else the preset defa
 });
 
 const season = (patch: Partial<WebsiteSeasonResponse>): WebsiteSeasonResponse => ({
+  ...DECORATION,
   presetKey: 'tet',
   label: 'x',
   startsAt: '2026-12-31T17:00:00.000Z',
@@ -235,14 +251,37 @@ test('the season form: create page, access rules, loading frame for an existing 
   assert.ok(create.includes(en.seasons.createTitle));
   assert.ok(create.includes(en.seasons.form.label) && create.includes(en.seasons.form.startDate));
   assert.ok(create.includes(en.seasons.form.lastDate) && create.includes(en.seasons.form.save));
-  // The picker offers every preset; the preview shows desktop and phone in light and dark.
+  // The picker offers every preset; the full-page preview is one frame with a device and a theme selector.
   for (const preset of SEASON_PRESETS)
     assert.ok(create.includes(`value="${preset.key}"`), preset.key);
-  assert.equal([...create.matchAll(/data-preview-theme=/g)].length, 4);
-  assert.ok(
-    create.includes(en.seasons.form.previewDesktop) &&
-      create.includes(en.seasons.form.previewPhone),
-  );
+  assert.equal([...create.matchAll(/<iframe\b/g)].length, 1, 'one preview frame at a time');
+  assert.ok(create.includes('src="/en/season-preview"'));
+  for (const label of [
+    en.seasons.form.previewDesktop,
+    en.seasons.form.previewPhone,
+    en.seasons.form.previewLight,
+    en.seasons.form.previewDark,
+    en.seasons.form.previewOpen,
+  ]) {
+    assert.ok(create.includes(label), label);
+  }
+  // The Decoration section: seven slot rows, the density control and the two greeting switches.
+  assert.ok(create.includes(en.seasons.form.decorationSection));
+  for (const name of [
+    en.seasons.form.slotParticles,
+    en.seasons.form.slotHeader,
+    en.seasons.form.slotLogo,
+    en.seasons.form.slotCorners,
+    en.seasons.form.slotDividers,
+    en.seasons.form.slotFooter,
+    en.seasons.form.slotTint,
+  ]) {
+    assert.ok(create.includes(name), name);
+  }
+  assert.equal([...create.matchAll(/class="ls-season-slot"/g)].length, 7);
+  assert.ok(create.includes(en.seasons.form.density));
+  assert.ok(create.includes(en.seasons.form.greetingStrip));
+  assert.ok(create.includes(en.seasons.form.greetingFooter));
   assert.ok(
     !create.includes(en.seasons.holiday.section),
     'linked content waits for a saved season',

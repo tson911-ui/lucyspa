@@ -96,12 +96,13 @@ const accentValues = (tokens: SeasonAccentTokens): string[] => Object.values(tok
 const GOLD_ORNAMENT_PRESETS = ['tet', 'mid-autumn', 'reunification-labour', 'national-day'];
 const FLAG_DAY_PRESETS = ['reunification-labour', 'national-day'];
 
-test('the registry is exactly the eight approved presets, in order, with unique keys', () => {
+test('the registry is exactly the eight approved holiday presets plus Celebration, in order, with unique keys', () => {
   assert.deepEqual(
     SEASON_PRESETS.map((preset) => preset.key),
     [...SEASON_PRESET_KEYS],
   );
-  assert.equal(new Set(SEASON_PRESET_KEYS).size, 8);
+  assert.equal(new Set(SEASON_PRESET_KEYS).size, 9);
+  assert.equal(SEASON_PRESET_KEYS.at(-1), 'celebration');
 });
 
 test('every preset has names, greetings up to 80 characters, hex colors and a valid suggested window', () => {
@@ -133,10 +134,12 @@ test('every preset has names, greetings up to 80 characters, hex colors and a va
   }
 });
 
-test('lunar holidays have no suggested window; every solar holiday has one', () => {
+test('lunar holidays and the custom-event kit have no suggested window; every solar holiday has one', () => {
   for (const preset of SEASON_PRESETS) {
-    const lunar = preset.key === 'tet' || preset.key === 'mid-autumn';
-    assert.equal(preset.suggestedWindow === null, lunar, preset.key);
+    const noWindow =
+      preset.key === 'tet' || preset.key === 'mid-autumn' || preset.key === 'celebration';
+    assert.equal(preset.suggestedWindow === null, noWindow, preset.key);
+    assert.equal(preset.customEvent === true, preset.key === 'celebration', preset.key);
   }
   const christmas = SEASON_PRESETS.find((preset) => preset.key === 'christmas')!;
   assert.deepEqual(christmas.suggestedWindow, {
