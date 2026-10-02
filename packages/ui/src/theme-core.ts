@@ -35,6 +35,35 @@ export function resolveTheme(preference: ThemePreference, now: Date): ResolvedTh
 }
 
 /**
+ * Applies the theme to `<html>` now and keeps it right: re-evaluates at the next 06:00 / 18:00 boundary
+ * and when the tab becomes visible again. Returns a cleanup. This is the client twin of `themeInitScript`:
+ * the root layout is keyed by the locale, so a locale switch remounts `<html>`, React clears the attributes
+ * the script set (`data-theme`), and the script is never created again after hydration. The component
+ * that renders the script therefore runs this on every mount.
+ */
+export function startThemeSync(doc: Document, clock: () => Date = () => new Date()): () => void {
+  const root = doc.documentElement;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const apply = () =>
+    root.setAttribute('data-theme', resolveTheme(parseThemeCookie(doc.cookie), clock()));
+  const schedule = () => {
+    apply();
+    const now = clock();
+    const nextHour =
+      themeForHour(now.getHours()) === 'light' ? AUTO_DARK_FROM_HOUR : AUTO_LIGHT_FROM_HOUR;
+    const boundary = new Date(now.getFullYear(), now.getMonth(), now.getDate(), nextHour, 0, 0, 0);
+    if (boundary.getTime() <= now.getTime()) boundary.setDate(boundary.getDate() + 1);
+    timer = setTimeout(schedule, boundary.getTime() - now.getTime() + 500);
+  };
+  schedule();
+  doc.addEventListener('visibilitychange', apply);
+  return () => {
+    clearTimeout(timer);
+    doc.removeEventListener('visibilitychange', apply);
+  };
+}
+
+/**
  * Runs before paint and keeps running: sets `data-theme` from the cookie, or from the local hour with
  * no cookie, then re-evaluates at the next 06:00 / 18:00 boundary and when the tab becomes visible
  * again (a sleeping device can miss the timer). No `<` character: the script sits in the HTML.

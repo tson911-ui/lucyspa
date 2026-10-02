@@ -1,7 +1,7 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
-import { themeInitScript } from './theme-core';
+import { useLayoutEffect, useSyncExternalStore } from 'react';
+import { startThemeSync, themeInitScript } from './theme-core';
 
 const subscribe = () => () => undefined;
 
@@ -14,8 +14,12 @@ const subscribe = () => () => undefined;
  * on every client navigation that re-renders the root layout (for example a language switch).
  * `useSyncExternalStore` returns the server snapshot (true) while hydrating and the client snapshot
  * (false) for every later render, so after hydration the already-executed script is simply dropped.
+ *
+ * Because the script is not re-created, a remount of `<html>` (the locale switch) would lose the
+ * `data-theme` attribute React clears; the layout effect re-applies it from the cookie before paint.
  */
 export function ThemeInitScript() {
+  useLayoutEffect(() => startThemeSync(document), []);
   const render = useSyncExternalStore(
     subscribe,
     () => false,
