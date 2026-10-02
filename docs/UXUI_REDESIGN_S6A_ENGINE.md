@@ -26,3 +26,8 @@ Status: implemented on base `8322941`. Plan and locked Owner decisions: `UXUI_RE
 ## Deploy / open questions
 
 Web only (kits ship with the build). None.
+
+## Revision 1 (Owner review of the S6a art, 2026-10-02)
+
+- Tet and Christmas redone to the Owner motif list (plan 4.1, registry `SEASON_MOTIFS`, `data-motif` tags, `season-motifs.test`): cau doi, mam ngu qua, banh chung and banh tet, dua hau (Tet); Santa, snowman, sleigh with reindeer, stockings, candy canes, bells, wreath (Christmas).
+- Approved with two fixes: the mam ngu qua is larger with outlined fruits; Christmas snow is clipped out of the header art band (`data-clear-top`, both themes). Re-rendered 768/360 light and 1440 light/dark, all opened.

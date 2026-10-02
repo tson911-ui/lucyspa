@@ -65,7 +65,9 @@ export function SeasonSiteFrame({
 }) {
   return (
     <div className="ls-site-page">
-      {decor.particles ? <SeasonSiteParticles kit={decor.kit} density={decor.density} /> : null}
+      {decor.particles ? (
+        <SeasonSiteParticles kit={decor.kit} density={decor.density} clearHeaderRow />
+      ) : null}
       <SeasonHeaderRow kit={decor.kit} />
       <div className="site-shell">
         {header}

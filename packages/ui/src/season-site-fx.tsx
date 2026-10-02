@@ -97,9 +97,12 @@ export function SeasonFxSwitch({ labels }: { labels: { turnOff: string; turnOn: 
 export function SeasonSiteParticles({
   kit,
   density = 'medium',
+  clearHeaderRow = false,
 }: {
   kit: SeasonArtKit;
   density?: ParticleDensity;
+  /** The page has a decor row above its header: Christmas keeps its snow out of that band. */
+  clearHeaderRow?: boolean;
 }) {
   const phone = useMediaQuery(PHONE_QUERY);
   const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY);
@@ -188,6 +191,7 @@ export function SeasonSiteParticles({
       ref={layerRef}
       className="ls-fx-site"
       data-paused={paused ? 'true' : undefined}
+      data-clear-top={clearHeaderRow && kit === 'christmas' ? 'true' : undefined}
       aria-hidden="true"
       style={style}
     >

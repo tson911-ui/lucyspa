@@ -7,17 +7,24 @@ import {
   ChristmasHat,
   ChristmasHills,
   ChristmasLights,
+  ChristmasSanta,
+  ChristmasSleigh,
+  ChristmasSnowman,
   ChristmasTree,
 } from './season-art-christmas';
 import { ArtSvg } from './season-art-kit';
 import {
   Blossom,
   TetBand,
+  TetCoupletPair,
   TetCrackers,
   TetDividerArt,
   TetEnvelopes,
+  TetFruitTray,
   TetLantern,
   TetMaiBranch,
+  TetMelons,
+  TetRiceCakes,
   TetSprig,
   ZODIAC_ART,
 } from './season-art-tet';
@@ -166,6 +173,11 @@ export function SeasonFooterScene({
         {kit === 'tet' ? (
           <>
             <TetBand className="ls-art-band" />
+            <TetCoupletPair className="ls-art-couplet ls-art-couplet-start ls-art-hide-medium" />
+            <TetCoupletPair className="ls-art-couplet ls-art-couplet-end ls-art-hide-medium" />
+            <TetFruitTray className="ls-art-tray ls-art-hide-medium" />
+            <TetRiceCakes className="ls-art-cakes ls-art-hide-medium" />
+            <TetMelons className="ls-art-melons ls-art-hide-medium" />
             <TetCrackers
               rolls={8}
               className="ls-art-crackers ls-art-crackers-start ls-art-show-wide"
@@ -182,13 +194,16 @@ export function SeasonFooterScene({
               rolls={3}
               className="ls-art-crackers ls-art-crackers-end ls-art-show-narrow"
             />
-            <TetEnvelopes className="ls-art-pile ls-art-pile-start" />
+            <TetEnvelopes className="ls-art-pile ls-art-pile-start ls-art-only-compact" />
             <TetEnvelopes className="ls-art-pile ls-art-pile-end" />
             {Animal ? <Animal className="ls-art-animal" /> : null}
           </>
         ) : (
           <>
             <ChristmasHills className="ls-art-hills" />
+            <ChristmasSleigh className="ls-art-sleigh" />
+            <ChristmasSnowman className="ls-art-snowman ls-art-hide-medium" />
+            <ChristmasSanta className="ls-art-santa ls-art-hide-medium" />
             <ChristmasTree className="ls-art-tree ls-art-tree-start" />
             <ChristmasGiftsA className="ls-art-gifts ls-art-gifts-start" />
             <ChristmasTree className="ls-art-tree ls-art-tree-end" />

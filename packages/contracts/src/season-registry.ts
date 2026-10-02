@@ -97,6 +97,55 @@ export interface SeasonArt {
   footer: { line: { vi: string; en: string }; sub?: { vi: string; en: string } };
 }
 
+/**
+ * The iconic motifs every kit must draw as part of its scenes, not just flowers (Owner addition 2026-10-02, recorded in
+ * docs/UXUI_REDESIGN_S6_PLAN.md section 4). Keys are stable ids: the art tags each drawing with `data-motif`, and a
+ * test fails when a shipped kit lacks one. Kits that have no art yet are listed here so each Step builds to the list.
+ */
+export const SEASON_MOTIFS: Readonly<Record<string, readonly string[]>> = {
+  tet: [
+    'li-xi',
+    'cau-doi',
+    'hoa-mai',
+    'hoa-dao',
+    'banh-chung',
+    'banh-tet',
+    'mam-ngu-qua',
+    'dua-hau',
+    'phao-giay',
+    'long-den',
+    'zodiac',
+  ],
+  christmas: [
+    'santa',
+    'snowman',
+    'sleigh-reindeer',
+    'gifts',
+    'stockings',
+    'candy-canes',
+    'wreath',
+    'bells',
+    'tree',
+  ],
+  valentine: ['roses', 'chocolates', 'love-letters', 'cupid'],
+  'womens-day': ['bouquets', 'ao-dai', 'non-la', 'gift-boxes'],
+  'vn-womens-day': ['bouquets', 'ao-dai', 'non-la', 'gift-boxes'],
+  'mid-autumn': [
+    'lion-dance',
+    'star-lantern',
+    'carp-lantern',
+    'spinning-lantern',
+    'full-moon',
+    'chi-hang-chu-cuoi',
+    'jade-rabbit',
+    'mooncakes',
+  ],
+  'reunification-labour': ['flag-bunting', 'fireworks', 'peace-doves', 'lotus'],
+  'national-day': ['flag-bunting', 'fireworks', 'peace-doves', 'lotus'],
+  'vu-lan': ['rose-on-shirt', 'hoa-dang', 'lotus'],
+  celebration: ['balloons', 'confetti', 'ribbons', 'cake'],
+};
+
 export const SEASON_GREETING_MAX_LENGTH = 80;
 
 export const SEASON_PRESETS: readonly SeasonPreset[] = [
@@ -149,6 +198,8 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
         cream: '#fff3e2',
         cream2: '#f0d9bd',
         blush: '#f4a1bd',
+        leaf2: '#2f6b3f',
+        leaf3: '#7fbf8e',
         ink: '#2b1d1d',
         white: '#ffffff',
         panel: '#f8d4de',
@@ -174,6 +225,8 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
         cream: '#fbead4',
         cream2: '#dcc3a4',
         blush: '#f0a0bb',
+        leaf2: '#4f9a62',
+        leaf3: '#8cc79a',
         ink: '#2b1d1d',
         white: '#ffffff',
         panel: '#46303a',
@@ -234,6 +287,9 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
         bulb4: '#f6a3c0',
         wire: '#3b5c47',
         star: '#f06a7c',
+        ink: '#2a2a35',
+        skin: '#f6c9a6',
+        carrot: '#e8873a',
         panel: '#ffffff',
         panelText: '#1f2d3a',
         tint1: '#58a272',
@@ -258,6 +314,9 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
         bulb4: '#f4b0c8',
         wire: '#8fb8a0',
         star: '#f58294',
+        ink: '#44445a',
+        skin: '#f6c9a6',
+        carrot: '#f09a50',
         panel: '#eef3f8',
         panelText: '#1f2d3a',
         tint1: '#3c8c5a',

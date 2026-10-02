@@ -18,12 +18,15 @@ export function ArtSvg({
   className,
   preserveAspectRatio,
   style,
+  motif,
   children,
 }: {
   viewBox: string;
   className?: string | undefined;
   preserveAspectRatio?: SVGAttributes<SVGSVGElement>['preserveAspectRatio'];
   style?: CSSProperties | undefined;
+  /** The iconic motif(s) this drawing is (space-separated ids of SEASON_MOTIFS), for tests and review. */
+  motif?: string | undefined;
   children: ReactNode;
 }) {
   return (
@@ -32,6 +35,7 @@ export function ArtSvg({
       viewBox={viewBox}
       preserveAspectRatio={preserveAspectRatio}
       style={style}
+      data-motif={motif}
       aria-hidden="true"
       focusable="false"
     >

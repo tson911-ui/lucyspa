@@ -110,3 +110,8 @@ test('only season, art, spacing, text, radius, motion, control, border and displ
   }
   assert.doesNotMatch(code, /--ls-season-(accent|line)/, 'the kit reads frame tokens only');
 });
+
+test('Christmas keeps its snow out of the header art band: the layer is clipped by the header row height', () => {
+  const clip = ruleFor("[data-clear-top='true']".replace(/^/, '.ls-fx-site'))[0]!;
+  assert.match(clip.body, /clip-path:\s*inset\(var\(--ls-art-header-h\) 0 0 0\)/);
+});

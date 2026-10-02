@@ -28,6 +28,8 @@
   --ls-art-cream: #fff3e2;
   --ls-art-cream-2: #f0d9bd;
   --ls-art-blush: #f4a1bd;
+  --ls-art-leaf-2: #2f6b3f;
+  --ls-art-leaf-3: #7fbf8e;
   --ls-art-ink: #2b1d1d;
   --ls-art-white: #ffffff;
   --ls-art-panel: #f8d4de;
@@ -64,6 +66,8 @@
   --ls-art-cream: #fbead4;
   --ls-art-cream-2: #dcc3a4;
   --ls-art-blush: #f0a0bb;
+  --ls-art-leaf-2: #4f9a62;
+  --ls-art-leaf-3: #8cc79a;
   --ls-art-ink: #2b1d1d;
   --ls-art-white: #ffffff;
   --ls-art-panel: #46303a;
@@ -100,6 +104,8 @@
     --ls-art-cream: #fbead4;
     --ls-art-cream-2: #dcc3a4;
     --ls-art-blush: #f0a0bb;
+    --ls-art-leaf-2: #4f9a62;
+    --ls-art-leaf-3: #8cc79a;
     --ls-art-ink: #2b1d1d;
     --ls-art-white: #ffffff;
     --ls-art-panel: #46303a;
@@ -138,6 +144,9 @@
   --ls-art-bulb-4: #f6a3c0;
   --ls-art-wire: #3b5c47;
   --ls-art-star: #f06a7c;
+  --ls-art-ink: #2a2a35;
+  --ls-art-skin: #f6c9a6;
+  --ls-art-carrot: #e8873a;
   --ls-art-panel: #ffffff;
   --ls-art-panel-text: #1f2d3a;
   --ls-art-tint-1: #58a272;
@@ -173,6 +182,9 @@
   --ls-art-bulb-4: #f4b0c8;
   --ls-art-wire: #8fb8a0;
   --ls-art-star: #f58294;
+  --ls-art-ink: #44445a;
+  --ls-art-skin: #f6c9a6;
+  --ls-art-carrot: #f09a50;
   --ls-art-panel: #eef3f8;
   --ls-art-panel-text: #1f2d3a;
   --ls-art-tint-1: #3c8c5a;
@@ -208,6 +220,9 @@
     --ls-art-bulb-4: #f4b0c8;
     --ls-art-wire: #8fb8a0;
     --ls-art-star: #f58294;
+    --ls-art-ink: #44445a;
+    --ls-art-skin: #f6c9a6;
+    --ls-art-carrot: #f09a50;
     --ls-art-panel: #eef3f8;
     --ls-art-panel-text: #1f2d3a;
     --ls-art-tint-1: #3c8c5a;
@@ -484,6 +499,8 @@
   --ls-art-cream: #fff3e2;
   --ls-art-cream-2: #f0d9bd;
   --ls-art-blush: #f4a1bd;
+  --ls-art-leaf-2: #2f6b3f;
+  --ls-art-leaf-3: #7fbf8e;
   --ls-art-ink: #2b1d1d;
   --ls-art-white: #ffffff;
   --ls-art-panel: #f8d4de;
@@ -519,6 +536,8 @@
   --ls-art-cream: #fbead4;
   --ls-art-cream-2: #dcc3a4;
   --ls-art-blush: #f0a0bb;
+  --ls-art-leaf-2: #4f9a62;
+  --ls-art-leaf-3: #8cc79a;
   --ls-art-ink: #2b1d1d;
   --ls-art-white: #ffffff;
   --ls-art-panel: #46303a;
@@ -555,6 +574,9 @@
   --ls-art-bulb-4: #f6a3c0;
   --ls-art-wire: #3b5c47;
   --ls-art-star: #f06a7c;
+  --ls-art-ink: #2a2a35;
+  --ls-art-skin: #f6c9a6;
+  --ls-art-carrot: #e8873a;
   --ls-art-panel: #ffffff;
   --ls-art-panel-text: #1f2d3a;
   --ls-art-tint-1: #58a272;
@@ -589,6 +611,9 @@
   --ls-art-bulb-4: #f4b0c8;
   --ls-art-wire: #8fb8a0;
   --ls-art-star: #f58294;
+  --ls-art-ink: #44445a;
+  --ls-art-skin: #f6c9a6;
+  --ls-art-carrot: #f09a50;
   --ls-art-panel: #eef3f8;
   --ls-art-panel-text: #1f2d3a;
   --ls-art-tint-1: #3c8c5a;

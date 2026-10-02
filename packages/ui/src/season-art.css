@@ -53,7 +53,8 @@
   display: block;
 }
 
-.ls-art-show-narrow {
+.ls-art-show-narrow,
+.ls-art-only-compact {
   display: none;
 }
 
@@ -75,6 +76,11 @@
   mask-size: 100% 100%;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-size: 100% 100%;
+}
+
+/* Christmas: the string-light row above the header is art, so no snowflake crosses it (both themes). */
+.ls-fx-site[data-clear-top='true'] {
+  clip-path: inset(var(--ls-art-header-h) 0 0 0);
 }
 
 .ls-fx-site-p {
@@ -221,6 +227,24 @@
   width: calc(var(--ls-art-u) * 6);
   height: auto;
   transform: translateX(-50%);
+}
+
+.ls-art-hang {
+  position: absolute;
+  height: auto;
+  transform: translateX(-50%);
+}
+
+.ls-art-hang-stocking {
+  width: calc(var(--ls-art-u) * 6);
+}
+
+.ls-art-hang-bell {
+  width: calc(var(--ls-art-u) * 5.5);
+}
+
+.ls-art-hang-cane {
+  width: calc(var(--ls-art-u) * 3.5);
 }
 
 /* ---- Slot 3: logo accent ------------------------------------------------------------------------- */
@@ -382,11 +406,51 @@
 }
 
 .ls-art-crackers-start {
-  left: calc(var(--ls-art-u) * 19);
+  left: calc(var(--ls-art-u) * 36);
 }
 
 .ls-art-crackers-end {
-  right: calc(var(--ls-art-u) * 19);
+  right: calc(var(--ls-art-u) * 36);
+}
+
+.ls-art-couplet {
+  position: absolute;
+  top: 0;
+  width: calc(var(--ls-art-u) * 28);
+  height: auto;
+}
+
+.ls-art-couplet-start {
+  left: calc(var(--ls-art-u) * 3);
+}
+
+.ls-art-couplet-end {
+  right: calc(var(--ls-art-u) * 3);
+}
+
+.ls-art-tray,
+.ls-art-cakes,
+.ls-art-melons {
+  position: absolute;
+  height: auto;
+}
+
+.ls-art-tray {
+  bottom: calc(var(--ls-art-u) * 5);
+  left: calc(var(--ls-art-u) * 47);
+  width: calc(var(--ls-art-u) * 56);
+}
+
+.ls-art-cakes {
+  bottom: calc(var(--ls-art-u) * 5);
+  left: calc(var(--ls-art-u) * 105);
+  width: calc(var(--ls-art-u) * 36);
+}
+
+.ls-art-melons {
+  right: calc(var(--ls-art-u) * 53);
+  bottom: calc(var(--ls-art-u) * 5);
+  width: calc(var(--ls-art-u) * 35);
 }
 
 .ls-art-pile {
@@ -401,7 +465,7 @@
 }
 
 .ls-art-pile-end {
-  right: calc(var(--ls-art-u) * 45);
+  right: calc(var(--ls-art-u) * 91);
   transform: scaleX(-1);
 }
 
@@ -412,6 +476,32 @@
   width: calc(var(--ls-art-u) * 55);
   height: auto;
   transform: translateX(-50%);
+}
+
+.ls-art-sleigh {
+  position: absolute;
+  top: calc(var(--ls-art-u) * 2);
+  left: 50%;
+  width: calc(var(--ls-art-u) * 75);
+  height: auto;
+  transform: translateX(-50%);
+}
+
+.ls-art-snowman,
+.ls-art-santa {
+  position: absolute;
+  bottom: calc(var(--ls-art-u) * 8);
+  height: auto;
+}
+
+.ls-art-snowman {
+  left: calc(var(--ls-art-u) * 110);
+  width: calc(var(--ls-art-u) * 21);
+}
+
+.ls-art-santa {
+  right: calc(var(--ls-art-u) * 108);
+  width: calc(var(--ls-art-u) * 24);
 }
 
 .ls-art-hills {
@@ -516,6 +606,18 @@
 
   .ls-art-animal {
     width: calc(var(--ls-art-u) * 50);
+  }
+
+  .ls-art-only-compact {
+    display: block;
+  }
+
+  .ls-art-sleigh {
+    width: calc(var(--ls-art-u) * 58);
+  }
+
+  .ls-art-hang-stocking {
+    width: calc(var(--ls-art-u) * 5.5);
   }
 
   .ls-art-tree-start {
@@ -636,6 +738,23 @@
 
   .ls-art-animal {
     width: calc(var(--ls-art-u) * 39.5);
+  }
+
+  .ls-art-sleigh {
+    top: calc(var(--ls-art-u) * 1);
+    width: calc(var(--ls-art-u) * 34);
+  }
+
+  .ls-art-hang-stocking {
+    width: calc(var(--ls-art-u) * 4.5);
+  }
+
+  .ls-art-hang-bell {
+    width: calc(var(--ls-art-u) * 4);
+  }
+
+  .ls-art-hang-cane {
+    width: calc(var(--ls-art-u) * 3);
   }
 
   .ls-art-footer-text {

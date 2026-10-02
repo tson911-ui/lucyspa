@@ -58,7 +58,7 @@ export function Blossom({
 /** A red paper lantern on a short string, with a yellow cap, emblem and tassel (48 x 106). */
 export function TetLantern({ className }: { className?: string }) {
   return (
-    <ArtSvg viewBox="0 0 48 106" className={className}>
+    <ArtSvg viewBox="0 0 48 106" className={className} motif="long-den">
       <path d="M24 0V12" stroke={art('cord')} strokeWidth="1.6" />
       <rect x="15" y="11" width="18" height="6" rx="2.5" fill={art('yellow')} />
       <path
@@ -117,7 +117,7 @@ export function TetMaiBranch({ className }: { className?: string }) {
     ['peach', 65, 15, 26],
   ];
   return (
-    <ArtSvg viewBox="0 0 220 120" className={className}>
+    <ArtSvg viewBox="0 0 220 120" className={className} motif="hoa-mai hoa-dao">
       <path
         d="M-4 8C40 12 74 28 108 50C140 70 174 84 214 100"
         stroke={art('wood')}
@@ -183,7 +183,7 @@ export function TetMaiBranch({ className }: { className?: string }) {
 /** A small mai sprig that sits at the end of the wordmark (96 x 60). */
 export function TetSprig({ className }: { className?: string }) {
   return (
-    <ArtSvg viewBox="0 0 96 60" className={className}>
+    <ArtSvg viewBox="0 0 96 60" className={className} motif="hoa-mai hoa-dao">
       <path
         d="M2 58C20 50 40 40 60 28S84 10 94 6"
         stroke={art('wood')}
@@ -263,7 +263,7 @@ function Envelope({ x, y, rotation }: { x: number; y: number; rotation: number }
 /** Three li xi envelopes fanned over a few coins: the bottom-left corner group (136 x 128). */
 export function TetEnvelopes({ className }: { className?: string }) {
   return (
-    <ArtSvg viewBox="0 0 136 128" className={className}>
+    <ArtSvg viewBox="0 0 136 128" className={className} motif="li-xi">
       <Envelope x={4} y={30} rotation={-14} />
       <Envelope x={38} y={14} rotation={2} />
       <Envelope x={72} y={30} rotation={16} />
@@ -278,7 +278,7 @@ export function TetEnvelopes({ className }: { className?: string }) {
 export function TetCrackers({ rolls, className }: { rolls: number; className?: string }) {
   const length = 24 + rolls * 27;
   return (
-    <ArtSvg viewBox={`-32 -20 64 ${length + 30}`} className={className}>
+    <ArtSvg viewBox={`-32 -20 64 ${length + 30}`} className={className} motif="phao-giay">
       <path d={`M0 -8V${length}`} stroke={art('yellow2')} strokeWidth="2.4" />
       <circle cy="-10" r="5" fill="none" stroke={art('yellow')} strokeWidth="2.6" />
       <path
@@ -348,7 +348,7 @@ export function TetBand({ className }: { className?: string }) {
  */
 export function ZodiacGoat({ className }: { className?: string }) {
   return (
-    <ArtSvg viewBox="0 0 176 156" className={className}>
+    <ArtSvg viewBox="0 0 176 156" className={className} motif="zodiac">
       <path
         d="M10 140C26 130 150 130 166 140C158 152 132 154 88 154C44 154 18 152 10 140Z"
         fill={art('yellow2')}
@@ -422,6 +422,199 @@ export function ZodiacGoat({ className }: { className?: string }) {
 export const ZODIAC_ART: Readonly<Record<string, (props: { className?: string }) => ReactNode>> = {
   mui: ZodiacGoat,
 };
+
+// ------------------------------------------------------------------------------- the footer's food and festive pieces
+
+/** A pair of cau doi (red couplet scrolls with yellow borders and brush marks) hung side by side (112 x 224). */
+export function TetCoupletPair({ className }: { className?: string }) {
+  const scroll = (x: number, variant: number) => (
+    <g key={x} transform={`translate(${x} 0)`}>
+      <path d="M4 14L24 0L44 14" stroke={art('cord')} strokeWidth="1.6" fill="none" />
+      <rect y="14" width="48" height="7" rx="3.5" fill={art('yellow2')} />
+      <circle cx="0" cy="17.5" r="5" fill={art('yellow')} />
+      <circle cx="48" cy="17.5" r="5" fill={art('yellow')} />
+      <rect x="4" y="21" width="40" height="176" fill={art('red')} />
+      <rect x="4" y="21" width="9" height="176" fill={art('red2')} opacity=".35" />
+      <rect
+        x="8"
+        y="25"
+        width="32"
+        height="168"
+        fill="none"
+        stroke={art('yellow')}
+        strokeWidth="1.4"
+      />
+      {Array.from({ length: 6 }, (_, index) => {
+        const y = 42 + index * 26;
+        // Four flowing brush marks, in a different order on each scroll: calligraphy-like, never a repeated glyph.
+        const marks = [
+          `M16 ${y + 10}C20 ${y + 2} 28 ${y - 4} 34 ${y - 8}M30 ${y + 8}L31 ${y + 9}`,
+          `M17 ${y - 8}C26 ${y - 10} 32 ${y - 4} 24 ${y + 2}C18 ${y + 6} 20 ${y + 12} 32 ${y + 10}`,
+          `M24 ${y - 9}V${y + 11}M15 ${y - 2}C22 ${y - 5} 28 ${y - 5} 33 ${y - 2}M18 ${y + 6}C22 ${y + 10} 28 ${y + 10} 31 ${y + 6}`,
+          `M17 ${y + 1}A7 7 0 1 0 31 ${y + 1}A7 7 0 1 0 17 ${y + 1}M30 ${y + 7}L34 ${y + 12}M24 ${y + 1}L24.6 ${y + 1.6}`,
+        ];
+        return (
+          <path
+            key={index}
+            d={marks[(index * 3 + variant) % 4]}
+            stroke={art('yellow')}
+            strokeWidth="2.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        );
+      })}
+      <rect x="4" y="197" width="40" height="5" rx="2" fill={art('yellow2')} />
+      <path d="M24 202V214" stroke={art('red')} strokeWidth="3" />
+      <circle cx="24" cy="206" r="3.2" fill={art('yellow')} />
+      <path
+        d="M24 214L19 224M24 214V226M24 214L29 224"
+        stroke={art('red')}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </g>
+  );
+  return (
+    <ArtSvg viewBox="0 0 112 226" className={className} motif="cau-doi">
+      {scroll(4, 0)}
+      {scroll(60, 1)}
+    </ArtSvg>
+  );
+}
+
+/** A mam ngu qua: a footed red tray with five fruits (pomelo, bananas, mandarins, persimmon, peach) (160 x 120). */
+export function TetFruitTray({ className }: { className?: string }) {
+  return (
+    <ArtSvg viewBox="0 0 160 120" className={className} motif="mam-ngu-qua">
+      <ellipse cx="80" cy="113" rx="34" ry="6" fill={art('red3')} />
+      <path d="M66 113C70 101 74 94 76 88H84C86 94 90 101 94 113Z" fill={art('red')} />
+      <path d="M72 100H88" stroke={art('yellow')} strokeWidth="2" />
+      {/* pomelo, the tall one at the back */}
+      <circle cx="80" cy="50" r="27" fill={art('leaf3')} stroke={art('cream')} strokeWidth="2" />
+      <ellipse cx="70" cy="42" rx="9" ry="6" fill={art('white')} opacity=".3" />
+      <ellipse cx="80" cy="26" rx="7" ry="3.4" fill={art('leaf')} />
+      {/* a bunch of bananas on the left */}
+      {[0, 9, 18].map((offset) => (
+        <path
+          key={offset}
+          d={`M${26 + offset} 80C${20 + offset} 60 ${32 + offset} 46 ${50 + offset} 42`}
+          stroke={art('mai')}
+          strokeWidth="9"
+          fill="none"
+          strokeLinecap="round"
+        />
+      ))}
+      <path d="M50 42L58 40" stroke={art('wood')} strokeWidth="4" strokeLinecap="round" />
+      {/* mandarins on the right */}
+      <circle
+        cx="114"
+        cy="66"
+        r="14"
+        fill={art('maiCentre')}
+        stroke={art('cream')}
+        strokeWidth="1.6"
+      />
+      <circle
+        cx="136"
+        cy="78"
+        r="12"
+        fill={art('maiCentre')}
+        stroke={art('cream')}
+        strokeWidth="1.6"
+      />
+      <ellipse cx="114" cy="53" rx="4.5" ry="2.4" fill={art('leaf')} />
+      <ellipse cx="136" cy="68" rx="4" ry="2.2" fill={art('leaf')} />
+      <ellipse cx="108" cy="63" rx="4" ry="2.4" fill={art('white')} opacity=".35" />
+      {/* persimmon and peach at the front */}
+      <circle cx="54" cy="80" r="13" fill={art('red2')} stroke={art('cream')} strokeWidth="1.6" />
+      <path
+        d="M47 70L54 75L61 70"
+        stroke={art('leaf2')}
+        strokeWidth="3"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <circle cx="94" cy="82" r="12" fill={art('peach')} stroke={art('cream')} strokeWidth="1.6" />
+      <ellipse cx="90" cy="78" rx="3.4" ry="5" fill={art('peach2')} opacity=".7" />
+      <ellipse cx="98" cy="71" rx="4.6" ry="2.4" fill={art('leaf')} />
+      {/* the tray: a yellow rim over a red bowl */}
+      <path d="M14 82C22 102 138 102 146 82Z" fill={art('red')} />
+      <path
+        d="M22 90C50 98 110 98 138 90"
+        stroke={art('yellow')}
+        strokeWidth="1.8"
+        fill="none"
+        strokeDasharray="4 4"
+      />
+      <ellipse
+        cx="80"
+        cy="82"
+        rx="66"
+        ry="10"
+        fill="none"
+        stroke={art('yellow2')}
+        strokeWidth="4"
+      />
+    </ArtSvg>
+  );
+}
+
+/** A banh chung (square, tied with strings) beside a banh tet (a log with a cut end showing the filling) (170 x 90). */
+export function TetRiceCakes({ className }: { className?: string }) {
+  return (
+    <ArtSvg viewBox="0 0 170 90" className={className} motif="banh-chung banh-tet">
+      <g transform="rotate(-5 42 48)">
+        <rect x="8" y="14" width="68" height="68" rx="9" fill={art('leaf2')} />
+        <path
+          d="M8 23L42 48L8 73M76 23L42 48L76 73"
+          stroke={art('leaf3')}
+          strokeWidth="2"
+          fill="none"
+          opacity=".7"
+        />
+        <path d="M30 14V82M54 14V82M8 38H76M8 58H76" stroke={art('cream2')} strokeWidth="3" />
+        <circle cx="30" cy="38" r="3.4" fill={art('cream2')} />
+        <circle cx="54" cy="58" r="3.4" fill={art('cream2')} />
+      </g>
+      <rect x="84" y="42" width="62" height="38" rx="19" fill={art('leaf2')} />
+      <rect x="90" y="46" width="52" height="8" rx="4" fill={art('leaf3')} opacity=".55" />
+      {[100, 114, 128].map((x) => (
+        <path key={x} d={`M${x} 42V80`} stroke={art('cream2')} strokeWidth="3" />
+      ))}
+      <ellipse cx="146" cy="61" rx="11" ry="19" fill={art('mai2')} />
+      <ellipse cx="146" cy="61" rx="7" ry="13" fill={art('cream')} />
+      <ellipse cx="146" cy="61" rx="3.4" ry="6.4" fill={art('peach')} />
+    </ArtSvg>
+  );
+}
+
+/** A whole watermelon and a cut wedge (140 x 84): dua hau, the Tet fruit that wishes a red year. */
+export function TetMelons({ className }: { className?: string }) {
+  return (
+    <ArtSvg viewBox="0 0 140 84" className={className} motif="dua-hau">
+      <ellipse cx="46" cy="50" rx="40" ry="30" fill={art('leaf2')} />
+      {['M26 24C18 40 18 62 30 76', 'M46 20V80', 'M66 24C74 40 74 62 62 76'].map((d) => (
+        <path key={d} d={d} stroke={art('leaf3')} strokeWidth="5" fill="none" opacity=".55" />
+      ))}
+      <rect x="42" y="16" width="8" height="7" rx="2" fill={art('wood')} />
+      <ellipse cx="32" cy="38" rx="9" ry="5" fill={art('white')} opacity=".2" />
+      <path d="M80 42A30 30 0 0 0 140 42Z" fill={art('leaf2')} />
+      <path d="M83 42A27 27 0 0 0 137 42Z" fill={art('cream')} />
+      <path d="M86 42A24 24 0 0 0 134 42Z" fill={art('red2')} />
+      {[
+        [98, 54],
+        [110, 60],
+        [122, 54],
+        [106, 48],
+        [116, 49],
+      ].map(([x, y]) => (
+        <ellipse key={`${x}-${y}`} cx={x} cy={y} rx="1.8" ry="2.8" fill={art('ink')} />
+      ))}
+    </ArtSvg>
+  );
+}
 
 /** A falling petal: mai (yellow) or peach (pink), alternating by index (16 x 16). */
 export function TetPetal({ index }: { index: number }) {

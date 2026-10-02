@@ -185,3 +185,16 @@ test('the keep-out collector finds text lines and controls, and ignores the deco
   assert.equal(rects.length, 4 + 2, 'four lines plus the link and the button boxes');
   assert.ok(rects.some((rect) => rect.width === 200 && rect.height === 24));
 });
+
+test('only Christmas on a page with a header row clears the top band of snow', async () => {
+  const flag = async (kit: 'tet' | 'christmas', clear: boolean) => {
+    const view = mount(<ui.SeasonSiteParticles kit={kit} clearHeaderRow={clear} />);
+    await settle();
+    const value = view.container.querySelector('.ls-fx-site')?.getAttribute('data-clear-top');
+    view.unmount();
+    return value;
+  };
+  assert.equal(await flag('christmas', true), 'true');
+  assert.equal(await flag('christmas', false), null, 'the member area has no header row');
+  assert.equal(await flag('tet', true), null);
+});

@@ -59,6 +59,23 @@ Ten kits: the 8 existing keys, new `vu-lan`, new `celebration`. Per kit the regi
 
 30/4-1/5 and 2/9 are two kits with the same family so the Owner can choose either (as today). Art is drawn larger and as multi-element compositions (the mockups show the level: 9 lanterns plus blossoms, 3-layer corner branches, 12-part firecracker string). Each kit ships as its own review (Owner approves the art before the next, as in S2).
 
+### 4.1 Owner addition (2026-10-02, after the S6a review): iconic motifs as scenes
+
+Every kit draws its **iconic, recognizable motifs as multi-element scenes**, not just flowers. The list below is the contract: it is data in the registry (`SEASON_MOTIFS`), every drawing carries `data-motif="<id>"`, and a test fails when a shipped kit lacks one. Art stays friendly and elegant (a spa brand), sits in the reserved rows and corners, and never covers text. The shipped Tet and Christmas kits were redone to this list (S6a revision).
+
+| Kit              | Motifs (ids in the registry)                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Christmas        | Santa Claus, snowman, reindeer sleigh, gifts, stockings, candy canes, wreath, bells, decorated tree                                  |
+| Tet              | li xi, cau doi, hoa mai, hoa dao, banh chung, banh tet, mam ngu qua, dua hau, paper firecrackers, lanterns, the year's zodiac animal |
+| Mid-Autumn       | mua lan su rong, den ong sao, den ca chep, den keo quan, full moon, chi Hang and chu Cuoi under the banyan, jade rabbit, mooncakes   |
+| Valentine        | roses, chocolates, love letters, cupid                                                                                               |
+| 8/3 and 20/10    | flower bouquets, ao dai, non la, gift boxes                                                                                          |
+| 30/4-1/5 and 2/9 | red flag with yellow star bunting, fireworks, peace doves, lotus                                                                     |
+| Vu Lan           | rose pinned on a shirt, floating hoa dang, lotus                                                                                     |
+| Celebration      | balloons, confetti, ribbons, cake                                                                                                    |
+
+Where they go (Tet and Christmas, as built): the header rail carries the hanging pieces (lanterns, or lights with stockings, bells and candy canes), the two top corners the branches or garlands, the divider a small centrepiece (coin and blossoms, or candy canes, bells and a wreath), and the footer scene the larger groups (Tet: cau doi pair, firecracker string, mam ngu qua, banh chung and banh tet, watermelons, li xi, the zodiac animal; Christmas: tree, gifts, snowman, Santa Claus, the sleigh with reindeer). Tablets and phones keep a subset (the lantern, firecracker, li xi and zodiac, or tree, gifts and sleigh) and drop the rest by CSS.
+
 ## 5. Custom events
 
 An event is a row of the existing `website_seasons`: its own name (`label`, now also shown as the event name in lists), dates (Vietnam time, last day inclusive), greeting VI/EN, a **base kit** (`preset_key`, any of the ten), links to popups and slides (S3, unchanged), overlap rule, audit. Vu Lan is a normal kit; the Owner types its lunar dates (never computed). The form's first field becomes "Event name" for custom events and keeps the solar prefill for the holiday kits. No colour pickers or free drawing (D10 stays).
@@ -108,3 +125,4 @@ S6b needs S6a's slot list; S6c needs S6b's draft config; kits S6d/S6e are indepe
 6. **Vu Lan:** no particles by default, with an option for slow floating lanterns (S6e; the density control applies to them).
 7. **Preview route** admin-only and session-guarded: accepted (Q-S10 holds, no shareable link).
 8. **Slot images** JPEG/PNG/WebP only; corners use one mirrored image: accepted.
+9. **Iconic motifs as scenes** for every kit (section 4.1); redo Tet and Christmas first, then build the other kits to the list.
