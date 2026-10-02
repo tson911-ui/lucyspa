@@ -4,7 +4,14 @@
 // horizontal page scroll and interactive targets below the minimum size.
 //
 //   node scripts/uxui-screens.mjs <name> <url-or-html-file> [--widths 360,768,1440] [--wait 800] [--top 1000] [--all]
-//                                   [--click <selector[@@text]> ...] [--eval <js>]
+//                                   [--click <selector[@@text]> ...] [--eval <js>] [--expect <text>] [--allow-status] [--theme-cookie]
+//
+// Gate integrity: the run FAILS (exit code 3, no image written for the failed render) when the server is unreachable,
+// the main document answers 4xx/5xx (unless `--allow-status`), the browser shows its own error page, the page has no
+// visible text, or `--expect <text>` is not on the page. A screenshot of an error page is not a review.
+//
+// `--theme-cookie` (real app over http): sets the `ls-theme` cookie to the rendered scheme before loading, because the
+// app's auto theme follows the local clock (dark in the evening), not the emulated colour scheme.
 //
 // `--all` also renders dark at every width. `--click` (repeatable, in order) opens a state before capturing (a menu,
 // drawer, dialog or sheet): the element is the first match of the CSS selector whose text contains `text`; the
@@ -29,6 +36,11 @@ for (let index = args.indexOf('--click'); index >= 0; index = args.indexOf('--cl
 const evalExpression = flag('eval', '');
 const all = args.includes('--all');
 if (all) args.splice(args.indexOf('--all'), 1);
+const allowStatus = args.includes('--allow-status');
+if (allowStatus) args.splice(args.indexOf('--allow-status'), 1);
+const expectText = flag('expect', '');
+const themeCookie = args.includes('--theme-cookie');
+if (themeCookie) args.splice(args.indexOf('--theme-cookie'), 1);
 const waitMs = Number(flag('wait', '800'));
 const topHeight = Number(flag('top', '1000'));
 const [name, target] = args;
@@ -39,6 +51,26 @@ if (!name || !target) {
   process.exit(2);
 }
 const url = /^https?:|^file:/.test(target) ? target : pathToFileURL(resolve(target)).href;
+
+const EXIT_FAILED_GATE = 3;
+// Before any browser starts: an http(s) target must answer, and with a page status (not 4xx/5xx).
+if (/^https?:/.test(url)) {
+  let status = 0;
+  try {
+    status = (await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(8000) })).status;
+  } catch (error) {
+    console.error(
+      `FAIL ${name}: server unreachable at ${url} (${error?.cause?.code ?? error?.message})`,
+    );
+    process.exit(EXIT_FAILED_GATE);
+  }
+  if (status >= 400 && !allowStatus) {
+    console.error(
+      `FAIL ${name}: ${url} answered HTTP ${status} (pass --allow-status to render it anyway)`,
+    );
+    process.exit(EXIT_FAILED_GATE);
+  }
+}
 
 const candidates = [
   process.env.UXUI_BROWSER,
@@ -118,6 +150,7 @@ const AUDIT = `(() => {
 })()`;
 
 let exitCode = 0;
+const documentState = { status: 0 };
 try {
   const socket = new WebSocket(await pageSocket());
   await new Promise((done, fail) => {
@@ -135,6 +168,9 @@ try {
       if (data.error) reject(new Error(data.error.message));
       else done(data.result);
     } else if (data.method) {
+      if (data.method === 'Network.responseReceived' && data.params.type === 'Document') {
+        documentState.status = data.params.response.status;
+      }
       for (const waiter of [...waiters]) if (waiter.method === data.method) waiter.done();
     }
   };
@@ -157,6 +193,7 @@ try {
     });
 
   await send('Page.enable');
+  await send('Network.enable');
   for (const scheme of ['light', 'dark']) {
     for (const width of widths) {
       // Gate matrix: light at every width, dark at the widest only (`--all` renders every combination).
@@ -170,10 +207,34 @@ try {
       await send('Emulation.setEmulatedMedia', {
         features: [{ name: 'prefers-color-scheme', value: scheme }],
       });
+      if (themeCookie && /^https?:/.test(url)) {
+        await send('Network.setCookie', { name: 'ls-theme', value: scheme, url });
+      }
       const loaded = once('Page.loadEventFired');
-      await send('Page.navigate', { url });
+      documentState.status = 0;
+      const navigation = await send('Page.navigate', { url });
       await loaded;
       await sleep(waitMs);
+      // The gate: never photograph an error page, an empty page or a page that is not the one asked for.
+      const probe = (
+        await send('Runtime.evaluate', {
+          expression:
+            '({ href: location.href, text: (document.body ? document.body.innerText : "").trim().length, body: (document.body ? document.body.innerText : "") })',
+          returnByValue: true,
+        })
+      ).result.value;
+      const reasons = [];
+      if (navigation.errorText) reasons.push(`BROWSER ERROR PAGE (${navigation.errorText})`);
+      if (/^chrome-error:/.test(probe.href)) reasons.push('BROWSER ERROR PAGE (chrome-error)');
+      if (documentState.status >= 400 && !allowStatus) reasons.push(`HTTP ${documentState.status}`);
+      if (probe.text === 0) reasons.push('EMPTY PAGE (no visible text)');
+      if (expectText && !probe.body.includes(expectText))
+        reasons.push(`missing --expect "${expectText}"`);
+      if (reasons.length) {
+        console.log(`FAIL ${name} ${width} ${scheme}: ${reasons.join('; ')} (no image written)`);
+        exitCode = EXIT_FAILED_GATE;
+        continue;
+      }
       for (const spec of clicks) {
         const [selector, text = ''] = spec.split('@@');
         // A real pointer press at the element's center (so focus and hover behave as for a visitor).
@@ -251,7 +312,7 @@ try {
       console.log(
         `${problems.length ? 'CHECK' : 'ok   '} ${name} ${width} ${scheme}: ${file}${problems.length ? '\n        ' + problems.join('\n        ') : ''}`,
       );
-      if (problems.length) exitCode = 1;
+      if (problems.length && exitCode === 0) exitCode = 1;
     }
   }
   socket.close();

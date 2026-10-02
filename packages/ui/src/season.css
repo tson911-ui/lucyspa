@@ -11,6 +11,29 @@
   --ls-season-ornament-1: #f5c518;
   --ls-season-ornament-2: #ffc2d6;
   --ls-season-ornament-3: #ffe9f0;
+  --ls-art-red: #d3263f;
+  --ls-art-red-2: #ec5a72;
+  --ls-art-red-3: #a51a31;
+  --ls-art-yellow: #f5c518;
+  --ls-art-yellow-2: #d49a0a;
+  --ls-art-yellow-3: #fde68a;
+  --ls-art-mai: #f7c928;
+  --ls-art-mai-2: #ffe27a;
+  --ls-art-mai-centre: #e8851c;
+  --ls-art-peach: #f08fb0;
+  --ls-art-peach-2: #ffd0df;
+  --ls-art-wood: #7a4a3a;
+  --ls-art-leaf: #4f8a5b;
+  --ls-art-cord: #b8862b;
+  --ls-art-cream: #fff3e2;
+  --ls-art-cream-2: #f0d9bd;
+  --ls-art-blush: #f4a1bd;
+  --ls-art-ink: #2b1d1d;
+  --ls-art-white: #ffffff;
+  --ls-art-panel: #f8d4de;
+  --ls-art-panel-text: #3a1a22;
+  --ls-art-tint-1: #f48fb0;
+  --ls-art-tint-2: #f5965a;
   --ls-season-line: var(--ls-season-accent);
 }
 :root[data-theme='dark'] [data-season='tet'],
@@ -24,6 +47,29 @@
   --ls-season-ornament-1: #f2c94c;
   --ls-season-ornament-2: #f4a6bd;
   --ls-season-ornament-3: #e8788f;
+  --ls-art-red: #e84a62;
+  --ls-art-red-2: #f47489;
+  --ls-art-red-3: #b8263d;
+  --ls-art-yellow: #f2c94c;
+  --ls-art-yellow-2: #c9a038;
+  --ls-art-yellow-3: #f8dc7e;
+  --ls-art-mai: #f2c94c;
+  --ls-art-mai-2: #f8dc7e;
+  --ls-art-mai-centre: #e9963a;
+  --ls-art-peach: #f0a0bb;
+  --ls-art-peach-2: #f9c9d8;
+  --ls-art-wood: #a8765f;
+  --ls-art-leaf: #6aa876;
+  --ls-art-cord: #d4a94c;
+  --ls-art-cream: #fbead4;
+  --ls-art-cream-2: #dcc3a4;
+  --ls-art-blush: #f0a0bb;
+  --ls-art-ink: #2b1d1d;
+  --ls-art-white: #ffffff;
+  --ls-art-panel: #46303a;
+  --ls-art-panel-text: #ffe8f0;
+  --ls-art-tint-1: #a0325a;
+  --ls-art-tint-2: #c8961e;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) [data-season='tet'],
@@ -37,6 +83,29 @@
     --ls-season-ornament-1: #f2c94c;
     --ls-season-ornament-2: #f4a6bd;
     --ls-season-ornament-3: #e8788f;
+    --ls-art-red: #e84a62;
+    --ls-art-red-2: #f47489;
+    --ls-art-red-3: #b8263d;
+    --ls-art-yellow: #f2c94c;
+    --ls-art-yellow-2: #c9a038;
+    --ls-art-yellow-3: #f8dc7e;
+    --ls-art-mai: #f2c94c;
+    --ls-art-mai-2: #f8dc7e;
+    --ls-art-mai-centre: #e9963a;
+    --ls-art-peach: #f0a0bb;
+    --ls-art-peach-2: #f9c9d8;
+    --ls-art-wood: #a8765f;
+    --ls-art-leaf: #6aa876;
+    --ls-art-cord: #d4a94c;
+    --ls-art-cream: #fbead4;
+    --ls-art-cream-2: #dcc3a4;
+    --ls-art-blush: #f0a0bb;
+    --ls-art-ink: #2b1d1d;
+    --ls-art-white: #ffffff;
+    --ls-art-panel: #46303a;
+    --ls-art-panel-text: #ffe8f0;
+    --ls-art-tint-1: #a0325a;
+    --ls-art-tint-2: #c8961e;
   }
 }
 
@@ -51,6 +120,28 @@
   --ls-season-ornament-1: #bfe8cf;
   --ls-season-ornament-2: #e6f6ec;
   --ls-season-ornament-3: #ffc9d1;
+  --ls-art-red: #c62f3f;
+  --ls-art-red-2: #e05a68;
+  --ls-art-red-3: #962033;
+  --ls-art-pine: #2f7a4d;
+  --ls-art-pine-2: #58a272;
+  --ls-art-pine-3: #1d5a38;
+  --ls-art-white: #ffffff;
+  --ls-art-snow: #ffffff;
+  --ls-art-snow-2: #d6e4f0;
+  --ls-art-ice: #8fb8de;
+  --ls-art-pink: #f4a8b4;
+  --ls-art-wood: #7a4a3a;
+  --ls-art-bulb-1: #e5484d;
+  --ls-art-bulb-2: #58b27a;
+  --ls-art-bulb-3: #8fc6f0;
+  --ls-art-bulb-4: #f6a3c0;
+  --ls-art-wire: #3b5c47;
+  --ls-art-star: #f06a7c;
+  --ls-art-panel: #ffffff;
+  --ls-art-panel-text: #1f2d3a;
+  --ls-art-tint-1: #58a272;
+  --ls-art-tint-2: #8fb8de;
   --ls-season-line: var(--ls-season-accent);
 }
 :root[data-theme='dark'] [data-season='christmas'],
@@ -64,6 +155,28 @@
   --ls-season-ornament-1: #86d6a6;
   --ls-season-ornament-2: #4fa072;
   --ls-season-ornament-3: #e08a9a;
+  --ls-art-red: #e5484d;
+  --ls-art-red-2: #f0727a;
+  --ls-art-red-3: #b32a3a;
+  --ls-art-pine: #3f9a63;
+  --ls-art-pine-2: #6bbf8a;
+  --ls-art-pine-3: #276f47;
+  --ls-art-white: #ffffff;
+  --ls-art-snow: #eef3f8;
+  --ls-art-snow-2: #8fa6bf;
+  --ls-art-ice: #b8d4ee;
+  --ls-art-pink: #f0a0ae;
+  --ls-art-wood: #a8765f;
+  --ls-art-bulb-1: #f0606a;
+  --ls-art-bulb-2: #6bbf8a;
+  --ls-art-bulb-3: #a8d3f5;
+  --ls-art-bulb-4: #f4b0c8;
+  --ls-art-wire: #8fb8a0;
+  --ls-art-star: #f58294;
+  --ls-art-panel: #eef3f8;
+  --ls-art-panel-text: #1f2d3a;
+  --ls-art-tint-1: #3c8c5a;
+  --ls-art-tint-2: #5a82be;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) [data-season='christmas'],
@@ -77,6 +190,28 @@
     --ls-season-ornament-1: #86d6a6;
     --ls-season-ornament-2: #4fa072;
     --ls-season-ornament-3: #e08a9a;
+    --ls-art-red: #e5484d;
+    --ls-art-red-2: #f0727a;
+    --ls-art-red-3: #b32a3a;
+    --ls-art-pine: #3f9a63;
+    --ls-art-pine-2: #6bbf8a;
+    --ls-art-pine-3: #276f47;
+    --ls-art-white: #ffffff;
+    --ls-art-snow: #eef3f8;
+    --ls-art-snow-2: #8fa6bf;
+    --ls-art-ice: #b8d4ee;
+    --ls-art-pink: #f0a0ae;
+    --ls-art-wood: #a8765f;
+    --ls-art-bulb-1: #f0606a;
+    --ls-art-bulb-2: #6bbf8a;
+    --ls-art-bulb-3: #a8d3f5;
+    --ls-art-bulb-4: #f4b0c8;
+    --ls-art-wire: #8fb8a0;
+    --ls-art-star: #f58294;
+    --ls-art-panel: #eef3f8;
+    --ls-art-panel-text: #1f2d3a;
+    --ls-art-tint-1: #3c8c5a;
+    --ls-art-tint-2: #5a82be;
   }
 }
 
@@ -332,6 +467,29 @@
   --ls-season-ornament-1: #f5c518;
   --ls-season-ornament-2: #ffc2d6;
   --ls-season-ornament-3: #ffe9f0;
+  --ls-art-red: #d3263f;
+  --ls-art-red-2: #ec5a72;
+  --ls-art-red-3: #a51a31;
+  --ls-art-yellow: #f5c518;
+  --ls-art-yellow-2: #d49a0a;
+  --ls-art-yellow-3: #fde68a;
+  --ls-art-mai: #f7c928;
+  --ls-art-mai-2: #ffe27a;
+  --ls-art-mai-centre: #e8851c;
+  --ls-art-peach: #f08fb0;
+  --ls-art-peach-2: #ffd0df;
+  --ls-art-wood: #7a4a3a;
+  --ls-art-leaf: #4f8a5b;
+  --ls-art-cord: #b8862b;
+  --ls-art-cream: #fff3e2;
+  --ls-art-cream-2: #f0d9bd;
+  --ls-art-blush: #f4a1bd;
+  --ls-art-ink: #2b1d1d;
+  --ls-art-white: #ffffff;
+  --ls-art-panel: #f8d4de;
+  --ls-art-panel-text: #3a1a22;
+  --ls-art-tint-1: #f48fb0;
+  --ls-art-tint-2: #f5965a;
 }
 :root [data-preview-theme='dark'] [data-season='tet'],
 :root [data-preview-theme='dark'][data-season='tet'] {
@@ -344,6 +502,29 @@
   --ls-season-ornament-1: #f2c94c;
   --ls-season-ornament-2: #f4a6bd;
   --ls-season-ornament-3: #e8788f;
+  --ls-art-red: #e84a62;
+  --ls-art-red-2: #f47489;
+  --ls-art-red-3: #b8263d;
+  --ls-art-yellow: #f2c94c;
+  --ls-art-yellow-2: #c9a038;
+  --ls-art-yellow-3: #f8dc7e;
+  --ls-art-mai: #f2c94c;
+  --ls-art-mai-2: #f8dc7e;
+  --ls-art-mai-centre: #e9963a;
+  --ls-art-peach: #f0a0bb;
+  --ls-art-peach-2: #f9c9d8;
+  --ls-art-wood: #a8765f;
+  --ls-art-leaf: #6aa876;
+  --ls-art-cord: #d4a94c;
+  --ls-art-cream: #fbead4;
+  --ls-art-cream-2: #dcc3a4;
+  --ls-art-blush: #f0a0bb;
+  --ls-art-ink: #2b1d1d;
+  --ls-art-white: #ffffff;
+  --ls-art-panel: #46303a;
+  --ls-art-panel-text: #ffe8f0;
+  --ls-art-tint-1: #a0325a;
+  --ls-art-tint-2: #c8961e;
 }
 :root [data-preview-theme='light'] [data-season='christmas'],
 :root [data-preview-theme='light'][data-season='christmas'] {
@@ -356,6 +537,28 @@
   --ls-season-ornament-1: #bfe8cf;
   --ls-season-ornament-2: #e6f6ec;
   --ls-season-ornament-3: #ffc9d1;
+  --ls-art-red: #c62f3f;
+  --ls-art-red-2: #e05a68;
+  --ls-art-red-3: #962033;
+  --ls-art-pine: #2f7a4d;
+  --ls-art-pine-2: #58a272;
+  --ls-art-pine-3: #1d5a38;
+  --ls-art-white: #ffffff;
+  --ls-art-snow: #ffffff;
+  --ls-art-snow-2: #d6e4f0;
+  --ls-art-ice: #8fb8de;
+  --ls-art-pink: #f4a8b4;
+  --ls-art-wood: #7a4a3a;
+  --ls-art-bulb-1: #e5484d;
+  --ls-art-bulb-2: #58b27a;
+  --ls-art-bulb-3: #8fc6f0;
+  --ls-art-bulb-4: #f6a3c0;
+  --ls-art-wire: #3b5c47;
+  --ls-art-star: #f06a7c;
+  --ls-art-panel: #ffffff;
+  --ls-art-panel-text: #1f2d3a;
+  --ls-art-tint-1: #58a272;
+  --ls-art-tint-2: #8fb8de;
 }
 :root [data-preview-theme='dark'] [data-season='christmas'],
 :root [data-preview-theme='dark'][data-season='christmas'] {
@@ -368,6 +571,28 @@
   --ls-season-ornament-1: #86d6a6;
   --ls-season-ornament-2: #4fa072;
   --ls-season-ornament-3: #e08a9a;
+  --ls-art-red: #e5484d;
+  --ls-art-red-2: #f0727a;
+  --ls-art-red-3: #b32a3a;
+  --ls-art-pine: #3f9a63;
+  --ls-art-pine-2: #6bbf8a;
+  --ls-art-pine-3: #276f47;
+  --ls-art-white: #ffffff;
+  --ls-art-snow: #eef3f8;
+  --ls-art-snow-2: #8fa6bf;
+  --ls-art-ice: #b8d4ee;
+  --ls-art-pink: #f0a0ae;
+  --ls-art-wood: #a8765f;
+  --ls-art-bulb-1: #f0606a;
+  --ls-art-bulb-2: #6bbf8a;
+  --ls-art-bulb-3: #a8d3f5;
+  --ls-art-bulb-4: #f4b0c8;
+  --ls-art-wire: #8fb8a0;
+  --ls-art-star: #f58294;
+  --ls-art-panel: #eef3f8;
+  --ls-art-panel-text: #1f2d3a;
+  --ls-art-tint-1: #3c8c5a;
+  --ls-art-tint-2: #5a82be;
 }
 :root [data-preview-theme='light'] [data-season='valentine'],
 :root [data-preview-theme='light'][data-season='valentine'] {

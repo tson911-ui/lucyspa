@@ -52,6 +52,9 @@ Owner reviews every Step. Work only on the Step you are given.
   in light plus 1440 px in dark with `node scripts/uxui-screens.mjs <name> <url-or-html>`, review them
   against the checklist, fix, re-render. Screenshots go to `.local/uxui-screens/` (git-ignored). Add a 5-line "UX gate" note to the
   Step report. Do not report a UI Step done without it.
+- Never report screenshots without opening each one (Read the image) and saying what was checked; never claim an image
+  was reviewed that was not opened. A screenshot of a browser error page or of a missing server is a failed gate: the
+  script exits non-zero (3) for it and writes no image. Do not work around that exit code.
 - Also run the DOM audit on the changed pages against the real app (section 21.5): scratch DB
   `lucy_spa_uxaudit_20261001` (never the dev DB), `node .local/uxui-audit/capture.mjs <page...>`, then
   `node scripts/uxui-audit-summary.mjs --compare docs/uxui-audit-baseline.json`. No count may rise; lower the ratchet

@@ -17,7 +17,13 @@ function sourceFiles(directory: string): string[] {
 }
 
 // The shell stylesheet (Step 5) and the seasonal decoration kit (S2) follow the same rules, so all are checked as one.
-const css = ['components.css', 'shell.css', 'season-decor.css', 'season-preview.css']
+const css = [
+  'components.css',
+  'shell.css',
+  'season-decor.css',
+  'season-art.css',
+  'season-preview.css',
+]
   .map((name) => readFileSync(new URL(name, here), 'utf8'))
   .join('\n');
 const tokens = readFileSync(new URL('tokens.css', here), 'utf8');
@@ -44,10 +50,14 @@ test('components.css uses tokens only: no color literals', () => {
 
 test('every token the component styles read is defined', () => {
   // A token is defined in tokens.css or declared by a rule of the stylesheets themselves (a local variable).
+  // The per-season tokens (`--ls-season-*`, `--ls-art-*`) are declared by the generated season.css.
+  const seasonCss = readFileSync(new URL('season.css', here), 'utf8');
   const defined = new Set(
-    [...tokens.matchAll(/(--ls-[\w-]+)\s*:/g), ...css.matchAll(/(--ls-[\w-]+)\s*:/g)].map(
-      (match) => match[1],
-    ),
+    [
+      ...tokens.matchAll(/(--ls-[\w-]+)\s*:/g),
+      ...css.matchAll(/(--ls-[\w-]+)\s*:/g),
+      ...seasonCss.matchAll(/(--ls-[\w-]+)\s*:/g),
+    ].map((match) => match[1]),
   );
   const used = new Set([...css.matchAll(/var\((--ls-[\w-]+)/g)].map((match) => match[1]));
   const missing = [...used].filter((name) => !defined.has(name));

@@ -70,6 +70,7 @@ const metrics: Record<string, Map<string, number>> = {
   ),
   workforceCssSpacingLiterals: spacingLiterals('apps/web/src/app/workforce.css'),
   seasonDecorCssSpacingLiterals: spacingLiterals('packages/ui/src/season-decor.css'),
+  seasonArtCssSpacingLiterals: spacingLiterals('packages/ui/src/season-art.css'),
   componentsCssSpacingLiterals: spacingLiterals('packages/ui/src/components.css'),
   shellCssSpacingLiterals: spacingLiterals('packages/ui/src/shell.css'),
 };

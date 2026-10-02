@@ -27,6 +27,22 @@ a:focus-visible {
   margin-inline: auto;
 }
 
+/* Seasonal page (S6): the wrapper owns the full height, the shell only fills the space between the decor rows, and
+   the dividers replace the plain header and footer borders. */
+.ls-site-page .site-shell {
+  flex: 1;
+  min-height: 0;
+}
+
+.ls-site-page .site-shell-foot {
+  flex: none;
+}
+
+.ls-site-page .site-header,
+.ls-site-page .site-footer {
+  border-width: 0;
+}
+
 .site-header {
   display: flex;
   align-items: center;

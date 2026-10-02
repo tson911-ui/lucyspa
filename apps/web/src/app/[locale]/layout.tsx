@@ -7,6 +7,7 @@ import '@lucy-spa/ui/tokens.css';
 // Seasonal presets (docs/UXUI_REDESIGN_DESIGN.md 20): inert until an element carries data-season (set below, S5).
 import '@lucy-spa/ui/season.css';
 import '@lucy-spa/ui/season-decor.css';
+import '@lucy-spa/ui/season-art.css';
 import '@lucy-spa/ui/season-preview.css';
 import '@lucy-spa/ui/base.css';
 import '@lucy-spa/ui/components.css';

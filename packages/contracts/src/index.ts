@@ -2119,6 +2119,7 @@ export interface ReassignServicesResponse {
 export * from './notification-registry.js';
 // Seasonal theme presets (docs/UXUI_REDESIGN_DESIGN.md 20): data only; the database stores the preset key.
 export * from './season-registry.js';
+export * from './lunar-year.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;

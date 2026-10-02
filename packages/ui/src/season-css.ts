@@ -8,7 +8,15 @@ import type { SeasonAccentTokens, SeasonPreset } from '@lucy-spa/contracts';
 export const SEASON_CSS_HEADER =
   '/* Generated from packages/contracts/src/season-registry.ts by `pnpm season:css`. Do not edit by hand. */';
 
-function accentLines(tokens: SeasonAccentTokens, ornament: readonly string[]): string[] {
+/** `panelText` -> `--ls-art-panel-text`: the S6 art colors of a preset, one custom property each. */
+export const artToken = (key: string): string =>
+  `--ls-art-${key.replace(/[A-Z0-9]/g, (char) => `-${char.toLowerCase()}`)}`;
+
+function accentLines(
+  tokens: SeasonAccentTokens,
+  ornament: readonly string[],
+  art: Readonly<Record<string, string>> = {},
+): string[] {
   return [
     `--ls-season-accent: ${tokens.accent};`,
     `--ls-season-accent-soft: ${tokens.accentSoft};`,
@@ -17,6 +25,7 @@ function accentLines(tokens: SeasonAccentTokens, ornament: readonly string[]): s
     `--ls-season-frame-to: ${tokens.frameTo};`,
     `--ls-season-frame-text: ${tokens.frameText};`,
     ...ornament.map((value, index) => `--ls-season-ornament-${index + 1}: ${value};`),
+    ...Object.entries(art).map(([key, value]) => `${artToken(key)}: ${value};`),
   ];
 }
 
@@ -28,14 +37,14 @@ function rule(selectors: string[], lines: string[], indent = ''): string {
 export function buildSeasonCss(presets: readonly SeasonPreset[]): string {
   const blocks = presets.map((preset) => {
     const scope = `[data-season='${preset.key}']`;
-    const dark = accentLines(preset.dark, preset.ornament.dark);
+    const dark = accentLines(preset.dark, preset.ornament.dark, preset.art?.dark);
     return [
       `/* ${preset.key}: ${preset.name.en} */`,
       // The line follows the accent on the same element, so the dark block recolors it without redeclaring it.
       rule(
         [scope],
         [
-          ...accentLines(preset.light, preset.ornament.light),
+          ...accentLines(preset.light, preset.ornament.light, preset.art?.light),
           '--ls-season-line: var(--ls-season-accent);',
         ],
       ),
@@ -59,7 +68,7 @@ export function buildSeasonCss(presets: readonly SeasonPreset[]): string {
           `:root [data-preview-theme='${theme}'] ${scope}`,
           `:root [data-preview-theme='${theme}']${scope}`,
         ],
-        accentLines(preset[theme], preset.ornament[theme]),
+        accentLines(preset[theme], preset.ornament[theme], preset.art?.[theme]),
       ),
     );
   });

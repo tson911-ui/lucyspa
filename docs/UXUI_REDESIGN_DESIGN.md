@@ -896,7 +896,7 @@ decision. Nothing in Part 1 blocks it; Step 2 already removes gold from shared t
 ## 20. Seasonal and holiday themes (Owner decision D12, design only)
 
 **Status: decision recorded 2026-09-30. Step S1 (registry, tokens, generated `season.css`, admin accent line) is implemented
-(`UXUI_REDESIGN_S1_SEASON_REGISTRY.md`) and so is S2 (decoration kit, `UXUI_REDESIGN_S2_DECORATION_KIT.md`) and S3 (seasons table, API, public endpoint, holiday links, `UXUI_REDESIGN_S3_SEASONS_API.md`) and S4 (admin Seasons tab, `UXUI_REDESIGN_S4_SEASONS_TAB.md`) and S5 (wiring, `UXUI_REDESIGN_S5_WIRING.md`): S1-S5 are complete.** It is planned as its own Steps S1-S5 (20.8), separate from Steps 2-14. It builds on Step 5 (theme
+(`UXUI_REDESIGN_S1_SEASON_REGISTRY.md`) and so is S2 (decoration kit, `UXUI_REDESIGN_S2_DECORATION_KIT.md`) and S3 (seasons table, API, public endpoint, holiday links, `UXUI_REDESIGN_S3_SEASONS_API.md`) and S4 (admin Seasons tab, `UXUI_REDESIGN_S4_SEASONS_TAB.md`) and S5 (wiring, `UXUI_REDESIGN_S5_WIRING.md`): S1-S5 are complete. Step S6 (site-wide art, `UXUI_REDESIGN_S6_PLAN.md`) replaces the "particles only inside the banner" rule of 20.2; S6a is implemented (`UXUI_REDESIGN_S6A_ENGINE.md`).** It is planned as its own Steps S1-S5 (20.8), separate from Steps 2-14. It builds on Step 5 (theme
 mechanism, admin shell) and on the website-content group (Steps 11-13).
 
 ### 20.1 The decision

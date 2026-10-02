@@ -1,4 +1,10 @@
-import { getSeasonPreset, isSeasonPresetKey, type PublicSeasonResponse } from '@lucy-spa/contracts';
+import {
+  getSeasonPreset,
+  isSeasonPresetKey,
+  lunarYearForSeasonEnd,
+  type PublicSeasonResponse,
+} from '@lucy-spa/contracts';
+import { isSeasonArtKit, type ParticleDensity, type SeasonArtKit } from '@lucy-spa/ui';
 import type { Locale } from '../i18n/locales';
 
 /**
@@ -77,14 +83,63 @@ export interface SeasonBandSpec {
   particle: ReturnType<typeof getSeasonPreset>['ornament']['particle'];
 }
 
-/** What the customer band draws, or null when the season is not for the customer side. */
+/**
+ * What the S5 customer band draws, or null when the season is not for the customer side. A preset with site-wide art
+ * (S6, `siteDecorSpec`) draws that instead of the band, so it never shows both.
+ */
 export function seasonBandSpec(season: PublicSeasonResponse | null): SeasonBandSpec | null {
   if (season === null || !season.customer || !isSeasonPresetKey(season.presetKey)) return null;
+  if (isSeasonArtKit(season.presetKey)) return null;
   const { ornament } = getSeasonPreset(season.presetKey);
   return {
     presetKey: season.presetKey,
     ornamentId: ornament.id,
     greeting: season.greeting,
     particle: season.particles ? ornament.particle : 'none',
+  };
+}
+
+// ------------------------------------------------------------------ site-wide decoration (S6)
+
+export interface SiteDecorSpec {
+  kit: SeasonArtKit;
+  greeting: string;
+  /** Whether particles drift (the schedule allows them and the kit has any). */
+  particles: boolean;
+  density: ParticleDensity;
+  /** The footer scene's greeting line and optional second line. */
+  footer: { line: string; sub?: string };
+  /** The Tet year's zodiac animal key, or null; art is drawn only when it exists for that animal. */
+  zodiac: string | null;
+  /** The computed can-chi name and year ("Đinh Mùi 2027") for the Tet kit, or null. */
+  lunar: { canChi: string; year: number; animal: { vi: string; en: string } } | null;
+}
+
+/**
+ * What the site-wide decoration draws (docs/UXUI_REDESIGN_S6_PLAN.md), or null when the season is not for the
+ * customer side or its preset has no site art yet (then the S5 band applies). The Tet footer's second line and its
+ * zodiac animal are computed from the season's end date, never typed (Owner decision 4).
+ */
+export function siteDecorSpec(
+  season: PublicSeasonResponse | null,
+  locale: Locale,
+): SiteDecorSpec | null {
+  if (season === null || !season.customer || !isSeasonPresetKey(season.presetKey)) return null;
+  const preset = getSeasonPreset(season.presetKey);
+  if (!preset.art || !isSeasonArtKit(preset.key)) return null;
+  const lunar = preset.key === 'tet' ? lunarYearForSeasonEnd(season.endsAt) : null;
+  const sub = lunar
+    ? locale === 'vi'
+      ? `Xuân ${lunar.canChi} ${lunar.year}`
+      : `${lunar.canChi} ${lunar.year}, Year of the ${lunar.animalName.en}`
+    : preset.art.footer.sub?.[locale];
+  return {
+    kit: preset.key,
+    greeting: season.greeting,
+    particles: season.particles && preset.ornament.particle !== 'none',
+    density: 'medium',
+    footer: { line: preset.art.footer.line[locale], ...(sub ? { sub } : {}) },
+    zodiac: lunar ? lunar.animal : null,
+    lunar: lunar ? { canChi: lunar.canChi, year: lunar.year, animal: lunar.animalName } : null,
   };
 }

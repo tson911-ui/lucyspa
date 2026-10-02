@@ -113,6 +113,20 @@ export { GreetingStrip, SeasonFrame } from './season-frame';
 export { SeasonPresetPicker, SeasonPreview } from './season-preview';
 export type { SeasonPresetChoice, SeasonPreviewLabels } from './season-preview';
 export { SeasonFxToggle, SeasonParticles, useSeasonFx } from './season-particles';
+// Site-wide season art (Step S6, docs/UXUI_REDESIGN_S6_PLAN.md): slots around the customer pages and their particles.
+export {
+  SEASON_ART_KITS,
+  SeasonDivider,
+  SeasonFooterScene,
+  SeasonHeaderRow,
+  SeasonLogoAccent,
+  SeasonStrip,
+  hasZodiacArt,
+  isSeasonArtKit,
+} from './season-scene';
+export type { SeasonArtKit } from './season-scene';
+export { SeasonFxSwitch, SeasonSiteParticles } from './season-site-fx';
+export type { ParticleDensity } from './season-fx-core';
 export {
   FX_COOKIE,
   PARTICLES_DESKTOP,

@@ -11,6 +11,7 @@
     "./shell.css": "./src/shell.css",
     "./season.css": "./src/season.css",
     "./season-decor.css": "./src/season-decor.css",
+    "./season-art.css": "./src/season-art.css",
     "./season-preview.css": "./src/season-preview.css"
   },
   "sideEffects": [

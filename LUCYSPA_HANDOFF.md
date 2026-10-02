@@ -310,3 +310,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Root layout reads the public season (server, 60 s cache, 1.5 s timeout, fail closed) and sets html data-season and data-season-admin (cookie ls-season-admin for the per-device hide). Customer public shell and member area get SeasonBand (frame, greeting, particles, Turn off effects); dashboard gets the admin greeting chip with Hide/Show. Web only, no API change; mobile reads the same endpoint plus the shared registry and bundles its own ornaments.
 - Report: docs/UXUI_REDESIGN_S5_WIRING.md. S1-S5 complete; deploy runbook: docs/DEPLOY_S1_S5_RUNBOOK.md. Next: Step 14 final gate, Part 2.
+
+### UX/UI Step S6a (season art engine) - implemented 2026-10-02 on 8322941
+
+- Site-wide season art: slots (header row, logo accent, corners, dividers, strip, footer scene, tint) and particles behind content with a text keep-out mask; Tet (computed lunar year, goat art for 2027 only) and Christmas kits. Registry gained art palettes; lunar-year.ts in contracts.
+- Screenshot gate fails hard (exit 3) on errors; CLAUDE.md: open every screenshot. Report: docs/UXUI_REDESIGN_S6A_ENGINE.md. Next: S6b (migration, admin Decoration section, custom events, Celebration kit).

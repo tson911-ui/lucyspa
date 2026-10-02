@@ -1,0 +1,693 @@
+/* Site-wide season decoration (docs/UXUI_REDESIGN_S6_PLAN.md section 3): the page wrapper with the soft tint, the
+   particle layer behind the content, the header row, logo accent, divider, greeting strip and footer scene. Tokens
+   only: colors are the --ls-art-* tokens that season.css sets per preset and theme, lengths are multiples of the 4
+   unit (--ls-art-u is the spacing token --ls-space-1). Everything drawn is non-interactive. Inert without the
+   .ls-site-page wrapper, which the layouts render only when a season with site art applies. */
+
+/* ---- Page wrapper, tint, layers ------------------------------------------------------------------ */
+.ls-site-page {
+  --ls-art-u: var(--ls-space-1);
+  --ls-art-header-h: calc(var(--ls-art-u) * 24);
+  --ls-art-inset: calc(var(--ls-art-u) * 56);
+  --ls-art-footer-h: calc(var(--ls-art-u) * 75);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  /* Slot 7: two soft washes at the top-left and bottom-right corners of the page. */
+  background:
+    radial-gradient(
+      ellipse 60% 40% at 0% 0%,
+      color-mix(in srgb, var(--ls-art-tint-1) 30%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 100% 100%,
+      color-mix(in srgb, var(--ls-art-tint-2) 12%, transparent),
+      transparent 70%
+    );
+}
+
+/* The content is above the particle layer; the layer is below everything (Owner decision 1). */
+.ls-site-page > :not(.ls-fx-site) {
+  position: relative;
+  z-index: 1;
+}
+
+.ls-art {
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.ls-art-row {
+  position: relative;
+  width: 100%;
+  pointer-events: none;
+}
+
+.ls-art-hide-narrow,
+.ls-art-hide-medium,
+.ls-art-show-wide {
+  display: block;
+}
+
+.ls-art-show-narrow {
+  display: none;
+}
+
+/* ---- Slot 1: particles --------------------------------------------------------------------------- */
+/* As tall as the page; a mask (set by the component) leaves a soft hole over every line of text and control. */
+.ls-fx-site {
+  --ls-fx-scale: 1;
+  --ls-fx-speed: 1;
+  --ls-fx-delay: 0;
+  --ls-fx-sway: 0;
+  --ls-fx-span: 1;
+  --ls-fx-dist: 0;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  mask-repeat: no-repeat;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+}
+
+.ls-fx-site-p {
+  position: absolute;
+  top: 0;
+  width: calc(var(--ls-space-5) * var(--ls-fx-scale));
+  animation: ls-fx-site-fall calc(var(--ls-dur-drift) * var(--ls-fx-span) * var(--ls-fx-speed))
+    linear
+    calc(var(--ls-dur-drift) * var(--ls-fx-span) * var(--ls-fx-speed) * var(--ls-fx-delay) * -1)
+    infinite;
+  will-change: transform, opacity;
+}
+
+.ls-fx-site-glyph {
+  display: block;
+  width: 100%;
+  height: auto;
+  animation: ls-fx-spin calc(var(--ls-dur-drift) * 0.5) linear infinite;
+}
+
+.ls-fx-site[data-paused='true'] .ls-fx-site-p,
+.ls-fx-site[data-paused='true'] .ls-fx-site-glyph {
+  animation-play-state: paused;
+}
+
+@keyframes ls-fx-site-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--ls-space-6) * -1), 0);
+  }
+
+  8% {
+    opacity: 0.9;
+  }
+
+  50% {
+    transform: translate3d(
+      calc(var(--ls-fx-sway) * var(--ls-space-7)),
+      calc(var(--ls-fx-dist) / 2),
+      0
+    );
+  }
+
+  92% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, var(--ls-fx-dist), 0);
+  }
+}
+
+/* ---- Slots 2 and 4: header row and its two corners ----------------------------------------------- */
+.ls-art-header {
+  height: var(--ls-art-header-h);
+}
+
+.ls-art-corner {
+  position: absolute;
+  top: 0;
+  width: calc(var(--ls-art-u) * 55);
+  height: auto;
+}
+
+.ls-art-header[data-kit='christmas'] .ls-art-corner {
+  width: calc(var(--ls-art-u) * 58);
+}
+
+.ls-art-corner-start {
+  left: 0;
+}
+
+.ls-art-corner-end {
+  right: 0;
+  transform: scaleX(-1);
+}
+
+/* Tet: a cord with lanterns hanging from it and a small blossom between each pair. */
+.ls-art-cord {
+  position: absolute;
+  top: 0;
+  left: calc(var(--ls-art-inset) - var(--ls-art-u) * 5);
+  width: calc(100% - 2 * (var(--ls-art-inset) - var(--ls-art-u) * 5));
+  height: calc(var(--ls-art-u) * 3);
+}
+
+.ls-art-lanterns {
+  position: absolute;
+  top: calc(var(--ls-art-u) / 2);
+  left: var(--ls-art-inset);
+  right: var(--ls-art-inset);
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  align-items: start;
+}
+
+.ls-art-lantern-cell {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.ls-art-lantern {
+  width: auto;
+  height: calc(var(--ls-art-u) * 18);
+}
+
+.ls-art-lantern-cell:nth-child(even) .ls-art-lantern {
+  height: calc(var(--ls-art-u) * 15.5);
+}
+
+.ls-art-cord-blossom {
+  position: absolute;
+  top: calc(var(--ls-art-u) / 2);
+  right: 0;
+  width: calc(var(--ls-art-u) * 5);
+  height: auto;
+  transform: translateX(50%);
+}
+
+/* Christmas: a wire in swags, stretched by percent, with the bulbs hung on it by percent. */
+.ls-art-lights {
+  position: absolute;
+  top: 0;
+  left: var(--ls-art-inset);
+  right: var(--ls-art-inset);
+  height: calc(var(--ls-art-u) * 12);
+}
+
+.ls-art-lights-narrow {
+  display: none;
+}
+
+.ls-art-wire {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ls-art-bulb {
+  position: absolute;
+  width: calc(var(--ls-art-u) * 6);
+  height: auto;
+  transform: translateX(-50%);
+}
+
+/* ---- Slot 3: logo accent ------------------------------------------------------------------------- */
+.ls-art-logo {
+  position: relative;
+  display: inline-block;
+}
+
+.ls-art-logo-art {
+  position: absolute;
+  pointer-events: none;
+}
+
+.ls-art-logo-art .ls-art {
+  width: 100%;
+  height: auto;
+}
+
+.ls-art-logo[data-kit='tet'] .ls-art-logo-art {
+  top: calc(var(--ls-art-u) * -6);
+  left: 100%;
+  width: calc(var(--ls-art-u) * 18);
+}
+
+.ls-art-logo[data-kit='christmas'] .ls-art-logo-art {
+  top: calc(var(--ls-art-u) * -6.5);
+  left: calc(var(--ls-art-u) * -2);
+  width: calc(var(--ls-art-u) * 8.5);
+  transform: rotate(-12deg);
+}
+
+/* ---- Slot 5: divider ----------------------------------------------------------------------------- */
+.ls-art-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-3);
+  height: calc(var(--ls-art-u) * 7);
+}
+
+.ls-art-divider-line {
+  flex: 1 1 0;
+  height: 0;
+  border-top: calc(var(--ls-art-u) / 4) solid var(--ls-border);
+}
+
+.ls-art-divider-art {
+  flex: none;
+  width: calc(var(--ls-art-u) * 40);
+  height: calc(var(--ls-art-u) * 7);
+}
+
+/* ---- Greeting strip ------------------------------------------------------------------------------ */
+.ls-art-strip {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, calc(var(--ls-art-u) * 160))
+    minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--ls-space-3);
+  min-height: var(--ls-control-h);
+  margin-block: var(--ls-space-4);
+  padding: var(--ls-space-2) var(--ls-space-4);
+  border-radius: var(--ls-radius-md);
+  background: linear-gradient(90deg, var(--ls-season-frame-from), var(--ls-season-frame-to));
+  color: var(--ls-season-frame-text);
+}
+
+.ls-art-strip-text {
+  grid-column: 2;
+}
+
+.ls-art-strip-tools {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.ls-art-fx-switch {
+  min-height: var(--ls-control-h);
+  padding: 0 var(--ls-space-3);
+  border: 0;
+  border-radius: var(--ls-radius-sm);
+  background: none;
+  color: var(--ls-season-frame-text);
+  font: inherit;
+  font-size: var(--ls-text-sm);
+  text-decoration: underline;
+  text-underline-offset: var(--ls-space-1);
+  cursor: pointer;
+}
+
+.ls-art-fx-switch:focus-visible {
+  outline: calc(var(--ls-art-u) / 2) solid currentcolor;
+  outline-offset: calc(var(--ls-art-u) / 2);
+}
+
+/* ---- Slots 6 and 4: footer scene and its two bottom corners -------------------------------------- */
+.ls-art-footer {
+  height: var(--ls-art-footer-h);
+  margin-top: var(--ls-space-6);
+}
+
+.ls-art-footer-art {
+  position: absolute;
+  inset: 0;
+}
+
+.ls-art-footer-text {
+  position: absolute;
+  right: 0;
+  bottom: calc(var(--ls-art-u) * 5.5);
+  left: 0;
+  display: flex;
+  justify-content: center;
+  padding-inline: var(--ls-space-6);
+}
+
+/* The greeting is text, so it sits on a panel: the Tet band is the panel, the Christmas card is its own. */
+.ls-art-plaque {
+  max-width: 100%;
+  color: var(--ls-art-panel-text);
+  text-align: center;
+}
+
+.ls-art-plaque[data-plaque='card'] {
+  padding: var(--ls-space-3) var(--ls-space-7) var(--ls-space-3);
+  border-radius: calc(var(--ls-radius-md) * 2);
+  background: var(--ls-art-panel);
+  box-shadow: 0 calc(var(--ls-art-u) / 2) 0 var(--ls-art-snow-2);
+}
+
+.ls-art-plaque-line {
+  margin: 0;
+  font-family: var(--lucy-font-display);
+  font-size: var(--ls-text-xl);
+  font-style: italic;
+  line-height: 1.3;
+}
+
+.ls-art-plaque-sub {
+  margin: var(--ls-space-1) 0 0;
+  font-size: var(--ls-text-sm);
+  line-height: 1.5;
+}
+
+.ls-art-band {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 40%;
+}
+
+.ls-art-crackers {
+  position: absolute;
+  top: 0;
+  width: auto;
+  height: calc(var(--ls-art-u) * 62);
+}
+
+.ls-art-crackers-start {
+  left: calc(var(--ls-art-u) * 19);
+}
+
+.ls-art-crackers-end {
+  right: calc(var(--ls-art-u) * 19);
+}
+
+.ls-art-pile {
+  position: absolute;
+  bottom: calc(var(--ls-art-u) * 3);
+  width: calc(var(--ls-art-u) * 37);
+  height: auto;
+}
+
+.ls-art-pile-start {
+  left: calc(var(--ls-art-u) * 45);
+}
+
+.ls-art-pile-end {
+  right: calc(var(--ls-art-u) * 45);
+  transform: scaleX(-1);
+}
+
+.ls-art-animal {
+  position: absolute;
+  top: calc(var(--ls-art-u) * 2);
+  left: 50%;
+  width: calc(var(--ls-art-u) * 55);
+  height: auto;
+  transform: translateX(-50%);
+}
+
+.ls-art-hills {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ls-art-tree,
+.ls-art-gifts {
+  position: absolute;
+  bottom: calc(var(--ls-art-u) * 8);
+  height: auto;
+}
+
+.ls-art-tree-start {
+  left: calc(var(--ls-art-u) * 30);
+  width: calc(var(--ls-art-u) * 46.5);
+}
+
+.ls-art-tree-end {
+  right: calc(var(--ls-art-u) * 60);
+  width: calc(var(--ls-art-u) * 37.5);
+}
+
+.ls-art-gifts-start {
+  left: calc(var(--ls-art-u) * 74.5);
+  width: calc(var(--ls-art-u) * 29.5);
+}
+
+.ls-art-gifts-end {
+  right: calc(var(--ls-art-u) * 77);
+  width: calc(var(--ls-art-u) * 21.5);
+}
+
+/* ---- Tablets (up to 1023 px): five lanterns, smaller corners, a stacked strip, a tighter footer scene -- */
+@media (max-width: 1023px) {
+  .ls-site-page {
+    --ls-art-inset: calc(var(--ls-art-u) * 40);
+  }
+
+  .ls-art-hide-medium,
+  .ls-art-lights-wide {
+    display: none;
+  }
+
+  .ls-art-lights-narrow {
+    display: block;
+  }
+
+  .ls-art-lanterns {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .ls-art-lantern {
+    height: calc(var(--ls-art-u) * 16);
+  }
+
+  .ls-art-corner {
+    width: calc(var(--ls-art-u) * 40);
+  }
+
+  .ls-art-header[data-kit='christmas'] .ls-art-corner {
+    width: calc(var(--ls-art-u) * 42);
+  }
+
+  .ls-art-strip {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--ls-space-1);
+  }
+
+  .ls-art-strip-text,
+  .ls-art-strip-tools {
+    grid-column: 1;
+  }
+
+  .ls-art-crackers {
+    height: calc(var(--ls-art-u) * 52);
+  }
+
+  .ls-art-crackers-start {
+    left: calc(var(--ls-art-u) * 3);
+  }
+
+  .ls-art-crackers-end {
+    right: calc(var(--ls-art-u) * 3);
+  }
+
+  .ls-art-pile {
+    width: calc(var(--ls-art-u) * 28);
+  }
+
+  .ls-art-pile-start {
+    left: calc(var(--ls-art-u) * 17);
+  }
+
+  .ls-art-pile-end {
+    right: calc(var(--ls-art-u) * 17);
+  }
+
+  .ls-art-animal {
+    width: calc(var(--ls-art-u) * 50);
+  }
+
+  .ls-art-tree-start {
+    left: calc(var(--ls-art-u) * 6);
+    width: calc(var(--ls-art-u) * 40);
+  }
+
+  .ls-art-gifts-start {
+    left: calc(var(--ls-art-u) * 38);
+    width: calc(var(--ls-art-u) * 20);
+  }
+
+  .ls-art-tree-end {
+    right: calc(var(--ls-art-u) * 6);
+    width: calc(var(--ls-art-u) * 32);
+  }
+
+  .ls-art-gifts-end {
+    right: calc(var(--ls-art-u) * 36);
+    width: calc(var(--ls-art-u) * 18);
+  }
+}
+
+/* ---- Phones: fewer pieces and smaller art, never smaller text ------------------------------------ */
+@media (max-width: 760px) {
+  .ls-site-page {
+    --ls-art-header-h: calc(var(--ls-art-u) * 17);
+    --ls-art-inset: calc(var(--ls-art-u) * 26);
+    --ls-art-footer-h: calc(var(--ls-art-u) * 67);
+  }
+
+  .ls-art-footer[data-kit='christmas'] {
+    --ls-art-footer-h: calc(var(--ls-art-u) * 56);
+  }
+
+  .ls-fx-site-p {
+    width: calc(var(--ls-space-4) * var(--ls-fx-scale));
+  }
+
+  .ls-art-hide-narrow,
+  .ls-art-show-wide,
+  .ls-art-lights-wide,
+  .ls-art-cord-blossom {
+    display: none;
+  }
+
+  .ls-art-show-narrow,
+  .ls-art-lights-narrow {
+    display: block;
+  }
+
+  .ls-art-lanterns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ls-art-lantern {
+    height: calc(var(--ls-art-u) * 13);
+  }
+
+  .ls-art-corner,
+  .ls-art-header[data-kit='christmas'] .ls-art-corner {
+    width: calc(var(--ls-art-u) * 28);
+  }
+
+  .ls-art-bulb {
+    width: calc(var(--ls-art-u) * 5);
+  }
+
+  .ls-art-logo[data-kit='tet'] .ls-art-logo-art {
+    top: calc(var(--ls-art-u) * -4);
+    width: calc(var(--ls-art-u) * 11);
+  }
+
+  .ls-art-logo[data-kit='christmas'] .ls-art-logo-art {
+    top: calc(var(--ls-art-u) * -5);
+    left: calc(var(--ls-art-u) * -2);
+    width: calc(var(--ls-art-u) * 6.5);
+  }
+
+  .ls-art-divider-art {
+    width: calc(var(--ls-art-u) * 32);
+  }
+
+  .ls-art-strip {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--ls-space-1);
+  }
+
+  .ls-art-strip-text,
+  .ls-art-strip-tools {
+    grid-column: 1;
+  }
+
+  .ls-art-crackers {
+    height: calc(var(--ls-art-u) * 26);
+  }
+
+  .ls-art-crackers-start {
+    left: calc(var(--ls-art-u) * 2.5);
+  }
+
+  .ls-art-crackers-end {
+    right: calc(var(--ls-art-u) * 2.5);
+  }
+
+  .ls-art-pile {
+    bottom: calc(var(--ls-art-u) * 2);
+    width: calc(var(--ls-art-u) * 18.5);
+  }
+
+  .ls-art-pile-start {
+    left: calc(var(--ls-art-u) * 2);
+  }
+
+  .ls-art-pile-end {
+    right: calc(var(--ls-art-u) * 2);
+  }
+
+  .ls-art-animal {
+    width: calc(var(--ls-art-u) * 39.5);
+  }
+
+  .ls-art-footer-text {
+    padding-inline: calc(var(--ls-art-u) * 22);
+  }
+
+  .ls-art-footer[data-kit='christmas'] .ls-art-footer-text {
+    padding-inline: calc(var(--ls-art-u) * 24);
+  }
+
+  .ls-art-plaque-line {
+    font-size: var(--ls-text-lg);
+  }
+
+  .ls-art-footer[data-kit='christmas'] .ls-art-plaque-line {
+    font-size: var(--ls-text-md);
+  }
+
+  .ls-art-plaque[data-plaque='card'] {
+    padding: var(--ls-space-2) var(--ls-space-3) var(--ls-space-3);
+  }
+
+  .ls-art-tree,
+  .ls-art-gifts {
+    bottom: calc(var(--ls-art-u) * 7);
+  }
+
+  .ls-art-tree-start {
+    left: 0;
+    width: calc(var(--ls-art-u) * 24);
+  }
+
+  .ls-art-tree-end {
+    right: 0;
+    width: calc(var(--ls-art-u) * 22);
+  }
+
+  .ls-art-gifts-start {
+    left: calc(var(--ls-art-u) * 5);
+    width: calc(var(--ls-art-u) * 13);
+  }
+
+  .ls-art-gifts-end {
+    right: calc(var(--ls-art-u) * 9.5);
+    width: calc(var(--ls-art-u) * 10);
+  }
+}
+
+/* The component also renders nothing under reduced motion; this keeps a stray element still. */
+@media (prefers-reduced-motion: reduce) {
+  .ls-fx-site-p,
+  .ls-fx-site-glyph {
+    animation: none;
+  }
+}

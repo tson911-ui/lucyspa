@@ -59,7 +59,7 @@
       ) &&
       !(el instanceof SVGElement && el.tagName.toLowerCase() !== 'svg') &&
       // The seasonal particle layer is decoration (aria-hidden, no pointer events) clipped by its band on purpose.
-      !el.closest('.ls-fx') &&
+      !el.closest('.ls-fx, .ls-fx-site') &&
       vis(el),
   );
   const findings = [];
@@ -425,6 +425,8 @@
       // The sticky phone form bar bleeds into the page gutter on purpose (one gutter, still inside the viewport).
       else if (el.querySelector('.ls-form-actions') && el.scrollWidth - el.clientWidth <= 17)
         continue;
+      // Season art hangs outside its anchor on purpose (aria-hidden, no pointer events): a lantern's blossom, the logo accent.
+      else if (el.querySelector(':scope > .ls-art, .ls-art-logo-art')) continue;
       else if (s.overflowX === 'visible' && !el.closest('[style*="overflow"], .ls-table-scroll'))
         add(
           'content-overflow',

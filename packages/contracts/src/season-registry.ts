@@ -80,6 +80,21 @@ export interface SeasonPreset {
     start: { month: number; day: number };
     end: { month: number; day: number };
   } | null;
+  /** Site-wide art (S6); absent until the preset's kit ships. */
+  art?: SeasonArt;
+}
+
+/**
+ * The site-wide decoration kit of a preset (Step S6, docs/UXUI_REDESIGN_S6_PLAN.md): the colors its drawn art reads,
+ * as named tokens (`--ls-art-<name>`, camelCase keys become kebab-case), and the short footer lines. Art colors are
+ * decoration only: text, buttons and accents keep the brand tokens. A preset without `art` keeps the S5 banner until
+ * its own Step ships. All values are 6-digit hex; yellow-hue colors are allowed only in the four Q-S1 presets.
+ */
+export interface SeasonArt {
+  light: Readonly<Record<string, string>>;
+  dark: Readonly<Record<string, string>>;
+  /** The footer scene's greeting line; `sub` is a second line (Tet computes its own, from the lunar year). */
+  footer: { line: { vi: string; en: string }; sub?: { vi: string; en: string } };
 }
 
 export const SEASON_GREETING_MAX_LENGTH = 80;
@@ -115,6 +130,59 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
       dark: ['#f2c94c', '#f4a6bd', '#e8788f'],
     },
     suggestedWindow: null,
+    art: {
+      light: {
+        red: '#d3263f',
+        red2: '#ec5a72',
+        red3: '#a51a31',
+        yellow: '#f5c518',
+        yellow2: '#d49a0a',
+        yellow3: '#fde68a',
+        mai: '#f7c928',
+        mai2: '#ffe27a',
+        maiCentre: '#e8851c',
+        peach: '#f08fb0',
+        peach2: '#ffd0df',
+        wood: '#7a4a3a',
+        leaf: '#4f8a5b',
+        cord: '#b8862b',
+        cream: '#fff3e2',
+        cream2: '#f0d9bd',
+        blush: '#f4a1bd',
+        ink: '#2b1d1d',
+        white: '#ffffff',
+        panel: '#f8d4de',
+        panelText: '#3a1a22',
+        tint1: '#f48fb0',
+        tint2: '#f5965a',
+      },
+      dark: {
+        red: '#e84a62',
+        red2: '#f47489',
+        red3: '#b8263d',
+        yellow: '#f2c94c',
+        yellow2: '#c9a038',
+        yellow3: '#f8dc7e',
+        mai: '#f2c94c',
+        mai2: '#f8dc7e',
+        maiCentre: '#e9963a',
+        peach: '#f0a0bb',
+        peach2: '#f9c9d8',
+        wood: '#a8765f',
+        leaf: '#6aa876',
+        cord: '#d4a94c',
+        cream: '#fbead4',
+        cream2: '#dcc3a4',
+        blush: '#f0a0bb',
+        ink: '#2b1d1d',
+        white: '#ffffff',
+        panel: '#46303a',
+        panelText: '#ffe8f0',
+        tint1: '#a0325a',
+        tint2: '#c8961e',
+      },
+      footer: { line: { vi: 'Chúc mừng năm mới', en: 'Happy Lunar New Year' } },
+    },
   },
   {
     key: 'christmas',
@@ -146,6 +214,60 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
       dark: ['#86d6a6', '#4fa072', '#e08a9a'],
     },
     suggestedWindow: { start: { month: 12, day: 15 }, end: { month: 12, day: 26 } },
+    art: {
+      light: {
+        red: '#c62f3f',
+        red2: '#e05a68',
+        red3: '#962033',
+        pine: '#2f7a4d',
+        pine2: '#58a272',
+        pine3: '#1d5a38',
+        white: '#ffffff',
+        snow: '#ffffff',
+        snow2: '#d6e4f0',
+        ice: '#8fb8de',
+        pink: '#f4a8b4',
+        wood: '#7a4a3a',
+        bulb1: '#e5484d',
+        bulb2: '#58b27a',
+        bulb3: '#8fc6f0',
+        bulb4: '#f6a3c0',
+        wire: '#3b5c47',
+        star: '#f06a7c',
+        panel: '#ffffff',
+        panelText: '#1f2d3a',
+        tint1: '#58a272',
+        tint2: '#8fb8de',
+      },
+      dark: {
+        red: '#e5484d',
+        red2: '#f0727a',
+        red3: '#b32a3a',
+        pine: '#3f9a63',
+        pine2: '#6bbf8a',
+        pine3: '#276f47',
+        white: '#ffffff',
+        snow: '#eef3f8',
+        snow2: '#8fa6bf',
+        ice: '#b8d4ee',
+        pink: '#f0a0ae',
+        wood: '#a8765f',
+        bulb1: '#f0606a',
+        bulb2: '#6bbf8a',
+        bulb3: '#a8d3f5',
+        bulb4: '#f4b0c8',
+        wire: '#8fb8a0',
+        star: '#f58294',
+        panel: '#eef3f8',
+        panelText: '#1f2d3a',
+        tint1: '#3c8c5a',
+        tint2: '#5a82be',
+      },
+      footer: {
+        line: { vi: 'Giáng sinh an lành', en: 'Merry Christmas' },
+        sub: { vi: 'Một mùa lễ ấm áp cùng Lucy Spa', en: 'A warm season with Lucy Spa' },
+      },
+    },
   },
   {
     key: 'valentine',
