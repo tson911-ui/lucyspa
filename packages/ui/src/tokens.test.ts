@@ -111,15 +111,22 @@ for (const [themeName, theme] of Object.entries(themes)) {
     }
   });
 
-  test(`${themeName}: hover text is at least 4.5:1 on the hover fill and on the surfaces it sits on`, () => {
-    for (const surface of ['hover-bg', 'bg-surface', 'bg-page', 'bg-sunken']) {
-      const value = ratio(color(theme, 'hover-text'), color(theme, surface));
-      assert.ok(value >= 4.5, `${themeName} hover-text on ${surface} = ${value.toFixed(2)}`);
+  test(`${themeName}: hover text is at least 4.5:1 on the solid hover fill, which is itself 3:1 on every surface`, () => {
+    const value = ratio(color(theme, 'hover-text'), color(theme, 'hover-bg'));
+    assert.ok(value >= 4.5, `${themeName} hover-text on hover-bg = ${value.toFixed(2)}`);
+    for (const surface of ['bg-surface', 'bg-page', 'bg-sunken', 'bg-raised']) {
+      const edge = ratio(color(theme, 'hover-bg'), color(theme, surface));
+      assert.ok(edge >= 3, `${themeName} hover-bg on ${surface} = ${edge.toFixed(2)}`);
     }
-    // Danger text keeps its own color inside a hovered menu item, so it must read on the hover fill too.
-    assert.ok(ratio(color(theme, 'danger'), color(theme, 'hover-bg')) >= 4.5);
-    // The hover border is a control boundary: 3:1 against the hover fill.
-    assert.ok(ratio(color(theme, 'hover-border'), color(theme, 'hover-bg')) >= 3);
+    // A destructive hover is the same solid rule in the danger color.
+    assert.ok(ratio(color(theme, 'on-danger'), color(theme, 'danger')) >= 4.5);
+    // The hover border is the fill itself; its boundary is the same 3:1.
+    assert.ok(ratio(color(theme, 'hover-border'), color(theme, 'hover-bg')) >= 1);
+    // A whole table row keeps a subtle tint: ordinary text and the brand link both stay readable on it.
+    for (const text of ['text', 'brand']) {
+      const row = ratio(color(theme, text), color(theme, 'row-hover-bg'));
+      assert.ok(row >= 4.5, `${themeName} ${text} on row-hover-bg = ${row.toFixed(2)}`);
+    }
   });
 
   test(`${themeName}: the six chart series clear 3:1 on the chart surface`, () => {
@@ -164,14 +171,24 @@ test('contract 6.2 ratios are reproduced (one decimal, as published)', () => {
   }
 });
 
-test('hover: light is the brand tint, dark keeps the neutral hover it always had (Owner, 7.5d)', () => {
-  assert.equal(light['--ls-hover-text'], light['--ls-brand']);
-  assert.equal(light['--ls-hover-border'], light['--ls-brand']);
-  assert.notEqual(light['--ls-hover-bg'], light['--ls-bg-sunken'], 'a red tint, not the grey one');
-  assert.equal(dark['--ls-hover-bg'], dark['--ls-bg-sunken']);
-  assert.equal(dark['--ls-hover-text'], dark['--ls-text']);
-  assert.equal(dark['--ls-hover-border'], dark['--ls-border-control']);
-  assert.equal(dark['--ls-hover-ghost-border'], 'transparent');
+test('hover, whole app: solid brand fill with on-brand text (light #782b37 + white, dark primary fill + on-primary)', () => {
+  assert.equal(light['--ls-hover-bg'], '#782b37');
+  assert.equal(light['--ls-hover-text'], '#ffffff');
+  assert.equal(light['--ls-hover-bg'], light['--ls-brand-fill']);
+  assert.equal(light['--ls-hover-text'], light['--ls-on-brand']);
+  assert.equal(dark['--ls-hover-bg'], dark['--ls-brand-fill']);
+  assert.equal(dark['--ls-hover-text'], dark['--ls-on-brand']);
+  for (const theme of [light, dark]) {
+    assert.equal(theme['--ls-hover-border'], theme['--ls-hover-bg']);
+    assert.equal(theme['--ls-hover-ghost-border'], theme['--ls-hover-bg']);
+    // The sidebar tokens are the same fill; one rule everywhere.
+    assert.equal(theme['--ls-nav-hover-bg'], theme['--ls-hover-bg']);
+    assert.equal(theme['--ls-nav-hover-text'], theme['--ls-hover-text']);
+  }
+  // The one exception: a whole table row keeps a subtle tint, never the solid fill.
+  assert.notEqual(light['--ls-row-hover-bg'], light['--ls-hover-bg']);
+  assert.notEqual(dark['--ls-row-hover-bg'], dark['--ls-hover-bg']);
+  assert.deepEqual(darkSystem, darkAttribute);
 });
 
 test('sidebar items: solid brand fill with its on-brand text in both themes (light red + white, dark primary fill + on-primary)', () => {

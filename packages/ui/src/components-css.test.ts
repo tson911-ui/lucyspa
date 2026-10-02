@@ -152,22 +152,37 @@ test('dashboard frame: clamped widget titles, flush notices in cards, a 280 px b
   assert.match(rule('.ls-tab'), /flex:\s*none/, 'tabs scroll in their strip instead of squeezing');
 });
 
-test('hover is one theme: row, nav, menu, outline and ghost hovers read the hover tokens', () => {
+test('hover is one theme: every interactive control reads the solid hover tokens; only table rows keep a tint', () => {
   for (const selector of [
-    '.ls-table tbody tr:hover td',
     ".ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled)",
     ".ls-btn-ghost:hover:not([aria-disabled='true']):not(:disabled)",
-    '.ls-menu-item:hover,\n.ls-menu-item:focus-visible',
+    '.ls-menu-item:hover:not(.ls-menu-item-disabled),\n.ls-menu-item:focus-visible:not(.ls-menu-item-disabled)',
+    ".ls-option-active,\n.ls-option:hover:not([aria-disabled='true'])",
+    '.ls-tab:hover:not(:disabled)',
+    '.ls-segment:hover',
+    '.ls-page-btn:hover:not(:disabled)',
+    '.ls-check-field:hover',
+    '.ls-facet-option:hover',
+    ".ls-calendar-day:hover:not([aria-disabled='true'])",
+    '.ls-password-toggle:hover',
   ]) {
     const body = rule(selector);
     assert.match(body, /background:\s*var\(--ls-hover-bg\)/, `${selector} fill`);
+    assert.match(body, /color:\s*var\(--ls-hover-text\)/, `${selector} text`);
   }
-  for (const selector of [
-    '.ls-table tbody tr:hover td',
-    ".ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled)",
-  ]) {
-    assert.match(rule(selector), /color:\s*var\(--ls-hover-text\)/, `${selector} text`);
-  }
+  // Rows (and the phone card rows) are the documented exception.
+  assert.match(rule('.ls-table tbody tr:hover td'), /background:\s*var\(--ls-row-hover-bg\)/);
+  assert.doesNotMatch(rule('.ls-table tbody tr:hover td'), /--ls-hover-bg/);
+  // Destructive controls use the solid rule in the danger color.
+  assert.match(
+    rule(".ls-btn-danger-outline:hover:not([aria-disabled='true']):not(:disabled)"),
+    /color:\s*var\(--ls-on-danger\)[\s\S]*background:\s*var\(--ls-danger\)/,
+  );
+  // Keyboard focus on a filled menu item keeps its ring visible by taking the on-fill color.
+  assert.match(
+    css,
+    /\.ls-menu-item:focus-visible:not\(\.ls-menu-item-disabled\) \{\s*outline-color:\s*var\(--ls-hover-text\)/,
+  );
   assert.match(
     rule(".ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled)"),
     /border-color:\s*var\(--ls-hover-border\)/,

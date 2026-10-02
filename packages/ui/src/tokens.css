@@ -27,12 +27,14 @@
   --ls-brand-soft: #f8edef;
   --ls-brand-on-soft: #782b37;
   --ls-focus: #782b37;
-  /* Hover (one theme for nav, rows, menus, outline/ghost buttons, pager, tabs): a very light brand
-     tint with brand text and border. Dark keeps the neutral sunken hover it always had. */
-  --ls-hover-bg: #fbf1f3;
-  --ls-hover-text: #782b37;
+  /* Hover (Owner rule, one source for the whole app: menus, options, tabs, segments, pager, buttons,
+     theme switch, sidebar): the solid brand fill with its on-brand text. Light = #782b37 + white. The
+     one exception is a whole table row, which keeps a subtle tint (--ls-row-hover-*) for readability. */
+  --ls-hover-bg: #782b37;
+  --ls-hover-text: #ffffff;
   --ls-hover-border: #782b37;
   --ls-hover-ghost-border: #782b37;
+  --ls-row-hover-bg: #fbf1f3;
   /* Sidebar items (Owner rule): solid brand red with white text on hover and for the current page. */
   --ls-nav-hover-bg: #782b37;
   --ls-nav-hover-text: #ffffff;
@@ -203,10 +205,11 @@
   --ls-brand-soft: #3a1b23;
   --ls-brand-on-soft: #f0b3be;
   --ls-focus: #e08a9a;
-  --ls-hover-bg: #100b0c;
-  --ls-hover-text: #f4ecec;
-  --ls-hover-border: #7d6c70;
-  --ls-hover-ghost-border: transparent;
+  --ls-hover-bg: #e08a9a;
+  --ls-hover-text: #2a0f16;
+  --ls-hover-border: #e08a9a;
+  --ls-hover-ghost-border: #e08a9a;
+  --ls-row-hover-bg: #100b0c;
   --ls-nav-hover-bg: #e08a9a;
   --ls-nav-hover-text: #2a0f16;
   --ls-nav-active-bg: #e08a9a;
@@ -261,10 +264,11 @@
     --ls-brand-soft: #3a1b23;
     --ls-brand-on-soft: #f0b3be;
     --ls-focus: #e08a9a;
-    --ls-hover-bg: #100b0c;
-    --ls-hover-text: #f4ecec;
-    --ls-hover-border: #7d6c70;
-    --ls-hover-ghost-border: transparent;
+    --ls-hover-bg: #e08a9a;
+    --ls-hover-text: #2a0f16;
+    --ls-hover-border: #e08a9a;
+    --ls-hover-ghost-border: #e08a9a;
+    --ls-row-hover-bg: #100b0c;
     --ls-nav-hover-bg: #e08a9a;
     --ls-nav-hover-text: #2a0f16;
     --ls-nav-active-bg: #e08a9a;

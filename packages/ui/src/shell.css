@@ -412,12 +412,14 @@
 
 .ls-theme-option:hover {
   color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
 }
 
-.ls-theme-option-active {
-  color: var(--ls-brand-on-soft);
-  background: var(--ls-brand-soft);
-  box-shadow: inset 0 0 0 1px var(--ls-brand);
+/* The selected mode is the same solid fill as hover; the weight and aria-pressed tell them apart. */
+.ls-theme-option-active,
+.ls-theme-option-active:hover {
+  color: var(--ls-on-brand);
+  background: var(--ls-brand-fill);
   font-weight: 600;
 }
 
@@ -574,6 +576,10 @@
   outline-offset: -2px;
 }
 
+.ls-usermenu-link:hover:focus-visible {
+  outline-color: var(--ls-hover-text);
+}
+
 /* Theme and language are in the topbar from 640 px; on phones they move into the panel. */
 @media (min-width: 640px) {
   .ls-only-phone {
@@ -655,11 +661,11 @@
   outline-color: var(--ls-auth-panel-text);
 }
 
+/* On the brand gradient the solid hover is inverted (panel text as fill), as the active theme option is. */
 .ls-auth-top .ls-btn-ghost:hover:not([aria-disabled='true']):not(:disabled) {
-  border-color: transparent;
-  color: var(--ls-auth-panel-text);
-  background: transparent;
-  text-decoration: underline;
+  border-color: var(--ls-auth-panel-text);
+  color: var(--ls-auth-panel-from);
+  background: var(--ls-auth-panel-text);
 }
 
 /* The outline is an inset ring, so the toggle keeps the same 40/44 px height as elsewhere. */
@@ -672,11 +678,9 @@
   color: var(--ls-auth-panel-text-muted);
 }
 
-.ls-auth-top .ls-theme-option:hover {
-  color: var(--ls-auth-panel-text);
-}
-
-.ls-auth-top .ls-theme-option-active {
+.ls-auth-top .ls-theme-option:hover,
+.ls-auth-top .ls-theme-option-active,
+.ls-auth-top .ls-theme-option-active:hover {
   color: var(--ls-auth-panel-from);
   background: var(--ls-auth-panel-text);
   box-shadow: none;

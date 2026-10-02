@@ -829,7 +829,10 @@ test('auth styles: full-screen gradient from tokens, subtle art, card on surface
     /outline-color:\s*var\(--ls-auth-panel-text\)/,
   );
   assert.match(
-    block(shellCss, '.ls-auth-top .ls-theme-option-active'),
+    block(
+      shellCss,
+      '.ls-auth-top .ls-theme-option:hover,\n.ls-auth-top .ls-theme-option-active,\n.ls-auth-top .ls-theme-option-active:hover',
+    ),
     /var\(--ls-auth-panel-from\)/,
   );
   assert.doesNotMatch(shellCss, /@keyframes/, 'shell keyframes live in components.css (shared)');

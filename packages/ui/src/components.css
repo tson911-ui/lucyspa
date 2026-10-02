@@ -94,8 +94,10 @@
   background: var(--ls-bg-surface);
 }
 
+/* Destructive hover is the same solid rule in the danger color, so the warning is not lost. */
 .ls-btn-danger-outline:hover:not([aria-disabled='true']):not(:disabled) {
-  background: var(--ls-danger-bg);
+  color: var(--ls-on-danger);
+  background: var(--ls-danger);
 }
 
 .ls-btn-danger {
@@ -263,17 +265,35 @@
   transition: background-color var(--ls-dur-fast) var(--ls-ease-out);
 }
 
-.ls-menu-item:hover,
-.ls-menu-item:focus-visible {
+/* Solid fill with on-brand text for hover and keyboard focus alike (Owner rule, tokens.css). */
+.ls-menu-item:hover:not(.ls-menu-item-disabled),
+.ls-menu-item:focus-visible:not(.ls-menu-item-disabled) {
+  color: var(--ls-hover-text);
   background: var(--ls-hover-bg);
 }
 
-.ls-menu-item:hover:not(.ls-menu-item-danger):not(.ls-menu-item-disabled) {
-  color: var(--ls-hover-text);
+.ls-menu-item-danger:hover:not(.ls-menu-item-disabled),
+.ls-menu-item-danger:focus-visible:not(.ls-menu-item-disabled) {
+  color: var(--ls-on-danger);
+  background: var(--ls-danger);
 }
 
+.ls-menu-item:hover:not(.ls-menu-item-disabled) .ls-menu-item-reason,
+.ls-menu-item:focus-visible:not(.ls-menu-item-disabled) .ls-menu-item-reason {
+  color: inherit;
+}
+
+/* The ring sits inside the item; on the solid fill it takes the on-fill color so it stays visible. */
 .ls-menu-item:focus-visible {
   outline-offset: -2px;
+}
+
+.ls-menu-item:focus-visible:not(.ls-menu-item-disabled) {
+  outline-color: var(--ls-hover-text);
+}
+
+.ls-menu-item-danger:focus-visible:not(.ls-menu-item-disabled) {
+  outline-color: var(--ls-on-danger);
 }
 
 .ls-menu-item-danger {
@@ -800,13 +820,21 @@
   cursor: pointer;
 }
 
-.ls-option-active {
-  background: var(--ls-bg-sunken);
+/* The highlighted option (pointer or arrow keys) is the same solid fill as every other hover. */
+.ls-option-active,
+.ls-option:hover:not([aria-disabled='true']) {
+  color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
 }
 
 .ls-option-selected {
   color: var(--ls-brand-on-soft);
   font-weight: 600;
+}
+
+.ls-option-selected.ls-option-active,
+.ls-option-selected:hover:not([aria-disabled='true']) {
+  color: var(--ls-hover-text);
 }
 
 .ls-option[aria-disabled='true'] {
@@ -859,6 +887,11 @@
 .ls-check-field:hover {
   color: var(--ls-hover-text);
   background: var(--ls-hover-bg);
+}
+
+/* A checked box in the brand accent would vanish into the brand fill, so it takes the on-fill color. */
+.ls-check-field:hover input {
+  accent-color: var(--ls-hover-text);
 }
 
 .ls-radios {
@@ -2093,9 +2126,9 @@
   transition: background-color var(--ls-dur-fast) var(--ls-ease-out);
 }
 
+/* Exception to the solid hover (Owner): a whole row keeps a subtle tint so its text stays readable. */
 .ls-table tbody tr:hover td {
-  color: var(--ls-hover-text);
-  background: var(--ls-hover-bg);
+  background: var(--ls-row-hover-bg);
 }
 
 .ls-table .ls-tr-selected td {
@@ -2207,8 +2240,7 @@
   }
 
   .ls-table tbody tr:hover {
-    color: var(--ls-hover-text);
-    background: var(--ls-hover-bg);
+    background: var(--ls-row-hover-bg);
   }
 
   .ls-table td,
@@ -2603,6 +2635,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+.ls-facet-option:hover .ls-facet-count {
+  color: inherit;
+}
+
+.ls-facet-option:hover input {
+  accent-color: var(--ls-hover-text);
+}
+
 .ls-facet-footer {
   display: flex;
   justify-content: flex-end;
@@ -2845,7 +2885,9 @@
 }
 
 .ls-tab:hover:not(:disabled) {
+  border-radius: var(--ls-radius-sm) var(--ls-radius-sm) 0 0;
   color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
 }
 
 .ls-tab:disabled {
@@ -2951,13 +2993,19 @@
   transition: color var(--ls-dur-base) var(--ls-ease-out);
 }
 
+/* The inset in the track color keeps a hovered option apart from the selected one (same solid fill). */
 .ls-segment:hover {
   color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
+  box-shadow: inset 0 0 0 2px var(--ls-bg-sunken);
 }
 
 .ls-segment-active,
 .ls-segment-active:hover {
   color: var(--ls-on-brand);
+  background: transparent;
+  box-shadow: none;
+  font-weight: 600;
 }
 
 .ls-segment:focus-visible {
@@ -2991,10 +3039,15 @@
 
 .ls-password-toggle:hover {
   color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
 }
 
 .ls-password-toggle:focus-visible {
   outline-offset: -2px;
+}
+
+.ls-password-toggle:hover:focus-visible {
+  outline-color: var(--ls-hover-text);
 }
 
 .ls-password-toggle:disabled {

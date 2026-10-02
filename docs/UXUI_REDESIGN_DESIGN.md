@@ -262,11 +262,18 @@ on dark surfaces); surfaces are warm near-black with separation by lightness ste
 (`#fff`) and pure black (`#000`) text/backgrounds are not used. Images keep their look (no filter); a decorative brand image may
 get `filter: brightness(.9)` only if it glares. Charts use their own dark-selected steps (section 15).
 
-**Hover (Owner, Step 7.5d).** One theme through tokens `--ls-hover-bg/-text/-border/-ghost-border`, never per screen. Light: a
-very light brand tint (`#fbf1f3`) with brand text and border (`#782b37`) for table rows, `⋮` menu items, facet
-options, tabs, pager buttons and outline/ghost buttons; the solid primary darkens to `--ls-brand-fill-hover`. Dark keeps its
-neutral hover (sunken fill, unchanged text and border), asserted in `tokens.test.ts`. Hover text meets 4.5:1 on the hover fill and
-every surface, and the hover border 3:1, in both themes (tested).
+**Hover, whole app (Owner, 2026-10-02; replaces the 7.5d tint).** One source: tokens `--ls-hover-bg/-text/-border/-ghost-border`,
+never per screen. **Light = solid `#782b37` + white text and icon; dark = solid `--ls-brand-fill` + `--ls-on-brand`**, for every
+interactive hover and keyboard highlight: user menu and `⋮` menu items, select/combobox options (also the arrow-key active
+option), tabs, segmented options, pager buttons, ghost/outline/icon buttons, theme switch, check rows, facet options, calendar
+days, password toggle and the sidebar. Rules: disabled never hovers; a keyboard-focused filled item draws its ring in the
+on-fill color; a checked box on a filled row takes the on-fill accent; destructive controls (danger-outline button, danger menu
+item) use the same solid rule in `--ls-danger` + `--ls-on-danger`; the solid primary keeps its own darker hover; on the auth
+brand gradient the fill is inverted (panel text as fill). The selected segment/theme option is the same fill, told apart by
+weight and the hover inset. **One documented exception:** a whole table row (and phone card row) keeps the subtle tint
+`--ls-row-hover-bg` (`#fbf1f3` light, `#100b0c` dark) with unchanged text, for readability. Media tiles keep their border
+highlight (cards, not menu-type items). Contrast is tested in `tokens.test.ts` (hover text 4.5:1 on the fill, fill 3:1 on every
+surface, text and brand link 4.5:1 on the row tint).
 
 **Sidebar items (Owner, workforce shell feedback 2026-10-02).** Their own tokens `--ls-nav-hover-bg/-text` and
 `--ls-nav-active-bg/-text/-bar`. Light: hover and the current page are **solid brand red `#782b37` with white text and icon**
