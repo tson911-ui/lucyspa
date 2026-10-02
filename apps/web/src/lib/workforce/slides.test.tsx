@@ -111,6 +111,7 @@ test('the form round-trips a slide: Vietnam local times, an open end, both image
     startsAt: '2090-01-01T00:00:00.000Z',
     endsAt: null,
     isEnabled: true,
+    seasonId: null,
   });
   assert.equal(slideFormChanged(form, formOfSlide(response)), false);
   assert.equal(slideFormChanged({ ...form, titleVi: 'x' }, formOfSlide(response)), true);

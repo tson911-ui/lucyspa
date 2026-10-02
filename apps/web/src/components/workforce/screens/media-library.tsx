@@ -67,6 +67,7 @@ import {
   useSuccessToast,
 } from '../ui';
 import { PopupsPanel } from './website-popups';
+import { SeasonsPanel } from './website-seasons';
 import { SlidesPanel, type SlideEditing } from './website-slides';
 
 const QUEUE_PAGE_SIZE = 20;
@@ -249,6 +250,7 @@ function MediaLibrary() {
 
   const onPopups = list.tab === 'popup';
   const onSlider = list.tab === 'slider';
+  const onSeasons = list.tab === 'season';
   const mediaPanel = (
     <>
       {dragging ? <Notice tone="info">{t.media.dropOverlay}</Notice> : null}
@@ -355,9 +357,25 @@ function MediaLibrary() {
     <>
       <PageHeader
         title={t.website.title}
-        intro={onPopups ? t.popups.intro : onSlider ? t.slides.intro : t.media.intro}
+        intro={
+          onPopups
+            ? t.popups.intro
+            : onSlider
+              ? t.slides.intro
+              : onSeasons
+                ? t.seasons.intro
+                : t.media.intro
+        }
       >
-        {onSlider ? (
+        {onSeasons ? (
+          <Button
+            variant="primary"
+            icon="plus"
+            onClick={() => navigate?.(`${base}/website/seasons/new`)}
+          >
+            {t.seasons.create}
+          </Button>
+        ) : onSlider ? (
           <Button variant="primary" icon="plus" onClick={() => setSlideEditing({ id: null })}>
             {t.slides.create}
           </Button>
@@ -407,6 +425,7 @@ function MediaLibrary() {
             label: t.website.slider,
             panel: <SlidesPanel editing={slideEditing} onEditing={setSlideEditing} />,
           },
+          { id: 'season', label: t.website.season, panel: <SeasonsPanel /> },
         ]}
       />
       {overlay?.kind === 'detail' ? (

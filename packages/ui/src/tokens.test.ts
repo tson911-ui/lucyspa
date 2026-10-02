@@ -29,7 +29,10 @@ function block(selector: RegExp): Record<string, string> {
 }
 
 const light = block(/^:root\s*\{/m);
-const darkAttribute = block(/^:root\[data-theme=['"]dark['"]\]\s*\{/m);
+const darkAttribute = block(
+  /^:root\[data-theme=['"]dark['"]\],\s*\[data-preview-theme=['"]dark['"]\]\s*\{/m,
+);
+const scopedLight = block(/^\[data-preview-theme=['"]light['"]\]\s*\{/m);
 const darkSystem = block(/:root:not\(\[data-theme=['"]light['"]\]\)\s*\{/m);
 const dark = darkAttribute;
 
@@ -63,6 +66,17 @@ test('dark tokens are declared identically for the toggle and for system prefere
       /^--ls-(?!font|text-(xs|sm|md|lg|xl|2xl))/.test(name) && /^#|^rgb|^none/.test(light[name]!),
   );
   for (const name of colorTokens) assert.ok(name in dark, `${name} missing in dark`);
+});
+
+test('preview scopes: forced light repeats the light value of every token the dark block overrides', () => {
+  for (const name of Object.keys(dark)) {
+    assert.equal(scopedLight[name], light[name], `${name} differs in the forced-light scope`);
+  }
+  assert.deepEqual(
+    Object.keys(scopedLight).filter((name) => !(name in dark)),
+    [],
+    'the forced-light scope carries colors only',
+  );
 });
 
 test('no gold or yellow token remains', () => {

@@ -203,7 +203,8 @@
 }
 
 /* Dark: selected, not inverted. Keep the two blocks below identical (tokens.test.ts). */
-:root[data-theme='dark'] {
+:root[data-theme='dark'],
+[data-preview-theme='dark'] {
   color-scheme: dark;
   --ls-bg-page: #140f10;
   --ls-bg-surface: #1d1618;
@@ -319,4 +320,66 @@
     --ls-chart-6: #55a648;
     --ls-chart-other: #a4949a;
   }
+}
+
+/* Preview scopes (admin season preview, docs/UXUI_REDESIGN_DESIGN.md 20.7): `data-preview-theme` forces one theme on a
+   subtree regardless of the page theme. Dark is the dark block above (shared selector); light repeats the light value of
+   every token the dark block overrides, colors only, so sizes and motion keep following the page. tokens.test.ts keeps
+   this block equal to the light values. */
+[data-preview-theme='light'] {
+  color-scheme: light;
+  --ls-bg-page: #faf7f7;
+  --ls-bg-surface: #ffffff;
+  --ls-bg-raised: #ffffff;
+  --ls-bg-sunken: #f3eeee;
+  --ls-text: #221a1c;
+  --ls-text-muted: #5c4e51;
+  --ls-text-subtle: #6f6164;
+  --ls-border: #e6dcdd;
+  --ls-border-control: #8c7d80;
+  --ls-brand: #782b37;
+  --ls-brand-fill: #782b37;
+  --ls-on-brand: #ffffff;
+  --ls-brand-fill-hover: #632330;
+  --ls-brand-soft: #f8edef;
+  --ls-brand-on-soft: #782b37;
+  --ls-focus: #782b37;
+  --ls-hover-bg: #782b37;
+  --ls-hover-text: #ffffff;
+  --ls-hover-border: #782b37;
+  --ls-hover-ghost-border: #782b37;
+  --ls-row-hover-bg: #fbf1f3;
+  --ls-nav-hover-bg: #782b37;
+  --ls-nav-hover-text: #ffffff;
+  --ls-nav-active-bg: #782b37;
+  --ls-nav-active-text: #ffffff;
+  --ls-nav-active-bar: transparent;
+  --ls-auth-panel-from: #8a3345;
+  --ls-auth-panel-to: #4d1822;
+  --ls-auth-panel-text: #ffffff;
+  --ls-auth-panel-text-muted: #f3dde2;
+  --ls-auth-panel-line: #ffffff;
+  --ls-auth-card-shadow: 0 2px 6px rgb(40 8 14 / 0.25), 0 20px 48px rgb(40 8 14 / 0.4);
+  --ls-danger: #b3261e;
+  --ls-danger-bg: #fdecea;
+  --ls-on-danger: #ffffff;
+  --ls-success: #1e6b3c;
+  --ls-success-bg: #e6f3ea;
+  --ls-warning: #8f4300;
+  --ls-warning-bg: #fdeedd;
+  --ls-info: #22518a;
+  --ls-info-bg: #e8f0fa;
+  --ls-overlay: rgb(34 26 28 / 0.5);
+  --ls-shadow-sm: 0 1px 2px rgb(34 26 28 / 0.06);
+  --ls-shadow-md: 0 4px 16px rgb(34 26 28 / 0.1);
+  --ls-shadow-lg: 0 12px 32px rgb(34 26 28 / 0.16);
+  --ls-chart-surface: #ffffff;
+  --ls-chart-grid: #e6dcdd;
+  --ls-chart-1: #a03a4c;
+  --ls-chart-2: #2b6cb0;
+  --ls-chart-3: #d2691e;
+  --ls-chart-4: #0b8f83;
+  --ls-chart-5: #7c4dbd;
+  --ls-chart-6: #3f8f3a;
+  --ls-chart-other: #6f6164;
 }

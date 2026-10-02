@@ -17,7 +17,7 @@ function sourceFiles(directory: string): string[] {
 }
 
 // The shell stylesheet (Step 5) and the seasonal decoration kit (S2) follow the same rules, so all are checked as one.
-const css = ['components.css', 'shell.css', 'season-decor.css']
+const css = ['components.css', 'shell.css', 'season-decor.css', 'season-preview.css']
   .map((name) => readFileSync(new URL(name, here), 'utf8'))
   .join('\n');
 const tokens = readFileSync(new URL('tokens.css', here), 'utf8');

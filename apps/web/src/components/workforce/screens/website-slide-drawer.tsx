@@ -3,6 +3,7 @@
 import type {
   MediaAssetSummary,
   WebsitePopupMedia,
+  WebsiteSeasonResponse,
   WebsiteSlideResponse,
 } from '@lucy-spa/contracts';
 import {
@@ -19,6 +20,7 @@ import {
 import { useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/api/client';
+import { isoToVnLocal } from '../../../lib/workforce/discounts';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { mediaVariantUrl } from '../../../lib/workforce/media';
 import {
@@ -34,6 +36,7 @@ import { runMutation } from '../../../lib/workforce/workflows';
 import { useWorkforce } from '../session';
 import { Button, ErrorState, Notice, useSubmit } from '../ui';
 import { MediaPicker } from './media-picker';
+import { SeasonSelect } from './season-select';
 
 const PROBLEMS: ReadonlySet<string> = new Set<SlideProblem>([
   'media',
@@ -80,12 +83,15 @@ const mediaOf = (asset: MediaAssetSummary): WebsitePopupMedia => ({
  */
 export function SlideDrawer({
   slide,
+  season = null,
   reload,
   onClose,
   onSaved,
 }: {
   /** The slide to edit, or null to add one. */
   slide: WebsiteSlideResponse | null;
+  /** A new slide that starts out following this season (the season page's shortcut). */
+  season?: WebsiteSeasonResponse | null;
   /** Reloads the list behind the drawer (after a stale version the drawer gets the current slide). */
   reload: () => Promise<void>;
   onClose: () => void;
@@ -95,7 +101,17 @@ export function SlideDrawer({
   const { api, t } = useWorkforce();
   const text = t.slides.form;
   const submit = useSubmit();
-  const [initial] = useState<SlideForm>(() => (slide ? formOfSlide(slide) : emptySlideForm()));
+  const [initial] = useState<SlideForm>(() =>
+    slide
+      ? formOfSlide(slide)
+      : season
+        ? {
+            ...emptySlideForm(season.id),
+            startsAt: isoToVnLocal(season.startsAt),
+            endsAt: isoToVnLocal(season.endsAt),
+          }
+        : emptySlideForm(),
+  );
   const [form, setForm] = useState<SlideForm>(initial);
   const [problem, setProblem] = useState<SlideProblem | null>(null);
   const [picking, setPicking] = useState<'media' | 'mobileMedia' | null>(null);
@@ -284,6 +300,23 @@ export function SlideDrawer({
               </Field>
             </FormGrid>
           </FormSection>
+          <SeasonSelect
+            value={form.seasonId}
+            onChange={(chosen) =>
+              change({
+                seasonId: chosen?.id ?? '',
+                ...(chosen
+                  ? { startsAt: isoToVnLocal(chosen.startsAt), endsAt: isoToVnLocal(chosen.endsAt) }
+                  : {}),
+              })
+            }
+            text={{
+              section: text.seasonSection,
+              label: text.seasonLabel,
+              none: text.seasonNone,
+              hint: text.seasonHint,
+            }}
+          />
           <FormSection title={text.scheduleSection} description={text.scheduleHint}>
             <FormGrid>
               <Field label={text.startsAt} error={error('startsAt')}>
@@ -291,6 +324,7 @@ export function SlideDrawer({
                   <TextInput
                     {...control}
                     type="datetime-local"
+                    disabled={form.seasonId !== ''}
                     value={form.startsAt}
                     onChange={(event) => change({ startsAt: event.target.value })}
                   />
@@ -301,6 +335,7 @@ export function SlideDrawer({
                   <TextInput
                     {...control}
                     type="datetime-local"
+                    disabled={form.seasonId !== ''}
                     value={form.endsAt}
                     onChange={(event) => change({ endsAt: event.target.value })}
                   />

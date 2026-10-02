@@ -4,6 +4,7 @@ import type {
   MediaAssetSummary,
   WebsitePopupListResponse,
   WebsitePopupResponse,
+  WebsiteSeasonResponse,
 } from '@lucy-spa/contracts';
 import {
   Breadcrumbs,
@@ -30,6 +31,7 @@ import { organizationDictionary } from '../../../i18n/organization';
 import { fill } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/api/client';
 import { POPUP_LIMITS } from '../../../lib/popup-core';
+import { isoToVnLocal } from '../../../lib/workforce/discounts';
 import { mediaVariantUrl } from '../../../lib/workforce/media';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import {
@@ -49,6 +51,7 @@ import { errorMessage } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
 import { Button, Empty, ErrorState, Notice, PageHeader, useResource, useSuccessToast } from '../ui';
 import { MediaPicker } from './media-picker';
+import { SeasonSelect } from './season-select';
 
 const PROBLEMS: ReadonlySet<string> = new Set<PopupProblem>([
   'content',
@@ -79,7 +82,14 @@ const serverProblem = (error: unknown): PopupProblem | null => {
  * `/website/popups/new` and `/website/popups/:id`. Saving returns to the popup tab with a toast. The server
  * decides every rule again (one enabled popup at a time, the image's Vietnamese description, the link rule).
  */
-export function PopupFormScreen({ id }: { id: string | null }) {
+export function PopupFormScreen({
+  id,
+  seasonId = null,
+}: {
+  id: string | null;
+  /** A new popup that starts out following this season (the season page's shortcut). */
+  seasonId?: string | null;
+}) {
   const { t, base, locale } = useWorkforce();
   const { account } = useAccount();
   const text = organizationDictionary(locale);
@@ -100,13 +110,25 @@ export function PopupFormScreen({ id }: { id: string | null }) {
       {!canGlobal(account, 'MANAGE_WEBSITE_CONTENT') ? (
         <Notice tone="info">{t.popups.noAccess}</Notice>
       ) : (
-        <PopupForm id={id} back={back} />
+        <PopupForm
+          id={id}
+          back={seasonId ? `${base}/website/seasons/${seasonId}` : back}
+          presetSeason={seasonId}
+        />
       )}
     </Page>
   );
 }
 
-function PopupForm({ id, back }: { id: string | null; back: string }) {
+function PopupForm({
+  id,
+  back,
+  presetSeason,
+}: {
+  id: string | null;
+  back: string;
+  presetSeason: string | null;
+}) {
   const { api, t, locale, navigate } = useWorkforce();
   const notify = useSuccessToast();
   const text = t.popups.form;
@@ -115,7 +137,17 @@ function PopupForm({ id, back }: { id: string | null; back: string }) {
       id ? api.get<WebsitePopupResponse>(`/api/v1/website/popups/${id}`) : Promise.resolve(null),
     [api, id],
   );
-  const [initial, setInitial] = useState<PopupForm | null>(id ? null : emptyPopupForm());
+  // A new popup opened from a season starts out following it, with the season's window shown.
+  const starting = useResource(
+    () =>
+      !id && presetSeason
+        ? api.get<WebsiteSeasonResponse>(`/api/v1/website/seasons/${presetSeason}`)
+        : Promise.resolve(null),
+    [api, id, presetSeason],
+  );
+  const [initial, setInitial] = useState<PopupForm | null>(
+    id || presetSeason ? null : emptyPopupForm(),
+  );
   const [form, setForm] = useState<PopupForm | null>(initial);
   const [version, setVersion] = useState(1);
   const [problem, setProblem] = useState<PopupProblem | null>(null);
@@ -132,6 +164,19 @@ function PopupForm({ id, back }: { id: string | null; back: string }) {
       setVersion(loaded.data.rowVersion);
     }
   }, [loaded.data]);
+  useEffect(() => {
+    if (!id && presetSeason && !starting.loading) {
+      const season = starting.data;
+      const next = {
+        ...emptyPopupForm(new Date(), season ? presetSeason : ''),
+        ...(season
+          ? { startsAt: isoToVnLocal(season.startsAt), endsAt: isoToVnLocal(season.endsAt) }
+          : {}),
+      };
+      setInitial(next);
+      setForm(next);
+    }
+  }, [id, presetSeason, starting.loading, starting.data]);
   useEffect(() => {
     if (problem && formRef.current) focusFirstInvalid(formRef.current);
   }, [problem]);
@@ -345,6 +390,26 @@ function PopupForm({ id, back }: { id: string | null; back: string }) {
                   </Field>
                 </FormGrid>
               </FormSection>
+              <SeasonSelect
+                value={form.seasonId}
+                onChange={(season) =>
+                  change({
+                    seasonId: season?.id ?? '',
+                    ...(season
+                      ? {
+                          startsAt: isoToVnLocal(season.startsAt),
+                          endsAt: isoToVnLocal(season.endsAt),
+                        }
+                      : {}),
+                  })
+                }
+                text={{
+                  section: text.seasonSection,
+                  label: text.seasonLabel,
+                  none: text.seasonNone,
+                  hint: text.seasonHint,
+                }}
+              />
               <FormSection title={text.scheduleSection} description={text.scheduleHint}>
                 <FormGrid cols={2}>
                   <Field
@@ -357,6 +422,7 @@ function PopupForm({ id, back }: { id: string | null; back: string }) {
                       <TextInput
                         {...control}
                         type="datetime-local"
+                        disabled={form.seasonId !== ''}
                         value={form.startsAt}
                         onChange={(event) => change({ startsAt: event.target.value })}
                       />
@@ -372,6 +438,7 @@ function PopupForm({ id, back }: { id: string | null; back: string }) {
                       <TextInput
                         {...control}
                         type="datetime-local"
+                        disabled={form.seasonId !== ''}
                         value={form.endsAt}
                         onChange={(event) => change({ endsAt: event.target.value })}
                       />

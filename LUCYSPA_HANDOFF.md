@@ -300,3 +300,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Migration `20261021000000_uxui_s3_website_seasons`: `website_seasons` + nullable `season_id` on popups and slides (RESTRICT). API `/api/v1/website/seasons` (MANAGE_WEBSITE_CONTENT, GLOBAL): CRUD, enable, delete rule A (items unlinked and hidden), `SEASON_OVERLAP`, audit; public `GET /api/v1/public/website/season?locale=` (60 s, 204 when none). No new permission or env.
 - Linked popups/slides store the season window, follow its switch (public, overlap, 8-slide limit, image serving) and are re-checked on every season save. Lock order: season lock, popup/slide lock, rows. Report: docs/UXUI_REDESIGN_S3_SEASONS_API.md. Next: S4 (admin Seasons tab), S5 (wiring).
+
+### UX/UI Step S4 (admin Seasons tab) - implemented 2026-10-02 on 498aa98
+
+- Website tab "Mùa lễ" (?tab=season): DataTable + schedule strip + status/year filters; form pages /website/seasons/new and /:id (theme picker, inclusive last day in Vietnam time, suggested days for solar holidays, greeting VI/EN, switches, preview, holiday content). Kit: SeasonPreview (desktop/phone x light/dark via data-preview-theme scope in tokens.css + forced rules in season.css), SeasonPresetPicker, season-preview.css.
+- Popup form and slide drawer got a Follow-a-season select (dates disabled, seasonId always sent). Web only, no API change. Report: docs/UXUI_REDESIGN_S4_SEASONS_TAB.md. Next: S5 (wiring).

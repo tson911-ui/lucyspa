@@ -49,6 +49,20 @@ export function buildSeasonCss(presets: readonly SeasonPreset[]): string {
       '}',
     ].join('\n');
   });
+  // Forced themes for the admin preview (`data-preview-theme` on the frame or an ancestor, tokens.css). They come last
+  // and are as specific as the page-theme rules above, so a forced theme wins over the page theme either way.
+  const forced = presets.flatMap((preset) => {
+    const scope = `[data-season='${preset.key}']`;
+    return (['light', 'dark'] as const).map((theme) =>
+      rule(
+        [
+          `:root [data-preview-theme='${theme}'] ${scope}`,
+          `:root [data-preview-theme='${theme}']${scope}`,
+        ],
+        accentLines(preset[theme], preset.ornament[theme]),
+      ),
+    );
+  });
   const off = rule(
     ["[data-season-admin='off']", "[data-season][data-season-admin='off']"],
     ['--ls-season-line: transparent;'],
@@ -56,6 +70,7 @@ export function buildSeasonCss(presets: readonly SeasonPreset[]): string {
   return [
     SEASON_CSS_HEADER,
     ...blocks,
+    `/* Forced light and dark for the admin preview frames. */\n${forced.join('\n')}`,
     `/* Admin opt-out (apply_admin = false, wired in S5): no accent line. */\n${off}`,
     '',
   ].join('\n\n');

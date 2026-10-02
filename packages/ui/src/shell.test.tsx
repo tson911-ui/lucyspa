@@ -763,8 +763,8 @@ test('auth card UX: token rhythm, elevation token in every theme block, segmente
   const tokens = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
   assert.equal(
     tokens.match(/--ls-auth-card-shadow:/g)?.length,
-    3,
-    'defined for light, dark toggle and dark system preference',
+    4,
+    'defined for light, dark toggle, dark system preference and the forced-light preview scope',
   );
   // Spacing between blocks comes from spacing tokens only (no px/rem literals on margins or gaps).
   const rhythm = [...shellCss.matchAll(/\.ls-auth-card > [^{]*\{([^}]*)\}/g)].map((m) => m[1]!);

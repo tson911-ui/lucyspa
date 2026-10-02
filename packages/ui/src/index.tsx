@@ -110,6 +110,8 @@ export type { SliderLabels, SliderSlide } from './slider';
 // Seasonal decoration kit (S2, docs/UXUI_REDESIGN_DESIGN.md 20.2): ornaments, banner frame, greeting strip, particles.
 export { SeasonOrnament } from './season-ornaments';
 export { GreetingStrip, SeasonFrame } from './season-frame';
+export { SeasonPresetPicker, SeasonPreview } from './season-preview';
+export type { SeasonPresetChoice, SeasonPreviewLabels } from './season-preview';
 export { SeasonFxToggle, SeasonParticles, useSeasonFx } from './season-particles';
 export {
   FX_COOKIE,

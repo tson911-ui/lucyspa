@@ -48,10 +48,12 @@ export interface SlideForm {
   startsAt: string;
   endsAt: string;
   isEnabled: boolean;
+  /** The season this slide follows ('' = none). A followed season's window replaces the dates above. */
+  seasonId: string;
 }
 
 /** A new slide is hidden until the Owner turns it on, and always shown once on. */
-export function emptySlideForm(): SlideForm {
+export function emptySlideForm(seasonId = ''): SlideForm {
   return {
     media: null,
     mobileMedia: null,
@@ -67,6 +69,7 @@ export function emptySlideForm(): SlideForm {
     startsAt: '',
     endsAt: '',
     isEnabled: false,
+    seasonId,
   };
 }
 
@@ -86,6 +89,7 @@ export function formOfSlide(slide: WebsiteSlideResponse): SlideForm {
     startsAt: slide.startsAt === null ? '' : isoToVnLocal(slide.startsAt),
     endsAt: slide.endsAt === null ? '' : isoToVnLocal(slide.endsAt),
     isEnabled: slide.isEnabled,
+    seasonId: slide.seasonId ?? '',
   };
 }
 
@@ -175,6 +179,8 @@ export function slideInputOf(
       startsAt,
       endsAt,
       isEnabled: form.isEnabled,
+      // Always sent: an omitted `seasonId` would unlink a slide that follows a season.
+      seasonId: form.seasonId === '' ? null : form.seasonId,
     },
   };
 }

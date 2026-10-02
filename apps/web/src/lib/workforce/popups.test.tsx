@@ -94,6 +94,7 @@ test('the form round-trips a popup: Vietnam local times, empty text, the chosen 
     startsAt: '2090-01-01T00:00:00.000Z',
     endsAt: '2090-01-08T10:30:00.000Z',
     isEnabled: true,
+    seasonId: null,
   });
   assert.equal(popupFormChanged(form, formOfPopup(response)), false);
   assert.equal(popupFormChanged({ ...form, titleVi: 'x' }, formOfPopup(response)), true);

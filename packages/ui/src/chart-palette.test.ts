@@ -10,7 +10,9 @@ const tokens = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
 
 /** The declarations of the first block that starts with `selector`. */
 function block(selector: string): string {
-  const start = tokens.indexOf(`${selector} {`);
+  // The dark block also carries the preview scope in its selector list (":root[data-theme='dark'], [data-preview-theme='dark'] {").
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const start = new RegExp(`^${escaped}(,[^{]*)? \\{`, 'm').exec(tokens)?.index ?? -1;
   assert.ok(start >= 0, `${selector} block exists`);
   return tokens.slice(start, tokens.indexOf('}', start));
 }

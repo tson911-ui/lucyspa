@@ -40,7 +40,10 @@ function block(css: string, selector: RegExp): Record<string, string> {
 }
 
 const light = block(tokensCss, /^:root\s*\{/m);
-const dark = block(tokensCss, /^:root\[data-theme=['"]dark['"]\]\s*\{/m);
+const dark = block(
+  tokensCss,
+  /^:root\[data-theme=['"]dark['"]\],\s*\[data-preview-theme=['"]dark['"]\]\s*\{/m,
+);
 const themes = { light, dark } as const;
 
 function rgb(hex: string): [number, number, number] {

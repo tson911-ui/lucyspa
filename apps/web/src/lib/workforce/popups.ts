@@ -43,12 +43,14 @@ export interface PopupForm {
   startsAt: string;
   endsAt: string;
   isEnabled: boolean;
+  /** The season this popup follows ('' = none). A followed season's window replaces the dates above. */
+  seasonId: string;
 }
 
 const DAY_MS = 86_400_000;
 
 /** A new popup starts now and runs a week; it is a draft until the Owner turns it on. */
-export function emptyPopupForm(now: Date = new Date()): PopupForm {
+export function emptyPopupForm(now: Date = new Date(), seasonId = ''): PopupForm {
   return {
     media: null,
     titleVi: '',
@@ -61,6 +63,7 @@ export function emptyPopupForm(now: Date = new Date()): PopupForm {
     startsAt: isoToVnLocal(now.toISOString()),
     endsAt: isoToVnLocal(new Date(now.getTime() + 7 * DAY_MS).toISOString()),
     isEnabled: false,
+    seasonId,
   };
 }
 
@@ -77,6 +80,7 @@ export function formOfPopup(popup: WebsitePopupResponse): PopupForm {
     startsAt: isoToVnLocal(popup.startsAt),
     endsAt: isoToVnLocal(popup.endsAt),
     isEnabled: popup.isEnabled,
+    seasonId: popup.seasonId ?? '',
   };
 }
 
@@ -155,6 +159,8 @@ export function popupInputOf(
       startsAt,
       endsAt,
       isEnabled: form.isEnabled,
+      // Always sent: an omitted `seasonId` would unlink a popup that follows a season.
+      seasonId: form.seasonId === '' ? null : form.seasonId,
     },
   };
 }

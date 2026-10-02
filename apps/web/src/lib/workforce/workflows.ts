@@ -126,6 +126,9 @@ export function errorMessage(error: unknown, t: WorkforceDictionary): string {
     // Homepage slider (UX/UI Step 13).
     case 'SLIDE_LIMIT':
       return t.errors.slideLimit;
+    // Seasonal themes (UX/UI Step S4).
+    case 'SEASON_OVERLAP':
+      return t.errors.seasonOverlap;
     default:
       return t.errors.unexpected;
   }

@@ -1,0 +1,139 @@
+/* Admin season preview (SeasonPreview, docs/UXUI_REDESIGN_DESIGN.md 20.7): desktop and phone frames, each forced to light
+   and to dark. It is the one place outside the season components that reads the accent tokens, to show the accent. */
+.ls-season-previews {
+  display: grid;
+  gap: var(--ls-space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  align-items: start;
+}
+
+.ls-season-pframe {
+  display: grid;
+  gap: var(--ls-space-2);
+  margin: 0;
+  min-width: 0;
+}
+
+.ls-season-pcaption {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+/* The stage paints its own page colors, so a forced theme shows even on a page of the other theme. */
+.ls-season-pstage {
+  display: grid;
+  gap: var(--ls-space-3);
+  padding: var(--ls-space-4);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-sunken);
+  color: var(--ls-text);
+}
+
+.ls-season-pframe-phone .ls-season-pstage {
+  width: min(100%, 20rem);
+}
+
+.ls-season-ptitle {
+  margin: 0;
+  font-size: var(--ls-text-lg);
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.ls-season-pbody {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-3);
+}
+
+/* ---- Preset picker: one card per preset (a swatch of its own banner colours, and its name) ---------- */
+.ls-season-picker {
+  display: grid;
+  gap: var(--ls-space-3);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10rem), 1fr));
+}
+
+/* No border inside a card (FR1): the selected card is a tinted surface with an outline, the focus ring is another. */
+.ls-season-card {
+  position: relative;
+  display: grid;
+  gap: var(--ls-space-2);
+  align-content: start;
+  min-width: 0;
+  min-height: var(--ls-control-h);
+  padding: var(--ls-space-2);
+  border-radius: var(--ls-radius-md);
+  background: var(--ls-bg-sunken);
+  color: var(--ls-text);
+  cursor: pointer;
+}
+
+.ls-season-card:has(.ls-season-card-input:checked) {
+  background: var(--ls-brand-soft);
+  outline: 2px solid var(--ls-brand);
+}
+
+.ls-season-card:has(.ls-season-card-input:focus-visible) {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: 2px;
+}
+
+.ls-season-card:has(.ls-season-card-input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* The native radio stays focusable and in the accessibility tree; the card draws its state. */
+.ls-season-card-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.ls-season-card-swatch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--ls-space-10);
+  padding: 0 var(--ls-space-2);
+  border-radius: var(--ls-radius-sm);
+  background: linear-gradient(90deg, var(--ls-season-frame-from), var(--ls-season-frame-to));
+  overflow: hidden;
+}
+
+.ls-season-card-orn {
+  width: var(--ls-space-9);
+}
+
+.ls-season-card-name {
+  font-size: var(--ls-text-sm);
+  font-weight: 600;
+  line-height: var(--ls-leading-sm);
+  overflow-wrap: anywhere;
+}
+
+.ls-season-pchip {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-space-7);
+  padding: 0 var(--ls-space-3);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-season-accent-soft);
+  color: var(--ls-season-accent);
+  font-size: var(--ls-text-sm);
+  font-weight: 600;
+}
+
+/* A link in the holiday-content list keeps the touch-target height of a control. */
+.ls-season-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+}
