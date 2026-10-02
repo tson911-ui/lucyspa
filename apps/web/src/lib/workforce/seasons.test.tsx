@@ -176,6 +176,15 @@ test('suggested days (Q-S3): solar holidays prefill the next occurrence, lunar o
   assert.equal(lunar.isEnabled, false, 'a new season is a draft');
 });
 
+test('Vu Lan is calm: a new Vu Lan season starts with the particles off and a lunar (typed) window; every other kit starts with them on', () => {
+  const vuLan = emptySeasonForm('vu-lan', noon('2027-01-05'));
+  assert.equal(vuLan.particlesEnabled, false);
+  assert.deepEqual([vuLan.startDate, vuLan.lastDate], ['2027-01-05', '2027-01-05']);
+  for (const preset of SEASON_PRESETS.filter((candidate) => candidate.key !== 'vu-lan')) {
+    assert.equal(emptySeasonForm(preset.key).particlesEnabled, true, preset.key);
+  }
+});
+
 test('preview greeting: the Owner’s text in the language, else the preset default', () => {
   const tet = getSeasonPreset('tet');
   assert.equal(previewGreeting(filled(), 'vi'), tet.greeting.vi);

@@ -25,7 +25,11 @@ test('no hex color, no gold, no px/rem/em length: colors and spacing come from t
 
 test('keyframes animate only transform and opacity', () => {
   const frames = [...code.matchAll(/@keyframes ([\w-]+)\s*\{((?:[^{}]*\{[^{}]*\})*)\s*\}/g)];
-  assert.equal(frames.length, 1, 'one fall animation (the spin is shared with season-decor.css)');
+  assert.equal(
+    frames.length,
+    2,
+    'a fall and a rise animation (the spin is shared with season-decor.css)',
+  );
   for (const [, name, body] of frames) {
     for (const { body: declarations } of rules(body!)) {
       for (const property of declarations.matchAll(/([\w-]+)\s*:/g)) {

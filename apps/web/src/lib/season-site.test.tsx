@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ALL_SEASON_SLOTS_ON, type PublicSeasonResponse } from '@lucy-spa/contracts';
+import {
+  ALL_SEASON_SLOTS_ON,
+  SEASON_PRESETS,
+  type PublicSeasonResponse,
+} from '@lucy-spa/contracts';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { SeasonSiteFrame, SiteLogo } from '../components/season/site-frame';
 import { siteDecorSpec } from './season-core';
@@ -26,10 +30,16 @@ const season = (patch: Partial<PublicSeasonResponse> = {}): PublicSeasonResponse
 test('only a customer season whose preset has site art gets the decoration', () => {
   assert.equal(siteDecorSpec(null, 'vi'), null);
   assert.equal(siteDecorSpec(season({ customer: false }), 'vi'), null);
+  // Every shipped kit has site art (S6e), so each one gets the decoration, with its own footer line.
+  for (const preset of SEASON_PRESETS) {
+    const spec = siteDecorSpec(season({ presetKey: preset.key }), 'vi');
+    assert.equal(spec?.kit, preset.key);
+    assert.ok(spec?.footer.line, preset.key);
+  }
+  // Vu Lan has no particles by default (the form switches them off); its kit still has a lantern glyph to draw.
   assert.equal(
-    siteDecorSpec(season({ presetKey: 'mid-autumn' }), 'vi'),
-    null,
-    'no art yet: the band',
+    siteDecorSpec(season({ presetKey: 'reunification-labour' }), 'vi')?.particles,
+    false,
   );
   assert.equal(siteDecorSpec(season({ presetKey: 'retired' }), 'vi'), null);
   assert.equal(siteDecorSpec(season(), 'vi')?.kit, 'tet');

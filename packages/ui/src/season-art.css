@@ -1124,6 +1124,15 @@
   margin-inline: auto;
 }
 
+/* Vu Lan: the water line the lanterns float on, along the bottom edge of the row. */
+.ls-art-water {
+  position: absolute;
+  bottom: calc(var(--ls-art-u) * 0.5);
+  left: calc(var(--ls-art-inset) - var(--ls-art-u) * 5);
+  width: calc(100% - 2 * (var(--ls-art-inset) - var(--ls-art-u) * 5));
+  height: calc(var(--ls-art-u) * 3);
+}
+
 /* The footer scene is one picture the width of the row, cropped to its centre on narrow screens. */
 .ls-art-scene {
   position: absolute;
@@ -1149,8 +1158,42 @@
 
 /* Particles of these kits do not spin (a heart or a lantern turning in the air looks wrong); lanterns rise. */
 .ls-fx-site:is([data-kit='valentine'], [data-kit='womens-day'], [data-kit='vn-womens-day'])
-  .ls-fx-site-glyph {
+  .ls-fx-site-glyph,
+.ls-fx-site[data-motion='rise'] .ls-fx-site-glyph {
   animation: none;
+}
+
+.ls-fx-site[data-motion='rise'] .ls-fx-site-p {
+  top: 0;
+  animation-name: ls-fx-site-rise;
+}
+
+@keyframes ls-fx-site-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, var(--ls-fx-dist), 0);
+  }
+
+  10% {
+    opacity: 0.9;
+  }
+
+  50% {
+    transform: translate3d(
+      calc(var(--ls-fx-sway) * var(--ls-space-7)),
+      calc(var(--ls-fx-dist) / 2),
+      0
+    );
+  }
+
+  90% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--ls-space-6) * -1), 0);
+  }
 }
 
 @media (max-width: 760px) {

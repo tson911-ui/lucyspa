@@ -1,38 +1,13 @@
 'use client';
 
-import { SeasonFrame, SeasonFxToggle, SeasonParticles } from '@lucy-spa/ui';
 import { useEffect, useRef, useState } from 'react';
 import type { PublicSeasonResponse } from '@lucy-spa/contracts';
 import type { Locale } from '../../i18n/locales';
-import { seasonText } from '../../i18n/season';
-import { seasonBandSpec, siteDecorSpec } from '../../lib/season-core';
+import { siteDecorSpec } from '../../lib/season-core';
 import { PREVIEW_SOURCE, parsePreviewMessage, seasonOfDraft } from '../../lib/season-preview';
 import { HomeContent } from '../public/home-content';
 import { PublicFooter, PublicHeader } from '../public/site-chrome';
 import { SeasonSiteFrame } from './site-frame-view';
-
-/** The S5 band for a kit that has no site art yet, drawn the way `SeasonBand` draws it on the real site. */
-function PreviewBand({ season, locale }: { season: PublicSeasonResponse; locale: Locale }) {
-  const spec = seasonBandSpec(season);
-  const text = seasonText(locale);
-  if (spec === null) return null;
-  const moving = spec.particle !== 'none';
-  return (
-    <section className="ls-season-band" aria-label={text.band}>
-      <SeasonFrame
-        ornamentId={spec.ornamentId}
-        effects={moving ? <SeasonParticles kind={spec.particle} /> : undefined}
-      >
-        <p className="ls-season-greeting">{spec.greeting}</p>
-      </SeasonFrame>
-      {moving ? (
-        <div className="ls-season-band-tools">
-          <SeasonFxToggle labels={{ turnOff: text.fxOff, turnOn: text.fxOn }} />
-        </div>
-      ) : null}
-    </section>
-  );
-}
 
 /**
  * The page behind the admin's full-page season preview (docs/UXUI_REDESIGN_S6_PLAN.md section 6): the real public
@@ -107,7 +82,6 @@ export function SeasonPreviewStage({ locale }: { locale: Locale }) {
       ) : (
         <div className="site-shell">
           {header}
-          {season ? <PreviewBand season={season} locale={locale} /> : null}
           {home}
           {footer}
         </div>

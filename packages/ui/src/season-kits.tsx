@@ -1,5 +1,30 @@
 import type { ReactNode } from 'react';
 import {
+  AutumnCorner,
+  AutumnDividerArt,
+  AutumnLanternPiece,
+  AutumnLogo,
+  AutumnRail,
+  AutumnScene,
+} from './season-art-autumn';
+import {
+  NationalCorner,
+  NationalDividerArt,
+  NationalLogo,
+  NationalNoParticle,
+  NationalRail,
+  NationalScene,
+  type NationalVariant,
+} from './season-art-national';
+import {
+  VuLanCorner,
+  VuLanDividerArt,
+  VuLanLanternPiece,
+  VuLanLogo,
+  VuLanRail,
+  VuLanScene,
+} from './season-art-vulan';
+import {
   ValentineCorner,
   ValentineDividerArt,
   ValentineHeartPiece,
@@ -51,6 +76,16 @@ const women = (variant: WomenVariant): KitArt => ({
   Particle: WomenPetal,
 });
 
+const national = (variant: NationalVariant): KitArt => ({
+  Rail: NationalRail,
+  Corner: NationalCorner,
+  Logo: (props) => <NationalLogo {...props} variant={variant} />,
+  Divider: (props) => <NationalDividerArt {...props} variant={variant} />,
+  Scene: (props) => <NationalScene {...props} variant={variant} />,
+  // These two kits have no particles; the layer never draws for them.
+  Particle: NationalNoParticle,
+});
+
 export const KIT_ART: Partial<Record<SeasonArtKit, KitArt>> = {
   valentine: {
     Rail: ValentineRail,
@@ -62,4 +97,24 @@ export const KIT_ART: Partial<Record<SeasonArtKit, KitArt>> = {
   },
   'womens-day': women('womens-day'),
   'vn-womens-day': women('vn-womens-day'),
+  'reunification-labour': national('reunification-labour'),
+  'national-day': national('national-day'),
+  'vu-lan': {
+    Rail: VuLanRail,
+    Corner: VuLanCorner,
+    Logo: VuLanLogo,
+    Divider: VuLanDividerArt,
+    Scene: VuLanScene,
+    Particle: VuLanLanternPiece,
+    motion: 'rise',
+  },
+  'mid-autumn': {
+    Rail: AutumnRail,
+    Corner: AutumnCorner,
+    Logo: AutumnLogo,
+    Divider: AutumnDividerArt,
+    Scene: AutumnScene,
+    Particle: AutumnLanternPiece,
+    motion: 'rise',
+  },
 };

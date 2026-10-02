@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { SeasonBand } from '../../../components/season/season-band';
 import {
   loadSiteDecor,
   SiteParticles,
@@ -38,7 +37,7 @@ export default async function AccountLayout({ children, params }: AccountLayoutP
   return (
     <div className={decor ? `${appClass} ls-site-page` : appClass}>
       {decor ? <SiteParticles decor={decor} /> : null}
-      {decor ? <SiteSeasonStrip decor={decor} locale={locale} /> : <SeasonBand locale={locale} />}
+      {decor ? <SiteSeasonStrip decor={decor} locale={locale} /> : null}
       <CustomerProvider locale={locale}>{children}</CustomerProvider>
     </div>
   );

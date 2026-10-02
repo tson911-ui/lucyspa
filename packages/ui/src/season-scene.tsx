@@ -56,6 +56,10 @@ export const SEASON_ART_KITS = [
   'valentine',
   'womens-day',
   'vn-womens-day',
+  'mid-autumn',
+  'reunification-labour',
+  'national-day',
+  'vu-lan',
   'celebration',
 ] as const;
 export type SeasonArtKit = (typeof SEASON_ART_KITS)[number];

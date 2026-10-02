@@ -41,17 +41,27 @@ function isGoldHue(hex: string): boolean {
   return hue >= 35 && hue <= 70 && delta / max >= 0.35 && max >= 0.55;
 }
 
-const ALL_KITS = ['tet', 'christmas', 'valentine', 'womens-day', 'vn-womens-day', 'celebration'];
+const ALL_KITS = [
+  'tet',
+  'christmas',
+  'valentine',
+  'womens-day',
+  'vn-womens-day',
+  'mid-autumn',
+  'reunification-labour',
+  'national-day',
+  'vu-lan',
+  'celebration',
+];
 
-test('the six shipped kits have site art; the registry and the scene agree on the kits', () => {
+test('all ten kits have site art; the registry and the scene agree on the kits', () => {
   assert.deepEqual(
     withArt.map((preset) => preset.key),
     ALL_KITS,
   );
   assert.deepEqual([...SEASON_ART_KITS], ALL_KITS);
   assert.equal(isSeasonArtKit('tet'), true);
-  assert.equal(isSeasonArtKit('valentine'), true);
-  assert.equal(isSeasonArtKit('mid-autumn'), false);
+  assert.equal(isSeasonArtKit('vu-lan'), true);
   assert.equal(isSeasonArtKit('not-a-kit'), false);
   assert.equal(isSeasonArtKit(null), false);
 });
@@ -77,6 +87,14 @@ test('every color the art reads is defined by its kit, and none is left unused',
     valentine: ['./season-art-valentine.tsx', './season-art-shapes.tsx', './season-scene.tsx'],
     'womens-day': ['./season-art-women.tsx', './season-art-shapes.tsx', './season-scene.tsx'],
     'vn-womens-day': ['./season-art-women.tsx', './season-art-shapes.tsx', './season-scene.tsx'],
+    'mid-autumn': ['./season-art-autumn.tsx', './season-art-shapes.tsx', './season-scene.tsx'],
+    'reunification-labour': [
+      './season-art-national.tsx',
+      './season-art-shapes.tsx',
+      './season-scene.tsx',
+    ],
+    'national-day': ['./season-art-national.tsx', './season-art-shapes.tsx', './season-scene.tsx'],
+    'vu-lan': ['./season-art-vulan.tsx', './season-art-shapes.tsx', './season-scene.tsx'],
   };
   for (const preset of withArt) {
     const text = sources[preset.key]!.map(read).join('\n');
@@ -103,8 +121,8 @@ test('every color the art reads is defined by its kit, and none is left unused',
   }
 });
 
-test('yellow art exists only in the Q-S1 presets (so far Tet); every other shipped kit has none', () => {
-  const yellowKits = ['tet'];
+test('yellow art exists only in the four Q-S1 presets; every other kit, Vu Lan and Celebration included, has none', () => {
+  const yellowKits = ['tet', 'mid-autumn', 'reunification-labour', 'national-day'];
   for (const key of yellowKits) {
     const preset = withArt.find((candidate) => candidate.key === key)!;
     assert.ok(Object.values(preset.art.light).some(isGoldHue), `${key} light keeps its yellow`);

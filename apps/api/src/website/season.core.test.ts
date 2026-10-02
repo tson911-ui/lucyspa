@@ -47,6 +47,8 @@ test('season fields: every registry preset is accepted, anything else is not', (
   for (const preset of SEASON_PRESETS) {
     assert.equal(parseSeasonFields(input({ presetKey: preset.key })).presetKey, preset.key);
   }
+  // Vu Lan (S6e) is a registry kit like any other: no migration, the API accepts it by the registry alone.
+  assert.equal(parseSeasonFields(input({ presetKey: 'vu-lan' })).presetKey, 'vu-lan');
   for (const presetKey of ['', 'unknown', 'TET', 'tet ', '__proto__', 'constructor']) {
     refused({ presetKey }, 'presetKey');
   }

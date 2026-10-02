@@ -139,32 +139,6 @@ export function seasonRootAttributes(
   };
 }
 
-// ------------------------------------------------------------------ customer band
-
-export interface SeasonBandSpec {
-  presetKey: string;
-  ornamentId: ReturnType<typeof getSeasonPreset>['ornament']['id'];
-  greeting: string;
-  /** The particle kind to drift in the band, or `none`. */
-  particle: ReturnType<typeof getSeasonPreset>['ornament']['particle'];
-}
-
-/**
- * What the S5 customer band draws, or null when the season is not for the customer side. A preset with site-wide art
- * (S6, `siteDecorSpec`) draws that instead of the band, so it never shows both.
- */
-export function seasonBandSpec(season: PublicSeasonResponse | null): SeasonBandSpec | null {
-  if (season === null || !season.customer || !isSeasonPresetKey(season.presetKey)) return null;
-  if (isSeasonArtKit(season.presetKey)) return null;
-  const { ornament } = getSeasonPreset(season.presetKey);
-  return {
-    presetKey: season.presetKey,
-    ornamentId: ornament.id,
-    greeting: season.greeting,
-    particle: season.particles ? ornament.particle : 'none',
-  };
-}
-
 // ------------------------------------------------------------------ site-wide decoration (S6)
 
 export interface SiteDecorSpec {

@@ -326,3 +326,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - `season-kits.tsx` table (rail, corner, logo, divider, one-SVG footer scene cropped to its centre, particle glyph) shared by all new kits; Valentine (roses, chocolates, love letters, cupid), 8/3 and 20/10 (bouquets, ao dai, non la, gift boxes; orchid/tulip and lotus variants). Plaque lines avoid circumflex+tone (Georgia on Windows).
 - Web UI only, no migration. Report: docs/UXUI_REDESIGN_S6D_KITS.md. Next: S6e (Mid-Autumn, 30/4-1/5, 2/9, Vu Lan).
+
+### UX/UI Step S6e (Mid-Autumn, 30/4-1/5, 2/9, Vu Lan kits) - implemented 2026-10-03 on S6d
+
+- Mid-Autumn (lanterns, moon with banyan, Chi Hang and Chu Cuoi, jade rabbit, mooncakes, lion dance), 30/4-1/5 and 2/9 (flag bunting, fireworks, doves, lotus), new kit `vu-lan` (lotus lanterns on water, rose on shirt, lotus; particles off by default via `particlesDefault`). All ten kits now have site art: the S5 band is removed.
+- No migration (kit = registry entry). Report: docs/UXUI_REDESIGN_S6E_KITS.md. Production deploy of S6a-S6e: docs/DEPLOY_S6_RUNBOOK.md. Next: Step 14 final gate, Part 2.

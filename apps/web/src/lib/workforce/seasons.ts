@@ -147,7 +147,8 @@ export function emptySeasonForm(presetKey: string = 'tet', now: Date = new Date(
     greetingEn: '',
     applyCustomer: true,
     applyAdmin: true,
-    particlesEnabled: true,
+    // Vu Lan is calm: its slow lanterns are an option the Owner turns on (S6e, decision 6).
+    particlesEnabled: preset?.particlesDefault !== false,
     slotHeader: ALL_SEASON_SLOTS_ON.header,
     slotLogo: ALL_SEASON_SLOTS_ON.logo,
     slotCorners: ALL_SEASON_SLOTS_ON.corners,

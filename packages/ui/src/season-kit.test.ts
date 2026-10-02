@@ -27,7 +27,7 @@ function ratio(a: string, b: string): number {
 test('each preset has its own motif, and every motif id is used exactly once', () => {
   const ids = SEASON_PRESETS.map((preset) => preset.ornament.id);
   assert.deepEqual([...ids].sort(), [...SEASON_ORNAMENT_IDS].sort());
-  assert.equal(new Set(ids).size, 9);
+  assert.equal(new Set(ids).size, 10);
 });
 
 test('particles per preset follow the approved table (flag-day presets have none)', () => {
@@ -40,6 +40,7 @@ test('particles per preset follow the approved table (flag-day presets have none
     'mid-autumn': 'lantern',
     'reunification-labour': 'none',
     'national-day': 'none',
+    'vu-lan': 'lantern',
     celebration: 'confetti',
   };
   for (const preset of SEASON_PRESETS) {

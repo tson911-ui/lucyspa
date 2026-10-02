@@ -187,6 +187,26 @@ const StarLotus = () => (
   </>
 );
 
+// Vu Lan: a lotus lantern (hoa dang) glowing on the water, with a second bloom and ripples.
+const LotusLantern = () => (
+  <>
+    <ellipse cx="32" cy="54" rx="26" ry="5" className="ls-o3" />
+    <ellipse cx="32" cy="50" rx="16" ry="3.4" className="ls-o2" />
+    {[-46, -22, 22, 46, 0].map((angle) => (
+      <ellipse
+        key={angle}
+        cx="0"
+        cy="-12"
+        rx="6"
+        ry="14"
+        transform={`translate(32 48) rotate(${angle})`}
+        className={angle === 0 || Math.abs(angle) === 46 ? 'ls-o1' : 'ls-o2'}
+      />
+    ))}
+    <path d="M32 30C36 34 36 38 32 41C28 38 28 34 32 30Z" className="ls-o3" />
+  </>
+);
+
 /** Two balloons with strings, a bow and a few confetti pieces (Celebration). */
 const BalloonsConfetti = () => (
   <>
@@ -227,6 +247,7 @@ const MOTIFS: Record<SeasonOrnamentId, () => ReactElement> = {
   'star-lantern-moon': StarLanternMoon,
   'star-fireworks': StarFireworks,
   'star-lotus': StarLotus,
+  'lotus-lantern': LotusLantern,
 };
 
 /** A corner motif, or a row of up to three of them (`count`). The box is fixed, so nothing shifts. */

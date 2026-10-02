@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import { PublicFooter, PublicHeader } from '../../../components/public/site-chrome';
-import { SeasonBand } from '../../../components/season/season-band';
 import { loadSiteDecor, SeasonSiteFrame } from '../../../components/season/site-frame';
 import { isLocale } from '../../../i18n/locales';
 
@@ -28,7 +27,6 @@ export default async function PublicLayout({ children, params }: PublicLayoutPro
   return (
     <div className="site-shell">
       {header}
-      <SeasonBand locale={locale} />
       {children}
       {footer}
     </div>

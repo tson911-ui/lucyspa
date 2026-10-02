@@ -2,19 +2,15 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   ALL_SEASON_SLOTS_ON,
-  getSeasonPreset,
   SEASON_PRESETS,
   type PublicSeasonResponse,
 } from '@lucy-spa/contracts';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { SeasonBand } from '../components/season/season-band';
 import { seasonText } from '../i18n/season';
 import {
   ADMIN_HIDE_COOKIE,
   parseAdminHidden,
   parsePublicSeason,
   publicSeasonUrl,
-  seasonBandSpec,
   seasonRootAttributes,
   serializeAdminHidden,
 } from './season-core';
@@ -168,57 +164,6 @@ test('the per-device hide is a one-year Lax cookie that the server can read', ()
   assert.match(set, /^ls-season-admin=off; Path=\/; Max-Age=31536000; SameSite=Lax$/);
   assert.equal(parseAdminHidden(set), true);
   assert.match(serializeAdminHidden(false), /Max-Age=0/);
-});
-
-test('the customer band: only when the schedule is for customers; particles only when asked and the preset has them', () => {
-  assert.equal(seasonBandSpec(null), null);
-  assert.equal(seasonBandSpec(season({ customer: false })), null);
-  // Mid-Autumn has no site-wide art yet (S6e), so it keeps the S5 band; Tet and Christmas draw the S6 decoration instead.
-  const autumn = seasonBandSpec(season({ presetKey: 'mid-autumn' }));
-  assert.equal(autumn?.ornamentId, getSeasonPreset('mid-autumn').ornament.id);
-  assert.equal(autumn?.greeting, 'Chúc mừng năm mới');
-  assert.equal(autumn?.particle, getSeasonPreset('mid-autumn').ornament.particle);
-  assert.equal(
-    seasonBandSpec(season({ presetKey: 'mid-autumn', particles: false }))?.particle,
-    'none',
-  );
-  assert.equal(seasonBandSpec(season({ presetKey: 'retired' })), null);
-  assert.equal(seasonBandSpec(season()), null, 'Tet has site art, no band');
-  assert.equal(seasonBandSpec(season({ presetKey: 'christmas' })), null, 'Christmas too');
-});
-
-test('the band renders on the server with the greeting, hidden ornaments, and the effects button only when effects exist', async () => {
-  const live = (patch: Record<string, unknown>) => {
-    const original = globalThis.fetch;
-    globalThis.fetch = (() =>
-      Promise.resolve(new Response(JSON.stringify(body(patch)), { status: 200 }))) as typeof fetch;
-    return () => {
-      globalThis.fetch = original;
-    };
-  };
-  let restore = live({ presetKey: 'mid-autumn', greeting: 'Giáng sinh an lành' });
-  try {
-    const html = renderToStaticMarkup(await SeasonBand({ locale: 'vi' }));
-    assert.match(html, /<section class="ls-season-band" aria-label="Lời chúc theo mùa lễ">/);
-    assert.ok(html.includes('Giáng sinh an lành'));
-    assert.ok(html.includes('aria-hidden="true"'), 'ornaments are decorative');
-    assert.doesNotMatch(html, /data-season=/, 'the page carries the preset, the band inherits it');
-    assert.ok(html.includes(seasonText('vi').fxOff), 'the per-device effects switch');
-    assert.doesNotMatch(html, /ls-fx-particle/, 'particles never render on the server');
-    restore();
-    restore = live({ presetKey: 'mid-autumn', particles: false });
-    const still = renderToStaticMarkup(await SeasonBand({ locale: 'en' }));
-    assert.ok(still.includes('Chúc mừng năm mới'));
-    assert.ok(!still.includes(seasonText('en').fxOff), 'nothing to switch off');
-    restore();
-    restore = live({ customer: false });
-    assert.equal(await SeasonBand({ locale: 'vi' }), null);
-    restore();
-    globalThis.fetch = (() => Promise.reject(new Error('down'))) as typeof fetch;
-    assert.equal(await SeasonBand({ locale: 'vi' }), null, 'a failing API changes nothing');
-  } finally {
-    restore();
-  }
 });
 
 test('the band and admin texts exist in both languages', () => {

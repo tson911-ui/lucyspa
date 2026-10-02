@@ -178,6 +178,8 @@ function SeasonFormBody({ id, back }: { id: string | null; back: string }) {
     const untouched = id === null && isUntouchedDates(form);
     change({
       presetKey,
+      // A new season takes the kit's default for the particles switch (Vu Lan starts with it off).
+      ...(id === null ? { particlesEnabled: emptySeasonForm(presetKey).particlesEnabled } : {}),
       ...(untouched
         ? {
             startDate: emptySeasonForm(presetKey).startDate,

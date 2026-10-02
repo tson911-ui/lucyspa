@@ -67,18 +67,18 @@ test('Celebration draws balloons, confetti, ribbons and a cake', () => {
   }
 });
 
-test('every shipped kit draws every motif of its list: Valentine, 8/3 and 20/10 too', () => {
+test('every kit draws every motif of its list: Valentine, 8/3, 20/10, Mid-Autumn, 30/4-1/5, 2/9 and Vu Lan too', () => {
   for (const kit of SEASON_ART_KITS) {
     const drawn = motifsOf(kit, kit === 'tet' ? 'mui' : null);
     for (const motif of SEASON_MOTIFS[kit]!) assert.ok(drawn.has(motif), `${kit} lacks ${motif}`);
   }
 });
 
-test('the header rails of the S6d kits hang nine pieces, keep a subset on tablets and fewer on phones', () => {
+test('the header rails of the S6d/S6e kits hang nine pieces, keep a subset on tablets and fewer on phones', () => {
   const railKits = SEASON_ART_KITS.filter(
     (kit) => !['tet', 'christmas', 'celebration'].includes(kit),
   );
-  assert.equal(railKits.length, 3);
+  assert.equal(railKits.length, 7);
   for (const kit of railKits) {
     const html = renderToStaticMarkup(<SeasonHeaderRow kit={kit} />);
     const cells = [...html.matchAll(/class="ls-art-rail-cell([^"]*)"/g)].map((match) => match[1]!);

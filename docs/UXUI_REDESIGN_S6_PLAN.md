@@ -1,6 +1,6 @@
 # UX/UI Step S6 plan: seasonal reskinning of the whole customer site
 
-Status: APPROVED by the Owner 2026-10-02 after the Tet mockup (decisions in section 11, LOCKED). S6a and S6b+S6c are implemented (reports `UXUI_REDESIGN_S6A_ENGINE.md`, `UXUI_REDESIGN_S6B_DECORATION.md`); S6d-S6e follow. Base `8322941` (S1-S5 deployed). Contract: `UXUI_REDESIGN_DESIGN.md` 20 (S6 replaces the 20.2 decision "particles only inside the banner"; 20.1, 20.3 and the Q-S1 yellow rule stay). Owner brief of 2026-10-02: decoration layer across the whole public site, 9 presets, custom events, per-slot customization, full-page preview, screenshot-gate fix.
+Status: APPROVED by the Owner 2026-10-02 after the Tet mockup (decisions in section 11, LOCKED). S6a-S6e are all implemented (reports `UXUI_REDESIGN_S6A_ENGINE.md`, `S6B_DECORATION`, `S6D_KITS`, `S6E_KITS`). Base `8322941` (S1-S5 deployed). Contract: `UXUI_REDESIGN_DESIGN.md` 20 (S6 replaces the 20.2 decision "particles only inside the banner"; 20.1, 20.3 and the Q-S1 yellow rule stay). Owner brief of 2026-10-02: decoration layer across the whole public site, 9 presets, custom events, per-slot customization, full-page preview, screenshot-gate fix.
 
 ## 1. Mockups (opened and checked)
 
