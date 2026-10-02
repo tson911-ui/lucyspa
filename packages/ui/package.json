@@ -9,7 +9,8 @@
     "./base.css": "./src/base.css",
     "./components.css": "./src/components.css",
     "./shell.css": "./src/shell.css",
-    "./season.css": "./src/season.css"
+    "./season.css": "./src/season.css",
+    "./season-decor.css": "./src/season-decor.css"
   },
   "sideEffects": [
     "**/*.css"

@@ -1,0 +1,256 @@
+/* Seasonal decoration kit (docs/UXUI_REDESIGN_DESIGN.md 20.2, 20.5): banner frame, greeting strip, ornaments and
+   particles. Tokens only: colors come from the --ls-season-* tokens that season.css sets per preset, lengths from the
+   spacing tokens. Inert without data-season on the page or on a frame (the neutral defaults are the brand). */
+
+/* ---- Frame and strip --------------------------------------------------------------------------- */
+.ls-season-frame {
+  --ls-orn-w: var(--ls-space-9);
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--ls-orn-w) minmax(0, 1fr) var(--ls-orn-w);
+  align-items: center;
+  gap: var(--ls-space-2);
+  min-width: 0;
+  padding: var(--ls-space-3) var(--ls-space-2);
+  border-radius: var(--ls-radius-md);
+  background: linear-gradient(90deg, var(--ls-season-frame-from), var(--ls-season-frame-to));
+  color: var(--ls-season-frame-text);
+  /* The particle layer is clipped to the band and never reaches the page body. */
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.ls-season-frame-strip {
+  --ls-orn-w: var(--ls-space-7);
+  min-height: var(--ls-control-h);
+  padding: var(--ls-space-1) var(--ls-space-2);
+  border-radius: 0;
+}
+
+.ls-season-frame-body {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ls-season-greeting {
+  margin: 0;
+  font-size: var(--ls-text-sm);
+  line-height: 1.5;
+  text-align: center;
+  text-wrap: balance;
+}
+
+@media (max-width: 639px) {
+  .ls-season-frame {
+    --ls-orn-w: var(--ls-space-8);
+  }
+
+  .ls-season-frame-strip {
+    --ls-orn-w: var(--ls-space-6);
+  }
+}
+
+/* ---- Ornaments --------------------------------------------------------------------------------- */
+.ls-orn {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* Both ornaments and the body share one row: start gutter, text, end gutter (mirrored). */
+.ls-season-orn {
+  grid-row: 1;
+}
+
+.ls-season-orn-start {
+  grid-column: 1;
+}
+
+.ls-season-orn-end {
+  grid-column: 3;
+  transform: scaleX(-1);
+}
+
+.ls-o1 {
+  fill: var(--ls-season-ornament-1);
+}
+
+.ls-o2 {
+  fill: var(--ls-season-ornament-2);
+}
+
+.ls-o3 {
+  fill: var(--ls-season-ornament-3);
+}
+
+.ls-ol1,
+.ls-ol2,
+.ls-ol3 {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ls-ol1 {
+  stroke: var(--ls-season-ornament-1);
+}
+
+.ls-ol2 {
+  stroke: var(--ls-season-ornament-2);
+}
+
+.ls-ol3 {
+  stroke: var(--ls-season-ornament-3);
+}
+
+.ls-thin {
+  stroke-width: 1.5;
+}
+
+/* ---- Particles --------------------------------------------------------------------------------- */
+/* A pool of at most 24 (12 on phones) inside the banner. Each particle is a full-height lane that is translated by
+   its own height, so only transform and opacity animate; the glyph sits at the lane's start. */
+.ls-fx {
+  /* Per-particle factors are set inline by the component; these are the neutral fallbacks. */
+  --ls-fx-scale: 1;
+  --ls-fx-speed: 1;
+  --ls-fx-delay: 0;
+  --ls-fx-sway: 0;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ls-fx-particle {
+  position: absolute;
+  top: 0;
+  display: flex;
+  height: 100%;
+  width: calc(var(--ls-space-5) * var(--ls-fx-scale));
+  animation: ls-fx-fall calc(var(--ls-dur-drift) * var(--ls-fx-speed)) linear
+    calc(var(--ls-dur-drift) * var(--ls-fx-speed) * var(--ls-fx-delay) * -1) infinite;
+  will-change: transform, opacity;
+}
+
+.ls-fx[data-direction='rise'] .ls-fx-particle {
+  align-items: flex-end;
+  animation-name: ls-fx-rise;
+}
+
+.ls-fx[data-paused='true'] .ls-fx-particle,
+.ls-fx[data-paused='true'] .ls-fx-glyph {
+  animation-play-state: paused;
+}
+
+.ls-fx-glyph {
+  display: block;
+  width: 100%;
+  height: auto;
+  animation: ls-fx-spin calc(var(--ls-dur-drift) * 0.5) linear infinite;
+}
+
+.ls-fx-petal,
+.ls-fx-heart {
+  fill: var(--ls-season-ornament-2);
+}
+
+.ls-fx-lantern {
+  fill: var(--ls-season-ornament-1);
+}
+
+.ls-fx-snow {
+  fill: none;
+  stroke: var(--ls-season-frame-text);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.ls-fx[data-direction='rise'] .ls-fx-glyph {
+  animation-name: ls-fx-sway;
+  animation-duration: calc(var(--ls-dur-drift) * 0.4);
+  animation-timing-function: ease-in-out;
+  animation-direction: alternate;
+}
+
+@keyframes ls-fx-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -100%, 0);
+  }
+
+  10% {
+    opacity: 0.85;
+  }
+
+  50% {
+    transform: translate3d(calc(var(--ls-fx-sway) * var(--ls-space-6)), 0, 0);
+  }
+
+  90% {
+    opacity: 0.85;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 100%, 0);
+  }
+}
+
+@keyframes ls-fx-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 100%, 0);
+  }
+
+  10% {
+    opacity: 0.85;
+  }
+
+  50% {
+    transform: translate3d(calc(var(--ls-fx-sway) * var(--ls-space-6)), 0, 0);
+  }
+
+  90% {
+    opacity: 0.85;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -100%, 0);
+  }
+}
+
+@keyframes ls-fx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ls-fx-sway {
+  from {
+    transform: rotate(-12deg);
+  }
+
+  to {
+    transform: rotate(12deg);
+  }
+}
+
+/* The component also renders nothing under reduced motion; this keeps a stray element still. */
+@media (prefers-reduced-motion: reduce) {
+  .ls-fx-particle,
+  .ls-fx-glyph {
+    animation: none;
+  }
+}

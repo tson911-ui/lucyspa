@@ -6,6 +6,7 @@
   "nativeCheckboxes": 1,
   "solidDangerButtons": 1,
   "workforceCssSpacingLiterals": 0,
+  "seasonDecorCssSpacingLiterals": 0,
   "componentsCssSpacingLiterals": 6,
   "shellCssSpacingLiterals": 0
 }

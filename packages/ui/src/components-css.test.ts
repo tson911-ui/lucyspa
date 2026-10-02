@@ -16,8 +16,8 @@ function sourceFiles(directory: string): string[] {
   });
 }
 
-// The shell stylesheet (Step 5) follows the same rules, so both are checked as one.
-const css = ['components.css', 'shell.css']
+// The shell stylesheet (Step 5) and the seasonal decoration kit (S2) follow the same rules, so all are checked as one.
+const css = ['components.css', 'shell.css', 'season-decor.css']
   .map((name) => readFileSync(new URL(name, here), 'utf8'))
   .join('\n');
 const tokens = readFileSync(new URL('tokens.css', here), 'utf8');
@@ -43,7 +43,12 @@ test('components.css uses tokens only: no color literals', () => {
 });
 
 test('every token the component styles read is defined', () => {
-  const defined = new Set([...tokens.matchAll(/(--ls-[\w-]+)\s*:/g)].map((match) => match[1]));
+  // A token is defined in tokens.css or declared by a rule of the stylesheets themselves (a local variable).
+  const defined = new Set(
+    [...tokens.matchAll(/(--ls-[\w-]+)\s*:/g), ...css.matchAll(/(--ls-[\w-]+)\s*:/g)].map(
+      (match) => match[1],
+    ),
+  );
   const used = new Set([...css.matchAll(/var\((--ls-[\w-]+)/g)].map((match) => match[1]));
   const missing = [...used].filter((name) => !defined.has(name));
   assert.deepEqual(missing, [], 'undefined tokens');

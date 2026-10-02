@@ -288,4 +288,10 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Owner decisions Q-S1..Q-S11 locked in design 20.10 (scoped yellow exception: Tet and Mid-Autumn ornaments only). Contracts `season-registry.ts` (8 presets, approved greetings and windows); ui `season-css.ts` generates `season.css` (`pnpm season:css`), neutral `--ls-season-*` defaults, topbar accent line (transparent by default); root layout imports `season.css`, inert until S5.
 - No API, DB, permission or migration change. Tests: new `season.test.ts` (contrast presets x themes, hue rules, freshness); ui 286/286, lint, format, whole-repo `pnpm test` green. DOM audit dashboard 86 -> 10, login 11 -> 10.
-- Report: docs/UXUI_REDESIGN_S1_SEASON_REGISTRY.md. Next: S2 (decoration kit).
+- Report: docs/UXUI_REDESIGN_S1_SEASON_REGISTRY.md. S1 committed 796cdf1, CI green.
+
+### UX/UI Step S2 (season decoration kit) - implemented 2026-10-02 on 796cdf1
+
+- Kit in `packages/ui`: 8 inline-SVG ornaments, `SeasonFrame`/`GreetingStrip`, `SeasonParticles` (max 24, 12 on phones, only in the band gutters, none under reduced motion or `ls-fx=off`, paused in a hidden tab), `SeasonFxToggle`, `season-decor.css`. Registry gains `particle` per preset; S1 ornament colors re-chosen (3:1 on the frame, yellow only Tet and Mid-Autumn). Inert until S5.
+- No API, DB, permission or migration change. New jsdom, css, fx-core and registry tests; whole-repo `pnpm test`, lint, format green. DOM audit dashboard 86 -> 10, login 11 -> 10. Specimens (Owner review of the art): `.local/season-s2-specimens/`.
+- Report: docs/UXUI_REDESIGN_S2_DECORATION_KIT.md. Next: S3 (`website_seasons` migration and API).

@@ -150,6 +150,8 @@
   --ls-dur-slow: 250ms;
   /* Skeleton loading pulse: the only repeating animation; 0 under reduced motion */
   --ls-dur-loop: 1400ms;
+  /* Seasonal particle drift (season-decor.css): one slow cycle; particles never render under reduced motion */
+  --ls-dur-drift: 12s;
   --ls-ease: cubic-bezier(0.2, 0, 0, 1);
   --ls-ease-out: cubic-bezier(0, 0, 0.2, 1);
   /* Button press feedback (micro-interaction); 1 = none */

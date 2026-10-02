@@ -896,7 +896,7 @@ decision. Nothing in Part 1 blocks it; Step 2 already removes gold from shared t
 ## 20. Seasonal and holiday themes (Owner decision D12, design only)
 
 **Status: decision recorded 2026-09-30. Step S1 (registry, tokens, generated `season.css`, admin accent line) is implemented
-(`UXUI_REDESIGN_S1_SEASON_REGISTRY.md`); S2-S5 are not. No schema, API or migration has changed.** It is planned as its own Steps S1-S5 (20.8), separate from Steps 2-14. It builds on Step 5 (theme
+(`UXUI_REDESIGN_S1_SEASON_REGISTRY.md`) and so is S2 (decoration kit, `UXUI_REDESIGN_S2_DECORATION_KIT.md`); S3-S5 are not. No schema, API or migration has changed.** It is planned as its own Steps S1-S5 (20.8), separate from Steps 2-14. It builds on Step 5 (theme
 mechanism, admin shell) and on the website-content group (Steps 11-13).
 
 ### 20.1 The decision

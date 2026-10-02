@@ -37,8 +37,28 @@ export interface SeasonAccentTokens {
   frameText: string;
 }
 
-/** Three decorative colors for the ornament SVGs; never read by text, buttons, borders or charts. */
+/**
+ * Three decorative colors for the ornament SVGs, drawn on the frame gradient (each at least 3:1 against both frame
+ * stops, tested); never read by text, buttons, borders or charts.
+ */
 export type SeasonOrnamentColors = readonly [string, string, string];
+
+/** One inline-SVG motif per preset (packages/ui `SeasonOrnament`). */
+export const SEASON_ORNAMENT_IDS = [
+  'mai-blossom',
+  'pine-branch',
+  'hearts',
+  'orchid',
+  'pink-lotus',
+  'lantern',
+  'line-star',
+  'lotus',
+] as const;
+export type SeasonOrnamentId = (typeof SEASON_ORNAMENT_IDS)[number];
+
+/** What drifts inside the banner (S2): falling petals or snow, rising lanterns or hearts, or nothing. */
+export const SEASON_PARTICLE_KINDS = ['petal', 'snow', 'lantern', 'heart', 'none'] as const;
+export type SeasonParticleKind = (typeof SEASON_PARTICLE_KINDS)[number];
 
 export interface SeasonPreset {
   key: SeasonPresetKey;
@@ -47,7 +67,12 @@ export interface SeasonPreset {
   greeting: { vi: string; en: string };
   light: SeasonAccentTokens;
   dark: SeasonAccentTokens;
-  ornament: { id: string; light: SeasonOrnamentColors; dark: SeasonOrnamentColors };
+  ornament: {
+    id: SeasonOrnamentId;
+    particle: SeasonParticleKind;
+    light: SeasonOrnamentColors;
+    dark: SeasonOrnamentColors;
+  };
   /** Suggested window for solar holidays, prefilled and editable in the admin form; null for lunar holidays. */
   suggestedWindow: {
     start: { month: number; day: number };
@@ -83,7 +108,8 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
     },
     ornament: {
       id: 'mai-blossom',
-      light: ['#e8b923', '#e88aa8', '#b3263f'],
+      particle: 'petal',
+      light: ['#f5c518', '#ffc2d6', '#ffe9f0'],
       dark: ['#f2c94c', '#f4a6bd', '#e8788f'],
     },
     suggestedWindow: null,
@@ -113,7 +139,8 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
     },
     ornament: {
       id: 'pine-branch',
-      light: ['#2f7a4d', '#6fb58a', '#782b37'],
+      particle: 'snow',
+      light: ['#bfe8cf', '#e6f6ec', '#ffc9d1'],
       dark: ['#86d6a6', '#4fa072', '#e08a9a'],
     },
     suggestedWindow: { start: { month: 12, day: 15 }, end: { month: 12, day: 26 } },
@@ -143,8 +170,9 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
     },
     ornament: {
       id: 'hearts',
-      light: ['#c23a74', '#f08db3', '#8c1c4a'],
-      dark: ['#f58bb5', '#c24b7f', '#ffc2d8'],
+      particle: 'heart',
+      light: ['#ffd0e2', '#fff0f6', '#ffb8d2'],
+      dark: ['#f58bb5', '#e0709e', '#ffc2d8'],
     },
     suggestedWindow: { start: { month: 2, day: 12 }, end: { month: 2, day: 15 } },
   },
@@ -173,8 +201,9 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
     },
     ornament: {
       id: 'orchid',
-      light: ['#9448a8', '#d2a0e0', '#672b7a'],
-      dark: ['#dba6ee', '#a066bd', '#f3d6fb'],
+      particle: 'petal',
+      light: ['#ecd0f7', '#faf0fd', '#dcb0ee'],
+      dark: ['#dba6ee', '#b680cc', '#f3d6fb'],
     },
     suggestedWindow: { start: { month: 3, day: 6 }, end: { month: 3, day: 9 } },
   },
@@ -203,8 +232,9 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
     },
     ornament: {
       id: 'pink-lotus',
-      light: ['#b23c98', '#ea9ad6', '#7f2069'],
-      dark: ['#ee9fdb', '#b34d9c', '#ffd0f2'],
+      particle: 'petal',
+      light: ['#f8cdeb', '#fff0fa', '#f4b0e0'],
+      dark: ['#ee9fdb', '#cc6bb4', '#ffd0f2'],
     },
     suggestedWindow: { start: { month: 10, day: 18 }, end: { month: 10, day: 21 } },
   },
@@ -233,7 +263,8 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
     },
     ornament: {
       id: 'lantern',
-      light: ['#f0b429', '#e4694f', '#4f4eae'],
+      particle: 'lantern',
+      light: ['#f5c518', '#ffb199', '#d3d2ff'],
       dark: ['#f6c85f', '#f08a74', '#b0aef4'],
     },
     suggestedWindow: null,
@@ -263,8 +294,9 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
     },
     ornament: {
       id: 'line-star',
-      light: ['#b64a72', '#f0a0bb', '#8a2a50'],
-      dark: ['#f09ab7', '#c05a7e', '#ffd0df'],
+      particle: 'none',
+      light: ['#ffd0df', '#fff0f5', '#ffbad0'],
+      dark: ['#f09ab7', '#d77a98', '#ffd0df'],
     },
     suggestedWindow: { start: { month: 4, day: 28 }, end: { month: 5, day: 2 } },
   },
@@ -293,8 +325,9 @@ export const SEASON_PRESETS: readonly SeasonPreset[] = [
     },
     ornament: {
       id: 'lotus',
-      light: ['#ae4472', '#eea0bd', '#82284d'],
-      dark: ['#ee9ab9', '#bf5880', '#ffd0e0'],
+      particle: 'none',
+      light: ['#ffd0e0', '#fff0f5', '#f6b0c8'],
+      dark: ['#ee9ab9', '#d6789c', '#ffd0e0'],
     },
     suggestedWindow: { start: { month: 8, day: 31 }, end: { month: 9, day: 3 } },
   },

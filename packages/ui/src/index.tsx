@@ -107,6 +107,20 @@ export { PromoCard, PromoPreview } from './promo';
 export type { PromoContent, PromoImage, PromoLink } from './promo';
 export { Slider } from './slider';
 export type { SliderLabels, SliderSlide } from './slider';
+// Seasonal decoration kit (S2, docs/UXUI_REDESIGN_DESIGN.md 20.2): ornaments, banner frame, greeting strip, particles.
+export { SeasonOrnament } from './season-ornaments';
+export { GreetingStrip, SeasonFrame } from './season-frame';
+export { SeasonFxToggle, SeasonParticles, useSeasonFx } from './season-particles';
+export {
+  FX_COOKIE,
+  PARTICLES_DESKTOP,
+  PARTICLES_PHONE,
+  parseFxCookie,
+  particleCount,
+  particleLayout,
+  serializeFxCookie,
+} from './season-fx-core';
+export type { ParticleSpec } from './season-fx-core';
 export {
   SLIDER_AUTOPLAY_MS,
   SLIDER_IMAGE_HINT,
