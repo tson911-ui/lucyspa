@@ -27,6 +27,20 @@
   --ls-brand-soft: #f8edef;
   --ls-brand-on-soft: #782b37;
   --ls-focus: #782b37;
+  /* Season layer (docs/UXUI_REDESIGN_DESIGN.md 20.2): neutral defaults equal the brand, so nothing changes
+     without data-season. season.css (generated from the contracts registry) overrides them per preset, in
+     scopable blocks. Only season components and the admin topbar line read them. The line is off by default. */
+  --ls-season-accent: var(--ls-brand);
+  --ls-season-accent-soft: var(--ls-brand-soft);
+  --ls-season-on-accent: var(--ls-on-brand);
+  --ls-season-frame-from: var(--ls-brand-fill);
+  --ls-season-frame-to: var(--ls-brand-fill-hover);
+  --ls-season-frame-text: var(--ls-on-brand);
+  --ls-season-ornament-1: var(--ls-brand);
+  --ls-season-ornament-2: var(--ls-brand-soft);
+  --ls-season-ornament-3: var(--ls-brand-fill-hover);
+  --ls-season-line: transparent;
+  --ls-season-line-w: 2px;
   /* Hover (Owner rule, one source for the whole app: menus, options, tabs, segments, pager, buttons,
      theme switch, sidebar): the solid brand fill with its on-brand text. Light = #782b37 + white. The
      one exception is a whole table row, which keeps a subtle tint (--ls-row-hover-*) for readability. */

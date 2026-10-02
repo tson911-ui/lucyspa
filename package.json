@@ -19,6 +19,7 @@
     "build": "pnpm db:generate && pnpm -r run --if-present build",
     "typecheck": "pnpm build:server && pnpm -r run --if-present typecheck",
     "lint": "eslint . --max-warnings 0 && node scripts/check-boundaries.mjs",
+    "season:css": "node --import tsx scripts/generate-season-css.mjs",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "test": "pnpm build:server && pnpm --filter @lucy-spa/api build && pnpm --filter @lucy-spa/worker build && pnpm -r run --if-present test",

@@ -283,3 +283,9 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 ### UX/UI workforce shell feedback (b568c5b..684b9ee) - committed, pushed, DEPLOYED to production (Owner-confirmed 2026-10-02)
 
 - Solid brand sidebar hover/current page, theme Auto by time (replaces System), collapsible sidebar groups, solid brand hover tokens everywhere, charts re-measure after the table view, theme survives a locale switch. HEAD 684b9ee. Next: S1-S5 (design 20.8), Step 14 final gate, then Part 2 (customer pages, own contract).
+
+### UX/UI Step S1 (season registry, tokens, admin accent line) - implemented 2026-10-02 on f219980
+
+- Owner decisions Q-S1..Q-S11 locked in design 20.10 (scoped yellow exception: Tet and Mid-Autumn ornaments only). Contracts `season-registry.ts` (8 presets, approved greetings and windows); ui `season-css.ts` generates `season.css` (`pnpm season:css`), neutral `--ls-season-*` defaults, topbar accent line (transparent by default); root layout imports `season.css`, inert until S5.
+- No API, DB, permission or migration change. Tests: new `season.test.ts` (contrast presets x themes, hue rules, freshness); ui 286/286, lint, format, whole-repo `pnpm test` green. DOM audit dashboard 86 -> 10, login 11 -> 10.
+- Report: docs/UXUI_REDESIGN_S1_SEASON_REGISTRY.md. Next: S2 (decoration kit).

@@ -21,6 +21,8 @@
   padding-inline: var(--ls-gutter);
   border-bottom: 1px solid var(--ls-border);
   background: var(--ls-bg-surface);
+  /* Seasonal accent line (admin, subtle): invisible unless a season sets --ls-season-line (20.5). */
+  box-shadow: 0 var(--ls-season-line-w) 0 0 var(--ls-season-line);
 }
 
 .ls-topbar-brand {

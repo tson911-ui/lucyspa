@@ -3,6 +3,8 @@ import { Be_Vietnam_Pro } from 'next/font/google';
 import { notFound } from 'next/navigation';
 import { ThemeInitScript } from '@lucy-spa/ui';
 import '@lucy-spa/ui/tokens.css';
+// Seasonal presets (docs/UXUI_REDESIGN_DESIGN.md 20): inert until an element carries data-season (wired in S5).
+import '@lucy-spa/ui/season.css';
 import '@lucy-spa/ui/base.css';
 import '@lucy-spa/ui/components.css';
 import '@lucy-spa/ui/shell.css';

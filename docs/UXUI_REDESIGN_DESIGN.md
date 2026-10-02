@@ -36,7 +36,7 @@ S1-S5 (decision D12) read sections 0, 6, 16 and 20 and section 20.10 for the ope
 
 | #   | Decision                                                                                                                                                                                                                                                                                                                                                                                       |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Brand colors: primary red `#782b37` and white `#ffffff`. **No gold anywhere** (also no yellow/amber that reads as gold).                                                                                                                                                                                                                                                                       |
+| D1  | Brand colors: primary red `#782b37` and white `#ffffff`. **No gold anywhere** (also no yellow/amber that reads as gold), with one scoped exception (Owner 2026-10-02, 20.10 Q-S1): seasonal ornaments of Tet and Mid-Autumn only.                                                                                                                                                              |
 | D2  | Light and dark mode with a user toggle; default is Auto by time (light 06:00-17:59, dark 18:00-05:59, local device time; Owner 2026-10-02, replaces "follows the system").                                                                                                                                                                                                                     |
 | D3  | Admin (workforce) area first. Customer area and public site are a later part of this track (own contract).                                                                                                                                                                                                                                                                                     |
 | D4  | Admin is modern, luxurious, professional, very easy to use, fast; no cinematic motion (PRD 4.4 applies to the customer side only).                                                                                                                                                                                                                                                             |
@@ -895,8 +895,8 @@ decision. Nothing in Part 1 blocks it; Step 2 already removes gold from shared t
 
 ## 20. Seasonal and holiday themes (Owner decision D12, design only)
 
-**Status: decision recorded 2026-09-30, documentation only. Nothing in this section is implemented; no code, schema, API or
-migration was changed.** It is planned as its own Steps S1-S5 (20.8), separate from Steps 2-14. It builds on Step 5 (theme
+**Status: decision recorded 2026-09-30. Step S1 (registry, tokens, generated `season.css`, admin accent line) is implemented
+(`UXUI_REDESIGN_S1_SEASON_REGISTRY.md`); S2-S5 are not. No schema, API or migration has changed.** It is planned as its own Steps S1-S5 (20.8), separate from Steps 2-14. It builds on Step 5 (theme
 mechanism, admin shell) and on the website-content group (Steps 11-13).
 
 ### 20.1 The decision
@@ -936,8 +936,8 @@ mechanism, admin shell) and on the website-content group (Steps 11-13).
   paused when the tab is hidden. Particles **render nothing** under `prefers-reduced-motion` (checked in the component, not only by
   the global duration reset), and a visible "Turn off effects" control stores a per-device cookie `ls-fx=off`. No layout shift, no
   scroll blocking, no third-party script.
-- Decorations never sit under text that has to be read, never use yellow/gold (D1, Q-S1), never change the popup/slider behavior
-  defined in 16.5-16.6.
+- Decorations never sit under text that has to be read, never use yellow/gold except the scoped Tet and Mid-Autumn ornament
+  exception (D1, Q-S1), never change the popup/slider behavior defined in 16.5-16.6.
 
 ### 20.3 Accessibility and colors
 
@@ -1042,6 +1042,21 @@ Step 5 needs **no rework**. Three small adjustments belong to Step S1, none to S
 | Q-S9  | Permission: reuse `MANAGE_WEBSITE_CONTENT` (rec) or add a separate code?                                                       | **(rec)** reuse (Q-CM1 logic).                                                                                  |
 | Q-S10 | Preview only inside admin frames, no shareable preview link?                                                                   | **(rec)** yes.                                                                                                  |
 | Q-S11 | Overlapping enabled seasons rejected (rec) instead of "newest wins"?                                                           | **(rec)** reject, as popups.                                                                                    |
+
+**Owner decisions, recorded 2026-10-02 (LOCKED; do not reopen):**
+
+- **Q-S1 = scoped exception to D1.** Yellow/gold is allowed **only** inside the decorative SVG ornaments of two presets: Tet (hoa mai
+  vang, apricot blossom) and Mid-Autumn (lanterns). Buttons, text, accents, frames, badges and every brand/status token stay brand red
+  `#782b37` and the neutral palette. Accent tokens (`--ls-season-accent*`, `--ls-season-frame-*`) are never gold or yellow in any preset.
+  The ornament colors live in their own tokens (`--ls-season-ornament-*`), read only by ornament SVG, never by text, buttons, borders
+  or charts. Contrast rules (20.3) are unchanged; ornaments stay `aria-hidden`, never under readable text. Only Tet and Mid-Autumn
+  may carry a gold-hue ornament color; a test fails for any other preset or token.
+- **Q-S2 = A** (linked popup/slides follow the season window). **Q-S3 = A** (suggested dates for solar holidays, editable, confirm to
+  save). **Q-S4 and Q-S5 = A** (admin: accent line + greeting chip with per-device hide; customer particles on, max 24, fewer on
+  phones, "Turn off effects"). **Q-S6 = A** (the 8 presets; VI/EN greeting proposals approved in S1, max 80 chars, overridable per
+  schedule). **Q-S7 = A** (S1-S5 after Step 13 and before Step 14; `season_id` column added in S3). **Q-S8, Q-S9, Q-S10 = defaults
+  accepted** (mobile bundles its own ornaments; reuse `MANAGE_WEBSITE_CONTENT`; preview only inside admin frames, no shareable link).
+  **Q-S11 = reject** overlapping enabled seasons, as popups.
 
 ---
 

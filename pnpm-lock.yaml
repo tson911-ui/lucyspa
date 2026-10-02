@@ -414,6 +414,9 @@ importers:
       '@lucy-spa/config':
         specifier: workspace:*
         version: link:../config
+      '@lucy-spa/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@types/d3-scale':
         specifier: ^4.0.9
         version: 4.0.9

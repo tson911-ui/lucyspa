@@ -8,7 +8,8 @@
     "./tokens.css": "./src/tokens.css",
     "./base.css": "./src/base.css",
     "./components.css": "./src/components.css",
-    "./shell.css": "./src/shell.css"
+    "./shell.css": "./src/shell.css",
+    "./season.css": "./src/season.css"
   },
   "sideEffects": [
     "**/*.css"
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@lucy-spa/config": "workspace:*",
+    "@lucy-spa/contracts": "workspace:*",
     "@types/d3-scale": "^4.0.9",
     "@types/d3-shape": "^3.2.0",
     "@types/jsdom": "^30.0.0",
