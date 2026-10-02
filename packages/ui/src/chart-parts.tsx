@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useLayoutEffect, useState, type ReactNode, type RefCallback } from 'react';
 import { Button } from './button';
 import { slotColor, type SlotIndex } from './chart-core';
 import { cx } from './cx';
@@ -10,12 +10,16 @@ import type { ComparisonMode } from './date-range-core';
 
 // Pieces shared by every chart (docs/UXUI_REDESIGN_DESIGN.md 14.4). Text always comes from props.
 
-/** Element width in px, kept up to date. `fallback` is used on the server and where nothing can be measured. */
-export function useElementWidth(fallback = 640): [RefObject<HTMLDivElement | null>, number] {
-  const ref = useRef<HTMLDivElement | null>(null);
+/**
+ * Element width in px, kept up to date. `fallback` is used on the server and where nothing can be measured.
+ * The ref is a callback ref held in state: a chart that is unmounted (the "Show as table" view) and mounted
+ * again gets a new element, which is measured and observed afresh instead of leaving the observer on a
+ * detached node that reads 0.
+ */
+export function useElementWidth(fallback = 640): [RefCallback<HTMLDivElement>, number] {
+  const [element, setElement] = useState<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(fallback);
   useLayoutEffect(() => {
-    const element = ref.current;
     if (!element) return undefined;
     const read = (value: number) => setWidth(value > 0 ? Math.round(value) : fallback);
     read(element.clientWidth);
@@ -23,8 +27,8 @@ export function useElementWidth(fallback = 640): [RefObject<HTMLDivElement | nul
     const observer = new ResizeObserver((entries) => read(entries[0]?.contentRect.width ?? 0));
     observer.observe(element);
     return () => observer.disconnect();
-  }, [fallback]);
-  return [ref, width];
+  }, [element, fallback]);
+  return [setElement, width];
 }
 
 export interface ChartFrameLabels {

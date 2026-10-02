@@ -8,7 +8,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
-  type RefObject,
+  type RefCallback,
 } from 'react';
 import {
   type Comparison,
@@ -180,7 +180,7 @@ function Plot({
   title: string;
   hint: string;
   height: number;
-  plotRef: RefObject<HTMLDivElement | null>;
+  plotRef: RefCallback<HTMLDivElement>;
   handlers: ReturnType<typeof usePlotInteraction>['handlers'];
   announcement: string;
   children: ReactNode;

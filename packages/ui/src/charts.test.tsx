@@ -151,6 +151,56 @@ test('line chart: every chart has "Show as table"; the table is a real table wit
   view.unmount();
 });
 
+// A controllable layout: the plot's clientWidth is `layout.width` and every ResizeObserver can be fired by hand.
+const layout = { width: 1000 };
+const observed: { element: Element; callback: (entries: unknown[]) => void; live: boolean }[] = [];
+Object.defineProperty(window.HTMLElement.prototype, 'clientWidth', {
+  configurable: true,
+  get(this: HTMLElement) {
+    return this.classList.contains('ls-chart-plot') ? layout.width : 0;
+  },
+});
+(globalThis as Record<string, unknown>).ResizeObserver = class {
+  private watchers: typeof observed = [];
+  constructor(private readonly callback: (entries: unknown[]) => void) {}
+  observe(element: Element) {
+    const watcher = { element, callback: this.callback, live: true };
+    this.watchers.push(watcher);
+    observed.push(watcher);
+  }
+  disconnect() {
+    for (const watcher of this.watchers) watcher.live = false;
+  }
+};
+const resizeLive = (width: number) =>
+  act(() => {
+    for (const watcher of observed.filter((item) => item.live)) {
+      watcher.callback([{ contentRect: { width } }]);
+    }
+  });
+const svgWidth = (container: Element) =>
+  Number(container.querySelector('svg.ls-chart-svg')?.getAttribute('width'));
+
+for (const [name, Chart] of [
+  ['line', LineChart],
+  ['bar', BarChart],
+] as const) {
+  test(`${name} chart: back from the table the plot is re-measured to the container width, and follows a resize`, () => {
+    layout.width = 1000;
+    const view = mount(<Chart title="t" data={two} format={format} labels={labels} />);
+    assert.equal(svgWidth(view.container), 1000);
+    click(byText(view.container, 'button', 'Xem dạng bảng'));
+    layout.width = 1240; // the card is wider by the time the chart is shown again
+    click(byText(view.container, 'button', 'Xem dạng biểu đồ'));
+    assert.equal(svgWidth(view.container), 1240, 'measured again, not the stale or fallback width');
+    resizeLive(480);
+    assert.equal(svgWidth(view.container), 480, 'the new plot element is the one observed');
+    assert.equal(observed.filter((item) => item.live).length, 1, 'no observer on a detached plot');
+    view.unmount();
+    layout.width = 0; // later tests run unmeasured, on the fallback width
+  });
+}
+
 test('line chart: arrow keys walk the points, show the tooltip and announce the values; Escape clears', () => {
   const view = mount(<LineChart title="t" data={one} format={format} labels={labels} />);
   const plot = view.container.querySelector('.ls-chart-plot')!;
