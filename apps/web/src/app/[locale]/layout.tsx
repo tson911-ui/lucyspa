@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Be_Vietnam_Pro } from 'next/font/google';
+import { Be_Vietnam_Pro, Playfair_Display } from 'next/font/google';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { ThemeInitScript } from '@lucy-spa/ui';
@@ -24,6 +24,16 @@ const beVietnamPro = Be_Vietnam_Pro({
   weight: ['400', '500', '600', '700'],
   display: 'swap',
   variable: '--font-be-vietnam-pro',
+});
+
+// Display and italic face (season greetings, legacy headings): Vietnamese subset so every stacked mark (ố ế ữ ặ ỗ ợ)
+// draws in the font itself, self-hosted by next/font; never a system serif.
+const playfairDisplay = Playfair_Display({
+  subsets: ['latin', 'vietnamese'],
+  weight: ['400'],
+  style: ['normal', 'italic'],
+  display: 'swap',
+  variable: '--font-playfair-display',
 });
 
 interface LocaleLayoutProps {
@@ -62,7 +72,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
     // The pre-paint script may set data-theme from the ls-theme cookie before hydration.
     <html
       lang={locale}
-      className={beVietnamPro.variable}
+      className={`${beVietnamPro.variable} ${playfairDisplay.variable}`}
       suppressHydrationWarning
       {...seasonRootAttributes(season, adminHidden)}
     >

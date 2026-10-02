@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { ArtSvg, art, n, type ArtProps } from './season-art-kit';
+import { ArtSvg, art, n, sceneView, type ArtProps, type SceneProps } from './season-art-kit';
 import { Hang, RailCord, RailRow, Sparkle, Star, place, type RailCell } from './season-art-shapes';
+import { Cymbals, LionDance, OngDia } from './season-art-lion';
 import { starPoints } from './season-ornaments';
 
 // Mid-Autumn kit (docs/UXUI_REDESIGN_S6_PLAN.md section 4.1): the lion dance, star lanterns, carp lanterns, spinning
@@ -308,74 +309,7 @@ function ChiHang({ x = 0, y = 0, s = 1 }: { x?: number; y?: number; s?: number }
   );
 }
 
-// ------------------------------------------------------------------------------------------ lion dance
-
-/** A lion head (dau lan) seen from the front, about 100 wide, centred on (0, 0). */
-function LionHead({ x = 0, y = 0, s = 1 }: { x?: number; y?: number; s?: number }) {
-  const mane = Array.from({ length: 14 }, (_, i) => {
-    const a = (i / 14) * Math.PI * 2;
-    return [Math.cos(a) * 46, Math.sin(a) * 44] as const;
-  });
-  return (
-    <g transform={place(x, y, s)} data-motif="lion-dance">
-      {mane.map(([cx, cy], i) => (
-        <circle key={i} cx={n(cx)} cy={n(cy)} r="11" fill={art(i % 2 ? 'orange' : 'yellow')} />
-      ))}
-      <circle r="42" fill={art('red')} />
-      <path d="M-6 -42C-6 -54 6 -54 6 -42Z" fill={art('yellow2')} />
-      <circle cx="-17" cy="-12" r="11" fill={art('white')} />
-      <circle cx="17" cy="-12" r="11" fill={art('white')} />
-      <circle cx="-15" cy="-11" r="5.4" fill={art('ink')} />
-      <circle cx="19" cy="-11" r="5.4" fill={art('ink')} />
-      <path
-        d="M-30 -26C-24 -34 -10 -32 -6 -26M30 -26C24 -34 10 -32 6 -26"
-        stroke={art('red3')}
-        strokeWidth="4"
-        fill="none"
-        strokeLinecap="round"
-      />
-      <ellipse cy="4" rx="7" ry="5" fill={art('red3')} />
-      <path d="M-26 14C-14 30 14 30 26 14C16 18 -16 18 -26 14Z" fill={art('red3')} />
-      <path d="M-24 18C-12 26 12 26 24 18L20 38C10 44 -10 44 -20 38Z" fill={art('white')} />
-      <path
-        d="M-14 24L-12 36M-4 26L-4 40M6 26L5 40M15 24L13 36"
-        stroke={art('jade2')}
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </g>
-  );
-}
-
-/** The lion's body: a draped cloth in stripes behind the head with two pairs of legs (about 180 wide). */
-function LionBody({ x = 0, y = 0, s = 1 }: { x?: number; y?: number; s?: number }) {
-  return (
-    <g transform={place(x, y, s)}>
-      <path d="M0 -40C50 -60 110 -50 150 -10L150 30L0 30Z" fill={art('orange')} />
-      <path
-        d="M30 -48C44 -26 44 0 36 30M64 -50C78 -26 78 0 70 30M98 -46C112 -24 112 0 104 30"
-        stroke={art('red')}
-        strokeWidth="6"
-        fill="none"
-      />
-      <path d="M0 -40C50 -60 110 -50 150 -10" stroke={art('yellow2')} strokeWidth="4" fill="none" />
-      <path
-        d="M150 -10C162 -22 172 -34 170 -50"
-        stroke={art('orange')}
-        strokeWidth="8"
-        fill="none"
-        strokeLinecap="round"
-      />
-      <circle cx="170" cy="-52" r="9" fill={art('yellow')} />
-      {[20, 56, 96, 130].map((lx) => (
-        <g key={lx}>
-          <rect x={lx - 6} y="28" width="12" height="34" rx="3" fill={art('yellow3')} />
-          <rect x={lx - 8} y="58" width="16" height="7" rx="2" fill={art('red3')} />
-        </g>
-      ))}
-    </g>
-  );
-}
+// ------------------------------------------------------------------------------------------ lion dance drum
 
 /** A lion-dance drum (trong): a red barrel with studs and two sticks, about 70 wide. */
 function Drum({ x = 0, y = 0, s = 1 }: { x?: number; y?: number; s?: number }) {
@@ -533,13 +467,12 @@ const SPARKLES: ReadonlyArray<readonly [number, number, number]> = [
  * and, in the wings, the lion dance with its drum. The middle 400 units (moon, banyan, rabbit, mooncakes) are complete
  * for a phone; the lanterns and the lion show from a tablet up.
  */
-export function AutumnScene({ className }: ArtProps) {
+export function AutumnScene({ className, part, split }: SceneProps) {
   return (
     <ArtSvg
-      viewBox="0 0 1440 300"
-      preserveAspectRatio="xMidYMax slice"
+      {...sceneView(part, split)}
       className={className}
-      motif="lion-dance star-lantern carp-lantern spinning-lantern full-moon chi-hang-chu-cuoi jade-rabbit mooncakes"
+      motif="lion-dance ong-dia drum-cymbals star-lantern carp-lantern spinning-lantern full-moon chi-hang-chu-cuoi jade-rabbit mooncakes"
     >
       <path
         d="M0 218C140 200 260 210 400 226C540 242 660 208 800 212C940 216 1060 240 1200 224C1300 212 1380 208 1440 216V300H0Z"
@@ -574,11 +507,10 @@ export function AutumnScene({ className }: ArtProps) {
       <g transform="translate(1262 120)">
         <StandLantern kind="star" c="green" c2="green2" />
       </g>
-      <g transform="translate(150 230)">
-        <LionBody x={30} y={-30} s={0.82} />
-        <LionHead x={0} y={-44} s={1.05} />
-      </g>
+      <LionDance x={64} y={252} s={0.84} />
+      <OngDia x={308} y={252} s={0.72} />
       <Drum x={392} y={228} s={0.9} />
+      <Cymbals x={398} y={252} s={0.56} />
     </ArtSvg>
   );
 }

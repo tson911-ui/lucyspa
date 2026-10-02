@@ -21,6 +21,15 @@ function sourceFiles(directory: string): string[] {
   });
 }
 
+test('the layout self-hosts a display font with the Vietnamese subset in normal and italic', () => {
+  const layout = readFileSync(new URL('[locale]/layout.tsx', here), 'utf8');
+  const block = /Playfair_Display\(\{([^}]*)\}\)/.exec(layout)?.[1] ?? '';
+  assert.match(block, /subsets:\s*\['latin',\s*'vietnamese'\]/);
+  assert.match(block, /style:\s*\['normal',\s*'italic'\]/);
+  assert.match(block, /variable:\s*'--font-playfair-display'/);
+  assert.match(layout, /playfairDisplay\.variable/);
+});
+
 test('no gold or ivory token or value remains in apps/web/src or packages/ui/src', () => {
   const pattern = /gold|ivory|#b69456|#e9d6aa|#faf7f1/i;
   for (const file of [

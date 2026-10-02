@@ -331,3 +331,9 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Mid-Autumn (lanterns, moon with banyan, Chi Hang and Chu Cuoi, jade rabbit, mooncakes, lion dance), 30/4-1/5 and 2/9 (flag bunting, fireworks, doves, lotus), new kit `vu-lan` (lotus lanterns on water, rose on shirt, lotus; particles off by default via `particlesDefault`). All ten kits now have site art: the S5 band is removed.
 - No migration (kit = registry entry). Report: docs/UXUI_REDESIGN_S6E_KITS.md. Production deploy of S6a-S6e: docs/DEPLOY_S6_RUNBOOK.md. Next: Step 14 final gate, Part 2.
+
+### UX/UI Step S6f (Vietnamese display font, full phone footer) - implemented 2026-10-03 on 9a2bfed
+
+- Display font is self-hosted Playfair Display (normal + italic, latin + vietnamese) instead of Georgia; 8/3 plaque line restored to "Chúc mừng Quốc tế Phụ nữ 8/3"; the circumflex+tone guard test is replaced by font and mark-rendering tests.
+- Phone footer shows every motif: panorama kits draw a centre row plus two side crops (per-kit `split` in `KIT_ART`), Tet gets a shelf row, Christmas a tree/gifts/snowman/Santa row, Celebration its gift piles; tablets unchanged. Report: docs/UXUI_REDESIGN_S6F_PHONE_FONT.md.
+- Mid-Autumn lion dance redrawn (`season-art-lion.tsx`: horn, mirror, eyes, beard, scaled cloth, four human legs) with Ong Dia and cymbals; Valentine lost Cupid (teddy bears hugging a heart, heart with an arrow; `wing` color removed, `pnpm season:css` rerun).

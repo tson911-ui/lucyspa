@@ -24,7 +24,7 @@ import {
   ChristmasSnowman,
   ChristmasTree,
 } from './season-art-christmas';
-import { ArtSvg } from './season-art-kit';
+import { ArtSvg, n, SCENE_MID_WIDTH, SCENE_SPLIT } from './season-art-kit';
 import {
   Blossom,
   TetBand,
@@ -334,8 +334,26 @@ function FooterArt({
   kit: SeasonArtKit;
   Animal: (typeof ZODIAC_ART)[string] | null;
 }) {
-  const { Scene } = KIT_ART[kit] ?? {};
-  if (Scene) return <Scene className="ls-art-scene" />;
+  const { Scene, split = SCENE_SPLIT } = KIT_ART[kit] ?? {};
+  if (Scene) {
+    // One panorama: wide screens crop it to its centre; a phone shows all of it as two rows (centre, then the sides).
+    const startShare = `${n((split / SCENE_MID_WIDTH) * 100)}%`;
+    return (
+      <>
+        <Scene className="ls-art-scene ls-art-scene-wide" />
+        <div className="ls-art-scene-phone">
+          <Scene className="ls-art-scene-mid" part="mid" split={split} />
+          <div
+            className="ls-art-scene-sides"
+            style={{ '--ls-art-scene-start': startShare } as CSSProperties}
+          >
+            <Scene className="ls-art-scene-side" part="start" split={split} />
+            <Scene className="ls-art-scene-side" part="end" split={split} />
+          </div>
+        </div>
+      </>
+    );
+  }
   if (kit === 'tet') {
     return (
       <>
@@ -355,6 +373,14 @@ function FooterArt({
         <TetEnvelopes className="ls-art-pile ls-art-pile-start ls-art-only-compact" />
         <TetEnvelopes className="ls-art-pile ls-art-pile-end" />
         {Animal ? <Animal className="ls-art-animal" /> : null}
+        {/* Tablets and phones: the pieces the wide scene places around the band stand in one row above it. */}
+        <div className="ls-art-shelf">
+          <TetCoupletPair className="ls-art-shelf-piece ls-art-shelf-couplet" />
+          <TetFruitTray className="ls-art-shelf-piece ls-art-shelf-tray" />
+          <TetRiceCakes className="ls-art-shelf-piece ls-art-shelf-cakes" />
+          <TetMelons className="ls-art-shelf-piece ls-art-shelf-melons" />
+          <TetCoupletPair className="ls-art-shelf-piece ls-art-shelf-couplet" />
+        </div>
       </>
     );
   }
@@ -363,8 +389,8 @@ function FooterArt({
       <>
         <ChristmasHills className="ls-art-hills" />
         <ChristmasSleigh className="ls-art-sleigh" />
-        <ChristmasSnowman className="ls-art-snowman ls-art-hide-medium" />
-        <ChristmasSanta className="ls-art-santa ls-art-hide-medium" />
+        <ChristmasSnowman className="ls-art-snowman ls-art-hide-tablet" />
+        <ChristmasSanta className="ls-art-santa ls-art-hide-tablet" />
         <ChristmasTree className="ls-art-tree ls-art-tree-start" />
         <ChristmasGiftsA className="ls-art-gifts ls-art-gifts-start" />
         <ChristmasTree className="ls-art-tree ls-art-tree-end" />
@@ -378,8 +404,8 @@ function FooterArt({
       <CelebrationFloorConfetti className="ls-art-floor-confetti" />
       <CelebrationBunch className="ls-art-bunch ls-art-bunch-start" />
       <CelebrationBunch className="ls-art-bunch ls-art-bunch-end" flip />
-      <CelebrationGifts className="ls-art-party-gifts ls-art-party-gifts-start ls-art-hide-medium" />
-      <CelebrationGifts className="ls-art-party-gifts ls-art-party-gifts-end ls-art-hide-medium" />
+      <CelebrationGifts className="ls-art-party-gifts ls-art-party-gifts-start ls-art-hide-tablet" />
+      <CelebrationGifts className="ls-art-party-gifts ls-art-party-gifts-end ls-art-hide-tablet" />
       <CelebrationCake className="ls-art-cake" />
     </>
   );
@@ -425,6 +451,7 @@ export function SeasonFooterScene({
       className="ls-art-row ls-art-footer"
       data-kit={kit}
       data-compact={compact ? 'true' : undefined}
+      data-scene={art && !footerImage && KIT_ART[kit] ? 'panorama' : undefined}
     >
       {!compact ? (
         <div className="ls-art-footer-art" aria-hidden="true">

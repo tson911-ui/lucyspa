@@ -1,4 +1,4 @@
-import { ArtSvg, art, type ArtProps } from './season-art-kit';
+import { ArtSvg, art, sceneView, type ArtProps, type SceneProps } from './season-art-kit';
 import {
   Bow,
   Heart,
@@ -11,7 +11,7 @@ import {
   type RailCell,
 } from './season-art-shapes';
 
-// Valentine kit (docs/UXUI_REDESIGN_S6_PLAN.md section 4.1): roses, chocolates, love letters and a cupid, in the
+// Valentine kit (docs/UXUI_REDESIGN_S6_PLAN.md section 4.1): roses, chocolates, love letters, teddy bears and a heart with an arrow, in the
 // rose and blush of the `valentine` preset. No yellow anywhere. Decoration only: aria-hidden, nothing focusable.
 
 const HEART_COLORS = ['rose', 'pink', 'rose2'] as const;
@@ -152,7 +152,7 @@ export function ValentineLogoHeart({ className }: ArtProps) {
 /** Divider centrepiece: a heart pierced by an arrow between two rosebuds (200 x 32). */
 export function ValentineDividerArt({ className }: ArtProps) {
   return (
-    <ArtSvg viewBox="0 0 200 32" className={className} motif="roses cupid">
+    <ArtSvg viewBox="0 0 200 32" className={className} motif="roses arrow-heart">
       {[52, 148].map((x) => (
         <g key={x}>
           <Leaf fill="leaf" x={x - 2} y={20} r={160} s={0.55} />
@@ -161,10 +161,10 @@ export function ValentineDividerArt({ className }: ArtProps) {
         </g>
       ))}
       <Heart fill="rose" x={100} y={16} s={0.78} />
-      <path d="M78 26L124 6" stroke={art('choc')} strokeWidth="2" strokeLinecap="round" />
-      <path d="M124 6L117 6.4L121 12Z" fill={art('choc')} />
+      <path d="M124 6L98 17" stroke={art('choc')} strokeWidth="2" strokeLinecap="round" />
+      <Heart fill="rose3" x={96} y={18} s={0.22} r={67} shine="pink" />
       <path
-        d="M78 26L74 22M78 26L74 30M82 24L78 20M82 24L78 28"
+        d="M124 6L128 2M124 6L128 10M120 8L124 4M120 8L124 12"
         stroke={art('rose3')}
         strokeWidth="1.8"
         strokeLinecap="round"
@@ -177,74 +177,120 @@ export function ValentineDividerArt({ className }: ArtProps) {
 
 // ------------------------------------------------------------------------------------------ footer scene
 
-/** A chubby cupid in flight with a bow, a drawn arrow and a trail of hearts (180 x 150). */
-export function ValentineCupid({ className }: ArtProps) {
+/**
+ * One teddy bear facing right, standing on y = 0 about its centre (x -30..32, y -98..0). `part` splits it so the heart
+ * can sit between the body and the arm: the body first, then the heart, then the arm hugging over it.
+ */
+function Teddy({ part, bow }: { part: 'body' | 'arm'; bow: 'tie' | 'ribbon' }) {
+  if (part === 'arm') {
+    return (
+      <g>
+        <path
+          d="M10 -46C22 -44 29 -34 23 -26"
+          stroke={art('choc2')}
+          strokeWidth="13"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <circle cx="23" cy="-26" r="7.4" fill={art('choc2')} />
+        <circle cx="24" cy="-25" r="3.6" fill={art('skin')} />
+      </g>
+    );
+  }
   return (
-    <g className={className} transform="translate(0 0)" data-motif="cupid">
-      <path d="M-4 -34C-34 -78 -78 -66 -70 -34C-64 -14 -30 -14 -4 -26Z" fill={art('wing')} />
-      <path d="M-4 -30C-28 -58 -58 -52 -58 -32C-58 -20 -36 -18 -4 -24Z" fill={art('pink2')} />
-      <path d="M4 -34C34 -78 78 -66 70 -34C64 -14 30 -14 4 -26Z" fill={art('wing')} />
-      <path d="M4 -30C28 -58 58 -52 58 -32C58 -20 36 -18 4 -24Z" fill={art('pink2')} />
+    <g>
+      <ellipse cx="-11" cy="-6" rx="12" ry="7.4" fill={art('choc2')} />
+      <ellipse cx="13" cy="-6" rx="12" ry="7.4" fill={art('choc2')} />
+      <ellipse cx="-11" cy="-5" rx="6" ry="3.8" fill={art('skin')} />
+      <ellipse cx="13" cy="-5" rx="6" ry="3.8" fill={art('skin')} />
+      <ellipse cx="1" cy="-32" rx="26" ry="29" fill={art('choc2')} />
+      <ellipse cx="4" cy="-28" rx="15" ry="19" fill={art('skin')} />
       <path
-        d="M-62 -40C-48 -34 -34 -34 -20 -30M62 -40C48 -34 34 -34 20 -30"
-        stroke={art('pink')}
-        strokeWidth="1.6"
-        fill="none"
-      />
-      <path
-        d="M-12 14C-26 20 -34 34 -26 42M10 16C26 18 38 28 34 40"
-        stroke={art('skin')}
-        strokeWidth="9"
+        d="M-18 -44C-30 -40 -34 -28 -30 -20"
+        stroke={art('choc2')}
+        strokeWidth="12"
         strokeLinecap="round"
         fill="none"
       />
-      <ellipse cx="0" cy="0" rx="19" ry="24" fill={art('skin')} />
-      <path d="M-18 8C-8 20 8 20 18 8L18 14C8 28 -8 28 -18 14Z" fill={art('rose')} />
+      <circle cx="-12" cy="-91" r="9.6" fill={art('choc2')} />
+      <circle cx="-12" cy="-91" r="5.2" fill={art('pink')} />
+      <circle cx="20" cy="-91" r="9.6" fill={art('choc2')} />
+      <circle cx="20" cy="-91" r="5.2" fill={art('pink')} />
+      <circle cx="3" cy="-70" r="24" fill={art('choc2')} />
+      <ellipse cx="10" cy="-63" rx="12.6" ry="9.6" fill={art('skin')} />
+      <ellipse cx="13" cy="-67" rx="4.8" ry="3.2" fill={art('ink')} />
       <path
-        d="M17 -8C32 -12 44 -4 50 -14"
-        stroke={art('skin')}
-        strokeWidth="8"
-        strokeLinecap="round"
-        fill="none"
-      />
-      <path
-        d="M-17 -6C-30 -4 -40 -14 -44 -26"
-        stroke={art('skin')}
-        strokeWidth="8"
-        strokeLinecap="round"
-        fill="none"
-      />
-      <circle cx="0" cy="-34" r="19" fill={art('skin')} />
-      {[-14, -6, 4, 12].map((x, i) => (
-        <circle key={x} cx={x} cy={-49 + (i % 2) * 2} r="7" fill={art('choc')} />
-      ))}
-      <circle cx="-7" cy="-33" r="2.2" fill={art('ink')} />
-      <circle cx="7" cy="-33" r="2.2" fill={art('ink')} />
-      <circle cx="-12" cy="-26" r="3.4" fill={art('pink')} opacity=".7" />
-      <circle cx="12" cy="-26" r="3.4" fill={art('pink')} opacity=".7" />
-      <path
-        d="M-4 -24C-1 -21 1 -21 4 -24"
-        stroke={art('rose3')}
+        d="M13 -64L13 -61C11 -57 8 -57 6 -59M13 -61C15 -57 18 -57 20 -59"
+        stroke={art('ink')}
         strokeWidth="1.6"
         fill="none"
         strokeLinecap="round"
       />
-      <path
-        d="M58 -34C86 -34 86 6 58 6"
-        stroke={art('choc')}
-        strokeWidth="3.4"
-        fill="none"
-        strokeLinecap="round"
-      />
-      <path d="M58 -34L58 6" stroke={art('string')} strokeWidth="1" />
-      <path d="M44 -14L98 -14" stroke={art('choc2')} strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M98 -14L90 -18L90 -10Z" fill={art('rose3')} />
-      <path
-        d="M44 -14L38 -18M44 -14L38 -10"
-        stroke={art('rose')}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
+      <circle cx="-3" cy="-74" r="3" fill={art('ink')} />
+      <circle cx="16" cy="-75" r="3" fill={art('ink')} />
+      <circle cx="-2" cy="-75" r="1" fill={art('white')} />
+      <circle cx="17" cy="-76" r="1" fill={art('white')} />
+      <circle cx="-8" cy="-65" r="4.4" fill={art('pink')} opacity=".75" />
+      {bow === 'tie' ? (
+        <Bow c="rose" c2="rose3" x={3} y={-47} s={0.5} />
+      ) : (
+        <Bow c="ribbon" c2="rose3" x={-8} y={-88} s={0.42} r={-18} />
+      )}
+    </g>
+  );
+}
+
+/** Two teddy bears hugging a big heart, standing on y = 0 about the centre (x -62..62, y -98..0). */
+function TeddyHug() {
+  return (
+    <g data-motif="teddy-bears">
+      <g transform="translate(-38 0)">
+        <Teddy part="body" bow="tie" />
+      </g>
+      <g transform="translate(38 0) scale(-1 1)">
+        <Teddy part="body" bow="ribbon" />
+      </g>
+      <Heart fill="rose" x={0} y={-31} s={1.7} />
+      <g transform="translate(-38 0)">
+        <Teddy part="arm" bow="tie" />
+      </g>
+      <g transform="translate(38 0) scale(-1 1)">
+        <Teddy part="arm" bow="tie" />
+      </g>
+    </g>
+  );
+}
+
+/**
+ * A large heart with an arrow whose heart-shaped tip points into it: the shaft comes in from the upper right with its
+ * feathers outside, the tip heart sits inside (x -58..110, y -80..40 about the heart's centre).
+ */
+function ArrowHeart() {
+  return (
+    <g data-motif="arrow-heart">
+      <Heart fill="rose" s={2.3} />
+      <g transform="translate(-12 8) rotate(143.13)">
+        <path d="M-92 0L0 0" stroke={art('choc')} strokeWidth="4.4" strokeLinecap="round" />
+        {[0, 14].map((dx) => (
+          <g key={dx} transform={`translate(${dx} 0)`}>
+            <path
+              d="M-72 0L-86 -12L-98 -12L-86 0Z"
+              fill={art('pink')}
+              stroke={art('rose3')}
+              strokeWidth="1.6"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M-72 0L-86 12L-98 12L-86 0Z"
+              fill={art('pink')}
+              stroke={art('rose3')}
+              strokeWidth="1.6"
+              strokeLinejoin="round"
+            />
+          </g>
+        ))}
+        <Heart fill="rose3" x={-2} y={0} s={0.74} r={-90} shine="pink" />
+      </g>
     </g>
   );
 }
@@ -380,17 +426,16 @@ const SCENE_HEARTS: ReadonlyArray<readonly [number, number, number, string]> = [
 ];
 
 /**
- * The footer scene (1440 x 300): a soft pink floor, cupid in flight at the centre with a heart-shaped box of
- * chocolates and a bundle of love letters beside him, rose bouquets at the sides and hearts in the air. The middle
+ * The footer scene (1440 x 300): a soft pink floor, two teddy bears hugging a heart at the centre under a heart
+ * with an arrow, a heart-shaped box of chocolates and a bundle of love letters beside them, rose bouquets at the sides and hearts in the air. The middle
  * 465 units are a complete composition: a phone shows only those (the SVG is cropped to the centre), a tablet more.
  */
-export function ValentineScene({ className }: ArtProps) {
+export function ValentineScene({ className, part, split }: SceneProps) {
   return (
     <ArtSvg
-      viewBox="0 0 1440 300"
-      preserveAspectRatio="xMidYMax slice"
+      {...sceneView(part, split)}
       className={className}
-      motif="roses chocolates love-letters cupid"
+      motif="roses chocolates love-letters teddy-bears arrow-heart"
     >
       <path
         d="M0 214C140 196 260 206 400 222C540 238 660 204 800 208C940 212 1060 236 1200 220C1300 208 1380 204 1440 212V300H0Z"
@@ -421,8 +466,11 @@ export function ValentineScene({ className }: ArtProps) {
       <g transform="translate(850 160)">
         <LoveLetters />
       </g>
-      <g transform="translate(720 96) scale(1.1)">
-        <ValentineCupid />
+      <g transform="translate(720 196) scale(0.95)">
+        <TeddyHug />
+      </g>
+      <g transform="translate(716 64) scale(0.9)">
+        <ArrowHeart />
       </g>
     </ArtSvg>
   );

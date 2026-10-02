@@ -1,4 +1,4 @@
-import { ArtSvg, art, type ArtProps } from './season-art-kit';
+import { ArtSvg, art, sceneView, type ArtProps, type SceneProps } from './season-art-kit';
 import {
   Leaf,
   Lotus,
@@ -243,14 +243,9 @@ const GLOWS: ReadonlyArray<readonly [number, number, number, boolean]> = [
  * lanterns floating around them, the rose pinned on a shirt on a round badge on each side and lotus plants in the
  * corners. The middle 400 units (the lotus and three lanterns) are complete for a phone.
  */
-export function VuLanScene({ className }: ArtProps) {
+export function VuLanScene({ className, part, split }: SceneProps) {
   return (
-    <ArtSvg
-      viewBox="0 0 1440 300"
-      preserveAspectRatio="xMidYMax slice"
-      className={className}
-      motif="rose-on-shirt hoa-dang lotus"
-    >
+    <ArtSvg {...sceneView(part, split)} className={className} motif="rose-on-shirt hoa-dang lotus">
       <path
         d="M0 214C140 200 260 208 400 220C540 232 660 206 800 210C940 214 1060 234 1200 220C1300 210 1380 206 1440 212V300H0Z"
         fill={art('cream2')}

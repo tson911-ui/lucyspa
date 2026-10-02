@@ -41,7 +41,7 @@ import {
   WomenScene,
   type WomenVariant,
 } from './season-art-women';
-import type { ArtProps } from './season-art-kit';
+import type { ArtProps, SceneProps } from './season-art-kit';
 import type { SeasonArtKit } from './season-scene';
 
 // The kits of the S6d/S6e Steps (docs/UXUI_REDESIGN_S6_PLAN.md section 4) as one table, so the scene components place
@@ -59,15 +59,18 @@ export interface KitArt {
   /** Slot 5: the centrepiece of the divider. */
   Divider: (props: ArtProps) => ReactNode;
   /** Slot 6: the footer scene. */
-  Scene: (props: ArtProps) => ReactNode;
+  Scene: (props: SceneProps) => ReactNode;
   /** Slot 1: one particle (the index picks its color or shape). */
   Particle: (props: { index: number }) => ReactNode;
   /** `fall` (default) or `rise`, slowly, like a lantern let go. */
   motion?: 'fall' | 'rise';
+  /** Phone footer: the first window's width in scene units, chosen so both cuts fall between motifs (default 360). */
+  split?: number;
 }
 
 /** The two women's-day kits are one drawing set with a variant: the flowers differ (orchids and tulips, lotus). */
-const women = (variant: WomenVariant): KitArt => ({
+const women = (variant: WomenVariant, split: number): KitArt => ({
+  split,
   Rail: () => <WomenRail variant={variant} />,
   Corner: (props) => <WomenCorner {...props} variant={variant} />,
   Logo: (props) => <WomenLogo {...props} variant={variant} />,
@@ -77,6 +80,7 @@ const women = (variant: WomenVariant): KitArt => ({
 });
 
 const national = (variant: NationalVariant): KitArt => ({
+  split: 310,
   Rail: NationalRail,
   Corner: NationalCorner,
   Logo: (props) => <NationalLogo {...props} variant={variant} />,
@@ -88,6 +92,7 @@ const national = (variant: NationalVariant): KitArt => ({
 
 export const KIT_ART: Partial<Record<SeasonArtKit, KitArt>> = {
   valentine: {
+    split: 536,
     Rail: ValentineRail,
     Corner: ValentineCorner,
     Logo: ValentineLogoHeart,
@@ -95,8 +100,8 @@ export const KIT_ART: Partial<Record<SeasonArtKit, KitArt>> = {
     Scene: ValentineScene,
     Particle: ValentineHeartPiece,
   },
-  'womens-day': women('womens-day'),
-  'vn-womens-day': women('vn-womens-day'),
+  'womens-day': women('womens-day', 254),
+  'vn-womens-day': women('vn-womens-day', 244),
   'reunification-labour': national('reunification-labour'),
   'national-day': national('national-day'),
   'vu-lan': {
@@ -109,6 +114,7 @@ export const KIT_ART: Partial<Record<SeasonArtKit, KitArt>> = {
     motion: 'rise',
   },
   'mid-autumn': {
+    split: 432,
     Rail: AutumnRail,
     Corner: AutumnCorner,
     Logo: AutumnLogo,

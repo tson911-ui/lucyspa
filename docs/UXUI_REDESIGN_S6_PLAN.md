@@ -63,16 +63,16 @@ Ten kits: the 8 existing keys, new `vu-lan`, new `celebration`. Per kit the regi
 
 Every kit draws its **iconic, recognizable motifs as multi-element scenes**, not just flowers. The list below is the contract: it is data in the registry (`SEASON_MOTIFS`), every drawing carries `data-motif="<id>"`, and a test fails when a shipped kit lacks one. Art stays friendly and elegant (a spa brand), sits in the reserved rows and corners, and never covers text. The shipped Tet and Christmas kits were redone to this list (S6a revision).
 
-| Kit              | Motifs (ids in the registry)                                                                                                         |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Christmas        | Santa Claus, snowman, reindeer sleigh, gifts, stockings, candy canes, wreath, bells, decorated tree                                  |
-| Tet              | li xi, cau doi, hoa mai, hoa dao, banh chung, banh tet, mam ngu qua, dua hau, paper firecrackers, lanterns, the year's zodiac animal |
-| Mid-Autumn       | mua lan su rong, den ong sao, den ca chep, den keo quan, full moon, chi Hang and chu Cuoi under the banyan, jade rabbit, mooncakes   |
-| Valentine        | roses, chocolates, love letters, cupid                                                                                               |
-| 8/3 and 20/10    | flower bouquets, ao dai, non la, gift boxes                                                                                          |
-| 30/4-1/5 and 2/9 | red flag with yellow star bunting, fireworks, peace doves, lotus                                                                     |
-| Vu Lan           | rose pinned on a shirt, floating hoa dang, lotus                                                                                     |
-| Celebration      | balloons, confetti, ribbons, cake                                                                                                    |
+| Kit              | Motifs (ids in the registry)                                                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Christmas        | Santa Claus, snowman, reindeer sleigh, gifts, stockings, candy canes, wreath, bells, decorated tree                                                           |
+| Tet              | li xi, cau doi, hoa mai, hoa dao, banh chung, banh tet, mam ngu qua, dua hau, paper firecrackers, lanterns, the year's zodiac animal                          |
+| Mid-Autumn       | mua lan su rong, ong Dia, drum and cymbals, den ong sao, den ca chep, den keo quan, full moon, chi Hang and chu Cuoi under the banyan, jade rabbit, mooncakes |
+| Valentine        | roses, chocolates, love letters, teddy bears hugging a heart, heart with an arrow (no cupid, Owner 2026-10-03)                                                |
+| 8/3 and 20/10    | flower bouquets, ao dai, non la, gift boxes                                                                                                                   |
+| 30/4-1/5 and 2/9 | red flag with yellow star bunting, fireworks, peace doves, lotus                                                                                              |
+| Vu Lan           | rose pinned on a shirt, floating hoa dang, lotus                                                                                                              |
+| Celebration      | balloons, confetti, ribbons, cake                                                                                                                             |
 
 Where they go (Tet and Christmas, as built): the header rail carries the hanging pieces (lanterns, or lights with stockings, bells and candy canes), the two top corners the branches or garlands, the divider a small centrepiece (coin and blossoms, or candy canes, bells and a wreath), and the footer scene the larger groups (Tet: cau doi pair, firecracker string, mam ngu qua, banh chung and banh tet, watermelons, li xi, the zodiac animal; Christmas: tree, gifts, snowman, Santa Claus, the sleigh with reindeer). Tablets and phones keep a subset (the lantern, firecracker, li xi and zodiac, or tree, gifts and sleigh) and drop the rest by CSS.
 

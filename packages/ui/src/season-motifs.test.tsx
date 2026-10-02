@@ -9,6 +9,7 @@ import {
   SeasonHeaderRow,
   SeasonLogoAccent,
 } from './season-scene';
+import { KIT_ART } from './season-kits';
 import type { SeasonArtKit } from './season-scene';
 
 // Owner addition 2026-10-02 (docs/UXUI_REDESIGN_S6_PLAN.md 4.1): every kit draws its iconic motifs as scenes, not just
@@ -36,8 +37,14 @@ test('every preset and the two new kits carry a motif list', () => {
   }
   assert.deepEqual(SEASON_MOTIFS['vu-lan'], ['rose-on-shirt', 'hoa-dang', 'lotus']);
   assert.deepEqual(SEASON_MOTIFS['celebration'], ['balloons', 'confetti', 'ribbons', 'cake']);
-  assert.deepEqual(SEASON_MOTIFS['valentine'], ['roses', 'chocolates', 'love-letters', 'cupid']);
-  assert.equal(SEASON_MOTIFS['mid-autumn']?.length, 8);
+  assert.deepEqual(SEASON_MOTIFS['valentine'], [
+    'roses',
+    'chocolates',
+    'love-letters',
+    'teddy-bears',
+    'arrow-heart',
+  ]);
+  assert.equal(SEASON_MOTIFS['mid-autumn']?.length, 10);
 });
 
 test('Tet draws li xi, cau doi, mai, dao, banh chung, banh tet, mam ngu qua, dua hau, firecrackers, lanterns and the zodiac animal', () => {
@@ -102,7 +109,80 @@ test('the phone and tablet tiers keep a subset: hidden pieces are hidden by clas
   );
   assert.match(html, /ls-art-animal/, 'the zodiac animal stays at every width');
   const xmas = renderToStaticMarkup(<SeasonFooterScene kit="christmas" line="x" />);
-  assert.match(xmas, /ls-art-snowman[^"]*ls-art-hide-medium/);
-  assert.match(xmas, /ls-art-santa[^"]*ls-art-hide-medium/);
+  assert.match(xmas, /ls-art-snowman[^"]*ls-art-hide-tablet/);
+  assert.match(xmas, /ls-art-santa[^"]*ls-art-hide-tablet/);
   assert.match(xmas, /ls-art-sleigh"/, 'the sleigh stays at every width');
+});
+
+// Owner follow-up 2026-10-03: the header stays compact on a phone, but the phone footer shows the full motif set of the
+// kit (two rows when needed). A piece is hidden on a phone by one of these classes, or by being the wide-only scene.
+const PHONE_HIDDEN = /ls-art-hide-narrow|ls-art-hide-medium|ls-art-show-wide|ls-art-scene-wide/;
+
+function footerMotifs(kit: SeasonArtKit) {
+  const html = renderToStaticMarkup(
+    <SeasonFooterScene kit={kit} line="x" zodiac={kit === 'tet' ? 'mui' : null} />,
+  );
+  const all = new Set<string>();
+  const phone = new Set<string>();
+  for (const tag of html.matchAll(/<svg[^>]*>/g)) {
+    const motif = /data-motif="([^"]+)"/.exec(tag[0])?.[1];
+    if (!motif) continue;
+    const hidden = PHONE_HIDDEN.test(/class="([^"]*)"/.exec(tag[0])?.[1] ?? '');
+    for (const id of motif.split(' ')) {
+      all.add(id);
+      if (!hidden) phone.add(id);
+    }
+  }
+  return { html, all, phone };
+}
+
+test('the phone footer of every kit shows every motif its footer draws, none only on wide screens', () => {
+  for (const kit of SEASON_ART_KITS) {
+    const { all, phone } = footerMotifs(kit);
+    assert.ok(all.size >= 3, `${kit}: the footer draws its motifs`);
+    for (const id of all) assert.ok(phone.has(id), `${kit}: ${id} is missing on a phone`);
+  }
+});
+
+test('Tet and Christmas show the pieces the wide scene spreads around: couplets, fruit tray, rice cakes, melons; Santa and snowman', () => {
+  const tet = footerMotifs('tet').phone;
+  for (const id of [
+    'cau-doi',
+    'mam-ngu-qua',
+    'banh-chung',
+    'banh-tet',
+    'dua-hau',
+    'li-xi',
+    'phao-giay',
+    'zodiac',
+  ]) {
+    assert.ok(tet.has(id), `tet phone: ${id}`);
+  }
+  const xmas = footerMotifs('christmas').phone;
+  for (const id of ['santa', 'snowman', 'sleigh-reindeer', 'gifts', 'tree']) {
+    assert.ok(xmas.has(id), `christmas phone: ${id}`);
+  }
+});
+
+test('a panorama kit draws its scene on a phone as a centre row and two side crops that together cover all 1440 units', () => {
+  for (const kit of SEASON_ART_KITS.filter((candidate) => KIT_ART[candidate])) {
+    const { html } = footerMotifs(kit);
+    const windows = (part: string) =>
+      [...html.matchAll(new RegExp(`<svg[^>]*ls-art-scene-${part}[^>]*>`, 'g'))].map((match) => {
+        const [x, , width] = /viewBox="([^"]+)"/.exec(match[0])![1]!.split(' ').map(Number);
+        return { x: x!, width: width! };
+      });
+    const [mid] = windows('mid');
+    const [start, end] = windows('side');
+    assert.ok(mid && start && end, `${kit}: a centre row and two side crops`);
+    assert.equal(start.x, 0, `${kit}: the start window begins at the left edge`);
+    assert.equal(
+      start.x + start.width,
+      mid.x,
+      `${kit}: the start window ends where the centre starts`,
+    );
+    assert.equal(mid.width, 720, `${kit}: the centre is half the scene`);
+    assert.equal(mid.x + mid.width, end.x, `${kit}: the centre ends where the end window starts`);
+    assert.equal(end.x + end.width, 1440, `${kit}: the end window reaches the right edge`);
+  }
 });

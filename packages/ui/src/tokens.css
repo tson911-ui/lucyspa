@@ -169,7 +169,8 @@
   --lucy-ink: var(--ls-text);
   --lucy-muted: var(--ls-text-muted);
   --lucy-border: var(--ls-border);
-  --lucy-font-display: Georgia, 'Times New Roman', serif;
+  --lucy-font-display:
+    var(--font-playfair-display), var(--font-be-vietnam-pro), system-ui, 'Segoe UI', sans-serif;
   --lucy-font-body: var(--ls-font-sans);
 }
 

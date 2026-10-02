@@ -1,4 +1,4 @@
-import { ArtSvg, art, n, type ArtProps } from './season-art-kit';
+import { ArtSvg, art, n, sceneView, type ArtProps, type SceneProps } from './season-art-kit';
 import {
   Hang,
   Leaf,
@@ -333,12 +333,16 @@ function SceneBunting() {
  * ponds in the corners and peace doves in flight. 30/4-1/5 puts a big firework in the middle with a dove on each side;
  * 2/9 puts a large dove with an olive branch there, between two lotus. The middle 400 units are complete for a phone.
  */
-export function NationalScene({ className, variant }: ArtProps & { variant: NationalVariant }) {
+export function NationalScene({
+  className,
+  part,
+  split,
+  variant,
+}: SceneProps & { variant: NationalVariant }) {
   const labour = variant === 'reunification-labour';
   return (
     <ArtSvg
-      viewBox="0 0 1440 300"
-      preserveAspectRatio="xMidYMax slice"
+      {...sceneView(part, split)}
       className={className}
       motif="flag-bunting fireworks peace-doves lotus"
     >

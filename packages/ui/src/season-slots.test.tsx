@@ -142,6 +142,17 @@ test('the strip: no greeting keeps only the effects switch, bare; nothing at all
   assert.equal(renderToStaticMarkup(<SeasonStrip greeting={null} label="Mùa lễ" />), '');
 });
 
+test('an Owner-typed greeting keeps every Vietnamese mark on the plaque, composed or decomposed', () => {
+  const marks = 'ố ế ữ ặ ỗ ợ';
+  for (const typed of [marks, marks.normalize('NFD')]) {
+    for (const kit of kits) {
+      const html = renderToStaticMarkup(<SeasonFooterScene kit={kit} line={typed} sub={typed} />);
+      assert.ok(html.includes(`<p class="ls-art-plaque-line">${typed}</p>`), `${kit}: line`);
+      assert.ok(html.includes(typed), `${kit}: sub`);
+    }
+  }
+});
+
 test('the footer scene: art and greeting switch independently; both off render nothing; a corner image fills the bottom corners', () => {
   for (const kit of kits) {
     const full = renderToStaticMarkup(<SeasonFooterScene kit={kit} line="Chúc" sub="mừng" />);

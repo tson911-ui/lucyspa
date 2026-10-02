@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ArtSvg, art, type ArtProps } from './season-art-kit';
+import { ArtSvg, art, sceneView, type ArtProps, type SceneProps } from './season-art-kit';
 import {
   Bow,
   GiftBox,
@@ -429,11 +429,15 @@ const STARS: ReadonlyArray<readonly [number, number, number]> = [
  * women in ao dai at the sides (one in a non la, one holding flowers) and flower beds beyond them. The middle 400
  * units are a complete composition for a phone; the women and beds show from a tablet up.
  */
-export function WomenScene({ className, variant }: ArtProps & { variant: WomenVariant }) {
+export function WomenScene({
+  className,
+  part,
+  split,
+  variant,
+}: SceneProps & { variant: WomenVariant }) {
   return (
     <ArtSvg
-      viewBox="0 0 1440 300"
-      preserveAspectRatio="xMidYMax slice"
+      {...sceneView(part, split)}
       className={className}
       motif="bouquets ao-dai non-la gift-boxes"
     >

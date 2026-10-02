@@ -87,7 +87,12 @@ test('every color the art reads is defined by its kit, and none is left unused',
     valentine: ['./season-art-valentine.tsx', './season-art-shapes.tsx', './season-scene.tsx'],
     'womens-day': ['./season-art-women.tsx', './season-art-shapes.tsx', './season-scene.tsx'],
     'vn-womens-day': ['./season-art-women.tsx', './season-art-shapes.tsx', './season-scene.tsx'],
-    'mid-autumn': ['./season-art-autumn.tsx', './season-art-shapes.tsx', './season-scene.tsx'],
+    'mid-autumn': [
+      './season-art-autumn.tsx',
+      './season-art-lion.tsx',
+      './season-art-shapes.tsx',
+      './season-scene.tsx',
+    ],
     'reunification-labour': [
       './season-art-national.tsx',
       './season-art-shapes.tsx',
@@ -201,14 +206,19 @@ test('the registry footer lines fit a plaque (short) in both languages', () => {
   }
 });
 
-test('the plaque line avoids letters the Windows display font (Georgia italic) cannot stack: no circumflex with a tone mark', () => {
-  // a, e or o with a circumflex (U+0302) and then an acute or grave tone (U+0301, U+0300), in decomposed form, draw
-  // their accent detached in Georgia on Windows; the sub line uses the body font and is free of this rule.
-  const stacked = /[aeoAEO]̂[̀́]/;
-  for (const preset of withArt) {
-    for (const locale of ['vi', 'en'] as const) {
-      const line = preset.art.footer.line[locale].normalize('NFD');
-      assert.doesNotMatch(line, stacked, `${preset.key} ${locale}: ${line}`);
-    }
-  }
+test('the plaque line keeps its full Vietnamese wording and uses a display font with Vietnamese marks, never Georgia', () => {
+  const women = withArt.find((preset) => preset.key === 'womens-day')!;
+  assert.equal(women.art.footer.line.vi, 'Chúc mừng Quốc tế Phụ nữ 8/3');
+  const display = /--lucy-font-display:\s*([^;]+);/.exec(read('./tokens.css'))![1]!;
+  assert.match(display, /^var\(--font-playfair-display\)/, 'the display font leads');
+  assert.doesNotMatch(display, /georgia|times/i, 'no system serif fallback');
+  assert.match(
+    display,
+    /var\(--font-be-vietnam-pro\)/,
+    'the fallback is the Vietnamese-ready body font',
+  );
+  assert.match(
+    read('./season-art.css'),
+    /\.ls-art-plaque-line\s*{[^}]*font-family:\s*var\(--lucy-font-display\)/,
+  );
 });
