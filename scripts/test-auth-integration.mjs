@@ -63,3 +63,4 @@ await import('../apps/api/dist/website/media.integration.test.js');
 await import('../apps/api/dist/website/popup.integration.test.js');
 await import('../apps/api/dist/website/slide.integration.test.js');
 await import('../apps/api/dist/website/season.integration.test.js');
+await import('../apps/api/dist/website/website.race.integration.test.js');
