@@ -24,6 +24,8 @@ Nothing is deployed. All Part 2 ratchet counters are 0 (`wfClassUses`, `nativeFi
 **P2-1 to P2-10 are done; the Owner reviews the whole of Part 2 next, then deploys with `docs/DEPLOY_PART2_RUNBOOK.md`.** Open items for the Owner: member-area LCP (see the P2-10
 report), the placeholder hero photo (admin upload, in the runbook), and the review notes above.
 
+**Follow-up 2026-10-03 (after the P2-10 review request):** navigation motion for the public site (prefetch, sliding menu pill, route entrance on navigation only, softer reveals) and the 360 px audit findings (FR8 phone cards, FR3 cancel dialog and Shop info tab). Report `UXUI_REDESIGN_PART2_NAV_MOTION.md`. Lesson: the seasonal frame is a stacking context below the phone tab bar, so anything fixed that must sit above the tab bar needs the tab bar hidden (`.ls-site:has(.ls-backdrop)`).
+
 ## Owner decisions (locked; do not reopen)
 
 - Q-P2-1 shop info = one `website_shop_info` row edited in admin; opening hours come from the chosen branch's operating hours (one source with booking).

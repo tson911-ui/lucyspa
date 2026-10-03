@@ -401,3 +401,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Integration 76/76 and 486/486, axe 0 on every Part 2 page, DOM audit clean except known phone-card FR8, CLS 0 everywhere, LCP <= 2.5 s on public pages and sign-in (member pages 3.7-5.5 s on the harsh profile: client-rendered). Fixed on the way: footer/divider shifts, sign-in server rendered, unread badge instead of bell.
 - Report: docs/UXUI_REDESIGN_PART2_P2-10_FINAL_GATE.md. Deploy checklist: docs/DEPLOY_PART2_RUNBOOK.md (additive migrations, no permission, no new env var).
+
+### UX/UI Part 2 follow-up: navigation motion + 360 px findings - 2026-10-03
+
+- Public site: prefetched menu/CTA links, sliding menu pill (`site-nav.tsx`, `--ls-dur-slide`), route entrance on navigation only (`RouteEnter`), softer section reveals; all off under reduced motion. Member sign-in untouched.
+- 360 px: last phone card layout fixed in the kit, `ls-cards-one-line` on member lists, tab bar hides under an open dialog (it blocked the cancel buttons while a season was active), audit exceptions for text fields and the docked form bar. Report: docs/UXUI_REDESIGN_PART2_NAV_MOTION.md.

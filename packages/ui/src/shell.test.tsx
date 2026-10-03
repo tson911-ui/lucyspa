@@ -685,7 +685,7 @@ test('Step 5b UX gate fixes (F1-F12, F14): topbar order, control sizes, brand ed
   assert.match(block(components, '.ls-badge'), /width:\s*max-content/);
   assert.match(block(components, '.ls-th-sort'), /min-width:\s*var\(--ls-control-h\)/);
   // F4/F5: phone card rows are two columns; titles and actions are full-size targets.
-  assert.match(components, /\.ls-table td\[data-label\] \{[^}]*grid-template-columns/);
+  assert.match(components, /\.ls-table tbody tr td\[data-label\] \{[^}]*grid-template-columns/);
   assert.match(
     components,
     /\.ls-table \.ls-cell-title a,[^{]*\{[^}]*min-height:\s*var\(--ls-control-h\)/,

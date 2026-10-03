@@ -35,18 +35,10 @@ export {
 export type { ResolvedTheme, ThemePreference } from './theme-core';
 export { ThemeInitScript } from './theme-script';
 export { RouteFade } from './route-fade';
+export { RouteEnter } from './route-enter';
 // Public site and member-area frame (Part 2): header, menu, tab bar, footer, bands, price list, steps, choice card, reveal.
-export {
-  Band,
-  PriceList,
-  PublicMain,
-  PublicPage,
-  SiteFooter,
-  SiteNav,
-  SiteSubNav,
-  Steps,
-  TabBar,
-} from './site';
+export { Band, PriceList, PublicMain, PublicPage, SiteFooter, Steps, TabBar } from './site';
+export { SiteNav, SiteSubNav } from './site-nav';
 export type {
   FooterColumn,
   PriceListItem,

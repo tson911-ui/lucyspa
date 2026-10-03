@@ -136,6 +136,7 @@
 }
 
 .ls-site-nav {
+  position: relative;
   display: none;
   align-items: center;
   gap: var(--ls-space-1);
@@ -144,6 +145,7 @@
 }
 
 .ls-site-nav a {
+  position: relative;
   display: inline-flex;
   align-items: center;
   min-height: var(--ls-control-h);
@@ -1022,6 +1024,7 @@
 
 /* ---------- member area: the in-page row under the header ---------- */
 .ls-subnav {
+  position: relative;
   display: flex;
   gap: var(--ls-space-1);
   padding-block: var(--ls-space-3);
@@ -1034,6 +1037,7 @@
 }
 
 .ls-subnav a {
+  position: relative;
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -1285,6 +1289,12 @@
   display: none;
 }
 
+/* An open dialog or drawer covers the whole screen. The seasonal frame is a stacking context of its own below the
+   tab bar, so without this the tab bar would sit over the dialog's buttons and block them (a season is active). */
+.ls-site:has(.ls-backdrop) .ls-tab-bar {
+  visibility: hidden;
+}
+
 @media (min-width: 1024px) {
   .ls-booking-layout {
     grid-template-columns: minmax(0, 1fr) 22rem;
@@ -1310,6 +1320,64 @@
   flex: 1;
   flex-direction: column;
   min-width: 0;
+  /* The first load paints at once (nothing waits for motion); only later route changes ease in (below). */
+  animation: none;
+}
+
+/* A route change: the new page eases in with a small rise, a little slower than the staff area's plain fade.
+   RouteEnter marks the wrapper only for a navigation (not the first load) on a device that allows motion. */
+.ls-site .ls-route-fade[data-enter='route'] {
+  animation: ls-route-in var(--ls-dur-slide) var(--ls-ease-premium) backwards;
+}
+
+@keyframes ls-route-in {
+  from {
+    opacity: 0;
+    translate: 0 calc(var(--ls-reveal-shift) / 2);
+  }
+}
+
+/* ---------- menu pill (M8) ---------- */
+/* One pill under the current entry; it slides to the next entry on a route change. Until it is placed (no scripts, first
+   paint) the current link carries its own highlight, so the menu is never without one. */
+.ls-site-nav,
+.ls-subnav {
+  /* The pill's box, set on the menu by the component from the current link's position. */
+  --ls-pill-x: 0px;
+  --ls-pill-y: 0px;
+  --ls-pill-w: 0px;
+  --ls-pill-h: 0px;
+}
+
+.ls-nav-pill {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: var(--ls-pill-w);
+  height: var(--ls-pill-h);
+  translate: var(--ls-pill-x) var(--ls-pill-y);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-brand-soft);
+  opacity: 0;
+  pointer-events: none;
+}
+
+[data-pill='still'] > .ls-nav-pill,
+[data-pill='slide'] > .ls-nav-pill {
+  opacity: 1;
+}
+
+[data-pill='slide'] > .ls-nav-pill {
+  transition:
+    translate var(--ls-dur-slide) var(--ls-ease-premium),
+    width var(--ls-dur-slide) var(--ls-ease-premium);
+}
+
+[data-pill='still'] > a[aria-current='page'],
+[data-pill='slide'] > a[aria-current='page'],
+[data-pill='still'] > a[aria-current='page']:hover,
+[data-pill='slide'] > a[aria-current='page']:hover {
+  background: transparent;
 }
 
 /* ---------- hero photo: settle (M2), hover zoom (M3), parallax (M6) ---------- */

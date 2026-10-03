@@ -1,80 +1,13 @@
-import type { ComponentType, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { cx } from './cx';
 import { Icon, type IconName } from './icons';
+import { PlainLink, type SiteLinkComponent } from './site-link';
 
 // Public site and member-area frame (docs/UXUI_REDESIGN_PART2_DESIGN.md section 3-5). Text always comes from
 // props; the styles are in `site.css` under `.ls-site`. Router links are injected (`LinkComponent`), as in the Slider.
+// The route menus (SiteNav, SiteSubNav) are client components in `site-nav.tsx`: their pill slides between entries.
 
-export type SiteLinkComponent = ComponentType<{
-  href: string;
-  className?: string | undefined;
-  'aria-current'?: 'page' | undefined;
-  'aria-label'?: string | undefined;
-  hrefLang?: string | undefined;
-  lang?: string | undefined;
-  'data-emphasis'?: 'true' | undefined;
-  children: ReactNode;
-}>;
-
-const PlainLink: SiteLinkComponent = ({ children, ...rest }) => <a {...rest}>{children}</a>;
-
-export interface SiteNavItem {
-  key: string;
-  label: string;
-  href: string;
-  current: boolean;
-}
-
-/** The main menu (desktop header, and the footer's discovery column). */
-export function SiteNav({
-  label,
-  items,
-  LinkComponent = PlainLink,
-  className,
-}: {
-  label: string;
-  items: readonly SiteNavItem[];
-  LinkComponent?: SiteLinkComponent | undefined;
-  className?: string | undefined;
-}) {
-  const Link = LinkComponent;
-  return (
-    <nav aria-label={label} className={cx('ls-site-nav', className)}>
-      {items.map((item) => (
-        <Link key={item.key} href={item.href} aria-current={item.current ? 'page' : undefined}>
-          {item.label}
-        </Link>
-      ))}
-    </nav>
-  );
-}
-
-/**
- * The in-page row of the member area (overview, bookings, invoices, notifications): route based pills that scroll
- * sideways inside their own strip on a narrow screen, never the page.
- */
-export function SiteSubNav({
-  label,
-  items,
-  LinkComponent = PlainLink,
-  className,
-}: {
-  label: string;
-  items: readonly SiteNavItem[];
-  LinkComponent?: SiteLinkComponent | undefined;
-  className?: string | undefined;
-}) {
-  const Link = LinkComponent;
-  return (
-    <nav aria-label={label} className={cx('ls-subnav', className)}>
-      {items.map((item) => (
-        <Link key={item.key} href={item.href} aria-current={item.current ? 'page' : undefined}>
-          {item.label}
-        </Link>
-      ))}
-    </nav>
-  );
-}
+export type { SiteLinkComponent, SiteNavItem } from './site-link';
 
 export interface TabBarItem {
   key: string;

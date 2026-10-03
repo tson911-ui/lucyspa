@@ -93,9 +93,11 @@ export function ServicesView({
               className="ls-service-section"
               aria-labelledby={`group-${entry.code}`}
             >
-              <h2 className="ls-site-h2" id={`group-${entry.code}`}>
-                {entry.name}
-              </h2>
+              <Reveal>
+                <h2 className="ls-site-h2" id={`group-${entry.code}`}>
+                  {entry.name}
+                </h2>
+              </Reveal>
               <div className="ls-service-grid">
                 {entry.services.map((service, index) => (
                   <Reveal key={service.code} index={index}>

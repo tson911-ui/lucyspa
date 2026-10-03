@@ -145,8 +145,13 @@ function BookingsTable({
       header: t.bookings.columns.services,
       truncate: true,
       width: 'lg',
-      cell: (item) =>
-        item.serviceNames.map((name) => (locale === 'vi' ? name.vi : name.en)).join(' · '),
+      // The first service and "+N" for the rest: a cell holds one short value (frontend rule 8).
+      cell: (item) => {
+        const [first, ...rest] = item.serviceNames.map((name) =>
+          locale === 'vi' ? name.vi : name.en,
+        );
+        return first === undefined ? '—' : rest.length > 0 ? `${first} +${rest.length}` : first;
+      },
     },
     {
       key: 'branch',
@@ -184,6 +189,7 @@ function BookingsTable({
   return (
     <DataTable
       mode="client"
+      className="ls-cards-one-line"
       caption={fill(w.common.list.table, { list: listName })}
       columns={columns}
       rows={items}

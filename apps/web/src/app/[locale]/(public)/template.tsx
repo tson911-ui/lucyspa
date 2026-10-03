@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { RouteFade } from '@lucy-spa/ui';
+import { RouteEnter } from '@lucy-spa/ui';
 
-// M5 (Part 2 contract 7): the page content eases in on every navigation inside the public pages (opacity only).
+// M5 (Part 2 contract 7): the page content eases in on every navigation inside the public pages (not on the first load).
 export default function Template({ children }: { children: ReactNode }) {
-  return <RouteFade>{children}</RouteFade>;
+  return <RouteEnter>{children}</RouteEnter>;
 }

@@ -32,6 +32,136 @@ test('SiteNav marks the current page and names the landmark', () => {
   assert.match(html, /<a href="\/vi\/services">Dịch vụ<\/a>/);
 });
 
+test('the menu pill slides to the new current entry on a route change and jumps for everything else', () => {
+  const server = renderToStaticMarkup(
+    <ui.SiteNav
+      label="Menu"
+      items={[{ key: 'home', label: 'Trang chủ', href: '/vi', current: true }]}
+    />,
+  );
+  assert.match(server, /<span class="ls-nav-pill" aria-hidden="true"><\/span>/);
+  assert.doesNotMatch(server, /data-pill/, 'nothing is placed on the server');
+
+  const proto = window.HTMLElement.prototype;
+  const geometry = new Map<string, { left: number; width: number }>([
+    ['/vi', { left: 8, width: 96 }],
+    ['/vi/services', { left: 112, width: 80 }],
+  ]);
+  const define = (name: string, read: (element: HTMLElement) => number) =>
+    Object.defineProperty(proto, name, {
+      configurable: true,
+      get(this: HTMLElement) {
+        return read(this);
+      },
+    });
+  const box = (element: HTMLElement) => geometry.get(element.getAttribute('href') ?? '');
+  define('offsetLeft', (element) => box(element)?.left ?? 0);
+  define('offsetWidth', (element) => box(element)?.width ?? 0);
+  define('offsetTop', () => 4);
+  define('offsetHeight', () => 40);
+
+  const container = window.document.createElement('div');
+  window.document.body.appendChild(container);
+  const root = createRoot(container);
+  const render = (current: string) =>
+    act(() =>
+      root.render(
+        <ui.SiteNav
+          label="Menu"
+          items={[
+            { key: 'home', label: 'Trang chủ', href: '/vi', current: current === 'home' },
+            {
+              key: 'services',
+              label: 'Dịch vụ',
+              href: '/vi/services',
+              current: current === 'services',
+            },
+            { key: 'other', label: 'Khác', href: '/vi/other', current: current === 'other' },
+          ]}
+        />,
+      ),
+    );
+  const nav = () => container.querySelector('nav') as HTMLElement;
+
+  render('home');
+  assert.equal(nav().dataset['pill'], 'still', 'first placement never slides');
+  assert.equal(nav().style.getPropertyValue('--ls-pill-x'), '8px');
+  assert.equal(nav().style.getPropertyValue('--ls-pill-w'), '96px');
+  render('services');
+  assert.equal(nav().dataset['pill'], 'slide', 'a route change slides');
+  assert.equal(nav().style.getPropertyValue('--ls-pill-x'), '112px');
+  assert.equal(nav().style.getPropertyValue('--ls-pill-w'), '80px');
+  render('other');
+  assert.equal(
+    nav().dataset['pill'],
+    'none',
+    'a current entry that is not laid out hides the pill',
+  );
+  render('home');
+  assert.equal(
+    nav().dataset['pill'],
+    'still',
+    'it comes back in place, not sliding from a stale spot',
+  );
+  act(() => root.unmount());
+  for (const name of ['offsetLeft', 'offsetWidth', 'offsetTop', 'offsetHeight']) {
+    Reflect.deleteProperty(proto, name);
+  }
+
+  assert.match(css, /\.ls-site-nav \{[^}]*position: relative;/);
+  assert.match(css, /\.ls-subnav \{[^}]*position: relative;/);
+  assert.match(
+    css,
+    /\[data-pill='slide'\] > \.ls-nav-pill \{\s*transition:\s*translate var\(--ls-dur-slide\) var\(--ls-ease-premium\)/,
+  );
+  assert.match(css, /\.ls-route-fade\[data-enter='route'\] \{[^}]*animation: ls-route-in/);
+});
+
+test('an open dialog hides the phone tab bar (the seasonal frame would otherwise stack it over the dialog buttons)', () => {
+  assert.match(css, /\.ls-site:has\(\.ls-backdrop\) \.ls-tab-bar \{\s*visibility: hidden;/);
+});
+
+test('RouteEnter never animates the first page of a tab, and does on every later route when motion is allowed', () => {
+  assert.doesNotMatch(
+    renderToStaticMarkup(
+      <ui.RouteEnter>
+        <p>x</p>
+      </ui.RouteEnter>,
+    ),
+    /data-enter/,
+  );
+  class Observer {
+    observe() {}
+    disconnect() {}
+  }
+  (window as unknown as Record<string, unknown>).IntersectionObserver = Observer;
+  (globalThis as Record<string, unknown>).IntersectionObserver = Observer;
+  const mount = () => {
+    const container = window.document.createElement('div');
+    window.document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() =>
+      root.render(
+        <ui.RouteEnter>
+          <p>x</p>
+        </ui.RouteEnter>,
+      ),
+    );
+    return { container, root };
+  };
+  const first = mount();
+  assert.equal(first.container.querySelector('.ls-route-fade')?.getAttribute('data-enter'), null);
+  act(() => first.root.unmount());
+  const later = mount();
+  assert.equal(
+    later.container.querySelector('.ls-route-fade')?.getAttribute('data-enter'),
+    'route',
+  );
+  act(() => later.root.unmount());
+  Reflect.deleteProperty(window, 'IntersectionObserver');
+  Reflect.deleteProperty(globalThis, 'IntersectionObserver');
+});
+
 test('SiteSubNav is a named landmark of route links whose strip scrolls, never the page', () => {
   const html = renderToStaticMarkup(
     <ui.SiteSubNav
@@ -358,6 +488,7 @@ test('the motion tokens exist and are zero under reduced motion', () => {
   for (const name of [
     '--ls-dur-reveal',
     '--ls-dur-zoom',
+    '--ls-dur-slide',
     '--ls-ease-premium',
     '--ls-reveal-shift',
     '--ls-stagger',
@@ -373,6 +504,7 @@ test('the motion tokens exist and are zero under reduced motion', () => {
   for (const name of [
     '--ls-dur-reveal',
     '--ls-dur-zoom',
+    '--ls-dur-slide',
     '--ls-stagger',
     '--ls-reveal-shift',
     '--ls-parallax-shift',
@@ -386,7 +518,7 @@ test('the staff stylesheets never read the customer-side motion tokens', () => {
     const text = readFileSync(new URL(name, import.meta.url), 'utf8');
     assert.doesNotMatch(
       text,
-      /--ls-(dur-reveal|dur-zoom|ease-premium|reveal-shift|stagger|parallax-shift)/,
+      /--ls-(dur-reveal|dur-zoom|dur-slide|ease-premium|reveal-shift|stagger|parallax-shift)/,
       name,
     );
   }

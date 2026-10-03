@@ -150,6 +150,7 @@ export function CustomerInvoicesScreen() {
       {failure ? <Notice tone="danger">{failure}</Notice> : null}
       <DataTable
         mode="client"
+        className="ls-cards-one-line"
         caption={fill(w.common.list.table, { list: t.invoices.title })}
         columns={columns}
         rows={shown}

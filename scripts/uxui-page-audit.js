@@ -214,10 +214,12 @@
     // Docked shell chrome runs edge to edge with one border toward the content; it is not a content surface.
     if (
       el.matches(
-        'aside.ls-sidebar, header.ls-topbar, nav.ls-tab-bar, div.ls-action-bar, header.ls-site-header, footer.ls-site-footer',
+        'aside.ls-sidebar, header.ls-topbar, nav.ls-tab-bar, div.ls-action-bar, div.ls-form-actions, header.ls-site-header, footer.ls-site-footer',
       )
     )
       continue;
+    // A text field is a control, not a content surface (a tall textarea would otherwise count as one).
+    if (el.matches('textarea, input, select')) continue;
     if (s.backgroundColor === 'rgba(0, 0, 0, 0)') continue;
     const r = el.getBoundingClientRect();
     if (r.width < 160 || r.height < 60) continue;

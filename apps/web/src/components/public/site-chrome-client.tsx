@@ -1,6 +1,13 @@
 'use client';
 
-import { buttonClass, SiteNav, SiteSubNav, TabBar, ThemeCycle } from '@lucy-spa/ui';
+import {
+  buttonClass,
+  SiteNav,
+  SiteSubNav,
+  TabBar,
+  ThemeCycle,
+  type SiteLinkComponent,
+} from '@lucy-spa/ui';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getSiteText } from '../../i18n/site';
@@ -11,6 +18,16 @@ import { useSiteSession } from './site-session';
 
 // The parts of the site chrome that depend on the current page (current menu entry, the other language's URL).
 
+/**
+ * The menus' router link. `prefetch` loads the whole page (not only up to its loading skeleton) as soon as the link is
+ * on screen, so a click shows the page at once. Production only; the pages are public and cached, so this is cheap.
+ */
+const PrefetchLink: SiteLinkComponent = ({ children, ...rest }) => (
+  <Link prefetch {...rest}>
+    {children}
+  </Link>
+);
+
 /** The menu: Trang chủ and Dịch vụ for everyone, Lịch hẹn and Hóa đơn once a member is signed in. */
 export function PublicNav({ locale }: { locale: Locale }) {
   const text = getSiteText(locale);
@@ -20,7 +37,7 @@ export function PublicNav({ locale }: { locale: Locale }) {
     <SiteNav
       label={text.nav.menu}
       items={headerNavItems(locale, pathname, text.nav, signedIn)}
-      LinkComponent={Link}
+      LinkComponent={PrefetchLink}
     />
   );
 }
@@ -33,7 +50,7 @@ export function PublicTabBar({ locale }: { locale: Locale }) {
     <TabBar
       label={text.nav.phone}
       items={tabBarItems(locale, pathname, text.nav, signedIn)}
-      LinkComponent={Link}
+      LinkComponent={PrefetchLink}
     />
   );
 }
@@ -68,7 +85,7 @@ export function AccountTabs({ locale }: { locale: Locale }) {
     <SiteSubNav
       label={text.member.tabs}
       items={accountTabItems(locale, pathname, text.member)}
-      LinkComponent={Link}
+      LinkComponent={PrefetchLink}
     />
   );
 }
@@ -79,7 +96,7 @@ export function PublicHeaderCta({ locale }: { locale: Locale }) {
   const pathname = usePathname();
   if (pathname.startsWith(`/${locale}/account/book`)) return null;
   return (
-    <Link className={buttonClass('primary')} href={`/${locale}/account/book`}>
+    <Link prefetch className={buttonClass('primary')} href={`/${locale}/account/book`}>
       {text.header.bookNow}
     </Link>
   );

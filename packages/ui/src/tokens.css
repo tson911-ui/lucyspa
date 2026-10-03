@@ -168,6 +168,7 @@
      All of them are 0 under reduced motion. */
   --ls-dur-reveal: 480ms;
   --ls-dur-zoom: 400ms;
+  --ls-dur-slide: 360ms;
   --ls-ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
   --ls-reveal-shift: var(--ls-space-4);
   --ls-stagger: 60ms;
@@ -222,6 +223,7 @@
     --ls-dur-loop: 0ms;
     --ls-dur-reveal: 0ms;
     --ls-dur-zoom: 0ms;
+    --ls-dur-slide: 0ms;
     --ls-stagger: 0ms;
     --ls-reveal-shift: 0px;
     --ls-parallax-shift: 0px;

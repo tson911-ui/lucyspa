@@ -1,5 +1,5 @@
 import type { PublicSiteResponse } from '@lucy-spa/contracts';
-import { Band, buttonClass, PublicMain } from '@lucy-spa/ui';
+import { Band, buttonClass, PublicMain, Reveal } from '@lucy-spa/ui';
 import Link from 'next/link';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
@@ -72,10 +72,18 @@ export function HomeContent({
             </h1>
             <p className="ls-lead">{text.home.lead}</p>
             <div className="ls-hero-actions">
-              <Link className={buttonClass('primary', 'lg')} href={`/${locale}/account/book`}>
+              <Link
+                className={buttonClass('primary', 'lg')}
+                href={`/${locale}/account/book`}
+                prefetch
+              >
                 {text.home.bookNow}
               </Link>
-              <Link className={buttonClass('secondary', 'lg')} href={`/${locale}/services`}>
+              <Link
+                className={buttonClass('secondary', 'lg')}
+                href={`/${locale}/services`}
+                prefetch
+              >
                 {text.home.viewServices}
               </Link>
             </div>
@@ -91,12 +99,14 @@ export function HomeContent({
       ) : null}
 
       <Band tone="page" labelledBy="groups-title">
-        <div className="ls-section-head">
-          <h2 className="ls-site-h2" id="groups-title">
-            {text.home.groupsTitle}
-          </h2>
-          <p>{text.home.groupsLead}</p>
-        </div>
+        <Reveal>
+          <div className="ls-section-head">
+            <h2 className="ls-site-h2" id="groups-title">
+              {text.home.groupsTitle}
+            </h2>
+            <p>{text.home.groupsLead}</p>
+          </div>
+        </Reveal>
         {services === null ? (
           <LoadNotice locale={locale} section={text.home.sectionServices} />
         ) : services.groups.length === 0 ? (
@@ -107,11 +117,13 @@ export function HomeContent({
       </Band>
 
       <Band tone="surface" labelledBy="visit-title">
-        <div className="ls-section-head">
-          <h2 className="ls-site-h2" id="visit-title">
-            {text.home.visitTitle}
-          </h2>
-        </div>
+        <Reveal>
+          <div className="ls-section-head">
+            <h2 className="ls-site-h2" id="visit-title">
+              {text.home.visitTitle}
+            </h2>
+          </div>
+        </Reveal>
         {site === null ? (
           <LoadNotice locale={locale} section={text.home.sectionShop} />
         ) : (
