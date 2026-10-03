@@ -874,7 +874,7 @@ Done in 7.5: Skills and Branches (7.5d) and Employees (7.5c) are already on the 
 Ordering constraints: 2 -> 3 -> 4 -> 5; 6 needs 3; 7 needs 5 and 6; 8-10 need 4 and 5; 11 needs 3-5 (may start its backend half
 earlier if the Owner asks); 12 needs 11; 13 needs 6 and 11; 14 last. Steps 8-10 may swap order.
 
-**Part 2 (later, own contract, Owner to start):** customer area and public site redesign on the same tokens and kit, including the
+**Part 2 contract and step plan (proposed 2026-10-03, waiting for Owner approval): `UXUI_REDESIGN_PART2_DESIGN.md` and `UXUI_REDESIGN_PART2_PLAN.md`.** Original note: customer area and public site redesign on the same tokens and kit, including the
 premium motion system of PRD 4.4, the public look of the popup/slider, logo and imagery when supplied, and the serif display face
 decision. Nothing in Part 1 blocks it; Step 2 already removes gold from shared tokens.
 

@@ -343,3 +343,9 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 - Full gate green on the real app + scratch DBs: pnpm check, integration 70+5 and 478, smoke, DOM audit and axe on 52 pages x 360/768/1440 x light/dark (axe 0), Step 12/13 browser flow, S3/Step 12/13 lock races (website.race.integration.test.ts, mutation-checked).
 - Fixed: API keep-alive (proxy ECONNRESET), slide rows/date inputs/card titles/breadcrumbs at 360 px, axe heading/radiogroup/landmark findings, kit spacing literals to tokens. Report: docs/UXUI_REDESIGN_STEP14_FINAL_GATE.md (with the deploy checklist).
 - Left for Part 2 (customer area): ratchet wfClassUses 80, nativeFieldsets 4, nativeCheckboxes 1, solidDangerButtons 1.
+
+### UX/UI Part 2 contract and plan (customer area + public site) - approved 2026-10-03
+
+- docs/UXUI_REDESIGN_PART2_DESIGN.md (contract) + _PLAN.md (steps P2-1..P2-10) + mockups in docs/mockups/part2 (home, booking; real tokens, light/dark, 360/1440 reviewed).
+- Decisions: one site chrome for public + member, 4-step booking on unchanged API, new public site/services endpoints + website_shop_info (Owner-editable), Owner seed data, motion tokens scoped to .ls-site, all four Part 2 ratchet counters to 0.
+- Owner answered Q-P2-1..11 on 2026-10-03 (contract section 10): no guest booking, no "why choose us" section, SEO now; P2-1..P2-10 implementation follows.
