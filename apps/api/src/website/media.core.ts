@@ -61,8 +61,8 @@ function summary(row: SummaryRow): MediaAssetSummary {
 }
 
 /**
- * Where an image is used: popups (Step 12), slides, desktop or phone image (Step 13), and season decoration slots
- * (S6b). Delete protection and the alt-text rule both read this; the public-serving rule reads the
+ * Where an image is used: popups (Step 12), slides, desktop or phone image (Step 13), season decoration slots
+ * (S6b) and the shop info hero image (Part 2). Delete protection and the alt-text rule both read this; the public-serving rule reads the
  * same tables through `isPubliclyServed` (popup.core.ts).
  */
 export type MediaUsageLookup = (
@@ -81,6 +81,10 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
     orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     select: { id: true, titleVi: true, titleEn: true },
   });
+  const shopInfo = await tx.websiteShopInfo.findMany({
+    where: { heroMediaId: assetId },
+    select: { id: true },
+  });
   const seasons = await tx.websiteSeason.findMany({
     where: { slotMedia: { some: { mediaId: assetId } } },
     orderBy: [{ startsAt: 'desc' }, { id: 'asc' }],
@@ -97,6 +101,7 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
       id: slide.id,
       title: slide.titleVi ?? slide.titleEn ?? '',
     })),
+    ...shopInfo.map((row) => ({ kind: 'SHOP_INFO' as const, id: row.id, title: '' })),
     ...seasons.map((season) => ({ kind: 'SEASON' as const, id: season.id, title: season.label })),
   ];
 };

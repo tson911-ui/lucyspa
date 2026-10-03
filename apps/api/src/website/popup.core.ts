@@ -553,7 +553,7 @@ export function publicImageSources(
     }));
 }
 
-/** Is this image shown on the public site right now, by a live popup, a visible slide or the live season? */
+/** Is this image shown on the public site right now, by a live popup, a visible slide, the shop profile or the live season? */
 export async function isPubliclyServed(
   tx: Prisma.TransactionClient,
   assetId: string,
@@ -583,6 +583,12 @@ export async function isPubliclyServed(
     select: { id: true },
   });
   if (slide !== null) return true;
+  // The hero image of the shop profile is always public (the profile has no draft state).
+  const hero = await tx.websiteShopInfo.findFirst({
+    where: { heroMediaId: assetId },
+    select: { id: true },
+  });
+  if (hero !== null) return true;
   // A decoration image of the season that is live now (customer side only; the admin side never shows one).
   const decoration = await tx.websiteSeasonSlotMedia.findFirst({
     where: {

@@ -2770,7 +2770,7 @@ export interface MediaAssetSummary {
 
 /** Where an image is used (filled by the popup and slider Steps); an image with any usage cannot be deleted. */
 export interface MediaUsage {
-  kind: 'POPUP' | 'SLIDE' | 'SEASON';
+  kind: 'POPUP' | 'SLIDE' | 'SEASON' | 'SHOP_INFO';
   id: string;
   title: string;
 }
@@ -3078,4 +3078,102 @@ export interface PublicSeasonResponse {
   greetingFooter: boolean;
   /** Images that replace a slot's drawn art: slot name -> public URL. */
   media: Partial<Record<SeasonSlot, string>>;
+}
+
+// UX/UI Part 2 (P2-2): the public shop profile and the public service catalogue (docs/UXUI_REDESIGN_PART2_DESIGN.md 6).
+// Shop info is edited with MANAGE_WEBSITE_CONTENT (GLOBAL only); both public reads are anonymous and cached for 60 s.
+
+/** One group of opening hours: the ISO weekdays (1 = Monday ... 7 = Sunday) that share the same hours. */
+export interface PublicHoursGroup {
+  weekdays: number[];
+  closed: boolean;
+  /** `HH:MM` in the branch time zone; null when closed. */
+  opensAt: string | null;
+  closesAt: string | null;
+}
+
+export interface PublicSiteImage {
+  alt: string;
+  width: number;
+  height: number;
+  /** Narrowest first. */
+  sources: { url: string; width: number }[];
+}
+
+export interface PublicSiteResponse {
+  tagline: string;
+  address: string;
+  /** As the Owner typed it, for display. */
+  hotline: string;
+  /** For a `tel:` link, digits with a leading plus (`+84934936101`). */
+  hotlineTel: string;
+  mapUrl: string | null;
+  /** The branch time zone the hours are in. */
+  timezone: string;
+  hours: PublicHoursGroup[];
+  heroImage: PublicSiteImage | null;
+}
+
+export interface WebsiteShopInfoInput {
+  taglineVi: string;
+  taglineEn: string;
+  address: string;
+  hotline: string;
+  mapUrl: string | null;
+  hoursBranchId: string | null;
+  heroMediaId: string | null;
+}
+
+export interface WebsiteShopInfoUpdateRequest extends WebsiteShopInfoInput {
+  expectedVersion: number;
+}
+
+export interface WebsiteShopInfoBranchOption {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface WebsiteShopInfoResponse extends WebsiteShopInfoInput {
+  rowVersion: number;
+  updatedAt: string;
+  /** The active branches the hours can come from. */
+  branches: WebsiteShopInfoBranchOption[];
+  /** The branch the hours currently come from (the chosen one, or the first active branch), or null when there is none. */
+  hoursBranch: WebsiteShopInfoBranchOption | null;
+  /** Read-only preview of those hours, as the public site shows them. */
+  hours: PublicHoursGroup[];
+  timezone: string | null;
+}
+
+export type PublicPricingUnit = 'PER_SERVICE' | 'PER_NAIL';
+
+/** A service as a visitor sees it. Only the customer-facing estimate is public; the scheduling duration never is. */
+export interface PublicService {
+  code: string;
+  name: string;
+  description: string | null;
+  /** Integer VND as a string; `priceMinVnd` equals `priceMaxVnd` for an exact price. */
+  priceMinVnd: string;
+  priceMaxVnd: string;
+  pricingUnit: PublicPricingUnit;
+  estimatedMinMinutes: number;
+  estimatedMaxMinutes: number;
+}
+
+export interface PublicServiceGroup {
+  code: string;
+  name: string;
+  services: PublicService[];
+}
+
+export interface PublicServicesResponse {
+  groups: PublicServiceGroup[];
+}
+
+export interface PublicServiceDetailResponse {
+  service: PublicService;
+  group: { code: string; name: string };
+  /** The other services of the same group, in catalogue order. */
+  related: PublicService[];
 }

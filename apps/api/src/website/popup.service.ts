@@ -1,6 +1,9 @@
 import type {
   PublicPopupResponse,
+  PublicServiceDetailResponse,
+  PublicServicesResponse,
   PublicSeasonResponse,
+  PublicSiteResponse,
   PublicSlide,
   WebsitePopupEnabledRequest,
   WebsitePopupInput,
@@ -30,7 +33,9 @@ import {
   updatePopup,
   type PublicLocale,
 } from './popup.core.js';
+import { publicServiceDetail, publicServices } from './public-catalog.core.js';
 import { activeSeason } from './season.core.js';
+import { publicSite } from './shop-info.core.js';
 import { visibleSlides } from './slide.core.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -142,6 +147,20 @@ export class PublicWebsiteService {
   /** The slides that are visible now, in slider order and in the visitor's language (possibly none). */
   slides(locale: PublicLocale): Promise<PublicSlide[]> {
     return this.read(async (tx) => visibleSlides(tx, await this.throttle.now(tx), locale));
+  }
+
+  /** The shop profile (tagline, address, hotline, hours, hero image) in the visitor's language. */
+  site(locale: PublicLocale): Promise<PublicSiteResponse> {
+    return this.read((tx) => publicSite(tx, locale));
+  }
+
+  /** The service catalogue a visitor may see: active services of active categories offered by an active branch. */
+  services(locale: PublicLocale): Promise<PublicServicesResponse> {
+    return this.read((tx) => publicServices(tx, locale));
+  }
+
+  serviceDetail(locale: PublicLocale, code: string): Promise<PublicServiceDetailResponse> {
+    return this.read((tx) => publicServiceDetail(tx, locale, code));
   }
 
   /** One rendition of an image that live content uses. Anything else is 404, never a hint that it exists. */

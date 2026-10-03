@@ -76,6 +76,8 @@ import { TeamService } from './teams/team.service.js';
 import { MediaController } from './website/media.controller.js';
 import { MediaService } from './website/media.service.js';
 import { PopupController, PublicWebsiteController } from './website/popup.controller.js';
+import { ShopInfoController } from './website/shop-info.controller.js';
+import { ShopInfoService } from './website/shop-info.service.js';
 import { PopupService, PublicWebsiteService } from './website/popup.service.js';
 import { SeasonController } from './website/season.controller.js';
 import { SeasonService } from './website/season.service.js';
@@ -134,6 +136,7 @@ export class AppModule {
         PopupController,
         SlideController,
         SeasonController,
+        ShopInfoController,
         PublicWebsiteController,
       ],
       providers: [
@@ -189,6 +192,7 @@ export class AppModule {
         PopupService,
         SlideService,
         SeasonService,
+        ShopInfoService,
         PublicWebsiteService,
         { provide: PasswordService, useFactory: () => new PasswordService() },
         { provide: APP_GUARD, useClass: CsrfGuard },

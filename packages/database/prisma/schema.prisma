@@ -33,6 +33,7 @@ model Branch {
   auditEvents             AuditEvent[]
   serviceAvailability     ServiceBranchAvailability[]
   operatingHours          BranchOperatingHours[]
+  shopInfoHours           WebsiteShopInfo[]
   attendanceRecords       AttendanceRecord[]
   collaboratorWork        CollaboratorWorkOccurrence[]
   bookings                Booking[]
@@ -403,6 +404,7 @@ model User {
   createdMediaAssets             MediaAsset[]                     @relation("MediaAssetCreator")
   createdWebsitePopups           WebsitePopup[]                   @relation("WebsitePopupCreator")
   updatedWebsitePopups           WebsitePopup[]                   @relation("WebsitePopupUpdater")
+  updatedShopInfo                WebsiteShopInfo[]                @relation("WebsiteShopInfoUpdater")
   createdWebsiteSlides           WebsiteSlide[]                   @relation("WebsiteSlideCreator")
   updatedWebsiteSlides           WebsiteSlide[]                   @relation("WebsiteSlideUpdater")
   createdWebsiteSeasons          WebsiteSeason[]                  @relation("WebsiteSeasonCreator")
@@ -1953,6 +1955,7 @@ model MediaAsset {
   updatedAt        DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   variants         MediaVariant[]
   popups           WebsitePopup[]
+  shopInfoHero     WebsiteShopInfo[]
   slides           WebsiteSlide[] @relation("WebsiteSlideImage")
   mobileSlides     WebsiteSlide[] @relation("WebsiteSlideMobileImage")
   seasonSlots      WebsiteSeasonSlotMedia[]
@@ -2005,6 +2008,31 @@ model WebsitePopup {
   @@index([mediaId], map: "website_popups_media_idx")
   @@index([seasonId], map: "website_popups_season_idx")
   @@map("website_popups")
+}
+
+// UX/UI Part 2 (P2-2): the public shop profile, one row (the id is fixed by a CHECK). Texts and contact for the website
+// header, footer and home; opening hours are NOT stored here: they are read from the branch's operating hours (the
+// same rows the booking engine uses). Both keys are RESTRICT. The migration seeds the Owner's real values.
+model WebsiteShopInfo {
+  id              String      @id @default("shop")
+  taglineVi       String      @map("tagline_vi")
+  taglineEn       String      @map("tagline_en")
+  address         String
+  hotline         String
+  mapUrl          String?     @map("map_url")
+  hoursBranchId   String?     @map("hours_branch_id") @db.Uuid
+  hoursBranch     Branch?     @relation(fields: [hoursBranchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  heroMediaId     String?     @map("hero_media_id") @db.Uuid
+  heroMedia       MediaAsset? @relation(fields: [heroMediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion      Int         @default(1) @map("row_version")
+  updatedByUserId String?     @map("updated_by_user_id") @db.Uuid
+  updatedBy       User?       @relation("WebsiteShopInfoUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([heroMediaId], map: "website_shop_info_media_idx")
+  @@index([hoursBranchId], map: "website_shop_info_branch_idx")
+  @@map("website_shop_info")
 }
 
 // UX/UI Step 13: the homepage slider (design 16.6). Marketing content, not history: a real delete is allowed.

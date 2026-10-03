@@ -1,6 +1,9 @@
 import type {
   PublicPopupResponse,
   PublicSeasonResponse,
+  PublicServiceDetailResponse,
+  PublicServicesResponse,
+  PublicSiteResponse,
   PublicSlidesResponse,
   WebsitePopupEnabledRequest,
   WebsitePopupInput,
@@ -227,6 +230,55 @@ export class PublicWebsiteController {
     response.setHeader('cache-control', 'public, max-age=60');
     response.setHeader('vary', 'Accept-Encoding');
     return { items };
+  }
+
+  @Get('site')
+  @ApiOkResponse({
+    description:
+      'The shop profile in the visitor language (`locale=vi|en`): tagline, address, hotline, map link, grouped opening hours of the shop branch and the hero image. Cached for 60 seconds.',
+  })
+  async site(
+    @Query('locale') locale: string | undefined,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PublicSiteResponse> {
+    if (locale !== 'vi' && locale !== 'en') throw new AuthError('VALIDATION_FAILED', 'locale');
+    const site = await this.website.site(locale);
+    response.setHeader('cache-control', 'public, max-age=60');
+    response.setHeader('vary', 'Accept-Encoding');
+    return site;
+  }
+
+  @Get('services')
+  @ApiOkResponse({
+    description:
+      'The service catalogue in the visitor language: groups with their active services, price range, per-nail flag and customer-facing time estimate. The internal scheduling duration is never included. Cached for 60 seconds.',
+  })
+  async services(
+    @Query('locale') locale: string | undefined,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PublicServicesResponse> {
+    if (locale !== 'vi' && locale !== 'en') throw new AuthError('VALIDATION_FAILED', 'locale');
+    const catalogue = await this.website.services(locale);
+    response.setHeader('cache-control', 'public, max-age=60');
+    response.setHeader('vary', 'Accept-Encoding');
+    return catalogue;
+  }
+
+  @Get('services/:code')
+  @ApiOkResponse({
+    description:
+      'One visible service by its code with its group and the other services of that group; 404 for an unknown, inactive or unavailable service. Cached for 60 seconds.',
+  })
+  async serviceDetail(
+    @Param('code') code: string,
+    @Query('locale') locale: string | undefined,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PublicServiceDetailResponse> {
+    if (locale !== 'vi' && locale !== 'en') throw new AuthError('VALIDATION_FAILED', 'locale');
+    const detail = await this.website.serviceDetail(locale, code);
+    response.setHeader('cache-control', 'public, max-age=60');
+    response.setHeader('vary', 'Accept-Encoding');
+    return detail;
   }
 
   @Get('media/:id/:variant')

@@ -354,3 +354,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Tokens (3xl, display, customer motion), Playfair 500/600, kit site frame (SiteHeader/Nav/TabBar/Footer/Band/PublicPage/PriceList/Steps/ChoiceCard/Reveal/ThemeCycle, site.css), siteNav registry, shared chrome + interim home hero; legacy welcome/site-header CSS deleted. Report: docs/UXUI_REDESIGN_PART2_P2-1_FOUNDATIONS.md.
 - Audit script knows the public frame (display tokens, hero actions, ls-site-main). Ratchet gained siteCssSpacingLiterals 0. No migration, no permission change.
+
+### UX/UI Part 2 Step P2-2 (shop info + public endpoints) - 2026-10-03
+
+- Migration 20261023000000 website_shop_info (one row, Owner seed); admin GET/POST /website/shop-info; public GET /public/site, /public/services, /public/services/:code (60 s cache, no internal duration). Report: docs/UXUI_REDESIGN_PART2_P2-2_BACKEND.md.
+- No new permission. Deploy: db:deploy (additive). Hero image is a media use (SHOP_INFO).
