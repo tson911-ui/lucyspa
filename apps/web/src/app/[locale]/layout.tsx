@@ -12,6 +12,7 @@ import '@lucy-spa/ui/season-preview.css';
 import '@lucy-spa/ui/base.css';
 import '@lucy-spa/ui/components.css';
 import '@lucy-spa/ui/shell.css';
+import '@lucy-spa/ui/site.css';
 import { getDictionary } from '../../i18n/dictionaries';
 import { isLocale, locales } from '../../i18n/locales';
 import { ADMIN_HIDE_COOKIE, seasonRootAttributes } from '../../lib/season-core';
@@ -30,7 +31,8 @@ const beVietnamPro = Be_Vietnam_Pro({
 // draws in the font itself, self-hosted by next/font; never a system serif.
 const playfairDisplay = Playfair_Display({
   subsets: ['latin', 'vietnamese'],
-  weight: ['400'],
+  // 500 and 600 are the h1-h3 weights of the public site and member area (Part 2 contract 4); 400 stays for greetings.
+  weight: ['400', '500', '600'],
   style: ['normal', 'italic'],
   display: 'swap',
   variable: '--font-playfair-display',

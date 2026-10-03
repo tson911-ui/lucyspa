@@ -3,7 +3,7 @@
 import type { PublicSlide } from '@lucy-spa/contracts';
 import { Slider, type PromoLink, type SliderLabels } from '@lucy-spa/ui';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { getDictionary } from '../../i18n/dictionaries';
 import type { Locale } from '../../i18n/locales';
 import { loadPublicSlides, sliderSlidesOf } from '../../lib/slider-core';
@@ -16,10 +16,16 @@ const RouterLink: PromoLink = ({ href, className, onClick, children }) => (
 
 /**
  * The homepage slider (design 16.6), mounted by the public home page only. It asks the API for the slides
- * that are visible now after the page has painted and draws nothing when there are none, so the current
- * home content is unchanged. The request is anonymous (no cookie) and any failure means "no slides".
+ * that are visible now after the page has painted and draws the fallback (nothing by default) when there are none. The request is anonymous (no cookie) and any failure means "no slides".
  */
-export function HomeSlider({ locale }: { locale: Locale }) {
+export function HomeSlider({
+  locale,
+  fallback = null,
+}: {
+  locale: Locale;
+  /** Drawn while there is no slide to show (and before the slides arrive). */
+  fallback?: ReactNode;
+}) {
   const [slides, setSlides] = useState<PublicSlide[]>([]);
   const text = getDictionary(locale);
 
@@ -47,8 +53,6 @@ export function HomeSlider({ locale }: { locale: Locale }) {
     slide: text.sliderSlide,
     goTo: text.sliderGoTo,
   };
-  if (items.length === 0) return null;
-  return (
-    <Slider className="home-slider" slides={items} labels={labels} LinkComponent={RouterLink} />
-  );
+  if (items.length === 0) return fallback;
+  return <Slider slides={items} labels={labels} LinkComponent={RouterLink} />;
 }

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { buttonClass, Band, PublicMain } from '@lucy-spa/ui';
 import { getDictionary } from '../../i18n/dictionaries';
 import type { Locale } from '../../i18n/locales';
 import { HomeSlider } from './home-slider';
@@ -11,33 +12,35 @@ import { PromoPopup } from './promo-popup';
 export function HomeContent({ locale, popup = true }: { locale: Locale; popup?: boolean }) {
   const dictionary = getDictionary(locale);
   return (
-    <main className="welcome" id="main-content" tabIndex={-1}>
-      <HomeSlider locale={locale} />
-      <div className="welcome-copy">
-        <p className="eyebrow">{dictionary.eyebrow}</p>
-        <h1>{dictionary.heading}</h1>
-        <p className="introduction">{dictionary.introduction}</p>
-        <nav className="welcome-actions" aria-label={dictionary.book}>
-          <Link className="welcome-primary" href={`/${locale}/account/book`}>
-            {dictionary.book}
-          </Link>
-          <Link href={`/${locale}/account/login`}>{dictionary.signIn}</Link>
-          <Link href={`/${locale}/account/register`}>{dictionary.register}</Link>
-        </nav>
-        <div className="welcome-note">
-          <p>{dictionary.welcome}</p>
+    <PublicMain>
+      <Band tone="page" labelledBy="home-title" className="ls-hero">
+        <div className="ls-hero-grid">
+          <div className="ls-hero-copy">
+            <p className="ls-eyebrow">{dictionary.eyebrow}</p>
+            <h1 className="ls-site-display" id="home-title">
+              {dictionary.heading}
+            </h1>
+            <p className="ls-lead">{dictionary.introduction}</p>
+            <div className="ls-hero-actions">
+              <Link className={buttonClass('primary', 'lg')} href={`/${locale}/account/book`}>
+                {dictionary.book}
+              </Link>
+              <Link className={buttonClass('secondary', 'lg')} href={`/${locale}/account/login`}>
+                {dictionary.signIn}
+              </Link>
+            </div>
+          </div>
+          <HomeSlider
+            locale={locale}
+            fallback={
+              <div className="ls-brand-panel" aria-hidden="true">
+                <span className="ls-brand-panel-mark">Lucy Spa</span>
+              </div>
+            }
+          />
         </div>
-      </div>
-      <div className="welcome-art" aria-hidden="true">
-        <div className="art-frame">
-          <span className="art-orbit art-orbit-one" />
-          <span className="art-orbit art-orbit-two" />
-          <span className="art-line" />
-          <span className="art-initial">L</span>
-          <span className="art-caption">Lucy Spa</span>
-        </div>
-      </div>
+      </Band>
       {popup ? <PromoPopup locale={locale} /> : null}
-    </main>
+    </PublicMain>
   );
 }

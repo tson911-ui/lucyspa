@@ -73,6 +73,7 @@ const metrics: Record<string, Map<string, number>> = {
   seasonArtCssSpacingLiterals: spacingLiterals('packages/ui/src/season-art.css'),
   componentsCssSpacingLiterals: spacingLiterals('packages/ui/src/components.css'),
   shellCssSpacingLiterals: spacingLiterals('packages/ui/src/shell.css'),
+  siteCssSpacingLiterals: spacingLiterals('packages/ui/src/site.css'),
 };
 const total = (map: Map<string, number>) =>
   [...map.values()].reduce((sum, value) => sum + value, 0);

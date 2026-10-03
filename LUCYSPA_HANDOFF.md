@@ -349,3 +349,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 - docs/UXUI_REDESIGN_PART2_DESIGN.md (contract) + _PLAN.md (steps P2-1..P2-10) + mockups in docs/mockups/part2 (home, booking; real tokens, light/dark, 360/1440 reviewed).
 - Decisions: one site chrome for public + member, 4-step booking on unchanged API, new public site/services endpoints + website_shop_info (Owner-editable), Owner seed data, motion tokens scoped to .ls-site, all four Part 2 ratchet counters to 0.
 - Owner answered Q-P2-1..11 on 2026-10-03 (contract section 10): no guest booking, no "why choose us" section, SEO now; P2-1..P2-10 implementation follows.
+
+### UX/UI Part 2 Step P2-1 (foundations) - 2026-10-03
+
+- Tokens (3xl, display, customer motion), Playfair 500/600, kit site frame (SiteHeader/Nav/TabBar/Footer/Band/PublicPage/PriceList/Steps/ChoiceCard/Reveal/ThemeCycle, site.css), siteNav registry, shared chrome + interim home hero; legacy welcome/site-header CSS deleted. Report: docs/UXUI_REDESIGN_PART2_P2-1_FOUNDATIONS.md.
+- Audit script knows the public frame (display tokens, hero actions, ls-site-main). Ratchet gained siteCssSpacingLiterals 0. No migration, no permission change.

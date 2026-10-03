@@ -35,18 +35,46 @@ export {
 export type { ResolvedTheme, ThemePreference } from './theme-core';
 export { ThemeInitScript } from './theme-script';
 export { RouteFade } from './route-fade';
+// Public site and member-area frame (Part 2): header, menu, tab bar, footer, bands, price list, steps, choice card, reveal.
+export {
+  Band,
+  PriceList,
+  PublicMain,
+  PublicPage,
+  SiteFooter,
+  SiteNav,
+  Steps,
+  TabBar,
+} from './site';
+export type {
+  FooterColumn,
+  PriceListItem,
+  SiteLinkComponent,
+  SiteNavItem,
+  StepItem,
+  TabBarItem,
+} from './site';
+export { SiteHeader } from './site-header';
+export { ChoiceCard } from './choice-card';
+export { Reveal } from './reveal';
+export { ThemeCycle } from './theme-cycle';
+export type { ThemeCycleLabels } from './theme-cycle';
+export {
+  LOW_MEMORY_GB,
+  MAX_STAGGER_INDEX,
+  motionAllowed,
+  staggerIndex,
+  startsVisible,
+} from './reveal-core';
+export type { MotionEnvironment } from './reveal-core';
 export { useTheme } from './use-theme';
 export type { ThemeState } from './use-theme';
 
 // Core components (Step 3). Text always comes from props; styles are in `components.css`.
-export { Button, ButtonLink, IconButton, VisuallyHidden, buttonClass } from './button';
-export type {
-  ButtonLinkProps,
-  ButtonProps,
-  ButtonSize,
-  ButtonVariant,
-  IconButtonProps,
-} from './button';
+export { Button, ButtonLink, IconButton, VisuallyHidden } from './button';
+export { buttonClass } from './button-class';
+export type { ButtonLinkProps, ButtonProps, IconButtonProps } from './button';
+export type { ButtonSize, ButtonVariant } from './button-class';
 export { ActionBar, RowActions } from './actions';
 export { Menu, arrangeMenu } from './menu';
 export type { MenuDivider, MenuEntry, MenuItem } from './menu';

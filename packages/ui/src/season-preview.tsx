@@ -1,5 +1,5 @@
 import type { SeasonOrnamentId } from '@lucy-spa/contracts';
-import { buttonClass } from './button';
+import { buttonClass } from './button-class';
 import { cx } from './cx';
 import { GreetingStrip, SeasonFrame } from './season-frame';
 import { SeasonOrnament } from './season-ornaments';

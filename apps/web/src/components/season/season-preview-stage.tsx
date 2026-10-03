@@ -74,7 +74,7 @@ export function SeasonPreviewStage({ locale }: { locale: Locale }) {
   const footer = <PublicFooter locale={locale} />;
   const home = <HomeContent locale={locale} popup={false} />;
   return (
-    <div ref={root} className="ls-season-preview-root">
+    <div ref={root} className="ls-season-preview-root ls-site">
       {decor ? (
         <SeasonSiteFrame decor={decor} locale={locale} header={header} footer={footer}>
           {home}

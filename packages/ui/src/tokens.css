@@ -108,6 +108,13 @@
   --ls-leading-xl: 1.3;
   --ls-text-2xl: 2rem;
   --ls-leading-2xl: 1.2;
+  /* Public site and member area only (Part 2 contract 4): section titles and the single hero h1. Admin never reads them. */
+  --ls-text-3xl: clamp(1.75rem, 1.35rem + 1.6vw, 2.5rem);
+  --ls-leading-3xl: 1.2;
+  --ls-text-display: clamp(2rem, 1.3rem + 2.8vw, 3.5rem);
+  --ls-leading-display: 1.15;
+  --ls-font-display:
+    var(--font-playfair-display), var(--font-be-vietnam-pro), system-ui, 'Segoe UI', sans-serif;
 
   /* Spacing (4 px base), radius, sizes */
   --ls-space-1: 0.25rem;
@@ -157,6 +164,17 @@
   --ls-dur-drift: 12s;
   --ls-ease: cubic-bezier(0.2, 0, 0, 1);
   --ls-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  /* Customer-side motion (Part 2 contract 7; PRD 4.4): read only by site.css under .ls-site, never by the admin.
+     All of them are 0 under reduced motion. */
+  --ls-dur-reveal: 480ms;
+  --ls-dur-zoom: 400ms;
+  --ls-ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
+  --ls-reveal-shift: var(--ls-space-4);
+  --ls-stagger: 60ms;
+  --ls-parallax-shift: var(--ls-space-6);
+  /* Public chrome sizes */
+  --ls-site-header-h: 4rem;
+  --ls-tab-bar-h: 4rem;
   /* Button press feedback (micro-interaction); 1 = none */
   --ls-press-scale: 0.98;
   /* Where a drawer slides in from (start-side drawers override with -100%) */
@@ -202,6 +220,11 @@
     --ls-dur-base: 0ms;
     --ls-dur-slow: 0ms;
     --ls-dur-loop: 0ms;
+    --ls-dur-reveal: 0ms;
+    --ls-dur-zoom: 0ms;
+    --ls-stagger: 0ms;
+    --ls-reveal-shift: 0px;
+    --ls-parallax-shift: 0px;
     --ls-press-scale: 1;
   }
 }

@@ -1,7 +1,8 @@
 'use client';
 
 import type { ComponentType, ReactNode } from 'react';
-import { buttonClass, IconButton } from './button';
+import { IconButton } from './button';
+import { buttonClass } from './button-class';
 import { cx } from './cx';
 import { Icon } from './icons';
 

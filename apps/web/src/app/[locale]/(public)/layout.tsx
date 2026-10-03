@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { PublicTabBar } from '../../../components/public/site-chrome-client';
 import { PublicFooter, PublicHeader } from '../../../components/public/site-chrome';
 import { loadSiteDecor, SeasonSiteFrame } from '../../../components/season/site-frame';
 import { isLocale } from '../../../i18n/locales';
@@ -17,18 +18,20 @@ export default async function PublicLayout({ children, params }: PublicLayoutPro
   const header = <PublicHeader locale={locale} decor={decor} />;
   const footer = <PublicFooter locale={locale} />;
 
-  if (decor) {
-    return (
-      <SeasonSiteFrame decor={decor} locale={locale} header={header} footer={footer}>
-        {children}
-      </SeasonSiteFrame>
-    );
-  }
   return (
-    <div className="site-shell">
-      {header}
-      {children}
-      {footer}
+    <div className="ls-site">
+      {decor ? (
+        <SeasonSiteFrame decor={decor} locale={locale} header={header} footer={footer}>
+          {children}
+        </SeasonSiteFrame>
+      ) : (
+        <div className="site-shell">
+          {header}
+          {children}
+          {footer}
+        </div>
+      )}
+      <PublicTabBar locale={locale} />
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   type ReactNode,
   type Ref,
 } from 'react';
+import { buttonClass, type ButtonSize, type ButtonVariant } from './button-class';
 import { cx } from './cx';
 import { Icon, type IconName } from './icons';
 import { Spinner } from './spinner';
@@ -15,21 +16,6 @@ import { Tooltip } from './tooltip';
 
 // Action components (docs/UXUI_REDESIGN_DESIGN.md 9.1). No fixed widths: labels wrap, so the longest
 // Vietnamese label still fits (contract section 5).
-
-/**
- * `danger` (solid red) is for confirmation dialogs only; a test fails if it appears elsewhere.
- * Everywhere else a destructive action is `danger-outline`.
- */
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger-outline' | 'danger';
-export type ButtonSize = 'md' | 'lg';
-
-export function buttonClass(
-  variant: ButtonVariant = 'secondary',
-  size: ButtonSize = 'md',
-  className?: string | undefined,
-): string {
-  return cx('ls-btn', `ls-btn-${variant}`, `ls-btn-${size}`, className);
-}
 
 interface CommonProps {
   variant?: ButtonVariant | undefined;

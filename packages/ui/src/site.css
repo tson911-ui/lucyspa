@@ -1,0 +1,662 @@
+/* Public site and member-area frame (docs/UXUI_REDESIGN_PART2_DESIGN.md sections 3-7). Tokens only: no color literals, no
+   px/rem spacing literals, no literal durations. The customer-side motion tokens are read here and nowhere in the admin
+   stylesheets (a test checks it). Mobile first; the tab bar and the header menu swap at 1024 px. */
+.ls-site {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  background: var(--ls-bg-page);
+  color: var(--ls-text);
+}
+
+.ls-site-main {
+  flex: 1;
+}
+
+.ls-site-main:focus {
+  outline: none;
+}
+
+.ls-container {
+  width: 100%;
+  max-width: var(--ls-content-max);
+  margin-inline: auto;
+  padding-inline: var(--ls-gutter);
+}
+
+.ls-container-narrow {
+  max-width: var(--ls-form-max);
+}
+
+/* ---------- type ---------- */
+.ls-eyebrow {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-xs);
+  line-height: var(--ls-leading-xs);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* The display face is for h1-h3 of the public site and member area only (contract 4); each rule sets every property
+   the legacy global h1 rule touches, so nothing leaks from it. */
+.ls-site-display,
+.ls-h1-display,
+.ls-site-h2,
+.ls-site-h3 {
+  margin: 0;
+  color: var(--ls-text);
+  font-family: var(--ls-font-display);
+  font-weight: 500;
+  letter-spacing: normal;
+  white-space: normal;
+  text-wrap: balance;
+}
+
+.ls-site-display {
+  font-size: var(--ls-text-display);
+  line-height: var(--ls-leading-display);
+}
+
+.ls-h1-display,
+.ls-site-h2 {
+  font-size: var(--ls-text-3xl);
+  line-height: var(--ls-leading-3xl);
+}
+
+.ls-site-h3 {
+  font-size: var(--ls-text-lg);
+  line-height: var(--ls-leading-lg);
+  font-weight: 600;
+}
+
+.ls-lead {
+  margin: 0;
+  max-width: 36rem;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-md);
+  line-height: var(--ls-leading-md);
+}
+
+.ls-public-title {
+  display: grid;
+  gap: var(--ls-space-2);
+  padding-block: var(--ls-space-8) var(--ls-space-5);
+}
+
+/* ---------- header ---------- */
+.ls-site-sentinel {
+  position: absolute;
+  top: 0;
+  inset-inline-start: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.ls-site-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--ls-z-sticky);
+  background: var(--ls-bg-surface);
+  border-bottom: 1px solid var(--ls-border);
+  transition: box-shadow var(--ls-dur-base) var(--ls-ease-out);
+}
+
+.ls-site-header[data-scrolled='true'] {
+  box-shadow: var(--ls-shadow-sm);
+}
+
+.ls-site-header-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-4);
+  min-height: var(--ls-site-header-h);
+}
+
+.ls-site-brand {
+  margin-inline-end: auto;
+}
+
+.ls-site-brand a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+  color: var(--ls-brand);
+  text-decoration: none;
+}
+
+.ls-site-nav {
+  display: none;
+  align-items: center;
+  gap: var(--ls-space-1);
+}
+
+.ls-site-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+  padding-inline: var(--ls-space-4);
+  border-radius: var(--ls-radius-full);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    background var(--ls-dur-fast) var(--ls-ease-out),
+    color var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+.ls-site-nav a:hover {
+  background: var(--ls-hover-bg);
+  color: var(--ls-hover-text);
+}
+
+.ls-site-nav a[aria-current='page'] {
+  background: var(--ls-brand-soft);
+  color: var(--ls-brand-on-soft);
+  font-weight: 600;
+}
+
+.ls-site-nav a[aria-current='page']:hover {
+  background: var(--ls-hover-bg);
+  color: var(--ls-hover-text);
+}
+
+.ls-site-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+}
+
+.ls-site-cta {
+  display: none;
+}
+
+/* Round tool buttons of the header (language, theme, account) and the pill shape of every kit button on these pages. */
+.ls-theme-cycle,
+.ls-site-tool {
+  display: inline-grid;
+  place-items: center;
+  width: var(--ls-control-h);
+  height: var(--ls-control-h);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-surface);
+  color: var(--ls-text);
+  padding: 0;
+  font: inherit;
+  font-size: var(--ls-text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background var(--ls-dur-fast) var(--ls-ease-out),
+    color var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+.ls-theme-cycle:hover,
+.ls-site-tool:hover {
+  background: var(--ls-hover-bg);
+  border-color: var(--ls-hover-border);
+  color: var(--ls-hover-text);
+}
+
+.ls-site .ls-btn {
+  border-radius: var(--ls-radius-full);
+}
+
+@media (min-width: 1024px) {
+  .ls-site-nav {
+    display: flex;
+  }
+
+  .ls-site-cta {
+    display: block;
+  }
+}
+
+/* ---------- phone tab bar ---------- */
+.ls-tab-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--ls-z-sticky);
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  padding-bottom: var(--ls-safe-bottom);
+  background: var(--ls-bg-surface);
+  border-top: 1px solid var(--ls-border);
+}
+
+.ls-tab-bar a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ls-space-1);
+  min-height: var(--ls-tab-bar-h);
+  padding-inline: var(--ls-space-1);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-xs);
+  line-height: var(--ls-leading-xs);
+  font-weight: 500;
+  text-align: center;
+  text-decoration: none;
+}
+
+.ls-tab-bar a[aria-current='page'] {
+  color: var(--ls-brand);
+  font-weight: 600;
+}
+
+@media (min-width: 1024px) {
+  .ls-tab-bar {
+    display: none;
+  }
+}
+
+/* ---------- bands ---------- */
+.ls-band {
+  padding-block: var(--ls-space-9);
+}
+
+.ls-band-page {
+  background: var(--ls-bg-page);
+}
+
+.ls-band-surface {
+  background: var(--ls-bg-surface);
+}
+
+.ls-band-flush {
+  padding-block: 0;
+}
+
+.ls-section-head {
+  display: grid;
+  gap: var(--ls-space-2);
+  margin-bottom: var(--ls-space-7);
+}
+
+.ls-section-head p {
+  margin: 0;
+  color: var(--ls-text-muted);
+}
+
+/* ---------- hero ---------- */
+.ls-hero {
+  padding-block: var(--ls-space-8) var(--ls-space-9);
+}
+
+.ls-hero-grid {
+  display: grid;
+  gap: var(--ls-space-7);
+  align-items: center;
+}
+
+.ls-hero-copy {
+  display: grid;
+  gap: var(--ls-space-4);
+  justify-items: start;
+}
+
+.ls-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-3);
+}
+
+@media (min-width: 1024px) {
+  .ls-hero-grid {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: var(--ls-space-9);
+  }
+}
+
+/* Hero fallback when there is no slide and no hero image: a brand panel in the slider's frame (same aspect ratio,
+   so a slider arriving after the first paint does not move the page). */
+.ls-brand-panel {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--ls-radius-md);
+  background: linear-gradient(135deg, var(--ls-auth-panel-from), var(--ls-auth-panel-to));
+  color: var(--ls-auth-panel-text);
+}
+
+.ls-brand-panel-mark {
+  font-size: var(--ls-text-3xl);
+  line-height: var(--ls-leading-3xl);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ---------- cards and lists ---------- */
+.ls-site-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ls-space-4);
+  padding: var(--ls-space-6);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-md);
+  background: var(--ls-bg-surface);
+  box-shadow: var(--ls-shadow-sm);
+}
+
+.ls-band-surface .ls-site-card {
+  background: var(--ls-bg-page);
+  box-shadow: none;
+}
+
+.ls-site-grid {
+  display: grid;
+  gap: var(--ls-space-5);
+}
+
+@media (min-width: 640px) {
+  .ls-site-grid-groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .ls-site-grid-groups {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.ls-price-list {
+  display: grid;
+  gap: var(--ls-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-price-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--ls-space-1) var(--ls-space-3);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-price {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ls-site-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-1);
+  min-width: var(--ls-control-h);
+  min-height: var(--ls-control-h);
+  color: var(--ls-brand);
+  font-size: var(--ls-text-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ls-site-link:hover {
+  text-decoration: underline;
+}
+
+/* ---------- footer ---------- */
+.ls-site-footer {
+  border-top: 1px solid var(--ls-border);
+  background: var(--ls-bg-surface);
+}
+
+.ls-site-footer-grid {
+  display: grid;
+  gap: var(--ls-space-7);
+  padding-block: var(--ls-space-9);
+}
+
+@media (min-width: 768px) {
+  .ls-site-footer-grid {
+    grid-template-columns: 2fr repeat(3, minmax(0, 1fr));
+  }
+}
+
+.ls-site-footer-brand a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+  color: var(--ls-brand);
+  text-decoration: none;
+}
+
+.ls-site-footer-brand p {
+  margin: var(--ls-space-3) 0 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+}
+
+.ls-site-footer-title {
+  margin: 0 0 var(--ls-space-3);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+  font-weight: 600;
+}
+
+.ls-site-footer-list {
+  display: grid;
+  gap: var(--ls-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+}
+
+.ls-site-footer-list a {
+  display: inline-flex;
+  align-items: center;
+  min-width: var(--ls-control-h);
+  min-height: var(--ls-control-h);
+  text-decoration: none;
+}
+
+.ls-site-footer-list a:hover {
+  text-decoration: underline;
+}
+
+.ls-site-footer-baseline {
+  border-top: 1px solid var(--ls-border);
+}
+
+.ls-site-footer-base {
+  padding-block: var(--ls-space-5);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-xs);
+  line-height: var(--ls-leading-xs);
+  text-align: center;
+}
+
+/* Seasonal page (S6): the dividers replace the plain header and footer rules. */
+.ls-site-page .ls-site-header,
+.ls-site-page .ls-site-footer {
+  border-width: 0;
+}
+
+/* ---------- booking: steps and choice rows ---------- */
+.ls-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ls-space-2);
+  margin: 0 0 var(--ls-space-7);
+  padding: 0;
+  list-style: none;
+}
+
+.ls-steps li {
+  display: grid;
+  gap: var(--ls-space-2);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-xs);
+  line-height: var(--ls-leading-xs);
+  font-weight: 500;
+}
+
+.ls-steps li::before {
+  content: '';
+  height: var(--ls-space-1);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-border);
+}
+
+.ls-steps li[data-done='true']::before,
+.ls-steps li[aria-current='step']::before {
+  background: var(--ls-brand-fill);
+}
+
+.ls-steps li[aria-current='step'] {
+  color: var(--ls-brand);
+  font-weight: 600;
+}
+
+.ls-steps-long {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .ls-steps li {
+    font-size: var(--ls-text-sm);
+    line-height: var(--ls-leading-sm);
+  }
+
+  .ls-steps-long {
+    display: inline;
+  }
+
+  .ls-steps-short {
+    display: none;
+  }
+}
+
+.ls-choice {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ls-space-4);
+  min-height: var(--ls-row-h);
+  padding: var(--ls-space-4);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-md);
+  background: var(--ls-bg-surface);
+  cursor: pointer;
+  transition:
+    background var(--ls-dur-fast) var(--ls-ease-out),
+    border-color var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+.ls-choice:hover {
+  border-color: var(--ls-brand);
+}
+
+.ls-choice[data-checked='true'] {
+  border-color: var(--ls-brand);
+  background: var(--ls-brand-soft);
+}
+
+.ls-choice-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ls-choice-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.ls-choice:has(.ls-choice-input:focus-visible) {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: 2px;
+}
+
+.ls-choice-tick {
+  display: grid;
+  place-items: center;
+  width: var(--ls-space-6);
+  height: var(--ls-space-6);
+  border: 1px solid var(--ls-border-control);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-surface);
+  color: transparent;
+  transition:
+    background var(--ls-dur-fast) var(--ls-ease-out),
+    color var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+.ls-choice-tick-round {
+  border-radius: var(--ls-radius-full);
+}
+
+.ls-choice[data-checked='true'] .ls-choice-tick {
+  border-color: var(--ls-brand-fill);
+  background: var(--ls-brand-fill);
+  color: var(--ls-on-brand);
+}
+
+.ls-choice-body {
+  display: grid;
+  gap: var(--ls-space-1);
+  min-width: 0;
+}
+
+.ls-choice-title {
+  font-weight: 600;
+}
+
+.ls-choice-meta {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-choice-price {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.ls-choice-extra {
+  grid-column: 2 / -1;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+/* ---------- motion (customer side only; contract 7) ---------- */
+.ls-reveal {
+  /* The component sets the real position inline (0-5). */
+  --ls-reveal-index: 0;
+}
+
+.ls-site .ls-reveal[data-reveal='hidden'] {
+  opacity: 0;
+  transform: translateY(var(--ls-reveal-shift));
+}
+
+.ls-site .ls-reveal[data-reveal='shown'] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--ls-dur-reveal) var(--ls-ease-premium),
+    transform var(--ls-dur-reveal) var(--ls-ease-premium);
+  transition-delay: calc(var(--ls-reveal-index) * var(--ls-stagger));
+}

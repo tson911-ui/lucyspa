@@ -99,6 +99,15 @@
 
   // 2. Font sizes off the type scale (12, 14, 16, 18, 24, 32, 40 px).
   const scale = new Set([12, 14, 16, 18, 20, 24, 28, 32, 40]);
+  // The public site's own display tokens (Part 2 contract 4.2) are fluid; their resolved sizes belong to the scale.
+  for (const token of ['--ls-text-3xl', '--ls-text-display']) {
+    const probe = document.createElement('span');
+    probe.style.fontSize = `var(${token})`;
+    probe.style.position = 'absolute';
+    document.body.appendChild(probe);
+    scale.add(Math.round(px(getComputedStyle(probe).fontSize) * 100) / 100);
+    probe.remove();
+  }
   const fonts = new Map();
   for (const el of all) {
     if (el instanceof SVGElement) continue;
@@ -368,7 +377,8 @@
 
   // 7. Edges: children of the page column should share one left and one right edge.
   const main = document.querySelector('main');
-  if (main) {
+  // Public pages (`.ls-site-main`) are bands that hold their own centered container: the page-column edge rule is for the admin shell.
+  if (main && !main.classList.contains('ls-site-main')) {
     const cr = main.getBoundingClientRect();
     const pad = getComputedStyle(main);
     const left = cr.left + px(pad.paddingLeft);
@@ -562,7 +572,7 @@
 
   // 10d. FR5: a button alone in its row (or a row of only buttons) outside the places actions belong. Heuristic: review each hit.
   const ACTION_PLACES =
-    'form, [role=dialog], dialog, header, nav, aside, li, td, th, tr, [role=toolbar], [role=menu], [role=tablist], .ls-toolbar, .ls-toolbar-row, .ls-toolbar-actions, .ls-card-header, .ls-list-section-head, .wf-section-header, .wf-page-header, .wf-page-actions, .ls-page-header, .ls-row-actions, .wf-row-actions, .wf-form-actions, .ls-action-bar, .ls-dialog, .ls-drawer, .ls-notice, .ls-empty, .wf-empty, .ls-pagination, .ls-stat, .ls-kpi, .ls-widget, .ls-auth-card, .ls-segmented, .ls-table-state';
+    '.ls-hero-actions, .ls-site-cta, form, [role=dialog], dialog, header, nav, aside, li, td, th, tr, [role=toolbar], [role=menu], [role=tablist], .ls-toolbar, .ls-toolbar-row, .ls-toolbar-actions, .ls-card-header, .ls-list-section-head, .wf-section-header, .wf-page-header, .wf-page-actions, .ls-page-header, .ls-row-actions, .wf-row-actions, .wf-form-actions, .ls-action-bar, .ls-dialog, .ls-drawer, .ls-notice, .ls-empty, .wf-empty, .ls-pagination, .ls-stat, .ls-kpi, .ls-widget, .ls-auth-card, .ls-segmented, .ls-table-state';
   const seenRows = new Set();
   for (const button of scope.querySelectorAll('button, a.ls-btn, a.wf-button')) {
     if (!vis(button) || button.closest(ACTION_PLACES) || button.closest('summary')) continue;
