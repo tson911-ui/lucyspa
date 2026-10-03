@@ -20,6 +20,18 @@ const response: WebsiteShopInfoResponse = {
   mapUrl: null,
   hoursBranchId: null,
   heroMediaId: null,
+  factsVisible: true,
+  facts: [
+    { id: 'hours', kind: 'HOURS', visible: true, icon: null, textVi: null, textEn: null },
+    { id: 'address', kind: 'ADDRESS', visible: true, icon: null, textVi: null, textEn: null },
+    { id: 'hotline', kind: 'HOTLINE', visible: true, icon: null, textVi: null, textEn: null },
+  ],
+  featuredGroups: [],
+  whyVisible: false,
+  whyTitleVi: null,
+  whyTitleEn: null,
+  whyCards: [],
+  groupOptions: [],
   rowVersion: 3,
   updatedAt: '2026-10-03T00:00:00.000Z',
   branches: [],
@@ -49,6 +61,13 @@ test('the form mirrors the stored profile and sends null for what is empty', () 
     mapUrl: null,
     hoursBranchId: null,
     heroMediaId: null,
+    factsVisible: true,
+    facts: response.facts,
+    featuredGroups: [],
+    whyVisible: false,
+    whyTitleVi: null,
+    whyTitleEn: null,
+    whyCards: [],
   });
   assert.deepEqual(shopInfoRequest(result.body, 3), { ...result.body, expectedVersion: 3 });
 });
@@ -110,4 +129,85 @@ test('server refusals map to a field', () => {
   assert.equal(shopInfoServerProblem({ code: 'CONFLICT' }), null);
   assert.equal(shopInfoServerProblem(new Error('x')), null);
   assert.equal(shopInfoServerProblem(null), null);
+});
+
+const customFact = (patch: object = {}) => ({
+  id: '8f6f2a4e-5b0c-4a53-9f4e-2f9a4a1c7d10',
+  kind: 'CUSTOM' as const,
+  visible: true,
+  icon: 'sparkles' as const,
+  textVi: 'Miễn phí gửi xe',
+  textEn: 'Free parking',
+  ...patch,
+});
+
+test('facts strip: a custom line needs both languages within 80 characters; built-ins carry no text', () => {
+  assert.equal(problem({ facts: [...base.facts, customFact()] }), null);
+  assert.equal(problem({ facts: [...base.facts, customFact({ textEn: ' ' })] }), 'facts');
+  assert.equal(
+    problem({ facts: [...base.facts, customFact({ textVi: 'x'.repeat(81) })] }),
+    'facts',
+  );
+  assert.equal(problem({ facts: [...base.facts, customFact({ icon: null })] }), 'facts');
+  const sent = shopInfoInputOf({
+    ...base,
+    factsVisible: false,
+    facts: [customFact({ textVi: '  Miễn  phí  gửi xe ' }), ...base.facts],
+  });
+  assert.ok('body' in sent);
+  assert.equal(sent.body.factsVisible, false);
+  assert.equal(sent.body.facts[0]?.textVi, 'Miễn phí gửi xe');
+  assert.equal(sent.body.facts.length, 4);
+});
+
+test('featured groups: descriptions are optional, cleaned, and at most 120 characters', () => {
+  const group = (patch: object = {}) => ({
+    code: 'NAIL',
+    descriptionVi: '  Móng   gọn gàng ',
+    descriptionEn: '',
+    ...patch,
+  });
+  const sent = shopInfoInputOf({ ...base, featuredGroups: [group()] });
+  assert.ok('body' in sent);
+  assert.deepEqual(sent.body.featuredGroups, [
+    { code: 'NAIL', descriptionVi: 'Móng gọn gàng', descriptionEn: null },
+  ]);
+  assert.equal(
+    problem({ featuredGroups: [group({ descriptionVi: 'x'.repeat(121) })] }),
+    'featuredGroups',
+  );
+});
+
+test('why section: off and empty is sent as is; turning it on needs both titles and a card with all four texts', () => {
+  const card = (patch: object = {}) => ({
+    id: '3b1d6c0a-7a5e-4e55-8a0b-0c4b0b6b9a11',
+    icon: 'leaf' as const,
+    headingVi: 'Dụng cụ sạch',
+    headingEn: 'Clean tools',
+    descriptionVi: 'Mỗi khách một bộ.',
+    descriptionEn: 'One set per guest.',
+    ...patch,
+  });
+  assert.equal(base.whyVisible, false);
+  assert.equal(base.whyTitleVi, '');
+  assert.equal(problem({ whyVisible: true }), 'whyTitleVi');
+  assert.equal(problem({ whyVisible: true, whyTitleVi: 'Vì sao' }), 'whyTitleEn');
+  assert.equal(problem({ whyVisible: true, whyTitleVi: 'Vì sao', whyTitleEn: 'Why' }), 'whyCards');
+  assert.equal(
+    problem({ whyVisible: true, whyTitleVi: 'Vì sao', whyTitleEn: 'Why', whyCards: [card()] }),
+    null,
+  );
+  // Off, a half-written section may be saved (a draft), but a card that is filled in must still be valid.
+  assert.equal(problem({ whyCards: [card({ descriptionEn: '' })] }), 'whyCards');
+  assert.equal(problem({ whyCards: [card({ headingVi: 'x'.repeat(61) })] }), 'whyCards');
+  assert.equal(problem({ whyCards: [card({ descriptionVi: 'x'.repeat(201) })] }), 'whyCards');
+  assert.equal(problem({ whyTitleVi: 'x'.repeat(81) }), 'whyTitleVi');
+});
+
+test('changes in the lists count as unsaved changes, and only real ones', () => {
+  assert.equal(shopInfoChanged(base, formOfShopInfo(response)), false);
+  assert.equal(shopInfoChanged(base, { ...base, factsVisible: false }), true);
+  assert.equal(shopInfoChanged(base, { ...base, facts: [...base.facts].reverse() }), true);
+  assert.equal(shopInfoChanged(base, { ...base, whyVisible: true }), true);
+  assert.equal(shopInfoChanged(base, { ...base, whyTitleVi: '  ' }), false);
 });

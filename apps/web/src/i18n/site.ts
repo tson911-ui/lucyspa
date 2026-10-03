@@ -38,11 +38,12 @@ export interface SiteText {
     theme: { group: string; light: string; dark: string; auto: string; switchTo: string };
   };
   footer: {
-    discover: string;
-    member: string;
+    links: string;
     contact: string;
-    signIn: string;
-    register: string;
+    /** One entry for both: Đăng nhập / Đăng ký. */
+    signInUp: string;
+    /** With {value}: "Điện thoại: 0934 936 101". */
+    phone: string;
     /** With {year}. */
     rights: string;
   };
@@ -54,23 +55,15 @@ export interface SiteText {
     factsLabel: string;
     groupsTitle: string;
     groupsLead: string;
-    /** With {count}. */
-    serviceCount: string;
     viewAll: string;
     /** With {group}. */
     viewAllOf: string;
-    visitTitle: string;
-    hoursTitle: string;
-    contactTitle: string;
-    directions: string;
     hotline: string;
     closed: string;
-    noHours: string;
     /** With {section}. */
     loadError: string;
     reload: string;
     sectionServices: string;
-    sectionShop: string;
     noServices: string;
   };
   services: {
@@ -133,11 +126,10 @@ const text = {
       },
     },
     footer: {
-      discover: 'Khám phá',
-      member: 'Tài khoản',
+      links: 'Liên kết',
       contact: 'Liên hệ',
-      signIn: 'Đăng nhập',
-      register: 'Đăng ký',
+      signInUp: 'Đăng nhập / Đăng ký',
+      phone: 'Điện thoại: {value}',
       rights: '© {year} Lucy Spa',
     },
     home: {
@@ -145,23 +137,15 @@ const text = {
       bookNow: 'Đặt lịch ngay',
       viewServices: 'Xem dịch vụ',
       factsLabel: 'Thông tin nhanh',
-      groupsTitle: 'Nhóm dịch vụ',
-      groupsLead:
-        'Giá niêm yết theo danh mục dịch vụ của tiệm; giá theo ngón hiển thị theo khoảng.',
-      serviceCount: '{count} dịch vụ',
+      groupsTitle: 'Nhóm dịch vụ nổi bật',
+      groupsLead: 'Giá niêm yết rõ ràng, chọn dịch vụ và đặt lịch chỉ trong vài phút.',
       viewAll: 'Xem tất cả',
       viewAllOf: 'Xem tất cả dịch vụ nhóm {group}',
-      visitTitle: 'Ghé thăm Lucy Spa',
-      hoursTitle: 'Giờ mở cửa',
-      contactTitle: 'Địa chỉ và liên hệ',
-      directions: 'Chỉ đường',
       hotline: 'Hotline',
       closed: 'Đóng cửa',
-      noHours: 'Giờ mở cửa sẽ được cập nhật.',
       loadError: 'Không tải được {section} lúc này. Vui lòng thử lại sau ít phút.',
       reload: 'Tải lại trang',
       sectionServices: 'danh mục dịch vụ',
-      sectionShop: 'thông tin tiệm',
       noServices: 'Danh mục dịch vụ đang được cập nhật.',
     },
     services: {
@@ -221,11 +205,10 @@ const text = {
       },
     },
     footer: {
-      discover: 'Explore',
-      member: 'Account',
+      links: 'Links',
       contact: 'Contact',
-      signIn: 'Sign in',
-      register: 'Create account',
+      signInUp: 'Sign in / Create account',
+      phone: 'Phone: {value}',
       rights: '© {year} Lucy Spa',
     },
     home: {
@@ -233,22 +216,15 @@ const text = {
       bookNow: 'Book now',
       viewServices: 'View services',
       factsLabel: 'Quick facts',
-      groupsTitle: 'Service groups',
-      groupsLead: 'Listed prices from the shop catalogue; per-nail prices are shown as a range.',
-      serviceCount: '{count} services',
+      groupsTitle: 'Featured service groups',
+      groupsLead: 'Clear listed prices; pick a service and book in a few minutes.',
       viewAll: 'View all',
       viewAllOf: 'View all {group} services',
-      visitTitle: 'Visit Lucy Spa',
-      hoursTitle: 'Opening hours',
-      contactTitle: 'Address and contact',
-      directions: 'Directions',
       hotline: 'Hotline',
       closed: 'Closed',
-      noHours: 'Opening hours will be updated soon.',
       loadError: 'We could not load the {section} right now. Please try again in a few minutes.',
       reload: 'Reload the page',
       sectionServices: 'service catalogue',
-      sectionShop: 'shop information',
       noServices: 'The service catalogue is being updated.',
     },
     services: {

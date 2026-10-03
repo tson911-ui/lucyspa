@@ -411,3 +411,9 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Admin > Website > Shop info has two optional fields (VI, EN, max 200 characters) for the sentence under the home headline; empty = the built-in sentence (smoke still sees it). `intro` added to `/public/site`.
 - **One additive migration on deploy:** `20261024000000_uxui_part2_hero_intro` (2 nullable columns + CHECK). Run `db:deploy` before restarting API and web. Report: docs/UXUI_REDESIGN_PART2_HERO_INTRO.md.
+
+### UX/UI Part 2 follow-up: Owner review of the live site - 2026-10-04
+
+- Header hover fixed (solid fill on the pill), three-state theme button (Light/Dark/Auto), tooltips below, serif logo and three-column footer, "Ghé thăm" removed, clickable cards share one hover/press motion. Home bands alternate warm/white like the reference.
+- Admin > Website > Shop info edits: facts strip (show/hide, built-ins hide, custom lines VI/EN + icon, order), featured groups (choice, order, VI/EN description) and the optional "Vì sao chọn" section (off and empty by default; supersedes Q-P2-3).
+- **One additive migration on deploy:** `20261025000000_uxui_part2_facts_groups` (7 defaulted columns + CHECK on `website_shop_info`). Run `db:deploy` before restarting API and web. Report: docs/UXUI_REDESIGN_PART2_OWNER_REVIEW_2.md.

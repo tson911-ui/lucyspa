@@ -14,6 +14,13 @@ import { ServiceDetailView, ServicesView } from './services-view';
 const site: PublicSiteResponse = {
   tagline: 'Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc',
   intro: null,
+  facts: [
+    { kind: 'HOURS', icon: 'clock', text: null },
+    { kind: 'ADDRESS', icon: 'map-pin', text: null },
+    { kind: 'HOTLINE', icon: 'phone', text: null },
+  ],
+  featuredGroups: [],
+  why: null,
   address: '04 Nguyễn Quang Bích, Đà Nẵng',
   hotline: '0934 936 101',
   hotlineTel: '+84934936101',
@@ -81,10 +88,13 @@ test('home: the tagline is the one h1, facts and visit read the Owner data, no m
   assert.match(html, /href="tel:\+84934936101"/);
   assert.match(html, /Thứ Hai – Thứ Bảy/);
   assert.match(html, /09:00 – 21:00/);
-  assert.match(html, /Chủ nhật/);
-  assert.match(html, /Đóng cửa/);
-  assert.match(html, /Chỉ đường/);
-  assert.match(html, /maps\/search\/\?api=1&amp;query=/);
+  // The address opens the map (a search for the address while the Owner has set no link) in a new tab.
+  assert.match(
+    html,
+    /<a href="https:\/\/www\.google\.com\/maps\/search\/\?api=1&amp;query=[^"]*" target="_blank"/,
+  );
+  // The "Ghé thăm" section is gone, and nothing is made up: the "why" section stays out until the Owner writes it.
+  assert.doesNotMatch(html, /Ghé thăm/);
   assert.doesNotMatch(html, /Vì sao chọn/i);
   assert.doesNotMatch(html, /durationMinutes/);
 });
@@ -110,21 +120,23 @@ test('home: an introduction set in Shop info replaces the built-in sentence; emp
 test('home: one card per live group with its prices and a link to all of them', () => {
   const html = home(full);
   assert.match(html, /Gội đầu/);
-  assert.match(html, /2 dịch vụ/);
+  assert.doesNotMatch(html, /2 dịch vụ/);
   assert.match(html, /50\.000 ₫/);
-  assert.match(html, /5\.000 ₫ – 30\.000 ₫\/ngón/);
+  // A per-nail price on a card is one short line ("from"), not the range the services pages show.
+  assert.match(html, /từ 5\.000 ₫\/ngón/);
+  assert.doesNotMatch(html, /5\.000 ₫ – 30\.000 ₫/);
   assert.match(html, /href="\/vi\/services\?group=GOI"/);
   assert.match(html, /href="\/vi\/services\?group=NAIL"/);
   assert.match(html, /href="\/vi\/services"/);
-  assert.match(home(full, 'en'), /5,000 ₫ – 30,000 ₫\/nail/);
+  assert.match(home(full, 'en'), /from 5,000 ₫\/nail/);
 });
 
 test('home: a part that could not be read shows a notice and the rest still renders', () => {
   const noServices = home({ ...full, services: null });
   assert.match(noServices, /Không tải được danh mục dịch vụ/);
-  assert.match(noServices, /Ghé thăm Lucy Spa/);
+  assert.match(noServices, /ls-site-facts/);
   const noSite = home({ ...full, site: null });
-  assert.match(noSite, /Không tải được thông tin tiệm/);
+  assert.doesNotMatch(noSite, /ls-site-facts/);
   assert.match(noSite, /<h1[^>]*>Lucy Spa<\/h1>/);
   assert.match(noSite, /Gội đầu/);
   assert.match(home({ ...full, services: { groups: [] } }), /Danh mục dịch vụ đang được cập nhật/);
@@ -156,8 +168,10 @@ test('home: the hero shows the chosen picture when there is no slide, else a bra
 test('footer: the contact column comes from the shop profile and is absent without it', () => {
   const html = renderToStaticMarkup(<PublicFooter locale="vi" site={site} year={2026} />);
   assert.match(html, /Liên hệ/);
+  assert.match(html, /Liên kết/);
   assert.match(html, /04 Nguyễn Quang Bích/);
-  assert.match(html, /href="tel:\+84934936101"/);
+  assert.match(html, /Điện thoại: <a href="tel:\+84934936101">0934 936 101<\/a>/);
+  assert.match(html, /Đăng nhập \/ Đăng ký/);
   assert.match(html, /Thư Giãn Tận Tâm/);
   assert.match(html, /© 2026 Lucy Spa/);
   const bare = renderToStaticMarkup(<PublicFooter locale="vi" site={null} year={2026} />);
@@ -212,4 +226,72 @@ test('service detail: facts, the per-nail note, the booking link and the group n
     renderToStaticMarkup(<ServiceDetailView locale="vi" detail={null} />),
     /Không tải được danh mục dịch vụ/,
   );
+});
+
+test('home facts strip: the Owner order, custom lines, hidden items; the whole strip can be off', () => {
+  const custom = { kind: 'CUSTOM' as const, icon: 'sparkles' as const, text: 'Miễn phí gửi xe' };
+  const html = home({
+    ...full,
+    site: {
+      ...site,
+      mapUrl: 'https://maps.example.com/lucy',
+      facts: [
+        custom,
+        { kind: 'HOTLINE', icon: 'phone', text: null },
+        { kind: 'ADDRESS', icon: 'map-pin', text: null },
+      ],
+    },
+  });
+  // Order is the Owner's; the hidden hours item (not in the list) is absent; the address opens the Owner's map link.
+  assert.ok(html.indexOf('Miễn phí gửi xe') < html.indexOf('href="tel:+84934936101"'));
+  assert.ok(
+    html.indexOf('href="tel:+84934936101"') < html.indexOf('04 Nguyễn Quang Bích, Đà Nẵng'),
+  );
+  assert.doesNotMatch(html, /09:00 – 21:00/);
+  assert.match(
+    html,
+    /<a href="https:\/\/maps\.example\.com\/lucy" target="_blank" rel="noopener noreferrer">/,
+  );
+  assert.match(html, /--ls-facts-cols:3/);
+  // The whole strip off: no band at all.
+  assert.doesNotMatch(home({ ...full, site: { ...site, facts: [] } }), /ls-site-facts/);
+});
+
+test('home service groups: the Owner choice, order and description; none chosen lists every group', () => {
+  const chosen = home({
+    ...full,
+    site: {
+      ...site,
+      featuredGroups: [
+        { code: 'NAIL', description: 'Móng gọn gàng, sơn gel bền màu' },
+        { code: 'GONE', description: 'Không còn' },
+        { code: 'GOI', description: null },
+      ],
+    },
+  });
+  assert.ok(chosen.indexOf('Móng gọn gàng') < chosen.indexOf('Gội đầu'));
+  assert.match(chosen, /<p class="ls-group-desc">Móng gọn gàng, sơn gel bền màu<\/p>/);
+  assert.doesNotMatch(chosen, /Không còn/);
+  assert.equal(chosen.match(/ls-group-card/g)?.length, 2);
+  assert.match(chosen, /Xem tất cả/);
+  const all = home(full);
+  assert.equal(all.match(/ls-group-card/g)?.length, 2);
+  assert.doesNotMatch(all, /ls-group-desc/);
+  assert.match(all, /Nhóm dịch vụ nổi bật/);
+});
+
+test('home why section: only when the Owner wrote it, below the groups, in the visitor language', () => {
+  const why = {
+    title: 'Điều khách yêu mến',
+    cards: [
+      { icon: 'leaf' as const, heading: 'Dụng cụ sạch', description: 'Mỗi khách một bộ.' },
+      { icon: 'heart' as const, heading: 'Tận tâm', description: 'Lắng nghe nhu cầu.' },
+    ],
+  };
+  const html = home({ ...full, site: { ...site, why } });
+  assert.match(html, /<h2[^>]*id="why-title"[^>]*>Điều khách yêu mến<\/h2>/);
+  assert.match(html, /<h3[^>]*>Dụng cụ sạch<\/h3>/);
+  assert.equal(html.match(/ls-icon-bubble/g)?.length, 2);
+  assert.ok(html.indexOf('groups-title') < html.indexOf('why-title'));
+  assert.doesNotMatch(home(full), /why-title/);
 });

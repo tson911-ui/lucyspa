@@ -1,15 +1,31 @@
 import type {
   PublicHoursGroup,
   PublicSiteResponse,
+  WebsiteFeaturedGroup,
+  WebsiteGroupOption,
+  WebsiteShopFact,
   WebsiteShopInfoBranchOption,
   WebsiteShopInfoInput,
   WebsiteShopInfoResponse,
   WebsiteShopInfoUpdateRequest,
+  WebsiteWhyCard,
 } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
 import { AuthError } from '../auth/auth.error.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
 import { requireWebsiteContent } from './media.core.js';
+import {
+  parseFacts,
+  parseFeaturedGroups,
+  parseWhyCards,
+  parseWhyTitle,
+  publicFacts,
+  publicFeaturedGroups,
+  publicWhy,
+  readFacts,
+  readFeaturedGroups,
+  readWhyCards,
+} from './shop-info.lists.js';
 import {
   pick,
   publicImageSources,
@@ -48,6 +64,13 @@ interface ShopInfoFields {
   mapUrl: string | null;
   hoursBranchId: string | null;
   heroMediaId: string | null;
+  factsVisible: boolean;
+  facts: WebsiteShopFact[];
+  featuredGroups: WebsiteFeaturedGroup[];
+  whyVisible: boolean;
+  whyTitleVi: string | null;
+  whyTitleEn: string | null;
+  whyCards: WebsiteWhyCard[];
 }
 
 const selectShopInfo = {
@@ -60,6 +83,13 @@ const selectShopInfo = {
   mapUrl: true,
   hoursBranchId: true,
   heroMediaId: true,
+  factsVisible: true,
+  factsItems: true,
+  featuredGroups: true,
+  whyVisible: true,
+  whyTitleVi: true,
+  whyTitleEn: true,
+  whyCards: true,
   rowVersion: true,
   updatedAt: true,
 } satisfies Prisma.WebsiteShopInfoSelect;
@@ -114,8 +144,45 @@ export function parseShopInfoFields(input: WebsiteShopInfoInput): ShopInfoFields
     mapUrl,
     hoursBranchId: optionalId(input.hoursBranchId, 'hoursBranchId'),
     heroMediaId: optionalId(input.heroMediaId, 'heroMediaId'),
+    factsVisible: parseFactsVisible(input.factsVisible),
+    facts: parseFacts(input.facts),
+    featuredGroups: parseFeaturedGroups(input.featuredGroups),
+    ...parseWhy(input),
   };
 }
+
+/** The "why choose us" section: off by default; turning it on needs both titles and at least one card. */
+function parseWhy(
+  input: WebsiteShopInfoInput,
+): Pick<ShopInfoFields, 'whyVisible' | 'whyTitleVi' | 'whyTitleEn' | 'whyCards'> {
+  if (typeof input.whyVisible !== 'boolean') throw new AuthError('VALIDATION_FAILED', 'whyVisible');
+  const whyTitleVi = parseWhyTitle(input.whyTitleVi, 'whyTitleVi');
+  const whyTitleEn = parseWhyTitle(input.whyTitleEn, 'whyTitleEn');
+  const whyCards = parseWhyCards(input.whyCards);
+  if (input.whyVisible) {
+    if (whyTitleVi === null) throw new AuthError('VALIDATION_FAILED', 'whyTitleVi');
+    if (whyTitleEn === null) throw new AuthError('VALIDATION_FAILED', 'whyTitleEn');
+    if (whyCards.length === 0) throw new AuthError('VALIDATION_FAILED', 'whyCards');
+  }
+  return { whyVisible: input.whyVisible, whyTitleVi, whyTitleEn, whyCards };
+}
+
+function parseFactsVisible(value: unknown): boolean {
+  if (typeof value !== 'boolean') throw new AuthError('VALIDATION_FAILED', 'factsVisible');
+  return value;
+}
+
+/** The row's columns for the fields (the two lists are stored as JSON under their column names). */
+const dataOf = ({ facts, featuredGroups, whyCards, ...rest }: ShopInfoFields) => ({
+  ...rest,
+  whyCards: whyCards as unknown as Prisma.InputJsonValue,
+  factsItems: facts as unknown as Prisma.InputJsonValue,
+  featuredGroups: featuredGroups as unknown as Prisma.InputJsonValue,
+});
+
+/** The audit record's JSON: the lists are plain data, so a round trip is exact. */
+const auditOf = (fields: ShopInfoFields) =>
+  JSON.parse(JSON.stringify(fields)) as Prisma.InputJsonObject;
 
 const fieldsOf = (row: ShopInfoRow): ShopInfoFields => ({
   taglineVi: row.taglineVi,
@@ -127,6 +194,13 @@ const fieldsOf = (row: ShopInfoRow): ShopInfoFields => ({
   mapUrl: row.mapUrl,
   hoursBranchId: row.hoursBranchId,
   heroMediaId: row.heroMediaId,
+  factsVisible: row.factsVisible,
+  facts: readFacts(row.factsItems),
+  featuredGroups: readFeaturedGroups(row.featuredGroups),
+  whyVisible: row.whyVisible,
+  whyTitleVi: row.whyTitleVi,
+  whyTitleEn: row.whyTitleEn,
+  whyCards: readWhyCards(row.whyCards),
 });
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -207,8 +281,14 @@ async function response(
     select: { id: true, code: true, name: true },
   });
   const branch = await hoursBranch(tx, row.hoursBranchId);
+  const groupOptions: WebsiteGroupOption[] = await tx.serviceCategory.findMany({
+    where: { isActive: true },
+    orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
+    select: { code: true, nameVi: true, nameEn: true },
+  });
   return {
     ...fieldsOf(row),
+    groupOptions,
     rowVersion: row.rowVersion,
     updatedAt: row.updatedAt.toISOString(),
     branches,
@@ -257,6 +337,16 @@ export async function updateShopInfo(
     });
     if (!branch) throw new AuthError('VALIDATION_FAILED', 'hoursBranchId');
   }
+  // A featured group must be a live category now (a later deactivation just hides it on the site).
+  if (fields.featuredGroups.length > 0) {
+    const known = await context.tx.serviceCategory.findMany({
+      where: { isActive: true, code: { in: fields.featuredGroups.map((group) => group.code) } },
+      select: { code: true },
+    });
+    if (known.length !== fields.featuredGroups.length) {
+      throw new AuthError('VALIDATION_FAILED', 'featuredGroups');
+    }
+  }
   // The image check only matters when the image changes (design 16.8, as for popups).
   if (fields.heroMediaId !== null && fields.heroMediaId !== before.heroMediaId) {
     try {
@@ -271,15 +361,19 @@ export async function updateShopInfo(
   }
   const updated = await context.tx.websiteShopInfo.update({
     where: { id: 'shop' },
-    data: { ...fields, updatedByUserId: context.actor.userId, rowVersion: { increment: 1 } },
+    data: {
+      ...dataOf(fields),
+      updatedByUserId: context.actor.userId,
+      rowVersion: { increment: 1 },
+    },
     select: selectShopInfo,
   });
   await appendAdminAudit(context, {
     action: 'SHOP_INFO_UPDATED',
     entityType: 'WebsiteShopInfo',
     entityId: 'shop',
-    before: { ...fieldsOf(before) },
-    after: { ...fields },
+    before: auditOf(fieldsOf(before)),
+    after: auditOf(fields),
   });
   return response(context.tx, updated);
 }
@@ -310,8 +404,29 @@ export async function publicSite(
   });
   const branch = await hoursBranch(tx, row.hoursBranchId);
   const media = row.heroMedia;
+  const featured = readFeaturedGroups(row.featuredGroups);
+  const live =
+    featured.length === 0
+      ? []
+      : await tx.serviceCategory.findMany({
+          where: { isActive: true, code: { in: featured.map((group) => group.code) } },
+          select: { code: true },
+        });
   return {
     tagline: pick(row.taglineVi, row.taglineEn, locale) ?? '',
+    facts: publicFacts(row.factsVisible, readFacts(row.factsItems), locale),
+    featuredGroups: publicFeaturedGroups(
+      featured,
+      new Set(live.map((group) => group.code)),
+      locale,
+    ),
+    why: publicWhy(
+      row.whyVisible,
+      row.whyTitleVi,
+      row.whyTitleEn,
+      readWhyCards(row.whyCards),
+      locale,
+    ),
     // Never the other language's sentence: null lets the site use its own text in the visitor's language.
     intro: locale === 'vi' ? row.introVi : row.introEn,
     address: row.address,

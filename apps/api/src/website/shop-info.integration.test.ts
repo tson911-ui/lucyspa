@@ -43,6 +43,13 @@ const input = (patch: Partial<WebsiteShopInfoInput> = {}): WebsiteShopInfoInput 
   mapUrl: null,
   hoursBranchId: null,
   heroMediaId: null,
+  factsVisible: true,
+  facts: [],
+  featuredGroups: [],
+  whyVisible: false,
+  whyTitleVi: null,
+  whyTitleEn: null,
+  whyCards: [],
   ...patch,
 });
 
@@ -358,6 +365,230 @@ test(
                 });
                 assert.equal(cleared.introVi, null);
                 assert.equal((await site.site('vi')).intro, null);
+              },
+            );
+
+            await context.test(
+              'facts strip, featured groups and the why section: defaults, saved lists, per-language public view, refusals by name',
+              async () => {
+                const current = await shop.get(editor.session);
+                // Defaults: the three built-in facts, every group, no why section (nothing is seeded).
+                assert.equal(current.factsVisible, true);
+                assert.deepEqual(
+                  current.facts.map((fact) => [fact.id, fact.visible]),
+                  [
+                    ['hours', true],
+                    ['address', true],
+                    ['hotline', true],
+                  ],
+                );
+                assert.deepEqual(current.featuredGroups, []);
+                assert.equal(current.whyVisible, false);
+                assert.deepEqual(current.whyCards, []);
+                assert.ok(Array.isArray(current.groupOptions));
+                const fresh = await site.site('vi');
+                assert.deepEqual(
+                  fresh.facts.map((fact) => fact.kind),
+                  ['HOURS', 'ADDRESS', 'HOTLINE'],
+                );
+                assert.deepEqual(fresh.featuredGroups, []);
+                assert.equal(fresh.why, null);
+
+                const live = await tx.serviceCategory.create({
+                  data: {
+                    code: `LIST_${run}_A`,
+                    nameVi: 'Nhóm A',
+                    nameEn: 'Group A',
+                    sortOrder: 0,
+                  },
+                  select: { code: true },
+                });
+                const off = await tx.serviceCategory.create({
+                  data: {
+                    code: `LIST_${run}_B`,
+                    nameVi: 'Nhóm B',
+                    nameEn: 'Group B',
+                    sortOrder: 0,
+                    isActive: false,
+                  },
+                  select: { code: true },
+                });
+                const keep = (patch: Partial<WebsiteShopInfoInput>) =>
+                  input({
+                    taglineVi: current.taglineVi,
+                    taglineEn: current.taglineEn,
+                    address: current.address,
+                    hotline: current.hotline,
+                    mapUrl: current.mapUrl,
+                    hoursBranchId: current.hoursBranchId,
+                    heroMediaId: current.heroMediaId,
+                    ...patch,
+                  });
+                const factId = '8f6f2a4e-5b0c-4a53-9f4e-2f9a4a1c7d10';
+                const cardId = '3b1d6c0a-7a5e-4e55-8a0b-0c4b0b6b9a11';
+                const builtIn = (
+                  id: string,
+                  kind: 'HOURS' | 'ADDRESS' | 'HOTLINE',
+                  visible = true,
+                ) => ({
+                  id,
+                  kind,
+                  visible,
+                  icon: null,
+                  textVi: null,
+                  textEn: null,
+                });
+                const saved = await shop.update(editor.session, {
+                  ...keep({
+                    facts: [
+                      { ...builtIn('hotline', 'HOTLINE') },
+                      {
+                        id: factId,
+                        kind: 'CUSTOM',
+                        visible: true,
+                        icon: 'sparkles',
+                        textVi: '  Miễn phí gửi xe ',
+                        textEn: 'Free parking',
+                      },
+                      builtIn('hours', 'HOURS', false),
+                    ],
+                    featuredGroups: [
+                      { code: live.code, descriptionVi: 'Mô tả A', descriptionEn: null },
+                    ],
+                    whyVisible: true,
+                    whyTitleVi: 'Vì sao',
+                    whyTitleEn: 'Why',
+                    whyCards: [
+                      {
+                        id: cardId,
+                        icon: 'leaf',
+                        headingVi: 'Sạch',
+                        headingEn: 'Clean',
+                        descriptionVi: 'Dụng cụ sạch.',
+                        descriptionEn: 'Clean tools.',
+                      },
+                    ],
+                  }),
+                  expectedVersion: current.rowVersion,
+                });
+                // The Owner's order is kept; the missing built-in (address) comes back visible at the end.
+                assert.deepEqual(
+                  saved.facts.map((fact) => [fact.id.slice(0, 7), fact.visible]),
+                  [
+                    ['hotline', true],
+                    ['8f6f2a4', true],
+                    ['hours', false],
+                    ['address', true],
+                  ],
+                );
+                assert.equal(saved.facts[1]?.textVi, 'Miễn phí gửi xe');
+                const vi = await site.site('vi');
+                assert.deepEqual(
+                  vi.facts.map((fact) => fact.text ?? fact.kind),
+                  ['HOTLINE', 'Miễn phí gửi xe', 'ADDRESS'],
+                );
+                assert.deepEqual(vi.featuredGroups, [{ code: live.code, description: 'Mô tả A' }]);
+                assert.equal(vi.why?.title, 'Vì sao');
+                const en = await site.site('en');
+                assert.equal(en.facts[1]?.text, 'Free parking');
+                assert.equal(
+                  en.featuredGroups[0]?.description,
+                  null,
+                  'never the Vietnamese description',
+                );
+                assert.equal(en.why?.cards[0]?.heading, 'Clean');
+
+                // Refusals name their field; nothing half-saved.
+                const attempt = (patch: Partial<WebsiteShopInfoInput>) =>
+                  shop.update(editor.session, {
+                    ...keep(patch),
+                    expectedVersion: saved.rowVersion,
+                  });
+                await fails(
+                  attempt({ facts: [{ ...builtIn('hours', 'HOURS'), id: 'x' }] }),
+                  'VALIDATION_FAILED',
+                  'facts',
+                );
+                await fails(
+                  attempt({
+                    featuredGroups: [{ code: off.code, descriptionVi: null, descriptionEn: null }],
+                  }),
+                  'VALIDATION_FAILED',
+                  'featuredGroups',
+                );
+                await fails(
+                  attempt({
+                    featuredGroups: [
+                      { code: 'NO_SUCH_GROUP', descriptionVi: null, descriptionEn: null },
+                    ],
+                  }),
+                  'VALIDATION_FAILED',
+                  'featuredGroups',
+                );
+                await fails(
+                  attempt({
+                    whyVisible: true,
+                    whyTitleVi: null,
+                    whyTitleEn: 'Why',
+                    whyCards: saved.whyCards,
+                  }),
+                  'VALIDATION_FAILED',
+                  'whyTitleVi',
+                );
+                await fails(
+                  attempt({
+                    whyVisible: true,
+                    whyTitleVi: 'Vì sao',
+                    whyTitleEn: 'Why',
+                    whyCards: [],
+                  }),
+                  'VALIDATION_FAILED',
+                  'whyCards',
+                );
+                await fails(
+                  attempt({
+                    whyCards: [
+                      {
+                        id: cardId,
+                        icon: 'leaf',
+                        headingVi: 'x',
+                        headingEn: '',
+                        descriptionVi: 'y',
+                        descriptionEn: 'z',
+                      },
+                    ],
+                  }),
+                  'VALIDATION_FAILED',
+                  'whyCards',
+                );
+                assert.equal((await shop.get(editor.session)).rowVersion, saved.rowVersion);
+
+                // A group deactivated later just drops out of the public list; hiding the strip and the section empties them.
+                await tx.serviceCategory.update({
+                  where: { code: live.code },
+                  data: { isActive: false },
+                });
+                assert.deepEqual((await site.site('vi')).featuredGroups, []);
+                const hidden = await shop.update(editor.session, {
+                  ...keep({
+                    factsVisible: false,
+                    facts: saved.facts,
+                    whyVisible: false,
+                    whyTitleVi: 'Vì sao',
+                    whyTitleEn: 'Why',
+                    whyCards: saved.whyCards,
+                  }),
+                  expectedVersion: saved.rowVersion,
+                });
+                const quiet = await site.site('vi');
+                assert.deepEqual(quiet.facts, []);
+                assert.equal(quiet.why, null);
+                assert.equal(hidden.whyCards.length, 1, 'a hidden section keeps what was written');
+                // Back to the defaults for the tests that follow.
+                await shop.update(editor.session, {
+                  ...keep({}),
+                  expectedVersion: hidden.rowVersion,
+                });
               },
             );
 

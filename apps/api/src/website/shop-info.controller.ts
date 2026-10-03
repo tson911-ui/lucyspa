@@ -1,7 +1,23 @@
-import type { WebsiteShopInfoResponse, WebsiteShopInfoUpdateRequest } from '@lucy-spa/contracts';
+import type {
+  WebsiteWhyCard,
+  WebsiteFeaturedGroup,
+  WebsiteShopFact,
+  WebsiteShopInfoResponse,
+  WebsiteShopInfoUpdateRequest,
+} from '@lucy-spa/contracts';
 import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res } from '@nestjs/common';
 import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
+  IsInt,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 import type { Request, Response } from 'express';
 import { sessionCookie } from '../auth/cookies.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
@@ -29,6 +45,17 @@ class ShopInfoUpdateDto implements WebsiteShopInfoUpdateRequest {
   @NullableText(TEXT_BOUND) mapUrl!: string | null;
   @NullableText(36) hoursBranchId!: string | null;
   @NullableText(36) heroMediaId!: string | null;
+  @ApiProperty() @IsBoolean() factsVisible!: boolean;
+  // Bounded here; the core checks every item and names `facts` / `featuredGroups` when one is refused.
+  @ApiProperty({ type: [Object] }) @IsArray() @ArrayMaxSize(32) facts!: WebsiteShopFact[];
+  @ApiProperty({ type: [Object] })
+  @IsArray()
+  @ArrayMaxSize(32)
+  featuredGroups!: WebsiteFeaturedGroup[];
+  @ApiProperty() @IsBoolean() whyVisible!: boolean;
+  @NullableText(TEXT_BOUND) whyTitleVi!: string | null;
+  @NullableText(TEXT_BOUND) whyTitleEn!: string | null;
+  @ApiProperty({ type: [Object] }) @IsArray() @ArrayMaxSize(32) whyCards!: WebsiteWhyCard[];
   @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
 }
 

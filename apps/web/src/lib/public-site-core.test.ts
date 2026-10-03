@@ -3,9 +3,11 @@ import { test } from 'node:test';
 import type { PublicService, PublicServiceGroup, PublicSiteResponse } from '@lucy-spa/contracts';
 import {
   bookServiceHref,
+  cardPrice,
   directionsUrl,
   featuredServices,
   groupFilter,
+  homeGroups,
   hoursHeadline,
   parsePublicServices,
   parsePublicSite,
@@ -31,6 +33,13 @@ const service = (patch: Partial<PublicService> = {}): PublicService => ({
 const site: PublicSiteResponse = {
   tagline: 'Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc',
   intro: null,
+  facts: [
+    { kind: 'HOURS', icon: 'clock', text: null },
+    { kind: 'ADDRESS', icon: 'map-pin', text: null },
+    { kind: 'HOTLINE', icon: 'phone', text: null },
+  ],
+  featuredGroups: [],
+  why: null,
   address: '04 Nguyễn Quang Bích, Đà Nẵng',
   hotline: '0934 936 101',
   hotlineTel: '+84934936101',
@@ -164,4 +173,84 @@ test('the group filter accepts only a group that exists', () => {
   assert.equal(groupFilter('NOPE', groups), '');
   assert.equal(groupFilter(undefined, groups), '');
   assert.equal(groupFilter('', groups), '');
+});
+
+test('facts, featured groups and the why section: parsed strictly, absent means the defaults', () => {
+  const withoutLists: Record<string, unknown> = { ...site };
+  delete withoutLists['facts'];
+  delete withoutLists['featuredGroups'];
+  delete withoutLists['why'];
+  const old = parsePublicSite(withoutLists);
+  assert.deepEqual(
+    old?.facts.map((fact) => fact.kind),
+    ['HOURS', 'ADDRESS', 'HOTLINE'],
+  );
+  assert.deepEqual(old?.featuredGroups, []);
+  assert.equal(old?.why, null);
+  // An empty list is an Owner decision (strip hidden), not a missing field.
+  assert.deepEqual(parsePublicSite({ ...site, facts: [] })?.facts, []);
+  const custom = { kind: 'CUSTOM', icon: 'sparkles', text: 'Miễn phí gửi xe' };
+  assert.equal(parsePublicSite({ ...site, facts: [custom] })?.facts[0]?.text, 'Miễn phí gửi xe');
+  assert.equal(parsePublicSite({ ...site, facts: [{ ...custom, text: null }] }), null);
+  assert.equal(parsePublicSite({ ...site, facts: [{ ...custom, icon: 'skull' }] }), null);
+  assert.equal(
+    parsePublicSite({ ...site, facts: [{ kind: 'X', icon: 'clock', text: null }] }),
+    null,
+  );
+  assert.equal(parsePublicSite({ ...site, facts: 'hours' }), null);
+  assert.equal(parsePublicSite({ ...site, featuredGroups: [{ code: 'NAIL' }] }), null);
+  assert.deepEqual(
+    parsePublicSite({ ...site, featuredGroups: [{ code: 'NAIL', description: null }] })
+      ?.featuredGroups,
+    [{ code: 'NAIL', description: null }],
+  );
+  const why = { title: 'Vì sao', cards: [{ icon: 'leaf', heading: 'A', description: 'B' }] };
+  assert.deepEqual(parsePublicSite({ ...site, why })?.why, why);
+  assert.equal(parsePublicSite({ ...site, why: { ...why, cards: [] } })?.why, null);
+  assert.equal(
+    parsePublicSite({
+      ...site,
+      why: { ...why, cards: [{ icon: 'skull', heading: 'A', description: 'B' }] },
+    }),
+    null,
+  );
+  assert.equal(parsePublicSite({ ...site, why: 'x' }), null);
+});
+
+test('home groups: the chosen ones in order with descriptions; none chosen lists everything', () => {
+  const group = (code: string) => ({ code, name: code, services: [] });
+  const services = { groups: [group('A'), group('B'), group('C')] };
+  assert.deepEqual(
+    homeGroups(services, { featuredGroups: [] }).map((entry) => entry.group.code),
+    ['A', 'B', 'C'],
+  );
+  assert.deepEqual(
+    homeGroups(services, null).map((entry) => entry.description),
+    [null, null, null],
+  );
+  const chosen = homeGroups(services, {
+    featuredGroups: [
+      { code: 'C', description: 'Mô tả C' },
+      { code: 'GONE', description: 'x' },
+      { code: 'A', description: null },
+    ],
+  });
+  assert.deepEqual(
+    chosen.map((entry) => [entry.group.code, entry.description]),
+    [
+      ['C', 'Mô tả C'],
+      ['A', null],
+    ],
+  );
+});
+
+test('card prices: a per-nail price is one short "from" line, other prices are unchanged', () => {
+  const nail = service({ pricingUnit: 'PER_NAIL', priceMinVnd: '5000', priceMaxVnd: '30000' });
+  assert.equal(cardPrice(nail, 'vi'), 'từ 5.000 ₫/ngón');
+  assert.equal(cardPrice(nail, 'en'), 'from 5,000 ₫/nail');
+  assert.equal(servicePrice(nail, 'vi'), '5.000 ₫ – 30.000 ₫/ngón');
+  assert.equal(
+    cardPrice(service({ priceMinVnd: '80000', priceMaxVnd: '80000' }), 'vi'),
+    '80.000 ₫',
+  );
 });

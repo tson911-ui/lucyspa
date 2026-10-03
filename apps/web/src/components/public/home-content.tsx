@@ -3,8 +3,8 @@ import { Band, buttonClass, PublicMain, Reveal } from '@lucy-spa/ui';
 import Link from 'next/link';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
-import type { HomeData } from '../../lib/public-site-core';
-import { FactsStrip, LoadNotice, ServiceGroups, VisitCards } from './home-sections';
+import { homeGroups, type HomeData } from '../../lib/public-site-core';
+import { FactsStrip, LoadNotice, ServiceGroups, WhyCards } from './home-sections';
 import { HomeSlider } from './home-slider';
 import { PromoPopup } from './promo-popup';
 
@@ -92,15 +92,15 @@ export function HomeContent({
         </div>
       </Band>
 
-      {site ? (
-        <Band tone="surface" label={text.home.factsLabel} className="ls-band-flush">
+      {site && site.facts.length > 0 ? (
+        <Band tone="page" label={text.home.factsLabel} className="ls-band-flush ls-band-facts">
           <FactsStrip locale={locale} site={site} />
         </Band>
       ) : null}
 
-      <Band tone="page" labelledBy="groups-title">
+      <Band tone="surface" labelledBy="groups-title">
         <Reveal>
-          <div className="ls-section-head">
+          <div className="ls-section-head ls-section-head-center">
             <h2 className="ls-site-h2" id="groups-title">
               {text.home.groupsTitle}
             </h2>
@@ -112,24 +112,22 @@ export function HomeContent({
         ) : services.groups.length === 0 ? (
           <p className="ls-group-count">{text.home.noServices}</p>
         ) : (
-          <ServiceGroups locale={locale} services={services} />
+          <ServiceGroups locale={locale} groups={homeGroups(services, site)} />
         )}
       </Band>
 
-      <Band tone="surface" labelledBy="visit-title">
-        <Reveal>
-          <div className="ls-section-head">
-            <h2 className="ls-site-h2" id="visit-title">
-              {text.home.visitTitle}
-            </h2>
-          </div>
-        </Reveal>
-        {site === null ? (
-          <LoadNotice locale={locale} section={text.home.sectionShop} />
-        ) : (
-          <VisitCards locale={locale} site={site} />
-        )}
-      </Band>
+      {site?.why ? (
+        <Band tone="page" labelledBy="why-title">
+          <Reveal>
+            <div className="ls-section-head ls-section-head-center">
+              <h2 className="ls-site-h2" id="why-title">
+                {site.why.title}
+              </h2>
+            </div>
+          </Reveal>
+          <WhyCards why={site.why} />
+        </Band>
+      ) : null}
       {popup ? <PromoPopup locale={locale} /> : null}
     </PublicMain>
   );

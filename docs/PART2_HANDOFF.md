@@ -28,11 +28,13 @@ report), the placeholder hero photo (admin upload, in the runbook), and the revi
 
 **Follow-up 2026-10-04:** the home introduction sentence is editable in Shop info (VI/EN, optional, max 200 characters, empty = built-in text; migration `20261024000000_uxui_part2_hero_intro`, deploy with `db:deploy` before restarting). Report `UXUI_REDESIGN_PART2_HERO_INTRO.md`. Production is at `f1efec2` (Part 2 deployed 2026-10-04).
 
+**Follow-up 2026-10-04 (Owner review of the live site):** header hover, three-state theme button, tooltips, facts strip, featured groups, "Ghé thăm" removed, footer and logo, card motion, and the optional "Vì sao chọn" section; all edited in Admin > Website > Shop info (migration `20261025000000_uxui_part2_facts_groups`). Report `UXUI_REDESIGN_PART2_OWNER_REVIEW_2.md`. The Lovable site went offline ("No published build"): the reference is the capture of 2026-10-03.
+
 ## Owner decisions (locked; do not reopen)
 
 - Q-P2-1 shop info = one `website_shop_info` row edited in admin; opening hours come from the chosen branch's operating hours (one source with booking).
 - Q-P2-2 **no guest booking**: signing in stays required; the CTA keeps the chosen service through login (`?service=CODE`, `next`).
-- Q-P2-3 **no "Vì sao chọn LUCY SPA" section** at all (the reference's claims are not real).
+- Q-P2-3 **no "Vì sao chọn LUCY SPA" section** at all (the reference's claims are not real). **Superseded 2026-10-04 at the Owner's request:** the section exists but is off and empty until the Owner writes it (nothing seeded).
 - Q-P2-4 **remove `noindex` and add SEO data now** (site not launched): home, services, service detail only; account/auth/staff stay noindex. Done in P2-9.
 - Q-P2-5..11 as recommended: Playfair Display 500/600 for h1-h3 on public/member pages; no service photos; same English slugs in VI and EN; services inside
   a group ordered price ascending then name; map as a link only; the Lovable hero photo imported as a clearly marked placeholder; EN copy approved as proposed.
@@ -51,9 +53,7 @@ report), the placeholder hero photo (admin upload, in the runbook), and the revi
 - 2026-10-03 site header (asked as part of P2-6, done as a follow-up commit because P2-6 was already pushed): match the Lovable reference. Logo left; menu
   "Trang chủ, Dịch vụ, Lịch hẹn, Hóa đơn"; then the theme icon, the account icon and the single "Đặt lịch ngay" button. The separate "Đặt lịch" menu item is
   gone (also from the phone tab bar, where the booking tab now reads "Đặt lịch ngay"). "Lịch hẹn" and "Hóa đơn" show to signed-in members only. "Mỹ phẩm" stays
-  hidden until the cosmetics phase (no entry exists; one registry line adds it). The VI/EN switch stays as a compact round button. The theme icon is a plain
-  sun/moon toggle that shows the theme in use; the clock icon (the "by time of day" state) is dropped from the public header because the page already follows
-  the clock until the visitor chooses (the staff area keeps its three-way toggle). Same items on phones: the header keeps logo, language, theme, account; the
+  hidden until the cosmetics phase (no entry exists; one registry line adds it). The VI/EN switch stays as a compact round button. The theme button cycles Light, Dark, Auto (changed 2026-10-04: the clock state is back, as in the staff area). Same items on phones: the header keeps logo, language, theme, account; the
   tab bar carries Trang chủ, Dịch vụ, Đặt lịch ngay and, for members, Lịch hẹn and Hóa đơn (the call to action does not fit the 360 px header next to the tools).
 
 ## What exists now (so you do not rebuild it)

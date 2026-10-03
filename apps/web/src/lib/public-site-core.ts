@@ -1,11 +1,18 @@
-import type {
-  PublicHoursGroup,
-  PublicService,
-  PublicServiceDetailResponse,
-  PublicServiceGroup,
-  PublicServicesResponse,
-  PublicSiteResponse,
-  PublicSlide,
+import {
+  SHOP_FACT_ICONS,
+  WHY_ICONS,
+  type PublicFact,
+  type PublicFeaturedGroup,
+  type PublicHoursGroup,
+  type PublicService,
+  type PublicServiceDetailResponse,
+  type PublicServiceGroup,
+  type PublicServicesResponse,
+  type PublicSiteResponse,
+  type PublicSlide,
+  type PublicWhy,
+  type ShopFactIcon,
+  type WhyIcon,
 } from '@lucy-spa/contracts';
 import { hoursLines, type HoursLine } from './hours';
 import { formatVndRange } from './customer/booking';
@@ -70,11 +77,84 @@ function parseSiteImage(value: unknown): PublicSiteResponse['heroImage'] | undef
   return { alt: value['alt'], width: value['width'], height: value['height'], sources };
 }
 
+/** What the strip shows when the API does not send a list (a restart in progress): the three built-in facts. */
+const DEFAULT_FACTS: PublicFact[] = [
+  { kind: 'HOURS', icon: 'clock', text: null },
+  { kind: 'ADDRESS', icon: 'map-pin', text: null },
+  { kind: 'HOTLINE', icon: 'phone', text: null },
+];
+
+function parseFacts(value: unknown): PublicFact[] | null {
+  if (value === undefined) return DEFAULT_FACTS;
+  if (!Array.isArray(value)) return null;
+  const facts: PublicFact[] = [];
+  for (const item of value) {
+    if (!isRecord(item) || !isNullableString(item['text'])) return null;
+    const kind = item['kind'];
+    const icon = item['icon'];
+    if (kind !== 'HOURS' && kind !== 'ADDRESS' && kind !== 'HOTLINE' && kind !== 'CUSTOM') {
+      return null;
+    }
+    if (typeof icon !== 'string' || !(SHOP_FACT_ICONS as readonly string[]).includes(icon)) {
+      return null;
+    }
+    // A custom fact is its text; a built-in one is drawn by the site from the profile, so it carries none.
+    if (kind === 'CUSTOM' && (item['text'] === null || item['text'] === '')) return null;
+    facts.push({ kind, icon: icon as ShopFactIcon, text: kind === 'CUSTOM' ? item['text'] : null });
+  }
+  return facts;
+}
+
+function parseFeatured(value: unknown): PublicFeaturedGroup[] | null {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) return null;
+  const groups: PublicFeaturedGroup[] = [];
+  for (const item of value) {
+    if (!isRecord(item) || !isString(item['code']) || !isNullableString(item['description'])) {
+      return null;
+    }
+    groups.push({ code: item['code'], description: item['description'] });
+  }
+  return groups;
+}
+
+/** The optional "why choose us" section: absent or null while hidden; a bad shape hides it rather than breaking the home. */
+function parseWhy(value: unknown): PublicWhy | null | undefined {
+  if (value === undefined || value === null) return null;
+  if (!isRecord(value) || !isString(value['title']) || !Array.isArray(value['cards'])) {
+    return undefined;
+  }
+  const cards: PublicWhy['cards'] = [];
+  for (const item of value['cards']) {
+    if (
+      !isRecord(item) ||
+      !isString(item['heading']) ||
+      !isString(item['description']) ||
+      typeof item['icon'] !== 'string' ||
+      !(WHY_ICONS as readonly string[]).includes(item['icon'])
+    ) {
+      return undefined;
+    }
+    cards.push({
+      icon: item['icon'] as WhyIcon,
+      heading: item['heading'],
+      description: item['description'],
+    });
+  }
+  return cards.length > 0 && value['title'] !== '' ? { title: value['title'], cards } : null;
+}
+
 export function parsePublicSite(value: unknown): PublicSiteResponse | null {
   if (!isRecord(value)) return null;
   const hours = parseHours(value['hours']);
   const heroImage = parseSiteImage(value['heroImage']);
+  const facts = parseFacts(value['facts']);
+  const featuredGroups = parseFeatured(value['featuredGroups']);
+  const why = parseWhy(value['why']);
   if (
+    facts === null ||
+    featuredGroups === null ||
+    why === undefined ||
     !isString(value['tagline']) ||
     // An API that predates the field (a restart in progress) sends none: the site then uses its own sentence.
     !(value['intro'] === undefined || isNullableString(value['intro'])) ||
@@ -93,6 +173,9 @@ export function parsePublicSite(value: unknown): PublicSiteResponse | null {
   const mapUrl = value['mapUrl'];
   return {
     tagline: value['tagline'],
+    facts,
+    featuredGroups,
+    why,
     intro: value['intro'] ?? null,
     address: value['address'],
     hotline: value['hotline'],
@@ -169,6 +252,22 @@ export function parseServiceDetail(value: unknown): PublicServiceDetailResponse 
 
 /** The price as the menu shows it: "80.000 ₫", "5.000 – 30.000 ₫/ngón". */
 export function servicePrice(service: PublicService, locale: Locale): string {
+  return formatServicePrice(service, locale, false);
+}
+
+/**
+ * The price on a home card, one short line: a per-nail price reads "từ 5.000 ₫/ngón" (the lowest price, "from"), never
+ * the range the list and the detail page show.
+ */
+export function cardPrice(service: PublicService, locale: Locale): string {
+  return formatServicePrice(service, locale, true);
+}
+
+function formatServicePrice(service: PublicService, locale: Locale, short: boolean): string {
+  if (short && service.pricingUnit === 'PER_NAIL') {
+    const from = formatVndRange(service.priceMinVnd, service.priceMinVnd, locale);
+    return locale === 'vi' ? `từ ${from}/ngón` : `from ${from}/nail`;
+  }
   const price = formatVndRange(service.priceMinVnd, service.priceMaxVnd, locale);
   return service.pricingUnit === 'PER_NAIL'
     ? `${price}${locale === 'vi' ? '/ngón' : '/nail'}`
@@ -180,6 +279,31 @@ export function serviceEstimate(service: PublicService, locale: Locale): string 
   const unit = locale === 'vi' ? 'phút' : 'min';
   const { estimatedMinMinutes: min, estimatedMaxMinutes: max } = service;
   return min === max ? `${min} ${unit}` : `${min}–${max} ${unit}`;
+}
+
+/** A group as the home card shows it: its Owner-written description (null when there is none) and its first services. */
+export interface HomeGroup {
+  group: PublicServiceGroup;
+  description: string | null;
+}
+
+/**
+ * The cards of "Nhóm dịch vụ nổi bật": the groups the Owner chose, in their order, each with its description. With none
+ * chosen (or the shop profile unreadable) every live group of the catalogue is listed without a description. A chosen
+ * group that no longer has a visible service is skipped.
+ */
+export function homeGroups(
+  services: PublicServicesResponse,
+  site: Pick<PublicSiteResponse, 'featuredGroups'> | null,
+): HomeGroup[] {
+  const chosen = site?.featuredGroups ?? [];
+  if (chosen.length === 0) return services.groups.map((group) => ({ group, description: null }));
+  const result: HomeGroup[] = [];
+  for (const entry of chosen) {
+    const group = services.groups.find((candidate) => candidate.code === entry.code);
+    if (group) result.push({ group, description: entry.description });
+  }
+  return result;
 }
 
 /** The first services of a group for the home cards. */

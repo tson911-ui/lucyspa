@@ -37,6 +37,13 @@ import { errorMessage } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
 import { Button, Empty, ErrorState, Notice, useResource, useSuccessToast } from '../ui';
 import { MediaPicker } from './media-picker';
+import {
+  FactsEditor,
+  GroupsEditor,
+  ShopListDialogs,
+  WhyEditor,
+  type ShopListEditor,
+} from './website-shop-lists';
 
 /**
  * The "Shop info" tab of the website content page (Part 2 contract 6.3): the tagline, contact, home page image and the
@@ -65,6 +72,7 @@ function ShopInfoForm_() {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [listEditor, setListEditor] = useState<ShopListEditor>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
 
   useEffect(() => {
@@ -205,6 +213,29 @@ function ShopInfoForm_() {
                   </Field>
                 </FormGrid>
               </FormSection>
+              <FactsEditor
+                form={form}
+                onChange={change}
+                onEdit={setListEditor}
+                problem={error('facts')}
+              />
+              <GroupsEditor
+                form={form}
+                info={info}
+                onChange={change}
+                onEdit={setListEditor}
+                problem={error('featuredGroups')}
+              />
+              <WhyEditor
+                form={form}
+                onChange={change}
+                onEdit={setListEditor}
+                problems={{
+                  whyTitleVi: error('whyTitleVi'),
+                  whyTitleEn: error('whyTitleEn'),
+                  whyCards: error('whyCards'),
+                }}
+              />
               <FormSection title={text.contactSection} description={text.contactHint}>
                 <FormGrid cols={2}>
                   <Field
@@ -352,6 +383,14 @@ function ShopInfoForm_() {
           />
         </Stack>
       </form>
+      {/* Outside the page form: a dialog's own submit must never reach the page form's handler. */}
+      <ShopListDialogs
+        editor={listEditor}
+        form={form}
+        info={info}
+        onChange={change}
+        onClose={() => setListEditor(null)}
+      />
       {picking ? (
         <MediaPicker
           onPick={(asset) => {

@@ -70,6 +70,15 @@ const paths = {
   // Public site (Part 2)
   phone:
     'M6.5 4h3l1.5 4-2 1.5a11 11 0 005.5 5.5L16 13l4 1.5v3a2 2 0 01-2 2A14 14 0 014.5 6a2 2 0 012-2z',
+  // "Why choose us" cards of the public home page (the Owner picks one per card; line style like the rest)
+  heart: 'M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z',
+  leaf: 'M20 4C10 4 5 9 5 15a5 5 0 005 5c6 0 10-6 10-16zM5 20c2-5 5-8 9-10',
+  droplet: 'M12 3s6 6.3 6 11a6 6 0 01-12 0c0-4.7 6-11 6-11z',
+  towel: 'M4 8h16v10H4zM4 12h16M7 8V6h10v2',
+  flower:
+    'M12 9a3 3 0 100 6 3 3 0 000-6zM12 9c-2-1-2-4 0-6 2 2 2 5 0 6zM12 15c-2 1-2 4 0 6 2-2 2-5 0-6zM9 12c-1-2-4-2-6 0 2 2 5 2 6 0zM15 12c1-2 4-2 6 0-2 2-5 2-6 0z',
+  gem: 'M6 4h12l3 5-9 11L3 9l3-5zM3 9h18M9 4l-1.5 5L12 20M15 4l1.5 5L12 20',
+  smile: 'M12 3a9 9 0 100 18 9 9 0 000-18zM8.5 14a4.5 4.5 0 007 0M9 9.5v.01M15 9.5v.01',
   // Homepage slider (Step 13)
   pause: 'M9 5v14M15 5v14',
   play: 'M8 5l11 7-11 7V5z',

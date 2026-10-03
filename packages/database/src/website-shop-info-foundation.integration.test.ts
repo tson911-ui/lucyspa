@@ -79,6 +79,38 @@ test('website shop info foundation: seeded single row, constrained texts, https 
             where: { id: 'shop' },
             data: { introVi: 'x'.repeat(200), introEn: 'Welcome' },
           });
+          // The facts strip, featured groups and the why section: defaults need no row change, the lists are arrays of a
+          // bounded size, the two why titles are 1-80 characters or absent.
+          assert.equal(seeded.factsVisible, true);
+          assert.deepEqual(seeded.factsItems, []);
+          assert.deepEqual(seeded.featuredGroups, []);
+          assert.equal(seeded.whyVisible, false);
+          assert.equal(seeded.whyTitleVi, null);
+          assert.deepEqual(seeded.whyCards, []);
+          for (const data of [
+            { factsItems: { not: 'a list' } },
+            { factsItems: Array.from({ length: 17 }, () => 1) },
+            { featuredGroups: 'x' },
+            { featuredGroups: Array.from({ length: 13 }, () => 1) },
+            { whyCards: {} },
+            { whyCards: Array.from({ length: 13 }, () => 1) },
+            { whyTitleVi: '' },
+            { whyTitleEn: 'x'.repeat(81) },
+          ]) {
+            await rejects(
+              () => tx.websiteShopInfo.update({ where: { id: 'shop' }, data }),
+              /website_shop_info_lists|violates check constraint/i,
+            );
+          }
+          await tx.websiteShopInfo.update({
+            where: { id: 'shop' },
+            data: {
+              factsItems: Array.from({ length: 16 }, () => 1),
+              featuredGroups: Array.from({ length: 12 }, () => 1),
+              whyCards: Array.from({ length: 12 }, () => 1),
+              whyTitleVi: 'x'.repeat(80),
+            },
+          });
           for (const mapUrl of [
             'http://maps.example.com/x',
             'javascript:alert(1)',

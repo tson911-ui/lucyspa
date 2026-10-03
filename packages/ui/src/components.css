@@ -1646,6 +1646,105 @@
   border-radius: var(--ls-radius-sm);
 }
 
+/* Icon picker: a wrapping row of 44 px icon cells (a radio group); the chosen one takes the soft brand tint. */
+.ls-icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2);
+}
+
+.ls-icon-pick {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--ls-control-h);
+  height: var(--ls-control-h);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-md);
+  background: var(--ls-bg-surface);
+  color: var(--ls-text);
+  cursor: pointer;
+  transition:
+    background var(--ls-dur-fast) var(--ls-ease-out),
+    border-color var(--ls-dur-fast) var(--ls-ease-out),
+    color var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+.ls-icon-pick:hover {
+  background: var(--ls-hover-bg);
+  border-color: var(--ls-hover-border);
+  color: var(--ls-hover-text);
+}
+
+.ls-icon-pick:has(.ls-icon-pick-input:checked) {
+  background: var(--ls-brand-soft);
+  border-color: var(--ls-brand);
+  color: var(--ls-brand-on-soft);
+}
+
+.ls-icon-pick:has(.ls-icon-pick-input:checked):hover {
+  background: var(--ls-hover-bg);
+  color: var(--ls-hover-text);
+}
+
+.ls-icon-pick:has(.ls-icon-pick-input:focus-visible) {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: 2px;
+}
+
+.ls-icon-pick-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.ls-list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ls-space-3);
+  align-items: center;
+  min-width: 0;
+}
+
+.ls-list-row-icon {
+  grid-template-columns: var(--ls-space-8) minmax(0, 1fr) auto;
+}
+
+.ls-list-row-mark {
+  display: grid;
+  place-items: center;
+  width: var(--ls-space-8);
+  height: var(--ls-space-8);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-brand-soft);
+  color: var(--ls-brand-on-soft);
+}
+
+.ls-list-row-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  min-width: 0;
+  min-height: var(--ls-control-h);
+}
+
+.ls-list-row-title {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  line-height: var(--ls-leading-md);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ls-list-row-head > .ls-badge {
+  flex: none;
+}
+
 /* The schedule is information, not decoration: it wraps instead of being cut off. */
 .ls-media-row .ls-media-meta {
   overflow: visible;

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import type { WebsiteFeaturedGroup, WebsiteShopFact, WebsiteWhyCard } from '@lucy-spa/contracts';
 import { AuthError } from '../auth/auth.error.js';
 import { groupOperatingHours, hotlineTel, parseShopInfoFields } from './shop-info.core.js';
 
@@ -25,6 +26,13 @@ const valid = {
   mapUrl: null,
   hoursBranchId: null,
   heroMediaId: null,
+  factsVisible: true,
+  facts: [] as WebsiteShopFact[],
+  featuredGroups: [] as WebsiteFeaturedGroup[],
+  whyVisible: false,
+  whyTitleVi: null,
+  whyTitleEn: null,
+  whyCards: [] as WebsiteWhyCard[],
 };
 
 const refused = (patch: object, field: string) =>

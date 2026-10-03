@@ -139,3 +139,46 @@ export function MediaTile({
     </li>
   );
 }
+
+/**
+ * One entry of an ordered list that has no picture (the facts strip, the featured groups): an optional icon, the title,
+ * one meta line, optional badges and the row's `⋮` menu at the trailing edge. The sortable item around it is the frame,
+ * exactly like `MediaRow`.
+ */
+export function ListRow({
+  icon,
+  title,
+  meta,
+  badge,
+  actions,
+}: {
+  icon?: ReactNode;
+  title: string;
+  /** One short line under the title (cut with an ellipsis, the full text is the tooltip): every row has the same height. */
+  meta?: string | undefined;
+  badge?: ReactNode;
+  /** The row's `⋮` menu (a `RowActions`). */
+  actions?: ReactNode;
+}) {
+  return (
+    <div className={cx('ls-list-row', icon ? 'ls-list-row-icon' : undefined)}>
+      {icon ? (
+        <span className="ls-list-row-mark" aria-hidden="true">
+          {icon}
+        </span>
+      ) : null}
+      <div className="ls-media-row-text">
+        <span className="ls-list-row-head">
+          <span className="ls-list-row-title" title={title}>
+            {title}
+          </span>
+          {badge}
+        </span>
+        <span className="ls-media-meta" title={meta}>
+          {meta ?? '\u00a0'}
+        </span>
+      </div>
+      {actions ? <div className="ls-media-row-actions">{actions}</div> : null}
+    </div>
+  );
+}

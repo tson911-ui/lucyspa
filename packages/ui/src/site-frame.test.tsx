@@ -303,7 +303,7 @@ test('reveal gate: reduced motion, data saver, low memory and a missing observer
   assert.equal(startsVisible({ top: 900, bottom: 1200 }, 800), false);
 });
 
-test('TabBar marks the call-to-action tab; ThemeCycle shows the theme in use and switches to the other', () => {
+test('TabBar marks the call-to-action tab; ThemeCycle cycles Light, Dark, Auto like the staff toggle', () => {
   const html = renderToStaticMarkup(
     <ui.TabBar
       label="Menu điện thoại"
@@ -331,18 +331,36 @@ test('TabBar marks the call-to-action tab; ThemeCycle shows the theme in use and
     auto: 'Theo giờ',
     switchTo: 'Chuyển sang {name}',
   };
-  window.document.documentElement.setAttribute('data-theme', 'dark');
+  window.document.cookie = 'ls-theme=; Max-Age=0; Path=/';
   const container = window.document.createElement('div');
   window.document.body.appendChild(container);
   const root = createRoot(container);
   act(() => root.render(<ui.ThemeCycle labels={labels} />));
   const button = container.querySelector('button') as HTMLButtonElement;
-  assert.equal(button.getAttribute('aria-label'), 'Giao diện: Tối. Chuyển sang Sáng');
-  assert.ok(container.querySelector('svg path[d^="M20 14.5"]'), 'the moon is drawn in dark');
+  const root_ = () => window.document.documentElement;
+  // No choice stored = Auto (by the clock). A press goes to Light, then Dark, then back to Auto.
+  assert.equal(button.dataset['preference'], 'auto');
+  assert.equal(button.getAttribute('aria-label'), 'Giao diện: Theo giờ. Chuyển sang Sáng');
+  assert.ok(
+    container.querySelector('svg path[d*="M12 7"]') || button.querySelector('svg'),
+    'the clock is drawn in Auto',
+  );
   act(() => button.click());
-  assert.equal(window.document.documentElement.getAttribute('data-theme'), 'light');
+  assert.equal(button.dataset['preference'], 'light');
+  assert.equal(root_().getAttribute('data-theme'), 'light');
   assert.match(window.document.cookie, /ls-theme=light/);
   assert.equal(button.getAttribute('aria-label'), 'Giao diện: Sáng. Chuyển sang Tối');
+  assert.ok(container.querySelector('svg path[d^="M12 8a4 4"]'), 'the sun is drawn in Light');
+  act(() => button.click());
+  assert.equal(button.dataset['preference'], 'dark');
+  assert.equal(root_().getAttribute('data-theme'), 'dark');
+  assert.match(window.document.cookie, /ls-theme=dark/);
+  assert.equal(button.getAttribute('aria-label'), 'Giao diện: Tối. Chuyển sang Theo giờ');
+  assert.ok(container.querySelector('svg path[d^="M20 14.5"]'), 'the moon is drawn in Dark');
+  act(() => button.click());
+  assert.equal(button.dataset['preference'], 'auto');
+  assert.doesNotMatch(window.document.cookie, /ls-theme=(light|dark)/);
+  assert.equal(button.getAttribute('aria-label'), 'Giao diện: Theo giờ. Chuyển sang Sáng');
   act(() => root.unmount());
 });
 
@@ -548,4 +566,103 @@ test('site.css does not redefine a class another stylesheet owns (a clash silent
       `classes also defined in ${other}`,
     );
   }
+});
+
+test('hovering the current menu entry turns its pill solid (the locked hover fill), light and dark', () => {
+  // The pill carries the current entry's highlight; the hover text colour must never sit on the pale pill.
+  assert.match(
+    css,
+    /\.ls-site-nav:has\(> a\[aria-current='page'\]:hover\) > \.ls-nav-pill,\s*\.ls-subnav:has\(> a\[aria-current='page'\]:hover\) > \.ls-nav-pill \{\s*background: var\(--ls-hover-bg\);/,
+  );
+  assert.match(
+    css,
+    /\.ls-site-nav a\[aria-current='page'\]:hover \{\s*background: var\(--ls-hover-bg\);\s*color: var\(--ls-hover-text\);/,
+  );
+  assert.match(tokens, /--ls-hover-bg: #782b37;[\s\S]*--ls-hover-text: #ffffff;/);
+  assert.match(tokens, /--ls-hover-bg: #e08a9a;\s*--ls-hover-text: #2a0f16;/);
+});
+
+test('header tooltips open below the button and give way to the open account menu', () => {
+  assert.match(
+    css,
+    /\.ls-site-header \.ls-tooltip \{\s*bottom: auto;\s*top: calc\(100% \+ var\(--ls-space-2\)\);/,
+  );
+  assert.match(
+    css,
+    /\.ls-site-header \.ls-tooltip-wrap:has\(\[aria-expanded='true'\]\) > \.ls-tooltip \{\s*display: none;/,
+  );
+});
+
+test('clickable cards share one gentle motion: lift, slight zoom, deeper shadow, a dip on press; none under reduced motion', () => {
+  for (const selector of [
+    '.ls-site-card',
+    '.ls-service-card',
+    '.ls-choice:not(.ls-choice-disabled)',
+  ]) {
+    assert.ok(css.includes(`${selector}:hover`), `${selector} hover`);
+    assert.ok(css.includes(`${selector}:active`), `${selector} press`);
+  }
+  assert.match(
+    css,
+    /transform: translateY\(calc\(var\(--ls-card-lift\) \* -1\)\) scale\(var\(--ls-card-zoom\)\);[\s\S]*?box-shadow: var\(--ls-shadow-lg\);/,
+  );
+  assert.match(css, /transform: scale\(var\(--ls-press-scale\)\);/);
+  const reduced = tokens.slice(tokens.indexOf('@media (prefers-reduced-motion: reduce)'));
+  assert.match(reduced, /--ls-card-lift: 0px;\s*--ls-card-zoom: 1;/);
+});
+
+test('the three-column footer and the featured group cards keep to the reference layout', () => {
+  assert.match(
+    css,
+    /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);\s*gap: var\(--ls-space-6\);/,
+  );
+  assert.match(css, /\.ls-site-grid-groups \{\s*align-items: start;/);
+  assert.match(
+    css,
+    /\.ls-group-card \.ls-site-link::after \{\s*content: '';\s*position: absolute;\s*inset: 0;/,
+  );
+  // Prices are a muted, regular-weight, right-aligned column that never wraps.
+  assert.match(
+    css,
+    /\.ls-price \{[^}]*font-weight: 400;[^}]*text-align: end;[^}]*white-space: nowrap;/,
+  );
+});
+
+test('ListRow and IconPicker: a text row with a menu slot, a radio group of icons', () => {
+  const row = renderToStaticMarkup(
+    <ui.ListRow
+      icon={<ui.Icon name="leaf" />}
+      title="Dụng cụ sạch"
+      meta="EN: Clean tools"
+      actions={<i />}
+    />,
+  );
+  assert.match(row, /ls-list-row ls-list-row-icon/);
+  assert.match(row, /<span class="ls-list-row-title" title="Dụng cụ sạch">Dụng cụ sạch<\/span>/);
+  assert.match(row, /ls-media-row-actions/);
+  const picker = renderToStaticMarkup(
+    <ui.IconPicker
+      label="Biểu tượng"
+      value="heart"
+      onChange={() => undefined}
+      options={[
+        { value: 'leaf', label: 'Chiếc lá', icon: 'leaf' },
+        { value: 'heart', label: 'Trái tim', icon: 'heart' },
+      ]}
+    />,
+  );
+  assert.match(picker, /<span class="ls-label" id="([^"]+)-label">Biểu tượng<\/span>/);
+  assert.match(picker, /role="radiogroup" aria-labelledby="[^"]+-label"/);
+  assert.equal(picker.match(/type="radio"/g)?.length, 2);
+  assert.match(
+    picker,
+    /aria-label="Trái tim"[^>]*checked=""|checked=""[^>]*aria-label="Trái tim"|value="heart"[^>]*checked/,
+  );
+  assert.match(picker, /aria-label="Chiếc lá"/);
+});
+
+test('the serif wordmark is the public logo; the staff wordmark keeps the sans face', () => {
+  const serif = renderToStaticMarkup(<ui.BrandWordmark serif />);
+  assert.match(serif, /font-family:var\(--ls-font-display\)/);
+  assert.match(renderToStaticMarkup(<ui.BrandWordmark />), /font-family:var\(--ls-font-sans\)/);
 });

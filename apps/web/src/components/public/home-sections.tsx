@@ -1,16 +1,17 @@
-import type { PublicServicesResponse, PublicSiteResponse } from '@lucy-spa/contracts';
+import type { PublicSiteResponse, PublicWhy } from '@lucy-spa/contracts';
 import { buttonClass, Icon, Notice, PriceList, Reveal } from '@lucy-spa/ui';
 import Link from 'next/link';
+import type { CSSProperties } from 'react';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import { fill } from '../../lib/fill';
-import { hoursLines } from '../../lib/hours';
 import {
+  cardPrice,
   directionsUrl,
   featuredServices,
   hoursHeadline,
-  servicePrice,
   telHref,
+  type HomeGroup,
 } from '../../lib/public-site-core';
 
 /** A section that could not be read: a notice with a way to try again; the rest of the page still renders. */
@@ -28,62 +29,93 @@ export function LoadNotice({ locale, section }: { locale: Locale; section: strin
   );
 }
 
-/** The three facts every visitor looks for: when we are open, where we are, how to call. */
+/** How many equal columns the strip uses on a tablet or desktop: 1-3 facts fill the width, more wrap in rows of 3 (2 for 4). */
+const factColumns = (count: number): number => (count === 4 ? 2 : Math.min(Math.max(count, 1), 3));
+
+/**
+ * The facts every visitor looks for, as the Owner arranged them in Shop info: the built-in opening hours, address and
+ * hotline (each can be hidden) and any custom lines, in the Owner's order. The address opens the map link, the hotline
+ * dials. Nothing at all when the Owner hid the strip or every item.
+ */
 export function FactsStrip({ locale, site }: { locale: Locale; site: PublicSiteResponse }) {
   const text = getSiteText(locale).home;
   const headline = hoursHeadline(site.hours, locale, text.closed);
-  return (
-    <div className="ls-site-facts">
-      {headline ? (
-        <p className="ls-site-fact">
-          <Icon className="ls-icon-lead" name="clock" />
-          <span>
-            <strong>{headline.value}</strong> · {headline.label}
-          </span>
-        </p>
-      ) : null}
-      <p className="ls-site-fact">
-        <Icon className="ls-icon-lead" name="map-pin" />
-        <strong>{site.address}</strong>
-      </p>
-      <p className="ls-site-fact">
-        <Icon className="ls-icon-lead" name="phone" />
-        <span>
-          {text.hotline}{' '}
-          <a href={telHref(site)}>
-            <strong>{site.hotline}</strong>
+  const items = site.facts.flatMap((fact) => {
+    const icon = <Icon className="ls-icon-lead" name={fact.icon} />;
+    if (fact.kind === 'HOURS') {
+      return headline
+        ? [
+            <p key="hours" className="ls-site-fact">
+              {icon}
+              <span>
+                <strong>{headline.value}</strong> · {headline.label}
+              </span>
+            </p>,
+          ]
+        : [];
+    }
+    if (fact.kind === 'ADDRESS') {
+      return [
+        <p key="address" className="ls-site-fact">
+          {icon}
+          <a href={directionsUrl(site)} target="_blank" rel="noopener noreferrer">
+            <strong>{site.address}</strong>
           </a>
-        </span>
-      </p>
+        </p>,
+      ];
+    }
+    if (fact.kind === 'HOTLINE') {
+      return [
+        <p key="hotline" className="ls-site-fact">
+          {icon}
+          <span>
+            {text.hotline}{' '}
+            <a href={telHref(site)}>
+              <strong>{site.hotline}</strong>
+            </a>
+          </span>
+        </p>,
+      ];
+    }
+    return [
+      <p key={`custom-${fact.text}`} className="ls-site-fact">
+        {icon}
+        <strong>{fact.text}</strong>
+      </p>,
+    ];
+  });
+  if (items.length === 0) return null;
+  return (
+    <div
+      className="ls-site-facts"
+      style={{ '--ls-facts-cols': factColumns(items.length) } as CSSProperties}
+    >
+      {items}
     </div>
   );
 }
 
-/** One card per live group of the catalogue: its first services with their prices and a link to all of them. */
-export function ServiceGroups({
-  locale,
-  services,
-}: {
-  locale: Locale;
-  services: PublicServicesResponse;
-}) {
+/**
+ * One card per featured group (the Owner's choice and order, else every live group): its name, the Owner's short
+ * description, its first three services with muted right-aligned prices, and "Xem tất cả →" right under them. The link
+ * stretches over the whole card, so the card itself is the click target.
+ */
+export function ServiceGroups({ locale, groups }: { locale: Locale; groups: HomeGroup[] }) {
   const text = getSiteText(locale).home;
   return (
     <div className="ls-site-grid ls-site-grid-groups">
-      {services.groups.map((group, index) => (
+      {groups.map(({ group, description }, index) => (
         <Reveal key={group.code} index={index}>
-          <article className="ls-site-card">
-            <div>
+          <article className="ls-site-card ls-group-card">
+            <div className="ls-group-head">
               <h3 className="ls-site-h3">{group.name}</h3>
-              <p className="ls-group-count">
-                {fill(text.serviceCount, { count: group.services.length })}
-              </p>
+              {description ? <p className="ls-group-desc">{description}</p> : null}
             </div>
             <PriceList
               items={featuredServices(group).map((service) => ({
                 key: service.code,
                 name: service.name,
-                price: servicePrice(service, locale),
+                price: cardPrice(service, locale),
               }))}
             />
             <Link
@@ -92,7 +124,9 @@ export function ServiceGroups({
               aria-label={fill(text.viewAllOf, { group: group.name })}
             >
               {text.viewAll}
-              <Icon name="chevron-right" />
+              <span aria-hidden="true" className="ls-link-arrow">
+                →
+              </span>
             </Link>
           </article>
         </Reveal>
@@ -101,60 +135,24 @@ export function ServiceGroups({
   );
 }
 
-/** "Ghé thăm": the opening hours (grouped as the Owner set them) and the address with the hotline and directions. */
-export function VisitCards({ locale, site }: { locale: Locale; site: PublicSiteResponse }) {
-  const text = getSiteText(locale).home;
-  const lines = hoursLines(site.hours, locale, text.closed);
+/**
+ * The optional "why choose us" cards, written by the Owner in Shop info: an icon in a soft round badge (the brand
+ * colours of the current theme), a serif heading and a short description. Drawn only when the page has a section.
+ */
+export function WhyCards({ why }: { why: PublicWhy }) {
   return (
-    <div className="ls-visit">
-      <Reveal index={0}>
-        <article className="ls-site-card">
-          <span className="ls-icon-bubble">
-            <Icon name="clock" />
-          </span>
-          <h3 className="ls-site-h3">{text.hoursTitle}</h3>
-          {lines.length > 0 ? (
-            <dl className="ls-hours">
-              {lines.map((line) => (
-                <div key={line.label}>
-                  <dt>{line.label}</dt>
-                  <dd>{line.value}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : (
-            <p className="ls-group-count">{text.noHours}</p>
-          )}
-        </article>
-      </Reveal>
-      <Reveal index={1}>
-        <article className="ls-site-card">
-          <span className="ls-icon-bubble">
-            <Icon name="map-pin" />
-          </span>
-          <h3 className="ls-site-h3">{text.contactTitle}</h3>
-          <p className="ls-contact-lines">
-            <strong>{site.address}</strong>
-            <span>
-              {text.hotline}: <a href={telHref(site)}>{site.hotline}</a>
+    <div className="ls-site-grid ls-site-grid-groups ls-site-grid-why">
+      {why.cards.map((card, index) => (
+        <Reveal key={`${card.heading}-${index}`} index={index}>
+          <article className="ls-site-card">
+            <span className="ls-icon-bubble">
+              <Icon name={card.icon} />
             </span>
-          </p>
-          <div className="ls-site-actions">
-            <Link className={buttonClass('primary')} href={`/${locale}/account/book`}>
-              {getSiteText(locale).header.bookNow}
-            </Link>
-            <a
-              className={buttonClass('secondary')}
-              href={directionsUrl(site)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Icon name="map-pin" />
-              <span className="ls-btn-label">{text.directions}</span>
-            </a>
-          </div>
-        </article>
-      </Reveal>
+            <h3 className="ls-site-h3">{card.heading}</h3>
+            <p className="ls-group-desc">{card.description}</p>
+          </article>
+        </Reveal>
+      ))}
     </div>
   );
 }

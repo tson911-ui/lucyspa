@@ -28,7 +28,7 @@ export function PublicHeader({
       brand={
         <Link href={`/${locale}`} aria-label={text.header.brand}>
           <SiteLogo decor={decor}>
-            <BrandWordmark />
+            <BrandWordmark serif />
           </SiteLogo>
         </Link>
       }
@@ -51,6 +51,8 @@ export function PublicFooter({
 }) {
   const text = getSiteText(locale);
   const hours = site ? hoursHeadline(site.hours, locale, getSiteText(locale).home.closed) : null;
+  // The shop's real data, in the order of the reference: brand and tagline, contact, links.
+  const [phoneBefore = '', phoneAfter = ''] = text.footer.phone.split('{value}');
   const columns: FooterColumn[] = [
     ...(site
       ? [
@@ -59,32 +61,27 @@ export function PublicFooter({
             title: text.footer.contact,
             items: [
               site.address,
-              <a key="tel" href={telHref(site)}>
-                {site.hotline}
-              </a>,
+              <span key="tel">
+                {phoneBefore}
+                <a href={telHref(site)}>{site.hotline}</a>
+                {phoneAfter}
+              </span>,
               ...(hours ? [`${hours.label}: ${hours.value}`] : []),
             ],
           },
         ]
       : []),
     {
-      key: 'discover',
-      title: text.footer.discover,
-      items: footerDiscoverItems(locale, text.nav).map((item) => (
-        <Link key={item.key} href={item.href}>
-          {item.label}
-        </Link>
-      )),
-    },
-    {
-      key: 'member',
-      title: text.footer.member,
+      key: 'links',
+      title: text.footer.links,
       items: [
+        ...footerDiscoverItems(locale, text.nav).map((item) => (
+          <Link key={item.key} href={item.href}>
+            {item.label}
+          </Link>
+        )),
         <Link key="in" href={`/${locale}/account/login`}>
-          {text.footer.signIn}
-        </Link>,
-        <Link key="up" href={`/${locale}/account/register`}>
-          {text.footer.register}
+          {text.footer.signInUp}
         </Link>,
       ],
     },
@@ -93,7 +90,7 @@ export function PublicFooter({
     <SiteFooter
       brand={
         <Link href={`/${locale}`} aria-label={text.header.brand} className="ls-site-footer-logo">
-          <BrandWordmark />
+          <BrandWordmark serif />
         </Link>
       }
       tagline={site?.tagline ?? null}

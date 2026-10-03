@@ -2026,6 +2026,16 @@ model WebsiteShopInfo {
   hoursBranch     Branch?     @relation(fields: [hoursBranchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   heroMediaId     String?     @map("hero_media_id") @db.Uuid
   heroMedia       MediaAsset? @relation(fields: [heroMediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  // The home page's facts strip and featured service groups: small ordered lists the Owner edits with the profile.
+  // `[]` means "default" (the three built-in facts shown; every group listed), so no row change is needed.
+  factsVisible    Boolean     @default(true) @map("facts_visible")
+  factsItems      Json        @default("[]") @map("facts_items") @db.JsonB
+  featuredGroups  Json        @default("[]") @map("featured_groups") @db.JsonB
+  // The optional "why choose us" section: hidden and empty until the Owner writes it (nothing is seeded).
+  whyVisible      Boolean     @default(false) @map("why_visible")
+  whyTitleVi      String?     @map("why_title_vi")
+  whyTitleEn      String?     @map("why_title_en")
+  whyCards        Json        @default("[]") @map("why_cards") @db.JsonB
   rowVersion      Int         @default(1) @map("row_version")
   updatedByUserId String?     @map("updated_by_user_id") @db.Uuid
   updatedBy       User?       @relation("WebsiteShopInfoUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)

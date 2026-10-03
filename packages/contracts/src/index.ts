@@ -3100,8 +3100,113 @@ export interface PublicSiteImage {
   sources: { url: string; width: number }[];
 }
 
+/** The icons an Owner can give a custom fact; the web draws them with the kit's icons of the same names. */
+export const SHOP_FACT_ICONS = [
+  'clock',
+  'map-pin',
+  'phone',
+  'calendar',
+  'sparkles',
+  'award',
+  'shield',
+  'globe',
+  'tag',
+  'info',
+] as const;
+export type ShopFactIcon = (typeof SHOP_FACT_ICONS)[number];
+
+/** The icons of a "why choose us" card: one line-icon set, drawn in the theme's brand colours (light and dark). */
+export const WHY_ICONS = [
+  'sparkles',
+  'heart',
+  'clock',
+  'leaf',
+  'droplet',
+  'towel',
+  'flower',
+  'shield',
+  'award',
+  'gem',
+  'smile',
+  'calendar-check',
+] as const;
+export type WhyIcon = (typeof WHY_ICONS)[number];
+
+/** One card of the optional "why choose us" section, as the Owner edits it (both languages required). */
+export interface WebsiteWhyCard {
+  /** A UUID chosen by the form. */
+  id: string;
+  icon: WhyIcon;
+  headingVi: string;
+  headingEn: string;
+  descriptionVi: string;
+  descriptionEn: string;
+}
+
+export interface PublicWhyCard {
+  icon: WhyIcon;
+  heading: string;
+  description: string;
+}
+
+/** The "why choose us" section in the visitor's language. Absent from `PublicSiteResponse.why` while hidden or empty. */
+export interface PublicWhy {
+  title: string;
+  cards: PublicWhyCard[];
+}
+export type ShopFactKind = 'HOURS' | 'ADDRESS' | 'HOTLINE' | 'CUSTOM';
+
+/**
+ * One item of the home page's facts strip, as the Owner edits it. The three built-in items (opening hours, address,
+ * hotline) can be hidden and moved but not deleted; their text comes from the shop profile. A custom item has its own
+ * icon and one line of text per language (both required, so a visitor never sees the other language).
+ */
+export interface WebsiteShopFact {
+  /** `hours`, `address`, `hotline` for the built-ins; a UUID chosen by the form for a custom item. */
+  id: string;
+  kind: ShopFactKind;
+  visible: boolean;
+  icon: ShopFactIcon | null;
+  textVi: string | null;
+  textEn: string | null;
+}
+
+/** A group of the service catalogue shown on the home page, with the Owner's short description (either language optional). */
+export interface WebsiteFeaturedGroup {
+  code: string;
+  descriptionVi: string | null;
+  descriptionEn: string | null;
+}
+
+export interface WebsiteGroupOption {
+  code: string;
+  nameVi: string;
+  nameEn: string;
+}
+
+/** A visible fact for the visitor: built-ins carry no text (the site formats hours, address and hotline itself). */
+export interface PublicFact {
+  kind: ShopFactKind;
+  icon: ShopFactIcon;
+  text: string | null;
+}
+
+export interface PublicFeaturedGroup {
+  code: string;
+  description: string | null;
+}
+
 export interface PublicSiteResponse {
   tagline: string;
+  /** The visible items of the facts strip, in the Owner's order; empty when the whole strip is hidden. */
+  facts: PublicFact[];
+  /**
+   * The groups the Owner chose for the home page, in their order. Empty means none chosen: the home then lists every
+   * group of the catalogue (without descriptions).
+   */
+  featuredGroups: PublicFeaturedGroup[];
+  /** The optional "why choose us" section (hidden by default: the Owner writes it); null when hidden or empty. */
+  why: PublicWhy | null;
   /** The sentence under the home headline in the visitor language; null when the Owner set none (the site then uses its own text). */
   intro: string | null;
   address: string;
@@ -3127,6 +3232,18 @@ export interface WebsiteShopInfoInput {
   mapUrl: string | null;
   hoursBranchId: string | null;
   heroMediaId: string | null;
+  /** Show the facts strip at all. */
+  factsVisible: boolean;
+  /** Ordered; always contains the three built-in items once. */
+  facts: WebsiteShopFact[];
+  /** Ordered; empty = every group, no descriptions. */
+  featuredGroups: WebsiteFeaturedGroup[];
+  /** Show the "why choose us" section (off by default; needs a title in both languages and at least one card). */
+  whyVisible: boolean;
+  whyTitleVi: string | null;
+  whyTitleEn: string | null;
+  /** Ordered. */
+  whyCards: WebsiteWhyCard[];
 }
 
 export interface WebsiteShopInfoUpdateRequest extends WebsiteShopInfoInput {
@@ -3146,6 +3263,8 @@ export interface WebsiteShopInfoResponse extends WebsiteShopInfoInput {
   branches: WebsiteShopInfoBranchOption[];
   /** The branch the hours currently come from (the chosen one, or the first active branch), or null when there is none. */
   hoursBranch: WebsiteShopInfoBranchOption | null;
+  /** The active catalogue groups the Owner can feature on the home page. */
+  groupOptions: WebsiteGroupOption[];
   /** Read-only preview of those hours, as the public site shows them. */
   hours: PublicHoursGroup[];
   timezone: string | null;

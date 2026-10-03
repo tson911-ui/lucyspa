@@ -1,15 +1,22 @@
 // Single wordmark used by every shell and auth page. Same look in light and dark (color is inherited
 // from the surrounding link, which uses the brand token). Replace the body with the logo image when
 // the Owner supplies it; callers stay unchanged.
-export function BrandWordmark({ size = 'md' }: { size?: 'md' | 'display' }) {
+export function BrandWordmark({
+  size = 'md',
+  serif = false,
+}: {
+  size?: 'md' | 'display';
+  /** The public site's logo: the serif display face with wide tracking (the staff area and sign-in keep the sans). */
+  serif?: boolean;
+}) {
   return (
     <span
       style={{
-        fontFamily: 'var(--ls-font-sans)',
+        fontFamily: serif ? 'var(--ls-font-display)' : 'var(--ls-font-sans)',
         // `display` (twice `md`) is for the auth card, where the brand leads the page.
-        fontSize: size === 'display' ? '2.5rem' : '1.25rem',
+        fontSize: size === 'display' ? '2.5rem' : serif ? '1.125rem' : '1.25rem',
         fontWeight: 600,
-        letterSpacing: '0.18em',
+        letterSpacing: serif ? '0.28em' : '0.18em',
         textTransform: 'uppercase',
         whiteSpace: 'nowrap',
         // Centered use: a tight line box, and a leading space equal to the trailing letter-spacing so the
@@ -181,7 +188,9 @@ export type { ScheduleItem, ScheduleLayout, ScheduleTone } from './schedule-stri
 export { ConfirmDialog } from './confirm-dialog';
 export type { ConfirmError, ConfirmFact } from './confirm-dialog';
 export { createConfirmController, typingMatches } from './confirm-core';
-export { MediaGrid, MediaPreview, MediaRow, MediaTile } from './media-grid';
+export { ListRow, MediaGrid, MediaPreview, MediaRow, MediaTile } from './media-grid';
+export { IconPicker } from './icon-picker';
+export type { IconPickerOption } from './icon-picker';
 export { FileDropzone, ImageUploader } from './image-uploader';
 export type { ImageUploaderLabels } from './image-uploader';
 export {

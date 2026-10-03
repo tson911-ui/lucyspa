@@ -133,6 +133,7 @@
   --ls-safe-bottom: env(safe-area-inset-bottom, 0px);
   --ls-radius-sm: 6px;
   --ls-radius-md: 10px;
+  --ls-radius-lg: 16px;
   --ls-radius-full: 999px;
   --ls-control-h: 40px;
   --ls-row-h: 48px;
@@ -173,6 +174,9 @@
   --ls-reveal-shift: var(--ls-space-4);
   --ls-stagger: 60ms;
   --ls-parallax-shift: var(--ls-space-6);
+  /* A clickable card of the public site on hover: lifts and grows slightly; on press it dips (--ls-press-scale). */
+  --ls-card-lift: var(--ls-space-1);
+  --ls-card-zoom: 1.015;
   /* Public chrome sizes */
   --ls-site-header-h: 4rem;
   --ls-tab-bar-h: 4rem;
@@ -227,6 +231,8 @@
     --ls-stagger: 0ms;
     --ls-reveal-shift: 0px;
     --ls-parallax-shift: 0px;
+    --ls-card-lift: 0px;
+    --ls-card-zoom: 1;
     --ls-press-scale: 1;
   }
 }
