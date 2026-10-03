@@ -1262,7 +1262,7 @@
 }
 
 /* The action bar owns the bottom edge of the booking pages, so the tab bar steps aside there. */
-.ls-site:has(.ls-booking) .ls-tab-bar {
+.ls-site:has(.ls-booking-bar) .ls-tab-bar {
   display: none;
 }
 
@@ -1281,6 +1281,119 @@
 
   .ls-action-bar {
     display: none;
+  }
+}
+
+/* The route fade wraps the page content (M5); it passes the remaining height on, so a short page still pushes the
+   footer to the bottom. */
+.ls-site .ls-route-fade {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ---------- hero photo: settle (M2), hover zoom (M3), parallax (M6) ---------- */
+/* The frame clips the picture, so a scaled or shifted image never leaves its rounded box. The picture itself uses the
+   individual `scale` and `translate` properties, so the three effects never replace each other. */
+.ls-photo {
+  overflow: hidden;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-md);
+  background: var(--ls-bg-sunken);
+}
+
+.ls-photo .ls-hero-image {
+  border: 0;
+  border-radius: 0;
+  scale: 1;
+  transition: scale var(--ls-dur-zoom) var(--ls-ease-premium);
+  animation: ls-settle var(--ls-dur-reveal) var(--ls-ease-premium) backwards;
+}
+
+@keyframes ls-settle {
+  from {
+    scale: 1.04;
+  }
+}
+
+@media (hover: hover) {
+  .ls-photo:hover .ls-hero-image {
+    scale: 1.03;
+  }
+}
+
+/* Parallax: only where the browser can drive an animation by scroll position, on a large screen with a fine pointer,
+   and only when the device allows scroll effects (MotionGate). The picture is a little larger than its frame so the
+   shift never shows an edge; the travel is the --ls-parallax-shift token. */
+@supports (animation-timeline: view()) {
+  @media (min-width: 1024px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    html[data-ls-motion='full'] .ls-photo .ls-hero-image {
+      scale: 1.2;
+      transition: none;
+      animation: ls-parallax linear both;
+      animation-timeline: view();
+    }
+
+    html[data-ls-motion='full'] .ls-photo:hover .ls-hero-image {
+      scale: 1.2;
+    }
+  }
+}
+
+@keyframes ls-parallax {
+  from {
+    translate: 0 calc(var(--ls-parallax-shift) * -1);
+  }
+
+  to {
+    translate: 0 var(--ls-parallax-shift);
+  }
+}
+
+/* ---------- hover steps (M3) ---------- */
+.ls-site-card {
+  transition:
+    border-color var(--ls-dur-fast) var(--ls-ease-out),
+    box-shadow var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+@media (hover: hover) {
+  .ls-site-card:hover {
+    border-color: var(--ls-hover-border);
+    box-shadow: var(--ls-shadow-md);
+  }
+
+  .ls-site-link svg {
+    transition: translate var(--ls-dur-fast) var(--ls-ease-out);
+  }
+
+  .ls-site-link:hover svg {
+    translate: var(--ls-space-1) 0;
+  }
+}
+
+/* ---------- booking micro-motion (M7) ---------- */
+.ls-choice-tick > svg {
+  scale: 0.6;
+  transition: scale var(--ls-dur-fast) var(--ls-ease-premium);
+}
+
+.ls-choice[data-checked='true'] .ls-choice-tick > svg {
+  scale: 1;
+}
+
+.ls-steps li::before {
+  transition: background var(--ls-dur-base) var(--ls-ease-out);
+}
+
+.ls-action-bar {
+  animation: ls-bar-in var(--ls-dur-reveal) var(--ls-ease-premium) backwards;
+}
+
+@keyframes ls-bar-in {
+  from {
+    translate: 0 100%;
   }
 }
 

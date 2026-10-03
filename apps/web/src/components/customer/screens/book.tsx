@@ -350,7 +350,7 @@ export function BookScreen() {
   );
 
   return (
-    <PublicMain className="ls-booking">
+    <PublicMain {...(totals.count > 0 ? { className: 'ls-booking-bar' } : {})}>
       <div className="ls-container">
         <div className="ls-public-title">
           <h1 className="ls-h1-display">{t.book.title}</h1>
@@ -694,25 +694,22 @@ export function BookScreen() {
           </aside>
         </div>
       </div>
-      <div className="ls-action-bar">
-        <div className="ls-action-tally">
-          {totals.count === 0 ? (
-            <span>{t.book.summaryEmpty}</span>
-          ) : (
-            <>
-              <span>
-                {fill(t.book.selectedCount, { count: totals.count })} ·{' '}
-                {fill(t.book.estimate, { minutes: totals.minutes })}
-              </span>
-              <strong>
-                {totalLine}
-                {totalNote ? ` ${totalNote}` : ''}
-              </strong>
-            </>
-          )}
+      {/* Mounted with the first chosen service, so it slides up then (M7); the phone tab bar leaves while it is here. */}
+      {totals.count > 0 ? (
+        <div className="ls-action-bar">
+          <div className="ls-action-tally">
+            <span>
+              {fill(t.book.selectedCount, { count: totals.count })} ·{' '}
+              {fill(t.book.estimate, { minutes: totals.minutes })}
+            </span>
+            <strong>
+              {totalLine}
+              {totalNote ? ` ${totalNote}` : ''}
+            </strong>
+          </div>
+          <div className="ls-action-buttons">{stepButtons}</div>
         </div>
-        <div className="ls-action-buttons">{stepButtons}</div>
-      </div>
+      ) : null}
     </PublicMain>
   );
 }

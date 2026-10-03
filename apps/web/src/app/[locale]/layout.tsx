@@ -55,7 +55,8 @@ export async function generateMetadata({ params }: LocaleLayoutProps): Promise<M
   return {
     title: dictionary.title,
     description: dictionary.description,
-    // The Phase 0 shell is not a published public website.
+    // Not indexable unless a page says otherwise: only the home page, the service list and a service's page do
+    // (lib/public-metadata.ts); the member area, the sign-in pages and the staff area stay out of every index.
     robots: { index: false, follow: false },
   };
 }

@@ -387,3 +387,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Overview, bookings and invoices as DataTable + Pagination (cursor "Xem thêm" for invoices), detail pages as Cards, cancel via ConfirmDialog (danger, reason); customer.css, wf-app, cu-* deleted. Ratchet wfClassUses, nativeFieldsets, nativeCheckboxes, solidDangerButtons all 0.
 - Report: docs/UXUI_REDESIGN_PART2_P2-8_MEMBER_AREA.md. No API change, no migration.
+
+### UX/UI Part 2 Step P2-9 (motion pass + search-engine data) - 2026-10-03
+
+- Motion M1-M7 on tokens (hero settle/zoom/parallax in @supports, route fade on public + account, booking micro-motion, MotionGate for data saver/low memory). SEO for home, services list and service pages only: metadata, canonical + hreflang, Open Graph, /sitemap.xml, /robots.txt, LocalBusiness JSON-LD; origin from the request host, no new env var; account/auth/staff stay noindex.
+- Report: docs/UXUI_REDESIGN_PART2_P2-9_MOTION_SEO.md. No API change, no migration.

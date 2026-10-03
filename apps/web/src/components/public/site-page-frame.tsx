@@ -1,3 +1,4 @@
+import { MotionGate } from '@lucy-spa/ui';
 import type { ReactNode } from 'react';
 import type { Locale } from '../../i18n/locales';
 import { fetchPublicSite } from '../../lib/public-site';
@@ -30,6 +31,7 @@ export async function SitePageFrame({ locale, children }: { locale: Locale; chil
         </div>
       )}
       <PublicTabBar locale={locale} />
+      <MotionGate />
     </div>
   );
 }

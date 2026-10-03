@@ -1,10 +1,18 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ServiceDetailView } from '../../../../../components/public/services-view';
 import { isLocale } from '../../../../../i18n/locales';
+import { serviceMetadata } from '../../../../../lib/public-metadata';
 import { fetchPublicService } from '../../../../../lib/public-site';
 
 interface ServicePageProps {
   params: Promise<{ locale: string; code: string }>;
+}
+
+export async function generateMetadata({ params }: ServicePageProps): Promise<Metadata> {
+  const { locale, code } = await params;
+  if (!isLocale(locale)) notFound();
+  return serviceMetadata(locale, code);
 }
 
 export default async function ServicePage({ params }: ServicePageProps) {

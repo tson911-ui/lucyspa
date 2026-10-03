@@ -170,7 +170,9 @@ test('screens: booking starts at the services step of four; home greets; VI and 
   assert.equal(book.match(/<li[^>]*>\s*<span class="ls-steps-long">/g)?.length, 4);
   assert.match(book, /aria-current="step"[^>]*><span class="ls-steps-long">1\. Chọn dịch vụ</);
   assert.ok(book.includes(vi.common.loading), 'branches come from the server');
-  assert.match(book, /class="ls-action-bar"/);
+  // The phone action bar and the tab bar's absence come with the first chosen service (it slides up then).
+  assert.doesNotMatch(book, /class="ls-action-bar"/);
+  assert.doesNotMatch(book, /ls-booking-bar/);
   assert.doesNotMatch(book, /<fieldset|wf-/, 'no native fieldset and no legacy class');
   const bookEn = paint(<BookScreen />, 'en');
   assert.match(bookEn, new RegExp(en.book.steps.confirm));

@@ -173,6 +173,73 @@ test('reveal gate: reduced motion, data saver, low memory and a missing observer
   assert.equal(startsVisible({ top: 900, bottom: 1200 }, 800), false);
 });
 
+test('MotionGate marks the document full only where scroll effects are allowed, and cleans up', async () => {
+  const globals = globalThis as Record<string, unknown>;
+  const win = window as unknown as Record<string, unknown>;
+  const mount = () => {
+    const container = window.document.createElement('div');
+    window.document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => root.render(<ui.MotionGate />));
+    return root;
+  };
+  const mark = () => window.document.documentElement.dataset['lsMotion'];
+  // No observer in this window: reduced.
+  let root = mount();
+  assert.equal(mark(), 'reduced');
+  act(() => root.unmount());
+  assert.equal(mark(), undefined);
+  // Observer present, nothing against it: full.
+  class Observer {
+    observe() {}
+    disconnect() {}
+  }
+  win.IntersectionObserver = Observer;
+  globals.IntersectionObserver = Observer;
+  root = mount();
+  assert.equal(mark(), 'full');
+  act(() => root.unmount());
+  // Data saver: reduced.
+  Object.defineProperty(globalThis.navigator, 'connection', {
+    configurable: true,
+    value: { saveData: true },
+  });
+  root = mount();
+  assert.equal(mark(), 'reduced');
+  act(() => root.unmount());
+  Object.defineProperty(globalThis.navigator, 'connection', {
+    configurable: true,
+    value: undefined,
+  });
+});
+
+test('the hero photo motion: settle and zoom on tokens, parallax only where it is allowed and supported', () => {
+  assert.match(
+    css,
+    /\.ls-photo \.ls-hero-image \{[^}]*animation: ls-settle var\(--ls-dur-reveal\)/,
+  );
+  assert.match(css, /transition: scale var\(--ls-dur-zoom\) var\(--ls-ease-premium\)/);
+  assert.match(css, /scale: 1\.03/);
+  const parallax = /@supports \(animation-timeline: view\(\)\) \{([\s\S]*?)\n\}\n/.exec(css);
+  assert.ok(parallax, 'parallax sits inside @supports');
+  const inner = parallax[1] ?? '';
+  assert.match(inner, /min-width: 1024px/);
+  assert.match(inner, /hover: hover/);
+  assert.match(inner, /pointer: fine/);
+  assert.match(inner, /prefers-reduced-motion: no-preference/);
+  assert.match(inner, /html\[data-ls-motion='full'\]/);
+  assert.match(inner, /animation-timeline: view\(\)/);
+  assert.match(css, /@keyframes ls-parallax \{[^}]*var\(--ls-parallax-shift\)/);
+  // Only compositor properties move: scale, translate and opacity (no layout property is animated).
+  for (const frames of css.matchAll(/@keyframes ([\w-]+) \{([\s\S]*?)\n\}\n/g)) {
+    assert.doesNotMatch(
+      frames[2] ?? '',
+      /\b(?:top|left|right|bottom|width|height|margin|padding)\s*:/,
+      `${frames[1]} animates a layout property`,
+    );
+  }
+});
+
 test('Reveal is visible in the server markup and starts hidden only below the fold', async () => {
   const server = renderToStaticMarkup(
     <ui.Reveal index={2}>

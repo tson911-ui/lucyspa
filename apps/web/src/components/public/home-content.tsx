@@ -13,18 +13,20 @@ function HeroImage({ image }: { image: NonNullable<PublicSiteResponse['heroImage
   const widest = image.sources[image.sources.length - 1];
   if (!widest) return null;
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- the media route already serves sized WebP renditions
-    <img
-      className="ls-hero-image"
-      src={widest.url}
-      srcSet={image.sources.map((source) => `${source.url} ${source.width}w`).join(', ')}
-      sizes="(min-width: 1024px) 50vw, 100vw"
-      width={image.width}
-      height={image.height}
-      alt={image.alt}
-      fetchPriority="high"
-      decoding="async"
-    />
+    <div className="ls-photo">
+      {/* eslint-disable-next-line @next/next/no-img-element -- the media route already serves sized WebP renditions */}
+      <img
+        className="ls-hero-image"
+        src={widest.url}
+        srcSet={image.sources.map((source) => `${source.url} ${source.width}w`).join(', ')}
+        sizes="(min-width: 1024px) 50vw, 100vw"
+        width={image.width}
+        height={image.height}
+        alt={image.alt}
+        fetchPriority="high"
+        decoding="async"
+      />
+    </div>
   );
 }
 
