@@ -117,7 +117,7 @@
 }
 
 .ls-site-brand {
-  margin-inline-end: auto;
+  flex: none;
 }
 
 .ls-site-brand a {
@@ -132,6 +132,8 @@
   display: none;
   align-items: center;
   gap: var(--ls-space-1);
+  /* Room for a seasonal accent that hangs off the wordmark. */
+  margin-inline-start: var(--ls-space-8);
 }
 
 .ls-site-nav a {
@@ -165,10 +167,13 @@
   color: var(--ls-hover-text);
 }
 
+/* The menu sits next to the logo and the tools at the trailing edge, so the member entries that arrive once the session
+   is known grow into free space and nothing else moves. */
 .ls-site-tools {
   display: flex;
   align-items: center;
   gap: var(--ls-space-2);
+  margin-inline-start: auto;
 }
 
 .ls-site-cta {
@@ -247,7 +252,8 @@
   text-decoration: none;
 }
 
-.ls-tab-bar a[aria-current='page'] {
+.ls-tab-bar a[aria-current='page'],
+.ls-tab-bar a[data-emphasis='true'] {
   color: var(--ls-brand);
   font-weight: 600;
 }

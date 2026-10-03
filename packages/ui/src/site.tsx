@@ -12,6 +12,7 @@ export type SiteLinkComponent = ComponentType<{
   'aria-label'?: string | undefined;
   hrefLang?: string | undefined;
   lang?: string | undefined;
+  'data-emphasis'?: 'true' | undefined;
   children: ReactNode;
 }>;
 
@@ -81,6 +82,8 @@ export interface TabBarItem {
   href: string;
   icon: IconName;
   current: boolean;
+  /** The one tab that is the call to action (the booking tab): brand colour and weight even when not current. */
+  emphasis?: boolean | undefined;
 }
 
 /** The phone tab bar (below 1024 px): at most five destinations, 44 px targets, the current one marked. */
@@ -97,7 +100,12 @@ export function TabBar({
   return (
     <nav aria-label={label} className="ls-tab-bar">
       {items.slice(0, 5).map((item) => (
-        <Link key={item.key} href={item.href} aria-current={item.current ? 'page' : undefined}>
+        <Link
+          key={item.key}
+          href={item.href}
+          aria-current={item.current ? 'page' : undefined}
+          data-emphasis={item.emphasis ? 'true' : undefined}
+        >
           <Icon name={item.icon} />
           <span>{item.label}</span>
         </Link>

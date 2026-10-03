@@ -5,6 +5,7 @@ import { fetchPublicSite } from '../../lib/public-site';
 import { loadSiteDecor, SeasonSiteFrame } from '../season/site-frame';
 import { PublicFooter, PublicHeader } from './site-chrome';
 import { PublicTabBar } from './site-chrome-client';
+import { SiteSessionProvider } from './site-session';
 
 /**
  * The one frame of the customer side (Part 2 contract 3.1): the public pages, the member auth pages and the member
@@ -19,18 +20,20 @@ export async function SitePageFrame({ locale, children }: { locale: Locale; chil
 
   return (
     <div className="ls-site">
-      {decor ? (
-        <SeasonSiteFrame decor={decor} locale={locale} header={header} footer={footer}>
-          {children}
-        </SeasonSiteFrame>
-      ) : (
-        <div className="site-shell">
-          {header}
-          {children}
-          {footer}
-        </div>
-      )}
-      <PublicTabBar locale={locale} />
+      <SiteSessionProvider>
+        {decor ? (
+          <SeasonSiteFrame decor={decor} locale={locale} header={header} footer={footer}>
+            {children}
+          </SeasonSiteFrame>
+        ) : (
+          <div className="site-shell">
+            {header}
+            {children}
+            {footer}
+          </div>
+        )}
+        <PublicTabBar locale={locale} />
+      </SiteSessionProvider>
       <MotionGate />
     </div>
   );

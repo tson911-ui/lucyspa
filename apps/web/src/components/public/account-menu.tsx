@@ -2,13 +2,12 @@
 
 import { Menu, type MenuItem } from '@lucy-spa/ui';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getSiteText, type SiteText } from '../../i18n/site';
 import type { Locale } from '../../i18n/locales';
-import { ApiClient } from '../../lib/api/client';
-import { customerLogout, loadCustomerSession } from '../../lib/customer/auth';
-import { announceSessionChange, SITE_SESSION_CHANGED } from '../../lib/site-session';
+import { customerLogout } from '../../lib/customer/auth';
+import { announceSessionChange } from '../../lib/site-session';
 import { NotificationIndicator } from '../notifications/inbox';
+import { useSiteSession } from './site-session';
 
 /** What the menu offers: sign-in and registration, or the member pages and sign-out (the order the contract lists). */
 export function accountMenuItems({
@@ -67,32 +66,7 @@ export function PublicAccountMenu({ locale }: { locale: Locale }) {
   const text = getSiteText(locale).member;
   const label = getSiteText(locale).header.account;
   const router = useRouter();
-  const api = useMemo(() => new ApiClient(), []);
-  const [signedIn, setSignedIn] = useState(false);
-
-  const refresh = useCallback(() => {
-    let active = true;
-    loadCustomerSession(api)
-      .then((session) => active && setSignedIn(session.kind === 'customer'))
-      // A failed read keeps the signed-out menu: sign-in is always reachable.
-      .catch(() => active && setSignedIn(false));
-    return () => {
-      active = false;
-    };
-  }, [api]);
-
-  useEffect(() => {
-    let cancel = refresh();
-    const changed = () => {
-      cancel();
-      cancel = refresh();
-    };
-    window.addEventListener(SITE_SESSION_CHANGED, changed);
-    return () => {
-      cancel();
-      window.removeEventListener(SITE_SESSION_CHANGED, changed);
-    };
-  }, [refresh]);
+  const { signedIn, api, markSignedOut } = useSiteSession();
 
   const base = `/${locale}/account`;
   const items = accountMenuItems({
@@ -104,7 +78,7 @@ export function PublicAccountMenu({ locale }: { locale: Locale }) {
       void customerLogout(api)
         .catch(() => undefined)
         .finally(() => {
-          setSignedIn(false);
+          markSignedOut();
           announceSessionChange();
           router.replace(`${base}/login?signedOut=1`);
         });

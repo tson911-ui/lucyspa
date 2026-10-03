@@ -1,9 +1,8 @@
 'use client';
 
 import { cx } from './cx';
-import { Icon, type IconName } from './icons';
+import { Icon } from './icons';
 import { fillTemplate } from './paging-core';
-import type { ThemePreference } from './theme-core';
 import type { ThemeToggleLabels } from './theme-toggle';
 import { useTheme } from './use-theme';
 
@@ -12,12 +11,11 @@ export interface ThemeCycleLabels extends ThemeToggleLabels {
   switchTo: string;
 }
 
-const ORDER: readonly ThemePreference[] = ['light', 'dark', 'auto'];
-const ICON: Record<ThemePreference, IconName> = { light: 'sun', dark: 'moon', auto: 'clock' };
-
 /**
- * A single round button that cycles Light, Dark, Auto by time (the public header, where three segments do not fit
- * a 360 px phone). Same stored choice as `ThemeToggle` (the `ls-theme` cookie). The name states the current choice.
+ * A single round button for the public header (three segments do not fit a 360 px phone): it shows the theme in use
+ * (sun in light, moon in dark) and switches to the other one. Until the visitor presses it the page follows the time
+ * of day (the stored choice is "auto"), so there is no separate clock state to cycle through; the staff area keeps the
+ * three-way toggle. Same stored choice as `ThemeToggle` (the `ls-theme` cookie). The name states the theme and the switch.
  */
 export function ThemeCycle({
   labels,
@@ -26,22 +24,18 @@ export function ThemeCycle({
   labels: ThemeCycleLabels;
   className?: string | undefined;
 }) {
-  const { preference, setPreference } = useTheme();
-  const next = ORDER[(ORDER.indexOf(preference) + 1) % ORDER.length] ?? 'light';
-  const names: Record<ThemePreference, string> = {
-    light: labels.light,
-    dark: labels.dark,
-    auto: labels.auto,
-  };
+  const { resolved, setPreference } = useTheme();
+  const names = { light: labels.light, dark: labels.dark };
+  const next = resolved === 'dark' ? 'light' : 'dark';
   return (
     <button
       type="button"
       className={cx('ls-theme-cycle', className)}
-      aria-label={`${labels.group}: ${names[preference]}. ${fillTemplate(labels.switchTo, { name: names[next] })}`}
-      title={`${labels.group}: ${names[preference]}`}
+      aria-label={`${labels.group}: ${names[resolved]}. ${fillTemplate(labels.switchTo, { name: names[next] })}`}
+      title={`${labels.group}: ${names[resolved]}`}
       onClick={() => setPreference(next)}
     >
-      <Icon name={ICON[preference]} />
+      <Icon name={resolved === 'dark' ? 'moon' : 'sun'} />
     </button>
   );
 }

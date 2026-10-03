@@ -10,7 +10,10 @@ export interface SiteText {
     services: string;
     book: string;
     bookings: string;
+    invoices: string;
     account: string;
+    /** The booking tab of the phone bar (the one booking call to action). */
+    bookNow: string;
   };
   /** The account menu in the header and the row under it in the member area. */
   member: {
@@ -98,7 +101,9 @@ const text = {
       services: 'Dịch vụ',
       book: 'Đặt lịch',
       bookings: 'Lịch hẹn',
+      invoices: 'Hóa đơn',
       account: 'Tài khoản',
+      bookNow: 'Đặt lịch ngay',
     },
     member: {
       signIn: 'Đăng nhập',
@@ -183,7 +188,9 @@ const text = {
       services: 'Services',
       book: 'Book',
       bookings: 'Bookings',
+      invoices: 'Invoices',
       account: 'Account',
+      bookNow: 'Book now',
     },
     member: {
       signIn: 'Sign in',

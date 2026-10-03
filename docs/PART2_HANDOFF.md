@@ -43,6 +43,14 @@ Nothing is deployed. Ratchet counters still to clear: `wfClassUses` 80, `nativeF
   (`pick(categories, index)`) and appends "(gói N)" to filler names; the scratch row `SV013` really has `category_id` = `CAT1` "Massage", and `public-catalog.core.ts` groups strictly by the
   service's own category. Real data is grouped by what the Owner sets in the catalogue.
 
+- 2026-10-03 site header (asked as part of P2-6, done as a follow-up commit because P2-6 was already pushed): match the Lovable reference. Logo left; menu
+  "Trang chủ, Dịch vụ, Lịch hẹn, Hóa đơn"; then the theme icon, the account icon and the single "Đặt lịch ngay" button. The separate "Đặt lịch" menu item is
+  gone (also from the phone tab bar, where the booking tab now reads "Đặt lịch ngay"). "Lịch hẹn" and "Hóa đơn" show to signed-in members only. "Mỹ phẩm" stays
+  hidden until the cosmetics phase (no entry exists; one registry line adds it). The VI/EN switch stays as a compact round button. The theme icon is a plain
+  sun/moon toggle that shows the theme in use; the clock icon (the "by time of day" state) is dropped from the public header because the page already follows
+  the clock until the visitor chooses (the staff area keeps its three-way toggle). Same items on phones: the header keeps logo, language, theme, account; the
+  tab bar carries Trang chủ, Dịch vụ, Đặt lịch ngay and, for members, Lịch hẹn and Hóa đơn (the call to action does not fit the 360 px header next to the tools).
+
 ## What exists now (so you do not rebuild it)
 
 - Kit (`packages/ui`): `site.css` (tokens only), `SiteHeader` (client, scroll sentinel), `SiteNav`, `TabBar`, `SiteFooter`, `PublicMain`, `Band`, `PublicPage`, `PriceList`, `Steps`,

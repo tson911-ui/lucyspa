@@ -392,3 +392,7 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Motion M1-M7 on tokens (hero settle/zoom/parallax in @supports, route fade on public + account, booking micro-motion, MotionGate for data saver/low memory). SEO for home, services list and service pages only: metadata, canonical + hreflang, Open Graph, /sitemap.xml, /robots.txt, LocalBusiness JSON-LD; origin from the request host, no new env var; account/auth/staff stay noindex.
 - Report: docs/UXUI_REDESIGN_PART2_P2-9_MOTION_SEO.md. No API change, no migration.
+
+### UX/UI Part 2 header review note (Owner, 2026-10-03) - follow-up to P2-6
+
+- Header per the Lovable reference: logo, menu Trang chủ / Dịch vụ / Lịch hẹn / Hóa đơn (the last two for signed-in members only, via the nav registry and a shared SiteSessionProvider), then VI/EN, a sun/moon toggle (clock state dropped), account (and bell) and the single Đặt lịch ngay button; no separate Đặt lịch item; phone tab bar = Trang chủ, Dịch vụ, Đặt lịch ngay (+ Lịch hẹn, Hóa đơn for members). No cosmetics entry until its phase.

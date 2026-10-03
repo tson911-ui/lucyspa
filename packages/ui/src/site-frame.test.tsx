@@ -173,6 +173,49 @@ test('reveal gate: reduced motion, data saver, low memory and a missing observer
   assert.equal(startsVisible({ top: 900, bottom: 1200 }, 800), false);
 });
 
+test('TabBar marks the call-to-action tab; ThemeCycle shows the theme in use and switches to the other', () => {
+  const html = renderToStaticMarkup(
+    <ui.TabBar
+      label="Menu điện thoại"
+      items={[
+        { key: 'home', label: 'Trang chủ', href: '/vi', icon: 'home', current: false },
+        {
+          key: 'book',
+          label: 'Đặt lịch ngay',
+          href: '/vi/account/book',
+          icon: 'calendar-check',
+          current: false,
+          emphasis: true,
+        },
+      ]}
+    />,
+  );
+  assert.match(html, /href="\/vi\/account\/book" data-emphasis="true"/);
+  assert.equal(html.match(/data-emphasis/g)?.length, 1);
+  assert.match(css, /\.ls-tab-bar a\[data-emphasis='true'\]/);
+
+  const labels = {
+    group: 'Giao diện',
+    light: 'Sáng',
+    dark: 'Tối',
+    auto: 'Theo giờ',
+    switchTo: 'Chuyển sang {name}',
+  };
+  window.document.documentElement.setAttribute('data-theme', 'dark');
+  const container = window.document.createElement('div');
+  window.document.body.appendChild(container);
+  const root = createRoot(container);
+  act(() => root.render(<ui.ThemeCycle labels={labels} />));
+  const button = container.querySelector('button') as HTMLButtonElement;
+  assert.equal(button.getAttribute('aria-label'), 'Giao diện: Tối. Chuyển sang Sáng');
+  assert.ok(container.querySelector('svg path[d^="M20 14.5"]'), 'the moon is drawn in dark');
+  act(() => button.click());
+  assert.equal(window.document.documentElement.getAttribute('data-theme'), 'light');
+  assert.match(window.document.cookie, /ls-theme=light/);
+  assert.equal(button.getAttribute('aria-label'), 'Giao diện: Sáng. Chuyển sang Tối');
+  act(() => root.unmount());
+});
+
 test('MotionGate marks the document full only where scroll effects are allowed, and cleans up', async () => {
   const globals = globalThis as Record<string, unknown>;
   const win = window as unknown as Record<string, unknown>;

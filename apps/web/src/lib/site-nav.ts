@@ -6,13 +6,15 @@ import type { SiteText } from '../i18n/site';
  * (for example the cosmetics shop in a later phase) is one entry here plus its route and its text; nothing else changes.
  */
 export interface SiteNavEntry {
-  key: 'home' | 'services' | 'book' | 'bookings' | 'account';
+  key: 'home' | 'services' | 'book' | 'bookings' | 'invoices' | 'account';
   /** Path after `/{locale}`. */
   path: string;
   /** `exact` matches only the path; `prefix` also its sub-pages. */
   match: 'exact' | 'prefix';
   /** A route that does not exist yet stays out of every menu. */
   enabled: boolean;
+  /** Shown only to a signed-in member (the member pages). */
+  members: boolean;
   header: boolean;
   phoneTab: IconName | null;
   footer: 'discover' | null;
@@ -24,6 +26,7 @@ export const SITE_NAV: readonly SiteNavEntry[] = [
     path: '',
     match: 'exact',
     enabled: true,
+    members: false,
     header: true,
     phoneTab: 'home',
     footer: null,
@@ -33,16 +36,19 @@ export const SITE_NAV: readonly SiteNavEntry[] = [
     path: '/services',
     match: 'prefix',
     enabled: true,
+    members: false,
     header: true,
     phoneTab: 'sparkles',
     footer: 'discover',
   },
+  // Booking is the header's call to action ("Đặt lịch ngay"), not a menu item; it is a tab on phones and a footer link.
   {
     key: 'book',
     path: '/account/book',
     match: 'prefix',
     enabled: true,
-    header: true,
+    members: false,
+    header: false,
     phoneTab: 'calendar-check',
     footer: 'discover',
   },
@@ -51,17 +57,30 @@ export const SITE_NAV: readonly SiteNavEntry[] = [
     path: '/account/bookings',
     match: 'prefix',
     enabled: true,
-    header: false,
+    members: true,
+    header: true,
+    phoneTab: 'calendar',
+    footer: null,
+  },
+  {
+    key: 'invoices',
+    path: '/account/invoices',
+    match: 'prefix',
+    enabled: true,
+    members: true,
+    header: true,
     phoneTab: 'receipt',
     footer: null,
   },
+  // The account pages as a whole (overview, sign-in): only the account menu leads there.
   {
     key: 'account',
     path: '/account',
     match: 'prefix',
     enabled: true,
+    members: false,
     header: false,
-    phoneTab: 'user',
+    phoneTab: null,
     footer: null,
   },
 ];
@@ -82,13 +101,18 @@ export function currentNavKey(pathname: string, locale: string): SiteNavEntry['k
   return best?.key ?? null;
 }
 
+/** An entry only for signed-in members stays out of the menus of a visitor who is not signed in. */
+const shown = (entry: SiteNavEntry, signedIn: boolean) =>
+  entry.enabled && (!entry.members || signedIn);
+
 export function headerNavItems(
   locale: string,
   pathname: string,
   text: SiteText['nav'],
+  signedIn = false,
 ): SiteNavItem[] {
   const current = currentNavKey(pathname, locale);
-  return SITE_NAV.filter((entry) => entry.enabled && entry.header).map((entry) => ({
+  return SITE_NAV.filter((entry) => entry.header && shown(entry, signedIn)).map((entry) => ({
     key: entry.key,
     label: text[entry.key],
     href: hrefOf(locale, entry),
@@ -96,17 +120,24 @@ export function headerNavItems(
   }));
 }
 
-export function tabBarItems(locale: string, pathname: string, text: SiteText['nav']): TabBarItem[] {
+/** The phone tab bar: the booking tab reads "Đặt lịch ngay" (the one booking call to action) and stands out. */
+export function tabBarItems(
+  locale: string,
+  pathname: string,
+  text: SiteText['nav'],
+  signedIn = false,
+): TabBarItem[] {
   const current = currentNavKey(pathname, locale);
   return SITE_NAV.flatMap((entry) =>
-    entry.enabled && entry.phoneTab
+    entry.phoneTab && shown(entry, signedIn)
       ? [
           {
             key: entry.key,
-            label: text[entry.key],
+            label: entry.key === 'book' ? text.bookNow : text[entry.key],
             href: hrefOf(locale, entry),
             icon: entry.phoneTab,
             current: entry.key === current,
+            ...(entry.key === 'book' ? { emphasis: true } : {}),
           },
         ]
       : [],

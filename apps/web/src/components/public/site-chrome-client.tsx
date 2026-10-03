@@ -7,16 +7,19 @@ import { getSiteText } from '../../i18n/site';
 import type { Locale } from '../../i18n/locales';
 import { accountTabItems, headerNavItems, otherLocalePath, tabBarItems } from '../../lib/site-nav';
 import { PublicAccountMenu } from './account-menu';
+import { useSiteSession } from './site-session';
 
 // The parts of the site chrome that depend on the current page (current menu entry, the other language's URL).
 
+/** The menu: Trang chủ and Dịch vụ for everyone, Lịch hẹn and Hóa đơn once a member is signed in. */
 export function PublicNav({ locale }: { locale: Locale }) {
   const text = getSiteText(locale);
   const pathname = usePathname();
+  const { signedIn } = useSiteSession();
   return (
     <SiteNav
       label={text.nav.menu}
-      items={headerNavItems(locale, pathname, text.nav)}
+      items={headerNavItems(locale, pathname, text.nav, signedIn)}
       LinkComponent={Link}
     />
   );
@@ -25,10 +28,11 @@ export function PublicNav({ locale }: { locale: Locale }) {
 export function PublicTabBar({ locale }: { locale: Locale }) {
   const text = getSiteText(locale);
   const pathname = usePathname();
+  const { signedIn } = useSiteSession();
   return (
     <TabBar
       label={text.nav.phone}
-      items={tabBarItems(locale, pathname, text.nav)}
+      items={tabBarItems(locale, pathname, text.nav, signedIn)}
       LinkComponent={Link}
     />
   );
