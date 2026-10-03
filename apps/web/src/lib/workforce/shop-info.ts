@@ -8,6 +8,7 @@ import type {
 // (the API decides every rule again and names the field it refused).
 export const SHOP_INFO_LIMITS = Object.freeze({
   tagline: 120,
+  intro: 200,
   address: 300,
   hotlineMax: 30,
   hotlineDigitsMin: 8,
@@ -15,11 +16,21 @@ export const SHOP_INFO_LIMITS = Object.freeze({
 });
 
 export type ShopInfoProblem =
-  'taglineVi' | 'taglineEn' | 'address' | 'hotline' | 'mapUrl' | 'hoursBranchId' | 'heroMediaId';
+  | 'taglineVi'
+  | 'taglineEn'
+  | 'introVi'
+  | 'introEn'
+  | 'address'
+  | 'hotline'
+  | 'mapUrl'
+  | 'hoursBranchId'
+  | 'heroMediaId';
 
 export const SHOP_INFO_PROBLEMS: ReadonlySet<string> = new Set<ShopInfoProblem>([
   'taglineVi',
   'taglineEn',
+  'introVi',
+  'introEn',
   'address',
   'hotline',
   'mapUrl',
@@ -30,6 +41,9 @@ export const SHOP_INFO_PROBLEMS: ReadonlySet<string> = new Set<ShopInfoProblem>(
 export interface ShopInfoForm {
   taglineVi: string;
   taglineEn: string;
+  /** Optional; empty = the website's built-in sentence. */
+  introVi: string;
+  introEn: string;
   address: string;
   hotline: string;
   mapUrl: string;
@@ -43,6 +57,8 @@ export function formOfShopInfo(info: WebsiteShopInfoResponse): ShopInfoForm {
   return {
     taglineVi: info.taglineVi,
     taglineEn: info.taglineEn,
+    introVi: info.introVi ?? '',
+    introEn: info.introEn ?? '',
     address: info.address,
     hotline: info.hotline,
     mapUrl: info.mapUrl ?? '',
@@ -60,6 +76,8 @@ export function shopInfoInputOf(
 ): { body: WebsiteShopInfoInput } | { problem: ShopInfoProblem } {
   const taglineVi = clean(form.taglineVi);
   const taglineEn = clean(form.taglineEn);
+  const introVi = clean(form.introVi);
+  const introEn = clean(form.introEn);
   const address = clean(form.address);
   const hotline = clean(form.hotline);
   const mapUrl = clean(form.mapUrl);
@@ -69,6 +87,8 @@ export function shopInfoInputOf(
   if (taglineEn === '' || length(taglineEn) > SHOP_INFO_LIMITS.tagline) {
     return { problem: 'taglineEn' };
   }
+  if (length(introVi) > SHOP_INFO_LIMITS.intro) return { problem: 'introVi' };
+  if (length(introEn) > SHOP_INFO_LIMITS.intro) return { problem: 'introEn' };
   if (address === '' || length(address) > SHOP_INFO_LIMITS.address) return { problem: 'address' };
   if (
     !/^[0-9+().\s-]+$/.test(hotline) ||
@@ -87,6 +107,8 @@ export function shopInfoInputOf(
     body: {
       taglineVi,
       taglineEn,
+      introVi: introVi === '' ? null : introVi,
+      introEn: introEn === '' ? null : introEn,
       address,
       hotline,
       mapUrl: mapUrl === '' ? null : mapUrl,

@@ -116,6 +116,8 @@ test('shop info HTTP: strict admin body, CSRF/Origin, anonymous cached public si
   const body = {
     taglineVi: 'Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc',
     taglineEn: 'Heartfelt Relaxation – Elevated Beauty',
+    introVi: null,
+    introEn: null,
     address: '04 Nguyễn Quang Bích, Đà Nẵng',
     hotline: '0934 936 101',
     mapUrl: null,
@@ -148,6 +150,9 @@ test('shop info HTTP: strict admin body, CSRF/Origin, anonymous cached public si
       { ...body, expectedVersion: undefined },
       { ...body, taglineVi: 5 },
       { ...body, taglineVi: undefined },
+      { ...body, introVi: 7 },
+      { ...body, introEn: undefined },
+      { ...body, introVi: 'x'.repeat(1_201) },
       { ...body, hotline: undefined },
       { ...body, mapUrl: 7 },
       { ...body, mapUrl: undefined },

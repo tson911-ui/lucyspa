@@ -61,6 +61,24 @@ test('website shop info foundation: seeded single row, constrained texts, https 
             () => tx.websiteShopInfo.update({ where: { id: 'shop' }, data: { taglineVi: '' } }),
             /website_shop_info_texts|violates check constraint/i,
           );
+          // The home introduction is optional: absent by default, 1-200 characters when present, never empty.
+          assert.equal(seeded.introVi, null);
+          assert.equal(seeded.introEn, null);
+          for (const data of [
+            { introVi: '' },
+            { introEn: '' },
+            { introVi: 'x'.repeat(201) },
+            { introEn: 'x'.repeat(201) },
+          ]) {
+            await rejects(
+              () => tx.websiteShopInfo.update({ where: { id: 'shop' }, data }),
+              /website_shop_info_intro|violates check constraint/i,
+            );
+          }
+          await tx.websiteShopInfo.update({
+            where: { id: 'shop' },
+            data: { introVi: 'x'.repeat(200), introEn: 'Welcome' },
+          });
           for (const mapUrl of [
             'http://maps.example.com/x',
             'javascript:alert(1)',

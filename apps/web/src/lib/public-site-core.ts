@@ -76,6 +76,8 @@ export function parsePublicSite(value: unknown): PublicSiteResponse | null {
   const heroImage = parseSiteImage(value['heroImage']);
   if (
     !isString(value['tagline']) ||
+    // An API that predates the field (a restart in progress) sends none: the site then uses its own sentence.
+    !(value['intro'] === undefined || isNullableString(value['intro'])) ||
     !isString(value['address']) ||
     !isString(value['hotline']) ||
     !isString(value['hotlineTel']) ||
@@ -91,6 +93,7 @@ export function parsePublicSite(value: unknown): PublicSiteResponse | null {
   const mapUrl = value['mapUrl'];
   return {
     tagline: value['tagline'],
+    intro: value['intro'] ?? null,
     address: value['address'],
     hotline: value['hotline'],
     hotlineTel: value['hotlineTel'],

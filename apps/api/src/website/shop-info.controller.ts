@@ -22,6 +22,8 @@ const NullableText = (max: number) => (target: object, key: string) => {
 class ShopInfoUpdateDto implements WebsiteShopInfoUpdateRequest {
   @ApiProperty() @IsString() @MaxLength(TEXT_BOUND) taglineVi!: string;
   @ApiProperty() @IsString() @MaxLength(TEXT_BOUND) taglineEn!: string;
+  @NullableText(TEXT_BOUND) introVi!: string | null;
+  @NullableText(TEXT_BOUND) introEn!: string | null;
   @ApiProperty() @IsString() @MaxLength(TEXT_BOUND) address!: string;
   @ApiProperty() @IsString() @MaxLength(100) hotline!: string;
   @NullableText(TEXT_BOUND) mapUrl!: string | null;

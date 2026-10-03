@@ -3102,6 +3102,8 @@ export interface PublicSiteImage {
 
 export interface PublicSiteResponse {
   tagline: string;
+  /** The sentence under the home headline in the visitor language; null when the Owner set none (the site then uses its own text). */
+  intro: string | null;
   address: string;
   /** As the Owner typed it, for display. */
   hotline: string;
@@ -3117,6 +3119,9 @@ export interface PublicSiteResponse {
 export interface WebsiteShopInfoInput {
   taglineVi: string;
   taglineEn: string;
+  /** Optional; null (or empty) falls back to the website's built-in sentence. */
+  introVi: string | null;
+  introEn: string | null;
   address: string;
   hotline: string;
   mapUrl: string | null;

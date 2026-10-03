@@ -28,6 +28,7 @@ import {
  */
 export const SHOP_INFO_LIMITS = Object.freeze({
   tagline: 120,
+  intro: 200,
   address: 300,
   hotlineMin: 6,
   hotlineMax: 30,
@@ -40,6 +41,8 @@ const HOTLINE = /^[0-9+().\s-]+$/;
 interface ShopInfoFields {
   taglineVi: string;
   taglineEn: string;
+  introVi: string | null;
+  introEn: string | null;
   address: string;
   hotline: string;
   mapUrl: string | null;
@@ -50,6 +53,8 @@ interface ShopInfoFields {
 const selectShopInfo = {
   taglineVi: true,
   taglineEn: true,
+  introVi: true,
+  introEn: true,
   address: true,
   hotline: true,
   mapUrl: true,
@@ -101,6 +106,9 @@ export function parseShopInfoFields(input: WebsiteShopInfoInput): ShopInfoFields
   return {
     taglineVi: required(input.taglineVi, 'taglineVi', limits.tagline),
     taglineEn: required(input.taglineEn, 'taglineEn', limits.tagline),
+    // Optional: empty becomes null, and the website then shows its built-in sentence.
+    introVi: textField(input.introVi, 'introVi', limits.intro),
+    introEn: textField(input.introEn, 'introEn', limits.intro),
     address: required(input.address, 'address', limits.address),
     hotline,
     mapUrl,
@@ -112,6 +120,8 @@ export function parseShopInfoFields(input: WebsiteShopInfoInput): ShopInfoFields
 const fieldsOf = (row: ShopInfoRow): ShopInfoFields => ({
   taglineVi: row.taglineVi,
   taglineEn: row.taglineEn,
+  introVi: row.introVi,
+  introEn: row.introEn,
   address: row.address,
   hotline: row.hotline,
   mapUrl: row.mapUrl,
@@ -302,6 +312,8 @@ export async function publicSite(
   const media = row.heroMedia;
   return {
     tagline: pick(row.taglineVi, row.taglineEn, locale) ?? '',
+    // Never the other language's sentence: null lets the site use its own text in the visitor's language.
+    intro: locale === 'vi' ? row.introVi : row.introEn,
     address: row.address,
     hotline: row.hotline,
     hotlineTel: hotlineTel(row.hotline),

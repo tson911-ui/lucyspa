@@ -2017,6 +2017,8 @@ model WebsiteShopInfo {
   id              String      @id @default("shop")
   taglineVi       String      @map("tagline_vi")
   taglineEn       String      @map("tagline_en")
+  introVi         String?     @map("intro_vi")
+  introEn         String?     @map("intro_en")
   address         String
   hotline         String
   mapUrl          String?     @map("map_url")

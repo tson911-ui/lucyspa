@@ -30,6 +30,7 @@ const service = (patch: Partial<PublicService> = {}): PublicService => ({
 
 const site: PublicSiteResponse = {
   tagline: 'Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc',
+  intro: null,
   address: '04 Nguyễn Quang Bích, Đà Nẵng',
   hotline: '0934 936 101',
   hotlineTel: '+84934936101',
@@ -45,6 +46,12 @@ test('the shop profile is accepted as sent and drops anything unsafe or malforme
   assert.equal(parsePublicSite({ ...site, hours: [{ weekdays: [8], closed: true }] }), null);
   assert.equal(parsePublicSite({ ...site, hours: 'always' }), null);
   assert.equal(parsePublicSite({ ...site, tagline: 5 }), null);
+  // The introduction is optional: text, null, or absent (an API that predates it) are fine; anything else is not.
+  assert.equal(parsePublicSite({ ...site, intro: 'Xin chào' })?.intro, 'Xin chào');
+  const withoutIntro: Record<string, unknown> = { ...site };
+  delete withoutIntro['intro'];
+  assert.equal(parsePublicSite(withoutIntro)?.intro, null);
+  assert.equal(parsePublicSite({ ...site, intro: 5 }), null);
   assert.equal(parsePublicSite(null), null);
   assert.equal(parsePublicSite([]), null);
   // The map link is drawn as a real link: only https survives.

@@ -36,6 +36,8 @@ const png = (shade: number) =>
 const input = (patch: Partial<WebsiteShopInfoInput> = {}): WebsiteShopInfoInput => ({
   taglineVi: 'Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc',
   taglineEn: 'Heartfelt Relaxation – Elevated Beauty',
+  introVi: null,
+  introEn: null,
   address: '04 Nguyễn Quang Bích, Đà Nẵng',
   hotline: '0934 936 101',
   mapUrl: null,
@@ -272,6 +274,7 @@ test(
                 assert.equal(vi.hotline, '0934 936 101');
                 assert.equal(vi.hotlineTel, '+84934936101');
                 assert.equal(vi.heroImage, null);
+                assert.equal(vi.intro, null, 'no introduction set: the site uses its own sentence');
                 const en = await site.site('en');
                 assert.equal(en.tagline, 'Heartfelt Relaxation – Elevated Beauty');
                 const admin = await shop.get(editor.session);
@@ -315,6 +318,46 @@ test(
                   (events[0]?.after as { hoursBranchId: string }).hoursBranchId,
                   branch.id,
                 );
+              },
+            );
+
+            await context.test(
+              'home introduction: optional, per language, never borrowed from the other language, 200 characters at most',
+              async () => {
+                const current = await shop.get(editor.session);
+                const keep = (patch: Partial<WebsiteShopInfoInput>) =>
+                  input({
+                    taglineVi: current.taglineVi,
+                    taglineEn: current.taglineEn,
+                    address: current.address,
+                    hotline: current.hotline,
+                    mapUrl: current.mapUrl,
+                    hoursBranchId: current.hoursBranchId,
+                    heroMediaId: current.heroMediaId,
+                    ...patch,
+                  });
+                const withIntro = await shop.update(editor.session, {
+                  ...keep({ introVi: '  Mở cửa mỗi ngày  ', introEn: null }),
+                  expectedVersion: current.rowVersion,
+                });
+                assert.equal(withIntro.introVi, 'Mở cửa mỗi ngày');
+                assert.equal(withIntro.introEn, null);
+                assert.equal((await site.site('vi')).intro, 'Mở cửa mỗi ngày');
+                assert.equal((await site.site('en')).intro, null);
+                await fails(
+                  shop.update(editor.session, {
+                    ...keep({ introEn: 'x'.repeat(201) }),
+                    expectedVersion: withIntro.rowVersion,
+                  }),
+                  'VALIDATION_FAILED',
+                  'introEn',
+                );
+                const cleared = await shop.update(editor.session, {
+                  ...keep({ introVi: '   ' }),
+                  expectedVersion: withIntro.rowVersion,
+                });
+                assert.equal(cleared.introVi, null);
+                assert.equal((await site.site('vi')).intro, null);
               },
             );
 

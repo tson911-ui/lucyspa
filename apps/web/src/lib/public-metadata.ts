@@ -57,12 +57,13 @@ export async function homeMetadata(locale: Locale): Promise<Metadata> {
   const [site, origin] = await Promise.all([fetchPublicSite(locale), requestOrigin()]);
   const text = getSiteText(locale);
   const widest = site?.heroImage?.sources[site.heroImage.sources.length - 1];
+  const lead = site?.intro ?? text.home.lead;
   return indexable({
     locale,
     origin,
     path: '',
     title: site ? `${SITE_NAME} — ${site.tagline}` : SITE_NAME,
-    description: clip(site ? `${text.home.lead} ${site.address}` : text.home.lead),
+    description: clip(site ? `${lead} ${site.address}` : lead),
     image: origin ? absoluteImage(origin, widest?.url) : null,
   });
 }

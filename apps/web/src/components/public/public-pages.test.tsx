@@ -13,6 +13,7 @@ import { ServiceDetailView, ServicesView } from './services-view';
 
 const site: PublicSiteResponse = {
   tagline: 'Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc',
+  intro: null,
   address: '04 Nguyễn Quang Bích, Đà Nẵng',
   hotline: '0934 936 101',
   hotlineTel: '+84934936101',
@@ -86,6 +87,24 @@ test('home: the tagline is the one h1, facts and visit read the Owner data, no m
   assert.match(html, /maps\/search\/\?api=1&amp;query=/);
   assert.doesNotMatch(html, /Vì sao chọn/i);
   assert.doesNotMatch(html, /durationMinutes/);
+});
+
+test('home: an introduction set in Shop info replaces the built-in sentence; empty falls back to it, per language', () => {
+  const builtIn = /Chọn dịch vụ, chọn giờ còn trống và giữ chỗ trực tuyến trong vài phút\./;
+  assert.match(home(full), builtIn);
+  assert.match(home({ ...full, site: null }), builtIn);
+  assert.match(
+    home(full, 'en'),
+    /Choose your services, pick a free time and book online in minutes\./,
+  );
+  const own = home({ ...full, site: { ...site, intro: 'Mở cửa mỗi ngày, đặt lịch dễ dàng.' } });
+  assert.match(own, /<p class="ls-lead">Mở cửa mỗi ngày, đặt lịch dễ dàng\.<\/p>/);
+  assert.doesNotMatch(own, builtIn);
+  // A Vietnamese sentence is never shown to an English visitor: the API sends null for that language.
+  assert.match(
+    home({ ...full, site: { ...site, intro: null } }, 'en'),
+    /Choose your services, pick a free time/,
+  );
 });
 
 test('home: one card per live group with its prices and a link to all of them', () => {

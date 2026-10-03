@@ -70,7 +70,7 @@ export function HomeContent({
             <h1 className="ls-site-display" id="home-title">
               {site?.tagline ?? 'Lucy Spa'}
             </h1>
-            <p className="ls-lead">{text.home.lead}</p>
+            <p className="ls-lead">{site?.intro ?? text.home.lead}</p>
             <div className="ls-hero-actions">
               <Link
                 className={buttonClass('primary', 'lg')}

@@ -13,6 +13,8 @@ import {
 const response: WebsiteShopInfoResponse = {
   taglineVi: 'Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc',
   taglineEn: 'Heartfelt Relaxation – Elevated Beauty',
+  introVi: null,
+  introEn: null,
   address: '04 Nguyễn Quang Bích, Đà Nẵng',
   hotline: '0934 936 101',
   mapUrl: null,
@@ -40,6 +42,8 @@ test('the form mirrors the stored profile and sends null for what is empty', () 
   assert.deepEqual(result.body, {
     taglineVi: response.taglineVi,
     taglineEn: response.taglineEn,
+    introVi: null,
+    introEn: null,
     address: response.address,
     hotline: '0934 936 101',
     mapUrl: null,
@@ -62,6 +66,18 @@ test('text is trimmed and collapsed, the optional link and branch are sent when 
   assert.equal(result.body.mapUrl, 'https://maps.example.com/?q=Lucy+Spa');
   assert.equal(result.body.hoursBranchId, 'b1');
   assert.equal(result.body.heroMediaId, 'm1');
+});
+
+test('the introduction is optional: empty is sent as null, text is cleaned, over 200 characters is named', () => {
+  assert.equal(base.introVi, '');
+  const set = shopInfoInputOf({ ...base, introVi: '  Mở   cửa mỗi ngày ', introEn: 'Welcome' });
+  assert.ok('body' in set);
+  assert.equal(set.body.introVi, 'Mở cửa mỗi ngày');
+  assert.equal(set.body.introEn, 'Welcome');
+  assert.equal(formOfShopInfo({ ...response, introEn: 'Welcome' }).introEn, 'Welcome');
+  assert.equal(problem({ introVi: 'x'.repeat(200) }), null);
+  assert.equal(problem({ introVi: 'x'.repeat(201) }), 'introVi');
+  assert.equal(problem({ introEn: 'x'.repeat(201) }), 'introEn');
 });
 
 test('the first invalid field is named', () => {

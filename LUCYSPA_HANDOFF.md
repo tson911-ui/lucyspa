@@ -406,3 +406,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Public site: prefetched menu/CTA links, sliding menu pill (`site-nav.tsx`, `--ls-dur-slide`), route entrance on navigation only (`RouteEnter`), softer section reveals; all off under reduced motion. Member sign-in untouched.
 - 360 px: last phone card layout fixed in the kit, `ls-cards-one-line` on member lists, tab bar hides under an open dialog (it blocked the cancel buttons while a season was active), audit exceptions for text fields and the docked form bar. Report: docs/UXUI_REDESIGN_PART2_NAV_MOTION.md.
+
+### UX/UI Part 2 follow-up: editable home introduction - 2026-10-04
+
+- Admin > Website > Shop info has two optional fields (VI, EN, max 200 characters) for the sentence under the home headline; empty = the built-in sentence (smoke still sees it). `intro` added to `/public/site`.
+- **One additive migration on deploy:** `20261024000000_uxui_part2_hero_intro` (2 nullable columns + CHECK). Run `db:deploy` before restarting API and web. Report: docs/UXUI_REDESIGN_PART2_HERO_INTRO.md.

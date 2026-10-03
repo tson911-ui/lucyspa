@@ -14,10 +14,12 @@ import {
   Select,
   Spinner,
   Stack,
+  Textarea,
   TextInput,
   useUnsavedChangesGuard,
 } from '@lucy-spa/ui';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { getSiteText } from '../../../i18n/site';
 import { ApiError } from '../../../lib/api/client';
 import { hoursLines } from '../../../lib/hours';
 import { mediaVariantUrl } from '../../../lib/workforce/media';
@@ -132,6 +134,9 @@ function ShopInfoForm_() {
   // The preview shows the hours of the saved record: they come from the branch, not from this form's unsaved choice.
   const lines = hoursLines(info.hours, locale, text.hoursClosed);
   const tagline = locale === 'vi' ? form.taglineVi : form.taglineEn;
+  // What the home page shows under the headline: the typed sentence, else the website's own.
+  const intro =
+    (locale === 'vi' ? form.introVi : form.introEn).trim() || getSiteText(locale).home.lead;
 
   return (
     <>
@@ -171,6 +176,30 @@ function ShopInfoForm_() {
                         {...control}
                         value={form.taglineEn}
                         onChange={(event) => change({ taglineEn: event.target.value })}
+                      />
+                    )}
+                  </Field>
+                </FormGrid>
+              </FormSection>
+              <FormSection title={text.introSection} description={text.introHint}>
+                <FormGrid cols={2}>
+                  <Field label={text.introVi} hint={text.introFieldHint} error={error('introVi')}>
+                    {(control) => (
+                      <Textarea
+                        {...control}
+                        rows={3}
+                        value={form.introVi}
+                        onChange={(event) => change({ introVi: event.target.value })}
+                      />
+                    )}
+                  </Field>
+                  <Field label={text.introEn} hint={text.introFieldHint} error={error('introEn')}>
+                    {(control) => (
+                      <Textarea
+                        {...control}
+                        rows={3}
+                        value={form.introEn}
+                        onChange={(event) => change({ introEn: event.target.value })}
                       />
                     )}
                   </Field>
@@ -281,6 +310,7 @@ function ShopInfoForm_() {
               <DescriptionList
                 items={[
                   { label: text.previewTagline, value: tagline },
+                  { label: text.previewIntro, value: intro },
                   { label: text.previewAddress, value: form.address },
                   { label: text.previewHotline, value: form.hotline },
                   {

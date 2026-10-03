@@ -16,6 +16,7 @@ import {
 
 const site: PublicSiteResponse = {
   tagline: 'Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc',
+  intro: null,
   address: '04 Nguyễn Quang Bích, Đà Nẵng',
   hotline: '0934 936 101',
   hotlineTel: '+84934936101',

@@ -18,6 +18,8 @@ const day = (
 const valid = {
   taglineVi: 'Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc',
   taglineEn: 'Heartfelt Relaxation – Elevated Beauty',
+  introVi: null,
+  introEn: null,
   address: '04 Nguyễn Quang Bích, Đà Nẵng',
   hotline: '0934 936 101',
   mapUrl: null,
@@ -86,6 +88,15 @@ test('shop info fields: text is normalized, the hotline and the map link are str
   assert.equal(parsed.taglineVi, 'Thư Giãn');
   assert.equal(parsed.hoursBranchId, '0f6e0a52-2f0c-4a1b-9c55-1f4e2d6a7b8c');
   assert.equal(parseShopInfoFields({ ...valid, mapUrl: '  ' }).mapUrl, null);
+
+  // The introduction is optional: empty or blank becomes null, text is normalized, 200 characters at most.
+  assert.equal(parseShopInfoFields({ ...valid, introVi: '   ' }).introVi, null);
+  assert.equal(parseShopInfoFields({ ...valid, introEn: '' }).introEn, null);
+  assert.equal(parseShopInfoFields({ ...valid, introVi: '  Mở   cửa  ' }).introVi, 'Mở cửa');
+  assert.equal(parseShopInfoFields({ ...valid, introEn: 'x'.repeat(200) }).introEn?.length, 200);
+  refused({ introVi: 'x'.repeat(201) }, 'introVi');
+  refused({ introEn: 'x'.repeat(201) }, 'introEn');
+  refused({ introVi: 7 }, 'introVi');
 
   refused({ taglineVi: '' }, 'taglineVi');
   refused({ taglineEn: '   ' }, 'taglineEn');

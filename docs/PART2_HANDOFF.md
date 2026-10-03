@@ -26,6 +26,8 @@ report), the placeholder hero photo (admin upload, in the runbook), and the revi
 
 **Follow-up 2026-10-03 (after the P2-10 review request):** navigation motion for the public site (prefetch, sliding menu pill, route entrance on navigation only, softer reveals) and the 360 px audit findings (FR8 phone cards, FR3 cancel dialog and Shop info tab). Report `UXUI_REDESIGN_PART2_NAV_MOTION.md`. Lesson: the seasonal frame is a stacking context below the phone tab bar, so anything fixed that must sit above the tab bar needs the tab bar hidden (`.ls-site:has(.ls-backdrop)`).
 
+**Follow-up 2026-10-04:** the home introduction sentence is editable in Shop info (VI/EN, optional, max 200 characters, empty = built-in text; migration `20261024000000_uxui_part2_hero_intro`, deploy with `db:deploy` before restarting). Report `UXUI_REDESIGN_PART2_HERO_INTRO.md`. Production is at `f1efec2` (Part 2 deployed 2026-10-04).
+
 ## Owner decisions (locked; do not reopen)
 
 - Q-P2-1 shop info = one `website_shop_info` row edited in admin; opening hours come from the chosen branch's operating hours (one source with booking).
