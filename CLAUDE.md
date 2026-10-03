@@ -71,6 +71,8 @@ Owner reviews every Step. Work only on the Step you are given.
 
 - Never touch or commit `apps/web/next-env.d.ts`.
 - No commit/push/deploy unless the Owner explicitly says so.
+- Never amend a pushed commit and never force-push `main` (or any shared branch) unless the Owner explicitly asks for
+  that exact action; "add it to the same commit" after a push is not enough, ask first. Follow-ups after a push are new commits.
 - Do not print or edit `.env`; never commit secrets.
 - Windows shell: never use heredocs; write multi-line scripts to a scratch file first.
 - Migrations are additive; never reset the DB, never delete volumes, never `db push`.

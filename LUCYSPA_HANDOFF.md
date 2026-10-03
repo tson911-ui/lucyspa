@@ -335,5 +335,5 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 ### UX/UI Step S6f (Vietnamese display font, full phone footer) - implemented 2026-10-03 on 9a2bfed
 
 - Display font is self-hosted Playfair Display (normal + italic, latin + vietnamese) instead of Georgia; 8/3 plaque line restored to "Chúc mừng Quốc tế Phụ nữ 8/3"; the circumflex+tone guard test is replaced by font and mark-rendering tests.
-- Phone footer shows every motif: panorama kits draw a centre row plus two side crops (per-kit `split` in `KIT_ART`), Tet gets a shelf row, Christmas a tree/gifts/snowman/Santa row, Celebration its gift piles; tablets unchanged. Report: docs/UXUI_REDESIGN_S6F_PHONE_FONT.md.
+- Phone footer shows every motif: panorama kits draw a centre row plus two side crops (per-kit `split` in `KIT_ART`), Tet gets a shelf row, Christmas a tree/gifts/snowman/Santa row, Celebration its gift piles; tablets (761-1023 px) get the same full footers at tablet sizes. Report: docs/UXUI_REDESIGN_S6F_PHONE_FONT.md.
 - Mid-Autumn lion dance redrawn (`season-art-lion.tsx`: horn, mirror, eyes, beard, scaled cloth, four human legs) with Ong Dia and cymbals; Valentine lost Cupid (teddy bears hugging a heart, heart with an arrow; `wing` color removed, `pnpm season:css` rerun).

@@ -561,11 +561,6 @@
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
-  /* Hidden on a tablet only: a phone has its own layout that shows the piece. */
-  .ls-art-hide-tablet {
-    display: none;
-  }
-
   .ls-art-lantern {
     height: calc(var(--ls-art-u) * 16);
   }
@@ -628,24 +623,107 @@
     width: calc(var(--ls-art-u) * 5.5);
   }
 
+  /* Christmas on a tablet: the sleigh on top, then one row of tree, gifts, snowman, Santa, gifts and tree above the
+     greeting card (the phone block below shrinks the same row). */
+  .ls-art-footer[data-kit='christmas'] {
+    --ls-art-footer-h: calc(var(--ls-art-u) * 94);
+  }
+
+  .ls-art-tree,
+  .ls-art-gifts,
+  .ls-art-snowman,
+  .ls-art-santa {
+    bottom: calc(var(--ls-art-u) * 30);
+  }
+
   .ls-art-tree-start {
-    left: calc(var(--ls-art-u) * 6);
-    width: calc(var(--ls-art-u) * 40);
+    left: calc(var(--ls-art-u) * 3);
+    width: calc(var(--ls-art-u) * 24);
   }
 
   .ls-art-gifts-start {
-    left: calc(var(--ls-art-u) * 38);
-    width: calc(var(--ls-art-u) * 20);
+    left: calc(var(--ls-art-u) * 28);
+    width: calc(var(--ls-art-u) * 15);
   }
 
-  .ls-art-tree-end {
-    right: calc(var(--ls-art-u) * 6);
-    width: calc(var(--ls-art-u) * 32);
+  .ls-art-snowman {
+    left: calc(var(--ls-art-u) * 54);
+    width: calc(var(--ls-art-u) * 16.5);
+  }
+
+  .ls-art-santa {
+    right: calc(var(--ls-art-u) * 42);
+    width: calc(var(--ls-art-u) * 18);
   }
 
   .ls-art-gifts-end {
-    right: calc(var(--ls-art-u) * 36);
-    width: calc(var(--ls-art-u) * 18);
+    right: calc(var(--ls-art-u) * 25);
+    width: calc(var(--ls-art-u) * 12);
+  }
+
+  .ls-art-tree-end {
+    right: calc(var(--ls-art-u) * 3);
+    width: calc(var(--ls-art-u) * 21);
+  }
+
+  /* Tet on a tablet: the goat and crackers on top, one shelf row (couplets, fruit tray, rice cakes, melons) above the
+     band with the greeting; the phone block below shrinks the same row. */
+  .ls-art-footer[data-kit='tet'] {
+    --ls-art-footer-h: calc(var(--ls-art-u) * 110);
+  }
+
+  .ls-art-footer[data-kit='tet'] .ls-art-band {
+    height: calc(var(--ls-art-u) * 28);
+  }
+
+  .ls-art-shelf {
+    position: absolute;
+    right: 0;
+    bottom: calc(var(--ls-art-u) * 26);
+    left: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding-inline: var(--ls-space-4);
+  }
+
+  .ls-art-shelf-piece {
+    flex: none;
+    height: auto;
+  }
+
+  .ls-art-shelf-couplet {
+    width: calc(var(--ls-art-u) * 15);
+  }
+
+  .ls-art-shelf-tray,
+  .ls-art-shelf-cakes {
+    width: calc(var(--ls-art-u) * 32);
+  }
+
+  .ls-art-shelf-melons {
+    width: calc(var(--ls-art-u) * 25);
+  }
+
+  /* A panorama on a tablet: the whole picture, in the flow, at the width of the row; the greeting sits under it. */
+  .ls-art-footer[data-scene='panorama'] {
+    height: auto;
+  }
+
+  .ls-art-footer[data-scene='panorama'] .ls-art-footer-art {
+    position: relative;
+    inset: auto;
+  }
+
+  .ls-art-footer[data-scene='panorama'] .ls-art-scene-wide {
+    position: static;
+    width: 100%;
+    height: auto;
+  }
+
+  .ls-art-footer[data-scene='panorama'] .ls-art-footer-text {
+    position: static;
+    padding: var(--ls-space-2) var(--ls-space-4) var(--ls-space-4);
   }
 }
 
@@ -673,8 +751,7 @@
   }
 
   .ls-art-show-narrow,
-  .ls-art-lights-narrow,
-  .ls-art-hide-tablet {
+  .ls-art-lights-narrow {
     display: block;
   }
 
@@ -829,26 +906,6 @@
      (couplets, fruit tray, rice cakes, melons), then the band with the greeting. Nothing sits on the greeting. */
   .ls-art-footer[data-kit='tet'] {
     --ls-art-footer-h: calc(var(--ls-art-u) * 86);
-  }
-
-  .ls-art-footer[data-kit='tet'] .ls-art-band {
-    height: calc(var(--ls-art-u) * 28);
-  }
-
-  .ls-art-shelf {
-    position: absolute;
-    right: 0;
-    bottom: calc(var(--ls-art-u) * 26);
-    left: 0;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    padding-inline: var(--ls-space-4);
-  }
-
-  .ls-art-shelf-piece {
-    flex: none;
-    height: auto;
   }
 
   .ls-art-shelf-couplet {
@@ -1102,6 +1159,19 @@
     right: calc(var(--ls-art-u) * 6);
   }
 
+  /* The two gift piles stand between a balloon bunch and the greeting card. */
+  .ls-art-party-gifts {
+    width: calc(var(--ls-art-u) * 18);
+  }
+
+  .ls-art-party-gifts-start {
+    left: calc(var(--ls-art-u) * 38);
+  }
+
+  .ls-art-party-gifts-end {
+    right: calc(var(--ls-art-u) * 38);
+  }
+
   .ls-art-corner-image {
     width: calc(var(--ls-art-u) * 30);
   }
@@ -1321,15 +1391,6 @@
 
   /* A panorama on a phone: the whole picture as two rows (centre, then the two sides) with the greeting under it, in
      the flow, so no motif is cropped away and nothing sits on the greeting. */
-  .ls-art-footer[data-scene='panorama'] {
-    height: auto;
-  }
-
-  .ls-art-footer[data-scene='panorama'] .ls-art-footer-art {
-    position: relative;
-    inset: auto;
-  }
-
   .ls-art-footer[data-scene='panorama'] .ls-art-scene-wide {
     display: none;
   }
@@ -1365,11 +1426,6 @@
 
   .ls-art-scene-side:last-child {
     width: calc(100% - var(--ls-art-scene-start));
-  }
-
-  .ls-art-footer[data-scene='panorama'] .ls-art-footer-text {
-    position: static;
-    padding: var(--ls-space-2) var(--ls-space-4) var(--ls-space-4);
   }
 }
 

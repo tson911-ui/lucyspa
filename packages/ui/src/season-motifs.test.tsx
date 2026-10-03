@@ -109,14 +109,21 @@ test('the phone and tablet tiers keep a subset: hidden pieces are hidden by clas
   );
   assert.match(html, /ls-art-animal/, 'the zodiac animal stays at every width');
   const xmas = renderToStaticMarkup(<SeasonFooterScene kit="christmas" line="x" />);
-  assert.match(xmas, /ls-art-snowman[^"]*ls-art-hide-tablet/);
-  assert.match(xmas, /ls-art-santa[^"]*ls-art-hide-tablet/);
+  for (const piece of ['ls-art-snowman', 'ls-art-santa']) {
+    assert.match(
+      xmas,
+      new RegExp(`${piece}"`),
+      `${piece} has no hide class: it shows on tablets and phones`,
+    );
+  }
   assert.match(xmas, /ls-art-sleigh"/, 'the sleigh stays at every width');
 });
 
 // Owner follow-up 2026-10-03: the header stays compact on a phone, but the phone footer shows the full motif set of the
 // kit (two rows when needed). A piece is hidden on a phone by one of these classes, or by being the wide-only scene.
 const PHONE_HIDDEN = /ls-art-hide-narrow|ls-art-hide-medium|ls-art-show-wide|ls-art-scene-wide/;
+// On a tablet (761-1023 px) the phone-only variants are hidden and the whole wide panorama shows.
+const TABLET_HIDDEN = /ls-art-hide-medium|ls-art-show-narrow|ls-art-scene-mid|ls-art-scene-side/;
 
 function footerMotifs(kit: SeasonArtKit) {
   const html = renderToStaticMarkup(
@@ -124,16 +131,19 @@ function footerMotifs(kit: SeasonArtKit) {
   );
   const all = new Set<string>();
   const phone = new Set<string>();
+  const tablet = new Set<string>();
   for (const tag of html.matchAll(/<svg[^>]*>/g)) {
     const motif = /data-motif="([^"]+)"/.exec(tag[0])?.[1];
     if (!motif) continue;
-    const hidden = PHONE_HIDDEN.test(/class="([^"]*)"/.exec(tag[0])?.[1] ?? '');
+    const cls = /class="([^"]*)"/.exec(tag[0])?.[1] ?? '';
+    const hidden = PHONE_HIDDEN.test(cls);
     for (const id of motif.split(' ')) {
       all.add(id);
       if (!hidden) phone.add(id);
+      if (!TABLET_HIDDEN.test(cls)) tablet.add(id);
     }
   }
-  return { html, all, phone };
+  return { html, all, phone, tablet };
 }
 
 test('the phone footer of every kit shows every motif its footer draws, none only on wide screens', () => {
@@ -141,6 +151,13 @@ test('the phone footer of every kit shows every motif its footer draws, none onl
     const { all, phone } = footerMotifs(kit);
     assert.ok(all.size >= 3, `${kit}: the footer draws its motifs`);
     for (const id of all) assert.ok(phone.has(id), `${kit}: ${id} is missing on a phone`);
+  }
+});
+
+test('the tablet footer of every kit also shows every motif its footer draws', () => {
+  for (const kit of SEASON_ART_KITS) {
+    const { all, tablet } = footerMotifs(kit);
+    for (const id of all) assert.ok(tablet.has(id), `${kit}: ${id} is missing on a tablet`);
   }
 });
 

@@ -389,8 +389,8 @@ function FooterArt({
       <>
         <ChristmasHills className="ls-art-hills" />
         <ChristmasSleigh className="ls-art-sleigh" />
-        <ChristmasSnowman className="ls-art-snowman ls-art-hide-tablet" />
-        <ChristmasSanta className="ls-art-santa ls-art-hide-tablet" />
+        <ChristmasSnowman className="ls-art-snowman" />
+        <ChristmasSanta className="ls-art-santa" />
         <ChristmasTree className="ls-art-tree ls-art-tree-start" />
         <ChristmasGiftsA className="ls-art-gifts ls-art-gifts-start" />
         <ChristmasTree className="ls-art-tree ls-art-tree-end" />
@@ -404,8 +404,8 @@ function FooterArt({
       <CelebrationFloorConfetti className="ls-art-floor-confetti" />
       <CelebrationBunch className="ls-art-bunch ls-art-bunch-start" />
       <CelebrationBunch className="ls-art-bunch ls-art-bunch-end" flip />
-      <CelebrationGifts className="ls-art-party-gifts ls-art-party-gifts-start ls-art-hide-tablet" />
-      <CelebrationGifts className="ls-art-party-gifts ls-art-party-gifts-end ls-art-hide-tablet" />
+      <CelebrationGifts className="ls-art-party-gifts ls-art-party-gifts-start" />
+      <CelebrationGifts className="ls-art-party-gifts ls-art-party-gifts-end" />
       <CelebrationCake className="ls-art-cake" />
     </>
   );

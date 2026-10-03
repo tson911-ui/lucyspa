@@ -16,8 +16,8 @@ Follow-up to S6d/S6e (Owner, 2026-10-03). Web UI only, no migration, no permissi
     in `KIT_ART` puts both cuts between motifs (measured with `.local/season-s6/extents.mjs`). Greeting sits under the art.
   - Tet: goat and crackers, then one shelf row (couplets, fruit tray, rice cakes, melons), then the band with the greeting.
   - Christmas: sleigh, then one row (tree, gifts, snowman, Santa, gifts, tree), then the greeting card.
-  - Celebration: the two gift piles in a row above the card. New class `ls-art-hide-tablet` (hidden 761-1023 px only).
-- Tablets (761-1023 px) are unchanged: they still drop the same pieces as before.
+  - Celebration: the two gift piles in a row above the card.
+- **Tablets (761-1023 px) get the full footers too**: panorama kits show the whole 1440 x 300 scene at the width of the row (no crop) with the greeting under it; Tet, Christmas and Celebration use the same shelf and rows as phones at tablet sizes (taller footers: Tet 110u, Christmas 94u). Desktop is unchanged.
 - **Mid-Autumn lion dance redrawn** (`season-art-lion.tsx`): head with one horn, a mirror, big round eyes with lids and
   thick lashes, open mouth with teeth and a red tongue, long beard, pom-poms; scaled cloth body with tassels over two
   dancers, only four human legs (loose trousers, cloth shoes), no stripes; plus Ong Dia (belly, wide smile, fan) and
@@ -38,4 +38,4 @@ Opened and checked: Tet, Christmas, Mid-Autumn at 360 and 1440 light (see chat f
 
 ## Open questions
 
-None. Tablets could get the same shelf rows if the Owner wants them.
+None.
