@@ -79,7 +79,7 @@ test('PriceList keeps a long price on the row as its own cell', () => {
 test('SiteFooter renders the brand, the columns and the base line', () => {
   const html = renderToStaticMarkup(
     <ui.SiteFooter
-      brand={<a href="/vi">Lucy Spa</a>}
+      brand={<span>Lucy Spa</span>}
       tagline="Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc"
       columns={[{ key: 'contact', title: 'Liên hệ', items: ['04 Nguyễn Quang Bích, Đà Nẵng'] }]}
       base="© 2026 Lucy Spa"
