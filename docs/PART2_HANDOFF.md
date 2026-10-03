@@ -1,21 +1,22 @@
 # Part 2 handoff (customer area and public site): read this first in a fresh session
 
 Last updated 2026-10-03. Contract: `UXUI_REDESIGN_PART2_DESIGN.md`. Plan: `UXUI_REDESIGN_PART2_PLAN.md`. Mockups: `docs/mockups/part2/`.
-Per-step reports: `UXUI_REDESIGN_PART2_P2-1_FOUNDATIONS.md`, `_P2-2_BACKEND.md`, `_P2-3_SHOP_INFO_TAB.md`, `_P2-4_HOME.md`, `_P2-6_MEMBER_AUTH.md`.
+Per-step reports: `UXUI_REDESIGN_PART2_P2-1_FOUNDATIONS.md`, `_P2-2_BACKEND.md`, `_P2-3_SHOP_INFO_TAB.md`, `_P2-4_HOME.md`, `_P2-6_MEMBER_AUTH.md`, `_P2-7_BOOKING.md`.
 Repo rules are in `CLAUDE.md` (UX gate, ratchet, no heredocs, never force-push, never touch `apps/web/next-env.d.ts`).
 
 ## Where we are
 
-| Step                                                                                                                 | Commits                                   | State                                                                                       |
-| -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Contract, plan, mockups (Owner answers Q-P2-1..11 recorded)                                                          | `a1432b5`                                 | done                                                                                        |
-| P2-1 foundations (tokens, kit site frame, siteNav registry, chrome)                                                  | `84b8141`, `55f298d`                      | done, CI green                                                                              |
-| P2-2 shop info backend (migration `20261023000000_uxui_part2_shop_info`, `/public/site`, `/public/services[/:code]`) | `d438ed0`                                 | done, CI green                                                                              |
-| P2-3 admin "Shop info" tab (website page, last tab)                                                                  | `84676b9`                                 | done, CI green                                                                              |
-| P2-4 public home + services list/detail                                                                              | `9f1d319`, **`5ec3cdb`** (smoke-test fix) | done, **CI green at `5ec3cdb`**                                                             |
-| P2-5 services polish                                                                                                 | -                                         | **folded into P2-7 (booking preselect) and P2-9 (metadata)**; list and detail already exist |
-| P2-6 member auth in the site chrome                                                                                  | see git log                               | done 2026-10-03 (report `UXUI_REDESIGN_PART2_P2-6_MEMBER_AUTH.md`); `wfClassUses` 65        |
-| P2-7 booking, P2-8 member area, P2-9 motion + SEO, P2-10 final gate                                                  | -                                         | not started                                                                                 |
+| Step                                                                                                                 | Commits                                   | State                                                                                                                       |
+| -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Contract, plan, mockups (Owner answers Q-P2-1..11 recorded)                                                          | `a1432b5`                                 | done                                                                                                                        |
+| P2-1 foundations (tokens, kit site frame, siteNav registry, chrome)                                                  | `84b8141`, `55f298d`                      | done, CI green                                                                                                              |
+| P2-2 shop info backend (migration `20261023000000_uxui_part2_shop_info`, `/public/site`, `/public/services[/:code]`) | `d438ed0`                                 | done, CI green                                                                                                              |
+| P2-3 admin "Shop info" tab (website page, last tab)                                                                  | `84676b9`                                 | done, CI green                                                                                                              |
+| P2-4 public home + services list/detail                                                                              | `9f1d319`, **`5ec3cdb`** (smoke-test fix) | done, **CI green at `5ec3cdb`**                                                                                             |
+| P2-5 services polish                                                                                                 | -                                         | **folded into P2-7 (booking preselect) and P2-9 (metadata)**; list and detail already exist                                 |
+| P2-6 member auth in the site chrome                                                                                  | see git log                               | done 2026-10-03 (report `UXUI_REDESIGN_PART2_P2-6_MEMBER_AUTH.md`); `wfClassUses` 65                                        |
+| P2-7 booking in four steps                                                                                           | see git log                               | done 2026-10-03 (report `UXUI_REDESIGN_PART2_P2-7_BOOKING.md`); `nativeFieldsets` 0, `nativeCheckboxes` 0, `wfClassUses` 38 |
+| P2-8 member area, P2-9 motion + SEO, P2-10 final gate                                                                | -                                         | not started                                                                                                                 |
 
 Nothing is deployed. Ratchet counters still to clear: `wfClassUses` 80, `nativeFieldsets` 4, `nativeCheckboxes` 1, `solidDangerButtons` 1
 (all in the member area: `components/customer/**`, `workforce/ui.tsx` 2 uses). `siteCssSpacingLiterals` is 0 and must stay 0.

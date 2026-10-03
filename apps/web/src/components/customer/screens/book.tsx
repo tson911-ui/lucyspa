@@ -8,8 +8,27 @@ import type {
   CustomerBookingDetail,
   CustomerBookingEmployeesResponse,
 } from '@lucy-spa/contracts';
+import {
+  Button,
+  buttonClass,
+  Card,
+  CardHeader,
+  ChoiceCard,
+  DateInput,
+  DescriptionList,
+  Field,
+  FormSection,
+  IconButton,
+  Notice,
+  PublicMain,
+  Select,
+  Skeleton,
+  Steps,
+  TextInput,
+  type DescriptionItem,
+} from '@lucy-spa/ui';
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { fill } from '../../../i18n/customer';
 import { ApiError } from '../../../lib/api/client';
 import {
@@ -27,10 +46,18 @@ import {
   type BookingDraft,
   type Person,
 } from '../../../lib/customer/booking';
-import { Field, Notice, SubmitButton } from '../../workforce/ui';
+import { formatBusinessDate } from '../../../lib/customer/invoice';
+import {
+  bookingTotals,
+  formatFixedTotal,
+  groupByCategory,
+  preselectServiceIds,
+  serviceCodesFromSearch,
+  type BranchService,
+} from '../../../lib/customer/booking-view';
 import { useCustomer } from '../session';
 
-const STEPS = ['branch', 'services', 'people', 'staff', 'time', 'review'] as const;
+const STEPS = ['services', 'guests', 'when', 'confirm'] as const;
 type Step = (typeof STEPS)[number];
 const OTHER_RELATIONS: Exclude<BookingRecipientRelationName, 'SELF'>[] = [
   'CHILD',
@@ -62,25 +89,40 @@ function useLoad<T>(load: (() => Promise<T>) | null, key: string) {
   return { ...state, retry: () => setAttempt((value) => value + 1) };
 }
 
+/** What the summary card (desktop) and the action bar (phone) offer: the same two buttons, primary last. */
+interface StepNav {
+  back: (() => void) | null;
+  nextLabel: string;
+  canContinue: boolean;
+  pending: boolean;
+  onNext: () => void;
+}
+
 /**
- * "Đặt lịch": branch → services (ordered) → who each service is for (O11) → KTV per service
- * (specific or Any) → date and a start time the server found feasible → review → submit.
- * The server plans, re-checks under locks and confirms (O4); this screen only collects choices.
+ * "Đặt lịch": four visible steps (services, guests, staff and time, confirm) over the same data and rules as before:
+ * the server plans, re-checks under locks and confirms (O4); this screen only collects choices. The services may
+ * be preselected from `?service=CODE` (the "Đặt lịch" buttons of the public pages).
  */
 export function BookScreen() {
-  const { api, t, locale, base } = useCustomer();
-  const [step, setStep] = useState<Step>('branch');
+  const { api, t, locale, base, sessionLost } = useCustomer();
+  const [step, setStep] = useState<Step>('services');
   const [draft, setDraft] = useState<BookingDraft>(emptyDraft);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [created, setCreated] = useState<CustomerBookingDetail | null>(null);
   const idempotencyKey = useRef<string>('');
   const heading = useRef<HTMLHeadingElement>(null);
+  const preselected = useRef(false);
 
   const branches = useLoad(
     () => api.get<CustomerBookingBranchesResponse>('/api/v1/me/booking/branches'),
     'branches',
   );
+  const onlyBranch = branches.data?.branches.length === 1 ? branches.data.branches[0] : undefined;
+  useEffect(() => {
+    // One active branch: no question to ask.
+    if (onlyBranch && !draft.branchId) setDraft({ ...emptyDraft(), branchId: onlyBranch.id });
+  }, [onlyBranch?.id]);
   const branch = useLoad(
     draft.branchId
       ? () =>
@@ -88,20 +130,21 @@ export function BookScreen() {
       : null,
     `branch:${draft.branchId}`,
   );
+  const needsStaff = step === 'when' || step === 'confirm';
   const staffKey = draft.serviceIds.join(',');
   const staff = useLoad(
-    draft.branchId && staffKey && (step === 'staff' || step === 'time' || step === 'review')
+    draft.branchId && staffKey && needsStaff
       ? () =>
           api.get<CustomerBookingEmployeesResponse>(
             `/api/v1/me/booking/branches/${draft.branchId}/employees`,
             { serviceIds: staffKey },
           )
       : null,
-    `staff:${draft.branchId}:${staffKey}:${step === 'staff' || step === 'time' || step === 'review'}`,
+    `staff:${draft.branchId}:${staffKey}:${needsStaff}`,
   );
   const [timesAttempt, setTimesAttempt] = useState(0);
   const times = useLoad(
-    step === 'time' && draft.date
+    step === 'when' && draft.date
       ? () =>
           api.get<CustomerBookingAvailabilityResponse>(
             '/api/v1/me/booking/availability',
@@ -111,14 +154,42 @@ export function BookScreen() {
     `times:${JSON.stringify(availabilityQuery(draft))}:${step}:${timesAttempt}`,
   );
 
+  const update = (change: (current: BookingDraft) => BookingDraft) =>
+    setDraft((current) => change(current));
+
+  // The services named by `?service=` are chosen once, when the branch's services arrive.
+  useEffect(() => {
+    if (preselected.current || !branch.data) return;
+    preselected.current = true;
+    const ids = preselectServiceIds(
+      serviceCodesFromSearch(window.location.search),
+      branch.data.services,
+    );
+    if (ids.length > 0) {
+      update((current) =>
+        ids.reduce(
+          (next, id) => (next.serviceIds.includes(id) ? next : toggleService(next, id)),
+          current,
+        ),
+      );
+    }
+  }, [branch.data]);
+
   const servicesById = useMemo(
     () => new Map((branch.data?.services ?? []).map((service) => [service.id, service])),
     [branch.data],
   );
+  const serviceLabel = (service: BranchService) =>
+    locale === 'vi' ? service.nameVi : service.nameEn;
   const serviceName = (id: string) => {
     const service = servicesById.get(id);
-    return service ? (locale === 'vi' ? service.nameVi : service.nameEn) : '';
+    return service ? serviceLabel(service) : '';
   };
+  const chosen = draft.serviceIds.flatMap((id) => {
+    const service = servicesById.get(id);
+    return service ? [service] : [];
+  });
+  const totals = bookingTotals(chosen);
   const staffName = (index: number) => {
     const choice = draft.staffOf[index];
     if (!choice || choice === 'ANY') return t.book.anyStaff;
@@ -132,18 +203,19 @@ export function BookScreen() {
     if (!person || person.relation === 'SELF') return t.book.self;
     return `${person.name || '—'} (${t.book.relations[person.relation]})`;
   };
+  const priceText = (service: BranchService) =>
+    `${formatVndRange(service.priceMinVnd, service.priceMaxVnd, locale)}${
+      service.pricingUnit === 'PER_NAIL' ? ` ${t.book.perNail}` : ''
+    }`;
 
   function go(next: Step) {
     setMessage(null);
     setStep(next);
-    if (next === 'review') idempotencyKey.current = crypto.randomUUID();
+    if (next === 'confirm') idempotencyKey.current = crypto.randomUUID();
     requestAnimationFrame(() => heading.current?.focus());
   }
-  const update = (change: (current: BookingDraft) => BookingDraft) =>
-    setDraft((current) => change(current));
 
-  async function confirm(event: FormEvent) {
-    event.preventDefault();
+  async function confirm() {
     if (pending) return;
     setPending(true);
     setMessage(null);
@@ -160,7 +232,7 @@ export function BookScreen() {
       if (error instanceof ApiError && RETRY_TIME_CODES.has(error.code)) {
         update((current) => ({ ...current, startTime: '' }));
         setTimesAttempt((value) => value + 1);
-        setStep('time');
+        setStep('when');
       }
       setMessage(text);
     } finally {
@@ -170,416 +242,527 @@ export function BookScreen() {
 
   if (created) {
     return (
-      <section className="cu-panel" aria-live="polite">
-        <h1 ref={heading} tabIndex={-1}>
-          {t.book.successTitle}
-        </h1>
-        <Notice tone="success">{fill(t.book.successIntro, { code: created.code })}</Notice>
-        <p>
-          {formatDateTime(created.startsAt, created.branch.timezone, locale)} ·{' '}
-          {created.branch.name}
-        </p>
-        <ul className="cu-lines">
-          {created.lines.map((line) => (
-            <li key={line.sequence}>
-              {locale === 'vi' ? line.serviceNameVi : line.serviceNameEn} —{' '}
-              {line.employee.displayName}
-            </li>
-          ))}
-        </ul>
-        <div className="cu-actions">
-          <Link className="wf-button wf-button-primary" href={`${base}/bookings/${created.id}`}>
-            {t.book.viewBooking}
-          </Link>
-          <button
-            type="button"
-            className="wf-button"
-            onClick={() => {
-              setCreated(null);
-              setDraft(emptyDraft());
-              go('branch');
-            }}
-          >
-            {t.book.bookAnother}
-          </button>
+      <PublicMain>
+        <div className="ls-container ls-container-narrow">
+          <div className="ls-public-title" aria-live="polite">
+            <h1 ref={heading} tabIndex={-1} className="ls-h1-display">
+              {t.book.successTitle}
+            </h1>
+          </div>
+          <div className="ls-booking-main">
+            <Card as="section" aria-label={t.book.successTitle}>
+              <Notice tone="success">{fill(t.book.successIntro, { code: created.code })}</Notice>
+              <DescriptionList
+                items={[
+                  {
+                    label: t.book.when,
+                    value: formatDateTime(created.startsAt, created.branch.timezone, locale),
+                  },
+                  { label: t.book.branch, value: created.branch.name },
+                  ...created.lines.map((line) => ({
+                    label: locale === 'vi' ? line.serviceNameVi : line.serviceNameEn,
+                    value: line.employee.displayName,
+                  })),
+                ]}
+              />
+            </Card>
+            <div className="ls-member-actions">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setCreated(null);
+                  setDraft(emptyDraft());
+                  preselected.current = true;
+                  go('services');
+                }}
+              >
+                {t.book.bookAnother}
+              </Button>
+              <Link className={buttonClass('primary')} href={`${base}/bookings/${created.id}`}>
+                {t.book.viewBooking}
+              </Link>
+            </div>
+          </div>
         </div>
-      </section>
+      </PublicMain>
     );
   }
 
   const index = STEPS.indexOf(step);
   const loadError = (error: unknown, retry: () => void) =>
     error ? (
-      <Notice tone="error">
+      <Notice tone="danger">
         <p>{customerErrorMessage(error, t)}</p>
-        <button type="button" className="wf-button wf-button-quiet" onClick={retry}>
+        <Button variant="secondary" onClick={retry}>
           {t.common.reload}
-        </button>
+        </Button>
       </Notice>
     ) : null;
   const loading = (
-    <p className="wf-muted" role="status">
-      {t.common.loading}
-    </p>
-  );
-  const nav = (canContinue: boolean, next?: Step) => (
-    <div className="cu-actions">
-      {index > 0 ? (
-        <button type="button" className="wf-button" onClick={() => go(STEPS[index - 1] as Step)}>
-          {t.common.back}
-        </button>
-      ) : null}
-      {next ? (
-        <button
-          type="button"
-          className="wf-button wf-button-primary"
-          disabled={!canContinue}
-          onClick={() => go(next)}
-        >
-          {t.common.next}
-        </button>
-      ) : null}
+    <div role="status">
+      <span className="ls-hint">{t.common.loading}</span>
+      <Skeleton lines={3} />
     </div>
   );
 
-  return (
-    <section className="cu-panel">
-      <h1 ref={heading} tabIndex={-1}>
-        {t.book.title}
-      </h1>
-      <ol
-        className="cu-steps"
-        aria-label={fill(t.book.stepOf, { current: index + 1, total: STEPS.length })}
+  const staffReady =
+    Boolean(staff.data) &&
+    draft.serviceIds.every(
+      (_, position) => (staff.data?.services[position]?.employees.length ?? 0) > 0,
+    );
+  const canContinue =
+    step === 'services'
+      ? draft.serviceIds.length > 0 && chosen.length === draft.serviceIds.length
+      : step === 'guests'
+        ? peopleProblem(draft) === null
+        : step === 'when'
+          ? staffReady &&
+            Boolean(draft.date && draft.startTime && times.data?.starts.includes(draft.startTime))
+          : true;
+  const nav: StepNav = {
+    back: index > 0 ? () => go(STEPS[index - 1] as Step) : null,
+    nextLabel: step === 'confirm' ? t.book.confirm : t.common.next,
+    canContinue,
+    pending: step === 'confirm' && pending,
+    onNext: () => (step === 'confirm' ? void confirm() : go(STEPS[index + 1] as Step)),
+  };
+
+  const fixedTotal = formatFixedTotal(totals, locale);
+  const totalLine = fixedTotal ?? (totals.hasPerNail ? t.book.perNailOnly : '—');
+  const totalNote = fixedTotal !== null && totals.hasPerNail ? t.book.plusPerNail : null;
+
+  const stepButtons = (
+    <>
+      {nav.back ? (
+        <Button variant="secondary" disabled={pending} onClick={nav.back}>
+          {t.common.back}
+        </Button>
+      ) : null}
+      <Button
+        variant="primary"
+        loading={nav.pending}
+        disabled={!nav.canContinue}
+        onClick={nav.onNext}
       >
-        {STEPS.map((name, position) => (
-          <li
-            key={name}
-            aria-current={name === step ? 'step' : undefined}
-            className={position < index ? 'cu-done' : undefined}
-          >
-            {t.book.steps[name]}
-          </li>
-        ))}
-      </ol>
-      <p className="wf-muted">{fill(t.book.stepOf, { current: index + 1, total: STEPS.length })}</p>
-      {message ? <Notice tone="error">{message}</Notice> : null}
+        {nav.pending ? t.book.confirming : nav.nextLabel}
+      </Button>
+    </>
+  );
 
-      {step === 'branch' ? (
-        <fieldset className="cu-choices">
-          <legend>{t.book.chooseBranch}</legend>
-          {branches.loading ? loading : null}
-          {loadError(branches.error, branches.retry)}
-          {branches.data && branches.data.branches.length === 0 ? (
-            <p className="wf-empty">{t.book.noBranches}</p>
-          ) : null}
-          {branches.data?.branches.map((entry) => (
-            <label key={entry.id} className="cu-choice">
-              <input
-                type="radio"
-                name="branch"
-                checked={draft.branchId === entry.id}
-                onChange={() => setDraft({ ...emptyDraft(), branchId: entry.id })}
-              />
-              <span>{entry.name}</span>
-            </label>
-          ))}
-          {nav(Boolean(draft.branchId), 'services')}
-        </fieldset>
-      ) : null}
+  return (
+    <PublicMain className="ls-booking">
+      <div className="ls-container">
+        <div className="ls-public-title">
+          <h1 className="ls-h1-display">{t.book.title}</h1>
+        </div>
+        <Steps
+          label={t.book.stepsLabel}
+          current={step}
+          steps={STEPS.map((key) => ({
+            key,
+            label: t.book.steps[key],
+            shortLabel: t.book.stepsShort[key],
+          }))}
+        />
+        {sessionLost ? <Notice tone="warning">{t.errors.sessionLost}</Notice> : null}
+        <div className="ls-booking-layout">
+          <div className="ls-booking-main">
+            <h2 ref={heading} tabIndex={-1} className="ls-booking-step-title">
+              {t.book.steps[step]}
+            </h2>
+            {message ? <Notice tone="danger">{message}</Notice> : null}
 
-      {step === 'services' ? (
-        <div>
-          {branch.loading ? loading : null}
-          {loadError(branch.error, branch.retry)}
-          {branch.data ? (
-            <>
-              <fieldset className="cu-choices">
-                <legend>{t.book.chooseServices}</legend>
-                {branch.data.services.length === 0 ? (
-                  <p className="wf-empty">{t.book.noServices}</p>
+            {step === 'services' ? (
+              <>
+                {branches.loading ? loading : null}
+                {loadError(branches.error, branches.retry)}
+                {branches.data && branches.data.branches.length === 0 ? (
+                  <Notice tone="info">{t.book.noBranches}</Notice>
                 ) : null}
-                {branch.data.services.map((service) => (
-                  <label key={service.id} className="cu-choice">
-                    <input
-                      type="checkbox"
-                      checked={draft.serviceIds.includes(service.id)}
-                      onChange={() => update((current) => toggleService(current, service.id))}
-                    />
-                    <span>
-                      <strong>{locale === 'vi' ? service.nameVi : service.nameEn}</strong>
-                      <span className="wf-muted">
-                        {' '}
-                        · {fill(t.book.duration, { minutes: service.durationMinutes })} ·{' '}
-                        {t.book.referencePrice}{' '}
-                        {formatVndRange(service.priceMinVnd, service.priceMaxVnd, locale)}
-                        {service.pricingUnit === 'PER_NAIL' ? ` ${t.book.perNail}` : ''}
-                      </span>
-                    </span>
-                  </label>
-                ))}
-              </fieldset>
-              {draft.serviceIds.length > 1 ? (
-                <div className="cu-order">
-                  <h2>{t.book.selectedOrder}</h2>
-                  <ol>
-                    {draft.serviceIds.map((id, position) => (
-                      <li key={id}>
-                        <span>{serviceName(id)}</span>
-                        <span className="cu-inline-actions">
-                          <button
-                            type="button"
-                            className="wf-button wf-button-quiet"
-                            disabled={position === 0}
-                            aria-label={`${t.book.moveUp}: ${serviceName(id)}`}
-                            onClick={() => update((current) => moveService(current, position, -1))}
-                          >
-                            ↑
-                          </button>
-                          <button
-                            type="button"
-                            className="wf-button wf-button-quiet"
-                            disabled={position === draft.serviceIds.length - 1}
-                            aria-label={`${t.book.moveDown}: ${serviceName(id)}`}
-                            onClick={() => update((current) => moveService(current, position, 1))}
-                          >
-                            ↓
-                          </button>
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              ) : null}
-              <p className="wf-muted">{t.book.priceNote}</p>
-            </>
-          ) : null}
-          {nav(draft.serviceIds.length > 0, 'people')}
-        </div>
-      ) : null}
+                {branches.data && branches.data.branches.length > 1 ? (
+                  <FormSection title={t.book.chooseBranch}>
+                    <div
+                      role="radiogroup"
+                      aria-label={t.book.chooseBranch}
+                      className="ls-choice-list"
+                    >
+                      {branches.data.branches.map((entry) => (
+                        <ChoiceCard
+                          key={entry.id}
+                          type="radio"
+                          name="branch"
+                          value={entry.id}
+                          checked={draft.branchId === entry.id}
+                          onChange={() => setDraft({ ...emptyDraft(), branchId: entry.id })}
+                          title={entry.name}
+                        />
+                      ))}
+                    </div>
+                  </FormSection>
+                ) : null}
+                {draft.branchId && branch.loading ? loading : null}
+                {loadError(branch.error, branch.retry)}
+                {branch.data && branch.data.services.length === 0 ? (
+                  <Notice tone="info">{t.book.noServices}</Notice>
+                ) : null}
+                {branch.data
+                  ? groupByCategory(branch.data.services, locale).map((group) => (
+                      <FormSection key={group.key} title={group.name}>
+                        <div className="ls-choice-list">
+                          {group.services.map((service) => (
+                            <ChoiceCard
+                              key={service.id}
+                              checked={draft.serviceIds.includes(service.id)}
+                              onChange={() =>
+                                update((current) => toggleService(current, service.id))
+                              }
+                              title={serviceLabel(service)}
+                              meta={fill(t.book.duration, { minutes: service.durationMinutes })}
+                              price={priceText(service)}
+                              extra={
+                                service.pricingUnit === 'PER_NAIL' ? t.book.perNailNote : undefined
+                              }
+                            />
+                          ))}
+                        </div>
+                      </FormSection>
+                    ))
+                  : null}
+                {draft.serviceIds.length > 1 ? (
+                  <FormSection title={t.book.selectedOrder} description={t.book.chooseServices}>
+                    <ol className="ls-order-list">
+                      {draft.serviceIds.map((id, position) => (
+                        <li key={id}>
+                          <span>{serviceName(id)}</span>
+                          <span className="ls-order-actions">
+                            <IconButton
+                              icon="arrow-up"
+                              variant="secondary"
+                              label={`${t.book.moveUp}: ${serviceName(id)}`}
+                              disabled={position === 0}
+                              onClick={() =>
+                                update((current) => moveService(current, position, -1))
+                              }
+                            />
+                            <IconButton
+                              icon="arrow-down"
+                              variant="secondary"
+                              label={`${t.book.moveDown}: ${serviceName(id)}`}
+                              disabled={position === draft.serviceIds.length - 1}
+                              onClick={() => update((current) => moveService(current, position, 1))}
+                            />
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </FormSection>
+                ) : null}
+                <p className="ls-detail-note">{t.book.priceNote}</p>
+              </>
+            ) : null}
 
-      {step === 'people' ? (
-        <div>
-          <h2>{t.book.whoTitle}</h2>
-          <p className="wf-muted">{t.book.whoIntro}</p>
-          {draft.people
-            .filter((person) => person.relation !== 'SELF')
-            .map((person) => (
-              <PersonEditor
-                key={person.key}
-                person={person}
-                onChange={(next) =>
-                  update((current) => ({
-                    ...current,
-                    people: current.people.map((entry) => (entry.key === next.key ? next : entry)),
-                  }))
-                }
-                onRemove={() =>
-                  update((current) => ({
-                    ...current,
-                    people: current.people.filter((entry) => entry.key !== person.key),
-                    recipientOf: current.recipientOf.map((key) =>
-                      key === person.key ? SELF.key : key,
-                    ),
-                  }))
-                }
-              />
-            ))}
-          <button
-            type="button"
-            className="wf-button"
-            disabled={draft.people.length >= 10}
-            onClick={() =>
-              update((current) => ({
-                ...current,
-                people: [
-                  ...current.people,
-                  { key: `p${Date.now().toString(36)}`, relation: 'FAMILY', name: '', phone: '' },
-                ],
-              }))
-            }
-          >
-            + {t.book.other}
-          </button>
-          {draft.serviceIds.map((id, position) => (
-            <Field key={id} id={`who-${position}`} label={serviceName(id)}>
-              <select
-                id={`who-${position}`}
-                value={draft.recipientOf[position]}
-                onChange={(event) =>
-                  update((current) => ({
-                    ...current,
-                    recipientOf: current.recipientOf.map((key, at) =>
-                      at === position ? event.target.value : key,
-                    ),
-                  }))
-                }
-              >
-                {draft.people.map((person) => (
-                  <option key={person.key} value={person.key}>
-                    {personLabel(person.key)}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          ))}
-          {peopleProblem(draft) ? (
-            <Notice tone="warning">{t.book.recipientNameRequired}</Notice>
-          ) : null}
-          {nav(peopleProblem(draft) === null, 'staff')}
-        </div>
-      ) : null}
-
-      {step === 'staff' ? (
-        <div>
-          <h2>{t.book.staffTitle}</h2>
-          {staff.loading ? loading : null}
-          {loadError(staff.error, staff.retry)}
-          {staff.data
-            ? draft.serviceIds.map((id, position) => {
-                const options = staff.data?.services[position]?.employees ?? [];
-                return (
-                  <Field key={id} id={`staff-${position}`} label={serviceName(id)}>
-                    {options.length === 0 ? (
-                      <Notice tone="warning">{t.book.noQualified}</Notice>
-                    ) : null}
-                    <select
-                      id={`staff-${position}`}
-                      value={draft.staffOf[position]}
-                      disabled={options.length === 0}
-                      onChange={(event) =>
+            {step === 'guests' ? (
+              <>
+                <FormSection
+                  title={t.book.other}
+                  description={t.book.whoIntro}
+                  actions={
+                    <Button
+                      variant="secondary"
+                      icon="plus"
+                      disabled={draft.people.length >= 10}
+                      onClick={() =>
                         update((current) => ({
                           ...current,
-                          startTime: '',
-                          staffOf: current.staffOf.map((value, at) =>
-                            at === position ? event.target.value : value,
-                          ),
+                          people: [
+                            ...current.people,
+                            {
+                              key: `p${Date.now().toString(36)}`,
+                              relation: 'FAMILY',
+                              name: '',
+                              phone: '',
+                            },
+                          ],
                         }))
                       }
                     >
-                      <option value="ANY">{t.book.anyStaff}</option>
-                      {options.map((employee) => (
-                        <option key={employee.id} value={employee.id}>
-                          {employee.displayName}
-                        </option>
-                      ))}
-                    </select>
+                      {t.book.add}
+                    </Button>
+                  }
+                >
+                  {draft.people
+                    .filter((person) => person.relation !== 'SELF')
+                    .map((person) => (
+                      <PersonEditor
+                        key={person.key}
+                        person={person}
+                        onChange={(next) =>
+                          update((current) => ({
+                            ...current,
+                            people: current.people.map((entry) =>
+                              entry.key === next.key ? next : entry,
+                            ),
+                          }))
+                        }
+                        onRemove={() =>
+                          update((current) => ({
+                            ...current,
+                            people: current.people.filter((entry) => entry.key !== person.key),
+                            recipientOf: current.recipientOf.map((key) =>
+                              key === person.key ? SELF.key : key,
+                            ),
+                          }))
+                        }
+                      />
+                    ))}
+                </FormSection>
+                <FormSection title={t.book.whoTitle}>
+                  {draft.serviceIds.map((id, position) => (
+                    <Field key={id} label={serviceName(id)}>
+                      {(control) => (
+                        <Select
+                          {...control}
+                          value={draft.recipientOf[position] ?? SELF.key}
+                          options={draft.people.map((person) => ({
+                            value: person.key,
+                            label: personLabel(person.key),
+                          }))}
+                          onChange={(event) =>
+                            update((current) => ({
+                              ...current,
+                              recipientOf: current.recipientOf.map((key, at) =>
+                                at === position ? event.target.value : key,
+                              ),
+                            }))
+                          }
+                        />
+                      )}
+                    </Field>
+                  ))}
+                </FormSection>
+                {peopleProblem(draft) ? (
+                  <Notice tone="warning">{t.book.recipientNameRequired}</Notice>
+                ) : null}
+              </>
+            ) : null}
+
+            {step === 'when' ? (
+              <>
+                <FormSection title={t.book.staffTitle} description={t.book.chooseStaffHint}>
+                  {staff.loading ? loading : null}
+                  {loadError(staff.error, staff.retry)}
+                  {staff.data
+                    ? draft.serviceIds.map((id, position) => {
+                        const options = staff.data?.services[position]?.employees ?? [];
+                        return (
+                          <Field key={id} label={serviceName(id)}>
+                            {(control) => (
+                              <>
+                                {options.length === 0 ? (
+                                  <Notice tone="warning">{t.book.noQualified}</Notice>
+                                ) : null}
+                                <Select
+                                  {...control}
+                                  value={draft.staffOf[position] ?? 'ANY'}
+                                  disabled={options.length === 0}
+                                  options={[
+                                    { value: 'ANY', label: t.book.anyStaff },
+                                    ...options.map((employee) => ({
+                                      value: employee.id,
+                                      label: employee.displayName,
+                                    })),
+                                  ]}
+                                  onChange={(event) =>
+                                    update((current) => ({
+                                      ...current,
+                                      startTime: '',
+                                      staffOf: current.staffOf.map((value, at) =>
+                                        at === position ? event.target.value : value,
+                                      ),
+                                    }))
+                                  }
+                                />
+                              </>
+                            )}
+                          </Field>
+                        );
+                      })
+                    : null}
+                </FormSection>
+                <FormSection title={t.book.pickDate}>
+                  <Field
+                    label={t.book.date}
+                    required
+                    requiredLabel={t.common.required}
+                    {...(branch.data
+                      ? {
+                          hint: fill(t.book.dateRange, {
+                            first: formatBusinessDate(branch.data.firstDate, locale),
+                            last: formatBusinessDate(branch.data.lastDate, locale),
+                          }),
+                        }
+                      : {})}
+                    width="md"
+                  >
+                    {(control) => (
+                      <DateInput
+                        {...control}
+                        min={branch.data?.firstDate}
+                        max={branch.data?.lastDate}
+                        value={draft.date}
+                        onChange={(event) =>
+                          update((current) => ({
+                            ...current,
+                            date: event.target.value,
+                            startTime: '',
+                          }))
+                        }
+                      />
+                    )}
                   </Field>
-                );
-              })
-            : null}
-          {nav(
-            Boolean(staff.data) &&
-              draft.serviceIds.every(
-                (_, position) => (staff.data?.services[position]?.employees.length ?? 0) > 0,
-              ),
-            'time',
+                </FormSection>
+                {draft.date ? (
+                  <FormSection title={t.book.pickTime} description={t.book.times}>
+                    {times.loading ? (
+                      <p className="ls-hint" role="status">
+                        {t.book.loadingTimes}
+                      </p>
+                    ) : null}
+                    {loadError(times.error, times.retry)}
+                    {times.data && times.data.starts.length === 0 ? (
+                      <Notice tone="info">{t.book.noTimes}</Notice>
+                    ) : null}
+                    {times.data && times.data.starts.length > 0 ? (
+                      <div role="radiogroup" aria-label={t.book.times} className="ls-slot-grid">
+                        {times.data.starts.map((start) => (
+                          <ChoiceCard
+                            key={start}
+                            type="radio"
+                            name="start"
+                            value={start}
+                            checked={draft.startTime === start}
+                            onChange={() => update((current) => ({ ...current, startTime: start }))}
+                            title={start}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+                  </FormSection>
+                ) : null}
+              </>
+            ) : null}
+
+            {step === 'confirm' ? (
+              <Card as="section" aria-label={t.book.reviewTitle}>
+                <DescriptionList
+                  items={[
+                    ...(branches.data && branches.data.branches.length > 1
+                      ? [{ label: t.book.branch, value: branch.data?.branch.name }]
+                      : []),
+                    {
+                      label: t.book.when,
+                      value: `${formatBusinessDate(draft.date, locale)} · ${draft.startTime}`,
+                    },
+                    ...draft.serviceIds.map((id, position): DescriptionItem => ({
+                      label: serviceName(id),
+                      value: `${t.book.for}: ${personLabel(draft.recipientOf[position] ?? SELF.key)} · ${t.book.staff}: ${staffName(position)}`,
+                    })),
+                  ]}
+                />
+              </Card>
+            ) : null}
+          </div>
+
+          <aside className="ls-summary" aria-label={t.book.summaryTitle}>
+            <Card as="section" aria-label={t.book.summaryTitle}>
+              <Summary
+                title={t.book.summaryTitle}
+                lines={chosen.map((service) => ({
+                  key: service.id,
+                  name: serviceLabel(service),
+                  price: priceText(service),
+                }))}
+                empty={t.book.summaryEmpty}
+                estimate={fill(t.book.estimate, { minutes: totals.minutes })}
+                subtotal={t.book.subtotal}
+                total={totalLine}
+                totalNote={totalNote}
+                note={t.book.priceNote}
+              />
+              <div className="ls-summary-actions">{stepButtons}</div>
+            </Card>
+          </aside>
+        </div>
+      </div>
+      <div className="ls-action-bar">
+        <div className="ls-action-tally">
+          {totals.count === 0 ? (
+            <span>{t.book.summaryEmpty}</span>
+          ) : (
+            <>
+              <span>
+                {fill(t.book.selectedCount, { count: totals.count })} ·{' '}
+                {fill(t.book.estimate, { minutes: totals.minutes })}
+              </span>
+              <strong>
+                {totalLine}
+                {totalNote ? ` ${totalNote}` : ''}
+              </strong>
+            </>
           )}
         </div>
-      ) : null}
+        <div className="ls-action-buttons">{stepButtons}</div>
+      </div>
+    </PublicMain>
+  );
+}
 
-      {step === 'time' ? (
-        <div>
-          <Field
-            id="date"
-            label={t.book.date}
-            required
-            {...(branch.data
-              ? {
-                  hint: fill(t.book.dateRange, {
-                    first: branch.data.firstDate,
-                    last: branch.data.lastDate,
-                  }),
-                }
-              : {})}
-          >
-            <input
-              id="date"
-              type="date"
-              required
-              min={branch.data?.firstDate}
-              max={branch.data?.lastDate}
-              value={draft.date}
-              onChange={(event) =>
-                update((current) => ({ ...current, date: event.target.value, startTime: '' }))
-              }
-            />
-          </Field>
-          {draft.date ? (
-            <fieldset className="cu-times">
-              <legend>{t.book.times}</legend>
-              {times.loading ? (
-                <p className="wf-muted" role="status">
-                  {t.book.loadingTimes}
-                </p>
-              ) : null}
-              {loadError(times.error, times.retry)}
-              {times.data && times.data.starts.length === 0 ? (
-                <p className="wf-empty">{t.book.noTimes}</p>
-              ) : null}
-              <div className="cu-time-grid">
-                {times.data?.starts.map((start) => (
-                  <label key={start} className="cu-time">
-                    <input
-                      type="radio"
-                      name="start"
-                      checked={draft.startTime === start}
-                      onChange={() => update((current) => ({ ...current, startTime: start }))}
-                    />
-                    <span>{start}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          ) : null}
-          {nav(
-            Boolean(draft.date && draft.startTime && times.data?.starts.includes(draft.startTime)),
-            'review',
-          )}
-        </div>
-      ) : null}
-
-      {step === 'review' ? (
-        <form onSubmit={(event) => void confirm(event)}>
-          <h2>{t.book.reviewTitle}</h2>
-          <dl className="cu-summary">
-            <dt>{t.book.branch}</dt>
-            <dd>{branch.data?.branch.name}</dd>
-            <dt>{t.book.when}</dt>
-            <dd>
-              {draft.date} · {draft.startTime}
-            </dd>
-          </dl>
-          <ol className="cu-lines">
-            {draft.serviceIds.map((id, position) => (
-              <li key={id}>
-                <strong>{serviceName(id)}</strong>
-                <span className="wf-muted">
-                  {' '}
-                  · {t.book.for}: {personLabel(draft.recipientOf[position] ?? SELF.key)} ·{' '}
-                  {t.book.staff}: {staffName(position)}
-                </span>
+function Summary({
+  title,
+  lines,
+  empty,
+  estimate,
+  subtotal,
+  total,
+  totalNote,
+  note,
+}: {
+  title: string;
+  lines: { key: string; name: string; price: string }[];
+  empty: string;
+  estimate: string;
+  subtotal: string;
+  total: string;
+  totalNote: string | null;
+  note: string;
+}): ReactNode {
+  return (
+    <>
+      <h2 className="ls-site-h3">{title}</h2>
+      {lines.length === 0 ? (
+        <p className="ls-summary-fact">{empty}</p>
+      ) : (
+        <>
+          <ul className="ls-summary-lines">
+            {lines.map((line) => (
+              <li key={line.key}>
+                <span>{line.name}</span>
+                <span className="ls-choice-price">{line.price}</span>
               </li>
             ))}
-          </ol>
-          <p className="wf-muted">{t.book.priceNote}</p>
-          <div className="cu-actions">
-            <button
-              type="button"
-              className="wf-button"
-              disabled={pending}
-              onClick={() => go('time')}
-            >
-              {t.common.back}
-            </button>
-            <SubmitButton
-              pending={pending}
-              label={t.book.confirm}
-              pendingLabel={t.book.confirming}
-            />
+          </ul>
+          <p className="ls-summary-fact">{estimate}</p>
+          <div className="ls-summary-total">
+            <span>{subtotal}</span>
+            <span>
+              {total}
+              {totalNote ? <small>{totalNote}</small> : null}
+            </span>
           </div>
-        </form>
-      ) : null}
-    </section>
+          <p className="ls-summary-fact">{note}</p>
+        </>
+      )}
+    </>
   );
 }
 
@@ -594,47 +777,57 @@ function PersonEditor({
 }) {
   const { t } = useCustomer();
   return (
-    <fieldset className="cu-person">
-      <legend>{t.book.other}</legend>
-      <Field id={`${person.key}-relation`} label={t.book.relation} required>
-        <select
-          id={`${person.key}-relation`}
-          value={person.relation}
-          onChange={(event) =>
-            onChange({ ...person, relation: event.target.value as Person['relation'] })
-          }
-        >
-          {OTHER_RELATIONS.map((relation) => (
-            <option key={relation} value={relation}>
-              {t.book.relations[relation]}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field id={`${person.key}-name`} label={t.book.recipientName} required>
-        <input
-          id={`${person.key}-name`}
-          required
-          maxLength={200}
-          autoComplete="off"
-          value={person.name}
-          onChange={(event) => onChange({ ...person, name: event.target.value })}
-        />
-      </Field>
-      <Field id={`${person.key}-phone`} label={`${t.book.recipientPhone} (${t.common.optional})`}>
-        <input
-          id={`${person.key}-phone`}
-          type="tel"
-          inputMode="tel"
-          maxLength={24}
-          autoComplete="off"
-          value={person.phone}
-          onChange={(event) => onChange({ ...person, phone: event.target.value })}
-        />
-      </Field>
-      <button type="button" className="wf-button wf-button-quiet" onClick={onRemove}>
-        {t.book.remove}
-      </button>
-    </fieldset>
+    <Card as="section" aria-label={t.book.other}>
+      <CardHeader
+        title={t.book.other}
+        headingLevel={3}
+        actions={
+          <Button variant="ghost" onClick={onRemove}>
+            {t.book.remove}
+          </Button>
+        }
+      />
+      <div className="ls-member-form">
+        <Field label={t.book.relation} required requiredLabel={t.common.required}>
+          {(control) => (
+            <Select
+              {...control}
+              value={person.relation}
+              options={OTHER_RELATIONS.map((relation) => ({
+                value: relation,
+                label: t.book.relations[relation],
+              }))}
+              onChange={(event) =>
+                onChange({ ...person, relation: event.target.value as Person['relation'] })
+              }
+            />
+          )}
+        </Field>
+        <Field label={t.book.recipientName} required requiredLabel={t.common.required}>
+          {(control) => (
+            <TextInput
+              {...control}
+              maxLength={200}
+              autoComplete="off"
+              value={person.name}
+              onChange={(event) => onChange({ ...person, name: event.target.value })}
+            />
+          )}
+        </Field>
+        <Field label={`${t.book.recipientPhone} (${t.common.optional})`}>
+          {(control) => (
+            <TextInput
+              {...control}
+              type="tel"
+              inputMode="tel"
+              maxLength={24}
+              autoComplete="off"
+              value={person.phone}
+              onChange={(event) => onChange({ ...person, phone: event.target.value })}
+            />
+          )}
+        </Field>
+      </div>
+    </Card>
   );
 }

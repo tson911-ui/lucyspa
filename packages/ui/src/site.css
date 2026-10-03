@@ -507,7 +507,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--ls-space-2);
-  margin: 0 0 var(--ls-space-7);
+  margin: 0 0 var(--ls-space-8);
   padding: 0;
   list-style: none;
 }
@@ -568,6 +568,8 @@
   border: 1px solid var(--ls-border);
   border-radius: var(--ls-radius-md);
   background: var(--ls-bg-surface);
+  /* The same surface as the Card: one border, one radius, one shadow on the page. */
+  box-shadow: var(--ls-shadow-sm);
   cursor: pointer;
   transition:
     background var(--ls-dur-fast) var(--ls-ease-out),
@@ -644,6 +646,7 @@
 }
 
 .ls-choice-price {
+  white-space: nowrap;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: end;
@@ -1103,6 +1106,175 @@
 
 .ls-member-actions > .ls-btn {
   flex: 1 1 auto;
+}
+
+/* ---------- booking: list, sticky summary (desktop), action bar (phone) ---------- */
+.ls-booking-layout {
+  display: grid;
+  gap: var(--ls-space-6);
+  padding-bottom: var(--ls-space-9);
+}
+
+.ls-booking-main {
+  display: grid;
+  gap: var(--ls-space-6);
+  min-width: 0;
+}
+
+.ls-booking-step-title {
+  margin: 0;
+  font-size: var(--ls-text-lg);
+  line-height: var(--ls-leading-lg);
+  font-weight: 600;
+}
+
+.ls-booking-step-title:focus {
+  outline: none;
+}
+
+.ls-choice-list {
+  display: grid;
+  gap: var(--ls-space-2);
+}
+
+.ls-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+  gap: var(--ls-space-2);
+}
+
+.ls-slot-grid .ls-choice {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  padding: var(--ls-space-2) var(--ls-space-3);
+}
+
+.ls-slot-grid .ls-choice-tick {
+  display: none;
+}
+
+.ls-order-list {
+  display: grid;
+  gap: var(--ls-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-order-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ls-space-3);
+}
+
+.ls-order-actions {
+  display: inline-flex;
+  gap: var(--ls-space-1);
+}
+
+.ls-summary {
+  display: none;
+}
+
+.ls-summary-lines {
+  display: grid;
+  gap: var(--ls-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-summary-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ls-space-3);
+}
+
+.ls-summary-fact {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-summary-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ls-space-3);
+  font-weight: 600;
+}
+
+.ls-summary-total small {
+  display: block;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  font-weight: 400;
+  text-align: end;
+}
+
+.ls-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ls-space-2);
+}
+
+.ls-action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--ls-z-sticky);
+  display: grid;
+  gap: var(--ls-space-3);
+  padding: var(--ls-space-3) var(--ls-gutter) calc(var(--ls-space-3) + var(--ls-safe-bottom));
+  border-top: 1px solid var(--ls-border);
+  background: var(--ls-bg-surface);
+}
+
+.ls-action-tally {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--ls-space-1) var(--ls-space-3);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-action-tally strong {
+  font-weight: 600;
+}
+
+.ls-action-buttons {
+  display: flex;
+  gap: var(--ls-space-2);
+}
+
+.ls-action-buttons > .ls-btn {
+  flex: 1 1 0;
+}
+
+/* The action bar owns the bottom edge of the booking pages, so the tab bar steps aside there. */
+.ls-site:has(.ls-booking) .ls-tab-bar {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .ls-booking-layout {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    align-items: start;
+  }
+
+  .ls-summary {
+    display: grid;
+    gap: var(--ls-space-4);
+    position: sticky;
+    top: calc(var(--ls-site-header-h) + var(--ls-space-4));
+  }
+
+  .ls-action-bar {
+    display: none;
+  }
 }
 
 /* ---------- motion (customer side only; contract 7) ---------- */

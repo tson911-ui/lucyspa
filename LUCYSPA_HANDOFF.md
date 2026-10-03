@@ -377,3 +377,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Auth pages as one centered card in the shared site frame (SegmentedControl, show/hide password, next kept); header account menu (signed out/in) + bell; member area moved onto the shared frame with a SiteSubNav row; customer.css shell/login rules removed, wfClassUses 80 -> 65.
 - Report: docs/UXUI_REDESIGN_PART2_P2-6_MEMBER_AUTH.md. No migration, no permission, no API change.
+
+### UX/UI Part 2 Step P2-7 (booking in four steps) - 2026-10-03
+
+- Booking page: 4 steps (services, guests, staff and time, confirm), ChoiceCard rows grouped by category, sticky summary (desktop) / action bar (phone), ?service=CODE preselect, per-nail note and total with "+ giá theo ngón"; branch asked only with more than one branch. nativeFieldsets 0, nativeCheckboxes 0.
+- Report: docs/UXUI_REDESIGN_PART2_P2-7_BOOKING.md. API and booking rules unchanged; no migration.

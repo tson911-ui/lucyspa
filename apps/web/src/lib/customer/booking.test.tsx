@@ -164,13 +164,16 @@ function paint(node: ReactNode, locale: Locale = 'vi', fetcher?: typeof fetch): 
   );
 }
 
-test('screens: booking wizard starts at the branch step; home greets; VI and EN', () => {
+test('screens: booking starts at the services step of four; home greets; VI and EN', () => {
   const book = paint(<BookScreen />);
   assert.match(book, new RegExp(vi.book.title));
-  assert.match(book, /aria-current="step"[^>]*>Chi nhánh</);
+  assert.equal(book.match(/<li[^>]*>\s*<span class="ls-steps-long">/g)?.length, 4);
+  assert.match(book, /aria-current="step"[^>]*><span class="ls-steps-long">1\. Chọn dịch vụ</);
   assert.ok(book.includes(vi.common.loading), 'branches come from the server');
+  assert.match(book, /class="ls-action-bar"/);
+  assert.doesNotMatch(book, /<fieldset|wf-/, 'no native fieldset and no legacy class');
   const bookEn = paint(<BookScreen />, 'en');
-  assert.match(bookEn, new RegExp(en.book.steps.review));
+  assert.match(bookEn, new RegExp(en.book.steps.confirm));
   const home = paint(<CustomerHomeScreen />);
   assert.match(home, /Xin chào, Lan/);
   assert.match(home, /href="\/vi\/account\/book"/);
