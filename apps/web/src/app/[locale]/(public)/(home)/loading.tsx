@@ -9,7 +9,7 @@ export default function Loading() {
           <Skeleton lines={1} height="var(--ls-space-9)" width="60%" />
           <Skeleton lines={2} height="var(--ls-space-5)" width="80%" />
           <div className="ls-site-grid ls-site-grid-groups">
-            {[0, 1, 2, 3].map((index) => (
+            {[0, 1, 2].map((index) => (
               <div key={index} className="ls-site-card">
                 <Skeleton lines={4} height="var(--ls-space-5)" />
               </div>

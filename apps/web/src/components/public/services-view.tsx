@@ -31,7 +31,9 @@ export function ServiceCard({
   return (
     <article className="ls-service-card">
       <Heading className="ls-site-h3">
-        <Link href={serviceHref(locale, service.code)}>{service.name}</Link>
+        <Link href={serviceHref(locale, service.code)} title={service.name}>
+          <span className="ls-service-name">{service.name}</span>
+        </Link>
       </Heading>
       <p className="ls-service-meta">
         <Icon name="clock" />
@@ -94,7 +96,7 @@ export function ServicesView({
               aria-labelledby={`group-${entry.code}`}
             >
               <Reveal>
-                <h2 className="ls-site-h2" id={`group-${entry.code}`}>
+                <h2 className="ls-site-h2-sub" id={`group-${entry.code}`}>
                   {entry.name}
                 </h2>
               </Reveal>
@@ -179,7 +181,7 @@ export function ServiceDetailView({
         </article>
         {related.length > 0 ? (
           <section aria-labelledby="related-title">
-            <h2 className="ls-site-h2" id="related-title">
+            <h2 className="ls-site-h2-sub" id="related-title">
               {text.services.related}
             </h2>
             <div className="ls-service-grid">

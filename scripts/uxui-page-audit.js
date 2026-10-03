@@ -99,8 +99,20 @@
 
   // 2. Font sizes off the type scale (12, 14, 16, 18, 24, 32, 40 px).
   const scale = new Set([12, 14, 16, 18, 20, 24, 28, 32, 40]);
-  // The public site's own display tokens (Part 2 contract 4.2) are fluid; their resolved sizes belong to the scale.
-  for (const token of ['--ls-text-3xl', '--ls-text-display']) {
+  // The public site's own type scale (tokens.css: hero, page, section, sub, card, price, lead, body, small) is fluid in part;
+  // its resolved sizes at the current width belong to the scale.
+  const publicScale = [
+    'hero',
+    'page',
+    'section',
+    'sub',
+    'card',
+    'price',
+    'lead',
+    'body',
+    'small',
+  ].map((role) => '--ls-type-' + role);
+  for (const token of ['--ls-text-3xl', '--ls-text-display', ...publicScale]) {
     const probe = document.createElement('span');
     probe.style.fontSize = `var(${token})`;
     probe.style.position = 'absolute';

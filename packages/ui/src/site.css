@@ -26,7 +26,7 @@
 
 .ls-container {
   width: 100%;
-  max-width: var(--ls-content-max);
+  max-width: var(--ls-site-max);
   margin-inline: auto;
   padding-inline: var(--ls-gutter);
 }
@@ -51,46 +51,62 @@
 .ls-site-display,
 .ls-h1-display,
 .ls-site-h2,
+.ls-site-h2-sub,
 .ls-site-h3 {
   margin: 0;
   color: var(--ls-text);
   font-family: var(--ls-font-display);
-  font-weight: 500;
+  font-weight: var(--ls-weight-title);
   letter-spacing: normal;
   white-space: normal;
   text-wrap: balance;
 }
 
+/* The scale (tokens.css): hero, page title (h1 of a page), section title (home), subsection (member and in-page groups),
+   card title. One line height per role; nothing else sets a heading size. */
 .ls-site-display {
-  font-size: var(--ls-text-display);
-  line-height: var(--ls-leading-display);
+  font-size: var(--ls-type-hero);
+  line-height: var(--ls-lh-hero);
 }
 
-.ls-h1-display,
+.ls-h1-display {
+  font-size: var(--ls-type-page);
+  line-height: var(--ls-lh-page);
+}
+
 .ls-site-h2 {
-  font-size: var(--ls-text-3xl);
-  line-height: var(--ls-leading-3xl);
+  font-size: var(--ls-type-section);
+  line-height: var(--ls-lh-section);
+}
+
+.ls-site-h2-sub {
+  font-size: var(--ls-type-sub);
+  line-height: var(--ls-lh-sub);
 }
 
 .ls-site-h3 {
-  font-size: var(--ls-text-lg);
-  line-height: var(--ls-leading-lg);
-  font-weight: 600;
+  font-size: var(--ls-type-card);
+  line-height: var(--ls-lh-card);
 }
 
 .ls-lead {
   margin: 0;
   max-width: 36rem;
   color: var(--ls-text-muted);
-  font-size: var(--ls-text-md);
-  line-height: var(--ls-leading-md);
+  font-size: var(--ls-type-lead);
+  line-height: var(--ls-lh-lead);
 }
 
 .ls-public-title {
   display: grid;
   gap: var(--ls-space-2);
-  padding-top: var(--ls-space-8);
-  margin-bottom: var(--ls-space-8);
+  padding-top: var(--ls-page-top);
+  margin-bottom: var(--ls-head-gap);
+}
+
+.ls-public-title .ls-lead {
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
 }
 
 /* ---------- header ---------- */
@@ -153,7 +169,7 @@
   border-radius: var(--ls-radius-full);
   color: var(--ls-text-muted);
   font-size: var(--ls-text-sm);
-  font-weight: 500;
+  font-weight: 400;
   text-decoration: none;
   transition:
     background var(--ls-dur-fast) var(--ls-ease-out),
@@ -168,7 +184,7 @@
 .ls-site-nav a[aria-current='page'] {
   background: var(--ls-brand-soft);
   color: var(--ls-brand-on-soft);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .ls-site-nav a[aria-current='page']:hover {
@@ -283,7 +299,7 @@
 
 /* ---------- bands ---------- */
 .ls-band {
-  padding-block: var(--ls-space-9);
+  padding-block: var(--ls-band-pad);
 }
 
 .ls-band-page {
@@ -315,17 +331,19 @@
 .ls-section-head {
   display: grid;
   gap: var(--ls-space-2);
-  margin-bottom: var(--ls-space-7);
+  margin-bottom: var(--ls-head-gap);
 }
 
 .ls-section-head p {
   margin: 0;
   color: var(--ls-text-muted);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
 }
 
 /* ---------- hero ---------- */
 .ls-hero {
-  padding-block: var(--ls-space-8) var(--ls-space-9);
+  padding-block: var(--ls-band-pad);
 }
 
 .ls-hero-grid {
@@ -359,14 +377,14 @@
   display: grid;
   place-items: center;
   aspect-ratio: 16 / 10;
-  border-radius: var(--ls-radius-md);
+  border-radius: var(--ls-radius-lg);
   background: linear-gradient(135deg, var(--ls-auth-panel-from), var(--ls-auth-panel-to));
   color: var(--ls-auth-panel-text);
 }
 
 .ls-brand-panel-mark {
-  font-size: var(--ls-text-3xl);
-  line-height: var(--ls-leading-3xl);
+  font-size: var(--ls-type-section);
+  line-height: var(--ls-lh-section);
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -421,14 +439,15 @@
 
 .ls-group-head {
   display: grid;
+  align-content: start;
   gap: var(--ls-space-1);
 }
 
 .ls-group-desc {
   margin: 0;
   color: var(--ls-text-muted);
-  font-size: var(--ls-text-sm);
-  line-height: var(--ls-leading-sm);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
 }
 
 .ls-site-grid > .ls-reveal {
@@ -441,7 +460,7 @@
 
 .ls-price-list {
   display: grid;
-  gap: var(--ls-space-3);
+  gap: var(--ls-space-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -452,8 +471,8 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--ls-space-3);
-  font-size: var(--ls-text-sm);
-  line-height: var(--ls-leading-sm);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
 }
 
 /* A service name is at most two lines; the rest is an ellipsis (the full name is the tooltip). */
@@ -484,7 +503,7 @@
   min-height: var(--ls-control-h);
   color: var(--ls-brand);
   font-size: var(--ls-text-sm);
-  font-weight: 600;
+  font-weight: 500;
   text-decoration: none;
 }
 
@@ -522,7 +541,8 @@
 .ls-site-footer-brand p {
   margin: var(--ls-space-2) 0 0;
   color: var(--ls-text-muted);
-  font-size: var(--ls-text-sm);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
 }
 
 .ls-site-footer-title {
@@ -531,9 +551,9 @@
   min-height: var(--ls-control-h);
   margin: 0;
   font-family: var(--ls-font-display);
-  font-size: var(--ls-text-md);
-  line-height: var(--ls-leading-md);
-  font-weight: 600;
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+  font-weight: var(--ls-weight-title);
 }
 
 .ls-site-footer-list {
@@ -543,7 +563,8 @@
   padding: 0;
   list-style: none;
   color: var(--ls-text-muted);
-  font-size: var(--ls-text-sm);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
 }
 
 .ls-site-footer-list a {
@@ -565,8 +586,8 @@
 .ls-site-footer-base {
   padding-block: var(--ls-space-5);
   color: var(--ls-text-muted);
-  font-size: var(--ls-text-xs);
-  line-height: var(--ls-leading-xs);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
   text-align: center;
 }
 
@@ -581,7 +602,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--ls-space-2);
-  margin: 0 0 var(--ls-space-8);
+  margin: 0 0 var(--ls-head-gap);
   padding: 0;
   list-style: none;
 }
@@ -590,8 +611,8 @@
   display: grid;
   gap: var(--ls-space-2);
   color: var(--ls-text-muted);
-  font-size: var(--ls-text-xs);
-  line-height: var(--ls-leading-xs);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
   font-weight: 500;
 }
 
@@ -715,8 +736,8 @@
 
 .ls-choice-meta {
   color: var(--ls-text-muted);
-  font-size: var(--ls-text-sm);
-  line-height: var(--ls-leading-sm);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
 }
 
 .ls-choice-price {
@@ -729,8 +750,8 @@
 .ls-choice-extra {
   grid-column: 2 / -1;
   color: var(--ls-text-muted);
-  font-size: var(--ls-text-sm);
-  line-height: var(--ls-leading-sm);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
 }
 
 /* ---------- home: hero image, facts, visit ---------- */
@@ -742,7 +763,7 @@
   aspect-ratio: 16 / 10;
   object-fit: cover;
   border: 1px solid var(--ls-border);
-  border-radius: var(--ls-radius-md);
+  border-radius: var(--ls-radius-lg);
   background: var(--ls-bg-sunken);
 }
 
@@ -846,6 +867,30 @@
   margin-top: auto;
 }
 
+/* Group and why-us cards share their inner rows across a grid row (a subgrid of three rows: head, list or text, link): the
+   price lists, the texts and "Xem tất cả" start at the same height in every card, whatever the length of a description or
+   a heading. Without subgrid support the flex layout above still gives equal cards with the link at the bottom. */
+@supports (grid-template-rows: subgrid) {
+  .ls-site-grid-groups > .ls-reveal {
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+    row-gap: 0;
+  }
+
+  .ls-site-grid-groups > .ls-reveal > .ls-site-card {
+    display: grid;
+    grid-row: 1 / span 3;
+    grid-template-rows: subgrid;
+    row-gap: var(--ls-space-4);
+    align-content: start;
+  }
+
+  .ls-site-grid-groups > .ls-reveal > .ls-site-card > .ls-icon-bubble {
+    justify-self: start;
+  }
+}
+
 /* The link of a group card covers the whole card (a stretched link): the card is one big target, and the link stays
    the one real, focusable element inside it. */
 .ls-group-card {
@@ -894,7 +939,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--ls-space-2);
-  margin: 0 0 var(--ls-space-8);
+  margin: 0 0 var(--ls-head-gap);
 }
 
 .ls-pills a {
@@ -902,12 +947,12 @@
   align-items: center;
   min-height: var(--ls-control-h);
   padding-inline: var(--ls-space-4);
-  border: 1px solid var(--ls-border-control);
+  border: 1px solid var(--ls-border);
   border-radius: var(--ls-radius-full);
   background: var(--ls-bg-surface);
-  color: var(--ls-text);
+  color: var(--ls-text-muted);
   font-size: var(--ls-text-sm);
-  font-weight: 500;
+  font-weight: 400;
   text-decoration: none;
   transition:
     background var(--ls-dur-fast) var(--ls-ease-out),
@@ -921,15 +966,72 @@
   color: var(--ls-on-brand);
 }
 
+/* The chosen pill is medium; hovering one keeps its weight, so nothing shifts under the pointer. */
+.ls-pills a[aria-current='true'] {
+  font-weight: 500;
+}
+
 .ls-service-section {
   display: grid;
   gap: var(--ls-space-4);
-  margin-bottom: var(--ls-space-8);
+  margin-bottom: var(--ls-head-gap);
 }
 
 .ls-service-grid {
   display: grid;
   gap: var(--ls-space-5);
+}
+
+/* On a service's own page the list sits in the narrow column: two cards a row, never three squeezed ones. */
+@media (min-width: 1024px) {
+  .ls-detail .ls-service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* A card fills its grid cell (the reveal wrapper stretches to the row, and so does the card inside it). */
+.ls-service-grid > .ls-reveal {
+  display: flex;
+}
+
+.ls-service-grid > .ls-reveal > .ls-service-card {
+  flex: 1;
+}
+
+@supports not (grid-template-rows: subgrid) {
+  .ls-service-name {
+    min-height: calc(2 * var(--ls-type-card) * var(--ls-lh-card));
+  }
+}
+
+@supports (grid-template-rows: subgrid) {
+  .ls-service-grid > .ls-reveal {
+    display: grid;
+    grid-row: span 5;
+    grid-template-rows: subgrid;
+    row-gap: 0;
+  }
+
+  .ls-service-grid > .ls-reveal > .ls-service-card,
+  .ls-service-grid > .ls-service-card {
+    display: grid;
+    grid-row: 1 / span 5;
+    grid-template-rows: subgrid;
+    row-gap: var(--ls-space-3);
+    align-content: start;
+  }
+
+  .ls-service-grid > .ls-service-card {
+    grid-row: span 5;
+  }
+
+  .ls-service-card > .ls-service-text {
+    grid-row: 4;
+  }
+
+  .ls-service-card > .ls-btn {
+    grid-row: 5;
+  }
 }
 
 @media (min-width: 640px) {
@@ -968,18 +1070,41 @@
   margin: 0;
 }
 
+/* Fixed slots, so every card of a row is the same size and the same rows line up: name (two lines at most, longer names end
+   in an ellipsis and the full name is the tooltip), time, price, an optional description (two lines at most) and the
+   button, which always sits at the bottom. With subgrid the cards of a row share those five rows; without it the name
+   keeps room for two lines instead. */
 .ls-service-card h2 a,
 .ls-service-card h3 a {
   display: flex;
   align-items: center;
   min-height: var(--ls-control-h);
+  padding-block: var(--ls-space-2);
   color: inherit;
   text-decoration: none;
+}
+
+.ls-service-name {
+  display: -webkit-box;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .ls-service-card h2 a:hover,
 .ls-service-card h3 a:hover {
   color: var(--ls-brand);
+}
+
+.ls-service-card {
+  padding-top: var(--ls-space-4);
+}
+
+.ls-service-card .ls-service-meta {
+  margin-top: calc(var(--ls-space-3) * -1);
 }
 
 .ls-service-meta {
@@ -988,14 +1113,15 @@
   gap: var(--ls-space-2);
   margin: 0;
   color: var(--ls-text-muted);
-  font-size: var(--ls-text-sm);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
 }
 
 .ls-service-price {
   margin: 0;
   color: var(--ls-brand);
-  font-size: var(--ls-text-lg);
-  line-height: var(--ls-leading-lg);
+  font-size: var(--ls-type-price);
+  line-height: var(--ls-lh-price);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -1004,14 +1130,15 @@
   margin: 0;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   overflow: hidden;
   color: var(--ls-text-muted);
-  font-size: var(--ls-text-sm);
-  line-height: var(--ls-leading-sm);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
 }
 
 .ls-service-card .ls-btn {
+  width: 100%;
   margin-top: auto;
 }
 
@@ -1059,8 +1186,8 @@
 .ls-detail-note {
   margin: 0;
   color: var(--ls-text-muted);
-  font-size: var(--ls-text-sm);
-  line-height: var(--ls-leading-sm);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
 }
 
 .ls-page-notice {
@@ -1107,6 +1234,55 @@
   }
 }
 
+/* ---------- forms of the site: fields are pills, like every button of the site ---------- */
+/* A one-line field has the same round shape as the buttons next to it; a multi-line field keeps a soft rounded rectangle.
+   The text stays at 16 px: a smaller field text makes phones zoom the page when a field is focused. */
+.ls-site .ls-input {
+  border-radius: var(--ls-radius-full);
+  padding-inline: var(--ls-space-4);
+}
+
+.ls-site .ls-textarea {
+  border-radius: var(--ls-radius-lg);
+}
+
+.ls-site .ls-password-toggle {
+  border-radius: var(--ls-radius-full);
+}
+
+/* ---------- member area: kit headings take the site's type scale ---------- */
+/* The member pages are built from the kit's Page, Card and list components, whose headings are the staff area's sans
+   titles. Inside the site frame they use the same display face and scale as every public page. */
+.ls-site .ls-page-title,
+.ls-site .ls-list-section-title,
+.ls-site .ls-form-section-title,
+.ls-site .ls-card-title {
+  font-family: var(--ls-font-display);
+  font-weight: var(--ls-weight-title);
+  letter-spacing: normal;
+}
+
+.ls-site .ls-page-title {
+  font-size: var(--ls-type-page);
+  line-height: var(--ls-lh-page);
+}
+
+.ls-site .ls-list-section-title {
+  font-size: var(--ls-type-sub);
+  line-height: var(--ls-lh-sub);
+}
+
+.ls-site .ls-card-title,
+.ls-site .ls-form-section-title {
+  font-size: var(--ls-type-card);
+  line-height: var(--ls-lh-card);
+}
+
+.ls-site .ls-page-description {
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
 /* ---------- member area: the in-page row under the header ---------- */
 .ls-subnav {
   position: relative;
@@ -1131,7 +1307,7 @@
   border-radius: var(--ls-radius-full);
   color: var(--ls-text-muted);
   font-size: var(--ls-text-sm);
-  font-weight: 500;
+  font-weight: 400;
   text-decoration: none;
   white-space: nowrap;
   transition:
@@ -1148,7 +1324,7 @@
 .ls-subnav a[aria-current='page'] {
   background: var(--ls-brand-soft);
   color: var(--ls-brand-on-soft);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .ls-member-page {
@@ -1183,21 +1359,34 @@
 .ls-member-card {
   display: grid;
   gap: var(--ls-space-5);
-  width: min(100%, 26rem);
+  width: min(100%, 28rem);
+}
+
+/* The sign-in card breathes like the reference: 32 px of padding, fields as pills. */
+.ls-member-auth .ls-card {
+  padding: var(--ls-space-8);
+}
+
+@media (max-width: 479px) {
+  .ls-member-auth .ls-card {
+    padding: var(--ls-space-6);
+  }
 }
 
 .ls-member-head {
   display: grid;
   gap: var(--ls-space-2);
+  justify-items: center;
+  text-align: center;
 }
 
 .ls-member-title {
   margin: 0;
   color: var(--ls-text);
   font-family: var(--ls-font-display);
-  font-size: var(--ls-text-xl);
-  font-weight: 600;
-  line-height: var(--ls-leading-xl);
+  font-size: var(--ls-type-sub);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-sub);
   letter-spacing: normal;
   text-wrap: balance;
 }
@@ -1238,9 +1427,10 @@
 
 .ls-booking-step-title {
   margin: 0;
-  font-size: var(--ls-text-lg);
-  line-height: var(--ls-leading-lg);
-  font-weight: 600;
+  font-family: var(--ls-font-display);
+  font-size: var(--ls-type-sub);
+  line-height: var(--ls-lh-sub);
+  font-weight: var(--ls-weight-title);
 }
 
 .ls-booking-step-title:focus {
@@ -1467,13 +1657,18 @@
   background: transparent;
 }
 
+/* The hero media (picture, slider, brand panel) has the same soft 16 px corners as every card. */
+.ls-site .ls-slider-viewport {
+  border-radius: var(--ls-radius-lg);
+}
+
 /* ---------- hero photo: settle (M2), hover zoom (M3), parallax (M6) ---------- */
 /* The frame clips the picture, so a scaled or shifted image never leaves its rounded box. The picture itself uses the
    individual `scale` and `translate` properties, so the three effects never replace each other. */
 .ls-photo {
   overflow: hidden;
   border: 1px solid var(--ls-border);
-  border-radius: var(--ls-radius-md);
+  border-radius: var(--ls-radius-lg);
   background: var(--ls-bg-sunken);
 }
 

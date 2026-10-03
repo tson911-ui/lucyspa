@@ -184,6 +184,11 @@ test('services list: the filter links, one section per group, a chosen group alo
   assert.equal(all.match(/<h1[ >]/g)?.length, 1);
   assert.match(all, /aria-current="true"[^>]*>Tất cả/);
   assert.match(all, /Gội thường/);
+  // A service name is a clamped span inside its link; the full name is the tooltip.
+  assert.match(
+    all,
+    /<a[^>]*title="Gội thường"[^>]*><span class="ls-service-name">Gội thường<\/span><\/a>/,
+  );
   assert.match(all, /Đính đá \/ charm/);
   assert.match(all, /href="\/vi\/services\/GOI_THUONG"/);
   assert.match(all, /href="\/vi\/account\/book\?service=GOI_THUONG"/);

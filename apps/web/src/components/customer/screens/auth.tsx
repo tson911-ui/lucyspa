@@ -54,6 +54,12 @@ function AuthCard({
     <PublicMain>
       <div className="ls-member-auth">
         <Card as="section" aria-labelledby={titleId} className="ls-member-card">
+          <div className="ls-member-head">
+            <h1 id={titleId} className="ls-member-title">
+              {title}
+            </h1>
+            {intro ? <p>{intro}</p> : null}
+          </div>
           {mode ? (
             <SegmentedControl
               label={t.auth.modes}
@@ -71,12 +77,6 @@ function AuthCard({
               }}
             />
           ) : null}
-          <div className="ls-member-head">
-            <h1 id={titleId} className="ls-member-title">
-              {title}
-            </h1>
-            {intro ? <p>{intro}</p> : null}
-          </div>
           {children}
         </Card>
       </div>

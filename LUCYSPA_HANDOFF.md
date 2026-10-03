@@ -418,3 +418,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 - Admin > Website > Shop info edits: facts strip (show/hide, built-ins hide, custom lines VI/EN + icon, order), featured groups (choice, order, VI/EN description) and the optional "Vì sao chọn" section (off and empty by default; supersedes Q-P2-3).
 - **One additive migration on deploy:** `20261025000000_uxui_part2_facts_groups` (7 defaulted columns + CHECK on `website_shop_info`). Run `db:deploy` before restarting API and web. Report: docs/UXUI_REDESIGN_PART2_OWNER_REVIEW_2.md.
 - Round 3: section headings left-aligned, group and why-us cards equal-sized per row (names clamp to 2 lines), facts strip one row (scrolls on phones), one hover/press style for all public buttons. No migration change. Nothing is seeded on production (sample texts live only in tests and the scratch script).
+
+### UX/UI Part 2 follow-up: one type scale, equal cards, real menu - 2026-10-04
+
+- One public/member type scale in tokens.css (`--ls-type-*`: hero 48, page 36, section 30, sub 24, card 18, body 15, small 13; Playfair 500), stepped rhythm tokens, container 73 rem; member and booking titles moved off the staff sans; the DOM audit allows this scale. Cards of a row are one size with shared rows (subgrid). Report: docs/UXUI_REDESIGN_PART2_TYPE_SCALE.md.
+- Scratch catalog hidden (it was invented). Real menu: docs/CATALOG_EXPORT_FOR_REVIEW.md (read-only export on the server), then `.local/p3-import-catalog.mjs`. No migration change. Open: weight 400 for titles is the Owner's call.

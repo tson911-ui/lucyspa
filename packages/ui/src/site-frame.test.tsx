@@ -729,3 +729,95 @@ test('the facts strip never shrinks the hours or the hotline, and keeps a minimu
     /\.ls-site-fact \{\s*flex: 0 1 auto;\s*min-width: calc\(var\(--ls-space-9\) \* 2\.5\);/,
   );
 });
+
+test('the public type scale: one set of tokens, every heading and body role reads them, none sets its own size', () => {
+  for (const role of ['hero', 'page', 'section', 'sub', 'card', 'price', 'lead', 'body', 'small']) {
+    assert.match(tokens, new RegExp(`--ls-type-${role}: `), `--ls-type-${role} is defined`);
+  }
+  assert.match(tokens, /--ls-type-hero: clamp\(2rem, 1\.5rem \+ 2vw, 3rem\);/);
+  assert.match(tokens, /--ls-type-section: clamp\(1\.5rem, 1\.25rem \+ 1\.2vw, 1\.875rem\);/);
+  assert.match(tokens, /--ls-type-card: 1\.125rem;/);
+  assert.match(tokens, /--ls-weight-title: 500;/);
+  const rule = (selector: string) => {
+    // Every rule that ends with this selector (a selector list's last entry included), their bodies joined.
+    const matches = [
+      ...css.matchAll(
+        new RegExp(
+          `(?:^|\\n)${selector.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')} \\{([^}]*)\\}`,
+          'g',
+        ),
+      ),
+    ];
+    assert.ok(matches.length > 0, `${selector} exists`);
+    return matches.map((match) => match[1] ?? '').join('\n');
+  };
+  assert.match(
+    rule('.ls-site-display'),
+    /font-size: var\(--ls-type-hero\);\s*line-height: var\(--ls-lh-hero\);/,
+  );
+  assert.match(rule('.ls-h1-display'), /font-size: var\(--ls-type-page\);/);
+  assert.match(rule('.ls-site-h2'), /font-size: var\(--ls-type-section\);/);
+  assert.match(rule('.ls-site-h2-sub'), /font-size: var\(--ls-type-sub\);/);
+  assert.match(rule('.ls-site-h3'), /font-size: var\(--ls-type-card\);/);
+  assert.match(
+    rule('.ls-member-title'),
+    /font-size: var\(--ls-type-sub\);\s*font-weight: var\(--ls-weight-title\);/,
+  );
+  // Titles are medium, never bold (the Owner found them heavy), and sit in the display face everywhere on the site.
+  assert.doesNotMatch(rule('.ls-site-h3'), /font-weight: 600/);
+  assert.match(
+    css,
+    /\.ls-site \.ls-page-title,\s*\.ls-site \.ls-list-section-title,\s*\.ls-site \.ls-form-section-title,\s*\.ls-site \.ls-card-title \{\s*font-family: var\(--ls-font-display\);\s*font-weight: var\(--ls-weight-title\);/,
+  );
+  // The booking form's own titles (step title, form section title) are in the same face and scale as every other title.
+  assert.match(css, /\.ls-booking-step-title \{[^}]*font-family: var\(--ls-font-display\);/);
+  assert.match(
+    css,
+    /\.ls-site \.ls-card-title,\s*\.ls-site \.ls-form-section-title \{\s*font-size: var\(--ls-type-card\);/,
+  );
+  assert.match(css, /\.ls-site \.ls-page-title \{\s*font-size: var\(--ls-type-page\);/);
+});
+
+test('the rhythm is stepped on the 4 px grid by width, never fluid; the site container is narrower than the staff area', () => {
+  assert.doesNotMatch(tokens, /--ls-(?:band-pad|page-top|head-gap): clamp/);
+  assert.match(
+    tokens,
+    /--ls-band-pad: 3rem;[\s\S]*--ls-band-pad: 4rem;[\s\S]*--ls-band-pad: 5rem;/,
+  );
+  assert.match(
+    tokens,
+    /--ls-page-top: 2\.5rem;[\s\S]*--ls-page-top: 3rem;[\s\S]*--ls-page-top: 4rem;/,
+  );
+  assert.match(css, /\.ls-band \{\s*padding-block: var\(--ls-band-pad\);/);
+  assert.match(css, /\.ls-container \{[^}]*max-width: var\(--ls-site-max\);/);
+  assert.match(tokens, /--ls-site-max: 73rem;/);
+});
+
+test('service cards: five shared rows, a name that stops at two lines and a title link that stays a full-size target', () => {
+  assert.match(css, /\.ls-service-name \{[^}]*-webkit-line-clamp: 2;/);
+  assert.match(
+    css,
+    /\.ls-service-card h3 a \{\s*display: flex;\s*align-items: center;\s*min-height: var\(--ls-control-h\);/,
+  );
+  assert.match(
+    css,
+    /@supports \(grid-template-rows: subgrid\) \{\s*\.ls-service-grid > \.ls-reveal \{\s*display: grid;\s*grid-row: span 5;\s*grid-template-rows: subgrid;/,
+  );
+  assert.match(css, /\.ls-service-card > \.ls-btn \{\s*grid-row: 5;/);
+  // The reveal wrapper's flex fallback is declared BEFORE the subgrid rules, or it would win at equal specificity.
+  assert.ok(
+    css.indexOf('.ls-service-grid > .ls-reveal {\n  display: flex;') <
+      css.indexOf('grid-row: span 5;'),
+  );
+  // Group and why-us cards share three rows (head, list or text, link).
+  assert.match(
+    css,
+    /@supports \(grid-template-rows: subgrid\) \{\s*\.ls-site-grid-groups > \.ls-reveal \{\s*display: grid;\s*grid-row: span 3;/,
+  );
+});
+
+test('public form fields are pills like the buttons; a multi-line field keeps a soft rectangle', () => {
+  assert.match(css, /\.ls-site \.ls-input \{\s*border-radius: var\(--ls-radius-full\);/);
+  assert.match(css, /\.ls-site \.ls-textarea \{\s*border-radius: var\(--ls-radius-lg\);/);
+  assert.match(css, /\.ls-member-card \{[^}]*width: min\(100%, 28rem\);/);
+});
