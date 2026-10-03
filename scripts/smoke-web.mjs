@@ -10,7 +10,10 @@ async function request(path) {
   });
 }
 
-async function checkLocale(locale, heading) {
+// The home page draws the shop's own data (tagline, catalogue) from the API; this probe has no API behind the web
+// server, so the headline falls back to the brand name. What it must always show is one non-empty h1 and the texts that
+// are translated in the app itself.
+async function checkLocale(locale, lead, cta) {
   const response = await request(`/${locale}`);
   assert.equal(response.status, 200, `/${locale} must return HTTP 200.`);
   assert.ok(
@@ -23,7 +26,10 @@ async function checkLocale(locale, heading) {
     new RegExp(`<html\\b[^>]*\\blang="${locale}"`).test(html),
     `/${locale} must set the HTML language.`,
   );
-  assert.ok(heading.test(html), `/${locale} must render its translated heading.`);
+  assert.equal(html.match(/<h1\b/g)?.length, 1, `/${locale} must have exactly one h1.`);
+  assert.ok(/<h1\b[^>]*>[^<]+<\/h1>/u.test(html), `/${locale} must render a non-empty heading.`);
+  assert.ok(lead.test(html), `/${locale} must render its translated introduction.`);
+  assert.ok(cta.test(html), `/${locale} must render its translated booking button.`);
   assert.ok(/<a\b[^>]*href="\/vi"/.test(html), `/${locale} must link to Vietnamese.`);
   assert.ok(/<a\b[^>]*href="\/en"/.test(html), `/${locale} must link to English.`);
 }
@@ -41,9 +47,23 @@ async function main() {
   await root.body?.cancel();
 
   await Promise.all([
-    checkLocale('vi', /<h1\b[^>]*>Một khoảng lặng\.\s*Dành riêng cho bạn\.<\/h1>/u),
-    checkLocale('en', /<h1\b[^>]*>A quiet moment\.\s*Just for you\.<\/h1>/u),
+    checkLocale('vi', /Chọn dịch vụ, chọn giờ còn trống/u, />Đặt lịch ngay</u),
+    checkLocale('en', /Choose your services, pick a free time/u, />Book now</u),
   ]);
+
+  // The services page renders (with a notice when the catalogue cannot be read) and keeps its single heading.
+  for (const [path, heading] of [
+    ['/vi/services', 'Dịch vụ'],
+    ['/en/services', 'Services'],
+  ]) {
+    const response = await request(path);
+    assert.equal(response.status, 200, `${path} must return HTTP 200.`);
+    const html = await response.text();
+    assert.ok(
+      new RegExp(`<h1\\b[^>]*>${heading}</h1>`, 'u').test(html),
+      `${path} must render its heading.`,
+    );
+  }
 
   const health = await request('/health');
   assert.equal(health.status, 200, '/health must return HTTP 200.');
