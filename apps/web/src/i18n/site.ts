@@ -26,6 +26,8 @@ export interface SiteText {
     notifications: string;
     /** Accessible name of the member-area row. */
     tabs: string;
+    /** With {count}: the unread notifications, in the account button's name. */
+    unread: string;
   };
   header: {
     brand: string;
@@ -114,6 +116,7 @@ const text = {
       invoices: 'Hóa đơn',
       notifications: 'Thông báo',
       tabs: 'Khu vực thành viên',
+      unread: '{count} chưa đọc',
     },
     header: {
       brand: 'Lucy Spa, về trang chủ',
@@ -201,6 +204,7 @@ const text = {
       invoices: 'Invoices',
       notifications: 'Notifications',
       tabs: 'Member area',
+      unread: '{count} unread',
     },
     header: {
       brand: 'Lucy Spa, back to the home page',

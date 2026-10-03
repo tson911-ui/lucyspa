@@ -131,7 +131,7 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
 
   if (state.kind === 'loading') {
     return (
-      <PublicMain>
+      <PublicMain className="ls-main-tall">
         <p className="ls-site-state" role="status">
           {t.auth.checking}
         </p>
@@ -140,7 +140,7 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
   }
   if (state.kind === 'error') {
     return (
-      <PublicMain>
+      <PublicMain className="ls-main-tall">
         <div className="ls-site-state">
           <p role="alert">{t.errors.unavailable}</p>
           <Button variant="primary" onClick={() => window.location.reload()}>
@@ -152,7 +152,7 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
   }
   if (state.kind === 'workforce') {
     return (
-      <PublicMain>
+      <PublicMain className="ls-main-tall">
         <div className="ls-site-state">
           <p role="alert">{t.auth.workforceNotAllowed}</p>
           <Button variant="primary" onClick={() => void signOut()}>

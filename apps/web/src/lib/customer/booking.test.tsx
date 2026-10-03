@@ -1,6 +1,7 @@
 import type { CurrentAccountResponse, CustomerBookingDetail } from '@lucy-spa/contracts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { BookScreen } from '../../components/customer/screens/book';
@@ -158,7 +159,9 @@ function paint(node: ReactNode, locale: Locale = 'vi', fetcher?: typeof fetch): 
       <CustomerAccountContext.Provider
         value={{ account: { ...customer, displayName: 'Lan' }, signOut: () => Promise.resolve() }}
       >
-        {node}
+        <AppRouterContext.Provider value={{ push: () => undefined } as never}>
+          {node}
+        </AppRouterContext.Provider>
       </CustomerAccountContext.Provider>
     </CustomerContext.Provider>,
   );

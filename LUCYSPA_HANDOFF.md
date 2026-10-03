@@ -396,3 +396,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 ### UX/UI Part 2 header review note (Owner, 2026-10-03) - follow-up to P2-6
 
 - Header per the Lovable reference: logo, menu Trang chủ / Dịch vụ / Lịch hẹn / Hóa đơn (the last two for signed-in members only, via the nav registry and a shared SiteSessionProvider), then VI/EN, a sun/moon toggle (clock state dropped), account (and bell) and the single Đặt lịch ngay button; no separate Đặt lịch item; phone tab bar = Trang chủ, Dịch vụ, Đặt lịch ngay (+ Lịch hẹn, Hóa đơn for members). No cosmetics entry until its phase.
+
+### UX/UI Part 2 Step P2-10 (final gate) - 2026-10-03, STOP for Owner review
+
+- Integration 76/76 and 486/486, axe 0 on every Part 2 page, DOM audit clean except known phone-card FR8, CLS 0 everywhere, LCP <= 2.5 s on public pages and sign-in (member pages 3.7-5.5 s on the harsh profile: client-rendered). Fixed on the way: footer/divider shifts, sign-in server rendered, unread badge instead of bell.
+- Report: docs/UXUI_REDESIGN_PART2_P2-10_FINAL_GATE.md. Deploy checklist: docs/DEPLOY_PART2_RUNBOOK.md (additive migrations, no permission, no new env var).

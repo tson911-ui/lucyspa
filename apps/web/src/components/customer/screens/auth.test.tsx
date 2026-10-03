@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime';
-import { SearchParamsContext } from 'next/dist/shared/lib/hooks-client-context.shared-runtime';
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { getCustomerDictionary } from '../../../i18n/customer';
@@ -62,10 +61,9 @@ test('the forgot-password card has no switch and ends with back (secondary) then
 });
 
 test('sign-in puts "Quên mật khẩu?" at the end of the password label row and shows the notices', () => {
-  const html = renderToStaticMarkup(
-    <SearchParamsContext.Provider value={new URLSearchParams('signedOut=1&next=/vi/account/book')}>
-      {withContext(<CustomerLoginScreen />, 'vi')}
-    </SearchParamsContext.Provider>,
+  const html = paint(
+    <CustomerLoginScreen query={{ signedOut: true, next: '/vi/account/book' }} />,
+    'vi',
   );
   assert.match(html, /aria-checked="true"[^>]*>Đăng nhập</);
   assert.match(html, /Bạn đã đăng xuất\./);
@@ -76,8 +74,9 @@ test('sign-in puts "Quên mật khẩu?" at the end of the password label row an
   assert.doesNotMatch(html, /wf-/);
 });
 
-test('without its search parameters the card paints a skeleton of the same width (no layout jump)', () => {
+test('the whole sign-in card is in the first markup, with no skeleton to swap for the form', () => {
   const html = paint(<CustomerLoginScreen />, 'vi');
-  assert.match(html, /ls-member-card/);
-  assert.doesNotMatch(html, /wf-/);
+  assert.match(html, /class="ls-card ls-member-card"/);
+  assert.match(html, /<form class="ls-member-form"/);
+  assert.doesNotMatch(html, /ls-skeleton|Bạn đã đăng xuất|wf-/);
 });

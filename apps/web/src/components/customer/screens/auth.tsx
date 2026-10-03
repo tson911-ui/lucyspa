@@ -9,20 +9,11 @@ import {
   PasswordInput,
   PublicMain,
   SegmentedControl,
-  Skeleton,
   TextInput,
 } from '@lucy-spa/ui';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  Suspense,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { fill } from '../../../i18n/customer';
 import { ApiError } from '../../../lib/api/client';
 import {
@@ -87,19 +78,6 @@ function AuthCard({
             {intro ? <p>{intro}</p> : null}
           </div>
           {children}
-        </Card>
-      </div>
-    </PublicMain>
-  );
-}
-
-/** What the sign-in card shows while the page's search parameters are read on the client. */
-function AuthPlaceholder() {
-  return (
-    <PublicMain>
-      <div className="ls-member-auth">
-        <Card className="ls-member-card" aria-hidden="true">
-          <Skeleton lines={6} />
         </Card>
       </div>
     </PublicMain>
@@ -189,15 +167,26 @@ function SubmitRow({
 
 // ------------------------------------------------------------------ sign in
 
-function LoginForm() {
+/**
+ * What the sign-in page's address says. The server page reads the search parameters and passes them down, so the whole
+ * card is in the first HTML (no skeleton that swaps for the form after the scripts load).
+ */
+export interface LoginQuery {
+  next?: string | undefined;
+  expired?: boolean | undefined;
+  signedOut?: boolean | undefined;
+  activated?: boolean | undefined;
+  reset?: boolean | undefined;
+}
+
+function LoginForm({ query }: { query: LoginQuery }) {
   const { api, t, base } = useCustomer();
   const router = useRouter();
-  const params = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const destination = safeCustomerNext(params.get('next'), base);
+  const destination = safeCustomerNext(query.next ?? null, base);
 
   useEffect(() => {
     let active = true;
@@ -236,10 +225,10 @@ function LoginForm() {
 
   return (
     <AuthCard title={t.auth.loginTitle} intro={t.auth.loginIntro} mode="login">
-      {params.get('expired') ? <Notice tone="warning">{t.auth.sessionExpired}</Notice> : null}
-      {params.get('signedOut') ? <Notice tone="info">{t.auth.signedOut}</Notice> : null}
-      {params.get('activated') ? <Notice tone="success">{t.auth.activated}</Notice> : null}
-      {params.get('reset') ? <Notice tone="success">{t.auth.passwordReset}</Notice> : null}
+      {query.expired ? <Notice tone="warning">{t.auth.sessionExpired}</Notice> : null}
+      {query.signedOut ? <Notice tone="info">{t.auth.signedOut}</Notice> : null}
+      {query.activated ? <Notice tone="success">{t.auth.activated}</Notice> : null}
+      {query.reset ? <Notice tone="success">{t.auth.passwordReset}</Notice> : null}
       {message ? <Notice tone="danger">{message}</Notice> : null}
       <form className="ls-member-form" onSubmit={(event) => void submit(event)}>
         <Field label={t.auth.email} required requiredLabel={t.common.required}>
@@ -278,12 +267,8 @@ function LoginForm() {
   );
 }
 
-export function CustomerLoginScreen() {
-  return (
-    <Suspense fallback={<AuthPlaceholder />}>
-      <LoginForm />
-    </Suspense>
-  );
+export function CustomerLoginScreen({ query = {} }: { query?: LoginQuery }) {
+  return <LoginForm query={query} />;
 }
 
 // ------------------------------------------------------------------ register + activation

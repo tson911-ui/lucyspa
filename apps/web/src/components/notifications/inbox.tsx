@@ -44,20 +44,19 @@ const REFRESH_MS = 30_000;
 
 type NotificationTexts = ReturnType<typeof getNotificationDictionary>;
 
-/** Bell with the unread badge (archived items are never counted by the API). */
-export function NotificationIndicator({
-  api,
-  base,
-  locale,
-}: {
-  api: ApiClient;
-  base: string;
-  locale: Locale;
-}) {
-  const t = getNotificationDictionary(locale);
+/**
+ * The unread count (archived items are never counted by the API), read now, every 30 seconds and whenever the inbox
+ * changes it. `null` as the client reads nothing (nobody is signed in).
+ */
+export function useUnreadCount(api: ApiClient | null): { count: number | null; failed: boolean } {
   const [count, setCount] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
+    if (!api) {
+      setCount(null);
+      setFailed(false);
+      return;
+    }
     let active = true;
     let generation = 0;
     const load = async () => {
@@ -86,6 +85,21 @@ export function NotificationIndicator({
       window.removeEventListener(CHANGED, changed);
     };
   }, [api]);
+  return { count, failed };
+}
+
+/** Bell with the unread badge. */
+export function NotificationIndicator({
+  api,
+  base,
+  locale,
+}: {
+  api: ApiClient;
+  base: string;
+  locale: Locale;
+}) {
+  const t = getNotificationDictionary(locale);
+  const { count, failed } = useUnreadCount(api);
   const label =
     failed || count === null
       ? failed

@@ -350,7 +350,7 @@ export function BookScreen() {
   );
 
   return (
-    <PublicMain {...(totals.count > 0 ? { className: 'ls-booking-bar' } : {})}>
+    <PublicMain className={totals.count > 0 ? 'ls-main-tall ls-booking-bar' : 'ls-main-tall'}>
       <div className="ls-container">
         <div className="ls-public-title">
           <h1 className="ls-h1-display">{t.book.title}</h1>
@@ -374,6 +374,8 @@ export function BookScreen() {
 
             {step === 'services' ? (
               <>
+                {/* Above the list, so the list arriving after it never moves it. */}
+                <p className="ls-detail-note">{t.book.priceNote}</p>
                 {branches.loading ? loading : null}
                 {loadError(branches.error, branches.retry)}
                 {branches.data && branches.data.branches.length === 0 ? (
@@ -457,7 +459,6 @@ export function BookScreen() {
                     </ol>
                   </FormSection>
                 ) : null}
-                <p className="ls-detail-note">{t.book.priceNote}</p>
               </>
             ) : null}
 

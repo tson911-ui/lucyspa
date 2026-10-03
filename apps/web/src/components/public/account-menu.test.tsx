@@ -21,6 +21,21 @@ test('signed out the menu offers sign-in and registration, signed in the member 
   assert.deepEqual(labels(true, 'en'), ['Bookings', 'Invoices', 'Notifications', 'Sign out']);
 });
 
+test('unread notifications show beside "Thông báo" in the menu', () => {
+  const labelOf = (unread: number) =>
+    accountMenuItems({
+      signedIn: true,
+      base: '/vi/account',
+      text: getSiteText('vi').member,
+      go: () => undefined,
+      signOut: () => undefined,
+      unread,
+    }).find((item) => item.id === 'notifications')?.label;
+  assert.equal(labelOf(0), 'Thông báo');
+  assert.equal(labelOf(3), 'Thông báo (3)');
+  assert.equal(labelOf(250), 'Thông báo (99+)');
+});
+
 test('choosing an entry goes to its member page; sign-out is the only entry that signs out', () => {
   const went: string[] = [];
   let signedOut = 0;

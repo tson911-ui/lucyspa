@@ -42,10 +42,20 @@ export function SiteSessionProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(() => {
     let active = true;
+    // Known (either way) once the first answer or failure is in: the phone tab bar shows then (see site.css).
+    const known = () => {
+      document.documentElement.dataset['lsSession'] = 'ready';
+    };
     loadCustomerSession(api)
-      .then((session) => active && setSignedIn(session.kind === 'customer'))
+      .then((session) => {
+        if (active) setSignedIn(session.kind === 'customer');
+        known();
+      })
       // A failed read keeps the signed-out menus: sign-in is always reachable.
-      .catch(() => active && setSignedIn(false));
+      .catch(() => {
+        if (active) setSignedIn(false);
+        known();
+      });
     return () => {
       active = false;
     };
@@ -61,6 +71,7 @@ export function SiteSessionProvider({ children }: { children: ReactNode }) {
     return () => {
       cancel();
       window.removeEventListener(SITE_SESSION_CHANGED, changed);
+      delete document.documentElement.dataset['lsSession'];
     };
   }, [refresh]);
 

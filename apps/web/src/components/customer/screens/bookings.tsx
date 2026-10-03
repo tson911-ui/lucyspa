@@ -113,12 +113,17 @@ function BookingsTable({
   listName,
   empty,
   paged = true,
+  loading = false,
+  skeletonRows = 5,
 }: {
   items: readonly CustomerBookingSummary[];
   listName: string;
   empty: ReactNode;
   /** The overview shows a fixed short list and says so instead of paging. */
   paged?: boolean;
+  /** Skeleton rows in the final layout while the bookings load (what follows the table does not move). */
+  loading?: boolean;
+  skeletonRows?: number;
 }) {
   const { t, locale, base } = useCustomer();
   const router = useRouter();
@@ -184,6 +189,9 @@ function BookingsTable({
       rows={items}
       rowKey={(item) => item.id}
       empty={empty}
+      loading={loading}
+      loadingLabel={t.common.loading}
+      skeletonRows={skeletonRows}
       paging={
         paged ? paging : { off: 'A fixed short list on the overview; the full list has the pager.' }
       }
@@ -215,15 +223,17 @@ export function CustomerHomeScreen() {
           </Link>
         }
       >
-        {list.data ? (
+        {list.error ? (
+          <LoadState error={list.error} retry={list.retry} />
+        ) : (
           <BookingsTable
-            items={list.data.upcoming.slice(0, 3)}
+            items={list.data ? list.data.upcoming.slice(0, 3) : []}
             listName={t.home.upcoming}
             empty={<Empty>{t.home.none}</Empty>}
             paged={false}
+            loading={!list.data}
+            skeletonRows={3}
           />
-        ) : (
-          <LoadState error={list.error} retry={list.retry} />
         )}
       </ListSection>
       <Card as="section" aria-label={t.home.profile}>

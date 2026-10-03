@@ -17,6 +17,13 @@
   outline: none;
 }
 
+/* A page whose content arrives after the first paint (the member area reads the session and its data in the browser)
+   is at least one screen tall, so the footer and the season dividers start below the fold and nothing visible moves
+   when the content lands. */
+.ls-main-tall {
+  min-height: 100svh;
+}
+
 .ls-container {
   width: 100%;
   max-width: var(--ls-content-max);
@@ -999,11 +1006,17 @@
   color: var(--ls-hover-text);
 }
 
-/* Four round tools plus the wordmark do not fit a 360 px header: the bell steps aside there, because the account menu
-   and the member row both lead to Thông báo. */
-@media (max-width: 479px) {
-  .ls-site-tools .ls-bell {
-    display: none;
+/* The account button carries the unread count as a badge (the count itself is styled by shell.css, `.ls-bell-count`). */
+.ls-site-account {
+  position: relative;
+  display: inline-flex;
+}
+
+/* The phone tab bar waits for the session (a member has two more tabs than a visitor), hidden rather than reshuffled,
+   so nothing visible moves when it is known. Without scripts it is simply shown. */
+@media (scripting: enabled) {
+  html:not([data-ls-session]) .ls-tab-bar {
+    visibility: hidden;
   }
 }
 

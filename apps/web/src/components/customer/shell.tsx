@@ -17,7 +17,7 @@ export function CustomerShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   if (pathname === `${base}/book` || pathname.startsWith(`${base}/book/`)) return <>{children}</>;
   return (
-    <PublicMain>
+    <PublicMain className="ls-main-tall">
       <div className="ls-container">
         <AccountTabs locale={locale} />
         <div className="ls-member-page">
