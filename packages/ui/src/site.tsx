@@ -159,13 +159,13 @@ export interface PriceListItem {
   price: string;
 }
 
-/** Name and price rows (home group cards, service lists). A long price wraps under its name instead of squeezing it. */
+/** Name and price rows (home group cards): a name longer than two lines is cut with an ellipsis (its full text is the tooltip), the price stays whole in its own right-aligned column. */
 export function PriceList({ items }: { items: readonly PriceListItem[] }) {
   return (
     <ul className="ls-price-list">
       {items.map((item) => (
         <li key={item.key}>
-          <span>{item.name}</span>
+          <span title={item.name}>{item.name}</span>
           <span className="ls-price">{item.price}</span>
         </li>
       ))}

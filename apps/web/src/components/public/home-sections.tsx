@@ -1,7 +1,6 @@
 import type { PublicSiteResponse, PublicWhy } from '@lucy-spa/contracts';
 import { buttonClass, Icon, Notice, PriceList, Reveal } from '@lucy-spa/ui';
 import Link from 'next/link';
-import type { CSSProperties } from 'react';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import { fill } from '../../lib/fill';
@@ -29,9 +28,6 @@ export function LoadNotice({ locale, section }: { locale: Locale; section: strin
   );
 }
 
-/** How many equal columns the strip uses on a tablet or desktop: 1-3 facts fill the width, more wrap in rows of 3 (2 for 4). */
-const factColumns = (count: number): number => (count === 4 ? 2 : Math.min(Math.max(count, 1), 3));
-
 /**
  * The facts every visitor looks for, as the Owner arranged them in Shop info: the built-in opening hours, address and
  * hotline (each can be hidden) and any custom lines, in the Owner's order. The address opens the map link, the hotline
@@ -45,7 +41,7 @@ export function FactsStrip({ locale, site }: { locale: Locale; site: PublicSiteR
     if (fact.kind === 'HOURS') {
       return headline
         ? [
-            <p key="hours" className="ls-site-fact">
+            <p key="hours" className="ls-site-fact" data-fact="hours">
               {icon}
               <span>
                 <strong>{headline.value}</strong> · {headline.label}
@@ -56,7 +52,7 @@ export function FactsStrip({ locale, site }: { locale: Locale; site: PublicSiteR
     }
     if (fact.kind === 'ADDRESS') {
       return [
-        <p key="address" className="ls-site-fact">
+        <p key="address" className="ls-site-fact" data-fact="address" title={site.address}>
           {icon}
           <a href={directionsUrl(site)} target="_blank" rel="noopener noreferrer">
             <strong>{site.address}</strong>
@@ -66,7 +62,7 @@ export function FactsStrip({ locale, site }: { locale: Locale; site: PublicSiteR
     }
     if (fact.kind === 'HOTLINE') {
       return [
-        <p key="hotline" className="ls-site-fact">
+        <p key="hotline" className="ls-site-fact" data-fact="hotline">
           {icon}
           <span>
             {text.hotline}{' '}
@@ -78,7 +74,12 @@ export function FactsStrip({ locale, site }: { locale: Locale; site: PublicSiteR
       ];
     }
     return [
-      <p key={`custom-${fact.text}`} className="ls-site-fact">
+      <p
+        key={`custom-${fact.text}`}
+        className="ls-site-fact"
+        data-fact="custom"
+        title={fact.text ?? undefined}
+      >
         {icon}
         <strong>{fact.text}</strong>
       </p>,
@@ -86,10 +87,9 @@ export function FactsStrip({ locale, site }: { locale: Locale; site: PublicSiteR
   });
   if (items.length === 0) return null;
   return (
-    <div
-      className="ls-site-facts"
-      style={{ '--ls-facts-cols': factColumns(items.length) } as CSSProperties}
-    >
+    // One row, never wrapping: the items are spread evenly across the width, and a row that is wider than the screen
+    // (a phone, or many custom lines) scrolls sideways inside itself. Focusable so a keyboard can scroll it.
+    <div className="ls-site-facts" tabIndex={0}>
       {items}
     </div>
   );

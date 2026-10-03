@@ -177,6 +177,9 @@
   /* A clickable card of the public site on hover: lifts and grows slightly; on press it dips (--ls-press-scale). */
   --ls-card-lift: var(--ls-space-1);
   --ls-card-zoom: 1.015;
+  /* Every button and link-button of the public site on hover: a small lift and zoom (smaller than a card's). */
+  --ls-ctl-lift: 2px;
+  --ls-ctl-zoom: 1.03;
   /* Public chrome sizes */
   --ls-site-header-h: 4rem;
   --ls-tab-bar-h: 4rem;
@@ -233,6 +236,8 @@
     --ls-parallax-shift: 0px;
     --ls-card-lift: 0px;
     --ls-card-zoom: 1;
+    --ls-ctl-lift: 0px;
+    --ls-ctl-zoom: 1;
     --ls-press-scale: 1;
   }
 }

@@ -218,7 +218,7 @@ test('PriceList keeps a long price on the row as its own cell', () => {
   );
   assert.match(
     html,
-    /<span>Đính đá \/ charm<\/span><span class="ls-price">5\.000-30\.000 ₫\/ngón<\/span>/,
+    /<span title="Đính đá \/ charm">Đính đá \/ charm<\/span><span class="ls-price">5\.000-30\.000 ₫\/ngón<\/span>/,
   );
 });
 
@@ -616,7 +616,13 @@ test('the three-column footer and the featured group cards keep to the reference
     css,
     /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);\s*gap: var\(--ls-space-6\);/,
   );
-  assert.match(css, /\.ls-site-grid-groups \{\s*align-items: start;/);
+  // Cards of a row are one size: the grid stretches them, "Xem tất cả" sits at the bottom of each, names stop at two lines.
+  assert.doesNotMatch(css, /\.ls-site-grid-groups \{\s*align-items: start;/);
+  assert.match(
+    css,
+    /\.ls-site-card \.ls-site-link \{\s*align-self: flex-start;\s*margin-top: auto;/,
+  );
+  assert.match(css, /\.ls-price-list li > span:first-child \{[^}]*-webkit-line-clamp: 2;/);
   assert.match(
     css,
     /\.ls-group-card \.ls-site-link::after \{\s*content: '';\s*position: absolute;\s*inset: 0;/,
@@ -665,4 +671,61 @@ test('the serif wordmark is the public logo; the staff wordmark keeps the sans f
   const serif = renderToStaticMarkup(<ui.BrandWordmark serif />);
   assert.match(serif, /font-family:var\(--ls-font-display\)/);
   assert.match(renderToStaticMarkup(<ui.BrandWordmark />), /font-family:var\(--ls-font-sans\)/);
+});
+
+test('every public control shares one hover and press style: smooth colours, a slight lift and zoom, a dip on press', () => {
+  const block = css.slice(css.indexOf('controls (M9)'));
+  // The one shared list: buttons (CTAs, outline, ghost, icon, slider arrows), header tools, pills, menu entries, tab bar.
+  for (const selector of [
+    '.ls-site .ls-btn',
+    '.ls-site .ls-theme-cycle',
+    '.ls-site .ls-site-tool',
+    '.ls-site .ls-pills a',
+    '.ls-site .ls-site-nav a',
+    '.ls-site .ls-subnav a',
+    '.ls-site .ls-tab-bar a',
+  ]) {
+    assert.ok(
+      block.includes(`${selector},`) || block.includes(`${selector} {`),
+      `${selector} is in the shared style`,
+    );
+  }
+  assert.match(
+    block,
+    /transform var\(--ls-dur-base\) var\(--ls-ease-premium\),\s*background-color/,
+  );
+  assert.match(
+    block,
+    /@media \(hover: hover\) \{[\s\S]*transform: translateY\(calc\(var\(--ls-ctl-lift\) \* -1\)\) scale\(var\(--ls-ctl-zoom\)\);/,
+  );
+  assert.match(block, /:active \{\s*transform: scale\(var\(--ls-press-scale\)\);/);
+  // A text link keeps no transform (the stretched card link would lose its click area); colours only.
+  assert.doesNotMatch(block.slice(block.indexOf('.ls-site .ls-site-link')), /^[^}]*transform/);
+  // No literal distances: the tokens carry them, and reduced motion zeroes them.
+  assert.doesNotMatch(block, /translateY\(-?\d|scale\(1\.\d/);
+  assert.match(tokens, /--ls-ctl-lift: 2px;\s*--ls-ctl-zoom: 1\.03;/);
+  const reduced = tokens.slice(tokens.indexOf('@media (prefers-reduced-motion: reduce)'));
+  assert.match(reduced, /--ls-ctl-lift: 0px;\s*--ls-ctl-zoom: 1;/);
+});
+
+test('the facts strip is one row that never wraps; phones scroll it, tablets and up shrink the items', () => {
+  assert.match(
+    css,
+    /\.ls-site-facts \{\s*display: flex;\s*align-items: center;\s*justify-content: space-between;[^}]*overflow-x: auto;/,
+  );
+  assert.doesNotMatch(css, /\.ls-site-facts \{[^}]*flex-wrap: wrap/);
+  assert.doesNotMatch(css, /--ls-facts-cols|\.ls-section-head-center/);
+  assert.match(css, /\.ls-site-fact \{\s*display: flex;\s*flex: none;[^}]*white-space: nowrap;/);
+  assert.match(css, /@media \(min-width: 768px\) \{[^{]*\.ls-site-fact \{\s*flex: 0 1 auto;/);
+});
+
+test('the facts strip never shrinks the hours or the hotline, and keeps a minimum width for the rest', () => {
+  assert.match(
+    css,
+    /\.ls-site-fact\[data-fact='hours'\],\s*\.ls-site-fact\[data-fact='hotline'\] \{\s*flex-shrink: 0;/,
+  );
+  assert.match(
+    css,
+    /\.ls-site-fact \{\s*flex: 0 1 auto;\s*min-width: calc\(var\(--ls-space-9\) \* 2\.5\);/,
+  );
 });

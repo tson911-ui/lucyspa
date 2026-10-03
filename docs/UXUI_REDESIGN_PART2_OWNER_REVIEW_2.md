@@ -30,5 +30,12 @@ Screens at 360/768/1440 light and 360/768/1440 dark were opened and compared nex
 
 ## Open for the Owner
 
-- The Oct-3 capture shows a left-aligned section heading; the review text says "centered section", so headings are centred. One line of CSS (`ls-section-head-center`) reverts it.
 - Headless-browser note for the tooling: a long-lived tab sometimes measures a page before React swaps in its loading fallback (the page is complete after a frame); run the gate one render per start for exact heights.
+
+## Round 3 (same day, Owner's local review)
+
+- **Nothing is seeded on production.** The migration only adds columns with defaults (strip visible, groups `[]`, why-us off and empty); no seed script or code writes a description, a featured group or why-us text. The sample texts exist only in unit/integration test fixtures (rolled back) and in the git-ignored scratch script `.local/p2-fu-states.mjs`, which now matches each description to its group by name. Migration unchanged since the first commit.
+- **Headings and subtitles are left-aligned** (the centred variant is gone); the card block stays centred on the page.
+- **Cards in a row are exactly one size** (equal columns, equal height, "Xem tất cả →" at the same distance from the bottom of every card); service names stop at two lines with an ellipsis (full name as tooltip), prices stay in one right-aligned column. Same for the why-us cards. Measured in the real app at 360/768/1440, light and dark.
+- **Facts strip is one row, never wrapping:** 4+ items spread evenly at 1440 (equal gaps, flush edges); from 768 the address and custom lines shrink with an ellipsis (hours and hotline never shrink); phones keep each item whole and scroll the row sideways.
+- **One hover/press style for every button and link-button of the public site** (CTAs, outline/ghost, round tools, account button, slider arrows, menu entries, pills, tab bar): smooth colour change, lift 2 px and zoom 3% on hover, 2% dip on press; tokens `--ls-ctl-lift/zoom`, off under reduced motion (measured). Text links keep colour/arrow motion only.

@@ -100,7 +100,7 @@ export function HomeContent({
 
       <Band tone="surface" labelledBy="groups-title">
         <Reveal>
-          <div className="ls-section-head ls-section-head-center">
+          <div className="ls-section-head">
             <h2 className="ls-site-h2" id="groups-title">
               {text.home.groupsTitle}
             </h2>
@@ -119,7 +119,7 @@ export function HomeContent({
       {site?.why ? (
         <Band tone="page" labelledBy="why-title">
           <Reveal>
-            <div className="ls-section-head ls-section-head-center">
+            <div className="ls-section-head">
               <h2 className="ls-site-h2" id="why-title">
                 {site.why.title}
               </h2>

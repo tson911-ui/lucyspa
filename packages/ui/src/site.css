@@ -318,11 +318,6 @@
   margin-bottom: var(--ls-space-7);
 }
 
-.ls-section-head-center {
-  justify-items: center;
-  text-align: center;
-}
-
 .ls-section-head p {
   margin: 0;
   color: var(--ls-text-muted);
@@ -412,11 +407,8 @@
   }
 }
 
-/* Cards are as tall as their content: a short list never leaves a gap above "Xem tất cả". */
-.ls-site-grid-groups {
-  align-items: start;
-}
-
+/* Cards in one row are exactly the same size: equal columns, and the row's height is its tallest card's. Service names are
+   cut at two lines, so no card grows far, and "Xem tất cả" sits at the bottom of every card (same place in each). */
 /* Bands alternate warm and white; a group card stays white (with its border and shadow) on the white band, like the
    "why" cards on the warm one. */
 .ls-band-surface .ls-group-card {
@@ -457,11 +449,21 @@
 
 .ls-price-list li {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--ls-space-3);
   font-size: var(--ls-text-sm);
   line-height: var(--ls-leading-sm);
+}
+
+/* A service name is at most two lines; the rest is an ellipsis (the full name is the tooltip). */
+.ls-price-list li > span:first-child {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 /* The price is one short muted line in its own right-aligned column; a long name wraps instead of squeezing it. */
@@ -745,34 +747,69 @@
 }
 
 .ls-site-facts {
-  --ls-facts-cols: 3;
-  display: grid;
-  gap: var(--ls-space-2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ls-space-4);
   padding-block: var(--ls-space-4);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
-/* The component sets the column count (1-3) as a property so the facts always fill the width evenly. */
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .ls-site-facts {
-    grid-template-columns: repeat(var(--ls-facts-cols, 3), minmax(0, 1fr));
-    gap: var(--ls-space-2) var(--ls-space-6);
+    gap: var(--ls-space-6);
   }
+}
 
-  .ls-site-fact {
-    justify-content: center;
-    text-align: center;
-  }
+.ls-site-facts::-webkit-scrollbar {
+  display: none;
 }
 
 .ls-site-fact {
   display: flex;
+  flex: none;
   align-items: center;
   gap: var(--ls-space-3);
+  white-space: nowrap;
   min-height: var(--ls-control-h);
   margin: 0;
   color: var(--ls-text-muted);
   font-size: var(--ls-text-sm);
   line-height: var(--ls-leading-sm);
+}
+
+/* From a tablet up the row always fits: when the items are wider than the width, the address and the custom lines shrink
+   and end in an ellipsis (their full text is the tooltip), still one row; the opening hours and the hotline never shrink.
+   A phone keeps every item whole and scrolls the row sideways. */
+@media (min-width: 768px) {
+  /* A shrinking item keeps a readable minimum; if even that does not fit (many lines), the row scrolls as on a phone. */
+  .ls-site-fact {
+    flex: 0 1 auto;
+    min-width: calc(var(--ls-space-9) * 2.5);
+  }
+
+  .ls-site-fact[data-fact='hours'],
+  .ls-site-fact[data-fact='hotline'] {
+    flex-shrink: 0;
+  }
+
+  .ls-site-fact > span,
+  .ls-site-fact > a {
+    min-width: 0;
+  }
+
+  .ls-site-fact > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ls-site-fact > a strong,
+  .ls-site-fact > strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .ls-site-fact strong {
@@ -806,6 +843,7 @@
 
 .ls-site-card .ls-site-link {
   align-self: flex-start;
+  margin-top: auto;
 }
 
 /* The link of a group card covers the whole card (a stretched link): the card is one big target, and the link stays
@@ -1577,4 +1615,63 @@
     opacity var(--ls-dur-reveal) var(--ls-ease-premium),
     transform var(--ls-dur-reveal) var(--ls-ease-premium);
   transition-delay: calc(var(--ls-reveal-index) * var(--ls-stagger));
+}
+
+/* ---------- controls (M9): one hover and press style for every button and link-button of the public site ---------- */
+/* Covers CTAs, outline and ghost buttons, links styled as buttons (`buttonClass`), the round header tools, the account
+   button, the slider arrows, the menu entries, the filter pills and the phone tab bar. A smooth colour change always; on
+   hover a slight lift and zoom (fine pointers only); on press (mouse or touch) a small dip. The distances are tokens, which
+   are 0 / 1 under reduced motion. Text links (`.ls-site-link`, footer links) keep colour and arrow motion only: a transform
+   on the card's stretched link would shrink its click area. The current menu entry is not lifted: its pill stays put. */
+.ls-site .ls-btn,
+.ls-site .ls-theme-cycle,
+.ls-site .ls-site-tool,
+.ls-site .ls-pills a,
+.ls-site .ls-site-nav a,
+.ls-site .ls-subnav a,
+.ls-site .ls-tab-bar a {
+  transition:
+    transform var(--ls-dur-base) var(--ls-ease-premium),
+    background-color var(--ls-dur-base) var(--ls-ease-out),
+    border-color var(--ls-dur-base) var(--ls-ease-out),
+    color var(--ls-dur-base) var(--ls-ease-out),
+    box-shadow var(--ls-dur-base) var(--ls-ease-out);
+}
+
+@media (hover: hover) {
+  .ls-site .ls-btn:where(:not(:disabled, [aria-disabled='true'])):hover,
+  .ls-site .ls-theme-cycle:hover,
+  .ls-site .ls-site-tool:hover,
+  .ls-site .ls-pills a:hover,
+  .ls-site .ls-site-nav a:where(:not([aria-current='page'])):hover,
+  .ls-site .ls-subnav a:where(:not([aria-current='page'])):hover {
+    transform: translateY(calc(var(--ls-ctl-lift) * -1)) scale(var(--ls-ctl-zoom));
+  }
+}
+
+.ls-site .ls-btn:where(:not(:disabled, [aria-disabled='true'])):active,
+.ls-site .ls-theme-cycle:active,
+.ls-site .ls-site-tool:active,
+.ls-site .ls-pills a:active,
+.ls-site .ls-site-nav a:active,
+.ls-site .ls-subnav a:active,
+.ls-site .ls-tab-bar a:active {
+  transform: scale(var(--ls-press-scale));
+  transition-duration: var(--ls-dur-fast);
+}
+
+.ls-site .ls-site-link {
+  transition: color var(--ls-dur-base) var(--ls-ease-out);
+}
+
+/* The slider's dots are small marks inside a full-size button: the mark itself eases and dips. */
+.ls-site .ls-slider-dot::before {
+  transition:
+    transform var(--ls-dur-base) var(--ls-ease-premium),
+    background-color var(--ls-dur-base) var(--ls-ease-out),
+    border-color var(--ls-dur-base) var(--ls-ease-out);
+}
+
+.ls-site .ls-slider-dot:active::before {
+  transform: scale(var(--ls-press-scale));
 }
