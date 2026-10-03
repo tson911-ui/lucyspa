@@ -10,9 +10,10 @@ Status: run 2026-10-03 on base `219d33e` (production). Contract: `UXUI_REDESIGN_
 - Browser flow waived for Steps 12-13 (`flow-s12-13.mjs`, 22 checks, read back from the API): slider add through drawer and image picker, move button, keyboard drag, hide, delete; popup create page, overlap refusal naming the other popup, schedule strip; public home shows the live slide and popup (a dirty form triggers the unsaved-changes prompt).
 - Real-app render, DOM audit and axe on 52 pages (admin 34, customer 8, public and auth 10) x 360/768/1440 light + dark = 312 renders: no error page, no 4xx/5xx, no redirect to login, no in-app error text. Theme forced by cookie.
 - DOM audit on the 26 baseline pages, light: no count above `uxui-audit-baseline.json` or `uxui-audit-after-7_5.json` (off-grid 1202 to 0, small-target 43 to 0, off-scale-font 423 to 0; remaining: row-height-uneven 11 and list-height-uneven 3 on phone cards, sibling-gap 6, edge-left 4 and surface-style 4 on login/forgot/dashboard, wrapped-label 1).
+- `pnpm smoke` (default build, scratch DB): passed (web, API/DB/Redis, OpenAPI, BullMQ round trip).
 - Every screenshot (312 + flow shots) was opened and reviewed.
 
-## Fixed (one commit per group)
+## Fixed (one commit per group: 9af286f races, 5a80a6e keep-alive, 6c4d031 UI)
 
 1. API keep-alive: Node closed idle sockets after 5 s, so the web proxy sometimes got `ECONNRESET` and showed "Đã có lỗi xảy ra" (seen on employee detail). Keep-alive 65 s.
 2. UI: slide rows lost their text at 360 px (grip and arrows took the width; schedule clipped); date-time inputs overflowed the form column (266 px); phone card title alignment (centered or right on cells with a code line); breadcrumbs no longer repeat the page title on a phone; selected tab scrolls into view; income pager buttons no longer wrap alone; tablet/phone layout tests.
@@ -21,8 +22,7 @@ Status: run 2026-10-03 on base `219d33e` (production). Contract: `UXUI_REDESIGN_
 ## Left for the Owner
 
 - Ratchet not at 0: the customer area only (Part 2): `wfClassUses` 80, `nativeFieldsets` 4, `nativeCheckboxes` 1, `solidDangerButtons` 1 (booking cancel). The public/customer pages also carry the off-grid, off-scale-font and small-target findings.
-- Axe after fixes: see the numbers in the final message; remaining items, if any, are listed there.
-- `pnpm smoke`: see the final message.
+- Nothing else: axe is 0 violations on all 312 renders after the fixes (before: heading-order 48, region 24, aria-allowed-attr 6, landmark-unique 6, page-has-heading-one 1).
 
 ## Deployment checklist (production at `219d33e`)
 
