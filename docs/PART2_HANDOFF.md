@@ -1,7 +1,7 @@
 # Part 2 handoff (customer area and public site): read this first in a fresh session
 
 Last updated 2026-10-03. Contract: `UXUI_REDESIGN_PART2_DESIGN.md`. Plan: `UXUI_REDESIGN_PART2_PLAN.md`. Mockups: `docs/mockups/part2/`.
-Per-step reports: `UXUI_REDESIGN_PART2_P2-1_FOUNDATIONS.md`, `_P2-2_BACKEND.md`, `_P2-3_SHOP_INFO_TAB.md`, `_P2-4_HOME.md`, `_P2-6_MEMBER_AUTH.md`, `_P2-7_BOOKING.md`.
+Per-step reports: `UXUI_REDESIGN_PART2_P2-1_FOUNDATIONS.md`, `_P2-2_BACKEND.md`, `_P2-3_SHOP_INFO_TAB.md`, `_P2-4_HOME.md`, `_P2-6_MEMBER_AUTH.md`, `_P2-7_BOOKING.md`, `_P2-8_MEMBER_AREA.md`.
 Repo rules are in `CLAUDE.md` (UX gate, ratchet, no heredocs, never force-push, never touch `apps/web/next-env.d.ts`).
 
 ## Where we are
@@ -16,7 +16,8 @@ Repo rules are in `CLAUDE.md` (UX gate, ratchet, no heredocs, never force-push, 
 | P2-5 services polish                                                                                                 | -                                         | **folded into P2-7 (booking preselect) and P2-9 (metadata)**; list and detail already exist                                 |
 | P2-6 member auth in the site chrome                                                                                  | see git log                               | done 2026-10-03 (report `UXUI_REDESIGN_PART2_P2-6_MEMBER_AUTH.md`); `wfClassUses` 65                                        |
 | P2-7 booking in four steps                                                                                           | see git log                               | done 2026-10-03 (report `UXUI_REDESIGN_PART2_P2-7_BOOKING.md`); `nativeFieldsets` 0, `nativeCheckboxes` 0, `wfClassUses` 38 |
-| P2-8 member area, P2-9 motion + SEO, P2-10 final gate                                                                | -                                         | not started                                                                                                                 |
+| P2-8 member area on the kit (overview, bookings, invoices as DataTables, cancel dialog, `customer.css` deleted)      | see git log                               | done 2026-10-03 (report `UXUI_REDESIGN_PART2_P2-8_MEMBER_AREA.md`); all four ratchet counters 0                             |
+| P2-9 motion + SEO, P2-10 final gate                                                                                  | -                                         | not started                                                                                                                 |
 
 Nothing is deployed. Ratchet counters still to clear: `wfClassUses` 80, `nativeFieldsets` 4, `nativeCheckboxes` 1, `solidDangerButtons` 1
 (all in the member area: `components/customer/**`, `workforce/ui.tsx` 2 uses). `siteCssSpacingLiterals` is 0 and must stay 0.

@@ -1,6 +1,7 @@
 import type { CustomerInvoiceDetail } from '@lucy-spa/contracts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
@@ -63,7 +64,9 @@ function paint(node: ReactNode, locale: Locale): string {
         sessionLost: false,
       }}
     >
-      {node}
+      <AppRouterContext.Provider value={{ push: () => undefined } as never}>
+        {node}
+      </AppRouterContext.Provider>
     </CustomerContext.Provider>,
   );
 }
@@ -72,6 +75,10 @@ test('screens wait for the server; no amount is shown before it answers', () => 
   const list = paint(<CustomerInvoicesScreen />, 'vi');
   assert.ok(list.includes(vi.invoices.title));
   assert.ok(list.includes(vi.common.loading));
+  // The shared page frame and header, no legacy markup.
+  assert.match(list, /class="ls-page ls-page-default"/);
+  assert.match(list, /<h1 class="ls-page-title">Hóa đơn của tôi<\/h1>/);
+  assert.doesNotMatch(list, /wf-|cu-/);
   const detail = paint(<CustomerInvoiceDetailScreen id="inv-1" />, 'en');
   assert.ok(detail.includes(en.common.loading));
   assert.ok(!detail.includes(en.invoices.total), 'no amounts before the server answers');

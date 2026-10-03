@@ -8,8 +8,9 @@ import { useCustomer } from './session';
 
 /**
  * The signed-in member area. The header, footer and phone tab bar are the shared site frame (account menu and bell
- * included); this adds the row of member pages and the "session lost" notice around the page's own content. The
- * booking page is its own full-width flow (steps, summary, action bar) and draws its own main landmark.
+ * included); this adds the row of member pages and the "session lost" notice around the page's own content (each page
+ * is a `Page` with its `PageHeader`). The booking page is its own full-width flow (steps, summary, action bar) and
+ * draws its own main landmark.
  */
 export function CustomerShell({ children }: { children: ReactNode }) {
   const { t, locale, base, sessionLost } = useCustomer();
@@ -17,10 +18,9 @@ export function CustomerShell({ children }: { children: ReactNode }) {
   if (pathname === `${base}/book` || pathname.startsWith(`${base}/book/`)) return <>{children}</>;
   return (
     <PublicMain>
-      <div className="ls-container ls-container-narrow">
+      <div className="ls-container">
         <AccountTabs locale={locale} />
-        {/* wf-app: the legacy control styles the not yet migrated member pages still rely on (P2-8 removes it). */}
-        <div className="ls-member-page wf-app">
+        <div className="ls-member-page">
           {sessionLost ? <Notice tone="warning">{t.errors.sessionLost}</Notice> : null}
           {children}
         </div>

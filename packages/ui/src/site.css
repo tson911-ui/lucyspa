@@ -1049,6 +1049,13 @@
   padding-bottom: var(--ls-space-9);
 }
 
+/* The member row above and the pages below share one left edge: the shell's container owns the gutter, so a Page
+   does not add its own, and a narrow (form width) page starts at that edge instead of centring. */
+.ls-member-page .ls-page {
+  margin-inline: 0;
+  padding: 0;
+}
+
 /* A short status (checking the session, an error) in the middle of the member area. */
 .ls-site-state {
   display: grid;

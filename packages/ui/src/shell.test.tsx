@@ -680,14 +680,7 @@ test('Step 5b UX gate fixes (F1-F12, F14): topbar order, control sizes, brand ed
   );
   assert.ok(order.every((index) => index > 0));
   const components = readFileSync(new URL('components.css', import.meta.url), 'utf8');
-  // The legacy plain-control rules now live in the member area's stylesheet (workforce.css was deleted in Step 10b).
-  const webCss = readFileSync(
-    new URL('../../../apps/web/src/app/customer.css', import.meta.url),
-    'utf8',
-  );
-  // F1/F2: the legacy plain-control rule has zero specificity, so `ls-*` controls always win.
-  assert.match(webCss, /:where\(\.wf-app\) :where\(input:not\(/);
-  assert.doesNotMatch(webCss, /^\.wf-app (?:input:not|select)/m, 'no specific legacy control rule');
+  // F1/F2 (legacy plain-control rules with zero specificity) went away with the last legacy stylesheet in Part 2 P2-8.
   // F3: a badge keeps one line when it can; F12: sort buttons keep a touch-sized width.
   assert.match(block(components, '.ls-badge'), /width:\s*max-content/);
   assert.match(block(components, '.ls-th-sort'), /min-width:\s*var\(--ls-control-h\)/);

@@ -41,14 +41,14 @@ test('no gold or ivory token or value remains in apps/web/src or packages/ui/src
 });
 
 test('application stylesheets contain no hex color literals', () => {
-  for (const name of ['customer.css', 'globals.css']) {
+  for (const name of ['globals.css']) {
     const css = readFileSync(new URL(name, here), 'utf8');
     assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b/i, name);
   }
 });
 
 test('legacy lucy color aliases are no longer used by application stylesheets', () => {
-  for (const name of ['customer.css', 'globals.css']) {
+  for (const name of ['globals.css']) {
     const css = readFileSync(new URL(name, here), 'utf8');
     assert.doesNotMatch(css, /var\(--lucy-(red|ink|muted|border)\)/, name);
   }

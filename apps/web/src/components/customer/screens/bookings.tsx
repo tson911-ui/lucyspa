@@ -5,9 +5,29 @@ import type {
   CustomerBookingListResponse,
   CustomerBookingSummary,
 } from '@lucy-spa/contracts';
+import {
+  Breadcrumbs,
+  buttonClass,
+  Button,
+  Card,
+  CardHeader,
+  ConfirmDialog,
+  DataTable,
+  DescriptionList,
+  ErrorState,
+  ListSection,
+  Notice,
+  Page,
+  PageHeader,
+  RowActions,
+  Skeleton,
+  type DataTableColumn,
+} from '@lucy-spa/ui';
 import Link from 'next/link';
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { fill } from '../../../i18n/customer';
+import { getWorkforceDictionary } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/api/client';
 import {
   customerErrorMessage,
@@ -16,7 +36,8 @@ import {
   formatVndRange,
   statusTone,
 } from '../../../lib/customer/booking';
-import { Badge, Field, Notice, SubmitButton } from '../../workforce/ui';
+import { useClientPaging } from '../../../lib/workforce/use-client-paging';
+import { Badge, Empty } from '../../workforce/ui';
 import { useCustomer, useCustomerAccount } from '../session';
 
 export function useFetch<T>(load: () => Promise<T>, key: string) {
@@ -47,85 +68,177 @@ export function LoadState({ error, retry }: { error: unknown; retry: () => void 
   const { t } = useCustomer();
   if (!error) {
     return (
-      <p className="wf-muted" role="status">
-        {t.common.loading}
-      </p>
+      <div role="status">
+        <span className="ls-hint">{t.common.loading}</span>
+        <Skeleton lines={3} />
+      </div>
     );
   }
-  const reference = error instanceof ApiError ? error.requestId : null;
   return (
-    <Notice tone="error">
-      <p>{customerErrorMessage(error, t)}</p>
-      {reference ? (
-        <p className="wf-small">
-          {t.errors.reference}: {reference}
-        </p>
-      ) : null}
-      <button type="button" className="wf-button wf-button-quiet" onClick={retry}>
-        {t.common.reload}
-      </button>
-    </Notice>
+    <ErrorState
+      message={customerErrorMessage(error, t)}
+      reference={error instanceof ApiError ? error.requestId : null}
+      referenceLabel={t.errors.reference}
+      onRetry={retry}
+      retryLabel={t.common.reload}
+    />
   );
 }
 
-function BookingCard({ item }: { item: CustomerBookingSummary }) {
-  const { t, locale, base } = useCustomer();
+/** A page whose record is missing: the notice and the way back, in the page's own frame. */
+export function NotFoundPage({
+  message,
+  backHref,
+  backLabel,
+}: {
+  message: string;
+  backHref: string;
+  backLabel: string;
+}) {
   return (
-    <li className="cu-card">
-      <div className="cu-card-head">
-        <strong>{formatDateTime(item.startsAt, item.branch.timezone, locale)}</strong>
-        <Badge tone={statusTone(item.status)}>{t.bookings.status[item.status]}</Badge>
+    <Page width="form">
+      <Notice tone="warning">{message}</Notice>
+      <div>
+        <Link href={backHref} className={buttonClass('secondary')}>
+          {backLabel}
+        </Link>
       </div>
-      <p>{item.serviceNames.map((name) => (locale === 'vi' ? name.vi : name.en)).join(' · ')}</p>
-      <p className="wf-muted">
-        {item.branch.name} · {t.bookings.code} {item.code}
-      </p>
-      <Link href={`${base}/bookings/${item.id}`} className="wf-button wf-button-quiet">
-        {t.bookings.open}
-      </Link>
-    </li>
+    </Page>
   );
 }
 
-/** The member area home: account details, upcoming bookings and the booking entry point. */
+/** Bookings as one table (Part 2 contract 5.6): the time is the link to the booking, the row menu opens it too. */
+function BookingsTable({
+  items,
+  listName,
+  empty,
+  paged = true,
+}: {
+  items: readonly CustomerBookingSummary[];
+  listName: string;
+  empty: ReactNode;
+  /** The overview shows a fixed short list and says so instead of paging. */
+  paged?: boolean;
+}) {
+  const { t, locale, base } = useCustomer();
+  const router = useRouter();
+  const w = getWorkforceDictionary(locale);
+  const paging = useClientPaging(w, listName);
+  const columns: DataTableColumn<CustomerBookingSummary>[] = [
+    {
+      key: 'when',
+      header: t.bookings.columns.when,
+      mobileTitle: true,
+      cell: (item) => (
+        <Link className="ls-link" href={`${base}/bookings/${item.id}`}>
+          {formatDateTime(item.startsAt, item.branch.timezone, locale)}
+        </Link>
+      ),
+    },
+    {
+      key: 'services',
+      header: t.bookings.columns.services,
+      truncate: true,
+      width: 'lg',
+      cell: (item) =>
+        item.serviceNames.map((name) => (locale === 'vi' ? name.vi : name.en)).join(' · '),
+    },
+    {
+      key: 'branch',
+      header: t.bookings.columns.branch,
+      hideBelow: 'lg',
+      truncate: true,
+      cell: (item) => item.branch.name,
+    },
+    {
+      key: 'status',
+      header: t.bookings.columns.status,
+      cell: (item) => (
+        <Badge tone={statusTone(item.status)}>{t.bookings.status[item.status]}</Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      header: t.bookings.columns.actions,
+      actions: true,
+      cell: (item) => (
+        <RowActions
+          menuLabel={fill(t.bookings.actionsFor, { code: item.code })}
+          items={[
+            {
+              id: 'open',
+              label: t.bookings.open,
+              icon: 'eye',
+              onSelect: () => router.push(`${base}/bookings/${item.id}`),
+            },
+          ]}
+        />
+      ),
+    },
+  ];
+  return (
+    <DataTable
+      mode="client"
+      caption={fill(w.common.list.table, { list: listName })}
+      columns={columns}
+      rows={items}
+      rowKey={(item) => item.id}
+      empty={empty}
+      paging={
+        paged ? paging : { off: 'A fixed short list on the overview; the full list has the pager.' }
+      }
+    />
+  );
+}
+
+/** The member area home: the booking entry point, upcoming bookings and the account details. */
 export function CustomerHomeScreen() {
   const { api, t, base } = useCustomer();
   const { account } = useCustomerAccount();
   const list = useFetch(() => api.get<CustomerBookingListResponse>('/api/v1/me/bookings'), 'home');
   return (
-    <section className="cu-panel">
-      <h1>{fill(t.home.title, { name: account.displayName })}</h1>
-      <p className="wf-muted">{t.home.intro}</p>
-      <div className="cu-actions">
-        <Link href={`${base}/book`} className="wf-button wf-button-primary wf-button-large">
-          {t.home.bookCta}
-        </Link>
-        <Link href={`${base}/bookings`} className="wf-button">
-          {t.home.bookingsCta}
-        </Link>
-      </div>
-      <h2>{t.home.upcoming}</h2>
-      {list.data ? (
-        list.data.upcoming.length === 0 ? (
-          <p className="wf-empty">{t.home.none}</p>
+    <Page>
+      <PageHeader
+        title={fill(t.home.title, { name: account.displayName })}
+        description={t.home.intro}
+        actions={
+          <Link href={`${base}/book`} className={buttonClass('primary')}>
+            {t.home.bookCta}
+          </Link>
+        }
+      />
+      <ListSection
+        title={t.home.upcoming}
+        actions={
+          <Link href={`${base}/bookings`} className={buttonClass('ghost')}>
+            {t.home.viewAll}
+          </Link>
+        }
+      >
+        {list.data ? (
+          <BookingsTable
+            items={list.data.upcoming.slice(0, 3)}
+            listName={t.home.upcoming}
+            empty={<Empty>{t.home.none}</Empty>}
+            paged={false}
+          />
         ) : (
-          <ul className="cu-cards">
-            {list.data.upcoming.slice(0, 3).map((item) => (
-              <BookingCard key={item.id} item={item} />
-            ))}
-          </ul>
-        )
-      ) : (
-        <LoadState error={list.error} retry={list.retry} />
-      )}
-      <h2>{t.home.profile}</h2>
-      <dl className="cu-summary">
-        <dt>{t.home.name}</dt>
-        <dd>{account.displayName}</dd>
-        <dt>{t.home.languagePref}</dt>
-        <dd>{account.locale === 'vi' ? 'Tiếng Việt' : 'English'}</dd>
-      </dl>
-    </section>
+          <LoadState error={list.error} retry={list.retry} />
+        )}
+      </ListSection>
+      <Card as="section" aria-label={t.home.profile}>
+        <CardHeader title={t.home.profile} />
+        <DescriptionList
+          items={[
+            { label: t.home.name, value: account.displayName },
+            {
+              label: t.home.languagePref,
+              value: account.locale === 'vi' ? 'Tiếng Việt' : 'English',
+            },
+          ]}
+        />
+      </Card>
+    </Page>
   );
 }
 
@@ -134,40 +247,36 @@ export function CustomerBookingsScreen() {
   const { api, t, base } = useCustomer();
   const list = useFetch(() => api.get<CustomerBookingListResponse>('/api/v1/me/bookings'), 'list');
   return (
-    <section className="cu-panel">
-      <h1>{t.bookings.title}</h1>
-      <p>
-        <Link href={`${base}/book`} className="wf-button wf-button-primary">
-          {t.home.bookCta}
-        </Link>
-      </p>
+    <Page>
+      <PageHeader
+        title={t.bookings.title}
+        actions={
+          <Link href={`${base}/book`} className={buttonClass('primary')}>
+            {t.home.bookCta}
+          </Link>
+        }
+      />
       {list.data ? (
         <>
-          <h2>{t.bookings.upcoming}</h2>
-          {list.data.upcoming.length === 0 ? (
-            <p className="wf-empty">{t.bookings.emptyUpcoming}</p>
-          ) : (
-            <ul className="cu-cards">
-              {list.data.upcoming.map((item) => (
-                <BookingCard key={item.id} item={item} />
-              ))}
-            </ul>
-          )}
-          <h2>{t.bookings.history}</h2>
-          {list.data.history.length === 0 ? (
-            <p className="wf-empty">{t.bookings.emptyHistory}</p>
-          ) : (
-            <ul className="cu-cards">
-              {list.data.history.map((item) => (
-                <BookingCard key={item.id} item={item} />
-              ))}
-            </ul>
-          )}
+          <ListSection title={t.bookings.upcoming} count={list.data.upcoming.length}>
+            <BookingsTable
+              items={list.data.upcoming}
+              listName={t.bookings.upcoming}
+              empty={<Empty>{t.bookings.emptyUpcoming}</Empty>}
+            />
+          </ListSection>
+          <ListSection title={t.bookings.history} count={list.data.history.length}>
+            <BookingsTable
+              items={list.data.history}
+              listName={t.bookings.history}
+              empty={<Empty>{t.bookings.emptyHistory}</Empty>}
+            />
+          </ListSection>
         </>
       ) : (
         <LoadState error={list.error} retry={list.retry} />
       )}
-    </section>
+    </Page>
   );
 }
 
@@ -175,51 +284,26 @@ export function CustomerBookingsScreen() {
 export function CustomerBookingDetailScreen({ id }: { id: string }) {
   const { api, t, locale, base } = useCustomer();
   const detail = useFetch(() => api.get<CustomerBookingDetail>(`/api/v1/me/bookings/${id}`), id);
-  const [confirming, setConfirming] = useState(false);
-  const [reason, setReason] = useState('');
-  const [pending, setPending] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [message, setMessage] = useState<{
-    tone: 'success' | 'error' | 'warning';
+    tone: 'success' | 'danger' | 'warning';
     text: string;
   } | null>(null);
-
-  async function cancel(event: FormEvent) {
-    event.preventDefault();
-    if (pending) return;
-    setPending(true);
-    setMessage(null);
-    try {
-      const result = await api.post<CustomerBookingDetail>(`/api/v1/me/bookings/${id}/cancel`, {
-        ...(reason.trim() ? { reason: reason.trim() } : {}),
-      });
-      detail.set(result);
-      setConfirming(false);
-      setMessage(
-        result.cancelledLate
-          ? { tone: 'warning', text: `${t.bookings.cancelled} ${t.bookings.cancelledLate}` }
-          : { tone: 'success', text: t.bookings.cancelled },
-      );
-    } catch (error) {
-      setMessage({ tone: 'error', text: customerErrorMessage(error, t) });
-      if (error instanceof ApiError && error.code === 'BOOKING_CANCEL_NOT_ALLOWED') detail.retry();
-    } finally {
-      setPending(false);
-    }
-  }
 
   if (!detail.data) {
     if (detail.error instanceof ApiError && detail.error.code === 'NOT_FOUND') {
       return (
-        <section className="cu-panel">
-          <Notice tone="warning">{t.bookings.notFound}</Notice>
-          <Link href={`${base}/bookings`}>{t.bookings.title}</Link>
-        </section>
+        <NotFoundPage
+          message={t.bookings.notFound}
+          backHref={`${base}/bookings`}
+          backLabel={t.bookings.title}
+        />
       );
     }
     return (
-      <section className="cu-panel">
+      <Page width="form">
         <LoadState error={detail.error} retry={detail.retry} />
-      </section>
+      </Page>
     );
   }
   const booking = detail.data;
@@ -231,93 +315,114 @@ export function CustomerBookingDetailScreen({ id }: { id: string }) {
       ? t.book.self
       : `${entry.displayName ?? ''} (${t.book.relations[entry.relation]})`;
   };
+
+  async function cancel(reason?: string) {
+    try {
+      const result = await api.post<CustomerBookingDetail>(`/api/v1/me/bookings/${id}/cancel`, {
+        ...(reason ? { reason } : {}),
+      });
+      detail.set(result);
+      setCancelling(false);
+      setMessage(
+        result.cancelledLate
+          ? { tone: 'warning', text: `${t.bookings.cancelled} ${t.bookings.cancelledLate}` }
+          : { tone: 'success', text: t.bookings.cancelled },
+      );
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'BOOKING_CANCEL_NOT_ALLOWED') {
+        // The booking moved on while the dialog was open: show the reason on the page and reload the record.
+        setCancelling(false);
+        setMessage({ tone: 'danger', text: customerErrorMessage(error, t) });
+        detail.retry();
+        return;
+      }
+      throw error;
+    }
+  }
+
   return (
-    <section className="cu-panel">
-      <p>
-        <Link href={`${base}/bookings`}>← {t.bookings.title}</Link>
-      </p>
-      <h1>{t.bookings.detailTitle}</h1>
+    <Page width="form">
+      <PageHeader
+        title={t.bookings.detailTitle}
+        breadcrumbs={
+          <Breadcrumbs
+            label={t.nav.menu}
+            LinkComponent={Link}
+            items={[{ label: t.bookings.title, href: `${base}/bookings` }, { label: booking.code }]}
+          />
+        }
+        actions={
+          booking.canCancel ? (
+            <Button variant="danger-outline" onClick={() => setCancelling(true)}>
+              {t.bookings.cancelTitle}
+            </Button>
+          ) : undefined
+        }
+      />
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
-      <dl className="cu-summary">
-        <dt>{t.bookings.code}</dt>
-        <dd>{booking.code}</dd>
-        <dt>{t.book.branch}</dt>
-        <dd>{booking.branch.name}</dd>
-        <dt>{t.book.when}</dt>
-        <dd>
-          {formatDateTime(booking.startsAt, zone, locale)} –{' '}
-          {formatTime(booking.endsAt, zone, locale)}
-        </dd>
-        <dt>{t.bookings.statusLabel}</dt>
-        <dd>
-          <Badge tone={statusTone(booking.status)}>{t.bookings.status[booking.status]}</Badge>
-        </dd>
-      </dl>
-      <h2>{t.bookings.services}</h2>
-      <ol className="cu-lines">
-        {booking.lines.map((line) => (
-          <li key={line.sequence}>
-            <strong>{locale === 'vi' ? line.serviceNameVi : line.serviceNameEn}</strong>
-            <span className="wf-muted">
-              {' '}
-              · {formatTime(line.startsAt, zone, locale)}–{formatTime(line.endsAt, zone, locale)} ·{' '}
-              {fill(t.book.duration, { minutes: line.durationMinutes })}
-            </span>
-            <br />
-            <span>
-              {t.bookings.recipient}: {recipient(line.recipientKey)} · {t.bookings.staff}:{' '}
-              {line.employee.displayName}
-              {line.assignmentMode === 'ANY' ? ` (${t.bookings.anyAssigned})` : ''}
-            </span>
-            <br />
-            <span className="wf-muted">
-              {t.book.referencePrice}: {formatVndRange(line.priceMinVnd, line.priceMaxVnd, locale)}
-              {line.pricingUnit === 'PER_NAIL' ? ` ${t.book.perNail}` : ''}
-            </span>
-          </li>
-        ))}
-      </ol>
-      <p className="wf-muted">{t.book.priceNote}</p>
-      {booking.canCancel && !confirming ? (
-        <button
-          type="button"
-          className="wf-button wf-button-danger"
-          onClick={() => setConfirming(true)}
-        >
-          {t.bookings.cancelTitle}
-        </button>
+      <Card as="section" aria-label={t.bookings.detailTitle}>
+        <DescriptionList
+          items={[
+            { label: t.bookings.code, value: booking.code },
+            { label: t.book.branch, value: booking.branch.name },
+            {
+              label: t.book.when,
+              value: `${formatDateTime(booking.startsAt, zone, locale)} – ${formatTime(booking.endsAt, zone, locale)}`,
+            },
+            {
+              label: t.bookings.statusLabel,
+              value: (
+                <Badge tone={statusTone(booking.status)}>{t.bookings.status[booking.status]}</Badge>
+              ),
+            },
+          ]}
+        />
+      </Card>
+      <Card as="section" aria-label={t.bookings.services}>
+        <CardHeader title={t.bookings.services} />
+        <DescriptionList
+          items={booking.lines.map((line) => ({
+            label: `${line.sequence}. ${locale === 'vi' ? line.serviceNameVi : line.serviceNameEn}`,
+            value: (
+              <>
+                {formatTime(line.startsAt, zone, locale)}–{formatTime(line.endsAt, zone, locale)} ·{' '}
+                {fill(t.book.duration, { minutes: line.durationMinutes })}
+                <br />
+                {t.bookings.recipient}: {recipient(line.recipientKey)} · {t.bookings.staff}:{' '}
+                {line.employee.displayName}
+                {line.assignmentMode === 'ANY' ? ` (${t.bookings.anyAssigned})` : ''}
+                <br />
+                {t.book.referencePrice}:{' '}
+                {formatVndRange(line.priceMinVnd, line.priceMaxVnd, locale)}
+                {line.pricingUnit === 'PER_NAIL' ? ` ${t.book.perNail}` : ''}
+              </>
+            ),
+          }))}
+        />
+        <p className="ls-detail-note">{t.book.priceNote}</p>
+      </Card>
+      {cancelling ? (
+        <ConfirmDialog
+          title={t.bookings.cancelTitle}
+          description={t.bookings.cancelIntro}
+          facts={[
+            { label: t.bookings.code, value: booking.code },
+            { label: t.book.when, value: formatDateTime(booking.startsAt, zone, locale) },
+          ]}
+          tone="danger"
+          confirmLabel={t.bookings.cancelConfirm}
+          busyLabel={t.bookings.cancelling}
+          cancelLabel={t.bookings.keep}
+          reasonField={{ label: t.bookings.cancelReason }}
+          referenceLabel={t.errors.reference}
+          describeError={(error) => ({
+            message: customerErrorMessage(error, t),
+            reference: error instanceof ApiError ? error.requestId : null,
+          })}
+          onCancel={() => setCancelling(false)}
+          onConfirm={(reason) => cancel(reason)}
+        />
       ) : null}
-      {booking.canCancel && confirming ? (
-        <form className="cu-confirm" onSubmit={(event) => void cancel(event)}>
-          <h2>{t.bookings.cancelTitle}</h2>
-          <p>{t.bookings.cancelIntro}</p>
-          <Field id="reason" label={t.bookings.cancelReason}>
-            <textarea
-              id="reason"
-              maxLength={500}
-              rows={3}
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </Field>
-          <div className="cu-actions">
-            <button
-              type="button"
-              className="wf-button"
-              disabled={pending}
-              onClick={() => setConfirming(false)}
-            >
-              {t.bookings.keep}
-            </button>
-            <SubmitButton
-              pending={pending}
-              tone="danger"
-              label={t.bookings.cancelConfirm}
-              pendingLabel={t.bookings.cancelling}
-            />
-          </div>
-        </form>
-      ) : null}
-    </section>
+    </Page>
   );
 }

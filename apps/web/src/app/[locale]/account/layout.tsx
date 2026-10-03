@@ -4,7 +4,6 @@ import { SitePageFrame } from '../../../components/public/site-page-frame';
 import { CustomerProvider } from '../../../components/customer/session';
 import { getCustomerDictionary } from '../../../i18n/customer';
 import { isLocale } from '../../../i18n/locales';
-import '../../customer.css';
 
 interface AccountLayoutProps {
   children: React.ReactNode;

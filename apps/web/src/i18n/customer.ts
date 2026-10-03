@@ -86,6 +86,7 @@ const vi = {
     profile: 'Thông tin tài khoản',
     name: 'Họ và tên',
     languagePref: 'Ngôn ngữ',
+    viewAll: 'Xem tất cả',
   },
   book: {
     title: 'Đặt lịch hẹn',
@@ -160,6 +161,14 @@ const vi = {
     emptyUpcoming: 'Bạn chưa có lịch hẹn sắp tới.',
     emptyHistory: 'Chưa có lịch hẹn trước đây.',
     open: 'Xem chi tiết',
+    actionsFor: 'Thao tác cho lịch hẹn {code}',
+    columns: {
+      when: 'Thời gian',
+      services: 'Dịch vụ',
+      branch: 'Chi nhánh',
+      status: 'Trạng thái',
+      actions: 'Thao tác',
+    },
     code: 'Mã lịch hẹn',
     statusLabel: 'Trạng thái',
     status: {
@@ -191,6 +200,15 @@ const vi = {
     empty: 'Bạn chưa có hóa đơn nào.',
     open: 'Xem chi tiết',
     loadMore: 'Xem thêm',
+    actionsFor: 'Thao tác cho hóa đơn {code}',
+    columns: {
+      date: 'Ngày',
+      branch: 'Chi nhánh',
+      total: 'Tổng cộng',
+      balance: 'Còn phải trả',
+      status: 'Trạng thái',
+      actions: 'Thao tác',
+    },
     code: 'Mã hóa đơn',
     statusLabel: 'Trạng thái',
     status: {
@@ -337,6 +355,7 @@ const en: CustomerDictionaryShape = {
     profile: 'Account details',
     name: 'Name',
     languagePref: 'Language',
+    viewAll: 'View all',
   },
   book: {
     title: 'Book an appointment',
@@ -410,6 +429,14 @@ const en: CustomerDictionaryShape = {
     emptyUpcoming: 'You have no upcoming appointments.',
     emptyHistory: 'No earlier appointments yet.',
     open: 'View details',
+    actionsFor: 'Actions for booking {code}',
+    columns: {
+      when: 'Time',
+      services: 'Services',
+      branch: 'Branch',
+      status: 'Status',
+      actions: 'Actions',
+    },
     code: 'Booking code',
     statusLabel: 'Status',
     status: {
@@ -441,6 +468,15 @@ const en: CustomerDictionaryShape = {
     empty: 'You have no invoices yet.',
     open: 'View details',
     loadMore: 'Show more',
+    actionsFor: 'Actions for invoice {code}',
+    columns: {
+      date: 'Date',
+      branch: 'Branch',
+      total: 'Total',
+      balance: 'Balance due',
+      status: 'Status',
+      actions: 'Actions',
+    },
     code: 'Invoice code',
     statusLabel: 'Status',
     status: {

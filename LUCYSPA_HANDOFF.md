@@ -382,3 +382,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Booking page: 4 steps (services, guests, staff and time, confirm), ChoiceCard rows grouped by category, sticky summary (desktop) / action bar (phone), ?service=CODE preselect, per-nail note and total with "+ giá theo ngón"; branch asked only with more than one branch. nativeFieldsets 0, nativeCheckboxes 0.
 - Report: docs/UXUI_REDESIGN_PART2_P2-7_BOOKING.md. API and booking rules unchanged; no migration.
+
+### UX/UI Part 2 Step P2-8 (member area on the kit) - 2026-10-03
+
+- Overview, bookings and invoices as DataTable + Pagination (cursor "Xem thêm" for invoices), detail pages as Cards, cancel via ConfirmDialog (danger, reason); customer.css, wf-app, cu-* deleted. Ratchet wfClassUses, nativeFieldsets, nativeCheckboxes, solidDangerButtons all 0.
+- Report: docs/UXUI_REDESIGN_PART2_P2-8_MEMBER_AREA.md. No API change, no migration.
