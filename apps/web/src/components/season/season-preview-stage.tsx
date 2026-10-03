@@ -7,6 +7,8 @@ import { siteDecorSpec } from '../../lib/season-core';
 import { PREVIEW_SOURCE, parsePreviewMessage, seasonOfDraft } from '../../lib/season-preview';
 import { HomeContent } from '../public/home-content';
 import { PublicFooter, PublicHeader } from '../public/site-chrome';
+import { loadHomeDataInBrowser } from '../../lib/public-site-client';
+import type { HomeData } from '../../lib/public-site-core';
 import { SeasonSiteFrame } from './site-frame-view';
 
 /**
@@ -18,6 +20,17 @@ import { SeasonSiteFrame } from './site-frame-view';
  */
 export function SeasonPreviewStage({ locale }: { locale: Locale }) {
   const [season, setSeason] = useState<PublicSeasonResponse | null>(null);
+  // The real home page: its shop profile, catalogue and slides are read here, in the browser, through the public routes.
+  const [data, setData] = useState<HomeData | null>(null);
+  useEffect(() => {
+    let active = true;
+    void loadHomeDataInBrowser((url, init) => fetch(url, init), locale).then((loaded) => {
+      if (active) setData(loaded);
+    });
+    return () => {
+      active = false;
+    };
+  }, [locale]);
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -71,8 +84,8 @@ export function SeasonPreviewStage({ locale }: { locale: Locale }) {
 
   const decor = season ? siteDecorSpec(season, locale) : null;
   const header = <PublicHeader locale={locale} decor={decor} />;
-  const footer = <PublicFooter locale={locale} />;
-  const home = <HomeContent locale={locale} popup={false} />;
+  const footer = <PublicFooter locale={locale} site={data?.site ?? null} />;
+  const home = data ? <HomeContent locale={locale} data={data} popup={false} /> : null;
   return (
     <div ref={root} className="ls-season-preview-root ls-site">
       {decor ? (

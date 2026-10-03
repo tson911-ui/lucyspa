@@ -212,7 +212,12 @@
     const s = getComputedStyle(el);
     if (px(s.borderTopLeftRadius) === 0 && !s.boxShadow) continue;
     // Docked shell chrome runs edge to edge with one border toward the content; it is not a content surface.
-    if (el.matches('aside.ls-sidebar, header.ls-topbar')) continue;
+    if (
+      el.matches(
+        'aside.ls-sidebar, header.ls-topbar, nav.ls-tab-bar, header.ls-site-header, footer.ls-site-footer',
+      )
+    )
+      continue;
     if (s.backgroundColor === 'rgba(0, 0, 0, 0)') continue;
     const r = el.getBoundingClientRect();
     if (r.width < 160 || r.height < 60) continue;
@@ -336,6 +341,9 @@
     }
   }
   for (const list of document.querySelectorAll('ul, ol')) {
+    // A price list or a footer column is a menu of names that wrap, not a list of records with one row height.
+    if (list.matches('.ls-price-list, .ls-site-footer-list') || list.closest('.ls-crumbs'))
+      continue;
     const items = [...list.children].filter(vis);
     if (items.length < 3) continue;
     const hs = items.map((li) => Math.round(li.getBoundingClientRect().height));
@@ -526,6 +534,8 @@
     if (
       parent instanceof SVGElement ||
       ['TABLE', 'THEAD', 'TBODY', 'TR', 'SELECT', 'UL', 'OL', 'DL'].includes(parent.tagName) ||
+      // A card pins its last action to the bottom of a row of equal-height cards: the gap above it is the slack.
+      parent.matches('.ls-site-card, .ls-service-card') ||
       !vis(parent)
     )
       continue;
@@ -572,7 +582,7 @@
 
   // 10d. FR5: a button alone in its row (or a row of only buttons) outside the places actions belong. Heuristic: review each hit.
   const ACTION_PLACES =
-    '.ls-hero-actions, .ls-site-cta, form, [role=dialog], dialog, header, nav, aside, li, td, th, tr, [role=toolbar], [role=menu], [role=tablist], .ls-toolbar, .ls-toolbar-row, .ls-toolbar-actions, .ls-card-header, .ls-list-section-head, .wf-section-header, .wf-page-header, .wf-page-actions, .ls-page-header, .ls-row-actions, .wf-row-actions, .wf-form-actions, .ls-action-bar, .ls-dialog, .ls-drawer, .ls-notice, .ls-empty, .wf-empty, .ls-pagination, .ls-stat, .ls-kpi, .ls-widget, .ls-auth-card, .ls-segmented, .ls-table-state';
+    '.ls-hero-actions, .ls-site-cta, .ls-site-actions, form, [role=dialog], dialog, header, nav, aside, li, td, th, tr, [role=toolbar], [role=menu], [role=tablist], .ls-toolbar, .ls-toolbar-row, .ls-toolbar-actions, .ls-card-header, .ls-list-section-head, .wf-section-header, .wf-page-header, .wf-page-actions, .ls-page-header, .ls-row-actions, .wf-row-actions, .wf-form-actions, .ls-action-bar, .ls-dialog, .ls-drawer, .ls-notice, .ls-empty, .wf-empty, .ls-pagination, .ls-stat, .ls-kpi, .ls-widget, .ls-auth-card, .ls-segmented, .ls-table-state';
   const seenRows = new Set();
   for (const button of scope.querySelectorAll('button, a.ls-btn, a.wf-button')) {
     if (!vis(button) || button.closest(ACTION_PLACES) || button.closest('summary')) continue;

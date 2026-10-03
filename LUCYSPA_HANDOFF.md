@@ -363,3 +363,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 ### UX/UI Part 2 Step P2-3 (admin Shop info tab) - 2026-10-03
 
 - Website page gets a Shop info tab (tagline VI/EN, address, hotline, https map link, home image, hours branch, preview); lib/hours.ts shared with the public site. Report: docs/UXUI_REDESIGN_PART2_P2-3_SHOP_INFO_TAB.md. No migration, no permission change.
+
+### UX/UI Part 2 Step P2-4 (public home + services pages) - 2026-10-03, STOP for Owner review
+
+- Home from live data (tagline, facts, catalogue group cards, visit, footer contact), /services list + detail (real 404s), hero = slide / chosen picture / brand panel, no why-choose-us. Report: docs/UXUI_REDESIGN_PART2_P2-4_HOME.md.
+- Fixed on the way: ended season stayed on the site (Next fetch cache never stores 204; now 60 s ttl-memo), slider box stretched by portrait images, class clash .ls-facts. P2-5 folded into P2-7/P2-9.

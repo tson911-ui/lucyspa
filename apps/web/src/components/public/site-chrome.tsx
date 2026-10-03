@@ -1,8 +1,9 @@
+import type { PublicSiteResponse } from '@lucy-spa/contracts';
 import Link from 'next/link';
 import { BrandWordmark, SiteFooter, SiteHeader, type FooterColumn } from '@lucy-spa/ui';
-import { getDictionary } from '../../i18n/dictionaries';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
+import { hoursHeadline, telHref } from '../../lib/public-site-core';
 import { footerDiscoverItems } from '../../lib/site-nav';
 import type { SiteDecorSpec } from '../../lib/season-core';
 import { SiteLogo } from '../season/site-frame-view';
@@ -38,10 +39,34 @@ export function PublicHeader({
   );
 }
 
-export function PublicFooter({ locale, year }: { locale: Locale; year?: number }) {
+export function PublicFooter({
+  locale,
+  site,
+  year,
+}: {
+  locale: Locale;
+  /** The shop profile; null when it could not be read (the footer then has no contact column). */
+  site: PublicSiteResponse | null;
+  year?: number;
+}) {
   const text = getSiteText(locale);
-  const dictionary = getDictionary(locale);
+  const hours = site ? hoursHeadline(site.hours, locale, getSiteText(locale).home.closed) : null;
   const columns: FooterColumn[] = [
+    ...(site
+      ? [
+          {
+            key: 'contact',
+            title: text.footer.contact,
+            items: [
+              site.address,
+              <a key="tel" href={telHref(site)}>
+                {site.hotline}
+              </a>,
+              ...(hours ? [`${hours.label}: ${hours.value}`] : []),
+            ],
+          },
+        ]
+      : []),
     {
       key: 'discover',
       title: text.footer.discover,
@@ -71,7 +96,7 @@ export function PublicFooter({ locale, year }: { locale: Locale; year?: number }
           <BrandWordmark />
         </Link>
       }
-      tagline={dictionary.signature}
+      tagline={site?.tagline ?? null}
       columns={columns}
       base={text.footer.rights.replace('{year}', String(year ?? new Date().getFullYear()))}
     />

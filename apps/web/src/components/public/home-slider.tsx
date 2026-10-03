@@ -3,10 +3,10 @@
 import type { PublicSlide } from '@lucy-spa/contracts';
 import { Slider, type PromoLink, type SliderLabels } from '@lucy-spa/ui';
 import Link from 'next/link';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { getDictionary } from '../../i18n/dictionaries';
 import type { Locale } from '../../i18n/locales';
-import { loadPublicSlides, sliderSlidesOf } from '../../lib/slider-core';
+import { sliderSlidesOf } from '../../lib/slider-core';
 
 const RouterLink: PromoLink = ({ href, className, onClick, children }) => (
   <Link href={href} {...(className ? { className } : {})} {...(onClick ? { onClick } : {})}>
@@ -15,35 +15,22 @@ const RouterLink: PromoLink = ({ href, className, onClick, children }) => (
 );
 
 /**
- * The homepage slider (design 16.6), mounted by the public home page only. It asks the API for the slides
- * that are visible now after the page has painted and draws the fallback (nothing by default) when there are none. The request is anonymous (no cookie) and any failure means "no slides".
+ * The homepage slider (design 16.6), mounted by the public home page only. The page reads the slides that are
+ * visible now on the server (anonymous, cached 60 s) and hands them over, so the hero is complete in the first
+ * paint and nothing moves when it arrives. With no slide it draws the fallback (nothing by default).
  */
 export function HomeSlider({
   locale,
+  slides,
   fallback = null,
 }: {
   locale: Locale;
-  /** Drawn while there is no slide to show (and before the slides arrive). */
+  slides: readonly PublicSlide[];
+  /** Drawn when there is no slide to show. */
   fallback?: ReactNode;
 }) {
-  const [slides, setSlides] = useState<PublicSlide[]>([]);
   const text = getDictionary(locale);
-
-  useEffect(() => {
-    let cancelled = false;
-    // After first paint: the page's own content never waits for the slider.
-    const timer = window.setTimeout(() => {
-      void loadPublicSlides((url, init) => fetch(url, init), locale).then((found) => {
-        if (!cancelled) setSlides(found);
-      });
-    }, 0);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [locale]);
-
-  const items = useMemo(() => sliderSlidesOf(slides), [slides]);
+  const items = useMemo(() => sliderSlidesOf([...slides]), [slides]);
   const labels: SliderLabels = {
     region: text.sliderLabel,
     previous: text.sliderPrevious,

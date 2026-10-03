@@ -1879,6 +1879,8 @@
 .ls-slider-media {
   display: block;
   aspect-ratio: 12 / 5;
+  /* A picture of another shape is cropped to the frame; without the clip its own height would stretch the box. */
+  overflow: hidden;
   background: var(--ls-bg-sunken);
 }
 

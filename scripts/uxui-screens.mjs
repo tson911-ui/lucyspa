@@ -215,6 +215,12 @@ try {
       const navigation = await send('Page.navigate', { url });
       await loaded;
       await sleep(waitMs);
+      // A visitor scrolls: blocks that reveal as they enter the view (customer site motion tokens) are shown before the capture.
+      await send('Runtime.evaluate', {
+        expression:
+          '(async () => { const step = Math.max(300, window.innerHeight - 100); for (let y = 0; y < document.documentElement.scrollHeight; y += step) { window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 120)); } window.scrollTo(0, 0); await new Promise((r) => setTimeout(r, 900)); })()',
+        awaitPromise: true,
+      });
       // The gate: never photograph an error page, an empty page or a page that is not the one asked for.
       const probe = (
         await send('Runtime.evaluate', {

@@ -137,16 +137,23 @@ export function PublicMain({ children, className }: { children: ReactNode; class
 export function Band({
   tone = 'page',
   labelledBy,
+  label,
   className,
   children,
 }: {
   tone?: 'page' | 'surface' | undefined;
   labelledBy?: string | undefined;
+  /** An accessible name for a band that has no visible heading. */
+  label?: string | undefined;
   className?: string | undefined;
   children: ReactNode;
 }) {
   return (
-    <section className={cx('ls-band', `ls-band-${tone}`, className)} aria-labelledby={labelledBy}>
+    <section
+      className={cx('ls-band', `ls-band-${tone}`, className)}
+      aria-labelledby={labelledBy}
+      aria-label={label}
+    >
       <div className="ls-container">{children}</div>
     </section>
   );

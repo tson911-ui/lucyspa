@@ -32,7 +32,7 @@ export const SITE_NAV: readonly SiteNavEntry[] = [
     key: 'services',
     path: '/services',
     match: 'prefix',
-    enabled: false,
+    enabled: true,
     header: true,
     phoneTab: 'sparkles',
     footer: 'discover',

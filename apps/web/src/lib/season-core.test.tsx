@@ -126,7 +126,7 @@ test('the server read fails closed: a 204, an error status, a bad body, a networ
     null,
   );
   // The request is anonymous, asks the API for the visitor's language, and is bounded in time and cached for a minute.
-  type Init = { credentials?: string; signal?: unknown; next?: { revalidate?: number } };
+  type Init = { credentials?: string; signal?: unknown; cache?: string };
   const calls: { url: string; init: Init }[] = [];
   await fetchActiveSeason('en', ((url: string, init: Init) => {
     calls.push({ url, init });
@@ -135,7 +135,8 @@ test('the server read fails closed: a 204, an error status, a bad body, a networ
   const request = calls[0]!;
   assert.match(request.url, /\/api\/v1\/public\/website\/season\?locale=en$/);
   assert.equal(request.init.credentials, 'omit');
-  assert.equal(request.init.next?.revalidate, 60);
+  // Remembered for a minute by the process (ttlMemo), not by Next's fetch cache (it never replaces a stored 200 with a 204).
+  assert.equal(request.init.cache, 'no-store');
   assert.ok(request.init.signal instanceof AbortSignal);
   assert.ok(SEASON_FETCH_TIMEOUT_MS <= 2_000);
 });

@@ -245,6 +245,10 @@ test('the website page shows the slider tab to the website editor; the panel nee
   assert.ok(adding.includes(en.slides.form.save));
 });
 
-test('the home page slider draws nothing at first paint: no slides, no change to the page', () => {
-  assert.equal(renderToStaticMarkup(<HomeSlider locale="vi" />), '');
+test('the home page slider draws nothing without slides, and the fallback when one is given', () => {
+  assert.equal(renderToStaticMarkup(<HomeSlider locale="vi" slides={[]} />), '');
+  assert.equal(
+    renderToStaticMarkup(<HomeSlider locale="vi" slides={[]} fallback={<i>khung</i>} />),
+    '<i>khung</i>',
+  );
 });

@@ -265,3 +265,29 @@ test('the staff stylesheets never read the customer-side motion tokens', () => {
     );
   }
 });
+
+test('site.css does not redefine a class another stylesheet owns (a clash silently restyles the admin or the site)', () => {
+  const owned = (name: string) =>
+    new Set(
+      [
+        ...readFileSync(new URL(name, import.meta.url), 'utf8').matchAll(/^\.(ls-[a-z0-9-]+)/gm),
+      ].map((match) => match[1]),
+    );
+  const mine = owned('site.css');
+  // The seasonal page wrapper is the season layer's own class; site.css only adjusts its header and footer rules.
+  mine.delete('ls-site-page');
+  for (const other of [
+    'components.css',
+    'shell.css',
+    'base.css',
+    'season-decor.css',
+    'season-art.css',
+  ]) {
+    const theirs = owned(other);
+    assert.deepEqual(
+      [...mine].filter((name) => theirs.has(name)),
+      [],
+      `classes also defined in ${other}`,
+    );
+  }
+});

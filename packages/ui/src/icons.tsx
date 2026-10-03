@@ -67,6 +67,9 @@ const paths = {
   table: 'M4 5h16v14H4zM4 10h16M4 15h16M10 5v14',
   'bar-chart': 'M5 20V10M12 20V4M19 20v-7',
   minus: 'M5 12h14',
+  // Public site (Part 2)
+  phone:
+    'M6.5 4h3l1.5 4-2 1.5a11 11 0 005.5 5.5L16 13l4 1.5v3a2 2 0 01-2 2A14 14 0 014.5 6a2 2 0 012-2z',
   // Homepage slider (Step 13)
   pause: 'M9 5v14M15 5v14',
   play: 'M8 5l11 7-11 7V5z',
