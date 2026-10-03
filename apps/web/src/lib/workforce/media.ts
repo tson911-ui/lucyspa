@@ -33,7 +33,10 @@ export function normalizeMediaList(state: MediaListState): MediaListState {
     q: state.q.slice(0, 100),
     page: normalizePage(state.page),
     tab:
-      state.tab === 'popup' || state.tab === 'slider' || state.tab === 'season'
+      state.tab === 'popup' ||
+      state.tab === 'slider' ||
+      state.tab === 'season' ||
+      state.tab === 'shop'
         ? state.tab
         : 'media',
   };

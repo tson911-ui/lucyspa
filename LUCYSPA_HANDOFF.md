@@ -359,3 +359,7 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Migration 20261023000000 website_shop_info (one row, Owner seed); admin GET/POST /website/shop-info; public GET /public/site, /public/services, /public/services/:code (60 s cache, no internal duration). Report: docs/UXUI_REDESIGN_PART2_P2-2_BACKEND.md.
 - No new permission. Deploy: db:deploy (additive). Hero image is a media use (SHOP_INFO).
+
+### UX/UI Part 2 Step P2-3 (admin Shop info tab) - 2026-10-03
+
+- Website page gets a Shop info tab (tagline VI/EN, address, hotline, https map link, home image, hours branch, preview); lib/hours.ts shared with the public site. Report: docs/UXUI_REDESIGN_PART2_P2-3_SHOP_INFO_TAB.md. No migration, no permission change.

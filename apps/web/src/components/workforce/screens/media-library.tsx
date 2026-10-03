@@ -68,6 +68,7 @@ import {
 } from '../ui';
 import { PopupsPanel } from './website-popups';
 import { SeasonsPanel } from './website-seasons';
+import { ShopInfoPanel } from './website-shop-info';
 import { SlidesPanel, type SlideEditing } from './website-slides';
 
 const QUEUE_PAGE_SIZE = 20;
@@ -251,6 +252,7 @@ function MediaLibrary() {
   const onPopups = list.tab === 'popup';
   const onSlider = list.tab === 'slider';
   const onSeasons = list.tab === 'season';
+  const onShop = list.tab === 'shop';
   const mediaPanel = (
     <>
       {dragging ? <Notice tone="info">{t.media.dropOverlay}</Notice> : null}
@@ -364,7 +366,9 @@ function MediaLibrary() {
               ? t.slides.intro
               : onSeasons
                 ? t.seasons.intro
-                : t.media.intro
+                : onShop
+                  ? t.shopInfo.intro
+                  : t.media.intro
         }
       >
         {onSeasons ? (
@@ -387,7 +391,7 @@ function MediaLibrary() {
           >
             {t.popups.create}
           </Button>
-        ) : (
+        ) : onShop ? null : (
           <>
             {finished ? (
               <Button variant="secondary" onClick={() => dispatch({ type: 'clear-finished' })}>
@@ -426,6 +430,7 @@ function MediaLibrary() {
             panel: <SlidesPanel editing={slideEditing} onEditing={setSlideEditing} />,
           },
           { id: 'season', label: t.website.season, panel: <SeasonsPanel /> },
+          { id: 'shop', label: t.website.shop, panel: <ShopInfoPanel /> },
         ]}
       />
       {overlay?.kind === 'detail' ? (
@@ -463,7 +468,9 @@ const usageKindLabel = (t: ReturnType<typeof useWorkforce>['t'], kind: MediaUsag
     ? t.media.detail.usagePopup
     : kind === 'SLIDE'
       ? t.media.detail.usageSlide
-      : t.media.detail.usageSeason;
+      : kind === 'SHOP_INFO'
+        ? t.media.detail.usageShop
+        : t.media.detail.usageSeason;
 
 /**
  * Delete one image (design 16.8). Where the image is used is looked up first: an image a popup or slide
