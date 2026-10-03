@@ -48,6 +48,33 @@ export function SiteNav({
   );
 }
 
+/**
+ * The in-page row of the member area (overview, bookings, invoices, notifications): route based pills that scroll
+ * sideways inside their own strip on a narrow screen, never the page.
+ */
+export function SiteSubNav({
+  label,
+  items,
+  LinkComponent = PlainLink,
+  className,
+}: {
+  label: string;
+  items: readonly SiteNavItem[];
+  LinkComponent?: SiteLinkComponent | undefined;
+  className?: string | undefined;
+}) {
+  const Link = LinkComponent;
+  return (
+    <nav aria-label={label} className={cx('ls-subnav', className)}>
+      {items.map((item) => (
+        <Link key={item.key} href={item.href} aria-current={item.current ? 'page' : undefined}>
+          {item.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
 export interface TabBarItem {
   key: string;
   label: string;

@@ -1,67 +1,27 @@
 'use client';
 
-import { BrandWordmark } from '@lucy-spa/ui';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { Notice } from '@lucy-spa/ui';
 import type { ReactNode } from 'react';
-import { Notice } from '../workforce/ui';
-import { NotificationIndicator } from '../notifications/inbox';
-import { useCustomer, useCustomerAccount } from './session';
+import { PublicMain } from '@lucy-spa/ui';
+import { AccountTabs } from '../public/site-chrome-client';
+import { useCustomer } from './session';
 
-/** The signed-in member area: brand, navigation (wraps on phones), language and sign-out. */
+/**
+ * The signed-in member area. The header, footer and phone tab bar are the shared site frame (account menu and bell
+ * included); this adds the row of member pages and the "session lost" notice around the page's own content.
+ */
 export function CustomerShell({ children }: { children: ReactNode }) {
-  const { t, base, locale, sessionLost, api } = useCustomer();
-  const { signOut } = useCustomerAccount();
-  const pathname = usePathname();
-  const other = locale === 'vi' ? 'en' : 'vi';
-  const links = [
-    { href: base, label: t.nav.home, exact: true },
-    { href: `${base}/book`, label: t.nav.book, exact: false },
-    { href: `${base}/bookings`, label: t.nav.bookings, exact: false },
-    { href: `${base}/invoices`, label: t.nav.invoices, exact: false },
-  ];
-  const current = (href: string, exact: boolean) =>
-    exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+  const { t, locale, sessionLost } = useCustomer();
   return (
-    <div className="cu-shell">
-      <header className="cu-header">
-        <Link href={base} className="cu-brand" aria-label="Lucy Spa">
-          <BrandWordmark />
-        </Link>
-        <nav aria-label={t.nav.menu} className="cu-nav">
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              aria-current={current(link.href, link.exact) ? 'page' : undefined}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="cu-header-actions">
-          <NotificationIndicator api={api} base={base} locale={locale} />
-          <Link
-            href={pathname.replace(`/${locale}/`, `/${other}/`)}
-            hrefLang={other}
-            lang={other}
-            className="wf-lang"
-          >
-            {t.common.language}
-          </Link>
-          <button
-            type="button"
-            className="wf-button wf-button-quiet"
-            onClick={() => void signOut()}
-          >
-            {t.nav.signOut}
-          </button>
+    <PublicMain>
+      <div className="ls-container ls-container-narrow">
+        <AccountTabs locale={locale} />
+        {/* wf-app: the legacy control styles the not yet migrated member pages still rely on (P2-8 removes it). */}
+        <div className="ls-member-page wf-app">
+          {sessionLost ? <Notice tone="warning">{t.errors.sessionLost}</Notice> : null}
+          {children}
         </div>
-      </header>
-      <main id="main-content" tabIndex={-1} className="cu-main">
-        {sessionLost ? <Notice tone="warning">{t.errors.sessionLost}</Notice> : null}
-        {children}
-      </main>
-    </div>
+      </div>
+    </PublicMain>
   );
 }

@@ -32,6 +32,22 @@ test('SiteNav marks the current page and names the landmark', () => {
   assert.match(html, /<a href="\/vi\/services">Dịch vụ<\/a>/);
 });
 
+test('SiteSubNav is a named landmark of route links whose strip scrolls, never the page', () => {
+  const html = renderToStaticMarkup(
+    <ui.SiteSubNav
+      label="Khu vực thành viên"
+      items={[
+        { key: 'overview', label: 'Tổng quan', href: '/vi/account', current: false },
+        { key: 'bookings', label: 'Lịch hẹn', href: '/vi/account/bookings', current: true },
+      ]}
+    />,
+  );
+  assert.match(html, /<nav aria-label="Khu vực thành viên" class="ls-subnav">/);
+  assert.match(html, /<a href="\/vi\/account\/bookings" aria-current="page">Lịch hẹn<\/a>/);
+  assert.match(css, /\.ls-subnav \{[^}]*overflow-x: auto;/);
+  assert.match(css, /\.ls-subnav a \{[^}]*flex: none;[^}]*white-space: nowrap;/);
+});
+
 test('TabBar shows at most five destinations and marks the current one', () => {
   const items = ['home', 'services', 'book', 'bookings', 'account', 'extra'].map((key, index) => ({
     key,

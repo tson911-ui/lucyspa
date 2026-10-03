@@ -1,9 +1,28 @@
 'use client';
 
-import { BrandWordmark } from '@lucy-spa/ui';
+import {
+  Button,
+  buttonClass,
+  Card,
+  Field,
+  Notice,
+  PasswordInput,
+  PublicMain,
+  SegmentedControl,
+  Skeleton,
+  TextInput,
+} from '@lucy-spa/ui';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+  Suspense,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import { fill } from '../../../i18n/customer';
 import { ApiError } from '../../../lib/api/client';
 import {
@@ -17,46 +36,73 @@ import {
   verifyActivation,
 } from '../../../lib/customer/auth';
 import { customerErrorMessage } from '../../../lib/customer/booking';
-import { Field, Notice, SubmitButton } from '../../workforce/ui';
+import { announceSessionChange } from '../../../lib/site-session';
 import { useCustomer } from '../session';
 
 const PASSWORD = { min: 8, max: 128 };
 const OTP = /^[0-9]{6}$/;
 const passwordLength = (value: string) => [...value.normalize('NFC')].length;
 
+/** The centered card on the page band (Part 2 contract 5.4): the shared header and footer stay around it. */
 function AuthCard({
   title,
   intro,
+  mode,
   children,
 }: {
   title: string;
   intro?: string;
+  /** Sign-in and registration switch between each other; the other steps have no switch. */
+  mode?: 'login' | 'register';
   children: ReactNode;
 }) {
-  const { locale, t } = useCustomer();
-  const pathname = usePathname();
-  const other = locale === 'vi' ? 'en' : 'vi';
+  const { t, base } = useCustomer();
+  const router = useRouter();
+  const titleId = useId();
   return (
-    <main className="wf-login" id="main-content" tabIndex={-1}>
-      <div className="wf-login-card">
-        <div className="wf-login-brand">
-          <Link href={`/${locale}`} aria-label="Lucy Spa">
-            <BrandWordmark />
-          </Link>
-          <Link
-            href={pathname.replace(`/${locale}/`, `/${other}/`)}
-            hrefLang={other}
-            lang={other}
-            className="wf-lang"
-          >
-            {t.common.language}
-          </Link>
-        </div>
-        <h1>{title}</h1>
-        {intro ? <p className="wf-muted">{intro}</p> : null}
-        {children}
+    <PublicMain>
+      <div className="ls-member-auth">
+        <Card as="section" aria-labelledby={titleId} className="ls-member-card">
+          {mode ? (
+            <SegmentedControl
+              label={t.auth.modes}
+              value={mode}
+              options={[
+                { value: 'login', label: t.auth.signIn },
+                { value: 'register', label: t.auth.registerTab },
+              ]}
+              onChange={(next) => {
+                if (next === mode) return;
+                // The page to return to travels with the visitor between the two forms.
+                const carry = new URLSearchParams(window.location.search).get('next');
+                const query = carry ? `?${new URLSearchParams({ next: carry }).toString()}` : '';
+                router.push(`${base}/${next}${query}`);
+              }}
+            />
+          ) : null}
+          <div className="ls-member-head">
+            <h1 id={titleId} className="ls-member-title">
+              {title}
+            </h1>
+            {intro ? <p>{intro}</p> : null}
+          </div>
+          {children}
+        </Card>
       </div>
-    </main>
+    </PublicMain>
+  );
+}
+
+/** What the sign-in card shows while the page's search parameters are read on the client. */
+function AuthPlaceholder() {
+  return (
+    <PublicMain>
+      <div className="ls-member-auth">
+        <Card className="ls-member-card" aria-hidden="true">
+          <Skeleton lines={6} />
+        </Card>
+      </div>
+    </PublicMain>
   );
 }
 
@@ -77,29 +123,32 @@ function PasswordPair({
   const { t } = useCustomer();
   return (
     <>
-      <Field id="password" label={label} required hint={t.auth.passwordHint}>
-        <input
-          id="password"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={PASSWORD.min}
-          maxLength={1024}
-          aria-describedby="password-hint"
-          value={password}
-          onChange={(event) => onPassword(event.target.value)}
-        />
+      <Field label={label} required requiredLabel={t.common.required} hint={t.auth.passwordHint}>
+        {(control) => (
+          <PasswordInput
+            {...control}
+            showLabel={t.auth.showPassword}
+            hideLabel={t.auth.hidePassword}
+            autoComplete="new-password"
+            minLength={PASSWORD.min}
+            maxLength={1024}
+            value={password}
+            onChange={(event) => onPassword(event.target.value)}
+          />
+        )}
       </Field>
-      <Field id="confirmation" label={t.auth.passwordConfirm} required>
-        <input
-          id="confirmation"
-          type="password"
-          autoComplete="new-password"
-          required
-          maxLength={1024}
-          value={confirmation}
-          onChange={(event) => onConfirmation(event.target.value)}
-        />
+      <Field label={t.auth.passwordConfirm} required requiredLabel={t.common.required}>
+        {(control) => (
+          <PasswordInput
+            {...control}
+            showLabel={t.auth.showPassword}
+            hideLabel={t.auth.hidePassword}
+            autoComplete="new-password"
+            maxLength={1024}
+            value={confirmation}
+            onChange={(event) => onConfirmation(event.target.value)}
+          />
+        )}
       </Field>
     </>
   );
@@ -114,6 +163,28 @@ function passwordProblem(
   if (length < PASSWORD.min || length > PASSWORD.max) return t.auth.passwordLength;
   if (password !== confirmation) return t.auth.passwordMismatch;
   return null;
+}
+
+function SubmitRow({
+  pending,
+  label,
+  pendingLabel,
+  before,
+}: {
+  pending: boolean;
+  label: string;
+  pendingLabel: string;
+  /** Secondary actions come first; the submit is always last (the footer rule). */
+  before?: ReactNode;
+}) {
+  return (
+    <div className="ls-member-actions">
+      {before}
+      <Button type="submit" variant="primary" loading={pending}>
+        {pending ? pendingLabel : label}
+      </Button>
+    </div>
+  );
 }
 
 // ------------------------------------------------------------------ sign in
@@ -148,6 +219,7 @@ function LoginForm() {
     try {
       await customerLogin(api, email, password);
       setPassword('');
+      announceSessionChange();
       router.replace(destination);
     } catch (error) {
       setPassword('');
@@ -163,50 +235,52 @@ function LoginForm() {
   }
 
   return (
-    <AuthCard title={t.auth.loginTitle} intro={t.auth.loginIntro}>
+    <AuthCard title={t.auth.loginTitle} intro={t.auth.loginIntro} mode="login">
       {params.get('expired') ? <Notice tone="warning">{t.auth.sessionExpired}</Notice> : null}
       {params.get('signedOut') ? <Notice tone="info">{t.auth.signedOut}</Notice> : null}
       {params.get('activated') ? <Notice tone="success">{t.auth.activated}</Notice> : null}
       {params.get('reset') ? <Notice tone="success">{t.auth.passwordReset}</Notice> : null}
-      {message ? <Notice tone="error">{message}</Notice> : null}
-      <form onSubmit={(event) => void submit(event)}>
-        <Field id="email" label={t.auth.email} required>
-          <input
-            id="email"
-            type="email"
-            autoComplete="username"
-            required
-            maxLength={320}
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
+      {message ? <Notice tone="danger">{message}</Notice> : null}
+      <form className="ls-member-form" onSubmit={(event) => void submit(event)}>
+        <Field label={t.auth.email} required requiredLabel={t.common.required}>
+          {(control) => (
+            <TextInput
+              {...control}
+              type="email"
+              autoComplete="username"
+              maxLength={320}
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          )}
         </Field>
-        <Field id="password" label={t.auth.password} required>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            maxLength={1024}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
+        <Field
+          label={t.auth.password}
+          required
+          requiredLabel={t.common.required}
+          labelAction={<Link href={`${base}/forgot-password`}>{t.auth.forgot}</Link>}
+        >
+          {(control) => (
+            <PasswordInput
+              {...control}
+              showLabel={t.auth.showPassword}
+              hideLabel={t.auth.hidePassword}
+              autoComplete="current-password"
+              maxLength={1024}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          )}
         </Field>
-        <SubmitButton pending={pending} label={t.auth.signIn} pendingLabel={t.auth.signingIn} />
+        <SubmitRow pending={pending} label={t.auth.signIn} pendingLabel={t.auth.signingIn} />
       </form>
-      <p>
-        <Link href={`${base}/forgot-password`}>{t.auth.forgot}</Link>
-      </p>
-      <p>
-        {t.auth.noAccount} <Link href={`${base}/register`}>{t.auth.register}</Link>
-      </p>
     </AuthCard>
   );
 }
 
 export function CustomerLoginScreen() {
   return (
-    <Suspense>
+    <Suspense fallback={<AuthPlaceholder />}>
       <LoginForm />
     </Suspense>
   );
@@ -219,7 +293,7 @@ function OtpStep({ flowToken, onVerified }: { flowToken: string; onVerified: () 
   const { api, t } = useCustomer();
   const [otp, setOtp] = useState('');
   const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState<{ tone: 'error' | 'info'; text: string } | null>(null);
+  const [message, setMessage] = useState<{ tone: 'danger' | 'info'; text: string } | null>(null);
   const [wait, setWait] = useState(60);
   useEffect(() => {
     if (wait <= 0) return;
@@ -231,7 +305,7 @@ function OtpStep({ flowToken, onVerified }: { flowToken: string; onVerified: () 
     event.preventDefault();
     if (pending) return;
     if (!OTP.test(otp.trim())) {
-      setMessage({ tone: 'error', text: t.auth.otpFailed });
+      setMessage({ tone: 'danger', text: t.auth.otpFailed });
       return;
     }
     setPending(true);
@@ -241,7 +315,7 @@ function OtpStep({ flowToken, onVerified }: { flowToken: string; onVerified: () 
       onVerified();
     } catch (error) {
       setMessage({
-        tone: 'error',
+        tone: 'danger',
         text:
           error instanceof ApiError && error.code === 'VERIFICATION_FAILED'
             ? t.auth.otpFailed
@@ -260,7 +334,7 @@ function OtpStep({ flowToken, onVerified }: { flowToken: string; onVerified: () 
       setWait(response.resendAfterSeconds);
       setMessage({ tone: 'info', text: t.auth.resent });
     } catch (error) {
-      setMessage({ tone: 'error', text: customerErrorMessage(error, t) });
+      setMessage({ tone: 'danger', text: customerErrorMessage(error, t) });
     } finally {
       setPending(false);
     }
@@ -269,34 +343,41 @@ function OtpStep({ flowToken, onVerified }: { flowToken: string; onVerified: () 
   return (
     <>
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
-      <form onSubmit={(event) => void verify(event)}>
-        <Field id="otp" label={t.auth.otp} required>
-          <input
-            id="otp"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            pattern="[0-9]{6}"
-            maxLength={6}
-            required
-            value={otp}
-            onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))}
-          />
-        </Field>
-        <SubmitButton pending={pending} label={t.auth.verify} pendingLabel={t.auth.verifying} />
-      </form>
-      <p>
-        <button
-          type="button"
-          className="wf-button wf-button-quiet"
-          disabled={pending || wait > 0}
-          onClick={() => void resend()}
+      <form className="ls-member-form" onSubmit={(event) => void verify(event)}>
+        <Field
+          label={t.auth.otp}
+          required
+          requiredLabel={t.common.required}
+          {...(wait > 0 ? { hint: fill(t.auth.resendWait, { seconds: wait }) } : {})}
         >
-          {t.auth.resend}
-        </button>{' '}
-        {wait > 0 ? (
-          <span className="wf-muted">{fill(t.auth.resendWait, { seconds: wait })}</span>
-        ) : null}
-      </p>
+          {(control) => (
+            <TextInput
+              {...control}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              value={otp}
+              onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))}
+            />
+          )}
+        </Field>
+        <SubmitRow
+          pending={pending}
+          label={t.auth.verify}
+          pendingLabel={t.auth.verifying}
+          before={
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={pending || wait > 0}
+              onClick={() => void resend()}
+            >
+              {t.auth.resend}
+            </Button>
+          }
+        />
+      </form>
     </>
   );
 }
@@ -354,69 +435,83 @@ export function CustomerRegisterScreen() {
       <AuthCard title={t.auth.otpTitle} intro={t.auth.otpIntro}>
         <OtpStep
           flowToken={flowToken}
-          onVerified={() => router.replace(`${base}/login?activated=1`)}
+          onVerified={() => {
+            // The page the visitor wanted comes back through sign-in after the account is activated.
+            const carry = new URLSearchParams(window.location.search).get('next');
+            const query = new URLSearchParams({
+              activated: '1',
+              ...(carry ? { next: carry } : {}),
+            });
+            router.replace(`${base}/login?${query.toString()}`);
+          }}
         />
       </AuthCard>
     );
   }
   const today = new Date().toISOString().slice(0, 10);
+  const required = { required: true, requiredLabel: t.common.required } as const;
   return (
-    <AuthCard title={t.auth.registerTitle} intro={t.auth.registerIntro}>
-      {message ? <Notice tone="error">{message}</Notice> : null}
-      <form onSubmit={(event) => void submit(event)}>
-        <Field id="fullName" label={t.auth.fullName} required>
-          <input
-            id="fullName"
-            autoComplete="name"
-            required
-            maxLength={200}
-            value={form.fullName}
-            onChange={(event) => set('fullName')(event.target.value)}
-          />
+    <AuthCard title={t.auth.registerTitle} intro={t.auth.registerIntro} mode="register">
+      {message ? <Notice tone="danger">{message}</Notice> : null}
+      <form className="ls-member-form" onSubmit={(event) => void submit(event)}>
+        <Field label={t.auth.fullName} {...required}>
+          {(control) => (
+            <TextInput
+              {...control}
+              autoComplete="name"
+              maxLength={200}
+              value={form.fullName}
+              onChange={(event) => set('fullName')(event.target.value)}
+            />
+          )}
         </Field>
-        <Field id="dateOfBirth" label={t.auth.dateOfBirth} required>
-          <input
-            id="dateOfBirth"
-            type="date"
-            autoComplete="bday"
-            required
-            max={today}
-            value={form.dateOfBirth}
-            onChange={(event) => set('dateOfBirth')(event.target.value)}
-          />
+        <Field label={t.auth.dateOfBirth} {...required}>
+          {(control) => (
+            <TextInput
+              {...control}
+              type="date"
+              autoComplete="bday"
+              max={today}
+              value={form.dateOfBirth}
+              onChange={(event) => set('dateOfBirth')(event.target.value)}
+            />
+          )}
         </Field>
-        <Field id="address" label={t.auth.address} required>
-          <input
-            id="address"
-            autoComplete="street-address"
-            required
-            maxLength={500}
-            value={form.address}
-            onChange={(event) => set('address')(event.target.value)}
-          />
+        <Field label={t.auth.address} {...required}>
+          {(control) => (
+            <TextInput
+              {...control}
+              autoComplete="street-address"
+              maxLength={500}
+              value={form.address}
+              onChange={(event) => set('address')(event.target.value)}
+            />
+          )}
         </Field>
-        <Field id="email" label={t.auth.email} required>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            required
-            maxLength={320}
-            value={form.email}
-            onChange={(event) => set('email')(event.target.value)}
-          />
+        <Field label={t.auth.email} {...required}>
+          {(control) => (
+            <TextInput
+              {...control}
+              type="email"
+              autoComplete="email"
+              maxLength={320}
+              value={form.email}
+              onChange={(event) => set('email')(event.target.value)}
+            />
+          )}
         </Field>
-        <Field id="phone" label={t.auth.phone} required>
-          <input
-            id="phone"
-            type="tel"
-            autoComplete="tel"
-            inputMode="tel"
-            required
-            maxLength={32}
-            value={form.phone}
-            onChange={(event) => set('phone')(event.target.value)}
-          />
+        <Field label={t.auth.phone} {...required}>
+          {(control) => (
+            <TextInput
+              {...control}
+              type="tel"
+              autoComplete="tel"
+              inputMode="tel"
+              maxLength={32}
+              value={form.phone}
+              onChange={(event) => set('phone')(event.target.value)}
+            />
+          )}
         </Field>
         <PasswordPair
           label={t.auth.password}
@@ -425,15 +520,8 @@ export function CustomerRegisterScreen() {
           onPassword={setPassword}
           onConfirmation={setConfirmation}
         />
-        <SubmitButton
-          pending={pending}
-          label={t.auth.createAccount}
-          pendingLabel={t.auth.creating}
-        />
+        <SubmitRow pending={pending} label={t.auth.createAccount} pendingLabel={t.auth.creating} />
       </form>
-      <p>
-        {t.auth.haveAccount} <Link href={`${base}/login`}>{t.auth.signIn}</Link>
-      </p>
     </AuthCard>
   );
 }
@@ -496,22 +584,29 @@ export function CustomerForgotPasswordScreen() {
     });
   };
 
+  const back = (
+    <Link href={`${base}/login`} className={buttonClass('ghost')}>
+      {t.auth.backToLogin}
+    </Link>
+  );
+  const required = { required: true, requiredLabel: t.common.required } as const;
   return (
     <AuthCard title={t.auth.forgotTitle} intro={flowToken ? t.auth.otpIntro : t.auth.forgotIntro}>
-      {message ? <Notice tone="error">{message}</Notice> : null}
+      {message ? <Notice tone="danger">{message}</Notice> : null}
       {flowToken ? (
-        <form onSubmit={complete}>
-          <Field id="otp" label={t.auth.otp} required>
-            <input
-              id="otp"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              required
-              value={otp}
-              onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))}
-            />
+        <form className="ls-member-form" onSubmit={complete}>
+          <Field label={t.auth.otp} {...required}>
+            {(control) => (
+              <TextInput
+                {...control}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                value={otp}
+                onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))}
+              />
+            )}
           </Field>
           <PasswordPair
             label={t.auth.newPassword}
@@ -520,31 +615,35 @@ export function CustomerForgotPasswordScreen() {
             onPassword={setPassword}
             onConfirmation={setConfirmation}
           />
-          <SubmitButton
+          <SubmitRow
             pending={pending}
             label={t.auth.resetPassword}
             pendingLabel={t.auth.resetting}
+            before={back}
           />
         </form>
       ) : (
-        <form onSubmit={request}>
-          <Field id="email" label={t.auth.email} required>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              maxLength={320}
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
+        <form className="ls-member-form" onSubmit={request}>
+          <Field label={t.auth.email} {...required}>
+            {(control) => (
+              <TextInput
+                {...control}
+                type="email"
+                autoComplete="email"
+                maxLength={320}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            )}
           </Field>
-          <SubmitButton pending={pending} label={t.auth.sendCode} pendingLabel={t.auth.sending} />
+          <SubmitRow
+            pending={pending}
+            label={t.auth.sendCode}
+            pendingLabel={t.auth.sending}
+            before={back}
+          />
         </form>
       )}
-      <p>
-        <Link href={`${base}/login`}>{t.auth.backToLogin}</Link>
-      </p>
     </AuthCard>
   );
 }

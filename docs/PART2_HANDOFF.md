@@ -1,7 +1,7 @@
 # Part 2 handoff (customer area and public site): read this first in a fresh session
 
 Last updated 2026-10-03. Contract: `UXUI_REDESIGN_PART2_DESIGN.md`. Plan: `UXUI_REDESIGN_PART2_PLAN.md`. Mockups: `docs/mockups/part2/`.
-Per-step reports: `UXUI_REDESIGN_PART2_P2-1_FOUNDATIONS.md`, `_P2-2_BACKEND.md`, `_P2-3_SHOP_INFO_TAB.md`, `_P2-4_HOME.md`.
+Per-step reports: `UXUI_REDESIGN_PART2_P2-1_FOUNDATIONS.md`, `_P2-2_BACKEND.md`, `_P2-3_SHOP_INFO_TAB.md`, `_P2-4_HOME.md`, `_P2-6_MEMBER_AUTH.md`.
 Repo rules are in `CLAUDE.md` (UX gate, ratchet, no heredocs, never force-push, never touch `apps/web/next-env.d.ts`).
 
 ## Where we are
@@ -14,7 +14,7 @@ Repo rules are in `CLAUDE.md` (UX gate, ratchet, no heredocs, never force-push, 
 | P2-3 admin "Shop info" tab (website page, last tab)                                                                  | `84676b9`                                 | done, CI green                                                                              |
 | P2-4 public home + services list/detail                                                                              | `9f1d319`, **`5ec3cdb`** (smoke-test fix) | done, **CI green at `5ec3cdb`**                                                             |
 | P2-5 services polish                                                                                                 | -                                         | **folded into P2-7 (booking preselect) and P2-9 (metadata)**; list and detail already exist |
-| P2-6 member auth in the site chrome                                                                                  | -                                         | **next, after the Owner's local review of the home**                                        |
+| P2-6 member auth in the site chrome                                                                                  | see git log                               | done 2026-10-03 (report `UXUI_REDESIGN_PART2_P2-6_MEMBER_AUTH.md`); `wfClassUses` 65        |
 | P2-7 booking, P2-8 member area, P2-9 motion + SEO, P2-10 final gate                                                  | -                                         | not started                                                                                 |
 
 Nothing is deployed. Ratchet counters still to clear: `wfClassUses` 80, `nativeFieldsets` 4, `nativeCheckboxes` 1, `solidDangerButtons` 1
@@ -32,6 +32,13 @@ Nothing is deployed. Ratchet counters still to clear: `wfClassUses` 80, `nativeF
   first (Shop info), and only without one searches the address on a map** (this is how `directionsUrl` in `lib/public-site-core.ts` works).
 - Promotions come only from the Owner's Slider and Popup; services and prices come live from the catalogue; shop facts come from Shop info. No cosmetics
   ("Mỹ phẩm") route or hidden link; the nav is data-driven (`lib/site-nav.ts`) so one entry adds it later.
+
+## Owner review notes (keep this list; mark each one when handled)
+
+- **P2-4 approved by the Owner (2026-10-03).** P2-6 to P2-10 run without stopping between steps: per step lint, smoke, full checks, a normal push, one hash line; the Owner stops the run at the runbook.
+- 2026-10-03 services page: "Nail gel (gói 13)" shows under the Massage group. **Checked: scratch data only, not a bug.** `.local/uxui-audit/seed.mjs` assigns categories round-robin
+  (`pick(categories, index)`) and appends "(gói N)" to filler names; the scratch row `SV013` really has `category_id` = `CAT1` "Massage", and `public-catalog.core.ts` groups strictly by the
+  service's own category. Real data is grouped by what the Owner sets in the catalogue.
 
 ## What exists now (so you do not rebuild it)
 

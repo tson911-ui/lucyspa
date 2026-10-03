@@ -1,10 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import {
-  loadSiteDecor,
-  SiteParticles,
-  SiteSeasonStrip,
-} from '../../../components/season/site-frame';
+import { SitePageFrame } from '../../../components/public/site-page-frame';
 import { CustomerProvider } from '../../../components/customer/session';
 import { getCustomerDictionary } from '../../../i18n/customer';
 import { isLocale } from '../../../i18n/locales';
@@ -25,20 +21,13 @@ export async function generateMetadata({ params }: AccountLayoutProps): Promise<
   };
 }
 
-const appClass = 'wf-app cu-app';
-
-/** The member area (Phase 3 Step 4): shares the design tokens and form primitives. */
+/** The member area and its sign-in pages: the shared site frame around the customer session provider. */
 export default async function AccountLayout({ children, params }: AccountLayoutProps) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  // A season with site-wide art (S6) gives the member area the tint, the particles behind the content and the greeting
-  // strip; its own shell keeps its header and footer (Part 2 redesigns the member area).
-  const decor = await loadSiteDecor(locale);
   return (
-    <div className={decor ? `${appClass} ls-site-page` : appClass}>
-      {decor ? <SiteParticles decor={decor} /> : null}
-      {decor ? <SiteSeasonStrip decor={decor} locale={locale} /> : null}
+    <SitePageFrame locale={locale}>
       <CustomerProvider locale={locale}>{children}</CustomerProvider>
-    </div>
+    </SitePageFrame>
   );
 }

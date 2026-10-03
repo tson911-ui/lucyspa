@@ -975,6 +975,136 @@
   margin-bottom: var(--ls-space-6);
 }
 
+/* ---------- header tools: account menu and the bell share the round tool shape ---------- */
+.ls-site-tools .ls-btn-icon {
+  width: var(--ls-control-h);
+  height: var(--ls-control-h);
+  border: 1px solid var(--ls-border);
+  background: var(--ls-bg-surface);
+  color: var(--ls-text);
+}
+
+.ls-site-tools .ls-btn-icon:hover {
+  background: var(--ls-hover-bg);
+  border-color: var(--ls-hover-border);
+  color: var(--ls-hover-text);
+}
+
+/* Four round tools plus the wordmark do not fit a 360 px header: the bell steps aside there, because the account menu
+   and the member row both lead to Thông báo. */
+@media (max-width: 479px) {
+  .ls-site-tools .ls-bell {
+    display: none;
+  }
+}
+
+/* ---------- member area: the in-page row under the header ---------- */
+.ls-subnav {
+  display: flex;
+  gap: var(--ls-space-1);
+  padding-block: var(--ls-space-3);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ls-subnav::-webkit-scrollbar {
+  display: none;
+}
+
+.ls-subnav a {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: var(--ls-control-h);
+  padding-inline: var(--ls-space-4);
+  border-radius: var(--ls-radius-full);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background var(--ls-dur-fast) var(--ls-ease-out),
+    color var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+.ls-subnav a:hover,
+.ls-subnav a[aria-current='page']:hover {
+  background: var(--ls-hover-bg);
+  color: var(--ls-hover-text);
+}
+
+.ls-subnav a[aria-current='page'] {
+  background: var(--ls-brand-soft);
+  color: var(--ls-brand-on-soft);
+  font-weight: 600;
+}
+
+.ls-member-page {
+  display: grid;
+  gap: var(--ls-space-6);
+  padding-bottom: var(--ls-space-9);
+}
+
+/* A short status (checking the session, an error) in the middle of the member area. */
+.ls-site-state {
+  display: grid;
+  gap: var(--ls-space-4);
+  justify-items: center;
+  padding-block: var(--ls-space-9);
+  text-align: center;
+}
+
+/* ---------- member auth: one centered card on the page band ---------- */
+.ls-member-auth {
+  display: grid;
+  justify-items: center;
+  padding: var(--ls-space-8) var(--ls-gutter) var(--ls-space-9);
+}
+
+.ls-member-card {
+  display: grid;
+  gap: var(--ls-space-5);
+  width: min(100%, 26rem);
+}
+
+.ls-member-head {
+  display: grid;
+  gap: var(--ls-space-2);
+}
+
+.ls-member-title {
+  margin: 0;
+  color: var(--ls-text);
+  font-family: var(--ls-font-display);
+  font-size: var(--ls-text-xl);
+  font-weight: 600;
+  line-height: var(--ls-leading-xl);
+  letter-spacing: normal;
+  text-wrap: balance;
+}
+
+.ls-member-head p {
+  margin: 0;
+  color: var(--ls-text-muted);
+}
+
+.ls-member-form {
+  display: grid;
+  gap: var(--ls-space-4);
+}
+
+.ls-member-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ls-space-2);
+}
+
+.ls-member-actions > .ls-btn {
+  flex: 1 1 auto;
+}
+
 /* ---------- motion (customer side only; contract 7) ---------- */
 .ls-reveal {
   /* The component sets the real position inline (0-5). */

@@ -372,3 +372,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 ### UX/UI Part 2 handoff note - 2026-10-03
 
 - docs/PART2_HANDOFF.md holds the state (P2-1..P2-4 done, CI green at 5ec3cdb), Owner decisions, lessons (run pnpm lint and pnpm smoke before pushing; the Owner checks CI), tooling and the next steps (Owner reviews the home, then P2-6).
+
+### UX/UI Part 2 Step P2-6 (member auth + account control) - 2026-10-03
+
+- Auth pages as one centered card in the shared site frame (SegmentedControl, show/hide password, next kept); header account menu (signed out/in) + bell; member area moved onto the shared frame with a SiteSubNav row; customer.css shell/login rules removed, wfClassUses 80 -> 65.
+- Report: docs/UXUI_REDESIGN_PART2_P2-6_MEMBER_AUTH.md. No migration, no permission, no API change.

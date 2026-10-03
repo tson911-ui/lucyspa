@@ -12,6 +12,7 @@ const vi = {
     close: 'Đóng',
     minutes: 'phút',
     optional: 'không bắt buộc',
+    required: 'bắt buộc',
     language: 'English',
   },
   nav: {
@@ -70,6 +71,10 @@ const vi = {
     resetPassword: 'Đặt lại mật khẩu',
     resetting: 'Đang đặt lại…',
     backToLogin: 'Về trang đăng nhập',
+    modes: 'Đăng nhập hoặc đăng ký',
+    registerTab: 'Đăng ký',
+    showPassword: 'Hiện mật khẩu',
+    hidePassword: 'Ẩn mật khẩu',
   },
   home: {
     title: 'Xin chào, {name}',
@@ -247,6 +252,7 @@ const en: CustomerDictionaryShape = {
     close: 'Close',
     minutes: 'min',
     optional: 'optional',
+    required: 'required',
     language: 'Tiếng Việt',
   },
   nav: {
@@ -305,6 +311,10 @@ const en: CustomerDictionaryShape = {
     resetPassword: 'Reset password',
     resetting: 'Resetting…',
     backToLogin: 'Back to sign in',
+    modes: 'Sign in or create an account',
+    registerTab: 'Create account',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
   },
   home: {
     title: 'Hello, {name}',

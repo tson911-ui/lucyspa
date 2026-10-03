@@ -43,6 +43,7 @@ export {
   PublicPage,
   SiteFooter,
   SiteNav,
+  SiteSubNav,
   Steps,
   TabBar,
 } from './site';

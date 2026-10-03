@@ -1,11 +1,12 @@
 'use client';
 
-import { buttonClass, Icon, SiteNav, TabBar, ThemeCycle } from '@lucy-spa/ui';
+import { buttonClass, SiteNav, SiteSubNav, TabBar, ThemeCycle } from '@lucy-spa/ui';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getSiteText } from '../../i18n/site';
 import type { Locale } from '../../i18n/locales';
-import { headerNavItems, otherLocalePath, tabBarItems } from '../../lib/site-nav';
+import { accountTabItems, headerNavItems, otherLocalePath, tabBarItems } from '../../lib/site-nav';
+import { PublicAccountMenu } from './account-menu';
 
 // The parts of the site chrome that depend on the current page (current menu entry, the other language's URL).
 
@@ -50,10 +51,21 @@ export function PublicTools({ locale }: { locale: Locale }) {
         {other.toUpperCase()}
       </Link>
       <ThemeCycle labels={text.header.theme} />
-      <Link className="ls-site-tool" href={`/${locale}/account`} aria-label={text.header.account}>
-        <Icon name="user" />
-      </Link>
+      <PublicAccountMenu locale={locale} />
     </>
+  );
+}
+
+/** The row of the member area (overview, bookings, invoices, notifications), under the header. */
+export function AccountTabs({ locale }: { locale: Locale }) {
+  const text = getSiteText(locale);
+  const pathname = usePathname();
+  return (
+    <SiteSubNav
+      label={text.member.tabs}
+      items={accountTabItems(locale, pathname, text.member)}
+      LinkComponent={Link}
+    />
   );
 }
 

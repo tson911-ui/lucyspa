@@ -113,6 +113,30 @@ export function tabBarItems(locale: string, pathname: string, text: SiteText['na
   ).slice(0, 5);
 }
 
+/** The row under the header in the member area: the overview matches only itself, the others also their sub-pages. */
+export function accountTabItems(
+  locale: string,
+  pathname: string,
+  text: SiteText['member'],
+): SiteNavItem[] {
+  const path = pathname.replace(/\/+$/, '');
+  const base = `/${locale}/account`;
+  return [
+    { key: 'overview', label: text.overview, href: base, exact: true },
+    { key: 'bookings', label: text.bookings, href: `${base}/bookings`, exact: false },
+    { key: 'invoices', label: text.invoices, href: `${base}/invoices`, exact: false },
+    {
+      key: 'notifications',
+      label: text.notifications,
+      href: `${base}/notifications`,
+      exact: false,
+    },
+  ].map(({ exact, ...item }) => ({
+    ...item,
+    current: exact ? path === item.href : path === item.href || path.startsWith(`${item.href}/`),
+  }));
+}
+
 export function footerDiscoverItems(locale: string, text: SiteText['nav']) {
   return SITE_NAV.filter((entry) => entry.enabled && entry.footer === 'discover').map((entry) => ({
     key: entry.key,

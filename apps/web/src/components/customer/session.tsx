@@ -1,6 +1,7 @@
 'use client';
 
 import type { CurrentAccountResponse } from '@lucy-spa/contracts';
+import { Button, PublicMain } from '@lucy-spa/ui';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   createContext,
@@ -16,6 +17,7 @@ import { getCustomerDictionary, type CustomerDictionary } from '../../i18n/custo
 import type { Locale } from '../../i18n/locales';
 import { ApiClient } from '../../lib/api/client';
 import { customerLogout, loadCustomerSession } from '../../lib/customer/auth';
+import { announceSessionChange } from '../../lib/site-session';
 
 export interface CustomerContextValue {
   locale: Locale;
@@ -122,35 +124,42 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
     try {
       await customerLogout(api);
     } finally {
+      announceSessionChange();
       router.replace(`${base}/login?signedOut=1`);
     }
   }, [api, base, router]);
 
   if (state.kind === 'loading') {
     return (
-      <p className="wf-center" role="status">
-        {t.auth.checking}
-      </p>
+      <PublicMain>
+        <p className="ls-site-state" role="status">
+          {t.auth.checking}
+        </p>
+      </PublicMain>
     );
   }
   if (state.kind === 'error') {
     return (
-      <div className="wf-center">
-        <p role="alert">{t.errors.unavailable}</p>
-        <button type="button" className="wf-button" onClick={() => window.location.reload()}>
-          {t.common.reload}
-        </button>
-      </div>
+      <PublicMain>
+        <div className="ls-site-state">
+          <p role="alert">{t.errors.unavailable}</p>
+          <Button variant="primary" onClick={() => window.location.reload()}>
+            {t.common.reload}
+          </Button>
+        </div>
+      </PublicMain>
     );
   }
   if (state.kind === 'workforce') {
     return (
-      <div className="wf-center">
-        <p role="alert">{t.auth.workforceNotAllowed}</p>
-        <button type="button" className="wf-button" onClick={() => void signOut()}>
-          {t.nav.signOut}
-        </button>
-      </div>
+      <PublicMain>
+        <div className="ls-site-state">
+          <p role="alert">{t.auth.workforceNotAllowed}</p>
+          <Button variant="primary" onClick={() => void signOut()}>
+            {t.nav.signOut}
+          </Button>
+        </div>
+      </PublicMain>
     );
   }
   return (

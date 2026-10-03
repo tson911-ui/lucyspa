@@ -12,6 +12,18 @@ export interface SiteText {
     bookings: string;
     account: string;
   };
+  /** The account menu in the header and the row under it in the member area. */
+  member: {
+    signIn: string;
+    register: string;
+    signOut: string;
+    overview: string;
+    bookings: string;
+    invoices: string;
+    notifications: string;
+    /** Accessible name of the member-area row. */
+    tabs: string;
+  };
   header: {
     brand: string;
     language: string;
@@ -88,6 +100,16 @@ const text = {
       bookings: 'Lịch hẹn',
       account: 'Tài khoản',
     },
+    member: {
+      signIn: 'Đăng nhập',
+      register: 'Đăng ký',
+      signOut: 'Đăng xuất',
+      overview: 'Tổng quan',
+      bookings: 'Lịch hẹn',
+      invoices: 'Hóa đơn',
+      notifications: 'Thông báo',
+      tabs: 'Khu vực thành viên',
+    },
     header: {
       brand: 'Lucy Spa, về trang chủ',
       language: 'Ngôn ngữ',
@@ -162,6 +184,16 @@ const text = {
       book: 'Book',
       bookings: 'Bookings',
       account: 'Account',
+    },
+    member: {
+      signIn: 'Sign in',
+      register: 'Create account',
+      signOut: 'Sign out',
+      overview: 'Overview',
+      bookings: 'Bookings',
+      invoices: 'Invoices',
+      notifications: 'Notifications',
+      tabs: 'Member area',
     },
     header: {
       brand: 'Lucy Spa, back to the home page',
