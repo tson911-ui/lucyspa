@@ -622,6 +622,18 @@
   font-weight: 600;
 }
 
+/* On a phone the page title directly below already names the current page: the trail stops at its parent, so a long
+   name never wraps into a second line that repeats the heading. */
+@media (max-width: 639px) {
+  .ls-crumbs li:last-child {
+    display: none;
+  }
+
+  .ls-crumbs li:nth-last-child(2) svg {
+    display: none;
+  }
+}
+
 /* ---- Auth layout (contract 12.6): centered card on a full-screen brand background --------- */
 .ls-auth {
   position: relative;

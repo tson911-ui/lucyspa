@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  useContext,
   useEffect,
   useId,
   useMemo,
@@ -24,6 +25,7 @@ import {
   parseMoney,
   type ComboOption,
 } from './form-core';
+import { FormSectionLevel } from './heading-level';
 import { Icon } from './icons';
 import { Spinner } from './spinner';
 
@@ -564,6 +566,7 @@ export function RadioGroup({
 }) {
   return (
     <fieldset
+      role="radiogroup"
       className={cx('ls-radios', layout === 'inline' && 'ls-radios-inline')}
       aria-required={required || undefined}
       aria-invalid={invalid || undefined}
@@ -729,10 +732,11 @@ export function FormSection({
   className?: string | undefined;
 }) {
   const titleId = useId();
+  const Heading = useContext(FormSectionLevel) === 2 ? 'h2' : 'h3';
   const heading = (
-    <h3 className="ls-form-section-title" id={titleId}>
+    <Heading className="ls-form-section-title" id={titleId}>
       {title}
-    </h3>
+    </Heading>
   );
   return (
     <section aria-labelledby={titleId} className={cx('ls-form-section', className)}>

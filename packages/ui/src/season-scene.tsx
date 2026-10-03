@@ -446,8 +446,11 @@ export function SeasonFooterScene({
   if (!art && !greeting && !cornerImage) return null;
   const Animal = zodiac && hasZodiacArt(zodiac) ? ZODIAC_ART[zodiac]! : null;
   const compact = !art && !cornerImage;
+  // The greeting is page content: with one, the scene is a named region (a landmark), without one it is decoration.
+  const Root = greeting ? 'section' : 'div';
   return (
-    <div
+    <Root
+      aria-label={greeting ? line : undefined}
       className="ls-art-row ls-art-footer"
       data-kit={kit}
       data-compact={compact ? 'true' : undefined}
@@ -480,6 +483,6 @@ export function SeasonFooterScene({
           </div>
         </div>
       ) : null}
-    </div>
+    </Root>
   );
 }

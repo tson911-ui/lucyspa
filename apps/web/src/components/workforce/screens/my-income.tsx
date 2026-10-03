@@ -49,25 +49,27 @@ export function MyIncomeScreen() {
             options={PERIODS.map((option) => ({ value: option, label: texts.periods[option] }))}
             onChange={(event) => setPeriod(event.target.value as IncomePeriod)}
           />
-          <IconButton
-            icon="chevron-left"
-            label={texts.previous}
-            disabled={!anchor}
-            onClick={() => anchor && setDate(shiftAnchor(anchor, period, -1))}
-          />
-          <DateInput
-            id="income-date"
-            aria-label={texts.date}
-            title={texts.date}
-            value={anchor ?? ''}
-            onChange={(event) => setDate(event.target.value === '' ? null : event.target.value)}
-          />
-          <IconButton
-            icon="chevron-right"
-            label={texts.next}
-            disabled={!anchor}
-            onClick={() => anchor && setDate(shiftAnchor(anchor, period, 1))}
-          />
+          <div className="ls-toolbar-group">
+            <IconButton
+              icon="chevron-left"
+              label={texts.previous}
+              disabled={!anchor}
+              onClick={() => anchor && setDate(shiftAnchor(anchor, period, -1))}
+            />
+            <DateInput
+              id="income-date"
+              aria-label={texts.date}
+              title={texts.date}
+              value={anchor ?? ''}
+              onChange={(event) => setDate(event.target.value === '' ? null : event.target.value)}
+            />
+            <IconButton
+              icon="chevron-right"
+              label={texts.next}
+              disabled={!anchor}
+              onClick={() => anchor && setDate(shiftAnchor(anchor, period, 1))}
+            />
+          </div>
         </Cluster>
       </div>
       {income.loading && !income.data ? <Loading t={t} /> : null}

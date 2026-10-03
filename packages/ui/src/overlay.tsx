@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { IconButton } from './button';
 import { cx } from './cx';
+import { FormSectionLevelProvider } from './heading-level';
 import { trapTarget } from './menu-core';
 import { PromoCard, type PromoContent, type PromoLink } from './promo';
 
@@ -167,7 +168,11 @@ export function Dialog({
             {description}
           </p>
         ) : null}
-        {children ? <div className="ls-dialog-body">{children}</div> : null}
+        {children ? (
+          <div className="ls-dialog-body">
+            <FormSectionLevelProvider level={3}>{children}</FormSectionLevelProvider>
+          </div>
+        ) : null}
         {footer ? <footer className="ls-dialog-footer">{footer}</footer> : null}
       </div>
     </div>
@@ -277,7 +282,9 @@ export function Drawer({
           </h2>
           <IconButton icon="close" label={closeLabel} onClick={onClose} disabled={busy} />
         </header>
-        <div className="ls-drawer-body">{children}</div>
+        <div className="ls-drawer-body">
+          <FormSectionLevelProvider level={3}>{children}</FormSectionLevelProvider>
+        </div>
         {footer ? <footer className="ls-dialog-footer">{footer}</footer> : null}
       </div>
     </div>

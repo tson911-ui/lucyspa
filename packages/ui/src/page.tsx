@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { cx } from './cx';
+import { FormSectionLevelProvider } from './heading-level';
 
 /**
  * Page container (docs/UXUI_REDESIGN_DESIGN.md 9.6, 21.4). One per route, hosted by the shell's content
@@ -15,7 +16,11 @@ export function Page({
   className?: string | undefined;
   children: ReactNode;
 }) {
-  return <div className={cx('ls-page', `ls-page-${width}`, className)}>{children}</div>;
+  return (
+    <div className={cx('ls-page', `ls-page-${width}`, className)}>
+      <FormSectionLevelProvider level={2}>{children}</FormSectionLevelProvider>
+    </div>
+  );
 }
 
 /**

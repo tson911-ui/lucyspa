@@ -121,6 +121,9 @@
   --ls-space-9: 3rem;
   --ls-space-10: 4rem;
   --ls-gutter: 1rem;
+  /* Optical alignment of a 20 px icon with the first line of text, and the device safe area (not layout spacing). */
+  --ls-icon-nudge: 0.125rem;
+  --ls-safe-bottom: env(safe-area-inset-bottom, 0px);
   --ls-radius-sm: 6px;
   --ls-radius-md: 10px;
   --ls-radius-full: 999px;

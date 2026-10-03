@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { cx } from './cx';
 import { nextTabIndex, type TabKey } from './paging-core';
 
@@ -43,6 +43,20 @@ export function Tabs({
     tabs.find((tab) => tab.id === requested && !tab.disabled) ?? tabs.find((tab) => !tab.disabled);
   const selected = selectedTab?.id;
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
+
+  // On a narrow screen the strip scrolls: bring the selected tab fully into view (the strip only, never the page).
+  useEffect(() => {
+    const button = buttons.current[tabs.findIndex((tab) => tab.id === selected)];
+    const list = button?.parentElement;
+    if (!button || !list || list.scrollWidth <= list.clientWidth) return;
+    const listBox = list.getBoundingClientRect();
+    const box = button.getBoundingClientRect();
+    const left = box.left - listBox.left + list.scrollLeft;
+    if (left < list.scrollLeft) list.scrollLeft = left;
+    else if (left + box.width > list.scrollLeft + list.clientWidth) {
+      list.scrollLeft = left + box.width - list.clientWidth;
+    }
+  }, [selected]);
 
   function select(id: string) {
     if (value === undefined) setOwn(id);

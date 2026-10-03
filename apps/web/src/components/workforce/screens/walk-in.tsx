@@ -230,7 +230,7 @@ export function WalkInScreen() {
       {!options && !optionsError ? <Loading t={t} /> : null}
       <form noValidate onSubmit={(event) => void submit(event)} aria-label={t.walkIn.title}>
         <Stack gap="block">
-          <Card as="section" aria-label={t.walkIn.people}>
+          <Card>
             <Stack gap="page">
               <FormGrid>
                 <Field label={t.walkIn.branch}>
