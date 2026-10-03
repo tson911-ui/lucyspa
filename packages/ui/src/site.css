@@ -410,7 +410,7 @@
 
 .ls-site-grid {
   display: grid;
-  gap: var(--ls-space-5);
+  gap: var(--ls-space-6);
 }
 
 @media (min-width: 640px) {
@@ -942,6 +942,32 @@
   margin: 0 0 var(--ls-head-gap);
 }
 
+/* On a phone the filter is one row that scrolls sideways, edge to edge (like the member row), instead of wrapping into
+   several lines. */
+@media (max-width: 639px) {
+  .ls-pills {
+    flex-wrap: nowrap;
+    margin-inline: calc(var(--ls-gutter) * -1);
+    padding-inline: var(--ls-gutter);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .ls-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ls-pills a {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  /* The row clips whatever sticks out of it, so the focus ring is drawn inside the pill. */
+  .ls-pills a:focus-visible {
+    outline-offset: calc(var(--ls-space-1) * -0.5);
+  }
+}
+
 .ls-pills a {
   display: inline-flex;
   align-items: center;
@@ -979,7 +1005,7 @@
 
 .ls-service-grid {
   display: grid;
-  gap: var(--ls-space-5);
+  gap: var(--ls-space-6);
 }
 
 /* On a service's own page the list sits in the narrow column: two cards a row, never three squeezed ones. */

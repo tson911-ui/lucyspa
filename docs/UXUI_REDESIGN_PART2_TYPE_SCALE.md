@@ -6,7 +6,7 @@
 
 | Role                        | Token                               | 360 / 768 / 1440 px | Used for                                                    |
 | --------------------------- | ----------------------------------- | ------------------- | ----------------------------------------------------------- |
-| Hero                        | `--ls-type-hero`                    | 32 / 39 / 48        | home headline                                               |
+| Hero                        | `--ls-type-hero`                    | 36 / 43 / 48        | home headline                                               |
 | Page title                  | `--ls-type-page`                    | 28 / 33 / 36        | h1 of services, booking, member pages                       |
 | Section title               | `--ls-type-section`                 | 24 / 29 / 30        | home sections                                               |
 | Subsection                  | `--ls-type-sub`                     | 20 / 22 / 24        | sign-in title, member section, booking step, service groups |

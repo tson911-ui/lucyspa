@@ -734,7 +734,7 @@ test('the public type scale: one set of tokens, every heading and body role read
   for (const role of ['hero', 'page', 'section', 'sub', 'card', 'price', 'lead', 'body', 'small']) {
     assert.match(tokens, new RegExp(`--ls-type-${role}: `), `--ls-type-${role} is defined`);
   }
-  assert.match(tokens, /--ls-type-hero: clamp\(2rem, 1\.5rem \+ 2vw, 3rem\);/);
+  assert.match(tokens, /--ls-type-hero: clamp\(2\.25rem, 1\.75rem \+ 2vw, 3rem\);/);
   assert.match(tokens, /--ls-type-section: clamp\(1\.5rem, 1\.25rem \+ 1\.2vw, 1\.875rem\);/);
   assert.match(tokens, /--ls-type-card: 1\.125rem;/);
   assert.match(tokens, /--ls-weight-title: 500;/);
@@ -820,4 +820,10 @@ test('public form fields are pills like the buttons; a multi-line field keeps a 
   assert.match(css, /\.ls-site \.ls-input \{\s*border-radius: var\(--ls-radius-full\);/);
   assert.match(css, /\.ls-site \.ls-textarea \{\s*border-radius: var\(--ls-radius-lg\);/);
   assert.match(css, /\.ls-member-card \{[^}]*width: min\(100%, 28rem\);/);
+});
+
+test('phones: the service filter is one scrolling row, and cards sit 24 px apart', () => {
+  assert.match(css, /@media \(max-width: 639px\) \{\s*\.ls-pills \{\s*flex-wrap: nowrap;/);
+  assert.match(css, /\.ls-service-grid \{\s*display: grid;\s*gap: var\(--ls-space-6\);/);
+  assert.match(css, /\.ls-site-grid \{\s*display: grid;\s*gap: var\(--ls-space-6\);/);
 });

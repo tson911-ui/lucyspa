@@ -112,21 +112,26 @@
     'body',
     'small',
   ].map((role) => '--ls-type-' + role);
-  for (const token of ['--ls-text-3xl', '--ls-text-display', ...publicScale]) {
+  // These sizes are accepted only inside the public site frame (`.ls-site`); the staff area keeps the older scale.
+  const publicSizes = new Set();
+  const sizeOf = (token) => {
     const probe = document.createElement('span');
     probe.style.fontSize = `var(${token})`;
     probe.style.position = 'absolute';
     document.body.appendChild(probe);
-    scale.add(Math.round(px(getComputedStyle(probe).fontSize) * 100) / 100);
+    const size = Math.round(px(getComputedStyle(probe).fontSize) * 100) / 100;
     probe.remove();
-  }
+    return size;
+  };
+  for (const token of ['--ls-text-3xl', '--ls-text-display']) scale.add(sizeOf(token));
+  for (const token of publicScale) publicSizes.add(sizeOf(token));
   const fonts = new Map();
   for (const el of all) {
     if (el instanceof SVGElement) continue;
     const hasText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     if (!hasText) continue;
     const size = Math.round(px(getComputedStyle(el).fontSize) * 100) / 100;
-    if (!scale.has(size)) {
+    if (!scale.has(size) && !(publicSizes.has(size) && el.closest('.ls-site'))) {
       const key = `${region(el)}|${desc(el)}|${size}px`;
       fonts.set(key, (fonts.get(key) ?? 0) + 1);
     }
