@@ -368,3 +368,7 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Home from live data (tagline, facts, catalogue group cards, visit, footer contact), /services list + detail (real 404s), hero = slide / chosen picture / brand panel, no why-choose-us. Report: docs/UXUI_REDESIGN_PART2_P2-4_HOME.md.
 - Fixed on the way: ended season stayed on the site (Next fetch cache never stores 204; now 60 s ttl-memo), slider box stretched by portrait images, class clash .ls-facts. P2-5 folded into P2-7/P2-9.
+
+### UX/UI Part 2 handoff note - 2026-10-03
+
+- docs/PART2_HANDOFF.md holds the state (P2-1..P2-4 done, CI green at 5ec3cdb), Owner decisions, lessons (run pnpm lint and pnpm smoke before pushing; the Owner checks CI), tooling and the next steps (Owner reviews the home, then P2-6).
