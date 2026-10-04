@@ -440,3 +440,7 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - Staff area uses the public motion system: prefetched links (`PrefetchLink`), sliding sidebar highlight (`useSlidingPill`), eased group open/close, page rise on navigation only, `LoadingState` skeletons, smooth button/row/tile hover (locked hover colours untouched). Off for reduced motion, data saver, low memory. Staff data stays fresh (no-store reads, no staleTimes, bfcache reload).
 - Dialogs, drawers and sheets: header and footer fixed, body scrolls at any height (backdrop row is the viewport; `dvh`). Back button (`PageBack`, `lib/navigation/back.ts`) on every page except the staff dashboard and public home. No migration. Report: docs/UXUI_REDESIGN_STAFF_MOTION.md.
+
+### UX/UI follow-up: Back on public services pages, header CTA - 2026-10-04
+
+- `PageBack` now also on /services and every service detail (`PublicPage` takes a `back` slot; the list returns to the home, a detail to the list). Header "Đặt lịch ngay" is the same on every page: the old `startsWith(/account/book)` test also hid it on /account/bookings. No migration.

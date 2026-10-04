@@ -392,6 +392,15 @@ test('Band and PublicPage give one landmark and one h1', () => {
   assert.match(html, /<section class="ls-band ls-band-surface" aria-labelledby="x">/);
 });
 
+test('PublicPage draws its Back row above the title', () => {
+  const html = renderToStaticMarkup(
+    <ui.PublicPage title="Dịch vụ" back={<div className="ls-back-row">Quay lại</div>}>
+      <p>x</p>
+    </ui.PublicPage>,
+  );
+  assert.ok(html.indexOf('ls-back-row') > -1 && html.indexOf('ls-back-row') < html.indexOf('<h1 '));
+});
+
 test('ChoiceCard is a real checkbox or radio inside a label and reports changes', async () => {
   const container = window.document.createElement('div');
   window.document.body.appendChild(container);

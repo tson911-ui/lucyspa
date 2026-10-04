@@ -93,7 +93,10 @@ export interface SiteText {
     price: string;
     empty: string;
     detailLead: string;
+    /** The button back to the list, under the service. */
     back: string;
+    /** The "← Back" button above the page title (same as on the account pages). */
+    backLabel: string;
     related: string;
     perNailNote: string;
     priceNote: string;
@@ -187,6 +190,7 @@ const text = {
       empty: 'Chưa có dịch vụ nào để hiển thị.',
       detailLead: 'Giá và thời gian dự kiến của dịch vụ.',
       back: 'Tất cả dịch vụ',
+      backLabel: 'Quay lại',
       related: 'Dịch vụ cùng nhóm',
       perNailNote: 'Tính theo số ngón; số ngón và giá cuối cùng được chốt tại tiệm.',
       priceNote: 'Thời gian là dự kiến; giá cuối cùng được chốt tại tiệm.',
@@ -278,6 +282,7 @@ const text = {
       empty: 'There are no services to show yet.',
       detailLead: 'Price and estimated time of this service.',
       back: 'All services',
+      backLabel: 'Back',
       related: 'More in this group',
       perNailNote:
         'Priced per nail; the number of nails and the final price are settled at the shop.',

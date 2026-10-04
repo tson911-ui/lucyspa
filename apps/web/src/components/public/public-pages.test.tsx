@@ -5,11 +5,24 @@ import type {
   PublicServicesResponse,
   PublicSiteResponse,
 } from '@lucy-spa/contracts';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime';
+import { PathnameContext } from 'next/dist/shared/lib/hooks-client-context.shared-runtime';
+import type { ReactElement } from 'react';
+import { renderToStaticMarkup as render } from 'react-dom/server';
 import type { HomeData } from '../../lib/public-site-core';
 import { HomeContent } from './home-content';
 import { PublicFooter } from './site-chrome';
+import { PublicHeaderCta } from './site-chrome-client';
 import { ServiceDetailView, ServicesView } from './services-view';
+
+/** Renders inside a router at `path`: the Back button needs both the router and the current path. */
+function renderToStaticMarkup(node: ReactElement, path = '/vi/services'): string {
+  return render(
+    <AppRouterContext.Provider value={{ push: () => undefined } as never}>
+      <PathnameContext.Provider value={path}>{node}</PathnameContext.Provider>
+    </AppRouterContext.Provider>,
+  );
+}
 
 const site: PublicSiteResponse = {
   tagline: 'Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc',
@@ -304,6 +317,8 @@ test('footer: the English footer uses the English badges and wording, and a hidd
 test('services list: the filter links, one section per group, a chosen group alone', () => {
   const all = renderToStaticMarkup(<ServicesView locale="vi" data={services} group="" />);
   assert.equal(all.match(/<h1[ >]/g)?.length, 1);
+  // Back sits above the title and, without history, goes to the home.
+  assert.match(all, /<a class="[^"]*ls-back[^"]*" href="\/vi">.*Quay lại.*<h1/s);
   assert.match(all, /aria-current="true"[^>]*>Tất cả/);
   assert.match(all, /Gội thường/);
   // A service name is a clamped span inside its link; the full name is the tooltip.
@@ -335,8 +350,13 @@ test('service detail: facts, the per-nail note, the booking link and the group n
     group: { code: 'NAIL', name: 'Nail' },
     related: [{ ...unit, code: 'SON_GEL', name: 'Sơn gel' }],
   };
-  const html = renderToStaticMarkup(<ServiceDetailView locale="vi" detail={detail} />);
+  const html = renderToStaticMarkup(
+    <ServiceDetailView locale="vi" detail={detail} />,
+    '/vi/services/DINH_DA',
+  );
   assert.match(html, /<h1[^>]*>Đính đá \/ charm<\/h1>/);
+  // Back sits above the title and, without history, goes to the service list.
+  assert.match(html, /<a class="[^"]*ls-back[^"]*" href="\/vi\/services">.*Quay lại.*<h1/s);
   assert.match(html, /5\.000 ₫ – 30\.000 ₫\/ngón/);
   assert.match(html, /Tính theo số ngón/);
   assert.match(html, /href="\/vi\/account\/book\?service=DINH_DA"/);
@@ -352,6 +372,17 @@ test('service detail: facts, the per-nail note, the booking link and the group n
   assert.match(
     renderToStaticMarkup(<ServiceDetailView locale="vi" detail={null} />),
     /Không tải được danh mục dịch vụ/,
+  );
+});
+
+test('header call to action: the same on every page, "My bookings" and the booking page included', () => {
+  assert.match(
+    renderToStaticMarkup(<PublicHeaderCta locale="vi" />),
+    /href="\/vi\/account\/book"[^>]*>Đặt lịch ngay</,
+  );
+  assert.match(
+    renderToStaticMarkup(<PublicHeaderCta locale="en" />),
+    /href="\/en\/account\/book"[^>]*>Book now</,
   );
 });
 

@@ -1510,6 +1510,11 @@
   padding-top: var(--ls-space-4);
 }
 
+/* On a public page the title follows the Back row at the same distance as on a member page (24 px less the row's pull). */
+.ls-container > .ls-back-row:first-child + .ls-public-title {
+  padding-top: var(--ls-space-6);
+}
+
 .ls-member-page {
   display: grid;
   gap: var(--ls-space-6);

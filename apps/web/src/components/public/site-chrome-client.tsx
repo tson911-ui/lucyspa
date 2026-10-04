@@ -90,11 +90,9 @@ export function AccountTabs({ locale }: { locale: Locale }) {
   );
 }
 
-/** The header call to action; the booking pages already are the action, so it stays away from them. */
+/** The header call to action: the same on every public and account page, the booking pages included. */
 export function PublicHeaderCta({ locale }: { locale: Locale }) {
   const text = getSiteText(locale);
-  const pathname = usePathname();
-  if (pathname.startsWith(`/${locale}/account/book`)) return null;
   return (
     <Link prefetch className={buttonClass('primary')} href={`/${locale}/account/book`}>
       {text.header.bookNow}

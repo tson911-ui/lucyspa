@@ -13,6 +13,7 @@ import {
   serviceHref,
   servicePrice,
 } from '../../lib/public-site-core';
+import { PageBack } from '../navigation/page-back';
 import { LoadNotice } from './home-sections';
 import { PublicBreadcrumbs } from './public-breadcrumbs';
 
@@ -50,6 +51,17 @@ export function ServiceCard({
   );
 }
 
+/** The "← Back" button of the service pages: back to where the visitor came from, else the list (detail) or the home (list). */
+function ServicesBack({ locale }: { locale: Locale }) {
+  return (
+    <PageBack
+      root={`/${locale}/services`}
+      publicHome={`/${locale}`}
+      label={getSiteText(locale).services.backLabel}
+    />
+  );
+}
+
 /**
  * The service list (Part 2 contract 5.3): a filter by group (links, so it works without scripts and can be shared),
  * then one section per group, or just the chosen one. The page is the catalogue as the Owner keeps it.
@@ -68,7 +80,11 @@ export function ServicesView({
   const base = `/${locale}/services`;
   const shown = data ? data.groups.filter((entry) => group === '' || entry.code === group) : [];
   return (
-    <PublicPage title={text.services.title} lead={text.services.lead}>
+    <PublicPage
+      title={text.services.title}
+      lead={text.services.lead}
+      back={<ServicesBack locale={locale} />}
+    >
       {data === null ? (
         <LoadNotice locale={locale} section={text.home.sectionServices} />
       ) : data.groups.length === 0 ? (
@@ -126,14 +142,19 @@ export function ServiceDetailView({
   const text = getSiteText(locale);
   if (detail === null) {
     return (
-      <PublicPage title={text.services.title}>
+      <PublicPage title={text.services.title} back={<ServicesBack locale={locale} />}>
         <LoadNotice locale={locale} section={text.home.sectionServices} />
       </PublicPage>
     );
   }
   const { service, group, related } = detail;
   return (
-    <PublicPage title={service.name} lead={text.services.detailLead} width="narrow">
+    <PublicPage
+      title={service.name}
+      lead={text.services.detailLead}
+      width="narrow"
+      back={<ServicesBack locale={locale} />}
+    >
       <div className="ls-detail">
         <PublicBreadcrumbs
           label={text.services.breadcrumbs}

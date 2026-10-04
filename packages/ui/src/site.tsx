@@ -150,16 +150,20 @@ export function PublicPage({
   title,
   lead,
   width = 'default',
+  back,
   children,
 }: {
   title: string;
   lead?: string | undefined;
   width?: 'default' | 'narrow' | undefined;
+  /** The "← Back" row, drawn at the top-left above the title. */
+  back?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <PublicMain>
       <div className={cx('ls-container', width === 'narrow' && 'ls-container-narrow')}>
+        {back}
         <div className="ls-public-title">
           <h1 className="ls-h1-display">{title}</h1>
           {lead ? <p className="ls-lead">{lead}</p> : null}

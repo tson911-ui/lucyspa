@@ -43,6 +43,14 @@ test('the member area: home returns to the public home, lists to the home, detai
   assert.equal(parentPath(`${MEMBER}/invoices/i1`, MEMBER, '/vi'), `${MEMBER}/invoices`);
 });
 
+test('the public services pages: a service returns to the list, the list to the home', () => {
+  const SERVICES = '/vi/services';
+  assert.equal(parentPath(SERVICES, SERVICES, '/vi'), '/vi');
+  assert.equal(parentPath(`${SERVICES}/GOI_THUONG`, SERVICES, '/vi'), SERVICES);
+  assert.equal(parentPath(`${SERVICES}/GOI_THUONG/`, SERVICES, '/vi'), SERVICES);
+  assert.equal(parentPath('/en/services/GOI_THUONG', '/en/services', '/en'), '/en/services');
+});
+
 test('a path outside the area has no parent', () => {
   assert.equal(parentPath('/vi/services', STAFF, null), null);
   assert.equal(parentPath('/vi/workforcefoo', STAFF, null), null);
