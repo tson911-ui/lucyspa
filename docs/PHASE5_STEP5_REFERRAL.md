@@ -35,7 +35,11 @@ New `CHANGE_REFERRER` (Owner only). `MANAGE_REFERRALS` (existed) binds at the co
 - Rendered at 360, 768, 1440 light + 1440 dark: referral list, 6 profiles (referrer with totals, rewarded, pending with history, pending, no referrer), bind dialog, change dialog, public signup, and the P5-4 tie invoice (re-shot). The theme cookie was set per render (the auto theme follows the clock).
 - Images opened: list 1440 light and 360 light; tuan 1440 and 768 light; hoa 360 light; lan 1440 dark; bich 1440 light; both dialogs 1440 light; pos-tie 1440 and 360 light; signup 1440 light, 360 light, 1440 dark. Others not opened one by one (DOM audit ran on all).
 - Fixed after the first look: card label repeated its heading ("Người giới thiệu" → "Hội viên"), list heading repeated its tab ("Danh sách giới thiệu"), the optional signup label was bold like the required ones (now a hint).
-- DOM audit: 0 findings on the list and on 5 of 6 profiles; the referrer's profile and the tie invoice show the known FR8 row-height finding of the ledger / invoice phone card list at 360 (pos-invoice baseline also 360: 1); the bind dialog shows the known dialog FR3 findings (notice over the card behind the overlay). No count rose.
+- DOM audit (run on the P5-3 scratch database, not the uxaudit one): every page here is new to the baseline, so the compare shows them as rises from 0. The findings are the known ones: the referrer profile and the tie invoice show the FR8 row-height finding of the ledger / invoice phone card list at 360 (the baselined pos-invoice is also 360: 1), the bind dialog shows the dialog FR3 findings (a notice beside the card behind the overlay). Lists, 4 of 6 profiles and the change dialog: 0. The public signup page is not in the baseline; the screens script found no horizontal scroll or small target. Baselined pages were not re-audited: the only change near them is permission labels (the roles page lists no Owner-only code).
+
+## Choices of mine, pending Owner approval
+
+- A visit OWNER (the booking customer) counts as having a visit for "brand-new" even if they did not receive the service (design 7.4 wording): such a customer can no longer be bound. The reward itself needs the referred customer to be a participant (the one who received the service).
 
 ## Open questions
 

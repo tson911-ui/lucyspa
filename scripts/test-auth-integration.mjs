@@ -68,3 +68,5 @@ await import('../apps/api/dist/website/website.race.integration.test.js');
 await import('../apps/api/dist/loyalty/loyalty.integration.test.js');
 await import('../apps/api/dist/pos/member-discount.race.integration.test.js');
 await import('../apps/api/dist/loyalty/loyalty.race.integration.test.js');
+await import('../apps/api/dist/referral/referral.integration.test.js');
+await import('../apps/api/dist/referral/referral.race.integration.test.js');
