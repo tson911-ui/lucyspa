@@ -124,6 +124,12 @@ None of these blocked P5-1. The Owner asked to be asked about OQ-2 … OQ-11 **o
 - **P5-4 instruction (Owner, 2026-10-04):** the Member Discount is a candidate of the existing best-offer selection under `calculation_version = 2`; finalized invoices are never
   recalculated; the tier comes from the payer's Spa balance BEFORE the invoice and is snapshotted on it; Beauty is Phase 6; the system picks whichever of promotion or member discount
   is better for the customer (never both); staff see the reason; it applies only when go-live is ON; the birthday gift is P5-6.
+- **P5-5 instruction (Owner, 2026-10-04; an instruction, NOT an approval of OQ-4 … OQ-7 or P5-T10):** referrer = the phone of an existing member, entered by the customer at signup or by staff at the counter
+  (`MANAGE_REFERRALS`), fixed forever once set, no self-referral. "Brand-new customer" = a phone with no completed visit ever, guest visits included (P5-Q4). Reward = +10 Spa and +10 Beauty points to the referrer,
+  once, when the new customer completes the first visit AND it is paid; never revoked on refund or cancel; idempotent; only when go-live is ON. Public signup must not reveal whether a phone is a member or show the
+  referrer's name. Admin: a referral list, and the referrer on the customer profile. The Owner asked to be asked if an open question blocks the Step (example named: a 0đ first visit).
+- **P5-5 is BLOCKED (nothing built):** P5-T10 (binding window, canonical participant-phone index, uniform signup response) is still a proposal, and OQ-4 (0đ first visit), OQ-5 (which role makes the qualifying
+  visit; never-paid first invoice), OQ-6 (mutual loop, deactivated referrer) and OQ-7 (a mistyped referrer phone is bound silently and permanently) are unanswered. Questions are in the Step report to the Owner.
 - **Owner review of P5-3 (approved):** reading loyalty follows the branch (`VIEW_LOYALTY` at the staff member's branch, like the POS member lookup); points are taken back on
   `INVOICE_REOPENED` / `INVOICE_CANCELLED` (not `PAYMENT_REVERSED`, which always comes with `INVOICE_REOPENED` for a paid invoice).
 - Implementation notes of P5-3 (no decision changed): reversal is keyed on `INVOICE_REOPENED` and `INVOICE_CANCELLED` per 4.4 (`PAYMENT_REVERSED` always comes with
