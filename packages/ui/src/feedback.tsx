@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { Button } from './button';
+import { Card } from './card';
 import { cx } from './cx';
 import { Icon, type IconName } from './icons';
 
@@ -104,6 +105,58 @@ export function Skeleton({
         />
       ))}
     </span>
+  );
+}
+
+/** Row widths of the loading placeholder: uneven, so it reads as text and not as a block. */
+const LOADING_WIDTHS = ['100%', '82%', '91%', '64%'] as const;
+
+/**
+ * What a screen shows while its data loads, instead of a blank area or a bare "loading" line. `block` is the body of a
+ * card or section (a few text rows); `page` is a whole screen (a title row and one card of rows), for a detail page
+ * that has nothing to show before its first response. The label is announced as a polite status; the shapes are
+ * decorative. The rows pulse on the shared `--ls-dur-loop` token, which is 0 under reduced motion.
+ */
+export function LoadingState({
+  label,
+  variant = 'block',
+  rows = 4,
+  className,
+}: {
+  label: string;
+  variant?: 'block' | 'page' | undefined;
+  /** Text rows, 1 to 8. */
+  rows?: number | undefined;
+  className?: string | undefined;
+}) {
+  const count = Math.min(Math.max(Math.trunc(rows), 1), LOADING_WIDTHS.length * 2);
+  const body = (
+    <span className="ls-loading-rows" aria-hidden="true">
+      {Array.from({ length: count }, (_, index) => (
+        <span
+          key={index}
+          className="ls-skeleton"
+          style={{ width: LOADING_WIDTHS[index % LOADING_WIDTHS.length] }}
+        />
+      ))}
+    </span>
+  );
+  return (
+    <div
+      className={cx('ls-loading', variant === 'page' && 'ls-loading-page', className)}
+      role="status"
+      aria-busy="true"
+    >
+      <span className="ls-visually-hidden">{label}</span>
+      {variant === 'page' ? (
+        <>
+          <span className="ls-skeleton ls-loading-title" aria-hidden="true" />
+          <Card>{body}</Card>
+        </>
+      ) : (
+        body
+      )}
+    </div>
   );
 }
 

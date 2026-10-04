@@ -435,3 +435,8 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 - The footer brand column under the logo is a block area managed in Admin > Website > Shop info (add, edit, delete, reorder, show/hide; 12 at most): social icons, app badges (official Google Play and App Store files, unmodified, `apps/web/public/badges`), text, link list, image, slogan. **Default none, nothing seeded: the footer is the logo alone, so the tagline leaves the footer until a Slogan block is added.**
 - **One additive migration on deploy:** `20261026000000_uxui_part2_footer_blocks` (`footer_blocks` JSONB default `[]` + CHECK). A server at `d59d02c` also has `20261024` and `20261025` pending; the Part 2 runbook lists only up to `20261023`. Check `/badges/*` answer 200 after deploy.
 - Image blocks are counted by the media library's usage list and delete protection, and served publicly only while visible. Report: docs/UXUI_REDESIGN_PART2_FOOTER_BLOCKS.md.
+
+### UX/UI follow-up: staff area motion, scrolling overlays, Back button - 2026-10-04
+
+- Staff area uses the public motion system: prefetched links (`PrefetchLink`), sliding sidebar highlight (`useSlidingPill`), eased group open/close, page rise on navigation only, `LoadingState` skeletons, smooth button/row/tile hover (locked hover colours untouched). Off for reduced motion, data saver, low memory. Staff data stays fresh (no-store reads, no staleTimes, bfcache reload).
+- Dialogs, drawers and sheets: header and footer fixed, body scrolls at any height (backdrop row is the viewport; `dvh`). Back button (`PageBack`, `lib/navigation/back.ts`) on every page except the staff dashboard and public home. No migration. Report: docs/UXUI_REDESIGN_STAFF_MOTION.md.

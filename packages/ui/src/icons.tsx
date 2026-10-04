@@ -9,6 +9,7 @@ const paths = {
   'chevron-up': 'M6 15l6-6 6 6',
   'chevron-left': 'M15 6l-6 6 6 6',
   'chevron-right': 'M9 6l6 6-6 6',
+  'arrow-left': 'M19 12H5M11 6l-6 6 6 6',
   'arrow-up': 'M12 19V5M6 11l6-6 6 6',
   'arrow-down': 'M12 5v14M6 13l6 6 6-6',
   search: 'M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4',

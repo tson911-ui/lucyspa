@@ -24,7 +24,7 @@ import {
   type DataTableColumn,
   type MenuItem,
 } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from '../link';
 import { useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { organizationDictionary } from '../../../i18n/organization';
@@ -94,7 +94,7 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
   if (employee.error && !employee.data) {
     return <ErrorState error={employee.error} t={t} onRetry={() => void employee.reload()} />;
   }
-  if (!employee.data) return <Loading t={t} />;
+  if (!employee.data) return <Loading t={t} page />;
   return (
     <EmployeeDetail
       employee={employee.data}

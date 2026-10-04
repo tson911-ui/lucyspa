@@ -10,7 +10,7 @@ import {
   ScheduleStrip,
   type ScheduleItem,
 } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from '../link';
 import { useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { formatVnInstant } from '../../../lib/workforce/discounts';

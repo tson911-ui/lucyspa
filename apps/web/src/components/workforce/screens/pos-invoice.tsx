@@ -18,7 +18,7 @@ import {
   RowActions,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from '../link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fill, type WorkforceDictionary } from '../../../i18n/workforce';
 import { organizationDictionary } from '../../../i18n/organization';
@@ -172,7 +172,7 @@ export function PosInvoiceScreen({ id }: { id: string }) {
       </>
     );
   }
-  if (!invoice) return <Loading t={t} />;
+  if (!invoice) return <Loading t={t} page />;
 
   const zone = invoice.branch.timezone;
   const draft = invoice.status === 'DRAFT';

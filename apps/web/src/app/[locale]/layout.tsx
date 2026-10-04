@@ -14,6 +14,7 @@ import '@lucy-spa/ui/components.css';
 import '@lucy-spa/ui/shell.css';
 import '@lucy-spa/ui/site.css';
 import { getDictionary } from '../../i18n/dictionaries';
+import { RouteHistoryTracker } from '../../components/navigation/page-back';
 import { isLocale, locales } from '../../i18n/locales';
 import { ADMIN_HIDE_COOKIE, seasonRootAttributes } from '../../lib/season-core';
 import { fetchActiveSeason } from '../../lib/season-server';
@@ -86,6 +87,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
         <a className="skip-link" href="#main-content">
           {dictionary.skipToContent}
         </a>
+        <RouteHistoryTracker />
         {children}
       </body>
     </html>

@@ -27,6 +27,7 @@ import {
   type NavGroupState,
   type ShellNavGroup,
 } from './shell-core';
+import { useSlidingPill } from './sliding-pill';
 import { PHONE_QUERY, useMediaQuery } from './use-media-query';
 
 /** The props the shell gives a link. A small explicit set so a router link (Next `Link`) is assignable. */
@@ -248,8 +249,21 @@ export function SidebarNav({
   const toggle = (id: string, open: boolean) =>
     setStored((previous) => ({ ...previous, [id]: !open }));
 
+  // The current page's highlight is one element that slides to the next page (pattern M8). A collapsed group clips its
+  // items, so the pill hides with it (the rail shows every group open).
+  const current = groups
+    .flatMap((group) => group.items.map((item) => `${item.id}${item.current ? '*' : ''}`))
+    .join('|');
+  const menu = useSlidingPill(`${rail ? 'rail' : 'full'}:${current}`, {
+    hidden: (link, element) =>
+      element.dataset['rail'] !== 'true' &&
+      link.closest('.ls-nav-collapse')?.getAttribute('data-open') === 'false',
+    watch: '.ls-nav-collapse',
+  });
+
   return (
-    <nav className="ls-nav" aria-label={label} data-rail={rail}>
+    <nav ref={menu} className="ls-nav" aria-label={label} data-rail={rail}>
+      <span className="ls-sidebar-pill" aria-hidden="true" />
       {groups.map((group) => {
         const headingId = `${prefix}-${group.id}`;
         const panelId = `${prefix}-${group.id}-items`;
@@ -274,27 +288,30 @@ export function SidebarNav({
                 <Icon name="chevron-down" size={16} className="ls-nav-chevron" />
               </button>
             )}
-            <ul
-              className="ls-nav-list"
-              id={panelId}
-              data-open={open}
-              {...(group.flat ? {} : { 'aria-labelledby': headingId })}
-            >
-              {group.items.map((item) => (
-                <li key={item.id}>
-                  <LinkComponent
-                    href={item.href}
-                    className="ls-nav-link"
-                    aria-current={item.current ? 'page' : undefined}
-                    title={rail ? item.label : undefined}
-                    {...(onNavigate ? { onClick: onNavigate } : {})}
-                  >
-                    <Icon name={item.icon} />
-                    <span className="ls-nav-label">{item.label}</span>
-                  </LinkComponent>
-                </li>
-              ))}
-            </ul>
+            {/* The wrapper animates the group open and closed (grid rows 0fr to 1fr); the list inside clips. */}
+            <div className="ls-nav-collapse" data-open={open}>
+              <ul
+                className="ls-nav-list"
+                id={panelId}
+                data-open={open}
+                {...(group.flat ? {} : { 'aria-labelledby': headingId })}
+              >
+                {group.items.map((item) => (
+                  <li key={item.id}>
+                    <LinkComponent
+                      href={item.href}
+                      className="ls-nav-link"
+                      aria-current={item.current ? 'page' : undefined}
+                      title={rail ? item.label : undefined}
+                      {...(onNavigate ? { onClick: onNavigate } : {})}
+                    >
+                      <Icon name={item.icon} />
+                      <span className="ls-nav-label">{item.label}</span>
+                    </LinkComponent>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         );
       })}

@@ -18,6 +18,15 @@ export function motionAllowed(environment: MotionEnvironment): boolean {
   return environment.deviceMemory === undefined || environment.deviceMemory > LOW_MEMORY_GB;
 }
 
+/**
+ * Whether links may be fetched ahead of a click. Data saver and low memory devices keep their bandwidth and memory for
+ * the page they are on; reduced motion says nothing about the network, so it does not matter here.
+ */
+export function prefetchAllowed(environment: MotionEnvironment): boolean {
+  if (environment.saveData) return false;
+  return environment.deviceMemory === undefined || environment.deviceMemory > LOW_MEMORY_GB;
+}
+
 /** At most six children are staggered; later ones share the last delay, so a long list never feels slow. */
 export const MAX_STAGGER_INDEX = 5;
 

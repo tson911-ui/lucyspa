@@ -624,7 +624,7 @@ test('motion (D13): every shared component animates from the tokens; loops are l
   for (const match of all.matchAll(/animation:([^;]*);/g)) {
     if (/ls-spin|ls-slide/.test(match[1]!)) continue;
     assert.doesNotMatch(match[1]!, /\d+m?s\b/, `animation uses tokens: ${match[1]}`);
-    assert.match(match[1]!, /var\(--ls-dur-(?:fast|base|slow|loop)\)/, match[1]);
+    assert.match(match[1]!, /var\(--ls-dur-(?:fast|base|slow|loop|slide)\)/, match[1]);
   }
   // Repeating animation is the skeleton pulse (and the two indicators) only.
   const infinite = [...all.matchAll(/animation:([^;]*infinite[^;]*);/g)].map((m) => m[1]!.trim());
@@ -880,10 +880,20 @@ test('sidebar styles: solid red hover and current page, accordion header, rail s
     /rotate\(-90deg\)/,
   );
   assert.match(block(shellCss, '.ls-nav-chevron'), /transition:[^;]*var\(--ls-dur-fast\)/);
-  assert.match(block(shellCss, ".ls-nav-list[data-open='false']"), /display:\s*none/);
+  // A group eases open and closed (grid rows 0fr to 1fr) and turns invisible once closed, so it is not focusable.
+  assert.match(block(shellCss, '.ls-nav-collapse'), /grid-template-rows:\s*1fr/);
+  assert.match(
+    block(shellCss, '.ls-nav-collapse'),
+    /transition:[^;]*grid-template-rows var\(--ls-dur-base\)/,
+  );
+  const closed = block(shellCss, ".ls-nav-collapse[data-open='false']");
+  assert.match(closed, /grid-template-rows:\s*0fr/);
+  assert.match(closed, /visibility:\s*hidden/);
+  assert.match(block(shellCss, '.ls-nav-list'), /overflow:\s*hidden/);
   assert.match(
     shellCss,
-    /\.ls-sidebar\[data-rail='true'\] \.ls-nav-list\[data-open='false'\] \{\s*display:\s*grid/,
+    /\.ls-sidebar\[data-rail='true'\] \.ls-nav-collapse\[data-open='false'\] \{\s*grid-template-rows:\s*1fr;\s*visibility:\s*visible/,
+    'the rail shows every group',
   );
   assert.match(shellCss, /\.ls-nav-heading-button:focus-visible \{\s*outline-offset:\s*2px/);
 });

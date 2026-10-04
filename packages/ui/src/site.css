@@ -1505,6 +1505,11 @@
   font-weight: 500;
 }
 
+/* The Back button of a full-width public flow (the booking page) sits right under the header: give it room above. */
+.ls-container > .ls-back-row:first-child {
+  padding-top: var(--ls-space-4);
+}
+
 .ls-member-page {
   display: grid;
   gap: var(--ls-space-6);

@@ -11,7 +11,7 @@ import {
   TextInput,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from '../link';
 import { useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';

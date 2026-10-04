@@ -19,7 +19,7 @@ import {
   type DataTableColumn,
   type MenuItem,
 } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from '../workforce/link';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { fill, getWorkforceDictionary } from '../../i18n/workforce';
 import { getNotificationDictionary } from '../../i18n/notifications';

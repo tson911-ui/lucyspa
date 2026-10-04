@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardHeader, EmptyState, IconButton, Skeleton, buttonClass } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from '../link';
 import { Component, useId, type ErrorInfo, type ReactNode } from 'react';
 import type { WidgetSize } from '../../../lib/workforce/dashboard/widgets';
 import { ApiError } from '../../../lib/workforce/api';

@@ -1,7 +1,7 @@
 'use client';
 
 import { AuthLayout, BrandWordmark, PasswordInput } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from '../link';
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { oneAtATime, PASSWORD_LENGTH } from '../../../lib/workforce/employee-create';
 import {

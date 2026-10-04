@@ -18,7 +18,7 @@ import {
   TextInput,
   useUnsavedChangesGuard,
 } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from '../link';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { boardErrorMessage, branchTime } from '../../../lib/workforce/booking-board';
@@ -152,7 +152,7 @@ export function WalkInScreen() {
     }
   }
 
-  if (branches.loading && !branches.data) return <Loading t={t} />;
+  if (branches.loading && !branches.data) return <Loading t={t} page />;
   if (allowed.length === 0) {
     return (
       <>

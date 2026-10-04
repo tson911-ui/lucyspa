@@ -113,6 +113,17 @@
   animation: ls-fade-in var(--ls-dur-base) var(--ls-ease-out) backwards;
 }
 
+/* The staff area's route wrapper (RouteEnter): the first load paints at once; a navigation eases the new page in with a
+   small rise (pattern M5, the same motion as the public site). RouteEnter marks the wrapper for a navigation only, on a
+   device that allows motion; the distances are tokens, 0 under reduced motion. */
+.ls-route-enter {
+  animation-name: none;
+}
+
+.ls-route-enter[data-enter='route'] {
+  animation: ls-content-in var(--ls-dur-slide) var(--ls-ease-premium) backwards;
+}
+
 /* ---- Sidebar -------------------------------------------------------------------------------- */
 .ls-sidebar-slot {
   position: sticky;
@@ -138,10 +149,56 @@
 }
 
 .ls-nav {
+  /* The positioning context of the sliding highlight; the component writes the highlight's box here. */
+  --ls-pill-x: 0px;
+  --ls-pill-y: 0px;
+  --ls-pill-w: 0px;
+  --ls-pill-h: 0px;
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding: var(--ls-space-3);
+}
+
+/* The current page's highlight (pattern M8): one element behind the links that slides to the next current link on a
+   route change. It is the locked solid fill (light: brand + white text, dark: pink + dark text). Until it is placed (no
+   scripts, first paint) the current link carries its own fill, so the menu is never without one. */
+.ls-sidebar-pill {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: var(--ls-pill-w);
+  height: var(--ls-pill-h);
+  translate: var(--ls-pill-x) var(--ls-pill-y);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-nav-active-bg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+.ls-nav[data-pill='still'] > .ls-sidebar-pill,
+.ls-nav[data-pill='slide'] > .ls-sidebar-pill {
+  opacity: 1;
+}
+
+.ls-nav[data-pill='slide'] > .ls-sidebar-pill {
+  transition:
+    translate var(--ls-dur-slide) var(--ls-ease-premium),
+    width var(--ls-dur-slide) var(--ls-ease-premium),
+    opacity var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+.ls-nav[data-pill='still'] a[aria-current='page'],
+.ls-nav[data-pill='slide'] a[aria-current='page'] {
+  background: transparent;
+}
+
+/* A group reaches 4 px past the list area on each side: the clipped list inside needs that room for the focus ring (2 px
+   offset + 2 px line), and the padding of the list takes it back, so links sit where they always did. */
+.ls-nav-group {
+  margin-inline: calc(var(--ls-space-1) * -1);
 }
 
 .ls-nav-group + .ls-nav-group {
@@ -165,7 +222,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--ls-space-2);
-  width: 100%;
+  margin-inline: var(--ls-space-1);
   min-height: var(--ls-control-h);
   padding-block: var(--ls-space-2);
   border: 0;
@@ -196,25 +253,43 @@
   transform: rotate(-90deg);
 }
 
+/* A group opens and closes by easing its rows between 0fr and 1fr (pattern M10); the list inside clips. A closed group
+   turns invisible once it has finished closing, so it is neither focusable nor read out. */
+.ls-nav-collapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  /* Visibility flips at the end of a closing and at the start of an opening, so the group stays visible while it moves. */
+  transition:
+    grid-template-rows var(--ls-dur-base) var(--ls-ease-out),
+    visibility var(--ls-dur-base) var(--ls-ease-out);
+}
+
+.ls-nav-collapse[data-open='false'] {
+  grid-template-rows: 0fr;
+  visibility: hidden;
+}
+
 .ls-nav-list {
   display: grid;
   gap: var(--ls-space-1);
-  margin: 0;
-  padding: 0;
+  min-height: 0;
+  /* The clip would cut the focus ring; 4 px of padding gives it room (the group reaches out sideways to pay for it, the
+     negative block margin pays for the rest), so the links keep their place. */
+  margin-block: calc(var(--ls-space-1) * -1);
+  padding: var(--ls-space-1);
+  overflow: hidden;
   list-style: none;
 }
 
-/* Items sit indented under their header; a closed group is not rendered (and not focusable). */
-.ls-nav-heading-button + .ls-nav-list {
-  padding-inline-start: var(--ls-space-4);
-}
-
-.ls-nav-list[data-open='false'] {
-  display: none;
+/* Items sit indented under their header. */
+.ls-nav-heading-button + .ls-nav-collapse > .ls-nav-list {
+  padding-inline-start: calc(var(--ls-space-4) + var(--ls-space-1));
 }
 
 .ls-nav-link,
 .ls-sidebar-toggle {
+  /* Positioned, so the links paint above the sliding highlight behind them. */
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--ls-space-3);
@@ -285,10 +360,15 @@
 }
 
 /* The rail has no headers, so every group's items are shown and not indented. */
+.ls-sidebar[data-rail='true'] .ls-nav-collapse,
+.ls-sidebar[data-rail='true'] .ls-nav-collapse[data-open='false'] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+}
+
 .ls-sidebar[data-rail='true'] .ls-nav-list,
-.ls-sidebar[data-rail='true'] .ls-nav-list[data-open='false'] {
-  display: grid;
-  padding-inline-start: 0;
+.ls-sidebar[data-rail='true'] .ls-nav-heading-button + .ls-nav-collapse > .ls-nav-list {
+  padding-inline-start: var(--ls-space-1);
 }
 
 .ls-sidebar[data-rail='true'] .ls-nav-link,
@@ -300,7 +380,8 @@
 .ls-sidebar[data-rail='true'] .ls-nav-group + .ls-nav-group {
   margin-top: var(--ls-space-2);
   padding-top: var(--ls-space-2);
-  border-top: 1px solid var(--ls-border);
+  background: linear-gradient(var(--ls-border), var(--ls-border)) no-repeat center top /
+    calc(100% - var(--ls-space-2)) 1px;
 }
 
 /* Tablet: always a rail; the menu button expands it as an overlay. Covered in CSS too, so the first
@@ -322,10 +403,15 @@
     white-space: nowrap;
   }
 
+  .ls-sidebar:not([data-overlay]) .ls-nav-collapse,
+  .ls-sidebar:not([data-overlay]) .ls-nav-collapse[data-open='false'] {
+    grid-template-rows: 1fr;
+    visibility: visible;
+  }
+
   .ls-sidebar:not([data-overlay]) .ls-nav-list,
-  .ls-sidebar:not([data-overlay]) .ls-nav-list[data-open='false'] {
-    display: grid;
-    padding-inline-start: 0;
+  .ls-sidebar:not([data-overlay]) .ls-nav-heading-button + .ls-nav-collapse > .ls-nav-list {
+    padding-inline-start: var(--ls-space-1);
   }
 
   .ls-sidebar:not([data-overlay]) .ls-nav-link {
@@ -336,7 +422,8 @@
   .ls-sidebar:not([data-overlay]) .ls-nav-group + .ls-nav-group {
     margin-top: var(--ls-space-2);
     padding-top: var(--ls-space-2);
-    border-top: 1px solid var(--ls-border);
+    background: linear-gradient(var(--ls-border), var(--ls-border)) no-repeat center top /
+      calc(100% - var(--ls-space-2)) 1px;
   }
 
   /* The collapse toggle is desktop only (the component omits it on tablet after hydration). */
@@ -386,6 +473,125 @@
 /* The 4 px inline padding leaves room for the focus ring (2 px offset + 2 px line) the scroll box would clip. */
 .ls-nav-drawer .ls-nav {
   padding: 0 var(--ls-space-1);
+}
+
+/* ---- Controls, cards and rows (pattern M9, staff side) --------------------------------------------- */
+/* The public site's hover and press motion on the same tokens, quieter for a dense screen: colours ease over the base
+   duration; on hover a button lifts half the public distance (fine pointers only, no zoom, so a toolbar never reflows);
+   on press it dips by --ls-press-scale. The hover COLOURS are not touched here: they stay the locked solid fills
+   (light: brand + white text, dark: pink + dark text); only the way they arrive is smooth. All distances are tokens,
+   0 / 1 under reduced motion. The public site overrides this with its own, stronger rules (`.ls-site ...`). */
+.ls-btn {
+  transition:
+    transform var(--ls-dur-base) var(--ls-ease-premium),
+    background-color var(--ls-dur-base) var(--ls-ease-out),
+    border-color var(--ls-dur-base) var(--ls-ease-out),
+    color var(--ls-dur-base) var(--ls-ease-out);
+}
+
+@media (hover: hover) {
+  .ls-btn:where(:not(:disabled, [aria-disabled='true'])):hover {
+    transform: translateY(calc(var(--ls-ctl-lift) / -2));
+  }
+}
+
+.ls-btn:active:not(:disabled):not([aria-disabled='true']) {
+  transition-duration: var(--ls-dur-fast);
+}
+
+.ls-nav-link,
+.ls-nav-heading-button,
+.ls-sidebar-toggle,
+.ls-tab,
+.ls-menu-item,
+.ls-usermenu-link {
+  transition:
+    background-color var(--ls-dur-base) var(--ls-ease-out),
+    color var(--ls-dur-base) var(--ls-ease-out),
+    border-color var(--ls-dur-base) var(--ls-ease-out);
+}
+
+.ls-nav-link:active,
+.ls-nav-heading-button:active {
+  transition-duration: var(--ls-dur-fast);
+}
+
+/* Table rows: the tint arrives and leaves over the base duration (rows are not clickable, so there is no lift). */
+.ls-table td,
+.ls-table tbody tr {
+  transition:
+    background-color var(--ls-dur-base) var(--ls-ease-out),
+    border-color var(--ls-dur-base) var(--ls-ease-out);
+}
+
+/* The one clickable card of the staff side, a media tile: it lifts a little like the public cards, and dips on press. */
+.ls-media-tile {
+  transition:
+    transform var(--ls-dur-base) var(--ls-ease-premium),
+    border-color var(--ls-dur-base) var(--ls-ease-out),
+    box-shadow var(--ls-dur-base) var(--ls-ease-out);
+}
+
+@media (hover: hover) {
+  .ls-media-tile:hover {
+    transform: translateY(calc(var(--ls-card-lift) * -1));
+    box-shadow: var(--ls-shadow-md);
+  }
+}
+
+.ls-media-tile:active {
+  transform: scale(var(--ls-press-scale));
+}
+
+/* Data saver and low memory devices (MotionGate sets `data-ls-motion="reduced"`): the staff area keeps its short colour
+   changes but drops the slide, the page rise, the lifts and the looping skeleton pulse. Reduced motion needs no rule
+   here: tokens.css zeroes every duration and distance for it. */
+html[data-ls-motion='reduced'] .ls-shell {
+  --ls-dur-slide: 0ms;
+  --ls-dur-loop: 0ms;
+  --ls-reveal-shift: 0px;
+  --ls-ctl-lift: 0px;
+  --ls-card-lift: 0px;
+}
+
+/* ---- Back button (every page but the dashboard and the public home) ------------------------------ */
+/* One ghost button at the top-left, above the breadcrumbs and the title. The row pulls the 24 px block gap of its
+   container in to 16 px; the button's own inline padding is taken back so its arrow sits on the content edge. The hover,
+   press and focus come from the button family (`ls-btn-ghost`), so they are the shared motion and the locked colours. */
+.ls-back-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-block-end: calc(var(--ls-space-2) * -1);
+}
+
+.ls-back-row .ls-back {
+  margin-inline-start: calc(var(--ls-space-3) * -1);
+  padding-inline: var(--ls-space-3);
+}
+
+/* ---- Loading placeholder (LoadingState) -------------------------------------------------------- */
+.ls-loading {
+  display: grid;
+  gap: var(--ls-space-4);
+}
+
+.ls-loading-rows {
+  display: grid;
+  gap: var(--ls-space-3);
+}
+
+.ls-loading-rows .ls-skeleton {
+  height: var(--ls-space-4);
+}
+
+.ls-loading-page {
+  gap: var(--ls-space-6);
+}
+
+.ls-loading-title {
+  width: 40%;
+  max-width: 20rem;
+  height: var(--ls-space-6);
 }
 
 /* ---- Theme toggle ----------------------------------------------------------------------------- */

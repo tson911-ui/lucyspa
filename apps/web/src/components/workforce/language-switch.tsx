@@ -1,7 +1,7 @@
 'use client';
 
 import { buttonClass } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from './link';
 import { usePathname } from 'next/navigation';
 import { useWorkforce } from './session';
 

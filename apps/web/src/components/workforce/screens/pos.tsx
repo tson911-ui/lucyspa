@@ -10,7 +10,7 @@ import {
   Select,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from '../link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fill } from '../../../i18n/workforce';
@@ -93,7 +93,7 @@ export function PosScreen() {
     }
   }
 
-  if (branches.loading && !branches.data) return <Loading t={t} />;
+  if (branches.loading && !branches.data) return <Loading t={t} page />;
   if (allowed.length === 0) {
     return (
       <>

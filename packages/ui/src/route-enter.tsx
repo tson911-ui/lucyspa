@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import { cx } from './cx';
 import { motionAllowed, readMotionEnvironment } from './reveal-core';
 
 /** True once this browser tab has drawn a page: every later mount of a route wrapper is a navigation. */
@@ -13,13 +14,23 @@ let pageDrawn = false;
  * `template.tsx`, which remounts on every navigation. The server and the first client render agree (no animation),
  * so there is no hydration difference.
  */
-export function RouteEnter({ children }: { children: ReactNode }) {
+export function RouteEnter({
+  stack = false,
+  children,
+}: {
+  /** Makes the wrapper the page's block container (24 px between its blocks), for routes inside a `Page`. */
+  stack?: boolean | undefined;
+  children: ReactNode;
+}) {
   const [enter] = useState(() => pageDrawn && motionAllowed(readMotionEnvironment()));
   useEffect(() => {
     pageDrawn = true;
   }, []);
   return (
-    <div className="ls-route-fade" data-enter={enter ? 'route' : undefined}>
+    <div
+      className={cx('ls-route-fade ls-route-enter', stack && 'ls-stack ls-gap-page')}
+      data-enter={enter ? 'route' : undefined}
+    >
       {children}
     </div>
   );

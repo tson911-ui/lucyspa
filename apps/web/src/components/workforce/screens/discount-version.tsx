@@ -2,7 +2,7 @@
 
 import type { DiscountDetailResponse } from '@lucy-spa/contracts';
 import { Breadcrumbs, Card, FormActions, Page, Stack, useUnsavedChangesGuard } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from '../link';
 import { useEffect, useState, type FormEvent } from 'react';
 import { organizationDictionary } from '../../../i18n/organization';
 import {
@@ -38,7 +38,7 @@ export function DiscountVersionScreen({ id }: { id: string }) {
   }, [api, id]);
 
   if (loadError && !program) return <ErrorState error={loadError} t={t} />;
-  if (!program) return <Loading t={t} />;
+  if (!program) return <Loading t={t} page />;
   return <VersionPage program={program} />;
 }
 

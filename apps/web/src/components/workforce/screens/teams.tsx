@@ -33,7 +33,7 @@ import {
   type DataTableColumn,
   type MenuItem,
 } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from '../link';
 import { useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { organizationDictionary } from '../../../i18n/organization';
@@ -319,7 +319,7 @@ export function TeamDetailScreen({ id }: { id: string }) {
   if (team.error && !team.data) {
     return <ErrorState error={team.error} t={t} onRetry={() => void team.reload()} />;
   }
-  if (!team.data) return <Loading t={t} />;
+  if (!team.data) return <Loading t={t} page />;
   const current = team.data;
 
   /** After a successful change: refresh, close the overlay and say what happened. */

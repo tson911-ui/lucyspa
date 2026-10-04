@@ -1,7 +1,7 @@
 'use client';
 
 import type { CurrentAccountResponse } from '@lucy-spa/contracts';
-import { Button, Cluster, ErrorState, Notice, Page, Spinner, Stack } from '@lucy-spa/ui';
+import { Button, ErrorState, LoadingState, Notice, Page, Stack } from '@lucy-spa/ui';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   createContext,
@@ -178,10 +178,7 @@ export function RequireWorkforce({ children }: { children: ReactNode }) {
   if (state.kind === 'loading') {
     return (
       <Page width="form">
-        <Cluster>
-          <Spinner />
-          <p role="status">{t.auth.checking}</p>
-        </Cluster>
+        <LoadingState variant="page" label={t.auth.checking} />
       </Page>
     );
   }

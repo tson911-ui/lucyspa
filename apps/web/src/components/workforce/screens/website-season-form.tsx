@@ -34,7 +34,7 @@ import {
   TextInput,
   useUnsavedChangesGuard,
 } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from '../link';
 import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react';
 import { organizationDictionary } from '../../../i18n/organization';
 import { fill } from '../../../i18n/workforce';

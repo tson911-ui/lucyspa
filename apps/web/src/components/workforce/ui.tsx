@@ -7,6 +7,7 @@ import {
   CardHeader,
   EmptyState,
   ErrorState as UiErrorState,
+  LoadingState,
   Field as UiField,
   Notice as UiNotice,
   PageHeader as UiPageHeader,
@@ -80,12 +81,12 @@ export function Notice({
   return <UiNotice tone={uiTone(tone) as Exclude<UiTone, 'neutral'>}>{children}</UiNotice>;
 }
 
-export function Loading({ t }: { t: WorkforceDictionary }) {
-  return (
-    <p className="ls-hint" role="status">
-      {t.common.loading}
-    </p>
-  );
+/**
+ * Skeleton placeholder while a screen's data loads (never a blank area). `page` is for a screen that returns this
+ * alone before its first response (a title row and one card); the default fills a card or section body.
+ */
+export function Loading({ t, page = false }: { t: WorkforceDictionary; page?: boolean }) {
+  return <LoadingState label={t.common.loading} variant={page ? 'page' : 'block'} />;
 }
 
 export function Empty({ children }: { children: ReactNode }) {

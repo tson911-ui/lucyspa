@@ -601,7 +601,7 @@
 
   // 10d. FR5: a button alone in its row (or a row of only buttons) outside the places actions belong. Heuristic: review each hit.
   const ACTION_PLACES =
-    '.ls-hero-actions, .ls-site-cta, .ls-site-actions, form, [role=dialog], dialog, header, nav, aside, li, td, th, tr, [role=toolbar], [role=menu], [role=tablist], .ls-toolbar, .ls-toolbar-row, .ls-toolbar-actions, .ls-card-header, .ls-list-section-head, .wf-section-header, .wf-page-header, .wf-page-actions, .ls-page-header, .ls-row-actions, .wf-row-actions, .wf-form-actions, .ls-action-bar, .ls-form-section-actions, .ls-member-actions, .ls-summary-actions, .ls-dialog, .ls-drawer, .ls-notice, .ls-empty, .wf-empty, .ls-pagination, .ls-stat, .ls-kpi, .ls-widget, .ls-auth-card, .ls-segmented, .ls-table-state';
+    '.ls-hero-actions, .ls-site-cta, .ls-site-actions, form, [role=dialog], dialog, header, nav, aside, li, td, th, tr, [role=toolbar], [role=menu], [role=tablist], .ls-toolbar, .ls-toolbar-row, .ls-toolbar-actions, .ls-card-header, .ls-list-section-head, .wf-section-header, .wf-page-header, .wf-page-actions, .ls-page-header, .ls-back-row, .ls-row-actions, .wf-row-actions, .wf-form-actions, .ls-action-bar, .ls-form-section-actions, .ls-member-actions, .ls-summary-actions, .ls-dialog, .ls-drawer, .ls-notice, .ls-empty, .wf-empty, .ls-pagination, .ls-stat, .ls-kpi, .ls-widget, .ls-auth-card, .ls-segmented, .ls-table-state';
   const seenRows = new Set();
   for (const button of scope.querySelectorAll('button, a.ls-btn, a.wf-button')) {
     if (!vis(button) || button.closest(ACTION_PLACES) || button.closest('summary')) continue;

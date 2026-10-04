@@ -55,6 +55,7 @@ import {
   serviceCodesFromSearch,
   type BranchService,
 } from '../../../lib/customer/booking-view';
+import { PageBack } from '../../navigation/page-back';
 import { useCustomer } from '../session';
 
 const STEPS = ['services', 'guests', 'when', 'confirm'] as const;
@@ -244,6 +245,7 @@ export function BookScreen() {
     return (
       <PublicMain>
         <div className="ls-container ls-container-narrow">
+          <PageBack root={base} publicHome={`/${locale}`} label={t.common.back} />
           <div className="ls-public-title" aria-live="polite">
             <h1 ref={heading} tabIndex={-1} className="ls-h1-display">
               {t.book.successTitle}
@@ -352,6 +354,7 @@ export function BookScreen() {
   return (
     <PublicMain className={totals.count > 0 ? 'ls-main-tall ls-booking-bar' : 'ls-main-tall'}>
       <div className="ls-container">
+        <PageBack root={base} publicHome={`/${locale}`} label={t.common.back} />
         <div className="ls-public-title">
           <h1 className="ls-h1-display">{t.book.title}</h1>
         </div>

@@ -672,14 +672,10 @@ test('the motion tokens exist and are zero under reduced motion', () => {
   }
 });
 
-test('the staff stylesheets never read the customer-side motion tokens', () => {
+test('the staff stylesheets read the shared motion tokens, never the hero-only ones', () => {
   for (const name of ['components.css', 'shell.css', 'base.css']) {
     const text = readFileSync(new URL(name, import.meta.url), 'utf8');
-    assert.doesNotMatch(
-      text,
-      /--ls-(dur-reveal|dur-zoom|dur-slide|ease-premium|reveal-shift|stagger|parallax-shift)/,
-      name,
-    );
+    assert.doesNotMatch(text, /--ls-(dur-reveal|dur-zoom|stagger|parallax-shift)/, name);
   }
 });
 

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { RouteFade } from '@lucy-spa/ui';
+import { RouteEnter } from '@lucy-spa/ui';
 
+// Remounts on every navigation: the new page eases in (a small rise and fade). The first load never animates.
 export default function Template({ children }: { children: ReactNode }) {
-  return <RouteFade stack>{children}</RouteFade>;
+  return <RouteEnter stack>{children}</RouteEnter>;
 }

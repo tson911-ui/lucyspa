@@ -216,6 +216,14 @@
   }
 }
 
+/* The staff route wrapper on a navigation: the page rises a little as it fades in (shell.css, RouteEnter). */
+@keyframes ls-content-in {
+  from {
+    opacity: 0;
+    translate: 0 calc(var(--ls-reveal-shift) / 2);
+  }
+}
+
 @keyframes ls-pop-in {
   from {
     opacity: 0;
@@ -1192,6 +1200,9 @@
   inset: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  /* One row exactly as tall as the screen: without it a tall panel stretches the row past the viewport and its footer is
+     out of reach. The panel scrolls its own body instead. */
+  grid-template-rows: minmax(0, 1fr);
   place-items: center;
   padding: var(--ls-space-4);
   background: var(--ls-overlay);
@@ -1205,8 +1216,11 @@
   gap: var(--ls-space-3);
   width: min(100%, var(--ls-dialog-md));
   max-height: calc(100vh - 2 * var(--ls-space-4));
+  max-height: calc(100dvh - 2 * var(--ls-space-4));
+  min-height: 0;
   padding: var(--ls-space-6);
-  overflow-y: auto;
+  /* The panel itself never scrolls: the header and the footer stay in place, the body between them scrolls. */
+  overflow: hidden;
   border: 1px solid var(--ls-border);
   border-radius: var(--ls-radius-md);
   background: var(--ls-bg-raised);
@@ -1219,6 +1233,12 @@
 
 .ls-dialog-lg {
   width: min(100%, var(--ls-dialog-lg));
+}
+
+.ls-dialog-header,
+.ls-dialog-description,
+.ls-dialog-footer {
+  flex: none;
 }
 
 .ls-dialog-header {
@@ -1246,7 +1266,16 @@
 
 .ls-dialog-body {
   display: grid;
+  flex: 1 1 auto;
+  align-content: start;
   gap: var(--ls-space-4);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* The scroll box would cut a focus ring at its edges; 4 px of padding gives it room and the negative margin keeps
+     the fields where they were. */
+  margin-inline: calc(var(--ls-space-1) * -1);
+  padding: var(--ls-space-1);
 }
 
 .ls-dialog-footer {
@@ -1293,6 +1322,8 @@
   gap: var(--ls-space-3);
   width: min(100%, 24rem);
   height: 100%;
+  max-height: 100%;
+  min-height: 0;
   padding: var(--ls-space-5);
   background: var(--ls-bg-raised);
   box-shadow: var(--ls-shadow-lg);
@@ -1325,6 +1356,7 @@
   width: 100%;
   height: auto;
   max-height: 85vh;
+  max-height: 85dvh;
   padding-bottom: calc(var(--ls-space-5) + var(--ls-safe-bottom));
   border-block-start: 1px solid var(--ls-border);
   border-start-start-radius: var(--ls-radius-md);
@@ -1336,6 +1368,15 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Room for the focus ring at the scroll box edges (see .ls-dialog-body). */
+  margin-inline: calc(var(--ls-space-1) * -1);
+  padding: var(--ls-space-1);
+}
+
+.ls-drawer .ls-dialog-header,
+.ls-drawer .ls-dialog-footer {
+  flex: none;
 }
 
 /* Bottom sheet on a phone for sm and md dialogs. */
@@ -1349,6 +1390,7 @@
   .ls-dialog-md {
     width: 100%;
     max-height: 90vh;
+    max-height: 90dvh;
     padding-bottom: calc(var(--ls-space-6) + var(--ls-safe-bottom));
     border-end-end-radius: 0;
     border-end-start-radius: 0;
@@ -1791,6 +1833,7 @@
   animation: ls-pop-in var(--ls-dur-base) var(--ls-ease-out) backwards;
   width: min(100%, var(--ls-dialog-sm));
   max-height: calc(100vh - 2 * var(--ls-space-4));
+  max-height: calc(100dvh - 2 * var(--ls-space-4));
   overflow-y: auto;
   border-radius: var(--ls-radius-md);
 }

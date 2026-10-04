@@ -234,7 +234,7 @@ export function BookingBoardScreen() {
     }
   }
 
-  if (branches.loading && !branches.data) return <Loading t={t} />;
+  if (branches.loading && !branches.data) return <Loading t={t} page />;
   if (allowed.length === 0) {
     return (
       <>

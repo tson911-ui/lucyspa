@@ -22,7 +22,7 @@ import {
   TimeInput,
   type MenuItem,
 } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from '../link';
 import { useState } from 'react';
 import { organizationDictionary } from '../../../i18n/organization';
 import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
@@ -88,7 +88,7 @@ export function BranchDetailScreen({ id }: { id: string }) {
   if (branch.error && !branch.data) {
     return <ErrorState error={branch.error} t={t} onRetry={() => void branch.reload()} />;
   }
-  if (!branch.data) return <Loading t={t} />;
+  if (!branch.data) return <Loading t={t} page />;
   return <BranchDetail branch={branch.data} reload={branch.reload} />;
 }
 

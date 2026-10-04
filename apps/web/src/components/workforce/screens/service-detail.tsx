@@ -28,7 +28,7 @@ import {
   type DataTableColumn,
   type MenuItem,
 } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from '../link';
 import { useEffect, useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { organizationDictionary } from '../../../i18n/organization';
@@ -74,7 +74,7 @@ export function ServiceDetailScreen({ id }: { id: string }) {
   if (service.error && !service.data) {
     return <ErrorState error={service.error} t={t} onRetry={() => void service.reload()} />;
   }
-  if (!service.data) return <Loading t={t} />;
+  if (!service.data) return <Loading t={t} page />;
   return <ServiceDetail service={service.data} reload={service.reload} />;
 }
 

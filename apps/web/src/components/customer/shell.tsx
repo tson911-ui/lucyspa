@@ -3,6 +3,7 @@
 import { Notice, PublicMain } from '@lucy-spa/ui';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { PageBack } from '../navigation/page-back';
 import { AccountTabs } from '../public/site-chrome-client';
 import { useCustomer } from './session';
 
@@ -21,6 +22,7 @@ export function CustomerShell({ children }: { children: ReactNode }) {
       <div className="ls-container">
         <AccountTabs locale={locale} />
         <div className="ls-member-page">
+          <PageBack root={base} publicHome={`/${locale}`} label={t.common.back} />
           {sessionLost ? <Notice tone="warning">{t.errors.sessionLost}</Notice> : null}
           {children}
         </div>

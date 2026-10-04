@@ -21,7 +21,7 @@ import {
   type DataTableColumn,
   type MenuItem,
 } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from '../link';
 import { useEffect, useRef, useState } from 'react';
 import { organizationDictionary } from '../../../i18n/organization';
 import { fill } from '../../../i18n/workforce';
@@ -75,7 +75,7 @@ export function DiscountDetailScreen({ id }: { id: string }) {
   }, [api, id]);
 
   if (loadError && !program) return <ErrorState error={loadError} t={t} />;
-  if (!program) return <Loading t={t} />;
+  if (!program) return <Loading t={t} page />;
   return <DiscountDetail program={program} onChange={setProgram} />;
 }
 

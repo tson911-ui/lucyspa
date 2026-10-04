@@ -5,18 +5,20 @@ import {
   BrandWordmark,
   Button,
   Icon,
+  MotionGate,
   Page,
   ThemeToggle,
   ToastProvider,
   UserMenu,
   isPathActive,
 } from '@lucy-spa/ui';
-import Link from 'next/link';
+import { PrefetchLink as Link } from './link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { SESSION_WATCH_INTERVAL_MS, createSessionCheck } from '../../lib/workforce/session-watch';
 import { NAV_ICONS, personalEntries, sidebarGroups } from '../../lib/workforce/nav-groups';
 import { navigationFor } from '../../lib/workforce/permissions';
+import { PageBack } from '../navigation/page-back';
 import { NotificationIndicator } from '../notifications/inbox';
 import { themeLabels } from './auth-actions';
 import { LanguageSwitch } from './language-switch';
@@ -38,7 +40,9 @@ export function WorkforceShell({ children }: { children: ReactNode }) {
 
   return (
     <WorkforceToasts>
+      <MotionGate />
       <SessionWatch />
+      <FreshOnReturn />
       <AppShell
         LinkComponent={Link}
         brand={
@@ -97,6 +101,7 @@ export function WorkforceShell({ children }: { children: ReactNode }) {
         }
       >
         <Page>
+          <PageBack root={base} label={t.common.back} />
           <SessionLostNotice />
           {children}
         </Page>
@@ -113,6 +118,21 @@ export function WorkforceToasts({ children }: { children: ReactNode }) {
       {children}
     </ToastProvider>
   );
+}
+
+/**
+ * A page restored from the browser's back/forward cache comes back exactly as it was left, numbers included. Staff
+ * data must never look old, so a restored page reloads and fetches again. Renders nothing.
+ */
+export function FreshOnReturn() {
+  useEffect(() => {
+    const onShow = (event: PageTransitionEvent) => {
+      if (event.persisted) window.location.reload();
+    };
+    window.addEventListener('pageshow', onShow);
+    return () => window.removeEventListener('pageshow', onShow);
+  }, []);
+  return null;
 }
 
 /**
