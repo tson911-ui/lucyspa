@@ -37,9 +37,10 @@ New `CHANGE_REFERRER` (Owner only). `MANAGE_REFERRALS` (existed) binds at the co
 - Fixed after the first look: card label repeated its heading ("Người giới thiệu" → "Hội viên"), list heading repeated its tab ("Danh sách giới thiệu"), the optional signup label was bold like the required ones (now a hint).
 - DOM audit (run on the P5-3 scratch database, not the uxaudit one): every page here is new to the baseline, so the compare shows them as rises from 0. The findings are the known ones: the referrer profile and the tie invoice show the FR8 row-height finding of the ledger / invoice phone card list at 360 (the baselined pos-invoice is also 360: 1), the bind dialog shows the dialog FR3 findings (a notice beside the card behind the overlay). Lists, 4 of 6 profiles and the change dialog: 0. The public signup page is not in the baseline; the screens script found no horizontal scroll or small target. Baselined pages were not re-audited: the only change near them is permission labels (the roles page lists no Owner-only code).
 
-## Choices of mine, pending Owner approval
+## Owner decisions after review (2026-10-04)
 
-- A visit OWNER (the booking customer) counts as having a visit for "brand-new" even if they did not receive the service (design 7.4 wording): such a customer can no longer be bound. The reward itself needs the referred customer to be a participant (the one who received the service).
+- **Received a service (Owner-approved):** "already visited" counts only a participant (by account or canonical phone) with a DONE service line in a COMPLETED visit. A visit owner or payer who received none is still new and can be bound; the earlier choice to count the owner is withdrawn. `completedVisitsOf` and the award query changed; new test "a booker who received no service is still new" (bind after the booking, the friend's visit does not reward, her own first visit does). `referral.integration` 12 / 12, `referral.race.integration` 5 / 5 on a fresh scratch database.
+- **Wording (Owner-approved):** "khám" removed from Vietnamese text (4 strings in `apps/web/src/i18n/loyalty.ts`: "lần khám đầu tiên" → "lượt làm dịch vụ đầu tiên" ×3, "đã có lần khám trước" → "đã từng làm dịch vụ"); rule added to `CLAUDE.md`.
 
 ## Open questions
 

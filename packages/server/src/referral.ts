@@ -13,8 +13,9 @@ export interface CompletedVisit {
 }
 
 /**
- * The customer's COMPLETED visits, earliest first (`completed_at`, then id). A visit counts when the customer owns it, is one of
- * its participants, or one of its participants (member or guest) carries the customer's canonical phone (P5-Q4, design 7.4).
+ * The customer's COMPLETED visits, earliest first (`completed_at`, then id). A visit counts only when the customer RECEIVED a
+ * service in it: they are a participant (by account, or by canonical phone for a member or guest participant) with a DONE service
+ * line (P5-Q4, design 7.4; Owner decision 2026-10-04: a booker who received nothing does not count as "already visited").
  */
 export async function completedVisitsOf(
   tx: Prisma.TransactionClient,
@@ -25,17 +26,18 @@ export async function completedVisitsOf(
     SELECT v.id, v.completed_at
     FROM visits v
     WHERE v.status = 'COMPLETED'
-      AND (
-        v.owner_user_id = ${userId}::uuid
-        OR EXISTS (
-          SELECT 1 FROM visit_participants p
-          WHERE p.visit_id = v.id
-            AND (
-              p.customer_user_id = ${userId}::uuid
-              OR (p.phone_canonical IS NOT NULL
-                  AND p.phone_canonical = (SELECT u.phone_canonical FROM users u WHERE u.id = ${userId}::uuid))
-            )
-        )
+      AND EXISTS (
+        SELECT 1 FROM visit_participants p
+        WHERE p.visit_id = v.id
+          AND (
+            p.customer_user_id = ${userId}::uuid
+            OR (p.phone_canonical IS NOT NULL
+                AND p.phone_canonical = (SELECT u.phone_canonical FROM users u WHERE u.id = ${userId}::uuid))
+          )
+          AND EXISTS (
+            SELECT 1 FROM visit_service_lines l
+            WHERE l.visit_id = v.id AND l.participant_id = p.id AND l.status = 'DONE'
+          )
       )
     ORDER BY v.completed_at, v.id
     LIMIT ${limit}`;
@@ -139,6 +141,10 @@ export async function referralAwardCandidates(
           AND (
             p.customer_user_id = r.referred_user_id
             OR (p.phone_canonical IS NOT NULL AND p.phone_canonical = u.phone_canonical)
+          )
+          AND EXISTS (
+            SELECT 1 FROM visit_service_lines l
+            WHERE l.visit_id = p.visit_id AND l.participant_id = p.id AND l.status = 'DONE'
           )
       )
     ORDER BY r.id

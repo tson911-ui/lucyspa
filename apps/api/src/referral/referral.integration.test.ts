@@ -737,6 +737,28 @@ test(
             );
 
             await suite.test(
+              'brand-new (Owner decision): a booker who received no service is still new and can still get a referrer',
+              async () => {
+                const olga = await customer('olga');
+                // olga only booked and paid for a friend's visit: she is the visit owner but not a recipient.
+                const friendsVisit = await finalized(exact, { guestPhone: null }, olga);
+                await pay(friendsVisit.id, 200_000);
+                const spaBefore = await balanceOf(alice.id, 'SPA');
+                const bound = await bind(binder.token, olga, typed(alice));
+                assert.equal(bound.replayed, false);
+                // The friend's visit did not close her window and does not reward: she received nothing.
+                assert.equal((await referralOf(olga.id)).awardedAt, null);
+                assert.equal(await balanceOf(alice.id, 'SPA'), spaBefore);
+                // Her own first visit (she receives the service) is the one that rewards the referrer.
+                const own = await finalized(exact, { member: olga });
+                await pay(own.id, 200_000);
+                assert.deepEqual(await consume(own.id), ['APPLIED']);
+                assert.ok((await referralOf(olga.id)).awardedAt, 'olga received the service');
+                assert.equal(await balanceOf(alice.id, 'SPA'), (spaBefore ?? 0) + 10);
+              },
+            );
+
+            await suite.test(
               'who received the service: a participant found by phone, several referred customers on one invoice',
               async () => {
                 const lena = await customer('lena');

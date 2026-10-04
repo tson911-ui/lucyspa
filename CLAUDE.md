@@ -82,6 +82,9 @@ Owner reviews every Step. Work only on the Step you are given.
 - Authorization is permission + branch scope server-side; never check role names.
 - Money is integer VND. Timestamps are UTC; business dates use the branch timezone.
 - Financial/operational history is never deleted or rewritten; corrections are explicit records.
+- Vietnamese wording: Lucy Spa is a spa, not a clinic. Never use "khám" (e.g. "lượt khám", "lần khám") in Vietnamese UI text,
+  emails, docs or reports; say "lượt đến" or "lượt làm dịch vụ". (Owner rule, 2026-10-04. The footer label "Khám phá" = Explore
+  is a separate question, pending Owner decision; do not change it unasked.)
 - Do not invent TBD/Future policies (PRD section 61). Ask the Owner instead.
 - Locked Owner decisions (Phase 4 Q0–Q10, OP-1…OP-7) are in the Phase 4 design doc; do not reopen them.
 - Never mark an open question (OQ-n) or a proposed technical decision (P5-Tn, OP-n, etc.) as approved yourself. Only the Owner's own

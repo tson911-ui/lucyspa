@@ -160,7 +160,7 @@ const vi = {
   referral: {
     title: 'Giới thiệu',
     intro:
-      'Mỗi khách có tối đa một người giới thiệu. Người giới thiệu nhận 10 điểm Spa và 10 điểm Beauty một lần, khi khách mới thanh toán bằng tiền cho lần khám đầu tiên.',
+      'Mỗi khách có tối đa một người giới thiệu. Người giới thiệu nhận 10 điểm Spa và 10 điểm Beauty một lần, khi khách mới thanh toán bằng tiền cho lượt làm dịch vụ đầu tiên.',
     status: { PENDING: 'Chờ thưởng', REWARDED: 'Đã thưởng' },
     via: { SIGNUP: 'Khách tự nhập khi đăng ký', COUNTER: 'Nhân viên ghi tại quầy' },
     list: {
@@ -187,7 +187,7 @@ const vi = {
       boundBy: 'Nhân viên ghi',
       status: 'Trạng thái',
       pending:
-        'Chờ thưởng: người giới thiệu nhận điểm khi lần khám đầu tiên của khách được thanh toán bằng tiền.',
+        'Chờ thưởng: người giới thiệu nhận điểm khi lượt làm dịch vụ đầu tiên của khách được thanh toán bằng tiền.',
       rewarded: 'Đã thưởng lúc {date} (hóa đơn {invoice}). Người giới thiệu không đổi được nữa.',
       rewardedNoInvoice: 'Đã thưởng lúc {date}. Người giới thiệu không đổi được nữa.',
       asReferrer: 'Đã giới thiệu',
@@ -206,7 +206,7 @@ const vi = {
     bind: {
       title: 'Gắn người giới thiệu',
       description:
-        'Nhập đúng số điện thoại của hội viên đã giới thiệu khách này. Chỉ gắn được trước khi khách thanh toán lần khám đầu tiên. Sau khi gắn, chỉ Chủ spa mới đổi được và chỉ trước khi người giới thiệu nhận thưởng.',
+        'Nhập đúng số điện thoại của hội viên đã giới thiệu khách này. Chỉ gắn được trước khi khách thanh toán lượt làm dịch vụ đầu tiên. Sau khi gắn, chỉ Chủ spa mới đổi được và chỉ trước khi người giới thiệu nhận thưởng.',
       phone: 'Số điện thoại người giới thiệu',
       search: 'Tìm hội viên',
       searching: 'Đang tìm…',
@@ -230,7 +230,7 @@ const vi = {
   },
   errors: {
     LOYALTY_BALANCE_TOO_LOW: 'Số dư chỉ còn {n} điểm',
-    REFERRAL_NOT_NEW: 'Khách này đã có lần khám trước nên không thể ghi người giới thiệu nữa.',
+    REFERRAL_NOT_NEW: 'Khách này đã từng làm dịch vụ nên không thể ghi người giới thiệu nữa.',
     REFERRAL_ALREADY_BOUND: 'Khách này đã có người giới thiệu.',
     REFERRAL_LOCKED: 'Người giới thiệu đã được thưởng nên không thể đổi nữa.',
     REFERRAL_SELF: 'Không thể chọn chính khách làm người giới thiệu.',

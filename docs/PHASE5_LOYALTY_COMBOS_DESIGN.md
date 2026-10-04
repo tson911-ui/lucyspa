@@ -137,6 +137,9 @@ None of these blocked P5-1. The Owner asked to be asked about OQ-2 … OQ-11 **o
   - **P5-T10: APPROVED as proposed** (binding window until the first PAID episode, canonical participant-phone index, identical signup response).
   - **Go-live:** a referrer entered while go-live is OFF is stored and rewarded later if the conditions are met after go-live (the go-live DB guard is relaxed for referral binding only; points still need go-live ON).
     Visits completed before go-live DO count, so such a customer is no longer "new".
+- **P5-5 review decisions (Owner, in the Owner's own words, 2026-10-04; locked, do not reopen):**
+  - **"Already visited" = received a service.** Only a person who actually received a service counts as having visited. A booker or payer who received none (visit owner only) still counts as new and can still get a referrer. Built and tested (7.4, 7.6).
+  - **Wording:** Lucy Spa is a spa, not a clinic. Never "khám" / "lượt khám" in Vietnamese; use "lượt đến" or "lượt làm dịch vụ" (rule added to `CLAUDE.md`).
 - **Owner review of P5-3 (approved):** reading loyalty follows the branch (`VIEW_LOYALTY` at the staff member's branch, like the POS member lookup); points are taken back on
   `INVOICE_REOPENED` / `INVOICE_CANCELLED` (not `PAYMENT_REVERSED`, which always comes with `INVOICE_REOPENED` for a paid invoice).
 - Implementation notes of P5-3 (no decision changed): reversal is keyed on `INVOICE_REOPENED` and `INVOICE_CANCELLED` per 4.4 (`PAYMENT_REVERSED` always comes with
@@ -319,8 +322,9 @@ visits, never clawed back (PRD §20.3-20.4). The value is a versioned constant (
 
 ### 7.4 "Brand-new" test (P5-Q4) and the canonical phone
 
-B is new iff the canonical phone of B has **no COMPLETED visit** as: a visit participant with `customer_user_id = B`, or a participant
-(member or guest) whose phone normalizes to B's canonical phone, or the owner of a visit where `owner_user_id = B`. Because
+B is new iff the canonical phone of B has **no COMPLETED visit** in which B received a service: a visit participant with `customer_user_id = B`, or a participant
+(member or guest) whose phone normalizes to B's canonical phone, in both cases with a DONE service line. **Owning or paying for a visit without receiving
+a service does not count** (Owner decision, 2.5; this replaces the earlier wording that counted a visit owner). Because
 `visit_participants.phone` is free text, historical rows must be normalized with the same canonicalizer and `normalization_version`
 as `users.phone_canonical` (a generated/indexed canonical column, P5-5; rows that cannot be normalized never match). Visits before
 go-live count as visits (a customer who came before is not new).
