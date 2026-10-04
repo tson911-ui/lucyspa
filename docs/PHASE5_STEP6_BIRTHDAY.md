@@ -15,10 +15,11 @@ Status: built and validated on scratch databases; **not deployed, loyalty stays 
 
 ## Choices of mine, pending Owner confirmation (not Owner words)
 
-1. A percentage gift that may not combine is still computed on "the amount left after the best offer" (e.g. 500,000 with a 15% offer and a 20% gift: 20% of 425,000 = 85,000 beats 75,000, customer pays 415,000, not 400,000).
+1. A gift that may not combine is still computed on "the amount left after the best offer", also for the cap of a FIXED gift. Example: 100,000 with a 60% offer (60,000) and a fixed 80,000 gift that may not combine: base 40,000, gift capped at 40,000, the offer wins although 80,000 > 60,000. For a percentage: 500,000, 15% offer, 20% gift: 85,000 beats 75,000, customer pays 415,000, not 400,000. **Question for the Owner: which base when the gift is compared with the offer instead of added?** The code is unchanged until the Owner answers.
 2. On an equal amount the offer stays and the yearly use is not consumed.
 3. "Per year" = the birthday year of the occurrence (a window across New Year is one birthday, one use); counted across all versions.
-4. Technical bound: days before + after at most 364. Lock order: invoice, discount rows, birthday configuration row, payer row, wallets.
+4. **P5-T7** (the birthday as a separate layer after the best offer) was never approved as a proposal; the Owner's P5-6 instruction describes it, so please confirm it in your own words. For information: `MANAGE_BIRTHDAY_REWARDS` is Owner only now (instruction "Owner-only config screen"), which changes its P5-T13 entry.
+5. Technical bound: days before + after at most 364. Lock order: invoice, discount rows, birthday configuration row, payer row, wallets.
 
 ## Tests (scratch DBs `lucy_spa_p5_6_scratch_20261004`, `..._noowner_...`)
 
@@ -36,7 +37,12 @@ Status: built and validated on scratch databases; **not deployed, loyalty stays 
 - Images opened: config 1440 light, 768 dark, 360 light (first build); edit form 1440 light and 360 light; new form 768 light; usage error and error-scrolled 1440 light; empty 360 dark; draft 1440 light; below-minimum 768 light; replaces 1440 dark; stacked 1440 light and limit 1440 dark (first build). The other combinations were not opened one by one (the DOM audit ran on all).
 - Fixed after the first look: the primary button wrapped under a long card description (intro moved out of the header); day fields at 160 px wrapped their labels (now 280); history columns were clipped (short window / limit texts, "Người lưu" hidden below 1024); table reasons clipped at 768 (short texts, the long ones stay in the notice).
 - DOM audit on the baselined pages on `lucy_spa_uxaudit_20261001` (migrated): `pos`, `discounts`, `discount-detail` rose nowhere (all fell to 0). New states show only known findings: FR3 surface-style-mix (drawer over the page card, info notice beside cards) and FR8 row-height-uneven in the candidates table at 360 (218-224 px, as the P5-4 pos-invoice baseline).
+- The shots come from the P5-5 derived capture script (it needs a login; `.local/p5-6/capture.mjs`), not from `scripts/uxui-screens.mjs`. The baseline compare used the plain audit capture (theme by the clock, dark at that hour); `pos` and `discount-detail` at 1440 were opened and are the real pages.
 - Servers were local scratch ones only and are stopped.
+
+## CI
+
+CI runs `pnpm test:auth:integration`, which now lists `birthday.integration` and `birthday.race.integration`. The result of the pushed commits is in the final message.
 
 ## Open questions
 
