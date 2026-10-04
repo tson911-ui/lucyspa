@@ -84,3 +84,6 @@ Owner reviews every Step. Work only on the Step you are given.
 - Financial/operational history is never deleted or rewritten; corrections are explicit records.
 - Do not invent TBD/Future policies (PRD section 61). Ask the Owner instead.
 - Locked Owner decisions (Phase 4 Q0–Q10, OP-1…OP-7) are in the Phase 4 design doc; do not reopen them.
+- Never mark an open question (OQ-n) or a proposed technical decision (P5-Tn, OP-n, etc.) as approved yourself. Only the Owner's own
+  words approve it. Stop and ask, and record it as "pending Owner approval" until the Owner answers; an answer collected through a
+  question tool still has to be recorded exactly as given, and anything built on it is provisional until the Owner confirms.

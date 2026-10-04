@@ -70,7 +70,7 @@ free entitlements generate no tour (§17.6); service/combo refunds do not exist 
 | P5-T5  | **`calculation_version = 2`**; drafts are recalculated at finalization under the version then in force; finalized v1 invoices are never touched (section 6.4).                                                                                                      | P5-4          |
 | P5-T6  | **Tie-break including the Member Discount:** equal amounts → the Member Discount wins (it consumes no limited resource), then Phase 4 order (program `code`, program id, voucher `code`).                                                                           | P5-4          |
 | P5-T7  | **Birthday is a separate layer applied after the single ordinary winner**, only when its configuration says it combines; a missing rule means no stacking (section 6.3).                                                                                            | P5-6          |
-| P5-T8  | **P5-Q5 applies to every negative ledger entry**, manual adjustments included: apply what the balance allows, record the shortfall, flag it.                                                                                                                        | P5-3          |
+| P5-T8  | **(PENDING OWNER APPROVAL)** **P5-Q5 applies to every negative ledger entry**, manual adjustments included: apply what the balance allows, record the shortfall, flag it.                                                                                           | P5-3          |
 | P5-T9  | **Stale-episode guard:** the consumer awards only if the paid episode is still current at processing time (section 4.4).                                                                                                                                            | P5-3          |
 | P5-T10 | **Referral binding window and resolution rules** of section 7.2-7.4, including the uniform public-signup response and the canonical phone index.                                                                                                                    | P5-5          |
 | P5-T11 | **Combo sessions are individual rows** (kind `PAID` or `BONUS`), consumed at invoice finalization with an append-only release, mirroring Phase 4 redemptions.                                                                                                       | P5-7          |
@@ -114,8 +114,12 @@ None of these blocked P5-1. The Owner asked to be asked about OQ-2 … OQ-11 **o
 - **Deploy: none until the whole of Phase 5 is finished.** Every Phase 5 Step is built and validated on scratch databases only.
 - **OQ-3 is answered by the Owner's own P5-3 instruction:** the P5-Q5 shortfall is flagged as a row in a permission-gated **loyalty exceptions list** in the admin area
   (derived from ledger entries with `shortfall_points > 0`; read-only; no notification, P5-Q9). OQ-4 … OQ-11 stay open.
-- **OQ-2 answered (P5-3): nothing is excluded.** Every Spa service line and every combo purchase earns; points = `floor(total_vnd / 1000)` of the PAID invoice (4.1, 4.3).
-- **P5-T8 approved (P5-3):** every negative ledger entry, a manual adjustment included, applies what the balance allows, records the shortfall and flags it (3.3).
+- **OQ-2: Owner-approved (confirmed by the Owner after the P5-3 review).** Every Spa service line and every combo purchase earns; tips are excluded; points = `floor(total_vnd / 1000)` of the PAID invoice (4.1, 4.3).
+- **P5-T8: PENDING OWNER APPROVAL (not approved).** An earlier line here calling it approved was wrong and is withdrawn. The proposal: every negative ledger entry, a manual
+  adjustment included, applies what the balance allows, records the shortfall and flags it (3.3). Only the _reversal_ case is Owner-locked (P5-Q5). The P5-3 code already
+  clamps manual deductions the same way; that behaviour stays provisional until the Owner answers.
+- **Owner review of P5-3 (approved):** reading loyalty follows the branch (`VIEW_LOYALTY` at the staff member's branch, like the POS member lookup); points are taken back on
+  `INVOICE_REOPENED` / `INVOICE_CANCELLED` (not `PAYMENT_REVERSED`, which always comes with `INVOICE_REOPENED` for a paid invoice).
 - Implementation notes of P5-3 (no decision changed): reversal is keyed on `INVOICE_REOPENED` and `INVOICE_CANCELLED` per 4.4 (`PAYMENT_REVERSED` always comes with
   `INVOICE_REOPENED` when a PAID invoice is reversed, so reacting to both would double-reverse); the earn key is `SPA_EARN:{invoice}:{paid_seq}` (one earn per paid episode,
   however many split payments it had).
@@ -141,7 +145,7 @@ None of these blocked P5-1. The Owner asked to be asked about OQ-2 … OQ-11 **o
 No automatic expiry, annual reset or rolling expiry. No point can reduce an invoice, be mixed with money, be transferred or be
 converted (PRD §18.2-18.3). The Member Discount never deducts points. A reward's own expiry never expires points (PRD §21).
 
-### 3.3 Never below zero (P5-Q5, P5-T8)
+### 3.3 Never below zero (P5-Q5; manual deductions: P5-T8, pending Owner approval)
 
 For any negative entry of `r` points on a balance `b`: `applied = min(r, b)`; the entry stores `points = -applied` and
 `shortfall_points = r - applied`; if `shortfall_points > 0` an exception record is created for the Owner (surface: OQ-3). The original
@@ -181,7 +185,7 @@ A result of 0 writes no entry.
 | Event (from Phase 4)              | Consumer action                                                                                                                                                                            |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `INVOICE_PAID(invoice, paid_seq)` | Re-read authoritative state under lock; if the invoice is still `PAID` **at this `paid_seq`**, payer is a member and `paid_at >= go_live_at` → write `EARN`. Otherwise record `SKIPPED_*`. |
-| `INVOICE_REOPENED(paid_seq)`      | Find the `EARN` entry of that episode; if present, write `EARN_REVERSAL` (full amount, P5-T8 clamp). None → no-op.                                                                         |
+| `INVOICE_REOPENED(paid_seq)`      | Find the `EARN` entry of that episode; if present, write `EARN_REVERSAL` (full amount; clamp per P5-Q5). None → no-op.                                                                     |
 | `INVOICE_CANCELLED.voidedPaidSeq` | Same as above for the voided episode (OP-7 voids a zero-balance episode with no payment event; it has no earn entry, so this is normally a no-op).                                         |
 | `PAYMENT_REVERSED`                | **Not a key.** A reversal that leaves an invoice short always emits `INVOICE_REOPENED`; reacting to both would double-reverse.                                                             |
 
