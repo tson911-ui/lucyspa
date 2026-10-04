@@ -22,7 +22,8 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                     |
 | **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**     |
 | UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `58bfabc`)                                |
-| Phase 5+ (loyalty, payroll, finance)      | NOT started (Phase 5 = loyalty and combos, next)                 |
+| **Phase 5 (loyalty and combos)**          | **IN PROGRESS (P5-1 design, awaiting Owner approval)**           |
+| Phase 6+ (products, payroll, finance)     | NOT started                                                      |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
 
@@ -62,9 +63,12 @@ Phase 4 migrations so far: Step 3 (`20261013…`), Step 4 (`20261014000000-04`),
 - **Q7** (PayOS, answered before Step 8): simulated PayOS in tests, live check only after deploy with a small amount; QR expires in 15 min; one pending request per invoice (cancel + recreate allowed); create/cancel needs `COLLECT_PAYMENTS` in scope; late confirmation recorded only if a balance remains, else anomaly for management; amount mismatch never marks paid (anomaly); a request may be partial (split with cash); no in-system correction of a PayOS-settled invoice (audited management note only, refunds Phase 6); staff can never mark a transfer received.
 - **OP-7** `PAID -> CANCELLED` only for a zero-balance invoice with no payment row; needs `CANCEL_INVOICES`, reason, fresh re-auth; releases the redemption.
 
+- **Phase 5 P5-Q1…P5-Q9** (locked 2026-10-04; table in `docs/PHASE5_LOYALTY_COMBOS_DESIGN.md` section 2.1; Phase 5 Q10 withdrawn): points start 0 at go-live, payer earns (guest: nobody), floor per invoice, new customer = phone with no completed visit, balance never < 0 (shortfall recorded and flagged), birthday and gift catalog ship empty, combos POS + members only, no notifications.
+
 ## Open Owner checkpoints (NOT decided; do not decide or implement)
 
-- None. Q8 was answered before Step 10 (see "Q8 (notifications)" below).
+- Phase 5 open questions OQ-1…OQ-11 and proposed decisions P5-T1…T13: `docs/PHASE5_LOYALTY_COMBOS_DESIGN.md` section 2.2-2.3 (only OQ-1 and P5-T1/T2/T12/T13 block P5-2).
+- Q8 (Phase 4) was answered before Step 10 (see "Q8 (notifications)" below).
 
 ## Q8 (invoice / revenue notifications) - LOCKED
 
