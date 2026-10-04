@@ -423,3 +423,4 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - One public/member type scale in tokens.css (`--ls-type-*`: hero 48, page 36, section 30, sub 24, card 18, body 15, small 13; Playfair 500), stepped rhythm tokens, container 73 rem; member and booking titles moved off the staff sans; the DOM audit allows this scale. Cards of a row are one size with shared rows (subgrid). Report: docs/UXUI_REDESIGN_PART2_TYPE_SCALE.md.
 - Scratch catalog hidden (it was invented). Real menu: docs/CATALOG_EXPORT_FOR_REVIEW.md (read-only export on the server), then `.local/p3-import-catalog.mjs`. No migration change. Open: weight 400 for titles is the Owner's call.
+- Owner decision 2026-10-04: public/member titles are Playfair **400** (`--ls-weight-title`, replaces 500/600 of Q-P2-5). The catalog export now also carries branch code and name (docs/CATALOG_EXPORT_FOR_REVIEW.md, five single-command steps).

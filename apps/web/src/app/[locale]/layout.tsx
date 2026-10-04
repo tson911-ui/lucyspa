@@ -31,7 +31,7 @@ const beVietnamPro = Be_Vietnam_Pro({
 // draws in the font itself, self-hosted by next/font; never a system serif.
 const playfairDisplay = Playfair_Display({
   subsets: ['latin', 'vietnamese'],
-  // 500 and 600 are the h1-h3 weights of the public site and member area (Part 2 contract 4); 400 stays for greetings.
+  // 400 is the h1-h3 weight of the public site and member area (Owner decision 2026-10-04, earlier 500/600); 500 and 600 stay loaded for the logo wordmark, the seasonal greetings and emphasis.
   weight: ['400', '500', '600'],
   style: ['normal', 'italic'],
   display: 'swap',

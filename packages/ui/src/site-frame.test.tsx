@@ -737,7 +737,7 @@ test('the public type scale: one set of tokens, every heading and body role read
   assert.match(tokens, /--ls-type-hero: clamp\(2\.25rem, 1\.75rem \+ 2vw, 3rem\);/);
   assert.match(tokens, /--ls-type-section: clamp\(1\.5rem, 1\.25rem \+ 1\.2vw, 1\.875rem\);/);
   assert.match(tokens, /--ls-type-card: 1\.125rem;/);
-  assert.match(tokens, /--ls-weight-title: 500;/);
+  assert.match(tokens, /--ls-weight-title: 400;/);
   const rule = (selector: string) => {
     // Every rule that ends with this selector (a selector list's last entry included), their bodies joined.
     const matches = [
@@ -763,7 +763,7 @@ test('the public type scale: one set of tokens, every heading and body role read
     rule('.ls-member-title'),
     /font-size: var\(--ls-type-sub\);\s*font-weight: var\(--ls-weight-title\);/,
   );
-  // Titles are medium, never bold (the Owner found them heavy), and sit in the display face everywhere on the site.
+  // Titles are regular weight (the Owner found them heavy and chose 400 on 2026-10-04) and sit in the display face everywhere on the site.
   assert.doesNotMatch(rule('.ls-site-h3'), /font-weight: 600/);
   assert.match(
     css,

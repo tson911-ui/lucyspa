@@ -2,7 +2,7 @@
 
 ## What changed
 
-- **One type scale for every public and member page** (`tokens.css`, `--ls-type-*`, measured on the Lovable captures at 1:1 and calibrated against our own known sizes). Titles are Playfair 500 and read these tokens only; the staff area keeps its own scale.
+- **One type scale for every public and member page** (`tokens.css`, `--ls-type-*`, measured on the Lovable captures at 1:1 and calibrated against our own known sizes). Titles are Playfair 400 (Owner decision 2026-10-04) and read these tokens only; the staff area keeps its own scale.
 
 | Role                        | Token                               | 360 / 768 / 1440 px | Used for                                                    |
 | --------------------------- | ----------------------------------- | ------------------- | ----------------------------------------------------------- |
@@ -19,7 +19,7 @@
 
 ## Not changed on purpose
 
-- Titles stay at weight 500 (Owner decision Q-P2-5: 500/600). In the 1:1 crops the reference looks closer to 400; 400 is already loaded, so it is a one-token change (`--ls-weight-title`) if the Owner wants it.
+- Title weight is **400** since 2026-10-04 (the Owner chose it after the 1:1 comparison; it replaces Q-P2-5's 500/600). One token: `--ls-weight-title`.
 
 ## Real menu (no invented services)
 

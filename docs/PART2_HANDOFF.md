@@ -36,7 +36,7 @@ report), the placeholder hero photo (admin upload, in the runbook), and the revi
 - Q-P2-2 **no guest booking**: signing in stays required; the CTA keeps the chosen service through login (`?service=CODE`, `next`).
 - Q-P2-3 **no "Vì sao chọn LUCY SPA" section** at all (the reference's claims are not real). **Superseded 2026-10-04 at the Owner's request:** the section exists but is off and empty until the Owner writes it (nothing seeded).
 - Q-P2-4 **remove `noindex` and add SEO data now** (site not launched): home, services, service detail only; account/auth/staff stay noindex. Done in P2-9.
-- Q-P2-5..11 as recommended: Playfair Display 500/600 for h1-h3 on public/member pages; no service photos; same English slugs in VI and EN; services inside
+- Q-P2-5..11 as recommended: Playfair Display for h1-h3 on public/member pages (weight 500/600, **changed by the Owner to 400 on 2026-10-04**, token `--ls-weight-title`); no service photos; same English slugs in VI and EN; services inside
   a group ordered price ascending then name; map as a link only; the Lovable hero photo imported as a clearly marked placeholder; EN copy approved as proposed.
 - **After the P2-4 review (2026-10-03):** keep the English tagline "Heartfelt Relaxation – Elevated Beauty". **"Chỉ đường" opens the Owner's map link
   first (Shop info), and only without one searches the address on a map** (this is how `directionsUrl` in `lib/public-site-core.ts` works).

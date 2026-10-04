@@ -179,7 +179,7 @@
   --ls-card-zoom: 1.015;
   /* Public site type scale and rhythm: ONE scale for every public and member page (the staff area keeps its own).
      Proportions measured on the reference at 1440 px: hero 48, page title 36, section title 30, subsection 24, card title 18,
-     lead 16, body 15, small 13; display titles in Playfair 500. Bands breathe: 80 px of padding at desktop width. */
+     lead 16, body 15, small 13; display titles in Playfair 400 (Owner decision 2026-10-04, lighter like the reference). Bands breathe: 80 px of padding at desktop width. */
   --ls-type-hero: clamp(2.25rem, 1.75rem + 2vw, 3rem);
   --ls-lh-hero: 1.2;
   --ls-type-page: clamp(1.75rem, 1.4rem + 1.4vw, 2.25rem);
@@ -198,7 +198,7 @@
   --ls-lh-body: 1.6;
   --ls-type-small: 0.8125rem;
   --ls-lh-small: 1.5;
-  --ls-weight-title: 500;
+  --ls-weight-title: 400;
   --ls-site-max: 73rem;
   /* Rhythm steps on the 4 px grid by width (never a fluid value): band padding 48 / 64 / 80, page top 40 / 48 / 64,
      heading block to content 24 / 32 / 32. */
