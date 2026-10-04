@@ -1233,7 +1233,7 @@ test(
                   'a new invoice reads the new balance',
                 );
 
-                // D. Promotion versus member: the better one wins and only the winner is redeemed; a tie goes to the promotion.
+                // D. Promotion versus member: the better one wins and only the winner is redeemed; a tie goes to the member discount.
                 const hana = await customer('hana');
                 await give(hana.id, 1_000);
                 const sale = await program(`P54${run}A`, 1500);
@@ -1254,9 +1254,14 @@ test(
                 await stop(sale);
                 const tied = await program(`P54${run}B`, 400);
                 const tieWins = await finalized([exact], hana);
-                assert.equal(tieWins.discount.winnerSource, 'PROMOTION');
-                assert.equal(tieWins.discount.selectionReason, 'PROGRAM_TIE_OVER_MEMBER');
+                assert.equal(tieWins.discount.winnerSource, 'MEMBER_TIER');
+                assert.equal(tieWins.discount.selectionReason, 'MEMBER_TIE_OVER_PROGRAM');
                 assert.equal(tieWins.totalVnd, '192000');
+                assert.equal(
+                  await tx.discountRedemption.count({ where: { invoiceId: tieWins.id } }),
+                  0,
+                  'a tie consumes no promotion usage',
+                );
                 await stop(tied);
                 const small = await program(`P54${run}C`, 300);
                 const memberBeats = await finalized([exact], hana);

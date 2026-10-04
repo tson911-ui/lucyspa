@@ -6,7 +6,7 @@ Also in this commit series: the Owner rejected P5-T8, so a manual deduction abov
 ## What changed
 
 - **Best-offer selection:** the pure engine (`discount.engine.ts`) has one more candidate, the Member Discount: the payer's tier percent of every priced line (half up to 1 VND).
-  The better of {best promotion/voucher, member} wins, never both. **On an equal amount a promotion or voucher wins** (P5-T6: answered through the question tool, **provisional until the Owner confirms**). `calculation_version = 2`;
+  The better of {best promotion/voucher, member} wins, never both. **On an equal amount the Member Discount wins**, so the customer keeps the voucher (P5-T6, **Owner-approved 2026-10-04**, replaces the earlier "promotion first" answer; reason `MEMBER_TIE_OVER_PROGRAM`, nothing redeemed). `calculation_version = 2`;
   without a member (guest payer or loyalty OFF) the result is exactly the version 1 result.
 - **Tier:** read from the payer's Spa wallet balance BEFORE the invoice (a DRAFT previews the current balance; finalization reads it under the wallet share lock) and frozen in
   `invoice_loyalty_snapshots` (balance, tier, table version, basis points, member amount, every candidate, winner and reason). A finalized invoice is never recalculated.
@@ -30,7 +30,7 @@ created (`appendLedgerEntry(..., { refuseBeyondBalance: true })`). Reversal of e
 ## Decisions needed / notes
 
 - Existing finalized invoices stay version 1 (no snapshot); new ones are version 2. The customer-facing invoice view does not show the member discount yet (P5-10).
-- The Member Discount base is every priced line (Phase 5 has Spa lines only): the OQ-2 half "which services must not receive the Member Discount" is PENDING Owner approval, so this is the proposed default, provisional. P5-T6 (tie goes to a promotion or voucher) is also provisional until the Owner confirms. Birthday is P5-6.
+- The Member Discount base is every priced line (Phase 5 has Spa lines only): **OQ-2 (member discount scope: all priced services, no exclusions) and P5-T6 (tie goes to the Member Discount) are Owner-approved 2026-10-04.** Birthday is P5-6.
 
 ## Tests (scratch DB `lucy_spa_p5_3_validation_20261004`)
 

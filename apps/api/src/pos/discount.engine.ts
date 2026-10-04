@@ -197,8 +197,8 @@ function evaluateMember(member: EngineMember, subtotalVnd: bigint): MemberCandid
 /**
  * Evaluates every candidate independently and picks exactly one winner (no stacking):
  * (a) every code-less promotion handed in as `promotions`, (b) every supplied voucher of `supplied`, (c) the
- * Member Discount of `member`. The larger benefit for the customer wins; on an equal amount a promotion or voucher
- * wins over the Member Discount (P5-T6: answer given through the question tool on 2026-10-04, "Ưu tiên khuyến mãi/voucher"; PROVISIONAL until the Owner confirms).
+ * Member Discount of `member`. The larger benefit for the customer wins; on an equal amount the Member Discount wins,
+ * so the customer keeps the promotion or voucher (P5-T6, Owner decision of 2026-10-04: it replaces the earlier "promotion first" answer).
  * `total = subtotal - discount` (never negative; may be 0).
  */
 export function evaluateDiscounts(input: {
@@ -226,12 +226,17 @@ export function evaluateDiscounts(input: {
   const memberWins =
     member !== null &&
     member.eligible &&
-    (programWinner === null || member.amountVnd > programWinner.amountVnd);
+    (programWinner === null || member.amountVnd >= programWinner.amountVnd);
   const winner = memberWins ? null : programWinner;
   const discountTotalVnd = memberWins ? member.amountVnd : winner ? winner.amountVnd : 0n;
   let selectionReason: string | null = null;
   if (memberWins) {
-    selectionReason = programWinner === null ? 'MEMBER_ONLY_ELIGIBLE' : 'MEMBER_LARGEST_BENEFIT';
+    selectionReason =
+      programWinner === null
+        ? 'MEMBER_ONLY_ELIGIBLE'
+        : member.amountVnd > programWinner.amountVnd
+          ? 'MEMBER_LARGEST_BENEFIT'
+          : 'MEMBER_TIE_OVER_PROGRAM';
   } else if (winner) {
     const runnerUp = winning[1];
     selectionReason = !runnerUp
@@ -239,11 +244,8 @@ export function evaluateDiscounts(input: {
       : runnerUp.amountVnd < winner.amountVnd
         ? 'LARGEST_BENEFIT'
         : 'TIE_BREAK_CODE_ORDER';
-    // Staff are told when the program also beat an eligible Member Discount (PRD 16.1).
-    if (member?.eligible) {
-      selectionReason =
-        winner.amountVnd > member.amountVnd ? 'PROGRAM_BEATS_MEMBER' : 'PROGRAM_TIE_OVER_MEMBER';
-    }
+    // Staff are told when the program also beat an eligible Member Discount (PRD 16.1); an equal amount never gets here.
+    if (member?.eligible) selectionReason = 'PROGRAM_BEATS_MEMBER';
   }
   const winnerSource: EngineResult['winnerSource'] = memberWins
     ? 'MEMBER_TIER'

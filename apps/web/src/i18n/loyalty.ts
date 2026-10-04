@@ -143,7 +143,8 @@ const vi = {
       MEMBER_ONLY_ELIGIBLE: 'Giảm giá hội viên là ưu đãi duy nhất đủ điều kiện.',
       MEMBER_LARGEST_BENEFIT: 'Giảm giá hội viên được chọn vì có lợi hơn cho khách.',
       PROGRAM_BEATS_MEMBER: 'Khuyến mãi được chọn vì có lợi hơn giảm giá hội viên.',
-      PROGRAM_TIE_OVER_MEMBER: 'Cùng mức giảm với giảm giá hội viên; chọn khuyến mãi hoặc mã.',
+      MEMBER_TIE_OVER_PROGRAM:
+        'Cùng mức giảm với khuyến mãi; chọn giảm giá hội viên để khách giữ khuyến mãi hoặc mã.',
     },
     ineligible: {
       NO_TIER: 'Chưa đủ 500 điểm Spa.',
@@ -282,8 +283,8 @@ const en: Dictionary = {
         'The member discount was chosen because it is better for the customer.',
       PROGRAM_BEATS_MEMBER:
         'The promotion was chosen because it is better than the member discount.',
-      PROGRAM_TIE_OVER_MEMBER:
-        'Same saving as the member discount; the promotion or code was chosen.',
+      MEMBER_TIE_OVER_PROGRAM:
+        'Same saving as the promotion; the member discount was chosen so the customer keeps the promotion or code.',
     },
     ineligible: {
       NO_TIER: 'Under 500 Spa points.',

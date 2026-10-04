@@ -106,16 +106,17 @@ test('member discount versus a promotion: the better one for the customer wins, 
   assert.equal(memberWins.selectionReason, 'MEMBER_LARGEST_BENEFIT');
 });
 
-test('member discount tie: a promotion or voucher wins over it (P5-T6, provisional until the Owner confirms)', () => {
+test('member discount tie: the member discount wins so the customer keeps the promotion or voucher (P5-T6, Owner decision)', () => {
   const lines = [line(100_000n)];
   const tie = run({
     lines,
     promotions: [program('SALE4', 400)],
     member: member('GOLD', 400, 1_100),
   });
-  assert.equal(tie.winnerSource, 'PROMOTION');
+  assert.equal(tie.winnerSource, 'MEMBER_TIER');
+  assert.equal(tie.winner, null, 'no program is redeemed on a tie');
   assert.equal(tie.discountTotalVnd, 4_000n);
-  assert.equal(tie.selectionReason, 'PROGRAM_TIE_OVER_MEMBER');
+  assert.equal(tie.selectionReason, 'MEMBER_TIE_OVER_PROGRAM');
   const code = program('CODE4', 400, true);
   const voucherTie = run({
     lines,
@@ -124,7 +125,17 @@ test('member discount tie: a promotion or voucher wins over it (P5-T6, provision
     ],
     member: member('GOLD', 400, 1_100),
   });
-  assert.equal(voucherTie.winnerSource, 'VOUCHER');
+  assert.equal(voucherTie.winnerSource, 'MEMBER_TIER');
+  assert.equal(voucherTie.winner, null, 'the voucher is not consumed on a tie');
+  assert.equal(voucherTie.selectionReason, 'MEMBER_TIE_OVER_PROGRAM');
+  // One VND below the member amount: the member discount still wins by amount; one VND above: the program wins.
+  const above = run({
+    lines,
+    promotions: [program('SALE41', 401)],
+    member: member('GOLD', 400, 1_100),
+  });
+  assert.equal(above.winnerSource, 'PROMOTION');
+  assert.equal(above.selectionReason, 'PROGRAM_BEATS_MEMBER');
 });
 
 test('no tier, no priced line or no member input: no member benefit; without a member the result is version 1', () => {

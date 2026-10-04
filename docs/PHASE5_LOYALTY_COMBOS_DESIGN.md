@@ -68,7 +68,7 @@ free entitlements generate no tour (§17.6); service/combo refunds do not exist 
 | P5-T3  | **The tier is read at finalization** under lock and **snapshotted**; a DRAFT only shows a non-binding preview (section 5.3).                                                                                                                                        | P5-4          |
 | P5-T4  | **The Member Discount and points follow the payer** (same identity as OP-3), using the payer's Spa tier. A guest payer has no Member Discount.                                                                                                                      | P5-4          |
 | P5-T5  | **`calculation_version = 2`**; drafts are recalculated at finalization under the version then in force; finalized v1 invoices are never touched (section 6.4).                                                                                                      | P5-4          |
-| P5-T6  | **(PROVISIONAL: answered through the question tool, see 2.5; pending Owner confirmation)** Tie-break including the Member Discount: equal amounts → a promotion or voucher wins over the Member Discount, then Phase 4 order.                                       | P5-4          |
+| P5-T6  | **(APPROVED by the Owner, 2026-10-04, see 2.5)** Tie-break including the Member Discount: equal amounts → the **Member Discount** wins, so the customer keeps the promotion or voucher; among programs the Phase 4 order stays.                                     | P5-4          |
 | P5-T7  | **Birthday is a separate layer applied after the single ordinary winner**, only when its configuration says it combines; a missing rule means no stacking (section 6.3).                                                                                            | P5-6          |
 | P5-T8  | **(REJECTED by the Owner; hard block instead, see 2.5)** P5-Q5 applies to every negative ledger entry, manual adjustments included.                                                                                                                                 | P5-3          |
 | P5-T9  | **Stale-episode guard:** the consumer awards only if the paid episode is still current at processing time (section 4.4).                                                                                                                                            | P5-3          |
@@ -118,11 +118,9 @@ None of these blocked P5-1. The Owner asked to be asked about OQ-2 … OQ-11 **o
 - **P5-T8: REJECTED by the Owner (2026-10-04), replaced by a hard block.** A manual deduction (adjustment or linked correction) larger than the current balance is
   **refused** with "Số dư chỉ còn X điểm": nothing is written to the ledger and no exception row is created. A deduction up to the balance is allowed. The
   **reversal** of earned points (invoice reopened or cancelled) keeps the Owner-locked P5-Q5 rule: floor at 0, record the shortfall, flag it as an exception (3.3).
-- **P5-T6: PROVISIONAL, pending Owner confirmation.** Collected through the question tool on 2026-10-04 (answer given exactly: "Ưu tiên khuyến mãi/voucher"): on an EQUAL amount a
-  promotion or voucher wins over the Member Discount (the Phase 4 order is kept); the proposal "Member Discount first" was not taken. P5-4 is built on it; one line in the engine
-  changes if the Owner decides otherwise. P5-T3, P5-T4 and P5-T5 were already approved (2.5, first bullet).
-- **OQ-2, second half: PENDING Owner approval.** OQ-2 also asks whether any service must NOT receive the Member Discount. The Owner confirmed only the points half (all services earn,
-  tips excluded). P5-4 applies the Member Discount to every priced Spa line as the proposed default; that stays provisional until the Owner answers.
+- **P5-T6: APPROVED by the Owner (P5-4 review, 2026-10-04), replacing the earlier provisional "Ưu tiên khuyến mãi/voucher" answer.** On an EQUAL amount the **Member Discount wins**, so the
+  customer keeps their promotion or voucher (no redemption is consumed). The engine, its tests and the staff-facing reason (`MEMBER_TIE_OVER_PROGRAM`) follow this. P5-T3, P5-T4 and P5-T5 were already approved (2.5, first bullet).
+- **OQ-2, second half: APPROVED by the Owner (P5-4 review, 2026-10-04).** The Member Discount applies to **all priced services, no exclusions**. OQ-2 is now fully answered (points half: all services earn, tips excluded).
 - **P5-4 instruction (Owner, 2026-10-04):** the Member Discount is a candidate of the existing best-offer selection under `calculation_version = 2`; finalized invoices are never
   recalculated; the tier comes from the payer's Spa balance BEFORE the invoice and is snapshotted on it; Beauty is Phase 6; the system picks whichever of promotion or member discount
   is better for the customer (never both); staff see the reason; it applies only when go-live is ON; the birthday gift is P5-6.
@@ -252,8 +250,8 @@ promotions and supplied vouchers. OP-3/OP-4/OP-5 apply unchanged to the Phase 4 
 ### 6.2 Selection (PRD §16.1)
 
 **Exactly one** ordinary winner: the largest customer benefit; no stacking of Member Discount with promotions or vouchers. Tie-break
-(deterministic): amount descending → **a promotion or voucher before the Member Discount** (P5-T6, provisional answer of 2026-10-04 via the question tool: the proposal
-"Member first" was NOT adopted; the Phase 4 order is kept) → program `code` ascending → program id → voucher `code`. Staff see the winner and why (PRD §14.1,
+(deterministic): amount descending → **the Member Discount before a promotion or voucher** (P5-T6, Owner decision of 2026-10-04: on an equal amount the customer keeps the voucher; this replaces
+the earlier "promotion first" answer) → program `code` ascending (among programs only) → program id → voucher `code`. Staff see the winner and why (PRD §14.1,
 §16.1); a customer is never given the weaker benefit because staff chose nothing. Only the winner is redeemed (unchanged from P4 §8.3).
 
 Examples (PRD §16.1): Diamond 7% vs sale 15% on 500,000đ → sale wins, 425,000đ paid, 425 points; sale 5% vs Diamond 7% → Member wins.
