@@ -1,7 +1,6 @@
 'use client';
 
 import type {
-  LoyaltyAdjustmentResponse,
   LoyaltyLedgerEntryResponse,
   LoyaltyLedgerPageResponse,
   LoyaltyProfileResponse,
@@ -111,7 +110,7 @@ export function LoyaltyCustomerScreen({ userId }: { userId: string }) {
   const { customer, goLive, wallets, can } = profile.data;
   const canAdjust = can.adjust && goLive.active;
 
-  const done = (_result: LoyaltyAdjustmentResponse) => {
+  const done = () => {
     setOverlay(null);
     notify(l.adjust.done);
     void profile.reload();
