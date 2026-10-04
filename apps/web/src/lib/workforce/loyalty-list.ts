@@ -6,7 +6,13 @@ import { normalizePage } from './list-view';
  */
 
 export const LOYALTY_PAGE_SIZE = 20;
-export const LOYALTY_TAB_IDS = ['customers', 'referrals', 'exceptions', 'goLive'] as const;
+export const LOYALTY_TAB_IDS = [
+  'customers',
+  'referrals',
+  'exceptions',
+  'birthday',
+  'goLive',
+] as const;
 export type LoyaltyTabId = (typeof LOYALTY_TAB_IDS)[number];
 
 export const LOYALTY_PAGE_DEFAULTS = { tab: '', page: 1, status: '' };

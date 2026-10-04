@@ -465,7 +465,11 @@ model User {
   referralChangesFrom            ReferralChange[]                 @relation("ReferralChangeOld")
   referralChangesTo              ReferralChange[]                 @relation("ReferralChangeNew")
   loyaltySnapshotsAsPayer        InvoiceLoyaltySnapshot[]         @relation("LoyaltySnapshotPayer")
-  createdCombos                  Combo[]                          @relation("ComboCreator")
+  createdBirthdayConfigs         BirthdayRewardConfig[]           @relation("BirthdayConfigCreator")
+  createdBirthdayVersions        BirthdayRewardVersion[]          @relation("BirthdayVersionCreator")
+  birthdayRedemptions            BirthdayRedemption[]             @relation("BirthdayRedemptionPayer")
+  releasedBirthdayRedemptions    BirthdayRedemptionRelease[]      @relation("BirthdayReleaseActor")
+  createdCombos                 Combo[]                          @relation("ComboCreator")
   createdComboVersions           ComboVersion[]                   @relation("ComboVersionCreator")
   ownedComboPurchases            ComboPurchase[]                  @relation("ComboPurchaseOwner")
   voidedComboPurchases           ComboPurchase[]                  @relation("ComboPurchaseVoider")
@@ -1598,6 +1602,7 @@ model Invoice {
   voucherEntries       InvoiceVoucherEntry[]
   discountApplication  InvoiceDiscountApplication?
   discountRedemption   DiscountRedemption?
+  birthdayRedemption   BirthdayRedemption?
   loyaltyLedgerEntries LoyaltyLedgerEntry[]        @relation("LoyaltyLedgerInvoice")
   awardedReferrals     Referral[]                  @relation("ReferralAwardInvoice")
   loyaltySnapshot      InvoiceLoyaltySnapshot?
@@ -2391,10 +2396,87 @@ model InvoiceLoyaltySnapshot {
   selectionReason       String?       @map("selection_reason")
   birthdayConfigVersion Int?          @map("birthday_config_version")
   birthdayResult        Json?         @map("birthday_result") @db.JsonB
+  /// P5-6: the birthday gift (0 = none) and the base it was computed on (the amount left after the best offer).
+  birthdayAmountVnd     BigInt        @default(0) @map("birthday_amount_vnd")
+  birthdayBaseVnd       BigInt        @default(0) @map("birthday_base_vnd")
   createdAt             DateTime      @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
 
   @@index([payerUserId], map: "invoice_loyalty_snapshots_payer_idx")
   @@map("invoice_loyalty_snapshots")
+}
+
+// P5-6 birthday gift (design 8). The single configuration; finalizations that apply a gift lock this row.
+model BirthdayRewardConfig {
+  id              String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  singleton       Boolean                 @unique(map: "birthday_reward_configs_singleton_key") @default(true)
+  createdByUserId String                  @map("created_by_user_id") @db.Uuid
+  createdBy       User                    @relation("BirthdayConfigCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime                @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  versions        BirthdayRewardVersion[]
+  redemptions     BirthdayRedemption[]
+
+  @@map("birthday_reward_configs")
+}
+
+/// Immutable; the current version is the highest `versionNo`. No column has a default: the Owner chooses everything.
+model BirthdayRewardVersion {
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  configId            String               @map("config_id") @db.Uuid
+  config              BirthdayRewardConfig @relation(fields: [configId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  versionNo           Int                  @map("version_no")
+  isActive            Boolean              @map("is_active")
+  kind                DiscountKind
+  percentBp           Int?                 @map("percent_bp")
+  fixedAmountVnd      BigInt?              @map("fixed_amount_vnd")
+  minSpendVnd         BigInt               @map("min_spend_vnd")
+  windowDaysBefore    Int                  @map("window_days_before")
+  windowDaysAfter     Int                  @map("window_days_after")
+  combineMember       Boolean              @map("combine_member")
+  combinePromotion    Boolean              @map("combine_promotion")
+  combineVoucher      Boolean              @map("combine_voucher")
+  usageLimitUnlimited Boolean              @map("usage_limit_unlimited")
+  usageLimitPerYear   Int?                 @map("usage_limit_per_year")
+  createdByUserId     String               @map("created_by_user_id") @db.Uuid
+  createdBy           User                 @relation("BirthdayVersionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt           DateTime             @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  redemptions         BirthdayRedemption[]
+
+  @@unique([configId, versionNo], map: "birthday_reward_versions_config_version_key")
+  @@unique([configId, id], map: "birthday_reward_versions_config_id_id_key")
+  @@map("birthday_reward_versions")
+}
+
+/// The gift usage ledger, one per invoice; active iff it has no release.
+model BirthdayRedemption {
+  id          String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId   String                    @unique(map: "birthday_redemptions_invoice_key") @map("invoice_id") @db.Uuid
+  invoice     Invoice                   @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  configId    String                    @map("config_id") @db.Uuid
+  config      BirthdayRewardConfig      @relation(fields: [configId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  versionId   String                    @map("version_id") @db.Uuid
+  version     BirthdayRewardVersion     @relation(fields: [configId, versionId], references: [configId, id], onDelete: Restrict, onUpdate: Restrict)
+  payerUserId String                    @map("payer_user_id") @db.Uuid
+  payer       User                      @relation("BirthdayRedemptionPayer", fields: [payerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  birthdayOn  DateTime                  @map("birthday_on") @db.Date
+  amountVnd   BigInt                    @map("amount_vnd")
+  redeemedAt  DateTime                  @default(dbgenerated("clock_timestamp()")) @map("redeemed_at") @db.Timestamptz(3)
+  release     BirthdayRedemptionRelease?
+
+  @@index([configId, payerUserId, birthdayOn], map: "birthday_redemptions_usage_idx")
+  @@map("birthday_redemptions")
+}
+
+model BirthdayRedemptionRelease {
+  id               String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  redemptionId     String                @unique(map: "birthday_redemption_releases_redemption_key") @map("redemption_id") @db.Uuid
+  redemption       BirthdayRedemption    @relation(fields: [redemptionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  releasedAt       DateTime              @default(dbgenerated("clock_timestamp()")) @map("released_at") @db.Timestamptz(3)
+  releasedByUserId String                @map("released_by_user_id") @db.Uuid
+  releasedBy       User                  @relation("BirthdayReleaseActor", fields: [releasedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cause            DiscountReleaseCause
+  reason           String
+
+  @@map("birthday_redemption_releases")
 }
 
 // Combo definition identity (PRD 17.1-17.3): one service per combo, never changed; the configurable

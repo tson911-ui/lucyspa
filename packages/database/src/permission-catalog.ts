@@ -173,6 +173,8 @@ export const PERMISSION_CATALOG = Object.freeze([
 export const OWNER_ONLY_PERMISSIONS: readonly string[] = Object.freeze([
   'ACTIVATE_LOYALTY',
   'CHANGE_REFERRER',
+  // P5-6: the birthday gift configuration is the Owner's alone (Owner instruction 2026-10-04).
+  'MANAGE_BIRTHDAY_REWARDS',
 ]);
 
 export interface PermissionCatalogSyncResult {

@@ -140,6 +140,14 @@ None of these blocked P5-1. The Owner asked to be asked about OQ-2 … OQ-11 **o
 - **P5-5 review decisions (Owner, in the Owner's own words, 2026-10-04; locked, do not reopen):**
   - **"Already visited" = received a service.** Only a person who actually received a service counts as having visited. A booker or payer who received none (visit owner only) still counts as new and can still get a referrer. Built and tested (7.4, 7.6).
   - **Wording:** Lucy Spa is a spa, not a clinic. Never "khám" / "lượt khám" in Vietnamese; use "lượt đến" or "lượt làm dịch vụ" (rule added to `CLAUDE.md`).
+- **"Khám phá" in the footer (Owner, 2026-10-04): keep it**, it means Explore, not clinic. The `CLAUDE.md` "khám" rule does not cover it.
+- **OQ-8: ANSWERED by the Owner in the Owner's own words, 2026-10-04 (locked, do not reopen).** Birthday gift (P5-6, section 8):
+  1. Whose birthday: the **PAYER's**. A guest payer gets no birthday gift.
+  2. Born on 29 February: in a non-leap year the birthday is **28 February**.
+  3. A **percentage** gift is calculated on the amount **remaining after the best offer**.
+  4. A gift **not allowed to combine** is compared with the best offer and the **larger discount wins**. Non-money gifts are never compared.
+  5. P5-6 covers **money gifts only** (fixed amount or percentage). Free-service and item gifts belong to P5-9.
+  6. Usage limit: the default is **1 time per customer per year**; the configuration screen must still **force the Owner to choose explicitly** when saving.
 - **Owner review of P5-3 (approved):** reading loyalty follows the branch (`VIEW_LOYALTY` at the staff member's branch, like the POS member lookup); points are taken back on
   `INVOICE_REOPENED` / `INVOICE_CANCELLED` (not `PAYMENT_REVERSED`, which always comes with `INVOICE_REOPENED` for a paid invoice).
 - Implementation notes of P5-3 (no decision changed): reversal is keyed on `INVOICE_REOPENED` and `INVOICE_CANCELLED` per 4.4 (`PAYMENT_REVERSED` always comes with
@@ -358,6 +366,32 @@ paid again the unique referral key prevents a second award. The purchase points 
 - Usage is a redemption row written at finalization and released append-only when the invoice is cancelled (same pattern and
   guarantees as P4 §8.3). A guest payer has no birthday benefit.
 - Birthday never multiplies points (PRD §19).
+
+### 8.1 As built in P5-6 (Owner decisions of 2026-10-04 on OQ-8 in 2.5; choices of mine that are not Owner words are marked)
+
+- **Configuration:** one configuration row (singleton) and append-only **versions** (the highest `version_no` is current). A version holds: active flag, kind
+  `PERCENT` (basis points) or `FIXED_AMOUNT` (integer VND), minimum spend, `window_days_before` / `window_days_after`, three combine switches (member discount,
+  automatic promotion, voucher; no rule means no stacking, 6.3) and the usage limit as N per birthday year or an explicit `unlimited`. No column has a default; the API refuses
+  a save without every field, the usage limit included, and the screen offers no preselected usage option. Edit, activate and deactivate are all new versions.
+  Nothing is inserted by the migration. `MANAGE_BIRTHDAY_REWARDS` is **Owner only** (Owner's P5-6 instruction): SQL refuses to attach it to a role or an override.
+- **Whose birthday, the window (Owner):** the PAYER's, from `customer_profiles.date_of_birth`, on the invoice `business_date` (branch timezone), from `birthday - before` to
+  `birthday + after`, inclusive. 29 February is 28 February in a non-leap year. `before + after <= 364` (**mine**, a technical bound so one date belongs to one birthday).
+  A guest payer has no gift. Money gifts only (free service and item gifts: P5-9).
+- **The layer (6.3, Owner):** after `evaluateDiscounts` picks the single ordinary winner W (amount `a`), the base is `subtotal - a`. A percentage rounds half up on that
+  base, a fixed amount is capped by it. If the configuration allows W's source the gift is **stacked** (`discount = a + gift`); with no W it stands **alone**; otherwise it
+  is **compared with W and the larger discount wins**: it replaces W only when strictly larger (then W is not applied or redeemed and the member amount is 0).
+  **Mine, pending Owner confirmation:** (1) the percentage base stays "the amount left after the best offer" even when the gift is compared with the offer (not the full subtotal);
+  (2) on an equal amount the offer stays and the yearly use is not consumed; (3) "per year" is the **birthday year** of the occurrence the invoice date belongs to (a window that
+  crosses New Year is one birthday, so one use), counted per customer across all versions.
+- **Invoice and DB:** `calculation_version` stays 2. The loyalty snapshot gets `birthday_amount_vnd` and `birthday_base_vnd` (and the existing `birthday_config_version` /
+  `birthday_result`); winner `BIRTHDAY` means the gift is the only benefit. `lucy_check_invoice_discount` now reads discount = ordinary part + birthday amount. A
+  `birthday_redemptions` row (one per invoice) is the usage ledger, `birthday_redemption_releases` returns the use when the invoice is cancelled (same causes as discount
+  redemptions). SQL guards re-verify payer, go-live, current active version, the window (`lucy_birthday_occurrence`), minimum spend, amount and the usage limit under the
+  configuration row lock. The TypeScript twin `birthdayOccurrence` is parity-tested against the SQL function.
+- **Locks (12.2 extension):** invoice → discount program rows → **the birthday configuration row** (only when the payer has a birthday window now) → the payer's user row →
+  wallets. A configuration save takes the same row, so saves and finalizations serialize.
+- **Only when go-live is ON, finalized invoices never recalculated, points never doubled:** with go-live OFF no context loads; a DRAFT previews and finalization freezes the
+  result in the snapshot; points are `floor(total / 1000)` of the total after the gift.
 
 ## 9. Combos
 

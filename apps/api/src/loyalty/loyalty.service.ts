@@ -1,4 +1,6 @@
 import type {
+  BirthdayRewardConfigResponse,
+  BirthdayRewardSaveRequest,
   LoyaltyAdjustmentRequest,
   LoyaltyAdjustmentResponse,
   LoyaltyExceptionPageResponse,
@@ -14,6 +16,7 @@ import { SessionService } from '../auth/session.service.js';
 import { runAdminCommand, type AdminContext } from '../authorization/admin-command.js';
 import { sqlStateOf } from '../booking/customer-command.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
+import { getBirthdayConfig, saveBirthdayConfig } from './birthday.core.js';
 import {
   activateGoLive,
   adjustPoints,
@@ -99,6 +102,25 @@ export class LoyaltyService {
   activate(token: string | undefined, requestId?: string): Promise<LoyaltyGoLiveResponse> {
     return this.run(token, requestId, [], (context) =>
       activateGoLive(context, this.environment.auth.freshAuthSeconds),
+    );
+  }
+
+  birthdayReward(token: string | undefined): Promise<BirthdayRewardConfigResponse> {
+    return this.run(token, undefined, [], getBirthdayConfig);
+  }
+
+  saveBirthdayReward(
+    token: string | undefined,
+    body: BirthdayRewardSaveRequest,
+    requestId?: string,
+  ): Promise<BirthdayRewardConfigResponse> {
+    return this.run(token, requestId, [], (context) =>
+      saveBirthdayConfig(context, {
+        ...body,
+        expectedVersionNo: body.expectedVersionNo ?? null,
+        percentBp: body.percentBp ?? null,
+        fixedAmountVnd: body.fixedAmountVnd ?? null,
+      }),
     );
   }
 

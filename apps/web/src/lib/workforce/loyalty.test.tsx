@@ -127,12 +127,14 @@ test('loyalty branches and tabs follow the permissions, never role names', () =>
     customers: true,
     referrals: true,
     exceptions: false,
+    birthday: false,
     goLive: false,
   });
   assert.deepEqual(loyaltyTabs(owner, branches), {
     customers: true,
     referrals: true,
     exceptions: true,
+    birthday: true,
     goLive: true,
   });
   // The exceptions list is organization-wide: a branch grant does not open it.
@@ -143,6 +145,8 @@ test('loyalty branches and tabs follow the permissions, never role names', () =>
   assert.equal(loyaltyTabs(employee([['VIEW_LOYALTY_EXCEPTIONS']]), branches).exceptions, true);
   // Only the Owner holds the go-live switch (the API refuses it to any role, so a grant is a stale hint).
   assert.equal(loyaltyTabs(employee([['VIEW_LOYALTY']]), branches).goLive, false);
+  // The birthday gift setup is the Owner's alone too (Phase 5 P5-6): no staff grant opens the tab.
+  assert.equal(loyaltyTabs(employee([['VIEW_LOYALTY']]), branches).birthday, false);
 });
 
 test('the sidebar offers the loyalty page to those who can use it', () => {

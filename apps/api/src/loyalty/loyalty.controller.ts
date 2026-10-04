@@ -1,4 +1,8 @@
 import type {
+  BirthdayGiftKindName,
+  BirthdayRewardConfigResponse,
+  BirthdayRewardSaveRequest,
+  BirthdayUsageLimit,
   LoyaltyAdjustmentRequest,
   LoyaltyAdjustmentResponse,
   LoyaltyExceptionPageResponse,
@@ -22,7 +26,17 @@ import {
   Res,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import type { Request, Response } from 'express';
 import { sessionCookie } from '../auth/cookies.js';
 import { requireEmptyObject } from '../auth/session-auth.controller.js';
@@ -60,6 +74,33 @@ class AdjustmentDto implements LoyaltyAdjustmentRequest {
   @IsString()
   @MaxLength(64)
   correctsEntryId?: string;
+}
+
+/** The birthday gift save: only the contract's fields (the core validates every value again, usage limit included). */
+class BirthdayRewardDto implements Omit<
+  BirthdayRewardSaveRequest,
+  'expectedVersionNo' | 'percentBp' | 'fixedAmountVnd'
+> {
+  @ApiProperty({ required: false, nullable: true }) @IsOptional() @IsInt() expectedVersionNo?:
+    number | null;
+  @ApiProperty() @IsBoolean() isActive!: boolean;
+  @ApiProperty({ enum: ['PERCENT', 'FIXED_AMOUNT'] })
+  @IsIn(['PERCENT', 'FIXED_AMOUNT'])
+  kind!: BirthdayGiftKindName;
+  @ApiProperty({ required: false, nullable: true }) @IsOptional() @IsInt() percentBp?:
+    number | null;
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(24)
+  fixedAmountVnd?: string | null;
+  @ApiProperty() @IsString() @MaxLength(24) minSpendVnd!: string;
+  @ApiProperty() @IsInt() windowDaysBefore!: number;
+  @ApiProperty() @IsInt() windowDaysAfter!: number;
+  @ApiProperty() @IsBoolean() combineMember!: boolean;
+  @ApiProperty() @IsBoolean() combinePromotion!: boolean;
+  @ApiProperty() @IsBoolean() combineVoucher!: boolean;
+  @ApiProperty() @IsObject() usageLimit!: BirthdayUsageLimit;
 }
 
 /**
@@ -154,6 +195,33 @@ export class LoyaltyController {
   ): Promise<LoyaltyGoLiveResponse> {
     requireEmptyObject(body);
     return this.loyalty.activate(this.session(request), this.requestId(response));
+  }
+
+  @Get('birthday-reward')
+  @ApiOkResponse({
+    description:
+      'The birthday gift configuration and its versions (MANAGE_BIRTHDAY_REWARDS, Owner only).',
+  })
+  birthdayReward(@Req() request: Request): Promise<BirthdayRewardConfigResponse> {
+    return this.loyalty.birthdayReward(this.session(request));
+  }
+
+  @Post('birthday-reward')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Saves the next version of the birthday gift configuration (MANAGE_BIRTHDAY_REWARDS, Owner only).',
+  })
+  saveBirthdayReward(
+    @Body() body: BirthdayRewardDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<BirthdayRewardConfigResponse> {
+    return this.loyalty.saveBirthdayReward(
+      this.session(request),
+      body as BirthdayRewardSaveRequest,
+      this.requestId(response),
+    );
   }
 
   private session(request: Request) {

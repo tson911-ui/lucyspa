@@ -26,6 +26,7 @@ import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import { Button, Empty, Loading, Notice, PageHeader } from '../ui';
 import { LoyaltyExceptions } from './loyalty-exceptions';
+import { LoyaltyBirthday } from './loyalty-birthday';
 import { LoyaltyGoLive } from './loyalty-go-live';
 import { LoyaltyReferrals } from './loyalty-referrals';
 
@@ -48,7 +49,13 @@ export function LoyaltyScreen() {
   });
 
   if (branches.loading && !branches.data) return <Loading t={t} page />;
-  if (!shown.customers && !shown.referrals && !shown.exceptions && !shown.goLive) {
+  if (
+    !shown.customers &&
+    !shown.referrals &&
+    !shown.exceptions &&
+    !shown.birthday &&
+    !shown.goLive
+  ) {
     return (
       <>
         <PageHeader title={l.title} intro={l.intro} />
@@ -76,6 +83,12 @@ export function LoyaltyScreen() {
       label: l.tabs.exceptions,
       show: shown.exceptions,
       panel: <LoyaltyExceptions page={state.page} onPage={(page) => update({ page })} />,
+    },
+    {
+      id: 'birthday',
+      label: l.tabs.birthday,
+      show: shown.birthday,
+      panel: <LoyaltyBirthday />,
     },
     { id: 'goLive', label: l.tabs.goLive, show: shown.goLive, panel: <LoyaltyGoLive /> },
   ].filter((tab) => tab.show);

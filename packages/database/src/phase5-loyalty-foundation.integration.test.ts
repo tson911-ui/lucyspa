@@ -46,6 +46,11 @@ const NEW_TABLES = [
   'referrals',
   'referral_changes',
   'invoice_loyalty_snapshots',
+  // P5-6: the birthday gift ships empty (no configuration, no version, no redemption).
+  'birthday_reward_configs',
+  'birthday_reward_versions',
+  'birthday_redemptions',
+  'birthday_redemption_releases',
   'combos',
   'combo_versions',
   'combo_purchases',
@@ -605,7 +610,8 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
                         branchId: branch,
                       },
                     }),
-                  /GLOBAL_ONLY permission cannot be overridden/,
+                  // The Owner-only codes (ACTIVATE_LOYALTY, CHANGE_REFERRER, MANAGE_BIRTHDAY_REWARDS) are refused for everyone.
+                  /GLOBAL_ONLY permission cannot be overridden|belongs to the Owner/,
                 );
               }
               await tx.userPermissionOverride.create({
@@ -692,6 +698,46 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
               const role = await tx.role.create({
                 data: {
                   code: `P55_OWNER_ONLY_${randomUUID().slice(0, 8).toUpperCase()}`,
+                  displayNameVi: 'x',
+                  displayNameEn: 'x',
+                },
+              });
+              await rejects(
+                () =>
+                  tx.rolePermission.create({
+                    data: { roleId: role.id, permissionId: permission.id },
+                  }),
+                /belongs to the Owner and cannot be granted/,
+              );
+              const grantee = await user('EMPLOYEE');
+              await rejects(
+                () =>
+                  tx.userPermissionOverride.create({
+                    data: {
+                      userId: grantee,
+                      permissionId: permission.id,
+                      effect: 'ALLOW',
+                      scopeKind: 'GLOBAL',
+                    },
+                  }),
+                /belongs to the Owner and cannot be granted/,
+              );
+            },
+          );
+
+          // ============================================================ MANAGE_BIRTHDAY_REWARDS (P5-6, Owner only)
+          await context.test(
+            'MANAGE_BIRTHDAY_REWARDS: GLOBAL_ONLY, never carried by a role or an override',
+            async () => {
+              await syncPermissionCatalog(tx);
+              const permission = await tx.permission.findUniqueOrThrow({
+                where: { code: 'MANAGE_BIRTHDAY_REWARDS' },
+              });
+              assert.equal(permission.scopeCapability, 'GLOBAL_ONLY');
+              assert.equal(permission.dataClassification, 'STANDARD');
+              const role = await tx.role.create({
+                data: {
+                  code: `P56_OWNER_ONLY_${randomUUID().slice(0, 8).toUpperCase()}`,
                   displayNameVi: 'x',
                   displayNameEn: 'x',
                 },

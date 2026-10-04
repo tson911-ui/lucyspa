@@ -28,6 +28,7 @@ import {
   parseVnd,
 } from './invoice.calc.js';
 import {
+  birthdayResponse,
   candidatesJson,
   evaluateInvoice,
   previewDiscount,
@@ -195,8 +196,17 @@ export const invoiceSelect = {
   discountRedemption: {
     select: { id: true, discountId: true, release: { select: { id: true } } },
   },
+  birthdayRedemption: {
+    select: { id: true, configId: true, release: { select: { id: true } } },
+  },
   loyaltySnapshot: {
-    select: { candidates: true, winnerSource: true, selectionReason: true, createdAt: true },
+    select: {
+      candidates: true,
+      winnerSource: true,
+      selectionReason: true,
+      birthdayResult: true,
+      createdAt: true,
+    },
   },
   lines: {
     orderBy: { sequence: 'asc' },
@@ -402,6 +412,7 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
       winner: null,
       winnerSource: null,
       member: null,
+      birthday: null,
       selectionReason: null,
       vouchers: entries,
       appliedAt: null,
@@ -1119,6 +1130,7 @@ export async function finalizeInvoice(
     });
   }
   const member = result.member;
+  const birthday = result.birthday;
   if (member && invoice.payerUserId !== null) {
     // P5-T3: the payer's Spa tier is read at finalization (under the wallet share lock) and frozen here with the candidates
     // and the winner; the invoice is never recomputed from a later balance.
@@ -1137,10 +1149,33 @@ export async function finalizeInvoice(
         candidates: snapshotCandidatesJson(result),
         winnerSource: result.winnerSource,
         selectionReason: result.selectionReason,
+        // P5-6: the gift layer (frozen like the tier): the version used, the full result, and the amount and base when applied.
+        ...(birthday
+          ? {
+              birthdayConfigVersion: birthday.context.version.versionNo,
+              birthdayResult: birthdayResponse(birthday) as unknown as Prisma.InputJsonObject,
+              birthdayAmountVnd: birthday.applied ? birthday.amountVnd : 0n,
+              birthdayBaseVnd: birthday.applied ? birthday.baseVnd : 0n,
+            }
+          : {}),
         createdAt: now,
       },
       select: { id: true },
     });
+    if (birthday?.applied) {
+      // Usage ledger of the gift; the guard re-verifies window, amount and limit under the configuration row lock.
+      await tx.birthdayRedemption.create({
+        data: {
+          invoiceId,
+          configId: birthday.context.version.configId,
+          versionId: birthday.context.version.id,
+          payerUserId: invoice.payerUserId,
+          birthdayOn: new Date(`${birthday.context.birthdayOn}T00:00:00.000Z`),
+          amountVnd: birthday.amountVnd,
+        },
+        select: { id: true },
+      });
+    }
   }
   await tx.invoice.update({
     where: { id: invoiceId },
@@ -1191,6 +1226,9 @@ export async function finalizeInvoice(
             amountVnd: result.member.amountVnd.toString(),
             won: result.winnerSource === 'MEMBER_TIER',
           }
+        : null,
+      birthdayGift: birthday
+        ? (birthdayResponse(birthday) as unknown as Prisma.InputJsonObject)
         : null,
       winnerSource: result.winnerSource,
       selectionReason: result.selectionReason,
@@ -1358,6 +1396,36 @@ export async function cancelInvoice(
       },
     );
   }
+  const gift = invoice.birthdayRedemption;
+  let releasedGiftId: string | null = null;
+  if (gift && !gift.release) {
+    // After the program release (lock order); the guard locks the configuration row. The use returns to the customer once.
+    const cause =
+      path === 'ZERO_BALANCE_CORRECTION' ? 'ZERO_BALANCE_CORRECTION' : 'INVOICE_CANCELLED_UNPAID';
+    const release = await tx.birthdayRedemptionRelease.create({
+      data: {
+        redemptionId: gift.id,
+        releasedByUserId: context.actor.userId,
+        cause,
+        reason: input.reason,
+        releasedAt: now,
+      },
+      select: { id: true },
+    });
+    releasedGiftId = gift.id;
+    await appendAdminAudit(
+      { ...context, now },
+      {
+        action: 'BIRTHDAY_REDEMPTION_RELEASED',
+        entityType: 'Invoice',
+        entityId: invoiceId,
+        branchId: hint.branchId,
+        classification: 'FINANCIAL',
+        reason: input.reason,
+        after: { redemptionId: gift.id, releaseId: release.id, cause },
+      },
+    );
+  }
   await appendAdminAudit(
     { ...context, now },
     {
@@ -1374,6 +1442,7 @@ export async function cancelInvoice(
         cancellationPath: path,
         voidedPaidSeq,
         redemptionReleased: releasedRedemptionId,
+        birthdayRedemptionReleased: releasedGiftId,
         reauthenticatedAt:
           path === 'DRAFT'
             ? null

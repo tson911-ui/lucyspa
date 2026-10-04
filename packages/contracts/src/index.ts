@@ -5,6 +5,7 @@ import type {
   NotificationParams,
   NotificationType,
 } from './notification-registry.js';
+import type { InvoiceBirthdayGift } from './birthday.js';
 import type { InvoiceMemberCandidate } from './loyalty.js';
 import type { SeasonDensity, SeasonSlot, SeasonSlotSwitches } from './season-registry.js';
 export type OrganizationLevel =
@@ -2144,6 +2145,8 @@ export * from './lunar-year.js';
 export * from './loyalty.js';
 // Phase 5 P5-5: referral (bind, Owner correction, list).
 export * from './referral.js';
+// Phase 5 P5-6: the birthday gift (Owner configuration and the invoice layer).
+export * from './birthday.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;
@@ -2572,9 +2575,14 @@ export interface InvoiceDiscountResponse {
   /** The winning PROGRAM benefit (promotion or voucher); null when none won or when the Member Discount won (see `winnerSource`). */
   winner: InvoiceDiscountCandidate | null;
   /** Which kind of benefit is the invoice discount: a promotion, a voucher or the member tier (Phase 5); null when none. */
-  winnerSource: 'PROMOTION' | 'VOUCHER' | 'MEMBER_TIER' | null;
+  winnerSource: 'PROMOTION' | 'VOUCHER' | 'MEMBER_TIER' | 'BIRTHDAY' | null;
   /** The Member Discount candidate (payer is a member and loyalty is live); null otherwise. */
   member: InvoiceMemberCandidate | null;
+  /**
+   * The birthday gift layer (Phase 5 P5-6), applied AFTER the single ordinary winner: present when the payer's birthday window
+   * contains the invoice date. `winnerSource` is `BIRTHDAY` only when the gift is the invoice's only benefit.
+   */
+  birthday: InvoiceBirthdayGift | null;
   /** Why this benefit won (or null when there is none). */
   selectionReason: string | null;
   /** Codes supplied to the draft (kept as history after finalization). */

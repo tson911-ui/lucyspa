@@ -29,13 +29,21 @@ export function loyaltyBranches(
 export function loyaltyTabs(
   account: CurrentAccountResponse,
   branches: ReadonlyMap<string, BranchSummary> | null,
-): { customers: boolean; referrals: boolean; exceptions: boolean; goLive: boolean } {
+): {
+  customers: boolean;
+  referrals: boolean;
+  exceptions: boolean;
+  birthday: boolean;
+  goLive: boolean;
+} {
   const lookup = loyaltyBranches(account, branches).length > 0;
   return {
     customers: lookup,
     // The referral list follows VIEW_LOYALTY at a branch, like the points lookup (Phase 5 P5-5).
     referrals: lookup,
     exceptions: canGlobal(account, 'VIEW_LOYALTY_EXCEPTIONS'),
+    // The birthday gift setup is the Owner's alone (Phase 5 P5-6).
+    birthday: canGlobal(account, 'MANAGE_BIRTHDAY_REWARDS'),
     goLive: canGlobal(account, 'ACTIVATE_LOYALTY'),
   };
 }

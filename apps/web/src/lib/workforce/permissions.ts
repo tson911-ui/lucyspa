@@ -253,7 +253,8 @@ export function navigationFor(account: Account): NavItem[] {
     // Loyalty points (Phase 5 P5-3): VIEW_LOYALTY somewhere, the organization-wide exceptions list or the Owner's switch.
     (canAnywhere(account, 'VIEW_LOYALTY') ||
       canGlobal(account, 'VIEW_LOYALTY_EXCEPTIONS') ||
-      canGlobal(account, 'ACTIVATE_LOYALTY')) && {
+      canGlobal(account, 'ACTIVATE_LOYALTY') ||
+      canGlobal(account, 'MANAGE_BIRTHDAY_REWARDS')) && {
       key: 'loyalty',
       group: 'sales',
       path: '/loyalty',

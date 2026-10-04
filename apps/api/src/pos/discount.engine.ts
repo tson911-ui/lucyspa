@@ -4,6 +4,7 @@ import type {
   LoyaltyTierName,
   MemberIneligibleReason,
 } from '@lucy-spa/contracts';
+import type { BirthdayEvaluation } from './birthday.engine.js';
 
 /**
  * Phase 4 Step 6 — the discount candidate engine (design 7.3, 8.3, OP-3/4/5). A PURE function of stored
@@ -12,7 +13,7 @@ import type {
  * amount is capped by the eligible subtotal, one benefit only).
  *
  * `calculation_version = 2` (Phase 5 P5-4) adds the Member Discount (tier) as one more candidate of the same
- * single choice; without a `member` input the result is exactly the version 1 result. Birthday is P5-6.
+ * single choice; without a `member` input the result is exactly the version 1 result. The birthday gift (P5-6) is a separate layer applied afterwards by `birthday.engine.ts`.
  */
 
 export interface EngineLine {
@@ -98,7 +99,9 @@ export interface EngineResult {
   winner: EngineCandidate | null;
   /** The Member Discount candidate, when the payer is a member and loyalty is live. */
   member: MemberCandidate | null;
-  winnerSource: 'PROMOTION' | 'VOUCHER' | 'MEMBER_TIER' | null;
+  winnerSource: 'PROMOTION' | 'VOUCHER' | 'MEMBER_TIER' | 'BIRTHDAY' | null;
+  /** The birthday gift layer (P5-6), set by `withBirthday` after the ordinary choice; null when no gift context applies. */
+  birthday: BirthdayEvaluation | null;
   discountTotalVnd: bigint;
   totalVnd: bigint;
   /** Machine-readable explanation of the choice; null without a winner. */
@@ -263,6 +266,7 @@ export function evaluateDiscounts(input: {
     winner,
     member,
     winnerSource,
+    birthday: null,
     discountTotalVnd,
     totalVnd: subtotalVnd - discountTotalVnd,
     selectionReason,

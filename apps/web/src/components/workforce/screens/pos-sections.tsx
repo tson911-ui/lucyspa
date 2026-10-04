@@ -12,6 +12,7 @@ import {
   type MenuItem,
 } from '@lucy-spa/ui';
 import { useState } from 'react';
+import { birthdayDictionary } from '../../../i18n/birthday';
 import { loyaltyDictionary } from '../../../i18n/loyalty';
 import { fill } from '../../../i18n/workforce';
 import {
@@ -19,7 +20,8 @@ import {
   candidateBenefitLabel,
   ineligibleText,
 } from '../../../lib/workforce/discounts';
-import { formatVnd } from '../../../lib/workforce/format';
+import { giftText } from '../../../lib/workforce/birthday';
+import { formatDate, formatVnd } from '../../../lib/workforce/format';
 import { paginationLabels } from '../../../lib/workforce/list-view';
 import { useWorkforce } from '../session';
 import { Badge, Empty, Notice } from '../ui';
@@ -53,7 +55,8 @@ export function DiscountCard({ invoice }: { invoice: InvoiceResponse }) {
   const { t, locale } = useWorkforce();
   const paging = usePaging();
   const l = loyaltyDictionary(locale);
-  const { winner, member, winnerSource } = invoice.discount;
+  const { winner, member, winnerSource, birthday } = invoice.discount;
+  const bd = birthdayDictionary(locale).invoice;
   const programName = (candidate: Pick<Candidate, 'nameVi' | 'nameEn'>) =>
     locale === 'vi' ? candidate.nameVi : candidate.nameEn;
   const percentOf = (bp: number) => {
@@ -61,6 +64,10 @@ export function DiscountCard({ invoice }: { invoice: InvoiceResponse }) {
     return locale === 'vi' ? percent.replace('.', ',') : percent;
   };
   const memberTier = member ? l.tiers[member.tier] : '';
+  const giftReason = (reason: keyof typeof bd.notApplied) =>
+    fill(bd.notApplied[reason], {
+      amount: formatVnd(birthday?.minSpendVnd ?? '0', locale),
+    });
   const rows: DiscountRow[] = [
     ...(member
       ? [
@@ -78,7 +85,7 @@ export function DiscountCard({ invoice }: { invoice: InvoiceResponse }) {
           },
         ]
       : []),
-    ...invoice.discount.candidates.map((candidate) => ({
+    ...invoice.discount.candidates.map((candidate): DiscountRow => ({
       key: `${candidate.discountId}:${candidate.voucherId ?? ''}`,
       name: programName(candidate),
       benefit: candidateBenefitLabel(candidate, locale),
@@ -89,8 +96,23 @@ export function DiscountCard({ invoice }: { invoice: InvoiceResponse }) {
       eligible: candidate.eligible,
       reason: candidate.reason ? ineligibleText(candidate.reason, t) : null,
     })),
+    // The birthday gift is its own layer after the best offer (Phase 5 P5-6), listed last.
+    ...(birthday
+      ? [
+          {
+            key: 'birthday',
+            name: bd.rowName,
+            benefit: giftText(birthday, locale, true),
+            source: bd.source,
+            winner: birthday.applied,
+            eligible: birthday.applied,
+            reason: birthday.reason ? bd.notAppliedShort[birthday.reason] : null,
+          } satisfies DiscountRow,
+        ]
+      : []),
   ];
   const reasonText = (reason: string): string =>
+    (bd.reasons as Record<string, string>)[reason] ??
     (l.member.reasons as Record<string, string>)[reason] ??
     (t.pos.selectionReasons as Record<string, string>)[reason] ??
     reason;
@@ -146,7 +168,7 @@ export function DiscountCard({ invoice }: { invoice: InvoiceResponse }) {
             ? ` — ${reasonText(invoice.discount.selectionReason)}`
             : ''}
         </Notice>
-      ) : winner ? (
+      ) : winnerSource === 'BIRTHDAY' ? null : winner ? (
         <Notice tone="success">
           <strong>{fill(t.pos.discountApplied, { name: programName(winner) })}</strong> ·{' '}
           {candidateBenefitLabel(winner, locale)} ·{' '}
@@ -158,6 +180,31 @@ export function DiscountCard({ invoice }: { invoice: InvoiceResponse }) {
       ) : (
         <Empty>{t.pos.discountNone}</Empty>
       )}
+      {birthday ? (
+        <Notice tone={birthday.applied ? 'success' : 'info'}>
+          {birthday.applied ? (
+            <>
+              <strong>
+                {birthday.mode === 'STACKED'
+                  ? bd.stacked
+                  : birthday.mode === 'REPLACES_OFFER'
+                    ? bd.replaces
+                    : bd.alone}
+              </strong>{' '}
+              · {fill(t.pos.candidateAmount, { amount: formatVnd(birthday.amountVnd, locale) })}
+              {winnerSource === 'BIRTHDAY' && invoice.discount.selectionReason
+                ? ` — ${reasonText(invoice.discount.selectionReason)}`
+                : ''}
+            </>
+          ) : (
+            <>
+              <strong>{bd.rowName}</strong> · {birthday.reason ? giftReason(birthday.reason) : ''}
+            </>
+          )}{' '}
+          · {fill(bd.birthdayOn, { date: formatDate(birthday.birthdayOn, locale) })}
+        </Notice>
+      ) : null}
+      {birthday && invoice.discount.preview ? <p className="ls-hint">{bd.previewNote}</p> : null}
       {member && invoice.discount.preview ? (
         <p className="ls-hint">{l.member.previewNote}</p>
       ) : null}
