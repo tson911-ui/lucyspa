@@ -251,17 +251,24 @@ export async function evaluateInvoice(
   now: Date,
   options: { lockPrograms: boolean },
 ): Promise<InvoiceEvaluation> {
+  const header = await tx.invoice.findUniqueOrThrow({
+    where: { id: invoice.id },
+    select: { kind: true },
+  });
   const lineRows = await tx.invoiceLine.findMany({
     where: { invoiceId: invoice.id },
     orderBy: { sequence: 'asc' },
     select: {
       grossVnd: true,
       serviceDetails: { select: { serviceId: true, serviceCategoryId: true } },
+      // A combo sale line (Phase 5 P5-7) is priced like a line of the combo's own service: the same service and the
+      // service category snapshot taken when the line was created.
+      comboDetails: { select: { serviceId: true, serviceCategoryId: true } },
     },
   });
   const lines: EngineLine[] = lineRows.map((line) => {
-    const detail = line.serviceDetails[0];
-    if (!detail) throw new Error('Every invoice line has its service detail.');
+    const detail = line.serviceDetails[0] ?? line.comboDetails[0];
+    if (!detail) throw new Error('Every invoice line has its service or combo detail.');
     return {
       serviceId: detail.serviceId,
       // The category the service had when the transaction was established (snapshot, never the live catalog).
@@ -338,12 +345,11 @@ export async function evaluateInvoice(
     .filter((program): program is EngineProgram => program !== undefined)
     .filter((program) => now < program.version.validUntil);
   // Lock order (design 12.2): invoice -> program rows -> the birthday configuration row -> the payer's user row -> wallets.
-  const birthdayContext = await loadBirthday(
-    tx,
-    invoice.id,
-    invoice.payerUserId,
-    options.lockPrograms,
-  );
+  // The birthday gift never applies to a combo sale (Owner answer of 2026-10-05): nothing is read and no lock is taken for it.
+  const birthdayContext =
+    header.kind === 'COMBO_SALE'
+      ? null
+      : await loadBirthday(tx, invoice.id, invoice.payerUserId, options.lockPrograms);
   const member = await loadMember(tx, invoice.payerUserId, options.lockPrograms);
   const ordinary = evaluateDiscounts({
     lines,

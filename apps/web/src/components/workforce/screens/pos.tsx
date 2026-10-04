@@ -13,6 +13,7 @@ import {
 import { PrefetchLink as Link } from '../link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { comboDictionary } from '../../../i18n/combo';
 import { fill } from '../../../i18n/workforce';
 import { BOARD_REFRESH_MS, branchTime } from '../../../lib/workforce/booking-board';
 import { formatDate, formatVnd, todayIn } from '../../../lib/workforce/format';
@@ -20,7 +21,8 @@ import { paginationLabels, toolbarLabels } from '../../../lib/workforce/list-vie
 import { invoiceTone, posBranches, posErrorMessage } from '../../../lib/workforce/pos';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
-import { Badge, Empty, Loading, Notice, PageHeader } from '../ui';
+import { Badge, Button, Empty, Loading, Notice, PageHeader } from '../ui';
+import { ComboSaleDialog } from './pos-combo-sale';
 
 type Awaiting = PosBoardResponse['awaiting'][number];
 type BoardInvoice = PosBoardResponse['invoices'][number];
@@ -32,6 +34,7 @@ type BoardInvoice = PosBoardResponse['invoices'][number];
  */
 export function PosScreen() {
   const { api, t, locale, base } = useWorkforce();
+  const c = comboDictionary(locale);
   const { account } = useAccount();
   const router = useRouter();
   const branches = useBranches(api);
@@ -41,6 +44,7 @@ export function PosScreen() {
   const [board, setBoard] = useState<PosBoardResponse | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
   const [opening, setOpening] = useState<string | null>(null);
+  const [selling, setSelling] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [awaitingPaging, setAwaitingPaging] = useState({ page: 1, pageSize: 20 });
   const [invoicesPaging, setInvoicesPaging] = useState({ page: 1, pageSize: 20 });
@@ -174,7 +178,16 @@ export function PosScreen() {
       header: t.pos.businessDate,
       cell: (invoice) => formatDate(invoice.businessDate, locale),
     },
-    { key: 'visit', header: t.pos.visit, hideBelow: 'xl', cell: (invoice) => invoice.visitCode },
+    {
+      key: 'type',
+      header: c.invoice.typeColumn,
+      hideBelow: 'xl',
+      truncate: true,
+      cell: (invoice) =>
+        invoice.kind === 'COMBO_SALE'
+          ? `${c.invoice.typeCombo}: ${invoice.comboName ? (locale === 'vi' ? invoice.comboName.vi : invoice.comboName.en) : '—'}`
+          : `${c.invoice.typeVisit} ${invoice.visitCode ?? ''}`.trim(),
+    },
     {
       key: 'status',
       header: t.pos.status,
@@ -218,7 +231,13 @@ export function PosScreen() {
 
   return (
     <>
-      <PageHeader title={t.pos.title} intro={t.pos.intro} />
+      <PageHeader title={t.pos.title} intro={t.pos.intro}>
+        {board?.canSellCombos ? (
+          <Button variant="primary" icon="plus" onClick={() => setSelling(true)}>
+            {c.sale.action}
+          </Button>
+        ) : null}
+      </PageHeader>
       <ListToolbar
         labels={toolbarLabels(t)}
         activeFilters={date ? 1 : 0}
@@ -283,6 +302,13 @@ export function PosScreen() {
           }}
         />
       </ListSection>
+      {selling ? (
+        <ComboSaleDialog
+          branchId={branchId}
+          onStarted={(invoiceId) => router.push(`${base}/pos/${invoiceId}`)}
+          onClose={() => setSelling(false)}
+        />
+      ) : null}
     </>
   );
 }

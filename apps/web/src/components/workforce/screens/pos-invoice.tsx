@@ -1,6 +1,7 @@
 'use client';
 
 import type {
+  InvoiceComboLineResponse,
   InvoiceLineResponse,
   InvoiceResponse,
   PaymentPayosRequest,
@@ -20,8 +21,10 @@ import {
 } from '@lucy-spa/ui';
 import { PrefetchLink as Link } from '../link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { comboDictionary } from '../../../i18n/combo';
 import { fill, type WorkforceDictionary } from '../../../i18n/workforce';
 import { organizationDictionary } from '../../../i18n/organization';
+import { comboErrorText, comboName, sessionsText } from '../../../lib/workforce/combo';
 import { formatDate, formatDateTime, formatVnd } from '../../../lib/workforce/format';
 import {
   hasPriceRange,
@@ -85,6 +88,7 @@ export function PosInvoiceScreen({ id }: { id: string }) {
   const { confirm, dialog } = useReauthentication();
   const notify = useSuccessToast();
   const text = organizationDictionary(locale);
+  const c = comboDictionary(locale);
   const [invoice, setInvoice] = useState<InvoiceResponse | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -140,7 +144,12 @@ export function PosInvoiceScreen({ id }: { id: string }) {
       notify(message, () => setFeedback({ tone: 'success', text: message }));
       return true;
     } catch (error) {
-      if (!rethrow) setFeedback({ tone: 'error', text: posErrorMessage(error, t) });
+      if (!rethrow) {
+        setFeedback({
+          tone: 'error',
+          text: comboErrorText(error, locale, (cause) => posErrorMessage(cause, t)),
+        });
+      }
       await load();
       if (rethrow) throw error;
       return false;
@@ -283,6 +292,8 @@ export function PosInvoiceScreen({ id }: { id: string }) {
     idle,
     onEdit: (lineId) => setOverlay({ kind: 'line', lineId }),
   });
+  const comboSale = invoice.kind === 'COMBO_SALE';
+  const comboColumns = comboColumnsOf({ c, locale });
   const cashBalance = cashBalanceOf(invoice).toString();
   const totals = [
     { label: t.pos.subtotal, value: formatVnd(invoice.subtotalVnd, locale) },
@@ -296,10 +307,14 @@ export function PosInvoiceScreen({ id }: { id: string }) {
     <>
       <PageHeader
         title={fill(t.pos.detailTitle, { code: invoice.code })}
-        intro={`${fill(t.pos.visitInfo, {
-          code: invoice.visit.code,
-          date: formatDate(invoice.visit.serviceDate, locale),
-        })} · ${invoice.branch.name}`}
+        intro={
+          invoice.visit
+            ? `${fill(t.pos.visitInfo, {
+                code: invoice.visit.code,
+                date: formatDate(invoice.visit.serviceDate, locale),
+              })} · ${invoice.branch.name}`
+            : fill(c.invoice.intro, { branch: invoice.branch.name })
+        }
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
@@ -349,8 +364,8 @@ export function PosInvoiceScreen({ id }: { id: string }) {
       {feedback && overlay === null ? <Notice tone={feedback.tone}>{feedback.text}</Notice> : null}
       {draft && invoice.actions.finalize ? (
         <>
-          <Notice tone="info">{t.pos.finalizeHint}</Notice>
-          {!invoice.readiness.ready ? (
+          <Notice tone="info">{comboSale ? c.invoice.finalizeHint : t.pos.finalizeHint}</Notice>
+          {!invoice.readiness.ready && !comboSale ? (
             <Notice tone="warning">
               {fill(t.pos.notReady, { count: invoice.readiness.unpricedLines })}
             </Notice>
@@ -365,6 +380,17 @@ export function PosInvoiceScreen({ id }: { id: string }) {
           {invoice.payments.length === 0 ? t.pos.paidNote : t.pos.paidFullNote}
         </Notice>
       ) : null}
+      {invoice.comboLine?.issuance === 'PENDING' ? (
+        <Notice tone="info">{c.invoice.pending}</Notice>
+      ) : null}
+      {invoice.comboLine?.issuance === 'ISSUED' ? (
+        <Notice tone="success">
+          {fill(c.invoice.issued, { total: invoice.comboLine.totalSessions })}
+        </Notice>
+      ) : null}
+      {invoice.comboLine?.issuance === 'REVOKED' ? (
+        <Notice tone="warning">{c.invoice.revoked}</Notice>
+      ) : null}
       {invoice.status === 'CANCELLED' ? (
         <Notice tone="error">
           {fill(t.pos.cancelledInfo, {
@@ -375,16 +401,28 @@ export function PosInvoiceScreen({ id }: { id: string }) {
       ) : null}
 
       <Card as="section">
-        <CardHeader title={t.pos.linesTitle} />
-        <DataTable
-          mode="client"
-          caption={fill(t.common.list.table, { list: t.pos.linesTitle })}
-          columns={lineColumns}
-          rows={invoice.lines}
-          rowKey={(line) => `${line.id}:${line.unitPriceVnd}:${line.quantity}`}
-          empty={<Empty>{t.pos.noLines}</Empty>}
-          paging={{ off: 'the lines of one visit' }}
-        />
+        <CardHeader title={comboSale ? c.invoice.linesTitle : t.pos.linesTitle} />
+        {comboSale ? (
+          <DataTable
+            mode="client"
+            caption={fill(t.common.list.table, { list: c.invoice.linesTitle })}
+            columns={comboColumns}
+            rows={invoice.comboLine ? [invoice.comboLine] : []}
+            rowKey={(line) => line.id}
+            empty={<Empty>{c.invoice.noLine}</Empty>}
+            paging={{ off: 'one combo per sale' }}
+          />
+        ) : (
+          <DataTable
+            mode="client"
+            caption={fill(t.common.list.table, { list: t.pos.linesTitle })}
+            columns={lineColumns}
+            rows={invoice.lines}
+            rowKey={(line) => `${line.id}:${line.unitPriceVnd}:${line.quantity}`}
+            empty={<Empty>{t.pos.noLines}</Empty>}
+            paging={{ off: 'the lines of one visit' }}
+          />
+        )}
         <DescriptionList layout="totals" items={totals} />
       </Card>
 
@@ -550,6 +588,51 @@ export function PosInvoiceScreen({ id }: { id: string }) {
       {dialog}
     </>
   );
+}
+
+/** The columns of a combo sale: the one combo line, its price fixed by the combo (nothing to choose, so no row menu). */
+function comboColumnsOf({
+  c,
+  locale,
+}: {
+  c: ReturnType<typeof comboDictionary>;
+  locale: 'vi' | 'en';
+}): DataTableColumn<InvoiceComboLineResponse>[] {
+  return [
+    {
+      key: 'combo',
+      header: c.invoice.colCombo,
+      mobileTitle: true,
+      truncate: true,
+      width: 'lg',
+      cell: (line) => comboName(line, locale),
+    },
+    {
+      key: 'service',
+      header: c.invoice.colService,
+      hideBelow: 'lg',
+      truncate: true,
+      cell: (line) => comboName(line.service, locale),
+    },
+    {
+      key: 'sessions',
+      header: c.invoice.colSessions,
+      cell: (line) => sessionsText(line.paidSessions, line.bonusSessions, locale),
+    },
+    {
+      key: 'price',
+      header: c.invoice.colPrice,
+      numeric: true,
+      hideBelow: 'xl',
+      cell: (line) => formatVnd(line.priceVnd, locale),
+    },
+    {
+      key: 'amount',
+      header: c.invoice.colAmount,
+      numeric: true,
+      cell: (line) => formatVnd(line.priceVnd, locale),
+    },
+  ];
 }
 
 /** The columns of the lines table; the `⋮` offers the price/quantity dialog only where the line permits a choice. */

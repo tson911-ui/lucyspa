@@ -26,6 +26,8 @@ import { NotificationController } from './notifications/notification.controller.
 import { NotificationService } from './notifications/notification.service.js';
 import { DiscountController } from './discounts/discount.controller.js';
 import { DiscountService } from './discounts/discount.service.js';
+import { ComboController } from './combo/combo.controller.js';
+import { ComboService } from './combo/combo.service.js';
 import { LoyaltyController } from './loyalty/loyalty.controller.js';
 import { LoyaltyService } from './loyalty/loyalty.service.js';
 import { ReferralController } from './referral/referral.controller.js';
@@ -131,6 +133,7 @@ export class AppModule {
         NotificationController,
         WalkInController,
         DiscountController,
+        ComboController,
         LoyaltyController,
         ReferralController,
         InvoiceController,
@@ -189,6 +192,7 @@ export class AppModule {
         NotificationService,
         WalkInService,
         DiscountService,
+        ComboService,
         LoyaltyService,
         ReferralService,
         InvoiceService,

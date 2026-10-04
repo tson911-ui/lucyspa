@@ -24,8 +24,10 @@ const invoice = (
   id,
   code: id,
   status,
+  kind: 'VISIT',
   visitId: `v-${id}`,
   visitCode: `V-${id}`,
+  comboName: null,
   payerName: null,
   totalVnd,
   businessDate,
@@ -40,6 +42,7 @@ const board = (date: string, invoices: PosBoardInvoice[] = []): PosBoardResponse
   awaiting: [],
   invoices,
   canManage: false,
+  canSellCombos: false,
 });
 
 const labels = { current: 'Đã thanh toán', previous: 'Kỳ trước' };

@@ -1,4 +1,6 @@
 import type {
+  ComboIssuanceState,
+  InvoiceComboLineResponse,
   InvoiceDiscountResponse,
   InvoiceLineResponse,
   InvoiceManagementNoteResponse,
@@ -97,6 +99,7 @@ export const invoiceSelect = {
   id: true,
   code: true,
   status: true,
+  kind: true,
   branchId: true,
   visitId: true,
   payerUserId: true,
@@ -220,6 +223,17 @@ export const invoiceSelect = {
       unitPriceVnd: true,
       grossVnd: true,
       priceSetAt: true,
+      kind: true,
+      comboDetails: {
+        select: {
+          comboId: true,
+          paidSessions: true,
+          bonusSessions: true,
+          priceVnd: true,
+          service: { select: { id: true, nameVi: true, nameEn: true } },
+        },
+      },
+      comboPurchases: { select: { paidSeq: true, issuedAt: true, voidedAt: true } },
       serviceDetails: {
         select: {
           visitServiceLineId: true,
@@ -380,6 +394,35 @@ export function balanceOf(row: {
   return row.status === 'PENDING_PAYMENT' ? row.totalVnd - effectivePaid(row) : 0n;
 }
 
+/** The single combo line of a combo sale and where its issuance stands (the worker issues the combo right after PAID). */
+function presentComboLine(row: InvoiceRow): InvoiceComboLineResponse | null {
+  const line = row.lines.find((candidate) => candidate.kind === 'COMBO_PURCHASE');
+  const detail = line?.comboDetails[0];
+  if (!line || !detail) return null;
+  const current = line.comboPurchases.find(
+    (purchase) => purchase.paidSeq === row.paidSeq && purchase.voidedAt === null,
+  );
+  let issuance: ComboIssuanceState;
+  if (row.status === 'PAID') issuance = current ? 'ISSUED' : 'PENDING';
+  else if (line.comboPurchases.some((purchase) => purchase.voidedAt !== null)) issuance = 'REVOKED';
+  else issuance = 'NOT_PAID';
+  return {
+    id: line.id,
+    sequence: line.sequence,
+    comboId: detail.comboId,
+    itemCode: line.itemCode,
+    nameVi: line.nameVi,
+    nameEn: line.nameEn,
+    service: detail.service,
+    paidSessions: detail.paidSessions,
+    bonusSessions: detail.bonusSessions,
+    totalSessions: detail.paidSessions + detail.bonusSessions,
+    priceVnd: detail.priceVnd.toString(),
+    issuance,
+    issuedAt: issuance === 'ISSUED' && current ? current.issuedAt.toISOString() : null,
+  };
+}
+
 /**
  * The response for one invoice. A DRAFT shows the LIVE evaluation (the totals finalization would produce now);
  * a finalized invoice shows its frozen amounts and stored application. Nothing here is client input.
@@ -432,36 +475,42 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     kind: 'BRANCH',
     branchId: row.branchId,
   });
-  const lines = row.lines.map((line): InvoiceLineResponse => {
-    const detail = line.serviceDetails[0];
-    if (!detail) throw new Error('Every invoice line has its service detail.');
-    const ranged = detail.catalogPriceMinVnd !== detail.catalogPriceMaxVnd;
-    return {
-      id: line.id,
-      sequence: line.sequence,
-      visitServiceLineId: detail.visitServiceLineId,
-      participant: {
-        id: detail.participant.id,
-        kind: detail.participant.kind,
-        displayName: detail.participant.customer?.fullName ?? detail.participant.displayName,
-      },
-      employee: { id: detail.employee.userId, displayName: detail.employee.user.fullName },
-      itemCode: line.itemCode,
-      nameVi: line.nameVi,
-      nameEn: line.nameEn,
-      pricingUnit: detail.pricingUnit,
-      priceMinVnd: detail.catalogPriceMinVnd.toString(),
-      priceMaxVnd: detail.catalogPriceMaxVnd.toString(),
-      quantityLimit: detail.quantityLimit,
-      quantity: line.quantity,
-      unitPriceVnd: line.unitPriceVnd === null ? null : line.unitPriceVnd.toString(),
-      grossVnd: line.grossVnd === null ? null : line.grossVnd.toString(),
-      priceSetAt: line.priceSetAt ? line.priceSetAt.toISOString() : null,
-      addedOnBehalf: detail.addedOnBehalf,
-      priceEditable: ranged || detail.quantityLimit > 1,
-    };
-  });
+  const comboLine = presentComboLine(row);
+  const lines = row.lines
+    .filter((line) => line.kind === 'SERVICE')
+    .map((line): InvoiceLineResponse => {
+      const detail = line.serviceDetails[0];
+      if (!detail) throw new Error('Every invoice line has its service detail.');
+      const ranged = detail.catalogPriceMinVnd !== detail.catalogPriceMaxVnd;
+      return {
+        id: line.id,
+        sequence: line.sequence,
+        visitServiceLineId: detail.visitServiceLineId,
+        participant: {
+          id: detail.participant.id,
+          kind: detail.participant.kind,
+          displayName: detail.participant.customer?.fullName ?? detail.participant.displayName,
+        },
+        employee: { id: detail.employee.userId, displayName: detail.employee.user.fullName },
+        itemCode: line.itemCode,
+        nameVi: line.nameVi,
+        nameEn: line.nameEn,
+        pricingUnit: detail.pricingUnit,
+        priceMinVnd: detail.catalogPriceMinVnd.toString(),
+        priceMaxVnd: detail.catalogPriceMaxVnd.toString(),
+        quantityLimit: detail.quantityLimit,
+        quantity: line.quantity,
+        unitPriceVnd: line.unitPriceVnd === null ? null : line.unitPriceVnd.toString(),
+        grossVnd: line.grossVnd === null ? null : line.grossVnd.toString(),
+        priceSetAt: line.priceSetAt ? line.priceSetAt.toISOString() : null,
+        addedOnBehalf: detail.addedOnBehalf,
+        priceEditable: ranged || detail.quantityLimit > 1,
+      };
+    });
+  const combo = row.kind === 'COMBO_SALE';
   const unpricedLines = lines.filter((line) => line.grossVnd === null).length;
+  // A combo sale is ready as soon as its one combo line exists (its price is fixed by the combo, never chosen).
+  const ready = combo ? comboLine !== null : unpricedLines === 0 && lines.length > 0;
   const draft = row.status === 'DRAFT';
   const collect = decide(context.actor.graph, 'COLLECT_PAYMENTS', {
     kind: 'BRANCH',
@@ -484,14 +533,17 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     code: row.code,
     status: row.status,
     branch: row.branch,
-    visit: {
-      id: row.visit.id,
-      code: row.visit.code,
-      serviceDate: day(row.visit.serviceDate),
-      completedAt: row.visit.completedAt ? row.visit.completedAt.toISOString() : null,
-    },
+    kind: row.kind,
+    visit: row.visit
+      ? {
+          id: row.visit.id,
+          code: row.visit.code,
+          serviceDate: day(row.visit.serviceDate),
+          completedAt: row.visit.completedAt ? row.visit.completedAt.toISOString() : null,
+        }
+      : null,
     payer: person(row.payer),
-    defaultPayer: person(row.visit.owner),
+    defaultPayer: row.visit ? person(row.visit.owner) : null,
     businessDate: day(row.businessDate),
     calculationVersion: row.calculationVersion,
     subtotalVnd: row.subtotalVnd.toString(),
@@ -506,6 +558,7 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     cancelReason: row.cancelReason,
     version: row.rowVersion,
     lines,
+    comboLine,
     discount,
     payments,
     paidVnd: paidVnd.toString(),
@@ -513,11 +566,12 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     pendingProviderVnd: heldByProvider.toString(),
     anomalies: presentAnomalies(context, row),
     managementNotes: presentNotes(context, row),
-    readiness: { ready: unpricedLines === 0 && lines.length > 0, unpricedLines },
+    readiness: { ready, unpricedLines },
     actions: {
-      editPrices: manage && draft,
-      setPayer: manage && draft,
-      finalize: manage && draft && unpricedLines === 0 && lines.length > 0,
+      // A combo sale has a fixed price and a fixed buyer: only a draft with a different buyer or price is a new draft.
+      editPrices: manage && draft && !combo,
+      setPayer: manage && draft && !combo,
+      finalize: manage && draft && ready,
       applyVouchers: apply && draft,
       collectPayment: collect && row.status === 'PENDING_PAYMENT',
       collectPayos: collect && row.status === 'PENDING_PAYMENT',
@@ -594,7 +648,7 @@ export async function lockedInvoice(
   };
 }
 
-export const eventBase = (row: { id: string; branchId: string; visitId: string }) => ({
+export const eventBase = (row: { id: string; branchId: string; visitId: string | null }) => ({
   invoiceId: row.id,
   branchId: row.branchId,
   visitId: row.visitId,
@@ -678,8 +732,10 @@ export async function posBoard(
       totalVnd: true,
       businessDate: true,
       createdAt: true,
+      kind: true,
       visit: { select: { id: true, code: true } },
       payer: { select: { fullName: true } },
+      lines: { where: { kind: 'COMBO_PURCHASE' }, select: { nameVi: true, nameEn: true } },
     },
   });
   return {
@@ -700,14 +756,21 @@ export async function posBoard(
       id: invoice.id,
       code: invoice.code,
       status: invoice.status as InvoiceStatusName,
-      visitId: invoice.visit.id,
-      visitCode: invoice.visit.code,
+      kind: invoice.kind,
+      visitId: invoice.visit ? invoice.visit.id : null,
+      visitCode: invoice.visit ? invoice.visit.code : null,
+      comboName: invoice.lines[0]
+        ? { vi: invoice.lines[0].nameVi, en: invoice.lines[0].nameEn }
+        : null,
       payerName: invoice.payer ? invoice.payer.fullName : null,
       totalVnd: invoice.totalVnd.toString(),
       businessDate: day(invoice.businessDate),
       createdAt: invoice.createdAt.toISOString(),
     })),
     canManage: decide(context.actor.graph, 'MANAGE_INVOICES', { kind: 'BRANCH', branchId }),
+    canSellCombos:
+      decide(context.actor.graph, 'MANAGE_INVOICES', { kind: 'BRANCH', branchId }) &&
+      decide(context.actor.graph, 'SELL_COMBOS', { kind: 'BRANCH', branchId }),
   };
 }
 
@@ -903,7 +966,10 @@ export async function setLinePrice(
   const { tx } = context;
   const invoice = await read();
   if (invoice.rowVersion !== input.expectedVersion) throw new AuthError('CONFLICT');
-  if (invoice.status !== 'DRAFT') throw new AuthError('INVOICE_STATE_INVALID');
+  if (invoice.status !== 'DRAFT' || invoice.kind === 'COMBO_SALE') {
+    // A combo sale is priced by its combo: the price is never chosen.
+    throw new AuthError('INVOICE_STATE_INVALID');
+  }
   const line = invoice.lines.find((candidate) => candidate.id === lineId);
   const detail = line?.serviceDetails[0];
   if (!line || !detail) throw new AuthError('NOT_FOUND');
@@ -997,7 +1063,10 @@ export async function setPayer(
   const { tx } = context;
   const invoice = await read();
   if (invoice.rowVersion !== input.expectedVersion) throw new AuthError('CONFLICT');
-  if (invoice.status !== 'DRAFT') throw new AuthError('INVOICE_STATE_INVALID');
+  // The buyer of a combo sale is fixed when it is created (a combo belongs to the member who paid for it).
+  if (invoice.status !== 'DRAFT' || invoice.kind === 'COMBO_SALE') {
+    throw new AuthError('INVOICE_STATE_INVALID');
+  }
   if (input.payerUserId !== null) {
     const member = await tx.user.findFirst({
       where: { id: input.payerUserId, kind: 'CUSTOMER', status: 'ACTIVE' },
@@ -1091,6 +1160,27 @@ export async function finalizeInvoice(
     now,
     { lockPrograms: true },
   );
+  if (invoice.kind === 'COMBO_SALE') {
+    // The combo may have been edited or switched off since this draft took its copy: a sale is always at the current,
+    // active definition (lock order, design 12.2: the combo row comes after the programs and the wallets).
+    const detail = invoice.lines.find((line) => line.kind === 'COMBO_PURCHASE')?.comboDetails[0];
+    if (!detail) throw new AuthError('INVOICE_NOT_READY');
+    await tx.$queryRaw`SELECT id FROM combos WHERE id = ${detail.comboId}::uuid FOR SHARE`;
+    const latest = await tx.comboVersion.findFirst({
+      where: { comboId: detail.comboId },
+      orderBy: { version: 'desc' },
+      select: { priceVnd: true, active: true, paidSessions: true, bonusSessions: true },
+    });
+    if (
+      !latest ||
+      !latest.active ||
+      latest.priceVnd !== detail.priceVnd ||
+      latest.paidSessions !== detail.paidSessions ||
+      latest.bonusSessions !== detail.bonusSessions
+    ) {
+      throw new AuthError('COMBO_CHANGED');
+    }
+  }
   const winner = result.winner;
   const totals = calculateTotals(
     invoice.lines.map((line) => ({ quantity: line.quantity, unitPriceVnd: line.unitPriceVnd })),

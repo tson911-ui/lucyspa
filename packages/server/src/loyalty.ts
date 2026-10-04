@@ -258,7 +258,10 @@ interface LockedInvoice {
   total_vnd: bigint;
   paid_at: Date | null;
   branch_id: string;
-  visit_id: string;
+  /** Null for a combo sale (no visit). */
+  visit_id: string | null;
+  kind: 'VISIT' | 'COMBO_SALE';
+  cancelled_by_user_id: string | null;
 }
 
 async function lockInvoiceShared(
@@ -267,9 +270,173 @@ async function lockInvoiceShared(
 ): Promise<LockedInvoice | null> {
   const rows = await tx.$queryRaw<LockedInvoice[]>`
     SELECT i.id, i.status::text AS status, i.paid_seq, i.payer_user_id, i.total_vnd, i.paid_at, i.branch_id,
-           i.visit_id
+           i.visit_id, i.kind::text AS kind, i.cancelled_by_user_id
     FROM invoices i WHERE i.id = ${invoiceId}::uuid FOR SHARE`;
   return rows[0] ?? null;
+}
+
+/**
+ * Issues the combo of a PAID combo sale to its buyer, one session row per session (P5-T11, design 9.3). The unique key
+ * `(invoice line, paid episode)` makes a replay create nothing. The purchase copies the combo LINE that was sold, never the live
+ * definition. The caller already holds the invoice (shared) and has checked that this is the invoice's current paid episode
+ * and that loyalty is live. Returns whether a combo was issued now.
+ */
+async function issueCombo(
+  tx: Prisma.TransactionClient,
+  invoice: LockedInvoice,
+  paidSeq: number,
+): Promise<boolean> {
+  const line = await tx.invoiceLine.findFirst({
+    where: { invoiceId: invoice.id, kind: 'COMBO_PURCHASE' },
+    select: { id: true, comboDetails: true },
+  });
+  const detail = line?.comboDetails[0];
+  if (!line || !detail || invoice.payer_user_id === null) return false;
+  const existing = await tx.comboPurchase.findUnique({
+    where: { invoiceLineId_paidSeq: { invoiceLineId: line.id, paidSeq } },
+    select: { id: true },
+  });
+  if (existing) return false;
+  const sessions = [
+    ...Array.from({ length: detail.paidSessions }, (_, index) => ({
+      sessionNo: index + 1,
+      kind: 'PAID' as const,
+    })),
+    ...Array.from({ length: detail.bonusSessions }, (_, index) => ({
+      sessionNo: detail.paidSessions + index + 1,
+      kind: 'BONUS' as const,
+    })),
+  ];
+  const purchase = await tx.comboPurchase.create({
+    data: {
+      comboId: detail.comboId,
+      versionId: detail.versionId,
+      ownerUserId: invoice.payer_user_id,
+      invoiceLineId: line.id,
+      paidSeq,
+      serviceId: detail.serviceId,
+      nameVi: detail.nameVi,
+      nameEn: detail.nameEn,
+      paidSessions: detail.paidSessions,
+      bonusSessions: detail.bonusSessions,
+      priceVnd: detail.priceVnd,
+      expiryMode: detail.expiryMode,
+      sessions: { create: sessions },
+    },
+    select: { id: true },
+  });
+  await appendOutboxEvent(tx, {
+    branchId: invoice.branch_id,
+    aggregateType: 'ComboPurchase',
+    aggregateId: purchase.id,
+    eventType: 'COMBO_ISSUED',
+    schemaVersion: 1,
+    payload: {
+      comboPurchaseId: purchase.id,
+      invoiceId: invoice.id,
+      paidSeq,
+      paidSessions: detail.paidSessions,
+      bonusSessions: detail.bonusSessions,
+    },
+  });
+  await tx.auditEvent.create({
+    data: {
+      action: 'COMBO_ISSUED',
+      actorKind: 'SYSTEM',
+      subjectUserId: invoice.payer_user_id,
+      entityType: 'ComboPurchase',
+      entityId: purchase.id,
+      branchId: invoice.branch_id,
+      dataClassification: 'FINANCIAL',
+      after: {
+        invoiceId: invoice.id,
+        paidSeq,
+        comboId: detail.comboId,
+        versionId: detail.versionId,
+        paidSessions: detail.paidSessions,
+        bonusSessions: detail.bonusSessions,
+        priceVnd: detail.priceVnd.toString(),
+      },
+    },
+    select: { id: true },
+  });
+  return true;
+}
+
+/**
+ * The paid episode that issued a combo has ended (the payment was reversed or the invoice cancelled): the combo is taken back
+ * while none of its sessions is in use (Owner answer of 2026-10-05). The purchase and its sessions stay as history
+ * (`voided_at`, never deleted); paying the invoice again issues a NEW purchase under the next paid episode. A combo with a
+ * session in use is NOT revoked here: the case is left in the audit trail for the Owner (use of a session is P5-8).
+ * Returns whether a combo was revoked now.
+ */
+async function revokeCombo(
+  tx: Prisma.TransactionClient,
+  invoice: LockedInvoice,
+  paidSeq: number,
+  voidedBy: string | null,
+  reason: string,
+): Promise<boolean> {
+  const purchases = await tx.comboPurchase.findMany({
+    where: { invoiceLine: { invoiceId: invoice.id }, paidSeq, voidedAt: null },
+    orderBy: { id: 'asc' },
+    select: { id: true },
+  });
+  let revoked = false;
+  for (const purchase of purchases) {
+    if (voidedBy === null) throw new Error('A revoked combo records who ended its paid episode');
+    const inUse = await tx.comboSessionConsumption.count({
+      where: {
+        session: { purchaseId: purchase.id },
+        release: null,
+        restoration: null,
+      },
+    });
+    if (inUse > 0) {
+      await tx.auditEvent.create({
+        data: {
+          action: 'COMBO_REVOKE_BLOCKED_IN_USE',
+          actorKind: 'SYSTEM',
+          entityType: 'ComboPurchase',
+          entityId: purchase.id,
+          branchId: invoice.branch_id,
+          dataClassification: 'FINANCIAL',
+          after: { invoiceId: invoice.id, endedPaidSeq: paidSeq, sessionsInUse: inUse },
+        },
+        select: { id: true },
+      });
+      continue;
+    }
+    await tx.comboPurchase.update({
+      where: { id: purchase.id },
+      data: { voidedAt: new Date(), voidedByUserId: voidedBy, voidReason: reason },
+      select: { id: true },
+    });
+    await appendOutboxEvent(tx, {
+      branchId: invoice.branch_id,
+      aggregateType: 'ComboPurchase',
+      aggregateId: purchase.id,
+      eventType: 'COMBO_REVOKED',
+      schemaVersion: 1,
+      payload: { comboPurchaseId: purchase.id, invoiceId: invoice.id, endedPaidSeq: paidSeq },
+    });
+    await tx.auditEvent.create({
+      data: {
+        action: 'COMBO_REVOKED',
+        actorKind: 'SYSTEM',
+        subjectUserId: invoice.payer_user_id,
+        entityType: 'ComboPurchase',
+        entityId: purchase.id,
+        branchId: invoice.branch_id,
+        dataClassification: 'FINANCIAL',
+        reason,
+        after: { invoiceId: invoice.id, endedPaidSeq: paidSeq },
+      },
+      select: { id: true },
+    });
+    revoked = true;
+  }
+  return revoked;
 }
 
 type Event = Prisma.OutboxEventGetPayload<object>;
@@ -369,8 +536,12 @@ async function paid(tx: Prisma.TransactionClient, event: Event): Promise<Loyalty
   const goLive = await tx.loyaltyGoLive.findFirst({ select: { goLiveAt: true } });
   const live = goLive !== null && invoice.paid_at !== null && invoice.paid_at >= goLive.goLiveAt;
   // A 0đ invoice (zero-balance settlement) never rewards a referral; real money must have been paid (Owner, OQ-4).
+  // The referral reward is about a first VISIT: buying a combo (an invoice with no visit) never triggers it.
   const awards =
-    live && field(event.payload, 'settlement') === 'PAYMENT' && invoice.total_vnd > 0n
+    live &&
+    invoice.visit_id !== null &&
+    field(event.payload, 'settlement') === 'PAYMENT' &&
+    invoice.total_vnd > 0n
       ? await referralAwardCandidates(tx, { visitId: invoice.visit_id, paidAt: invoice.paid_at! })
       : [];
   let outcome: LoyaltyEventOutcome;
@@ -414,7 +585,12 @@ async function paid(tx: Prisma.TransactionClient, event: Event): Promise<Loyalty
     outcome = result.created ? 'APPLIED' : 'NOOP';
   }
   const rewarded = await grantReferralAwards(tx, invoice, paidSeq as number, awards);
-  return rewarded > 0 ? 'APPLIED' : outcome;
+  // The combo of a paid combo sale is issued whatever the earn outcome was (0 points, a replay): its own unique key guards it.
+  const issued =
+    live && invoice.kind === 'COMBO_SALE' && outcome !== 'SKIPPED_NOT_MEMBER'
+      ? await issueCombo(tx, invoice, paidSeq as number)
+      : false;
+  return rewarded > 0 || issued ? 'APPLIED' : outcome;
 }
 
 /** `INVOICE_REOPENED` / `INVOICE_CANCELLED`: reverse the earn entry of the voided episode (design 4.4). */
@@ -452,6 +628,28 @@ async function reverse(
       branchId: invoice.branch_id,
     });
     applied ||= result.created;
+  }
+  if (invoice.kind === 'COMBO_SALE') {
+    // Who ended the paid episode: the person who reversed the payment, or who cancelled the invoice.
+    let endedBy = invoice.cancelled_by_user_id;
+    const reversedPaymentId = field(event.payload, 'reversedPaymentId');
+    if (endedBy === null && typeof reversedPaymentId === 'string' && UUID.test(reversedPaymentId)) {
+      const correction = await tx.paymentCorrection.findUnique({
+        where: { paymentId: reversedPaymentId },
+        select: { actorUserId: true },
+      });
+      endedBy = correction?.actorUserId ?? null;
+    }
+    const revoked = await revokeCombo(
+      tx,
+      invoice,
+      paidSeq as number,
+      endedBy,
+      seqKey === 'paidSeq'
+        ? 'Thanh toán đã bị đảo, combo chưa dùng buổi nào được thu hồi'
+        : 'Hóa đơn đã bị hủy, combo chưa dùng buổi nào được thu hồi',
+    );
+    applied ||= revoked;
   }
   return applied ? 'APPLIED' : 'NOOP';
 }

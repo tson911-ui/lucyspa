@@ -10,6 +10,7 @@ export const LOYALTY_TAB_IDS = [
   'customers',
   'referrals',
   'exceptions',
+  'combos',
   'birthday',
   'goLive',
 ] as const;

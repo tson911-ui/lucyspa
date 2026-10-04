@@ -87,6 +87,7 @@ test('screens wait for the server; no amount is shown before it answers', () => 
 test('the detail contract carries no staff, cancel, provider or audit fields', () => {
   const sample: CustomerInvoiceDetail = {
     id: 'i',
+    kind: 'VISIT',
     code: 'INV-270301-ABCDEF',
     status: 'PAID',
     branch: { id: 'br', name: 'Q1', timezone: 'Asia/Ho_Chi_Minh' },

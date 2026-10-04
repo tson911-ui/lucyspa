@@ -6,6 +6,7 @@ import type {
   NotificationType,
 } from './notification-registry.js';
 import type { InvoiceBirthdayGift } from './birthday.js';
+import type { InvoiceComboLineResponse, InvoiceKindName } from './combo.js';
 import type { InvoiceMemberCandidate } from './loyalty.js';
 import type { SeasonDensity, SeasonSlot, SeasonSlotSwitches } from './season-registry.js';
 export type OrganizationLevel =
@@ -2147,6 +2148,8 @@ export * from './loyalty.js';
 export * from './referral.js';
 // Phase 5 P5-6: the birthday gift (Owner configuration and the invoice layer).
 export * from './birthday.js';
+// Phase 5 P5-7: combos (definitions, the counter sale and its invoice line).
+export * from './combo.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;
@@ -2325,7 +2328,10 @@ export interface InvoiceResponse {
   code: string;
   status: InvoiceStatusName;
   branch: { id: string; name: string; timezone: string };
-  visit: { id: string; code: string; serviceDate: string; completedAt: string | null };
+  /** `VISIT`: an invoice of a completed visit (`lines`). `COMBO_SALE` (Phase 5 P5-7): a counter sale of a combo (`comboLine`), no visit. */
+  kind: InvoiceKindName;
+  /** Null for a combo sale. */
+  visit: { id: string; code: string; serviceDate: string; completedAt: string | null } | null;
   /** The payer; null = guest payer (no account, never inferred from guest details). */
   payer: InvoicePersonSummary | null;
   /** The booking owner (the default payer) when the visit has one. */
@@ -2344,7 +2350,10 @@ export interface InvoiceResponse {
   cancelReason: string | null;
   /** Optimistic-concurrency version: send it back as `expectedVersion` with every command. */
   version: number;
+  /** The performed-service lines of a VISIT invoice; empty for a combo sale. */
   lines: InvoiceLineResponse[];
+  /** The single combo line of a COMBO_SALE invoice; null for a VISIT invoice. */
+  comboLine: InvoiceComboLineResponse | null;
   /** The benefit: a live evaluation while DRAFT, the frozen application once finalized. */
   discount: InvoiceDiscountResponse;
   /** Every payment ever recorded, oldest first (reversed ones included, with their correction). */
@@ -2497,8 +2506,12 @@ export interface PosBoardInvoice {
   id: string;
   code: string;
   status: InvoiceStatusName;
-  visitId: string;
-  visitCode: string;
+  kind: InvoiceKindName;
+  /** Null for a combo sale (no visit). */
+  visitId: string | null;
+  visitCode: string | null;
+  /** The combo sold, for a combo sale; null for a visit invoice. */
+  comboName: { vi: string; en: string } | null;
   payerName: string | null;
   totalVnd: string;
   businessDate: string;
@@ -2518,6 +2531,8 @@ export interface PosBoardResponse {
   invoices: PosBoardInvoice[];
   /** MANAGE_INVOICES here: the "open invoice" action is offered. */
   canManage: boolean;
+  /** SELL_COMBOS and MANAGE_INVOICES here: the "sell a combo" action is offered (Phase 5 P5-7). */
+  canSellCombos: boolean;
 }
 
 // ------------------------------------------------------------------ Phase 4 Step 6: discounts / vouchers
@@ -2722,6 +2737,8 @@ export interface VoucherActiveRequest {
 export type CustomerInvoiceStatus = 'PENDING_PAYMENT' | 'PAID' | 'CANCELLED';
 
 export interface CustomerInvoiceSummary {
+  /** `COMBO_SALE`: the member bought a combo at the counter (no visit). */
+  kind: InvoiceKindName;
   id: string;
   /** The only customer-facing identifier (`INV-YYMMDD-XXXXXX`). */
   code: string;

@@ -1673,9 +1673,117 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
                 expiryMode: true,
               },
             });
-            return { comboId: combo.id, version, serviceId };
+            const code = (await tx.combo.findUniqueOrThrow({ where: { id: combo.id } })).code;
+            return {
+              comboId: combo.id,
+              code,
+              version,
+              serviceId,
+              expiryDays: options.expiryDays ?? null,
+            };
           };
           type ComboFixture = Awaited<ReturnType<typeof makeCombo>>;
+          /**
+           * Phase 5 P5-7: a combo is issued only from a COMBO_SALE invoice. This builds one for the member (no visit, one combo line
+           * copied from the combo version) and, by default, finalizes it and pays it in cash (paid episode 1).
+           */
+          const comboSale = async (
+            combo: ComboFixture,
+            payer: string,
+            state: 'PENDING' | 'PAID' = 'PAID',
+          ) => {
+            const invoice = await tx.invoice.create({
+              data: {
+                code: generateInvoiceCode(todayText),
+                kind: 'COMBO_SALE',
+                branchId: branch,
+                payerUserId: payer,
+                businessDate: today,
+                calculationVersion: 2,
+                subtotalVnd: combo.version.priceVnd,
+                totalVnd: combo.version.priceVnd,
+                createdByUserId: staff,
+              },
+              select: { id: true },
+            });
+            const line = await tx.invoiceLine.create({
+              data: {
+                invoiceId: invoice.id,
+                sequence: 1,
+                kind: 'COMBO_PURCHASE',
+                itemCode: combo.code,
+                nameVi: combo.version.nameVi,
+                nameEn: combo.version.nameEn,
+                quantity: 1,
+                unitPriceVnd: combo.version.priceVnd,
+                grossVnd: combo.version.priceVnd,
+              },
+              select: { id: true },
+            });
+            const sold = await tx.service.findUniqueOrThrow({
+              where: { id: combo.serviceId },
+              select: { categoryId: true },
+            });
+            await tx.invoiceLineCombo.create({
+              data: {
+                invoiceLineId: line.id,
+                invoiceId: invoice.id,
+                comboId: combo.comboId,
+                versionId: combo.version.id,
+                serviceId: combo.serviceId,
+                serviceCategoryId: sold.categoryId,
+                nameVi: combo.version.nameVi,
+                nameEn: combo.version.nameEn,
+                paidSessions: combo.version.paidSessions,
+                bonusSessions: combo.version.bonusSessions,
+                priceVnd: combo.version.priceVnd,
+                expiryMode: combo.version.expiryMode,
+                expiryDays: combo.expiryDays,
+              },
+            });
+            await finalize({ id: invoice.id, visitId: '', lines: [] });
+            let paymentId: string | null = null;
+            if (state === 'PAID') {
+              const payment = await tx.payment.create({
+                data: {
+                  invoiceId: invoice.id,
+                  branchId: branch,
+                  method: 'CASH',
+                  status: 'SUCCEEDED',
+                  amountDueVnd: combo.version.priceVnd,
+                  amountVnd: combo.version.priceVnd,
+                  tenderedVnd: combo.version.priceVnd,
+                  changeVnd: 0n,
+                  collectedByUserId: staff,
+                  idempotencyKey: randomUUID(),
+                },
+                select: { id: true },
+              });
+              paymentId = payment.id;
+              await tx.invoice.update({
+                where: { id: invoice.id },
+                data: {
+                  status: 'PAID',
+                  paidAt: await dbNow(),
+                  paidSeq: { increment: 1 },
+                  rowVersion: { increment: 1 },
+                },
+              });
+              await settle();
+            }
+            return { id: invoice.id, lineId: line.id, paymentId };
+          };
+          /** Ends the paid episode: the cash payment is reversed and the invoice goes back to PENDING_PAYMENT. */
+          const reopenSale = async (sale: { id: string; paymentId: string | null }) => {
+            await tx.paymentCorrection.create({
+              data: { paymentId: sale.paymentId!, reason: 'Thu nhầm', actorUserId: staff },
+            });
+            await tx.invoice.update({
+              where: { id: sale.id },
+              data: { status: 'PENDING_PAYMENT', paidAt: null, rowVersion: { increment: 1 } },
+            });
+            await settle();
+          };
           const purchase = async (
             combo: ComboFixture,
             owner: string,
@@ -1828,23 +1936,24 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
             async () => {
               const owner = await user('CUSTOMER');
               const combo = await makeCombo(wide.id);
-              const guestPaid = await paidInvoice(null);
+              // P5-7: only a combo sale issues a combo (an ordinary visit invoice never does).
+              const visitInvoice = await paidInvoice(owner);
               await rejects(
-                () => purchase(combo, owner, guestPaid.lines[0]!.id),
-                /belongs to the member who paid for it/,
+                () => purchase(combo, owner, visitInvoice.lines[0]!.id),
+                /issued only for a combo sale/,
               );
-              const unpaid = await unpaidInvoice(wide, owner);
+              const unpaid = await comboSale(combo, owner, 'PENDING');
               await rejects(
-                () => purchase(combo, owner, unpaid.lines[0]!.id),
+                () => purchase(combo, owner, unpaid.lineId),
                 /current paid episode of a paid invoice/,
               );
-              const paid = await paidInvoice(owner);
+              const paid = await comboSale(combo, owner);
               await rejects(
-                () => purchase(combo, owner, paid.lines[0]!.id, 2),
+                () => purchase(combo, owner, paid.lineId, 2),
                 /current paid episode of a paid invoice/,
               );
               await rejects(
-                () => purchase(combo, customer2, paid.lines[0]!.id),
+                () => purchase(combo, customer2, paid.lineId),
                 /belongs to the member who paid for it/,
               );
               // The snapshot must equal the active version exactly.
@@ -1855,7 +1964,7 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
                       comboId: combo.comboId,
                       versionId: combo.version.id,
                       ownerUserId: owner,
-                      invoiceLineId: paid.lines[0]!.id,
+                      invoiceLineId: paid.lineId,
                       paidSeq: 1,
                       serviceId: combo.serviceId,
                       nameVi: combo.version.nameVi,
@@ -1866,18 +1975,18 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
                       expiryMode: 'NONE',
                     },
                   }),
-                /snapshots an active version exactly/,
+                /snapshots the combo line that was sold exactly/,
               );
               // Sessions: missing or short fail at commit; the exact set passes and is numbered 1..n.
               await rejectsAtCommit(
-                () => purchase(combo, owner, paid.lines[0]!.id, 1, 'SHORT'),
+                () => purchase(combo, owner, paid.lineId, 1, 'SHORT'),
                 /exactly its paid and bonus sessions/,
               );
               await rejectsAtCommit(
-                () => purchase(combo, owner, paid.lines[0]!.id, 1, 'NONE'),
+                () => purchase(combo, owner, paid.lineId, 1, 'NONE'),
                 /exactly its paid and bonus sessions/,
               );
-              const good = await purchase(combo, owner, paid.lines[0]!.id, 1, 'ALL');
+              const good = await purchase(combo, owner, paid.lineId, 1, 'ALL');
               await settle();
               const sessions = await sessionsOf(good.id);
               assert.equal(sessions.length, 6);
@@ -1885,7 +1994,7 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
               assert.equal(sessions.filter((entry) => entry.kind === 'BONUS').length, 1);
               assert.equal(good.expiresAt, null, 'combos have no expiry (PRD 17.2)');
               await rejects(
-                () => purchase(combo, owner, paid.lines[0]!.id),
+                () => purchase(combo, owner, paid.lineId),
                 /line_episode_key|Unique constraint/,
               );
               await rejectsAtCommit(
@@ -1908,11 +2017,20 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
                 /never deleted/,
               );
               await truncateRejected('combo_purchases');
-              // Void once, with reason and actor; nothing else changes.
+              // Void once, with reason and actor; nothing else changes. P5-7: only after the paid episode that issued it has ended.
               await rejects(
                 () => tx.comboPurchase.update({ where: { id: good.id }, data: { priceVnd: 1n } }),
                 /immutable apart from being voided once/,
               );
+              await rejects(
+                () =>
+                  tx.comboPurchase.update({
+                    where: { id: good.id },
+                    data: { voidedAt: new Date(), voidedByUserId: staff, voidReason: 'Sớm' },
+                  }),
+                /revoked only after the paid episode that issued it has ended/,
+              );
+              await reopenSale(paid);
               await rejects(
                 () =>
                   tx.comboPurchase.update({
@@ -1932,8 +2050,8 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
               );
               // An inactive version cannot be sold; a configured expiry is computed from the issue instant.
               const dated = await makeCombo(wide.id, { expiryDays: 30 });
-              const paid2 = await paidInvoice(owner);
-              const expiring = await purchase(dated, owner, paid2.lines[0]!.id);
+              const paid2 = await comboSale(dated, owner);
+              const expiring = await purchase(dated, owner, paid2.lineId);
               assert.ok(expiring.expiresAt);
               const issued = await tx.comboPurchase.findUniqueOrThrow({
                 where: { id: expiring.id },
@@ -1952,8 +2070,8 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
             async () => {
               const owner = await user('CUSTOMER');
               const combo = await makeCombo(wide.id, { paid: 2, bonus: 1 });
-              const paid = await paidInvoice(owner);
-              const bought = await purchase(combo, owner, paid.lines[0]!.id);
+              const paid = await comboSale(combo, owner);
+              const bought = await purchase(combo, owner, paid.lineId);
               await settle();
               const [first, second, bonus] = await sessionsOf(bought.id);
               assert.equal(bonus!.kind, 'BONUS');
@@ -2120,14 +2238,33 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
                 await tx.comboSessionConsumption.count({ where: { sessionId: first!.id } }),
                 3,
               );
+              // P5-7: a combo with a session in use is not revoked, even after its paid episode ended.
+              await reopenSale(paid);
+              await rejects(
+                () =>
+                  tx.comboPurchase.update({
+                    where: { id: bought.id },
+                    data: {
+                      voidedAt: new Date(),
+                      voidedByUserId: staff,
+                      voidReason: 'Hóa đơn bị đảo',
+                    },
+                  }),
+                /session in use is not revoked automatically/,
+              );
               // A voided combo cannot be consumed.
+              const sale2 = await comboSale(combo, owner);
+              const bought2 = await purchase(combo, owner, sale2.lineId);
+              await settle();
+              const [unused] = await sessionsOf(bought2.id);
+              await reopenSale(sale2);
               await tx.comboPurchase.update({
-                where: { id: bought.id },
+                where: { id: bought2.id },
                 data: { voidedAt: new Date(), voidedByUserId: staff, voidReason: 'Hóa đơn bị đảo' },
               });
               const fourth = await unpaidInvoice(wide, owner);
               await rejects(
-                () => consume(second!.id, fourth.lines[0]!.id),
+                () => consume(unused!.id, fourth.lines[0]!.id),
                 /voided or expired combo cannot be consumed/,
               );
               await truncateRejected('combo_session_consumptions');

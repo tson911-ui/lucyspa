@@ -248,7 +248,52 @@ test('Phase 5 loyalty guards under real concurrency (isolated schema, dropped af
            VALUES ($1, $2, 1, 'Combo', 'Combo', 1, 0, 100000, true, $3)`,
           [version, combo, staff],
         );
-        const bought = await invoiceFor(100_000, true);
+        // Phase 5 P5-7: a combo is issued only from a paid COMBO_SALE invoice (no visit, one combo line).
+        const comboCode = `P5R_COMBO_${run.toUpperCase()}`;
+        const saleInvoice = id();
+        const bought = { invoice: saleInvoice, line: id() };
+        const saleDay = (
+          await setup.query<{ d: string }>(
+            `SELECT to_char(lucy_branch_local_date($1::uuid, now()), 'YYYY-MM-DD') AS d`,
+            [branch],
+          )
+        ).rows[0]!.d;
+        await setup.query('BEGIN');
+        await setup.query(
+          `INSERT INTO invoices (id, code, kind, branch_id, business_date, calculation_version, created_by_user_id, payer_user_id)
+           VALUES ($1, $2, 'COMBO_SALE', $3, lucy_branch_local_date($3::uuid, now()), 2, $4, $5)`,
+          [saleInvoice, generateInvoiceCode(saleDay), branch, staff, customer],
+        );
+        await setup.query(
+          `INSERT INTO invoice_lines (id, invoice_id, sequence, kind, item_code, name_vi, name_en, quantity, unit_price_vnd, gross_vnd)
+           VALUES ($1, $2, 1, 'COMBO_PURCHASE', $3, 'Combo', 'Combo', 1, 100000, 100000)`,
+          [bought.line, saleInvoice, comboCode],
+        );
+        await setup.query(
+          `INSERT INTO invoice_line_combos (invoice_line_id, invoice_id, combo_id, version_id, service_id, service_category_id,
+             name_vi, name_en, paid_sessions, bonus_sessions, price_vnd, expiry_mode)
+           VALUES ($1, $2, $3, $4, $5, $6, 'Combo', 'Combo', 1, 0, 100000, 'NONE')`,
+          [bought.line, saleInvoice, combo, version, service, category],
+        );
+        await setup.query(
+          `UPDATE invoices SET status = 'PENDING_PAYMENT', subtotal_vnd = 100000, total_vnd = 100000,
+             finalized_at = clock_timestamp(), finalized_by_user_id = $2, row_version = row_version + 1 WHERE id = $1`,
+          [saleInvoice, staff],
+        );
+        await setup.query('COMMIT');
+        await setup.query('BEGIN');
+        await setup.query(
+          `INSERT INTO payments (invoice_id, branch_id, method, status, amount_due_vnd, amount_vnd, tendered_vnd,
+             change_vnd, collected_by_user_id, idempotency_key)
+           VALUES ($1, $2, 'CASH', 'SUCCEEDED', 100000, 100000, 100000, 0, $3, $4)`,
+          [saleInvoice, branch, staff, id()],
+        );
+        await setup.query(
+          `UPDATE invoices SET status = 'PAID', paid_at = clock_timestamp(), paid_seq = paid_seq + 1,
+             row_version = row_version + 1 WHERE id = $1`,
+          [saleInvoice],
+        );
+        await setup.query('COMMIT');
         await setup.query('BEGIN');
         await setup.query(
           `INSERT INTO combo_purchases (id, combo_id, version_id, owner_user_id, invoice_line_id, paid_seq, service_id,

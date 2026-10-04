@@ -536,7 +536,7 @@ test(
                 await fails(() => pay(collector, drafted.id, 100_000), 'INVOICE_STATE_INVALID');
 
                 const visitBefore = await tx.visit.findUniqueOrThrow({
-                  where: { id: (await stored(invoice.id)).visitId },
+                  where: { id: (await stored(invoice.id)).visitId! },
                 });
                 const before = Date.now();
                 // The collector has ONLY COLLECT_PAYMENTS: it records cash (tender above the amount) but cannot read.
@@ -573,7 +573,9 @@ test(
                 );
                 assert.equal(result.payment.collectedAt, payment.collectedAt.toISOString());
                 // Payment never touches the Visit (END/completion independence).
-                const visitAfter = await tx.visit.findUniqueOrThrow({ where: { id: row.visitId } });
+                const visitAfter = await tx.visit.findUniqueOrThrow({
+                  where: { id: row.visitId! },
+                });
                 assert.equal(visitAfter.status, 'COMPLETED');
                 assert.equal(visitAfter.rowVersion, visitBefore.rowVersion);
 

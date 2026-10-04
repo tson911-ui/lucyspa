@@ -74,3 +74,5 @@ await import('../apps/api/dist/referral/referral.integration.test.js');
 await import('../apps/api/dist/referral/referral.race.integration.test.js');
 await import('../apps/api/dist/loyalty/birthday.integration.test.js');
 await import('../apps/api/dist/pos/birthday.race.integration.test.js');
+await import('../apps/api/dist/combo/combo.integration.test.js');
+await import('../apps/api/dist/combo/combo.race.integration.test.js');

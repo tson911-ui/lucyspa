@@ -1,6 +1,6 @@
 # Phase 5: Loyalty, Membership, Referral, Birthday, Combos and Gift Catalog — design contract
 
-Status: **P5-1 approved by the Owner 2026-10-04 (section 2.4); P5-2 approved (section 2.5); P5-3 (points and tiers) built, not deployed.** P5-1 itself was docs only.
+Status: **P5-1 approved by the Owner 2026-10-04 (section 2.4); P5-2 approved (section 2.5); P5-6 approved 2026-10-05; P5-7 (combo sale, section 9.6) built, not deployed.** P5-1 itself was docs only.
 Production state is whatever `LUCYSPA_HANDOFF.md` records (Phase 4 live at `58bfabc`); nothing here assumes a deploy.
 
 Every rule below carries a source label so nothing is silently invented:
@@ -425,6 +425,15 @@ consumed for its own service. Definitions are versioned; purchases snapshot name
 - On the purchase's paid episode (consumer key `COMBO_ISSUE:{invoice_line_id}:{paid_seq}`) one **session row per session** is issued to
   the owner, each marked `PAID` or `BONUS` (P5-T11). Sessions are not usable before issuance (OQ-9).
 - If the paid episode is reopened/voided: sessions not yet consumed are voided; consumed ones remain history; handling in OQ-9.
+
+### 9.6 As built in P5-7 (combo sale; answers of 2026-10-05 collected through the question tool, **pending Owner confirmation in own words**)
+
+- Invoice `kind` `VISIT` / `COMBO_SALE`; `visit_id` NULL exactly for `COMBO_SALE`; one `COMBO_PURCHASE` line (quantity 1, price = the combo price, never edited) with a detail row `invoice_line_combos` copying the current active combo version and the service category. Every Phase 4 rule is unchanged for `VISIT`.
+- **Go-live OFF: no sale** (API `LOYALTY_NOT_LIVE`, DB refuses the invoice insert).
+- Sale needs `SELL_COMBOS` and `MANAGE_INVOICES` at the branch, an active member buyer (fixed, becomes the owner). Finalization needs the combo to be unchanged in price/sessions and active (`COMBO_CHANGED`).
+- **Best offer applies to the combo line** like its service (promotions, vouchers, Member Discount; tier read before the sale). **The birthday gift never applies** to a combo sale.
+- Issued by the `loyalty` worker on `INVOICE_PAID` for the current paid episode only; the issued combo copies the sold line, not the live definition. Points earned once; a combo sale never triggers the referral reward (not a visit).
+- **Reopen/cancel before use: the unused combo is revoked** (who ended the episode, reason, history kept); re-pay issues a new one. With a session in use it is not revoked automatically (audit trail only; P5-8 decides). OQ-9 (any branch, consume order, reversal after use) stays open for P5-8.
 
 ### 9.4 Consumption (PRD §17.4-17.6, P5-T11)
 

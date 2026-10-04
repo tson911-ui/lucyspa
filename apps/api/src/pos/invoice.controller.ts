@@ -1,4 +1,6 @@
 import type {
+  ComboSaleOptionsResponse,
+  ComboSaleRequest,
   InvoiceCancelRequest,
   InvoiceFinalizeRequest,
   InvoiceLinePriceRequest,
@@ -69,6 +71,12 @@ class LinePriceDto implements InvoiceLinePriceRequest {
   @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
   @ApiProperty({ required: false }) @IsOptional() @IsString() @Matches(VND) unitPriceVnd?: string;
   @ApiProperty({ required: false }) @IsOptional() @IsInt() quantity?: number;
+}
+
+/** Only the two choices a counter sale has: which combo and which member. Branch, price, state and totals are never supplied. */
+class ComboSaleDto implements ComboSaleRequest {
+  @ApiProperty() @IsString() @MaxLength(64) comboId!: string;
+  @ApiProperty() @IsString() @MaxLength(64) payerUserId!: string;
 }
 
 class PayerDto implements InvoicePayerRequest {
@@ -158,6 +166,37 @@ export class InvoiceController {
     @Req() request: Request,
   ): Promise<WalkInMemberLookupResponse> {
     return this.invoices.members(this.session(request), branchId, query);
+  }
+
+  @Get('branches/:branchId/combos')
+  @ApiOkResponse({
+    description: 'The combos on sale at the counter and whether selling is open (SELL_COMBOS).',
+  })
+  comboOptions(
+    @Param('branchId') branchId: string,
+    @Req() request: Request,
+  ): Promise<ComboSaleOptionsResponse> {
+    return this.invoices.comboOptions(this.session(request), branchId);
+  }
+
+  @Post('branches/:branchId/combo-sales')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Start a combo sale: a DRAFT invoice for an identified member, not tied to a visit (SELL_COMBOS and MANAGE_INVOICES).',
+  })
+  openComboSale(
+    @Param('branchId') branchId: string,
+    @Body() body: ComboSaleDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<InvoiceOpenedResponse> {
+    return this.invoices.openComboSale(
+      this.session(request),
+      branchId,
+      body,
+      this.requestId(response),
+    );
   }
 
   @Post('visits/:visitId/invoice')

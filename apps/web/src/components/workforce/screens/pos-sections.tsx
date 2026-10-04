@@ -13,6 +13,7 @@ import {
 } from '@lucy-spa/ui';
 import { useState } from 'react';
 import { birthdayDictionary } from '../../../i18n/birthday';
+import { comboDictionary } from '../../../i18n/combo';
 import { loyaltyDictionary } from '../../../i18n/loyalty';
 import { fill } from '../../../i18n/workforce';
 import {
@@ -313,8 +314,10 @@ export function PayerCard({
   onFind: () => void;
   onSetPayer: (payerUserId: string | null) => void;
 }) {
-  const { t } = useWorkforce();
+  const { t, locale } = useWorkforce();
   const { payer, defaultPayer } = invoice;
+  // A combo sale has a fixed buyer (the owner of the combo), so the card says "Buyer" and offers no change.
+  const buyer = invoice.kind === 'COMBO_SALE';
   const items: MenuItem[] =
     invoice.status === 'DRAFT' && invoice.actions.setPayer
       ? [
@@ -350,7 +353,7 @@ export function PayerCard({
   return (
     <Card as="section">
       <CardHeader
-        title={t.pos.payerTitle}
+        title={buyer ? comboDictionary(locale).invoice.buyerTitle : t.pos.payerTitle}
         actions={
           items.length > 0 ? <RowActions menuLabel={t.pos.payerMenu} items={items} /> : undefined
         }
@@ -358,7 +361,10 @@ export function PayerCard({
       <DescriptionList
         columns={2}
         items={[
-          { label: t.pos.payer, value: payer ? payer.displayName : t.pos.guestPayer },
+          {
+            label: buyer ? comboDictionary(locale).invoice.buyer : t.pos.payer,
+            value: payer ? payer.displayName : t.pos.guestPayer,
+          },
           ...(payer?.phoneMasked ? [{ label: t.pos.phone, value: payer.phoneMasked }] : []),
           ...(payer?.emailMasked ? [{ label: t.pos.email, value: payer.emailMasked }] : []),
         ]}

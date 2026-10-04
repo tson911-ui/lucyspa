@@ -13,6 +13,7 @@ import {
   useUrlState,
 } from '@lucy-spa/ui';
 import { useMemo, useState } from 'react';
+import { comboDictionary } from '../../../i18n/combo';
 import { loyaltyDictionary } from '../../../i18n/loyalty';
 import { fill } from '../../../i18n/workforce';
 import { loyaltyBranches, loyaltyErrorMessage, loyaltyTabs } from '../../../lib/workforce/loyalty';
@@ -25,6 +26,7 @@ import {
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import { Button, Empty, Loading, Notice, PageHeader } from '../ui';
+import { LoyaltyCombos } from './loyalty-combos';
 import { LoyaltyExceptions } from './loyalty-exceptions';
 import { LoyaltyBirthday } from './loyalty-birthday';
 import { LoyaltyGoLive } from './loyalty-go-live';
@@ -53,6 +55,7 @@ export function LoyaltyScreen() {
     !shown.customers &&
     !shown.referrals &&
     !shown.exceptions &&
+    !shown.combos &&
     !shown.birthday &&
     !shown.goLive
   ) {
@@ -83,6 +86,12 @@ export function LoyaltyScreen() {
       label: l.tabs.exceptions,
       show: shown.exceptions,
       panel: <LoyaltyExceptions page={state.page} onPage={(page) => update({ page })} />,
+    },
+    {
+      id: 'combos',
+      label: comboDictionary(locale).tab,
+      show: shown.combos,
+      panel: <LoyaltyCombos />,
     },
     {
       id: 'birthday',

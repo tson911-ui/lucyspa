@@ -25,6 +25,7 @@ const day = (value: Date) => value.toISOString().slice(0, 10);
 const summarySelect = {
   id: true,
   code: true,
+  kind: true,
   status: true,
   businessDate: true,
   totalVnd: true,
@@ -71,6 +72,7 @@ const detailSelect = {
       quantity: true,
       unitPriceVnd: true,
       grossVnd: true,
+      comboDetails: { select: { invoiceLineId: true } },
       serviceDetails: {
         select: {
           pricingUnit: true,
@@ -97,6 +99,7 @@ function summary(row: SummaryRow): CustomerInvoiceSummary {
   return {
     id: row.id,
     code: row.code,
+    kind: row.kind,
     status: row.status,
     branch: row.branch,
     businessDate: day(row.businessDate),
@@ -113,7 +116,8 @@ function detail(row: DetailRow, customerUserId: string): CustomerInvoiceDetail {
   const application = row.discountApplication;
   return {
     ...summary(row),
-    visitDate: day(row.visit.serviceDate),
+    // A combo sale has no visit: its date is the business date of the sale.
+    visitDate: day(row.visit ? row.visit.serviceDate : row.businessDate),
     subtotalVnd: row.subtotalVnd.toString(),
     discountTotalVnd: row.discountTotalVnd.toString(),
     discount: application
@@ -126,13 +130,26 @@ function detail(row: DetailRow, customerUserId: string): CustomerInvoiceDetail {
       : null,
     lines: row.lines.map((line) => {
       const service = line.serviceDetails[0];
-      if (
-        !service ||
-        line.quantity === null ||
-        line.unitPriceVnd === null ||
-        line.grossVnd === null
-      ) {
-        // A finalized invoice has every line priced and a service detail (database invariants).
+      if (line.quantity === null || line.unitPriceVnd === null || line.grossVnd === null) {
+        // A finalized invoice has every line priced (database invariant).
+        throw new Error('A finalized invoice line is complete.');
+      }
+      if (!service && line.comboDetails.length > 0) {
+        // The combo the member bought: always for the signed-in member (only the payer sees this invoice).
+        return {
+          sequence: line.sequence,
+          nameVi: line.nameVi,
+          nameEn: line.nameEn,
+          quantity: line.quantity,
+          unitPriceVnd: line.unitPriceVnd.toString(),
+          grossVnd: line.grossVnd.toString(),
+          pricingUnit: 'PER_SERVICE' as const,
+          forSelf: true,
+          recipientName: null,
+        };
+      }
+      if (!service) {
+        // A finalized invoice line has a service or a combo detail (database invariants).
         throw new Error('A finalized invoice line is complete.');
       }
       const forSelf = service.participant.customerUserId === customerUserId;

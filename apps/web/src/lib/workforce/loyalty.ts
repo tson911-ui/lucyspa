@@ -33,6 +33,7 @@ export function loyaltyTabs(
   customers: boolean;
   referrals: boolean;
   exceptions: boolean;
+  combos: boolean;
   birthday: boolean;
   goLive: boolean;
 } {
@@ -42,6 +43,8 @@ export function loyaltyTabs(
     // The referral list follows VIEW_LOYALTY at a branch, like the points lookup (Phase 5 P5-5).
     referrals: lookup,
     exceptions: canGlobal(account, 'VIEW_LOYALTY_EXCEPTIONS'),
+    // Combo definitions follow the global MANAGE_COMBOS (an Owner or a manager; Phase 5 P5-7).
+    combos: canGlobal(account, 'MANAGE_COMBOS'),
     // The birthday gift setup is the Owner's alone (Phase 5 P5-6).
     birthday: canGlobal(account, 'MANAGE_BIRTHDAY_REWARDS'),
     goLive: canGlobal(account, 'ACTIVATE_LOYALTY'),

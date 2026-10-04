@@ -254,6 +254,7 @@ export function navigationFor(account: Account): NavItem[] {
     (canAnywhere(account, 'VIEW_LOYALTY') ||
       canGlobal(account, 'VIEW_LOYALTY_EXCEPTIONS') ||
       canGlobal(account, 'ACTIVATE_LOYALTY') ||
+      canGlobal(account, 'MANAGE_COMBOS') ||
       canGlobal(account, 'MANAGE_BIRTHDAY_REWARDS')) && {
       key: 'loyalty',
       group: 'sales',

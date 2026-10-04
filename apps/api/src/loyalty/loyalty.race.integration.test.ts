@@ -76,11 +76,10 @@ test(
       );
     try {
       if ((await database.loyaltyGoLive.count()) === 0) {
-        const owner = await database.user.findFirstOrThrow({
-          where: { kind: 'OWNER' },
-          select: { id: true },
-        });
-        await database.loyaltyGoLive.create({ data: { activatedByUserId: owner.id } });
+        // Any account can be recorded as the activator in this throw-away fixture (a fresh CI database has no Owner yet);
+        // the account is cleaned up with the other fixtures below.
+        const activator = await customer();
+        await database.loyaltyGoLive.create({ data: { activatedByUserId: activator } });
         installedGoLive = true;
       }
 

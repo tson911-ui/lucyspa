@@ -97,7 +97,7 @@ export async function effectivePaidVnd(
 interface InvoiceFacts {
   readonly id: string;
   readonly branchId: string;
-  readonly visitId: string;
+  readonly visitId: string | null;
   readonly status: 'DRAFT' | 'PENDING_PAYMENT' | 'PAID' | 'CANCELLED';
   readonly totalVnd: bigint;
   readonly paidSeq: number;

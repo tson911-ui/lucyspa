@@ -108,6 +108,10 @@ const errors = {
   REFERRAL_LOCKED: [409, 'The reward was already granted, so the referrer can no longer change'],
   REFERRAL_SELF: [400, 'A customer cannot refer themselves'],
   REFERRAL_SAME_REFERRER: [400, 'This is already the referrer'],
+  // Phase 5 P5-7: combos.
+  COMBO_NOT_SELLABLE: [409, 'This combo is not on sale'],
+  COMBO_CHANGED: [409, 'The combo changed after this sale was started; start a new sale'],
+  COMBO_SERVICE_INVALID: [409, 'A combo needs an active service'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

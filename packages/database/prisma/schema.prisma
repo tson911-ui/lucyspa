@@ -840,6 +840,7 @@ model ServiceCategory {
   bookingLines              BookingServiceLine[]      @relation("BookingLineCategory")
   visitLines                VisitServiceLine[]        @relation("VisitLineCategory")
   invoiceLineDetails        InvoiceLineService[]      @relation("InvoiceLineCategory")
+  invoiceComboLines         InvoiceLineCombo[]        @relation("InvoiceComboCategory")
 
   @@index([isActive, sortOrder, id], map: "service_categories_active_order_idx")
   @@map("service_categories")
@@ -885,6 +886,7 @@ model Service {
   invoiceLineServices     InvoiceLineService[]
   combos                  Combo[]                     @relation("ComboService")
   comboPurchases          ComboPurchase[]             @relation("ComboPurchaseService")
+  invoiceComboLines       InvoiceLineCombo[]          @relation("InvoiceComboService")
   rewardCatalogItems      RewardCatalogItem[]         @relation("RewardItemService")
   discountVersionServices DiscountVersionService[]
 
@@ -1497,8 +1499,14 @@ enum InvoiceStatus {
   CANCELLED
 }
 
+enum InvoiceKind {
+  VISIT
+  COMBO_SALE
+}
+
 enum InvoiceLineKind {
   SERVICE
+  COMBO_PURCHASE
 }
 
 enum PaymentMethod {
@@ -1570,8 +1578,10 @@ model Invoice {
   code                 String                      @unique(map: "invoices_code_key")
   branchId             String                      @map("branch_id") @db.Uuid
   branch               Branch                      @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  visitId              String                      @map("visit_id") @db.Uuid
-  visit                Visit                       @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Phase 5 P5-7: a combo sale (kind COMBO_SALE) is not tied to a Visit; SQL keeps visit_id NULL exactly for that kind.
+  kind                 InvoiceKind                 @default(VISIT)
+  visitId              String?                     @map("visit_id") @db.Uuid
+  visit                Visit?                      @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   status               InvoiceStatus               @default(DRAFT)
   payerUserId          String?                     @map("payer_user_id") @db.Uuid
   payer                User?                       @relation("InvoicePayer", fields: [payerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -1634,6 +1644,7 @@ model InvoiceLine {
   updatedAt        DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   // SQL: exactly one detail row per SERVICE line (its primary key is the line id).
   serviceDetails   InvoiceLineService[]
+  comboDetails     InvoiceLineCombo[]
   comboPurchases   ComboPurchase[]          @relation("ComboPurchaseLine")
   comboConsumption ComboSessionConsumption? @relation("ComboConsumptionLine")
   rewardRedemption RewardRedemption?        @relation("RewardRedemptionLine")
@@ -1672,6 +1683,32 @@ model InvoiceLineService {
   @@index([serviceId], map: "invoice_line_services_service_idx")
   @@index([employeeUserId], map: "invoice_line_services_employee_idx")
   @@map("invoice_line_services")
+}
+
+// Phase 5 P5-7: the COMBO_PURCHASE detail of a line (1:1, one per combo-sale invoice). An exact copy of the current active
+// combo version and of the service category at sale time; the issued combo (ComboPurchase) copies THIS, not the live definition.
+model InvoiceLineCombo {
+  invoiceLineId     String                @id @map("invoice_line_id") @db.Uuid
+  invoiceId         String                @unique(map: "invoice_line_combos_invoice_key") @map("invoice_id") @db.Uuid
+  line              InvoiceLine           @relation(fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_line_combos_line_fkey")
+  comboId           String                @map("combo_id") @db.Uuid
+  versionId         String                @map("version_id") @db.Uuid
+  version           ComboVersion          @relation(fields: [comboId, versionId], references: [comboId, id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_line_combos_version_fkey")
+  serviceId         String                @map("service_id") @db.Uuid
+  service           Service               @relation("InvoiceComboService", fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  serviceCategoryId String                @map("service_category_id") @db.Uuid
+  serviceCategory   ServiceCategory       @relation("InvoiceComboCategory", fields: [serviceCategoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  nameVi            String                @map("name_vi")
+  nameEn            String                @map("name_en")
+  paidSessions      Int                   @map("paid_sessions")
+  bonusSessions     Int                   @map("bonus_sessions")
+  priceVnd          BigInt                @map("price_vnd")
+  expiryMode        EntitlementExpiryMode @map("expiry_mode")
+  expiryDays        Int?                  @map("expiry_days")
+  createdAt         DateTime              @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([comboId], map: "invoice_line_combos_combo_idx")
+  @@map("invoice_line_combos")
 }
 
 // Cash shape extended additively by Phase 4 Step 8 for PayOS (a provider payment). collectedAt and
@@ -2512,6 +2549,7 @@ model ComboVersion {
   createdBy       User                  @relation("ComboVersionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   createdAt       DateTime              @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   purchases       ComboPurchase[]
+  invoiceLines    InvoiceLineCombo[]
 
   @@unique([comboId, version], map: "combo_versions_combo_version_key")
   @@unique([comboId, id], map: "combo_versions_combo_id_id_key")

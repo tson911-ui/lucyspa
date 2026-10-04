@@ -1,4 +1,6 @@
 import type {
+  ComboSaleOptionsResponse,
+  ComboSaleRequest,
   InvoiceCancelRequest,
   InvoiceFinalizeRequest,
   InvoiceLinePriceRequest,
@@ -35,6 +37,7 @@ import { sqlStateOf } from '../booking/customer-command.js';
 import { normalizeReason } from '../operations/service-execution.service.js';
 import { API_ENVIRONMENT, PAYMENT_PROVIDER, type ApiEnvironment } from '../platform/tokens.js';
 import { lookupMember } from '../walkin/walkin.core.js';
+import { comboSaleOptions, openComboSale } from './combo-sale.core.js';
 import { parseVnd } from './invoice.calc.js';
 import {
   cancelInvoice,
@@ -107,6 +110,31 @@ export class InvoiceService {
       }
       return lookupMember(context.tx, query);
     });
+  }
+
+  /** The combos on sale at the counter (SELL_COMBOS at the branch). */
+  comboOptions(token: string | undefined, branchId: string): Promise<ComboSaleOptionsResponse> {
+    return this.run(token, branchId, undefined, comboSaleOptions);
+  }
+
+  /** Starts a combo sale: a DRAFT invoice for an identified member (SELL_COMBOS and MANAGE_INVOICES at the branch). */
+  async openComboSale(
+    token: string | undefined,
+    branchId: string,
+    body: ComboSaleRequest,
+    requestId?: string,
+  ): Promise<InvoiceOpenedResponse> {
+    if (typeof body.comboId !== 'string' || !UUID.test(body.comboId)) {
+      throw new AuthError('VALIDATION_FAILED', 'comboId');
+    }
+    if (typeof body.payerUserId !== 'string' || !UUID.test(body.payerUserId)) {
+      throw new AuthError('VALIDATION_FAILED', 'payerUserId');
+    }
+    const input = {
+      comboId: body.comboId.toLowerCase(),
+      payerUserId: body.payerUserId.toLowerCase(),
+    };
+    return this.run(token, branchId, requestId, (context, id) => openComboSale(context, id, input));
   }
 
   get(token: string | undefined, invoiceId: string): Promise<InvoiceResponse> {

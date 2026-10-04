@@ -13,17 +13,17 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 
 ## Phase status
 
-| Phase                                     | Status                                                           |
-| ----------------------------------------- | ---------------------------------------------------------------- |
-| Phase 0                                   | PASS                                                             |
-| Phase 1 (auth and security)               | COMPLETE                                                         |
-| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted) |
-| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                        |
-| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                     |
-| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**     |
-| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `58bfabc`)                                |
-| **Phase 5 (loyalty and combos)**          | **IN PROGRESS (P5-6 built, not deployed)**                       |
-| Phase 6+ (products, payroll, finance)     | NOT started                                                      |
+| Phase                                     | Status                                                            |
+| ----------------------------------------- | ----------------------------------------------------------------- |
+| Phase 0                                   | PASS                                                              |
+| Phase 1 (auth and security)               | COMPLETE                                                          |
+| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)  |
+| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                         |
+| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                      |
+| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**      |
+| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `58bfabc`)                                 |
+| **Phase 5 (loyalty and combos)**          | **IN PROGRESS (P5-7 built, awaiting Owner review, not deployed)** |
+| Phase 6+ (products, payroll, finance)     | NOT started                                                       |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
 
@@ -75,7 +75,7 @@ Phase 4 migrations so far: Step 3 (`20261013…`), Step 4 (`20261014000000-04`),
 - P5-5 (`docs/PHASE5_STEP5_REFERRAL.md`) built, **not deployed**: migrations `20261030000000`, `20261030000001`; referrer at signup (silent) or counter (`MANAGE_REFERRALS`), award +10 Spa +10 Beauty by the `loyalty` consumer on the FIRST paid-with-money visit (0đ never, cancelled/never paid never, bound while OFF is stored, visits before go-live count), Owner-only `CHANGE_REFERRER` correction with history until the reward (OQ-7 rejected as written), referral list tab + profile card; deploy adds `pnpm db:permissions:sync` (54 codes). Owner approvals of 2026-10-04 (OQ-4/5/6, OQ-7 rejected, P5-T10, go-live scope) are in design 2.5. Owner review 2026-10-04: "already visited" = received a service (booker with none stays new; Owner-approved, built); never "khám" in Vietnamese (rule in CLAUDE.md, 4 strings changed); footer "Khám phá" (Explore) stays.
 - Owner 2026-10-04, OQ-8 (birthday gift, P5-6) answered: payer's birthday (guest none); 29/2 = 28/2 in non-leap years; percentage on the amount after the best offer; non-combinable gift competes with the best offer (larger wins), non-money never compared; money gifts only (free service/items = P5-9); usage limit default 1 per customer per year, screen forces an explicit choice. Design 2.5.
 - P5-6 (`docs/PHASE5_STEP6_BIRTHDAY.md`) built, **not deployed**: migrations `20261031000000`, `20261031000001`; Owner-only setup tab "Quà sinh nhật" (ships empty, explicit usage limit), gift layer after the best offer on the invoice (stacked / replaces / alone, frozen at finalization, points never doubled), `MANAGE_BIRTHDAY_REWARDS` Owner only.
-- Owner 2026-10-05 (P5-6 follow-ups, design 2.5): a gift that may NOT combine is compared with the best offer, both on the ORIGINAL total, larger discount wins (100,000 with a 60,000 offer vs a fixed 80,000 gift: the gift wins, 20,000 paid); the "amount left after the offer" base applies only when the gift IS allowed to combine; a tie keeps the offer and the gift is not counted as used; "per year" = per birthday occurrence; **P5-T7 APPROVED**; Owner-only config and the 364-day window approved. Engine and tests follow. Awaiting Owner review; P5-7 waits.
+- Owner 2026-10-05 (P5-6 follow-ups, design 2.5): a gift that may NOT combine is compared with the best offer, both on the ORIGINAL total, larger discount wins (100,000 with a 60,000 offer vs a fixed 80,000 gift: the gift wins, 20,000 paid); the "amount left after the offer" base applies only when the gift IS allowed to combine; a tie keeps the offer and the gift is not counted as used; "per year" = per birthday occurrence; **P5-T7 APPROVED**; Owner-only config and the 364-day window approved. Engine and tests follow. **P5-6 APPROVED by the Owner, 2026-10-05** (Owner's instruction to start P5-7).
 - CI (Owner 2026-10-05): red since P5-2 because the foundation tests ran in parallel on a fresh database whose permission catalog was empty, so two suites inserted the same catalog rows (write conflict / deadlock, then 25P02). `test:integration` now commits the catalog once first (`node dist/sync-permissions.js`). Integration tests, `pnpm smoke` and the API integration entry refuse any database whose name is not a scratch/test one (the CI container `lucy_spa_dev` is accepted only with `CI=true`).
 - Q8 (Phase 4) was answered before Step 10 (see "Q8 (notifications)" below).
 
@@ -463,3 +463,4 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 ### UX/UI follow-up: Back on public services pages, header CTA - 2026-10-04
 
 - `PageBack` now also on /services and every service detail (`PublicPage` takes a `back` slot; the list returns to the home, a detail to the list). Header "Đặt lịch ngay" is the same on every page: the old `startsWith(/account/book)` test also hid it on /account/bookings. No migration.
+- P5-7 (`docs/PHASE5_STEP7_COMBO_SALE.md`) built, **not deployed**: migrations `20261101000000`, `20261101000001`; combo definitions (tab Combo, `MANAGE_COMBOS`), counter sale on a visit-less `COMBO_SALE` invoice (OQ-1), combo issued by the loyalty worker only when PAID, one row per session, revoked if the paid episode ends before any use. Owner answers 2026-10-05 via the question tool, **pending Owner confirmation**: no sale while go-live is OFF; unused combo revoked on reversal/cancel; promotions and vouchers apply to a combo; birthday gift does not. Using sessions = P5-8 (waits for Owner approval of P5-7).
