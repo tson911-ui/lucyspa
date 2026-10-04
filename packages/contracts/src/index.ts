@@ -3196,8 +3196,103 @@ export interface PublicFeaturedGroup {
   description: string | null;
 }
 
+/** The social networks of a footer "social icons" block, in the order the icons are drawn. */
+export const FOOTER_SOCIAL_NETWORKS = [
+  'facebook',
+  'zalo',
+  'tiktok',
+  'instagram',
+  'youtube',
+  'messenger',
+] as const;
+export type FooterSocialNetwork = (typeof FOOTER_SOCIAL_NETWORKS)[number];
+
+/** The block types of the footer's brand column (Owner request 2026-10-04). */
+export const FOOTER_BLOCK_TYPES = ['SOCIAL', 'APP', 'TEXT', 'LINKS', 'IMAGE', 'SLOGAN'] as const;
+export type FooterBlockType = (typeof FOOTER_BLOCK_TYPES)[number];
+
+/** A block's identity and visibility, common to every type. `id` is a UUID chosen by the form. */
+interface WebsiteFooterBlockBase {
+  id: string;
+  visible: boolean;
+}
+
+/** Round icon buttons, one per network that has a link (https only); a network with no link is not drawn. */
+export interface WebsiteFooterSocialBlock extends WebsiteFooterBlockBase {
+  type: 'SOCIAL';
+  urls: Record<FooterSocialNetwork, string | null>;
+}
+
+/** The official Google Play and App Store badges, each drawn only when its https link is set. */
+export interface WebsiteFooterAppBlock extends WebsiteFooterBlockBase {
+  type: 'APP';
+  googlePlayUrl: string | null;
+  appStoreUrl: string | null;
+}
+
+/** A short plain-text paragraph, in both languages. */
+export interface WebsiteFooterTextBlock extends WebsiteFooterBlockBase {
+  type: 'TEXT';
+  textVi: string;
+  textEn: string;
+}
+
+/** One link of a link list: a label per language and an https address or a site path (`/services`). */
+export interface WebsiteFooterLink {
+  labelVi: string;
+  labelEn: string;
+  url: string;
+}
+
+/** A list of links with an optional title (both languages or neither). */
+export interface WebsiteFooterLinksBlock extends WebsiteFooterBlockBase {
+  type: 'LINKS';
+  titleVi: string | null;
+  titleEn: string | null;
+  items: WebsiteFooterLink[];
+}
+
+/** A picture from the media library, optionally a link (https address or site path). Its alt text is the media's. */
+export interface WebsiteFooterImageBlock extends WebsiteFooterBlockBase {
+  type: 'IMAGE';
+  mediaId: string;
+  linkUrl: string | null;
+}
+
+/** The shop slogan (the Shop info tagline); no settings of its own. */
+export interface WebsiteFooterSloganBlock extends WebsiteFooterBlockBase {
+  type: 'SLOGAN';
+}
+
+export type WebsiteFooterBlock =
+  | WebsiteFooterSocialBlock
+  | WebsiteFooterAppBlock
+  | WebsiteFooterTextBlock
+  | WebsiteFooterLinksBlock
+  | WebsiteFooterImageBlock
+  | WebsiteFooterSloganBlock;
+
+/** A footer block as a visitor gets it: visible and complete only, one language, links already resolved. */
+export type PublicFooterBlock =
+  | { id: string; type: 'SOCIAL'; links: { network: FooterSocialNetwork; url: string }[] }
+  | { id: string; type: 'APP'; googlePlayUrl: string | null; appStoreUrl: string | null }
+  | { id: string; type: 'TEXT'; text: string }
+  | {
+      id: string;
+      type: 'LINKS';
+      title: string | null;
+      items: { label: string; url: string }[];
+    }
+  | { id: string; type: 'IMAGE'; image: PublicSiteImage; linkUrl: string | null }
+  | { id: string; type: 'SLOGAN'; text: string };
+
 export interface PublicSiteResponse {
   tagline: string;
+  /**
+   * The blocks under the footer logo, in the Owner's order. Empty by default: the footer then shows only the logo
+   * (nothing is seeded; the slogan appears only through a SLOGAN block).
+   */
+  footerBlocks: PublicFooterBlock[];
   /** The visible items of the facts strip, in the Owner's order; empty when the whole strip is hidden. */
   facts: PublicFact[];
   /**
@@ -3244,6 +3339,8 @@ export interface WebsiteShopInfoInput {
   whyTitleEn: string | null;
   /** Ordered. */
   whyCards: WebsiteWhyCard[];
+  /** The footer's brand-column blocks, ordered; empty by default (the footer then shows only the logo). */
+  footerBlocks: WebsiteFooterBlock[];
 }
 
 export interface WebsiteShopInfoUpdateRequest extends WebsiteShopInfoInput {

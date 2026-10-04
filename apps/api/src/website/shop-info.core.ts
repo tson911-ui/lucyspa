@@ -1,7 +1,9 @@
 import type {
   PublicHoursGroup,
   PublicSiteResponse,
+  PublicSiteImage,
   WebsiteFeaturedGroup,
+  WebsiteFooterBlock,
   WebsiteGroupOption,
   WebsiteShopFact,
   WebsiteShopInfoBranchOption,
@@ -14,6 +16,12 @@ import type { Prisma } from '@lucy-spa/database';
 import { AuthError } from '../auth/auth.error.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
 import { requireWebsiteContent } from './media.core.js';
+import {
+  footerMediaIds,
+  parseFooterBlocks,
+  publicFooterBlocks,
+  readFooterBlocks,
+} from './shop-info.footer.js';
 import {
   parseFacts,
   parseFeaturedGroups,
@@ -71,6 +79,7 @@ interface ShopInfoFields {
   whyTitleVi: string | null;
   whyTitleEn: string | null;
   whyCards: WebsiteWhyCard[];
+  footerBlocks: WebsiteFooterBlock[];
 }
 
 const selectShopInfo = {
@@ -90,6 +99,7 @@ const selectShopInfo = {
   whyTitleVi: true,
   whyTitleEn: true,
   whyCards: true,
+  footerBlocks: true,
   rowVersion: true,
   updatedAt: true,
 } satisfies Prisma.WebsiteShopInfoSelect;
@@ -148,6 +158,7 @@ export function parseShopInfoFields(input: WebsiteShopInfoInput): ShopInfoFields
     facts: parseFacts(input.facts),
     featuredGroups: parseFeaturedGroups(input.featuredGroups),
     ...parseWhy(input),
+    footerBlocks: parseFooterBlocks(input.footerBlocks),
   };
 }
 
@@ -173,9 +184,10 @@ function parseFactsVisible(value: unknown): boolean {
 }
 
 /** The row's columns for the fields (the two lists are stored as JSON under their column names). */
-const dataOf = ({ facts, featuredGroups, whyCards, ...rest }: ShopInfoFields) => ({
+const dataOf = ({ facts, featuredGroups, whyCards, footerBlocks, ...rest }: ShopInfoFields) => ({
   ...rest,
   whyCards: whyCards as unknown as Prisma.InputJsonValue,
+  footerBlocks: footerBlocks as unknown as Prisma.InputJsonValue,
   factsItems: facts as unknown as Prisma.InputJsonValue,
   featuredGroups: featuredGroups as unknown as Prisma.InputJsonValue,
 });
@@ -201,6 +213,7 @@ const fieldsOf = (row: ShopInfoRow): ShopInfoFields => ({
   whyTitleVi: row.whyTitleVi,
   whyTitleEn: row.whyTitleEn,
   whyCards: readWhyCards(row.whyCards),
+  footerBlocks: readFooterBlocks(row.footerBlocks),
 });
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -359,6 +372,20 @@ export async function updateShopInfo(
       throw error;
     }
   }
+  // A picture a footer block newly uses must exist and have its alt text (same rule as the hero image); an unchanged one
+  // is not re-checked, so an old block never blocks an unrelated save.
+  const knownImages = new Set(footerMediaIds(readFooterBlocks(before.footerBlocks)));
+  for (const mediaId of footerMediaIds(fields.footerBlocks)) {
+    if (knownImages.has(mediaId)) continue;
+    try {
+      await requireUsableMedia(context.tx, mediaId);
+    } catch (error) {
+      if (error instanceof AuthError && error.field === 'mediaId') {
+        throw new AuthError(error.code, 'footerBlocks');
+      }
+      throw error;
+    }
+  }
   const updated = await context.tx.websiteShopInfo.update({
     where: { id: 'shop' },
     data: {
@@ -412,8 +439,40 @@ export async function publicSite(
           where: { isActive: true, code: { in: featured.map((group) => group.code) } },
           select: { code: true },
         });
+  const tagline = pick(row.taglineVi, row.taglineEn, locale) ?? '';
+  const footerBlocks = readFooterBlocks(row.footerBlocks);
+  const imageIds = footerMediaIds(footerBlocks.filter((block) => block.visible));
+  const imageAssets =
+    imageIds.length === 0
+      ? []
+      : await tx.mediaAsset.findMany({
+          where: { id: { in: imageIds } },
+          select: {
+            id: true,
+            altVi: true,
+            altEn: true,
+            width: true,
+            height: true,
+            variants: {
+              where: { kind: { in: ['MD', 'LG'] } },
+              select: { kind: true, width: true },
+            },
+          },
+        });
+  const images = new Map<string, PublicSiteImage>(
+    imageAssets.map((asset) => [
+      asset.id,
+      {
+        alt: pick(asset.altVi, asset.altEn, locale) ?? '',
+        width: asset.width,
+        height: asset.height,
+        sources: publicImageSources(asset.id, asset.variants),
+      },
+    ]),
+  );
   return {
-    tagline: pick(row.taglineVi, row.taglineEn, locale) ?? '',
+    tagline,
+    footerBlocks: publicFooterBlocks(footerBlocks, locale, tagline, images),
     facts: publicFacts(row.factsVisible, readFacts(row.factsItems), locale),
     featuredGroups: publicFeaturedGroups(
       featured,

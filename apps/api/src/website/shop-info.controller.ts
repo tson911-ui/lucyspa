@@ -1,6 +1,7 @@
 import type {
   WebsiteWhyCard,
   WebsiteFeaturedGroup,
+  WebsiteFooterBlock,
   WebsiteShopFact,
   WebsiteShopInfoResponse,
   WebsiteShopInfoUpdateRequest,
@@ -56,6 +57,11 @@ class ShopInfoUpdateDto implements WebsiteShopInfoUpdateRequest {
   @NullableText(TEXT_BOUND) whyTitleVi!: string | null;
   @NullableText(TEXT_BOUND) whyTitleEn!: string | null;
   @ApiProperty({ type: [Object] }) @IsArray() @ArrayMaxSize(32) whyCards!: WebsiteWhyCard[];
+  // Bounded here; the core checks every block and names `footerBlocks` when one is refused.
+  @ApiProperty({ type: [Object] })
+  @IsArray()
+  @ArrayMaxSize(32)
+  footerBlocks!: WebsiteFooterBlock[];
   @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
 }
 

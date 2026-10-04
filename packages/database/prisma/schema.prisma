@@ -2036,6 +2036,9 @@ model WebsiteShopInfo {
   whyTitleVi      String?     @map("why_title_vi")
   whyTitleEn      String?     @map("why_title_en")
   whyCards        Json        @default("[]") @map("why_cards") @db.JsonB
+  // The blocks under the footer logo (social icons, app badges, text, links, image, slogan): empty until the Owner adds
+  // some, so the footer shows only the logo (nothing is seeded). An image block names a media asset inside this JSON.
+  footerBlocks    Json        @default("[]") @map("footer_blocks") @db.JsonB
   rowVersion      Int         @default(1) @map("row_version")
   updatedByUserId String?     @map("updated_by_user_id") @db.Uuid
   updatedBy       User?       @relation("WebsiteShopInfoUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)

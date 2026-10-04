@@ -13,6 +13,7 @@ import { ServiceDetailView, ServicesView } from './services-view';
 
 const site: PublicSiteResponse = {
   tagline: 'Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc',
+  footerBlocks: [],
   intro: null,
   facts: [
     { kind: 'HOURS', icon: 'clock', text: null },
@@ -172,11 +173,132 @@ test('footer: the contact column comes from the shop profile and is absent witho
   assert.match(html, /04 Nguyễn Quang Bích/);
   assert.match(html, /Điện thoại: <a href="tel:\+84934936101">0934 936 101<\/a>/);
   assert.match(html, /Đăng nhập \/ Đăng ký/);
-  assert.match(html, /Thư Giãn Tận Tâm/);
   assert.match(html, /© 2026 Lucy Spa/);
+  // Nothing is seeded: with no blocks the brand column is the logo alone, so the tagline is not in the footer.
+  assert.doesNotMatch(html, /Thư Giãn Tận Tâm/);
+  assert.doesNotMatch(html, /ls-site-footer-blocks/);
   const bare = renderToStaticMarkup(<PublicFooter locale="vi" site={null} year={2026} />);
   assert.doesNotMatch(bare, /Liên hệ/);
   assert.match(bare, /Dịch vụ/);
+});
+
+const mediaId = '8f6f2a4e-5b0c-4a53-9f4e-2f9a4a1c7d90';
+const blockId = (n: number) => `8f6f2a4e-5b0c-4a53-9f4e-2f9a4a1c7d${String(n).padStart(2, '0')}`;
+const blocks: PublicSiteResponse['footerBlocks'] = [
+  {
+    id: blockId(1),
+    type: 'SOCIAL',
+    links: [
+      { network: 'facebook', url: 'https://facebook.com/lucyspa' },
+      { network: 'zalo', url: 'https://zalo.me/0934936101' },
+    ],
+  },
+  {
+    id: blockId(2),
+    type: 'APP',
+    googlePlayUrl: 'https://play.google.com/store/apps/details?id=vn.lucyspa',
+    appStoreUrl: 'https://apps.apple.com/vn/app/lucy-spa/id1',
+  },
+  { id: blockId(3), type: 'TEXT', text: 'Mở cửa mỗi ngày.\nĐặt lịch trước để không phải chờ.' },
+  {
+    id: blockId(4),
+    type: 'LINKS',
+    title: 'Khám phá',
+    items: [
+      { label: 'Dịch vụ', url: '/vi/services' },
+      { label: 'Fanpage', url: 'https://facebook.com/lucyspa' },
+    ],
+  },
+  {
+    id: blockId(5),
+    type: 'IMAGE',
+    image: {
+      alt: 'Chứng nhận',
+      width: 800,
+      height: 600,
+      sources: [{ url: `/api/v1/public/media/${mediaId}/md`, width: 640 }],
+    },
+    linkUrl: '/vi/services',
+  },
+  { id: blockId(6), type: 'SLOGAN', text: 'Thư Giãn Tận Tâm' },
+];
+
+test('footer: the Owner blocks are drawn under the logo in order, with safe, named links', () => {
+  const html = renderToStaticMarkup(
+    <PublicFooter locale="vi" site={{ ...site, footerBlocks: blocks }} year={2026} />,
+  );
+  const order = [
+    'ls-social"',
+    'ls-store-badges',
+    'ls-footer-text',
+    'ls-footer-links"',
+    'ls-footer-picture',
+    'Thư Giãn Tận Tâm',
+  ].map((marker) => html.indexOf(marker));
+  assert.ok(
+    order.every((at) => at > 0),
+    'every block is drawn',
+  );
+  assert.deepEqual(
+    order,
+    [...order].sort((a, b) => a - b),
+    'in the Owner order',
+  );
+  // The blocks sit in the brand column, before the contact column.
+  assert.ok(order.every((at) => at < html.indexOf('Liên hệ')));
+  // Social: round buttons that leave the site in a new tab, named for the network and the new tab.
+  assert.match(
+    html,
+    /<a class="ls-social-btn" href="https:\/\/facebook.com\/lucyspa" target="_blank" rel="noopener noreferrer" aria-label="Facebook \(mở trong tab mới\)"/,
+  );
+  // The official Vietnamese badges, each with the official wording as its name.
+  assert.match(html, /aria-label="Tải trên Google Play \(mở trong tab mới\)"/);
+  assert.match(html, /aria-label="Tải về trên App Store \(mở trong tab mới\)"/);
+  assert.match(html, /src="\/badges\/google-play-vi\.png"/);
+  assert.match(html, /src="\/badges\/app-store-vi\.svg"/);
+  // Text keeps its lines; a site link stays in the tab, an address opens a new one.
+  assert.match(html, /<p class="ls-footer-text">Mở cửa mỗi ngày\.\nĐặt lịch trước/);
+  assert.match(html, /<a href="\/vi\/services">Dịch vụ<\/a>/);
+  assert.match(
+    html,
+    /<a href="https:\/\/facebook.com\/lucyspa" target="_blank" rel="noopener noreferrer" aria-label="Fanpage \(mở trong tab mới\)">Fanpage<\/a>/,
+  );
+  // The picture is a link to a site path (same tab); the link carries the name and the picture's alt is empty.
+  assert.match(html, /<a aria-label="Chứng nhận" href="\/vi\/services"><img[^>]*alt=""/);
+  assert.match(html, /srcSet="[^"]*\/md 640w"/);
+  // Below the fold: no picture of the footer is preloaded or fetched before it is needed.
+  assert.doesNotMatch(html, /rel="preload"/);
+  assert.equal(html.match(/loading="lazy"/g)?.length, 3, 'two badges and the picture');
+  // The slogan block is the shop's slogan as text.
+  assert.match(html, /<p class="ls-footer-text">Thư Giãn Tận Tâm<\/p>/);
+});
+
+test('footer: the English footer uses the English badges and wording, and a hidden or empty block adds nothing', () => {
+  const html = renderToStaticMarkup(
+    <PublicFooter
+      locale="en"
+      site={{
+        ...site,
+        footerBlocks: [
+          blocks[1] as PublicSiteResponse['footerBlocks'][number],
+          {
+            id: blockId(7),
+            type: 'APP',
+            googlePlayUrl: 'https://play.google.com/x',
+            appStoreUrl: null,
+          },
+        ],
+      }}
+      year={2026}
+    />,
+  );
+  assert.match(html, /aria-label="Get it on Google Play \(opens in a new tab\)"/);
+  assert.match(html, /aria-label="Download on the App Store \(opens in a new tab\)"/);
+  assert.match(html, /src="\/badges\/google-play-en\.png"/);
+  assert.match(html, /src="\/badges\/app-store-en\.svg"/);
+  // A badge is drawn only for the link that is set.
+  assert.equal(html.match(/class="ls-store-badge"/g)?.length, 3);
+  assert.equal(html.match(/src="\/badges\/app-store-en\.svg"/g)?.length, 1);
 });
 
 test('services list: the filter links, one section per group, a chosen group alone', () => {

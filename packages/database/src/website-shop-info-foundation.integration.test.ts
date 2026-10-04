@@ -87,6 +87,23 @@ test('website shop info foundation: seeded single row, constrained texts, https 
           assert.equal(seeded.whyVisible, false);
           assert.equal(seeded.whyTitleVi, null);
           assert.deepEqual(seeded.whyCards, []);
+          // The footer's brand-column blocks: empty by default (nothing is seeded), a list of at most 12.
+          assert.deepEqual(seeded.footerBlocks, []);
+          for (const data of [
+            { footerBlocks: {} },
+            { footerBlocks: 'x' },
+            { footerBlocks: Array.from({ length: 13 }, () => 1) },
+          ]) {
+            await rejects(
+              () => tx.websiteShopInfo.update({ where: { id: 'shop' }, data }),
+              /website_shop_info_footer_blocks|violates check constraint/i,
+            );
+          }
+          await tx.websiteShopInfo.update({
+            where: { id: 'shop' },
+            data: { footerBlocks: Array.from({ length: 12 }, () => 1) },
+          });
+          await tx.websiteShopInfo.update({ where: { id: 'shop' }, data: { footerBlocks: [] } });
           for (const data of [
             { factsItems: { not: 'a list' } },
             { factsItems: Array.from({ length: 17 }, () => 1) },

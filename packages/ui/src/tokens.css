@@ -208,6 +208,8 @@
   /* Every button and link-button of the public site on hover: a small lift and zoom (smaller than a card's). */
   --ls-ctl-lift: 2px;
   --ls-ctl-zoom: 1.03;
+  /* The height of an official store badge's artwork (Apple's badge is 40 px; Google's is drawn to match). */
+  --ls-store-badge-h: 2.5rem;
   /* Public chrome sizes */
   --ls-site-header-h: 4rem;
   --ls-tab-bar-h: 4rem;

@@ -32,6 +32,7 @@ const service = (patch: Partial<PublicService> = {}): PublicService => ({
 
 const site: PublicSiteResponse = {
   tagline: 'Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc',
+  footerBlocks: [],
   intro: null,
   facts: [
     { kind: 'HOURS', icon: 'clock', text: null },
@@ -48,6 +49,80 @@ const site: PublicSiteResponse = {
   hours: [{ weekdays: [1, 2, 3, 4, 5, 6, 7], closed: false, opensAt: '09:00', closesAt: '21:00' }],
   heroImage: null,
 };
+
+test('footer blocks: kept when well formed, an unsafe link or a malformed or unknown block is dropped alone', () => {
+  const id = '0f6e0a52-2f0c-4a1b-9c55-1f4e2d6a7b8c';
+  const good = [
+    { id: 'a', type: 'SOCIAL', links: [{ network: 'facebook', url: 'https://facebook.com/x' }] },
+    { id: 'b', type: 'APP', googlePlayUrl: 'https://play.google.com/x', appStoreUrl: null },
+    { id: 'c', type: 'TEXT', text: 'Xin chào' },
+    {
+      id: 'd',
+      type: 'LINKS',
+      title: null,
+      items: [{ label: 'Dịch vụ', url: '/vi/services' }],
+    },
+    {
+      id: 'e',
+      type: 'IMAGE',
+      image: {
+        alt: 'Ảnh',
+        width: 8,
+        height: 6,
+        sources: [{ url: `/api/v1/public/media/${id}/md`, width: 640 }],
+      },
+      linkUrl: null,
+    },
+    { id: 'f', type: 'SLOGAN', text: 'Thư giãn' },
+  ];
+  assert.deepEqual(parsePublicSite({ ...site, footerBlocks: good })?.footerBlocks, good);
+  // An API that predates the field sends none: the footer then shows only the logo.
+  const without: Record<string, unknown> = { ...site };
+  delete without['footerBlocks'];
+  assert.deepEqual(parsePublicSite(without)?.footerBlocks, []);
+  assert.deepEqual(parsePublicSite({ ...site, footerBlocks: 'blocks' })?.footerBlocks, []);
+  const bad = [
+    { id: 'g', type: 'WIDGET' },
+    'junk',
+    { id: 'h', type: 'TEXT', text: '' },
+    { id: 'i', type: 'SOCIAL', links: [{ network: 'facebook', url: 'javascript:alert(1)' }] },
+    { id: 'j', type: 'SOCIAL', links: [{ network: 'myspace', url: 'https://x.example' }] },
+    { id: 'k', type: 'APP', googlePlayUrl: 'http://play.google.com/x', appStoreUrl: '/vi' },
+    { id: 'l', type: 'LINKS', title: null, items: [{ label: 'x', url: '//evil.example' }] },
+    { id: 'm', type: 'LINKS', title: null, items: [{ label: 'x', url: 'data:text/html,x' }] },
+    {
+      id: 'n',
+      type: 'IMAGE',
+      image: { alt: 'x', width: 1, height: 1, sources: [] },
+      linkUrl: null,
+    },
+    {
+      id: 'o',
+      type: 'IMAGE',
+      image: {
+        alt: 'x',
+        width: 1,
+        height: 1,
+        sources: [{ url: 'https://evil.example/a.png', width: 1 }],
+      },
+      linkUrl: null,
+    },
+  ];
+  assert.deepEqual(
+    parsePublicSite({ ...site, footerBlocks: [...bad, good[2]] })?.footerBlocks,
+    [good[2]],
+    'every bad block is dropped, the good one next to them stays',
+  );
+  // A picture's link: https or a language path only; anything else is dropped, the picture stays.
+  const picture = good[4] as { image: unknown };
+  const linked = parsePublicSite({
+    ...site,
+    footerBlocks: [
+      { id: 'p', type: 'IMAGE', image: picture.image, linkUrl: 'javascript:alert(1)' },
+    ],
+  })?.footerBlocks[0];
+  assert.equal(linked?.type === 'IMAGE' ? linked.linkUrl : 'x', null);
+});
 
 test('the shop profile is accepted as sent and drops anything unsafe or malformed', () => {
   assert.deepEqual(parsePublicSite(site), site);

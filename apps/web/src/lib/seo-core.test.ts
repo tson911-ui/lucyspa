@@ -16,6 +16,7 @@ import {
 
 const site: PublicSiteResponse = {
   tagline: 'Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc',
+  footerBlocks: [],
   intro: null,
   facts: [
     { kind: 'HOURS', icon: 'clock', text: null },

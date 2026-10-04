@@ -130,6 +130,7 @@ test('shop info HTTP: strict admin body, CSRF/Origin, anonymous cached public si
     whyTitleVi: null,
     whyTitleEn: null,
     whyCards: [],
+    footerBlocks: [],
     expectedVersion: 1,
   };
   try {
@@ -176,6 +177,9 @@ test('shop info HTTP: strict admin body, CSRF/Origin, anonymous cached public si
       { ...body, whyTitleEn: undefined },
       { ...body, whyCards: undefined },
       { ...body, whyCards: 'cards' },
+      { ...body, footerBlocks: undefined },
+      { ...body, footerBlocks: 'blocks' },
+      { ...body, footerBlocks: Array.from({ length: 33 }, () => ({})) },
       { ...body, extra: 1 },
       { ...body, address: 'a'.repeat(1_201) },
     ];

@@ -81,10 +81,15 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
     orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     select: { id: true, titleVi: true, titleEn: true },
   });
-  const shopInfo = await tx.websiteShopInfo.findMany({
+  const hero = await tx.websiteShopInfo.findMany({
     where: { heroMediaId: assetId },
     select: { id: true },
   });
+  // A footer image block names its asset inside the JSON (no foreign key), so it is looked up by containment here.
+  const footer = await tx.$queryRaw<{ id: string }[]>`
+    SELECT id FROM website_shop_info
+    WHERE footer_blocks @> ${JSON.stringify([{ type: 'IMAGE', mediaId: assetId }])}::jsonb`;
+  const shopInfo = [...new Set([...hero, ...footer].map((row) => row.id))].map((id) => ({ id }));
   const seasons = await tx.websiteSeason.findMany({
     where: { slotMedia: { some: { mediaId: assetId } } },
     orderBy: [{ startsAt: 'desc' }, { id: 'asc' }],

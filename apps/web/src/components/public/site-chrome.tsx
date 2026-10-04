@@ -7,6 +7,7 @@ import { hoursHeadline, telHref } from '../../lib/public-site-core';
 import { footerDiscoverItems } from '../../lib/site-nav';
 import type { SiteDecorSpec } from '../../lib/season-core';
 import { SiteLogo } from '../season/site-frame-view';
+import { footerBlockItems } from './footer-blocks';
 import { PublicHeaderCta, PublicNav, PublicTools } from './site-chrome-client';
 
 /**
@@ -93,7 +94,7 @@ export function PublicFooter({
           <BrandWordmark serif />
         </Link>
       }
-      tagline={site?.tagline ?? null}
+      blocks={footerBlockItems(site?.footerBlocks ?? [], locale)}
       columns={columns}
       base={text.footer.rights.replace('{year}', String(year ?? new Date().getFullYear()))}
     />

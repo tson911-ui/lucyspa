@@ -1,8 +1,17 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { WebsiteShopInfoResponse } from '@lucy-spa/contracts';
+import type {
+  FooterSocialNetwork,
+  WebsiteFooterBlock,
+  WebsiteShopInfoResponse,
+} from '@lucy-spa/contracts';
 import {
+  footerBlockOf,
   formOfShopInfo,
+  isHttpsLink,
+  isSiteLink,
+  newBlockId,
+  newFooterBlock,
   shopInfoChanged,
   shopInfoInputOf,
   shopInfoRequest,
@@ -31,6 +40,7 @@ const response: WebsiteShopInfoResponse = {
   whyTitleVi: null,
   whyTitleEn: null,
   whyCards: [],
+  footerBlocks: [],
   groupOptions: [],
   rowVersion: 3,
   updatedAt: '2026-10-03T00:00:00.000Z',
@@ -68,8 +78,193 @@ test('the form mirrors the stored profile and sends null for what is empty', () 
     whyTitleVi: null,
     whyTitleEn: null,
     whyCards: [],
+    footerBlocks: [],
   });
   assert.deepEqual(shopInfoRequest(result.body, 3), { ...result.body, expectedVersion: 3 });
+});
+
+const social = (urls: Partial<Record<FooterSocialNetwork, string>>): WebsiteFooterBlock => ({
+  id: newBlockId(),
+  type: 'SOCIAL',
+  visible: true,
+  urls: {
+    facebook: null,
+    zalo: null,
+    tiktok: null,
+    instagram: null,
+    youtube: null,
+    messenger: null,
+    ...urls,
+  },
+});
+
+test('footer blocks: none by default, and a new block of each type starts empty and visible', () => {
+  assert.deepEqual(base.footerBlocks, []);
+  const types = ['SOCIAL', 'APP', 'TEXT', 'LINKS', 'IMAGE', 'SLOGAN'] as const;
+  for (const type of types) {
+    const block = newFooterBlock(type);
+    assert.equal(block.type, type);
+    assert.equal(block.visible, true);
+    assert.match(block.id, /^[0-9a-f-]{36}$/);
+  }
+  // An empty new block is not valid yet (except the slogan, which has nothing to fill): the dialog keeps "Save" honest.
+  for (const type of ['SOCIAL', 'APP', 'TEXT', 'LINKS', 'IMAGE'] as const) {
+    assert.equal(footerBlockOf(newFooterBlock(type)), null, type);
+  }
+  assert.deepEqual(footerBlockOf({ id: 'x', type: 'SLOGAN', visible: false }), {
+    id: 'x',
+    type: 'SLOGAN',
+    visible: false,
+  });
+});
+
+test('footer blocks: https links only, at least one, both languages for text, 12 blocks at most', () => {
+  assert.equal(isHttpsLink('https://facebook.com/lucyspa'), true);
+  for (const bad of [
+    'http://x.example',
+    'javascript:alert(1)',
+    '//evil.example',
+    '/vi/services',
+    'https://',
+    'https://a b',
+    `https://x.example/${'a'.repeat(300)}`,
+  ]) {
+    assert.equal(isHttpsLink(bad), false, bad);
+  }
+  assert.equal(isSiteLink('/vi/services'), true);
+  assert.equal(isSiteLink('/{locale}/services'), true);
+  assert.equal(isSiteLink('/services'), false);
+  assert.equal(isSiteLink('//evil.example'), false);
+  assert.equal(isSiteLink('data:text/html,x'), false);
+  // Social: empty fields are none, at least one https link is needed.
+  const cleaned = footerBlockOf(social({ facebook: ' https://facebook.com/lucyspa ', zalo: '  ' }));
+  assert.equal(
+    cleaned?.type === 'SOCIAL' ? cleaned.urls.facebook : '',
+    'https://facebook.com/lucyspa',
+  );
+  assert.equal(cleaned?.type === 'SOCIAL' ? cleaned.urls.zalo : '', null);
+  assert.equal(footerBlockOf(social({})), null);
+  assert.equal(footerBlockOf(social({ tiktok: 'http://tiktok.com/x' })), null);
+  // App: one https link is enough, the other may stay empty.
+  const app = footerBlockOf({
+    id: 'a',
+    type: 'APP',
+    visible: true,
+    googlePlayUrl: 'https://play.google.com/x',
+    appStoreUrl: '',
+  });
+  assert.equal(app?.type === 'APP' ? app.appStoreUrl : 'x', null);
+  assert.equal(
+    footerBlockOf({ id: 'a', type: 'APP', visible: true, googlePlayUrl: 'x', appStoreUrl: null }),
+    null,
+  );
+  // Text: both languages, line breaks kept, 300 characters.
+  const text = footerBlockOf({
+    id: 't',
+    type: 'TEXT',
+    visible: true,
+    textVi: ' Một  dòng\n\n\n\nHai ',
+    textEn: 'One',
+  });
+  assert.equal(text?.type === 'TEXT' ? text.textVi : '', 'Một dòng\n\nHai');
+  assert.equal(
+    footerBlockOf({ id: 't', type: 'TEXT', visible: true, textVi: 'Một', textEn: '' }),
+    null,
+  );
+  assert.equal(
+    footerBlockOf({ id: 't', type: 'TEXT', visible: true, textVi: 'a'.repeat(301), textEn: 'b' }),
+    null,
+  );
+  // The list: 12 at most.
+  const many = Array.from({ length: 13 }, () => ({
+    id: newBlockId(),
+    type: 'SLOGAN' as const,
+    visible: true,
+  }));
+  assert.equal(problem({ footerBlocks: many }), 'footerBlocks');
+  assert.equal(problem({ footerBlocks: many.slice(0, 12) }), null);
+});
+
+test('footer blocks: a link list needs both title languages or none, and every link both names and an address', () => {
+  const link = { labelVi: 'Dịch vụ', labelEn: 'Services', url: '/{locale}/services' };
+  const list = (patch: object) => ({
+    id: 'l',
+    type: 'LINKS' as const,
+    visible: true,
+    titleVi: null,
+    titleEn: null,
+    items: [link],
+    ...patch,
+  });
+  assert.notEqual(footerBlockOf(list({})), null);
+  assert.notEqual(footerBlockOf(list({ titleVi: 'Khám phá', titleEn: 'Explore' })), null);
+  assert.equal(footerBlockOf(list({ titleVi: 'Khám phá' })), null);
+  assert.equal(footerBlockOf(list({ items: [] })), null);
+  assert.equal(footerBlockOf(list({ items: Array.from({ length: 9 }, () => link) })), null);
+  assert.equal(footerBlockOf(list({ items: [{ ...link, labelEn: '' }] })), null);
+  assert.equal(footerBlockOf(list({ items: [{ ...link, url: 'http://x.example' }] })), null);
+  assert.equal(footerBlockOf(list({ items: [{ ...link, labelVi: 'a'.repeat(41) }] })), null);
+  // Image: a picture is required, its link is optional but must be safe.
+  assert.equal(
+    footerBlockOf({ id: 'i', type: 'IMAGE', visible: true, mediaId: '', linkUrl: null }),
+    null,
+  );
+  assert.equal(
+    footerBlockOf({
+      id: 'i',
+      type: 'IMAGE',
+      visible: true,
+      mediaId: 'm',
+      linkUrl: 'javascript:alert(1)',
+    }),
+    null,
+  );
+  const image = footerBlockOf({
+    id: 'i',
+    type: 'IMAGE',
+    visible: true,
+    mediaId: 'm',
+    linkUrl: ' ',
+  });
+  assert.equal(image?.type === 'IMAGE' ? image.linkUrl : 'x', null);
+});
+
+test('footer blocks: the saved request carries them cleaned, and a change in order or visibility counts as a change', () => {
+  const first = social({ facebook: ' https://facebook.com/x ' });
+  const second: WebsiteFooterBlock = { id: newBlockId(), type: 'SLOGAN', visible: true };
+  const form = { ...base, footerBlocks: [first, second] };
+  const result = shopInfoInputOf(form);
+  assert.ok('body' in result);
+  const sent = result.body.footerBlocks[0];
+  assert.equal(sent?.type === 'SOCIAL' ? sent.urls.facebook : '', 'https://facebook.com/x');
+  assert.equal(shopInfoChanged(form, base), true);
+  assert.equal(shopInfoChanged({ ...form, footerBlocks: [second, first] }, form), true, 'order');
+  assert.equal(
+    shopInfoChanged({ ...form, footerBlocks: [first, { ...second, visible: false }] }, form),
+    true,
+    'visibility',
+  );
+  assert.equal(shopInfoChanged({ ...form, footerBlocks: [first, second] }, form), false);
+  // A copy made by the form never shares nested lists with the response.
+  const copy = formOfShopInfo({ ...response, footerBlocks: [first] });
+  assert.notEqual(copy.footerBlocks[0], first);
+  assert.deepEqual(copy.footerBlocks, [first]);
+});
+
+test('the server names the footer when it refuses a block, and a picture without alt text is the block or the hero', () => {
+  assert.equal(
+    shopInfoServerProblem({ code: 'VALIDATION_FAILED', field: 'footerBlocks' }),
+    'footerBlocks',
+  );
+  assert.equal(
+    shopInfoServerProblem({ code: 'MEDIA_ALT_REQUIRED', field: 'footerBlocks' }),
+    'footerBlocks',
+  );
+  assert.equal(
+    shopInfoServerProblem({ code: 'MEDIA_ALT_REQUIRED', field: 'heroMediaId' }),
+    'heroMediaId',
+  );
+  assert.equal(shopInfoServerProblem({ code: 'MEDIA_ALT_REQUIRED' }), 'heroMediaId');
 });
 
 test('text is trimmed and collapsed, the optional link and branch are sent when set', () => {

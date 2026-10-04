@@ -46,6 +46,22 @@ export interface SiteText {
     phone: string;
     /** With {year}. */
     rights: string;
+    /** The group name of the row of social icons. */
+    social: string;
+    /** With {name}: the accessible name of a link that opens another site in a new tab ("Facebook (mở trong tab mới)"). */
+    newTab: string;
+    /** The official wording of each store badge, for the accessible name of its link (before the new-tab note). */
+    googlePlay: string;
+    appStore: string;
+    /** The brand names of the networks the social icons link to. */
+    networks: {
+      facebook: string;
+      zalo: string;
+      tiktok: string;
+      instagram: string;
+      youtube: string;
+      messenger: string;
+    };
   };
   home: {
     /** The product, in one factual sentence under the tagline. */
@@ -131,6 +147,18 @@ const text = {
       signInUp: 'Đăng nhập / Đăng ký',
       phone: 'Điện thoại: {value}',
       rights: '© {year} Lucy Spa',
+      social: 'Mạng xã hội',
+      newTab: '{name} (mở trong tab mới)',
+      googlePlay: 'Tải trên Google Play',
+      appStore: 'Tải về trên App Store',
+      networks: {
+        facebook: 'Facebook',
+        zalo: 'Zalo',
+        tiktok: 'TikTok',
+        instagram: 'Instagram',
+        youtube: 'YouTube',
+        messenger: 'Messenger',
+      },
     },
     home: {
       lead: 'Chọn dịch vụ, chọn giờ còn trống và giữ chỗ trực tuyến trong vài phút.',
@@ -210,6 +238,18 @@ const text = {
       signInUp: 'Sign in / Create account',
       phone: 'Phone: {value}',
       rights: '© {year} Lucy Spa',
+      social: 'Social media',
+      newTab: '{name} (opens in a new tab)',
+      googlePlay: 'Get it on Google Play',
+      appStore: 'Download on the App Store',
+      networks: {
+        facebook: 'Facebook',
+        zalo: 'Zalo',
+        tiktok: 'TikTok',
+        instagram: 'Instagram',
+        youtube: 'YouTube',
+        messenger: 'Messenger',
+      },
     },
     home: {
       lead: 'Choose your services, pick a free time and book online in minutes.',

@@ -535,7 +535,8 @@
   }
 }
 
-.ls-site-footer-brand a {
+/* Only the logo is brand-coloured; the links inside the Owner's blocks keep their own colours. */
+.ls-site-footer-logo {
   display: inline-flex;
   align-items: center;
   min-height: var(--ls-control-h);
@@ -543,11 +544,135 @@
   text-decoration: none;
 }
 
-.ls-site-footer-brand p {
-  margin: var(--ls-space-2) 0 0;
+/* The blocks under the logo (social icons, store badges, text, link list, picture, slogan): the Owner's order, one
+   rhythm, one left edge. With no blocks the column is the logo alone. */
+.ls-site-footer-blocks {
+  display: grid;
+  justify-items: start;
+  gap: var(--ls-space-4);
+  margin-top: var(--ls-space-2);
+}
+
+.ls-site-footer-block {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* On a tablet three columns are too narrow for a row of six round buttons or two badges, so while the brand column
+   holds blocks it takes the whole first row and the two other columns share the second. Phones are one column, and
+   from 1024 px three columns are wide enough. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .ls-site-footer-grid:has(.ls-site-footer-blocks) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ls-site-footer-grid:has(.ls-site-footer-blocks) > .ls-site-footer-brand {
+    grid-column: 1 / -1;
+  }
+}
+
+.ls-footer-text {
+  max-width: 24rem;
+  margin: 0;
   color: var(--ls-text-muted);
   font-size: var(--ls-type-body);
   line-height: var(--ls-lh-body);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.ls-social,
+.ls-store-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Round buttons like the header tools: the shared hover and press motion is in the controls block below. */
+.ls-social-btn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--ls-control-h);
+  height: var(--ls-control-h);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-surface);
+  color: var(--ls-text);
+  text-decoration: none;
+}
+
+.ls-social-btn:hover {
+  background: var(--ls-hover-bg);
+  border-color: var(--ls-hover-border);
+  color: var(--ls-hover-text);
+}
+
+/* The official badges are drawn as delivered (never recoloured, cropped or restyled) at one artwork height. A file
+   that carries clear space around its artwork (Google's) is drawn taller by its own scale, so the artwork is the same
+   height as the other badge. The link is at least a full touch target. */
+.ls-store-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+  text-decoration: none;
+}
+
+.ls-store-badge img {
+  display: block;
+  /* The official artwork keeps its proportions: it is never squeezed by its flex container. */
+  flex: none;
+  max-width: none;
+  width: auto;
+  height: calc(var(--ls-store-badge-h) * var(--ls-badge-file-scale));
+}
+
+/* The file's own transparent left and right margin is pulled back by the list item (the file is drawn whole, never
+   cropped, and nothing overflows its own box): the artwork starts at the column edge and the next badge follows at
+   the normal gap. */
+.ls-store-badges li {
+  /* Per-badge values the component sets inline: 1 (the file is the artwork) and 0 (no clear space) unless it says so. */
+  --ls-badge-file-scale: 1;
+  --ls-badge-file-inset: 0;
+  margin-inline: calc(
+    var(--ls-badge-file-inset) * var(--ls-store-badge-h) * var(--ls-badge-file-scale) * -1
+  );
+}
+
+/* A titled link list: its own navigation landmark; the title and the list stack with no extra gap. */
+.ls-footer-links {
+  display: grid;
+  min-width: 0;
+}
+
+.ls-footer-links-title {
+  display: flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+  margin: 0;
+  font-family: var(--ls-font-display);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+  font-weight: var(--ls-weight-title);
+}
+
+/* A picture is as wide as its column, never wider than a card-sized 20 rem. */
+.ls-footer-picture {
+  width: min(100%, 20rem);
+}
+
+.ls-footer-picture a {
+  display: block;
+}
+
+.ls-footer-picture img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--ls-radius-md);
 }
 
 .ls-site-footer-title {
@@ -1877,7 +2002,9 @@
 .ls-site .ls-pills a,
 .ls-site .ls-site-nav a,
 .ls-site .ls-subnav a,
-.ls-site .ls-tab-bar a {
+.ls-site .ls-tab-bar a,
+.ls-site .ls-social-btn,
+.ls-site .ls-store-badge {
   transition:
     transform var(--ls-dur-base) var(--ls-ease-premium),
     background-color var(--ls-dur-base) var(--ls-ease-out),
@@ -1892,7 +2019,9 @@
   .ls-site .ls-site-tool:hover,
   .ls-site .ls-pills a:hover,
   .ls-site .ls-site-nav a:where(:not([aria-current='page'])):hover,
-  .ls-site .ls-subnav a:where(:not([aria-current='page'])):hover {
+  .ls-site .ls-subnav a:where(:not([aria-current='page'])):hover,
+  .ls-site .ls-social-btn:hover,
+  .ls-site .ls-store-badge:hover {
     transform: translateY(calc(var(--ls-ctl-lift) * -1)) scale(var(--ls-ctl-zoom));
   }
 }
@@ -1903,7 +2032,9 @@
 .ls-site .ls-pills a:active,
 .ls-site .ls-site-nav a:active,
 .ls-site .ls-subnav a:active,
-.ls-site .ls-tab-bar a:active {
+.ls-site .ls-tab-bar a:active,
+.ls-site .ls-social-btn:active,
+.ls-site .ls-store-badge:active {
   transform: scale(var(--ls-press-scale));
   transition-duration: var(--ls-dur-fast);
 }

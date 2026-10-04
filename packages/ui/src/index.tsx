@@ -47,6 +47,7 @@ export { RouteEnter } from './route-enter';
 export { Band, PriceList, PublicMain, PublicPage, SiteFooter, Steps, TabBar } from './site';
 export { SiteNav, SiteSubNav } from './site-nav';
 export type {
+  FooterBlockItem,
   FooterColumn,
   PriceListItem,
   SiteLinkComponent,
@@ -54,6 +55,16 @@ export type {
   StepItem,
   TabBarItem,
 } from './site';
+export { BrandIcon } from './brand-icons';
+export type { BrandIconName } from './brand-icons';
+export {
+  FooterLinkList,
+  FooterPicture,
+  FooterText,
+  SocialLinks,
+  StoreBadges,
+} from './footer-blocks';
+export type { SocialLinkItem, StoreBadgeItem } from './footer-blocks';
 export { SiteHeader } from './site-header';
 export { ChoiceCard } from './choice-card';
 export { Reveal } from './reveal';

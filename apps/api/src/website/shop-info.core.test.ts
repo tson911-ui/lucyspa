@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { WebsiteFeaturedGroup, WebsiteShopFact, WebsiteWhyCard } from '@lucy-spa/contracts';
+import type {
+  WebsiteFeaturedGroup,
+  WebsiteFooterBlock,
+  WebsiteShopFact,
+  WebsiteWhyCard,
+} from '@lucy-spa/contracts';
 import { AuthError } from '../auth/auth.error.js';
 import { groupOperatingHours, hotlineTel, parseShopInfoFields } from './shop-info.core.js';
 
@@ -33,6 +38,7 @@ const valid = {
   whyTitleVi: null,
   whyTitleEn: null,
   whyCards: [] as WebsiteWhyCard[],
+  footerBlocks: [] as WebsiteFooterBlock[],
 };
 
 const refused = (patch: object, field: string) =>

@@ -222,19 +222,160 @@ test('PriceList keeps a long price on the row as its own cell', () => {
   );
 });
 
-test('SiteFooter renders the brand, the columns and the base line', () => {
-  const html = renderToStaticMarkup(
+test('SiteFooter renders the logo alone by default, and the Owner blocks under it in order', () => {
+  const columns = [{ key: 'contact', title: 'Liên hệ', items: ['04 Nguyễn Quang Bích, Đà Nẵng'] }];
+  const plain = renderToStaticMarkup(
+    <ui.SiteFooter brand={<span>Lucy Spa</span>} columns={columns} base="© 2026 Lucy Spa" />,
+  );
+  assert.match(plain, /<footer class="ls-site-footer">/);
+  assert.match(plain, /<h2 class="ls-site-footer-title">Liên hệ<\/h2>/);
+  assert.match(plain, /© 2026 Lucy Spa/);
+  // No blocks: the brand column is the logo and nothing else (no tagline, no empty wrapper).
+  assert.doesNotMatch(plain, /ls-site-footer-blocks/);
+  assert.match(plain, /<div class="ls-site-footer-brand"><span>Lucy Spa<\/span><\/div>/);
+  const withBlocks = renderToStaticMarkup(
     <ui.SiteFooter
       brand={<span>Lucy Spa</span>}
-      tagline="Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc"
-      columns={[{ key: 'contact', title: 'Liên hệ', items: ['04 Nguyễn Quang Bích, Đà Nẵng'] }]}
-      base="© 2026 Lucy Spa"
+      blocks={[
+        { key: 'a', node: <p>Một</p> },
+        { key: 'b', node: <p>Hai</p> },
+      ]}
+      columns={columns}
+      base="x"
     />,
   );
-  assert.match(html, /<footer class="ls-site-footer">/);
-  assert.match(html, /<h2 class="ls-site-footer-title">Liên hệ<\/h2>/);
-  assert.match(html, /Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc/);
-  assert.match(html, /© 2026 Lucy Spa/);
+  assert.match(
+    withBlocks,
+    /<div class="ls-site-footer-blocks"><div class="ls-site-footer-block"><p>Một<\/p><\/div><div class="ls-site-footer-block"><p>Hai<\/p><\/div><\/div>/,
+  );
+});
+
+test('footer blocks: social icons are round new-tab links named for the network, drawn in currentColor', () => {
+  const html = renderToStaticMarkup(
+    <ui.SocialLinks
+      label="Mạng xã hội"
+      items={[
+        {
+          key: 'facebook',
+          label: 'Facebook (mở trong tab mới)',
+          href: 'https://facebook.com/lucyspa',
+          icon: 'facebook',
+        },
+        { key: 'zalo', label: 'Zalo (mở trong tab mới)', href: 'https://zalo.me/x', icon: 'zalo' },
+      ]}
+    />,
+  );
+  assert.match(html, /<ul class="ls-social" aria-label="Mạng xã hội">/);
+  assert.equal(html.match(/<li>/g)?.length, 2);
+  assert.equal(html.match(/target="_blank"/g)?.length, 2);
+  assert.equal(html.match(/rel="noopener noreferrer"/g)?.length, 2);
+  assert.match(html, /aria-label="Facebook \(mở trong tab mới\)"/);
+  // The glyph is decorative (the link has the name) and follows the theme: no hex colour anywhere.
+  assert.match(html, /<svg[^>]*fill="currentColor"[^>]*aria-hidden="true"/);
+  assert.doesNotMatch(html, /#[0-9a-fA-F]{3,8}\b/);
+});
+
+test('footer blocks: store badges are the official files, unaltered, each a named new-tab link', () => {
+  const html = renderToStaticMarkup(
+    <ui.StoreBadges
+      items={[
+        {
+          key: 'google-play',
+          label: 'Tải trên Google Play (mở trong tab mới)',
+          href: 'https://play.google.com/store/apps/details?id=vn.lucyspa',
+          src: '/badges/google-play-vi.png',
+          width: 646,
+          height: 250,
+          fileScale: 250 / 192,
+        },
+        {
+          key: 'app-store',
+          label: 'Tải về trên App Store (mở trong tab mới)',
+          href: 'https://apps.apple.com/vn/app/lucy/id1',
+          src: '/badges/app-store-vi.svg',
+          width: 120,
+          height: 40,
+        },
+      ]}
+    />,
+  );
+  assert.equal(html.match(/class="ls-store-badge"/g)?.length, 2);
+  assert.equal(html.match(/target="_blank"/g)?.length, 2);
+  assert.match(html, /aria-label="Tải trên Google Play \(mở trong tab mới\)"/);
+  // The link carries the name; the picture is decorative, and nothing filters or recolours it.
+  assert.equal(html.match(/<img[^>]*alt=""/g)?.length, 2);
+  assert.match(html, /--ls-badge-file-scale:1\.30/);
+  assert.match(html, /--ls-badge-file-scale:1(;|")/);
+  assert.doesNotMatch(html, /filter/);
+});
+
+test('footer blocks: a titled link list is a named navigation, a picture link opens only what leaves the site in a new tab', () => {
+  const titled = renderToStaticMarkup(
+    <ui.FooterLinkList title="Khám phá" items={[<span key="a">Dịch vụ</span>]} />,
+  );
+  assert.match(titled, /<nav aria-label="Khám phá" class="ls-footer-links">/);
+  assert.match(titled, /<p class="ls-footer-links-title" aria-hidden="true">Khám phá<\/p>/);
+  assert.match(titled, /<ul class="ls-site-footer-list"><li><span>Dịch vụ<\/span><\/li><\/ul>/);
+  const untitled = renderToStaticMarkup(
+    <ui.FooterLinkList items={[<span key="a">Trang chủ</span>]} />,
+  );
+  assert.doesNotMatch(untitled, /<nav/);
+  const external = renderToStaticMarkup(
+    <ui.FooterPicture href="https://example.com/x" label="Đối tác (mở trong tab mới)">
+      <span>ảnh</span>
+    </ui.FooterPicture>,
+  );
+  assert.match(
+    external,
+    /<a href="https:\/\/example.com\/x" target="_blank" rel="noopener noreferrer" aria-label="Đối tác \(mở trong tab mới\)">/,
+  );
+  const internal = renderToStaticMarkup(
+    <ui.FooterPicture href="/vi/services" label="Dịch vụ">
+      <span>ảnh</span>
+    </ui.FooterPicture>,
+  );
+  assert.match(internal, /<a href="\/vi\/services" aria-label="Dịch vụ">/);
+  assert.doesNotMatch(internal, /target=/);
+  const bare = renderToStaticMarkup(
+    <ui.FooterPicture>
+      <span>ảnh</span>
+    </ui.FooterPicture>,
+  );
+  assert.doesNotMatch(bare, /<a /);
+  assert.match(
+    renderToStaticMarkup(<ui.FooterText>{'Một\nHai'}</ui.FooterText>),
+    /class="ls-footer-text"/,
+  );
+});
+
+test('footer blocks: styles use tokens, only the logo is brand-coloured, and the new controls share the one motion', () => {
+  assert.match(css, /\.ls-site-footer-logo \{[^}]*color: var\(--ls-brand\);/);
+  assert.doesNotMatch(
+    css,
+    /\.ls-site-footer-brand a \{/,
+    'links inside blocks are not brand-coloured',
+  );
+  assert.match(
+    css,
+    /\.ls-social-btn \{[^}]*width: var\(--ls-control-h\);[^}]*border-radius: var\(--ls-radius-full\);/,
+  );
+  assert.match(
+    css,
+    /\.ls-store-badge img \{[^}]*height: calc\(var\(--ls-store-badge-h\) \* var\(--ls-badge-file-scale\)\);/,
+  );
+  assert.match(css, /\.ls-store-badge \{[^}]*min-height: var\(--ls-control-h\);/);
+  const tokens = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
+  assert.match(tokens, /--ls-store-badge-h: 2\.5rem;/);
+  // The shared hover and press block lists them (so reduced motion zeroes them with every other control).
+  assert.match(css, /\.ls-site \.ls-social-btn,\s*\.ls-site \.ls-store-badge \{\s*transition:/);
+  assert.match(
+    css,
+    /\.ls-site \.ls-social-btn:hover,\s*\.ls-site \.ls-store-badge:hover \{\s*transform:/,
+  );
+  assert.match(
+    css,
+    /\.ls-site \.ls-social-btn:active,\s*\.ls-site \.ls-store-badge:active \{\s*transform: scale\(var\(--ls-press-scale\)\);/,
+  );
 });
 
 test('Band and PublicPage give one landmark and one h1', () => {

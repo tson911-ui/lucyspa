@@ -1,8 +1,11 @@
 import {
+  FOOTER_SOCIAL_NETWORKS,
   SHOP_FACT_ICONS,
   WHY_ICONS,
+  type FooterSocialNetwork,
   type PublicFact,
   type PublicFeaturedGroup,
+  type PublicFooterBlock,
   type PublicHoursGroup,
   type PublicService,
   type PublicServiceDetailResponse,
@@ -144,6 +147,89 @@ function parseWhy(value: unknown): PublicWhy | null | undefined {
   return cards.length > 0 && value['title'] !== '' ? { title: value['title'], cards } : null;
 }
 
+/** A store or social link is drawn as a real link: https with a host, whatever the server says. */
+const isHttpsLink = (value: unknown): value is string =>
+  isString(value) && /^https:\/\/[^\s<>"'\\/]\S*$/.test(value) && !/[<>"'\\]/.test(value);
+/** A link-list or image link: https, or an internal path of a language (`/vi/services`). */
+const isSiteLink = (value: unknown): value is string =>
+  isHttpsLink(value) || (isString(value) && /^\/(vi|en)(\/[^\s<>"'\\]*)?$/.test(value));
+
+function parseFooterBlock(item: unknown): PublicFooterBlock | null {
+  if (!isRecord(item) || !isString(item['id']) || !isString(item['type'])) return null;
+  const id = item['id'];
+  switch (item['type']) {
+    case 'SOCIAL': {
+      if (!Array.isArray(item['links'])) return null;
+      const links: { network: FooterSocialNetwork; url: string }[] = [];
+      for (const link of item['links']) {
+        if (
+          !isRecord(link) ||
+          !(FOOTER_SOCIAL_NETWORKS as readonly string[]).includes(link['network'] as string) ||
+          !isHttpsLink(link['url'])
+        ) {
+          continue;
+        }
+        links.push({ network: link['network'] as FooterSocialNetwork, url: link['url'] });
+      }
+      return links.length > 0 ? { id, type: 'SOCIAL', links } : null;
+    }
+    case 'APP': {
+      const googlePlayUrl = isHttpsLink(item['googlePlayUrl']) ? item['googlePlayUrl'] : null;
+      const appStoreUrl = isHttpsLink(item['appStoreUrl']) ? item['appStoreUrl'] : null;
+      return googlePlayUrl !== null || appStoreUrl !== null
+        ? { id, type: 'APP', googlePlayUrl, appStoreUrl }
+        : null;
+    }
+    case 'TEXT':
+      return isString(item['text']) && item['text'] !== ''
+        ? { id, type: 'TEXT', text: item['text'] }
+        : null;
+    case 'LINKS': {
+      if (!Array.isArray(item['items']) || !isNullableString(item['title'])) return null;
+      const items: { label: string; url: string }[] = [];
+      for (const entry of item['items']) {
+        if (
+          isRecord(entry) &&
+          isString(entry['label']) &&
+          entry['label'] !== '' &&
+          isSiteLink(entry['url'])
+        ) {
+          items.push({ label: entry['label'], url: entry['url'] });
+        }
+      }
+      return items.length > 0 ? { id, type: 'LINKS', title: item['title'] || null, items } : null;
+    }
+    case 'IMAGE': {
+      const image = parseSiteImage(item['image']);
+      if (!image || image.sources.length === 0) return null;
+      return {
+        id,
+        type: 'IMAGE',
+        image,
+        linkUrl: isSiteLink(item['linkUrl']) ? item['linkUrl'] : null,
+      };
+    }
+    case 'SLOGAN':
+      return isString(item['text']) && item['text'] !== ''
+        ? { id, type: 'SLOGAN', text: item['text'] }
+        : null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * The footer's brand-column blocks. An API that predates the field sends none (the footer then shows only the logo);
+ * one block that is malformed or of an unknown type is left out, never the whole site.
+ */
+function parseFooterBlocks(value: unknown): PublicFooterBlock[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const block = parseFooterBlock(item);
+    return block ? [block] : [];
+  });
+}
+
 export function parsePublicSite(value: unknown): PublicSiteResponse | null {
   if (!isRecord(value)) return null;
   const hours = parseHours(value['hours']);
@@ -173,6 +259,7 @@ export function parsePublicSite(value: unknown): PublicSiteResponse | null {
   const mapUrl = value['mapUrl'];
   return {
     tagline: value['tagline'],
+    footerBlocks: parseFooterBlocks(value['footerBlocks']),
     facts,
     featuredGroups,
     why,

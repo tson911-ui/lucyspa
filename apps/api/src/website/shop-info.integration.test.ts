@@ -50,6 +50,7 @@ const input = (patch: Partial<WebsiteShopInfoInput> = {}): WebsiteShopInfoInput 
   whyTitleVi: null,
   whyTitleEn: null,
   whyCards: [],
+  footerBlocks: [],
   ...patch,
 });
 
@@ -696,6 +697,86 @@ test(
                 });
                 assert.equal(cleared.heroMediaId, null);
                 await fails(site.variant(pic.id, 'MD'), 'NOT_FOUND');
+              },
+            );
+
+            await context.test(
+              'footer blocks: empty by default; a picture block needs alt text, is served only while visible, counts as a use and blocks deletion',
+              async () => {
+                const upload = async (shade: number, alt: boolean) =>
+                  (
+                    await media.upload(
+                      editor.session,
+                      { buffer: await png(shade), originalname: `footer-${shade}.png` },
+                      alt ? { altVi: `Ảnh ${shade}`, altEn: `Image ${shade}` } : {},
+                    )
+                  ).asset;
+                const bare = await upload(33, false);
+                const pic = await upload(44, true);
+                const current = await shop.get(editor.session);
+                assert.deepEqual(current.footerBlocks, [], 'nothing is seeded');
+                assert.deepEqual((await site.site('vi')).footerBlocks, [], 'only the logo');
+                const picture = (patch: { mediaId?: string; visible?: boolean } = {}) => ({
+                  id: randomUUID(),
+                  type: 'IMAGE' as const,
+                  visible: patch.visible ?? true,
+                  mediaId: patch.mediaId ?? pic.id,
+                  linkUrl: null,
+                });
+                const slogan = { id: randomUUID(), type: 'SLOGAN' as const, visible: true };
+                const save = (
+                  footerBlocks: WebsiteShopInfoInput['footerBlocks'],
+                  version: number,
+                ) =>
+                  shop.update(editor.session, {
+                    ...input({ hoursBranchId: branch.id, footerBlocks }),
+                    expectedVersion: version,
+                  });
+                await fails(
+                  save([picture({ mediaId: bare.id })], current.rowVersion),
+                  'MEDIA_ALT_REQUIRED',
+                  'footerBlocks',
+                );
+                await fails(
+                  save([picture({ mediaId: randomUUID() })], current.rowVersion),
+                  'VALIDATION_FAILED',
+                  'footerBlocks',
+                );
+                await fails(site.variant(pic.id, 'MD'), 'NOT_FOUND');
+                const block = picture();
+                const saved = await save([block, slogan], current.rowVersion);
+                assert.deepEqual(
+                  saved.footerBlocks.map((entry) => entry.type),
+                  ['IMAGE', 'SLOGAN'],
+                );
+                const publicSite = await site.site('en');
+                const shown = publicSite.footerBlocks[0];
+                assert.equal(shown?.type === 'IMAGE' ? shown.image.alt : '', 'Image 44');
+                assert.match(
+                  shown?.type === 'IMAGE' ? (shown.image.sources[0]?.url ?? '') : '',
+                  /^\/api\/v1\/public\/media\//,
+                );
+                const served = await site.variant(pic.id, 'MD');
+                assert.ok(served.bytes > 0);
+                served.stream.destroy();
+                assert.deepEqual(
+                  (await media.get(editor.session, pic.id)).usedIn.map((use) => use.kind),
+                  ['SHOP_INFO'],
+                );
+                await fails(media.remove(editor.session, pic.id), 'MEDIA_IN_USE');
+                // Hidden: no longer drawn or served, but still a use (the Owner may show it again), so it cannot be deleted.
+                const hidden = await save([{ ...block, visible: false }, slogan], saved.rowVersion);
+                assert.deepEqual(
+                  (await site.site('en')).footerBlocks.map((entry) => entry.type),
+                  ['SLOGAN'],
+                );
+                await fails(site.variant(pic.id, 'MD'), 'NOT_FOUND');
+                await fails(media.remove(editor.session, pic.id), 'MEDIA_IN_USE');
+                // An unchanged picture is not re-checked, so an old block never blocks an unrelated save.
+                await save([{ ...block, visible: false }], hidden.rowVersion);
+                const cleared = await save([], (await shop.get(editor.session)).rowVersion);
+                assert.deepEqual(cleared.footerBlocks, []);
+                assert.deepEqual((await media.get(editor.session, pic.id)).usedIn, []);
               },
             );
 

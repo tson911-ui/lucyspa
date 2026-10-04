@@ -1,10 +1,15 @@
-import type {
-  WebsiteFeaturedGroup,
-  WebsiteShopFact,
-  WebsiteShopInfoInput,
-  WebsiteShopInfoResponse,
-  WebsiteShopInfoUpdateRequest,
-  WebsiteWhyCard,
+import {
+  FOOTER_SOCIAL_NETWORKS,
+  type FooterBlockType,
+  type FooterSocialNetwork,
+  type WebsiteFeaturedGroup,
+  type WebsiteFooterBlock,
+  type WebsiteFooterLink,
+  type WebsiteShopFact,
+  type WebsiteShopInfoInput,
+  type WebsiteShopInfoResponse,
+  type WebsiteShopInfoUpdateRequest,
+  type WebsiteWhyCard,
 } from '@lucy-spa/contracts';
 
 // The "Shop info" tab of the website content page (Part 2, P2-3): form state, the request and the client-side checks
@@ -23,6 +28,16 @@ export const SHOP_INFO_LIMITS = Object.freeze({
   mapUrl: 500,
 });
 
+/** The footer block limits (the API holds the same numbers). */
+export const FOOTER_LIMITS = Object.freeze({
+  blocks: 12,
+  url: 300,
+  text: 300,
+  title: 40,
+  label: 40,
+  links: 8,
+});
+
 export type ShopInfoProblem =
   | 'taglineVi'
   | 'taglineEn'
@@ -37,7 +52,8 @@ export type ShopInfoProblem =
   | 'featuredGroups'
   | 'whyTitleVi'
   | 'whyTitleEn'
-  | 'whyCards';
+  | 'whyCards'
+  | 'footerBlocks';
 
 export const SHOP_INFO_PROBLEMS: ReadonlySet<string> = new Set<ShopInfoProblem>([
   'taglineVi',
@@ -54,6 +70,7 @@ export const SHOP_INFO_PROBLEMS: ReadonlySet<string> = new Set<ShopInfoProblem>(
   'whyTitleVi',
   'whyTitleEn',
   'whyCards',
+  'footerBlocks',
 ]);
 
 export interface ShopInfoForm {
@@ -79,6 +96,8 @@ export interface ShopInfoForm {
   whyTitleVi: string;
   whyTitleEn: string;
   whyCards: WebsiteWhyCard[];
+  /** The blocks under the footer logo, in order; none until the Owner adds some. */
+  footerBlocks: WebsiteFooterBlock[];
 }
 
 export function formOfShopInfo(info: WebsiteShopInfoResponse): ShopInfoForm {
@@ -99,11 +118,159 @@ export function formOfShopInfo(info: WebsiteShopInfoResponse): ShopInfoForm {
     whyTitleVi: info.whyTitleVi ?? '',
     whyTitleEn: info.whyTitleEn ?? '',
     whyCards: info.whyCards.map((card) => ({ ...card })),
+    // A deep copy: a block holds nested lists (links, networks) the editor must not change in place.
+    footerBlocks: JSON.parse(JSON.stringify(info.footerBlocks)) as WebsiteFooterBlock[],
   };
 }
 
 const clean = (value: string) => value.normalize('NFC').replace(/\s+/g, ' ').trim();
 const length = (value: string) => [...value].length;
+/** A paragraph keeps the line breaks the Owner typed (at most one blank line in a row). */
+const cleanParagraph = (value: string) =>
+  value
+    .normalize('NFC')
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+/g, ' ').trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+/** A store or social address: https with a host, nothing else. */
+export const isHttpsLink = (value: string): boolean =>
+  length(value) <= FOOTER_LIMITS.url &&
+  /^https:\/\/[^\s<>"'\\/]\S*$/.test(value) &&
+  !/[<>"'\\]/.test(value);
+/** A link-list or image address: https, or an internal path of a language (`/vi/services`, `/{locale}/services`). */
+export const isSiteLink = (value: string): boolean =>
+  isHttpsLink(value) ||
+  (length(value) <= FOOTER_LIMITS.url && /^\/(vi|en|\{locale\})(\/[^\s<>"'\\]*)?$/.test(value));
+
+/** A block's own id: the API wants a UUID, and the form is where it is made. */
+export const newBlockId = (): string => crypto.randomUUID();
+
+const emptyUrls = (): Record<FooterSocialNetwork, string | null> =>
+  Object.fromEntries(FOOTER_SOCIAL_NETWORKS.map((network) => [network, null])) as Record<
+    FooterSocialNetwork,
+    string | null
+  >;
+
+/** A new, empty block of a type, visible; the Owner fills it in the dialog before it is kept. */
+export function newFooterBlock(type: FooterBlockType): WebsiteFooterBlock {
+  const base = { id: newBlockId(), visible: true };
+  switch (type) {
+    case 'SOCIAL':
+      return { ...base, type, urls: emptyUrls() };
+    case 'APP':
+      return { ...base, type, googlePlayUrl: null, appStoreUrl: null };
+    case 'TEXT':
+      return { ...base, type, textVi: '', textEn: '' };
+    case 'LINKS':
+      return {
+        ...base,
+        type,
+        titleVi: null,
+        titleEn: null,
+        items: [{ labelVi: '', labelEn: '', url: '' }],
+      };
+    case 'IMAGE':
+      return { ...base, type, mediaId: '', linkUrl: null };
+    case 'SLOGAN':
+      return { ...base, type };
+  }
+}
+
+/** The text of an optional address field: trimmed, '' is none; null when what was typed is not allowed. */
+function optionalLink(
+  value: string | null,
+  valid: (url: string) => boolean,
+): string | null | false {
+  const text = clean(value ?? '');
+  if (text === '') return null;
+  return valid(text) ? text : false;
+}
+
+/**
+ * A block as it will be saved (text cleaned, empty addresses none), or null when the API would refuse it. The dialog
+ * uses this to enable "Save", the form uses it again for the whole list.
+ */
+export function footerBlockOf(block: WebsiteFooterBlock): WebsiteFooterBlock | null {
+  const base = { id: block.id, visible: block.visible };
+  switch (block.type) {
+    case 'SOCIAL': {
+      const urls = emptyUrls();
+      for (const network of FOOTER_SOCIAL_NETWORKS) {
+        const link = optionalLink(block.urls[network], isHttpsLink);
+        if (link === false) return null;
+        urls[network] = link;
+      }
+      return FOOTER_SOCIAL_NETWORKS.some((network) => urls[network] !== null)
+        ? { ...base, type: 'SOCIAL', urls }
+        : null;
+    }
+    case 'APP': {
+      const googlePlayUrl = optionalLink(block.googlePlayUrl, isHttpsLink);
+      const appStoreUrl = optionalLink(block.appStoreUrl, isHttpsLink);
+      if (googlePlayUrl === false || appStoreUrl === false) return null;
+      return googlePlayUrl !== null || appStoreUrl !== null
+        ? { ...base, type: 'APP', googlePlayUrl, appStoreUrl }
+        : null;
+    }
+    case 'TEXT': {
+      const textVi = cleanParagraph(block.textVi);
+      const textEn = cleanParagraph(block.textEn);
+      if (
+        textVi === '' ||
+        textEn === '' ||
+        length(textVi) > FOOTER_LIMITS.text ||
+        length(textEn) > FOOTER_LIMITS.text
+      ) {
+        return null;
+      }
+      return { ...base, type: 'TEXT', textVi, textEn };
+    }
+    case 'LINKS': {
+      const titleVi = clean(block.titleVi ?? '');
+      const titleEn = clean(block.titleEn ?? '');
+      // A title in one language only would show nothing (or the wrong language) to half the visitors.
+      if ((titleVi === '') !== (titleEn === '')) return null;
+      if (length(titleVi) > FOOTER_LIMITS.title || length(titleEn) > FOOTER_LIMITS.title) {
+        return null;
+      }
+      if (block.items.length < 1 || block.items.length > FOOTER_LIMITS.links) return null;
+      const items: WebsiteFooterLink[] = [];
+      for (const item of block.items) {
+        const labelVi = clean(item.labelVi);
+        const labelEn = clean(item.labelEn);
+        const url = clean(item.url);
+        if (
+          labelVi === '' ||
+          labelEn === '' ||
+          length(labelVi) > FOOTER_LIMITS.label ||
+          length(labelEn) > FOOTER_LIMITS.label ||
+          !isSiteLink(url)
+        ) {
+          return null;
+        }
+        items.push({ labelVi, labelEn, url });
+      }
+      return {
+        ...base,
+        type: 'LINKS',
+        titleVi: titleVi === '' ? null : titleVi,
+        titleEn: titleEn === '' ? null : titleEn,
+        items,
+      };
+    }
+    case 'IMAGE': {
+      const linkUrl = optionalLink(block.linkUrl, isSiteLink);
+      if (block.mediaId === '' || linkUrl === false) return null;
+      return { ...base, type: 'IMAGE', mediaId: block.mediaId, linkUrl };
+    }
+    case 'SLOGAN':
+      return { ...base, type: 'SLOGAN' };
+  }
+}
 
 /** A custom line's own id: the API wants a UUID, and the form is where it is made. */
 export const newFactId = (): string => crypto.randomUUID();
@@ -217,6 +384,13 @@ export function shopInfoInputOf(
     whyCards.push({ ...card, ...cleaned });
   }
   if (form.whyVisible && whyCards.length === 0) return { problem: 'whyCards' };
+  if (form.footerBlocks.length > FOOTER_LIMITS.blocks) return { problem: 'footerBlocks' };
+  const footerBlocks: WebsiteFooterBlock[] = [];
+  for (const block of form.footerBlocks) {
+    const cleaned = footerBlockOf(block);
+    if (cleaned === null) return { problem: 'footerBlocks' };
+    footerBlocks.push(cleaned);
+  }
   return {
     body: {
       taglineVi,
@@ -235,6 +409,7 @@ export function shopInfoInputOf(
       whyTitleVi: whyTitleVi === '' ? null : whyTitleVi,
       whyTitleEn: whyTitleEn === '' ? null : whyTitleEn,
       whyCards,
+      footerBlocks,
     },
   };
 }
@@ -263,6 +438,7 @@ export function shopInfoChanged(a: ShopInfoForm, b: ShopInfoForm): boolean {
     whyTitleVi: clean(form.whyTitleVi),
     whyTitleEn: clean(form.whyTitleEn),
     whyCards: form.whyCards,
+    footerBlocks: form.footerBlocks,
   });
   return JSON.stringify(text(a)) !== JSON.stringify(text(b));
 }
@@ -273,7 +449,10 @@ export function shopInfoServerProblem(error: unknown): ShopInfoProblem | null {
   if (!failure || (failure.code !== 'VALIDATION_FAILED' && failure.code !== 'MEDIA_ALT_REQUIRED')) {
     return null;
   }
-  if (failure.code === 'MEDIA_ALT_REQUIRED') return 'heroMediaId';
+  if (failure.code === 'MEDIA_ALT_REQUIRED') {
+    // A picture without alt text: the hero image, or one a footer block uses (the API names which).
+    return failure.field === 'footerBlocks' ? 'footerBlocks' : 'heroMediaId';
+  }
   return typeof failure.field === 'string' && SHOP_INFO_PROBLEMS.has(failure.field)
     ? (failure.field as ShopInfoProblem)
     : null;

@@ -38,6 +38,11 @@ import { useAccount, useWorkforce } from '../session';
 import { Button, Empty, ErrorState, Notice, useResource, useSuccessToast } from '../ui';
 import { MediaPicker } from './media-picker';
 import {
+  FooterBlockDrawer,
+  FooterBlocksEditor,
+  type FooterBlockEditor,
+} from './website-footer-blocks';
+import {
   FactsEditor,
   GroupsEditor,
   ShopListDialogs,
@@ -73,6 +78,7 @@ function ShopInfoForm_() {
   const [pending, setPending] = useState(false);
   const [picking, setPicking] = useState(false);
   const [listEditor, setListEditor] = useState<ShopListEditor>(null);
+  const [footerEditor, setFooterEditor] = useState<FooterBlockEditor>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
 
   useEffect(() => {
@@ -333,6 +339,12 @@ function ShopInfoForm_() {
                   <p className="ls-hint">{text.hoursNone}</p>
                 )}
               </FormSection>
+              <FooterBlocksEditor
+                form={form}
+                onChange={change}
+                onEdit={setFooterEditor}
+                problem={error('footerBlocks')}
+              />
               {message ? <Notice tone="error">{message}</Notice> : null}
             </Stack>
           </Card>
@@ -390,6 +402,12 @@ function ShopInfoForm_() {
         info={info}
         onChange={change}
         onClose={() => setListEditor(null)}
+      />
+      <FooterBlockDrawer
+        editor={footerEditor}
+        form={form}
+        onChange={change}
+        onClose={() => setFooterEditor(null)}
       />
       {picking ? (
         <MediaPicker

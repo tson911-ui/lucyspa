@@ -53,14 +53,24 @@ export interface FooterColumn {
   items: readonly ReactNode[];
 }
 
+/** One block of the brand column: the Owner's order, a stable key, the drawn content. */
+export interface FooterBlockItem {
+  key: string;
+  node: ReactNode;
+}
+
+/**
+ * The public footer: the brand column (the logo, then the Owner's blocks; the logo alone when there are none), the
+ * columns, and the base line.
+ */
 export function SiteFooter({
   brand,
-  tagline,
+  blocks = [],
   columns,
   base,
 }: {
   brand: ReactNode;
-  tagline?: string | null | undefined;
+  blocks?: readonly FooterBlockItem[] | undefined;
   columns: readonly FooterColumn[];
   base: ReactNode;
 }) {
@@ -69,7 +79,15 @@ export function SiteFooter({
       <div className="ls-container ls-site-footer-grid">
         <div className="ls-site-footer-brand">
           {brand}
-          {tagline ? <p>{tagline}</p> : null}
+          {blocks.length > 0 ? (
+            <div className="ls-site-footer-blocks">
+              {blocks.map((block) => (
+                <div key={block.key} className="ls-site-footer-block">
+                  {block.node}
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
         {columns.map((column) => (
           <div key={column.key}>

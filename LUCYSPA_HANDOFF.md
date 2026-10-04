@@ -429,3 +429,9 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 
 - The Owner's production export (1 branch, 4 groups, 23 services) was imported into the scratch DB only and the public and member pages were re-audited on it: 78 renders, 0 findings, 0 axe. Fixes (CSS and tests in `packages/ui` only, no migration): four home groups form a 2 x 2 block; per-nail booking rows put the price under the name on phones (it squeezed the name to 23 px, FR11); breadcrumb links are at least as wide as tall; the section count uses the sans face.
 - Scratch-only data (git-ignored `.local/`): the importer now gives each service the one skill most staff at an active branch hold (before, no start time existed); real-service customers `*.real@example.com`; scratch registration needs `API_PORT=3101 node .local/uxui-audit/start-api-keys.mjs`. Report: docs/UXUI_REDESIGN_PART2_TYPE_SCALE.md.
+
+### UX/UI Part 2 follow-up: footer block area - 2026-10-04
+
+- The footer brand column under the logo is a block area managed in Admin > Website > Shop info (add, edit, delete, reorder, show/hide; 12 at most): social icons, app badges (official Google Play and App Store files, unmodified, `apps/web/public/badges`), text, link list, image, slogan. **Default none, nothing seeded: the footer is the logo alone, so the tagline leaves the footer until a Slogan block is added.**
+- **One additive migration on deploy:** `20261026000000_uxui_part2_footer_blocks` (`footer_blocks` JSONB default `[]` + CHECK). A server at `d59d02c` also has `20261024` and `20261025` pending; the Part 2 runbook lists only up to `20261023`. Check `/badges/*` answer 200 after deploy.
+- Image blocks are counted by the media library's usage list and delete protection, and served publicly only while visible. Report: docs/UXUI_REDESIGN_PART2_FOOTER_BLOCKS.md.
