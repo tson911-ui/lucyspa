@@ -8,6 +8,7 @@ import type {
 } from '@lucy-spa/contracts';
 import { LOYALTY_ADJUSTMENT_MAX_POINTS } from '@lucy-spa/contracts';
 import { loyaltyDictionary } from '../../i18n/loyalty';
+import { fill } from '../../i18n/workforce';
 import type { Locale } from '../../i18n/locales';
 import type { WorkforceDictionary } from '../../i18n/workforce';
 import { ApiError } from './api';
@@ -54,6 +55,15 @@ export function loyaltyErrorMessage(
   locale: Locale,
 ): string {
   const texts = loyaltyDictionary(locale).errors as Record<string, string>;
+  // A refused manual deduction names the current balance as the field `balance<N>` (Owner decision on P5-T8).
+  if (error instanceof ApiError && error.code === 'LOYALTY_BALANCE_TOO_LOW') {
+    const balance = /^balance([0-9]+)$/.exec(error.field ?? '')?.[1];
+    if (balance !== undefined) {
+      return fill(texts.LOYALTY_BALANCE_TOO_LOW as string, {
+        n: formatPoints(Number(balance), locale),
+      });
+    }
+  }
   if (error instanceof ApiError && error.code in texts) return texts[error.code] as string;
   return errorMessage(error, t);
 }

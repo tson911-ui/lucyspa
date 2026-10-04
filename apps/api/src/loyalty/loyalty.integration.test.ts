@@ -899,21 +899,57 @@ test(
                 await fails(() => loyalty.exceptions(viewer.token, {}), 'FORBIDDEN');
                 await fails(() => loyalty.exceptions(adjuster.token, {}), 'FORBIDDEN');
 
-                // A manual deduction larger than the balance clamps the same way (P5-T8).
-                const clamped = await ok(() =>
-                  loyalty.adjust(adjuster.token, erin.id, {
-                    wallet: 'SPA',
-                    points: -40,
-                    reason: 'Sửa nhầm',
-                    clientRequestId: randomUUID(),
-                  }),
+                // Owner decision on P5-T8: a MANUAL deduction larger than the balance is refused (hard block):
+                // nothing is written and no exception row is created. Reversals keep the clamp above.
+                const frank = await customer('frank');
+                const manual = (points: number, extra: Record<string, unknown> = {}) => ({
+                  wallet: 'SPA' as const,
+                  points,
+                  reason: 'Sửa nhầm',
+                  clientRequestId: randomUUID(),
+                  ...extra,
+                });
+                const seeded = await ok(() => loyalty.adjust(adjuster.token, frank.id, manual(50)));
+                const tooMuch = async (points: number, balance: number, extra = {}) => {
+                  await assert.rejects(
+                    () => loyalty.adjust(adjuster.token, frank.id, manual(points, extra)),
+                    (error: unknown) =>
+                      Reflect.get(Object(error), 'code') === 'LOYALTY_BALANCE_TOO_LOW' &&
+                      Reflect.get(Object(error), 'field') === `balance${balance}`,
+                  );
+                };
+                const exceptionsBefore = (await loyalty.exceptions(examiner.token, {})).total;
+                const entriesBefore = (await ledgerOf(frank.id)).length;
+                await tooMuch(-51, 50);
+                await tooMuch(-51, 50, { correctsEntryId: seeded.entry.id });
+                await tooMuch(-40, 0, { wallet: 'BEAUTY' });
+                assert.equal(
+                  (await ledgerOf(frank.id)).length,
+                  entriesBefore,
+                  'nothing was written',
                 );
-                assert.equal(clamped.entry.points, 0);
-                assert.equal(clamped.entry.shortfallPoints, 40);
-                assert.equal(clamped.wallet.balancePoints, 0);
-                assert.equal(await balanceOf(erin.id), await ledgerSum(erin.id));
-                const after = await loyalty.exceptions(examiner.token, {});
-                assert.equal(after.total, listed.total + 1);
+                assert.equal(await balanceOf(frank.id), 50);
+                assert.equal(
+                  (await loyalty.exceptions(examiner.token, {})).total,
+                  exceptionsBefore,
+                  'no exception row',
+                );
+                assert.equal(
+                  await tx.outboxEvent.count({
+                    where: {
+                      eventType: 'LOYALTY_SHORTFALL_FLAGGED',
+                      payload: { path: ['userId'], equals: frank.id },
+                    },
+                  }),
+                  0,
+                );
+                // Exactly the balance is allowed and brings it to 0.
+                const all = await ok(() => loyalty.adjust(adjuster.token, frank.id, manual(-50)));
+                assert.equal(all.entry.points, -50);
+                assert.equal(all.entry.shortfallPoints, 0);
+                assert.equal(await balanceOf(frank.id), 0);
+                await tooMuch(-1, 0);
+                assert.equal(await balanceOf(frank.id), await ledgerSum(frank.id));
               },
             );
 

@@ -129,6 +129,7 @@ export {
   LOYALTY_AGGREGATE,
   LOYALTY_CONSUMER,
   LOYALTY_EVENT_TYPES,
+  LoyaltyBalanceError,
   processLoyaltyEvent,
   relayLoyaltyEvents,
   reversalKey,

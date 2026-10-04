@@ -5,7 +5,7 @@ import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createDatabaseClient } from '@lucy-spa/database';
-import { appendLedgerEntry, processLoyaltyEvent } from '@lucy-spa/server';
+import { appendLedgerEntry, LoyaltyBalanceError, processLoyaltyEvent } from '@lucy-spa/server';
 
 /**
  * Phase 5 P5-3 ledger races on separate committed PostgreSQL connections (real production functions, no
@@ -106,6 +106,50 @@ test(
         );
         assert.equal(ledger.filter((row) => row.shortfallPoints > 0).length >= 4, true);
       });
+
+      await suite.test(
+        'concurrent MANUAL deductions are hard-blocked beyond the balance',
+        async () => {
+          const id = await customer();
+          await entry(id, `RACE:${id}:seed`, 100);
+          const results = await Promise.allSettled(
+            Array.from({ length: 8 }, (_, i) =>
+              database.$transaction(
+                (tx) =>
+                  appendLedgerEntry(tx, {
+                    userId: id,
+                    wallet: 'SPA',
+                    kind: 'MANUAL_ADJUSTMENT',
+                    points: -30,
+                    idempotencyKey: `RACE:${id}:manual${i}`,
+                    reason: 'Race',
+                    actorUserId: id,
+                    refuseBeyondBalance: true,
+                  }),
+                { timeout: 30_000, maxWait: 10_000 },
+              ),
+            ),
+          );
+          assert.equal(results.filter((result) => result.status === 'fulfilled').length, 3);
+          for (const result of results) {
+            if (result.status === 'rejected')
+              assert.ok(result.reason instanceof LoyaltyBalanceError);
+          }
+          const wallet = await database.loyaltyWalletAccount.findUniqueOrThrow({
+            where: { userId_wallet: { userId: id, wallet: 'SPA' } },
+          });
+          assert.equal(wallet.balancePoints, 10);
+          const ledger = await database.loyaltyLedgerEntry.findMany({ where: { userId: id } });
+          assert.equal(
+            ledger.reduce((sum, row) => sum + row.points, 0),
+            10,
+          );
+          assert.ok(
+            ledger.every((row) => row.shortfallPoints === 0),
+            'no shortfall from a manual deduction',
+          );
+        },
+      );
 
       await suite.test('one idempotency key writes one entry', async () => {
         const id = await customer();

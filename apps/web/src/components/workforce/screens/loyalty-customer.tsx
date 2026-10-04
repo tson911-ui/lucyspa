@@ -111,13 +111,9 @@ export function LoyaltyCustomerScreen({ userId }: { userId: string }) {
   const { customer, goLive, wallets, can } = profile.data;
   const canAdjust = can.adjust && goLive.active;
 
-  const done = (result: LoyaltyAdjustmentResponse) => {
+  const done = (_result: LoyaltyAdjustmentResponse) => {
     setOverlay(null);
-    notify(
-      result.entry.shortfallPoints > 0
-        ? fill(l.adjust.doneShortfall, { n: formatPoints(result.entry.shortfallPoints, locale) })
-        : l.adjust.done,
-    );
+    notify(l.adjust.done);
     void profile.reload();
     void ledger.reload();
   };

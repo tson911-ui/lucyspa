@@ -13,7 +13,7 @@ import {
   type WalkInMemberLookupResponse,
 } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
-import { appendLedgerEntry } from '@lucy-spa/server';
+import { appendLedgerEntry, LoyaltyBalanceError } from '@lucy-spa/server';
 import { AuthError } from '../auth/auth.error.js';
 import { hasFreshReauthentication } from '../auth/session.policy.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
@@ -315,8 +315,8 @@ function adjustmentInput(input: LoyaltyAdjustmentRequest) {
 /**
  * Manual points adjustment (PRD 18.4): amount, wallet, reason, actor and time, written as a NEW ledger entry
  * (optionally linked to the entry it offsets; one correction per entry). `ADJUST_LOYALTY_POINTS` (GLOBAL_ONLY,
- * FINANCIAL) and a fresh re-authentication. A deduction larger than the balance takes what the balance has, records
- * the shortfall and flags it (P5-T8). A replay of the same `clientRequestId` returns the stored result.
+ * FINANCIAL) and a fresh re-authentication. A deduction larger than the balance is REFUSED (Owner decision on P5-T8:
+ * hard block; error `LOYALTY_BALANCE_TOO_LOW` carrying the balance, nothing written, no exception row). A replay of the same `clientRequestId` returns the stored result.
  */
 export async function adjustPoints(
   context: AdminContext,
@@ -345,16 +345,26 @@ export async function adjustPoints(
     if (target.correction) throw new AuthError('LOYALTY_ENTRY_ALREADY_CORRECTED');
   }
   const kind = input.correctsEntryId ? 'MANUAL_CORRECTION' : 'MANUAL_ADJUSTMENT';
-  const result = await appendLedgerEntry(tx, {
-    userId,
-    wallet: input.wallet,
-    kind,
-    points: input.points,
-    idempotencyKey: `MANUAL:${context.actor.userId}:${input.clientRequestId}`,
-    reason: input.reason,
-    actorUserId: context.actor.userId,
-    ...(input.correctsEntryId ? { correctsEntryId: input.correctsEntryId } : {}),
-  });
+  let result: Awaited<ReturnType<typeof appendLedgerEntry>>;
+  try {
+    result = await appendLedgerEntry(tx, {
+      userId,
+      wallet: input.wallet,
+      kind,
+      points: input.points,
+      idempotencyKey: `MANUAL:${context.actor.userId}:${input.clientRequestId}`,
+      reason: input.reason,
+      actorUserId: context.actor.userId,
+      refuseBeyondBalance: true,
+      ...(input.correctsEntryId ? { correctsEntryId: input.correctsEntryId } : {}),
+    });
+  } catch (error) {
+    // Owner decision on P5-T8: a manual deduction larger than the balance is refused, nothing is written.
+    if (error instanceof LoyaltyBalanceError) {
+      throw new AuthError('LOYALTY_BALANCE_TOO_LOW', `balance${error.balance}`);
+    }
+    throw error;
+  }
   if (!result.created) {
     // The same client request must mean the same adjustment; anything else is a conflict.
     if (

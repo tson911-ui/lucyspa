@@ -44,7 +44,7 @@ export interface LedgerEffect {
   readonly userId: string;
   readonly wallet: LoyaltyWalletName;
   readonly kind: Exclude<LoyaltyLedgerKindName, 'REFERRAL_AWARD'>;
-  /** Signed requested points, never 0. A negative request is clamped to the balance (P5-Q5, P5-T8). */
+  /** Signed requested points, never 0. A negative request is clamped to the balance (P5-Q5, reversals only) unless `refuseBeyondBalance`. */
   readonly points: number;
   readonly idempotencyKey: string;
   readonly invoiceId?: string;
@@ -54,6 +54,19 @@ export interface LedgerEffect {
   readonly reason?: string;
   readonly actorUserId?: string;
   readonly branchId?: string | null;
+  /**
+   * A manual deduction (Owner decision on P5-T8: hard block). When the request is larger than the balance nothing is
+   * written and `LoyaltyBalanceError` is thrown; reversals leave this off and keep the P5-Q5 clamp.
+   */
+  readonly refuseBeyondBalance?: boolean;
+}
+
+/** A manual deduction larger than the current balance: refused, nothing written, no exception row. */
+export class LoyaltyBalanceError extends Error {
+  constructor(readonly balance: number) {
+    super('The balance is smaller than the deduction');
+    this.name = 'LoyaltyBalanceError';
+  }
 }
 
 export interface LedgerResult {
@@ -128,6 +141,9 @@ export async function appendLedgerEntry(
   }
 
   const requestedDebit = effect.points < 0 ? -effect.points : 0;
+  if (effect.refuseBeyondBalance && requestedDebit > wallet.balance_points) {
+    throw new LoyaltyBalanceError(wallet.balance_points);
+  }
   const appliedDebit = Math.min(requestedDebit, wallet.balance_points);
   const applied = effect.points > 0 ? effect.points : appliedDebit === 0 ? 0 : -appliedDebit;
   const shortfall = requestedDebit - appliedDebit;

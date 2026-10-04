@@ -90,7 +90,7 @@ const vi = {
     title: 'Điều chỉnh điểm',
     correctTitle: 'Điều chỉnh sửa lỗi',
     description:
-      'Ghi một dòng điều chỉnh mới vào lịch sử điểm. Dòng cũ không bao giờ bị sửa hay xóa. Không thể trừ quá số dư: phần thiếu được ghi lại và báo vào mục “Ngoại lệ”.',
+      'Ghi một dòng điều chỉnh mới vào lịch sử điểm. Dòng cũ không bao giờ bị sửa hay xóa. Không thể trừ quá số dư hiện có.',
     correctDescription:
       'Dòng sửa lỗi này gắn với giao dịch đã chọn và chỉ ghi được một lần cho mỗi giao dịch.',
     wallet: 'Ví điểm',
@@ -104,8 +104,6 @@ const vi = {
     submit: 'Ghi điều chỉnh',
     submitting: 'Đang ghi…',
     done: 'Đã ghi điều chỉnh điểm.',
-    doneShortfall:
-      'Đã ghi điều chỉnh. Số dư không đủ nên {n} điểm bị thiếu và đã được báo ở mục “Ngoại lệ”.',
   },
   exceptions: {
     title: 'Điểm bị thiếu khi thu hồi hoặc trừ',
@@ -134,6 +132,7 @@ const vi = {
     ownerOnly: 'Chỉ Chủ spa mới thấy và thực hiện được thao tác này.',
   },
   errors: {
+    LOYALTY_BALANCE_TOO_LOW: 'Số dư chỉ còn {n} điểm',
     LOYALTY_NOT_LIVE: 'Chương trình điểm thưởng chưa được bật nên chưa thể ghi điểm.',
     LOYALTY_ALREADY_LIVE: 'Chương trình điểm thưởng đã được bật trước đó.',
     LOYALTY_ENTRY_ALREADY_CORRECTED: 'Giao dịch này đã có một điều chỉnh sửa lỗi.',
@@ -210,7 +209,7 @@ const en: Dictionary = {
     title: 'Adjust points',
     correctTitle: 'Correction adjustment',
     description:
-      'Writes a new adjustment line to the points history. Earlier lines are never edited or deleted. A deduction cannot go below the balance: the shortfall is recorded and flagged under “Exceptions”.',
+      'Writes a new adjustment line to the points history. Earlier lines are never edited or deleted. A deduction cannot be larger than the current balance.',
     correctDescription:
       'This correction is linked to the chosen transaction and can be written once per transaction.',
     wallet: 'Points wallet',
@@ -224,8 +223,6 @@ const en: Dictionary = {
     submit: 'Record adjustment',
     submitting: 'Recording…',
     done: 'Points adjustment recorded.',
-    doneShortfall:
-      'Adjustment recorded. The balance was too small, so {n} points were short and flagged under “Exceptions”.',
   },
   exceptions: {
     title: 'Points short on a reversal or deduction',
@@ -254,6 +251,7 @@ const en: Dictionary = {
     ownerOnly: 'Only the Owner sees and can do this.',
   },
   errors: {
+    LOYALTY_BALANCE_TOO_LOW: 'The balance is only {n} points',
     LOYALTY_NOT_LIVE: 'The loyalty programme is not switched on yet, so points cannot be recorded.',
     LOYALTY_ALREADY_LIVE: 'The loyalty programme was already switched on.',
     LOYALTY_ENTRY_ALREADY_CORRECTED: 'This transaction already has a correction.',

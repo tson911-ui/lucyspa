@@ -70,7 +70,7 @@ free entitlements generate no tour (§17.6); service/combo refunds do not exist 
 | P5-T5  | **`calculation_version = 2`**; drafts are recalculated at finalization under the version then in force; finalized v1 invoices are never touched (section 6.4).                                                                                                      | P5-4          |
 | P5-T6  | **Tie-break including the Member Discount:** equal amounts → the Member Discount wins (it consumes no limited resource), then Phase 4 order (program `code`, program id, voucher `code`).                                                                           | P5-4          |
 | P5-T7  | **Birthday is a separate layer applied after the single ordinary winner**, only when its configuration says it combines; a missing rule means no stacking (section 6.3).                                                                                            | P5-6          |
-| P5-T8  | **(PENDING OWNER APPROVAL)** **P5-Q5 applies to every negative ledger entry**, manual adjustments included: apply what the balance allows, record the shortfall, flag it.                                                                                           | P5-3          |
+| P5-T8  | **(REJECTED by the Owner; hard block instead, see 2.5)** P5-Q5 applies to every negative ledger entry, manual adjustments included.                                                                                                                                 | P5-3          |
 | P5-T9  | **Stale-episode guard:** the consumer awards only if the paid episode is still current at processing time (section 4.4).                                                                                                                                            | P5-3          |
 | P5-T10 | **Referral binding window and resolution rules** of section 7.2-7.4, including the uniform public-signup response and the canonical phone index.                                                                                                                    | P5-5          |
 | P5-T11 | **Combo sessions are individual rows** (kind `PAID` or `BONUS`), consumed at invoice finalization with an append-only release, mirroring Phase 4 redemptions.                                                                                                       | P5-7          |
@@ -115,9 +115,9 @@ None of these blocked P5-1. The Owner asked to be asked about OQ-2 … OQ-11 **o
 - **OQ-3 is answered by the Owner's own P5-3 instruction:** the P5-Q5 shortfall is flagged as a row in a permission-gated **loyalty exceptions list** in the admin area
   (derived from ledger entries with `shortfall_points > 0`; read-only; no notification, P5-Q9). OQ-4 … OQ-11 stay open.
 - **OQ-2: Owner-approved (confirmed by the Owner after the P5-3 review).** Every Spa service line and every combo purchase earns; tips are excluded; points = `floor(total_vnd / 1000)` of the PAID invoice (4.1, 4.3).
-- **P5-T8: PENDING OWNER APPROVAL (not approved).** An earlier line here calling it approved was wrong and is withdrawn. The proposal: every negative ledger entry, a manual
-  adjustment included, applies what the balance allows, records the shortfall and flags it (3.3). Only the _reversal_ case is Owner-locked (P5-Q5). The P5-3 code already
-  clamps manual deductions the same way; that behaviour stays provisional until the Owner answers.
+- **P5-T8: REJECTED by the Owner (2026-10-04), replaced by a hard block.** A manual deduction (adjustment or linked correction) larger than the current balance is
+  **refused** with "Số dư chỉ còn X điểm": nothing is written to the ledger and no exception row is created. A deduction up to the balance is allowed. The
+  **reversal** of earned points (invoice reopened or cancelled) keeps the Owner-locked P5-Q5 rule: floor at 0, record the shortfall, flag it as an exception (3.3).
 - **Owner review of P5-3 (approved):** reading loyalty follows the branch (`VIEW_LOYALTY` at the staff member's branch, like the POS member lookup); points are taken back on
   `INVOICE_REOPENED` / `INVOICE_CANCELLED` (not `PAYMENT_REVERSED`, which always comes with `INVOICE_REOPENED` for a paid invoice).
 - Implementation notes of P5-3 (no decision changed): reversal is keyed on `INVOICE_REOPENED` and `INVOICE_CANCELLED` per 4.4 (`PAYMENT_REVERSED` always comes with
@@ -145,9 +145,12 @@ None of these blocked P5-1. The Owner asked to be asked about OQ-2 … OQ-11 **o
 No automatic expiry, annual reset or rolling expiry. No point can reduce an invoice, be mixed with money, be transferred or be
 converted (PRD §18.2-18.3). The Member Discount never deducts points. A reward's own expiry never expires points (PRD §21).
 
-### 3.3 Never below zero (P5-Q5; manual deductions: P5-T8, pending Owner approval)
+### 3.3 Never below zero (P5-Q5 for reversals; hard block for manual deductions)
 
-For any negative entry of `r` points on a balance `b`: `applied = min(r, b)`; the entry stores `points = -applied` and
+**Manual deductions (Owner decision, P5-T8 rejected):** a manual adjustment or correction of `r` points on a balance `b < r` is refused ("Số dư chỉ còn `b` điểm"); nothing is written, no
+exception row. The clamp below applies to **reversals only**.
+
+For a reversal of `r` points on a balance `b`: `applied = min(r, b)`; the entry stores `points = -applied` and
 `shortfall_points = r - applied`; if `shortfall_points > 0` an exception record is created for the Owner (surface: OQ-3). The original
 earn entry is untouched. Because the stored amount is the applied amount, `balance = Σ points` still holds.
 

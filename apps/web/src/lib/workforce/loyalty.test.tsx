@@ -160,6 +160,15 @@ test('tier tone, URL state and error text', () => {
   assert.deepEqual(normalizeLoyaltyPage({ tab: 'nope', page: 2 }), { tab: '', page: 2 });
   const refused = new ApiError(409, 'LOYALTY_NOT_LIVE');
   assert.equal(loyaltyErrorMessage(refused, vi, 'vi'), l.errors.LOYALTY_NOT_LIVE);
+  // Owner decision on P5-T8: a manual deduction beyond the balance names the balance.
+  assert.equal(
+    loyaltyErrorMessage(new ApiError(409, 'LOYALTY_BALANCE_TOO_LOW', 'balance1130'), vi, 'vi'),
+    'Số dư chỉ còn 1.130 điểm',
+  );
+  assert.equal(
+    loyaltyErrorMessage(new ApiError(409, 'LOYALTY_BALANCE_TOO_LOW', 'balance50'), vi, 'en'),
+    'The balance is only 50 points',
+  );
   assert.equal(loyaltyErrorMessage(new ApiError(403, 'FORBIDDEN'), vi, 'vi'), vi.errors.forbidden);
   assert.equal(
     loyaltyErrorMessage(new ApiError(409, 'LOYALTY_ALREADY_LIVE'), vi, 'vi'),

@@ -96,6 +96,8 @@ const errors = {
   // Phase 5 P5-3: loyalty points and the Owner's go-live switch.
   LOYALTY_NOT_LIVE: [409, 'The loyalty programme has not been switched on yet'],
   LOYALTY_ALREADY_LIVE: [409, 'The loyalty programme is already switched on'],
+  // The field carries the current balance as `balance<N>` so the screen can say "Số dư chỉ còn N điểm".
+  LOYALTY_BALANCE_TOO_LOW: [409, 'A manual deduction cannot be larger than the balance'],
   LOYALTY_ENTRY_ALREADY_CORRECTED: [409, 'This ledger entry already has a correction'],
 } as const;
 
