@@ -153,8 +153,8 @@ test('editing starts from the saved version, including a usage limit that was ch
 
 test('texts: the gift, its window, the combine switches and the usage limit read in Vietnamese and English', () => {
   const v = version();
-  assert.equal(giftText(v, 'vi'), '7,5% của số tiền còn lại sau ưu đãi tốt nhất');
-  assert.equal(giftText(v, 'en'), '7.5% of the amount left after the best offer');
+  assert.equal(giftText(v, 'vi'), 'Giảm 7,5%');
+  assert.equal(giftText(v, 'en'), '7.5% off');
   assert.equal(giftText(v, 'vi', true), '7,5%');
   const money = version({ kind: 'FIXED_AMOUNT', percentBp: null, fixedAmountVnd: '50000' });
   assert.equal(giftText(money, 'vi', true), '50.000 ₫');
@@ -163,7 +163,10 @@ test('texts: the gift, its window, the combine switches and the usage limit read
     windowText(version({ windowDaysBefore: 0, windowDaysAfter: 0 }), 'vi'),
     'Đúng ngày sinh nhật',
   );
-  assert.equal(combineText(v, 'vi'), 'Được cộng thêm với: giảm giá hội viên');
+  assert.equal(
+    combineText(v, 'vi'),
+    'Được cộng thêm với: giảm giá hội viên (tính trên số còn lại sau ưu đãi đó)',
+  );
   assert.ok(combineText(version({ combineMember: false }), 'vi').startsWith('Không cộng thêm'));
   assert.equal(
     usageText({ mode: 'PER_YEAR', perYear: 1 }, 'vi'),

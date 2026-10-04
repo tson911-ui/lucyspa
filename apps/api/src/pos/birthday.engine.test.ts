@@ -249,6 +249,56 @@ test('a fixed gift never exceeds what is left; nothing left means no gift', () =
   assert.equal(none.reason, 'NO_AMOUNT');
 });
 
+test('Owner example: not combinable, both on the ORIGINAL total: 100,000 with a 60,000 offer and a fixed 80,000 gift, the gift wins and 20,000 is paid', () => {
+  const base = ordinary({ gross: 100_000n, promotions: [program('SALE60', 6000)] });
+  assert.equal(base.winner?.amountVnd, 60_000n);
+  const evaluation = evaluateBirthday(base, context({ fixedAmountVnd: 80_000n }));
+  assert.equal(evaluation.mode, 'REPLACES_OFFER');
+  assert.equal(
+    evaluation.baseVnd,
+    100_000n,
+    'the original total, not the 40,000 left after the offer',
+  );
+  assert.equal(evaluation.amountVnd, 80_000n);
+  const result = withBirthday(base, evaluation);
+  assert.equal(result.discountTotalVnd, 80_000n);
+  assert.equal(result.totalVnd, 20_000n);
+  assert.equal(result.winner, null, 'the offer is not applied or redeemed');
+  assert.equal(result.winnerSource, 'BIRTHDAY');
+});
+
+test('not combinable, a percentage gift is also taken on the original total: 20% of 500,000 = 100,000 beats a 75,000 offer', () => {
+  const base = ordinary({ gross: 500_000n, promotions: [program('SALE15', 1500)] });
+  const evaluation = evaluateBirthday(
+    base,
+    context({ kind: 'PERCENT', percentBp: 2000, fixedAmountVnd: null }),
+  );
+  assert.equal(evaluation.mode, 'REPLACES_OFFER');
+  assert.equal(evaluation.baseVnd, 500_000n);
+  assert.equal(withBirthday(base, evaluation).totalVnd, 400_000n);
+  // A 10% gift is 50,000 on the original total: smaller than the offer, so the offer stays and the gift is not used.
+  const smaller = evaluateBirthday(
+    base,
+    context({ kind: 'PERCENT', percentBp: 1000, fixedAmountVnd: null }),
+  );
+  assert.equal(smaller.applied, false);
+  assert.equal(smaller.reason, 'OFFER_IS_BETTER');
+  assert.equal(smaller.baseVnd, 500_000n);
+  assert.equal(withBirthday(base, smaller).totalVnd, 425_000n);
+});
+
+test('the remaining-amount base applies only when the gift IS allowed to combine', () => {
+  const base = ordinary({ gross: 100_000n, promotions: [program('SALE60', 6000)] });
+  const stacked = evaluateBirthday(
+    base,
+    context({ fixedAmountVnd: 80_000n, combinePromotion: true }),
+  );
+  assert.equal(stacked.mode, 'STACKED');
+  assert.equal(stacked.baseVnd, 40_000n);
+  assert.equal(stacked.amountVnd, 40_000n, 'capped by what is left after the offer');
+  assert.equal(withBirthday(base, stacked).totalVnd, 0n);
+});
+
 test('no gift context: the result is exactly the ordinary result', () => {
   const base = ordinary({ gross: 500_000n, member: diamond });
   assert.equal(withBirthday(base, null), base);

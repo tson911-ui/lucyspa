@@ -33,7 +33,10 @@ export interface InvoiceBirthdayGift {
   minSpendVnd: string;
   /** The birthday (business date, `YYYY-MM-DD`) the invoice date belongs to; 28 February for a 29 February birthday in a non-leap year. */
   birthdayOn: string;
-  /** The amount the gift is computed on: the eligible amount left after the best offer. */
+  /**
+   * The amount the gift is computed on: the eligible amount left after the offer when the gift is added to it (`STACKED`), the original
+   * eligible total when it stands alone, replaces the offer or is compared with it (both are taken on the original total).
+   */
   baseVnd: string;
   /** The gift computed on that base (also shown when it was not applied). */
   amountVnd: string;

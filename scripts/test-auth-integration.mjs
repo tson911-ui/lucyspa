@@ -1,4 +1,6 @@
 // Explicit entry point; ordinary unit tests never access the configured database.
+// Safety (Owner rule 2026-10-05): refuse to run unless DATABASE_URL names a scratch or test database.
+await import('../packages/database/dist/assert-test-database.js');
 process.env['RUN_AUTH_INTEGRATION'] = 'true';
 await import('../apps/api/dist/auth/session.integration.test.js');
 await import('../apps/api/dist/auth/registration.integration.test.js');

@@ -9,12 +9,13 @@ import { percentAmount, type EngineResult } from './discount.engine.js';
  * Phase 5 P5-6: the birthday gift layer (design 6.3, 8; Owner decisions of 2026-10-04, OQ-8). A PURE function of stored inputs:
  * integer VND in `bigint`, no I/O. It runs AFTER the single ordinary winner of `evaluateDiscounts`:
  *
- * - the base of the gift is the eligible amount LEFT AFTER the best offer (`subtotal - ordinary amount`);
- * - a percentage rounds half up to 1 VND, a fixed amount is capped by the base (money gifts only);
- * - when the configuration allows the gift to combine with the winner's source, it is ADDED to the offer (`STACKED`);
- * - when it does not, it is compared with the offer and the LARGER discount wins: the gift replaces the offer only when its
- *   amount is strictly larger (a tie keeps the offer, so the yearly gift is not used up);
- * - with no ordinary winner the gift stands alone (`ALONE`).
+ * - a percentage rounds half up to 1 VND, a fixed amount is capped by its base (money gifts only);
+ * - when the configuration allows the gift to combine with the winner's source, it is ADDED to the offer (`STACKED`) and its
+ *   base is the eligible amount LEFT AFTER the best offer (`subtotal - ordinary amount`);
+ * - when it does not, the gift and the offer are BOTH calculated on the ORIGINAL eligible total (Owner, 2026-10-05) and the LARGER
+ *   discount wins: the gift replaces the offer only when its amount is strictly larger (a tie keeps the offer and the gift is
+ *   not counted as used). Example: 100,000 with a 60,000 offer against a fixed 80,000 gift: the gift wins, 20,000 is paid;
+ * - with no ordinary winner the gift stands alone (`ALONE`) on the original total.
  *
  * Whether the invoice is in the payer's window, the go-live switch, the guest payer and the usage count are decided by the
  * loader (`discount.eval.ts`); this function is handed the occurrence and the number of active uses in its year.
@@ -129,7 +130,9 @@ export function evaluateBirthday(
 ): BirthdayEvaluation {
   const { version } = context;
   const ordinary = ordinaryAmount(result);
-  const baseVnd = result.subtotalVnd - ordinary;
+  // The remaining amount is the base ONLY when the gift is added to the offer; against the offer (or alone) it is the original total.
+  const stacks = result.winnerSource !== null && combinesWith(version, result.winnerSource);
+  const baseVnd = stacks ? result.subtotalVnd - ordinary : result.subtotalVnd;
   const amountVnd = giftAmount(version, baseVnd);
   const notApplied = (reason: BirthdayNotAppliedReason): BirthdayEvaluation => ({
     context,
@@ -157,8 +160,8 @@ export function evaluateBirthday(
     reason: null,
   });
   if (result.winnerSource === null) return applied('ALONE');
-  if (combinesWith(version, result.winnerSource)) return applied('STACKED');
-  // Not allowed to combine: the larger discount wins; a tie keeps the offer.
+  if (stacks) return applied('STACKED');
+  // Not allowed to combine: both on the original total, the larger discount wins; a tie keeps the offer.
   return amountVnd > ordinary ? applied('REPLACES_OFFER') : notApplied('OFFER_IS_BETTER');
 }
 

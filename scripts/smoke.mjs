@@ -10,6 +10,10 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 
+// Safety (Owner rule 2026-10-05): the smoke run starts the real API against DATABASE_URL, so it refuses anything but a scratch or
+// test database (the CI job's throw-away container database is accepted under CI=true).
+await import('../packages/database/dist/assert-test-database.js');
+
 const root = fileURLToPath(new URL('../', import.meta.url));
 const children = [];
 // The production API requires an absolute media directory (UX/UI Step 11); the probe uses a throwaway one.

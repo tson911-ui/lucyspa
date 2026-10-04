@@ -61,21 +61,21 @@ free entitlements generate no tour (§17.6); service/combo refunds do not exist 
 
 ### 2.2 Proposed technical decisions (need Owner approval)
 
-| #      | Proposal                                                                                                                                                                                                                                                                             | Needed before |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
-| P5-T1  | **Points are awarded and reversed asynchronously** by the `loyalty` outbox consumer (P4 §15.2). Redemptions, releases and the tier snapshot are **synchronous** inside the invoice commands. A loyalty fault therefore never blocks a payment. Consequence in 12.3.                  | P5-2          |
-| P5-T2  | **One Owner-activated go-live instant** (`loyalty_go_live.go_live_at`, set once, immutable, audited) gates the whole module (points, tiers, referral, birthday, combos). Before it is set Phase 5 code is dormant and invoices behave exactly as in Phase 4.                         | P5-2          |
-| P5-T3  | **The tier is read at finalization** under lock and **snapshotted**; a DRAFT only shows a non-binding preview (section 5.3).                                                                                                                                                         | P5-4          |
-| P5-T4  | **The Member Discount and points follow the payer** (same identity as OP-3), using the payer's Spa tier. A guest payer has no Member Discount.                                                                                                                                       | P5-4          |
-| P5-T5  | **`calculation_version = 2`**; drafts are recalculated at finalization under the version then in force; finalized v1 invoices are never touched (section 6.4).                                                                                                                       | P5-4          |
-| P5-T6  | **(APPROVED by the Owner, 2026-10-04, see 2.5)** Tie-break including the Member Discount: equal amounts → the **Member Discount** wins, so the customer keeps the promotion or voucher; among programs the Phase 4 order stays.                                                      | P5-4          |
-| P5-T7  | **(Built in P5-6 on the Owner's P5-6 instruction; still pending the Owner's own confirmation as a decision)** Birthday is a separate layer applied after the single ordinary winner**, only when its configuration says it combines; a missing rule means no stacking (section 6.3). | P5-6          |
-| P5-T8  | **(REJECTED by the Owner; hard block instead, see 2.5)** P5-Q5 applies to every negative ledger entry, manual adjustments included.                                                                                                                                                  | P5-3          |
-| P5-T9  | **Stale-episode guard:** the consumer awards only if the paid episode is still current at processing time (section 4.4).                                                                                                                                                             | P5-3          |
-| P5-T10 | **(APPROVED by the Owner, 2026-10-04, see 2.5)** **Referral binding window and resolution rules** of section 7.2-7.4, including the uniform public-signup response and the canonical phone index.                                                                                    | P5-5          |
-| P5-T11 | **Combo sessions are individual rows** (kind `PAID` or `BONUS`), consumed at invoice finalization with an append-only release, mirroring Phase 4 redemptions.                                                                                                                        | P5-7          |
-| P5-T12 | **Lock order extension** of section 12.2.                                                                                                                                                                                                                                            | P5-2          |
-| P5-T13 | **Permission names** of section 13 (no seeding).                                                                                                                                                                                                                                     | P5-2          |
+| #      | Proposal                                                                                                                                                                                                                                                            | Needed before |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| P5-T1  | **Points are awarded and reversed asynchronously** by the `loyalty` outbox consumer (P4 §15.2). Redemptions, releases and the tier snapshot are **synchronous** inside the invoice commands. A loyalty fault therefore never blocks a payment. Consequence in 12.3. | P5-2          |
+| P5-T2  | **One Owner-activated go-live instant** (`loyalty_go_live.go_live_at`, set once, immutable, audited) gates the whole module (points, tiers, referral, birthday, combos). Before it is set Phase 5 code is dormant and invoices behave exactly as in Phase 4.        | P5-2          |
+| P5-T3  | **The tier is read at finalization** under lock and **snapshotted**; a DRAFT only shows a non-binding preview (section 5.3).                                                                                                                                        | P5-4          |
+| P5-T4  | **The Member Discount and points follow the payer** (same identity as OP-3), using the payer's Spa tier. A guest payer has no Member Discount.                                                                                                                      | P5-4          |
+| P5-T5  | **`calculation_version = 2`**; drafts are recalculated at finalization under the version then in force; finalized v1 invoices are never touched (section 6.4).                                                                                                      | P5-4          |
+| P5-T6  | **(APPROVED by the Owner, 2026-10-04, see 2.5)** Tie-break including the Member Discount: equal amounts → the **Member Discount** wins, so the customer keeps the promotion or voucher; among programs the Phase 4 order stays.                                     | P5-4          |
+| P5-T7  | **(APPROVED by the Owner, 2026-10-05, see 2.5)** **Birthday is a separate layer applied after the single ordinary winner**, only when its configuration says it combines; a missing rule means no stacking (section 6.3, 8.1).                                      | P5-6          |
+| P5-T8  | **(REJECTED by the Owner; hard block instead, see 2.5)** P5-Q5 applies to every negative ledger entry, manual adjustments included.                                                                                                                                 | P5-3          |
+| P5-T9  | **Stale-episode guard:** the consumer awards only if the paid episode is still current at processing time (section 4.4).                                                                                                                                            | P5-3          |
+| P5-T10 | **(APPROVED by the Owner, 2026-10-04, see 2.5)** **Referral binding window and resolution rules** of section 7.2-7.4, including the uniform public-signup response and the canonical phone index.                                                                   | P5-5          |
+| P5-T11 | **Combo sessions are individual rows** (kind `PAID` or `BONUS`), consumed at invoice finalization with an append-only release, mirroring Phase 4 redemptions.                                                                                                       | P5-7          |
+| P5-T12 | **Lock order extension** of section 12.2.                                                                                                                                                                                                                           | P5-2          |
+| P5-T13 | **Permission names** of section 13 (no seeding).                                                                                                                                                                                                                    | P5-2          |
 
 ### 2.3 Open questions (not decided; do not implement)
 
@@ -148,6 +148,12 @@ None of these blocked P5-1. The Owner asked to be asked about OQ-2 … OQ-11 **o
   4. A gift **not allowed to combine** is compared with the best offer and the **larger discount wins**. Non-money gifts are never compared.
   5. P5-6 covers **money gifts only** (fixed amount or percentage). Free-service and item gifts belong to P5-9.
   6. Usage limit: the default is **1 time per customer per year**; the configuration screen must still **force the Owner to choose explicitly** when saving.
+- **P5-6 follow-ups to OQ-8 (Owner, in the Owner's own words, 2026-10-05; locked, do not reopen):**
+  1. **A gift that may NOT combine is compared with the best offer, both calculated on the ORIGINAL invoice total; the larger discount wins.** Example: total 100,000đ, promotion 60,000đ against a fixed gift of 80,000đ: the gift wins and the customer pays 20,000đ. The "amount left after the best offer" base applies ONLY when the gift IS allowed to combine (this replaces my earlier reading that used the remaining amount for the comparison too).
+  2. **Tie:** the existing offer stays and the gift is NOT counted as used.
+  3. **"Per year" = per birthday occurrence**, not calendar year.
+  4. **P5-T7: APPROVED.**
+  5. **The birthday configuration is Owner only** (`MANAGE_BIRTHDAY_REWARDS`, changes its P5-T13 entry) and the **364-day maximum window** (days before + days after) is approved.
 - **Owner review of P5-3 (approved):** reading loyalty follows the branch (`VIEW_LOYALTY` at the staff member's branch, like the POS member lookup); points are taken back on
   `INVOICE_REOPENED` / `INVOICE_CANCELLED` (not `PAYMENT_REVERSED`, which always comes with `INVOICE_REOPENED` for a paid invoice).
 - Implementation notes of P5-3 (no decision changed): reversal is keyed on `INVOICE_REOPENED` and `INVOICE_CANCELLED` per 4.4 (`PAYMENT_REVERSED` always comes with
@@ -367,7 +373,7 @@ paid again the unique referral key prevents a second award. The purchase points 
   guarantees as P4 §8.3). A guest payer has no birthday benefit.
 - Birthday never multiplies points (PRD §19).
 
-### 8.1 As built in P5-6 (Owner decisions of 2026-10-04 on OQ-8 in 2.5; choices of mine that are not Owner words are marked)
+### 8.1 As built in P5-6 (Owner decisions of 2026-10-04 and 2026-10-05 on OQ-8 in 2.5)
 
 - **Configuration:** one configuration row (singleton) and append-only **versions** (the highest `version_no` is current). A version holds: active flag, kind
   `PERCENT` (basis points) or `FIXED_AMOUNT` (integer VND), minimum spend, `window_days_before` / `window_days_after`, three combine switches (member discount,
@@ -377,15 +383,15 @@ paid again the unique referral key prevents a second award. The purchase points 
 - **Whose birthday, the window (Owner):** the PAYER's, from `customer_profiles.date_of_birth`, on the invoice `business_date` (branch timezone), from `birthday - before` to
   `birthday + after`, inclusive. 29 February is 28 February in a non-leap year. `before + after <= 364` (**mine**, a technical bound so one date belongs to one birthday).
   A guest payer has no gift. Money gifts only (free service and item gifts: P5-9).
-- **The layer (6.3, Owner):** after `evaluateDiscounts` picks the single ordinary winner W (amount `a`), the base is `subtotal - a`. A percentage rounds half up on that
-  base, a fixed amount is capped by it. If the configuration allows W's source the gift is **stacked** (`discount = a + gift`); with no W it stands **alone**; otherwise it
-  is **compared with W and the larger discount wins**: it replaces W only when strictly larger (then W is not applied or redeemed and the member amount is 0).
-  **Mine, pending Owner confirmation:** (1) the base stays "the amount left after the best offer" (a percentage AND the cap of a fixed gift) even when the gift is compared with the offer instead of added to it (not the full subtotal). Example: 100,000 with a 60% offer and a fixed 80,000 gift that may not combine: the base is 40,000, the gift is capped at 40,000 and loses to 60,000, although 80,000 > 60,000;
-  (2) on an equal amount the offer stays and the yearly use is not consumed; (3) "per year" is the **birthday year** of the occurrence the invoice date belongs to (a window that
-  crosses New Year is one birthday, so one use), counted per customer across all versions.
+- **The layer (6.3, Owner decisions of 2026-10-04 and 2026-10-05):** after `evaluateDiscounts` picks the single ordinary winner W (amount `a`) on the eligible subtotal `S`:
+  a percentage rounds half up and a fixed amount is capped by its base. If the configuration allows W's source the gift is **stacked** (`discount = a + gift`) and its base is the amount left
+  after the offer (`S - a`). With no W it stands **alone** on `S`. Otherwise the gift and W are **both calculated on the original `S` and the larger discount wins**: the gift replaces W only
+  when strictly larger (then W is not applied or redeemed, the member amount is 0 and the winner is `BIRTHDAY`); on a tie W stays and the gift is not used. Example: 100,000 with a 60,000
+  offer against a fixed 80,000 gift that may not combine: the gift wins, 20,000 is paid. "Per year" is the **birthday occurrence** the invoice date belongs to (a window that crosses New Year is
+  one birthday, so one use), counted per customer across all versions. The 364-day bound on days before + after is approved.
 - **Invoice and DB:** `calculation_version` stays 2. The loyalty snapshot gets `birthday_amount_vnd` and `birthday_base_vnd` (and the existing `birthday_config_version` /
   `birthday_result`); winner `BIRTHDAY` means the gift is the only benefit. `lucy_check_invoice_discount` now reads discount = ordinary part + birthday amount. A
-  `birthday_redemptions` row (one per invoice) is the usage ledger, `birthday_redemption_releases` returns the use when the invoice is cancelled (same causes as discount
+  `birthday_redemptions` row (one per invoice) is the usage ledger (migration `20261031000001` makes the guard re-verify the base: the whole eligible total for `BIRTHDAY`, eligible minus the ordinary part for a stacked gift whose source the version allows), `birthday_redemption_releases` returns the use when the invoice is cancelled (same causes as discount
   redemptions). SQL guards re-verify payer, go-live, current active version, the window (`lucy_birthday_occurrence`), minimum spend, amount and the usage limit under the
   configuration row lock. The TypeScript twin `birthdayOccurrence` is parity-tested against the SQL function.
 - **Locks (12.2 extension):** invoice → discount program rows → **the birthday configuration row** (only when the payer has a birthday window now) → the payer's user row →

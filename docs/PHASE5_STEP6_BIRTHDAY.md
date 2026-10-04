@@ -13,19 +13,16 @@ Status: built and validated on scratch databases; **not deployed, loyalty stays 
 
 `20261031000000_phase5_birthday_reward`: `birthday_reward_configs` (singleton), `birthday_reward_versions` (append-only, no defaults), `birthday_redemptions` + `birthday_redemption_releases`, snapshot columns `birthday_amount_vnd` / `birthday_base_vnd`, winner `BIRTHDAY`, `lucy_birthday_occurrence`, guards (current active version, window, min spend, amount, usage limit under the configuration row lock), `lucy_check_invoice_discount` = ordinary part + birthday amount, Owner-only trigger. Inserts nothing. Deploy (only when asked, after all of Phase 5): backup, `pnpm db:deploy`, `pnpm db:permissions:sync`, restart API/Web/Worker.
 
-## Choices of mine, pending Owner confirmation (not Owner words)
+## Owner decisions after review (2026-10-05, locked)
 
-1. A gift that may not combine is still computed on "the amount left after the best offer", also for the cap of a FIXED gift. Example: 100,000 with a 60% offer (60,000) and a fixed 80,000 gift that may not combine: base 40,000, gift capped at 40,000, the offer wins although 80,000 > 60,000. For a percentage: 500,000, 15% offer, 20% gift: 85,000 beats 75,000, customer pays 415,000, not 400,000. **Question for the Owner: which base when the gift is compared with the offer instead of added?** The code is unchanged until the Owner answers.
-2. On an equal amount the offer stays and the yearly use is not consumed.
-3. "Per year" = the birthday year of the occurrence (a window across New Year is one birthday, one use); counted across all versions.
-4. **P5-T7** (the birthday as a separate layer after the best offer) was never approved as a proposal; the Owner's P5-6 instruction describes it, so please confirm it in your own words. For information: `MANAGE_BIRTHDAY_REWARDS` is Owner only now (instruction "Owner-only config screen"), which changes its P5-T13 entry.
-5. Technical bound: days before + after at most 364. Lock order: invoice, discount rows, birthday configuration row, payer row, wallets.
+1. A gift that may not combine is compared with the best offer, both on the ORIGINAL total, larger discount wins (100,000 with a 60,000 offer and a fixed 80,000 gift: the gift wins, 20,000 paid). The remaining-amount base applies only when the gift is allowed to combine. Engine, tests and the SQL guard (migration `20261031000001`) follow.
+2. A tie keeps the offer and the gift is not counted as used. 3. "Per year" = per birthday occurrence. 4. P5-T7 approved. 5. Owner-only config and the 364-day window approved.
 
 ## Tests (scratch DBs `lucy_spa_p5_6_scratch_20261004`, `..._noowner_...`)
 
 | Check                                                                                                                                                                                             | Result        |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| Engine unit (29/2, New Year window, stacked / replaces / tie, min spend, limits, caps)                                                                                                            | 14 / 14       |
+| Engine unit (29/2, New Year window, stacked / replaces / tie, original-total comparison, min spend, limits, caps)                                                                                 | 17 / 17       |
 | `birthday.integration` (empty, Owner only, validation, versions, OFF, alone, window, min spend, limit + cancel release, member stacking, frozen invoice, DB guards, SQL = TS twin over 4k+ cases) | 14 / 14       |
 | `birthday.race.integration` (two invoices of one payer: exactly one gift; finalize vs cancel; finalize vs Owner save), run twice                                                                  | 4 / 4, twice  |
 | Regression: loyalty, referral, invoice, discount, payment, payos, customer-invoice, notifications, authorization, role-admin (Owner-less DB), all races, DB foundation                            | all pass      |
@@ -40,10 +37,11 @@ Status: built and validated on scratch databases; **not deployed, loyalty stays 
 - The shots come from the P5-5 derived capture script (it needs a login; `.local/p5-6/capture.mjs`), not from `scripts/uxui-screens.mjs`. The baseline compare used the plain audit capture (theme by the clock, dark at that hour); `pos` and `discount-detail` at 1440 were opened and are the real pages.
 - Servers were local scratch ones only and are stopped.
 
-## CI
+## CI (red since P5-2, fixed in the follow-up)
 
-CI runs `pnpm test:auth:integration`, which now lists `birthday.integration` and `birthday.race.integration`. The result of the pushed commits is in the final message.
+- **Cause:** `pnpm test:integration` runs the database suites in parallel on a fresh database whose permission catalog is empty (CI runs `db:deploy` only). Several suites call `syncPermissionCatalog` inside their own long transaction, so two of them inserted the same catalog rows at once: a write conflict / deadlock aborted one transaction and every later statement in it failed with 25P02. Reproduced locally with a Postgres 17 Alpine replica throttled to 0.4 CPU (it passed on a fast machine).
+- **Fix (test side, production code untouched):** `test:integration` first commits the catalog once (`node dist/sync-permissions.js`, idempotent); five runs on a fresh throttled replica passed (91 + 11 each). New guard `assert-test-database` (preload + entry scripts): integration tests, the API integration entry and `pnpm smoke` refuse any database whose name is not a scratch/test one; the CI container database `lucy_spa_dev` is accepted only with `CI=true`.
 
 ## Open questions
 
-The four choices above. Nothing else blocks P5-7.
+None. Nothing blocks P5-7.

@@ -866,6 +866,9 @@ test(
                 assert.equal(replaced.discount.winnerSource, 'BIRTHDAY');
                 assert.equal(replaced.discount.selectionReason, 'BIRTHDAY_BEATS_OFFER');
                 assert.equal(replaced.totalVnd, '150000');
+                // Both were taken on the ORIGINAL total (Owner, 2026-10-05): 200,000, not the 194,000 left after the member discount.
+                assert.equal(replaced.discount.birthday?.baseVnd, '200000');
+                assert.equal((await snapshotOf(replaced.id)).birthdayBaseVnd, 200_000n);
                 const replacedSnapshot = await snapshotOf(replaced.id);
                 assert.equal(
                   replacedSnapshot.memberAmountVnd,
