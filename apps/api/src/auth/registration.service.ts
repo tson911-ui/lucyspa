@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { AcceptedFlowResponse } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
+import { bindReferral, canBindReferrer, findMemberByPhone } from '@lucy-spa/server';
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import { enqueueAuthEmail, invalidatePendingDeliveries } from './auth-delivery.js';
@@ -140,6 +141,7 @@ export class RegistrationService {
             emailCanonical: candidate.emailCanonical,
             emailDelivery: candidate.emailDelivery,
             phoneCanonical: candidate.phoneCanonical,
+            referrerPhoneCanonical: candidate.referrerPhoneCanonical,
             normalizationVersion: candidate.normalizationVersion,
             passwordHash,
             fullName: candidate.fullName,
@@ -309,6 +311,9 @@ export class RegistrationService {
           occurredAt: now,
           dataClassification: 'STANDARD',
         } as const;
+        // P5-5: the referrer typed at signup is resolved here and never reported back. A phone that is no member, a brand-new
+        // test that fails, or anything else simply records nothing: signup must not reveal who is a member.
+        const referral = await this.bindSignupReferrer(tx, userId, intent.referrerPhoneCanonical);
         await tx.auditEvent.createMany({
           data: [
             { ...audit, action: 'USER_CREATED', after: { kind: 'CUSTOMER', status: 'ACTIVE' } },
@@ -317,6 +322,17 @@ export class RegistrationService {
               action: 'CUSTOMER_EMAIL_VERIFIED',
               after: { method: 'EMAIL_OTP', registrationIntentId: intent.id },
             },
+            ...(referral
+              ? [
+                  {
+                    ...audit,
+                    action: 'REFERRAL_BOUND',
+                    entityType: 'Referral',
+                    entityId: referral.id,
+                    after: { via: 'SIGNUP', referrerUserId: referral.referrerUserId },
+                  },
+                ]
+              : []),
           ],
         });
         return 'ACTIVATED';
@@ -421,6 +437,23 @@ export class RegistrationService {
       });
       if (limited) throw new RateLimitedError(OTP_POLICY.ipIssueWindowSeconds);
     });
+  }
+
+  /** Binds the signup referrer when it is an existing member other than the new account and the account is brand-new. */
+  private async bindSignupReferrer(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    referrerPhoneCanonical: string | null,
+  ): Promise<{ id: string; referrerUserId: string } | null> {
+    if (referrerPhoneCanonical === null) return null;
+    const referrer = await findMemberByPhone(tx, referrerPhoneCanonical);
+    if (!referrer || referrer.id === userId || !(await canBindReferrer(tx, userId))) return null;
+    const created = await bindReferral(tx, {
+      referredUserId: userId,
+      referrerUserId: referrer.id,
+      via: 'SIGNUP',
+    });
+    return { id: created.id, referrerUserId: referrer.id };
   }
 
   private async lockChallenge(

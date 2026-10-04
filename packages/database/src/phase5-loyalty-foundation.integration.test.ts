@@ -44,6 +44,7 @@ const NEW_TABLES = [
   'loyalty_wallets',
   'loyalty_ledger_entries',
   'referrals',
+  'referral_changes',
   'invoice_loyalty_snapshots',
   'combos',
   'combo_versions',
@@ -678,6 +679,75 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
             },
           );
 
+          // ============================================================ CHANGE_REFERRER (P5-5, Owner only)
+          await context.test(
+            'CHANGE_REFERRER: GLOBAL_ONLY, never carried by a role or an override',
+            async () => {
+              await syncPermissionCatalog(tx);
+              const permission = await tx.permission.findUniqueOrThrow({
+                where: { code: 'CHANGE_REFERRER' },
+              });
+              assert.equal(permission.scopeCapability, 'GLOBAL_ONLY');
+              assert.equal(permission.dataClassification, 'STANDARD');
+              const role = await tx.role.create({
+                data: {
+                  code: `P55_OWNER_ONLY_${randomUUID().slice(0, 8).toUpperCase()}`,
+                  displayNameVi: 'x',
+                  displayNameEn: 'x',
+                },
+              });
+              await rejects(
+                () =>
+                  tx.rolePermission.create({
+                    data: { roleId: role.id, permissionId: permission.id },
+                  }),
+                /belongs to the Owner and cannot be granted/,
+              );
+              const grantee = await user('EMPLOYEE');
+              await rejects(
+                () =>
+                  tx.userPermissionOverride.create({
+                    data: {
+                      userId: grantee,
+                      permissionId: permission.id,
+                      effect: 'ALLOW',
+                      scopeKind: 'GLOBAL',
+                    },
+                  }),
+                /belongs to the Owner and cannot be granted/,
+              );
+            },
+          );
+
+          // ============================================================ canonical phone of a participant (P5-T10)
+          await context.test(
+            'lucy_phone_canonical: the SQL twin of normalizePhone for matching participant phones',
+            async () => {
+              const canonical = async (input: string | null) =>
+                (
+                  await tx.$queryRaw<
+                    { c: string | null }[]
+                  >`SELECT lucy_phone_canonical(${input}) AS c`
+                )[0]!.c;
+              assert.equal(await canonical('0912 345 678'), '+84912345678');
+              assert.equal(await canonical('(091) 234-5678'), '+84912345678');
+              assert.equal(await canonical('0084912345678'), '+84912345678');
+              assert.equal(await canonical('+84 912.345.678'), '+84912345678');
+              assert.equal(await canonical('+1 (415) 555-2671'), '+14155552671');
+              for (const bad of [
+                null,
+                '',
+                'abc',
+                '00123456',
+                '+840912345678',
+                '12345',
+                'x0912345678',
+              ]) {
+                assert.equal(await canonical(bad), null, String(bad));
+              }
+            },
+          );
+
           // ====================================================================== go-live (OFF by default)
           await context.test(
             'the go-live switch is OFF by default and gates every customer fact',
@@ -685,13 +755,26 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
               assert.equal(await tx.loyaltyGoLive.count(), 0, 'no row means OFF');
               const off = /Loyalty is not live: the go-live switch is off/;
               await rejects(() => wallet(customer), off);
+              // P5-5 (Owner decision): a referral may be BOUND while go-live is OFF (the guard is relaxed for binding only);
+              // the award, its ledger entries and everything else still need go-live ON.
+              const earlyReferred = await user('CUSTOMER');
+              const early = await tx.referral.create({
+                data: {
+                  referredUserId: earlyReferred,
+                  referrerUserId: customer2,
+                  boundVia: 'SIGNUP',
+                },
+                select: { id: true },
+              });
+              const unpaidEarly = await unpaidInvoice(wide, earlyReferred);
               await rejects(
                 () =>
-                  tx.referral.create({
+                  tx.referral.update({
+                    where: { id: early.id },
                     data: {
-                      referredUserId: customer,
-                      referrerUserId: customer2,
-                      boundVia: 'SIGNUP',
+                      awardedAt: new Date(),
+                      awardedInvoiceId: unpaidEarly.id,
+                      awardedPaidSeq: 1,
                     },
                   }),
                 off,
@@ -1176,14 +1259,90 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
                   }),
                 /referrals_referred_key|Unique constraint/,
               );
+              // The referred person and the binding facts never change; the referrer changes only through an Owner history row.
+              await rejects(
+                () =>
+                  tx.referral.update({ where: { id: referral.id }, data: { referredUserId: c } }),
+                /relationship is permanent/,
+              );
               await rejects(
                 () =>
                   tx.referral.update({ where: { id: referral.id }, data: { referrerUserId: c } }),
-                /relationship is permanent/,
+                /referrer change needs its history row/,
               );
               await rejects(
                 () => tx.referral.delete({ where: { id: referral.id } }),
                 /cannot be removed or rewritten/,
+              );
+              // Owner correction before the award (Owner decision 2026-10-04): reason + history, Owner only.
+              const ownerRow =
+                (await tx.user.findFirst({ where: { kind: 'OWNER' } })) ??
+                (await tx.user.create({
+                  data: {
+                    kind: 'OWNER',
+                    status: 'ACTIVE',
+                    fullName: 'Chủ spa fixture',
+                    preferredLocale: 'vi',
+                    emailCanonical: `p55-owner-${run.toLowerCase()}@example.com`,
+                    emailDelivery: `p55-owner-${run.toLowerCase()}@example.com`,
+                    normalizationVersion: 1,
+                    passwordHash: '$argon2id$fixture',
+                  },
+                }));
+              const change = (
+                over: Partial<{
+                  oldReferrerUserId: string;
+                  newReferrerUserId: string;
+                  actorUserId: string;
+                  reason: string;
+                }> = {},
+              ) =>
+                tx.referralChange.create({
+                  data: {
+                    referralId: referral.id,
+                    oldReferrerUserId: a,
+                    newReferrerUserId: c,
+                    actorUserId: ownerRow.id,
+                    reason: 'Khách nhập nhầm số',
+                    ...over,
+                  },
+                  select: { id: true },
+                });
+              await rejects(
+                () => change({ actorUserId: staff }),
+                /Only the Owner changes a referrer/,
+              );
+              await rejects(
+                () => change({ oldReferrerUserId: c }),
+                /records the referrer that is current/,
+              );
+              await rejects(() => change({ newReferrerUserId: b }), /another customer account/);
+              await rejects(() => change({ newReferrerUserId: staff }), /another customer account/);
+              await rejects(() => change({ newReferrerUserId: a }), /referral_changes_distinct/);
+              await rejects(() => change({ reason: '   ' }), /referral_changes_reason/);
+              const changeRow = await change();
+              await tx.referral.update({ where: { id: referral.id }, data: { referrerUserId: c } });
+              assert.equal(
+                (await tx.referral.findUniqueOrThrow({ where: { id: referral.id } }))
+                  .referrerUserId,
+                c,
+              );
+              // The history is append-only; a second change needs its own row and may go back.
+              await rejects(
+                () =>
+                  tx.referralChange.update({ where: { id: changeRow.id }, data: { reason: 'x' } }),
+                /cannot be removed or rewritten/,
+              );
+              await rejects(
+                () => tx.referralChange.delete({ where: { id: changeRow.id } }),
+                /cannot be removed or rewritten/,
+              );
+              await truncateRejected('referral_changes');
+              await change({ oldReferrerUserId: c, newReferrerUserId: a, reason: 'Sửa lại' });
+              await tx.referral.update({ where: { id: referral.id }, data: { referrerUserId: a } });
+              assert.equal(
+                await tx.referralChange.count({ where: { referralId: referral.id } }),
+                2,
               );
               await truncateRejected('referrals');
               // A chain A -> B -> C is allowed (B is referred and refers).
@@ -1264,6 +1423,13 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
                     data: { awardedInvoiceId: qualifying.id, awardedPaidSeq: 2 },
                   }),
                 /awarded at most once|referrals_award_facts/,
+              );
+              // Once the reward is granted the referrer is locked forever (Owner decision 2026-10-04).
+              await rejects(() => change(), /locked once the reward has been granted/);
+              await rejects(
+                () =>
+                  tx.referral.update({ where: { id: referral.id }, data: { referrerUserId: c } }),
+                /locked once the reward has been granted/,
               );
               // Award entries cannot exist for an unawarded referral.
               await rejectsAtCommit(async () => {

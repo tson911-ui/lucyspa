@@ -37,6 +37,31 @@ test('registration normalizes every required PRD field through the Step 3 identi
   assert.equal(candidate.dateOfBirth.toISOString(), '1990-02-28T00:00:00.000Z');
 });
 
+test('the optional referrer phone (P5-5): canonical, blank or own number means none, only a malformed one is an error', () => {
+  assert.equal(normalizeRegistration(valid).referrerPhoneCanonical, null);
+  assert.equal(
+    normalizeRegistration({ ...valid, referrerPhone: '   ' }).referrerPhoneCanonical,
+    null,
+  );
+  assert.equal(
+    normalizeRegistration({ ...valid, referrerPhone: '0901 234 511' }).referrerPhoneCanonical,
+    '+84901234511',
+  );
+  assert.equal(
+    normalizeRegistration({ ...valid, referrerPhone: '+84 901 234 511' }).referrerPhoneCanonical,
+    '+84901234511',
+  );
+  // The registrant's own number (in any format) is dropped without a trace: a self-referral looks like no referrer.
+  assert.equal(
+    normalizeRegistration({ ...valid, referrerPhone: '+84912345678' }).referrerPhoneCanonical,
+    null,
+  );
+  assert.equal(
+    field(() => normalizeRegistration({ ...valid, referrerPhone: 'not a phone' })),
+    'referrerPhone',
+  );
+});
+
 test('registration reports only the invalid field identifier, never the value', () => {
   assert.equal(
     field(() => normalizeRegistration({ ...valid, fullName: '   ' })),

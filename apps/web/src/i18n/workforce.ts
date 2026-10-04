@@ -1364,6 +1364,7 @@ const vi = {
       ISSUE_REWARDS: 'Cấp hoặc thu hồi quà tặng cho khách',
       VIEW_LOYALTY_EXCEPTIONS: 'Xem các trường hợp điểm bất thường',
       ACTIVATE_LOYALTY: 'Bật chương trình điểm thưởng (chỉ Chủ sở hữu)',
+      CHANGE_REFERRER: 'Đổi người giới thiệu của khách (chỉ Chủ sở hữu)',
     },
     duplicateCode: 'Mã vai trò này đã tồn tại.',
     managerGroupHolders:
@@ -3909,6 +3910,7 @@ const en: Dictionary = {
       ISSUE_REWARDS: 'Issue or void customer rewards',
       VIEW_LOYALTY_EXCEPTIONS: 'View unusual points cases',
       ACTIVATE_LOYALTY: 'Switch the loyalty programme on (Owner only)',
+      CHANGE_REFERRER: 'Change a customer’s referrer (Owner only)',
     },
     duplicateCode: 'This role code already exists.',
     managerGroupHolders:

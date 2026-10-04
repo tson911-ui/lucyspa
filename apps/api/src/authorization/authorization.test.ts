@@ -430,6 +430,8 @@ test('the code-owned catalog is exactly the Phase 1, Phase 2 and follow-up Step 
       ['VIEW_LOYALTY_EXCEPTIONS', 'GLOBAL_ONLY', 'STANDARD'],
       // Phase 5 P5-3: the Owner-only go-live switch.
       ['ACTIVATE_LOYALTY', 'GLOBAL_ONLY', 'STANDARD'],
+      // Phase 5 P5-5: the Owner-only referrer correction.
+      ['CHANGE_REFERRER', 'GLOBAL_ONLY', 'STANDARD'],
     ],
   );
 });

@@ -376,6 +376,7 @@ export function CustomerRegisterScreen() {
     address: '',
     email: '',
     phone: '',
+    referrerPhone: '',
   });
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -404,6 +405,8 @@ export function CustomerRegisterScreen() {
         phone: form.phone.trim(),
         password,
         locale,
+        // Optional; the server never says whether it matched a member.
+        ...(form.referrerPhone.trim() ? { referrerPhone: form.referrerPhone.trim() } : {}),
       });
       setPassword('');
       setConfirmation('');
@@ -495,6 +498,19 @@ export function CustomerRegisterScreen() {
               maxLength={32}
               value={form.phone}
               onChange={(event) => set('phone')(event.target.value)}
+            />
+          )}
+        </Field>
+        <Field label={t.auth.referrerPhone} hint={t.auth.referrerHint}>
+          {(control) => (
+            <TextInput
+              {...control}
+              type="tel"
+              autoComplete="off"
+              inputMode="tel"
+              maxLength={32}
+              value={form.referrerPhone}
+              onChange={(event) => set('referrerPhone')(event.target.value)}
             />
           )}
         </Field>

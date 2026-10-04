@@ -7,7 +7,7 @@ import type {
 } from '@lucy-spa/contracts';
 import { Body, Controller, HttpCode, Inject, Post, Req, Res } from '@nestjs/common';
 import { ApiAcceptedResponse, ApiNoContentResponse, ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsString, Matches, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import type { Request, Response } from 'express';
 import { RateLimitedError, RegistrationService } from './registration.service.js';
 
@@ -19,6 +19,11 @@ class RegisterCustomerDto implements RegisterCustomerRequest {
   @ApiProperty() @IsString() @MaxLength(128) phone!: string;
   @ApiProperty({ writeOnly: true }) @IsString() @MaxLength(1_024) password!: string;
   @ApiProperty({ enum: ['vi', 'en'] }) @IsIn(['vi', 'en']) locale!: 'vi' | 'en';
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  referrerPhone?: string;
 }
 
 class ActivationVerifyDto implements ActivationVerifyRequest {

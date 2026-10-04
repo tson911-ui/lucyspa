@@ -99,6 +99,15 @@ const errors = {
   // The field carries the current balance as `balance<N>` so the screen can say "Số dư chỉ còn N điểm".
   LOYALTY_BALANCE_TOO_LOW: [409, 'A manual deduction cannot be larger than the balance'],
   LOYALTY_ENTRY_ALREADY_CORRECTED: [409, 'This ledger entry already has a correction'],
+  // Phase 5 P5-5: referral (staff side only; public signup never reports any of these).
+  REFERRAL_NOT_NEW: [
+    409,
+    'This customer already had a visit, so a referrer can no longer be recorded',
+  ],
+  REFERRAL_ALREADY_BOUND: [409, 'This customer already has a referrer'],
+  REFERRAL_LOCKED: [409, 'The reward was already granted, so the referrer can no longer change'],
+  REFERRAL_SELF: [400, 'A customer cannot refer themselves'],
+  REFERRAL_SAME_REFERRER: [400, 'This is already the referrer'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

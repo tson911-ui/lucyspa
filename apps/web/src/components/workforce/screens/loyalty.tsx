@@ -27,6 +27,7 @@ import { useAccount, useWorkforce } from '../session';
 import { Button, Empty, Loading, Notice, PageHeader } from '../ui';
 import { LoyaltyExceptions } from './loyalty-exceptions';
 import { LoyaltyGoLive } from './loyalty-go-live';
+import { LoyaltyReferrals } from './loyalty-referrals';
 
 type Member = WalkInMemberLookupResponse['members'][number];
 
@@ -47,7 +48,7 @@ export function LoyaltyScreen() {
   });
 
   if (branches.loading && !branches.data) return <Loading t={t} page />;
-  if (!shown.customers && !shown.exceptions && !shown.goLive) {
+  if (!shown.customers && !shown.referrals && !shown.exceptions && !shown.goLive) {
     return (
       <>
         <PageHeader title={l.title} intro={l.intro} />
@@ -57,6 +58,19 @@ export function LoyaltyScreen() {
   }
   const tabs = [
     { id: 'customers', label: l.tabs.customers, show: shown.customers, panel: <CustomerLookup /> },
+    {
+      id: 'referrals',
+      label: l.tabs.referrals,
+      show: shown.referrals,
+      panel: (
+        <LoyaltyReferrals
+          page={state.page}
+          status={state.status}
+          onPage={(page) => update({ page })}
+          onStatus={(status) => update({ status })}
+        />
+      ),
+    },
     {
       id: 'exceptions',
       label: l.tabs.exceptions,

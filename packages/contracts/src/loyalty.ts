@@ -1,3 +1,5 @@
+import type { CustomerReferralResponse, ReferrerTotalsResponse } from './referral.js';
+
 /**
  * Phase 5 P5-3: loyalty points and tiers (design `PHASE5_LOYALTY_COMBOS_DESIGN.md` sections 3-5).
  * The tier table is the locked PRD 18.5 table, version 1: a pure function of a wallet balance, never stored as
@@ -87,7 +89,17 @@ export interface LoyaltyProfileResponse {
   goLive: LoyaltyGoLiveResponse;
   /** Always both wallets (a customer with no entry yet shows 0 and no tier). */
   wallets: LoyaltyWalletResponse[];
-  can: { adjust: boolean };
+  can: {
+    adjust: boolean;
+    /** MANAGE_REFERRALS at the branch, the customer has no referrer yet and is still brand-new (P5-5). */
+    bindReferrer: boolean;
+    /** CHANGE_REFERRER (Owner only), a referrer exists and the reward was not granted yet (P5-5). */
+    changeReferrer: boolean;
+  };
+  /** The customer's referrer; null when none was recorded (P5-5). */
+  referral: CustomerReferralResponse | null;
+  /** What this customer achieved as a referrer (P5-5). */
+  asReferrer: ReferrerTotalsResponse;
 }
 
 export interface LoyaltyLedgerEntryResponse {

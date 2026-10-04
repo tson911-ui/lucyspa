@@ -357,6 +357,7 @@ enum PermissionCode {
   ISSUE_REWARDS
   VIEW_LOYALTY_EXCEPTIONS
   ACTIVATE_LOYALTY
+  CHANGE_REFERRER
 }
 
 enum LeaveStatus {
@@ -460,6 +461,9 @@ model User {
   referralsAsReferred            Referral[]                       @relation("ReferralReferred")
   referralsAsReferrer            Referral[]                       @relation("ReferralReferrer")
   referralsBound                 Referral[]                       @relation("ReferralBinder")
+  referralChangesActed           ReferralChange[]                 @relation("ReferralChangeActor")
+  referralChangesFrom            ReferralChange[]                 @relation("ReferralChangeOld")
+  referralChangesTo              ReferralChange[]                 @relation("ReferralChangeNew")
   loyaltySnapshotsAsPayer        InvoiceLoyaltySnapshot[]         @relation("LoyaltySnapshotPayer")
   createdCombos                  Combo[]                          @relation("ComboCreator")
   createdComboVersions           ComboVersion[]                   @relation("ComboVersionCreator")
@@ -567,23 +571,25 @@ model EmployeeBranchAssignment {
 // Candidate identifiers deliberately do not reserve unique User identities.
 // Terminal candidate records are transient and may be removed by bounded cleanup.
 model RegistrationIntent {
-  id                   String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  emailCanonical       String          @map("email_canonical") @db.VarChar(254)
-  emailDelivery        String          @map("email_delivery") @db.VarChar(254)
-  phoneCanonical       String          @map("phone_canonical") @db.VarChar(16)
-  normalizationVersion Int             @map("normalization_version")
-  passwordHash         String          @map("password_hash")
-  fullName             String          @map("full_name")
-  dateOfBirth          DateTime        @map("date_of_birth") @db.Date
-  address              String
-  preferredLocale      PreferredLocale @map("preferred_locale")
-  createdAt            DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
-  expiresAt            DateTime        @map("expires_at") @db.Timestamptz(3)
-  completedAt          DateTime?       @map("completed_at") @db.Timestamptz(3)
-  invalidatedAt        DateTime?       @map("invalidated_at") @db.Timestamptz(3)
-  completedUserId      String?         @map("completed_user_id") @db.Uuid
-  completedUser        User?           @relation(fields: [completedUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  challenges           AuthChallenge[]
+  id                     String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  emailCanonical         String          @map("email_canonical") @db.VarChar(254)
+  emailDelivery          String          @map("email_delivery") @db.VarChar(254)
+  phoneCanonical         String          @map("phone_canonical") @db.VarChar(16)
+  /// P5-5: the referrer's canonical phone typed at signup; resolved silently when the account is created.
+  referrerPhoneCanonical String?         @map("referrer_phone_canonical") @db.VarChar(16)
+  normalizationVersion   Int             @map("normalization_version")
+  passwordHash           String          @map("password_hash")
+  fullName               String          @map("full_name")
+  dateOfBirth            DateTime        @map("date_of_birth") @db.Date
+  address                String
+  preferredLocale        PreferredLocale @map("preferred_locale")
+  createdAt              DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt              DateTime        @map("expires_at") @db.Timestamptz(3)
+  completedAt            DateTime?       @map("completed_at") @db.Timestamptz(3)
+  invalidatedAt          DateTime?       @map("invalidated_at") @db.Timestamptz(3)
+  completedUserId        String?         @map("completed_user_id") @db.Uuid
+  completedUser          User?           @relation(fields: [completedUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  challenges             AuthChallenge[]
 
   @@index([emailCanonical, expiresAt], map: "registration_intents_email_expiry_idx")
   @@index([expiresAt, id], map: "registration_intents_expiry_idx")
@@ -1295,6 +1301,8 @@ model VisitParticipant {
   customer              User?                     @relation(fields: [customerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   displayName           String?                   @map("display_name")
   phone                 String?
+  /// P5-5: GENERATED ALWAYS AS lucy_phone_canonical(phone) STORED (never written by the application).
+  phoneCanonical        String?                   @map("phone_canonical") @db.VarChar(16)
   note                  String?
   guardianParticipantId String?                   @map("guardian_participant_id") @db.Uuid
   guardian              VisitParticipant?         @relation("ParticipantGuardian", fields: [visitId, guardianParticipantId], references: [visitId, id], onDelete: Restrict, onUpdate: Restrict)
@@ -2335,9 +2343,29 @@ model Referral {
   awardedInvoice   Invoice?             @relation("ReferralAwardInvoice", fields: [awardedInvoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   awardedPaidSeq   Int?                 @map("awarded_paid_seq")
   ledgerEntries    LoyaltyLedgerEntry[]
+  changes          ReferralChange[]
 
   @@index([referrerUserId], map: "referrals_referrer_idx")
   @@map("referrals")
+}
+
+// P5-5 (Owner decision 2026-10-04): the referrer is changed ONLY by the Owner and ONLY before the award; each
+// change is an append-only row (old, new, actor, reason, time) written before the referral row is updated.
+model ReferralChange {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referralId        String   @map("referral_id") @db.Uuid
+  referral          Referral @relation(fields: [referralId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  oldReferrerUserId String   @map("old_referrer_user_id") @db.Uuid
+  oldReferrer       User     @relation("ReferralChangeOld", fields: [oldReferrerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  newReferrerUserId String   @map("new_referrer_user_id") @db.Uuid
+  newReferrer       User     @relation("ReferralChangeNew", fields: [newReferrerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reason            String
+  actorUserId       String   @map("actor_user_id") @db.Uuid
+  actor             User     @relation("ReferralChangeActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt         DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([referralId, createdAt], map: "referral_changes_referral_idx")
+  @@map("referral_changes")
 }
 
 // The tier snapshot of a finalized invoice (design 5.3, PRD 14.2): the payer's balance and tier BEFORE the

@@ -29,9 +29,12 @@ export function loyaltyBranches(
 export function loyaltyTabs(
   account: CurrentAccountResponse,
   branches: ReadonlyMap<string, BranchSummary> | null,
-): { customers: boolean; exceptions: boolean; goLive: boolean } {
+): { customers: boolean; referrals: boolean; exceptions: boolean; goLive: boolean } {
+  const lookup = loyaltyBranches(account, branches).length > 0;
   return {
-    customers: loyaltyBranches(account, branches).length > 0,
+    customers: lookup,
+    // The referral list follows VIEW_LOYALTY at a branch, like the points lookup (Phase 5 P5-5).
+    referrals: lookup,
     exceptions: canGlobal(account, 'VIEW_LOYALTY_EXCEPTIONS'),
     goLive: canGlobal(account, 'ACTIVATE_LOYALTY'),
   };
@@ -66,6 +69,20 @@ export function loyaltyErrorMessage(
   }
   if (error instanceof ApiError && error.code in texts) return texts[error.code] as string;
   return errorMessage(error, t);
+}
+
+/** The error text of a referral command: its own codes first, then the loyalty and shared messages. */
+export function referralErrorMessage(
+  error: unknown,
+  t: WorkforceDictionary,
+  locale: Locale,
+): string {
+  const texts = loyaltyDictionary(locale).errors as Record<string, string>;
+  // An unknown referrer phone is a not-found on the field `referrerPhone` (the staff screens may say so; signup never does).
+  if (error instanceof ApiError && error.code === 'NOT_FOUND' && error.field === 'referrerPhone') {
+    return texts.REFERRAL_PHONE_UNKNOWN as string;
+  }
+  return loyaltyErrorMessage(error, t, locale);
 }
 
 export type AdjustDirection = 'add' | 'subtract';

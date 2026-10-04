@@ -6,16 +6,18 @@ import { normalizePage } from './list-view';
  */
 
 export const LOYALTY_PAGE_SIZE = 20;
-export const LOYALTY_TAB_IDS = ['customers', 'exceptions', 'goLive'] as const;
+export const LOYALTY_TAB_IDS = ['customers', 'referrals', 'exceptions', 'goLive'] as const;
 export type LoyaltyTabId = (typeof LOYALTY_TAB_IDS)[number];
 
-export const LOYALTY_PAGE_DEFAULTS = { tab: '', page: 1 };
+export const LOYALTY_PAGE_DEFAULTS = { tab: '', page: 1, status: '' };
 export type LoyaltyPageState = typeof LOYALTY_PAGE_DEFAULTS;
 
 export function normalizeLoyaltyPage(state: LoyaltyPageState): LoyaltyPageState {
   return {
     tab: (LOYALTY_TAB_IDS as readonly string[]).includes(state.tab) ? state.tab : '',
     page: normalizePage(state.page),
+    // The referral list filter (Phase 5 P5-5).
+    status: state.status === 'PENDING' || state.status === 'REWARDED' ? state.status : '',
   };
 }
 

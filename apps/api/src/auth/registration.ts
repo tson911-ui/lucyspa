@@ -15,6 +15,8 @@ export interface RegistrationInput {
   phone: string;
   password: string;
   locale: 'vi' | 'en';
+  /** Optional referrer phone (P5-5); never an error source beyond its format. */
+  referrerPhone?: string;
 }
 
 export interface RegistrationCandidate {
@@ -27,6 +29,8 @@ export interface RegistrationCandidate {
   normalizationVersion: number;
   password: string;
   locale: 'vi' | 'en';
+  /** The referrer's canonical phone; null when none was given or it is the registrant's own number (ignored silently). */
+  referrerPhoneCanonical: string | null;
 }
 
 /** Trimmed NFC profile text without controls; also used for employee profiles. */
@@ -96,6 +100,7 @@ export function normalizeRegistration(input: RegistrationInput): RegistrationCan
   if (input.locale !== 'vi' && input.locale !== 'en') {
     throw new AuthError('VALIDATION_FAILED', 'locale');
   }
+  const referrerPhoneCanonical = referrerPhoneOf(input.referrerPhone, phone.phoneCanonical);
   return {
     fullName,
     dateOfBirth,
@@ -106,5 +111,25 @@ export function normalizeRegistration(input: RegistrationInput): RegistrationCan
     normalizationVersion: email.normalizationVersion,
     password,
     locale: input.locale,
+    referrerPhoneCanonical,
   };
+}
+
+/**
+ * The optional referrer phone. A blank value means none; a malformed one is a field error (it says nothing about members). A
+ * referrer equal to the registrant's own phone is dropped without a trace, so a self-referral looks like no referrer.
+ */
+function referrerPhoneOf(input: unknown, ownPhone: string): string | null {
+  if (input === undefined || input === null) return null;
+  if (typeof input !== 'string') throw new AuthError('VALIDATION_FAILED', 'referrerPhone');
+  if (input.trim() === '') return null;
+  try {
+    const canonical = normalizePhone(input).phoneCanonical;
+    return canonical === ownPhone ? null : canonical;
+  } catch (error) {
+    if (error instanceof IdentityValidationError) {
+      throw new AuthError('VALIDATION_FAILED', 'referrerPhone');
+    }
+    throw error;
+  }
 }

@@ -394,6 +394,129 @@ test(
               },
             );
 
+            await context.test(
+              'a referrer typed at signup is resolved silently at activation (Phase 5 P5-5)',
+              async () => {
+                // An existing member and a registrant who names her (the national form of the same number).
+                const memberPhone = phone();
+                const member = await tx.user.create({
+                  data: {
+                    kind: 'CUSTOMER',
+                    status: 'ACTIVE',
+                    fullName: 'Hội viên giới thiệu',
+                    preferredLocale: 'vi',
+                    emailCanonical: `${run}-member@example.com`,
+                    emailDelivery: `${run}-member@example.com`,
+                    emailVerifiedAt: new Date(),
+                    phoneCanonical: `+84${memberPhone.slice(1)}`,
+                    normalizationVersion: 1,
+                    passwordHash: fixtureHash,
+                    customerProfile: {
+                      create: { dateOfBirth: new Date('1990-01-01'), address: 'Fixture' },
+                    },
+                  },
+                });
+                emails.push(`${run}-member@example.com`);
+                const activate = async (label: string, extra: { referrerPhone?: string }) => {
+                  const address = email(label);
+                  const ownPhone = phone();
+                  const flow = await service.register(
+                    { ...registration(address, ownPhone), ...extra },
+                    peer,
+                  );
+                  // The answer never depends on the referrer: same shape for a member, a stranger and nobody.
+                  assert.deepEqual(Object.keys(flow).sort(), [
+                    'codeLifetimeSeconds',
+                    'flowToken',
+                    'resendAfterSeconds',
+                    'status',
+                  ]);
+                  const code = await deliverLatest(flow.flowToken);
+                  await service.verify(flow.flowToken, code, peer);
+                  const created = await tx.user.findFirstOrThrow({
+                    where: { emailCanonical: address.toLowerCase() },
+                    select: { id: true, phoneCanonical: true },
+                  });
+                  const intent = await tx.registrationIntent.findFirstOrThrow({
+                    where: { completedUserId: created.id },
+                    select: { referrerPhoneCanonical: true },
+                  });
+                  return { user: created, intent, ownPhone };
+                };
+                const named = await activate('ref-named', { referrerPhone: memberPhone });
+                assert.equal(named.intent.referrerPhoneCanonical, member.phoneCanonical);
+                const link = await tx.referral.findUniqueOrThrow({
+                  where: { referredUserId: named.user.id },
+                });
+                assert.equal(link.referrerUserId, member.id);
+                assert.equal(link.boundVia, 'SIGNUP');
+                assert.equal(link.boundByUserId, null);
+                assert.equal(link.awardedAt, null);
+                const audit = await tx.auditEvent.findFirstOrThrow({
+                  where: { action: 'REFERRAL_BOUND', entityId: link.id },
+                });
+                assert.equal(audit.actorKind, 'SYSTEM');
+                assert.equal(audit.subjectUserId, named.user.id);
+                assert.doesNotMatch(JSON.stringify(audit), /\+84/);
+                assert.equal(
+                  await tx.outboxEvent.count({
+                    where: { eventType: 'REFERRAL_BOUND', aggregateId: link.id },
+                  }),
+                  1,
+                );
+                // A stranger's number, nobody, the registrant's own number and a blank field all activate normally and record nothing.
+                const strangers = [
+                  await activate('ref-stranger', { referrerPhone: phone() }),
+                  await activate('ref-none', {}),
+                  await activate('ref-blank', { referrerPhone: '   ' }),
+                ];
+                for (const result of strangers) {
+                  assert.equal(
+                    await tx.referral.count({ where: { referredUserId: result.user.id } }),
+                    0,
+                  );
+                }
+                const selfAddress = email('ref-self');
+                const selfPhone = phone();
+                const selfFlow = await service.register(
+                  { ...registration(selfAddress, selfPhone), referrerPhone: selfPhone },
+                  peer,
+                );
+                await service.verify(
+                  selfFlow.flowToken,
+                  await deliverLatest(selfFlow.flowToken),
+                  peer,
+                );
+                const selfUser = await tx.user.findFirstOrThrow({
+                  where: { emailCanonical: selfAddress.toLowerCase() },
+                });
+                assert.equal(
+                  await tx.referral.count({ where: { referredUserId: selfUser.id } }),
+                  0,
+                );
+                assert.equal(
+                  (
+                    await tx.registrationIntent.findFirstOrThrow({
+                      where: { completedUserId: selfUser.id },
+                    })
+                  ).referrerPhoneCanonical,
+                  null,
+                  'a self-referral is dropped without a trace',
+                );
+                // Only a malformed phone is a field error (it says nothing about members).
+                await assert.rejects(
+                  service.register(
+                    { ...registration(email('ref-bad')), referrerPhone: 'not a phone' },
+                    peer,
+                  ),
+                  (error: unknown) =>
+                    error instanceof AuthError &&
+                    error.code === 'VALIDATION_FAILED' &&
+                    error.field === 'referrerPhone',
+                );
+              },
+            );
+
             await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
             throw rollback;
           },

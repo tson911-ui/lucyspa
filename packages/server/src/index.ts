@@ -132,11 +132,23 @@ export {
   LoyaltyBalanceError,
   processLoyaltyEvent,
   relayLoyaltyEvents,
+  referralAwardKey,
   reversalKey,
   type LedgerEffect,
   type LedgerResult,
   type LoyaltyEventOutcome,
 } from './loyalty.js';
+export {
+  bindReferral,
+  canBindReferrer,
+  completedVisitsOf,
+  findMemberByPhone,
+  REFERRAL_AGGREGATE,
+  referralAwardCandidates,
+  type BindReferralInput,
+  type CompletedVisit,
+  type ReferralAwardCandidate,
+} from './referral.js';
 export {
   FINANCIAL_NOTIFICATION_AGGREGATES,
   FINANCIAL_NOTIFICATION_EVENT_TYPES,

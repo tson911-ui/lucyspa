@@ -220,8 +220,12 @@ test('registration routes enforce CSRF, strict DTOs and the public accepted/veri
       ['register', 'verify', 'verify', 'verify', 'resend'],
     );
     const registerCall = calls[0]!;
+    // The DTO may carry the optional referrerPhone (P5-5) as an undefined key; only the supplied fields count.
     assert.deepEqual(
-      Object.keys(registerCall[1] as object).sort(),
+      Object.entries(registerCall[1] as object)
+        .filter(([, value]) => value !== undefined)
+        .map(([key]) => key)
+        .sort(),
       Object.keys(registration).sort(),
     );
     assert.equal(typeof registerCall[2], 'string');

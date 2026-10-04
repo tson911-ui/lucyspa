@@ -194,6 +194,11 @@ export interface RegisterCustomerRequest {
   phone: string;
   password: string;
   locale: PreferredLocale;
+  /**
+   * Optional referrer (P5-5): the phone of the member who recommended Lucy Spa. Accepted when well-formed and resolved silently
+   * when the account is activated; the response never reveals whether it belongs to a member.
+   */
+  referrerPhone?: string;
 }
 
 /** Constant for real, duplicate, throttled and suppressed requests; not a delivery promise. */
@@ -731,7 +736,8 @@ export type PermissionCodeName =
   | 'MANAGE_REWARD_CATALOG'
   | 'ISSUE_REWARDS'
   | 'VIEW_LOYALTY_EXCEPTIONS'
-  | 'ACTIVATE_LOYALTY';
+  | 'ACTIVATE_LOYALTY'
+  | 'CHANGE_REFERRER';
 
 /** A named permission bundle. OWNER is virtual and never a role. */
 export interface RoleResponse {
@@ -2136,6 +2142,8 @@ export * from './season-registry.js';
 export * from './lunar-year.js';
 // Phase 5 P5-3: loyalty tiers, points and the admin loyalty API.
 export * from './loyalty.js';
+// Phase 5 P5-5: referral (bind, Owner correction, list).
+export * from './referral.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;

@@ -20,6 +20,7 @@ import { appendAdminAudit, type AdminContext } from '../authorization/admin-comm
 import { decide } from '../authorization/authorization.js';
 import { normalizeReason } from '../operations/service-execution.service.js';
 import { maskPhone } from '../operations/operations.state.js';
+import { referralOfCustomer } from '../referral/referral.core.js';
 import { lookupMember, maskEmail } from '../walkin/walkin.core.js';
 
 /**
@@ -139,6 +140,7 @@ export async function getProfile(
     select: { wallet: true, balancePoints: true },
   });
   const balances = new Map(accounts.map((row) => [row.wallet, row.balancePoints]));
+  const referral = await referralOfCustomer(context, branchId, userId);
   return {
     customer: {
       id: user.id,
@@ -148,7 +150,9 @@ export async function getProfile(
     },
     goLive: await goLiveOf(tx),
     wallets: WALLETS.map((wallet) => walletResponse(wallet, balances.get(wallet) ?? 0)),
-    can: { adjust: decide(context.actor.graph, 'ADJUST_LOYALTY_POINTS', GLOBAL) },
+    can: { adjust: decide(context.actor.graph, 'ADJUST_LOYALTY_POINTS', GLOBAL), ...referral.can },
+    referral: referral.referral,
+    asReferrer: referral.asReferrer,
   };
 }
 

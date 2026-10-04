@@ -53,6 +53,8 @@ import {
   useSuccessToast,
 } from '../ui';
 import { AdjustDialog } from './loyalty-adjust-dialog';
+import { ReferralCard } from './referral-card';
+import { BindReferrerDialog, ChangeReferrerDialog } from './referral-dialogs';
 
 /**
  * One customer's points (Phase 5 P5-3): the Spa and Beauty balances with their tier, and the permanent ledger
@@ -93,6 +95,7 @@ export function LoyaltyCustomerScreen({ userId }: { userId: string }) {
   const [overlay, setOverlay] = useState<{ correcting: LoyaltyLedgerEntryResponse | null } | null>(
     null,
   );
+  const [referralDialog, setReferralDialog] = useState<'bind' | 'change' | null>(null);
 
   if (branches.loading && !branches.data) return <Loading t={t} page />;
   if (allowed.length === 0) {
@@ -107,7 +110,7 @@ export function LoyaltyCustomerScreen({ userId }: { userId: string }) {
     return <ErrorState error={profile.error} t={t} onRetry={() => void profile.reload()} />;
   }
   if (!profile.data) return <Loading t={t} page />;
-  const { customer, goLive, wallets, can } = profile.data;
+  const { customer, goLive, wallets, can, referral, asReferrer } = profile.data;
   const canAdjust = can.adjust && goLive.active;
 
   const done = () => {
@@ -115,6 +118,12 @@ export function LoyaltyCustomerScreen({ userId }: { userId: string }) {
     notify(l.adjust.done);
     void profile.reload();
     void ledger.reload();
+  };
+
+  const referralDone = (message: string) => {
+    setReferralDialog(null);
+    notify(message);
+    void profile.reload();
   };
 
   const zone = allowed[0] ? (branches.data?.get(allowed[0].id)?.timezone ?? 'UTC') : 'UTC';
@@ -218,6 +227,14 @@ export function LoyaltyCustomerScreen({ userId }: { userId: string }) {
             <WalletCard key={wallet.wallet} wallet={wallet} />
           ))}
         </Grid>
+        <ReferralCard
+          referral={referral}
+          asReferrer={asReferrer}
+          can={can}
+          zone={zone}
+          onBind={() => setReferralDialog('bind')}
+          onChange={() => setReferralDialog('change')}
+        />
         <ListSection title={l.profile.ledger}>
           <ListToolbar
             labels={toolbarLabels(t)}
@@ -265,6 +282,21 @@ export function LoyaltyCustomerScreen({ userId }: { userId: string }) {
           />
         </ListSection>
       </Stack>
+      {referralDialog === 'bind' ? (
+        <BindReferrerDialog
+          branchId={branchId}
+          userId={userId}
+          onDone={() => referralDone(l.referral.bind.done)}
+          onClose={() => setReferralDialog(null)}
+        />
+      ) : null}
+      {referralDialog === 'change' ? (
+        <ChangeReferrerDialog
+          userId={userId}
+          onDone={() => referralDone(l.referral.changeDialog.done)}
+          onClose={() => setReferralDialog(null)}
+        />
+      ) : null}
       {overlay ? (
         <AdjustDialog
           userId={userId}

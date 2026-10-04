@@ -165,10 +165,15 @@ export const PERMISSION_CATALOG = Object.freeze([
   },
   // P5-3: the loyalty go-live switch. Owner only: SQL refuses to attach it to any role or override.
   { code: 'ACTIVATE_LOYALTY', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'STANDARD' },
+  // P5-5: correcting a customer's referrer before the reward. Owner only, like the go-live switch.
+  { code: 'CHANGE_REFERRER', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'STANDARD' },
 ] as const satisfies readonly PermissionDefinition[]);
 
 /** Codes that only the virtual Owner holds: no role and no override may carry them (SQL refuses too). */
-export const OWNER_ONLY_PERMISSIONS: readonly string[] = Object.freeze(['ACTIVATE_LOYALTY']);
+export const OWNER_ONLY_PERMISSIONS: readonly string[] = Object.freeze([
+  'ACTIVATE_LOYALTY',
+  'CHANGE_REFERRER',
+]);
 
 export interface PermissionCatalogSyncResult {
   readonly inserted: number;

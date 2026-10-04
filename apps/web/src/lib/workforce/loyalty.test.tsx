@@ -18,6 +18,7 @@ import {
   loyaltyErrorMessage,
   loyaltyTabs,
   parseAmount,
+  referralErrorMessage,
   tierTone,
 } from './loyalty';
 import { normalizeLedger, normalizeLoyaltyPage } from './loyalty-list';
@@ -124,11 +125,13 @@ test('loyalty branches and tabs follow the permissions, never role names', () =>
   );
   assert.deepEqual(loyaltyTabs(viewer, branches), {
     customers: true,
+    referrals: true,
     exceptions: false,
     goLive: false,
   });
   assert.deepEqual(loyaltyTabs(owner, branches), {
     customers: true,
+    referrals: true,
     exceptions: true,
     goLive: true,
   });
@@ -157,7 +160,29 @@ test('tier tone, URL state and error text', () => {
   assert.equal(tierTone('GOLD'), 'info');
   assert.deepEqual(normalizeLedger({ wallet: 'X', page: 0 }), { wallet: '', page: 1 });
   assert.deepEqual(normalizeLedger({ wallet: 'BEAUTY', page: 3 }), { wallet: 'BEAUTY', page: 3 });
-  assert.deepEqual(normalizeLoyaltyPage({ tab: 'nope', page: 2 }), { tab: '', page: 2 });
+  assert.deepEqual(normalizeLoyaltyPage({ tab: 'nope', page: 2, status: 'x' }), {
+    tab: '',
+    page: 2,
+    status: '',
+  });
+  assert.deepEqual(normalizeLoyaltyPage({ tab: 'referrals', page: 1, status: 'REWARDED' }), {
+    tab: 'referrals',
+    page: 1,
+    status: 'REWARDED',
+  });
+  // Phase 5 P5-5: referral errors have their own texts; an unknown referrer phone says so on the staff screens only.
+  assert.equal(
+    referralErrorMessage(new ApiError(409, 'REFERRAL_LOCKED'), vi, 'vi'),
+    l.errors.REFERRAL_LOCKED,
+  );
+  assert.equal(
+    referralErrorMessage(new ApiError(404, 'NOT_FOUND', 'referrerPhone'), vi, 'en'),
+    'No member matches this number.',
+  );
+  assert.equal(
+    referralErrorMessage(new ApiError(404, 'NOT_FOUND'), vi, 'vi'),
+    loyaltyErrorMessage(new ApiError(404, 'NOT_FOUND'), vi, 'vi'),
+  );
   const refused = new ApiError(409, 'LOYALTY_NOT_LIVE');
   assert.equal(loyaltyErrorMessage(refused, vi, 'vi'), l.errors.LOYALTY_NOT_LIVE);
   // Owner decision on P5-T8: a manual deduction beyond the balance names the balance.
