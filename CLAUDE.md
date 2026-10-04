@@ -71,6 +71,9 @@ Owner reviews every Step. Work only on the Step you are given.
 
 - Never touch or commit `apps/web/next-env.d.ts`.
 - No commit/push/deploy unless the Owner explicitly says so.
+- Production state is known only from the Owner's deploy reports recorded in `LUCYSPA_HANDOFF.md`. Never assume something
+  is or isn't deployed; if the handoff doesn't record it, ask the Owner. When the Owner reports a deploy, immediately
+  record the commit, applied migrations and date in `LUCYSPA_HANDOFF.md`.
 - Never amend a pushed commit and never force-push `main` (or any shared branch) unless the Owner explicitly asks for
   that exact action; "add it to the same commit" after a push is not enough, ask first. Follow-ups after a push are new commits.
 - Do not print or edit `.env`; never commit secrets.
