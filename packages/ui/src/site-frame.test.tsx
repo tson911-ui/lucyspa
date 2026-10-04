@@ -814,6 +814,19 @@ test('service cards: five shared rows, a name that stops at two lines and a titl
     css,
     /@supports \(grid-template-rows: subgrid\) \{\s*\.ls-site-grid-groups > \.ls-reveal \{\s*display: grid;\s*grid-row: span 3;/,
   );
+  // Exactly four cards (the real menu has four groups) form a 2 x 2 block, not three and one alone.
+  assert.match(
+    css,
+    /\.ls-site-grid-groups:has\(> :nth-child\(4\):last-child\) \{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/,
+  );
+});
+
+test('phones: per-nail booking rows put the price under the name; the section count is sans, not old-style serif', () => {
+  assert.match(
+    css,
+    /@media \(max-width: 479px\) \{\s*\.ls-choice:has\(> \.ls-choice-extra\) \.ls-choice-price \{\s*grid-column: 2 \/ -1;\s*grid-row: 2;/,
+  );
+  assert.match(css, /\.ls-site \.ls-list-section-count \{\s*font-family: var\(--ls-font-sans\);/);
 });
 
 test('public form fields are pills like the buttons; a multi-line field keeps a soft rectangle', () => {

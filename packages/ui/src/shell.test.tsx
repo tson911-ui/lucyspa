@@ -515,6 +515,12 @@ const block = (css: string, selector: string): string => {
   return new RegExp(`${escaped}\\s*\\{([^}]*)\\}`).exec(css)?.[1] ?? '';
 };
 
+test('Breadcrumb links are full-size targets, even a one-word name such as "Nail"', () => {
+  const link = block(shellCss, '.ls-crumbs a');
+  assert.match(link, /min-width: var\(--ls-control-h\)/);
+  assert.match(link, /min-height: var\(--ls-control-h\)/);
+});
+
 test('SegmentedControl: one sliding thumb positioned by the selected index, solid brand fill, no border', () => {
   const markup = renderToStaticMarkup(
     <ui.SegmentedControl

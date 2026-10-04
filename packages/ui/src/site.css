@@ -423,6 +423,11 @@
   .ls-site-grid-groups {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  /* Exactly four cards (the real menu has four groups) stay a balanced 2 x 2 instead of three and one on its own. */
+  .ls-site-grid-groups:has(> :nth-child(4):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* Cards in one row are exactly the same size: equal columns, and the row's height is its tallest card's. Service names are
@@ -745,6 +750,21 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: end;
+}
+
+/* On a phone a per-nail price ("5.000 ₫ – 30.000 ₫ / móng") is too wide to share the row with the name: the rows that
+   carry the per-nail note put the price on its own line under the name, above the note, so the name keeps the whole
+   column. Every other row keeps its price at the trailing edge. */
+@media (max-width: 479px) {
+  .ls-choice:has(> .ls-choice-extra) .ls-choice-price {
+    grid-column: 2 / -1;
+    grid-row: 2;
+    text-align: start;
+  }
+
+  .ls-choice:has(> .ls-choice-extra) .ls-choice-extra {
+    grid-row: 3;
+  }
 }
 
 .ls-choice-extra {
@@ -1302,6 +1322,13 @@
 .ls-site .ls-form-section-title {
   font-size: var(--ls-type-card);
   line-height: var(--ls-lh-card);
+}
+
+/* The count next to a section title is a small supporting number: the sans face, not the title's serif, whose
+   old-style figures make a small "0" read as the letter "o". */
+.ls-site .ls-list-section-count {
+  font-family: var(--ls-font-sans);
+  font-size: var(--ls-type-small);
 }
 
 .ls-site .ls-page-description {

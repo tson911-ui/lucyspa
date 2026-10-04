@@ -610,10 +610,12 @@
   overflow-wrap: anywhere;
 }
 
-/* A link is a full-height target (40 px desktop, 44 px touch) even though it reads as small text. */
+/* A link is a full-size target (40 px desktop, 44 px touch) even though it reads as small text; a one-word name such as
+   "Nail" is as wide as it is tall. */
 .ls-crumbs a {
   display: inline-flex;
   align-items: center;
+  min-width: var(--ls-control-h);
   min-height: var(--ls-control-h);
 }
 

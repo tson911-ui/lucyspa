@@ -23,7 +23,16 @@
 
 ## Real menu (no invented services)
 
-The scratch catalog was invented, so it is now **hidden** (rows stay: scratch bookings reference them). `docs/CATALOG_EXPORT_FOR_REVIEW.md` has the read-only export for the iNET terminal (two catalog tables, JSON, no customer data). When the file arrives: `.local/p3-import-catalog.mjs` (dry run first), then the review shots of services, service detail and home groups are retaken. Until then the layout was proven with a clearly synthetic fixture (never shown as the menu): equal rows at 360/768/1440, VI and EN, light and dark (`.local/p3-measure-grids.mjs`), DOM audit 36 of 36 renders clean, computed typography of every heading flagged off-scale or off-face (`.local/p3-type-dump.mjs`: none left).
+The Owner's read-only production export (1 branch, 4 groups, 23 services; no staff or customer data) is imported into the **scratch** database only (`.local/p3-import-catalog.mjs`, git-ignored): the invented catalog stays hidden, the branch is renamed in place to the real one. The review runs on that real menu.
+
+Found only with the real data, and fixed:
+
+- **Home groups:** four groups in a three-column grid left "Massage" alone on a second row. Exactly four cards are now a 2 x 2 block (`.ls-site-grid-groups:has(> :nth-child(4):last-child)`, 1024 px and up; 640 to 1023 px was already two columns).
+- **Booking, first step, 360 px:** the per-nail price range ("5.000 ₫ – 30.000 ₫ / móng") squeezed the service name to about 23 px and ran under it (DOM audit FR11, three findings). On phones the rows that carry the per-nail note now put the price on its own line under the name, above the note; every other row keeps its trailing price. Zero findings after.
+- **Service detail breadcrumb:** a one-word crumb ("Nail") was a 27 px target; crumb links are now at least as wide as they are tall (40/44 px).
+- **Section counts** ("Sắp tới 3", "Lịch sử 0") were drawn in the title's serif, whose old-style figures made a small 0 look like "o": sans now.
+
+Scratch data only (never in the repo): the catalog import gives each real service the one skill most employees at an active branch hold (otherwise no start time existed), and nine bookings for three new `@example.com` customers use real services only.
 
 ## Checks
 
