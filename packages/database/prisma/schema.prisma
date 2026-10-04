@@ -2356,6 +2356,8 @@ model InvoiceLoyaltySnapshot {
   calculationVersion    Int           @map("calculation_version")
   eligibleSpaVnd        BigInt        @map("eligible_spa_vnd")
   eligibleBeautyVnd     BigInt        @default(0) @map("eligible_beauty_vnd")
+  /// The member amount; the invoice discount only when winnerSource is MEMBER_TIER (0 otherwise).
+  memberAmountVnd       BigInt        @default(0) @map("member_amount_vnd")
   candidates            Json          @db.JsonB
   winnerSource          String?       @map("winner_source")
   selectionReason       String?       @map("selection_reason")

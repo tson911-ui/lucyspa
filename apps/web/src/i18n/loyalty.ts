@@ -106,9 +106,9 @@ const vi = {
     done: 'Đã ghi điều chỉnh điểm.',
   },
   exceptions: {
-    title: 'Điểm bị thiếu khi thu hồi hoặc trừ',
+    title: 'Điểm bị thiếu khi thu hồi',
     intro:
-      'Mỗi dòng là một lần số dư không đủ để trừ hết điểm: số dư được đưa về 0, phần thiếu được ghi lại để Chủ spa xem xét. Danh sách này chỉ để xem.',
+      'Mỗi dòng là một lần số dư không đủ để thu hồi hết điểm của một hóa đơn: số dư được đưa về 0, phần thiếu được ghi lại để Chủ spa xem xét. Danh sách này chỉ để xem.',
     none: 'Chưa có trường hợp nào.',
     open: 'Mở hồ sơ điểm',
     noBranch: 'Cần ít nhất một chi nhánh để mở hồ sơ khách.',
@@ -130,6 +130,25 @@ const vi = {
     confirming: 'Đang bật…',
     done: 'Đã bật chương trình điểm thưởng.',
     ownerOnly: 'Chỉ Chủ spa mới thấy và thực hiện được thao tác này.',
+  },
+  // The Member Discount on the invoice (Phase 5 P5-4): staff always see the winner and why.
+  member: {
+    name: 'Giảm giá hội viên {tier}',
+    nameNoTier: 'Giảm giá hội viên',
+    applied: '{tier} {percent}% được áp dụng',
+    source: 'Hội viên (tự động)',
+    previewNote:
+      'Hạng tính theo số điểm hiện tại của người thanh toán và được chốt khi chốt hóa đơn. Hóa đơn đã chốt không bao giờ tính lại.',
+    reasons: {
+      MEMBER_ONLY_ELIGIBLE: 'Giảm giá hội viên là ưu đãi duy nhất đủ điều kiện.',
+      MEMBER_LARGEST_BENEFIT: 'Giảm giá hội viên được chọn vì có lợi hơn cho khách.',
+      PROGRAM_BEATS_MEMBER: 'Khuyến mãi được chọn vì có lợi hơn giảm giá hội viên.',
+      PROGRAM_TIE_OVER_MEMBER: 'Cùng mức giảm với giảm giá hội viên; chọn khuyến mãi hoặc mã.',
+    },
+    ineligible: {
+      NO_TIER: 'Chưa đủ 500 điểm Spa.',
+      NO_ELIGIBLE_LINES: 'Hóa đơn chưa có dịch vụ đã định giá.',
+    },
   },
   errors: {
     LOYALTY_BALANCE_TOO_LOW: 'Số dư chỉ còn {n} điểm',
@@ -225,9 +244,9 @@ const en: Dictionary = {
     done: 'Points adjustment recorded.',
   },
   exceptions: {
-    title: 'Points short on a reversal or deduction',
+    title: 'Points short on a reversal',
     intro:
-      'Each row is a time the balance could not cover a deduction: the balance went to 0 and the shortfall was recorded for the Owner to review. This list is read-only.',
+      'Each row is a time the balance could not cover taking back the points of an invoice: the balance went to 0 and the shortfall was recorded for the Owner to review. This list is read-only.',
     none: 'No cases yet.',
     open: 'Open points profile',
     noBranch: 'At least one branch is needed to open a customer profile.',
@@ -249,6 +268,27 @@ const en: Dictionary = {
     confirming: 'Switching on…',
     done: 'The loyalty programme is switched on.',
     ownerOnly: 'Only the Owner sees and can do this.',
+  },
+  member: {
+    name: 'Member discount {tier}',
+    nameNoTier: 'Member discount',
+    applied: '{tier} {percent}% applied',
+    source: 'Member (automatic)',
+    previewNote:
+      "The tier follows the payer's current points and is fixed when the invoice is finalized. A finalized invoice is never recalculated.",
+    reasons: {
+      MEMBER_ONLY_ELIGIBLE: 'The member discount is the only eligible benefit.',
+      MEMBER_LARGEST_BENEFIT:
+        'The member discount was chosen because it is better for the customer.',
+      PROGRAM_BEATS_MEMBER:
+        'The promotion was chosen because it is better than the member discount.',
+      PROGRAM_TIE_OVER_MEMBER:
+        'Same saving as the member discount; the promotion or code was chosen.',
+    },
+    ineligible: {
+      NO_TIER: 'Under 500 Spa points.',
+      NO_ELIGIBLE_LINES: 'The invoice has no priced service yet.',
+    },
   },
   errors: {
     LOYALTY_BALANCE_TOO_LOW: 'The balance is only {n} points',

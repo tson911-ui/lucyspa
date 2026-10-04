@@ -1,4 +1,9 @@
-import type { DiscountIneligibleReason, DiscountKindName } from '@lucy-spa/contracts';
+import type {
+  DiscountIneligibleReason,
+  DiscountKindName,
+  LoyaltyTierName,
+  MemberIneligibleReason,
+} from '@lucy-spa/contracts';
 
 /**
  * Phase 4 Step 6 — the discount candidate engine (design 7.3, 8.3, OP-3/4/5). A PURE function of stored
@@ -6,7 +11,8 @@ import type { DiscountIneligibleReason, DiscountKindName } from '@lucy-spa/contr
  * computed; the Step 4 database guards re-verify the result (percent rounds half up to 1 VND, a fixed
  * amount is capped by the eligible subtotal, one benefit only).
  *
- * `calculation_version = 1`. Phase 5 adds Member/Birthday candidates to the same list under a new version.
+ * `calculation_version = 2` (Phase 5 P5-4) adds the Member Discount (tier) as one more candidate of the same
+ * single choice; without a `member` input the result is exactly the version 1 result. Birthday is P5-6.
  */
 
 export interface EngineLine {
@@ -66,10 +72,33 @@ export interface EngineCandidate {
   amountVnd: bigint;
 }
 
+/** The payer's Spa tier from the balance BEFORE the invoice (P5-T3/T4); only given for a member payer once loyalty is live. */
+export interface EngineMember {
+  tier: LoyaltyTierName;
+  tierTableVersion: number;
+  balanceBefore: number;
+  /** The tier's Member Discount in basis points; 0 = no tier yet. */
+  discountBp: number;
+}
+
+/** The Member Discount as a candidate (Phase 5, calculation_version 2). It consumes nothing: no program, no usage. */
+export interface MemberCandidate {
+  member: EngineMember;
+  /** All priced lines before any benefit (OP-4). */
+  eligibleSubtotalVnd: bigint;
+  eligible: boolean;
+  reason: MemberIneligibleReason | null;
+  amountVnd: bigint;
+}
+
 export interface EngineResult {
   subtotalVnd: bigint;
   candidates: EngineCandidate[];
+  /** The winning PROGRAM benefit; null when none won or when the Member Discount won. */
   winner: EngineCandidate | null;
+  /** The Member Discount candidate, when the payer is a member and loyalty is live. */
+  member: MemberCandidate | null;
+  winnerSource: 'PROMOTION' | 'VOUCHER' | 'MEMBER_TIER' | null;
   discountTotalVnd: bigint;
   totalVnd: bigint;
   /** Machine-readable explanation of the choice; null without a winner. */
@@ -150,9 +179,26 @@ function compare(a: EngineCandidate, b: EngineCandidate): number {
   );
 }
 
+/** The Member Discount: the tier's percent of every priced line, rounded half up to 1 VND (PRD 16.1, 18.5; Phase 4 Q3). */
+function evaluateMember(member: EngineMember, subtotalVnd: bigint): MemberCandidate {
+  const base = { member, eligibleSubtotalVnd: subtotalVnd };
+  if (member.discountBp <= 0) {
+    return { ...base, eligible: false, reason: 'NO_TIER', amountVnd: 0n };
+  }
+  if (subtotalVnd <= 0n) {
+    return { ...base, eligible: false, reason: 'NO_ELIGIBLE_LINES', amountVnd: 0n };
+  }
+  const amountVnd = percentAmount(subtotalVnd, member.discountBp);
+  return amountVnd > 0n
+    ? { ...base, eligible: true, reason: null, amountVnd }
+    : { ...base, eligible: false, reason: 'NO_ELIGIBLE_LINES', amountVnd: 0n };
+}
+
 /**
  * Evaluates every candidate independently and picks exactly one winner (no stacking):
- * (a) every code-less promotion handed in as `promotions`, (b) every supplied voucher of `supplied`.
+ * (a) every code-less promotion handed in as `promotions`, (b) every supplied voucher of `supplied`, (c) the
+ * Member Discount of `member`. The larger benefit for the customer wins; on an equal amount a promotion or voucher
+ * wins over the Member Discount (P5-T6: answer given through the question tool on 2026-10-04, "Ưu tiên khuyến mãi/voucher"; PROVISIONAL until the Owner confirms).
  * `total = subtotal - discount` (never negative; may be 0).
  */
 export function evaluateDiscounts(input: {
@@ -160,6 +206,8 @@ export function evaluateDiscounts(input: {
   promotions: readonly EngineProgram[];
   supplied: readonly { voucher: EngineVoucher; program: EngineProgram }[];
   hasMemberPayer: boolean;
+  /** Only for an identified member payer once loyalty is live; absent = exactly the version 1 result. */
+  member?: EngineMember | null;
   now: Date;
 }): EngineResult {
   const subtotalVnd = input.lines.reduce((sum, line) => sum + (line.grossVnd ?? 0n), 0n);
@@ -173,17 +221,33 @@ export function evaluateDiscounts(input: {
   ];
   const winning = candidates.filter((candidate) => candidate.eligible && candidate.amountVnd > 0n);
   winning.sort(compare);
-  const winner = winning[0] ?? null;
-  const discountTotalVnd = winner ? winner.amountVnd : 0n;
+  const programWinner = winning[0] ?? null;
+  const member = input.member ? evaluateMember(input.member, subtotalVnd) : null;
+  const memberWins =
+    member !== null &&
+    member.eligible &&
+    (programWinner === null || member.amountVnd > programWinner.amountVnd);
+  const winner = memberWins ? null : programWinner;
+  const discountTotalVnd = memberWins ? member.amountVnd : winner ? winner.amountVnd : 0n;
   let selectionReason: string | null = null;
-  if (winner) {
+  if (memberWins) {
+    selectionReason = programWinner === null ? 'MEMBER_ONLY_ELIGIBLE' : 'MEMBER_LARGEST_BENEFIT';
+  } else if (winner) {
     const runnerUp = winning[1];
     selectionReason = !runnerUp
       ? 'ONLY_ELIGIBLE'
       : runnerUp.amountVnd < winner.amountVnd
         ? 'LARGEST_BENEFIT'
         : 'TIE_BREAK_CODE_ORDER';
+    // Staff are told when the program also beat an eligible Member Discount (PRD 16.1).
+    if (member?.eligible) {
+      selectionReason =
+        winner.amountVnd > member.amountVnd ? 'PROGRAM_BEATS_MEMBER' : 'PROGRAM_TIE_OVER_MEMBER';
+    }
   }
+  const winnerSource: EngineResult['winnerSource'] = memberWins
+    ? 'MEMBER_TIER'
+    : (winner?.source ?? null);
   // Presentation order: the winner first, then eligible by benefit, then ineligible by code.
   candidates.sort((a, b) => {
     if (a === winner) return -1;
@@ -195,6 +259,8 @@ export function evaluateDiscounts(input: {
     subtotalVnd,
     candidates,
     winner,
+    member,
+    winnerSource,
     discountTotalVnd,
     totalVnd: subtotalVnd - discountTotalVnd,
     selectionReason,

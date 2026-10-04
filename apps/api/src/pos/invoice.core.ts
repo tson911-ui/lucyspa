@@ -31,6 +31,7 @@ import {
   candidatesJson,
   evaluateInvoice,
   previewDiscount,
+  snapshotCandidatesJson,
   storedDiscount,
   type InvoiceEvaluation,
 } from './discount.eval.js';
@@ -193,6 +194,9 @@ export const invoiceSelect = {
   },
   discountRedemption: {
     select: { id: true, discountId: true, release: { select: { id: true } } },
+  },
+  loyaltySnapshot: {
+    select: { candidates: true, winnerSource: true, selectionReason: true, createdAt: true },
   },
   lines: {
     orderBy: { sequence: 'asc' },
@@ -389,13 +393,15 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
       { lockPrograms: false },
     );
     discount = previewDiscount(evaluation, entries);
-  } else if (row.discountApplication) {
-    discount = storedDiscount(row.discountApplication, entries);
+  } else if (row.discountApplication || row.loyaltySnapshot) {
+    discount = storedDiscount(row.discountApplication, row.loyaltySnapshot, entries);
   } else {
     discount = {
       preview: false,
       candidates: [],
       winner: null,
+      winnerSource: null,
+      member: null,
       selectionReason: null,
       vouchers: entries,
       appliedAt: null,
@@ -1112,6 +1118,30 @@ export async function finalizeInvoice(
       select: { id: true },
     });
   }
+  const member = result.member;
+  if (member && invoice.payerUserId !== null) {
+    // P5-T3: the payer's Spa tier is read at finalization (under the wallet share lock) and frozen here with the candidates
+    // and the winner; the invoice is never recomputed from a later balance.
+    await tx.invoiceLoyaltySnapshot.create({
+      data: {
+        invoiceId,
+        payerUserId: invoice.payerUserId,
+        wallet: 'SPA',
+        balanceBefore: member.member.balanceBefore,
+        tier: member.member.tier,
+        tierTableVersion: member.member.tierTableVersion,
+        memberDiscountBp: member.member.discountBp,
+        calculationVersion: CALCULATION_VERSION,
+        eligibleSpaVnd: member.eligibleSubtotalVnd,
+        memberAmountVnd: result.winnerSource === 'MEMBER_TIER' ? member.amountVnd : 0n,
+        candidates: snapshotCandidatesJson(result),
+        winnerSource: result.winnerSource,
+        selectionReason: result.selectionReason,
+        createdAt: now,
+      },
+      select: { id: true },
+    });
+  }
   await tx.invoice.update({
     where: { id: invoiceId },
     data: {
@@ -1152,6 +1182,18 @@ export async function finalizeInvoice(
             selectionReason: result.selectionReason,
           }
         : null,
+      memberDiscount: result.member
+        ? {
+            tier: result.member.member.tier,
+            balanceBefore: result.member.member.balanceBefore,
+            discountBp: result.member.member.discountBp,
+            eligibleSubtotalVnd: result.member.eligibleSubtotalVnd.toString(),
+            amountVnd: result.member.amountVnd.toString(),
+            won: result.winnerSource === 'MEMBER_TIER',
+          }
+        : null,
+      winnerSource: result.winnerSource,
+      selectionReason: result.selectionReason,
       candidates: candidatesJson(result),
       zeroBalance,
       payerUserId: invoice.payerUserId,

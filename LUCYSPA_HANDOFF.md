@@ -22,7 +22,7 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                     |
 | **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**     |
 | UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `58bfabc`)                                |
-| **Phase 5 (loyalty and combos)**          | **IN PROGRESS (P5-3 built, not deployed)**                       |
+| **Phase 5 (loyalty and combos)**          | **IN PROGRESS (P5-4 built, not deployed)**                       |
 | Phase 6+ (products, payroll, finance)     | NOT started                                                      |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
@@ -71,6 +71,7 @@ Phase 4 migrations so far: Step 3 (`20261013…`), Step 4 (`20261014000000-04`),
 - P5-2 (`docs/PHASE5_STEP2_DB_PERMISSIONS_FOUNDATION.md`): migrations `20261027000000`…`20261027000003` (permission codes, semantics, loyalty foundation, combo/reward foundation); 11 permissions, nothing granted; **not deployed**; deploy = `pnpm db:deploy` then `pnpm db:permissions:sync`.
 - Owner 2026-10-04 (after P5-2): P5-T3/T4/T5/T9/T11 approved; combo issued only when its invoice is PAID; go-live = new Owner-only permission `ACTIVATE_LOYALTY` + fresh re-auth, stays OFF; **no deploy until all of Phase 5 is done**; OQ-2 Owner-approved (all services earn, tips excluded); **P5-T8 REJECTED by the Owner: manual deductions above the balance are hard-blocked ("Số dư chỉ còn X điểm", nothing written); reversals keep the P5-Q5 floor-at-0 + exception**. Design doc 2.5.
 - P5-3 (`docs/PHASE5_STEP3_POINTS_TIERS.md`): migrations `20261028000000`…`02` (ACTIVATE_LOYALTY code, Owner-only triggers, loyalty consumer outcomes); `loyalty` outbox consumer (earn on INVOICE_PAID, reverse on INVOICE_REOPENED/CANCELLED), manual adjustments, exceptions list, go-live screen, customer points profile; **not deployed**; deploy adds `pnpm db:permissions:sync` (53 codes) and a worker restart.
+- P5-4 (`docs/PHASE5_STEP4_MEMBER_DISCOUNT.md`): migration `20261029000000`; Member Discount = tier candidate in the best-offer selection (`calculation_version = 2`, Spa tier from the balance BEFORE the invoice, snapshot on the invoice, equal amount: promotion/voucher wins per a PROVISIONAL answer on P5-T6 (pending Owner confirmation), only when go-live ON); **pending Owner confirmation: P5-T6 (tie) and the OQ-2 Member-Discount half (which services get no member discount; applied to all as the proposed default)**; also P5-T8 REJECTED by the Owner (manual deduction above the balance is hard-blocked); **not deployed**.
 - Q8 (Phase 4) was answered before Step 10 (see "Q8 (notifications)" below).
 
 ## Q8 (invoice / revenue notifications) - LOCKED

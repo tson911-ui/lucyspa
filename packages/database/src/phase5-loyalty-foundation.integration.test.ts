@@ -1300,9 +1300,10 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
                     memberDiscountBp: 300,
                     calculationVersion: 2,
                     eligibleSpaVnd: 500_000n,
-                    candidates: [{ source: 'MEMBER_TIER', amountVnd: 15_000 }],
-                    winnerSource: 'MEMBER_TIER',
-                    selectionReason: 'Member Discount 3%',
+                    candidates: { member: { tier: 'SILVER' }, programs: [] },
+                    winnerSource: null,
+                    selectionReason: null,
+                    memberAmountVnd: 0n,
                     ...overrides,
                   },
                   select: { id: true },
@@ -1374,6 +1375,48 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
                 /cannot be removed or rewritten/,
               );
               await truncateRejected('invoice_loyalty_snapshots');
+
+              // P5-4: the member amount follows the tier percent (half up) and is the invoice discount only when it won.
+              const memberWin = (overrides: Record<string, unknown> = {}) =>
+                snapshot({
+                  winnerSource: 'MEMBER_TIER',
+                  selectionReason: 'MEMBER_ONLY_ELIGIBLE',
+                  memberAmountVnd: 15_000n,
+                  ...overrides,
+                });
+              const fresh = await unpaidInvoice(wide, payer);
+              const tryOn = (overrides: Record<string, unknown>) =>
+                memberWin({ invoiceId: fresh.id, ...overrides });
+              await rejects(
+                () => tryOn({ memberAmountVnd: 14_999n }),
+                /invoice_loyalty_snapshots_member_amount/,
+              );
+              await rejects(
+                () => tryOn({ memberAmountVnd: 0n }),
+                /invoice_loyalty_snapshots_member_amount/,
+              );
+              await rejects(
+                () => tryOn({ tier: 'NONE', balanceBefore: 100, memberDiscountBp: 0 }),
+                /invoice_loyalty_snapshots_member_amount/,
+              );
+              await rejects(
+                () => tryOn({ winnerSource: 'PROMOTION', memberAmountVnd: 15_000n }),
+                /invoice_loyalty_snapshots_member_amount/,
+              );
+              await rejects(
+                () => tryOn({ winnerSource: 'GIFT', memberAmountVnd: 0n }),
+                /invoice_loyalty_snapshots_winner/,
+              );
+              // Half up to 1 VND: 3% of 10,017 = 300.51 -> 301.
+              await rejects(
+                () => tryOn({ eligibleSpaVnd: 10_017n, memberAmountVnd: 300n }),
+                /invoice_loyalty_snapshots_member_amount/,
+              );
+              // A snapshot saying the member won must match the invoice header discount at commit (here the header is 0).
+              await rejectsAtCommit(
+                () => tryOn({}),
+                /invoice discount total must equal its applied benefit/,
+              );
               const cancelled = await unpaidInvoice(wide, payer);
               await cancelUnpaid(cancelled.id);
               await rejects(() => snapshot({ invoiceId: cancelled.id }), /never a cancelled one/);

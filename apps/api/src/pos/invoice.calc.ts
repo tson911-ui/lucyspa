@@ -5,10 +5,10 @@ import { AuthError } from '../auth/auth.error.js';
  * in `bigint`, no floating point, no rounding (a line's gross is exactly quantity x unit price). The
  * database re-verifies these rules (Step 4 guards); this module is the only place amounts are computed.
  *
- * `calculation_version = 1`: line gross = quantity x unit price; subtotal = sum of the priced lines'
+ * `calculation_version = 2` (Phase 5 P5-4 adds the Member Discount candidate; the line arithmetic is unchanged from 1): line gross = quantity x unit price; subtotal = sum of the priced lines'
  * gross; the benefit (Step 6) is passed in as `discountTotal` (0 in Step 5); total = subtotal - discount.
  */
-export const CALCULATION_VERSION = 1;
+export const CALCULATION_VERSION = 2;
 
 export type PricingUnitName = 'PER_SERVICE' | 'PER_NAIL';
 

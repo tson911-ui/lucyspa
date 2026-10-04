@@ -12,14 +12,30 @@ import {
   type MenuItem,
 } from '@lucy-spa/ui';
 import { useState } from 'react';
+import { loyaltyDictionary } from '../../../i18n/loyalty';
 import { fill } from '../../../i18n/workforce';
-import { candidateBenefitLabel, ineligibleText } from '../../../lib/workforce/discounts';
+import {
+  bpToPercent,
+  candidateBenefitLabel,
+  ineligibleText,
+} from '../../../lib/workforce/discounts';
 import { formatVnd } from '../../../lib/workforce/format';
 import { paginationLabels } from '../../../lib/workforce/list-view';
 import { useWorkforce } from '../session';
 import { Badge, Empty, Notice } from '../ui';
 
 type Candidate = InvoiceResponse['discount']['candidates'][number];
+
+/** One line of "Các ưu đãi đã xét": a program candidate or the Member Discount, already turned into text. */
+interface DiscountRow {
+  key: string;
+  name: string;
+  benefit: string;
+  source: string;
+  winner: boolean;
+  eligible: boolean;
+  reason: string | null;
+}
 type AppliedVoucher = InvoiceResponse['discount']['vouchers'][number];
 
 /** Client paging for the short lists of one invoice (20 per page, like every list). */
@@ -36,49 +52,83 @@ function usePaging() {
 export function DiscountCard({ invoice }: { invoice: InvoiceResponse }) {
   const { t, locale } = useWorkforce();
   const paging = usePaging();
-  const winner = invoice.discount.winner;
+  const l = loyaltyDictionary(locale);
+  const { winner, member, winnerSource } = invoice.discount;
   const programName = (candidate: Pick<Candidate, 'nameVi' | 'nameEn'>) =>
     locale === 'vi' ? candidate.nameVi : candidate.nameEn;
+  const percentOf = (bp: number) => {
+    const percent = bpToPercent(bp);
+    return locale === 'vi' ? percent.replace('.', ',') : percent;
+  };
+  const memberTier = member ? l.tiers[member.tier] : '';
+  const rows: DiscountRow[] = [
+    ...(member
+      ? [
+          {
+            key: 'member',
+            name:
+              member.tier === 'NONE'
+                ? l.member.nameNoTier
+                : fill(l.member.name, { tier: memberTier }),
+            benefit: `${percentOf(member.discountBp)}%`,
+            source: l.member.source,
+            winner: member.winner,
+            eligible: member.eligible,
+            reason: member.reason ? l.member.ineligible[member.reason] : null,
+          },
+        ]
+      : []),
+    ...invoice.discount.candidates.map((candidate) => ({
+      key: `${candidate.discountId}:${candidate.voucherId ?? ''}`,
+      name: programName(candidate),
+      benefit: candidateBenefitLabel(candidate, locale),
+      source: candidate.voucherCode
+        ? fill(t.pos.candidateCode, { code: candidate.voucherCode })
+        : t.pos.candidateAuto,
+      winner: candidate.winner,
+      eligible: candidate.eligible,
+      reason: candidate.reason ? ineligibleText(candidate.reason, t) : null,
+    })),
+  ];
+  const reasonText = (reason: string): string =>
+    (l.member.reasons as Record<string, string>)[reason] ??
+    (t.pos.selectionReasons as Record<string, string>)[reason] ??
+    reason;
 
-  const columns: DataTableColumn<Candidate>[] = [
+  const columns: DataTableColumn<DiscountRow>[] = [
     {
       key: 'program',
       header: t.pos.colProgram,
       mobileTitle: true,
       truncate: true,
       width: 'lg',
-      cell: (candidate) => programName(candidate),
+      cell: (row) => row.name,
     },
     {
       key: 'benefit',
       header: t.pos.colBenefit,
       numeric: true,
-      cell: (candidate) => candidateBenefitLabel(candidate, locale),
+      cell: (row) => row.benefit,
     },
     {
       key: 'source',
       header: t.pos.colSource,
       hideBelow: 'md',
-      cell: (candidate) =>
-        candidate.voucherCode
-          ? fill(t.pos.candidateCode, { code: candidate.voucherCode })
-          : t.pos.candidateAuto,
+      cell: (row) => row.source,
     },
     {
       key: 'result',
       header: t.pos.colResult,
       wrap: true,
       width: 'lg',
-      cell: (candidate) =>
+      cell: (row) =>
         // Only the winner is a badge; the long explanations are plain text that wraps inside the cell.
-        candidate.winner ? (
+        row.winner ? (
           <Badge tone="success">{t.pos.candidateWinner}</Badge>
-        ) : candidate.eligible ? (
+        ) : row.eligible ? (
           t.pos.candidateEligible
-        ) : candidate.reason ? (
-          ineligibleText(candidate.reason, t)
         ) : (
-          '—'
+          (row.reason ?? '—')
         ),
     },
   ];
@@ -86,29 +136,38 @@ export function DiscountCard({ invoice }: { invoice: InvoiceResponse }) {
   return (
     <Card as="section">
       <CardHeader title={t.pos.discountTitle} description={t.pos.discountNote} />
-      {winner ? (
+      {winnerSource === 'MEMBER_TIER' && member ? (
+        <Notice tone="success">
+          <strong>
+            {fill(l.member.applied, { tier: memberTier, percent: percentOf(member.discountBp) })}
+          </strong>{' '}
+          · {fill(t.pos.candidateAmount, { amount: formatVnd(member.amountVnd, locale) })}
+          {invoice.discount.selectionReason
+            ? ` — ${reasonText(invoice.discount.selectionReason)}`
+            : ''}
+        </Notice>
+      ) : winner ? (
         <Notice tone="success">
           <strong>{fill(t.pos.discountApplied, { name: programName(winner) })}</strong> ·{' '}
           {candidateBenefitLabel(winner, locale)} ·{' '}
           {fill(t.pos.candidateAmount, { amount: formatVnd(winner.amountVnd, locale) })}
           {invoice.discount.selectionReason
-            ? ` — ${
-                t.pos.selectionReasons[
-                  invoice.discount.selectionReason as keyof typeof t.pos.selectionReasons
-                ] ?? invoice.discount.selectionReason
-              }`
+            ? ` — ${reasonText(invoice.discount.selectionReason)}`
             : ''}
         </Notice>
       ) : (
         <Empty>{t.pos.discountNone}</Empty>
       )}
-      {invoice.discount.candidates.length > 0 ? (
+      {member && invoice.discount.preview ? (
+        <p className="ls-hint">{l.member.previewNote}</p>
+      ) : null}
+      {rows.length > 0 ? (
         <DataTable
           mode="client"
           caption={fill(t.common.list.table, { list: t.pos.candidatesTitle })}
           columns={columns}
-          rows={invoice.discount.candidates}
-          rowKey={(candidate) => `${candidate.discountId}:${candidate.voucherId ?? ''}`}
+          rows={rows}
+          rowKey={(row) => row.key}
           paging={{ ...paging, labels: paginationLabels(t, t.pos.candidatesTitle) }}
         />
       ) : null}

@@ -5,6 +5,7 @@ import type {
   NotificationParams,
   NotificationType,
 } from './notification-registry.js';
+import type { InvoiceMemberCandidate } from './loyalty.js';
 import type { SeasonDensity, SeasonSlot, SeasonSlotSwitches } from './season-registry.js';
 export type OrganizationLevel =
   | 'CEO'
@@ -2560,8 +2561,12 @@ export interface InvoiceDiscountResponse {
   /** True while DRAFT: candidates are re-evaluated now; false once finalized (the stored application). */
   preview: boolean;
   candidates: InvoiceDiscountCandidate[];
-  /** The one winning benefit, or null when none is eligible/worth more than 0. */
+  /** The winning PROGRAM benefit (promotion or voucher); null when none won or when the Member Discount won (see `winnerSource`). */
   winner: InvoiceDiscountCandidate | null;
+  /** Which kind of benefit is the invoice discount: a promotion, a voucher or the member tier (Phase 5); null when none. */
+  winnerSource: 'PROMOTION' | 'VOUCHER' | 'MEMBER_TIER' | null;
+  /** The Member Discount candidate (payer is a member and loyalty is live); null otherwise. */
+  member: InvoiceMemberCandidate | null;
   /** Why this benefit won (or null when there is none). */
   selectionReason: string | null;
   /** Codes supplied to the draft (kept as history after finalization). */

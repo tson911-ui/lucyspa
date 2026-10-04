@@ -1,17 +1,22 @@
-import type {
-  DiscountIneligibleReason,
-  InvoiceDiscountCandidate,
-  InvoiceDiscountResponse,
+import {
+  loyaltyTierFor,
+  LOYALTY_TIER_TABLE_VERSION,
+  type DiscountIneligibleReason,
+  type InvoiceDiscountCandidate,
+  type InvoiceDiscountResponse,
+  type InvoiceMemberCandidate,
 } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
 import {
   evaluateDiscounts,
   type EngineCandidate,
   type EngineLine,
+  type EngineMember,
   type EngineProgram,
   type EngineResult,
   type EngineVersion,
   type EngineVoucher,
+  type MemberCandidate,
 } from './discount.engine.js';
 
 /**
@@ -107,6 +112,42 @@ export async function usageCounts(
   return counts;
 }
 
+/**
+ * The payer's Spa tier from the balance BEFORE this invoice (P5-T3/T4), or null for a guest payer or while loyalty is not
+ * live (then the result is exactly the version 1 result). At finalization (`lock`) the wallet row is read `FOR SHARE`, after
+ * the invoice and the program rows (lock order, design 12.2), so a concurrent earn cannot move the balance under the read;
+ * a DRAFT only previews the current balance. A customer with no wallet yet has 0 points and no tier.
+ */
+export async function loadMember(
+  tx: Prisma.TransactionClient,
+  payerUserId: string | null,
+  lock: boolean,
+): Promise<EngineMember | null> {
+  if (payerUserId === null) return null;
+  if ((await tx.loyaltyGoLive.count()) === 0) return null;
+  if (lock) {
+    // Lock order (design 12.2): the payer's user row comes BEFORE the wallet. The tier snapshot inserted next takes
+    // this row's key-share lock through its foreign key anyway; taking it first keeps a concurrent manual adjustment
+    // (which holds the customer row, then wants the wallet) from deadlocking with this finalization.
+    await tx.$queryRaw`SELECT id FROM users WHERE id = ${payerUserId}::uuid FOR KEY SHARE`;
+  }
+  const rows = lock
+    ? await tx.$queryRaw<{ balance_points: number }[]>`
+        SELECT balance_points FROM loyalty_wallets
+        WHERE user_id = ${payerUserId}::uuid AND wallet = 'SPA'::"LoyaltyWallet" FOR SHARE`
+    : await tx.$queryRaw<{ balance_points: number }[]>`
+        SELECT balance_points FROM loyalty_wallets
+        WHERE user_id = ${payerUserId}::uuid AND wallet = 'SPA'::"LoyaltyWallet"`;
+  const balanceBefore = rows[0]?.balance_points ?? 0;
+  const standing = loyaltyTierFor(balanceBefore);
+  return {
+    tier: standing.tier,
+    tierTableVersion: LOYALTY_TIER_TABLE_VERSION,
+    balanceBefore,
+    discountBp: standing.memberDiscountBp,
+  };
+}
+
 export async function evaluateInvoice(
   tx: Prisma.TransactionClient,
   invoice: { id: string; payerUserId: string | null },
@@ -199,11 +240,13 @@ export async function evaluateInvoice(
     .map((id) => programs.get(id))
     .filter((program): program is EngineProgram => program !== undefined)
     .filter((program) => now < program.version.validUntil);
+  const member = await loadMember(tx, invoice.payerUserId, options.lockPrograms);
   const result = evaluateDiscounts({
     lines,
     promotions,
     supplied: entries.map((entry) => ({ voucher: entry.voucher, program: entry.program })),
     hasMemberPayer: invoice.payerUserId !== null,
+    member,
     now,
   });
   return { result, entries };
@@ -243,7 +286,42 @@ export function candidatesJson(result: EngineResult): Prisma.InputJsonArray {
   })) as unknown as Prisma.InputJsonArray;
 }
 
-/** A frozen application as the response shows it (candidates come back from the stored JSON). */
+/** The Member Discount candidate as the response and the snapshot show it. */
+export function memberResponse(
+  candidate: MemberCandidate,
+  winner: boolean,
+): InvoiceMemberCandidate {
+  return {
+    tier: candidate.member.tier,
+    tierTableVersion: candidate.member.tierTableVersion,
+    balanceBefore: candidate.member.balanceBefore,
+    discountBp: candidate.member.discountBp,
+    eligibleSubtotalVnd: candidate.eligibleSubtotalVnd.toString(),
+    amountVnd: candidate.amountVnd.toString(),
+    eligible: candidate.eligible,
+    reason: candidate.reason,
+    winner,
+  };
+}
+
+/** The tier snapshot's candidates JSON: the Member candidate and every program candidate evaluated (design 5.3). */
+export function snapshotCandidatesJson(result: EngineResult): Prisma.InputJsonObject {
+  return {
+    member: result.member
+      ? (memberResponse(
+          result.member,
+          result.winnerSource === 'MEMBER_TIER',
+        ) as unknown as Prisma.InputJsonObject)
+      : null,
+    programs: candidatesJson(result),
+  };
+}
+
+/**
+ * A finalized invoice's benefit as the response shows it: the frozen program application (candidates come back from its
+ * stored JSON) and/or the frozen tier snapshot. The member part and the overall reason come from the snapshot, so a
+ * finalized invoice is never recomputed from today's balance or programs.
+ */
 export function storedDiscount(
   application: {
     voucherId: string | null;
@@ -251,19 +329,40 @@ export function storedDiscount(
     candidates: Prisma.JsonValue;
     selectionReason: string;
     appliedAt: Date;
-  },
+  } | null,
+  snapshot: {
+    candidates: Prisma.JsonValue;
+    winnerSource: string | null;
+    selectionReason: string | null;
+    createdAt: Date;
+  } | null,
   entries: InvoiceDiscountResponse['vouchers'],
 ): InvoiceDiscountResponse {
-  const candidates = (Array.isArray(application.candidates)
+  const stored =
+    snapshot && typeof snapshot.candidates === 'object' && snapshot.candidates !== null
+      ? (snapshot.candidates as unknown as {
+          member?: InvoiceMemberCandidate | null;
+          programs?: InvoiceDiscountCandidate[];
+        })
+      : null;
+  // No program application when the Member Discount won: the candidates evaluated are in the tier snapshot.
+  const candidates = (Array.isArray(application?.candidates)
     ? application.candidates
-    : []) as unknown as InvoiceDiscountCandidate[];
+    : Array.isArray(stored?.programs)
+      ? stored.programs
+      : []) as unknown as InvoiceDiscountCandidate[];
+  const winnerSource = (snapshot?.winnerSource ??
+    (application ? (application.voucherId ? 'VOUCHER' : 'PROMOTION') : null)) as
+    InvoiceDiscountResponse['winnerSource'] | null;
   return {
     preview: false,
     candidates,
     winner: candidates.find((candidate) => candidate.winner) ?? null,
-    selectionReason: application.selectionReason,
+    winnerSource,
+    member: stored?.member ?? null,
+    selectionReason: snapshot?.selectionReason ?? application?.selectionReason ?? null,
     vouchers: entries,
-    appliedAt: application.appliedAt.toISOString(),
+    appliedAt: (application?.appliedAt ?? snapshot?.createdAt ?? null)?.toISOString() ?? null,
   };
 }
 
@@ -276,6 +375,10 @@ export function previewDiscount(
     preview: true,
     candidates: result.candidates.map((candidate) => candidateResponse(candidate, result.winner)),
     winner: result.winner ? candidateResponse(result.winner, result.winner) : null,
+    winnerSource: result.winnerSource,
+    member: result.member
+      ? memberResponse(result.member, result.winnerSource === 'MEMBER_TIER')
+      : null,
     selectionReason: result.selectionReason,
     vouchers: entries,
     appliedAt: null,

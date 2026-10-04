@@ -1288,7 +1288,7 @@ test(
                     'every evaluated candidate is stored',
                   );
                   assert.ok(done.discount.appliedAt);
-                  assert.equal(done.calculationVersion, 1);
+                  assert.equal(done.calculationVersion, 2);
 
                   const application = await tx.invoiceDiscountApplication.findUniqueOrThrow({
                     where: { invoiceId: invoice.id },

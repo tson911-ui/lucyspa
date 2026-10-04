@@ -66,4 +66,5 @@ await import('../apps/api/dist/website/season.integration.test.js');
 await import('../apps/api/dist/website/shop-info.integration.test.js');
 await import('../apps/api/dist/website/website.race.integration.test.js');
 await import('../apps/api/dist/loyalty/loyalty.integration.test.js');
+await import('../apps/api/dist/pos/member-discount.race.integration.test.js');
 await import('../apps/api/dist/loyalty/loyalty.race.integration.test.js');

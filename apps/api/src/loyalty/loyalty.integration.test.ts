@@ -23,6 +23,7 @@ import {
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
+import { DiscountService } from '../discounts/discount.service.js';
 import { InvoiceService } from '../pos/invoice.service.js';
 import { LoyaltyService } from './loyalty.service.js';
 
@@ -403,7 +404,8 @@ test(
               });
               return visit.id;
             };
-            const finalized = async (services: Service[], owner: { id: string } | null) => {
+            /** A priced DRAFT (every line at its minimum price), not finalized. */
+            const pricedDraft = async (services: Service[], owner: { id: string } | null) => {
               const visitId = await completedVisit(services, owner);
               let current = (await ok(() => invoices.open(cashier.token, visitId))).invoice;
               for (const line of current.lines) {
@@ -414,10 +416,14 @@ test(
                   }),
                 );
               }
-              return ok(() =>
-                invoices.finalize(cashier.token, current.id, { expectedVersion: current.version }),
-              ) as Promise<InvoiceResponse>;
+              return current;
             };
+            const finalizeDraft = (draft: InvoiceResponse) =>
+              ok(() =>
+                invoices.finalize(cashier.token, draft.id, { expectedVersion: draft.version }),
+              ) as Promise<InvoiceResponse>;
+            const finalized = async (services: Service[], owner: { id: string } | null) =>
+              finalizeDraft(await pricedDraft(services, owner));
             const pay = (invoiceId: string, amount: number) =>
               ok(() =>
                 invoices.recordPayment(collector.token, invoiceId, {
@@ -481,6 +487,14 @@ test(
               async () => {
                 assert.equal(await tx.loyaltyGoLive.count(), 0);
                 const before = await finalized([exact], alice);
+                // P5-4: while OFF there is no Member Discount candidate and no tier snapshot (exactly the Phase 4 result).
+                assert.equal(before.discount.member, null);
+                assert.equal(before.discountTotalVnd, '0');
+                assert.equal(before.calculationVersion, 2);
+                assert.equal(
+                  await tx.invoiceLoyaltySnapshot.count({ where: { invoiceId: before.id } }),
+                  0,
+                );
                 await pay(before.id, 200_000);
                 // Not consumed yet: it will still be a pre-go-live episode once the switch is on.
                 const consumed = await finalized([exact], alice);
@@ -663,9 +677,9 @@ test(
               async () => {
                 const invoice = await finalized([exact], alice);
                 const before = (await balanceOf(alice.id)) ?? 0;
-                const paid = await pay(invoice.id, 200_000);
+                const paid = await pay(invoice.id, Number(invoice.totalVnd));
                 await reverse(invoice.id, paid.payment.id);
-                await pay(invoice.id, 200_000);
+                await pay(invoice.id, Number(invoice.totalVnd));
                 const events = await eventsOf(invoice.id);
                 const byKey = (type: string, seq: number) =>
                   events.find(
@@ -677,7 +691,11 @@ test(
                 assert.equal(await consumeEvent(byKey('INVOICE_PAID', 2).id), 'APPLIED');
                 assert.equal(await consumeEvent(byKey('INVOICE_REOPENED', 1).id), 'NOOP');
                 assert.equal(await consumeEvent(byKey('INVOICE_PAID', 1).id), 'SKIPPED_STALE');
-                assert.equal(await balanceOf(alice.id), before + 200, 'earned exactly once');
+                assert.equal(
+                  await balanceOf(alice.id),
+                  before + Math.floor(Number(invoice.totalVnd) / 1000),
+                  'earned exactly once',
+                );
                 const keys = (await ledgerOf(alice.id)).map((entry) => entry.idempotencyKey);
                 assert.equal(new Set(keys).size, keys.length);
               },
@@ -966,12 +984,12 @@ test(
                 );
                 const spa = profile.wallets[0]!;
                 assert.equal(spa.balancePoints, await balanceOf(alice.id));
-                // 930 (930,500 VND) + 200 (one paid episode, the stale one skipped) = 1,130: Gold, 4%.
-                assert.equal(spa.balancePoints, 1130);
+                // 930 (930,500 VND) + 194 (Silver 3% off 200,000 = 194,000, one paid episode; the stale one skipped) = 1,124: Gold, 4%.
+                assert.equal(spa.balancePoints, 1124);
                 assert.equal(spa.tier, 'GOLD');
                 assert.equal(spa.memberDiscountBp, 400);
                 assert.equal(spa.nextTier, 'PLATINUM');
-                assert.equal(spa.pointsToNextTier, 3000 - 1130);
+                assert.equal(spa.pointsToNextTier, 3000 - 1124);
                 assert.deepEqual(profile.wallets[1], {
                   wallet: 'BEAUTY',
                   balancePoints: 0,
@@ -1088,6 +1106,195 @@ test(
                     () => undefined,
                   ),
                   0,
+                );
+              },
+            );
+
+            // ============================================================ Member Discount (P5-4)
+            await suite.test(
+              'member discount: tier read before the invoice, snapshot, best offer, frozen after finalization',
+              async () => {
+                const discounts = new DiscountService(
+                  sessionAdapter,
+                  new AuthThrottleService(environment),
+                );
+                const hour = 3_600_000;
+                const program = (code: string, percentBp: number) =>
+                  ok(() =>
+                    discounts.create(ownerToken, {
+                      code,
+                      nameVi: `Khuyến mãi ${percentBp / 100}%`,
+                      nameEn: `Sale ${percentBp / 100}%`,
+                      requiresCode: false,
+                      version: {
+                        kind: 'PERCENT',
+                        percentBp,
+                        validFrom: new Date(Date.now() - 24 * hour).toISOString(),
+                        validUntil: new Date(Date.now() + 720 * hour).toISOString(),
+                        minSpendVnd: '0',
+                        scopeMode: 'ALL_SERVICES',
+                        serviceIds: [],
+                        categoryIds: [],
+                        usageLimitTotal: null,
+                        usageLimitPerCustomer: null,
+                      },
+                    }),
+                  );
+                const stop = (detail: { id: string; version: number }) =>
+                  ok(() =>
+                    discounts.setActive(ownerToken, detail.id, {
+                      expectedVersion: detail.version,
+                      isActive: false,
+                    }),
+                  );
+                const give = (userId: string, points: number) =>
+                  ok(() =>
+                    loyalty.adjust(adjuster.token, userId, {
+                      wallet: 'SPA',
+                      points,
+                      reason: 'Điểm khởi tạo cho thử nghiệm',
+                      clientRequestId: randomUUID(),
+                    }),
+                  );
+                const snapshotOf = (invoiceId: string) =>
+                  tx.invoiceLoyaltySnapshot.findUnique({ where: { invoiceId } });
+
+                // A. A payer under 500 points has no tier: nothing is discounted, the snapshot still records the tier.
+                const gina = await customer('gina');
+                const plain = await finalized([exact], gina);
+                assert.equal(plain.calculationVersion, 2);
+                assert.equal(plain.discountTotalVnd, '0');
+                assert.equal(plain.totalVnd, '200000');
+                assert.equal(plain.discount.member?.tier, 'NONE');
+                assert.equal(plain.discount.member?.reason, 'NO_TIER');
+                assert.equal(plain.discount.winnerSource, null);
+                const plainSnapshot = (await snapshotOf(plain.id))!;
+                assert.equal(plainSnapshot.tier, 'NONE');
+                assert.equal(plainSnapshot.balanceBefore, 0);
+                assert.equal(plainSnapshot.memberAmountVnd, 0n);
+                assert.equal(plainSnapshot.winnerSource, null);
+
+                // B. Gold 4% from the balance BEFORE the invoice; the draft previews it and the finalization freezes it.
+                await give(alice.id, 100);
+                const aliceBefore = (await balanceOf(alice.id)) ?? 0;
+                assert.ok(aliceBefore >= 1000 && aliceBefore < 3000, String(aliceBefore));
+                const draft = await pricedDraft([exact], alice);
+                assert.equal(draft.discount.preview, true);
+                assert.equal(draft.discount.member?.tier, 'GOLD');
+                assert.equal(draft.discount.member?.discountBp, 400);
+                assert.equal(draft.discount.winnerSource, 'MEMBER_TIER');
+                assert.equal(draft.discountTotalVnd, '8000');
+                assert.equal(draft.totalVnd, '192000');
+                const gold = await finalizeDraft(draft);
+                assert.equal(gold.discountTotalVnd, '8000');
+                assert.equal(gold.totalVnd, '192000');
+                assert.equal(gold.discount.winnerSource, 'MEMBER_TIER');
+                assert.equal(gold.discount.winner, null);
+                assert.equal(gold.discount.selectionReason, 'MEMBER_ONLY_ELIGIBLE');
+                assert.equal(gold.discount.member?.winner, true);
+                const goldSnapshot = (await snapshotOf(gold.id))!;
+                assert.deepEqual(
+                  [
+                    goldSnapshot.tier,
+                    goldSnapshot.balanceBefore,
+                    goldSnapshot.memberDiscountBp,
+                    goldSnapshot.tierTableVersion,
+                    goldSnapshot.calculationVersion,
+                    goldSnapshot.eligibleSpaVnd,
+                    goldSnapshot.memberAmountVnd,
+                    goldSnapshot.winnerSource,
+                    goldSnapshot.wallet,
+                  ],
+                  ['GOLD', aliceBefore, 400, 1, 2, 200000n, 8000n, 'MEMBER_TIER', 'SPA'],
+                );
+                assert.equal(
+                  await tx.invoiceDiscountApplication.count({ where: { invoiceId: gold.id } }),
+                  0,
+                );
+                assert.equal(
+                  await tx.discountRedemption.count({ where: { invoiceId: gold.id } }),
+                  0,
+                );
+
+                // C. Points follow what is PAID (192,000 -> 192) and a later balance never recalculates the invoice.
+                await pay(gold.id, 192_000);
+                assert.deepEqual(outcomes(await consume(gold.id)), ['APPLIED']);
+                assert.equal(await balanceOf(alice.id), aliceBefore + 192);
+                await give(alice.id, 6_000);
+                const again = await ok(() => invoices.get(cashier.token, gold.id));
+                assert.equal(again.discountTotalVnd, '8000');
+                assert.equal(again.discount.member?.tier, 'GOLD');
+                assert.equal(again.discount.member?.balanceBefore, aliceBefore);
+                assert.equal(again.calculationVersion, 2);
+                const next = await pricedDraft([exact], alice);
+                assert.equal(
+                  next.discount.member?.tier,
+                  'DIAMOND',
+                  'a new invoice reads the new balance',
+                );
+
+                // D. Promotion versus member: the better one wins and only the winner is redeemed; a tie goes to the promotion.
+                const hana = await customer('hana');
+                await give(hana.id, 1_000);
+                const sale = await program(`P54${run}A`, 1500);
+                const beaten = await finalized([exact], hana);
+                assert.equal(beaten.discount.winnerSource, 'PROMOTION');
+                assert.equal(beaten.discount.winner?.discountCode, `P54${run}A`);
+                assert.equal(beaten.discount.selectionReason, 'PROGRAM_BEATS_MEMBER');
+                assert.equal(beaten.discount.member?.tier, 'GOLD');
+                assert.equal(beaten.discount.member?.winner, false);
+                assert.equal(beaten.totalVnd, '170000');
+                const beatenSnapshot = (await snapshotOf(beaten.id))!;
+                assert.equal(beatenSnapshot.winnerSource, 'PROMOTION');
+                assert.equal(beatenSnapshot.memberAmountVnd, 0n);
+                assert.equal(
+                  await tx.discountRedemption.count({ where: { invoiceId: beaten.id } }),
+                  1,
+                );
+                await stop(sale);
+                const tied = await program(`P54${run}B`, 400);
+                const tieWins = await finalized([exact], hana);
+                assert.equal(tieWins.discount.winnerSource, 'PROMOTION');
+                assert.equal(tieWins.discount.selectionReason, 'PROGRAM_TIE_OVER_MEMBER');
+                assert.equal(tieWins.totalVnd, '192000');
+                await stop(tied);
+                const small = await program(`P54${run}C`, 300);
+                const memberBeats = await finalized([exact], hana);
+                assert.equal(memberBeats.discount.winnerSource, 'MEMBER_TIER');
+                assert.equal(memberBeats.discount.selectionReason, 'MEMBER_LARGEST_BENEFIT');
+                assert.equal(
+                  memberBeats.discount.candidates.length,
+                  1,
+                  'the program candidate is still listed',
+                );
+                assert.equal(memberBeats.totalVnd, '192000');
+                assert.equal(
+                  await tx.discountRedemption.count({ where: { invoiceId: memberBeats.id } }),
+                  0,
+                );
+                await stop(small);
+
+                // E. A guest payer has no member discount and no snapshot; a cancelled member invoice keeps its history.
+                const guest = await finalized([exact], null);
+                assert.equal(guest.discount.member, null);
+                assert.equal(await snapshotOf(guest.id), null);
+                const cancelled = await ok(() =>
+                  invoices.cancel(canceller.token, memberBeats.id, {
+                    expectedVersion: memberBeats.version,
+                    reason: 'Khách đổi ý',
+                  }),
+                );
+                assert.equal(cancelled.status, 'CANCELLED');
+                assert.ok(await snapshotOf(memberBeats.id));
+                assert.equal(cancelled.discount.winnerSource, 'MEMBER_TIER');
+
+                // F. The database refuses a snapshot that disagrees with the invoice (member amount outside the rule).
+                await sqlRejects(
+                  () =>
+                    tx.$executeRawUnsafe(
+                      `UPDATE invoice_loyalty_snapshots SET member_amount_vnd = 1 WHERE invoice_id = '${gold.id}'::uuid`,
+                    ),
+                  /permanent|immutable|history|append/i,
                 );
               },
             );

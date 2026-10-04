@@ -159,3 +159,25 @@ export interface LoyaltyExceptionPageResponse {
 
 /** GET/POST /api/v1/loyalty/go-live (ACTIVATE_LOYALTY, Owner only; POST needs fresh re-authentication). */
 export type LoyaltyGoLiveStatusResponse = LoyaltyGoLiveResponse;
+
+// ------------------------------------------------------------------- member discount (P5-4)
+
+/** Why the Member Discount is not a winning candidate of an invoice (a stable code; the UI shows a localized text). */
+export type MemberIneligibleReason = 'NO_TIER' | 'NO_ELIGIBLE_LINES';
+
+/** The Member Discount as a candidate of the best-offer selection (PRD 16.1, 18.5-18.6). Only for an identified member payer once loyalty is live. */
+export interface InvoiceMemberCandidate {
+  /** The payer's Spa tier from the balance BEFORE this invoice (never after it earns). */
+  tier: LoyaltyTierName;
+  tierTableVersion: number;
+  balanceBefore: number;
+  /** The tier's Member Discount in basis points (0 = no tier yet). */
+  discountBp: number;
+  /** All priced Spa lines before any benefit (Phase 5 has Spa lines only). */
+  eligibleSubtotalVnd: string;
+  /** The computed benefit; 0 when not eligible. */
+  amountVnd: string;
+  eligible: boolean;
+  reason: MemberIneligibleReason | null;
+  winner: boolean;
+}

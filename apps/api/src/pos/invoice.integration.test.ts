@@ -469,7 +469,7 @@ test(
                 assert.equal(invoice.status, 'DRAFT');
                 assert.match(invoice.code, /^INV-\d{6}-[A-HJ-NP-Z2-9]{6}$/);
                 assert.equal(invoice.version, 1);
-                assert.equal(invoice.calculationVersion, 1);
+                assert.equal(invoice.calculationVersion, 2);
                 // Exactly the performed lines, once each; the cancelled line is never invoiced.
                 assert.equal(invoice.lines.length, 4);
                 assert.deepEqual(
@@ -960,7 +960,7 @@ test(
                   visitId: visit.id,
                   totalVnd: '145000',
                   discountTotalVnd: '0',
-                  calculationVersion: 1,
+                  calculationVersion: 2,
                 });
                 // Replay by the same actor: the current state, no second audit or event.
                 const replay = await ok(() =>
