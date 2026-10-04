@@ -20,8 +20,9 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted) |
 | Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                        |
 | Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                     |
-| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11)**                         |
-| Phase 5+ (loyalty, payroll, finance)      | NOT started (deferred)                                           |
+| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**     |
+| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `58bfabc`)                                |
+| Phase 5+ (loyalty, payroll, finance)      | NOT started (Phase 5 = loyalty and combos, next)                 |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
 
@@ -100,13 +101,18 @@ Step 10 Owner answers (confirmed): Owner account receives exceptions/summary via
 ## Step 11 (final validation)
 
 Step 11 (`docs/PHASE4_FINAL_VALIDATION.md`): full gate on scratch DB `lucy_spa_step11_validation_20260930` (35 migrations): 917 tests pass, web build, smoke pass.
-Fixed only gate-side defects (stale OpenAPI assertion in `scripts/smoke.mjs`, prettier drift). No migration, no product change, not deployed.
+Fixed only gate-side defects (stale OpenAPI assertion in `scripts/smoke.mjs`, prettier drift). No migration, no product change (deployed later, see Production).
 Report has the deployment checklist (10 pending migrations, PayOS env, webhook URL, `db:permissions:sync`, PER_NAIL limits). Step 11 and Phase 4 CLOSED / OWNER APPROVED; scratch DB dropped.
 
 ## Production
 
-Deployed commit `97e0485` (Notification Center final validation); 25 migrations applied; api/web/worker online.
-**Phase 4 (Steps 2-11) is NOT deployed.** Run `pnpm db:permissions:sync` at the next deployment. Deploy only when the Owner asks.
+Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deployed" line in this file):
+
+- Production runs `58bfabc` (latest `main`), deployed by the Owner through the usual runbook; every deploy checks out `origin/main`.
+- `pnpm db:status` on the server: up to date, so all migrations through `20261026000000_uxui_part2_footer_blocks` are applied.
+- Phase 4 (POS, invoices, PayOS) is live. The PayOS checksum key was rotated on the server today and a real QR test payment was marked paid correctly. The webhook signature hotfix is deployed (it is in `main`).
+- Server security today: fail2ban on, SSH password login off, server rebooted onto the new kernel, all services came back.
+- Deploy only when the Owner asks. Run `pnpm db:permissions:sync` at a deployment that adds permissions.
 
 ## Known pre-existing test flakes (unrelated to Phase 4; note in one line, do not investigate)
 
@@ -114,7 +120,7 @@ Deployed commit `97e0485` (Notification Center final validation); 25 migrations 
 - Worker Step 9 notification tests (`Redis job loss…`, `real Redis delayed-job loss…`) build the visit `serviceDate` from the UTC date and fail
   when the UTC and Vietnam dates differ (roughly 17:00-24:00 UTC).
 
-## Hotfix: PayOS webhook signature (post 82a0862, not deployed)
+## Hotfix: PayOS webhook signature (post 82a0862, DEPLOYED with 58bfabc)
 
 - Webhook now verifies the signature over `data` first; authentic non-payment deliveries (URL-confirmation probe) get 200 and apply nothing.
 - Refusals log a sanitized reason (`PayOS webhook refused`: reason, signature length, field names). See `docs/PHASE4_HOTFIX_PAYOS_WEBHOOK_SIGNATURE.md`.
