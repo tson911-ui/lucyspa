@@ -531,7 +531,7 @@ test('Phase 4 Step 4 POS database foundation invariants (all fixtures roll back)
                 );
                 assert.equal(row.dataClassification, 'FINANCIAL', row.code);
               }
-              // Only the pay codes are EMPLOYEE_PAY and no non-financial code is FINANCIAL.
+              // Only the pay codes are EMPLOYEE_PAY and no other code is FINANCIAL (Phase 5 adds two FINANCIAL codes).
               const others = await tx.permission.findMany({
                 where: { code: { notIn: [...FINANCIAL_CODES] } },
                 select: { code: true, dataClassification: true },
@@ -541,7 +541,9 @@ test('Phase 4 Step 4 POS database foundation invariants (all fixtures roll back)
                   row.dataClassification,
                   ['VIEW_EMPLOYEE_PAY', 'MANAGE_EMPLOYEE_PAY'].includes(row.code)
                     ? 'EMPLOYEE_PAY'
-                    : 'STANDARD',
+                    : ['ADJUST_LOYALTY_POINTS', 'RESTORE_COMBO_SESSIONS'].includes(row.code)
+                      ? 'FINANCIAL'
+                      : 'STANDARD',
                   row.code,
                 );
               }

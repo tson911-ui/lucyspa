@@ -14,8 +14,8 @@ export interface PermissionDefinition {
 /**
  * Code-owned catalog (Phase 1 design section 7, extended in Phase 2). Every permission
  * is branch-capable except MANAGE_SERVICE_PRICES, MANAGE_BOOKING_SETTINGS, MANAGE_DISCOUNTS,
- * CREATE_VOUCHERS and MANAGE_WEBSITE_CONTENT (GLOBAL_ONLY); the two pay permissions are EMPLOYEE_PAY data and the nine Phase 4
- * financial permissions are FINANCIAL data. Semantics are immutable in SQL.
+ * CREATE_VOUCHERS, MANAGE_WEBSITE_CONTENT and six Phase 5 codes (GLOBAL_ONLY); the two pay permissions are EMPLOYEE_PAY data and
+ * the nine Phase 4 financial permissions plus two Phase 5 codes are FINANCIAL data. Semantics are immutable in SQL.
  */
 export const PERMISSION_CATALOG = Object.freeze([
   { code: 'VIEW_EMPLOYEES', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
@@ -121,6 +121,45 @@ export const PERMISSION_CATALOG = Object.freeze([
   { code: 'VIEW_REVENUE', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'FINANCIAL' },
   {
     code: 'MANAGE_WEBSITE_CONTENT',
+    scopeCapability: 'GLOBAL_ONLY',
+    dataClassification: 'STANDARD',
+  },
+  // Phase 5 loyalty, referral, combos and rewards (design section 13, P5-T13). Nothing is granted by default.
+  // Manual points, combo restoration, combo/birthday/catalog configuration and the exceptions list are
+  // organization-wide (GLOBAL_ONLY); points adjustment and combo restoration are FINANCIAL data and will
+  // require fresh re-authentication when those actions exist (P5-3, P5-8). The codes alone do nothing yet.
+  { code: 'VIEW_LOYALTY', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  {
+    code: 'ADJUST_LOYALTY_POINTS',
+    scopeCapability: 'GLOBAL_ONLY',
+    dataClassification: 'FINANCIAL',
+  },
+  { code: 'MANAGE_REFERRALS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  { code: 'MANAGE_COMBOS', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'STANDARD' },
+  { code: 'SELL_COMBOS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  {
+    code: 'CONSUME_COMBO_SESSIONS',
+    scopeCapability: 'BRANCH_CAPABLE',
+    dataClassification: 'STANDARD',
+  },
+  {
+    code: 'RESTORE_COMBO_SESSIONS',
+    scopeCapability: 'GLOBAL_ONLY',
+    dataClassification: 'FINANCIAL',
+  },
+  {
+    code: 'MANAGE_BIRTHDAY_REWARDS',
+    scopeCapability: 'GLOBAL_ONLY',
+    dataClassification: 'STANDARD',
+  },
+  {
+    code: 'MANAGE_REWARD_CATALOG',
+    scopeCapability: 'GLOBAL_ONLY',
+    dataClassification: 'STANDARD',
+  },
+  { code: 'ISSUE_REWARDS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  {
+    code: 'VIEW_LOYALTY_EXCEPTIONS',
     scopeCapability: 'GLOBAL_ONLY',
     dataClassification: 'STANDARD',
   },

@@ -416,6 +416,18 @@ test('the code-owned catalog is exactly the Phase 1, Phase 2 and follow-up Step 
       ['VIEW_REVENUE', 'BRANCH_CAPABLE', 'FINANCIAL'],
       // UX/UI Step 11 (design 16.1, Q-CM1): one GLOBAL_ONLY code for media, popup and slider.
       ['MANAGE_WEBSITE_CONTENT', 'GLOBAL_ONLY', 'STANDARD'],
+      // Phase 5 P5-2 (design 13, P5-T13): loyalty, referral, combos and rewards.
+      ['VIEW_LOYALTY', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['ADJUST_LOYALTY_POINTS', 'GLOBAL_ONLY', 'FINANCIAL'],
+      ['MANAGE_REFERRALS', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['MANAGE_COMBOS', 'GLOBAL_ONLY', 'STANDARD'],
+      ['SELL_COMBOS', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['CONSUME_COMBO_SESSIONS', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['RESTORE_COMBO_SESSIONS', 'GLOBAL_ONLY', 'FINANCIAL'],
+      ['MANAGE_BIRTHDAY_REWARDS', 'GLOBAL_ONLY', 'STANDARD'],
+      ['MANAGE_REWARD_CATALOG', 'GLOBAL_ONLY', 'STANDARD'],
+      ['ISSUE_REWARDS', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['VIEW_LOYALTY_EXCEPTIONS', 'GLOBAL_ONLY', 'STANDARD'],
     ],
   );
 });

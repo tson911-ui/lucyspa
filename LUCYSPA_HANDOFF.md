@@ -22,7 +22,7 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                     |
 | **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**     |
 | UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `58bfabc`)                                |
-| **Phase 5 (loyalty and combos)**          | **IN PROGRESS (P5-1 design, awaiting Owner approval)**           |
+| **Phase 5 (loyalty and combos)**          | **IN PROGRESS (P5-2 built, not deployed)**                       |
 | Phase 6+ (products, payroll, finance)     | NOT started                                                      |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
@@ -67,7 +67,8 @@ Phase 4 migrations so far: Step 3 (`20261013…`), Step 4 (`20261014000000-04`),
 
 ## Open Owner checkpoints (NOT decided; do not decide or implement)
 
-- Phase 5 open questions OQ-1…OQ-11 and proposed decisions P5-T1…T13: `docs/PHASE5_LOYALTY_COMBOS_DESIGN.md` section 2.2-2.3 (only OQ-1 and P5-T1/T2/T12/T13 block P5-2).
+- Phase 5 (2026-10-04): OQ-1 yes, P5-T1/T2/T12/T13 approved, go-live switch defaults OFF; OQ-2…OQ-11 stay open (ask only when a step is blocked): `docs/PHASE5_LOYALTY_COMBOS_DESIGN.md` section 2.3-2.4.
+- P5-2 (`docs/PHASE5_STEP2_DB_PERMISSIONS_FOUNDATION.md`): migrations `20261027000000`…`20261027000003` (permission codes, semantics, loyalty foundation, combo/reward foundation); 11 permissions, nothing granted; **not deployed**; deploy = `pnpm db:deploy` then `pnpm db:permissions:sync`.
 - Q8 (Phase 4) was answered before Step 10 (see "Q8 (notifications)" below).
 
 ## Q8 (invoice / revenue notifications) - LOCKED

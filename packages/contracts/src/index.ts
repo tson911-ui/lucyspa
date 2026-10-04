@@ -718,7 +718,18 @@ export type PermissionCodeName =
   | 'CANCEL_INVOICES'
   | 'CORRECT_PAYMENTS'
   | 'VIEW_REVENUE'
-  | 'MANAGE_WEBSITE_CONTENT';
+  | 'MANAGE_WEBSITE_CONTENT'
+  | 'VIEW_LOYALTY'
+  | 'ADJUST_LOYALTY_POINTS'
+  | 'MANAGE_REFERRALS'
+  | 'MANAGE_COMBOS'
+  | 'SELL_COMBOS'
+  | 'CONSUME_COMBO_SESSIONS'
+  | 'RESTORE_COMBO_SESSIONS'
+  | 'MANAGE_BIRTHDAY_REWARDS'
+  | 'MANAGE_REWARD_CATALOG'
+  | 'ISSUE_REWARDS'
+  | 'VIEW_LOYALTY_EXCEPTIONS';
 
 /** A named permission bundle. OWNER is virtual and never a role. */
 export interface RoleResponse {

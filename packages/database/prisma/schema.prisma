@@ -43,6 +43,8 @@ model Branch {
   payments                Payment[]
   paymentAnomalies        PaymentAnomaly[]
   invoiceNotes            InvoiceManagementNote[]
+  comboConsumptions       ComboSessionConsumption[]    @relation("ComboConsumptionBranch")
+  rewardRedemptions       RewardRedemption[]           @relation("RewardRedemptionBranch")
 
   @@index([areaId], map: "branches_area_idx")
   @@map("branches")
@@ -343,6 +345,17 @@ enum PermissionCode {
   CORRECT_PAYMENTS
   VIEW_REVENUE
   MANAGE_WEBSITE_CONTENT
+  VIEW_LOYALTY
+  ADJUST_LOYALTY_POINTS
+  MANAGE_REFERRALS
+  MANAGE_COMBOS
+  SELL_COMBOS
+  CONSUME_COMBO_SESSIONS
+  RESTORE_COMBO_SESSIONS
+  MANAGE_BIRTHDAY_REWARDS
+  MANAGE_REWARD_CATALOG
+  ISSUE_REWARDS
+  VIEW_LOYALTY_EXCEPTIONS
 }
 
 enum LeaveStatus {
@@ -440,6 +453,27 @@ model User {
   finalizedDiscountApplications  InvoiceDiscountApplication[]     @relation("DiscountApplicationFinalizer")
   discountRedemptions            DiscountRedemption[]             @relation("DiscountRedemptionPayer")
   releasedDiscountRedemptions    DiscountRedemptionRelease[]      @relation("DiscountReleaseActor")
+  loyaltyGoLiveActivations       LoyaltyGoLive[]                  @relation("LoyaltyGoLiveActivator")
+  loyaltyWallets                 LoyaltyWalletAccount[]           @relation("LoyaltyWalletOwner")
+  loyaltyLedgerActions           LoyaltyLedgerEntry[]             @relation("LoyaltyLedgerActor")
+  referralsAsReferred            Referral[]                       @relation("ReferralReferred")
+  referralsAsReferrer            Referral[]                       @relation("ReferralReferrer")
+  referralsBound                 Referral[]                       @relation("ReferralBinder")
+  loyaltySnapshotsAsPayer        InvoiceLoyaltySnapshot[]         @relation("LoyaltySnapshotPayer")
+  createdCombos                  Combo[]                          @relation("ComboCreator")
+  createdComboVersions           ComboVersion[]                   @relation("ComboVersionCreator")
+  ownedComboPurchases            ComboPurchase[]                  @relation("ComboPurchaseOwner")
+  voidedComboPurchases           ComboPurchase[]                  @relation("ComboPurchaseVoider")
+  ktvComboConsumptions           ComboSessionConsumption[]        @relation("ComboConsumptionKtv")
+  performedComboConsumptions     ComboSessionConsumption[]        @relation("ComboConsumptionActor")
+  releasedComboSessions          ComboSessionRelease[]            @relation("ComboReleaseActor")
+  restoredComboSessions          ComboSessionRestoration[]        @relation("ComboRestorationActor")
+  createdRewardCatalogItems      RewardCatalogItem[]              @relation("RewardItemCreator")
+  ownedRewardEntitlements        RewardEntitlement[]              @relation("RewardEntitlementOwner")
+  issuedRewardEntitlements       RewardEntitlement[]              @relation("RewardEntitlementIssuer")
+  voidedRewardEntitlements       RewardEntitlement[]              @relation("RewardEntitlementVoider")
+  redeemedRewards                RewardRedemption[]               @relation("RewardRedemptionActor")
+  releasedRewardRedemptions      RewardRedemptionRelease[]        @relation("RewardReleaseActor")
   updatedSettings                AppSetting[]
   grantedOrganizationAssignments OrganizationAssignment[]         @relation("OrganizationAssignmentGrantor")
   grantedTeamMemberships         TeamMembership[]                 @relation("TeamMembershipGrantor")
@@ -838,6 +872,9 @@ model Service {
   bookingLines            BookingServiceLine[]
   visitLines              VisitServiceLine[]
   invoiceLineServices     InvoiceLineService[]
+  combos                  Combo[]                     @relation("ComboService")
+  comboPurchases          ComboPurchase[]             @relation("ComboPurchaseService")
+  rewardCatalogItems      RewardCatalogItem[]         @relation("RewardItemService")
   discountVersionServices DiscountVersionService[]
 
   @@index([categoryId, isActive, id], map: "services_category_idx")
@@ -1249,23 +1286,24 @@ model Visit {
 // Who receives services (design section 9): MEMBER (a customer account), GUEST or CHILD
 // (never accounts; a child names a guardian participant of the same visit).
 model VisitParticipant {
-  id                    String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  visitId               String               @map("visit_id") @db.Uuid
-  visit                 Visit                @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  id                    String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  visitId               String                    @map("visit_id") @db.Uuid
+  visit                 Visit                     @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   kind                  VisitParticipantKind
-  customerUserId        String?              @map("customer_user_id") @db.Uuid
-  customer              User?                @relation(fields: [customerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  displayName           String?              @map("display_name")
+  customerUserId        String?                   @map("customer_user_id") @db.Uuid
+  customer              User?                     @relation(fields: [customerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  displayName           String?                   @map("display_name")
   phone                 String?
   note                  String?
-  guardianParticipantId String?              @map("guardian_participant_id") @db.Uuid
-  guardian              VisitParticipant?    @relation("ParticipantGuardian", fields: [visitId, guardianParticipantId], references: [visitId, id], onDelete: Restrict, onUpdate: Restrict)
-  wards                 VisitParticipant[]   @relation("ParticipantGuardian")
-  bookingRecipientId    String?              @unique(map: "visit_participants_booking_recipient_id_key") @map("booking_recipient_id") @db.Uuid
-  bookingRecipient      BookingRecipient?    @relation(fields: [bookingRecipientId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  guardianParticipantId String?                   @map("guardian_participant_id") @db.Uuid
+  guardian              VisitParticipant?         @relation("ParticipantGuardian", fields: [visitId, guardianParticipantId], references: [visitId, id], onDelete: Restrict, onUpdate: Restrict)
+  wards                 VisitParticipant[]        @relation("ParticipantGuardian")
+  bookingRecipientId    String?                   @unique(map: "visit_participants_booking_recipient_id_key") @map("booking_recipient_id") @db.Uuid
+  bookingRecipient      BookingRecipient?         @relation(fields: [bookingRecipientId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt             DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
   lines                 VisitServiceLine[]
   invoiceLineServices   InvoiceLineService[]
+  comboConsumptions     ComboSessionConsumption[] @relation("ComboConsumptionRecipient")
 
   @@unique([visitId, id], map: "visit_participants_visit_id_id_key")
   @@index([customerUserId], map: "visit_participants_customer_idx")
@@ -1515,42 +1553,45 @@ enum DiscountReleaseCause {
 // customer account or NULL (guest). Amounts are integer VND; total = subtotal - discountTotal is
 // the receivable and may be 0. Status transitions and freezing are guarded in SQL.
 model Invoice {
-  id                  String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code                String                      @unique(map: "invoices_code_key")
-  branchId            String                      @map("branch_id") @db.Uuid
-  branch              Branch                      @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  visitId             String                      @map("visit_id") @db.Uuid
-  visit               Visit                       @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  status              InvoiceStatus               @default(DRAFT)
-  payerUserId         String?                     @map("payer_user_id") @db.Uuid
-  payer               User?                       @relation("InvoicePayer", fields: [payerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  businessDate        DateTime                    @map("business_date") @db.Date
-  calculationVersion  Int                         @map("calculation_version")
-  subtotalVnd         BigInt                      @default(0) @map("subtotal_vnd")
-  discountTotalVnd    BigInt                      @default(0) @map("discount_total_vnd")
-  totalVnd            BigInt                      @default(0) @map("total_vnd")
-  finalizedAt         DateTime?                   @map("finalized_at") @db.Timestamptz(3)
-  finalizedByUserId   String?                     @map("finalized_by_user_id") @db.Uuid
-  finalizedBy         User?                       @relation("InvoiceFinalizedBy", fields: [finalizedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  cancelledAt         DateTime?                   @map("cancelled_at") @db.Timestamptz(3)
-  cancelledByUserId   String?                     @map("cancelled_by_user_id") @db.Uuid
-  cancelledBy         User?                       @relation("InvoiceCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  cancelledFromStatus InvoiceStatus?              @map("cancelled_from_status")
-  cancelReason        String?                     @map("cancel_reason")
-  paidAt              DateTime?                   @map("paid_at") @db.Timestamptz(3)
-  paidSeq             Int                         @default(0) @map("paid_seq")
-  createdByUserId     String                      @map("created_by_user_id") @db.Uuid
-  createdBy           User                        @relation("InvoiceCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  rowVersion          Int                         @default(1) @map("row_version")
-  createdAt           DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  lines               InvoiceLine[]
-  payments            Payment[]
-  paymentAnomalies    PaymentAnomaly[]
-  managementNotes     InvoiceManagementNote[]
-  voucherEntries      InvoiceVoucherEntry[]
-  discountApplication InvoiceDiscountApplication?
-  discountRedemption  DiscountRedemption?
+  id                   String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                 String                      @unique(map: "invoices_code_key")
+  branchId             String                      @map("branch_id") @db.Uuid
+  branch               Branch                      @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  visitId              String                      @map("visit_id") @db.Uuid
+  visit                Visit                       @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  status               InvoiceStatus               @default(DRAFT)
+  payerUserId          String?                     @map("payer_user_id") @db.Uuid
+  payer                User?                       @relation("InvoicePayer", fields: [payerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  businessDate         DateTime                    @map("business_date") @db.Date
+  calculationVersion   Int                         @map("calculation_version")
+  subtotalVnd          BigInt                      @default(0) @map("subtotal_vnd")
+  discountTotalVnd     BigInt                      @default(0) @map("discount_total_vnd")
+  totalVnd             BigInt                      @default(0) @map("total_vnd")
+  finalizedAt          DateTime?                   @map("finalized_at") @db.Timestamptz(3)
+  finalizedByUserId    String?                     @map("finalized_by_user_id") @db.Uuid
+  finalizedBy          User?                       @relation("InvoiceFinalizedBy", fields: [finalizedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelledAt          DateTime?                   @map("cancelled_at") @db.Timestamptz(3)
+  cancelledByUserId    String?                     @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy          User?                       @relation("InvoiceCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelledFromStatus  InvoiceStatus?              @map("cancelled_from_status")
+  cancelReason         String?                     @map("cancel_reason")
+  paidAt               DateTime?                   @map("paid_at") @db.Timestamptz(3)
+  paidSeq              Int                         @default(0) @map("paid_seq")
+  createdByUserId      String                      @map("created_by_user_id") @db.Uuid
+  createdBy            User                        @relation("InvoiceCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion           Int                         @default(1) @map("row_version")
+  createdAt            DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  lines                InvoiceLine[]
+  payments             Payment[]
+  paymentAnomalies     PaymentAnomaly[]
+  managementNotes      InvoiceManagementNote[]
+  voucherEntries       InvoiceVoucherEntry[]
+  discountApplication  InvoiceDiscountApplication?
+  discountRedemption   DiscountRedemption?
+  loyaltyLedgerEntries LoyaltyLedgerEntry[]        @relation("LoyaltyLedgerInvoice")
+  awardedReferrals     Referral[]                  @relation("ReferralAwardInvoice")
+  loyaltySnapshot      InvoiceLoyaltySnapshot?
 
   @@index([branchId, businessDate, status], map: "invoices_branch_date_idx")
   @@index([payerUserId, createdAt], map: "invoices_payer_idx")
@@ -1560,25 +1601,28 @@ model Invoice {
 // Generic invoice line; kind selects the 1:1 detail table (Phase 4 defines only SERVICE).
 // Quantity and price stay NULL until set (a DRAFT may be unpriced); gross = quantity x price.
 model InvoiceLine {
-  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  invoiceId        String               @map("invoice_id") @db.Uuid
-  invoice          Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  sequence         Int                  @db.SmallInt
-  kind             InvoiceLineKind      @default(SERVICE)
-  itemCode         String               @map("item_code")
-  nameVi           String               @map("name_vi")
-  nameEn           String               @map("name_en")
+  id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId        String                   @map("invoice_id") @db.Uuid
+  invoice          Invoice                  @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sequence         Int                      @db.SmallInt
+  kind             InvoiceLineKind          @default(SERVICE)
+  itemCode         String                   @map("item_code")
+  nameVi           String                   @map("name_vi")
+  nameEn           String                   @map("name_en")
   quantity         Int?
-  unitPriceVnd     BigInt?              @map("unit_price_vnd")
-  grossVnd         BigInt?              @map("gross_vnd")
-  priceSetByUserId String?              @map("price_set_by_user_id") @db.Uuid
-  priceSetBy       User?                @relation("InvoiceLinePriceSetBy", fields: [priceSetByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  priceSetAt       DateTime?            @map("price_set_at") @db.Timestamptz(3)
-  rowVersion       Int                  @default(1) @map("row_version")
-  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  unitPriceVnd     BigInt?                  @map("unit_price_vnd")
+  grossVnd         BigInt?                  @map("gross_vnd")
+  priceSetByUserId String?                  @map("price_set_by_user_id") @db.Uuid
+  priceSetBy       User?                    @relation("InvoiceLinePriceSetBy", fields: [priceSetByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  priceSetAt       DateTime?                @map("price_set_at") @db.Timestamptz(3)
+  rowVersion       Int                      @default(1) @map("row_version")
+  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   // SQL: exactly one detail row per SERVICE line (its primary key is the line id).
   serviceDetails   InvoiceLineService[]
+  comboPurchases   ComboPurchase[]          @relation("ComboPurchaseLine")
+  comboConsumption ComboSessionConsumption? @relation("ComboConsumptionLine")
+  rewardRedemption RewardRedemption?        @relation("RewardRedemptionLine")
 
   @@unique([invoiceId, sequence], map: "invoice_lines_invoice_sequence_key")
   @@unique([invoiceId, id], map: "invoice_lines_invoice_id_id_key")
@@ -1938,26 +1982,26 @@ enum MediaVariantKind {
 // allowed while nothing references the asset. `storageKey` and variant keys are opaque random keys, never
 // paths or URLs; the original is kept (PRD 53) and three WebP variants are derived from it.
 model MediaAsset {
-  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  storageKey       String         @unique(map: "media_assets_storage_key_key") @map("storage_key")
-  originalFilename String         @map("original_filename")
+  id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storageKey       String                   @unique(map: "media_assets_storage_key_key") @map("storage_key")
+  originalFilename String                   @map("original_filename")
   mime             String
   bytes            Int
   width            Int
   height           Int
-  sha256           String         @unique(map: "media_assets_sha256_key")
-  altVi            String?        @map("alt_vi")
-  altEn            String?        @map("alt_en")
-  createdByUserId  String         @map("created_by_user_id") @db.Uuid
-  createdBy        User           @relation("MediaAssetCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  rowVersion       Int            @default(1) @map("row_version")
-  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  sha256           String                   @unique(map: "media_assets_sha256_key")
+  altVi            String?                  @map("alt_vi")
+  altEn            String?                  @map("alt_en")
+  createdByUserId  String                   @map("created_by_user_id") @db.Uuid
+  createdBy        User                     @relation("MediaAssetCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion       Int                      @default(1) @map("row_version")
+  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   variants         MediaVariant[]
   popups           WebsitePopup[]
   shopInfoHero     WebsiteShopInfo[]
-  slides           WebsiteSlide[] @relation("WebsiteSlideImage")
-  mobileSlides     WebsiteSlide[] @relation("WebsiteSlideMobileImage")
+  slides           WebsiteSlide[]           @relation("WebsiteSlideImage")
+  mobileSlides     WebsiteSlide[]           @relation("WebsiteSlideMobileImage")
   seasonSlots      WebsiteSeasonSlotMedia[]
 
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "media_assets_created_idx")
@@ -2094,35 +2138,35 @@ model WebsiteSlide {
 // against the registry in packages/contracts by the API; at most one ENABLED season may cover any instant,
 // which the API enforces under an advisory lock.
 model WebsiteSeason {
-  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  presetKey        String         @map("preset_key")
+  id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  presetKey        String                   @map("preset_key")
   label            String
-  startsAt         DateTime       @map("starts_at") @db.Timestamptz(3)
-  endsAt           DateTime       @map("ends_at") @db.Timestamptz(3)
-  greetingVi       String?        @map("greeting_vi")
-  greetingEn       String?        @map("greeting_en")
-  applyCustomer    Boolean        @default(true) @map("apply_customer")
-  applyAdmin       Boolean        @default(true) @map("apply_admin")
-  particlesEnabled Boolean        @default(true) @map("particles_enabled")
+  startsAt         DateTime                 @map("starts_at") @db.Timestamptz(3)
+  endsAt           DateTime                 @map("ends_at") @db.Timestamptz(3)
+  greetingVi       String?                  @map("greeting_vi")
+  greetingEn       String?                  @map("greeting_en")
+  applyCustomer    Boolean                  @default(true) @map("apply_customer")
+  applyAdmin       Boolean                  @default(true) @map("apply_admin")
+  particlesEnabled Boolean                  @default(true) @map("particles_enabled")
   // S6b decoration: one switch per slot (particles is `particlesEnabled`), the greeting in the strip and in the
   // footer scene, the particle density (low, medium, high) and one image per slot.
-  slotHeader       Boolean        @default(true) @map("slot_header")
-  slotLogo         Boolean        @default(true) @map("slot_logo")
-  slotCorners      Boolean        @default(true) @map("slot_corners")
-  slotDividers     Boolean        @default(true) @map("slot_dividers")
-  slotFooter       Boolean        @default(true) @map("slot_footer")
-  slotTint         Boolean        @default(true) @map("slot_tint")
-  greetingStrip    Boolean        @default(true) @map("greeting_strip")
-  greetingFooter   Boolean        @default(true) @map("greeting_footer")
-  particleDensity  String         @default("medium") @map("particle_density")
-  isEnabled        Boolean        @default(false) @map("is_enabled")
-  rowVersion       Int            @default(1) @map("row_version")
-  createdByUserId  String         @map("created_by_user_id") @db.Uuid
-  createdBy        User           @relation("WebsiteSeasonCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  updatedByUserId  String         @map("updated_by_user_id") @db.Uuid
-  updatedBy        User           @relation("WebsiteSeasonUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  slotHeader       Boolean                  @default(true) @map("slot_header")
+  slotLogo         Boolean                  @default(true) @map("slot_logo")
+  slotCorners      Boolean                  @default(true) @map("slot_corners")
+  slotDividers     Boolean                  @default(true) @map("slot_dividers")
+  slotFooter       Boolean                  @default(true) @map("slot_footer")
+  slotTint         Boolean                  @default(true) @map("slot_tint")
+  greetingStrip    Boolean                  @default(true) @map("greeting_strip")
+  greetingFooter   Boolean                  @default(true) @map("greeting_footer")
+  particleDensity  String                   @default("medium") @map("particle_density")
+  isEnabled        Boolean                  @default(false) @map("is_enabled")
+  rowVersion       Int                      @default(1) @map("row_version")
+  createdByUserId  String                   @map("created_by_user_id") @db.Uuid
+  createdBy        User                     @relation("WebsiteSeasonCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  updatedByUserId  String                   @map("updated_by_user_id") @db.Uuid
+  updatedBy        User                     @relation("WebsiteSeasonUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   popups           WebsitePopup[]
   slides           WebsiteSlide[]
   slotMedia        WebsiteSeasonSlotMedia[]
@@ -2144,4 +2188,396 @@ model WebsiteSeasonSlotMedia {
   @@id([seasonId, slot])
   @@index([mediaId], map: "website_season_slot_media_media_idx")
   @@map("website_season_slot_media")
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Phase 5 (loyalty, referral, combos, reward entitlements): database foundation only (P5-2). No table
+// holds data after the migration and no behavior exists yet; every new table is gated in SQL by the
+// loyalty go-live switch where it records a customer fact. Design: docs/PHASE5_LOYALTY_COMBOS_DESIGN.md.
+// ---------------------------------------------------------------------------------------------------
+
+enum LoyaltyWallet {
+  SPA
+  BEAUTY
+}
+
+enum LoyaltyLedgerKind {
+  EARN
+  EARN_REVERSAL
+  REFERRAL_AWARD
+  MANUAL_ADJUSTMENT
+  MANUAL_CORRECTION
+}
+
+enum LoyaltyTier {
+  NONE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+  RUBY
+}
+
+enum ReferralBindSource {
+  SIGNUP
+  COUNTER
+}
+
+enum EntitlementExpiryMode {
+  NONE
+  DAYS_AFTER_ISSUE
+}
+
+enum ComboSessionKind {
+  PAID
+  BONUS
+}
+
+enum ComboUsageKind {
+  OWNER
+  RELATIVE
+}
+
+enum EntitlementReleaseCause {
+  INVOICE_CANCELLED_UNPAID
+  ZERO_BALANCE_CORRECTION
+}
+
+enum RewardKind {
+  FREE_SERVICE
+  VOUCHER
+  PRODUCT_GIFT
+  OTHER
+}
+
+enum RewardIssueSource {
+  MANUAL
+  BIRTHDAY
+  CAMPAIGN
+}
+
+// P5-T2: the single immutable go-live switch. NO ROW means OFF (the default). The row is inserted once by
+// the (later) Owner activation command; SQL stamps the database clock into go_live_at (no backdating, so
+// no backfill of earlier invoices, P5-Q1) and refuses any update or delete.
+model LoyaltyGoLive {
+  id                Int      @id @default(1) @db.SmallInt
+  goLiveAt          DateTime @default(dbgenerated("clock_timestamp()")) @map("go_live_at") @db.Timestamptz(3)
+  activatedByUserId String   @map("activated_by_user_id") @db.Uuid
+  activatedBy       User     @relation("LoyaltyGoLiveActivator", fields: [activatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("loyalty_go_live")
+}
+
+// One balance cache per customer and wallet (design 3.1). The tier is never stored here: it is a pure
+// function of the balance. SQL keeps balance_points >= 0 and equal to the sum of the ledger.
+model LoyaltyWalletAccount {
+  userId        String               @map("user_id") @db.Uuid
+  user          User                 @relation("LoyaltyWalletOwner", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  wallet        LoyaltyWallet
+  balancePoints Int                  @default(0) @map("balance_points")
+  rowVersion    Int                  @default(1) @map("row_version")
+  createdAt     DateTime             @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime             @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  entries       LoyaltyLedgerEntry[]
+
+  @@id([userId, wallet], map: "loyalty_wallets_pkey")
+  @@map("loyalty_wallets")
+}
+
+// The permanent point ledger: append-only, one signed whole-point entry per effect. Corrections and
+// reversals are linked entries, never edits (PRD 18.4). `shortfall_points` records the part of a negative
+// entry the balance could not absorb (P5-Q5); the stored `points` is the applied amount.
+model LoyaltyLedgerEntry {
+  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String               @map("user_id") @db.Uuid
+  wallet          LoyaltyWallet
+  account         LoyaltyWalletAccount @relation(fields: [userId, wallet], references: [userId, wallet], onDelete: Restrict, onUpdate: Restrict, map: "loyalty_ledger_entries_wallet_fkey")
+  kind            LoyaltyLedgerKind
+  points          Int
+  shortfallPoints Int                  @default(0) @map("shortfall_points")
+  idempotencyKey  String               @unique(map: "loyalty_ledger_entries_idempotency_key") @map("idempotency_key")
+  invoiceId       String?              @map("invoice_id") @db.Uuid
+  invoice         Invoice?             @relation("LoyaltyLedgerInvoice", fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  paidSeq         Int?                 @map("paid_seq")
+  referralId      String?              @map("referral_id") @db.Uuid
+  referral        Referral?            @relation(fields: [referralId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reversesEntryId String?              @unique(map: "loyalty_ledger_entries_reverses_key") @map("reverses_entry_id") @db.Uuid
+  reversesEntry   LoyaltyLedgerEntry?  @relation("LedgerReversal", fields: [reversesEntryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reversal        LoyaltyLedgerEntry?  @relation("LedgerReversal")
+  correctsEntryId String?              @unique(map: "loyalty_ledger_entries_corrects_key") @map("corrects_entry_id") @db.Uuid
+  correctsEntry   LoyaltyLedgerEntry?  @relation("LedgerCorrection", fields: [correctsEntryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  correction      LoyaltyLedgerEntry?  @relation("LedgerCorrection")
+  reason          String?
+  actorUserId     String?              @map("actor_user_id") @db.Uuid
+  actor           User?                @relation("LoyaltyLedgerActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime             @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([userId, wallet, createdAt], map: "loyalty_ledger_entries_wallet_idx")
+  @@index([invoiceId, paidSeq], map: "loyalty_ledger_entries_invoice_idx")
+  @@map("loyalty_ledger_entries")
+}
+
+// A permanent referral link (PRD 20.2): one referrer per referred customer, never changed. The award is
+// stamped once (all three award columns together, never changed afterwards).
+model Referral {
+  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referredUserId   String               @unique(map: "referrals_referred_key") @map("referred_user_id") @db.Uuid
+  referred         User                 @relation("ReferralReferred", fields: [referredUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  referrerUserId   String               @map("referrer_user_id") @db.Uuid
+  referrer         User                 @relation("ReferralReferrer", fields: [referrerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  boundVia         ReferralBindSource   @map("bound_via")
+  boundByUserId    String?              @map("bound_by_user_id") @db.Uuid
+  boundBy          User?                @relation("ReferralBinder", fields: [boundByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  boundAt          DateTime             @default(dbgenerated("clock_timestamp()")) @map("bound_at") @db.Timestamptz(3)
+  awardedAt        DateTime?            @map("awarded_at") @db.Timestamptz(3)
+  awardedInvoiceId String?              @map("awarded_invoice_id") @db.Uuid
+  awardedInvoice   Invoice?             @relation("ReferralAwardInvoice", fields: [awardedInvoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  awardedPaidSeq   Int?                 @map("awarded_paid_seq")
+  ledgerEntries    LoyaltyLedgerEntry[]
+
+  @@index([referrerUserId], map: "referrals_referrer_idx")
+  @@map("referrals")
+}
+
+// The tier snapshot of a finalized invoice (design 5.3, PRD 14.2): the payer's balance and tier BEFORE the
+// transaction, the applied basis points and the explanation. Written once, never recomputed.
+model InvoiceLoyaltySnapshot {
+  id                    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId             String        @unique(map: "invoice_loyalty_snapshots_invoice_key") @map("invoice_id") @db.Uuid
+  invoice               Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  payerUserId           String        @map("payer_user_id") @db.Uuid
+  payer                 User          @relation("LoyaltySnapshotPayer", fields: [payerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  wallet                LoyaltyWallet
+  balanceBefore         Int           @map("balance_before")
+  tier                  LoyaltyTier
+  tierTableVersion      Int           @map("tier_table_version")
+  memberDiscountBp      Int           @map("member_discount_bp")
+  calculationVersion    Int           @map("calculation_version")
+  eligibleSpaVnd        BigInt        @map("eligible_spa_vnd")
+  eligibleBeautyVnd     BigInt        @default(0) @map("eligible_beauty_vnd")
+  candidates            Json          @db.JsonB
+  winnerSource          String?       @map("winner_source")
+  selectionReason       String?       @map("selection_reason")
+  birthdayConfigVersion Int?          @map("birthday_config_version")
+  birthdayResult        Json?         @map("birthday_result") @db.JsonB
+  createdAt             DateTime      @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([payerUserId], map: "invoice_loyalty_snapshots_payer_idx")
+  @@map("invoice_loyalty_snapshots")
+}
+
+// Combo definition identity (PRD 17.1-17.3): one service per combo, never changed; the configurable
+// values live in append-only versions. No expiry by default (PRD 17.2).
+model Combo {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code            String          @unique(map: "combos_code_key")
+  serviceId       String          @map("service_id") @db.Uuid
+  service         Service         @relation("ComboService", fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdByUserId String          @map("created_by_user_id") @db.Uuid
+  createdBy       User            @relation("ComboCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  versions        ComboVersion[]
+  purchases       ComboPurchase[]
+
+  @@map("combos")
+}
+
+model ComboVersion {
+  id              String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  comboId         String                @map("combo_id") @db.Uuid
+  combo           Combo                 @relation(fields: [comboId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  version         Int
+  nameVi          String                @map("name_vi")
+  nameEn          String                @map("name_en")
+  paidSessions    Int                   @map("paid_sessions")
+  bonusSessions   Int                   @default(0) @map("bonus_sessions")
+  priceVnd        BigInt                @map("price_vnd")
+  expiryMode      EntitlementExpiryMode @default(NONE) @map("expiry_mode")
+  expiryDays      Int?                  @map("expiry_days")
+  active          Boolean
+  createdByUserId String                @map("created_by_user_id") @db.Uuid
+  createdBy       User                  @relation("ComboVersionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime              @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  purchases       ComboPurchase[]
+
+  @@unique([comboId, version], map: "combo_versions_combo_version_key")
+  @@unique([comboId, id], map: "combo_versions_combo_id_id_key")
+  @@map("combo_versions")
+}
+
+// A purchased combo, issued when its purchase invoice is paid (one row per (purchase line, paid episode)).
+// The owner is the member who paid. The definition is snapshotted so later configuration never rewrites it.
+model ComboPurchase {
+  id             String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  comboId        String                @map("combo_id") @db.Uuid
+  combo          Combo                 @relation(fields: [comboId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  versionId      String                @map("version_id") @db.Uuid
+  version        ComboVersion          @relation(fields: [comboId, versionId], references: [comboId, id], onDelete: Restrict, onUpdate: Restrict, map: "combo_purchases_version_fkey")
+  ownerUserId    String                @map("owner_user_id") @db.Uuid
+  owner          User                  @relation("ComboPurchaseOwner", fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceLineId  String                @map("invoice_line_id") @db.Uuid
+  invoiceLine    InvoiceLine           @relation("ComboPurchaseLine", fields: [invoiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  paidSeq        Int                   @map("paid_seq")
+  serviceId      String                @map("service_id") @db.Uuid
+  service        Service               @relation("ComboPurchaseService", fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  nameVi         String                @map("name_vi")
+  nameEn         String                @map("name_en")
+  paidSessions   Int                   @map("paid_sessions")
+  bonusSessions  Int                   @map("bonus_sessions")
+  priceVnd       BigInt                @map("price_vnd")
+  expiryMode     EntitlementExpiryMode @map("expiry_mode")
+  expiresAt      DateTime?             @map("expires_at") @db.Timestamptz(3)
+  issuedAt       DateTime              @default(dbgenerated("clock_timestamp()")) @map("issued_at") @db.Timestamptz(3)
+  voidedAt       DateTime?             @map("voided_at") @db.Timestamptz(3)
+  voidedByUserId String?               @map("voided_by_user_id") @db.Uuid
+  voidedBy       User?                 @relation("ComboPurchaseVoider", fields: [voidedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  voidReason     String?               @map("void_reason")
+  sessions       ComboSession[]
+
+  @@unique([invoiceLineId, paidSeq], map: "combo_purchases_line_episode_key")
+  @@index([ownerUserId, issuedAt], map: "combo_purchases_owner_idx")
+  @@map("combo_purchases")
+}
+
+// One row per session (P5-T11), so paid and bonus sessions stay distinguishable for future tour rules.
+model ComboSession {
+  id           String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purchaseId   String                    @map("purchase_id") @db.Uuid
+  purchase     ComboPurchase             @relation(fields: [purchaseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sessionNo    Int                       @map("session_no")
+  kind         ComboSessionKind
+  consumptions ComboSessionConsumption[]
+
+  @@unique([purchaseId, sessionNo], map: "combo_sessions_purchase_no_key")
+  @@map("combo_sessions")
+}
+
+// Use of one session on an invoice line (the 0 VND line): owner or relative, who performed it. Active iff it
+// has neither a release (invoice cancelled) nor a restoration (authorized correction); never edited.
+model ComboSessionConsumption {
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId              String                   @map("session_id") @db.Uuid
+  session                ComboSession             @relation(fields: [sessionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceLineId          String                   @unique(map: "combo_session_consumptions_line_key") @map("invoice_line_id") @db.Uuid
+  invoiceLine            InvoiceLine              @relation("ComboConsumptionLine", fields: [invoiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId               String                   @map("branch_id") @db.Uuid
+  branch                 Branch                   @relation("ComboConsumptionBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  usedBy                 ComboUsageKind           @map("used_by")
+  relationshipNote       String?                  @map("relationship_note")
+  recipientParticipantId String?                  @map("recipient_participant_id") @db.Uuid
+  recipientParticipant   VisitParticipant?        @relation("ComboConsumptionRecipient", fields: [recipientParticipantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  ktvUserId              String?                  @map("ktv_user_id") @db.Uuid
+  ktv                    User?                    @relation("ComboConsumptionKtv", fields: [ktvUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  performedByUserId      String                   @map("performed_by_user_id") @db.Uuid
+  performedBy            User                     @relation("ComboConsumptionActor", fields: [performedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  consumedAt             DateTime                 @default(dbgenerated("clock_timestamp()")) @map("consumed_at") @db.Timestamptz(3)
+  release                ComboSessionRelease?
+  restoration            ComboSessionRestoration?
+
+  @@index([sessionId], map: "combo_session_consumptions_session_idx")
+  @@map("combo_session_consumptions")
+}
+
+model ComboSessionRelease {
+  id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  consumptionId    String                  @unique(map: "combo_session_releases_consumption_key") @map("consumption_id") @db.Uuid
+  consumption      ComboSessionConsumption @relation(fields: [consumptionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  releasedAt       DateTime                @default(dbgenerated("clock_timestamp()")) @map("released_at") @db.Timestamptz(3)
+  releasedByUserId String                  @map("released_by_user_id") @db.Uuid
+  releasedBy       User                    @relation("ComboReleaseActor", fields: [releasedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cause            EntitlementReleaseCause
+  reason           String
+
+  @@map("combo_session_releases")
+}
+
+// PRD 17.5: an authorized correction of an incorrect consumption, with reason and actor; the consumption row stays.
+model ComboSessionRestoration {
+  id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  consumptionId    String                  @unique(map: "combo_session_restorations_consumption_key") @map("consumption_id") @db.Uuid
+  consumption      ComboSessionConsumption @relation(fields: [consumptionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  restoredAt       DateTime                @default(dbgenerated("clock_timestamp()")) @map("restored_at") @db.Timestamptz(3)
+  restoredByUserId String                  @map("restored_by_user_id") @db.Uuid
+  restoredBy       User                    @relation("ComboRestorationActor", fields: [restoredByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reason           String
+
+  @@map("combo_session_restorations")
+}
+
+// Reward / gift catalog framework (PRD 21, P5-Q7): ships empty. A catalog item's identity is immutable.
+model RewardCatalogItem {
+  id              String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code            String                @unique(map: "reward_catalog_items_code_key")
+  kind            RewardKind
+  serviceId       String?               @map("service_id") @db.Uuid
+  service         Service?              @relation("RewardItemService", fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  nameVi          String                @map("name_vi")
+  nameEn          String                @map("name_en")
+  active          Boolean               @default(true)
+  expiryMode      EntitlementExpiryMode @default(NONE) @map("expiry_mode")
+  expiryDays      Int?                  @map("expiry_days")
+  createdByUserId String                @map("created_by_user_id") @db.Uuid
+  createdBy       User                  @relation("RewardItemCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion      Int                   @default(1) @map("row_version")
+  createdAt       DateTime              @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime              @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  entitlements    RewardEntitlement[]
+
+  @@map("reward_catalog_items")
+}
+
+// What a customer is entitled to. Never mixed into points (PRD 21). Remaining quantity and status are
+// derived (issued minus active redemptions, expiry, void), never stored.
+model RewardEntitlement {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerUserId     String             @map("owner_user_id") @db.Uuid
+  owner           User               @relation("RewardEntitlementOwner", fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  catalogItemId   String             @map("catalog_item_id") @db.Uuid
+  catalogItem     RewardCatalogItem  @relation(fields: [catalogItemId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sourceKind      RewardIssueSource  @map("source_kind")
+  sourceReference String?            @map("source_reference")
+  quantityIssued  Int                @map("quantity_issued")
+  issuedAt        DateTime           @default(dbgenerated("clock_timestamp()")) @map("issued_at") @db.Timestamptz(3)
+  expiresAt       DateTime?          @map("expires_at") @db.Timestamptz(3)
+  issuedByUserId  String?            @map("issued_by_user_id") @db.Uuid
+  issuedBy        User?              @relation("RewardEntitlementIssuer", fields: [issuedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reason          String?
+  voidedAt        DateTime?          @map("voided_at") @db.Timestamptz(3)
+  voidedByUserId  String?            @map("voided_by_user_id") @db.Uuid
+  voidedBy        User?              @relation("RewardEntitlementVoider", fields: [voidedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  voidReason      String?            @map("void_reason")
+  redemptions     RewardRedemption[]
+
+  @@index([ownerUserId, issuedAt], map: "reward_entitlements_owner_idx")
+  @@map("reward_entitlements")
+}
+
+model RewardRedemption {
+  id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entitlementId    String                   @map("entitlement_id") @db.Uuid
+  entitlement      RewardEntitlement        @relation(fields: [entitlementId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceLineId    String                   @unique(map: "reward_redemptions_line_key") @map("invoice_line_id") @db.Uuid
+  invoiceLine      InvoiceLine              @relation("RewardRedemptionLine", fields: [invoiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId         String                   @map("branch_id") @db.Uuid
+  branch           Branch                   @relation("RewardRedemptionBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  redeemedByUserId String                   @map("redeemed_by_user_id") @db.Uuid
+  redeemedBy       User                     @relation("RewardRedemptionActor", fields: [redeemedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  redeemedAt       DateTime                 @default(dbgenerated("clock_timestamp()")) @map("redeemed_at") @db.Timestamptz(3)
+  release          RewardRedemptionRelease?
+
+  @@index([entitlementId], map: "reward_redemptions_entitlement_idx")
+  @@map("reward_redemptions")
+}
+
+model RewardRedemptionRelease {
+  id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  redemptionId     String                  @unique(map: "reward_redemption_releases_redemption_key") @map("redemption_id") @db.Uuid
+  redemption       RewardRedemption        @relation(fields: [redemptionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  releasedAt       DateTime                @default(dbgenerated("clock_timestamp()")) @map("released_at") @db.Timestamptz(3)
+  releasedByUserId String                  @map("released_by_user_id") @db.Uuid
+  releasedBy       User                    @relation("RewardReleaseActor", fields: [releasedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cause            EntitlementReleaseCause
+  reason           String
+
+  @@map("reward_redemption_releases")
 }

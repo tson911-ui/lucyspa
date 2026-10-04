@@ -51,7 +51,7 @@ export function roleCodePreview(value: string): { code: string; valid: boolean }
 }
 
 export type PermissionGroup =
-  'employees' | 'pay' | 'operations' | 'catalog' | 'finance' | 'admin' | 'other';
+  'employees' | 'pay' | 'operations' | 'catalog' | 'finance' | 'loyalty' | 'admin' | 'other';
 
 /** Display grouping of known codes; codes added later fall into "other" until labelled. */
 const GROUP_OF: Readonly<Record<string, PermissionGroup>> = {
@@ -88,6 +88,17 @@ const GROUP_OF: Readonly<Record<string, PermissionGroup>> = {
   CANCEL_INVOICES: 'finance',
   CORRECT_PAYMENTS: 'finance',
   VIEW_REVENUE: 'finance',
+  VIEW_LOYALTY: 'loyalty',
+  ADJUST_LOYALTY_POINTS: 'loyalty',
+  MANAGE_REFERRALS: 'loyalty',
+  MANAGE_COMBOS: 'loyalty',
+  SELL_COMBOS: 'loyalty',
+  CONSUME_COMBO_SESSIONS: 'loyalty',
+  RESTORE_COMBO_SESSIONS: 'loyalty',
+  MANAGE_BIRTHDAY_REWARDS: 'loyalty',
+  MANAGE_REWARD_CATALOG: 'loyalty',
+  ISSUE_REWARDS: 'loyalty',
+  VIEW_LOYALTY_EXCEPTIONS: 'loyalty',
   MANAGE_PERMISSIONS: 'admin',
   VIEW_AUDIT_LOG: 'admin',
   MANAGE_WEBSITE_CONTENT: 'admin',
@@ -98,6 +109,7 @@ const GROUP_ORDER: PermissionGroup[] = [
   'operations',
   'catalog',
   'finance',
+  'loyalty',
   'admin',
   'other',
 ];
