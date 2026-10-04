@@ -7,7 +7,7 @@ import { loyaltyDictionary } from '../../../i18n/loyalty';
 import { confirmError } from '../../../lib/workforce/form-labels';
 import { formatDateTime } from '../../../lib/workforce/format';
 import { loyaltyErrorMessage } from '../../../lib/workforce/loyalty';
-import { withReauthentication } from '../../../lib/workforce/reauth';
+import { ReauthenticationCancelled, withReauthentication } from '../../../lib/workforce/reauth';
 import { useReauthentication } from '../reauth-dialog';
 import { useWorkforce } from '../session';
 import { Badge, Button, ErrorState, Loading, Notice, useResource, useSuccessToast } from '../ui';
@@ -36,10 +36,16 @@ export function LoyaltyGoLive() {
   const { active, goLiveAt, activatedByName } = status.data;
 
   async function activate() {
-    await withReauthentication(
-      () => api.post<LoyaltyGoLiveStatusResponse>('/api/v1/loyalty/go-live', {}),
-      confirm,
-    );
+    try {
+      await withReauthentication(
+        () => api.post<LoyaltyGoLiveStatusResponse>('/api/v1/loyalty/go-live', {}),
+        confirm,
+      );
+    } catch (failure) {
+      // Closing the password prompt is not an error: nothing was switched on.
+      if (failure instanceof ReauthenticationCancelled) return;
+      throw failure;
+    }
     setAsking(false);
     notify(g.done);
     await status.reload();

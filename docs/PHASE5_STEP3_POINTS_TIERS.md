@@ -16,25 +16,27 @@ Status: built and validated on a scratch database; **not deployed, loyalty stays
 
 ## Migrations
 
-`20261028000000_phase5_activate_loyalty_code`, `…01_phase5_activate_loyalty_owner_only`, `…02_phase5_loyalty_consumer_outcomes`. Additive. Deploy (only when asked, after all of Phase 5): backup, `pnpm db:deploy`, `pnpm db:permissions:sync`, restart API/Web/Worker.
+`20261028000000_phase5_activate_loyalty_code`, `…01_phase5_activate_loyalty_owner_only`, `…02_phase5_loyalty_consumer_outcomes`. Additive. Deploy (only when asked, after all of Phase 5): backup, `pnpm db:deploy`, `pnpm db:permissions:sync` (53 codes), restart API/Web/Worker.
 
 ## Decisions needed / notes
 
 - Read access follows a branch, like the POS member lookup (`VIEW_LOYALTY` at the staff member's branch; the profile uses their first allowed branch). Confirm this is the wanted rule.
 - Tier discount % is not shown yet (Member Discount arrives in P5-4). Customer-facing page: P5-10.
 
-## Tests (scratch DB `lucy_spa_p5_3_validation_20261004`)
+## Tests (scratch DB `lucy_spa_p5_3_validation_20261004`; the audit DB `lucy_spa_uxaudit_20261001` was migrated only for the DOM audit, go-live OFF)
 
-| Check                                                                                                                                                           | Result           |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| New API suite `loyalty.integration.test` (OFF, go-live, pre-go-live, earn, reversal, out-of-order, cancel, adjustments, shortfall, profile/ledger, worker pass) | 12 / 12          |
-| New API races `loyalty.race.integration.test` (8 concurrent deductions, one key, one correction, two workers on one event)                                      | 5 / 5            |
-| Database foundation + Phase 4 foundation (incl. Owner-only SQL)                                                                                                 | 38 / 38          |
-| Web: new loyalty tests, nav, permissions, back                                                                                                                  | pass             |
-| Full `pnpm test`, lint, typecheck, format                                                                                                                       | see final report |
+| Check                                                                                                                                                                                               | Result   |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| New API suite `loyalty.integration.test` (OFF, go-live, pre-go-live, earn, reversal, out-of-order, cancel, adjustments, shortfall, profile/ledger, worker pass; fixture Owner when the DB has none) | 12 / 12  |
+| New API races `loyalty.race.integration.test` (8 concurrent deductions, one key, one correction, two workers on one event; skips on a non-throwaway DB)                                             | 5 / 5    |
+| API authorization 4/4, role-admin 4 (+1 skipped), invoice-notifications 12/12, payment 11/11                                                                                                        | pass     |
+| Database foundation, Phase 4 foundation, database, notification foundation (incl. Owner-only SQL)                                                                                                   | 42 / 42  |
+| Full `pnpm test` (server 39, worker 15 + 1 skipped, ui 440, web 469, api 218 + integration skips)                                                                                                   | all pass |
+| `pnpm lint`, `pnpm format:check`, `pnpm typecheck`                                                                                                                                                  | clean    |
 
 ## UX gate
 
-- Rendered at 360, 768, 1440 light + 1440 dark and opened every image: lookup, exceptions, go-live (OFF with confirmation dialog, ON), customer profile (OFF notice, populated with ledger), adjustment dialog.
-- Fixed after the first look: lookup form stretched full width (now one compact row); heading and button both said "Tìm khách" (button is now "Tra cứu"); go-live heading repeated the button.
-- DOM audit of the new pages: 0 findings except FR3 `surface-style-mix` (info Notice next to Cards/table) at 360/768 on pages that show a Notice, the same kit-level pattern already in the baseline; no existing page changed.
+- Rendered the new screens at 360, 768 and 1440 light plus 1440 dark. Opened: lookup (1440 and 360 light), go-live (OFF 1440 and 360 light, confirmation dialog 1440 light, 360 light; ON 1440 dark), exceptions (1440 light and dark, 360 light), customer profile (OFF notice 1440 and 360 light; populated 1440, 768, 360 light; shortfall customer 1440 dark), adjustment dialog (1440 light and dark, 360 light). The other width/theme combinations were not opened one by one (the DOM audit ran on all of them).
+- Fixed after the first look: the lookup form stretched full width (now one compact row); heading and button both said "Tìm khách" (button is now "Tra cứu"); the go-live heading repeated its button; cancelling the password prompt no longer shows a generic error.
+- DOM audit of the new pages: the profile with a Notice shows FR3 `surface-style-mix` (info Notice beside cards) at 360/768; the ledger and exceptions tables show FR8 `row-height-uneven` at 360 (a free-text note wraps in the phone card list). Both are kit patterns already in the baseline. Everything else 0.
+- Existing pages after the sidebar and role-editor change (audit DB, light): roles 4 to 0, dashboard 10 to 4, pos 2 to 0, discounts 1 to 0, teams 1 to 0, employees 3, skills 1, account 0. No count rose.

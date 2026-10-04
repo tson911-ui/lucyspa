@@ -30,7 +30,7 @@ import { LoyaltyService } from './loyalty.service.js';
  * Phase 5 P5-3: points and tiers against real PostgreSQL. Staff create, pay, reverse and cancel invoices
  * through the real services (which append the real outbox events); the `loyalty` consumer then runs on those
  * events, and the admin commands run through the real LoyaltyService. Every fixture rolls back with the outer
- * transaction. Needs an Owner in the database (the go-live switch is the Owner's alone).
+ * transaction. The Owner is the database's own, or a rolled-back fixture (the go-live switch is the Owner's alone).
  */
 test(
   'Phase 5 P5-3 loyalty points and tiers; fixtures roll back',
@@ -57,10 +57,6 @@ test(
     const rollback = new Error('Phase 5 P5-3 fixture rollback');
     const run = randomUUID().replaceAll('-', '').slice(0, 10).toUpperCase();
     try {
-      assert.ok(
-        await database.user.findFirst({ where: { kind: 'OWNER' }, select: { id: true } }),
-        'this suite needs the Owner of the database (bootstrap one on the scratch database)',
-      );
       await assert.rejects(
         database.$transaction(
           async (tx: Prisma.TransactionClient) => {
@@ -206,7 +202,21 @@ test(
             const alice = await customer('alice');
             const bob = await customer('bob');
             const carol = await customer('carol');
-            const ownerRow = await tx.user.findFirstOrThrow({ where: { kind: 'OWNER' } });
+            // The database's own Owner, or a fixture Owner when it has none (CI starts empty); rolled back with the rest.
+            const ownerRow =
+              (await tx.user.findFirst({ where: { kind: 'OWNER' } })) ??
+              (await tx.user.create({
+                data: {
+                  kind: 'OWNER',
+                  status: 'ACTIVE',
+                  fullName: 'Chủ spa fixture',
+                  preferredLocale: 'vi',
+                  emailCanonical: `l53-owner-${run.toLowerCase()}@example.com`,
+                  emailDelivery: `l53-owner-${run.toLowerCase()}@example.com`,
+                  normalizationVersion: 1,
+                  passwordHash: '$argon2id$fixture',
+                },
+              }));
             const ownerToken = await login(ownerRow);
             const ownerStaleToken = await login(ownerRow, false);
 
