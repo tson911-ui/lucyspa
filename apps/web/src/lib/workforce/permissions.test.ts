@@ -32,6 +32,8 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'services',
     // Phase 4 Step 6: discount programs and voucher codes (GLOBAL MANAGE_DISCOUNTS / CREATE_VOUCHERS).
     'discounts',
+    // Phase 5 P5-3: loyalty points (VIEW_LOYALTY, the exceptions list or the Owner's switch; the Owner holds all).
+    'loyalty',
     'skills',
     'employees',
     // Organization hierarchy + teams (VIEW/MANAGE_ORGANIZATION, VIEW/MANAGE_TEAMS; Owner holds all).

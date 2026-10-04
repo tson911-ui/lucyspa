@@ -99,6 +99,7 @@ const GROUP_OF: Readonly<Record<string, PermissionGroup>> = {
   MANAGE_REWARD_CATALOG: 'loyalty',
   ISSUE_REWARDS: 'loyalty',
   VIEW_LOYALTY_EXCEPTIONS: 'loyalty',
+  ACTIVATE_LOYALTY: 'loyalty',
   MANAGE_PERMISSIONS: 'admin',
   VIEW_AUDIT_LOG: 'admin',
   MANAGE_WEBSITE_CONTENT: 'admin',

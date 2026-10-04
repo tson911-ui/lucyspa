@@ -428,6 +428,8 @@ test('the code-owned catalog is exactly the Phase 1, Phase 2 and follow-up Step 
       ['MANAGE_REWARD_CATALOG', 'GLOBAL_ONLY', 'STANDARD'],
       ['ISSUE_REWARDS', 'BRANCH_CAPABLE', 'STANDARD'],
       ['VIEW_LOYALTY_EXCEPTIONS', 'GLOBAL_ONLY', 'STANDARD'],
+      // Phase 5 P5-3: the Owner-only go-live switch.
+      ['ACTIVATE_LOYALTY', 'GLOBAL_ONLY', 'STANDARD'],
     ],
   );
 });

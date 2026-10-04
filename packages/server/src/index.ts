@@ -124,6 +124,19 @@ export {
   type LeaveNotificationDependencies,
 } from './leave-notifications.js';
 export {
+  appendLedgerEntry,
+  earnKey,
+  LOYALTY_AGGREGATE,
+  LOYALTY_CONSUMER,
+  LOYALTY_EVENT_TYPES,
+  processLoyaltyEvent,
+  relayLoyaltyEvents,
+  reversalKey,
+  type LedgerEffect,
+  type LedgerResult,
+  type LoyaltyEventOutcome,
+} from './loyalty.js';
+export {
   FINANCIAL_NOTIFICATION_AGGREGATES,
   FINANCIAL_NOTIFICATION_EVENT_TYPES,
   NOTIFICATION_CONSUMER,

@@ -12,6 +12,7 @@ import { processSystemCheck } from './processor.js';
 import { startBookingJobs } from './booking-jobs.js';
 import { startInvoiceNotifications } from './invoice-notification-jobs.js';
 import { startLeaveNotifications } from './leave-jobs.js';
+import { startLoyaltyPoints } from './loyalty-jobs.js';
 import { startPayosReconciliation } from './payos-jobs.js';
 
 const bootstrapLogger = createLogger('worker', 'info');
@@ -28,6 +29,7 @@ async function bootstrap() {
   let leaveJobs: { stop(): Promise<void> } | undefined;
   let payosJobs: { stop(): Promise<void> } | undefined;
   let invoiceNotifications: { stop(): Promise<void> } | undefined;
+  let loyaltyPoints: { stop(): Promise<void> } | undefined;
   try {
     await database.$queryRaw`SELECT 1`;
     worker = new Worker(SYSTEM_CHECK_QUEUE, async (job) => processSystemCheck(job), {
@@ -56,8 +58,10 @@ async function bootstrap() {
     leaveJobs = startLeaveNotifications(database, logger);
     payosJobs = startPayosReconciliation(database, config.payos, logger);
     invoiceNotifications = startInvoiceNotifications(database, logger);
+    loyaltyPoints = startLoyaltyPoints(database, logger);
     logger.info({ queue: SYSTEM_CHECK_QUEUE }, 'Worker ready');
   } catch (error) {
+    await loyaltyPoints?.stop();
     await invoiceNotifications?.stop();
     await payosJobs?.stop();
     await leaveJobs?.stop();
@@ -74,6 +78,7 @@ async function bootstrap() {
     const deadline = setTimeout(() => process.exit(1), 15000);
     deadline.unref();
     try {
+      await loyaltyPoints?.stop();
       await invoiceNotifications?.stop();
       await payosJobs?.stop();
       await leaveJobs?.stop();

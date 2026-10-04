@@ -1,6 +1,6 @@
 # Phase 5: Loyalty, Membership, Referral, Birthday, Combos and Gift Catalog — design contract
 
-Status: **P5-1 approved by the Owner 2026-10-04 (section 2.4); P5-2 (database + permissions foundation) built, not deployed.** P5-1 itself was docs only.
+Status: **P5-1 approved by the Owner 2026-10-04 (section 2.4); P5-2 approved (section 2.5); P5-3 (points and tiers) built, not deployed.** P5-1 itself was docs only.
 Production state is whatever `LUCYSPA_HANDOFF.md` records (Phase 4 live at `58bfabc`); nothing here assumes a deploy.
 
 Every rule below carries a source label so nothing is silently invented:
@@ -102,6 +102,23 @@ None of these blocked P5-1. The Owner asked to be asked about OQ-2 … OQ-11 **o
   its absence means OFF, and activating it is a deliberate later action.
 - **OQ-2 … OQ-11 stay open.** Nothing may be implemented from their proposed defaults until the Owner answers the one that blocks a step.
 - Open for P5-3 (not decided): which permission activates go-live. P5-T2 requires it to be `GLOBAL_ONLY` and re-authenticated, but section 13 lists no code for it.
+  **Answered 2026-10-04 (below).**
+
+### 2.5 Owner approvals after P5-2 review (2026-10-04, locked; do not reopen)
+
+- **P5-2 approved as built:** the permission scopes and data classifications of section 13 as proposed; **P5-T3, P5-T4, P5-T5** (tier read at finalization and
+  snapshotted, payer-based Member Discount, `calculation_version = 2`), **P5-T9** (stale-episode guard), **P5-T11** (combo sessions are individual rows).
+  **A combo is issued only when its invoice is `PAID`** (never at finalization).
+- **Go-live switch:** Owner only. One **new system-wide (`GLOBAL_ONLY`) permission** activates it (code `ACTIVATE_LOYALTY`, added in P5-3); switching it on **requires fresh
+  re-authentication** (the existing password re-authentication; the repository has no 2FA); **granted to the Owner only** (no role or override may carry it). It stays **OFF**.
+- **Deploy: none until the whole of Phase 5 is finished.** Every Phase 5 Step is built and validated on scratch databases only.
+- **OQ-3 is answered by the Owner's own P5-3 instruction:** the P5-Q5 shortfall is flagged as a row in a permission-gated **loyalty exceptions list** in the admin area
+  (derived from ledger entries with `shortfall_points > 0`; read-only; no notification, P5-Q9). OQ-4 … OQ-11 stay open.
+- **OQ-2 answered (P5-3): nothing is excluded.** Every Spa service line and every combo purchase earns; points = `floor(total_vnd / 1000)` of the PAID invoice (4.1, 4.3).
+- **P5-T8 approved (P5-3):** every negative ledger entry, a manual adjustment included, applies what the balance allows, records the shortfall and flags it (3.3).
+- Implementation notes of P5-3 (no decision changed): reversal is keyed on `INVOICE_REOPENED` and `INVOICE_CANCELLED` per 4.4 (`PAYMENT_REVERSED` always comes with
+  `INVOICE_REOPENED` when a PAID invoice is reversed, so reacting to both would double-reverse); the earn key is `SPA_EARN:{invoice}:{paid_seq}` (one earn per paid episode,
+  however many split payments it had).
 
 ## 3. Wallets and the point ledger (design only; nothing is created in P5-1)
 

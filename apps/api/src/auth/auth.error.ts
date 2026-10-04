@@ -93,6 +93,10 @@ const errors = {
   SLIDE_LIMIT: [409, 'At most 8 slides can be visible at the same time'],
   // UX/UI Step S3: seasonal themes (design 20.4). `SEASON_OVERLAP` names the conflicting season's id as the field.
   SEASON_OVERLAP: [409, 'Another enabled season already covers part of this time'],
+  // Phase 5 P5-3: loyalty points and the Owner's go-live switch.
+  LOYALTY_NOT_LIVE: [409, 'The loyalty programme has not been switched on yet'],
+  LOYALTY_ALREADY_LIVE: [409, 'The loyalty programme is already switched on'],
+  LOYALTY_ENTRY_ALREADY_CORRECTED: [409, 'This ledger entry already has a correction'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

@@ -26,6 +26,8 @@ import { NotificationController } from './notifications/notification.controller.
 import { NotificationService } from './notifications/notification.service.js';
 import { DiscountController } from './discounts/discount.controller.js';
 import { DiscountService } from './discounts/discount.service.js';
+import { LoyaltyController } from './loyalty/loyalty.controller.js';
+import { LoyaltyService } from './loyalty/loyalty.service.js';
 import { CustomerInvoiceController } from './pos/customer-invoice.controller.js';
 import { CustomerInvoiceService } from './pos/customer-invoice.service.js';
 import { InvoiceController } from './pos/invoice.controller.js';
@@ -127,6 +129,7 @@ export class AppModule {
         NotificationController,
         WalkInController,
         DiscountController,
+        LoyaltyController,
         InvoiceController,
         CustomerInvoiceController,
         PayosWebhookController,
@@ -183,6 +186,7 @@ export class AppModule {
         NotificationService,
         WalkInService,
         DiscountService,
+        LoyaltyService,
         InvoiceService,
         CustomerInvoiceService,
         PayosWebhookService,

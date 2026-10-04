@@ -626,6 +626,58 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
             },
           );
 
+          // ============================================================ ACTIVATE_LOYALTY (P5-3, Owner only)
+          await context.test(
+            'ACTIVATE_LOYALTY: GLOBAL_ONLY, never carried by a role or an override',
+            async () => {
+              await syncPermissionCatalog(tx);
+              const permission = await tx.permission.findUniqueOrThrow({
+                where: { code: 'ACTIVATE_LOYALTY' },
+              });
+              assert.equal(permission.scopeCapability, 'GLOBAL_ONLY');
+              assert.equal(permission.dataClassification, 'STANDARD');
+              await rejects(
+                () =>
+                  tx.$executeRawUnsafe(
+                    `UPDATE permissions SET scope_capability = 'BRANCH_CAPABLE' WHERE code = 'ACTIVATE_LOYALTY'`,
+                  ),
+                /code-owned and immutable/,
+              );
+              const role = await tx.role.create({
+                data: {
+                  code: `P53_OWNER_ONLY_${randomUUID().slice(0, 8).toUpperCase()}`,
+                  displayNameVi: 'x',
+                  displayNameEn: 'x',
+                },
+              });
+              await rejects(
+                () =>
+                  tx.rolePermission.create({
+                    data: { roleId: role.id, permissionId: permission.id },
+                  }),
+                /belongs to the Owner and cannot be granted/,
+              );
+              const grantee = await user('EMPLOYEE');
+              await rejects(
+                () =>
+                  tx.userPermissionOverride.create({
+                    data: {
+                      userId: grantee,
+                      permissionId: permission.id,
+                      effect: 'ALLOW',
+                      scopeKind: 'GLOBAL',
+                    },
+                  }),
+                /belongs to the Owner and cannot be granted/,
+              );
+              // Any other global-only code is still grantable at GLOBAL scope (the rule is specific).
+              const other = await tx.permission.findUniqueOrThrow({
+                where: { code: 'VIEW_LOYALTY_EXCEPTIONS' },
+              });
+              await tx.rolePermission.create({ data: { roleId: role.id, permissionId: other.id } });
+            },
+          );
+
           // ====================================================================== go-live (OFF by default)
           await context.test(
             'the go-live switch is OFF by default and gates every customer fact',

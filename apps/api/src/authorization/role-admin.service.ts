@@ -13,7 +13,7 @@ import type {
   RoleRevokeRequest,
   RoleUpdateRequest,
 } from '@lucy-spa/contracts';
-import { PERMISSION_CATALOG, type Prisma } from '@lucy-spa/database';
+import { OWNER_ONLY_PERMISSIONS, PERMISSION_CATALOG, type Prisma } from '@lucy-spa/database';
 import { Inject, Injectable } from '@nestjs/common';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { AuthError } from '../auth/auth.error.js';
@@ -39,7 +39,11 @@ import {
 } from './authorization.js';
 import { invalidateAuthorization, loadAuthorityGraph } from './authorization.store.js';
 
-const CATALOG = PERMISSION_CATALOG.map((entry) => entry.code) as PermissionCodeName[];
+/** The Owner's own codes (ACTIVATE_LOYALTY) are never listed, assigned or overridden: only the virtual Owner holds them. */
+const ASSIGNABLE_CATALOG = PERMISSION_CATALOG.filter(
+  (entry) => !OWNER_ONLY_PERMISSIONS.includes(entry.code),
+);
+const CATALOG = ASSIGNABLE_CATALOG.map((entry) => entry.code) as PermissionCodeName[];
 const GLOBAL_ONLY: ReadonlySet<string> = new Set(
   PERMISSION_CATALOG.filter((entry) => entry.scopeCapability === 'GLOBAL_ONLY').map(
     (entry) => entry.code,
@@ -105,7 +109,11 @@ function normalizeRoleCode(value: string): string {
 function normalizePermissions(values: readonly string[]): PermissionCodeName[] {
   const codes = [...new Set(values)];
   // Only the code-owned catalog; unknown codes never gain executable meaning.
-  if (codes.length > CATALOG.length || !codes.every(isKnownPermission)) {
+  if (
+    codes.length > CATALOG.length ||
+    !codes.every(isKnownPermission) ||
+    codes.some((code) => OWNER_ONLY_PERMISSIONS.includes(code))
+  ) {
     throw new AuthError('VALIDATION_FAILED', 'permissions');
   }
   return (codes as PermissionCodeName[]).sort();
@@ -156,7 +164,7 @@ export class RoleAdminService {
       return {
         roles: roles.map(presentRole),
         permissions: [...CATALOG],
-        permissionCatalog: PERMISSION_CATALOG.map((entry) => ({
+        permissionCatalog: ASSIGNABLE_CATALOG.map((entry) => ({
           code: entry.code as PermissionCodeName,
           scopeCapability: entry.scopeCapability,
         })),

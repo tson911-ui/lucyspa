@@ -165,6 +165,7 @@ const vi = {
     walkIn: 'Khách vãng lai',
     pos: 'Hóa đơn',
     discounts: 'Ưu đãi',
+    loyalty: 'Điểm thưởng',
     websiteContent: 'Website',
     account: 'Tài khoản',
     language: 'Ngôn ngữ',
@@ -1362,6 +1363,7 @@ const vi = {
       MANAGE_REWARD_CATALOG: 'Quản lý danh mục quà tặng',
       ISSUE_REWARDS: 'Cấp hoặc thu hồi quà tặng cho khách',
       VIEW_LOYALTY_EXCEPTIONS: 'Xem các trường hợp điểm bất thường',
+      ACTIVATE_LOYALTY: 'Bật chương trình điểm thưởng (chỉ Chủ sở hữu)',
     },
     duplicateCode: 'Mã vai trò này đã tồn tại.',
     managerGroupHolders:
@@ -2702,6 +2704,7 @@ const en: Dictionary = {
     walkIn: 'Walk-in',
     pos: 'Invoices',
     discounts: 'Discounts',
+    loyalty: 'Loyalty points',
     websiteContent: 'Website',
     myServices: 'My services',
     reassignment: 'KTV reassignment',
@@ -3905,6 +3908,7 @@ const en: Dictionary = {
       MANAGE_REWARD_CATALOG: 'Manage the reward catalog',
       ISSUE_REWARDS: 'Issue or void customer rewards',
       VIEW_LOYALTY_EXCEPTIONS: 'View unusual points cases',
+      ACTIVATE_LOYALTY: 'Switch the loyalty programme on (Owner only)',
     },
     duplicateCode: 'This role code already exists.',
     managerGroupHolders:

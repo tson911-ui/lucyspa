@@ -18,6 +18,7 @@ export {
   type BookingSettingKey,
 } from './booking-settings.js';
 export {
+  OWNER_ONLY_PERMISSIONS,
   PERMISSION_CATALOG,
   PermissionCatalogMismatchError,
   syncPermissionCatalog,

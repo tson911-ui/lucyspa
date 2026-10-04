@@ -12,7 +12,7 @@ const SIDEBAR_LAYOUT: ReadonlyArray<{ group: NavGroupId; order: readonly NavKey[
     group: 'operations',
     order: ['bookingBoard', 'walkIn', 'myServices', 'reassignment', 'collaboratorSchedule'],
   },
-  { group: 'sales', order: ['pos', 'discounts'] },
+  { group: 'sales', order: ['pos', 'discounts', 'loyalty'] },
   {
     group: 'people',
     order: ['employees', 'attendance', 'leave', 'teams', 'organization', 'skills'],
@@ -33,6 +33,7 @@ export const NAV_ICONS: Record<NavKey, IconName> = {
   collaboratorSchedule: 'clock',
   pos: 'receipt',
   discounts: 'tag',
+  loyalty: 'gem',
   employees: 'users',
   attendance: 'calendar-check',
   leave: 'sun',

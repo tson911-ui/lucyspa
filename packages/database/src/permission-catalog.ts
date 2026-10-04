@@ -14,7 +14,7 @@ export interface PermissionDefinition {
 /**
  * Code-owned catalog (Phase 1 design section 7, extended in Phase 2). Every permission
  * is branch-capable except MANAGE_SERVICE_PRICES, MANAGE_BOOKING_SETTINGS, MANAGE_DISCOUNTS,
- * CREATE_VOUCHERS, MANAGE_WEBSITE_CONTENT and six Phase 5 codes (GLOBAL_ONLY); the two pay permissions are EMPLOYEE_PAY data and
+ * CREATE_VOUCHERS, MANAGE_WEBSITE_CONTENT and seven Phase 5 codes (GLOBAL_ONLY); the two pay permissions are EMPLOYEE_PAY data and
  * the nine Phase 4 financial permissions plus two Phase 5 codes are FINANCIAL data. Semantics are immutable in SQL.
  */
 export const PERMISSION_CATALOG = Object.freeze([
@@ -163,7 +163,12 @@ export const PERMISSION_CATALOG = Object.freeze([
     scopeCapability: 'GLOBAL_ONLY',
     dataClassification: 'STANDARD',
   },
+  // P5-3: the loyalty go-live switch. Owner only: SQL refuses to attach it to any role or override.
+  { code: 'ACTIVATE_LOYALTY', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'STANDARD' },
 ] as const satisfies readonly PermissionDefinition[]);
+
+/** Codes that only the virtual Owner holds: no role and no override may carry them (SQL refuses too). */
+export const OWNER_ONLY_PERMISSIONS: readonly string[] = Object.freeze(['ACTIVATE_LOYALTY']);
 
 export interface PermissionCatalogSyncResult {
   readonly inserted: number;

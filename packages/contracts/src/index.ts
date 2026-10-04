@@ -729,7 +729,8 @@ export type PermissionCodeName =
   | 'MANAGE_BIRTHDAY_REWARDS'
   | 'MANAGE_REWARD_CATALOG'
   | 'ISSUE_REWARDS'
-  | 'VIEW_LOYALTY_EXCEPTIONS';
+  | 'VIEW_LOYALTY_EXCEPTIONS'
+  | 'ACTIVATE_LOYALTY';
 
 /** A named permission bundle. OWNER is virtual and never a role. */
 export interface RoleResponse {
@@ -2132,6 +2133,8 @@ export * from './notification-registry.js';
 // Seasonal theme presets (docs/UXUI_REDESIGN_DESIGN.md 20): data only; the database stores the preset key.
 export * from './season-registry.js';
 export * from './lunar-year.js';
+// Phase 5 P5-3: loyalty tiers, points and the admin loyalty API.
+export * from './loyalty.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;

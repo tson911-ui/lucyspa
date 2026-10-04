@@ -22,7 +22,7 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                     |
 | **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**     |
 | UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `58bfabc`)                                |
-| **Phase 5 (loyalty and combos)**          | **IN PROGRESS (P5-2 built, not deployed)**                       |
+| **Phase 5 (loyalty and combos)**          | **IN PROGRESS (P5-3 built, not deployed)**                       |
 | Phase 6+ (products, payroll, finance)     | NOT started                                                      |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
@@ -69,6 +69,8 @@ Phase 4 migrations so far: Step 3 (`20261013…`), Step 4 (`20261014000000-04`),
 
 - Phase 5 (2026-10-04): OQ-1 yes, P5-T1/T2/T12/T13 approved, go-live switch defaults OFF; OQ-2…OQ-11 stay open (ask only when a step is blocked): `docs/PHASE5_LOYALTY_COMBOS_DESIGN.md` section 2.3-2.4.
 - P5-2 (`docs/PHASE5_STEP2_DB_PERMISSIONS_FOUNDATION.md`): migrations `20261027000000`…`20261027000003` (permission codes, semantics, loyalty foundation, combo/reward foundation); 11 permissions, nothing granted; **not deployed**; deploy = `pnpm db:deploy` then `pnpm db:permissions:sync`.
+- Owner 2026-10-04 (after P5-2): P5-T3/T4/T5/T9/T11 approved; combo issued only when its invoice is PAID; go-live = new Owner-only permission `ACTIVATE_LOYALTY` + fresh re-auth, stays OFF; **no deploy until all of Phase 5 is done**; OQ-2 = nothing excluded; P5-T8 approved (clamp + shortfall + flag). Design doc 2.5.
+- P5-3 (`docs/PHASE5_STEP3_POINTS_TIERS.md`): migrations `20261028000000`…`02` (ACTIVATE_LOYALTY code, Owner-only triggers, loyalty consumer outcomes); `loyalty` outbox consumer (earn on INVOICE_PAID, reverse on INVOICE_REOPENED/CANCELLED), manual adjustments, exceptions list, go-live screen, customer points profile; **not deployed**; deploy adds `pnpm db:permissions:sync` (53 codes) and a worker restart.
 - Q8 (Phase 4) was answered before Step 10 (see "Q8 (notifications)" below).
 
 ## Q8 (invoice / revenue notifications) - LOCKED
