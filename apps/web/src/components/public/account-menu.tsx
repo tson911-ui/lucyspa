@@ -51,6 +51,12 @@ export function accountMenuItems({
       onSelect: () => go(`${base}/invoices`),
     },
     {
+      id: 'rewards',
+      label: text.rewards,
+      icon: 'award',
+      onSelect: () => go(`${base}/loyalty`),
+    },
+    {
       id: 'notifications',
       label:
         unread > 0 ? `${text.notifications} (${unread > 99 ? '99+' : unread})` : text.notifications,

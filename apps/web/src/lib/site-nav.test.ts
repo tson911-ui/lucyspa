@@ -113,11 +113,12 @@ test('the member row marks the overview only on its own page and the others with
   assert.deepEqual(current('/vi/account/bookings'), ['bookings']);
   assert.deepEqual(current('/vi/account/bookings/abc'), ['bookings']);
   assert.deepEqual(current('/vi/account/invoices/x'), ['invoices']);
+  assert.deepEqual(current('/vi/account/loyalty'), ['rewards']);
   assert.deepEqual(current('/vi/account/notifications'), ['notifications']);
   assert.deepEqual(current('/vi/account/book'), []);
   assert.deepEqual(
     accountTabItems('en', '/en/account', getSiteText('en').member).map((item) => item.label),
-    ['Overview', 'Bookings', 'Invoices', 'Notifications'],
+    ['Overview', 'Bookings', 'Invoices', 'Rewards', 'Notifications'],
   );
 });
 

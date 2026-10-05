@@ -30,6 +30,8 @@ import { ComboController } from './combo/combo.controller.js';
 import { ComboService } from './combo/combo.service.js';
 import { RewardController } from './reward/reward.controller.js';
 import { RewardService } from './reward/reward.service.js';
+import { CustomerLoyaltyController } from './loyalty/customer-loyalty.controller.js';
+import { CustomerLoyaltyService } from './loyalty/customer-loyalty.service.js';
 import { LoyaltyController } from './loyalty/loyalty.controller.js';
 import { LoyaltyService } from './loyalty/loyalty.service.js';
 import { ReferralController } from './referral/referral.controller.js';
@@ -137,6 +139,7 @@ export class AppModule {
         DiscountController,
         ComboController,
         RewardController,
+        CustomerLoyaltyController,
         LoyaltyController,
         ReferralController,
         InvoiceController,
@@ -197,6 +200,7 @@ export class AppModule {
         DiscountService,
         ComboService,
         RewardService,
+        CustomerLoyaltyService,
         LoyaltyService,
         ReferralService,
         InvoiceService,

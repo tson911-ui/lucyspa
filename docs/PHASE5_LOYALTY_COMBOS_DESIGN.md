@@ -90,7 +90,7 @@ free entitlements generate no tour (§17.6); service/combo refunds do not exist 
 | OQ-7  | **ANSWERED 2026-10-04 (REJECTED as written, see 2.5): the Owner may correct the referrer before the award, with history.** The uniform public-signup response (7.3) means a customer who mistypes the referrer phone gets no feedback. Accept that trade-off?                                                                                                                                                                                                                                                                                                                             | P5-5        | Accept; staff can bind at the counter with a masked confirmation.                                                                                                                                                                                                              |
 | OQ-8  | **ANSWERED 2026-10-04 (Owner, see 2.5).** Birthday details PRD §19 leaves to configuration: **whose birthday** (payer or participant); how **29 February** is treated in non-leap years; the **base of a percentage** Birthday benefit; a **non-combinable** Birthday benefit versus the ordinary winner; **non-monetary** types (free service, gift) and their valuation against money (PRD §61).                                                                                                                                                                                        | P5-6        | Payer's birthday; 28 Feb in non-leap years; percentage on the amount left after the winner; Phase 5 ships monetary types only, free-service/gift types follow P5-9; a non-combinable monetary Birthday competes by amount, a non-monetary one never competes.                  |
 | OQ-9  | **ANSWERED 2026-10-05 (Owner's own words, see 2.5): PAID first, any branch, reversal after use allowed (used kept, unused frozen, Owner told through Exceptions), re-pay reopens the same combo.** Combos: is consumption allowed at **any branch** or only the selling branch? Which session is consumed first, `PAID` or `BONUS` (it decides future tour; history is immutable)? What happens when the **purchase payment is reversed after sessions were consumed** (PRD §61)? Are sessions usable before the purchase invoice is `PAID`? Do ordinary promotions apply to combo lines? | P5-7 / P5-8 | Any branch the Owner configures; ask Owner for order; reversal allowed (money first), consumed sessions stay as history, unused sessions frozen and flagged (OQ-3 list); not usable before `PAID`; existing programs do not apply to combos until an Owner adds a combo scope. |
-| OQ-10 | How far does P5-9 go: catalog CRUD, manual issuance, entitlement lifecycle only, or also POS redemption (which kinds)? PRD §21 defines entities, not flows, and forbids a point-priced reward program.                                                                                                                                                                                                                                                                                                                                                                                    | P5-9        | Catalog CRUD + manual issuance with reason + lifecycle + POS redemption of `FREE_SERVICE` only (reusing the combo consumption path).                                                                                                                                           |
+| OQ-10 | **ANSWERED 2026-10-05 (Owner's own words, see 2.5): catalog + manual grant/use/revoke/restore only; a free service is marked by hand, no POS redemption, no OTHER kind.** How far does P5-9 go: catalog CRUD, manual issuance, entitlement lifecycle only, or also POS redemption (which kinds)? PRD §21 defines entities, not flows, and forbids a point-priced reward program.                                                                                                                                                                                                          | P5-9        | Catalog CRUD + manual issuance with reason + lifecycle + POS redemption of `FREE_SERVICE` only (reusing the combo consumption path).                                                                                                                                           |
 | OQ-11 | What does the customer see for a manual adjustment: the reason text or a generic label?                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | P5-10       | Generic label ("Điều chỉnh bởi Lucy Spa"); internal reason stays staff-only.                                                                                                                                                                                                   |
 
 None of these blocked P5-1. The Owner asked to be asked about OQ-2 … OQ-11 **only when a step is blocked by one** (the "Blocks" column).
@@ -170,10 +170,13 @@ None of these blocked P5-1. The Owner asked to be asked about OQ-2 … OQ-11 **o
   6. **Restoring a session only returns the session.** The invoice and the money are not changed; there is no money-correction step.
   7. **Tour counting for PAID sessions is decided in Phase 7.**
 - **P5-9 instruction (Owner, in own words, 2026-10-05):** Owner or manager with `MANAGE_REWARD_CATALOG` defines catalog items (gift item, voucher, free service); it ships EMPTY, no preset. Staff with `ISSUE_REWARDS` grant an item to a member customer and mark it used; revoking needs a reason; full history, nothing deleted. Completely separate from points: points can never be exchanged for rewards. Works only when go-live is ON.
-- **P5-9 answers collected through the question tool, 2026-10-05 (recorded exactly as given; PROVISIONAL, pending the Owner's own words; OQ-10 is NOT marked answered):**
-  1. Free service: **"Chỉ đánh dấu tay (Recommended cho P5-9)"**: no 0đ line, no POS change in P5-9.
-  2. Expiry: **"Owner đặt số ngày cho từng loại quà"**.
-  3. A mistaken "used": **"Quản lý hoàn lại có lý do (Recommended)"**.
+- **P5-9 APPROVED by the Owner, in the Owner's own words, 2026-10-05 (locked, do not reopen; OQ-10 is ANSWERED).** These replace the "provisional" question-tool answers of the same day:
+  1. **A free-service reward is marked used by hand. It does not become a 0đ invoice line.**
+  2. **The Owner sets the expiry per catalog item (none, or N days).**
+  3. **A mistaken "used" is restored by a manager with a reason, using `MANAGE_REWARD_CATALOG`. No new permission.**
+  4. **`ISSUE_REWARDS` stays as built.** After the deploy the Owner will grant it to managers only (nothing is granted automatically).
+  5. **No "OTHER" reward type.**
+  6. **The catalog may be edited while go-live is OFF. Granting, using and revoking require go-live ON.**
 - **Owner review of P5-3 (approved):** reading loyalty follows the branch (`VIEW_LOYALTY` at the staff member's branch, like the POS member lookup); points are taken back on
   `INVOICE_REOPENED` / `INVOICE_CANCELLED` (not `PAYMENT_REVERSED`, which always comes with `INVOICE_REOPENED` for a paid invoice).
 - Implementation notes of P5-3 (no decision changed): reversal is keyed on `INVOICE_REOPENED` and `INVOICE_CANCELLED` per 4.4 (`PAYMENT_REVERSED` always comes with
@@ -483,7 +486,7 @@ do not exist (PRD §29).
 
 An **empty framework**: no catalog item exists at deploy (the final catalog is TBD, PRD §61).
 
-- **Catalog item:** type (`FREE_SERVICE`, `VOUCHER`, `PRODUCT_GIFT`, `OTHER`), name vi/en, active flag, optional expiry rule.
+- **Catalog item:** type (`FREE_SERVICE`, `VOUCHER`, `PRODUCT_GIFT`; no `OTHER`, Owner 2026-10-05), name vi/en, active flag, optional expiry rule.
 - **Entitlement:** type, quantity, owner/customer, issued source/campaign, issued date, expiry if configured, redemption history, status.
 - Separate domain from points, combos and Phase 4 vouchers (PRD §21): a free service is never added to a points balance, redemption
   never deducts points, and **no point-priced reward program** is created from this catalog (PRD §21).
@@ -491,10 +494,10 @@ An **empty framework**: no catalog item exists at deploy (the final catalog is T
 - A `PRODUCT_GIFT` item is descriptive only; stock handling is Phase 6.
 - Depth of P5-9 (issuance and POS redemption flows): OQ-10. Birthday `FREE_SERVICE` / `GIFT` types arrive only after P5-9.
 
-### 10.1 As built in P5-9 (the Owner's instruction of 2026-10-05; the three question-tool answers in 2.5 are PROVISIONAL)
+### 10.1 As built in P5-9 (the Owner's instruction of 2026-10-05; **APPROVED by the Owner in own words, 2026-10-05**, see 2.5)
 
 - **Catalog** (`MANAGE_REWARD_CATALOG`, global): kinds `FREE_SERVICE` (an active service is required), `VOUCHER` (a reward voucher, never a Phase 4 discount code), `PRODUCT_GIFT`; generated code; names vi/en; active flag; optional "N days after the grant" expiry; edits under `row_version`, audited with before/after; never deleted. Definitions may be saved while go-live is OFF (like combos); everything else needs go-live ON.
-- **Grant** (`ISSUE_REWARDS` at the branch): exact-phone masked lookup, an active item, quantity 1-50, reason required; expiry is fixed at grant time from the item rule. **Mark used**: one unit at a time, optional note, any branch where the staff member holds `ISSUE_REWARDS`; no invoice line, no points (provisional answer 1). **Revoke**: reason required, used units stay as history. **Restore a mistaken use**: manager only (`MANAGE_REWARD_CATALOG`, no new permission), reason required, one offset row, the use stays (provisional answer 3).
+- **Grant** (`ISSUE_REWARDS` at the branch): exact-phone masked lookup, an active item, quantity 1-50, reason required; expiry is fixed at grant time from the item rule. **Mark used**: one unit at a time, optional note, any branch where the staff member holds `ISSUE_REWARDS`; no invoice line, no points (Owner decision 1). **Revoke**: reason required, used units stay as history. **Restore a mistaken use**: manager only (`MANAGE_REWARD_CATALOG`, no new permission), reason required, one offset row, the use stays (Owner decision 3).
 - Remaining quantity = issued - active invoice redemptions - active manual uses (migration `20261103000000`: `reward_manual_uses`, `reward_manual_use_restorations`, append-only, go-live gated, the P5-2 redemption guard now counts both). Nothing here reads or writes a wallet or the ledger.
 - Events `REWARD_ISSUED`, `REWARD_REDEEMED`, `REWARD_VOIDED`, `REWARD_USE_RESTORED` (ids only). Not built: POS redemption of a free service (the redemption tables of P5-2 stay ready), customer view (P5-10).
 
@@ -591,6 +594,14 @@ balances and tiers, distance to the next tier, ledger history (earn, reversal, r
 push**, and no other notification is created for any Phase 5 event. Shortfall flags and internal reasons are never shown to customers
 (OQ-11).
 
+### 15.1 As built in P5-10 (the Owner's instruction of 2026-10-05; answers marked PROVISIONAL are pending the Owner's own words)
+
+- Route `/{locale}/account/loyalty` ("Điểm thưởng và ưu đãi", a tab of the member row and an entry of the account menu), API `GET /api/v1/me/loyalty` (+ `/history`, `/combos`, `/combo-uses`, `/referrals`, `/gifts`, 20 per page). Read only, identity from the session (no id accepted), no notification.
+- Shows: Spa and Beauty points, tier, next tier and points to go; the Member Discount % on the Spa card only (Beauty earning and its discount are Phase 6, so none is promised); the points history; my combos (paid and bonus sessions left, status); combo usage including relatives; people I referred (masked name, waiting or rewarded); my gifts (status, units left, expiry).
+- Privacy: another person is only ever a masked name (first letter of each word); a relative's name is masked; no phone, no staff name, no staff reason, no shortfall, no relationship note, no other person's invoice code. Mistaken or cancelled combo uses are not listed (the session is back).
+- **PROVISIONAL (question tool, 2026-10-05, pending the Owner's own words):** while go-live is OFF the page shows one notice and no number, combo, gift or referral (the API answers empty); OQ-11 is built as the proposed default (a manual change reads "Điều chỉnh bởi Lucy Spa", the staff reason is never shown). OQ-11 is NOT marked answered.
+- Not on the page (not in the Owner's list): the birthday benefit status of 15 above.
+
 ## 16. Execution sequence (restored by the Owner, 2026-10-04)
 
 | Step  | Content                                                                              |
@@ -604,7 +615,7 @@ push**, and no other notification is created for any Phase 5 event. Shortfall fl
 | P5-7  | Combo sale                                                                           |
 | P5-8  | Combo usage                                                                          |
 | P5-9  | Gift catalog framework                                                               |
-| P5-10 | Customer page + admin points screens                                                 |
+| P5-10 | Customer page + admin points screens (customer page built; admin gaps listed)        |
 | P5-11 | Final check, no deploy                                                               |
 
 Placement notes (implementation level, no decision changed): P5-2 creates only the new loyalty/referral/combo/reward tables, the go-live

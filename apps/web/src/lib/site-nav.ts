@@ -156,6 +156,7 @@ export function accountTabItems(
     { key: 'overview', label: text.overview, href: base, exact: true },
     { key: 'bookings', label: text.bookings, href: `${base}/bookings`, exact: false },
     { key: 'invoices', label: text.invoices, href: `${base}/invoices`, exact: false },
+    { key: 'rewards', label: text.rewards, href: `${base}/loyalty`, exact: false },
     {
       key: 'notifications',
       label: text.notifications,

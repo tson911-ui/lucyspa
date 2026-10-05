@@ -23,6 +23,8 @@ export interface SiteText {
     overview: string;
     bookings: string;
     invoices: string;
+    /** Phase 5 P5-10: points, combos, referrals and gifts. */
+    rewards: string;
     notifications: string;
     /** Accessible name of the member-area row. */
     tabs: string;
@@ -126,6 +128,7 @@ const text = {
       overview: 'Tổng quan',
       bookings: 'Lịch hẹn',
       invoices: 'Hóa đơn',
+      rewards: 'Điểm thưởng',
       notifications: 'Thông báo',
       tabs: 'Khu vực thành viên',
       unread: '{count} chưa đọc',
@@ -218,6 +221,7 @@ const text = {
       overview: 'Overview',
       bookings: 'Bookings',
       invoices: 'Invoices',
+      rewards: 'Rewards',
       notifications: 'Notifications',
       tabs: 'Member area',
       unread: '{count} unread',

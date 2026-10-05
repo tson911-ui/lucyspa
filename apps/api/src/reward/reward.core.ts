@@ -87,15 +87,24 @@ const entitlementSelect = {
 
 type EntitlementRow = Prisma.RewardEntitlementGetPayload<{ select: typeof entitlementSelect }>;
 
+/** What the usage rule reads of an entitlement (shared with the customer's own view, P5-10). */
+export interface EntitlementUsageFacts {
+  quantityIssued: number;
+  voidedAt: Date | null;
+  expiresAt: Date | null;
+  manualUses: readonly { restoration: unknown }[];
+  redemptions: readonly { release: unknown }[];
+}
+
 /** Units in use now: invoice redemptions not released plus manual uses not restored (the same rule as the database guards). */
-function unitsInUse(row: EntitlementRow): number {
+export function unitsInUse(row: EntitlementUsageFacts): number {
   return (
     row.manualUses.filter((use) => use.restoration === null).length +
     row.redemptions.filter((redemption) => redemption.release === null).length
   );
 }
 
-function statusOf(row: EntitlementRow, now: Date): RewardEntitlementStatus {
+export function statusOf(row: EntitlementUsageFacts, now: Date): RewardEntitlementStatus {
   if (row.voidedAt) return 'VOIDED';
   if (row.quantityIssued - unitsInUse(row) <= 0) return 'USED_UP';
   if (row.expiresAt && row.expiresAt.getTime() <= now.getTime()) return 'EXPIRED';

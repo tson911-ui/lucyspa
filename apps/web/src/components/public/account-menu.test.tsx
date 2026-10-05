@@ -16,9 +16,21 @@ const labels = (signedIn: boolean, locale: 'vi' | 'en') =>
 
 test('signed out the menu offers sign-in and registration, signed in the member pages and sign-out', () => {
   assert.deepEqual(labels(false, 'vi'), ['Đăng nhập', 'Đăng ký']);
-  assert.deepEqual(labels(true, 'vi'), ['Lịch hẹn', 'Hóa đơn', 'Thông báo', 'Đăng xuất']);
+  assert.deepEqual(labels(true, 'vi'), [
+    'Lịch hẹn',
+    'Hóa đơn',
+    'Điểm thưởng',
+    'Thông báo',
+    'Đăng xuất',
+  ]);
   assert.deepEqual(labels(false, 'en'), ['Sign in', 'Create account']);
-  assert.deepEqual(labels(true, 'en'), ['Bookings', 'Invoices', 'Notifications', 'Sign out']);
+  assert.deepEqual(labels(true, 'en'), [
+    'Bookings',
+    'Invoices',
+    'Rewards',
+    'Notifications',
+    'Sign out',
+  ]);
 });
 
 test('unread notifications show beside "Thông báo" in the menu', () => {
@@ -50,6 +62,7 @@ test('choosing an entry goes to its member page; sign-out is the only entry that
   assert.deepEqual(went, [
     '/vi/account/bookings',
     '/vi/account/invoices',
+    '/vi/account/loyalty',
     '/vi/account/notifications',
   ]);
   assert.equal(signedOut, 1);

@@ -2156,6 +2156,8 @@ export * from './birthday.js';
 export * from './combo.js';
 // Phase 5 P5-9: the gift / benefit catalog framework (definitions, issuing, marking used, revoking).
 export * from './reward.js';
+// Phase 5 P5-10: the customer's own membership page (points, combos, referrals, gifts; read only).
+export * from './customer-loyalty.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;
