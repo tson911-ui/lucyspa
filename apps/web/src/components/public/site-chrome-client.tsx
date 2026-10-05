@@ -31,8 +31,7 @@ const PrefetchLink: SiteLinkComponent = ({ children, ...rest }) => (
 );
 
 /**
- * The site header. The home page is the one page that starts with a full-bleed hero, so there (and only there) the
- * bar floats over it; `overlay` forces it either way (the admin's season preview). The path is known on the server
+ * The site header. On the home page (and only there) the bar is clear at the top and turns solid on scroll; `overlay` forces it either way (the admin's season preview). The path is known on the server
  * too, so the first paint already has the right bar.
  */
 export function PublicSiteHeader({

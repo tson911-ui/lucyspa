@@ -23,7 +23,7 @@ export function PublicHeader({
   locale: Locale;
   /** The season's site decoration (logo accent), or null for the plain wordmark. */
   decor: SiteDecorSpec | null;
-  /** Floats over a full-bleed hero. Left out, the home page does and every other page does not. */
+  /** Clear at the top and solid on scroll. Left out, the home page is and every other page is not. */
   overlay?: boolean;
 }) {
   const text = getSiteText(locale);

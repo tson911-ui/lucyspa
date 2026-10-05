@@ -1004,23 +1004,20 @@ test('SiteHeader: only a page that starts with a hero floats the bar over it (da
   assert.match(html, /class="ls-site-sentinel" data-overlay="true"/);
 });
 
-test('header over the hero: pulled out of the flow by its own height, solid after about 60 px, light only while clear', () => {
-  // The bar is as tall as the token and its margin takes exactly that out of the flow, so the hero starts at the top.
-  assert.match(
-    css,
-    /\.ls-site-header\[data-overlay='true'\] \{\s*margin-block-end: calc\(var\(--ls-site-header-h\) \* -1\);\s*border-width: 0;/,
-  );
+test('header on the home page: clear at the top, solid after about 60 px, in its place in the flow', () => {
   // About 60 px of scrolling (48 + 12) turns it solid; the sentinel is 1 px wide, so no scroll listener is needed.
   assert.match(
     css,
     /\.ls-site-sentinel\[data-overlay='true'\] \{\s*height: calc\(var\(--ls-space-9\) \+ var\(--ls-space-3\)\);/,
   );
-  // Light ink applies only while the bar is clear; the scrolled bar keeps the normal colours and gets the shadow.
+  // At the top: no background and no hairline (the border keeps its width, so the bar's height never changes).
   assert.match(
     css,
-    /\[data-overlay='true'\]:not\(\[data-scrolled='true'\]\) \{\s*background: transparent;/,
+    /\[data-overlay='true'\]:not\(\[data-scrolled='true'\]\) \{\s*border-bottom-color: transparent;\s*background: transparent;/,
   );
-  assert.match(css, /\[data-overlay='true'\]\[data-scrolled='true'\] \{\s*box-shadow:/);
+  // Nothing takes the bar out of the flow and no colour of its text changes: the hero is the light page.
+  assert.doesNotMatch(css, /margin-block-end: calc\(var\(--ls-site-header-h\)/);
+  assert.doesNotMatch(css, /--ls-hero-/);
   // The change eases on the motion tokens, which are 0 under reduced motion (nothing animates, it just switches).
   const overlayRule = /\.ls-site-header\[data-overlay='true'\] \{([^}]*)\}/.exec(css)?.[1] ?? '';
   assert.match(overlayRule, /background-color var\(--ls-dur-base\)/);
@@ -1031,26 +1028,7 @@ test('header over the hero: pulled out of the flow by its own height, solid afte
   );
 });
 
-test('hero: the stage fills the section, the scrim lies on the picture and the foot keeps room for caption and controls', () => {
-  assert.match(css, /\.ls-hero-stage \{\s*position: absolute;\s*inset: 0;/);
-  assert.match(css, /\.ls-hero-stage \.ls-slider-media::after,[^{]*\{[^}]*pointer-events: none;/);
-  assert.match(css, /\.ls-hero-full\[data-foot='caption'\] \.ls-hero-content \{/);
-  assert.match(css, /\.ls-site \.ls-slider-cover \{\s*position: absolute;\s*inset: 0;/);
-  // The headline clears the floating bar.
-  assert.match(
-    css,
-    /\.ls-hero-content \{[^}]*calc\(var\(--ls-site-header-h\) \+ var\(--ls-space-6\)\)/,
-  );
-  // Light ink and the shades are tokens that read the same in both themes (a test above compares the dark blocks).
-  for (const name of [
-    'ink',
-    'ink-muted',
-    'ink-line',
-    'on-ink',
-    'shade',
-    'shade-strong',
-    'shade-phone',
-  ]) {
-    assert.match(tokens, new RegExp(`--ls-hero-${name}:`));
-  }
+test('hero: the split layout is back (copy beside a rounded card), no full-bleed pieces', () => {
+  assert.match(css, /\.ls-hero-grid \{\s*display: grid;/);
+  assert.doesNotMatch(css, /ls-hero-full|ls-hero-stage|ls-slider-cover/);
 });

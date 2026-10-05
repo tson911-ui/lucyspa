@@ -517,5 +517,6 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 
 ### Customer navigation and transparent home header - 2026-10-05 (not deployed)
 
-- A: account sub-tab row removed; person menu = Tài khoản của tôi / Điểm thưởng / Đăng xuất; new notification bell with a latest-8 panel next to the language button (`docs/UXUI_REDESIGN_NAV_HEADER.md`). A and B are one commit (the bell and 360 px header fixes belong to both).
-- B: home hero is full-bleed (slides, else Shop info picture, else brand panel) and the header floats over it until about 60 px of scroll (`SiteHeader overlay`). The full-bleed hero choice was given through the question tool: **provisional until the Owner confirms**. No migration, no permission.
+- A: account sub-tab row removed; person menu = Tài khoản của tôi / Điểm thưởng / Đăng xuất; new notification bell with a latest-8 panel next to the language button (`docs/UXUI_REDESIGN_NAV_HEADER.md`).
+- B: the full-bleed hero built in `be5617d` was **rejected by the Owner** (misunderstanding) and removed; the home hero is the original split layout again. **Approved by the Owner:** a transparent header over the original hero (no background, border or shadow at the top, normal colours; solid after about 60 px of scroll; `SiteHeader overlay`).
+- No migration, no permission. `be5617d` (CI green) is superseded and must not be deployed on its own.
