@@ -21,8 +21,8 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                                          |
 | Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                                       |
 | **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                                       |
-| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `d11be14`)                                                                  |
-| **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `d11be14`); go-live turned ON by the Owner about 17:20 (+07)** |
+| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `f79572d`)                                                                  |
+| **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `f79572d`); go-live turned ON by the Owner about 17:20 (+07)** |
 | Phase 6+ (products, payroll, finance)     | NOT started                                                                                        |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
@@ -117,14 +117,21 @@ Step 11 (`docs/PHASE4_FINAL_VALIDATION.md`): full gate on scratch DB `lucy_spa_s
 Fixed only gate-side defects (stale OpenAPI assertion in `scripts/smoke.mjs`, prettier drift). No migration, no product change (deployed later, see Production).
 Report has the deployment checklist (10 pending migrations, PayOS env, webhook URL, `db:permissions:sync`, PER_NAIL limits). Step 11 and Phase 4 CLOSED / OWNER APPROVED; scratch DB dropped.
 
-## Wallet names (2026-10-05, after the `d11be14` deploy; not deployed)
+## Wallet names (2026-10-05, deployed in `f79572d`, see Production)
 
 - Owner instruction: the wallets are "Điểm Lucy Spa" / "Điểm Lucy Beauty" (EN "Lucy Spa points" / "Lucy Beauty points") everywhere, from one place (`apps/web/src/i18n/loyalty.ts`).
 - Customer Beauty card has the same "Ưu đãi hội viên" row: "Áp dụng khi Lucy Beauty mở bán" until Phase 6, which must replace it with the real tier % (design 15.3). Report: `docs/PHASE5_WALLET_NAMES.md`. No migration.
 
 ## Production
 
-Status as of 2026-10-05, about 21:31 (+07) (Owner-reported; supersedes the blocks below):
+Status as of 2026-10-05, about 22:08 (+07) (Owner-reported; supersedes the blocks below):
+
+- **Production runs `f79572d02d543b1ad8c0b644d90a70f5260987c6`** (wallet names "Điểm Lucy Spa" / "Điểm Lucy Beauty", Beauty member-discount row), deployed by the Owner on 2026-10-05 at about 22:08 (+07). Previous: `d11be14`.
+- No new migration: `pnpm db:status` up to date (61 migrations).
+- After the deploy: health ok, `/vi`, `/vi/account/loyalty` and `/vi/workforce/login` answer 200, pm2 3/3 online, `loyalty_go_live` = 1 (ON).
+- Backup taken before this deploy: `/root/backups/lucyspa-pre-walletname-20261005T150355Z.dump`.
+
+Status as of 2026-10-05, about 21:31 (+07) (the `d11be14` deploy):
 
 - **Production runs `d11be146088c78b1e69858b8596fd1b121d0fe72`** (overlay z-index fix `bee3785` plus the removal of the count after section headings), deployed by the Owner on 2026-10-05 at about 21:31 (+07). Previous: `d6781fa`.
 - No new migration: `pnpm db:status` up to date (61 migrations).
