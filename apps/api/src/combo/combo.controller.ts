@@ -4,6 +4,7 @@ import type {
   ComboListResponse,
   ComboRestoreRequest,
   ComboResponse,
+  ComboSoldPageResponse,
   ComboUsageItemResponse,
   ComboUsagePageResponse,
   ComboVersionRequest,
@@ -52,6 +53,11 @@ class UsageQueryDto {
   @IsOptional() @IsString() @MaxLength(8) page?: string;
 }
 
+class SoldQueryDto {
+  @IsOptional() @IsString() @MaxLength(8) page?: string;
+  @IsOptional() @IsString() @MaxLength(16) status?: string;
+}
+
 /** The reason only: the use, the actor, the time and the branch are never supplied. */
 class RestoreDto implements ComboRestoreRequest {
   @ApiProperty() @IsString() @MaxLength(2_048) reason!: string;
@@ -80,6 +86,15 @@ export class ComboController {
   })
   usage(@Query() query: UsageQueryDto, @Req() request: Request): Promise<ComboUsagePageResponse> {
     return this.combos.usage(this.session(request), query);
+  }
+
+  @Get('sold')
+  @ApiOkResponse({
+    description:
+      'Every combo sold in every state, with totals of the sessions usable now (RESTORE_COMBO_SESSIONS or MANAGE_COMBOS).',
+  })
+  sold(@Query() query: SoldQueryDto, @Req() request: Request): Promise<ComboSoldPageResponse> {
+    return this.combos.sold(this.session(request), query);
   }
 
   @Get('frozen')

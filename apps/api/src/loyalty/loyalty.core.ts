@@ -34,7 +34,7 @@ const GLOBAL = { kind: 'GLOBAL' } as const;
 const WALLETS: readonly LoyaltyWalletName[] = ['SPA', 'BEAUTY'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function requireView(context: AdminContext, branchId: string): void {
+export function requireView(context: AdminContext, branchId: string): void {
   if (!decide(context.actor.graph, 'VIEW_LOYALTY', { kind: 'BRANCH', branchId })) {
     throw new AuthError('FORBIDDEN');
   }
@@ -59,7 +59,7 @@ export function pageOf(value: unknown): number {
   return page;
 }
 
-async function customerOrNotFound(tx: Prisma.TransactionClient, userId: string) {
+export async function customerOrNotFound(tx: Prisma.TransactionClient, userId: string) {
   const user = await tx.user.findFirst({
     where: { id: userId, kind: 'CUSTOMER' },
     select: { id: true, fullName: true, phoneCanonical: true, emailCanonical: true },

@@ -1,5 +1,7 @@
 import type {
   BirthdayRewardConfigResponse,
+  ComboSoldCustomerPageResponse,
+  CustomerGiftPageResponse,
   BirthdayRewardSaveRequest,
   LoyaltyAdjustmentRequest,
   LoyaltyAdjustmentResponse,
@@ -17,6 +19,7 @@ import { runAdminCommand, type AdminContext } from '../authorization/admin-comma
 import { sqlStateOf } from '../booking/customer-command.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import { getBirthdayConfig, saveBirthdayConfig } from './birthday.core.js';
+import { profileCombos, profileGifts } from './profile-lists.core.js';
 import {
   activateGoLive,
   adjustPoints,
@@ -73,6 +76,30 @@ export class LoyaltyService {
   ): Promise<LoyaltyLedgerPageResponse> {
     return this.run(token, undefined, [], (context) =>
       listLedger(context, this.id(branchId), this.id(userId), query),
+    );
+  }
+
+  /** A customer's combos, every state (VIEW_LOYALTY at the branch). */
+  combos(
+    token: string | undefined,
+    branchId: string,
+    userId: string,
+    query: { page?: string },
+  ): Promise<ComboSoldCustomerPageResponse> {
+    return this.run(token, undefined, [], (context) =>
+      profileCombos(context, this.id(branchId), this.id(userId), query),
+    );
+  }
+
+  /** A customer's gifts: status, units left, expiry (VIEW_LOYALTY at the branch). */
+  gifts(
+    token: string | undefined,
+    branchId: string,
+    userId: string,
+    query: { page?: string },
+  ): Promise<CustomerGiftPageResponse> {
+    return this.run(token, undefined, [], (context) =>
+      profileGifts(context, this.id(branchId), this.id(userId), query),
     );
   }
 

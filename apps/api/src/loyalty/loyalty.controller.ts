@@ -1,5 +1,7 @@
 import type {
   BirthdayGiftKindName,
+  ComboSoldCustomerPageResponse,
+  CustomerGiftPageResponse,
   BirthdayRewardConfigResponse,
   BirthdayRewardSaveRequest,
   BirthdayUsageLimit,
@@ -148,6 +150,33 @@ export class LoyaltyController {
     @Req() request: Request,
   ): Promise<LoyaltyLedgerPageResponse> {
     return this.loyalty.ledger(this.session(request), branchId, userId, query);
+  }
+
+  @Get('branches/:branchId/customers/:userId/combos')
+  @ApiOkResponse({
+    description: "A customer's combos in every state, newest first, 20 per page (VIEW_LOYALTY).",
+  })
+  combos(
+    @Param('branchId') branchId: string,
+    @Param('userId') userId: string,
+    @Query() query: PageQueryDto,
+    @Req() request: Request,
+  ): Promise<ComboSoldCustomerPageResponse> {
+    return this.loyalty.combos(this.session(request), branchId, userId, query);
+  }
+
+  @Get('branches/:branchId/customers/:userId/gifts')
+  @ApiOkResponse({
+    description:
+      "A customer's gifts with status, units left and expiry, 20 per page (VIEW_LOYALTY).",
+  })
+  gifts(
+    @Param('branchId') branchId: string,
+    @Param('userId') userId: string,
+    @Query() query: PageQueryDto,
+    @Req() request: Request,
+  ): Promise<CustomerGiftPageResponse> {
+    return this.loyalty.gifts(this.session(request), branchId, userId, query);
   }
 
   @Post('customers/:userId/adjustments')

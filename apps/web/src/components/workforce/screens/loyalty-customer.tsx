@@ -54,6 +54,7 @@ import {
 } from '../ui';
 import { AdjustDialog } from './loyalty-adjust-dialog';
 import { ReferralCard } from './referral-card';
+import { ProfileCombos, ProfileGifts } from './loyalty-combo-sold';
 import { BindReferrerDialog, ChangeReferrerDialog } from './referral-dialogs';
 
 /**
@@ -281,6 +282,8 @@ export function LoyaltyCustomerScreen({ userId }: { userId: string }) {
             }}
           />
         </ListSection>
+        <ProfileCombos branchId={branchId} userId={userId} />
+        <ProfileGifts branchId={branchId} userId={userId} />
       </Stack>
       {referralDialog === 'bind' ? (
         <BindReferrerDialog

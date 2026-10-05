@@ -14,6 +14,7 @@ import {
 } from '@lucy-spa/ui';
 import { useMemo, useState } from 'react';
 import { comboDictionary } from '../../../i18n/combo';
+import { comboSoldDictionary } from '../../../i18n/combo-sold';
 import { loyaltyDictionary } from '../../../i18n/loyalty';
 import { rewardDictionary } from '../../../i18n/reward';
 import { fill } from '../../../i18n/workforce';
@@ -28,6 +29,7 @@ import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import { Button, Empty, Loading, Notice, PageHeader } from '../ui';
 import { LoyaltyCombos } from './loyalty-combos';
+import { LoyaltyComboSold } from './loyalty-combo-sold';
 import { FrozenCombos, LoyaltyComboUsage } from './loyalty-combo-usage';
 import { LoyaltyExceptions } from './loyalty-exceptions';
 import { LoyaltyBirthday } from './loyalty-birthday';
@@ -61,6 +63,7 @@ export function LoyaltyScreen() {
     !shown.exceptions &&
     !shown.combos &&
     !shown.comboUsage &&
+    !shown.comboSold &&
     !shown.rewardDesk &&
     !shown.rewardCatalog &&
     !shown.birthday &&
@@ -104,6 +107,21 @@ export function LoyaltyScreen() {
       label: comboDictionary(locale).tab,
       show: shown.combos,
       panel: <LoyaltyCombos />,
+    },
+    {
+      id: 'comboSold',
+      label: comboSoldDictionary(locale).tab,
+      show: shown.comboSold,
+      panel: (
+        <Stack gap="page">
+          <LoyaltyComboSold
+            page={state.page}
+            status={state.status}
+            onPage={(page) => update({ page })}
+            onStatus={(status) => update({ status })}
+          />
+        </Stack>
+      ),
     },
     {
       id: 'comboUsage',

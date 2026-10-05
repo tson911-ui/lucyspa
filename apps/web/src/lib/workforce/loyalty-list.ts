@@ -1,3 +1,4 @@
+import { COMBO_SOLD_STATUSES } from '@lucy-spa/contracts';
 import { normalizePage } from './list-view';
 
 /**
@@ -12,6 +13,7 @@ export const LOYALTY_TAB_IDS = [
   'exceptions',
   'combos',
   'comboUsage',
+  'comboSold',
   'rewardDesk',
   'rewardCatalog',
   'birthday',
@@ -22,12 +24,18 @@ export type LoyaltyTabId = (typeof LOYALTY_TAB_IDS)[number];
 export const LOYALTY_PAGE_DEFAULTS = { tab: '', page: 1, status: '' };
 export type LoyaltyPageState = typeof LOYALTY_PAGE_DEFAULTS;
 
+function normalizeStatus(tab: string, status: string): string {
+  if (tab === 'comboSold')
+    return (COMBO_SOLD_STATUSES as readonly string[]).includes(status) ? status : '';
+  return status === 'PENDING' || status === 'REWARDED' ? status : '';
+}
+
 export function normalizeLoyaltyPage(state: LoyaltyPageState): LoyaltyPageState {
   return {
     tab: (LOYALTY_TAB_IDS as readonly string[]).includes(state.tab) ? state.tab : '',
     page: normalizePage(state.page),
-    // The referral list filter (Phase 5 P5-5).
-    status: state.status === 'PENDING' || state.status === 'REWARDED' ? state.status : '',
+    // The status filter belongs to the referral list (Phase 5 P5-5) or to the sold-combos list (P5-10b).
+    status: normalizeStatus(state.tab, state.status),
   };
 }
 

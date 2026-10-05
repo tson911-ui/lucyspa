@@ -1,6 +1,6 @@
 # Phase 5 P5-10: Customer membership page + admin gap list
 
-Status: built and validated on scratch databases; **not deployed, loyalty stays OFF**; awaits Owner review. Contract: `PHASE5_LOYALTY_COMBOS_DESIGN.md` section 15 and 15.1. P5-9 was approved by the Owner in own words on 2026-10-05 (design 2.5; OQ-10 answered, Step 9 doc and handoff updated).
+Status: built and validated on scratch databases; **not deployed, loyalty stays OFF**; **APPROVED by the Owner in own words, 2026-10-05** (design 2.5; OQ-11 answered). Contract: `PHASE5_LOYALTY_COMBOS_DESIGN.md` section 15 and 15.1. P5-9 was approved by the Owner in own words on 2026-10-05 (design 2.5; OQ-10 answered, Step 9 doc and handoff updated).
 
 ## What changed
 
@@ -9,9 +9,9 @@ Status: built and validated on scratch databases; **not deployed, loyalty stays 
 - Privacy: only masked names (relative too); no phone, staff name, staff reason, shortfall, relationship note or other people's invoice code. No notification (P5-Q9).
 - No migration, no new permission. `reward.core` now exports its shared usage rule.
 
-## Provisional (question tool, pending the Owner's own words)
+## Owner decisions (own words, 2026-10-05; design 2.5)
 
-1. Go-live OFF: the page is one notice and no data (the API answers empty). 2. OQ-11: a manual change reads "Điều chỉnh bởi Lucy Spa"; OQ-11 is not marked answered.
+1. Go-live OFF: the page shows only the notice. 2. Manual adjustments read "Điều chỉnh bởi Lucy Spa". 3. Member discount % on the Spa card only. 4. Birthday gift status on the customer page: deferred. 5. Admin "view as customer" and per-customer birthday status: deferred.
 
 ## Tests
 
@@ -33,9 +33,4 @@ Rendered 360/768/1440 light and 1440 dark (all widths in both themes) on the P5-
 3. No staff view of "what this customer sees" and no cross-customer points list or report (Phase 8 scope).
 4. The birthday gift has a setup tab but no per-customer "used this birthday" status for staff or customer.
 
-## Open questions for the Owner
-
-1. Confirm in own words: go-live OFF notice-only page; OQ-11 generic label.
-2. The Member Discount % is shown on the Spa card only (Beauty earning is Phase 6). OK?
-3. Should the customer see the birthday gift status (design 15 lists it; not in your list, so not built)?
-4. Build any of the admin gaps above?
+The Owner then chose three of the gaps above for P5-10b (`PHASE5_STEP10B_ADMIN_COMBOS_GIFTS.md`).

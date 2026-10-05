@@ -1,6 +1,7 @@
 import type {
   ComboCreateRequest,
   ComboFrozenListResponse,
+  ComboSoldPageResponse,
   ComboListResponse,
   ComboRestoreRequest,
   ComboResponse,
@@ -16,6 +17,7 @@ import { runAdminCommand, type AdminContext } from '../authorization/admin-comma
 import { sqlStateOf } from '../booking/customer-command.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import { addComboVersion, createCombo, listCombos } from './combo.core.js';
+import { canSeeSold, listSold, soldPageOf, soldStatusOf } from './combo-sold.core.js';
 import { listFrozen, listUsage, restoreUsage } from './combo-usage.core.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -40,6 +42,21 @@ export class ComboService {
   /** The usage history (RESTORE_COMBO_SESSIONS or MANAGE_COMBOS, global). */
   usage(token: string | undefined, query: { page?: string }): Promise<ComboUsagePageResponse> {
     return this.run(token, undefined, (context) => listUsage(context, query));
+  }
+
+  /** Every combo sold, all states, with a status filter and totals (RESTORE_COMBO_SESSIONS or MANAGE_COMBOS, global). */
+  sold(
+    token: string | undefined,
+    query: { page?: string; status?: string },
+  ): Promise<ComboSoldPageResponse> {
+    return this.run(token, undefined, async (context) => {
+      if (!canSeeSold(context)) throw new AuthError('FORBIDDEN');
+      return listSold(context.tx, context.now, {
+        ownerUserId: null,
+        status: soldStatusOf(query.status),
+        page: soldPageOf(query.page),
+      });
+    });
   }
 
   /** The combos frozen by the reversal of their sale (VIEW_LOYALTY_EXCEPTIONS, global). */

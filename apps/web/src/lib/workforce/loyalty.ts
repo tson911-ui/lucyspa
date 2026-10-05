@@ -36,6 +36,7 @@ export function loyaltyTabs(
   exceptions: boolean;
   combos: boolean;
   comboUsage: boolean;
+  comboSold: boolean;
   rewardDesk: boolean;
   rewardCatalog: boolean;
   birthday: boolean;
@@ -51,6 +52,8 @@ export function loyaltyTabs(
     combos: canGlobal(account, 'MANAGE_COMBOS'),
     // The combo usage history is for those who define or restore combos (Phase 5 P5-8).
     comboUsage: canGlobal(account, 'RESTORE_COMBO_SESSIONS') || canGlobal(account, 'MANAGE_COMBOS'),
+    // The list of combos sold follows the same rule as the usage history (Phase 5 P5-10b).
+    comboSold: canGlobal(account, 'RESTORE_COMBO_SESSIONS') || canGlobal(account, 'MANAGE_COMBOS'),
     // The birthday gift setup is the Owner's alone (Phase 5 P5-6).
     // Granting and using rewards follows ISSUE_REWARDS at a branch; the catalog is the global MANAGE_REWARD_CATALOG (Phase 5 P5-9).
     rewardDesk: rewardBranches(account, branches).length > 0,

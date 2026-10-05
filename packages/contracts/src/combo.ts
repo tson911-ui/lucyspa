@@ -243,3 +243,58 @@ export interface InvoiceComboLineResponse {
   issuance: ComboIssuanceState;
   issuedAt: string | null;
 }
+
+/**
+ * Phase 5 P5-10b: the state of a sold combo for staff, nothing hidden. `FROZEN`: its sale was reversed or cancelled after it was
+ * issued, so it cannot be used until the sale is paid again (even when every session was used). `REVOKED`: its sale was reversed
+ * or cancelled before any session was used, so it was withdrawn.
+ */
+export type ComboSoldStatus = 'ACTIVE' | 'USED_UP' | 'EXPIRED' | 'FROZEN' | 'REVOKED';
+
+/** Why the sale stopped counting: its payment was reversed, or its invoice was cancelled. */
+export type ComboSoldCause = 'SALE_REVERSED' | 'SALE_CANCELLED';
+
+export const COMBO_SOLD_STATUSES: readonly ComboSoldStatus[] = [
+  'ACTIVE',
+  'USED_UP',
+  'EXPIRED',
+  'FROZEN',
+  'REVOKED',
+];
+
+export interface ComboSoldItemResponse {
+  purchaseId: string;
+  /** The member who paid and owns the combo (name and masked phone, as in the other staff lists). */
+  buyer: { id: string; displayName: string; phoneMasked: string | null };
+  comboNameVi: string;
+  comboNameEn: string;
+  serviceNameVi: string;
+  serviceNameEn: string;
+  /** When the combo was issued (its sale invoice was paid). */
+  soldAt: string;
+  /** The branch of the sale. */
+  branchName: string;
+  saleInvoiceCode: string;
+  paidSessions: number;
+  bonusSessions: number;
+  /** Sessions with no active use, by kind. */
+  paidLeft: number;
+  bonusLeft: number;
+  expiresAt: string | null;
+  status: ComboSoldStatus;
+  /** For `FROZEN` and `REVOKED`: when it happened and why (a stable cause, never text typed by a person); null otherwise. */
+  event: { kind: 'FROZEN' | 'REVOKED'; at: string; cause: ComboSoldCause } | null;
+}
+
+/** GET /api/v1/combos/sold?page&status (RESTORE_COMBO_SESSIONS or MANAGE_COMBOS, global), newest first, 20 per page. */
+export interface ComboSoldPageResponse {
+  items: ComboSoldItemResponse[];
+  page: number;
+  pageSize: number;
+  total: number;
+  /** Sessions still usable now: the sum over `ACTIVE` combos only (frozen, revoked, expired and used-up ones add nothing). */
+  totals: { paidLeft: number; bonusLeft: number };
+}
+
+/** GET /api/v1/loyalty/branches/:branchId/customers/:userId/combos?page (VIEW_LOYALTY at the branch): one customer's combos, all states. */
+export type ComboSoldCustomerPageResponse = ComboSoldPageResponse;

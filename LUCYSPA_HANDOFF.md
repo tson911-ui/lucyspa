@@ -13,17 +13,17 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 
 ## Phase status
 
-| Phase                                     | Status                                                                            |
-| ----------------------------------------- | --------------------------------------------------------------------------------- |
-| Phase 0                                   | PASS                                                                              |
-| Phase 1 (auth and security)               | COMPLETE                                                                          |
-| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)                  |
-| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                         |
-| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                      |
-| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                      |
-| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `58bfabc`)                                                 |
-| **Phase 5 (loyalty and combos)**          | **IN PROGRESS (P5-9 approved, P5-10 built, awaiting Owner review, not deployed)** |
-| Phase 6+ (products, payroll, finance)     | NOT started                                                                       |
+| Phase                                     | Status                                                                              |
+| ----------------------------------------- | ----------------------------------------------------------------------------------- |
+| Phase 0                                   | PASS                                                                                |
+| Phase 1 (auth and security)               | COMPLETE                                                                            |
+| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)                    |
+| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                           |
+| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                        |
+| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                        |
+| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `58bfabc`)                                                   |
+| **Phase 5 (loyalty and combos)**          | **IN PROGRESS (P5-10 approved, P5-10b built, awaiting Owner review, not deployed)** |
+| Phase 6+ (products, payroll, finance)     | NOT started                                                                         |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
 
@@ -466,4 +466,5 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - P5-7 (`docs/PHASE5_STEP7_COMBO_SALE.md`) built, **not deployed**: migrations `20261101000000`, `20261101000001`; combo definitions (tab Combo, `MANAGE_COMBOS`), counter sale on a visit-less `COMBO_SALE` invoice (OQ-1), combo issued by the loyalty worker only when PAID, one row per session, revoked if the paid episode ends before any use. Owner answers 2026-10-05 via the question tool, **APPROVED by the Owner in own words 2026-10-05** (design 2.5): no sale while go-live is OFF; unused combo revoked on reversal/cancel; promotions and vouchers apply to a combo as best offer only (no stacking); birthday gift does not; buying a combo is not a visit for the referral reward; one combo per invoice, `COMBO_CHANGED` and frozen issued combos approved.
 - P5-8 (`docs/PHASE5_STEP8_COMBO_USAGE.md`) built, **not deployed**: migration `20261102000000`; lookup by the owner's phone (masked name), use chosen on a draft line (0đ, quantity 1, exempt from the price range only through its marker), session taken at finalization (PAID first), history tab, manager restore (`RESTORE_COMBO_SESSIONS`), frozen combos list, re-pay reopens the same combo. **P5-8 APPROVED by the Owner in own words, 2026-10-05** (design 2.5; OQ-9 answered): PAID sessions first and BONUS last; reversal after use allowed (used kept, unused frozen, Owner told through Exceptions); any branch; one session = one 0đ line, quantity 1, exempt from the price range; re-pay reopens the same frozen combo; restoring returns only the session (invoice and money untouched, no money-correction step); tour counting for PAID sessions is Phase 7. CI of 9392710 was green (run 185).
 - P5-9 (`docs/PHASE5_STEP9_REWARD_CATALOG.md`) built, **not deployed**: migration `20261103000000`; catalog tab (`MANAGE_REWARD_CATALOG`, ships empty) and "Cấp quà tặng" tab (`ISSUE_REWARDS`: grant with reason, mark used, revoke with reason, history; manager restore of a mistaken use), needs go-live ON, separate from points. **P5-9 APPROVED by the Owner in own words, 2026-10-05** (design 2.5; OQ-10 answered): free service marked by hand (no 0đ line), expiry per item (none or N days), manager restore with `MANAGE_REWARD_CATALOG`, `ISSUE_REWARDS` unchanged (Owner grants it to managers only after deploy), no OTHER kind, catalog editable while OFF but grant/use/revoke need go-live ON.
-- P5-10 (`docs/PHASE5_STEP10_CUSTOMER_PAGE.md`) built, **not deployed**, no migration: customer page `/account/loyalty` + `GET /api/v1/me/loyalty*` (points, tier, history, combos, combo usage with relatives, referred people, gifts), read only, masked names, no notification. **PROVISIONAL (question tool, pending the Owner's own words):** go-live OFF = one notice and no data; OQ-11 = generic label "Điều chỉnh bởi Lucy Spa" (OQ-11 not marked answered). Admin gaps listed in the report, nothing built there. P5-11 waits for Owner approval of P5-10.
+- P5-10 (`docs/PHASE5_STEP10_CUSTOMER_PAGE.md`) built, **not deployed**, no migration: customer page `/account/loyalty` + `GET /api/v1/me/loyalty*`, read only, masked names, no notification. **P5-10 APPROVED by the Owner in own words, 2026-10-05** (design 2.5; OQ-11 answered): OFF = notice only, generic label "Điều chỉnh bởi Lucy Spa", member discount % on the Spa card only, birthday status and admin "view as customer" / per-customer birthday status deferred.
+- P5-10b (`docs/PHASE5_STEP10B_ADMIN_COMBOS_GIFTS.md`) built, **not deployed**, no migration, no new permission: "Combo đã bán" tab (`RESTORE_COMBO_SESSIONS` or `MANAGE_COMBOS`; every state incl. frozen and revoked with date and cause, status filter, totals of usable sessions, 20 per page) and the staff profile now lists the customer's combos and gifts (`VIEW_LOYALTY` at the branch). No money value shown (open question to the Owner). P5-11 waits for Owner approval of P5-10b.
