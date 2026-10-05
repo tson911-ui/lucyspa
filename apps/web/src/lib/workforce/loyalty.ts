@@ -34,6 +34,7 @@ export function loyaltyTabs(
   referrals: boolean;
   exceptions: boolean;
   combos: boolean;
+  comboUsage: boolean;
   birthday: boolean;
   goLive: boolean;
 } {
@@ -45,6 +46,8 @@ export function loyaltyTabs(
     exceptions: canGlobal(account, 'VIEW_LOYALTY_EXCEPTIONS'),
     // Combo definitions follow the global MANAGE_COMBOS (an Owner or a manager; Phase 5 P5-7).
     combos: canGlobal(account, 'MANAGE_COMBOS'),
+    // The combo usage history is for those who define or restore combos (Phase 5 P5-8).
+    comboUsage: canGlobal(account, 'RESTORE_COMBO_SESSIONS') || canGlobal(account, 'MANAGE_COMBOS'),
     // The birthday gift setup is the Owner's alone (Phase 5 P5-6).
     birthday: canGlobal(account, 'MANAGE_BIRTHDAY_REWARDS'),
     goLive: canGlobal(account, 'ACTIVATE_LOYALTY'),

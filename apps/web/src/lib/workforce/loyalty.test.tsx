@@ -128,6 +128,7 @@ test('loyalty branches and tabs follow the permissions, never role names', () =>
     referrals: true,
     exceptions: false,
     combos: false,
+    comboUsage: false,
     birthday: false,
     goLive: false,
   });
@@ -136,6 +137,7 @@ test('loyalty branches and tabs follow the permissions, never role names', () =>
     referrals: true,
     exceptions: true,
     combos: true,
+    comboUsage: true,
     birthday: true,
     goLive: true,
   });

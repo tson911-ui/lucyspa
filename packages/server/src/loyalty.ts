@@ -297,6 +297,47 @@ async function issueCombo(
     select: { id: true },
   });
   if (existing) return false;
+  // Owner answer of 2026-10-05 (provisional): a combo frozen by the reversal of its sale while sessions were in use comes back as
+  // the SAME combo when the sale is paid again; no second combo is issued (the number of sessions never exceeds what was sold).
+  const frozen = await tx.comboPurchase.findFirst({
+    where: {
+      invoiceLineId: line.id,
+      paidSeq: { lt: paidSeq },
+      voidedAt: null,
+      sessions: { some: { consumptions: { some: { release: null, restoration: null } } } },
+    },
+    orderBy: { paidSeq: 'desc' },
+    select: { id: true, paidSeq: true, reopenings: { select: { paidSeq: true } } },
+  });
+  if (frozen) {
+    if (frozen.reopenings.some((reopening) => reopening.paidSeq === paidSeq)) return false;
+    await tx.comboPurchaseReopening.create({
+      data: { purchaseId: frozen.id, paidSeq },
+      select: { id: true },
+    });
+    await appendOutboxEvent(tx, {
+      branchId: invoice.branch_id,
+      aggregateType: 'ComboPurchase',
+      aggregateId: frozen.id,
+      eventType: 'COMBO_REOPENED',
+      schemaVersion: 1,
+      payload: { comboPurchaseId: frozen.id, invoiceId: invoice.id, paidSeq },
+    });
+    await tx.auditEvent.create({
+      data: {
+        action: 'COMBO_REOPENED',
+        actorKind: 'SYSTEM',
+        subjectUserId: invoice.payer_user_id,
+        entityType: 'ComboPurchase',
+        entityId: frozen.id,
+        branchId: invoice.branch_id,
+        dataClassification: 'FINANCIAL',
+        after: { invoiceId: invoice.id, paidSeq, issuedInEpisode: frozen.paidSeq },
+      },
+      select: { id: true },
+    });
+    return true;
+  }
   const sessions = [
     ...Array.from({ length: detail.paidSessions }, (_, index) => ({
       sessionNo: index + 1,
@@ -367,7 +408,8 @@ async function issueCombo(
  * The paid episode that issued a combo has ended (the payment was reversed or the invoice cancelled): the combo is taken back
  * while none of its sessions is in use (Owner answer of 2026-10-05). The purchase and its sessions stay as history
  * (`voided_at`, never deleted); paying the invoice again issues a NEW purchase under the next paid episode. A combo with a
- * session in use is NOT revoked here: the case is left in the audit trail for the Owner (use of a session is P5-8).
+ * session in use is NOT revoked: it is FROZEN (the sale invoice is no longer paid, so the database refuses to use it), listed
+ * for the Owner, and re-opened as the same combo when the sale is paid again (P5-8, Owner answer provisional).
  * Returns whether a combo was revoked now.
  */
 async function revokeCombo(
@@ -380,11 +422,18 @@ async function revokeCombo(
   const purchases = await tx.comboPurchase.findMany({
     where: { invoiceLine: { invoiceId: invoice.id }, paidSeq, voidedAt: null },
     orderBy: { id: 'asc' },
-    select: { id: true },
+    select: { id: true, reopenings: { select: { paidSeq: true } } },
   });
   let revoked = false;
   for (const purchase of purchases) {
     if (voidedBy === null) throw new Error('A revoked combo records who ended its paid episode');
+    // Reopened by a later payment of the sale and usable now: never revoked (the reversal event came late).
+    if (
+      invoice.status === 'PAID' &&
+      purchase.reopenings.some((reopening) => reopening.paidSeq === invoice.paid_seq)
+    ) {
+      continue;
+    }
     const inUse = await tx.comboSessionConsumption.count({
       where: {
         session: { purchaseId: purchase.id },

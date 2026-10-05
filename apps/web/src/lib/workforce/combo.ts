@@ -1,8 +1,14 @@
 import type {
   ComboCreateRequest,
+  ComboLookupComboResponse,
   ComboResponse,
+  ComboSessionKindName,
+  ComboUsedBy,
+  ComboUseRequest,
+  ComboUseState,
   ComboVersionRequest,
   ComboVersionResponse,
+  InvoiceLineComboUseResponse,
 } from '@lucy-spa/contracts';
 import { comboDictionary } from '../../i18n/combo';
 import type { Locale } from '../../i18n/locales';
@@ -130,6 +136,87 @@ export const comboOptionLabel = (
     name: comboName(option, locale),
     price: formatVnd(option.priceVnd, locale),
   });
+
+// ------------------------------------------------------------------------------------- Phase 5 P5-8: using the sessions
+
+export interface ComboUseDraft {
+  purchaseId: string;
+  usedBy: ComboUsedBy;
+  /** Text as typed; only a relative's use carries it. */
+  note: string;
+}
+
+const MAX_NOTE = 120;
+
+/** The request to pay a line with a session, or null while no combo is chosen or the note is too long. */
+export function comboUseBody(draft: ComboUseDraft, version: number): ComboUseRequest | null {
+  if (!draft.purchaseId) return null;
+  const note = draft.usedBy === 'RELATIVE' ? draft.note.normalize('NFC').trim() : '';
+  if ([...note].length > MAX_NOTE) return null;
+  return {
+    expectedVersion: version,
+    purchaseId: draft.purchaseId,
+    usedBy: draft.usedBy,
+    ...(note ? { relationshipNote: note } : {}),
+  };
+}
+
+/** "Combo massage · còn 4/6 buổi" for the combo picker of the use dialog. */
+export function comboLookupLabel(combo: ComboLookupComboResponse, locale: Locale): string {
+  return fill(comboDictionary(locale).use.comboLabel, {
+    name: comboName(combo, locale),
+    left: combo.sessionsLeft,
+    total: combo.totalSessions,
+  });
+}
+
+export const usedByLabel = (usedBy: ComboUsedBy, locale: Locale): string => {
+  const u = comboDictionary(locale).use;
+  return usedBy === 'OWNER' ? u.usedByOwner : u.usedByRelative;
+};
+
+export const sessionKindLabel = (kind: ComboSessionKindName, locale: Locale): string => {
+  const u = comboDictionary(locale).use;
+  return kind === 'PAID' ? u.kindPaid : u.kindBonus;
+};
+
+/** What the invoice line shows for the combo that pays it: the combo, the session once taken, and who used it. */
+export function comboUseBadgeText(use: InvoiceLineComboUseResponse, locale: Locale): string {
+  const c = comboDictionary(locale);
+  const u = c.use;
+  const combo = locale === 'vi' ? use.comboNameVi : use.comboNameEn;
+  const who = usedByLabel(use.usedBy, locale);
+  return use.sessionNo === null
+    ? fill(u.chosenBadge, { combo, who })
+    : fill(u.takenBadge, {
+        combo,
+        no: use.sessionNo,
+        who,
+        kind: use.sessionKind === 'BONUS' ? c.usage.kindBonus : c.usage.kindPaid,
+      });
+}
+
+/** "Buổi 3 · trả tiền" for the usage history. */
+export const usageSessionText = (
+  item: { sessionNo: number; sessionKind: ComboSessionKindName },
+  locale: Locale,
+): string => {
+  const x = comboDictionary(locale).usage;
+  return fill(x.sessionText, {
+    no: item.sessionNo,
+    kind: item.sessionKind === 'PAID' ? x.kindPaid : x.kindBonus,
+  });
+};
+
+/** Tone of the state of a combo use on a line. */
+export const comboUseTone = (state: ComboUseState): 'info' | 'success' | 'neutral' | 'warning' =>
+  state === 'USED'
+    ? 'success'
+    : state === 'SELECTED'
+      ? 'info'
+      : state === 'RELEASED'
+        ? 'neutral'
+        : 'warning';
 
 /** The error text of a combo command: its own texts first, then the shared messages. */
 export function comboErrorText(

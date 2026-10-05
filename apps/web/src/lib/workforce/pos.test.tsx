@@ -65,6 +65,7 @@ const line = (change: Partial<InvoiceLineResponse> = {}): InvoiceLineResponse =>
   priceSetAt: null,
   addedOnBehalf: false,
   priceEditable: true,
+  comboUse: null,
   ...change,
 });
 const nail = (change: Partial<InvoiceLineResponse> = {}) =>

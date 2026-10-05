@@ -1,6 +1,11 @@
 import type {
+  ComboLookupRequest,
+  ComboLookupResponse,
   ComboSaleOptionsResponse,
   ComboSaleRequest,
+  ComboUseClearRequest,
+  ComboUseRequest,
+  ComboUsedBy,
   InvoiceCancelRequest,
   InvoiceFinalizeRequest,
   InvoiceLinePriceRequest,
@@ -77,6 +82,27 @@ class LinePriceDto implements InvoiceLinePriceRequest {
 class ComboSaleDto implements ComboSaleRequest {
   @ApiProperty() @IsString() @MaxLength(64) comboId!: string;
   @ApiProperty() @IsString() @MaxLength(64) payerUserId!: string;
+}
+
+/** The owner's exact phone only. */
+class ComboLookupDto implements ComboLookupRequest {
+  @ApiProperty() @IsString() @MaxLength(128) phone!: string;
+}
+
+/** Which combo, owner or relative, and an optional relationship note. Session, recipient, technician, branch: never supplied. */
+class ComboUseDto implements ComboUseRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
+  @ApiProperty() @IsString() @MaxLength(64) purchaseId!: string;
+  @ApiProperty({ enum: ['OWNER', 'RELATIVE'] }) @IsIn(['OWNER', 'RELATIVE']) usedBy!: ComboUsedBy;
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(400)
+  relationshipNote?: string;
+}
+
+class ComboUseClearDto implements ComboUseClearRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
 }
 
 class PayerDto implements InvoicePayerRequest {
@@ -237,6 +263,65 @@ export class InvoiceController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<InvoiceResponse> {
     return this.invoices.setPrice(
+      this.session(request),
+      id,
+      lineId,
+      body,
+      this.requestId(response),
+    );
+  }
+
+  @Post('invoices/:id/combo-lookup')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Usable combos of an owner found by exact phone, for the services of a DRAFT; the owner name is masked (CONSUME_COMBO_SESSIONS).',
+  })
+  comboLookup(
+    @Param('id') id: string,
+    @Body() body: ComboLookupDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<ComboLookupResponse> {
+    return this.invoices.comboLookup(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Post('invoices/:id/lines/:lineId/combo-use')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Pay one line of a DRAFT with a session of a combo, by the owner or a relative; the line becomes 0 VND (CONSUME_COMBO_SESSIONS).',
+  })
+  comboUse(
+    @Param('id') id: string,
+    @Param('lineId') lineId: string,
+    @Body() body: ComboUseDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<InvoiceResponse> {
+    return this.invoices.comboUse(
+      this.session(request),
+      id,
+      lineId,
+      body,
+      this.requestId(response),
+    );
+  }
+
+  @Post('invoices/:id/lines/:lineId/combo-use/clear')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Pay the line normally again while the invoice is a DRAFT (CONSUME_COMBO_SESSIONS).',
+  })
+  comboUseClear(
+    @Param('id') id: string,
+    @Param('lineId') lineId: string,
+    @Body() body: ComboUseClearDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<InvoiceResponse> {
+    return this.invoices.comboUseClear(
       this.session(request),
       id,
       lineId,

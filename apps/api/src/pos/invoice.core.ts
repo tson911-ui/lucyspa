@@ -1,6 +1,7 @@
 import type {
   ComboIssuanceState,
   InvoiceComboLineResponse,
+  InvoiceLineComboUseResponse,
   InvoiceDiscountResponse,
   InvoiceLineResponse,
   InvoiceManagementNoteResponse,
@@ -39,6 +40,12 @@ import {
   type InvoiceEvaluation,
 } from './discount.eval.js';
 import { PAYMENT_METHOD_RULES } from './payment.methods.js';
+import {
+  consumeSelectedSessions,
+  countsAsTour,
+  releaseConsumedSessions,
+  sessionStateOf,
+} from './combo-consume.js';
 
 /**
  * Phase 4 Step 5 — Invoice / POS ("Hóa đơn"). Commands run in the admin frame (actor and session locked,
@@ -234,9 +241,27 @@ export const invoiceSelect = {
         },
       },
       comboPurchases: { select: { paidSeq: true, issuedAt: true, voidedAt: true } },
+      // Phase 5 P5-8: the staff's choice to pay this line with a combo session and, once finalized, the session taken.
+      comboUsages: {
+        select: {
+          purchaseId: true,
+          usedBy: true,
+          relationshipNote: true,
+          purchase: { select: { nameVi: true, nameEn: true } },
+        },
+      },
+      comboConsumption: {
+        select: {
+          consumedAt: true,
+          session: { select: { sessionNo: true, kind: true } },
+          release: { select: { id: true } },
+          restoration: { select: { id: true } },
+        },
+      },
       serviceDetails: {
         select: {
           visitServiceLineId: true,
+          serviceId: true,
           pricingUnit: true,
           catalogPriceMinVnd: true,
           catalogPriceMaxVnd: true,
@@ -423,6 +448,25 @@ function presentComboLine(row: InvoiceRow): InvoiceComboLineResponse | null {
   };
 }
 
+/** The combo session that pays one service line, or null (Phase 5 P5-8). */
+function presentComboUse(line: InvoiceRow['lines'][number]): InvoiceLineComboUseResponse | null {
+  const usage = line.comboUsages[0];
+  if (!usage) return null;
+  const taken = line.comboConsumption;
+  return {
+    purchaseId: usage.purchaseId,
+    comboNameVi: usage.purchase.nameVi,
+    comboNameEn: usage.purchase.nameEn,
+    usedBy: usage.usedBy,
+    relationshipNote: usage.relationshipNote,
+    state: taken ? sessionStateOf(taken) : 'SELECTED',
+    sessionNo: taken ? taken.session.sessionNo : null,
+    sessionKind: taken ? taken.session.kind : null,
+    countsAsTour: taken ? countsAsTour(taken.session.kind) : null,
+    usedAt: taken ? taken.consumedAt.toISOString() : null,
+  };
+}
+
 /**
  * The response for one invoice. A DRAFT shows the LIVE evaluation (the totals finalization would produce now);
  * a finalized invoice shows its frozen amounts and stored application. Nothing here is client input.
@@ -475,6 +519,10 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     kind: 'BRANCH',
     branchId: row.branchId,
   });
+  const consume = decide(context.actor.graph, 'CONSUME_COMBO_SESSIONS', {
+    kind: 'BRANCH',
+    branchId: row.branchId,
+  });
   const comboLine = presentComboLine(row);
   const lines = row.lines
     .filter((line) => line.kind === 'SERVICE')
@@ -504,7 +552,9 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
         grossVnd: line.grossVnd === null ? null : line.grossVnd.toString(),
         priceSetAt: line.priceSetAt ? line.priceSetAt.toISOString() : null,
         addedOnBehalf: detail.addedOnBehalf,
-        priceEditable: ranged || detail.quantityLimit > 1,
+        // A line paid with a combo session is a fixed 0 VND line.
+        priceEditable: (ranged || detail.quantityLimit > 1) && line.comboUsages.length === 0,
+        comboUse: presentComboUse(line),
       };
     });
   const combo = row.kind === 'COMBO_SALE';
@@ -570,6 +620,7 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     actions: {
       // A combo sale has a fixed price and a fixed buyer: only a draft with a different buyer or price is a new draft.
       editPrices: manage && draft && !combo,
+      useCombos: manage && consume && draft && !combo,
       setPayer: manage && draft && !combo,
       finalize: manage && draft && ready,
       applyVouchers: apply && draft,
@@ -615,7 +666,7 @@ export async function databaseClock(tx: Prisma.TransactionClient): Promise<Date>
  * The header amounts of a DRAFT as the engine computes them NOW (subtotal of the priced lines, the winning
  * benefit, total). Refreshed with every draft mutation; finalization recomputes them under the program locks.
  */
-async function draftAmounts(
+export async function draftAmounts(
   tx: Prisma.TransactionClient,
   invoice: { id: string; payerUserId: string | null },
   now: Date,
@@ -973,6 +1024,8 @@ export async function setLinePrice(
   const line = invoice.lines.find((candidate) => candidate.id === lineId);
   const detail = line?.serviceDetails[0];
   if (!line || !detail) throw new AuthError('NOT_FOUND');
+  // A line paid with a combo session is a fixed 0 VND line: clear the combo use first.
+  if (line.comboUsages.length > 0) throw new AuthError('INVOICE_STATE_INVALID');
 
   const unitPriceVnd =
     input.unitPriceVnd === undefined
@@ -1181,6 +1234,13 @@ export async function finalizeInvoice(
       throw new AuthError('COMBO_CHANGED');
     }
   }
+  // Phase 5 P5-8: the sessions the staff chose to pay lines with are taken NOW, atomically with the finalization (design 12.1),
+  // after the programs and wallets (design 12.2) and while the invoice is still a draft (the consumption guard requires it).
+  const consumed = await consumeSelectedSessions(
+    tx,
+    { id: invoiceId, branchId: invoice.branchId },
+    context.actor.userId,
+  );
   const winner = result.winner;
   const totals = calculateTotals(
     invoice.lines.map((line) => ({ quantity: line.quantity, unitPriceVnd: line.unitPriceVnd })),
@@ -1323,6 +1383,13 @@ export async function finalizeInvoice(
       winnerSource: result.winnerSource,
       selectionReason: result.selectionReason,
       candidates: candidatesJson(result),
+      comboSessions: consumed.map((session) => ({
+        lineId: session.invoiceLineId,
+        comboPurchaseId: session.purchaseId,
+        sessionNo: session.sessionNo,
+        sessionKind: session.kind,
+        usedBy: session.usedBy,
+      })),
       zeroBalance,
       payerUserId: invoice.payerUserId,
       lines: invoice.lines.map((line) => ({
@@ -1516,6 +1583,15 @@ export async function cancelInvoice(
       },
     );
   }
+  // Phase 5 P5-8: every combo session this invoice took returns (append-only release, once); after the gift release (lock order).
+  const releasedSessions = await releaseConsumedSessions(
+    tx,
+    { id: invoiceId, branchId: invoice.branchId },
+    context.actor.userId,
+    path === 'ZERO_BALANCE_CORRECTION' ? 'ZERO_BALANCE_CORRECTION' : 'INVOICE_CANCELLED_UNPAID',
+    input.reason,
+    now,
+  );
   await appendAdminAudit(
     { ...context, now },
     {
@@ -1533,6 +1609,7 @@ export async function cancelInvoice(
         voidedPaidSeq,
         redemptionReleased: releasedRedemptionId,
         birthdayRedemptionReleased: releasedGiftId,
+        comboSessionsReleased: releasedSessions,
         reauthenticatedAt:
           path === 'DRAFT'
             ? null

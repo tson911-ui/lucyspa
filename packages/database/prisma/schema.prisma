@@ -473,6 +473,7 @@ model User {
   createdComboVersions           ComboVersion[]                   @relation("ComboVersionCreator")
   ownedComboPurchases            ComboPurchase[]                  @relation("ComboPurchaseOwner")
   voidedComboPurchases           ComboPurchase[]                  @relation("ComboPurchaseVoider")
+  selectedComboUsages            InvoiceLineComboUsage[]          @relation("ComboUsageSelector")
   ktvComboConsumptions           ComboSessionConsumption[]        @relation("ComboConsumptionKtv")
   performedComboConsumptions     ComboSessionConsumption[]        @relation("ComboConsumptionActor")
   releasedComboSessions          ComboSessionRelease[]            @relation("ComboReleaseActor")
@@ -1647,6 +1648,7 @@ model InvoiceLine {
   comboDetails     InvoiceLineCombo[]
   comboPurchases   ComboPurchase[]          @relation("ComboPurchaseLine")
   comboConsumption ComboSessionConsumption? @relation("ComboConsumptionLine")
+  comboUsages      InvoiceLineComboUsage[]
   rewardRedemption RewardRedemption?        @relation("RewardRedemptionLine")
 
   @@unique([invoiceId, sequence], map: "invoice_lines_invoice_sequence_key")
@@ -2584,10 +2586,45 @@ model ComboPurchase {
   voidedBy       User?                 @relation("ComboPurchaseVoider", fields: [voidedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   voidReason     String?               @map("void_reason")
   sessions       ComboSession[]
+  usages         InvoiceLineComboUsage[]
+  reopenings     ComboPurchaseReopening[]
 
   @@unique([invoiceLineId, paidSeq], map: "combo_purchases_line_episode_key")
   @@index([ownerUserId, issuedAt], map: "combo_purchases_owner_idx")
   @@map("combo_purchases")
+}
+
+// P5-8: the staff's choice, on a line of a DRAFT visit invoice, to pay that service with a session of a combo. Editable (cleared and
+// chosen again) only while the invoice is a draft; the consumption is written at finalization. The row is also the immutable marker that
+// exempts the 0 VND line from the snapshotted price range.
+model InvoiceLineComboUsage {
+  invoiceLineId    String         @id @map("invoice_line_id") @db.Uuid
+  invoiceId        String         @map("invoice_id") @db.Uuid
+  line             InvoiceLine    @relation(fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_line_combo_usages_line_fkey")
+  purchaseId       String         @map("purchase_id") @db.Uuid
+  purchase         ComboPurchase  @relation(fields: [purchaseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  usedBy           ComboUsageKind @map("used_by")
+  relationshipNote String?        @map("relationship_note")
+  selectedByUserId String         @map("selected_by_user_id") @db.Uuid
+  selectedBy       User           @relation("ComboUsageSelector", fields: [selectedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  selectedAt       DateTime       @default(dbgenerated("clock_timestamp()")) @map("selected_at") @db.Timestamptz(3)
+
+  @@index([invoiceId], map: "invoice_line_combo_usages_invoice_idx")
+  @@index([purchaseId], map: "invoice_line_combo_usages_purchase_idx")
+  @@map("invoice_line_combo_usages")
+}
+
+// P5-8 (Owner answer, provisional): a combo frozen by the reversal of its sale while sessions were in use comes back, as the same
+// combo, when the sale is paid again. One row per paid episode.
+model ComboPurchaseReopening {
+  id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purchaseId String        @map("purchase_id") @db.Uuid
+  purchase   ComboPurchase @relation(fields: [purchaseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  paidSeq    Int           @map("paid_seq")
+  reopenedAt DateTime      @default(dbgenerated("clock_timestamp()")) @map("reopened_at") @db.Timestamptz(3)
+
+  @@unique([purchaseId, paidSeq], map: "combo_purchase_reopenings_episode_key")
+  @@map("combo_purchase_reopenings")
 }
 
 // One row per session (P5-T11), so paid and bonus sessions stay distinguishable for future tour rules.

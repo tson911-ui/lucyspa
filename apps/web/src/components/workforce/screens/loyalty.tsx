@@ -27,6 +27,7 @@ import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import { Button, Empty, Loading, Notice, PageHeader } from '../ui';
 import { LoyaltyCombos } from './loyalty-combos';
+import { FrozenCombos, LoyaltyComboUsage } from './loyalty-combo-usage';
 import { LoyaltyExceptions } from './loyalty-exceptions';
 import { LoyaltyBirthday } from './loyalty-birthday';
 import { LoyaltyGoLive } from './loyalty-go-live';
@@ -56,6 +57,7 @@ export function LoyaltyScreen() {
     !shown.referrals &&
     !shown.exceptions &&
     !shown.combos &&
+    !shown.comboUsage &&
     !shown.birthday &&
     !shown.goLive
   ) {
@@ -85,13 +87,24 @@ export function LoyaltyScreen() {
       id: 'exceptions',
       label: l.tabs.exceptions,
       show: shown.exceptions,
-      panel: <LoyaltyExceptions page={state.page} onPage={(page) => update({ page })} />,
+      panel: (
+        <Stack gap="page">
+          <LoyaltyExceptions page={state.page} onPage={(page) => update({ page })} />
+          <FrozenCombos />
+        </Stack>
+      ),
     },
     {
       id: 'combos',
       label: comboDictionary(locale).tab,
       show: shown.combos,
       panel: <LoyaltyCombos />,
+    },
+    {
+      id: 'comboUsage',
+      label: comboDictionary(locale).usage.tab,
+      show: shown.comboUsage,
+      panel: <LoyaltyComboUsage page={state.page} onPage={(page) => update({ page })} />,
     },
     {
       id: 'birthday',

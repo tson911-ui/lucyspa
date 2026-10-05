@@ -1,6 +1,6 @@
 # Phase 5 P5-7: Combo sale
 
-Status: built and validated on scratch databases; **not deployed, loyalty stays OFF**. Contract: `PHASE5_LOYALTY_COMBOS_DESIGN.md` sections 9.1-9.3 and 9.6 (as built). P5-6 was approved by the Owner on 2026-10-05.
+Status: built and validated on scratch databases; **APPROVED by the Owner, 2026-10-05 (own words, design 2.5)**; not deployed, loyalty stays OFF. Contract: `PHASE5_LOYALTY_COMBOS_DESIGN.md` sections 9.1-9.3 and 9.6 (as built). P5-6 was approved by the Owner on 2026-10-05.
 
 ## What changed
 
@@ -10,7 +10,7 @@ Status: built and validated on scratch databases; **not deployed, loyalty stays 
 - **Reversal/cancel before any use**: the paid episode ends, the unused combo is revoked (`voided_at`, who, why; sessions stay as history); paying again issues a new combo. A combo with a session in use is never revoked automatically (audit `COMBO_REVOKE_BLOCKED_IN_USE`; use is P5-8).
 - No usage in this step. Phase 4 guards for visit invoices are unchanged (every rule is split by `kind`).
 
-## Owner answers of 2026-10-05 (asked through the question tool; provisional until the Owner confirms in own words)
+## Owner answers of 2026-10-05 (first collected through the question tool, then APPROVED in the Owner's own words, design 2.5; items 5 and 6 added by the Owner)
 
 1. Combos cannot be sold while go-live is OFF (API refuses, DB refuses). 2. Unused combo is revoked when the payment is reversed or the invoice cancelled. 3. Existing promotions and vouchers apply to a combo. 4. The birthday gift does not apply to a combo sale (engine skips it, DB refuses).
 

@@ -100,6 +100,133 @@ export interface ComboSaleRequest {
  */
 export type ComboIssuanceState = 'NOT_PAID' | 'PENDING' | 'ISSUED' | 'REVOKED';
 
+// ---------------------------------------------------------------------------------------------- P5-8: using the sessions
+
+export type ComboUsedBy = 'OWNER' | 'RELATIVE';
+export type ComboSessionKindName = 'PAID' | 'BONUS';
+
+/**
+ * Where the use of a combo session on one service line stands: `SELECTED` (the staff's choice on a draft; no session is taken
+ * yet), `USED` (finalized: one session is taken), `RELEASED` (the invoice was cancelled: the session returned), `RESTORED` (a
+ * manager restored a mistaken use, with a reason; the line keeps its 0 VND).
+ */
+export type ComboUseState = 'SELECTED' | 'USED' | 'RELEASED' | 'RESTORED';
+
+/** The combo session that pays one service line of a visit invoice (a 0 VND line, quantity 1). */
+export interface InvoiceLineComboUseResponse {
+  purchaseId: string;
+  comboNameVi: string;
+  comboNameEn: string;
+  usedBy: ComboUsedBy;
+  /** Only for a relative, free text, optional. */
+  relationshipNote: string | null;
+  state: ComboUseState;
+  /** Null while `SELECTED`: the session is taken (lowest number first, so PAID before BONUS) only at finalization. */
+  sessionNo: number | null;
+  sessionKind: ComboSessionKindName | null;
+  /** Phase 7 reads this: a BONUS session never counts as a tour for the technician (Owner, 2026-10-05). Null while `SELECTED`. */
+  countsAsTour: boolean | null;
+  usedAt: string | null;
+}
+
+/** POST /api/v1/pos/invoices/:id/combo-lookup (staff; exact owner phone). */
+export interface ComboLookupRequest {
+  phone: string;
+}
+
+/** One usable combo of the owner, for a service on this invoice. Only what staff need: no phone, no email, no history. */
+export interface ComboLookupComboResponse {
+  purchaseId: string;
+  nameVi: string;
+  nameEn: string;
+  service: { id: string; nameVi: string; nameEn: string };
+  sessionsLeft: number;
+  totalSessions: number;
+  /** The invoice lines (not yet paid with a session) this combo can pay. */
+  lineIds: string[];
+}
+
+/** The owner's NAME is masked ("N••• T••• L•••"); nothing else identifies them (PRD 52). An empty list means "nothing usable found". */
+export interface ComboLookupResponse {
+  owners: { ownerNameMasked: string; combos: ComboLookupComboResponse[] }[];
+}
+
+/** POST /api/v1/pos/invoices/:id/lines/:lineId/combo-use: pay this line with a session of the combo (DRAFT only). */
+export interface ComboUseRequest {
+  expectedVersion: number;
+  purchaseId: string;
+  usedBy: ComboUsedBy;
+  relationshipNote?: string;
+}
+
+/** POST /api/v1/pos/invoices/:id/lines/:lineId/combo-use/clear: pay this line normally again (DRAFT only). */
+export interface ComboUseClearRequest {
+  expectedVersion: number;
+}
+
+export type ComboUsageStatus = 'ACTIVE' | 'RELEASED' | 'RESTORED';
+
+/** One row of the usage history (append-only). */
+export interface ComboUsageItemResponse {
+  consumptionId: string;
+  usedAt: string;
+  status: ComboUsageStatus;
+  owner: { id: string; displayName: string; phoneMasked: string | null };
+  comboNameVi: string;
+  comboNameEn: string;
+  sessionNo: number;
+  sessionKind: ComboSessionKindName;
+  usedBy: ComboUsedBy;
+  relationshipNote: string | null;
+  serviceNameVi: string;
+  serviceNameEn: string;
+  /** The person who received the service. */
+  recipientName: string | null;
+  technicianName: string | null;
+  performedByName: string;
+  invoiceCode: string;
+  branchName: string;
+  /** Present when `status` is `RESTORED`. */
+  restoration: { restoredAt: string; restoredByName: string; reason: string } | null;
+  /** Present when `status` is `RELEASED` (the use invoice was cancelled). */
+  releasedAt: string | null;
+}
+
+/** GET /api/v1/combos/usage?page= (RESTORE_COMBO_SESSIONS or MANAGE_COMBOS, global): newest first, 20 per page. */
+export interface ComboUsagePageResponse {
+  items: ComboUsageItemResponse[];
+  page: number;
+  pageSize: number;
+  total: number;
+  /** The actor may restore a mistaken use (RESTORE_COMBO_SESSIONS). */
+  canRestore: boolean;
+}
+
+/** POST /api/v1/combos/usage/:consumptionId/restore (RESTORE_COMBO_SESSIONS, fresh re-authentication). */
+export interface ComboRestoreRequest {
+  reason: string;
+}
+
+/**
+ * A combo whose sale was reversed while sessions were already used: it is frozen (its unused sessions cannot be used) until the
+ * sale is paid again, and the Owner is told here (Owner answer 2026-10-05, provisional). GET /api/v1/combos/frozen
+ * (VIEW_LOYALTY_EXCEPTIONS, global).
+ */
+export interface ComboFrozenItemResponse {
+  purchaseId: string;
+  owner: { id: string; displayName: string; phoneMasked: string | null };
+  comboNameVi: string;
+  comboNameEn: string;
+  sessionsUsed: number;
+  sessionsLeft: number;
+  saleInvoiceCode: string;
+  saleInvoiceStatus: 'PENDING_PAYMENT' | 'CANCELLED';
+}
+
+export interface ComboFrozenListResponse {
+  items: ComboFrozenItemResponse[];
+}
+
 /** The single line of a COMBO_SALE invoice: an exact copy of the combo version sold. */
 export interface InvoiceComboLineResponse {
   id: string;

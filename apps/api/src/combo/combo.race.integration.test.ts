@@ -65,7 +65,7 @@ test(
     };
     const throttle = new AuthThrottleService(environment);
     const invoices = new InvoiceService(adapter, throttle, environment);
-    const combos = new ComboService(adapter, throttle);
+    const combos = new ComboService(adapter, throttle, environment);
     const ids = {
       branch: randomUUID(),
       category: randomUUID(),

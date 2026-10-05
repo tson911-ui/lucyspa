@@ -1,6 +1,10 @@
 import type {
+  ComboLookupRequest,
+  ComboLookupResponse,
   ComboSaleOptionsResponse,
   ComboSaleRequest,
+  ComboUseClearRequest,
+  ComboUseRequest,
   InvoiceCancelRequest,
   InvoiceFinalizeRequest,
   InvoiceLinePriceRequest,
@@ -38,6 +42,7 @@ import { normalizeReason } from '../operations/service-execution.service.js';
 import { API_ENVIRONMENT, PAYMENT_PROVIDER, type ApiEnvironment } from '../platform/tokens.js';
 import { lookupMember } from '../walkin/walkin.core.js';
 import { comboSaleOptions, openComboSale } from './combo-sale.core.js';
+import { clearComboUse, lookupCombos, selectComboUse } from './combo-use.core.js';
 import { parseVnd } from './invoice.calc.js';
 import {
   cancelInvoice,
@@ -164,6 +169,57 @@ export class InvoiceService {
         unitPriceVnd: body.unitPriceVnd,
         quantity: body.quantity,
       }),
+    );
+  }
+
+  /** Finds the usable combos of an owner by exact phone for the services of this draft (masked; CONSUME_COMBO_SESSIONS). */
+  async comboLookup(
+    token: string | undefined,
+    invoiceId: string,
+    body: ComboLookupRequest,
+    requestId?: string,
+  ): Promise<ComboLookupResponse> {
+    return this.run(token, invoiceId, requestId, (context, id) =>
+      lookupCombos(context, id, { phone: body.phone }),
+    );
+  }
+
+  /** Pays one line of a draft with a session of a combo (owner or relative). */
+  async comboUse(
+    token: string | undefined,
+    invoiceId: string,
+    lineId: string,
+    body: ComboUseRequest,
+    requestId?: string,
+  ): Promise<InvoiceResponse> {
+    const expectedVersion = this.version(body.expectedVersion);
+    if (!UUID.test(lineId)) throw new AuthError('NOT_FOUND');
+    if (typeof body.purchaseId !== 'string' || !UUID.test(body.purchaseId)) {
+      throw new AuthError('VALIDATION_FAILED', 'purchaseId');
+    }
+    const purchaseId = body.purchaseId.toLowerCase();
+    return this.run(token, invoiceId, requestId, (context, id) =>
+      selectComboUse(context, id, lineId.toLowerCase(), {
+        expectedVersion,
+        purchaseId,
+        usedBy: body.usedBy,
+        relationshipNote: body.relationshipNote,
+      }),
+    );
+  }
+
+  /** Pays the line normally again. */
+  async comboUseClear(
+    token: string | undefined,
+    invoiceId: string,
+    lineId: string,
+    body: ComboUseClearRequest,
+    requestId?: string,
+  ): Promise<InvoiceResponse> {
+    const expectedVersion = this.version(body.expectedVersion);
+    if (!UUID.test(lineId)) throw new AuthError('NOT_FOUND');
+    return this.run(token, invoiceId, requestId, (context, id) =>
+      clearComboUse(context, id, lineId.toLowerCase(), { expectedVersion }),
     );
   }
 

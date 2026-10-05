@@ -1,4 +1,9 @@
-import type { BranchSummary, ComboResponse } from '@lucy-spa/contracts';
+import type {
+  BranchSummary,
+  ComboLookupComboResponse,
+  ComboResponse,
+  InvoiceLineComboUseResponse,
+} from '@lucy-spa/contracts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { comboDictionary } from '../../i18n/combo';
@@ -7,11 +12,16 @@ import { employee } from '../../test/support';
 import { ApiError } from './api';
 import {
   comboErrorText,
+  comboLookupLabel,
   comboOptionLabel,
+  comboUseBadgeText,
+  comboUseBody,
+  comboUseTone,
   createRequest,
   draftFromCombo,
   emptyComboDraft,
   sessionsText,
+  usageSessionText,
   validateComboDraft,
   versionRequest,
   type ComboDraft,
@@ -157,4 +167,113 @@ test('the combo tab is offered to a global MANAGE_COMBOS holder only (the API de
   assert.equal(loyaltyTabs(employee([['MANAGE_COMBOS', 'b1']]), branches).combos, false);
   assert.equal(loyaltyTabs(employee([['VIEW_LOYALTY', 'b1']]), branches).combos, false);
   assert.equal(loyaltyTabs(employee([['SELL_COMBOS', 'b1']]), branches).combos, false);
+});
+
+// ------------------------------------------------------------------------------------------ Phase 5 P5-8
+
+const use = (change: Partial<InvoiceLineComboUseResponse> = {}): InvoiceLineComboUseResponse => ({
+  purchaseId: 'p1',
+  comboNameVi: 'Combo massage',
+  comboNameEn: 'Massage combo',
+  usedBy: 'OWNER',
+  relationshipNote: null,
+  state: 'SELECTED',
+  sessionNo: null,
+  sessionKind: null,
+  countsAsTour: null,
+  usedAt: null,
+  ...change,
+});
+
+test('the use request carries only the combo, who used it and a relative note, and the version it started from', () => {
+  assert.equal(comboUseBody({ purchaseId: '', usedBy: 'OWNER', note: '' }, 3), null);
+  assert.deepEqual(comboUseBody({ purchaseId: 'p1', usedBy: 'OWNER', note: 'ignored' }, 3), {
+    expectedVersion: 3,
+    purchaseId: 'p1',
+    usedBy: 'OWNER',
+  });
+  assert.deepEqual(comboUseBody({ purchaseId: 'p1', usedBy: 'RELATIVE', note: '  Con gái ' }, 4), {
+    expectedVersion: 4,
+    purchaseId: 'p1',
+    usedBy: 'RELATIVE',
+    relationshipNote: 'Con gái',
+  });
+  // An empty note is not sent; a note over the limit is not sent at all.
+  assert.deepEqual(comboUseBody({ purchaseId: 'p1', usedBy: 'RELATIVE', note: '   ' }, 4), {
+    expectedVersion: 4,
+    purchaseId: 'p1',
+    usedBy: 'RELATIVE',
+  });
+  assert.equal(
+    comboUseBody({ purchaseId: 'p1', usedBy: 'RELATIVE', note: 'x'.repeat(121) }, 4),
+    null,
+  );
+});
+
+test('the use texts: the picker label, the badge before and after the session is taken, the history session', () => {
+  const found: ComboLookupComboResponse = {
+    purchaseId: 'p1',
+    nameVi: 'Combo massage',
+    nameEn: 'Massage combo',
+    service: { id: 's1', nameVi: 'Massage', nameEn: 'Massage' },
+    sessionsLeft: 4,
+    totalSessions: 6,
+    lineIds: ['l1'],
+  };
+  assert.equal(comboLookupLabel(found, 'vi'), 'Combo massage · 4/6');
+  assert.equal(comboLookupLabel(found, 'en'), 'Massage combo · 4/6');
+  assert.equal(comboUseBadgeText(use(), 'vi'), 'Combo massage · Chủ combo');
+  assert.equal(
+    comboUseBadgeText(
+      use({ usedBy: 'RELATIVE', state: 'USED', sessionNo: 6, sessionKind: 'BONUS' }),
+      'vi',
+    ),
+    'Combo massage · buổi 6 (tặng) · Người thân',
+  );
+  assert.equal(
+    comboUseBadgeText(use({ state: 'USED', sessionNo: 2, sessionKind: 'PAID' }), 'en'),
+    'Massage combo · session 2 (paid) · The combo owner',
+  );
+  assert.equal(usageSessionText({ sessionNo: 6, sessionKind: 'BONUS' }, 'vi'), 'Buổi 6 · tặng');
+  assert.equal(usageSessionText({ sessionNo: 1, sessionKind: 'PAID' }, 'en'), 'Session 1 · paid');
+  assert.equal(comboUseTone('USED'), 'success');
+  assert.equal(comboUseTone('SELECTED'), 'info');
+  assert.equal(comboUseTone('RELEASED'), 'neutral');
+  assert.equal(comboUseTone('RESTORED'), 'warning');
+});
+
+test('the use errors have their own texts in both languages and nothing says the word for a medical examination', () => {
+  const fallback = () => 'shared';
+  for (const code of [
+    'COMBO_NOT_USABLE',
+    'COMBO_NO_SESSION_LEFT',
+    'COMBO_SERVICE_MISMATCH',
+    'COMBO_LINE_QUANTITY',
+    'COMBO_USE_NOT_RESTORABLE',
+  ]) {
+    for (const locale of ['vi', 'en'] as const) {
+      const text = comboErrorText(new ApiError(409, code), locale, fallback);
+      assert.notEqual(text, 'shared', code);
+      assert.equal(text, (comboDictionary(locale).errors as Record<string, string>)[code]);
+    }
+  }
+  const all = JSON.stringify(comboDictionary('vi'));
+  assert.ok(!/khám(?! phá)/i.test(all));
+});
+
+test('the usage history tab is offered to a global RESTORE_COMBO_SESSIONS or MANAGE_COMBOS holder only', () => {
+  const branches = new Map<string, BranchSummary>([
+    ['b1', { id: 'b1', isActive: true } as BranchSummary],
+  ]);
+  assert.equal(loyaltyTabs(employee([['RESTORE_COMBO_SESSIONS']]), branches).comboUsage, true);
+  assert.equal(loyaltyTabs(employee([['MANAGE_COMBOS']]), branches).comboUsage, true);
+  assert.equal(
+    loyaltyTabs(employee([['RESTORE_COMBO_SESSIONS', 'b1']]), branches).comboUsage,
+    false,
+  );
+  assert.equal(
+    loyaltyTabs(employee([['CONSUME_COMBO_SESSIONS', 'b1']]), branches).comboUsage,
+    false,
+  );
+  assert.equal(loyaltyTabs(employee([['VIEW_LOYALTY', 'b1']]), branches).comboUsage, false);
 });

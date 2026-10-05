@@ -212,6 +212,51 @@ test('Phase 5 loyalty guards under real concurrency (isolated schema, dropped af
       }
       return { invoice, line };
     };
+    /**
+     * Phase 5 P5-8: a DRAFT visit invoice with one 0 VND line that the staff chose to pay with a session of `purchase` (the marker
+     * row). The consumption of the session is written while the invoice is a draft, like finalization does.
+     */
+    const draftUseFor = async (purchase: string) => {
+      const visit = await completedVisit();
+      const invoice = id();
+      const line = id();
+      const business = (
+        await setup.query<{ d: string }>(
+          `SELECT to_char(lucy_branch_local_date($1::uuid, now()), 'YYYY-MM-DD') AS d`,
+          [branch],
+        )
+      ).rows[0]!.d;
+      await setup.query('BEGIN');
+      await setup.query(
+        `INSERT INTO invoices (id, code, branch_id, visit_id, business_date, calculation_version, created_by_user_id, payer_user_id)
+         VALUES ($1, $2, $3, $4, lucy_branch_local_date($3::uuid, now()), 1, $5, $6)`,
+        [invoice, generateInvoiceCode(business), branch, visit.visit, staff, customer],
+      );
+      await setup.query(
+        `INSERT INTO invoice_lines (id, invoice_id, sequence, item_code, name_vi, name_en, quantity, unit_price_vnd,
+           gross_vnd, price_set_by_user_id, price_set_at)
+         VALUES ($1, $2, 1, 'P5R_SVC', 'Dịch vụ', 'Service', 1, 1000, 1000, $3, clock_timestamp())`,
+        [line, invoice, staff],
+      );
+      await setup.query(
+        `INSERT INTO invoice_line_services (invoice_line_id, invoice_id, visit_service_line_id, service_id,
+           participant_id, employee_user_id, pricing_unit, catalog_price_min_vnd, catalog_price_max_vnd,
+           quantity_limit, added_on_behalf)
+         VALUES ($1, $2, $3, $4, $5, $6, 'PER_SERVICE', 1000, 10000000, 1, false)`,
+        [line, invoice, visit.line, service, visit.participant, ktv],
+      );
+      await setup.query(
+        `INSERT INTO invoice_line_combo_usages (invoice_line_id, invoice_id, purchase_id, used_by, selected_by_user_id)
+         VALUES ($1, $2, $3, 'OWNER', $4)`,
+        [line, invoice, purchase, staff],
+      );
+      await setup.query(
+        `UPDATE invoice_lines SET unit_price_vnd = 0, gross_vnd = 0, row_version = row_version + 1 WHERE id = $1`,
+        [line],
+      );
+      await setup.query('COMMIT');
+      return { invoice, line, participant: visit.participant };
+    };
     const count = async (sql: string, args: unknown[]) =>
       Number((await setup.query<{ n: string }>(sql, args)).rows[0]!.n);
     const blocked = async (pid: number) => {
@@ -307,21 +352,22 @@ test('Phase 5 loyalty guards under real concurrency (isolated schema, dropped af
           [session, purchase],
         );
         await setup.query('COMMIT');
-        const a = await invoiceFor(50_000, false);
-        const b = await invoiceFor(50_000, false);
+        const a = await draftUseFor(purchase);
+        const b = await draftUseFor(purchase);
         const first = await connect();
         const second = await connect();
         const secondPid = await pidOf(second);
-        const consume = (client: Client, line: string) =>
+        const consume = (client: Client, draft: { line: string; participant: string }) =>
           client.query(
-            `INSERT INTO combo_session_consumptions (session_id, invoice_line_id, branch_id, used_by, performed_by_user_id)
-             VALUES ($1, $2, $3, 'OWNER', $4)`,
-            [session, line, branch, staff],
+            `INSERT INTO combo_session_consumptions (session_id, invoice_line_id, branch_id, used_by,
+               recipient_participant_id, ktv_user_id, performed_by_user_id)
+             VALUES ($1, $2, $3, 'OWNER', $4, $5, $6)`,
+            [session, draft.line, branch, draft.participant, ktv, staff],
           );
         await first.query('BEGIN');
         await second.query('BEGIN');
-        await consume(first, a.line);
-        const racing = outcome(consume(second, b.line));
+        await consume(first, a);
+        const racing = outcome(consume(second, b));
         await blocked(secondPid);
         await first.query('COMMIT');
         const refused = await racing;

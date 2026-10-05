@@ -6,7 +6,11 @@ import type {
   NotificationType,
 } from './notification-registry.js';
 import type { InvoiceBirthdayGift } from './birthday.js';
-import type { InvoiceComboLineResponse, InvoiceKindName } from './combo.js';
+import type {
+  InvoiceComboLineResponse,
+  InvoiceKindName,
+  InvoiceLineComboUseResponse,
+} from './combo.js';
 import type { InvoiceMemberCandidate } from './loyalty.js';
 import type { SeasonDensity, SeasonSlot, SeasonSlotSwitches } from './season-registry.js';
 export type OrganizationLevel =
@@ -2236,6 +2240,8 @@ export interface InvoiceLineResponse {
   addedOnBehalf: boolean;
   /** The actor may still choose the price (a range) or the quantity (PER_NAIL) of this line. */
   priceEditable: boolean;
+  /** Phase 5 P5-8: the combo session that pays this line (a 0 VND line), or null. */
+  comboUse: InvoiceLineComboUseResponse | null;
 }
 
 /**
@@ -2373,6 +2379,8 @@ export interface InvoiceResponse {
   /** Which commands this actor may issue now (the API authorizes each again). */
   actions: {
     editPrices: boolean;
+    /** Pay a service line with a combo session (CONSUME_COMBO_SESSIONS and MANAGE_INVOICES) while DRAFT (Phase 5 P5-8). */
+    useCombos: boolean;
     setPayer: boolean;
     finalize: boolean;
     /** Supply or remove a voucher code (APPLY_DISCOUNTS) while DRAFT. */

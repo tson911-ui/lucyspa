@@ -58,6 +58,7 @@ import {
   VoucherDialog,
   type Attempt,
 } from './pos-dialogs';
+import { ComboUseCard, ComboUseDialog } from './pos-combo-use';
 import { cashBalanceOf, PosPaymentsSection } from './pos-payments';
 import { DiscountCard, PayerCard, VouchersCard } from './pos-sections';
 
@@ -66,6 +67,7 @@ type Feedback = { tone: 'success' | 'error'; text: string } | null;
 /** The one dialog that is open (or none): the screen owns them so a failed command can keep its dialog open. */
 type Overlay =
   | { kind: 'line'; lineId: string }
+  | { kind: 'combo-use'; lineId: string }
   | { kind: 'voucher' }
   | { kind: 'payer' }
   | { kind: 'cash' }
@@ -190,6 +192,10 @@ export function PosInvoiceScreen({ id }: { id: string }) {
   const dialogError = feedback?.tone === 'error' ? feedback.text : null;
   const lineTarget =
     overlay?.kind === 'line' ? invoice.lines.find((line) => line.id === overlay.lineId) : undefined;
+  const comboUseTarget =
+    overlay?.kind === 'combo-use'
+      ? invoice.lines.find((line) => line.id === overlay.lineId)
+      : undefined;
   const reverseTarget =
     overlay?.kind === 'reverse'
       ? invoice.payments.find((payment) => payment.id === overlay.paymentId)
@@ -290,7 +296,19 @@ export function PosInvoiceScreen({ id }: { id: string }) {
     t,
     locale,
     idle,
+    c,
     onEdit: (lineId) => setOverlay({ kind: 'line', lineId }),
+    onUseCombo: (lineId) => setOverlay({ kind: 'combo-use', lineId }),
+    onClearCombo: (lineId) =>
+      void command(
+        `combo-clear-${lineId}`,
+        () =>
+          api.post<InvoiceResponse>(
+            `/api/v1/pos/invoices/${invoice.id}/lines/${lineId}/combo-use/clear`,
+            { expectedVersion: version },
+          ),
+        () => c.use.cleared,
+      ),
   });
   const comboSale = invoice.kind === 'COMBO_SALE';
   const comboColumns = comboColumnsOf({ c, locale });
@@ -426,6 +444,8 @@ export function PosInvoiceScreen({ id }: { id: string }) {
         <DescriptionList layout="totals" items={totals} />
       </Card>
 
+      <ComboUseCard lines={invoice.lines} />
+
       <DiscountCard invoice={invoice} />
       <VouchersCard
         invoice={invoice}
@@ -480,6 +500,27 @@ export function PosInvoiceScreen({ id }: { id: string }) {
                   body,
                 ),
               () => t.pos.lineSaved,
+            )
+          }
+          onClose={closeOverlay}
+        />
+      ) : null}
+      {comboUseTarget ? (
+        <ComboUseDialog
+          invoiceId={invoice.id}
+          line={comboUseTarget}
+          version={version}
+          working={working === `combo-use-${comboUseTarget.id}`}
+          error={dialogError}
+          onUse={(body) =>
+            command(
+              `combo-use-${comboUseTarget.id}`,
+              () =>
+                api.post<InvoiceResponse>(
+                  `/api/v1/pos/invoices/${invoice.id}/lines/${comboUseTarget.id}/combo-use`,
+                  body,
+                ),
+              () => c.use.done,
             )
           }
           onClose={closeOverlay}
@@ -641,13 +682,19 @@ function lineColumnsOf({
   t,
   locale,
   idle,
+  c,
   onEdit,
+  onUseCombo,
+  onClearCombo,
 }: {
   invoice: InvoiceResponse;
   t: WorkforceDictionary;
   locale: 'vi' | 'en';
   idle: boolean;
+  c: ReturnType<typeof comboDictionary>;
   onEdit: (lineId: string) => void;
+  onUseCombo: (lineId: string) => void;
+  onClearCombo: (lineId: string) => void;
 }): DataTableColumn<InvoiceLineResponse>[] {
   const nameOf = (line: InvoiceLineResponse) => (locale === 'vi' ? line.nameVi : line.nameEn);
   const editable = (line: InvoiceLineResponse) =>
@@ -655,6 +702,13 @@ function lineColumnsOf({
     invoice.actions.editPrices &&
     line.priceEditable &&
     (hasPriceRange(line) || hasQuantity(line));
+  const canUseCombo = (line: InvoiceLineResponse) =>
+    invoice.status === 'DRAFT' && invoice.actions.useCombos && line.comboUse === null;
+  const canClearCombo = (line: InvoiceLineResponse) =>
+    invoice.status === 'DRAFT' &&
+    invoice.actions.useCombos &&
+    line.comboUse !== null &&
+    line.comboUse.state === 'SELECTED';
   return [
     {
       key: 'service',
@@ -730,8 +784,8 @@ function lineColumnsOf({
       cell: (line) => (
         <RowActions
           menuLabel={fill(t.common.list.actionsFor, { name: nameOf(line) })}
-          items={
-            editable(line)
+          items={[
+            ...(editable(line)
               ? [
                   {
                     id: 'edit',
@@ -741,8 +795,30 @@ function lineColumnsOf({
                     onSelect: () => onEdit(line.id),
                   },
                 ]
-              : []
-          }
+              : []),
+            ...(canUseCombo(line)
+              ? [
+                  {
+                    id: 'use-combo',
+                    label: c.use.action,
+                    icon: 'award' as const,
+                    disabled: !idle,
+                    onSelect: () => onUseCombo(line.id),
+                  },
+                ]
+              : []),
+            ...(canClearCombo(line)
+              ? [
+                  {
+                    id: 'clear-combo',
+                    label: c.use.clear,
+                    icon: 'x-circle' as const,
+                    disabled: !idle,
+                    onSelect: () => onClearCombo(line.id),
+                  },
+                ]
+              : []),
+          ]}
         />
       ),
     },

@@ -84,7 +84,7 @@ test(
               simulator.provider,
             );
             const loyalty = new LoyaltyService(sessionAdapter, throttle, environment);
-            const combos = new ComboService(sessionAdapter, throttle);
+            const combos = new ComboService(sessionAdapter, throttle, environment);
             const discounts = new DiscountService(sessionAdapter, throttle);
             const settle = async () => {
               await tx.$executeRawUnsafe('SET CONSTRAINTS ALL IMMEDIATE');
@@ -1091,6 +1091,78 @@ test(
                 const [purchase] = await purchasesOf(final.id);
                 assert.equal(purchase!.sessions.length, 6);
                 assert.equal(await balanceOf(member.id), 0, 'a 0 VND sale earns no points');
+              },
+            );
+
+            await suite.test(
+              'a promotion and a voucher both reach a combo line, but only the better ONE applies: never stacked (Owner, 2026-10-05)',
+              async () => {
+                const spa = await newService('STACK');
+                const version = (fixedAmountVnd: string) => ({
+                  kind: 'FIXED_AMOUNT' as const,
+                  fixedAmountVnd,
+                  validFrom: new Date(Date.now() - 86_400_000).toISOString(),
+                  validUntil: new Date(Date.now() + 86_400_000).toISOString(),
+                  minSpendVnd: '0',
+                  scopeMode: 'SELECTED' as const,
+                  serviceIds: [spa.id],
+                  categoryIds: [],
+                  usageLimitTotal: null,
+                  usageLimitPerCustomer: null,
+                });
+                await ok(() =>
+                  discounts.create(ownerToken, {
+                    code: `STP${run}`,
+                    nameVi: 'Khuyến mãi',
+                    nameEn: 'Promotion',
+                    requiresCode: false,
+                    version: version('50000'),
+                  }),
+                );
+                const program = await ok(() =>
+                  discounts.create(ownerToken, {
+                    code: `STV${run}`,
+                    nameVi: 'Voucher',
+                    nameEn: 'Voucher',
+                    requiresCode: true,
+                    version: version('80000'),
+                  }),
+                );
+                await ok(() =>
+                  discounts.createVoucher(ownerToken, program.id, { code: `STACK${run}` }),
+                );
+                const combo = await defineCombo({ serviceId: spa.id, priceVnd: '300000' });
+                const draft = await startSale(combo, await customer('stack'));
+                const supplied = await ok(() =>
+                  invoices.supplyVoucher(ownerToken, draft.id, {
+                    expectedVersion: draft.version,
+                    code: `STACK${run}`,
+                  }),
+                );
+                assert.equal(
+                  supplied.discount.candidates.filter((candidate) => candidate.eligible).length,
+                  2,
+                  'both reach the combo line',
+                );
+                assert.equal(
+                  supplied.discountTotalVnd,
+                  '80000',
+                  'the better one only, not 130,000',
+                );
+                const final = (await ok(() =>
+                  invoices.finalize(ownerToken, supplied.id, { expectedVersion: supplied.version }),
+                )) as InvoiceResponse;
+                assert.equal(final.discountTotalVnd, '80000');
+                assert.equal(final.totalVnd, '220000');
+                assert.equal(final.discount.winnerSource, 'VOUCHER');
+                assert.equal(
+                  await tx.invoiceDiscountApplication.count({ where: { invoiceId: final.id } }),
+                  1,
+                );
+                assert.equal(
+                  await tx.discountRedemption.count({ where: { invoiceId: final.id } }),
+                  1,
+                );
               },
             );
 

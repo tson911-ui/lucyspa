@@ -1,7 +1,11 @@
 import type {
   ComboCreateRequest,
+  ComboFrozenListResponse,
   ComboListResponse,
+  ComboRestoreRequest,
   ComboResponse,
+  ComboUsageItemResponse,
+  ComboUsagePageResponse,
   ComboVersionRequest,
 } from '@lucy-spa/contracts';
 import { Inject, Injectable } from '@nestjs/common';
@@ -10,7 +14,9 @@ import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { SessionService } from '../auth/session.service.js';
 import { runAdminCommand, type AdminContext } from '../authorization/admin-command.js';
 import { sqlStateOf } from '../booking/customer-command.js';
+import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import { addComboVersion, createCombo, listCombos } from './combo.core.js';
+import { listFrozen, listUsage, restoreUsage } from './combo-usage.core.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -24,10 +30,35 @@ export class ComboService {
       'withTransaction' | 'withExclusiveTransaction' | 'resolveForMutation'
     >,
     @Inject(AuthThrottleService) private readonly throttle: Pick<AuthThrottleService, 'now'>,
+    @Inject(API_ENVIRONMENT) private readonly environment: ApiEnvironment,
   ) {}
 
   list(token: string | undefined): Promise<ComboListResponse> {
     return this.run(token, undefined, listCombos);
+  }
+
+  /** The usage history (RESTORE_COMBO_SESSIONS or MANAGE_COMBOS, global). */
+  usage(token: string | undefined, query: { page?: string }): Promise<ComboUsagePageResponse> {
+    return this.run(token, undefined, (context) => listUsage(context, query));
+  }
+
+  /** The combos frozen by the reversal of their sale (VIEW_LOYALTY_EXCEPTIONS, global). */
+  frozen(token: string | undefined): Promise<ComboFrozenListResponse> {
+    return this.run(token, undefined, listFrozen);
+  }
+
+  /** Restores a mistaken use as an offset entry (RESTORE_COMBO_SESSIONS, fresh re-authentication). */
+  async restore(
+    token: string | undefined,
+    consumptionId: string,
+    body: ComboRestoreRequest,
+    requestId?: string,
+  ): Promise<ComboUsageItemResponse> {
+    if (!UUID.test(consumptionId)) throw new AuthError('NOT_FOUND');
+    const id = consumptionId.toLowerCase();
+    return this.run(token, requestId, (context) =>
+      restoreUsage(context, id, { reason: body.reason }, this.environment.auth.freshAuthSeconds),
+    );
   }
 
   async create(

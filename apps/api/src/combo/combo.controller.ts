@@ -1,12 +1,27 @@
 import type {
   ComboCreateRequest,
+  ComboFrozenListResponse,
   ComboListResponse,
+  ComboRestoreRequest,
   ComboResponse,
+  ComboUsageItemResponse,
+  ComboUsagePageResponse,
   ComboVersionRequest,
 } from '@lucy-spa/contracts';
-import { Body, Controller, Get, HttpCode, Inject, Param, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Inject,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsInt, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
 import type { Request, Response } from 'express';
 import { sessionCookie } from '../auth/cookies.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
@@ -33,6 +48,15 @@ class ComboVersionDto implements ComboVersionRequest {
   @ApiProperty() @IsBoolean() active!: boolean;
 }
 
+class UsageQueryDto {
+  @IsOptional() @IsString() @MaxLength(8) page?: string;
+}
+
+/** The reason only: the use, the actor, the time and the branch are never supplied. */
+class RestoreDto implements ComboRestoreRequest {
+  @ApiProperty() @IsString() @MaxLength(2_048) reason!: string;
+}
+
 /**
  * Phase 5 P5-7: combo definitions (admin). `MANAGE_COMBOS` is GLOBAL_ONLY and decided inside each command; the global guard
  * enforces JSON, exact Origin and CSRF.
@@ -48,6 +72,42 @@ export class ComboController {
   @ApiOkResponse({ description: 'Every combo with its versions (MANAGE_COMBOS).' })
   list(@Req() request: Request): Promise<ComboListResponse> {
     return this.combos.list(this.session(request));
+  }
+
+  @Get('usage')
+  @ApiOkResponse({
+    description: 'The combo usage history, newest first (RESTORE_COMBO_SESSIONS or MANAGE_COMBOS).',
+  })
+  usage(@Query() query: UsageQueryDto, @Req() request: Request): Promise<ComboUsagePageResponse> {
+    return this.combos.usage(this.session(request), query);
+  }
+
+  @Get('frozen')
+  @ApiOkResponse({
+    description: 'Combos frozen by the reversal of their sale (VIEW_LOYALTY_EXCEPTIONS).',
+  })
+  frozen(@Req() request: Request): Promise<ComboFrozenListResponse> {
+    return this.combos.frozen(this.session(request));
+  }
+
+  @Post('usage/:consumptionId/restore')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Restores a mistaken use as an offset entry with a reason (RESTORE_COMBO_SESSIONS, fresh re-authentication).',
+  })
+  restore(
+    @Param('consumptionId') consumptionId: string,
+    @Body() body: RestoreDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<ComboUsageItemResponse> {
+    return this.combos.restore(
+      this.session(request),
+      consumptionId,
+      body,
+      this.requestId(response),
+    );
   }
 
   @Post()

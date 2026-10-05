@@ -112,6 +112,15 @@ const errors = {
   COMBO_NOT_SELLABLE: [409, 'This combo is not on sale'],
   COMBO_CHANGED: [409, 'The combo changed after this sale was started; start a new sale'],
   COMBO_SERVICE_INVALID: [409, 'A combo needs an active service'],
+  // Phase 5 P5-8: using the sessions.
+  COMBO_NOT_USABLE: [409, 'This combo cannot be used now'],
+  COMBO_NO_SESSION_LEFT: [409, 'This combo has no session left'],
+  COMBO_SERVICE_MISMATCH: [409, 'A combo can only be used for its own service'],
+  COMBO_LINE_QUANTITY: [
+    409,
+    'A combo session pays one unit of the service: set the quantity to 1 first',
+  ],
+  COMBO_USE_NOT_RESTORABLE: [409, 'This use was already restored or released'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

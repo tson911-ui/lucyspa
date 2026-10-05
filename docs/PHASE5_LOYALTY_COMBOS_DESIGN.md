@@ -154,6 +154,19 @@ None of these blocked P5-1. The Owner asked to be asked about OQ-2 … OQ-11 **o
   3. **"Per year" = per birthday occurrence**, not calendar year.
   4. **P5-T7: APPROVED.**
   5. **The birthday configuration is Owner only** (`MANAGE_BIRTHDAY_REWARDS`, changes its P5-T13 entry) and the **364-day maximum window** (days before + days after) is approved.
+- **P5-7 APPROVED by the Owner, in the Owner's own words, 2026-10-05 (locked, do not reopen).** These replace the "provisional" wording of the 2026-10-05 question-tool answers:
+  1. **Combos cannot be sold while go-live is OFF.**
+  2. **If the payment is reversed or the invoice is cancelled before any session is used, the combo is revoked.**
+  3. **Existing promotions and vouchers may apply to a combo, as the best offer only, never stacking.**
+  4. **The birthday gift does not apply to combos.**
+  5. **Buying a combo does NOT count as a visit for the referral reward.** Only a completed service counts.
+  6. **One combo per invoice, the `COMBO_CHANGED` refusal, and frozen issued combos (an issued combo copies the sold line, never the live definition): approved.**
+- **P5-8 answers collected through the question tool, 2026-10-05 (recorded exactly as given; PROVISIONAL, pending the Owner's confirmation in own words; OQ-9 is NOT marked answered):**
+  1. Order of use: **PAID sessions first** ("Buổi trả tiền (PAID) trước").
+  2. OQ-9 payment reversed AFTER some sessions were used: **"Cho đảo, buổi đã dùng giữ lịch sử, buổi chưa dùng bị đóng băng và báo Owner"**.
+  3. OQ-9 branch: **any branch** ("Mọi chi nhánh").
+  4. The 0đ combo line: **"Miễn kiểm tra khoảng giá chỉ cho dòng có buổi combo, mỗi buổi = 1 dòng số lượng 1"**.
+  5. Re-pay of a combo sale whose reversal froze a used combo: **"Mở lại combo cũ"** (no new combo is issued; the frozen sessions become usable again; the number of sessions never exceeds what was sold).
 - **Owner review of P5-3 (approved):** reading loyalty follows the branch (`VIEW_LOYALTY` at the staff member's branch, like the POS member lookup); points are taken back on
   `INVOICE_REOPENED` / `INVOICE_CANCELLED` (not `PAYMENT_REVERSED`, which always comes with `INVOICE_REOPENED` for a paid invoice).
 - Implementation notes of P5-3 (no decision changed): reversal is keyed on `INVOICE_REOPENED` and `INVOICE_CANCELLED` per 4.4 (`PAYMENT_REVERSED` always comes with
@@ -426,7 +439,7 @@ consumed for its own service. Definitions are versioned; purchases snapshot name
   the owner, each marked `PAID` or `BONUS` (P5-T11). Sessions are not usable before issuance (OQ-9).
 - If the paid episode is reopened/voided: sessions not yet consumed are voided; consumed ones remain history; handling in OQ-9.
 
-### 9.6 As built in P5-7 (combo sale; answers of 2026-10-05 collected through the question tool, **pending Owner confirmation in own words**)
+### 9.6 As built in P5-7 (combo sale; **APPROVED by the Owner in own words, 2026-10-05**, see 2.5)
 
 - Invoice `kind` `VISIT` / `COMBO_SALE`; `visit_id` NULL exactly for `COMBO_SALE`; one `COMBO_PURCHASE` line (quantity 1, price = the combo price, never edited) with a detail row `invoice_line_combos` copying the current active combo version and the service category. Every Phase 4 rule is unchanged for `VISIT`.
 - **Go-live OFF: no sale** (API `LOYALTY_NOT_LIVE`, DB refuses the invoice insert).
@@ -434,6 +447,13 @@ consumed for its own service. Definitions are versioned; purchases snapshot name
 - **Best offer applies to the combo line** like its service (promotions, vouchers, Member Discount; tier read before the sale). **The birthday gift never applies** to a combo sale.
 - Issued by the `loyalty` worker on `INVOICE_PAID` for the current paid episode only; the issued combo copies the sold line, not the live definition. Points earned once; a combo sale never triggers the referral reward (not a visit).
 - **Reopen/cancel before use: the unused combo is revoked** (who ended the episode, reason, history kept); re-pay issues a new one. With a session in use it is not revoked automatically (audit trail only; P5-8 decides). OQ-9 (any branch, consume order, reversal after use) stays open for P5-8.
+
+### 9.7 As built in P5-8 (combo usage; the 2.5 answers of 2026-10-05 are PROVISIONAL, OQ-9 not answered)
+
+- Staff choose the use on a DRAFT visit line (`invoice_line_combo_usages`: marker, editable only on the draft, the line becomes 0đ quantity 1); the consumption is written at finalization under the lock order use invoice, sale invoice, sessions; the lowest free session is taken (PAID first); recipient and technician are those of the line. Cancel releases (cause by path), restoration is an offset entry.
+- A combo is usable only while its sale invoice is PAID in the episode that issued it or in an episode that reopened it (`lucy_combo_purchase_usable`). A reversal therefore freezes it at once; a combo with a use in it is never revoked and is listed for the Owner; re-pay reopens the same combo (one `combo_purchase_reopenings` row per episode); unused combos are still revoked.
+- The 0đ line is exempt from the snapshotted price range only through the marker row; the integrity check requires every marked line to be 0đ/1 and, once finalized, to have its consumption.
+- Lookup is by the owner's exact phone and returns the masked name, the combo and the sessions left only. `countsAsTour` is false for a BONUS session; no tour logic exists before Phase 7.
 
 ### 9.4 Consumption (PRD §17.4-17.6, P5-T11)
 

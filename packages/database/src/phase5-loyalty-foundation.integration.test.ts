@@ -1827,30 +1827,6 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
               orderBy: { sessionNo: 'asc' },
               select: { id: true, kind: true },
             });
-          const consume = (
-            sessionId: string,
-            lineId: string,
-            options: {
-              branchId?: string;
-              usedBy?: 'OWNER' | 'RELATIVE';
-              note?: string;
-              recipient?: string;
-              ktvUserId?: string;
-            } = {},
-          ) =>
-            tx.comboSessionConsumption.create({
-              data: {
-                sessionId,
-                invoiceLineId: lineId,
-                branchId: options.branchId ?? branch,
-                usedBy: options.usedBy ?? 'OWNER',
-                relationshipNote: options.note ?? null,
-                recipientParticipantId: options.recipient ?? null,
-                ktvUserId: options.ktvUserId ?? ktv,
-                performedByUserId: staff,
-              },
-              select: { id: true },
-            });
 
           await context.test(
             'combo definitions: next version number, no expiry by default, append-only',
@@ -2065,6 +2041,121 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
             },
           );
 
+          /**
+           * Phase 5 P5-8: a session is consumed on the DRAFT visit invoice being finalized, for a line the staff chose to pay with it
+           * (a marker row, a 0 VND line). This builds that draft: two performed services (`wide`, the combo's service, then `other`
+           * at the full price), with the combo use chosen on `lines[line]`.
+           */
+          const markUse = async (
+            invoice: InvoiceFixture,
+            lineId: string,
+            purchaseId: string,
+            options: { usedBy?: 'OWNER' | 'RELATIVE'; note?: string } = {},
+          ) => {
+            await tx.invoiceLineComboUsage.create({
+              data: {
+                invoiceLineId: lineId,
+                invoiceId: invoice.id,
+                purchaseId,
+                usedBy: options.usedBy ?? 'OWNER',
+                relationshipNote: options.note ?? null,
+                selectedByUserId: staff,
+              },
+            });
+            await tx.invoiceLine.update({
+              where: { id: lineId },
+              data: { unitPriceVnd: 0n, grossVnd: 0n, rowVersion: { increment: 1 } },
+            });
+          };
+          const useDraft = async (
+            services: ServiceRow[],
+            options: { branchId?: string; payer?: string | null } = {},
+          ) => {
+            const visit = await completedVisit(services, options.branchId ?? branch);
+            const invoice = await draft(visit, {
+              payer: options.payer ?? null,
+              branchId: options.branchId ?? branch,
+            });
+            return { ...invoice, visit };
+          };
+          /** Takes the session for the line like finalization does: the recipient and technician are those of the line. */
+          const consumeOn = (
+            sessionId: string,
+            invoice: Awaited<ReturnType<typeof useDraft>>,
+            lineIndex: number,
+            options: {
+              branchId?: string;
+              usedBy?: 'OWNER' | 'RELATIVE';
+              note?: string;
+              recipient?: string;
+              ktvUserId?: string;
+            } = {},
+          ) =>
+            tx.comboSessionConsumption.create({
+              data: {
+                sessionId,
+                invoiceLineId: invoice.lines[lineIndex]!.id,
+                branchId: options.branchId ?? branch,
+                usedBy: options.usedBy ?? 'OWNER',
+                relationshipNote: options.note ?? null,
+                recipientParticipantId: options.recipient ?? invoice.visit.participantId,
+                ktvUserId: options.ktvUserId ?? ktv,
+                performedByUserId: staff,
+              },
+              select: { id: true },
+            });
+          /** Finalizes a use draft whose other line is paid in money (so it waits for payment). */
+          const finalizeUse = (invoice: Awaited<ReturnType<typeof useDraft>>) => finalize(invoice);
+          /** Finalizes a draft whose every line is a combo line: the receivable is 0, settled directly (OP-2). */
+          const finalizeFree = async (invoice: { id: string }) => {
+            const now = await dbNow();
+            await tx.invoice.update({
+              where: { id: invoice.id },
+              data: {
+                status: 'PAID',
+                subtotalVnd: 0n,
+                totalVnd: 0n,
+                finalizedAt: now,
+                finalizedByUserId: staff,
+                paidAt: now,
+                paidSeq: 1,
+                rowVersion: { increment: 1 },
+              },
+            });
+          };
+          /** The sale is paid again after a reversal: a new paid episode. */
+          const repaySale = async (sale: { id: string }, total: bigint) => {
+            await tx.payment.create({
+              data: {
+                invoiceId: sale.id,
+                branchId: branch,
+                method: 'CASH',
+                status: 'SUCCEEDED',
+                amountDueVnd: total,
+                amountVnd: total,
+                tenderedVnd: total,
+                changeVnd: 0n,
+                collectedByUserId: staff,
+                idempotencyKey: randomUUID(),
+              },
+            });
+            await tx.invoice.update({
+              where: { id: sale.id },
+              data: {
+                status: 'PAID',
+                paidAt: await dbNow(),
+                paidSeq: { increment: 1 },
+                rowVersion: { increment: 1 },
+              },
+            });
+            await settle();
+          };
+          const usableNow = async (purchaseId: string) =>
+            (
+              await tx.$queryRaw<{ usable: boolean }[]>`
+                SELECT lucy_combo_purchase_usable(${purchaseId}::uuid) AS usable`
+            )[0]!.usable;
+
           await context.test(
             'combo consumption: own service, branch, one active use, release and restoration',
             async () => {
@@ -2075,51 +2166,98 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
               await settle();
               const [first, second, bonus] = await sessionsOf(bought.id);
               assert.equal(bonus!.kind, 'BONUS');
-              // A line for another service, or a line of another branch, cannot consume.
-              const wrongService = await unpaidInvoice(other, owner);
+              // The choice itself: a line for another service, a customer's marker without a note rule, an unusable combo.
+              const wrongService = await useDraft([other]);
               await rejects(
-                () => consume(first!.id, wrongService.lines[0]!.id),
+                () => markUse(wrongService, wrongService.lines[0]!.id, bought.id),
                 /only for the service of its combo/,
               );
-              const otherBranchInvoice = await unpaidInvoice(wide, owner, otherBranch);
+              // A relative's note is for a relative's use only.
+              const noted = await useDraft([wide, other]);
               await rejects(
-                () => consume(first!.id, otherBranchInvoice.lines[0]!.id),
+                () => markUse(noted, noted.lines[0]!.id, bought.id, { note: 'Em gái' }),
+                /invoice_line_combo_usages_note/,
+              );
+              // A line of another branch: any branch may CHOOSE the combo (provisional Owner answer), but a consumption records
+              // the branch of its invoice.
+              const otherBranchInvoice = await useDraft([wide, other], { branchId: otherBranch });
+              await markUse(otherBranchInvoice, otherBranchInvoice.lines[0]!.id, bought.id);
+              await rejects(
+                () => consumeOn(first!.id, otherBranchInvoice, 0),
                 /records the branch of its invoice/,
               );
-              const usage = await unpaidInvoice(wide, owner);
-              // The KTV is an employee; a recipient belongs to the visit; a note is for a relative's use only.
+              await consumeOn(first!.id, otherBranchInvoice, 0, { branchId: otherBranch });
+              await finalizeUse(otherBranchInvoice);
+              await cancelUnpaid(otherBranchInvoice.id);
+              await tx.comboSessionRelease.create({
+                data: {
+                  consumptionId: (
+                    await tx.comboSessionConsumption.findFirstOrThrow({
+                      where: { invoiceLineId: otherBranchInvoice.lines[0]!.id },
+                      select: { id: true },
+                    })
+                  ).id,
+                  cause: 'INVOICE_CANCELLED_UNPAID',
+                  reason: 'Hóa đơn bị hủy',
+                  releasedByUserId: staff,
+                },
+              });
+              await settle();
+
+              const usage = await useDraft([wide, other]);
+              await markUse(usage, usage.lines[0]!.id, bought.id, {
+                usedBy: 'RELATIVE',
+                note: 'Em gái',
+              });
+              // The technician and the recipient are those of the line; the note and the marker follow the choice.
               await rejects(
-                () => consume(first!.id, usage.lines[0]!.id, { ktvUserId: customer2 }),
-                /KTV of a consumption is an employee/,
+                () =>
+                  consumeOn(first!.id, usage, 0, {
+                    ktvUserId: customer2,
+                    usedBy: 'RELATIVE',
+                    note: 'Em gái',
+                  }),
+                /recipient and technician of a consumption are those of its line/,
               );
               await rejects(
-                () => consume(first!.id, usage.lines[0]!.id, { recipient: randomUUID() }),
-                /recipient belongs to the visit of the invoice/,
+                () =>
+                  consumeOn(first!.id, usage, 0, {
+                    recipient: randomUUID(),
+                    usedBy: 'RELATIVE',
+                    note: 'Em gái',
+                  }),
+                /recipient and technician of a consumption are those of its line/,
               );
               const strangerVisit = await completedVisit([wide]);
               await rejects(
                 () =>
-                  consume(first!.id, usage.lines[0]!.id, {
+                  consumeOn(first!.id, usage, 0, {
                     recipient: strangerVisit.participantId,
+                    usedBy: 'RELATIVE',
+                    note: 'Em gái',
                   }),
-                /recipient belongs to the visit of the invoice/,
+                /recipient and technician of a consumption are those of its line/,
               );
               await rejects(
-                () => consume(first!.id, usage.lines[0]!.id, { note: 'Em gái' }),
-                /combo_session_consumptions_note/,
+                () => consumeOn(first!.id, usage, 0, { usedBy: 'OWNER' }),
+                /follows the combo use chosen on its line/,
               );
-              const used = await consume(first!.id, usage.lines[0]!.id, {
+              await rejects(
+                () => consumeOn(first!.id, usage, 1),
+                /follows the combo use chosen on its line/,
+              );
+              const used = await consumeOn(first!.id, usage, 0, {
                 usedBy: 'RELATIVE',
                 note: 'Em gái',
-                recipient: usage.visit.participantId,
               });
-              await settle();
-              // One active use per session; one consumption per invoice line.
-              const second_ = await unpaidInvoice(wide, owner);
-              await rejects(() => consume(first!.id, second_.lines[0]!.id), /already consumed/);
+              await finalizeUse(usage);
+              // One active use per session; one consumption per invoice line (and only on the draft being finalized).
+              const second_ = await useDraft([wide, other]);
+              await markUse(second_, second_.lines[0]!.id, bought.id);
+              await rejects(() => consumeOn(first!.id, second_, 0), /already consumed/);
               await rejects(
-                () => consume(second!.id, usage.lines[0]!.id),
-                /line_key|Unique constraint/,
+                () => consumeOn(second!.id, usage, 0, { usedBy: 'RELATIVE', note: 'Em gái' }),
+                /consumed on the visit invoice being finalized|line_key|Unique constraint/,
               );
               // Not released while the invoice is open; a cancelled invoice must release (deferred).
               const reasonBase = { reason: 'Hóa đơn bị hủy', releasedByUserId: staff };
@@ -2186,8 +2324,10 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
                 /cannot be removed or rewritten/,
               );
               // After the release the session is free again, and a new line can consume it.
-              const again = await unpaidInvoice(wide, owner);
-              const reused = await consume(first!.id, again.lines[0]!.id);
+              const again = await useDraft([wide, other]);
+              await markUse(again, again.lines[0]!.id, bought.id);
+              const reused = await consumeOn(first!.id, again, 0);
+              await finalizeUse(again);
               await settle();
               // Restoration (PRD 17.5): reason required, once, never for a released consumption.
               await rejects(
@@ -2231,14 +2371,16 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
               );
               await settle();
               // The restored session can be consumed once more; history stays.
-              const third = await unpaidInvoice(wide, owner);
-              await consume(first!.id, third.lines[0]!.id);
+              const third = await useDraft([wide, other]);
+              await markUse(third, third.lines[0]!.id, bought.id);
+              await consumeOn(first!.id, third, 0);
+              await finalizeUse(third);
               await settle();
               assert.equal(
                 await tx.comboSessionConsumption.count({ where: { sessionId: first!.id } }),
-                3,
+                4,
               );
-              // P5-7: a combo with a session in use is not revoked, even after its paid episode ended.
+              // P5-7: a combo with a session in use is not revoked, even after its paid episode ended (it is FROZEN, P5-8).
               await reopenSale(paid);
               await rejects(
                 () =>
@@ -2252,7 +2394,16 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
                   }),
                 /session in use is not revoked automatically/,
               );
-              // A voided combo cannot be consumed.
+              // A frozen or voided combo cannot be chosen and cannot be consumed.
+              const frozenDraft = await useDraft([wide, other]);
+              await rejects(
+                () => markUse(frozenDraft, frozenDraft.lines[0]!.id, bought.id),
+                /cannot be used now/,
+              );
+              await rejects(
+                () => consumeOn(second!.id, frozenDraft, 0),
+                /frozen or expired combo cannot be consumed/,
+              );
               const sale2 = await comboSale(combo, owner);
               const bought2 = await purchase(combo, owner, sale2.lineId);
               await settle();
@@ -2262,12 +2413,123 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
                 where: { id: bought2.id },
                 data: { voidedAt: new Date(), voidedByUserId: staff, voidReason: 'Hóa đơn bị đảo' },
               });
-              const fourth = await unpaidInvoice(wide, owner);
+              const fourth = await useDraft([wide, other]);
               await rejects(
-                () => consume(unused!.id, fourth.lines[0]!.id),
-                /voided or expired combo cannot be consumed/,
+                () => consumeOn(unused!.id, fourth, 0),
+                /frozen or expired combo cannot be consumed/,
               );
               await truncateRejected('combo_session_consumptions');
+            },
+          );
+
+          await context.test(
+            'combo use (P5-8): a marker only on a draft visit line, the range exemption, the finalization invariant, reopening',
+            async () => {
+              const owner = await user('CUSTOMER');
+              const combo = await makeCombo(wide.id, { paid: 2, bonus: 0 });
+              const sale = await comboSale(combo, owner);
+              const bought = await purchase(combo, owner, sale.lineId);
+              await settle();
+              const [one, two] = await sessionsOf(bought.id);
+              // Only a 0 VND line of quantity 1 is a combo line; the marker row cannot be edited.
+              const base = await useDraft([wide]);
+              await markUse(base, base.lines[0]!.id, bought.id);
+              await rejects(
+                () =>
+                  tx.invoiceLineComboUsage.update({
+                    where: { invoiceLineId: base.lines[0]!.id },
+                    data: { usedBy: 'RELATIVE' },
+                  }),
+                /selected or cleared, never edited/,
+              );
+              await rejectsAtCommit(
+                () =>
+                  tx.invoiceLine.update({
+                    where: { id: base.lines[0]!.id },
+                    data: { unitPriceVnd: 10n, grossVnd: 10n, rowVersion: { increment: 1 } },
+                  }),
+                /0 VND line of quantity 1/,
+              );
+              // A line WITHOUT the marker keeps the snapshotted range: 0 is below the catalog price of 500,000.
+              const plain = await useDraft([wide]);
+              await rejectsAtCommit(
+                () =>
+                  tx.invoiceLine.update({
+                    where: { id: plain.lines[0]!.id },
+                    data: { unitPriceVnd: 0n, grossVnd: 0n, rowVersion: { increment: 1 } },
+                  }),
+                /snapshotted range/,
+              );
+              // The marked line passes the same check (0 < catalog minimum) once the session is taken at finalization.
+              await rejectsAtCommit(
+                () => finalizeFree(base),
+                /consumes a combo session for every line paid with one/,
+              );
+              await consumeOn(one!.id, base, 0);
+              await finalizeFree(base);
+              await settle();
+              // The marker is removable only on a draft.
+              await rejects(
+                () =>
+                  tx.invoiceLineComboUsage.delete({ where: { invoiceLineId: base.lines[0]!.id } }),
+                /only on the draft of a visit invoice/,
+              );
+              // A second use of the second session, then none left to choose.
+              const next = await useDraft([wide]);
+              await markUse(next, next.lines[0]!.id, bought.id);
+              await consumeOn(two!.id, next, 0);
+              await finalizeFree(next);
+              await settle();
+              // Reversal freezes: not usable now; re-payment (episode 2) alone does not make it usable either.
+              await reopenSale(sale);
+              assert.equal(await usableNow(bought.id), false, 'frozen when the sale is not paid');
+              await repaySale(sale, combo.version.priceVnd);
+              assert.equal(
+                await usableNow(bought.id),
+                false,
+                'not before it is reopened for the new episode',
+              );
+              // Reopening: only for the current paid episode, once, never for a revoked combo; a purchase is not also issued for it.
+              await rejects(
+                () =>
+                  tx.comboPurchaseReopening.create({ data: { purchaseId: bought.id, paidSeq: 3 } }),
+                /current paid episode of its paid sale invoice/,
+              );
+              await rejects(
+                () =>
+                  tx.comboPurchaseReopening.create({ data: { purchaseId: bought.id, paidSeq: 1 } }),
+                /combo_purchase_reopenings_seq|current paid episode/,
+              );
+              await tx.comboPurchaseReopening.create({
+                data: { purchaseId: bought.id, paidSeq: 2 },
+              });
+              await settle();
+              await rejects(
+                () =>
+                  tx.comboPurchaseReopening.create({ data: { purchaseId: bought.id, paidSeq: 2 } }),
+                /episode_key|Unique constraint/,
+              );
+              await rejects(
+                () => purchase(combo, owner, sale.lineId, 2),
+                /reopened or issued once per paid episode/,
+              );
+              assert.equal(await usableNow(bought.id), true, 'usable again as the same combo');
+              await rejects(
+                () =>
+                  tx.comboPurchase.update({
+                    where: { id: bought.id },
+                    data: { voidedAt: new Date(), voidedByUserId: staff, voidReason: 'x' },
+                  }),
+                /can be used now is not revoked|session in use is not revoked automatically|paid episode that issued it has ended/,
+              );
+              await rejects(
+                () =>
+                  tx.comboPurchaseReopening.update({
+                    where: { purchaseId_paidSeq: { purchaseId: bought.id, paidSeq: 2 } },
+                    data: { paidSeq: 5 },
+                  }),
+                /cannot be removed or rewritten/,
+              );
             },
           );
 
