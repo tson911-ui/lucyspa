@@ -21,8 +21,8 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                                          |
 | Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                                       |
 | **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                                       |
-| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `d6781fa`)                                                                  |
-| **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `d6781fa`); go-live turned ON by the Owner about 17:20 (+07)** |
+| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `d11be14`)                                                                  |
+| **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `d11be14`); go-live turned ON by the Owner about 17:20 (+07)** |
 | Phase 6+ (products, payroll, finance)     | NOT started                                                                                        |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
@@ -119,7 +119,15 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 
 ## Production
 
-Status as of 2026-10-05, about 17:44 (+07) (Owner-reported; supersedes the blocks below):
+Status as of 2026-10-05, about 21:31 (+07) (Owner-reported; supersedes the blocks below):
+
+- **Production runs `d11be146088c78b1e69858b8596fd1b121d0fe72`** (overlay z-index fix `bee3785` plus the removal of the count after section headings), deployed by the Owner on 2026-10-05 at about 21:31 (+07). Previous: `d6781fa`.
+- No new migration: `pnpm db:status` up to date (61 migrations).
+- After the deploy: health ok, `/vi`, `/vi/account/loyalty` and `/vi/workforce/login` answer 200, pm2 3/3 online, `loyalty_go_live` = 1 (ON).
+- Backup taken before this deploy: `/root/backups/lucyspa-pre-uifix-20261005T142617Z.dump`.
+- CI failed once on `bee3785` at `test:auth:integration` and passed on `d11be14`; likely a CI-only flaky test (the same step passed locally on a scratch database).
+
+Status as of 2026-10-05, about 17:44 (+07) (the customer tier table deploy):
 
 - **Production runs `d6781fa`** (customer tier table plus the handoff docs), deployed by the Owner on 2026-10-05 at about 17:44 (+07). Previous: `42841d6`. No new migration: `pnpm db:status` up to date (61 migrations).
 - After the deploy: health ok, public pages 200, `/vi/account/loyalty` 200, pm2 3/3 online, `loyalty_go_live` = 1 (ON). CI of `d6781fa` is green (Owner checked on GitHub).
@@ -489,8 +497,8 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 
 ### Fix: menus behind the sticky table header - 2026-10-05
 
-- Cause: the top bar (sticky, z 10) is one stacking context holding the account menu, tied with the sticky table header (z 10), which came later and won. New `--ls-z-chrome: 20` for top bar, site header, sidebar, bottom bars; scale now sticky 10 < chrome 20 < popover 30 < drawer 40 < dialog 50 < toast 60 (`docs/UXUI_FIX_OVERLAY_LAYERS.md`, design 6.6). No migration. Not yet deployed; the commit to deploy is recorded by the Owner after CI.
+- Cause: the top bar (sticky, z 10) is one stacking context holding the account menu, tied with the sticky table header (z 10), which came later and won. New `--ls-z-chrome: 20` for top bar, site header, sidebar, bottom bars; scale now sticky 10 < chrome 20 < popover 30 < drawer 40 < dialog 50 < toast 60 (`docs/UXUI_FIX_OVERLAY_LAYERS.md`, design 6.6). No migration. Deployed in `d11be14` (see Production).
 
 ### Fix: no count next to section headings - 2026-10-05
 
-- Owner decision: `ListSection` has no `count` (text-only headings everywhere, rule added to CLAUDE.md); pagination "Hiển thị x–y trong n" and empty states stay (`docs/UXUI_FIX_HEADING_COUNTS.md`). Not deployed; deploy one commit covering this and the menu layer fix `bee3785` once CI is green.
+- Owner decision: `ListSection` has no `count` (text-only headings everywhere, rule added to CLAUDE.md); pagination "Hiển thị x–y trong n" and empty states stay (`docs/UXUI_FIX_HEADING_COUNTS.md`). Deployed in `d11be14` together with the menu layer fix `bee3785` (see Production).
