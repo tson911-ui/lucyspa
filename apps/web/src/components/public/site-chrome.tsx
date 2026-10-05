@@ -1,6 +1,6 @@
 import type { PublicSiteResponse } from '@lucy-spa/contracts';
 import Link from 'next/link';
-import { BrandWordmark, SiteFooter, SiteHeader, type FooterColumn } from '@lucy-spa/ui';
+import { BrandWordmark, SiteFooter, type FooterColumn } from '@lucy-spa/ui';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import { hoursHeadline, telHref } from '../../lib/public-site-core';
@@ -8,7 +8,7 @@ import { footerDiscoverItems } from '../../lib/site-nav';
 import type { SiteDecorSpec } from '../../lib/season-core';
 import { SiteLogo } from '../season/site-frame-view';
 import { footerBlockItems } from './footer-blocks';
-import { PublicHeaderCta, PublicNav, PublicTools } from './site-chrome-client';
+import { PublicHeaderCta, PublicNav, PublicSiteHeader, PublicTools } from './site-chrome-client';
 
 /**
  * The shared site header (Part 2 contract 3, 5.1): brand, menu, language/theme/account tools and the booking call to
@@ -18,14 +18,19 @@ import { PublicHeaderCta, PublicNav, PublicTools } from './site-chrome-client';
 export function PublicHeader({
   locale,
   decor,
+  overlay,
 }: {
   locale: Locale;
   /** The season's site decoration (logo accent), or null for the plain wordmark. */
   decor: SiteDecorSpec | null;
+  /** Floats over a full-bleed hero. Left out, the home page does and every other page does not. */
+  overlay?: boolean;
 }) {
   const text = getSiteText(locale);
   return (
-    <SiteHeader
+    <PublicSiteHeader
+      locale={locale}
+      overlay={overlay}
       brand={
         <Link href={`/${locale}`} aria-label={text.header.brand}>
           <SiteLogo decor={decor}>

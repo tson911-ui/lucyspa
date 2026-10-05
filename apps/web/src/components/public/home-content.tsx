@@ -4,11 +4,12 @@ import Link from 'next/link';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import { homeGroups, type HomeData } from '../../lib/public-site-core';
+import { heroFoot } from '../../lib/slider-core';
 import { FactsStrip, LoadNotice, ServiceGroups, WhyCards } from './home-sections';
 import { HomeSlider } from './home-slider';
 import { PromoPopup } from './promo-popup';
 
-/** The hero picture the Owner chose in Shop info (same frame as the slider, so nothing moves). */
+/** The hero picture the Owner chose in Shop info (it fills the hero stage like the slider does). */
 function HeroImage({ image }: { image: NonNullable<PublicSiteResponse['heroImage']> }) {
   const widest = image.sources[image.sources.length - 1];
   if (!widest) return null;
@@ -19,7 +20,7 @@ function HeroImage({ image }: { image: NonNullable<PublicSiteResponse['heroImage
         className="ls-hero-image"
         src={widest.url}
         srcSet={image.sources.map((source) => `${source.url} ${source.width}w`).join(', ')}
-        sizes="(min-width: 1024px) 50vw, 100vw"
+        sizes="100vw"
         width={image.width}
         height={image.height}
         alt={image.alt}
@@ -64,8 +65,22 @@ export function HomeContent({
     );
   return (
     <PublicMain>
-      <Band tone="page" labelledBy="home-title" className="ls-hero">
-        <div className="ls-hero-grid">
+      {/* The hero is full-bleed from the very top of the page: the header floats over it (site.css, .ls-hero-full). The
+          picture (slides, the Shop info picture or the brand panel) is the stage, its scrim keeps the light text readable
+          on any picture, and the headline and the two actions sit on top. */}
+      <section
+        className="ls-hero-full"
+        aria-labelledby="home-title"
+        data-foot={slides.length > 0 ? heroFoot(slides) : 'none'}
+      >
+        <div className="ls-hero-stage">
+          {slides.length > 0 ? (
+            <HomeSlider locale={locale} slides={slides} className="ls-slider-cover" />
+          ) : (
+            media
+          )}
+        </div>
+        <div className="ls-container ls-hero-content">
           <div className="ls-hero-copy">
             <h1 className="ls-site-display" id="home-title">
               {site?.tagline ?? 'Lucy Spa'}
@@ -88,9 +103,8 @@ export function HomeContent({
               </Link>
             </div>
           </div>
-          {slides.length > 0 ? <HomeSlider locale={locale} slides={slides} /> : media}
         </div>
-      </Band>
+      </section>
 
       {site && site.facts.length > 0 ? (
         <Band tone="page" label={text.home.factsLabel} className="ls-band-flush ls-band-facts">

@@ -83,7 +83,8 @@ export function SeasonPreviewStage({ locale }: { locale: Locale }) {
   }, []);
 
   const decor = season ? siteDecorSpec(season, locale) : null;
-  const header = <PublicHeader locale={locale} decor={decor} />;
+  // The preview shows the home page, whose hero the header floats over (the preview's own path is not the home path).
+  const header = <PublicHeader locale={locale} decor={decor} overlay={data !== null} />;
   const footer = <PublicFooter locale={locale} site={data?.site ?? null} />;
   const home = data ? <HomeContent locale={locale} data={data} popup={false} /> : null;
   return (

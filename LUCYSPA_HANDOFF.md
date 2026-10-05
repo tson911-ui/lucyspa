@@ -514,3 +514,8 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 ### Fix: no count next to section headings - 2026-10-05
 
 - Owner decision: `ListSection` has no `count` (text-only headings everywhere, rule added to CLAUDE.md); pagination "Hiển thị x–y trong n" and empty states stay (`docs/UXUI_FIX_HEADING_COUNTS.md`). Deployed in `d11be14` together with the menu layer fix `bee3785` (see Production).
+
+### Customer navigation and transparent home header - 2026-10-05 (not deployed)
+
+- A: account sub-tab row removed; person menu = Tài khoản của tôi / Điểm thưởng / Đăng xuất; new notification bell with a latest-8 panel next to the language button (`docs/UXUI_REDESIGN_NAV_HEADER.md`). A and B are one commit (the bell and 360 px header fixes belong to both).
+- B: home hero is full-bleed (slides, else Shop info picture, else brand panel) and the header floats over it until about 60 px of scroll (`SiteHeader overlay`). The full-bleed hero choice was given through the question tool: **provisional until the Owner confirms**. No migration, no permission.

@@ -92,6 +92,19 @@ export function sliderSlidesOf(slides: readonly PublicSlide[]): SliderSlide[] {
   }));
 }
 
+/**
+ * What the foot of a full-bleed hero must make room for: a slide's caption (title, text or link; the controls come
+ * with it when there are several slides), only the controls, or nothing (one plain picture).
+ */
+export function heroFoot(slides: readonly PublicSlide[]): 'caption' | 'controls' | 'none' {
+  const captioned = slides.some(
+    (slide) =>
+      slide.title || slide.subtitle || (slide.linkLabel !== null && slide.linkUrl !== null),
+  );
+  if (captioned) return 'caption';
+  return slides.length > 1 ? 'controls' : 'none';
+}
+
 /** The slides to show now; none on any failure (the page itself is never blocked or changed). */
 export async function loadPublicSlides(
   fetcher: (

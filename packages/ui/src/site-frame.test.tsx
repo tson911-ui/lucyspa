@@ -986,3 +986,71 @@ test('phones: the service filter is one scrolling row, and cards sit 24 px apart
   assert.match(css, /\.ls-service-grid \{\s*display: grid;\s*gap: var\(--ls-space-6\);/);
   assert.match(css, /\.ls-site-grid \{\s*display: grid;\s*gap: var\(--ls-space-6\);/);
 });
+
+test('SiteHeader: only a page that starts with a hero floats the bar over it (data-overlay on the bar and its sentinel)', () => {
+  const draw = (overlay?: boolean) =>
+    renderToStaticMarkup(
+      <ui.SiteHeader
+        brand="Lucy Spa"
+        nav={null}
+        tools={null}
+        {...(overlay === undefined ? {} : { overlay })}
+      />,
+    );
+  assert.doesNotMatch(draw(), /data-overlay/);
+  assert.doesNotMatch(draw(false), /data-overlay/);
+  const html = draw(true);
+  assert.match(html, /<header class="ls-site-header" data-overlay="true"/);
+  assert.match(html, /class="ls-site-sentinel" data-overlay="true"/);
+});
+
+test('header over the hero: pulled out of the flow by its own height, solid after about 60 px, light only while clear', () => {
+  // The bar is as tall as the token and its margin takes exactly that out of the flow, so the hero starts at the top.
+  assert.match(
+    css,
+    /\.ls-site-header\[data-overlay='true'\] \{\s*margin-block-end: calc\(var\(--ls-site-header-h\) \* -1\);\s*border-width: 0;/,
+  );
+  // About 60 px of scrolling (48 + 12) turns it solid; the sentinel is 1 px wide, so no scroll listener is needed.
+  assert.match(
+    css,
+    /\.ls-site-sentinel\[data-overlay='true'\] \{\s*height: calc\(var\(--ls-space-9\) \+ var\(--ls-space-3\)\);/,
+  );
+  // Light ink applies only while the bar is clear; the scrolled bar keeps the normal colours and gets the shadow.
+  assert.match(
+    css,
+    /\[data-overlay='true'\]:not\(\[data-scrolled='true'\]\) \{\s*background: transparent;/,
+  );
+  assert.match(css, /\[data-overlay='true'\]\[data-scrolled='true'\] \{\s*box-shadow:/);
+  // The change eases on the motion tokens, which are 0 under reduced motion (nothing animates, it just switches).
+  const overlayRule = /\.ls-site-header\[data-overlay='true'\] \{([^}]*)\}/.exec(css)?.[1] ?? '';
+  assert.match(overlayRule, /background-color var\(--ls-dur-base\)/);
+  assert.doesNotMatch(overlayRule, /\d+ms/);
+  assert.match(
+    tokens,
+    /@media \(prefers-reduced-motion: reduce\) \{\s*:root \{[^}]*--ls-dur-base: 0ms/,
+  );
+});
+
+test('hero: the stage fills the section, the scrim lies on the picture and the foot keeps room for caption and controls', () => {
+  assert.match(css, /\.ls-hero-stage \{\s*position: absolute;\s*inset: 0;/);
+  assert.match(css, /\.ls-hero-stage \.ls-slider-media::after,[^{]*\{[^}]*pointer-events: none;/);
+  assert.match(css, /\.ls-hero-full\[data-foot='caption'\] \.ls-hero-content \{/);
+  assert.match(css, /\.ls-site \.ls-slider-cover \{\s*position: absolute;\s*inset: 0;/);
+  // The headline clears the floating bar.
+  assert.match(
+    css,
+    /\.ls-hero-content \{[^}]*calc\(var\(--ls-site-header-h\) \+ var\(--ls-space-6\)\)/,
+  );
+  // Light ink and the shades are tokens that read the same in both themes (a test above compares the dark blocks).
+  for (const name of [
+    'ink',
+    'ink-muted',
+    'ink-line',
+    'on-ink',
+    'shade',
+    'shade-strong',
+    'shade-phone',
+  ]) {
+    assert.match(tokens, new RegExp(`--ls-hero-${name}:`));
+  }
+});

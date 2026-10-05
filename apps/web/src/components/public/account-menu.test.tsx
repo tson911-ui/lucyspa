@@ -16,36 +16,9 @@ const labels = (signedIn: boolean, locale: 'vi' | 'en') =>
 
 test('signed out the menu offers sign-in and registration, signed in the member pages and sign-out', () => {
   assert.deepEqual(labels(false, 'vi'), ['Đăng nhập', 'Đăng ký']);
-  assert.deepEqual(labels(true, 'vi'), [
-    'Lịch hẹn',
-    'Hóa đơn',
-    'Điểm thưởng',
-    'Thông báo',
-    'Đăng xuất',
-  ]);
+  assert.deepEqual(labels(true, 'vi'), ['Tài khoản của tôi', 'Điểm thưởng', 'Đăng xuất']);
   assert.deepEqual(labels(false, 'en'), ['Sign in', 'Create account']);
-  assert.deepEqual(labels(true, 'en'), [
-    'Bookings',
-    'Invoices',
-    'Rewards',
-    'Notifications',
-    'Sign out',
-  ]);
-});
-
-test('unread notifications show beside "Thông báo" in the menu', () => {
-  const labelOf = (unread: number) =>
-    accountMenuItems({
-      signedIn: true,
-      base: '/vi/account',
-      text: getSiteText('vi').member,
-      go: () => undefined,
-      signOut: () => undefined,
-      unread,
-    }).find((item) => item.id === 'notifications')?.label;
-  assert.equal(labelOf(0), 'Thông báo');
-  assert.equal(labelOf(3), 'Thông báo (3)');
-  assert.equal(labelOf(250), 'Thông báo (99+)');
+  assert.deepEqual(labels(true, 'en'), ['My account', 'Rewards', 'Sign out']);
 });
 
 test('choosing an entry goes to its member page; sign-out is the only entry that signs out', () => {
@@ -59,12 +32,7 @@ test('choosing an entry goes to its member page; sign-out is the only entry that
     signOut: () => (signedOut += 1),
   });
   for (const item of items) item.onSelect?.();
-  assert.deepEqual(went, [
-    '/vi/account/bookings',
-    '/vi/account/invoices',
-    '/vi/account/loyalty',
-    '/vi/account/notifications',
-  ]);
+  assert.deepEqual(went, ['/vi/account', '/vi/account/loyalty']);
   assert.equal(signedOut, 1);
 });
 
@@ -76,5 +44,5 @@ test('before the session is known the header shows one named account button and 
   );
   assert.match(html, /aria-label="Tài khoản của tôi"/);
   assert.match(html, /aria-haspopup="menu"/);
-  assert.doesNotMatch(html, /Lịch hẹn|Đăng xuất|notification-badge/);
+  assert.doesNotMatch(html, /Điểm thưởng|Đăng xuất|notification-badge/);
 });

@@ -179,6 +179,21 @@ test('home: the hero shows the chosen picture when there is no slide, else a bra
   assert.match(home(full), /ls-brand-panel/);
 });
 
+test('home: the hero is one full-bleed section (stage, headline, two actions); no slide leaves the foot without extra room', () => {
+  const html = home(full);
+  assert.match(
+    html,
+    /<section class="ls-hero-full" aria-labelledby="home-title" data-foot="none">/,
+  );
+  assert.match(html, /class="ls-hero-stage"/);
+  assert.match(html, /class="ls-container ls-hero-content"/);
+  // The two actions are the hero's own: booking first, then the services list.
+  assert.match(html, /ls-hero-actions[\s\S]*account\/book[\s\S]*\/vi\/services/);
+  // The old split layout (copy beside a rounded card) is gone.
+  assert.doesNotMatch(html, /ls-hero-grid/);
+  assert.equal(html.match(/<h1[ >]/g)?.length, 1);
+});
+
 test('footer: the contact column comes from the shop profile and is absent without it', () => {
   const html = renderToStaticMarkup(<PublicFooter locale="vi" site={site} year={2026} />);
   assert.match(html, /Liên hệ/);

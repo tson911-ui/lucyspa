@@ -2,18 +2,20 @@
 
 import {
   buttonClass,
+  SiteHeader,
   SiteNav,
-  SiteSubNav,
   TabBar,
   ThemeCycle,
   type SiteLinkComponent,
 } from '@lucy-spa/ui';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { getSiteText } from '../../i18n/site';
 import type { Locale } from '../../i18n/locales';
-import { accountTabItems, headerNavItems, otherLocalePath, tabBarItems } from '../../lib/site-nav';
+import { headerNavItems, otherLocalePath, tabBarItems } from '../../lib/site-nav';
 import { PublicAccountMenu } from './account-menu';
+import { NotificationBell } from './notification-bell';
 import { useSiteSession } from './site-session';
 
 // The parts of the site chrome that depend on the current page (current menu entry, the other language's URL).
@@ -27,6 +29,28 @@ const PrefetchLink: SiteLinkComponent = ({ children, ...rest }) => (
     {children}
   </Link>
 );
+
+/**
+ * The site header. The home page is the one page that starts with a full-bleed hero, so there (and only there) the
+ * bar floats over it; `overlay` forces it either way (the admin's season preview). The path is known on the server
+ * too, so the first paint already has the right bar.
+ */
+export function PublicSiteHeader({
+  locale,
+  overlay,
+  ...slots
+}: {
+  locale: Locale;
+  overlay?: boolean | undefined;
+  brand: ReactNode;
+  nav: ReactNode;
+  tools: ReactNode;
+  cta: ReactNode;
+}) {
+  const pathname = usePathname();
+  const onHome = (pathname ?? '').replace(/\/+$/, '') === `/${locale}`;
+  return <SiteHeader {...slots} overlay={overlay ?? onHome} />;
+}
 
 /** The menu: Trang chủ and Dịch vụ for everyone, Lịch hẹn and Hóa đơn once a member is signed in. */
 export function PublicNav({ locale }: { locale: Locale }) {
@@ -55,13 +79,14 @@ export function PublicTabBar({ locale }: { locale: Locale }) {
   );
 }
 
-/** Language, theme and account: round 44 px tools (40 px on a fine pointer). */
+/** Notifications (members), language, theme and account: round 44 px tools (40 px on a fine pointer). */
 export function PublicTools({ locale }: { locale: Locale }) {
   const text = getSiteText(locale);
   const pathname = usePathname();
   const other = locale === 'vi' ? 'en' : 'vi';
   return (
     <>
+      <NotificationBell locale={locale} />
       <Link
         className="ls-site-tool"
         href={otherLocalePath(pathname, locale)}
@@ -74,19 +99,6 @@ export function PublicTools({ locale }: { locale: Locale }) {
       <ThemeCycle labels={text.header.theme} />
       <PublicAccountMenu locale={locale} />
     </>
-  );
-}
-
-/** The row of the member area (overview, bookings, invoices, notifications), under the header. */
-export function AccountTabs({ locale }: { locale: Locale }) {
-  const text = getSiteText(locale);
-  const pathname = usePathname();
-  return (
-    <SiteSubNav
-      label={text.member.tabs}
-      items={accountTabItems(locale, pathname, text.member)}
-      LinkComponent={PrefetchLink}
-    />
   );
 }
 

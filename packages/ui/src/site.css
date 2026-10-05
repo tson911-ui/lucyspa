@@ -209,6 +209,24 @@
   margin-inline-start: auto;
 }
 
+/* A 360 px phone with a member signed in holds the logo and four 44 px tools (bell, language, theme, account) between
+   its gutters: the gaps narrow so the last tool ends on the gutter. */
+@media (max-width: 479px) {
+  .ls-site-header-row {
+    gap: var(--ls-space-2);
+  }
+
+  .ls-site-tools {
+    gap: var(--ls-space-1);
+  }
+
+  /* A seasonal accent that hangs off the end of the wordmark would sit on the bell here, so it is left out for a member
+     (the Christmas hat sits on the first letter and stays). */
+  .ls-site-header:has(.ls-site-bell) .ls-art-logo:not([data-kit='christmas']) .ls-art-logo-art {
+    display: none;
+  }
+}
+
 .ls-site-cta {
   display: none;
 }
@@ -254,6 +272,107 @@
   .ls-site-cta {
     display: block;
   }
+}
+
+/* ---------- header over the hero (home page only: `data-overlay`) ---------- */
+/* The bar leaves the flow (its own height is pulled back out) so the hero starts at the very top, and it stays sticky.
+   Until the page has scrolled about 60 px it is transparent with light text; then it eases into the normal solid bar:
+   background, colours and a light shadow. Without the attribute nothing here applies. Under reduced motion the
+   transition durations are 0, so it just switches. */
+.ls-site-sentinel[data-overlay='true'] {
+  height: calc(var(--ls-space-9) + var(--ls-space-3));
+}
+
+.ls-site-header[data-overlay='true'] {
+  margin-block-end: calc(var(--ls-site-header-h) * -1);
+  border-width: 0;
+  transition:
+    background-color var(--ls-dur-base) var(--ls-ease-out),
+    box-shadow var(--ls-dur-base) var(--ls-ease-out);
+}
+
+/* The hairline of the solid bar is a shadow (a border would add to the bar's height, which is pulled out exactly). */
+.ls-site-header[data-overlay='true'][data-scrolled='true'] {
+  box-shadow:
+    0 1px 0 var(--ls-border),
+    var(--ls-shadow-sm);
+}
+
+.ls-site-header[data-overlay='true']:not([data-scrolled='true']) {
+  background: transparent;
+}
+
+.ls-site-header[data-overlay='true']
+  :is(.ls-site-brand a, .ls-site-nav a, .ls-theme-cycle, .ls-site-tool),
+.ls-site-header[data-overlay='true'] .ls-site-bell > .ls-tooltip-wrap > .ls-btn,
+.ls-site-header[data-overlay='true'] .ls-site-account .ls-menu > .ls-tooltip-wrap > .ls-btn,
+.ls-site-header[data-overlay='true'] .ls-site-cta .ls-btn {
+  transition:
+    background-color var(--ls-dur-base) var(--ls-ease-out),
+    border-color var(--ls-dur-base) var(--ls-ease-out),
+    color var(--ls-dur-base) var(--ls-ease-out);
+}
+
+/* A device that asked for less motion (reduced motion, data saver) gets the switch without the ease. */
+html[data-ls-motion='reduced'] .ls-site-header[data-overlay='true'],
+html[data-ls-motion='reduced'] .ls-site-header[data-overlay='true'] * {
+  transition: none;
+}
+
+/* Transparent state: the logo, the menu, the tools and the account buttons are light; the entry that is current keeps
+   its pale pill and brand text, and every hover keeps the site's solid fill. */
+.ls-site-header[data-overlay='true']:not([data-scrolled='true']) .ls-site-brand a,
+.ls-site-header[data-overlay='true']:not([data-scrolled='true'])
+  .ls-site-nav
+  a:not([aria-current='page']):not(:hover) {
+  color: var(--ls-hero-ink);
+}
+
+.ls-site-header[data-overlay='true']:not([data-scrolled='true']) .ls-theme-cycle:not(:hover),
+.ls-site-header[data-overlay='true']:not([data-scrolled='true']) .ls-site-tool:not(:hover),
+.ls-site-header[data-overlay='true']:not([data-scrolled='true'])
+  .ls-site-bell
+  > .ls-tooltip-wrap
+  > .ls-btn:not(:hover),
+.ls-site-header[data-overlay='true']:not([data-scrolled='true'])
+  .ls-site-account
+  .ls-menu
+  > .ls-tooltip-wrap
+  > .ls-btn:not(:hover) {
+  border-color: var(--ls-hero-ink-line);
+  color: var(--ls-hero-ink);
+  background: transparent;
+}
+
+/* "Đặt lịch ngay" stays the clear call to action: a light button with brand text on the picture, the brand fill after. */
+.ls-site-header[data-overlay='true']:not([data-scrolled='true'])
+  .ls-site-cta
+  .ls-btn-primary:not(:hover) {
+  border-color: var(--ls-hero-ink);
+  color: var(--ls-hero-on-ink);
+  background: var(--ls-hero-ink);
+}
+
+.ls-site-header[data-overlay='true']:not([data-scrolled='true'])
+  .ls-site-cta
+  .ls-btn-primary:hover {
+  border-color: var(--ls-hero-ink);
+}
+
+.ls-site-header[data-overlay='true']:not([data-scrolled='true']) :is(a, button):focus-visible {
+  outline-color: var(--ls-hero-ink);
+}
+
+/* A menu or panel opened from the bar is an ordinary surface: its focus ring is the normal one again. */
+.ls-site-header[data-overlay='true'] .ls-popover :is(a, button):focus-visible {
+  outline-color: var(--ls-focus);
+}
+
+/* The season's greeting strip and the first divider come before the bar on the home page, so the bar floats over the
+   hero and not over them (the order of the elements in the page is otherwise unchanged). */
+.site-shell:has(> .ls-site-header[data-overlay='true'])
+  > :is(.ls-art-divider:not(:last-child), .ls-art-strip, .ls-art-strip-bare) {
+  order: -1;
 }
 
 /* ---------- phone tab bar ---------- */
@@ -341,21 +460,53 @@
   line-height: var(--ls-lh-body);
 }
 
-/* ---------- hero ---------- */
-.ls-hero {
-  padding-block: var(--ls-band-pad);
+/* ---------- hero (home): full-bleed, from the very top of the page ---------- */
+/* The header floats over the top of the hero (see "header over the hero" below), so the content clears it. The stage is
+   the picture (the slider, the Shop info picture or the brand panel) and fills the hero; its scrim (the shades below)
+   sits on the picture, under the caption and the controls, so the light text is readable on any picture. */
+.ls-hero-full {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  min-height: var(--ls-hero-min);
+  background: var(--ls-auth-panel-to);
+  color: var(--ls-hero-ink);
 }
 
-.ls-hero-grid {
-  display: grid;
-  gap: var(--ls-space-7);
-  align-items: center;
+.ls-hero-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.ls-hero-content {
+  position: relative;
+  padding-block: calc(var(--ls-site-header-h) + var(--ls-space-6)) var(--ls-space-9);
+}
+
+/* Room for the slide's caption and the slider's controls at the foot, so the headline never meets them. */
+.ls-hero-full[data-foot='caption'] .ls-hero-content {
+  padding-block-end: calc(var(--ls-space-7) + var(--ls-hero-foot-caption));
+}
+
+.ls-hero-full[data-foot='controls'] .ls-hero-content {
+  padding-block-end: calc(var(--ls-space-7) + var(--ls-hero-foot-controls));
 }
 
 .ls-hero-copy {
   display: grid;
   gap: var(--ls-space-4);
   justify-items: start;
+  max-width: 36rem;
+}
+
+.ls-hero-full .ls-site-display {
+  color: var(--ls-hero-ink);
+}
+
+.ls-hero-full .ls-lead {
+  color: var(--ls-hero-ink-muted);
 }
 
 .ls-hero-actions {
@@ -364,31 +515,206 @@
   gap: var(--ls-space-3);
 }
 
-@media (min-width: 1024px) {
-  .ls-hero-grid {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-    gap: var(--ls-space-9);
+/* On the picture the primary action is the light button with the brand text (the brand fill would sink into the
+   shade) and the secondary one is an outline; both turn into the site's hover fill, with a light ring so it shows. */
+.ls-hero-full .ls-btn-primary {
+  border-color: var(--ls-hero-ink);
+  color: var(--ls-hero-on-ink);
+  background: var(--ls-hero-ink);
+}
+
+.ls-hero-full .ls-btn-secondary {
+  border-color: var(--ls-hero-ink-line);
+  color: var(--ls-hero-ink);
+  background: transparent;
+}
+
+.ls-hero-full .ls-btn-primary:hover:not([aria-disabled='true']):not(:disabled),
+.ls-hero-full .ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled) {
+  border-color: var(--ls-hero-ink);
+  color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
+}
+
+.ls-hero-full a:focus-visible,
+.ls-hero-full button:focus-visible {
+  outline-color: var(--ls-hero-ink);
+}
+
+/* The scrim of the picture: a shade over the whole picture, stronger under the header, at the foot and (from tablet width)
+   behind the headline at the start side. A phone's headline spans the width, so there the shade is even. Light text on
+   a white picture stays above 4.5:1 (tokens.css gives the arithmetic). */
+.ls-hero-stage .ls-slider-media::after,
+.ls-hero-stage .ls-photo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, var(--ls-hero-shade-strong), transparent 35%),
+    linear-gradient(to top, var(--ls-hero-shade-strong), transparent 30%),
+    linear-gradient(var(--ls-hero-shade-phone), var(--ls-hero-shade-phone)),
+    linear-gradient(var(--ls-hero-shade), var(--ls-hero-shade));
+}
+
+@media (min-width: 768px) {
+  .ls-hero-stage .ls-slider-media::after,
+  .ls-hero-stage .ls-photo::after {
+    background:
+      linear-gradient(to bottom, var(--ls-hero-shade-strong), transparent 35%),
+      linear-gradient(to top, var(--ls-hero-shade-strong), transparent 30%),
+      linear-gradient(
+        to right,
+        var(--ls-hero-shade-strong) 0%,
+        var(--ls-hero-shade-strong) 40%,
+        transparent 90%
+      ),
+      linear-gradient(var(--ls-hero-shade), var(--ls-hero-shade));
   }
 }
 
-/* Hero fallback when there is no slide and no hero image: a brand panel in the slider's frame (same aspect ratio,
-   so a slider arriving after the first paint does not move the page). */
+/* The Shop info picture fills the stage. */
+.ls-hero-stage .ls-photo {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.ls-hero-stage .ls-hero-image {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+/* Hero fallback when there is no slide and no hero image: a brand panel (never a made-up photo). The mark sits at the end
+   side where the headline is not, and only where there is room for it. */
 .ls-brand-panel {
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
-  aspect-ratio: 16 / 10;
-  border-radius: var(--ls-radius-lg);
   background: linear-gradient(135deg, var(--ls-auth-panel-from), var(--ls-auth-panel-to));
-  color: var(--ls-auth-panel-text);
+  color: var(--ls-auth-panel-text-muted);
 }
 
 .ls-brand-panel-mark {
+  display: none;
   font-size: var(--ls-type-section);
   line-height: var(--ls-lh-section);
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+@media (min-width: 1024px) {
+  .ls-brand-panel {
+    justify-items: end;
+    padding-inline: calc(var(--ls-gutter) * 4);
+  }
+
+  .ls-brand-panel-mark {
+    display: block;
+  }
+}
+
+/* The slider fills the stage: the picture is the background, the caption sits at the foot at the container's start edge
+   and the controls at its trailing edge (a phone stacks them). Slides, dots and buttons read on the shade. */
+.ls-site .ls-slider-cover {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.ls-site .ls-slider-cover .ls-slider-viewport {
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: var(--ls-auth-panel-to);
+}
+
+.ls-slider-cover .ls-slider-track {
+  height: 100%;
+}
+
+.ls-slider-cover .ls-slider-slide {
+  position: relative;
+}
+
+.ls-site .ls-slider-cover .ls-slider-media {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+}
+
+.ls-slider-cover .ls-slider-caption,
+.ls-slider-cover .ls-slider-controls {
+  position: absolute;
+  inset-inline: 0;
+  width: 100%;
+  max-width: var(--ls-site-max);
+  margin-inline: auto;
+  padding-inline: var(--ls-gutter);
+}
+
+.ls-slider-cover .ls-slider-caption {
+  inset-block-end: 0;
+  padding-block: 0 calc(var(--ls-control-h) + var(--ls-space-4) * 2);
+}
+
+.ls-slider-cover .ls-slider-caption > * {
+  max-width: 36rem;
+}
+
+.ls-slider-cover .ls-slider-title {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--ls-hero-ink);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.ls-slider-cover .ls-slider-text {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--ls-hero-ink-muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.ls-slider-cover .ls-slider-controls {
+  inset-block-end: var(--ls-space-4);
+  justify-content: flex-start;
+}
+
+.ls-slider-cover .ls-slider-dots {
+  justify-content: flex-start;
+}
+
+.ls-slider-cover .ls-btn-ghost:not(:hover) {
+  color: var(--ls-hero-ink);
+}
+
+.ls-site .ls-slider-cover .ls-slider-dot::before {
+  border-color: var(--ls-hero-ink-line);
+  background: transparent;
+}
+
+.ls-site .ls-slider-cover .ls-slider-dot[aria-current='true']::before {
+  border-color: var(--ls-hero-ink);
+  background: var(--ls-hero-ink);
+}
+
+@media (min-width: 768px) {
+  .ls-slider-cover .ls-slider-controls {
+    justify-content: flex-end;
+  }
+
+  .ls-slider-cover .ls-slider-dots {
+    justify-content: flex-end;
+  }
 }
 
 /* ---------- cards and lists ---------- */
@@ -1380,6 +1706,12 @@
   color: var(--ls-hover-text);
 }
 
+/* A button inside the bell's panel is not a tool of the bar: no ring, and its row's tint shows. */
+.ls-bell-panel .ls-btn-icon:not(:hover) {
+  border-color: transparent;
+  background: transparent;
+}
+
 /* The header sits at the very top of the screen: its tooltips open below the button (above would be clipped), and the
    account menu's own panel replaces the tooltip while it is open. */
 .ls-site-header .ls-tooltip {
@@ -1391,10 +1723,99 @@
   display: none;
 }
 
-/* The account button carries the unread count as a badge (the count itself is styled by shell.css, `.ls-bell-count`). */
-.ls-site-account {
+/* The bell carries the unread count as a badge (the count itself is styled by shell.css, `.ls-bell-count`). */
+.ls-site-account,
+.ls-site-bell {
   position: relative;
   display: inline-flex;
+}
+
+/* The bell's panel: a popover (the shared layer scale) with the latest notifications. Rows have no border: an unread one
+   is tinted, a read one is plain, and the row's mark-read button sits at its trailing edge. */
+.ls-bell-panel {
+  display: flex;
+  flex-direction: column;
+  width: 22rem;
+  padding: var(--ls-space-2);
+  overflow: hidden;
+}
+
+.ls-bell-title {
+  margin: 0;
+  padding: var(--ls-space-2) var(--ls-space-3);
+  font-size: var(--ls-text-sm);
+  font-weight: 600;
+}
+
+.ls-bell-note {
+  margin: 0;
+  padding: var(--ls-space-3);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+}
+
+/* Only the list scrolls; the title above it and "Xem tất cả" below it always stay in view. */
+.ls-bell-list {
+  display: grid;
+  flex: 1 1 auto;
+  gap: var(--ls-space-1);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.ls-bell-item {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-1);
+  border-radius: var(--ls-radius-sm);
+}
+
+.ls-bell-item[data-unread] {
+  background: var(--ls-brand-soft);
+}
+
+.ls-bell-body {
+  display: grid;
+  flex: 1;
+  gap: var(--ls-space-1);
+  min-width: 0;
+  min-height: var(--ls-control-h);
+  padding: var(--ls-space-2) var(--ls-space-3);
+  border-radius: var(--ls-radius-sm);
+  color: var(--ls-text);
+  font-size: var(--ls-text-sm);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+a.ls-bell-body:hover,
+a.ls-bell-body:focus-visible {
+  color: var(--ls-hover-text);
+  background: var(--ls-hover-bg);
+}
+
+.ls-bell-item[data-unread] .ls-bell-text {
+  font-weight: 600;
+}
+
+.ls-bell-time {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-xs);
+}
+
+a.ls-bell-body:hover .ls-bell-time,
+a.ls-bell-body:focus-visible .ls-bell-time {
+  color: inherit;
+}
+
+.ls-bell-foot {
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
+  padding-top: var(--ls-space-2);
 }
 
 /* The phone tab bar waits for the session (a member has two more tabs than a visitor), hidden rather than reshuffled,

@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { getSiteText } from '../i18n/site';
 import {
-  accountTabItems,
   SITE_NAV,
   currentNavKey,
   footerDiscoverItems,
@@ -100,26 +99,6 @@ test('the language link keeps the rest of the path', () => {
   assert.equal(otherLocalePath('/vi/account/book', 'vi'), '/en/account/book');
   assert.equal(otherLocalePath('/en/services', 'en'), '/vi/services');
   assert.equal(otherLocalePath('/vietnam', 'vi'), '/vietnam');
-});
-
-test('the member row marks the overview only on its own page and the others with their sub-pages', () => {
-  const text = getSiteText('vi').member;
-  const current = (path: string) =>
-    accountTabItems('vi', path, text)
-      .filter((item) => item.current)
-      .map((item) => item.key);
-  assert.deepEqual(current('/vi/account'), ['overview']);
-  assert.deepEqual(current('/vi/account/'), ['overview']);
-  assert.deepEqual(current('/vi/account/bookings'), ['bookings']);
-  assert.deepEqual(current('/vi/account/bookings/abc'), ['bookings']);
-  assert.deepEqual(current('/vi/account/invoices/x'), ['invoices']);
-  assert.deepEqual(current('/vi/account/loyalty'), ['rewards']);
-  assert.deepEqual(current('/vi/account/notifications'), ['notifications']);
-  assert.deepEqual(current('/vi/account/book'), []);
-  assert.deepEqual(
-    accountTabItems('en', '/en/account', getSiteText('en').member).map((item) => item.label),
-    ['Overview', 'Bookings', 'Invoices', 'Rewards', 'Notifications'],
-  );
 });
 
 test('every menu label exists in both languages', () => {

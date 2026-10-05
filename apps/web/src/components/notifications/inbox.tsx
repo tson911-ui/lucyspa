@@ -39,7 +39,8 @@ import {
 } from '../../lib/notifications';
 import { Badge, Empty, Notice, PageHeader } from '../workforce/ui';
 
-const CHANGED = 'lucy-notifications-changed';
+/** Announced on the window whenever a notification changes, so every unread count reads again. */
+export const CHANGED = 'lucy-notifications-changed';
 const REFRESH_MS = 30_000;
 
 type NotificationTexts = ReturnType<typeof getNotificationDictionary>;
@@ -166,7 +167,7 @@ export function notificationMenu(
   ];
 }
 
-function timestampParts(item: NotificationItem, locale: Locale) {
+export function timestampParts(item: NotificationItem, locale: Locale) {
   // A person-level notification (leave) has no branch; use the viewer's own time zone.
   const zone = item.branch ? { timeZone: item.branch.timezone } : {};
   const tag = locale === 'vi' ? 'vi-VN' : 'en-GB';

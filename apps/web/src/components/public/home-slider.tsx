@@ -23,11 +23,14 @@ export function HomeSlider({
   locale,
   slides,
   fallback = null,
+  className,
 }: {
   locale: Locale;
   slides: readonly PublicSlide[];
   /** Drawn when there is no slide to show. */
   fallback?: ReactNode;
+  /** A frame class of the page (the full-bleed hero fills its stage with the slider). */
+  className?: string;
 }) {
   const text = getDictionary(locale);
   const items = useMemo(() => sliderSlidesOf([...slides]), [slides]);
@@ -41,5 +44,12 @@ export function HomeSlider({
     goTo: text.sliderGoTo,
   };
   if (items.length === 0) return fallback;
-  return <Slider slides={items} labels={labels} LinkComponent={RouterLink} />;
+  return (
+    <Slider
+      slides={items}
+      labels={labels}
+      LinkComponent={RouterLink}
+      {...(className ? { className } : {})}
+    />
+  );
 }

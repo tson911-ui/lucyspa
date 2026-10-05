@@ -213,7 +213,7 @@ export function CustomerHomeScreen() {
   return (
     <Page>
       <PageHeader
-        title={fill(t.home.title, { name: account.displayName })}
+        title={t.home.title}
         description={t.home.intro}
         actions={
           <Link href={`${base}/book`} className={buttonClass('primary')}>

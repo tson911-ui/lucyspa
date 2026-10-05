@@ -15,21 +15,15 @@ export interface SiteText {
     /** The booking tab of the phone bar (the one booking call to action). */
     bookNow: string;
   };
-  /** The account menu in the header and the row under it in the member area. */
+  /** The account menu in the header: sign-in and registration, or the account page, rewards and sign-out. */
   member: {
     signIn: string;
     register: string;
     signOut: string;
-    overview: string;
-    bookings: string;
-    invoices: string;
+    /** The account overview page. */
+    account: string;
     /** Phase 5 P5-10: points, combos, referrals and gifts. */
     rewards: string;
-    notifications: string;
-    /** Accessible name of the member-area row. */
-    tabs: string;
-    /** With {count}: the unread notifications, in the account button's name. */
-    unread: string;
   };
   header: {
     brand: string;
@@ -37,6 +31,15 @@ export interface SiteText {
     switchLanguage: string;
     account: string;
     bookNow: string;
+    /** The notification bell and its panel (the list's own wording is in the notifications dictionary). */
+    bell: {
+      /** The bell button and the panel's name. */
+      label: string;
+      /** With {count}: the button's name when something is unread. */
+      unread: string;
+      /** The link to the full notifications page. */
+      viewAll: string;
+    };
     theme: { group: string; light: string; dark: string; auto: string; switchTo: string };
   };
   footer: {
@@ -125,13 +128,8 @@ const text = {
       signIn: 'Đăng nhập',
       register: 'Đăng ký',
       signOut: 'Đăng xuất',
-      overview: 'Tổng quan',
-      bookings: 'Lịch hẹn',
-      invoices: 'Hóa đơn',
+      account: 'Tài khoản của tôi',
       rewards: 'Điểm thưởng',
-      notifications: 'Thông báo',
-      tabs: 'Khu vực thành viên',
-      unread: '{count} chưa đọc',
     },
     header: {
       brand: 'Lucy Spa, về trang chủ',
@@ -139,6 +137,7 @@ const text = {
       switchLanguage: 'English',
       account: 'Tài khoản của tôi',
       bookNow: 'Đặt lịch ngay',
+      bell: { label: 'Thông báo', unread: '{count} chưa đọc', viewAll: 'Xem tất cả' },
       theme: {
         group: 'Giao diện',
         light: 'Sáng',
@@ -218,13 +217,8 @@ const text = {
       signIn: 'Sign in',
       register: 'Create account',
       signOut: 'Sign out',
-      overview: 'Overview',
-      bookings: 'Bookings',
-      invoices: 'Invoices',
+      account: 'My account',
       rewards: 'Rewards',
-      notifications: 'Notifications',
-      tabs: 'Member area',
-      unread: '{count} unread',
     },
     header: {
       brand: 'Lucy Spa, back to the home page',
@@ -232,6 +226,7 @@ const text = {
       switchLanguage: 'Tiếng Việt',
       account: 'My account',
       bookNow: 'Book now',
+      bell: { label: 'Notifications', unread: '{count} unread', viewAll: 'View all' },
       theme: {
         group: 'Appearance',
         light: 'Light',

@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import type { CurrentAccountResponse } from '@lucy-spa/contracts';
 import { ApiClient } from '../../lib/api/client';
 import { loadCustomerSession } from '../../lib/customer/auth';
 import { SITE_SESSION_CHANGED } from '../../lib/site-session';
@@ -21,6 +22,8 @@ import { SITE_SESSION_CHANGED } from '../../lib/site-session';
 interface SiteSession {
   /** A customer (member) session is open. A staff session has no member pages, so it counts as not signed in. */
   signedIn: boolean;
+  /** The member's own account while signed in (the bell needs it to link a notification), else null. */
+  account: CurrentAccountResponse | null;
   api: ApiClient;
   /** For a sign-out that has just completed, before the next read confirms it. */
   markSignedOut: () => void;
@@ -29,6 +32,7 @@ interface SiteSession {
 // Without a provider (the admin's season preview draws the header too) the visitor is simply not signed in.
 const fallback: SiteSession = {
   signedIn: false,
+  account: null,
   api: new ApiClient(),
   markSignedOut: () => undefined,
 };
@@ -38,7 +42,8 @@ export const useSiteSession = (): SiteSession => useContext(Context);
 
 export function SiteSessionProvider({ children }: { children: ReactNode }) {
   const api = useMemo(() => new ApiClient(), []);
-  const [signedIn, setSignedIn] = useState(false);
+  const [account, setAccount] = useState<CurrentAccountResponse | null>(null);
+  const signedIn = account !== null;
 
   const refresh = useCallback(() => {
     let active = true;
@@ -48,12 +53,12 @@ export function SiteSessionProvider({ children }: { children: ReactNode }) {
     };
     loadCustomerSession(api)
       .then((session) => {
-        if (active) setSignedIn(session.kind === 'customer');
+        if (active) setAccount(session.kind === 'customer' ? session.account : null);
         known();
       })
       // A failed read keeps the signed-out menus: sign-in is always reachable.
       .catch(() => {
-        if (active) setSignedIn(false);
+        if (active) setAccount(null);
         known();
       });
     return () => {
@@ -76,8 +81,8 @@ export function SiteSessionProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo<SiteSession>(
-    () => ({ signedIn, api, markSignedOut: () => setSignedIn(false) }),
-    [signedIn, api],
+    () => ({ signedIn, account, api, markSignedOut: () => setAccount(null) }),
+    [signedIn, account, api],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   asPublicSlides,
+  heroFoot,
   loadPublicSlides,
   MAX_VISIBLE_SLIDES,
   publicSlidesUrl,
@@ -144,4 +145,18 @@ test('loading never blocks the page: any failure means no slides, requests carry
     [],
   );
   assert.deepEqual(await loadPublicSlides(() => Promise.reject(new Error('offline')), 'vi'), []);
+});
+
+test('the foot of a full-bleed hero keeps room for a caption, else for the controls of several slides, else for nothing', () => {
+  const plain = (n: number) => asPublicSlides({ items: [slide(n, { title: null })] })[0]!;
+  const captioned = (n: number, patch: Record<string, unknown>) =>
+    asPublicSlides({ items: [slide(n, { title: null, ...patch })] })[0]!;
+  assert.equal(heroFoot([]), 'none');
+  assert.equal(heroFoot([plain(1)]), 'none');
+  assert.equal(heroFoot([plain(1), plain(2)]), 'controls');
+  assert.equal(heroFoot([captioned(1, { title: 'Ưu đãi' })]), 'caption');
+  assert.equal(heroFoot([plain(1), captioned(2, { subtitle: 'Giảm 20%' })]), 'caption');
+  // A link needs both its label and its address to be shown.
+  assert.equal(heroFoot([captioned(1, { linkLabel: 'Xem', linkUrl: '/vi' })]), 'caption');
+  assert.equal(heroFoot([captioned(1, { linkLabel: 'Xem' })]), 'none');
 });

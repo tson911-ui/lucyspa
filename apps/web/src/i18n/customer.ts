@@ -79,10 +79,9 @@ const vi = {
     hidePassword: 'Ẩn mật khẩu',
   },
   home: {
-    title: 'Xin chào, {name}',
+    title: 'Tài khoản của tôi',
     intro: 'Quản lý lịch hẹn của bạn tại Lucy Spa.',
     bookCta: 'Đặt lịch mới',
-    bookingsCta: 'Xem lịch hẹn',
     upcoming: 'Lịch hẹn sắp tới',
     none: 'Bạn chưa có lịch hẹn sắp tới.',
     profile: 'Thông tin tài khoản',
@@ -350,10 +349,9 @@ const en: CustomerDictionaryShape = {
     hidePassword: 'Hide password',
   },
   home: {
-    title: 'Hello, {name}',
+    title: 'My account',
     intro: 'Manage your appointments at Lucy Spa.',
     bookCta: 'Book an appointment',
-    bookingsCta: 'See my bookings',
     upcoming: 'Upcoming appointments',
     none: 'You have no upcoming appointments.',
     profile: 'Account details',
