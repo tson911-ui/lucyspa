@@ -267,7 +267,6 @@ export function LoyaltyRewards() {
           {!live ? <Notice tone="info">{r.notLive}</Notice> : null}
           <ListSection
             title={fill(d.list.title, { name: member.displayName })}
-            count={list.data?.total}
             actions={
               list.data?.canIssue ? (
                 <Button

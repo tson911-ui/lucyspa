@@ -266,7 +266,7 @@ export function PosScreen() {
       />
       {message ? <Notice tone="error">{message}</Notice> : null}
       {loadError ? <Notice tone="error">{posErrorMessage(loadError, t)}</Notice> : null}
-      <ListSection title={t.pos.awaitingTitle} count={board?.awaiting.length}>
+      <ListSection title={t.pos.awaitingTitle}>
         <DataTable
           mode="client"
           caption={fill(t.common.list.table, { list: t.pos.awaitingTitle })}
@@ -284,7 +284,7 @@ export function PosScreen() {
           }}
         />
       </ListSection>
-      <ListSection title={t.pos.invoicesTitle} count={board?.invoices.length}>
+      <ListSection title={t.pos.invoicesTitle}>
         <DataTable
           mode="client"
           caption={fill(t.common.list.table, { list: t.pos.invoicesTitle })}

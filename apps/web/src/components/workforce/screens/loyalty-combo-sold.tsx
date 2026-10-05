@@ -268,7 +268,7 @@ export function LoyaltyComboSold({
           </Card>
         </Grid>
       ) : null}
-      <ListSection title={s.title} count={list.data?.total}>
+      <ListSection title={s.title}>
         <ListToolbar
           labels={toolbarLabels(t)}
           activeFilters={status ? 1 : 0}
@@ -331,7 +331,7 @@ export function ProfileCombos({ branchId, userId }: { branchId: string; userId: 
   );
   const rows = list.data?.items ?? [];
   return (
-    <ListSection title={s.profile.combosTitle} count={list.data?.total}>
+    <ListSection title={s.profile.combosTitle}>
       <DataTable
         mode="server"
         caption={fill(t.common.list.table, { list: s.profile.combosTitle })}
@@ -410,7 +410,7 @@ export function ProfileGifts({ branchId, userId }: { branchId: string; userId: s
     },
   ];
   return (
-    <ListSection title={s.profile.giftsTitle} count={list.data?.total}>
+    <ListSection title={s.profile.giftsTitle}>
       <DataTable
         mode="server"
         caption={fill(t.common.list.table, { list: s.profile.giftsTitle })}

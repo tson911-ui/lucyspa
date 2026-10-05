@@ -462,7 +462,7 @@ function BranchAssignments({
         />
       </ListSection>
       {history.length > 0 ? (
-        <ListSection title={t.employees.history} count={history.length}>
+        <ListSection title={t.employees.history}>
           <DataTable
             mode="client"
             caption={t.employees.history}

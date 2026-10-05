@@ -210,7 +210,7 @@ function PagedSection<T extends { id: string }>({
   const total = useRef(0);
   if (list.data) total.current = list.data.total;
   return (
-    <ListSection title={title} count={list.data?.total}>
+    <ListSection title={title}>
       {hint ? <p className="ls-hint">{hint}</p> : null}
       <DataTable
         mode="server"

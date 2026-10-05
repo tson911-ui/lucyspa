@@ -97,7 +97,7 @@ export function LoyaltyExceptions({
     },
   ];
   return (
-    <ListSection title={x.title} count={list.data?.total}>
+    <ListSection title={x.title}>
       <p className="ls-hint">{x.intro}</p>
       <DataTable
         mode="server"

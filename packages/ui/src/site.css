@@ -1449,13 +1449,6 @@
   line-height: var(--ls-lh-card);
 }
 
-/* The count next to a section title is a small supporting number: the sans face, not the title's serif, whose
-   old-style figures make a small "0" read as the letter "o". */
-.ls-site .ls-list-section-count {
-  font-family: var(--ls-font-sans);
-  font-size: var(--ls-type-small);
-}
-
 .ls-site .ls-page-description {
   font-size: var(--ls-type-body);
   line-height: var(--ls-lh-body);

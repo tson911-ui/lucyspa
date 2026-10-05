@@ -2953,12 +2953,6 @@
   font-weight: 600;
 }
 
-.ls-list-section-count {
-  color: var(--ls-text-muted);
-  font-size: var(--ls-text-sm);
-  font-weight: 400;
-}
-
 /* Filter chips */
 .ls-chips {
   display: flex;

@@ -577,7 +577,7 @@ function Availability({
   ];
 
   return (
-    <ListSection title={t.services.availability} count={rows.length}>
+    <ListSection title={t.services.availability}>
       {submit.error ? <ErrorState error={submit.error} t={t} /> : null}
       <DataTable
         mode="client"

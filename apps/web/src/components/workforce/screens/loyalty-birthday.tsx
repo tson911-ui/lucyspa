@@ -171,7 +171,7 @@ export function LoyaltyBirthday() {
         </Card>
       )}
       {configured ? (
-        <ListSection title={b.history.title} count={versions.length}>
+        <ListSection title={b.history.title}>
           <DataTable
             mode="client"
             caption={fill(t.common.list.table, { list: b.history.title })}

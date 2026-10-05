@@ -154,7 +154,7 @@ export function LoyaltyComboUsage({
 
   return (
     <>
-      <ListSection title={x.title} count={list.data?.total}>
+      <ListSection title={x.title}>
         <p className="ls-hint">{x.intro}</p>
         <DataTable
           mode="server"
@@ -276,7 +276,7 @@ export function FrozenCombos() {
     },
   ];
   return (
-    <ListSection title={f.title} count={list.data ? rows.length : undefined}>
+    <ListSection title={f.title}>
       <p className="ls-hint">{f.intro}</p>
       <DataTable
         mode="client"

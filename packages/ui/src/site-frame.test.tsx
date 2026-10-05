@@ -967,12 +967,12 @@ test('service cards: five shared rows, a name that stops at two lines and a titl
   );
 });
 
-test('phones: per-nail booking rows put the price under the name; the section count is sans, not old-style serif', () => {
+test('phones: per-nail booking rows put the price under the name; a section title carries no count', () => {
   assert.match(
     css,
     /@media \(max-width: 479px\) \{\s*\.ls-choice:has\(> \.ls-choice-extra\) \.ls-choice-price \{\s*grid-column: 2 \/ -1;\s*grid-row: 2;/,
   );
-  assert.match(css, /\.ls-site \.ls-list-section-count \{\s*font-family: var\(--ls-font-sans\);/);
+  assert.doesNotMatch(css, /ls-list-section-count/);
 });
 
 test('public form fields are pills like the buttons; a multi-line field keeps a soft rectangle', () => {

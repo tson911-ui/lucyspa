@@ -46,6 +46,8 @@ Owner reviews every Step. Work only on the Step you are given.
   - Any list that can exceed 20 rows is `DataTable` + `Pagination` (20/page); no raw `<table>`; one row height; numeric columns nowrap.
   - Create/edit: short form = Dialog, medium = Drawer, long = its own page. Never `<details>`, inline expanding cards or native `fieldset`.
   - A heading never repeats the label of its own control; no horizontal page scroll; toolbar controls have no labels above.
+  - Headings are text only: no decorative number, count, badge or symbol next to a heading (a small count reads as a stray
+    "o" or a degree sign). Counts live in the table's "Hiển thị x–y trong n" line and in empty-state messages. (Owner rule, 2026-10-05)
   - No new `wf-*` class, no px/rem spacing literal, no hex color. `apps/web/src/test/ui-ratchet.test.ts` pins these counters (only down).
 - Radix primitives are allowed as headless behavior inside `packages/ui` only, when the kit lacks the behavior (plan section 1.1); no Tailwind.
 - Before reporting a UI Step done: render only the screens changed in that Step at 360, 768 and 1440 px

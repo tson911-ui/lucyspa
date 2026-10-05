@@ -274,14 +274,14 @@ export function CustomerBookingsScreen() {
       />
       {list.data ? (
         <>
-          <ListSection title={t.bookings.upcoming} count={list.data.upcoming.length}>
+          <ListSection title={t.bookings.upcoming}>
             <BookingsTable
               items={list.data.upcoming}
               listName={t.bookings.upcoming}
               empty={<Empty>{t.bookings.emptyUpcoming}</Empty>}
             />
           </ListSection>
-          <ListSection title={t.bookings.history} count={list.data.history.length}>
+          <ListSection title={t.bookings.history}>
             <BookingsTable
               items={list.data.history}
               listName={t.bookings.history}

@@ -49,14 +49,12 @@ export function activeRows(visits: readonly OperationalActiveVisit[]): ActiveRow
 
 /** Today's bookings: the arrival, no-show and priority decisions are in the row menu. */
 export function BookingsSection({
-  board,
   bookings,
   loading,
   empty,
   time,
   onCommand,
 }: {
-  board: OperationalTodayResponse | null;
   bookings: OperationalBooking[];
   loading: boolean;
   empty: string | null;
@@ -201,7 +199,7 @@ export function BookingsSection({
     },
   ];
   return (
-    <ListSection title={b.bookings} count={board?.bookings.length}>
+    <ListSection title={b.bookings}>
       <DataTable
         mode="client"
         caption={fill(t.common.list.table, { list: b.bookings })}
@@ -344,7 +342,7 @@ export function ActiveSection({
   ];
   const rows = activeRows(board?.activeVisits ?? []);
   return (
-    <ListSection title={b.active} count={board?.activeVisits.length}>
+    <ListSection title={b.active}>
       <DataTable
         mode="client"
         caption={fill(t.common.list.table, { list: b.active })}
@@ -507,7 +505,7 @@ export function PoolSection({
     },
   ];
   return (
-    <ListSection title={b.pool} count={board?.waitingPool.length}>
+    <ListSection title={b.pool}>
       <DataTable
         mode="client"
         caption={fill(t.common.list.table, { list: b.pool })}
@@ -539,7 +537,7 @@ export function QueueSection({
   const { t } = useWorkforce();
   const b = t.bookingBoard;
   return (
-    <ListSection title={b.queue} count={board?.queue.length}>
+    <ListSection title={b.queue}>
       {board && board.queue.length === 0 ? <Empty>{b.queueEmpty}</Empty> : null}
       {board && board.queue.length > 0 ? (
         <Grid min="md">

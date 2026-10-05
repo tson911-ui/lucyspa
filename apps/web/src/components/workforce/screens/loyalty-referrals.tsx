@@ -146,7 +146,7 @@ export function LoyaltyReferrals({
   if (branches.data && allowed.length === 0) return <Empty>{r.list.noBranch}</Empty>;
   return (
     <>
-      <ListSection title={r.list.title} count={list.data?.total}>
+      <ListSection title={r.list.title}>
         <p className="ls-hint">{r.intro}</p>
         <ListToolbar
           labels={toolbarLabels(t)}

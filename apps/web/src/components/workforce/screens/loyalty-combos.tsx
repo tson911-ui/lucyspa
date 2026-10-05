@@ -140,7 +140,6 @@ export function LoyaltyCombos() {
       ) : (
         <ListSection
           title={c.list.title}
-          count={combos.length}
           actions={
             <Button variant="primary" icon="plus" onClick={() => setEditing(null)}>
               {c.list.add}

@@ -239,7 +239,7 @@ export function SkillsView({
           />
         </ListSection>
         {held && held.history.length > 0 ? (
-          <ListSection title={texts.history} count={held.history.length}>
+          <ListSection title={texts.history}>
             <DataTable
               mode="client"
               caption={texts.history}

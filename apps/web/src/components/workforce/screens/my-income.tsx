@@ -201,7 +201,7 @@ export function MyIncomeView({
             </ListSection>
           ) : null}
           {items.length > 0 ? (
-            <ListSection title={texts.details} count={items.length}>
+            <ListSection title={texts.details}>
               <DataTable
                 mode="client"
                 caption={fill(t.common.list.table, { list: texts.details })}

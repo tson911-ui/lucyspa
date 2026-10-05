@@ -285,7 +285,6 @@ export function BookingBoardScreen() {
       {loadError ? <Notice tone="error">{boardErrorMessage(loadError, t)}</Notice> : null}
 
       <BookingsSection
-        board={board}
         bookings={visible}
         loading={loading}
         empty={

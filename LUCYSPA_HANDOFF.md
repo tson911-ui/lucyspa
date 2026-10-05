@@ -490,3 +490,7 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 ### Fix: menus behind the sticky table header - 2026-10-05
 
 - Cause: the top bar (sticky, z 10) is one stacking context holding the account menu, tied with the sticky table header (z 10), which came later and won. New `--ls-z-chrome: 20` for top bar, site header, sidebar, bottom bars; scale now sticky 10 < chrome 20 < popover 30 < drawer 40 < dialog 50 < toast 60 (`docs/UXUI_FIX_OVERLAY_LAYERS.md`, design 6.6). No migration. Not yet deployed; the commit to deploy is recorded by the Owner after CI.
+
+### Fix: no count next to section headings - 2026-10-05
+
+- Owner decision: `ListSection` has no `count` (text-only headings everywhere, rule added to CLAUDE.md); pagination "Hiển thị x–y trong n" and empty states stay (`docs/UXUI_FIX_HEADING_COUNTS.md`). Not deployed; deploy one commit covering this and the menu layer fix `bee3785` once CI is green.

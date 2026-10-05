@@ -25,18 +25,17 @@ export function Page({
 
 /**
  * A titled block of a page that is not a card, typically one list (the table is its own surface).
- * `h2`, 16 px between the heading and its content; `count` reads after the title ("Managers 3"). `actions` is the
- * action of this list only (for example "Assign role"), at the trailing edge of the title row.
+ * `h2`, 16 px between the heading and its content. The title is text only: no count, badge or symbol after it (the
+ * table's own "Showing 1-4 of 4" line carries the number). `actions` is the action of this list only (for example
+ * "Assign role"), at the trailing edge of the title row.
  */
 export function ListSection({
   title,
-  count,
   headingId,
   actions,
   children,
 }: {
   title: string;
-  count?: number | undefined;
   /** Optional id of the heading, used as the section's accessible name. */
   headingId?: string | undefined;
   actions?: ReactNode | undefined;
@@ -47,7 +46,6 @@ export function ListSection({
       <div className="ls-list-section-head">
         <h2 className="ls-list-section-title" id={headingId}>
           {title}
-          {count !== undefined ? <span className="ls-list-section-count">{count}</span> : null}
         </h2>
         {actions ? <div className="ls-list-section-actions">{actions}</div> : null}
       </div>

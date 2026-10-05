@@ -113,7 +113,6 @@ test('check-in is a button on the row only when the API offers it; the other dec
     }) as unknown as OperationalBooking;
   const html = render(
     <BookingsSection
-      board={null}
       loading={false}
       empty={null}
       time={(iso) => iso.slice(11, 16)}

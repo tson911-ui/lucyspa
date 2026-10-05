@@ -354,7 +354,7 @@ function Versions({ program }: { program: DiscountDetailResponse }) {
     },
   ];
   return (
-    <ListSection title={d.history} count={program.versions.length}>
+    <ListSection title={d.history}>
       <DataTable
         mode="client"
         caption={fill(t.common.list.table, { list: d.history })}
@@ -437,7 +437,6 @@ function Vouchers({
   return (
     <ListSection
       title={d.vouchersTitle}
-      count={program.vouchers.length}
       actions={
         editable ? (
           <Button variant="secondary" icon="plus" onClick={onAdd}>

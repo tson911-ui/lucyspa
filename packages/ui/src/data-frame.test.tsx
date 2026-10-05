@@ -362,14 +362,16 @@ test('FacetedFilter multiple: checkboxes toggle and the panel stays open; severa
 
 test('ListSection: a heading and its content, 16 px apart, not a card', () => {
   const markup = html(
-    <ListSection title="Quản lý" count={3} headingId="mgr">
+    <ListSection title="Quản lý" headingId="mgr">
       <p>bảng</p>
     </ListSection>,
   );
   assert.match(
     markup,
-    /<section class="ls-list-section" aria-labelledby="mgr"><div class="ls-list-section-head"><h2 [^>]*id="mgr">Quản lý<span [^>]*>3<\/span><\/h2><\/div><p>bảng<\/p>/,
+    /<section class="ls-list-section" aria-labelledby="mgr"><div class="ls-list-section-head"><h2 [^>]*id="mgr">Quản lý<\/h2><\/div><p>bảng<\/p>/,
   );
+  // The title is text only: a section takes no count (Owner rule 2026-10-05).
+  assert.doesNotMatch(markup, /<span/);
   assert.doesNotMatch(markup, /ls-card/);
   assert.match(css, /\.ls-list-section\s*\{[^}]*gap:\s*var\(--ls-space-4\)/s);
   // The action of this list only sits at the trailing edge of the title row.

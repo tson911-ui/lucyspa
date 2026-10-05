@@ -120,7 +120,7 @@ export function LoyaltyRewardCatalog() {
           <Empty>{c.emptyBody}</Empty>
         </Card>
       ) : (
-        <ListSection title={c.title} count={items.length} actions={add}>
+        <ListSection title={c.title} actions={add}>
           <DataTable
             mode="client"
             caption={fill(t.common.list.table, { list: c.title })}

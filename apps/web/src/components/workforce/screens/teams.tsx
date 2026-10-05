@@ -669,7 +669,7 @@ function TeamMembers({ team, reload }: { team: TeamSummary; reload: () => Promis
   const [tab, setTab] = useState<'members' | 'add'>('members');
   if (!team.canManage) {
     return (
-      <ListSection title={text.members} count={team.memberCount}>
+      <ListSection title={text.members}>
         <MemberList team={team} reload={reload} mode="view" />
       </ListSection>
     );
