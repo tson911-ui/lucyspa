@@ -28,7 +28,7 @@ import {
 import { useRef, useState } from 'react';
 import { fill } from '../../../i18n/customer';
 import { customerLoyaltyDictionary } from '../../../i18n/customer-loyalty';
-import { loyaltyDictionary } from '../../../i18n/loyalty';
+import { loyaltyDictionary, loyaltyWalletInline } from '../../../i18n/loyalty';
 import { getWorkforceDictionary } from '../../../i18n/workforce';
 import {
   comboTone,
@@ -96,7 +96,10 @@ export function CustomerLoyaltyScreen() {
   );
 }
 
-/** One wallet: points, tier and the distance to the next tier; the Member Discount belongs to the Spa wallet. */
+/**
+ * One wallet: points, tier, the distance to the next tier and the Member Discount row; both cards carry the same rows. The
+ * Beauty row is a notice until Phase 6 (products) gives it a real tier % (design 15).
+ */
 function WalletCard({ wallet }: { wallet: LoyaltyWalletResponse }) {
   const { locale } = useCustomer();
   const text = customerLoyaltyDictionary(locale);
@@ -120,19 +123,19 @@ function WalletCard({ wallet }: { wallet: LoyaltyWalletResponse }) {
             : text.points.topTier
         }
       />
-      {wallet.wallet === 'SPA' ? (
-        <DescriptionList
-          items={[
-            {
-              label: text.points.memberDiscount,
-              value:
-                wallet.memberDiscountBp > 0
+      <DescriptionList
+        items={[
+          {
+            label: text.points.memberDiscount,
+            value:
+              wallet.wallet === 'BEAUTY'
+                ? text.points.beautyDiscountPending
+                : wallet.memberDiscountBp > 0
                   ? `${wallet.memberDiscountBp / 100}%`
                   : text.points.noDiscount,
-            },
-          ]}
-        />
-      ) : null}
+          },
+        ]}
+      />
     </Card>
   );
 }
@@ -382,6 +385,7 @@ function ComboUsesSection() {
 function ReferralsSection() {
   const { locale } = useCustomer();
   const text = customerLoyaltyDictionary(locale);
+  const walletInline = loyaltyWalletInline(locale);
   const columns: DataTableColumn<CustomerReferralItemResponse>[] = [
     {
       key: 'who',
@@ -406,7 +410,11 @@ function ReferralsSection() {
   return (
     <PagedSection<CustomerReferralItemResponse>
       title={text.referrals.title}
-      hint={fill(text.referrals.hint, { n: REFERRAL_AWARD_POINTS })}
+      hint={fill(text.referrals.hint, {
+        n: REFERRAL_AWARD_POINTS,
+        spa: walletInline.SPA,
+        beauty: walletInline.BEAUTY,
+      })}
       path="/api/v1/me/loyalty/referrals"
       columns={columns}
       empty={text.referrals.empty}

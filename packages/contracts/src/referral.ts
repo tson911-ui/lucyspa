@@ -1,6 +1,6 @@
 /**
  * Phase 5 P5-5: referral (design `PHASE5_LOYALTY_COMBOS_DESIGN.md` section 7 and the Owner decisions of 2026-10-04 in 2.5).
- * A customer has at most one referrer (an existing member, by exact phone). The reward is fixed: +10 Spa and +10 Beauty points to the
+ * A customer has at most one referrer (an existing member, by exact phone). The reward is fixed: +10 Lucy Spa and +10 Lucy Beauty points to the
  * referrer, once, when the new customer's FIRST completed visit is paid with real money. Only the Owner may change a referrer, and only
  * before the reward; every change is kept in history.
  */

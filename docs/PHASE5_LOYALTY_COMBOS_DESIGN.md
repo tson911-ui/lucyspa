@@ -623,6 +623,11 @@ push**, and no other notification is created for any Phase 5 event. Shortfall fl
 - **Staff customer profile** (`VIEW_LOYALTY` at the branch): `GET /api/v1/loyalty/branches/:branchId/customers/:userId/combos` (every state, same rows) and `/gifts` (status, units left, expiry; never the grant reason or staff names), 20 per page, read only.
 - One SQL statement decides the state of every combo in scope, so the filter, the count and the totals cannot disagree. Nothing is written.
 
+### 15.3 Wallet names and the Beauty card (Owner instruction, 2026-10-05)
+
+- **Names:** "Điểm Spa" → **"Điểm Lucy Spa"**, "Điểm Beauty" → **"Điểm Lucy Beauty"** (EN "Lucy Spa points" / "Lucy Beauty points"). They are written once in `apps/web/src/i18n/loyalty.ts` (`wallets` for labels, `loyaltyWalletInline` for sentences); the customer page, admin profile, ledger, adjustment form, exceptions and the referral wording ("+10 điểm Lucy Spa và +10 điểm Lucy Beauty") all read them.
+- **Beauty card:** carries the same "Ưu đãi hội viên" row as the Spa card so both look the same. Until Phase 6 (products) its value is "Áp dụng khi Lucy Beauty mở bán" / "Applies when Lucy Beauty opens", with no %. **Phase 6 must replace this text with the real Beauty tier % (key `points.beautyDiscountPending` in `customer-loyalty.ts`).** This replaces the "Spa card only" rule of 15.1.
+
 ## 16. Execution sequence (restored by the Owner, 2026-10-04)
 
 | Step  | Content                                                                                            |

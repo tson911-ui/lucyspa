@@ -19,6 +19,8 @@ const vi = {
   points: {
     memberDiscount: 'Ưu đãi hội viên',
     noDiscount: 'Chưa có',
+    // Lucy Beauty sells no products yet: no % is promised. Phase 6 (products) must replace this with the real tier % (design 15).
+    beautyDiscountPending: 'Áp dụng khi Lucy Beauty mở bán',
     tier: 'Hạng',
     balance: 'Số điểm',
     toGo: 'Còn {n} điểm để lên hạng {tier}',
@@ -89,7 +91,7 @@ const vi = {
   },
   referrals: {
     title: 'Người tôi đã giới thiệu',
-    hint: 'Bạn nhận +{n} điểm Spa và +{n} điểm Beauty khi người được giới thiệu hoàn tất lượt làm dịch vụ đầu tiên và đã thanh toán bằng tiền.',
+    hint: 'Bạn nhận +{n} {spa} và +{n} {beauty} khi người được giới thiệu hoàn tất lượt làm dịch vụ đầu tiên và đã thanh toán bằng tiền.',
     empty: 'Bạn chưa giới thiệu ai.',
     columns: { who: 'Người được giới thiệu', date: 'Ngày ghi nhận', status: 'Trạng thái' },
     status: {
@@ -134,6 +136,7 @@ const en: Dictionary = {
   points: {
     memberDiscount: 'Member discount',
     noDiscount: 'None yet',
+    beautyDiscountPending: 'Applies when Lucy Beauty opens',
     tier: 'Tier',
     balance: 'Points',
     toGo: '{n} points to reach {tier}',
@@ -198,7 +201,7 @@ const en: Dictionary = {
   },
   referrals: {
     title: 'People I referred',
-    hint: 'You receive +{n} Spa points and +{n} Beauty points when the person you referred completes their first service and has paid with money.',
+    hint: 'You receive +{n} {spa} and +{n} {beauty} when the person you referred completes their first service and has paid with money.',
     empty: 'You have not referred anyone yet.',
     columns: { who: 'Referred person', date: 'Recorded on', status: 'Status' },
     status: {

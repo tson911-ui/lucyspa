@@ -23,10 +23,23 @@ const tierLabels = (none: string): Record<LoyaltyTierName, string> => {
   return labels as Record<LoyaltyTierName, string>;
 };
 
+// The wallet names are written once, here (Owner, 2026-10-05): the labels, the sentences below and the customer page all read them.
+// `walletNames` is the label; `walletInline` is the same name inside a sentence (Vietnamese keeps the capital only at a sentence start).
+const walletNames: Record<Locale, Record<LoyaltyWalletName, string>> = {
+  vi: { SPA: 'Điểm Lucy Spa', BEAUTY: 'Điểm Lucy Beauty' },
+  en: { SPA: 'Lucy Spa points', BEAUTY: 'Lucy Beauty points' },
+};
+const walletInline: Record<Locale, Record<LoyaltyWalletName, string>> = {
+  vi: { SPA: 'điểm Lucy Spa', BEAUTY: 'điểm Lucy Beauty' },
+  en: walletNames.en,
+};
+/** The wallet names for use inside a sentence ("+10 điểm Lucy Spa và +10 điểm Lucy Beauty"). */
+export const loyaltyWalletInline = (locale: Locale): Record<LoyaltyWalletName, string> =>
+  walletInline[locale];
+
 const vi = {
   title: 'Điểm thưởng',
-  intro:
-    'Tra cứu điểm Spa và điểm Beauty của khách, xem lịch sử điểm và điều chỉnh có lý do. Điểm không hết hạn và không dùng để trừ tiền.',
+  intro: `Tra cứu ${walletInline.vi.SPA} và ${walletInline.vi.BEAUTY} của khách, xem lịch sử điểm và điều chỉnh có lý do. Điểm không hết hạn và không dùng để trừ tiền.`,
   tabsLabel: 'Các mục điểm thưởng',
   tabs: {
     customers: 'Khách hàng',
@@ -67,7 +80,7 @@ const vi = {
     wallet: 'Ví điểm',
     walletsLabel: 'Ví điểm',
   },
-  wallets: { SPA: 'Điểm Spa', BEAUTY: 'Điểm Beauty' } satisfies Record<LoyaltyWalletName, string>,
+  wallets: walletNames.vi,
   tiers: tierLabels('Chưa có hạng'),
   kinds: {
     EARN: 'Tích điểm từ hóa đơn',
@@ -153,15 +166,14 @@ const vi = {
         'Cùng mức giảm với khuyến mãi; chọn giảm giá hội viên để khách giữ khuyến mãi hoặc mã.',
     },
     ineligible: {
-      NO_TIER: 'Chưa đủ 500 điểm Spa.',
+      NO_TIER: `Chưa đủ 500 ${walletInline.vi.SPA}.`,
       NO_ELIGIBLE_LINES: 'Hóa đơn chưa có dịch vụ đã định giá.',
     },
   },
   // Referral (Phase 5 P5-5): the referrer on a customer, the list, the counter binding and the Owner's correction.
   referral: {
     title: 'Giới thiệu',
-    intro:
-      'Mỗi khách có tối đa một người giới thiệu. Người giới thiệu nhận 10 điểm Spa và 10 điểm Beauty một lần, khi khách mới thanh toán bằng tiền cho lượt làm dịch vụ đầu tiên.',
+    intro: `Mỗi khách có tối đa một người giới thiệu. Người giới thiệu nhận 10 ${walletInline.vi.SPA} và 10 ${walletInline.vi.BEAUTY} một lần, khi khách mới thanh toán bằng tiền cho lượt làm dịch vụ đầu tiên.`,
     status: { PENDING: 'Chờ thưởng', REWARDED: 'Đã thưởng' },
     via: { SIGNUP: 'Khách tự nhập khi đăng ký', COUNTER: 'Nhân viên ghi tại quầy' },
     list: {
@@ -248,8 +260,7 @@ type Dictionary = typeof vi;
 
 const en: Dictionary = {
   title: 'Loyalty points',
-  intro:
-    "Look up a customer's Spa and Beauty points, see the points history and adjust it with a reason. Points never expire and never reduce a bill.",
+  intro: `Look up a customer's ${walletInline.en.SPA} and ${walletInline.en.BEAUTY}, see the points history and adjust it with a reason. Points never expire and never reduce a bill.`,
   tabsLabel: 'Loyalty sections',
   tabs: {
     customers: 'Customers',
@@ -290,7 +301,7 @@ const en: Dictionary = {
     wallet: 'Points wallet',
     walletsLabel: 'Points wallet',
   },
-  wallets: { SPA: 'Spa points', BEAUTY: 'Beauty points' },
+  wallets: walletNames.en,
   tiers: tierLabels('No tier yet'),
   kinds: {
     EARN: 'Earned from an invoice',
@@ -377,15 +388,14 @@ const en: Dictionary = {
         'Same saving as the promotion; the member discount was chosen so the customer keeps the promotion or code.',
     },
     ineligible: {
-      NO_TIER: 'Under 500 Spa points.',
+      NO_TIER: `Under 500 ${walletInline.en.SPA}.`,
       NO_ELIGIBLE_LINES: 'The invoice has no priced service yet.',
     },
   },
   // Referral (Phase 5 P5-5): the referrer on a customer, the list, the counter binding and the Owner's correction.
   referral: {
     title: 'Referrals',
-    intro:
-      'Each customer has at most one referrer. The referrer receives 10 Spa points and 10 Beauty points once, when the new customer pays their first visit with money.',
+    intro: `Each customer has at most one referrer. The referrer receives 10 ${walletInline.en.SPA} and 10 ${walletInline.en.BEAUTY} once, when the new customer pays their first visit with money.`,
     status: { PENDING: 'Waiting for reward', REWARDED: 'Rewarded' },
     via: {
       SIGNUP: 'Entered by the customer at signup',

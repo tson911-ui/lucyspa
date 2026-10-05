@@ -30,7 +30,9 @@ export class CustomerLoyaltyController {
   ) {}
 
   @Get()
-  @ApiOkResponse({ description: 'Spa and Beauty points, tier, Member Discount and the next tier.' })
+  @ApiOkResponse({
+    description: 'Lucy Spa and Lucy Beauty points, tier, Member Discount and the next tier.',
+  })
   summary(@Req() request: Request): Promise<CustomerLoyaltySummaryResponse> {
     return this.loyalty.summary(this.session(request));
   }

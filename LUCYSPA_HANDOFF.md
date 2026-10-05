@@ -117,6 +117,11 @@ Step 11 (`docs/PHASE4_FINAL_VALIDATION.md`): full gate on scratch DB `lucy_spa_s
 Fixed only gate-side defects (stale OpenAPI assertion in `scripts/smoke.mjs`, prettier drift). No migration, no product change (deployed later, see Production).
 Report has the deployment checklist (10 pending migrations, PayOS env, webhook URL, `db:permissions:sync`, PER_NAIL limits). Step 11 and Phase 4 CLOSED / OWNER APPROVED; scratch DB dropped.
 
+## Wallet names (2026-10-05, after the `d11be14` deploy; not deployed)
+
+- Owner instruction: the wallets are "Điểm Lucy Spa" / "Điểm Lucy Beauty" (EN "Lucy Spa points" / "Lucy Beauty points") everywhere, from one place (`apps/web/src/i18n/loyalty.ts`).
+- Customer Beauty card has the same "Ưu đãi hội viên" row: "Áp dụng khi Lucy Beauty mở bán" until Phase 6, which must replace it with the real tier % (design 15.3). Report: `docs/PHASE5_WALLET_NAMES.md`. No migration.
+
 ## Production
 
 Status as of 2026-10-05, about 21:31 (+07) (Owner-reported; supersedes the blocks below):

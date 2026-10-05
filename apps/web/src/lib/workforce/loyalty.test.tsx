@@ -229,6 +229,26 @@ test('every loyalty text exists in both languages', () => {
   }
 });
 
+test('the wallets are named Lucy Spa and Lucy Beauty everywhere, from one place (Owner, 2026-10-05)', () => {
+  assert.deepEqual(loyaltyDictionary('vi').wallets, {
+    SPA: 'Điểm Lucy Spa',
+    BEAUTY: 'Điểm Lucy Beauty',
+  });
+  assert.deepEqual(loyaltyDictionary('en').wallets, {
+    SPA: 'Lucy Spa points',
+    BEAUTY: 'Lucy Beauty points',
+  });
+  const referral = loyaltyDictionary('vi').referral.intro;
+  assert.ok(referral.includes('10 điểm Lucy Spa và 10 điểm Lucy Beauty'));
+  assert.ok(
+    loyaltyDictionary('en').referral.intro.includes('10 Lucy Spa points and 10 Lucy Beauty points'),
+  );
+  for (const locale of ['vi', 'en'] as const) {
+    const text = JSON.stringify(loyaltyDictionary(locale));
+    assert.ok(!/(?<!Lucy )\b(Spa|Beauty) points|[Đđ]iểm (Spa|Beauty)/.test(text));
+  }
+});
+
 test('the screens paint a loading state first and never a legacy table', () => {
   for (const node of [<LoyaltyScreen key="a" />, <LoyaltyCustomerScreen key="b" userId="u1" />]) {
     const markup = render(node, owner);
