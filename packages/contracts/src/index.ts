@@ -2154,6 +2154,8 @@ export * from './referral.js';
 export * from './birthday.js';
 // Phase 5 P5-7: combos (definitions, the counter sale and its invoice line).
 export * from './combo.js';
+// Phase 5 P5-9: the gift / benefit catalog framework (definitions, issuing, marking used, revoking).
+export * from './reward.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;

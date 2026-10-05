@@ -15,6 +15,7 @@ import {
 import { useMemo, useState } from 'react';
 import { comboDictionary } from '../../../i18n/combo';
 import { loyaltyDictionary } from '../../../i18n/loyalty';
+import { rewardDictionary } from '../../../i18n/reward';
 import { fill } from '../../../i18n/workforce';
 import { loyaltyBranches, loyaltyErrorMessage, loyaltyTabs } from '../../../lib/workforce/loyalty';
 import {
@@ -32,6 +33,8 @@ import { LoyaltyExceptions } from './loyalty-exceptions';
 import { LoyaltyBirthday } from './loyalty-birthday';
 import { LoyaltyGoLive } from './loyalty-go-live';
 import { LoyaltyReferrals } from './loyalty-referrals';
+import { LoyaltyRewardCatalog } from './loyalty-rewards-catalog';
+import { LoyaltyRewards } from './loyalty-rewards';
 
 type Member = WalkInMemberLookupResponse['members'][number];
 
@@ -58,6 +61,8 @@ export function LoyaltyScreen() {
     !shown.exceptions &&
     !shown.combos &&
     !shown.comboUsage &&
+    !shown.rewardDesk &&
+    !shown.rewardCatalog &&
     !shown.birthday &&
     !shown.goLive
   ) {
@@ -105,6 +110,18 @@ export function LoyaltyScreen() {
       label: comboDictionary(locale).usage.tab,
       show: shown.comboUsage,
       panel: <LoyaltyComboUsage page={state.page} onPage={(page) => update({ page })} />,
+    },
+    {
+      id: 'rewardDesk',
+      label: rewardDictionary(locale).tabs.desk,
+      show: shown.rewardDesk,
+      panel: <LoyaltyRewards />,
+    },
+    {
+      id: 'rewardCatalog',
+      label: rewardDictionary(locale).tabs.catalog,
+      show: shown.rewardCatalog,
+      panel: <LoyaltyRewardCatalog />,
     },
     {
       id: 'birthday',

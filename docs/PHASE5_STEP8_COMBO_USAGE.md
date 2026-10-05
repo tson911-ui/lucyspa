@@ -1,6 +1,6 @@
 # Phase 5 P5-8: Combo usage
 
-Status: built and validated on scratch databases; **not deployed, loyalty stays OFF**; awaits Owner review. Contract: `PHASE5_LOYALTY_COMBOS_DESIGN.md` sections 9.4, 9.5 and 9.7 (as built). P5-7 was approved by the Owner on 2026-10-05 (design 2.5).
+Status: **APPROVED by the Owner, in the Owner's own words, 2026-10-05** (design 2.5); not deployed, loyalty stays OFF. Contract: `PHASE5_LOYALTY_COMBOS_DESIGN.md` sections 9.4, 9.5 and 9.7 (as built).
 
 ## What changed
 
@@ -11,9 +11,9 @@ Status: built and validated on scratch databases; **not deployed, loyalty stays 
 - **Frozen combos** (Exceptions tab): sale reversed after use. Usable only while the sale invoice is PAID in its episode, so the freeze is immediate. Re-pay **reopens the same combo** (`combo_purchase_reopenings`); unused combos are still revoked (P5-7).
 - The 0đ line is exempt from the price-range check **only through the immutable marker row**; every other line keeps the range rule.
 
-## Owner answers (question tool, 2026-10-05, PROVISIONAL until confirmed in own words)
+## Owner decisions (own words, 2026-10-05, locked)
 
-PAID sessions first; reversal after use allowed, used sessions stay, unused frozen and flagged; any branch; 0đ line exempt from the range, one session = quantity 1; re-pay reopens the old combo. OQ-9 is **not** marked answered.
+PAID sessions first, BONUS last; reversal after use allowed (used sessions keep history, unused frozen, Owner told through Exceptions); any branch; one session = one 0đ line, quantity 1, exempt from the price range; re-pay reopens the same frozen combo; restoring a session returns only the session (invoice and money untouched, no money-correction step); tour counting for PAID sessions is decided in Phase 7. OQ-9 is answered.
 
 ## Migration (additive)
 
@@ -35,5 +35,4 @@ Rendered 360/768/1440 light and 1440 dark (all widths in both themes): empty/pla
 
 ## Open questions
 
-- Restoring a use does not change the 0đ line of the invoice (the service was still done): is a money correction wanted?
-- PAID sessions count for tour in Phase 7 (only BONUS is excluded by the Owner).
+None. Both earlier questions are closed by the Owner: restoring changes no money (no correction step), and tour for PAID sessions is a Phase 7 decision.

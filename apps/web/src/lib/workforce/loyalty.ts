@@ -13,6 +13,7 @@ import type { Locale } from '../../i18n/locales';
 import type { WorkforceDictionary } from '../../i18n/workforce';
 import { ApiError } from './api';
 import { canAt, canGlobal } from './permissions';
+import { rewardBranches } from './reward';
 import { errorMessage } from './workflows';
 
 /** Branches where this account may look customers' points up (the API decides again on every call). */
@@ -35,6 +36,8 @@ export function loyaltyTabs(
   exceptions: boolean;
   combos: boolean;
   comboUsage: boolean;
+  rewardDesk: boolean;
+  rewardCatalog: boolean;
   birthday: boolean;
   goLive: boolean;
 } {
@@ -49,6 +52,9 @@ export function loyaltyTabs(
     // The combo usage history is for those who define or restore combos (Phase 5 P5-8).
     comboUsage: canGlobal(account, 'RESTORE_COMBO_SESSIONS') || canGlobal(account, 'MANAGE_COMBOS'),
     // The birthday gift setup is the Owner's alone (Phase 5 P5-6).
+    // Granting and using rewards follows ISSUE_REWARDS at a branch; the catalog is the global MANAGE_REWARD_CATALOG (Phase 5 P5-9).
+    rewardDesk: rewardBranches(account, branches).length > 0,
+    rewardCatalog: canGlobal(account, 'MANAGE_REWARD_CATALOG'),
     birthday: canGlobal(account, 'MANAGE_BIRTHDAY_REWARDS'),
     goLive: canGlobal(account, 'ACTIVATE_LOYALTY'),
   };

@@ -12,6 +12,8 @@ export const LOYALTY_TAB_IDS = [
   'exceptions',
   'combos',
   'comboUsage',
+  'rewardDesk',
+  'rewardCatalog',
   'birthday',
   'goLive',
 ] as const;

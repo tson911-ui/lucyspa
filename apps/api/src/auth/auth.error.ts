@@ -121,6 +121,13 @@ const errors = {
     'A combo session pays one unit of the service: set the quantity to 1 first',
   ],
   COMBO_USE_NOT_RESTORABLE: [409, 'This use was already restored or released'],
+  // Phase 5 P5-9: the gift / benefit catalog.
+  REWARD_SERVICE_INVALID: [409, 'A free-service reward needs an active service'],
+  REWARD_ITEM_INACTIVE: [409, 'This reward is not available to grant'],
+  REWARD_NOT_USABLE: [409, 'This reward was revoked or has expired'],
+  REWARD_NOTHING_LEFT: [409, 'This reward has no unit left'],
+  REWARD_ALREADY_VOIDED: [409, 'This reward was already revoked'],
+  REWARD_USE_NOT_RESTORABLE: [409, 'This use was already restored, or its reward was revoked'],
 } as const;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */

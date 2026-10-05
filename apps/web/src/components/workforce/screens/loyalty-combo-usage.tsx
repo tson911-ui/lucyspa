@@ -227,7 +227,7 @@ export function LoyaltyComboUsage({
 }
 
 /**
- * The Owner's list of frozen combos (Phase 5 P5-8, provisional Owner answer): the payment for the purchase was reversed after
+ * The Owner's list of frozen combos (Phase 5 P5-8, Owner-approved): the payment for the purchase was reversed after
  * some sessions were used, so the unused sessions wait until the sale is paid again. Read-only; nobody is notified.
  */
 export function FrozenCombos() {

@@ -20,7 +20,7 @@ import { normalizeReason } from '../operations/service-execution.service.js';
  * - A mistaken use is corrected by an authorized manager (`RESTORE_COMBO_SESSIONS`: GLOBAL_ONLY, FINANCIAL, fresh
  *   re-authentication) with a reason, as ONE offset entry (`combo_session_restorations`, unique per use). The use stays as
  *   history; the session becomes free again; the 0 VND line of the invoice is not touched.
- * - Frozen combos (Owner answer of 2026-10-05, provisional): a combo whose sale was reversed while sessions were used keeps its
+ * - Frozen combos (Owner decision of 2026-10-05, approved in own words): a combo whose sale was reversed while sessions were used keeps its
  *   used sessions as history and cannot be used again until the sale is paid again. `VIEW_LOYALTY_EXCEPTIONS` (Owner-level)
  *   lists them; no notification is sent (P5-Q9).
  */

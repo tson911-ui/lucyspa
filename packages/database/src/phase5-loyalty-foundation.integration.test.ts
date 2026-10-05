@@ -2696,6 +2696,31 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
                   }),
                 /cannot be removed or rewritten/,
               );
+              // P5-9: a unit marked used by hand and a unit redeemed on an invoice draw from the SAME quantity; a restoration
+              // of a manual use frees its unit again (the use itself stays as history).
+              const mixed = await issue();
+              const mixedInvoice = await unpaidInvoice(wide, owner);
+              await redeem(mixed.id, mixedInvoice.lines[0]!.id);
+              await settle();
+              const markUsed = () =>
+                tx.rewardManualUse.create({
+                  data: { entitlementId: mixed.id, branchId: branch, usedByUserId: staff },
+                  select: { id: true },
+                });
+              const firstUse = await markUsed();
+              await rejects(() => markUsed(), /no quantity left/);
+              const f = await unpaidInvoice(wide, owner);
+              await rejects(() => redeem(mixed.id, f.lines[0]!.id), /no quantity left/);
+              await tx.rewardManualUseRestoration.create({
+                data: { useId: firstUse.id, restoredByUserId: staff, reason: 'Bấm nhầm' },
+              });
+              await markUsed();
+              await rejects(() => markUsed(), /no quantity left/);
+              await rejects(
+                () =>
+                  tx.rewardManualUse.update({ where: { id: firstUse.id }, data: { note: 'sửa' } }),
+                /cannot be removed or rewritten/,
+              );
               // Void once; a voided entitlement cannot be redeemed.
               await rejects(
                 () =>
@@ -2767,6 +2792,8 @@ test('Phase 5 P5-2 loyalty / referral / combo / reward database foundation (all 
               await truncateRejected('reward_redemptions');
               await truncateRejected('reward_redemption_releases');
               await truncateRejected('reward_catalog_items');
+              await truncateRejected('reward_manual_uses');
+              await truncateRejected('reward_manual_use_restorations');
             },
           );
 

@@ -11,7 +11,7 @@ import { databaseClock, draftAmounts, load, lockedInvoice, present } from './inv
 /**
  * Phase 5 P5-8: the staff side of using a combo at a visit's invoice (design 9.4; PRD 17.4, 52). Three commands on a DRAFT visit
  * invoice, all needing `MANAGE_INVOICES` and `CONSUME_COMBO_SESSIONS` at the invoice's branch (any branch may use a combo: Owner
- * answer of 2026-10-05, provisional):
+ * answer of 2026-10-05, approved in own words):
  *
  * - `lookupCombos`: by the combo OWNER's exact phone. It shows the minimum: the combo name, the sessions left and the owner's
  *   NAME MASKED; never a phone, an email, an id of the owner or a history. Not found and "nothing usable" look the same.
@@ -226,7 +226,7 @@ export async function selectComboUse(
   const detail = line?.serviceDetails[0];
   if (!line || !detail) throw new AuthError('NOT_FOUND');
   if ((await tx.loyaltyGoLive.count()) === 0) throw new AuthError('LOYALTY_NOT_LIVE');
-  // One session pays one unit of the service (Owner answer, provisional): a line already set to more than one is refused.
+  // One session pays one unit of the service (Owner decision, approved): a line already set to more than one is refused.
   if (line.quantity !== null && line.quantity !== 1) throw new AuthError('COMBO_LINE_QUANTITY');
 
   const purchase = await tx.comboPurchase.findUnique({

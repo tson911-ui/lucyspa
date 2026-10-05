@@ -22,7 +22,7 @@ import { ComboService } from './combo.service.js';
 
 /**
  * Phase 5 P5-8: using the sessions of a combo at a visit's invoice, against real PostgreSQL (design 9.4-9.5; the Owner answers of
- * 2026-10-05, the first six confirmed and the P5-8 ones provisional). Everything goes through the real invoice and combo
+ * 2026-10-05, all approved by the Owner in own words). Everything goes through the real invoice and combo
  * services; the `loyalty` consumer issues, revokes and reopens on the real outbox events. Every fixture rolls back with the outer
  * transaction.
  */
@@ -870,7 +870,7 @@ test(
             );
 
             await suite.test(
-              'any branch may use the combo (provisional Owner answer); a mixed invoice keeps only the paid line in its total',
+              'any branch may use the combo (Owner-approved); a mixed invoice keeps only the paid line in its total',
               async () => {
                 const draft = await draftFor(massage, buyer, {
                   at: otherBranch,
