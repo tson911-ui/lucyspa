@@ -14,6 +14,7 @@ import {
 import {
   Card,
   CardHeader,
+  Cluster,
   DataTable,
   DescriptionList,
   Grid,
@@ -36,7 +37,9 @@ import {
   giftTone,
   historyText,
   referralTone,
+  tierRows,
   usedByText,
+  type TierRow,
 } from '../../../lib/customer/loyalty';
 import { paginationLabels } from '../../../lib/workforce/list-view';
 import { formatPoints, tierTone } from '../../../lib/workforce/loyalty';
@@ -81,6 +84,9 @@ export function CustomerLoyaltyScreen() {
           <WalletCard key={wallet.wallet} wallet={wallet} />
         ))}
       </Grid>
+      <TiersSection
+        current={summary.data.wallets.find((w) => w.wallet === 'SPA')?.tier ?? 'NONE'}
+      />
       <HistorySection />
       <CombosSection />
       <ComboUsesSection />
@@ -128,6 +134,57 @@ function WalletCard({ wallet }: { wallet: LoyaltyWalletResponse }) {
         />
       ) : null}
     </Card>
+  );
+}
+
+/** The five tiers with their points and Member Discount, read from the shared tier table; the customer's own Spa tier is marked. */
+function TiersSection({ current }: { current: LoyaltyWalletResponse['tier'] }) {
+  const { locale } = useCustomer();
+  const text = customerLoyaltyDictionary(locale);
+  const l = loyaltyDictionary(locale);
+  const w = getWorkforceDictionary(locale);
+  const columns: DataTableColumn<TierRow>[] = [
+    {
+      key: 'tier',
+      header: text.tiers.columns.tier,
+      mobileTitle: true,
+      cell: (row) => (
+        <span>
+          <Cluster gap="inline">
+            {l.tiers[row.tier]}
+            {row.tier === current ? (
+              <Badge tone={tierTone(row.tier)}>{text.tiers.current}</Badge>
+            ) : null}
+          </Cluster>
+        </span>
+      ),
+    },
+    {
+      key: 'points',
+      header: text.tiers.columns.points,
+      numeric: true,
+      cell: (row) => formatPoints(row.fromPoints, locale),
+    },
+    {
+      key: 'discount',
+      header: text.tiers.columns.discount,
+      numeric: true,
+      cell: (row) => `${row.discountPercent}%`,
+    },
+  ];
+  return (
+    <ListSection title={text.tiers.title}>
+      <p className="ls-hint">{text.tiers.rule}</p>
+      <DataTable
+        mode="client"
+        caption={fill(w.common.list.table, { list: text.tiers.title })}
+        columns={columns}
+        rows={tierRows()}
+        rowKey={(row) => row.tier}
+        selectedKey={current === 'NONE' ? undefined : current}
+        paging={{ off: 'The five tiers of the locked tier table: a fixed short list.' }}
+      />
+    </ListSection>
   );
 }
 

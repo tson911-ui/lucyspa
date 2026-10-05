@@ -2,7 +2,7 @@
 
 Dành cho Owner, không cần rành kỹ thuật. Làm **từng bước, theo thứ tự**, trong **cùng một cửa sổ terminal** từ đầu đến cuối. Mỗi bước có: lệnh cần gõ, kết quả mong đợi, và việc phải làm nếu kết quả khác. **Nếu một bước ra kết quả khác mong đợi: DỪNG, không làm bước tiếp theo, chụp màn hình gửi lại.**
 
-**Trạng thái:** Phase 5 đã làm xong và đã kiểm tra trên cơ sở dữ liệu thử, **chưa deploy**. Hướng dẫn này chỉ dùng khi Owner nói "deploy".
+**Trạng thái:** Phase 5 đã được Owner deploy ngày 2026-10-05 (commit `42841d6`, ghi trong `LUCYSPA_HANDOFF.md`). Tài liệu này giữ lại để tham khảo và để quay lại bản cũ nếu cần.
 
 ## Tóm tắt
 

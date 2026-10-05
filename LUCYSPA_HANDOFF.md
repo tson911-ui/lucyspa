@@ -13,17 +13,17 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 
 ## Phase status
 
-| Phase                                     | Status                                                                               |
-| ----------------------------------------- | ------------------------------------------------------------------------------------ |
-| Phase 0                                   | PASS                                                                                 |
-| Phase 1 (auth and security)               | COMPLETE                                                                             |
-| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)                     |
-| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                            |
-| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                         |
-| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                         |
-| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `58bfabc`)                                                    |
-| **Phase 5 (loyalty and combos)**          | **COMPLETE (P5-1 to P5-11), waiting for the Owner's deploy; go-live OFF by default** |
-| Phase 6+ (products, payroll, finance)     | NOT started                                                                          |
+| Phase                                     | Status                                                                                             |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Phase 0                                   | PASS                                                                                               |
+| Phase 1 (auth and security)               | COMPLETE                                                                                           |
+| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)                                   |
+| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                                          |
+| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                                       |
+| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                                       |
+| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `42841d6`)                                                                  |
+| **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `42841d6`); go-live turned ON by the Owner about 17:20 (+07)** |
+| Phase 6+ (products, payroll, finance)     | NOT started                                                                                        |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
 
@@ -118,6 +118,16 @@ Fixed only gate-side defects (stale OpenAPI assertion in `scripts/smoke.mjs`, pr
 Report has the deployment checklist (10 pending migrations, PayOS env, webhook URL, `db:permissions:sync`, PER_NAIL limits). Step 11 and Phase 4 CLOSED / OWNER APPROVED; scratch DB dropped.
 
 ## Production
+
+Status as of 2026-10-05, about 17:20 (+07) (Owner-reported; supersedes the 2026-10-04 block below):
+
+- **Phase 5 is deployed.** Production runs `42841d6765c763b04c00e9f512c90dea4daf9729`, deployed by the Owner on 2026-10-05 at about 17:11 (+07). Previous: `58bfabc`.
+- All 61 migrations are applied, including the 16 Phase 5 migrations (`20261027000000_phase5_permission_codes` to `20261103000000_phase5_reward_catalog`). `pnpm db:status`: up to date.
+- `pnpm db:permissions:sync`: 13 inserted, total 54.
+- After the deploy: health ok, the 3 new APIs answer 401 without a login, public pages 200, data counts unchanged (9|4|2|2).
+- Backup taken before the deploy: `/root/backups/lucyspa-pre-phase5-20261005T100713Z.dump`.
+- **Loyalty go-live is ON.** The Owner switched it on around 17:20 (+07) on 2026-10-05; the exact instant is the row in the `loyalty_go_live` table (immutable, never backdated). Invoices paid before it earn nothing.
+- The production database is named `lucy_spa_dev`. **Integration tests, race tests and `pnpm smoke` must never run on the server** (the scratch-name guard allows that name only with `CI=true`).
 
 Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deployed" line in this file):
 
@@ -468,5 +478,5 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - P5-9 (`docs/PHASE5_STEP9_REWARD_CATALOG.md`) built, **not deployed**: migration `20261103000000`; catalog tab (`MANAGE_REWARD_CATALOG`, ships empty) and "Cấp quà tặng" tab (`ISSUE_REWARDS`: grant with reason, mark used, revoke with reason, history; manager restore of a mistaken use), needs go-live ON, separate from points. **P5-9 APPROVED by the Owner in own words, 2026-10-05** (design 2.5; OQ-10 answered): free service marked by hand (no 0đ line), expiry per item (none or N days), manager restore with `MANAGE_REWARD_CATALOG`, `ISSUE_REWARDS` unchanged (Owner grants it to managers only after deploy), no OTHER kind, catalog editable while OFF but grant/use/revoke need go-live ON.
 - P5-10 (`docs/PHASE5_STEP10_CUSTOMER_PAGE.md`) built, **not deployed**, no migration: customer page `/account/loyalty` + `GET /api/v1/me/loyalty*`, read only, masked names, no notification. **P5-10 APPROVED by the Owner in own words, 2026-10-05** (design 2.5; OQ-11 answered): OFF = notice only, generic label "Điều chỉnh bởi Lucy Spa", member discount % on the Spa card only, birthday status and admin "view as customer" / per-customer birthday status deferred.
 - P5-10b (`docs/PHASE5_STEP10B_ADMIN_COMBOS_GIFTS.md`) built, **not deployed**, no migration, no new permission: "Combo đã bán" tab (`RESTORE_COMBO_SESSIONS` or `MANAGE_COMBOS`; every state incl. frozen and revoked with date and cause, status filter, totals of usable sessions, 20 per page) and the staff profile now lists the customer's combos and gifts (`VIEW_LOYALTY` at the branch). **P5-10b APPROVED by the Owner in own words, 2026-10-05** (design 2.5): unused prepaid money value in "Combo đã bán" for the Owner only (`ACTIVATE_LOYALTY` check; paid after discount ÷ purchased sessions × purchased sessions left, bonus 0đ, a total at the top, frozen and revoked shown apart), a frozen-sessions top card, `VIEW_LOYALTY` staff may see a customer's combos and gifts, the four self-made choices. **Owner approved the money-value choices in own words, 2026-10-05** (design 2.5): amount paid = combo-sale invoice total (tips excluded: none exist before Phase 7), rounded once per combo, expired combos in no total, no money on the staff customer profile, frozen and revoked in one card. To confirm with the Owner: "rounded up" is built as round half up to 1 VND.
-- P5-11 (`docs/PHASE5_STEP11_FINAL_CHECK.md`): **Phase 5 is COMPLETE and WAITING FOR THE OWNER'S DEPLOY (nothing deployed, go-live OFF by default).** Built: the money value and frozen card above, the 360 px fix of "Lịch sử điểm" (`ls-cards-one-line`), six Phase 5 integration suites added to the CI entry (they were never run by CI), a millisecond flake fixed in `discount.integration`. Checked on brand-new scratch databases from zero (61 migrations): `pnpm check`, all integration and race suites, smoke, and one end-to-end run (69/69). Deploy guide for the Owner: `docs/PHASE5_DEPLOY_CHECKLIST.md` (16 migrations, 13 new permissions, rollback). Found: rolling back to `58bfabc` after the permission sync needs the 13 new permission rows deleted first (in the guide).
-- Production is still `58bfabc` until the Owner reports a deploy; then record the commit, the 16 migrations (`20261027000000` to `20261103000000`) and the date here.
+- P5-11 (`docs/PHASE5_STEP11_FINAL_CHECK.md`): **Phase 5 is COMPLETE; deployed 2026-10-05 (see Production).** Built: the money value and frozen card above, the 360 px fix of "Lịch sử điểm" (`ls-cards-one-line`), six Phase 5 integration suites added to the CI entry (they were never run by CI), a millisecond flake fixed in `discount.integration`. Checked on brand-new scratch databases from zero (61 migrations): `pnpm check`, all integration and race suites, smoke, and one end-to-end run (69/69). Deploy guide for the Owner: `docs/PHASE5_DEPLOY_CHECKLIST.md` (16 migrations, 13 new permissions, rollback). Found: rolling back to `58bfabc` after the permission sync needs the 13 new permission rows deleted first (in the guide).
+- Deployment of Phase 5 reported by the Owner and recorded in the Production section (commit `42841d6`, 16 migrations, 54 permissions, go-live ON about 17:20 +07 on 2026-10-05). Follow-up after the deploy: a read-only tier table (from the contract tier table v1) on the customer page `/account/loyalty`; a new commit, not yet deployed.

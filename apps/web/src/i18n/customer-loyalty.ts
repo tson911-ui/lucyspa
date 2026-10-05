@@ -24,6 +24,16 @@ const vi = {
     toGo: 'Còn {n} điểm để lên hạng {tier}',
     topTier: 'Bạn đang ở hạng cao nhất',
   },
+  tiers: {
+    title: 'Các hạng thành viên',
+    rule: '1.000đ thanh toán = 1 điểm. Điểm không hết hạn. Hạng mới áp dụng từ lần thanh toán sau.',
+    columns: {
+      tier: 'Hạng',
+      points: 'Điểm cần có',
+      discount: 'Ưu đãi hội viên',
+    },
+    current: 'Hạng của bạn',
+  },
   history: {
     title: 'Lịch sử điểm',
     empty: 'Bạn chưa có giao dịch điểm nào.',
@@ -128,6 +138,16 @@ const en: Dictionary = {
     balance: 'Points',
     toGo: '{n} points to reach {tier}',
     topTier: 'You are at the top tier',
+  },
+  tiers: {
+    title: 'Membership tiers',
+    rule: 'Every 1,000đ paid = 1 point. Points never expire. A new tier applies from your next payment.',
+    columns: {
+      tier: 'Tier',
+      points: 'Points needed',
+      discount: 'Member discount',
+    },
+    current: 'Your tier',
   },
   history: {
     title: 'Points history',

@@ -34,3 +34,9 @@ Rendered 360/768/1440 light and 1440 dark (all widths in both themes) on the P5-
 4. The birthday gift has a setup tab but no per-customer "used this birthday" status for staff or customer.
 
 The Owner then chose three of the gaps above for P5-10b (`PHASE5_STEP10B_ADMIN_COMBOS_GIFTS.md`).
+
+## Follow-up after the deploy: tier table (Owner instruction, 2026-10-05)
+
+Below the two point cards: a read-only table of the five tiers (tier, points needed, Member Discount) read from `LOYALTY_TIERS_V1` of the contracts package, the customer's own Spa tier marked "Hạng của bạn" (row highlight plus a badge), and one line of rules (1.000đ = 1 điểm, points never expire, a new tier applies from the next payment); VI and EN. No API change, no migration. Tests: `loyalty.test.tsx` 8 / 8 (the rows equal the contract table; both languages).
+
+UX gate: rendered 360/768/1440 light and 1440 dark (all widths in both themes, VI and EN, three customers: Platinum, no tier, no tier). Opened: An 1440 light, An 360 light (twice), Binh 360 dark, An 768 dark, An EN 1440 dark. Fixed after the first look: the tier name touched its badge at 360 (now a `Cluster`). DOM audit script: 0 findings on every capture. Scratch review database only; no server.

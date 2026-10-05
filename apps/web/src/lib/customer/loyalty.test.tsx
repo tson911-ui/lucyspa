@@ -1,4 +1,8 @@
-import type { CustomerComboUseResponse, CustomerLedgerItemResponse } from '@lucy-spa/contracts';
+import {
+  LOYALTY_TIERS_V1,
+  type CustomerComboUseResponse,
+  type CustomerLedgerItemResponse,
+} from '@lucy-spa/contracts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime';
@@ -16,6 +20,7 @@ import {
   giftTone,
   historyText,
   referralTone,
+  tierRows,
   usedByText,
 } from './loyalty';
 
@@ -118,4 +123,33 @@ test('the page opens with its single heading, then loads; nothing is shown befor
   assert.match(html, /Điểm thưởng và ưu đãi/);
   assert.doesNotMatch(html, /Lịch sử điểm|Combo của tôi|Quà tặng của tôi/);
   assert.match(render('en'), /Points and rewards/);
+});
+
+test('the tier table is the shared version 1 table, five tiers with a discount, never typed in the page', () => {
+  const rows = tierRows();
+  assert.deepEqual(
+    rows.map((row) => [row.tier, row.fromPoints, row.discountPercent]),
+    [
+      ['SILVER', 500, 3],
+      ['GOLD', 1000, 4],
+      ['PLATINUM', 3000, 5],
+      ['DIAMOND', 5000, 7],
+      ['RUBY', 10000, 9],
+    ],
+  );
+  // Every row comes from the contract table: a change there changes the page.
+  assert.equal(rows.length, LOYALTY_TIERS_V1.filter((entry) => entry.tier !== 'NONE').length);
+  assert.ok(
+    rows.every((row, index) => index === 0 || row.fromPoints > rows[index - 1]!.fromPoints),
+  );
+});
+
+test('the tier section says how points are earned, in both languages', () => {
+  assert.equal(
+    vi.tiers.rule,
+    '1.000đ thanh toán = 1 điểm. Điểm không hết hạn. Hạng mới áp dụng từ lần thanh toán sau.',
+  );
+  assert.match(en.tiers.rule, /1,000/);
+  assert.match(en.tiers.rule, /never expire/);
+  assert.match(en.tiers.rule, /next payment/);
 });

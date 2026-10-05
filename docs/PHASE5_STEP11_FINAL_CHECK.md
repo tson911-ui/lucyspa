@@ -1,6 +1,6 @@
 # Phase 5 P5-11: Final check (no deploy)
 
-Status: **Phase 5 is complete and waiting for the Owner's deploy; nothing deployed, go-live OFF by default.** Contract: `PHASE5_LOYALTY_COMBOS_DESIGN.md` (2.5, 15.2). P5-10b was approved by the Owner in own words on 2026-10-05, with the money value and the frozen-sessions card added to it. Deploy guide for the Owner (plain Vietnamese): `PHASE5_DEPLOY_CHECKLIST.md`.
+Status: **Phase 5 is complete and was deployed by the Owner on 2026-10-05 (commit `42841d6`); go-live was switched on by the Owner afterwards (see the handoff).** Contract: `PHASE5_LOYALTY_COMBOS_DESIGN.md` (2.5, 15.2). P5-10b was approved by the Owner in own words on 2026-10-05, with the money value and the frozen-sessions card added to it. Deploy guide for the Owner (plain Vietnamese): `PHASE5_DEPLOY_CHECKLIST.md`.
 
 ## What changed
 

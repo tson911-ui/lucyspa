@@ -1,8 +1,10 @@
+import { LOYALTY_TIERS_V1 } from '@lucy-spa/contracts';
 import type {
   CustomerComboStatus,
   CustomerComboUseResponse,
   CustomerLedgerItemResponse,
   CustomerReferralStatus,
+  LoyaltyTierName,
   RewardEntitlementStatus,
 } from '@lucy-spa/contracts';
 
@@ -65,4 +67,19 @@ export function giftTone(status: RewardEntitlementStatus): Tone {
 
 export function referralTone(status: CustomerReferralStatus): Tone {
   return status === 'REWARDED' ? 'success' : 'neutral';
+}
+
+export interface TierRow {
+  tier: LoyaltyTierName;
+  fromPoints: number;
+  discountPercent: number;
+}
+
+/** The tier table (version 1) of the shared contract as display rows: every tier with a Member Discount, lowest first. Never typed in the UI. */
+export function tierRows(): TierRow[] {
+  return LOYALTY_TIERS_V1.filter((entry) => entry.tier !== 'NONE').map((entry) => ({
+    tier: entry.tier,
+    fromPoints: entry.fromPoints,
+    discountPercent: entry.memberDiscountBp / 100,
+  }));
 }

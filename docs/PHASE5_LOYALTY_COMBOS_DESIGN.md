@@ -1,6 +1,6 @@
 # Phase 5: Loyalty, Membership, Referral, Birthday, Combos and Gift Catalog — design contract
 
-Status: **P5-1 approved by the Owner 2026-10-04 (section 2.4); P5-2 approved (section 2.5); P5-6, P5-7 and P5-8 approved 2026-10-05; P5-9, P5-10 and P5-10b approved 2026-10-05 (own words); P5-11 (final check) done, NOT deployed, waiting for the Owner's deploy.** P5-1 itself was docs only.
+Status: **P5-1 approved by the Owner 2026-10-04 (section 2.4); P5-2 approved (section 2.5); P5-6, P5-7 and P5-8 approved 2026-10-05; P5-9, P5-10 and P5-10b approved 2026-10-05 (own words); P5-11 (final check) done; Phase 5 DEPLOYED by the Owner on 2026-10-05 (commit `42841d6`, see `LUCYSPA_HANDOFF.md`).** P5-1 itself was docs only.
 Production state is whatever `LUCYSPA_HANDOFF.md` records (Phase 4 live at `58bfabc`); nothing here assumes a deploy.
 
 Every rule below carries a source label so nothing is silently invented:
@@ -615,6 +615,7 @@ push**, and no other notification is created for any Phase 5 event. Shortfall fl
 - Privacy: another person is only ever a masked name (first letter of each word); a relative's name is masked; no phone, no staff name, no staff reason, no shortfall, no relationship note, no other person's invoice code. Mistaken or cancelled combo uses are not listed (the session is back).
 - **Owner decisions (2.5):** while go-live is OFF the page shows one notice and no number, combo, gift or referral (the API answers empty); a manual change reads "Điều chỉnh bởi Lucy Spa" and the staff reason is never shown (OQ-11 answered).
 - Not on the page: the birthday benefit status of 15 above (deferred by the Owner).
+- **Tier table (Owner instruction, 2026-10-05, after the deploy):** below the two point cards a read-only table of the five tiers (tier, points needed, Member Discount), read from the shared tier table v1 (`LOYALTY_TIERS_V1`, never typed in the page), the customer's own Spa tier marked "Hạng của bạn", and one line: "1.000đ thanh toán = 1 điểm. Điểm không hết hạn. Hạng mới áp dụng từ lần thanh toán sau." (VI and EN). No API change.
 
 ### 15.2 As built in P5-10b (admin gaps; the Owner's instruction of 2026-10-05 in 2.5)
 
