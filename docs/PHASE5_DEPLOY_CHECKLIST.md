@@ -6,7 +6,7 @@ Dành cho Owner, không cần rành kỹ thuật. Làm **từng bước, theo th
 
 ## Tóm tắt
 
-- **Bản sẽ cài:** `origin/main` tại thời điểm Owner làm Bước 4 (sau commit ghi chú cuối Phase 5). Claude ghi mã commit và kết quả CI xanh ở tin nhắn báo cáo cuối Phase 5; Bước 0 yêu cầu khớp mã đó.
+- **Bản sẽ cài:** đúng commit `42841d6765c763b04c00e9f512c90dea4daf9729` (viết tắt `42841d6`), không phải "bản mới nhất". Các commit tài liệu đẩy lên sau này không đổi mã và **không** được cài.
 - **Máy chủ đang chạy:** `58bfabc` (theo `LUCYSPA_HANDOFF.md`), mọi migration đến `20261026000000_uxui_part2_footer_blocks` đã áp.
 - **Công tắc điểm thưởng (go-live) MẶC ĐỊNH TẮT và vẫn TẮT sau khi deploy.** Sau khi cài xong, hóa đơn, thanh toán, khách hàng chạy y như hôm nay: không ai được điểm, không giảm giá hội viên, không bán combo, không tặng quà. Chỉ khi chính Owner bấm "Kích hoạt" (có nhập lại mật khẩu) thì Phase 5 mới bắt đầu tính. **Không có bước nào trong hướng dẫn này bật nó.**
 - **Thay đổi cơ sở dữ liệu (chỉ thêm, không xóa, không sửa dòng cũ), 16 migration:**
@@ -35,7 +35,7 @@ Dành cho Owner, không cần rành kỹ thuật. Làm **từng bước, theo th
 
 ## Bước 0. Điều kiện trước khi bắt đầu
 
-1. Trên GitHub, tab **Actions**, commit sẽ cài (mã Claude đã báo cuối Phase 5) phải có dấu **xanh** (không đỏ, không đang chạy). Nếu đỏ hoặc đang chạy: **DỪNG**.
+1. Trên GitHub, tab **Actions**, commit `42841d6` phải có dấu **xanh** (không đỏ, không đang chạy). Nếu đỏ hoặc đang chạy: **DỪNG**.
 2. Có một tài khoản khách thử (hoặc email thật của Owner) để kiểm tra trang khách ở Bước 6.
 3. Đã đọc xong Bước 8 (nhắc về công tắc điểm thưởng).
 
@@ -106,17 +106,18 @@ grep -c '^MEDIA_STORAGE_DIR=' /opt/lucyspa/.env
 
 ## Bước 4. Lấy bản mới, cài, cập nhật cơ sở dữ liệu, build, khởi động lại
 
-4.1. Lấy bản `origin/main`:
+4.1. Lấy đúng bản `42841d6`:
 
 ```
 cd /opt/lucyspa
 git fetch origin
-git checkout origin/main
+git cat-file -t 42841d6765c763b04c00e9f512c90dea4daf9729
+git checkout 42841d6765c763b04c00e9f512c90dea4daf9729
 git rev-parse HEAD
 git log -1 --format='%h %s'
 ```
 
-**Mong đợi:** `git rev-parse HEAD` in đúng mã commit Claude đã báo (Bước 0). Máy báo "detached HEAD" là bình thường. **Nếu mã khác: DỪNG.**
+**Mong đợi:** `cat-file` in `commit`; `git rev-parse HEAD` in đúng `42841d6765c763b04c00e9f512c90dea4daf9729` và dòng cuối bắt đầu bằng `42841d6`. Máy báo "detached HEAD" là bình thường. **Nếu mã khác: DỪNG.**
 
 4.2. Cài thư viện (bản khóa sẵn):
 
@@ -251,13 +252,10 @@ cd /opt/lucyspa
 pm2 stop lucyspa-api lucyspa-web lucyspa-worker
 ```
 
-A2. Xóa 13 quyền mới (chép nguyên khối, gồm cả dòng `<<'SQL'` và dòng `SQL` cuối):
+A2. Xóa 13 quyền mới (một lệnh duy nhất, chép nguyên dòng):
 
 ```
-docker exec -i lucy-spa-postgres-1 sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At' <<'SQL'
-delete from permissions where code::text in ('VIEW_LOYALTY', 'ADJUST_LOYALTY_POINTS', 'MANAGE_REFERRALS', 'MANAGE_COMBOS', 'SELL_COMBOS', 'CONSUME_COMBO_SESSIONS', 'RESTORE_COMBO_SESSIONS', 'MANAGE_BIRTHDAY_REWARDS', 'MANAGE_REWARD_CATALOG', 'ISSUE_REWARDS', 'VIEW_LOYALTY_EXCEPTIONS', 'ACTIVATE_LOYALTY', 'CHANGE_REFERRER');
-select count(*) from permissions;
-SQL
+docker exec lucy-spa-postgres-1 sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c "delete from permissions where code::text = any(string_to_array(\$\$VIEW_LOYALTY,ADJUST_LOYALTY_POINTS,MANAGE_REFERRALS,MANAGE_COMBOS,SELL_COMBOS,CONSUME_COMBO_SESSIONS,RESTORE_COMBO_SESSIONS,MANAGE_BIRTHDAY_REWARDS,MANAGE_REWARD_CATALOG,ISSUE_REWARDS,VIEW_LOYALTY_EXCEPTIONS,ACTIVATE_LOYALTY,CHANGE_REFERRER\$\$, \$\$,\$\$))" -c "select count(*) from permissions"'
 ```
 
 **Mong đợi:** in `DELETE 13` rồi `41`. **Nếu có chữ `violates foreign key` hoặc số khác: DỪNG** (không có gì bị xóa; dùng Cách B hoặc hỏi).

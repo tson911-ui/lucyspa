@@ -33,4 +33,4 @@ Rendered 360/768/1440 light and 1440 dark (all widths in both themes) on the P5-
 2. A separate top card: frozen sessions (purchased + bonus locked in frozen combos). **Built.**
 3. Staff with `VIEW_LOYALTY` at a branch may see a customer's combos and gifts: approved. 4. The four choices above: approved.
 
-My own reading choices for the money value are listed in the design doc (2.5, "P5-11 built-in choices") and are **pending Owner approval**.
+The money-value choices were approved by the Owner in own words on 2026-10-05 (design 2.5: invoice total rounded once per combo, expired in no total, no money on the staff customer profile, frozen and revoked in one card); the split in the frozen-sessions note and the exact rounding wording ("rounded up" vs the built half up) are still to confirm.

@@ -40,5 +40,5 @@ Final build, rendered 360/768/1440 light and 1440 dark (all widths in both theme
 
 ## Open questions for the Owner
 
-1. The money layout and my money-value readings (design 2.5, "P5-11 built-in choices") need your approval: invoice total as "amount paid", one half-up rounding per combo, expired combos shown on the row but in no total, no money on the staff profile even for you, frozen and revoked money in one shared card.
+1. (Answered 2026-10-05, design 2.5: approved. Still to confirm: "rounded up" vs the built half up.) The money layout and my money-value readings (design 2.5, "P5-11 built-in choices") need your approval: invoice total as "amount paid", one half-up rounding per combo, expired combos shown on the row but in no total, no money on the staff profile even for you, frozen and revoked money in one shared card.
 2. When to deploy; the guide waits for your word. Go-live stays OFF until you switch it on.
