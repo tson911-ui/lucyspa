@@ -26,6 +26,7 @@ import type { Locale } from '../../../i18n/locales';
 import { rewardDictionary } from '../../../i18n/reward';
 import { fill, getWorkforceDictionary } from '../../../i18n/workforce';
 import { formatDay } from '../../../lib/customer/loyalty';
+import { formatVnd } from '../../../lib/workforce/format';
 import { comboName } from '../../../lib/workforce/combo';
 import { paginationLabels, toolbarLabels } from '../../../lib/workforce/list-view';
 import { LOYALTY_PAGE_SIZE } from '../../../lib/workforce/loyalty-list';
@@ -136,6 +137,11 @@ function soldColumns(
               ? fill(s.bonusLeft, { left: row.bonusLeft, total: row.bonusSessions })
               : s.noBonus}
           </span>
+          {row.valueVnd !== null && (
+            <span className="ls-cell-sub">
+              {fill(s.value.row, { amount: formatVnd(row.valueVnd, locale) })}
+            </span>
+          )}
         </span>
       ),
     },
@@ -179,7 +185,7 @@ function soldColumns(
 
 /**
  * "Combo đã bán" (Phase 5 P5-10b): every combo that was sold, in every state, with the sessions usable now at the top. For the
- * Owner or a manager (`RESTORE_COMBO_SESSIONS` or `MANAGE_COMBOS`). Read only; no money value is shown.
+ * Owner or a manager (`RESTORE_COMBO_SESSIONS` or `MANAGE_COMBOS`). Read only. The unused prepaid money (per combo and in total) is shown to the Owner only.
  */
 export function LoyaltyComboSold({
   page,
@@ -204,7 +210,7 @@ export function LoyaltyComboSold({
   return (
     <>
       <p className="ls-hint">{s.intro}</p>
-      <Grid min="md" gap="page">
+      <Grid min="sm" gap="page">
         <Card as="section" aria-label={s.totals.paid}>
           <Stat
             label={s.totals.paid}
@@ -221,7 +227,47 @@ export function LoyaltyComboSold({
             note={s.totals.note}
           />
         </Card>
+        <Card as="section" aria-label={s.totals.frozen}>
+          <Stat
+            label={s.totals.frozen}
+            value={(totals?.frozenPaidLeft ?? 0) + (totals?.frozenBonusLeft ?? 0)}
+            format={{ valueFormat: 'count', locale }}
+            note={fill(s.totals.frozenNote, {
+              paid: totals?.frozenPaidLeft ?? 0,
+              bonus: totals?.frozenBonusLeft ?? 0,
+            })}
+          />
+        </Card>
       </Grid>
+      {totals?.value ? (
+        <Grid min="md" gap="page">
+          <Card as="section" aria-label={s.value.active}>
+            <Stat
+              label={s.value.active}
+              value={Number(totals.value.activeVnd)}
+              format={{ valueFormat: 'vnd', locale }}
+              note={s.value.activeNote}
+            />
+          </Card>
+          {/* Frozen and revoked money are counted apart from the usable total, so they share one card: two cards, never an orphan at any width. */}
+          <Card as="section" aria-label={s.value.apart}>
+            <Grid min="sm" gap="page">
+              <Stat
+                label={s.value.frozen}
+                value={Number(totals.value.frozenVnd)}
+                format={{ valueFormat: 'vnd', locale }}
+                note={s.value.apartNote}
+              />
+              <Stat
+                label={s.value.revoked}
+                value={Number(totals.value.revokedVnd)}
+                format={{ valueFormat: 'vnd', locale }}
+                note={s.value.apartNote}
+              />
+            </Grid>
+          </Card>
+        </Grid>
+      ) : null}
       <ListSection title={s.title} count={list.data?.total}>
         <ListToolbar
           labels={toolbarLabels(t)}

@@ -1,6 +1,6 @@
 # Phase 5 P5-10b: Admin gaps (combos sold, customer profile combos and gifts)
 
-Status: built and validated on scratch databases; **not deployed, loyalty stays OFF**; awaits Owner review. Contract: `PHASE5_LOYALTY_COMBOS_DESIGN.md` section 15.2. P5-10 was approved by the Owner in own words on 2026-10-05 (design 2.5; OQ-11 answered, Step 10 report and handoff updated). The Owner chose exactly three of the gaps listed in the Step 10 report.
+Status: built and validated on scratch databases; **not deployed, loyalty stays OFF**; **APPROVED by the Owner in own words, 2026-10-05** (design 2.5), who also asked for the money value and the frozen-sessions card (added in P5-11, see below). Contract: `PHASE5_LOYALTY_COMBOS_DESIGN.md` section 15.2. P5-10 was approved by the Owner in own words on 2026-10-05 (design 2.5; OQ-11 answered, Step 10 report and handoff updated). The Owner chose exactly three of the gaps listed in the Step 10 report.
 
 ## What changed
 
@@ -27,7 +27,10 @@ Status: built and validated on scratch databases; **not deployed, loyalty stays 
 
 Rendered 360/768/1440 light and 1440 dark (all widths in both themes) on the P5-8 review scratch database: the list (all, frozen filter, revoked filter, English) and the staff profile of three customers. Opened: list 1440 light and dark, 768 light and dark (filtered), 360 (English cards), profiles 1440 light and dark, Chi 360. Fixed after the first look: the table was wider than the content (actions off-screen, clipped names, a card badge over its label); merged sale date and branch under the combo name, three-line status cell, one-line values with a title. DOM audit script: 0 findings on the list in every width, theme and language. The profile pages keep one 360 px finding in the points-history table (row heights, from P5-3, not part of this Step). The audit did not run on `lucy_spa_uxaudit_20261001`; this review database holds the combos. The frozen and revoked combos come from real flows (a payment reversal); only the expiry of the expired one was written with `session_replication_role = replica` (scratch only).
 
-## Open questions for the Owner
+## Owner answers (own words, 2026-10-05; design 2.5) and what P5-11 added
 
-1. Should the list show a money value, for example the unused prepaid amount of an active combo (sessions left x price per session)? Not added.
-2. Totals count only usable combos. Should they also show the sessions locked in frozen combos?
+1. Money value, **Owner only** (the `ACTIVATE_LOYALTY` check): per combo (paid after discount, no tip) ÷ purchased sessions × purchased sessions left; bonus 0đ; a total at the top; frozen and revoked shown separately, never inside the active total. **Built in P5-11** (`valueVnd` per item and `totals.value`, both `null` for everyone else and on the staff profile).
+2. A separate top card: frozen sessions (purchased + bonus locked in frozen combos). **Built.**
+3. Staff with `VIEW_LOYALTY` at a branch may see a customer's combos and gifts: approved. 4. The four choices above: approved.
+
+My own reading choices for the money value are listed in the design doc (2.5, "P5-11 built-in choices") and are **pending Owner approval**.

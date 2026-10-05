@@ -1,6 +1,6 @@
 # Phase 5: Loyalty, Membership, Referral, Birthday, Combos and Gift Catalog — design contract
 
-Status: **P5-1 approved by the Owner 2026-10-04 (section 2.4); P5-2 approved (section 2.5); P5-6, P5-7 and P5-8 approved 2026-10-05; P5-9 (gift catalog, section 10) built, not deployed, pending Owner review.** P5-1 itself was docs only.
+Status: **P5-1 approved by the Owner 2026-10-04 (section 2.4); P5-2 approved (section 2.5); P5-6, P5-7 and P5-8 approved 2026-10-05; P5-9, P5-10 and P5-10b approved 2026-10-05 (own words); P5-11 (final check) done, NOT deployed, waiting for the Owner's deploy.** P5-1 itself was docs only.
 Production state is whatever `LUCYSPA_HANDOFF.md` records (Phase 4 live at `58bfabc`); nothing here assumes a deploy.
 
 Every rule below carries a source label so nothing is silently invented:
@@ -184,6 +184,12 @@ None of these blocked P5-1. The Owner asked to be asked about OQ-2 … OQ-11 **o
   4. **Birthday gift status on the customer page: not now, deferred.**
   5. **Admin "view as customer" and the per-customer birthday-used status: deferred.**
 - **P5-10b instruction (Owner, in own words, 2026-10-05):** build only three admin gaps: (1) the staff customer profile shows the customer's combos (sessions left, paid/bonus, status) and granted gifts (status, quantity left, expiry), read only, existing permissions and branch scope; (2) a "Combo đã bán" list in Điểm thưởng (buyer masked per existing rules, combo, sale date, branch, paid/bonus sessions left, status; status filter; 20 per page; totals of remaining paid and bonus sessions at the top; Owner/manager only with an existing permission); (3) revoked and frozen combos appear in that list with status and the reason/date, nothing hidden. No money value (unused prepaid amount) is added without the Owner's answer.
+- **P5-10b APPROVED by the Owner, in the Owner's own words, 2026-10-05 (locked, do not reopen; the two open questions of the P5-10b report are ANSWERED).**
+  1. **The unused prepaid money value is shown in "Combo đã bán", OWNER ONLY** (the same Owner check as `ACTIVATE_LOYALTY`). Per combo: (the amount actually paid for the combo, after discount, excluding tip) ÷ purchased (paid) sessions × remaining purchased sessions. Bonus sessions are worth 0đ. A total sits at the top. Frozen and revoked combos show their value **separately**, never inside the active total.
+  2. **A separate top card shows the frozen sessions count.**
+  3. **Staff with `VIEW_LOYALTY` at a branch may see a customer's combos and gifts** (staff profile, read only).
+  4. **All four self-made choices of the P5-10b report are approved:** totals count only combos usable now; "Bị khóa" also covers a combo whose sale was reversed after every session was used; sale date and branch sit under the combo name; who reversed or cancelled is not shown.
+- **P5-11 built-in choices (mine, NOT Owner decisions, pending Owner approval):** (a) "the amount actually paid, after discount, excluding tip" is read as the total of the combo's sale invoice (a combo sale has exactly one combo line; no tip exists in the data model before Phase 7, so none can be inside it); (b) the value is rounded half up to 1 VND once per combo (`total × left ÷ purchased`, not a rounded per-session price); (c) an expired combo shows its own row value but is in no total, a used-up one shows 0đ; (d) the frozen-sessions card shows purchased plus bonus sessions locked in frozen combos, with the split in its note; (e) the money never appears on the staff profile lists, even to the Owner; (f) the frozen and the revoked totals share one card (two money cards never leave an orphan at any width), the revoked value being the whole paid amount of a combo whose payment was reversed or cancelled (nothing was used).
 - **Owner review of P5-3 (approved):** reading loyalty follows the branch (`VIEW_LOYALTY` at the staff member's branch, like the POS member lookup); points are taken back on
   `INVOICE_REOPENED` / `INVOICE_CANCELLED` (not `PAYMENT_REVERSED`, which always comes with `INVOICE_REOPENED` for a paid invoice).
 - Implementation notes of P5-3 (no decision changed): reversal is keyed on `INVOICE_REOPENED` and `INVOICE_CANCELLED` per 4.4 (`PAYMENT_REVERSED` always comes with
@@ -611,25 +617,25 @@ push**, and no other notification is created for any Phase 5 event. Shortfall fl
 
 ### 15.2 As built in P5-10b (admin gaps; the Owner's instruction of 2026-10-05 in 2.5)
 
-- **"Combo đã bán"** tab in Điểm thưởng and `GET /api/v1/combos/sold?page&status` (`RESTORE_COMBO_SESSIONS` or `MANAGE_COMBOS`, global: the rule of the usage history, no new permission): every combo sold, newest first, 20 per page, status filter, nothing hidden. Statuses: Dùng được, Đã dùng hết, Hết hạn, **Bị khóa** (sale reversed or cancelled after issue, even when every session was used), **Đã thu hồi** (withdrawn before any use). A frozen or revoked combo shows since when and why (payment reversed or invoice cancelled). Totals at the top: purchased and bonus sessions usable now (active combos only; never changed by the filter or the page). Buyer shown as in the other staff lists (name, masked phone). Sale date and branch sit under the combo name. **No money value is shown** (an unused prepaid amount is an open question to the Owner).
+- **"Combo đã bán"** tab in Điểm thưởng and `GET /api/v1/combos/sold?page&status` (`RESTORE_COMBO_SESSIONS` or `MANAGE_COMBOS`, global: the rule of the usage history, no new permission): every combo sold, newest first, 20 per page, status filter, nothing hidden. Statuses: Dùng được, Đã dùng hết, Hết hạn, **Bị khóa** (sale reversed or cancelled after issue, even when every session was used), **Đã thu hồi** (withdrawn before any use). A frozen or revoked combo shows since when and why (payment reversed or invoice cancelled). Totals at the top: purchased and bonus sessions usable now (active combos only; never changed by the filter or the page). Buyer shown as in the other staff lists (name, masked phone). Sale date and branch sit under the combo name. **Money value (added in P5-11, Owner-approved 2026-10-05, see 2.5): the Owner only** sees the unused prepaid value per combo (a third line under the sessions) and two cards: unused prepaid money of usable combos, and, apart, one card holding the money of frozen combos and of revoked combos; everyone who sees the list also gets a "frozen sessions" card (purchased plus bonus). The API answers `valueVnd: null` and `totals.value: null` to anyone without the Owner check (`ACTIVATE_LOYALTY`); the staff profile never carries money.
 - **Staff customer profile** (`VIEW_LOYALTY` at the branch): `GET /api/v1/loyalty/branches/:branchId/customers/:userId/combos` (every state, same rows) and `/gifts` (status, units left, expiry; never the grant reason or staff names), 20 per page, read only.
 - One SQL statement decides the state of every combo in scope, so the filter, the count and the totals cannot disagree. Nothing is written.
 
 ## 16. Execution sequence (restored by the Owner, 2026-10-04)
 
-| Step  | Content                                                                              |
-| ----- | ------------------------------------------------------------------------------------ |
-| P5-1  | Design contract (done)                                                               |
-| P5-2  | DB + permissions foundation                                                          |
-| P5-3  | Points & tiers: earn on paid, reverse on reversal, manual adjustment with reason     |
-| P5-4  | Member discount at POS: best-offer selection, reason shown, tier snapshot on invoice |
-| P5-5  | Referral                                                                             |
-| P5-6  | Birthday gift config                                                                 |
-| P5-7  | Combo sale                                                                           |
-| P5-8  | Combo usage                                                                          |
-| P5-9  | Gift catalog framework                                                               |
-| P5-10 | Customer page + admin points screens (customer page built; admin gaps listed)        |
-| P5-11 | Final check, no deploy                                                               |
+| Step  | Content                                                                                            |
+| ----- | -------------------------------------------------------------------------------------------------- |
+| P5-1  | Design contract (done)                                                                             |
+| P5-2  | DB + permissions foundation                                                                        |
+| P5-3  | Points & tiers: earn on paid, reverse on reversal, manual adjustment with reason                   |
+| P5-4  | Member discount at POS: best-offer selection, reason shown, tier snapshot on invoice               |
+| P5-5  | Referral                                                                                           |
+| P5-6  | Birthday gift config                                                                               |
+| P5-7  | Combo sale                                                                                         |
+| P5-8  | Combo usage                                                                                        |
+| P5-9  | Gift catalog framework                                                                             |
+| P5-10 | Customer page + admin points screens (customer page built; admin gaps listed)                      |
+| P5-11 | Final check, no deploy (done; see `PHASE5_STEP11_FINAL_CHECK.md` and `PHASE5_DEPLOY_CHECKLIST.md`) |
 
 Placement notes (implementation level, no decision changed): P5-2 creates only the new loyalty/referral/combo/reward tables, the go-live
 table and the permissions. The invoice changes of OQ-1 (an invoice `kind`, `visit_id` NULL only for `COMBO_SALE`, the `COMBO_PURCHASE` line kind,

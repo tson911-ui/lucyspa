@@ -257,6 +257,7 @@ export function LoyaltyCustomerScreen({ userId }: { userId: string }) {
           />
           <DataTable
             mode="server"
+            className="ls-cards-one-line"
             caption={fill(t.common.list.table, { list: l.profile.ledger })}
             columns={columns}
             rows={rows}

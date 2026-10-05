@@ -26,6 +26,7 @@ const item = (over: Partial<ComboSoldItemResponse>): ComboSoldItemResponse => ({
   expiresAt: null,
   status: 'ACTIVE',
   event: null,
+  valueVnd: null,
   ...over,
 });
 
@@ -75,12 +76,11 @@ test('the status filter belongs to its tab: a combo status on the combos-sold ta
   assert.equal(normalizeLoyaltyPage({ ...base, tab: 'comboSold' }).tab, 'comboSold');
 });
 
-test('both languages carry every text, never say "khám" and never mention a price', () => {
+test('both languages carry every text and never say "khám"', () => {
   const keys = (value: unknown, prefix = ''): string[] =>
     value && typeof value === 'object'
       ? Object.entries(value).flatMap(([key, inner]) => keys(inner, `${prefix}${key}.`))
       : [prefix];
   assert.deepEqual(keys(comboSoldDictionary('vi')), keys(comboSoldDictionary('en')));
-  assert.doesNotMatch(JSON.stringify(comboSoldDictionary('vi')), /khám|giá|tiền|₫|VND/i);
-  assert.doesNotMatch(JSON.stringify(comboSoldDictionary('en')), /price|money|VND/i);
+  assert.doesNotMatch(JSON.stringify(comboSoldDictionary('vi')), /khám/i);
 });

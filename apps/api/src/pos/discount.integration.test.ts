@@ -486,10 +486,14 @@ test(
               }
             };
             const HOUR = 3_600_000;
-            const span = (fromHours = -24, untilHours = 720) => ({
-              validFrom: new Date(Date.now() + fromHours * HOUR).toISOString(),
-              validUntil: new Date(Date.now() + untilHours * HOUR).toISOString(),
-            });
+            // One clock reading for both ends: two readings a millisecond apart made span(24, 24) a valid window now and then.
+            const span = (fromHours = -24, untilHours = 720) => {
+              const now = Date.now();
+              return {
+                validFrom: new Date(now + fromHours * HOUR).toISOString(),
+                validUntil: new Date(now + untilHours * HOUR).toISOString(),
+              };
+            };
             const versionInput = (
               change: Partial<DiscountVersionInput> = {},
             ): DiscountVersionInput => {

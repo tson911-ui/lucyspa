@@ -284,6 +284,12 @@ export interface ComboSoldItemResponse {
   status: ComboSoldStatus;
   /** For `FROZEN` and `REVOKED`: when it happened and why (a stable cause, never text typed by a person); null otherwise. */
   event: { kind: 'FROZEN' | 'REVOKED'; at: string; cause: ComboSoldCause } | null;
+  /**
+   * The unused prepaid money of this combo, integer VND as a string: (what the sale invoice charged after discount, no tip) divided
+   * by the purchased sessions, times the purchased sessions left (bonus sessions are worth 0). Present only for the Owner on the
+   * "Combo đã bán" list (`ACTIVATE_LOYALTY` check); null for everyone else, and never on the staff profile.
+   */
+  valueVnd: string | null;
 }
 
 /** GET /api/v1/combos/sold?page&status (RESTORE_COMBO_SESSIONS or MANAGE_COMBOS, global), newest first, 20 per page. */
@@ -293,7 +299,18 @@ export interface ComboSoldPageResponse {
   pageSize: number;
   total: number;
   /** Sessions still usable now: the sum over `ACTIVE` combos only (frozen, revoked, expired and used-up ones add nothing). */
-  totals: { paidLeft: number; bonusLeft: number };
+  totals: {
+    paidLeft: number;
+    bonusLeft: number;
+    /** Sessions (purchased and bonus) locked in `FROZEN` combos; kept apart from the usable totals above. */
+    frozenPaidLeft: number;
+    frozenBonusLeft: number;
+    /**
+     * Owner only (null otherwise). The unused prepaid money, integer VND strings, apart by state: `activeVnd` sums `ACTIVE` combos
+     * only; frozen and revoked combos are never inside it. Expired and used-up combos are in no total.
+     */
+    value: { activeVnd: string; frozenVnd: string; revokedVnd: string } | null;
+  };
 }
 
 /** GET /api/v1/loyalty/branches/:branchId/customers/:userId/combos?page (VIEW_LOYALTY at the branch): one customer's combos, all states. */

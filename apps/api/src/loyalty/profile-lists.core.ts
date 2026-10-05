@@ -21,6 +21,7 @@ export async function profileCombos(
     ownerUserId: userId,
     status: null,
     page: soldPageOf(query.page),
+    withValue: false,
   });
 }
 

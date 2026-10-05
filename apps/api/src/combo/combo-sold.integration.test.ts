@@ -259,6 +259,7 @@ test(
               state: 'PAID' | 'PENDING' | 'CANCELLED',
               payer: { id: string },
               lines = 1,
+              total = 1_000_000n,
             ) =>
               replica(async () => {
                 day++;
@@ -280,7 +281,8 @@ test(
                     businessDate: date,
                     calculationVersion: 2,
                     subtotalVnd: 1_000_000n,
-                    totalVnd: 1_000_000n,
+                    discountTotalVnd: 1_000_000n - total,
+                    totalVnd: total,
                     finalizedAt,
                     finalizedByUserId: ownerRow.id,
                     paidAt: state === 'PAID' ? new Date(finalizedAt.getTime() + 1000) : null,
@@ -354,7 +356,8 @@ test(
               });
 
             // ------------------------------------------------------------------- fixtures, one per state
-            const [lineActive] = await sale('PAID', alice);
+            // The active combo was sold with a 10% discount: it is worth what was paid (900,000), not the list price.
+            const [lineActive] = await sale('PAID', alice, 1, 900_000n);
             const active = await purchase(alice, lineActive!, 'Combo đang dùng', 3, 1, [1]);
             const [lineUsedUp] = await sale('PAID', alice);
             const usedUp = await purchase(alice, lineUsedUp!, 'Combo dùng hết', 2, 0, [1, 2]);
@@ -427,7 +430,10 @@ test(
                 );
                 assert.equal(row.branchName, 'Lucy Spa Một');
                 assert.ok(row.soldAt && row.saleInvoiceCode.startsWith('INV-'));
-                assert.doesNotMatch(JSON.stringify(page), /price|Vnd|amount|tiền/i);
+                // A manager sees no money at all: the value is the Owner's alone.
+                assert.ok(page.items.every((item) => item.valueVnd === null));
+                assert.equal(page.totals.value, null);
+                assert.doesNotMatch(JSON.stringify(page), /price|amount|tiền/i);
                 assert.ok(!JSON.stringify(page).includes(alice.phoneCanonical!));
               },
             );
@@ -436,7 +442,15 @@ test(
               'totals count only the sessions usable now; the status filter and the page never change them',
               async () => {
                 const all = await combos.sold(manager.token, {});
-                assert.deepEqual(all.totals, { paidLeft: 2, bonusLeft: 1 });
+                const usable = {
+                  paidLeft: 2,
+                  bonusLeft: 1,
+                  // Locked in the two frozen combos: 2 + 1 purchased and 1 bonus, never inside the usable totals.
+                  frozenPaidLeft: 3,
+                  frozenBonusLeft: 1,
+                  value: null,
+                };
+                assert.deepEqual(all.totals, usable);
                 for (const [status, total] of [
                   ['ACTIVE', 1],
                   ['USED_UP', 1],
@@ -447,7 +461,7 @@ test(
                   const filtered = await combos.sold(manager.token, { status });
                   assert.equal(filtered.total, total, status);
                   assert.ok(filtered.items.every((item) => item.status === status));
-                  assert.deepEqual(filtered.totals, { paidLeft: 2, bonusLeft: 1 });
+                  assert.deepEqual(filtered.totals, usable);
                 }
                 assert.deepEqual((await combos.sold(manager.token, { status: '' })).total, 7);
                 await fails(
@@ -465,6 +479,52 @@ test(
                 // Newest first.
                 const times = all.items.map((item) => item.soldAt);
                 assert.deepEqual(times, [...times].sort().reverse());
+              },
+            );
+
+            await suite.test(
+              'unused prepaid value (Owner only): paid after discount / purchased sessions x purchased sessions left, bonus is 0, frozen and revoked apart',
+              async () => {
+                const page = await combos.sold(ownerToken, {});
+                const byId = new Map(page.items.map((item) => [item.purchaseId, item]));
+                const value = (id: string) => byId.get(id)!.valueVnd;
+                // 900,000 paid (10% off 1,000,000) over 3 purchased sessions, 2 left: 600,000; the bonus session adds nothing.
+                assert.equal(value(active), '600000');
+                assert.equal(value(usedUp), '0');
+                // Expired: the row still says what was left; it is in no total.
+                assert.equal(value(expired), '1000000');
+                // 1,000,000 / 3 x 2 = 666,666.67 -> rounded half up once to 1 VND.
+                assert.equal(value(frozen), '666667');
+                assert.equal(value(frozenCancelled), '500000');
+                assert.equal(value(revoked), '1000000');
+                assert.equal(value(revokedCancelled), '1000000');
+                // Active, frozen and revoked are summed apart; the frozen and the revoked never enter the active total.
+                assert.deepEqual(page.totals.value, {
+                  activeVnd: '600000',
+                  frozenVnd: '1166667',
+                  revokedVnd: '2000000',
+                });
+                assert.equal(page.totals.frozenPaidLeft, 3);
+                assert.equal(page.totals.frozenBonusLeft, 1);
+                // The filter and the page never change the totals.
+                const frozenOnly = await combos.sold(ownerToken, { status: 'FROZEN' });
+                assert.deepEqual(frozenOnly.totals, page.totals);
+                assert.deepEqual(frozenOnly.items.map((item) => item.valueVnd).sort(), [
+                  '500000',
+                  '666667',
+                ]);
+                // Nobody else sees a value: not a manager, a restorer, nor the branch profile.
+                for (const token of [manager.token, restorer.token]) {
+                  const other = await combos.sold(token, {});
+                  assert.ok(other.items.every((item) => item.valueVnd === null));
+                  assert.equal(other.totals.value, null);
+                  assert.doesNotMatch(JSON.stringify(other), /600000|666667|1166667|2000000/);
+                }
+                const profile = await loyalty.combos(viewer.token, branch.id, alice.id, {});
+                assert.doesNotMatch(JSON.stringify(profile), /600000|666667|1166667|2000000/);
+                // The Owner reading the profile sees none either: the profile is staff work, not an Owner report.
+                const ownerProfile = await loyalty.combos(ownerToken, branch.id, alice.id, {});
+                assert.ok(ownerProfile.items.every((item) => item.valueVnd === null));
               },
             );
 
@@ -511,10 +571,24 @@ test(
                 assert.ok(everyRow.every((item) => item.buyer.id === alice.id));
                 assert.ok(everyRow.some((item) => item.status === 'REVOKED'));
                 assert.ok(everyRow.some((item) => item.status === 'FROZEN'));
-                assert.deepEqual(mine.totals, { paidLeft: 2, bonusLeft: 1 });
+                // The staff profile never carries money, even for a customer with unused prepaid sessions.
+                assert.deepEqual(mine.totals, {
+                  paidLeft: 2,
+                  bonusLeft: 1,
+                  frozenPaidLeft: 1,
+                  frozenBonusLeft: 0,
+                  value: null,
+                });
+                assert.ok(everyRow.every((item) => item.valueVnd === null));
                 const bobs = await loyalty.combos(viewer.token, branch.id, bob.id, {});
                 assert.equal(bobs.total, 3);
-                assert.deepEqual(bobs.totals, { paidLeft: 0, bonusLeft: 0 });
+                assert.deepEqual(bobs.totals, {
+                  paidLeft: 0,
+                  bonusLeft: 0,
+                  frozenPaidLeft: 2,
+                  frozenBonusLeft: 1,
+                  value: null,
+                });
                 await fails(
                   () => loyalty.combos(otherViewer.token, branch.id, alice.id, {}),
                   'FORBIDDEN',

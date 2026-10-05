@@ -14,7 +14,9 @@ import { maskPhone } from '../operations/operations.state.js';
 /**
  * Phase 5 P5-10b: the combos that were sold, every state, nothing hidden (Owner instruction of 2026-10-05). Read only.
  * The list for the Owner or a manager (`RESTORE_COMBO_SESSIONS` or `MANAGE_COMBOS`, global, the same rule as the usage history)
- * and one customer's combos on the staff profile (`VIEW_LOYALTY` at a branch) share this reading. No money value is shown.
+ * and one customer's combos on the staff profile (`VIEW_LOYALTY` at a branch) share this reading. The unused prepaid money
+ * (Owner instruction of 2026-10-05) is computed here too but handed out for the Owner only (`ACTIVATE_LOYALTY`, the Owner check),
+ * never on the staff profile.
  *
  * The state is decided in one SQL statement: revoked (withdrawn before any use) first, then frozen (the database's own usability
  * rule is false: its sale was reversed or cancelled after issue), used up, expired, and otherwise active.
@@ -27,6 +29,11 @@ export function canSeeSold(context: AdminContext): boolean {
     decide(context.actor.graph, 'RESTORE_COMBO_SESSIONS', GLOBAL) ||
     decide(context.actor.graph, 'MANAGE_COMBOS', GLOBAL)
   );
+}
+
+/** The unused prepaid value is the Owner's alone: the same check as switching loyalty on (only the virtual Owner holds it). */
+export function canSeeValue(context: AdminContext): boolean {
+  return decide(context.actor.graph, 'ACTIVATE_LOYALTY', GLOBAL);
 }
 
 export function soldPageOf(value: string | undefined): number {
@@ -47,6 +54,7 @@ interface Classified {
   status: ComboSoldStatus;
   paid_left: number;
   bonus_left: number;
+  value_vnd: string;
 }
 
 /** The revoke text is written by the loyalty worker (`packages/server/src/loyalty.ts`); its two causes are told apart here. */
@@ -92,6 +100,7 @@ function presentItem(
   status: ComboSoldStatus,
   paidLeft: number,
   bonusLeft: number,
+  valueVnd: string | null,
 ): ComboSoldItemResponse {
   const sale = row.invoiceLine.invoice;
   let event: ComboSoldItemResponse['event'] = null;
@@ -141,6 +150,7 @@ function presentItem(
     expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
     status,
     event,
+    valueVnd,
   };
 }
 
@@ -153,11 +163,19 @@ function presentItem(
 export async function listSold(
   tx: Prisma.TransactionClient,
   now: Date,
-  query: { ownerUserId: string | null; status: ComboSoldStatus | null; page: number },
+  query: {
+    ownerUserId: string | null;
+    status: ComboSoldStatus | null;
+    page: number;
+    /** The Owner only: unused prepaid money per combo and in the totals; otherwise both stay null. */
+    withValue: boolean;
+  },
 ): Promise<ComboSoldPageResponse> {
   const all = await tx.$queryRaw<Classified[]>`
     SELECT p.id,
       f.paid_left, f.bonus_left,
+      -- (invoice total after discount, tips are not on the invoice) / purchased sessions * purchased sessions left, half up to 1 VND
+      ((i.total_vnd * f.paid_left * 2 + p.paid_sessions) / (2 * p.paid_sessions))::text AS value_vnd,
       CASE
         WHEN p.voided_at IS NOT NULL THEN 'REVOKED'
         WHEN NOT lucy_combo_purchase_usable(p.id) THEN 'FROZEN'
@@ -166,6 +184,8 @@ export async function listSold(
         ELSE 'ACTIVE'
       END AS status
     FROM combo_purchases p
+    JOIN invoice_lines l ON l.id = p.invoice_line_id
+    JOIN invoices i ON i.id = l.invoice_id
     CROSS JOIN LATERAL (
       SELECT (count(*) FILTER (WHERE s.kind = 'PAID'))::int AS paid_left,
              (count(*) FILTER (WHERE s.kind = 'BONUS'))::int AS bonus_left
@@ -190,10 +210,24 @@ export async function listSold(
   });
   const byId = new Map(rows.map((row) => [row.id, row]));
   const active = all.filter((row) => row.status === 'ACTIVE');
+  const frozen = all.filter((row) => row.status === 'FROZEN');
+  const valueOf = (rows: Classified[]) =>
+    rows.reduce((sum, row) => sum + BigInt(row.value_vnd), 0n).toString();
+  const valueById = new Map(all.map((row) => [row.id, row.value_vnd]));
   return {
     items: slice.flatMap((entry) => {
       const row = byId.get(entry.id);
-      return row ? [presentItem(row, entry.status, entry.paid_left, entry.bonus_left)] : [];
+      return row
+        ? [
+            presentItem(
+              row,
+              entry.status,
+              entry.paid_left,
+              entry.bonus_left,
+              query.withValue ? (valueById.get(entry.id) ?? '0') : null,
+            ),
+          ]
+        : [];
     }),
     page: query.page,
     pageSize: COMBO_SOLD_PAGE_SIZE,
@@ -201,6 +235,15 @@ export async function listSold(
     totals: {
       paidLeft: active.reduce((sum, row) => sum + row.paid_left, 0),
       bonusLeft: active.reduce((sum, row) => sum + row.bonus_left, 0),
+      frozenPaidLeft: frozen.reduce((sum, row) => sum + row.paid_left, 0),
+      frozenBonusLeft: frozen.reduce((sum, row) => sum + row.bonus_left, 0),
+      value: query.withValue
+        ? {
+            activeVnd: valueOf(active),
+            frozenVnd: valueOf(frozen),
+            revokedVnd: valueOf(all.filter((row) => row.status === 'REVOKED')),
+          }
+        : null,
     },
   };
 }
