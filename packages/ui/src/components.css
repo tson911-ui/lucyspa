@@ -1184,7 +1184,7 @@
 @media (max-width: 639px) {
   .ls-form-actions {
     position: sticky;
-    z-index: var(--ls-z-sticky);
+    z-index: var(--ls-z-chrome);
     bottom: 0;
     margin-inline: calc(var(--ls-gutter) * -1);
     padding: var(--ls-space-3) var(--ls-gutter);
@@ -1312,6 +1312,7 @@
 }
 
 .ls-backdrop-drawer {
+  z-index: var(--ls-z-drawer);
   place-items: stretch;
   padding: 0;
 }

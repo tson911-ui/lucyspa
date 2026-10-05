@@ -217,11 +217,15 @@
   --ls-press-scale: 0.98;
   /* Where a drawer slides in from (start-side drawers override with -100%) */
   --ls-drawer-from: 100%;
+  /* The one layer scale, lowest first: page content (no z-index) < sticky table header and drag < chrome (topbar, site
+     header, sidebar, bottom bars) < popovers and menus < drawers < dialogs < toasts. A chrome bar is a stacking context,
+     so a menu rendered inside it is capped at the chrome level: the chrome must sit above the sticky table header. */
   --ls-z-sticky: 10;
-  --ls-z-drawer: 20;
+  --ls-z-chrome: 20;
   --ls-z-popover: 30;
-  --ls-z-dialog: 40;
-  --ls-z-toast: 50;
+  --ls-z-drawer: 40;
+  --ls-z-dialog: 50;
+  --ls-z-toast: 60;
 
   /* Legacy aliases kept until Part 2 so customer.css keeps working. */
   --lucy-red: var(--ls-brand);

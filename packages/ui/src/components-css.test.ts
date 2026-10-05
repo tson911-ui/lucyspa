@@ -269,3 +269,36 @@ test('data components: text wraps, touch targets are 44 px, the phone gets a car
     'tablet hiding',
   );
 });
+
+test('one layer scale: content < sticky table header < chrome < popovers < drawers < dialogs < toasts', () => {
+  const order = ['sticky', 'chrome', 'popover', 'drawer', 'dialog', 'toast'];
+  const values = order.map((name) => {
+    const match = new RegExp(`--ls-z-${name}:\\s*(\\d+);`).exec(tokens);
+    assert.ok(match, `token --ls-z-${name}`);
+    return Number(match[1]);
+  });
+  assert.deepEqual(
+    values,
+    [...values].sort((a, b) => a - b),
+    'layers are strictly ascending',
+  );
+  assert.equal(new Set(values).size, values.length);
+  // No stylesheet picks a number of its own: only the tokens, or the local 0/1 layers of decoration.
+  for (const [, value] of css.matchAll(/z-index:\s*([^;]+);/g)) {
+    assert.match(value!.trim(), /^(var\(--ls-z-[a-z]+\)|calc\(var\(--ls-z-drawer\) - 1\)|[01])$/);
+  }
+  assert.match(rule('.ls-table thead th'), /z-index:\s*var\(--ls-z-sticky\)/);
+  // A chrome bar is a stacking context that holds its own menus (account, bell): it must sit above the sticky table header.
+  for (const selector of [
+    '.ls-topbar',
+    '.ls-sidebar-slot',
+    '.ls-site-header',
+    '.ls-tab-bar',
+    '.ls-action-bar',
+  ]) {
+    assert.match(rule(selector), /z-index:\s*var\(--ls-z-chrome\)/, selector);
+  }
+  assert.match(rule('.ls-popover'), /z-index:\s*var\(--ls-z-popover\)/);
+  assert.match(rule('.ls-backdrop'), /z-index:\s*var\(--ls-z-dialog\)/);
+  assert.match(rule('.ls-backdrop-drawer'), /z-index:\s*var\(--ls-z-drawer\)/);
+});

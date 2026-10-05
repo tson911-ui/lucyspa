@@ -122,7 +122,7 @@
 .ls-site-header {
   position: sticky;
   top: 0;
-  z-index: var(--ls-z-sticky);
+  z-index: var(--ls-z-chrome);
   background: var(--ls-bg-surface);
   border-bottom: 1px solid var(--ls-border);
   transition: box-shadow var(--ls-dur-base) var(--ls-ease-out);
@@ -260,7 +260,7 @@
 .ls-tab-bar {
   position: sticky;
   bottom: 0;
-  z-index: var(--ls-z-sticky);
+  z-index: var(--ls-z-chrome);
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
@@ -1717,7 +1717,7 @@
 .ls-action-bar {
   position: sticky;
   bottom: 0;
-  z-index: var(--ls-z-sticky);
+  z-index: var(--ls-z-chrome);
   display: grid;
   gap: var(--ls-space-3);
   padding: var(--ls-space-3) var(--ls-gutter) calc(var(--ls-space-3) + var(--ls-safe-bottom));

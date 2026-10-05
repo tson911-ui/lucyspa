@@ -342,7 +342,9 @@ No gold, no yellow in any chart.
   literal durations in CSS (a test checks transitions and animations). Still forbidden: parallax, animated page transitions
   (slides, zooms), scroll effects, decorative or looping animation beyond the indicators above. `prefers-reduced-motion: reduce` sets all durations to 0 and the press scale to 1
   (drag and drop still works). New micro-interactions need a token, not a literal, and appear in the UX gate review (section 21).
-- **z-index**: base 0, sticky header 10, drawer 20, popover 30, dialog 40, toast 50.
+- **z-index**: base 0, sticky table header 10, chrome (topbar, site header, sidebar, bottom bars) 20, popover and menu 30,
+  drawer 40, dialog 50, toast 60. A chrome bar is a stacking context, so a menu inside it (account menu) is capped at the
+  chrome level: chrome must stay above the sticky table header. Tokens only; `components-css.test.ts` pins the order.
 - **Icons**: one line-icon set, 20 px, `currentColor`, 1.75 stroke, inlined SVG components in `packages/ui` (no icon font, no
   runtime dependency). Icons are decorative (`aria-hidden`) unless they are the only label of a button.
 

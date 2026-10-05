@@ -12,7 +12,7 @@
 .ls-topbar {
   position: sticky;
   top: 0;
-  z-index: var(--ls-z-sticky);
+  z-index: var(--ls-z-chrome);
   display: flex;
   align-items: center;
   gap: var(--ls-space-3);
@@ -128,6 +128,7 @@
 .ls-sidebar-slot {
   position: sticky;
   top: var(--ls-topbar-h);
+  z-index: var(--ls-z-chrome);
   flex: none;
   width: var(--ls-sidebar-w);
   height: calc(100svh - var(--ls-topbar-h));
@@ -431,7 +432,7 @@
     display: none;
   }
 
-  /* The overlay must sit above sticky page content (table headers) and below the popovers and dialogs. */
+  /* The overlay is a drawer: above the chrome and the sticky table header, below dialogs and toasts. */
   .ls-sidebar-slot:has(> .ls-sidebar[data-overlay]) {
     z-index: var(--ls-z-drawer);
   }
