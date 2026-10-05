@@ -20,6 +20,7 @@ import { LeaveService } from '../leave/leave.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { ReassignmentService } from './reassignment.service.js';
 import { appointForFixture } from '../testing/organization-fixture.js';
+import { validVnMobile } from '../testing/phone.js';
 
 // Added for the final Phase 3 gate. No tests were executed during Step 8 implementation.
 test(
@@ -128,7 +129,6 @@ test(
             await tx.serviceBranchAvailability.create({
               data: { serviceId: service.id, branchId: branch.id },
             });
-            const phonePrefix = String(Math.floor(Math.random() * 100_000)).padStart(5, '0');
             const user = async (kind: 'EMPLOYEE' | 'CUSTOMER') => {
               const number = ++n;
               return tx.user.create({
@@ -138,7 +138,7 @@ test(
                   fullName: `Reassignment ${number}`,
                   preferredLocale: 'vi',
                   normalizationVersion: 1,
-                  phoneCanonical: `+849${phonePrefix}${String(number).padStart(3, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   passwordHash: '$argon2id$fixture',
                   ...(kind === 'EMPLOYEE'
                     ? {

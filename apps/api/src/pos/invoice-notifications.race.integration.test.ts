@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
-import { randomInt, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { appendOutboxEvent, createDatabaseClient, syncPermissionCatalog } from '@lucy-spa/database';
 import { processFinancialNotificationEvent, scheduleRevenueSummaries } from '@lucy-spa/server';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Real concurrency: several database connections COMMIT and race for the same financial events and for the
@@ -66,7 +67,7 @@ test(
             emailDelivery: `race-n10-${index}-${run.toLowerCase()}@example.com`,
             normalizationVersion: 1,
             passwordHash: '$argon2id$fixture',
-            phoneCanonical: `+84913${randomInt(0, 1_000_000).toString().padStart(6, '0')}`,
+            phoneCanonical: validVnMobile(),
             employeeProfile: {
               create: {
                 employeeCodeCanonical: `RACEN10-${index}-${run}`,

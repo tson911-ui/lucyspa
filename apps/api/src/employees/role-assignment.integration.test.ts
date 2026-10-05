@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
@@ -27,6 +27,7 @@ import {
   endedEmploymentWithRelationships,
   endOrganizationRelationships,
 } from '../organization/organization.lifecycle.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 const STAFF: PermissionCode[] = ['VIEW_EMPLOYEES', 'CREATE_EMPLOYEES', 'UPDATE_EMPLOYEES'];
@@ -109,7 +110,7 @@ test(
                 })
               ).id;
             const A = await branch('A');
-            const phone = () => `+84918${randomInt(0, 1_000_000).toString().padStart(6, '0')}`;
+            const phone = () => validVnMobile();
             let sequence = 0;
 
             // Direct fixture principals; the API under test never creates these.

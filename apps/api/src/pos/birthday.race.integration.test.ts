@@ -14,6 +14,7 @@ import { SessionService } from '../auth/session.service.js';
 import { LoyaltyService } from '../loyalty/loyalty.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { InvoiceService } from './invoice.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 5 P5-6 birthday gift races on separate committed PostgreSQL connections with real production service calls. A
@@ -172,7 +173,7 @@ test(
               preferredLocale: 'vi',
               normalizationVersion: 1,
               passwordHash: '$argon2id$fixture',
-              phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+              phoneCanonical: validVnMobile(),
               employeeProfile: {
                 create: {
                   employeeCodeCanonical: `BDR_${run}_${++serial}`,
@@ -271,7 +272,7 @@ test(
             emailCanonical: `br-${id}@example.com`,
             emailDelivery: `br-${id}@example.com`,
             emailVerifiedAt: new Date(),
-            phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+            phoneCanonical: validVnMobile(),
             normalizationVersion: 1,
             passwordHash: '$argon2id$fixture',
             customerProfile: {

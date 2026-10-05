@@ -14,6 +14,7 @@ import { ReferralService } from '../referral/referral.service.js';
 import { RewardService } from '../reward/reward.service.js';
 import { CustomerLoyaltyService } from './customer-loyalty.service.js';
 import { LoyaltyService } from './loyalty.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 5 P5-10: the customer's own membership page against real PostgreSQL (design 15, P5-Q9). Read only, identity from the
@@ -130,8 +131,7 @@ test(
                 await sessions.rotateAuthenticated(first, principal, { reauthenticated: true }, tx)
               ).token;
             };
-            const phoneOf = () =>
-              `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`;
+            const phoneOf = () => validVnMobile();
             const customer = async (label: string, fullName: string) => {
               n++;
               const user = await tx.user.create({

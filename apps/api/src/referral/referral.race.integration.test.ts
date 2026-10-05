@@ -19,6 +19,7 @@ import { SessionService } from '../auth/session.service.js';
 import { InvoiceService } from '../pos/invoice.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { ReferralService } from './referral.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 5 P5-5 referral races on separate committed PostgreSQL connections with real production service calls. A two-party latch
@@ -224,7 +225,7 @@ test(
               preferredLocale: 'vi',
               normalizationVersion: 1,
               passwordHash: '$argon2id$fixture',
-              phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+              phoneCanonical: validVnMobile(),
               employeeProfile: {
                 create: {
                   employeeCodeCanonical: `RFR_${run}_${++serial}`,
@@ -262,7 +263,7 @@ test(
       const member = async () => {
         const id = randomUUID();
         memberIds.push(id);
-        const phone = `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`;
+        const phone = validVnMobile();
         await database.user.create({
           data: {
             id,

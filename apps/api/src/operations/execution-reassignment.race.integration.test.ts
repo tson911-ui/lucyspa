@@ -18,6 +18,7 @@ import { WalkInService } from '../walkin/walkin.service.js';
 import { ReassignmentService } from './reassignment.service.js';
 import { ServiceExecutionService } from './service-execution.service.js';
 import { appointForFixture } from '../testing/organization-fixture.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Real production service calls on separate committed PostgreSQL connections. The two-party
@@ -182,7 +183,7 @@ test(
               preferredLocale: 'vi',
               normalizationVersion: 1,
               passwordHash: '$argon2id$fixture',
-              phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+              phoneCanonical: validVnMobile(),
               employeeProfile: {
                 create: {
                   employeeCodeCanonical: `EXR_${run}_${++serial}`,

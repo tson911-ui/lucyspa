@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
@@ -16,6 +16,8 @@ import { AuthThrottleService } from './auth-throttle.service.js';
 import { AuthError } from './auth.error.js';
 import { capabilityDigest, generateCapability, throttleDigest } from './crypto.js';
 import { RateLimitedError, RegistrationService } from './registration.service.js';
+import { validVnMobileLocal } from '../testing/phone.js';
+import { awaitThrottleWindowRoom } from '../testing/throttle-window.js';
 
 const fixtureHash =
   '$argon2id$v=19$m=19456,t=2,p=1$YWFhYWFhYWFhYWFhYWFhYQ$YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE';
@@ -89,7 +91,7 @@ test(
               emails.push(value.toLowerCase());
               return value;
             };
-            const phone = () => `0912${randomInt(0, 1_000_000).toString().padStart(6, '0')}`;
+            const phone = () => validVnMobileLocal();
             const registration = (address: string, phoneNumber = phone()) => ({
               fullName: 'Nguyễn Thị Linh',
               dateOfBirth: '1990-02-28',
@@ -371,6 +373,7 @@ test(
             await context.test(
               'IP issuance budget is public and independent of account existence',
               async () => {
+                await awaitThrottleWindowRoom();
                 const limited = new RegistrationService(
                   parseApiEnvironment({ ...base, AUTH_OTP_IP_ISSUE_LIMIT: '2' }),
                   runner,

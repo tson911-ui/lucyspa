@@ -24,6 +24,7 @@ import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { InvoiceService } from './invoice.service.js';
 import { PayosWebhookService } from './payos.webhook.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 4 Step 8: PayOS (simulated provider) against real PostgreSQL: request creation, verified
@@ -236,7 +237,7 @@ test(
                   status: 'ACTIVE',
                   fullName: `Staff ${n}`,
                   preferredLocale: 'vi',
-                  phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: '$argon2id$fixture',
                   employeeProfile: {
@@ -308,7 +309,7 @@ test(
                   emailCanonical: `iv-${label}-${run.toLowerCase()}@example.com`,
                   emailDelivery: `iv-${label}-${run.toLowerCase()}@example.com`,
                   emailVerifiedAt: new Date(),
-                  phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: status === 'ACTIVE' ? '$argon2id$fixture' : null,
                   customerProfile: {

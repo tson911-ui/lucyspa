@@ -25,6 +25,7 @@ import type { PrismaService } from '../platform/prisma.service.js';
 import { EmailChangeService } from './email-change.service.js';
 import { MyAccountService } from './my-account.service.js';
 import { appointForFixture } from '../testing/organization-fixture.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 const NEW_PASSWORD = 'jasmine tea by the quiet river';
@@ -135,7 +136,7 @@ test(
               },
             };
             const processor = new AuthDeliveryProcessor(runner, environment.auth, transport);
-            const phone = () => `+84919${randomInt(0, 1_000_000).toString().padStart(6, '0')}`;
+            const phone = () => validVnMobile();
             let sequence = 0;
             const address = (label: string) => `${label}-${run}@example.com`;
             const principal = async (kind: 'EMPLOYEE' | 'CUSTOMER' | 'OWNER', branch?: string) => {

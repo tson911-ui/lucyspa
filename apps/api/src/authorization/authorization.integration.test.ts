@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
@@ -16,6 +16,7 @@ import {
 } from '../auth/auth-store.js';
 import { authorizationSummary, decide, decideAcross, GLOBAL } from './authorization.js';
 import { invalidateAuthorization, loadAuthorityGraph } from './authorization.store.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const fixtureHash =
   '$argon2id$v=19$m=19456,t=2,p=1$YWFhYWFhYWFhYWFhYWFhYQ$YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE';
@@ -70,7 +71,7 @@ test(
                   status: active ? 'ACTIVE' : 'PENDING_SETUP',
                   fullName: `Employee ${label}`,
                   preferredLocale: 'vi',
-                  phoneCanonical: `+84914${randomInt(0, 1_000_000).toString().padStart(6, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: active ? fixtureHash : null,
                   employeeProfile: {

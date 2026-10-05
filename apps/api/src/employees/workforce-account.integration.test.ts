@@ -23,6 +23,7 @@ import { EmployeeDirectoryService } from './employee-directory.service.js';
 import { EmployeeService } from './employee.service.js';
 import { businessToday, day } from './employment.js';
 import { appointForFixture, isAdministrative } from '../testing/organization-fixture.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 const STAFF: PermissionCode[] = ['VIEW_EMPLOYEES', 'CREATE_EMPLOYEES', 'UPDATE_EMPLOYEES'];
@@ -132,7 +133,7 @@ test(
                 })
               ).id;
             const A = await branch('A');
-            const phone = () => `+84918${randomInt(0, 1_000_000).toString().padStart(6, '0')}`;
+            const phone = () => validVnMobile();
             let sequence = 0;
 
             // Direct fixture principals; the API under test never creates these.

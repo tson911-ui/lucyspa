@@ -20,6 +20,7 @@ import { SessionService } from '../auth/session.service.js';
 import { OperationsService } from '../operations/operations.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { WalkInService } from './walkin.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const code = (error: unknown) => (error instanceof AuthError ? error.code : String(error));
 const plus = (at: Date, minutes: number) => new Date(at.getTime() + minutes * 60_000);
@@ -104,10 +105,15 @@ test(
 
             let sequence = 0;
             // 0992xxxxxx is not an allocated VN mobile range, so normalizePhone rejects it (1% of runs).
-            const phoneBase = String(Math.floor(Math.random() * 100_000))
-              .padStart(5, '0')
-              .replace(/^92/, '93');
-            const phoneOf = (n: number) => `+849${phoneBase}${String(n).padStart(3, '0')}`;
+            const phones = new Map<number, string>();
+            // One valid, unique number per fixture index, the same every time it is asked for.
+            const phoneOf = (n: number) => {
+              const known = phones.get(n);
+              if (known) return known;
+              const created = validVnMobile();
+              phones.set(n, created);
+              return created;
+            };
             const user = async (kind: 'CUSTOMER' | 'EMPLOYEE') => {
               sequence += 1;
               const id = randomUUID();

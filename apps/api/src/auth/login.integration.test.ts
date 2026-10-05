@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
@@ -16,6 +16,8 @@ import { LOGIN_POLICY, LoginService } from './login.service.js';
 import { PasswordService } from './password.service.js';
 import { RateLimitedError } from './registration.service.js';
 import { SessionService } from './session.service.js';
+import { validVnMobile } from '../testing/phone.js';
+import { awaitThrottleWindowRoom } from '../testing/throttle-window.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 
@@ -97,7 +99,7 @@ test(
                   emailCanonical: email,
                   emailDelivery: email,
                   emailVerifiedAt: new Date(),
-                  phoneCanonical: `+84912${randomInt(0, 1_000_000).toString().padStart(6, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash,
                   customerProfile: {
@@ -227,6 +229,7 @@ test(
             await context.test(
               'identifier failure budget blocks further password work',
               async () => {
+                await awaitThrottleWindowRoom();
                 const target = await customer('c');
                 for (let attempt = 0; attempt < LOGIN_POLICY.identifierFailureLimit; attempt += 1) {
                   await failsWith(

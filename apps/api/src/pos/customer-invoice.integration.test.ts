@@ -16,6 +16,7 @@ import { customerInvoiceList } from './customer-invoice.core.js';
 import { CustomerInvoiceService } from './customer-invoice.service.js';
 import { DiscountService } from '../discounts/discount.service.js';
 import { InvoiceService } from './invoice.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 4 Step 9: the customer's invoice history against real PostgreSQL. Every fixture (and every command)
@@ -210,7 +211,7 @@ test(
                   status: 'ACTIVE',
                   fullName: `Staff ${n}`,
                   preferredLocale: 'vi',
-                  phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: '$argon2id$fixture',
                   employeeProfile: {
@@ -270,7 +271,7 @@ test(
                   emailCanonical: `ci-${label}-${run.toLowerCase()}@example.com`,
                   emailDelivery: `ci-${label}-${run.toLowerCase()}@example.com`,
                   emailVerifiedAt: new Date(),
-                  phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: '$argon2id$fixture',
                   customerProfile: {

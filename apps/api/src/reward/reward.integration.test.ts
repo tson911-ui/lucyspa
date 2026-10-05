@@ -12,6 +12,7 @@ import { SessionService } from '../auth/session.service.js';
 import { LoyaltyService } from '../loyalty/loyalty.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { RewardService } from './reward.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 5 P5-9: the reward catalog and the customers' entitlements against real PostgreSQL (design 10; the Owner's instruction and
@@ -139,8 +140,7 @@ test(
                 await sessions.rotateAuthenticated(first, principal, { reauthenticated: true }, tx)
               ).token;
             };
-            const phoneOf = () =>
-              `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`;
+            const phoneOf = () => validVnMobile();
             const customer = async (label: string) => {
               n++;
               return tx.user.create({

@@ -20,6 +20,7 @@ import { LoyaltyService } from '../loyalty/loyalty.service.js';
 import { InvoiceService } from '../pos/invoice.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { ReferralService } from './referral.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 5 P5-5: referral against real PostgreSQL (design 7 and the Owner decisions of 2026-10-04 in 2.5). Staff bind, pay and
@@ -176,8 +177,7 @@ test(
                 await sessions.rotateAuthenticated(first, principal, { reauthenticated: true }, tx)
               ).token;
             };
-            const phoneOf = () =>
-              `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`;
+            const phoneOf = () => validVnMobile();
             const customer = async (label: string, phone = phoneOf()) => {
               n++;
               return tx.user.create({

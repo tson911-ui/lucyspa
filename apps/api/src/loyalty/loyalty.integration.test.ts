@@ -26,6 +26,7 @@ import type { PrismaService } from '../platform/prisma.service.js';
 import { DiscountService } from '../discounts/discount.service.js';
 import { InvoiceService } from '../pos/invoice.service.js';
 import { LoyaltyService } from './loyalty.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 5 P5-3: points and tiers against real PostgreSQL. Staff create, pay, reverse and cancel invoices
@@ -191,7 +192,7 @@ test(
                   emailCanonical: `l53-${label}-${run.toLowerCase()}@example.com`,
                   emailDelivery: `l53-${label}-${run.toLowerCase()}@example.com`,
                   emailVerifiedAt: new Date(),
-                  phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: '$argon2id$fixture',
                   customerProfile: {
@@ -249,7 +250,7 @@ test(
                   status: 'ACTIVE',
                   fullName: `Staff ${n}`,
                   preferredLocale: 'vi',
-                  phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: '$argon2id$fixture',
                   employeeProfile: {

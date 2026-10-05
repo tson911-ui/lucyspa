@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
@@ -24,6 +24,7 @@ import type { PrismaService } from '../platform/prisma.service.js';
 import { collaboratorWorkCovering, isoWeekday } from './collaborator-work.rules.js';
 import { CollaboratorWorkService } from './collaborator-work.service.js';
 import { appointForFixture } from '../testing/organization-fixture.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 const shift = (date: string, days: number) =>
@@ -133,7 +134,7 @@ test(
               }
               throw new Error('unreachable');
             };
-            const phone = () => `+84915${randomInt(0, 1_000_000).toString().padStart(6, '0')}`;
+            const phone = () => validVnMobile();
             const principal = async (
               kind: 'EMPLOYEE' | 'OWNER',
               branches: string[] = [],

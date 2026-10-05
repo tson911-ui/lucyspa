@@ -12,6 +12,7 @@ import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { ServiceExecutionService } from './service-execution.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 // Added for the final Phase 3 gate. NOT EXECUTED during Step 7 implementation.
 test(
@@ -133,7 +134,7 @@ test(
                   status: 'ACTIVE',
                   fullName: `Execution ${n}`,
                   preferredLocale: 'vi',
-                  phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: '$argon2id$fixture',
                   employeeProfile: {

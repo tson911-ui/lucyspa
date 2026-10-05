@@ -8,6 +8,7 @@ import { createDatabaseClient, type Prisma } from '@lucy-spa/database';
 import { AuthError } from '../auth/auth.error.js';
 import type { AdminActor, AdminContext } from '../authorization/admin-command.js';
 import { arriveBooking, markNoShow } from './operations.core.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Arrival races with real connections (contract §16). A third transaction holds the booking
@@ -35,7 +36,6 @@ test(
       customer: randomUUID(),
     };
     try {
-      const phoneBase = String(Math.floor(Math.random() * 100_000)).padStart(5, '0');
       await database.branch.create({
         data: { id: ids.branch, code: `IT-OPR-${run}`, name: 'Race ops', timezone: 'UTC' },
       });
@@ -73,7 +73,7 @@ test(
             emailCanonical: `opr-${index}-${run.toLowerCase()}@example.invalid`,
             emailDelivery: `opr-${index}-${run.toLowerCase()}@example.invalid`,
             emailVerifiedAt: new Date(),
-            phoneCanonical: `+849${phoneBase}${String(index).padStart(3, '0')}`,
+            phoneCanonical: validVnMobile(),
             normalizationVersion: 1,
             passwordHash: '$argon2id$fixture-password-hash',
             ...(kind === 'CUSTOMER'

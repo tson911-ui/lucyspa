@@ -13,6 +13,7 @@ import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { loadTimingSettings, operationalToday } from './operations.core.js';
 import { ServiceExecutionService } from './service-execution.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 4 Step 3: staff-added service against real PostgreSQL. Every fixture (and every command)
@@ -165,7 +166,7 @@ test(
                   status: 'ACTIVE',
                   fullName: `Add ${n}`,
                   preferredLocale: 'vi',
-                  phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: '$argon2id$fixture',
                   employeeProfile: {

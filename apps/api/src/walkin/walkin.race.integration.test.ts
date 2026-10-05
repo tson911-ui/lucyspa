@@ -13,6 +13,7 @@ import {
   createWalkIn,
   normalizeWalkIn,
 } from './walkin.core.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Walk-in races with real connections. A third transaction holds the contended row lock (the
@@ -48,7 +49,6 @@ test(
       const offset = 12 - clock!.hour;
       const zone = offset === 0 ? 'UTC' : `Etc/GMT${offset > 0 ? '-' : '+'}${Math.abs(offset)}`;
       const today = new Date(clock!.now.getTime() + offset * 3_600_000).toISOString().slice(0, 10);
-      const phoneBase = String(Math.floor(Math.random() * 100_000)).padStart(5, '0');
 
       await database.branch.create({
         data: { id: ids.branch, code: `IT-WIR-${run}`, name: 'Walk-in race', timezone: zone },
@@ -93,7 +93,7 @@ test(
             emailCanonical: `wir-${index}-${run.toLowerCase()}@example.invalid`,
             emailDelivery: `wir-${index}-${run.toLowerCase()}@example.invalid`,
             emailVerifiedAt: new Date(),
-            phoneCanonical: `+849${phoneBase}${String(index).padStart(3, '0')}`,
+            phoneCanonical: validVnMobile(),
             normalizationVersion: 1,
             passwordHash: '$argon2id$fixture-password-hash',
             employeeProfile: {

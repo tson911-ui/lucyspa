@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
-import { randomInt, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createDatabaseClient, syncPermissionCatalog } from '@lucy-spa/database';
 import { leaveRequestedPayload, processLeaveEvent } from '@lucy-spa/server';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Real concurrency: several database connections COMMIT and race for the same Leave events.
@@ -57,7 +58,7 @@ test(
             emailDelivery: `race-${sequence}-${run.toLowerCase()}@example.com`,
             normalizationVersion: 1,
             passwordHash: '$argon2id$fixture',
-            phoneCanonical: `+84912${randomInt(0, 1_000_000).toString().padStart(6, '0')}`,
+            phoneCanonical: validVnMobile(),
             employeeProfile: {
               create: {
                 employeeCodeCanonical: `RACE-${sequence}-${run}`,

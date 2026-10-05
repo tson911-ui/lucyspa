@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
@@ -16,6 +16,8 @@ import { SessionService } from '../auth/session.service.js';
 import { invalidateAuthorization } from '../authorization/authorization.store.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { bootstrapOwner, type OwnerBootstrapInput } from './owner-bootstrap.js';
+import { validVnMobile } from '../testing/phone.js';
+import { awaitThrottleWindowRoom } from '../testing/throttle-window.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 const WORKFORCE_EMAIL: LoginPrincipal = { realm: 'WORKFORCE', identifierType: 'EMAIL' };
@@ -77,7 +79,7 @@ test(
             );
             await service.onModuleInit();
             const anonymous = async () => (await sessions.createAnonymous(tx)).token;
-            const phone = () => `+84915${randomInt(0, 1_000_000).toString().padStart(6, '0')}`;
+            const phone = () => validVnMobile();
             const fails = (work: Promise<unknown>, code = 'AUTHENTICATION_FAILED') =>
               assert.rejects(
                 work,
@@ -462,6 +464,7 @@ test(
             await context.test(
               'workforce identifier failures are throttled independently of existence',
               async () => {
+                await awaitThrottleWindowRoom();
                 for (const code of [`ktv-ghost-${run}`, `ktv-a-${run}`]) {
                   for (
                     let attempt = 0;

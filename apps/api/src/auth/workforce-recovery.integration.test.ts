@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
@@ -21,6 +21,7 @@ import { PasswordService } from './password.service.js';
 import { RecoveryEmailService } from './recovery-email.service.js';
 import { RegistrationService } from './registration.service.js';
 import { SessionService } from './session.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const OLD_PASSWORD = 'a calm lotus evening 2026';
 const NEW_PASSWORD = 'a brand new lotus morning 2026';
@@ -87,7 +88,7 @@ test(
               },
             };
             const processor = new AuthDeliveryProcessor(runner, environment.auth, transport);
-            const phone = () => `+84916${randomInt(0, 1_000_000).toString().padStart(6, '0')}`;
+            const phone = () => validVnMobile();
             const account = async (
               label: string,
               kind: 'OWNER' | 'EMPLOYEE' | 'CUSTOMER',

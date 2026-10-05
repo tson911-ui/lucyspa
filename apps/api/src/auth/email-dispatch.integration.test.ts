@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
@@ -21,6 +21,7 @@ import { AuthThrottleService } from './auth-throttle.service.js';
 import { capabilityDigest, throttleDigest } from './crypto.js';
 import { PasswordResetService } from './password-reset.service.js';
 import { PasswordService } from './password.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 // Explicit opt-in: ordinary unit/HTTP tests do not connect to PostgreSQL. No real email
 // provider is contacted; every send goes to an in-memory transport.
@@ -81,7 +82,7 @@ test(
                   emailCanonical: delivery.toLowerCase(),
                   emailDelivery: delivery,
                   emailVerifiedAt: new Date(),
-                  phoneCanonical: `+84919${randomInt(0, 1_000_000).toString().padStart(6, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: hash,
                   customerProfile: {

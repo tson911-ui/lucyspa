@@ -24,6 +24,7 @@ import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { InvoiceService } from './invoice.service.js';
 import { PayosWebhookService } from './payos.webhook.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 4 Step 10 (Owner answers Q8): invoice / revenue notifications against real PostgreSQL. Staff
@@ -177,7 +178,7 @@ test(
                   emailCanonical: `n10-${label}-${run.toLowerCase()}@example.com`,
                   emailDelivery: `n10-${label}-${run.toLowerCase()}@example.com`,
                   emailVerifiedAt: new Date(),
-                  phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: '$argon2id$fixture',
                   customerProfile: {
@@ -237,7 +238,7 @@ test(
                     status: 'ACTIVE',
                     fullName: `Staff ${n}`,
                     preferredLocale: 'vi',
-                    phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+                    phoneCanonical: validVnMobile(),
                     normalizationVersion: 1,
                     passwordHash: '$argon2id$fixture',
                     employeeProfile: {

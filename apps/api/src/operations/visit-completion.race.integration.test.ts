@@ -13,6 +13,7 @@ import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { ServiceExecutionService } from './service-execution.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 4 Step 2 races on separate committed PostgreSQL connections, with real production
@@ -173,7 +174,7 @@ test(
               preferredLocale: 'vi',
               normalizationVersion: 1,
               passwordHash: '$argon2id$fixture',
-              phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+              phoneCanonical: validVnMobile(),
               employeeProfile: {
                 create: {
                   employeeCodeCanonical: `VCR_${run}_${++serial}`,

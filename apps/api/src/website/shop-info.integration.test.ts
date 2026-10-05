@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -27,6 +27,7 @@ import { appointForFixture, isAdministrative } from '../testing/organization-fix
 import { MediaService } from './media.service.js';
 import { PublicWebsiteService } from './popup.service.js';
 import { ShopInfoService } from './shop-info.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const png = (shade: number) =>
   sharp({ create: { width: 8, height: 8, channels: 3, background: { r: shade, g: 90, b: 50 } } })
@@ -136,7 +137,7 @@ test(
                   emailCanonical: `shop-${sequence}-${run.toLowerCase()}@example.com`,
                   emailDelivery: `shop-${sequence}-${run.toLowerCase()}@example.com`,
                   emailVerifiedAt: kind === 'CUSTOMER' ? new Date() : null,
-                  phoneCanonical: `+84918${randomInt(0, 1_000_000).toString().padStart(6, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: hash,
                   ...(kind === 'EMPLOYEE'

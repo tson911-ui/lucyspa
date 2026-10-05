@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -20,6 +20,7 @@ import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { AttendanceService } from './attendance.service.js';
 import { appointForFixture } from '../testing/organization-fixture.js';
+import { validVnMobile } from '../testing/phone.js';
 
 // The calendar date of `instant` in `timeZone` (independent of the server timezone).
 function localDate(instant: Date, timeZone: string): string {
@@ -128,10 +129,7 @@ test(
                   emailCanonical: `att-${sequence}-${run.toLowerCase()}@example.com`,
                   emailDelivery: `att-${sequence}-${run.toLowerCase()}@example.com`,
                   emailVerifiedAt: kind === 'CUSTOMER' ? new Date() : null,
-                  phoneCanonical:
-                    kind === 'OWNER'
-                      ? null
-                      : `+84913${randomInt(0, 1_000_000).toString().padStart(6, '0')}`,
+                  phoneCanonical: kind === 'OWNER' ? null : validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: hash,
                   ...(kind === 'EMPLOYEE'

@@ -12,6 +12,7 @@ import {
   validateAssignment,
 } from './availability.engine.js';
 import type { AvailabilityContext, SequenceAtRequest } from './availability.types.js';
+import { validVnMobile } from '../testing/phone.js';
 
 // Branch timezone Asia/Ho_Chi_Minh (UTC+7, no DST). Monday 2027-03-01 is the fixture "today".
 const local = (date: string, hhmm: string) => new Date(`${date}T${hhmm}:00+07:00`);
@@ -37,7 +38,6 @@ test(
           async (tx: Prisma.TransactionClient) => {
             // ---------------------------------------------------------------- fixtures
             let sequence = 0;
-            const phoneBase = String(Math.floor(Math.random() * 100_000)).padStart(5, '0');
             const user = async (
               kind: 'CUSTOMER' | 'EMPLOYEE',
               status: 'ACTIVE' | 'INACTIVE' = 'ACTIVE',
@@ -54,7 +54,7 @@ test(
                   emailCanonical: `av-${sequence}-${run.toLowerCase()}@example.invalid`,
                   emailDelivery: `av-${sequence}-${run.toLowerCase()}@example.invalid`,
                   emailVerifiedAt: new Date(),
-                  phoneCanonical: `+849${phoneBase}${String(sequence).padStart(3, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: '$argon2id$fixture-password-hash',
                   ...(kind === 'CUSTOMER'

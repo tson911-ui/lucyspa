@@ -23,6 +23,7 @@ import { InvoiceService } from '../pos/invoice.service.js';
 import { birthdayOccurrence } from '../pos/birthday.engine.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { LoyaltyService } from './loyalty.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 5 P5-6: the birthday gift against real PostgreSQL (design 6.3, 8 and the Owner decisions of 2026-10-04, OQ-8). The
@@ -173,8 +174,7 @@ test(
                 await sessions.rotateAuthenticated(first, principal, { reauthenticated: true }, tx)
               ).token;
             };
-            const phoneOf = () =>
-              `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`;
+            const phoneOf = () => validVnMobile();
 
             // ------------------------------------------------------------------ dates: relative to the database's "today"
             const branchRow = await tx.branch.create({

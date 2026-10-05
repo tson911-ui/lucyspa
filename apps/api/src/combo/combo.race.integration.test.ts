@@ -14,6 +14,7 @@ import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { InvoiceService } from '../pos/invoice.service.js';
 import { ComboService } from './combo.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 5 P5-7 combo races on separate committed PostgreSQL connections with real production service calls: the same paid event
@@ -174,7 +175,7 @@ test(
               preferredLocale: 'vi',
               normalizationVersion: 1,
               passwordHash: '$argon2id$fixture',
-              phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+              phoneCanonical: validVnMobile(),
               employeeProfile: {
                 create: {
                   employeeCodeCanonical: `CBR_${run}_${++serial}`,
@@ -247,7 +248,7 @@ test(
             emailCanonical: `cbr-${id}@example.com`,
             emailDelivery: `cbr-${id}@example.com`,
             emailVerifiedAt: new Date(),
-            phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+            phoneCanonical: validVnMobile(),
             normalizationVersion: 1,
             passwordHash: '$argon2id$fixture',
             customerProfile: {

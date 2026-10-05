@@ -13,6 +13,7 @@ import { LoyaltyService } from '../loyalty/loyalty.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { RewardService } from '../reward/reward.service.js';
 import { ComboService } from './combo.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 5 P5-10b: the "Combo đã bán" list (Owner/manager) and a customer's combos and gifts on the staff profile, against real
@@ -131,8 +132,7 @@ test(
                 await sessions.rotateAuthenticated(first, principal, { reauthenticated: true }, tx)
               ).token;
             };
-            const phoneOf = () =>
-              `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`;
+            const phoneOf = () => validVnMobile();
             const customer = async (label: string, fullName: string) => {
               n++;
               return tx.user.create({

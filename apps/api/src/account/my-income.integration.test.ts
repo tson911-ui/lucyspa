@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
@@ -15,6 +15,7 @@ import { SessionService } from '../auth/session.service.js';
 import { businessToday, day } from '../employees/employment.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { MyIncomeService } from './my-income.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 const shift = (date: string, days: number) =>
@@ -95,7 +96,7 @@ test(
             // Tokyo (UTC+9) was already on the next date but Ho Chi Minh (UTC+7) was not: 22:00-24:00 in
             // Vietnam, 15:00-17:00 UTC. `now()` is frozen per transaction, so one value is stable all test.
             const today = day(await businessToday(tx, [A, T]));
-            const phone = () => `+84914${randomInt(0, 1_000_000).toString().padStart(6, '0')}`;
+            const phone = () => validVnMobile();
             const principal = async (
               kind: 'EMPLOYEE' | 'OWNER' | 'CUSTOMER',
               classifications: [string, string][] = [],

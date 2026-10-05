@@ -20,6 +20,7 @@ import type { AdminActor, AdminContext } from '../authorization/admin-command.js
 import type { PrismaService } from '../platform/prisma.service.js';
 import { arriveBooking, markNoShow } from './operations.core.js';
 import { OperationsService } from './operations.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const code = (error: unknown) => (error instanceof AuthError ? error.code : String(error));
 const plus = (at: Date, minutes: number) => new Date(at.getTime() + minutes * 60_000);
@@ -113,7 +114,6 @@ test(
               new Date(Date.parse(`${date}T${hhmm}:00.000Z`) - offset * 3_600_000);
 
             let sequence = 0;
-            const phoneBase = String(Math.floor(Math.random() * 100_000)).padStart(5, '0');
             const user = async (kind: 'CUSTOMER' | 'EMPLOYEE') => {
               sequence += 1;
               const id = randomUUID();
@@ -127,7 +127,7 @@ test(
                   emailCanonical: `ops-${sequence}-${run.toLowerCase()}@example.invalid`,
                   emailDelivery: `ops-${sequence}-${run.toLowerCase()}@example.invalid`,
                   emailVerifiedAt: new Date(),
-                  phoneCanonical: `+849${phoneBase}${String(sequence).padStart(3, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: '$argon2id$fixture-password-hash',
                   ...(kind === 'CUSTOMER'

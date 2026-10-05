@@ -25,6 +25,7 @@ import { AuthError } from './auth.error.js';
 import { ContextThrottleService } from './context-throttle.service.js';
 import { capabilityDigest, generateCapability, throttleDigest } from './crypto.js';
 import { SessionService, type CredentialEvidence } from './session.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 // Explicit opt-in: ordinary unit/HTTP tests do not connect to PostgreSQL.
 test(
@@ -162,7 +163,7 @@ test(
                 fullName: 'Session rollback fixture',
                 preferredLocale: 'vi',
                 normalizationVersion: 1,
-                phoneCanonical: `+849${randomBytes(4).readUInt32BE().toString().padStart(10, '0')}`,
+                phoneCanonical: validVnMobile(),
                 passwordHash: fixtureHash,
                 employeeProfile: {
                   create: {

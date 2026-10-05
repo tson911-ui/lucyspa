@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
@@ -13,6 +13,7 @@ import { AuthError } from '../auth/auth.error.js';
 import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { LeaveService } from './leave.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 // Explicit opt-in: ordinary unit tests do not connect to PostgreSQL. All fixtures roll back.
 test(
@@ -111,7 +112,7 @@ test(
                   emailDelivery: `leave-${sequence}-${run.toLowerCase()}@example.com`,
                   normalizationVersion: 1,
                   passwordHash: '$argon2id$fixture',
-                  phoneCanonical: `+84913${randomInt(0, 1_000_000).toString().padStart(6, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   employeeProfile: {
                     create: {
                       employeeCodeCanonical: `LVN-${sequence}-${run}`,

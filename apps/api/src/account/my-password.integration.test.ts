@@ -22,6 +22,8 @@ import { RateLimitedError } from '../auth/registration.service.js';
 import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { MyAccountService } from './my-account.service.js';
+import { validVnMobile } from '../testing/phone.js';
+import { awaitThrottleWindowRoom } from '../testing/throttle-window.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 const NEW_PASSWORD = 'jasmine tea by the quiet river';
@@ -117,7 +119,7 @@ test(
               },
             };
             const processor = new AuthDeliveryProcessor(runner, environment.auth, transport);
-            const phone = () => `+84917${randomInt(0, 1_000_000).toString().padStart(6, '0')}`;
+            const phone = () => validVnMobile();
             let sequence = 0;
             const principal = async (
               kind: 'EMPLOYEE' | 'CUSTOMER' | 'OWNER',
@@ -323,6 +325,7 @@ test(
             await context.test(
               'rate limit: the reauthentication failure budget applies',
               async () => {
+                await awaitThrottleWindowRoom();
                 const limited = await principal('EMPLOYEE');
                 const here = await login(limited.id);
                 for (let attempt = 0; attempt < 10; attempt += 1) {

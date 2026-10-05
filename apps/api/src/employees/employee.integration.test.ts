@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
@@ -23,6 +23,7 @@ import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { EmployeeService } from './employee.service.js';
 import { appointForFixture, isAdministrative } from '../testing/organization-fixture.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 const NEW_PASSWORD = 'a brand new lotus morning 2026';
@@ -101,7 +102,7 @@ test(
                 })
               ).id;
             const [A, B, C] = [await branch('A'), await branch('B'), await branch('C')];
-            const phone = () => `+84917${randomInt(0, 1_000_000).toString().padStart(6, '0')}`;
+            const phone = () => validVnMobile();
             let sequence = 0;
 
             // Direct fixture principals; the API under test never creates these.

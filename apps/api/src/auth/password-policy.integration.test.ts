@@ -25,6 +25,7 @@ import { PasswordResetService } from './password-reset.service.js';
 import { PasswordService } from './password.service.js';
 import { RegistrationService } from './registration.service.js';
 import { SessionService } from './session.service.js';
+import { validVnMobileLocal } from '../testing/phone.js';
 
 const OWNER_PASSWORD = 'a calm lotus evening 2026';
 const SEVEN = 'Lotus#7';
@@ -131,7 +132,7 @@ test(
             ).id;
             const today = day(await businessToday(tx, [A]));
             const peer = () => `198.51.100.${randomInt(1, 250)}`;
-            const phone = () => `0918${randomInt(0, 1_000_000).toString().padStart(6, '0')}`;
+            const phone = () => validVnMobileLocal();
             const fails = (work: Promise<unknown>, code: string, field?: string) =>
               assert.rejects(
                 work,

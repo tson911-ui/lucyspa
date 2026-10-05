@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
@@ -23,6 +23,7 @@ import type { PrismaService } from '../platform/prisma.service.js';
 import { AuditReadService } from './audit-read.service.js';
 import { RoleAdminService } from './role-admin.service.js';
 import { appointForFixture } from '../testing/organization-fixture.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const PASSWORD = 'a calm lotus evening 2026';
 
@@ -137,7 +138,7 @@ test(
                 })
               ).id;
             const [A, B] = [await branch('A'), await branch('B')];
-            const phone = () => `+84918${randomInt(0, 1_000_000).toString().padStart(6, '0')}`;
+            const phone = () => validVnMobile();
             let sequence = 0;
             const principal = async (
               kind: 'EMPLOYEE' | 'CUSTOMER' | 'OWNER',

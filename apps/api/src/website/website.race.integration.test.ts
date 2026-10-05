@@ -24,6 +24,7 @@ import { followsEnabledSeason, SEASON_LOCK } from './season.link.js';
 import { SeasonService } from './season.service.js';
 import { SLIDE_LOCK } from './slide.core.js';
 import { SlideService } from './slide.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const DAY = 86_400_000;
 /** Far-future windows keep every case independent of the content already in the database. */
@@ -238,7 +239,7 @@ test(
               preferredLocale: 'vi',
               normalizationVersion: 1,
               passwordHash: '$argon2id$fixture',
-              phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+              phoneCanonical: validVnMobile(),
               employeeProfile: {
                 create: {
                   employeeCodeCanonical: `WSR_${run}_${++serial}`,

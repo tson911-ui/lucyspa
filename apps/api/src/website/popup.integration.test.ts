@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -26,6 +26,7 @@ import type { PrismaService } from '../platform/prisma.service.js';
 import { appointForFixture, isAdministrative } from '../testing/organization-fixture.js';
 import { MediaService } from './media.service.js';
 import { PopupService, PublicWebsiteService } from './popup.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const png = (shade: number, size = 8) =>
   sharp({
@@ -142,7 +143,7 @@ test(
                   emailCanonical: `popup-${sequence}-${run.toLowerCase()}@example.com`,
                   emailDelivery: `popup-${sequence}-${run.toLowerCase()}@example.com`,
                   emailVerifiedAt: kind === 'CUSTOMER' ? new Date() : null,
-                  phoneCanonical: `+84918${randomInt(0, 1_000_000).toString().padStart(6, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: hash,
                   ...(kind === 'EMPLOYEE'

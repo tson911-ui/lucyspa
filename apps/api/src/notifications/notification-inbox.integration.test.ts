@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomInt, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
@@ -13,6 +13,7 @@ import {
   readAllOwnNotifications,
   readOwnNotification,
 } from './notification.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 // Explicit opt-in: ordinary unit tests do not connect to PostgreSQL. All fixtures roll back.
 test(
@@ -44,7 +45,7 @@ test(
                     emailVerifiedAt: new Date(),
                     normalizationVersion: 1,
                     passwordHash: '$argon2id$fixture',
-                    phoneCanonical: `+84918${randomInt(0, 1_000_000).toString().padStart(6, '0')}`,
+                    phoneCanonical: validVnMobile(),
                     customerProfile: {
                       create: { dateOfBirth: new Date('1990-01-01'), address: 'x' },
                     },

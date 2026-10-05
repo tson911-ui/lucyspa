@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createDatabaseClient } from '@lucy-spa/database';
 import { appendLedgerEntry, LoyaltyBalanceError, processLoyaltyEvent } from '@lucy-spa/server';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 5 P5-3 ledger races on separate committed PostgreSQL connections (real production functions, no
@@ -46,7 +47,7 @@ test(
           emailCanonical: `l53race-${n}-${run.toLowerCase()}@example.com`,
           emailDelivery: `l53race-${n}-${run.toLowerCase()}@example.com`,
           emailVerifiedAt: new Date(),
-          phoneCanonical: `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`,
+          phoneCanonical: validVnMobile(),
           normalizationVersion: 1,
           passwordHash: '$argon2id$fixture',
           customerProfile: { create: { dateOfBirth: new Date('1990-01-01'), address: 'Fixture' } },

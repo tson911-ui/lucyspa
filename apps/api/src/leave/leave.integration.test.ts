@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
@@ -21,6 +21,7 @@ import type { PrismaService } from '../platform/prisma.service.js';
 import { employeesOnApprovedLeave } from './leave.availability.js';
 import { LeaveService, parseLeaveDate } from './leave.service.js';
 import { appointForFixture } from '../testing/organization-fixture.js';
+import { validVnMobile } from '../testing/phone.js';
 
 // Explicit opt-in: ordinary unit/HTTP tests do not connect to PostgreSQL.
 test(
@@ -151,7 +152,7 @@ test(
                   emailCanonical: `lv-${sequence}-${run.toLowerCase()}@example.com`,
                   emailDelivery: `lv-${sequence}-${run.toLowerCase()}@example.com`,
                   emailVerifiedAt: kind === 'CUSTOMER' ? new Date() : null,
-                  phoneCanonical: `+84914${randomInt(0, 1_000_000).toString().padStart(6, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: hash,
                   ...(kind === 'EMPLOYEE'

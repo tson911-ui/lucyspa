@@ -14,6 +14,7 @@ import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { loadTieBreakFacts } from './booking.core.js';
 import { CustomerBookingService } from './customer-booking.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const addDays = (date: string, days: number) =>
   new Date(Date.parse(`${date}T00:00:00.000Z`) + days * 86_400_000).toISOString().slice(0, 10);
@@ -80,7 +81,6 @@ test(
 
             // ---------------------------------------------------------------- fixtures
             let sequence = 0;
-            const phoneBase = String(Math.floor(Math.random() * 100_000)).padStart(5, '0');
             const user = async (kind: 'CUSTOMER' | 'EMPLOYEE', employeeCode?: string) => {
               sequence += 1;
               const id = randomUUID();
@@ -94,7 +94,7 @@ test(
                   emailCanonical: `bk-${sequence}-${run.toLowerCase()}@example.invalid`,
                   emailDelivery: `bk-${sequence}-${run.toLowerCase()}@example.invalid`,
                   emailVerifiedAt: new Date(),
-                  phoneCanonical: `+849${phoneBase}${String(sequence).padStart(3, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: '$argon2id$fixture-password-hash',
                   ...(kind === 'CUSTOMER'

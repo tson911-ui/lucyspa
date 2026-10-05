@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { createDatabaseClient } from '@lucy-spa/database';
 import { AuthError } from '../auth/auth.error.js';
 import { createCustomerBooking, type NormalizedBookingRequest } from './booking.core.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const addDays = (date: string, days: number) =>
   new Date(Date.parse(`${date}T00:00:00.000Z`) + days * 86_400_000).toISOString().slice(0, 10);
@@ -44,7 +45,6 @@ test(
     const users = [ids.ktv, ...ids.customers];
     try {
       // ------------------------------------------------------------------ committed fixtures
-      const phoneBase = String(Math.floor(Math.random() * 100_000)).padStart(5, '0');
       await database.branch.create({
         data: {
           id: ids.branch,
@@ -94,7 +94,7 @@ test(
             emailCanonical: `race-${index}-${run.toLowerCase()}@example.invalid`,
             emailDelivery: `race-${index}-${run.toLowerCase()}@example.invalid`,
             emailVerifiedAt: new Date(),
-            phoneCanonical: `+849${phoneBase}${String(index).padStart(3, '0')}`,
+            phoneCanonical: validVnMobile(),
             normalizationVersion: 1,
             passwordHash: '$argon2id$fixture-password-hash',
             ...(kind === 'CUSTOMER'

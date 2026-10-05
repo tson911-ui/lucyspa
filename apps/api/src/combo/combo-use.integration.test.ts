@@ -19,6 +19,7 @@ import { LoyaltyService } from '../loyalty/loyalty.service.js';
 import { InvoiceService } from '../pos/invoice.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { ComboService } from './combo.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 /**
  * Phase 5 P5-8: using the sessions of a combo at a visit's invoice, against real PostgreSQL (design 9.4-9.5; the Owner answers of
@@ -176,8 +177,7 @@ test(
                 await sessions.rotateAuthenticated(first, principal, { reauthenticated: true }, tx)
               ).token;
             };
-            const phoneOf = () =>
-              `+849${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`;
+            const phoneOf = () => validVnMobile();
             const makeBranch = (label: string) =>
               tx.branch.create({
                 data: {

@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
@@ -20,6 +20,7 @@ import { PasswordResetService } from './password-reset.service.js';
 import { PasswordService } from './password.service.js';
 import { RegistrationService } from './registration.service.js';
 import { SessionService } from './session.service.js';
+import { validVnMobile } from '../testing/phone.js';
 
 const OLD_PASSWORD = 'a calm lotus evening 2026';
 const NEW_PASSWORD = 'a brand new lotus morning 2026';
@@ -97,7 +98,7 @@ test(
                   emailCanonical: delivery.toLowerCase(),
                   emailDelivery: delivery,
                   emailVerifiedAt: new Date(),
-                  phoneCanonical: `+84913${randomInt(0, 1_000_000).toString().padStart(6, '0')}`,
+                  phoneCanonical: validVnMobile(),
                   normalizationVersion: 1,
                   passwordHash: oldHash,
                   customerProfile: {
