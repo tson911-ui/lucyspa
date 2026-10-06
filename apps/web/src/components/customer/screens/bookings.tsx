@@ -7,8 +7,8 @@ import type {
 } from '@lucy-spa/contracts';
 import {
   Breadcrumbs,
-  buttonClass,
   Button,
+  buttonClass,
   Card,
   CardHeader,
   ConfirmDialog,
@@ -19,6 +19,7 @@ import {
   Notice,
   Page,
   PageHeader,
+  Reveal,
   RowActions,
   Skeleton,
   type DataTableColumn,
@@ -221,39 +222,43 @@ export function CustomerHomeScreen() {
           </Link>
         }
       />
-      <ListSection
-        title={t.home.upcoming}
-        actions={
-          <Link href={`${base}/bookings`} className={buttonClass('ghost')}>
-            {t.home.viewAll}
-          </Link>
-        }
-      >
-        {list.error ? (
-          <LoadState error={list.error} retry={list.retry} />
-        ) : (
-          <BookingsTable
-            items={list.data ? list.data.upcoming.slice(0, 3) : []}
-            listName={t.home.upcoming}
-            empty={<Empty>{t.home.none}</Empty>}
-            paged={false}
-            loading={!list.data}
-            skeletonRows={3}
+      <Reveal>
+        <ListSection
+          title={t.home.upcoming}
+          actions={
+            <Link href={`${base}/bookings`} className={buttonClass('ghost')}>
+              {t.home.viewAll}
+            </Link>
+          }
+        >
+          {list.error ? (
+            <LoadState error={list.error} retry={list.retry} />
+          ) : (
+            <BookingsTable
+              items={list.data ? list.data.upcoming.slice(0, 3) : []}
+              listName={t.home.upcoming}
+              empty={<Empty>{t.home.none}</Empty>}
+              paged={false}
+              loading={!list.data}
+              skeletonRows={3}
+            />
+          )}
+        </ListSection>
+      </Reveal>
+      <Reveal>
+        <Card as="section" aria-label={t.home.profile}>
+          <CardHeader title={t.home.profile} />
+          <DescriptionList
+            items={[
+              { label: t.home.name, value: account.displayName },
+              {
+                label: t.home.languagePref,
+                value: account.locale === 'vi' ? 'Tiếng Việt' : 'English',
+              },
+            ]}
           />
-        )}
-      </ListSection>
-      <Card as="section" aria-label={t.home.profile}>
-        <CardHeader title={t.home.profile} />
-        <DescriptionList
-          items={[
-            { label: t.home.name, value: account.displayName },
-            {
-              label: t.home.languagePref,
-              value: account.locale === 'vi' ? 'Tiếng Việt' : 'English',
-            },
-          ]}
-        />
-      </Card>
+        </Card>
+      </Reveal>
     </Page>
   );
 }
@@ -274,20 +279,24 @@ export function CustomerBookingsScreen() {
       />
       {list.data ? (
         <>
-          <ListSection title={t.bookings.upcoming}>
-            <BookingsTable
-              items={list.data.upcoming}
-              listName={t.bookings.upcoming}
-              empty={<Empty>{t.bookings.emptyUpcoming}</Empty>}
-            />
-          </ListSection>
-          <ListSection title={t.bookings.history}>
-            <BookingsTable
-              items={list.data.history}
-              listName={t.bookings.history}
-              empty={<Empty>{t.bookings.emptyHistory}</Empty>}
-            />
-          </ListSection>
+          <Reveal>
+            <ListSection title={t.bookings.upcoming}>
+              <BookingsTable
+                items={list.data.upcoming}
+                listName={t.bookings.upcoming}
+                empty={<Empty>{t.bookings.emptyUpcoming}</Empty>}
+              />
+            </ListSection>
+          </Reveal>
+          <Reveal>
+            <ListSection title={t.bookings.history}>
+              <BookingsTable
+                items={list.data.history}
+                listName={t.bookings.history}
+                empty={<Empty>{t.bookings.emptyHistory}</Empty>}
+              />
+            </ListSection>
+          </Reveal>
         </>
       ) : (
         <LoadState error={list.error} retry={list.retry} />
@@ -376,47 +385,53 @@ export function CustomerBookingDetailScreen({ id }: { id: string }) {
         }
       />
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
-      <Card as="section" aria-label={t.bookings.detailTitle}>
-        <DescriptionList
-          items={[
-            { label: t.bookings.code, value: booking.code },
-            { label: t.book.branch, value: booking.branch.name },
-            {
-              label: t.book.when,
-              value: `${formatDateTime(booking.startsAt, zone, locale)} – ${formatTime(booking.endsAt, zone, locale)}`,
-            },
-            {
-              label: t.bookings.statusLabel,
+      <Reveal>
+        <Card as="section" aria-label={t.bookings.detailTitle}>
+          <DescriptionList
+            items={[
+              { label: t.bookings.code, value: booking.code },
+              { label: t.book.branch, value: booking.branch.name },
+              {
+                label: t.book.when,
+                value: `${formatDateTime(booking.startsAt, zone, locale)} – ${formatTime(booking.endsAt, zone, locale)}`,
+              },
+              {
+                label: t.bookings.statusLabel,
+                value: (
+                  <Badge tone={statusTone(booking.status)}>
+                    {t.bookings.status[booking.status]}
+                  </Badge>
+                ),
+              },
+            ]}
+          />
+        </Card>
+      </Reveal>
+      <Reveal>
+        <Card as="section" aria-label={t.bookings.services}>
+          <CardHeader title={t.bookings.services} />
+          <DescriptionList
+            items={booking.lines.map((line) => ({
+              label: `${line.sequence}. ${locale === 'vi' ? line.serviceNameVi : line.serviceNameEn}`,
               value: (
-                <Badge tone={statusTone(booking.status)}>{t.bookings.status[booking.status]}</Badge>
+                <>
+                  {formatTime(line.startsAt, zone, locale)}–{formatTime(line.endsAt, zone, locale)}{' '}
+                  · {fill(t.book.duration, { minutes: line.durationMinutes })}
+                  <br />
+                  {t.bookings.recipient}: {recipient(line.recipientKey)} · {t.bookings.staff}:{' '}
+                  {line.employee.displayName}
+                  {line.assignmentMode === 'ANY' ? ` (${t.bookings.anyAssigned})` : ''}
+                  <br />
+                  {t.book.referencePrice}:{' '}
+                  {formatVndRange(line.priceMinVnd, line.priceMaxVnd, locale)}
+                  {line.pricingUnit === 'PER_NAIL' ? ` ${t.book.perNail}` : ''}
+                </>
               ),
-            },
-          ]}
-        />
-      </Card>
-      <Card as="section" aria-label={t.bookings.services}>
-        <CardHeader title={t.bookings.services} />
-        <DescriptionList
-          items={booking.lines.map((line) => ({
-            label: `${line.sequence}. ${locale === 'vi' ? line.serviceNameVi : line.serviceNameEn}`,
-            value: (
-              <>
-                {formatTime(line.startsAt, zone, locale)}–{formatTime(line.endsAt, zone, locale)} ·{' '}
-                {fill(t.book.duration, { minutes: line.durationMinutes })}
-                <br />
-                {t.bookings.recipient}: {recipient(line.recipientKey)} · {t.bookings.staff}:{' '}
-                {line.employee.displayName}
-                {line.assignmentMode === 'ANY' ? ` (${t.bookings.anyAssigned})` : ''}
-                <br />
-                {t.book.referencePrice}:{' '}
-                {formatVndRange(line.priceMinVnd, line.priceMaxVnd, locale)}
-                {line.pricingUnit === 'PER_NAIL' ? ` ${t.book.perNail}` : ''}
-              </>
-            ),
-          }))}
-        />
-        <p className="ls-detail-note">{t.book.priceNote}</p>
-      </Card>
+            }))}
+          />
+          <p className="ls-detail-note">{t.book.priceNote}</p>
+        </Card>
+      </Reveal>
       {cancelling ? (
         <ConfirmDialog
           title={t.bookings.cancelTitle}

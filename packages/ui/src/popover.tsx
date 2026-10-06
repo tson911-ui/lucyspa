@@ -30,6 +30,39 @@ export function placePanel(
   return { top: Math.max(margin, top), left };
 }
 
+/** Extra time, past the animation's own length, before a panel whose `animationend` never fires is removed. */
+const EXIT_SLACK_MS = 60;
+
+/** A computed `animation-duration` ("0.18s", "180ms", or a list) as milliseconds: the longest entry. */
+export function exitDuration(value: string): number {
+  return value.split(',').reduce((longest, part) => {
+    const text = part.trim();
+    const number = Number.parseFloat(text);
+    if (Number.isNaN(number)) return longest;
+    return Math.max(longest, text.endsWith('ms') ? number : number * 1000);
+  }, 0);
+}
+
+/**
+ * Where a fixed panel's coordinates start: the screen's corner, unless an ancestor is transformed (then that ancestor's
+ * box). A throwaway fixed probe next to the panel reports it.
+ */
+function containingOrigin(panel: HTMLElement): { x: number; y: number } {
+  const parent = panel.parentElement;
+  if (!parent) return { x: 0, y: 0 };
+  const probe = document.createElement('span');
+  probe.style.position = 'fixed';
+  probe.style.top = '0';
+  probe.style.left = '0';
+  probe.style.width = '0';
+  probe.style.height = '0';
+  probe.style.visibility = 'hidden';
+  parent.appendChild(probe);
+  const box = probe.getBoundingClientRect();
+  probe.remove();
+  return { x: box.left, y: box.top };
+}
+
 /**
  * A floating panel anchored to an element. It closes on Escape and on a press outside, and follows
  * its anchor while the page scrolls or resizes. Focus handling stays with the owner (Menu, pickers).
@@ -63,6 +96,29 @@ export function Popover({
   const ownRef = useRef<HTMLDivElement | null>(null);
   const panelRef = ref ?? ownRef;
   const [style, setStyle] = useState<CSSProperties>({ visibility: 'hidden' });
+  // The panel stays in the page while its exit animation runs (site.css), then is removed. Without an animation (the
+  // staff area, reduced motion, tests) it is removed at once.
+  const [mounted, setMounted] = useState(open);
+  if (open && !mounted) setMounted(true);
+
+  useLayoutEffect(() => {
+    if (open || !mounted) return undefined;
+    const panel = panelRef.current;
+    const computed = panel ? getComputedStyle(panel) : null;
+    const ms =
+      computed && computed.animationName !== 'none' ? exitDuration(computed.animationDuration) : 0;
+    if (!panel || ms <= 0) {
+      setMounted(false);
+      return undefined;
+    }
+    const done = () => setMounted(false);
+    panel.addEventListener('animationend', done);
+    const timer = window.setTimeout(done, ms + EXIT_SLACK_MS);
+    return () => {
+      panel.removeEventListener('animationend', done);
+      window.clearTimeout(timer);
+    };
+  }, [open, mounted, panelRef]);
 
   useLayoutEffect(() => {
     if (!open) return undefined;
@@ -70,13 +126,25 @@ export function Popover({
       const anchor = anchorRef.current;
       const panel = panelRef.current;
       if (!anchor || !panel) return;
+      const anchorBox = anchor.getBoundingClientRect();
       const position = placePanel(
-        anchor.getBoundingClientRect(),
+        anchorBox,
         { width: panel.offsetWidth, height: panel.offsetHeight },
         { width: window.innerWidth, height: window.innerHeight },
         align,
       );
-      setStyle({ top: position.top, left: position.left });
+      // A transformed ancestor (the shrinking site header) becomes the containing block of a fixed panel: measure where
+      // its origin is and place relative to it. With no such ancestor the origin is 0, 0.
+      const origin = containingOrigin(panel);
+      const fromBelow = position.top >= anchorBox.bottom;
+      setStyle({
+        top: position.top - origin.y,
+        left: position.left - origin.x,
+        // The panel opens and closes from the trigger: its scale origin is the middle of the trigger's edge.
+        transformOrigin: `${(anchorBox.left + anchorBox.right) / 2 - position.left}px ${
+          fromBelow ? 0 : panel.offsetHeight
+        }px`,
+      });
     };
     update();
     window.addEventListener('resize', update);
@@ -110,7 +178,7 @@ export function Popover({
     };
   }, [open, onClose, anchorRef, panelRef]);
 
-  if (!open) return null;
+  if (!open && !mounted) return null;
   return (
     <div
       ref={panelRef}
@@ -119,6 +187,8 @@ export function Popover({
       aria-label={label}
       className={cx('ls-popover', className)}
       style={style}
+      data-state={open ? 'open' : 'closed'}
+      inert={open ? undefined : true}
       onKeyDown={onKeyDown}
     >
       {children}

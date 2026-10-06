@@ -44,7 +44,7 @@ export function SiteNav({
   LinkComponent?: SiteLinkComponent | undefined;
   className?: string | undefined;
 }) {
-  const nav = useSlidingPill(signatureOf(items));
+  const nav = useSlidingPill(signatureOf(items), { follow: true });
   return (
     <nav ref={nav} aria-label={label} className={cx('ls-site-nav', className)}>
       <RouteLinks items={items} LinkComponent={LinkComponent} />
@@ -67,7 +67,7 @@ export function SiteSubNav({
   LinkComponent?: SiteLinkComponent | undefined;
   className?: string | undefined;
 }) {
-  const nav = useSlidingPill(signatureOf(items));
+  const nav = useSlidingPill(signatureOf(items), { follow: true });
   return (
     <nav ref={nav} aria-label={label} className={cx('ls-subnav', className)}>
       <RouteLinks items={items} LinkComponent={LinkComponent} />

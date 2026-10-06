@@ -15,6 +15,7 @@ import {
   Notice,
   Page,
   PageHeader,
+  Reveal,
   RowActions,
   type DataTableColumn,
 } from '@lucy-spa/ui';
@@ -205,111 +206,122 @@ export function CustomerInvoiceDetailScreen({ id }: { id: string }) {
           />
         }
       />
-      <Card as="section" aria-label={t.invoices.detailTitle}>
-        <DescriptionList
-          items={[
-            { label: t.invoices.code, value: invoice.code },
-            {
-              label: t.invoices.statusLabel,
-              value: (
-                <Badge tone={invoiceTone(invoice.status)}>
-                  {t.invoices.status[invoice.status]}
-                </Badge>
-              ),
-            },
-            { label: t.invoices.branch, value: invoice.branch.name },
-            { label: t.invoices.date, value: formatBusinessDate(invoice.visitDate, locale) },
-            {
-              label: t.invoices.issuedAt,
-              value: formatDateTime(invoice.finalizedAt, zone, locale),
-            },
-            ...(invoice.paidAt
-              ? [{ label: t.invoices.paidAt, value: formatDateTime(invoice.paidAt, zone, locale) }]
-              : []),
-            ...(invoice.cancelledAt
-              ? [
-                  {
-                    label: t.invoices.cancelledAt,
-                    value: formatDateTime(invoice.cancelledAt, zone, locale),
-                  },
-                ]
-              : []),
-          ]}
-        />
-      </Card>
-      <Card as="section" aria-label={t.invoices.services}>
-        <CardHeader title={t.invoices.services} />
-        <DescriptionList
-          items={invoice.lines.map((line) => ({
-            label: `${line.sequence}. ${locale === 'vi' ? line.nameVi : line.nameEn}`,
-            value: (
-              <>
-                {line.forSelf
-                  ? t.invoices.forSelf
-                  : line.recipientName
-                    ? fill(t.invoices.forOther, { name: line.recipientName })
-                    : null}
-                {line.forSelf || line.recipientName ? <br /> : null}
-                {formatVnd(line.unitPriceVnd, locale)} × {line.quantity} ={' '}
-                <strong>{formatVnd(line.grossVnd, locale)}</strong>
-              </>
-            ),
-          }))}
-        />
-        <DescriptionList
-          layout="totals"
-          items={[
-            { label: t.invoices.subtotal, value: formatVnd(invoice.subtotalVnd, locale) },
-            ...(invoice.discount
-              ? [
-                  {
-                    label: `${t.invoices.discount} (${locale === 'vi' ? invoice.discount.nameVi : invoice.discount.nameEn}${
-                      invoice.discount.voucherCode
-                        ? `, ${fill(t.invoices.voucher, { code: invoice.discount.voucherCode })}`
-                        : ''
-                    })`,
-                    value: `−${formatVnd(invoice.discount.amountVnd, locale)}`,
-                  },
-                ]
-              : []),
-            { label: t.invoices.total, value: formatVnd(invoice.totalVnd, locale), strong: true },
-            { label: t.invoices.paid, value: formatVnd(invoice.paidVnd, locale) },
-            ...(invoice.status === 'PENDING_PAYMENT'
-              ? [
-                  {
-                    label: t.invoices.balance,
-                    value: formatVnd(invoice.balanceVnd, locale),
-                    strong: true,
-                  },
-                ]
-              : []),
-          ]}
-        />
-      </Card>
-      <Card as="section" aria-label={t.invoices.payments}>
-        <CardHeader title={t.invoices.payments} />
-        {invoice.payments.length === 0 ? (
-          <Empty>{t.invoices.noPayments}</Empty>
-        ) : (
+      <Reveal>
+        <Card as="section" aria-label={t.invoices.detailTitle}>
           <DescriptionList
-            items={invoice.payments.map((payment) => ({
-              label: `${t.invoices.method[payment.method]} · ${formatDateTime(payment.paidAt, zone, locale)}`,
+            items={[
+              { label: t.invoices.code, value: invoice.code },
+              {
+                label: t.invoices.statusLabel,
+                value: (
+                  <Badge tone={invoiceTone(invoice.status)}>
+                    {t.invoices.status[invoice.status]}
+                  </Badge>
+                ),
+              },
+              { label: t.invoices.branch, value: invoice.branch.name },
+              { label: t.invoices.date, value: formatBusinessDate(invoice.visitDate, locale) },
+              {
+                label: t.invoices.issuedAt,
+                value: formatDateTime(invoice.finalizedAt, zone, locale),
+              },
+              ...(invoice.paidAt
+                ? [
+                    {
+                      label: t.invoices.paidAt,
+                      value: formatDateTime(invoice.paidAt, zone, locale),
+                    },
+                  ]
+                : []),
+              ...(invoice.cancelledAt
+                ? [
+                    {
+                      label: t.invoices.cancelledAt,
+                      value: formatDateTime(invoice.cancelledAt, zone, locale),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        </Card>
+      </Reveal>
+      <Reveal>
+        <Card as="section" aria-label={t.invoices.services}>
+          <CardHeader title={t.invoices.services} />
+          <DescriptionList
+            items={invoice.lines.map((line) => ({
+              label: `${line.sequence}. ${locale === 'vi' ? line.nameVi : line.nameEn}`,
               value: (
                 <>
-                  <strong>{formatVnd(payment.amountVnd, locale)}</strong>
-                  {payment.reversed ? (
-                    <>
-                      {' '}
-                      <Badge tone="warning">{t.invoices.reversed}</Badge>
-                    </>
-                  ) : null}
+                  {line.forSelf
+                    ? t.invoices.forSelf
+                    : line.recipientName
+                      ? fill(t.invoices.forOther, { name: line.recipientName })
+                      : null}
+                  {line.forSelf || line.recipientName ? <br /> : null}
+                  {formatVnd(line.unitPriceVnd, locale)} × {line.quantity} ={' '}
+                  <strong>{formatVnd(line.grossVnd, locale)}</strong>
                 </>
               ),
             }))}
           />
-        )}
-        <p className="ls-detail-note">{t.invoices.note}</p>
-      </Card>
+          <DescriptionList
+            layout="totals"
+            items={[
+              { label: t.invoices.subtotal, value: formatVnd(invoice.subtotalVnd, locale) },
+              ...(invoice.discount
+                ? [
+                    {
+                      label: `${t.invoices.discount} (${locale === 'vi' ? invoice.discount.nameVi : invoice.discount.nameEn}${
+                        invoice.discount.voucherCode
+                          ? `, ${fill(t.invoices.voucher, { code: invoice.discount.voucherCode })}`
+                          : ''
+                      })`,
+                      value: `−${formatVnd(invoice.discount.amountVnd, locale)}`,
+                    },
+                  ]
+                : []),
+              { label: t.invoices.total, value: formatVnd(invoice.totalVnd, locale), strong: true },
+              { label: t.invoices.paid, value: formatVnd(invoice.paidVnd, locale) },
+              ...(invoice.status === 'PENDING_PAYMENT'
+                ? [
+                    {
+                      label: t.invoices.balance,
+                      value: formatVnd(invoice.balanceVnd, locale),
+                      strong: true,
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        </Card>
+      </Reveal>
+      <Reveal>
+        <Card as="section" aria-label={t.invoices.payments}>
+          <CardHeader title={t.invoices.payments} />
+          {invoice.payments.length === 0 ? (
+            <Empty>{t.invoices.noPayments}</Empty>
+          ) : (
+            <DescriptionList
+              items={invoice.payments.map((payment) => ({
+                label: `${t.invoices.method[payment.method]} · ${formatDateTime(payment.paidAt, zone, locale)}`,
+                value: (
+                  <>
+                    <strong>{formatVnd(payment.amountVnd, locale)}</strong>
+                    {payment.reversed ? (
+                      <>
+                        {' '}
+                        <Badge tone="warning">{t.invoices.reversed}</Badge>
+                      </>
+                    ) : null}
+                  </>
+                ),
+              }))}
+            />
+          )}
+          <p className="ls-detail-note">{t.invoices.note}</p>
+        </Card>
+      </Reveal>
     </Page>
   );
 }

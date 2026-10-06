@@ -3,26 +3,21 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 /**
- * The sticky site header: brand at the start, the main menu, then tools (language, theme, account) and the call
- * to action. A sentinel at the top of the page tells it when the page has scrolled, which adds the shadow
- * (pattern M4) without a scroll listener.
- *
- * `overlay` is for the home page: at the top the bar has no background, hairline or shadow, so it blends with the
- * hero's light background, and after about 60 px of scrolling it becomes the normal solid bar (site.css). The bar keeps
- * its height and place in the flow, so nothing moves. Every other page keeps the plain solid header.
+ * The sticky site header of every public and member page: brand and main menu at the start, then tools (language, theme,
+ * account) and the call to action. A sentinel at the top of the page tells it when the page has scrolled, so no scroll
+ * listener runs. At the top the bar is the page itself (no background, hairline or shadow); after about 48 px it shrinks
+ * and becomes frosted glass (site.css). The bar keeps its height and its place in the flow, so nothing moves.
  */
 export function SiteHeader({
   brand,
   nav,
   tools,
   cta,
-  overlay = false,
 }: {
   brand: ReactNode;
   nav: ReactNode;
   tools: ReactNode;
   cta?: ReactNode;
-  overlay?: boolean;
 }) {
   const sentinel = useRef<HTMLDivElement | null>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -33,18 +28,15 @@ export function SiteHeader({
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  const mode = overlay ? 'true' : undefined;
   return (
     <>
-      <div ref={sentinel} className="ls-site-sentinel" data-overlay={mode} aria-hidden="true" />
-      <header
-        className="ls-site-header"
-        data-overlay={mode}
-        data-scrolled={scrolled ? 'true' : undefined}
-      >
+      <div ref={sentinel} className="ls-site-sentinel" aria-hidden="true" />
+      <header className="ls-site-header" data-scrolled={scrolled ? 'true' : undefined}>
         <div className="ls-container ls-site-header-row">
-          <div className="ls-site-brand">{brand}</div>
-          {nav}
+          <div className="ls-site-lead">
+            <div className="ls-site-brand">{brand}</div>
+            {nav}
+          </div>
           <div className="ls-site-tools">{tools}</div>
           {cta ? <div className="ls-site-cta">{cta}</div> : null}
         </div>

@@ -11,6 +11,9 @@ import { mergeNotifications, notificationHref, notificationMessage } from '../..
 import { CHANGED, timestampParts, useUnreadCount } from '../notifications/inbox';
 import { useSiteSession } from './site-session';
 
+/** A bell ring that never reports its end (no animation support) is cleared after this long. */
+const RING_FALLBACK_MS = 2000;
+
 /** How many notifications the panel lists; the rest are one click away on the full page. */
 export const BELL_PANEL_ITEMS = 8;
 
@@ -36,6 +39,20 @@ function SignedInBell({ locale }: { locale: Locale }) {
   const { count } = useUnreadCount(api);
   const unread = count ?? 0;
   const base = `/${locale}/account`;
+
+  // The bell rings once when the count RISES from a count already known (never on the first read or a remount).
+  const [ring, setRing] = useState(false);
+  const known = useRef<number | null>(null);
+  useEffect(() => {
+    if (count === null) return undefined;
+    const before = known.current;
+    known.current = count;
+    if (before === null || count <= before) return undefined;
+    setRing(true);
+    // The animation's end clears it; this is only for a browser that never runs it.
+    const timer = window.setTimeout(() => setRing(false), RING_FALLBACK_MS);
+    return () => window.clearTimeout(timer);
+  }, [count]);
 
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[] | null>(null);
@@ -90,7 +107,11 @@ function SignedInBell({ locale }: { locale: Locale }) {
       : site.header.bell.label;
 
   return (
-    <span className="ls-site-bell">
+    <span
+      className="ls-site-bell"
+      data-ring={ring ? 'true' : undefined}
+      onAnimationEnd={() => setRing(false)}
+    >
       <IconButton
         ref={triggerRef}
         icon="bell"

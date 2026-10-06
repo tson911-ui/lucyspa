@@ -112,7 +112,7 @@ test('the menu pill slides to the new current entry on a route change and jumps 
   assert.match(css, /\.ls-subnav \{[^}]*position: relative;/);
   assert.match(
     css,
-    /\[data-pill='slide'\] > \.ls-nav-pill \{\s*transition:\s*translate var\(--ls-dur-slide\) var\(--ls-ease-premium\)/,
+    /\[data-pill='slide'\] > \.ls-nav-pill \{\s*transition:\s*translate var\(--ls-dur-glide\) var\(--ls-ease-premium\)/,
   );
   assert.match(css, /\.ls-route-fade\[data-enter='route'\] \{[^}]*animation: ls-route-in/);
 });
@@ -714,18 +714,88 @@ test('site.css does not redefine a class another stylesheet owns (a clash silent
   }
 });
 
-test('hovering the current menu entry turns its pill solid (the locked hover fill), light and dark', () => {
-  // The pill carries the current entry's highlight; the hover text colour must never sit on the pale pill.
+test('the current menu entry is the solid brand pill at all times, not only on hover (light and dark)', () => {
+  // The pill and the no-script fallback both read the nav-active tokens (brand red + white; pink + dark in the dark theme).
+  assert.match(css, /\.ls-nav-pill \{[^}]*background: var\(--ls-nav-active-bg\);/);
   assert.match(
     css,
-    /\.ls-site-nav:has\(> a\[aria-current='page'\]:hover\) > \.ls-nav-pill,\s*\.ls-subnav:has\(> a\[aria-current='page'\]:hover\) > \.ls-nav-pill \{\s*background: var\(--ls-hover-bg\);/,
+    /\.ls-site-nav:not\(\[data-pill='still'\], \[data-pill='slide'\]\) a\[aria-current='page'\] \{\s*background: var\(--ls-nav-active-bg\);\s*color: var\(--ls-nav-active-text\);/,
   );
   assert.match(
     css,
-    /\.ls-site-nav a\[aria-current='page'\]:hover \{\s*background: var\(--ls-hover-bg\);\s*color: var\(--ls-hover-text\);/,
+    /\.ls-subnav:not\(\[data-pill='still'\], \[data-pill='slide'\]\) a\[aria-current='page'\] \{\s*background: var\(--ls-nav-active-bg\);\s*color: var\(--ls-nav-active-text\);/,
   );
-  assert.match(tokens, /--ls-hover-bg: #782b37;[\s\S]*--ls-hover-text: #ffffff;/);
-  assert.match(tokens, /--ls-hover-bg: #e08a9a;\s*--ls-hover-text: #2a0f16;/);
+  // The pale tint is gone from the menus, and the entry under the pill (hovered or current) has the on-pill text.
+  assert.doesNotMatch(css, /\.ls-nav-pill \{[^}]*brand-soft/);
+  assert.match(css, /> a\[data-under\] \{\s*color: var\(--ls-nav-active-text\);/);
+  assert.match(tokens, /--ls-nav-active-bg: #782b37;\s*--ls-nav-active-text: #ffffff;/);
+  assert.match(tokens, /--ls-nav-active-bg: #e08a9a;\s*--ls-nav-active-text: #2a0f16;/);
+  // The menu entries have no zoom or lift of their own any more: the pill glides instead.
+  assert.doesNotMatch(
+    css,
+    /\.ls-site \.ls-site-nav a:where\(:not\(\[aria-current='page'\]\)\):hover/,
+  );
+});
+
+test('the menu pill follows the mouse and the keyboard focus and goes back; touch never moves it', () => {
+  const proto = window.HTMLElement.prototype;
+  const geometry = new Map<string, { left: number; width: number }>([
+    ['/vi', { left: 8, width: 96 }],
+    ['/vi/services', { left: 112, width: 80 }],
+  ]);
+  const define = (name: string, read: (element: HTMLElement) => number) =>
+    Object.defineProperty(proto, name, {
+      configurable: true,
+      get(this: HTMLElement) {
+        return read(this);
+      },
+    });
+  const box = (element: HTMLElement) => geometry.get(element.getAttribute('href') ?? '');
+  define('offsetLeft', (element) => box(element)?.left ?? 0);
+  define('offsetWidth', (element) => box(element)?.width ?? 0);
+  define('offsetTop', () => 4);
+  define('offsetHeight', () => 40);
+  const container = window.document.createElement('div');
+  window.document.body.appendChild(container);
+  const root = createRoot(container);
+  act(() =>
+    root.render(
+      <ui.SiteNav
+        label="Menu"
+        items={[
+          { key: 'home', label: 'Trang chủ', href: '/vi', current: true },
+          { key: 'services', label: 'Dịch vụ', href: '/vi/services', current: false },
+        ]}
+      />,
+    ),
+  );
+  const nav = container.querySelector('nav') as HTMLElement;
+  const [home, services] = Array.from(nav.querySelectorAll('a')) as HTMLElement[];
+  const pointer = (type: string, target: Element, pointerType: string) =>
+    act(() => {
+      const event = new window.Event(type, { bubbles: true });
+      Object.defineProperty(event, 'pointerType', { value: pointerType });
+      target.dispatchEvent(event);
+    });
+  assert.equal(home?.hasAttribute('data-under'), true, 'the current entry starts under the pill');
+
+  pointer('pointerover', services as Element, 'touch');
+  assert.equal(nav.style.getPropertyValue('--ls-pill-x'), '8px', 'touch does not move it');
+
+  pointer('pointerover', services as Element, 'mouse');
+  assert.equal(nav.style.getPropertyValue('--ls-pill-x'), '112px');
+  assert.equal(nav.dataset['pill'], 'slide', 'it glides to the hovered entry');
+  assert.equal(services?.hasAttribute('data-under'), true);
+  assert.equal(home?.hasAttribute('data-under'), false, 'the text colour follows the pill');
+
+  pointer('pointerleave', nav, 'mouse');
+  assert.equal(nav.style.getPropertyValue('--ls-pill-x'), '8px', 'and back to the current entry');
+  assert.equal(home?.hasAttribute('data-under'), true);
+
+  act(() => root.unmount());
+  for (const name of ['offsetLeft', 'offsetWidth', 'offsetTop', 'offsetHeight']) {
+    Reflect.deleteProperty(proto, name);
+  }
 });
 
 test('header tooltips open below the button and give way to the open account menu', () => {
@@ -987,45 +1057,96 @@ test('phones: the service filter is one scrolling row, and cards sit 24 px apart
   assert.match(css, /\.ls-site-grid \{\s*display: grid;\s*gap: var\(--ls-space-6\);/);
 });
 
-test('SiteHeader: only a page that starts with a hero floats the bar over it (data-overlay on the bar and its sentinel)', () => {
-  const draw = (overlay?: boolean) =>
-    renderToStaticMarkup(
-      <ui.SiteHeader
-        brand="Lucy Spa"
-        nav={null}
-        tools={null}
-        {...(overlay === undefined ? {} : { overlay })}
-      />,
-    );
-  assert.doesNotMatch(draw(), /data-overlay/);
-  assert.doesNotMatch(draw(false), /data-overlay/);
-  const html = draw(true);
-  assert.match(html, /<header class="ls-site-header" data-overlay="true"/);
-  assert.match(html, /class="ls-site-sentinel" data-overlay="true"/);
+test('SiteHeader: every page gets the same bar (one sentinel, the logo and menu grouped, no overlay switch)', () => {
+  const html = renderToStaticMarkup(
+    <ui.SiteHeader brand="Lucy Spa" nav={<nav>Menu</nav>} tools="tools" cta="cta" />,
+  );
+  assert.doesNotMatch(html, /data-overlay/);
+  assert.match(html, /<div class="ls-site-sentinel" aria-hidden="true"><\/div>/);
+  assert.match(html, /<header class="ls-site-header">/);
+  assert.match(
+    html,
+    /<div class="ls-site-lead"><div class="ls-site-brand">Lucy Spa<\/div><nav>Menu<\/nav><\/div><div class="ls-site-tools">tools<\/div><div class="ls-site-cta">cta<\/div>/,
+  );
 });
 
-test('header on the home page: clear at the top, solid after about 60 px, in its place in the flow', () => {
-  // About 60 px of scrolling (48 + 12) turns it solid; the sentinel is 1 px wide, so no scroll listener is needed.
+test('header: clear at the top; shrinking frosted glass after about 48 px; the box and the page never move', () => {
+  // The sentinel (1 px wide, no scroll listener) is the scroll threshold, from a token.
+  assert.match(css, /\.ls-site-sentinel \{[^}]*height: var\(--ls-header-shrink-at\);/);
+  // The header box keeps one height; it ignores the pointer, its row takes it back.
   assert.match(
     css,
-    /\.ls-site-sentinel\[data-overlay='true'\] \{\s*height: calc\(var\(--ls-space-9\) \+ var\(--ls-space-3\)\);/,
+    /\.ls-site-header \{[^}]*height: var\(--ls-site-header-h\);[^}]*pointer-events: none;/,
   );
-  // At the top: no background and no hairline (the border keeps its width, so the bar's height never changes).
+  assert.match(css, /\.ls-site-header-row \{[^}]*pointer-events: auto;/);
+  // At the top nothing is drawn; the surface is a pseudo-element (a filter or transform on the header itself would
+  // capture the fixed bell and account panels) that fades in and slides up by the shrink distance.
+  assert.match(css, /\.ls-site-header::before \{[^}]*opacity: 0;/);
   assert.match(
     css,
-    /\[data-overlay='true'\]:not\(\[data-scrolled='true'\]\) \{\s*border-bottom-color: transparent;\s*background: transparent;/,
+    /\.ls-site-header\[data-scrolled='true'\]::before \{\s*opacity: 1;\s*translate: 0 calc\(var\(--ls-header-shrink\) \* -1\);/,
   );
-  // Nothing takes the bar out of the flow and no colour of its text changes: the hero is the light page.
-  assert.doesNotMatch(css, /margin-block-end: calc\(var\(--ls-site-header-h\)/);
-  assert.doesNotMatch(css, /--ls-hero-/);
-  // The change eases on the motion tokens, which are 0 under reduced motion (nothing animates, it just switches).
-  const overlayRule = /\.ls-site-header\[data-overlay='true'\] \{([^}]*)\}/.exec(css)?.[1] ?? '';
-  assert.match(overlayRule, /background-color var\(--ls-dur-base\)/);
-  assert.doesNotMatch(overlayRule, /\d+ms/);
+  assert.doesNotMatch(css, /\.ls-site-header \{[^}]*(backdrop-filter|transform|translate|filter):/);
+  // Frosted where the browser can blur; solid where it cannot.
+  assert.match(css, /\.ls-site-header::before \{[^}]*background: var\(--ls-bg-surface\);/);
   assert.match(
-    tokens,
-    /@media \(prefers-reduced-motion: reduce\) \{\s*:root \{[^}]*--ls-dur-base: 0ms/,
+    css,
+    /@supports \(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter: blur\(1px\)\) \{\s*\.ls-site-header::before \{\s*background: color-mix\(in srgb, var\(--ls-bg-surface\) var\(--ls-header-glass-mix\), transparent\);[\s\S]*?backdrop-filter: blur\(var\(--ls-header-blur\)\);/,
   );
+  // The content shrinks by transform/scale only (logo and menu), never a layout property.
+  assert.match(
+    css,
+    /\.ls-site-header\[data-scrolled='true'\] \.ls-site-lead \{\s*scale: var\(--ls-header-lead-scale\);/,
+  );
+  assert.match(css, /\.ls-site-header-row \{[^}]*transition: translate var\(--ls-dur-header\)/);
+  assert.doesNotMatch(
+    css,
+    /\.ls-site-header[^{]*\{[^}]*transition:[^;]*\b(height|padding|min-height|width)\b/,
+  );
+  assert.doesNotMatch(css, /data-overlay/);
+  // The seasonal wordmark accent would be clipped by the compact bar: it fades out with the shrink.
+  assert.match(css, /\.ls-site-header\[data-scrolled='true'\] \.ls-art-logo-art \{\s*opacity: 0;/);
+  // All of it rides the motion tokens, which are 0 under reduced motion (it just switches).
+  const reduced =
+    /@media \(prefers-reduced-motion: reduce\) \{\s*:root \{([^}]*)\}/.exec(tokens)?.[1] ?? '';
+  for (const name of [
+    '--ls-dur-header',
+    '--ls-dur-glide',
+    '--ls-dur-pop',
+    '--ls-dur-wiggle',
+    '--ls-dur-sheen',
+  ]) {
+    assert.match(reduced, new RegExp(`${name}: 0ms`));
+  }
+  for (const name of ['--ls-pop-shift', '--ls-arrow-nudge']) {
+    assert.match(reduced, new RegExp(`${name}: 0px`));
+  }
+  assert.match(reduced, /--ls-pop-scale: 1;/);
+  assert.match(reduced, /--ls-tool-zoom: 1;/);
+  assert.match(reduced, /--ls-wiggle-angle: 0deg;/);
+});
+
+test('header motion: panels grow from the trigger, the bell rings once, the booking button sweeps, tools scale, arrows nudge', () => {
+  assert.match(
+    css,
+    /\.ls-site \.ls-popover \{\s*animation: ls-site-pop-in var\(--ls-dur-pop\) var\(--ls-ease-premium\) both;/,
+  );
+  assert.match(
+    css,
+    /\.ls-site \.ls-popover\[data-state='closed'\] \{\s*animation: ls-site-pop-out var\(--ls-dur-pop\)/,
+  );
+  assert.match(
+    css,
+    /\.ls-site-bell\[data-ring='true'\] > \.ls-tooltip-wrap > \.ls-btn-icon svg \{[^}]*animation: ls-bell-ring var\(--ls-dur-wiggle\)[^}]* 1;/,
+  );
+  assert.match(
+    css,
+    /@media \(hover: hover\) \{\s*\.ls-site \.ls-btn-sheen:hover::after \{\s*translate: 250% 0;\s*transition: translate var\(--ls-dur-sheen\)/,
+  );
+  assert.match(css, /transform: scale\(var\(--ls-tool-zoom\)\);/);
+  assert.match(css, /translate: var\(--ls-arrow-nudge\) 0;/);
+  // Every hover effect is behind (hover: hover): touch keeps only the press dip.
+  assert.doesNotMatch(css, /\.ls-btn-sheen:hover(?![^{]*::after)/);
 });
 
 test('hero: the split layout is back (copy beside a rounded card), no full-bleed pieces', () => {

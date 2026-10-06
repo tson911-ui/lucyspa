@@ -18,19 +18,14 @@ import { PublicHeaderCta, PublicNav, PublicSiteHeader, PublicTools } from './sit
 export function PublicHeader({
   locale,
   decor,
-  overlay,
 }: {
   locale: Locale;
   /** The season's site decoration (logo accent), or null for the plain wordmark. */
   decor: SiteDecorSpec | null;
-  /** Clear at the top and solid on scroll. Left out, the home page is and every other page is not. */
-  overlay?: boolean;
 }) {
   const text = getSiteText(locale);
   return (
     <PublicSiteHeader
-      locale={locale}
-      overlay={overlay}
       brand={
         <Link href={`/${locale}`} aria-label={text.header.brand}>
           <SiteLogo decor={decor}>

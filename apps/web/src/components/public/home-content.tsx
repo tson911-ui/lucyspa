@@ -73,7 +73,7 @@ export function HomeContent({
             <p className="ls-lead">{site?.intro ?? text.home.lead}</p>
             <div className="ls-hero-actions">
               <Link
-                className={buttonClass('primary', 'lg')}
+                className={buttonClass('primary', 'lg', 'ls-btn-sheen')}
                 href={`/${locale}/account/book`}
                 prefetch
               >

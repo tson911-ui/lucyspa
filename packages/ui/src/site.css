@@ -110,12 +110,19 @@
 }
 
 /* ---------- header ---------- */
+/* The header of every public and member page. At the top it is the page itself: no background, hairline or shadow. After
+   `--ls-header-shrink-at` of scrolling (the sentinel leaves the screen) it shrinks and turns into frosted glass. The box
+   never changes height (`--ls-site-header-h`), so no content moves; the glass surface is the header's ::before (a
+   backdrop filter or transform on the header itself would capture the bell and account panels, which are fixed), it
+   slides up by `--ls-header-shrink` while it fades in, the row follows by half of that to stay centred in it, and the
+   menu with the logo scales down. Only opacity and transform move. The header box ignores the pointer, so the strip under
+   the compact bar never blocks the page; the row takes it back. */
 .ls-site-sentinel {
   position: absolute;
   top: 0;
   inset-inline-start: 0;
   width: 1px;
-  height: 1px;
+  height: var(--ls-header-shrink-at);
   pointer-events: none;
 }
 
@@ -123,20 +130,80 @@
   position: sticky;
   top: 0;
   z-index: var(--ls-z-chrome);
-  background: var(--ls-bg-surface);
-  border-bottom: 1px solid var(--ls-border);
-  transition: box-shadow var(--ls-dur-base) var(--ls-ease-out);
+  height: var(--ls-site-header-h);
+  pointer-events: none;
 }
 
-.ls-site-header[data-scrolled='true'] {
+/* The surface: solid where there is no backdrop filter, translucent glass where there is. */
+.ls-site-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ls-bg-surface);
+  border-bottom: 1px solid var(--ls-border);
   box-shadow: var(--ls-shadow-sm);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--ls-dur-header) var(--ls-ease-out),
+    translate var(--ls-dur-header) var(--ls-ease-premium);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .ls-site-header::before {
+    background: color-mix(in srgb, var(--ls-bg-surface) var(--ls-header-glass-mix), transparent);
+    -webkit-backdrop-filter: blur(var(--ls-header-blur));
+    backdrop-filter: blur(var(--ls-header-blur));
+  }
+}
+
+.ls-site-header[data-scrolled='true']::before {
+  opacity: 1;
+  translate: 0 calc(var(--ls-header-shrink) * -1);
 }
 
 .ls-site-header-row {
   display: flex;
   align-items: center;
   gap: var(--ls-space-4);
-  min-height: var(--ls-site-header-h);
+  height: 100%;
+  pointer-events: auto;
+  transition: translate var(--ls-dur-header) var(--ls-ease-premium);
+}
+
+.ls-site-header[data-scrolled='true'] .ls-site-header-row {
+  translate: 0 calc(var(--ls-header-shrink) / -2);
+}
+
+/* Logo and menu: one group that scales down from its start edge (smaller logo and menu text, tighter spacing). */
+.ls-site-lead {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-4);
+  transform-origin: left center;
+  transition: scale var(--ls-dur-header) var(--ls-ease-premium);
+}
+
+.ls-site-header[data-scrolled='true'] .ls-site-lead {
+  scale: var(--ls-header-lead-scale);
+}
+
+/* The seasonal accent on the wordmark (Christmas hat, Tết branch) hangs above the text, and the compact bar has no room
+   for it: it fades out with the shrink and is back at the top. */
+.ls-site-header .ls-art-logo-art {
+  transition: opacity var(--ls-dur-header) var(--ls-ease-out);
+}
+
+.ls-site-header[data-scrolled='true'] .ls-art-logo-art {
+  opacity: 0;
+}
+
+/* A device that asked for less motion (data saver, low memory) gets the switch without the ease. */
+html[data-ls-motion='reduced'] .ls-site-header::before,
+html[data-ls-motion='reduced'] .ls-site-header .ls-art-logo-art,
+html[data-ls-motion='reduced'] .ls-site-header-row,
+html[data-ls-motion='reduced'] .ls-site-lead {
+  transition: none;
 }
 
 .ls-site-brand {
@@ -176,28 +243,21 @@
     color var(--ls-dur-fast) var(--ls-ease-out);
 }
 
-.ls-site-nav a:hover {
-  background: var(--ls-hover-bg);
-  color: var(--ls-hover-text);
-}
-
+/* The current entry is always the solid brand pill (light: brand red with white text; dark: pink with dark text), on
+   every page, header state and season: the nav-active tokens, the same ones the staff sidebar uses. Here is the version
+   without scripts or before the pill is placed; once the pill is placed (menu pill section below) the pill carries it. */
 .ls-site-nav a[aria-current='page'] {
-  background: var(--ls-brand-soft);
-  color: var(--ls-brand-on-soft);
   font-weight: 500;
 }
 
-.ls-site-nav a[aria-current='page']:hover {
-  background: var(--ls-hover-bg);
-  color: var(--ls-hover-text);
+.ls-site-nav:not([data-pill='still'], [data-pill='slide']) a[aria-current='page'] {
+  background: var(--ls-nav-active-bg);
+  color: var(--ls-nav-active-text);
 }
 
-/* The current entry's highlight is the sliding pill behind it, so hovering that entry turns the pill into the same solid
-   fill every hover uses (light: the brand red with white text; dark: pink with dark text). Without it the link's own text
-   colour would sit on the pale pill and vanish. */
-.ls-site-nav:has(> a[aria-current='page']:hover) > .ls-nav-pill,
-.ls-subnav:has(> a[aria-current='page']:hover) > .ls-nav-pill {
+.ls-site-nav:not([data-pill='still'], [data-pill='slide']) a:hover:not([aria-current='page']) {
   background: var(--ls-hover-bg);
+  color: var(--ls-hover-text);
 }
 
 /* The menu sits next to the logo and the tools at the trailing edge, so the member entries that arrive once the session
@@ -272,32 +332,6 @@
   .ls-site-cta {
     display: block;
   }
-}
-
-/* ---------- header on the home page (`data-overlay`) ---------- */
-/* The home page's hero is light, so at the top the bar is the page itself: no background, no hairline, no shadow, and the
-   normal colours. After about 60 px of scrolling it eases into the normal solid bar (background, hairline, light shadow);
-   back at the top it is clear again. The bar keeps its height and its place in the flow, so nothing moves. Without the
-   attribute nothing here applies. Under reduced motion the durations are 0, so it just switches. */
-.ls-site-sentinel[data-overlay='true'] {
-  height: calc(var(--ls-space-9) + var(--ls-space-3));
-}
-
-.ls-site-header[data-overlay='true'] {
-  transition:
-    background-color var(--ls-dur-base) var(--ls-ease-out),
-    border-color var(--ls-dur-base) var(--ls-ease-out),
-    box-shadow var(--ls-dur-base) var(--ls-ease-out);
-}
-
-.ls-site-header[data-overlay='true']:not([data-scrolled='true']) {
-  border-bottom-color: transparent;
-  background: transparent;
-}
-
-/* A device that asked for less motion (reduced motion, data saver) gets the switch without the ease. */
-html[data-ls-motion='reduced'] .ls-site-header[data-overlay='true'] {
-  transition: none;
 }
 
 /* ---------- phone tab bar ---------- */
@@ -766,7 +800,7 @@ html[data-ls-motion='reduced'] .ls-site-header[data-overlay='true'] {
 }
 
 /* Seasonal page (S6): the dividers replace the plain header and footer rules. */
-.ls-site-page .ls-site-header,
+.ls-site-page .ls-site-header::before,
 .ls-site-page .ls-site-footer {
   border-width: 0;
 }
@@ -1625,16 +1659,18 @@ a.ls-bell-body:focus-visible .ls-bell-time {
     color var(--ls-dur-fast) var(--ls-ease-out);
 }
 
-.ls-subnav a:hover,
-.ls-subnav a[aria-current='page']:hover {
-  background: var(--ls-hover-bg);
-  color: var(--ls-hover-text);
+.ls-subnav a[aria-current='page'] {
+  font-weight: 500;
 }
 
-.ls-subnav a[aria-current='page'] {
-  background: var(--ls-brand-soft);
-  color: var(--ls-brand-on-soft);
-  font-weight: 500;
+.ls-subnav:not([data-pill='still'], [data-pill='slide']) a[aria-current='page'] {
+  background: var(--ls-nav-active-bg);
+  color: var(--ls-nav-active-text);
+}
+
+.ls-subnav:not([data-pill='still'], [data-pill='slide']) a:hover:not([aria-current='page']) {
+  background: var(--ls-hover-bg);
+  color: var(--ls-hover-text);
 }
 
 /* The Back button of a full-width public flow (the booking page) sits right under the header: give it room above. */
@@ -1952,10 +1988,9 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   height: var(--ls-pill-h);
   translate: var(--ls-pill-x) var(--ls-pill-y);
   border-radius: var(--ls-radius-full);
-  background: var(--ls-brand-soft);
+  background: var(--ls-nav-active-bg);
   opacity: 0;
   pointer-events: none;
-  transition: background var(--ls-dur-fast) var(--ls-ease-out);
 }
 
 [data-pill='still'] > .ls-nav-pill,
@@ -1963,18 +1998,26 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   opacity: 1;
 }
 
+/* The pill glides to the current entry on a route change and to the hovered or keyboard-focused entry (mouse and keys
+   only; the hook marks the entry under it with `data-under`). */
 [data-pill='slide'] > .ls-nav-pill {
   transition:
-    translate var(--ls-dur-slide) var(--ls-ease-premium),
-    width var(--ls-dur-slide) var(--ls-ease-premium),
-    background var(--ls-dur-fast) var(--ls-ease-out);
+    translate var(--ls-dur-glide) var(--ls-ease-premium),
+    width var(--ls-dur-glide) var(--ls-ease-premium);
 }
 
-[data-pill='still'] > a[aria-current='page'],
-[data-pill='slide'] > a[aria-current='page'],
-[data-pill='still'] > a[aria-current='page']:hover,
-[data-pill='slide'] > a[aria-current='page']:hover {
+/* With the pill placed the entries carry no fill of their own; only the entry under the pill has the on-pill text. */
+:is(.ls-site-nav, .ls-subnav):is([data-pill='still'], [data-pill='slide']) > a {
   background: transparent;
+}
+
+:is(.ls-site-nav, .ls-subnav):is([data-pill='still'], [data-pill='slide']) > a[data-under] {
+  color: var(--ls-nav-active-text);
+}
+
+/* Keyboard focus: the ring sits outside the pill (the ring and the pill are both brand coloured). */
+:is(.ls-site-nav, .ls-subnav) a:focus-visible {
+  outline-offset: var(--ls-space-1);
 }
 
 /* The hero media (picture, slider, brand panel) has the same soft 16 px corners as every card. */
@@ -2084,7 +2127,7 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   .ls-site-link:hover svg,
   .ls-site-link:hover .ls-link-arrow,
   .ls-group-card:hover .ls-link-arrow {
-    translate: var(--ls-space-1) 0;
+    translate: var(--ls-arrow-nudge) 0;
   }
 }
 
@@ -2157,14 +2200,18 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 
 @media (hover: hover) {
   .ls-site .ls-btn:where(:not(:disabled, [aria-disabled='true'])):hover,
-  .ls-site .ls-theme-cycle:hover,
-  .ls-site .ls-site-tool:hover,
   .ls-site .ls-pills a:hover,
-  .ls-site .ls-site-nav a:where(:not([aria-current='page'])):hover,
-  .ls-site .ls-subnav a:where(:not([aria-current='page'])):hover,
   .ls-site .ls-social-btn:hover,
   .ls-site .ls-store-badge:hover {
     transform: translateY(calc(var(--ls-ctl-lift) * -1)) scale(var(--ls-ctl-zoom));
+  }
+
+  /* The round header tools (bell, language, theme, account): one effect, a small scale-up, no lift. The menu entries
+     have none either: their pill glides instead. */
+  .ls-site .ls-theme-cycle:hover,
+  .ls-site .ls-site-tool:hover,
+  .ls-site .ls-site-tools .ls-btn-icon:not(.ls-popover .ls-btn-icon):hover {
+    transform: scale(var(--ls-tool-zoom));
   }
 }
 
@@ -2195,4 +2242,92 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 
 .ls-site .ls-slider-dot:active::before {
   transform: scale(var(--ls-press-scale));
+}
+
+/* ---------- header motion: pop panels, bell, sheen (docs/UXUI_REDESIGN_PUBLIC_HEADER_MOTION.md) ---------- */
+/* The person menu and the bell panel (any panel of the public site) grow from the trigger (the Popover sets the origin) with
+   a fade and a small shift, and close the same way. */
+.ls-site .ls-popover {
+  animation: ls-site-pop-in var(--ls-dur-pop) var(--ls-ease-premium) both;
+}
+
+.ls-site .ls-popover[data-state='closed'] {
+  animation: ls-site-pop-out var(--ls-dur-pop) var(--ls-ease-out) both;
+}
+
+@keyframes ls-site-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--ls-pop-shift) * -1)) scale(var(--ls-pop-scale));
+  }
+}
+
+@keyframes ls-site-pop-out {
+  to {
+    opacity: 0;
+    transform: translateY(calc(var(--ls-pop-shift) * -1)) scale(var(--ls-pop-scale));
+  }
+}
+
+/* The bell rings once (the component sets data-ring for the length of the animation when a new unread notification
+   arrives); the icon swings from its top. */
+.ls-site-bell[data-ring='true'] > .ls-tooltip-wrap > .ls-btn-icon svg {
+  transform-origin: 50% 0;
+  animation: ls-bell-ring var(--ls-dur-wiggle) var(--ls-ease-premium) 1;
+}
+
+@keyframes ls-bell-ring {
+  15% {
+    rotate: var(--ls-wiggle-angle);
+  }
+
+  30% {
+    rotate: calc(var(--ls-wiggle-angle) * -0.8);
+  }
+
+  45% {
+    rotate: calc(var(--ls-wiggle-angle) * 0.5);
+  }
+
+  60% {
+    rotate: calc(var(--ls-wiggle-angle) * -0.3);
+  }
+
+  75% {
+    rotate: calc(var(--ls-wiggle-angle) * 0.15);
+  }
+
+  100% {
+    rotate: 0deg;
+  }
+}
+
+/* "Đặt lịch ngay": on top of the button's hover zoom a light band sweeps across once (fine pointers only). */
+.ls-site .ls-btn-sheen {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.ls-site .ls-btn-sheen::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 60%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    color-mix(in srgb, var(--ls-on-brand) 38%, transparent),
+    transparent
+  );
+  translate: -150% 0;
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  .ls-site .ls-btn-sheen:hover::after {
+    translate: 250% 0;
+    transition: translate var(--ls-dur-sheen) var(--ls-ease-out);
+  }
 }

@@ -209,6 +209,11 @@
   animation: ls-pop-in var(--ls-dur-fast) var(--ls-ease-out) backwards;
 }
 
+/* A closing panel has no exit animation here (the Popover removes it at once); the public site adds one (site.css). */
+.ls-popover[data-state='closed'] {
+  animation-name: none;
+}
+
 /* Shared entrance keyframes (opacity/transform only); every user reads durations from the motion tokens. */
 @keyframes ls-fade-in {
   from {

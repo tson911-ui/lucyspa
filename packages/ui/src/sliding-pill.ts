@@ -25,6 +25,20 @@ export interface SlidingPillOptions {
   hidden?: ((current: HTMLElement, menu: HTMLElement) => boolean) | undefined;
   /** Extra elements whose size changes move the current link (the sidebar's groups open and close). */
   watch?: string | undefined;
+  /**
+   * The pill also glides to the entry the mouse is over or the keyboard has focused, and back to the current entry when
+   * they leave (the public menus). Touch never moves it, and a mouse click's focus does not either.
+   */
+  follow?: boolean | undefined;
+}
+
+/** Keyboard focus (not the focus a mouse click leaves behind); a browser that cannot tell counts as not. */
+function focusVisible(element: Element): boolean {
+  try {
+    return element.matches(':focus-visible');
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -41,20 +55,30 @@ export function useSlidingPill(signature: string, options: SlidingPillOptions = 
   const settings = useRef(options);
   settings.current = options;
 
+  /** The entry the mouse is over / the keyboard is on (`follow` menus); the pill goes there instead of the current one. */
+  const hovered = useRef<HTMLElement | null>(null);
+  const focused = useRef<HTMLElement | null>(null);
+
   const place = (animate: boolean) => {
     const element = nav.current;
     if (!element) return;
-    const current = element.querySelector<HTMLElement>('a[aria-current]');
-    if (
-      !current ||
-      current.offsetWidth === 0 ||
-      settings.current.hidden?.(current, element) === true
-    ) {
+    const route = element.querySelector<HTMLElement>('a[aria-current]');
+    if (!route || route.offsetWidth === 0 || settings.current.hidden?.(route, element) === true) {
       placed.current = false;
       lastBox.current = '';
       element.dataset['pill'] = 'none' satisfies PillMode;
+      element
+        .querySelectorAll('[data-under]')
+        .forEach((link) => link.removeAttribute('data-under'));
       return;
     }
+    // The entry the pill sits under: what the pointer or the keys are on, else the current page's entry.
+    const wanted = hovered.current ?? focused.current;
+    const current = wanted?.isConnected && element.contains(wanted) ? wanted : route;
+    element.querySelectorAll('a').forEach((link) => {
+      if (link === current) link.setAttribute('data-under', '');
+      else link.removeAttribute('data-under');
+    });
     const box = [current.offsetLeft, current.offsetTop, current.offsetWidth, current.offsetHeight];
     if (!animate && placed.current && box.join() === lastBox.current) return;
     lastBox.current = box.join();
@@ -92,6 +116,54 @@ export function useSlidingPill(signature: string, options: SlidingPillOptions = 
     if (watch) element.querySelectorAll(watch).forEach((node) => observer.observe(node));
     return () => observer.disconnect();
   }, [signature]);
+
+  // The public menus: the pill follows the mouse and the keyboard focus, and goes back to the current entry on leaving.
+  const follow = options.follow === true;
+  useEffect(() => {
+    const element = nav.current;
+    if (!follow || !element) return;
+    const linkOf = (target: EventTarget | null): HTMLElement | null => {
+      const link = target instanceof Element ? target.closest('a') : null;
+      return link && element.contains(link) ? link : null;
+    };
+    const onOver = (event: PointerEvent) => {
+      if (event.pointerType === 'touch') return;
+      const link = linkOf(event.target);
+      if (!link || link === hovered.current) return;
+      hovered.current = link;
+      place(true);
+    };
+    const onLeave = () => {
+      if (!hovered.current) return;
+      hovered.current = null;
+      place(true);
+    };
+    const onFocusIn = (event: FocusEvent) => {
+      const link = linkOf(event.target);
+      if (!link || !focusVisible(link)) return;
+      focused.current = link;
+      place(true);
+    };
+    const onFocusOut = (event: FocusEvent) => {
+      if (linkOf(event.relatedTarget)) return;
+      if (!focused.current) return;
+      focused.current = null;
+      place(true);
+    };
+    element.addEventListener('pointerover', onOver);
+    element.addEventListener('pointerleave', onLeave);
+    element.addEventListener('focusin', onFocusIn);
+    element.addEventListener('focusout', onFocusOut);
+    return () => {
+      element.removeEventListener('pointerover', onOver);
+      element.removeEventListener('pointerleave', onLeave);
+      element.removeEventListener('focusin', onFocusIn);
+      element.removeEventListener('focusout', onFocusOut);
+      hovered.current = null;
+      focused.current = null;
+    };
+    // `place` only reads refs.
+  }, [follow]);
 
   return nav;
 }

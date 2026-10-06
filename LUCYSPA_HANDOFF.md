@@ -533,3 +533,8 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - A: account sub-tab row removed; person menu = Tài khoản của tôi / Điểm thưởng / Đăng xuất; new notification bell with a latest-8 panel next to the language button (`docs/UXUI_REDESIGN_NAV_HEADER.md`).
 - B: the full-bleed hero built in `be5617d` was **rejected by the Owner** (misunderstanding) and removed; the home hero is the original split layout again. **Approved by the Owner:** a transparent header over the original hero (no background, border or shadow at the top, normal colours; solid after about 60 px of scroll; `SiteHeader overlay`).
 - No migration, no permission. `be5617d` (CI green) is superseded and must not be deployed on its own.
+
+### Public header and motion package - 2026-10-06 (not deployed)
+
+- Active menu tab is the solid brand pill at all times (cause: the pill used the pale brand-soft token, red only on hover); one transparent, shrinking frosted header on every public and member page; pill glides to hovered/focused tab; pop panels, bell ring, button sheen, member-page reveal (`docs/UXUI_REDESIGN_PUBLIC_HEADER_MOTION.md`).
+- No migration, no permission. Not deployed; the Owner deploys the pushed head after CI is green.

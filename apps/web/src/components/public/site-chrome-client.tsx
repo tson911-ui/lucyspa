@@ -30,25 +30,14 @@ const PrefetchLink: SiteLinkComponent = ({ children, ...rest }) => (
   </Link>
 );
 
-/**
- * The site header. On the home page (and only there) the bar is clear at the top and turns solid on scroll; `overlay` forces it either way (the admin's season preview). The path is known on the server
- * too, so the first paint already has the right bar.
- */
-export function PublicSiteHeader({
-  locale,
-  overlay,
-  ...slots
-}: {
-  locale: Locale;
-  overlay?: boolean | undefined;
+/** The site header: the same clear-at-the-top, shrinking glass bar on every public and member page. */
+export function PublicSiteHeader(slots: {
   brand: ReactNode;
   nav: ReactNode;
   tools: ReactNode;
   cta: ReactNode;
 }) {
-  const pathname = usePathname();
-  const onHome = (pathname ?? '').replace(/\/+$/, '') === `/${locale}`;
-  return <SiteHeader {...slots} overlay={overlay ?? onHome} />;
+  return <SiteHeader {...slots} />;
 }
 
 /** The menu: Trang chủ and Dịch vụ for everyone, Lịch hẹn and Hóa đơn once a member is signed in. */
@@ -105,7 +94,11 @@ export function PublicTools({ locale }: { locale: Locale }) {
 export function PublicHeaderCta({ locale }: { locale: Locale }) {
   const text = getSiteText(locale);
   return (
-    <Link prefetch className={buttonClass('primary')} href={`/${locale}/account/book`}>
+    <Link
+      prefetch
+      className={buttonClass('primary', 'md', 'ls-btn-sheen')}
+      href={`/${locale}/account/book`}
+    >
       {text.header.bookNow}
     </Link>
   );

@@ -22,6 +22,7 @@ import {
   Notice,
   Page,
   PageHeader,
+  Reveal,
   Stat,
   type DataTableColumn,
 } from '@lucy-spa/ui';
@@ -105,38 +106,40 @@ function WalletCard({ wallet }: { wallet: LoyaltyWalletResponse }) {
   const text = customerLoyaltyDictionary(locale);
   const l = loyaltyDictionary(locale);
   return (
-    <Card as="section" aria-label={l.wallets[wallet.wallet]}>
-      <CardHeader
-        title={l.wallets[wallet.wallet]}
-        actions={<Badge tone={tierTone(wallet.tier)}>{l.tiers[wallet.tier]}</Badge>}
-      />
-      <Stat
-        label={text.points.balance}
-        value={wallet.balancePoints}
-        format={{ valueFormat: 'count', locale }}
-        note={
-          wallet.nextTier && wallet.pointsToNextTier !== null
-            ? fill(text.points.toGo, {
-                n: formatPoints(wallet.pointsToNextTier, locale),
-                tier: l.tiers[wallet.nextTier],
-              })
-            : text.points.topTier
-        }
-      />
-      <DescriptionList
-        items={[
-          {
-            label: text.points.memberDiscount,
-            value:
-              wallet.wallet === 'BEAUTY'
-                ? text.points.beautyDiscountPending
-                : wallet.memberDiscountBp > 0
-                  ? `${wallet.memberDiscountBp / 100}%`
-                  : text.points.noDiscount,
-          },
-        ]}
-      />
-    </Card>
+    <Reveal>
+      <Card as="section" aria-label={l.wallets[wallet.wallet]}>
+        <CardHeader
+          title={l.wallets[wallet.wallet]}
+          actions={<Badge tone={tierTone(wallet.tier)}>{l.tiers[wallet.tier]}</Badge>}
+        />
+        <Stat
+          label={text.points.balance}
+          value={wallet.balancePoints}
+          format={{ valueFormat: 'count', locale }}
+          note={
+            wallet.nextTier && wallet.pointsToNextTier !== null
+              ? fill(text.points.toGo, {
+                  n: formatPoints(wallet.pointsToNextTier, locale),
+                  tier: l.tiers[wallet.nextTier],
+                })
+              : text.points.topTier
+          }
+        />
+        <DescriptionList
+          items={[
+            {
+              label: text.points.memberDiscount,
+              value:
+                wallet.wallet === 'BEAUTY'
+                  ? text.points.beautyDiscountPending
+                  : wallet.memberDiscountBp > 0
+                    ? `${wallet.memberDiscountBp / 100}%`
+                    : text.points.noDiscount,
+            },
+          ]}
+        />
+      </Card>
+    </Reveal>
   );
 }
 
@@ -176,18 +179,20 @@ function TiersSection({ current }: { current: LoyaltyWalletResponse['tier'] }) {
     },
   ];
   return (
-    <ListSection title={text.tiers.title}>
-      <p className="ls-hint">{text.tiers.rule}</p>
-      <DataTable
-        mode="client"
-        caption={fill(w.common.list.table, { list: text.tiers.title })}
-        columns={columns}
-        rows={tierRows()}
-        rowKey={(row) => row.tier}
-        selectedKey={current === 'NONE' ? undefined : current}
-        paging={{ off: 'The five tiers of the locked tier table: a fixed short list.' }}
-      />
-    </ListSection>
+    <Reveal>
+      <ListSection title={text.tiers.title}>
+        <p className="ls-hint">{text.tiers.rule}</p>
+        <DataTable
+          mode="client"
+          caption={fill(w.common.list.table, { list: text.tiers.title })}
+          columns={columns}
+          rows={tierRows()}
+          rowKey={(row) => row.tier}
+          selectedKey={current === 'NONE' ? undefined : current}
+          paging={{ off: 'The five tiers of the locked tier table: a fixed short list.' }}
+        />
+      </ListSection>
+    </Reveal>
   );
 }
 
@@ -213,28 +218,30 @@ function PagedSection<T extends { id: string }>({
   const total = useRef(0);
   if (list.data) total.current = list.data.total;
   return (
-    <ListSection title={title}>
-      {hint ? <p className="ls-hint">{hint}</p> : null}
-      <DataTable
-        mode="server"
-        className="ls-cards-one-line"
-        caption={fill(w.common.list.table, { list: title })}
-        columns={columns}
-        rows={list.data?.items ?? []}
-        rowKey={(row) => row.id}
-        loading={!list.data && !list.error}
-        loadingLabel={t.common.loading}
-        error={list.error ? <LoadState error={list.error} retry={list.retry} /> : undefined}
-        empty={list.data ? <Empty>{empty}</Empty> : undefined}
-        paging={{
-          page,
-          pageSize: list.data?.pageSize ?? 20,
-          total: list.data?.total ?? total.current,
-          onPageChange: setPage,
-          labels: paginationLabels(w, title),
-        }}
-      />
-    </ListSection>
+    <Reveal>
+      <ListSection title={title}>
+        {hint ? <p className="ls-hint">{hint}</p> : null}
+        <DataTable
+          mode="server"
+          className="ls-cards-one-line"
+          caption={fill(w.common.list.table, { list: title })}
+          columns={columns}
+          rows={list.data?.items ?? []}
+          rowKey={(row) => row.id}
+          loading={!list.data && !list.error}
+          loadingLabel={t.common.loading}
+          error={list.error ? <LoadState error={list.error} retry={list.retry} /> : undefined}
+          empty={list.data ? <Empty>{empty}</Empty> : undefined}
+          paging={{
+            page,
+            pageSize: list.data?.pageSize ?? 20,
+            total: list.data?.total ?? total.current,
+            onPageChange: setPage,
+            labels: paginationLabels(w, title),
+          }}
+        />
+      </ListSection>
+    </Reveal>
   );
 }
 
