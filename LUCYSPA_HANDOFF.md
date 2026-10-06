@@ -124,7 +124,16 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 
 ## Production
 
-Status as of 2026-10-06, about 12:00 (+07) (Owner-reported; supersedes the blocks below):
+Status as of 2026-10-06, about 13:28 (+07) (Owner-reported; supersedes the blocks below):
+
+- **Production runs `d0fc191`** (single shared layout, no flash on page switch, mobile info strip wraps, "Đặt lịch mới" rules, bottom bar with a raised center "Đặt lịch ngay", contact button auto-hides while scrolling down), deployed by the Owner on 2026-10-06 at about 13:28 (+07). Previous: `9b76789`.
+- No new migrations (62, `pnpm db:status` up to date). Permissions unchanged (54).
+- After the deploy: health ok, `/vi`, `/vi/account/bookings` and `/vi/workforce/login` answer 200, pm2 3/3 online.
+- Backup taken just before this deploy: `/root/backups/lucyspa-pre-smoothnav-20261006T061633Z.dump`.
+- Owner decision: keep the contact button as built (hides while scrolling down, shows on scroll up); no edge handle, not moved into the header.
+- Deploy note: the first build attempt ran from `/` instead of `/opt/lucyspa` and failed, then was rerun correctly. Every deploy block must start with `cd /opt/lucyspa`.
+
+Status as of 2026-10-06, about 12:00 (+07) (Owner-reported; the `9b76789` deploy):
 
 - **Production runs `9b76789f3d6679ddc30a6de38c9a604d13dab8b7`** (the header/motion package `4d28ab9` plus the floating contact button, the footer Facebook and Zalo icons and the Shop info Facebook / Zalo fields), deployed by the Owner on 2026-10-06 at about 12:00 (+07). Previous: `4bdeaca`.
 - Migration applied: `20261104000000_shop_info_contact_links` (62 migrations, `pnpm db:status` up to date). Permissions unchanged (54).
@@ -552,8 +561,8 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - Shop info has two optional fields (Trang Facebook, Zalo); public site gets a floating contact button and footer icons (`docs/UXUI_CONTACT_BUTTONS.md`).
 - **Migration `20261104000000_shop_info_contact_links`** (two nullable columns, additive). Production: apply it with the deploy, then the Owner enters the links in Admin > Website > Shop info.
 
-### Navigation flash fix + tab bar (2026-10-06, not deployed)
+### Navigation flash fix + tab bar (2026-10-06, deployed in `d0fc191`)
 
 - Cause: public and account each mounted their own site frame (header, tab bar, footer, session remounted), plus a fade from opacity 0 and a text-only session check. Now one `(site)` layout, view-transition cross-fade, skeleton guard (`docs/UXUI_REDESIGN_NAV_FLASH.md`).
 - Also: info strip stacks on phones, "Đặt lịch mới" hidden below 1024 px, tab bar only the current tab active with a raised "Đặt lịch ngay", contact button steps aside while reading. No migration.
-- Open for the Owner: the contact button can still sit over a line when shown (top, scrolling up); alternatives in the report.
+- Owner decision: the contact button stays as built (hides while scrolling down, shows on scroll up).
