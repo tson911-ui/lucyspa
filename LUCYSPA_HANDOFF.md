@@ -247,6 +247,7 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - Two `My Income` integration assertions fail only between 15:00 and 17:00 UTC.
 - Worker Step 9 notification tests (`Redis job loss…`, `real Redis delayed-job loss…`) build the visit `serviceDate` from the UTC date and fail
   when the UTC and Vietnam dates differ (roughly 17:00-24:00 UTC).
+- FIXED 2026-10-07: CI of `39ad8d1` failed in `pnpm test:integration` (packages/database) with `40P01 deadlock detected`. Cause: several database test files ran in parallel and their `TRUNCATE` assertions need ACCESS EXCLUSIVE on shared tables. Test-only (reproduced on a database without migration `20261105000000`); production code and the migration are not involved. The two `node --test` runs now use `--test-concurrency=1` (guard test in `assert-test-database.test.ts`).
 
 ## Hotfix: PayOS webhook signature (post 82a0862, DEPLOYED with 58bfabc)
 
