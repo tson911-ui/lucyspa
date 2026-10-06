@@ -130,15 +130,19 @@ export function PublicFooter({
   return (
     <SiteFooter
       brand={
-        <Link
-          href={`/${locale}`}
-          aria-label={text.header.brand}
-          className="ls-site-footer-logo"
-          prefetch
-          transitionTypes={NAV_TRANSITION}
-        >
-          <BrandWordmark serif />
-        </Link>
+        <>
+          <Link
+            href={`/${locale}`}
+            aria-label={text.header.brand}
+            className="ls-site-footer-logo"
+            prefetch
+            transitionTypes={NAV_TRANSITION}
+          >
+            <BrandWordmark serif />
+          </Link>
+          {/* The shop's own tagline (Admin > Website > Shop info), nothing written here. */}
+          {site?.tagline ? <p className="ls-footer-tagline">{site.tagline}</p> : null}
+        </>
       }
       blocks={footerBlockItems(site?.footerBlocks ?? [], locale)}
       columns={columns}

@@ -578,6 +578,16 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - Shop info has two optional fields (Trang Facebook, Zalo); public site gets a floating contact button and footer icons (`docs/UXUI_CONTACT_BUTTONS.md`).
 - **Migration `20261104000000_shop_info_contact_links`** (two nullable columns, additive). Production: apply it with the deploy, then the Owner enters the links in Admin > Website > Shop info.
 
+### Contact button colours + footer alignment (2026-10-06, after `cdde1cf`, not deployed)
+
+- Owner choice: each expanded contact button in its app's colour with a white icon, light and dark alike: Zalo blue, Messenger gradient, call GREEN `#16853a` (`--ls-brand-call`, 4.7:1; the iOS green fails AA). The "Liên hệ" toggle keeps the brand fill (`docs/UXUI_CONTACT_BUTTONS.md`).
+- Footer: icons on the text edge, one 40-44 px row rhythm in all columns, the shop's own tagline under the logo (`docs/UXUI_FOOTER_ALIGNMENT.md`). No migration.
+
+### Strip below the tab bar + see-through header (2026-10-06, after `cdde1cf`, not deployed)
+
+- Header glass 78 % to 96 % (text behind it no longer readable). `viewport-fit=cover` restored (with `minimum-scale=1`, `overflow-x: clip`): most likely cause of the strip on Android, not proven. A 1-pixel last row only appears at fractional screen heights (ratio 2.625) and no CSS reached it.
+- `uxui-tabbar-check.mjs` checks every pixel row of the bar, logged-in, 408x908 and 440x956 (`docs/UXUI_REDESIGN_TABBAR_STRIP.md`). No migration.
+
 ### Tab bar cut off + hover stuck on touch (2026-10-06, deployed in `cdde1cf`)
 
 - `0be4abe` bar fell below the screen on a phone/DevTools 440x956: a page wider than the screen makes the browser zoom out and the fixed bar leaves the visible screen. Now `minimum-scale=1`, `.ls-site { overflow-x: clip }`, no `viewport-fit=cover`, bar 72 px, top line a shadow.

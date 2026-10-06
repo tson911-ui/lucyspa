@@ -253,8 +253,12 @@ test('footer: the contact column comes from the shop profile and is absent witho
   assert.match(html, /Điện thoại: <a href="tel:\+84934936101">0934 936 101<\/a>/);
   assert.match(html, /Đăng nhập \/ Đăng ký/);
   assert.match(html, /© 2026 Lucy Spa/);
-  // Nothing is seeded: with no blocks the brand column is the logo alone, so the tagline is not in the footer.
-  assert.doesNotMatch(html, /Thư Giãn Tận Tâm/);
+  // The brand column holds the logo and the shop's own tagline (Shop info), with no blocks seeded; without a profile only the logo.
+  assert.match(html, /<p class="ls-footer-tagline">Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc<\/p>/);
+  assert.doesNotMatch(
+    renderToStaticMarkup(<PublicFooter locale="vi" site={null} year={2026} />),
+    /ls-footer-tagline/,
+  );
   assert.doesNotMatch(html, /ls-site-footer-blocks/);
   const bare = renderToStaticMarkup(<PublicFooter locale="vi" site={null} year={2026} />);
   assert.doesNotMatch(bare, /Liên hệ/);
@@ -313,7 +317,10 @@ test('footer: the Owner blocks are drawn under the logo in order, with safe, nam
     'ls-footer-links"',
     'ls-footer-picture',
     'Thư Giãn Tận Tâm',
-  ].map((marker) => html.indexOf(marker));
+  ].map((marker) =>
+    // The footer's own tagline under the logo has the same words as the slogan block: the block is the LAST one.
+    marker === 'Thư Giãn Tận Tâm' ? html.lastIndexOf(marker) : html.indexOf(marker),
+  );
   assert.ok(
     order.every((at) => at > 0),
     'every block is drawn',

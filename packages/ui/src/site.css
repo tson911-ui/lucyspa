@@ -356,6 +356,7 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
   padding-block-end: var(--ls-safe-bottom);
+  padding-inline: var(--ls-safe-left) var(--ls-safe-right);
   background: var(--ls-bg-surface);
   /* A shadow line, not a border: a border would add 1 px to the bar that the page's reserved height does not count. */
   box-shadow: 0 -1px 0 var(--ls-border);
@@ -687,6 +688,15 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   text-decoration: none;
 }
 
+/* The shop's own tagline under the logo: subtle and short (it wraps only on a very narrow screen). */
+.ls-footer-tagline {
+  max-width: 24rem;
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
+}
+
 /* The blocks under the logo (social icons, store badges, text, link list, picture, slogan): the Owner's order, one
    rhythm, one left edge. With no blocks the column is the logo alone. */
 .ls-site-footer-blocks {
@@ -840,6 +850,14 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   color: var(--ls-text-muted);
   font-size: var(--ls-type-body);
   line-height: var(--ls-lh-body);
+}
+
+/* Every row of every column is one 40-44 px line (the touch target of a link), so the rows of the contact and the link
+   columns line up whatever they hold. */
+.ls-site-footer-list > li {
+  display: flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
 }
 
 .ls-site-footer-list a:not(.ls-footer-icon) {
@@ -2661,7 +2679,8 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   transition: scale var(--ls-dur-base) var(--ls-ease-premium);
 }
 
-/* Official shapes and colours for Zalo and Messenger; the call button is the site's brand button. */
+/* Each button wears its app's familiar colour with a white icon, in light and dark alike (Owner 2026-10-06): Zalo blue, the
+   Messenger gradient, and the phone-call green. The toggle alone keeps the brand fill. */
 .ls-contact-link[data-kind='zalo'] .ls-contact-icon {
   background: var(--ls-brand-zalo);
 }
@@ -2676,8 +2695,8 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 }
 
 .ls-contact-link[data-kind='call'] .ls-contact-icon {
-  color: var(--ls-on-brand);
-  background: var(--ls-brand-fill);
+  color: var(--ls-on-network);
+  background: var(--ls-brand-call);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -2701,14 +2720,20 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 .ls-footer-icons {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--ls-space-1);
+  align-items: center;
+  gap: var(--ls-space-4);
 }
 
+/* The glyph sits on the left edge of the text column: the link is a full touch target (40-44 px) but a negative margin makes
+   it take only its glyph's width in the row (a plain 40-44 px round box with the glyph centred pushed the glyph about 10 px
+   inside). The 16 px gap between glyphs is the overhang of the two targets (10 + 6), so neighbouring targets just touch. */
 .ls-footer-icon {
+  --ls-footer-icon-size: var(--ls-space-6);
   display: inline-grid;
   place-items: center;
   width: var(--ls-control-h);
   height: var(--ls-control-h);
+  margin: calc((var(--ls-footer-icon-size) - var(--ls-control-h)) / 2);
   border-radius: var(--ls-radius-full);
   color: var(--ls-text-muted);
   transition: color var(--ls-dur-base) var(--ls-ease-out);
@@ -2729,5 +2754,6 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 }
 
 .ls-footer-icon[data-network='zalo'] {
+  --ls-footer-icon-size: var(--ls-space-7);
   --ls-footer-icon-hover: var(--ls-brand-zalo);
 }

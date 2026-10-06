@@ -18,9 +18,12 @@ Owner-approved. Public site and member pages only; the staff area is untouched.
   Only the button and links take the pointer. There is no customer pay bar (PayOS is staff-side); the only sticky bottom
   bars of the public site are the tab bar and the booking action bar.
 - **Motion** (tokens only, 0 under reduced motion): one attention pulse on the first page of a visit (never looping),
-  fade + slight scale unfold with a stagger. **Colours:** Zalo and Messenger in official colours (tokens, same in both themes),
-  the call button and the toggle in the site's brand fill: red with a white icon in light mode, the site's pink with a dark
-  icon in dark mode (the Owner can ask for white on red in both). Labels (VI/EN): "Nhắn Zalo", "Nhắn Messenger", "Gọi Lucy Spa".
+  fade + slight scale unfold with a stagger. **Colours (Owner choice 2026-10-06): each expanded button wears its app's familiar
+  colour with a white icon, the same in light and dark:** Zalo blue `#0068ff`, the Messenger gradient, and the phone-call
+  **green `#16853a`** (`--ls-brand-call`, 4.7:1 with white; the iOS green `#34c759` would only reach 2.2:1). The main "Liên hệ" toggle keeps
+  the site's brand fill (red with a white icon in light, pink with a dark icon in dark). Footer icons unchanged. Labels (VI/EN):
+  "Nhắn Zalo", "Nhắn Messenger", "Gọi Lucy Spa". The Messenger gradient's own cyan and pink stops are below 3:1 with white; the white
+  glyph sits on the purple middle of the gradient (4.7:1), as in the official mark.
 - **Footer:** Facebook and Zalo icons under the contact lines, footer-link grey, official colour on hover; hidden when empty.
 
 ## Migration

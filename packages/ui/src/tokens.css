@@ -131,6 +131,8 @@
   /* Optical alignment of a 20 px icon with the first line of text, and the device safe area (not layout spacing). */
   --ls-icon-nudge: 0.125rem;
   --ls-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ls-safe-left: env(safe-area-inset-left, 0px);
+  --ls-safe-right: env(safe-area-inset-right, 0px);
   --ls-radius-sm: 6px;
   --ls-radius-md: 10px;
   --ls-radius-lg: 16px;
@@ -185,7 +187,8 @@
   --ls-header-shrink: calc(var(--ls-site-header-h) - var(--ls-site-header-h-compact));
   --ls-header-shrink-at: 3rem;
   --ls-header-lead-scale: 0.92;
-  --ls-header-glass-mix: 78%;
+  /* 96 %: the page text behind the bar must not be readable through it, light or dark (Owner 2026-10-06). */
+  --ls-header-glass-mix: 96%;
   --ls-header-blur: 16px;
   --ls-pop-scale: 0.94;
   --ls-pop-shift: var(--ls-space-1);
@@ -198,6 +201,7 @@
   /* Official brand colours of the contact networks (the same in light and dark; the marks identify the link). Zalo blue,
      Facebook blue and the three stops of the Messenger gradient. */
   --ls-brand-zalo: #0068ff;
+  --ls-brand-call: #16853a;
   --ls-brand-facebook: #1877f2;
   --ls-brand-messenger-from: #00b2ff;
   --ls-brand-messenger-via: #a334fa;
@@ -359,6 +363,7 @@
   --ls-nav-active-bar: transparent;
   /* Official network colours: the same in every theme. */
   --ls-brand-zalo: #0068ff;
+  --ls-brand-call: #16853a;
   --ls-brand-facebook: #1877f2;
   --ls-brand-messenger-from: #00b2ff;
   --ls-brand-messenger-via: #a334fa;
@@ -425,6 +430,7 @@
     --ls-nav-active-bar: transparent;
     /* Official network colours: the same in every theme. */
     --ls-brand-zalo: #0068ff;
+    --ls-brand-call: #16853a;
     --ls-brand-facebook: #1877f2;
     --ls-brand-messenger-from: #00b2ff;
     --ls-brand-messenger-via: #a334fa;
@@ -495,6 +501,7 @@
   --ls-nav-active-bar: transparent;
   /* Official network colours: the same in every theme. */
   --ls-brand-zalo: #0068ff;
+  --ls-brand-call: #16853a;
   --ls-brand-facebook: #1877f2;
   --ls-brand-messenger-from: #00b2ff;
   --ls-brand-messenger-via: #a334fa;

@@ -108,13 +108,36 @@ test('ContactFab css: sticky row on the shared layer scale, lifted above the tab
     css,
     /\.ls-contact\[data-open='true'\] \.ls-contact-link \{[^}]*visibility: visible;[^}]*scale: 1;/,
   );
-  // Colours: Zalo and Messenger in their brand colours, the call button in the site's brand fill, a brand-red toggle.
+  // Colours (Owner 2026-10-06): each button in its app's familiar colour with a white icon (Zalo blue, Messenger gradient, call
+  // green), the toggle in the brand fill.
   assert.match(css, /data-kind='zalo'\] \.ls-contact-icon \{\s*background: var\(--ls-brand-zalo\)/);
   assert.match(css, /data-kind='messenger'\] \.ls-contact-icon \{\s*background: linear-gradient\(/);
   assert.match(
     css,
-    /data-kind='call'\] \.ls-contact-icon \{[^}]*background: var\(--ls-brand-fill\)/,
+    /data-kind='call'\] \.ls-contact-icon \{[^}]*color: var\(--ls-on-network\);[^}]*background: var\(--ls-brand-call\)/,
   );
+  // The same colours in every theme block, and a white icon on the green and the blue keeps 4.5:1 (AA).
+  const tokenCss = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
+  const luminance = (hex: string) => {
+    const [r = 0, g = 0, b = 0] = [1, 3, 5].map((index) => {
+      const channel = Number.parseInt(hex.slice(index, index + 2), 16) / 255;
+      return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  for (const name of ['--ls-brand-call', '--ls-brand-zalo']) {
+    const values = [...tokenCss.matchAll(new RegExp(`${name}:\\s*(#[0-9a-f]{6});`, 'g'))].map(
+      (match) => match[1] ?? '',
+    );
+    assert.ok(
+      values.length >= 3 && new Set(values).size === 1,
+      `${name} is one colour in every theme`,
+    );
+    assert.ok(
+      1.05 / (luminance(values[0] ?? '#000000') + 0.05) >= 4.5,
+      `${name} keeps 4.5:1 with white`,
+    );
+  }
   assert.match(
     css,
     /\.ls-contact-toggle \{[^}]*color: var\(--ls-on-brand\);[^}]*background: var\(--ls-brand-fill\)/,
@@ -125,5 +148,15 @@ test('ContactFab css: sticky row on the shared layer scale, lifted above the tab
     css,
     /data-network='facebook'\] \{\s*--ls-footer-icon-hover: var\(--ls-brand-facebook\)/,
   );
-  assert.match(css, /data-network='zalo'\] \{\s*--ls-footer-icon-hover: var\(--ls-brand-zalo\)/);
+  assert.match(
+    css,
+    /data-network='zalo'\] \{\s*--ls-footer-icon-size: var\(--ls-space-7\);\s*--ls-footer-icon-hover: var\(--ls-brand-zalo\)/,
+  );
+  // The glyph (24 px Facebook, 32 px Zalo) sits on the text column's left edge: the link keeps a full touch target but a
+  // negative margin makes it take only its glyph's width in the row; every footer row is one control-height line.
+  assert.match(
+    css,
+    /\.ls-footer-icon \{\s*--ls-footer-icon-size: var\(--ls-space-6\);[^}]*width: var\(--ls-control-h\);[^}]*margin: calc\(\(var\(--ls-footer-icon-size\) - var\(--ls-control-h\)\) \/ 2\);/,
+  );
+  assert.match(css, /\.ls-site-footer-list > li \{[^}]*min-height: var\(--ls-control-h\);/);
 });

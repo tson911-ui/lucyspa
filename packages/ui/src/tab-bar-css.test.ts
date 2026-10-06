@@ -57,17 +57,26 @@ test('tab bar: fixed to the bottom edge with the safe area as padding inside it,
   assert.match(css, /\.ls-site:has\(\.ls-booking-bar\) \{\s*padding-block-end: 0;/);
 });
 
-test("the page never asks for viewport-fit=cover: the fixed tab bar slid under Android Chrome's system bar with it (Owner 2026-10-06)", () => {
+test('the header glass hides the text behind it', () => {
+  const tokens = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
+  const mix = /--ls-header-glass-mix:\s*(\d+)%/.exec(tokens);
+  assert.ok(mix && Number(mix[1]) >= 94, 'the header surface is at least 94 % opaque');
+});
+
+test('the page covers the whole screen (viewport-fit=cover) and can never be zoomed out, so the bar reaches the bottom edge and stays on screen', () => {
   const layout = readFileSync(
     new URL('../../../apps/web/src/app/[locale]/layout.tsx', import.meta.url),
     'utf8',
   );
-  // The comment explaining the removal names it, so only a real option counts.
-  assert.doesNotMatch(layout, /viewportFit\s*:/);
+  // Cover: the bar's opaque background reaches the screen edge (no strip of the browser's own below it).
+  assert.match(layout, /viewportFit:\s*'cover'/);
   // A page wider than the screen makes the phone zoom out, which strands the fixed bar below the visible screen.
   assert.match(layout, /minimumScale:\s*1/);
   assert.match(rule('.ls-site'), /overflow-x:\s*clip;/);
-  assert.doesNotMatch(css, /safe-area-inset-(left|right)/);
+  assert.match(
+    rule('.ls-tab-bar'),
+    /padding-inline: var\(--ls-safe-left\) var\(--ls-safe-right\);/,
+  );
 });
 
 test('a "book" button in a page header is hidden below 1024 px, where the tab bar has "Đặt lịch ngay"', () => {

@@ -47,12 +47,14 @@ interface LocaleLayoutProps {
 // Owner bug 2026-10-06 (tab bar labels cut off at the bottom): a page wider than the screen made the phone browser zoom
 // out to fit it, which leaves the layout viewport (where the fixed bar is anchored) taller than the visible screen.
 // `minimumScale: 1` forbids that zoom-out (the visitor can still zoom in), and the site frame clips horizontal overflow.
-// There is no `viewport-fit=cover` either (0be4abe had it): the page stays inside the phone's safe area and the bar
-// sits flush with the bottom of it; a browser that reports a bottom inset still gets it as padding inside the bar.
+// `viewportFit: 'cover'` (back after cdde1cf dropped it): without it Android Chrome and the iPhone keep the page above their
+// system bar and leave a thin strip of their own below the tab bar (Owner 2026-10-06, after cdde1cf). The page covers the
+// whole screen, the bar's opaque background reaches the bottom edge and the bottom inset is padding inside it.
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   minimumScale: 1,
+  viewportFit: 'cover',
 };
 
 export function generateStaticParams() {
