@@ -122,7 +122,7 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 - Owner instruction: the wallets are "Điểm Lucy Spa" / "Điểm Lucy Beauty" (EN "Lucy Spa points" / "Lucy Beauty points") everywhere, from one place (`apps/web/src/i18n/loyalty.ts`).
 - Customer Beauty card has the same "Ưu đãi hội viên" row: "Áp dụng khi Lucy Beauty mở bán" until Phase 6, which must replace it with the real tier % (design 15.3). Report: `docs/PHASE5_WALLET_NAMES.md`. No migration.
 
-## Early START of a service (2026-10-07, built, NOT deployed)
+## Early START of a service (2026-10-07, deployed in `39ad8d1`, see Production)
 
 - Owner request and eight decisions (own words): `docs/EARLY_START_DESIGN.md`. A technician may START before the booked time when the customer is checked in, they are free, nothing overlaps (also the early part, at database level) and a collaborator's shift covers it. Only the assigned technician; no notification; label "Bắt đầu sớm X phút" on My services and the booking board.
 - Migration `20261105000000_early_service_start_occupancy` (replaces `lucy_sync_visit_line_occupancy`, adds an `AFTER INSERT` trigger on `service_executions`; no table or data change). Must be applied with the deploy (63 migrations). Permissions unchanged (54).
@@ -130,7 +130,15 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 
 ## Production
 
-Status as of 2026-10-07, about 01:47 (+07) (Owner-reported; supersedes the blocks below):
+Status as of 2026-10-07, about 02:52 (+07) (Owner-reported; supersedes the blocks below):
+
+- **Production runs `39ad8d1`** (early service start `f88dff7` plus the Owner-approval docs commit), deployed by the Owner on 2026-10-07 at about 02:52 (+07). Previous: `607ca6a`.
+- Migration applied: `20261105000000_early_service_start_occupancy`. `pnpm db:status`: up to date (63 migrations). Permissions unchanged (54).
+- After the deploy: health ok (database up, redis up), `/vi` and `/vi/workforce/login` answer 200, pm2 3/3 online.
+- Backup taken just before this deploy: `/root/backups/lucyspa-pre-earlystart-20261006T195014Z.dump`.
+- `origin/main` is at `67deff2`, newer than production: it adds only `docs/DEPLOY_EARLY_START_RUNBOOK.md` (docs, no code), so no deploy is needed.
+
+Status as of 2026-10-07, about 01:47 (+07) (Owner-reported; superseded by the block above):
 
 - **Production runs `607ca6a`** (phone app shell below 1024 px: the document does not scroll, `.ls-site-scroll` is the only scroll container, the tab bar is in the normal flow), deployed by the Owner on 2026-10-07 at about 01:47 (+07). Previous: `15cd7e0`.
 - No new migrations (62, `pnpm db:status` up to date). Permissions unchanged (54).
