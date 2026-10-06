@@ -14,6 +14,8 @@ html {
 
 body {
   margin: 0;
+  /* A phone in landscape with a notch: nothing is drawn under it (the viewport covers the whole screen, see the root layout). */
+  padding-inline: var(--ls-safe-left) var(--ls-safe-right);
   color: var(--ls-text);
   background: var(--ls-bg-page);
   font-family: var(--ls-font-sans);

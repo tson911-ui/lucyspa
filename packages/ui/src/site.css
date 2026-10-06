@@ -335,16 +335,38 @@ html[data-ls-motion='reduced'] .ls-site-lead {
 }
 
 /* ---------- phone tab bar ---------- */
+/* Fixed to the bottom edge of the screen, not sticky inside the page: a sticky bar follows the page's own box, which a
+   phone browser's toolbar showing and hiding resizes under it (a gap below the labels where the page shows through). Its
+   opaque background reaches the screen edge: the bottom safe area (the iPhone's home indicator) is padding INSIDE the bar,
+   and the page reserves the bar's height at its end (the .ls-site rule below) so the last content scrolls fully above it. */
 .ls-tab-bar {
-  position: sticky;
+  position: fixed;
+  inset-inline: 0;
   bottom: 0;
   z-index: var(--ls-z-chrome);
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
-  padding-bottom: var(--ls-safe-bottom);
+  padding-block-end: var(--ls-safe-bottom);
+  padding-inline: var(--ls-safe-left) var(--ls-safe-right);
   background: var(--ls-bg-surface);
   border-top: 1px solid var(--ls-border);
+}
+
+@media (max-width: 1023.98px) {
+  .ls-site {
+    padding-block-end: calc(var(--ls-tab-bar-h) + var(--ls-safe-bottom));
+  }
+
+  /* A focused or anchored element is never left under the bar. */
+  html:has(.ls-tab-bar) {
+    scroll-padding-block-end: calc(var(--ls-tab-bar-h) + var(--ls-safe-bottom));
+  }
+
+  /* The booking pages have their own action bar at the bottom edge and no tab bar. */
+  .ls-site:has(.ls-booking-bar) {
+    padding-block-end: 0;
+  }
 }
 
 .ls-tab-bar a {
@@ -353,7 +375,7 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   align-items: center;
   justify-content: center;
   gap: var(--ls-space-1);
-  min-height: var(--ls-tab-bar-h);
+  height: var(--ls-tab-bar-h);
   padding-inline: var(--ls-space-1);
   color: var(--ls-text-muted);
   font-size: var(--ls-text-xs);
@@ -381,7 +403,7 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   box-sizing: content-box;
   width: var(--ls-space-6);
   height: var(--ls-space-6);
-  margin-top: calc(var(--ls-space-4) * -1);
+  margin-top: calc(var(--ls-space-5) * -1);
   padding: var(--ls-space-3);
   border-radius: 50%;
   background: var(--ls-brand);

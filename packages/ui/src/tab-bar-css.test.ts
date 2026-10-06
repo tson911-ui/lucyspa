@@ -29,7 +29,7 @@ test('tab bar: the booking tab is a raised round brand button with its icon on i
   assert.match(disc, /border-radius: 50%;/);
   assert.match(disc, /background: var\(--ls-brand\);/);
   assert.match(disc, /color: var\(--ls-on-brand\);/);
-  assert.match(disc, /margin-top: calc\(var\(--ls-space-4\) \* -1\);/);
+  assert.match(disc, /margin-top: calc\(var\(--ls-space-5\) \* -1\);/);
   assert.match(
     rule(".ls-tab-bar a[data-emphasis='true'][aria-current='page'] svg"),
     /box-shadow:[^;]*var\(--ls-brand\)/,
@@ -39,6 +39,22 @@ test('tab bar: the booking tab is a raised round brand button with its icon on i
     rule(".ls-site .ls-tab-bar a[data-emphasis='true']:active svg"),
     /transform: scale\(var\(--ls-press-scale\)\);/,
   );
+});
+
+test('tab bar: fixed to the bottom edge with the safe area as padding inside it, and the page reserves its height', () => {
+  const bar = rule('.ls-tab-bar');
+  assert.match(bar, /position: fixed;/);
+  assert.match(bar, /bottom: 0;/);
+  assert.match(bar, /padding-block-end: var\(--ls-safe-bottom\);/);
+  assert.match(bar, /background: var\(--ls-bg-surface\);/);
+  assert.doesNotMatch(bar, /position: sticky|margin-bottom|translate|transform/);
+  // The page ends with the bar's height (plus the safe area) so the last content scrolls fully above it; the booking
+  // pages, which have their own action bar and no tab bar, reserve nothing.
+  assert.match(
+    css,
+    /@media \(max-width: 1023\.98px\) \{\s*\.ls-site \{\s*padding-block-end: calc\(var\(--ls-tab-bar-h\) \+ var\(--ls-safe-bottom\)\);/,
+  );
+  assert.match(css, /\.ls-site:has\(\.ls-booking-bar\) \{\s*padding-block-end: 0;/);
 });
 
 test('a "book" button in a page header is hidden below 1024 px, where the tab bar has "Đặt lịch ngay"', () => {

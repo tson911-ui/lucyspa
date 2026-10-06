@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Be_Vietnam_Pro, Playfair_Display } from 'next/font/google';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
@@ -43,6 +43,15 @@ interface LocaleLayoutProps {
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
 }
+
+// The page covers the whole screen, the bottom safe area (an iPhone's home indicator) included: the phone tab bar draws its
+// own opaque background down to the screen edge and pads its labels above the indicator (env(safe-area-inset-bottom)).
+// Without viewport-fit=cover the inset is always 0 and the browser decides what shows below the page.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
