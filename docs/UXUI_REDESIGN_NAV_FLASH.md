@@ -32,13 +32,15 @@ the contact button covered text. Added the same day: "Đặt lịch mới" butto
 Per navigation, 360 light / 390 dark / scrolled / Tết kit: before, header+tab+footer replaced on public↔account, minimum
 opacity 0, 20+ blank frames on Lịch hẹn; after, replaced 0, minimum opacity 1, 0 blank frames, one view transition per click.
 
-## Migrations / permissions: none. Tests: ui 455 + web 522 pass; typecheck, eslint, format:check clean; DOM audit home and
+## Migrations, permissions, tests
 
-account-login 0 findings (scratch DB `lucy_spa_uxaudit_20261001`); no count rose from this Step.
+None, none. Tests: ui 458 and web 522 pass; whole-repo `pnpm test`, typecheck, eslint and format:check clean. DOM audit (scratch DB
+`lucy_spa_uxaudit_20261001`): home and account-login 0 findings; no count rose from this Step.
 
-## UX gate: Trang chủ, Dịch vụ, Đặt lịch, Lịch hẹn, Hóa đơn, Tài khoản at 360/390/768/1440 light and dark rendered (48 images), opened:
+## UX gate
 
-home 360, bookings 1440, book 360 dark, account 360, and the tab-switch frame sheets. No horizontal scroll on any page at 360/390.
+Trang chủ, Dịch vụ, Đặt lịch, Lịch hẹn, Hóa đơn, Tài khoản at 360/390/768/1440, light and dark (48 images). Opened: home 360,
+bookings 1440, book 360 dark, account 360, and the tab-switch frame sheets. No horizontal scroll on any page at 360/390.
 
 ## Open for the Owner
 
