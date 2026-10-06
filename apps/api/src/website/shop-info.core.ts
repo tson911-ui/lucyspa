@@ -1,16 +1,19 @@
-import type {
-  PublicHoursGroup,
-  PublicSiteResponse,
-  PublicSiteImage,
-  WebsiteFeaturedGroup,
-  WebsiteFooterBlock,
-  WebsiteGroupOption,
-  WebsiteShopFact,
-  WebsiteShopInfoBranchOption,
-  WebsiteShopInfoInput,
-  WebsiteShopInfoResponse,
-  WebsiteShopInfoUpdateRequest,
-  WebsiteWhyCard,
+import {
+  CONTACT_LINK_MAX,
+  facebookPageLinks,
+  zaloLink,
+  type PublicHoursGroup,
+  type PublicSiteResponse,
+  type PublicSiteImage,
+  type WebsiteFeaturedGroup,
+  type WebsiteFooterBlock,
+  type WebsiteGroupOption,
+  type WebsiteShopFact,
+  type WebsiteShopInfoBranchOption,
+  type WebsiteShopInfoInput,
+  type WebsiteShopInfoResponse,
+  type WebsiteShopInfoUpdateRequest,
+  type WebsiteWhyCard,
 } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
 import { AuthError } from '../auth/auth.error.js';
@@ -58,6 +61,7 @@ export const SHOP_INFO_LIMITS = Object.freeze({
   hotlineMax: 30,
   hotlineDigitsMin: 8,
   mapUrl: 500,
+  contactLink: CONTACT_LINK_MAX,
 });
 const MAX_VERSION = 2_147_483_647;
 const HOTLINE = /^[0-9+().\s-]+$/;
@@ -70,6 +74,8 @@ interface ShopInfoFields {
   address: string;
   hotline: string;
   mapUrl: string | null;
+  facebookUrl: string | null;
+  zaloContact: string | null;
   hoursBranchId: string | null;
   heroMediaId: string | null;
   factsVisible: boolean;
@@ -90,6 +96,8 @@ const selectShopInfo = {
   address: true,
   hotline: true,
   mapUrl: true,
+  facebookUrl: true,
+  zaloContact: true,
   hoursBranchId: true,
   heroMediaId: true,
   factsVisible: true,
@@ -143,6 +151,16 @@ export function parseShopInfoFields(input: WebsiteShopInfoInput): ShopInfoFields
   if (mapUrl !== null && (!/^https:\/\//.test(mapUrl) || !validPopupUrl(mapUrl))) {
     throw new AuthError('VALIDATION_FAILED', 'mapUrl');
   }
+  // Optional contact links the Owner types himself: stored as typed (trimmed), refused unless the site can turn them into a
+  // link (a Facebook page / profile id; a Zalo number or zalo.me link).
+  const facebookUrl = textField(input.facebookUrl, 'facebookUrl', limits.contactLink);
+  if (facebookUrl !== null && facebookPageLinks(facebookUrl) === null) {
+    throw new AuthError('VALIDATION_FAILED', 'facebookUrl');
+  }
+  const zaloContact = textField(input.zaloContact, 'zaloContact', limits.contactLink);
+  if (zaloContact !== null && zaloLink(zaloContact) === null) {
+    throw new AuthError('VALIDATION_FAILED', 'zaloContact');
+  }
   return {
     taglineVi: required(input.taglineVi, 'taglineVi', limits.tagline),
     taglineEn: required(input.taglineEn, 'taglineEn', limits.tagline),
@@ -152,6 +170,8 @@ export function parseShopInfoFields(input: WebsiteShopInfoInput): ShopInfoFields
     address: required(input.address, 'address', limits.address),
     hotline,
     mapUrl,
+    facebookUrl,
+    zaloContact,
     hoursBranchId: optionalId(input.hoursBranchId, 'hoursBranchId'),
     heroMediaId: optionalId(input.heroMediaId, 'heroMediaId'),
     factsVisible: parseFactsVisible(input.factsVisible),
@@ -204,6 +224,8 @@ const fieldsOf = (row: ShopInfoRow): ShopInfoFields => ({
   address: row.address,
   hotline: row.hotline,
   mapUrl: row.mapUrl,
+  facebookUrl: row.facebookUrl,
+  zaloContact: row.zaloContact,
   hoursBranchId: row.hoursBranchId,
   heroMediaId: row.heroMediaId,
   factsVisible: row.factsVisible,
@@ -470,6 +492,7 @@ export async function publicSite(
       },
     ]),
   );
+  const facebook = row.facebookUrl === null ? null : facebookPageLinks(row.facebookUrl);
   return {
     tagline,
     footerBlocks: publicFooterBlocks(footerBlocks, locale, tagline, images),
@@ -492,6 +515,9 @@ export async function publicSite(
     hotline: row.hotline,
     hotlineTel: hotlineTel(row.hotline),
     mapUrl: row.mapUrl,
+    facebookUrl: facebook?.pageUrl ?? null,
+    messengerUrl: facebook?.messengerUrl ?? null,
+    zaloUrl: row.zaloContact === null ? null : zaloLink(row.zaloContact),
     timezone: branch?.timezone ?? 'Asia/Ho_Chi_Minh',
     hours: branch ? await hoursOf(tx, branch.id) : [],
     heroImage: media

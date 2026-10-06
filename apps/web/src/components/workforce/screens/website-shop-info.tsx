@@ -289,6 +289,35 @@ function ShopInfoForm_() {
                       />
                     )}
                   </Field>
+                  <Field
+                    label={text.facebookUrl}
+                    hint={text.facebookUrlHint}
+                    error={error('facebookUrl')}
+                  >
+                    {(control) => (
+                      <TextInput
+                        {...control}
+                        inputMode="url"
+                        autoComplete="off"
+                        value={form.facebookUrl}
+                        onChange={(event) => change({ facebookUrl: event.target.value })}
+                      />
+                    )}
+                  </Field>
+                  <Field
+                    label={text.zaloContact}
+                    hint={text.zaloContactHint}
+                    error={error('zaloContact')}
+                  >
+                    {(control) => (
+                      <TextInput
+                        {...control}
+                        autoComplete="off"
+                        value={form.zaloContact}
+                        onChange={(event) => change({ zaloContact: event.target.value })}
+                      />
+                    )}
+                  </Field>
                 </FormGrid>
               </FormSection>
               <FormSection title={text.imageSection} description={text.imageHint}>

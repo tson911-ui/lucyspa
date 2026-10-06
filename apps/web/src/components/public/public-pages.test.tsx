@@ -11,6 +11,8 @@ import type { ReactElement } from 'react';
 import { renderToStaticMarkup as render } from 'react-dom/server';
 import type { HomeData } from '../../lib/public-site-core';
 import { HomeContent } from './home-content';
+import { getSiteText } from '../../i18n/site';
+import { ContactWidget, contactItems } from './contact-widget';
 import { PublicFooter } from './site-chrome';
 import { PublicHeaderCta } from './site-chrome-client';
 import { ServiceDetailView, ServicesView } from './services-view';
@@ -39,6 +41,9 @@ const site: PublicSiteResponse = {
   hotline: '0934 936 101',
   hotlineTel: '+84934936101',
   mapUrl: null,
+  facebookUrl: null,
+  messengerUrl: null,
+  zaloUrl: null,
   timezone: 'Asia/Ho_Chi_Minh',
   hours: [
     { weekdays: [1, 2, 3, 4, 5, 6], closed: false, opensAt: '09:00', closesAt: '21:00' },
@@ -177,6 +182,67 @@ test('home: the hero shows the chosen picture when there is no slide, else a bra
   assert.match(withImage, /srcSet="[^"]*\/md 960w, [^"]*\/lg 1920w"/);
   assert.doesNotMatch(withImage, /ls-brand-panel/);
   assert.match(home(full), /ls-brand-panel/);
+});
+
+test('footer: Facebook and Zalo icons sit with the contact lines, each only when its link is set', () => {
+  const links = {
+    facebookUrl: 'https://www.facebook.com/lucyspa.danang',
+    zaloUrl: 'https://zalo.me/0934936101',
+  };
+  const both = renderToStaticMarkup(
+    <PublicFooter locale="vi" site={{ ...site, ...links }} year={2026} />,
+  );
+  assert.match(
+    both,
+    /<a class="ls-footer-icon" data-network="facebook" href="https:\/\/www\.facebook\.com\/lucyspa\.danang" target="_blank" rel="noopener noreferrer" aria-label="Facebook \(mở trong tab mới\)">/,
+  );
+  assert.match(
+    both,
+    /<a class="ls-footer-icon" data-network="zalo" href="https:\/\/zalo\.me\/0934936101" target="_blank" rel="noopener noreferrer" aria-label="Zalo \(mở trong tab mới\)">/,
+  );
+  const onlyZalo = renderToStaticMarkup(
+    <PublicFooter locale="en" site={{ ...site, zaloUrl: links.zaloUrl }} year={2026} />,
+  );
+  assert.match(onlyZalo, /data-network="zalo"[^>]*aria-label="Zalo \(opens in a new tab\)"/);
+  assert.doesNotMatch(onlyZalo, /data-network="facebook"/);
+  // None set (the default): no icons and no empty group.
+  const none = renderToStaticMarkup(<PublicFooter locale="vi" site={site} year={2026} />);
+  assert.doesNotMatch(none, /ls-footer-icon/);
+});
+
+test('contact button: Zalo, Messenger and phone in that order; an empty link is left out; none without the profile', () => {
+  const vi = getSiteText('vi').contactFab;
+  const labels = (data: Parameters<typeof contactItems>[0]) =>
+    contactItems(data, vi).map((item) => `${item.key}:${item.label}`);
+  assert.deepEqual(
+    labels({
+      zaloUrl: 'https://zalo.me/09',
+      messengerUrl: 'https://m.me/lucy',
+      hotlineTel: '+84934936101',
+    }),
+    ['zalo:Nhắn Zalo', 'messenger:Nhắn Messenger', 'call:Gọi Lucy Spa'],
+  );
+  assert.deepEqual(
+    labels({ zaloUrl: null, messengerUrl: 'https://m.me/lucy', hotlineTel: '+84934936101' }),
+    ['messenger:Nhắn Messenger', 'call:Gọi Lucy Spa'],
+  );
+  assert.deepEqual(labels({ zaloUrl: null, messengerUrl: null, hotlineTel: '+84934936101' }), [
+    'call:Gọi Lucy Spa',
+  ]);
+  assert.deepEqual(labels(null), []);
+  const call = contactItems(
+    { zaloUrl: null, messengerUrl: null, hotlineTel: '+84934936101' },
+    vi,
+  )[0];
+  assert.equal(call?.href, 'tel:+84934936101');
+  // English wording.
+  assert.equal(getSiteText('en').contactFab.zalo, 'Message on Zalo');
+  assert.equal(getSiteText('en').contactFab.call, 'Call Lucy Spa');
+  // No profile: no widget at all.
+  assert.equal(renderToStaticMarkup(<ContactWidget locale="vi" site={null} />), '');
+  const html = renderToStaticMarkup(<ContactWidget locale="vi" site={site} />);
+  assert.match(html, /aria-label="Liên hệ"/);
+  assert.match(html, /Gọi Lucy Spa/);
 });
 
 test('footer: the contact column comes from the shop profile and is absent without it', () => {

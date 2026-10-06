@@ -2158,6 +2158,8 @@ export * from './combo.js';
 export * from './reward.js';
 // Phase 5 P5-10: the customer's own membership page (points, combos, referrals, gifts; read only).
 export * from './customer-loyalty.js';
+// Owner request 2026-10-06: the shop's Facebook / Zalo contact links (validation and the links the public site opens).
+export * from './contact-links.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;
@@ -3374,6 +3376,12 @@ export interface PublicSiteResponse {
   /** For a `tel:` link, digits with a leading plus (`+84934936101`). */
   hotlineTel: string;
   mapUrl: string | null;
+  /** The Facebook page link for the footer icon; null when the Owner set none. */
+  facebookUrl: string | null;
+  /** `https://m.me/<page>` for the Messenger button, derived from the Facebook page; null when there is none. */
+  messengerUrl: string | null;
+  /** `https://zalo.me/...` for the Zalo button and footer icon; null when the Owner set none. */
+  zaloUrl: string | null;
   /** The branch time zone the hours are in. */
   timezone: string;
   hours: PublicHoursGroup[];
@@ -3389,6 +3397,10 @@ export interface WebsiteShopInfoInput {
   address: string;
   hotline: string;
   mapUrl: string | null;
+  /** Optional Facebook page link (https); also gives the Messenger link. See `facebookPageLinks`. */
+  facebookUrl: string | null;
+  /** Optional Zalo number or `https://zalo.me/...` link. See `zaloLink`. */
+  zaloContact: string | null;
   hoursBranchId: string | null;
   heroMediaId: string | null;
   /** Show the facts strip at all. */

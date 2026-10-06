@@ -69,6 +69,9 @@ const paths = {
   'bar-chart': 'M5 20V10M12 20V4M19 20v-7',
   minus: 'M5 12h14',
   // Public site (Part 2)
+  // The floating contact button: a speech bubble.
+  'message-circle':
+    'M21 11.5a8.4 8.4 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.4 8.4 0 01-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 01-.9-3.8 8.5 8.5 0 014.7-7.6A8.4 8.4 0 0112.5 3H13a8.5 8.5 0 018 8v.5z',
   phone:
     'M6.5 4h3l1.5 4-2 1.5a11 11 0 005.5 5.5L16 13l4 1.5v3a2 2 0 01-2 2A14 14 0 014.5 6a2 2 0 012-2z',
   // "Why choose us" cards of the public home page (the Owner picks one per card; line style like the rest)

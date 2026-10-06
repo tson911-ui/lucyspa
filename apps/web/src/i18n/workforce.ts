@@ -626,6 +626,12 @@ const vi = {
     mapUrl: 'Liên kết bản đồ',
     mapUrlHint:
       'Không bắt buộc. Địa chỉ bản đồ bắt đầu bằng https://. Để trống thì nút "Chỉ đường" tìm theo địa chỉ.',
+    facebookUrl: 'Trang Facebook',
+    facebookUrlHint:
+      'Không bắt buộc. Liên kết trang Facebook của spa, ví dụ https://www.facebook.com/tenpage. Dùng cho biểu tượng ở chân trang và nút Messenger. Để trống thì ẩn cả hai.',
+    zaloContact: 'Zalo',
+    zaloContactHint:
+      'Không bắt buộc. Số Zalo (ví dụ 0934 936 101) hoặc liên kết https://zalo.me/.... Dùng cho biểu tượng ở chân trang và nút Zalo. Để trống thì ẩn cả hai.',
     imageSection: 'Ảnh đầu trang chủ',
     imageHint:
       'Hiện ở đầu trang chủ khi không có slide nào đang bật. Để trống thì hiện khung thương hiệu.',
@@ -841,6 +847,9 @@ const vi = {
       address: 'Nhập địa chỉ (tối đa 300 ký tự).',
       hotline: 'Nhập số điện thoại hợp lệ, ít nhất 8 chữ số.',
       mapUrl: 'Liên kết bản đồ phải bắt đầu bằng https://.',
+      facebookUrl:
+        'Nhập liên kết trang Facebook dạng https://www.facebook.com/tenpage (không dùng liên kết bài viết, nhóm hay chia sẻ).',
+      zaloContact: 'Nhập số Zalo (9 đến 15 chữ số) hoặc liên kết dạng https://zalo.me/....',
       hoursBranchId: 'Chi nhánh này không còn hoạt động. Chọn chi nhánh khác.',
       heroMediaId: 'Ảnh cần có mô tả tiếng Việt. Thêm mô tả trong thư viện ảnh.',
       facts: 'Mỗi dòng riêng cần nội dung tiếng Việt và tiếng Anh (tối đa 80 ký tự).',
@@ -3166,6 +3175,12 @@ const en: Dictionary = {
     mapUrl: 'Map link',
     mapUrlHint:
       'Optional. A map address starting with https://. When empty, the "Directions" button searches by address.',
+    facebookUrl: 'Facebook page',
+    facebookUrlHint:
+      'Optional. The spa Facebook page link, for example https://www.facebook.com/pagename. Used for the footer icon and the Messenger button. When empty, both are hidden.',
+    zaloContact: 'Zalo',
+    zaloContactHint:
+      'Optional. A Zalo number (for example 0934 936 101) or a https://zalo.me/... link. Used for the footer icon and the Zalo button. When empty, both are hidden.',
     imageSection: 'Home page image',
     imageHint:
       'Shown at the top of the home page when no slide is on. When empty, a brand panel is shown.',
@@ -3384,6 +3399,9 @@ const en: Dictionary = {
       address: 'Enter the address (up to 300 characters).',
       hotline: 'Enter a valid phone number with at least 8 digits.',
       mapUrl: 'The map link must start with https://.',
+      facebookUrl:
+        'Enter the Facebook page link as https://www.facebook.com/pagename (not a post, group or share link).',
+      zaloContact: 'Enter a Zalo number (9 to 15 digits) or a link like https://zalo.me/....',
       hoursBranchId: 'This branch is no longer active. Choose another branch.',
       heroMediaId: 'The image needs a Vietnamese description. Add it in the media library.',
       facts: 'Each custom line needs Vietnamese and English text (up to 80 characters).',

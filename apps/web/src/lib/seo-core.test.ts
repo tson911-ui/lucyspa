@@ -29,6 +29,9 @@ const site: PublicSiteResponse = {
   hotline: '0934 936 101',
   hotlineTel: '+84934936101',
   mapUrl: 'https://maps.example.com/lucy',
+  facebookUrl: null,
+  messengerUrl: null,
+  zaloUrl: null,
   timezone: 'Asia/Ho_Chi_Minh',
   hours: [
     { weekdays: [1, 2, 3, 4, 5, 6], closed: false, opensAt: '09:00', closesAt: '21:00' },

@@ -42,6 +42,8 @@ const input = (patch: Partial<WebsiteShopInfoInput> = {}): WebsiteShopInfoInput 
   address: '04 Nguyễn Quang Bích, Đà Nẵng',
   hotline: '0934 936 101',
   mapUrl: null,
+  facebookUrl: null,
+  zaloContact: null,
   hoursBranchId: null,
   heroMediaId: null,
   factsVisible: true,
@@ -301,6 +303,8 @@ test(
                     taglineVi: '  Thư   Giãn   Tận Tâm ',
                     hotline: ' +84 934 936 101 ',
                     mapUrl: 'https://maps.example.com/?q=Lucy+Spa',
+                    facebookUrl: 'https://www.facebook.com/lucyspa.danang',
+                    zaloContact: '0934 936 101',
                     hoursBranchId: branch.id,
                   }),
                   expectedVersion: current.rowVersion,
@@ -318,6 +322,10 @@ test(
                 const publicSite = await site.site('vi');
                 assert.equal(publicSite.hotlineTel, '+84934936101');
                 assert.equal(publicSite.mapUrl, 'https://maps.example.com/?q=Lucy+Spa');
+                assert.equal(publicSite.facebookUrl, 'https://www.facebook.com/lucyspa.danang');
+                assert.equal(publicSite.messengerUrl, 'https://m.me/lucyspa.danang');
+                assert.equal(publicSite.zaloUrl, 'https://zalo.me/0934936101');
+                assert.equal(saved.zaloContact, '0934 936 101');
                 assert.equal(publicSite.hours.length, 3);
                 const events = await tx.auditEvent.findMany({
                   where: { action: 'SHOP_INFO_UPDATED', actorUserId: editor.id },
@@ -616,6 +624,16 @@ test(
                   attempt({ mapUrl: 'http://maps.example.com/x' }),
                   'VALIDATION_FAILED',
                   'mapUrl',
+                );
+                await fails(
+                  attempt({ facebookUrl: 'https://example.com/lucyspa' }),
+                  'VALIDATION_FAILED',
+                  'facebookUrl',
+                );
+                await fails(
+                  attempt({ zaloContact: 'not a number' }),
+                  'VALIDATION_FAILED',
+                  'zaloContact',
                 );
                 await fails(
                   attempt({ hoursBranchId: randomUUID() }),

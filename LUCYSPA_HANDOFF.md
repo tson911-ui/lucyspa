@@ -538,3 +538,8 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 
 - Active menu tab is the solid brand pill at all times (cause: the pill used the pale brand-soft token, red only on hover); one transparent, shrinking frosted header on every public and member page; pill glides to hovered/focused tab; pop panels, bell ring, button sheen, member-page reveal (`docs/UXUI_REDESIGN_PUBLIC_HEADER_MOTION.md`).
 - No migration, no permission. Not deployed; the Owner deploys the pushed head after CI is green.
+
+### Contact buttons (Zalo / Messenger / phone) - 2026-10-06 (not deployed)
+
+- Shop info has two optional fields (Trang Facebook, Zalo); public site gets a floating contact button and footer icons (`docs/UXUI_CONTACT_BUTTONS.md`).
+- **Migration `20261104000000_shop_info_contact_links`** (two nullable columns, additive). Production: apply it with the deploy, then the Owner enters the links in Admin > Website > Shop info.

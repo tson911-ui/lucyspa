@@ -27,6 +27,8 @@ const response: WebsiteShopInfoResponse = {
   address: '04 Nguyễn Quang Bích, Đà Nẵng',
   hotline: '0934 936 101',
   mapUrl: null,
+  facebookUrl: null,
+  zaloContact: null,
   hoursBranchId: null,
   heroMediaId: null,
   factsVisible: true,
@@ -69,6 +71,8 @@ test('the form mirrors the stored profile and sends null for what is empty', () 
     address: response.address,
     hotline: '0934 936 101',
     mapUrl: null,
+    facebookUrl: null,
+    zaloContact: null,
     hoursBranchId: null,
     heroMediaId: null,
     factsVisible: true,
@@ -303,6 +307,25 @@ test('the first invalid field is named', () => {
   assert.equal(problem({ mapUrl: 'http://maps.example.com' }), 'mapUrl');
   assert.equal(problem({ mapUrl: 'https://' }), 'mapUrl');
   assert.equal(problem({ taglineVi: '', address: '' }), 'taglineVi');
+});
+
+test('the Facebook page and Zalo contact are optional: empty is sent as null, a malformed one is named', () => {
+  const result = shopInfoInputOf({
+    ...base,
+    facebookUrl: '  https://www.facebook.com/lucyspa.danang ',
+    zaloContact: ' 0934   936 101 ',
+  });
+  assert.ok('body' in result);
+  assert.equal(result.body.facebookUrl, 'https://www.facebook.com/lucyspa.danang');
+  assert.equal(result.body.zaloContact, '0934 936 101');
+  const empty = shopInfoInputOf({ ...base, facebookUrl: '  ', zaloContact: '' });
+  assert.ok('body' in empty);
+  assert.equal(empty.body.facebookUrl, null);
+  assert.equal(empty.body.zaloContact, null);
+  assert.equal(problem({ facebookUrl: 'https://example.com/lucyspa' }), 'facebookUrl');
+  assert.equal(problem({ facebookUrl: 'facebook.com/lucyspa.danang' }), 'facebookUrl');
+  assert.equal(problem({ zaloContact: 'zalo' }), 'zaloContact');
+  assert.equal(problem({ zaloContact: 'http://zalo.me/0934936101' }), 'zaloContact');
 });
 
 test('changed ignores whitespace-only edits', () => {

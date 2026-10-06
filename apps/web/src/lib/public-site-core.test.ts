@@ -45,6 +45,9 @@ const site: PublicSiteResponse = {
   hotline: '0934 936 101',
   hotlineTel: '+84934936101',
   mapUrl: null,
+  facebookUrl: null,
+  messengerUrl: null,
+  zaloUrl: null,
   timezone: 'Asia/Ho_Chi_Minh',
   hours: [{ weekdays: [1, 2, 3, 4, 5, 6, 7], closed: false, opensAt: '09:00', closesAt: '21:00' }],
   heroImage: null,
@@ -138,6 +141,32 @@ test('the shop profile is accepted as sent and drops anything unsafe or malforme
   assert.equal(parsePublicSite({ ...site, intro: 5 }), null);
   assert.equal(parsePublicSite(null), null);
   assert.equal(parsePublicSite([]), null);
+  // The contact links are drawn as real links too: https on the network's own host, or nothing (an older API sends none).
+  const contacts = parsePublicSite({
+    ...site,
+    facebookUrl: 'https://www.facebook.com/lucyspa.danang',
+    messengerUrl: 'https://m.me/lucyspa.danang',
+    zaloUrl: 'https://zalo.me/0934936101',
+  });
+  assert.equal(contacts?.facebookUrl, 'https://www.facebook.com/lucyspa.danang');
+  assert.equal(contacts?.messengerUrl, 'https://m.me/lucyspa.danang');
+  assert.equal(contacts?.zaloUrl, 'https://zalo.me/0934936101');
+  const noContacts: Record<string, unknown> = { ...site };
+  for (const key of ['facebookUrl', 'messengerUrl', 'zaloUrl']) delete noContacts[key];
+  assert.equal(parsePublicSite(noContacts)?.zaloUrl, null);
+  for (const bad of [
+    'javascript:alert(1)',
+    'http://zalo.me/0934936101',
+    'https://zalo.me.evil.example/0934936101',
+    'https://user:pw@zalo.me/0934936101',
+    5,
+  ]) {
+    assert.equal(parsePublicSite({ ...site, zaloUrl: bad })?.zaloUrl, null, String(bad));
+  }
+  assert.equal(
+    parsePublicSite({ ...site, messengerUrl: 'https://www.facebook.com/x' })?.messengerUrl,
+    null,
+  );
   // The map link is drawn as a real link: only https survives.
   assert.equal(parsePublicSite({ ...site, mapUrl: 'javascript:alert(1)' })?.mapUrl, null);
   assert.equal(parsePublicSite({ ...site, mapUrl: 'http://maps.example.com' })?.mapUrl, null);

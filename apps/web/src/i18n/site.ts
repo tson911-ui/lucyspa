@@ -42,6 +42,15 @@ export interface SiteText {
     };
     theme: { group: string; light: string; dark: string; auto: string; switchTo: string };
   };
+  /** The floating contact button (Owner request 2026-10-06): the button, its group and the three ways to reach the spa. */
+  contactFab: {
+    open: string;
+    close: string;
+    group: string;
+    zalo: string;
+    messenger: string;
+    call: string;
+  };
   footer: {
     links: string;
     contact: string;
@@ -146,6 +155,14 @@ const text = {
         switchTo: 'Chuyển sang {name}',
       },
     },
+    contactFab: {
+      open: 'Liên hệ',
+      close: 'Đóng các cách liên hệ',
+      group: 'Liên hệ Lucy Spa',
+      zalo: 'Nhắn Zalo',
+      messenger: 'Nhắn Messenger',
+      call: 'Gọi Lucy Spa',
+    },
     footer: {
       links: 'Liên kết',
       contact: 'Liên hệ',
@@ -234,6 +251,14 @@ const text = {
         auto: 'By time of day',
         switchTo: 'Switch to {name}',
       },
+    },
+    contactFab: {
+      open: 'Contact',
+      close: 'Close contact options',
+      group: 'Contact Lucy Spa',
+      zalo: 'Message on Zalo',
+      messenger: 'Message on Messenger',
+      call: 'Call Lucy Spa',
     },
     footer: {
       links: 'Links',

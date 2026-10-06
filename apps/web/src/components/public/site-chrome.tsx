@@ -1,8 +1,9 @@
 import type { PublicSiteResponse } from '@lucy-spa/contracts';
 import Link from 'next/link';
-import { BrandWordmark, SiteFooter, type FooterColumn } from '@lucy-spa/ui';
+import { BrandIcon, BrandWordmark, SiteFooter, type FooterColumn } from '@lucy-spa/ui';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
+import { fill } from '../../lib/fill';
 import { hoursHeadline, telHref } from '../../lib/public-site-core';
 import { footerDiscoverItems } from '../../lib/site-nav';
 import type { SiteDecorSpec } from '../../lib/season-core';
@@ -54,6 +55,38 @@ export function PublicFooter({
   const hours = site ? hoursHeadline(site.hours, locale, getSiteText(locale).home.closed) : null;
   // The shop's real data, in the order of the reference: brand and tagline, contact, links.
   const [phoneBefore = '', phoneAfter = ''] = text.footer.phone.split('{value}');
+  // The Facebook page and Zalo icons next to the contact lines (Owner request 2026-10-06): monochrome like the other footer
+  // links, the official colour on hover; an empty link leaves its icon out.
+  const newTab = (name: string) => fill(text.footer.newTab, { name });
+  const contactIcons =
+    site && (site.facebookUrl || site.zaloUrl) ? (
+      <span key="icons" className="ls-footer-icons" role="group" aria-label={text.footer.social}>
+        {site.facebookUrl ? (
+          <a
+            className="ls-footer-icon"
+            data-network="facebook"
+            href={site.facebookUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={newTab(text.footer.networks.facebook)}
+          >
+            <BrandIcon name="facebook" size={24} />
+          </a>
+        ) : null}
+        {site.zaloUrl ? (
+          <a
+            className="ls-footer-icon"
+            data-network="zalo"
+            href={site.zaloUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={newTab(text.footer.networks.zalo)}
+          >
+            <BrandIcon name="zalo" size={32} />
+          </a>
+        ) : null}
+      </span>
+    ) : null;
   const columns: FooterColumn[] = [
     ...(site
       ? [
@@ -68,6 +101,7 @@ export function PublicFooter({
                 {phoneAfter}
               </span>,
               ...(hours ? [`${hours.label}: ${hours.value}`] : []),
+              ...(contactIcons ? [contactIcons] : []),
             ],
           },
         ]

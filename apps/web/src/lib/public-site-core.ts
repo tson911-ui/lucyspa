@@ -230,6 +230,25 @@ function parseFooterBlocks(value: unknown): PublicFooterBlock[] {
   });
 }
 
+/**
+ * A contact link (Facebook page, Messenger, Zalo) is drawn as a real link, so only an https link on the network's own host
+ * passes, whatever the server says; anything else (or an API that predates the field) means "no such contact".
+ */
+function contactLink(value: unknown, host: string): string | null {
+  if (typeof value !== 'string' || value.length > 300) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' &&
+      url.hostname === host &&
+      url.username === '' &&
+      url.password === ''
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export function parsePublicSite(value: unknown): PublicSiteResponse | null {
   if (!isRecord(value)) return null;
   const hours = parseHours(value['hours']);
@@ -268,6 +287,9 @@ export function parsePublicSite(value: unknown): PublicSiteResponse | null {
     hotline: value['hotline'],
     hotlineTel: value['hotlineTel'],
     mapUrl: mapUrl !== null && /^https:\/\/\S+$/.test(mapUrl) ? mapUrl : null,
+    facebookUrl: contactLink(value['facebookUrl'], 'www.facebook.com'),
+    messengerUrl: contactLink(value['messengerUrl'], 'm.me'),
+    zaloUrl: contactLink(value['zaloUrl'], 'zalo.me'),
     timezone: value['timezone'],
     hours,
     heroImage,

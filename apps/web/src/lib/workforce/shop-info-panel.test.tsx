@@ -56,6 +56,8 @@ const form: ShopInfoForm = {
   address: '04 Nguyễn Quang Bích',
   hotline: '0934 936 101',
   mapUrl: '',
+  facebookUrl: '',
+  zaloContact: '',
   hoursBranchId: '',
   heroMediaId: '',
   factsVisible: true,

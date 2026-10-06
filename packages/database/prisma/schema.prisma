@@ -2122,6 +2122,10 @@ model WebsiteShopInfo {
   address         String
   hotline         String
   mapUrl          String?     @map("map_url")
+  // Optional contact links the Owner types himself (Owner request 2026-10-06): the Facebook page (footer icon and
+  // Messenger as m.me/<page>) and the Zalo number or zalo.me link. Empty until he fills them in.
+  facebookUrl     String?     @map("facebook_url")
+  zaloContact     String?     @map("zalo_contact")
   hoursBranchId   String?     @map("hours_branch_id") @db.Uuid
   hoursBranch     Branch?     @relation(fields: [hoursBranchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   heroMediaId     String?     @map("hero_media_id") @db.Uuid

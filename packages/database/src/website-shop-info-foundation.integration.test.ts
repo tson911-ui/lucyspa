@@ -104,6 +104,31 @@ test('website shop info foundation: seeded single row, constrained texts, https 
             data: { footerBlocks: Array.from({ length: 12 }, () => 1) },
           });
           await tx.websiteShopInfo.update({ where: { id: 'shop' }, data: { footerBlocks: [] } });
+          // The optional contact links (Owner request 2026-10-06): empty by default, never an empty or oversized text.
+          assert.equal(seeded.facebookUrl, null);
+          assert.equal(seeded.zaloContact, null);
+          for (const data of [
+            { facebookUrl: '' },
+            { facebookUrl: 'x'.repeat(301) },
+            { zaloContact: '' },
+            { zaloContact: 'x'.repeat(301) },
+          ]) {
+            await rejects(
+              () => tx.websiteShopInfo.update({ where: { id: 'shop' }, data }),
+              /website_shop_info_contact_links|violates check constraint/i,
+            );
+          }
+          await tx.websiteShopInfo.update({
+            where: { id: 'shop' },
+            data: {
+              facebookUrl: 'https://www.facebook.com/lucyspa.danang',
+              zaloContact: '0934 936 101',
+            },
+          });
+          await tx.websiteShopInfo.update({
+            where: { id: 'shop' },
+            data: { facebookUrl: null, zaloContact: null },
+          });
           for (const data of [
             { factsItems: { not: 'a list' } },
             { factsItems: Array.from({ length: 17 }, () => 1) },

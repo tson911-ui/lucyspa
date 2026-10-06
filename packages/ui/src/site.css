@@ -775,7 +775,7 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   line-height: var(--ls-lh-body);
 }
 
-.ls-site-footer-list a {
+.ls-site-footer-list a:not(.ls-footer-icon) {
   display: inline-flex;
   align-items: center;
   min-width: var(--ls-control-h);
@@ -783,7 +783,7 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   text-decoration: none;
 }
 
-.ls-site-footer-list a:hover {
+.ls-site-footer-list a:not(.ls-footer-icon):hover {
   text-decoration: underline;
 }
 
@@ -2330,4 +2330,215 @@ a.ls-bell-body:focus-visible .ls-bell-time {
     translate: 250% 0;
     transition: translate var(--ls-dur-sheen) var(--ls-ease-out);
   }
+}
+
+/* ---------- floating contact button (Owner request 2026-10-06) ---------- */
+/* A sticky row placed just before the footer, as tall as the button plus a safe space above and below it. It sticks above the
+   bottom of the screen while the page scrolls and, at the end of the page, rests in its own slot between the content (an action
+   bar included) and the footer, so at rest the button covers nothing. The bottom edge is lifted above the phone tab bar, and
+   above a sticky action bar (the booking flow) by the height the component measures. Layer: above the page content, below the
+   header, the menus, the drawers and the dialogs (the shared scale). */
+.ls-contact {
+  --ls-fab-size: calc(var(--ls-space-9) + var(--ls-space-2));
+  --ls-fab-base: var(--ls-safe-bottom);
+  --ls-fab-lift: 0px;
+  position: sticky;
+  bottom: calc(var(--ls-fab-base) + var(--ls-fab-lift));
+  z-index: var(--ls-z-sticky);
+  height: calc(var(--ls-fab-size) + var(--ls-space-4) * 2);
+  pointer-events: none;
+}
+
+@media (max-width: 1023px) {
+  .ls-contact {
+    --ls-fab-base: calc(var(--ls-tab-bar-h) + var(--ls-safe-bottom));
+  }
+}
+
+/* The booking flow's action bar owns the bottom edge and hides the tab bar: only its measured height lifts the button. */
+.ls-site:has(.ls-booking-bar) .ls-contact {
+  --ls-fab-base: 0px;
+}
+
+.ls-contact-stack {
+  position: absolute;
+  inset-inline-end: var(--ls-gutter);
+  bottom: var(--ls-space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--ls-space-3);
+  /* The stack is only a layout box: its empty space above the button never blocks the page; the button and links take the pointer. */
+  pointer-events: none;
+}
+
+.ls-contact-items {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--ls-space-3);
+}
+
+.ls-contact-toggle {
+  pointer-events: auto;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--ls-fab-size);
+  height: var(--ls-fab-size);
+  padding: 0;
+  border: 0;
+  border-radius: var(--ls-radius-full);
+  color: var(--ls-on-brand);
+  background: var(--ls-brand-fill);
+  box-shadow: var(--ls-shadow-md);
+  cursor: pointer;
+}
+
+.ls-contact-toggle:focus-visible,
+.ls-contact-link:focus-visible {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: var(--ls-space-1);
+}
+
+/* The one attention pulse: a ring that grows and fades once, after the page has settled (never looping). */
+.ls-contact-toggle[data-pulse='true']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--ls-brand-fill);
+  border-radius: var(--ls-radius-full);
+  pointer-events: none;
+  animation: ls-fab-pulse var(--ls-dur-pulse) var(--ls-ease-out) var(--ls-dur-reveal) 1 both;
+}
+
+@keyframes ls-fab-pulse {
+  from {
+    opacity: 0.6;
+    scale: 1;
+  }
+
+  to {
+    opacity: 0;
+    scale: var(--ls-pulse-scale);
+  }
+}
+
+/* Each way to reach the spa: a label chip and a 48 px round button, hidden while collapsed and unfolding upward from the
+   toggle, one after the other, with a fade and a slight scale. */
+.ls-contact-link {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  color: var(--ls-text);
+  text-decoration: none;
+  --ls-fab-index: 0;
+  transform-origin: right bottom;
+  opacity: 0;
+  visibility: hidden;
+  scale: var(--ls-pop-scale);
+  translate: 0 var(--ls-pop-shift);
+  transition:
+    opacity var(--ls-dur-pop) var(--ls-ease-out),
+    scale var(--ls-dur-pop) var(--ls-ease-premium),
+    translate var(--ls-dur-pop) var(--ls-ease-premium),
+    visibility var(--ls-dur-pop);
+}
+
+.ls-contact[data-open='true'] .ls-contact-link {
+  opacity: 1;
+  visibility: visible;
+  scale: 1;
+  translate: 0 0;
+  transition-delay: calc(var(--ls-fab-index) * var(--ls-stagger));
+}
+
+.ls-contact-label {
+  padding: var(--ls-space-2) var(--ls-space-3);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-raised);
+  box-shadow: var(--ls-shadow-sm);
+  font-size: var(--ls-text-sm);
+  font-weight: 600;
+  line-height: var(--ls-leading-sm);
+  white-space: nowrap;
+}
+
+.ls-contact-icon {
+  display: inline-grid;
+  place-items: center;
+  width: var(--ls-space-9);
+  height: var(--ls-space-9);
+  border-radius: var(--ls-radius-full);
+  color: var(--ls-on-network);
+  box-shadow: var(--ls-shadow-md);
+  transition: scale var(--ls-dur-base) var(--ls-ease-premium);
+}
+
+/* Official shapes and colours for Zalo and Messenger; the call button is the site's brand button. */
+.ls-contact-link[data-kind='zalo'] .ls-contact-icon {
+  background: var(--ls-brand-zalo);
+}
+
+.ls-contact-link[data-kind='messenger'] .ls-contact-icon {
+  background: linear-gradient(
+    135deg,
+    var(--ls-brand-messenger-from),
+    var(--ls-brand-messenger-via),
+    var(--ls-brand-messenger-to)
+  );
+}
+
+.ls-contact-link[data-kind='call'] .ls-contact-icon {
+  color: var(--ls-on-brand);
+  background: var(--ls-brand-fill);
+}
+
+@media (hover: hover) {
+  .ls-contact-link:hover .ls-contact-icon,
+  .ls-contact-toggle:hover {
+    scale: var(--ls-tool-zoom);
+  }
+}
+
+.ls-contact-toggle {
+  transition: scale var(--ls-dur-base) var(--ls-ease-premium);
+}
+
+.ls-contact-toggle:active,
+.ls-contact-link:active .ls-contact-icon {
+  scale: var(--ls-press-scale);
+  transition-duration: var(--ls-dur-fast);
+}
+
+/* Footer: the Facebook and Zalo icons beside the contact lines. Monochrome like the footer links; the official colour on hover. */
+.ls-footer-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-1);
+}
+
+.ls-footer-icon {
+  display: inline-grid;
+  place-items: center;
+  width: var(--ls-control-h);
+  height: var(--ls-control-h);
+  border-radius: var(--ls-radius-full);
+  color: var(--ls-text-muted);
+  transition: color var(--ls-dur-base) var(--ls-ease-out);
+}
+
+.ls-footer-icon:hover,
+.ls-footer-icon:focus-visible {
+  color: var(--ls-footer-icon-hover);
+}
+
+.ls-footer-icon[data-network='facebook'] {
+  --ls-footer-icon-hover: var(--ls-brand-facebook);
+}
+
+.ls-footer-icon[data-network='zalo'] {
+  --ls-footer-icon-hover: var(--ls-brand-zalo);
 }

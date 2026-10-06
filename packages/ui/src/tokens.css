@@ -192,6 +192,17 @@
   --ls-tool-zoom: 1.08;
   --ls-wiggle-angle: 14deg;
   --ls-arrow-nudge: var(--ls-space-1);
+  /* Floating contact button: one short attention pulse (the ring grows by --ls-pulse-scale and fades). */
+  --ls-dur-pulse: 1600ms;
+  --ls-pulse-scale: 1.6;
+  /* Official brand colours of the contact networks (the same in light and dark; the marks identify the link). Zalo blue,
+     Facebook blue and the three stops of the Messenger gradient. */
+  --ls-brand-zalo: #0068ff;
+  --ls-brand-facebook: #1877f2;
+  --ls-brand-messenger-from: #00b2ff;
+  --ls-brand-messenger-via: #a334fa;
+  --ls-brand-messenger-to: #ff6968;
+  --ls-on-network: #ffffff;
   /* A clickable card of the public site on hover: lifts and grows slightly; on press it dips (--ls-press-scale). */
   --ls-card-lift: var(--ls-space-1);
   --ls-card-zoom: 1.015;
@@ -298,6 +309,8 @@
     --ls-dur-pop: 0ms;
     --ls-dur-wiggle: 0ms;
     --ls-dur-sheen: 0ms;
+    --ls-dur-pulse: 0ms;
+    --ls-pulse-scale: 1;
     --ls-pop-scale: 1;
     --ls-pop-shift: 0px;
     --ls-tool-zoom: 1;
@@ -344,6 +357,13 @@
   --ls-nav-active-bg: #e08a9a;
   --ls-nav-active-text: #2a0f16;
   --ls-nav-active-bar: transparent;
+  /* Official network colours: the same in every theme. */
+  --ls-brand-zalo: #0068ff;
+  --ls-brand-facebook: #1877f2;
+  --ls-brand-messenger-from: #00b2ff;
+  --ls-brand-messenger-via: #a334fa;
+  --ls-brand-messenger-to: #ff6968;
+  --ls-on-network: #ffffff;
   --ls-auth-panel-from: #4a1a24;
   --ls-auth-panel-to: #1f0b10;
   --ls-auth-panel-text: #ffffff;
@@ -403,6 +423,13 @@
     --ls-nav-active-bg: #e08a9a;
     --ls-nav-active-text: #2a0f16;
     --ls-nav-active-bar: transparent;
+    /* Official network colours: the same in every theme. */
+    --ls-brand-zalo: #0068ff;
+    --ls-brand-facebook: #1877f2;
+    --ls-brand-messenger-from: #00b2ff;
+    --ls-brand-messenger-via: #a334fa;
+    --ls-brand-messenger-to: #ff6968;
+    --ls-on-network: #ffffff;
     --ls-auth-panel-from: #4a1a24;
     --ls-auth-panel-to: #1f0b10;
     --ls-auth-panel-text: #ffffff;
@@ -466,6 +493,13 @@
   --ls-nav-active-bg: #782b37;
   --ls-nav-active-text: #ffffff;
   --ls-nav-active-bar: transparent;
+  /* Official network colours: the same in every theme. */
+  --ls-brand-zalo: #0068ff;
+  --ls-brand-facebook: #1877f2;
+  --ls-brand-messenger-from: #00b2ff;
+  --ls-brand-messenger-via: #a334fa;
+  --ls-brand-messenger-to: #ff6968;
+  --ls-on-network: #ffffff;
   --ls-auth-panel-from: #8a3345;
   --ls-auth-panel-to: #4d1822;
   --ls-auth-panel-text: #ffffff;

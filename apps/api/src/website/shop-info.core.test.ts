@@ -29,6 +29,8 @@ const valid = {
   address: '04 Nguyễn Quang Bích, Đà Nẵng',
   hotline: '0934 936 101',
   mapUrl: null,
+  facebookUrl: null,
+  zaloContact: null,
   hoursBranchId: null,
   heroMediaId: null,
   factsVisible: true,

@@ -44,6 +44,8 @@ class ShopInfoUpdateDto implements WebsiteShopInfoUpdateRequest {
   @ApiProperty() @IsString() @MaxLength(TEXT_BOUND) address!: string;
   @ApiProperty() @IsString() @MaxLength(100) hotline!: string;
   @NullableText(TEXT_BOUND) mapUrl!: string | null;
+  @NullableText(TEXT_BOUND) facebookUrl!: string | null;
+  @NullableText(TEXT_BOUND) zaloContact!: string | null;
   @NullableText(36) hoursBranchId!: string | null;
   @NullableText(36) heroMediaId!: string | null;
   @ApiProperty() @IsBoolean() factsVisible!: boolean;

@@ -1,4 +1,7 @@
 import {
+  CONTACT_LINK_MAX,
+  facebookPageLinks,
+  zaloLink,
   FOOTER_SOCIAL_NETWORKS,
   type FooterBlockType,
   type FooterSocialNetwork,
@@ -26,6 +29,7 @@ export const SHOP_INFO_LIMITS = Object.freeze({
   hotlineMax: 30,
   hotlineDigitsMin: 8,
   mapUrl: 500,
+  contactLink: CONTACT_LINK_MAX,
 });
 
 /** The footer block limits (the API holds the same numbers). */
@@ -46,6 +50,8 @@ export type ShopInfoProblem =
   | 'address'
   | 'hotline'
   | 'mapUrl'
+  | 'facebookUrl'
+  | 'zaloContact'
   | 'hoursBranchId'
   | 'heroMediaId'
   | 'facts'
@@ -63,6 +69,8 @@ export const SHOP_INFO_PROBLEMS: ReadonlySet<string> = new Set<ShopInfoProblem>(
   'address',
   'hotline',
   'mapUrl',
+  'facebookUrl',
+  'zaloContact',
   'hoursBranchId',
   'heroMediaId',
   'facts',
@@ -82,6 +90,10 @@ export interface ShopInfoForm {
   address: string;
   hotline: string;
   mapUrl: string;
+  /** Optional Facebook page link (also gives Messenger); empty = no icon and no Messenger button. */
+  facebookUrl: string;
+  /** Optional Zalo number or zalo.me link; empty = no icon and no Zalo button. */
+  zaloContact: string;
   /** '' = the first active branch. */
   hoursBranchId: string;
   /** The chosen hero image's id, or '' for none. */
@@ -109,6 +121,8 @@ export function formOfShopInfo(info: WebsiteShopInfoResponse): ShopInfoForm {
     address: info.address,
     hotline: info.hotline,
     mapUrl: info.mapUrl ?? '',
+    facebookUrl: info.facebookUrl ?? '',
+    zaloContact: info.zaloContact ?? '',
     hoursBranchId: info.hoursBranchId ?? '',
     heroMediaId: info.heroMediaId ?? '',
     factsVisible: info.factsVisible,
@@ -299,6 +313,8 @@ export function shopInfoInputOf(
   const address = clean(form.address);
   const hotline = clean(form.hotline);
   const mapUrl = clean(form.mapUrl);
+  const facebookUrl = clean(form.facebookUrl);
+  const zaloContact = clean(form.zaloContact);
   if (taglineVi === '' || length(taglineVi) > SHOP_INFO_LIMITS.tagline) {
     return { problem: 'taglineVi' };
   }
@@ -321,6 +337,10 @@ export function shopInfoInputOf(
   ) {
     return { problem: 'mapUrl' };
   }
+  if (facebookUrl !== '' && facebookPageLinks(facebookUrl) === null) {
+    return { problem: 'facebookUrl' };
+  }
+  if (zaloContact !== '' && zaloLink(zaloContact) === null) return { problem: 'zaloContact' };
   const facts: WebsiteShopFact[] = [];
   for (const fact of form.facts) {
     if (fact.kind !== 'CUSTOM') {
@@ -400,6 +420,8 @@ export function shopInfoInputOf(
       address,
       hotline,
       mapUrl: mapUrl === '' ? null : mapUrl,
+      facebookUrl: facebookUrl === '' ? null : facebookUrl,
+      zaloContact: zaloContact === '' ? null : zaloContact,
       hoursBranchId: form.hoursBranchId === '' ? null : form.hoursBranchId,
       heroMediaId: form.heroMediaId === '' ? null : form.heroMediaId,
       factsVisible: form.factsVisible,
@@ -428,6 +450,8 @@ export function shopInfoChanged(a: ShopInfoForm, b: ShopInfoForm): boolean {
     address: clean(form.address),
     hotline: clean(form.hotline),
     mapUrl: clean(form.mapUrl),
+    facebookUrl: clean(form.facebookUrl),
+    zaloContact: clean(form.zaloContact),
     hoursBranchId: form.hoursBranchId,
     heroMediaId: form.heroMediaId,
     factsVisible: form.factsVisible,
