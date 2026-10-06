@@ -129,9 +129,9 @@ Status as of 2026-10-07, about 01:47 (+07) (Owner-reported; supersedes the block
 - **Production runs `607ca6a`** (phone app shell below 1024 px: the document does not scroll, `.ls-site-scroll` is the only scroll container, the tab bar is in the normal flow), deployed by the Owner on 2026-10-07 at about 01:47 (+07). Previous: `15cd7e0`.
 - No new migrations (62, `pnpm db:status` up to date). Permissions unchanged (54).
 - After the deploy: health ok, `/vi`, `/vi/account/bookings` and `/vi/workforce/login` answer 200, pm2 3/3 online.
-- Backup taken just before this deploy: `/root/backups/lucyspa-pre-appshell-*.dump` (exact file name not reported to me; ask the Owner if it is needed).
+- Backup taken just before this deploy: `/root/backups/lucyspa-pre-appshell-20261006T184411Z.dump`.
 - **Rollback target** if the app shell misbehaves on real phones: `15cd7e0` (no DB change).
-- Waiting for the Owner's real-phone test: the strip under the tab bar, tab switching, the keyboard on the booking form, pull-to-refresh. Also unchecked on a phone: iOS status-bar tap, the address bar behaviour.
+- **Real-phone test of `607ca6a` (Owner, 2026-10-07): everything OK** — no strip under the tab bar, smooth tab switching. This closes the "waiting for the real-phone test" item. The Owner did not itemise the keyboard on the booking form, pull-to-refresh, the iOS status-bar tap or the address bar; "everything OK" is the only report, nothing was reported broken.
 
 Status as of 2026-10-06, about 23:24 (+07) (Owner-reported; the `15cd7e0` deploy, superseded by `607ca6a`):
 
@@ -139,7 +139,7 @@ Status as of 2026-10-06, about 23:24 (+07) (Owner-reported; the `15cd7e0` deploy
 - No new migrations (62, `pnpm db:status` up to date). Permissions unchanged (54).
 - After the deploy: health ok, `/vi`, `/vi/account/bookings` and `/vi/workforce/login` answer 200, pm2 3/3 online.
 - Backup taken just before this deploy: `/root/backups/lucyspa-pre-ui3-20261006T162055Z.dump`.
-- Open item: a possible 1-pixel strip under the tab bar at fractional device pixel ratios (seen only in the headless browser, ratio 2.625); waiting for the Owner's real-phone check. The other open items below (130 % text header, slider on touch) still stand.
+- CLOSED 2026-10-07: the strip under the tab bar (and the possible 1-pixel strip at fractional pixel ratios) is gone on the Owner's real phone with the app shell (`607ca6a`). The other open items below (130 % text header, slider on touch) still stand.
 - Next in queue: planning (no code yet) for "the technician may start early when the customer is checked in", already requested.
 
 Status as of 2026-10-06, about 18:46 (+07) (Owner-reported; the `cdde1cf` deploy, superseded by `15cd7e0`):
@@ -599,7 +599,7 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 ### Phone app shell (2026-10-06, deployed in `607ca6a`)
 
 - Owner decision after the strip under the tab bar survived three patches: below 1024 px the customer pages are an app shell (`.ls-site` fixed height, `.ls-site-scroll` the only scroller, tab bar in the flow). Desktop pixel-identical. Scroll code follows the scroller (`packages/ui/src/scroller.ts`), new `SiteScrollManager`.
-- Customer-visible: browser address bar no longer hides on scroll; pull-to-refresh, iOS status-bar tap and the iOS keyboard still need a phone check (`docs/UXUI_REDESIGN_APP_SHELL.md`). Gate `uxui-tabbar-check.mjs` rewritten. No migration.
+- Customer-visible: browser address bar no longer hides on scroll; pull-to-refresh, iOS status-bar tap and the iOS keyboard were not itemised in the Owner's real-phone test ("everything OK", 2026-10-07) (`docs/UXUI_REDESIGN_APP_SHELL.md`). Gate `uxui-tabbar-check.mjs` rewritten. No migration.
 
 ### Contact button colours + footer alignment (2026-10-06, deployed in `15cd7e0`)
 
