@@ -63,8 +63,10 @@
   background: var(--ls-brand-fill);
 }
 
-.ls-btn-primary:hover:not([aria-disabled='true']):not(:disabled) {
-  background: var(--ls-brand-fill-hover);
+@media (hover: hover) and (pointer: fine) {
+  .ls-btn-primary:hover:not([aria-disabled='true']):not(:disabled) {
+    background: var(--ls-brand-fill-hover);
+  }
 }
 
 .ls-btn-secondary {
@@ -72,20 +74,24 @@
   background: var(--ls-bg-surface);
 }
 
-.ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled) {
-  border-color: var(--ls-hover-border);
-  color: var(--ls-hover-text);
-  background: var(--ls-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled) {
+    border-color: var(--ls-hover-border);
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
 }
 
 .ls-btn-ghost {
   color: var(--ls-text);
 }
 
-.ls-btn-ghost:hover:not([aria-disabled='true']):not(:disabled) {
-  border-color: var(--ls-hover-ghost-border);
-  color: var(--ls-hover-text);
-  background: var(--ls-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-btn-ghost:hover:not([aria-disabled='true']):not(:disabled) {
+    border-color: var(--ls-hover-ghost-border);
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
 }
 
 .ls-btn-danger-outline {
@@ -95,9 +101,11 @@
 }
 
 /* Destructive hover is the same solid rule in the danger color, so the warning is not lost. */
-.ls-btn-danger-outline:hover:not([aria-disabled='true']):not(:disabled) {
-  color: var(--ls-on-danger);
-  background: var(--ls-danger);
+@media (hover: hover) and (pointer: fine) {
+  .ls-btn-danger-outline:hover:not([aria-disabled='true']):not(:disabled) {
+    color: var(--ls-on-danger);
+    background: var(--ls-danger);
+  }
 }
 
 .ls-btn-danger {
@@ -279,21 +287,38 @@
 }
 
 /* Solid fill with on-brand text for hover and keyboard focus alike (Owner rule, tokens.css). */
-.ls-menu-item:hover:not(.ls-menu-item-disabled),
 .ls-menu-item:focus-visible:not(.ls-menu-item-disabled) {
   color: var(--ls-hover-text);
   background: var(--ls-hover-bg);
 }
 
-.ls-menu-item-danger:hover:not(.ls-menu-item-disabled),
+@media (hover: hover) and (pointer: fine) {
+  .ls-menu-item:hover:not(.ls-menu-item-disabled) {
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
+}
+
 .ls-menu-item-danger:focus-visible:not(.ls-menu-item-disabled) {
   color: var(--ls-on-danger);
   background: var(--ls-danger);
 }
 
-.ls-menu-item:hover:not(.ls-menu-item-disabled) .ls-menu-item-reason,
+@media (hover: hover) and (pointer: fine) {
+  .ls-menu-item-danger:hover:not(.ls-menu-item-disabled) {
+    color: var(--ls-on-danger);
+    background: var(--ls-danger);
+  }
+}
+
 .ls-menu-item:focus-visible:not(.ls-menu-item-disabled) .ls-menu-item-reason {
   color: inherit;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-menu-item:hover:not(.ls-menu-item-disabled) .ls-menu-item-reason {
+    color: inherit;
+  }
 }
 
 /* The ring sits inside the item; on the solid fill it takes the on-fill color so it stays visible. */
@@ -365,17 +390,18 @@
   transform: translateX(-50%);
 }
 
-.ls-tooltip-wrap:hover:not([data-dismissed]) > .ls-tooltip,
 .ls-tooltip-wrap:has(:focus-visible):not([data-dismissed]) > .ls-tooltip {
   display: block;
 }
 
-/* Touch devices have no hover; the label is the accessible name and visible on focus only. */
-@media (pointer: coarse) {
-  .ls-tooltip-wrap:hover:not(:has(:focus-visible)) > .ls-tooltip {
-    display: none;
+@media (hover: hover) and (pointer: fine) {
+  .ls-tooltip-wrap:hover:not([data-dismissed]) > .ls-tooltip {
+    display: block;
   }
 }
+
+/* Touch devices have no hover (the rule above is for a fine pointer only): the label is the accessible name and shows on
+   focus only. */
 
 /* ---- Badge and notice ----------------------------------------------------------------------- */
 .ls-badge {
@@ -836,10 +862,16 @@
 }
 
 /* The highlighted option (pointer or arrow keys) is the same solid fill as every other hover. */
-.ls-option-active,
-.ls-option:hover:not([aria-disabled='true']) {
+.ls-option-active {
   color: var(--ls-hover-text);
   background: var(--ls-hover-bg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-option:hover:not([aria-disabled='true']) {
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
 }
 
 .ls-option-selected {
@@ -847,9 +879,14 @@
   font-weight: 600;
 }
 
-.ls-option-selected.ls-option-active,
-.ls-option-selected:hover:not([aria-disabled='true']) {
+.ls-option-selected.ls-option-active {
   color: var(--ls-hover-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-option-selected:hover:not([aria-disabled='true']) {
+    color: var(--ls-hover-text);
+  }
 }
 
 .ls-option[aria-disabled='true'] {
@@ -899,14 +936,18 @@
   margin: 0;
 }
 
-.ls-check-field:hover {
-  color: var(--ls-hover-text);
-  background: var(--ls-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-check-field:hover {
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
 }
 
 /* A checked box in the brand accent would vanish into the brand fill, so it takes the on-fill color. */
-.ls-check-field:hover input {
-  accent-color: var(--ls-hover-text);
+@media (hover: hover) and (pointer: fine) {
+  .ls-check-field:hover input {
+    accent-color: var(--ls-hover-text);
+  }
 }
 
 .ls-radios {
@@ -1143,9 +1184,11 @@
   cursor: pointer;
 }
 
-.ls-disclosure-trigger:hover {
-  color: var(--ls-hover-text);
-  background: var(--ls-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-disclosure-trigger:hover {
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
 }
 
 .ls-disclosure-title {
@@ -1435,10 +1478,16 @@
   cursor: pointer;
 }
 
-.ls-dropzone-button:hover:not(:disabled),
 .ls-dropzone-dragging .ls-dropzone-button {
   border-color: var(--ls-brand);
   background: var(--ls-brand-soft);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-dropzone-button:hover:not(:disabled) {
+    border-color: var(--ls-brand);
+    background: var(--ls-brand-soft);
+  }
 }
 
 .ls-dropzone-button:disabled {
@@ -1552,8 +1601,10 @@
   background: var(--ls-bg-surface);
 }
 
-.ls-media-tile:hover {
-  border-color: var(--ls-brand);
+@media (hover: hover) and (pointer: fine) {
+  .ls-media-tile:hover {
+    border-color: var(--ls-brand);
+  }
 }
 
 /* The focus ring goes around the whole tile, not just the name. */
@@ -1684,8 +1735,10 @@
   align-items: center;
 }
 
-.ls-media-row-title:hover {
-  color: var(--ls-hover-text);
+@media (hover: hover) and (pointer: fine) {
+  .ls-media-row-title:hover {
+    color: var(--ls-hover-text);
+  }
 }
 
 .ls-media-row-title:focus-visible {
@@ -1718,10 +1771,12 @@
     color var(--ls-dur-fast) var(--ls-ease-out);
 }
 
-.ls-icon-pick:hover {
-  background: var(--ls-hover-bg);
-  border-color: var(--ls-hover-border);
-  color: var(--ls-hover-text);
+@media (hover: hover) and (pointer: fine) {
+  .ls-icon-pick:hover {
+    background: var(--ls-hover-bg);
+    border-color: var(--ls-hover-border);
+    color: var(--ls-hover-text);
+  }
 }
 
 .ls-icon-pick:has(.ls-icon-pick-input:checked) {
@@ -1730,9 +1785,11 @@
   color: var(--ls-brand-on-soft);
 }
 
-.ls-icon-pick:has(.ls-icon-pick-input:checked):hover {
-  background: var(--ls-hover-bg);
-  color: var(--ls-hover-text);
+@media (hover: hover) and (pointer: fine) {
+  .ls-icon-pick:has(.ls-icon-pick-input:checked):hover {
+    background: var(--ls-hover-bg);
+    color: var(--ls-hover-text);
+  }
 }
 
 .ls-icon-pick:has(.ls-icon-pick-input:focus-visible) {
@@ -2102,8 +2159,10 @@
   background: var(--ls-brand-fill);
 }
 
-.ls-slider-dot:hover::before {
-  border-color: var(--ls-hover-border);
+@media (hover: hover) and (pointer: fine) {
+  .ls-slider-dot:hover::before {
+    border-color: var(--ls-hover-border);
+  }
 }
 
 .ls-slider-dot:focus-visible {
@@ -2309,8 +2368,10 @@
 }
 
 /* Exception to the solid hover (Owner): a whole row keeps a subtle tint so its text stays readable. */
-.ls-table tbody tr:hover td {
-  background: var(--ls-row-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-table tbody tr:hover td {
+    background: var(--ls-row-hover-bg);
+  }
 }
 
 .ls-table .ls-tr-selected td {
@@ -2421,8 +2482,10 @@
       border-color var(--ls-dur-fast) var(--ls-ease-out);
   }
 
-  .ls-table tbody tr:hover {
-    background: var(--ls-row-hover-bg);
+  @media (hover: hover) and (pointer: fine) {
+    .ls-table tbody tr:hover {
+      background: var(--ls-row-hover-bg);
+    }
   }
 
   .ls-table td,
@@ -2522,9 +2585,14 @@
     overflow-wrap: normal;
   }
 
-  .ls-table tbody tr:hover td,
   .ls-table .ls-tr-selected td {
     background: transparent;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .ls-table tbody tr:hover td {
+      background: transparent;
+    }
   }
 
   .ls-table .ls-cell-title {
@@ -2632,10 +2700,12 @@
   transform: scale(var(--ls-press-scale));
 }
 
-.ls-page-btn:hover:not(:disabled) {
-  border-color: var(--ls-hover-border);
-  color: var(--ls-hover-text);
-  background: var(--ls-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-page-btn:hover:not(:disabled) {
+    border-color: var(--ls-hover-border);
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
 }
 
 .ls-page-btn:disabled {
@@ -2650,10 +2720,12 @@
   font-weight: 600;
 }
 
-.ls-page-current:hover:not(:disabled) {
-  border-color: var(--ls-brand-fill-hover);
-  color: var(--ls-on-brand);
-  background: var(--ls-brand-fill-hover);
+@media (hover: hover) and (pointer: fine) {
+  .ls-page-current:hover:not(:disabled) {
+    border-color: var(--ls-brand-fill-hover);
+    color: var(--ls-on-brand);
+    background: var(--ls-brand-fill-hover);
+  }
 }
 
 .ls-page-gap {
@@ -2833,9 +2905,11 @@
   border-radius: var(--ls-radius-sm);
 }
 
-.ls-facet-option:hover {
-  color: var(--ls-hover-text);
-  background: var(--ls-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-facet-option:hover {
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
 }
 
 .ls-facet-option .ls-check-text {
@@ -2849,12 +2923,16 @@
   font-variant-numeric: tabular-nums;
 }
 
-.ls-facet-option:hover .ls-facet-count {
-  color: inherit;
+@media (hover: hover) and (pointer: fine) {
+  .ls-facet-option:hover .ls-facet-count {
+    color: inherit;
+  }
 }
 
-.ls-facet-option:hover input {
-  accent-color: var(--ls-hover-text);
+@media (hover: hover) and (pointer: fine) {
+  .ls-facet-option:hover input {
+    accent-color: var(--ls-hover-text);
+  }
 }
 
 .ls-facet-footer {
@@ -2909,8 +2987,10 @@
   text-align: center;
 }
 
-.ls-multi-more:hover .ls-multi-pill {
-  background: var(--ls-bg-raised);
+@media (hover: hover) and (pointer: fine) {
+  .ls-multi-more:hover .ls-multi-pill {
+    background: var(--ls-bg-raised);
+  }
 }
 
 .ls-multi-panel {
@@ -2996,9 +3076,11 @@
   cursor: pointer;
 }
 
-.ls-chip-remove:hover {
-  color: var(--ls-hover-text);
-  background: var(--ls-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-chip-remove:hover {
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
 }
 
 /* Description list */
@@ -3092,10 +3174,12 @@
     border-color var(--ls-dur-fast) var(--ls-ease-out);
 }
 
-.ls-tab:hover:not(:disabled) {
-  border-radius: var(--ls-radius-sm) var(--ls-radius-sm) 0 0;
-  color: var(--ls-hover-text);
-  background: var(--ls-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-tab:hover:not(:disabled) {
+    border-radius: var(--ls-radius-sm) var(--ls-radius-sm) 0 0;
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
 }
 
 .ls-tab:disabled {
@@ -3120,8 +3204,10 @@
   text-underline-offset: 0.2em;
 }
 
-.ls-link:hover {
-  color: var(--ls-brand-fill-hover);
+@media (hover: hover) and (pointer: fine) {
+  .ls-link:hover {
+    color: var(--ls-brand-fill-hover);
+  }
 }
 
 /* ---- Label row, segmented control, password field ---------------------------------------- */
@@ -3154,9 +3240,11 @@
   cursor: pointer;
 }
 
-.ls-label-action a:hover,
-.ls-label-action button:hover {
-  color: var(--ls-brand-fill-hover);
+@media (hover: hover) and (pointer: fine) {
+  .ls-label-action a:hover,
+  .ls-label-action button:hover {
+    color: var(--ls-brand-fill-hover);
+  }
 }
 
 /* Joined choices on a quiet neutral track (no border). Segments are equal width and their labels wrap.
@@ -3202,18 +3290,28 @@
 }
 
 /* The inset in the track color keeps a hovered option apart from the selected one (same solid fill). */
-.ls-segment:hover {
-  color: var(--ls-hover-text);
-  background: var(--ls-hover-bg);
-  box-shadow: inset 0 0 0 2px var(--ls-bg-sunken);
+@media (hover: hover) and (pointer: fine) {
+  .ls-segment:hover {
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+    box-shadow: inset 0 0 0 2px var(--ls-bg-sunken);
+  }
 }
 
-.ls-segment-active,
-.ls-segment-active:hover {
+.ls-segment-active {
   color: var(--ls-on-brand);
   background: transparent;
   box-shadow: none;
   font-weight: 600;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-segment-active:hover {
+    color: var(--ls-on-brand);
+    background: transparent;
+    box-shadow: none;
+    font-weight: 600;
+  }
 }
 
 .ls-segment:focus-visible {
@@ -3245,17 +3343,21 @@
   cursor: pointer;
 }
 
-.ls-password-toggle:hover {
-  color: var(--ls-hover-text);
-  background: var(--ls-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-password-toggle:hover {
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
 }
 
 .ls-password-toggle:focus-visible {
   outline-offset: -2px;
 }
 
-.ls-password-toggle:hover:focus-visible {
-  outline-color: var(--ls-hover-text);
+@media (hover: hover) and (pointer: fine) {
+  .ls-password-toggle:hover:focus-visible {
+    outline-color: var(--ls-hover-text);
+  }
 }
 
 .ls-password-toggle:disabled {
@@ -4216,9 +4318,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-.ls-calendar-day:hover:not([aria-disabled='true']) {
-  color: var(--ls-hover-text);
-  background: var(--ls-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-calendar-day:hover:not([aria-disabled='true']) {
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
 }
 
 .ls-calendar-day[data-today='true'] {

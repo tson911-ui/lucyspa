@@ -947,7 +947,7 @@ test('every public control shares one hover and press style: smooth colours, a s
   );
   assert.match(
     block,
-    /@media \(hover: hover\) \{[\s\S]*transform: translateY\(calc\(var\(--ls-ctl-lift\) \* -1\)\) scale\(var\(--ls-ctl-zoom\)\);/,
+    /@media \(hover: hover\) and \(pointer: fine\) \{[\s\S]*transform: translateY\(calc\(var\(--ls-ctl-lift\) \* -1\)\) scale\(var\(--ls-ctl-zoom\)\);/,
   );
   assert.match(block, /:active \{\s*transform: scale\(var\(--ls-press-scale\)\);/);
   // A text link keeps no transform (the stretched card link would lose its click area); colours only.
@@ -1180,7 +1180,7 @@ test('header motion: panels grow from the trigger, the bell rings once, the book
   );
   assert.match(
     css,
-    /@media \(hover: hover\) \{\s*\.ls-site \.ls-btn-sheen:hover::after \{\s*translate: 250% 0;\s*transition: translate var\(--ls-dur-sheen\)/,
+    /@media \(hover: hover\) and \(pointer: fine\) \{\s*\.ls-site \.ls-btn-sheen:hover::after \{\s*translate: 250% 0;\s*transition: translate var\(--ls-dur-sheen\)/,
   );
   assert.match(css, /transform: scale\(var\(--ls-tool-zoom\)\);/);
   assert.match(css, /translate: var\(--ls-arrow-nudge\) 0;/);

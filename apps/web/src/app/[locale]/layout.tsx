@@ -44,13 +44,15 @@ interface LocaleLayoutProps {
   params: Promise<{ locale: string }>;
 }
 
-// The page covers the whole screen, the bottom safe area (an iPhone's home indicator) included: the phone tab bar draws its
-// own opaque background down to the screen edge and pads its labels above the indicator (env(safe-area-inset-bottom)).
-// Without viewport-fit=cover the inset is always 0 and the browser decides what shows below the page.
+// Owner bug 2026-10-06 (tab bar labels cut off at the bottom): a page wider than the screen made the phone browser zoom
+// out to fit it, which leaves the layout viewport (where the fixed bar is anchored) taller than the visible screen.
+// `minimumScale: 1` forbids that zoom-out (the visitor can still zoom in), and the site frame clips horizontal overflow.
+// There is no `viewport-fit=cover` either (0be4abe had it): the page stays inside the phone's safe area and the bar
+// sits flush with the bottom of it; a browser that reports a bottom inset still gets it as padding inside the bar.
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  viewportFit: 'cover',
+  minimumScale: 1,
 };
 
 export function generateStaticParams() {

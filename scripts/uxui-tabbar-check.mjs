@@ -13,7 +13,7 @@
 // area by `Emulation.setSafeAreaInsetsOverride` (34 px, an iPhone's). Exit code 3 on any failure; needs Node 22+ and Edge or
 // Chrome, like the other gate scripts.
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createProfile, disposeProfile } from './uxui-browser-profile.mjs';
 
 const args = process.argv.slice(2);
@@ -25,8 +25,13 @@ const pages = flag(
   'pages',
   '/vi,/vi/services,/vi/account/bookings,/vi/account/invoices,/vi/account/book',
 ).split(',');
-const widths = flag('widths', '360,390,768').split(',').map(Number);
+const widths = flag('widths', '360,390,414,768').split(',').map(Number);
 const schemes = flag('schemes', 'light,dark').split(',');
+// `--inject <css>` adds a stylesheet to every page: a self-test that the check fails on a broken bar (for example
+// `--inject ".ls-tab-bar{bottom:-40px}"`).
+const injected = flag('inject', '');
+const shotsDir = flag('shots', '');
+let lastShot = '';
 const [base] = args;
 if (!base) {
   console.error(
@@ -48,7 +53,11 @@ if (!browser) {
 }
 
 const SAFE_BOTTOM = 34;
-const HEIGHT = 780;
+const HEIGHT = Number(flag('height', '780'));
+const SCALE = Number(flag('scale', '1'));
+const DPR = Number(flag('dpr', '1'));
+const COVER = args.includes('--cover');
+if (COVER) args.splice(args.indexOf('--cover'), 1);
 const TOOLBAR = 80;
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 const profile = createProfile('uxflow-');
@@ -120,17 +129,22 @@ try {
   await send('Page.enable');
   await send('Network.enable');
   let safeInsets = true;
-  try {
-    await send('Emulation.setSafeAreaInsetsOverride', {
-      insets: { top: 0, left: 0, right: 0, bottom: SAFE_BOTTOM },
-    });
-  } catch {
-    safeInsets = false;
-  }
+  let safeNow = 0;
+  const setSafe = async (bottom) => {
+    safeNow = bottom;
+    try {
+      await send('Emulation.setSafeAreaInsetsOverride', {
+        insets: { top: 0, left: 0, right: 0, bottom },
+      });
+    } catch {
+      safeInsets = false;
+    }
+  };
 
   // Reads the bar's geometry and the last rows of a real screenshot (decoded in the page through a canvas).
   const probe = async (label) => {
     const shot = await send('Page.captureScreenshot', { format: 'png' });
+    lastShot = shot.data;
     const result = await evaluate(`(async () => {
       const bar = document.querySelector('.ls-tab-bar');
       if (!bar || getComputedStyle(bar).display === 'none') return { none: true };
@@ -149,9 +163,43 @@ try {
       const data = context.getImageData(0, image.height - rows, image.width, rows).data;
       // The bar's own colour: its background, read from a pixel of the bar's top-left corner area inside the border.
       const probeAt = context.getImageData(2, Math.round((rect.top + 4) * scale), 1, 1).data;
+      const contentBoxes = [];
+      // Everything the bar shows (each tab's link, icon and label, the raised button) must be inside the part of the page the
+      // person sees: the layout viewport (innerHeight) AND the visual viewport (what is left after a browser toolbar), and
+      // a label must stay inside its own tab. The bar itself being flush says nothing if the viewport is bigger than the screen.
+      const visibleBottom = Math.min(innerHeight, visualViewport.offsetTop + visualViewport.height);
+      const outside = [];
+      for (const link of bar.querySelectorAll('a')) {
+        const linkRect = link.getBoundingClientRect();
+        const parts = [['link', linkRect], ['icon', link.querySelector('svg')?.getBoundingClientRect()]];
+        const walker = document.createTreeWalker(link, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          if (!node.textContent.trim()) continue;
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          parts.push(['label', range.getBoundingClientRect()]);
+        }
+        for (const [part, box] of parts) {
+          if (!box || (box.width === 0 && box.height === 0)) continue;
+          if (part !== 'link') contentBoxes.push(box);
+          const name = link.textContent.trim().replace(/\\s+/g, ' ') + ' ' + part;
+          if (box.bottom > visibleBottom + 0.5) outside.push(name + ' bottom ' + Math.round(box.bottom) + ' > visible ' + Math.round(visibleBottom));
+          if (box.top < -0.5) outside.push(name + ' top ' + Math.round(box.top) + ' < 0');
+          if (part === 'label' && box.bottom > linkRect.bottom + 0.5) outside.push(name + ' is cut below its tab');
+          if (part === 'label' && box.bottom > linkRect.bottom - 3) outside.push(name + ' touches the bottom edge of its tab (needs 4px of air)');
+        }
+      }
+      // The last rows of the screenshot are the bar's own colour everywhere except under a tab's own icon or label.
+      const rowWidth = image.width;
       let bad = 0;
-      for (let i = 0; i < data.length; i += 4 * 3) {
-        if (Math.abs(data[i] - probeAt[0]) > 6 || Math.abs(data[i + 1] - probeAt[1]) > 6 || Math.abs(data[i + 2] - probeAt[2]) > 6) bad += 1;
+      for (let row = 0; row < rows; row += 1) {
+        for (let column = 0; column < rowWidth; column += 3) {
+          const x = column / scale;
+          const y = (image.height - rows + row) / scale;
+          if (contentBoxes.some((b) => x >= b.left - 1 && x <= b.right + 1 && y >= b.top - 1 && y <= b.bottom + 1)) continue;
+          const i = (row * rowWidth + column) * 4;
+          if (Math.abs(data[i] - probeAt[0]) > 6 || Math.abs(data[i + 1] - probeAt[1]) > 6 || Math.abs(data[i + 2] - probeAt[2]) > 6) bad += 1;
+        }
       }
       const last = document.querySelector('footer, .ls-footer, .ls-site-footer');
       const lastBottom = last ? last.getBoundingClientRect().bottom : null;
@@ -161,11 +209,24 @@ try {
         gap: Math.round((innerHeight - rect.bottom) * 10) / 10,
         opaque: !/rgba\\(.*,\\s*0(\\.\\d+)?\\)$/.test(style.backgroundColor) && style.backgroundColor !== 'transparent',
         badPixels: bad,
-        sampled: data.length / 12,
+        sampled: rows * Math.ceil(rowWidth / 3),
         barTop: Math.round(rect.top),
         lastBottom: lastBottom === null ? null : Math.round(lastBottom),
         atEnd,
         paddingBottom: style.paddingBottom,
+        visualGap: Math.round((visibleBottom - rect.bottom) * 10) / 10,
+        wide: (() => {
+          const root = document.documentElement;
+          if (root.scrollWidth <= root.clientWidth + 1) return [];
+          const names = [];
+          for (const el of document.body.querySelectorAll('*')) {
+            if (names.length >= 4) break;
+            const r = el.getBoundingClientRect();
+            if (r.width > 0 && r.right > root.clientWidth + 1 && getComputedStyle(el).position !== 'fixed') names.push(el.tagName.toLowerCase() + '.' + String(el.className).split(' ')[0] + ' right ' + Math.round(r.right));
+          }
+          return ['page is ' + root.scrollWidth + ' wide, screen ' + root.clientWidth, ...names];
+        })(),
+        outside,
       };
     })()`);
     return { label, ...result };
@@ -179,9 +240,16 @@ try {
     if (Math.abs(r.gap) > 0.5)
       problems.push(`bar bottom is ${r.gap}px from the bottom of the screen`);
     if (!r.opaque) problems.push('bar background is not opaque');
-    if (safeInsets && r.paddingBottom !== `${SAFE_BOTTOM}px`) {
+    if (Math.abs(r.visualGap) > 0.5)
+      problems.push(`bar bottom is ${r.visualGap}px from the bottom of the visual viewport`);
+    if (r.outside.length) problems.push(`outside the visible screen: ${r.outside.join(', ')}`);
+    if (r.wide.length)
       problems.push(
-        `safe area is not padding inside the bar (padding-bottom ${r.paddingBottom}, expected ${SAFE_BOTTOM}px)`,
+        `wider than the screen (the browser zooms out and the fixed bar leaves the visible screen): ${r.wide.join('; ')}`,
+      );
+    if (safeInsets && r.paddingBottom !== `${safeNow}px`) {
+      problems.push(
+        `safe area is not padding inside the bar (padding-bottom ${r.paddingBottom}, expected ${safeNow}px)`,
       );
     }
     if (r.badPixels > 0)
@@ -196,56 +264,95 @@ try {
     }
   };
 
-  for (const scheme of schemes) {
-    for (const width of widths) {
-      if (width >= 1024) continue;
-      await send('Emulation.setEmulatedMedia', {
-        features: [{ name: 'prefers-color-scheme', value: scheme }],
-      });
-      await send('Network.setCookie', { name: 'ls-theme', value: scheme, url: base });
-      await send('Emulation.setDeviceMetricsOverride', {
-        width,
-        height: HEIGHT,
-        deviceScaleFactor: 1,
-        mobile: true,
-      });
-      for (const path of pages) {
-        const where = `${path} ${width}px ${scheme}`;
-        const loaded = once('Page.loadEventFired');
-        await send('Page.navigate', { url: new URL(path, base).href });
-        await loaded;
-        await sleep(1800);
-        const max = await evaluate('document.documentElement.scrollHeight - innerHeight');
-        const stops = [
-          ['top', 0],
-          ['middle', Math.round(max / 2)],
-          ['bottom', max],
-        ];
-        for (const [name, y] of stops) {
-          await evaluate(`window.scrollTo(0, ${y})`);
-          await sleep(350);
-          report(where, await probe(`${name}`));
-          // The toolbar hides (the viewport grows), then shows again.
-          await send('Emulation.setDeviceMetricsOverride', {
-            width,
-            height: HEIGHT + TOOLBAR,
-            deviceScaleFactor: 1,
-            mobile: true,
-          });
-          await sleep(300);
-          report(where, await probe(`${name}, toolbar hidden`));
-          await send('Emulation.setDeviceMetricsOverride', {
-            width,
-            height: HEIGHT,
-            deviceScaleFactor: 1,
-            mobile: true,
-          });
-          await sleep(300);
+  await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+  // Safe area 0 (Android, desktop browsers) and 34 px (iPhone home indicator); and an enlarged text size (a phone's
+  // "font size" setting scales rem), where a label that wraps to a third line must still stay inside its tab.
+  const variants = [
+    { safe: 0, text: 100 },
+    { safe: SAFE_BOTTOM, text: 100 },
+    { safe: SAFE_BOTTOM, text: 130 },
+  ];
+  for (const variant of variants) {
+    await setSafe(variant.safe);
+    for (const scheme of schemes) {
+      for (const width of widths) {
+        if (width >= 1024) continue;
+        await send('Emulation.setEmulatedMedia', {
+          features: [{ name: 'prefers-color-scheme', value: scheme }],
+        });
+        await send('Network.setCookie', { name: 'ls-theme', value: scheme, url: base });
+        await send('Emulation.setDeviceMetricsOverride', {
+          width,
+          height: HEIGHT,
+          deviceScaleFactor: DPR,
+          mobile: true,
+          scale: SCALE,
+        });
+        for (const path of pages) {
+          const where = `${path} ${width}px ${scheme} safe ${variant.safe} text ${variant.text}%`;
+          const loaded = once('Page.loadEventFired');
+          await send('Page.navigate', { url: new URL(path, base).href });
+          await loaded;
+          await sleep(1500);
+          if (variant.text !== 100) {
+            await evaluate(`document.documentElement.style.fontSize = '${variant.text}%'`);
+            await sleep(300);
+          }
+          if (COVER) {
+            await evaluate(
+              `document.querySelector('meta[name=viewport]').content = 'width=device-width, initial-scale=1, viewport-fit=cover'`,
+            );
+            await sleep(300);
+          }
+          if (injected) {
+            await evaluate(
+              `document.head.append(Object.assign(document.createElement('style'), { textContent: ${JSON.stringify(injected)} }))`,
+            );
+            await sleep(200);
+          }
+          const max = await evaluate('document.documentElement.scrollHeight - innerHeight');
+          const stops = [
+            ['top', 0],
+            ['middle', Math.round(max / 2)],
+            ['bottom', max],
+          ];
+          for (const [name, y] of stops) {
+            await evaluate(`window.scrollTo(0, ${y})`);
+            await sleep(350);
+            report(where, await probe(`${name}`));
+            // Pictures for the review (the first variant only: safe area 0, normal text size, toolbar shown).
+            if (shotsDir && variant === variants[0]) {
+              mkdirSync(shotsDir, { recursive: true });
+              const slug = path.replace(/^\/vi\/?/, '').replace(/\//g, '-') || 'home';
+              writeFileSync(
+                `${shotsDir}/${slug}-${width}-${scheme}-${name}.png`,
+                Buffer.from(lastShot, 'base64'),
+              );
+            }
+            // The toolbar hides (the viewport grows), then shows again.
+            await send('Emulation.setDeviceMetricsOverride', {
+              width,
+              height: HEIGHT + TOOLBAR,
+              deviceScaleFactor: DPR,
+              mobile: true,
+              scale: SCALE,
+            });
+            await sleep(300);
+            report(where, await probe(`${name}, toolbar hidden`));
+            await send('Emulation.setDeviceMetricsOverride', {
+              width,
+              height: HEIGHT,
+              deviceScaleFactor: DPR,
+              mobile: true,
+              scale: SCALE,
+            });
+            await sleep(300);
+          }
+          // Fast scrolling: ten jumps, then a check at once.
+          for (let step = 0; step < 10; step++)
+            await evaluate(`window.scrollTo(0, ${Math.round((max * ((step * 7) % 10)) / 10)})`);
+          report(where, await probe('after fast scrolling'));
         }
-        // Fast scrolling: ten jumps, then a check at once.
-        for (let step = 0; step < 10; step++)
-          await evaluate(`window.scrollTo(0, ${Math.round((max * ((step * 7) % 10)) / 10)})`);
-        report(where, await probe('after fast scrolling'));
       }
     }
   }

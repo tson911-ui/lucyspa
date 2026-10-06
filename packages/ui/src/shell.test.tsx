@@ -547,10 +547,7 @@ test('SegmentedControl: one sliding thumb positioned by the selected index, soli
     /transition:\s*transform var\(--ls-dur-slow\) var\(--ls-ease-out\)/,
     'slides',
   );
-  assert.match(
-    block(components, '.ls-segment-active,\n.ls-segment-active:hover'),
-    /color:\s*var\(--ls-on-brand\)/,
-  );
+  assert.match(block(components, '.ls-segment-active:hover'), /color:\s*var\(--ls-on-brand\)/);
 });
 
 test('ThemeInitScript: in the server HTML, never created on the client (no React script warning)', () => {
@@ -830,7 +827,7 @@ test('auth styles: full-screen gradient from tokens, subtle art, card on surface
   assert.match(
     block(
       shellCss,
-      '.ls-auth-top .ls-theme-option:hover,\n.ls-auth-top .ls-theme-option-active,\n.ls-auth-top .ls-theme-option-active:hover',
+      '.ls-auth-top .ls-theme-option:hover,\n  .ls-auth-top .ls-theme-option-active:hover',
     ),
     /var\(--ls-auth-panel-from\)/,
   );
@@ -864,7 +861,7 @@ test('shell styles: tokens only, rail and overlay on tablet, phone hides the sid
 });
 
 test('sidebar styles: solid red hover and current page, accordion header, rail shows every item, ring outside', () => {
-  const hover = block(shellCss, '.ls-nav-link:hover,\n.ls-sidebar-toggle:hover');
+  const hover = block(shellCss, '.ls-nav-link:hover,\n  .ls-sidebar-toggle:hover');
   assert.match(hover, /color:\s*var\(--ls-nav-hover-text\)/);
   assert.match(hover, /background:\s*var\(--ls-nav-hover-bg\)/);
   const active = block(shellCss, ".ls-nav-link[aria-current='page']");

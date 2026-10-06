@@ -67,7 +67,7 @@ test('every token the component styles read is defined', () => {
 
 function rule(selector: string): string {
   const escaped = selector.replace(/[.[\]()]/g, '\\$&');
-  const match = new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]*)\\}`).exec(css);
+  const match = new RegExp(`(?:^|\\n)[ \\t]*${escaped}\\s*\\{([^}]*)\\}`).exec(css);
   assert.ok(match, `rule ${selector} exists`);
   return match[1] ?? '';
 }
@@ -172,8 +172,10 @@ test('hover is one theme: every interactive control reads the solid hover tokens
   for (const selector of [
     ".ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled)",
     ".ls-btn-ghost:hover:not([aria-disabled='true']):not(:disabled)",
-    '.ls-menu-item:hover:not(.ls-menu-item-disabled),\n.ls-menu-item:focus-visible:not(.ls-menu-item-disabled)',
-    ".ls-option-active,\n.ls-option:hover:not([aria-disabled='true'])",
+    '.ls-menu-item:hover:not(.ls-menu-item-disabled)',
+    '.ls-menu-item:focus-visible:not(.ls-menu-item-disabled)',
+    '.ls-option-active',
+    ".ls-option:hover:not([aria-disabled='true'])",
     '.ls-tab:hover:not(:disabled)',
     '.ls-segment:hover',
     '.ls-page-btn:hover:not(:disabled)',
@@ -205,7 +207,7 @@ test('hover is one theme: every interactive control reads the solid hover tokens
   );
   // The sidebar has its own hover (solid brand red, white text in light; the neutral hover in dark).
   assert.match(
-    rule('.ls-nav-link:hover,\n.ls-sidebar-toggle:hover'),
+    rule('.ls-nav-link:hover,\n  .ls-sidebar-toggle:hover'),
     /background:\s*var\(--ls-nav-hover-bg\)/,
   );
   // Solid red keeps a deeper red on hover; it does not turn pale.
@@ -301,4 +303,33 @@ test('one layer scale: content < sticky table header < chrome < popovers < drawe
   assert.match(rule('.ls-popover'), /z-index:\s*var\(--ls-z-popover\)/);
   assert.match(rule('.ls-backdrop'), /z-index:\s*var\(--ls-z-dialog\)/);
   assert.match(rule('.ls-backdrop-drawer'), /z-index:\s*var\(--ls-z-drawer\)/);
+});
+
+test('hover never sticks on touch: every :hover rule sits inside @media (hover: hover) and (pointer: fine)', () => {
+  // A tap leaves :hover on the element on a touch screen until the next tap elsewhere (a red header button that stays red).
+  // Walk the rules with a stack of the enclosing at-rule preludes; a selector with :hover needs the media query around it.
+  const text = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const stack: string[] = [];
+  const bare: string[] = [];
+  let prelude = '';
+  for (const char of text) {
+    if (char === '{') {
+      const head = prelude.trim();
+      if (!head.startsWith('@') && head.includes(':hover')) {
+        const guarded = stack.some((entry) => /\(hover: hover\) and \(pointer: fine\)/.test(entry));
+        if (!guarded) bare.push(head.replace(/\s+/g, ' '));
+      }
+      stack.push(head);
+      prelude = '';
+    } else if (char === '}') {
+      stack.pop();
+      prelude = '';
+    } else if (char === ';') {
+      prelude = '';
+    } else {
+      prelude += char;
+    }
+  }
+  assert.deepEqual(bare, [], 'bare :hover selectors');
+  assert.ok(!/@media \(hover: hover\) \{/.test(text), 'no hover query without pointer: fine');
 });

@@ -131,8 +131,6 @@
   /* Optical alignment of a 20 px icon with the first line of text, and the device safe area (not layout spacing). */
   --ls-icon-nudge: 0.125rem;
   --ls-safe-bottom: env(safe-area-inset-bottom, 0px);
-  --ls-safe-left: env(safe-area-inset-left, 0px);
-  --ls-safe-right: env(safe-area-inset-right, 0px);
   --ls-radius-sm: 6px;
   --ls-radius-md: 10px;
   --ls-radius-lg: 16px;
@@ -243,7 +241,7 @@
   --ls-store-badge-h: 2.5rem;
   /* Public chrome sizes */
   --ls-site-header-h: 4rem;
-  --ls-tab-bar-h: 4rem;
+  --ls-tab-bar-h: 4.5rem;
   /* Button press feedback (micro-interaction); 1 = none */
   --ls-press-scale: 0.98;
   /* Where a drawer slides in from (start-side drawers override with -100%) */

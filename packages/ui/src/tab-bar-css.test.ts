@@ -57,6 +57,19 @@ test('tab bar: fixed to the bottom edge with the safe area as padding inside it,
   assert.match(css, /\.ls-site:has\(\.ls-booking-bar\) \{\s*padding-block-end: 0;/);
 });
 
+test("the page never asks for viewport-fit=cover: the fixed tab bar slid under Android Chrome's system bar with it (Owner 2026-10-06)", () => {
+  const layout = readFileSync(
+    new URL('../../../apps/web/src/app/[locale]/layout.tsx', import.meta.url),
+    'utf8',
+  );
+  // The comment explaining the removal names it, so only a real option counts.
+  assert.doesNotMatch(layout, /viewportFit\s*:/);
+  // A page wider than the screen makes the phone zoom out, which strands the fixed bar below the visible screen.
+  assert.match(layout, /minimumScale:\s*1/);
+  assert.match(rule('.ls-site'), /overflow-x:\s*clip;/);
+  assert.doesNotMatch(css, /safe-area-inset-(left|right)/);
+});
+
 test('a "book" button in a page header is hidden below 1024 px, where the tab bar has "Đặt lịch ngay"', () => {
   assert.match(
     css,

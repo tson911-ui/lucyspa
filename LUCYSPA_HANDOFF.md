@@ -569,6 +569,11 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - Shop info has two optional fields (Trang Facebook, Zalo); public site gets a floating contact button and footer icons (`docs/UXUI_CONTACT_BUTTONS.md`).
 - **Migration `20261104000000_shop_info_contact_links`** (two nullable columns, additive). Production: apply it with the deploy, then the Owner enters the links in Admin > Website > Shop info.
 
+### Tab bar cut off + hover stuck on touch (2026-10-06, not deployed)
+
+- `0be4abe` bar fell below the screen on a phone/DevTools 440x956: a page wider than the screen makes the browser zoom out and the fixed bar leaves the visible screen. Now `minimum-scale=1`, `.ls-site { overflow-x: clip }`, no `viewport-fit=cover`, bar 72 px, top line a shadow.
+- Every `:hover` of the kit sits in `@media (hover: hover) and (pointer: fine)` (tests forbid a bare one). New `scripts/uxui-touch-check.mjs`; `uxui-tabbar-check.mjs` extended (`docs/UXUI_REDESIGN_TABBAR_ANDROID.md`). No migration.
+
 ### Tab bar anchored to the screen edge (2026-10-06, deployed in `0be4abe`)
 
 - Production `d0fc191` had a gap below the phone tab bar (sticky bar in a `100svh` box, no `viewport-fit=cover`). Now `position: fixed`, safe area as padding inside the bar, page reserves its height (`docs/UXUI_REDESIGN_TABBAR_FIXED.md`).

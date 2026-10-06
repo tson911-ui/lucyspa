@@ -240,9 +240,11 @@
   overflow-wrap: anywhere;
 }
 
-.ls-nav-heading-button:hover {
-  color: var(--ls-nav-hover-text);
-  background: var(--ls-nav-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-nav-heading-button:hover {
+    color: var(--ls-nav-hover-text);
+    background: var(--ls-nav-hover-bg);
+  }
 }
 
 .ls-nav-chevron {
@@ -316,10 +318,12 @@
 }
 
 /* Hover: the solid brand fill with its on-brand text in both themes (Owner rule); dark uses the primary button fill. */
-.ls-nav-link:hover,
-.ls-sidebar-toggle:hover {
-  color: var(--ls-nav-hover-text);
-  background: var(--ls-nav-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-nav-link:hover,
+  .ls-sidebar-toggle:hover {
+    color: var(--ls-nav-hover-text);
+    background: var(--ls-nav-hover-bg);
+  }
 }
 
 /* The ring sits outside the item: inside it would vanish on the solid red fill. */
@@ -490,7 +494,7 @@
     color var(--ls-dur-base) var(--ls-ease-out);
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .ls-btn:where(:not(:disabled, [aria-disabled='true'])):hover {
     transform: translateY(calc(var(--ls-ctl-lift) / -2));
   }
@@ -533,7 +537,7 @@
     box-shadow var(--ls-dur-base) var(--ls-ease-out);
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .ls-media-tile:hover {
     transform: translateY(calc(var(--ls-card-lift) * -1));
     box-shadow: var(--ls-shadow-md);
@@ -619,17 +623,26 @@ html[data-ls-motion='reduced'] .ls-shell {
   cursor: pointer;
 }
 
-.ls-theme-option:hover {
-  color: var(--ls-hover-text);
-  background: var(--ls-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-theme-option:hover {
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
 }
 
 /* The selected mode is the same solid fill as hover; the weight and aria-pressed tell them apart. */
-.ls-theme-option-active,
-.ls-theme-option-active:hover {
+.ls-theme-option-active {
   color: var(--ls-on-brand);
   background: var(--ls-brand-fill);
   font-weight: 600;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-theme-option-active:hover {
+    color: var(--ls-on-brand);
+    background: var(--ls-brand-fill);
+    font-weight: 600;
+  }
 }
 
 .ls-theme-toggle-labeled {
@@ -669,9 +682,11 @@ html[data-ls-motion='reduced'] .ls-shell {
   cursor: pointer;
 }
 
-.ls-usermenu-trigger:hover {
-  color: var(--ls-hover-text);
-  background: var(--ls-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-usermenu-trigger:hover {
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
 }
 
 .ls-usermenu-name {
@@ -776,17 +791,21 @@ html[data-ls-motion='reduced'] .ls-shell {
   cursor: pointer;
 }
 
-.ls-usermenu-link:hover {
-  color: var(--ls-hover-text);
-  background: var(--ls-hover-bg);
+@media (hover: hover) and (pointer: fine) {
+  .ls-usermenu-link:hover {
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
 }
 
 .ls-usermenu-link:focus-visible {
   outline-offset: -2px;
 }
 
-.ls-usermenu-link:hover:focus-visible {
-  outline-color: var(--ls-hover-text);
+@media (hover: hover) and (pointer: fine) {
+  .ls-usermenu-link:hover:focus-visible {
+    outline-color: var(--ls-hover-text);
+  }
 }
 
 /* Theme and language are in the topbar from 640 px; on phones they move into the panel. */
@@ -885,10 +904,12 @@ html[data-ls-motion='reduced'] .ls-shell {
 }
 
 /* On the brand gradient the solid hover is inverted (panel text as fill), as the active theme option is. */
-.ls-auth-top .ls-btn-ghost:hover:not([aria-disabled='true']):not(:disabled) {
-  border-color: var(--ls-auth-panel-text);
-  color: var(--ls-auth-panel-from);
-  background: var(--ls-auth-panel-text);
+@media (hover: hover) and (pointer: fine) {
+  .ls-auth-top .ls-btn-ghost:hover:not([aria-disabled='true']):not(:disabled) {
+    border-color: var(--ls-auth-panel-text);
+    color: var(--ls-auth-panel-from);
+    background: var(--ls-auth-panel-text);
+  }
 }
 
 /* The outline is an inset ring, so the toggle keeps the same 40/44 px height as elsewhere. */
@@ -901,12 +922,19 @@ html[data-ls-motion='reduced'] .ls-shell {
   color: var(--ls-auth-panel-text-muted);
 }
 
-.ls-auth-top .ls-theme-option:hover,
-.ls-auth-top .ls-theme-option-active,
-.ls-auth-top .ls-theme-option-active:hover {
+.ls-auth-top .ls-theme-option-active {
   color: var(--ls-auth-panel-from);
   background: var(--ls-auth-panel-text);
   box-shadow: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-auth-top .ls-theme-option:hover,
+  .ls-auth-top .ls-theme-option-active:hover {
+    color: var(--ls-auth-panel-from);
+    background: var(--ls-auth-panel-text);
+    box-shadow: none;
+  }
 }
 
 .ls-auth-main {
