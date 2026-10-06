@@ -41,20 +41,59 @@ test('tab bar: the booking tab is a raised round brand button with its icon on i
   );
 });
 
-test('tab bar: fixed to the bottom edge with the safe area as padding inside it, and the page reserves its height', () => {
+test('app shell below 1024 px: the scroller is the only scroll container and the tab bar is in the flow below it', () => {
   const bar = rule('.ls-tab-bar');
-  assert.match(bar, /position: fixed;/);
-  assert.match(bar, /bottom: 0;/);
+  // In the flow, opaque, the safe area as padding inside it; never fixed or sticky.
+  assert.match(bar, /position: relative;/);
+  assert.match(bar, /flex: none;/);
   assert.match(bar, /padding-block-end: var\(--ls-safe-bottom\);/);
   assert.match(bar, /background: var\(--ls-bg-surface\);/);
-  assert.doesNotMatch(bar, /position: sticky|margin-bottom|translate|transform/);
-  // The page ends with the bar's height (plus the safe area) so the last content scrolls fully above it; the booking
-  // pages, which have their own action bar and no tab bar, reserve nothing.
-  assert.match(
-    css,
-    /@media \(max-width: 1023\.98px\) \{\s*\.ls-site \{\s*padding-block-end: calc\(var\(--ls-tab-bar-h\) \+ var\(--ls-safe-bottom\)\);/,
+  assert.doesNotMatch(bar, /position: (?:fixed|sticky)|bottom:|translate|transform/);
+  // The shell: a fixed-height column (vh, then svh, then dvh), the document never scrolls, the scroller scrolls.
+  const flat = css.replace(/\s+/g, ' ');
+  assert.ok(
+    flat.includes(
+      '@media (max-width: 1023.98px) { .ls-site { height: 100vh; height: 100svh; height: 100dvh; min-height: 0; overflow: hidden; }',
+    ),
+    'the shell is a fixed-height column',
   );
-  assert.match(css, /\.ls-site:has\(\.ls-booking-bar\) \{\s*padding-block-end: 0;/);
+  assert.ok(
+    flat.includes(
+      '.ls-site-scroll { position: relative; display: flex; flex: 1; flex-direction: column; min-height: 0; overflow-x: hidden; overflow-y: auto;',
+    ),
+    'the scroller is the only scroll container',
+  );
+  assert.ok(flat.includes('html:has(.ls-site-scroll) { background: var(--ls-bg-surface); }'));
+  // From 1024 px the wrapper changes nothing: the document scrolls as before.
+  assert.ok(flat.includes('.ls-site-scroll { display: contents; }'));
+  // No page reserve, no document scroll padding: nothing can be behind the bar.
+  assert.ok(!flat.includes('html:has(.ls-tab-bar)'));
+  assert.ok(!flat.includes('padding-block-end: calc(var(--ls-tab-bar-h)'));
+  // The keyboard: the bar steps aside while a field has focus.
+  assert.ok(
+    flat.includes(
+      '.ls-site:has(input:focus, textarea:focus, select:focus) .ls-tab-bar { display: none; }',
+    ),
+  );
+});
+
+test('the site frame puts everything but the tab bar in the one scroller and the scroll code follows it', () => {
+  const frame = readFileSync(
+    new URL('../../../apps/web/src/components/public/site-page-frame.tsx', import.meta.url),
+    'utf8',
+  );
+  const scrollerAt = frame.indexOf('data-ls-scroll');
+  assert.ok(scrollerAt > 0, 'the scroller is marked');
+  assert.ok(frame.indexOf('<SiteScrollManager') > scrollerAt);
+  assert.ok(
+    frame.indexOf('<PublicTabBar') > frame.indexOf('</div>', scrollerAt),
+    'the tab bar is outside it',
+  );
+  // No scroll reader of the customer pages looks at the window alone.
+  for (const file of ['contact-fab.tsx', 'reveal.tsx', 'overlay.tsx']) {
+    const source = readFileSync(new URL(file, import.meta.url), 'utf8');
+    assert.match(source, /from '\.\/scroller'/, `${file} follows the scroller`);
+  }
 });
 
 test('the header glass hides the text behind it', () => {

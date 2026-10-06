@@ -28,8 +28,8 @@ a:focus-visible {
 }
 
 /* Seasonal page (S6): the wrapper owns the full height, the shell only fills the space between the decor rows. */
-/* A season wrapper inside the site frame shares the height with the phone tab bar instead of adding to it. */
-.ls-site > .ls-site-page {
+/* A season wrapper inside the site frame fills the scroller (the page area) and shares the height with the phone tab bar. */
+.ls-site-scroll > .ls-site-page {
   flex: 1;
   min-height: 0;
 }

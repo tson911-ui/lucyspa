@@ -12,6 +12,7 @@ import { IconButton } from './button';
 import { cx } from './cx';
 import { FormSectionLevelProvider } from './heading-level';
 import { trapTarget } from './menu-core';
+import { findScroller } from './scroller';
 import { PromoCard, type PromoContent, type PromoLink } from './promo';
 
 // Modal surfaces (docs/UXUI_REDESIGN_DESIGN.md 9.5): focus is trapped, Escape and a press on the
@@ -21,14 +22,28 @@ const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 let scrollLocks = 0;
+let savedBodyOverflow = '';
+let lockedScroller: { element: HTMLElement; overflowY: string } | null = null;
 
 function lockScroll(): () => void {
   scrollLocks += 1;
-  const previous = document.body.style.overflow;
-  document.body.style.overflow = 'hidden';
+  if (scrollLocks === 1) {
+    savedBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    // The customer pages scroll inside the shell's scroller below 1024 px (scroller.ts): lock that too (a no-op elsewhere).
+    const scroller = findScroller();
+    if (scroller) {
+      lockedScroller = { element: scroller, overflowY: scroller.style.overflowY };
+      scroller.style.overflowY = 'hidden';
+    }
+  }
   return () => {
     scrollLocks -= 1;
-    if (scrollLocks === 0) document.body.style.overflow = previous;
+    if (scrollLocks === 0) {
+      document.body.style.overflow = savedBodyOverflow;
+      if (lockedScroller) lockedScroller.element.style.overflowY = lockedScroller.overflowY;
+      lockedScroller = null;
+    }
   };
 }
 

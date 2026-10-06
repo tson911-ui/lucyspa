@@ -6,6 +6,7 @@ import { loadSiteDecor, SeasonSiteFrame } from '../season/site-frame';
 import { ContactWidget } from './contact-widget';
 import { PublicFooter, PublicHeader } from './site-chrome';
 import { PublicTabBar } from './site-chrome-client';
+import { SiteScrollManager } from './site-scroll-manager';
 import { SiteSessionProvider } from './site-session';
 
 /**
@@ -29,17 +30,22 @@ export async function SitePageFrame({ locale, children }: { locale: Locale; chil
   return (
     <div className="ls-site">
       <SiteSessionProvider>
-        {decor ? (
-          <SeasonSiteFrame decor={decor} locale={locale} header={header} footer={footer}>
-            {content}
-          </SeasonSiteFrame>
-        ) : (
-          <div className="site-shell">
-            {header}
-            {content}
-            {footer}
-          </div>
-        )}
+        {/* Below 1024 px this is the one scroll container of the page (the app shell, site.css); the tab bar below it is in
+            the flow. From 1024 px it is display: contents and the document scrolls. */}
+        <div className="ls-site-scroll" data-ls-scroll="">
+          <SiteScrollManager />
+          {decor ? (
+            <SeasonSiteFrame decor={decor} locale={locale} header={header} footer={footer}>
+              {content}
+            </SeasonSiteFrame>
+          ) : (
+            <div className="site-shell">
+              {header}
+              {content}
+              {footer}
+            </div>
+          )}
+        </div>
         <PublicTabBar locale={locale} />
       </SiteSessionProvider>
       <MotionGate />

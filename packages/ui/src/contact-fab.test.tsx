@@ -88,10 +88,7 @@ test('ContactFab css: sticky row on the shared layer scale, lifted above the tab
     css,
     /\.ls-contact \{[^}]*bottom: calc\(var\(--ls-fab-base\) \+ var\(--ls-fab-lift\)\);/,
   );
-  assert.match(
-    css,
-    /@media \(max-width: 1023px\) \{\s*\.ls-contact \{\s*--ls-fab-base: calc\(var\(--ls-tab-bar-h\) \+ var\(--ls-safe-bottom\)\);/,
-  );
+  assert.match(css, /@media \(max-width: 1023\.98px\) \{\s*\.ls-contact \{\s*--ls-fab-base: 0px;/);
   assert.match(css, /\.ls-site:has\(\.ls-booking-bar\) \.ls-contact \{\s*--ls-fab-base: 0px;/);
   // One pulse (1 iteration), on the motion tokens; the ring only exists while the pulse plays.
   assert.match(

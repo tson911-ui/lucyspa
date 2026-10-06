@@ -55,6 +55,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   minimumScale: 1,
   viewportFit: 'cover',
+  // The on-screen keyboard shrinks the page (the shell then ends above it) instead of covering it.
+  interactiveWidget: 'resizes-content',
 };
 
 export function generateStaticParams() {

@@ -587,6 +587,11 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - Shop info has two optional fields (Trang Facebook, Zalo); public site gets a floating contact button and footer icons (`docs/UXUI_CONTACT_BUTTONS.md`).
 - **Migration `20261104000000_shop_info_contact_links`** (two nullable columns, additive). Production: apply it with the deploy, then the Owner enters the links in Admin > Website > Shop info.
 
+### Phone app shell (2026-10-06, after `15cd7e0`, not deployed)
+
+- Owner decision after the strip under the tab bar survived three patches: below 1024 px the customer pages are an app shell (`.ls-site` fixed height, `.ls-site-scroll` the only scroller, tab bar in the flow). Desktop pixel-identical. Scroll code follows the scroller (`packages/ui/src/scroller.ts`), new `SiteScrollManager`.
+- Customer-visible: browser address bar no longer hides on scroll; pull-to-refresh, iOS status-bar tap and the iOS keyboard still need a phone check (`docs/UXUI_REDESIGN_APP_SHELL.md`). Gate `uxui-tabbar-check.mjs` rewritten. No migration.
+
 ### Contact button colours + footer alignment (2026-10-06, deployed in `15cd7e0`)
 
 - Owner choice: each expanded contact button in its app's colour with a white icon, light and dark alike: Zalo blue, Messenger gradient, call GREEN `#16853a` (`--ls-brand-call`, 4.7:1; the iOS green fails AA). The "Liên hệ" toggle keeps the brand fill (`docs/UXUI_CONTACT_BUTTONS.md`).

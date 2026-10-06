@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { BrandIcon } from './brand-icons';
 import { Icon } from './icons';
+import { findScroller, onPageScroll, scrollPosition } from './scroller';
 
 /** The ways to reach the spa the floating button offers; the page decides which exist (an empty link is left out). */
 export interface ContactFabItem {
@@ -86,11 +87,11 @@ export function ContactFab({
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return undefined;
     const phone = window.matchMedia(PHONE_QUERY);
-    let last = window.scrollY;
+    let last = scrollPosition();
     let timer = 0;
     const apply = (hidden: boolean) => setAway(phone.matches && hidden);
     const onScroll = () => {
-      const now = window.scrollY;
+      const now = scrollPosition(findScroller());
       const delta = now - last;
       if (now < TOP_ZONE_PX) {
         window.clearTimeout(timer);
@@ -109,11 +110,11 @@ export function ContactFab({
       }
     };
     const onChange = () => setAway(false);
-    window.addEventListener('scroll', onScroll, { passive: true });
+    const stopScroll = onPageScroll(onScroll);
     phone.addEventListener('change', onChange);
     return () => {
       window.clearTimeout(timer);
-      window.removeEventListener('scroll', onScroll);
+      stopScroll();
       phone.removeEventListener('change', onChange);
     };
   }, []);

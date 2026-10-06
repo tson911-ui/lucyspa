@@ -342,39 +342,69 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   }
 }
 
-/* ---------- phone tab bar ---------- */
-/* Fixed to the bottom edge of the screen, not sticky inside the page: a sticky bar follows the page's own box, which a
-   phone browser's toolbar showing and hiding resizes under it (a gap below the labels where the page shows through). Its
-   opaque background reaches the screen edge: the bottom safe area (the iPhone's home indicator) is padding INSIDE the bar,
-   and the page reserves the bar's height at its end (the .ls-site rule below) so the last content scrolls fully above it. */
+/* ---------- phone shell and tab bar ---------- */
+/* Below 1024 px the customer pages are an APP SHELL (Owner decision 2026-10-06, after three patches to a fixed bar failed on
+   real phones): the screen is one column of fixed height, the page scrolls inside .ls-site-scroll (the only scroll
+   container, the document never scrolls) and the tab bar is the last item of the column, in normal flow. Content can
+   therefore never be behind or below the bar: the scroller ends where the bar begins, and the bar's own opaque background
+   paints down to the last row of the screen with the bottom safe area as padding inside it. From 1024 px the wrapper is
+   display: contents and the page is the document, exactly as before. The height tries 100vh, then 100svh, then 100dvh. */
+.ls-site-scroll {
+  display: contents;
+}
+
 .ls-tab-bar {
-  position: fixed;
-  inset-inline: 0;
-  bottom: 0;
+  position: relative;
   z-index: var(--ls-z-chrome);
+  flex: none;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
   padding-block-end: var(--ls-safe-bottom);
   padding-inline: var(--ls-safe-left) var(--ls-safe-right);
   background: var(--ls-bg-surface);
-  /* A shadow line, not a border: a border would add 1 px to the bar that the page's reserved height does not count. */
+  /* A shadow line, not a border: the bar's height stays exactly its tabs plus the safe area. */
   box-shadow: 0 -1px 0 var(--ls-border);
 }
 
 @media (max-width: 1023.98px) {
   .ls-site {
-    padding-block-end: calc(var(--ls-tab-bar-h) + var(--ls-safe-bottom));
+    height: 100vh;
+    height: 100svh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
   }
 
-  /* A focused or anchored element is never left under the bar. */
-  html:has(.ls-tab-bar) {
-    scroll-padding-block-end: calc(var(--ls-tab-bar-h) + var(--ls-safe-bottom));
+  /* Whatever the browser shows below or around the shell (a viewport a few pixels taller than 100dvh while a browser bar
+     animates) is the colour of the tab bar, never the page's: it can only read as a longer bar. */
+  html:has(.ls-site-scroll) {
+    background: var(--ls-bg-surface);
   }
 
-  /* The booking pages have their own action bar at the bottom edge and no tab bar. */
-  .ls-site:has(.ls-booking-bar) {
-    padding-block-end: 0;
+  .ls-site-scroll {
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    /* Overscroll stays at its default so a pull at the top can still reach the browser's pull-to-refresh. */
+    /* An anchor or a focused element is never left under the sticky header. */
+    scroll-padding-top: var(--ls-site-header-h);
+  }
+
+  /* The page (with or without the seasonal wrapper) is at least the scroller's height and never shrinks below its content,
+     so a short page still pushes the footer to the bottom and a long one scrolls. */
+  .ls-site > .ls-site-scroll > .site-shell,
+  .ls-site > .ls-site-scroll > .ls-site-page {
+    flex: 1 0 auto;
+  }
+
+  /* While a text field has focus the on-screen keyboard takes the lower part of the screen: the bar steps aside. */
+  .ls-site:has(input:focus, textarea:focus, select:focus) .ls-tab-bar {
+    display: none;
   }
 }
 
@@ -2531,12 +2561,13 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   pointer-events: none;
 }
 
-@media (max-width: 1023px) {
+/* On a phone the button sticks to the bottom of the scroller, which already ends above the tab bar (the app shell), so nothing
+   is added for the bar; the booking flow's action bar is measured by ContactFab and lifts it. */
+@media (max-width: 1023.98px) {
   .ls-contact {
-    --ls-fab-base: calc(var(--ls-tab-bar-h) + var(--ls-safe-bottom));
+    --ls-fab-base: 0px;
   }
 }
-
 /* A phone: the button steps aside while the visitor reads down the page (ContactFab sets data-away), so it never sits on
    top of what is being read. Hidden, it is not focusable or clickable either. */
 @media (max-width: 1023.98px) {

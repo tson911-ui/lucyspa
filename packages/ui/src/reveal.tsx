@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { cx } from './cx';
+import { findScroller } from './scroller';
 import { motionAllowed, readMotionEnvironment, staggerIndex, startsVisible } from './reveal-core';
 
 /**
@@ -25,7 +26,19 @@ export function Reveal({
   useEffect(() => {
     const element = ref.current;
     if (!element || !motionAllowed(readMotionEnvironment())) return;
-    if (startsVisible(element.getBoundingClientRect(), window.innerHeight, window.scrollY)) return;
+    // Below 1024 px the page scrolls inside the shell's scroller: measure against it, not against the window.
+    const scroller = findScroller(element);
+    const rect = element.getBoundingClientRect();
+    const frame = scroller?.getBoundingClientRect();
+    const top = rect.top - (frame?.top ?? 0);
+    if (
+      startsVisible(
+        { top, bottom: top + rect.height },
+        scroller ? scroller.clientHeight : window.innerHeight,
+        scroller ? scroller.scrollTop : window.scrollY,
+      )
+    )
+      return;
     element.dataset.reveal = 'hidden';
     let first = true;
     const observer = new IntersectionObserver(

@@ -71,6 +71,7 @@ export { SiteHeader } from './site-header';
 export { ChoiceCard } from './choice-card';
 export { Reveal } from './reveal';
 export { MotionGate } from './motion-gate';
+export { findScroller, onPageScroll, scrollPosition, SCROLLER_SELECTOR } from './scroller';
 export { ThemeCycle } from './theme-cycle';
 export type { ThemeCycleLabels } from './theme-cycle';
 export {
