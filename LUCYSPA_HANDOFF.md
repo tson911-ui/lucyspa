@@ -124,7 +124,15 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 
 ## Production
 
-Status as of 2026-10-06, about 13:28 (+07) (Owner-reported; supersedes the blocks below):
+Status as of 2026-10-06, about 16:18 (+07) (Owner-reported; supersedes the blocks below):
+
+- **Production runs `0be4abe`** (phone tab bar fixed flush to the bottom, safe area inside it, `viewport-fit=cover`, page reserves its height), deployed by the Owner on 2026-10-06 at about 16:18 (+07). Previous: `d0fc191`.
+- No new migrations (62, `pnpm db:status` up to date). Permissions unchanged (54).
+- After the deploy: health ok, `/vi`, `/vi/account/bookings` and `/vi/workforce/login` answer 200, pm2 3/3 online.
+- Backup taken just before this deploy: `/root/backups/lucyspa-pre-tabbar-20261006T091708Z.dump`.
+- Open item: the booking page's own bottom action bar is still sticky. Apply the same fix (fixed, safe area inside, page reserves its height) if the Owner reports a gap there.
+
+Status as of 2026-10-06, about 13:28 (+07) (Owner-reported; the `d0fc191` deploy):
 
 - **Production runs `d0fc191`** (single shared layout, no flash on page switch, mobile info strip wraps, "Đặt lịch mới" rules, bottom bar with a raised center "Đặt lịch ngay", contact button auto-hides while scrolling down), deployed by the Owner on 2026-10-06 at about 13:28 (+07). Previous: `9b76789`.
 - No new migrations (62, `pnpm db:status` up to date). Permissions unchanged (54).
@@ -561,7 +569,7 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - Shop info has two optional fields (Trang Facebook, Zalo); public site gets a floating contact button and footer icons (`docs/UXUI_CONTACT_BUTTONS.md`).
 - **Migration `20261104000000_shop_info_contact_links`** (two nullable columns, additive). Production: apply it with the deploy, then the Owner enters the links in Admin > Website > Shop info.
 
-### Tab bar anchored to the screen edge (2026-10-06, not deployed)
+### Tab bar anchored to the screen edge (2026-10-06, deployed in `0be4abe`)
 
 - Production `d0fc191` had a gap below the phone tab bar (sticky bar in a `100svh` box, no `viewport-fit=cover`). Now `position: fixed`, safe area as padding inside the bar, page reserves its height (`docs/UXUI_REDESIGN_TABBAR_FIXED.md`).
 - New gate script `scripts/uxui-tabbar-check.mjs <url>` (pixel check at top, middle, bottom, toolbar hidden, safe area). No migration.
