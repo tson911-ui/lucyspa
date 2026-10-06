@@ -21,7 +21,7 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                                          |
 | Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                                       |
 | **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                                       |
-| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `f79572d`)                                                                  |
+| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `4bdeaca`)                                                                  |
 | **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `f79572d`); go-live turned ON by the Owner about 17:20 (+07)** |
 | Phase 6+ (products, payroll, finance)     | NOT started                                                                                        |
 
@@ -123,6 +123,14 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 - Customer Beauty card has the same "Ưu đãi hội viên" row: "Áp dụng khi Lucy Beauty mở bán" until Phase 6, which must replace it with the real tier % (design 15.3). Report: `docs/PHASE5_WALLET_NAMES.md`. No migration.
 
 ## Production
+
+Status as of 2026-10-06, about 09:03 (+07) (Owner-reported; supersedes the blocks below):
+
+- **Production runs `4bdeaca7496842aef43d2310b11da5a2233ed49c`** (customer navigation + bell panel, transparent header over the ORIGINAL home hero from `3faa95b`, flaky test fixes), deployed by the Owner on 2026-10-06 at about 09:03 (+07). Previous (as the Owner reported it): `be5617d` (superseded: the full-bleed hero was rejected by the Owner). This file had no record of a `be5617d` deploy; the last recorded production before this entry was `f79572d`.
+- No new migration: `pnpm db:status` up to date (61 migrations).
+- After the deploy: health ok, `/vi`, `/vi/account/loyalty` and `/vi/workforce/login` answer 200, pm2 3/3 online.
+- Backup taken just before this deploy: `/root/backups/lucyspa-pre-header2-*.dump`.
+- Prisma printed "Update available 7.10.0 -> 8.0.0" on the server and it was ignored. Never upgrade Prisma without a planned step.
 
 Status as of 2026-10-05, about 22:08 (+07) (Owner-reported; supersedes the blocks below):
 
@@ -515,7 +523,7 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 
 - Owner decision: `ListSection` has no `count` (text-only headings everywhere, rule added to CLAUDE.md); pagination "Hiển thị x–y trong n" and empty states stay (`docs/UXUI_FIX_HEADING_COUNTS.md`). Deployed in `d11be14` together with the menu layer fix `bee3785` (see Production).
 
-### Customer navigation and transparent home header - 2026-10-05 (not deployed)
+### Customer navigation and transparent home header - 2026-10-05 (deployed in `4bdeaca`, 2026-10-06, see Production)
 
 - A: account sub-tab row removed; person menu = Tài khoản của tôi / Điểm thưởng / Đăng xuất; new notification bell with a latest-8 panel next to the language button (`docs/UXUI_REDESIGN_NAV_HEADER.md`).
 - B: the full-bleed hero built in `be5617d` was **rejected by the Owner** (misunderstanding) and removed; the home hero is the original split layout again. **Approved by the Owner:** a transparent header over the original hero (no background, border or shadow at the top, normal colours; solid after about 60 px of scroll; `SiteHeader overlay`).
