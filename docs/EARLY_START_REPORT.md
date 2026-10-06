@@ -39,5 +39,4 @@ fixture text, not by the new badge). Note: the older fixture rig screenshots wer
 
 ## Open for the Owner
 
-- Decision 6 reads "the schedule" as the per-technician queue on the booking board; say if another page was meant.
-- Technical details marked "pending Owner review" in the design doc (new block codes, rounding down, second trigger).
+- Answered 2026-10-07: new block codes and messages kept, early minutes rounded down, "the schedule" = the per-technician list on "Lịch hẹn hôm nay" (all approved by the Owner).

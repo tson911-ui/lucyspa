@@ -49,12 +49,12 @@ later part of the booked slot reopens at END, as it does today.
 7. Multiple services in one visit: the rule applies to every line; later lines still wait for the previous line to finish.
 8. Database anti-overlap: (b) additive migration so `ktv_occupancies` also holds the early part; the database rejects overlaps.
 
-## Technical details chosen while building (pending Owner review)
+## Technical details chosen while building (items 1-3 APPROVED by the Owner, 2026-10-07)
 
-- Two block reasons replace the old "not ready": `SERVICE_EARLY_START_CONFLICT` (other work of the technician is in the way) and
+- **APPROVED 2026-10-07** (Owner: keep both codes and their messages as written). Two block reasons replace the old "not ready": `SERVICE_EARLY_START_CONFLICT` (other work of the technician is in the way) and
   `SERVICE_EARLY_START_OUTSIDE_SHIFT` (collaborator shift). Used only for an early START and only when that is the whole reason; every
   other reason keeps `SERVICE_START_UNAVAILABLE`. `SERVICE_NOT_READY` is removed (contract, error table, VI/EN texts).
-- "The schedule" in decision 6 is read as the per-technician queue on the booking board ("Đang phục vụ" rows) plus the open-visits table;
+- **APPROVED 2026-10-07** (Owner: confirmed; rounding down of the early minutes also approved, see Times and records). "The schedule" in decision 6 is read as the per-technician queue on the booking board ("Đang phục vụ" rows) plus the open-visits table;
   "Dịch vụ của tôi" shows the label too.
-- The race rule is the existing lock order (visit, line, execution, technician user row) plus the database constraint; a lost race maps
+- Implementation of decision 8 (not a separate question). The race rule is the existing lock order (visit, line, execution, technician user row) plus the database constraint; a lost race maps
   to `SERVICE_EXECUTION_CONFLICT` (SQLSTATE 23P01 is already mapped).
