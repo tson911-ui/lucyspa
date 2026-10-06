@@ -644,6 +644,186 @@ test('Phase 3 Step 2 database foundation invariants (all fixtures roll back)', a
           );
 
           await context.test(
+            'early START: the database also claims [started_at, planned_start) and rejects overlaps',
+            async () => {
+              const hhmm = (ms: number) => new Date(ms + 7 * 3_600_000).toISOString().slice(11, 16);
+              // A checked-in booked line: booking line + visit + participant + visit line (the claim moves to the visit line).
+              const checkedIn = async (ktv: string, start: string, minutes: number) => {
+                const n = ++codeSeq;
+                const b = await booking(start, hhmm(at(start).getTime() + minutes * 60_000));
+                const me = await self(b.id);
+                const bl = await line(b.id, me.id, 1, ktv, start, minutes);
+                const visit = await tx.visit.create({
+                  data: {
+                    code: `VS-${run}-E${n}`,
+                    branchId: branch,
+                    origin: 'BOOKING',
+                    bookingId: b.id,
+                    ownerUserId: customer,
+                    serviceDate: DATE,
+                    arrivedAt: at('05:00'),
+                    createdByUserId: staff,
+                  },
+                  select: { id: true },
+                });
+                const member = await tx.visitParticipant.create({
+                  data: {
+                    visitId: visit.id,
+                    kind: 'MEMBER',
+                    customerUserId: customer,
+                    bookingRecipientId: me.id,
+                  },
+                  select: { id: true },
+                });
+                const vl = await tx.visitServiceLine.create({
+                  data: {
+                    visitId: visit.id,
+                    participantId: member.id,
+                    sequence: 1,
+                    bookingServiceLineId: bl.id,
+                    serviceId: service,
+                    employeeUserId: ktv,
+                    assignmentMode: 'ANY',
+                    plannedStartAt: at(start),
+                    plannedEndAt: new Date(at(start).getTime() + minutes * 60_000),
+                    durationMinutes: minutes,
+                    bufferMinutes: 0,
+                    ...snapshot,
+                  },
+                  select: { id: true },
+                });
+                await tx.booking.update({
+                  where: { id: b.id },
+                  data: {
+                    status: 'CHECKED_IN',
+                    checkedInAt: at('05:00'),
+                    checkedInByUserId: staff,
+                    rowVersion: { increment: 1 },
+                  },
+                });
+                return { visitId: visit.id, lineId: vl.id };
+              };
+              const claim = async (lineId: string) =>
+                (
+                  await tx.$queryRaw<{ lo: Date; hi: Date }[]>`
+                    SELECT lower(period) AS lo, upper(period) AS hi FROM ktv_occupancies
+                    WHERE visit_service_line_id = ${lineId}::uuid`
+                )[0];
+              const startLine = async (visitId: string, lineId: string) => {
+                await tx.visitServiceLine.update({
+                  where: { id: lineId },
+                  data: { status: 'IN_PROGRESS', rowVersion: { increment: 1 } },
+                });
+                await tx.visit.updateMany({
+                  where: { id: visitId, status: 'OPEN' },
+                  data: { status: 'IN_SERVICE', rowVersion: { increment: 1 } },
+                });
+              };
+              const execute = (ktv: string, lineId: string, start: string, minutes: number) =>
+                tx.serviceExecution.create({
+                  data: {
+                    visitServiceLineId: lineId,
+                    employeeUserId: ktv,
+                    startedAt: at(start),
+                    expectedEndAt: new Date(at(start).getTime() + minutes * 60_000),
+                  },
+                  select: { id: true },
+                });
+
+              // Order 1 (what the API does): execution first, then the line becomes IN_PROGRESS.
+              const ktvC = await user('EMPLOYEE');
+              const previous = await booking('08:00', '09:00');
+              await line(previous.id, (await self(previous.id)).id, 1, ktvC, '08:00', 60);
+              const target = await checkedIn(ktvC, '11:00', 60);
+              await rejects(
+                () => execute(ktvC, target.lineId, '08:30', 60),
+                /ktv_occupancies_no_overlap/,
+              );
+              assert.equal(
+                (await claim(target.lineId))?.lo.getTime(),
+                at('11:00').getTime(),
+                'a rejected early start leaves the planned claim',
+              );
+              await execute(ktvC, target.lineId, '09:00', 60); // exactly at the previous end: half-open, free
+              await startLine(target.visitId, target.lineId);
+              const early = await claim(target.lineId);
+              assert.equal(
+                early?.lo.getTime(),
+                at('09:00').getTime(),
+                'claim starts at the actual start',
+              );
+              assert.equal(
+                early?.hi.getTime(),
+                at('12:00').getTime(),
+                'claim still ends at planned end + buffer',
+              );
+              // The early part is now taken: nobody else can be booked into it, nor into the rest of the window.
+              const intruder = await booking('09:20', '09:50');
+              const intruderMe = await self(intruder.id);
+              await rejects(
+                () => line(intruder.id, intruderMe.id, 1, ktvC, '09:20', 30),
+                /ktv_occupancies_no_overlap/,
+              );
+              await rejects(
+                () => line(intruder.id, intruderMe.id, 2, ktvC, '10:30', 30),
+                /ktv_occupancies_no_overlap/,
+              );
+
+              // Order 2 (defensive): the line is IN_PROGRESS first, then the execution row is written.
+              const ktvD = await user('EMPLOYEE');
+              const before = await booking('12:00', '12:50');
+              await line(before.id, (await self(before.id)).id, 1, ktvD, '12:00', 50);
+              const second = await checkedIn(ktvD, '14:00', 60);
+              await startLine(second.visitId, second.lineId);
+              await rejects(
+                () => execute(ktvD, second.lineId, '12:45', 60),
+                /ktv_occupancies_no_overlap/,
+              );
+              await execute(ktvD, second.lineId, '12:50', 60);
+              assert.equal(
+                (await claim(second.lineId))?.lo.getTime(),
+                at('12:50').getTime(),
+                'the execution row widens the claim of an IN_PROGRESS line',
+              );
+
+              // A start on or after the planned start keeps today's claim exactly.
+              const ktvE = await user('EMPLOYEE');
+              const late = await checkedIn(ktvE, '16:00', 60);
+              await execute(ktvE, late.lineId, '16:05', 60);
+              await startLine(late.visitId, late.lineId);
+              assert.equal((await claim(late.lineId))?.lo.getTime(), at('16:00').getTime());
+              const ktvF = await user('EMPLOYEE');
+              const onTime = await checkedIn(ktvF, '18:00', 60);
+              await execute(ktvF, onTime.lineId, '18:00', 60);
+              await startLine(onTime.visitId, onTime.lineId);
+              assert.equal((await claim(onTime.lineId))?.lo.getTime(), at('18:00').getTime());
+
+              // The claim ends with the line, early or not.
+              const executionId = (
+                await tx.serviceExecution.findFirstOrThrow({
+                  where: { visitServiceLineId: target.lineId },
+                  select: { id: true },
+                })
+              ).id;
+              await tx.serviceExecution.update({
+                where: { id: executionId },
+                data: {
+                  status: 'ENDED',
+                  endedAt: at('09:50'),
+                  endKind: 'NORMAL',
+                  endedByUserId: ktvC,
+                  rowVersion: { increment: 1 },
+                },
+              });
+              await tx.visitServiceLine.update({
+                where: { id: target.lineId },
+                data: { status: 'DONE', rowVersion: { increment: 1 } },
+              });
+              assert.equal(await claim(target.lineId), undefined);
+            },
+          );
+
+          await context.test(
             'walk-in participants: guests and children without accounts; one service at a time',
             async () => {
               const visit = await tx.visit.create({
@@ -902,7 +1082,10 @@ test('Phase 3 Step 2 database foundation invariants (all fixtures roll back)', a
                   WHERE b.status = 'CONFIRMED'
                     AND NOT EXISTS (SELECT 1 FROM visit_service_lines v WHERE v.booking_service_line_id = l.id)
                   UNION ALL
-                  SELECT v.employee_user_id, tstzrange(v.planned_start_at, v.planned_end_at + make_interval(mins => v.buffer_minutes), '[)'),
+                  -- An execution that started before the planned start also holds the early part (early START).
+                  SELECT v.employee_user_id,
+                         tstzrange(LEAST(v.planned_start_at, COALESCE((SELECT x.started_at FROM service_executions x WHERE x.visit_service_line_id = v.id), v.planned_start_at)),
+                                   v.planned_end_at + make_interval(mins => v.buffer_minutes), '[)'),
                          NULL::uuid, v.id
                   FROM visit_service_lines v WHERE v.status IN ('PLANNED', 'IN_PROGRESS')
                 ),

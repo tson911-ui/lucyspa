@@ -1773,6 +1773,8 @@ export interface OperationalQueueKtv {
     participantName: string;
     serviceNameVi: string;
     serviceNameEn: string;
+    /** Whole minutes started before the planned start; 0 when on time or late. */
+    startedEarlyMinutes: number;
   }[];
   /** Arrived, not started: the computed order (position 1 is next). */
   waiting: {
@@ -1850,7 +1852,13 @@ export interface OperationalActiveVisitLine {
   employee: { id: string; displayName: string } | null;
   plannedStartAt: string | null;
   /** Only for a line with a running execution. `overdue` is computed by the server clock. */
-  execution: { startedAt: string; expectedEndAt: string; overdue: boolean } | null;
+  execution: {
+    startedAt: string;
+    expectedEndAt: string;
+    overdue: boolean;
+    /** Whole minutes started before the planned start; 0 when on time or late. */
+    startedEarlyMinutes: number;
+  } | null;
   actions: { cancel: boolean; resolve: boolean };
 }
 
@@ -1981,8 +1989,11 @@ export type ServiceStartBlock =
   | 'SERVICE_SEQUENCE_BLOCKED'
   | 'SERVICE_KTV_BUSY'
   | 'SERVICE_NOT_TODAY'
-  | 'SERVICE_NOT_READY'
-  | 'SERVICE_START_UNAVAILABLE';
+  | 'SERVICE_START_UNAVAILABLE'
+  /** Early START only (planned start still ahead): other work of the KTV is in the way. */
+  | 'SERVICE_EARLY_START_CONFLICT'
+  /** Early START only: a collaborator's scheduled shift does not cover the early period. */
+  | 'SERVICE_EARLY_START_OUTSIDE_SHIFT';
 
 export interface ServiceExecutionWork {
   lineId: string;
@@ -2005,6 +2016,8 @@ export interface ServiceExecutionWork {
     expectedEndAt: string;
     endedAt: string | null;
     endKind: 'NORMAL' | 'MANAGER_RESOLVED' | null;
+    /** Whole minutes started before the planned start; 0 when on time or late. */
+    startedEarlyMinutes: number;
   } | null;
   actions: {
     start: boolean;

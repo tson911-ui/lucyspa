@@ -273,7 +273,20 @@ export function ActiveSection({
             <Badge tone={row.line.status === 'IN_PROGRESS' ? 'info' : 'neutral'}>
               {b.lineStatuses[row.line.status]}
             </Badge>
-            {row.line.execution?.overdue ? <Badge tone="warning">{b.overdue}</Badge> : null}
+            {row.line.execution && row.line.execution.startedEarlyMinutes > 0 ? (
+              <>
+                {' '}
+                <Badge tone="neutral">
+                  {fill(b.startedEarly, { minutes: row.line.execution.startedEarlyMinutes })}
+                </Badge>
+              </>
+            ) : null}
+            {row.line.execution?.overdue ? (
+              <>
+                {' '}
+                <Badge tone="warning">{b.overdue}</Badge>
+              </>
+            ) : null}
           </>
         ) : (
           '—'
@@ -559,12 +572,23 @@ function QueueCard({ ktv, time }: { ktv: OperationalQueueKtv; time: Time }) {
       ? [
           {
             label: b.serving,
-            value: ktv.serving
-              .map(
-                (entry) =>
-                  `${entry.participantName} (${name(entry.serviceNameVi, entry.serviceNameEn)})`,
-              )
-              .join(', '),
+            value: (
+              <ul className="ls-list-plain">
+                {ktv.serving.map((entry, index) => (
+                  <li key={`${entry.participantName}-${index}`}>
+                    {entry.participantName} ({name(entry.serviceNameVi, entry.serviceNameEn)})
+                    {entry.startedEarlyMinutes > 0 ? (
+                      <>
+                        {' '}
+                        <Badge tone="neutral">
+                          {fill(b.startedEarly, { minutes: entry.startedEarlyMinutes })}
+                        </Badge>
+                      </>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ),
           },
         ]
       : []),

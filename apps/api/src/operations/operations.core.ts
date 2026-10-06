@@ -21,6 +21,7 @@ import {
   orderQueue,
   preArrivalState,
   punctuality,
+  startedEarlyMinutes,
   type Occupied,
   type TimingSettings,
   type WaitingLine,
@@ -514,6 +515,7 @@ async function computeActiveVisits(
               startedAt: running.startedAt.toISOString(),
               expectedEndAt: running.expectedEndAt.toISOString(),
               overdue: input.now >= running.expectedEndAt,
+              startedEarlyMinutes: startedEarlyMinutes(line.plannedStartAt, running.startedAt),
             }
           : null,
         actions: {
@@ -552,6 +554,7 @@ async function computeQueue(
       id: true,
       status: true,
       employeeUserId: true,
+      execution: { select: { startedAt: true } },
       plannedStartAt: true,
       plannedEndAt: true,
       bufferMinutes: true,
@@ -656,6 +659,9 @@ async function computeQueue(
           participantName: participantName(line),
           serviceNameVi: line.serviceNameVi,
           serviceNameEn: line.serviceNameEn,
+          startedEarlyMinutes: line.execution
+            ? startedEarlyMinutes(line.plannedStartAt, line.execution.startedAt)
+            : 0,
         })),
       waiting: orderQueue(waiting, input.settings).map((entry, index) => {
         const line = byLine.get(entry.lineId)!;

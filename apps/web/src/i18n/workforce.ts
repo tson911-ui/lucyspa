@@ -1746,6 +1746,7 @@ const vi = {
       CANCELLED: 'Đã hủy',
     },
     runningSince: 'Bắt đầu {start}, dự kiến xong {end}',
+    startedEarly: 'Bắt đầu sớm {minutes} phút',
     overdue: 'Quá giờ dự kiến',
     resolveEnd: 'Kết thúc ngoại lệ',
     resolveEndIntro:
@@ -1861,6 +1862,7 @@ const vi = {
     ended: 'Đã kết thúc dịch vụ.',
     planned: 'Theo lịch',
     actualStart: 'Bắt đầu thực tế',
+    startedEarly: 'Bắt đầu sớm {minutes} phút',
     actualEnd: 'Kết thúc thực tế',
     expectedEnd: 'Dự kiến kết thúc',
     participant: 'Khách',
@@ -1879,9 +1881,12 @@ const vi = {
       SERVICE_SEQUENCE_BLOCKED: 'Cần hoàn thành dịch vụ trước của khách này.',
       SERVICE_KTV_BUSY: 'Hãy kết thúc dịch vụ đang thực hiện trước khi bắt đầu dịch vụ khác.',
       SERVICE_NOT_TODAY: 'Chỉ có thể bắt đầu dịch vụ thuộc ngày làm việc hôm nay.',
-      SERVICE_NOT_READY: 'Chưa đến giờ bắt đầu theo lịch.',
       SERVICE_START_UNAVAILABLE:
         'Kiểm tra chấm công, lịch làm việc và khả năng phục vụ trước khi bắt đầu.',
+      SERVICE_EARLY_START_CONFLICT:
+        'Chưa thể bắt đầu sớm: bạn còn lịch khác trước giờ hẹn của khách này.',
+      SERVICE_EARLY_START_OUTSIDE_SHIFT:
+        'Chưa thể bắt đầu sớm: thời điểm này nằm ngoài ca làm đã xếp của bạn.',
       SERVICE_EXECUTION_CONFLICT: 'Dữ liệu dịch vụ vừa thay đổi. Vui lòng tải lại và thử lại.',
     },
   },
@@ -4302,6 +4307,7 @@ const en: Dictionary = {
       CANCELLED: 'Cancelled',
     },
     runningSince: 'Started {start}, expected end {end}',
+    startedEarly: 'Started {minutes} min early',
     overdue: 'Past expected end',
     resolveEnd: 'End by exception',
     resolveEndIntro:
@@ -4419,6 +4425,7 @@ const en: Dictionary = {
     ended: 'Service ended.',
     planned: 'Planned',
     actualStart: 'Actual start',
+    startedEarly: 'Started {minutes} min early',
     actualEnd: 'Actual end',
     expectedEnd: 'Expected end',
     participant: 'Customer',
@@ -4437,9 +4444,12 @@ const en: Dictionary = {
       SERVICE_SEQUENCE_BLOCKED: 'Complete this customer’s preceding service first.',
       SERVICE_KTV_BUSY: 'End your current service before starting another.',
       SERVICE_NOT_TODAY: 'Only services for today’s business date can start.',
-      SERVICE_NOT_READY: 'The planned start time has not arrived.',
       SERVICE_START_UNAVAILABLE:
         'Check attendance, work schedule and availability before starting.',
+      SERVICE_EARLY_START_CONFLICT:
+        'Cannot start early: you have other work before this customer’s booked time.',
+      SERVICE_EARLY_START_OUTSIDE_SHIFT:
+        'Cannot start early: this time is outside your scheduled shift.',
       SERVICE_EXECUTION_CONFLICT: 'Service work changed. Refresh and try again.',
     },
   },

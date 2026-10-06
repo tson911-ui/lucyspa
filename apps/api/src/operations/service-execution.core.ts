@@ -11,6 +11,7 @@ import {
   evaluateExecutionStart,
   loadAvailabilityFacts,
 } from '../availability/availability.engine.js';
+import { startedEarlyMinutes } from './operations.state.js';
 
 const include = {
   visit: true,
@@ -78,7 +79,11 @@ async function startBlock(
     return 'SERVICE_START_NOT_ALLOWED';
   const date = line.visit.serviceDate.toISOString().slice(0, 10);
   if (date !== (await branchDay(tx, line.visit.branchId, now))) return 'SERVICE_NOT_TODAY';
-  if (line.plannedStartAt > now) return 'SERVICE_NOT_READY';
+  // Early START (Owner decision 2026-10-07): a planned start still ahead no longer blocks. The same facts
+  // below decide it (checked-in customer = the visit exists, KTV free, no overlap with other work, CTV shift),
+  // evaluated for the actual interval [now, now + duration + buffer). There is no extra cap: the customer could
+  // only check in inside `booking.checkInWindowMinutes`.
+  const early = line.plannedStartAt > now;
   const preceding = await tx.visitServiceLine.findFirst({
     where: {
       participantId: line.participantId,
@@ -113,7 +118,15 @@ async function startBlock(
     durationMinutes: line.durationMinutes,
     bufferMinutes: line.bufferMinutes,
   });
-  if (line.assignmentConflict || !eligibility.eligible) return 'SERVICE_START_UNAVAILABLE';
+  if (line.assignmentConflict) return 'SERVICE_START_UNAVAILABLE';
+  if (!eligibility.eligible) {
+    // For an early START say what is in the way, but only when that is the whole story.
+    const only = (...allowed: string[]) =>
+      eligibility.reasons.every((reason) => allowed.includes(reason));
+    if (early && only('CONFLICT', 'SERVICE_RUNNING')) return 'SERVICE_EARLY_START_CONFLICT';
+    if (early && only('CTV_NOT_SCHEDULED')) return 'SERVICE_EARLY_START_OUTSIDE_SHIFT';
+    return 'SERVICE_START_UNAVAILABLE';
+  }
   return null;
 }
 
@@ -147,6 +160,7 @@ async function present(context: AdminContext, line: WorkLine): Promise<ServiceEx
           expectedEndAt: execution.expectedEndAt.toISOString(),
           endedAt: execution.endedAt?.toISOString() ?? null,
           endKind: execution.endKind,
+          startedEarlyMinutes: startedEarlyMinutes(line.plannedStartAt, execution.startedAt),
         }
       : null,
     actions: {
@@ -304,7 +318,10 @@ export async function startService(
     serviceLineId: line.id,
     executionId: execution.id,
     employeeUserId: context.actor.userId,
+    // Both times are kept: the booked one (never rewritten) and the actual one.
+    plannedStartAt: line.plannedStartAt?.toISOString() ?? null,
     startedAt: now.toISOString(),
+    startedEarlyMinutes: startedEarlyMinutes(line.plannedStartAt, now),
     expectedEndAt: execution.expectedEndAt.toISOString(),
   };
   await appendAdminAudit(context, {

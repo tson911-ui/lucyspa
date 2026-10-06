@@ -45,6 +45,14 @@ test('three five-minute timings use START-derived expected end, independently of
   assert.equal(warningTarget(running(), 'PRE_END'), expectedEndAt);
   assert.equal(warningTarget(running(), 'END_OVERDUE'), expectedEndAt);
 });
+test('an early START (before the planned start) raises no START warning; END warnings follow the actual start', () => {
+  const plannedLater = new Date('2030-01-02T10:30:00Z'); // booked 30 minutes after the actual start
+  const early = running({ startedAt, expectedEndAt });
+  Object.assign(early, { plannedStartAt: plannedLater });
+  assert.equal(warningTarget(early, 'START_OVERDUE'), null);
+  assert.equal(warningTarget(early, 'PRE_END'), expectedEndAt);
+  assert.equal(warningTarget(early, 'END_OVERDUE'), expectedEndAt);
+});
 test('START, cancellation, waiting and closed visit make START warnings stale', () => {
   assert.equal(warningTarget(line(), 'START_OVERDUE'), startedAt);
   for (const work of [

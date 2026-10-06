@@ -268,6 +268,16 @@ export function MyServicesScreen() {
                   >
                     {t.execution.states[line.status]}
                   </Badge>
+                  {line.execution && line.execution.startedEarlyMinutes > 0 ? (
+                    <>
+                      {' '}
+                      <Badge tone="neutral">
+                        {fill(t.execution.startedEarly, {
+                          minutes: line.execution.startedEarlyMinutes,
+                        })}
+                      </Badge>
+                    </>
+                  ) : null}
                 </div>
                 <DescriptionList items={details(line)} />
                 {line.visitStatus === 'COMPLETED' ? (

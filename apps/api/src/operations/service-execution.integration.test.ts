@@ -11,7 +11,9 @@ import { AuthError } from '../auth/auth.error.js';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
+import { ReassignmentService } from './reassignment.service.js';
 import { ServiceExecutionService } from './service-execution.service.js';
+import { appointForFixture } from '../testing/organization-fixture.js';
 import { validVnMobile } from '../testing/phone.js';
 
 // Added for the final Phase 3 gate. NOT EXECUTED during Step 7 implementation.
@@ -57,14 +59,14 @@ test(
                 throw error;
               }
             };
-            const executions = new ServiceExecutionService(
-              {
-                withTransaction: isolated,
-                withExclusiveTransaction: isolated,
-                resolveForMutation: (token: string) => sessions.resolveForMutation(token, tx),
-              },
-              new AuthThrottleService(environment),
-            );
+            const runner = {
+              withTransaction: isolated,
+              withExclusiveTransaction: isolated,
+              resolveForMutation: (token: string) => sessions.resolveForMutation(token, tx),
+            };
+            const throttle = new AuthThrottleService(environment);
+            const executions = new ServiceExecutionService(runner, throttle);
+            const reassignments = new ReassignmentService(runner, throttle);
             const fails = async (work: () => Promise<unknown>, code: string) => {
               await assert.rejects(
                 work,
@@ -126,7 +128,15 @@ test(
             });
             await tx.serviceSkill.create({ data: { serviceId: service.id, skillId: skill.id } });
 
-            const ktv = async (options: { permission?: boolean; checkedIn?: boolean } = {}) => {
+            let managerRole: { id: string } | undefined;
+            const ktv = async (
+              options: {
+                permission?: boolean;
+                checkedIn?: boolean;
+                collaborator?: boolean;
+                manager?: boolean;
+              } = {},
+            ) => {
               n++;
               const user = await tx.user.create({
                 data: {
@@ -149,7 +159,7 @@ test(
               await tx.employmentClassificationChange.create({
                 data: {
                   employeeUserId: user.id,
-                  classification: 'OFFICIAL_EMPLOYEE',
+                  classification: options.collaborator ? 'COLLABORATOR' : 'OFFICIAL_EMPLOYEE',
                   effectiveDate: new Date('2020-01-01'),
                 },
               });
@@ -168,6 +178,34 @@ test(
                     branchId: branch.id,
                   },
                 });
+              if (options.manager) {
+                // A desk manager who may reassign work (hierarchy position needed by the command).
+                managerRole ??= await tx.role.create({
+                  data: {
+                    code: `EXEC_MGR_${run}`,
+                    displayNameVi: 'Manager',
+                    displayNameEn: 'Manager',
+                    permissions: {
+                      create: {
+                        permissionId: (
+                          await tx.permission.findUniqueOrThrow({
+                            where: { code: 'REASSIGN_SERVICES' },
+                          })
+                        ).id,
+                      },
+                    },
+                  },
+                });
+                await tx.userRoleAssignment.create({
+                  data: {
+                    userId: user.id,
+                    roleId: managerRole.id,
+                    scopeKind: 'BRANCH',
+                    branchId: branch.id,
+                  },
+                });
+                await appointForFixture(tx, user.id, branch.id);
+              }
               if (options.checkedIn !== false)
                 await tx.attendanceRecord.create({
                   data: {
@@ -425,13 +463,9 @@ test(
               },
             );
 
-            await suite.test('future planned start and cancelled line cannot START', async () => {
+            await suite.test('cancelled line cannot START', async () => {
               const actor = await ktv();
               const future = await visit([actor.id], 60);
-              await fails(
-                () => executions.start(actor.token, future.lines[0]!.id),
-                'SERVICE_NOT_READY',
-              );
               await tx.visitServiceLine.update({
                 where: { id: future.lines[0]!.id },
                 data: {
@@ -447,6 +481,251 @@ test(
                 'SERVICE_START_NOT_ALLOWED',
               );
             });
+            // ------------------------------------------------------------------ early START (Owner, 2026-10-07)
+            const claimOf = async (lineId: string) => {
+              const [row] = await tx.$queryRaw<{ lo: Date; hi: Date }[]>`
+                SELECT lower(period) AS lo, upper(period) AS hi FROM ktv_occupancies
+                WHERE visit_service_line_id = ${lineId}::uuid`;
+              return row;
+            };
+
+            await suite.test(
+              'early START: free KTV, checked-in customer; booked and actual times are both kept',
+              async () => {
+                const actor = await ktv();
+                const {
+                  row,
+                  lines: [line],
+                } = await visit([actor.id], 30);
+                const hint = await executions.get(actor.token, line!.id);
+                assert.equal(hint.actions.start, true);
+                assert.equal(hint.actions.startBlockedBy, null);
+                assert.equal(
+                  (await executions.myWork(actor.token, branch.id)).lines.find(
+                    (entry) => entry.lineId === line!.id,
+                  )?.actions.start,
+                  true,
+                );
+                const started = await executions.start(actor.token, line!.id);
+                assert.equal(started.status, 'IN_PROGRESS');
+                assert.equal(started.visitStatus, 'IN_SERVICE');
+                const early = started.execution!.startedEarlyMinutes;
+                assert.ok(early >= 29 && early <= 30, `started ${early} minutes early`);
+                assert.equal(
+                  Date.parse(started.execution!.expectedEndAt) -
+                    Date.parse(started.execution!.startedAt),
+                  600_000,
+                  'expected end = actual start + duration',
+                );
+                // The booked window is never rewritten; the database claims the early part too.
+                const stored = await tx.visitServiceLine.findUniqueOrThrow({
+                  where: { id: line!.id },
+                });
+                assert.deepEqual(stored.plannedStartAt, line!.plannedStartAt);
+                assert.deepEqual(stored.plannedEndAt, line!.plannedEndAt);
+                const claim = await claimOf(line!.id);
+                assert.equal(claim!.lo.getTime(), Date.parse(started.execution!.startedAt));
+                assert.equal(claim!.hi.getTime(), line!.plannedEndAt!.getTime());
+                // Audit and outbox carry the booked time, the actual time and the minutes early.
+                const audit = await tx.auditEvent.findFirstOrThrow({
+                  where: { entityId: started.execution!.id, action: 'SERVICE_STARTED' },
+                });
+                const outbox = await tx.outboxEvent.findFirstOrThrow({
+                  where: { aggregateId: started.execution!.id, eventType: 'SERVICE_STARTED' },
+                });
+                for (const facts of [audit.after, outbox.payload] as Record<string, unknown>[]) {
+                  assert.equal(facts['plannedStartAt'], line!.plannedStartAt!.toISOString());
+                  assert.equal(facts['startedAt'], started.execution!.startedAt);
+                  assert.equal(facts['startedEarlyMinutes'], early);
+                }
+                // The board read model shows the same label data.
+                const ended = await executions.end(actor.token, line!.id);
+                assert.equal(ended.status, 'DONE');
+                assert.equal(ended.visitStatus, 'COMPLETED');
+                assert.equal(ended.execution!.startedEarlyMinutes, early);
+                assert.equal(await claimOf(line!.id), undefined, 'the claim ends with the line');
+                assert.ok(
+                  (await tx.visit.findUniqueOrThrow({ where: { id: row.id } })).completedAt,
+                );
+              },
+            );
+
+            await suite.test(
+              'early START is refused while the KTV has a service running',
+              async () => {
+                const actor = await ktv();
+                const running = await visit([actor.id], -60);
+                const later = await visit([actor.id], 30);
+                await executions.start(actor.token, running.lines[0]!.id);
+                await fails(
+                  () => executions.start(actor.token, later.lines[0]!.id),
+                  'SERVICE_KTV_BUSY',
+                );
+                assert.equal(
+                  (await executions.get(actor.token, later.lines[0]!.id)).actions.startBlockedBy,
+                  'SERVICE_KTV_BUSY',
+                );
+              },
+            );
+
+            await suite.test(
+              'early START is refused over the previous booking, allowed once it has finished',
+              async () => {
+                const actor = await ktv();
+                const previous = await visit([actor.id], -5); // planned [-5, +5): customer not started yet
+                const target = await visit([actor.id], 30);
+                await fails(
+                  () => executions.start(actor.token, target.lines[0]!.id),
+                  'SERVICE_EARLY_START_CONFLICT',
+                );
+                const hint = await executions.get(actor.token, target.lines[0]!.id);
+                assert.equal(hint.actions.start, false);
+                assert.equal(hint.actions.startBlockedBy, 'SERVICE_EARLY_START_CONFLICT');
+                assert.equal(
+                  await tx.serviceExecution.count({
+                    where: { visitServiceLineId: target.lines[0]!.id },
+                  }),
+                  0,
+                );
+                await executions.start(actor.token, previous.lines[0]!.id);
+                await executions.end(actor.token, previous.lines[0]!.id);
+                assert.equal(
+                  (await executions.start(actor.token, target.lines[0]!.id)).status,
+                  'IN_PROGRESS',
+                );
+              },
+            );
+
+            await suite.test(
+              'early START is safe for the next booking: it keeps its slot and nobody can book the early part',
+              async () => {
+                const actor = await ktv();
+                const target = await visit([actor.id], 30); // [+30, +40)
+                const next = await visit([actor.id], 40); // [+40, +50)
+                const started = await executions.start(actor.token, target.lines[0]!.id);
+                const claim = await claimOf(target.lines[0]!.id);
+                const nextClaim = await claimOf(next.lines[0]!.id);
+                assert.equal(claim!.lo.getTime(), Date.parse(started.execution!.startedAt));
+                assert.equal(claim!.hi.getTime(), at(40).getTime());
+                assert.equal(
+                  nextClaim!.lo.getTime(),
+                  at(40).getTime(),
+                  'the next slot is untouched',
+                );
+                assert.ok(claim!.hi.getTime() <= nextClaim!.lo.getTime(), 'no overlap');
+                // The database itself rejects new work inside the early part of the claim.
+                await assert.rejects(
+                  () => isolated(() => visit([actor.id], 5)),
+                  /ktv_occupancies_no_overlap|exclusion constraint/,
+                );
+                await executions.end(actor.token, target.lines[0]!.id);
+                // After END the early service freed everything it did not use.
+                assert.equal(await claimOf(target.lines[0]!.id), undefined);
+                assert.equal(
+                  (await executions.get(actor.token, next.lines[0]!.id)).actions.start,
+                  true,
+                );
+              },
+            );
+
+            await suite.test(
+              'early START of a collaborator is refused outside the scheduled shift',
+              async () => {
+                const outside = await ktv({ collaborator: true });
+                const covered = await ktv({ collaborator: true });
+                const outsideLine = (await visit([outside.id], 30)).lines[0]!;
+                const coveredLine = (await visit([covered.id], 30)).lines[0]!;
+                const shift = (employeeUserId: string, startMinute: number) =>
+                  tx.collaboratorWorkOccurrence.create({
+                    data: {
+                      employeeUserId,
+                      branchId: branch.id,
+                      workDate: new Date(today),
+                      mode: 'SHIFT',
+                      startMinute,
+                      endMinute: 20 * 60,
+                      createdByUserId: employeeUserId,
+                      updatedByUserId: employeeUserId,
+                    },
+                  });
+                // The fixture clock is 12:mm branch-local (mm = the current minute): this shift begins 20 minutes from now.
+                await shift(outside.id, 12 * 60 + now.getUTCMinutes() + 20);
+                await shift(covered.id, 10 * 60);
+                await fails(
+                  () => executions.start(outside.token, outsideLine.id),
+                  'SERVICE_EARLY_START_OUTSIDE_SHIFT',
+                );
+                assert.equal(
+                  (await executions.get(outside.token, outsideLine.id)).actions.startBlockedBy,
+                  'SERVICE_EARLY_START_OUTSIDE_SHIFT',
+                );
+                assert.equal(
+                  (await executions.start(covered.token, coveredLine.id)).status,
+                  'IN_PROGRESS',
+                );
+              },
+            );
+
+            await suite.test(
+              'late START is unchanged: no early label, planned claim kept, conflicts still refused',
+              async () => {
+                const actor = await ktv();
+                const late = await visit([actor.id], -30); // planned [-30, -20)
+                const started = await executions.start(actor.token, late.lines[0]!.id);
+                assert.equal(started.execution!.startedEarlyMinutes, 0);
+                assert.equal(
+                  (await claimOf(late.lines[0]!.id))!.lo.getTime(),
+                  late.lines[0]!.plannedStartAt!.getTime(),
+                );
+                const audit = await tx.auditEvent.findFirstOrThrow({
+                  where: { entityId: started.execution!.id, action: 'SERVICE_STARTED' },
+                });
+                assert.equal((audit.after as Record<string, unknown>)['startedEarlyMinutes'], 0);
+                await executions.end(actor.token, late.lines[0]!.id);
+                const blocked = await ktv();
+                const delayed = await visit([blocked.id], -30);
+                await visit([blocked.id], -5); // another reservation covering now
+                await fails(
+                  () => executions.start(blocked.token, delayed.lines[0]!.id),
+                  'SERVICE_START_UNAVAILABLE',
+                );
+              },
+            );
+
+            await suite.test(
+              'technician switch, then early START: only the new technician can start, within their own free time',
+              async () => {
+                const original = await ktv();
+                const replacement = await ktv();
+                const manager = await ktv({ manager: true, permission: false });
+                const {
+                  lines: [line],
+                } = await visit([original.id], 30);
+                await reassignments.reassign(manager.token, 'VISIT', line!.id, {
+                  scope: 'LINE',
+                  targets: [{ id: line!.id, expectedVersion: line!.rowVersion }],
+                  employeeUserId: replacement.id,
+                  context: 'MANAGER',
+                  reason: 'Switch technician before an early start',
+                  acknowledgeSpecific: true,
+                });
+                await fails(() => executions.start(original.token, line!.id), 'NOT_FOUND');
+                const started = await executions.start(replacement.token, line!.id);
+                assert.equal(started.status, 'IN_PROGRESS');
+                assert.ok(started.execution!.startedEarlyMinutes >= 29);
+                assert.equal(
+                  (
+                    await tx.serviceExecution.findUniqueOrThrow({
+                      where: { id: started.execution!.id },
+                    })
+                  ).employeeUserId,
+                  replacement.id,
+                );
+                const claim = await claimOf(line!.id);
+                assert.equal(claim!.lo.getTime(), Date.parse(started.execution!.startedAt));
+              },
+            );
+
             await suite.test(
               'WAITING cannot START and prevents premature visit completion',
               async () => {

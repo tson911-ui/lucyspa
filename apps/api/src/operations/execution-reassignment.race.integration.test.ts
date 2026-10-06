@@ -235,7 +235,7 @@ test(
           sessionIds.push(issued.session.id);
           return { id, token: issued.token };
         });
-      const lineFor = (employee: { id: string }) =>
+      const lineFor = (employee: { id: string }, startMinute = -1) =>
         database.$transaction(async (tx) => {
           const visit = await tx.visit.create({
             data: {
@@ -259,8 +259,8 @@ test(
               employeeUserId: employee.id,
               requestedEmployeeUserId: employee.id,
               assignmentMode: 'SPECIFIC',
-              plannedStartAt: at(-1),
-              plannedEndAt: at(9),
+              plannedStartAt: at(startMinute),
+              plannedEndAt: at(startMinute + 10),
               durationMinutes: 10,
               bufferMinutes: 0,
               serviceCode: `EXR_${run}`,
@@ -401,6 +401,87 @@ test(
             assert.equal(final.execution, null);
             assert.equal(await claims(line.id), 0);
           }
+        },
+      );
+      await suite.test(
+        'early START vs early START of two lines: one KTV runs one service',
+        async () => {
+          const actor = await staff();
+          const first = await lineFor(actor, 30);
+          const second = await lineFor(actor, 60);
+          const results = await race(
+            () => executions.start(actor.token, first.id),
+            () => executions.start(actor.token, second.id),
+          );
+          const codes = results.map(reason).sort();
+          assert.equal(codes[0], 'OK');
+          assert.ok(
+            [
+              'SERVICE_EXECUTION_CONFLICT',
+              'SERVICE_KTV_BUSY',
+              'SERVICE_EARLY_START_CONFLICT',
+            ].includes(codes[1]!),
+            codes.join(),
+          );
+          assert.equal(
+            await database.serviceExecution.count({
+              where: { employeeUserId: actor.id, status: 'IN_PROGRESS' },
+            }),
+            1,
+          );
+        },
+      );
+      await suite.test(
+        'early START vs a walk-in assigned into the early part: the database lets only one win',
+        async () => {
+          const actor = await staff();
+          const manager = await staff(true);
+          const booked = await lineFor(actor, 30); // [+30, +40): the early part is [now, +30)
+          const [started, created] = await race(
+            () => executions.start(actor.token, booked.id),
+            () =>
+              walkins.create(manager.token, ids.branch, {
+                idempotencyKey: randomUUID(),
+                participants: [{ key: 'guest', kind: 'GUEST', displayName: 'Early-part guest' }],
+                lines: [
+                  {
+                    participantKey: 'guest',
+                    serviceId: ids.service,
+                    requestedEmployeeUserId: actor.id,
+                  },
+                ],
+              }),
+          );
+          assert.ok(
+            ['OK', 'SERVICE_EXECUTION_CONFLICT', 'SERVICE_EARLY_START_CONFLICT'].includes(
+              reason(started),
+            ),
+            reason(started),
+          );
+          // Whatever the order, the KTV's claims never overlap (the exclusion constraint) and an early
+          // execution never coexists with another planned line inside its early part.
+          const [overlap] = await database.$queryRaw<{ n: bigint }[]>`
+            SELECT count(*) AS n FROM ktv_occupancies a JOIN ktv_occupancies b
+              ON a.employee_user_id = b.employee_user_id AND a.id < b.id AND a.period && b.period
+            WHERE a.employee_user_id = ${actor.id}::uuid`;
+          assert.equal(Number(overlap!.n), 0);
+          const execution = await database.serviceExecution.findUnique({
+            where: { visitServiceLineId: booked.id },
+          });
+          if (execution) {
+            assert.equal(reason(started), 'OK');
+            const [inside] = await database.$queryRaw<{ n: bigint }[]>`
+              SELECT count(*) AS n FROM visit_service_lines
+              WHERE employee_user_id = ${actor.id}::uuid AND id <> ${booked.id}::uuid
+                AND status IN ('PLANNED', 'IN_PROGRESS')
+                AND planned_start_at < ${booked.plannedStartAt}::timestamptz
+                AND planned_end_at > ${execution.startedAt}::timestamptz`;
+            assert.equal(Number(inside!.n), 0);
+          } else {
+            assert.notEqual(reason(started), 'OK');
+          }
+          // The walk-in command either succeeds or fails with a mapped, retryable error; never a raw database error.
+          reason(created);
         },
       );
       await suite.test(

@@ -122,6 +122,12 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 - Owner instruction: the wallets are "Điểm Lucy Spa" / "Điểm Lucy Beauty" (EN "Lucy Spa points" / "Lucy Beauty points") everywhere, from one place (`apps/web/src/i18n/loyalty.ts`).
 - Customer Beauty card has the same "Ưu đãi hội viên" row: "Áp dụng khi Lucy Beauty mở bán" until Phase 6, which must replace it with the real tier % (design 15.3). Report: `docs/PHASE5_WALLET_NAMES.md`. No migration.
 
+## Early START of a service (2026-10-07, built, NOT deployed)
+
+- Owner request and eight decisions (own words): `docs/EARLY_START_DESIGN.md`. A technician may START before the booked time when the customer is checked in, they are free, nothing overlaps (also the early part, at database level) and a collaborator's shift covers it. Only the assigned technician; no notification; label "Bắt đầu sớm X phút" on My services and the booking board.
+- Migration `20261105000000_early_service_start_occupancy` (replaces `lucy_sync_visit_line_occupancy`, adds an `AFTER INSERT` trigger on `service_executions`; no table or data change). Must be applied with the deploy (63 migrations). Permissions unchanged (54).
+- `SERVICE_NOT_READY` removed; new block codes `SERVICE_EARLY_START_CONFLICT` / `SERVICE_EARLY_START_OUTSIDE_SHIFT`; audit/outbox `SERVICE_STARTED` gain `plannedStartAt`, `startedEarlyMinutes`. Report: `docs/EARLY_START_REPORT.md`.
+
 ## Production
 
 Status as of 2026-10-07, about 01:47 (+07) (Owner-reported; supersedes the blocks below):

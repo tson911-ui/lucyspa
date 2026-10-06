@@ -183,6 +183,15 @@ export function freeNow(occupied: readonly Occupied[], running: boolean, now: Da
   );
 }
 
+/**
+ * Early START (Owner decision 2026-10-07): whole minutes between the actual start and the planned start,
+ * rounded down so a label never overstates it. 0 when started on time, late, or without a planned start.
+ */
+export function startedEarlyMinutes(plannedStartAt: Date | null, startedAt: Date): number {
+  if (!plannedStartAt) return 0;
+  return Math.max(0, Math.floor((plannedStartAt.getTime() - startedAt.getTime()) / MINUTE));
+}
+
 /** `+84905123456` → `•••••••456`: enough for staff to confirm with the customer. */
 export function maskPhone(phone: string | null): string | null {
   if (!phone) return null;
