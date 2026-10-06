@@ -124,7 +124,16 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 
 ## Production
 
-Status as of 2026-10-06, about 18:46 (+07) (Owner-reported; supersedes the blocks below):
+Status as of 2026-10-06, about 23:24 (+07) (Owner-reported; supersedes the blocks below):
+
+- **Production runs `15cd7e0`** (tab bar reaches the screen edge again with `viewport-fit=cover` restored, header glass 96 % opaque, app-coloured contact buttons with a green call button, aligned footer with the shop tagline), deployed by the Owner on 2026-10-06 at about 23:24 (+07). Previous: `cdde1cf`.
+- No new migrations (62, `pnpm db:status` up to date). Permissions unchanged (54).
+- After the deploy: health ok, `/vi`, `/vi/account/bookings` and `/vi/workforce/login` answer 200, pm2 3/3 online.
+- Backup taken just before this deploy: `/root/backups/lucyspa-pre-ui3-20261006T162055Z.dump`.
+- Open item: a possible 1-pixel strip under the tab bar at fractional device pixel ratios (seen only in the headless browser, ratio 2.625); waiting for the Owner's real-phone check. The other open items below (130 % text header, slider on touch) still stand.
+- Next in queue: planning (no code yet) for "the technician may start early when the customer is checked in", already requested.
+
+Status as of 2026-10-06, about 18:46 (+07) (Owner-reported; the `cdde1cf` deploy, superseded by `15cd7e0`):
 
 - **Production runs `cdde1cf`** (tab bar stays on screen when the page is wider than the viewport: `minimum-scale=1`, `overflow-x: clip`, `viewport-fit=cover` removed, bar 72 px; hover styles only for hover-capable fine pointers), deployed by the Owner on 2026-10-06 at about 18:46 (+07). Previous: `0be4abe`.
 - No new migrations (62, `pnpm db:status` up to date). Permissions unchanged (54).
@@ -578,12 +587,12 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - Shop info has two optional fields (Trang Facebook, Zalo); public site gets a floating contact button and footer icons (`docs/UXUI_CONTACT_BUTTONS.md`).
 - **Migration `20261104000000_shop_info_contact_links`** (two nullable columns, additive). Production: apply it with the deploy, then the Owner enters the links in Admin > Website > Shop info.
 
-### Contact button colours + footer alignment (2026-10-06, after `cdde1cf`, not deployed)
+### Contact button colours + footer alignment (2026-10-06, deployed in `15cd7e0`)
 
 - Owner choice: each expanded contact button in its app's colour with a white icon, light and dark alike: Zalo blue, Messenger gradient, call GREEN `#16853a` (`--ls-brand-call`, 4.7:1; the iOS green fails AA). The "Liên hệ" toggle keeps the brand fill (`docs/UXUI_CONTACT_BUTTONS.md`).
 - Footer: icons on the text edge, one 40-44 px row rhythm in all columns, the shop's own tagline under the logo (`docs/UXUI_FOOTER_ALIGNMENT.md`). No migration.
 
-### Strip below the tab bar + see-through header (2026-10-06, after `cdde1cf`, not deployed)
+### Strip below the tab bar + see-through header (2026-10-06, deployed in `15cd7e0`)
 
 - Header glass 78 % to 96 % (text behind it no longer readable). `viewport-fit=cover` restored (with `minimum-scale=1`, `overflow-x: clip`): most likely cause of the strip on Android, not proven. A 1-pixel last row only appears at fractional screen heights (ratio 2.625) and no CSS reached it.
 - `uxui-tabbar-check.mjs` checks every pixel row of the bar, logged-in, 408x908 and 440x956 (`docs/UXUI_REDESIGN_TABBAR_STRIP.md`). No migration.
