@@ -126,11 +126,16 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 
 Status as of 2026-10-06, about 09:03 (+07) (Owner-reported; supersedes the blocks below):
 
-- **Production runs `4bdeaca7496842aef43d2310b11da5a2233ed49c`** (customer navigation + bell panel, transparent header over the ORIGINAL home hero from `3faa95b`, flaky test fixes), deployed by the Owner on 2026-10-06 at about 09:03 (+07). Previous (as the Owner reported it): `be5617d` (superseded: the full-bleed hero was rejected by the Owner). This file had no record of a `be5617d` deploy; the last recorded production before this entry was `f79572d`.
+- **Production runs `4bdeaca7496842aef43d2310b11da5a2233ed49c`** (customer navigation + bell panel, transparent header over the ORIGINAL home hero from `3faa95b`, flaky test fixes), deployed by the Owner on 2026-10-06 at about 09:03 (+07). Previous: `be5617d` (see the next entry; its full-bleed hero was rejected by the Owner).
 - No new migration: `pnpm db:status` up to date (61 migrations).
 - After the deploy: health ok, `/vi`, `/vi/account/loyalty` and `/vi/workforce/login` answer 200, pm2 3/3 online.
 - Backup taken just before this deploy: `/root/backups/lucyspa-pre-header2-*.dump`.
 - Prisma printed "Update available 7.10.0 -> 8.0.0" on the server and it was ignored. Never upgrade Prisma without a planned step.
+
+Status as of 2026-10-05, about 23:29 (+07) (Owner-confirmed 2026-10-06; the `be5617d` deploy):
+
+- **Production ran `be5617d71872311de502a9f660e07a0e296b99a0`** (customer navigation + bell panel and the first, full-bleed home hero with a transparent header), deployed by the Owner on 2026-10-05 at about 23:29 (+07). Previous: `f79572d`. It ran until `4bdeaca` replaced it on 2026-10-06 at about 09:03 (+07). The Owner then rejected its full-bleed hero (the original hero came back in `3faa95b`).
+- Backup taken before this deploy: `/root/backups/lucyspa-pre-header-20261005T162721Z.dump`.
 
 Status as of 2026-10-05, about 22:08 (+07) (Owner-reported; supersedes the blocks below):
 
