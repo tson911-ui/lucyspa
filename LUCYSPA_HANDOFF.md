@@ -124,7 +124,16 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 
 ## Production
 
-Status as of 2026-10-06, about 16:18 (+07) (Owner-reported; supersedes the blocks below):
+Status as of 2026-10-06, about 18:46 (+07) (Owner-reported; supersedes the blocks below):
+
+- **Production runs `cdde1cf`** (tab bar stays on screen when the page is wider than the viewport: `minimum-scale=1`, `overflow-x: clip`, `viewport-fit=cover` removed, bar 72 px; hover styles only for hover-capable fine pointers), deployed by the Owner on 2026-10-06 at about 18:46 (+07). Previous: `0be4abe`.
+- No new migrations (62, `pnpm db:status` up to date). Permissions unchanged (54).
+- After the deploy: health ok, `/vi`, `/vi/account/bookings` and `/vi/workforce/login` answer 200, pm2 3/3 online.
+- Backup taken just before this deploy: `/root/backups/lucyspa-pre-tabbar2-20261006T113920Z.dump`.
+- Server: the Owner is renewing the iNET Cloud Server `cs-linux-20260916080518738` ("Duy trì") before 2026-10-16.
+- Open items: at 130 % text on a 360 px screen the header tools are 23 px too wide (now clipped); the home slider pauses on touch (`mouseenter` fires on a tap). The booking page's own sticky action bar note below still stands.
+
+Status as of 2026-10-06, about 16:18 (+07) (Owner-reported; the `0be4abe` deploy, superseded by `cdde1cf`):
 
 - **Production runs `0be4abe`** (phone tab bar fixed flush to the bottom, safe area inside it, `viewport-fit=cover`, page reserves its height), deployed by the Owner on 2026-10-06 at about 16:18 (+07). Previous: `d0fc191`.
 - No new migrations (62, `pnpm db:status` up to date). Permissions unchanged (54).
@@ -569,7 +578,7 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - Shop info has two optional fields (Trang Facebook, Zalo); public site gets a floating contact button and footer icons (`docs/UXUI_CONTACT_BUTTONS.md`).
 - **Migration `20261104000000_shop_info_contact_links`** (two nullable columns, additive). Production: apply it with the deploy, then the Owner enters the links in Admin > Website > Shop info.
 
-### Tab bar cut off + hover stuck on touch (2026-10-06, not deployed)
+### Tab bar cut off + hover stuck on touch (2026-10-06, deployed in `cdde1cf`)
 
 - `0be4abe` bar fell below the screen on a phone/DevTools 440x956: a page wider than the screen makes the browser zoom out and the fixed bar leaves the visible screen. Now `minimum-scale=1`, `.ls-site { overflow-x: clip }`, no `viewport-fit=cover`, bar 72 px, top line a shadow.
 - Every `:hover` of the kit sits in `@media (hover: hover) and (pointer: fine)` (tests forbid a bare one). New `scripts/uxui-touch-check.mjs`; `uxui-tabbar-check.mjs` extended (`docs/UXUI_REDESIGN_TABBAR_ANDROID.md`). No migration.
