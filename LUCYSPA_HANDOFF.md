@@ -21,7 +21,7 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                                          |
 | Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                                       |
 | **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                                       |
-| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `4bdeaca`)                                                                  |
+| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `9b76789`)                                                                  |
 | **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `f79572d`); go-live turned ON by the Owner about 17:20 (+07)** |
 | Phase 6+ (products, payroll, finance)     | NOT started                                                                                        |
 
@@ -124,9 +124,17 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 
 ## Production
 
-Status as of 2026-10-06, about 09:03 (+07) (Owner-reported; supersedes the blocks below):
+Status as of 2026-10-06, about 12:00 (+07) (Owner-reported; supersedes the blocks below):
 
-- **Production runs `4bdeaca7496842aef43d2310b11da5a2233ed49c`** (customer navigation + bell panel, transparent header over the ORIGINAL home hero from `3faa95b`, flaky test fixes), deployed by the Owner on 2026-10-06 at about 09:03 (+07). Previous: `be5617d` (see the next entry; its full-bleed hero was rejected by the Owner).
+- **Production runs `9b76789f3d6679ddc30a6de38c9a604d13dab8b7`** (the header/motion package `4d28ab9` plus the floating contact button, the footer Facebook and Zalo icons and the Shop info Facebook / Zalo fields), deployed by the Owner on 2026-10-06 at about 12:00 (+07). Previous: `4bdeaca`.
+- Migration applied: `20261104000000_shop_info_contact_links` (62 migrations, `pnpm db:status` up to date). Permissions unchanged (54).
+- After the deploy: health ok, `/vi`, `/vi/services` and `/vi/workforce/login` answer 200, pm2 3/3 online.
+- Backup taken just before this deploy: `/root/backups/lucyspa-pre-contact-20261006T045934Z.dump`.
+- The Owner will enter the Facebook and Zalo links himself in Admin > Website > Thông tin tiệm (nothing was filled on production).
+
+Status as of 2026-10-06, about 09:03 (+07) (Owner-reported; the `4bdeaca` deploy):
+
+- **Production ran `4bdeaca7496842aef43d2310b11da5a2233ed49c`** (until `9b76789` replaced it on 2026-10-06 at about 12:00 (+07)) (customer navigation + bell panel, transparent header over the ORIGINAL home hero from `3faa95b`, flaky test fixes), deployed by the Owner on 2026-10-06 at about 09:03 (+07). Previous: `be5617d` (see the next entry; its full-bleed hero was rejected by the Owner).
 - No new migration: `pnpm db:status` up to date (61 migrations).
 - After the deploy: health ok, `/vi`, `/vi/account/loyalty` and `/vi/workforce/login` answer 200, pm2 3/3 online.
 - Backup taken just before this deploy: `/root/backups/lucyspa-pre-header2-*.dump`.
