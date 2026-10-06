@@ -476,8 +476,8 @@ test('home facts strip: the Owner order, custom lines, hidden items; the whole s
     html,
     /<a href="https:\/\/maps\.example\.com\/lucy" target="_blank" rel="noopener noreferrer">/,
   );
-  // One scrollable row (never wrapping), not a column grid.
-  assert.match(html, /<div class="ls-site-facts" tabindex="0">/);
+  // A stacked list on a phone and one row from a tablet up (site.css), not a column grid.
+  assert.match(html, /<div class="ls-site-facts">/);
   assert.doesNotMatch(html, /--ls-facts-cols/);
   // The whole strip off: no band at all.
   assert.doesNotMatch(home({ ...full, site: { ...site, facts: [] } }), /ls-site-facts/);

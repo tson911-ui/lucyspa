@@ -25,12 +25,18 @@ export function Reveal({
   useEffect(() => {
     const element = ref.current;
     if (!element || !motionAllowed(readMotionEnvironment())) return;
-    if (startsVisible(element.getBoundingClientRect(), window.innerHeight)) return;
+    if (startsVisible(element.getBoundingClientRect(), window.innerHeight, window.scrollY)) return;
     element.dataset.reveal = 'hidden';
+    let first = true;
     const observer = new IntersectionObserver(
       (entries) => {
+        const initial = first;
+        first = false;
         if (!entries.some((entry) => entry.isIntersecting)) return;
-        element.dataset.reveal = 'shown';
+        // Already on screen when the observer first looked (the page was scrolled or resized in between): show it
+        // without the fade, so nothing visible is ever hidden and then faded in.
+        if (initial) delete element.dataset.reveal;
+        else element.dataset.reveal = 'shown';
         observer.disconnect();
       },
       { rootMargin: '0px 0px -10% 0px' },

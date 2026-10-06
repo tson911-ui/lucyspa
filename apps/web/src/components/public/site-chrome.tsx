@@ -4,6 +4,7 @@ import { BrandIcon, BrandWordmark, SiteFooter, type FooterColumn } from '@lucy-s
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import { fill } from '../../lib/fill';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 import { hoursHeadline, telHref } from '../../lib/public-site-core';
 import { footerDiscoverItems } from '../../lib/site-nav';
 import type { SiteDecorSpec } from '../../lib/season-core';
@@ -28,7 +29,12 @@ export function PublicHeader({
   return (
     <PublicSiteHeader
       brand={
-        <Link href={`/${locale}`} aria-label={text.header.brand}>
+        <Link
+          href={`/${locale}`}
+          aria-label={text.header.brand}
+          prefetch
+          transitionTypes={NAV_TRANSITION}
+        >
           <SiteLogo decor={decor}>
             <BrandWordmark serif />
           </SiteLogo>
@@ -111,11 +117,11 @@ export function PublicFooter({
       title: text.footer.links,
       items: [
         ...footerDiscoverItems(locale, text.nav).map((item) => (
-          <Link key={item.key} href={item.href}>
+          <Link key={item.key} href={item.href} prefetch transitionTypes={NAV_TRANSITION}>
             {item.label}
           </Link>
         )),
-        <Link key="in" href={`/${locale}/account/login`}>
+        <Link key="in" href={`/${locale}/account/login`} prefetch transitionTypes={NAV_TRANSITION}>
           {text.footer.signInUp}
         </Link>,
       ],
@@ -124,7 +130,13 @@ export function PublicFooter({
   return (
     <SiteFooter
       brand={
-        <Link href={`/${locale}`} aria-label={text.header.brand} className="ls-site-footer-logo">
+        <Link
+          href={`/${locale}`}
+          aria-label={text.header.brand}
+          className="ls-site-footer-logo"
+          prefetch
+          transitionTypes={NAV_TRANSITION}
+        >
           <BrandWordmark serif />
         </Link>
       }

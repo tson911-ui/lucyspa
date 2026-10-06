@@ -34,11 +34,18 @@ export function staggerIndex(position: number): number {
   return Math.min(Math.max(Math.trunc(position), 0), MAX_STAGGER_INDEX);
 }
 
-/** An element already inside the viewport at mount never starts hidden: above the fold is visible from the first paint. */
+/**
+ * An element already inside the viewport at mount never starts hidden: above the fold is visible from the first paint.
+ * `scrollY` makes it hold on a navigation too: a new page mounts while the old page's scroll position is still set
+ * (the router scrolls to the top afterwards), so a block that will be above the fold once the page is at the top is
+ * also visible from the start, never hidden and then faded in.
+ */
 export function startsVisible(
   rect: { top: number; bottom: number },
   viewportHeight: number,
+  scrollY = 0,
 ): boolean {
+  if (rect.top + scrollY < viewportHeight) return true;
   return rect.bottom <= 0 ? false : rect.top < viewportHeight;
 }
 

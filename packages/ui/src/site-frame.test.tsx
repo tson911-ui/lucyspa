@@ -114,7 +114,16 @@ test('the menu pill slides to the new current entry on a route change and jumps 
     css,
     /\[data-pill='slide'\] > \.ls-nav-pill \{\s*transition:\s*translate var\(--ls-dur-glide\) var\(--ls-ease-premium\)/,
   );
-  assert.match(css, /\.ls-route-fade\[data-enter='route'\] \{[^}]*animation: ls-route-in/);
+  // A route change never fades the page in from nothing: the page paints at once, and the change is a view-transition
+  // cross-fade (the tab bar and the contact button are named so they stay above it, the header needs no name).
+  assert.doesNotMatch(css, /ls-route-in|\.ls-route-fade\[data-enter/);
+  assert.match(css, /\.ls-site \.ls-route-fade \{[^}]*animation: none;/);
+  assert.match(css, /\.ls-site \.ls-tab-bar \{\s*view-transition-name: ls-tab-bar;/);
+  assert.match(
+    css,
+    /::view-transition-group\(ls-page\) \{\s*animation-name: none;\s*animation-duration: var\(--ls-dur-base\);/,
+  );
+  assert.match(css, /::view-transition \{\s*pointer-events: none;/);
 });
 
 test('an open dialog hides the phone tab bar (the seasonal frame would otherwise stack it over the dialog buttons)', () => {
@@ -451,6 +460,9 @@ test('reveal gate: reduced motion, data saver, low memory and a missing observer
   assert.equal(staggerIndex(-3), 0);
   assert.equal(startsVisible({ top: 100, bottom: 400 }, 800), true);
   assert.equal(startsVisible({ top: 900, bottom: 1200 }, 800), false);
+  // A navigation from a scrolled page: the block is at 300 + 1500 px of the old scroll now, and 300 px once at the top.
+  assert.equal(startsVisible({ top: -1200, bottom: -900 }, 800, 1500), true);
+  assert.equal(startsVisible({ top: 1700, bottom: 2000 }, 800, 1500), false);
 });
 
 test('TabBar marks the call-to-action tab; ThemeCycle cycles Light, Dark, Auto like the staff toggle', () => {
@@ -631,6 +643,14 @@ test('Reveal is visible in the server markup and starts hidden only below the fo
   assert.equal(element.getAttribute('data-reveal'), 'hidden');
   const observer = observers[observers.length - 1];
   assert.ok(observer);
+  // Not on screen at the observer's first look: it stays hidden, and fades in when it later enters the screen.
+  act(() =>
+    observer.callback(
+      [{ isIntersecting: false } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    ),
+  );
+  assert.equal(element.getAttribute('data-reveal'), 'hidden');
   act(() =>
     observer.callback(
       [{ isIntersecting: true } as IntersectionObserverEntry],
@@ -640,6 +660,21 @@ test('Reveal is visible in the server markup and starts hidden only below the fo
   assert.equal(element.getAttribute('data-reveal'), 'shown');
   assert.equal(observer.disconnected, true);
   act(() => below.root.unmount());
+
+  // Already on screen at the observer's first look (the page was scrolled in between): shown without the fade.
+  const late = mountAt(1500);
+  const lateElement = late.container.querySelector('.ls-reveal') as HTMLElement;
+  assert.equal(lateElement.getAttribute('data-reveal'), 'hidden');
+  const lateObserver = observers[observers.length - 1];
+  assert.ok(lateObserver);
+  act(() =>
+    lateObserver.callback(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    ),
+  );
+  assert.equal(lateElement.getAttribute('data-reveal'), null);
+  act(() => late.root.unmount());
   proto.getBoundingClientRect = original;
 });
 
@@ -924,15 +959,19 @@ test('every public control shares one hover and press style: smooth colours, a s
   assert.match(reduced, /--ls-ctl-lift: 0px;\s*--ls-ctl-zoom: 1;/);
 });
 
-test('the facts strip is one row that never wraps; phones scroll it, tablets and up shrink the items', () => {
+test('the facts strip stacks on a phone, shares one row from a tablet up and never scrolls sideways', () => {
+  assert.match(css, /\.ls-site-facts \{\s*display: flex;\s*flex-direction: column;/);
+  assert.doesNotMatch(css, /\.ls-site-facts \{[^}]*overflow-x: auto/);
   assert.match(
     css,
-    /\.ls-site-facts \{\s*display: flex;\s*align-items: center;\s*justify-content: space-between;[^}]*overflow-x: auto;/,
+    /@media \(min-width: 768px\) \{\s*\.ls-site-facts \{\s*flex-direction: row;\s*flex-wrap: wrap;/,
   );
-  assert.doesNotMatch(css, /\.ls-site-facts \{[^}]*flex-wrap: wrap/);
   assert.doesNotMatch(css, /--ls-facts-cols|\.ls-section-head-center/);
-  assert.match(css, /\.ls-site-fact \{\s*display: flex;\s*flex: none;[^}]*white-space: nowrap;/);
-  assert.match(css, /@media \(min-width: 768px\) \{[^{]*\.ls-site-fact \{\s*flex: 0 1 auto;/);
+  assert.doesNotMatch(css, /\.ls-site-fact \{[^}]*flex: none;/);
+  assert.match(
+    css,
+    /@media \(min-width: 768px\) \{[^{]*\.ls-site-fact \{\s*flex: 0 1 auto;[^}]*white-space: nowrap;/,
+  );
 });
 
 test('the facts strip never shrinks the hours or the hotline, and keeps a minimum width for the rest', () => {

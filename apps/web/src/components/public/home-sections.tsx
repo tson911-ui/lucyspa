@@ -87,11 +87,8 @@ export function FactsStrip({ locale, site }: { locale: Locale; site: PublicSiteR
   });
   if (items.length === 0) return null;
   return (
-    // One row, never wrapping: the items are spread evenly across the width, and a row that is wider than the screen
-    // (a phone, or many custom lines) scrolls sideways inside itself. Focusable so a keyboard can scroll it.
-    <div className="ls-site-facts" tabIndex={0}>
-      {items}
-    </div>
+    // A phone stacks the items (a long address wraps in its line); a tablet and up shares one row (site.css).
+    <div className="ls-site-facts">{items}</div>
   );
 }
 

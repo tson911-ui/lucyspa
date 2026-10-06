@@ -16,6 +16,7 @@ import type { Locale } from '../../i18n/locales';
 import { headerNavItems, otherLocalePath, tabBarItems } from '../../lib/site-nav';
 import { PublicAccountMenu } from './account-menu';
 import { NotificationBell } from './notification-bell';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 import { useSiteSession } from './site-session';
 
 // The parts of the site chrome that depend on the current page (current menu entry, the other language's URL).
@@ -25,7 +26,7 @@ import { useSiteSession } from './site-session';
  * on screen, so a click shows the page at once. Production only; the pages are public and cached, so this is cheap.
  */
 const PrefetchLink: SiteLinkComponent = ({ children, ...rest }) => (
-  <Link prefetch {...rest}>
+  <Link prefetch transitionTypes={NAV_TRANSITION} {...rest}>
     {children}
   </Link>
 );
@@ -96,6 +97,7 @@ export function PublicHeaderCta({ locale }: { locale: Locale }) {
   return (
     <Link
       prefetch
+      transitionTypes={NAV_TRANSITION}
       className={buttonClass('primary', 'md', 'ls-btn-sheen')}
       href={`/${locale}/account/book`}
     >

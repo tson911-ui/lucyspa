@@ -1,7 +1,7 @@
 'use client';
 
 import type { CurrentAccountResponse } from '@lucy-spa/contracts';
-import { Button, PublicMain } from '@lucy-spa/ui';
+import { Button, PublicMain, Skeleton } from '@lucy-spa/ui';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   createContext,
@@ -18,6 +18,7 @@ import type { Locale } from '../../i18n/locales';
 import { ApiClient } from '../../lib/api/client';
 import { customerLogout, loadCustomerSession } from '../../lib/customer/auth';
 import { announceSessionChange } from '../../lib/site-session';
+import { useSiteSession } from '../public/site-session';
 
 export interface CustomerContextValue {
   locale: Locale;
@@ -98,7 +99,12 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
   const { api, base, t } = useCustomer();
   const router = useRouter();
   const pathname = usePathname();
-  const [state, setState] = useState<GuardState>({ kind: 'loading' });
+  // The site frame already knows the member after the first page: coming from a public page the area opens at once
+  // (the read below only confirms it); only a first load straight into the area waits, and it shows the page's shape.
+  const site = useSiteSession();
+  const [state, setState] = useState<GuardState>(() =>
+    site.account ? { kind: 'customer', account: site.account } : { kind: 'loading' },
+  );
 
   useEffect(() => {
     let active = true;
@@ -132,9 +138,15 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
   if (state.kind === 'loading') {
     return (
       <PublicMain className="ls-main-tall">
-        <p className="ls-site-state" role="status">
-          {t.auth.checking}
-        </p>
+        <div className="ls-container" aria-busy="true">
+          <div className="ls-member-page">
+            <span className="ls-visually-hidden" role="status">
+              {t.auth.checking}
+            </span>
+            <Skeleton lines={1} height="var(--ls-space-9)" width="60%" />
+            <Skeleton lines={3} height="var(--ls-space-5)" />
+          </div>
+        </div>
       </PublicMain>
     );
   }

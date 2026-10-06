@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getSiteText, type SiteText } from '../../i18n/site';
 import type { Locale } from '../../i18n/locales';
 import { customerLogout } from '../../lib/customer/auth';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 import { announceSessionChange } from '../../lib/site-session';
 import { useSiteSession } from './site-session';
 
@@ -64,7 +65,7 @@ export function PublicAccountMenu({ locale }: { locale: Locale }) {
     signedIn,
     base,
     text: site.member,
-    go: (path) => router.push(path),
+    go: (path) => router.push(path, { transitionTypes: NAV_TRANSITION }),
     signOut: () => {
       void customerLogout(api)
         .catch(() => undefined)

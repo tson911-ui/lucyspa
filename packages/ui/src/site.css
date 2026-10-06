@@ -363,10 +363,43 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   text-decoration: none;
 }
 
-.ls-tab-bar a[aria-current='page'],
-.ls-tab-bar a[data-emphasis='true'] {
+/* Only the current page's tab uses the active style (brand colour and weight). */
+.ls-tab-bar a[aria-current='page'] {
   color: var(--ls-brand);
   font-weight: 600;
+}
+
+/* The booking tab is the one primary action, not a tab: a raised round brand button in the middle of the bar with the
+   icon on it and the label below. On the booking page itself it also shows the active state (a ring and the brand
+   label). The whole tab stays a full-height target (the bar's 64 px); the button is 48 px. */
+.ls-tab-bar a[data-emphasis='true'] {
+  color: var(--ls-text);
+  font-weight: 600;
+}
+
+.ls-tab-bar a[data-emphasis='true'] svg {
+  box-sizing: content-box;
+  width: var(--ls-space-6);
+  height: var(--ls-space-6);
+  margin-top: calc(var(--ls-space-4) * -1);
+  padding: var(--ls-space-3);
+  border-radius: 50%;
+  background: var(--ls-brand);
+  color: var(--ls-on-brand);
+  box-shadow: var(--ls-shadow-sm);
+  transition:
+    transform var(--ls-dur-base) var(--ls-ease-premium),
+    box-shadow var(--ls-dur-base) var(--ls-ease-out);
+}
+
+.ls-tab-bar a[data-emphasis='true'][aria-current='page'] {
+  color: var(--ls-brand);
+}
+
+.ls-tab-bar a[data-emphasis='true'][aria-current='page'] svg {
+  box-shadow:
+    0 0 0 var(--ls-space-1) var(--ls-bg-surface),
+    0 0 0 calc(var(--ls-space-1) + 2px) var(--ls-brand);
 }
 
 @media (min-width: 1024px) {
@@ -992,12 +1025,20 @@ html[data-ls-motion='reduced'] .ls-site-lead {
 
 .ls-site-facts {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ls-space-4);
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--ls-space-2);
   padding-block: var(--ls-space-4);
-  overflow-x: auto;
-  scrollbar-width: none;
+}
+
+@media (min-width: 768px) {
+  .ls-site-facts {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ls-space-4);
+  }
 }
 
 @media (min-width: 1024px) {
@@ -1006,31 +1047,27 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   }
 }
 
-.ls-site-facts::-webkit-scrollbar {
-  display: none;
-}
-
 .ls-site-fact {
   display: flex;
-  flex: none;
   align-items: center;
   gap: var(--ls-space-3);
-  white-space: nowrap;
   min-height: var(--ls-control-h);
   margin: 0;
+  min-width: 0;
   color: var(--ls-text-muted);
   font-size: var(--ls-text-sm);
   line-height: var(--ls-leading-sm);
 }
 
-/* From a tablet up the row always fits: when the items are wider than the width, the address and the custom lines shrink
-   and end in an ellipsis (their full text is the tooltip), still one row; the opening hours and the hotline never shrink.
-   A phone keeps every item whole and scrolls the row sideways. */
+/* A phone stacks the items, one under the other, and a long address wraps inside its own line: nothing is cut off and
+   the page never scrolls sideways. From a tablet up the items share one row; when they are wider than the width, the
+   address and the custom lines shrink and end in an ellipsis (their full text is the tooltip) and the opening hours and
+   the hotline never shrink; if even the shrunk items do not fit (many lines), the row wraps onto a second line. */
 @media (min-width: 768px) {
-  /* A shrinking item keeps a readable minimum; if even that does not fit (many lines), the row scrolls as on a phone. */
   .ls-site-fact {
     flex: 0 1 auto;
     min-width: calc(var(--ls-space-9) * 2.5);
+    white-space: nowrap;
   }
 
   .ls-site-fact[data-fact='hours'],
@@ -1757,6 +1794,15 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   gap: var(--ls-space-4);
 }
 
+/* A "book" button in a page header: the phone tab bar (below 1024 px) already has "Đặt lịch ngay", so the button shows
+   only where the tab bar does not, on the title's row. Its empty actions slot goes with it (no stray row). */
+@media (max-width: 1023.98px) {
+  .ls-site .ls-hide-on-tabbar,
+  .ls-site .ls-page-actions:has(> .ls-hide-on-tabbar:only-child) {
+    display: none;
+  }
+}
+
 .ls-member-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1951,21 +1997,57 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   flex: 1;
   flex-direction: column;
   min-width: 0;
-  /* The first load paints at once (nothing waits for motion); only later route changes ease in (below). */
+  /* Paints at once, always: a page never starts from opacity 0. A route change is a cross-fade of the old and the new
+     page (view transitions below, or a fade from 60 % in a browser without them: PageTransition). */
   animation: none;
 }
 
-/* A route change: the new page eases in with a small rise, a little slower than the staff area's plain fade.
-   RouteEnter marks the wrapper only for a navigation (not the first load) on a device that allows motion. */
-.ls-site .ls-route-fade[data-enter='route'] {
-  animation: ls-route-in var(--ls-dur-slide) var(--ls-ease-premium) backwards;
+/* ---------- page change (view transitions) ---------- */
+/* PageTransition names the page `ls-page`. The tab bar and the contact button are named too, so they stay above the
+   page's snapshot (a tall page would otherwise paint over them for the length of the fade) and never move. The header
+   sits above the page in the flow and needs no name. The old picture of everything else (the page background, the
+   footer) is dropped: the new one is shown at once and only the page cross-fades. Durations are motion tokens, 0 under
+   reduced motion. */
+.ls-site .ls-tab-bar {
+  view-transition-name: ls-tab-bar;
 }
 
-@keyframes ls-route-in {
-  from {
-    opacity: 0;
-    translate: 0 calc(var(--ls-reveal-shift) / 2);
-  }
+.ls-site .ls-contact {
+  view-transition-name: ls-contact;
+}
+
+::view-transition {
+  pointer-events: none;
+}
+
+::view-transition-group(root),
+::view-transition-group(ls-tab-bar),
+::view-transition-group(ls-contact) {
+  animation: none;
+}
+
+::view-transition-old(root),
+::view-transition-old(ls-tab-bar),
+::view-transition-old(ls-contact) {
+  display: none;
+}
+
+::view-transition-new(root),
+::view-transition-new(ls-tab-bar),
+::view-transition-new(ls-contact) {
+  animation: none;
+}
+
+::view-transition-group(ls-tab-bar),
+::view-transition-group(ls-contact) {
+  z-index: var(--ls-z-chrome);
+}
+
+/* The page keeps its place (no morph between two heights) and cross-fades over the token duration. */
+::view-transition-group(ls-page) {
+  animation-name: none;
+  animation-duration: var(--ls-dur-base);
+  animation-timing-function: var(--ls-ease-out);
 }
 
 /* ---------- menu pill (M8) ---------- */
@@ -2221,9 +2303,15 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 .ls-site .ls-pills a:active,
 .ls-site .ls-site-nav a:active,
 .ls-site .ls-subnav a:active,
-.ls-site .ls-tab-bar a:active,
+.ls-site .ls-tab-bar a:not([data-emphasis='true']):active,
 .ls-site .ls-social-btn:active,
 .ls-site .ls-store-badge:active {
+  transform: scale(var(--ls-press-scale));
+  transition-duration: var(--ls-dur-fast);
+}
+
+/* The raised booking button dips (the icon disc, not the whole tab, so its label and target stay put). */
+.ls-site .ls-tab-bar a[data-emphasis='true']:active svg {
   transform: scale(var(--ls-press-scale));
   transition-duration: var(--ls-dur-fast);
 }
@@ -2352,6 +2440,26 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 @media (max-width: 1023px) {
   .ls-contact {
     --ls-fab-base: calc(var(--ls-tab-bar-h) + var(--ls-safe-bottom));
+  }
+}
+
+/* A phone: the button steps aside while the visitor reads down the page (ContactFab sets data-away), so it never sits on
+   top of what is being read. Hidden, it is not focusable or clickable either. */
+@media (max-width: 1023.98px) {
+  .ls-contact-stack {
+    transition:
+      opacity var(--ls-dur-base) var(--ls-ease-out),
+      translate var(--ls-dur-base) var(--ls-ease-premium);
+  }
+
+  .ls-contact[data-away='true'] .ls-contact-stack {
+    visibility: hidden;
+    opacity: 0;
+    translate: 0 var(--ls-space-4);
+    transition:
+      opacity var(--ls-dur-base) var(--ls-ease-out),
+      translate var(--ls-dur-base) var(--ls-ease-premium),
+      visibility var(--ls-dur-base) step-end;
   }
 }
 

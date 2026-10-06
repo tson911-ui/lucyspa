@@ -551,3 +551,9 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 
 - Shop info has two optional fields (Trang Facebook, Zalo); public site gets a floating contact button and footer icons (`docs/UXUI_CONTACT_BUTTONS.md`).
 - **Migration `20261104000000_shop_info_contact_links`** (two nullable columns, additive). Production: apply it with the deploy, then the Owner enters the links in Admin > Website > Shop info.
+
+### Navigation flash fix + tab bar (2026-10-06, not deployed)
+
+- Cause: public and account each mounted their own site frame (header, tab bar, footer, session remounted), plus a fade from opacity 0 and a text-only session check. Now one `(site)` layout, view-transition cross-fade, skeleton guard (`docs/UXUI_REDESIGN_NAV_FLASH.md`).
+- Also: info strip stacks on phones, "Đặt lịch mới" hidden below 1024 px, tab bar only the current tab active with a raised "Đặt lịch ngay", contact button steps aside while reading. No migration.
+- Open for the Owner: the contact button can still sit over a line when shown (top, scrolling up); alternatives in the report.

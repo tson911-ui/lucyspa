@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type MouseEvent } from 'react';
 import { hasAppHistory, parentPath, trackRoute } from '../../lib/navigation/back';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 
 /** Mounted once in the locale layout: counts in-app navigations so "Back" knows whether the app has a previous page. */
 export function RouteHistoryTracker() {
@@ -47,7 +48,12 @@ export function PageBack({
 
   return (
     <div className="ls-back-row">
-      <Link href={parent} className={buttonClass('ghost', 'md', 'ls-back')} onClick={onClick}>
+      <Link
+        href={parent}
+        className={buttonClass('ghost', 'md', 'ls-back')}
+        onClick={onClick}
+        transitionTypes={NAV_TRANSITION}
+      >
         <Icon name="arrow-left" />
         <span className="ls-btn-label">{label}</span>
       </Link>

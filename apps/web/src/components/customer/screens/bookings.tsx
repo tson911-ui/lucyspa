@@ -217,7 +217,7 @@ export function CustomerHomeScreen() {
         title={t.home.title}
         description={t.home.intro}
         actions={
-          <Link href={`${base}/book`} className={buttonClass('primary')}>
+          <Link href={`${base}/book`} className={buttonClass('primary', 'md', 'ls-hide-on-tabbar')}>
             {t.home.bookCta}
           </Link>
         }
@@ -272,7 +272,7 @@ export function CustomerBookingsScreen() {
       <PageHeader
         title={t.bookings.title}
         actions={
-          <Link href={`${base}/book`} className={buttonClass('primary')}>
+          <Link href={`${base}/book`} className={buttonClass('primary', 'md', 'ls-hide-on-tabbar')}>
             {t.home.bookCta}
           </Link>
         }

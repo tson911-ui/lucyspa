@@ -14,6 +14,12 @@ export interface ContactFabItem {
 
 const PULSED_KEY = 'lucy-contact-pulsed';
 
+/** On a phone the button steps aside while the visitor reads down the page (see the effect below). */
+const PHONE_QUERY = '(max-width: 1023.98px)';
+const TOP_ZONE_PX = 120;
+const MOVE_PX = 6;
+const IDLE_MS = 1600;
+
 /**
  * The floating contact button of the public site (Owner request 2026-10-06): one round button that opens Zalo,
  * Messenger and phone. It sits in the page flow just before the footer as a sticky row with its own slot (the button's
@@ -37,6 +43,7 @@ export function ContactFab({
 }) {
   const [open, setOpen] = useState(false);
   const [pulse, setPulse] = useState(false);
+  const [away, setAway] = useState(false);
   const root = useRef<HTMLDivElement | null>(null);
   const toggle = useRef<HTMLButtonElement | null>(null);
   const listId = useId();
@@ -70,6 +77,45 @@ export function ContactFab({
       // Storage may be blocked: the pulse then plays on every full page load, which is still once per load.
     }
     setPulse(true);
+  }, []);
+
+  // Never over what is being read (Owner request 2026-10-06): on a phone a floating button always covers some row while
+  // the page scrolls, so it steps aside while the visitor reads down the page and is there when it is wanted: at the
+  // top of the page, for a moment after scrolling up (looking for it), while its menu is open and while a keyboard or
+  // screen reader user is on it. After a short idle it steps aside again. Desktop keeps it in place.
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return undefined;
+    const phone = window.matchMedia(PHONE_QUERY);
+    let last = window.scrollY;
+    let timer = 0;
+    const apply = (hidden: boolean) => setAway(phone.matches && hidden);
+    const onScroll = () => {
+      const now = window.scrollY;
+      const delta = now - last;
+      if (now < TOP_ZONE_PX) {
+        window.clearTimeout(timer);
+        apply(false);
+        last = now;
+        return;
+      }
+      if (Math.abs(delta) < MOVE_PX) return;
+      last = now;
+      window.clearTimeout(timer);
+      if (delta > 0) {
+        apply(true);
+      } else {
+        apply(false);
+        timer = window.setTimeout(() => apply(true), IDLE_MS);
+      }
+    };
+    const onChange = () => setAway(false);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    phone.addEventListener('change', onChange);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('scroll', onScroll);
+      phone.removeEventListener('change', onChange);
+    };
   }, []);
 
   // Stay above a sticky action bar (the booking flow's summary and buttons): its height is not known to the stylesheet.
@@ -112,7 +158,13 @@ export function ContactFab({
 
   if (items.length === 0) return null;
   return (
-    <div ref={root} className="ls-contact" data-open={open ? 'true' : 'false'}>
+    <div
+      ref={root}
+      className="ls-contact"
+      data-open={open ? 'true' : 'false'}
+      data-away={away && !open ? 'true' : undefined}
+      onFocus={() => setAway(false)}
+    >
       <div className="ls-contact-stack">
         <div id={listId} className="ls-contact-items" role="group" aria-label={groupLabel}>
           {items.map((item, position) => (
