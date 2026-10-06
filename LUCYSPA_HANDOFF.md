@@ -124,7 +124,16 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 
 ## Production
 
-Status as of 2026-10-06, about 23:24 (+07) (Owner-reported; supersedes the blocks below):
+Status as of 2026-10-07, about 01:47 (+07) (Owner-reported; supersedes the blocks below):
+
+- **Production runs `607ca6a`** (phone app shell below 1024 px: the document does not scroll, `.ls-site-scroll` is the only scroll container, the tab bar is in the normal flow), deployed by the Owner on 2026-10-07 at about 01:47 (+07). Previous: `15cd7e0`.
+- No new migrations (62, `pnpm db:status` up to date). Permissions unchanged (54).
+- After the deploy: health ok, `/vi`, `/vi/account/bookings` and `/vi/workforce/login` answer 200, pm2 3/3 online.
+- Backup taken just before this deploy: `/root/backups/lucyspa-pre-appshell-*.dump` (exact file name not reported to me; ask the Owner if it is needed).
+- **Rollback target** if the app shell misbehaves on real phones: `15cd7e0` (no DB change).
+- Waiting for the Owner's real-phone test: the strip under the tab bar, tab switching, the keyboard on the booking form, pull-to-refresh. Also unchecked on a phone: iOS status-bar tap, the address bar behaviour.
+
+Status as of 2026-10-06, about 23:24 (+07) (Owner-reported; the `15cd7e0` deploy, superseded by `607ca6a`):
 
 - **Production runs `15cd7e0`** (tab bar reaches the screen edge again with `viewport-fit=cover` restored, header glass 96 % opaque, app-coloured contact buttons with a green call button, aligned footer with the shop tagline), deployed by the Owner on 2026-10-06 at about 23:24 (+07). Previous: `cdde1cf`.
 - No new migrations (62, `pnpm db:status` up to date). Permissions unchanged (54).
@@ -587,7 +596,7 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - Shop info has two optional fields (Trang Facebook, Zalo); public site gets a floating contact button and footer icons (`docs/UXUI_CONTACT_BUTTONS.md`).
 - **Migration `20261104000000_shop_info_contact_links`** (two nullable columns, additive). Production: apply it with the deploy, then the Owner enters the links in Admin > Website > Shop info.
 
-### Phone app shell (2026-10-06, after `15cd7e0`, not deployed)
+### Phone app shell (2026-10-06, deployed in `607ca6a`)
 
 - Owner decision after the strip under the tab bar survived three patches: below 1024 px the customer pages are an app shell (`.ls-site` fixed height, `.ls-site-scroll` the only scroller, tab bar in the flow). Desktop pixel-identical. Scroll code follows the scroller (`packages/ui/src/scroller.ts`), new `SiteScrollManager`.
 - Customer-visible: browser address bar no longer hides on scroll; pull-to-refresh, iOS status-bar tap and the iOS keyboard still need a phone check (`docs/UXUI_REDESIGN_APP_SHELL.md`). Gate `uxui-tabbar-check.mjs` rewritten. No migration.
