@@ -15,6 +15,8 @@ import type {
   ProductListResponse,
   ProductPriceChangeRequest,
   ProductPromotionCreateRequest,
+  ProductSettingsEditRequest,
+  ProductSettingsResponse,
   ProductStatusRequest,
   ProductVariantCreateRequest,
   ProductVariantEditRequest,
@@ -27,6 +29,7 @@ import { runAdminCommand, type AdminContext } from '../authorization/admin-comma
 import { sqlStateOf } from '../booking/customer-command.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import * as core from './product-catalog.core.js';
+import * as settingsCore from './product-settings.core.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -265,6 +268,20 @@ export class ProductCatalogService {
     const productId = this.id(id);
     const image = this.id(imageId);
     return this.run(token, requestId, (context) => core.removeImage(context, productId, image));
+  }
+
+  // ------------------------------------------------------------------------------------------------ settings
+
+  settings(token: string | undefined): Promise<ProductSettingsResponse> {
+    return this.run(token, undefined, (context) => settingsCore.getSettings(context));
+  }
+
+  editSettings(
+    token: string | undefined,
+    body: ProductSettingsEditRequest,
+    requestId?: string,
+  ): Promise<ProductSettingsResponse> {
+    return this.run(token, requestId, (context) => settingsCore.editSettings(context, body));
   }
 
   private id(value: string): string {

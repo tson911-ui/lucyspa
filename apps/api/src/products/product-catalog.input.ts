@@ -94,6 +94,33 @@ export function threshold(value: unknown): number | null {
   return value;
 }
 
+/** A waiting time in whole days, 1 to 90 (database rule `product_variants_lead_time`, pending the Owner's yes/no). */
+export function leadDays(value: unknown, field: string): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 90) {
+    throw new AuthError('VALIDATION_FAILED', field);
+  }
+  return value;
+}
+
+/**
+ * A variant's own waiting time: both bounds or neither (`null`), min <= max. `undefined` for both means "not sent"
+ * (a create uses the settings default, an edit leaves the stored values alone); one sent without the other is refused.
+ */
+export function leadTime(
+  min: unknown,
+  max: unknown,
+): { min: number | null; max: number | null } | undefined {
+  if (min === undefined && max === undefined) return undefined;
+  if (min === null && max === null) return { min: null, max: null };
+  if (min === undefined || max === undefined || min === null || max === null) {
+    throw new AuthError('VALIDATION_FAILED', 'leadTimeDays');
+  }
+  const low = leadDays(min, 'leadTimeDaysMin');
+  const high = leadDays(max, 'leadTimeDaysMax');
+  if (low > high) throw new AuthError('VALIDATION_FAILED', 'leadTimeDays');
+  return { min: low, max: high };
+}
+
 /** The SKU is the stable business identifier (PRD 31.4): trimmed and upper-cased, no spaces. */
 export function sku(value: unknown): string {
   if (typeof value !== 'string') throw new AuthError('VALIDATION_FAILED', 'sku');

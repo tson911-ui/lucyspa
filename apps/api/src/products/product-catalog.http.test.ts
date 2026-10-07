@@ -90,6 +90,8 @@ test('product catalog HTTP: guards, exact fields, optional money keys, stable co
     'addImage',
     'orderImages',
     'removeImage',
+    'settings',
+    'editSettings',
   ] as const;
   const module = await Test.createTestingModule({
     imports: [AppModule.forRoot(environment, pino({ level: 'silent' }))],
@@ -140,6 +142,8 @@ test('product catalog HTTP: guards, exact fields, optional money keys, stable co
     assert.deepEqual(calls.at(-1), ['products', token]);
     await request(server).get(`${base}/products/${productId}`).set({ Cookie: cookie }).expect(200);
     assert.deepEqual(calls.at(-1)?.slice(0, 3), ['product', token, productId]);
+    await request(server).get(`${base}/product-settings`).set({ Cookie: cookie }).expect(200);
+    assert.deepEqual(calls.at(-1), ['settings', token]);
     for (const path of ['product-brands', 'product-categories']) {
       await request(server).get(`${base}/${path}`).set({ Cookie: cookie }).expect(200);
     }
@@ -171,6 +175,25 @@ test('product catalog HTTP: guards, exact fields, optional money keys, stable co
     const present = calls.at(-1)![3] as Record<string, unknown>;
     assert.equal(present['listPriceVnd'], '100000');
     assert.equal(present['costPriceVnd'], null);
+    // The pre-order fields: absent stays absent; sent, they reach the service as sent (null clears the waiting time).
+    assert.equal(absent['sellOnOrder'], undefined);
+    assert.equal(absent['leadTimeDaysMin'], undefined);
+    await request(server)
+      .post(`${base}/products/${productId}/variants`)
+      .set(headers)
+      .send({ ...variantBody, sellOnOrder: false, leadTimeDaysMin: 3, leadTimeDaysMax: null })
+      .expect(200);
+    const preorder = calls.at(-1)![3] as Record<string, unknown>;
+    assert.equal(preorder['sellOnOrder'], false);
+    assert.equal(preorder['leadTimeDaysMin'], 3);
+    assert.equal(preorder['leadTimeDaysMax'], null);
+    await request(server)
+      .post(`${base}/product-settings/edit`)
+      .set(headers)
+      .send({ expectedRowVersion: 2, leadTimeDaysMin: 3, leadTimeDaysMax: 5 })
+      .expect(200);
+    assert.deepEqual(calls.at(-1)?.slice(0, 2), ['editSettings', token]);
+    assert.equal((calls.at(-1)![2] as Record<string, unknown>)['expiryWarningDays'], undefined);
     await request(server)
       .post(`${base}/products/${productId}/variants/${variantId}/edit`)
       .set(headers)
@@ -219,6 +242,12 @@ test('product catalog HTTP: guards, exact fields, optional money keys, stable co
       ],
       [`products/${productId}/variants`, { ...variantBody, costPrice: '1' }],
       [`products/${productId}/variants`, { ...variantBody, listPriceVnd: 100000 }],
+      [`products/${productId}/variants`, { ...variantBody, sellOnOrder: 'yes' }],
+      [`products/${productId}/variants`, { ...variantBody, leadTimeDaysMin: '3' }],
+      [`products/${productId}/variants`, { ...variantBody, weightGrams: 100 }],
+      ['product-settings/edit', { expectedRowVersion: 1, newBadgeDays: 10 }],
+      ['product-settings/edit', { leadTimeDaysMin: 3, leadTimeDaysMax: 5 }],
+      ['product-settings/edit', { expectedRowVersion: 1, expiryWarningDays: '90' }],
       [
         `products/${productId}/variants/${variantId}/price`,
         { expectedVersionNo: '1', listPriceVnd: '1', reason: null },

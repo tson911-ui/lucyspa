@@ -37,6 +37,9 @@ const product = (
         labelEn: null,
         barcode: null,
         lowStockThreshold: 3,
+        sellOnOrder: true,
+        leadTimeDaysMin: null,
+        leadTimeDaysMax: null,
         sortOrder: 0,
         isActive: true,
         rowVersion: 1,
@@ -90,6 +93,27 @@ test('with the cost permission the cost and margin columns and values appear', (
   assert.ok(markup.includes(p.variants.margin));
   assert.ok(markup.includes('123.456'));
   assert.ok(markup.includes('126.544'));
+});
+
+test('the variant table shows the pre-order badge, the own waiting time and the in-stock state', () => {
+  const access = { manage: true, prices: false, cost: false };
+  const base = product(access, false).variants[0]!;
+  const withVariants = (...variants: ProductDetailResponse['variants']) =>
+    view(product(access, false, { variants }));
+  const on = withVariants(base);
+  assert.ok(on.includes(p.variants.preOrder), 'the column header');
+  assert.ok(on.includes(p.variants.preOrderOn));
+  assert.ok(!on.includes(p.variants.preOrderOff));
+  const own = withVariants({ ...base, leadTimeDaysMin: 2, leadTimeDaysMax: 4 });
+  assert.ok(own.includes(`${p.variants.preOrderOn} · 2-4 ngày`));
+  const same = withVariants({ ...base, leadTimeDaysMin: 3, leadTimeDaysMax: 3 });
+  assert.ok(same.includes(`${p.variants.preOrderOn} · 3 ngày`));
+  const off = withVariants({ ...base, sellOnOrder: false });
+  assert.ok(off.includes(p.variants.preOrderOff));
+  assert.ok(!off.includes(`${p.variants.preOrderOn} ·`));
+  // The badge is a cell of the table, never next to the page heading (Owner rule of 2026-10-05).
+  const heading = on.slice(on.indexOf('<h1'), on.indexOf('</h1>'));
+  assert.ok(!heading.includes(p.variants.preOrderOn));
 });
 
 test('a draft has one primary action in the header, one h1, no status next to the title', () => {

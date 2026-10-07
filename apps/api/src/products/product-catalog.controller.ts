@@ -15,6 +15,8 @@ import type {
   ProductListResponse,
   ProductPriceChangeRequest,
   ProductPromotionCreateRequest,
+  ProductSettingsEditRequest,
+  ProductSettingsResponse,
   ProductStatusRequest,
   ProductVariantCreateRequest,
   ProductVariantEditRequest,
@@ -135,6 +137,17 @@ class VariantCreateDto implements ProductVariantCreateRequest {
   @ValidateIf((_, value) => value !== null)
   @IsInt()
   lowStockThreshold!: number | null;
+  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() sellOnOrder?: boolean;
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsInt()
+  leadTimeDaysMin?: number | null;
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsInt()
+  leadTimeDaysMax?: number | null;
   @ApiProperty({ required: false }) @IsOptional() @IsInt() sortOrder?: number;
   @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(32) listPriceVnd?: string;
   @ApiProperty({ required: false, nullable: true })
@@ -165,6 +178,17 @@ class VariantEditDto implements ProductVariantEditRequest {
   @ValidateIf((_, value) => value !== null)
   @IsInt()
   lowStockThreshold!: number | null;
+  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() sellOnOrder?: boolean;
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsInt()
+  leadTimeDaysMin?: number | null;
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsInt()
+  leadTimeDaysMax?: number | null;
   @ApiProperty() @IsInt() sortOrder!: number;
   @ApiProperty() @IsBoolean() isActive!: boolean;
   @ApiProperty({ required: false, nullable: true })
@@ -172,6 +196,13 @@ class VariantEditDto implements ProductVariantEditRequest {
   @IsString()
   @MaxLength(32)
   costPriceVnd?: string | null;
+}
+
+class SettingsEditDto implements ProductSettingsEditRequest {
+  @ApiProperty() @IsInt() expectedRowVersion!: number;
+  @ApiProperty({ required: false }) @IsOptional() @IsInt() leadTimeDaysMin?: number;
+  @ApiProperty({ required: false }) @IsOptional() @IsInt() leadTimeDaysMax?: number;
+  @ApiProperty({ required: false }) @IsOptional() @IsInt() expiryWarningDays?: number;
 }
 
 class PriceDto implements ProductPriceChangeRequest {
@@ -464,6 +495,28 @@ export class ProductCatalogController {
   ): Promise<ProductDetailResponse> {
     requireEmptyObject(body);
     return this.catalog.removeImage(this.session(request), id, imageId, this.requestId(response));
+  }
+
+  // ------------------------------------------------------------------------------------------------ settings
+
+  @Get('product-settings')
+  @ApiOkResponse({
+    description:
+      'The product settings: waiting time of items sold on order, expiry warning (MANAGE_PRODUCTS or MANAGE_PRODUCT_PRICES).',
+  })
+  settings(@Req() request: Request): Promise<ProductSettingsResponse> {
+    return this.catalog.settings(this.session(request));
+  }
+
+  @Post('product-settings/edit')
+  @HttpCode(200)
+  @ApiOkResponse({ description: 'Changes the product settings (MANAGE_PRODUCTS).' })
+  editSettings(
+    @Body() body: SettingsEditDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<ProductSettingsResponse> {
+    return this.catalog.editSettings(this.session(request), body, this.requestId(response));
   }
 
   private session(request: Request) {

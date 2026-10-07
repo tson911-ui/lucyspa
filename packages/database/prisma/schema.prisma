@@ -2977,6 +2977,9 @@ model ProductVariant {
   barcode           String?               @db.VarChar(64)
   costPriceVnd      BigInt?               @map("cost_price_vnd")
   lowStockThreshold Int?                  @map("low_stock_threshold")
+  sellOnOrder       Boolean               @default(true) @map("sell_on_order")
+  leadTimeDaysMin   Int?                  @map("lead_time_days_min") @db.SmallInt
+  leadTimeDaysMax   Int?                  @map("lead_time_days_max") @db.SmallInt
   sortOrder         Int                   @default(0) @map("sort_order")
   isActive          Boolean               @default(true) @map("is_active")
   rowVersion        Int                   @default(1) @map("row_version")
@@ -3048,6 +3051,8 @@ model ProductSettings {
   id                Int      @id @default(1) @db.SmallInt
   expiryWarningDays Int      @default(90) @map("expiry_warning_days")
   newBadgeDays      Int      @default(30) @map("new_badge_days")
+  leadTimeDaysMin   Int      @default(3) @map("lead_time_days_min") @db.SmallInt
+  leadTimeDaysMax   Int      @default(5) @map("lead_time_days_max") @db.SmallInt
   updatedByUserId   String?  @map("updated_by_user_id") @db.Uuid
   updatedBy         User?    @relation("ProductSettingsUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   rowVersion        Int      @default(1) @map("row_version")

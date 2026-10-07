@@ -2,6 +2,7 @@ import type {
   ProductAccess,
   ProductCategoryResponse,
   ProductListItem,
+  ProductSettingsResponse,
   ProductVariantResponse,
 } from '@lucy-spa/contracts';
 import assert from 'node:assert/strict';
@@ -17,14 +18,18 @@ import {
   canOpenCatalog,
   categoryCreateRequest,
   draftFromCategory,
+  draftFromSettings,
+  draftFromVariant,
   emptyProductDraft,
   emptyVariantDraft,
   filterProducts,
+  leadTimeRange,
   marginText,
   movedImageIds,
   normalizeProductList,
   orderCategoryTree,
   parentOptions,
+  parseLeadTime,
   PRODUCT_LIST_DEFAULTS,
   priceIssue,
   priceRangeText,
@@ -33,9 +38,12 @@ import {
   productRequest,
   productSortValue,
   promotionRequest,
+  settingsRequest,
   statusMoveKind,
   validatePromotionDraft,
   validateProductDraft,
+  validateSettingsDraft,
+  validateVariantDraft,
   variantActiveRequest,
   variantColumnKeys,
   variantCreateRequest,
@@ -55,6 +63,9 @@ const variant = (patch: Partial<ProductVariantResponse> = {}): ProductVariantRes
   labelEn: null,
   barcode: null,
   lowStockThreshold: null,
+  sellOnOrder: true,
+  leadTimeDaysMin: null,
+  leadTimeDaysMax: null,
   sortOrder: 0,
   isActive: true,
   rowVersion: 3,
@@ -252,6 +263,111 @@ test('a new variant sends a price only to a price holder and a cost only to a co
   assert.equal(full.costPriceVnd, '90000');
   assert.equal(variantCreateRequest({ ...draft, sku: 'bad sku' }, ALL), null);
   assert.equal(variantCreateRequest({ ...draft, sku: '' }, ALL), null);
+});
+
+test('a new variant is sold on order by default, with the settings waiting time', () => {
+  const draft = { ...emptyVariantDraft(), sku: 'ab-2' };
+  assert.equal(draft.sellOnOrder, true, 'on by default (OQ-P6-30)');
+  const request = variantCreateRequest(draft, MANAGE)!;
+  assert.equal(request.sellOnOrder, true);
+  assert.equal(request.leadTimeDaysMin, null);
+  assert.equal(request.leadTimeDaysMax, null);
+  const own = variantCreateRequest({ ...draft, leadMin: '3', leadMax: '5' }, MANAGE)!;
+  assert.deepEqual([own.leadTimeDaysMin, own.leadTimeDaysMax], [3, 5]);
+  // Switching the flag off drops a waiting time of its own.
+  const off = variantCreateRequest(
+    { ...draft, sellOnOrder: false, leadMin: '3', leadMax: '5' },
+    MANAGE,
+  )!;
+  assert.equal(off.sellOnOrder, false);
+  assert.deepEqual([off.leadTimeDaysMin, off.leadTimeDaysMax], [null, null]);
+});
+
+test('the waiting time is both boxes or neither, 1 to 90 days, from not above to', () => {
+  assert.equal(parseLeadTime('', ''), 'empty');
+  assert.deepEqual(parseLeadTime('1', '90'), { min: 1, max: 90 });
+  assert.deepEqual(parseLeadTime(' 4 ', '4'), { min: 4, max: 4 });
+  for (const [min, max] of [
+    ['3', ''],
+    ['', '5'],
+    ['0', '5'],
+    ['1', '91'],
+    ['6', '5'],
+    ['1.5', '5'],
+    ['a', '5'],
+    ['-1', '5'],
+  ] as const) {
+    assert.equal(parseLeadTime(min, max), null, `${min}-${max}`);
+  }
+  const draft = { ...emptyVariantDraft(), sku: 'AB-3', leadMin: '9', leadMax: '3' };
+  assert.equal(variantCreateRequest(draft, MANAGE), null);
+  assert.equal(validateVariantDraft(draft, { creating: true, ...MANAGE }).leadTime, 'invalid');
+  // A bad waiting time does not block a variant that is not sold on order (the boxes are hidden then).
+  assert.ok(variantCreateRequest({ ...draft, sellOnOrder: false }, MANAGE));
+});
+
+test('editing a variant sends the flag and the waiting time it holds', () => {
+  const stored = variant({ sellOnOrder: false, leadTimeDaysMin: 2, leadTimeDaysMax: 4 });
+  const draft = draftFromVariant(stored);
+  assert.equal(draft.sellOnOrder, false);
+  assert.deepEqual([draft.leadMin, draft.leadMax], ['2', '4']);
+  const request = variantEditRequest({ ...draft, sellOnOrder: true }, stored, MANAGE)!;
+  assert.equal(request.sellOnOrder, true);
+  assert.deepEqual([request.leadTimeDaysMin, request.leadTimeDaysMax], [2, 4]);
+  const cleared = variantEditRequest(
+    { ...draft, sellOnOrder: true, leadMin: '', leadMax: '' },
+    stored,
+    MANAGE,
+  )!;
+  assert.deepEqual([cleared.leadTimeDaysMin, cleared.leadTimeDaysMax], [null, null]);
+});
+
+const SETTINGS: ProductSettingsResponse = {
+  leadTimeDaysMin: 3,
+  leadTimeDaysMax: 5,
+  expiryWarningDays: 90,
+  rowVersion: 4,
+  access: { manage: true, prices: false, cost: false },
+};
+
+test('the settings request carries only what changed and refuses a bad draft', () => {
+  const draft = draftFromSettings(SETTINGS);
+  assert.deepEqual(draft, { leadMin: '3', leadMax: '5', expiry: '90' });
+  assert.equal(settingsRequest(draft, SETTINGS, ['lead', 'expiry']), null, 'nothing changed');
+  assert.deepEqual(settingsRequest({ ...draft, leadMin: '2', leadMax: '6' }, SETTINGS, ['lead']), {
+    expectedRowVersion: 4,
+    leadTimeDaysMin: 2,
+    leadTimeDaysMax: 6,
+  });
+  assert.deepEqual(settingsRequest({ ...draft, expiry: '120' }, SETTINGS, ['expiry']), {
+    expectedRowVersion: 4,
+    expiryWarningDays: 120,
+  });
+  // A field the screen does not offer is never sent, even when the draft differs.
+  assert.equal(settingsRequest({ ...draft, expiry: '120' }, SETTINGS, ['lead']), null);
+  for (const bad of [
+    { ...draft, leadMin: '', leadMax: '' },
+    { ...draft, leadMin: '8', leadMax: '2' },
+  ]) {
+    assert.equal(settingsRequest(bad, SETTINGS, ['lead']), null);
+    assert.equal(validateSettingsDraft(bad, ['lead']).lead, 'invalid');
+  }
+  for (const expiry of ['0', '731', '1.5', '', 'x']) {
+    assert.equal(validateSettingsDraft({ ...draft, expiry }, ['expiry']).expiry, 'invalid', expiry);
+  }
+  assert.equal(validateSettingsDraft({ ...draft, expiry: '730' }, ['expiry']).expiry, undefined);
+});
+
+test('a variant shows its own waiting time, else the settings default', () => {
+  assert.deepEqual(leadTimeRange({ leadTimeDaysMin: 2, leadTimeDaysMax: 4 }, SETTINGS), {
+    min: 2,
+    max: 4,
+  });
+  assert.deepEqual(leadTimeRange({ leadTimeDaysMin: null, leadTimeDaysMax: null }, SETTINGS), {
+    min: 3,
+    max: 5,
+  });
+  assert.equal(leadTimeRange({ leadTimeDaysMin: null, leadTimeDaysMax: null }, null), null);
 });
 
 test('editing a variant leaves an unchanged or inaccessible cost out of the request', () => {

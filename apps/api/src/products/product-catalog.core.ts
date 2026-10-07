@@ -487,12 +487,18 @@ export async function createVariant(
   const wantsCost = request.costPriceVnd !== undefined;
   if (wantsPrice) requirePrices(context);
   if (wantsCost) requireCost(context);
+  // On by default (Owner, OQ-P6-30); an absent waiting time means the settings default applies.
+  const lead = input.leadTime(request.leadTimeDaysMin, request.leadTimeDaysMax);
   const values = {
     sku: input.sku(request.sku),
     labelVi: input.label(request.labelVi, 'labelVi'),
     labelEn: input.label(request.labelEn, 'labelEn'),
     barcode: input.barcode(request.barcode),
     lowStockThreshold: input.threshold(request.lowStockThreshold),
+    sellOnOrder:
+      request.sellOnOrder === undefined ? true : input.boolean(request.sellOnOrder, 'sellOnOrder'),
+    leadTimeDaysMin: lead?.min ?? null,
+    leadTimeDaysMax: lead?.max ?? null,
   };
   const order = request.sortOrder === undefined ? null : input.sortOrder(request.sortOrder);
   const price = wantsPrice ? input.positiveMoney(request.listPriceVnd, 'listPriceVnd') : null;
@@ -559,7 +565,7 @@ export async function editVariant(
   const access = requireManage(context);
   const wantsCost = request.costPriceVnd !== undefined;
   if (wantsCost) requireCost(context);
-  const values = {
+  const base = {
     labelVi: input.label(request.labelVi, 'labelVi'),
     labelEn: input.label(request.labelEn, 'labelEn'),
     barcode: input.barcode(request.barcode),
@@ -567,6 +573,12 @@ export async function editVariant(
     sortOrder: input.sortOrder(request.sortOrder),
     isActive: input.boolean(request.isActive, 'isActive'),
   };
+  // Absent pre-order fields leave the stored values alone (like an absent cost).
+  const sellOnOrder =
+    request.sellOnOrder === undefined
+      ? undefined
+      : input.boolean(request.sellOnOrder, 'sellOnOrder');
+  const lead = input.leadTime(request.leadTimeDaysMin, request.leadTimeDaysMax);
   const expected = input.rowVersion(request.expectedRowVersion);
   const costValue = wantsCost ? input.cost(request.costPriceVnd) : undefined;
   const { tx } = context;
@@ -580,6 +592,9 @@ export async function editVariant(
       labelEn: true,
       barcode: true,
       lowStockThreshold: true,
+      sellOnOrder: true,
+      leadTimeDaysMin: true,
+      leadTimeDaysMax: true,
       sortOrder: true,
       isActive: true,
       rowVersion: true,
@@ -587,6 +602,12 @@ export async function editVariant(
     },
   });
   if (current.rowVersion !== expected) throw new AuthError('CONFLICT');
+  const values = {
+    ...base,
+    sellOnOrder: sellOnOrder ?? current.sellOnOrder,
+    leadTimeDaysMin: lead ? lead.min : current.leadTimeDaysMin,
+    leadTimeDaysMax: lead ? lead.max : current.leadTimeDaysMax,
+  };
   const before = pickOf(current, values);
   const storedCost = current.costPriceVnd;
   const costChanged = costValue !== undefined && costValue !== storedCost;

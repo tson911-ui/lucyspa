@@ -86,6 +86,8 @@ export function VariantsSection({
       ? product.variants.find((variant) => variant.id === overlay.id)
       : undefined;
   const keys = variantColumnKeys(access);
+  const leadText = (min: number, max: number) =>
+    min === max ? fill(v.preOrderOneDay, { days: min }) : fill(v.preOrderDays, { min, max });
 
   const columns: DataTableColumn<ProductVariantResponse>[] = [
     {
@@ -136,6 +138,21 @@ export function VariantsSection({
       numeric: true,
       hideBelow: '2xl',
       cell: (variant) => variant.lowStockThreshold ?? '—',
+    },
+    {
+      key: 'preOrder',
+      header: v.preOrder,
+      hideBelow: 'lg',
+      cell: (variant) =>
+        variant.sellOnOrder ? (
+          <Badge tone="info">
+            {variant.leadTimeDaysMin !== null && variant.leadTimeDaysMax !== null
+              ? `${v.preOrderOn} · ${leadText(variant.leadTimeDaysMin, variant.leadTimeDaysMax)}`
+              : v.preOrderOn}
+          </Badge>
+        ) : (
+          <Badge tone="neutral">{v.preOrderOff}</Badge>
+        ),
     },
     ...(keys.includes('cost')
       ? [
@@ -480,6 +497,46 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
           </Field>
         ) : null}
       </FormGrid>
+      <CheckField
+        label={v.preOrderField}
+        hint={v.preOrderHint}
+        checked={draft.sellOnOrder}
+        onChange={(event) => set({ sellOnOrder: event.target.checked })}
+      />
+      {draft.sellOnOrder ? (
+        <>
+          <FormGrid cols={2}>
+            <Field
+              label={v.leadMinField}
+              hint={v.leadHint}
+              error={checked && errors.leadTime ? v.leadInvalid : undefined}
+            >
+              {(control) => (
+                <NumberInput
+                  {...control}
+                  inputMode="numeric"
+                  min={1}
+                  max={90}
+                  value={draft.leadMin}
+                  onChange={(event) => set({ leadMin: event.target.value })}
+                />
+              )}
+            </Field>
+            <Field label={v.leadMaxField}>
+              {(control) => (
+                <NumberInput
+                  {...control}
+                  inputMode="numeric"
+                  min={1}
+                  max={90}
+                  value={draft.leadMax}
+                  onChange={(event) => set({ leadMax: event.target.value })}
+                />
+              )}
+            </Field>
+          </FormGrid>
+        </>
+      ) : null}
       {!creating ? (
         <CheckField
           label={v.activeField}

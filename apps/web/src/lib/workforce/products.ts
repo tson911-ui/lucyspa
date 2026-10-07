@@ -12,6 +12,8 @@ import type {
   ProductPriceChangeRequest,
   ProductPromotionCreateRequest,
   ProductPromotionResponse,
+  ProductSettingsEditRequest,
+  ProductSettingsResponse,
   ProductStatusName,
   ProductVariantCreateRequest,
   ProductVariantEditRequest,
@@ -407,6 +409,11 @@ export interface VariantDraft {
   labelEn: string;
   barcode: string;
   threshold: string;
+  /** Sold on order (on for a new variant, Owner OQ-P6-30). */
+  sellOnOrder: boolean;
+  /** The variant's own waiting time in days; both empty means the settings default. */
+  leadMin: string;
+  leadMax: string;
   sortOrder: string;
   listPrice: string;
   cost: string;
@@ -421,6 +428,9 @@ export const emptyVariantDraft = (): VariantDraft => ({
   labelEn: '',
   barcode: '',
   threshold: '',
+  sellOnOrder: true,
+  leadMin: '',
+  leadMax: '',
   sortOrder: '0',
   listPrice: '',
   cost: '',
@@ -433,6 +443,9 @@ export const draftFromVariant = (variant: ProductVariantResponse): VariantDraft 
   labelEn: variant.labelEn ?? '',
   barcode: variant.barcode ?? '',
   threshold: variant.lowStockThreshold === null ? '' : String(variant.lowStockThreshold),
+  sellOnOrder: variant.sellOnOrder,
+  leadMin: variant.leadTimeDaysMin === null ? '' : String(variant.leadTimeDaysMin),
+  leadMax: variant.leadTimeDaysMax === null ? '' : String(variant.leadTimeDaysMax),
   sortOrder: String(variant.sortOrder),
   listPrice: '',
   cost: variant.costPriceVnd ?? '',
@@ -440,7 +453,32 @@ export const draftFromVariant = (variant: ProductVariantResponse): VariantDraft 
 });
 
 export type VariantField =
-  'sku' | 'labelVi' | 'labelEn' | 'barcode' | 'threshold' | 'sortOrder' | 'listPrice' | 'cost';
+  | 'sku'
+  | 'labelVi'
+  | 'labelEn'
+  | 'barcode'
+  | 'threshold'
+  | 'leadTime'
+  | 'sortOrder'
+  | 'listPrice'
+  | 'cost';
+
+export const LEAD_DAYS_MAX = 90;
+
+/**
+ * A waiting time of whole days: both boxes empty (the settings default) or both filled with 1 to 90 and from <= to. Returns
+ * "empty" for no own time, null when invalid, otherwise the pair.
+ */
+export function parseLeadTime(
+  min: string,
+  max: string,
+): 'empty' | { min: number; max: number } | null {
+  if (min.trim() === '' && max.trim() === '') return 'empty';
+  const low = wholeNumber(min, LEAD_DAYS_MAX);
+  const high = wholeNumber(max, LEAD_DAYS_MAX);
+  if (low === null || high === null || low < 1 || high < 1 || low > high) return null;
+  return { min: low, max: high };
+}
 
 export function validateVariantDraft(
   draft: VariantDraft,
@@ -457,6 +495,9 @@ export function validateVariantDraft(
   if (length(clean(draft.barcode)) > 64) errors.barcode = 'invalid';
   if (draft.threshold.trim() !== '' && wholeNumber(draft.threshold, 2_147_483_647) === null) {
     errors.threshold = 'invalid';
+  }
+  if (draft.sellOnOrder && parseLeadTime(draft.leadMin, draft.leadMax) === null) {
+    errors.leadTime = 'invalid';
   }
   if (wholeNumber(draft.sortOrder, 100_000) === null) errors.sortOrder = 'invalid';
   if (
@@ -477,6 +518,18 @@ const optionalText = (text: string): string | null => (clean(text) === '' ? null
 const optionalNumber = (text: string): number | null =>
   text.trim() === '' ? null : wholeNumber(text, 2_147_483_647);
 
+/** The waiting-time keys of a request: the pair, or both null to fall back to the settings default. */
+function leadTimeKeys(draft: VariantDraft): {
+  leadTimeDaysMin: number | null;
+  leadTimeDaysMax: number | null;
+} {
+  // A variant that is not sold on order has no waiting time of its own.
+  const lead = draft.sellOnOrder ? parseLeadTime(draft.leadMin, draft.leadMax) : 'empty';
+  return lead && lead !== 'empty'
+    ? { leadTimeDaysMin: lead.min, leadTimeDaysMax: lead.max }
+    : { leadTimeDaysMin: null, leadTimeDaysMax: null };
+}
+
 /**
  * A new variant. The list price is sent only to a caller who may price, the cost only to one who may see cost: the API refuses
  * either key from anybody else (403), so the screen never includes them.
@@ -494,6 +547,8 @@ export function variantCreateRequest(
     labelEn: optionalText(draft.labelEn),
     barcode: optionalText(draft.barcode),
     lowStockThreshold: optionalNumber(draft.threshold),
+    sellOnOrder: draft.sellOnOrder,
+    ...leadTimeKeys(draft),
     sortOrder: wholeNumber(draft.sortOrder, 100_000)!,
     ...(price ? { listPriceVnd: price } : {}),
     ...(access.cost && draft.cost.trim() !== '' ? { costPriceVnd: vndAmount(draft.cost, 0)! } : {}),
@@ -522,6 +577,8 @@ export function variantEditRequest(
     labelEn: optionalText(draft.labelEn),
     barcode: optionalText(draft.barcode),
     lowStockThreshold: optionalNumber(draft.threshold),
+    sellOnOrder: draft.sellOnOrder,
+    ...leadTimeKeys(draft),
     sortOrder: wholeNumber(draft.sortOrder, 100_000)!,
     isActive: draft.isActive,
     ...(costChanged
@@ -648,6 +705,78 @@ export function movedImageIds(
   const next = [...ids];
   [next[index], next[target]] = [next[target]!, next[index]!];
   return next;
+}
+
+// ---------------------------------------------------------------------------------------------------- settings
+
+export interface SettingsDraft {
+  leadMin: string;
+  leadMax: string;
+  expiry: string;
+}
+
+export type SettingsField = 'lead' | 'expiry';
+
+export const draftFromSettings = (settings: ProductSettingsResponse): SettingsDraft => ({
+  leadMin: String(settings.leadTimeDaysMin),
+  leadMax: String(settings.leadTimeDaysMax),
+  expiry: String(settings.expiryWarningDays),
+});
+
+/** Which parts of the settings dialog the caller sees: the waiting time (products) and the expiry warning (inventory). */
+export function validateSettingsDraft(
+  draft: SettingsDraft,
+  fields: readonly SettingsField[],
+): Partial<Record<SettingsField, Issue>> {
+  const errors: Partial<Record<SettingsField, Issue>> = {};
+  if (fields.includes('lead')) {
+    const lead = parseLeadTime(draft.leadMin, draft.leadMax);
+    if (lead === null || lead === 'empty') errors.lead = 'invalid';
+  }
+  if (fields.includes('expiry')) {
+    const days = wholeNumber(draft.expiry, EXPIRY_DAYS_MAX);
+    if (days === null || days < 1) errors.expiry = 'invalid';
+  }
+  return errors;
+}
+
+export const EXPIRY_DAYS_MAX = 730;
+
+/** Only the keys that changed (the API changes only the keys present); null when nothing changed or the draft is invalid. */
+export function settingsRequest(
+  draft: SettingsDraft,
+  settings: ProductSettingsResponse,
+  fields: readonly SettingsField[],
+): ProductSettingsEditRequest | null {
+  if (Object.keys(validateSettingsDraft(draft, fields)).length > 0) return null;
+  const request: ProductSettingsEditRequest = { expectedRowVersion: settings.rowVersion };
+  if (fields.includes('lead')) {
+    const lead = parseLeadTime(draft.leadMin, draft.leadMax);
+    if (
+      lead &&
+      lead !== 'empty' &&
+      (lead.min !== settings.leadTimeDaysMin || lead.max !== settings.leadTimeDaysMax)
+    ) {
+      request.leadTimeDaysMin = lead.min;
+      request.leadTimeDaysMax = lead.max;
+    }
+  }
+  if (fields.includes('expiry')) {
+    const days = wholeNumber(draft.expiry, EXPIRY_DAYS_MAX);
+    if (days !== null && days !== settings.expiryWarningDays) request.expiryWarningDays = days;
+  }
+  return Object.keys(request).length > 1 ? request : null;
+}
+
+/** The waiting time a variant shows: its own range, else the settings default, always as "from-to days" (a single day when equal). */
+export function leadTimeRange(
+  variant: Pick<ProductVariantResponse, 'leadTimeDaysMin' | 'leadTimeDaysMax'>,
+  settings: Pick<ProductSettingsResponse, 'leadTimeDaysMin' | 'leadTimeDaysMax'> | null,
+): { min: number; max: number } | null {
+  if (variant.leadTimeDaysMin !== null && variant.leadTimeDaysMax !== null) {
+    return { min: variant.leadTimeDaysMin, max: variant.leadTimeDaysMax };
+  }
+  return settings ? { min: settings.leadTimeDaysMin, max: settings.leadTimeDaysMax } : null;
 }
 
 // ------------------------------------------------------------------------------------------------------ errors

@@ -53,6 +53,7 @@ import {
   useResource,
   useSuccessToast,
 } from '../ui';
+import { ProductSettingsDialog } from './product-settings-dialog';
 import { ProductStatusConfirm } from './product-status';
 import { BrandsTab, CategoriesTab } from './products-taxonomy';
 
@@ -83,6 +84,7 @@ export function ProductsScreen() {
   const [overlay, setOverlay] = useState<Overlay | null>(null);
   const [createOpen, setCreateOpen] = useState<'brand' | 'category' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const notify = useSuccessToast();
 
   /** A success is a toast (shown by the dialog itself); only a conflict leaves a message on the page. */
@@ -299,6 +301,11 @@ export function ProductsScreen() {
   return (
     <>
       <PageHeader title={p.title}>
+        {manage ? (
+          <Button variant="secondary" icon="settings" onClick={() => setSettingsOpen(true)}>
+            {p.settings.open}
+          </Button>
+        ) : null}
         {manage && list.tab === 'products' ? (
           <Button variant="primary" icon="plus" onClick={() => navigate?.(`${base}/products/new`)}>
             {p.list.add}
@@ -358,6 +365,9 @@ export function ProductsScreen() {
           },
         ]}
       />
+      {settingsOpen ? (
+        <ProductSettingsDialog fields={['lead']} onClose={() => setSettingsOpen(false)} />
+      ) : null}
       {overlay?.kind === 'status' ? (
         <ProductStatusConfirm
           key={overlay.product.id}

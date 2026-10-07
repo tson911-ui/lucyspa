@@ -3641,6 +3641,11 @@ export interface ProductVariantResponse {
   labelEn: string | null;
   barcode: string | null;
   lowStockThreshold: number | null;
+  /** Sold on order: the shop orders it from the supplier after payment (Owner, OQ-P6-30; on by default). */
+  sellOnOrder: boolean;
+  /** This variant's own waiting time in days (both set or both null); null means the settings default applies. */
+  leadTimeDaysMin: number | null;
+  leadTimeDaysMax: number | null;
   sortOrder: number;
   isActive: boolean;
   rowVersion: number;
@@ -3727,6 +3732,11 @@ export interface ProductVariantCreateRequest {
   labelEn: string | null;
   barcode: string | null;
   lowStockThreshold: number | null;
+  /** Absent means on (OQ-P6-30). */
+  sellOnOrder?: boolean;
+  /** Both or neither (1 to 90 days, min <= max); absent or null means the settings default. */
+  leadTimeDaysMin?: number | null;
+  leadTimeDaysMax?: number | null;
   sortOrder?: number;
   listPriceVnd?: string;
   costPriceVnd?: string | null;
@@ -3739,6 +3749,11 @@ export interface ProductVariantEditRequest {
   labelEn: string | null;
   barcode: string | null;
   lowStockThreshold: number | null;
+  /** Absent leaves the stored value unchanged. */
+  sellOnOrder?: boolean;
+  /** Both together, or both null to fall back to the settings default; absent leaves them unchanged. */
+  leadTimeDaysMin?: number | null;
+  leadTimeDaysMax?: number | null;
   sortOrder: number;
   isActive: boolean;
   costPriceVnd?: string | null;
@@ -3767,4 +3782,23 @@ export interface ProductImageAddRequest {
 /** POST /api/v1/products/:id/images/order: every image id of the product, in the new order. */
 export interface ProductImageOrderRequest {
   imageIds: string[];
+}
+
+/** GET /api/v1/product-settings (MANAGE_PRODUCTS or MANAGE_PRODUCT_PRICES): the one settings row of the product module. */
+export interface ProductSettingsResponse {
+  /** The default waiting time of an item sold on order, in days (OQ-P6-31: 3 to 5), unless a variant has its own. */
+  leadTimeDaysMin: number;
+  leadTimeDaysMax: number;
+  /** Lots expiring within this many days are warned about (P6-Q14: 90 by default). */
+  expiryWarningDays: number;
+  rowVersion: number;
+  access: ProductAccess;
+}
+
+/** POST /api/v1/product-settings/edit (MANAGE_PRODUCTS). Only the keys present change; the lead-time pair is sent together. */
+export interface ProductSettingsEditRequest {
+  expectedRowVersion: number;
+  leadTimeDaysMin?: number;
+  leadTimeDaysMax?: number;
+  expiryWarningDays?: number;
 }

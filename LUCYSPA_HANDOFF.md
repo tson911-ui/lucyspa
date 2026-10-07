@@ -146,6 +146,10 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 - Earlier note: a setup command ran on the local `lucy_spa_dev` by mistake (applied the 68 migrations, permission sync, a review Owner account; it had no data); see the report.
 - **Owner change of scope for Lucy Beauty sales (2026-10-07, docs only):** counter pre-orders (paid in full, goods ordered from the supplier, arrive in 3-5 days, "phiếu hẹn nhận hàng") and online orders (PayOS, nationwide, no COD; replaces T8). Impact, model P6-T28..T33, redesigned steps P6-3b and P6-15..24 (online = Wave 4) in design 2.7 and 18; 13 questions OQ-P6-29..41 in `docs/PHASE6_OWNER_DECISIONS_VI.md`. **The Owner answered the same day (design 2.8, in his words): T28-T32 approved, T7 confirmed (pre-order is a separate mode, not overselling), T33 changed (NO variant weight; fee simple, Wave 4; `sell_on_order` + optional wait days kept; P6-8 `channel` + `shipping_fee_vnd` approved), OQ-29/30/31/33/34/36/37/39/41 as recommended, OQ-32 (7 days late = free cancel), OQ-35 (no printing; digital only), OQ-38 deferred to Wave 4, OQ-40. Still pending: **OQ-P6-42** (how a walk-in customer without an account views the ticket; proposal = secret link + QR sent by hand) and the renumbered 18.6 table. He asked for P6-3b then P6-4 (local commits only).**
 
+## Phase 6 P6-3b (variant pre-order fields, 2026-10-07, committed locally, not pushed, not deployed)
+
+- Migration `20261106000006_phase6_variant_pre_order` (now 70): variant `sell_on_order` (default ON, OQ-P6-30), optional `lead_time_days_min/max` (both or neither, 1-90, min <= max: my DB rules, pending his yes/no), and the default 3-5 days on `product_settings`. NO weight (Owner removed it). New `GET /product-settings`, `POST /product-settings/edit` (view: MANAGE_PRODUCTS or PRICES; edit: MANAGE_PRODUCTS). Screens: variant drawer, "Đặt trước" column, "Cài đặt" dialog on Sản phẩm. Report: `docs/PHASE6_STEP3B_PRE_ORDER_FIELDS.md`.
+
 ## Production
 
 Status as of 2026-10-07, about 02:52 (+07) (Owner-reported; supersedes the blocks below):
