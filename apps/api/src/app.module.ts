@@ -101,6 +101,8 @@ import { SlideController } from './website/slide.controller.js';
 import { SlideService } from './website/slide.service.js';
 import { HealthController } from './health/health.controller.js';
 import { InfrastructureService } from './platform/infrastructure.service.js';
+import { PublicRateLimitGuard } from './platform/public-rate-limit.guard.js';
+import { PublicRateLimitService } from './platform/public-rate-limit.service.js';
 import {
   API_ENVIRONMENT,
   API_LOGGER,
@@ -177,6 +179,8 @@ export class AppModule {
           useValue: new LocalDiskMediaStorage(environment.mediaStorageDir),
         },
         InfrastructureService,
+        PublicRateLimitService,
+        PublicRateLimitGuard,
         PrismaService,
         SessionService,
         ContextThrottleService,

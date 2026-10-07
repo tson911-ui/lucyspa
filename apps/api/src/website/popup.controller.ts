@@ -25,6 +25,7 @@ import {
   Query,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
 import {
@@ -40,6 +41,7 @@ import {
 import type { Request, Response } from 'express';
 import { AuthError } from '../auth/auth.error.js';
 import { sessionCookie } from '../auth/cookies.js';
+import { PublicRateLimitGuard } from '../platform/public-rate-limit.guard.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import { parsePublicProductsQuery } from '../products/public-products.logic.js';
 import { VARIANT_KINDS, type VariantKind } from './media.processing.js';
@@ -173,8 +175,10 @@ export class PopupController {
 
 /**
  * UX/UI Step 12: what the public website reads, anonymously and read-only (design 16.3, 16.5). No session,
- * no cookie, nothing that reveals a draft.
+ * no cookie, nothing that reveals a draft. Phase 6 P6-7: every route draws on a per-address budget kept in Redis
+ * (`PublicRateLimitGuard`; a request from the website's own server is not counted).
  */
+@UseGuards(PublicRateLimitGuard)
 @Controller('api/v1/public')
 export class PublicWebsiteController {
   constructor(@Inject(PublicWebsiteService) private readonly website: PublicWebsiteService) {}

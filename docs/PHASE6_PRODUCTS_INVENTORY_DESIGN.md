@@ -515,6 +515,8 @@ Timing is the Owner's: it runs after the public catalog Step and before the prod
 - Rate limits for public read endpoints shared between processes (Redis is already running). Auth throttling already lives in PostgreSQL and is not moved.
 - Gate: load test of product list and detail pages before and after, recorded in the Step report.
 
+**As built in P6-7 (2026-10-07; report `docs/PHASE6_STEP7_LOAD_READINESS.md`; OQ-P6-26 approved: web only).** `ecosystem.config.cjs` clusters only `lucyspa-web` (3 processes, 700 MB cap); API and worker are single `fork` entries pinned by a test. Public routes `/api/v1/public/*` are rate limited per client address in Redis (300 a minute, pictures 1,200; all outside clients 6,000 and 30,000; Redis down lets requests through; the website's own server-side calls carry no `X-Forwarded-For` and are not counted). A 5-second in-process cache with in-flight sharing sits in front of the three cosmetics reads, so with the web's 60-second memory a price or stock change shows within about 65 seconds. PostgreSQL `max_connections` 100 against pools of 10 (API) and 10 (worker); the web holds none. The numbers, the nginx requirement (`X-Forwarded-For`) and these choices are **pending the Owner's yes/no (OQ-P6-54..OQ-P6-57)**.
+
 ## 13. Execution sequence and waves (T25, approved 2026-10-07)
 
 Wave 1 must not touch payments or the POS flow (Q17): it contains no migration on `invoices`, `discounts`, `loyalty_*` or `payments`, and none of the Wave 2 permissions. The numbering differs from my first summary because Q16, Q17 and Q18 reordered it: Q18's "after P6-5" means after the public catalog Step, now P6-6.

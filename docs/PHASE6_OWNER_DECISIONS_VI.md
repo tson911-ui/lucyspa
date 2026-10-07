@@ -442,3 +442,33 @@ Chi tiết: `docs/PHASE6_STEP6_PUBLIC_CATALOG.md`. OQ-27 và OQ-28 đã duyệt 
 ### OQ-53. Tên tiếng Anh của mục menu
 
 - Tiếng Việt "Mỹ phẩm" (Chủ đã chọn). Tiếng Anh tôi dùng "Cosmetics".
+
+## Câu hỏi của P6-7 (chịu tải): **chờ Chủ có/không**, chưa tính là đã duyệt
+
+Chi tiết: `docs/PHASE6_STEP7_LOAD_READINESS.md`. OQ-26 (chỉ web chạy nhiều tiến trình ở Đợt 1) đã duyệt và được làm đúng như vậy. Bốn điểm dưới đây là cách làm cụ thể của tôi.
+
+### OQ-54. Mức giới hạn số lần đọc trang công khai
+
+- **Ý nghĩa:** chặn một địa chỉ (hoặc một chương trình quét) đọc dồn dập các đường công khai làm chậm cả hệ thống, kể cả thu tiền, vì API dùng chung.
+- **Ví dụ:** mỗi địa chỉ được **300 lần mỗi phút** (ảnh **1.200**); mọi khách ngoài cộng lại **6.000** (ảnh **30.000**). Một người xem trang thấy khoảng 5 lần gọi; cả tiệm dùng chung một Wi-Fi vẫn thoải mái. Vượt thì nhận lỗi 429 và tự hết sau tối đa 1 phút.
+- **Tôi khuyên:** như trên. Redis hỏng thì **cho qua** (không để trang lỗi theo).
+- **Nếu khác:** Chủ cho con số khác, hoặc không giới hạn (rủi ro: một chương trình quét làm API chậm).
+
+### OQ-55. Bộ nhớ đệm 5 giây cho danh sách, chi tiết và mã sản phẩm trong API
+
+- **Ý nghĩa:** các yêu cầu giống nhau trong 5 giây dùng chung một lần đọc cơ sở dữ liệu. Đo thấy API danh sách sản phẩm từ **74 lên 1.200** yêu cầu mỗi giây.
+- **Ví dụ:** Chủ đổi giá lúc 10:00:00; khách có thể còn thấy giá cũ đến khoảng 10:01:05 (5 giây của API cộng 60 giây sẵn có của web). Hiện nay là 60 giây.
+- **Tôi khuyên:** làm. Không nhớ tìm kiếm tự do, không nhớ lỗi.
+- **Nếu khác:** bỏ thì mỗi lần mở trang mới đều đọc cơ sở dữ liệu; tải nhẹ vẫn chạy được, nhưng chịu kém khi đông.
+
+### OQ-56. Web chạy 3 tiến trình, trần 700 MB mỗi tiến trình
+
+- **Ý nghĩa:** máy chủ 6 nhân, 7,8 GB, không swap. 3 tiến trình web nhanh gấp khoảng 2,5 lần trên máy thử, mỗi tiến trình dùng khoảng 400-470 MB khi tải nặng; vượt 700 MB thì pm2 khởi động lại riêng tiến trình đó. Còn lại nhân cho API, PostgreSQL, Redis, nginx. Worker và API giữ đúng một.
+- **Tôi khuyên:** 3. Chỉnh bằng biến `WEB_INSTANCES` mà không sửa mã.
+- **Nếu khác:** 2 (ít bộ nhớ hơn) hoặc 4 (cần thử lại trên máy chủ thật).
+
+### OQ-57. Nginx phải gửi địa chỉ khách (`X-Forwarded-For`)
+
+- **Ý nghĩa:** muốn giới hạn theo từng khách, API phải biết địa chỉ thật. Nếu nginx không gửi thì **giới hạn không có tác dụng** (không ai bị chặn nhầm, nhưng cũng không bảo vệ được). Tôi không xem được cấu hình nginx nên hướng dẫn deploy có một bước kiểm bằng lệnh (gọi 310 lần rồi đếm lỗi 429) và một bước xem cấu hình.
+- **Tôi khuyên:** làm bước kiểm. Nếu thiếu, sửa nginx thêm `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` (kỹ thuật viên của Chủ làm, tôi không đụng máy chủ).
+- **Nếu khác:** không thêm, chấp nhận không có giới hạn theo khách ở Đợt 1.

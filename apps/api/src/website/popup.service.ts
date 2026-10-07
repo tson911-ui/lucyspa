@@ -22,6 +22,7 @@ import { AuthError } from '../auth/auth.error.js';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { SessionService } from '../auth/session.service.js';
 import { runAdminCommand, type AdminContext } from '../authorization/admin-command.js';
+import { ShortCache } from '../platform/short-cache.js';
 import { MEDIA_STORAGE } from '../platform/tokens.js';
 import { mediaVariantObject } from './media.core.js';
 import type { VariantKind } from './media.processing.js';
@@ -47,6 +48,8 @@ import { activeSeason } from './season.core.js';
 import { publicSite } from './shop-info.core.js';
 import { visibleSlides } from './slide.core.js';
 
+/** How long a public cosmetics read is remembered by the API (P6-7). */
+const PUBLIC_PRODUCT_CACHE_MS = 5_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
@@ -137,6 +140,16 @@ export class PopupService {
  */
 @Injectable()
 export class PublicWebsiteService {
+  /**
+   * P6-7: the cosmetics reads are remembered for a few seconds (see `ShortCache`), so a burst of visitors costs one query.
+   * Together with the website's own 60-second memory a price or stock change shows within about 65 seconds.
+   */
+  private readonly cache = {
+    products: new ShortCache<PublicProductsResponse>(PUBLIC_PRODUCT_CACHE_MS, 100),
+    detail: new ShortCache<PublicProductDetailResponse>(PUBLIC_PRODUCT_CACHE_MS, 300),
+    codes: new ShortCache<PublicProductCodesResponse>(PUBLIC_PRODUCT_CACHE_MS, 1),
+  };
+
   constructor(
     @Inject(SessionService) private readonly sessions: Pick<SessionService, 'withTransaction'>,
     @Inject(AuthThrottleService) private readonly throttle: Pick<AuthThrottleService, 'now'>,
@@ -174,15 +187,19 @@ export class PublicWebsiteService {
 
   /** The visible cosmetics, one page (P6-6): only PUBLISHED products with a price; never a cost or a quantity. */
   products(locale: PublicLocale, query: PublicProductsQuery): Promise<PublicProductsResponse> {
-    return this.read((tx) => publicProducts(tx, locale, query));
+    const load = () => this.read((tx) => publicProducts(tx, locale, query));
+    // A visitor's free-text search is never remembered (an unbounded set of words); every other page is, for a few seconds.
+    return query.q === '' ? this.cache.products.get(JSON.stringify([locale, query]), load) : load();
   }
 
   productDetail(locale: PublicLocale, code: string): Promise<PublicProductDetailResponse> {
-    return this.read((tx) => publicProductDetail(tx, locale, code));
+    return this.cache.detail.get(`${locale}:${code}`, () =>
+      this.read((tx) => publicProductDetail(tx, locale, code)),
+    );
   }
 
   productCodes(): Promise<PublicProductCodesResponse> {
-    return this.read((tx) => publicProductCodes(tx));
+    return this.cache.codes.get('codes', () => this.read((tx) => publicProductCodes(tx)));
   }
 
   /** One rendition of an image that live content uses. Anything else is 404, never a hint that it exists. */
