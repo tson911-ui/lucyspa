@@ -81,7 +81,7 @@ const detailSelect = {
       unitPriceVnd: true,
       grossVnd: true,
       comboDetails: { select: { invoiceLineId: true } },
-      // Phase 6 P6-8: a product line (the seller is never read here).
+      // Phase 6 P6-10 (T26): only the fact that the line is a product; the seller, SKU, cost, lots and every internal id are never selected.
       productDetails: { select: { invoiceLineId: true } },
       serviceDetails: {
         select: {
@@ -138,16 +138,38 @@ function detail(row: DetailRow, customerUserId: string): CustomerInvoiceDetail {
           amountVnd: application.computedAmountVnd.toString(),
         }
       : null,
+    // Phase 6 P6-10 (T26): which lines are products, only for an invoice that has any (the shape of every other invoice is unchanged).
+    ...(row.lines.some((line) => line.productDetails.length > 0)
+      ? {
+          productSequences: row.lines
+            .filter((line) => line.productDetails.length > 0)
+            .map((line) => line.sequence),
+        }
+      : {}),
     lines: row.lines.map((line) => {
       const service = line.serviceDetails[0];
       if (line.quantity === null || line.unitPriceVnd === null || line.grossVnd === null) {
         // A finalized invoice has every line priced (database invariant).
         throw new Error('A finalized invoice line is complete.');
       }
-      if (!service && (line.comboDetails.length > 0 || line.productDetails.length > 0)) {
-        // The combo or product the payer bought: always for the signed-in member (only the payer sees this invoice). The proper
-        // product line of the customer view (T26) is the point-of-sale Step; until then it has this shape, which carries no seller,
-        // cost, SKU or stock.
+      const product = line.productDetails[0];
+      if (!service && product) {
+        // A product the payer bought (T26): always for the signed-in member (only the payer sees this invoice). The name already
+        // carries the variant label (the catalog copy taken at finalization); nothing of the seller, SKU, cost, lots or stock.
+        return {
+          sequence: line.sequence,
+          nameVi: line.nameVi,
+          nameEn: line.nameEn,
+          quantity: line.quantity,
+          unitPriceVnd: line.unitPriceVnd.toString(),
+          grossVnd: line.grossVnd.toString(),
+          pricingUnit: 'PER_SERVICE' as const,
+          forSelf: true,
+          recipientName: null,
+        };
+      }
+      if (!service && line.comboDetails.length > 0) {
+        // The combo the payer bought: always for the signed-in member; no seller, cost or SKU.
         return {
           sequence: line.sequence,
           nameVi: line.nameVi,

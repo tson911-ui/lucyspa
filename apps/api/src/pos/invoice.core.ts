@@ -509,6 +509,29 @@ function presentComboUse(line: InvoiceRow['lines'][number]): InvoiceLineComboUse
  * The response for one invoice. A DRAFT shows the LIVE evaluation (the totals finalization would produce now);
  * a finalized invoice shows its frozen amounts and stored application. Nothing here is client input.
  */
+/** The board entry's product figures (Phase 6 P6-10): present only on an invoice that has product lines. */
+function productSummary(
+  lines: readonly {
+    kind: string;
+    quantity: number | null;
+    productDetails: readonly { seller: { fullName: string } }[];
+  }[],
+): { products?: { lines: number; quantity: number; sellers: string[] } } {
+  const products = lines.filter((line) => line.kind === 'PRODUCT');
+  if (products.length === 0) return {};
+  return {
+    products: {
+      lines: products.length,
+      quantity: products.reduce((sum, line) => sum + (line.quantity ?? 0), 0),
+      sellers: [
+        ...new Set(
+          products.flatMap((line) => line.productDetails.map((detail) => detail.seller.fullName)),
+        ),
+      ].sort((a, b) => a.localeCompare(b, 'vi')),
+    },
+  };
+}
+
 /** The product lines of an invoice (Phase 6 P6-8). The seller is shown to staff only; the customer view never carries it. */
 function presentProductLines(row: InvoiceRow): InvoiceProductLineResponse[] {
   return row.lines
@@ -908,7 +931,17 @@ export async function posBoard(
       kind: true,
       visit: { select: { id: true, code: true } },
       payer: { select: { fullName: true } },
-      lines: { where: { kind: 'COMBO_PURCHASE' }, select: { nameVi: true, nameEn: true } },
+      // The combo of a combo sale and (Phase 6 P6-10) the product lines with who sold them: staff board only.
+      lines: {
+        where: { kind: { in: ['COMBO_PURCHASE', 'PRODUCT'] } },
+        select: {
+          kind: true,
+          nameVi: true,
+          nameEn: true,
+          quantity: true,
+          productDetails: { select: { seller: { select: { fullName: true } } } },
+        },
+      },
     },
   });
   return {
@@ -932,15 +965,20 @@ export async function posBoard(
       kind: invoice.kind,
       visitId: invoice.visit ? invoice.visit.id : null,
       visitCode: invoice.visit ? invoice.visit.code : null,
-      comboName: invoice.lines[0]
-        ? { vi: invoice.lines[0].nameVi, en: invoice.lines[0].nameEn }
+      comboName: invoice.lines.find((line) => line.kind === 'COMBO_PURCHASE')
+        ? {
+            vi: invoice.lines.find((line) => line.kind === 'COMBO_PURCHASE')!.nameVi,
+            en: invoice.lines.find((line) => line.kind === 'COMBO_PURCHASE')!.nameEn,
+          }
         : null,
       payerName: invoice.payer ? invoice.payer.fullName : null,
       totalVnd: invoice.totalVnd.toString(),
       businessDate: day(invoice.businessDate),
       createdAt: invoice.createdAt.toISOString(),
+      ...productSummary(invoice.lines),
     })),
     canManage: decide(context.actor.graph, 'MANAGE_INVOICES', { kind: 'BRANCH', branchId }),
+    canSellProducts: decide(context.actor.graph, 'SELL_PRODUCTS', { kind: 'BRANCH', branchId }),
     canSellCombos:
       decide(context.actor.graph, 'MANAGE_INVOICES', { kind: 'BRANCH', branchId }) &&
       decide(context.actor.graph, 'SELL_COMBOS', { kind: 'BRANCH', branchId }),

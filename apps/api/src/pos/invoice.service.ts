@@ -25,6 +25,7 @@ import type {
   PaymentResultResponse,
   PaymentReverseRequest,
   PosBoardResponse,
+  PosProductOptionsResponse,
   ProductSaleRequest,
   WalkInMemberLookupResponse,
 } from '@lucy-spa/contracts';
@@ -46,6 +47,7 @@ import { normalizeReason } from '../operations/service-execution.service.js';
 import { API_ENVIRONMENT, PAYMENT_PROVIDER, type ApiEnvironment } from '../platform/tokens.js';
 import { lookupMember } from '../walkin/walkin.core.js';
 import { comboSaleOptions, openComboSale } from './combo-sale.core.js';
+import { productCounterOptions } from './product-counter.core.js';
 import { clearComboUse, lookupCombos, selectComboUse } from './combo-use.core.js';
 import { parseVnd } from './invoice.calc.js';
 import {
@@ -125,6 +127,17 @@ export class InvoiceService {
       }
       return lookupMember(context.tx, query);
     });
+  }
+
+  /** The products the counter can add and the staff who may be the seller (SELL_PRODUCTS at the branch; Phase 6 P6-10). */
+  productOptions(
+    token: string | undefined,
+    branchId: string,
+    query: { q?: string },
+  ): Promise<PosProductOptionsResponse> {
+    return this.run(token, branchId, undefined, (context, id) =>
+      productCounterOptions(context, id, query),
+    );
   }
 
   /** The combos on sale at the counter (SELL_COMBOS at the branch). */

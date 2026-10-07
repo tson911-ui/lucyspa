@@ -59,3 +59,40 @@ export interface InvoiceProductLineUpdateRequest {
 export interface InvoiceProductLineRemoveRequest {
   expectedVersion: number;
 }
+
+/**
+ * Phase 6 P6-10: GET /api/v1/pos/branches/:branchId/products?q= (SELL_PRODUCTS at the branch). What the counter needs to add a
+ * product line: the sellable variants that match the search (name, brand, variant label or SKU, without diacritics), each with the
+ * server's effective price and what is available at THIS branch, and the staff who may be named as the seller. Never the cost, the
+ * lots, the suppliers or the stock of another branch.
+ */
+export interface PosProductOption {
+  variantId: string;
+  productId: string;
+  sku: string;
+  nameVi: string;
+  nameEn: string;
+  variantLabelVi: string | null;
+  variantLabelEn: string | null;
+  /** The effective price now; the finalization freezes the price of that instant. */
+  unitPriceVnd: string;
+  listPriceVnd: string;
+  onPromotion: boolean;
+  /** Units a new sale can still take at this branch (expired lots and reserved units excluded); 0 = "Hết hàng". */
+  available: number;
+}
+
+export interface PosSellerOption {
+  id: string;
+  displayName: string;
+}
+
+export interface PosProductOptionsResponse {
+  products: PosProductOption[];
+  /** More variants match than are listed: the cashier refines the search. */
+  truncated: boolean;
+  /** Active staff assigned to the branch, by name. */
+  sellers: PosSellerOption[];
+  /** The caller when they may be a seller here; null for an Owner without an assignment (who must choose). */
+  defaultSellerId: string | null;
+}

@@ -2564,6 +2564,11 @@ export interface PosBoardInvoice {
   totalVnd: string;
   businessDate: string;
   createdAt: string;
+  /**
+   * Phase 6 P6-10: present only on an invoice that has product lines: how many lines, how many units, and who sold them (names of
+   * the distinct sellers, by name). Staff only.
+   */
+  products?: { lines: number; quantity: number; sellers: string[] };
 }
 
 /**
@@ -2581,6 +2586,8 @@ export interface PosBoardResponse {
   canManage: boolean;
   /** SELL_COMBOS and MANAGE_INVOICES here: the "sell a combo" action is offered (Phase 5 P5-7). */
   canSellCombos: boolean;
+  /** Phase 6 P6-10: SELL_PRODUCTS here: the "sell products" action is offered (absent = false). */
+  canSellProducts?: boolean;
 }
 
 // ------------------------------------------------------------------ Phase 4 Step 6: discounts / vouchers
@@ -2881,6 +2888,11 @@ export interface CustomerInvoiceDetail extends CustomerInvoiceSummary {
     voucherCode: string | null;
     amountVnd: string;
   } | null;
+  /**
+   * Phase 6 P6-10 (T26): the `sequence` of the lines that are PRODUCTS, present only on an invoice that has any. A product line's
+   * name already carries its variant label; the seller, SKU, cost, lots and stock are never part of the customer view.
+   */
+  productSequences?: number[];
   lines: CustomerInvoiceLine[];
   payments: CustomerInvoicePayment[];
 }

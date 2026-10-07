@@ -26,6 +26,7 @@ import type {
   PaymentResultResponse,
   PaymentReverseRequest,
   PosBoardResponse,
+  PosProductOptionsResponse,
   ProductSaleRequest,
   WalkInMemberLookupResponse,
 } from '@lucy-spa/contracts';
@@ -68,6 +69,10 @@ class BoardQueryDto {
 
 class AnomalyQueryDto {
   @IsOptional() @IsIn(['OPEN', 'REVIEWED']) status?: 'OPEN' | 'REVIEWED';
+}
+
+class ProductOptionsQueryDto {
+  @IsOptional() @IsString() @MaxLength(80) q?: string;
 }
 
 class MemberQueryDto {
@@ -223,6 +228,19 @@ export class InvoiceController {
     @Req() request: Request,
   ): Promise<WalkInMemberLookupResponse> {
     return this.invoices.members(this.session(request), branchId, query);
+  }
+
+  @Get('branches/:branchId/products')
+  @ApiOkResponse({
+    description:
+      'The sellable products matching a search with the price now and the availability at the branch, and the staff who may be the seller (SELL_PRODUCTS; never cost).',
+  })
+  productOptions(
+    @Param('branchId') branchId: string,
+    @Query() query: ProductOptionsQueryDto,
+    @Req() request: Request,
+  ): Promise<PosProductOptionsResponse> {
+    return this.invoices.productOptions(this.session(request), branchId, query);
   }
 
   @Get('branches/:branchId/combos')
