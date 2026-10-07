@@ -34,6 +34,11 @@ export interface DataTableColumn<Row> {
   /** The trailing "Actions" column: heading visually hidden but present, cells right aligned. */
   actions?: boolean | undefined;
   /**
+   * A small leading picture (`MediaThumb`): the first column, heading visually hidden but present, no label in the phone card,
+   * where the picture sits at the top start beside the title.
+   */
+  leading?: boolean | undefined;
+  /**
    * Widest the column's content may grow (`xs` 96, `sm` 144, `md` 224, `lg` 320 px). Only `truncate`
    * and `wrap` cells are held to it; a column without either stays on one line at its natural width.
    */
@@ -239,7 +244,7 @@ export function DataTable<Row>({
                         )}
                       />
                     </button>
-                  ) : column.actions ? (
+                  ) : column.actions || column.leading ? (
                     <span className="ls-visually-hidden">{column.header}</span>
                   ) : (
                     column.header
@@ -272,7 +277,9 @@ export function DataTable<Row>({
                           key={column.key}
                           className={cellClass(column)}
                           data-label={
-                            column.actions || column.mobileTitle ? undefined : column.header
+                            column.actions || column.leading || column.mobileTitle
+                              ? undefined
+                              : column.header
                           }
                           // The phone card shows the title on one line; the full name stays in the tooltip.
                           title={column.mobileTitle ? nodeText(column.cell(row)) : undefined}
@@ -308,7 +315,7 @@ export function DataTable<Row>({
 function renderCell<Row>(column: DataTableColumn<Row>, row: Row): ReactNode {
   const clipped = column.truncate || column.wrap;
   const content = column.cell(row);
-  if (column.actions) return content;
+  if (column.actions || column.leading) return content;
   const clip = cx(column.truncate ? 'ls-cell-truncate' : column.wrap && 'ls-cell-wrap');
   if (column.mobileTitle) {
     return clipped ? (
@@ -360,6 +367,7 @@ function cellClass<Row>(column: DataTableColumn<Row>): string {
     (column.align === 'end' || column.numeric) && 'ls-cell-end',
     column.align === 'center' && 'ls-cell-center',
     column.actions && 'ls-cell-actions',
+    column.leading && 'ls-cell-leading',
     column.mobileTitle && 'ls-cell-title',
     column.hideBelow === 'md' && 'ls-hide-md',
     column.hideBelow === 'lg' && 'ls-hide-lg',

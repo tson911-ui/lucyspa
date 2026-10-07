@@ -1636,6 +1636,25 @@
   object-fit: cover;
 }
 
+/* A small row picture: one square the height of a control (the row is that plus its padding), cropped to fill. */
+.ls-thumb {
+  display: grid;
+  place-items: center;
+  width: var(--ls-control-h);
+  height: var(--ls-control-h);
+  overflow: hidden;
+  border-radius: var(--ls-radius-sm);
+  color: var(--ls-text-muted);
+  background: var(--ls-bg-sunken);
+}
+
+.ls-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .ls-media-preview {
   display: grid;
   place-items: center;
@@ -2278,6 +2297,13 @@
   white-space: nowrap;
 }
 
+/* The leading picture column is as wide as its picture; the next column's own padding separates them. */
+.ls-table th.ls-cell-leading,
+.ls-table td.ls-cell-leading {
+  width: var(--ls-control-h);
+  padding-inline-end: 0;
+}
+
 /* Widest a clipped cell grows: xs 96, sm 144, md 224, lg 320 px. */
 .ls-col-xs {
   --ls-col-w: 6rem;
@@ -2616,6 +2642,19 @@
     font-size: var(--ls-text-md);
     font-weight: 600;
     text-align: start;
+  }
+
+  /* A leading picture sits at the top start of the card; the title makes room for it. */
+  .ls-table .ls-cell-leading {
+    position: absolute;
+    inset-block-start: var(--ls-space-3);
+    inset-inline-start: var(--ls-space-4);
+    width: auto;
+    padding: 0;
+  }
+
+  .ls-table tbody tr:has(.ls-cell-leading) .ls-cell-title {
+    padding-inline-start: calc(var(--ls-control-h) + var(--ls-space-3));
   }
 
   /* The row menu sits at the top right of the card, beside the title. */

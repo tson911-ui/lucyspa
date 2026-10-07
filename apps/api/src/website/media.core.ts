@@ -32,7 +32,8 @@ export function requireWebsiteContent(context: AdminContext): void {
 
 /**
  * Phase 6 P6-3 (design 3.5): the people who manage the product catalog (`MANAGE_PRODUCTS`, GLOBAL_ONLY) also list, view and upload
- * pictures to choose product images from. Changing alt text and deleting stay with `MANAGE_WEBSITE_CONTENT` only.
+ * pictures to choose product images from, and (Owner, 2026-10-07) edit their captions and alt text. Deleting stays with
+ * `MANAGE_WEBSITE_CONTENT` only.
  */
 export const holdsMediaAccess = (graph: AuthorityGraph): boolean =>
   holdsWebsiteContent(graph) || decide(graph, 'MANAGE_PRODUCTS', GLOBAL);
@@ -286,7 +287,7 @@ export async function updateMediaAlt(
   id: string,
   request: MediaUpdateRequest,
 ): Promise<MediaAssetDetail> {
-  requireWebsiteContent(context);
+  requireMediaAccess(context);
   const altVi = altText(request.altVi, 'altVi');
   const altEn = altText(request.altEn, 'altEn');
   const [locked] = await context.tx.$queryRaw<{ row_version: number }[]>`

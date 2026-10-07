@@ -662,11 +662,16 @@ export async function changePrice(
   if ((latest?.versionNo ?? 0) !== expectedNo) throw new AuthError('CONFLICT');
   if (latest && latest.listPriceVnd === price) return loadDetail(context, productId, access);
   // Rule 1 (Owner-approved 2026-10-07): while a promotion that has not ended is at or above the new price, the price cannot change.
+  // A promotion ended by hand (even before it started) is over: it never blocks (Owner fix, same day).
   const blocking = await tx.productPromotion.findMany({
     where: { variantId },
     select: { promoPriceVnd: true, endsAt: true, endedEarlyAt: true },
   });
-  if (blocking.some((row) => promotionEnd(row) > now && row.promoPriceVnd >= price)) {
+  if (
+    blocking.some(
+      (row) => row.endedEarlyAt === null && row.endsAt > now && row.promoPriceVnd >= price,
+    )
+  ) {
     throw new AuthError('PRODUCT_PRICE_BELOW_PROMOTION', 'listPriceVnd');
   }
   const versionNo = (latest?.versionNo ?? 0) + 1;
@@ -723,7 +728,13 @@ export async function createPromotion(
     where: { variantId },
     select: { startsAt: true, endsAt: true, endedEarlyAt: true },
   });
-  if (others.some((row) => row.startsAt < endsAt && startsAt < promotionEnd(row))) {
+  // A promotion ended by hand before it started has an empty window and overlaps nothing (as in the database exclusion).
+  if (
+    others.some(
+      (row) =>
+        promotionEnd(row) > row.startsAt && row.startsAt < endsAt && startsAt < promotionEnd(row),
+    )
+  ) {
     throw new AuthError('PRODUCT_PROMOTION_OVERLAP', 'startsAt');
   }
   const created = await tx.productPromotion.create({
@@ -770,7 +781,8 @@ export async function endPromotion(
     where: { id: promotionId },
     select: { promoPriceVnd: true, startsAt: true, endsAt: true, endedEarlyAt: true },
   });
-  if (promotionEnd(current) <= now) throw new AuthError('PRODUCT_PROMOTION_EXPIRED');
+  if (current.endedEarlyAt !== null || current.endsAt <= now)
+    throw new AuthError('PRODUCT_PROMOTION_EXPIRED');
   await tx.productPromotion.update({
     where: { id: promotionId },
     data: { endedEarlyAt: now, endedEarlyByUserId: context.actor.userId },

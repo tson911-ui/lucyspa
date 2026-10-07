@@ -698,6 +698,37 @@ test('Phase 6 P6-2 catalog / import / inventory database foundation (all fixture
                 "clock_timestamp() + interval '1 second'",
                 "clock_timestamp() + interval '1 hour'",
               );
+              // Owner fix (2026-10-07): a promotion ended by hand before it started no longer blocks lowering the list price.
+              await promotion(
+                400000,
+                "clock_timestamp() + interval '5 hour'",
+                "clock_timestamp() + interval '6 hour'",
+              );
+              await rejects(
+                () =>
+                  exec(
+                    `INSERT INTO product_price_versions (variant_id, version_no, list_price_vnd, created_by_user_id)
+                   VALUES ('${variant}'::uuid, 4, 350000, '${actor}'::uuid)`,
+                  ),
+                /must stay above the price of a promotion/,
+              );
+              await exec(
+                `UPDATE product_promotions SET ended_early_by_user_id = '${actor}'::uuid, ended_early_at = now()
+                 WHERE variant_id = '${variant}'::uuid AND promo_price_vnd = 400000`,
+              );
+              await exec(
+                `INSERT INTO product_price_versions (variant_id, version_no, list_price_vnd, created_by_user_id)
+               VALUES ('${variant}'::uuid, 4, 350000, '${actor}'::uuid)`,
+              );
+              const notApplied = await one<{ effective_price_vnd: bigint }>(
+                `SELECT effective_price_vnd FROM lucy_variant_price_at($1::uuid, clock_timestamp() + interval '330 minute')`,
+                variant,
+              );
+              assert.equal(
+                notApplied.effective_price_vnd,
+                350000n,
+                'the ended promotion never applies',
+              );
             },
           );
 

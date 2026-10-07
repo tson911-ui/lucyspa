@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { cx } from './cx';
+import { Icon } from './icons';
 
 /**
  * Responsive grid of image tiles for a media library (docs/UXUI_REDESIGN_DESIGN.md 16.3). The grid sits on
@@ -22,6 +23,23 @@ export function MediaGrid({
     <ul className={cx('ls-media-grid', className)} aria-label={label}>
       {children}
     </ul>
+  );
+}
+
+/**
+ * A small square picture at the start of a table row (a `leading` DataTable column). It is decorative (the name next to it is
+ * the text); without a picture a muted placeholder icon holds the same square, so rows keep one height.
+ */
+export function MediaThumb({ src }: { src: string | null }) {
+  return (
+    <span className="ls-thumb">
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" loading="lazy" decoding="async" />
+      ) : (
+        <Icon name="image" />
+      )}
+    </span>
   );
 }
 

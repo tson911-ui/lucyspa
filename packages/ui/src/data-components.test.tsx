@@ -8,6 +8,7 @@ import {
   DescriptionList,
   FilterChips,
   ListToolbar,
+  MediaThumb,
   Pagination,
   Tabs,
   type DataTableColumn,
@@ -92,6 +93,35 @@ test('DataTable: an empty value shows an em dash; the value sits in its own span
   );
   assert.equal(markup.match(/<span class="ls-cell-value">—<\/span>/g)?.length, 2);
   assert.match(markup, /<span class="ls-cell-value">Học viên<\/span>/);
+});
+
+test('DataTable: a leading picture column has a hidden heading, no card label, and MediaThumb keeps its square without a picture', () => {
+  const markup = html(
+    <DataTable
+      paging={{ off: 'test' }}
+      mode="server"
+      columns={[
+        {
+          key: 'image',
+          header: 'Ảnh sản phẩm',
+          leading: true,
+          cell: (row: { id: string }) => <MediaThumb src={row.id === '1' ? '/t/1' : null} />,
+        },
+        { key: 'name', header: 'Tên', mobileTitle: true, cell: () => 'Sữa rửa mặt' },
+      ]}
+      rows={[{ id: '1' }, { id: '2' }]}
+      rowKey={(row) => row.id}
+      caption="t"
+    />,
+  );
+  assert.match(
+    markup,
+    /<th[^>]*ls-cell-leading[^>]*><span class="ls-visually-hidden">Ảnh sản phẩm<\/span>/,
+  );
+  assert.doesNotMatch(markup, /<td[^>]*ls-cell-leading[^>]*data-label/, 'no label in the card');
+  assert.match(markup, /<span class="ls-thumb"><img src="\/t\/1" alt=""/, 'decorative picture');
+  assert.equal((markup.match(/class="ls-thumb"/g) ?? []).length, 2, 'both rows hold the square');
+  assert.match(markup, /<span class="ls-thumb"><svg/, 'placeholder icon when there is no picture');
 });
 
 test('DataTable: semantic table, labelled cells, hidden actions heading, responsive classes', () => {

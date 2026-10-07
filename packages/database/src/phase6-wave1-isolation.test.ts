@@ -47,8 +47,8 @@ const sql = (name: string) =>
     .map((line) => line.replace(/--.*$/, ''))
     .join('\n');
 
-test('Wave 1 has its five migrations', () => {
-  assert.equal(WAVE1.length, 5, WAVE1.join(', '));
+test('Wave 1 has its six migrations', () => {
+  assert.equal(WAVE1.length, 6, WAVE1.join(', '));
 });
 
 test('Wave 1 migrations touch no POS, invoice, discount, payment, loyalty or booking table', () => {

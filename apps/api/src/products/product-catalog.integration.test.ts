@@ -942,19 +942,16 @@ test(
               );
               p = await catalog.endPromotion(actors.full.token, p.id, scheduled!.id);
               assert.ok(v().promotions.every((row) => row.state === 'ENDED'));
-              // A promotion ended by hand before it started still ends at its planned start in the database, and the database guard counts
-              // it as unfinished until then: the price cannot go below it yet (my reading, reported to the Owner), but it can rise.
-              await fails(
-                () =>
-                  catalog.changePrice(actors.full.token, p.id, v().id, {
-                    expectedVersionNo: 3,
-                    listPriceVnd: money(100_000),
-                    reason: null,
-                  }),
-                'PRODUCT_PRICE_BELOW_PROMOTION',
-              );
+              // Owner fix (2026-10-07): a promotion ended by hand, even before it started, no longer blocks lowering the list price.
               p = await catalog.changePrice(actors.full.token, p.id, v().id, {
                 expectedVersionNo: 3,
+                listPriceVnd: money(100_000),
+                reason: null,
+              });
+              assert.equal(v().priceVersionNo, 4);
+              assert.equal(v().effectivePriceVnd, '100000');
+              p = await catalog.changePrice(actors.full.token, p.id, v().id, {
+                expectedVersionNo: 4,
                 listPriceVnd: money(170_000),
                 reason: 'Tăng giá',
               });
@@ -983,7 +980,7 @@ test(
               });
               assert.equal(last.reason, 'Tăng giá');
               // The history rows are append-only at the database too.
-              assert.equal(await tx.productPriceVersion.count({ where: { variantId: v().id } }), 4);
+              assert.equal(await tx.productPriceVersion.count({ where: { variantId: v().id } }), 5);
             });
 
             await suite.test(
@@ -1206,15 +1203,26 @@ test(
                 assert.ok(listed.items.some((item) => item.id === one.id));
                 await fails(() => media.list(actors.pricer.token, {}), 'FORBIDDEN');
                 await fails(() => media.list(actors.none.token, {}), 'FORBIDDEN');
-                await fails(
-                  () =>
-                    media.updateAlt(actors.manager.token, two.id, {
-                      altVi: 'Sửa',
-                      altEn: null,
-                      expectedVersion: two.rowVersion,
-                    }),
-                  'FORBIDDEN',
-                );
+                // Owner (2026-10-07): product editors also edit captions and alt text; others still cannot.
+                for (const actor of [actors.pricer, actors.none]) {
+                  await fails(
+                    () =>
+                      media.updateAlt(actor.token, bare.id, {
+                        altVi: 'Sửa',
+                        altEn: null,
+                        expectedVersion: bare.rowVersion,
+                      }),
+                    'FORBIDDEN',
+                  );
+                }
+                const described = await media.updateAlt(actors.manager.token, bare.id, {
+                  altVi: 'Mô tả do người sửa sản phẩm',
+                  altEn: 'Caption by a product editor',
+                  expectedVersion: bare.rowVersion,
+                });
+                assert.equal(described.altVi, 'Mô tả do người sửa sản phẩm');
+                assert.equal(described.altEn, 'Caption by a product editor');
+                // Deleting stays with website content.
                 await fails(() => media.remove(actors.manager.token, bare.id), 'FORBIDDEN');
                 // Removal only unlinks.
                 await fails(

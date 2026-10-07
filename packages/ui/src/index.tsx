@@ -205,7 +205,7 @@ export type { ScheduleItem, ScheduleLayout, ScheduleTone } from './schedule-stri
 export { ConfirmDialog } from './confirm-dialog';
 export type { ConfirmError, ConfirmFact } from './confirm-dialog';
 export { createConfirmController, typingMatches } from './confirm-core';
-export { ListRow, MediaGrid, MediaPreview, MediaRow, MediaTile } from './media-grid';
+export { ListRow, MediaGrid, MediaPreview, MediaRow, MediaThumb, MediaTile } from './media-grid';
 export { IconPicker } from './icon-picker';
 export type { IconPickerOption } from './icon-picker';
 export { FileDropzone, ImageUploader } from './image-uploader';

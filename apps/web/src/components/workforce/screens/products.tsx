@@ -10,6 +10,7 @@ import {
   DataTable,
   FacetedFilter,
   ListToolbar,
+  MediaThumb,
   RowActions,
   SearchInput,
   Tabs,
@@ -40,6 +41,7 @@ import {
   statusMoveKind,
   statusTone,
 } from '../../../lib/workforce/products';
+import { mediaVariantUrl } from '../../../lib/workforce/media';
 import { useWorkforce } from '../session';
 import {
   Badge,
@@ -101,11 +103,21 @@ export function ProductsScreen() {
 
   const columns: DataTableColumn<ProductListItem>[] = [
     {
+      key: 'image',
+      header: p.list.image,
+      leading: true,
+      cell: (product) => (
+        <MediaThumb
+          src={product.coverMediaId ? mediaVariantUrl(product.coverMediaId, 'thumb') : null}
+        />
+      ),
+    },
+    {
       key: 'name',
       header: p.list.name,
       mobileTitle: true,
       truncate: true,
-      width: 'lg',
+      width: 'md',
       sortable: true,
       sortValue: (product) => productSortValue(product, 'name', locale),
       cell: (product) => (
