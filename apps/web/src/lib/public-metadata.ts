@@ -147,7 +147,11 @@ export async function productsMetadata(locale: Locale, state: ProductsState): Pr
     description: clip(site ? `${lead} ${SITE_NAME}, ${site.address}` : lead),
     image: origin ? absoluteImage(origin, widest?.url) : null,
   });
-  return isPlainList(state) ? metadata : { ...metadata, robots: { index: false, follow: true } };
+  // A list with nothing in it (no published product yet) is not worth indexing either.
+  const empty = data !== null && data.total === 0;
+  return isPlainList(state) && !empty
+    ? metadata
+    : { ...metadata, robots: { index: false, follow: true } };
 }
 
 export async function productMetadata(locale: Locale, code: string): Promise<Metadata> {

@@ -142,6 +142,8 @@ export interface SiteText {
     /** With {days}: "Đặt trước, dự kiến 3–5 ngày". */
     preOrder: string;
     empty: string;
+    /** The button under the empty message: where to look meanwhile (the services). */
+    emptyAction: string;
     noMatch: string;
     pager: {
       nav: string;
@@ -297,7 +299,8 @@ const text = {
       badgeNew: 'Mới',
       outOfStock: 'Hết hàng',
       preOrder: 'Đặt trước, dự kiến {days} ngày',
-      empty: 'Chưa có sản phẩm nào để hiển thị.',
+      empty: 'Mỹ phẩm sắp có tại Lucy Spa. Trong lúc chờ, mời bạn xem các dịch vụ của tiệm.',
+      emptyAction: 'Xem dịch vụ',
       noMatch: 'Không có sản phẩm phù hợp. Thử đổi từ khóa hoặc bỏ bớt bộ lọc.',
       pager: {
         nav: 'Phân trang sản phẩm',
@@ -452,7 +455,8 @@ const text = {
       badgeNew: 'New',
       outOfStock: 'Out of stock',
       preOrder: 'Pre-order, expected {days} days',
-      empty: 'There are no products to show yet.',
+      empty: 'Cosmetics are coming soon to Lucy Spa. In the meantime, have a look at our services.',
+      emptyAction: 'See services',
       noMatch: 'No products match. Try other words or remove a filter.',
       pager: {
         nav: 'Product pages',

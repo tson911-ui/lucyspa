@@ -19,6 +19,8 @@ export interface SiteNavEntry {
   phoneTab: IconName | null;
   /** The phone tab is for visitors who are not signed in only (a member's bar already has five: OQ-P6-27). */
   phoneTabGuestsOnly?: boolean;
+  /** Stays out of every menu while the shop has no published product (the page itself still answers, kindly). */
+  needsProducts?: boolean;
   footer: 'discover' | null;
 }
 
@@ -53,6 +55,7 @@ export const SITE_NAV: readonly SiteNavEntry[] = [
     header: true,
     phoneTab: 'droplet',
     phoneTabGuestsOnly: true,
+    needsProducts: true,
     footer: 'discover',
   },
   // Booking is the header's call to action ("Đặt lịch ngay"), not a menu item; it is a tab on phones and a footer link.
@@ -115,23 +118,29 @@ export function currentNavKey(pathname: string, locale: string): SiteNavEntry['k
   return best?.key ?? null;
 }
 
-/** An entry only for signed-in members stays out of the menus of a visitor who is not signed in. */
-const shown = (entry: SiteNavEntry, signedIn: boolean) =>
-  entry.enabled && (!entry.members || signedIn);
+/**
+ * An entry only for signed-in members stays out of the menus of a visitor who is not signed in; the cosmetics entry stays
+ * out while the shop has no published product (`hasProducts`; true when that is not known, so a failed read hides nothing).
+ */
+const shown = (entry: SiteNavEntry, signedIn: boolean, hasProducts: boolean) =>
+  entry.enabled && (!entry.members || signedIn) && (!entry.needsProducts || hasProducts);
 
 export function headerNavItems(
   locale: string,
   pathname: string,
   text: SiteText['nav'],
   signedIn = false,
+  hasProducts = true,
 ): SiteNavItem[] {
   const current = currentNavKey(pathname, locale);
-  return SITE_NAV.filter((entry) => entry.header && shown(entry, signedIn)).map((entry) => ({
-    key: entry.key,
-    label: text[entry.key],
-    href: hrefOf(locale, entry),
-    current: entry.key === current,
-  }));
+  return SITE_NAV.filter((entry) => entry.header && shown(entry, signedIn, hasProducts)).map(
+    (entry) => ({
+      key: entry.key,
+      label: text[entry.key],
+      href: hrefOf(locale, entry),
+      current: entry.key === current,
+    }),
+  );
 }
 
 /** The phone tab bar: the booking tab reads "Đặt lịch ngay" (the one booking call to action) and stands out. */
@@ -140,10 +149,11 @@ export function tabBarItems(
   pathname: string,
   text: SiteText['nav'],
   signedIn = false,
+  hasProducts = true,
 ): TabBarItem[] {
   const current = currentNavKey(pathname, locale);
   return SITE_NAV.flatMap((entry) =>
-    entry.phoneTab && shown(entry, signedIn) && !(entry.phoneTabGuestsOnly && signedIn)
+    entry.phoneTab && shown(entry, signedIn, hasProducts) && !(entry.phoneTabGuestsOnly && signedIn)
       ? [
           {
             key: entry.key,
@@ -158,8 +168,10 @@ export function tabBarItems(
   ).slice(0, 5);
 }
 
-export function footerDiscoverItems(locale: string, text: SiteText['nav']) {
-  return SITE_NAV.filter((entry) => entry.enabled && entry.footer === 'discover').map((entry) => ({
+export function footerDiscoverItems(locale: string, text: SiteText['nav'], hasProducts = true) {
+  return SITE_NAV.filter(
+    (entry) => shown(entry, false, hasProducts) && entry.footer === 'discover',
+  ).map((entry) => ({
     key: entry.key,
     label: text[entry.key],
     href: hrefOf(locale, entry),

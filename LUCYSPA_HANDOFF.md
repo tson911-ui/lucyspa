@@ -169,7 +169,8 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 ## Phase 6 P6-6 (public cosmetics catalog, 2026-10-07, committed locally, not pushed, not deployed)
 
 - `/products` ("Mỹ phẩm"; OQ-P6-27/28 as approved): list (Owner hero + commitment box hidden while empty, search, 4 sorts, category/brand filters, 20 per page) and product page (gallery, variants, store block from the shop profile, related); public API `/api/v1/public/products[/:code|/codes]`, 60 s cache, no cost/quantity/SKU/ids; pictures public only while PUBLISHED; sitemap + JSON-LD. Migration `20261106000009` (8 columns on `product_settings`, additive); Wave 1 is now 10 migrations (73 total). Report: `docs/PHASE6_STEP6_PUBLIC_CATALOG.md`.
-- Pending the Owner (OQ-49..OQ-53 in `docs/PHASE6_OWNER_DECISIONS_VI.md`): where the hero/commitment copy is edited (I used Products → "Trang mỹ phẩm", not the Shop info tab), the four sorts, the stock wording rule, the store-block text, the English label "Cosmetics". P6-5 approval (OQ-43..48) recorded in design 2.10.
+- **APPROVED by the Owner on 2026-10-07 (design 2.11): OQ-49..OQ-53 as proposed** (hero/commitment copy edited in Products → "Trang mỹ phẩm", four sorts, stock wording rule, store-block text, English label "Cosmetics"). P6-5 approval (OQ-43..48) is in design 2.10.
+- **Deploy rule (Owner, final, design 2.11): Phase 6 deploys wave by wave, only when the Owner says so, after each wave's milestone check. Before each wave: rehearsal on a restored copy of the production DB (pg_dump), timed migrations, a written rollback plan (DB restore + previous commit), and the guide as iNET web terminal commands block by block.**
 
 ## Production
 

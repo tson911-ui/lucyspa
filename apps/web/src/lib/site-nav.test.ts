@@ -101,6 +101,26 @@ test('the footer lists the discovery destinations that exist', () => {
   assert.ok(items.some((item) => item.key === 'products' && item.href === '/vi/products'));
 });
 
+test('while no product is published the cosmetics entry is out of the header, the phone bar and the footer', () => {
+  for (const signedIn of [false, true]) {
+    assert.ok(
+      !headerNavItems('vi', '/vi', vi, signedIn, false).some((item) => item.key === 'products'),
+    );
+  }
+  assert.deepEqual(
+    headerNavItems('vi', '/vi', vi, false, false).map((item) => item.key),
+    ['home', 'services'],
+  );
+  assert.deepEqual(
+    tabBarItems('vi', '/vi', vi, false, false).map((tab) => tab.key),
+    ['home', 'services', 'book'],
+  );
+  assert.ok(!footerDiscoverItems('vi', vi, false).some((item) => item.key === 'products'));
+  assert.ok(footerDiscoverItems('vi', vi, false).some((item) => item.key === 'services'));
+  // Not knowing (the default) leaves the entry where it is.
+  assert.ok(headerNavItems('vi', '/vi', vi).some((item) => item.key === 'products'));
+});
+
 test('the language link keeps the rest of the path', () => {
   assert.equal(otherLocalePath('/vi', 'vi'), '/en');
   assert.equal(otherLocalePath('/vi/account/book', 'vi'), '/en/account/book');

@@ -42,27 +42,40 @@ export function PublicSiteHeader(slots: {
 }
 
 /** The menu: Trang chủ and Dịch vụ for everyone, Lịch hẹn and Hóa đơn once a member is signed in. */
-export function PublicNav({ locale }: { locale: Locale }) {
+export function PublicNav({
+  locale,
+  hasProducts = true,
+}: {
+  locale: Locale;
+  /** False while no product is published: the Mỹ phẩm entry is then left out. */
+  hasProducts?: boolean;
+}) {
   const text = getSiteText(locale);
   const pathname = usePathname();
   const { signedIn } = useSiteSession();
   return (
     <SiteNav
       label={text.nav.menu}
-      items={headerNavItems(locale, pathname, text.nav, signedIn)}
+      items={headerNavItems(locale, pathname, text.nav, signedIn, hasProducts)}
       LinkComponent={PrefetchLink}
     />
   );
 }
 
-export function PublicTabBar({ locale }: { locale: Locale }) {
+export function PublicTabBar({
+  locale,
+  hasProducts = true,
+}: {
+  locale: Locale;
+  hasProducts?: boolean;
+}) {
   const text = getSiteText(locale);
   const pathname = usePathname();
   const { signedIn } = useSiteSession();
   return (
     <TabBar
       label={text.nav.phone}
-      items={tabBarItems(locale, pathname, text.nav, signedIn)}
+      items={tabBarItems(locale, pathname, text.nav, signedIn, hasProducts)}
       LinkComponent={PrefetchLink}
     />
   );

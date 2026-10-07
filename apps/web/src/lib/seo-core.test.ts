@@ -161,10 +161,10 @@ test('the sitemap lists home, the service list, each service, the cosmetics list
     'https://lucyspa.vn/en/products',
   );
   assert.ok(!entries.some((entry) => /account|workforce/.test(entry.url)));
-  // Without product codes (the list could not be read) the cosmetics list itself is still there.
+  // Without product codes (nothing published, or the list could not be read) the cosmetics list is left out too.
   assert.equal(
     sitemapEntries('https://lucyspa.vn', []).filter((entry) => /products/.test(entry.url)).length,
-    2,
+    0,
   );
 });
 

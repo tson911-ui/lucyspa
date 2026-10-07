@@ -412,7 +412,11 @@ Chi tiết: `docs/PHASE6_STEP5_IMPORT.md`. **Lời Chủ (2026-10-07):** "P6-5 a
 
 - **Ảnh hàng loạt theo tên tệp = SKU** (31.3) và **cập nhật giá hàng loạt: xuất ra, sửa, nhập lại, xem khác biệt, xác nhận** (31.4). Lời yêu cầu của Chủ ngày 2026-10-07 chỉ nêu sản phẩm, phân loại và tồn đầu kỳ nên tôi **chưa làm** hai việc này. Chủ cho biết làm ở bước nào.
 
-## Câu hỏi của P6-6 (trang mỹ phẩm công khai): **chờ Chủ có/không**, chưa tính là đã duyệt
+## Câu hỏi của P6-6 (trang mỹ phẩm công khai): **Chủ đã duyệt OQ-49 đến OQ-53 như đề xuất (2026-10-07)**
+
+**Lời Chủ (2026-10-07):** "P6-6 approved: OQ-49…53 as you proposed. Record in the design doc, owner-decisions doc and handoff." Các mục dưới đây giữ nguyên như đã viết.
+
+**Quyết định deploy của Chủ (cuối cùng, 2026-10-07):** deploy Phase 6 **từng đợt**, sau kiểm tra mốc của mỗi đợt và **chỉ khi Chủ nói**. Trước mỗi đợt: chạy thử trên bản khôi phục của DB thật (pg_dump), đo thời gian từng migration, viết kế hoạch quay lại (khôi phục DB + commit trước), và đưa hướng dẫn dưới dạng lệnh cho terminal web của iNET, từng khối một.
 
 Chi tiết: `docs/PHASE6_STEP6_PUBLIC_CATALOG.md`. OQ-27 và OQ-28 đã duyệt (mục 2.5 của thiết kế) và đã làm đúng như vậy. Năm điểm dưới đây là cách đọc của tôi, nơi thiết kế chưa nói rõ.
 

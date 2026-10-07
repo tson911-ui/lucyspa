@@ -15,6 +15,7 @@ import {
   parseProductDetail,
   parsePublicProducts,
   productsQuery,
+  productsStateOf,
   isProductCode,
   type ProductsState,
 } from './public-products-core';
@@ -93,6 +94,19 @@ export async function fetchPublicProducts(
   const path = `/api/v1/public/products?locale=${locale}${query === '' ? '' : `&${query.slice(1)}`}`;
   const answer = await read(path, fetcher, state.q === '');
   return answer?.status === 200 ? parsePublicProducts(answer.body) : null;
+}
+
+/**
+ * Whether the shop has any published product, for the menus (the entry is left out while it has none). It is the first
+ * page of the list in its default state, so the answer is the one the list page itself uses (remembered for a minute).
+ * When the catalog cannot be read this is true: an outage must not hide the entry.
+ */
+export async function fetchHasPublicProducts(
+  locale: Locale,
+  fetcher: typeof fetch = fetch,
+): Promise<boolean> {
+  const data = await fetchPublicProducts(locale, productsStateOf({}), fetcher);
+  return data === null || data.total > 0;
 }
 
 /** One product: the detail, 'missing' when the API says there is no such visible product, null when it could not be read. */

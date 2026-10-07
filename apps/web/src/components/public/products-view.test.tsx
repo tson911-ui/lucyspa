@@ -192,7 +192,8 @@ test('states: nothing published, nothing matches (with a way out), and a list th
   const empty = html(
     <ProductsView locale="vi" data={data({ items: [], total: 0 })} state={EMPTY_PRODUCTS_STATE} />,
   );
-  assert.ok(empty.includes('Chưa có sản phẩm nào để hiển thị.'));
+  assert.ok(empty.includes('Mỹ phẩm sắp có tại Lucy Spa.'));
+  assert.ok(empty.includes('href="/vi/services"') && empty.includes('Xem dịch vụ'));
   assert.ok(!empty.includes('ls-prod-grid'));
   const noMatch = html(
     <ProductsView

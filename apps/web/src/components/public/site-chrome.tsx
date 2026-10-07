@@ -20,10 +20,13 @@ import { PublicHeaderCta, PublicNav, PublicSiteHeader, PublicTools } from './sit
 export function PublicHeader({
   locale,
   decor,
+  hasProducts = true,
 }: {
   locale: Locale;
   /** The season's site decoration (logo accent), or null for the plain wordmark. */
   decor: SiteDecorSpec | null;
+  /** False while no product is published: the Mỹ phẩm menu entry is left out. */
+  hasProducts?: boolean;
 }) {
   const text = getSiteText(locale);
   return (
@@ -40,7 +43,7 @@ export function PublicHeader({
           </SiteLogo>
         </Link>
       }
-      nav={<PublicNav locale={locale} />}
+      nav={<PublicNav locale={locale} hasProducts={hasProducts} />}
       tools={<PublicTools locale={locale} />}
       cta={<PublicHeaderCta locale={locale} />}
     />
@@ -51,11 +54,13 @@ export function PublicFooter({
   locale,
   site,
   year,
+  hasProducts = true,
 }: {
   locale: Locale;
   /** The shop profile; null when it could not be read (the footer then has no contact column). */
   site: PublicSiteResponse | null;
   year?: number;
+  hasProducts?: boolean;
 }) {
   const text = getSiteText(locale);
   const hours = site ? hoursHeadline(site.hours, locale, getSiteText(locale).home.closed) : null;
@@ -116,7 +121,7 @@ export function PublicFooter({
       key: 'links',
       title: text.footer.links,
       items: [
-        ...footerDiscoverItems(locale, text.nav).map((item) => (
+        ...footerDiscoverItems(locale, text.nav, hasProducts).map((item) => (
           <Link key={item.key} href={item.href} prefetch transitionTypes={NAV_TRANSITION}>
             {item.label}
           </Link>

@@ -219,6 +219,16 @@ The Owner's message, as given:
 
 What this fixes: OQ-P6-43 to OQ-P6-48 are approved as written in `docs/PHASE6_OWNER_DECISIONS_VI.md` (the P6-5 section) and 11.3. Bulk images (31.3) and the price update (31.4) are not part of Phase 6 any more: they belong to Phase 9. The P6-6 request orders the page of section 16 built on top of OQ-P6-27 and OQ-P6-28 (2.5, already approved). It does not approve what 16 itself marks as pending: the product page of 16.4 (its look and the wording of the store block) stays **pending the Owner's look and yes/no**, and so does everything P6-6 had to decide where the contract was silent; the report `docs/PHASE6_STEP6_PUBLIC_CATALOG.md` and OQ-P6-49 to OQ-P6-53 list them.
 
+### 2.11 Owner approval of P6-6, the final deploy rule, and the P6-7 request (the Owner's own words, 2026-10-07; locked, do not reopen)
+
+The Owner's message, as given:
+
+- "P6-6 approved: OQ-49…53 as you proposed. Record in the design doc, owner-decisions doc and handoff." The product page look of 16.4 and everything else P6-6 decided where the contract was silent is approved by that sentence.
+- **Deploy decision (final): deploy Phase 6 to production wave by wave, after each wave's milestone check and only when the Owner says so. Before each wave deploy: rehearse it on a restored copy of the production DB (pg_dump), time each migration, write a rollback plan (DB restore + previous commit), and give the Owner the deploy guide as iNET web terminal commands block by block.** (An earlier draft of the same message said "no wave deploys"; the Owner's later message wins.)
+- Finish P6-6 first: (1) hide the "Mỹ phẩm" menu item (header, mobile bar, sitemap) and show a friendly page at `/products` when there are no published products; (2) complete the UI gate (final list 1440 light, detail 768 light, a real logged-in member at 1024 px); (3) explain the cut-off sentence "Ảnh sản phẩm chỉ…" of the P6-6 report.
+- Then P6-7 (load readiness, per the approved OQ-26: multi-process for **web only**; API and worker stay single, the worker must stay exactly one). Server: 6 cores, 7.8 GB RAM, no swap. Shared rate limiting for public read-only endpoints (Redis), Postgres `max_connections` against Prisma pools, cache behaviour with several web processes, measure before and after. The pm2 config goes in the repo; the server is not touched.
+- Then the Wave 1 milestone check (full tests including race tests, UI gate), the rehearsal and the Wave 1 deploy guide. Report in Vietnamese. Commit locally, no push, no deploy, stop.
+
 ## 3. Catalog (PRD §23-24; T9-T12)
 
 ### 3.1 Model

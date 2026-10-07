@@ -265,7 +265,16 @@ export function ProductsView({
           activeFilterCount(state) === 0 &&
           data.categories.length === 0 ? (
           <div className="ls-prod-section">
-            <EmptyState icon="droplet">{t.empty}</EmptyState>
+            <EmptyState
+              icon="droplet"
+              action={
+                <Link className={buttonClass('secondary')} href={`/${locale}/services`}>
+                  {t.emptyAction}
+                </Link>
+              }
+            >
+              {t.empty}
+            </EmptyState>
           </div>
         ) : (
           <section className="ls-prod-section" aria-labelledby={PRODUCTS_LIST_ID}>

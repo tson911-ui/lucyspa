@@ -172,7 +172,8 @@ export function sitemapEntries(
     '',
     '/services',
     ...serviceCodes.map((code) => `/services/${encodeURIComponent(code)}`),
-    '/products',
+    // The cosmetics list is a destination only while a product is published (the menus leave it out otherwise).
+    ...(productCodes.length > 0 ? ['/products'] : []),
     ...productCodes.map((code) => `/products/${encodeURIComponent(code)}`),
   ];
   return paths.flatMap((path) =>

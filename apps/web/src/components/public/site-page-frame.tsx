@@ -1,7 +1,7 @@
 import { MotionGate } from '@lucy-spa/ui';
 import type { ReactNode } from 'react';
 import type { Locale } from '../../i18n/locales';
-import { fetchPublicSite } from '../../lib/public-site';
+import { fetchHasPublicProducts, fetchPublicSite } from '../../lib/public-site';
 import { loadSiteDecor, SeasonSiteFrame } from '../season/site-frame';
 import { ContactWidget } from './contact-widget';
 import { PublicFooter, PublicHeader } from './site-chrome';
@@ -16,9 +16,13 @@ import { SiteSessionProvider } from './site-session';
 export async function SitePageFrame({ locale, children }: { locale: Locale; children: ReactNode }) {
   // A season with site-wide art (S6) decorates the whole page; without one the page keeps its exact structure.
   // The shop profile (cached 60 s, shared with the pages) feeds the footer's contact column.
-  const [decor, site] = await Promise.all([loadSiteDecor(locale), fetchPublicSite(locale)]);
-  const header = <PublicHeader locale={locale} decor={decor} />;
-  const footer = <PublicFooter locale={locale} site={site} />;
+  const [decor, site, hasProducts] = await Promise.all([
+    loadSiteDecor(locale),
+    fetchPublicSite(locale),
+    fetchHasPublicProducts(locale),
+  ]);
+  const header = <PublicHeader locale={locale} decor={decor} hasProducts={hasProducts} />;
+  const footer = <PublicFooter locale={locale} site={site} hasProducts={hasProducts} />;
   // The floating contact button is the last thing of the content (just before the footer), so it never covers the footer.
   const content = (
     <>
@@ -46,7 +50,7 @@ export async function SitePageFrame({ locale, children }: { locale: Locale; chil
             </div>
           )}
         </div>
-        <PublicTabBar locale={locale} />
+        <PublicTabBar locale={locale} hasProducts={hasProducts} />
       </SiteSessionProvider>
       <MotionGate />
     </div>
