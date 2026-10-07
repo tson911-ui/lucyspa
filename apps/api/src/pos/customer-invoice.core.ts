@@ -63,6 +63,14 @@ const detailSelect = {
       voucher: { select: { code: true } },
     },
   },
+  // Phase 6 P6-9: the Beauty side's program (a version 3 invoice); the customer's product view itself is P6-10 (T26).
+  beautyApplication: {
+    select: {
+      computedAmountVnd: true,
+      version: { select: { discount: { select: { nameVi: true, nameEn: true } } } },
+      voucher: { select: { code: true } },
+    },
+  },
   lines: {
     orderBy: { sequence: 'asc' },
     select: {
@@ -115,7 +123,7 @@ function summary(row: SummaryRow): CustomerInvoiceSummary {
 }
 
 function detail(row: DetailRow, customerUserId: string): CustomerInvoiceDetail {
-  const application = row.discountApplication;
+  const application = row.discountApplication ?? row.beautyApplication;
   return {
     ...summary(row),
     // A combo sale has no visit: its date is the business date of the sale.

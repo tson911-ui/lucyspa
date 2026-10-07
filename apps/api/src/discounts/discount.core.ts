@@ -1,6 +1,7 @@
 import type {
   DiscountDetailResponse,
   DiscountListResponse,
+  DiscountScopeName,
   DiscountStatusName,
   DiscountSummaryResponse,
   DiscountVersionInput,
@@ -62,11 +63,15 @@ const versionSelect = {
   validUntil: true,
   minSpendVnd: true,
   scopeMode: true,
+  scope: true,
   usageLimitTotal: true,
   usageLimitPerCustomer: true,
   createdAt: true,
   services: { select: { serviceId: true }, orderBy: { serviceId: 'asc' } },
   categories: { select: { categoryId: true }, orderBy: { categoryId: 'asc' } },
+  brands: { select: { brandId: true }, orderBy: { brandId: 'asc' } },
+  productCategories: { select: { categoryId: true }, orderBy: { categoryId: 'asc' } },
+  products: { select: { productId: true }, orderBy: { productId: 'asc' } },
 } satisfies Prisma.DiscountVersionSelect;
 
 type VersionRow = Prisma.DiscountVersionGetPayload<{ select: typeof versionSelect }>;
@@ -100,6 +105,10 @@ function versionResponse(row: VersionRow): DiscountVersionResponse {
     scopeMode: row.scopeMode,
     serviceIds: row.services.map((scope) => scope.serviceId),
     categoryIds: row.categories.map((scope) => scope.categoryId),
+    scope: row.scope,
+    brandIds: row.brands.map((target) => target.brandId),
+    productCategoryIds: row.productCategories.map((target) => target.categoryId),
+    productIds: row.products.map((target) => target.productId),
     usageLimitTotal: row.usageLimitTotal,
     usageLimitPerCustomer: row.usageLimitPerCustomer,
     createdAt: row.createdAt.toISOString(),
@@ -208,8 +217,18 @@ interface ParsedVersion {
   scopeMode: 'ALL_SERVICES' | 'SELECTED';
   serviceIds: string[];
   categoryIds: string[];
+  /** Phase 6 P6-9 (Q7, OQ-P6-21): what the program may discount and, for a selection, its product targets. */
+  scope: DiscountScopeName;
+  brandIds: string[];
+  productCategoryIds: string[];
+  productIds: string[];
   usageLimitTotal: number | null;
   usageLimitPerCustomer: number | null;
+}
+
+/** An optional id list of the version input: absent is empty (a program written before Phase 6 names no product target). */
+function optionalIds(value: unknown, field: string): string[] {
+  return value === undefined ? [] : ids(value, field);
 }
 
 /** Validates one version's configuration (the Step 4 CHECKs are the database backstop). */
@@ -249,11 +268,41 @@ async function parseVersion(
   }
   const serviceIds = ids(input.serviceIds, 'serviceIds');
   const categoryIds = ids(input.categoryIds, 'categoryIds');
-  if (scopeMode === 'ALL_SERVICES' && serviceIds.length + categoryIds.length > 0) {
+  // Phase 6 P6-9 (Q7): a program may discount services (the default, every program before Phase 6), products, or both. A product
+  // selection (OQ-P6-21) names brands, product categories (that exact category) or products; targets must fit the scope.
+  const scope = input.scope ?? 'SERVICES';
+  if (scope !== 'SERVICES' && scope !== 'PRODUCTS' && scope !== 'BOTH') {
+    throw new AuthError('VALIDATION_FAILED', 'scope');
+  }
+  const brandIds = optionalIds(input.brandIds, 'brandIds');
+  const productCategoryIds = optionalIds(input.productCategoryIds, 'productCategoryIds');
+  const productIds = optionalIds(input.productIds, 'productIds');
+  const productTargets = brandIds.length + productCategoryIds.length + productIds.length;
+  if (scope === 'SERVICES' && productTargets > 0) {
+    throw new AuthError('VALIDATION_FAILED', 'brandIds');
+  }
+  if (scope === 'PRODUCTS' && serviceIds.length + categoryIds.length > 0) {
     throw new AuthError('VALIDATION_FAILED', 'serviceIds');
   }
-  if (scopeMode === 'SELECTED' && serviceIds.length + categoryIds.length === 0) {
+  if (scopeMode === 'ALL_SERVICES' && serviceIds.length + categoryIds.length + productTargets > 0) {
     throw new AuthError('VALIDATION_FAILED', 'serviceIds');
+  }
+  if (scopeMode === 'SELECTED' && serviceIds.length + categoryIds.length + productTargets === 0) {
+    throw new AuthError('VALIDATION_FAILED', 'serviceIds');
+  }
+  if (brandIds.length > 0) {
+    const found = await tx.brand.count({ where: { id: { in: brandIds } } });
+    if (found !== brandIds.length) throw new AuthError('VALIDATION_FAILED', 'brandIds');
+  }
+  if (productCategoryIds.length > 0) {
+    const found = await tx.productCategory.count({ where: { id: { in: productCategoryIds } } });
+    if (found !== productCategoryIds.length) {
+      throw new AuthError('VALIDATION_FAILED', 'productCategoryIds');
+    }
+  }
+  if (productIds.length > 0) {
+    const found = await tx.product.count({ where: { id: { in: productIds } } });
+    if (found !== productIds.length) throw new AuthError('VALIDATION_FAILED', 'productIds');
   }
   if (serviceIds.length > 0) {
     const found = await tx.service.count({ where: { id: { in: serviceIds } } });
@@ -273,6 +322,10 @@ async function parseVersion(
     scopeMode,
     serviceIds,
     categoryIds,
+    scope,
+    brandIds,
+    productCategoryIds,
+    productIds,
     usageLimitTotal: limit(input.usageLimitTotal, 'usageLimitTotal'),
     usageLimitPerCustomer: limit(input.usageLimitPerCustomer, 'usageLimitPerCustomer'),
   };
@@ -297,6 +350,7 @@ async function insertVersion(
       validUntil: version.validUntil,
       minSpendVnd: version.minSpendVnd,
       scopeMode: version.scopeMode,
+      scope: version.scope,
       usageLimitTotal: version.usageLimitTotal,
       usageLimitPerCustomer: version.usageLimitPerCustomer,
       createdByUserId: actorUserId,
@@ -314,6 +368,21 @@ async function insertVersion(
       data: version.categoryIds.map((categoryId) => ({ versionId: created.id, categoryId })),
     });
   }
+  if (version.brandIds.length > 0) {
+    await tx.discountVersionBrand.createMany({
+      data: version.brandIds.map((brandId) => ({ versionId: created.id, brandId })),
+    });
+  }
+  if (version.productCategoryIds.length > 0) {
+    await tx.discountVersionProductCategory.createMany({
+      data: version.productCategoryIds.map((categoryId) => ({ versionId: created.id, categoryId })),
+    });
+  }
+  if (version.productIds.length > 0) {
+    await tx.discountVersionProduct.createMany({
+      data: version.productIds.map((productId) => ({ versionId: created.id, productId })),
+    });
+  }
   return created.id;
 }
 
@@ -327,6 +396,15 @@ const versionFacts = (version: ParsedVersion) => ({
   scopeMode: version.scopeMode,
   serviceIds: version.serviceIds,
   categoryIds: version.categoryIds,
+  // A SERVICES program's audit facts are exactly what they were before Phase 6 (no scope noise); the others record theirs.
+  ...(version.scope === 'SERVICES'
+    ? {}
+    : {
+        scope: version.scope,
+        brandIds: version.brandIds,
+        productCategoryIds: version.productCategoryIds,
+        productIds: version.productIds,
+      }),
   usageLimitTotal: version.usageLimitTotal,
   usageLimitPerCustomer: version.usageLimitPerCustomer,
 });
@@ -477,6 +555,11 @@ export async function addVersion(
   if (program.terminatedAt) throw new AuthError('DISCOUNT_STATE_INVALID');
   const now = await databaseClock(tx);
   const previous = program.versions[0];
+  // P6-9: a program that discounts products is edited by stating its scope explicitly. Leaving the scope out would silently turn it
+  // back into a services-only program (the existing screens do not know the scope yet, P6-11), so it is refused instead.
+  if (input.version.scope === undefined && previous && previous.scope !== 'SERVICES') {
+    throw new AuthError('VALIDATION_FAILED', 'scope');
+  }
   const versionNo = (previous?.versionNo ?? 0) + 1;
   await insertVersion(tx, id, versionNo, version, context.actor.userId, now);
   await tx.discount.update({

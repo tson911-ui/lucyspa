@@ -6,6 +6,8 @@ import {
   type InvoiceDiscountCandidate,
   type InvoiceDiscountResponse,
   type InvoiceMemberCandidate,
+  type InvoiceSideDiscount,
+  type PricingSideName,
 } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
 import {
@@ -27,6 +29,12 @@ import {
   type EngineVoucher,
   type MemberCandidate,
 } from './discount.engine.js';
+import {
+  evaluatePricingV3,
+  type PricingV3Input,
+  type PricingV3Result,
+  type V3Line,
+} from './pricing.v3.js';
 
 /**
  * Phase 4 Step 6: loads the stored inputs of one invoice and runs the pure engine. Used for the live DRAFT
@@ -49,10 +57,14 @@ const versionSelect = {
     validUntil: true,
     minSpendVnd: true,
     scopeMode: true,
+    scope: true,
     usageLimitTotal: true,
     usageLimitPerCustomer: true,
     services: { select: { serviceId: true } },
     categories: { select: { categoryId: true } },
+    brands: { select: { brandId: true } },
+    productCategories: { select: { categoryId: true } },
+    products: { select: { productId: true } },
   },
 } satisfies Prisma.Discount$versionsArgs;
 
@@ -77,8 +89,16 @@ export interface SuppliedEntry {
 }
 
 export interface InvoiceEvaluation {
+  /**
+   * The version 2 result: the source of truth of an invoice with NO product line (OQ-59). For an invoice with product lines it is the
+   * Spa side of the version 3 result (an empty result when the invoice has no Spa side), kept so Spa-shaped readers still work.
+   */
   result: EngineResult;
   entries: SuppliedEntry[];
+  /** The inputs every engine is given: the version 3 engine and the shadow comparison run on exactly these, loaded once. */
+  pricing: PricingV3Input;
+  /** The version 3 result; present exactly when the invoice has a product line (then it IS the result, version 3). */
+  v3: PricingV3Result | null;
 }
 
 function toVersion(row: ProgramRow['versions'][number]): EngineVersion {
@@ -96,6 +116,10 @@ function toVersion(row: ProgramRow['versions'][number]): EngineVersion {
     categoryIds: new Set(row.categories.map((scope) => scope.categoryId)),
     usageLimitTotal: row.usageLimitTotal,
     usageLimitPerCustomer: row.usageLimitPerCustomer,
+    scope: row.scope,
+    brandIds: new Set(row.brands.map((target) => target.brandId)),
+    productCategoryIds: new Set(row.productCategories.map((target) => target.categoryId)),
+    productIds: new Set(row.products.map((target) => target.productId)),
   };
 }
 
@@ -131,6 +155,7 @@ export async function loadMember(
   tx: Prisma.TransactionClient,
   payerUserId: string | null,
   lock: boolean,
+  wallet: PricingSideName = 'SPA',
 ): Promise<EngineMember | null> {
   if (payerUserId === null) return null;
   if ((await tx.loyaltyGoLive.count()) === 0) return null;
@@ -140,13 +165,14 @@ export async function loadMember(
     // (which holds the customer row, then wants the wallet) from deadlocking with this finalization.
     await tx.$queryRaw`SELECT id FROM users WHERE id = ${payerUserId}::uuid FOR KEY SHARE`;
   }
+  // Phase 6 P6-9 (T4): the Beauty wallet is read the same way, AFTER the Spa wallet (wallets sorted by (user, wallet)).
   const rows = lock
     ? await tx.$queryRaw<{ balance_points: number }[]>`
         SELECT balance_points FROM loyalty_wallets
-        WHERE user_id = ${payerUserId}::uuid AND wallet = 'SPA'::"LoyaltyWallet" FOR SHARE`
+        WHERE user_id = ${payerUserId}::uuid AND wallet = ${wallet}::"LoyaltyWallet" FOR SHARE`
     : await tx.$queryRaw<{ balance_points: number }[]>`
         SELECT balance_points FROM loyalty_wallets
-        WHERE user_id = ${payerUserId}::uuid AND wallet = 'SPA'::"LoyaltyWallet"`;
+        WHERE user_id = ${payerUserId}::uuid AND wallet = ${wallet}::"LoyaltyWallet"`;
   const balanceBefore = rows[0]?.balance_points ?? 0;
   const standing = loyaltyTierFor(balanceBefore);
   return {
@@ -255,20 +281,27 @@ export async function evaluateInvoice(
     where: { id: invoice.id },
     select: { kind: true },
   });
-  // Phase 6 P6-8: the engine prices the Spa side (service and combo lines). A PRODUCT line is outside it until the Beauty side exists
-  // (P6-9, P6-11): it earns no discount and counts toward no eligible subtotal, whatever the program.
+  // Phase 6 P6-9: an invoice with a PRODUCT line is priced by the version 3 engine, per side (SPA = service and combo lines, BEAUTY =
+  // product lines). An invoice without one is priced by the version 2 engine below (OQ-59), and version 3 only runs beside it.
   const lineRows = await tx.invoiceLine.findMany({
-    where: { invoiceId: invoice.id, kind: { not: 'PRODUCT' } },
+    where: { invoiceId: invoice.id },
     orderBy: { sequence: 'asc' },
     select: {
+      id: true,
+      sequence: true,
+      kind: true,
       grossVnd: true,
       serviceDetails: { select: { serviceId: true, serviceCategoryId: true } },
       // A combo sale line (Phase 5 P5-7) is priced like a line of the combo's own service: the same service and the
       // service category snapshot taken when the line was created.
       comboDetails: { select: { serviceId: true, serviceCategoryId: true } },
+      // A product line's historical brand and category snapshots (never the live catalog).
+      productDetails: { select: { productId: true, brandId: true, categoryId: true } },
     },
   });
-  const lines: EngineLine[] = lineRows.map((line) => {
+  const spaRows = lineRows.filter((line) => line.kind !== 'PRODUCT');
+  const hasProducts = lineRows.length > spaRows.length;
+  const lines: EngineLine[] = spaRows.map((line) => {
     const detail = line.serviceDetails[0] ?? line.comboDetails[0];
     if (!detail) throw new Error('Every invoice line has its service or combo detail.');
     return {
@@ -276,6 +309,36 @@ export async function evaluateInvoice(
       // The category the service had when the transaction was established (snapshot, never the live catalog).
       categoryId: detail.serviceCategoryId,
       grossVnd: line.grossVnd,
+    };
+  });
+  const v3Lines: V3Line[] = lineRows.map((line) => {
+    if (line.kind === 'PRODUCT') {
+      const product = line.productDetails[0];
+      if (!product) throw new Error('Every product line has its product detail.');
+      return {
+        lineId: line.id,
+        sequence: line.sequence,
+        side: 'BEAUTY',
+        grossVnd: line.grossVnd,
+        serviceId: null,
+        serviceCategoryId: null,
+        productId: product.productId,
+        brandId: product.brandId,
+        productCategoryId: product.categoryId,
+      };
+    }
+    const detail = line.serviceDetails[0] ?? line.comboDetails[0];
+    if (!detail) throw new Error('Every invoice line has its service or combo detail.');
+    return {
+      lineId: line.id,
+      sequence: line.sequence,
+      side: 'SPA',
+      grossVnd: line.grossVnd,
+      serviceId: detail.serviceId,
+      serviceCategoryId: detail.serviceCategoryId,
+      productId: null,
+      brandId: null,
+      productCategoryId: null,
     };
   });
 
@@ -349,16 +412,38 @@ export async function evaluateInvoice(
   // Lock order (design 12.2): invoice -> program rows -> the birthday configuration row -> the payer's user row -> wallets.
   // The birthday gift never applies to a combo sale (Owner answer of 2026-10-05) nor to a product-only sale (it is Spa-side only,
   // Q7): nothing is read and no lock is taken for it.
+  // A product-only invoice has no Spa side, so no Spa wallet, no birthday gift and no lock for either is taken (P6-9, Q7).
+  const hasSpaSide = spaRows.length > 0 || !hasProducts;
   const birthdayContext =
-    header.kind !== 'VISIT'
+    header.kind !== 'VISIT' || !hasSpaSide
       ? null
       : await loadBirthday(tx, invoice.id, invoice.payerUserId, options.lockPrograms);
-  const member = await loadMember(tx, invoice.payerUserId, options.lockPrograms);
-  const ordinary = evaluateDiscounts({
-    lines,
+  const member = hasSpaSide
+    ? await loadMember(tx, invoice.payerUserId, options.lockPrograms, 'SPA')
+    : null;
+  // The Beauty wallet is read only when a Beauty side exists, AFTER the Spa wallet (lock order, design 10.2); nothing is read or
+  // locked for it on a service-only invoice, so the shadow run adds no query and no lock there.
+  const beautyMember = hasProducts
+    ? await loadMember(tx, invoice.payerUserId, options.lockPrograms, 'BEAUTY')
+    : null;
+  const pricing: PricingV3Input = {
+    lines: v3Lines,
     promotions,
     supplied: entries.map((entry) => ({ voucher: entry.voucher, program: entry.program })),
     hasMemberPayer: invoice.payerUserId !== null,
+    members: { SPA: member, BEAUTY: beautyMember },
+    birthday: birthdayContext,
+    now,
+  };
+  if (hasProducts) {
+    const v3 = evaluatePricingV3(pricing);
+    return { result: v3.sides.SPA ?? emptyResult(), entries, pricing, v3 };
+  }
+  const ordinary = evaluateDiscounts({
+    lines,
+    promotions,
+    supplied: pricing.supplied,
+    hasMemberPayer: pricing.hasMemberPayer,
     member,
     now,
   });
@@ -367,7 +452,39 @@ export async function evaluateInvoice(
     ordinary,
     member && birthdayContext ? evaluateBirthday(ordinary, birthdayContext) : null,
   );
-  return { result, entries };
+  return { result, entries, pricing, v3: null };
+}
+
+/** The Spa-shaped result of an invoice that has no Spa side (a product-only sale). */
+function emptyResult(): EngineResult {
+  return {
+    subtotalVnd: 0n,
+    candidates: [],
+    winner: null,
+    member: null,
+    winnerSource: null,
+    birthday: null,
+    discountTotalVnd: 0n,
+    totalVnd: 0n,
+    selectionReason: null,
+  };
+}
+
+/**
+ * Re-prices the version 3 inputs with the product prices frozen at finalization (the line rows still hold the draft prices when the
+ * inputs were loaded: finalization re-resolves them AFTER the programs and wallets are locked, design 10.2) and evaluates again.
+ */
+export function evaluateFrozen(
+  evaluation: InvoiceEvaluation,
+  frozen: ReadonlyMap<string, { quantity: number; unitPriceVnd: bigint }>,
+): PricingV3Result {
+  return evaluatePricingV3({
+    ...evaluation.pricing,
+    lines: evaluation.pricing.lines.map((line) => {
+      const price = frozen.get(line.lineId);
+      return price ? { ...line, grossVnd: BigInt(price.quantity) * price.unitPriceVnd } : line;
+    }),
+  });
 }
 
 export function candidateResponse(
@@ -394,6 +511,15 @@ export function candidateResponse(
     reason: candidate.reason,
     amountVnd: candidate.amountVnd.toString(),
     winner: candidate === winner,
+    // Only a shared (BOTH) program of a version 3 invoice carries it; every other candidate is exactly the Phase 4/5 shape.
+    ...(candidate.shared
+      ? {
+          shared: {
+            eligibleSubtotalVnd: candidate.shared.eligibleSubtotalVnd.toString(),
+            amountVnd: candidate.shared.amountVnd.toString(),
+          },
+        }
+      : {}),
   };
 }
 
@@ -508,6 +634,24 @@ export function storedDiscount(
   };
 }
 
+/** One side of a version 3 result as the response shows it (a draft preview and the frozen snapshot use the same shape). */
+export function sideResponse(side: PricingSideName, result: EngineResult): InvoiceSideDiscount {
+  return {
+    side,
+    subtotalVnd: result.subtotalVnd.toString(),
+    discountVnd: result.discountTotalVnd.toString(),
+    netVnd: result.totalVnd.toString(),
+    candidates: result.candidates.map((candidate) => candidateResponse(candidate, result.winner)),
+    winner: result.winner ? candidateResponse(result.winner, result.winner) : null,
+    winnerSource: result.winnerSource,
+    member: result.member
+      ? memberResponse(result.member, result.winnerSource === 'MEMBER_TIER')
+      : null,
+    birthday: result.birthday ? birthdayResponse(result.birthday) : null,
+    selectionReason: result.selectionReason,
+  };
+}
+
 export function previewDiscount(
   evaluation: InvoiceEvaluation,
   entries: InvoiceDiscountResponse['vouchers'],
@@ -525,7 +669,103 @@ export function previewDiscount(
     selectionReason: result.selectionReason,
     vouchers: entries,
     appliedAt: null,
+    ...(evaluation.v3
+      ? {
+          sides: (['SPA', 'BEAUTY'] as const).flatMap((side) => {
+            const sideResult = evaluation.v3?.sides[side];
+            return sideResult ? [sideResponse(side, sideResult)] : [];
+          }),
+        }
+      : {}),
   };
+}
+
+/**
+ * A FINALIZED version 3 invoice's sides as the stored rows show them: the Spa side from the Phase 4/5 application and tier snapshot,
+ * the Beauty side from the Beauty rows, the amounts from the immutable line allocations. Never recomputed from today's data.
+ */
+export function storedSides(input: {
+  spa: ReturnType<typeof storedDiscount>;
+  beauty: {
+    application: {
+      voucherId: string | null;
+      candidates: Prisma.JsonValue;
+      selectionReason: string;
+    } | null;
+    snapshot: {
+      candidates: Prisma.JsonValue;
+      winnerSource: string | null;
+      selectionReason: string | null;
+    } | null;
+  };
+  allocations: readonly {
+    side: PricingSideName;
+    grossVnd: bigint;
+    discountShareVnd: bigint;
+    netVnd: bigint;
+  }[];
+}): InvoiceSideDiscount[] {
+  const totals = (side: PricingSideName) => {
+    const rows = input.allocations.filter((row) => row.side === side);
+    return {
+      present: rows.length > 0,
+      gross: rows.reduce((sum, row) => sum + row.grossVnd, 0n),
+      discount: rows.reduce((sum, row) => sum + row.discountShareVnd, 0n),
+      net: rows.reduce((sum, row) => sum + row.netVnd, 0n),
+    };
+  };
+  const out: InvoiceSideDiscount[] = [];
+  const spa = totals('SPA');
+  if (spa.present) {
+    out.push({
+      side: 'SPA',
+      subtotalVnd: spa.gross.toString(),
+      discountVnd: spa.discount.toString(),
+      netVnd: spa.net.toString(),
+      candidates: input.spa.candidates,
+      winner: input.spa.winner,
+      winnerSource: input.spa.winnerSource,
+      member: input.spa.member,
+      birthday: input.spa.birthday,
+      selectionReason: input.spa.selectionReason,
+    });
+  }
+  const beauty = totals('BEAUTY');
+  if (beauty.present) {
+    const stored =
+      input.beauty.snapshot &&
+      typeof input.beauty.snapshot.candidates === 'object' &&
+      input.beauty.snapshot.candidates !== null
+        ? (input.beauty.snapshot.candidates as unknown as {
+            member?: InvoiceMemberCandidate | null;
+            programs?: InvoiceDiscountCandidate[];
+          })
+        : null;
+    const candidates = (Array.isArray(input.beauty.application?.candidates)
+      ? input.beauty.application.candidates
+      : Array.isArray(stored?.programs)
+        ? stored.programs
+        : []) as unknown as InvoiceDiscountCandidate[];
+    out.push({
+      side: 'BEAUTY',
+      subtotalVnd: beauty.gross.toString(),
+      discountVnd: beauty.discount.toString(),
+      netVnd: beauty.net.toString(),
+      candidates,
+      winner: candidates.find((candidate) => candidate.winner) ?? null,
+      winnerSource: (input.beauty.snapshot?.winnerSource ??
+        (input.beauty.application
+          ? input.beauty.application.voucherId
+            ? 'VOUCHER'
+            : 'PROMOTION'
+          : null)) as InvoiceSideDiscount['winnerSource'],
+      member: stored?.member ?? null,
+      birthday: null,
+      selectionReason:
+        input.beauty.snapshot?.selectionReason ?? input.beauty.application?.selectionReason ?? null,
+    });
+  }
+  return out;
 }
 
 export type { DiscountIneligibleReason };

@@ -1,6 +1,7 @@
 import type {
   DiscountIneligibleReason,
   DiscountKindName,
+  DiscountScopeName,
   LoyaltyTierName,
   MemberIneligibleReason,
 } from '@lucy-spa/contracts';
@@ -38,6 +39,15 @@ export interface EngineVersion {
   categoryIds: ReadonlySet<string>;
   usageLimitTotal: number | null;
   usageLimitPerCustomer: number | null;
+  /**
+   * Phase 6 P6-9 (Q7): what the program may discount. Absent = `SERVICES` (every program that existed before Phase 6), which keeps
+   * the version 2 behavior. The product selection (OQ-P6-21) applies to PRODUCTS and BOTH programs: a product line matches by its
+   * snapshotted brand, its snapshotted category (that exact category, children are not included) or its product.
+   */
+  scope?: DiscountScopeName;
+  brandIds?: ReadonlySet<string>;
+  productCategoryIds?: ReadonlySet<string>;
+  productIds?: ReadonlySet<string>;
 }
 
 export interface EngineProgram {
@@ -71,6 +81,11 @@ export interface EngineCandidate {
   eligible: boolean;
   reason: DiscountIneligibleReason | null;
   amountVnd: bigint;
+  /**
+   * Version 3 only (P6-9, OQ-P6-20): set for a `BOTH` program. `eligibleSubtotalVnd` and `amountVnd` above are THIS SIDE's part
+   * (the share of the program's amount); the program-level eligible subtotal and amount that were split are here.
+   */
+  shared?: { eligibleSubtotalVnd: bigint; amountVnd: bigint };
 }
 
 /** The payer's Spa tier from the balance BEFORE the invoice (P5-T3/T4); only given for a member payer once loyalty is live. */
@@ -118,6 +133,8 @@ export function percentAmount(eligibleSubtotal: bigint, percentBp: number): bigi
 
 function inScope(line: EngineLine, version: EngineVersion): boolean {
   if (line.grossVnd === null) return false;
+  // Phase 6 P6-9: this engine prices service and combo lines; a program that may only discount products never touches them.
+  if (version.scope === 'PRODUCTS') return false;
   if (version.scopeMode === 'ALL_SERVICES') return true;
   return (
     version.serviceIds.has(line.serviceId) ||
@@ -173,7 +190,7 @@ function evaluateOne(
 }
 
 /** Candidate order for the choice: largest benefit, then program code, program id, voucher code (ordinal). */
-function compare(a: EngineCandidate, b: EngineCandidate): number {
+export function compare(a: EngineCandidate, b: EngineCandidate): number {
   if (a.amountVnd !== b.amountVnd) return a.amountVnd > b.amountVnd ? -1 : 1;
   return (
     ordinal(a.program.code, b.program.code) ||
@@ -183,7 +200,7 @@ function compare(a: EngineCandidate, b: EngineCandidate): number {
 }
 
 /** The Member Discount: the tier's percent of every priced line, rounded half up to 1 VND (PRD 16.1, 18.5; Phase 4 Q3). */
-function evaluateMember(member: EngineMember, subtotalVnd: bigint): MemberCandidate {
+export function evaluateMember(member: EngineMember, subtotalVnd: bigint): MemberCandidate {
   const base = { member, eligibleSubtotalVnd: subtotalVnd };
   if (member.discountBp <= 0) {
     return { ...base, eligible: false, reason: 'NO_TIER', amountVnd: 0n };
@@ -216,7 +233,9 @@ export function evaluateDiscounts(input: {
   const subtotalVnd = input.lines.reduce((sum, line) => sum + (line.grossVnd ?? 0n), 0n);
   const candidates = [
     ...input.promotions
-      .filter((program) => !program.requiresCode)
+      // A code-less promotion that may only discount products is not a candidate of the Spa side (P6-9); a voucher of one still
+      // shows, as ineligible, so staff see why a supplied code gives nothing.
+      .filter((program) => !program.requiresCode && program.version.scope !== 'PRODUCTS')
       .map((program) => evaluateOne(program, null, input.lines, input.hasMemberPayer, input.now)),
     ...input.supplied.map(({ voucher, program }) =>
       evaluateOne(program, voucher, input.lines, input.hasMemberPayer, input.now),

@@ -34,12 +34,17 @@ import {
 import {
   birthdayResponse,
   candidatesJson,
+  evaluateFrozen,
   evaluateInvoice,
   previewDiscount,
   snapshotCandidatesJson,
   storedDiscount,
+  storedSides,
   type InvoiceEvaluation,
 } from './discount.eval.js';
+import { persistPricingV3, pricingAudit, PRICING_V3_VERSION } from './pricing.persist.js';
+import { reportShadow } from './pricing.shadow-report.js';
+import { runShadow } from './pricing.shadow.js';
 import { PAYMENT_METHOD_RULES } from './payment.methods.js';
 import {
   consumeSelectedSessions,
@@ -47,12 +52,7 @@ import {
   releaseConsumedSessions,
   sessionStateOf,
 } from './combo-consume.js';
-import {
-  productGrossOf,
-  releaseProductStock,
-  repriceProductLines,
-  reserveProductStock,
-} from './product-stock.js';
+import { releaseProductStock, repriceProductLines, reserveProductStock } from './product-stock.js';
 
 /**
  * Phase 4 Step 5 — Invoice / POS ("Hóa đơn"). Commands run in the admin frame (actor and session locked,
@@ -212,7 +212,9 @@ export const invoiceSelect = {
       appliedAt: true,
     },
   },
-  discountRedemption: {
+  // Phase 6 P6-9: one redemption per (invoice, program), so a list (a program that wins both sides is one row).
+  discountRedemptions: {
+    orderBy: { discountId: 'asc' },
     select: { id: true, discountId: true, release: { select: { id: true } } },
   },
   birthdayRedemption: {
@@ -226,6 +228,13 @@ export const invoiceSelect = {
       birthdayResult: true,
       createdAt: true,
     },
+  },
+  // Phase 6 P6-9: the Beauty side of a version 3 invoice (the Spa side is the application and snapshot above).
+  beautyApplication: {
+    select: { voucherId: true, candidates: true, selectionReason: true },
+  },
+  beautySnapshot: {
+    select: { candidates: true, winnerSource: true, selectionReason: true },
   },
   lines: {
     orderBy: { sequence: 'asc' },
@@ -266,6 +275,10 @@ export const invoiceSelect = {
         },
       },
       reservations: { select: { status: true, quantity: true } },
+      // Phase 6 P6-9: the immutable net amount of the line (version 3 invoices only).
+      allocations: {
+        select: { side: true, grossVnd: true, discountShareVnd: true, netVnd: true },
+      },
       // Phase 5 P5-8: the staff's choice to pay this line with a combo session and, once finalized, the session taken.
       comboUsages: {
         select: {
@@ -569,7 +582,22 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
       appliedAt: null,
     };
   }
-  const discountTotalVnd = evaluation ? evaluation.result.discountTotalVnd : row.discountTotalVnd;
+  if (!evaluation && row.calculationVersion >= 3) {
+    // Phase 6 P6-9: a finalized version 3 invoice shows both sides exactly as they were frozen (the Spa side is the Phase 4/5 rows,
+    // the Beauty side its own rows; the amounts are the immutable line allocations).
+    discount = {
+      ...discount,
+      sides: storedSides({
+        spa: discount,
+        beauty: { application: row.beautyApplication, snapshot: row.beautySnapshot },
+        allocations: row.lines.flatMap((line) => line.allocations),
+      }),
+    };
+  }
+  // A DRAFT with a product line is priced by version 3 (both sides); every other invoice by version 2 (Spa side only, OQ-59).
+  const discountTotalVnd = evaluation
+    ? (evaluation.v3?.discountTotalVnd ?? evaluation.result.discountTotalVnd)
+    : row.discountTotalVnd;
   const totalVnd = evaluation
     ? row.subtotalVnd - discountTotalVnd + row.shippingFeeVnd
     : row.totalVnd;
@@ -752,18 +780,24 @@ export async function draftAmounts(
   invoice: { id: string; payerUserId: string | null },
   now: Date,
 ) {
-  const { result } = await evaluateInvoice(tx, invoice, now, { lockPrograms: false });
-  // Phase 6 P6-8: the engine prices the Spa side (service and combo lines) only; the product lines and the shipping fee add to the
-  // subtotal and the total beside it. With neither (every invoice before Wave 2) the result is exactly the engine's.
-  const productVnd = await productGrossOf(tx, invoice.id);
+  const { result, v3 } = await evaluateInvoice(tx, invoice, now, { lockPrograms: false });
   const header = await tx.invoice.findUniqueOrThrow({
     where: { id: invoice.id },
     select: { shippingFeeVnd: true },
   });
+  // Phase 6 P6-9: an invoice with a product line is priced per side by the version 3 engine (the total is the sum of the side nets
+  // plus the shipping fee, T33). Every other invoice is the version 2 result exactly, as before (OQ-59).
+  if (v3) {
+    return {
+      subtotalVnd: v3.subtotalVnd,
+      discountTotalVnd: v3.discountTotalVnd,
+      totalVnd: v3.totalVnd + header.shippingFeeVnd,
+    };
+  }
   return {
-    subtotalVnd: result.subtotalVnd + productVnd,
+    subtotalVnd: result.subtotalVnd,
     discountTotalVnd: result.discountTotalVnd,
-    totalVnd: result.totalVnd + productVnd + header.shippingFeeVnd,
+    totalVnd: result.totalVnd + header.shippingFeeVnd,
   };
 }
 
@@ -1295,12 +1329,16 @@ export async function finalizeInvoice(
     throw new AuthError('INVOICE_NOT_READY');
 
   const now = await databaseClock(tx);
-  const { result } = await evaluateInvoice(
+  const evaluation = await evaluateInvoice(
     tx,
     { id: invoiceId, payerUserId: invoice.payerUserId },
     now,
     { lockPrograms: true },
   );
+  const { result } = evaluation;
+  // Phase 6 P6-9, OQ-59: an invoice with NO product line keeps the version 2 result as its only source of truth; the version 3
+  // engine runs beside it on the same loaded inputs and a difference is reported after the invoice is written, never acted on.
+  const shadow = evaluation.v3 === null ? runShadow(result, evaluation.pricing) : null;
   if (invoice.kind === 'COMBO_SALE') {
     // The combo may have been edited or switched off since this draft took its copy: a sale is always at the current,
     // active definition (lock order, design 12.2: the combo row comes after the programs and the wallets).
@@ -1335,7 +1373,10 @@ export async function finalizeInvoice(
   // product line does nothing here.
   const frozen = await repriceProductLines(tx, invoice, now, true);
   const reservedLines = await reserveProductStock(tx, invoice, context.actor.userId);
-  const winner = result.winner;
+  // Version 3 prices the product lines at their prices FROZEN just above (the line rows still held the draft prices when the inputs
+  // were loaded), per side; the version 2 result is used as is for every other invoice.
+  const v3 = evaluation.v3 ? evaluateFrozen(evaluation, frozen) : null;
+  const winner = v3 ? null : result.winner;
   const totals = calculateTotals(
     invoice.lines.map((line) => {
       const price = frozen.get(line.id);
@@ -1343,10 +1384,19 @@ export async function finalizeInvoice(
         ? { quantity: price.quantity, unitPriceVnd: price.unitPriceVnd }
         : { quantity: line.quantity, unitPriceVnd: line.unitPriceVnd };
     }),
-    result.discountTotalVnd,
+    v3 ? v3.discountTotalVnd : result.discountTotalVnd,
     invoice.shippingFeeVnd,
   );
   const zeroBalance = totals.totalVnd === 0n;
+  if (v3) {
+    await persistPricingV3(tx, {
+      invoiceId,
+      payerUserId: invoice.payerUserId,
+      actorUserId: context.actor.userId,
+      now,
+      v3,
+    });
+  }
   if (winner) {
     const version = winner.program.version;
     await tx.invoiceDiscountApplication.create({
@@ -1381,7 +1431,7 @@ export async function finalizeInvoice(
   }
   const member = result.member;
   const birthday = result.birthday;
-  if (member && invoice.payerUserId !== null) {
+  if (!v3 && member && invoice.payerUserId !== null) {
     // P5-T3: the payer's Spa tier is read at finalization (under the wallet share lock) and frozen here with the candidates
     // and the winner; the invoice is never recomputed from a later balance.
     await tx.invoiceLoyaltySnapshot.create({
@@ -1431,7 +1481,7 @@ export async function finalizeInvoice(
     where: { id: invoiceId },
     data: {
       status: zeroBalance ? 'PAID' : 'PENDING_PAYMENT',
-      calculationVersion: CALCULATION_VERSION,
+      calculationVersion: v3 ? PRICING_V3_VERSION : CALCULATION_VERSION,
       subtotalVnd: totals.subtotalVnd,
       discountTotalVnd: totals.discountTotalVnd,
       totalVnd: totals.totalVnd,
@@ -1455,7 +1505,7 @@ export async function finalizeInvoice(
       subtotalVnd: totals.subtotalVnd.toString(),
       discountTotalVnd: totals.discountTotalVnd.toString(),
       totalVnd: totals.totalVnd.toString(),
-      calculationVersion: CALCULATION_VERSION,
+      calculationVersion: v3 ? PRICING_V3_VERSION : CALCULATION_VERSION,
       benefit: winner
         ? {
             discountId: winner.program.id,
@@ -1509,8 +1559,12 @@ export async function finalizeInvoice(
       ...(reservedLines > 0
         ? { stockReservations: reservedLines, shippingFeeVnd: invoice.shippingFeeVnd.toString() }
         : {}),
+      // Phase 6 P6-9: and, for the same invoices, the per-side pricing that was frozen.
+      ...(v3 ? { pricing: pricingAudit(v3) } : {}),
     },
   });
+  // OQ-59: a difference between version 3 and the version 2 amount that was just charged is logged and recorded here, never acted on.
+  if (shadow) await reportShadow(locked, { id: invoiceId, branchId: invoice.branchId }, shadow);
   await appendOutboxEvent(tx, {
     branchId: invoice.branchId,
     aggregateType: 'Invoice',
@@ -1522,7 +1576,7 @@ export async function finalizeInvoice(
       ...eventBase(invoice),
       totalVnd: totals.totalVnd.toString(),
       discountTotalVnd: totals.discountTotalVnd.toString(),
-      calculationVersion: CALCULATION_VERSION,
+      calculationVersion: v3 ? PRICING_V3_VERSION : CALCULATION_VERSION,
     },
   });
   if (zeroBalance) {
@@ -1628,9 +1682,11 @@ export async function cancelInvoice(
     select: { id: true },
   });
   const voidedPaidSeq = path === 'ZERO_BALANCE_CORRECTION' ? invoice.paidSeq : null;
-  const redemption = invoice.discountRedemption;
   let releasedRedemptionId: string | null = null;
-  if (redemption && !redemption.release) {
+  // Phase 6 P6-9: an invoice may hold one redemption per program (a version 3 invoice can have two); every open one is released, in
+  // program order (the same order finalization locked them in). An invoice before version 3 has at most one, exactly as before.
+  for (const redemption of invoice.discountRedemptions) {
+    if (redemption.release) continue;
     // Lock order: invoice (held) -> the redemption's program row, as finalization; capacity returns once.
     await tx.$queryRaw`SELECT id FROM discounts WHERE id = ${redemption.discountId}::uuid FOR UPDATE`;
     const cause =
@@ -1645,7 +1701,7 @@ export async function cancelInvoice(
       },
       select: { id: true },
     });
-    releasedRedemptionId = redemption.id;
+    releasedRedemptionId ??= redemption.id;
     await appendAdminAudit(
       { ...context, now },
       {

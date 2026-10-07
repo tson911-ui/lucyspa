@@ -59,15 +59,6 @@ export async function eligibleSellers(
   return new Set(rows.map((row) => row.id));
 }
 
-/** The sum of the gross of the PRODUCT lines of an invoice (they sit outside the Spa-side pricing engine until P6-9). */
-export async function productGrossOf(tx: Prisma.TransactionClient, invoiceId: string) {
-  const sum = await tx.invoiceLine.aggregate({
-    where: { invoiceId, kind: 'PRODUCT' },
-    _sum: { grossVnd: true },
-  });
-  return sum._sum.grossVnd ?? 0n;
-}
-
 const productLineSelect = {
   id: true,
   sequence: true,

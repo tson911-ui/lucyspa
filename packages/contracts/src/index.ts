@@ -2586,7 +2586,12 @@ export interface PosBoardResponse {
 // ------------------------------------------------------------------ Phase 4 Step 6: discounts / vouchers
 
 export type DiscountKindName = 'PERCENT' | 'FIXED_AMOUNT';
+/** `ALL_SERVICES` means "every item of the program's scope" (Phase 6 P6-9: the scope below decides services, products or both). */
 export type DiscountScopeModeName = 'ALL_SERVICES' | 'SELECTED';
+/** Phase 6 P6-9 (Q7): what a program may discount. Every program that existed before Phase 6 is `SERVICES`. */
+export type DiscountScopeName = 'SERVICES' | 'PRODUCTS' | 'BOTH';
+/** Phase 6 P6-9 (T17): the two sides of an invoice. SPA = service and combo lines (Spa wallet); BEAUTY = product lines (Beauty wallet). */
+export type PricingSideName = 'SPA' | 'BEAUTY';
 
 /** Why a candidate benefit is not eligible (a stable code; the UI shows a localized text). */
 export type DiscountIneligibleReason =
@@ -2617,9 +2622,28 @@ export interface InvoiceDiscountCandidate {
   eligibleSubtotalVnd: string;
   eligible: boolean;
   reason: DiscountIneligibleReason | null;
-  /** The computed benefit; 0 when not eligible. */
+  /** The computed benefit; 0 when not eligible. On a version 3 invoice it is THIS SIDE's share of a shared program. */
   amountVnd: string;
   winner: boolean;
+  /** Version 3 (P6-9), a shared (BOTH) program only: the program-level eligible subtotal and amount that were split between the sides. */
+  shared?: { eligibleSubtotalVnd: string; amountVnd: string } | null;
+}
+
+/**
+ * Phase 6 P6-9 (T17): one side of a version 3 invoice (an invoice with a product line). Each side has its own subtotal, candidates,
+ * single winner, discount and net amount; the Spa side's discount includes the birthday gift.
+ */
+export interface InvoiceSideDiscount {
+  side: PricingSideName;
+  subtotalVnd: string;
+  discountVnd: string;
+  netVnd: string;
+  candidates: InvoiceDiscountCandidate[];
+  winner: InvoiceDiscountCandidate | null;
+  winnerSource: 'PROMOTION' | 'VOUCHER' | 'MEMBER_TIER' | 'BIRTHDAY' | null;
+  member: InvoiceMemberCandidate | null;
+  birthday: InvoiceBirthdayGift | null;
+  selectionReason: string | null;
 }
 
 export interface InvoiceVoucherEntryResponse {
@@ -2651,6 +2675,11 @@ export interface InvoiceDiscountResponse {
   /** Codes supplied to the draft (kept as history after finalization). */
   vouchers: InvoiceVoucherEntryResponse[];
   appliedAt: string | null;
+  /**
+   * Phase 6 P6-9: present exactly for an invoice with a product line (version 3): both sides, Spa first. The fields above then describe
+   * the Spa side (empty for a product-only invoice), so a reader that knows only one side keeps working.
+   */
+  sides?: InvoiceSideDiscount[];
 }
 
 /** POST /api/v1/pos/invoices/:id/vouchers: supply a voucher code to a DRAFT (APPLY_DISCOUNTS). */
@@ -2678,6 +2707,12 @@ export interface DiscountVersionResponse {
   scopeMode: DiscountScopeModeName;
   serviceIds: string[];
   categoryIds: string[];
+  /** Phase 6 P6-9 (Q7): what the program may discount; absent = SERVICES (a response from before Phase 6, or any fixture of it). */
+  scope?: DiscountScopeName;
+  /** Product targets of a PRODUCTS or BOTH selection (OQ-P6-21); a product category matches only that exact category. */
+  brandIds?: string[];
+  productCategoryIds?: string[];
+  productIds?: string[];
   usageLimitTotal: number | null;
   usageLimitPerCustomer: number | null;
   createdAt: string;
@@ -2735,6 +2770,14 @@ export interface DiscountVersionInput {
   scopeMode: DiscountScopeModeName;
   serviceIds: string[];
   categoryIds: string[];
+  /**
+   * Phase 6 P6-9: absent = SERVICES. Appending a version to a program whose scope is not SERVICES must state the scope (leaving it out
+   * would silently turn it back into a services-only program); the screens for it come with P6-11.
+   */
+  scope?: DiscountScopeName;
+  brandIds?: string[];
+  productCategoryIds?: string[];
+  productIds?: string[];
   usageLimitTotal: number | null;
   usageLimitPerCustomer: number | null;
 }

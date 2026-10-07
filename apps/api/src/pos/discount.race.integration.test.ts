@@ -530,7 +530,7 @@ test(
               const stored = await database.invoice.findUniqueOrThrow({
                 where: { id: waiting.id },
               });
-              const redemption = await database.discountRedemption.findUnique({
+              const redemption = await database.discountRedemption.findFirst({
                 where: { invoiceId: waiting.id },
               });
               // Either the release committed first (B got the usage) or B counted it as still taken.

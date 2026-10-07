@@ -2902,7 +2902,7 @@ test('Phase 4 Step 4 POS database foundation invariants (all fixtures roll back)
                 payer: null,
               });
               await settle();
-              const guestRedemption = await tx.discountRedemption.findUniqueOrThrow({
+              const guestRedemption = await tx.discountRedemption.findFirstOrThrow({
                 where: { invoiceId: guest.id },
               });
               assert.equal(guestRedemption.payerUserId, null);
@@ -2973,7 +2973,7 @@ test('Phase 4 Step 4 POS database foundation invariants (all fixtures roll back)
                 /needs an identified member payer|total usage limit/,
               );
               // The ledger is permanent and one redemption per invoice.
-              const redemption = await tx.discountRedemption.findUniqueOrThrow({
+              const redemption = await tx.discountRedemption.findFirstOrThrow({
                 where: { invoiceId: member.id },
               });
               await rejects(
@@ -3308,7 +3308,7 @@ test('Phase 4 Step 4 POS database foundation invariants (all fixtures roll back)
                 payer: customer,
               });
               await settle();
-              const redemption = await tx.discountRedemption.findUniqueOrThrow({
+              const redemption = await tx.discountRedemption.findFirstOrThrow({
                 where: { invoiceId: unpaidBenefit.id },
               });
               const release = (
@@ -3451,7 +3451,7 @@ test('Phase 4 Step 4 POS database foundation invariants (all fixtures roll back)
               assert.equal(settled.totalVnd, 0n);
               assert.equal(settled.discountTotalVnd, 50_000n);
               assert.equal(await tx.payment.count({ where: { invoiceId: zero.id } }), 0);
-              const zeroRedemption = await tx.discountRedemption.findUniqueOrThrow({
+              const zeroRedemption = await tx.discountRedemption.findFirstOrThrow({
                 where: { invoiceId: zero.id },
               });
               const cancelZero = async () =>

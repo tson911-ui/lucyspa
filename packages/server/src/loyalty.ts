@@ -257,9 +257,10 @@ interface LockedInvoice {
   payer_user_id: string | null;
   total_vnd: bigint;
   /**
-   * Phase 6 P6-8: what the Spa wallet earns on = the invoice total without its PRODUCT lines and shipping fee. Until the Beauty side
-   * has its own discount (P6-9, P6-11) a product line has none, so this is total - product gross - fee; for every invoice without a
-   * product line it is exactly the total, as before.
+   * What the Spa wallet earns on = the Spa SIDE's net amount (Q2: points are rounded per wallet on the side net). For a version 3
+   * invoice (an invoice with a product line, P6-9) it is the sum of the Spa line allocations (its own discount already taken, the
+   * Beauty side's discount never mixed in); for every other invoice it is the total without product lines and fee (P6-8), which is
+   * exactly the total when there is no product line, as before.
    */
   spa_net_vnd: bigint;
   paid_at: Date | null;
@@ -276,8 +277,10 @@ async function lockInvoiceShared(
 ): Promise<LockedInvoice | null> {
   const rows = await tx.$queryRaw<LockedInvoice[]>`
     SELECT i.id, i.status::text AS status, i.paid_seq, i.payer_user_id, i.total_vnd,
-           (i.total_vnd - i.shipping_fee_vnd - COALESCE((
-             SELECT sum(l.gross_vnd) FROM invoice_lines l WHERE l.invoice_id = i.id AND l.kind = 'PRODUCT'), 0))::bigint AS spa_net_vnd,
+           (CASE WHEN i.calculation_version >= 3 THEN COALESCE((
+               SELECT sum(a.net_vnd) FROM invoice_line_allocations a WHERE a.invoice_id = i.id AND a.side = 'SPA'), 0)
+             ELSE i.total_vnd - i.shipping_fee_vnd - COALESCE((
+               SELECT sum(l.gross_vnd) FROM invoice_lines l WHERE l.invoice_id = i.id AND l.kind = 'PRODUCT'), 0) END)::bigint AS spa_net_vnd,
            i.paid_at, i.branch_id,
            i.visit_id, i.kind::text AS kind, i.cancelled_by_user_id
     FROM invoices i WHERE i.id = ${invoiceId}::uuid FOR SHARE`;

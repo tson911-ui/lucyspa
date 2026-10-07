@@ -485,6 +485,8 @@ model User {
   referralChangesFrom            ReferralChange[]                 @relation("ReferralChangeOld")
   referralChangesTo              ReferralChange[]                 @relation("ReferralChangeNew")
   loyaltySnapshotsAsPayer        InvoiceLoyaltySnapshot[]         @relation("LoyaltySnapshotPayer")
+  finalizedBeautyApplications    InvoiceBeautyApplication[]       @relation("BeautyApplicationFinalizer")
+  beautySnapshotsAsPayer         InvoiceBeautySnapshot[]          @relation("BeautySnapshotPayer")
   createdBirthdayConfigs         BirthdayRewardConfig[]           @relation("BirthdayConfigCreator")
   createdBirthdayVersions        BirthdayRewardVersion[]          @relation("BirthdayVersionCreator")
   birthdayRedemptions            BirthdayRedemption[]             @relation("BirthdayRedemptionPayer")
@@ -1626,6 +1628,24 @@ enum DiscountScopeMode {
   SELECTED
 }
 
+/// Phase 6 P6-9 (Q7): what a program version may discount. Every program before Phase 6 is SERVICES.
+enum DiscountScope {
+  SERVICES
+  PRODUCTS
+  BOTH
+}
+
+/// Phase 6 P6-9 (T17): the two sides of an invoice priced by calculation version 3.
+enum PricingSide {
+  SPA
+  BEAUTY
+}
+
+enum PaymentSideKind {
+  PAYMENT
+  REVERSAL
+}
+
 enum DiscountReleaseCause {
   INVOICE_CANCELLED_UNPAID
   ZERO_BALANCE_CORRECTION
@@ -1675,11 +1695,16 @@ model Invoice {
   managementNotes      InvoiceManagementNote[]
   voucherEntries       InvoiceVoucherEntry[]
   discountApplication  InvoiceDiscountApplication?
-  discountRedemption   DiscountRedemption?
+  /// Phase 6 P6-9 (T19): one redemption per (invoice, program); a program that wins both sides is redeemed once.
+  discountRedemptions  DiscountRedemption[]
   birthdayRedemption   BirthdayRedemption?
   loyaltyLedgerEntries LoyaltyLedgerEntry[]        @relation("LoyaltyLedgerInvoice")
   awardedReferrals     Referral[]                  @relation("ReferralAwardInvoice")
   loyaltySnapshot      InvoiceLoyaltySnapshot?
+  /// Phase 6 P6-9: the Beauty side of a version 3 invoice (the Spa side is the three rows above).
+  beautyApplication    InvoiceBeautyApplication?
+  beautySnapshot       InvoiceBeautySnapshot?
+  paymentSideAllocations PaymentSideAllocation[]
 
   @@index([branchId, businessDate, status], map: "invoices_branch_date_idx")
   @@index([payerUserId, createdAt], map: "invoices_payer_idx")
@@ -1712,6 +1737,7 @@ model InvoiceLine {
   // SQL: exactly one detail row per PRODUCT line (its primary key is the line id); one reservation once the invoice is finalized.
   productDetails   InvoiceLineProduct[]
   reservations     StockReservation[]
+  allocations      InvoiceLineAllocation[]
   comboPurchases   ComboPurchase[]          @relation("ComboPurchaseLine")
   comboConsumption ComboSessionConsumption? @relation("ComboConsumptionLine")
   comboUsages      InvoiceLineComboUsage[]
@@ -1876,6 +1902,7 @@ model Payment {
   correction            PaymentCorrection?
   attempts              PaymentAttempt[]
   anomalies             PaymentAnomaly[]
+  sideAllocations       PaymentSideAllocation[]
 
   @@unique([collectedByUserId, idempotencyKey], map: "payments_collector_idempotency_key")
   @@index([invoiceId], map: "payments_invoice_idx")
@@ -2018,6 +2045,8 @@ model DiscountVersion {
   validUntil            DateTime                     @map("valid_until") @db.Timestamptz(3)
   minSpendVnd           BigInt                       @default(0) @map("min_spend_vnd")
   scopeMode             DiscountScopeMode            @map("scope_mode")
+  /// Phase 6 P6-9 (Q7): SERVICES (every program before Phase 6), PRODUCTS or BOTH. `scopeMode` ALL_SERVICES = every item of this scope.
+  scope                 DiscountScope                @default(SERVICES)
   usageLimitTotal       Int?                         @map("usage_limit_total")
   usageLimitPerCustomer Int?                         @map("usage_limit_per_customer")
   createdByUserId       String                       @map("created_by_user_id") @db.Uuid
@@ -2025,7 +2054,11 @@ model DiscountVersion {
   createdAt             DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
   services              DiscountVersionService[]
   categories            DiscountVersionCategory[]
+  brands                DiscountVersionBrand[]
+  productCategories     DiscountVersionProductCategory[]
+  products              DiscountVersionProduct[]
   applications          InvoiceDiscountApplication[]
+  beautyApplications    InvoiceBeautyApplication[]
   redemptions           DiscountRedemption[]
 
   @@unique([discountId, versionNo], map: "discount_versions_discount_version_key")
@@ -2053,6 +2086,40 @@ model DiscountVersionCategory {
   @@map("discount_version_categories")
 }
 
+/// Phase 6 P6-9 (OQ-P6-21): product targets of a PRODUCTS or BOTH version.
+model DiscountVersionBrand {
+  versionId String          @map("version_id") @db.Uuid
+  version   DiscountVersion @relation(fields: [versionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  brandId   String          @map("brand_id") @db.Uuid
+  brand     Brand           @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([versionId, brandId])
+  @@index([brandId], map: "discount_version_brands_brand_idx")
+  @@map("discount_version_brands")
+}
+
+model DiscountVersionProductCategory {
+  versionId  String          @map("version_id") @db.Uuid
+  version    DiscountVersion @relation(fields: [versionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  categoryId String          @map("category_id") @db.Uuid
+  category   ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([versionId, categoryId])
+  @@index([categoryId], map: "discount_version_product_categories_category_idx")
+  @@map("discount_version_product_categories")
+}
+
+model DiscountVersionProduct {
+  versionId String          @map("version_id") @db.Uuid
+  version   DiscountVersion @relation(fields: [versionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  productId String          @map("product_id") @db.Uuid
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([versionId, productId])
+  @@index([productId], map: "discount_version_products_product_idx")
+  @@map("discount_version_products")
+}
+
 // A redeemable code under a requiresCode program (canonical upper-case).
 model Voucher {
   id              String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -2067,6 +2134,7 @@ model Voucher {
   updatedAt       DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   entries         InvoiceVoucherEntry[]
   applications    InvoiceDiscountApplication[]
+  beautyApplications InvoiceBeautyApplication[]
   redemptions     DiscountRedemption[]
 
   @@map("vouchers")
@@ -2106,6 +2174,9 @@ model InvoiceDiscountApplication {
   fixedAmountVnd      BigInt?         @map("fixed_amount_vnd")
   eligibleSubtotalVnd BigInt          @map("eligible_subtotal_vnd")
   computedAmountVnd   BigInt          @map("computed_amount_vnd")
+  /// Phase 6 P6-9 (T18): a shared (BOTH) program under version 3 records the program-level eligible subtotal and amount that were split.
+  sharedEligibleSubtotalVnd BigInt?   @map("shared_eligible_subtotal_vnd")
+  sharedAmountVnd     BigInt?         @map("shared_amount_vnd")
   candidates          Json            @db.JsonB
   selectionReason     String          @map("selection_reason")
   finalizedByUserId   String          @map("finalized_by_user_id") @db.Uuid
@@ -2115,11 +2186,12 @@ model InvoiceDiscountApplication {
   @@map("invoice_discount_applications")
 }
 
-// The permanent usage ledger: one redemption per invoice for the winner only; active iff it has
+// The permanent usage ledger: one redemption per (invoice, program) for the winners only (P6-9: a program that wins both sides is
+// redeemed once, two programs winning the two sides are two rows); active iff it has
 // no release. redeemedAt is always the database clock (SQL overwrites it).
 model DiscountRedemption {
   id          String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  invoiceId   String                     @unique(map: "discount_redemptions_invoice_key") @map("invoice_id") @db.Uuid
+  invoiceId   String                     @map("invoice_id") @db.Uuid
   invoice     Invoice                    @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   discountId  String                     @map("discount_id") @db.Uuid
   discount    Discount                   @relation(fields: [discountId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -2132,6 +2204,8 @@ model DiscountRedemption {
   redeemedAt  DateTime                   @default(dbgenerated("clock_timestamp()")) @map("redeemed_at") @db.Timestamptz(3)
   release     DiscountRedemptionRelease?
 
+  @@unique([invoiceId, discountId], map: "discount_redemptions_invoice_discount_key")
+  @@index([invoiceId], map: "discount_redemptions_invoice_idx")
   @@index([discountId, payerUserId], map: "discount_redemptions_usage_idx")
   @@map("discount_redemptions")
 }
@@ -2575,6 +2649,91 @@ model InvoiceLoyaltySnapshot {
   @@map("invoice_loyalty_snapshots")
 }
 
+/// Phase 6 P6-9 (T19): the Beauty side's winning program benefit of a version 3 invoice (the Spa side is InvoiceDiscountApplication).
+model InvoiceBeautyApplication {
+  id                        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId                 String          @unique(map: "invoice_beauty_applications_invoice_key") @map("invoice_id") @db.Uuid
+  invoice                   Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  discountId                String          @map("discount_id") @db.Uuid
+  versionId                 String          @map("version_id") @db.Uuid
+  version                   DiscountVersion @relation(fields: [discountId, versionId], references: [discountId, id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_beauty_applications_version_fkey")
+  voucherId                 String?         @map("voucher_id") @db.Uuid
+  voucher                   Voucher?        @relation(fields: [voucherId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  kind                      DiscountKind
+  percentBp                 Int?            @map("percent_bp")
+  fixedAmountVnd            BigInt?         @map("fixed_amount_vnd")
+  eligibleSubtotalVnd       BigInt          @map("eligible_subtotal_vnd")
+  computedAmountVnd         BigInt          @map("computed_amount_vnd")
+  sharedEligibleSubtotalVnd BigInt?         @map("shared_eligible_subtotal_vnd")
+  sharedAmountVnd           BigInt?         @map("shared_amount_vnd")
+  candidates                Json            @db.JsonB
+  selectionReason           String          @map("selection_reason")
+  finalizedByUserId         String          @map("finalized_by_user_id") @db.Uuid
+  finalizedBy               User            @relation("BeautyApplicationFinalizer", fields: [finalizedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  appliedAt                 DateTime        @default(dbgenerated("clock_timestamp()")) @map("applied_at") @db.Timestamptz(3)
+
+  @@map("invoice_beauty_applications")
+}
+
+/// Phase 6 P6-9 (T19): the Beauty wallet's tier snapshot (the Spa wallet's is InvoiceLoyaltySnapshot).
+model InvoiceBeautySnapshot {
+  id                 String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId          String      @unique(map: "invoice_beauty_snapshots_invoice_key") @map("invoice_id") @db.Uuid
+  invoice            Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  payerUserId        String      @map("payer_user_id") @db.Uuid
+  payer              User        @relation("BeautySnapshotPayer", fields: [payerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  balanceBefore      Int         @map("balance_before")
+  tier               LoyaltyTier
+  tierTableVersion   Int         @map("tier_table_version")
+  memberDiscountBp   Int         @map("member_discount_bp")
+  calculationVersion Int         @map("calculation_version")
+  eligibleBeautyVnd  BigInt      @map("eligible_beauty_vnd")
+  /// The member amount; the Beauty discount only when winnerSource is MEMBER_TIER (0 otherwise).
+  memberAmountVnd    BigInt      @default(0) @map("member_amount_vnd")
+  candidates         Json        @db.JsonB
+  winnerSource       String?     @map("winner_source")
+  selectionReason    String?     @map("selection_reason")
+  createdAt          DateTime    @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([payerUserId], map: "invoice_beauty_snapshots_payer_idx")
+  @@map("invoice_beauty_snapshots")
+}
+
+/// Phase 6 P6-9 (T18, T19): the immutable net amount of every line of a version 3 invoice: its gross, its share of its side's discount
+/// (cumulative rounding) and the net a refund will be based on (Q3).
+model InvoiceLineAllocation {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId        String      @map("invoice_id") @db.Uuid
+  invoiceLineId    String      @unique(map: "invoice_line_allocations_line_key") @map("invoice_line_id") @db.Uuid
+  line             InvoiceLine @relation(fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_line_allocations_line_fkey")
+  side             PricingSide
+  grossVnd         BigInt      @map("gross_vnd")
+  discountShareVnd BigInt      @map("discount_share_vnd")
+  netVnd           BigInt      @map("net_vnd")
+  createdAt        DateTime    @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([invoiceId, side], map: "invoice_line_allocations_invoice_idx")
+  @@map("invoice_line_allocations")
+}
+
+/// Phase 6 P6-9 (T18, Q2): how a payment (and its reversal) of a version 3 invoice is attributed to the sides. Written by triggers.
+model PaymentSideAllocation {
+  id        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId String          @map("invoice_id") @db.Uuid
+  invoice   Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  paymentId String          @map("payment_id") @db.Uuid
+  payment   Payment         @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  side      PricingSide
+  kind      PaymentSideKind
+  /// Signed: a payment adds, its reversal mirrors it exactly.
+  amountVnd BigInt          @map("amount_vnd")
+  createdAt DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([paymentId, side, kind], map: "payment_side_allocations_payment_key")
+  @@index([invoiceId, side], map: "payment_side_allocations_invoice_idx")
+  @@map("payment_side_allocations")
+}
+
 // P5-6 birthday gift (design 8). The single configuration; finalizations that apply a gift lock this row.
 model BirthdayRewardConfig {
   id              String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -3007,6 +3166,7 @@ model Brand {
   updatedAt  DateTime  @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   products   Product[]
   soldLines  InvoiceLineProduct[]
+  discountVersions DiscountVersionBrand[]
 
   @@map("brands")
 }
@@ -3026,6 +3186,7 @@ model ProductCategory {
   updatedAt  DateTime          @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   products   Product[]
   soldLines  InvoiceLineProduct[]
+  discountVersions DiscountVersionProductCategory[]
 
   @@index([parentId], map: "product_categories_parent_idx")
   @@map("product_categories")
@@ -3054,6 +3215,7 @@ model Product {
   variants        ProductVariant[]
   images          ProductImage[]
   invoiceLines    InvoiceLineProduct[]
+  discountVersions DiscountVersionProduct[]
 
   @@index([status, categoryId], map: "products_status_idx")
   @@index([brandId], map: "products_brand_idx")

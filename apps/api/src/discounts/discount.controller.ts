@@ -5,6 +5,7 @@ import type {
   DiscountKindName,
   DiscountListResponse,
   DiscountScopeModeName,
+  DiscountScopeName,
   DiscountTerminateRequest,
   DiscountVersionInput,
   DiscountVersionRequest,
@@ -38,6 +39,7 @@ const MAX_VERSION = 2_147_483_647;
 const VND = /^(?:0|[1-9][0-9]{0,17})$/;
 const KINDS: DiscountKindName[] = ['PERCENT', 'FIXED_AMOUNT'];
 const SCOPES: DiscountScopeModeName[] = ['ALL_SERVICES', 'SELECTED'];
+const DISCOUNT_SCOPES: DiscountScopeName[] = ['SERVICES', 'PRODUCTS', 'BOTH'];
 
 class VersionInputDto implements DiscountVersionInput {
   @ApiProperty({ enum: KINDS }) @IsIn(KINDS) kind!: DiscountKindName;
@@ -49,6 +51,29 @@ class VersionInputDto implements DiscountVersionInput {
   @ApiProperty({ enum: SCOPES }) @IsIn(SCOPES) scopeMode!: DiscountScopeModeName;
   @ApiProperty() @IsArray() @ArrayMaxSize(200) @IsString({ each: true }) serviceIds!: string[];
   @ApiProperty() @IsArray() @ArrayMaxSize(200) @IsString({ each: true }) categoryIds!: string[];
+  // Phase 6 P6-9 (Q7, OQ-P6-21): optional; absent means SERVICES and no product target.
+  @ApiProperty({ enum: DISCOUNT_SCOPES, required: false })
+  @IsOptional()
+  @IsIn(DISCOUNT_SCOPES)
+  scope?: DiscountScopeName;
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsString({ each: true })
+  brandIds?: string[];
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsString({ each: true })
+  productCategoryIds?: string[];
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsString({ each: true })
+  productIds?: string[];
   @ApiProperty({ nullable: true })
   @ValidateIf((_object: unknown, value: unknown) => value !== null)
   @IsInt()
