@@ -5,7 +5,8 @@
  * the buyer only when that invoice is PAID. Using the sessions is P5-8.
  */
 
-export type InvoiceKindName = 'VISIT' | 'COMBO_SALE';
+/** `PRODUCT_SALE` (Phase 6 P6-8): product lines only, no visit. */
+export type InvoiceKindName = 'VISIT' | 'COMBO_SALE' | 'PRODUCT_SALE';
 
 /** One version of a combo definition (append-only). Lucy Spa combos never expire, so no expiry field is exposed. */
 export interface ComboVersionResponse {

@@ -90,3 +90,5 @@ await import('../apps/api/dist/inventory/inventory.integration.test.js');
 await import('../apps/api/dist/inventory/inventory.race.integration.test.js');
 await import('../apps/api/dist/product-imports/import.integration.test.js');
 await import('../apps/api/dist/product-imports/import.race.integration.test.js');
+await import('../apps/api/dist/pos/product-sale.integration.test.js');
+await import('../apps/api/dist/pos/product-sale.race.integration.test.js');

@@ -12,6 +12,7 @@ import type {
   InvoiceLineComboUseResponse,
 } from './combo.js';
 import type { InvoiceMemberCandidate } from './loyalty.js';
+import type { InvoiceChannelName, InvoiceProductLineResponse } from './product-sale.js';
 import type { SeasonDensity, SeasonSlot, SeasonSlotSwitches } from './season-registry.js';
 export type OrganizationLevel =
   | 'CEO'
@@ -2184,6 +2185,8 @@ export * from './reward.js';
 export * from './customer-loyalty.js';
 // Owner request 2026-10-06: the shop's Facebook / Zalo contact links (validation and the links the public site opens).
 export * from './contact-links.js';
+// Phase 6 P6-8: product lines on invoices (seller, reservation, product-only invoices).
+export * from './product-sale.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;
@@ -2390,6 +2393,11 @@ export interface InvoiceResponse {
   lines: InvoiceLineResponse[];
   /** The single combo line of a COMBO_SALE invoice; null for a VISIT invoice. */
   comboLine: InvoiceComboLineResponse | null;
+  /** Phase 6 P6-8: the product lines of a VISIT or PRODUCT_SALE invoice (empty for service-only invoices and combo sales). */
+  productLines: InvoiceProductLineResponse[];
+  /** Phase 6 P6-8 (T33): `COUNTER` until the online channel exists; the shipping fee is 0 unless ONLINE. total = subtotal - discount + fee. */
+  channel: InvoiceChannelName;
+  shippingFeeVnd: string;
   /** The benefit: a live evaluation while DRAFT, the frozen application once finalized. */
   discount: InvoiceDiscountResponse;
   /** Every payment ever recorded, oldest first (reversed ones included, with their correction). */
@@ -2426,6 +2434,8 @@ export interface InvoiceResponse {
     cancel: boolean;
     /** A finalized invoice needs fresh password re-authentication to be cancelled. */
     cancelNeedsReauth: boolean;
+    /** Phase 6 P6-8: add, change or remove product lines (SELL_PRODUCTS at the branch) while DRAFT. */
+    sellProducts: boolean;
   };
 }
 

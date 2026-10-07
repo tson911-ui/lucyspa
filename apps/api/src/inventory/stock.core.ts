@@ -173,7 +173,13 @@ export async function adjustStock(
   if (second) return second;
   if (locked[0]!.quantity_on_hand < quantity)
     throw new AuthError('INVENTORY_INSUFFICIENT_STOCK', 'quantity');
-  await tx.$queryRaw`SELECT 1 FROM stock_levels WHERE branch_id = ${branchId}::uuid AND variant_id = ${variantId}::uuid FOR UPDATE`;
+  const held = await tx.$queryRaw<
+    { on_hand: number; reserved: number }[]
+  >`SELECT on_hand, reserved FROM stock_levels WHERE branch_id = ${branchId}::uuid AND variant_id = ${variantId}::uuid FOR UPDATE`;
+  // Stock reserved by a finalized invoice (Phase 6 P6-8) cannot be taken out from under it (T13: reserved <= on hand).
+  if (held[0] && held[0].on_hand - quantity < held[0].reserved) {
+    throw new AuthError('INVENTORY_STOCK_RESERVED', 'quantity');
+  }
   await tx.stockMovement.create({
     data: {
       branchId,
@@ -497,10 +503,14 @@ export async function approveCount(
       SELECT id, quantity_on_hand, expiry_date FROM inventory_lots
       WHERE branch_id = ${session.branchId}::uuid AND variant_id = ${line.variantId}::uuid
       ORDER BY id FOR UPDATE`;
-    const level = await tx.$queryRaw<{ on_hand: number }[]>`
-      SELECT on_hand FROM stock_levels
+    const level = await tx.$queryRaw<{ on_hand: number; reserved: number }[]>`
+      SELECT on_hand, reserved FROM stock_levels
       WHERE branch_id = ${session.branchId}::uuid AND variant_id = ${line.variantId}::uuid FOR UPDATE`;
     const system = level[0]?.on_hand ?? 0;
+    // A count cannot take stock below what finalized invoices have reserved (Phase 6 P6-8, T13); nothing is written.
+    if (line.countedQuantity < (level[0]?.reserved ?? 0)) {
+      throw new AuthError('INVENTORY_STOCK_RESERVED', 'countedQuantity');
+    }
     const difference = line.countedQuantity - system;
     await tx.stockCountLine.update({
       where: { id: line.id },

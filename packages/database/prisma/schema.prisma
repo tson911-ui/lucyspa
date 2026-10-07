@@ -525,6 +525,9 @@ model User {
   approvedStockCounts            StockCountSession[]              @relation("StockCountApprover")
   cancelledStockCounts           StockCountSession[]              @relation("StockCountCanceller")
   stockMovements                 StockMovement[]                  @relation("StockMovementActor")
+  soldProductLines               InvoiceLineProduct[]             @relation("InvoiceProductSeller")
+  reservationsCreated            StockReservation[]               @relation("StockReservationCreator")
+  reservationsReleased           StockReservation[]               @relation("StockReservationReleaser")
 
   @@index([kind, status, id], map: "users_kind_status_idx")
   @@map("users")
@@ -1541,11 +1544,30 @@ enum InvoiceStatus {
 enum InvoiceKind {
   VISIT
   COMBO_SALE
+  /// Phase 6 P6-8: product lines only, not tied to a Visit (SQL keeps visit_id NULL exactly for the two visit-less kinds).
+  PRODUCT_SALE
 }
 
 enum InvoiceLineKind {
   SERVICE
   COMBO_PURCHASE
+  PRODUCT
+}
+
+/// Phase 6 P6-8 (T33): where the sale happened. ONLINE is reachable only in Wave 4; SQL allows a shipping fee on ONLINE only.
+enum InvoiceChannel {
+  COUNTER
+  ONLINE
+}
+
+enum StockReservationStatus {
+  RESERVED
+  CONSUMED
+  RELEASED
+}
+
+enum StockReservationSource {
+  INVOICE_LINE
 }
 
 enum PaymentMethod {
@@ -1619,6 +1641,9 @@ model Invoice {
   branch               Branch                      @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// Phase 5 P5-7: a combo sale (kind COMBO_SALE) is not tied to a Visit; SQL keeps visit_id NULL exactly for that kind.
   kind                 InvoiceKind                 @default(VISIT)
+  /// Phase 6 P6-8 (T33): sales channel (COUNTER until Wave 4) and shipping fee (0 unless ONLINE). total = subtotal - discount + fee.
+  channel              InvoiceChannel              @default(COUNTER)
+  shippingFeeVnd       BigInt                      @default(0) @map("shipping_fee_vnd")
   visitId              String?                     @map("visit_id") @db.Uuid
   visit                Visit?                      @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   status               InvoiceStatus               @default(DRAFT)
@@ -1684,6 +1709,9 @@ model InvoiceLine {
   // SQL: exactly one detail row per SERVICE line (its primary key is the line id).
   serviceDetails   InvoiceLineService[]
   comboDetails     InvoiceLineCombo[]
+  // SQL: exactly one detail row per PRODUCT line (its primary key is the line id); one reservation once the invoice is finalized.
+  productDetails   InvoiceLineProduct[]
+  reservations     StockReservation[]
   comboPurchases   ComboPurchase[]          @relation("ComboPurchaseLine")
   comboConsumption ComboSessionConsumption? @relation("ComboConsumptionLine")
   comboUsages      InvoiceLineComboUsage[]
@@ -1749,6 +1777,65 @@ model InvoiceLineCombo {
 
   @@index([comboId], map: "invoice_line_combos_combo_idx")
   @@map("invoice_line_combos")
+}
+
+// Phase 6 P6-8: the PRODUCT detail of a line (1:1). An exact copy of the product and variant at the time of the sale, the seller
+// (required: an active employee assigned to the invoice branch) and the price resolution (list price, promotion, instant). SQL
+// re-derives the line price from the effective price at `pricedAt` and, once finalized, requires `pricedAt = finalizedAt`.
+model InvoiceLineProduct {
+  invoiceLineId  String            @id @map("invoice_line_id") @db.Uuid
+  invoiceId      String            @map("invoice_id") @db.Uuid
+  line           InvoiceLine       @relation(fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_line_products_line_fkey")
+  productId      String            @map("product_id") @db.Uuid
+  product        Product           @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  variantId      String            @map("variant_id") @db.Uuid
+  variant        ProductVariant    @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sku            String            @db.VarChar(64)
+  brandId        String?           @map("brand_id") @db.Uuid
+  brand          Brand?            @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  categoryId     String?           @map("category_id") @db.Uuid
+  category       ProductCategory?  @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  productNameVi  String            @map("product_name_vi")
+  productNameEn  String            @map("product_name_en")
+  variantLabelVi String?           @map("variant_label_vi")
+  variantLabelEn String?           @map("variant_label_en")
+  sellerUserId   String            @map("seller_user_id") @db.Uuid
+  seller         User              @relation("InvoiceProductSeller", fields: [sellerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  listPriceVnd   BigInt            @map("list_price_vnd")
+  promotionId    String?           @map("promotion_id") @db.Uuid
+  promotion      ProductPromotion? @relation(fields: [promotionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  pricedAt       DateTime          @map("priced_at") @db.Timestamptz(3)
+  createdAt      DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([invoiceId], map: "invoice_line_products_invoice_idx")
+  @@index([variantId], map: "invoice_line_products_variant_idx")
+  @@index([sellerUserId], map: "invoice_line_products_seller_idx")
+  @@map("invoice_line_products")
+}
+
+// Phase 6 P6-8 (T15): the stock held for one product line of a finalized invoice, at the invoice branch. `StockLevel.reserved` is a
+// cache of the RESERVED rows. Released once, only by the cancellation of the invoice; CONSUMED (the sale) is not reachable yet.
+model StockReservation {
+  id               String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceLineId    String                 @unique(map: "stock_reservations_line_key") @map("invoice_line_id") @db.Uuid
+  invoiceId        String                 @map("invoice_id") @db.Uuid
+  line             InvoiceLine            @relation(fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "stock_reservations_line_fkey")
+  branchId         String                 @map("branch_id") @db.Uuid
+  variantId        String                 @map("variant_id") @db.Uuid
+  level            StockLevel             @relation(fields: [branchId, variantId], references: [branchId, variantId], onDelete: Restrict, onUpdate: Restrict, map: "stock_reservations_level_fkey")
+  quantity         Int
+  source           StockReservationSource @default(INVOICE_LINE)
+  status           StockReservationStatus @default(RESERVED)
+  reservedAt       DateTime               @default(dbgenerated("clock_timestamp()")) @map("reserved_at") @db.Timestamptz(3)
+  createdByUserId  String                 @map("created_by_user_id") @db.Uuid
+  createdBy        User                   @relation("StockReservationCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  releasedAt       DateTime?              @map("released_at") @db.Timestamptz(3)
+  releasedByUserId String?                @map("released_by_user_id") @db.Uuid
+  releasedBy       User?                  @relation("StockReservationReleaser", fields: [releasedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  releaseCause     String?                @map("release_cause")
+
+  @@index([invoiceId], map: "stock_reservations_invoice_idx")
+  @@map("stock_reservations")
 }
 
 // Cash shape extended additively by Phase 4 Step 8 for PayOS (a provider payment). collectedAt and
@@ -2919,6 +3006,7 @@ model Brand {
   createdAt  DateTime  @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   updatedAt  DateTime  @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   products   Product[]
+  soldLines  InvoiceLineProduct[]
 
   @@map("brands")
 }
@@ -2937,6 +3025,7 @@ model ProductCategory {
   createdAt  DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   updatedAt  DateTime          @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   products   Product[]
+  soldLines  InvoiceLineProduct[]
 
   @@index([parentId], map: "product_categories_parent_idx")
   @@map("product_categories")
@@ -2964,6 +3053,7 @@ model Product {
   updatedAt       DateTime         @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   variants        ProductVariant[]
   images          ProductImage[]
+  invoiceLines    InvoiceLineProduct[]
 
   @@index([status, categoryId], map: "products_status_idx")
   @@index([brandId], map: "products_brand_idx")
@@ -2993,6 +3083,7 @@ model ProductVariant {
   receiptLines      StockReceiptLine[]
   lots              InventoryLot[]
   stockLevels       StockLevel[]
+  invoiceLines      InvoiceLineProduct[]
   lowStockAlerts    InventoryLowStockAlert[]
   countLines        StockCountLine[]
   movements         StockMovement[]
@@ -3029,6 +3120,7 @@ model ProductPromotion {
   createdByUserId    String         @map("created_by_user_id") @db.Uuid
   createdBy          User           @relation("PromotionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   createdAt          DateTime       @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  soldLines          InvoiceLineProduct[]
 
   @@index([variantId, startsAt], map: "product_promotions_variant_idx")
   @@map("product_promotions")
@@ -3221,6 +3313,7 @@ model StockLevel {
   rowVersion      Int            @default(1) @map("row_version")
   createdAt       DateTime       @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime       @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  reservations    StockReservation[]
 
   @@id([branchId, variantId])
   @@map("stock_levels")

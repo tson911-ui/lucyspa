@@ -255,8 +255,10 @@ export async function evaluateInvoice(
     where: { id: invoice.id },
     select: { kind: true },
   });
+  // Phase 6 P6-8: the engine prices the Spa side (service and combo lines). A PRODUCT line is outside it until the Beauty side exists
+  // (P6-9, P6-11): it earns no discount and counts toward no eligible subtotal, whatever the program.
   const lineRows = await tx.invoiceLine.findMany({
-    where: { invoiceId: invoice.id },
+    where: { invoiceId: invoice.id, kind: { not: 'PRODUCT' } },
     orderBy: { sequence: 'asc' },
     select: {
       grossVnd: true,
@@ -345,9 +347,10 @@ export async function evaluateInvoice(
     .filter((program): program is EngineProgram => program !== undefined)
     .filter((program) => now < program.version.validUntil);
   // Lock order (design 12.2): invoice -> program rows -> the birthday configuration row -> the payer's user row -> wallets.
-  // The birthday gift never applies to a combo sale (Owner answer of 2026-10-05): nothing is read and no lock is taken for it.
+  // The birthday gift never applies to a combo sale (Owner answer of 2026-10-05) nor to a product-only sale (it is Spa-side only,
+  // Q7): nothing is read and no lock is taken for it.
   const birthdayContext =
-    header.kind === 'COMBO_SALE'
+    header.kind !== 'VISIT'
       ? null
       : await loadBirthday(tx, invoice.id, invoice.payerUserId, options.lockPrograms);
   const member = await loadMember(tx, invoice.payerUserId, options.lockPrograms);

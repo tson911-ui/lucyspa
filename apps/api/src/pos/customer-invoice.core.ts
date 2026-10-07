@@ -73,6 +73,8 @@ const detailSelect = {
       unitPriceVnd: true,
       grossVnd: true,
       comboDetails: { select: { invoiceLineId: true } },
+      // Phase 6 P6-8: a product line (the seller is never read here).
+      productDetails: { select: { invoiceLineId: true } },
       serviceDetails: {
         select: {
           pricingUnit: true,
@@ -134,8 +136,10 @@ function detail(row: DetailRow, customerUserId: string): CustomerInvoiceDetail {
         // A finalized invoice has every line priced (database invariant).
         throw new Error('A finalized invoice line is complete.');
       }
-      if (!service && line.comboDetails.length > 0) {
-        // The combo the member bought: always for the signed-in member (only the payer sees this invoice).
+      if (!service && (line.comboDetails.length > 0 || line.productDetails.length > 0)) {
+        // The combo or product the payer bought: always for the signed-in member (only the payer sees this invoice). The proper
+        // product line of the customer view (T26) is the point-of-sale Step; until then it has this shape, which carries no seller,
+        // cost, SKU or stock.
         return {
           sequence: line.sequence,
           nameVi: line.nameVi,

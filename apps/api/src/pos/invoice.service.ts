@@ -10,6 +10,9 @@ import type {
   InvoiceLinePriceRequest,
   InvoiceOpenedResponse,
   InvoicePayerRequest,
+  InvoiceProductLineAddRequest,
+  InvoiceProductLineRemoveRequest,
+  InvoiceProductLineUpdateRequest,
   InvoiceResponse,
   InvoiceVoucherRemoveRequest,
   InvoiceVoucherSupplyRequest,
@@ -22,6 +25,7 @@ import type {
   PaymentResultResponse,
   PaymentReverseRequest,
   PosBoardResponse,
+  ProductSaleRequest,
   WalkInMemberLookupResponse,
 } from '@lucy-spa/contracts';
 import {
@@ -56,6 +60,12 @@ import {
   supplyVoucher,
 } from './invoice.core.js';
 import { recordPayment, reversePayment } from './payment.core.js';
+import {
+  addProductLine,
+  openProductSale,
+  removeProductLine,
+  updateProductLine,
+} from './product-sale.core.js';
 import {
   addManagementNote,
   completePayosRequest,
@@ -140,6 +150,80 @@ export class InvoiceService {
       payerUserId: body.payerUserId.toLowerCase(),
     };
     return this.run(token, branchId, requestId, (context, id) => openComboSale(context, id, input));
+  }
+
+  /** Starts a product-only sale: a DRAFT invoice for a member or a guest (SELL_PRODUCTS at the branch; Phase 6 P6-8). */
+  async openProductSale(
+    token: string | undefined,
+    branchId: string,
+    body: ProductSaleRequest,
+    requestId?: string,
+  ): Promise<InvoiceOpenedResponse> {
+    let payerUserId: string | null = null;
+    if (body.payerUserId !== undefined && body.payerUserId !== null) {
+      if (typeof body.payerUserId !== 'string' || !UUID.test(body.payerUserId)) {
+        throw new AuthError('VALIDATION_FAILED', 'payerUserId');
+      }
+      payerUserId = body.payerUserId.toLowerCase();
+    }
+    return this.run(token, branchId, requestId, (context, id) =>
+      openProductSale(context, id, { payerUserId }),
+    );
+  }
+
+  /** Adds a product to a DRAFT (SELL_PRODUCTS); the price is the server's, the seller is required (defaults to the caller). */
+  async addProductLine(
+    token: string | undefined,
+    invoiceId: string,
+    body: InvoiceProductLineAddRequest,
+    requestId?: string,
+  ): Promise<InvoiceResponse> {
+    const expectedVersion = this.version(body.expectedVersion);
+    if (typeof body.variantId !== 'string' || !UUID.test(body.variantId)) {
+      throw new AuthError('VALIDATION_FAILED', 'variantId');
+    }
+    const sellerUserId = this.optionalUuid(body.sellerUserId, 'sellerUserId');
+    return this.run(token, invoiceId, requestId, (context, id) =>
+      addProductLine(context, id, {
+        expectedVersion,
+        variantId: body.variantId.toLowerCase(),
+        quantity: body.quantity,
+        ...(sellerUserId === undefined ? {} : { sellerUserId }),
+      }),
+    );
+  }
+
+  async updateProductLine(
+    token: string | undefined,
+    invoiceId: string,
+    lineId: string,
+    body: InvoiceProductLineUpdateRequest,
+    requestId?: string,
+  ): Promise<InvoiceResponse> {
+    const expectedVersion = this.version(body.expectedVersion);
+    if (!UUID.test(lineId)) throw new AuthError('NOT_FOUND');
+    const sellerUserId = this.optionalUuid(body.sellerUserId, 'sellerUserId');
+    return this.run(token, invoiceId, requestId, (context, id) =>
+      updateProductLine(context, id, lineId.toLowerCase(), {
+        expectedVersion,
+        ...(body.quantity === undefined ? {} : { quantity: body.quantity }),
+        ...(sellerUserId === undefined ? {} : { sellerUserId }),
+      }),
+    );
+  }
+
+  async removeProductLine(
+    token: string | undefined,
+    invoiceId: string,
+    lineId: string,
+    body: InvoiceProductLineRemoveRequest,
+    requestId?: string,
+  ): Promise<InvoiceResponse> {
+    const expectedVersion = this.version(body.expectedVersion);
+    if (!UUID.test(lineId)) throw new AuthError('NOT_FOUND');
+    return this.run(token, invoiceId, requestId, (context, id) =>
+      removeProductLine(context, id, lineId.toLowerCase(), { expectedVersion }),
+    );
   }
 
   get(token: string | undefined, invoiceId: string): Promise<InvoiceResponse> {
@@ -522,6 +606,13 @@ export class InvoiceService {
       throw new AuthError('VALIDATION_FAILED', 'expectedVersion');
     }
     return value;
+  }
+
+  private optionalUuid(value: unknown, field: string): string | undefined {
+    if (value === undefined) return undefined;
+    if (typeof value !== 'string' || !UUID.test(value))
+      throw new AuthError('VALIDATION_FAILED', field);
+    return value.toLowerCase();
   }
 
   private isCalendarDate(value: string): boolean {

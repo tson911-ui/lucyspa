@@ -6,7 +6,7 @@ import { AuthError } from '../auth/auth.error.js';
  * database re-verifies these rules (Step 4 guards); this module is the only place amounts are computed.
  *
  * `calculation_version = 2` (Phase 5 P5-4 adds the Member Discount candidate; the line arithmetic is unchanged from 1): line gross = quantity x unit price; subtotal = sum of the priced lines'
- * gross; the benefit (Step 6) is passed in as `discountTotal` (0 in Step 5); total = subtotal - discount.
+ * gross; the benefit (Step 6) is passed in as `discountTotal` (0 in Step 5); total = subtotal - discount + shipping fee (Phase 6 P6-8, T33: the fee is 0 until the online channel exists).
  */
 export const CALCULATION_VERSION = 2;
 
@@ -31,7 +31,11 @@ export function grossOf(quantity: number | null, unitPriceVnd: bigint | null): b
 }
 
 /** Server-authoritative totals of an invoice. Never taken from a client. */
-export function calculateTotals(lines: readonly CalcLine[], discountTotalVnd = 0n): InvoiceTotals {
+export function calculateTotals(
+  lines: readonly CalcLine[],
+  discountTotalVnd = 0n,
+  shippingFeeVnd = 0n,
+): InvoiceTotals {
   let subtotalVnd = 0n;
   let unpricedLines = 0;
   for (const line of lines) {
@@ -42,7 +46,12 @@ export function calculateTotals(lines: readonly CalcLine[], discountTotalVnd = 0
   if (discountTotalVnd < 0n || discountTotalVnd > subtotalVnd) {
     throw new AuthError('VALIDATION_FAILED', 'discountTotalVnd');
   }
-  return { subtotalVnd, discountTotalVnd, totalVnd: subtotalVnd - discountTotalVnd, unpricedLines };
+  return {
+    subtotalVnd,
+    discountTotalVnd,
+    totalVnd: subtotalVnd - discountTotalVnd + shippingFeeVnd,
+    unpricedLines,
+  };
 }
 
 /** A non-negative integer VND decimal string (the API's wire format for money). */

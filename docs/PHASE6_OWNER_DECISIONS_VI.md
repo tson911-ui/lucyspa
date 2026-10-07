@@ -1,8 +1,12 @@
 # Phase 6: các mục chờ Chủ duyệt (giải thích bằng tiếng Việt)
 
-**Mới (2026-10-07, ngay bên dưới): mục "Đợt 2"** (bán sản phẩm tại quầy; sửa POS, hóa đơn, thanh toán đang chạy thật) với bảng trả lời nhanh, rủi ro và cách kiểm. Chưa có mã nào của Đợt 2.
+**Mới (2026-10-07, ngay bên dưới): mục "Đợt 2"** (bán sản phẩm tại quầy; sửa POS, hóa đơn, thanh toán đang chạy thật) với bảng trả lời nhanh, rủi ro và cách kiểm.
 
-**Cập nhật 2026-10-07: Chủ đã duyệt T9 đến T16, T24, T25 và đã trả lời OQ-19 đến OQ-28** (ghi lại ở mục 2.5 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`). Tài liệu này giữ lại như bản giải thích gốc. Còn chờ Chủ duyệt: T17 đến T23, T26, T27 (các đề xuất của Đợt 2 và 3).
+**Chủ đã trả lời Đợt 2 (2026-10-07, nguyên văn ở mục 2.13 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`): "Wave 2 decisions approved as you recommended"** cho T17, T18, T19, T20, T26, T27, OQ-58, OQ-59, OQ-60 và, cho Đợt 3, T21, T22, T23 (**"48 hours from handover"**: hạn 48 giờ tính từ lúc giao hàng cho khách, không tính từ lúc thanh toán). Cột "Tôi khuyên" của bảng dưới đây là câu trả lời đã được duyệt. Chủ cũng bảo bắt đầu **P6-8** (chỉ bước này). OQ-59 đổi quy tắc "kiểm vi sai": bộ tính cũ vẫn là chuẩn cho hóa đơn chỉ có dịch vụ, bộ mới chạy song song để so và báo lệch (việc của P6-9, chưa làm). **Chưa được trả lời, vẫn chờ:** cách sắp xếp khóa kho (chi nhánh, biến thể) ở T13 và OQ-P6-19 (làm tròn điểm khi hoàn tiền).
+
+**P6-8 đã làm xong, chờ Chủ duyệt (báo cáo `docs/PHASE6_STEP8_PRODUCT_LINES.md`). Bốn điểm tôi tự hiểu, cần Chủ đồng ý hoặc sửa:** OQ-61: Chủ (hoặc người không thuộc chi nhánh) bán hàng phải chọn người bán là nhân viên của chi nhánh, hệ thống không tự điền; OQ-62: dòng sản phẩm của hóa đơn **nháp** được xóa hẳn (nhật ký vẫn lưu), dòng khác của hóa đơn không bao giờ xóa; OQ-63: hóa đơn sản phẩm đã thanh toán vẫn **giữ hàng** (chưa trừ kho) cho đến P6-10; OQ-64: không cho điều chỉnh/kiểm kê làm tồn kho thấp hơn số đang giữ cho hóa đơn. Cho đến P6-9/P6-11, dòng sản phẩm **chưa có giảm giá và chưa cộng điểm**.
+
+**Cập nhật 2026-10-07: Chủ đã duyệt T9 đến T16, T24, T25 và đã trả lời OQ-19 đến OQ-28** (ghi lại ở mục 2.5 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`). Tài liệu này giữ lại như bản giải thích gốc. T17 đến T23, T26, T27 đã được duyệt sau đó (đoạn trên).
 
 **Mới 2026-10-07 (cuối tài liệu): thay đổi phạm vi bán Lucy Beauty** (đặt trước tại quầy, đặt hàng online): T28 đến T33 và OQ-29 đến OQ-41. **Chủ đã trả lời cùng ngày** (khung "Chủ đã trả lời" ở đầu phần đó). Còn chờ Chủ: **OQ-42** (khách vãng lai xem phiếu hẹn) và OQ-38 (để sang Đợt 4).
 

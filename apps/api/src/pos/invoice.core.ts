@@ -9,6 +9,7 @@ import type {
   InvoiceOpenedResponse,
   InvoicePaymentResponse,
   InvoicePersonSummary,
+  InvoiceProductLineResponse,
   InvoiceResponse,
   InvoiceStatusName,
   PosBoardResponse,
@@ -46,6 +47,12 @@ import {
   releaseConsumedSessions,
   sessionStateOf,
 } from './combo-consume.js';
+import {
+  productGrossOf,
+  releaseProductStock,
+  repriceProductLines,
+  reserveProductStock,
+} from './product-stock.js';
 
 /**
  * Phase 4 Step 5 — Invoice / POS ("Hóa đơn"). Commands run in the admin frame (actor and session locked,
@@ -107,6 +114,8 @@ export const invoiceSelect = {
   code: true,
   status: true,
   kind: true,
+  channel: true,
+  shippingFeeVnd: true,
   branchId: true,
   visitId: true,
   payerUserId: true,
@@ -241,6 +250,22 @@ export const invoiceSelect = {
         },
       },
       comboPurchases: { select: { paidSeq: true, issuedAt: true, voidedAt: true } },
+      // Phase 6 P6-8: the product detail (with its seller) and the stock held for the line once the invoice is finalized.
+      productDetails: {
+        select: {
+          productId: true,
+          variantId: true,
+          sku: true,
+          variantLabelVi: true,
+          variantLabelEn: true,
+          sellerUserId: true,
+          seller: { select: { id: true, fullName: true } },
+          listPriceVnd: true,
+          promotionId: true,
+          pricedAt: true,
+        },
+      },
+      reservations: { select: { status: true, quantity: true } },
       // Phase 5 P5-8: the staff's choice to pay this line with a combo session and, once finalized, the session taken.
       comboUsages: {
         select: {
@@ -471,6 +496,45 @@ function presentComboUse(line: InvoiceRow['lines'][number]): InvoiceLineComboUse
  * The response for one invoice. A DRAFT shows the LIVE evaluation (the totals finalization would produce now);
  * a finalized invoice shows its frozen amounts and stored application. Nothing here is client input.
  */
+/** The product lines of an invoice (Phase 6 P6-8). The seller is shown to staff only; the customer view never carries it. */
+function presentProductLines(row: InvoiceRow): InvoiceProductLineResponse[] {
+  return row.lines
+    .filter((line) => line.kind === 'PRODUCT')
+    .map((line): InvoiceProductLineResponse => {
+      const detail = line.productDetails[0];
+      if (
+        !detail ||
+        line.quantity === null ||
+        line.unitPriceVnd === null ||
+        line.grossVnd === null
+      ) {
+        throw new Error('Every product line has its detail and its price.');
+      }
+      const reservation = line.reservations[0];
+      return {
+        id: line.id,
+        sequence: line.sequence,
+        productId: detail.productId,
+        variantId: detail.variantId,
+        sku: detail.sku,
+        nameVi: line.nameVi,
+        nameEn: line.nameEn,
+        variantLabelVi: detail.variantLabelVi,
+        variantLabelEn: detail.variantLabelEn,
+        quantity: line.quantity,
+        unitPriceVnd: line.unitPriceVnd.toString(),
+        grossVnd: line.grossVnd.toString(),
+        listPriceVnd: detail.listPriceVnd.toString(),
+        onPromotion: detail.promotionId !== null,
+        pricedAt: detail.pricedAt.toISOString(),
+        seller: { id: detail.seller.id, displayName: detail.seller.fullName },
+        reservation: reservation
+          ? { status: reservation.status, quantity: reservation.quantity }
+          : null,
+      };
+    });
+}
+
 export async function present(context: AdminContext, row: InvoiceRow): Promise<InvoiceResponse> {
   const entries = row.voucherEntries.map((entry) => ({
     id: entry.id,
@@ -506,7 +570,9 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     };
   }
   const discountTotalVnd = evaluation ? evaluation.result.discountTotalVnd : row.discountTotalVnd;
-  const totalVnd = evaluation ? row.subtotalVnd - discountTotalVnd : row.totalVnd;
+  const totalVnd = evaluation
+    ? row.subtotalVnd - discountTotalVnd + row.shippingFeeVnd
+    : row.totalVnd;
   const apply = decide(context.actor.graph, 'APPLY_DISCOUNTS', {
     kind: 'BRANCH',
     branchId: row.branchId,
@@ -523,7 +589,12 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     kind: 'BRANCH',
     branchId: row.branchId,
   });
+  const sell = decide(context.actor.graph, 'SELL_PRODUCTS', {
+    kind: 'BRANCH',
+    branchId: row.branchId,
+  });
   const comboLine = presentComboLine(row);
+  const productLines = presentProductLines(row);
   const lines = row.lines
     .filter((line) => line.kind === 'SERVICE')
     .map((line): InvoiceLineResponse => {
@@ -558,9 +629,15 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
       };
     });
   const combo = row.kind === 'COMBO_SALE';
+  const productSale = row.kind === 'PRODUCT_SALE';
   const unpricedLines = lines.filter((line) => line.grossVnd === null).length;
-  // A combo sale is ready as soon as its one combo line exists (its price is fixed by the combo, never chosen).
-  const ready = combo ? comboLine !== null : unpricedLines === 0 && lines.length > 0;
+  // A combo sale is ready as soon as its one combo line exists (its price is fixed by the combo, never chosen); a product sale as
+  // soon as it has a product line (product lines are always priced by the server).
+  const ready = combo
+    ? comboLine !== null
+    : productSale
+      ? productLines.length > 0
+      : unpricedLines === 0 && lines.length > 0;
   const draft = row.status === 'DRAFT';
   const collect = decide(context.actor.graph, 'COLLECT_PAYMENTS', {
     kind: 'BRANCH',
@@ -609,6 +686,9 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     version: row.rowVersion,
     lines,
     comboLine,
+    productLines,
+    channel: row.channel,
+    shippingFeeVnd: row.shippingFeeVnd.toString(),
     discount,
     payments,
     paidVnd: paidVnd.toString(),
@@ -619,8 +699,8 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     readiness: { ready, unpricedLines },
     actions: {
       // A combo sale has a fixed price and a fixed buyer: only a draft with a different buyer or price is a new draft.
-      editPrices: manage && draft && !combo,
-      useCombos: manage && consume && draft && !combo,
+      editPrices: manage && draft && !combo && !productSale,
+      useCombos: manage && consume && draft && !combo && !productSale,
       setPayer: manage && draft && !combo,
       finalize: manage && draft && ready,
       applyVouchers: apply && draft,
@@ -637,6 +717,7 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
         ),
       cancel: cancelPermitted && cancellable,
       cancelNeedsReauth: !draft,
+      sellProducts: sell && draft && !combo,
     },
   };
 }
@@ -672,10 +753,17 @@ export async function draftAmounts(
   now: Date,
 ) {
   const { result } = await evaluateInvoice(tx, invoice, now, { lockPrograms: false });
+  // Phase 6 P6-8: the engine prices the Spa side (service and combo lines) only; the product lines and the shipping fee add to the
+  // subtotal and the total beside it. With neither (every invoice before Wave 2) the result is exactly the engine's.
+  const productVnd = await productGrossOf(tx, invoice.id);
+  const header = await tx.invoice.findUniqueOrThrow({
+    where: { id: invoice.id },
+    select: { shippingFeeVnd: true },
+  });
   return {
-    subtotalVnd: result.subtotalVnd,
+    subtotalVnd: result.subtotalVnd + productVnd,
     discountTotalVnd: result.discountTotalVnd,
-    totalVnd: result.totalVnd,
+    totalVnd: result.totalVnd + productVnd + header.shippingFeeVnd,
   };
 }
 
@@ -1241,10 +1329,22 @@ export async function finalizeInvoice(
     { id: invoiceId, branchId: invoice.branchId },
     context.actor.userId,
   );
+  // Phase 6 P6-8: the product lines are priced at the effective price AT THIS INSTANT (frozen from here on, the instant the database
+  // re-derives the price from) and their stock is reserved, all or nothing, under the stock level locks (design 4.5, T15). This
+  // comes after the programs, wallets and combo rows and before any payment (lock order, design 10.2). An invoice without a
+  // product line does nothing here.
+  const frozen = await repriceProductLines(tx, invoice, now, true);
+  const reservedLines = await reserveProductStock(tx, invoice, context.actor.userId);
   const winner = result.winner;
   const totals = calculateTotals(
-    invoice.lines.map((line) => ({ quantity: line.quantity, unitPriceVnd: line.unitPriceVnd })),
+    invoice.lines.map((line) => {
+      const price = frozen.get(line.id);
+      return price
+        ? { quantity: price.quantity, unitPriceVnd: price.unitPriceVnd }
+        : { quantity: line.quantity, unitPriceVnd: line.unitPriceVnd };
+    }),
     result.discountTotalVnd,
+    invoice.shippingFeeVnd,
   );
   const zeroBalance = totals.totalVnd === 0n;
   if (winner) {
@@ -1392,12 +1492,23 @@ export async function finalizeInvoice(
       })),
       zeroBalance,
       payerUserId: invoice.payerUserId,
-      lines: invoice.lines.map((line) => ({
-        lineId: line.id,
-        quantity: line.quantity,
-        unitPriceVnd: line.unitPriceVnd === null ? null : line.unitPriceVnd.toString(),
-        grossVnd: line.grossVnd === null ? null : line.grossVnd.toString(),
-      })),
+      lines: invoice.lines.map((line) => {
+        const price = frozen.get(line.id);
+        const unitPriceVnd = price ? price.unitPriceVnd : line.unitPriceVnd;
+        return {
+          lineId: line.id,
+          quantity: line.quantity,
+          unitPriceVnd: unitPriceVnd === null ? null : unitPriceVnd.toString(),
+          grossVnd:
+            price || line.grossVnd === null
+              ? (grossOf(line.quantity, unitPriceVnd)?.toString() ?? null)
+              : line.grossVnd.toString(),
+        };
+      }),
+      // Phase 6 P6-8: only an invoice with product lines carries these (a service-only audit entry is unchanged).
+      ...(reservedLines > 0
+        ? { stockReservations: reservedLines, shippingFeeVnd: invoice.shippingFeeVnd.toString() }
+        : {}),
     },
   });
   await appendOutboxEvent(tx, {
@@ -1592,6 +1703,14 @@ export async function cancelInvoice(
     input.reason,
     now,
   );
+  // Phase 6 P6-8: the stock held for the product lines returns to the shelf, in this same transaction (design 4.5); after the combo
+  // sessions and before any payment step. A cancelled draft and a service-only invoice hold none.
+  const releasedStock = await releaseProductStock(
+    tx,
+    invoice,
+    context.actor.userId,
+    path === 'ZERO_BALANCE_CORRECTION' ? 'ZERO_BALANCE_CORRECTION' : 'INVOICE_CANCELLED_UNPAID',
+  );
   await appendAdminAudit(
     { ...context, now },
     {
@@ -1610,6 +1729,7 @@ export async function cancelInvoice(
         redemptionReleased: releasedRedemptionId,
         birthdayRedemptionReleased: releasedGiftId,
         comboSessionsReleased: releasedSessions,
+        ...(releasedStock > 0 ? { stockReservationsReleased: releasedStock } : {}),
         reauthenticatedAt:
           path === 'DRAFT'
             ? null

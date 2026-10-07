@@ -81,7 +81,7 @@ threshold cosmetic campaigns (PRD §22, deferred by Q12), inter-branch stock tra
 | P6-T6 | Low-stock and expiry alerts go to the holders of the matching permission at the branch through the permission engine (as Q8). No role names.                                                                                                                       |
 | P6-T7 | **No oversell mode** in Phase 6 (PRD §27.2 allows a controlled override only if the Owner enables it later). **Refinement CONFIRMED by the Owner on 2026-10-07 (2.8): no oversell for in-stock lines; a pre-order is a separate, explicit mode, not overselling.** |
 
-**T8 was approved by the Owner in own words on 2026-10-07 (follow-up: "the public catalog is view-only: no cart, delivery or COD"); T9-T16, T24 and T25 were approved by the Owner on 2026-10-07 (section 2.5); the rest (T17-T23, T26, T27) are pending Owner approval:**
+**T8 was approved by the Owner in own words on 2026-10-07 (follow-up: "the public catalog is view-only: no cart, delivery or COD"); T9-T16, T24 and T25 were approved by the Owner on 2026-10-07 (section 2.5); T17-T23, T26 and T27 were approved by the Owner on 2026-10-07 (section 2.13; T21-T23 for Wave 3, T23's clock is "48 hours from handover"; the engine part of T17 follows OQ-59 in 2.13):**
 
 | #      | Proposal                                                                                                                                                                                                                                                                                                                                                                                           | Needed before |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
@@ -235,6 +235,27 @@ The Owner's message, as given:
 
 - "Wave 1 approved: OQ-54…57 as you proposed. Record in the design doc, owner-decisions doc and handoff." This approves the public rate limits (300 and 1,200 a minute per address, 6,000 and 30,000 in total), the 5-second API cache for the cosmetics reads, the web at 3 processes with a 700 MB cap (API and worker stay exactly one) and the nginx `X-Forwarded-For` requirement. It is the go for the Wave 1 pre-deploy work below; **the deploy itself still happens only when the Owner runs the guide.**
 - Before deploy: (1) a neutral placeholder, no broken-image icon, when an image fails to load (`MediaThumb` and every product image on the public site), with the related tests and a quick UI check; (2) push `main` and wait for CI, and if CI fails fix and report without going on; (3) with CI green, put the real commit into `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md`, commit and push that doc change; (4) paste the complete Wave 1 deploy guide in the chat (iNET web terminal blocks, backup with `pg_dump`, checkout, install, generate, status, migrate, permission sync after the restart, pm2 with the new ecosystem config, nginx check, health checks, rollback). Nothing is run on the server by Claude.
+
+### 2.13 Owner approval of the Wave 2 decisions and the P6-8 request (the Owner's own words, 2026-10-07; locked, do not reopen)
+
+The Owner's message, as given:
+
+- "Wave 2 decisions approved as you recommended: T17, T18, T19, T20, T26, T27, OQ-58 (API stays single-process in Wave 2), OQ-59 (service-only invoices keep the current calculator as the source of truth; the new one runs in parallel for comparison and any mismatch is logged/alerted), OQ-60 (supervised trial sales before granting SELL_PRODUCTS), and T21, T22, T23 for Wave 3 (48 hours from handover). Record in the design doc, owner-decisions doc and handoff."
+- "Now start P6-8 only, per the approved design: invoice schema and rules for product lines (T19, T20), sales channel and shipping fee fields (approved T33, default counter/0), product-only invoices, seller required on each product line (default creator), stock reservation at finalize per T15, no oversell for in-stock items."
+- Strict rules for P6-8 (live POS and payments): service-only invoices behave exactly as today, proved by the existing POS/invoice/payment tests unchanged plus new regression tests; real PostgreSQL race tests (two cashiers selling the last item, finalize vs cancel, double payment, PayOS webhook vs reversal); reconciliation tests (line totals = invoice total, stock = sum of movements); full tests, UI gate per CLAUDE.md, commit locally, no push, no deploy; report in Vietnamese and stop for approval.
+
+What this approves, in the contract's own terms (the Owner's words above approve; this list only names what they cover):
+
+- **T17, T18, T19, T20, T26, T27 are approved** (engine v3 per side, the one split primitive, the Wave 2 persistence changes, the invoice shapes, the customer invoice view, restore on void). **OQ-58 approved:** the API stays one process in Wave 2. **OQ-60 approved:** supervised trial sales before `SELL_PRODUCTS` is granted to anyone.
+- **OQ-59 approved, and it changes the differential rule of 6.7 and T17.** For an invoice with no product line, the **current (v2) calculator stays the source of truth**; the new calculator (v3) runs in parallel for comparison only and any mismatch is logged and alerted (it never changes the amount). This is P6-9 work: recorded now, not built in P6-8.
+- **T21, T22, T23 are approved for Wave 3.** T23's clock start (open in 18.2 and OQ-P6-40 for the counter) is **"48 hours from handover"** (the day the goods are handed to the customer), not `paid_at`. The 7-day clock of OQ-P6-22 and the delivered-date clock of online orders are not part of this sentence and stay as they are in 18.2.
+- **Not answered, stays pending:** the (branch, variant) sort-key refinement of the approved T3 (T13 text), and OQ-P6-19 (refund point rounding).
+
+### 2.14 P6-8 as built (my readings where the contract was silent; PENDING the Owner's yes/no; report `docs/PHASE6_STEP8_PRODUCT_LINES.md`)
+
+- **Scope:** database, guards, API commands, reserve at finalization, release at cancellation. Deferred inside Wave 2 with their writers: consumption and T27 (P6-10), the T19 per-side rows and the discount scope column (P6-9/P6-11), screens (P6-10).
+- **Interim money rule:** no discount and no points on a product line before the v3 engine and the Beauty wallet (consequence of "existing programs migrate to SERVICES", Q7, P6-11).
+- **OQ-61:** an Owner (or any caller) without an active branch assignment must name the seller; there is no silent default. **OQ-62:** a `PRODUCT` line of a DRAFT is physically deleted (audit keeps it); no other invoice line is ever deletable. **OQ-63:** a paid product invoice keeps its reservation until P6-10 consumes it. **OQ-64:** an adjustment or count that would take stock below the reserved quantity is refused (`INVENTORY_STOCK_RESERVED`), the visible effect of T13.
 
 ## 3. Catalog (PRD §23-24; T9-T12)
 

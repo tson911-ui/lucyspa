@@ -152,6 +152,12 @@ const errors = {
   INVENTORY_RECEIPT_NOT_DRAFT: [409, 'Only a draft receipt can change'],
   INVENTORY_COUNT_NOT_OPEN: [409, 'Only an open stock count can change'],
   INVENTORY_VARIANT_UNAVAILABLE: [409, 'The variant cannot be used for stock'],
+  INVENTORY_STOCK_RESERVED: [409, 'Finalized invoices have reserved this stock'],
+  // Phase 6 P6-8: product lines on invoices. The field of PRODUCT_OUT_OF_STOCK lists the line ids that cannot be served.
+  PRODUCT_NOT_SELLABLE: [409, 'This product cannot be sold now'],
+  PRODUCT_OUT_OF_STOCK: [409, 'There is not enough stock for one or more product lines'],
+  PRODUCT_SELLER_INVALID: [409, 'The seller must be an active employee assigned to this branch'],
+  PRODUCT_SELLER_REQUIRED: [400, 'Choose the seller of this product line'],
   // Phase 6 P6-5: the Excel/CSV import. The field of IMPORT_FILE_INVALID names the reason (never file content).
   IMPORT_FILE_INVALID: [422, 'The file cannot be imported'],
   IMPORT_JOB_NOT_PREVIEWED: [409, 'Only a previewed import can be applied or cancelled'],

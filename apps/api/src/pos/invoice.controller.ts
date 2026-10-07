@@ -11,6 +11,9 @@ import type {
   InvoiceLinePriceRequest,
   InvoiceOpenedResponse,
   InvoicePayerRequest,
+  InvoiceProductLineAddRequest,
+  InvoiceProductLineRemoveRequest,
+  InvoiceProductLineUpdateRequest,
   InvoiceResponse,
   InvoiceVoucherRemoveRequest,
   InvoiceVoucherSupplyRequest,
@@ -23,6 +26,7 @@ import type {
   PaymentResultResponse,
   PaymentReverseRequest,
   PosBoardResponse,
+  ProductSaleRequest,
   WalkInMemberLookupResponse,
 } from '@lucy-spa/contracts';
 import {
@@ -82,6 +86,33 @@ class LinePriceDto implements InvoiceLinePriceRequest {
 class ComboSaleDto implements ComboSaleRequest {
   @ApiProperty() @IsString() @MaxLength(64) comboId!: string;
   @ApiProperty() @IsString() @MaxLength(64) payerUserId!: string;
+}
+
+/** A product-only sale: only the optional payer (a member found by the exact lookup); nothing else can be supplied. */
+class ProductSaleDto implements ProductSaleRequest {
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  payerUserId?: string | null;
+}
+
+/** A product line: which variant, how many and who sells it. There is no price field: the server resolves it. */
+class ProductLineAddDto implements InvoiceProductLineAddRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
+  @ApiProperty() @IsString() @MaxLength(64) variantId!: string;
+  @ApiProperty() @IsInt() quantity!: number;
+  @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(64) sellerUserId?: string;
+}
+
+class ProductLineUpdateDto implements InvoiceProductLineUpdateRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
+  @ApiProperty({ required: false }) @IsOptional() @IsInt() quantity?: number;
+  @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(64) sellerUserId?: string;
+}
+
+class ProductLineRemoveDto implements InvoiceProductLineRemoveRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
 }
 
 /** The owner's exact phone only. */
@@ -225,6 +256,26 @@ export class InvoiceController {
     );
   }
 
+  @Post('branches/:branchId/product-sales')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Start a product-only sale: a DRAFT invoice for a member or a guest, not tied to a visit (SELL_PRODUCTS).',
+  })
+  openProductSale(
+    @Param('branchId') branchId: string,
+    @Body() body: ProductSaleDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<InvoiceOpenedResponse> {
+    return this.invoices.openProductSale(
+      this.session(request),
+      branchId,
+      body,
+      this.requestId(response),
+    );
+  }
+
   @Post('visits/:visitId/invoice')
   @HttpCode(200)
   @ApiOkResponse({
@@ -263,6 +314,62 @@ export class InvoiceController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<InvoiceResponse> {
     return this.invoices.setPrice(
+      this.session(request),
+      id,
+      lineId,
+      body,
+      this.requestId(response),
+    );
+  }
+
+  @Post('invoices/:id/product-lines')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Add a product to a DRAFT at the server-resolved price, with its seller (SELL_PRODUCTS). Nothing is reserved until the invoice is finalized.',
+  })
+  addProductLine(
+    @Param('id') id: string,
+    @Body() body: ProductLineAddDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<InvoiceResponse> {
+    return this.invoices.addProductLine(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Post('invoices/:id/product-lines/:lineId/update')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Change the quantity and/or the seller of one product line of a DRAFT (SELL_PRODUCTS).',
+  })
+  updateProductLine(
+    @Param('id') id: string,
+    @Param('lineId') lineId: string,
+    @Body() body: ProductLineUpdateDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<InvoiceResponse> {
+    return this.invoices.updateProductLine(
+      this.session(request),
+      id,
+      lineId,
+      body,
+      this.requestId(response),
+    );
+  }
+
+  @Post('invoices/:id/product-lines/:lineId/remove')
+  @HttpCode(200)
+  @ApiOkResponse({ description: 'Remove one product line of a DRAFT (SELL_PRODUCTS).' })
+  removeProductLine(
+    @Param('id') id: string,
+    @Param('lineId') lineId: string,
+    @Body() body: ProductLineRemoveDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<InvoiceResponse> {
+    return this.invoices.removeProductLine(
       this.session(request),
       id,
       lineId,

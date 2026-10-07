@@ -256,11 +256,17 @@ interface LockedInvoice {
   paid_seq: number;
   payer_user_id: string | null;
   total_vnd: bigint;
+  /**
+   * Phase 6 P6-8: what the Spa wallet earns on = the invoice total without its PRODUCT lines and shipping fee. Until the Beauty side
+   * has its own discount (P6-9, P6-11) a product line has none, so this is total - product gross - fee; for every invoice without a
+   * product line it is exactly the total, as before.
+   */
+  spa_net_vnd: bigint;
   paid_at: Date | null;
   branch_id: string;
   /** Null for a combo sale (no visit). */
   visit_id: string | null;
-  kind: 'VISIT' | 'COMBO_SALE';
+  kind: 'VISIT' | 'COMBO_SALE' | 'PRODUCT_SALE';
   cancelled_by_user_id: string | null;
 }
 
@@ -269,7 +275,10 @@ async function lockInvoiceShared(
   invoiceId: string,
 ): Promise<LockedInvoice | null> {
   const rows = await tx.$queryRaw<LockedInvoice[]>`
-    SELECT i.id, i.status::text AS status, i.paid_seq, i.payer_user_id, i.total_vnd, i.paid_at, i.branch_id,
+    SELECT i.id, i.status::text AS status, i.paid_seq, i.payer_user_id, i.total_vnd,
+           (i.total_vnd - i.shipping_fee_vnd - COALESCE((
+             SELECT sum(l.gross_vnd) FROM invoice_lines l WHERE l.invoice_id = i.id AND l.kind = 'PRODUCT'), 0))::bigint AS spa_net_vnd,
+           i.paid_at, i.branch_id,
            i.visit_id, i.kind::text AS kind, i.cancelled_by_user_id
     FROM invoices i WHERE i.id = ${invoiceId}::uuid FOR SHARE`;
   return rows[0] ?? null;
@@ -590,7 +599,7 @@ async function paid(tx: Prisma.TransactionClient, event: Event): Promise<Loyalty
     live &&
     invoice.visit_id !== null &&
     field(event.payload, 'settlement') === 'PAYMENT' &&
-    invoice.total_vnd > 0n
+    invoice.spa_net_vnd > 0n
       ? await referralAwardCandidates(tx, { visitId: invoice.visit_id, paidAt: invoice.paid_at! })
       : [];
   let outcome: LoyaltyEventOutcome;
@@ -607,7 +616,7 @@ async function paid(tx: Prisma.TransactionClient, event: Event): Promise<Loyalty
     if (payer?.kind !== 'CUSTOMER') {
       outcome = 'SKIPPED_NOT_MEMBER';
     } else {
-      points = loyaltyPointsForPaidVnd(invoice.total_vnd);
+      points = loyaltyPointsForPaidVnd(invoice.spa_net_vnd);
       outcome = points === 0 ? 'NOOP' : 'APPLIED';
     }
   }
