@@ -470,7 +470,9 @@ const usageKindLabel = (t: ReturnType<typeof useWorkforce>['t'], kind: MediaUsag
       ? t.media.detail.usageSlide
       : kind === 'SHOP_INFO'
         ? t.media.detail.usageShop
-        : t.media.detail.usageSeason;
+        : kind === 'PRODUCT'
+          ? t.media.detail.usageProduct
+          : t.media.detail.usageSeason;
 
 /**
  * Delete one image (design 16.8). Where the image is used is looked up first: an image a popup or slide

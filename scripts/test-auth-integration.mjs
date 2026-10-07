@@ -82,3 +82,4 @@ await import('../apps/api/dist/reward/reward.integration.test.js');
 await import('../apps/api/dist/reward/reward.race.integration.test.js');
 await import('../apps/api/dist/combo/combo-sold.integration.test.js');
 await import('../apps/api/dist/loyalty/customer-loyalty.integration.test.js');
+await import('../apps/api/dist/products/product-catalog.integration.test.js');

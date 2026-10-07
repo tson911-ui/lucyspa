@@ -132,7 +132,24 @@ const errors = {
   REWARD_NOTHING_LEFT: [409, 'This reward has no unit left'],
   REWARD_ALREADY_VOIDED: [409, 'This reward was already revoked'],
   REWARD_USE_NOT_RESTORABLE: [409, 'This use was already restored, or its reward was revoked'],
+  // Phase 6 P6-3: the product catalog. Each one names a database rule of the P6-2 migrations.
+  PRODUCT_STATUS_INVALID: [409, 'This product cannot move to that status'],
+  PRODUCT_PUBLISH_INCOMPLETE: [409, 'A product is published only with an active, priced variant'],
+  PRODUCT_LAST_PRICED_VARIANT: [
+    409,
+    'A published product keeps at least one active, priced variant',
+  ],
+  PRODUCT_PRICE_BELOW_PROMOTION: [
+    409,
+    'The list price must stay above the price of a promotion that has not ended',
+  ],
+  PRODUCT_PROMOTION_PRICE_INVALID: [409, 'A promotional price is below the current list price'],
+  PRODUCT_PROMOTION_EXPIRED: [409, 'This promotion is already over'],
+  PRODUCT_PROMOTION_OVERLAP: [409, 'This variant already has a promotion in that period'],
+  PRODUCT_CATEGORY_DEPTH: [409, 'Categories have two levels at most'],
 } as const;
+
+export type AuthErrorCode = keyof typeof errors;
 
 /** Only allowlisted public errors reach the transport; never attach input or driver causes. */
 export class AuthError extends HttpException {

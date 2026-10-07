@@ -61,6 +61,18 @@ Owner reviews every Step. Work only on the Step you are given.
   `lucy_spa_uxaudit_20261001` (never the dev DB), `node .local/uxui-audit/capture.mjs <page...>`, then
   `node scripts/uxui-audit-summary.mjs --compare docs/uxui-audit-baseline.json`. No count may rise; lower the ratchet
   (`UPDATE_RATCHET=1`) for what the Step retired. Compare migrated pages with `docs/references/` (8 questions, 21.5).
+- **Phase 6 standing rule (Owner, 2026-10-07; applies to every Phase 6 UI Step, P6-3 included):** the UI must be polished,
+  consistent and detailed, at the level of a professional product designer.
+  - Existing design system, tokens, components and spacing scale only; no ad-hoc colors, fonts, sizes or one-off styles.
+    Match the current lucyspa.vn site and admin exactly.
+  - Clear visual hierarchy, consistent alignment, spacing and typography; nothing cramped or crowded, no overlapping text,
+    no layout shift.
+  - Every screen designed and checked for all states: loading, empty, error, success, disabled, long text, many items, no image.
+  - Responsive: checked at 360, 768 and 1440 px, light and dark mode, and 130% text size.
+  - Accessibility: proper contrast, visible focus, keyboard use, tap targets of at least 44px, a label on every input.
+  - Short, natural Vietnamese; consistent terms; never "khám" (a spa, not a clinic).
+  - Before reporting a UI Step: take the screenshots above, review them yourself against this checklist (and the Lovable
+    reference where there is one), fix every issue, then report what was checked and anything that could not be fixed.
 
 ## Reporting (keep it short)
 

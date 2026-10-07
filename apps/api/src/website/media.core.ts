@@ -30,6 +30,17 @@ export function requireWebsiteContent(context: AdminContext): void {
   if (!holdsWebsiteContent(context.actor.graph)) throw new AuthError('FORBIDDEN');
 }
 
+/**
+ * Phase 6 P6-3 (design 3.5): the people who manage the product catalog (`MANAGE_PRODUCTS`, GLOBAL_ONLY) also list, view and upload
+ * pictures to choose product images from. Changing alt text and deleting stay with `MANAGE_WEBSITE_CONTENT` only.
+ */
+export const holdsMediaAccess = (graph: AuthorityGraph): boolean =>
+  holdsWebsiteContent(graph) || decide(graph, 'MANAGE_PRODUCTS', GLOBAL);
+
+export function requireMediaAccess(context: AdminContext): void {
+  if (!holdsMediaAccess(context.actor.graph)) throw new AuthError('FORBIDDEN');
+}
+
 const summarySelect = {
   id: true,
   originalFilename: true,
@@ -95,6 +106,12 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
     orderBy: [{ startsAt: 'desc' }, { id: 'asc' }],
     select: { id: true, label: true },
   });
+  // Phase 6 P6-3: a picture a product uses cannot be deleted (the foreign key is RESTRICT).
+  const products = await tx.productImage.findMany({
+    where: { mediaAssetId: assetId },
+    orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+    select: { product: { select: { id: true, nameVi: true, nameEn: true } } },
+  });
   return [
     ...popups.map((popup) => ({
       kind: 'POPUP' as const,
@@ -108,6 +125,11 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
     })),
     ...shopInfo.map((row) => ({ kind: 'SHOP_INFO' as const, id: row.id, title: '' })),
     ...seasons.map((season) => ({ kind: 'SEASON' as const, id: season.id, title: season.label })),
+    ...products.map((row) => ({
+      kind: 'PRODUCT' as const,
+      id: row.product.id,
+      title: row.product.nameVi,
+    })),
   ];
 };
 
@@ -131,7 +153,7 @@ export async function listMedia(
   context: AdminContext,
   query: { search?: string | undefined; page?: number | undefined },
 ): Promise<MediaListResponse> {
-  requireWebsiteContent(context);
+  requireMediaAccess(context);
   const search = (query.search ?? '').normalize('NFC').replace(/\s+/g, ' ').trim();
   if ([...search].length > MAX_SEARCH) throw new AuthError('VALIDATION_FAILED', 'search');
   const page = query.page ?? 1;
@@ -164,7 +186,7 @@ export async function listMedia(
 }
 
 export async function getMedia(context: AdminContext, id: string): Promise<MediaAssetDetail> {
-  requireWebsiteContent(context);
+  requireMediaAccess(context);
   const row = await context.tx.mediaAsset.findUnique({ where: { id }, select: summarySelect });
   if (!row) throw new AuthError('NOT_FOUND');
   return detail(context.tx, row);
@@ -175,7 +197,7 @@ export async function findMediaByHash(
   context: AdminContext,
   sha256: string,
 ): Promise<MediaAssetDetail | null> {
-  requireWebsiteContent(context);
+  requireMediaAccess(context);
   const row = await context.tx.mediaAsset.findUnique({
     where: { sha256 },
     select: summarySelect,
@@ -202,7 +224,7 @@ export async function createMedia(
     altEn: unknown;
   },
 ): Promise<{ asset: MediaAssetDetail; duplicate: boolean }> {
-  requireWebsiteContent(context);
+  requireMediaAccess(context);
   const existing = await context.tx.mediaAsset.findUnique({
     where: { sha256: input.image.sha256 },
     select: summarySelect,

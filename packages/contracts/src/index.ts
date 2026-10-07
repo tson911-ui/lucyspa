@@ -2860,7 +2860,7 @@ export interface MediaAssetSummary {
 
 /** Where an image is used (filled by the popup and slider Steps); an image with any usage cannot be deleted. */
 export interface MediaUsage {
-  kind: 'POPUP' | 'SLIDE' | 'SEASON' | 'SHOP_INFO';
+  kind: 'POPUP' | 'SLIDE' | 'SEASON' | 'SHOP_INFO' | 'PRODUCT';
   id: string;
   title: string;
 }
@@ -3497,4 +3497,274 @@ export interface PublicServiceDetailResponse {
   group: { code: string; name: string };
   /** The other services of the same group, in catalogue order. */
   related: PublicService[];
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Phase 6 P6-3: product catalog administration (design PHASE6_PRODUCTS_INVENTORY_DESIGN.md sections 3 and 16.5).
+// Money is integer VND carried as a decimal string. Cost price and margin exist ONLY in responses built for a caller
+// who holds VIEW_PRODUCT_COST: for everyone else the keys are absent (never null), on every endpoint.
+// ---------------------------------------------------------------------------------------------------------------
+
+export type ProductStatusName = 'DRAFT' | 'PUBLISHED' | 'INACTIVE';
+
+/** What the caller may do with the catalog (UX hints; the API decides again on every request). */
+export interface ProductAccess {
+  /** MANAGE_PRODUCTS: brands, categories, products, variants, images, status. */
+  manage: boolean;
+  /** MANAGE_PRODUCT_PRICES: list price, promotions. */
+  prices: boolean;
+  /** VIEW_PRODUCT_COST: cost price and margin. */
+  cost: boolean;
+}
+
+export interface ProductBrandResponse {
+  id: string;
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  isActive: boolean;
+  rowVersion: number;
+  productCount: number;
+}
+
+export interface ProductBrandListResponse {
+  brands: ProductBrandResponse[];
+  access: ProductAccess;
+}
+
+/** POST /api/v1/product-brands. The code is derived from the English name and never changes. */
+export interface ProductBrandCreateRequest {
+  nameVi: string;
+  nameEn: string;
+}
+
+/** POST /api/v1/product-brands/:id/edit */
+export interface ProductBrandEditRequest {
+  expectedRowVersion: number;
+  nameVi: string;
+  nameEn: string;
+  isActive: boolean;
+}
+
+export interface ProductCategoryResponse {
+  id: string;
+  parentId: string | null;
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  sortOrder: number;
+  isActive: boolean;
+  rowVersion: number;
+  productCount: number;
+}
+
+export interface ProductCategoryListResponse {
+  categories: ProductCategoryResponse[];
+  access: ProductAccess;
+}
+
+/** POST /api/v1/product-categories. At most two levels: a parent must itself be a top-level category. */
+export interface ProductCategoryCreateRequest {
+  parentId: string | null;
+  nameVi: string;
+  nameEn: string;
+  sortOrder?: number;
+}
+
+/** POST /api/v1/product-categories/:id/edit */
+export interface ProductCategoryEditRequest {
+  expectedRowVersion: number;
+  parentId: string | null;
+  nameVi: string;
+  nameEn: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface ProductNameRef {
+  id: string;
+  nameVi: string;
+  nameEn: string;
+}
+
+/** One row of the products list. It never carries a cost. */
+export interface ProductListItem {
+  id: string;
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  status: ProductStatusName;
+  featured: boolean;
+  brand: ProductNameRef | null;
+  category: ProductNameRef | null;
+  activeVariantCount: number;
+  /** Lowest and highest effective price of the active variants that have a price; null when none is priced. */
+  priceFromVnd: string | null;
+  priceToVnd: string | null;
+  /** The first image of the product (media library asset id), or null. */
+  coverMediaId: string | null;
+  rowVersion: number;
+  updatedAt: string;
+}
+
+export interface ProductListResponse {
+  products: ProductListItem[];
+  access: ProductAccess;
+}
+
+export type ProductPromotionState = 'SCHEDULED' | 'ACTIVE' | 'ENDED';
+
+export interface ProductPromotionResponse {
+  id: string;
+  promoPriceVnd: string;
+  startsAt: string;
+  /** The planned end. */
+  endsAt: string;
+  /** Set when someone ended it by hand before `endsAt`. */
+  endedEarlyAt: string | null;
+  state: ProductPromotionState;
+  createdByName: string;
+}
+
+export interface ProductPriceVersionResponse {
+  versionNo: number;
+  listPriceVnd: string;
+  reason: string | null;
+  createdAt: string;
+  createdByName: string;
+}
+
+export interface ProductVariantResponse {
+  id: string;
+  sku: string;
+  labelVi: string | null;
+  labelEn: string | null;
+  barcode: string | null;
+  lowStockThreshold: number | null;
+  sortOrder: number;
+  isActive: boolean;
+  rowVersion: number;
+  /** The current list price (newest version), or null before a price is set. */
+  listPriceVnd: string | null;
+  /** The number of the newest price version (0 before a price is set); send it back as `expectedVersionNo`. */
+  priceVersionNo: number;
+  /** The price a customer pays now: the running promotion's price, else the list price. */
+  effectivePriceVnd: string | null;
+  /** The promotion running now, if any. */
+  activePromotion: ProductPromotionResponse | null;
+  /** Every promotion of the variant, newest start first (the price-change history of promotions). */
+  promotions: ProductPromotionResponse[];
+  /** Every list price version, newest first. */
+  priceHistory: ProductPriceVersionResponse[];
+  /**
+   * ONLY for a caller who holds VIEW_PRODUCT_COST; the keys are absent otherwise. `marginVnd` is the effective price
+   * minus the cost, computed on the server.
+   */
+  costPriceVnd?: string | null;
+  marginVnd?: string | null;
+}
+
+export interface ProductImageResponse {
+  id: string;
+  mediaAssetId: string;
+  altVi: string | null;
+  sortOrder: number;
+}
+
+/** The full product: every product command returns this same shape. */
+export interface ProductDetailResponse {
+  id: string;
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  descriptionVi: string | null;
+  descriptionEn: string | null;
+  status: ProductStatusName;
+  featured: boolean;
+  publishedAt: string | null;
+  brand: ProductNameRef | null;
+  category: ProductNameRef | null;
+  rowVersion: number;
+  createdAt: string;
+  updatedAt: string;
+  variants: ProductVariantResponse[];
+  images: ProductImageResponse[];
+  /** Active brands and categories to choose from, plus the current ones even when inactive. */
+  brandOptions: ProductNameRef[];
+  categoryOptions: ProductNameRef[];
+  access: ProductAccess;
+}
+
+/** POST /api/v1/products creates a DRAFT; variants, prices and images are added on its page. */
+export interface ProductCreateRequest {
+  nameVi: string;
+  nameEn: string;
+  descriptionVi: string | null;
+  descriptionEn: string | null;
+  brandId: string | null;
+  categoryId: string | null;
+  featured: boolean;
+}
+
+/** POST /api/v1/products/:id/edit */
+export interface ProductEditRequest extends ProductCreateRequest {
+  expectedRowVersion: number;
+}
+
+/** POST /api/v1/products/:id/status. Allowed: DRAFT to PUBLISHED, PUBLISHED to INACTIVE, INACTIVE to PUBLISHED. */
+export interface ProductStatusRequest {
+  expectedRowVersion: number;
+  status: 'PUBLISHED' | 'INACTIVE';
+}
+
+/**
+ * POST /api/v1/products/:id/variants. A list price needs MANAGE_PRODUCT_PRICES and a cost needs VIEW_PRODUCT_COST;
+ * sending either without that permission is refused (403) and nothing is written.
+ */
+export interface ProductVariantCreateRequest {
+  sku: string;
+  labelVi: string | null;
+  labelEn: string | null;
+  barcode: string | null;
+  lowStockThreshold: number | null;
+  sortOrder?: number;
+  listPriceVnd?: string;
+  costPriceVnd?: string | null;
+}
+
+/** POST /api/v1/products/:id/variants/:variantId/edit. An absent `costPriceVnd` leaves the stored cost unchanged. */
+export interface ProductVariantEditRequest {
+  expectedRowVersion: number;
+  labelVi: string | null;
+  labelEn: string | null;
+  barcode: string | null;
+  lowStockThreshold: number | null;
+  sortOrder: number;
+  isActive: boolean;
+  costPriceVnd?: string | null;
+}
+
+/** POST /api/v1/products/:id/variants/:variantId/price (MANAGE_PRODUCT_PRICES). Appends a price version. */
+export interface ProductPriceChangeRequest {
+  /** The `priceVersionNo` the editor saw; another change in between is a conflict. */
+  expectedVersionNo: number;
+  listPriceVnd: string;
+  reason: string | null;
+}
+
+/** POST /api/v1/products/:id/variants/:variantId/promotions (MANAGE_PRODUCT_PRICES). ISO instants with an offset. */
+export interface ProductPromotionCreateRequest {
+  promoPriceVnd: string;
+  startsAt: string;
+  endsAt: string;
+}
+
+/** POST /api/v1/products/:id/images */
+export interface ProductImageAddRequest {
+  mediaAssetId: string;
+}
+
+/** POST /api/v1/products/:id/images/order: every image id of the product, in the new order. */
+export interface ProductImageOrderRequest {
+  imageIds: string[];
 }

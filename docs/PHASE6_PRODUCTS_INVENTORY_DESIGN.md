@@ -143,6 +143,11 @@ All of OQ-P6-19 … 28 are answered (2.5); the rows below are kept for history a
 - **OQ-P6-24 exchange:** a more expensive replacement: the customer pays the difference as a normal payment (cash or PayOS); a cheaper replacement: the difference is refunded by cash or manual transfer, like a refund; approved by someone holding the refund permission, with password re-entry (so no separate exchange permission exists).
 - **P6-2 request (Owner, 2026-10-07):** start P6-2 only: the DB foundation and the permission codes, granted to no one; the existing POS, invoice and payment behavior must not change; run on a local/test database with the full tests and the race tests; commit locally, no push, no deploy. The Owner wrote "the 11 permission codes", so all eleven codes of section 9 are added now (Wave 2 and 3 codes included); T24 listed four of them in later waves, which only affected when a feature uses them.
 
+### 2.6 Owner approval of P6-2 and the P6-3 request (the Owner's own words, 2026-10-07; locked, do not reopen)
+
+- **P6-2 approved**, including the six database rules listed in the P6-2 report (checked against the migrations before recording): (1) the list price cannot change while an active or scheduled promotion is at or above the new price; (2) a promotion must be below the list price and must not already be over; (3) stock lots are immutable (only the quantity moves, through a movement); (4) categories have two levels at most; (5) settings ranges: expiry warning 1-730 days, "Mới" badge 1-365 days; (6) only draft receipts can be cancelled, with a reason.
+- **P6-3 request:** P6-3 only. Admin catalog per T25: brands, categories, products, variants, images, list price and simple promotions, statuses Nháp / Đang bán / Ngừng bán, price-change history. Cost price and profit are cut **at the API** for anyone without the cost permission (permission tests, not only hidden in the UI). Staff without the price permission cannot change prices. Admin UI in Vietnamese matching the existing admin design; run the UX checks (screenshots, DOM audit), including the new "Sản phẩm và kho" group on the Roles screen. POS, invoice and payment behavior must not change. Local/test database only, full tests, commit locally, no push or deploy; report in Vietnamese and stop for approval, with the steps to try the screen locally.
+
 ## 3. Catalog (PRD §23-24; T9-T12)
 
 ### 3.1 Model
@@ -394,7 +399,7 @@ Timing is the Owner's: it runs after the public catalog Step and before the prod
 - Rate limits for public read endpoints shared between processes (Redis is already running). Auth throttling already lives in PostgreSQL and is not moved.
 - Gate: load test of product list and detail pages before and after, recorded in the Step report.
 
-## 13. Execution sequence and waves (T25, pending approval)
+## 13. Execution sequence and waves (T25, approved 2026-10-07)
 
 Wave 1 must not touch payments or the POS flow (Q17): it contains no migration on `invoices`, `discounts`, `loyalty_*` or `payments`, and none of the Wave 2 permissions. The numbering differs from my first summary because Q16, Q17 and Q18 reordered it: Q18's "after P6-5" means after the public catalog Step, now P6-6.
 

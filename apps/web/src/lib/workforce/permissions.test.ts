@@ -30,6 +30,8 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'collaboratorSchedule',
     'branches',
     'services',
+    // Phase 6 P6-3: the product catalog (GLOBAL MANAGE_PRODUCTS / MANAGE_PRODUCT_PRICES; the Owner holds all).
+    'products',
     // Phase 4 Step 6: discount programs and voucher codes (GLOBAL MANAGE_DISCOUNTS / CREATE_VOUCHERS).
     'discounts',
     // Phase 5 P5-3: loyalty points (VIEW_LOYALTY, the exceptions list or the Owner's switch; the Owner holds all).
@@ -62,6 +64,12 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
   assert.ok(!keys(employee([['MANAGE_WEBSITE_CONTENT', 'A']])).includes('websiteContent'));
   assert.ok(!keys(employee([['VIEW_EMPLOYEES']])).includes('websiteContent'));
   assert.ok(!keys(customer).includes('websiteContent'));
+  // The product catalog is GLOBAL_ONLY: either global permission opens it, a branch grant or the cost permission alone never does.
+  assert.ok(keys(employee([['MANAGE_PRODUCTS']])).includes('products'));
+  assert.ok(keys(employee([['MANAGE_PRODUCT_PRICES']])).includes('products'));
+  assert.ok(!keys(employee([['MANAGE_PRODUCTS', 'A']])).includes('products'));
+  assert.ok(!keys(employee([['VIEW_PRODUCT_COST']])).includes('products'));
+  assert.ok(!keys(customer).includes('products'));
   assert.ok(keys(employee([['VIEW_ORGANIZATION', 'A']])).includes('organization'));
   assert.ok(keys(employee([['VIEW_TEAMS', 'A']])).includes('teams'));
   assert.ok(!keys(employee([['VIEW_TEAMS', 'A']])).includes('organization'));

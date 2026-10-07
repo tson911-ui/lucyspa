@@ -153,6 +153,7 @@ const vi = {
     leave: 'Nghỉ phép',
     branches: 'Chi nhánh',
     services: 'Dịch vụ',
+    products: 'Sản phẩm',
     skills: 'Kỹ năng',
     employees: 'Nhân viên',
     roles: 'Vai trò & quyền',
@@ -577,6 +578,7 @@ const vi = {
       usageSlide: 'Slider',
       usageSeason: 'Mùa lễ',
       usageShop: 'Thông tin tiệm',
+      usageProduct: 'Sản phẩm',
       altVi: 'Mô tả ảnh (tiếng Việt)',
       altViHint:
         'Bắt buộc trước khi dùng ảnh trên website. Mô tả ngắn nội dung ảnh cho người dùng trình đọc màn hình.',
@@ -2719,6 +2721,7 @@ const en: Dictionary = {
     leave: 'Leave',
     branches: 'Branches',
     services: 'Services',
+    products: 'Products',
     skills: 'Skills',
     employees: 'Employees',
     roles: 'Roles & permissions',
@@ -3142,6 +3145,7 @@ const en: Dictionary = {
       usageSlide: 'Slider',
       usageSeason: 'Season',
       usageShop: 'Shop info',
+      usageProduct: 'Product',
       altVi: 'Image description (Vietnamese)',
       altViHint:
         'Required before the image is used on the website. A short description of what the image shows, for screen reader users.',

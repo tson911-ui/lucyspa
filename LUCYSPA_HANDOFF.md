@@ -137,6 +137,12 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 
 - 5 additive migrations `20261106000000`…`04` (63 -> 68): 11 permission codes (54 -> 65, granted to nobody, new role-screen group "Sản phẩm và kho"), 18 new tables, 17 empty (catalog, prices and promotions, images, import jobs and rows, suppliers, receipts, lots, stock levels, counts, movements) plus `product_settings` with one row (expiry warning 90 days, "Mới" 30 days).
 - No change to invoices, discounts, loyalty or payments (guard test `phase6-wave1-isolation.test.ts`); no API, screen or worker yet. Deploy of Wave 1 later = `pnpm db:deploy` then `pnpm db:permissions:sync`. Report: `docs/PHASE6_STEP2_DB_PERMISSIONS_FOUNDATION.md`. Next: P6-3 (catalog administration), after the Owner reviews P6-2.
+- **P6-2 APPROVED by the Owner (2026-10-07)**, with its six database rules (price change blocked while a promotion is at or above it; promotion below list price and not already over; lots immutable; two-level categories; ranges 1-730 / 1-365; only draft receipts cancellable, with a reason). P6-3 (catalog administration) was requested in the same message; recorded in design section 2.6.
+
+## Phase 6 P6-3 (catalog administration, 2026-10-07, committed locally, not pushed, not deployed)
+
+- No migration (still 68). API `/api/v1/product-brands|product-categories|products` (global authority: `MANAGE_PRODUCTS`, `MANAGE_PRODUCT_PRICES`, `VIEW_PRODUCT_COST`); one presenter cuts cost and margin (keys absent) for callers without the cost permission, on every endpoint. Screens under Danh mục > Sản phẩm (list, brands and categories tabs, new page, detail with variants, price and promotion history, images). Media library list, upload and serving also open to `MANAGE_PRODUCTS`; a product image shows as a usage and blocks deletion.
+- Open for the Owner: a guard quirk (a promotion ended by hand before it starts still blocks lowering the list price until its planned start; fixing needs a small migration), who may read the catalog (my reading), alt text for images. A setup command ran on the local `lucy_spa_dev` by mistake (applied the 68 migrations, permission sync, a review Owner account; it had no data); see the report. Report: `docs/PHASE6_STEP3_CATALOG_ADMIN.md`. Next: P6-4 (inventory), after the Owner reviews P6-3.
 
 ## Production
 

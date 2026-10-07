@@ -19,10 +19,10 @@ import {
   deleteMedia,
   findMediaByHash,
   getMedia,
-  holdsWebsiteContent,
+  holdsMediaAccess,
   listMedia,
   mediaVariantObject,
-  requireWebsiteContent,
+  requireMediaAccess,
   updateMediaAlt,
   type StoredMedia,
 } from './media.core.js';
@@ -105,7 +105,7 @@ export class MediaService {
     const sha256 = sha256Hex(file.buffer);
     // 1. Authorize, rate limit and short-circuit a repeat of the same bytes before any image work.
     const known = await this.run(token, requestId, async (context) => {
-      requireWebsiteContent(context);
+      requireMediaAccess(context);
       const admitted = await this.throttle.debitWindow(
         context.tx,
         'MEDIA_UPLOAD',
@@ -169,7 +169,7 @@ export class MediaService {
         }
         const graph = await loadAuthorityGraph(tx, principal.userId);
         if (!graph) throw new AuthError('AUTHENTICATION_REQUIRED');
-        if (!holdsWebsiteContent(graph)) throw new AuthError('FORBIDDEN');
+        if (!holdsMediaAccess(graph)) throw new AuthError('FORBIDDEN');
         return mediaVariantObject(tx, id.toLowerCase(), kind);
       })
       .catch((error: unknown) => {

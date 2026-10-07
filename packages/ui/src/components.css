@@ -1057,10 +1057,16 @@
   pointer-events: none;
 }
 
-.ls-search-clear {
+/* The icon button sits inside its tooltip wrapper, so the wrapper is what is placed over the end of the field. */
+.ls-search > .ls-tooltip-wrap {
   position: absolute;
   inset-block: 0;
   inset-inline-end: 0;
+  align-items: center;
+}
+
+.ls-search-clear {
+  flex: none;
 }
 
 /* Form structure */
@@ -1599,6 +1605,8 @@
   border-radius: var(--ls-radius-md);
   color: var(--ls-text);
   background: var(--ls-bg-surface);
+  /* The same elevation as every other surface (card, table), so a media grid beside a card is not a second style. */
+  box-shadow: var(--ls-shadow-sm);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -2220,6 +2228,13 @@
   box-shadow: none;
 }
 
+/* The lowest-priority columns of a wide table (cost, profit): shown only on a very wide desktop screen. */
+@media (min-width: 640px) and (max-width: 1535px) {
+  .ls-hide-2xl {
+    display: none;
+  }
+}
+
 .ls-table-wrap {
   border: 1px solid var(--ls-border);
   border-radius: var(--ls-radius-md);
@@ -2560,7 +2575,7 @@
   .ls-table td.ls-cell-title > *,
   .ls-table td.ls-cell-title a {
     display: -webkit-box;
-    min-width: 0;
+    min-width: min(100%, var(--ls-control-h));
     max-width: 100%;
     min-height: calc(2 * var(--ls-leading-md));
     overflow: hidden;
@@ -3096,6 +3111,7 @@
 
 .ls-dl-row {
   display: grid;
+  align-content: start;
   gap: var(--ls-space-1);
   min-width: 0;
 }

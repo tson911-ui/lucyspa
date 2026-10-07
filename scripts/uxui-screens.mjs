@@ -5,6 +5,7 @@
 //
 //   node scripts/uxui-screens.mjs <name> <url-or-html-file> [--widths 360,768,1440] [--wait 800] [--top 1000] [--all]
 //                                   [--click <selector[@@text]> ...] [--eval <js>] [--expect <text>] [--allow-status] [--theme-cookie]
+//                                   [--cookie <name=value> ...] [--before <js>]
 //
 // Gate integrity: the run FAILS (exit code 3, no image written for the failed render) when the server is unreachable,
 // the main document answers 4xx/5xx (unless `--allow-status`), the browser shows its own error page, the page has no
@@ -33,6 +34,13 @@ const clicks = [];
 for (let index = args.indexOf('--click'); index >= 0; index = args.indexOf('--click')) {
   clicks.push(args.splice(index, 2)[1]);
 }
+// `--cookie name=value` (repeatable): a session for pages behind the sign-in; set for the page's origin before it loads.
+const cookies = [];
+for (let index = args.indexOf('--cookie'); index >= 0; index = args.indexOf('--cookie')) {
+  cookies.push(args.splice(index, 2)[1]);
+}
+// `--before <js>`: runs after the clicks and before the capture (for example scrolling a drawer to the part under review).
+const beforeExpression = flag('before', '');
 const evalExpression = flag('eval', '');
 const all = args.includes('--all');
 if (all) args.splice(args.indexOf('--all'), 1);
@@ -207,6 +215,17 @@ try {
       await send('Emulation.setEmulatedMedia', {
         features: [{ name: 'prefers-color-scheme', value: scheme }],
       });
+      if (/^https?:/.test(url)) {
+        for (const pair of cookies) {
+          const at = pair.indexOf('=');
+          await send('Network.setCookie', {
+            name: pair.slice(0, at),
+            value: pair.slice(at + 1),
+            url,
+            httpOnly: true,
+          });
+        }
+      }
       if (themeCookie && /^https?:/.test(url)) {
         await send('Network.setCookie', { name: 'ls-theme', value: scheme, url });
       }
@@ -266,6 +285,10 @@ try {
         if (!clicked)
           console.log(`CHECK ${name} ${width} ${scheme}: nothing matches --click ${spec}`);
         await sleep(400);
+      }
+      if (beforeExpression) {
+        await send('Runtime.evaluate', { expression: beforeExpression, awaitPromise: true });
+        await sleep(300);
       }
       const height =
         clicks.length > 0
