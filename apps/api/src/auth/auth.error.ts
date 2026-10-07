@@ -152,6 +152,11 @@ const errors = {
   INVENTORY_RECEIPT_NOT_DRAFT: [409, 'Only a draft receipt can change'],
   INVENTORY_COUNT_NOT_OPEN: [409, 'Only an open stock count can change'],
   INVENTORY_VARIANT_UNAVAILABLE: [409, 'The variant cannot be used for stock'],
+  // Phase 6 P6-5: the Excel/CSV import. The field of IMPORT_FILE_INVALID names the reason (never file content).
+  IMPORT_FILE_INVALID: [422, 'The file cannot be imported'],
+  IMPORT_JOB_NOT_PREVIEWED: [409, 'Only a previewed import can be applied or cancelled'],
+  IMPORT_PREVIEW_STALE: [409, 'The data changed since the preview; upload the file again'],
+  IMPORT_NOTHING_TO_APPLY: [409, 'No valid row of this file would change anything'],
 } as const;
 
 export type AuthErrorCode = keyof typeof errors;

@@ -377,3 +377,37 @@ Giải thích ngắn: T28 như một cuốn sổ giao hàng riêng bên cạnh s
 - **Ví dụ:** đơn 1.000.000đ + phí 30.000đ, voucher 10%: giảm 100.000đ hay 103.000đ? Điểm tính trên 1.000.000đ hay 1.030.000đ?
 - **Tôi khuyên:** **không áp dụng** giảm giá và không tính điểm cho phí giao hàng; chỉ tính trên sản phẩm.
 - **Nếu khác:** tính cả phí thì khách có thể dùng voucher để giảm phí giao hàng, và hoàn tiền phải tách phí ra.
+
+## Câu hỏi của P6-5 (nhập Excel/CSV): **chờ Chủ có/không**, chưa tính là đã duyệt
+
+Chi tiết: `docs/PHASE6_STEP5_IMPORT.md`. Mọi cách đọc dưới đây là của tôi; đã làm theo hướng khuyên nhưng chưa có lời duyệt của Chủ.
+
+### OQ-43. Tệp có dòng lỗi thì xử lý thế nào?
+
+- **Ý nghĩa:** PRD chỉ ghi "phải xác nhận trước khi áp dụng", không nói tệp có dòng lỗi thì sao.
+- **Tôi đã làm:** các dòng hợp lệ được nhập cùng lúc (cả lô thành công hoặc không có gì); dòng lỗi **không bao giờ** được nhập. Nếu có dòng lỗi, hộp xác nhận nêu rõ số dòng bị bỏ qua và Chủ phải **tích ô "Tôi hiểu … dòng có lỗi sẽ bị bỏ qua"** mới nhập được.
+- **Nếu khác:** chỉ nhập khi **mọi** dòng đều đúng (an toàn hơn, nhưng một dòng sai chặn cả tệp).
+
+### OQ-44. Giới hạn tệp: 5 MB và 2.000 dòng, xử lý ngay (không chạy nền)
+
+- **Ý nghĩa:** thiết kế 11.2 viết "tệp lớn chạy nền (PRD 53)". Tôi chưa làm chạy nền: danh mục spa chỉ vài trăm đến vài nghìn mặt hàng.
+- **Đo thực tế:** xem trước dưới 1 giây; nhập 2.000 sản phẩm có giá và giá vốn mất khoảng 23 giây, 2.000 dòng tồn đầu kỳ khoảng 8 giây (giới hạn của giao dịch là 120 giây).
+- **Nếu khác:** cần danh mục lớn hơn 2.000 dòng/tệp thì nên làm chạy nền (thêm một đợt công việc).
+
+### OQ-45. Cách viết tệp sản phẩm
+
+- Mỗi dòng là một **phân loại** (một SKU). Cột tùy chọn **"Nhóm sản phẩm"** gom nhiều dòng thành một sản phẩm; để trống thì mỗi dòng là một sản phẩm. SKU đã có thì dòng đó **cập nhật**; **ô để trống nghĩa là giữ nguyên** (không xóa được dữ liệu bằng tệp).
+- Sản phẩm mới tạo ở trạng thái **nháp** (đăng bán trong màn hình sản phẩm). **Thương hiệu và danh mục không tự tạo**: tên không có trong hệ thống là lỗi của dòng đó.
+- "Cho đặt trước" để trống: sản phẩm mới là **Có** (đúng mặc định đã duyệt), sản phẩm cũ giữ nguyên.
+
+### OQ-46. Tồn đầu kỳ
+
+- Chỉ nhập **một lần cho mỗi phân loại ở mỗi chi nhánh** (đã có nhập hoặc xuất kho thì dòng bị từ chối, dùng phiếu nhập hoặc kiểm kê). Một phân loại có thể có **nhiều lô** trong cùng tệp. Hạn dùng đã qua bị từ chối. Giá vốn chỉ nhập được khi có quyền xem giá vốn.
+
+### OQ-47. Hai thư viện mới
+
+- Đọc tệp .xlsx cần **fflate** (giải nén) và **fast-xml-parser** (đọc XML); cả hai không có phụ thuộc phức tạp (khóa phụ thuộc thêm 9 gói). Đây là quyết định kỹ thuật cần Chủ đồng ý.
+
+### OQ-48. Hai việc PRD 31 chưa làm: khi nào làm?
+
+- **Ảnh hàng loạt theo tên tệp = SKU** (31.3) và **cập nhật giá hàng loạt: xuất ra, sửa, nhập lại, xem khác biệt, xác nhận** (31.4). Lời yêu cầu của Chủ ngày 2026-10-07 chỉ nêu sản phẩm, phân loại và tồn đầu kỳ nên tôi **chưa làm** hai việc này. Chủ cho biết làm ở bước nào.

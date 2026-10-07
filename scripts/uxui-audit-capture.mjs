@@ -129,6 +129,7 @@ const LISTS = {
   team: '/api/v1/teams',
   discount: '/api/v1/discounts',
   product: '/api/v1/products',
+  import: '/api/v1/product-imports',
 };
 const firstId = (body) => {
   const list = Array.isArray(body)

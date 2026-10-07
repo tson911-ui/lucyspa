@@ -1,5 +1,5 @@
 {
-  "note": "Pages of the DOM audit (docs/UXUI_REDESIGN_DESIGN.md 21.5). Paths are relative to /{locale}/workforce/; {employee}, {branch}, {service}, {team}, {discount}, {product} are replaced by the first record of the list. `public` pages need no sign-in. `baseline: true` marks the 26 pages of docs/uxui-audit-baseline.json (the compare uses only those).",
+  "note": "Pages of the DOM audit (docs/UXUI_REDESIGN_DESIGN.md 21.5). Paths are relative to /{locale}/workforce/; {employee}, {branch}, {service}, {team}, {discount}, {product}, {import} are replaced by the first record of the list. `public` pages need no sign-in. `baseline: true` marks the 26 pages of docs/uxui-audit-baseline.json (the compare uses only those).",
   "pages": {
     "account": { "path": "account", "baseline": true },
     "attendance": { "path": "attendance", "baseline": true },
@@ -35,6 +35,8 @@
     "inventory-receipts": { "path": "inventory?tab=receipts" },
     "inventory-counts": { "path": "inventory?tab=counts" },
     "inventory-suppliers": { "path": "inventory?tab=suppliers" },
-    "inventory-receipt-new": { "path": "inventory/receipts/new" }
+    "inventory-receipt-new": { "path": "inventory/receipts/new" },
+    "imports": { "path": "import" },
+    "import-detail": { "path": "import/{import}" }
   }
 }

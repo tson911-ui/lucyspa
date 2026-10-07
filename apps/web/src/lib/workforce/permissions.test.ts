@@ -34,6 +34,8 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'products',
     // Phase 6 P6-4: the inventory (branch VIEW_INVENTORY / MANAGE_STOCK_RECEIPTS / ADJUST_STOCK or global MANAGE_PRODUCTS).
     'inventory',
+    // Phase 6 P6-5: the Excel/CSV import (GLOBAL IMPORT_PRODUCT_DATA; the Owner holds all).
+    'import',
     // Phase 4 Step 6: discount programs and voucher codes (GLOBAL MANAGE_DISCOUNTS / CREATE_VOUCHERS).
     'discounts',
     // Phase 5 P5-3: loyalty points (VIEW_LOYALTY, the exceptions list or the Owner's switch; the Owner holds all).
@@ -81,6 +83,12 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
   assert.ok(!keys(employee([['VIEW_PRODUCT_COST']])).includes('inventory'));
   assert.ok(!keys(employee()).includes('inventory'));
   assert.ok(!keys(customer).includes('inventory'));
+  // The import is GLOBAL_ONLY IMPORT_PRODUCT_DATA: no branch grant, no other product permission opens it.
+  assert.ok(keys(employee([['IMPORT_PRODUCT_DATA']])).includes('import'));
+  assert.ok(!keys(employee([['IMPORT_PRODUCT_DATA', 'A']])).includes('import'));
+  assert.ok(!keys(employee([['MANAGE_PRODUCTS'], ['MANAGE_PRODUCT_PRICES']])).includes('import'));
+  assert.ok(!keys(employee()).includes('import'));
+  assert.ok(!keys(customer).includes('import'));
   assert.ok(keys(employee([['VIEW_ORGANIZATION', 'A']])).includes('organization'));
   assert.ok(keys(employee([['VIEW_TEAMS', 'A']])).includes('teams'));
   assert.ok(!keys(employee([['VIEW_TEAMS', 'A']])).includes('organization'));

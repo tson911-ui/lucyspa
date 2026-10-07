@@ -217,3 +217,6 @@ export {
   type SettlementActor,
   type SettlementResult,
 } from './payment-settlement.js';
+export * from './product-import/columns.js';
+export * from './product-import/spreadsheet.js';
+export * from './product-import/template.js';

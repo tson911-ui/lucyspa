@@ -1,0 +1,28 @@
+# Phase 6 P6-5: nhập dữ liệu từ Excel/CSV (Wave 1)
+
+Trạng thái: **làm xong, commit cục bộ, chưa push, chưa deploy.** Căn cứ: thiết kế 11.2 và 11.3 (cách đọc của tôi), PRD 31.1 và 31.2, lời yêu cầu của Chủ ngày 2026-10-07 (sản phẩm, phân loại với cột đặt trước, tồn đầu kỳ; xem trước; lỗi từng dòng bằng tiếng Việt; kiểm tra trùng; chưa lưu gì cho đến khi Chủ xác nhận; tệp mẫu tải về).
+
+## Đã làm gì
+
+- **Không có migration** (Wave 1 vẫn 9 migration, tổng 72): bảng `product_import_jobs/rows` của P6-2 đủ dùng. Quyền `IMPORT_PRODUCT_DATA` mở mọi thao tác; cột giá cần `MANAGE_PRODUCT_PRICES`, cột giá vốn cần `VIEW_PRODUCT_COST` (kiểm từng ô theo quyền của người thao tác).
+- **Đọc tệp** (`packages/server/src/product-import/`): `.xlsx` (sheet đầu, kiểm kích thước từng mục trước khi giải nén, không đọc DTD/entity, hai hệ ngày, chuỗi chung/chuỗi trực tiếp/chữ nhiều đoạn) và CSV UTF-8 (dấu phẩy, chấm phẩy, tab, xuống dòng trong ngoặc kép). `.xls` cũ bị từ chối kèm hướng dẫn lưu lại `.xlsx`. Tệp mẫu Excel (có sheet "Hướng dẫn", chỉ có dòng tiêu đề ở sheet dữ liệu, cột SKU/mã vạch/mã lô định dạng văn bản) và CSV, tiếng Việt hoặc tiếng Anh.
+- **API** `/api/v1/product-imports` (`apps/api/src/product-imports/`): tải mẫu, tải lên = xem trước (một giao dịch), danh sách, chi tiết kèm các dòng, **áp dụng** (khóa sản phẩm rồi biến thể theo thứ tự; tồn đầu kỳ khóa tư vấn theo chi nhánh + biến thể; **lập kế hoạch lại bằng quyền của người xác nhận** và từ chối `IMPORT_PREVIEW_STALE`, không ghi gì, nếu bất kỳ dòng nào khác bản xem trước), hủy. Ghi cùng bảng và cùng nhật ký như màn hình quản trị (phiên bản giá mới, giá vốn có nhật ký riêng, lô + giao dịch `OPENING`).
+- **Kiểm tra trùng/lỗi** (mã, tiếng Việt ở màn hình): SKU/mã vạch trùng trong tệp, mã vạch đã dùng, tên sản phẩm đã có (chỉ cảnh báo), thương hiệu/danh mục không có hoặc mơ hồ hoặc ngừng dùng, giá dưới giá khuyến mãi đang chạy, nhóm sản phẩm mâu thuẫn, tồn đầu kỳ đã có, lô trùng, hạn dùng đã qua, cột lạ (cảnh báo), cùng tệp đã nhập trước đó (cảnh báo).
+- **Màn hình** "Nhập dữ liệu" (Danh mục): danh sách lần nhập + hộp "Tải lên tệp" (loại dữ liệu, chi nhánh cho tồn đầu kỳ, tải mẫu, chọn tệp), trang xem trước (tóm tắt, lọc/tìm dòng, kết quả từng dòng, hộp "Xem chi tiết dòng" liệt kê **mọi** ghi chú và dữ liệu của dòng), hộp xác nhận (nêu số dòng sẽ nhập và số dòng lỗi bị bỏ qua; có dòng lỗi thì phải tích ô đồng ý).
+
+## Kiểm thử (DB thử `lucy_spa_p6_4_scratch_20261007`, 72 migration)
+
+`format:check`, `lint`, `typecheck` sạch; `pnpm test` cả repo đạt (database 10, server 53, worker 19 + 1 bỏ qua, ui 464, web 592, api 266); `pnpm test:integration` (database) 107 + 18; `pnpm test:auth:integration` **673 đạt, 1 bỏ qua**. Mới: trình đọc tệp bằng tệp **tự dựng tay** (không phải do trình ghi mẫu của repo tạo: chuỗi chung, chuỗi trực tiếp, chữ nhiều đoạn, ô ngày, ô thưa, zip bom, DOCTYPE, CSV BOM + chấm phẩy), mẫu, phân tích ô, kế hoạch trên PostgreSQL thật (quyền, xem trước không ghi, áp dụng, bản xem trước cũ, giá/giá vốn ẩn với người không có quyền, tồn đầu kỳ), **3 bài thi đua** trên kết nối riêng (cùng một tệp áp dụng hai lần; hai tệp tồn đầu kỳ cùng chi nhánh + biến thể; hai tệp tạo cùng SKU mới), HTTP (CSRF, multipart giới hạn, trường lạ), web (mọi mã lỗi có chữ VI và EN).
+Đo thật qua HTTP trên DB thử: 2.000 dòng sản phẩm có giá, giá vốn: xem trước 0,6 giây, **áp dụng 23 giây**; 2.000 dòng tồn đầu kỳ: 0,5 giây và 8 giây; trang chi tiết 2.000 dòng 0,87 MB. Qua cổng web (proxy Next) tải mẫu và tải tệp lên đều chạy.
+
+## UX gate (5 dòng)
+
+1. **Đã mở xem** (chỉ những ảnh sau): danh sách 1440 sáng; xem trước 1440 sáng, 1440 tối (lọc "chỉ dòng lỗi"), 768 và 360; tồn đầu kỳ 1440 sáng và 360 kèm hộp xác nhận (ảnh 768 của trang này bị ghép nhiều khung nên chỉ xem được phần đầu); đã nhập 1440; đã hủy 768; hộp tải lên 1440, 768, 360; hộp xác nhận 1440 sáng; hộp chi tiết dòng 1440 sáng, 1440 tối, 360; chữ 130% ở 1440. **Chưa mở**: danh sách tối/768/130%, tồn đầu kỳ tối, đã nhập/đã hủy tối và 360, hộp tải lên tối, hộp xác nhận tối/768/360 của bản xem trước 32 dòng, chữ 130% ở 360 (các ảnh này cùng thành phần với ảnh đã xem; nói rõ để Chủ biết).
+2. **Sửa sau khi xem**: ghi chú nhiều lỗi bị cắt hai dòng (mất lỗi giá) nên thêm hộp "Xem chi tiết dòng" và hậu tố "(+n)"; giới hạn hiện "5,2 MB" nay là "5 MB"; tồn đầu kỳ không còn các số "Tạo mới/Cập nhật/Không đổi".
+3. **DOM audit** (`scripts/uxui-audit-capture.mjs`): hai trang mới 0 phát hiện; 26 trang của mốc cũ không có số đếm nào tăng so với `docs/uxui-audit-baseline.json`.
+4. 130% ở 360 px vẫn tràn ngang do thanh trên cùng chung (đã ghi `docs/UI_BACKLOG.md`). Ô tích 20 px trong hộp xác nhận bị cảnh báo "dưới 44 px" của công cụ chụp: đó là ô tích của bộ kiểu chung (vùng bấm là cả nhãn), như các hộp khác.
+5. Không thêm `wf-*`, px/rem hay màu hex; kiểu dùng sẵn của bộ UI. **Chưa thử** mở tệp mẫu trong Microsoft Excel thật (không có trên máy này); đã thử đọc lại bằng trình đọc riêng và mở được cấu trúc zip.
+
+## Chưa rõ / cần Chủ quyết (OQ-43..OQ-48 ở `docs/PHASE6_OWNER_DECISIONS_VI.md`, đều chờ có/không)
+
+Dòng lỗi chỉ bị bỏ qua khi Chủ tích đồng ý; giới hạn 5 MB/2.000 dòng và xử lý ngay (thiết kế 11.2 nói chạy nền); cách viết tệp (nhóm sản phẩm, ô trống giữ nguyên, sản phẩm mới là nháp, không tự tạo thương hiệu/danh mục); tồn đầu kỳ một lần mỗi phân loại và chi nhánh; hai thư viện mới (fflate, fast-xml-parser, thêm 9 gói); **ảnh hàng loạt (31.3) và cập nhật giá hàng loạt (31.4) chưa làm**: hỏi làm ở bước nào. Khi nhập 2.000 dòng, giao dịch giữ khóa chung của đồ thị quyền khoảng 23 giây (đổi vai trò/quyền chờ lâu hơn bình thường lúc đó): nên nhập lúc vắng khách.

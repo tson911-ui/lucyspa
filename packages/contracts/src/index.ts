@@ -4136,3 +4136,368 @@ export interface StockCountLinesRequest {
   lines: { variantId: string; countedQuantity: number }[];
   removeVariantIds: string[];
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Phase 6 P6-5: Excel/CSV import of the catalog (products and variants, with the pre-order columns) and of opening stock.
+// IMPORT_PRODUCT_DATA (GLOBAL_ONLY) for every endpoint. A file is parsed and checked into a PREVIEW (nothing is saved); only an
+// explicit confirmation applies it (PRD 31.2). A price column needs MANAGE_PRODUCT_PRICES, a cost column VIEW_PRODUCT_COST: the cells
+// of a column the viewer may not see are absent from every response. Row problems are language-neutral codes; the screens write them
+// in Vietnamese or English.
+// ---------------------------------------------------------------------------------------------------------------
+
+export type ProductImportKindName = 'CATALOG' | 'OPENING_STOCK';
+export type ProductImportStatusName = 'UPLOADED' | 'PREVIEWED' | 'APPLIED' | 'FAILED' | 'CANCELLED';
+export type ProductImportActionName = 'CREATE' | 'UPDATE' | 'NONE';
+
+/** Why a row cannot be imported (an error), or what deserves a look (a warning). `field` is the column key of the template. */
+export const PRODUCT_IMPORT_ISSUE_CODES = [
+  // errors, both kinds
+  'SKU_REQUIRED',
+  'SKU_INVALID',
+  'SKU_DUPLICATE_IN_FILE',
+  'COST_INVALID',
+  'COST_NOT_ALLOWED',
+  // errors, catalog
+  'NAME_REQUIRED',
+  'NAME_INVALID',
+  'TEXT_INVALID',
+  'BRAND_NOT_FOUND',
+  'BRAND_AMBIGUOUS',
+  'BRAND_INACTIVE',
+  'CATEGORY_NOT_FOUND',
+  'CATEGORY_AMBIGUOUS',
+  'CATEGORY_INACTIVE',
+  'FEATURED_INVALID',
+  'BARCODE_INVALID',
+  'BARCODE_DUPLICATE_IN_FILE',
+  'BARCODE_IN_USE',
+  'THRESHOLD_INVALID',
+  'SELL_ON_ORDER_INVALID',
+  'LEAD_TIME_INVALID',
+  'PRICE_INVALID',
+  'PRICE_NOT_ALLOWED',
+  'PRICE_BELOW_PROMOTION',
+  'GROUP_MISMATCH',
+  'GROUP_CONFLICT',
+  'PRODUCT_HAS_ERRORS',
+  // errors, opening stock
+  'QUANTITY_REQUIRED',
+  'QUANTITY_INVALID',
+  'VARIANT_NOT_FOUND',
+  'VARIANT_INACTIVE',
+  'ALREADY_STOCKED',
+  'LOT_CODE_INVALID',
+  'LOT_DUPLICATE_IN_FILE',
+  'EXPIRY_INVALID',
+  'EXPIRY_PAST',
+  // warnings
+  'PRODUCT_NAME_EXISTS',
+  'UNKNOWN_COLUMN',
+  'SAME_FILE_APPLIED',
+] as const;
+export type ProductImportIssueCode = (typeof PRODUCT_IMPORT_ISSUE_CODES)[number];
+
+export interface ProductImportIssue {
+  code: ProductImportIssueCode;
+  /** The template column the issue is about (a key such as "sku", "price"), when there is one. */
+  field?: string;
+  /** Small facts for the message: a row number, the text that was not found. Never a cost or a price. */
+  params?: Record<string, string | number>;
+}
+
+export interface ProductImportRowResponse {
+  /** The row number in the sheet, counting the header as row 1. */
+  rowNo: number;
+  status: 'VALID' | 'INVALID';
+  action: ProductImportActionName;
+  /** The SKU of the row (as written when it could not be read). */
+  sku: string;
+  /** What the row is about: the product name (catalog) or the lot (opening stock). */
+  title: string | null;
+  errors: ProductImportIssue[];
+  warnings: ProductImportIssue[];
+  /** For an UPDATE: the columns that would change. */
+  changes: string[];
+  /** The cells as read, by column key. A price cell needs MANAGE_PRODUCT_PRICES to appear, a cost cell VIEW_PRODUCT_COST. */
+  cells: Record<string, string>;
+}
+
+export interface ProductImportJobResponse {
+  id: string;
+  kind: ProductImportKindName;
+  status: ProductImportStatusName;
+  filename: string;
+  branchId: string | null;
+  branchName: string | null;
+  rowCount: number;
+  validCount: number;
+  invalidCount: number;
+  createCount: number;
+  updateCount: number;
+  /** Valid rows that would change nothing. */
+  unchangedCount: number;
+  /** Problems of the whole file (an unknown column, the same file applied before). */
+  warnings: ProductImportIssue[];
+  /** The columns of the file that were recognized, by column key. */
+  columns: string[];
+  failureMessage: string | null;
+  createdByName: string;
+  createdAt: string;
+  previewedAt: string | null;
+  appliedByName: string | null;
+  appliedAt: string | null;
+  rowVersion: number;
+}
+
+/** GET /api/v1/product-imports/:id */
+export interface ProductImportDetailResponse extends ProductImportJobResponse {
+  rows: ProductImportRowResponse[];
+  /** The job is PREVIEWED and has at least one valid row that changes something. */
+  canApply: boolean;
+}
+
+/** GET /api/v1/product-imports (IMPORT_PRODUCT_DATA). */
+export interface ProductImportListResponse {
+  jobs: ProductImportJobResponse[];
+  /** The branches an opening-stock file may name. */
+  branches: { id: string; name: string }[];
+  /** What the caller may import: price and cost columns need their own permissions. */
+  access: { prices: boolean; cost: boolean };
+  limits: { maxBytes: number; maxRows: number };
+}
+
+/** POST /api/v1/product-imports/:id/apply. Invalid rows are never applied; `skipInvalid` says the person accepts that. */
+export interface ProductImportApplyRequest {
+  expectedRowVersion: number;
+  skipInvalid: boolean;
+}
+
+export interface ProductImportCancelRequest {
+  expectedRowVersion: number;
+}
+
+/**
+ * The columns of the two import templates. The key is stable (stored with the preview, used in messages); the header is what the
+ * template shows and what an error message names. A file may use the Vietnamese header, the English one or the key.
+ * `needs` marks a column only a person holding that authority may fill (price: MANAGE_PRODUCT_PRICES, cost: VIEW_PRODUCT_COST).
+ */
+export interface ProductImportColumn {
+  key: string;
+  header: { vi: string; en: string };
+  /** The column must exist in the file (a cell may still be blank where the guide says so). */
+  required: boolean;
+  needs?: 'prices' | 'cost';
+  note: { vi: string; en: string };
+  example: string;
+}
+
+export const PRODUCT_IMPORT_COLUMNS: Record<ProductImportKindName, readonly ProductImportColumn[]> =
+  {
+    CATALOG: [
+      {
+        key: 'sku',
+        header: { vi: 'Mã SKU', en: 'SKU' },
+        required: true,
+        note: {
+          vi: 'Bắt buộc. Mỗi dòng là một phân loại. SKU đã có trong hệ thống thì dòng đó cập nhật.',
+          en: 'Required. One row is one variant. A SKU that already exists updates that variant.',
+        },
+        example: 'KEM-DUONG-50',
+      },
+      {
+        key: 'product_key',
+        header: { vi: 'Nhóm sản phẩm', en: 'Product group' },
+        required: false,
+        note: {
+          vi: 'Các dòng cùng nhóm là các phân loại của một sản phẩm. Để trống thì mỗi dòng là một sản phẩm.',
+          en: 'Rows with the same group are variants of one product. Blank: each row is its own product.',
+        },
+        example: 'KEM-DUONG',
+      },
+      {
+        key: 'name_vi',
+        header: { vi: 'Tên tiếng Việt', en: 'Name (Vietnamese)' },
+        required: false,
+        note: {
+          vi: 'Bắt buộc khi tạo sản phẩm mới. Khi cập nhật, để trống là giữ nguyên.',
+          en: 'Required for a new product. On update, blank keeps the current value.',
+        },
+        example: 'Kem dưỡng da',
+      },
+      {
+        key: 'name_en',
+        header: { vi: 'Tên tiếng Anh', en: 'Name (English)' },
+        required: false,
+        note: { vi: 'Bắt buộc khi tạo sản phẩm mới.', en: 'Required for a new product.' },
+        example: 'Face cream',
+      },
+      {
+        key: 'description_vi',
+        header: { vi: 'Mô tả tiếng Việt', en: 'Description (Vietnamese)' },
+        required: false,
+        note: { vi: 'Tối đa 2.000 ký tự.', en: 'Up to 2,000 characters.' },
+        example: '',
+      },
+      {
+        key: 'description_en',
+        header: { vi: 'Mô tả tiếng Anh', en: 'Description (English)' },
+        required: false,
+        note: { vi: 'Tối đa 2.000 ký tự.', en: 'Up to 2,000 characters.' },
+        example: '',
+      },
+      {
+        key: 'brand',
+        header: { vi: 'Thương hiệu', en: 'Brand' },
+        required: false,
+        note: {
+          vi: 'Tên hoặc mã của thương hiệu đã có. Hệ thống không tự tạo thương hiệu mới.',
+          en: 'Name or code of an existing brand. New brands are never created by an import.',
+        },
+        example: 'Lucy',
+      },
+      {
+        key: 'category',
+        header: { vi: 'Danh mục', en: 'Category' },
+        required: false,
+        note: {
+          vi: 'Tên hoặc mã của danh mục đã có. Hệ thống không tự tạo danh mục mới.',
+          en: 'Name or code of an existing category. New categories are never created by an import.',
+        },
+        example: 'Chăm sóc da',
+      },
+      {
+        key: 'featured',
+        header: { vi: 'Nổi bật', en: 'Featured' },
+        required: false,
+        note: { vi: 'Có hoặc Không.', en: 'Yes or No.' },
+        example: 'Không',
+      },
+      {
+        key: 'label_vi',
+        header: { vi: 'Phân loại (VI)', en: 'Variant label (VI)' },
+        required: false,
+        note: { vi: 'Ví dụ: 50 ml.', en: 'For example: 50 ml.' },
+        example: '50 ml',
+      },
+      {
+        key: 'label_en',
+        header: { vi: 'Phân loại (EN)', en: 'Variant label (EN)' },
+        required: false,
+        note: { vi: 'Ví dụ: 50 ml.', en: 'For example: 50 ml.' },
+        example: '50 ml',
+      },
+      {
+        key: 'barcode',
+        header: { vi: 'Mã vạch', en: 'Barcode' },
+        required: false,
+        note: { vi: 'Không trùng với mặt hàng khác.', en: 'Not shared with another item.' },
+        example: '8936000000017',
+      },
+      {
+        key: 'low_stock_threshold',
+        header: { vi: 'Ngưỡng sắp hết', en: 'Low-stock threshold' },
+        required: false,
+        note: {
+          vi: 'Số nguyên từ 0. Dưới hoặc bằng số này thì báo sắp hết hàng.',
+          en: 'A whole number from 0. At or below it the item is reported as running low.',
+        },
+        example: '5',
+      },
+      {
+        key: 'sell_on_order',
+        header: { vi: 'Cho đặt trước', en: 'Pre-order allowed' },
+        required: false,
+        note: {
+          vi: 'Có hoặc Không. Để trống: sản phẩm mới là Có, sản phẩm đã có giữ nguyên.',
+          en: 'Yes or No. Blank: a new item is Yes, an existing item is unchanged.',
+        },
+        example: 'Có',
+      },
+      {
+        key: 'lead_time_min',
+        header: { vi: 'Chờ tối thiểu (ngày)', en: 'Wait, at least (days)' },
+        required: false,
+        note: {
+          vi: 'Từ 1 đến 90. Điền cả hai ô chờ hoặc để trống cả hai (dùng mặc định của cửa hàng).',
+          en: 'From 1 to 90. Fill both wait columns or leave both blank (the shop default applies).',
+        },
+        example: '3',
+      },
+      {
+        key: 'lead_time_max',
+        header: { vi: 'Chờ tối đa (ngày)', en: 'Wait, at most (days)' },
+        required: false,
+        note: {
+          vi: 'Từ 1 đến 90, không nhỏ hơn ô chờ tối thiểu.',
+          en: 'From 1 to 90, not below the minimum.',
+        },
+        example: '5',
+      },
+      {
+        key: 'price',
+        header: { vi: 'Giá bán (₫)', en: 'List price (VND)' },
+        required: false,
+        needs: 'prices',
+        note: {
+          vi: 'Số nguyên đồng, lớn hơn 0. Giá khác giá hiện tại sẽ tạo phiên bản giá mới.',
+          en: 'Whole VND above 0. A different price creates a new price version.',
+        },
+        example: '250000',
+      },
+      {
+        key: 'cost',
+        header: { vi: 'Giá vốn (₫)', en: 'Cost (VND)' },
+        required: false,
+        needs: 'cost',
+        note: { vi: 'Số nguyên đồng, từ 0.', en: 'Whole VND, from 0.' },
+        example: '120000',
+      },
+    ],
+    OPENING_STOCK: [
+      {
+        key: 'sku',
+        header: { vi: 'Mã SKU', en: 'SKU' },
+        required: true,
+        note: {
+          vi: 'SKU của phân loại đã có trong danh mục.',
+          en: 'The SKU of a variant that already exists in the catalog.',
+        },
+        example: 'KEM-DUONG-50',
+      },
+      {
+        key: 'quantity',
+        header: { vi: 'Số lượng', en: 'Quantity' },
+        required: true,
+        note: {
+          vi: 'Số nguyên lớn hơn 0. Chỉ nhập được khi phân loại chưa từng có nhập hay xuất kho tại chi nhánh này.',
+          en: 'A whole number above 0. Only for a variant with no stock history at this branch.',
+        },
+        example: '24',
+      },
+      {
+        key: 'lot_code',
+        header: { vi: 'Mã lô', en: 'Lot code' },
+        required: false,
+        note: { vi: 'Để trống thì hệ thống tự đặt.', en: 'Blank: the system names it.' },
+        example: 'L2610',
+      },
+      {
+        key: 'expiry_date',
+        header: { vi: 'Hạn dùng', en: 'Expiry date' },
+        required: false,
+        note: {
+          vi: 'Ngày dạng 2027-12-31 hoặc 31/12/2027. Để trống nếu không có hạn.',
+          en: 'A date like 2027-12-31 or 31/12/2027. Blank when there is none.',
+        },
+        example: '2027-12-31',
+      },
+      {
+        key: 'cost',
+        header: { vi: 'Giá vốn (₫)', en: 'Cost (VND)' },
+        required: false,
+        needs: 'cost',
+        note: { vi: 'Giá vốn một đơn vị, số nguyên đồng.', en: 'Cost of one unit, whole VND.' },
+        example: '120000',
+      },
+    ],
+  };

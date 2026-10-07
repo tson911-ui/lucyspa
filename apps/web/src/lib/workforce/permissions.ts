@@ -160,6 +160,7 @@ export type NavKey =
   | 'services'
   | 'products'
   | 'inventory'
+  | 'import'
   | 'discounts'
   | 'loyalty'
   | 'skills'
@@ -260,6 +261,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'inventory',
       group: 'catalog',
       path: '/inventory',
+    },
+    // Phase 6 P6-5: the Excel/CSV import (GLOBAL_ONLY IMPORT_PRODUCT_DATA; price and cost columns need their own permissions).
+    canGlobal(account, 'IMPORT_PRODUCT_DATA') && {
+      key: 'import',
+      group: 'catalog',
+      path: '/import',
     },
     // Discount programs and voucher codes are Owner configuration: GLOBAL_ONLY permissions (Phase 4 Step 6).
     (canGlobal(account, 'MANAGE_DISCOUNTS') || canGlobal(account, 'CREATE_VOUCHERS')) && {

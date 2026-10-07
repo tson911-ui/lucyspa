@@ -18,6 +18,8 @@
     "@lucy-spa/contracts": "workspace:*",
     "@lucy-spa/database": "workspace:*",
     "bullmq": "5.81.5",
+    "fast-xml-parser": "^5.11.2",
+    "fflate": "^0.8.3",
     "nodemailer": "10.0.10",
     "pino": "10.3.1",
     "zod": "4.6.5"

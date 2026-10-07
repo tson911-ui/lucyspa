@@ -160,6 +160,12 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 - **Approved:** P6-3b and P6-4; migration …08 (notifications CHECKs loosened only; **Wave 1 is deployed in the evening, a quiet time**: `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md`); my readings (pre-order on by default, branch-local expiry, nearest-expiry-first count correction, 08:00 scan, 1-90 days); **OQ-P6-42** (secret link + QR for walk-in customers, built in P6-16). Recorded in design 2.9 and `PHASE6_OWNER_DECISIONS_VI.md`.
 - Asked before P6-5: finish the UI gate of P6-3b/P6-4, fix or backlog the bell badge, recreate the official DOM audit. Then P6-5 (Excel/CSV import: products and variants with the pre-order columns, opening stock; preview, row errors in Vietnamese, duplicate checks, nothing saved until he confirms, template download).
 
+## Phase 6 P6-5 (Excel/CSV import, 2026-10-08, committed locally, not pushed, not deployed)
+
+- Import of products and variants (pre-order columns) and of opening stock: template download (xlsx, csv), preview with row-level Vietnamese errors, duplicate checks, nothing saved until the Owner confirms; apply plans again under locks and refuses a stale preview. API `apps/api/src/product-imports/`, parser and templates in `packages/server/src/product-import/`, screens "Nhập dữ liệu" (`/import`). **No migration** (72 in Wave 1); new dependencies fflate and fast-xml-parser.
+- My readings (OQ-43..OQ-48 in `docs/PHASE6_OWNER_DECISIONS_VI.md`) are **pending the Owner's yes/no**: skipping invalid rows needs an explicit tick, 5 MB / 2,000 rows synchronous, blank cell keeps the value, two new libraries, bulk images (31.3) and bulk price update (31.4) not built. Report: `docs/PHASE6_STEP5_IMPORT.md`.
+- The official DOM audit capture is now committed (`scripts/uxui-audit-capture.mjs`); the 26 baseline pages show no count rising.
+
 ## Production
 
 Status as of 2026-10-07, about 02:52 (+07) (Owner-reported; supersedes the blocks below):

@@ -35,6 +35,8 @@ export interface AdminCommandOptions {
   /** Security-graph writers take the exclusive graph lock as their first statement. */
   readonly exclusive: boolean;
   readonly requestId?: string | undefined;
+  /** A longer transaction for a batch command (the Excel import); the default is Prisma's 5 seconds. */
+  readonly timeoutMs?: number;
   /**
    * Other Users this command reads or changes (targets, shared-role recipients). They
    * are locked together with the actor, sorted by UUID, before the actor's session.
@@ -63,9 +65,12 @@ export async function runAdminCommand<T>(
     throw new AuthError('AUTHENTICATION_REQUIRED');
   }
   const { sessions, throttle } = dependencies;
-  const run = options.exclusive
-    ? sessions.withExclusiveTransaction.bind(sessions)
-    : sessions.withTransaction.bind(sessions);
+  const { timeoutMs } = options;
+  const run: SessionService['withTransaction'] = options.exclusive
+    ? (work) => sessions.withExclusiveTransaction(work)
+    : timeoutMs === undefined
+      ? (work) => sessions.withTransaction(work)
+      : (work) => sessions.withTransaction(work, { timeoutMs });
   try {
     return await run(async (tx) => {
       const hint = await tx.session.findUnique({

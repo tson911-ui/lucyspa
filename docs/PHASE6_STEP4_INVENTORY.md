@@ -32,3 +32,9 @@ Hết hạn tính theo **ngày của chi nhánh** (còn bán đến hết ngày 
 - **Ghi chú khi deploy Wave 1:** migration `…08` giữ khóa độc quyền rất ngắn trên bảng `notifications` lúc chạy (bảng nhỏ); Wave 1 nay gồm **9 migration, tổng 72**.
 - Các cách đọc ở trên. Chọn mặt hàng trong phiếu/kiểm kê tải toàn bộ danh sách (lọc trên trình duyệt): đủ cho vài trăm mặt hàng, danh mục lớn hơn cần tìm kiếm phía máy chủ.
 - Mỗi bộ test đua chạy **một lần** trên máy này (mỗi tình huống 3 vòng), chưa thử tải thật (P6-7).
+
+## Bổ sung UX gate (2026-10-08)
+
+- Sau lần chụp lại bản cuối, tôi đã **mở thêm và xem**: kiểm kê 768 (sau khi ẩn cột Mã SKU ở máy tính bảng), nhà cung cấp 768, thông báo 768, phiếu nhập lỗi 768, trang mặt hàng 768, hộp thêm nhà cung cấp 768, hộp tạo đợt kiểm kê 768, đợt kiểm kê chưa lưu 768, hộp cài đặt 768, ba trạng thái rỗng (tối 1440 và 768) và tồn kho tối 1440. Không thấy lỗi mới. Các ảnh 360, hộp thoại và chữ 130% đã xem ở lượt trước.
+- **DOM audit chính thức đã được tạo lại** và nằm trong repo: `scripts/uxui-audit-capture.mjs` + `scripts/uxui-audit-pages.json`. Chạy trên bản cuối cho các trang Phase 6: chỉ còn 2 phát hiện `row-height-uneven` (Tồn kho, Phiếu nhập); 26 trang của mốc cũ không có số đếm nào tăng so với `docs/uxui-audit-baseline.json`.
+- Huy hiệu "3" trên chuông thông báo là lớp phủ có chủ đích (không phải chữ lệch): quy tắc kiểm tra bỏ qua phần tử định vị tuyệt đối; giao diện không đổi.

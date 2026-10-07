@@ -44,11 +44,16 @@ export class SessionService {
   /** Future flows compose credential changes, session writes and audit in this transaction. */
   async withTransaction<T>(
     work: (transaction: Prisma.TransactionClient) => Promise<T>,
+    options?: { timeoutMs?: number },
   ): Promise<T> {
-    return this.prisma.client.$transaction(async (transaction) => {
-      await takeSharedAuthGraphLock(transaction);
-      return work(transaction);
-    });
+    return this.prisma.client.$transaction(
+      async (transaction) => {
+        await takeSharedAuthGraphLock(transaction);
+        return work(transaction);
+      },
+      // Prisma's own default (5 s) stays unless a long batch command (the Excel import) asks for more.
+      options?.timeoutMs === undefined ? undefined : { timeout: options.timeoutMs, maxWait: 5_000 },
+    );
   }
 
   /**

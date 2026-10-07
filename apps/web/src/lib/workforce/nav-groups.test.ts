@@ -47,7 +47,7 @@ test('the Owner sees the contract groups in the contract order', () => {
     operations: ['bookingBoard', 'walkIn', 'reassignment', 'collaboratorSchedule'],
     sales: ['pos', 'discounts', 'loyalty'],
     people: ['employees', 'attendance', 'leave', 'teams', 'organization', 'skills'],
-    catalog: ['services', 'products', 'inventory', 'branches'],
+    catalog: ['services', 'products', 'inventory', 'import', 'branches'],
     administration: ['roles', 'websiteContent'],
   });
   assert.deepEqual(
