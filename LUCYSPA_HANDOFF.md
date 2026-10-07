@@ -172,6 +172,11 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 - **APPROVED by the Owner on 2026-10-07 (design 2.11): OQ-49..OQ-53 as proposed** (hero/commitment copy edited in Products → "Trang mỹ phẩm", four sorts, stock wording rule, store-block text, English label "Cosmetics"). P6-5 approval (OQ-43..48) is in design 2.10.
 - **Deploy rule (Owner, final, design 2.11): Phase 6 deploys wave by wave, only when the Owner says so, after each wave's milestone check. Before each wave: rehearsal on a restored copy of the production DB (pg_dump), timed migrations, a written rollback plan (DB restore + previous commit), and the guide as iNET web terminal commands block by block.**
 
+## Phase 6 P6-7 (load readiness, 2026-10-07, committed locally, not pushed, not deployed)
+
+- `ecosystem.config.cjs`: web = pm2 cluster (3), API and worker = exactly one (test pins it). Public `/api/v1/public/*` rate limit in Redis (needs nginx `X-Forwarded-For`), 5 s API cache for cosmetics reads, `scripts/load-public.mjs`. Product list API 74 -> 1,200 req/s; pages about 2.5x with 3 web processes (local numbers). Report: `docs/PHASE6_STEP7_LOAD_READINESS.md`.
+- **Pending the Owner: OQ-54..OQ-57** (limits, 5 s cache, 3 web processes, nginx header). Wave 1 milestone report `docs/PHASE6_WAVE1_MILESTONE.md`; deploy guide (iNET terminal blocks, rehearsal, rollback) is `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md`. Nothing of Phase 6 is on production; the Owner decides when.
+
 ## Production
 
 Status as of 2026-10-07, about 02:52 (+07) (Owner-reported; supersedes the blocks below):
