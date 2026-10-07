@@ -139,6 +139,20 @@ export {
   type LoyaltyEventOutcome,
 } from './loyalty.js';
 export {
+  INVENTORY_CONSUMER,
+  INVENTORY_EVENT_TYPES,
+  INVENTORY_RETRY_AFTER_MS,
+  processInventoryEvent,
+  relayInventoryEvents,
+  saleKey,
+  saleReversalKey,
+  settleInvoiceStock,
+  type InventoryEventOutcome,
+  type StockInvoiceState,
+  type StockSettlement,
+  type StockSettlementOptions,
+} from './stock-sales.js';
+export {
   bindReferral,
   canBindReferrer,
   completedVisitsOf,

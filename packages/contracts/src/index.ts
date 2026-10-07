@@ -4005,7 +4005,7 @@ export interface ProductSettingsEditRequest {
 // A unit cost exists only for a caller who holds VIEW_PRODUCT_COST: for everyone else the keys are absent (never null).
 // ---------------------------------------------------------------------------------------------------------------
 
-export type StockMovementKindName = 'OPENING' | 'RECEIPT' | 'ADJUSTMENT';
+export type StockMovementKindName = 'OPENING' | 'RECEIPT' | 'ADJUSTMENT' | 'SALE' | 'SALE_REVERSAL';
 /** The reasons a person may choose for an adjustment (COUNT_CORRECTION is written only by an approved count). */
 export type StockAdjustmentReasonName =
   'INTERNAL_USE' | 'TESTER' | 'DAMAGED' | 'EXPIRED' | 'LOSS' | 'COUNT_CORRECTION';

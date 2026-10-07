@@ -83,7 +83,13 @@ const vi = {
       note: 'Ghi chú',
       source: 'Phiếu',
     },
-    kinds: { RECEIPT: 'Nhập kho', OPENING: 'Tồn đầu kỳ', ADJUSTMENT: 'Điều chỉnh' },
+    kinds: {
+      RECEIPT: 'Nhập kho',
+      OPENING: 'Tồn đầu kỳ',
+      ADJUSTMENT: 'Điều chỉnh',
+      SALE: 'Bán hàng',
+      SALE_REVERSAL: 'Hoàn kho do hủy bán',
+    },
     reasons: {
       INTERNAL_USE: 'Dùng nội bộ',
       TESTER: 'Hàng dùng thử',
@@ -401,7 +407,13 @@ const en: Dictionary = {
       note: 'Note',
       source: 'Document',
     },
-    kinds: { RECEIPT: 'Receipt', OPENING: 'Opening stock', ADJUSTMENT: 'Adjustment' },
+    kinds: {
+      RECEIPT: 'Receipt',
+      OPENING: 'Opening stock',
+      ADJUSTMENT: 'Adjustment',
+      SALE: 'Sale',
+      SALE_REVERSAL: 'Sale reversed',
+    },
     reasons: {
       INTERNAL_USE: 'Internal use',
       TESTER: 'Tester',

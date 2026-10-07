@@ -11,6 +11,7 @@ import { parseAuthJobsEnvironment, startAuthJobs } from './auth-jobs.js';
 import { processSystemCheck } from './processor.js';
 import { startBookingJobs } from './booking-jobs.js';
 import { startInventoryAlerts } from './inventory-jobs.js';
+import { startInventorySales } from './inventory-sales-jobs.js';
 import { startInvoiceNotifications } from './invoice-notification-jobs.js';
 import { startLeaveNotifications } from './leave-jobs.js';
 import { startLoyaltyPoints } from './loyalty-jobs.js';
@@ -32,6 +33,7 @@ async function bootstrap() {
   let invoiceNotifications: { stop(): Promise<void> } | undefined;
   let loyaltyPoints: { stop(): Promise<void> } | undefined;
   let inventoryAlerts: { stop(): Promise<void> } | undefined;
+  let inventorySales: { stop(): Promise<void> } | undefined;
   try {
     await database.$queryRaw`SELECT 1`;
     worker = new Worker(SYSTEM_CHECK_QUEUE, async (job) => processSystemCheck(job), {
@@ -62,8 +64,10 @@ async function bootstrap() {
     invoiceNotifications = startInvoiceNotifications(database, logger);
     loyaltyPoints = startLoyaltyPoints(database, logger);
     inventoryAlerts = startInventoryAlerts(database, logger);
+    inventorySales = startInventorySales(database, logger);
     logger.info({ queue: SYSTEM_CHECK_QUEUE }, 'Worker ready');
   } catch (error) {
+    await inventorySales?.stop();
     await inventoryAlerts?.stop();
     await loyaltyPoints?.stop();
     await invoiceNotifications?.stop();
@@ -82,6 +86,7 @@ async function bootstrap() {
     const deadline = setTimeout(() => process.exit(1), 15000);
     deadline.unref();
     try {
+      await inventorySales?.stop();
       await inventoryAlerts?.stop();
       await loyaltyPoints?.stop();
       await invoiceNotifications?.stop();

@@ -1,10 +1,31 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import type { InvoiceResponse } from '@lucy-spa/contracts';
+import {
+  INVENTORY_CONSUMER,
+  INVENTORY_EVENT_TYPES,
+  processInventoryEvent,
+  relayInventoryEvents,
+} from '@lucy-spa/server';
 import { InventoryService } from '../inventory/inventory.service.js';
 import { InvoiceService } from '../pos/invoice.service.js';
 import { validVnMobile } from './phone.js';
 import type { Phase6Kit } from './phase6-fixture.js';
+
+/** The stock facts of one invoice line (see `saleOf`). */
+export interface SaleFacts {
+  status: 'RESERVED' | 'CONSUMED' | 'RELEASED';
+  consumedPaidSeq: number | null;
+  movements: {
+    kind: string;
+    delta: number;
+    paidSeq: number | null;
+    lot: string;
+    actor: string;
+    key: string;
+  }[];
+  net: number;
+}
 
 export interface Service {
   id: string;
@@ -359,6 +380,83 @@ export async function productSaleKit(kit: Phase6Kit) {
       }),
     );
 
+  // ------------------------------------------------------------------------------- stock sales (P6-10)
+  /**
+   * Handles the pending `inventory` events of one invoice (or of all), oldest first, one at a time, forcing the deferred database
+   * checks after each as a commit would. Returns the outcome of each event.
+   */
+  const runInventory = async (invoiceId?: string): Promise<string[]> => {
+    const events = await tx.outboxEvent.findMany({
+      where: {
+        aggregateType: 'Invoice',
+        eventType: { in: INVENTORY_EVENT_TYPES },
+        ...(invoiceId ? { aggregateId: invoiceId } : {}),
+        consumptions: { none: { consumer: INVENTORY_CONSUMER } },
+      },
+      orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
+      select: { id: true },
+    });
+    const outcomes: string[] = [];
+    for (const event of events) {
+      outcomes.push(await processInventoryEvent(tx, event.id));
+      await settle();
+    }
+    return outcomes;
+  };
+  /** The production relay (its own selection of events) over the fixture transaction. */
+  const relayInventory = async (): Promise<string[]> => {
+    const outcomes: string[] = [];
+    const database = {
+      $queryRaw: tx.$queryRaw.bind(tx),
+      $transaction: async <T>(work: (client: typeof tx) => Promise<T>) => {
+        const result = await work(tx);
+        await settle();
+        return result;
+      },
+    };
+    await relayInventoryEvents(
+      database as never,
+      new Map(),
+      (outcome) => outcomes.push(outcome),
+      (error) => {
+        throw error;
+      },
+    );
+    return outcomes;
+  };
+  /** The stock facts of one invoice line: its reservation and the net of its sale movements. */
+  const saleOf = async (invoiceLineId: string): Promise<SaleFacts> => {
+    const reservation = await tx.stockReservation.findUniqueOrThrow({
+      where: { invoiceLineId },
+      select: { status: true, consumedPaidSeq: true, quantity: true },
+    });
+    const movements = await tx.stockMovement.findMany({
+      where: { invoiceLineId },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      select: {
+        kind: true,
+        quantityDelta: true,
+        paidSeq: true,
+        lot: { select: { lotCode: true } },
+        actorUserId: true,
+        idempotencyKey: true,
+      },
+    });
+    return {
+      status: reservation.status as SaleFacts['status'],
+      consumedPaidSeq: reservation.consumedPaidSeq,
+      movements: movements.map((movement) => ({
+        kind: String(movement.kind),
+        delta: movement.quantityDelta,
+        paidSeq: movement.paidSeq,
+        lot: movement.lot.lotCode,
+        actor: movement.actorUserId,
+        key: movement.idempotencyKey,
+      })),
+      net: movements.reduce((sum, movement) => sum + movement.quantityDelta, 0),
+    };
+  };
+
   // ------------------------------------------------------------------------------------- reconciliation
   /**
    * The Owner's reconciliation rules over the whole fixture: every invoice's lines add up to its subtotal, the total is
@@ -428,6 +526,41 @@ export async function productSaleKit(kit: Phase6Kit) {
       );
       assert.ok(level.reserved <= level.on_hand, `reserved <= on hand of ${level.variant}`);
     }
+    // P6-10: a consumed reservation has sold exactly its quantity (and belongs to a paid episode that has begun), every other
+    // reservation has sold nothing; a reservation of a cancelled invoice is released.
+    const sales = await tx.$queryRaw<
+      {
+        line: string;
+        status: string;
+        quantity: number;
+        consumed_paid_seq: number | null;
+        net: bigint;
+        invoice_status: string;
+        paid_seq: number;
+      }[]
+    >`
+      SELECT r.invoice_line_id AS line, r.status::text AS status, r.quantity, r.consumed_paid_seq,
+             COALESCE((SELECT sum(m.quantity_delta) FROM stock_movements m
+                       WHERE m.invoice_line_id = r.invoice_line_id AND m.kind IN ('SALE', 'SALE_REVERSAL')), 0)::bigint AS net,
+             i.status::text AS invoice_status, i.paid_seq
+      FROM stock_reservations r JOIN invoices i ON i.id = r.invoice_id
+      WHERE r.branch_id IN (${A.id}::uuid, ${B.id}::uuid)`;
+    for (const sale of sales) {
+      assert.equal(
+        sale.net,
+        sale.status === 'CONSUMED' ? -BigInt(sale.quantity) : 0n,
+        `sale movements of line ${sale.line}`,
+      );
+      if (sale.status === 'CONSUMED') {
+        assert.ok(
+          sale.consumed_paid_seq !== null && sale.consumed_paid_seq <= sale.paid_seq,
+          `consumed episode of ${sale.line}`,
+        );
+        assert.notEqual(sale.invoice_status, 'CANCELLED', `cancelled invoice sold ${sale.line}`);
+      } else {
+        assert.equal(sale.consumed_paid_seq, null);
+      }
+    }
   };
 
   return {
@@ -453,6 +586,10 @@ export async function productSaleKit(kit: Phase6Kit) {
     pay,
     settle,
     ok,
+    day,
+    runInventory,
+    relayInventory,
+    saleOf,
     reconcile,
   };
 }

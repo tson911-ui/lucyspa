@@ -1,4 +1,5 @@
 import type { Prisma } from '@lucy-spa/database';
+import { settleInvoiceStock } from '@lucy-spa/server';
 import { AuthError } from '../auth/auth.error.js';
 
 /**
@@ -10,7 +11,7 @@ import { AuthError } from '../auth/auth.error.js';
  *   instant of finalization, which is the instant the database integrity check re-derives it from. Nobody can type a price.
  * - Stock: finalization reserves each line's quantity at the invoice branch under the stock level locks (sorted), refusing the
  *   whole finalization when anything is short; cancelling the unpaid invoice releases the reservations in the same transaction.
- *   Drafts reserve nothing (Q8). Consumption (the SALE movement) is the point-of-sale Step, not this one.
+ *   Drafts reserve nothing (Q8). Consumption (the SALE movement) is `packages/server/src/stock-sales.ts` (P6-10).
  */
 
 /** The largest quantity of one product line; availability is the real limit, this only rejects absurd input. */
@@ -216,21 +217,29 @@ export async function reserveProductStock(
 }
 
 /**
- * Releases the open reservations of an invoice that has just been CANCELLED (the same transaction), once: the stock becomes
+ * Gives back and releases the reservations of an invoice that has just been CANCELLED (the same transaction), once: the stock becomes
  * available again. The level rows are locked in (branch, variant) order, like the reservation. A cancelled draft holds none.
  */
 export async function releaseProductStock(
   tx: Prisma.TransactionClient,
-  invoice: { id: string },
+  invoice: { id: string; paidSeq: number },
   actorUserId: string,
   cause: 'INVOICE_CANCELLED_UNPAID' | 'ZERO_BALANCE_CORRECTION',
 ): Promise<number> {
+  // Phase 6 P6-10 (T27): a sale the consumer has not yet reversed (the payment was reversed, or the zero-balance invoice was paid,
+  // and the invoice is cancelled before the consumer saw it) is reversed here, in the cancelling transaction: a cancelled invoice
+  // holds no live reservation at commit (P6-8 rule). The consumer then finds nothing left to do.
+  const returned = await settleInvoiceStock(
+    tx,
+    { id: invoice.id, status: 'CANCELLED', paidSeq: invoice.paidSeq },
+    { actorUserId, releaseCause: cause },
+  );
   const open = await tx.stockReservation.findMany({
     where: { invoiceId: invoice.id, status: 'RESERVED' },
     orderBy: [{ branchId: 'asc' }, { variantId: 'asc' }, { invoiceLineId: 'asc' }],
     select: { id: true, branchId: true, variantId: true },
   });
-  if (open.length === 0) return 0;
+  if (open.length === 0) return returned.released;
   const branchIds = [...new Set(open.map((row) => row.branchId))].sort();
   const variantIds = [...new Set(open.map((row) => row.variantId))].sort();
   await tx.$queryRaw`
@@ -244,5 +253,5 @@ export async function releaseProductStock(
       select: { id: true },
     });
   }
-  return open.length;
+  return open.length + returned.released;
 }
