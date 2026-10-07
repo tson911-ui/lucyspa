@@ -1,4 +1,6 @@
-# Phase 6 Đợt 1: kiểm tra mốc (2026-10-07, chạy trên máy này, chưa push, chưa deploy)
+# Phase 6 Đợt 1: kiểm tra mốc (2026-10-07, chạy trên máy này)
+
+> **Cập nhật:** Đợt 1 đã được Chủ deploy lên máy chủ thật ngày 2026-10-07 khoảng 23:10 (UTC+7), commit `6546c434595cef5c7ab764d8e5e7cc4b62afe256`. Diễn tập trên bản khôi phục của dữ liệu thật: 10 migration tổng khoảng 0,43 giây (máy thử ước 0,6 giây). Chi tiết ở `LUCYSPA_HANDOFF.md` và `PHASE6_WAVE1_DEPLOY_CHECKLIST.md`. Phần dưới là bản ghi tại lúc kiểm tra mốc, trước khi push và deploy.
 
 **Phạm vi Đợt 1:** P6-2 đến P6-7 (nền cơ sở dữ liệu và quyền, danh mục sản phẩm, "cho đặt trước", kho hàng, nhập Excel/CSV, trang mỹ phẩm công khai, chịu tải). **10 migration (63 thành 73), 11 quyền mới (54 thành 65)**, không đụng POS, hóa đơn, thanh toán, điểm thưởng (test cô lập Đợt 1 ghim điều này).
 

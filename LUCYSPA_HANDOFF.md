@@ -172,14 +172,25 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 - **APPROVED by the Owner on 2026-10-07 (design 2.11): OQ-49..OQ-53 as proposed** (hero/commitment copy edited in Products → "Trang mỹ phẩm", four sorts, stock wording rule, store-block text, English label "Cosmetics"). P6-5 approval (OQ-43..48) is in design 2.10.
 - **Deploy rule (Owner, final, design 2.11): Phase 6 deploys wave by wave, only when the Owner says so, after each wave's milestone check. Before each wave: rehearsal on a restored copy of the production DB (pg_dump), timed migrations, a written rollback plan (DB restore + previous commit), and the guide as iNET web terminal commands block by block.**
 
-## Phase 6 P6-7 (load readiness, 2026-10-07, committed locally, not pushed, not deployed)
+## Phase 6 P6-7 (load readiness, 2026-10-07, deployed with Wave 1, commit 6546c43)
 
 - `ecosystem.config.cjs`: web = pm2 cluster (3), API and worker = exactly one (test pins it). Public `/api/v1/public/*` rate limit in Redis (needs nginx `X-Forwarded-For`), 5 s API cache for cosmetics reads, `scripts/load-public.mjs`. Product list API 74 -> 1,200 req/s; pages about 2.5x with 3 web processes (local numbers). Report: `docs/PHASE6_STEP7_LOAD_READINESS.md`.
-- **APPROVED by the Owner on 2026-10-07 (design 2.12): OQ-54..OQ-57 as proposed** (limits, 5 s cache, 3 web processes, nginx header; Wave 1 approved). Image fallback added (`FallbackImage`, MediaThumb/Tile/Row and public product pictures). **Pushed `6546c43` to `main`, CI green (2026-10-07); that is the Wave 1 deploy commit** (guide `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md` names it). Not deployed: production still records `39ad8d1` until the Owner reports his deploy. Wave 1 milestone report `docs/PHASE6_WAVE1_MILESTONE.md`; deploy guide (iNET terminal blocks, rehearsal, rollback) is `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md`. Nothing of Phase 6 is on production; the Owner decides when.
+- **APPROVED by the Owner on 2026-10-07 (design 2.12): OQ-54..OQ-57 as proposed** (limits, 5 s cache, 3 web processes, nginx header; Wave 1 approved). Image fallback added (`FallbackImage`, MediaThumb/Tile/Row and public product pictures). **Pushed `6546c43` to `main`, CI green (2026-10-07); that is the Wave 1 deploy commit** (guide `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md` names it). Deployed by the Owner on 2026-10-07 (see the Production section). Wave 1 milestone report `docs/PHASE6_WAVE1_MILESTONE.md`; deploy guide (iNET terminal blocks, rehearsal, rollback) is `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md`. Nothing of Phase 6 is on production; the Owner decides when.
 
 ## Production
 
-Status as of 2026-10-07, about 02:52 (+07) (Owner-reported; supersedes the blocks below):
+Status as of 2026-10-07, about 23:10 (+07) (Owner-reported; supersedes the blocks below): **Phase 6 Wave 1 is deployed.**
+
+- **Production runs `6546c434595cef5c7ab764d8e5e7cc4b62afe256`** (`6546c43`), deployed by the Owner on 2026-10-07 at about 23:10 (+07). Previous: `39ad8d1`. Docs commits after it (`4a4171d` and later) are not installed.
+- Backup before the deploy: `/root/backups/lucyspa-pre-phase6-dot1-20261007T160340Z.dump` (790,983 bytes, 1287 TOC lines); the pm2 dump is saved in `/root/backups`.
+- Rehearsal on the restored production copy: 10 migrations OK, about 0.43 s in total (largest 0.178 s, `inventory_foundation`).
+- Production now: **73 migrations, 65 permissions** (11 new, granted to no one yet), 0 products. Counts before and after unchanged: users 9, bookings 4, invoices 2, payments 2, notifications 28.
+- pm2 (saved): `lucyspa-api` 1 (fork), `lucyspa-worker` 1 (fork), `lucyspa-web` 3 (cluster via `ecosystem.config.cjs`).
+- Health ok (database, redis up); `/vi`, `/vi/services`, `/vi/products`, `/vi/workforce/login` answer 200; "Mỹ phẩm" is hidden from the menu and the sitemap (no published products).
+- Nginx already sends `X-Forwarded-For` (`sites-available/default`). Rate limit test: 300 x 200, 400 x 429. Old pm2 error-log lines (ELIFECYCLE from earlier process stops) are historical; no new errors.
+- Wave 2 has not started. Rollback needs the 11 new permission rows deleted first (guide step 9).
+
+Status as of 2026-10-07, about 02:52 (+07) (Owner-reported; superseded by the block above):
 
 - **Production runs `39ad8d1`** (early service start `f88dff7` plus the Owner-approval docs commit), deployed by the Owner on 2026-10-07 at about 02:52 (+07). Previous: `607ca6a`.
 - Migration applied: `20261105000000_early_service_start_occupancy`. `pnpm db:status`: up to date (63 migrations). Permissions unchanged (54).

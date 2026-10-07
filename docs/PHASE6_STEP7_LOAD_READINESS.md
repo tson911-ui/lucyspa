@@ -1,4 +1,4 @@
-# Phase 6 P6-7: chịu tải cho trang mỹ phẩm (2026-10-07, đã commit trên máy, chưa push, chưa deploy)
+# Phase 6 P6-7: chịu tải cho trang mỹ phẩm (2026-10-07, đã deploy cùng Đợt 1, commit 6546c43)
 
 Theo OQ-26 đã duyệt: **chỉ web chạy nhiều tiến trình; API và worker giữ đúng một**. Máy chủ: 6 nhân, 7,8 GB RAM, không swap. Không đụng máy chủ, không migration, không quyền mới, không đụng POS/thanh toán.
 
