@@ -2,6 +2,8 @@
 
 **Cập nhật 2026-10-07: Chủ đã duyệt T9 đến T16, T24, T25 và đã trả lời OQ-19 đến OQ-28** (ghi lại ở mục 2.5 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`). Tài liệu này giữ lại như bản giải thích gốc. Còn chờ Chủ duyệt: T17 đến T23, T26, T27 (các đề xuất của Đợt 2 và 3).
 
+**Mới 2026-10-07 (cuối tài liệu): thay đổi phạm vi bán Lucy Beauty** (đặt trước tại quầy, đặt hàng online): đề xuất T28 đến T33 và 13 câu hỏi OQ-29 đến OQ-41, chờ Chủ trả lời. P6-4 chưa bắt đầu.
+
 Tài liệu này giải thích, bằng lời thường, từng mục kỹ thuật và câu hỏi đã được hỏi. Bản đầy đủ bằng tiếng Anh nằm trong `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md` (mục 2.2 và 2.4). Chỉ lời của Chủ mới duyệt.
 
 Mỗi mục có bốn phần: **Ý nghĩa**, **Ví dụ ở spa**, **Tôi khuyên**, **Nếu Chủ chọn khác**.
@@ -180,3 +182,173 @@ Lưu ý: OQ-27 và OQ-28 là hai câu hỏi mới, phát sinh từ trang mẫu L
 - **Ví dụ:** "Mới" = sản phẩm đăng trong 30 ngày gần đây (Chủ đặt số ngày; chưa đặt thì không hiện). "Nổi bật" = Chủ tick ô "nổi bật" ở từng sản phẩm. Khung cam kết, ảnh và chữ đầu trang do Chủ nhập; để trống thì ẩn.
 - **Tôi khuyên:** như ví dụ.
 - **Nếu khác:** nếu dùng chữ mẫu, những câu như "Tư vấn phù hợp với tình trạng da" sẽ nằm trên web thật dù Chủ chưa xác nhận. Nếu bỏ "Mới" và "Nổi bật" thì trang đơn giản hơn nhưng khác trang mẫu.
+
+## Thay đổi phạm vi: bán Lucy Beauty qua đặt trước tại quầy và đặt hàng online (Chủ, 2026-10-07)
+
+**Trạng thái:** chỉ là đề xuất của tôi, **chờ Chủ duyệt bằng lời của Chủ**. Chưa sửa mã, chưa tạo migration. **Chưa bắt đầu P6-4** cho tới khi Chủ duyệt. Bản đầy đủ bằng tiếng Anh: mục 2.7 và mục 18 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`.
+
+### Tóm tắt bằng lời thường
+
+- Hàng Beauty phần lớn **không có sẵn**: khách trả đủ tiền, cửa hàng đặt nhà cung cấp, 3-5 ngày hàng về. Vậy bán hàng chưa có trong kho là chuyện thường, không phải ngoại lệ.
+- Hệ thống sẽ có thêm **"đơn hàng sản phẩm"** (theo dõi hàng) tách khỏi **hóa đơn** (theo dõi tiền). Hóa đơn vẫn là PAID như hiện nay; đơn hàng đi qua các trạng thái: **Đã thanh toán → Đã đặt nhà cung cấp → Hàng đã về → Đã giao khách (quầy) hoặc Đang giao (online) → Hoàn tất**, hoặc **Đã hủy** (kèm hoàn tiền).
+- Hàng bán sẵn tại quầy (có trong kho) **không đổi**: khách cầm về ngay, trừ kho khi thanh toán.
+- Hàng đặt trước: khi hàng về, hàng được **giữ riêng cho đúng đơn đó** (đơn trả tiền trước được ưu tiên), không bán lẻ cho người khác.
+- Vì cửa hàng nhận tiền cho hàng chưa giao, **phải có cách hoàn tiền trước** khi bán đặt trước. Nên thứ tự: hoàn tiền (P6-13) rồi mới đặt trước tại quầy, rồi mới online (đúng ý Chủ: online là Đợt 4).
+
+### Ảnh hưởng đến các quyết định đã duyệt (nói gọn)
+
+- **T7 "không bán vượt kho"**: vẫn giữ cho hàng có sẵn. Đặt trước là một chế độ riêng, rõ ràng (khách được báo là đặt nhà cung cấp và thấy ngày dự kiến). **Cần Chủ xác nhận** rằng đặt trước không bị coi là bán vượt kho.
+- **Q8/T15 (giữ hàng khi chốt hóa đơn)**: giữ nguyên cho hàng có sẵn. Hàng đặt trước không giữ gì lúc chốt, chỉ giữ khi hàng về. Hàng đặt trước và hàng online trừ kho khi **giao khách / gửi đi**, không phải lúc thanh toán.
+- **Q15 "Hết hàng"**: sản phẩm cho đặt trước sẽ ghi "Đặt trước, dự kiến n ngày" thay vì "Hết hàng". Vẫn không hiện số lượng.
+- **T8 (trang công khai chỉ để xem)**: được thay bằng đặt hàng online (Chủ quyết). Trang xem vẫn làm ở P6-6, chừa sẵn chỗ cho nút mua.
+- **Điểm Beauty**: câu hỏi OQ-33 bên dưới.
+- **T23 / OQ-22 (hạn 48 giờ, 7 ngày)**: tôi từng ghi "tính từ lúc thanh toán"; với đặt trước và hàng gửi đi, khách chưa cầm hàng lúc thanh toán, nên tôi **rút lại** cách đọc đó, hỏi lại ở OQ-40.
+- **P6-2 (đã xong)**: không phải sửa. **P6-3 (đã xong)**: cần thêm một bước nhỏ **P6-3b** (xem dưới) để khỏi làm lại.
+
+### Để khỏi làm lại, cần thêm ngay (đề xuất)
+
+- **P6-3b (nhỏ, chỉ thêm, làm trước P6-4):** ở từng biến thể thêm **cân nặng (gram)**, ô **"cho đặt trước"**, và (tùy chọn) **số ngày chờ riêng**. Không có cân nặng thì đến lúc làm giao hàng phải sửa lại từng sản phẩm.
+- **P6-4 (kho):** khi xác nhận phiếu nhập kho, hệ thống phát một sự kiện "đã nhập hàng" để sau này tự giữ hàng cho đơn đặt trước. Chưa cần bảng đơn hàng.
+- **P6-5 (nhập Excel):** thêm 3 cột mới vào file mẫu. **P6-6 (trang công khai):** nhãn "Đặt trước" và chỗ trống cho nút mua.
+- **P6-8 (đợt 2, đụng hóa đơn):** thêm vào hóa đơn "kênh bán" (quầy/online) và "phí giao hàng" (mặc định 0). Đây là lần duy nhất trước Đợt 4 sửa bảng hóa đơn đang chạy, nên quyết sớm.
+
+### Thứ tự bước và các đợt (đề xuất)
+
+P6-2 đến P6-14 giữ nguyên số và nội dung đã duyệt (thêm P6-3b). Các bước sau P6-14 đánh số lại:
+
+| Bước          | Nội dung                                                                                           | Đợt |
+| ------------- | -------------------------------------------------------------------------------------------------- | --- |
+| P6-3b         | Cân nặng, "cho đặt trước", số ngày chờ ở biến thể                                                  | 1   |
+| P6-12 - P6-14 | Trả hàng, hoàn tiền, đổi hàng (như đã duyệt). **Mốc 3a: đã có hoàn tiền**                          | 3   |
+| P6-15         | Cơ sở dữ liệu đơn hàng sản phẩm, hàng chờ, quyền mới                                               | 3   |
+| P6-16         | Đặt trước tại quầy và phiếu hẹn nhận hàng                                                          | 3   |
+| P6-17         | Danh sách "cần đặt", giữ hàng khi về, báo khách, giao khách, hủy và hoàn tiền. **Mốc 3b**          | 3   |
+| P6-18         | Quà tặng sản phẩm (trước là P6-15)                                                                 | 3   |
+| P6-19         | Đặt hàng online: giỏ hàng, địa chỉ, phí giao hàng, khách thanh toán PayOS, hết hạn chưa thanh toán | 4   |
+| P6-20         | Xử lý đơn online: đóng gói, gửi, mã vận đơn, đã nhận, giao thất bại                                | 4   |
+| P6-21         | Trả hàng, hoàn tiền cho đơn online; thông báo khách                                                | 4   |
+| P6-22         | Kiểm tra tải và bảo mật cho thanh toán online. **Mốc Đợt 4**                                       | 4   |
+| P6-23         | Chương trình khuyến mãi đầy đủ (trước là P6-16, vẫn "làm cuối")                                    | 4   |
+| P6-24         | Kiểm tra cuối (trước là P6-17)                                                                     | 4   |
+
+### Các mục kỹ thuật mới (T)
+
+| Mục | Chủ đề                                                                                     | Tôi khuyên |
+| --- | ------------------------------------------------------------------------------------------ | ---------- |
+| T28 | Đơn hàng sản phẩm tách khỏi hóa đơn (tiền ≠ hàng)                                          | Đồng ý     |
+| T29 | Dòng "đặt trước" là chế độ riêng, chỉ cho sản phẩm được bật                                | Đồng ý     |
+| T30 | Hàng về thì giữ cho đơn chờ lâu nhất trước                                                 | Đồng ý     |
+| T31 | Hàng đặt trước/online trừ kho khi giao hoặc gửi                                            | Đồng ý     |
+| T32 | Các trạng thái đơn (xem trên)                                                              | Đồng ý     |
+| T33 | Thêm sớm: cân nặng, "cho đặt trước" (P6-3b); kênh bán và phí giao hàng trên hóa đơn (P6-8) | Đồng ý     |
+
+Giải thích ngắn: T28 như một cuốn sổ giao hàng riêng bên cạnh sổ thu tiền, để hủy hay trễ hàng không làm rối sổ tiền. T29 để hệ thống không tự biến hàng thiếu thành "đặt trước" mà thu ngân phải chọn. T30 công bằng cho người trả tiền trước. T31 để kho không bị trừ khi hàng còn nằm ở nhà cung cấp. T33 tránh sửa hóa đơn đang chạy thật hai lần. Nếu Chủ chọn khác từng mục: làm sau vẫn được nhưng phải sửa lại phần đã làm.
+
+### Bảng trả lời nhanh các câu hỏi mới
+
+| Mục   | Chủ đề                                                     | Tôi khuyên                                                              | Chặn bước nào |
+| ----- | ---------------------------------------------------------- | ----------------------------------------------------------------------- | ------------- |
+| OQ-29 | Hàng về rồi: nhận tại cửa hàng hay giao                    | Quầy: nhận tại cửa hàng. Online: giao                                   | P6-16         |
+| OQ-30 | Có giữ hàng sẵn hay đặt theo từng đơn                      | Mỗi sản phẩm tự chọn; mặc định "đặt theo đơn"                           | P6-3b         |
+| OQ-31 | Cách đặt nhà cung cấp, ngày dự kiến                        | Danh sách "cần đặt"; ngày dự kiến là khoảng 3-5 ngày                    | P6-17         |
+| OQ-32 | Khách hủy, nhà cung cấp không giao được, trễ hẹn           | Hoàn đủ tiền; xem chi tiết                                              | P6-17         |
+| OQ-33 | Điểm Beauty tính lúc nào                                   | Lúc thanh toán, hoàn tiền thì trừ lại                                   | P6-16         |
+| OQ-34 | Báo khách hàng đã về, số điện thoại, giữ bao lâu           | Thông báo trong app + email; bắt buộc số điện thoại; giữ 7 ngày rồi gọi | P6-16         |
+| OQ-35 | Mẫu phiếu hẹn nhận hàng                                    | Trang in khổ A5 hoặc A4 + bản trong tài khoản                           | P6-16         |
+| OQ-36 | Ai được mua online; giao từ chi nhánh nào                  | Chỉ thành viên; một chi nhánh giao hàng cố định                         | P6-19         |
+| OQ-37 | Online: hàng chưa có kho có cho đặt trước không            | Cho (với sản phẩm đã bật), ghi rõ ngày                                  | P6-19         |
+| OQ-38 | Phí giao hàng, hãng vận chuyển, ngưỡng miễn phí            | Chủ quyết (cần các số)                                                  | P6-19         |
+| OQ-39 | Hết hạn đơn online chưa thanh toán                         | 30 phút                                                                 | P6-19         |
+| OQ-40 | Hạn đổi trả tính từ đâu; giao thất bại                     | Từ ngày giao khách; Chủ quyết giao thất bại                             | P6-21         |
+| OQ-41 | Giảm giá, voucher, điểm có áp dụng cho phí giao hàng không | Không                                                                   | P6-19         |
+
+### OQ-29. Hàng về rồi: khách nhận tại cửa hàng, được giao tận nơi, hay tự chọn? (câu hỏi (a) của Chủ)
+
+- **Ý nghĩa:** khách trả đủ tiền ở quầy trước. Nếu sau đó muốn giao tận nơi thì phí giao hàng phải thu thêm lần nữa, trái với "trả đủ một lần".
+- **Ví dụ:** chị Lan đặt kem ở quầy, 4 ngày sau hàng về. Chị nhận tại 04 Nguyễn Quang Bích. Chị ở Đà Nẵng đặt trên web thì hàng được gửi tới nhà.
+- **Tôi khuyên:** đơn tại quầy chỉ **nhận tại cửa hàng** (phiên bản đầu); đơn online **giao tận nơi**. Nếu muốn, đơn online có thêm lựa chọn "nhận tại cửa hàng" (không phí giao hàng).
+- **Nếu khác:** cho khách chọn giao tận nơi ở quầy thì phải biết phí ngay lúc thanh toán hoặc thu thêm sau, và phải nhập địa chỉ ở quầy. Làm được, nhưng thêm việc và thêm lỗi dễ xảy ra.
+
+### OQ-30. Cửa hàng giữ sẵn một số mặt hàng, hay đặt theo từng đơn? (câu hỏi (b) của Chủ)
+
+- **Ý nghĩa:** hệ thống hỗ trợ cả hai; câu trả lời quyết định cách nhập dữ liệu ban đầu và trang web hiện gì.
+- **Ví dụ:** kem bán chạy giữ sẵn 5 hộp (bán ngay, trừ kho). Son hiếm không giữ, ai mua thì mới đặt.
+- **Tôi khuyên:** **mỗi sản phẩm tự chọn** (ô "cho đặt trước" ở P6-3b). Mặc định bật "đặt theo đơn" cho mọi sản phẩm chưa có hàng nhập.
+- **Nếu khác:** "đặt hết theo đơn" thì trang web hầu như toàn "đặt trước". "Giữ sẵn hết" thì không dùng được tính năng này, trái với ý Chủ.
+
+### OQ-31. Cách đặt nhà cung cấp và ngày dự kiến
+
+- **Ý nghĩa:** Chủ nói hàng về sau 3-5 ngày. Cần quy tắc ngày dự kiến trên phiếu và cách nhân viên ghi "đã đặt".
+- **Ví dụ:** thanh toán thứ Hai: phiếu ghi "dự kiến từ thứ Năm đến thứ Bảy". Cuối ngày, nhân viên mở danh sách "cần đặt", thấy 3 hộp kem cùng nhà cung cấp, bấm "đã đặt".
+- **Tôi khuyên:** ngày dự kiến = ngày thanh toán + 3 đến 5 **ngày thường** (không loại trừ chủ nhật hay lễ), ghi "dự kiến, không phải cam kết"; số ngày là một ô cài đặt, mỗi sản phẩm có thể riêng. Chỉ có danh sách "cần đặt" và nút "đã đặt", **chưa làm phiếu đặt hàng gửi nhà cung cấp**.
+- **Nếu khác:** tính ngày làm việc thì phiếu chính xác hơn nhưng cần danh sách ngày lễ. Làm phiếu đặt hàng riêng thì thêm một phần việc lớn.
+
+### OQ-32. Khách hủy, nhà cung cấp không giao được, hàng về trễ
+
+- **Ý nghĩa:** cần quy tắc kinh doanh, tôi không tự đặt. Hoàn tiền vẫn theo quy tắc đã duyệt: chỉ tiền mặt hoặc chuyển khoản tay, chỉ người có quyền hoàn tiền, nhập lại mật khẩu.
+- **Ví dụ:** nhà cung cấp hết hàng: cửa hàng hoàn đủ tiền. Khách đổi ý sau khi đã đặt nhà cung cấp: có hoàn không? Hàng trễ hơn dự kiến 5 ngày: khách có được hủy không?
+- **Tôi khuyên:** nhà cung cấp không giao được: **hoàn đủ tiền**. Khách hủy **trước** khi đặt nhà cung cấp: hoàn đủ. Sau khi đã đặt: Chủ hoặc quản lý quyết từng trường hợp (giống trường hợp kích ứng da). Trễ quá dự kiến một số ngày (Chủ cho con số): khách được hủy, hoàn đủ.
+- **Nếu khác:** cho hủy tự do sau khi đã đặt thì cửa hàng có thể kẹt hàng đã nhập. Không cho hủy thì dễ tranh cãi khi hàng về trễ.
+
+### OQ-33. Điểm Beauty tính lúc nào?
+
+- **Ý nghĩa:** hiện điểm cộng ngay khi hóa đơn PAID. Với đặt trước, tiền đã trả nhưng hàng chưa giao.
+- **Ví dụ:** khách trả 1.000.000đ. Cộng 1.000 điểm ngay, hoặc đợi tới khi nhận hàng 4 ngày sau?
+- **Tôi khuyên:** **cộng lúc thanh toán** (đúng quy tắc đã duyệt cho Spa). Nếu đơn bị hủy và hoàn tiền thì trừ lại điểm đúng quy tắc hoàn tiền đã duyệt (hoàn đủ thì ví về như cũ).
+- **Nếu khác:** cộng lúc giao hàng thì ít phải trừ lại, nhưng khách đợi lâu mới thấy điểm, và đơn online gửi đi mất thêm ngày.
+
+### OQ-34. Báo khách khi hàng về, số điện thoại, giữ hàng bao lâu
+
+- **Ý nghĩa:** khách có tài khoản nhận thông báo trong app và email. Khách vãng lai không có tài khoản thì cần số điện thoại để nhân viên gọi (hệ thống chưa gửi tin nhắn Zalo hay SMS).
+- **Ví dụ:** hàng về chiều thứ Năm: khách thành viên nhận chuông thông báo; khách vãng lai hiện trong danh sách "đã về, chưa gọi" của nhân viên.
+- **Tôi khuyên:** thông báo trong app + email; **đơn đặt trước bắt buộc có số điện thoại** (không tự bịa, khách tự cung cấp); hàng về giữ cho khách **7 ngày**, quá hạn thì nhắc nhân viên gọi lại, **không tự hủy** đơn.
+- **Nếu khác:** không bắt buộc số điện thoại thì khách vãng lai có thể không bao giờ biết hàng đã về. Tự hủy sau N ngày thì phải có quy tắc hoàn tiền rõ trước.
+
+### OQ-35. Mẫu phiếu hẹn nhận hàng
+
+- **Ý nghĩa:** phiếu giống hóa đơn: tên cửa hàng và chi nhánh, mã đơn, ngày thanh toán, từng sản phẩm, số lượng, giá, tổng, "Đã thanh toán", ngày dự kiến có hàng, dòng "dự kiến, không phải cam kết".
+- **Ví dụ:** in ngay ở quầy, đồng thời hiện trong "Hóa đơn của tôi" của khách thành viên.
+- **Tôi khuyên:** một trang in được bằng trình duyệt; cần Chủ cho biết **máy in dùng khổ nào** (giấy nhiệt 80 mm hay A5/A4) và có in số điện thoại, địa chỉ cửa hàng không.
+- **Nếu khác:** nếu chỉ cần bản điện tử (gửi link) thì bỏ phần in, nhanh hơn.
+
+### OQ-36. Ai được mua online, và giao từ chi nhánh nào?
+
+- **Ý nghĩa:** kho tính riêng từng chi nhánh và chưa có chuyển kho (Q13), nên mỗi đơn online phải lấy hàng từ một chi nhánh cố định.
+- **Ví dụ:** mọi đơn online lấy từ 04 Nguyễn Quang Bích.
+- **Tôi khuyên:** **chỉ thành viên đã đăng nhập** mới đặt (có lịch sử đơn, điểm, thông báo, tra cứu phiếu); **một chi nhánh giao hàng** do Chủ chọn trong cài đặt.
+- **Nếu khác:** cho khách vãng lai đặt thì phải có cách tra cứu đơn bằng mã và số điện thoại, và không tích điểm.
+
+### OQ-37. Online: sản phẩm chưa có kho có cho đặt trước không?
+
+- **Ý nghĩa:** Chủ nói hàng thường không có sẵn, nên nếu online chỉ bán hàng có sẵn thì gần như trống.
+- **Ví dụ:** trang ghi "Đặt trước, dự kiến hàng về trong 3-5 ngày, sau đó giao tận nơi".
+- **Tôi khuyên:** **cho đặt trước online** với sản phẩm đã bật "cho đặt trước", ghi rõ thời gian chờ hàng và thời gian giao.
+- **Nếu khác:** chỉ bán hàng có sẵn: đơn giản hơn, nhưng danh mục online sẽ rất nhỏ.
+
+### OQ-38. Phí giao hàng, hãng vận chuyển, ngưỡng miễn phí (cần các con số của Chủ)
+
+- **Ý nghĩa:** PRD ghi mục này là "chưa quyết", tôi không tự đặt. Chủ đã quyết: toàn quốc, trả đủ trước, không COD.
+- **Câu hỏi cần Chủ trả lời:** (1) phí cố định, theo cân nặng, hay theo vùng; (2) hãng nào (ví dụ GHN, GHTK, Viettel Post) và ai đặt đơn với hãng; (3) có miễn phí giao hàng từ một mức tiền không, mức bao nhiêu; (4) có cần kích thước gói hàng ngoài cân nặng không.
+- **Tôi khuyên:** phiên bản đầu **nhân viên tự tạo đơn trên trang của hãng và nhập mã vận đơn** vào hệ thống (chưa nối API hãng); phí theo bảng cố định theo cân nặng và vùng do Chủ nhập; ngưỡng miễn phí là một con số trong cài đặt. Tôi sẽ không làm gì cho tới khi có số.
+- **Nếu khác:** nối API hãng thì tự tính phí và in vận đơn nhưng thêm một đợt công việc và phụ thuộc hãng.
+
+### OQ-39. Hết hạn đơn online chưa thanh toán
+
+- **Ý nghĩa:** đơn online chốt xong thì giữ hàng có sẵn trong lúc khách trả tiền. Nếu không trả, phải nhả hàng ra.
+- **Ví dụ:** khách bấm đặt, nhưng bỏ ngang lúc quét mã PayOS.
+- **Tôi khuyên:** **30 phút**, sau đó tự hủy đơn chưa trả và nhả hàng; mỗi tài khoản chỉ được một số ít đơn chưa trả cùng lúc để không ai giữ hàng chơi. Hàng đặt trước không giữ gì nên không bị ảnh hưởng.
+- **Nếu khác:** dài hơn (vài giờ) thì khách thong thả hơn nhưng hàng có sẵn bị giữ lâu.
+
+### OQ-40. Hạn đổi trả tính từ đâu; giao thất bại thì sao?
+
+- **Ý nghĩa:** các hạn đã duyệt (7 ngày đổi ý, 48 giờ hàng sai hoặc hỏng) cần ngày bắt đầu. "Giao thất bại" (khách không nhận, sai địa chỉ) chưa có quy tắc trong PRD.
+- **Ví dụ:** hàng gửi ngày 10, khách nhận ngày 13: 7 ngày tính từ ngày 13.
+- **Tôi khuyên:** tính từ **ngày giao khách** (tại quầy: lúc nhân viên bấm "đã giao"; online: ngày nhận ghi nhận trên đơn). Cách xử lý giao thất bại (hoàn tiền trừ phí giao? ai chịu phí?) **Chủ quyết**.
+- **Nếu khác:** tính từ ngày thanh toán thì khách đặt trước gần như mất quyền đổi trả khi hàng mới về.
+
+### OQ-41. Giảm giá, voucher và điểm có áp dụng cho phí giao hàng không?
+
+- **Ý nghĩa:** phí giao hàng không phải sản phẩm.
+- **Ví dụ:** đơn 1.000.000đ + phí 30.000đ, voucher 10%: giảm 100.000đ hay 103.000đ? Điểm tính trên 1.000.000đ hay 1.030.000đ?
+- **Tôi khuyên:** **không áp dụng** giảm giá và không tính điểm cho phí giao hàng; chỉ tính trên sản phẩm.
+- **Nếu khác:** tính cả phí thì khách có thể dùng voucher để giảm phí giao hàng, và hoàn tiền phải tách phí ra.
