@@ -217,7 +217,7 @@ The Owner's message, as given:
   - Only published products; no cost data in any public response; public caching like the other public routes; good SEO titles and descriptions. Must not touch POS, invoices or payments.
   - Full tests, the UX gate of `CLAUDE.md` with screenshots compared against the Lovable reference, commit locally, no push, no deploy; report in Vietnamese and stop.
 
-What this fixes: OQ-P6-43 to OQ-P6-48 are approved as written in `docs/PHASE6_OWNER_DECISIONS_VI.md` (the P6-5 section) and 11.3. Bulk images (31.3) and the price update (31.4) are not part of Phase 6 any more: they belong to Phase 9. The P6-6 request confirms OQ-P6-27 and OQ-P6-28 (2.5) and the reading of 16.1-16.4; where P6-6 had to decide something the contract left open, the report `docs/PHASE6_STEP6_PUBLIC_CATALOG.md` lists it as pending the Owner.
+What this fixes: OQ-P6-43 to OQ-P6-48 are approved as written in `docs/PHASE6_OWNER_DECISIONS_VI.md` (the P6-5 section) and 11.3. Bulk images (31.3) and the price update (31.4) are not part of Phase 6 any more: they belong to Phase 9. The P6-6 request orders the page of section 16 built on top of OQ-P6-27 and OQ-P6-28 (2.5, already approved). It does not approve what 16 itself marks as pending: the product page of 16.4 (its look and the wording of the store block) stays **pending the Owner's look and yes/no**, and so does everything P6-6 had to decide where the contract was silent; the report `docs/PHASE6_STEP6_PUBLIC_CATALOG.md` and OQ-P6-49 to OQ-P6-53 list them.
 
 ## 3. Catalog (PRD §23-24; T9-T12)
 

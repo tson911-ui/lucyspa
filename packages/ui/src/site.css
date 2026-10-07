@@ -342,19 +342,20 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   }
 }
 
-/* A menu label never breaks over two lines. Five items (a member sees Mỹ phẩm, Lịch hẹn and Hóa đơn next to the other two) are
-   tight between 1024 and 1279 px: the links and the gap to the logo get a little less room there, so the bar keeps one line. */
+/* A menu label never breaks over two lines (the bar was approved with short labels; this only forbids a wrap). A member sees five
+   items (Mỹ phẩm, Lịch hẹn and Hóa đơn next to Trang chủ and Dịch vụ), which is tight between 1024 and 1279 px: only a menu with a
+   fifth link gets a little less room around its links and to the logo there. A visitor's menu of three is untouched. */
 .ls-site-nav a,
 .ls-site-cta a {
   white-space: nowrap;
 }
 
 @media (min-width: 1024px) and (max-width: 1279px) {
-  .ls-site-nav {
+  .ls-site-nav:has(> a:nth-of-type(5)) {
     margin-inline-start: var(--ls-space-4);
   }
 
-  .ls-site-nav a {
+  .ls-site-nav:has(> a:nth-of-type(5)) a {
     padding-inline: var(--ls-space-3);
   }
 }
