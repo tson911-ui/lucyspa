@@ -187,6 +187,12 @@ Lưu ý: OQ-27 và OQ-28 là hai câu hỏi mới, phát sinh từ trang mẫu L
 
 **Trạng thái (cập nhật sau khi Chủ trả lời, 2026-10-07):** Chủ đã trả lời bằng lời của Chủ (xem khung "Chủ đã trả lời" ngay dưới). Phần đề xuất bên dưới giữ nguyên như đã viết; **khi khác với câu trả lời của Chủ thì câu trả lời của Chủ thắng.** Bản đầy đủ bằng tiếng Anh: mục 2.7, 2.8 và 18 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`.
 
+### Chủ duyệt P6-3b, P6-4 và OQ-42 (2026-10-07; đã khóa)
+
+- **Duyệt P6-3b và P6-4.** (1) Migration …08 nới 3 ràng buộc bảng thông báo: **duyệt** (chỉ nới). **Chạy Đợt 1 vào lúc vắng khách (buổi tối)**: đã ghi vào `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md`. (2) Các cách đọc của tôi (cho đặt trước mặc định bật, hết hạn tính theo ngày chi nhánh, kiểm kê lấy lô gần hết hạn trước, quét 08:00, luật 1-90 ngày): **duyệt**.
+- **OQ-42 duyệt:** khách vãng lai xem "phiếu hẹn nhận hàng" bằng đường dẫn bí mật + mã QR, nhân viên gửi qua Zalo.
+- Chủ yêu cầu hoàn thành cổng giao diện P6-3b/P6-4 rồi làm P6-5 (nhập Excel/CSV): sản phẩm, biến thể có các cột đặt trước, tồn đầu kỳ; xem trước, lỗi từng dòng bằng tiếng Việt, kiểm tra trùng, chỉ lưu khi Chủ xác nhận, có tệp mẫu tải về.
+
 ### Chủ đã trả lời (2026-10-07, ghi lại đúng ý của Chủ; đã khóa, không hỏi lại)
 
 - **Đã duyệt:** T28, T29, T30, T31, T32. **T7 xác nhận:** không bán vượt kho với hàng có sẵn; đặt trước là chế độ riêng, rõ ràng, không phải bán vượt kho.
@@ -198,7 +204,7 @@ Lưu ý: OQ-27 và OQ-28 là hai câu hỏi mới, phát sinh từ trang mẫu L
 - **OQ-40:** hạn đổi trả tính từ ngày giao khách. Giao thất bại = hoàn tiền hàng trừ phí giao hai chiều, khách chịu.
 - **Cách đọc của tôi, Chủ xác nhận giúp:** (1) OQ-30 nói "mặc định bật đặt theo đơn cho sản phẩm chưa có hàng nhập": tôi đặt ô "cho đặt trước" **mặc định bật** ở mỗi biến thể mới; Chủ bỏ chọn với mặt hàng cửa hàng giữ sẵn. (2) OQ-31: số ngày chờ mặc định **3 đến 5** nằm trong cài đặt sản phẩm (từng biến thể có thể ghi đè); "ngày thường" nhưng không loại chủ nhật hay lễ, nên tôi coi là ngày theo lịch.
 
-### OQ-42 (mới, chờ Chủ trả lời). Khách vãng lai không có tài khoản xem phiếu hẹn nhận hàng thế nào?
+### OQ-42 (**Chủ đã duyệt 2026-10-07**: đường dẫn bí mật + mã QR, nhân viên gửi qua Zalo). Khách vãng lai không có tài khoản xem phiếu hẹn nhận hàng thế nào?
 
 - **Ý nghĩa:** khách có tài khoản thấy phiếu trong hóa đơn của họ. Khách vãng lai (chỉ có số điện thoại) không có chỗ đăng nhập.
 - **Ví dụ:** chị Lan mua kem ở quầy, không đăng ký. Nhân viên gửi cho chị một tin Zalo có đường dẫn; chị mở ra thấy phiếu (đã thanh toán, ngày dự kiến, trạng thái "hàng đã về").

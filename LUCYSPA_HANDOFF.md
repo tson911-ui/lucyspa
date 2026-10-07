@@ -155,6 +155,11 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 - Migrations `20261106000007_phase6_inventory_alerts` (sequences, `lucy_available_stock`, low-stock alert + expiry scan tables, movement trigger now raises the low-stock alert) and `20261106000008_phase6_notification_kinds` (widens 3 CHECKs of `notifications`; the only existing table Wave 1 touches). Now 72 migrations; Wave 1 guard counts nine. API `/inventory/*`, `/suppliers`, `/stock-receipts`, `/stock-adjustments`, `/stock-counts`; worker loop `inventory-jobs.ts` (alerts + 08:00 branch-local expiry scan); confirming a receipt writes outbox `STOCK_RECEIPT_CONFIRMED` (no consumer yet). Screens: Danh mục > Kho hàng (stock, receipts, counts, suppliers). Unit cost only with `VIEW_PRODUCT_COST`.
 - My readings pending his yes/no are listed in design 4.8 and `docs/PHASE6_STEP4_INVENTORY.md`. Next: P6-5 (Excel/CSV import) after the Owner's review of P6-3b and P6-4; his answer to OQ-P6-42 is needed only before P6-16.
 
+## Owner approval of P6-3b and P6-4 (2026-10-07) and the P6-5 request
+
+- **Approved:** P6-3b and P6-4; migration …08 (notifications CHECKs loosened only; **Wave 1 is deployed in the evening, a quiet time**: `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md`); my readings (pre-order on by default, branch-local expiry, nearest-expiry-first count correction, 08:00 scan, 1-90 days); **OQ-P6-42** (secret link + QR for walk-in customers, built in P6-16). Recorded in design 2.9 and `PHASE6_OWNER_DECISIONS_VI.md`.
+- Asked before P6-5: finish the UI gate of P6-3b/P6-4, fix or backlog the bell badge, recreate the official DOM audit. Then P6-5 (Excel/CSV import: products and variants with the pre-order columns, opening stock; preview, row errors in Vietnamese, duplicate checks, nothing saved until he confirms, template download).
+
 ## Production
 
 Status as of 2026-10-07, about 02:52 (+07) (Owner-reported; supersedes the blocks below):
