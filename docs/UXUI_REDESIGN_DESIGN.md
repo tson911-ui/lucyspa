@@ -1171,7 +1171,7 @@ Kit dependencies: Radix primitives are allowed as headless behavior inside `pack
 DOM audit evaluated in a rendered page; every finding carries its rule `FR*`), `scripts/uxui-audit-summary.mjs` (table, `--write`,
 `--compare`, `--page`), `apps/web/src/test/ui-ratchet.test.ts` + `ui-ratchet-baseline.json` (static counters), `docs/uxui-audit-baseline.json`
 (Step 7.5a DOM baseline, 26 pages). **Machine-local, not committed** (credentials and seed data): `.local/uxui-audit/` holds the real-app
-capture (`capture.mjs`), API client, seeds and `creds.json`.
+seeds and `creds.json`. **The capture script itself was lost with the machine-local folder and recreated on 2026-10-08 as the committed `scripts/uxui-audit-capture.mjs`** (sign-in through the API, `scripts/uxui-audit-pages.json` lists the pages and their paths, `{employee}`-style placeholders open the first record of a list; it renders light at 1440/768/360 through `scripts/uxui-screens.mjs`, evaluates `scripts/uxui-page-audit.js` and writes `.local/uxui-audit/results/<page>.json`). Only `.local/uxui-audit/creds.json` (`{ "email", "password" }` of the audit Owner, or `AUDIT_EMAIL`/`AUDIT_PASSWORD`) stays machine-local.
 
 **Environment.** Scratch database `lucy_spa_uxaudit_20261001` (never the dev DB): `node .local/uxui-audit/create-db.mjs` (keeps it if
 present), `node .local/uxui-audit/migrate.mjs` (additive migrations + permission sync, safe to repeat), then the built API on 3101 and
@@ -1179,7 +1179,7 @@ the built web on 3100 (`node .local/uxui-audit/start-api.mjs`, `start-web.mjs`; 
 changed code). Seed scripts recreate the data if the database is rebuilt. Stop both servers afterwards.
 
 **Per UI Step.** (1) Render the changed screens as in 21.2 and review them. (2) Run the audit on the changed pages against the real
-app: `node .local/uxui-audit/capture.mjs <page...>` (set `AUDIT_ONLY=1` to skip screenshots) and compare with the baseline:
+app: `node scripts/uxui-audit-capture.mjs <page...>` (`--baseline` for the 26 baseline pages, `--all` adds the Phase 6 pages; `--out <dir>` and `summary --dir <dir>` keep a set of new pages apart from the baseline set) and compare with the baseline:
 `node scripts/uxui-audit-summary.mjs --compare docs/uxui-audit-baseline.json`. A Step must not raise any count on any page; on the
 pages it migrates the types of the rules it targets must be 0 or explained line by line in the report. (3) Lower the ratchet counters the
 Step retired (`UPDATE_RATCHET=1 pnpm --filter @lucy-spa/web exec node --import tsx --test src/test/ui-ratchet.test.ts`); the test is

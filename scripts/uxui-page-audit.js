@@ -384,6 +384,10 @@
       .flatMap((n) => [...n.childNodes])
       .find((n) => n.nodeType === 3 && n.textContent.trim());
     if (!textNode) continue;
+    // A count badge laid over the icon corner (the bell's unread number, `.ls-bell-count`) is positioned on purpose: it is not
+    // text that should share the icon's line.
+    if (textNode.parentElement && getComputedStyle(textNode.parentElement).position === 'absolute')
+      continue;
     // Visually hidden text (the phone Filter button keeps its word for screen readers only) is not on the line.
     const holder = textNode.parentElement?.getBoundingClientRect();
     if (holder && holder.width <= 2 && holder.height <= 2) continue;

@@ -312,7 +312,7 @@ export function CountView({
   }
 
   const columns: DataTableColumn<StockCountLineResponse>[] = [
-    { key: 'sku', header: c.columns.sku, cell: (line) => line.sku },
+    { key: 'sku', header: c.columns.sku, hideBelow: 'lg', cell: (line) => line.sku },
     {
       key: 'product',
       header: c.columns.product,

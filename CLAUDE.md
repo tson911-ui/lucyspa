@@ -58,7 +58,7 @@ Owner reviews every Step. Work only on the Step you are given.
   was reviewed that was not opened. A screenshot of a browser error page or of a missing server is a failed gate: the
   script exits non-zero (3) for it and writes no image. Do not work around that exit code.
 - Also run the DOM audit on the changed pages against the real app (section 21.5): scratch DB
-  `lucy_spa_uxaudit_20261001` (never the dev DB), `node .local/uxui-audit/capture.mjs <page...>`, then
+  `lucy_spa_uxaudit_20261001` (never the dev DB), `node scripts/uxui-audit-capture.mjs <page...>` (committed; `--baseline` = the 26 baseline pages, `--all`), then
   `node scripts/uxui-audit-summary.mjs --compare docs/uxui-audit-baseline.json`. No count may rise; lower the ratchet
   (`UPDATE_RATCHET=1`) for what the Step retired. Compare migrated pages with `docs/references/` (8 questions, 21.5).
 - **Phase 6 standing rule (Owner, 2026-10-07; applies to every Phase 6 UI Step, P6-3 included):** the UI must be polished,
