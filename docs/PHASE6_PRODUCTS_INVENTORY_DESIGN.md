@@ -229,6 +229,13 @@ The Owner's message, as given:
 - Then P6-7 (load readiness, per the approved OQ-26: multi-process for **web only**; API and worker stay single, the worker must stay exactly one). Server: 6 cores, 7.8 GB RAM, no swap. Shared rate limiting for public read-only endpoints (Redis), Postgres `max_connections` against Prisma pools, cache behaviour with several web processes, measure before and after. The pm2 config goes in the repo; the server is not touched.
 - Then the Wave 1 milestone check (full tests including race tests, UI gate), the rehearsal and the Wave 1 deploy guide. Report in Vietnamese. Commit locally, no push, no deploy, stop.
 
+### 2.12 Owner approval of Wave 1 and the pre-deploy request (the Owner's own words, 2026-10-07; locked, do not reopen)
+
+The Owner's message, as given:
+
+- "Wave 1 approved: OQ-54…57 as you proposed. Record in the design doc, owner-decisions doc and handoff." This approves the public rate limits (300 and 1,200 a minute per address, 6,000 and 30,000 in total), the 5-second API cache for the cosmetics reads, the web at 3 processes with a 700 MB cap (API and worker stay exactly one) and the nginx `X-Forwarded-For` requirement. It is the go for the Wave 1 pre-deploy work below; **the deploy itself still happens only when the Owner runs the guide.**
+- Before deploy: (1) a neutral placeholder, no broken-image icon, when an image fails to load (`MediaThumb` and every product image on the public site), with the related tests and a quick UI check; (2) push `main` and wait for CI, and if CI fails fix and report without going on; (3) with CI green, put the real commit into `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md`, commit and push that doc change; (4) paste the complete Wave 1 deploy guide in the chat (iNET web terminal blocks, backup with `pg_dump`, checkout, install, generate, status, migrate, permission sync after the restart, pm2 with the new ecosystem config, nginx check, health checks, rollback). Nothing is run on the server by Claude.
+
 ## 3. Catalog (PRD §23-24; T9-T12)
 
 ### 3.1 Model
@@ -515,7 +522,7 @@ Timing is the Owner's: it runs after the public catalog Step and before the prod
 - Rate limits for public read endpoints shared between processes (Redis is already running). Auth throttling already lives in PostgreSQL and is not moved.
 - Gate: load test of product list and detail pages before and after, recorded in the Step report.
 
-**As built in P6-7 (2026-10-07; report `docs/PHASE6_STEP7_LOAD_READINESS.md`; OQ-P6-26 approved: web only).** `ecosystem.config.cjs` clusters only `lucyspa-web` (3 processes, 700 MB cap); API and worker are single `fork` entries pinned by a test. Public routes `/api/v1/public/*` are rate limited per client address in Redis (300 a minute, pictures 1,200; all outside clients 6,000 and 30,000; Redis down lets requests through; the website's own server-side calls carry no `X-Forwarded-For` and are not counted). A 5-second in-process cache with in-flight sharing sits in front of the three cosmetics reads, so with the web's 60-second memory a price or stock change shows within about 65 seconds. PostgreSQL `max_connections` 100 against pools of 10 (API) and 10 (worker); the web holds none. The numbers, the nginx requirement (`X-Forwarded-For`) and these choices are **pending the Owner's yes/no (OQ-P6-54..OQ-P6-57)**.
+**As built in P6-7 (2026-10-07; report `docs/PHASE6_STEP7_LOAD_READINESS.md`; OQ-P6-26 approved: web only).** `ecosystem.config.cjs` clusters only `lucyspa-web` (3 processes, 700 MB cap); API and worker are single `fork` entries pinned by a test. Public routes `/api/v1/public/*` are rate limited per client address in Redis (300 a minute, pictures 1,200; all outside clients 6,000 and 30,000; Redis down lets requests through; the website's own server-side calls carry no `X-Forwarded-For` and are not counted). A 5-second in-process cache with in-flight sharing sits in front of the three cosmetics reads, so with the web's 60-second memory a price or stock change shows within about 65 seconds. PostgreSQL `max_connections` 100 against pools of 10 (API) and 10 (worker); the web holds none. The numbers, the nginx requirement (`X-Forwarded-For`) and these choices were **approved by the Owner on 2026-10-07 (OQ-P6-54..OQ-P6-57, see 2.12)**.
 
 ## 13. Execution sequence and waves (T25, approved 2026-10-07)
 

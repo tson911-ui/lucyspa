@@ -1629,6 +1629,15 @@
   background: var(--ls-bg-sunken);
 }
 
+/* The stand-in for a picture that failed to load: the frame is unchanged, a muted icon sits in its centre. */
+.ls-img-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--ls-text-muted);
+}
+
 .ls-media-thumb img {
   display: block;
   width: 100%;

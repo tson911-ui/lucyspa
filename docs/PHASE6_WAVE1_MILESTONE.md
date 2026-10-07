@@ -18,7 +18,7 @@ Sau lần chạy trên tôi chỉ sửa một lỗi nhỏ trong `public-rate-lim
 ## UI gate của mốc
 
 - **DOM audit thật** (`uxui-audit-capture.mjs --all`, rồi `--compare docs/uxui-audit-baseline.json`): **không số đếm nào tăng so với mốc chuẩn** (edge-left 4 = 4, unpaged-list 3 = 3, các loại khác giảm); 4 trang chi tiết bị bỏ qua vì cơ sở dữ liệu thử không có dữ liệu để mở. Trang Sản phẩm, Chi tiết sản phẩm, Thêm sản phẩm, Phiếu nhập mới, Kiểm kê, Nhà cung cấp, Nhập dữ liệu: 0 phát hiện. Còn 3 phát hiện đã báo ở P6-4 và P6-5, không mới: Kho hàng và Phiếu nhập `row-height-uneven` ở 360 px (hai chiều cao dòng vì nhãn xuống dòng), chi tiết lần nhập `surface-style-mix` (thông báo cạnh thẻ).
-- **Đã mở xem ảnh:** Sản phẩm, Kho hàng, Nhập dữ liệu (quản trị, đăng nhập Chủ, 1440 sáng); trang công khai: danh sách 1440 sáng, chi tiết 768 sáng (3 vị trí cuộn), thành viên đăng nhập thật ở 1024, trang rỗng 360 và 1440 sáng và tối (xem `PHASE6_STEP6_PUBLIC_CATALOG.md`). Các ảnh 360, 768, tối của ba trang quản trị đã chụp, chưa mở lại ở mốc này (đã mở ở P6-3, P6-4, P6-5). **Thấy khi xem:** dòng "Kem dưỡng ẩm ban đêm" hiện biểu tượng ảnh hỏng ở hai bảng, vì tệp ảnh của dòng đó không còn trong thư mục media của máy thử (đường ảnh trả 404): lỗi dữ liệu thử, không phải của mã; nhưng `MediaThumb` (dùng chung nhiều màn) chưa có hình thay thế khi ảnh tải lỗi. **Chưa sửa** (đụng bộ thành phần chung); Chủ cho biết nếu muốn thêm.
+- **Đã mở xem ảnh:** Sản phẩm, Kho hàng, Nhập dữ liệu (quản trị, đăng nhập Chủ, 1440 sáng); trang công khai: danh sách 1440 sáng, chi tiết 768 sáng (3 vị trí cuộn), thành viên đăng nhập thật ở 1024, trang rỗng 360 và 1440 sáng và tối (xem `PHASE6_STEP6_PUBLIC_CATALOG.md`). Các ảnh 360, 768, tối của ba trang quản trị đã chụp, chưa mở lại ở mốc này (đã mở ở P6-3, P6-4, P6-5). **Thấy khi xem:** dòng "Kem dưỡng ẩm ban đêm" hiện biểu tượng ảnh hỏng ở hai bảng, vì tệp ảnh của dòng đó không còn trong thư mục media của máy thử (đường ảnh trả 404): lỗi dữ liệu thử, không phải của mã; nhưng `MediaThumb` chưa có hình thay thế khi ảnh tải lỗi. **Đã sửa sau mốc** theo yêu cầu của Chủ (xem `PHASE6_STEP7_LOAD_READINESS.md`, mục "Ảnh lỗi").
 
 ## Diễn tập trên bản khôi phục (Chủ yêu cầu)
 
@@ -35,5 +35,5 @@ Chạy **toàn bộ kiểm thử tích hợp API của bản cũ `39ad8d1`** tr�
 
 - Chưa thử trên máy chủ thật: pm2 cluster chỉ thử trên Windows; số đo tải là của máy này (16 nhân), không phải máy chủ 6 nhân; phiên bản Node, pnpm, pm2 và cấu hình nginx trên máy chủ tôi không xem được (hướng dẫn có bước kiểm).
 - Giới hạn tần suất chỉ có tác dụng nếu nginx gửi `X-Forwarded-For` (OQ-57; hướng dẫn có lệnh thử).
-- **Chờ Chủ có/không:** OQ-54..OQ-57 (`PHASE6_OWNER_DECISIONS_VI.md`). Đợt 1 chưa thể deploy trước khi Chủ trả lời và chỉ khi Chủ nói.
+- **Đã duyệt (2026-10-07):** OQ-54..OQ-57 như đề xuất (`PHASE6_OWNER_DECISIONS_VI.md`). Đợt 1 chỉ được deploy khi Chủ tự chạy hướng dẫn.
 - Hướng dẫn deploy từng khối lệnh cho terminal web iNET: `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md` (mã commit sẽ điền sau khi Chủ push và CI xanh).

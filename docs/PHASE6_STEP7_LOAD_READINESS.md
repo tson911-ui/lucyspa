@@ -23,9 +23,13 @@ Theo OQ-26 đã duyệt: **chỉ web chạy nhiều tiến trình; API và worke
 Chưa đổi (đã đo, đủ dùng): `site` 211, `services` 265, `slides` 194, ảnh 143 req/s. Quá 3–4 tiến trình web, số đo cục bộ không tăng thêm (đo 2/3/4/6) nên chọn **3**, chừa nhân cho API, PostgreSQL, Redis, nginx. Mỗi tiến trình web dừng ở 400–470 MB sau 45 giây tải hỗn hợp (không tăng tiếp). `pm2 reload` dưới tải: 13 trên 2.148 yêu cầu bị đứt (0,6%); khởi động lại đơn như hiện nay đứt hẳn vài giây.
 Giới hạn: kiểm thử khi quá hạn mức (đúng 300 lần qua rồi 429; khách khác không ảnh hưởng; yêu cầu của chính website không đếm) làm trên Redis thật; **pm2 chỉ thử trên Windows**, trên Linux phân phối kết nối đều hơn.
 
-## Quyết định kỹ thuật chờ Chủ có/không (OQ-54..OQ-57 trong `PHASE6_OWNER_DECISIONS_VI.md`; chưa tính là đã duyệt)
+## Quyết định kỹ thuật (OQ-54..OQ-57 trong `PHASE6_OWNER_DECISIONS_VI.md`): Chủ đã duyệt như đề xuất ngày 2026-10-07
 
 Mức giới hạn 300/1.200 và 6.000/30.000; bộ nhớ đệm 5 giây; web 3 tiến trình, trần 700 MB; yêu cầu nginx gửi `X-Forwarded-For` (nếu không, giới hạn **không có tác dụng**; hướng dẫn deploy có bước kiểm bằng lệnh).
+
+## Ảnh lỗi (sau khi Chủ duyệt Đợt 1)
+
+Ảnh không tải được (tệp mất, mạng đứt) nay được thay bằng biểu tượng trung tính cùng khung, không còn biểu tượng ảnh hỏng của trình duyệt: `MediaThumb`, `MediaTile`, `MediaRow` (bộ thành phần chung) và mọi ảnh sản phẩm trên trang công khai (thẻ, thư viện ảnh và dải ảnh nhỏ). Dùng `FallbackImage` / `useImageFailure` trong `packages/ui/src/image-fallback.tsx`; bắt cả ảnh đã lỗi trước khi trang kịp "thức dậy" (trang vẽ từ máy chủ). Test jsdom: `image-fallback.test.tsx`.
 
 ## Kiểm thử
 

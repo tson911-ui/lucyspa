@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { cx } from './cx';
 import { Icon } from './icons';
+import { FallbackImage } from './image-fallback';
 
 /**
  * Responsive grid of image tiles for a media library (docs/UXUI_REDESIGN_DESIGN.md 16.3). The grid sits on
@@ -34,8 +35,7 @@ export function MediaThumb({ src }: { src: string | null }) {
   return (
     <span className="ls-thumb">
       {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" loading="lazy" decoding="async" />
+        <FallbackImage src={src} loading="lazy" decoding="async" fallback={<Icon name="image" />} />
       ) : (
         <Icon name="image" />
       )}
@@ -50,6 +50,15 @@ export function MediaPreview({ src, alt }: { src: string; alt: string }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={alt} decoding="async" />
     </div>
+  );
+}
+
+/** What stands in for a picture that cannot be loaded: the same muted placeholder icon a missing picture shows. */
+function ImageGone() {
+  return (
+    <span className="ls-img-fallback" aria-hidden="true">
+      <Icon name="image" />
+    </span>
   );
 }
 
@@ -84,8 +93,7 @@ export function MediaRow({
   return (
     <div className="ls-media-row">
       <span className="ls-media-row-thumb">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt="" loading="lazy" decoding="async" />
+        <FallbackImage src={src} loading="lazy" decoding="async" fallback={<ImageGone />} />
       </span>
       <div className="ls-media-row-text">
         <button
@@ -136,8 +144,7 @@ export function MediaTile({
     <li className="ls-media-item">
       <div className="ls-media-tile">
         <span className="ls-media-thumb">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt="" loading="lazy" decoding="async" />
+          <FallbackImage src={src} loading="lazy" decoding="async" fallback={<ImageGone />} />
         </span>
         {/* The name is the button (as a table's name cell is the link); its pseudo-element stretches the
             click area over the whole tile. */}

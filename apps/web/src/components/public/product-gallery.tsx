@@ -1,7 +1,7 @@
 'use client';
 
 import type { PublicSlideImage } from '@lucy-spa/contracts';
-import { Icon } from '@lucy-spa/ui';
+import { FallbackImage, Icon } from '@lucy-spa/ui';
 import { useRef, useState } from 'react';
 import { ProductImage } from './product-image';
 
@@ -54,6 +54,7 @@ export function ProductGallery({
           images.map((image, index) => (
             <figure key={image.sources[0]?.url ?? index} className="ls-prod-slide">
               <ProductImage
+                placeholderSize={48}
                 image={image}
                 sizes="(min-width: 1024px) 50vw, 100vw"
                 priority={index === 0}
@@ -73,8 +74,14 @@ export function ProductGallery({
               aria-current={index === current ? 'true' : undefined}
               onClick={() => show(index)}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- the media route already serves sized WebP renditions */}
-              <img src={image.sources[0]?.url} alt="" width={image.width} height={image.height} />
+              {image.sources[0] ? (
+                <FallbackImage
+                  src={image.sources[0].url}
+                  width={image.width}
+                  height={image.height}
+                  fallback={<Icon name="droplet" size={20} aria-hidden="true" />}
+                />
+              ) : null}
             </button>
           ))}
         </div>

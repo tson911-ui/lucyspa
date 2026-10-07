@@ -443,7 +443,9 @@ Chi tiết: `docs/PHASE6_STEP6_PUBLIC_CATALOG.md`. OQ-27 và OQ-28 đã duyệt 
 
 - Tiếng Việt "Mỹ phẩm" (Chủ đã chọn). Tiếng Anh tôi dùng "Cosmetics".
 
-## Câu hỏi của P6-7 (chịu tải): **chờ Chủ có/không**, chưa tính là đã duyệt
+## Câu hỏi của P6-7 (chịu tải): **Chủ đã duyệt OQ-54 đến OQ-57 như đề xuất (2026-10-07)**
+
+**Lời Chủ (2026-10-07):** "Wave 1 approved: OQ-54…57 as you proposed. Record in the design doc, owner-decisions doc and handoff." Các mục dưới đây giữ nguyên như đã viết. Việc deploy vẫn chỉ diễn ra khi Chủ tự chạy hướng dẫn.
 
 Chi tiết: `docs/PHASE6_STEP7_LOAD_READINESS.md`. OQ-26 (chỉ web chạy nhiều tiến trình ở Đợt 1) đã duyệt và được làm đúng như vậy. Bốn điểm dưới đây là cách làm cụ thể của tôi.
 

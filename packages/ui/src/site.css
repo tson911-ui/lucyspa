@@ -2835,6 +2835,9 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 }
 
 .ls-prod-hero-picture {
+  display: grid;
+  place-items: center;
+  color: var(--ls-text-subtle);
   order: -1;
   aspect-ratio: 16 / 10;
   background: var(--ls-bg-sunken);
@@ -3348,6 +3351,9 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 }
 
 .ls-prod-thumb {
+  display: grid;
+  place-items: center;
+  color: var(--ls-text-subtle);
   flex: none;
   box-sizing: border-box;
   width: calc(var(--ls-space-9) + var(--ls-space-4));
