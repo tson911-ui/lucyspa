@@ -28,4 +28,5 @@ No screen changed (`apps/web` untouched; web typecheck and 614 tests pass with t
 
 - OQ-66..71 (design 2.16); the redemption-key answer is provisional until the Owner confirms it in own words.
 - Not rehearsed: rollback of these two migrations (Wave 2 rollback evidence is due at P6-11; restoring the one-per-invoice key is only possible while no invoice holds two redemptions). `CREATE UNIQUE INDEX` on `discount_redemptions` briefly blocks writes to that small table at deploy.
+- The outbox event `PRICING_V3_MISMATCH` is read by no consumer on purpose: every worker consumer (booking, leave, financial notifications, loyalty, inventory) selects its events by an explicit list of types, so an unknown type is never claimed, retried or counted as a backlog. Attaching a notification to it is the Owner's choice (OQ-68).
 - Version 3 reads one extra (empty) relation per finalization of a service-only invoice (product detail of the lines); no extra lock.
