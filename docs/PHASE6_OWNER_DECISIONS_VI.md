@@ -2,7 +2,7 @@
 
 **Cập nhật 2026-10-07: Chủ đã duyệt T9 đến T16, T24, T25 và đã trả lời OQ-19 đến OQ-28** (ghi lại ở mục 2.5 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`). Tài liệu này giữ lại như bản giải thích gốc. Còn chờ Chủ duyệt: T17 đến T23, T26, T27 (các đề xuất của Đợt 2 và 3).
 
-**Mới 2026-10-07 (cuối tài liệu): thay đổi phạm vi bán Lucy Beauty** (đặt trước tại quầy, đặt hàng online): đề xuất T28 đến T33 và 13 câu hỏi OQ-29 đến OQ-41, chờ Chủ trả lời. P6-4 chưa bắt đầu.
+**Mới 2026-10-07 (cuối tài liệu): thay đổi phạm vi bán Lucy Beauty** (đặt trước tại quầy, đặt hàng online): T28 đến T33 và OQ-29 đến OQ-41. **Chủ đã trả lời cùng ngày** (khung "Chủ đã trả lời" ở đầu phần đó). Còn chờ Chủ: **OQ-42** (khách vãng lai xem phiếu hẹn) và OQ-38 (để sang Đợt 4).
 
 Tài liệu này giải thích, bằng lời thường, từng mục kỹ thuật và câu hỏi đã được hỏi. Bản đầy đủ bằng tiếng Anh nằm trong `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md` (mục 2.2 và 2.4). Chỉ lời của Chủ mới duyệt.
 
@@ -185,7 +185,26 @@ Lưu ý: OQ-27 và OQ-28 là hai câu hỏi mới, phát sinh từ trang mẫu L
 
 ## Thay đổi phạm vi: bán Lucy Beauty qua đặt trước tại quầy và đặt hàng online (Chủ, 2026-10-07)
 
-**Trạng thái:** chỉ là đề xuất của tôi, **chờ Chủ duyệt bằng lời của Chủ**. Chưa sửa mã, chưa tạo migration. **Chưa bắt đầu P6-4** cho tới khi Chủ duyệt. Bản đầy đủ bằng tiếng Anh: mục 2.7 và mục 18 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`.
+**Trạng thái (cập nhật sau khi Chủ trả lời, 2026-10-07):** Chủ đã trả lời bằng lời của Chủ (xem khung "Chủ đã trả lời" ngay dưới). Phần đề xuất bên dưới giữ nguyên như đã viết; **khi khác với câu trả lời của Chủ thì câu trả lời của Chủ thắng.** Bản đầy đủ bằng tiếng Anh: mục 2.7, 2.8 và 18 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`.
+
+### Chủ đã trả lời (2026-10-07, ghi lại đúng ý của Chủ; đã khóa, không hỏi lại)
+
+- **Đã duyệt:** T28, T29, T30, T31, T32. **T7 xác nhận:** không bán vượt kho với hàng có sẵn; đặt trước là chế độ riêng, rõ ràng, không phải bán vượt kho.
+- **T33 đổi:** **không thêm cân nặng cho biến thể.** Phí giao hàng sẽ làm đơn giản (quyết ở Đợt 4). Giữ ô "cho đặt trước" và số ngày chờ riêng (tùy chọn) cho từng biến thể. Thêm "kênh bán" và "phí giao hàng" vào hóa đơn ở P6-8: **đã duyệt**.
+- **Duyệt đúng như tôi khuyên:** OQ-29, 30, 31, 33, 34, 36, 37, 39, 41.
+- **OQ-32:** nhà cung cấp không giao được = hoàn đủ tiền; khách hủy trước khi đặt nhà cung cấp = hoàn đủ tiền; khách đổi ý sau khi đã đặt nhà cung cấp = Chủ hoặc quản lý quyết từng trường hợp; hàng về trễ hơn ngày dự kiến **hơn 7 ngày** = khách được hủy và hoàn đủ tiền.
+- **OQ-35:** **không in.** "Phiếu hẹn nhận hàng" chỉ có bản điện tử, hiện ngay trong hóa đơn trong app/tài khoản. Với khách vãng lai không có tài khoản: tôi phải đề xuất cách xem phiếu (ví dụ đường dẫn bí mật hoặc mã QR do nhân viên gửi qua Zalo) và hỏi Chủ: xem **OQ-42** ngay dưới.
+- **OQ-38:** để sang Đợt 4, chưa có số.
+- **OQ-40:** hạn đổi trả tính từ ngày giao khách. Giao thất bại = hoàn tiền hàng trừ phí giao hai chiều, khách chịu.
+- **Cách đọc của tôi, Chủ xác nhận giúp:** (1) OQ-30 nói "mặc định bật đặt theo đơn cho sản phẩm chưa có hàng nhập": tôi đặt ô "cho đặt trước" **mặc định bật** ở mỗi biến thể mới; Chủ bỏ chọn với mặt hàng cửa hàng giữ sẵn. (2) OQ-31: số ngày chờ mặc định **3 đến 5** nằm trong cài đặt sản phẩm (từng biến thể có thể ghi đè); "ngày thường" nhưng không loại chủ nhật hay lễ, nên tôi coi là ngày theo lịch.
+
+### OQ-42 (mới, chờ Chủ trả lời). Khách vãng lai không có tài khoản xem phiếu hẹn nhận hàng thế nào?
+
+- **Ý nghĩa:** khách có tài khoản thấy phiếu trong hóa đơn của họ. Khách vãng lai (chỉ có số điện thoại) không có chỗ đăng nhập.
+- **Ví dụ:** chị Lan mua kem ở quầy, không đăng ký. Nhân viên gửi cho chị một tin Zalo có đường dẫn; chị mở ra thấy phiếu (đã thanh toán, ngày dự kiến, trạng thái "hàng đã về").
+- **Tôi đề xuất:** khi tạo đơn, hệ thống tạo **một đường dẫn bí mật** (chuỗi ngẫu nhiên dài, chỉ lưu bản mã hóa, hiện đầy đủ một lần cho nhân viên) và **mã QR** của đường dẫn đó. Nhân viên sao chép hoặc cho khách quét, rồi gửi qua Zalo bằng tay (hệ thống không tự gửi gì). Trang chỉ cho **xem** phiếu: mã đơn, sản phẩm, giá, tổng, "Đã thanh toán", ngày dự kiến ("dự kiến, không phải cam kết"), trạng thái hiện tại; không có số điện thoại, địa chỉ hay đơn khác. Nhân viên có quyền xử lý đơn có thể **hủy đường dẫn và tạo lại**; đường dẫn hết hiệu lực sau một số ngày kể từ khi đơn hoàn tất hoặc bị hủy; có giới hạn số lần mở; đường dẫn sai không lộ thông tin gì.
+- **Nếu khác:** cách khác là tra bằng **mã đơn + 4 số cuối điện thoại** (không cần đường dẫn nhưng yếu hơn, dễ đoán). Hoặc khách vãng lai không có bản điện tử, chỉ nhân viên đọc cho khách khi gọi.
+- **Chủ cần trả lời:** đồng ý đường dẫn bí mật + QR không? Hiệu lực bao nhiêu ngày sau khi đơn xong? Cần xong trước P6-16.
 
 ### Tóm tắt bằng lời thường
 
@@ -207,7 +226,7 @@ Lưu ý: OQ-27 và OQ-28 là hai câu hỏi mới, phát sinh từ trang mẫu L
 
 ### Để khỏi làm lại, cần thêm ngay (đề xuất)
 
-- **P6-3b (nhỏ, chỉ thêm, làm trước P6-4):** ở từng biến thể thêm **cân nặng (gram)**, ô **"cho đặt trước"**, và (tùy chọn) **số ngày chờ riêng**. Không có cân nặng thì đến lúc làm giao hàng phải sửa lại từng sản phẩm.
+- **P6-3b (nhỏ, chỉ thêm, làm trước P6-4; Chủ đã bỏ cân nặng):** ở từng biến thể thêm ô **"cho đặt trước"** (mặc định bật) và (tùy chọn) **số ngày chờ riêng**. **Không có cân nặng.**
 - **P6-4 (kho):** khi xác nhận phiếu nhập kho, hệ thống phát một sự kiện "đã nhập hàng" để sau này tự giữ hàng cho đơn đặt trước. Chưa cần bảng đơn hàng.
 - **P6-5 (nhập Excel):** thêm 3 cột mới vào file mẫu. **P6-6 (trang công khai):** nhãn "Đặt trước" và chỗ trống cho nút mua.
 - **P6-8 (đợt 2, đụng hóa đơn):** thêm vào hóa đơn "kênh bán" (quầy/online) và "phí giao hàng" (mặc định 0). Đây là lần duy nhất trước Đợt 4 sửa bảng hóa đơn đang chạy, nên quyết sớm.
@@ -218,7 +237,7 @@ P6-2 đến P6-14 giữ nguyên số và nội dung đã duyệt (thêm P6-3b). 
 
 | Bước          | Nội dung                                                                                           | Đợt |
 | ------------- | -------------------------------------------------------------------------------------------------- | --- |
-| P6-3b         | Cân nặng, "cho đặt trước", số ngày chờ ở biến thể                                                  | 1   |
+| P6-3b         | "Cho đặt trước" và số ngày chờ ở biến thể (không có cân nặng)                                      | 1   |
 | P6-12 - P6-14 | Trả hàng, hoàn tiền, đổi hàng (như đã duyệt). **Mốc 3a: đã có hoàn tiền**                          | 3   |
 | P6-15         | Cơ sở dữ liệu đơn hàng sản phẩm, hàng chờ, quyền mới                                               | 3   |
 | P6-16         | Đặt trước tại quầy và phiếu hẹn nhận hàng                                                          | 3   |
@@ -233,14 +252,14 @@ P6-2 đến P6-14 giữ nguyên số và nội dung đã duyệt (thêm P6-3b). 
 
 ### Các mục kỹ thuật mới (T)
 
-| Mục | Chủ đề                                                                                     | Tôi khuyên |
-| --- | ------------------------------------------------------------------------------------------ | ---------- |
-| T28 | Đơn hàng sản phẩm tách khỏi hóa đơn (tiền ≠ hàng)                                          | Đồng ý     |
-| T29 | Dòng "đặt trước" là chế độ riêng, chỉ cho sản phẩm được bật                                | Đồng ý     |
-| T30 | Hàng về thì giữ cho đơn chờ lâu nhất trước                                                 | Đồng ý     |
-| T31 | Hàng đặt trước/online trừ kho khi giao hoặc gửi                                            | Đồng ý     |
-| T32 | Các trạng thái đơn (xem trên)                                                              | Đồng ý     |
-| T33 | Thêm sớm: cân nặng, "cho đặt trước" (P6-3b); kênh bán và phí giao hàng trên hóa đơn (P6-8) | Đồng ý     |
+| Mục | Chủ đề                                                                                               | Tôi khuyên |
+| --- | ---------------------------------------------------------------------------------------------------- | ---------- |
+| T28 | Đơn hàng sản phẩm tách khỏi hóa đơn (tiền ≠ hàng)                                                    | Đồng ý     |
+| T29 | Dòng "đặt trước" là chế độ riêng, chỉ cho sản phẩm được bật                                          | Đồng ý     |
+| T30 | Hàng về thì giữ cho đơn chờ lâu nhất trước                                                           | Đồng ý     |
+| T31 | Hàng đặt trước/online trừ kho khi giao hoặc gửi                                                      | Đồng ý     |
+| T32 | Các trạng thái đơn (xem trên)                                                                        | Đồng ý     |
+| T33 | Thêm sớm: "cho đặt trước" (P6-3b, **không cân nặng**); kênh bán và phí giao hàng trên hóa đơn (P6-8) | Đồng ý     |
 
 Giải thích ngắn: T28 như một cuốn sổ giao hàng riêng bên cạnh sổ thu tiền, để hủy hay trễ hàng không làm rối sổ tiền. T29 để hệ thống không tự biến hàng thiếu thành "đặt trước" mà thu ngân phải chọn. T30 công bằng cho người trả tiền trước. T31 để kho không bị trừ khi hàng còn nằm ở nhà cung cấp. T33 tránh sửa hóa đơn đang chạy thật hai lần. Nếu Chủ chọn khác từng mục: làm sau vẫn được nhưng phải sửa lại phần đã làm.
 
