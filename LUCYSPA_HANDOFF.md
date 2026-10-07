@@ -177,6 +177,10 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 - `ecosystem.config.cjs`: web = pm2 cluster (3), API and worker = exactly one (test pins it). Public `/api/v1/public/*` rate limit in Redis (needs nginx `X-Forwarded-For`), 5 s API cache for cosmetics reads, `scripts/load-public.mjs`. Product list API 74 -> 1,200 req/s; pages about 2.5x with 3 web processes (local numbers). Report: `docs/PHASE6_STEP7_LOAD_READINESS.md`.
 - **APPROVED by the Owner on 2026-10-07 (design 2.12): OQ-54..OQ-57 as proposed** (limits, 5 s cache, 3 web processes, nginx header; Wave 1 approved). Image fallback added (`FallbackImage`, MediaThumb/Tile/Row and public product pictures). **Pushed `6546c43` to `main`, CI green (2026-10-07); that is the Wave 1 deploy commit** (guide `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md` names it). Deployed by the Owner on 2026-10-07 (see the Production section). Wave 1 milestone report `docs/PHASE6_WAVE1_MILESTONE.md`; deploy guide (iNET terminal blocks, rehearsal, rollback) is `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md`. Nothing of Phase 6 is on production; the Owner decides when.
 
+## Phase 6 Wave 2 preparation (2026-10-07, docs only, no code)
+
+- `docs/PHASE6_OWNER_DECISIONS_VI.md` has a new "Đợt 2" section (quick-answer table at its top, risks and test plan): **pending the Owner** T17, T18, T19, T20, T26, T27 (block P6-8..P6-10), new OQ-58 (no API clustering in Wave 2), OQ-59 (old engine stays authoritative for service-only invoices while v3 runs in shadow), OQ-60 (supervised test sale, then when real selling starts; no product returns/refunds until Wave 3), plus T21..T23 (block Wave 3 only; T23 clock restated to hand-over date per OQ-40). Nothing is approved until the Owner says so.
+
 ## Production
 
 Status as of 2026-10-07, about 23:10 (+07) (Owner-reported; supersedes the blocks below): **Phase 6 Wave 1 is deployed.**

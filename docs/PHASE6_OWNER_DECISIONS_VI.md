@@ -1,5 +1,7 @@
 # Phase 6: các mục chờ Chủ duyệt (giải thích bằng tiếng Việt)
 
+**Mới (2026-10-07, ngay bên dưới): mục "Đợt 2"** (bán sản phẩm tại quầy; sửa POS, hóa đơn, thanh toán đang chạy thật) với bảng trả lời nhanh, rủi ro và cách kiểm. Chưa có mã nào của Đợt 2.
+
 **Cập nhật 2026-10-07: Chủ đã duyệt T9 đến T16, T24, T25 và đã trả lời OQ-19 đến OQ-28** (ghi lại ở mục 2.5 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`). Tài liệu này giữ lại như bản giải thích gốc. Còn chờ Chủ duyệt: T17 đến T23, T26, T27 (các đề xuất của Đợt 2 và 3).
 
 **Mới 2026-10-07 (cuối tài liệu): thay đổi phạm vi bán Lucy Beauty** (đặt trước tại quầy, đặt hàng online): T28 đến T33 và OQ-29 đến OQ-41. **Chủ đã trả lời cùng ngày** (khung "Chủ đã trả lời" ở đầu phần đó). Còn chờ Chủ: **OQ-42** (khách vãng lai xem phiếu hẹn) và OQ-38 (để sang Đợt 4).
@@ -9,6 +11,132 @@ Tài liệu này giải thích, bằng lời thường, từng mục kỹ thuậ
 Mỗi mục có bốn phần: **Ý nghĩa**, **Ví dụ ở spa**, **Tôi khuyên**, **Nếu Chủ chọn khác**.
 
 Đã duyệt rồi (không cần trả lời lại): T1 đến T8 (T8 = trang sản phẩm công khai chỉ để xem, không giỏ hàng, giao hàng hay COD).
+
+## Đợt 2: bán sản phẩm tại quầy (P6-8 đến P6-11). **Đợt này sửa POS, hóa đơn, thanh toán và điểm đang chạy thật**
+
+Đợt 1 (đã chạy thật từ 2026-10-07) chỉ **thêm** thứ mới, không đụng tiền. **Đợt 2 thì sửa chính các bảng và luồng đang thu tiền thật**: hóa đơn, ưu đãi, điểm thưởng, thanh toán. Vì vậy tôi hỏi kỹ hơn và kiểm kỹ hơn. Đợt 2 gồm: P6-8 (cơ sở dữ liệu), P6-9 (bộ tính giá mới), P6-10 (dòng sản phẩm ở POS, người bán, kho), P6-11 (điểm Beauty, giảm giá thành viên Beauty, phạm vi voucher). **Chưa viết dòng mã nào của Đợt 2**; chỉ khi Chủ trả lời các mục dưới đây tôi mới bắt đầu.
+
+Chủ đã duyệt (không hỏi lại): hai bên Spa/Beauty chọn ưu đãi riêng (Q1), thanh toán chia theo tỷ lệ (Q2), hóa đơn chỉ có sản phẩm được phép (Q6), voucher có phạm vi Dịch vụ/Sản phẩm/Cả hai và quà sinh nhật chỉ cho dịch vụ (Q7), giữ hàng khi chốt hóa đơn và không bán vượt kho (Q8, T7), người bán bắt buộc ở mỗi dòng (Q9), T1 đến T8, T9 đến T16, T24, T25, T28 đến T33, OQ-19 đến OQ-25, OQ-29 đến OQ-42 (trừ OQ-38).
+
+### Bảng trả lời nhanh cho Đợt 2
+
+Chủ chỉ cần ghi "đồng ý" hoặc "khác: …" cho từng dòng. Cột "Mức rủi ro" là rủi ro **nếu làm sai**, không phải mức khó.
+
+| Mục   | Chủ đề                                                                          | Tôi khuyên                                  | Chặn bước | Mức rủi ro |
+| ----- | ------------------------------------------------------------------------------- | ------------------------------------------- | --------- | ---------- |
+| T17   | Bộ tính giá mới: tính riêng từng bên (Spa, Beauty)                              | Đồng ý                                      | P6-9      | **Cao**    |
+| T18   | Một cách chia tiền theo tỷ lệ, làm tròn cộng dồn                                | Đồng ý                                      | P6-9      | Trung bình |
+| T19   | Thêm bảng và sửa luật kiểm tra của hóa đơn, ưu đãi, điểm, thanh toán            | Đồng ý                                      | P6-8      | **Cao**    |
+| T20   | Các loại hóa đơn: dịch vụ + sản phẩm chung một hóa đơn; hóa đơn chỉ sản phẩm    | Đồng ý                                      | P6-8      | **Cao**    |
+| T26   | Khách xem hóa đơn: thấy tên, loại, số lượng, giá; không thấy người bán, giá vốn | Đồng ý                                      | P6-10     | Thấp       |
+| T27   | Hủy hóa đơn sản phẩm đã đảo hết thanh toán thì trả hàng về kho                  | Đồng ý                                      | P6-10     | Trung bình |
+| OQ-58 | Có chạy nhiều tiến trình cho API ngay trong Đợt 2 không                         | **Không**, để sau Đợt 2 chạy ổn rồi mới làm | P6-11     | **Cao**    |
+| OQ-59 | Hóa đơn chỉ có dịch vụ: giữ bộ tính cũ làm chuẩn, bộ mới chạy song song để so   | Đồng ý (dây an toàn)                        | P6-9      | **Cao**    |
+| OQ-60 | Khi nào bắt đầu bán sản phẩm thật: bán thử có giám sát trước, rồi mới cấp quyền | Đồng ý (xem điều kiện trả hàng)             | sau P6-11 | **Cao**    |
+| T21   | Quy tắc trừ điểm khi hoàn tiền (chặn **Đợt 3**, không chặn Đợt 2)               | Đồng ý                                      | P6-13     | Trung bình |
+| T22   | Phiếu hoàn tiền không sửa được (chặn **Đợt 3**)                                 | Đồng ý                                      | P6-13     | Trung bình |
+| T23   | Hạn 48 giờ cho "giao nhầm hàng, hỏng do đóng gói" (chặn **Đợt 3**)              | Đồng ý, tính từ ngày giao khách             | P6-12     | Thấp       |
+
+T21, T22, T23 không chặn Đợt 2 nhưng cùng một nhóm quyết định về hoàn tiền; Chủ trả lời luôn một lần thì Đợt 3 khỏi hỏi lại. Nếu muốn để sau, cứ để trống.
+
+### Vì sao Đợt 2 nguy hiểm hơn, và tôi kiểm thế nào
+
+| Rủi ro                                                                                | Hậu quả thật ở spa                                                                          | Cách tôi kiểm trước khi đưa cho Chủ                                                                                                                                                                                     |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hóa đơn chỉ dịch vụ bị tính lệch, dù 1 đồng                                           | Khách trả sai tiền, điểm sai, doanh thu sai                                                 | **Kiểm vi sai**: chạy mọi tình huống của Phase 4 và 5 (voucher, giảm giá thành viên, quà sinh nhật, combo, thưởng) qua bộ cũ và bộ mới, so từng đồng; kiểm theo tính chất (tổng chia luôn đúng); chạy song song (OQ-59) |
+| Hai thu ngân cùng bán món cuối, hoặc chốt hóa đơn cùng lúc hủy                        | Bán vượt kho, hàng không có để giao                                                         | **Kiểm tranh chấp thật** trên PostgreSQL (hai giao dịch chạy cùng lúc), như 20 file race đã có; các số kho luôn đúng (`tồn = tổng phát sinh`, `giữ ≤ tồn`)                                                              |
+| Thanh toán chia cho hai bên sai; thanh toán PayOS, đảo thanh toán, thanh toán hai lần | Tiền khớp sai, báo cáo sai, khách bị trừ hai lần                                            | Kiểm tranh chấp cho thanh toán và PayOS (bản giả lập), kiểm đối soát: `tổng phần chia của hai bên = số tiền thanh toán`, `tổng dòng = tổng hóa đơn`                                                                     |
+| Điểm cộng hai lần, thiếu, hoặc thu hồi sai                                            | Khách lên hạng sai, giảm giá sai                                                            | Mỗi lần ghi điểm có khóa chống trùng; chạy lại sự kiện không tạo thêm; số dư ví luôn bằng tổng sổ cái                                                                                                                   |
+| Migration hỏng trên dữ liệu thật                                                      | Hóa đơn không mở được, POS ngừng                                                            | **Diễn tập trên bản khôi phục `pg_dump` của dữ liệu thật** (như Đợt 1), đo thời gian từng migration; chạy **toàn bộ kiểm thử của bản cũ trên cơ sở dữ liệu mới** (như đã làm: phát hiện việc phải xóa 11 quyền)         |
+| Quay lại bản cũ sau khi đã có bán thật                                                | Đợt 1 quay lại dễ vì chưa có dữ liệu mới; **Đợt 2 thì dữ liệu bán thật nằm trong bảng mới** | Chưa cấp quyền bán cho ai khi deploy; Chủ bán thử có giám sát (OQ-60); quay lại sau khi đã có bán thật chỉ còn cách khôi phục cơ sở dữ liệu và **mất giao dịch sau lúc sao lưu**: tôi ghi rõ trong hướng dẫn            |
+| Thu ngân thao tác nhầm trên màn POS mới                                               | Chọn nhầm người bán, nhầm số lượng                                                          | Kiểm giao diện ở 360, 768, 1440 px sáng và tối, đủ trạng thái (lỗi, hết hàng, nhiều dòng); phân quyền: không có quyền thì không thấy nút                                                                                |
+
+Điểm cuối cùng phải nói thẳng: **từ Đợt 2 đến Đợt 3 hệ thống chưa có chức năng trả hàng và hoàn tiền sản phẩm** (đó là P6-12 đến P6-14). Hóa đơn bán nhầm trong ngày vẫn sửa được bằng cách đảo thanh toán và hủy hóa đơn như Phase 4; khách mang hàng về rồi trả lại thì **chưa có công cụ**. Đó là lý do của OQ-60.
+
+Việc **của Chủ** (không phải quyết định) trước khi bán thật: nhập sản phẩm, giá, tồn đầu kỳ thật bằng màn Nhập dữ liệu (Đợt 1 đã có), rồi gán 11 quyền mới cho đúng vai trò, trước hết `SELL_PRODUCTS`.
+
+### T17. Bộ tính giá mới, tính riêng từng bên
+
+- **Ý nghĩa:** một hóa đơn có thể có phần Spa (dịch vụ, combo) và phần Beauty (sản phẩm). Chủ đã duyệt (Q1) rằng **mỗi bên tự chọn đúng một ưu đãi tốt nhất** (không cộng dồn), có điểm và hạng riêng. T17 là cách tính cụ thể. Hóa đơn **chỉ có dịch vụ** phải ra **đúng từng đồng** như hôm nay.
+- **Ví dụ ở spa:** khách hạng Vàng ở Spa (giảm 4%) và hạng Bạc ở Beauty (giảm 3%) làm massage 300.000đ và mua một lọ kem 200.000đ. Phần Spa giảm 4% = 12.000đ, còn 288.000đ, được 288 điểm Spa. Phần Beauty giảm 3% = 6.000đ, còn 194.000đ, được 194 điểm Beauty. Tổng phải trả 482.000đ.
+- **Tôi khuyên:** đồng ý.
+- **Nếu Chủ chọn khác:** muốn một ưu đãi cho cả hóa đơn thì trái với Q1 đã duyệt; nếu muốn tính khác ở một chi tiết (ví dụ khi hai ưu đãi bằng nhau) thì Chủ nói rõ, tôi sửa quy tắc trước khi viết mã.
+
+### T18. Một cách chia tiền theo tỷ lệ, làm tròn cộng dồn
+
+- **Ý nghĩa:** khi chia một voucher dùng chung, hoặc một lần thanh toán, cho hai bên, sẽ dư vài đồng lẻ. Chỉ dùng **một cách làm tròn duy nhất** (cộng dồn, làm tròn lên từ nửa đồng) để tổng các phần **luôn đúng bằng số gốc** và kết quả luôn giống nhau với cùng dữ liệu.
+- **Ví dụ ở spa:** voucher 10.000đ dùng chung, phần dịch vụ 100.000đ và phần sản phẩm 200.000đ. Chia ra 3.333đ và 6.667đ (cộng đủ 10.000đ). Nếu mỗi phần làm tròn xuống riêng thì ra 3.333đ + 6.666đ = 9.999đ, mất 1đ.
+- **Tôi khuyên:** đồng ý.
+- **Nếu Chủ chọn khác:** cách khác (ví dụ dồn đồng lẻ vào bên Spa) cũng chạy được nhưng kết quả lệch 1đ ở vài hóa đơn; Chủ chọn cách nào tôi làm cách đó, chỉ cần một cách cho cả hệ thống.
+
+### T19. Thêm bảng và sửa luật kiểm tra của dữ liệu đang chạy thật
+
+- **Ý nghĩa:** hiện mỗi hóa đơn có một dòng "ưu đãi đã áp" và một dòng ảnh chụp điểm. Từ Đợt 2 cần **một dòng cho mỗi bên**, thêm bảng ghi số tiền giảm của từng dòng hàng và bảng ghi mỗi lần thanh toán thuộc bên nào, và **luật kiểm tra của cơ sở dữ liệu** (đang chặn tổng giảm giá sai) phải sửa theo. Dữ liệu cũ **không bị đổi**; hóa đơn cũ vẫn mở và tính như cũ.
+- **Ví dụ ở spa:** hóa đơn 482.000đ ở T17 sẽ có hai dòng ưu đãi (Spa 12.000đ, Beauty 6.000đ), hai dòng ảnh chụp điểm (ví Spa, ví Beauty), và ghi rõ khoản thanh toán 482.000đ gồm bao nhiêu thuộc bên nào. Sau này hoàn tiền một sản phẩm mới biết đúng số tiền của sản phẩm đó.
+- **Tôi khuyên:** đồng ý. Đây là **bước rủi ro cao nhất** vì sửa luật kiểm tra của hóa đơn đang thu tiền. Tôi chỉ **thêm** cột và bảng, không xóa gì, và diễn tập trên bản sao dữ liệu thật trước (hiện thật mới có 2 hóa đơn, 2 thanh toán nên migration rất nhanh; rủi ro nằm ở logic, không ở khối lượng).
+- **Nếu Chủ chọn khác:** không thêm bảng mà nhét dữ liệu hai bên vào một cột JSON trên hóa đơn thì ít bảng hơn nhưng không kiểm tra được bằng cơ sở dữ liệu và rất khó tính hoàn tiền sau này. Tôi không khuyên.
+
+### T20. Các loại hóa đơn
+
+- **Ý nghĩa:** (1) hóa đơn của một lượt đến có thể có **cả dịch vụ và sản phẩm**; (2) có loại hóa đơn **chỉ sản phẩm** (không cần lượt đến; Chủ đã duyệt ở Q6); (3) hóa đơn bán combo vẫn **chỉ có một dòng combo**: mua combo và mua sản phẩm là hai hóa đơn. Các luật kiểm tra hiện tại của Phase 4 sẽ đổi để cho phép (1) và (2).
+- **Ví dụ ở spa:** khách làm facial rồi mua serum: một hóa đơn có dòng facial và dòng serum, trả một lần. Khách chỉ ghé mua kem: hóa đơn chỉ có sản phẩm. Khách mua combo 10 buổi và một lọ kem: hai hóa đơn.
+- **Tôi khuyên:** đồng ý.
+- **Nếu Chủ chọn khác:** cho phép combo và sản phẩm cùng một hóa đơn thì đụng thêm phần buổi combo đang chạy (Phase 5), rủi ro tăng; cấm trộn dịch vụ và sản phẩm thì khách phải trả hai lần và hai bên Spa/Beauty không bao giờ gặp nhau trên một hóa đơn (mất ý nghĩa của Q1).
+
+### T26. Khách xem hóa đơn sản phẩm
+
+- **Ý nghĩa:** trong `/account/invoices` khách thấy tên sản phẩm, loại, số lượng, đơn giá, thành tiền. **Không bao giờ** thấy người bán, giá vốn, lô hàng, mã nội bộ.
+- **Ví dụ ở spa:** khách mở hóa đơn thấy "Kem dưỡng ẩm, 50 ml, 2 x 289.000đ"; không thấy tên bạn nhân viên đã bán (tên người bán chỉ để Phase 7 tính hoa hồng).
+- **Tôi khuyên:** đồng ý.
+- **Nếu Chủ chọn khác:** muốn hiện tên người bán cho khách thì tôi thêm, nhưng khách sẽ thấy tên nhân viên (cân nhắc riêng tư).
+
+### T27. Hủy hóa đơn sản phẩm đã đảo hết thanh toán thì hoàn hàng về kho
+
+- **Ý nghĩa:** Phase 4 (OP-7) cho phép hủy một hóa đơn đã đảo hết thanh toán (số dư 0). Với hóa đơn sản phẩm, như vậy là việc bán **chưa từng xảy ra**, nên hàng phải **tự về lại kho**.
+- **Ví dụ ở spa:** thu ngân bán nhầm một lọ serum, khách chưa đi khỏi quầy; quản lý đảo thanh toán và hủy hóa đơn. Lọ serum tự cộng lại vào tồn kho của chi nhánh.
+- **Tôi khuyên:** đồng ý.
+- **Nếu Chủ chọn khác:** không tự hoàn kho thì nhân viên phải tự "điều chỉnh kho" bằng tay; quên thì tồn kho lệch so với hàng thật.
+
+### OQ-58. Có chạy nhiều tiến trình cho API ngay trong Đợt 2 không? (mới)
+
+- **Ý nghĩa:** ở Đợt 1 Chủ chọn "Không" cho API và để sang sau. API vừa phục vụ thu tiền, webhook PayOS vừa đăng nhập lại. Chạy nhiều tiến trình giúp chịu tải nhưng đổi cách chạy đúng lúc đổi luật tính tiền.
+- **Ví dụ ở spa:** nếu có lỗi sau deploy, ta sẽ không biết do luật tính mới hay do cách chạy mới.
+- **Tôi khuyên:** **không** làm trong Đợt 2. Đợt 2 vẫn **một** tiến trình API. Khi bán sản phẩm đã chạy ổn, đo tải thật, rồi mới làm riêng (một bước nhỏ, có kiểm thử riêng).
+- **Nếu Chủ chọn khác:** làm ngay trong Đợt 2 thì nhanh hơn một bước, nhưng hai thay đổi lớn lên đường thu tiền cùng lúc: khó biết nguyên nhân khi có lỗi.
+
+### OQ-59. Hóa đơn chỉ có dịch vụ: bộ tính cũ vẫn là chuẩn, bộ mới chạy song song để so (mới)
+
+- **Ý nghĩa:** dù đã kiểm vi sai kỹ, tôi muốn thêm một **dây an toàn**: với hóa đơn **không có sản phẩm**, kết quả thật vẫn là của **bộ tính cũ đang chạy**; bộ mới tính song song và ghi lại nếu khác dù 1 đồng. Sau vài tuần không có chênh lệch mới chuyển sang bộ mới.
+- **Ví dụ ở spa:** thu ngân chốt hóa đơn massage + voucher như mọi ngày: khách trả đúng số cũ; trong nền, bộ mới tính lại và so. Nếu có lệch, tôi nhận được cảnh báo mà khách không bị ảnh hưởng.
+- **Tôi khuyên:** đồng ý. Phải giữ hai bộ tính một thời gian (thêm việc), đổi lại gần như không có rủi ro làm sai hóa đơn dịch vụ đang chạy.
+- **Nếu Chủ chọn khác:** dùng ngay bộ mới cho mọi hóa đơn (chỉ dựa vào kiểm thử vi sai). Nhanh gọn hơn, nhưng nếu còn lỗi hiếm mà kiểm thử không bắt được thì nó sai trên hóa đơn thật.
+
+### OQ-60. Khi nào bắt đầu bán sản phẩm thật? (mới)
+
+- **Ý nghĩa:** sau khi deploy Đợt 2, tôi đề nghị **chưa cấp quyền `SELL_PRODUCTS` cho nhân viên**. Chủ tự làm **một hóa đơn thử có giám sát** (một sản phẩm, trả tiền mặt, rồi hủy), kiểm kho, điểm, doanh thu. **Hóa đơn thử này ở lại vĩnh viễn trong sổ sách** (hệ thống không xóa lịch sử tiền). Đạt thì mới cấp quyền.
+- **Trả hàng:** như đã nói, **chưa có trả hàng và hoàn tiền sản phẩm cho đến Đợt 3**. Hai cách: (A) cho bán thật ngay sau lần thử và nếu khách trả hàng sau ngày bán thì Chủ xử lý ngoài hệ thống rồi báo tôi để ghi nhận sau ở Đợt 3; (B) chỉ cho bán thật khi Đợt 3 (hoàn tiền) đã chạy.
+- **Tôi khuyên:** làm lần thử có giám sát; về trả hàng chọn **(B)** nếu Chủ muốn sổ sách luôn sạch, hoặc **(A)** nếu cần bán sớm và chấp nhận xử lý tay trong thời gian ngắn. Quyết định này là của Chủ.
+- **Nếu Chủ chọn khác:** cấp quyền ngay khi deploy, không thử trước: nếu có lỗi chỉ lộ ra trên khách thật, và quay lại bản cũ sau khi đã có bán thật là việc nặng (khôi phục cơ sở dữ liệu, mất giao dịch sau lúc sao lưu).
+
+### T21. Quy tắc trừ điểm khi hoàn tiền (Đợt 3)
+
+- **Ý nghĩa:** khi hoàn tiền một phần, điểm còn lại của khách = phần tiền còn lại sau hoàn, chia 1.000 làm tròn xuống; phần dư so với điểm đã cộng thì bị trừ. Hoàn tiền **không bao giờ bị chặn** vì khách đã dùng hết điểm; nếu điểm không đủ để trừ thì trừ đến 0 và ghi lại phần thiếu để Chủ xem. (Chủ đã chọn cách A ở OQ-19.)
+- **Ví dụ ở spa:** khách mua 2 lọ x 150.000đ = 300.000đ, được 300 điểm. Trả lại 1 lọ: còn 150.000đ nên giữ 150 điểm, trừ 150 điểm. Trả cả hai: ví trở về đúng như trước khi mua.
+- **Tôi khuyên:** đồng ý. **Nếu khác:** ví dụ muốn chặn hoàn tiền khi khách không còn đủ điểm thì khách mua hàng lỗi cũng không được hoàn: tôi không khuyên.
+
+### T22. Phiếu hoàn tiền không sửa được (Đợt 3)
+
+- **Ý nghĩa:** mỗi lần hoàn tiền là một bản ghi cố định (tiền mặt hoặc chuyển khoản thủ công, số tiền, lý do, người làm, giờ, mã giao dịch ngân hàng). Hóa đơn vẫn là "Đã thanh toán"; sau khi có hoàn tiền thì **không đảo thanh toán hay hủy hóa đơn** đó được nữa (tránh hoàn hai lần).
+- **Ví dụ ở spa:** hoàn 289.000đ bằng chuyển khoản cho khách trả lọ kem, ghi mã giao dịch; hôm sau không ai đảo được khoản thanh toán gốc để "hoàn lần nữa".
+- **Tôi khuyên:** đồng ý. **Nếu khác:** cho sửa phiếu hoàn tiền thì mất dấu vết kiểm toán, trái với quy tắc "lịch sử tiền không bao giờ bị viết lại".
+
+### T23. Hạn 48 giờ cho "giao nhầm hàng, hỏng do đóng gói" (Đợt 3)
+
+- **Ý nghĩa:** với hai lý do này, quá 48 giờ hệ thống **từ chối**, không có ngoại lệ (PRD §28.2). Tôi từng đề xuất tính từ lúc thanh toán; vì Chủ đã trả lời ở OQ-40 rằng hạn đổi trả tính **từ ngày giao khách**, tôi sửa lại cho khớp: **từ ngày khách nhận hàng** (quầy: lúc giao tại cửa hàng).
+- **Ví dụ ở spa:** khách đặt trước một lọ serum, hàng về sau 4 ngày, nhận lúc 10:00 thứ Ba: 48 giờ chạy từ 10:00 thứ Ba, không phải từ ngày thanh toán.
+- **Tôi khuyên:** đồng ý. **Nếu khác:** tính từ ngày thanh toán thì khách đặt trước có thể hết hạn khi chưa cầm hàng; muốn cho quản lý bỏ qua hạn thì cần thêm quyền và màn hình riêng (PRD nói "không chấp nhận").
+
+---
 
 ## Bảng trả lời nhanh
 
