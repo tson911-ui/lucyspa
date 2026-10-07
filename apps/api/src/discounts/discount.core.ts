@@ -269,7 +269,7 @@ async function parseVersion(
   const serviceIds = ids(input.serviceIds, 'serviceIds');
   const categoryIds = ids(input.categoryIds, 'categoryIds');
   // Phase 6 P6-9 (Q7): a program may discount services (the default, every program before Phase 6), products, or both. A product
-  // selection (OQ-P6-21) names brands, product categories (that exact category) or products; targets must fit the scope.
+  // selection (OQ-P6-21) names brands, product categories (a category covers its subcategories, OQ-66) or products; targets must fit the scope.
   const scope = input.scope ?? 'SERVICES';
   if (scope !== 'SERVICES' && scope !== 'PRODUCTS' && scope !== 'BOTH') {
     throw new AuthError('VALIDATION_FAILED', 'scope');

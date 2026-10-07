@@ -532,13 +532,50 @@ test(
             return supply(draft, code);
           };
           assert.equal((await sale(byBrand.code)).discountTotalVnd, '20000');
+          // OQ-66 (changed by the Owner, 2026-10-08): a category target also covers its subcategories.
           assert.equal(
             (await sale(byParent.code)).discountTotalVnd,
-            '0',
-            'a parent does not include its children',
+            '20000',
+            'a parent includes its children',
           );
           assert.equal((await sale(byChild.code)).discountTotalVnd, '20000');
           assert.equal((await sale(byProduct.code)).discountTotalVnd, '24000');
+          // The tree has two levels (the database refuses a grandchild): the serum moves to a SIBLING of the child, under the parent.
+          const sibling = await tx.productCategory.create({
+            data: {
+              code: `p69f-${base.run.toLowerCase()}`,
+              nameVi: 'Nhóm anh em',
+              nameEn: 'Sibling',
+              parentId: category.id,
+            },
+          });
+          await tx.product.update({
+            where: { id: serum.id },
+            data: { categoryId: sibling.id, rowVersion: { increment: 1 } },
+          });
+          const target = (categoryId: string) =>
+            voucherProgram({
+              kind: 'PERCENT',
+              percentBp: 1000,
+              scope: 'PRODUCTS',
+              scopeMode: 'SELECTED',
+              productCategoryIds: [categoryId],
+            });
+          // cream (200,000) is in the child, serum (120,000) in its sibling: the parent covers both children, a child only itself.
+          assert.equal((await sale((await target(category.id)).code)).discountTotalVnd, '32000');
+          assert.equal(
+            (await sale((await target(child.id)).code)).discountTotalVnd,
+            '20000',
+            'a sibling is not covered',
+          );
+          assert.equal((await sale((await target(sibling.id)).code)).discountTotalVnd, '12000');
+          // A child target never reaches up: with the serum in the parent itself, only the cream (in the child) is covered.
+          await tx.product.update({
+            where: { id: serum.id },
+            data: { categoryId: category.id, rowVersion: { increment: 1 } },
+          });
+          assert.equal((await sale((await target(child.id)).code)).discountTotalVnd, '20000');
+          assert.equal((await sale((await target(category.id)).code)).discountTotalVnd, '32000');
           // A mixed invoice: the BOTH selection takes the exact service (200,000) and the serum (120,000): 20% of 320,000 = 64,000,
           // split 125,000 : 75,000... by what matched (200,000 of Spa, 120,000 of Beauty).
           let withServices: InvoiceResponse = await k.serviceDraft([k.exact, k.ranged], null);

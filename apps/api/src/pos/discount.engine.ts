@@ -42,7 +42,7 @@ export interface EngineVersion {
   /**
    * Phase 6 P6-9 (Q7): what the program may discount. Absent = `SERVICES` (every program that existed before Phase 6), which keeps
    * the version 2 behavior. The product selection (OQ-P6-21) applies to PRODUCTS and BOTH programs: a product line matches by its
-   * snapshotted brand, its snapshotted category (that exact category, children are not included) or its product.
+   * snapshotted brand, its snapshotted category (a set of ids: the loader has already widened each target with its subcategories, OQ-66) or its product.
    */
   scope?: DiscountScopeName;
   brandIds?: ReadonlySet<string>;

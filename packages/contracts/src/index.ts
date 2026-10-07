@@ -2709,7 +2709,7 @@ export interface DiscountVersionResponse {
   categoryIds: string[];
   /** Phase 6 P6-9 (Q7): what the program may discount; absent = SERVICES (a response from before Phase 6, or any fixture of it). */
   scope?: DiscountScopeName;
-  /** Product targets of a PRODUCTS or BOTH selection (OQ-P6-21); a product category matches only that exact category. */
+  /** Product targets of a PRODUCTS or BOTH selection (OQ-P6-21); a product category also covers all its subcategories (OQ-66, changed 2026-10-08). */
   brandIds?: string[];
   productCategoryIds?: string[];
   productIds?: string[];

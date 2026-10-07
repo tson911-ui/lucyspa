@@ -278,7 +278,8 @@ test('product targeting (OQ-P6-21): by brand, by that exact category, by product
     ],
   });
   assert.equal(byProduct.discountTotalVnd, 40_000n);
-  // A parent category does not include its children: only the exact snapshotted category matches.
+  // The pure engine matches the snapshotted category against the set of ids it is given; the loader widens each target with its
+  // subcategories (OQ-66, tested through the API in pricing-v3.integration.test).
   const parent = price({
     lines,
     promotions: [

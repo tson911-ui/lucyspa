@@ -101,7 +101,37 @@ export interface InvoiceEvaluation {
   v3: PricingV3Result | null;
 }
 
-function toVersion(row: ProgramRow['versions'][number]): EngineVersion {
+/**
+ * Phase 6 P6-10 (OQ-66, changed by the Owner on 2026-10-08): a product category target also covers every subcategory below it, to
+ * any depth. The pure engine keeps matching a line's snapshotted category against a set of ids; the loader widens that set with the
+ * descendants of each target, read from the category tree in force at this evaluation (the tree of the moment of finalization is
+ * the one that applies; a stored invoice is never matched again). `UNION` (not `UNION ALL`) cannot loop on a cycle.
+ */
+export async function categoryDescendants(
+  tx: Prisma.TransactionClient,
+  categoryIds: readonly string[],
+): Promise<Map<string, Set<string>>> {
+  const result = new Map<string, Set<string>>();
+  if (categoryIds.length === 0) return result;
+  const rows = await tx.$queryRaw<{ root_id: string; id: string }[]>`
+    WITH RECURSIVE tree(root_id, id) AS (
+      SELECT c.id, c.id FROM product_categories c WHERE c.id = ANY(${[...categoryIds]}::uuid[])
+      UNION
+      SELECT tree.root_id, child.id FROM tree JOIN product_categories child ON child.parent_id = tree.id
+    )
+    SELECT root_id, id FROM tree`;
+  for (const row of rows) {
+    const set = result.get(row.root_id) ?? new Set<string>();
+    set.add(row.id);
+    result.set(row.root_id, set);
+  }
+  return result;
+}
+
+function toVersion(
+  row: ProgramRow['versions'][number],
+  descendants: ReadonlyMap<string, ReadonlySet<string>>,
+): EngineVersion {
   return {
     id: row.id,
     versionNo: row.versionNo,
@@ -118,7 +148,12 @@ function toVersion(row: ProgramRow['versions'][number]): EngineVersion {
     usageLimitPerCustomer: row.usageLimitPerCustomer,
     scope: row.scope,
     brandIds: new Set(row.brands.map((target) => target.brandId)),
-    productCategoryIds: new Set(row.productCategories.map((target) => target.categoryId)),
+    productCategoryIds: new Set(
+      row.productCategories.flatMap((target) => [
+        target.categoryId,
+        ...(descendants.get(target.categoryId) ?? []),
+      ]),
+    ),
     productIds: new Set(row.products.map((target) => target.productId)),
   };
 }
@@ -370,6 +405,14 @@ export async function evaluateInvoice(
     select: programSelect,
   });
   const counts = await usageCounts(tx, programIds, invoice.payerUserId);
+  const descendants = await categoryDescendants(
+    tx,
+    rows.flatMap((row) =>
+      row.versions.flatMap((version) =>
+        version.productCategories.map((target) => target.categoryId),
+      ),
+    ),
+  );
   const programs = new Map<string, EngineProgram>();
   for (const row of rows) {
     const version = row.versions[0];
@@ -383,7 +426,7 @@ export async function evaluateInvoice(
       requiresCode: row.requiresCode,
       isActive: row.isActive,
       terminated: row.terminatedAt !== null,
-      version: toVersion(version),
+      version: toVersion(version, descendants),
       activeRedemptions: used.total,
       payerRedemptions: used.payer,
     });
