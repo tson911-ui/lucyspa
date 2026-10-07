@@ -8,6 +8,8 @@ export interface SiteText {
     phone: string;
     home: string;
     services: string;
+    /** The cosmetics catalog (Phase 6 P6-6). */
+    products: string;
     book: string;
     bookings: string;
     invoices: string;
@@ -118,6 +120,59 @@ export interface SiteText {
     notFoundBody: string;
     breadcrumbs: string;
   };
+  /** The public cosmetics catalog (Phase 6 P6-6). Hero and commitment words are the Owner's, from the admin, never from here. */
+  products: {
+    title: string;
+    lead: string;
+    sectionTitle: string;
+    searchLabel: string;
+    searchClear: string;
+    sortLabel: string;
+    sorts: { featured: string; newest: string; price_asc: string; price_desc: string };
+    filterButton: string;
+    filterTitle: string;
+    filterDone: string;
+    filterReset: string;
+    categories: string;
+    allCategories: string;
+    brands: string;
+    allBrands: string;
+    badgeNew: string;
+    outOfStock: string;
+    /** With {days}: "Đặt trước, dự kiến 3–5 ngày". */
+    preOrder: string;
+    empty: string;
+    noMatch: string;
+    pager: {
+      nav: string;
+      first: string;
+      previous: string;
+      next: string;
+      last: string;
+      pageNumber: string;
+      summary: string;
+    };
+    backLabel: string;
+    breadcrumbs: string;
+    back: string;
+    detailLead: string;
+    gallery: string;
+    /** With {n}: the thumbnail that shows picture n. */
+    pictureN: string;
+    variants: string;
+    descriptionTitle: string;
+    related: string;
+    notFoundTitle: string;
+    notFoundBody: string;
+    store: {
+      title: string;
+      body: string;
+      address: string;
+      hotline: string;
+      directions: string;
+      call: string;
+    };
+  };
 }
 
 const text = {
@@ -127,6 +182,7 @@ const text = {
       phone: 'Menu điện thoại',
       home: 'Trang chủ',
       services: 'Dịch vụ',
+      products: 'Mỹ phẩm',
       book: 'Đặt lịch',
       bookings: 'Lịch hẹn',
       invoices: 'Hóa đơn',
@@ -217,6 +273,62 @@ const text = {
       notFoundBody: 'Dịch vụ này không còn hoặc đang tạm ngưng. Xem các dịch vụ khác của tiệm.',
       breadcrumbs: 'Đường dẫn',
     },
+    products: {
+      title: 'Mỹ phẩm',
+      lead: 'Mỹ phẩm đang bán tại Lucy Spa, kèm giá niêm yết.',
+      sectionTitle: 'Sản phẩm',
+      searchLabel: 'Tìm mỹ phẩm',
+      searchClear: 'Xóa nội dung tìm',
+      sortLabel: 'Sắp xếp',
+      sorts: {
+        featured: 'Nổi bật',
+        newest: 'Mới nhất',
+        price_asc: 'Giá thấp đến cao',
+        price_desc: 'Giá cao đến thấp',
+      },
+      filterButton: 'Lọc',
+      filterTitle: 'Lọc sản phẩm',
+      filterDone: 'Xong',
+      filterReset: 'Xóa bộ lọc',
+      categories: 'Danh mục',
+      allCategories: 'Tất cả',
+      brands: 'Thương hiệu',
+      allBrands: 'Tất cả thương hiệu',
+      badgeNew: 'Mới',
+      outOfStock: 'Hết hàng',
+      preOrder: 'Đặt trước, dự kiến {days} ngày',
+      empty: 'Chưa có sản phẩm nào để hiển thị.',
+      noMatch: 'Không có sản phẩm phù hợp. Thử đổi từ khóa hoặc bỏ bớt bộ lọc.',
+      pager: {
+        nav: 'Phân trang sản phẩm',
+        first: 'Trang đầu',
+        previous: 'Trang trước',
+        next: 'Trang sau',
+        last: 'Trang cuối',
+        pageNumber: 'Trang {page}',
+        summary: 'Hiển thị {from}–{to} trong {total}',
+      },
+      backLabel: 'Quay lại',
+      breadcrumbs: 'Đường dẫn',
+      back: 'Tất cả mỹ phẩm',
+      detailLead: 'Giá niêm yết và tình trạng hàng của sản phẩm.',
+      gallery: 'Ảnh sản phẩm',
+      pictureN: 'Xem ảnh {n}',
+      variants: 'Loại',
+      descriptionTitle: 'Mô tả',
+      related: 'Sản phẩm cùng danh mục',
+      notFoundTitle: 'Không tìm thấy sản phẩm',
+      notFoundBody:
+        'Sản phẩm này không còn bán hoặc đang tạm ngưng. Xem các sản phẩm khác của tiệm.',
+      store: {
+        title: 'Mua trực tiếp tại cửa hàng',
+        body: 'Đến Lucy Spa để xem và mua sản phẩm. Nên gọi trước để biết tình trạng hàng.',
+        address: 'Địa chỉ',
+        hotline: 'Điện thoại',
+        directions: 'Chỉ đường',
+        call: 'Gọi cửa hàng',
+      },
+    },
   },
   en: {
     nav: {
@@ -224,6 +336,7 @@ const text = {
       phone: 'Phone menu',
       home: 'Home',
       services: 'Services',
+      products: 'Cosmetics',
       book: 'Book',
       bookings: 'Bookings',
       invoices: 'Invoices',
@@ -314,6 +427,61 @@ const text = {
       notFoundTitle: 'Service not found',
       notFoundBody: 'This service is no longer offered or is paused. See the shop other services.',
       breadcrumbs: 'Breadcrumbs',
+    },
+    products: {
+      title: 'Cosmetics',
+      lead: 'Cosmetics on sale at Lucy Spa, with listed prices.',
+      sectionTitle: 'Products',
+      searchLabel: 'Search cosmetics',
+      searchClear: 'Clear search',
+      sortLabel: 'Sort',
+      sorts: {
+        featured: 'Featured',
+        newest: 'Newest',
+        price_asc: 'Price, low to high',
+        price_desc: 'Price, high to low',
+      },
+      filterButton: 'Filter',
+      filterTitle: 'Filter products',
+      filterDone: 'Done',
+      filterReset: 'Clear filters',
+      categories: 'Category',
+      allCategories: 'All',
+      brands: 'Brand',
+      allBrands: 'All brands',
+      badgeNew: 'New',
+      outOfStock: 'Out of stock',
+      preOrder: 'Pre-order, expected {days} days',
+      empty: 'There are no products to show yet.',
+      noMatch: 'No products match. Try other words or remove a filter.',
+      pager: {
+        nav: 'Product pages',
+        first: 'First page',
+        previous: 'Previous page',
+        next: 'Next page',
+        last: 'Last page',
+        pageNumber: 'Page {page}',
+        summary: 'Showing {from}–{to} of {total}',
+      },
+      backLabel: 'Back',
+      breadcrumbs: 'Breadcrumbs',
+      back: 'All cosmetics',
+      detailLead: 'Listed price and availability of the product.',
+      gallery: 'Product pictures',
+      pictureN: 'Show picture {n}',
+      variants: 'Option',
+      descriptionTitle: 'Description',
+      related: 'More in this category',
+      notFoundTitle: 'Product not found',
+      notFoundBody: 'This product is no longer sold or is paused. See the shop other products.',
+      store: {
+        title: 'Buy in the shop',
+        body: 'Visit Lucy Spa to see and buy the product. Call first to check availability.',
+        address: 'Address',
+        hotline: 'Phone',
+        directions: 'Directions',
+        call: 'Call the shop',
+      },
     },
   },
 } satisfies Record<Locale, SiteText>;

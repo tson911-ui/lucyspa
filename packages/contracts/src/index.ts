@@ -3500,6 +3500,122 @@ export interface PublicServiceDetailResponse {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// Phase 6 P6-6: the public cosmetics catalog (design 11.1, 16). Anonymous and read-only. Only PUBLISHED products with at
+// least one active, priced variant appear. A response never carries a cost, a quantity, a branch, an internal id or a SKU:
+// stock is a state, never a number.
+// ---------------------------------------------------------------------------------------------------------------
+
+export const PUBLIC_PRODUCT_SORTS = ['featured', 'newest', 'price_asc', 'price_desc'] as const;
+export type PublicProductSort = (typeof PUBLIC_PRODUCT_SORTS)[number];
+export const PUBLIC_PRODUCTS_PAGE_SIZE = 20;
+
+/**
+ * What a visitor learns about availability. IN_STOCK shows nothing; PRE_ORDER reads "Đặt trước, dự kiến n ngày" with the
+ * waiting time in days; OUT_OF_STOCK reads "Hết hàng". The waiting time is present only for PRE_ORDER.
+ */
+export interface PublicProductStock {
+  state: 'IN_STOCK' | 'PRE_ORDER' | 'OUT_OF_STOCK';
+  leadTimeDaysMin: number | null;
+  leadTimeDaysMax: number | null;
+}
+
+/** The price of one thing: what is paid now, the struck list price while a promotion runs, and its rounded percent. */
+export interface PublicProductPrice {
+  priceVnd: string;
+  /** The list price, only while a promotion makes the price lower; null otherwise. */
+  listPriceVnd: string | null;
+  /** Round half up of (list - price) / list in whole percent, 1 to 99; null when there is no promotion or it rounds to nothing. */
+  discountPercent: number | null;
+}
+
+export interface PublicProductCategoryRef {
+  code: string;
+  name: string;
+}
+
+/** One product as a card of the list and of the related products. */
+export interface PublicProductCard {
+  code: string;
+  name: string;
+  category: PublicProductCategoryRef | null;
+  brand: string | null;
+  image: PublicSlideImage | null;
+  /** The cheapest variant's price (with its struck list price and percent); `priceMaxVnd` differs when the prices differ. */
+  price: PublicProductPrice;
+  priceMaxVnd: string;
+  isNew: boolean;
+  featured: boolean;
+  stock: PublicProductStock;
+}
+
+export interface PublicProductCategory extends PublicProductCategoryRef {
+  /** The parent's code when it is a sub-category; filtering by a parent includes its sub-categories. */
+  parentCode: string | null;
+}
+
+/** The hero of the page as the Owner wrote it; null while the Owner has written none of it. */
+export interface PublicProductsHero {
+  title: string | null;
+  text: string | null;
+  image: PublicSlideImage | null;
+}
+
+/** The commitment box as the Owner wrote it; null while it has no lines. */
+export interface PublicProductsCommitment {
+  title: string | null;
+  items: string[];
+}
+
+/** GET /api/v1/public/products?locale&q&category&brand&sort&page : one page of the catalog and what the filters need. */
+export interface PublicProductsResponse {
+  hero: PublicProductsHero | null;
+  commitment: PublicProductsCommitment | null;
+  /** Categories that hold at least one visible product (a parent holds its children's products too). */
+  categories: PublicProductCategory[];
+  /** Brands that hold at least one visible product. */
+  brands: { code: string; name: string }[];
+  items: PublicProductCard[];
+  page: number;
+  pageSize: number;
+  /** Products matching the filters, over all pages. */
+  total: number;
+}
+
+export interface PublicProductVariant {
+  label: string | null;
+  price: PublicProductPrice;
+  stock: PublicProductStock;
+}
+
+export interface PublicProductDetail {
+  code: string;
+  name: string;
+  description: string | null;
+  category: PublicProductCategoryRef | null;
+  brand: string | null;
+  images: PublicSlideImage[];
+  /** In the shop's own order. */
+  variants: PublicProductVariant[];
+  priceMaxVnd: string;
+  isNew: boolean;
+  featured: boolean;
+  stock: PublicProductStock;
+}
+
+/** GET /api/v1/public/products/:code?locale : one visible product, 404 for anything else (draft, discontinued, unknown). */
+export interface PublicProductDetailResponse {
+  product: PublicProductDetail;
+  commitment: PublicProductsCommitment | null;
+  /** Up to four other products of the same category. */
+  related: PublicProductCard[];
+}
+
+/** GET /api/v1/public/products/codes : the codes of every visible product, for the sitemap (at most 5000). */
+export interface PublicProductCodesResponse {
+  codes: string[];
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // Phase 6 P6-3: product catalog administration (design PHASE6_PRODUCTS_INVENTORY_DESIGN.md sections 3 and 16.5).
 // Money is integer VND carried as a decimal string. Cost price and margin exist ONLY in responses built for a caller
 // who holds VIEW_PRODUCT_COST: for everyone else the keys are absent (never null), on every endpoint.
@@ -3791,16 +3907,42 @@ export interface ProductSettingsResponse {
   leadTimeDaysMax: number;
   /** Lots expiring within this many days are warned about (P6-Q14: 90 by default). */
   expiryWarningDays: number;
+  /** The "Mới" badge shows for this many days after the first publication (OQ-P6-28: 30; 1 to 365). */
+  newBadgeDays: number;
+  /** The copy of the public cosmetics page, as the Owner wrote it (both languages); all empty until he fills it in. */
+  publicPage: ProductPublicPageCopy;
   rowVersion: number;
   access: ProductAccess;
 }
 
-/** POST /api/v1/product-settings/edit (MANAGE_PRODUCTS). Only the keys present change; the lead-time pair is sent together. */
+/** One line of the commitment box, in both languages (both required, so a visitor never sees the other language). */
+export interface ProductCommitmentLine {
+  textVi: string;
+  textEn: string;
+}
+
+export interface ProductPublicPageCopy {
+  heroMediaId: string | null;
+  heroTitleVi: string | null;
+  heroTitleEn: string | null;
+  heroTextVi: string | null;
+  heroTextEn: string | null;
+  commitmentTitleVi: string | null;
+  commitmentTitleEn: string | null;
+  commitmentItems: ProductCommitmentLine[];
+}
+
+/**
+ * POST /api/v1/product-settings/edit (MANAGE_PRODUCTS). Only the keys present change; the lead-time pair is sent together.
+ * `publicPage` is replaced as a whole when present (an empty string or null clears a text).
+ */
 export interface ProductSettingsEditRequest {
   expectedRowVersion: number;
   leadTimeDaysMin?: number;
   leadTimeDaysMax?: number;
   expiryWarningDays?: number;
+  newBadgeDays?: number;
+  publicPage?: ProductPublicPageCopy;
 }
 
 // ---------------------------------------------------------------------------------------------------------------

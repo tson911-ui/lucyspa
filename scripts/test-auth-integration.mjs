@@ -84,6 +84,7 @@ await import('../apps/api/dist/combo/combo-sold.integration.test.js');
 await import('../apps/api/dist/loyalty/customer-loyalty.integration.test.js');
 await import('../apps/api/dist/products/product-catalog.integration.test.js');
 await import('../apps/api/dist/products/product-preorder.integration.test.js');
+await import('../apps/api/dist/products/public-products.integration.test.js');
 await import('../apps/api/dist/inventory/inventory.integration.test.js');
 await import('../apps/api/dist/inventory/inventory.race.integration.test.js');
 await import('../apps/api/dist/product-imports/import.integration.test.js');

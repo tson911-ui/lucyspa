@@ -11,6 +11,7 @@ import {
   ROBOTS_DISALLOW,
   serviceDescription,
   siteOrigin,
+  productDescription,
   sitemapEntries,
 } from './seo-core';
 
@@ -133,8 +134,8 @@ test('the LocalBusiness data comes only from the shop profile and is safe inside
   assert.deepEqual(JSON.parse(script), { name: '</script><b>&' });
 });
 
-test('the sitemap lists home, the service list and each service in both languages with alternates', () => {
-  const entries = sitemapEntries('https://lucyspa.vn', ['GOI', 'NAIL 1']);
+test('the sitemap lists home, the service list, each service, the cosmetics list and each product in both languages with alternates', () => {
+  const entries = sitemapEntries('https://lucyspa.vn', ['GOI', 'NAIL 1'], ['kem-duong', 'mat na']);
   assert.deepEqual(
     entries.map((entry) => entry.url),
     [
@@ -146,10 +147,68 @@ test('the sitemap lists home, the service list and each service in both language
       'https://lucyspa.vn/en/services/GOI',
       'https://lucyspa.vn/vi/services/NAIL%201',
       'https://lucyspa.vn/en/services/NAIL%201',
+      'https://lucyspa.vn/vi/products',
+      'https://lucyspa.vn/en/products',
+      'https://lucyspa.vn/vi/products/kem-duong',
+      'https://lucyspa.vn/en/products/kem-duong',
+      'https://lucyspa.vn/vi/products/mat%20na',
+      'https://lucyspa.vn/en/products/mat%20na',
     ],
   );
   assert.equal(entries[0]?.alternates['en'], 'https://lucyspa.vn/en');
+  assert.equal(
+    entries.find((entry) => entry.url.endsWith('/vi/products'))?.alternates['en'],
+    'https://lucyspa.vn/en/products',
+  );
   assert.ok(!entries.some((entry) => /account|workforce/.test(entry.url)));
+  // Without product codes (the list could not be read) the cosmetics list itself is still there.
+  assert.equal(
+    sitemapEntries('https://lucyspa.vn', []).filter((entry) => /products/.test(entry.url)).length,
+    2,
+  );
+});
+
+test('a product page description: its own text, else name and category; always the price (from, when sizes differ) and the shop address', () => {
+  const price = (priceVnd: string) => ({ priceVnd, listPriceVnd: null, discountPercent: null });
+  const stock = { state: 'IN_STOCK', leadTimeDaysMin: null, leadTimeDaysMax: null } as const;
+  const product = {
+    code: 'kem',
+    name: 'Kem dưỡng',
+    description: null,
+    category: { code: 'da', name: 'Chăm sóc da' },
+    brand: null,
+    images: [],
+    variants: [
+      { label: '30 ml', price: price('150000'), stock },
+      { label: '50 ml', price: price('120000'), stock },
+    ],
+    priceMaxVnd: '150000',
+    isNew: false,
+    featured: false,
+    stock,
+  };
+  assert.equal(
+    productDescription(product, 'vi', 'Lucy Spa', '04 Nguyễn Quang Bích'),
+    'Kem dưỡng tại Lucy Spa, danh mục Chăm sóc da. Giá từ 120.000 ₫. Mua tại 04 Nguyễn Quang Bích.',
+  );
+  assert.equal(
+    productDescription(
+      {
+        ...product,
+        description: 'Dưỡng ẩm.',
+        variants: [product.variants[0]!],
+        priceMaxVnd: '150000',
+      },
+      'en',
+      'Lucy Spa',
+      null,
+    ),
+    'Dưỡng ẩm. Price 150,000 ₫.',
+  );
+  assert.ok(
+    productDescription({ ...product, description: 'x'.repeat(400) }, 'vi', 'Lucy Spa', null)
+      .length <= 160,
+  );
 });
 
 test('robots keep crawlers out of the member area, the staff area and the API', () => {

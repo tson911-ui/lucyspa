@@ -342,6 +342,23 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   }
 }
 
+/* A menu label never breaks over two lines. Five items (a member sees Mỹ phẩm, Lịch hẹn and Hóa đơn next to the other two) are
+   tight between 1024 and 1279 px: the links and the gap to the logo get a little less room there, so the bar keeps one line. */
+.ls-site-nav a,
+.ls-site-cta a {
+  white-space: nowrap;
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .ls-site-nav {
+    margin-inline-start: var(--ls-space-4);
+  }
+
+  .ls-site-nav a {
+    padding-inline: var(--ls-space-3);
+  }
+}
+
 /* ---------- phone shell and tab bar ---------- */
 /* Below 1024 px the customer pages are an APP SHELL (Owner decision 2026-10-06, after three patches to a fixed bar failed on
    real phones): the screen is one column of fixed height, the page scrolls inside .ls-site-scroll (the only scroll
@@ -2295,6 +2312,7 @@ a.ls-bell-body:focus-visible .ls-bell-time {
    overshoots slightly on the way back. All distances are tokens, which are 0 under reduced motion. */
 .ls-site-card,
 .ls-service-card,
+.ls-prod-card,
 .ls-choice {
   transition:
     transform var(--ls-dur-slide) var(--ls-ease-premium),
@@ -2305,6 +2323,7 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 
 .ls-site-card:active,
 .ls-service-card:active,
+.ls-prod-card:active,
 .ls-choice:not(.ls-choice-disabled):active {
   transform: scale(var(--ls-press-scale));
   transition-duration: var(--ls-dur-fast);
@@ -2313,6 +2332,7 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 @media (hover: hover) and (pointer: fine) {
   .ls-site-card:hover,
   .ls-service-card:hover,
+  .ls-prod-card:hover,
   .ls-choice:not(.ls-choice-disabled):hover {
     transform: translateY(calc(var(--ls-card-lift) * -1)) scale(var(--ls-card-zoom));
     border-color: var(--ls-hover-border);
@@ -2321,6 +2341,7 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 
   .ls-site-card:active,
   .ls-service-card:active,
+  .ls-prod-card:active,
   .ls-choice:not(.ls-choice-disabled):active {
     transform: scale(var(--ls-press-scale));
   }
@@ -2787,4 +2808,699 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 .ls-footer-icon[data-network='zalo'] {
   --ls-footer-icon-size: var(--ls-space-7);
   --ls-footer-icon-hover: var(--ls-brand-zalo);
+}
+
+/* ---------- cosmetics catalog (Phase 6 P6-6; design 16) ---------- */
+/* The hero is the Owner's picture and words (hidden when empty). On a phone the picture sits above the words, which stay
+   on a solid panel: nothing is ever drawn over the photo. From 768 px they sit side by side. */
+.ls-prod-hero {
+  display: grid;
+  margin-top: var(--ls-page-top);
+  overflow: hidden;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
+}
+
+.ls-prod-hero-copy {
+  display: grid;
+  align-content: center;
+  gap: var(--ls-space-3);
+  padding: var(--ls-space-6);
+}
+
+.ls-prod-hero-copy .ls-lead {
+  max-width: 32rem;
+}
+
+.ls-prod-hero-picture {
+  order: -1;
+  aspect-ratio: 16 / 10;
+  background: var(--ls-bg-sunken);
+}
+
+.ls-prod-hero-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (min-width: 768px) {
+  .ls-prod-hero-image {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .ls-prod-hero-copy {
+    padding: var(--ls-space-8);
+  }
+
+  .ls-prod-hero-picture {
+    order: 0;
+    aspect-ratio: auto;
+  }
+}
+
+/* The list: a heading row (title, then search, filter and sort), the sidebar and the grid. */
+.ls-prod-section {
+  padding-top: var(--ls-head-gap);
+}
+
+.ls-prod-head {
+  display: grid;
+  gap: var(--ls-space-4);
+  padding-bottom: var(--ls-space-4);
+  margin-bottom: var(--ls-space-6);
+  border-bottom: 1px solid var(--ls-border);
+}
+
+.ls-prod-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-3);
+}
+
+.ls-prod-tools .ls-search {
+  flex: 1 1 100%;
+}
+
+/* The site's pill fields set their own side padding; a search field keeps the room for its icon and its clear button. */
+.ls-site .ls-prod-tools .ls-search .ls-input {
+  padding-inline: var(--ls-space-8) var(--ls-space-3);
+}
+
+.ls-site .ls-prod-tools .ls-search .ls-input:not(:placeholder-shown) {
+  padding-inline-end: var(--ls-space-8);
+}
+
+.ls-prod-sort {
+  flex: 1 1 var(--ls-field-sm);
+}
+
+.ls-prod-filter-button {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 768px) {
+  .ls-prod-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .ls-prod-tools {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+
+  .ls-prod-tools .ls-search {
+    flex: 0 1 var(--ls-field-md);
+    min-width: var(--ls-field-sm);
+  }
+
+  .ls-prod-sort {
+    flex: 0 0 var(--ls-field-sm);
+  }
+}
+
+@media (min-width: 1024px) {
+  .ls-prod-filter-button {
+    display: none;
+  }
+}
+
+.ls-prod-layout {
+  display: grid;
+  gap: var(--ls-space-7);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'main'
+    'commit';
+}
+
+/* Under 1024 px the sidebar dissolves: its filters are in the sheet and its commitment box follows the list. */
+.ls-prod-side {
+  display: contents;
+}
+
+@media (min-width: 1024px) {
+  .ls-prod-layout {
+    grid-template-columns: var(--ls-field-md) minmax(0, 1fr);
+    grid-template-areas: 'side main';
+    align-items: start;
+    column-gap: var(--ls-space-8);
+  }
+
+  .ls-prod-side {
+    display: grid;
+    grid-area: side;
+    gap: var(--ls-space-6);
+    align-content: start;
+  }
+
+  .ls-prod-side > .ls-prod-commitment {
+    grid-area: auto;
+  }
+}
+
+.ls-prod-main {
+  grid-area: main;
+  min-width: 0;
+}
+
+.ls-prod-aside {
+  display: none;
+  gap: var(--ls-space-6);
+}
+
+@media (min-width: 1024px) {
+  .ls-prod-aside {
+    display: grid;
+  }
+}
+
+.ls-prod-commitment {
+  grid-area: commit;
+  display: grid;
+  gap: var(--ls-space-3);
+  padding: var(--ls-space-5);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
+  box-shadow: var(--ls-shadow-sm);
+}
+
+.ls-prod-commitment h2,
+.ls-prod-commitment h3,
+.ls-prod-filter-group h2,
+.ls-prod-filter-group h3 {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+  font-weight: 600;
+}
+
+.ls-prod-commitment ul {
+  display: grid;
+  gap: var(--ls-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-prod-commitment li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ls-space-2);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+.ls-prod-commitment li svg {
+  flex: none;
+  margin-top: var(--ls-icon-nudge);
+  color: var(--ls-brand);
+}
+
+/* Filters are links (they work without scripts and can be shared): a radio-like list, one choice at a time. */
+.ls-prod-filter-group {
+  display: grid;
+  gap: var(--ls-space-2);
+}
+
+.ls-prod-options {
+  display: grid;
+  gap: var(--ls-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-prod-options a {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-3);
+  min-height: var(--ls-control-h);
+  padding-inline: var(--ls-space-2);
+  border-radius: var(--ls-radius-md);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+  text-decoration: none;
+  transition:
+    background var(--ls-dur-fast) var(--ls-ease-out),
+    color var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+.ls-prod-options a::before {
+  content: '';
+  flex: none;
+  box-sizing: border-box;
+  width: var(--ls-space-4);
+  height: var(--ls-space-4);
+  border: 2px solid var(--ls-border-control);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.ls-prod-options a[aria-current='true'] {
+  color: var(--ls-text);
+  font-weight: 500;
+}
+
+.ls-prod-options a[aria-current='true']::before {
+  border-color: var(--ls-brand-fill);
+  background: var(--ls-brand-fill);
+  box-shadow: inset 0 0 0 2px var(--ls-bg-surface);
+}
+
+.ls-prod-options .ls-prod-option-child a {
+  padding-inline-start: var(--ls-space-6);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-prod-options a:hover {
+    background: var(--ls-brand-soft);
+    color: var(--ls-brand-on-soft);
+  }
+}
+
+.ls-prod-sheet {
+  display: grid;
+  gap: var(--ls-space-6);
+}
+
+/* The grid: two cards a row on a phone, three from 768 px (with the sidebar from 1024 px). */
+.ls-prod-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ls-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 768px) {
+  .ls-prod-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--ls-space-6);
+  }
+}
+
+.ls-prod-grid > li {
+  display: flex;
+  min-width: 0;
+}
+
+.ls-prod-grid > li > .ls-reveal {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.ls-prod-card {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
+  box-shadow: var(--ls-shadow-sm);
+}
+
+.ls-prod-media {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1;
+  background: var(--ls-bg-sunken);
+  color: var(--ls-text-subtle);
+}
+
+.ls-prod-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Badges sit on a picture, so they are solid: the brand colour with white text, readable on any photo. */
+.ls-prod-badges .ls-badge-brand {
+  border-color: var(--ls-brand-fill);
+  background: var(--ls-brand-fill);
+  color: var(--ls-on-brand);
+}
+
+.ls-prod-badges .ls-badge-neutral {
+  border-color: var(--ls-border);
+  background: var(--ls-bg-surface);
+  color: var(--ls-text);
+}
+
+.ls-prod-badges {
+  position: absolute;
+  inset-block-start: var(--ls-space-3);
+  inset-inline-start: var(--ls-space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ls-space-1);
+}
+
+.ls-prod-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--ls-space-1);
+  padding: var(--ls-space-4);
+}
+
+.ls-prod-meta {
+  display: block;
+  overflow: hidden;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The name is the card's one link, stretched over the whole card; two lines at most, so every card of a row lines up. */
+.ls-prod-name {
+  margin: 0;
+}
+
+.ls-prod-name a {
+  display: -webkit-box;
+  min-height: calc(2 * var(--ls-type-card) * var(--ls-lh-card));
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  color: inherit;
+  text-decoration: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.ls-prod-name a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.ls-prod-name a:focus-visible {
+  outline: none;
+}
+
+.ls-prod-card:has(.ls-prod-name a:focus-visible) {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: 2px;
+}
+
+.ls-prod-foot {
+  display: grid;
+  gap: var(--ls-space-1);
+  margin-top: auto;
+  padding-top: var(--ls-space-2);
+}
+
+.ls-prod-stock {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
+}
+
+.ls-prod-stock[data-state='OUT_OF_STOCK'] {
+  color: var(--ls-text);
+  font-weight: 500;
+}
+
+.ls-prod-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--ls-space-2);
+  margin: 0;
+}
+
+.ls-prod-price strong {
+  color: var(--ls-brand);
+  font-size: var(--ls-type-card);
+  line-height: var(--ls-lh-card);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ls-prod-price del {
+  color: var(--ls-text-subtle);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
+  white-space: nowrap;
+}
+
+.ls-prod-pager {
+  margin-top: var(--ls-space-7);
+}
+
+/* The product's own page. */
+.ls-prod-detail {
+  display: grid;
+  gap: var(--ls-space-7);
+  margin-bottom: var(--ls-space-9);
+}
+
+@media (min-width: 1024px) {
+  .ls-prod-detail {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--ls-space-8);
+  }
+}
+
+.ls-prod-gallery {
+  display: grid;
+  gap: var(--ls-space-3);
+  width: 100%;
+  min-width: 0;
+  /* On a tablet the picture is not the whole screen: it keeps a sensible size and sits in the middle. */
+  max-width: 30rem;
+  margin-inline: auto;
+}
+
+@media (min-width: 1024px) {
+  .ls-prod-gallery {
+    max-width: none;
+    margin-inline: 0;
+  }
+}
+
+.ls-prod-desc {
+  display: grid;
+  gap: var(--ls-space-2);
+}
+
+.ls-prod-viewport {
+  display: flex;
+  aspect-ratio: 1 / 1;
+  overflow-x: auto;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-sunken);
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.ls-prod-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.ls-prod-viewport:focus-visible {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: 2px;
+}
+
+.ls-prod-slide {
+  display: grid;
+  flex: 0 0 100%;
+  place-items: center;
+  margin: 0;
+  scroll-snap-align: center;
+  color: var(--ls-text-subtle);
+}
+
+.ls-prod-slide img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ls-prod-thumbs {
+  display: flex;
+  gap: var(--ls-space-2);
+  overflow-x: auto;
+}
+
+.ls-prod-thumb {
+  flex: none;
+  box-sizing: border-box;
+  width: calc(var(--ls-space-9) + var(--ls-space-4));
+  height: calc(var(--ls-space-9) + var(--ls-space-4));
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-md);
+  background: var(--ls-bg-sunken);
+  cursor: pointer;
+}
+
+.ls-prod-thumb[aria-current='true'] {
+  border-color: var(--ls-brand-fill);
+  box-shadow: 0 0 0 1px var(--ls-brand-fill);
+}
+
+.ls-prod-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ls-prod-thumb:focus-visible {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: 2px;
+}
+
+.ls-prod-info {
+  display: grid;
+  align-content: start;
+  gap: var(--ls-space-4);
+  min-width: 0;
+}
+
+/* The commitment box names a grid area for the list page; inside the product's column it is an ordinary row. */
+.ls-prod-info > .ls-prod-commitment {
+  grid-area: auto;
+}
+
+.ls-prod-detail-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ls-space-2) var(--ls-space-3);
+  margin: 0;
+}
+
+.ls-prod-detail-price strong {
+  color: var(--ls-brand);
+  font-size: var(--ls-type-sub);
+  line-height: var(--ls-lh-sub);
+  font-weight: 600;
+}
+
+.ls-prod-detail-price del {
+  color: var(--ls-text-subtle);
+  font-size: var(--ls-type-body);
+}
+
+.ls-prod-variants {
+  display: grid;
+  gap: var(--ls-space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ls-prod-copy {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+  white-space: pre-line;
+}
+
+.ls-prod-page {
+  padding-top: var(--ls-space-2);
+}
+
+.ls-prod-offer {
+  display: grid;
+  gap: var(--ls-space-3);
+}
+
+.ls-prod-detail-badges {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ls-space-2);
+}
+
+.ls-prod-detail-badges .ls-badge-brand,
+.ls-prod-detail-price .ls-badge-brand {
+  border-color: var(--ls-brand-fill);
+  background: var(--ls-brand-fill);
+  color: var(--ls-on-brand);
+}
+
+.ls-prod-store {
+  display: grid;
+  gap: var(--ls-space-3);
+  padding: var(--ls-space-5);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
+  box-shadow: var(--ls-shadow-sm);
+}
+
+.ls-prod-store h2 {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+  font-weight: 600;
+}
+
+.ls-prod-store p {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+.ls-prod-store dl {
+  display: grid;
+  gap: var(--ls-space-2);
+  margin: 0;
+}
+
+.ls-prod-store dt {
+  color: var(--ls-text-subtle);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
+}
+
+.ls-prod-store dd {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+.ls-prod-related {
+  display: grid;
+  gap: var(--ls-space-5);
+}
+
+.ls-prod-related .ls-prod-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 1024px) {
+  .ls-prod-related .ls-prod-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }

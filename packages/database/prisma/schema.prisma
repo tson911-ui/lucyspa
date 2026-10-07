@@ -2073,28 +2073,29 @@ enum MediaVariantKind {
 // allowed while nothing references the asset. `storageKey` and variant keys are opaque random keys, never
 // paths or URLs; the original is kept (PRD 53) and three WebP variants are derived from it.
 model MediaAsset {
-  id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  storageKey       String                   @unique(map: "media_assets_storage_key_key") @map("storage_key")
-  originalFilename String                   @map("original_filename")
-  mime             String
-  bytes            Int
-  width            Int
-  height           Int
-  sha256           String                   @unique(map: "media_assets_sha256_key")
-  altVi            String?                  @map("alt_vi")
-  altEn            String?                  @map("alt_en")
-  createdByUserId  String                   @map("created_by_user_id") @db.Uuid
-  createdBy        User                     @relation("MediaAssetCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  rowVersion       Int                      @default(1) @map("row_version")
-  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  variants         MediaVariant[]
-  popups           WebsitePopup[]
-  shopInfoHero     WebsiteShopInfo[]
-  slides           WebsiteSlide[]           @relation("WebsiteSlideImage")
-  mobileSlides     WebsiteSlide[]           @relation("WebsiteSlideMobileImage")
-  seasonSlots      WebsiteSeasonSlotMedia[]
-  productImages    ProductImage[]
+  id                  String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storageKey          String                   @unique(map: "media_assets_storage_key_key") @map("storage_key")
+  originalFilename    String                   @map("original_filename")
+  mime                String
+  bytes               Int
+  width               Int
+  height              Int
+  sha256              String                   @unique(map: "media_assets_sha256_key")
+  altVi               String?                  @map("alt_vi")
+  altEn               String?                  @map("alt_en")
+  createdByUserId     String                   @map("created_by_user_id") @db.Uuid
+  createdBy           User                     @relation("MediaAssetCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion          Int                      @default(1) @map("row_version")
+  createdAt           DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  variants            MediaVariant[]
+  popups              WebsitePopup[]
+  shopInfoHero        WebsiteShopInfo[]
+  productSettingsHero ProductSettings[]        @relation("ProductSettingsHero")
+  slides              WebsiteSlide[]           @relation("WebsiteSlideImage")
+  mobileSlides        WebsiteSlide[]           @relation("WebsiteSlideMobileImage")
+  seasonSlots         WebsiteSeasonSlotMedia[]
+  productImages       ProductImage[]
 
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "media_assets_created_idx")
   @@map("media_assets")
@@ -2942,25 +2943,25 @@ model ProductCategory {
 }
 
 model Product {
-  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code            String            @unique(map: "products_code_key") @db.VarChar(96)
-  brandId         String?           @map("brand_id") @db.Uuid
-  brand           Brand?            @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  categoryId      String?           @map("category_id") @db.Uuid
-  category        ProductCategory?  @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  nameVi          String            @map("name_vi")
-  nameEn          String            @map("name_en")
-  descriptionVi   String?           @map("description_vi")
-  descriptionEn   String?           @map("description_en")
-  status          ProductStatus     @default(DRAFT)
-  featured        Boolean           @default(false)
-  publishedAt     DateTime?         @map("published_at") @db.Timestamptz(3)
-  source          Json?             @db.JsonB
-  createdByUserId String            @map("created_by_user_id") @db.Uuid
-  createdBy       User              @relation("ProductCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  rowVersion      Int               @default(1) @map("row_version")
-  createdAt       DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime          @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code            String           @unique(map: "products_code_key") @db.VarChar(96)
+  brandId         String?          @map("brand_id") @db.Uuid
+  brand           Brand?           @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  categoryId      String?          @map("category_id") @db.Uuid
+  category        ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  nameVi          String           @map("name_vi")
+  nameEn          String           @map("name_en")
+  descriptionVi   String?          @map("description_vi")
+  descriptionEn   String?          @map("description_en")
+  status          ProductStatus    @default(DRAFT)
+  featured        Boolean          @default(false)
+  publishedAt     DateTime?        @map("published_at") @db.Timestamptz(3)
+  source          Json?            @db.JsonB
+  createdByUserId String           @map("created_by_user_id") @db.Uuid
+  createdBy       User             @relation("ProductCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion      Int              @default(1) @map("row_version")
+  createdAt       DateTime         @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime         @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   variants        ProductVariant[]
   images          ProductImage[]
 
@@ -2970,23 +2971,23 @@ model Product {
 }
 
 model ProductVariant {
-  id                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  productId         String                @map("product_id") @db.Uuid
-  product           Product               @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  sku               String                @unique(map: "product_variants_sku_key") @db.VarChar(64)
-  labelVi           String?               @map("label_vi")
-  labelEn           String?               @map("label_en")
-  barcode           String?               @db.VarChar(64)
-  costPriceVnd      BigInt?               @map("cost_price_vnd")
-  lowStockThreshold Int?                  @map("low_stock_threshold")
-  sellOnOrder       Boolean               @default(true) @map("sell_on_order")
-  leadTimeDaysMin   Int?                  @map("lead_time_days_min") @db.SmallInt
-  leadTimeDaysMax   Int?                  @map("lead_time_days_max") @db.SmallInt
-  sortOrder         Int                   @default(0) @map("sort_order")
-  isActive          Boolean               @default(true) @map("is_active")
-  rowVersion        Int                   @default(1) @map("row_version")
-  createdAt         DateTime              @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime              @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  id                String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId         String                   @map("product_id") @db.Uuid
+  product           Product                  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sku               String                   @unique(map: "product_variants_sku_key") @db.VarChar(64)
+  labelVi           String?                  @map("label_vi")
+  labelEn           String?                  @map("label_en")
+  barcode           String?                  @db.VarChar(64)
+  costPriceVnd      BigInt?                  @map("cost_price_vnd")
+  lowStockThreshold Int?                     @map("low_stock_threshold")
+  sellOnOrder       Boolean                  @default(true) @map("sell_on_order")
+  leadTimeDaysMin   Int?                     @map("lead_time_days_min") @db.SmallInt
+  leadTimeDaysMax   Int?                     @map("lead_time_days_max") @db.SmallInt
+  sortOrder         Int                      @default(0) @map("sort_order")
+  isActive          Boolean                  @default(true) @map("is_active")
+  rowVersion        Int                      @default(1) @map("row_version")
+  createdAt         DateTime                 @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime                 @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   priceVersions     ProductPriceVersion[]
   promotions        ProductPromotion[]
   receiptLines      StockReceiptLine[]
@@ -3051,17 +3052,28 @@ model ProductImage {
 
 /// One row (id = 1) with the Owner-approved defaults: expiry warning 90 days, "Moi" badge 30 days.
 model ProductSettings {
-  id                Int      @id @default(1) @db.SmallInt
-  expiryWarningDays Int      @default(90) @map("expiry_warning_days")
-  newBadgeDays      Int      @default(30) @map("new_badge_days")
-  leadTimeDaysMin   Int      @default(3) @map("lead_time_days_min") @db.SmallInt
-  leadTimeDaysMax   Int      @default(5) @map("lead_time_days_max") @db.SmallInt
-  updatedByUserId   String?  @map("updated_by_user_id") @db.Uuid
-  updatedBy         User?    @relation("ProductSettingsUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  rowVersion        Int      @default(1) @map("row_version")
-  createdAt         DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  id                Int         @id @default(1) @db.SmallInt
+  expiryWarningDays Int         @default(90) @map("expiry_warning_days")
+  newBadgeDays      Int         @default(30) @map("new_badge_days")
+  leadTimeDaysMin   Int         @default(3) @map("lead_time_days_min") @db.SmallInt
+  leadTimeDaysMax   Int         @default(5) @map("lead_time_days_max") @db.SmallInt
+  // P6-6: the Owner-written copy of the public cosmetics page. Empty until filled in; the page hides what is empty.
+  heroMediaId       String?     @map("hero_media_id") @db.Uuid
+  heroMedia         MediaAsset? @relation("ProductSettingsHero", fields: [heroMediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  heroTitleVi       String?     @map("hero_title_vi")
+  heroTitleEn       String?     @map("hero_title_en")
+  heroTextVi        String?     @map("hero_text_vi")
+  heroTextEn        String?     @map("hero_text_en")
+  commitmentTitleVi String?     @map("commitment_title_vi")
+  commitmentTitleEn String?     @map("commitment_title_en")
+  commitmentItems   Json        @default("[]") @map("commitment_items") @db.JsonB
+  updatedByUserId   String?     @map("updated_by_user_id") @db.Uuid
+  updatedBy         User?       @relation("ProductSettingsUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion        Int         @default(1) @map("row_version")
+  createdAt         DateTime    @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime    @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
 
+  @@index([heroMediaId], map: "product_settings_hero_media_idx")
   @@map("product_settings")
 }
 
@@ -3158,18 +3170,18 @@ model StockReceipt {
 }
 
 model StockReceiptLine {
-  id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  receiptId    String          @map("receipt_id") @db.Uuid
-  receipt      StockReceipt    @relation(fields: [receiptId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  lineNo       Int             @map("line_no") @db.SmallInt
-  variantId    String          @map("variant_id") @db.Uuid
-  variant      ProductVariant  @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  quantity     Int
-  unitCostVnd  BigInt?         @map("unit_cost_vnd")
-  lotCode      String?         @map("lot_code") @db.VarChar(64)
-  expiryDate   DateTime?       @map("expiry_date") @db.Date
-  lots         InventoryLot[]
-  movements    StockMovement[]
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  receiptId   String          @map("receipt_id") @db.Uuid
+  receipt     StockReceipt    @relation(fields: [receiptId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  lineNo      Int             @map("line_no") @db.SmallInt
+  variantId   String          @map("variant_id") @db.Uuid
+  variant     ProductVariant  @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  quantity    Int
+  unitCostVnd BigInt?         @map("unit_cost_vnd")
+  lotCode     String?         @map("lot_code") @db.VarChar(64)
+  expiryDate  DateTime?       @map("expiry_date") @db.Date
+  lots        InventoryLot[]
+  movements   StockMovement[]
 
   @@unique([receiptId, lineNo], map: "stock_receipt_lines_receipt_no_key")
   @@index([variantId], map: "stock_receipt_lines_variant_idx")

@@ -10,6 +10,14 @@ import {
   parseServiceDetail,
   type HomeData,
 } from './public-site-core';
+import {
+  parseProductCodes,
+  parseProductDetail,
+  parsePublicProducts,
+  productsQuery,
+  isProductCode,
+  type ProductsState,
+} from './public-products-core';
 import { apiOrigin } from './season-server';
 import { asPublicSlides, publicSlidesUrl } from './slider-core';
 import { ttlMemo, type Answer } from './ttl-memo';
@@ -20,6 +28,7 @@ export const PUBLIC_FETCH_TIMEOUT_MS = 3_000;
 async function read(
   path: string,
   fetcher: typeof fetch,
+  memo = true,
 ): Promise<{ status: number; body: unknown } | null> {
   const load = async (): Promise<Answer<{ status: number; body: unknown } | null>> => {
     try {
@@ -37,8 +46,9 @@ async function read(
       return { value: null, ok: false };
     }
   };
-  // Remembered for a minute by the process (see ttlMemo); a caller-supplied fetcher (tests) is never memoized.
-  return fetcher === fetch ? ttlMemo(`public:${path}`, load) : (await load()).value;
+  // Remembered for a minute by the process (see ttlMemo); a caller-supplied fetcher (tests) is never memoized, and neither is a
+  // visitor's free-text search (the memo holds 200 entries: an unbounded set of search words must not push the real pages out).
+  return fetcher === fetch && memo ? ttlMemo(`public:${path}`, load) : (await load()).value;
 }
 
 /** The shop profile for a language, or null on any failure or malformed answer. */
@@ -71,6 +81,39 @@ export async function fetchPublicService(
   );
   if (answer?.status === 404) return 'missing';
   return answer?.status === 200 ? parseServiceDetail(answer.body) : null;
+}
+
+/** One page of the cosmetics catalog for the address bar's state, or null when it could not be read. */
+export async function fetchPublicProducts(
+  locale: Locale,
+  state: ProductsState,
+  fetcher: typeof fetch = fetch,
+) {
+  const query = productsQuery(state);
+  const path = `/api/v1/public/products?locale=${locale}${query === '' ? '' : `&${query.slice(1)}`}`;
+  const answer = await read(path, fetcher, state.q === '');
+  return answer?.status === 200 ? parsePublicProducts(answer.body) : null;
+}
+
+/** One product: the detail, 'missing' when the API says there is no such visible product, null when it could not be read. */
+export async function fetchPublicProduct(
+  locale: Locale,
+  code: string,
+  fetcher: typeof fetch = fetch,
+) {
+  if (!isProductCode(code)) return 'missing' as const;
+  const answer = await read(
+    `/api/v1/public/products/${encodeURIComponent(code)}?locale=${locale}`,
+    fetcher,
+  );
+  if (answer?.status === 404) return 'missing' as const;
+  return answer?.status === 200 ? parseProductDetail(answer.body) : null;
+}
+
+/** The codes of every visible product, for the sitemap (empty when they cannot be read). */
+export async function fetchPublicProductCodes(fetcher: typeof fetch = fetch): Promise<string[]> {
+  const answer = await read('/api/v1/public/products/codes', fetcher);
+  return (answer?.status === 200 ? parseProductCodes(answer.body)?.codes : undefined) ?? [];
 }
 
 export async function fetchPublicSlidesServer(locale: Locale, fetcher: typeof fetch = fetch) {

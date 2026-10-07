@@ -194,6 +194,17 @@ test('product catalog HTTP: guards, exact fields, optional money keys, stable co
       .expect(200);
     assert.deepEqual(calls.at(-1)?.slice(0, 2), ['editSettings', token]);
     assert.equal((calls.at(-1)![2] as Record<string, unknown>)['expiryWarningDays'], undefined);
+    // P6-6: the badge days and the public page copy travel in the same call (the API validates the copy itself).
+    await request(server)
+      .post(`${base}/product-settings/edit`)
+      .set(headers)
+      .send({
+        expectedRowVersion: 3,
+        newBadgeDays: 10,
+        publicPage: { heroMediaId: null, commitmentItems: [] },
+      })
+      .expect(200);
+    assert.equal((calls.at(-1)![2] as Record<string, unknown>)['newBadgeDays'], 10);
     await request(server)
       .post(`${base}/products/${productId}/variants/${variantId}/edit`)
       .set(headers)
@@ -245,7 +256,9 @@ test('product catalog HTTP: guards, exact fields, optional money keys, stable co
       [`products/${productId}/variants`, { ...variantBody, sellOnOrder: 'yes' }],
       [`products/${productId}/variants`, { ...variantBody, leadTimeDaysMin: '3' }],
       [`products/${productId}/variants`, { ...variantBody, weightGrams: 100 }],
-      ['product-settings/edit', { expectedRowVersion: 1, newBadgeDays: 10 }],
+      ['product-settings/edit', { expectedRowVersion: 1, newBadgeDays: '10' }],
+      ['product-settings/edit', { expectedRowVersion: 1, publicPage: 'hero' }],
+      ['product-settings/edit', { expectedRowVersion: 1, unknownKey: 1 }],
       ['product-settings/edit', { leadTimeDaysMin: 3, leadTimeDaysMax: 5 }],
       ['product-settings/edit', { expectedRowVersion: 1, expiryWarningDays: '90' }],
       [

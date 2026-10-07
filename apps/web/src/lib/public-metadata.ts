@@ -2,12 +2,21 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import type { Locale } from '../i18n/locales';
 import { getSiteText } from '../i18n/site';
-import { fetchPublicService, fetchPublicServices, fetchPublicSite } from './public-site';
+import { isPlainList, type ProductsState } from './public-products-core';
+import {
+  fetchPublicProduct,
+  fetchPublicProductCodes,
+  fetchPublicProducts,
+  fetchPublicService,
+  fetchPublicServices,
+  fetchPublicSite,
+} from './public-site';
 import {
   absoluteImage,
   clip,
   languageAlternates,
   ogLocale,
+  productDescription,
   serviceDescription,
   siteOrigin,
 } from './seo-core';
@@ -107,3 +116,61 @@ export async function publicServiceCodes(): Promise<string[]> {
     ? catalogue.groups.flatMap((group) => group.services.map((entry) => entry.code))
     : [];
 }
+
+/**
+ * The cosmetics list. Its address and the hero's words are the Owner's; a search, a filter or a later page is a view of the same
+ * list, so it names the plain list as canonical and stays out of the index (its links are still followed).
+ */
+export async function productsMetadata(locale: Locale, state: ProductsState): Promise<Metadata> {
+  const [site, data, origin] = await Promise.all([
+    fetchPublicSite(locale),
+    // The plain first page is what a crawler reads; it is also the one already in the 60-second memory.
+    fetchPublicProducts(locale, {
+      ...state,
+      q: '',
+      category: '',
+      brand: '',
+      sort: 'featured',
+      page: 1,
+    }),
+    requestOrigin(),
+  ]);
+  const text = getSiteText(locale);
+  const title = data?.hero?.title ?? text.products.title;
+  const lead = data?.hero?.text ?? text.products.lead;
+  const widest = data?.hero?.image?.sources.at(-1);
+  const metadata = indexable({
+    locale,
+    origin,
+    path: '/products',
+    title: `${title} · ${SITE_NAME}`,
+    description: clip(site ? `${lead} ${SITE_NAME}, ${site.address}` : lead),
+    image: origin ? absoluteImage(origin, widest?.url) : null,
+  });
+  return isPlainList(state) ? metadata : { ...metadata, robots: { index: false, follow: true } };
+}
+
+export async function productMetadata(locale: Locale, code: string): Promise<Metadata> {
+  const [detail, site, origin] = await Promise.all([
+    fetchPublicProduct(locale, code),
+    fetchPublicSite(locale),
+    requestOrigin(),
+  ]);
+  const text = getSiteText(locale);
+  // An unknown, unpublished or discontinued product is a 404 page and says so; a failed read keeps the page out of the index.
+  if (detail === 'missing' || detail === null) {
+    return { title: `${text.products.notFoundTitle} · ${SITE_NAME}`, robots: { index: false } };
+  }
+  const widest = detail.product.images[0]?.sources.at(-1);
+  return indexable({
+    locale,
+    origin,
+    path: `/products/${encodeURIComponent(detail.product.code)}`,
+    title: `${detail.product.name} · ${SITE_NAME}`,
+    description: productDescription(detail.product, locale, SITE_NAME, site?.address ?? null),
+    image: origin ? absoluteImage(origin, widest?.url) : null,
+  });
+}
+
+/** The codes of every visible product, for the sitemap (empty when they cannot be read). */
+export const publicProductCodes = (): Promise<string[]> => fetchPublicProductCodes();

@@ -165,6 +165,25 @@ function SettingsForm({
             </Field>
           </>
         ) : null}
+        {fields.includes('badge') ? (
+          <Field
+            label={s.badgeField}
+            hint={s.badgeHint}
+            error={issue(checked, 'badge', draft, fields) ? s.badgeInvalid : undefined}
+            required
+          >
+            {(control) => (
+              <NumberInput
+                {...control}
+                inputMode="numeric"
+                min={1}
+                max={365}
+                value={draft.badge}
+                onChange={(event) => set({ badge: event.target.value })}
+              />
+            )}
+          </Field>
+        ) : null}
         {fields.includes('expiry') ? (
           <Field
             label={s.expiryField}

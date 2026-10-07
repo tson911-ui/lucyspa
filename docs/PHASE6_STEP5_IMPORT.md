@@ -23,6 +23,6 @@ Trạng thái: **làm xong, commit cục bộ, chưa push, chưa deploy.** Căn 
 4. 130% ở 360 px vẫn tràn ngang do thanh trên cùng chung (đã ghi `docs/UI_BACKLOG.md`). Ô tích 20 px trong hộp xác nhận bị cảnh báo "dưới 44 px" của công cụ chụp: đó là ô tích của bộ kiểu chung (vùng bấm là cả nhãn), như các hộp khác.
 5. Không thêm `wf-*`, px/rem hay màu hex; kiểu dùng sẵn của bộ UI. **Chưa thử** mở tệp mẫu trong Microsoft Excel thật (không có trên máy này); đã thử đọc lại bằng trình đọc riêng và mở được cấu trúc zip.
 
-## Chưa rõ / cần Chủ quyết (OQ-43..OQ-48 ở `docs/PHASE6_OWNER_DECISIONS_VI.md`, đều chờ có/không)
+## Đã duyệt (Chủ, 2026-10-07): OQ-43..OQ-48 như đề xuất; ảnh hàng loạt và giá hàng loạt sang Phase 9 (`docs/PHASE6_OWNER_DECISIONS_VI.md`)
 
 Dòng lỗi chỉ bị bỏ qua khi Chủ tích đồng ý; giới hạn 5 MB/2.000 dòng và xử lý ngay (thiết kế 11.2 nói chạy nền); cách viết tệp (nhóm sản phẩm, ô trống giữ nguyên, sản phẩm mới là nháp, không tự tạo thương hiệu/danh mục); tồn đầu kỳ một lần mỗi phân loại và chi nhánh; hai thư viện mới (fflate, fast-xml-parser, thêm 9 gói); **ảnh hàng loạt (31.3) và cập nhật giá hàng loạt (31.4) chưa làm**: hỏi làm ở bước nào. Khi nhập 2.000 dòng, giao dịch giữ khóa chung của đồ thị quyền và dòng người dùng/phiên của người nhập khoảng 20 giây (đổi vai trò/quyền, hoặc thao tác khác của chính người nhập ở thẻ khác, chờ lâu hơn bình thường lúc đó): nên nhập lúc vắng khách. Nếu có nginx đứng trước: đặt `proxy_read_timeout` từ 150 giây (đã ghi vào hướng dẫn deploy).

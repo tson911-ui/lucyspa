@@ -100,6 +100,9 @@ test('shop info HTTP: strict admin body, CSRF/Origin, anonymous cached public si
       site: reply('public-site', { tagline: 'Thư Giãn Tận Tâm', hours: [] }),
       services: reply('public-services', { groups: [] }),
       serviceDetail: reply('public-service', { service: { code: 'GOI_THUONG' } }),
+      products: reply('public-products', { items: [], total: 0 }),
+      productDetail: reply('public-product', { product: { code: 'kem-duong' } }),
+      productCodes: reply('public-product-codes', { codes: ['kem-duong'] }),
     })
     .compile();
   const app = module.createNestApplication({ logger: false });
@@ -242,6 +245,47 @@ test('shop info HTTP: strict admin body, CSRF/Origin, anonymous cached public si
     assert.deepEqual(calls.pop()?.args, ['vi', 'GOI_THUONG']);
     outcome = new AuthError('NOT_FOUND');
     await request(server).get('/api/v1/public/services/NOPE?locale=vi').expect(404);
+    outcome = null;
+    calls.length = 0;
+
+    // The cosmetics catalog (P6-6): same rules, plus a bounded query that never reaches the service when it is out of range.
+    for (const path of ['/api/v1/public/products', '/api/v1/public/products/kem-duong']) {
+      await request(server).get(path).expect(400);
+      await request(server).get(`${path}?locale=fr`).expect(400);
+    }
+    for (const bad of [
+      'sort=cost',
+      'page=0',
+      'page=501',
+      'category=a%20b',
+      'q=' + 'x'.repeat(81),
+    ]) {
+      await request(server).get(`/api/v1/public/products?locale=vi&${bad}`).expect(400);
+    }
+    assert.equal(calls.length, 0);
+    const products = await request(server)
+      .get('/api/v1/public/products?locale=vi&q=kem&sort=price_asc&page=2&category=skin&brand=lucy')
+      .expect(200);
+    assert.deepEqual(products.body, { items: [], total: 0 });
+    assert.equal(products.headers['cache-control'], 'public, max-age=60');
+    assert.equal(products.headers.vary?.includes('Accept-Encoding'), true);
+    assert.equal(products.headers['set-cookie'], undefined, 'anonymous and cookie-free');
+    assert.deepEqual(calls.pop()?.args, [
+      'vi',
+      { q: 'kem', category: 'skin', brand: 'lucy', sort: 'price_asc', page: 2 },
+    ]);
+    const codes = await request(server).get('/api/v1/public/products/codes').expect(200);
+    assert.deepEqual(codes.body, { codes: ['kem-duong'] });
+    assert.equal(codes.headers['cache-control'], 'public, max-age=60');
+    assert.deepEqual(calls.pop()?.args, []);
+    const product = await request(server)
+      .get('/api/v1/public/products/kem-duong?locale=en')
+      .expect(200);
+    assert.equal(product.body.product.code, 'kem-duong');
+    assert.equal(product.headers['cache-control'], 'public, max-age=60');
+    assert.deepEqual(calls.pop()?.args, ['en', 'kem-duong']);
+    outcome = new AuthError('NOT_FOUND');
+    await request(server).get('/api/v1/public/products/draft?locale=vi').expect(404);
   } finally {
     await app.close();
   }

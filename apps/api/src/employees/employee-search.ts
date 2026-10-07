@@ -20,6 +20,9 @@ export function foldSearch(value: string): string {
 const FROM = 'àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ';
 const TO = [...FROM].map((letter) => foldSearch(letter)).join('');
 
+/** The same two strings, for other searches that fold names in SQL (the public product search). */
+export { FROM as FROM_FOLDED, TO as TO_FOLDED };
+
 /** Terms of the folded query (whitespace separated), for word-prefix matching. */
 export function searchTokens(query: string): string[] {
   return foldSearch(query).split(/\s+/u).filter(Boolean);

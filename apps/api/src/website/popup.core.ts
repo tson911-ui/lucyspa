@@ -589,6 +589,18 @@ export async function isPubliclyServed(
     select: { id: true },
   });
   if (hero !== null) return true;
+  // The hero of the cosmetics page (P6-6): public once the Owner chose it, like the shop profile's.
+  const productsHero = await tx.productSettings.findFirst({
+    where: { heroMediaId: assetId },
+    select: { id: true },
+  });
+  if (productsHero !== null) return true;
+  // A picture of a product that is published right now (P6-6); a draft or discontinued product's pictures stay private.
+  const productImage = await tx.productImage.findFirst({
+    where: { mediaAssetId: assetId, product: { status: 'PUBLISHED' } },
+    select: { id: true },
+  });
+  if (productImage !== null) return true;
   // A picture of a visible footer block (the block names its asset inside the profile's JSON).
   const [footer] = await tx.$queryRaw<{ id: string }[]>`
     SELECT id FROM website_shop_info

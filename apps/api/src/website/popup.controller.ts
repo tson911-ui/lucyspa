@@ -1,5 +1,8 @@
 import type {
   PublicPopupResponse,
+  PublicProductCodesResponse,
+  PublicProductDetailResponse,
+  PublicProductsResponse,
   PublicSeasonResponse,
   PublicServiceDetailResponse,
   PublicServicesResponse,
@@ -38,6 +41,7 @@ import type { Request, Response } from 'express';
 import { AuthError } from '../auth/auth.error.js';
 import { sessionCookie } from '../auth/cookies.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
+import { parsePublicProductsQuery } from '../products/public-products.logic.js';
 import { VARIANT_KINDS, type VariantKind } from './media.processing.js';
 import { PopupService, PublicWebsiteService } from './popup.service.js';
 
@@ -276,6 +280,54 @@ export class PublicWebsiteController {
   ): Promise<PublicServiceDetailResponse> {
     if (locale !== 'vi' && locale !== 'en') throw new AuthError('VALIDATION_FAILED', 'locale');
     const detail = await this.website.serviceDetail(locale, code);
+    response.setHeader('cache-control', 'public, max-age=60');
+    response.setHeader('vary', 'Accept-Encoding');
+    return detail;
+  }
+
+  @Get('products')
+  @ApiOkResponse({
+    description:
+      'One page of the cosmetics catalog (`locale=vi|en`, `q`, `category`, `brand`, `sort=featured|newest|price_asc|price_desc`, `page`; 20 per page) with the categories and brands that hold products and the Owner-written hero and commitment box. Only published, priced products; stock is a state, never a quantity; no cost. Cached for 60 seconds.',
+  })
+  async products(
+    @Query() query: Record<string, unknown>,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PublicProductsResponse> {
+    const locale = query['locale'];
+    if (locale !== 'vi' && locale !== 'en') throw new AuthError('VALIDATION_FAILED', 'locale');
+    const result = await this.website.products(locale, parsePublicProductsQuery(query));
+    response.setHeader('cache-control', 'public, max-age=60');
+    response.setHeader('vary', 'Accept-Encoding');
+    return result;
+  }
+
+  @Get('products/codes')
+  @ApiOkResponse({
+    description:
+      'The codes of every visible product (at most 5000), for the sitemap. Cached for 60 seconds.',
+  })
+  async productCodes(
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PublicProductCodesResponse> {
+    const codes = await this.website.productCodes();
+    response.setHeader('cache-control', 'public, max-age=60');
+    response.setHeader('vary', 'Accept-Encoding');
+    return codes;
+  }
+
+  @Get('products/:code')
+  @ApiOkResponse({
+    description:
+      'One visible product by its code with its variants, pictures and related products; 404 for a draft, discontinued or unknown product. Cached for 60 seconds.',
+  })
+  async productDetail(
+    @Param('code') code: string,
+    @Query('locale') locale: string | undefined,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PublicProductDetailResponse> {
+    if (locale !== 'vi' && locale !== 'en') throw new AuthError('VALIDATION_FAILED', 'locale');
+    const detail = await this.website.productDetail(locale, code);
     response.setHeader('cache-control', 'public, max-age=60');
     response.setHeader('vary', 'Accept-Encoding');
     return detail;

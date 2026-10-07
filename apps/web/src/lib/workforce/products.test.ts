@@ -326,13 +326,24 @@ const SETTINGS: ProductSettingsResponse = {
   leadTimeDaysMin: 3,
   leadTimeDaysMax: 5,
   expiryWarningDays: 90,
+  newBadgeDays: 30,
+  publicPage: {
+    heroMediaId: null,
+    heroTitleVi: null,
+    heroTitleEn: null,
+    heroTextVi: null,
+    heroTextEn: null,
+    commitmentTitleVi: null,
+    commitmentTitleEn: null,
+    commitmentItems: [],
+  },
   rowVersion: 4,
   access: { manage: true, prices: false, cost: false },
 };
 
 test('the settings request carries only what changed and refuses a bad draft', () => {
   const draft = draftFromSettings(SETTINGS);
-  assert.deepEqual(draft, { leadMin: '3', leadMax: '5', expiry: '90' });
+  assert.deepEqual(draft, { leadMin: '3', leadMax: '5', expiry: '90', badge: '30' });
   assert.equal(settingsRequest(draft, SETTINGS, ['lead', 'expiry']), null, 'nothing changed');
   assert.deepEqual(settingsRequest({ ...draft, leadMin: '2', leadMax: '6' }, SETTINGS, ['lead']), {
     expectedRowVersion: 4,
@@ -343,6 +354,14 @@ test('the settings request carries only what changed and refuses a bad draft', (
     expectedRowVersion: 4,
     expiryWarningDays: 120,
   });
+  assert.deepEqual(settingsRequest({ ...draft, badge: '14' }, SETTINGS, ['lead', 'badge']), {
+    expectedRowVersion: 4,
+    newBadgeDays: 14,
+  });
+  for (const badge of ['0', '366', '1.5', '', 'x']) {
+    assert.equal(validateSettingsDraft({ ...draft, badge }, ['badge']).badge, 'invalid', badge);
+  }
+  assert.equal(validateSettingsDraft({ ...draft, badge: '365' }, ['badge']).badge, undefined);
   // A field the screen does not offer is never sent, even when the draft differs.
   assert.equal(settingsRequest({ ...draft, expiry: '120' }, SETTINGS, ['lead']), null);
   for (const bad of [

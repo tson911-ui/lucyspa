@@ -1,9 +1,11 @@
 import type {
   PublicHoursGroup,
+  PublicProductDetail,
   PublicServiceDetailResponse,
   PublicSiteResponse,
 } from '@lucy-spa/contracts';
 import type { Locale } from '../i18n/locales';
+import { moneyText } from './public-products-core';
 import { servicePrice } from './public-site-core';
 
 // Search-engine data of the public pages (Part 2 contract 9, decision Q-P2-4): the address a crawler should use, the
@@ -77,6 +79,31 @@ export function serviceDescription(
   return clip(`${lead} ${locale === 'vi' ? 'Giá' : 'Price'} ${price}.`);
 }
 
+/** The description of a product's page: its own text, else its name and category; always with the price ("from" when sizes differ). */
+export function productDescription(
+  product: PublicProductDetail,
+  locale: Locale,
+  siteName: string,
+  address: string | null,
+): string {
+  const cheapest = product.variants.reduce<string>(
+    (min, variant) => (BigInt(variant.price.priceVnd) < BigInt(min) ? variant.price.priceVnd : min),
+    product.variants[0]?.price.priceVnd ?? '0',
+  );
+  const price =
+    cheapest === product.priceMaxVnd
+      ? moneyText(cheapest, locale)
+      : `${locale === 'vi' ? 'từ' : 'from'} ${moneyText(cheapest, locale)}`;
+  const category = product.category?.name ?? null;
+  const lead =
+    product.description?.trim() ||
+    (locale === 'vi'
+      ? `${product.name} tại ${siteName}${category ? `, danh mục ${category}` : ''}.`
+      : `${product.name} at ${siteName}${category ? `, in ${category}` : ''}.`);
+  const where = address ? ` ${locale === 'vi' ? 'Mua tại' : 'Buy at'} ${address}.` : '';
+  return clip(`${lead} ${locale === 'vi' ? 'Giá' : 'Price'} ${price}.${where}`);
+}
+
 const DAY = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
 
 /** schema.org times are `HH:MM`; a closing time of 24:00 is the last minute of the day. */
@@ -135,12 +162,18 @@ export interface SitemapEntry {
   alternates: Record<string, string>;
 }
 
-/** Every indexable page in both languages, each with its alternates: home, the service list and each service's page. */
-export function sitemapEntries(origin: string, serviceCodes: readonly string[]): SitemapEntry[] {
+/** Every indexable page in both languages, each with its alternates: home, the service list and each service's page, the cosmetics list and each product's page. */
+export function sitemapEntries(
+  origin: string,
+  serviceCodes: readonly string[],
+  productCodes: readonly string[] = [],
+): SitemapEntry[] {
   const paths = [
     '',
     '/services',
     ...serviceCodes.map((code) => `/services/${encodeURIComponent(code)}`),
+    '/products',
+    ...productCodes.map((code) => `/products/${encodeURIComponent(code)}`),
   ];
   return paths.flatMap((path) =>
     SEO_LOCALES.map((locale) => ({

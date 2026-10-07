@@ -53,8 +53,9 @@ const sql = (name: string) =>
     .map((line) => line.replace(/--.*$/, ''))
     .join('\n');
 
-test('Wave 1 has its nine migrations', () => {
-  assert.equal(WAVE1.length, 9, WAVE1.join(', '));
+// Nine from P6-2 to P6-4, the tenth is P6-6's eight columns of page copy on `product_settings` (a new Phase 6 table).
+test('Wave 1 has its ten migrations', () => {
+  assert.equal(WAVE1.length, 10, WAVE1.join(', '));
 });
 
 test('Wave 1 migrations touch no POS, invoice, discount, payment, loyalty or booking table', () => {

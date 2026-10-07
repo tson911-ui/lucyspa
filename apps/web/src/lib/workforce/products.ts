@@ -713,17 +713,20 @@ export interface SettingsDraft {
   leadMin: string;
   leadMax: string;
   expiry: string;
+  /** The days the "Mới" badge shows after the first publication. */
+  badge: string;
 }
 
-export type SettingsField = 'lead' | 'expiry';
+export type SettingsField = 'lead' | 'expiry' | 'badge';
 
 export const draftFromSettings = (settings: ProductSettingsResponse): SettingsDraft => ({
   leadMin: String(settings.leadTimeDaysMin),
   leadMax: String(settings.leadTimeDaysMax),
   expiry: String(settings.expiryWarningDays),
+  badge: String(settings.newBadgeDays),
 });
 
-/** Which parts of the settings dialog the caller sees: the waiting time (products) and the expiry warning (inventory). */
+/** Which parts of the settings dialog the caller sees: the waiting time and the "Mới" days (products), the expiry warning (inventory). */
 export function validateSettingsDraft(
   draft: SettingsDraft,
   fields: readonly SettingsField[],
@@ -737,10 +740,15 @@ export function validateSettingsDraft(
     const days = wholeNumber(draft.expiry, EXPIRY_DAYS_MAX);
     if (days === null || days < 1) errors.expiry = 'invalid';
   }
+  if (fields.includes('badge')) {
+    const days = wholeNumber(draft.badge, NEW_BADGE_DAYS_MAX);
+    if (days === null || days < 1) errors.badge = 'invalid';
+  }
   return errors;
 }
 
 export const EXPIRY_DAYS_MAX = 730;
+export const NEW_BADGE_DAYS_MAX = 365;
 
 /** Only the keys that changed (the API changes only the keys present); null when nothing changed or the draft is invalid. */
 export function settingsRequest(
@@ -764,6 +772,10 @@ export function settingsRequest(
   if (fields.includes('expiry')) {
     const days = wholeNumber(draft.expiry, EXPIRY_DAYS_MAX);
     if (days !== null && days !== settings.expiryWarningDays) request.expiryWarningDays = days;
+  }
+  if (fields.includes('badge')) {
+    const days = wholeNumber(draft.badge, NEW_BADGE_DAYS_MAX);
+    if (days !== null && days !== settings.newBadgeDays) request.newBadgeDays = days;
   }
   return Object.keys(request).length > 1 ? request : null;
 }

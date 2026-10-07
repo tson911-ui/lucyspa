@@ -378,9 +378,9 @@ Giải thích ngắn: T28 như một cuốn sổ giao hàng riêng bên cạnh s
 - **Tôi khuyên:** **không áp dụng** giảm giá và không tính điểm cho phí giao hàng; chỉ tính trên sản phẩm.
 - **Nếu khác:** tính cả phí thì khách có thể dùng voucher để giảm phí giao hàng, và hoàn tiền phải tách phí ra.
 
-## Câu hỏi của P6-5 (nhập Excel/CSV): **chờ Chủ có/không**, chưa tính là đã duyệt
+## Câu hỏi của P6-5 (nhập Excel/CSV): **Chủ đã duyệt OQ-43 đến OQ-48 như đề xuất (2026-10-07)**
 
-Chi tiết: `docs/PHASE6_STEP5_IMPORT.md`. Mọi cách đọc dưới đây là của tôi; đã làm theo hướng khuyên nhưng chưa có lời duyệt của Chủ.
+Chi tiết: `docs/PHASE6_STEP5_IMPORT.md`. **Lời Chủ (2026-10-07):** "P6-5 approved: OQ-43…48 as you proposed (explicit tick to skip invalid rows; 5 MB / 2,000 rows synchronous; blank cell keeps existing value; opening stock once per variant and branch; fflate and fast-xml-parser). Bulk images and bulk price update (PRD 31.3/31.4) stay in Phase 9." Ảnh hàng loạt và cập nhật giá hàng loạt (OQ-48) nằm ở Phase 9. Các mục dưới đây giữ nguyên như đã viết.
 
 ### OQ-43. Tệp có dòng lỗi thì xử lý thế nào?
 
@@ -408,6 +408,33 @@ Chi tiết: `docs/PHASE6_STEP5_IMPORT.md`. Mọi cách đọc dưới đây là 
 
 - Đọc tệp .xlsx cần **fflate** (giải nén) và **fast-xml-parser** (đọc XML); cả hai không có phụ thuộc phức tạp (khóa phụ thuộc thêm 9 gói). Đây là quyết định kỹ thuật cần Chủ đồng ý.
 
-### OQ-48. Hai việc PRD 31 chưa làm: khi nào làm?
+### OQ-48. Hai việc PRD 31 chưa làm: khi nào làm? (Chủ trả lời: Phase 9)
 
 - **Ảnh hàng loạt theo tên tệp = SKU** (31.3) và **cập nhật giá hàng loạt: xuất ra, sửa, nhập lại, xem khác biệt, xác nhận** (31.4). Lời yêu cầu của Chủ ngày 2026-10-07 chỉ nêu sản phẩm, phân loại và tồn đầu kỳ nên tôi **chưa làm** hai việc này. Chủ cho biết làm ở bước nào.
+
+## Câu hỏi của P6-6 (trang mỹ phẩm công khai): **chờ Chủ có/không**, chưa tính là đã duyệt
+
+Chi tiết: `docs/PHASE6_STEP6_PUBLIC_CATALOG.md`. OQ-27 và OQ-28 đã duyệt (mục 2.5 của thiết kế) và đã làm đúng như vậy. Năm điểm dưới đây là cách đọc của tôi, nơi thiết kế chưa nói rõ.
+
+### OQ-49. Chỗ nhập ảnh, lời đầu trang và khung cam kết
+
+- **Tôi đã làm:** nhập ở trang **Sản phẩm → nút "Trang mỹ phẩm"** (cần quyền quản lý sản phẩm), cùng chỗ với "Cài đặt". Thiết kế 16.5 ghi "tab Thông tin cửa hàng".
+- **Lý do:** phần này thuộc về sản phẩm, có sẵn quyền, bản ghi và nhật ký; tab Thông tin cửa hàng là một biểu mẫu lớn lưu cả cửa hàng một lần.
+- **Nếu khác:** chuyển sang tab Thông tin cửa hàng (đổi cột, không mất dữ liệu).
+
+### OQ-50. Bốn cách sắp xếp
+
+- Mẫu Lovable chỉ có "Nổi bật". Tôi thêm **Mới nhất, Giá thấp đến cao, Giá cao đến thấp** (khách quen dùng). "Nổi bật" = ô "nổi bật" của sản phẩm, rồi mới đăng trước.
+- **Nếu khác:** bỏ ba cách thêm, ô sắp xếp chỉ còn "Nổi bật".
+
+### OQ-51. Khi nào hiện "Hết hàng" và "Đặt trước, dự kiến n ngày"
+
+- Còn hàng ở bất kỳ chi nhánh đang hoạt động: **không ghi gì**. Hết hàng và loại đó cho bán theo đơn: "Đặt trước, dự kiến 3–5 ngày" (số ngày riêng của loại, nếu không thì số ngày mặc định). Hết hàng và không bán theo đơn: "Hết hàng". Sản phẩm nhiều loại: còn hàng ở một loại là không ghi gì ở thẻ. Không bao giờ hiện số lượng.
+
+### OQ-52. Lời của khối "Mua trực tiếp tại cửa hàng"
+
+- "Đến Lucy Spa để xem và mua sản phẩm. Nên gọi trước để biết tình trạng hàng." kèm địa chỉ, điện thoại, giờ mở cửa từ Thông tin cửa hàng và hai nút "Chỉ đường", "Gọi cửa hàng". Lời là của tôi; Chủ sửa nếu muốn.
+
+### OQ-53. Tên tiếng Anh của mục menu
+
+- Tiếng Việt "Mỹ phẩm" (Chủ đã chọn). Tiếng Anh tôi dùng "Cosmetics".

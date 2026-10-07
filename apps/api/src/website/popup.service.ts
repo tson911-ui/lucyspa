@@ -1,5 +1,8 @@
 import type {
   PublicPopupResponse,
+  PublicProductCodesResponse,
+  PublicProductDetailResponse,
+  PublicProductsResponse,
   PublicServiceDetailResponse,
   PublicServicesResponse,
   PublicSeasonResponse,
@@ -33,6 +36,12 @@ import {
   updatePopup,
   type PublicLocale,
 } from './popup.core.js';
+import {
+  publicProductCodes,
+  publicProductDetail,
+  publicProducts,
+} from '../products/public-products.core.js';
+import type { PublicProductsQuery } from '../products/public-products.logic.js';
 import { publicServiceDetail, publicServices } from './public-catalog.core.js';
 import { activeSeason } from './season.core.js';
 import { publicSite } from './shop-info.core.js';
@@ -161,6 +170,19 @@ export class PublicWebsiteService {
 
   serviceDetail(locale: PublicLocale, code: string): Promise<PublicServiceDetailResponse> {
     return this.read((tx) => publicServiceDetail(tx, locale, code));
+  }
+
+  /** The visible cosmetics, one page (P6-6): only PUBLISHED products with a price; never a cost or a quantity. */
+  products(locale: PublicLocale, query: PublicProductsQuery): Promise<PublicProductsResponse> {
+    return this.read((tx) => publicProducts(tx, locale, query));
+  }
+
+  productDetail(locale: PublicLocale, code: string): Promise<PublicProductDetailResponse> {
+    return this.read((tx) => publicProductDetail(tx, locale, code));
+  }
+
+  productCodes(): Promise<PublicProductCodesResponse> {
+    return this.read((tx) => publicProductCodes(tx));
   }
 
   /** One rendition of an image that live content uses. Anything else is 404, never a hint that it exists. */

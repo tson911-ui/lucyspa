@@ -163,8 +163,13 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 ## Phase 6 P6-5 (Excel/CSV import, 2026-10-07, committed locally, not pushed, not deployed)
 
 - Import of products and variants (pre-order columns) and of opening stock: template download (xlsx, csv), preview with row-level Vietnamese errors, duplicate checks, nothing saved until the Owner confirms; apply plans again under locks and refuses a stale preview. API `apps/api/src/product-imports/`, parser and templates in `packages/server/src/product-import/`, screens "Nhập dữ liệu" (`/import`). **No migration** (72 in Wave 1); new dependencies fflate and fast-xml-parser.
-- My readings (OQ-43..OQ-48 in `docs/PHASE6_OWNER_DECISIONS_VI.md`) are **pending the Owner's yes/no**: skipping invalid rows needs an explicit tick, 5 MB / 2,000 rows synchronous, blank cell keeps the value, two new libraries, bulk images (31.3) and bulk price update (31.4) not built. Report: `docs/PHASE6_STEP5_IMPORT.md`.
+- **APPROVED by the Owner on 2026-10-07 (design 2.10): OQ-43..OQ-48 as proposed; bulk images and bulk price update move to Phase 9.** The readings (OQ-43..OQ-48 in `docs/PHASE6_OWNER_DECISIONS_VI.md`) are: skipping invalid rows needs an explicit tick, 5 MB / 2,000 rows synchronous, blank cell keeps the value, two new libraries, bulk images (31.3) and bulk price update (31.4) not built. Report: `docs/PHASE6_STEP5_IMPORT.md`.
 - The official DOM audit capture is now committed (`scripts/uxui-audit-capture.mjs`); the 26 baseline pages show no count rising.
+
+## Phase 6 P6-6 (public cosmetics catalog, 2026-10-07, committed locally, not pushed, not deployed)
+
+- `/products` ("Mỹ phẩm"; OQ-P6-27/28 as approved): list (Owner hero + commitment box hidden while empty, search, 4 sorts, category/brand filters, 20 per page) and product page (gallery, variants, store block from the shop profile, related); public API `/api/v1/public/products[/:code|/codes]`, 60 s cache, no cost/quantity/SKU/ids; pictures public only while PUBLISHED; sitemap + JSON-LD. Migration `20261106000009` (8 columns on `product_settings`, additive); Wave 1 is now 10 migrations (73 total). Report: `docs/PHASE6_STEP6_PUBLIC_CATALOG.md`.
+- Pending the Owner (OQ-49..OQ-53 in `docs/PHASE6_OWNER_DECISIONS_VI.md`): where the hero/commitment copy is edited (I used Products → "Trang mỹ phẩm", not the Shop info tab), the four sorts, the stock wording rule, the store-block text, the English label "Cosmetics". P6-5 approval (OQ-43..48) recorded in design 2.10.
 
 ## Production
 

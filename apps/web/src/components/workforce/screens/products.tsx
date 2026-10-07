@@ -53,6 +53,7 @@ import {
   useResource,
   useSuccessToast,
 } from '../ui';
+import { ProductPageDrawer } from './product-page-drawer';
 import { ProductSettingsDialog } from './product-settings-dialog';
 import { ProductStatusConfirm } from './product-status';
 import { BrandsTab, CategoriesTab } from './products-taxonomy';
@@ -85,6 +86,7 @@ export function ProductsScreen() {
   const [createOpen, setCreateOpen] = useState<'brand' | 'category' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [pageOpen, setPageOpen] = useState(false);
   const notify = useSuccessToast();
 
   /** A success is a toast (shown by the dialog itself); only a conflict leaves a message on the page. */
@@ -302,6 +304,11 @@ export function ProductsScreen() {
     <>
       <PageHeader title={p.title}>
         {manage ? (
+          <Button variant="secondary" icon="globe" onClick={() => setPageOpen(true)}>
+            {p.page.open}
+          </Button>
+        ) : null}
+        {manage ? (
           <Button variant="secondary" icon="settings" onClick={() => setSettingsOpen(true)}>
             {p.settings.open}
           </Button>
@@ -366,8 +373,9 @@ export function ProductsScreen() {
         ]}
       />
       {settingsOpen ? (
-        <ProductSettingsDialog fields={['lead']} onClose={() => setSettingsOpen(false)} />
+        <ProductSettingsDialog fields={['lead', 'badge']} onClose={() => setSettingsOpen(false)} />
       ) : null}
+      {pageOpen ? <ProductPageDrawer onClose={() => setPageOpen(false)} /> : null}
       {overlay?.kind === 'status' ? (
         <ProductStatusConfirm
           key={overlay.product.id}

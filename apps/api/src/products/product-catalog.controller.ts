@@ -15,6 +15,7 @@ import type {
   ProductListResponse,
   ProductPriceChangeRequest,
   ProductPromotionCreateRequest,
+  ProductPublicPageCopy,
   ProductSettingsEditRequest,
   ProductSettingsResponse,
   ProductStatusRequest,
@@ -27,6 +28,7 @@ import {
   IsArray,
   IsBoolean,
   IsIn,
+  IsObject,
   IsInt,
   IsOptional,
   IsString,
@@ -203,6 +205,11 @@ class SettingsEditDto implements ProductSettingsEditRequest {
   @ApiProperty({ required: false }) @IsOptional() @IsInt() leadTimeDaysMin?: number;
   @ApiProperty({ required: false }) @IsOptional() @IsInt() leadTimeDaysMax?: number;
   @ApiProperty({ required: false }) @IsOptional() @IsInt() expiryWarningDays?: number;
+  @ApiProperty({ required: false }) @IsOptional() @IsInt() newBadgeDays?: number;
+  @ApiProperty({ required: false, type: Object })
+  @IsOptional()
+  @IsObject()
+  publicPage?: ProductPublicPageCopy;
 }
 
 class PriceDto implements ProductPriceChangeRequest {

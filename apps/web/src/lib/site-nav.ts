@@ -6,7 +6,7 @@ import type { SiteText } from '../i18n/site';
  * (for example the cosmetics shop in a later phase) is one entry here plus its route and its text; nothing else changes.
  */
 export interface SiteNavEntry {
-  key: 'home' | 'services' | 'book' | 'bookings' | 'invoices' | 'account';
+  key: 'home' | 'services' | 'products' | 'book' | 'bookings' | 'invoices' | 'account';
   /** Path after `/{locale}`. */
   path: string;
   /** `exact` matches only the path; `prefix` also its sub-pages. */
@@ -17,6 +17,8 @@ export interface SiteNavEntry {
   members: boolean;
   header: boolean;
   phoneTab: IconName | null;
+  /** The phone tab is for visitors who are not signed in only (a member's bar already has five: OQ-P6-27). */
+  phoneTabGuestsOnly?: boolean;
   footer: 'discover' | null;
 }
 
@@ -39,6 +41,18 @@ export const SITE_NAV: readonly SiteNavEntry[] = [
     members: false,
     header: true,
     phoneTab: 'sparkles',
+    footer: 'discover',
+  },
+  // The cosmetics catalog (Phase 6 P6-6, OQ-P6-27): one menu item for everyone; on a phone only guests get a tab.
+  {
+    key: 'products',
+    path: '/products',
+    match: 'prefix',
+    enabled: true,
+    members: false,
+    header: true,
+    phoneTab: 'droplet',
+    phoneTabGuestsOnly: true,
     footer: 'discover',
   },
   // Booking is the header's call to action ("Đặt lịch ngay"), not a menu item; it is a tab on phones and a footer link.
@@ -129,7 +143,7 @@ export function tabBarItems(
 ): TabBarItem[] {
   const current = currentNavKey(pathname, locale);
   return SITE_NAV.flatMap((entry) =>
-    entry.phoneTab && shown(entry, signedIn)
+    entry.phoneTab && shown(entry, signedIn) && !(entry.phoneTabGuestsOnly && signedIn)
       ? [
           {
             key: entry.key,

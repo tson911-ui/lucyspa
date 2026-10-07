@@ -36,17 +36,18 @@ test('a route that does not exist yet stays out of every menu', () => {
   assert.equal(currentNavKey('/vi/services', 'vi'), null);
 });
 
-test('the menu is Trang chủ and Dịch vụ; Lịch hẹn and Hóa đơn appear only for a signed-in member; booking is no menu item', () => {
+test('the menu is Trang chủ, Dịch vụ and Mỹ phẩm; Lịch hẹn and Hóa đơn appear only for a signed-in member; booking is no menu item', () => {
   const keys = (signedIn: boolean) =>
     headerNavItems('vi', '/vi', vi, signedIn).map((item) => item.key);
-  assert.deepEqual(keys(false), ['home', 'services']);
-  assert.deepEqual(keys(true), ['home', 'services', 'bookings', 'invoices']);
+  assert.deepEqual(keys(false), ['home', 'services', 'products']);
+  assert.deepEqual(keys(true), ['home', 'services', 'products', 'bookings', 'invoices']);
   assert.deepEqual(
     headerNavItems('vi', '/vi', vi, true).map((item) => item.label),
-    ['Trang chủ', 'Dịch vụ', 'Lịch hẹn', 'Hóa đơn'],
+    ['Trang chủ', 'Dịch vụ', 'Mỹ phẩm', 'Lịch hẹn', 'Hóa đơn'],
   );
-  // No cosmetics entry exists until its phase; the default is the visitor who is not signed in.
-  assert.ok(!SITE_NAV.some((entry) => /cosmetic|my-pham/i.test(entry.key + entry.path)));
+  // The cosmetics entry is /products (OQ-P6-27), not the reference's /my-pham; the default is the visitor who is not signed in.
+  assert.equal(SITE_NAV.find((entry) => entry.key === 'products')?.path, '/products');
+  assert.ok(!SITE_NAV.some((entry) => /my-pham/i.test(entry.path)));
   assert.deepEqual(headerNavItems('vi', '/vi', vi), headerNavItems('vi', '/vi', vi, false));
 });
 
@@ -66,11 +67,16 @@ test('header items carry the locale, the label and the current flag', () => {
   );
 });
 
-test('the phone tab bar: three tabs for a visitor, five for a member, the booking tab is the call to action', () => {
+test('the phone tab bar: four tabs for a visitor (cosmetics included), five for a member (none for cosmetics), the booking tab is the call to action', () => {
   const visitor = tabBarItems('vi', '/vi', vi);
   assert.deepEqual(
     visitor.map((tab) => tab.key),
-    ['home', 'services', 'book'],
+    ['home', 'services', 'products', 'book'],
+  );
+  assert.equal(visitor.find((tab) => tab.key === 'products')?.label, 'Mỹ phẩm');
+  assert.equal(
+    tabBarItems('vi', '/vi/products/kem', vi).find((tab) => tab.current)?.key,
+    'products',
   );
   const member = tabBarItems('vi', '/vi/account/bookings/x', vi, true);
   assert.deepEqual(
@@ -92,6 +98,7 @@ test('the footer lists the discovery destinations that exist', () => {
   const items = footerDiscoverItems('vi', vi);
   assert.ok(items.every((item) => item.href.startsWith('/vi/')));
   assert.ok(items.some((item) => item.key === 'book'));
+  assert.ok(items.some((item) => item.key === 'products' && item.href === '/vi/products'));
 });
 
 test('the language link keeps the rest of the path', () => {

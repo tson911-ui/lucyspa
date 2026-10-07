@@ -204,6 +204,21 @@ The Owner's message, as given:
 
 What this fixes: the `notifications` CHECK widening of migration …08 (4.8) is approved as a loosening only, and **Wave 1 is deployed at a quiet time (evening)**: the Wave 1 deploy checklist records it (`docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md`). The readings of 4.8 and of P6-3b (sell-on-order default on, 1-90 day waiting range, branch-local expiry, nearest-expiry-first count correction, 08:00 scan) are approved. OQ-P6-42 is approved as proposed: one secret link and QR per order, shown to staff, sent by hand through Zalo (details in 2.8); the validity after completion, the revoke/regenerate action and the rate limit are built in P6-16 and reported there.
 
+### 2.10 Owner approval of P6-5, and the P6-6 request (the Owner's own words, 2026-10-07; locked, do not reopen)
+
+The Owner's message, as given:
+
+- P6-5 approved: OQ-43…48 as I proposed (explicit tick to skip invalid rows; 5 MB / 2,000 rows synchronous; blank cell keeps the existing value; opening stock once per variant and branch; fflate and fast-xml-parser). Bulk images and bulk price update (PRD 31.3/31.4) stay in Phase 9. Record in the design doc, owner-decisions doc and handoff.
+- Now P6-6: the public cosmetics catalog on the customer site, following the Lovable reference `https://pixel-perfect-render-8439.lovable.app/my-pham` and section 16 of this document (rebuild with our components and tokens; never import its placeholder data).
+  - Label "Mỹ phẩm", path `/products`, menu per the approved OQ-27.
+  - List page: hero, search, category filter, commitment box, product cards with image, category, name, price, struck-through promotional price, "-x%", "Mới" (30 days), "Nổi bật" sort. Hero and commitment content come from the admin and are hidden when empty.
+  - Stock label: "Đặt trước, dự kiến n ngày" for pre-order variants, "Hết hàng" otherwise; never a quantity.
+  - Product detail page in the same style, with a "mua tại cửa hàng" block from the shop info and a reserved spot for a future buy button (not shown yet; online orders are Wave 4).
+  - Only published products; no cost data in any public response; public caching like the other public routes; good SEO titles and descriptions. Must not touch POS, invoices or payments.
+  - Full tests, the UX gate of `CLAUDE.md` with screenshots compared against the Lovable reference, commit locally, no push, no deploy; report in Vietnamese and stop.
+
+What this fixes: OQ-P6-43 to OQ-P6-48 are approved as written in `docs/PHASE6_OWNER_DECISIONS_VI.md` (the P6-5 section) and 11.3. Bulk images (31.3) and the price update (31.4) are not part of Phase 6 any more: they belong to Phase 9. The P6-6 request confirms OQ-P6-27 and OQ-P6-28 (2.5) and the reading of 16.1-16.4; where P6-6 had to decide something the contract left open, the report `docs/PHASE6_STEP6_PUBLIC_CATALOG.md` lists it as pending the Owner.
+
 ## 3. Catalog (PRD §23-24; T9-T12)
 
 ### 3.1 Model
@@ -456,9 +471,9 @@ Public endpoints and pages for `PUBLISHED` products: list by category and brand,
 
 Built early (P6-5), after the catalog and inventory exist: downloadable template; preview with valid, invalid, missing-required, duplicate-SKU, existing-to-update and new rows; the user must confirm before anything is applied (PRD §31.2); SKU is the matching key, internal ids stay internal; bulk image mapping by SKU filename (PRD §31.3); bulk price update by export, edit, re-import, preview of differences, confirm, audit (PRD §31.4); opening stock becomes `OPENING` movements per branch and lot. Large files run as background jobs (PRD §53). `IMPORT_PRODUCT_DATA` (and `MANAGE_PRODUCT_PRICES` for price rows). **The Owner supplies real prices, stock and suppliers; nothing is invented, nothing is seeded.** The website crawler and supplier importer remain Phase 9.
 
-### 11.3 P6-5 as built (the two imports the Owner asked for; my readings pending his yes/no, see `docs/PHASE6_STEP5_IMPORT.md`)
+### 11.3 P6-5 as built (the two imports the Owner asked for; OQ-43…48 approved by the Owner on 2026-10-07, see 2.10 and `docs/PHASE6_STEP5_IMPORT.md`)
 
-Built: Excel (.xlsx) and CSV import of **products and variants** (with the pre-order columns) and of **opening stock**. Not built (not in the Owner's request of 2026-10-07; asked in the report): bulk images by SKU filename (PRD 31.3) and the export, edit, re-import price update (PRD 31.4).
+Built: Excel (.xlsx) and CSV import of **products and variants** (with the pre-order columns) and of **opening stock**. Not built, **moved to Phase 9 by the Owner (2026-10-07)**: bulk images by SKU filename (PRD 31.3) and the export, edit, re-import price update (PRD 31.4).
 
 - **No migration.** The P6-2 tables carry everything (`raw` holds the cells, warnings and changed columns of a row; `errors` the language-neutral codes). `IMPORT_PRODUCT_DATA` (GLOBAL_ONLY) opens every endpoint; a price column needs `MANAGE_PRODUCT_PRICES` and a cost column `VIEW_PRODUCT_COST`, checked per cell from the actor's own graph.
 - **Preview first, nothing saved:** upload parses, plans and stores the preview in one transaction (job UPLOADED, rows, job PREVIEWED). **Apply** takes the job lock and the row locks (products then variants, sorted; an advisory lock per branch and variant for opening stock, because a never-stocked variant has no stock row), plans **again with the applier's authority** and refuses with `IMPORT_PREVIEW_STALE` (writing nothing) if any row's validity, action or changed columns differ from the preview. Valid rows are applied together in one transaction.
@@ -467,6 +482,18 @@ Built: Excel (.xlsx) and CSV import of **products and variants** (with the pre-o
 - **Opening stock:** once per variant and branch (refused when any movement exists); several lots of one variant in a file; an expiry already past is refused (T14); `OPENING` movements into new lots, cost only with the cost permission.
 - **Limits (my reading; design 11.2 says large files run as background jobs, PRD 53):** 5 MB (under the 10 MB image upload known to pass the production proxy) and 2,000 rows, parsed and applied synchronously. Measured on this machine (scratch DB): 2,000 catalog rows with prices and costs apply in about 23 s, 2,000 stock rows in about 8 s; the apply transaction has a 120 s timeout (the default is 5 s). Preview takes under 1 s.
 - **Reading files:** `.xlsx` is read with fflate and fast-xml-parser (new direct dependencies of `packages/server`; 9 packages added to the lockfile): only the first sheet, entry sizes checked before inflating, no DTD or entity, both date systems. `.xls` is refused with "save as .xlsx"; CSV must be UTF-8 (BOM, comma, semicolon or tab, quoted line breaks).
+
+### 11.4 P6-6 as built (public cosmetics catalog; my readings pending the Owner's yes/no, see `docs/PHASE6_STEP6_PUBLIC_CATALOG.md`)
+
+Built as section 16 and the request of 2.10 say: `/products` (label "Mỹ phẩm", EN "Cosmetics"), one header item for everyone and a phone tab for guests only (OQ-P6-27); the list (Owner hero, search, sort, category and brand filters, commitment box, 20 per page) and the product page (gallery, variants, "Mua trực tiếp tại cửa hàng" from the shop profile, related products); sitemap, JSON-LD `Product`, canonical and noindex for filtered views. Public API `GET /api/v1/public/products`, `/products/:code`, `/products/codes`, cached 60 s like the other public routes.
+
+- **Visibility:** `PUBLISHED` with at least one active variant that has a list price. Price from `lucy_variant_price_at`, availability from `lucy_available_stock` summed over the active branches (the one definition of 4.5). A retired category shows no label but its products stay; a parent category's filter includes its sub-categories.
+- **Stock reading (mine):** some variant in stock: nothing is said; none in stock and the variant is sold on order: "Đặt trước, dự kiến n ngày" (own days, else the settings default; "3–5" or one number); otherwise "Hết hàng". A product with several variants says nothing when any is in stock, else the pre-order span, else "Hết hàng". Never a quantity; JSON-LD uses InStock, PreOrder, OutOfStock.
+- **Never public:** cost, margin, SKU, barcode, quantities, branches, internal ids, lots, reservations. A dedicated public `select`; a test serializes every answer and looks for them.
+- **Pictures:** a product's pictures are served by `/api/v1/public/media` only while the product is PUBLISHED (`isPubliclyServed`); the hero picture once the Owner chose it.
+- **Owner copy (migration `20261106000009`, additive, 8 columns on `product_settings`):** hero picture, headline and sentence, commitment title and up to 6 lines, each in both languages (a block is both languages or none); edited by `MANAGE_PRODUCTS` in the drawer "Trang mỹ phẩm" of the products screen (audited). Hidden while empty. **Where it lives differs from 16.5 ("Shop info tab") and is pending the Owner.** "Mới" days (`new_badge_days`, 1–365, default 30) are in the settings dialog.
+- **Sorts (mine):** Nổi bật (featured first, then newest), Mới nhất, Giá thấp đến cao, Giá cao đến thấp; the reference shows only "Nổi bật".
+- **Not built:** buy button, cart, quantity (Wave 4). `ProductOffer` has an `action` slot that draws nothing while empty.
 
 ## 12. Load readiness for product sales (separate Step P6-7; Q18 option 2)
 
