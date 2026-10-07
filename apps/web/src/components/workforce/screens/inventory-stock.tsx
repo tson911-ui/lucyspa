@@ -271,7 +271,7 @@ export function StockList({
           }
         />
       ) : branchControl ? (
-        <Cluster>{branchControl}</Cluster>
+        <ListToolbar labels={toolbarLabels(t)} filters={branchControl} />
       ) : null}
       <DataTable
         mode="client"

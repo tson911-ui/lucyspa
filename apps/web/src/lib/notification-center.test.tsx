@@ -367,6 +367,19 @@ test('stock alerts render from counts and the SKU in VI and EN; missing params f
     notificationMessage(expiry, 'en'),
     'Expiry warning: 1 lots expired, 4 lots expire within 90 days.',
   );
+  // A zero count is never spoken ("0 lô đã hết hạn").
+  const only = (expiredLots: number, expiringLots: number) =>
+    ({ ...expiry, params: { withinDays: 90, expiredLots, expiringLots } }) as NotificationItem;
+  assert.equal(
+    notificationMessage(only(0, 3), 'vi'),
+    'Cảnh báo hạn dùng: 3 lô sẽ hết hạn trong 90 ngày.',
+  );
+  assert.equal(notificationMessage(only(2, 0), 'vi'), 'Cảnh báo hạn dùng: 2 lô đã hết hạn.');
+  assert.equal(
+    notificationMessage(only(0, 3), 'en'),
+    'Expiry warning: 3 lots expire within 90 days.',
+  );
+  assert.equal(notificationMessage(only(2, 0), 'en'), 'Expiry warning: 2 lots have expired.');
   assert.equal(
     notificationMessage({ ...lowStock, params: null }, 'vi'),
     getNotificationDictionary('vi').types.LOW_STOCK_REACHED,

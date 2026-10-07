@@ -179,7 +179,14 @@ function inventoryMessage(
     });
   }
   if (item.type === 'EXPIRY_ALERT' && 'expiredLots' in params) {
-    return fill(i.expiry, {
+    // Say only what is true: no "0 lots expired".
+    const template =
+      params.expiredLots === 0
+        ? i.expiringOnly
+        : params.expiringLots === 0
+          ? i.expiredOnly
+          : i.expiry;
+    return fill(template, {
       expired: params.expiredLots,
       expiring: params.expiringLots,
       days: params.withinDays,

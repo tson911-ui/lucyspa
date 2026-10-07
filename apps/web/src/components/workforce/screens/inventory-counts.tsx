@@ -159,7 +159,7 @@ export function CountsTab({
           filters={branchControl}
         />
       ) : (
-        branchControl && <div>{branchControl}</div>
+        branchControl && <ListToolbar labels={toolbarLabels(t)} filters={branchControl} />
       )}
       <DataTable
         mode="client"
@@ -312,13 +312,13 @@ export function CountView({
   }
 
   const columns: DataTableColumn<StockCountLineResponse>[] = [
-    { key: 'sku', header: c.columns.sku, mobileTitle: true, cell: (line) => line.sku },
+    { key: 'sku', header: c.columns.sku, cell: (line) => line.sku },
     {
       key: 'product',
       header: c.columns.product,
+      mobileTitle: true,
       truncate: true,
       width: 'md',
-      hideBelow: 'md',
       cell: (line) => itemTitle(line, locale),
     },
     {

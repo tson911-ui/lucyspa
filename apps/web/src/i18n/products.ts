@@ -205,8 +205,7 @@ const vi = {
     leadMin: 'Chờ hàng đặt trước, từ (ngày)',
     leadMax: 'Đến (ngày)',
     leadInvalid: 'Nhập cả hai ô, từ 1 đến 90 ngày, ô đầu không lớn hơn ô sau.',
-    expiryHint:
-      'Lô hàng còn không quá số ngày này là hết hạn sẽ được báo cho người phụ trách kho mỗi sáng.',
+    expiryHint: 'Mỗi sáng, người phụ trách kho được báo về các lô sẽ hết hạn trong số ngày này.',
     expiryField: 'Báo trước khi hết hạn (ngày)',
     expiryInvalid: 'Nhập số ngày từ 1 đến 730.',
     save: 'Lưu cài đặt',

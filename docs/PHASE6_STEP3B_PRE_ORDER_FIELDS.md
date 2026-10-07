@@ -20,8 +20,8 @@ Trạng thái: **làm xong, commit cục bộ, chưa push, chưa deploy.** Căn 
 
 ## UX gate (5 dòng)
 
-1. Đã chụp và mở xem từng ảnh: danh sách sản phẩm, chi tiết (cột Đặt trước), hộp Cài đặt, hộp Thêm biến thể; 360/768/1440 sáng, 1440 tối, và chữ 130% (360, 1440). Ảnh trong `.local/uxui-screens/`.
-2. DOM audit (3 trang × 4 lần chụp): 0 phát hiện. Cờ "ô 20x20" của hộp chọn giống mọi màn cũ.
+1. **Đã mở xem**: danh sách sản phẩm (1440 sáng, 768, 360), chi tiết (1440 sáng và tối; cột Đặt trước), hộp Cài đặt (1440 và 360), hộp Thêm biến thể (360, 768, 1440 sáng, 1440 tối), chữ 130% (hộp thêm biến thể, 1440). **Chưa mở**: danh sách ở bản tối, chi tiết ở 768, hộp Cài đặt ở 768 và tối, chữ 130% ở 360. Ảnh trong `.local/uxui-screens/`.
+2. DOM audit bằng công cụ riêng (cùng `scripts/uxui-page-audit.js`; kịch bản chính thức `.local/uxui-audit/capture.mjs` không còn trên máy này nên chưa chạy `--compare` với baseline): 3 trang × 4 lần chụp, 0 phát hiện. Cờ "ô 20x20" của hộp chọn giống mọi màn cũ.
 3. Sửa sau khi xem: hộp Cài đặt chuyển một cột, lời giải thích nằm sau cả hai ô.
 4. Nhãn "Đặt trước" nằm trong ô của bảng, không cạnh tiêu đề (quy tắc 2026-10-05). Không thêm `wf-*`, px/rem, màu hex.
 5. Chưa kiểm: trạng thái lỗi 409 của hộp Cài đặt chỉ có test logic, chưa chụp.

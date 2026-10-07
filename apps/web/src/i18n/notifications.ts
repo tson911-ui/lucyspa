@@ -20,6 +20,8 @@ interface FinanceTexts {
 interface InventoryTexts {
   lowStock: string;
   expiry: string;
+  expiredOnly: string;
+  expiringOnly: string;
   openStock: string;
 }
 
@@ -124,6 +126,8 @@ const vi = {
     lowStock: 'Sắp hết hàng: {sku} còn {onHand} (ngưỡng {threshold}).',
     expiry:
       'Cảnh báo hạn dùng: {expired} lô đã hết hạn, {expiring} lô sẽ hết hạn trong {days} ngày.',
+    expiredOnly: 'Cảnh báo hạn dùng: {expired} lô đã hết hạn.',
+    expiringOnly: 'Cảnh báo hạn dùng: {expiring} lô sẽ hết hạn trong {days} ngày.',
     openStock: 'Xem kho hàng',
   } satisfies InventoryTexts,
 };
@@ -245,6 +249,8 @@ const en: Dictionary = {
   inventory: {
     lowStock: 'Low stock: {sku} has {onHand} left (level {threshold}).',
     expiry: 'Expiry warning: {expired} lots expired, {expiring} lots expire within {days} days.',
+    expiredOnly: 'Expiry warning: {expired} lots have expired.',
+    expiringOnly: 'Expiry warning: {expiring} lots expire within {days} days.',
     openStock: 'View inventory',
   },
 };

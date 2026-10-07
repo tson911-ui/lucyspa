@@ -13,7 +13,6 @@ import {
   Breadcrumbs,
   Card,
   CardHeader,
-  Cluster,
   Combobox,
   ConfirmDialog,
   DataTable,
@@ -158,7 +157,7 @@ export function ReceiptsList({
       header: r.columns.supplier,
       truncate: true,
       width: 'md',
-      hideBelow: 'md',
+      hideBelow: 'lg',
       cell: (receipt) => receipt.supplierName ?? text.none,
     },
     {
@@ -259,7 +258,7 @@ export function ReceiptsList({
           }
         />
       ) : branchControl ? (
-        <Cluster>{branchControl}</Cluster>
+        <ListToolbar labels={toolbarLabels(t)} filters={branchControl} />
       ) : null}
       <DataTable
         mode="client"
