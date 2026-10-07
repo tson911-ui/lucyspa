@@ -33,11 +33,21 @@ const FINANCE = [
   'REVENUE_DAILY_SUMMARY',
 ];
 
-test('the registry keeps every Phase 3 type unchanged and adds the Leave and the Q8 finance types', () => {
+// Phase 6 P6-4: stock alerts for the holders of VIEW_INVENTORY at the branch (operations).
+const INVENTORY = ['LOW_STOCK_REACHED', 'EXPIRY_ALERT'];
+
+test('the registry keeps every Phase 3 type unchanged and adds the Leave, finance and stock alert types', () => {
   assert.deepEqual(
     [...NOTIFICATION_TYPES].sort(),
-    [...PHASE3, 'LEAVE_REQUESTED', 'LEAVE_DECIDED', ...FINANCE].sort(),
+    [...PHASE3, 'LEAVE_REQUESTED', 'LEAVE_DECIDED', ...FINANCE, ...INVENTORY].sort(),
   );
+  assert.deepEqual(notificationMetadata('LOW_STOCK_REACHED').entityTypes, ['ProductVariant']);
+  assert.deepEqual(notificationMetadata('EXPIRY_ALERT').entityTypes, ['Branch']);
+  for (const type of INVENTORY) {
+    assert.equal(notificationMetadata(type as never).category, 'OPERATIONS');
+    assert.ok(!isAllowedNotificationEntity(type as never, 'Booking'));
+    assert.ok(!isAllowedNotificationEntity(type as never, 'Invoice'));
+  }
   for (const type of PHASE3) {
     assert.ok(isNotificationType(type));
     const meta = notificationMetadata(type as never);
@@ -70,7 +80,8 @@ test('category filters are derived from the registry, and targets from the entit
     'LEAVE_REQUESTED',
   ]);
   assert.deepEqual([...notificationTypesInCategory('FINANCE')].sort(), [...FINANCE].sort());
-  assert.equal(notificationTypesInCategory('OPERATIONS').length, PHASE3.length);
+  assert.equal(notificationTypesInCategory('OPERATIONS').length, PHASE3.length + 2);
+  assert.equal(notificationTarget('ProductVariant'), 'PRODUCT_VARIANT');
   assert.equal(notificationTarget('Invoice'), 'INVOICE');
   assert.equal(notificationTarget('Branch'), 'BRANCH');
   assert.equal(notificationTarget('Booking'), 'BOOKING');
@@ -211,4 +222,26 @@ test('finance params carry only integer VND strings, counts and enums; never a r
   bad('REVENUE_DAILY_SUMMARY', { ...summary, pendingPaymentCount: 1.5 });
   bad('REVENUE_DAILY_SUMMARY', { ...summary, businessDate: '2026-13-01' });
   bad('REVENUE_DAILY_SUMMARY', { ...summary, note: 'Doanh thu' });
+});
+
+test('stock alert params are counts only: no names, no free text', () => {
+  assert.deepEqual(parseNotificationParams('LOW_STOCK_REACHED', { onHand: 2, threshold: 3 }), {
+    onHand: 2,
+    threshold: 3,
+  });
+  assert.deepEqual(
+    parseNotificationParams('EXPIRY_ALERT', { withinDays: 90, expiredLots: 0, expiringLots: 4 }),
+    { withinDays: 90, expiredLots: 0, expiringLots: 4 },
+  );
+  const bad = (type: string, value: unknown) =>
+    assert.throws(() => parseNotificationParams(type as never, value));
+  bad('LOW_STOCK_REACHED', null);
+  bad('LOW_STOCK_REACHED', { onHand: -1, threshold: 3 });
+  bad('LOW_STOCK_REACHED', { onHand: 1.5, threshold: 3 });
+  bad('LOW_STOCK_REACHED', { onHand: '1', threshold: 3 });
+  bad('LOW_STOCK_REACHED', { onHand: 1, threshold: 3, sku: 'ABC' });
+  bad('EXPIRY_ALERT', { withinDays: 0, expiredLots: 0, expiringLots: 1 });
+  bad('EXPIRY_ALERT', { withinDays: 90, expiredLots: -1, expiringLots: 1 });
+  bad('EXPIRY_ALERT', { withinDays: 90, expiredLots: 0 });
+  bad('EXPIRY_ALERT', { withinDays: 90, expiredLots: 0, expiringLots: 1, note: 'x' });
 });

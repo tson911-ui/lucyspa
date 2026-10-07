@@ -12,6 +12,7 @@ export const NOTIFICATION_ENTITY_TYPES = [
   'LeaveRequest',
   'Invoice',
   'Branch',
+  'ProductVariant',
 ] as const;
 export type NotificationEntityType = (typeof NOTIFICATION_ENTITY_TYPES)[number];
 
@@ -23,7 +24,8 @@ export function isNotificationCategory(value: unknown): value is NotificationCat
 }
 export type NotificationSeverity = 'INFO' | 'ATTENTION' | 'WARNING';
 /** Which allowlisted screen an item opens; the destination API still enforces authority. */
-export type NotificationTargetKind = 'BOOKING' | 'VISIT' | 'LEAVE_REQUEST' | 'INVOICE' | 'BRANCH';
+export type NotificationTargetKind =
+  'BOOKING' | 'VISIT' | 'LEAVE_REQUEST' | 'INVOICE' | 'BRANCH' | 'PRODUCT_VARIANT';
 /** Shape of the structured `params` a type carries. Never free text. */
 export type NotificationParamsKind =
   | 'NONE'
@@ -33,7 +35,9 @@ export type NotificationParamsKind =
   | 'PAYOS_ANOMALY'
   | 'PAYMENT_REVERSED'
   | 'INVOICE_CANCELLED_ALERT'
-  | 'REVENUE_SUMMARY';
+  | 'REVENUE_SUMMARY'
+  | 'LOW_STOCK'
+  | 'EXPIRY_ALERT';
 
 export interface NotificationTypeMetadata {
   readonly category: NotificationCategory;
@@ -56,6 +60,7 @@ export const NOTIFICATION_TARGET_BY_ENTITY = {
   LeaveRequest: 'LEAVE_REQUEST',
   Invoice: 'INVOICE',
   Branch: 'BRANCH',
+  ProductVariant: 'PRODUCT_VARIANT',
 } as const satisfies Record<NotificationEntityType, NotificationTargetKind>;
 
 const operations = (severity: NotificationSeverity, i18nKey: string): NotificationTypeMetadata => ({
@@ -84,6 +89,21 @@ const finance = (
   entity: 'Invoice' | 'Branch' = 'Invoice',
 ): NotificationTypeMetadata => ({
   category: 'FINANCE',
+  severity,
+  entityTypes: [entity],
+  i18nKey,
+  params,
+});
+
+// Phase 6 P6-4 (design 4.6, P6-T16): in-app stock alerts for the holders of VIEW_INVENTORY at the branch. A low-stock alert is
+// about one variant (the row also carries the branch); the daily expiry alert is about the branch.
+const inventory = (
+  severity: NotificationSeverity,
+  i18nKey: string,
+  params: NotificationParamsKind,
+  entity: 'ProductVariant' | 'Branch',
+): NotificationTypeMetadata => ({
+  category: 'OPERATIONS',
   severity,
   entityTypes: [entity],
   i18nKey,
@@ -121,6 +141,9 @@ export const NOTIFICATION_TYPE_REGISTRY = {
     'INVOICE_CANCELLED_ALERT',
   ),
   REVENUE_DAILY_SUMMARY: finance('INFO', 'REVENUE_DAILY_SUMMARY', 'REVENUE_SUMMARY', 'Branch'),
+  // Phase 6 P6-4: stock alerts (VIEW_INVENTORY holders at the branch).
+  LOW_STOCK_REACHED: inventory('ATTENTION', 'LOW_STOCK_REACHED', 'LOW_STOCK', 'ProductVariant'),
+  EXPIRY_ALERT: inventory('ATTENTION', 'EXPIRY_ALERT', 'EXPIRY_ALERT', 'Branch'),
 } as const satisfies Record<string, NotificationTypeMetadata>;
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPE_REGISTRY;
@@ -189,7 +212,20 @@ export interface RevenueSummaryParams {
   paidInvoiceCount: number;
   pendingPaymentCount: number;
 }
+/** A variant reached its low-stock threshold (the SKU is the notification's context code). */
+export interface LowStockParams {
+  onHand: number;
+  threshold: number;
+}
+/** The daily expiry scan of a branch: lots with stock that expired, and lots that expire within `withinDays`. */
+export interface ExpiryAlertParams {
+  withinDays: number;
+  expiredLots: number;
+  expiringLots: number;
+}
 export type NotificationParams =
+  | LowStockParams
+  | ExpiryAlertParams
   | LeaveRequestedParams
   | LeaveDecidedParams
   | InvoiceAmountParams
@@ -274,6 +310,22 @@ export function parseNotificationParams(
         cancelledFrom: oneOf('cancelledFrom', record['cancelledFrom'], ['PENDING_PAYMENT', 'PAID']),
         amountVnd: vnd('amountVnd', record['amountVnd']),
       };
+    case 'LOW_STOCK':
+      exactKeys(type, record, ['onHand', 'threshold']);
+      return {
+        onHand: count('onHand', record['onHand']),
+        threshold: count('threshold', record['threshold']),
+      };
+    case 'EXPIRY_ALERT': {
+      exactKeys(type, record, ['withinDays', 'expiredLots', 'expiringLots']);
+      const withinDays = count('withinDays', record['withinDays']);
+      if (withinDays < 1) throw new Error('Notification param withinDays must be at least 1.');
+      return {
+        withinDays,
+        expiredLots: count('expiredLots', record['expiredLots']),
+        expiringLots: count('expiringLots', record['expiringLots']),
+      };
+    }
     case 'REVENUE_SUMMARY': {
       exactKeys(type, record, [
         'businessDate',

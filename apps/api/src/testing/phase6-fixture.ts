@@ -43,7 +43,13 @@ export interface Phase6Kit {
    */
   staff: (
     codes: readonly PermissionCode[],
-    options?: { branchId?: string; member?: readonly string[]; deny?: readonly PermissionCode[] },
+    options?: {
+      branchId?: string;
+      member?: readonly string[];
+      deny?: readonly PermissionCode[];
+      /** A second role granted GLOBALLY next to the branch-scoped one (the global-only codes). */
+      globalCodes?: readonly PermissionCode[];
+    },
   ) => Promise<{ id: string; token: string }>;
   fails: (work: () => Promise<unknown>, code: string, field?: string) => Promise<void>;
 }
@@ -199,6 +205,26 @@ export async function phase6Fixture(work: (kit: Phase6Kit) => Promise<void>): Pr
                   }
                 : { userId: user.id, roleId: role.id, scopeKind: 'GLOBAL' },
             });
+            if (options.globalCodes?.length) {
+              const globalRole = await tx.role.create({
+                data: {
+                  code: `P6_G${n}_${run}`,
+                  displayNameVi: `Vai trò chung ${n}`,
+                  displayNameEn: `Global role ${n}`,
+                  permissions: {
+                    create: await Promise.all(
+                      options.globalCodes.map(async (code) => ({
+                        permissionId: (await tx.permission.findUniqueOrThrow({ where: { code } }))
+                          .id,
+                      })),
+                    ),
+                  },
+                },
+              });
+              await tx.userRoleAssignment.create({
+                data: { userId: user.id, roleId: globalRole.id, scopeKind: 'GLOBAL' },
+              });
+            }
             for (const code of options.deny ?? []) {
               await tx.userPermissionOverride.create({
                 data: {
@@ -214,11 +240,15 @@ export async function phase6Fixture(work: (kit: Phase6Kit) => Promise<void>): Pr
             return { id: user.id, token: await login(fresh) };
           };
           const fails: Phase6Kit['fails'] = async (job, code, field) => {
-            await assert.rejects(job, (error: unknown) => {
-              assert.equal(Reflect.get(Object(error), 'code'), code);
-              if (field !== undefined) assert.equal(Reflect.get(Object(error), 'field'), field);
-              return true;
-            });
+            // A command that fails before it returns a promise (a bad id) counts as rejecting too.
+            await assert.rejects(
+              async () => job(),
+              (error: unknown) => {
+                assert.equal(Reflect.get(Object(error), 'code'), code);
+                if (field !== undefined) assert.equal(Reflect.get(Object(error), 'field'), field);
+                return true;
+              },
+            );
           };
           await work({
             tx,

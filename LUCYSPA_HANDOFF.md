@@ -150,6 +150,11 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 
 - Migration `20261106000006_phase6_variant_pre_order` (now 70): variant `sell_on_order` (default ON, OQ-P6-30), optional `lead_time_days_min/max` (both or neither, 1-90, min <= max: my DB rules, pending his yes/no), and the default 3-5 days on `product_settings`. NO weight (Owner removed it). New `GET /product-settings`, `POST /product-settings/edit` (view: MANAGE_PRODUCTS or PRICES; edit: MANAGE_PRODUCTS). Screens: variant drawer, "Đặt trước" column, "Cài đặt" dialog on Sản phẩm. Report: `docs/PHASE6_STEP3B_PRE_ORDER_FIELDS.md`.
 
+## Phase 6 P6-4 (inventory, 2026-10-07, committed locally, not pushed, not deployed)
+
+- Migrations `20261106000007_phase6_inventory_alerts` (sequences, `lucy_available_stock`, low-stock alert + expiry scan tables, movement trigger now raises the low-stock alert) and `20261106000008_phase6_notification_kinds` (widens 3 CHECKs of `notifications`; the only existing table Wave 1 touches). Now 72 migrations; Wave 1 guard counts nine. API `/inventory/*`, `/suppliers`, `/stock-receipts`, `/stock-adjustments`, `/stock-counts`; worker loop `inventory-jobs.ts` (alerts + 08:00 branch-local expiry scan); confirming a receipt writes outbox `STOCK_RECEIPT_CONFIRMED` (no consumer yet). Screens: Danh mục > Kho hàng (stock, receipts, counts, suppliers). Unit cost only with `VIEW_PRODUCT_COST`.
+- My readings pending his yes/no are listed in design 4.8 and `docs/PHASE6_STEP4_INVENTORY.md`. Next: P6-5 (Excel/CSV import) after the Owner's review of P6-3b and P6-4; his answer to OQ-P6-42 is needed only before P6-16.
+
 ## Production
 
 Status as of 2026-10-07, about 02:52 (+07) (Owner-reported; supersedes the blocks below):

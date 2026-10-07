@@ -16,6 +16,13 @@ interface FinanceTexts {
   openInvoice: string;
 }
 
+/** Stock alert templates (Phase 6 P6-4): counts and the SKU only, never a name or free text. */
+interface InventoryTexts {
+  lowStock: string;
+  expiry: string;
+  openStock: string;
+}
+
 const vi = {
   title: 'Thông báo',
   intro: 'Thông báo trong ứng dụng về lịch hẹn, dịch vụ và công việc của bạn.',
@@ -77,6 +84,8 @@ const vi = {
     PAYMENT_REVERSED: 'Một khoản thanh toán đã được hoàn tác (điều chỉnh).',
     INVOICE_CANCELLED_ALERT: 'Một hóa đơn đã hoàn tất vừa bị hủy.',
     REVENUE_DAILY_SUMMARY: 'Tổng kết doanh thu trong ngày.',
+    LOW_STOCK_REACHED: 'Một mặt hàng đã xuống đến mức sắp hết hàng.',
+    EXPIRY_ALERT: 'Có lô hàng đã hết hạn hoặc sắp hết hạn.',
   } satisfies Record<NotificationType, string>,
   leave: {
     requested: 'Có đơn xin nghỉ ({type}) từ {from} đến {to} cần bạn xử lý.',
@@ -111,6 +120,12 @@ const vi = {
     notApplicable: 'không có',
     openInvoice: 'Xem hóa đơn',
   } satisfies FinanceTexts,
+  inventory: {
+    lowStock: 'Sắp hết hàng: {sku} còn {onHand} (ngưỡng {threshold}).',
+    expiry:
+      'Cảnh báo hạn dùng: {expired} lô đã hết hạn, {expiring} lô sẽ hết hạn trong {days} ngày.',
+    openStock: 'Xem kho hàng',
+  } satisfies InventoryTexts,
 };
 type Dictionary = {
   [K in keyof typeof vi]: K extends 'types'
@@ -119,14 +134,16 @@ type Dictionary = {
       ? Record<NotificationCategory, string>
       : K extends 'finance'
         ? FinanceTexts
-        : K extends 'leave'
-          ? {
-              requested: string;
-              approved: string;
-              rejected: string;
-              types: Record<LeaveType, string>;
-            }
-          : string;
+        : K extends 'inventory'
+          ? InventoryTexts
+          : K extends 'leave'
+            ? {
+                requested: string;
+                approved: string;
+                rejected: string;
+                types: Record<LeaveType, string>;
+              }
+            : string;
 };
 const en: Dictionary = {
   title: 'Notifications',
@@ -190,6 +207,8 @@ const en: Dictionary = {
     PAYMENT_REVERSED: 'A payment was reversed (a correction).',
     INVOICE_CANCELLED_ALERT: 'A completed invoice was cancelled.',
     REVENUE_DAILY_SUMMARY: 'Daily revenue summary.',
+    LOW_STOCK_REACHED: 'An item has reached its low-stock level.',
+    EXPIRY_ALERT: 'Some lots have expired or are about to expire.',
   },
   leave: {
     requested: 'A leave request ({type}) from {from} to {to} needs your attention.',
@@ -222,6 +241,11 @@ const en: Dictionary = {
       'Summary for {date} (up to 21:30): collected {total} (cash {cash}, PayOS {payos}); {paid} paid invoices; {pending} awaiting payment.',
     notApplicable: 'n/a',
     openInvoice: 'View invoice',
+  },
+  inventory: {
+    lowStock: 'Low stock: {sku} has {onHand} left (level {threshold}).',
+    expiry: 'Expiry warning: {expired} lots expired, {expiring} lots expire within {days} days.',
+    openStock: 'View inventory',
   },
 };
 export function getNotificationDictionary(locale: Locale): Dictionary {

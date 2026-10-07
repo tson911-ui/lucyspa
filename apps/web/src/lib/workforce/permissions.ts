@@ -159,6 +159,7 @@ export type NavKey =
   | 'branches'
   | 'services'
   | 'products'
+  | 'inventory'
   | 'discounts'
   | 'loyalty'
   | 'skills'
@@ -250,6 +251,15 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'products',
       group: 'catalog',
       path: '/products',
+    },
+    // Phase 6 P6-4: the inventory (branch-scoped VIEW_INVENTORY / MANAGE_STOCK_RECEIPTS / ADJUST_STOCK, global MANAGE_PRODUCTS for suppliers).
+    (canAnywhere(account, 'VIEW_INVENTORY') ||
+      canAnywhere(account, 'MANAGE_STOCK_RECEIPTS') ||
+      canAnywhere(account, 'ADJUST_STOCK') ||
+      canGlobal(account, 'MANAGE_PRODUCTS')) && {
+      key: 'inventory',
+      group: 'catalog',
+      path: '/inventory',
     },
     // Discount programs and voucher codes are Owner configuration: GLOBAL_ONLY permissions (Phase 4 Step 6).
     (canGlobal(account, 'MANAGE_DISCOUNTS') || canGlobal(account, 'CREATE_VOUCHERS')) && {

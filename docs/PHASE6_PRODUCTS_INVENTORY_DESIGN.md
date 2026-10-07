@@ -254,6 +254,17 @@ Per-variant threshold. Low stock fires once when `on_hand` crosses at or below t
 
 A `PRODUCT_GIFT` reward item may be linked to a variant. When staff mark a granted gift **used** at a branch, `GIFT_OUT` deducts that branch's stock (refused with "Hết hàng" if none, nothing written); a manager's restore of a mistaken "used" writes `GIFT_RETURN`. A gift item with no variant (any created before Phase 6) deducts nothing. No money, no invoice, no points. This touches the reward module only, not payments, so it is scheduled in Wave 3.
 
+### 4.8 P6-4 as built (my readings where this contract was silent; pending the Owner's yes/no)
+
+- **Event:** confirming a receipt writes `STOCK_RECEIPT_CONFIRMED` (aggregate `StockReceipt`, ids and quantities only, no cost) to the outbox in the same transaction. No consumer exists yet (the pre-order Wave allocates from it); no existing relay can claim it (a worker test pins that).
+- **Available** is one SQL function, `lucy_available_stock(branch, variant)`: lots not expired in the **branch-local** calendar (sellable through the expiry date, expired from the next day) minus `stock_levels.reserved` (0 until Wave 2). Every later reader (public catalog, POS) must call it.
+- **Low stock (T16):** the movement trigger writes one `inventory_low_stock_alerts` row when a movement that **takes stock out** leaves a variant at or below its threshold and no alert is open; the flag re-arms when stock is above the threshold again. A receipt never alerts; changing a threshold alone fires nothing until the next movement. The worker turns pending rows into in-app notices for `VIEW_INVENTORY` holders of the branch (re-reading the level first: a restock makes the alert "stale", nothing sent). No trigger writes to the outbox (Wave 1 isolation).
+- **Expiry (T16, Q14):** the worker scans each active branch once per branch-local day from **08:00** (my proposal), writes one insert-only `inventory_expiry_scans` row, and notifies only when a lot with stock has expired or expires within the warning days (setting, default 90). Notices carry counts only.
+- **Lots:** a received lot is never edited. An adjustment takes stock out of **one lot chosen by the person** (default: earliest expiry), with a required reason, never below zero, idempotent by a request key. A count's correction takes missing units from lots **earliest expiry first (no expiry last)**; found units land on **one new lot named after the count, with no expiry date**.
+- **Counts:** a line starts at the quantity on hand; approval compares with the quantity locked at that moment and writes `COUNT_CORRECTION` movements (never an overwrite). Lock order is lot rows, then the level row, the order the movement trigger uses, so an approval and an adjustment wait for each other.
+- **Receipts:** unit cost is seen and entered only with `VIEW_PRODUCT_COST`; a draft edited by someone without it keeps the cost of the same line and variant. An expiry date already past is refused when the receipt is created and again when it is confirmed. Codes: `PN000001` and `KK000001` (sequences; a gap after a rolled-back command is harmless).
+- **Notifications table:** the stock alerts need two new types and the entity `ProductVariant`; migration `20261106000008_phase6_notification_kinds` only **widens** three CHECK constraints of `notifications` (the one existing table Wave 1 touches; the isolation guard pins exactly that).
+
 ## 5. Product lines on invoices (PRD §14, §25; Q6, Q9, T1, T12, T20)
 
 ### 5.1 Shapes

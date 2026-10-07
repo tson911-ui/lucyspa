@@ -32,6 +32,8 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'services',
     // Phase 6 P6-3: the product catalog (GLOBAL MANAGE_PRODUCTS / MANAGE_PRODUCT_PRICES; the Owner holds all).
     'products',
+    // Phase 6 P6-4: the inventory (branch VIEW_INVENTORY / MANAGE_STOCK_RECEIPTS / ADJUST_STOCK or global MANAGE_PRODUCTS).
+    'inventory',
     // Phase 4 Step 6: discount programs and voucher codes (GLOBAL MANAGE_DISCOUNTS / CREATE_VOUCHERS).
     'discounts',
     // Phase 5 P5-3: loyalty points (VIEW_LOYALTY, the exceptions list or the Owner's switch; the Owner holds all).
@@ -70,6 +72,15 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
   assert.ok(!keys(employee([['MANAGE_PRODUCTS', 'A']])).includes('products'));
   assert.ok(!keys(employee([['VIEW_PRODUCT_COST']])).includes('products'));
   assert.ok(!keys(customer).includes('products'));
+  // The inventory opens with any of the three branch permissions at a branch, or the global product permission; nothing else.
+  for (const code of ['VIEW_INVENTORY', 'MANAGE_STOCK_RECEIPTS', 'ADJUST_STOCK'] as const) {
+    assert.ok(keys(employee([[code, 'A']])).includes('inventory'), code);
+  }
+  assert.ok(keys(employee([['MANAGE_PRODUCTS']])).includes('inventory'));
+  assert.ok(!keys(employee([['MANAGE_PRODUCT_PRICES']])).includes('inventory'));
+  assert.ok(!keys(employee([['VIEW_PRODUCT_COST']])).includes('inventory'));
+  assert.ok(!keys(employee()).includes('inventory'));
+  assert.ok(!keys(customer).includes('inventory'));
   assert.ok(keys(employee([['VIEW_ORGANIZATION', 'A']])).includes('organization'));
   assert.ok(keys(employee([['VIEW_TEAMS', 'A']])).includes('teams'));
   assert.ok(!keys(employee([['VIEW_TEAMS', 'A']])).includes('organization'));

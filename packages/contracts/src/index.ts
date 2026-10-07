@@ -3802,3 +3802,337 @@ export interface ProductSettingsEditRequest {
   leadTimeDaysMax?: number;
   expiryWarningDays?: number;
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Phase 6 P6-4: inventory (suppliers, stock receipts, stock levels, lots, adjustments, physical counts).
+// Stock is per branch. Every command re-decides authority in its transaction: VIEW_INVENTORY (levels, lots, movements, counts),
+// MANAGE_STOCK_RECEIPTS (receipts), ADJUST_STOCK (adjustments and counts) at the branch, MANAGE_PRODUCTS (suppliers) globally.
+// A unit cost exists only for a caller who holds VIEW_PRODUCT_COST: for everyone else the keys are absent (never null).
+// ---------------------------------------------------------------------------------------------------------------
+
+export type StockMovementKindName = 'OPENING' | 'RECEIPT' | 'ADJUSTMENT';
+/** The reasons a person may choose for an adjustment (COUNT_CORRECTION is written only by an approved count). */
+export type StockAdjustmentReasonName =
+  'INTERNAL_USE' | 'TESTER' | 'DAMAGED' | 'EXPIRED' | 'LOSS' | 'COUNT_CORRECTION';
+export type StockReceiptStatusName = 'DRAFT' | 'CONFIRMED' | 'CANCELLED';
+export type StockCountStatusName = 'OPEN' | 'APPROVED' | 'CANCELLED';
+
+/** GET /api/v1/inventory/context: the branches the caller may work in and what they may do there. */
+export interface InventoryContextResponse {
+  branches: {
+    id: string;
+    code: string;
+    name: string;
+    view: boolean;
+    receipts: boolean;
+    adjust: boolean;
+  }[];
+  /** MANAGE_PRODUCTS: suppliers, the expiry-warning setting. */
+  manageProducts: boolean;
+  /** VIEW_PRODUCT_COST: a unit cost on receipts and lots. */
+  cost: boolean;
+}
+
+export interface InventoryItem {
+  variantId: string;
+  sku: string;
+  productId: string;
+  productNameVi: string;
+  productNameEn: string;
+  labelVi: string | null;
+  labelEn: string | null;
+  /** The product cover picture (a media library id), or null. */
+  coverMediaId: string | null;
+  variantActive: boolean;
+  onHand: number;
+  reserved: number;
+  /** The one definition of available stock (non-expired lots in the branch calendar minus reservations). */
+  available: number;
+  /** Units in lots that are past their expiry date today (branch calendar); still counted in `onHand`. */
+  expiredQuantity: number;
+  lowStockThreshold: number | null;
+  /** On hand is at or below the threshold. */
+  lowStock: boolean;
+  /** Lots with stock. */
+  lotCount: number;
+  /** The earliest expiry date among lots with stock (YYYY-MM-DD), or null. */
+  nextExpiry: string | null;
+  /** Some lot with stock expires within the warning window, or has already expired. */
+  expiryAlert: boolean;
+}
+
+/** GET /api/v1/inventory/overview?branchId= (VIEW_INVENTORY at the branch). */
+export interface InventoryOverviewResponse {
+  branchId: string;
+  /** Lots expiring within this many days are flagged. */
+  expiryWarningDays: number;
+  items: InventoryItem[];
+}
+
+export interface InventoryLotResponse {
+  id: string;
+  lotCode: string;
+  expiryDate: string | null;
+  quantityOnHand: number;
+  receivedQuantity: number;
+  expired: boolean;
+  receiptCode: string | null;
+  createdAt: string;
+  /** Only for a caller who holds VIEW_PRODUCT_COST. */
+  unitCostVnd?: string | null;
+}
+
+export interface InventoryMovementResponse {
+  id: string;
+  kind: StockMovementKindName;
+  quantityDelta: number;
+  reason: StockAdjustmentReasonName | null;
+  note: string | null;
+  lotCode: string;
+  actorName: string;
+  createdAt: string;
+  receiptCode: string | null;
+  countCode: string | null;
+}
+
+/** GET /api/v1/inventory/branches/:branchId/variants/:variantId (VIEW_INVENTORY at the branch). */
+export interface InventoryVariantDetailResponse {
+  branchId: string;
+  branchName: string;
+  item: InventoryItem;
+  expiryWarningDays: number;
+  /** Lots with stock first (earliest expiry first), then the emptied ones. */
+  lots: InventoryLotResponse[];
+  /** The newest 100 movements, newest first. */
+  movements: InventoryMovementResponse[];
+  /** ADJUST_STOCK at the branch. */
+  canAdjust: boolean;
+}
+
+/** POST /api/v1/stock-adjustments (ADJUST_STOCK at the branch). Takes `quantity` units out of one lot. */
+export interface StockAdjustmentRequest {
+  /** A fresh id per attempt: sending the same request again returns the same result and writes nothing twice. */
+  requestKey: string;
+  branchId: string;
+  variantId: string;
+  lotId: string;
+  quantity: number;
+  reason: Exclude<StockAdjustmentReasonName, 'COUNT_CORRECTION'>;
+  note: string | null;
+}
+
+/** GET /api/v1/inventory/variant-options (MANAGE_STOCK_RECEIPTS or ADJUST_STOCK somewhere): what a receipt or count may list. */
+export interface InventoryVariantOptionsResponse {
+  variants: {
+    variantId: string;
+    sku: string;
+    productNameVi: string;
+    productNameEn: string;
+    labelVi: string | null;
+    labelEn: string | null;
+  }[];
+}
+
+// ------------------------------------------------------------------------------------------------- suppliers
+
+export interface SupplierResponse {
+  id: string;
+  name: string;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  notes: string | null;
+  isActive: boolean;
+  rowVersion: number;
+  receiptCount: number;
+}
+
+/** GET /api/v1/suppliers (MANAGE_PRODUCTS, or MANAGE_STOCK_RECEIPTS at some branch). */
+export interface SupplierListResponse {
+  suppliers: SupplierResponse[];
+  /** MANAGE_PRODUCTS: create and edit. */
+  manage: boolean;
+}
+
+export interface SupplierCreateRequest {
+  name: string;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  notes: string | null;
+}
+
+export interface SupplierEditRequest extends SupplierCreateRequest {
+  expectedRowVersion: number;
+  isActive: boolean;
+}
+
+// -------------------------------------------------------------------------------------------------- receipts
+
+export interface StockReceiptListItem {
+  id: string;
+  code: string;
+  receiptDate: string;
+  status: StockReceiptStatusName;
+  supplierName: string | null;
+  lineCount: number;
+  totalQuantity: number;
+  createdByName: string;
+  createdAt: string;
+  confirmedAt: string | null;
+  /** Only for a caller who holds VIEW_PRODUCT_COST (lines without a cost count as zero). */
+  totalCostVnd?: string;
+}
+
+/** GET /api/v1/stock-receipts?branchId= (MANAGE_STOCK_RECEIPTS at the branch). */
+export interface StockReceiptListResponse {
+  branchId: string;
+  receipts: StockReceiptListItem[];
+}
+
+export interface StockReceiptLineResponse {
+  lineNo: number;
+  variantId: string;
+  sku: string;
+  productNameVi: string;
+  productNameEn: string;
+  labelVi: string | null;
+  labelEn: string | null;
+  quantity: number;
+  lotCode: string | null;
+  expiryDate: string | null;
+  /** Only for a caller who holds VIEW_PRODUCT_COST. */
+  unitCostVnd?: string | null;
+}
+
+export interface StockReceiptResponse {
+  id: string;
+  code: string;
+  branchId: string;
+  branchName: string;
+  supplierId: string | null;
+  supplierName: string | null;
+  receiptDate: string;
+  notes: string | null;
+  status: StockReceiptStatusName;
+  rowVersion: number;
+  createdByName: string;
+  createdAt: string;
+  confirmedByName: string | null;
+  confirmedAt: string | null;
+  cancelledByName: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  lines: StockReceiptLineResponse[];
+  /** VIEW_PRODUCT_COST: unit costs are shown and may be entered. */
+  cost: boolean;
+}
+
+export interface StockReceiptLineRequest {
+  variantId: string;
+  quantity: number;
+  /** Only with VIEW_PRODUCT_COST (403 otherwise). An absent key on an edit keeps the cost of the same line and variant. */
+  unitCostVnd?: string | null;
+  lotCode: string | null;
+  /** YYYY-MM-DD, or null for a lot that does not expire. */
+  expiryDate: string | null;
+}
+
+/** POST /api/v1/stock-receipts (MANAGE_STOCK_RECEIPTS at the branch). Creates a draft. */
+export interface StockReceiptCreateRequest {
+  branchId: string;
+  supplierId: string | null;
+  receiptDate: string;
+  notes: string | null;
+  lines: StockReceiptLineRequest[];
+}
+
+/** POST /api/v1/stock-receipts/:id/edit: replaces the header and the lines of a DRAFT. */
+export interface StockReceiptEditRequest {
+  expectedRowVersion: number;
+  supplierId: string | null;
+  receiptDate: string;
+  notes: string | null;
+  lines: StockReceiptLineRequest[];
+}
+
+export interface StockReceiptVersionRequest {
+  expectedRowVersion: number;
+}
+
+export interface StockReceiptCancelRequest {
+  expectedRowVersion: number;
+  reason: string;
+}
+
+// ---------------------------------------------------------------------------------------------------- counts
+
+export interface StockCountListItem {
+  id: string;
+  code: string;
+  status: StockCountStatusName;
+  lineCount: number;
+  /** Sum of the absolute differences once approved, else null. */
+  differenceUnits: number | null;
+  createdByName: string;
+  createdAt: string;
+  approvedAt: string | null;
+}
+
+/** GET /api/v1/stock-counts?branchId= (VIEW_INVENTORY or ADJUST_STOCK at the branch). */
+export interface StockCountListResponse {
+  branchId: string;
+  counts: StockCountListItem[];
+  canAdjust: boolean;
+}
+
+export interface StockCountLineResponse {
+  variantId: string;
+  sku: string;
+  productNameVi: string;
+  productNameEn: string;
+  labelVi: string | null;
+  labelEn: string | null;
+  countedQuantity: number;
+  /** The system quantity stamped at approval, null while the count is open. */
+  systemQuantity: number | null;
+  difference: number | null;
+  /** The live quantity on hand while the count is open (it may move while people count). */
+  currentOnHand: number | null;
+}
+
+export interface StockCountResponse {
+  id: string;
+  code: string;
+  branchId: string;
+  branchName: string;
+  status: StockCountStatusName;
+  notes: string | null;
+  rowVersion: number;
+  createdByName: string;
+  createdAt: string;
+  approvedByName: string | null;
+  approvedAt: string | null;
+  cancelledAt: string | null;
+  lines: StockCountLineResponse[];
+  canAdjust: boolean;
+}
+
+/**
+ * POST /api/v1/stock-counts (ADJUST_STOCK at the branch). A new count lists the given variants, or every variant that has stock
+ * when `variantIds` is null. Each line starts at the quantity on hand: people then enter what they counted.
+ */
+export interface StockCountCreateRequest {
+  branchId: string;
+  notes: string | null;
+  variantIds: string[] | null;
+}
+
+/** POST /api/v1/stock-counts/:id/lines: sets counted quantities (adding a variant if needed) and removes lines. */
+export interface StockCountLinesRequest {
+  expectedRowVersion: number;
+  lines: { variantId: string; countedQuantity: number }[];
+  removeVariantIds: string[];
+}

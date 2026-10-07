@@ -147,6 +147,11 @@ const errors = {
   PRODUCT_PROMOTION_EXPIRED: [409, 'This promotion is already over'],
   PRODUCT_PROMOTION_OVERLAP: [409, 'This variant already has a promotion in that period'],
   PRODUCT_CATEGORY_DEPTH: [409, 'Categories have two levels at most'],
+  // Phase 6 P6-4: inventory.
+  INVENTORY_INSUFFICIENT_STOCK: [409, 'The lot holds less than the quantity requested'],
+  INVENTORY_RECEIPT_NOT_DRAFT: [409, 'Only a draft receipt can change'],
+  INVENTORY_COUNT_NOT_OPEN: [409, 'Only an open stock count can change'],
+  INVENTORY_VARIANT_UNAVAILABLE: [409, 'The variant cannot be used for stock'],
 } as const;
 
 export type AuthErrorCode = keyof typeof errors;

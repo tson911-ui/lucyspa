@@ -17,7 +17,7 @@ const SIDEBAR_LAYOUT: ReadonlyArray<{ group: NavGroupId; order: readonly NavKey[
     group: 'people',
     order: ['employees', 'attendance', 'leave', 'teams', 'organization', 'skills'],
   },
-  { group: 'catalog', order: ['services', 'products', 'branches'] },
+  { group: 'catalog', order: ['services', 'products', 'inventory', 'branches'] },
   { group: 'administration', order: ['roles', 'websiteContent'] },
 ];
 
@@ -42,6 +42,7 @@ export const NAV_ICONS: Record<NavKey, IconName> = {
   skills: 'award',
   services: 'sparkles',
   products: 'gem',
+  inventory: 'table',
   branches: 'map-pin',
   roles: 'shield',
   websiteContent: 'image',

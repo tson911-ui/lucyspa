@@ -24,6 +24,17 @@ export function notificationHref(
   if (item.source.type === 'LeaveRequest') {
     return account.kind === 'EMPLOYEE' || account.kind === 'OWNER' ? `${base}/leave` : null;
   }
+  // A stock alert opens the inventory of its branch (the item page for one variant, the stock list for the daily expiry scan).
+  if (item.source.type === 'ProductVariant') {
+    return item.branch !== null && canAt(account, 'VIEW_INVENTORY', item.branch.id)
+      ? `${base}/inventory/items/${encodeURIComponent(item.source.id)}?branch=${encodeURIComponent(item.branch.id)}`
+      : null;
+  }
+  if (item.source.type === 'Branch' && item.type === 'EXPIRY_ALERT') {
+    return item.branch !== null && canAt(account, 'VIEW_INVENTORY', item.branch.id)
+      ? `${base}/inventory?branch=${encodeURIComponent(item.branch.id)}`
+      : null;
+  }
   // The revenue summary is about a branch and has no screen (reports are a later phase).
   if (item.source.type === 'Branch') return null;
   if (item.source.type === 'Invoice') {
@@ -82,7 +93,13 @@ export function notificationMessage(item: NotificationItem, locale: Locale): str
       return fill(params.decision === 'APPROVED' ? t.leave.approved : t.leave.rejected, values);
     }
   }
-  if (params) return financeMessage(item, params, locale) ?? t.types[item.type];
+  if (params) {
+    return (
+      financeMessage(item, params, locale) ??
+      inventoryMessage(item, params, locale) ??
+      t.types[item.type]
+    );
+  }
   return t.types[item.type];
 }
 
@@ -145,6 +162,30 @@ function financeMessage(
     default:
       return null;
   }
+}
+
+/** Stock alerts render from validated counts and the SKU (the notification's context code); anything else falls back. */
+function inventoryMessage(
+  item: NotificationItem,
+  params: NonNullable<NotificationItem['params']>,
+  locale: Locale,
+): string | null {
+  const i = getNotificationDictionary(locale).inventory;
+  if (item.type === 'LOW_STOCK_REACHED' && 'onHand' in params) {
+    return fill(i.lowStock, {
+      sku: item.source.code,
+      onHand: params.onHand,
+      threshold: params.threshold,
+    });
+  }
+  if (item.type === 'EXPIRY_ALERT' && 'expiredLots' in params) {
+    return fill(i.expiry, {
+      expired: params.expiredLots,
+      expiring: params.expiringLots,
+      days: params.withinDays,
+    });
+  }
+  return null;
 }
 
 export function mergeNotifications(

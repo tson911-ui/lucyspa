@@ -50,6 +50,8 @@ model Branch {
   stockReceipts           StockReceipt[]               @relation("StockReceiptBranch")
   inventoryLots           InventoryLot[]               @relation("InventoryLotBranch")
   stockLevels             StockLevel[]                 @relation("StockLevelBranch")
+  inventoryLowStockAlerts InventoryLowStockAlert[]     @relation("LowStockAlertBranch")
+  inventoryExpiryScans    InventoryExpiryScan[]        @relation("ExpiryScanBranch")
   stockCounts             StockCountSession[]          @relation("StockCountBranch")
   stockMovements          StockMovement[]              @relation("StockMovementBranch")
 
@@ -2990,6 +2992,7 @@ model ProductVariant {
   receiptLines      StockReceiptLine[]
   lots              InventoryLot[]
   stockLevels       StockLevel[]
+  lowStockAlerts    InventoryLowStockAlert[]
   countLines        StockCountLine[]
   movements         StockMovement[]
 
@@ -3209,6 +3212,39 @@ model StockLevel {
 
   @@id([branchId, variantId])
   @@map("stock_levels")
+}
+
+// One row per time a movement left a variant at or below its threshold (design 4.6). Written by the movement trigger; the worker
+// stamps `handledAt` and the outcome once, and the row is history after that.
+model InventoryLowStockAlert {
+  id        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId  String         @map("branch_id") @db.Uuid
+  branch    Branch         @relation("LowStockAlertBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  variantId String         @map("variant_id") @db.Uuid
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  onHand    Int            @map("on_hand")
+  threshold Int
+  createdAt DateTime       @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  handledAt DateTime?      @map("handled_at") @db.Timestamptz(3)
+  outcome   String?
+
+  @@index([branchId, variantId, createdAt], map: "inventory_low_stock_alerts_level_idx")
+  @@map("inventory_low_stock_alerts")
+}
+
+// One row per branch per local day, written by the worker's expiry scan (design 4.6).
+model InventoryExpiryScan {
+  branchId     String   @map("branch_id") @db.Uuid
+  branch       Branch   @relation("ExpiryScanBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  businessDate DateTime @map("business_date") @db.Date
+  warningDays  Int      @map("warning_days")
+  expiringLots Int      @map("expiring_lots")
+  expiredLots  Int      @map("expired_lots")
+  outcome      String
+  scannedAt    DateTime @default(dbgenerated("clock_timestamp()")) @map("scanned_at") @db.Timestamptz(3)
+
+  @@id([branchId, businessDate])
+  @@map("inventory_expiry_scans")
 }
 
 model StockCountSession {

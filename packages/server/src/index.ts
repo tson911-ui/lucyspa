@@ -160,6 +160,16 @@ export {
   type FinancialEventOutcome,
 } from './invoice-notifications.js';
 export {
+  EXPIRY_ALERT_EVENT,
+  EXPIRY_SCAN_LOCAL_TIME,
+  INVENTORY_ALERT_AGGREGATE,
+  LOW_STOCK_EVENT,
+  pendingLowStockAlerts,
+  processLowStockAlert,
+  runExpiryScan,
+  type LowStockOutcome,
+} from './inventory-alerts.js';
+export {
   ProviderRejectedError,
   ProviderUnavailableError,
   type NotificationCheck,

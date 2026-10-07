@@ -28,6 +28,8 @@ import { DiscountController } from './discounts/discount.controller.js';
 import { DiscountService } from './discounts/discount.service.js';
 import { ComboController } from './combo/combo.controller.js';
 import { ComboService } from './combo/combo.service.js';
+import { InventoryController } from './inventory/inventory.controller.js';
+import { InventoryService } from './inventory/inventory.service.js';
 import { ProductCatalogController } from './products/product-catalog.controller.js';
 import { ProductCatalogService } from './products/product-catalog.service.js';
 import { RewardController } from './reward/reward.controller.js';
@@ -141,6 +143,7 @@ export class AppModule {
         DiscountController,
         ComboController,
         ProductCatalogController,
+        InventoryController,
         RewardController,
         CustomerLoyaltyController,
         LoyaltyController,
@@ -203,6 +206,7 @@ export class AppModule {
         DiscountService,
         ComboService,
         ProductCatalogService,
+        InventoryService,
         RewardService,
         CustomerLoyaltyService,
         LoyaltyService,

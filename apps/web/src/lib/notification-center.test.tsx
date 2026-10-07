@@ -327,3 +327,85 @@ test('a finance card shows the invoice code, the VI/EN message and the invoice a
     assert.ok(!html.includes('INVOICE_PAID'), 'no raw event code');
   }
 });
+
+// ---------------------------------------------------------------------------------------- Phase 6 P6-4: stock alerts
+
+const stockAlert = (
+  type: 'LOW_STOCK_REACHED' | 'EXPIRY_ALERT',
+  params: NotificationItem['params'],
+  source: NotificationItem['source'],
+): NotificationItem => ({
+  id: `stock-${type}`,
+  type,
+  branch: { id: 'A', name: 'Spa', timezone: 'Asia/Ho_Chi_Minh' },
+  source,
+  actionAt: '2030-01-02T10:00:00.000Z',
+  createdAt: '2030-01-02T10:00:01.000Z',
+  readAt: null,
+  archivedAt: null,
+  params,
+});
+const lowStock = stockAlert(
+  'LOW_STOCK_REACHED',
+  { onHand: 2, threshold: 3 },
+  { type: 'ProductVariant', id: 'var-1', code: 'KEM-50' },
+);
+const expiry = stockAlert(
+  'EXPIRY_ALERT',
+  { withinDays: 90, expiredLots: 1, expiringLots: 4 },
+  { type: 'Branch', id: 'A', code: '2030-01-02' },
+);
+
+test('stock alerts render from counts and the SKU in VI and EN; missing params fall back to the type text', () => {
+  assert.equal(notificationMessage(lowStock, 'vi'), 'Sắp hết hàng: KEM-50 còn 2 (ngưỡng 3).');
+  assert.equal(notificationMessage(lowStock, 'en'), 'Low stock: KEM-50 has 2 left (level 3).');
+  assert.equal(
+    notificationMessage(expiry, 'vi'),
+    'Cảnh báo hạn dùng: 1 lô đã hết hạn, 4 lô sẽ hết hạn trong 90 ngày.',
+  );
+  assert.equal(
+    notificationMessage(expiry, 'en'),
+    'Expiry warning: 1 lots expired, 4 lots expire within 90 days.',
+  );
+  assert.equal(
+    notificationMessage({ ...lowStock, params: null }, 'vi'),
+    getNotificationDictionary('vi').types.LOW_STOCK_REACHED,
+  );
+  assert.equal(
+    notificationMessage({ ...expiry, params: { onHand: 1, threshold: 1 } }, 'en'),
+    getNotificationDictionary('en').types.EXPIRY_ALERT,
+  );
+  for (const locale of ['vi', 'en'] as const) {
+    const t = getNotificationDictionary(locale);
+    assert.ok(t.types.LOW_STOCK_REACHED.length > 0 && t.types.EXPIRY_ALERT.length > 0);
+    assert.ok(t.inventory.openStock.length > 0);
+  }
+});
+
+test('a stock alert opens the item page or the inventory of its branch for people who may view that branch only', () => {
+  const viewer = employee([['VIEW_INVENTORY', 'A']]);
+  assert.equal(
+    notificationHref(lowStock, viewer, '/vi/workforce'),
+    '/vi/workforce/inventory/items/var-1?branch=A',
+  );
+  assert.equal(
+    notificationHref(expiry, viewer, '/vi/workforce'),
+    '/vi/workforce/inventory?branch=A',
+  );
+  // Another branch, another permission or no permission: no link (the destination API would refuse anyway).
+  for (const other of [
+    employee([['VIEW_INVENTORY', 'B']]),
+    employee([['MANAGE_STOCK_RECEIPTS', 'A']]),
+    employee(),
+  ]) {
+    assert.equal(notificationHref(lowStock, other, '/vi/workforce'), null);
+    assert.equal(notificationHref(expiry, other, '/vi/workforce'), null);
+  }
+  // The revenue summary of a branch still has no screen.
+  const summary = finance('REVENUE_DAILY_SUMMARY', null, {
+    type: 'Branch',
+    id: 'A',
+    code: '2030-01-02',
+  });
+  assert.equal(notificationHref(summary, viewer, '/vi/workforce'), null);
+});

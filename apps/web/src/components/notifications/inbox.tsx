@@ -219,7 +219,9 @@ export function NotificationTable({
             ? t.openLeave
             : item.source.type === 'Invoice'
               ? t.finance.openInvoice
-              : t.open;
+              : item.source.type === 'ProductVariant' || item.type === 'EXPIRY_ALERT'
+                ? t.inventory.openStock
+                : t.open;
         return href ? (
           <Link className="ls-link" href={href} title={`${open}: ${message}`}>
             {message}

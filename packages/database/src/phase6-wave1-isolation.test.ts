@@ -33,6 +33,8 @@ const NEW_TABLES = new Set([
   'stock_count_sessions',
   'stock_count_lines',
   'stock_movements',
+  'inventory_low_stock_alerts',
+  'inventory_expiry_scans',
 ]);
 // Existing tables a new foreign key may point at (identity, branches, media library, the catalog of permissions).
 const REFERENCEABLE = new Set(['users', 'branches', 'media_assets', 'permissions']);
@@ -41,18 +43,23 @@ const PROTECTED_SOURCE =
 const PROTECTED = new RegExp(`\\b(${PROTECTED_SOURCE})\\b`);
 const PROTECTED_EXACT = new RegExp(`^(${PROTECTED_SOURCE})$`);
 
+// The one Wave 1 migration that widens two CHECK constraints of the notifications table (the stock alerts need their own types).
+// It may touch nothing else, and it is checked on its own below.
+const NOTIFICATION_KINDS = '20261106000008_phase6_notification_kinds';
+
 const sql = (name: string) =>
   readFileSync(new URL(`${name}/migration.sql`, migrations), 'utf8')
     .split('\n')
     .map((line) => line.replace(/--.*$/, ''))
     .join('\n');
 
-test('Wave 1 has its seven migrations', () => {
-  assert.equal(WAVE1.length, 7, WAVE1.join(', '));
+test('Wave 1 has its nine migrations', () => {
+  assert.equal(WAVE1.length, 9, WAVE1.join(', '));
 });
 
 test('Wave 1 migrations touch no POS, invoice, discount, payment, loyalty or booking table', () => {
   for (const name of WAVE1) {
+    if (name === NOTIFICATION_KINDS) continue;
     const text = sql(name);
     const quoted = [...text.matchAll(/"([a-z_]+)"/g)].map((match) => match[1]!);
     for (const word of quoted) {
@@ -85,6 +92,43 @@ test('Wave 1 migrations touch no POS, invoice, discount, payment, loyalty or boo
     for (const match of text.matchAll(/\b(?:FROM|JOIN|INTO|UPDATE)\s+([a-z_]+)\b/g)) {
       assert.ok(!PROTECTED.test(match[1]!), `${name}: a function reads or writes ${match[1]}`);
     }
+  }
+});
+
+test('the notification-kinds migration only widens three constraints of notifications, and touches nothing else', () => {
+  const text = sql(NOTIFICATION_KINDS);
+  const statements = [...text.matchAll(/ALTER TABLE\s+"([a-z_]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(statements, ['notifications'], 'one ALTER TABLE, on notifications');
+  const constraints = [...text.matchAll(/(?:DROP|ADD) CONSTRAINT\s+"([a-z_]+)"/g)].map(
+    (match) => match[1],
+  );
+  assert.deepEqual([...new Set(constraints)].sort(), [
+    'notifications_entity_type_check',
+    'notifications_type_check',
+    'notifications_type_entity',
+  ]);
+  // Each constraint is replaced, one drop and one add, never dropped alone.
+  for (const name of new Set(constraints)) {
+    assert.equal(constraints.filter((entry) => entry === name).length, 2, name);
+  }
+  assert.ok(
+    !/\b(INSERT|UPDATE|DELETE|TRUNCATE|CREATE|DROP TABLE|DROP COLUMN|ADD COLUMN)\b/i.test(
+      text.replace(/DROP CONSTRAINT/gi, ''),
+    ),
+  );
+  // It widens: every type and entity the previous constraint allowed is still there.
+  for (const kept of [
+    'BOOKING_CREATED',
+    'LEAVE_DECIDED',
+    'INVOICE_PAID',
+    'REVENUE_DAILY_SUMMARY',
+    'Booking',
+    'Visit',
+    'LeaveRequest',
+    'Invoice',
+    'Branch',
+  ]) {
+    assert.ok(text.includes(`'${kept}'`), kept);
   }
 });
 
