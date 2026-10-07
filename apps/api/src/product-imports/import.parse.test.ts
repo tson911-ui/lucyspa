@@ -29,6 +29,12 @@ test('amounts: whole VND in the ways people write them, never a fraction', () =>
 test('counts, yes/no words and dates', () => {
   assert.equal(parseCount('12'), 12);
   assert.equal(parseCount('12.0'), 12);
+  assert.equal(parseCount('1.000'), 1000);
+  assert.equal(parseCount('10.000'), 10000);
+  assert.equal(parseCount('1,000'), 1000);
+  assert.equal(parseCount('1.234.567'), 1234567);
+  assert.equal(parseCount('12.000.000'), null);
+  assert.equal(parseCount('1.00'), 1);
   assert.equal(parseCount('1.5'), null);
   assert.equal(parseCount('-1'), null);
   assert.equal(parseFlag(''), undefined);

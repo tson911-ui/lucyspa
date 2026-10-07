@@ -10,7 +10,7 @@
 
 - **Cơ sở dữ liệu, chỉ thêm (9 migration; 63 migration hiện có trên máy chủ + 9 = 72):** `20261106000000` đến `20261106000008` (xem `PHASE6_STEP2_DB_PERMISSIONS_FOUNDATION.md`, `PHASE6_STEP3_CATALOG_ADMIN.md`, `PHASE6_STEP3B_PRE_ORDER_FIELDS.md`, `PHASE6_STEP4_INVENTORY.md`). Nếu P6-5 thêm migration, báo cáo `PHASE6_STEP5_IMPORT.md` sẽ nói rõ và danh sách này được cập nhật.
 - **Nhập Excel/CSV (P6-5): không thêm migration**, nên vẫn **9 migration, tổng 72**. Quyền `IMPORT_PRODUCT_DATA` đã nằm trong 11 quyền mới. Cần `pnpm install` để lấy 2 thư viện mới của `packages/server` (fflate, fast-xml-parser).
-- **Giới hạn tệp nhập: 5 MB**, nhỏ hơn giới hạn tải ảnh 10 MB; nếu có nginx đứng trước web, dòng `client_max_body_size 11m;` đã ghi ở `DEPLOY_STEP13_RUNBOOK.md` là đủ cho cả hai (chưa thử trên máy chủ thật). Nhập 2.000 dòng giữ một giao dịch khoảng 23 giây: nên nhập lúc vắng khách (Chủ đã quyết Đợt 1 chạy buổi tối).
+- **Giới hạn tệp nhập: 5 MB**, nhỏ hơn giới hạn tải ảnh 10 MB; nếu có nginx đứng trước web, dòng `client_max_body_size 11m;` đã ghi ở `DEPLOY_STEP13_RUNBOOK.md` là đủ cho cả hai (chưa thử trên máy chủ thật). Nhập 2.000 dòng giữ một giao dịch khoảng 20 đến 23 giây (nginx cần `proxy_read_timeout 150s;` cho đường `/api/`; web đã đặt `proxyTimeout` 150 giây): nên nhập lúc vắng khách (Chủ đã quyết Đợt 1 chạy buổi tối).
 - **Quyền mới: 11** (tổng 65), **chưa gán cho ai**. Sau khi deploy, Chủ gán trong màn hình Vai trò, nhóm "Sản phẩm và kho".
 - **Không đụng** hóa đơn, thanh toán, điểm thưởng, POS (test cô lập Đợt 1 ghim điều này; ngoại lệ duy nhất là nới 2 loại thông báo ở trên).
 - **Worker phải khởi động lại** (vòng cảnh báo kho và quét hạn dùng 08:00 nằm trong worker).

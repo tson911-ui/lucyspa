@@ -30,6 +30,6 @@ Trạng thái: **làm xong, commit cục bộ, chưa push, chưa deploy.** Căn 
 
 - Ba cách đọc ở trên. Mặc định 3-5 ngày lấy đúng số của Chủ (OQ-31).
 
-## Bổ sung UX gate (2026-10-08)
+## Bổ sung UX gate (2026-10-07)
 
 - Đã mở thêm và xem: trang sản phẩm tối 1440, trang chi tiết 768, ngăn kéo thêm biến thể 768 (ô "Cho đặt trước" và hai ô thời gian chờ), hộp cài đặt 768 và tối. Không thấy lỗi mới. DOM audit chính thức đã tạo lại (`scripts/uxui-audit-capture.mjs`); trang sản phẩm không có phát hiện nào.

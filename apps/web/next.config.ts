@@ -14,6 +14,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   transpilePackages: ['@lucy-spa/ui'],
+  // The Excel import applies a big file in one request (about 23 s for 2,000 rows here; its transaction may take up to 120 s).
+  // Next's own rewrite proxy gives up after 30 s unless told otherwise.
+  experimental: { proxyTimeout: 150_000 },
   async rewrites() {
     return [{ source: '/api/:path*', destination: `${apiOrigin}/api/:path*` }];
   },

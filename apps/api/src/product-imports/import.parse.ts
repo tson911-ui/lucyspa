@@ -33,9 +33,16 @@ export function parseMoney(text: string): bigint | null {
   return null;
 }
 
-/** A whole number from 0 up to 7 digits (the cell as Excel or a person writes it). `null` when it is not one. */
+/**
+ * A whole number up to 7 digits, as Excel or a person writes it: "1000", "1.000" or "1,000" (Vietnamese Excel saves a
+ * thousands-formatted cell like that, and the money parser reads it the same way), "12.0". `null` when it is not one.
+ */
 export function parseCount(text: string): number | null {
   const bare = text.replace(/\s+/g, '');
+  if (/^\d{1,3}(?:[.,]\d{3})+$/.test(bare)) {
+    const value = Number(bare.replace(/[.,]/g, ''));
+    return value <= 9_999_999 ? value : null;
+  }
   if (/^\d{1,7}$/.test(bare)) return Number(bare);
   if (/^\d{1,7}\.0+$/.test(bare)) return Number(bare.split('.')[0]);
   return null;

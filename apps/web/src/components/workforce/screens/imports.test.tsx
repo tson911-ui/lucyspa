@@ -118,6 +118,8 @@ test('an applied import is history: a success notice, no action; a cancelled one
     owner,
   );
   assert.ok(cancelled.includes(text.detail.cancelled));
+  // Only the summary label says "Tạo mới"; no row of a cancelled import reads as created.
+  assert.equal((cancelled.match(/Tạo mới/g) ?? []).length, 1);
 });
 
 test('opening stock shows the quantity and the lot, the branch and no price or cost column', () => {

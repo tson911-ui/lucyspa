@@ -338,7 +338,8 @@ function ImportRows({ job }: { job: ProductImportDetailResponse }) {
       header: d.columns.name,
       truncate: true,
       width: 'md',
-      hideBelow: 'md',
+      // Opening stock has more columns (quantity, lot), so the name gives way to the notes on a tablet.
+      hideBelow: opening ? 'lg' : 'md',
       cell: (row) => row.title ?? text.none,
     },
     ...(opening
@@ -363,7 +364,9 @@ function ImportRows({ job }: { job: ProductImportDetailResponse }) {
       key: 'result',
       header: d.columns.result,
       cell: (row) => {
-        const outcome = rowOutcome(row);
+        // A cancelled import wrote nothing, so its valid rows are not shown as created or updated.
+        const outcome =
+          job.status === 'CANCELLED' && row.status === 'VALID' ? 'NONE' : rowOutcome(row);
         return <Badge tone={outcomeTone(outcome)}>{d.results[outcome]}</Badge>;
       },
     },

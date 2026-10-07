@@ -33,7 +33,7 @@ Hết hạn tính theo **ngày của chi nhánh** (còn bán đến hết ngày 
 - Các cách đọc ở trên. Chọn mặt hàng trong phiếu/kiểm kê tải toàn bộ danh sách (lọc trên trình duyệt): đủ cho vài trăm mặt hàng, danh mục lớn hơn cần tìm kiếm phía máy chủ.
 - Mỗi bộ test đua chạy **một lần** trên máy này (mỗi tình huống 3 vòng), chưa thử tải thật (P6-7).
 
-## Bổ sung UX gate (2026-10-08)
+## Bổ sung UX gate (2026-10-07)
 
 - Sau lần chụp lại bản cuối, tôi đã **mở thêm và xem**: kiểm kê 768 (sau khi ẩn cột Mã SKU ở máy tính bảng), nhà cung cấp 768, thông báo 768, phiếu nhập lỗi 768, trang mặt hàng 768, hộp thêm nhà cung cấp 768, hộp tạo đợt kiểm kê 768, đợt kiểm kê chưa lưu 768, hộp cài đặt 768, ba trạng thái rỗng (tối 1440 và 768) và tồn kho tối 1440. Không thấy lỗi mới. Các ảnh 360, hộp thoại và chữ 130% đã xem ở lượt trước.
 - **DOM audit chính thức đã được tạo lại** và nằm trong repo: `scripts/uxui-audit-capture.mjs` + `scripts/uxui-audit-pages.json`. Chạy trên bản cuối cho các trang Phase 6: chỉ còn 2 phát hiện `row-height-uneven` (Tồn kho, Phiếu nhập); 26 trang của mốc cũ không có số đếm nào tăng so với `docs/uxui-audit-baseline.json`.
