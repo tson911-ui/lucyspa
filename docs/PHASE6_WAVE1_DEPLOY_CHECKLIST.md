@@ -2,7 +2,7 @@
 
 Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, theo thứ tự**, trong **cùng một cửa sổ terminal web của iNET** đã đăng nhập vào máy chủ. Mỗi khối có dòng **Mong đợi**; kết quả khác thì **DỪNG, không chạy tiếp, chụp màn hình gửi Claude**. Chưa có gì của Phase 6 trên máy chủ; chỉ làm khi Owner quyết (Owner chốt 2026-10-07: deploy từng đợt, sau kiểm tra mốc của mỗi đợt).
 
-**Bản sẽ cài:** `<MÃ_COMMIT_MỚI>` (Claude điền mã đầy đủ 40 ký tự sau khi Owner push; Bước 0 kiểm CI xanh).
+**Bản sẽ cài:** commit `6546c434595cef5c7ab764d8e5e7cc4b62afe256` (viết tắt `6546c43`), đã push lên `main`, **CI xanh** (2026-10-07). Các commit tài liệu đẩy lên sau đó (kể cả commit điền mã này) **không** được cài và không đổi mã chạy.
 **Bản đang chạy:** `39ad8d1` (theo `LUCYSPA_HANDOFF.md`).
 **Cơ sở dữ liệu:** thêm **10 migration** (`20261106000000` đến `…09`): **63 thành 73**. Quyền: **54 thành 65** (11 quyền mới, chưa gán cho ai). Chỉ thêm bảng, hàm, cột; không đổi dòng dữ liệu cũ; **không đụng** hóa đơn, thanh toán, điểm thưởng, POS. Ngoại lệ duy nhất: nới 3 ràng buộc của bảng `notifications` (migration `…08`, giữ khóa rất ngắn).
 **Thay đổi chạy:** web chuyển từ 1 tiến trình sang **cluster 3 tiến trình** (cấu hình `ecosystem.config.cjs`); API và worker **vẫn đúng một**; giới hạn số lần đọc trang công khai (cần nginx gửi `X-Forwarded-For`); trang `/vi/products` (ẩn khỏi menu cho đến khi có sản phẩm "Đang bán").
@@ -10,8 +10,8 @@ Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, t
 
 ## Bước 0. Điều kiện
 
-- Trên GitHub, tab **Actions**, commit `<MÃ_COMMIT_MỚI>` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
-- Owner đã đọc `docs/PHASE6_WAVE1_MILESTONE.md` và trả lời OQ-54..OQ-57 (`PHASE6_OWNER_DECISIONS_VI.md`).
+- Trên GitHub, tab **Actions**, commit `6546c43` có dấu **xanh** (đã xanh lúc Claude kiểm). Đỏ hoặc đang chạy: **DỪNG**.
+- Owner đã đọc `docs/PHASE6_WAVE1_MILESTONE.md`; OQ-54..OQ-57 đã duyệt (2026-10-07).
 
 ## Bước 1. Xem hiện trạng (chỉ đọc)
 
@@ -81,7 +81,7 @@ docker exec lucy-spa-postgres-1 sh -c 'pg_restore --list /tmp/check.dump | wc -l
 ```
 cd /opt/lucyspa
 git fetch origin
-git checkout <MÃ_COMMIT_MỚI>
+git checkout 6546c434595cef5c7ab764d8e5e7cc4b62afe256
 git rev-parse HEAD
 ```
 

@@ -175,7 +175,7 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 ## Phase 6 P6-7 (load readiness, 2026-10-07, committed locally, not pushed, not deployed)
 
 - `ecosystem.config.cjs`: web = pm2 cluster (3), API and worker = exactly one (test pins it). Public `/api/v1/public/*` rate limit in Redis (needs nginx `X-Forwarded-For`), 5 s API cache for cosmetics reads, `scripts/load-public.mjs`. Product list API 74 -> 1,200 req/s; pages about 2.5x with 3 web processes (local numbers). Report: `docs/PHASE6_STEP7_LOAD_READINESS.md`.
-- **APPROVED by the Owner on 2026-10-07 (design 2.12): OQ-54..OQ-57 as proposed** (limits, 5 s cache, 3 web processes, nginx header; Wave 1 approved). Next: image fallback, push, CI, real commit in the guide, guide pasted to the Owner; the Owner deploys. Wave 1 milestone report `docs/PHASE6_WAVE1_MILESTONE.md`; deploy guide (iNET terminal blocks, rehearsal, rollback) is `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md`. Nothing of Phase 6 is on production; the Owner decides when.
+- **APPROVED by the Owner on 2026-10-07 (design 2.12): OQ-54..OQ-57 as proposed** (limits, 5 s cache, 3 web processes, nginx header; Wave 1 approved). Image fallback added (`FallbackImage`, MediaThumb/Tile/Row and public product pictures). **Pushed `6546c43` to `main`, CI green (2026-10-07); that is the Wave 1 deploy commit** (guide `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md` names it). Not deployed: production still records `39ad8d1` until the Owner reports his deploy. Wave 1 milestone report `docs/PHASE6_WAVE1_MILESTONE.md`; deploy guide (iNET terminal blocks, rehearsal, rollback) is `docs/PHASE6_WAVE1_DEPLOY_CHECKLIST.md`. Nothing of Phase 6 is on production; the Owner decides when.
 
 ## Production
 
