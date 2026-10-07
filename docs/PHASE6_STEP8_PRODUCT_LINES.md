@@ -12,7 +12,7 @@ Status: committed locally, not pushed, not deployed. Owner request and approvals
 - **Interim money rule (until P6-9/P6-11):** the Spa engine sees service/combo lines only, so a product line gets **no discount and earns no points**; the Spa wallet earns on `total - product gross - fee` (identical to `total` without products); birthday gift skips non-VISIT invoices.
 - **Customer view:** a product line shows name, quantity, price, total (combo-like shape, no seller/SKU); the proper T26 view is P6-10.
 
-## Not in this Step (kept for P6-9..P6-11, nothing lost)
+## NOT built, and why (open question OQ-65: keep in P6-9/P6-11, or pull into P6-8?)
 
 Consumption at PAID / `SALE` movements and T27 restore (P6-10); T19 per-side applications, snapshots, line-net and payment-side rows and the discount scope column (they have no writer before the v3 engine, P6-9/P6-11); POS screens (P6-10). A **paid** product invoice therefore keeps its reservation `RESERVED` and stock is not yet decremented.
 
@@ -22,11 +22,13 @@ Consumption at PAID / `SALE` movements and T27 restore (P6-10); T19 per-side app
 
 ## Tests (scratch DB `lucy_spa_p6_8_scratch_20261007`)
 
-- **All API integration suites, unmodified existing ones included** (invoice, discount, payment, PayOS, customer invoice, loyalty, referral, birthday, combo, reward, inventory, import, 20 race suites): 708 tests, 707 pass, 0 fail, 1 skipped (pre-existing). This is the proof that service-only POS/payment/loyalty behavior is unchanged; no existing test file was edited.
+- **All API integration suites, unmodified existing ones included** (invoice, discount, payment, PayOS, customer invoice, loyalty, referral, birthday, combo, reward, inventory, import, 20 race suites): 708 tests, 707 pass, 0 fail, 1 skipped (referral race "the award racing the Owner correction": the scratch database has no Owner; a Phase 5 test I did not touch). This is the proof that service-only POS/payment/loyalty behavior is unchanged; no existing test file was edited.
 - **New:** `phase6-wave2-foundation` (9, SQL guards), `product-sale.integration` (13: authority, draft, pricing/freeze, reserve, no oversell, cancel/pay/reverse, T13 refusals, mixed invoice equals a service-only twin, Spa earn on the Spa side only, customer view, service-only regression), `product-sale.race` (10 on separate connections: two cashiers on the last unit, double finalize, finalize vs cancel, cancel vs take-the-freed-unit, double payment, pay vs cancel, PayOS notification vs cash reversal on a mixed invoice, adjustment vs finalize, opposite lock order), `phase6-wave2-isolation` (5 static checks of what the migrations may touch). Reconciliation (lines = subtotal, total = subtotal - discount + fee, on hand = Σ movements = Σ lots, reserved = Σ open reservations <= on hand) runs after every test.
 - `packages/database` integration: 116 + 18 race, 0 fail. `pnpm test` (all packages): 0 fail (api 287, web 614, worker 22, database 15). `pnpm lint`, `pnpm typecheck`, `pnpm format:check`: clean.
 - Edits outside new files that tests depend on: `scripts/test-auth-integration.mjs` and `packages/database/package.json` list the new suites. A bug the new tests caught: a numeric `sum()` in the Spa-earn query (fixed, `::bigint`).
 
 ## UX gate
 
-No screen changed (`apps/web` untouched; `pnpm --filter @lucy-spa/web typecheck` passes with the widened contracts), so there is nothing to render; the POS screens for product lines are P6-10. Not run: DOM audit (no page changed).
+No screen changed (`apps/web` untouched; `pnpm --filter @lucy-spa/web typecheck` passes with the widened contracts), so there is nothing to render; the POS screens for product lines are P6-10. Not run: DOM audit (no page changed). If a product sale existed today the screens would show: board type column = visit label without code; admin invoice page without product lines; `/account/invoices` as a visit. This is P6-10 work and must land before `SELL_PRODUCTS` is granted.
+
+Wave 2 rollback evidence (previous commit's POS suites against the new schema) belongs to the P6-11 checkpoint; not done here.
