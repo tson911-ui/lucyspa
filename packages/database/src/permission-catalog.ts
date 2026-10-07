@@ -167,6 +167,36 @@ export const PERMISSION_CATALOG = Object.freeze([
   { code: 'ACTIVATE_LOYALTY', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'STANDARD' },
   // P5-5: correcting a customer's referrer before the reward. Owner only, like the go-live switch.
   { code: 'CHANGE_REFERRER', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'STANDARD' },
+  // Phase 6 P6-2 (design PHASE6_PRODUCTS_INVENTORY_DESIGN.md section 9, P6-T24): products, inventory, product sales and returns.
+  // Nothing is granted to anyone and none of them is Owner-only; the Owner grants them. The Wave 2 and 3 codes exist now so
+  // the catalog stays one append-only list; the features that use them arrive with their Steps.
+  { code: 'MANAGE_PRODUCTS', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'STANDARD' },
+  {
+    code: 'MANAGE_PRODUCT_PRICES',
+    scopeCapability: 'GLOBAL_ONLY',
+    dataClassification: 'FINANCIAL',
+  },
+  { code: 'VIEW_PRODUCT_COST', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'FINANCIAL' },
+  { code: 'VIEW_INVENTORY', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  {
+    code: 'MANAGE_STOCK_RECEIPTS',
+    scopeCapability: 'BRANCH_CAPABLE',
+    dataClassification: 'FINANCIAL',
+  },
+  { code: 'ADJUST_STOCK', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  { code: 'IMPORT_PRODUCT_DATA', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'FINANCIAL' },
+  { code: 'SELL_PRODUCTS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  {
+    code: 'MANAGE_PRODUCT_RETURNS',
+    scopeCapability: 'BRANCH_CAPABLE',
+    dataClassification: 'STANDARD',
+  },
+  { code: 'REFUND_PRODUCTS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'FINANCIAL' },
+  {
+    code: 'MANAGE_PRODUCT_CAMPAIGNS',
+    scopeCapability: 'GLOBAL_ONLY',
+    dataClassification: 'FINANCIAL',
+  },
 ] as const satisfies readonly PermissionDefinition[]);
 
 /** Codes that only the virtual Owner holds: no role and no override may carry them (SQL refuses too). */

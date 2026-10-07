@@ -432,6 +432,18 @@ test('the code-owned catalog is exactly the Phase 1, Phase 2 and follow-up Step 
       ['ACTIVATE_LOYALTY', 'GLOBAL_ONLY', 'STANDARD'],
       // Phase 5 P5-5: the Owner-only referrer correction.
       ['CHANGE_REFERRER', 'GLOBAL_ONLY', 'STANDARD'],
+      // Phase 6 P6-2 (design section 9, P6-T24): products, inventory, product sales and returns; granted to no one.
+      ['MANAGE_PRODUCTS', 'GLOBAL_ONLY', 'STANDARD'],
+      ['MANAGE_PRODUCT_PRICES', 'GLOBAL_ONLY', 'FINANCIAL'],
+      ['VIEW_PRODUCT_COST', 'GLOBAL_ONLY', 'FINANCIAL'],
+      ['VIEW_INVENTORY', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['MANAGE_STOCK_RECEIPTS', 'BRANCH_CAPABLE', 'FINANCIAL'],
+      ['ADJUST_STOCK', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['IMPORT_PRODUCT_DATA', 'GLOBAL_ONLY', 'FINANCIAL'],
+      ['SELL_PRODUCTS', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['MANAGE_PRODUCT_RETURNS', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['REFUND_PRODUCTS', 'BRANCH_CAPABLE', 'FINANCIAL'],
+      ['MANAGE_PRODUCT_CAMPAIGNS', 'GLOBAL_ONLY', 'FINANCIAL'],
     ],
   );
 });

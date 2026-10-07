@@ -46,6 +46,12 @@ model Branch {
   comboConsumptions       ComboSessionConsumption[]    @relation("ComboConsumptionBranch")
   rewardRedemptions       RewardRedemption[]           @relation("RewardRedemptionBranch")
   rewardManualUses        RewardManualUse[]            @relation("RewardManualUseBranch")
+  productImportJobs       ProductImportJob[]           @relation("ImportJobBranch")
+  stockReceipts           StockReceipt[]               @relation("StockReceiptBranch")
+  inventoryLots           InventoryLot[]               @relation("InventoryLotBranch")
+  stockLevels             StockLevel[]                 @relation("StockLevelBranch")
+  stockCounts             StockCountSession[]          @relation("StockCountBranch")
+  stockMovements          StockMovement[]              @relation("StockMovementBranch")
 
   @@index([areaId], map: "branches_area_idx")
   @@map("branches")
@@ -359,6 +365,17 @@ enum PermissionCode {
   VIEW_LOYALTY_EXCEPTIONS
   ACTIVATE_LOYALTY
   CHANGE_REFERRER
+  MANAGE_PRODUCTS
+  MANAGE_PRODUCT_PRICES
+  VIEW_PRODUCT_COST
+  VIEW_INVENTORY
+  MANAGE_STOCK_RECEIPTS
+  ADJUST_STOCK
+  IMPORT_PRODUCT_DATA
+  SELL_PRODUCTS
+  MANAGE_PRODUCT_RETURNS
+  REFUND_PRODUCTS
+  MANAGE_PRODUCT_CAMPAIGNS
 }
 
 enum LeaveStatus {
@@ -490,6 +507,22 @@ model User {
   updatedSettings                AppSetting[]
   grantedOrganizationAssignments OrganizationAssignment[]         @relation("OrganizationAssignmentGrantor")
   grantedTeamMemberships         TeamMembership[]                 @relation("TeamMembershipGrantor")
+  createdProducts                Product[]                        @relation("ProductCreator")
+  createdPriceVersions           ProductPriceVersion[]            @relation("PriceVersionCreator")
+  createdPromotions              ProductPromotion[]               @relation("PromotionCreator")
+  endedPromotions                ProductPromotion[]               @relation("PromotionEnder")
+  createdProductImages           ProductImage[]                   @relation("ProductImageCreator")
+  updatedProductSettings         ProductSettings[]                @relation("ProductSettingsUpdater")
+  createdImportJobs              ProductImportJob[]               @relation("ImportJobCreator")
+  appliedImportJobs              ProductImportJob[]               @relation("ImportJobApplier")
+  createdStockReceipts           StockReceipt[]                   @relation("StockReceiptCreator")
+  confirmedStockReceipts         StockReceipt[]                   @relation("StockReceiptConfirmer")
+  cancelledStockReceipts         StockReceipt[]                   @relation("StockReceiptCanceller")
+  createdInventoryLots           InventoryLot[]                   @relation("InventoryLotCreator")
+  createdStockCounts             StockCountSession[]              @relation("StockCountCreator")
+  approvedStockCounts            StockCountSession[]              @relation("StockCountApprover")
+  cancelledStockCounts           StockCountSession[]              @relation("StockCountCanceller")
+  stockMovements                 StockMovement[]                  @relation("StockMovementActor")
 
   @@index([kind, status, id], map: "users_kind_status_idx")
   @@map("users")
@@ -2059,6 +2092,7 @@ model MediaAsset {
   slides           WebsiteSlide[]           @relation("WebsiteSlideImage")
   mobileSlides     WebsiteSlide[]           @relation("WebsiteSlideMobileImage")
   seasonSlots      WebsiteSeasonSlotMedia[]
+  productImages    ProductImage[]
 
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "media_assets_created_idx")
   @@map("media_assets")
@@ -2806,4 +2840,435 @@ model RewardManualUseRestoration {
   reason           String
 
   @@map("reward_manual_use_restorations")
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Phase 6 P6-2 (products, inventory and import foundation; design PHASE6_PRODUCTS_INVENTORY_DESIGN.md). Wave 1 only: no table
+// of POS, invoices, discounts, loyalty or payments is touched. CHECKs, triggers, partial indexes and the exclusion constraint of
+// the migrations 20261106000002-04 are not expressible here and live in SQL.
+// ---------------------------------------------------------------------------------------------------------------
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  INACTIVE
+}
+
+enum ProductImportKind {
+  CATALOG
+  OPENING_STOCK
+  PRICE_UPDATE
+}
+
+enum ProductImportStatus {
+  UPLOADED
+  PREVIEWED
+  APPLIED
+  FAILED
+  CANCELLED
+}
+
+enum ProductImportRowStatus {
+  VALID
+  INVALID
+}
+
+enum ProductImportRowAction {
+  CREATE
+  UPDATE
+  NONE
+}
+
+enum StockReceiptStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+enum StockMovementKind {
+  OPENING
+  RECEIPT
+  ADJUSTMENT
+}
+
+enum StockAdjustmentReason {
+  INTERNAL_USE
+  TESTER
+  DAMAGED
+  EXPIRED
+  LOSS
+  COUNT_CORRECTION
+}
+
+enum StockCountStatus {
+  OPEN
+  APPROVED
+  CANCELLED
+}
+
+model Brand {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code       String    @unique(map: "brands_code_key") @db.VarChar(64)
+  nameVi     String    @map("name_vi")
+  nameEn     String    @map("name_en")
+  isActive   Boolean   @default(true) @map("is_active")
+  rowVersion Int       @default(1) @map("row_version")
+  createdAt  DateTime  @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime  @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  products   Product[]
+
+  @@map("brands")
+}
+
+model ProductCategory {
+  id         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  parentId   String?           @map("parent_id") @db.Uuid
+  parent     ProductCategory?  @relation("ProductCategoryTree", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  children   ProductCategory[] @relation("ProductCategoryTree")
+  code       String            @unique(map: "product_categories_code_key") @db.VarChar(64)
+  nameVi     String            @map("name_vi")
+  nameEn     String            @map("name_en")
+  sortOrder  Int               @default(0) @map("sort_order")
+  isActive   Boolean           @default(true) @map("is_active")
+  rowVersion Int               @default(1) @map("row_version")
+  createdAt  DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime          @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  products   Product[]
+
+  @@index([parentId], map: "product_categories_parent_idx")
+  @@map("product_categories")
+}
+
+model Product {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code            String            @unique(map: "products_code_key") @db.VarChar(96)
+  brandId         String?           @map("brand_id") @db.Uuid
+  brand           Brand?            @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  categoryId      String?           @map("category_id") @db.Uuid
+  category        ProductCategory?  @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  nameVi          String            @map("name_vi")
+  nameEn          String            @map("name_en")
+  descriptionVi   String?           @map("description_vi")
+  descriptionEn   String?           @map("description_en")
+  status          ProductStatus     @default(DRAFT)
+  featured        Boolean           @default(false)
+  publishedAt     DateTime?         @map("published_at") @db.Timestamptz(3)
+  source          Json?             @db.JsonB
+  createdByUserId String            @map("created_by_user_id") @db.Uuid
+  createdBy       User              @relation("ProductCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion      Int               @default(1) @map("row_version")
+  createdAt       DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime          @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  variants        ProductVariant[]
+  images          ProductImage[]
+
+  @@index([status, categoryId], map: "products_status_idx")
+  @@index([brandId], map: "products_brand_idx")
+  @@map("products")
+}
+
+model ProductVariant {
+  id                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId         String                @map("product_id") @db.Uuid
+  product           Product               @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sku               String                @unique(map: "product_variants_sku_key") @db.VarChar(64)
+  labelVi           String?               @map("label_vi")
+  labelEn           String?               @map("label_en")
+  barcode           String?               @db.VarChar(64)
+  costPriceVnd      BigInt?               @map("cost_price_vnd")
+  lowStockThreshold Int?                  @map("low_stock_threshold")
+  sortOrder         Int                   @default(0) @map("sort_order")
+  isActive          Boolean               @default(true) @map("is_active")
+  rowVersion        Int                   @default(1) @map("row_version")
+  createdAt         DateTime              @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime              @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  priceVersions     ProductPriceVersion[]
+  promotions        ProductPromotion[]
+  receiptLines      StockReceiptLine[]
+  lots              InventoryLot[]
+  stockLevels       StockLevel[]
+  countLines        StockCountLine[]
+  movements         StockMovement[]
+
+  @@index([productId, sortOrder], map: "product_variants_product_idx")
+  @@map("product_variants")
+}
+
+model ProductPriceVersion {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variantId       String         @map("variant_id") @db.Uuid
+  variant         ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  versionNo       Int            @map("version_no")
+  listPriceVnd    BigInt         @map("list_price_vnd")
+  reason          String?
+  createdByUserId String         @map("created_by_user_id") @db.Uuid
+  createdBy       User           @relation("PriceVersionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime       @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([variantId, versionNo], map: "product_price_versions_variant_version_key")
+  @@map("product_price_versions")
+}
+
+model ProductPromotion {
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variantId          String         @map("variant_id") @db.Uuid
+  variant            ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  promoPriceVnd      BigInt         @map("promo_price_vnd")
+  startsAt           DateTime       @map("starts_at") @db.Timestamptz(3)
+  endsAt             DateTime       @map("ends_at") @db.Timestamptz(3)
+  endedEarlyAt       DateTime?      @map("ended_early_at") @db.Timestamptz(3)
+  endedEarlyByUserId String?        @map("ended_early_by_user_id") @db.Uuid
+  endedEarlyBy       User?          @relation("PromotionEnder", fields: [endedEarlyByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdByUserId    String         @map("created_by_user_id") @db.Uuid
+  createdBy          User           @relation("PromotionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt          DateTime       @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([variantId, startsAt], map: "product_promotions_variant_idx")
+  @@map("product_promotions")
+}
+
+model ProductImage {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId       String     @map("product_id") @db.Uuid
+  product         Product    @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  mediaAssetId    String     @map("media_asset_id") @db.Uuid
+  mediaAsset      MediaAsset @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sortOrder       Int        @default(0) @map("sort_order")
+  createdByUserId String     @map("created_by_user_id") @db.Uuid
+  createdBy       User       @relation("ProductImageCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime   @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([productId, mediaAssetId], map: "product_images_product_asset_key")
+  @@index([mediaAssetId], map: "product_images_asset_idx")
+  @@map("product_images")
+}
+
+/// One row (id = 1) with the Owner-approved defaults: expiry warning 90 days, "Moi" badge 30 days.
+model ProductSettings {
+  id                Int      @id @default(1) @db.SmallInt
+  expiryWarningDays Int      @default(90) @map("expiry_warning_days")
+  newBadgeDays      Int      @default(30) @map("new_badge_days")
+  updatedByUserId   String?  @map("updated_by_user_id") @db.Uuid
+  updatedBy         User?    @relation("ProductSettingsUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion        Int      @default(1) @map("row_version")
+  createdAt         DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+
+  @@map("product_settings")
+}
+
+model ProductImportJob {
+  id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind             ProductImportKind
+  status           ProductImportStatus @default(UPLOADED)
+  originalFilename String              @map("original_filename")
+  fileSha256       String              @map("file_sha256") @db.VarChar(64)
+  branchId         String?             @map("branch_id") @db.Uuid
+  branch           Branch?             @relation("ImportJobBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowCount         Int                 @default(0) @map("row_count")
+  validCount       Int                 @default(0) @map("valid_count")
+  invalidCount     Int                 @default(0) @map("invalid_count")
+  createCount      Int                 @default(0) @map("create_count")
+  updateCount      Int                 @default(0) @map("update_count")
+  summary          Json?               @db.JsonB
+  failureMessage   String?             @map("failure_message")
+  createdByUserId  String              @map("created_by_user_id") @db.Uuid
+  createdBy        User                @relation("ImportJobCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  previewedAt      DateTime?           @map("previewed_at") @db.Timestamptz(3)
+  appliedAt        DateTime?           @map("applied_at") @db.Timestamptz(3)
+  appliedByUserId  String?             @map("applied_by_user_id") @db.Uuid
+  appliedBy        User?               @relation("ImportJobApplier", fields: [appliedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion       Int                 @default(1) @map("row_version")
+  createdAt        DateTime            @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime            @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  rows             ProductImportRow[]
+  openingMovements StockMovement[]
+
+  @@index([fileSha256], map: "product_import_jobs_file_idx")
+  @@map("product_import_jobs")
+}
+
+model ProductImportRow {
+  id        String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId     String                 @map("job_id") @db.Uuid
+  job       ProductImportJob       @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowNo     Int                    @map("row_no")
+  raw       Json                   @db.JsonB
+  status    ProductImportRowStatus
+  action    ProductImportRowAction @default(NONE)
+  errors    Json                   @default("[]") @db.JsonB
+  appliedAt DateTime?              @map("applied_at") @db.Timestamptz(3)
+  createdAt DateTime               @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([jobId, rowNo], map: "product_import_rows_job_row_key")
+  @@map("product_import_rows")
+}
+
+model Supplier {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  contactName String?        @map("contact_name")
+  phone       String?
+  email       String?
+  address     String?
+  notes       String?
+  isActive    Boolean        @default(true) @map("is_active")
+  rowVersion  Int            @default(1) @map("row_version")
+  createdAt   DateTime       @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime       @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  receipts    StockReceipt[]
+
+  @@map("suppliers")
+}
+
+model StockReceipt {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code              String             @unique(map: "stock_receipts_code_key") @db.VarChar(40)
+  branchId          String             @map("branch_id") @db.Uuid
+  branch            Branch             @relation("StockReceiptBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  supplierId        String?            @map("supplier_id") @db.Uuid
+  supplier          Supplier?          @relation(fields: [supplierId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  receiptDate       DateTime           @map("receipt_date") @db.Date
+  notes             String?
+  status            StockReceiptStatus @default(DRAFT)
+  createdByUserId   String             @map("created_by_user_id") @db.Uuid
+  createdBy         User               @relation("StockReceiptCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  confirmedByUserId String?            @map("confirmed_by_user_id") @db.Uuid
+  confirmedBy       User?              @relation("StockReceiptConfirmer", fields: [confirmedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  confirmedAt       DateTime?          @map("confirmed_at") @db.Timestamptz(3)
+  cancelledByUserId String?            @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy       User?              @relation("StockReceiptCanceller", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelledAt       DateTime?          @map("cancelled_at") @db.Timestamptz(3)
+  cancelReason      String?            @map("cancel_reason")
+  rowVersion        Int                @default(1) @map("row_version")
+  createdAt         DateTime           @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime           @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  lines             StockReceiptLine[]
+
+  @@index([branchId, receiptDate(sort: Desc), id], map: "stock_receipts_branch_idx")
+  @@map("stock_receipts")
+}
+
+model StockReceiptLine {
+  id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  receiptId    String          @map("receipt_id") @db.Uuid
+  receipt      StockReceipt    @relation(fields: [receiptId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  lineNo       Int             @map("line_no") @db.SmallInt
+  variantId    String          @map("variant_id") @db.Uuid
+  variant      ProductVariant  @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  quantity     Int
+  unitCostVnd  BigInt?         @map("unit_cost_vnd")
+  lotCode      String?         @map("lot_code") @db.VarChar(64)
+  expiryDate   DateTime?       @map("expiry_date") @db.Date
+  lots         InventoryLot[]
+  movements    StockMovement[]
+
+  @@unique([receiptId, lineNo], map: "stock_receipt_lines_receipt_no_key")
+  @@index([variantId], map: "stock_receipt_lines_variant_idx")
+  @@map("stock_receipt_lines")
+}
+
+model InventoryLot {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId            String            @map("branch_id") @db.Uuid
+  branch              Branch            @relation("InventoryLotBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  variantId           String            @map("variant_id") @db.Uuid
+  variant             ProductVariant    @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  lotCode             String            @map("lot_code") @db.VarChar(64)
+  expiryDate          DateTime?         @map("expiry_date") @db.Date
+  unitCostVnd         BigInt?           @map("unit_cost_vnd")
+  sourceReceiptLineId String?           @map("source_receipt_line_id") @db.Uuid
+  sourceReceiptLine   StockReceiptLine? @relation(fields: [sourceReceiptLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  quantityOnHand      Int               @default(0) @map("quantity_on_hand")
+  createdByUserId     String            @map("created_by_user_id") @db.Uuid
+  createdBy           User              @relation("InventoryLotCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt           DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  movements           StockMovement[]
+
+  @@unique([branchId, variantId, id], map: "inventory_lots_branch_variant_id_key")
+  @@index([branchId, variantId, expiryDate], map: "inventory_lots_variant_idx")
+  @@map("inventory_lots")
+}
+
+model StockLevel {
+  branchId        String         @map("branch_id") @db.Uuid
+  branch          Branch         @relation("StockLevelBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  variantId       String         @map("variant_id") @db.Uuid
+  variant         ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  onHand          Int            @default(0) @map("on_hand")
+  reserved        Int            @default(0)
+  lowStockAlerted Boolean        @default(false) @map("low_stock_alerted")
+  rowVersion      Int            @default(1) @map("row_version")
+  createdAt       DateTime       @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime       @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+
+  @@id([branchId, variantId])
+  @@map("stock_levels")
+}
+
+model StockCountSession {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code              String           @unique(map: "stock_count_sessions_code_key") @db.VarChar(40)
+  branchId          String           @map("branch_id") @db.Uuid
+  branch            Branch           @relation("StockCountBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  status            StockCountStatus @default(OPEN)
+  notes             String?
+  createdByUserId   String           @map("created_by_user_id") @db.Uuid
+  createdBy         User             @relation("StockCountCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  approvedByUserId  String?          @map("approved_by_user_id") @db.Uuid
+  approvedBy        User?            @relation("StockCountApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  approvedAt        DateTime?        @map("approved_at") @db.Timestamptz(3)
+  cancelledByUserId String?          @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy       User?            @relation("StockCountCanceller", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelledAt       DateTime?        @map("cancelled_at") @db.Timestamptz(3)
+  rowVersion        Int              @default(1) @map("row_version")
+  createdAt         DateTime         @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime         @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  lines             StockCountLine[]
+
+  @@index([branchId, createdAt(sort: Desc), id], map: "stock_count_sessions_branch_idx")
+  @@map("stock_count_sessions")
+}
+
+model StockCountLine {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId       String            @map("session_id") @db.Uuid
+  session         StockCountSession @relation(fields: [sessionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  variantId       String            @map("variant_id") @db.Uuid
+  variant         ProductVariant    @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  countedQuantity Int               @map("counted_quantity")
+  systemQuantity  Int?              @map("system_quantity")
+  difference      Int?
+  movements       StockMovement[]
+
+  @@unique([sessionId, variantId], map: "stock_count_lines_session_variant_key")
+  @@map("stock_count_lines")
+}
+
+model StockMovement {
+  id             String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId       String                 @map("branch_id") @db.Uuid
+  branch         Branch                 @relation("StockMovementBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  variantId      String                 @map("variant_id") @db.Uuid
+  variant        ProductVariant         @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  lotId          String                 @map("lot_id") @db.Uuid
+  lot            InventoryLot           @relation(fields: [branchId, variantId, lotId], references: [branchId, variantId, id], onDelete: Restrict, onUpdate: Restrict, map: "stock_movements_lot_fkey")
+  kind           StockMovementKind
+  quantityDelta  Int                    @map("quantity_delta")
+  reason         StockAdjustmentReason?
+  note           String?
+  receiptLineId  String?                @map("receipt_line_id") @db.Uuid
+  receiptLine    StockReceiptLine?      @relation(fields: [receiptLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  countLineId    String?                @map("count_line_id") @db.Uuid
+  countLine      StockCountLine?        @relation(fields: [countLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  importJobId    String?                @map("import_job_id") @db.Uuid
+  importJob      ProductImportJob?      @relation(fields: [importJobId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  idempotencyKey String                 @unique(map: "stock_movements_idempotency_key") @map("idempotency_key")
+  actorUserId    String                 @map("actor_user_id") @db.Uuid
+  actor          User                   @relation("StockMovementActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt      DateTime               @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([branchId, variantId, createdAt], map: "stock_movements_level_idx")
+  @@index([lotId], map: "stock_movements_lot_idx")
+  @@map("stock_movements")
 }

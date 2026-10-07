@@ -13,18 +13,18 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 
 ## Phase status
 
-| Phase                                     | Status                                                                                             |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Phase 0                                   | PASS                                                                                               |
-| Phase 1 (auth and security)               | COMPLETE                                                                                           |
-| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)                                   |
-| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                                          |
-| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                                       |
-| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                                       |
-| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `9b76789`)                                                                  |
-| **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `f79572d`); go-live turned ON by the Owner about 17:20 (+07)** |
-| Phase 6 (products, inventory, Beauty)     | P6-1 design contract written 2026-10-07 (docs only), awaiting Owner approval; no code yet          |
-| Phase 7+ (payroll, cash, reports)         | NOT started                                                                                        |
+| Phase                                     | Status                                                                                                                      |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Phase 0                                   | PASS                                                                                                                        |
+| Phase 1 (auth and security)               | COMPLETE                                                                                                                    |
+| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)                                                            |
+| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                                                                   |
+| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                                                                |
+| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                                                                |
+| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `9b76789`)                                                                                           |
+| **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `f79572d`); go-live turned ON by the Owner about 17:20 (+07)**                          |
+| Phase 6 (products, inventory, Beauty)     | P6-1 design contract APPROVED (2026-10-07); P6-2 (Wave 1 DB + permissions) built, committed locally, NOT pushed or deployed |
+| Phase 7+ (payroll, cash, reports)         | NOT started                                                                                                                 |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
 
@@ -70,7 +70,7 @@ Phase 4 migrations so far: Step 3 (`20261013…`), Step 4 (`20261014000000-04`),
 
 ## Open Owner checkpoints (NOT decided; do not decide or implement)
 
-- Phase 6 (2026-10-07): P6-T9…T27 (proposals) and OQ-P6-19…28 are pending Owner approval (plain-Vietnamese explanations: `docs/PHASE6_OWNER_DECISIONS_VI.md`; contract sections 2.2, 2.4, 16). P6-T8 (public catalog view-only) was approved by the Owner on 2026-10-07, who also authorized the one PRD §56 line moving Reviews (§37) to Phase 8 (done). Before P6-2 can start the Owner must approve T9-T16, T24 and T25; OQ-P6-19…25 block only Wave 2/3 Steps; OQ-P6-26 (cluster the API in Wave 1?) concerns only P6-7; OQ-P6-27/28 (public page label, address, menu, "Mới" and "Nổi bật" rules) concern only P6-6. Public catalog reference: Lovable prototype, visual only, never imported (contract 16).
+- Phase 6 (2026-10-07): the Owner approved P6-T8, P6-T9…T16, P6-T24, P6-T25 and answered OQ-P6-19…28 in own words (contract section 2.5; plain-Vietnamese guide `docs/PHASE6_OWNER_DECISIONS_VI.md`). Still pending Owner approval: P6-T17…T23, T26, T27 (Wave 2 and 3 proposals). OQ-P6-22: personal preference = exchange or refund within 7 days, seal intact, invoice required, customer pays shipping; wrong/damaged packaging = exchange or refund within 48 hours, photo required, spa pays shipping; skin irritation = case by case (Owner/manager decides, notes and photos only). OQ-P6-24: dearer replacement = difference paid as a normal payment, cheaper = difference refunded by cash or manual transfer, approved by a refund-permission holder with password re-entry. The Owner also authorized the one PRD §56 line moving Reviews (§37) to Phase 8 (done).
 
 - Phase 5 (2026-10-04): OQ-1 yes, P5-T1/T2/T12/T13 approved, go-live switch defaults OFF; OQ-2…OQ-11 stay open (ask only when a step is blocked): `docs/PHASE5_LOYALTY_COMBOS_DESIGN.md` section 2.3-2.4.
 - P5-2 (`docs/PHASE5_STEP2_DB_PERMISSIONS_FOUNDATION.md`): migrations `20261027000000`…`20261027000003` (permission codes, semantics, loyalty foundation, combo/reward foundation); 11 permissions, nothing granted; **not deployed**; deploy = `pnpm db:deploy` then `pnpm db:permissions:sync`.
@@ -132,6 +132,11 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 - Owner request and eight decisions (own words): `docs/EARLY_START_DESIGN.md`. A technician may START before the booked time when the customer is checked in, they are free, nothing overlaps (also the early part, at database level) and a collaborator's shift covers it. Only the assigned technician; no notification; label "Bắt đầu sớm X phút" on My services and the booking board.
 - Migration `20261105000000_early_service_start_occupancy` (replaces `lucy_sync_visit_line_occupancy`, adds an `AFTER INSERT` trigger on `service_executions`; no table or data change). Must be applied with the deploy (63 migrations). Permissions unchanged (54).
 - `SERVICE_NOT_READY` removed; new block codes `SERVICE_EARLY_START_CONFLICT` / `SERVICE_EARLY_START_OUTSIDE_SHIFT`; audit/outbox `SERVICE_STARTED` gain `plannedStartAt`, `startedEarlyMinutes`. Report: `docs/EARLY_START_REPORT.md`.
+
+## Phase 6 P6-2 (Wave 1 database and permissions foundation, 2026-10-07, committed locally, not pushed, not deployed)
+
+- 5 additive migrations `20261106000000`…`04` (63 -> 68): 11 permission codes (54 -> 65, granted to nobody, new role-screen group "Sản phẩm và kho"), 18 new tables, 17 empty (catalog, prices and promotions, images, import jobs and rows, suppliers, receipts, lots, stock levels, counts, movements) plus `product_settings` with one row (expiry warning 90 days, "Mới" 30 days).
+- No change to invoices, discounts, loyalty or payments (guard test `phase6-wave1-isolation.test.ts`); no API, screen or worker yet. Deploy of Wave 1 later = `pnpm db:deploy` then `pnpm db:permissions:sync`. Report: `docs/PHASE6_STEP2_DB_PERMISSIONS_FOUNDATION.md`. Next: P6-3 (catalog administration), after the Owner reviews P6-2.
 
 ## Production
 
