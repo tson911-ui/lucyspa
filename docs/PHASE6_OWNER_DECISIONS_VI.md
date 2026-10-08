@@ -1,6 +1,8 @@
 # Phase 6: các mục chờ Chủ duyệt (giải thích bằng tiếng Việt)
 
-**Mới (2026-10-07, ngay bên dưới): mục "Đợt 2"** (bán sản phẩm tại quầy; sửa POS, hóa đơn, thanh toán đang chạy thật) với bảng trả lời nhanh, rủi ro và cách kiểm.
+**Mới (2026-10-08): mục "Đợt 3"** (trả hàng, hoàn tiền, đổi hàng, đặt trước tại quầy, quà tặng; chỉ tài liệu, chờ Chủ trả lời) nằm ngay sau mục "Đợt 2".
+
+**(2026-10-07, ngay bên dưới): mục "Đợt 2"** (bán sản phẩm tại quầy; sửa POS, hóa đơn, thanh toán đang chạy thật) với bảng trả lời nhanh, rủi ro và cách kiểm.
 
 **Chủ đã trả lời Đợt 2 (2026-10-07, nguyên văn ở mục 2.13 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`): "Wave 2 decisions approved as you recommended"** cho T17, T18, T19, T20, T26, T27, OQ-58, OQ-59, OQ-60 và, cho Đợt 3, T21, T22, T23 (**"48 hours from handover"**: hạn 48 giờ tính từ lúc giao hàng cho khách, không tính từ lúc thanh toán). Cột "Tôi khuyên" của bảng dưới đây là câu trả lời đã được duyệt. Chủ cũng bảo bắt đầu **P6-8** (chỉ bước này). OQ-59 đổi quy tắc "kiểm vi sai": bộ tính cũ vẫn là chuẩn cho hóa đơn chỉ có dịch vụ, bộ mới chạy song song để so và báo lệch (việc của P6-9, chưa làm). **Đính chính (Chủ, 2026-10-08):** câu "chưa được trả lời" trước đây là sai. Cách sắp xếp khóa kho (chi nhánh, biến thể) ở T13 và OQ-P6-19 (làm tròn điểm khi hoàn tiền, phương án A) đã được Chủ duyệt từ 2026-10-07 (mục 2.5). Không còn mục nào của Đợt 2 đang chờ.
 
@@ -151,6 +153,166 @@ Việc **của Chủ** (không phải quyết định) trước khi bán thật:
 - **Ý nghĩa:** với hai lý do này, quá 48 giờ hệ thống **từ chối**, không có ngoại lệ (PRD §28.2). Tôi từng đề xuất tính từ lúc thanh toán; vì Chủ đã trả lời ở OQ-40 rằng hạn đổi trả tính **từ ngày giao khách**, tôi sửa lại cho khớp: **từ ngày khách nhận hàng** (quầy: lúc giao tại cửa hàng).
 - **Ví dụ ở spa:** khách đặt trước một lọ serum, hàng về sau 4 ngày, nhận lúc 10:00 thứ Ba: 48 giờ chạy từ 10:00 thứ Ba, không phải từ ngày thanh toán.
 - **Tôi khuyên:** đồng ý. **Nếu khác:** tính từ ngày thanh toán thì khách đặt trước có thể hết hạn khi chưa cầm hàng; muốn cho quản lý bỏ qua hạn thì cần thêm quyền và màn hình riêng (PRD nói "không chấp nhận").
+
+---
+
+## Đợt 3: trả hàng, hoàn tiền, đổi hàng, đặt trước tại quầy, quà tặng là sản phẩm (P6-12 đến P6-18). **Chỉ chuẩn bị tài liệu, chưa viết dòng mã nào**
+
+Đợt 2 đã chạy thật từ 2026-10-08 (bản `1358725`, 80 migration, 65 quyền, chưa quyền bán sản phẩm nào được gán). **Đợt 3 là đợt đầu tiên có _tiền ra_**: hoàn tiền cho khách. Nó cũng là đợt đầu tiên **nhận tiền trước cho hàng mà tiệm chưa có** (đặt trước). Vì thế tôi hỏi kỹ hơn nữa, và tôi sẽ kiểm đúng cách đã làm ở Đợt 2 (kiểm tranh chấp thật trên PostgreSQL, đối soát sổ cái, diễn tập trên bản khôi phục, thử bản cũ trên cơ sở dữ liệu mới).
+
+Đợt 3 gồm 7 bước (theo bảng 18.6 của tài liệu thiết kế; Chủ nhắc "P6-12 đến P6-18" là đúng phạm vi này):
+
+| Bước  | Làm gì                                                                                                                                             | Chặn bởi            |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| P6-12 | **Hồ sơ trả hàng**: lý do, ảnh bằng chứng riêng tư, kiểm niêm phong, ai chịu phí gửi, hàng có bán lại được không; hạn 48 giờ                       | T35, OQ-79          |
+| P6-13 | **Hoàn tiền theo từng dòng** (tiền mặt hoặc chuyển khoản thủ công, nhập lại mật khẩu), trừ điểm Beauty tương ứng, hàng trả về kho nếu bán lại được | OQ-80, OQ-81, OQ-83 |
+| P6-14 | **Đổi hàng** (hàng lỗi, đổi sang hàng khác); **mốc 3a: đã có hoàn tiền**                                                                           | OQ-82               |
+| P6-15 | **Cơ sở dữ liệu đơn đặt trước**: đơn, dòng đơn, lịch sử trạng thái, hàng đợi, quyền mới                                                            | T36                 |
+| P6-16 | **Đặt trước tại quầy** và phiếu hẹn nhận hàng (điện tử)                                                                                            | OQ-84               |
+| P6-17 | Danh sách "cần đặt", phân hàng khi hàng về, báo khách, giao hàng, hủy dòng chưa giao kèm hoàn tiền; **mốc 3b: đặt trước tại quầy**                 | OQ-85, OQ-86, OQ-87 |
+| P6-18 | **Quà tặng là sản phẩm**: trừ kho khi khách nhận quà                                                                                               | T37                 |
+
+(Đặt hàng online, giao hàng, khuyến mãi đầy đủ là **Đợt 4**, chưa hỏi gì ở đây.)
+
+**Chủ đã duyệt rồi, không hỏi lại:** hoàn theo số tiền khách **thực trả** của dòng sau giảm giá, ghi bằng một dòng điều chỉnh liên kết (Q3); hoàn chỉ bằng tiền mặt hoặc chuyển khoản thủ công, không bao giờ gọi PayOS, chỉ người có quyền riêng và phải nhập lại mật khẩu mỗi lần (Q4); trạng thái "đã hoàn" tính theo từng dòng, hóa đơn vẫn "Đã thanh toán" (Q5); T21 (cách trừ điểm, phương án A), T22 (phiếu hoàn tiền không sửa được, đã hoàn thì không đảo thanh toán hay hủy hóa đơn), T23 (48 giờ tính từ ngày giao khách); OQ-22 (ba lý do trả hàng và hạn 7 ngày, 48 giờ), OQ-23 (hoàn theo số lượng), OQ-24 (đổi hàng: chênh lệch trả như một lần thanh toán thường, hoặc hoàn như hoàn tiền; người giữ quyền hoàn tiền duyệt), OQ-25 (người bán chỉ sửa khi hóa đơn còn nháp); T28 đến T33 (đơn đặt trước tách khỏi hóa đơn, hai kiểu dòng "có sẵn / đặt trước", hàng đợi theo giờ thanh toán, kho trừ khi giao, các trạng thái, không bán vượt kho); OQ-29 đến OQ-37, OQ-39 đến OQ-42 (nhận tại cửa hàng, hàng giữ 7 ngày rồi nhắc gọi, hủy và hoàn tiền đầy đủ khi nhà cung cấp không giao hoặc trễ hơn 7 ngày, phiếu hẹn chỉ điện tử, khách vãng lai xem bằng đường dẫn bí mật và mã QR do nhân viên gửi qua Zalo, điểm Beauty tính lúc thanh toán, giao thất bại trừ phí hai chiều); Q10 (quà tặng là sản phẩm thì trừ kho khi khách nhận). Hoàn tiền và trả hàng chỉ áp dụng cho **sản phẩm**, không cho dịch vụ và combo (PRD §29).
+
+### Bảng trả lời nhanh cho Đợt 3
+
+Chủ chỉ cần ghi "đồng ý" hoặc "khác: …" cho từng dòng. Cột "Mức rủi ro" là rủi ro **nếu làm sai**, không phải mức khó.
+
+| Mục   | Chủ đề                                                                                                   | Tôi khuyên                                                                                      | Chặn bước | Mức rủi ro |
+| ----- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | --------- | ---------- |
+| T34   | Thứ tự bước Đợt 3 và **hai lần triển khai** (3a: trả hàng, hoàn tiền, đổi hàng; 3b: đặt trước, quà tặng) | Đồng ý                                                                                          | cả Đợt 3  | Trung bình |
+| T35   | Hồ sơ trả hàng và **ảnh bằng chứng riêng tư** (không bao giờ hiện công khai hay cho khách)               | Đồng ý                                                                                          | P6-12     | Trung bình |
+| T36   | Thêm **một quyền mới** `MANAGE_PRODUCT_ORDERS` cho việc quản lý đơn đặt trước (65 thành 66 quyền)        | Đồng ý                                                                                          | P6-15     | Trung bình |
+| T37   | Quà tặng là sản phẩm: cách trừ kho khi dùng quà và khôi phục khi bấm nhầm                                | Đồng ý                                                                                          | P6-18     | Thấp       |
+| OQ-79 | Ảnh bằng chứng trả hàng giữ bao lâu, ai được xóa                                                         | Giữ cùng hồ sơ, không tự xóa; chỉ xóa khi khách yêu cầu và Chủ duyệt, có nhật ký                | P6-12     | Trung bình |
+| OQ-80 | Hàng khách trả lại và "bán lại được": nhập vào lô nào, ai quyết                                          | Lô mới mang tên phiếu trả, giữ hạn dùng của lô đã bán; người giữ quyền hoàn tiền quyết          | P6-13     | **Cao**    |
+| OQ-81 | Voucher hoặc quà sinh nhật đã dùng ở hóa đơn bị hoàn **toàn bộ**: có cấp lại không                       | Không tự cấp lại (đã tiêu); muốn thì cấp voucher mới bằng tay                                   | P6-13     | Trung bình |
+| OQ-82 | Đổi sang hàng **khác giá**: tiền chênh lệch tính thế nào                                                 | Giá hàng mới tại ngày đổi trừ số tiền khách thực trả cho dòng cũ                                | P6-14     | **Cao**    |
+| OQ-83 | Hoàn bằng chuyển khoản: có lưu số tài khoản của khách trong hệ thống không                               | Không lưu; chỉ lưu mã giao dịch ngân hàng của lần chuyển                                        | P6-13     | Thấp       |
+| OQ-84 | Chỉ còn một phần hàng có sẵn: hệ thống có tự tách thành "lấy ngay" và "đặt trước" không                  | Không; thu ngân tự tách thành hai dòng                                                          | P6-16     | Thấp       |
+| OQ-85 | Ai được nhận hàng đặt trước, nhân viên kiểm thế nào                                                      | Khách hoặc người đọc đúng mã đơn và 4 số cuối điện thoại; ghi "người nhận"                      | P6-17     | Trung bình |
+| OQ-86 | Cảnh báo đơn đặt trước **trễ hẹn**                                                                       | Có, thông báo trong ứng dụng lúc 08:00 cho người giữ quyền quản lý đơn                          | P6-17     | Thấp       |
+| OQ-87 | "Cần đặt" nhóm theo nhà cung cấp: thêm trường "nhà cung cấp thường đặt" cho từng loại sản phẩm           | Có, tùy chọn                                                                                    | P6-17     | Thấp       |
+| OQ-88 | **Khi nào** đưa Đợt 3 lên máy chủ thật, khi chưa có sản phẩm thật (sản phẩm thật có sau Phase 9)         | Như Đợt 2: đưa lên khi xong và qua mốc, **không gán quyền cho ai** cho đến khi có sản phẩm thật | cả Đợt 3  | Trung bình |
+
+Nếu Chủ muốn trả lời gọn: "Đợt 3: đồng ý như tôi khuyên" cho cả bảng, hoặc ghi mục nào khác.
+
+### Vì sao Đợt 3 nguy hiểm theo cách khác Đợt 2, và tôi kiểm thế nào
+
+| Rủi ro                                                                                 | Hậu quả thật ở spa                              | Cách tôi kiểm trước khi đưa cho Chủ                                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hoàn tiền **nhiều hơn khách đã trả**, hoặc hoàn hai lần một dòng                       | Tiệm mất tiền thật, sổ sách sai                 | Mỗi lần hoàn bị chặn ở mức tiền thực trả còn lại của dòng và số lượng đã bán; kiểm tranh chấp thật (hai người hoàn cùng dòng cùng lúc, hoàn cùng lúc đảo thanh toán); đối soát: `tổng hoàn ≤ tổng thu`, mỗi dòng không quá số tiền thực trả |
+| Hoàn tiền sửa các luật kiểm tra của thanh toán và hủy hóa đơn **đang chạy thật** (T22) | Có thể làm hỏng luồng thu tiền đang dùng        | Chạy lại toàn bộ kiểm thử Phase 4 và 5 và các kiểm thử của Đợt 2; bài kiểm "hóa đơn chưa hoàn thì hoạt động y như cũ"                                                                                                                       |
+| Trừ điểm Beauty sai khi hoàn một phần                                                  | Khách xuống hạng sai, mất ưu đãi                | Công thức đã duyệt (T21); kiểm bằng ví dụ có số, kiểm khóa chống trùng và thu hồi đúng một lần; sổ cái luôn bằng số dư                                                                                                                      |
+| Hàng trả về kho **tạo ra tồn kho không có thật**                                       | Tồn kho ảo, bán vượt kho sau này                | Hàng nhập lại chỉ được bằng số đã bán của đúng dòng đó; không bao giờ tạo hàng từ không; đối soát `tồn = tổng phát sinh = tổng lô`                                                                                                          |
+| Nhận tiền trước cho hàng chưa có (đặt trước): khách trả mà không nhận được hàng        | Tiền của khách bị giữ, phải hoàn, khách mất tin | **Hoàn tiền phải chạy ổn trước** (vì thế 3a trước 3b); đơn trễ hẹn có cảnh báo; hủy dòng chưa giao luôn kèm hoàn tiền                                                                                                                       |
+| Hàng vừa về bị bán cho người khác trước khi tới lượt người đã đặt                      | Khách đặt trước bị giành hàng                   | Phân hàng nằm **trong cùng giao dịch** xác nhận phiếu nhập; kiểm tranh chấp thật (bán món cuối đúng lúc hàng về; hai phiếu nhập cùng phân một hàng đợi)                                                                                     |
+| Lộ dữ liệu cá nhân: ảnh da, số điện thoại, đường dẫn phiếu hẹn                         | Khách bị lộ thông tin nhạy cảm                  | Ảnh bằng chứng lưu riêng, không có đường dẫn công khai; đường dẫn phiếu hẹn chỉ lưu dạng băm, thu hồi và tạo lại được; kiểm quyền bằng test cho từng màn                                                                                    |
+| Quay lại bản cũ sau khi đã có hoàn tiền hoặc đơn đặt trước                             | Giống Đợt 2: bản cũ không đọc được dữ liệu mới  | Làm lại đúng bằng chứng quay lui của Đợt 2 (bản cũ trên cơ sở dữ liệu mới, có dữ liệu mới), kèm **cổng kiểm các số** trước khi cho phép quay lại; sau hoàn tiền hoặc đơn đầu tiên, quay lại phần mềm không còn là lựa chọn                  |
+| Thao tác nhầm trên màn mới (hoàn nhầm dòng, bấm nhầm trạng thái)                       | Hoàn nhầm tiền, giao nhầm hàng                  | Mỗi hoàn tiền có hộp xác nhận nêu rõ số tiền và dòng, nhập lại mật khẩu, lý do bắt buộc; kiểm giao diện ở 360, 768, 1440 px sáng và tối, chữ 130%, đủ trạng thái                                                                            |
+
+**Cách tôi kiểm trước khi đưa cho Chủ (giống Đợt 2):** kiểm thử đơn vị và tích hợp trên PostgreSQL thật; kiểm tranh chấp (hai giao dịch cùng lúc) cho mọi lệnh đụng tiền hoặc kho; đối soát sau mỗi bài (tiền, kho, sổ điểm); chạy lại **toàn bộ kiểm thử của các Phase trước**; kiểm giao diện đủ kích thước và trạng thái; diễn tập trên bản khôi phục của sao lưu thật, đo từng migration; chạy bản cũ trên cơ sở dữ liệu mới có dữ liệu mới để biết chính xác cái gì hỏng; hướng dẫn triển khai từng khối lệnh cho terminal web iNET, có cổng kiểm quay lui. Tôi **không chạm vào máy chủ**.
+
+Điểm phải nói thẳng: **trước khi có sản phẩm thật (sau Phase 9), mọi thứ của Đợt 3 chỉ chạy trên dữ liệu thử.** Đó là lý do của OQ-88: triển khai sớm cho yên tâm về mã, nhưng chưa gán quyền cho ai.
+
+### T34. Thứ tự bước Đợt 3 và hai lần triển khai
+
+- **Ý nghĩa:** Đợt 3 chia hai lần triển khai. **Mốc 3a** (P6-12 đến P6-14): trả hàng, hoàn tiền, đổi hàng. **Mốc 3b** (P6-15 đến P6-18): đơn đặt trước, đặt trước tại quầy, quà tặng. Sau mỗi mốc tôi làm một lần kiểm tra mốc đầy đủ như Đợt 2, rồi Chủ tự triển khai khi Chủ quyết.
+- **Ví dụ ở spa:** nếu 3a gặp lỗi, ta chỉ phải sửa phần hoàn tiền; đặt trước (3b) chưa có nên không có khách nào đang chờ hàng bị ảnh hưởng.
+- **Tôi khuyên:** đồng ý. Lý do chính: đặt trước nhận tiền cho hàng chưa có, nên đường hoàn tiền phải có trước.
+- **Nếu Chủ chọn khác:** gộp một lần triển khai thì nhanh hơn nhưng rủi ro tập trung một chỗ, và quay lại bản cũ khó hơn.
+
+### T35. Hồ sơ trả hàng và ảnh bằng chứng riêng tư
+
+- **Ý nghĩa:** mỗi lần khách trả hàng là một **hồ sơ**: hóa đơn và dòng hàng, một trong ba lý do (sở thích cá nhân, giao nhầm hoặc hỏng do đóng gói, kích ứng da), cách xử lý (**đổi** hoặc **hoàn tiền**, ghi rõ), hàng còn nguyên niêm phong không, ai chịu phí gửi, ảnh bằng chứng, ghi chú (chỉ ghi nhận, **không chẩn đoán**), hàng có bán lại được không và ai quyết. Ảnh lưu **riêng**: không có đường dẫn công khai, chỉ người có quyền `MANAGE_PRODUCT_RETURNS` hoặc `REFUND_PRODUCTS` ở chi nhánh xem được; khách không thấy. Hồ sơ mới báo cho người giữ quyền hoàn tiền.
+- **Ví dụ ở spa:** khách báo lọ serum bị nứt nắp sau hai ngày: thu ngân mở hồ sơ, chụp ảnh, hệ thống chặn vì quá 48 giờ tính từ ngày khách nhận; còn nếu khách kích ứng da thì hồ sơ ghi ảnh và lời khách, Chủ hoặc quản lý chọn đổi, hoàn hay từ chối.
+- **Tôi khuyên:** đồng ý. **Nếu khác:** cho ảnh dùng chung kho ảnh website là không an toàn (ảnh da của khách có thể bị lộ).
+
+### T36. Một quyền mới cho đơn đặt trước: `MANAGE_PRODUCT_ORDERS`
+
+- **Ý nghĩa:** quyền để xem danh sách "cần đặt", đánh dấu đã đặt nhà cung cấp, hàng đã về, đã giao khách, tạo lại đường dẫn phiếu hẹn của khách vãng lai. Phạm vi theo chi nhánh. **Không** có quyền "đặt trước" riêng: tạo đơn đặt trước dùng quyền `SELL_PRODUCTS` đã có; hủy dòng và hoàn tiền dùng `REFUND_PRODUCTS` đã có (nhập lại mật khẩu). Quyền mới sẽ **không gán cho ai** khi triển khai; số quyền sẽ là 66.
+- **Ví dụ ở spa:** thủ kho (không bán hàng) có quyền này để đánh dấu hàng đã về và giao khách, nhưng không hoàn được tiền.
+- **Tôi khuyên:** đồng ý, một quyền là đủ. **Nếu khác:** tách thêm quyền (đặt hàng nhà cung cấp, giao hàng) cho nhiều tầng hơn, nhưng thêm việc gán quyền mà tiệm nhỏ chưa cần.
+
+### T37. Quà tặng là sản phẩm: cách trừ kho
+
+- **Ý nghĩa:** Chủ đã duyệt (Q10): quà là sản phẩm thì **trừ kho khi khách nhận quà**. Cách làm: một mục quà trong danh mục thưởng có thể gắn với một loại sản phẩm; nhân viên bấm "đã dùng" quà của khách ở chi nhánh nào thì kho chi nhánh đó giảm đúng 1 (lấy lô gần hết hạn trước). Hết hàng thì **báo "Hết hàng" và không ghi gì**. Nếu quản lý khôi phục một lần "đã dùng" bấm nhầm thì hàng trở về đúng lô cũ. Không có tiền, không có hóa đơn, không có điểm. Quà tạo trước Phase 6 (không gắn sản phẩm) không trừ kho.
+- **Ví dụ ở spa:** khách đủ điểm đổi một lọ kem mini làm quà; thu ngân bấm "đã dùng", kho giảm 1; bấm nhầm thì quản lý khôi phục, kho tăng lại 1.
+- **Tôi khuyên:** đồng ý. **Nếu khác:** trừ kho lúc khách đổi quà (thay vì lúc nhận) thì tồn kho giảm trước khi hàng rời tiệm.
+
+### OQ-79. Ảnh bằng chứng trả hàng giữ bao lâu, ai được xóa
+
+- **Ý nghĩa:** ảnh da và ảnh hàng hỏng là dữ liệu nhạy cảm của khách. Quy tắc chung của hệ thống: lịch sử không bị xóa hay viết lại.
+- **Ví dụ ở spa:** một năm sau, khách yêu cầu xóa ảnh da của họ.
+- **Tôi khuyên:** giữ cùng hồ sơ, hệ thống không tự xóa; chỉ xóa **ảnh** (không xóa hồ sơ) khi khách yêu cầu và Chủ duyệt, có nhật ký ai xóa lúc nào. Không đề xuất con số "giữ n tháng" vì PRD chưa quy định.
+- **Nếu Chủ chọn khác:** muốn tự xóa sau một khoảng thời gian thì Chủ cho tôi con số; tôi sẽ không tự đặt.
+
+### OQ-80. Hàng khách trả lại: nhập vào lô nào, ai quyết "bán lại được"
+
+- **Ý nghĩa:** chỉ hàng "bán lại được" mới về kho bán; hàng không bán lại được thì ghi một phiếu riêng và **không** cộng vào tồn bán. Hàng trả về cần một lô để theo dõi hạn dùng.
+- **Ví dụ ở spa:** khách trả một lọ kem còn nguyên niêm phong (bán lại được), còn lọ hỏng nắp (không bán lại được).
+- **Tôi khuyên:** hàng bán lại được vào **một lô mới mang tên phiếu trả**, giữ **hạn dùng của lô đã bán** (hóa đơn biết lô nào); không trộn lại vào lô gốc. Người giữ quyền hoàn tiền xác nhận "bán lại được" (người mở hồ sơ chỉ đề xuất). Số lượng nhập lại không bao giờ nhiều hơn số đã bán của đúng dòng đó.
+- **Nếu Chủ chọn khác:** nhập lại đúng lô gốc thì tiện hơn nhưng lẫn hàng đã rời tiệm với hàng chưa rời; lô không hạn dùng thì mất cảnh báo hết hạn.
+
+### OQ-81. Voucher hoặc quà sinh nhật đã dùng ở hóa đơn bị hoàn toàn bộ
+
+- **Ý nghĩa:** hoàn tiền theo số khách thực trả (đã trừ giảm giá), nhưng voucher dùng một lần đã bị "tiêu".
+- **Ví dụ ở spa:** khách dùng voucher 100.000đ cho đơn 500.000đ rồi trả cả đơn; hoàn 400.000đ.
+- **Tôi khuyên:** **không tự cấp lại** voucher (đã tiêu); nếu muốn bù cho khách thì tạo voucher mới bằng công cụ giảm giá đã có.
+- **Nếu Chủ chọn khác:** tự cấp lại thì khách có thể lợi dụng "mua dùng voucher rồi trả để lấy lại voucher".
+
+### OQ-82. Đổi sang hàng khác giá: tiền chênh lệch tính thế nào
+
+- **Ý nghĩa:** PRD cấm đoán mò. Đổi **cùng loại** (hàng lỗi đổi cái mới) thì chênh lệch bằng 0. Đổi sang hàng giá khác cần một quy tắc.
+- **Ví dụ ở spa:** khách đã trả thực 270.000đ cho lọ cũ (sau giảm giá), muốn đổi sang lọ giá niêm yết 350.000đ.
+- **Tôi khuyên:** chênh lệch = **giá hàng mới tại ngày đổi** trừ **số tiền khách thực trả cho dòng cũ** (ở ví dụ: 80.000đ khách trả thêm); hàng mới rẻ hơn thì hoàn phần dư như hoàn tiền; điểm Beauty theo T21 và PRD §28.5.
+- **Nếu Chủ chọn khác:** tính theo giá niêm yết cũ thì khách đổi sẽ được hưởng lại giảm giá đã dùng.
+
+### OQ-83. Hoàn bằng chuyển khoản: có lưu số tài khoản của khách không
+
+- **Ý nghĩa:** hoàn chuyển khoản cần số tài khoản của khách ở thời điểm chuyển, nhưng đó là dữ liệu nhạy cảm.
+- **Ví dụ ở spa:** thu ngân chuyển 289.000đ cho khách rồi nhập mã giao dịch.
+- **Tôi khuyên:** **không lưu số tài khoản** của khách; chỉ lưu mã giao dịch ngân hàng của lần chuyển (đã có trong T22) và người thực hiện.
+- **Nếu Chủ chọn khác:** lưu thêm số tài khoản (che bớt số) nếu Chủ cần đối chiếu sau; tôi sẽ thêm trường và quyền xem riêng.
+
+### OQ-84. Chỉ còn một phần hàng có sẵn
+
+- **Ý nghĩa:** khách mua 3 lọ, kho có 1. Theo T29, hệ thống không tự đổi một dòng thiếu hàng thành đặt trước.
+- **Ví dụ ở spa:** khách muốn 3 lọ serum: lấy ngay 1, đặt trước 2.
+- **Tôi khuyên:** thu ngân **tự tách thành hai dòng** (1 lấy ngay, 2 đặt trước); hệ thống không tự tách. Mỗi dòng vẫn trọn vẹn: một dòng hoặc đủ hàng hoặc chờ.
+- **Nếu Chủ chọn khác:** tự tách thì nhanh hơn nhưng dễ làm khách hiểu nhầm số hàng nhận ngay.
+
+### OQ-85. Ai được nhận hàng đặt trước, kiểm thế nào
+
+- **Ý nghĩa:** hàng đã trả tiền và đã về, nhân viên cần biết giao đúng người.
+- **Ví dụ ở spa:** chị gái nhờ nhận hộ lọ kem.
+- **Tôi khuyên:** nhận bởi chính khách, hoặc người đọc đúng **mã đơn** và **4 số cuối điện thoại** đã ghi; nhân viên chọn "người nhận: chính khách / người khác" và hệ thống ghi giờ, người giao. Không bắt giấy tờ tùy thân. Con số 4 là đề xuất của tôi.
+- **Nếu Chủ chọn khác:** muốn chặt hơn (giấy tờ) hoặc lỏng hơn (chỉ mã đơn) đều làm được.
+
+### OQ-86. Cảnh báo đơn đặt trước trễ hẹn
+
+- **Ý nghĩa:** Chủ đã duyệt: quá 7 ngày so với ngày dự kiến thì khách được hủy và hoàn đầy đủ. Cần để nhân viên biết đơn nào đang trễ.
+- **Ví dụ ở spa:** nhà cung cấp hẹn 5 ngày, đã 6 ngày chưa có hàng.
+- **Tôi khuyên:** danh sách "trễ hẹn" trong màn quản lý đơn, và một thông báo trong ứng dụng lúc 08:00 (cách đã làm cho cảnh báo hết hạn) cho người giữ quyền quản lý đơn khi có đơn trễ hẹn hoặc sắp quá 7 ngày. Không gửi email hay Zalo.
+- **Nếu Chủ chọn khác:** bỏ thông báo, chỉ giữ danh sách (phải nhớ vào xem).
+
+### OQ-87. Nhóm "cần đặt" theo nhà cung cấp
+
+- **Ý nghĩa:** danh sách "cần đặt" nhóm theo nhà cung cấp để gọi một lần cho nhiều món. Hiện sản phẩm chưa ghi nhà cung cấp thường đặt.
+- **Ví dụ ở spa:** gom 4 lọ của hãng A thành một cuộc gọi.
+- **Tôi khuyên:** thêm trường **tùy chọn** "nhà cung cấp thường đặt" cho loại sản phẩm (thay đổi nhỏ, chỉ thêm cột); chưa điền thì nằm nhóm "Chưa rõ nhà cung cấp".
+- **Nếu Chủ chọn khác:** không thêm trường, nhóm theo nhãn hiệu.
+
+### OQ-88. Khi nào đưa Đợt 3 lên máy chủ thật
+
+- **Ý nghĩa:** website hiện chỉ dùng nội bộ, sản phẩm thật có sau Phase 9. Đợt 3 dùng quyền bán và hoàn tiền mà chưa ai có.
+- **Ví dụ ở spa:** giống Đợt 2: mã đã chạy trên máy chủ, nút bán và hoàn tiền không hiện với ai.
+- **Tôi khuyên:** như Đợt 2: đưa lên từng mốc (3a rồi 3b) khi xong và qua kiểm tra mốc, **không gán** `SELL_PRODUCTS`, `MANAGE_PRODUCT_RETURNS`, `REFUND_PRODUCTS`, `MANAGE_PRODUCT_ORDERS` cho ai cho đến khi có sản phẩm thật và Chủ bán thử có giám sát (OQ-60).
+- **Nếu Chủ chọn khác:** chờ đến sau Phase 9 mới đưa lên thì mã nằm lâu chưa chạy thật, lỗi môi trường phát hiện muộn.
+
+Việc **của Chủ** (không phải quyết định) trước khi bán thật: nhập sản phẩm, giá, tồn đầu kỳ thật (Phase 9), gán quyền cho đúng người, bán thử có giám sát một hóa đơn rồi trả lại thử một lần.
 
 ---
 

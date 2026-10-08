@@ -360,6 +360,14 @@ Owner's words, recorded exactly as given:
 - **The trial sale of OQ-60 is postponed** (no real products until after Phase 9): after the Wave 2 deploy `SELL_PRODUCTS` stays granted to no one. The OQ-60 rule itself is unchanged (a supervised trial sale before anybody is granted the permission).
 - **Done in this request:** the customer tier table marks the tier of each wallet (one badge "Hạng của bạn" when both wallets are in the same tier, else "Hạng của bạn ở Lucy Spa" and "Hạng của bạn ở Lucy Beauty"; the row highlight only when equal); deploy guide updated; push and CI as requested.
 
+### 2.22 Wave 3 preparation (2026-10-08, docs only, no code; **everything below is pending the Owner**)
+
+The Owner asked for Wave 3 (P6-12 to P6-18, section 18.6) to be prepared like Wave 2: a plain-Vietnamese section with a quick-answer table in `docs/PHASE6_OWNER_DECISIONS_VI.md`. Nothing is approved by me. New items (numbering continues after OQ-78):
+
+- **T34** the Wave 3 order and two deploy checkpoints (3a refunds/returns/exchanges, 3b pre-orders/gifts). **T35** return case record with private evidence photos (8.1). **T36** one new permission `MANAGE_PRODUCT_ORDERS` (65 to 66; counter pre-orders use `SELL_PRODUCTS`, cancel-and-refund uses `REFUND_PRODUCTS`). **T37** gift stock (4.7: `GIFT_OUT` at "used", `GIFT_RETURN` at restore, FEFO, "Hết hàng" refuses).
+- **OQ-79** evidence photo retention/removal (proposal: keep, delete a photo only on customer request with Owner approval, audited; no invented number). **OQ-80** returned sellable goods: new lot named after the return case, keeping the sold lot's expiry; the refund holder confirms "sellable"; never more than sold. **OQ-81** a voucher or birthday gift used on a fully refunded invoice is not given back automatically. **OQ-82** exchange price difference = current price of the replacement minus what the customer actually paid for the old line. **OQ-83** no customer bank account stored (only the transfer reference). **OQ-84** no automatic split of a partly available line. **OQ-85** hand-over to the customer or to whoever gives the order code and the last 4 digits of the phone (my number). **OQ-86** a 08:00 in-app alert for late pre-orders. **OQ-87** optional "usual supplier" on a variant for the "cần đặt" grouping. **OQ-88** when to deploy Wave 3 while no real products exist (proposal: at each checkpoint, granting nobody the permissions, as Wave 2).
+- Already approved and not asked again: Q3-Q5, T21-T23, OQ-19, OQ-22 to OQ-25, T28-T33, OQ-29 to OQ-37, OQ-39 to OQ-42, Q10.
+
 ## 3. Catalog (PRD §23-24; T9-T12)
 
 ### 3.1 Model
