@@ -211,3 +211,21 @@ test('every replaced or new function gets a fixed search_path and no PUBLIC exec
   assert.match(text, /SET search_path TO pg_catalog/);
   assert.match(text, /REVOKE ALL ON FUNCTION/);
 });
+
+test('a return case can never be opened on the invoice of an exchange: one guard, nothing else touched (P14-15)', () => {
+  const guard = read('20261115000002_phase6_wave3_exchange_return_guard');
+  assert.deepEqual(
+    [...guard.matchAll(/\bCREATE\s+(?:OR REPLACE\s+)?(FUNCTION|TRIGGER)\s+(\w+)/gi)].map(
+      (match) => match[2],
+    ),
+    ['lucy_refuse_return_of_exchange_invoice', 'lucy_product_return_cases_exchange_invoice'],
+  );
+  assert.match(guard, /BEFORE INSERT ON "product_return_cases"/);
+  assert.match(guard, /x\.exchange_invoice_id = NEW\.invoice_id/);
+  assert.doesNotMatch(
+    guard,
+    /\bDROP\b|ALTER\s+TABLE|UPDATE\s+\S+\s+SET|INSERT\s+INTO|DELETE\s+FROM/i,
+  );
+  assert.match(guard, /SET search_path TO pg_catalog/);
+  assert.match(guard, /REVOKE ALL ON FUNCTION/);
+});

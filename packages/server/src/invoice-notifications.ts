@@ -101,6 +101,13 @@ async function onInvoicePaid(tx: Prisma.TransactionClient, event: Event): Promis
   const paidSeq = field(event.payload, 'paidSeq');
   // Only the paid episode this event announces: a later reversal (or a newer episode) supersedes it.
   if (invoice.status !== 'PAID' || invoice.paidSeq !== paidSeq) return SKIP;
+  // Phase 6 P6-14: an exchange that costs the customer nothing is settled at once; "paid in full (0 VND)" would only confuse.
+  if (
+    invoice.totalVnd === 0n &&
+    (await tx.productExchange.count({ where: { exchangeInvoiceId: invoice.id } })) > 0
+  ) {
+    return SKIP;
+  }
   const payer = await payerRecipient(tx, invoice.payerUserId);
   if (!payer) return SKIP;
   return {

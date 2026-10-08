@@ -117,6 +117,7 @@ export async function lookupInvoice(
       status: true,
       channel: true,
       paidAt: true,
+      exchangeFor: { select: { id: true } },
       payer: { select: { fullName: true } },
       lines: {
         where: { kind: 'PRODUCT' },
@@ -139,7 +140,13 @@ export async function lookupInvoice(
     },
   });
   if (!invoice) throw new AuthError('NOT_FOUND');
-  if (invoice.status !== 'PAID' || invoice.paidAt === null || invoice.channel !== 'COUNTER') {
+  // P6-14 (PRD 28.4): the replacement of an exchange is not a new sale to return: no new window, nothing new to refund.
+  if (
+    invoice.status !== 'PAID' ||
+    invoice.paidAt === null ||
+    invoice.channel !== 'COUNTER' ||
+    invoice.exchangeFor !== null
+  ) {
     throw new AuthError('RETURN_NOT_ELIGIBLE');
   }
   const paidAt = invoice.paidAt;
@@ -490,6 +497,7 @@ export async function openCase(
       channel: true,
       paidAt: true,
       paidSeq: true,
+      exchangeFor: { select: { id: true } },
       lines: {
         where: { id: invoiceLineId },
         select: { kind: true, quantity: true, productDetails: { select: { invoiceLineId: true } } },
@@ -504,7 +512,8 @@ export async function openCase(
     sold.quantity === null ||
     invoice.status !== 'PAID' ||
     invoice.paidAt === null ||
-    invoice.channel !== 'COUNTER'
+    invoice.channel !== 'COUNTER' ||
+    invoice.exchangeFor !== null
   ) {
     throw new AuthError('RETURN_NOT_ELIGIBLE');
   }

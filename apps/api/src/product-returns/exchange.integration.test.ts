@@ -16,13 +16,18 @@ import {
 import {
   appendLedgerEntry,
   LocalDiskMediaStorage,
+  createPayosSimulator,
   LOYALTY_EVENT_TYPES,
+  processFinancialNotificationEvent,
   processLoyaltyEvent,
 } from '@lucy-spa/server';
 import { pino } from 'pino';
 import { DiscountService } from '../discounts/discount.service.js';
 import { phase6Fixture } from '../testing/phase6-fixture.js';
 import { productSaleKit } from '../testing/product-sale-kit.js';
+import { customerInvoiceDetail } from '../pos/customer-invoice.core.js';
+import { InvoiceService } from '../pos/invoice.service.js';
+import { PayosWebhookService } from '../pos/payos.webhook.js';
 import { ProductExchangeService } from './exchange.service.js';
 import { ProductRefundService } from './refund.service.js';
 import { ProductReturnService } from './return.service.js';
@@ -1013,6 +1018,163 @@ test(
                 }),
               'REAUTHENTICATION_REQUIRED',
             );
+            await reconcileExchanges();
+          },
+        );
+
+        await suite.test(
+          'a dearer exchange can be paid by PayOS: the provider confirms the difference, the invoice is paid, stock and points follow, the exchange completes',
+          async () => {
+            const simulator = createPayosSimulator();
+            const payosInvoices = new InvoiceService(
+              base.adapter,
+              base.throttle,
+              base.environment,
+              simulator.provider,
+            );
+            const webhook = new PayosWebhookService(
+              {
+                client: { $transaction: (work: never) => base.adapter.withTransaction(work) },
+              } as never,
+              simulator.provider,
+              null,
+            );
+            const payer = await member(0);
+            const s = await sale({ quantity: 2, price: 100_000, payer: payer.id });
+            assert.equal(await balance(payer.id), 200);
+            const c = await accepted(s, { quantity: 1 });
+            const swap = await item(150_000, 6);
+            const ex = last(await exchangeNow(approver, c, swap.id));
+            assert.equal(ex.payableVnd, '50000');
+            const made = await k.ok(() =>
+              payosInvoices.createPayos(people.cashier.token, ex.invoice.id, {
+                amountVnd: '50000',
+                idempotencyKey: randomUUID(),
+              }),
+            );
+            const orderCode = Number(
+              (await tx.payment.findUniqueOrThrow({ where: { id: made.payment.id } }))
+                .providerOrderCode,
+            );
+            // Pending until the authentic notification arrives; the exchange still waits for its payment.
+            assert.equal(
+              last(await exchanges.summary(approver.token, c.id)).status,
+              'AWAITING_PAYMENT',
+            );
+            assert.deepEqual(
+              await webhook.receive(simulator.pay(orderCode, { reference: 'TF-EX-1' })),
+              {
+                received: true,
+              },
+            );
+            await k.settle();
+            const paid = await invoiceRow(ex.invoice.id);
+            assert.equal(paid.status, 'PAID');
+            assert.equal(paid.payments[0]!.method, 'PAYOS');
+            assert.equal(paid.payments[0]!.amountVnd, 50_000n);
+            assert.equal(
+              last(await exchanges.summary(approver.token, c.id)).status,
+              'AWAITING_COMPLETION',
+            );
+            // Stock is sold and the Beauty points follow the difference actually paid (the original 200 stay).
+            assert.deepEqual(await k.runInventory(ex.invoice.id), ['APPLIED']);
+            await consumeInvoice(ex.invoice.id);
+            assert.equal(await balance(payer.id), 250);
+            const done = last(
+              await k.ok(() =>
+                exchanges.complete(approver.token, c.id, ex.id, { restock: 'SELLABLE' }),
+              ),
+            );
+            assert.equal(done.status, 'COMPLETED');
+            assert.equal(done.beautyPointsEarned, 50);
+            // A confirmed PayOS payment is never reversed (Q6), and the completed exchange keeps it anyway.
+            await reconcileExchanges();
+          },
+        );
+
+        await suite.test(
+          'a return case cannot be opened on a line of an exchange invoice: no new eligibility window for the replacement (PRD 28.4)',
+          async () => {
+            const s = await sale({ quantity: 2, price: 100_000 });
+            const c = await accepted(s, { quantity: 1 });
+            const swap = await item(150_000, 6);
+            const ex = last(await exchangeNow(approver, c, swap.id));
+            await k.pay(ex.invoice.id, 50_000);
+            const view = await invoices.get(people.cashier.token, ex.invoice.id);
+            const swapLine = view.productLines[0]!;
+            await fails(
+              () =>
+                returns.open(clerk.token, {
+                  branchId: A.id,
+                  invoiceLineId: swapLine.id,
+                  reason: 'PERSONAL_PREFERENCE',
+                  requestedOutcome: 'REFUND',
+                  quantity: 1,
+                  sealIntact: true,
+                  notes: null,
+                  clientRequestId: randomUUID(),
+                }),
+              'RETURN_NOT_ELIGIBLE',
+            );
+            await refuses(
+              `INSERT INTO product_return_cases (code, branch_id, invoice_id, invoice_line_id, reason, requested_outcome, quantity, seal_intact, handover_at, paid_seq, window_ends_at, opened_by_user_id, client_request_id)
+               SELECT 'TH-X${randomUUID().slice(0, 6)}', i.branch_id, l.invoice_id, l.id, 'PERSONAL_PREFERENCE', 'REFUND', 1, true, clock_timestamp(), 1, clock_timestamp() + interval '168 hours', '${clerk.id}', '${randomUUID()}'
+               FROM invoice_lines l JOIN invoices i ON i.id = l.invoice_id WHERE l.id = '${swapLine.id}'`,
+              /exchange invoice|replacement/,
+            );
+            await reconcileExchanges();
+          },
+        );
+
+        await suite.test(
+          'what the member payer sees of the exchange invoice: the credit is named, a free exchange sends no "paid in full 0" notice, a paid difference does',
+          async () => {
+            const payer = await member(0);
+            const s = await sale({ quantity: 2, price: 100_000, payer: payer.id });
+            const noticesOf = (invoiceId: string) =>
+              tx.notification.findMany({
+                where: { recipientUserId: payer.id, type: 'INVOICE_PAID', entityId: invoiceId },
+              });
+            const announce = async (invoiceId: string) => {
+              const events = await tx.outboxEvent.findMany({
+                where: { aggregateId: invoiceId, eventType: 'INVOICE_PAID' },
+                orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
+              });
+              for (const event of events) {
+                await processFinancialNotificationEvent(tx, event.id);
+                await k.settle();
+              }
+            };
+            // A dearer exchange: the invoice shows the replacement, the credit as its one discount row, and the difference to pay.
+            const dearerCase = await accepted(s, { quantity: 1 });
+            const dearer = last(await exchangeNow(approver, dearerCase, (await item(150_000)).id));
+            const shown = await customerInvoiceDetail(tx, payer.id, dearer.invoice.id);
+            assert.equal(shown.subtotalVnd, '150000');
+            assert.equal(shown.discountTotalVnd, '100000');
+            assert.equal(shown.totalVnd, '50000');
+            assert.ok(shown.discount, 'the discount row is explained');
+            assert.equal(shown.discount!.amountVnd, '100000');
+            assert.equal(shown.discount!.voucherCode, null);
+            assert.match(shown.discount!.nameVi, /hàng cũ/);
+            assert.doesNotMatch(
+              JSON.stringify(shown),
+              /sku|seller|lotCode|unitCost|returnCase|DH0/i,
+            );
+            await k.pay(dearer.invoice.id, 50_000);
+            await announce(dearer.invoice.id);
+            const told = await noticesOf(dearer.invoice.id);
+            assert.equal(told.length, 1);
+            assert.deepEqual(told[0]!.params, { amountVnd: '50000' });
+            // A free exchange (equal value): settled at once, nothing to announce to the customer.
+            const s2 = await sale({ quantity: 1, price: 100_000, payer: payer.id });
+            const equalCase = await accepted(s2);
+            const equal = last(await exchangeNow(approver, equalCase, (await item(100_000)).id));
+            const none = await customerInvoiceDetail(tx, payer.id, equal.invoice.id);
+            assert.equal(none.totalVnd, '0');
+            assert.equal(none.discount!.amountVnd, '100000');
+            await announce(equal.invoice.id);
+            assert.equal((await noticesOf(equal.invoice.id)).length, 0);
+            // The ordinary zero-balance invoices keep their notice (an ordinary free invoice is announced as before).
             await reconcileExchanges();
           },
         );

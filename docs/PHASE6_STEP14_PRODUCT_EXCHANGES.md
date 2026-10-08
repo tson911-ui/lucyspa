@@ -1,6 +1,6 @@
 # P6-14: Đổi hàng (báo cáo)
 
-Làm theo yêu cầu của Chủ (2026-10-08, nguyên văn ở mục 2.27 của `PHASE6_PRODUCTS_INVENTORY_DESIGN.md`; cách làm ở mục 2.28). Chưa đẩy lên, chưa triển khai, chưa gán quyền cho ai. Các chỗ phải tự hiểu (P14-1 đến P14-14) **chờ Chủ**.
+Làm theo yêu cầu của Chủ (2026-10-08, nguyên văn ở mục 2.27 của `PHASE6_PRODUCTS_INVENTORY_DESIGN.md`; cách làm ở mục 2.28). Chưa đẩy lên, chưa triển khai, chưa gán quyền cho ai. Các chỗ phải tự hiểu (P14-1 đến P14-16) **chờ Chủ**.
 
 ## Đã làm
 
@@ -14,7 +14,7 @@ Làm theo yêu cầu của Chủ (2026-10-08, nguyên văn ở mục 2.27 của 
 
 ## Migration
 
-`20261115000000` (một giá trị enum `EXCHANGE_RETURN`) và `20261115000001`: 3 bảng, 1 kiểu, 1 dãy số `DH000001`, cột mới ở bảng dùng mật khẩu, lô và chuyển kho, hàm `lucy_line_claims`, thay 3 hàm bảo vệ (hoàn tiền, kiểm tra giá bản 3, T22) và thêm các ràng buộc. Tổng 88 migration. Không đụng quyền; không gán quyền.
+`20261115000000` (một giá trị enum `EXCHANGE_RETURN`) và `20261115000001`: 3 bảng, 1 kiểu, 1 dãy số `DH000001`, cột mới ở bảng dùng mật khẩu, lô và chuyển kho, hàm `lucy_line_claims`, thay 3 hàm bảo vệ (hoàn tiền, kiểm tra giá bản 3, T22) và thêm các ràng buộc. Thêm `20261115000002` (chốt chặn: không mở hồ sơ trả hàng trên hóa đơn đổi, P14-15). Tổng 89 migration. Không đụng quyền; không gán quyền.
 
 ## Kiểm thử
 
@@ -27,4 +27,4 @@ Làm theo yêu cầu của Chủ (2026-10-08, nguyên văn ở mục 2.27 của 
 
 ## Câu hỏi mở
 
-P14-1 đến P14-14 ở mục 2.28, nhất là P14-2 (cùng sản phẩm thì đổi miễn phí, không tính chênh lệch), P14-3 (giá hôm nay, không giảm giá nào áp lên hàng mới), P14-4 (khách không trả đồng nào cho dòng thì không đổi), P14-6 (hàng cũ nhận lúc hoàn tất) và P14-9 (không có lệnh "hủy lần đổi" riêng, hủy hóa đơn đổi là đủ).
+P14-1 đến P14-16 ở mục 2.28, nhất là P14-15 (hàng mới của một lần đổi không được trả lại bằng hồ sơ mới, theo PRD 28.4), P14-2 (cùng sản phẩm thì đổi miễn phí, không tính chênh lệch), P14-3 (giá hôm nay, không giảm giá nào áp lên hàng mới), P14-4 (khách không trả đồng nào cho dòng thì không đổi), P14-6 (hàng cũ nhận lúc hoàn tất) và P14-9 (không có lệnh "hủy lần đổi" riêng, hủy hóa đơn đổi là đủ).

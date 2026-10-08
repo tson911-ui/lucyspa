@@ -56,6 +56,8 @@ const detailSelect = {
       correction: { select: { id: true } },
     },
   },
+  // Phase 6 P6-14: the invoice of an exchange has no program, only the credit of what was paid for the returned goods.
+  exchangeFor: { select: { appliedCreditVnd: true } },
   discountApplication: {
     select: {
       computedAmountVnd: true,
@@ -137,7 +139,14 @@ function detail(row: DetailRow, customerUserId: string): CustomerInvoiceDetail {
           voucherCode: application.voucher?.code ?? null,
           amountVnd: application.computedAmountVnd.toString(),
         }
-      : null,
+      : row.exchangeFor
+        ? {
+            nameVi: 'đã trả cho hàng cũ, đổi hàng',
+            nameEn: 'paid for the old goods, exchange',
+            voucherCode: null,
+            amountVnd: row.exchangeFor.appliedCreditVnd.toString(),
+          }
+        : null,
     // Phase 6 P6-10 (T26): which lines are products, only for an invoice that has any (the shape of every other invoice is unchanged).
     ...(row.lines.some((line) => line.productDetails.length > 0)
       ? {
