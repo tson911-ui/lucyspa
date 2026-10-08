@@ -3,6 +3,8 @@
 import type {
   InvoiceComboLineResponse,
   InvoiceLineResponse,
+  InvoiceProductLineAddRequest,
+  InvoiceProductLineUpdateRequest,
   InvoiceResponse,
   PaymentPayosRequest,
   PaymentRecordRequest,
@@ -22,9 +24,11 @@ import {
 import { PrefetchLink as Link } from '../link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { comboDictionary } from '../../../i18n/combo';
+import { productSaleDictionary } from '../../../i18n/product-sale';
 import { fill, type WorkforceDictionary } from '../../../i18n/workforce';
 import { organizationDictionary } from '../../../i18n/organization';
 import { comboErrorText, comboName, sessionsText } from '../../../lib/workforce/combo';
+import { productErrorText } from '../../../lib/workforce/product-sale';
 import { formatDate, formatDateTime, formatVnd } from '../../../lib/workforce/format';
 import {
   hasPriceRange,
@@ -60,6 +64,7 @@ import {
 } from './pos-dialogs';
 import { ComboUseCard, ComboUseDialog } from './pos-combo-use';
 import { cashBalanceOf, PosPaymentsSection } from './pos-payments';
+import { ProductAddDialog, ProductEditDialog, ProductLinesCard, SidesCard } from './pos-products';
 import { DiscountCard, PayerCard, VouchersCard } from './pos-sections';
 
 type Feedback = { tone: 'success' | 'error'; text: string } | null;
@@ -68,6 +73,8 @@ type Feedback = { tone: 'success' | 'error'; text: string } | null;
 type Overlay =
   | { kind: 'line'; lineId: string }
   | { kind: 'combo-use'; lineId: string }
+  | { kind: 'product-add' }
+  | { kind: 'product-edit'; lineId: string }
   | { kind: 'voucher' }
   | { kind: 'payer' }
   | { kind: 'cash' }
@@ -91,6 +98,7 @@ export function PosInvoiceScreen({ id }: { id: string }) {
   const notify = useSuccessToast();
   const text = organizationDictionary(locale);
   const c = comboDictionary(locale);
+  const p = productSaleDictionary(locale);
   const [invoice, setInvoice] = useState<InvoiceResponse | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -149,7 +157,9 @@ export function PosInvoiceScreen({ id }: { id: string }) {
       if (!rethrow) {
         setFeedback({
           tone: 'error',
-          text: comboErrorText(error, locale, (cause) => posErrorMessage(cause, t)),
+          text: productErrorText(error, locale, invoice, (cause) =>
+            comboErrorText(cause, locale, (other) => posErrorMessage(other, t)),
+          ),
         });
       }
       await load();
@@ -213,6 +223,32 @@ export function PosInvoiceScreen({ id }: { id: string }) {
     );
 
   const reload = () => api.get<InvoiceResponse>(`/api/v1/pos/invoices/${invoice.id}`);
+  const addProduct = (body: InvoiceProductLineAddRequest) =>
+    command(
+      'product-add',
+      () => api.post<InvoiceResponse>(`/api/v1/pos/invoices/${invoice.id}/product-lines`, body),
+      () => p.lines.added,
+    );
+  const saveProduct = (lineId: string, body: InvoiceProductLineUpdateRequest) =>
+    command(
+      `product-${lineId}`,
+      () =>
+        api.post<InvoiceResponse>(
+          `/api/v1/pos/invoices/${invoice.id}/product-lines/${lineId}/update`,
+          body,
+        ),
+      () => p.lines.saved,
+    );
+  const removeProduct = (lineId: string) =>
+    void command(
+      `product-remove-${lineId}`,
+      () =>
+        api.post<InvoiceResponse>(
+          `/api/v1/pos/invoices/${invoice.id}/product-lines/${lineId}/remove`,
+          { expectedVersion: version },
+        ),
+      () => p.lines.removed,
+    );
   const collect = (body: PaymentRecordRequest) =>
     command(
       'collect',
@@ -311,6 +347,18 @@ export function PosInvoiceScreen({ id }: { id: string }) {
       ),
   });
   const comboSale = invoice.kind === 'COMBO_SALE';
+  // Phase 6 P6-10: a product-only sale has no service lines; a visit invoice shows the product card when it has products or when a
+  // seller may still add some to the draft.
+  const productOnly = invoice.kind === 'PRODUCT_SALE';
+  const showProducts =
+    productOnly ||
+    invoice.productLines.length > 0 ||
+    (draft && invoice.actions.sellProducts && !comboSale);
+  const noLines = productOnly && invoice.productLines.length === 0;
+  const productTarget =
+    overlay?.kind === 'product-edit'
+      ? invoice.productLines.find((line) => line.id === overlay.lineId)
+      : undefined;
   const comboColumns = comboColumnsOf({ c, locale });
   const cashBalance = cashBalanceOf(invoice).toString();
   const totals = [
@@ -331,7 +379,9 @@ export function PosInvoiceScreen({ id }: { id: string }) {
                 code: invoice.visit.code,
                 date: formatDate(invoice.visit.serviceDate, locale),
               })} · ${invoice.branch.name}`
-            : fill(c.invoice.intro, { branch: invoice.branch.name })
+            : productOnly
+              ? fill(p.lines.intro, { branch: invoice.branch.name })
+              : fill(c.invoice.intro, { branch: invoice.branch.name })
         }
         breadcrumbs={
           <Breadcrumbs
@@ -380,10 +430,12 @@ export function PosInvoiceScreen({ id }: { id: string }) {
         <Badge tone={invoiceTone(invoice.status)}>{t.pos.statuses[invoice.status]}</Badge>
       </Cluster>
       {feedback && overlay === null ? <Notice tone={feedback.tone}>{feedback.text}</Notice> : null}
+      {draft && noLines ? <Notice tone="info">{p.lines.needLines}</Notice> : null}
       {draft && invoice.actions.finalize ? (
         <>
           <Notice tone="info">{comboSale ? c.invoice.finalizeHint : t.pos.finalizeHint}</Notice>
-          {!invoice.readiness.ready && !comboSale ? (
+
+          {!invoice.readiness.ready && !comboSale && !noLines ? (
             <Notice tone="warning">
               {fill(t.pos.notReady, { count: invoice.readiness.unpricedLines })}
             </Notice>
@@ -418,35 +470,48 @@ export function PosInvoiceScreen({ id }: { id: string }) {
         </Notice>
       ) : null}
 
-      <Card as="section">
-        <CardHeader title={comboSale ? c.invoice.linesTitle : t.pos.linesTitle} />
-        {comboSale ? (
-          <DataTable
-            mode="client"
-            caption={fill(t.common.list.table, { list: c.invoice.linesTitle })}
-            columns={comboColumns}
-            rows={invoice.comboLine ? [invoice.comboLine] : []}
-            rowKey={(line) => line.id}
-            empty={<Empty>{c.invoice.noLine}</Empty>}
-            paging={{ off: 'one combo per sale' }}
-          />
-        ) : (
-          <DataTable
-            mode="client"
-            caption={fill(t.common.list.table, { list: t.pos.linesTitle })}
-            columns={lineColumns}
-            rows={invoice.lines}
-            rowKey={(line) => `${line.id}:${line.unitPriceVnd}:${line.quantity}`}
-            empty={<Empty>{t.pos.noLines}</Empty>}
-            paging={{ off: 'the lines of one visit' }}
-          />
-        )}
-        <DescriptionList layout="totals" items={totals} />
-      </Card>
+      {productOnly ? null : (
+        <Card as="section">
+          <CardHeader title={comboSale ? c.invoice.linesTitle : t.pos.linesTitle} />
+          {comboSale ? (
+            <DataTable
+              mode="client"
+              caption={fill(t.common.list.table, { list: c.invoice.linesTitle })}
+              columns={comboColumns}
+              rows={invoice.comboLine ? [invoice.comboLine] : []}
+              rowKey={(line) => line.id}
+              empty={<Empty>{c.invoice.noLine}</Empty>}
+              paging={{ off: 'one combo per sale' }}
+            />
+          ) : (
+            <DataTable
+              mode="client"
+              caption={fill(t.common.list.table, { list: t.pos.linesTitle })}
+              columns={lineColumns}
+              rows={invoice.lines}
+              rowKey={(line) => `${line.id}:${line.unitPriceVnd}:${line.quantity}`}
+              empty={<Empty>{t.pos.noLines}</Empty>}
+              paging={{ off: 'the lines of one visit' }}
+            />
+          )}
+          {showProducts ? null : <DescriptionList layout="totals" items={totals} />}
+        </Card>
+      )}
+      {showProducts ? (
+        <ProductLinesCard
+          invoice={invoice}
+          idle={idle}
+          onAdd={() => setOverlay({ kind: 'product-add' })}
+          onEdit={(lineId) => setOverlay({ kind: 'product-edit', lineId })}
+          onRemove={removeProduct}
+          footer={<DescriptionList layout="totals" items={totals} />}
+        />
+      ) : null}
 
       <ComboUseCard lines={invoice.lines} />
 
-      <DiscountCard invoice={invoice} />
+      <SidesCard invoice={invoice} />
+      {productOnly ? null : <DiscountCard invoice={invoice} />}
       <VouchersCard
         invoice={invoice}
         working={!idle}
@@ -485,6 +550,27 @@ export function PosInvoiceScreen({ id }: { id: string }) {
         />
       ) : null}
 
+      {overlay?.kind === 'product-add' ? (
+        <ProductAddDialog
+          branchId={invoice.branch.id}
+          version={version}
+          working={working === 'product-add'}
+          error={dialogError}
+          onAdd={addProduct}
+          onClose={closeOverlay}
+        />
+      ) : null}
+      {productTarget ? (
+        <ProductEditDialog
+          branchId={invoice.branch.id}
+          line={productTarget}
+          version={version}
+          working={working === `product-${productTarget.id}`}
+          error={dialogError}
+          onSave={(body) => saveProduct(productTarget.id, body)}
+          onClose={closeOverlay}
+        />
+      ) : null}
       {lineTarget ? (
         <LineDialog
           line={lineTarget}

@@ -1,0 +1,28 @@
+# Phase 6 P6-10: product lines at the counter, stock consumption, customer view (Wave 2)
+
+Status: committed locally, not pushed, not deployed. Owner request and approvals: design doc 2.17. My readings, **pending the Owner's yes/no**: 2.18 (OQ-72..75, plus `docs/PHASE6_OWNER_DECISIONS_VI.md`).
+
+## What changed
+
+- **OQ-66 changed by the Owner (2.17):** a product category target also covers its subcategories. The loader widens each target with its descendants (recursive, cycle-safe); the pure engine is untouched. Tests: parent covers child, a sibling is not covered, a child never reaches up. The one deliberate edit of an existing test: the "a parent does not include its children" assertion of `pricing-v3.integration.test`.
+- **Stock consumption (T15, T27; ends OQ-63):** `packages/server/src/stock-sales.ts`. A paid invoice turns its reservations into sales (SALE movements, first-expiry lot first, one per lot); a reversed payment gives the stock back to the same lots (SALE_REVERSAL) and the reservation is held again; a cancelled invoice returns it and releases. State based, not event based: any order or replay gives the same stock. The `inventory` consumer (worker, own loop) selects only invoices that hold a reservation (no backlog from the paid-service history). The cancel command reverses a sale the consumer has not yet reversed (OQ-73).
+- **Migrations (2, additive):** `20261109000000` (enum values SALE, SALE_REVERSAL), `20261109000001` (movement columns `invoice_line_id`, `paid_seq`; reservation columns `consumed_paid_seq`, `consumed_at`; two CHECKs replaced; three functions replaced; one commit-time check "a consumed reservation has sold exactly its quantity, any other nothing"). Permissions: none. A static guard pins what they may touch.
+- **Counter API:** product search with price and availability of the branch and the staff who may be the seller; board figures (units, sellers, `canSellProducts`). **Member view (T26):** product lines without seller, SKU, cost, lots or stock; product line numbers in the optional `productSequences`.
+- **Screens:** "Bán sản phẩm" on the board (start dialog: member or guest), product card on the invoice (add dialog with search, quantity, required seller; edit quantity and seller while DRAFT only; remove; stock state after finalization), per-side discount table, the out-of-stock refusal naming the products, the member's invoice with a "Sản phẩm" card.
+
+## Tests (scratch DBs `lucy_spa_p6_10_scratch`, `lucy_spa_p6_10_dbtests_scratch`)
+
+- New API integration: `stock-sale` (9: FEFO, reversal to the same lots, cancel with the consumer lagging, zero-balance cancel, any event order, expired-lot fallback, last unit held, SQL guards), `product-counter` (6), `stock-sale.race` (7 real PostgreSQL races: two workers on one event, sale vs reversal, reversal vs cancel, sale vs finalize, sale vs adjustment, opposite order, relay). The race tests found one real deadlock (the consumer's foreign key to the actor row against a command holding it): fixed by locking the actor first. Reconciliation after every test: on hand = movements = lots, reserved = open reservations, a consumed line sold exactly its quantity.
+- Existing suites ran unmodified (P6-8 product-sale and customer-invoice included); one existing assertion edited on purpose (OQ-66, above). Web: `product-sale.test` (9), `client.field.test` (1). Worker: `inventory-sales-isolation` (2). Database: static `phase6-wave2-consumption-isolation` (5).
+- Whole repo `pnpm test`: 0 fail (database 26, server 53, worker 25, ui 467, web 623, api 410 with the integration tests skipped by design); `pnpm lint`, `pnpm typecheck`, `pnpm format:check` clean. Full integration on databases built from zero by the final migrations: **API 754 tests, 753 pass, 0 fail, 1 skipped** (the referral race that needs an Owner, skipped as in P6-8 and P6-9); **database 123 + 18 race tests, 0 fail**.
+
+## UX gate (review stack on `lucy_spa_p6_10_review_scratch`, screenshots in `.local/uxui-screens/p610-*`)
+
+- Rendered at 360, 768, 1440 light and 1440 dark: board, invoice (empty, draft with three lines and a voucher, finalized, paid and sold, eight lines), add dialog (closed list, open list, search with a sold-out product), edit dialog, start dialog, out-of-stock refusal, member list and detail; 130% text for the board, draft and dialogs. Each image was opened and read.
+- Fixed from what I saw: the board table lost its total and menu columns (narrower payer and seller columns, shorter type text), the variant label appeared twice, an empty "Kho" column on drafts, the 768 product table clipped (seller from 1024 up), the empty-invoice hint, a placeholder cut at 130%.
+- DOM audit (`uxui-audit-capture` on the review database, not the audit database): `pos` 42 -> 1 findings against the baseline, no count rises; the new invoice page: 3 findings (a notice next to cards, the same pattern as every invoice page; uneven card heights at 360 with a 70-character seller name).
+- Not fixed: at 130% and 360 px the admin top bar overflows 32 px (known, `docs/UI_BACKLOG.md`, every page). The product table at 768 hides the seller and SKU columns (they show from 1024 and in the phone cards).
+
+## Open
+
+OQ-72..75 (design 2.18); nothing is pushed or deployed; no permission is granted by this Step, so `SELL_PRODUCTS` still has to be granted by the Owner after the deploy; the worker must run the new loop (`inventory-sales-jobs.ts`) for stock to be sold after payment.

@@ -194,6 +194,20 @@ export function CustomerInvoiceDetailScreen({ id }: { id: string }) {
   }
   const invoice = detail.data;
   const zone = invoice.branch.timezone;
+  // Phase 6 P6-10 (T26): services and combos first, then the products; each group is its own card and the totals close the last one.
+  const productSequences = new Set(invoice.productSequences ?? []);
+  const groups = [
+    {
+      key: 'services' as const,
+      title: t.invoices.services,
+      lines: invoice.lines.filter((line) => !productSequences.has(line.sequence)),
+    },
+    {
+      key: 'products' as const,
+      title: t.invoices.products,
+      lines: invoice.lines.filter((line) => productSequences.has(line.sequence)),
+    },
+  ].filter((group) => group.lines.length > 0);
   return (
     <Page width="form">
       <PageHeader
@@ -245,57 +259,69 @@ export function CustomerInvoiceDetailScreen({ id }: { id: string }) {
           />
         </Card>
       </Reveal>
-      <Reveal>
-        <Card as="section" aria-label={t.invoices.services}>
-          <CardHeader title={t.invoices.services} />
-          <DescriptionList
-            items={invoice.lines.map((line) => ({
-              label: `${line.sequence}. ${locale === 'vi' ? line.nameVi : line.nameEn}`,
-              value: (
-                <>
-                  {line.forSelf
-                    ? t.invoices.forSelf
-                    : line.recipientName
-                      ? fill(t.invoices.forOther, { name: line.recipientName })
-                      : null}
-                  {line.forSelf || line.recipientName ? <br /> : null}
-                  {formatVnd(line.unitPriceVnd, locale)} × {line.quantity} ={' '}
-                  <strong>{formatVnd(line.grossVnd, locale)}</strong>
-                </>
-              ),
-            }))}
-          />
-          <DescriptionList
-            layout="totals"
-            items={[
-              { label: t.invoices.subtotal, value: formatVnd(invoice.subtotalVnd, locale) },
-              ...(invoice.discount
-                ? [
-                    {
-                      label: `${t.invoices.discount} (${locale === 'vi' ? invoice.discount.nameVi : invoice.discount.nameEn}${
-                        invoice.discount.voucherCode
-                          ? `, ${fill(t.invoices.voucher, { code: invoice.discount.voucherCode })}`
-                          : ''
-                      })`,
-                      value: `−${formatVnd(invoice.discount.amountVnd, locale)}`,
-                    },
-                  ]
-                : []),
-              { label: t.invoices.total, value: formatVnd(invoice.totalVnd, locale), strong: true },
-              { label: t.invoices.paid, value: formatVnd(invoice.paidVnd, locale) },
-              ...(invoice.status === 'PENDING_PAYMENT'
-                ? [
-                    {
-                      label: t.invoices.balance,
-                      value: formatVnd(invoice.balanceVnd, locale),
-                      strong: true,
-                    },
-                  ]
-                : []),
-            ]}
-          />
-        </Card>
-      </Reveal>
+      {groups.map((group, index) => (
+        <Reveal key={group.key}>
+          <Card as="section" aria-label={group.title}>
+            <CardHeader title={group.title} />
+            <DescriptionList
+              items={group.lines.map((line) => ({
+                label: `${line.sequence}. ${locale === 'vi' ? line.nameVi : line.nameEn}`,
+                value: (
+                  <>
+                    {group.key === 'services' ? (
+                      <>
+                        {line.forSelf
+                          ? t.invoices.forSelf
+                          : line.recipientName
+                            ? fill(t.invoices.forOther, { name: line.recipientName })
+                            : null}
+                        {line.forSelf || line.recipientName ? <br /> : null}
+                      </>
+                    ) : null}
+                    {formatVnd(line.unitPriceVnd, locale)} × {line.quantity} ={' '}
+                    <strong>{formatVnd(line.grossVnd, locale)}</strong>
+                  </>
+                ),
+              }))}
+            />
+            {index === groups.length - 1 ? (
+              <DescriptionList
+                layout="totals"
+                items={[
+                  { label: t.invoices.subtotal, value: formatVnd(invoice.subtotalVnd, locale) },
+                  ...(invoice.discount
+                    ? [
+                        {
+                          label: `${t.invoices.discount} (${locale === 'vi' ? invoice.discount.nameVi : invoice.discount.nameEn}${
+                            invoice.discount.voucherCode
+                              ? `, ${fill(t.invoices.voucher, { code: invoice.discount.voucherCode })}`
+                              : ''
+                          })`,
+                          value: `−${formatVnd(invoice.discount.amountVnd, locale)}`,
+                        },
+                      ]
+                    : []),
+                  {
+                    label: t.invoices.total,
+                    value: formatVnd(invoice.totalVnd, locale),
+                    strong: true,
+                  },
+                  { label: t.invoices.paid, value: formatVnd(invoice.paidVnd, locale) },
+                  ...(invoice.status === 'PENDING_PAYMENT'
+                    ? [
+                        {
+                          label: t.invoices.balance,
+                          value: formatVnd(invoice.balanceVnd, locale),
+                          strong: true,
+                        },
+                      ]
+                    : []),
+                ]}
+              />
+            ) : null}
+          </Card>
+        </Reveal>
+      ))}
       <Reveal>
         <Card as="section" aria-label={t.invoices.payments}>
           <CardHeader title={t.invoices.payments} />

@@ -22,7 +22,6 @@ import { InventoryService } from '../inventory/inventory.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
 import { validVnMobile } from '../testing/phone.js';
 import { InvoiceService } from './invoice.service.js';
-import { PayosWebhookService } from './payos.webhook.js';
 
 /**
  * Phase 6 P6-10 races (the sale of reserved stock) on separate committed PostgreSQL connections with real production service calls (the same latch as the
@@ -73,22 +72,6 @@ test(
     const throttle = new AuthThrottleService(environment);
     const invoices = new InvoiceService(adapter, throttle, environment, simulator.provider);
     const inventory = new InventoryService(adapter as never, throttle, environment);
-    const webhook = new PayosWebhookService(
-      {
-        client: {
-          $transaction: (work: (tx: Prisma.TransactionClient) => Promise<unknown>) =>
-            database.$transaction(
-              async (tx) => {
-                if (meet) await meet();
-                return work(tx);
-              },
-              { timeout: 30_000, maxWait: 10_000 },
-            ),
-        },
-      } as never,
-      simulator.provider,
-      null,
-    );
     const ids = {
       branch: randomUUID(),
       category: randomUUID(),
@@ -253,7 +236,6 @@ test(
       const a = await staff(false);
       const b = await staff(false);
       const boss = await staff(true);
-      const ktv = await staff(false);
 
       /** A published product with one priced variant and `stock` units received at the branch. */
       const variant = async (price: number, stock: number) => {
@@ -329,16 +311,10 @@ test(
           tenderedVnd: String(amount),
           idempotencyKey: randomUUID(),
         });
-      const reservationsOf = (invoiceId: string) =>
-        database.stockReservation.findMany({ where: { invoiceId }, orderBy: { id: 'asc' } });
       const levelOf = (variantId: string) =>
         database.stockLevel.findUniqueOrThrow({
           where: { branchId_variantId: { branchId: ids.branch, variantId } },
         });
-      const auditCount = (invoiceId: string, action: string) =>
-        database.auditEvent.count({ where: { entityId: invoiceId, action } });
-      const eventCount = (invoiceId: string, eventType: string) =>
-        database.outboxEvent.count({ where: { aggregateId: invoiceId, eventType } });
       const effective = async (invoiceId: string) =>
         (
           await database.payment.findMany({

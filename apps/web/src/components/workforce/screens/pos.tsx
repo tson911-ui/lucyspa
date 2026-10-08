@@ -14,6 +14,7 @@ import { PrefetchLink as Link } from '../link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { comboDictionary } from '../../../i18n/combo';
+import { productSaleDictionary } from '../../../i18n/product-sale';
 import { fill } from '../../../i18n/workforce';
 import { BOARD_REFRESH_MS, branchTime } from '../../../lib/workforce/booking-board';
 import { formatDate, formatVnd, todayIn } from '../../../lib/workforce/format';
@@ -23,6 +24,7 @@ import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import { Badge, Button, Empty, Loading, Notice, PageHeader } from '../ui';
 import { ComboSaleDialog } from './pos-combo-sale';
+import { ProductSaleDialog } from './pos-products';
 
 type Awaiting = PosBoardResponse['awaiting'][number];
 type BoardInvoice = PosBoardResponse['invoices'][number];
@@ -35,6 +37,7 @@ type BoardInvoice = PosBoardResponse['invoices'][number];
 export function PosScreen() {
   const { api, t, locale, base } = useWorkforce();
   const c = comboDictionary(locale);
+  const ps = productSaleDictionary(locale);
   const { account } = useAccount();
   const router = useRouter();
   const branches = useBranches(api);
@@ -45,6 +48,7 @@ export function PosScreen() {
   const [loadError, setLoadError] = useState<unknown>(null);
   const [opening, setOpening] = useState<string | null>(null);
   const [selling, setSelling] = useState(false);
+  const [sellingProducts, setSellingProducts] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [awaitingPaging, setAwaitingPaging] = useState({ page: 1, pageSize: 20 });
   const [invoicesPaging, setInvoicesPaging] = useState({ page: 1, pageSize: 20 });
@@ -162,6 +166,8 @@ export function PosScreen() {
       : []),
   ];
 
+  // Product figures add a column; the payer and seller columns then take a narrower width so the total and the menu stay in view.
+  const hasProducts = board?.invoices.some((invoice) => invoice.products) ?? false;
   const invoiceColumns: DataTableColumn<BoardInvoice>[] = [
     {
       key: 'code',
@@ -183,11 +189,31 @@ export function PosScreen() {
       header: c.invoice.typeColumn,
       hideBelow: 'xl',
       truncate: true,
-      cell: (invoice) =>
-        invoice.kind === 'COMBO_SALE'
-          ? `${c.invoice.typeCombo}: ${invoice.comboName ? (locale === 'vi' ? invoice.comboName.vi : invoice.comboName.en) : '—'}`
-          : `${c.invoice.typeVisit} ${invoice.visitCode ?? ''}`.trim(),
+      cell: (invoice) => {
+        if (invoice.kind === 'COMBO_SALE') {
+          return `${c.invoice.typeCombo}: ${invoice.comboName ? (locale === 'vi' ? invoice.comboName.vi : invoice.comboName.en) : '—'}`;
+        }
+        if (invoice.kind === 'PRODUCT_SALE') {
+          return fill(ps.board.typeProductUnits, { count: invoice.products?.quantity ?? 0 });
+        }
+        const visit = `${c.invoice.typeVisit} ${invoice.visitCode ?? ''}`.trim();
+        return invoice.products
+          ? fill(ps.board.typeWithProducts, { type: visit, count: invoice.products.quantity })
+          : visit;
+      },
     },
+    ...(hasProducts
+      ? [
+          {
+            key: 'sellers',
+            header: ps.board.sellers,
+            hideBelow: 'xl' as const,
+            truncate: true,
+            width: 'sm' as const,
+            cell: (invoice: BoardInvoice) => invoice.products?.sellers.join(', ') || '—',
+          },
+        ]
+      : []),
     {
       key: 'status',
       header: t.pos.status,
@@ -200,6 +226,7 @@ export function PosScreen() {
       header: t.pos.payer,
       hideBelow: 'lg',
       truncate: true,
+      ...(hasProducts ? { width: 'xs' as const } : {}),
       cell: (invoice) => invoice.payerName ?? t.pos.guestPayer,
     },
     {
@@ -232,9 +259,19 @@ export function PosScreen() {
   return (
     <>
       <PageHeader title={t.pos.title} intro={t.pos.intro}>
+        {/* One primary action: selling products when the cashier may, otherwise the combo sale as before. */}
         {board?.canSellCombos ? (
-          <Button variant="primary" icon="plus" onClick={() => setSelling(true)}>
+          <Button
+            variant={board.canSellProducts ? 'secondary' : 'primary'}
+            icon="plus"
+            onClick={() => setSelling(true)}
+          >
             {c.sale.action}
+          </Button>
+        ) : null}
+        {board?.canSellProducts ? (
+          <Button variant="primary" icon="plus" onClick={() => setSellingProducts(true)}>
+            {ps.board.action}
           </Button>
         ) : null}
       </PageHeader>
@@ -302,6 +339,13 @@ export function PosScreen() {
           }}
         />
       </ListSection>
+      {sellingProducts ? (
+        <ProductSaleDialog
+          branchId={branchId}
+          onStarted={(invoiceId) => router.push(`${base}/pos/${invoiceId}`)}
+          onClose={() => setSellingProducts(false)}
+        />
+      ) : null}
       {selling ? (
         <ComboSaleDialog
           branchId={branchId}

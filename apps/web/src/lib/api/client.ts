@@ -21,11 +21,15 @@ export class ApiError extends Error {
 
 /**
  * The backend reports a named field as `"<Message>: <field>"`. A field is a camelCase name, or (for a
- * conflict that names the other record, like `POPUP_OVERLAP`) that record's id.
+ * conflict that names the other record, like `POPUP_OVERLAP`) that record's id, or (Phase 6 P6-10: `PRODUCT_OUT_OF_STOCK` names every line
+ * it cannot serve) a comma-separated list of ids.
  */
 function fieldOf(message: unknown): string | null {
   if (typeof message !== 'string') return null;
-  const match = /: ([A-Za-z][A-Za-z0-9]*|[0-9a-f]{8}-[0-9a-f-]{27})$/.exec(message);
+  const match =
+    /: ([A-Za-z][A-Za-z0-9]*|[0-9a-f]{8}-[0-9a-f-]{27}(?:,[0-9a-f]{8}-[0-9a-f-]{27})*)$/.exec(
+      message,
+    );
   return match?.[1] ?? null;
 }
 
