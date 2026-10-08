@@ -36,4 +36,4 @@
 
 - Chưa thử trên máy chủ thật: pm2, web Next cũ khi quay lại, bản Linux, nginx (đợt này **không** thêm thư mục hay cấu hình nginx; trang phiếu công khai cần nginx gửi `X-Forwarded-For`, đã yêu cầu từ Đợt 1).
 - **Chưa làm (cần Chủ quyết, không tự đặt):** email báo hàng về (hệ thống chưa có chỗ gửi email giao dịch); liên kết phiếu có hết hạn không; hoàn đủ hay trừ phí khi khách đổi ý sau khi đã đặt hàng; cho phép "người dùng hệ thống" cấp hàng chạy ngầm; đổi hàng sang hàng đặt trước.
-- Hướng dẫn deploy từng khối lệnh cho terminal web iNET: `docs/PHASE6_WAVE3B_DEPLOY_CHECKLIST.md` (mã commit điền sau khi push và CI xanh). Đợt 3b chỉ được deploy khi Chủ tự chạy hướng dẫn.
+- Hướng dẫn deploy từng khối lệnh cho terminal web iNET: `docs/PHASE6_WAVE3B_DEPLOY_CHECKLIST.md` (commit `43a1b29`, đã push, CI xanh). Đợt 3b chỉ được deploy khi Chủ tự chạy hướng dẫn.

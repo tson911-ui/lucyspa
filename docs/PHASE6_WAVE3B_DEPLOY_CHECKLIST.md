@@ -2,7 +2,7 @@
 
 Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, theo thứ tự**, trong **cùng một cửa sổ terminal web của iNET** đã đăng nhập vào máy chủ. Mỗi khối có dòng **Mong đợi**; kết quả khác thì **DỪNG, không chạy tiếp, chụp màn hình gửi Claude**. Chỉ làm khi Owner quyết (deploy từng mốc, sau kiểm tra mốc 3b). **Claude không chạm vào máy chủ.**
 
-**Bản sẽ cài:** commit `@@COMMIT@@` (viết tắt `@@COMMIT7@@`), đã push lên `main`, **CI xanh**. Các commit tài liệu đẩy sau đó (kể cả commit điền mã này) **không** được cài và không đổi mã chạy.
+**Bản sẽ cài:** commit `43a1b29cef128d5555e1fd69b927d62c0ab276e5` (viết tắt `43a1b29`), đã push lên `main`, **CI xanh** (2026-10-09, lần chạy `37837929898`). Các commit tài liệu đẩy sau đó (kể cả commit điền mã này) **không** được cài và không đổi mã chạy.
 **Bản đang chạy:** `2076cc58ed7fd062f4b05576a67d8625e325c038` (Đợt 3a, `2076cc5`, Chủ báo triển khai 2026-10-08).
 **Cơ sở dữ liệu:** thêm **6 migration** (`20261116000000` đến `20261119000001`): **89 thành 95**. **Quyền: thêm đúng một quyền, `MANAGE_PRODUCT_ORDERS` (65 thành 66)**; quyền này **chưa gán cho ai**. Các quyền có sẵn mà đợt này dùng: `SELL_PRODUCTS` (bán đặt trước ở quầy), `REFUND_PRODUCTS` (hủy dòng hàng và hoàn tiền), `MANAGE_REWARD_CATALOG` (gắn sản phẩm cho quà) và `ISSUE_REWARDS` (bấm "đã dùng"); **`SELL_PRODUCTS` và `REFUND_PRODUCTS` cũng chưa gán cho ai**, nên sau deploy chỉ tài khoản Chủ làm được các việc này.
 **Khác Đợt 3a:** 4 bảng mới (đơn đặt trước, dòng đơn, lịch sử dòng đơn, phiếu hẹn nhận hàng) cộng bảng ghi nhận lần quét hằng ngày; 3 cột mới (nhà cung cấp quen thuộc của biến thể, sản phẩm gắn với quà, lượt dùng quà của phát sinh kho) và vài cột chế độ bán, nguồn giữ hàng; các giá trị mới cho loại phát sinh kho (`GIFT_OUT`, `GIFT_RETURN`), nguồn giữ hàng (`ORDER_LINE`) và quyền; thay thân các hàm kiểm tra đang chạy của dòng hóa đơn, giữ hàng, phát sinh kho, hoàn tiền và danh mục quà; bảng thông báo được **nới** thêm hai loại (hàng đặt trước đã về, nhắc hằng ngày) và một đối tượng. Mọi migration **chỉ thêm hoặc nới, không xóa dữ liệu, không ghi lại dòng cũ**.
@@ -13,7 +13,7 @@ Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, t
 
 ## Bước 0. Điều kiện
 
-- Trên GitHub, tab **Actions**, commit `@@COMMIT@@` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
+- Trên GitHub, tab **Actions**, commit `43a1b29cef128d5555e1fd69b927d62c0ab276e5` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
 - Owner đã đọc `docs/PHASE6_WAVE3B_MILESTONE.md` và `docs/PHASE6_WAVE3B_ROLLBACK_PROOF.md` (cách quay lại đã thử thật).
 - Các cách hiểu kỹ thuật P15-1 đến P18-5 (`docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`, mục 2.30 đến 2.33) và bốn câu hỏi mở (liên kết phiếu có hết hạn không; có gửi email báo hàng về không; hoàn đủ hay trừ phí khi khách đổi ý sau khi đã đặt hàng; có cho "người dùng hệ thống" tự cấp hàng chạy ngầm không) **chưa được Chủ duyệt, nhưng không ảnh hưởng việc deploy**: các quyền chưa gán cho ai. **Chỉ gán quyền cho nhân viên sau khi Chủ trả lời.**
 - Nếu có nhân viên đang thu tiền ở quầy, báo họ tạm dừng khoảng 10 phút ở Bước 5 và 6.
@@ -77,7 +77,7 @@ docker exec lucy-spa-postgres-1 sh -c 'pg_restore --list /tmp/check.dump | wc -l
 ```
 cd /opt/lucyspa
 git fetch origin
-git checkout @@COMMIT@@
+git checkout 43a1b29cef128d5555e1fd69b927d62c0ab276e5
 git rev-parse HEAD
 ```
 
