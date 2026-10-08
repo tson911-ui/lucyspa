@@ -587,6 +587,10 @@ Migrations `20261119000000` (two enum values) and `20261119000001` (93 to 95). R
 - **Existing tests changed (additive only):** the web reward fixture gained `variant: null`; the stock history labels gained the two kinds; the database package script lists the new static test.
 - **Open for the Owner:** whether a gift's product link may be added after units were already used (now: no, a new gift item is made instead).
 
+### 2.34 Wave 3b deployed; P15-1..P18-5 APPROVED; the four open questions answered (the Owner's own words, 2026-10-09; locked)
+
+Wave 3b is deployed (commit `43a1b29`, 95 migrations, 66 permissions; see `LUCYSPA_HANDOFF.md`, Production). The Owner wrote: "P15-1 to P18-5: approved as you proposed. Open question 1: the walk-in ticket link expires 30 days after the order is handed over or cancelled. Open question 2: no email for 'goods arrived' for now (in-app for members, staff call walk-ins). Open question 3: already decided in OQ-32: customer changes mind after the supplier order = Owner/manager decides per case (full refund, partial or decline, with a written reason). Change the current 'always full refund' behaviour to match, with tests. Open question 4: no background auto-allocation user." Items 1 and 3 are implemented (local, see 2.35 when built); items 2 and 4 need no code.
+
 ## 3. Catalog (PRD §23-24; T9-T12)
 
 ### 3.1 Model
