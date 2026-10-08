@@ -753,7 +753,7 @@ Lưu ý: OQ-27 và OQ-28 là hai câu hỏi mới, phát sinh từ trang mẫu L
 - **Duyệt đúng như tôi khuyên:** OQ-29, 30, 31, 33, 34, 36, 37, 39, 41.
 - **OQ-32:** nhà cung cấp không giao được = hoàn đủ tiền; khách hủy trước khi đặt nhà cung cấp = hoàn đủ tiền; khách đổi ý sau khi đã đặt nhà cung cấp = Chủ hoặc quản lý quyết từng trường hợp; hàng về trễ hơn ngày dự kiến **hơn 7 ngày** = khách được hủy và hoàn đủ tiền.
 - **OQ-35:** **không in.** "Phiếu hẹn nhận hàng" chỉ có bản điện tử, hiện ngay trong hóa đơn trong app/tài khoản. Với khách vãng lai không có tài khoản: tôi phải đề xuất cách xem phiếu (ví dụ đường dẫn bí mật hoặc mã QR do nhân viên gửi qua Zalo) và hỏi Chủ: xem **OQ-42** ngay dưới.
-- **OQ-38:** để sang Đợt 4, chưa có số.
+- **OQ-38:** để sang Đợt 4, chưa có số. **Đã được thay bằng quyết định của Chủ ngày 2026-10-09: miễn phí giao hàng cho mọi đơn online (xem mục "Đợt 4" ở đầu tài liệu).**
 - **OQ-40:** hạn đổi trả tính từ ngày giao khách. Giao thất bại = hoàn tiền hàng trừ phí giao hai chiều, khách chịu.
 - **Cách đọc của tôi, Chủ xác nhận giúp:** (1) OQ-30 nói "mặc định bật đặt theo đơn cho sản phẩm chưa có hàng nhập": tôi đặt ô "cho đặt trước" **mặc định bật** ở mỗi biến thể mới; Chủ bỏ chọn với mặt hàng cửa hàng giữ sẵn. (2) OQ-31: số ngày chờ mặc định **3 đến 5** nằm trong cài đặt sản phẩm (từng biến thể có thể ghi đè); "ngày thường" nhưng không loại chủ nhật hay lễ, nên tôi coi là ngày theo lịch.
 
@@ -824,21 +824,21 @@ Giải thích ngắn: T28 như một cuốn sổ giao hàng riêng bên cạnh s
 
 ### Bảng trả lời nhanh các câu hỏi mới
 
-| Mục   | Chủ đề                                                     | Tôi khuyên                                                              | Chặn bước nào |
-| ----- | ---------------------------------------------------------- | ----------------------------------------------------------------------- | ------------- |
-| OQ-29 | Hàng về rồi: nhận tại cửa hàng hay giao                    | Quầy: nhận tại cửa hàng. Online: giao                                   | P6-16         |
-| OQ-30 | Có giữ hàng sẵn hay đặt theo từng đơn                      | Mỗi sản phẩm tự chọn; mặc định "đặt theo đơn"                           | P6-3b         |
-| OQ-31 | Cách đặt nhà cung cấp, ngày dự kiến                        | Danh sách "cần đặt"; ngày dự kiến là khoảng 3-5 ngày                    | P6-17         |
-| OQ-32 | Khách hủy, nhà cung cấp không giao được, trễ hẹn           | Hoàn đủ tiền; xem chi tiết                                              | P6-17         |
-| OQ-33 | Điểm Beauty tính lúc nào                                   | Lúc thanh toán, hoàn tiền thì trừ lại                                   | P6-16         |
-| OQ-34 | Báo khách hàng đã về, số điện thoại, giữ bao lâu           | Thông báo trong app + email; bắt buộc số điện thoại; giữ 7 ngày rồi gọi | P6-16         |
-| OQ-35 | Mẫu phiếu hẹn nhận hàng                                    | Trang in khổ A5 hoặc A4 + bản trong tài khoản                           | P6-16         |
-| OQ-36 | Ai được mua online; giao từ chi nhánh nào                  | Chỉ thành viên; một chi nhánh giao hàng cố định                         | P6-19         |
-| OQ-37 | Online: hàng chưa có kho có cho đặt trước không            | Cho (với sản phẩm đã bật), ghi rõ ngày                                  | P6-19         |
-| OQ-38 | Phí giao hàng, hãng vận chuyển, ngưỡng miễn phí            | Chủ quyết (cần các số)                                                  | P6-19         |
-| OQ-39 | Hết hạn đơn online chưa thanh toán                         | 30 phút                                                                 | P6-19         |
-| OQ-40 | Hạn đổi trả tính từ đâu; giao thất bại                     | Từ ngày giao khách; Chủ quyết giao thất bại                             | P6-21         |
-| OQ-41 | Giảm giá, voucher, điểm có áp dụng cho phí giao hàng không | Không                                                                   | P6-19         |
+| Mục   | Chủ đề                                                                                                    | Tôi khuyên                                                              | Chặn bước nào |
+| ----- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------- |
+| OQ-29 | Hàng về rồi: nhận tại cửa hàng hay giao                                                                   | Quầy: nhận tại cửa hàng. Online: giao                                   | P6-16         |
+| OQ-30 | Có giữ hàng sẵn hay đặt theo từng đơn                                                                     | Mỗi sản phẩm tự chọn; mặc định "đặt theo đơn"                           | P6-3b         |
+| OQ-31 | Cách đặt nhà cung cấp, ngày dự kiến                                                                       | Danh sách "cần đặt"; ngày dự kiến là khoảng 3-5 ngày                    | P6-17         |
+| OQ-32 | Khách hủy, nhà cung cấp không giao được, trễ hẹn                                                          | Hoàn đủ tiền; xem chi tiết                                              | P6-17         |
+| OQ-33 | Điểm Beauty tính lúc nào                                                                                  | Lúc thanh toán, hoàn tiền thì trừ lại                                   | P6-16         |
+| OQ-34 | Báo khách hàng đã về, số điện thoại, giữ bao lâu                                                          | Thông báo trong app + email; bắt buộc số điện thoại; giữ 7 ngày rồi gọi | P6-16         |
+| OQ-35 | Mẫu phiếu hẹn nhận hàng                                                                                   | Trang in khổ A5 hoặc A4 + bản trong tài khoản                           | P6-16         |
+| OQ-36 | Ai được mua online; giao từ chi nhánh nào                                                                 | Chỉ thành viên; một chi nhánh giao hàng cố định                         | P6-19         |
+| OQ-37 | Online: hàng chưa có kho có cho đặt trước không                                                           | Cho (với sản phẩm đã bật), ghi rõ ngày                                  | P6-19         |
+| OQ-38 | Phí giao hàng, hãng vận chuyển, ngưỡng miễn phí (**đã thay bằng quyết định Đợt 4, 2026-10-09: miễn phí**) | Chủ quyết (cần các số)                                                  | P6-19         |
+| OQ-39 | Hết hạn đơn online chưa thanh toán                                                                        | 30 phút                                                                 | P6-19         |
+| OQ-40 | Hạn đổi trả tính từ đâu; giao thất bại                                                                    | Từ ngày giao khách; Chủ quyết giao thất bại                             | P6-21         |
+| OQ-41 | Giảm giá, voucher, điểm có áp dụng cho phí giao hàng không                                                | Không                                                                   | P6-19         |
 
 ### OQ-29. Hàng về rồi: khách nhận tại cửa hàng, được giao tận nơi, hay tự chọn? (câu hỏi (a) của Chủ)
 
@@ -903,7 +903,7 @@ Giải thích ngắn: T28 như một cuốn sổ giao hàng riêng bên cạnh s
 - **Tôi khuyên:** **cho đặt trước online** với sản phẩm đã bật "cho đặt trước", ghi rõ thời gian chờ hàng và thời gian giao.
 - **Nếu khác:** chỉ bán hàng có sẵn: đơn giản hơn, nhưng danh mục online sẽ rất nhỏ.
 
-### OQ-38. Phí giao hàng, hãng vận chuyển, ngưỡng miễn phí (cần các con số của Chủ)
+### OQ-38 (**đã thay bằng quyết định của Chủ ngày 2026-10-09: miễn phí giao hàng cho mọi đơn online, cửa hàng tự trả hãng, nhân viên chỉ nhập mã vận đơn; xem mục "Đợt 4" ở đầu tài liệu; phần dưới giữ nguyên để tra cứu**). Phí giao hàng, hãng vận chuyển, ngưỡng miễn phí (cần các con số của Chủ)
 
 - **Ý nghĩa:** PRD ghi mục này là "chưa quyết", tôi không tự đặt. Chủ đã quyết: toàn quốc, trả đủ trước, không COD.
 - **Câu hỏi cần Chủ trả lời:** (1) phí cố định, theo cân nặng, hay theo vùng; (2) hãng nào (ví dụ GHN, GHTK, Viettel Post) và ai đặt đơn với hãng; (3) có miễn phí giao hàng từ một mức tiền không, mức bao nhiêu; (4) có cần kích thước gói hàng ngoài cân nặng không.

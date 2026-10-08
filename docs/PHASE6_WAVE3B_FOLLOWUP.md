@@ -17,7 +17,7 @@ API: 18 bài `order.commands` (mới 5: số tiền hợp lệ/không, hoàn m�
 
 ## UX gate (đã mở từng ảnh)
 
-`fu-cancel-full/part/bad/other`, `fu-decline`, `fu-menu`, `fu-card-live`, `fu-card-dead`, `fu-public-expired` ở 360, 768, 1440 sáng và 1440 tối. Đã xem: ô tiền dùng `MoneyInput` của bộ giao diện (có dấu chấm nghìn và ₫), lỗi hiện dưới ô, dòng thông báo "Hoàn cho khách 150.000 ₫ trong tổng 240.000 ₫ đã thu", hộp thoại cuộn được ở 360, chế độ tối ổn. DOM audit trên 3 trang (đơn, hóa đơn còn hạn, hóa đơn hết hạn): **0 phát hiện**, không bộ đếm nào tăng. Chữ 130%: hộp thoại vừa khung; tràn ngang 32 px ở 360 là lỗi cũ của thanh trên cùng mọi trang quản trị.
+Đã mở đủ 36 ảnh (9 màn × 4 cỡ), trang công khai chụp lại sau khi sửa chữ, bản chữ cuối. `fu-cancel-full/part/bad/other`, `fu-decline`, `fu-menu`, `fu-card-live`, `fu-card-dead`, `fu-public-expired` ở 360, 768, 1440 sáng và 1440 tối. Đã xem: ô tiền dùng `MoneyInput` của bộ giao diện (có dấu chấm nghìn và ₫), lỗi hiện dưới ô, dòng thông báo "Hoàn cho khách 150.000 ₫ trong tổng 240.000 ₫ đã thu", hộp thoại cuộn được ở 360, chế độ tối ổn. DOM audit trên 3 trang (đơn, hóa đơn còn hạn, hóa đơn hết hạn): **0 phát hiện**, không bộ đếm nào tăng. Chữ 130%: hộp thoại vừa khung; tràn ngang 32 px ở 360 là lỗi cũ của thanh trên cùng mọi trang quản trị.
 
 ## Cách hiểu kỹ thuật chờ Chủ xem (F1..F4, không tự quyết)
 
