@@ -2,7 +2,7 @@
 
 Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, theo thứ tự**, trong **cùng một cửa sổ terminal web của iNET** đã đăng nhập vào máy chủ. Mỗi khối có dòng **Mong đợi**; kết quả khác thì **DỪNG, không chạy tiếp, chụp màn hình gửi Claude**. Chỉ làm khi Owner quyết (deploy từng mốc, sau kiểm tra mốc 3a). **Claude không chạm vào máy chủ.**
 
-**Bản sẽ cài:** commit `<MÃ_COMMIT_MỚI>` (điền sau khi Owner đẩy lên `main` và CI xanh; **chưa có mã, chưa được làm**). Các commit tài liệu đẩy sau đó không được cài và không đổi mã chạy.
+**Bản sẽ cài:** commit `2076cc58ed7fd062f4b05576a67d8625e325c038` (viết tắt `2076cc5`), đã push lên `main`, **CI xanh** (2026-10-08). Các commit tài liệu đẩy sau đó (kể cả commit điền mã này) **không** được cài và không đổi mã chạy.
 **Bản đang chạy:** `135872558838e00436fa5ce829e70f0517d7be68` (Đợt 2, `1358725`, theo `LUCYSPA_HANDOFF.md`).
 **Cơ sở dữ liệu:** thêm **9 migration** (`20261111000000` đến `20261115000002`): **80 thành 89**. **Quyền: không thêm quyền nào** (vẫn 65). Hai quyền của đợt này, `MANAGE_PRODUCT_RETURNS` (mở hồ sơ trả hàng) và `REFUND_PRODUCTS` (duyệt, hoàn tiền, đổi hàng), **đã có từ Đợt 1 và chưa gán cho ai**; deploy xong vẫn không ai làm được các việc này (trừ tài khoản Chủ, qua mọi kiểm tra quyền).
 **Khác Đợt 2:** Đợt 3a thêm **9 bảng mới** (hồ sơ trả hàng, lịch sử, ảnh bằng chứng, phiếu hoàn tiền, sửa mã chuyển khoản, phiếu đổi hàng, hoàn tất đổi, sửa mã đổi hàng, các lần dùng mật khẩu), **7 kiểu enum mới** (và thêm giá trị `REFUND_RETURN`, `EXCHANGE_RETURN` vào loại phiếu kho, `REFUND_REVERSAL` vào loại sổ điểm), 21 hàm kiểm tra mới, 28 trigger mới và **thay thân 4 hàm đang chạy** (`lucy_guard_loyalty_ledger` sổ điểm, `lucy_guard_stock_movement` chuyển kho, `lucy_guard_inventory_lot` lô, `lucy_check_invoice_pricing_v3` giá bản 3). Số này đo bằng cách so cơ sở dữ liệu 80 và 89 migration (bảng 128 thành 137, hàm 322 thành 343, trigger 307 thành 335). Mọi migration **chỉ thêm hoặc nới, không xóa dữ liệu, không ghi lại dòng cũ**. Bảng thông báo được nới thêm hai loại (hồ sơ trả hàng mới, hoàn tiền); ràng buộc cũ không bị thu hẹp.
@@ -12,7 +12,7 @@ Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, t
 
 ## Bước 0. Điều kiện
 
-- Trên GitHub, tab **Actions**, commit `<MÃ_COMMIT_MỚI>` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
+- Trên GitHub, tab **Actions**, commit `2076cc58ed7fd062f4b05576a67d8625e325c038` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
 - Owner đã đọc `docs/PHASE6_WAVE3A_MILESTONE.md` và `docs/PHASE6_WAVE3A_ROLLBACK_PROOF.md` (cách quay lại đã thử thật).
 - Năm mục của P14 (P14-2, P14-3, P14-4, P14-5, P14-15) chưa được Chủ duyệt, nhưng **không ảnh hưởng việc deploy**: hai quyền `MANAGE_PRODUCT_RETURNS` và `REFUND_PRODUCTS` chưa gán cho ai nên không nhân viên nào đổi hàng được. **Chỉ gán quyền cho nhân viên sau khi Chủ trả lời năm mục đó.**
 - Nếu có nhân viên đang thu tiền ở quầy, báo họ tạm dừng khoảng 10 phút ở Bước 5 và 6.
@@ -76,7 +76,7 @@ docker exec lucy-spa-postgres-1 sh -c 'pg_restore --list /tmp/check.dump | wc -l
 ```
 cd /opt/lucyspa
 git fetch origin
-git checkout <MÃ_COMMIT_MỚI>
+git checkout 2076cc58ed7fd062f4b05576a67d8625e325c038
 git rev-parse HEAD
 ```
 
