@@ -327,7 +327,7 @@ Owner's words, recorded exactly as given:
 - **OQ-75 CHANGED (replaces 2.18):** an expired lot is still used only as a last resort, so that stock stays reconciled after payment, but the sale **immediately creates an in-app alert** to the holders of the inventory permission at the invoice's branch, naming the invoice, the product and the lot, so that a manager checks what was handed to the customer. Built in P6-11 (section 2.20).
 - **P6-11 requested:** the four bullets above. The design table (section 14, row P6-11) and the P6-9 report also put "scope on the discount screens" in P6-11 (the discount API accepts the scope and product targets since P6-9 but no screen shows them); it is built here as part of P6-11, so the Owner can create a PRODUCTS or BOTH program. This is my reading of "per the approved design" and is flagged in the Step report.
 
-### 2.20 P6-11 as built (my readings where the contract was silent; **PENDING the Owner's yes/no**; report `docs/PHASE6_STEP11_BEAUTY_WAVE2.md`)
+### 2.20 P6-11 as built (my readings where the contract was silent; **APPROVED by the Owner on 2026-10-08, OQ-77 and OQ-78 as proposed: see 2.21**; report `docs/PHASE6_STEP11_BEAUTY_WAVE2.md`)
 
 - **OQ-75 as changed (2.19):** `settleInvoiceStock` still takes sellable lots first and an expired lot only when they fall short. When it does take from an expired lot it writes, in the same transaction as the SALE movement, an audit event (`STOCK_EXPIRED_LOT_SOLD`, entity the lot) and one in-app alert **for each expired lot** to the holders of `VIEW_INVENTORY` at the invoice's branch (the same recipients as the low-stock and expiry alerts), through the permission engine. A sale from sellable lots sends nothing; a replay finds nothing to consume, so it sends nothing twice; with nobody to tell (an inactive branch) the sale still goes through and the audit event records `notifiedUsers: 0`.
 - **Reading R1 (parameters):** the registry only carries ids, dates, enums, VND and counts. The alert names the product by the SKU (the notification's context code, its entity is the variant, so it opens the item page for a holder of the permission) and carries `invoiceCode`, `lotCode` and `quantity`. The two codes are identifiers shown as plain text; the validator accepts one line of 1 to 64 characters without control or format characters and is **not** loosened for anything else. A stored lot code that is not a plain code can never stop a sale: the alert shows it cleaned (control characters become spaces, trimmed, cut at 64).
@@ -339,6 +339,26 @@ Owner's words, recorded exactly as given:
 - **Customer account:** the Beauty card shows the real percent of the Beauty wallet (`points.beautyDiscountPending` removed; "Chưa có" / "None yet" when the tier has no discount, like the Spa card); the history already lists both wallets with a wallet column, so Beauty entries show in it (tested).
 - **Deliberate edits to existing tests (the assertions "the Beauty wallet earns nothing yet" were true until now):** `pricing-v3.integration` example A (Beauty 0 became 194) and `product-sale.integration` loyalty test (product-only 0 became 485 and the mixed one 500, per wallet; the 485 shows the Silver tier earned by the mixed invoice before it).
 - **Migration** `20261110000000_phase6_wave2_expired_lot_alert`: widens `notifications_type_check` and `notifications_type_entity` by the one type (no row read or written). Deliberate edits to existing tests: the registry list (`INVENTORY`, and the count that used `PHASE3.length + 2`) and the pinned event list of `inventory-sales-isolation.test`; nothing weakened.
+
+### 2.21 Wave 2 APPROVED by the Owner (2026-10-08): OQ-77 and OQ-78 as proposed; deploy preparation requested
+
+Owner's words, recorded exactly as given:
+
+> Wave 2 approved: OQ-77 and OQ-78 as proposed. Record in the design doc, owner-decisions doc and handoff. Note: the website is internal-only (not public, no customers), so deploys can happen at any time of day.
+>
+> Before deploy:
+>
+> 1. Your report had a cut-off sentence about the rollback ("bản cũ 6546c43 chỉ chạy…"). Repeat the full rollback finding in plain Vietnamese.
+> 2. Small fix: the customer tier table must mark the customer's Beauty tier too, not only Spa. Related tests + quick UI check.
+> 3. No real products exist yet (they come after Phase 9), so the supervised trial sale is postponed: SELL_PRODUCTS stays granted to no one after deploy. Update the deploy guide accordingly.
+> 4. Push main and wait for CI to pass. If CI fails, fix and report; do not continue.
+> 5. When green, fill the real commit into docs/PHASE6_WAVE2_DEPLOY_CHECKLIST.md, commit and push that doc change.
+> 6. Paste the complete Wave 2 deploy guide here in the chat: iNET web terminal commands block by block (backup, checkout, install, generate, build, rehearsal on a restored copy, migrate, restart incl. worker, permission checks, health and smoke checks), plus rollback commands. I will deploy right away. Do not run anything on the server.
+
+- **Approved as proposed:** OQ-77 (the expired-lot alert shows SKU, invoice code and lot code and opens the product's stock page) and OQ-78 (the scope screens of the discount programs are part of P6-11). Section 2.20 is therefore approved.
+- **Context recorded:** the website is internal-only (no public use, no customers), so a deploy needs no quiet hour.
+- **The trial sale of OQ-60 is postponed** (no real products until after Phase 9): after the Wave 2 deploy `SELL_PRODUCTS` stays granted to no one. The OQ-60 rule itself is unchanged (a supervised trial sale before anybody is granted the permission).
+- **Done in this request:** the customer tier table marks the tier of each wallet (one badge "Hạng của bạn" when both wallets are in the same tier, else "Hạng của bạn ở Lucy Spa" and "Hạng của bạn ở Lucy Beauty"; the row highlight only when equal); deploy guide updated; push and CI as requested.
 
 ## 3. Catalog (PRD §23-24; T9-T12)
 

@@ -37,6 +37,7 @@ import {
   formatSignedPoints,
   giftTone,
   historyText,
+  tierMarks,
   referralTone,
   tierRows,
   usedByText,
@@ -86,7 +87,8 @@ export function CustomerLoyaltyScreen() {
         ))}
       </Grid>
       <TiersSection
-        current={summary.data.wallets.find((w) => w.wallet === 'SPA')?.tier ?? 'NONE'}
+        spa={summary.data.wallets.find((w) => w.wallet === 'SPA')?.tier ?? 'NONE'}
+        beauty={summary.data.wallets.find((w) => w.wallet === 'BEAUTY')?.tier ?? 'NONE'}
       />
       <HistorySection />
       <CombosSection />
@@ -141,8 +143,20 @@ export function WalletCard({ wallet }: { wallet: LoyaltyWalletResponse }) {
   );
 }
 
-/** The five tiers with their points and Member Discount, read from the shared tier table; the customer's own Spa tier is marked. */
-function TiersSection({ current }: { current: LoyaltyWalletResponse['tier'] }) {
+/** The brand names of the two wallets (the same in both languages) for the tier marks. */
+const WALLET_BRANDS = { SPA: 'Lucy Spa', BEAUTY: 'Lucy Beauty' } as const;
+
+/**
+ * The five tiers with their points and Member Discount, read from the shared tier table. The customer's own tiers are marked: one
+ * badge when both wallets are in the same tier, one badge for each wallet when they differ (the two wallets have their own tier).
+ */
+export function TiersSection({
+  spa,
+  beauty,
+}: {
+  spa: LoyaltyWalletResponse['tier'];
+  beauty: LoyaltyWalletResponse['tier'];
+}) {
   const { locale } = useCustomer();
   const text = customerLoyaltyDictionary(locale);
   const l = loyaltyDictionary(locale);
@@ -156,9 +170,11 @@ function TiersSection({ current }: { current: LoyaltyWalletResponse['tier'] }) {
         <span>
           <Cluster gap="inline">
             {l.tiers[row.tier]}
-            {row.tier === current ? (
-              <Badge tone={tierTone(row.tier)}>{text.tiers.current}</Badge>
-            ) : null}
+            {tierMarks(row.tier, spa, beauty, text.tiers, WALLET_BRANDS).map((mark) => (
+              <Badge key={mark} tone={tierTone(row.tier)}>
+                {mark}
+              </Badge>
+            ))}
           </Cluster>
         </span>
       ),
@@ -186,7 +202,7 @@ function TiersSection({ current }: { current: LoyaltyWalletResponse['tier'] }) {
           columns={columns}
           rows={tierRows()}
           rowKey={(row) => row.tier}
-          selectedKey={current === 'NONE' ? undefined : current}
+          selectedKey={spa === beauty && spa !== 'NONE' ? spa : undefined}
           paging={{ off: 'The five tiers of the locked tier table: a fixed short list.' }}
         />
       </ListSection>

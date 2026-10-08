@@ -33,6 +33,7 @@ const vi = {
       discount: 'Ưu đãi hội viên',
     },
     current: 'Hạng của bạn',
+    currentIn: 'Hạng của bạn ở {wallet}',
   },
   history: {
     title: 'Lịch sử điểm',
@@ -148,6 +149,7 @@ const en: Dictionary = {
       discount: 'Member discount',
     },
     current: 'Your tier',
+    currentIn: 'Your tier in {wallet}',
   },
   history: {
     title: 'Points history',

@@ -37,6 +37,6 @@
 ## Chưa làm được / Chủ cần biết
 
 - Chưa thử trên máy chủ thật: pm2, web Next cũ khi quay lại, bản Linux. Cổng kiểm và hướng dẫn có bước kiểm cho các điểm này.
-- **Chưa có trả hàng và hoàn tiền sản phẩm** (Đợt 3): hóa đơn bán nhầm chỉ sửa bằng đảo khoản thu rồi hủy hóa đơn (OQ-60: bán thử có giám sát trước, rồi mới cấp quyền; Bước 9 của hướng dẫn).
-- Hai điểm chờ Chủ: **OQ-77** (thông báo lô hết hạn ghi SKU, mã hóa đơn, mã lô và mở trang kho) và **OQ-78** (ô "Phạm vi" của giảm giá làm trong P6-11). Hai khoảng trống của ô chọn sản phẩm: người chỉ có quyền giảm giá (không có quyền sản phẩm) không chọn được đích sản phẩm; danh sách sản phẩm chưa có tìm kiếm phía máy chủ (ô chọn lọc trong trình duyệt, hiện 30 kết quả đầu).
+- **Chưa có trả hàng và hoàn tiền sản phẩm** (Đợt 3): hóa đơn bán nhầm chỉ sửa bằng đảo khoản thu rồi hủy hóa đơn (OQ-60: bán thử có giám sát trước khi cấp quyền; Chủ hoãn bán thử vì chưa có sản phẩm thật, `SELL_PRODUCTS` không gán cho ai).
+- **Đã duyệt (2026-10-08):** OQ-77 (thông báo lô hết hạn ghi SKU, mã hóa đơn, mã lô và mở trang kho) và OQ-78 (ô "Phạm vi" của giảm giá làm trong P6-11). Hai khoảng trống của ô chọn sản phẩm: người chỉ có quyền giảm giá (không có quyền sản phẩm) không chọn được đích sản phẩm; danh sách sản phẩm chưa có tìm kiếm phía máy chủ (ô chọn lọc trong trình duyệt, hiện 30 kết quả đầu).
 - Hướng dẫn deploy từng khối lệnh cho terminal web iNET: `docs/PHASE6_WAVE2_DEPLOY_CHECKLIST.md` (mã commit điền sau khi Chủ push và CI xanh). Đợt 2 chỉ được deploy khi Chủ tự chạy hướng dẫn.

@@ -7,14 +7,14 @@ Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, t
 **Cơ sở dữ liệu:** thêm **7 migration** (`20261107000000` đến `20261110000000`): **73 thành 80**. **Quyền: không thêm quyền nào** (vẫn 65; `SELL_PRODUCTS` đã có từ Đợt 1 và **chưa gán cho ai**).
 **Khác Đợt 1:** Đợt 1 chỉ _thêm_ bảng mới. **Đợt 2 sửa chính các bảng đang thu tiền thật**: hóa đơn (thêm 2 cột, thay một ràng buộc tiền), khóa dùng ưu đãi, bảng thông báo (nới 2 ràng buộc), kho (thêm cột và 2 loại phiếu), các hàm kiểm tra của thanh toán. Mọi migration đều **chỉ thêm hoặc nới, không xóa dữ liệu, không ghi lại dòng cũ**; hóa đơn chỉ có dịch vụ vẫn tính bằng bộ tính cũ (bộ mới chạy ngầm để so, không bao giờ đổi số tiền).
 **Thay đổi chạy:** API, worker và web đều có mã mới. **Worker có thêm một vòng việc mới** (trừ kho sau khi thanh toán) **nằm trong chính tiến trình `lucyspa-worker`**, không có tiến trình pm2 mới; worker cũng cộng điểm Lucy Beauty. Không có thư viện mới (`pnpm install` không tải gì thêm).
-**Sau deploy chưa có gì đổi với khách:** không ai có quyền bán sản phẩm, nên quầy vẫn như cũ; thẻ Lucy Beauty của khách đổi chữ "Áp dụng khi Lucy Beauty mở bán" thành phần trăm hạng thật; màn hình giảm giá có thêm ô "Phạm vi".
-**Thời gian:** khoảng 40 phút (build vài phút, diễn tập vài phút). **Chọn buổi tối vắng khách, lúc không có hóa đơn đang thu tiền.** Lúc khởi động lại API (vài giây) POS gián đoạn ngắn; báo nhân viên trước.
+**Sau deploy quầy vẫn như cũ:** **quyền `SELL_PRODUCTS` không gán cho ai** (chưa có sản phẩm thật, các sản phẩm sẽ có sau Phase 9; bán thử có giám sát được hoãn), nên không ai thấy nút bán sản phẩm; thẻ Lucy Beauty của khách đổi chữ "Áp dụng khi Lucy Beauty mở bán" thành phần trăm hạng thật; màn hình giảm giá có thêm ô "Phạm vi".
+**Thời gian:** khoảng 40 phút (build vài phút, diễn tập vài phút). Website hiện chỉ dùng nội bộ (chưa có khách), nên **làm lúc nào cũng được**. Lúc khởi động lại API (vài giây) POS gián đoạn ngắn; nếu có nhân viên đang dùng thì báo trước.
 
 ## Bước 0. Điều kiện
 
 - Trên GitHub, tab **Actions**, commit `<MÃ_COMMIT_MỚI>` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
 - Owner đã đọc `docs/PHASE6_WAVE2_MILESTONE.md` và `docs/PHASE6_WAVE2_ROLLBACK_PROOF.md` (cách quay lại đã thử thật).
-- Lúc làm, **không ai đang thanh toán** hóa đơn ở quầy (báo nhân viên tạm dừng thu tiền khoảng 10 phút ở Bước 5 và 6).
+- Nếu có nhân viên đang thu tiền ở quầy, báo họ tạm dừng khoảng 10 phút ở Bước 5 và 6.
 
 ## Bước 1. Xem hiện trạng (chỉ đọc)
 
@@ -141,7 +141,7 @@ docker exec lucy-spa-postgres-1 sh -c 'dropdb -U "$POSTGRES_USER" lucy_spa_rehea
 
 ## Bước 5. Áp migration vào cơ sở dữ liệu thật
 
-Báo nhân viên **tạm dừng thu tiền**. Các migration khóa bảng hóa đơn rất ngắn (dưới 1 giây).
+Các migration khóa bảng hóa đơn rất ngắn (dưới 1 giây); nếu có người đang thu tiền thì báo họ chờ.
 
 ```
 env | grep -c '^DATABASE_URL=' || true
@@ -171,7 +171,7 @@ pm2 logs lucyspa-worker --err --lines 30 --nostream
 pnpm db:permissions:sync
 ```
 
-**Mong đợi:** `lucyspa-api` 1 dòng `online`, `lucyspa-worker` **đúng 1 dòng** `online`, `lucyspa-web` **3 dòng** `online`; không có dòng lỗi mới sau lúc khởi động lại (đặc biệt không có chữ `Inventory sales job failed`); `Permission catalog synced: 0 inserted, 65 already present.` **Không bao giờ chạy `pm2 scale lucyspa-worker` hoặc `pm2 scale lucyspa-api`**: lập lịch của worker sẽ chạy hai lần. Báo nhân viên **thu tiền lại được**.
+**Mong đợi:** `lucyspa-api` 1 dòng `online`, `lucyspa-worker` **đúng 1 dòng** `online`, `lucyspa-web` **3 dòng** `online`; không có dòng lỗi mới sau lúc khởi động lại (đặc biệt không có chữ `Inventory sales job failed`); `Permission catalog synced: 0 inserted, 65 already present.` **Không bao giờ chạy `pm2 scale lucyspa-worker` hoặc `pm2 scale lucyspa-api`**: lập lịch của worker sẽ chạy hai lần. Báo nhân viên (nếu có) thu tiền lại được.
 
 ## Bước 7. Kiểm tra bằng lệnh (không tạo hay sửa dữ liệu thật)
 
@@ -202,23 +202,15 @@ docker exec lucy-spa-postgres-1 sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB
 3. Giảm giá: tạo hoặc mở một chương trình, có ô **Phạm vi** (Dịch vụ, Sản phẩm, Cả hai); chương trình cũ vẫn là "Dịch vụ".
 4. Mở nhanh vài trang cũ: Lịch hẹn, Hóa đơn, trang chủ khách. Không có gì đổi.
 
-## Bước 9. Bán thử có giám sát (Owner quyết khi nào; câu trả lời OQ-60)
+## Bước 9. Bán thử có giám sát: HOÃN, không làm trong lần deploy này
 
-**Chỉ làm khi Owner muốn bắt đầu bán sản phẩm thật, và làm trước giờ mở cửa hoặc lúc vắng khách.** Chưa có hàng "Đang bán" trong kho thì bước này chưa làm được: Owner nhập một sản phẩm thật có tồn kho (màn hình **Sản phẩm** và **Phiếu nhập**).
-
-1. Vào **Vai trò** và cấp quyền **Bán sản phẩm** cho **một** vai trò hoặc **một** nhân viên thu ngân (Owner tự chọn người đã được hướng dẫn). Không cấp cho người khác cho đến khi bán thử xong.
-2. Ở quầy: **Bán sản phẩm**, chọn khách vãng lai, thêm **1** sản phẩm, chọn người bán, chốt hóa đơn. Tồn kho "Có thể bán" giảm ngay 1 (đã giữ hàng), "Tồn thực" chưa giảm.
-3. Thu **tiền mặt** đúng số tiền. Khoảng **10 giây** sau, "Tồn thực" giảm 1 (worker trừ kho). Kiểm tra bằng lệnh (thay `<MÃ_SẢN_PHẨM>` bằng mã SKU của sản phẩm vừa bán):
+Chủ quyết (2026-10-08): chưa có sản phẩm thật (sẽ có sau Phase 9), nên **bán thử có giám sát (OQ-60) được hoãn**. **Quyền `SELL_PRODUCTS` vẫn không gán cho ai sau khi deploy.** Kiểm lại rằng đúng như vậy:
 
 ```
-docker exec lucy-spa-postgres-1 sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c "select m.kind, m.quantity_delta, m.paid_seq from stock_movements m join product_variants v on v.id = m.variant_id where v.sku = \$\$<MÃ_SẢN_PHẨM>\$\$ and m.kind in (\$\$SALE\$\$, \$\$SALE_REVERSAL\$\$) order by m.created_at"'
+docker exec lucy-spa-postgres-1 sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c "select (select count(*) from role_permissions rp join permissions p on p.id = rp.permission_id where p.code::text = \$\$SELL_PRODUCTS\$\$) as vai_tro_co_quyen, (select count(*) from user_permission_overrides o join permissions p on p.id = o.permission_id where p.code::text = \$\$SELL_PRODUCTS\$\$) as nguoi_co_quyen_rieng"'
 ```
 
-**Mong đợi:** một dòng `SALE|-1|1`. Không có dòng nào sau 1 phút: **DỪNG**, xem `pm2 logs lucyspa-worker --err --lines 50 --nostream` và hỏi Claude.
-
-4. Nếu khách là **hội viên** (không phải khách vãng lai): sau vài giây, ví **Lucy Beauty** của khách tăng điểm bằng số tiền sản phẩm sau giảm giá chia 1.000, làm tròn xuống (khách vãng lai không có điểm).
-5. **Hoàn tác bản thử**: ở hóa đơn đó chọn **Đảo khoản thu**, rồi **Hủy hóa đơn**. Sau khoảng 10 giây "Tồn thực" trở lại như cũ; câu lệnh ở bước 3 in thêm dòng `SALE_REVERSAL|1|1`; điểm Beauty (nếu có) được thu hồi.
-6. Báo Claude kết quả. **Trả hàng và hoàn tiền sản phẩm chưa có** (Đợt 3): hóa đơn bán nhầm trong ngày chỉ sửa được bằng cách đảo khoản thu rồi hủy hóa đơn như ở bước 5; khách mang hàng về rồi trả lại thì chưa có công cụ (đây là lý do của OQ-60). Owner tự quyết lúc nào cấp quyền **Bán sản phẩm** cho các nhân viên còn lại.
+**Mong đợi:** `0|0`. (Chủ tài khoản Owner vẫn có mọi quyền theo thiết kế; không tạo hóa đơn bán sản phẩm khi chưa có sản phẩm thật.) Khi nào có sản phẩm thật và Chủ muốn bắt đầu bán, hỏi Claude một hướng dẫn riêng cho lần bán thử đầu tiên (cấp quyền cho một người, bán một sản phẩm, đảo khoản thu, hủy hóa đơn, kiểm tra kho). Lưu ý đến lúc đó: **trả hàng và hoàn tiền sản phẩm chưa có** (Đợt 3), và **sau hóa đơn bán sản phẩm đầu tiên, quay lại phần mềm cũ không còn là lựa chọn** (xem Bước 10).
 
 ## Bước 10. Quay lại nếu có sự cố
 
@@ -276,7 +268,7 @@ rồi làm A3 (đưa phần mềm về `$OLD_COMMIT`) và khởi động lại c
 
 ## Bước 11. Báo lại cho Claude
 
-Gửi: mã commit đang chạy, 7 dòng thời gian migration ở 4.3, dòng `80|65|0|0|0` ở Bước 5, `pm2 status`, kết quả Bước 7 (kể cả hai số `0` của việc tồn), kết quả bán thử ở Bước 9 (nếu làm) và đường dẫn tệp sao lưu. Claude ghi vào `LUCYSPA_HANDOFF.md`.
+Gửi: mã commit đang chạy, 7 dòng thời gian migration ở 4.3, dòng `80|65|0|0|0` ở Bước 5, `pm2 status`, kết quả Bước 7 (kể cả hai số `0` của việc tồn), kết quả `0|0` ở Bước 9 và đường dẫn tệp sao lưu. Claude ghi vào `LUCYSPA_HANDOFF.md`.
 
 ## Ghi chú kỹ thuật cho kỹ thuật viên
 

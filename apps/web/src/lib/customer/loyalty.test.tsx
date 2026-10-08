@@ -8,7 +8,11 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { CustomerLoyaltyScreen, WalletCard } from '../../components/customer/screens/loyalty';
+import {
+  CustomerLoyaltyScreen,
+  TiersSection,
+  WalletCard,
+} from '../../components/customer/screens/loyalty';
 import { CustomerContext } from '../../components/customer/session';
 import { getCustomerDictionary } from '../../i18n/customer';
 import { customerLoyaltyDictionary } from '../../i18n/customer-loyalty';
@@ -21,6 +25,7 @@ import {
   giftTone,
   historyText,
   referralTone,
+  tierMarks,
   tierRows,
   usedByText,
 } from './loyalty';
@@ -187,6 +192,42 @@ test('the Beauty card shows the real tier percent of the Beauty wallet, like the
   assert.match(none, /Chưa có/);
   assert.doesNotMatch(none, /mở bán/);
   assert.match(renderCard('vi', { ...beauty, wallet: 'SPA' }), /4%/);
+});
+
+test('the tier table marks the customer tier of each wallet: one badge when equal, one per wallet when they differ', () => {
+  const wallets = { SPA: 'Lucy Spa', BEAUTY: 'Lucy Beauty' } as const;
+  const marks = (row: string, spa: string, beauty: string) =>
+    tierMarks(row, spa, beauty, vi.tiers, wallets);
+  assert.deepEqual(marks('GOLD', 'GOLD', 'GOLD'), ['Hạng của bạn']);
+  assert.deepEqual(marks('GOLD', 'GOLD', 'SILVER'), ['Hạng của bạn ở Lucy Spa']);
+  assert.deepEqual(marks('SILVER', 'GOLD', 'SILVER'), ['Hạng của bạn ở Lucy Beauty']);
+  assert.deepEqual(marks('RUBY', 'GOLD', 'SILVER'), []);
+  assert.deepEqual(marks('NONE', 'NONE', 'NONE'), []);
+  assert.deepEqual(tierMarks('GOLD', 'GOLD', 'SILVER', en.tiers, wallets), [
+    'Your tier in Lucy Spa',
+  ]);
+  const render = (spa: LoyaltyWalletResponse['tier'], beauty: LoyaltyWalletResponse['tier']) =>
+    renderToStaticMarkup(
+      <CustomerContext.Provider
+        value={{
+          locale: 'vi',
+          t: getCustomerDictionary('vi'),
+          api: new ApiClient({ onUnauthenticated: () => undefined }),
+          base: '/vi/account',
+          sessionLost: false,
+        }}
+      >
+        <TiersSection spa={spa} beauty={beauty} />
+      </CustomerContext.Provider>,
+    );
+  const different = render('GOLD', 'SILVER');
+  assert.match(different, /Hạng của bạn ở Lucy Spa/);
+  assert.match(different, /Hạng của bạn ở Lucy Beauty/);
+  const same = render('GOLD', 'GOLD');
+  // The table renders the row once for wide screens and once as a phone card: the same count for each mark.
+  assert.equal(same.match(/Hạng của bạn/g)?.length, different.match(/ở Lucy Spa/g)?.length);
+  assert.doesNotMatch(same, /ở Lucy/);
+  assert.doesNotMatch(render('NONE', 'NONE'), /của bạn/);
 });
 
 test('the tier section says how points are earned, in both languages', () => {

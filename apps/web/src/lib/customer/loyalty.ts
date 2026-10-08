@@ -83,3 +83,23 @@ export function tierRows(): TierRow[] {
     discountPercent: entry.memberDiscountBp / 100,
   }));
 }
+
+/**
+ * The badges of one row of the tier table: the customer's tier of each wallet. Both wallets in the row's tier give the one badge
+ * "Your tier"; only one wallet in it gives "Your {wallet} tier"; a customer with no tier yet is not marked.
+ */
+export function tierMarks(
+  rowTier: string,
+  spa: string,
+  beauty: string,
+  texts: { current: string; currentIn: string },
+  wallets: Record<'SPA' | 'BEAUTY', string>,
+): string[] {
+  if (rowTier === 'NONE') return [];
+  const here = (['SPA', 'BEAUTY'] as const).filter(
+    (wallet) => (wallet === 'SPA' ? spa : beauty) === rowTier,
+  );
+  if (here.length === 0) return [];
+  if (spa === beauty) return [texts.current];
+  return here.map((wallet) => texts.currentIn.replace('{wallet}', wallets[wallet]));
+}
