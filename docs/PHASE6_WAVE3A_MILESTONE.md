@@ -1,6 +1,6 @@
 # Phase 6 Đợt 3a: kiểm tra mốc (2026-10-08, chạy trên máy này)
 
-**Phạm vi Đợt 3a:** P6-12 (hồ sơ trả hàng), P6-13 (hoàn tiền theo dòng sản phẩm, mật khẩu một lần cho mỗi lần hoàn, thông báo cho Chủ), P6-14 (đổi hàng). **9 migration (80 thành 89), 0 quyền mới (vẫn 65).** `MANAGE_PRODUCT_RETURNS` và `REFUND_PRODUCTS` đã có từ Đợt 1 và **chưa gán cho ai**. Mọi migration chỉ thêm hoặc nới, không ghi lại dòng cũ; thay 6 hàm kiểm tra đang chạy (sổ điểm, chuyển kho, lô, giá bản 3, chặn đảo thanh toán, chặn hoàn). **Chưa có gì được đẩy lên hay triển khai.** Các mục đọc P12 đến P14 vẫn **chờ Chủ duyệt** (ghi ở `PHASE6_OWNER_DECISIONS_VI.md`).
+**Phạm vi Đợt 3a:** P6-12 (hồ sơ trả hàng), P6-13 (hoàn tiền theo dòng sản phẩm, mật khẩu một lần cho mỗi lần hoàn, thông báo cho Chủ), P6-14 (đổi hàng). **9 migration (80 thành 89), 0 quyền mới (vẫn 65).** `MANAGE_PRODUCT_RETURNS` và `REFUND_PRODUCTS` đã có từ Đợt 1 và **chưa gán cho ai**. Mọi migration chỉ thêm hoặc nới, không ghi lại dòng cũ; thay thân 4 hàm đang chạy (sổ điểm, chuyển kho, lô, giá bản 3); 9 bảng, 21 hàm và 28 trigger mới (đo bằng so cơ sở dữ liệu 80 và 89 migration). **Chưa có gì được đẩy lên hay triển khai.** Các mục đọc P12 đến P14 vẫn **chờ Chủ duyệt** (ghi ở `PHASE6_OWNER_DECISIONS_VI.md`).
 
 ## Kết quả kiểm tra (mã nguồn tại commit mốc, cơ sở dữ liệu thử dựng từ số 0 bằng 89 migration)
 
@@ -31,12 +31,12 @@
 ## UI gate
 
 - Màn hình đổi hàng và hóa đơn thay thế dựng lại sau khi áp migration 89 và build mới: hồ sơ trả hàng (chờ thanh toán, đã hoàn tất) và hóa đơn thay thế ở 360, 768, 1440 sáng, 1440 tối. Đã mở từng ảnh: không cuộn ngang, không chồng chữ, một tiêu đề, nhãn "Trừ số tiền đã trả cho hàng cũ" đọc rõ, thẻ không lồng thẻ (ở 360 dòng sản phẩm của hóa đơn là thẻ con theo mẫu bảng-thành-thẻ có sẵn của POS). DOM audit 8 trang đổi hàng và hóa đơn: **0 lỗi mỗi trang**; không bộ đếm nào tăng so với `docs/uxui-audit-baseline.json`. Chi tiết ở `PHASE6_STEP14_PRODUCT_EXCHANGES.md`.
-- Chữ 130% (ngăn kéo đổi hàng) đã dựng ở lần gate của P6-14 (xem báo cáo); chưa dựng lại ở lượt này (mã giao diện không đổi từ đó).
+- Chữ 130% đã dựng cho trang hồ sơ (chờ thanh toán) và hóa đơn thay thế ở 360, 768, 1440 sáng và 1440 tối (cộng ngăn kéo đổi hàng ở lần gate của P6-14): đã mở ảnh 360 của cả hai; chữ xuống dòng gọn, không chồng chữ, không cắt số tiền; chỉ còn lỗi đã biết của thanh trên cùng (nút tài khoản bị cắt, 392 > 360) và các mục rail 40 x 44 của thanh bên ở 768. Điểm `401` của đường ảnh bằng chứng khi chưa đăng nhập đã chạy thật trên API xem thử (hướng dẫn Bước 7 đòi đúng số này).
 - Còn lại, đã biết: thanh trên cùng của quản trị tràn ở 360 px với chữ 130% (`UI_BACKLOG`, mọi trang).
 
 ## Chưa làm được / Chủ cần biết
 
 - Chưa thử trên máy chủ thật: pm2, web Next cũ khi quay lại, bản Linux, nginx (kho `/opt/lucyspa-media/returns` không được phục vụ công khai: **hướng dẫn Bước 6 bắt Chủ kiểm bằng lệnh và DỪNG nếu nginx trỏ vào thư mục ảnh**; repo không có cấu hình nginx nên tôi không chứng minh được từ đây).
-- Hai lỗi "Inventory sales job failed" của worker trên dữ liệu xem thử (cả bản cũ lẫn mới, do hai hóa đơn của dữ liệu xem thử) và ba lỗi "Booking notification job failed" ở lần chạy worker cũ đầu tiên: chưa điều tra sâu, không do quay lui.
+- **Lỗi "Inventory sales job failed" của worker trên dữ liệu xem thử, đã tìm ra nguyên nhân:** ràng buộc của Đợt 2 (`lucy_check_invoice_integrity`, thân hàm **giống hệt** ở cơ sở dữ liệu 80 và 89 migration, md5 trùng) đòi `priced_at` của dòng sản phẩm bằng `finalized_at` của hóa đơn; hai hóa đơn của dữ liệu xem thử bị **script dữ liệu thử của tôi lùi `finalized_at`** (để thử hạn trả hàng) mà không lùi `priced_at` (4 trong 39 dòng lệch). Bản mới và bản cũ đều lỗi y hệt vì cùng dữ liệu đó; không phải lỗi của 3a và không xảy ra với hóa đơn tạo bình thường (giá vẫn tra theo `priced_at`, đổi giá sau đó không ảnh hưởng). Ba lỗi "Booking notification job failed" ở lần chạy worker cũ đầu tiên: **không tái hiện ở lần chạy sau, chưa rõ nguyên nhân** (không chứng minh được là do hay không do quay lui; lần chạy trên cơ sở dữ liệu 89 migration không có dữ liệu 3a không có lỗi).
 - **Mục chờ Chủ duyệt:** P14-1 đến P14-16 (design 2.28), P13 đã duyệt, N1-N4, P12 còn lại: xem `PHASE6_OWNER_DECISIONS_VI.md`. Đặt hàng trước (đổi sang hàng chưa có) là mốc 3b.
 - Hướng dẫn deploy từng khối lệnh cho terminal web iNET: `docs/PHASE6_WAVE3A_DEPLOY_CHECKLIST.md` (mã commit điền sau khi Chủ push và CI xanh). Đợt 3a chỉ được deploy khi Chủ tự chạy hướng dẫn.

@@ -5,7 +5,7 @@ Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, t
 **Bản sẽ cài:** commit `<MÃ_COMMIT_MỚI>` (điền sau khi Owner đẩy lên `main` và CI xanh; **chưa có mã, chưa được làm**). Các commit tài liệu đẩy sau đó không được cài và không đổi mã chạy.
 **Bản đang chạy:** `135872558838e00436fa5ce829e70f0517d7be68` (Đợt 2, `1358725`, theo `LUCYSPA_HANDOFF.md`).
 **Cơ sở dữ liệu:** thêm **9 migration** (`20261111000000` đến `20261115000002`): **80 thành 89**. **Quyền: không thêm quyền nào** (vẫn 65). Hai quyền của đợt này, `MANAGE_PRODUCT_RETURNS` (mở hồ sơ trả hàng) và `REFUND_PRODUCTS` (duyệt, hoàn tiền, đổi hàng), **đã có từ Đợt 1 và chưa gán cho ai**; deploy xong vẫn không ai làm được các việc này (trừ tài khoản Chủ, qua mọi kiểm tra quyền).
-**Khác Đợt 2:** Đợt 3a thêm 8 bảng mới (hồ sơ trả hàng và lịch sử, ảnh bằng chứng, phiếu hoàn tiền, sửa mã chuyển khoản, phiếu đổi hàng, hoàn tất đổi, sửa mã, các lần dùng mật khẩu), 4 giá trị enum, và **thay 6 hàm kiểm tra đang chạy** (sổ điểm, chuyển kho, lô, kiểm tra giá bản 3, chặn đảo thanh toán, chặn hoàn). Mọi migration **chỉ thêm hoặc nới, không xóa dữ liệu, không ghi lại dòng cũ**. Bảng thông báo được nới thêm hai loại (hồ sơ trả hàng mới, hoàn tiền); ràng buộc cũ không bị thu hẹp.
+**Khác Đợt 2:** Đợt 3a thêm **9 bảng mới** (hồ sơ trả hàng, lịch sử, ảnh bằng chứng, phiếu hoàn tiền, sửa mã chuyển khoản, phiếu đổi hàng, hoàn tất đổi, sửa mã đổi hàng, các lần dùng mật khẩu), **7 kiểu enum mới** (và thêm giá trị `REFUND_RETURN`, `EXCHANGE_RETURN` vào loại phiếu kho, `REFUND_REVERSAL` vào loại sổ điểm), 21 hàm kiểm tra mới, 28 trigger mới và **thay thân 4 hàm đang chạy** (`lucy_guard_loyalty_ledger` sổ điểm, `lucy_guard_stock_movement` chuyển kho, `lucy_guard_inventory_lot` lô, `lucy_check_invoice_pricing_v3` giá bản 3). Số này đo bằng cách so cơ sở dữ liệu 80 và 89 migration (bảng 128 thành 137, hàm 322 thành 343, trigger 307 thành 335). Mọi migration **chỉ thêm hoặc nới, không xóa dữ liệu, không ghi lại dòng cũ**. Bảng thông báo được nới thêm hai loại (hồ sơ trả hàng mới, hoàn tiền); ràng buộc cũ không bị thu hẹp.
 **Thay đổi chạy:** API, worker và web đều có mã mới. Không có tiến trình pm2 mới; worker xử lý thêm một loại sự kiện (thu hồi điểm khi hoàn tiền) trong vòng cộng điểm có sẵn. Không có thư viện mới (`pnpm install` không tải gì thêm). **Có một thư mục mới trên máy chủ: ảnh bằng chứng trả hàng (riêng tư), Bước 6.**
 **Sau deploy quầy vẫn như cũ:** không ai thấy mục "Trả hàng" ngoài Chủ (quyền chưa gán). Owner tự quyết khi nào gán quyền, và gán cho ai.
 **Thời gian:** khoảng 40 phút (build vài phút, diễn tập vài giây). Website hiện chỉ dùng nội bộ, nên **làm lúc nào cũng được**. Lúc khởi động lại API (vài giây) POS gián đoạn ngắn; nếu có nhân viên đang dùng thì báo trước.
@@ -168,10 +168,13 @@ ps -o user= -p "$(pm2 pid lucyspa-api)"
 mkdir -p /opt/lucyspa-media/returns
 chmod 700 /opt/lucyspa-media/returns
 ls -ld /opt/lucyspa-media /opt/lucyspa-media/returns
-grep -rn "lucyspa-media" /etc/nginx/ 2>/dev/null || echo KHONG_CO_ALIAS_NGINX
+nginx -T > /tmp/nginx-hieu-luc.txt 2>&1; echo "nginx -T exit=$?"
+wc -l /tmp/nginx-hieu-luc.txt
+grep -nE "^[[:space:]]*(root|alias)[[:space:]]" /tmp/nginx-hieu-luc.txt
+grep -c "lucyspa-media" /tmp/nginx-hieu-luc.txt
 ```
 
-**Mong đợi:** dòng `MEDIA_STORAGE_DIR=/opt/lucyspa-media`; tên người dùng chạy API (thường `root`) **trùng** chủ sở hữu hai thư mục ở lệnh `ls -ld`; dòng cuối in đúng `KHONG_CO_ALIAS_NGINX`. **Nếu lệnh `grep` in ra bất kỳ dòng nào (nginx có trỏ vào thư mục ảnh): DỪNG**, ảnh bằng chứng có thể bị lộ; chụp màn hình gửi Claude, chưa mở quyền cho ai. Nếu chủ sở hữu khác người dùng chạy API: `chown` lại cho đúng người dùng đó (hỏi Claude).
+**Mong đợi:** dòng `MEDIA_STORAGE_DIR=/opt/lucyspa-media`; tên người dùng chạy API (thường `root`) **trùng** chủ sở hữu hai thư mục ở lệnh `ls -ld`; `nginx -T exit=0` và `wc -l` lớn hơn vài chục dòng (cấu hình đầy đủ đang chạy); lệnh `grep -nE` liệt kê mọi dòng `root` hoặc `alias` của nginx: **không dòng nào được là `/`, `/opt`, `/opt/` hay bắt đầu bằng `/opt/lucyspa-media`** (các thư mục khác như `/usr/share/nginx/html` hoặc `/var/www/...` là bình thường; không có dòng nào cũng được vì nginx chỉ chuyển tiếp sang web và API); số cuối (`grep -c lucyspa-media`) phải là `0`. **Nếu `nginx -T` báo lỗi hoặc không có lệnh `nginx` (exit khác 0), hoặc có dòng `root`/`alias` trỏ vào `/opt`: DỪNG**, chưa kiểm chứng được là ảnh không bị lộ; chụp màn hình gửi Claude, chưa mở quyền cho ai. (Ảnh nằm trong `returns`, khóa tệp của website luôn bắt đầu bằng năm nên không với tới được thư mục này qua API; nginx là đường duy nhất còn lại.) Nếu chủ sở hữu khác người dùng chạy API: `chown` lại cho đúng người dùng đó (hỏi Claude).
 
 Khởi động lại (API và worker, rồi web), kiểm tra quyền:
 
