@@ -90,6 +90,7 @@ const vi = {
   },
   sides: {
     title: 'Ưu đãi theo từng bên',
+    spaDetail: 'Ưu đãi đã xét cho bên Spa',
     note: 'Spa và Lucy Beauty tính ưu đãi riêng; mỗi bên chỉ dùng một ưu đãi tốt nhất, không cộng dồn.',
     colSide: 'Bên',
     colSubtotal: 'Tạm tính',
@@ -207,6 +208,7 @@ const en: Dictionary = {
   },
   sides: {
     title: 'Discount by side',
+    spaDetail: 'Offers considered for the Spa side',
     note: 'Spa and Lucy Beauty are discounted separately; each side uses its one best offer, never added together.',
     colSide: 'Side',
     colSubtotal: 'Subtotal',

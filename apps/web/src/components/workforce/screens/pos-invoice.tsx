@@ -355,6 +355,9 @@ export function PosInvoiceScreen({ id }: { id: string }) {
     invoice.productLines.length > 0 ||
     (draft && invoice.actions.sellProducts && !comboSale);
   const noLines = productOnly && invoice.productLines.length === 0;
+  // The totals close the last card of the lines: the products when the invoice has any, otherwise the services (a visit invoice with an
+  // empty product card keeps its totals where it always had them).
+  const totalsInProducts = productOnly || invoice.productLines.length > 0;
   const productTarget =
     overlay?.kind === 'product-edit'
       ? invoice.productLines.find((line) => line.id === overlay.lineId)
@@ -494,7 +497,7 @@ export function PosInvoiceScreen({ id }: { id: string }) {
               paging={{ off: 'the lines of one visit' }}
             />
           )}
-          {showProducts ? null : <DescriptionList layout="totals" items={totals} />}
+          {totalsInProducts ? null : <DescriptionList layout="totals" items={totals} />}
         </Card>
       )}
       {showProducts ? (
@@ -504,14 +507,21 @@ export function PosInvoiceScreen({ id }: { id: string }) {
           onAdd={() => setOverlay({ kind: 'product-add' })}
           onEdit={(lineId) => setOverlay({ kind: 'product-edit', lineId })}
           onRemove={removeProduct}
-          footer={<DescriptionList layout="totals" items={totals} />}
+          {...(totalsInProducts
+            ? { footer: <DescriptionList layout="totals" items={totals} /> }
+            : {})}
         />
       ) : null}
 
       <ComboUseCard lines={invoice.lines} />
 
       <SidesCard invoice={invoice} />
-      {productOnly ? null : <DiscountCard invoice={invoice} />}
+      {productOnly ? null : (
+        <DiscountCard
+          invoice={invoice}
+          {...(invoice.discount.sides ? { title: p.sides.spaDetail } : {})}
+        />
+      )}
       <VouchersCard
         invoice={invoice}
         working={!idle}

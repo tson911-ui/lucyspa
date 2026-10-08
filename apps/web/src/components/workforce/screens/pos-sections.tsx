@@ -52,7 +52,7 @@ function usePaging() {
 }
 
 /** The server's benefit evaluation: the winner and every program considered. Nothing here is chosen by the cashier. */
-export function DiscountCard({ invoice }: { invoice: InvoiceResponse }) {
+export function DiscountCard({ invoice, title }: { invoice: InvoiceResponse; title?: string }) {
   const { t, locale } = useWorkforce();
   const paging = usePaging();
   const l = loyaltyDictionary(locale);
@@ -158,7 +158,7 @@ export function DiscountCard({ invoice }: { invoice: InvoiceResponse }) {
 
   return (
     <Card as="section">
-      <CardHeader title={t.pos.discountTitle} description={t.pos.discountNote} />
+      <CardHeader title={title ?? t.pos.discountTitle} description={t.pos.discountNote} />
       {winnerSource === 'MEMBER_TIER' && member ? (
         <Notice tone="success">
           <strong>
