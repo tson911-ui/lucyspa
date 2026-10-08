@@ -86,6 +86,8 @@ export interface ReturnDraft {
   quantity: string;
   seal: boolean;
   notes: string;
+  /** The Owner's written reason for taking a product back after its window (P6-12 follow-up); empty otherwise. */
+  exceptionReason: string;
 }
 
 export const emptyReturnDraft = (): ReturnDraft => ({
@@ -96,11 +98,12 @@ export const emptyReturnDraft = (): ReturnDraft => ({
   quantity: '1',
   seal: false,
   notes: '',
+  exceptionReason: '',
 });
 
 export type DraftIssue = 'required' | 'invalid';
 export type ReturnDraftErrors = Partial<
-  Record<'line' | 'reason' | 'quantity' | 'seal' | 'notes', DraftIssue>
+  Record<'line' | 'reason' | 'quantity' | 'seal' | 'notes' | 'exception', DraftIssue>
 >;
 
 /** Whether a reason is still open for a line (its window has not ended) and a unit is left to return. */
@@ -109,17 +112,36 @@ export const reasonOpen = (
   reason: ProductReturnReasonName,
 ): boolean => line.availableQuantity > 0 && line.reasons[reason].open;
 
+/** Whether the window of a reason is over for a line that still has units to return (only the Owner may go on, with a reason). */
+export const reasonPastWindow = (
+  line: ProductReturnLookupLine,
+  reason: ProductReturnReasonName,
+): boolean => line.availableQuantity > 0 && !line.reasons[reason].open;
+
 const wholeNumber = (text: string): number | null =>
   /^[0-9]{1,7}$/.test(text.trim()) ? Number(text.trim()) : null;
 
+/**
+ * `canException` is true for the Owner only (the context says so): a reason whose window is over can then still be chosen, with a
+ * written reason. Everyone else gets the same refusal as before. The API decides again.
+ */
 export function validateReturnDraft(
   draft: ReturnDraft,
   line: ProductReturnLookupLine | null,
+  canException = false,
 ): ReturnDraftErrors {
   const errors: ReturnDraftErrors = {};
   if (!line) errors.line = 'required';
   if (draft.reason === '') errors.reason = 'required';
-  else if (line && !reasonOpen(line, draft.reason)) errors.reason = 'invalid';
+  else if (line && !reasonOpen(line, draft.reason)) {
+    if (canException && reasonPastWindow(line, draft.reason)) {
+      const reason = draft.exceptionReason.normalize('NFC').trim();
+      if (reason === '') errors.exception = 'required';
+      else if ([...reason].length > RETURN_NOTE_MAX) errors.exception = 'invalid';
+    } else {
+      errors.reason = 'invalid';
+    }
+  }
   const quantity = wholeNumber(draft.quantity);
   if (draft.quantity.trim() === '') errors.quantity = 'required';
   else if (quantity === null || quantity < 1 || (line && quantity > line.availableQuantity)) {
@@ -139,12 +161,22 @@ export function returnOpenRequest(
   line: ProductReturnLookupLine | null,
   branchId: string,
   clientRequestId: string,
+  canException = false,
 ): ProductReturnOpenRequest | null {
-  if (!line || draft.reason === '' || !returnDraftValid(validateReturnDraft(draft, line))) {
+  if (
+    !line ||
+    draft.reason === '' ||
+    !returnDraftValid(validateReturnDraft(draft, line, canException))
+  ) {
     return null;
   }
   const notes = draft.notes.normalize('NFC').trim();
+  const exception =
+    canException && reasonPastWindow(line, draft.reason)
+      ? draft.exceptionReason.normalize('NFC').trim()
+      : null;
   return {
+    ...(exception ? { windowExceptionReason: exception } : {}),
     branchId,
     invoiceLineId: line.lineId,
     reason: draft.reason,
@@ -175,10 +207,13 @@ export function returnProductName(
 
 /** True when a wrong or damaged case still lacks a photo that counts: one present and taken before the window ended. */
 export function needsQualifyingPhoto(
-  c: Pick<ProductReturnCaseResponse, 'reason' | 'status' | 'windowEndsAt' | 'photos'>,
+  c: Pick<ProductReturnCaseResponse, 'reason' | 'status' | 'windowEndsAt' | 'photos'> &
+    Partial<Pick<ProductReturnCaseResponse, 'windowException'>>,
 ): boolean {
   if (c.reason !== 'WRONG_OR_DAMAGED' || c.status !== 'OPEN' || c.windowEndsAt === null)
     return false;
+  // A case the Owner opened after its window accepts any photo that is still present.
+  if (c.windowException) return !c.photos.some((photo) => photo.removedAt === null);
   const end = Date.parse(c.windowEndsAt);
   return !c.photos.some((photo) => photo.removedAt === null && Date.parse(photo.uploadedAt) <= end);
 }

@@ -58,3 +58,13 @@ test('a wrong or damaged product needs a photo still present and taken inside th
   assert.equal(hasQualifyingPhoto('PERSONAL_PREFERENCE', at(168), []), true);
   assert.equal(hasQualifyingPhoto('SKIN_IRRITATION', null, []), true);
 });
+
+test('a case the Owner opened after its window (an exception) accepts any photo that is still present', () => {
+  const end = at(48);
+  const late = { uploadedAt: at(300), removedAt: null };
+  const removed = { uploadedAt: at(300), removedAt: at(301) };
+  assert.equal(hasQualifyingPhoto('WRONG_OR_DAMAGED', end, [late], false), false);
+  assert.equal(hasQualifyingPhoto('WRONG_OR_DAMAGED', end, [late], true), true);
+  assert.equal(hasQualifyingPhoto('WRONG_OR_DAMAGED', end, [], true), false, 'still needs a photo');
+  assert.equal(hasQualifyingPhoto('WRONG_OR_DAMAGED', end, [removed], true), false);
+});

@@ -45,6 +45,7 @@ const OPEN_KEYS = [
   'sealIntact',
   'notes',
   'clientRequestId',
+  'windowExceptionReason',
 ] as const;
 const STATUSES = ['OPEN', 'ACCEPTED', 'DECLINED', 'CANCELLED'] as const;
 const OUTCOMES = ['EXCHANGE', 'REFUND'] as const;
@@ -285,6 +286,9 @@ const caseSelect = {
   notes: true,
   handoverAt: true,
   windowEndsAt: true,
+  windowExceptionReason: true,
+  windowExceptionAt: true,
+  windowExceptionBy: { select: { fullName: true } },
   status: true,
   decidedOutcome: true,
   closedAt: true,
@@ -366,6 +370,16 @@ async function present(context: AdminContext, id: string): Promise<ProductReturn
     notes: row.notes,
     handoverAt: row.handoverAt.toISOString(),
     windowEndsAt: row.windowEndsAt?.toISOString() ?? null,
+    windowException:
+      row.windowExceptionAt === null ||
+      row.windowExceptionReason === null ||
+      row.windowExceptionBy === null
+        ? null
+        : {
+            byName: row.windowExceptionBy.fullName,
+            at: row.windowExceptionAt.toISOString(),
+            reason: row.windowExceptionReason,
+          },
     status: row.status,
     decidedOutcome: row.decidedOutcome,
     closedByName: row.closedBy?.fullName ?? null,
@@ -443,6 +457,11 @@ export async function openCase(
   }
   const sealIntact = typeof sealRaw === 'boolean' ? sealRaw : null;
   const notes = parse.optionalNote(body['notes'], 'notes', RETURN_LIMITS.noteMax);
+  const exceptionReason = parse.optionalNote(
+    body['windowExceptionReason'],
+    'windowExceptionReason',
+    RETURN_LIMITS.noteMax,
+  );
   requireManage(context, branchId);
   const { tx } = context;
   await branchOf(tx, branchId);
@@ -499,7 +518,17 @@ export async function openCase(
     throw new AuthError('RETURN_SEAL_REQUIRED', 'sealIntact');
   }
   const handoverAt = invoice.paidAt;
-  if (!windowStatus(reason, handoverAt, context.now).open) {
+  const windowOpen = windowStatus(reason, handoverAt, context.now).open;
+  // The Owner alone may open a case after its window, with a written reason (P6-12 follow-up, 2026-10-08). The reason is refused when
+  // it is not needed (the window is open) or not allowed (anyone but the Owner), so the record never claims an exception that was not one.
+  if (exceptionReason !== null) {
+    if (!context.actor.owner) throw new AuthError('FORBIDDEN');
+    if (windowOpen) throw new AuthError('VALIDATION_FAILED', 'windowExceptionReason');
+  } else if (!windowOpen) {
+    // The Owner who sent a blank reason is told the reason is what is missing; everyone else is told the window is over.
+    if (context.actor.owner && typeof body['windowExceptionReason'] === 'string') {
+      throw new AuthError('VALIDATION_FAILED', 'windowExceptionReason');
+    }
     throw new AuthError('RETURN_WINDOW_EXPIRED', 'reason');
   }
   const [sequence] = await tx.$queryRaw<
@@ -520,6 +549,12 @@ export async function openCase(
       handoverAt,
       paidSeq: invoice.paidSeq,
       windowEndsAt: windowEndsAt(reason, handoverAt),
+      ...(exceptionReason === null
+        ? {}
+        : {
+            windowExceptionByUserId: context.actor.userId,
+            windowExceptionReason: exceptionReason,
+          }),
       openedByUserId: context.actor.userId,
       clientRequestId,
     },
@@ -528,6 +563,29 @@ export async function openCase(
   await tx.productReturnEvent.create({
     data: { caseId: created.id, kind: 'OPENED', actorUserId: context.actor.userId, note: notes },
   });
+  if (exceptionReason !== null) {
+    await tx.productReturnEvent.create({
+      data: {
+        caseId: created.id,
+        kind: 'WINDOW_EXCEPTION',
+        actorUserId: context.actor.userId,
+        note: exceptionReason,
+      },
+    });
+    await appendAdminAudit(context, {
+      action: 'PRODUCT_RETURN_WINDOW_EXCEPTION',
+      entityType: 'ProductReturnCase',
+      entityId: created.id,
+      branchId,
+      classification: 'FINANCIAL',
+      reason: exceptionReason,
+      after: {
+        code,
+        reason,
+        windowEndsAt: windowEndsAt(reason, handoverAt)?.toISOString() ?? null,
+      },
+    });
+  }
   await appendAdminAudit(context, {
     action: 'PRODUCT_RETURN_OPENED',
     entityType: 'ProductReturnCase',
@@ -594,6 +652,7 @@ interface LockedCase {
   status: ProductReturnStatusName;
   rowVersion: number;
   windowEndsAt: Date | null;
+  windowExceptionAt: Date | null;
   code: string;
 }
 
@@ -627,6 +686,7 @@ async function lockedCase(
       status: true,
       rowVersion: true,
       windowEndsAt: true,
+      windowExceptionAt: true,
       code: true,
     },
   });
@@ -700,7 +760,14 @@ async function close(
       where: { caseId: id },
       select: { uploadedAt: true, removedAt: true },
     });
-    if (!hasQualifyingPhoto(locked.reason, locked.windowEndsAt, photos)) {
+    if (
+      !hasQualifyingPhoto(
+        locked.reason,
+        locked.windowEndsAt,
+        photos,
+        locked.windowExceptionAt !== null,
+      )
+    ) {
       throw new AuthError('RETURN_PHOTO_REQUIRED');
     }
   }

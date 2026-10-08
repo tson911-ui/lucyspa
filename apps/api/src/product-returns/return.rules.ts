@@ -38,14 +38,17 @@ export const RETURN_REASONS = [
 
 /**
  * Whether the photo requirement of WRONG_OR_DAMAGED is met: at least one photo that is still present and was taken (uploaded) inside
- * the 48 hours. Other reasons need no photo to be decided.
+ * the 48 hours. Other reasons need no photo to be decided. A case the Owner opened after its window (an exception) was opened when that
+ * window was already over, so any photo that is still present counts.
  */
 export function hasQualifyingPhoto(
   reason: ProductReturnReasonName,
   windowEnd: Date | null,
   photos: readonly { uploadedAt: Date; removedAt: Date | null }[],
+  windowException = false,
 ): boolean {
   if (reason !== 'WRONG_OR_DAMAGED') return true;
+  if (windowException) return photos.some((photo) => photo.removedAt === null);
   if (windowEnd === null) return false;
   return photos.some(
     (photo) => photo.removedAt === null && photo.uploadedAt.getTime() <= windowEnd.getTime(),

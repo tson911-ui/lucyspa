@@ -182,6 +182,10 @@ test('product return HTTP: guards, exact fields, private photo headers, stable c
     // Good bodies reach the service with exactly the fields sent.
     await request(server).post(`${base}/cases`).set(headers).send(openBody).expect(200);
     assert.deepEqual({ ...(calls.at(-1)![2] as object) }, openBody);
+    // The Owner's exception reason (P6-12 follow-up) reaches the service exactly as sent; the service decides who may use it.
+    const withException = { ...openBody, windowExceptionReason: 'Chủ đồng ý nhận lại' };
+    await request(server).post(`${base}/cases`).set(headers).send(withException).expect(200);
+    assert.deepEqual({ ...(calls.at(-1)![2] as object) }, withException);
     for (const [path, body, name] of [
       [`cases/${id}/notes`, { note: 'Đã gọi khách' }, 'addNote'],
       [`cases/${id}/accept`, { expectedRowVersion: 1, outcome: 'REFUND', note: null }, 'accept'],
@@ -241,6 +245,7 @@ test('product return HTTP: guards, exact fields, private photo headers, stable c
       ['cases', { ...openBody, quantity: 0 }],
       ['cases', { ...openBody, sealIntact: 'yes' }],
       ['cases', { ...openBody, notes: 5 }],
+      ['cases', { ...openBody, windowExceptionReason: 5 }],
       ['cases', { ...openBody, windowEndsAt: '2030-01-01T00:00:00Z' }],
       ['cases', { ...openBody, refundVnd: '1000' }],
       ['cases', { branchId: branch }],

@@ -317,7 +317,8 @@ test(
             await aged(s.invoiceId, '167 hours 59 minutes');
             const inside = await open(clerk, s);
             assert.equal(inside.status, 'OPEN');
-            // One minute past the 168 hours: over, with no override for anyone, the Owner included.
+            // One minute past the 168 hours: over. Without a written reason nobody gets past it, the Owner included (the Owner's
+            // exception, with a reason, is tested in return.exception.integration.test.ts).
             await aged(s.invoiceId, '168 hours 1 minute');
             await fails(() => open(clerk, s), 'RETURN_WINDOW_EXPIRED', 'reason');
             await fails(() => open(owner, s), 'RETURN_WINDOW_EXPIRED', 'reason');

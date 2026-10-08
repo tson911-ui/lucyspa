@@ -285,6 +285,7 @@ const item = (patch: Partial<ProductReturnCaseResponse> = {}): ProductReturnCase
   notes: 'Khách đổi ý',
   handoverAt: '2026-10-08T03:00:00.000Z',
   windowEndsAt: '2026-10-15T03:00:00.000Z',
+  windowException: null,
   status: 'OPEN',
   decidedOutcome: null,
   closedByName: null,
@@ -475,6 +476,82 @@ test('a skin-irritation case shows no window and no diagnosis field', () => {
   assert.ok(markup.includes(text.view.windowNone));
   assert.ok(markup.includes(text.view.sealUnknown));
   assert.ok(!/<label[^>]*>[^<]*chẩn đoán/i.test(markup));
+});
+
+// ------------------------------------------------------------------------- the Owner's exception (P6-12 follow-up, 2026-10-08)
+
+const ownerContext = (): ProductReturnContextResponse => ({ ...context(), owner: true });
+const pastWindow = (reason: 'PERSONAL_PREFERENCE' | 'WRONG_OR_DAMAGED' = 'WRONG_OR_DAMAGED') => ({
+  found: found(),
+  draft: { invoiceCode: 'HD000042', lineId: 'l1', reason } as const,
+});
+
+test('the Owner may choose a reason whose window is over; it asks for a written reason and says why', () => {
+  const markup = render(
+    <ProductReturnForm context={ownerContext()} preset={pastWindow()} />,
+    owner,
+  );
+  const damaged = markup.slice(
+    markup.indexOf(text.reasons.WRONG_OR_DAMAGED) - 400,
+    markup.indexOf(text.reasons.WRONG_OR_DAMAGED),
+  );
+  assert.doesNotMatch(damaged, /disabled/, 'the Owner can choose it');
+  assert.ok(markup.includes('Chủ được duyệt ngoại lệ kèm lý do'));
+  assert.ok(markup.includes(text.form.exceptionBody));
+  assert.ok(markup.includes(text.form.exceptionReason));
+});
+
+test('nobody else sees the exception: the reason stays disabled and no reason is asked for', () => {
+  const markup = render(<ProductReturnForm context={context()} preset={pastWindow()} />, owner);
+  const damaged = markup.slice(
+    markup.indexOf(text.reasons.WRONG_OR_DAMAGED) - 400,
+    markup.indexOf(text.reasons.WRONG_OR_DAMAGED),
+  );
+  assert.match(damaged, /disabled/);
+  assert.ok(!markup.includes(text.form.exceptionReason));
+  assert.ok(!markup.includes(text.form.exceptionBody));
+});
+
+test('the Owner sees no exception field while the reason is still inside its window', () => {
+  const markup = render(
+    <ProductReturnForm context={ownerContext()} preset={pastWindow('PERSONAL_PREFERENCE')} />,
+    owner,
+  );
+  assert.ok(!markup.includes(text.form.exceptionReason));
+});
+
+test('a case opened by the Owner after its window shows who approved it, when and why, and the history says so', () => {
+  const markup = view(
+    item({
+      windowException: {
+        byName: 'Chủ tiệm',
+        at: '2026-10-20T03:00:00.000Z',
+        reason: 'Khách ở xa, về nước muộn',
+      },
+      events: [
+        {
+          id: 'e1',
+          kind: 'OPENED',
+          actorName: 'Chủ tiệm',
+          note: null,
+          photoId: null,
+          occurredAt: '2026-10-20T03:00:00.000Z',
+        },
+        {
+          id: 'e2',
+          kind: 'WINDOW_EXCEPTION',
+          actorName: 'Chủ tiệm',
+          note: 'Khách ở xa, về nước muộn',
+          photoId: null,
+          occurredAt: '2026-10-20T03:00:00.000Z',
+        },
+      ],
+    }),
+  );
+  assert.ok(markup.includes(text.view.fields.exception));
+  assert.ok(markup.includes('Khách ở xa, về nước muộn'));
+  assert.ok(markup.includes(text.events.WINDOW_EXCEPTION));
+  assert.ok(!view(item()).includes(text.view.fields.exception), 'an ordinary case has no such row');
 });
 
 test('the English page says the same things', () => {

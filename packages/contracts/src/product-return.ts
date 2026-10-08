@@ -11,7 +11,14 @@ export type ProductReturnReasonName =
 export type ProductReturnOutcomeName = 'EXCHANGE' | 'REFUND';
 export type ProductReturnStatusName = 'OPEN' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
 export type ProductReturnEventKindName =
-  'OPENED' | 'NOTE_ADDED' | 'PHOTO_ADDED' | 'PHOTO_REMOVED' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
+  | 'OPENED'
+  | 'WINDOW_EXCEPTION'
+  | 'NOTE_ADDED'
+  | 'PHOTO_ADDED'
+  | 'PHOTO_REMOVED'
+  | 'ACCEPTED'
+  | 'DECLINED'
+  | 'CANCELLED';
 export type ProductReturnPhotoVariantName = 'thumb' | 'md' | 'lg';
 
 /** The return windows, in hours from hand-over (T23, OQ-22): 7 days for a personal preference, 48 hours for a wrong or damaged product. */
@@ -150,6 +157,8 @@ export interface ProductReturnCaseResponse {
   notes: string | null;
   handoverAt: string;
   windowEndsAt: string | null;
+  /** Set when the Owner opened the case after its window (P6-12 follow-up, 2026-10-08): who, when and the written reason. */
+  windowException: { byName: string; at: string; reason: string } | null;
   status: ProductReturnStatusName;
   /** The remedy the case was accepted for (set only when ACCEPTED). */
   decidedOutcome: ProductReturnOutcomeName | null;
@@ -188,6 +197,11 @@ export interface ProductReturnOpenRequest {
   notes: string | null;
   /** A UUID made by the screen: a repeat of the same request returns the case it already opened. */
   clientRequestId: string;
+  /**
+   * Only the Owner may open a case whose window is over, and only with this written reason (mandatory, kept on the case, in its history
+   * and in the audit log). Sent when the window is open, or by anyone else, it is refused.
+   */
+  windowExceptionReason?: string | null;
 }
 
 /** POST /api/v1/product-returns/cases/:id/notes */

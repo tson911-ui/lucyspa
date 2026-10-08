@@ -98,3 +98,6 @@ await import('../apps/api/dist/pos/product-counter.integration.test.js');
 await import('../apps/api/dist/pos/stock-sale.integration.test.js');
 await import('../apps/api/dist/pos/stock-sale.race.integration.test.js');
 await import('../apps/api/dist/loyalty/beauty-loyalty.integration.test.js');
+await import('../apps/api/dist/product-returns/return.integration.test.js');
+await import('../apps/api/dist/product-returns/return.exception.integration.test.js');
+await import('../apps/api/dist/product-returns/return.race.integration.test.js');

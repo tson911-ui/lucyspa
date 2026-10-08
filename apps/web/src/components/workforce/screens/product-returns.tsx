@@ -54,6 +54,7 @@ import {
   precheckReturnPhoto,
   presentPhotos,
   reasonOpen,
+  reasonPastWindow,
   removedPhotoCount,
   returnDraftValid,
   returnErrorText,
@@ -410,7 +411,9 @@ export function ProductReturnForm({
   const found = lookup.state === 'found' ? lookup.found : null;
   const line: ProductReturnLookupLine | null =
     found?.lines.find((entry) => entry.lineId === draft.lineId) ?? null;
-  const errors = validateReturnDraft(draft, line);
+  // Only the Owner may take a product back after its window, with a written reason (P6-12 follow-up, 2026-10-08).
+  const canException = context.owner;
+  const errors = validateReturnDraft(draft, line, canException);
 
   async function find(event?: FormEvent) {
     event?.preventDefault();
@@ -449,7 +452,7 @@ export function ProductReturnForm({
     if (pending) return;
     setChecked(true);
     setError(null);
-    const body = returnOpenRequest(draft, line, branchId, attempt.current);
+    const body = returnOpenRequest(draft, line, branchId, attempt.current, canException);
     if (!body) return;
     setPending(true);
     try {
@@ -596,16 +599,17 @@ export function ProductReturnForm({
                     options={RETURN_REASONS.map((reason) => {
                       const status = line.reasons[reason];
                       const closed = !reasonOpen(line, reason);
+                      const owner = canException && reasonPastWindow(line, reason);
                       return {
                         value: reason,
                         label: text.reasons[reason],
                         hint:
                           closed && status.endsAt
-                            ? fill(f.reasonOver, {
+                            ? fill(owner ? f.reasonOverOwner : f.reasonOver, {
                                 time: formatDateTime(status.endsAt, ZONE, locale),
                               })
                             : text.reasonHints[reason],
-                        disabled: closed,
+                        disabled: closed && !owner,
                       };
                     })}
                   />
@@ -613,6 +617,28 @@ export function ProductReturnForm({
                     <Notice tone="error">
                       {errors.reason === 'required' ? f.chooseReason : f.reasonClosed}
                     </Notice>
+                  ) : null}
+                  {draft.reason !== '' && canException && reasonPastWindow(line, draft.reason) ? (
+                    <>
+                      <Notice tone="warning">{f.exceptionBody}</Notice>
+                      <Field
+                        label={f.exceptionReason}
+                        hint={f.exceptionReasonHint}
+                        required
+                        full
+                        error={shown('exception', text.errors.fields.windowExceptionReason)}
+                      >
+                        {(control) => (
+                          <Textarea
+                            {...control}
+                            rows={3}
+                            maxLength={RETURN_NOTE_MAX}
+                            value={draft.exceptionReason}
+                            onChange={(event) => set({ exceptionReason: event.target.value })}
+                          />
+                        )}
+                      </Field>
+                    </>
                   ) : null}
                   <FormGrid cols={2}>
                     <Field label={f.wanted} required>
@@ -778,7 +804,11 @@ export function ProductReturnCaseView({
         {item.status === 'DECLINED' || item.status === 'CANCELLED' ? (
           <Notice tone="info">{v.closedNotice}</Notice>
         ) : null}
-        {needsQualifyingPhoto(item) ? <Notice tone="warning">{v.photoNeeded}</Notice> : null}
+        {needsQualifyingPhoto(item) ? (
+          <Notice tone="warning">
+            {item.windowException ? v.photoNeededException : v.photoNeeded}
+          </Notice>
+        ) : null}
         <Section
           title={v.info}
           actions={
@@ -850,6 +880,24 @@ export function ProductReturnCaseView({
                   ? fill(v.windowEnds, { time: when(item.windowEndsAt) })
                   : v.windowNone,
               },
+              ...(item.windowException
+                ? [
+                    {
+                      label: v.fields.exception,
+                      value: (
+                        <>
+                          <span className="ls-hint">
+                            {fill(v.exceptionBy, {
+                              name: item.windowException.byName,
+                              time: when(item.windowException.at),
+                            })}
+                          </span>
+                          <p>{item.windowException.reason}</p>
+                        </>
+                      ),
+                    },
+                  ]
+                : []),
               { label: v.fields.branch, value: item.branchName },
               {
                 label: v.fields.openedBy,

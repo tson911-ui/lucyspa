@@ -30,6 +30,17 @@ Test cũ chỉ sửa theo hướng thêm (R12): danh sách loại thông báo v�
 - DOM audit (CSDL `lucy_spa_uxaudit_20261001`, 26 trang gốc + 3 trang mới): 3 trang mới 0 phát hiện, không loại nào tăng so với baseline.
 - Chưa sửa được: ở chữ 130% và màn 360 px thanh trên cùng của khu quản trị tràn ngang 392 > 360 (đã ghi ở `docs/UI_BACKLOG.md`, lỗi chung của khung). Ô chọn tròn/vuông của kit là 20 px nhưng cả dòng nhãn là vùng bấm.
 
+## Chủ đã duyệt (2026-10-08) và một thay đổi: ngoại lệ quá hạn của Chủ
+
+Chủ duyệt R1 đến R12; **thay đổi ở R3**: chỉ Chủ được duyệt hồ sơ quá hạn như một ngoại lệ, bắt buộc có lý do bằng chữ, ghi vào lịch sử hồ sơ và nhật ký (nguyên văn ở mục 2.25 của tài liệu thiết kế). Đã làm:
+
+- Chủ mở hồ sơ quá hạn kèm `windowExceptionReason`; nhân viên (kể cả người giữ cả hai quyền) vẫn bị từ chối, Chủ không có lý do cũng bị từ chối, lý do để trống hoặc gửi khi chưa quá hạn bị từ chối (hồ sơ không ghi "ngoại lệ" khi không phải ngoại lệ).
+- Ghi ở ba chỗ: cột trên hồ sơ (ai, lúc nào, lý do), sự kiện lịch sử `WINDOW_EXCEPTION`, dòng nhật ký `PRODUCT_RETURN_WINDOW_EXCEPTION`. Hạn không đổi (`window_ends_at` vẫn là 168 giờ hoặc 48 giờ).
+- Cơ sở dữ liệu giữ chốt: người mở phải là tài khoản kiểu `OWNER`, hạn thực sự đã qua, lý do không trống, và có dòng lịch sử đi kèm khi commit. Migration `20261112000000` (chỉ thêm giá trị enum) và `20261112000001`; `20261111000000` không đụng tới.
+- Hồ sơ "giao nhầm hoặc hỏng" mở theo ngoại lệ chấp nhận với bất kỳ ảnh nào còn trên hồ sơ (vì không thể có ảnh trong hạn 48 giờ đã qua).
+- Màn hình: Chủ chọn được lý do đã quá hạn và phải nhập "Lý do ngoại lệ"; nhân viên thấy lý do bị khóa như cũ; trang hồ sơ hiện ngoại lệ (ai, lúc nào, vì sao).
+- Kiểm thử mới: 5 bài PostgreSQL thật (kể cả các lời từ chối của cơ sở dữ liệu), 1 bài đơn vị cho luật ảnh, 1 bài HTTP cho trường mới, 3 bài logic và 4 bài hiển thị ở web, 5 bài kiểm tĩnh hai migration. Các bài tích hợp của P6-12 trước đây chạy lẻ, nay đã nằm trong `scripts/test-auth-integration.mjs`.
+
 ## Câu hỏi mở
 
-Chờ Chủ trả lời R1 đến R12 (nhất là R1: ai xem ảnh, R2: ai quyết ca kích ứng da, R3: 168 giờ, R8: "Chủ duyệt" nghĩa là Chủ tự xóa).
+Cách hiểu E1 đến E6 (mục 2.25) chờ Chủ xác nhận, nhất là E1 (Chủ tự mở hồ sơ quá hạn, không có bước "nhân viên mở, Chủ duyệt sau") và E5 (ảnh nào cũng được).

@@ -165,7 +165,10 @@ const errors = {
   IMPORT_NOTHING_TO_APPLY: [409, 'No valid row of this file would change anything'],
   // Phase 6 P6-12: product return cases (T23, T35, OQ-22, OQ-79).
   RETURN_NOT_ELIGIBLE: [409, 'This invoice line cannot be returned'],
-  RETURN_WINDOW_EXPIRED: [409, 'The return window for this reason is over'],
+  RETURN_WINDOW_EXPIRED: [
+    409,
+    'The return window for this reason is over; only the Owner may approve an exception, with a written reason',
+  ],
   RETURN_SEAL_REQUIRED: [409, 'A personal-preference return needs the seal intact'],
   RETURN_QUANTITY_EXCEEDED: [409, 'More units than the line has left to return'],
   RETURN_CLOSED: [409, 'The return case is closed'],

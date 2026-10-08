@@ -26,7 +26,17 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsIn, IsInt, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 import type { Request, Response } from 'express';
 import { AuthError } from '../auth/auth.error.js';
 import { sessionCookie } from '../auth/cookies.js';
@@ -66,6 +76,11 @@ class OpenDto implements ProductReturnOpenRequest {
   @MaxLength(4000)
   notes!: string | null;
   @ApiProperty() @IsString() @MaxLength(64) clientRequestId!: string;
+  @ApiProperty({ nullable: true, required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  windowExceptionReason?: string | null;
 }
 
 class NoteDto implements ProductReturnNoteRequest {
@@ -171,7 +186,13 @@ export class ProductReturnController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<ProductReturnCaseResponse> {
-    return this.returns.open(this.session(request), body, this.requestId(response));
+    // An omitted optional field reaches the service as an absent key, not as `undefined`.
+    const { windowExceptionReason, ...rest } = body;
+    return this.returns.open(
+      this.session(request),
+      windowExceptionReason === undefined ? rest : { ...rest, windowExceptionReason },
+      this.requestId(response),
+    );
   }
 
   @Post('cases/:id/notes')

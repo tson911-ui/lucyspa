@@ -523,6 +523,7 @@ model User {
   createdStockReceipts           StockReceipt[]                   @relation("StockReceiptCreator")
   openedProductReturns           ProductReturnCase[]              @relation("ProductReturnOpener")
   closedProductReturns           ProductReturnCase[]              @relation("ProductReturnCloser")
+  windowExceptionReturns         ProductReturnCase[]              @relation("ProductReturnWindowException")
   productReturnEvents            ProductReturnEvent[]             @relation("ProductReturnEventActor")
   uploadedReturnPhotos           ProductReturnPhoto[]             @relation("ProductReturnPhotoUploader")
   removedReturnPhotos            ProductReturnPhoto[]             @relation("ProductReturnPhotoRemover")
@@ -3629,6 +3630,7 @@ enum ProductReturnEventKind {
   ACCEPTED
   DECLINED
   CANCELLED
+  WINDOW_EXCEPTION
 }
 
 model ProductReturnCase {
@@ -3654,6 +3656,11 @@ model ProductReturnCase {
   paidSeq           Int                   @map("paid_seq")
   /// handover + 7 days (PERSONAL_PREFERENCE) or + 48 hours (WRONG_OR_DAMAGED); NULL for SKIN_IRRITATION (case by case).
   windowEndsAt      DateTime?             @map("window_ends_at") @db.Timestamptz(3)
+  /// P6-12 follow-up (Owner, 2026-10-08): only the Owner opens a case after its window, with a written reason (all three set or none).
+  windowExceptionByUserId String?         @map("window_exception_by_user_id") @db.Uuid
+  windowExceptionBy User?                 @relation("ProductReturnWindowException", fields: [windowExceptionByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  windowExceptionReason String?           @map("window_exception_reason")
+  windowExceptionAt DateTime?             @map("window_exception_at") @db.Timestamptz(3)
   status            ProductReturnStatus   @default(OPEN)
   decidedOutcome    ProductReturnOutcome? @map("decided_outcome")
   closedByUserId    String?               @map("closed_by_user_id") @db.Uuid

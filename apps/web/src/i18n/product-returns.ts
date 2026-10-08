@@ -38,6 +38,7 @@ const vi = {
   },
   events: {
     OPENED: 'Mở hồ sơ',
+    WINDOW_EXCEPTION: 'Chủ duyệt ngoại lệ quá hạn',
     NOTE_ADDED: 'Ghi chú',
     PHOTO_ADDED: 'Thêm ảnh',
     PHOTO_REMOVED: 'Xóa ảnh theo yêu cầu của khách',
@@ -86,6 +87,12 @@ const vi = {
     detailsTitle: 'Thông tin trả hàng',
     reason: 'Lý do',
     reasonOver: 'Đã hết hạn lúc {time}',
+    reasonOverOwner: 'Đã hết hạn lúc {time}. Chủ được duyệt ngoại lệ kèm lý do.',
+    exceptionTitle: 'Ngoại lệ quá hạn',
+    exceptionBody:
+      'Hồ sơ này đã quá hạn nhận trả hàng. Chỉ Chủ được duyệt ngoại lệ, và phải ghi lý do. Lý do được lưu vào hồ sơ, lịch sử và nhật ký.',
+    exceptionReason: 'Lý do ngoại lệ',
+    exceptionReasonHint: 'Ví dụ: vì sao Chủ đồng ý nhận lại sau hạn.',
     wanted: 'Khách muốn',
     quantity: 'Số lượng trả',
     seal: 'Hàng còn nguyên niêm phong, tem và bao bì',
@@ -117,6 +124,7 @@ const vi = {
       seal: 'Niêm phong',
       handover: 'Giao lúc',
       window: 'Hạn tiếp nhận',
+      exception: 'Ngoại lệ quá hạn',
       branch: 'Chi nhánh',
       openedBy: 'Mở bởi',
       closedBy: 'Xử lý bởi',
@@ -130,6 +138,7 @@ const vi = {
     guest: 'Khách vãng lai',
     windowNone: 'Không giới hạn, xét từng trường hợp',
     windowEnds: 'Đến {time}',
+    exceptionBy: 'Chủ duyệt: {name} · {time}',
     accept: 'Chấp nhận',
     decline: 'Từ chối',
     cancel: 'Hủy hồ sơ',
@@ -146,6 +155,8 @@ const vi = {
     photoLimit: 'Mỗi hồ sơ có tối đa 8 ảnh.',
     photoNeeded:
       'Cần ít nhất một ảnh chụp trong 48 giờ kể từ lúc giao thì mới chấp nhận được hồ sơ này.',
+    photoNeededException:
+      'Cần ít nhất một ảnh thì mới chấp nhận được hồ sơ này. Hồ sơ đã được Chủ duyệt ngoại lệ quá hạn nên ảnh chụp lúc nào cũng được.',
     privateNote:
       'Ảnh chỉ hiện cho người xử lý trả hàng và hoàn tiền, không có đường dẫn công khai.',
     removePhoto: 'Xóa ảnh',
@@ -183,7 +194,8 @@ const vi = {
   errors: {
     RETURN_NOT_ELIGIBLE:
       'Dòng hàng này chưa trả được: hóa đơn chưa thanh toán hoặc không phải sản phẩm bán tại quầy.',
-    RETURN_WINDOW_EXPIRED: 'Đã quá hạn nhận trả hàng với lý do này. Không có ngoại lệ.',
+    RETURN_WINDOW_EXPIRED:
+      'Đã quá hạn nhận trả hàng với lý do này. Chỉ Chủ được duyệt ngoại lệ, kèm lý do.',
     RETURN_SEAL_REQUIRED: 'Khách đổi ý chỉ được nhận khi hàng còn nguyên niêm phong.',
     RETURN_QUANTITY_EXCEEDED: 'Số lượng trả nhiều hơn số còn trả được của dòng hàng này.',
     RETURN_CLOSED: 'Hồ sơ này đã đóng.',
@@ -204,6 +216,7 @@ const vi = {
       notes: 'Ghi chú không hợp lệ hoặc quá dài.',
       note: 'Nhập nội dung (tối đa 1000 ký tự).',
       invoiceCode: 'Nhập mã hóa đơn.',
+      windowExceptionReason: 'Nhập lý do ngoại lệ, và chỉ khi hồ sơ đã quá hạn.',
       sealIntact: 'Hãy xác nhận hàng còn nguyên niêm phong.',
       outcome: 'Chọn cách xử lý.',
       file: 'Chọn một ảnh.',
@@ -246,6 +259,7 @@ const en: Dictionary = {
   },
   events: {
     OPENED: 'Case opened',
+    WINDOW_EXCEPTION: 'Owner approved an exception after the window',
     NOTE_ADDED: 'Note',
     PHOTO_ADDED: 'Photo added',
     PHOTO_REMOVED: 'Photo removed at the customer’s request',
@@ -295,6 +309,13 @@ const en: Dictionary = {
     detailsTitle: 'Return details',
     reason: 'Reason',
     reasonOver: 'Closed on {time}',
+    reasonOverOwner: 'Closed on {time}. The Owner may approve an exception with a reason.',
+    exceptionTitle: 'Exception after the window',
+    exceptionBody:
+      'The return window for this case is over. Only the Owner may approve an exception, with a written reason. The reason is kept on the case, in its history and in the audit log.',
+    exceptionReason: 'Reason for the exception',
+    exceptionReasonHint:
+      'For example, why the Owner agrees to take the product back after the window.',
     wanted: 'Customer wants',
     quantity: 'Quantity returned',
     seal: 'The seal, tags and packaging are intact',
@@ -326,6 +347,7 @@ const en: Dictionary = {
       seal: 'Seal',
       handover: 'Handed over',
       window: 'Accepted until',
+      exception: 'Exception after the window',
       branch: 'Branch',
       openedBy: 'Opened by',
       closedBy: 'Handled by',
@@ -339,6 +361,7 @@ const en: Dictionary = {
     guest: 'Guest customer',
     windowNone: 'No limit, decided case by case',
     windowEnds: 'Until {time}',
+    exceptionBy: 'Approved by the Owner: {name} · {time}',
     accept: 'Accept',
     decline: 'Decline',
     cancel: 'Cancel case',
@@ -355,6 +378,8 @@ const en: Dictionary = {
     photoLimit: 'A case holds at most 8 photos.',
     photoNeeded:
       'At least one photo taken within 48 hours of hand-over is needed before this case can be accepted.',
+    photoNeededException:
+      'At least one photo is needed before this case can be accepted. The Owner approved it as an exception after the window, so the photo may be taken at any time.',
     privateNote:
       'Photos are shown only to people who handle returns and refunds. They have no public link.',
     removePhoto: 'Remove photo',
@@ -394,7 +419,8 @@ const en: Dictionary = {
   errors: {
     RETURN_NOT_ELIGIBLE:
       'This line cannot be returned: the invoice is not paid, or it is not a product sold at the counter.',
-    RETURN_WINDOW_EXPIRED: 'The return window for this reason is over. There is no exception.',
+    RETURN_WINDOW_EXPIRED:
+      'The return window for this reason is over. Only the Owner may approve an exception, with a reason.',
     RETURN_SEAL_REQUIRED: 'A change of mind is accepted only when the seal is intact.',
     RETURN_QUANTITY_EXCEEDED: 'More units than this line has left to return.',
     RETURN_CLOSED: 'This case is closed.',
@@ -415,6 +441,8 @@ const en: Dictionary = {
       notes: 'The notes are invalid or too long.',
       note: 'Enter the text (1000 characters at most).',
       invoiceCode: 'Enter the invoice code.',
+      windowExceptionReason:
+        'Enter the reason for the exception, and only when the case is past its window.',
       sealIntact: 'Confirm the seal is intact.',
       outcome: 'Choose the remedy.',
       file: 'Choose an image.',

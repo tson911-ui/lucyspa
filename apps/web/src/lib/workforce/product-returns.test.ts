@@ -18,6 +18,7 @@ import {
   precheckReturnPhoto,
   presentPhotos,
   reasonOpen,
+  reasonPastWindow,
   removedPhotoCount,
   returnDraftValid,
   returnErrorText,
@@ -333,6 +334,60 @@ test('both languages say the same things, and a spa never "khám"', () => {
   // A skin irritation is noted and photographed, never diagnosed (PRD 28.3).
   assert.match(vi.reasonHints.SKIN_IRRITATION, /không chẩn đoán/);
   assert.match(vi.view.acceptBody, /chưa hoàn tiền và chưa đổi hàng/);
+});
+
+test('the Owner may go past a closed window with a written reason; nobody else can, and the reason is sent only then', () => {
+  const past = line({ reasons: { ...line().reasons, PERSONAL_PREFERENCE: closed } });
+  const text = (patch: Partial<ReturnDraft> = {}) =>
+    draft({ exceptionReason: 'Chủ đồng ý', ...patch });
+  // Everyone else: the closed reason is refused, whatever is typed.
+  assert.equal(validateReturnDraft(text(), past).reason, 'invalid');
+  assert.equal(returnOpenRequest(text(), past, 'b', 'r'), null);
+  // The Owner: the reason needs words, not blanks, and not more than 1000 characters.
+  assert.deepEqual(validateReturnDraft(text(), past, true), {});
+  assert.equal(
+    validateReturnDraft(text({ exceptionReason: '   ' }), past, true).exception,
+    'required',
+  );
+  assert.equal(
+    validateReturnDraft(text({ exceptionReason: 'x'.repeat(1001) }), past, true).exception,
+    'invalid',
+  );
+  assert.equal(validateReturnDraft(text(), past, true).reason, undefined);
+  // The Owner still cannot return units that are gone.
+  assert.equal(validateReturnDraft(text(), line({ availableQuantity: 0 }), true).reason, 'invalid');
+  const request = returnOpenRequest(
+    text({ exceptionReason: '  Chủ đồng ý  ' }),
+    past,
+    'b',
+    'r',
+    true,
+  );
+  assert.equal(request?.windowExceptionReason, 'Chủ đồng ý');
+  // Inside the window the reason is never sent, even if the Owner typed one earlier.
+  const inside = returnOpenRequest(text(), line(), 'b', 'r', true);
+  assert.ok(inside);
+  assert.equal('windowExceptionReason' in inside, false);
+  assert.equal(reasonPastWindow(past, 'PERSONAL_PREFERENCE'), true);
+  assert.equal(reasonPastWindow(line(), 'PERSONAL_PREFERENCE'), false);
+  assert.equal(reasonPastWindow(line({ availableQuantity: 0 }), 'PERSONAL_PREFERENCE'), false);
+});
+
+test('an exception case asks for any photo that is still present, not one taken inside the window', () => {
+  const exception = { byName: 'Chủ', at: '2026-10-20T03:00:00.000Z', reason: 'Khách ở xa' };
+  const late = photo({ uploadedAt: '2026-10-20T04:00:00.000Z' });
+  assert.equal(needsQualifyingPhoto(caseOf({ photos: [late] })), true);
+  assert.equal(needsQualifyingPhoto(caseOf({ photos: [late], windowException: exception })), false);
+  assert.equal(needsQualifyingPhoto(caseOf({ windowException: exception })), true);
+  assert.equal(
+    needsQualifyingPhoto(
+      caseOf({
+        photos: [photo({ removedAt: '2026-10-20T05:00:00.000Z' })],
+        windowException: exception,
+      }),
+    ),
+    true,
+  );
 });
 
 test('the Returns page is offered to people who handle returns or refunds at a branch, and to nobody else', () => {
