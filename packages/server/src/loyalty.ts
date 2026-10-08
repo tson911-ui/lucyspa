@@ -263,6 +263,12 @@ interface LockedInvoice {
    * exactly the total when there is no product line, as before.
    */
   spa_net_vnd: bigint;
+  /**
+   * What the Beauty wallet earns on (Phase 6 P6-11, T2, OQ-33, OQ-41) = the Beauty SIDE's net amount: the sum of the Beauty line
+   * allocations of a version 3 invoice, i.e. the product amount after its own discount. The shipping fee is on no line and in no
+   * allocation, so it never earns; an invoice below version 3 has no Beauty side and earns nothing here.
+   */
+  beauty_net_vnd: bigint;
   paid_at: Date | null;
   branch_id: string;
   /** Null for a combo sale (no visit). */
@@ -281,6 +287,9 @@ async function lockInvoiceShared(
                SELECT sum(a.net_vnd) FROM invoice_line_allocations a WHERE a.invoice_id = i.id AND a.side = 'SPA'), 0)
              ELSE i.total_vnd - i.shipping_fee_vnd - COALESCE((
                SELECT sum(l.gross_vnd) FROM invoice_lines l WHERE l.invoice_id = i.id AND l.kind = 'PRODUCT'), 0) END)::bigint AS spa_net_vnd,
+           (CASE WHEN i.calculation_version >= 3 THEN COALESCE((
+               SELECT sum(a.net_vnd) FROM invoice_line_allocations a WHERE a.invoice_id = i.id AND a.side = 'BEAUTY'), 0)
+             ELSE 0 END)::bigint AS beauty_net_vnd,
            i.paid_at, i.branch_id,
            i.visit_id, i.kind::text AS kind, i.cancelled_by_user_id
     FROM invoices i WHERE i.id = ${invoiceId}::uuid FOR SHARE`;
@@ -607,6 +616,7 @@ async function paid(tx: Prisma.TransactionClient, event: Event): Promise<Loyalty
       : [];
   let outcome: LoyaltyEventOutcome;
   let points = 0;
+  let beautyPoints = 0;
   if (invoice.payer_user_id === null) {
     outcome = 'SKIPPED_GUEST';
   } else if (!live) {
@@ -619,8 +629,10 @@ async function paid(tx: Prisma.TransactionClient, event: Event): Promise<Loyalty
     if (payer?.kind !== 'CUSTOMER') {
       outcome = 'SKIPPED_NOT_MEMBER';
     } else {
+      // Each wallet rounds on its own side's net (Q2): the Spa side and the Beauty side never mix.
       points = loyaltyPointsForPaidVnd(invoice.spa_net_vnd);
-      outcome = points === 0 ? 'NOOP' : 'APPLIED';
+      beautyPoints = loyaltyPointsForPaidVnd(invoice.beauty_net_vnd);
+      outcome = points + beautyPoints === 0 ? 'NOOP' : 'APPLIED';
     }
   }
   if (live) {
@@ -630,21 +642,29 @@ async function paid(tx: Prisma.TransactionClient, event: Event): Promise<Loyalty
         { userId: award.referrerUserId, wallet: 'BEAUTY' as const },
       ]),
       ...(points > 0 ? [{ userId: invoice.payer_user_id!, wallet: 'SPA' as const }] : []),
+      ...(beautyPoints > 0 ? [{ userId: invoice.payer_user_id!, wallet: 'BEAUTY' as const }] : []),
     ]);
   }
-  if (points > 0) {
+  // One earn entry for each wallet that earns, once per paid episode (the unique key `{WALLET}_EARN:{invoice}:{paid_seq}`).
+  let earnWritten = false;
+  for (const [wallet, amount] of [
+    ['SPA', points],
+    ['BEAUTY', beautyPoints],
+  ] as const) {
+    if (amount === 0) continue;
     const result = await appendLedgerEntry(tx, {
       userId: invoice.payer_user_id!,
-      wallet: 'SPA',
+      wallet,
       kind: 'EARN',
-      points,
-      idempotencyKey: earnKey('SPA', invoiceId, paidSeq as number),
+      points: amount,
+      idempotencyKey: earnKey(wallet, invoiceId, paidSeq as number),
       invoiceId,
       paidSeq: paidSeq as number,
       branchId: invoice.branch_id,
     });
-    outcome = result.created ? 'APPLIED' : 'NOOP';
+    earnWritten ||= result.created;
   }
+  if (points + beautyPoints > 0) outcome = earnWritten ? 'APPLIED' : 'NOOP';
   const rewarded = await grantReferralAwards(tx, invoice, paidSeq as number, awards);
   // The combo of a paid combo sale is issued whatever the earn outcome was (0 points, a replay): its own unique key guards it.
   const issued =

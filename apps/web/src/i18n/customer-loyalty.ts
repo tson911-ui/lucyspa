@@ -19,8 +19,6 @@ const vi = {
   points: {
     memberDiscount: 'Ưu đãi hội viên',
     noDiscount: 'Chưa có',
-    // Lucy Beauty sells no products yet: no % is promised. Phase 6 (products) must replace this with the real tier % (design 15).
-    beautyDiscountPending: 'Áp dụng khi Lucy Beauty mở bán',
     tier: 'Hạng',
     balance: 'Số điểm',
     toGo: 'Còn {n} điểm để lên hạng {tier}',
@@ -136,7 +134,6 @@ const en: Dictionary = {
   points: {
     memberDiscount: 'Member discount',
     noDiscount: 'None yet',
-    beautyDiscountPending: 'Applies when Lucy Beauty opens',
     tier: 'Tier',
     balance: 'Points',
     toGo: '{n} points to reach {tier}',

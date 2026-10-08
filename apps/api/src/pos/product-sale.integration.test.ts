@@ -742,7 +742,7 @@ test(
       );
 
       await suite.test(
-        'loyalty: the Spa wallet earns on the SPA side only; a product-only sale earns nothing (no Beauty points before P6-11)',
+        'loyalty: the Spa wallet earns on the SPA side only and the Beauty wallet on the product side only (P6-11)',
         async () => {
           await k.receive(v50.id, 20);
           await k.receive(v100.id, 20);
@@ -767,26 +767,36 @@ test(
             }
             return outcomes;
           };
-          const earned = async (invoiceId: string) =>
+          const earned = async (invoiceId: string, wallet: 'SPA' | 'BEAUTY') =>
             (
               await tx.loyaltyLedgerEntry.aggregate({
-                where: { invoiceId, kind: 'EARN' },
+                where: { invoiceId, kind: 'EARN', wallet },
                 _sum: { points: true },
               })
             )._sum.points ?? 0;
-          for (const [draft, expectedPoints] of [
-            [spaDraft, 200],
-            [mixedDraft, 200],
-            [productOnly, 0],
+          // A member without points has no tier discount, so each side is paid its gross: Spa 200,000, products 500,000 (the 100 ml cream
+          // was repriced to 500,000 by the price tests above).
+          for (const [draft, spaPoints, beautyPoints] of [
+            [spaDraft, 200, 0],
+            [mixedDraft, 200, 500],
+            // By now the member holds 500 Beauty points (Silver, 3%): 500,000 less 15,000 = 485,000.
+            [productOnly, 0, 485],
           ] as const) {
             const done = await k.finalize(draft);
             await k.pay(done.id, done.totalVnd);
             await consume(done.id);
-            assert.equal(await earned(done.id), expectedPoints, `points of ${done.kind}`);
+            assert.equal(await earned(done.id, 'SPA'), spaPoints, `Spa points of ${done.kind}`);
+            assert.equal(
+              await earned(done.id, 'BEAUTY'),
+              beautyPoints,
+              `Beauty points of ${done.kind}`,
+            );
           }
-          // The product-only sale left no ledger entry at all, and no Beauty wallet.
+          // The service-only visit invoice has no Beauty entry at all.
           assert.equal(
-            await tx.loyaltyLedgerEntry.count({ where: { invoiceId: productOnly.id } }),
+            await tx.loyaltyLedgerEntry.count({
+              where: { invoiceId: spaDraft.id, wallet: 'BEAUTY' },
+            }),
             0,
           );
           await k.reconcile();

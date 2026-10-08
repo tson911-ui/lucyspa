@@ -98,10 +98,10 @@ export function CustomerLoyaltyScreen() {
 }
 
 /**
- * One wallet: points, tier, the distance to the next tier and the Member Discount row; both cards carry the same rows. The
- * Beauty row is a notice until Phase 6 (products) gives it a real tier % (design 15).
+ * One wallet: points, tier, the distance to the next tier and the Member Discount row; both cards carry the same rows, each with
+ * the real tier % of its own wallet (the Beauty wallet since Phase 6 P6-11: the server answers each wallet's own tier).
  */
-function WalletCard({ wallet }: { wallet: LoyaltyWalletResponse }) {
+export function WalletCard({ wallet }: { wallet: LoyaltyWalletResponse }) {
   const { locale } = useCustomer();
   const text = customerLoyaltyDictionary(locale);
   const l = loyaltyDictionary(locale);
@@ -130,11 +130,9 @@ function WalletCard({ wallet }: { wallet: LoyaltyWalletResponse }) {
             {
               label: text.points.memberDiscount,
               value:
-                wallet.wallet === 'BEAUTY'
-                  ? text.points.beautyDiscountPending
-                  : wallet.memberDiscountBp > 0
-                    ? `${wallet.memberDiscountBp / 100}%`
-                    : text.points.noDiscount,
+                wallet.memberDiscountBp > 0
+                  ? `${wallet.memberDiscountBp / 100}%`
+                  : text.points.noDiscount,
             },
           ]}
         />

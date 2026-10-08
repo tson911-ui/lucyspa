@@ -6,7 +6,13 @@ import { loadEnvFile } from 'node:process';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createDatabaseClient, syncPermissionCatalog, type Prisma } from '@lucy-spa/database';
-import { appendLedgerEntry, parseApiEnvironment } from '@lucy-spa/server';
+import {
+  appendLedgerEntry,
+  LOYALTY_CONSUMER,
+  LOYALTY_EVENT_TYPES,
+  parseApiEnvironment,
+  processLoyaltyEvent,
+} from '@lucy-spa/server';
 import { AuthError } from '../auth/auth.error.js';
 import { takeSharedAuthGraphLock } from '../auth/auth-store.js';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
@@ -790,6 +796,158 @@ test(
             assert.equal(sum('BEAUTY'), 97_000n);
             assert.equal(cumulativeShare(193_000n, 96_000n, 193_000n), 96_000n);
           }
+          await audit();
+        },
+      );
+
+      // ---------------------------------------------------------------------- P6-11: the Beauty wallet earns
+      /** One `loyalty` event in its own committed transaction, as the worker runs it (the graph lock first, then the latch). */
+      const loyaltyWorker = (eventId: string) =>
+        database.$transaction(
+          async (tx) => {
+            await takeSharedAuthGraphLock(tx);
+            if (meet) await meet();
+            return processLoyaltyEvent(tx, eventId);
+          },
+          { timeout: 30_000, maxWait: 10_000 },
+        );
+      const loyaltyEvents = (invoiceId: string) =>
+        database.outboxEvent.findMany({
+          where: {
+            aggregateType: 'Invoice',
+            aggregateId: invoiceId,
+            eventType: { in: LOYALTY_EVENT_TYPES },
+            consumptions: { none: { consumer: LOYALTY_CONSUMER } },
+          },
+          orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
+          select: { id: true, eventType: true },
+        });
+      /** The worker catching up on everything pending for the invoice, oldest first. */
+      const drainLoyalty = async (invoiceId: string) => {
+        for (const event of await loyaltyEvents(invoiceId)) await loyaltyWorker(event.id);
+      };
+      const settledValue = (result: PromiseSettledResult<unknown>) =>
+        result.status === 'fulfilled' ? String(result.value) : outcome(result);
+      const ledger = (invoiceId: string, wallet: 'SPA' | 'BEAUTY') =>
+        database.loyaltyLedgerEntry.findMany({
+          where: { invoiceId, wallet },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        });
+      const balanceOf = async (userId: string, wallet: 'SPA' | 'BEAUTY') =>
+        (
+          await database.loyaltyWalletAccount.findUniqueOrThrow({
+            where: { userId_wallet: { userId, wallet } },
+          })
+        ).balancePoints;
+      /** Each wallet's balance equals the sum of its entries (Owner's reconciliation rule), for every race member. */
+      const reconcileWallets = async () => {
+        for (const wallet of await database.loyaltyWalletAccount.findMany({
+          where: { userId: { in: userIds } },
+        })) {
+          const sum = await database.loyaltyLedgerEntry.aggregate({
+            where: { userId: wallet.userId, wallet: wallet.wallet },
+            _sum: { points: true },
+          });
+          assert.equal(wallet.balancePoints, sum._sum.points ?? 0, `${wallet.wallet} balance`);
+        }
+      };
+
+      await suite.test(
+        'two workers claim the same paid event of a mixed invoice at once: one earns in both wallets, the other claims nothing',
+        async () => {
+          for (let round = 0; round < 6; round += 1) {
+            const v = await variant(100_000, 4);
+            const payer = await member(1000, 500);
+            const done = await finalize(a, await mixedDraft([v], payer));
+            await pay(a, done.id, 193_000);
+            const [event] = await loyaltyEvents(done.id);
+            assert.equal(event!.eventType, 'INVOICE_PAID');
+            const results = await race(
+              () => loyaltyWorker(event!.id),
+              () => loyaltyWorker(event!.id),
+            );
+            assert.deepEqual(
+              results.map(settledValue).sort(),
+              ['APPLIED', 'NOT_CLAIMED'],
+              `round ${round}`,
+            );
+            assert.deepEqual(
+              (await ledger(done.id, 'SPA')).map((e) => [e.points, e.idempotencyKey]),
+              [[96, `SPA_EARN:${done.id}:1`]],
+            );
+            assert.deepEqual(
+              (await ledger(done.id, 'BEAUTY')).map((e) => [e.points, e.idempotencyKey]),
+              [[97, `BEAUTY_EARN:${done.id}:1`]],
+            );
+            assert.equal(await balanceOf(payer, 'SPA'), 1096);
+            assert.equal(await balanceOf(payer, 'BEAUTY'), 597);
+          }
+          await reconcileWallets();
+          await audit();
+        },
+      );
+
+      await suite.test(
+        'the paid event racing the reversal of the payment: the points are earned and taken back, or never earned; never earned without being taken back',
+        async () => {
+          for (let round = 0; round < 6; round += 1) {
+            const v = await variant(100_000, 4);
+            const payer = await member(1000, 500);
+            const done = await finalize(a, await mixedDraft([v], payer));
+            const paid = await pay(a, done.id, 193_000);
+            const [event] = await loyaltyEvents(done.id);
+            const results = await race(
+              () => loyaltyWorker(event!.id),
+              () =>
+                invoices.reversePayment(boss.token, done.id, paid.payment.id, {
+                  reason: 'Nhập nhầm',
+                }),
+            );
+            assert.equal(outcome(results[1]!), 'OK', `round ${round}`);
+            assert.ok(
+              ['APPLIED', 'SKIPPED_STALE'].includes(settledValue(results[0]!)),
+              settledValue(results[0]!),
+            );
+            await drainLoyalty(done.id);
+            for (const wallet of ['SPA', 'BEAUTY'] as const) {
+              const entries = await ledger(done.id, wallet);
+              const net = entries.reduce((sum, entry) => sum + entry.points, 0);
+              assert.equal(net, 0, `${wallet} nets to zero after the reversal`);
+              assert.ok([0, 2].includes(entries.length), `${wallet}: no earn without its reversal`);
+            }
+            assert.equal(await balanceOf(payer, 'SPA'), 1000);
+            assert.equal(await balanceOf(payer, 'BEAUTY'), 500);
+          }
+          await reconcileWallets();
+          await audit();
+        },
+      );
+
+      await suite.test(
+        'the Beauty earn racing a manual adjustment of the same wallet: both apply, whichever comes first',
+        async () => {
+          for (let round = 0; round < 6; round += 1) {
+            const v = await variant(100_000, 4);
+            const payer = await member(1000, 500);
+            const done = await finalize(a, await mixedDraft([v], payer));
+            await pay(a, done.id, 193_000);
+            const [event] = await loyaltyEvents(done.id);
+            const results = await race(
+              () => loyaltyWorker(event!.id),
+              () =>
+                loyaltyService.adjust(adjuster.token, payer, {
+                  wallet: 'BEAUTY',
+                  points: 200,
+                  reason: 'Race: cộng điểm khi tích điểm',
+                  clientRequestId: randomUUID(),
+                }),
+            );
+            assert.equal(settledValue(results[0]!), 'APPLIED', `round ${round}`);
+            assert.equal(outcome(results[1]!), 'OK');
+            assert.equal(await balanceOf(payer, 'BEAUTY'), 500 + 97 + 200);
+            assert.equal(await balanceOf(payer, 'SPA'), 1096);
+          }
+          await reconcileWallets();
           await audit();
         },
       );

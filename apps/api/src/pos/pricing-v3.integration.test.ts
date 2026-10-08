@@ -312,10 +312,10 @@ test(
               ['BEAUTY', 300_000n - paidSpa],
             ],
           );
-          // Points follow the side net per wallet: Spa 288; the Beauty wallet earns nothing yet (P6-11).
+          // Points follow the side net per wallet: Spa 288 and, since P6-11, Beauty 194 (the product amount after its discount).
           await consume(done.id);
           assert.equal(await earned(done.id, 'SPA'), 288);
-          assert.equal(await earned(done.id, 'BEAUTY'), 0);
+          assert.equal(await earned(done.id, 'BEAUTY'), 194);
           // The customer sees the product line and the invoice total.
           const view = await customerInvoiceDetail(tx, payer.id, done.id);
           assert.equal(view.totalVnd, '482000');
