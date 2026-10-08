@@ -32,6 +32,7 @@ export function customerKindOf(kind: LoyaltyLedgerKindName): CustomerLedgerKind 
     case 'EARN':
       return 'EARNED';
     case 'EARN_REVERSAL':
+    case 'REFUND_REVERSAL':
       return 'TAKEN_BACK';
     case 'REFERRAL_AWARD':
       return 'REFERRAL';

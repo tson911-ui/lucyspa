@@ -49,6 +49,7 @@ model Branch {
   productImportJobs       ProductImportJob[]           @relation("ImportJobBranch")
   stockReceipts           StockReceipt[]               @relation("StockReceiptBranch")
   productReturnCases      ProductReturnCase[]          @relation("ProductReturnBranch")
+  productRefunds          ProductRefund[]              @relation("ProductRefundBranch")
   inventoryLots           InventoryLot[]               @relation("InventoryLotBranch")
   stockLevels             StockLevel[]                 @relation("StockLevelBranch")
   inventoryLowStockAlerts InventoryLowStockAlert[]     @relation("LowStockAlertBranch")
@@ -524,6 +525,8 @@ model User {
   openedProductReturns           ProductReturnCase[]              @relation("ProductReturnOpener")
   closedProductReturns           ProductReturnCase[]              @relation("ProductReturnCloser")
   windowExceptionReturns         ProductReturnCase[]              @relation("ProductReturnWindowException")
+  productRefundsMade             ProductRefund[]                  @relation("ProductRefundActor")
+  productRefundCorrections       ProductRefundCorrection[]        @relation("ProductRefundCorrectionActor")
   productReturnEvents            ProductReturnEvent[]             @relation("ProductReturnEventActor")
   uploadedReturnPhotos           ProductReturnPhoto[]             @relation("ProductReturnPhotoUploader")
   removedReturnPhotos            ProductReturnPhoto[]             @relation("ProductReturnPhotoRemover")
@@ -1713,6 +1716,7 @@ model Invoice {
   beautySnapshot       InvoiceBeautySnapshot?
   paymentSideAllocations PaymentSideAllocation[]
   productReturnCases   ProductReturnCase[]
+  productRefunds       ProductRefund[]
 
   @@index([branchId, businessDate, status], map: "invoices_branch_date_idx")
   @@index([payerUserId, createdAt], map: "invoices_payer_idx")
@@ -1752,6 +1756,7 @@ model InvoiceLine {
   comboUsages      InvoiceLineComboUsage[]
   rewardRedemption RewardRedemption?        @relation("RewardRedemptionLine")
   productReturnCases ProductReturnCase[]    @relation("ProductReturnLine")
+  productRefunds     ProductRefund[]        @relation("ProductRefundLine")
 
   @@unique([invoiceId, sequence], map: "invoice_lines_invoice_sequence_key")
   @@unique([invoiceId, id], map: "invoice_lines_invoice_id_id_key")
@@ -1843,6 +1848,7 @@ model InvoiceLineProduct {
   pricedAt       DateTime          @map("priced_at") @db.Timestamptz(3)
   createdAt      DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   returnCases    ProductReturnCase[] @relation("ProductReturnProductLine")
+  refunds        ProductRefund[]     @relation("ProductRefundProductLine")
 
   @@index([invoiceId], map: "invoice_line_products_invoice_idx")
   @@index([variantId], map: "invoice_line_products_variant_idx")
@@ -2479,6 +2485,7 @@ enum LoyaltyLedgerKind {
   REFERRAL_AWARD
   MANUAL_ADJUSTMENT
   MANUAL_CORRECTION
+  REFUND_REVERSAL
 }
 
 enum LoyaltyTier {
@@ -2582,6 +2589,9 @@ model LoyaltyLedgerEntry {
   reason          String?
   actorUserId     String?              @map("actor_user_id") @db.Uuid
   actor           User?                @relation("LoyaltyLedgerActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Phase 6 P6-13: the refund a REFUND_REVERSAL entry belongs to (one entry per refund).
+  productRefundId String?              @unique(map: "loyalty_ledger_entries_refund_key") @map("product_refund_id") @db.Uuid
+  productRefund   ProductRefund?       @relation("ProductRefundLedger", fields: [productRefundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   createdAt       DateTime             @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
 
   @@index([userId, wallet, createdAt], map: "loyalty_ledger_entries_wallet_idx")
@@ -3154,6 +3164,7 @@ enum StockMovementKind {
   ADJUSTMENT
   SALE
   SALE_REVERSAL
+  REFUND_RETURN
 }
 
 enum StockAdjustmentReason {
@@ -3469,6 +3480,9 @@ model InventoryLot {
   unitCostVnd         BigInt?           @map("unit_cost_vnd")
   sourceReceiptLineId String?           @map("source_receipt_line_id") @db.Uuid
   sourceReceiptLine   StockReceiptLine? @relation(fields: [sourceReceiptLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Phase 6 P6-13: a lot named after a refund (sellable goods the customer brought back); never together with a receipt line.
+  sourceRefundId      String?           @map("source_refund_id") @db.Uuid
+  sourceRefund        ProductRefund?    @relation("ProductRefundLot", fields: [sourceRefundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   quantityOnHand      Int               @default(0) @map("quantity_on_hand")
   createdByUserId     String            @map("created_by_user_id") @db.Uuid
   createdBy           User              @relation("InventoryLotCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -3589,6 +3603,9 @@ model StockMovement {
   importJob      ProductImportJob?      @relation(fields: [importJobId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   invoiceLineId  String?                @map("invoice_line_id") @db.Uuid
   invoiceLine    InvoiceLine?           @relation("StockMovementInvoiceLine", fields: [invoiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Phase 6 P6-13: the refund a REFUND_RETURN movement belongs to.
+  productRefundId String?               @map("product_refund_id") @db.Uuid
+  productRefund  ProductRefund?         @relation("ProductRefundMovement", fields: [productRefundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// The paid episode of the invoice a SALE or SALE_REVERSAL belongs to (P6-10).
   paidSeq        Int?                   @map("paid_seq")
   idempotencyKey String                 @unique(map: "stock_movements_idempotency_key") @map("idempotency_key")
@@ -3676,6 +3693,7 @@ model ProductReturnCase {
   updatedAt         DateTime              @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   events            ProductReturnEvent[]
   photos            ProductReturnPhoto[]
+  refunds           ProductRefund[]
 
   @@unique([openedByUserId, clientRequestId], map: "product_return_cases_request_key")
   @@index([branchId, openedAt(sort: Desc), id], map: "product_return_cases_branch_idx")
@@ -3726,4 +3744,78 @@ model ProductReturnPhoto {
 
   @@index([caseId, uploadedAt, id], map: "product_return_photos_case_idx")
   @@map("product_return_photos")
+}
+
+// Phase 6 P6-13 (design 8.2-8.4, Q3, Q4, Q5, OQ-19 option A, OQ-23, T21, T22, OQ-80, OQ-81, OQ-83; PRD 28.6): one refund of some units of
+// ONE product line of a paid counter invoice, backed by an accepted return case decided as a refund. Immutable: never updated, never
+// deleted (SQL refuses both). The amount is the line's net share of the units (cumulative rounding, design 6.4 item 4), recomputed by SQL.
+// Cash or manual bank transfer only (never PayOS); only the transfer reference is stored, never the customer's account number.
+enum ProductRefundMethod {
+  CASH
+  BANK_TRANSFER_MANUAL
+}
+
+enum ProductRefundRestock {
+  SELLABLE
+  NOT_SELLABLE
+}
+
+model ProductRefund {
+  id                      String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                    String               @unique(map: "product_refunds_code_key") @db.VarChar(40)
+  branchId                String               @map("branch_id") @db.Uuid
+  branch                  Branch               @relation("ProductRefundBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceId               String               @map("invoice_id") @db.Uuid
+  invoice                 Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceLineId           String               @map("invoice_line_id") @db.Uuid
+  line                    InvoiceLine          @relation("ProductRefundLine", fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "product_refunds_line_fkey")
+  productLine             InvoiceLineProduct   @relation("ProductRefundProductLine", fields: [invoiceLineId], references: [invoiceLineId], onDelete: Restrict, onUpdate: Restrict, map: "product_refunds_product_line_fkey")
+  returnCaseId            String               @map("return_case_id") @db.Uuid
+  returnCase              ProductReturnCase    @relation(fields: [returnCaseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// The paid episode of the invoice the refund belongs to.
+  paidSeq                 Int                  @map("paid_seq")
+  /// 1, 2, ... within the case; names the returned lot.
+  caseOrdinal             Int                  @map("case_ordinal")
+  quantity                Int
+  amountVnd               BigInt               @map("amount_vnd")
+  /// Running totals after this refund: units and money of the line, money of the whole invoice (the Beauty side).
+  lineUnitsAfter          Int                  @map("line_units_after")
+  lineAmountAfterVnd      BigInt               @map("line_amount_after_vnd")
+  invoiceRefundedAfterVnd BigInt               @map("invoice_refunded_after_vnd")
+  method                  ProductRefundMethod
+  bankReference           String?              @map("bank_reference") @db.VarChar(64)
+  reason                  String
+  restock                 ProductRefundRestock
+  actorUserId             String               @map("actor_user_id") @db.Uuid
+  actor                   User                 @relation("ProductRefundActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// When the person confirmed their password for this refund (evidence of the fresh re-authentication).
+  reauthenticatedAt       DateTime             @map("reauthenticated_at") @db.Timestamptz(3)
+  clientRequestId         String               @map("client_request_id") @db.Uuid
+  occurredAt              DateTime             @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+  corrections             ProductRefundCorrection[]
+  ledgerEntries           LoyaltyLedgerEntry[] @relation("ProductRefundLedger")
+  movements               StockMovement[]      @relation("ProductRefundMovement")
+  lots                    InventoryLot[]       @relation("ProductRefundLot")
+
+  @@unique([actorUserId, clientRequestId], map: "product_refunds_request_key")
+  @@unique([invoiceLineId, lineUnitsAfter], map: "product_refunds_line_units_key")
+  @@unique([returnCaseId, caseOrdinal], map: "product_refunds_case_ordinal_key")
+  @@index([invoiceId], map: "product_refunds_invoice_idx")
+  @@index([branchId, occurredAt(sort: Desc), id], map: "product_refunds_branch_idx")
+  @@map("product_refunds")
+}
+
+/// Append-only corrections of a typed bank transfer reference; the refund row itself never changes.
+model ProductRefundCorrection {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  refundId      String        @map("refund_id") @db.Uuid
+  refund        ProductRefund @relation(fields: [refundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  bankReference String        @map("bank_reference") @db.VarChar(64)
+  reason        String
+  actorUserId   String        @map("actor_user_id") @db.Uuid
+  actor         User          @relation("ProductRefundCorrectionActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  occurredAt    DateTime      @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+
+  @@index([refundId, occurredAt, id], map: "product_refund_corrections_refund_idx")
+  @@map("product_refund_corrections")
 }

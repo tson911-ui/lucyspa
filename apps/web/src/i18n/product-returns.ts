@@ -169,7 +169,7 @@ const vi = {
     historyBy: '{name} · {time}',
     closedNotice: 'Hồ sơ đã đóng nên không sửa được. Mọi thay đổi chỉ được ghi thêm vào lịch sử.',
     acceptedNotice:
-      'Hồ sơ đã được chấp nhận. Việc hoàn tiền hoặc đổi hàng sẽ làm ở bước sau; hiện chưa có tiền hay kho nào thay đổi.',
+      'Hồ sơ đã được chấp nhận. Việc hoàn tiền do người có quyền hoàn tiền ghi nhận; đổi hàng sẽ làm ở bước sau. Bản thân hồ sơ không làm thay đổi tiền hay kho.',
     noteTitle: 'Thêm ghi chú',
     noteField: 'Ghi chú',
     noteDone: 'Đã thêm ghi chú.',
@@ -393,7 +393,7 @@ const en: Dictionary = {
     closedNotice:
       'The case is closed and cannot change. Anything new is only added to the history.',
     acceptedNotice:
-      'The case is accepted. The refund or the exchange is a later step; no money or stock has changed yet.',
+      'The case is accepted. A refund is recorded by someone who may refund; an exchange is a later step. The case itself changes no money or stock.',
     noteTitle: 'Add a note',
     noteField: 'Note',
     noteDone: 'Note added.',

@@ -1675,6 +1675,10 @@ export async function cancelInvoice(
     throw new AuthError('INVOICE_STATE_INVALID');
   }
   if (invoice.rowVersion !== input.expectedVersion) throw new AuthError('CONFLICT');
+  // Phase 6 P6-13 (T22): an invoice with a refund stays paid and is never cancelled.
+  if ((await tx.productRefund.count({ where: { invoiceId } })) > 0) {
+    throw new AuthError('INVOICE_HAS_REFUND');
+  }
 
   let path: 'DRAFT' | 'UNPAID_FINALIZED' | 'ZERO_BALANCE_CORRECTION';
   if (invoice.status === 'DRAFT') {

@@ -305,7 +305,14 @@ const item = (patch: Partial<ProductReturnCaseResponse> = {}): ProductReturnCase
       occurredAt: '2026-10-08T05:00:00.000Z',
     },
   ],
-  can: { note: true, addPhoto: true, decide: true, cancel: true, removePhoto: false },
+  can: {
+    note: true,
+    addPhoto: true,
+    decide: true,
+    cancel: true,
+    removePhoto: false,
+    refunds: false,
+  },
   ...patch,
 });
 
@@ -343,7 +350,14 @@ test('an open case: the facts, one primary action, the others in the menu, the h
 test('who may do what comes from the case: no decision, no note, no photo without the flags', () => {
   const nothing = view(
     item({
-      can: { note: false, addPhoto: false, decide: false, cancel: false, removePhoto: false },
+      can: {
+        note: false,
+        addPhoto: false,
+        decide: false,
+        cancel: false,
+        removePhoto: false,
+        refunds: false,
+      },
     }),
   );
   assert.ok(!nothing.includes(`>${text.view.accept}<`));
@@ -399,7 +413,14 @@ test('evidence is shown only through the permission-checked route, with a tile m
   const asOwner = view(
     item({
       photos: [photo('p1')],
-      can: { note: true, addPhoto: true, decide: true, cancel: true, removePhoto: true },
+      can: {
+        note: true,
+        addPhoto: true,
+        decide: true,
+        cancel: true,
+        removePhoto: true,
+        refunds: false,
+      },
     }),
   );
   assert.ok(
@@ -450,7 +471,14 @@ test('an accepted case says no money or stock has moved yet; a declined or cance
       closedAt: '2026-10-08T06:00:00.000Z',
       closedByName: 'Chủ',
       closingNote: 'Đủ điều kiện',
-      can: { note: true, addPhoto: false, decide: false, cancel: false, removePhoto: false },
+      can: {
+        note: true,
+        addPhoto: false,
+        decide: false,
+        cancel: false,
+        removePhoto: false,
+        refunds: false,
+      },
     }),
   );
   assert.ok(accepted.includes(text.view.acceptedNotice));
@@ -463,7 +491,14 @@ test('an accepted case says no money or stock has moved yet; a declined or cance
       closedAt: '2026-10-08T06:00:00.000Z',
       closedByName: 'Chủ',
       closingNote: 'Hộp đã mở',
-      can: { note: false, addPhoto: false, decide: false, cancel: false, removePhoto: false },
+      can: {
+        note: false,
+        addPhoto: false,
+        decide: false,
+        cancel: false,
+        removePhoto: false,
+        refunds: false,
+      },
     }),
   );
   assert.ok(declined.includes(text.view.closedNotice));

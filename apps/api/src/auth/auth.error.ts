@@ -178,6 +178,18 @@ const errors = {
   ],
   RETURN_PHOTO_LIMIT: [409, 'A return case holds at most eight photos'],
   RETURN_PHOTO_GONE: [409, 'This photo was already removed'],
+  // Phase 6 P6-13: refunds per product line (Q3-Q5, T22, OQ-80).
+  REFUND_CASE_NOT_READY: [409, 'A refund follows a return case that was accepted as a refund'],
+  REFUND_QUANTITY_EXCEEDED: [409, 'More units than this return case has left to refund'],
+  REFUND_NOTHING_PAID: [409, 'Nothing was paid for these units, so there is nothing to refund'],
+  REFUND_STOCK_PENDING: [
+    409,
+    'The sale of these goods is not recorded in stock yet; try again in a moment, or record them as not sellable',
+  ],
+  INVOICE_HAS_REFUND: [
+    409,
+    'An invoice with a refund keeps its payments and stays paid; it cannot be reversed or cancelled',
+  ],
 } as const;
 
 export type AuthErrorCode = keyof typeof errors;

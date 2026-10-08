@@ -181,6 +181,8 @@ export interface ProductReturnCaseResponse {
     cancel: boolean;
     /** Owner only, and only when a photo is still present. */
     removePhoto: boolean;
+    /** REFUND_PRODUCTS at the case's branch: the refunds of this case (money) are shown to this person only. */
+    refunds: boolean;
   };
 }
 

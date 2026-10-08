@@ -412,6 +412,7 @@ async function present(context: AdminContext, id: string): Promise<ProductReturn
       decide: open && canDecideAt(graph, row.branchId, row.reason),
       cancel: open && manage,
       removePhoto: context.actor.owner && presentPhotos > 0,
+      refunds: holdsGraphAt(graph, 'REFUND_PRODUCTS', row.branchId),
     },
   };
 }

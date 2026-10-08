@@ -2188,6 +2188,7 @@ export * from './contact-links.js';
 // Phase 6 P6-8: product lines on invoices (seller, reservation, product-only invoices).
 export * from './product-sale.js';
 export * from './product-return.js';
+export * from './product-refund.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;
@@ -4018,7 +4019,14 @@ export interface ProductSettingsEditRequest {
 // A unit cost exists only for a caller who holds VIEW_PRODUCT_COST: for everyone else the keys are absent (never null).
 // ---------------------------------------------------------------------------------------------------------------
 
-export type StockMovementKindName = 'OPENING' | 'RECEIPT' | 'ADJUSTMENT' | 'SALE' | 'SALE_REVERSAL';
+export type StockMovementKindName =
+  | 'OPENING'
+  | 'RECEIPT'
+  | 'ADJUSTMENT'
+  | 'SALE'
+  | 'SALE_REVERSAL'
+  /** Phase 6 P6-13: goods a customer brought back and the refunding person recorded as sellable. */
+  | 'REFUND_RETURN';
 /** The reasons a person may choose for an adjustment (COUNT_CORRECTION is written only by an approved count). */
 export type StockAdjustmentReasonName =
   'INTERNAL_USE' | 'TESTER' | 'DAMAGED' | 'EXPIRED' | 'LOSS' | 'COUNT_CORRECTION';

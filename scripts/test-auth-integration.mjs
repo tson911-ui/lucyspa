@@ -101,3 +101,5 @@ await import('../apps/api/dist/loyalty/beauty-loyalty.integration.test.js');
 await import('../apps/api/dist/product-returns/return.integration.test.js');
 await import('../apps/api/dist/product-returns/return.exception.integration.test.js');
 await import('../apps/api/dist/product-returns/return.race.integration.test.js');
+await import('../apps/api/dist/product-returns/refund.integration.test.js');
+await import('../apps/api/dist/product-returns/refund.race.integration.test.js');

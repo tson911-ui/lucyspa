@@ -260,6 +260,10 @@ export async function reversePayment(
   if (invoice.status !== 'PENDING_PAYMENT' && invoice.status !== 'PAID') {
     throw new AuthError('INVOICE_STATE_INVALID');
   }
+  // Phase 6 P6-13 (T22): an invoice with a refund keeps its payments and stays paid, so a correction can never double an effect.
+  if ((await tx.productRefund.count({ where: { invoiceId } })) > 0) {
+    throw new AuthError('INVOICE_HAS_REFUND');
+  }
   if (!hasFreshReauthentication(context.actor.principal, context.now, freshAuthSeconds)) {
     throw new AuthError('REAUTHENTICATION_REQUIRED');
   }

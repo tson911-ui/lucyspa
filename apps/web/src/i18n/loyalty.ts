@@ -85,6 +85,7 @@ const vi = {
   kinds: {
     EARN: 'Tích điểm từ hóa đơn',
     EARN_REVERSAL: 'Thu hồi điểm của hóa đơn',
+    REFUND_REVERSAL: 'Thu hồi điểm do hoàn tiền sản phẩm',
     REFERRAL_AWARD: 'Thưởng giới thiệu',
     MANUAL_ADJUSTMENT: 'Điều chỉnh thủ công',
     MANUAL_CORRECTION: 'Điều chỉnh sửa lỗi',
@@ -306,6 +307,7 @@ const en: Dictionary = {
   kinds: {
     EARN: 'Earned from an invoice',
     EARN_REVERSAL: 'Invoice points taken back',
+    REFUND_REVERSAL: 'Points taken back for a product refund',
     REFERRAL_AWARD: 'Referral reward',
     MANUAL_ADJUSTMENT: 'Manual adjustment',
     MANUAL_CORRECTION: 'Correction adjustment',

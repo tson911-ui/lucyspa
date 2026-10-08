@@ -264,6 +264,7 @@ test(
               decide: true,
               cancel: true,
               removePhoto: false,
+              refunds: false,
             });
             assert.equal(
               await tx.auditEvent.count({

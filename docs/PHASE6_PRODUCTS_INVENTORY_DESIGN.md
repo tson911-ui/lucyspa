@@ -423,6 +423,45 @@ Owner's words, recorded exactly as given:
 - **Tests:** unit (rules, web), HTTP (the new field), 5 real-PostgreSQL tests (Owner opens after 168 h and 48 h, history and audit, photo rule, who may and may not, idempotent replay, the database refusals with their messages), a static guard on the two migrations.
 - **Also:** the integration files of P6-12 (`return.integration`, `return.race.integration`) were missing from `scripts/test-auth-integration.mjs` (they had been run one by one); they are listed there now, with the new exception file.
 
+### 2.26 P6-13 requested by the Owner (2026-10-08) and built: refunds per product line (my readings are **pending the Owner's own words**; report `docs/PHASE6_STEP13_PRODUCT_REFUNDS.md`)
+
+Owner's words, recorded exactly as given (the second paragraph of the message recorded in 2.25):
+
+> Then do P6-13 (refunds per product line), per the approved design (Q3, Q4, Q5, OQ-19 option A, OQ-23, T21, T22, OQ-80, OQ-81, OQ-83, PRD 28.6):
+>
+> - Refund by cash or manual bank transfer only; requires REFUND_PRODUCTS and password re-entry; store only the transfer reference, never the customer's account number.
+> - Refund per line and by quantity; a line becomes refunded when fully refunded; refund records are immutable (corrections are new linked records).
+> - Beauty points deducted by a linked ledger entry based on the amount actually paid for the refunded quantity (option A rounding); tier recalculated and may drop; Spa wallet unchanged; referral points not revoked.
+> - Vouchers/birthday rewards used on the invoice are not re-issued automatically.
+> - Returned goods: new lot named after the return, keeping the sold lot's expiry; the refunding person decides if it is resellable; otherwise recorded as not sellable. No phantom stock.
+> - Never opens a refund path for services or combos (PRD 29). Cash drawer link stays for Phase 7.
+>
+> Same strict rules: existing POS/payment tests unchanged, real PostgreSQL race tests (double refund, refund vs payment reversal, concurrent partial refunds), reconciliation (refunded ≤ paid per line, points and stock reconcile), full tests, full UI gate. Commit locally, no push/deploy. Report in Vietnamese and stop.
+
+**As built** (migrations `20261113000000` enum values, `20261113000001` everything else; total 85):
+
+- **Refund record** `product_refunds`: one refund of some units of ONE product line of a paid counter invoice, with the amount, method (`CASH` or `BANK_TRANSFER_MANUAL`), the transfer reference only, the reason, who, the database time, the time of the password confirmation, the request id (unique per person), the running totals (units and money of the line, money of the invoice) and the goods decision. Never updated, never deleted, never truncated (database). A typed transfer reference is corrected by a **linked record** (`product_refund_corrections`); the refund row never changes.
+- **Money** (6.4 item 4): the amount is the line's net (`invoice_line_allocations.net_vnd`, after discounts, what was actually paid) split over its units by the cumulative half-up rule; the refunds of all units add up to the net exactly. The API computes it (shared function `productRefundAmount`), the database recomputes it and refuses any other amount; the request carries no amount at all. A line is `NOT_REFUNDED`, `PARTIALLY_REFUNDED` or `REFUNDED` (derived); the invoice stays PAID.
+- **Authority**: `REFUND_PRODUCTS` at the invoice's branch and a recent password confirmation (the same freshness window as a payment reversal); the Owner passes as always. Nothing is granted to anyone. No PayOS call exists in the code path, whatever the original payment was. The refunds (money) are shown only to those who may refund.
+- **Points** (8.4, T21, OQ-19 option A): the `loyalty` consumer handles the new event `PRODUCT_REFUNDED` and writes ONE linked negative entry `REFUND_REVERSAL` per refund (`BEAUTY_REFUND:{refund}`, unique `product_refund_id`): points that remain = floor((Beauty side net − refunded so far) / 1000), points taken back so far = earned − remaining, this refund writes what is still missing. The earn entry stays, the tier follows the balance (it can drop: PRD 28.6 5,160 Diamond to 4,400 Platinum is a test), the Spa wallet and referral points are untouched, a balance too small follows P5-Q5 (floor at 0, shortfall recorded and listed in Exceptions), a money refund is never blocked. **A race test found and fixed one bug**: the already-taken points were read before the wallet lock, so two workers on two refunds of one invoice could take back too much; the wallet is now locked first.
+- **Stock** (OQ-80): the refunding person must say `SELLABLE` or `NOT_SELLABLE` (no default). Sellable goods go into NEW lots named `{case code}-{n}` (and `/1`, `/2` when the units came from several lots), each keeping the expiry and cost of the lot its units were sold from (cost is never in a response), by `REFUND_RETURN` movements; the database refuses a lot or a movement that does not belong to a sellable refund and checks at commit that a sellable refund put back exactly its units and any other none. Not sellable moves nothing (no phantom stock). Sellable needs the sale to be recorded in stock (`REFUND_STOCK_PENDING`, retry); not sellable never waits.
+- **T22**: an invoice with a refund keeps its payments and stays paid: `reversePayment` and `cancelInvoice` refuse (`INVOICE_HAS_REFUND`) after the invoice lock, and the database refuses a `payment_corrections` insert and any move of a PAID invoice to another status.
+- **OQ-81**: nothing reads or writes vouchers, redemptions or birthday gifts (test: the rows are exactly as before). **PRD 29**: the refund names a product detail row (foreign key), so a service or a combo can have no refund; the screens only exist on product return cases.
+- **Screens**: on the case page of an accepted refund case, "Hoàn tiền" (the one primary action), the card "Các lần hoàn tiền" (state of the line, each refund with money, method, goods, lots, points, reason, corrections; "Sửa mã giao dịch" in the card menu) and the refund form (amount shown before saving).
+- **Locks** (10.2): invoice row, case row, then the line and the stock rows by the database guards; no lock is taken in another order.
+
+**My readings, all pending the Owner's own words:**
+
+- **P13-1 a refund follows an accepted return case.** It needs a case ACCEPTED with decided outcome REFUND for that line (the windows, the seal and the Owner's exception of 2.25 are enforced there); the refund's quantity is capped by the case and by the line. A refund without a case (for example a pre-order cancelled before hand-over) comes with P6-15.
+- **P13-2 one line per refund**, by quantity, any number of refunds per case.
+- **P13-3 "re-entry on every refund"** is the project's convention (a confirmation no older than `AUTH_FRESH_AUTH_SECONDS`, 300 s, as for a payment reversal); the time of the confirmation is stored on the refund. A stricter "once per refund" is a small change if the Owner wants it.
+- **P13-4 transfer reference**: 4 to 64 of letters, digits and `. _ / -`, nothing else (no spaces); a number that is an account cannot be told from a reference by a machine, so the screen says plainly not to type one; the audit log never copies the reference.
+- **P13-5 corrections**: the only linked correction built is of a mistyped transfer reference (REFUND_PRODUCTS, no password). Anything else (a wrong amount given by hand, a refund taken back) is not built: it would be a new decision (cash drawer, Phase 7).
+- **P13-6 lot naming and the multi-lot split** as above (first-expiry lot first, units already refunded first).
+- **P13-7 not built**: the notice `PRODUCT_REFUNDED` of 10.1 to the holders of `CORRECT_PAYMENTS` / `REFUND_PRODUCTS` on an exception; a shortfall is listed in the existing Exceptions screen instead.
+- **P13-8 the line state is shown on the case page only**, not on the invoice screens.
+- **P13-9 existing tests**: no POS or payment test changed. Additive edits only: the fixtures of the P6-12 screen test gain `can.refunds`, and the P6-12 integration files are listed in the runner (2.25).
+
 ## 3. Catalog (PRD §23-24; T9-T12)
 
 ### 3.1 Model

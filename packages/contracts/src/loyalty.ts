@@ -11,7 +11,13 @@ export const LOYALTY_TIER_TABLE_VERSION = 1;
 export type LoyaltyWalletName = 'SPA' | 'BEAUTY';
 export type LoyaltyTierName = 'NONE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'RUBY';
 export type LoyaltyLedgerKindName =
-  'EARN' | 'EARN_REVERSAL' | 'REFERRAL_AWARD' | 'MANUAL_ADJUSTMENT' | 'MANUAL_CORRECTION';
+  | 'EARN'
+  | 'EARN_REVERSAL'
+  | 'REFERRAL_AWARD'
+  | 'MANUAL_ADJUSTMENT'
+  | 'MANUAL_CORRECTION'
+  /** Phase 6 P6-13: Beauty points taken back by a product refund (PRD 28.6). */
+  | 'REFUND_REVERSAL';
 
 /** Lowest balance of each tier and its Member Discount in basis points (PRD 18.5, version 1). */
 export const LOYALTY_TIERS_V1: readonly {

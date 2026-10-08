@@ -17,6 +17,12 @@ import { referralAwardCandidates, type ReferralAwardCandidate } from './referral
 export const LOYALTY_CONSUMER = 'loyalty';
 export const LOYALTY_AGGREGATE = 'LoyaltyLedgerEntry';
 export const LOYALTY_EVENT_TYPES = ['INVOICE_PAID', 'INVOICE_REOPENED', 'INVOICE_CANCELLED'];
+/**
+ * Phase 6 P6-13 (design 8.4, 10.1): a product refund takes Beauty points back. Its event belongs to the refund, not to an invoice, so it
+ * has its own aggregate and type; `LOYALTY_EVENT_TYPES` (the invoice events) is unchanged.
+ */
+export const LOYALTY_REFUND_AGGREGATE = 'ProductRefund';
+export const LOYALTY_REFUND_EVENT_TYPES = ['PRODUCT_REFUNDED'];
 
 /**
  * - `APPLIED`: a ledger entry was written (earn or reversal).
@@ -41,6 +47,7 @@ export type LoyaltyEventOutcome =
 export const earnKey = (wallet: LoyaltyWalletName, invoiceId: string, paidSeq: number): string =>
   `${wallet}_EARN:${invoiceId}:${paidSeq}`;
 export const reversalKey = (earnEntryId: string): string => `EARN_REVERSAL:${earnEntryId}`;
+export const refundKey = (refundId: string): string => `BEAUTY_REFUND:${refundId}`;
 
 export const referralAwardKey = (referralId: string, wallet: LoyaltyWalletName): string =>
   `REFERRAL_AWARD:${referralId}:${wallet}`;
@@ -58,6 +65,8 @@ export interface LedgerEffect {
   readonly paidSeq?: number;
   readonly reversesEntryId?: string;
   readonly correctsEntryId?: string;
+  /** A refund reversal names its refund (one entry per refund). */
+  readonly productRefundId?: string;
   readonly reason?: string;
   readonly actorUserId?: string;
   readonly branchId?: string | null;
@@ -93,6 +102,7 @@ export interface LedgerResult {
 const ledgerEvents: Record<LoyaltyLedgerKindName, string> = {
   EARN: 'LOYALTY_POINTS_EARNED',
   EARN_REVERSAL: 'LOYALTY_POINTS_REVERSED',
+  REFUND_REVERSAL: 'LOYALTY_POINTS_REVERSED',
   REFERRAL_AWARD: 'REFERRAL_AWARDED',
   MANUAL_ADJUSTMENT: 'LOYALTY_POINTS_ADJUSTED',
   MANUAL_CORRECTION: 'LOYALTY_POINTS_ADJUSTED',
@@ -168,6 +178,7 @@ export async function appendLedgerEntry(
       referralId: effect.referralId ?? null,
       reversesEntryId: effect.reversesEntryId ?? null,
       correctsEntryId: effect.correctsEntryId ?? null,
+      productRefundId: effect.productRefundId ?? null,
       reason: effect.reason ?? null,
       actorUserId: effect.actorUserId ?? null,
     },
@@ -736,6 +747,93 @@ async function reverse(
 }
 
 /**
+ * `PRODUCT_REFUNDED` (design 8.4, T21, OQ-19 option A, PRD 28.6): takes Beauty points back for one product refund by ONE linked negative
+ * entry (`BEAUTY_REFUND:{refund}`). The points that should remain on the invoice's Beauty side after the refund are
+ * floor((side net - everything refunded so far) / 1000); the points to take back by now are what the invoice earned less that; this
+ * refund writes what is still missing (taken back by earlier refunds counts as requested points, applied plus shortfall). Refunds
+ * handled out of order therefore still end at the same total, and a result of zero or less writes nothing. The earn entry stays, the Spa
+ * wallet and the referral points are never touched, the tier is the function of the new balance, and a balance too small to absorb it
+ * follows P5-Q5 (floor at 0, the shortfall is recorded and listed in Exceptions): the money refund is never blocked by the points.
+ * A guest payer earned nothing; a payment before go-live earned nothing. When the earn entry is missing only because the worker has not
+ * handled INVOICE_PAID yet, the event waits (it throws and is retried) instead of silently dropping the reversal.
+ */
+async function refunded(tx: Prisma.TransactionClient, event: Event): Promise<LoyaltyEventOutcome> {
+  const refundId = field(event.payload, 'refundId');
+  if (typeof refundId !== 'string' || !UUID.test(refundId)) {
+    throw new Error('Malformed PRODUCT_REFUNDED event');
+  }
+  const refund = await tx.productRefund.findUnique({
+    where: { id: refundId },
+    select: {
+      id: true,
+      invoiceId: true,
+      paidSeq: true,
+      branchId: true,
+      actorUserId: true,
+      invoiceRefundedAfterVnd: true,
+    },
+  });
+  if (!refund) throw new Error('The refund of a PRODUCT_REFUNDED event is missing');
+  const invoice = await lockInvoiceShared(tx, refund.invoiceId);
+  if (!invoice) return 'NOOP';
+  if (invoice.payer_user_id === null) return 'SKIPPED_GUEST';
+  const payer = await tx.user.findUnique({
+    where: { id: invoice.payer_user_id },
+    select: { kind: true },
+  });
+  if (payer?.kind !== 'CUSTOMER') return 'SKIPPED_NOT_MEMBER';
+  const earn = await tx.loyaltyLedgerEntry.findUnique({
+    where: { idempotencyKey: earnKey('BEAUTY', invoice.id, refund.paidSeq) },
+    select: { points: true },
+  });
+  if (!earn) {
+    const waiting = await tx.outboxEvent.findFirst({
+      where: {
+        aggregateType: 'Invoice',
+        aggregateId: invoice.id,
+        eventType: 'INVOICE_PAID',
+        payload: { path: ['paidSeq'], equals: refund.paidSeq },
+        consumptions: { none: { consumer: LOYALTY_CONSUMER } },
+      },
+      select: { id: true },
+    });
+    if (waiting) throw new Error('The Beauty earn entry of this paid episode is not recorded yet');
+    return 'NOOP';
+  }
+  const remainingVnd = invoice.beauty_net_vnd - refund.invoiceRefundedAfterVnd;
+  const remaining = loyaltyPointsForPaidVnd(remainingVnd > 0n ? remainingVnd : 0n);
+  const due = Math.max(0, earn.points - remaining);
+  // The wallet is locked BEFORE what was already taken back is read: two workers on two refunds of one invoice then run one after the
+  // other and the second sees the first's entry (read first, they would both count the same points as still due).
+  await lockWalletsSorted(tx, [{ userId: invoice.payer_user_id, wallet: 'BEAUTY' }]);
+  const prior = await tx.loyaltyLedgerEntry.findMany({
+    where: {
+      kind: 'REFUND_REVERSAL',
+      invoiceId: invoice.id,
+      paidSeq: refund.paidSeq,
+      wallet: 'BEAUTY',
+    },
+    select: { points: true, shortfallPoints: true },
+  });
+  const taken = prior.reduce((sum, entry) => sum - entry.points + entry.shortfallPoints, 0);
+  const points = due - taken;
+  if (points <= 0) return 'NOOP';
+  const result = await appendLedgerEntry(tx, {
+    userId: invoice.payer_user_id,
+    wallet: 'BEAUTY',
+    kind: 'REFUND_REVERSAL',
+    points: -points,
+    idempotencyKey: refundKey(refund.id),
+    invoiceId: invoice.id,
+    paidSeq: refund.paidSeq,
+    productRefundId: refund.id,
+    actorUserId: refund.actorUserId,
+    branchId: refund.branchId,
+  });
+  return result.created ? 'APPLIED' : 'NOOP';
+}
+
+/**
  * Handles ONE outbox event for the `loyalty` consumer (design 11.1). In a single transaction:
  *
  * 1. take the shared graph lock, then claim the event (`FOR UPDATE SKIP LOCKED`) if this consumer has no
@@ -761,6 +859,17 @@ export async function processLoyaltyEvent(
     FOR UPDATE OF e SKIP LOCKED`;
   if (claimed.length === 0) return 'NOT_CLAIMED';
   const event = await tx.outboxEvent.findUniqueOrThrow({ where: { id: eventId } });
+  if (
+    event.aggregateType === LOYALTY_REFUND_AGGREGATE &&
+    LOYALTY_REFUND_EVENT_TYPES.includes(event.eventType)
+  ) {
+    if (event.schemaVersion !== 1) throw new Error('Unsupported refund event version');
+    const outcome = await refunded(tx, event);
+    await tx.outboxConsumption.create({
+      data: { eventId: event.id, consumer: LOYALTY_CONSUMER, outcome },
+    });
+    return outcome;
+  }
   if (event.aggregateType !== 'Invoice' || !LOYALTY_EVENT_TYPES.includes(event.eventType)) {
     return 'IGNORED';
   }
@@ -798,8 +907,10 @@ export async function relayLoyaltyEvents(
   for (const [id, retryAt] of coolingDown) if (retryAt <= now) coolingDown.delete(id);
   const events = await database.outboxEvent.findMany({
     where: {
-      aggregateType: 'Invoice',
-      eventType: { in: LOYALTY_EVENT_TYPES },
+      OR: [
+        { aggregateType: 'Invoice', eventType: { in: LOYALTY_EVENT_TYPES } },
+        { aggregateType: LOYALTY_REFUND_AGGREGATE, eventType: { in: LOYALTY_REFUND_EVENT_TYPES } },
+      ],
       consumptions: { none: { consumer: LOYALTY_CONSUMER } },
       ...(coolingDown.size > 0 ? { id: { notIn: [...coolingDown.keys()] } } : {}),
     },
