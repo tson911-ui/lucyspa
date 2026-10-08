@@ -1,5 +1,199 @@
 # Phase 6: các mục chờ Chủ duyệt (giải thích bằng tiếng Việt)
 
+## Đợt 4: bán hàng online (P6-19 đến P6-24). **Chỉ chuẩn bị tài liệu, chưa viết dòng mã nào**
+
+Đợt 3b đã chạy thật từ 2026-10-09 (bản `43a1b29`, 95 migration, 66 quyền; chưa quyền bán hàng, xử lý đơn hay hoàn tiền nào được gán). Đợt 4 là đợt đầu tiên **khách tự trả tiền qua mạng** và đầu tiên có **địa chỉ nhà khách** và **hàng gửi đi xa**. Mọi thứ dưới đây là đề xuất; **chưa có gì được duyệt cho đến khi Chủ trả lời bằng lời của Chủ**.
+
+### Chủ đã quyết (2026-10-09 và trước đó), đã khóa, không hỏi lại
+
+- **Miễn phí giao hàng cho MỌI đơn online** (Chủ, 2026-10-09): khách chỉ trả tiền hàng, trả đủ trước bằng PayOS; phí giao hàng khách thấy và bị tính **luôn bằng 0**. Quyết định này **thay thế OQ-38** (phí, hãng, ngưỡng miễn phí).
+- **Cửa hàng tự trả tiền cho hãng vận chuyển.** Nhân viên đặt hãng **ở ngoài hệ thống** và chỉ **nhập mã vận đơn** vào hệ thống.
+- **Giữ trong cài đặt (quản trị) một mục phí giao hàng / ngưỡng miễn phí, nhưng TẮT mặc định**, để dùng sau nếu cần.
+- **Giao thất bại** (khách không nghe máy, đi vắng, sai địa chỉ): nhân viên liên hệ khách và giao lại; nếu khách không còn muốn nhận, **hoàn tiền hàng trừ phí vận chuyển hai chiều mà cửa hàng thực trả** (như OQ-40 đã duyệt), **do nhân viên nhập kèm lý do**.
+- Từ trước: chỉ thành viên đã đăng nhập mua online; trả đủ trước bằng PayOS, không thu tiền khi giao (COD); giao toàn quốc; hàng gửi từ **04 Nguyễn Quang Bích** (OQ-36); đơn chưa thanh toán tự hủy sau **30 phút** (OQ-39); giảm giá và điểm **không bao giờ** tính cho phí giao hàng (OQ-41; hiện phí bằng 0 nên chưa có tác dụng, chỉ có nghĩa nếu sau này bật phí); online là **giao tận nơi** (OQ-29); sản phẩm chưa có hàng vẫn cho **đặt trước online** (OQ-37); điểm Beauty cộng lúc thanh toán (OQ-33); hạn đổi trả tính từ **ngày khách nhận hàng** (OQ-40); hoàn tiền chỉ bằng tiền mặt hoặc chuyển khoản tay, chỉ người có quyền hoàn tiền, nhập lại mật khẩu (Q4).
+
+### Bảng trả lời nhanh cho Đợt 4
+
+Chủ chỉ cần ghi "đồng ý" hoặc "khác: …" cho từng dòng. Cột "Mức rủi ro" là rủi ro **nếu làm sai**, không phải mức khó. Mục có dấu **(tiền)** đụng tới tiền thật của khách hoặc của cửa hàng.
+
+| Mục    | Chủ đề                                                                                                | Tôi khuyên                                                                                                  | Chặn bước    | Mức rủi ro |
+| ------ | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------ | ---------- |
+| T38    | Thứ tự bước Đợt 4 và **hai lần triển khai** (4a: bán và giao hàng; 4b: khuyến mãi đầy đủ)             | Đồng ý: 4a sau P6-22; P6-23 làm riêng, triển khai sau                                                       | cả Đợt 4     | Trung bình |
+| T39    | **Không thêm quyền mới** (vẫn 66 quyền); dùng lại quyền xử lý đơn, quyền hoàn tiền, quyền sản phẩm    | Đồng ý                                                                                                      | P6-20        | Trung bình |
+| T40    | Cài đặt phí giao hàng và ngưỡng miễn phí: **tắt mặc định**, chỉ phí cố định và ngưỡng                 | Đồng ý (không cân nặng, không theo vùng)                                                                    | P6-19        | Thấp       |
+| T41    | Đơn online **dùng lại** hóa đơn, PayOS, đơn hàng, giữ hàng đã có; thêm trạng thái "đã gửi", "đã giao" | Đồng ý                                                                                                      | P6-19        | **Cao**    |
+| T42    | Kiểm tải và bảo mật trước khi mở bán; có chạy nhiều tiến trình API không (mở lại OQ-26)               | Đo thật trước; chỉ thêm tiến trình API nếu số đo cho thấy cần                                               | P6-22        | Trung bình |
+| OQ-89  | Giỏ hàng: lưu theo tài khoản; giới hạn số dòng và số lượng                                            | Giỏ lưu theo tài khoản; tối đa 20 dòng, mỗi dòng tối đa 10 cái                                              | P6-19        | Thấp       |
+| OQ-90  | Đơn có cả hàng có sẵn và hàng đặt trước                                                               | **Một đơn, một kiện**, gửi khi đủ hàng; báo rõ lúc thanh toán                                               | P6-19, P6-20 | **Cao**    |
+| OQ-91  | Sản phẩm nào được bán online                                                                          | Mỗi biến thể có ô "bán online", **mặc định bật**                                                            | P6-19        | Thấp       |
+| OQ-92  | Số đơn **chưa thanh toán** tối đa cùng lúc của một tài khoản                                          | 3 đơn                                                                                                       | P6-19        | Trung bình |
+| OQ-93  | Địa chỉ giao hàng và số điện thoại nhận hàng (dữ liệu cá nhân)                                        | Nhập 5 ô; lưu theo từng đơn; che bớt trong danh sách; chỉ người xử lý đơn thấy đủ                           | P6-19        | Trung bình |
+| OQ-94  | Hứa thời gian gửi hàng và thời gian giao (cần các con số của Chủ)                                     | Gửi trong 2 ngày làm việc kể từ khi có hàng; vận chuyển "dự kiến 2 đến 5 ngày", không phải cam kết          | P6-19        | Trung bình |
+| OQ-95  | Hãng vận chuyển, mã vận đơn và **phí hãng cửa hàng thực trả** **(tiền)**                              | Danh sách hãng trong cài đặt; nhập mã vận đơn và phí hãng thực trả lúc gửi (nội bộ, khách không thấy)       | P6-20        | **Cao**    |
+| OQ-96  | Ai đánh dấu "đã giao" và khi nào (bắt đầu hạn đổi trả)                                                | Nhân viên đánh dấu; khách cũng bấm được "Tôi đã nhận hàng"; nhắc lúc 08:00 nếu quá 7 ngày chưa xong         | P6-20, P6-21 | Trung bình |
+| OQ-97  | Khách hủy đơn online (trước thanh toán, sau thanh toán chưa gửi, đã gửi) **(tiền)**                   | Xem chi tiết: chưa thanh toán tự do; đã thanh toán chưa gửi theo OQ-32; đã gửi thì không hủy                | P6-20        | **Cao**    |
+| OQ-98  | Các bước của **giao thất bại** và hoàn tiền trừ phí hai chiều **(tiền)**                              | Xem chi tiết: chỉ hoàn khi hàng đã về cửa hàng; tiền hoàn = tiền hàng đã thu trừ phí hai chiều, thấp nhất 0 | P6-20, P6-21 | **Cao**    |
+| OQ-99  | Hoàn tiền đơn online bằng chuyển khoản: lấy số tài khoản của khách thế nào **(tiền)**                 | Nhân viên hỏi khách qua điện thoại/Zalo; hệ thống **không lưu** số tài khoản, chỉ lưu mã giao dịch          | P6-21        | Trung bình |
+| OQ-100 | Khách trả hàng **đã nhận** (đổi ý hoặc hàng sai, hỏng): ai chịu phí gửi trả **(tiền)**                | Đổi ý: khách chịu phí gửi trả; hàng sai/hỏng: cửa hàng chịu; không trừ phí giao ban đầu (đã miễn phí)       | P6-21        | **Cao**    |
+| OQ-101 | Báo khách về đơn online: trong ứng dụng hay có cả email                                               | Chỉ trong ứng dụng và trên trang đơn (hệ thống chưa có email giao dịch)                                     | P6-21        | Trung bình |
+| OQ-102 | Mã giảm giá khi thanh toán online                                                                     | Giảm giá thành viên tự áp dụng; cho nhập **một** mã voucher                                                 | P6-19        | Trung bình |
+| OQ-103 | Chính sách giao hàng và đổi trả hiện ở trang thanh toán                                               | Tôi soạn bản nháp từ các quyết định đã duyệt; Chủ sửa; khách tích "đã đọc"                                  | P6-19        | Trung bình |
+
+Nếu Chủ muốn trả lời gọn: "Đợt 4: đồng ý như tôi khuyên" cho cả bảng, hoặc ghi mục nào khác. **Chủ nên đọc kỹ các dòng in đậm "Cao" (T41, OQ-90, OQ-95, OQ-97, OQ-98, OQ-100)**: các dòng này quyết cách tiền được hoàn và hàng đi lại giữa khách và cửa hàng.
+
+### Vì sao Đợt 4 nguy hiểm theo cách khác các đợt trước, và tôi kiểm thế nào
+
+| Rủi ro                                                                                 | Hậu quả thật ở spa                                  | Cách tôi kiểm trước khi đưa cho Chủ                                                                                                                                                               |
+| -------------------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lần đầu **người lạ trên mạng** chạm vào luồng thanh toán (nhưng phải đăng nhập)        | Đơn giả, chiếm hàng, làm nghẽn hệ thống             | Chỉ thành viên; giới hạn số đơn chưa trả (OQ-92); giới hạn số lần gọi theo tài khoản; kiểm tải thật ở P6-22                                                                                       |
+| Khách trả tiền nhưng **PayOS báo chậm, báo hai lần hoặc báo sau khi đơn đã tự hủy**    | Mất tiền khách hoặc hàng bị giữ sai                 | Dùng lại đường thanh toán PayOS đã chạy thật từ Phase 4; kiểm tranh chấp thật: thanh toán đến đúng lúc hết 30 phút, báo hai lần, báo sau khi hủy; đối soát tiền, kho, sổ điểm sau mỗi bài         |
+| Hai khách đặt **cái cuối cùng**, hoặc quầy bán cái cuối đúng lúc khách online đang trả | Bán một món hai lần                                 | Dùng chung một số "hàng còn bán được" của chi nhánh với quầy; giữ hàng từ lúc đặt, nhả sau 30 phút; kiểm tranh chấp thật                                                                          |
+| **Hoàn tiền sai số** khi giao thất bại (trừ nhầm phí, trừ hai lần, hoàn âm)            | Cửa hàng mất tiền hoặc khách bị trừ oan             | Tiền hoàn tính bằng một công thức duy nhất, thấp nhất 0, không bao giờ vượt tiền hàng đã thu; phí thực trả do nhân viên nhập và lưu lại; bản ghi hoàn tiền không sửa được (như các đợt trước)     |
+| Lộ **địa chỉ nhà và số điện thoại** của khách                                          | Khách bị lộ thông tin cá nhân                       | Địa chỉ chỉ đọc được bởi chủ đơn và người xử lý đơn ở chi nhánh; danh sách che bớt; không bao giờ có trong trang công khai, thông báo hay nhật ký (chỉ ghi "đã đổi địa chỉ"); kiểm quyền từng màn |
+| Hàng gửi đi nhưng **hệ thống không biết đã giao hay chưa**                             | Hạn đổi trả không bao giờ bắt đầu, tiền treo        | Nhân viên đánh dấu đã giao; khách bấm "đã nhận"; nhắc lúc 08:00 đơn quá hạn (OQ-96)                                                                                                               |
+| Quay lại bản cũ sau khi đã có đơn online                                               | Giống Đợt 2 và 3: bản cũ không đọc được dữ liệu mới | Làm lại đúng bằng chứng quay lui (bản cũ trên cơ sở dữ liệu mới có dữ liệu mới), kèm cổng kiểm các số; sau đơn online đầu tiên, quay lại phần mềm không còn là lựa chọn                           |
+| Thao tác nhầm của nhân viên (nhập sai mã vận đơn, sai phí, hoàn nhầm)                  | Khách theo dõi sai đơn, hoàn sai tiền               | Nhập mã vận đơn có hộp xác nhận và sửa được bằng bản ghi mới (như sửa mã giao dịch); hoàn tiền nêu rõ số tiền, nhập lại mật khẩu, lý do bắt buộc                                                  |
+
+**Cách tôi kiểm trước khi đưa cho Chủ (giống các đợt trước):** kiểm thử đơn vị và tích hợp trên PostgreSQL thật; kiểm tranh chấp cho mọi lệnh đụng tiền hoặc kho; đối soát sau mỗi bài; chạy lại **toàn bộ kiểm thử của các Phase trước**; kiểm giao diện ở 360, 768, 1440 px sáng và tối, chữ 130%, đủ trạng thái; diễn tập trên bản khôi phục của sao lưu thật; chạy bản cũ trên cơ sở dữ liệu mới; hướng dẫn triển khai từng khối lệnh cho terminal web iNET. Tôi **không chạm vào máy chủ**. Đợt 4 chỉ nên triển khai **khi đã có sản phẩm thật** và Chủ đã thử luồng mua bằng một tài khoản thật với số tiền nhỏ.
+
+### T38. Thứ tự bước Đợt 4 và hai lần triển khai
+
+- **Ý nghĩa:** theo bảng 18.6: P6-19 mua hàng và thanh toán; P6-20 xử lý đơn (đóng gói, gửi, mã vận đơn, đã giao, giao thất bại); P6-21 trả hàng, hoàn tiền, thông báo cho đơn online; P6-22 kiểm tải và bảo mật; P6-23 khuyến mãi đầy đủ (PRD §24.1: chiến dịch theo ngưỡng, giảm giá theo nhóm sản phẩm, biểu ngữ); P6-24 kiểm tra cuối.
+- **Tôi khuyên:** **4a = P6-19 đến P6-22** triển khai một lần sau kiểm tra mốc; **P6-23** (khuyến mãi đầy đủ) làm riêng và triển khai sau, vì bán online không cần nó (giảm giá thành viên và voucher đã có). P6-24 là kiểm tra cuối cho cả hai.
+- **Nếu khác:** gộp cả P6-23 vào một lần triển khai thì đợi lâu hơn và rủi ro dồn một chỗ; bỏ P6-23 khỏi Phase 6 thì phải ghi lại sang Phase sau.
+
+### T39. Không thêm quyền mới
+
+- **Ý nghĩa:** hiện có 66 quyền. Việc xử lý đơn online đủ dùng lại quyền đã có.
+- **Ví dụ:** người đóng gói và gửi hàng cần `MANAGE_PRODUCT_ORDERS` (xem đơn, nhập mã vận đơn, đánh dấu đã gửi và đã giao); chỉ người có `REFUND_PRODUCTS` được hủy đơn đã thanh toán và hoàn tiền (kể cả giao thất bại); `MANAGE_PRODUCTS` sửa cài đặt giao hàng. Địa chỉ nhà khách chỉ hiện cho người có `MANAGE_PRODUCT_ORDERS` hoặc `REFUND_PRODUCTS` ở chi nhánh gửi hàng.
+- **Tôi khuyên:** đồng ý, vẫn 66 quyền, không gán thêm cho ai.
+- **Nếu khác:** tách quyền riêng cho việc xem địa chỉ khách hoặc nhập phí hãng: an toàn hơn nhưng thêm một quyền (67) và một lần hỏi lại phân quyền.
+
+### T40. Cài đặt phí giao hàng và ngưỡng miễn phí, tắt mặc định
+
+- **Ý nghĩa:** Chủ muốn giữ chỗ này trong quản trị để dùng sau, nhưng hiện miễn phí hết. Cột phí giao hàng đã có sẵn trên hóa đơn (mặc định 0, làm ở P6-8).
+- **Ví dụ:** cài đặt có công tắc "Thu phí giao hàng" (tắt), "Phí cố định" (ví dụ 30.000đ) và "Miễn phí từ" (ví dụ 500.000đ). Công tắc tắt thì dù có điền số, khách vẫn thấy "Miễn phí giao hàng" và phí bằng 0.
+- **Tôi khuyên:** chỉ phí cố định và ngưỡng miễn phí; **không** cân nặng, **không** theo vùng (Chủ đã bỏ cân nặng). Bật lên cũng không áp giảm giá hay điểm vào phí (OQ-41).
+- **Nếu khác:** phí theo vùng hoặc cân nặng cần bảng giá và thêm một đợt việc, chỉ nên làm khi Chủ thật sự cần.
+
+### T41. Đơn online dùng lại bộ máy đã có
+
+- **Ý nghĩa:** thay vì làm hệ thống riêng, đơn online là **hóa đơn kênh online** (chờ thanh toán, rồi đã thanh toán) kèm **đơn hàng và dòng đơn** giống đặt trước tại quầy. Khách tự trả bằng PayOS (liên kết hết hạn sau 30 phút). Hàng có sẵn được giữ ngay khi khách đặt và nhả nếu hết 30 phút; hàng đặt trước không giữ gì cho đến khi hàng về. Kho **chỉ bị trừ khi nhân viên đánh dấu "đã gửi"** (T31 đã duyệt). Thêm hai trạng thái cho dòng đơn online: **Đã gửi**, rồi **Hoàn tất** (có ngày giao).
+- **Ví dụ:** chị Hoa đặt 2 hộp kem có sẵn: hàng được giữ, chị quét mã PayOS trong 30 phút, đơn thành "Đã thanh toán", nhân viên đóng gói, gọi hãng, nhập mã vận đơn, hộp kem bị trừ khỏi kho, đơn thành "Đã gửi".
+- **Tôi khuyên:** đồng ý. Ưu điểm lớn: tiền, kho, điểm Beauty, thông báo và hoàn tiền đều chạy trên đường đã kiểm kỹ ở các đợt trước. Chỗ rủi ro cao nhất là lúc PayOS báo trùng giờ với lúc hết hạn, nên tôi kiểm tranh chấp thật chỗ này.
+- **Nếu khác:** làm hệ thống đơn online riêng thì không ảnh hưởng đường cũ nhưng phải viết lại và kiểm lại từ đầu toàn bộ tiền, kho, điểm.
+
+### T42. Kiểm tải và bảo mật trước khi mở bán (P6-22)
+
+- **Ý nghĩa:** đây là lúc OQ-26 (API chạy một tiến trình) được xem lại, vì lần đầu có khách tự thanh toán qua mạng.
+- **Tôi khuyên:** **đo thật trước**: giả lập nhiều khách cùng đặt hàng, trả tiền và PayOS báo cùng lúc (mục tiêu đề xuất: 100 khách đồng thời trong 1 phút). Chỉ chạy nhiều tiến trình API **nếu số đo cho thấy cần**; Chủ duyệt kết quả đo trước khi tôi đổi cấu hình. Thêm giới hạn số lần gọi theo tài khoản cho đặt hàng và thanh toán.
+- **Nếu khác:** chạy nhiều tiến trình API ngay: nhanh hơn khi đông nhưng đổi cách chạy máy chủ và phải kiểm lại cổng quay lui.
+
+### OQ-89. Giỏ hàng và các giới hạn
+
+- **Ý nghĩa:** khách có thể mua nhiều món một lần. Giỏ lưu ở đâu và tối đa bao nhiêu.
+- **Ví dụ:** chị Hoa thêm kem vào giỏ trên điện thoại buổi sáng, buổi tối mở máy tính vẫn thấy.
+- **Tôi khuyên:** giỏ **lưu theo tài khoản** (cả hai máy cùng thấy); tối đa **20 dòng**, mỗi dòng tối đa **10 cái**; giá luôn lấy lại khi thanh toán, không giữ giá cũ trong giỏ.
+- **Nếu khác:** giỏ chỉ lưu trong trình duyệt thì đơn giản hơn nhưng mất khi đổi máy; hoặc chỉ có nút "mua ngay" một món.
+
+### OQ-90. Đơn có cả hàng có sẵn và hàng đặt trước
+
+- **Ý nghĩa:** hàng có sẵn gửi được ngay; hàng đặt trước phải chờ 3 đến 5 ngày. Vì cửa hàng trả phí hãng, gửi hai lần là tốn hai lần.
+- **Ví dụ:** chị Hoa mua 1 kem có sẵn và 1 son đặt trước.
+- **Tôi khuyên:** **một đơn, một kiện, gửi khi đủ hàng**; trang thanh toán ghi rõ "đơn này có hàng đặt trước, sẽ gửi khi đủ hàng, dự kiến …". Nhân viên không tách kiện.
+- **Nếu khác:** gửi hàng có sẵn trước và phần còn lại sau: khách nhận sớm hơn nhưng cửa hàng trả hai lần phí hãng và mã vận đơn phải theo từng kiện (thêm việc đáng kể).
+
+### OQ-91. Sản phẩm nào được bán online
+
+- **Ý nghĩa:** có món chỉ nên bán tại quầy (dễ vỡ, cần tư vấn).
+- **Ví dụ:** một loại tinh dầu cần tư vấn thì tắt "bán online", trang vẫn xem được và ghi "Mua tại cửa hàng".
+- **Tôi khuyên:** mỗi **biến thể** có ô "bán online", **mặc định bật**; tắt thì trang không hiện nút mua.
+- **Nếu khác:** mọi sản phẩm đã đăng đều mua được online (không có công tắc), hoặc mặc định tắt và phải bật từng món.
+
+### OQ-92. Số đơn chưa thanh toán tối đa của một tài khoản
+
+- **Ý nghĩa:** đơn chưa trả giữ hàng 30 phút; nếu không giới hạn, một người có thể giữ hết hàng bằng nhiều đơn.
+- **Tôi khuyên:** tối đa **3 đơn chưa thanh toán** cùng lúc; đặt thêm thì báo "hãy thanh toán hoặc hủy đơn đang chờ".
+- **Nếu khác:** số khác (Chủ cho số), hoặc chỉ 1 đơn một lúc (chặt hơn).
+
+### OQ-93. Địa chỉ giao hàng và số điện thoại nhận hàng
+
+- **Ý nghĩa:** đây là dữ liệu cá nhân. Địa chỉ trong hồ sơ khách (một địa chỉ) không đủ vì mỗi đơn có thể gửi chỗ khác, người nhận khác.
+- **Tôi khuyên:** năm ô: tên người nhận, số điện thoại, tỉnh hoặc thành phố (chọn từ danh sách), phường hoặc xã, số nhà và đường (nhập tay). **Lưu theo từng đơn** (không đổi về sau); điền sẵn từ hồ sơ khách và cho lưu địa chỉ dùng lại. Trong danh sách, số điện thoại bị che bớt; chỉ người xử lý đơn và người hoàn tiền ở chi nhánh gửi hàng thấy đủ; không có trong thông báo, nhật ký hay trang công khai.
+- **Nếu khác:** một ô địa chỉ tự do thì nhanh hơn nhưng nhân viên khó đọc và đặt hãng; kiểm địa chỉ tự động bằng dịch vụ ngoài thì chính xác hơn nhưng thêm phụ thuộc bên ngoài.
+
+### OQ-94. Hứa thời gian gửi và thời gian giao (cần các con số của Chủ)
+
+- **Ý nghĩa:** PRD ghi thời gian giao hàng là "chưa quyết". Tôi không tự hứa với khách.
+- **Tôi khuyên:** cửa hàng **gửi trong 2 ngày làm việc** kể từ khi có hàng; vận chuyển do hãng, ghi **"dự kiến 2 đến 5 ngày, không phải cam kết"**; hệ thống nhắc nhân viên lúc 08:00 những đơn đã thanh toán, đã đủ hàng mà quá 2 ngày làm việc chưa gửi. **Chủ cho con số đúng của cửa hàng** trước khi tôi ghi lên trang.
+- **Nếu khác:** không ghi con số nào (chỉ "cửa hàng sẽ báo khi gửi") thì không bị ràng buộc nhưng khách khó tin.
+
+### OQ-95. Hãng vận chuyển, mã vận đơn và phí hãng cửa hàng thực trả (tiền)
+
+- **Ý nghĩa:** Chủ đã quyết nhân viên đặt hãng ở ngoài và chỉ nhập mã. Hai việc cần thêm: (1) tên hãng và đường dẫn tra cứu hiện cho khách; (2) **số tiền cửa hàng thực trả cho hãng**, vì nếu giao thất bại thì số này được trừ khi hoàn tiền (đã duyệt).
+- **Ví dụ:** nhân viên đặt hãng X, nhập "Hãng X", mã `ABC123`, phí đi 35.000đ. Khách thấy "Hãng X, mã ABC123" và nút "Tra cứu" nếu hãng có đường dẫn.
+- **Tôi khuyên:** **danh sách hãng nằm trong cài đặt** (Chủ nhập tên và, nếu có, mẫu đường dẫn tra cứu; tôi không tự đặt tên hãng nào); nhân viên chọn hãng, nhập mã và **phí hãng thực trả** lúc đánh dấu "đã gửi". Phí này **chỉ nội bộ**, khách không thấy, chỉ người có quyền hoàn tiền thấy. Nhập sai mã hay phí thì sửa bằng bản ghi mới (bản cũ giữ trong lịch sử).
+- **Nếu khác:** không nhập phí lúc gửi mà nhập lúc giao thất bại: ít việc hơn lúc gửi nhưng dễ quên hoặc nhớ sai con số.
+
+### OQ-96. Ai đánh dấu "đã giao" và khi nào
+
+- **Ý nghĩa:** hạn đổi trả (7 ngày, 48 giờ) bắt đầu từ ngày khách **nhận** hàng (OQ-40). Hệ thống không nối với hãng nên không tự biết.
+- **Tôi khuyên:** nhân viên đánh dấu "đã giao" kèm ngày (xem trên trang tra cứu của hãng); khách cũng có nút **"Tôi đã nhận hàng"** trong trang đơn của mình; ai bấm trước thì tính. Lúc 08:00, đơn **đã gửi quá 7 ngày chưa có ngày giao** hiện trong danh sách nhắc để nhân viên kiểm tra với hãng.
+- **Nếu khác:** tự coi là đã giao sau N ngày kể từ lúc gửi (không cần ai bấm) thì đơn giản nhưng có thể tính sai ngày và làm khách mất quyền đổi trả oan.
+
+### OQ-97. Khách hủy đơn online (tiền)
+
+- **Ý nghĩa:** ba lúc khác nhau, ba cách xử lý.
+- **Tôi khuyên:** (1) **chưa thanh toán**: khách tự hủy bất cứ lúc nào, hoặc tự hủy sau 30 phút; (2) **đã thanh toán, chưa gửi**: khách liên hệ cửa hàng; người có quyền hoàn tiền hủy dòng và hoàn tiền: hàng có sẵn hoặc đặt trước chưa đặt nhà cung cấp thì **hoàn đủ**; khách đổi ý sau khi đã đặt nhà cung cấp thì **Chủ hoặc quản lý quyết từng trường hợp** (hoàn đủ, một phần hoặc từ chối, có lý do) đúng như đợt 3b; nhà cung cấp không giao được hoặc trễ quá 7 ngày thì hoàn đủ (OQ-32); (3) **đã gửi**: không hủy được; khách từ chối nhận thì đi theo "giao thất bại" (OQ-98), nhận rồi thì đi theo đổi trả (OQ-100).
+- **Nếu khác:** cho khách tự hủy cả khi đã thanh toán thì khách tiện hơn nhưng dễ hủy đúng lúc nhân viên đóng gói; khóa hẳn thì dễ tranh cãi.
+
+### OQ-98. Giao thất bại: các bước và công thức hoàn tiền (tiền)
+
+- **Ý nghĩa:** Chủ đã quyết phần chính. Còn các chi tiết sau mà tôi cần Chủ đồng ý, vì chúng quyết khi nào tiền được hoàn.
+- **Tôi khuyên:**
+  1. Đơn "giao thất bại" (hãng báo không giao được): nhân viên **liên hệ khách, ghi lại từng lần liên hệ và lý do**, rồi cho giao lại; số lần giao lại **nhân viên quyết**, hệ thống không tự giới hạn.
+  2. Nếu khách không còn muốn nhận: hãng gửi hàng **về cửa hàng**; nhân viên bấm "hàng đã về cửa hàng" (có ngày). **Chỉ sau bước này mới nhập được khoản hoàn**, để không hoàn tiền khi hàng còn trên đường.
+  3. Tiền hoàn = **tiền hàng khách đã thu trừ (phí hãng chiều đi + phí hãng chiều về) mà cửa hàng thực trả**, do nhân viên nhập hai con số và **lý do**; **thấp nhất là 0** (không bao giờ bắt khách trả thêm), không bao giờ vượt tiền hàng đã thu.
+  4. Hàng về cửa hàng nhập kho lại thành lô mới mang tên đơn đó; người giữ quyền hoàn tiền quyết "bán lại được" hay không (giống OQ-80); điểm Beauty thu hồi theo đúng số tiền đã hoàn.
+  5. Đây là khoản hoàn như mọi khoản hoàn khác: chỉ người có quyền hoàn tiền, nhập lại mật khẩu, Chủ nhận thông báo, bản ghi không sửa được.
+- **Nếu khác:** cho hoàn ngay khi hãng báo thất bại (trước khi hàng về) thì khách có tiền sớm nhưng cửa hàng có thể chưa nhận được hàng; trừ phí cố định thay cho phí thực trả thì dễ hơn nhưng không đúng ý Chủ ("phí thực trả").
+
+### OQ-99. Hoàn tiền đơn online bằng chuyển khoản: số tài khoản của khách
+
+- **Ý nghĩa:** khách trả bằng PayOS nhưng hoàn tiền chỉ bằng chuyển khoản tay (Q4: không bao giờ hoàn qua PayOS). Nhân viên cần số tài khoản để chuyển; tại quầy OQ-83 đã quyết không lưu số tài khoản.
+- **Tôi khuyên:** nhân viên **hỏi khách qua điện thoại hoặc Zalo** lúc cần, chuyển khoản rồi ghi **mã giao dịch ngân hàng**; hệ thống **không lưu số tài khoản** (giống OQ-83). Nếu nhập mã giao dịch sai thì sửa bằng bản ghi mới (đã có từ đợt 3b).
+- **Nếu khác:** khách nhập sẵn số tài khoản lúc đặt: tiện hơn nhưng thêm dữ liệu nhạy cảm phải bảo vệ.
+
+### OQ-100. Khách trả hàng đã nhận: ai chịu phí gửi trả (tiền)
+
+- **Ý nghĩa:** khi khách đã **nhận** hàng rồi muốn trả, hàng phải gửi ngược về. PRD có ô "ai chịu phí gửi" trong hồ sơ trả hàng nhưng chưa có quy tắc. Giao hàng đi miễn phí, nên khác với giao thất bại (hàng chưa tới tay khách).
+- **Tôi khuyên:** **đổi ý** (hạn 7 ngày): khách tự chịu phí gửi hàng về, cửa hàng hoàn tiền hàng đủ và **không trừ phí giao ban đầu** (vì đã miễn phí); **hàng sai, hỏng** (hạn 48 giờ): cửa hàng chịu phí gửi trả (nhân viên ghi số tiền, đây là chi phí của cửa hàng, không trừ vào khoản hoàn). Các quy tắc còn lại (ảnh bằng chứng, niêm phong, duyệt, hoàn tiền) y như trả hàng tại quầy.
+- **Nếu khác:** cửa hàng chịu mọi phí gửi trả (thân thiện nhưng tốn), hoặc trừ phí giao ban đầu khi khách đổi ý (đi ngược lời "miễn phí giao hàng", không khuyên).
+
+### OQ-101. Báo khách về đơn online
+
+- **Ý nghĩa:** hôm nay Chủ quyết chưa gửi email "hàng đã về" cho đặt trước tại quầy (hệ thống chưa có email giao dịch). Đơn online cần báo nhiều lúc: đã nhận đơn, đã thanh toán, đã gửi (kèm mã vận đơn), đã giao, giao thất bại, đã hoàn tiền.
+- **Tôi khuyên:** **chỉ trong ứng dụng** (chuông thông báo) và hiện đầy đủ trạng thái, mã vận đơn trên **trang đơn** của khách; khách không có tài khoản không mua online được nên không bị bỏ sót. Email giao dịch (cần cấu hình gửi thư và tên miền gửi) để một đợt riêng nếu Chủ muốn.
+- **Nếu khác:** làm email giao dịch trước khi mở bán online: khách yên tâm hơn nhưng thêm một đợt việc và phần cấu hình ngoài hệ thống.
+
+### OQ-102. Mã giảm giá khi thanh toán online
+
+- **Ý nghĩa:** hệ thống đã có giảm giá thành viên (Beauty) và voucher. Cần biết khách được dùng gì ở trang thanh toán.
+- **Tôi khuyên:** giảm giá thành viên **tự áp dụng** như ở quầy; khách có thể nhập **một** mã voucher (dùng lại luật đã duyệt: mỗi bên chỉ một ưu đãi tốt nhất, không cộng dồn); quà sinh nhật chỉ dành cho dịch vụ nên không có ở đây; không áp cho phí giao hàng (OQ-41). Chương trình khuyến mãi đầy đủ chờ P6-23.
+- **Nếu khác:** không cho nhập voucher online (đơn giản hơn) hoặc cho nhiều mã (khó kiểm hơn).
+
+### OQ-103. Chính sách giao hàng và đổi trả ở trang thanh toán
+
+- **Ý nghĩa:** khách đồng ý các điều kiện trước khi trả tiền: miễn phí giao hàng, thời gian gửi dự kiến, hàng đặt trước, hủy đơn, đổi trả (7 ngày, 48 giờ), giao thất bại bị trừ phí hai chiều.
+- **Tôi khuyên:** tôi **soạn bản nháp bằng tiếng Việt thường** chỉ từ các quyết định Chủ đã duyệt, **không thêm điều khoản mới**; Chủ sửa; trang thanh toán có ô "Tôi đã đọc" bắt buộc tích. Nội dung này sửa được trong quản trị.
+- **Nếu khác:** để Chủ hoặc người tư vấn pháp lý soạn toàn bộ văn bản: chính xác hơn, nhưng P6-19 phải đợi văn bản.
+
+### Việc tôi làm tiếp theo khi Chủ đã trả lời
+
+1. Ghi câu trả lời đúng lời Chủ vào tài liệu thiết kế, tài liệu này và `LUCYSPA_HANDOFF.md` (mục nào chưa được trả lời thì giữ "chờ Chủ duyệt", không tự duyệt).
+2. Làm P6-19 trước (mua hàng và thanh toán), dừng cho Chủ xem; rồi P6-20, P6-21, P6-22. Mỗi bước có báo cáo ngắn, kiểm giao diện, và chỉ commit trên máy khi Chủ chưa bảo đẩy lên.
+3. Sau P6-22: kiểm tra mốc 4a (đầy đủ như các đợt trước), diễn tập trên bản khôi phục, bằng chứng quay lui, hướng dẫn triển khai cho terminal iNET.
+
 ## Đợt 3b (mốc 3b: đặt hàng trước tại quầy): các lựa chọn kỹ thuật **chờ Chủ xem lại**
 
 Chủ dặn (2026-10-08, mục 2.29 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`): chọn theo đề xuất của tôi, ghi là "chờ Chủ xem lại" và làm tiếp; không tự bịa chính sách về tiền. Mỗi bước ghi thêm vào đây. Mục nào đụng tới tiền hoặc quyền của người làm được đánh dấu **(tiền/quyền)**.
