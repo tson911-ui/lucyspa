@@ -2,7 +2,7 @@
 
 Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, theo thứ tự**, trong **cùng một cửa sổ terminal web của iNET** đã đăng nhập vào máy chủ. Mỗi khối có dòng **Mong đợi**; kết quả khác thì **DỪNG, không chạy tiếp, chụp màn hình gửi Claude**. Chỉ làm khi Owner quyết (Owner chốt 2026-10-07: deploy từng đợt, sau kiểm tra mốc của mỗi đợt). **Claude không chạm vào máy chủ.**
 
-**Bản sẽ cài:** commit `<MÃ_COMMIT_MỚI>` (điền sau khi Owner push lên `main` và CI xanh; các commit tài liệu đẩy sau đó không đổi mã chạy).
+**Bản sẽ cài:** commit `135872558838e00436fa5ce829e70f0517d7be68` (viết tắt `1358725`), đã push lên `main`, **CI xanh** (2026-10-08). Các commit tài liệu đẩy sau đó (kể cả commit điền mã này) **không** được cài và không đổi mã chạy.
 **Bản đang chạy:** `6546c434595cef5c7ab764d8e5e7cc4b62afe256` (Đợt 1, theo `LUCYSPA_HANDOFF.md`).
 **Cơ sở dữ liệu:** thêm **7 migration** (`20261107000000` đến `20261110000000`): **73 thành 80**. **Quyền: không thêm quyền nào** (vẫn 65; `SELL_PRODUCTS` đã có từ Đợt 1 và **chưa gán cho ai**).
 **Khác Đợt 1:** Đợt 1 chỉ _thêm_ bảng mới. **Đợt 2 sửa chính các bảng đang thu tiền thật**: hóa đơn (thêm 2 cột, thay một ràng buộc tiền), khóa dùng ưu đãi, bảng thông báo (nới 2 ràng buộc), kho (thêm cột và 2 loại phiếu), các hàm kiểm tra của thanh toán. Mọi migration đều **chỉ thêm hoặc nới, không xóa dữ liệu, không ghi lại dòng cũ**; hóa đơn chỉ có dịch vụ vẫn tính bằng bộ tính cũ (bộ mới chạy ngầm để so, không bao giờ đổi số tiền).
@@ -12,7 +12,7 @@ Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, t
 
 ## Bước 0. Điều kiện
 
-- Trên GitHub, tab **Actions**, commit `<MÃ_COMMIT_MỚI>` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
+- Trên GitHub, tab **Actions**, commit `135872558838e00436fa5ce829e70f0517d7be68` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
 - Owner đã đọc `docs/PHASE6_WAVE2_MILESTONE.md` và `docs/PHASE6_WAVE2_ROLLBACK_PROOF.md` (cách quay lại đã thử thật).
 - Nếu có nhân viên đang thu tiền ở quầy, báo họ tạm dừng khoảng 10 phút ở Bước 5 và 6.
 
@@ -74,7 +74,7 @@ docker exec lucy-spa-postgres-1 sh -c 'pg_restore --list /tmp/check.dump | wc -l
 ```
 cd /opt/lucyspa
 git fetch origin
-git checkout <MÃ_COMMIT_MỚI>
+git checkout 135872558838e00436fa5ce829e70f0517d7be68
 git rev-parse HEAD
 ```
 
