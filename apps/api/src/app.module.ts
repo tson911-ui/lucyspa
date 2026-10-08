@@ -1,4 +1,5 @@
 import { Module, type DynamicModule } from '@nestjs/common';
+import path from 'node:path';
 import type { Logger } from 'pino';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { EmailChangeService } from './account/email-change.service.js';
@@ -30,6 +31,8 @@ import { ComboController } from './combo/combo.controller.js';
 import { ComboService } from './combo/combo.service.js';
 import { InventoryController } from './inventory/inventory.controller.js';
 import { InventoryService } from './inventory/inventory.service.js';
+import { ProductReturnController } from './product-returns/return.controller.js';
+import { ProductReturnService } from './product-returns/return.service.js';
 import { ProductImportController } from './product-imports/import.controller.js';
 import { ProductImportService } from './product-imports/import.service.js';
 import { ProductCatalogController } from './products/product-catalog.controller.js';
@@ -107,6 +110,7 @@ import {
   API_ENVIRONMENT,
   API_LOGGER,
   MEDIA_STORAGE,
+  RETURN_EVIDENCE_STORAGE,
   PAYMENT_PROVIDER,
   type ApiEnvironment,
 } from './platform/tokens.js';
@@ -148,6 +152,7 @@ export class AppModule {
         ComboController,
         ProductCatalogController,
         InventoryController,
+        ProductReturnController,
         ProductImportController,
         RewardController,
         CustomerLoyaltyController,
@@ -177,6 +182,11 @@ export class AppModule {
         {
           provide: MEDIA_STORAGE,
           useValue: new LocalDiskMediaStorage(environment.mediaStorageDir),
+        },
+        // Phase 6 P6-12: private return evidence, a separate folder under the same root.
+        {
+          provide: RETURN_EVIDENCE_STORAGE,
+          useValue: new LocalDiskMediaStorage(path.join(environment.mediaStorageDir, 'returns')),
         },
         InfrastructureService,
         PublicRateLimitService,
@@ -214,6 +224,7 @@ export class AppModule {
         ComboService,
         ProductCatalogService,
         InventoryService,
+        ProductReturnService,
         ProductImportService,
         RewardService,
         CustomerLoyaltyService,

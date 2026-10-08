@@ -13,18 +13,18 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 
 ## Phase status
 
-| Phase                                     | Status                                                                                             |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Phase 0                                   | PASS                                                                                               |
-| Phase 1 (auth and security)               | COMPLETE                                                                                           |
-| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)                                   |
-| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                                          |
-| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                                       |
-| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                                       |
-| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `9b76789`)                                                                  |
-| **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `f79572d`); go-live turned ON by the Owner about 17:20 (+07)** |
-| Phase 6 (products, inventory, Beauty)     | Waves 1 and 2 DEPLOYED (production = `1358725`, 2026-10-08); Wave 3 not started (docs only)        |
-| Phase 7+ (payroll, cash, reports)         | NOT started                                                                                        |
+| Phase                                     | Status                                                                                                  |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Phase 0                                   | PASS                                                                                                    |
+| Phase 1 (auth and security)               | COMPLETE                                                                                                |
+| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)                                        |
+| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                                               |
+| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                                            |
+| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                                            |
+| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `9b76789`)                                                                       |
+| **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `f79572d`); go-live turned ON by the Owner about 17:20 (+07)**      |
+| Phase 6 (products, inventory, Beauty)     | Waves 1 and 2 DEPLOYED (production = `1358725`, 2026-10-08); Wave 3: P6-12 built locally (not deployed) |
+| Phase 7+ (payroll, cash, reports)         | NOT started                                                                                             |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
 
@@ -194,6 +194,8 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 - **P6-11 built, committed locally, not pushed, not deployed** (`docs/PHASE6_STEP11_BEAUTY_WAVE2.md`, design 2.20): Beauty points (`BEAUTY_EARN:{invoice}:{paid_seq}`, payer only, Beauty side net, never the fee), the expired-lot alert of OQ-75 as changed (`EXPIRED_LOT_SOLD`, migration `20261110000000`, recipients locked before the stock), Beauty card real %, scope/product targets on the discount screens. **Wave 2 milestone done** (`PHASE6_WAVE2_MILESTONE.md`): all suites green, rehearsal on a production-like copy (7 migrations ~0.4 s), rollback proof (`PHASE6_WAVE2_ROLLBACK_PROOF.md`: old code breaks once any product sale exists, so a 5-number gate precedes any rollback), deploy guide `PHASE6_WAVE2_DEPLOY_CHECKLIST.md` (fill `<MÃ_COMMIT_MỚI>` after the Owner pushes). Pending the Owner: OQ-77, OQ-78. Wave 2 is NOT deployed; production stays `6546c43`.
 - **2026-10-08: the Owner APPROVED Wave 2** (design 2.21, exact words): OQ-77 and OQ-78 as proposed. The site is internal-only (no customers), so deploys need no quiet hour. The supervised trial sale (OQ-60) is POSTPONED (no real products until after Phase 9): `SELL_PRODUCTS` stays granted to no one after the deploy. Customer tier table now marks the Beauty tier too. Owner asked: push, CI, commit into the guide, paste the guide in chat; the Owner deploys himself.
 - **2026-10-08: pushed `1358725` (full sha 135872558838e00436fa5ce829e70f0517d7be68) to `main`, CI green (Phase 0 checks).** It is the Wave 2 deploy commit named in `docs/PHASE6_WAVE2_DEPLOY_CHECKLIST.md`. NOT deployed yet: the Owner deploys himself from the guide; record the deploy (commit, migrations 80, date) here when he reports it.
+- **2026-10-08: the Owner APPROVED Wave 3 decisions** (design 2.23, exact words): "Wave 3 decisions approved as you recommended: T34, T35, T36, T37, OQ-79 to OQ-88". Owner asked for **P6-12 only** (product return cases: record, eligibility checks, private evidence photos, staff screens; no money, no stock; `MANAGE_PRODUCT_RETURNS` stays granted to no one).
+- **P6-12 built, committed locally, not pushed, not deployed** (`docs/PHASE6_STEP12_PRODUCT_RETURNS.md`, design 2.24, readings R1-R12 pending the Owner): return cases per product line (windows 168 h / 48 h from hand-over, seal, quantity cap, private evidence photos, Owner-only removal, in-app notice to `REFUND_PRODUCTS` holders), migration `20261111000000` (81), screens "Trả hàng". No money, stock or points move; `MANAGE_PRODUCT_RETURNS` and `REFUND_PRODUCTS` granted to nobody (65 codes). Next: P6-13 only after the Owner approves P6-12.
 - **2026-10-08: Wave 3 prepared, docs only** (`docs/PHASE6_OWNER_DECISIONS_VI.md`, new "Đợt 3" section; design 2.22): quick-answer table for P6-12..P6-18 (T34-T37, OQ-79..OQ-88), risks and the test plan. Nothing is approved and no code is written; the Owner answers first. Wave 2 is deployed; production stays `1358725`.
 
 ## Phase 6 Wave 2 preparation (2026-10-07, docs only, no code)

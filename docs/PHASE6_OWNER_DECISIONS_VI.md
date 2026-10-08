@@ -1,6 +1,8 @@
 # Phase 6: các mục chờ Chủ duyệt (giải thích bằng tiếng Việt)
 
-**Mới (2026-10-08): mục "Đợt 3"** (trả hàng, hoàn tiền, đổi hàng, đặt trước tại quầy, quà tặng; chỉ tài liệu, chờ Chủ trả lời) nằm ngay sau mục "Đợt 2".
+**Chủ đã duyệt Đợt 3 (2026-10-08, nguyên văn ở mục 2.23 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`): "Wave 3 decisions approved as you recommended: T34, T35, T36, T37, OQ-79 to OQ-88".** Cột "Tôi khuyên" của bảng "Đợt 3" là câu trả lời đã được duyệt: hai mốc triển khai 3a và 3b (T34), hồ sơ trả hàng với ảnh bằng chứng riêng tư (T35), quyền mới `MANAGE_PRODUCT_ORDERS` ở P6-15 (T36), trừ kho quà tặng (T37), ảnh bằng chứng giữ cùng hồ sơ, chỉ xóa ảnh khi khách yêu cầu và Chủ duyệt, có nhật ký (OQ-79), và OQ-80 đến OQ-88. Chủ bảo làm **P6-12 (hồ sơ trả hàng) và chỉ bước này**: không có tiền hoàn, không có chuyển kho (đó là P6-13, P6-14); `MANAGE_PRODUCT_RETURNS` vẫn không gán cho ai. Những chỗ hợp đồng chưa nói rõ và tôi phải tự hiểu nằm ở mục 2.24 của tài liệu thiết kế, **chờ Chủ**.
+
+**Mới (2026-10-08): mục "Đợt 3"** (trả hàng, hoàn tiền, đổi hàng, đặt trước tại quầy, quà tặng) nằm ngay sau mục "Đợt 2". Các dòng đã được duyệt như đoạn trên.
 
 **(2026-10-07, ngay bên dưới): mục "Đợt 2"** (bán sản phẩm tại quầy; sửa POS, hóa đơn, thanh toán đang chạy thật) với bảng trả lời nhanh, rủi ro và cách kiểm.
 

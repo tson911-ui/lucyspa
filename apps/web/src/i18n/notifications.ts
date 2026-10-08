@@ -16,6 +16,13 @@ interface FinanceTexts {
   openInvoice: string;
 }
 
+/** Product return notice templates (Phase 6 P6-12): the case code and a closed reason only, never a name or free text. */
+interface ReturnTexts {
+  opened: string;
+  reasons: Record<'PERSONAL_PREFERENCE' | 'WRONG_OR_DAMAGED' | 'SKIN_IRRITATION', string>;
+  openCase: string;
+}
+
 /** Stock alert templates (Phase 6 P6-4): counts and the SKU only, never a name or free text. */
 interface InventoryTexts {
   lowStock: string;
@@ -90,6 +97,7 @@ const vi = {
     LOW_STOCK_REACHED: 'Một mặt hàng đã xuống đến mức sắp hết hàng.',
     EXPIRY_ALERT: 'Có lô hàng đã hết hạn hoặc sắp hết hạn.',
     EXPIRED_LOT_SOLD: 'Hàng của một lô đã hết hạn vừa được giao cho khách.',
+    PRODUCT_RETURN_OPENED: 'Có hồ sơ trả hàng mới cần bạn xem.',
   } satisfies Record<NotificationType, string>,
   leave: {
     requested: 'Có đơn xin nghỉ ({type}) từ {from} đến {to} cần bạn xử lý.',
@@ -133,6 +141,15 @@ const vi = {
     expiredLotSold: 'Lô {lot} hết hạn đã giao {quantity} {sku} (hóa đơn {invoice}).',
     openStock: 'Xem kho hàng',
   } satisfies InventoryTexts,
+  returns: {
+    opened: 'Có hồ sơ trả hàng mới {code}: {reason}.',
+    reasons: {
+      PERSONAL_PREFERENCE: 'khách đổi ý',
+      WRONG_OR_DAMAGED: 'giao nhầm hoặc hỏng do đóng gói',
+      SKIN_IRRITATION: 'kích ứng da',
+    },
+    openCase: 'Xem hồ sơ',
+  } satisfies ReturnTexts,
 };
 type Dictionary = {
   [K in keyof typeof vi]: K extends 'types'
@@ -143,14 +160,16 @@ type Dictionary = {
         ? FinanceTexts
         : K extends 'inventory'
           ? InventoryTexts
-          : K extends 'leave'
-            ? {
-                requested: string;
-                approved: string;
-                rejected: string;
-                types: Record<LeaveType, string>;
-              }
-            : string;
+          : K extends 'returns'
+            ? ReturnTexts
+            : K extends 'leave'
+              ? {
+                  requested: string;
+                  approved: string;
+                  rejected: string;
+                  types: Record<LeaveType, string>;
+                }
+              : string;
 };
 const en: Dictionary = {
   title: 'Notifications',
@@ -217,6 +236,7 @@ const en: Dictionary = {
     LOW_STOCK_REACHED: 'An item has reached its low-stock level.',
     EXPIRY_ALERT: 'Some lots have expired or are about to expire.',
     EXPIRED_LOT_SOLD: 'Stock from an expired lot was just handed to a customer.',
+    PRODUCT_RETURN_OPENED: 'A new return case needs your attention.',
   },
   leave: {
     requested: 'A leave request ({type}) from {from} to {to} needs your attention.',
@@ -257,6 +277,15 @@ const en: Dictionary = {
     expiringOnly: 'Expiry warning: {expiring} lots expire within {days} days.',
     expiredLotSold: 'Expired lot {lot}: {quantity} x {sku} handed out (invoice {invoice}).',
     openStock: 'View inventory',
+  },
+  returns: {
+    opened: 'New return case {code}: {reason}.',
+    reasons: {
+      PERSONAL_PREFERENCE: 'changed their mind',
+      WRONG_OR_DAMAGED: 'wrong product or damaged packing',
+      SKIN_IRRITATION: 'skin irritation',
+    },
+    openCase: 'View case',
   },
 };
 export function getNotificationDictionary(locale: Locale): Dictionary {

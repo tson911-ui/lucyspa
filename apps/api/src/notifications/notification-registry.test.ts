@@ -36,10 +36,13 @@ const FINANCE = [
 // Phase 6 P6-4: stock alerts for the holders of VIEW_INVENTORY at the branch (operations).
 const INVENTORY = ['LOW_STOCK_REACHED', 'EXPIRY_ALERT', 'EXPIRED_LOT_SOLD'];
 
+// Phase 6 P6-12 (T35): a new product return case tells the holders of REFUND_PRODUCTS at the branch (operations).
+const RETURNS = ['PRODUCT_RETURN_OPENED'];
+
 test('the registry keeps every Phase 3 type unchanged and adds the Leave, finance and stock alert types', () => {
   assert.deepEqual(
     [...NOTIFICATION_TYPES].sort(),
-    [...PHASE3, 'LEAVE_REQUESTED', 'LEAVE_DECIDED', ...FINANCE, ...INVENTORY].sort(),
+    [...PHASE3, 'LEAVE_REQUESTED', 'LEAVE_DECIDED', ...FINANCE, ...INVENTORY, ...RETURNS].sort(),
   );
   assert.deepEqual(notificationMetadata('LOW_STOCK_REACHED').entityTypes, ['ProductVariant']);
   assert.deepEqual(notificationMetadata('EXPIRY_ALERT').entityTypes, ['Branch']);
@@ -80,7 +83,10 @@ test('category filters are derived from the registry, and targets from the entit
     'LEAVE_REQUESTED',
   ]);
   assert.deepEqual([...notificationTypesInCategory('FINANCE')].sort(), [...FINANCE].sort());
-  assert.equal(notificationTypesInCategory('OPERATIONS').length, PHASE3.length + INVENTORY.length);
+  assert.equal(
+    notificationTypesInCategory('OPERATIONS').length,
+    PHASE3.length + INVENTORY.length + RETURNS.length,
+  );
   assert.equal(notificationTarget('ProductVariant'), 'PRODUCT_VARIANT');
   assert.equal(notificationTarget('Invoice'), 'INVOICE');
   assert.equal(notificationTarget('Branch'), 'BRANCH');
@@ -249,6 +255,36 @@ test('the expired-lot alert names the invoice and the lot by plain codes and the
   bad({ ...ok, invoiceCode: 7 });
   bad({ ...ok, note: 'free text' });
   bad({ invoiceCode: 'INV-1', quantity: 1 });
+});
+
+test('the return-case notice names the entity, the reason and nothing else', () => {
+  assert.deepEqual(notificationMetadata('PRODUCT_RETURN_OPENED').entityTypes, [
+    'ProductReturnCase',
+  ]);
+  assert.equal(notificationMetadata('PRODUCT_RETURN_OPENED').category, 'OPERATIONS');
+  assert.equal(notificationTarget('ProductReturnCase'), 'PRODUCT_RETURN');
+  assert.ok(isAllowedNotificationEntity('PRODUCT_RETURN_OPENED', 'ProductReturnCase'));
+  for (const entity of [
+    'Booking',
+    'Visit',
+    'Invoice',
+    'Branch',
+    'ProductVariant',
+    'LeaveRequest',
+  ] as const) {
+    assert.ok(!isAllowedNotificationEntity('PRODUCT_RETURN_OPENED', entity), entity);
+  }
+  for (const reason of ['PERSONAL_PREFERENCE', 'WRONG_OR_DAMAGED', 'SKIN_IRRITATION']) {
+    assert.deepEqual(parseNotificationParams('PRODUCT_RETURN_OPENED', { reason }), { reason });
+  }
+  const bad = (value: unknown) =>
+    assert.throws(() => parseNotificationParams('PRODUCT_RETURN_OPENED', value));
+  bad(null);
+  bad({});
+  bad({ reason: 'BORED' });
+  bad({ reason: 'SKIN_IRRITATION', note: 'Khách bị đỏ da' });
+  bad({ reason: 'SKIN_IRRITATION', customerName: 'A' });
+  bad({ reason: 5 });
 });
 
 test('stock alert params are counts only: no names, no free text', () => {

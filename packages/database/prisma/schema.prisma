@@ -48,6 +48,7 @@ model Branch {
   rewardManualUses        RewardManualUse[]            @relation("RewardManualUseBranch")
   productImportJobs       ProductImportJob[]           @relation("ImportJobBranch")
   stockReceipts           StockReceipt[]               @relation("StockReceiptBranch")
+  productReturnCases      ProductReturnCase[]          @relation("ProductReturnBranch")
   inventoryLots           InventoryLot[]               @relation("InventoryLotBranch")
   stockLevels             StockLevel[]                 @relation("StockLevelBranch")
   inventoryLowStockAlerts InventoryLowStockAlert[]     @relation("LowStockAlertBranch")
@@ -520,6 +521,11 @@ model User {
   createdImportJobs              ProductImportJob[]               @relation("ImportJobCreator")
   appliedImportJobs              ProductImportJob[]               @relation("ImportJobApplier")
   createdStockReceipts           StockReceipt[]                   @relation("StockReceiptCreator")
+  openedProductReturns           ProductReturnCase[]              @relation("ProductReturnOpener")
+  closedProductReturns           ProductReturnCase[]              @relation("ProductReturnCloser")
+  productReturnEvents            ProductReturnEvent[]             @relation("ProductReturnEventActor")
+  uploadedReturnPhotos           ProductReturnPhoto[]             @relation("ProductReturnPhotoUploader")
+  removedReturnPhotos            ProductReturnPhoto[]             @relation("ProductReturnPhotoRemover")
   confirmedStockReceipts         StockReceipt[]                   @relation("StockReceiptConfirmer")
   cancelledStockReceipts         StockReceipt[]                   @relation("StockReceiptCanceller")
   createdInventoryLots           InventoryLot[]                   @relation("InventoryLotCreator")
@@ -1705,6 +1711,7 @@ model Invoice {
   beautyApplication    InvoiceBeautyApplication?
   beautySnapshot       InvoiceBeautySnapshot?
   paymentSideAllocations PaymentSideAllocation[]
+  productReturnCases   ProductReturnCase[]
 
   @@index([branchId, businessDate, status], map: "invoices_branch_date_idx")
   @@index([payerUserId, createdAt], map: "invoices_payer_idx")
@@ -1743,6 +1750,7 @@ model InvoiceLine {
   comboConsumption ComboSessionConsumption? @relation("ComboConsumptionLine")
   comboUsages      InvoiceLineComboUsage[]
   rewardRedemption RewardRedemption?        @relation("RewardRedemptionLine")
+  productReturnCases ProductReturnCase[]    @relation("ProductReturnLine")
 
   @@unique([invoiceId, sequence], map: "invoice_lines_invoice_sequence_key")
   @@unique([invoiceId, id], map: "invoice_lines_invoice_id_id_key")
@@ -1833,6 +1841,7 @@ model InvoiceLineProduct {
   promotion      ProductPromotion? @relation(fields: [promotionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   pricedAt       DateTime          @map("priced_at") @db.Timestamptz(3)
   createdAt      DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  returnCases    ProductReturnCase[] @relation("ProductReturnProductLine")
 
   @@index([invoiceId], map: "invoice_line_products_invoice_idx")
   @@index([variantId], map: "invoice_line_products_variant_idx")
@@ -3589,4 +3598,125 @@ model StockMovement {
   @@index([branchId, variantId, createdAt], map: "stock_movements_level_idx")
   @@index([lotId], map: "stock_movements_lot_idx")
   @@map("stock_movements")
+}
+
+// Phase 6 P6-12 (design 8.1, T35, OQ-79): product return cases. A case records one claim about one product line of a PAID counter
+// invoice; it moves no money and no stock (P6-13 and P6-14 do). Nothing is ever deleted and the facts of a case never change: the
+// notes, photos and decisions that follow are appended as events (and a photo removal is a tombstone whose bytes are deleted).
+enum ProductReturnReason {
+  PERSONAL_PREFERENCE
+  WRONG_OR_DAMAGED
+  SKIN_IRRITATION
+}
+
+enum ProductReturnOutcome {
+  EXCHANGE
+  REFUND
+}
+
+enum ProductReturnStatus {
+  OPEN
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
+enum ProductReturnEventKind {
+  OPENED
+  NOTE_ADDED
+  PHOTO_ADDED
+  PHOTO_REMOVED
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
+model ProductReturnCase {
+  id                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code              String                @unique(map: "product_return_cases_code_key") @db.VarChar(40)
+  branchId          String                @map("branch_id") @db.Uuid
+  branch            Branch                @relation("ProductReturnBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceId         String                @map("invoice_id") @db.Uuid
+  invoice           Invoice               @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceLineId     String                @map("invoice_line_id") @db.Uuid
+  line              InvoiceLine           @relation("ProductReturnLine", fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "product_return_cases_line_fkey")
+  productLine       InvoiceLineProduct    @relation("ProductReturnProductLine", fields: [invoiceLineId], references: [invoiceLineId], onDelete: Restrict, onUpdate: Restrict, map: "product_return_cases_product_line_fkey")
+  reason            ProductReturnReason
+  /// What the customer asked for. It is a request, not an approved remedy; the remedy is `decidedOutcome` once ACCEPTED.
+  requestedOutcome  ProductReturnOutcome  @map("requested_outcome")
+  quantity          Int
+  /// The seal/packaging check made at the counter (required true for PERSONAL_PREFERENCE).
+  sealIntact        Boolean?              @map("seal_intact")
+  /// The opening note; later notes are events. Notes record what was said and seen, never a diagnosis (PRD 28.3).
+  notes             String?
+  /// The start of the return window: hand-over to the customer (for an in-stock counter sale, the invoice's paid time).
+  handoverAt        DateTime              @map("handover_at") @db.Timestamptz(3)
+  paidSeq           Int                   @map("paid_seq")
+  /// handover + 7 days (PERSONAL_PREFERENCE) or + 48 hours (WRONG_OR_DAMAGED); NULL for SKIN_IRRITATION (case by case).
+  windowEndsAt      DateTime?             @map("window_ends_at") @db.Timestamptz(3)
+  status            ProductReturnStatus   @default(OPEN)
+  decidedOutcome    ProductReturnOutcome? @map("decided_outcome")
+  closedByUserId    String?               @map("closed_by_user_id") @db.Uuid
+  closedBy          User?                 @relation("ProductReturnCloser", fields: [closedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  closedAt          DateTime?             @map("closed_at") @db.Timestamptz(3)
+  closingNote       String?               @map("closing_note")
+  openedByUserId    String                @map("opened_by_user_id") @db.Uuid
+  openedBy          User                  @relation("ProductReturnOpener", fields: [openedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  openedAt          DateTime              @default(dbgenerated("clock_timestamp()")) @map("opened_at") @db.Timestamptz(3)
+  clientRequestId   String                @map("client_request_id") @db.Uuid
+  rowVersion        Int                   @default(1) @map("row_version")
+  createdAt         DateTime              @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime              @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  events            ProductReturnEvent[]
+  photos            ProductReturnPhoto[]
+
+  @@unique([openedByUserId, clientRequestId], map: "product_return_cases_request_key")
+  @@index([branchId, openedAt(sort: Desc), id], map: "product_return_cases_branch_idx")
+  @@index([invoiceLineId, status], map: "product_return_cases_line_idx")
+  @@map("product_return_cases")
+}
+
+/// Append-only history of a case (no update, no delete).
+model ProductReturnEvent {
+  id          String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId      String                 @map("case_id") @db.Uuid
+  returnCase  ProductReturnCase      @relation(fields: [caseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  kind        ProductReturnEventKind
+  actorUserId String                 @map("actor_user_id") @db.Uuid
+  actor       User                   @relation("ProductReturnEventActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  note        String?
+  photoId     String?                @map("photo_id") @db.Uuid
+  photo       ProductReturnPhoto?    @relation(fields: [photoId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  occurredAt  DateTime               @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+
+  @@index([caseId, occurredAt, id], map: "product_return_events_case_idx")
+  @@map("product_return_events")
+}
+
+/// Private evidence (OQ-79). The objects live in a storage folder the website never reads and are streamed only through the
+/// permission-checked API. A removal keeps the row as a tombstone (who, when, why) and the bytes are deleted.
+model ProductReturnPhoto {
+  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId           String               @map("case_id") @db.Uuid
+  returnCase       ProductReturnCase    @relation(fields: [caseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  originalKey      String               @unique(map: "product_return_photos_original_key") @map("original_key")
+  thumbKey         String               @unique(map: "product_return_photos_thumb_key") @map("thumb_key")
+  mdKey            String               @unique(map: "product_return_photos_md_key") @map("md_key")
+  lgKey            String               @unique(map: "product_return_photos_lg_key") @map("lg_key")
+  mime             String
+  bytes            Int
+  width            Int
+  height           Int
+  sha256           String
+  uploadedByUserId String               @map("uploaded_by_user_id") @db.Uuid
+  uploadedBy       User                 @relation("ProductReturnPhotoUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  uploadedAt       DateTime             @default(dbgenerated("clock_timestamp()")) @map("uploaded_at") @db.Timestamptz(3)
+  removedAt        DateTime?            @map("removed_at") @db.Timestamptz(3)
+  removedByUserId  String?              @map("removed_by_user_id") @db.Uuid
+  removedBy        User?                @relation("ProductReturnPhotoRemover", fields: [removedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  removalNote      String?              @map("removal_note")
+  events           ProductReturnEvent[]
+
+  @@index([caseId, uploadedAt, id], map: "product_return_photos_case_idx")
+  @@map("product_return_photos")
 }

@@ -163,6 +163,7 @@ export type NavKey =
   | 'import'
   | 'discounts'
   | 'loyalty'
+  | 'productReturns'
   | 'skills'
   | 'employees'
   | 'roles'
@@ -283,6 +284,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'loyalty',
       group: 'sales',
       path: '/loyalty',
+    },
+    // Phase 6 P6-12: product return cases (branch MANAGE_PRODUCT_RETURNS to work on them, REFUND_PRODUCTS to see and decide skin cases).
+    (canAnywhere(account, 'MANAGE_PRODUCT_RETURNS') || canAnywhere(account, 'REFUND_PRODUCTS')) && {
+      key: 'productReturns',
+      group: 'sales',
+      path: '/product-returns',
     },
     canAnywhere(account, 'MANAGE_SKILLS') && {
       key: 'skills',

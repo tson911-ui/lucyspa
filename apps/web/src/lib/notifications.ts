@@ -24,6 +24,14 @@ export function notificationHref(
   if (item.source.type === 'LeaveRequest') {
     return account.kind === 'EMPLOYEE' || account.kind === 'OWNER' ? `${base}/leave` : null;
   }
+  // A return notice opens the case page for people who handle returns or refunds at its branch.
+  if (item.source.type === 'ProductReturnCase') {
+    return item.branch !== null &&
+      (canAt(account, 'MANAGE_PRODUCT_RETURNS', item.branch.id) ||
+        canAt(account, 'REFUND_PRODUCTS', item.branch.id))
+      ? `${base}/product-returns/${encodeURIComponent(item.source.id)}`
+      : null;
+  }
   // A stock alert opens the inventory of its branch (the item page for one variant, the stock list for the daily expiry scan).
   if (item.source.type === 'ProductVariant') {
     return item.branch !== null && canAt(account, 'VIEW_INVENTORY', item.branch.id)
@@ -97,6 +105,7 @@ export function notificationMessage(item: NotificationItem, locale: Locale): str
     return (
       financeMessage(item, params, locale) ??
       inventoryMessage(item, params, locale) ??
+      returnMessage(item, params, locale) ??
       t.types[item.type]
     );
   }
@@ -162,6 +171,17 @@ function financeMessage(
     default:
       return null;
   }
+}
+
+/** A return notice names the case code (its context code) and the closed reason; anything else falls back. */
+function returnMessage(
+  item: NotificationItem,
+  params: NonNullable<NotificationItem['params']>,
+  locale: Locale,
+): string | null {
+  if (item.type !== 'PRODUCT_RETURN_OPENED' || !('reason' in params)) return null;
+  const r = getNotificationDictionary(locale).returns;
+  return fill(r.opened, { code: item.source.code, reason: r.reasons[params.reason] });
 }
 
 /** Stock alerts render from validated counts and the SKU (the notification's context code); anything else falls back. */

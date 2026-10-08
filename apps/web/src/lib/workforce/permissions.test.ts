@@ -40,6 +40,8 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'discounts',
     // Phase 5 P5-3: loyalty points (VIEW_LOYALTY, the exceptions list or the Owner's switch; the Owner holds all).
     'loyalty',
+    // Phase 6 P6-12: product return cases (branch MANAGE_PRODUCT_RETURNS / REFUND_PRODUCTS; the Owner holds all).
+    'productReturns',
     'skills',
     'employees',
     // Organization hierarchy + teams (VIEW/MANAGE_ORGANIZATION, VIEW/MANAGE_TEAMS; Owner holds all).

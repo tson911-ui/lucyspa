@@ -163,6 +163,18 @@ const errors = {
   IMPORT_JOB_NOT_PREVIEWED: [409, 'Only a previewed import can be applied or cancelled'],
   IMPORT_PREVIEW_STALE: [409, 'The data changed since the preview; upload the file again'],
   IMPORT_NOTHING_TO_APPLY: [409, 'No valid row of this file would change anything'],
+  // Phase 6 P6-12: product return cases (T23, T35, OQ-22, OQ-79).
+  RETURN_NOT_ELIGIBLE: [409, 'This invoice line cannot be returned'],
+  RETURN_WINDOW_EXPIRED: [409, 'The return window for this reason is over'],
+  RETURN_SEAL_REQUIRED: [409, 'A personal-preference return needs the seal intact'],
+  RETURN_QUANTITY_EXCEEDED: [409, 'More units than the line has left to return'],
+  RETURN_CLOSED: [409, 'The return case is closed'],
+  RETURN_PHOTO_REQUIRED: [
+    409,
+    'This reason needs a photo taken within 48 hours before it is accepted',
+  ],
+  RETURN_PHOTO_LIMIT: [409, 'A return case holds at most eight photos'],
+  RETURN_PHOTO_GONE: [409, 'This photo was already removed'],
 } as const;
 
 export type AuthErrorCode = keyof typeof errors;

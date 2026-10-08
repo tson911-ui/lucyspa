@@ -13,6 +13,7 @@ export const NOTIFICATION_ENTITY_TYPES = [
   'Invoice',
   'Branch',
   'ProductVariant',
+  'ProductReturnCase',
 ] as const;
 export type NotificationEntityType = (typeof NOTIFICATION_ENTITY_TYPES)[number];
 
@@ -25,7 +26,13 @@ export function isNotificationCategory(value: unknown): value is NotificationCat
 export type NotificationSeverity = 'INFO' | 'ATTENTION' | 'WARNING';
 /** Which allowlisted screen an item opens; the destination API still enforces authority. */
 export type NotificationTargetKind =
-  'BOOKING' | 'VISIT' | 'LEAVE_REQUEST' | 'INVOICE' | 'BRANCH' | 'PRODUCT_VARIANT';
+  | 'BOOKING'
+  | 'VISIT'
+  | 'LEAVE_REQUEST'
+  | 'INVOICE'
+  | 'BRANCH'
+  | 'PRODUCT_VARIANT'
+  | 'PRODUCT_RETURN';
 /** Shape of the structured `params` a type carries. Never free text. */
 export type NotificationParamsKind =
   | 'NONE'
@@ -38,7 +45,8 @@ export type NotificationParamsKind =
   | 'REVENUE_SUMMARY'
   | 'LOW_STOCK'
   | 'EXPIRY_ALERT'
-  | 'EXPIRED_LOT_SOLD';
+  | 'EXPIRED_LOT_SOLD'
+  | 'PRODUCT_RETURN_OPENED';
 
 export interface NotificationTypeMetadata {
   readonly category: NotificationCategory;
@@ -62,6 +70,7 @@ export const NOTIFICATION_TARGET_BY_ENTITY = {
   Invoice: 'INVOICE',
   Branch: 'BRANCH',
   ProductVariant: 'PRODUCT_VARIANT',
+  ProductReturnCase: 'PRODUCT_RETURN',
 } as const satisfies Record<NotificationEntityType, NotificationTargetKind>;
 
 const operations = (severity: NotificationSeverity, i18nKey: string): NotificationTypeMetadata => ({
@@ -147,6 +156,14 @@ export const NOTIFICATION_TYPE_REGISTRY = {
   EXPIRY_ALERT: inventory('ATTENTION', 'EXPIRY_ALERT', 'EXPIRY_ALERT', 'Branch'),
   // Phase 6 P6-11 (Owner, 2026-10-08, OQ-75 changed): a paid invoice was handed stock from an expired lot (last resort).
   EXPIRED_LOT_SOLD: inventory('WARNING', 'EXPIRED_LOT_SOLD', 'EXPIRED_LOT_SOLD', 'ProductVariant'),
+  // Phase 6 P6-12 (T35): a new product return case tells the holders of REFUND_PRODUCTS at the branch (the reason is the only fact).
+  PRODUCT_RETURN_OPENED: {
+    category: 'OPERATIONS',
+    severity: 'ATTENTION',
+    entityTypes: ['ProductReturnCase'],
+    i18nKey: 'PRODUCT_RETURN_OPENED',
+    params: 'PRODUCT_RETURN_OPENED',
+  },
 } as const satisfies Record<string, NotificationTypeMetadata>;
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPE_REGISTRY;
@@ -236,7 +253,12 @@ export interface ExpiredLotSoldParams {
   lotCode: string;
   quantity: number;
 }
+/** A return case was opened: the reason is a closed enum (never the customer's words, never a name). */
+export interface ProductReturnOpenedParams {
+  reason: 'PERSONAL_PREFERENCE' | 'WRONG_OR_DAMAGED' | 'SKIN_IRRITATION';
+}
 export type NotificationParams =
+  | ProductReturnOpenedParams
   | ExpiredLotSoldParams
   | LowStockParams
   | ExpiryAlertParams
@@ -348,6 +370,15 @@ export function parseNotificationParams(
         quantity,
       };
     }
+    case 'PRODUCT_RETURN_OPENED':
+      exactKeys(type, record, ['reason']);
+      return {
+        reason: oneOf('reason', record['reason'], [
+          'PERSONAL_PREFERENCE',
+          'WRONG_OR_DAMAGED',
+          'SKIN_IRRITATION',
+        ] as const),
+      };
     case 'EXPIRY_ALERT': {
       exactKeys(type, record, ['withinDays', 'expiredLots', 'expiringLots']);
       const withinDays = count('withinDays', record['withinDays']);

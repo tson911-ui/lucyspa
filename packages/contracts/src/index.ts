@@ -2187,6 +2187,7 @@ export * from './customer-loyalty.js';
 export * from './contact-links.js';
 // Phase 6 P6-8: product lines on invoices (seller, reservation, product-only invoices).
 export * from './product-sale.js';
+export * from './product-return.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;

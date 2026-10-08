@@ -368,6 +368,40 @@ The Owner asked for Wave 3 (P6-12 to P6-18, section 18.6) to be prepared like Wa
 - **OQ-79** evidence photo retention/removal (proposal: keep, delete a photo only on customer request with Owner approval, audited; no invented number). **OQ-80** returned sellable goods: new lot named after the return case, keeping the sold lot's expiry; the refund holder confirms "sellable"; never more than sold. **OQ-81** a voucher or birthday gift used on a fully refunded invoice is not given back automatically. **OQ-82** exchange price difference = current price of the replacement minus what the customer actually paid for the old line. **OQ-83** no customer bank account stored (only the transfer reference). **OQ-84** no automatic split of a partly available line. **OQ-85** hand-over to the customer or to whoever gives the order code and the last 4 digits of the phone (my number). **OQ-86** a 08:00 in-app alert for late pre-orders. **OQ-87** optional "usual supplier" on a variant for the "cần đặt" grouping. **OQ-88** when to deploy Wave 3 while no real products exist (proposal: at each checkpoint, granting nobody the permissions, as Wave 2).
 - Already approved and not asked again: Q3-Q5, T21-T23, OQ-19, OQ-22 to OQ-25, T28-T33, OQ-29 to OQ-37, OQ-39 to OQ-42, Q10.
 
+### 2.23 Wave 3 APPROVED by the Owner (2026-10-08): T34-T37 and OQ-79 to OQ-88 as recommended; P6-12 requested
+
+Owner's words, recorded exactly as given:
+
+> Wave 3 decisions approved as you recommended: T34, T35, T36, T37, OQ-79 to OQ-88. Record in the design doc, owner-decisions doc and handoff.
+>
+> Now do P6-12 only (product return cases), per the approved design (Q3–Q5, OQ-22, OQ-40, T23, T35, OQ-79):
+>
+> - Return case record per invoice line: reason (personal preference / wrong or damaged packaging / skin irritation), requested outcome (exchange or refund), quantity, notes, status, who handled it; never deletes or edits history.
+> - Eligibility checks: personal preference within 7 days with seal intact and invoice; wrong/damaged packaging within 48 hours with a photo; skin irritation case by case decided by Owner/manager, records notes and photos only, no diagnosis. Window starts from handover (for in-stock counter sales, the paid time).
+> - Evidence photos are private (never public URLs), visible only to people with the returns permission; deletion only on customer request with Owner approval, logged (OQ-79).
+> - Staff screens to create and review a return case; no money or stock movement yet (that is P6-13/P6-14).
+> - Permissions: MANAGE_PRODUCT_RETURNS stays granted to no one.
+>
+> Same strict rules: existing tests unchanged, race tests where relevant, full tests, full UI gate per CLAUDE.md. Commit locally, no push/deploy. Report in Vietnamese and stop.
+
+- **Approved as recommended (2.22 and `docs/PHASE6_OWNER_DECISIONS_VI.md`, "Đợt 3"):** T34 (two deploy checkpoints, 3a refunds/returns/exchanges and 3b pre-orders/gifts), T35 (return case with private evidence photos, 8.1), T36 (one new permission `MANAGE_PRODUCT_ORDERS`, 65 to 66, at P6-15), T37 (gift stock), OQ-79 (photos kept with the case; a photo is removed only on the customer's request with the Owner's approval, audited; no retention number invented), OQ-80 to OQ-88 as listed in 2.22 (OQ-80 to OQ-83 belong to P6-13/P6-14, OQ-84 to OQ-87 to P6-16/P6-17, OQ-88: deploy at each checkpoint granting nobody the permissions).
+- **Scope of this request:** P6-12 only. The readings I had to make where the contract is silent are listed in 2.24 and stay pending until the Owner's own words.
+
+### 2.24 P6-12 as built: my readings where the contract was silent (**all pending the Owner's own words**; report `docs/PHASE6_STEP12_PRODUCT_RETURNS.md`)
+
+- **R1 Who sees the evidence:** holders of `MANAGE_PRODUCT_RETURNS` or `REFUND_PRODUCTS` at the case's branch (the approved wording of 8.1/T35). The request said "the returns permission"; one function (`canViewAt`) decides it.
+- **R2 Who decides:** opening, notes, photos and cancelling need `MANAGE_PRODUCT_RETURNS`. Accepting or declining a personal-preference or wrong/damaged case needs either permission. A **skin-irritation** case is decided only by a holder of `REFUND_PRODUCTS` (my mapping of "Owner/manager decides"; nobody holds it by default).
+- **R3 Windows:** 7 days = **168 elapsed hours**, 48 hours = 48 elapsed hours, from the invoice's `paid_at` (hand-over of an in-stock counter sale); the end is inclusive; checked when the case is **opened**, refused with no override for anyone (Owner included); a personal preference older than 7 days is refused too (PRD 28.4: no new eligibility window). The database derives the same end as a CHECK, so a request cannot invent a longer one.
+- **R4 Photo rule:** a wrong/damaged case may be opened without a photo, but is **accepted** only with a photo that is still present and was uploaded inside the 48 hours.
+- **R5 Seal:** required `true` for a personal preference; recorded as checked for a wrong/damaged product; not asked for a skin irritation.
+- **R6 Units:** one case per product line; open and accepted cases hold their units, declined and cancelled ones free them; the sum never exceeds the units sold (lock on the invoice row, backed by a database trigger).
+- **R7 Status:** `OPEN` to `ACCEPTED`, `DECLINED` or `CANCELLED`, once. `requested_outcome` is what the customer asked; `decided_outcome` is the remedy chosen at acceptance (it may differ). Notes while OPEN or ACCEPTED, photos only while OPEN; every change is an event, nothing is edited or deleted (database guards).
+- **R8 Photo removal (OQ-79):** only the Owner account, with a written note of the customer's request, at any case status. The row stays as a tombstone (who, when, why); the stored files are deleted after the commit. "Owner approval" is read as the Owner doing it himself.
+- **R9 Storage:** private folder `<MEDIA_STORAGE_DIR>/returns` (no new setting, never the website media library, no `media_assets` row); the original is kept byte for byte but never served; only three WebP renditions (EXIF/GPS stripped) are streamed, through the permission-checked route, with `no-store`. At most 8 photos of 10 MB per case; the same picture twice in one case is one photo (nothing is compared across cases).
+- **R10 Notice (T35):** a new case writes an in-app notice `PRODUCT_RETURN_OPENED` to the holders of `REFUND_PRODUCTS` at the branch, except the opener. Deviation from 10.1 (an outbox event plus a consumer): it is written in the case's own transaction, like the expired-lot alert of P6-11; the recipients are locked with the actor before the invoice row (a mutation test shows the deadlock without it). The notice carries only the reason code.
+- **R11 Scope:** only PRODUCT lines of PAID **counter** invoices (no pre-order line exists yet; when P6-15 adds hand-over, only the clock source changes). No shipping-cost bearer is stored (a counter return has no shipping; the reason hints say who pays) and no restock decision (OQ-80: the refund holder confirms it in P6-13/P6-14). Nothing moves money, stock or points.
+- **R12 Existing tests changed (additive only):** `notification-registry.test` (the pinned type list and the OPERATIONS count gain the new type), `nav-groups.test` and `permissions.test` (the Owner sees one more entry), and the database package's `test` script lists the new guard test.
+
 ## 3. Catalog (PRD §23-24; T9-T12)
 
 ### 3.1 Model
