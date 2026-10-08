@@ -97,6 +97,13 @@ export function DiscountsScreen() {
           : d.autoProgram,
     },
     {
+      key: 'scope',
+      header: d.colScope,
+      // Lowest priority: on a 1440 px screen the validity column would be cut off (the detail page shows the scope).
+      hideBelow: '2xl',
+      cell: (program) => d.scopeKinds[program.current.scope ?? 'SERVICES'],
+    },
+    {
       key: 'benefit',
       header: d.colBenefit,
       numeric: true,

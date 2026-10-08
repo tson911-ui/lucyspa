@@ -2,6 +2,7 @@ import type {
   DiscountCreateRequest,
   DiscountDetailResponse,
   DiscountIneligibleReason,
+  DiscountScopeName,
   DiscountStatusName,
   DiscountVersionInput,
   DiscountVersionRequest,
@@ -34,9 +35,15 @@ export interface DiscountForm {
   validFrom: string;
   validUntil: string;
   minSpend: string;
+  /** What the program may discount (Phase 6 P6-11): services, products or both. */
+  scope: DiscountScopeName;
+  /** `ALL_SERVICES` = every item of the scope (the name is the contract's); `SELECTED` = only the chosen targets. */
   scopeMode: 'ALL_SERVICES' | 'SELECTED';
   serviceIds: string[];
   categoryIds: string[];
+  brandIds: string[];
+  productCategoryIds: string[];
+  productIds: string[];
   limitTotal: string;
   limitPerCustomer: string;
 }
@@ -55,12 +62,20 @@ export const emptyDiscountForm = (): DiscountForm => ({
   validFrom: '',
   validUntil: '',
   minSpend: '0',
+  scope: 'SERVICES',
   scopeMode: 'ALL_SERVICES',
   serviceIds: [],
   categoryIds: [],
+  brandIds: [],
+  productCategoryIds: [],
+  productIds: [],
   limitTotal: '',
   limitPerCustomer: '',
 });
+
+/** Whether the scope reaches services / products. */
+export const scopeHasServices = (scope: DiscountScopeName) => scope !== 'PRODUCTS';
+export const scopeHasProducts = (scope: DiscountScopeName) => scope !== 'SERVICES';
 
 /** "12.5" -> 1250 basis points; null when it is not a percent with at most two decimals in (0, 100]. */
 export function percentToBp(text: string): number | null {
@@ -143,8 +158,24 @@ export function versionInputOf(
   if (!validFrom || !validUntil || validUntil <= validFrom) return { problem: 'window' };
   const minSpend = form.minSpend.trim() || '0';
   if (!isVndInput(minSpend)) return { problem: 'minSpend' };
+  // Only the targets that fit the scope are kept and sent (the server refuses a target of the wrong kind, and a "selected"
+  // program with nothing selected); switching the scope in the form therefore never leaves a stale choice behind.
+  const selected = form.scopeMode === 'SELECTED';
+  const services = selected && scopeHasServices(form.scope);
+  const products = selected && scopeHasProducts(form.scope);
+  const serviceIds = services ? form.serviceIds : [];
+  const categoryIds = services ? form.categoryIds : [];
+  const brandIds = products ? form.brandIds : [];
+  const productCategoryIds = products ? form.productCategoryIds : [];
+  const productIds = products ? form.productIds : [];
   if (
-    form.scopeMode === 'SELECTED' ? form.serviceIds.length + form.categoryIds.length === 0 : false
+    selected &&
+    serviceIds.length +
+      categoryIds.length +
+      brandIds.length +
+      productCategoryIds.length +
+      productIds.length ===
+      0
   ) {
     return { problem: 'scope' };
   }
@@ -161,8 +192,13 @@ export function versionInputOf(
     validUntil,
     minSpendVnd: minSpend,
     scopeMode: form.scopeMode,
-    serviceIds: form.scopeMode === 'SELECTED' ? form.serviceIds : [],
-    categoryIds: form.scopeMode === 'SELECTED' ? form.categoryIds : [],
+    serviceIds,
+    categoryIds,
+    // A services-only program sends exactly what it always did (the server reads a missing scope as SERVICES); any other scope is
+    // stated with its product targets, so a new version never silently falls back to services only.
+    ...(form.scope === 'SERVICES'
+      ? {}
+      : { scope: form.scope, brandIds, productCategoryIds, productIds }),
     usageLimitTotal,
     usageLimitPerCustomer,
   };
@@ -212,9 +248,13 @@ export function formFromProgram(program: DiscountDetailResponse): DiscountForm {
     validFrom: isoToVnLocal(current.validFrom),
     validUntil: isoToVnLocal(current.validUntil),
     minSpend: current.minSpendVnd,
+    scope: current.scope ?? 'SERVICES',
     scopeMode: current.scopeMode,
     serviceIds: [...current.serviceIds],
     categoryIds: [...current.categoryIds],
+    brandIds: [...(current.brandIds ?? [])],
+    productCategoryIds: [...(current.productCategoryIds ?? [])],
+    productIds: [...(current.productIds ?? [])],
     limitTotal: current.usageLimitTotal === null ? '' : String(current.usageLimitTotal),
     limitPerCustomer:
       current.usageLimitPerCustomer === null ? '' : String(current.usageLimitPerCustomer),

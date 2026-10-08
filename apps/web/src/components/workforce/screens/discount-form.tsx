@@ -1,11 +1,20 @@
 'use client';
 
-import type { ServiceCategoryListResponse, ServiceListResponse } from '@lucy-spa/contracts';
+import type {
+  DiscountScopeName,
+  ServiceCategoryListResponse,
+  ServiceListResponse,
+} from '@lucy-spa/contracts';
 import { CheckField, Field, FormGrid, FormSection, Select, Stack, TextInput } from '@lucy-spa/ui';
-import { useId, type Dispatch, type SetStateAction } from 'react';
-import type { DiscountForm } from '../../../lib/workforce/discounts';
+import type { Dispatch, SetStateAction } from 'react';
+import {
+  scopeHasProducts,
+  scopeHasServices,
+  type DiscountForm,
+} from '../../../lib/workforce/discounts';
 import { useWorkforce } from '../session';
-import { Empty, Loading, useResource } from '../ui';
+import { Loading, useResource } from '../ui';
+import { PickerGroup, ProductTargetsFields, useProductCatalog } from './discount-targets';
 
 /**
  * The configuration fields of one discount program version, grouped in sections (program, discount,
@@ -26,14 +35,31 @@ export function DiscountFormFields({
   columns?: 1 | 2;
 }) {
   const { api, t, locale } = useWorkforce();
-  const services = useResource(() => api.get<ServiceListResponse>('/api/v1/services'), [api]);
-  const categories = useResource(
-    () => api.get<ServiceCategoryListResponse>('/api/v1/service-categories'),
-    [api],
+  const withServices = scopeHasServices(form.scope);
+  const withProducts = scopeHasProducts(form.scope);
+  const selected = form.scopeMode === 'SELECTED';
+  // The lists are read only for the kinds of target the form shows.
+  const services = useResource(
+    () =>
+      withServices && selected
+        ? api.get<ServiceListResponse>('/api/v1/services')
+        : Promise.resolve(null),
+    [api, withServices && selected],
   );
+  const categories = useResource(
+    () =>
+      withServices && selected
+        ? api.get<ServiceCategoryListResponse>('/api/v1/service-categories')
+        : Promise.resolve(null),
+    [api, withServices && selected],
+  );
+  const catalog = useProductCatalog(withProducts && selected);
   const d = t.discounts;
   const change = (patch: Partial<DiscountForm>) => setForm((current) => ({ ...current, ...patch }));
-  const toggle = (key: 'serviceIds' | 'categoryIds', id: string) =>
+  const toggle = (
+    key: 'serviceIds' | 'categoryIds' | 'brandIds' | 'productCategoryIds',
+    id: string,
+  ) =>
     setForm((current) => ({
       ...current,
       [key]: current[key].includes(id)
@@ -180,10 +206,23 @@ export function DiscountFormFields({
             {(control) => (
               <Select
                 {...control}
+                value={form.scope}
+                options={(['SERVICES', 'PRODUCTS', 'BOTH'] as const).map((value) => ({
+                  value,
+                  label: d.scopeKinds[value],
+                }))}
+                onChange={(event) => change({ scope: event.target.value as DiscountScopeName })}
+              />
+            )}
+          </Field>
+          <Field label={d.selection}>
+            {(control) => (
+              <Select
+                {...control}
                 value={form.scopeMode}
                 options={[
-                  { value: 'ALL_SERVICES', label: d.scopes.ALL_SERVICES },
-                  { value: 'SELECTED', label: d.scopes.SELECTED },
+                  { value: 'ALL_SERVICES', label: d.allOf[form.scope] },
+                  { value: 'SELECTED', label: d.selectedOnly },
                 ]}
                 onChange={(event) =>
                   change({ scopeMode: event.target.value as DiscountForm['scopeMode'] })
@@ -192,7 +231,7 @@ export function DiscountFormFields({
             )}
           </Field>
         </FormGrid>
-        {form.scopeMode === 'SELECTED' ? (
+        {selected && withServices ? (
           services.loading || categories.loading ? (
             <Loading t={t} />
           ) : (
@@ -219,6 +258,15 @@ export function DiscountFormFields({
               />
             </FormGrid>
           )
+        ) : null}
+        {selected && withProducts ? (
+          <ProductTargetsFields
+            form={form}
+            catalog={catalog}
+            columns={columns}
+            toggle={toggle}
+            setProducts={(productIds) => change({ productIds })}
+          />
         ) : null}
       </FormSection>
 
@@ -251,41 +299,5 @@ export function DiscountFormFields({
         </FormGrid>
       </FormSection>
     </Stack>
-  );
-}
-
-/** A labelled group of checkboxes (categories or services) of the "selected" scope. */
-function PickerGroup({
-  title,
-  empty,
-  options,
-  selected,
-  onToggle,
-}: {
-  title: string;
-  empty: string;
-  options: readonly { id: string; label: string }[];
-  selected: readonly string[];
-  onToggle: (id: string) => void;
-}) {
-  const labelId = useId();
-  return (
-    <div className="ls-field" role="group" aria-labelledby={labelId}>
-      <span className="ls-label" id={labelId}>
-        {title}
-      </span>
-      {options.length === 0 ? (
-        <Empty>{empty}</Empty>
-      ) : (
-        options.map((option) => (
-          <CheckField
-            key={option.id}
-            checked={selected.includes(option.id)}
-            onChange={() => onToggle(option.id)}
-            label={option.label}
-          />
-        ))
-      )}
-    </div>
   );
 }

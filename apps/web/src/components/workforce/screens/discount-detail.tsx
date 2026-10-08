@@ -3,6 +3,8 @@
 import type {
   DiscountDetailResponse,
   DiscountVersionResponse,
+  ServiceCategoryListResponse,
+  ServiceListResponse,
   VoucherResponse,
 } from '@lucy-spa/contracts';
 import {
@@ -46,8 +48,10 @@ import {
   Notice,
   PageHeader,
   Section,
+  useResource,
   useSuccessToast,
 } from '../ui';
+import { orderedCategories, useProductCatalog } from './discount-targets';
 
 type TabId = 'current' | 'versions' | 'vouchers';
 type Overlay = 'terminate' | 'voucher';
@@ -287,10 +291,87 @@ function DiscountDetail({
   );
 }
 
+/**
+ * The targets of the version in force, by name (the lists are read only for the kinds of target the version has). A list that cannot
+ * be read (no permission, or a failure) falls back to the number of items, never to an id.
+ */
+function useTargetNames(current: DiscountVersionResponse) {
+  const { api, locale } = useWorkforce();
+  const name = (entry: { nameVi: string; nameEn: string }) =>
+    locale === 'vi' ? entry.nameVi : entry.nameEn;
+  const brandIds = current.brandIds ?? [];
+  const productCategoryIds = current.productCategoryIds ?? [];
+  const productIds = current.productIds ?? [];
+  const wantServices = current.serviceIds.length + current.categoryIds.length > 0;
+  const wantProducts = brandIds.length + productCategoryIds.length + productIds.length > 0;
+  const services = useResource(
+    () => (wantServices ? api.get<ServiceListResponse>('/api/v1/services') : Promise.resolve(null)),
+    [api, wantServices],
+  );
+  const serviceCategories = useResource(
+    () =>
+      wantServices
+        ? api.get<ServiceCategoryListResponse>('/api/v1/service-categories')
+        : Promise.resolve(null),
+    [api, wantServices],
+  );
+  const catalog = useProductCatalog(wantProducts);
+  const pick = (
+    ids: readonly string[],
+    list: readonly { id: string; label: string }[] | null,
+  ): string[] | null => {
+    if (!list) return null;
+    const labels = new Map(list.map((entry) => [entry.id, entry.label]));
+    const found = ids.map((id) => labels.get(id));
+    return found.every((label): label is string => label !== undefined) ? found : null;
+  };
+  return {
+    loading: services.loading || serviceCategories.loading || catalog.loading,
+    services: pick(
+      current.serviceIds,
+      services.data?.services.map((service) => ({ id: service.id, label: name(service) })) ?? null,
+    ),
+    categories: pick(
+      current.categoryIds,
+      serviceCategories.data?.categories.map((category) => ({
+        id: category.id,
+        label: name(category),
+      })) ?? null,
+    ),
+    brands: pick(
+      brandIds,
+      catalog.ready ? catalog.brands.map((brand) => ({ id: brand.id, label: name(brand) })) : null,
+    ),
+    productCategories: pick(
+      productCategoryIds,
+      catalog.ready ? orderedCategories(catalog.categories, name) : null,
+    ),
+    products: pick(
+      productIds,
+      catalog.ready
+        ? catalog.products.map((product) => ({ id: product.id, label: name(product) }))
+        : null,
+    ),
+  };
+}
+
 function CurrentVersion({ program }: { program: DiscountDetailResponse }) {
   const { t, locale } = useWorkforce();
   const d = t.discounts;
   const current = program.current;
+  const scope = current.scope ?? 'SERVICES';
+  const names = useTargetNames(current);
+  const targets: { label: string; ids: readonly string[]; names: string[] | null }[] = [
+    { label: d.categories, ids: current.categoryIds, names: names.categories },
+    { label: d.services, ids: current.serviceIds, names: names.services },
+    { label: d.brands, ids: current.brandIds ?? [], names: names.brands },
+    {
+      label: d.productCategories,
+      ids: current.productCategoryIds ?? [],
+      names: names.productCategories,
+    },
+    { label: d.products, ids: current.productIds ?? [], names: names.products },
+  ];
   const limits = [
     current.usageLimitTotal === null ? null : fill(d.totalShort, { n: current.usageLimitTotal }),
     current.usageLimitPerCustomer === null
@@ -308,14 +389,21 @@ function CurrentVersion({ program }: { program: DiscountDetailResponse }) {
             value: `${formatVnInstant(current.validFrom, locale)} → ${formatVnInstant(current.validUntil, locale)}`,
           },
           { label: d.minSpend, value: formatVnd(current.minSpendVnd, locale) },
+          { label: d.scope, value: d.scopeKinds[scope] },
           {
-            label: d.scope,
-            value:
-              d.scopes[current.scopeMode] +
-              (current.scopeMode === 'SELECTED'
-                ? ` (${current.serviceIds.length} ${d.services.toLowerCase()}, ${current.categoryIds.length} ${d.categories.toLowerCase()})`
-                : ''),
+            label: d.selection,
+            value: current.scopeMode === 'SELECTED' ? d.selectedOnly : d.allOf[scope],
           },
+          ...targets
+            .filter((target) => target.ids.length > 0)
+            .map((target) => ({
+              label: target.label,
+              value: names.loading
+                ? '…'
+                : target.names
+                  ? target.names.join(', ')
+                  : fill(d.targetsCount, { n: target.ids.length }),
+            })),
           { label: d.limits, value: limits.length > 0 ? limits.join(' · ') : d.unlimited },
           { label: d.colUsed, value: program.redemptions },
         ]}
