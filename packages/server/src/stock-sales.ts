@@ -34,7 +34,14 @@ import {
  * variant), the order of the movement trigger, an adjustment and a count.
  */
 export const INVENTORY_CONSUMER = 'inventory';
-export const INVENTORY_EVENT_TYPES = ['INVOICE_PAID', 'INVOICE_REOPENED', 'INVOICE_CANCELLED'];
+/** Phase 6 P6-15: staff handed over the goods of a pre-order line (payload: invoiceId, orderLineId); the stock leaves now (T31). */
+export const ORDER_HANDED_OVER_EVENT = 'INVOICE_ORDER_HANDED_OVER';
+export const INVENTORY_EVENT_TYPES = [
+  'INVOICE_PAID',
+  'INVOICE_REOPENED',
+  'INVOICE_CANCELLED',
+  ORDER_HANDED_OVER_EVENT,
+];
 
 /**
  * - `APPLIED`: stock was consumed, given back or released for this invoice.
@@ -194,11 +201,18 @@ async function loadLots(
   return result;
 }
 
+/** Who the movements of a sale name, and the idempotency key of each (the default is the sale of an invoice line at its paid episode). */
+interface ConsumeOptions {
+  actorUserId?: string;
+  key?: (lotId: string) => string;
+}
+
 async function consume(
   tx: Prisma.TransactionClient,
   reservation: ReservationRow,
   paidSeq: number,
   lots: Map<string, LotState[]>,
+  options: ConsumeOptions = {},
 ): Promise<Take[]> {
   const available = lots.get(pairKey(reservation.branchId, reservation.variantId)) ?? [];
   let needed = reservation.quantity;
@@ -238,8 +252,10 @@ async function consume(
         quantityDelta: -take.quantity,
         invoiceLineId: reservation.invoiceLineId,
         paidSeq,
-        idempotencyKey: saleKey(reservation.invoiceLineId, paidSeq, take.lotId),
-        actorUserId: reservation.createdByUserId,
+        idempotencyKey: options.key
+          ? options.key(take.lotId)
+          : saleKey(reservation.invoiceLineId, paidSeq, take.lotId),
+        actorUserId: options.actorUserId ?? reservation.createdByUserId,
       },
       select: { id: true },
     });
@@ -373,8 +389,10 @@ export async function settleInvoiceStock(
   invoice: StockInvoiceState,
   options: StockSettlementOptions = {},
 ): Promise<StockSettlement> {
+  // Phase 6 P6-15: only the reservations of invoice lines follow the payment of the invoice. The goods reserved for a pre-order line
+  // (source ORDER_LINE) are sold at the hand-over of that line (`settleHandedOverOrderLines`) and by nothing else.
   const reservations = (await tx.stockReservation.findMany({
-    where: { invoiceId: invoice.id },
+    where: { invoiceId: invoice.id, source: 'INVOICE_LINE' },
     orderBy: [{ branchId: 'asc' }, { variantId: 'asc' }, { invoiceLineId: 'asc' }],
     select: {
       id: true,
@@ -427,6 +445,75 @@ export async function settleInvoiceStock(
   return settlement;
 }
 
+/** The key of the SALE movement taken from one lot for a handed-over order line: one per (order line, lot), whatever happens. */
+export const orderSaleKey = (orderLineId: string, lotId: string): string =>
+  `ORDER_SALE:${orderLineId}:${lotId}`;
+
+/**
+ * Phase 6 P6-15 (design 18.3 P6-T31): the goods held for a pre-order line leave the stock when the line is HANDED_OVER. In one
+ * transaction, under the invoice lock the caller holds: the order lines first (row locks, in id order), then the lots and levels,
+ * the reservation is CONSUMED at the invoice's current paid episode, the SALE movements are written (first-expiry lot first, one
+ * movement per lot, the person who handed the goods over as their actor) and the line becomes COMPLETED. A replay finds nothing
+ * HANDED_OVER with a reserved reservation and writes nothing. The hand-over is irreversible, so there is no give-back.
+ */
+export async function settleHandedOverOrderLines(
+  tx: Prisma.TransactionClient,
+  invoice: StockInvoiceState,
+  options: StockSettlementOptions = {},
+): Promise<StockSettlement> {
+  const settlement: StockSettlement = { consumed: 0, givenBack: 0, released: 0 };
+  if (invoice.status !== 'PAID') return settlement;
+  const due = await tx.$queryRaw<
+    {
+      order_line_id: string;
+      handed_over_by_user_id: string;
+      reservation_id: string;
+      invoice_line_id: string;
+      branch_id: string;
+      variant_id: string;
+      quantity: number;
+    }[]
+  >`
+    SELECT o.id AS order_line_id, o.handed_over_by_user_id, r.id AS reservation_id, r.invoice_line_id, r.branch_id, r.variant_id,
+           r.quantity
+    FROM product_order_lines o
+    JOIN stock_reservations r ON r.invoice_line_id = o.invoice_line_id AND r.source = 'ORDER_LINE'
+    WHERE o.invoice_id = ${invoice.id}::uuid AND o.status = 'HANDED_OVER' AND r.status = 'RESERVED'
+    ORDER BY o.id
+    FOR UPDATE OF o`;
+  if (due.length === 0) return settlement;
+  const reservations: (ReservationRow & { orderLineId: string; handedOverBy: string })[] = due.map(
+    (row) => ({
+      id: row.reservation_id,
+      invoiceLineId: row.invoice_line_id,
+      branchId: row.branch_id,
+      variantId: row.variant_id,
+      quantity: row.quantity,
+      status: 'RESERVED',
+      consumedPaidSeq: null,
+      createdByUserId: row.handed_over_by_user_id,
+      orderLineId: row.order_line_id,
+      handedOverBy: row.handed_over_by_user_id,
+    }),
+  );
+  await lockStock(tx, reservations);
+  const lots = await loadLots(tx, reservations);
+  for (const reservation of reservations) {
+    const takes = await consume(tx, reservation, invoice.paidSeq, lots, {
+      actorUserId: reservation.handedOverBy,
+      key: (lotId) => orderSaleKey(reservation.orderLineId, lotId),
+    });
+    await announceExpiredLots(tx, invoice.id, reservation, invoice.paidSeq, takes, options);
+    await tx.productOrderLine.update({
+      where: { id: reservation.orderLineId },
+      data: { status: 'COMPLETED' },
+      select: { id: true },
+    });
+    settlement.consumed += 1;
+  }
+  return settlement;
+}
+
 // ------------------------------------------------------------------------------------ consumer
 
 function field(payload: unknown, key: string): unknown {
@@ -435,6 +522,48 @@ function field(payload: unknown, key: string): unknown {
     : undefined;
 }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * The hand-over of a pre-order line (inside the claimed transaction of `processInventoryEvent`). Lock order (design 10.2): the users
+ * rows first (the movements name whoever handed the goods over, and an expired-lot alert reaches the holders of the inventory
+ * permission), then the invoice, then the order lines, then the stock.
+ */
+async function processHandOver(
+  tx: Prisma.TransactionClient,
+  eventId: string,
+  invoiceId: string,
+): Promise<InventoryEventOutcome> {
+  const handedBy = await tx.$queryRaw<{ id: string; branch_id: string }[]>`
+    SELECT DISTINCT handed_over_by_user_id AS id, branch_id FROM product_order_lines
+    WHERE invoice_id = ${invoiceId}::uuid AND status = 'HANDED_OVER'`;
+  const alertRecipients = new Map<string, readonly string[]>();
+  for (const branchId of new Set(handedBy.map((row) => row.branch_id))) {
+    alertRecipients.set(branchId, await stockAlertRecipients(tx, branchId));
+  }
+  const userIds = [
+    ...new Set([...handedBy.map((row) => row.id), ...[...alertRecipients.values()].flat()]),
+  ].sort();
+  if (userIds.length > 0) {
+    await tx.$queryRaw`
+      SELECT id FROM users WHERE id = ANY(${userIds}::uuid[]) ORDER BY id FOR KEY SHARE`;
+  }
+  const rows = await tx.$queryRaw<{ id: string; status: string; paid_seq: number }[]>`
+    SELECT i.id, i.status::text AS status, i.paid_seq FROM invoices i WHERE i.id = ${invoiceId}::uuid FOR SHARE`;
+  const invoice = rows[0];
+  let outcome: InventoryEventOutcome = 'NOOP';
+  if (invoice) {
+    const settlement = await settleHandedOverOrderLines(
+      tx,
+      { id: invoice.id, status: invoice.status, paidSeq: invoice.paid_seq },
+      { alertRecipients },
+    );
+    if (settlement.consumed > 0) outcome = 'APPLIED';
+  }
+  await tx.outboxConsumption.create({
+    data: { eventId, consumer: INVENTORY_CONSUMER, outcome },
+  });
+  return outcome;
+}
 
 /**
  * Handles ONE outbox event for the `inventory` consumer (design 10.1). In a single transaction: the shared graph lock, the claim
@@ -462,6 +591,9 @@ export async function processInventoryEvent(
   const invoiceId = field(event.payload, 'invoiceId');
   if (typeof invoiceId !== 'string' || !UUID.test(invoiceId)) {
     throw new Error('Malformed invoice event');
+  }
+  if (event.eventType === ORDER_HANDED_OVER_EVENT) {
+    return processHandOver(tx, event.id, invoiceId);
   }
   const eventSeq = field(
     event.payload,
@@ -536,7 +668,8 @@ export async function relayInventoryEvents(
     WHERE e.aggregate_type = 'Invoice' AND e.event_type = ANY(${INVENTORY_EVENT_TYPES}::text[])
       AND NOT EXISTS (SELECT 1 FROM outbox_consumptions c WHERE c.event_id = e.id AND c.consumer = ${INVENTORY_CONSUMER})
       AND EXISTS (SELECT 1 FROM stock_reservations r
-                  WHERE r.invoice_id = CASE WHEN e.aggregate_type = 'Invoice' THEN e.aggregate_id::uuid END)
+                  WHERE r.invoice_id = CASE WHEN e.aggregate_type = 'Invoice' THEN e.aggregate_id::uuid END
+                    AND r.source = CASE WHEN e.event_type = ${ORDER_HANDED_OVER_EVENT} THEN 'ORDER_LINE' ELSE 'INVOICE_LINE' END::"StockReservationSource")
       AND e.id <> ALL(${parked}::uuid[])
     ORDER BY e.occurred_at ASC, e.id ASC
     LIMIT ${PAGE}`;

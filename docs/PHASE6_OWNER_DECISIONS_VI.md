@@ -1,5 +1,20 @@
 # Phase 6: các mục chờ Chủ duyệt (giải thích bằng tiếng Việt)
 
+## Đợt 3b (mốc 3b: đặt hàng trước tại quầy): các lựa chọn kỹ thuật **chờ Chủ xem lại**
+
+Chủ dặn (2026-10-08, mục 2.29 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`): chọn theo đề xuất của tôi, ghi là "chờ Chủ xem lại" và làm tiếp; không tự bịa chính sách về tiền. Mỗi bước ghi thêm vào đây. Mục nào đụng tới tiền hoặc quyền của người làm được đánh dấu **(tiền/quyền)**.
+
+### P6-15 (cơ sở dữ liệu đơn đặt trước, kho): chờ Chủ xem lại
+
+- **Đơn và dòng đơn được tạo lúc chốt hóa đơn, không phải lúc thanh toán.** Hệ thống tự chuyển sang "đã thanh toán" khi hóa đơn được trả (tiền mặt, PayOS hay hóa đơn 0 đồng), tự hủy khi hóa đơn chưa trả bị hủy. Lý do: một luật chung cho mọi cách trả, và số điện thoại hỏi một lần ở quầy.
+- **Ngày dự kiến có hàng** tính lúc thanh toán: ngày trả (giờ chi nhánh) + số ngày chờ của sản phẩm (nếu có) hoặc mặc định 3 đến 5 ngày; ghi là "dự kiến, không phải cam kết"; không đổi về sau.
+- **(tiền/quyền) Đảo thanh toán của đơn đặt trước:** được phép chỉ khi chưa đặt hàng với nhà cung cấp; từ lúc đã đặt hàng trở đi, hóa đơn giữ nguyên các lần thanh toán, đường duy nhất là hủy dòng và hoàn tiền (P6-17). Chủ cho biết nếu muốn khác.
+- **Chia hàng về (phân bổ):** chỉ phân cho dòng đơn mà số hàng đủ cho **cả dòng** (không chia lẻ, theo OQ-84), người trả tiền sớm nhất trước. Nếu dòng sớm nhất cần nhiều hơn số hàng về thì dòng sau (cần ít hơn) vẫn được phân, để hàng không nằm không. Cách "xếp hàng nghiêm ngặt" (dòng sớm nhất chưa đủ thì không ai được) chỉ cần đổi một dòng mã; **Chủ chọn**.
+- **Hàng về được giữ riêng** cho dòng đơn (không bán cho người khác); hàng xuất kho **khi giao cho khách** (không phải lúc thanh toán), do bộ xử lý nền hiện có ghi, theo thứ tự hạn dùng gần nhất.
+- **Trả hàng:** dòng đặt trước chỉ mở hồ sơ trả hàng sau khi đã giao và hàng đã xuất kho; hạn 7 ngày / 48 giờ tính từ lúc giao (OQ-40).
+- **Quyền:** bán đặt trước = `SELL_PRODUCTS`; hàng đợi "cần đặt", đánh dấu đã đặt, giao hàng, liên kết phiếu = `MANAGE_PRODUCT_ORDERS` (quyền mới, chưa gán cho ai); hủy và hoàn tiền = `REFUND_PRODUCTS`.
+- Mã đơn `DT000001`; lý do hủy theo OQ-32.
+
 **Chủ đã duyệt (2026-10-08, nguyên văn): "Owner decisions: P14-2, P14-3, P14-4, P14-5, P14-15 approved as you recommended."** Vậy toàn bộ P14-1 đến P14-16 (đổi hàng) đã được duyệt: cùng sản phẩm thì đổi miễn phí; giá hàng mới là giá hôm nay, không áp giảm giá; khách chưa trả đồng nào cho dòng hàng thì không đổi; người đổi chỉ cần quyền hoàn tiền; hàng thay thế không được mở hồ sơ trả hàng. Đợt 3a đã lên máy chủ thật (mục 2.29 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`). Các lựa chọn kỹ thuật của P6-15 đến P6-18 (mốc 3b) ghi ở các mục sau với nhãn **chờ Chủ xem lại**.
 
 **Chủ nói (2026-10-08, nguyên văn): "P12–P14 and N1–N4: list each in the chat, one short line in plain Vietnamese with your recommendation. If none of them changes money policy (refund amounts, who can refund, return windows, points), treat them as approved as you proposed and record that. If any does change money policy, do not treat it as approved; ask me."** Tôi áp dụng từng mục: mục **không** đổi số tiền hoàn, người được hoàn, hạn trả hay điểm thì **coi là đã duyệt như đề xuất**: N1 to N4, P14-1, P14-6, P14-7, P14-8, P14-9, P14-10, P14-11, P14-12, P14-13, P14-14, P14-16. Mục **có** đụng tới một trong bốn thứ đó thì **không** coi là duyệt, chờ Chủ trả lời: **P14-2, P14-3, P14-4, P14-5, P14-15** (giá khi đổi cùng sản phẩm; giá hôm nay không áp giảm giá; khách chưa trả đồng nào thì không đổi; ai được đổi; hàng thay thế có được trả tiếp không). P12 và P13 Chủ đã duyệt bằng lời riêng (mục 2.25, 2.27).

@@ -1391,6 +1391,8 @@ const vi = {
       MANAGE_PRODUCT_RETURNS: 'Ghi nhận và xử lý hồ sơ trả hàng sản phẩm',
       REFUND_PRODUCTS: 'Duyệt và chi hoàn tiền sản phẩm',
       MANAGE_PRODUCT_CAMPAIGNS: 'Quản lý chiến dịch khuyến mãi sản phẩm',
+      MANAGE_PRODUCT_ORDERS:
+        'Xử lý đơn đặt trước: đặt hàng nhà cung cấp, báo hàng về, giao hàng cho khách',
     },
     duplicateCode: 'Mã vai trò này đã tồn tại.',
     managerGroupHolders:
@@ -3986,6 +3988,8 @@ const en: Dictionary = {
       MANAGE_PRODUCT_RETURNS: 'Record and handle product return cases',
       REFUND_PRODUCTS: 'Approve and pay product refunds',
       MANAGE_PRODUCT_CAMPAIGNS: 'Manage product promotion campaigns',
+      MANAGE_PRODUCT_ORDERS:
+        'Handle pre-orders: order from the supplier, mark goods arrived, hand over to the customer',
     },
     duplicateCode: 'This role code already exists.',
     managerGroupHolders:

@@ -51,6 +51,8 @@ model Branch {
   productReturnCases      ProductReturnCase[]          @relation("ProductReturnBranch")
   productRefunds          ProductRefund[]              @relation("ProductRefundBranch")
   productExchanges        ProductExchange[]            @relation("ProductExchangeBranch")
+  productOrders           ProductOrder[]               @relation("ProductOrderBranch")
+  productOrderLines       ProductOrderLine[]           @relation("ProductOrderLineBranch")
   inventoryLots           InventoryLot[]               @relation("InventoryLotBranch")
   stockLevels             StockLevel[]                 @relation("StockLevelBranch")
   inventoryLowStockAlerts InventoryLowStockAlert[]     @relation("LowStockAlertBranch")
@@ -381,6 +383,7 @@ enum PermissionCode {
   MANAGE_PRODUCT_RETURNS
   REFUND_PRODUCTS
   MANAGE_PRODUCT_CAMPAIGNS
+  MANAGE_PRODUCT_ORDERS
 }
 
 enum LeaveStatus {
@@ -530,6 +533,13 @@ model User {
   productExchangesMade           ProductExchange[]                @relation("ProductExchangeActor")
   productExchangeCompletions     ProductExchangeCompletion[]      @relation("ProductExchangeCompletionActor")
   productExchangeCorrections     ProductExchangeCorrection[]      @relation("ProductExchangeCorrectionActor")
+  productOrdersCreated           ProductOrder[]                   @relation("ProductOrderCreator")
+  productOrdersAsCustomer        ProductOrder[]                   @relation("ProductOrderCustomer")
+  productOrderLinesOrdered       ProductOrderLine[]               @relation("ProductOrderLineOrderedBy")
+  productOrderLinesArrived       ProductOrderLine[]               @relation("ProductOrderLineArrivedBy")
+  productOrderLinesHandedOver    ProductOrderLine[]               @relation("ProductOrderLineHandedOverBy")
+  productOrderLinesCancelled     ProductOrderLine[]               @relation("ProductOrderLineCancelledBy")
+  productOrderEvents             ProductOrderEvent[]              @relation("ProductOrderEventActor")
   productRefundCorrections       ProductRefundCorrection[]        @relation("ProductRefundCorrectionActor")
   refundReauthenticationUses     RefundReauthenticationUse[]      @relation("RefundReauthenticationUseActor")
   productReturnEvents            ProductReturnEvent[]             @relation("ProductReturnEventActor")
@@ -1585,6 +1595,8 @@ enum StockReservationStatus {
 
 enum StockReservationSource {
   INVOICE_LINE
+  /// Phase 6 P6-15: goods that arrived for a pre-order line (reserved for that line, sold at hand-over).
+  ORDER_LINE
 }
 
 enum PaymentMethod {
@@ -1724,6 +1736,8 @@ model Invoice {
   productRefunds       ProductRefund[]
   productExchanges     ProductExchange[]    @relation("ProductExchangeOriginalInvoice")
   exchangeFor          ProductExchange?     @relation("ProductExchangeInvoice")
+  productOrder         ProductOrder?
+  productOrderLines    ProductOrderLine[]
 
   @@index([branchId, businessDate, status], map: "invoices_branch_date_idx")
   @@index([payerUserId, createdAt], map: "invoices_payer_idx")
@@ -1765,6 +1779,7 @@ model InvoiceLine {
   productReturnCases ProductReturnCase[]    @relation("ProductReturnLine")
   productRefunds     ProductRefund[]        @relation("ProductRefundLine")
   productExchanges   ProductExchange[]      @relation("ProductExchangeLine")
+  productOrderLines  ProductOrderLine[]      @relation("ProductOrderLineInvoiceLine")
 
   @@unique([invoiceId, sequence], map: "invoice_lines_invoice_sequence_key")
   @@unique([invoiceId, id], map: "invoice_lines_invoice_id_id_key")
@@ -1858,6 +1873,9 @@ model InvoiceLineProduct {
   returnCases    ProductReturnCase[] @relation("ProductReturnProductLine")
   refunds        ProductRefund[]     @relation("ProductRefundProductLine")
   exchanges      ProductExchange[]   @relation("ProductExchangeProductLine")
+  /// Phase 6 P6-15: IN_STOCK (taken at once, reserved at finalization) or PRE_ORDER (goods the shop does not hold yet; an order line follows).
+  fulfilmentMode ProductLineMode     @default(IN_STOCK) @map("fulfilment_mode")
+  orderLine      ProductOrderLine?   @relation("ProductOrderLineProductLine")
 
   @@index([invoiceId], map: "invoice_line_products_invoice_idx")
   @@index([variantId], map: "invoice_line_products_variant_idx")
@@ -3287,6 +3305,7 @@ model ProductVariant {
   countLines        StockCountLine[]
   movements         StockMovement[]
   exchangeReplacements ProductExchange[] @relation("ProductExchangeReplacement")
+  productOrderLines    ProductOrderLine[] @relation("ProductOrderLineVariant")
 
   @@index([productId, sortOrder], map: "product_variants_product_idx")
   @@map("product_variants")
@@ -3456,6 +3475,7 @@ model StockReceipt {
   createdAt         DateTime           @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime           @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   lines             StockReceiptLine[]
+  arrivedOrderLines ProductOrderLine[] @relation("ProductOrderLineArrivalReceipt")
 
   @@index([branchId, receiptDate(sort: Desc), id], map: "stock_receipts_branch_idx")
   @@map("stock_receipts")
@@ -3948,4 +3968,130 @@ model ProductExchangeCorrection {
 
   @@index([exchangeId, occurredAt, id], map: "product_exchange_corrections_exchange_idx")
   @@map("product_exchange_corrections")
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// Phase 6 P6-15 (Wave 3b: product orders). The goods record of a counter pre-order: the invoice stays the money record.
+// ---------------------------------------------------------------------------------------------------------------------------
+
+enum ProductLineMode {
+  IN_STOCK
+  PRE_ORDER
+}
+
+enum ProductOrderLineStatus {
+  AWAITING_PAYMENT
+  PAID
+  ORDERED
+  ARRIVED
+  HANDED_OVER
+  COMPLETED
+  CANCELLED
+}
+
+enum ProductOrderCancelCause {
+  INVOICE_CANCELLED
+  SUPPLIER_CANNOT_DELIVER
+  CUSTOMER_CANCELLED_BEFORE_ORDERING
+  CUSTOMER_CHANGED_MIND
+  LATE_OVER_7_DAYS
+}
+
+enum ProductHandoverTo {
+  CUSTOMER
+  REPRESENTATIVE
+}
+
+/// One per invoice that has a pre-order product line. Created by the finalization of the invoice; only the contact can change afterwards.
+model ProductOrder {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code            String             @unique(map: "product_orders_code_key") @db.VarChar(40)
+  invoiceId       String             @unique(map: "product_orders_invoice_key") @map("invoice_id") @db.Uuid
+  invoice         Invoice            @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId        String             @map("branch_id") @db.Uuid
+  branch          Branch             @relation("ProductOrderBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  channel         InvoiceChannel     @default(COUNTER)
+  customerUserId  String?            @map("customer_user_id") @db.Uuid
+  customer        User?              @relation("ProductOrderCustomer", fields: [customerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Canonical +84 form; mandatory (OQ-34).
+  contactPhone    String             @map("contact_phone") @db.VarChar(16)
+  contactName     String?            @map("contact_name") @db.VarChar(120)
+  createdByUserId String             @map("created_by_user_id") @db.Uuid
+  createdBy       User               @relation("ProductOrderCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime           @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime           @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  lines           ProductOrderLine[]
+
+  @@index([branchId, createdAt(sort: Desc), id], map: "product_orders_branch_idx")
+  @@index([contactPhone], map: "product_orders_phone_idx")
+  @@map("product_orders")
+}
+
+/// One per PRE_ORDER invoice line. The status machine and its facts are enforced by SQL (lucy_guard_product_order_line).
+model ProductOrderLine {
+  id                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId             String                  @map("order_id") @db.Uuid
+  order               ProductOrder            @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceId           String                  @map("invoice_id") @db.Uuid
+  invoice             Invoice                 @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "product_order_lines_invoice_fkey")
+  invoiceLineId       String                  @unique(map: "product_order_lines_line_key") @map("invoice_line_id") @db.Uuid
+  line                InvoiceLine             @relation("ProductOrderLineInvoiceLine", fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "product_order_lines_line_fkey")
+  productLine         InvoiceLineProduct      @relation("ProductOrderLineProductLine", fields: [invoiceLineId], references: [invoiceLineId], onDelete: Restrict, onUpdate: Restrict, map: "product_order_lines_product_line_fkey")
+  branchId            String                  @map("branch_id") @db.Uuid
+  branch              Branch                  @relation("ProductOrderLineBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  variantId           String                  @map("variant_id") @db.Uuid
+  variant             ProductVariant          @relation("ProductOrderLineVariant", fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  quantity            Int
+  status              ProductOrderLineStatus  @default(AWAITING_PAYMENT)
+  paidAt              DateTime?               @map("paid_at") @db.Timestamptz(3)
+  /// "Dự kiến, không phải cam kết": the branch-local paid date plus the lead time (variant override or the settings default).
+  expectedFrom        DateTime?               @map("expected_from") @db.Date
+  expectedTo          DateTime?               @map("expected_to") @db.Date
+  orderedAt           DateTime?               @map("ordered_at") @db.Timestamptz(3)
+  orderedByUserId     String?                 @map("ordered_by_user_id") @db.Uuid
+  orderedBy           User?                   @relation("ProductOrderLineOrderedBy", fields: [orderedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  orderedNote         String?                 @map("ordered_note")
+  arrivedAt           DateTime?               @map("arrived_at") @db.Timestamptz(3)
+  arrivedByUserId     String?                 @map("arrived_by_user_id") @db.Uuid
+  arrivedBy           User?                   @relation("ProductOrderLineArrivedBy", fields: [arrivedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  arrivalReceiptId    String?                 @map("arrival_receipt_id") @db.Uuid
+  arrivalReceipt      StockReceipt?           @relation("ProductOrderLineArrivalReceipt", fields: [arrivalReceiptId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  handedOverAt        DateTime?               @map("handed_over_at") @db.Timestamptz(3)
+  handedOverByUserId  String?                 @map("handed_over_by_user_id") @db.Uuid
+  handedOverBy        User?                   @relation("ProductOrderLineHandedOverBy", fields: [handedOverByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  handedOverTo        ProductHandoverTo?      @map("handed_over_to")
+  handedOverToName    String?                 @map("handed_over_to_name") @db.VarChar(120)
+  handedOverNote      String?                 @map("handed_over_note")
+  completedAt         DateTime?               @map("completed_at") @db.Timestamptz(3)
+  cancelledAt         DateTime?               @map("cancelled_at") @db.Timestamptz(3)
+  cancelledByUserId   String?                 @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy         User?                   @relation("ProductOrderLineCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelCause         ProductOrderCancelCause? @map("cancel_cause")
+  cancelNote          String?                 @map("cancel_note")
+  rowVersion          Int                     @default(1) @map("row_version")
+  createdAt           DateTime                @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  events              ProductOrderEvent[]
+
+  @@index([orderId], map: "product_order_lines_order_idx")
+  @@index([invoiceId], map: "product_order_lines_invoice_idx")
+  @@index([branchId, variantId, paidAt, id], map: "product_order_lines_queue_idx")
+  @@index([branchId, status, paidAt], map: "product_order_lines_status_idx")
+  @@map("product_order_lines")
+}
+
+/// Append-only history of an order line, written by SQL from every change.
+model ProductOrderEvent {
+  id          String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderLineId String                  @map("order_line_id") @db.Uuid
+  orderLine   ProductOrderLine        @relation(fields: [orderLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  fromStatus  ProductOrderLineStatus? @map("from_status")
+  toStatus    ProductOrderLineStatus  @map("to_status")
+  actorUserId String?                 @map("actor_user_id") @db.Uuid
+  actor       User?                   @relation("ProductOrderEventActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  note        String?
+  occurredAt  DateTime                @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+
+  @@index([orderLineId, occurredAt, id], map: "product_order_events_line_idx")
+  @@map("product_order_events")
 }

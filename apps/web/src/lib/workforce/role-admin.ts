@@ -120,6 +120,7 @@ const GROUP_OF: Readonly<Record<string, PermissionGroup>> = {
   MANAGE_PRODUCT_RETURNS: 'products',
   REFUND_PRODUCTS: 'products',
   MANAGE_PRODUCT_CAMPAIGNS: 'products',
+  MANAGE_PRODUCT_ORDERS: 'products',
   MANAGE_PERMISSIONS: 'admin',
   VIEW_AUDIT_LOG: 'admin',
   MANAGE_WEBSITE_CONTENT: 'admin',

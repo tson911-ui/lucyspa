@@ -197,6 +197,13 @@ export const PERMISSION_CATALOG = Object.freeze([
     scopeCapability: 'GLOBAL_ONLY',
     dataClassification: 'FINANCIAL',
   },
+  // Phase 6 P6-15 (T36, approved 2026-10-08): the order queue of counter pre-orders ("cần đặt", mark ordered, hand over). Creating a
+  // pre-order stays SELL_PRODUCTS; cancelling one with a refund stays REFUND_PRODUCTS. Granted to nobody.
+  {
+    code: 'MANAGE_PRODUCT_ORDERS',
+    scopeCapability: 'BRANCH_CAPABLE',
+    dataClassification: 'STANDARD',
+  },
 ] as const satisfies readonly PermissionDefinition[]);
 
 /** Codes that only the virtual Owner holds: no role and no override may carry them (SQL refuses too). */

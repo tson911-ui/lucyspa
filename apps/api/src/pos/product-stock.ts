@@ -66,7 +66,13 @@ const productLineSelect = {
   quantity: true,
   unitPriceVnd: true,
   productDetails: {
-    select: { variantId: true, sellerUserId: true, listPriceVnd: true, promotionId: true },
+    select: {
+      variantId: true,
+      sellerUserId: true,
+      listPriceVnd: true,
+      promotionId: true,
+      fulfilmentMode: true,
+    },
   },
 } satisfies Prisma.InvoiceLineSelect;
 
@@ -169,7 +175,10 @@ export async function reserveProductStock(
   invoice: { id: string; branchId: string },
   actorUserId: string,
 ): Promise<number> {
-  const lines = await productLines(tx, invoice.id);
+  // Phase 6 P6-15 (T29): a PRE_ORDER line sells goods the shop does not hold; it reserves nothing now and is reserved on arrival.
+  const lines = (await productLines(tx, invoice.id)).filter(
+    (line) => line.row.productDetails[0]?.fulfilmentMode !== 'PRE_ORDER',
+  );
   if (lines.length === 0) return 0;
   const totals = new Map<string, number>();
   for (const line of lines)
@@ -235,7 +244,7 @@ export async function releaseProductStock(
     { actorUserId, releaseCause: cause },
   );
   const open = await tx.stockReservation.findMany({
-    where: { invoiceId: invoice.id, status: 'RESERVED' },
+    where: { invoiceId: invoice.id, status: 'RESERVED', source: 'INVOICE_LINE' },
     orderBy: [{ branchId: 'asc' }, { variantId: 'asc' }, { invoiceLineId: 'asc' }],
     select: { id: true, branchId: true, variantId: true },
   });

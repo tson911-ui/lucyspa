@@ -147,14 +147,24 @@ export {
   INVENTORY_RETRY_AFTER_MS,
   processInventoryEvent,
   relayInventoryEvents,
+  ORDER_HANDED_OVER_EVENT,
+  orderSaleKey,
   saleKey,
   saleReversalKey,
+  settleHandedOverOrderLines,
   settleInvoiceStock,
   type InventoryEventOutcome,
   type StockInvoiceState,
   type StockSettlement,
   type StockSettlementOptions,
 } from './stock-sales.js';
+export {
+  allocateWaitingLines,
+  allocationKey,
+  lockWaitingOrderLines,
+  type AllocatedLine,
+  type AllocationInput,
+} from './order-allocation.js';
 export {
   bindReferral,
   canBindReferrer,
