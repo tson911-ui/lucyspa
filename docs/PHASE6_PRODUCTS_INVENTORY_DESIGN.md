@@ -298,7 +298,7 @@ What this records:
 - **OQ-66 is changed:** a product category target also includes its subcategories (the example given: "Chăm sóc da" covers "Serum"). Built in P6-10: `discount.eval.ts` widens each target with the descendants of that category (recursive query, cycle-safe) read at the evaluation; the pure engine still matches a line's snapshotted category against a set of ids. Consequences, my readings **pending the Owner**: **OQ-72** the category tree in force at the moment of finalization is the one that applies (a later re-parenting never changes a finalized invoice, whose amounts are stored); the program's stored targets stay as the Owner chose them (only the evaluation widens). The product category tree has two levels (the database refuses a grandchild), so "subcategories" means the children. The one deliberate edit of an existing test: the assertion of `pricing-v3.integration.test` that "a parent does not include its children" (it encoded the overruled reading) now expects the child to be covered; every other assertion is unchanged.
 - **P6-10 is requested** (this Owner message): readings in 2.18.
 
-### 2.18 P6-10 as built (my readings where the contract was silent; **PENDING the Owner's yes/no**; report `docs/PHASE6_STEP10_POS_PRODUCTS.md`)
+### 2.18 P6-10 as built (my readings where the contract was silent; **APPROVED by the Owner on 2026-10-08, OQ-72/73/74/76 as proposed and OQ-75 changed: see 2.19**; report `docs/PHASE6_STEP10_POS_PRODUCTS.md`)
 
 - **Scope:** stock consumption and its reversal (T15, T27; ends the OQ-63 interim: a paid product invoice is now sold by the `inventory` consumer), the counter API (product search, sellers), the staff screens for product lines, the member's view of product lines (T26) and the OQ-66 change (2.17). Nothing of Beauty points, discount screens, refunds or permission grants.
 - **OQ-72** (tree at finalization): see 2.17. **OQ-73 (deviation from 4.5, reading):** 4.5 says a CONSUMED reservation is never released synchronously and the consumer restores it. The P6-8 commit-time rule (a CANCELLED invoice holds no live reservation) would refuse that state, so the cancel command reverses a sale the consumer has not yet reversed in its own transaction (`settleInvoiceStock`), and the consumer then finds nothing to do. Same result, no window in which a cancelled invoice still holds sold stock.
@@ -308,6 +308,24 @@ What this records:
 - **State, not event:** the consumer re-reads the invoice (status and paid episode) under a share lock and aligns the reservations with it, so events handled in any order or twice give the same stock; an event for a service-only invoice is never selected (no backlog of the paid-service history).
 - **Counter API:** `GET /pos/branches/:id/products?q=` (SELL_PRODUCTS): search by words of name, brand, variant label or SKU without diacritics, effective price now, availability at that branch (0 = "Hết hàng"), never cost or lots; the same answer lists the staff who may be the seller (active, assigned to the branch) and the default (the caller when assigned, none for an Owner without assignment). The board gains `products` (units, sellers; only on an invoice with products) and `canSellProducts`.
 - **Screens:** board action "Bán sản phẩm" (primary when the cashier may sell products, the combo action then secondary), start dialog (member by exact phone/email or guest), product card on the invoice (add, edit quantity and seller while DRAFT only, remove; stock state once finalized), per-side discount table, out-of-stock refusal naming the lines. The member's invoice shows services and products in separate cards, no seller, SKU, cost or stock (the serialized view is tested); the detail response lists the product line numbers in the optional `productSequences` (no key was added to existing line shapes).
+
+### 2.19 P6-10 APPROVED by the Owner (2026-10-08) and P6-11 requested
+
+Owner's words, recorded exactly as given:
+
+> P6-10 approved: OQ-72, 73, 74, 76 as proposed. OQ-75 changed: consumption may still use an expired lot only as a last resort (so stock stays reconciled after payment), but it must immediately create an in-app alert to users with inventory permission at that branch, naming the invoice, product and lot, so a manager checks what was handed to the customer. Add tests. Record everything in the design doc, owner-decisions doc and handoff.
+>
+> Then do P6-11, the last step of Wave 2, per the approved design (T2, T4, OQ-33, OQ-41):
+>
+> - Beauty points: earned once per paid invoice on the Beauty side (key BEAUTY_EARN:{invoice}:{paid_seq}), by the payer; walk-in customers earn nothing; based on product amount after discounts, never on shipping fee; reversal of payment reverses points per existing rules.
+> - Beauty member discount tier snapshot at finalize; Beauty card shows the real % (replace points.beautyDiscountPending); customer account shows Beauty points history.
+> - Wave 2 milestone: full tests incl. race and reconciliation, UI gate, old-version tests run against the new schema (rollback proof), rehearsal on a restored production-like DB with migration timings, and a Wave 2 deploy guide as iNET web terminal commands block by block, including the new stock-consumption worker and rollback steps. Do not touch the server.
+>
+> Commit locally, no push/deploy. Report in Vietnamese and stop.
+
+- **Approved as proposed:** OQ-72 (the category tree in force at finalization applies), OQ-73 (the cancel command reverses an unreversed sale itself; the deviation from 4.5 stands), OQ-74 (who is recorded on a stock movement), OQ-76 (the seller defaults to the person who adds the line, not the invoice creator; this replaces the wording of 5.3). Nothing else of P6-10 is open.
+- **OQ-75 CHANGED (replaces 2.18):** an expired lot is still used only as a last resort, so that stock stays reconciled after payment, but the sale **immediately creates an in-app alert** to the holders of the inventory permission at the invoice's branch, naming the invoice, the product and the lot, so that a manager checks what was handed to the customer. Built in P6-11 (section 2.20).
+- **P6-11 requested:** the four bullets above. The design table (section 14, row P6-11) and the P6-9 report also put "scope on the discount screens" in P6-11 (the discount API accepts the scope and product targets since P6-9 but no screen shows them); it is built here as part of P6-11, so the Owner can create a PRODUCTS or BOTH program. This is my reading of "per the approved design" and is flagged in the Step report.
 
 ## 3. Catalog (PRD §23-24; T9-T12)
 
