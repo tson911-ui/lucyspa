@@ -1,5 +1,7 @@
 # Phase 6 Đợt 2: kiểm tra mốc (2026-10-08, chạy trên máy này)
 
+> **Cập nhật:** Đợt 2 đã được Chủ deploy lên máy chủ thật ngày 2026-10-08 khoảng 12:02 (UTC+7), commit `135872558838e00436fa5ce829e70f0517d7be68`. Diễn tập trên bản khôi phục của dữ liệu thật: 7 migration tổng khoảng 0,31 giây (lớn nhất 0,126 giây, `pricing_v3`; máy thử ước 0,4 giây). Sau deploy: 80 migration, 65 quyền, 0 dữ liệu bán sản phẩm, `SELL_PRODUCTS` không gán cho ai. Chi tiết ở `LUCYSPA_HANDOFF.md` và `PHASE6_WAVE2_DEPLOY_CHECKLIST.md`. Phần dưới là bản ghi tại lúc kiểm tra mốc, trước khi push và deploy.
+
 **Phạm vi Đợt 2:** P6-8 đến P6-11 (bán sản phẩm tại quầy, giá bản 3 cho hai bên Spa và Beauty, trừ kho sau thanh toán, điểm Lucy Beauty, màn hình phạm vi giảm giá). **7 migration (73 thành 80), 0 quyền mới (vẫn 65).** Khác Đợt 1: Đợt 2 sửa các bảng đang thu tiền thật (hóa đơn, ưu đãi, thông báo, kho); mọi migration chỉ thêm hoặc nới, hóa đơn chỉ có dịch vụ vẫn tính bằng bộ tính cũ. **Chưa có gì được đẩy lên hay triển khai; chưa quyền `SELL_PRODUCTS` nào được gán.**
 
 ## Kết quả kiểm tra (mã nguồn tại commit mốc, cơ sở dữ liệu thử dựng từ số 0 bằng 80 migration)

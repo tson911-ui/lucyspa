@@ -13,18 +13,18 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 
 ## Phase status
 
-| Phase                                     | Status                                                                                                                      |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Phase 0                                   | PASS                                                                                                                        |
-| Phase 1 (auth and security)               | COMPLETE                                                                                                                    |
-| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)                                                            |
-| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                                                                   |
-| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                                                                |
-| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                                                                |
-| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `9b76789`)                                                                                           |
-| **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `f79572d`); go-live turned ON by the Owner about 17:20 (+07)**                          |
-| Phase 6 (products, inventory, Beauty)     | P6-1 design contract APPROVED (2026-10-07); P6-2 (Wave 1 DB + permissions) built, committed locally, NOT pushed or deployed |
-| Phase 7+ (payroll, cash, reports)         | NOT started                                                                                                                 |
+| Phase                                     | Status                                                                                             |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Phase 0                                   | PASS                                                                                               |
+| Phase 1 (auth and security)               | COMPLETE                                                                                           |
+| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)                                   |
+| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                                          |
+| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                                       |
+| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                                       |
+| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `9b76789`)                                                                  |
+| **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `f79572d`); go-live turned ON by the Owner about 17:20 (+07)** |
+| Phase 6 (products, inventory, Beauty)     | Waves 1 and 2 DEPLOYED (production = `1358725`, 2026-10-08); Wave 3 not started (docs only)        |
+| Phase 7+ (payroll, cash, reports)         | NOT started                                                                                        |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
 
@@ -201,7 +201,18 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 
 ## Production
 
-Status as of 2026-10-07, about 23:10 (+07) (Owner-reported; supersedes the blocks below): **Phase 6 Wave 1 is deployed.**
+Status as of 2026-10-08, about 12:02 (+07) (Owner-reported; supersedes the blocks below): **Phase 6 Wave 2 is deployed.**
+
+- **Production runs `135872558838e00436fa5ce829e70f0517d7be68`** (`1358725`), deployed by the Owner on 2026-10-08 at about 12:02 (+07). Previous: `6546c43`. Docs commits after it (`da54739`, `1e6d46d` and later) are not installed.
+- Backup before the deploy: `/root/backups/lucyspa-pre-phase6-dot2-20261008T045527Z.dump` (913,894 bytes, 1496 TOC lines); the pm2 dump is saved in `/root/backups`.
+- Rehearsal on the restored production copy: 7 migrations OK (`invoice_kinds` 0.016, `product_sales` 0.104, `discount_scope` 0.027, `pricing_v3` 0.126, `stock_sale_kinds` 0.005, `stock_consumption` 0.022, `expired_lot_alert` 0.007 s); `80|65|28|2|2`, old invoices untouched.
+- Production now: **80 migrations, 65 permissions** (0 inserted), 0 product lines, 0 product invoices, 0 sale movements. Counts before and after unchanged: users 9, bookings 4, invoices 2, payments 2, notifications 28.
+- pm2 (saved): `lucyspa-api` 1 (fork), `lucyspa-worker` 1 (fork, includes the stock-consumption loop), `lucyspa-web` 3 (cluster, reloaded). No new errors (the old ELIFECYCLE lines are historical).
+- Health ok (database, redis up); `/vi`, `/vi/services`, `/vi/products`, `/vi/workforce/login` all 200. Outbox backlog: loyalty 0, inventory 0.
+- **`SELL_PRODUCTS` is granted to nobody (`0|0`).** The supervised trial sale (OQ-60) is postponed until real products exist (after Phase 9). The website is internal-only (no customers). Rollback to the old version remains possible while the 5-number gate of the guide (step 10) is all 0.
+- Wave 3 (returns, refunds, exchanges, counter pre-orders) has not started: docs only, see `docs/PHASE6_OWNER_DECISIONS_VI.md`.
+
+Status as of 2026-10-07, about 23:10 (+07) (Owner-reported; superseded by the block above, **Wave 1 deploy record**):
 
 - **Production runs `6546c434595cef5c7ab764d8e5e7cc4b62afe256`** (`6546c43`), deployed by the Owner on 2026-10-07 at about 23:10 (+07). Previous: `39ad8d1`. Docs commits after it (`4a4171d` and later) are not installed.
 - Backup before the deploy: `/root/backups/lucyspa-pre-phase6-dot1-20261007T160340Z.dump` (790,983 bytes, 1287 TOC lines); the pm2 dump is saved in `/root/backups`.
