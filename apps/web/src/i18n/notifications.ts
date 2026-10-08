@@ -130,8 +130,7 @@ const vi = {
       'Cảnh báo hạn dùng: {expired} lô đã hết hạn, {expiring} lô sẽ hết hạn trong {days} ngày.',
     expiredOnly: 'Cảnh báo hạn dùng: {expired} lô đã hết hạn.',
     expiringOnly: 'Cảnh báo hạn dùng: {expiring} lô sẽ hết hạn trong {days} ngày.',
-    expiredLotSold:
-      'Đã giao {quantity} sản phẩm {sku} từ lô {lot} đã hết hạn (hóa đơn {invoice}). Hãy kiểm tra lại với khách.',
+    expiredLotSold: 'Lô {lot} hết hạn đã giao {quantity} {sku} (hóa đơn {invoice}).',
     openStock: 'Xem kho hàng',
   } satisfies InventoryTexts,
 };
@@ -256,8 +255,7 @@ const en: Dictionary = {
     expiry: 'Expiry warning: {expired} lots expired, {expiring} lots expire within {days} days.',
     expiredOnly: 'Expiry warning: {expired} lots have expired.',
     expiringOnly: 'Expiry warning: {expiring} lots expire within {days} days.',
-    expiredLotSold:
-      '{quantity} x {sku} from expired lot {lot} was handed out (invoice {invoice}). Please check with the customer.',
+    expiredLotSold: 'Expired lot {lot}: {quantity} x {sku} handed out (invoice {invoice}).',
     openStock: 'View inventory',
   },
 };

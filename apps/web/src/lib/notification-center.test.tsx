@@ -404,11 +404,11 @@ test('the expired-lot alert names the quantity, the product, the lot and the inv
   } as NotificationItem;
   assert.equal(
     notificationMessage(alert, 'vi'),
-    'Đã giao 2 sản phẩm KEM-50 từ lô LOT 07/26 đã hết hạn (hóa đơn INV-2026-0042). Hãy kiểm tra lại với khách.',
+    'Lô LOT 07/26 hết hạn đã giao 2 KEM-50 (hóa đơn INV-2026-0042).',
   );
   assert.equal(
     notificationMessage(alert, 'en'),
-    '2 x KEM-50 from expired lot LOT 07/26 was handed out (invoice INV-2026-0042). Please check with the customer.',
+    'Expired lot LOT 07/26: 2 x KEM-50 handed out (invoice INV-2026-0042).',
   );
   // Without its params it falls back to the type text; nothing raw is shown.
   assert.equal(

@@ -41,3 +41,11 @@ Not rendered: the detail page when the catalog lists are forbidden (the fallback
 - Brand, category and product lists need `MANAGE_PRODUCTS` or `MANAGE_PRODUCT_PRICES`; a holder of `MANAGE_DISCOUNTS` alone gets a notice and
   cannot pick product targets (an Owner can). Options: grant both, or a read-only catalog list for discount managers. Not decided here.
 - `GET /products` has no search or paging (every product); the picker filters in the browser. Fine for hundreds, heavy for thousands.
+
+## UX gate: Beauty card and expired-lot notice
+
+Review stack on `lucy_spa_p6_10_review_scratch`; the member `khach@review` got go-live ON and Beauty points by manual ledger rows; one `EXPIRED_LOT_SOLD` notification was inserted for the Owner. Every image was opened and read.
+
+- **Loyalty page** (`/vi/account/loyalty`, Beauty 1,000 points, Spa 0): 360, 768, 1440 light, 1440 dark, 130% at 360 and 1440. The Beauty card shows "Gold" and "4%" (the Spa card "Chưa có hạng" / "Chưa có"); both cards are equal in size and aligned, 2 columns from 768, no overlap, no horizontal scroll, the Beauty history row (+1.000, "Điểm Lucy Beauty") is listed. "No tier yet" state (Beauty 40 points, 360 and 1440): "Chưa có hạng", "Còn 460 điểm để lên hạng Silver", "Chưa có".
+- **Staff inbox** with the expired-lot notice, 360 and 1440 light (and 1440 dark): the row opens the stock item. **Defect found and fixed:** the message (~100 characters) was cut by the 2-line clamp, losing "hết hạn". Shortened to "Lô {lot} hết hạn đã giao {quantity} {sku} (hóa đơn {invoice})." (EN likewise); the meaning now always shows, a very long invoice code can still be cut at 360 (the full text is the link tooltip). `i18n/notifications.ts` and the notice test changed; 12 notification tests pass.
+- **Not covered:** the loyalty page is a customer page, not in `uxui-audit-pages.json`, so no DOM audit. The tier table marks only the Spa tier as "current" (a member whose Beauty tier differs sees no mark for it): left as is, a design choice for the Owner. At 360 px with 130% text the customer top bar clips its last icon (shell, not this change).
