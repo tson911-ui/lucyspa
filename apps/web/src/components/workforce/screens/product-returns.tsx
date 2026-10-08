@@ -78,7 +78,7 @@ import {
 import { isRefundConflict } from '../../../lib/workforce/product-refunds';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { PrefetchLink as Link } from '../link';
-import { CorrectionDialog, RefundDialog, RefundsSection } from './product-refunds';
+import { CorrectionDialog, RefundDialog, RefundsPending, RefundsSection } from './product-refunds';
 import { useWorkforce } from '../session';
 import {
   Badge,
@@ -744,7 +744,10 @@ export function ProductReturnCaseScreen({ id }: { id: string }) {
     [api, id],
   );
   // The money of a case is shown to the people who hold REFUND_PRODUCTS at its branch (the API decides again).
-  const showRefunds = found.data?.can.refunds === true && found.data.status === 'ACCEPTED';
+  const showRefunds =
+    found.data?.can.refunds === true &&
+    found.data.status === 'ACCEPTED' &&
+    found.data.decidedOutcome === 'REFUND';
   const refunds = useResource(
     () =>
       showRefunds
@@ -762,7 +765,9 @@ export function ProductReturnCaseScreen({ id }: { id: string }) {
     <ProductReturnCaseView
       item={found.data}
       reload={found.reload}
-      refunds={refunds.data ? { summary: refunds.data, reload: refunds.reload } : null}
+      refunds={
+        showRefunds ? { summary: refunds.data, error: refunds.error, reload: refunds.reload } : null
+      }
     />
   );
 }
@@ -781,14 +786,24 @@ export function ProductReturnCaseView({
 }: {
   item: ProductReturnCaseResponse;
   reload: () => Promise<void>;
-  /** The refunds of an accepted case, for the people who may see them (P6-13); absent for everyone else. */
-  refunds?: { summary: ProductRefundSummaryResponse; reload: () => Promise<void> } | null;
+  /**
+   * The refunds of an accepted refund case, for the people who may see them (P6-13); absent for everyone else. The place of the card is
+   * known from the case itself (`can.refunds`), so it shows a loading card, then the refunds or a retry, and nothing jumps in later.
+   */
+  refunds?: {
+    summary: ProductRefundSummaryResponse | null;
+    error?: unknown;
+    reload: () => Promise<void>;
+  } | null;
 }) {
   const { api, t, locale, base } = useWorkforce();
   const text = productReturnsDictionary(locale);
   const v = text.view;
   const notify = useSuccessToast();
   const [overlay, setOverlay] = useState<Overlay>(null);
+  const refundSlot =
+    item.can.refunds && item.status === 'ACCEPTED' && item.decidedOutcome === 'REFUND';
+  const refundSummary = refunds?.summary ?? null;
   const path = `/api/v1/product-returns/cases/${item.id}`;
   const describeError = (error: unknown) => ({
     message: returnErrorText(error, locale, (cause) => errorMessage(cause, t)),
@@ -821,14 +836,14 @@ export function ProductReturnCaseView({
           <Button variant="primary" onClick={() => setOverlay('accept')}>
             {v.accept}
           </Button>
-        ) : refunds?.summary.can.refund ? (
+        ) : refundSummary?.can.refund ? (
           <Button variant="primary" onClick={() => setOverlay('refund')}>
             {productRefundsDictionary(locale).action}
           </Button>
         ) : null}
       </PageHeader>
       <Stack gap="page">
-        {item.status === 'ACCEPTED' && !refunds ? (
+        {item.status === 'ACCEPTED' && !refundSlot ? (
           <Notice tone="info">{v.acceptedNotice}</Notice>
         ) : null}
         {item.status === 'DECLINED' || item.status === 'CANCELLED' ? (
@@ -948,8 +963,12 @@ export function ProductReturnCaseView({
             ]}
           />
         </Section>
-        {refunds && item.status === 'ACCEPTED' ? (
-          <RefundsSection summary={refunds.summary} onCorrect={() => setOverlay('correct')} />
+        {refundSlot ? (
+          refundSummary ? (
+            <RefundsSection summary={refundSummary} onCorrect={() => setOverlay('correct')} />
+          ) : (
+            <RefundsPending error={refunds?.error ?? null} onRetry={refunds?.reload} />
+          )
         ) : null}
         <PhotosSection item={item} reload={reload} />
         <Section
@@ -994,10 +1013,10 @@ export function ProductReturnCaseView({
           onFail={settle}
         />
       ) : null}
-      {overlay === 'refund' && refunds ? (
+      {overlay === 'refund' && refunds && refundSummary ? (
         <RefundDialog
           item={item}
-          summary={refunds.summary}
+          summary={refundSummary}
           onClose={() => setOverlay(null)}
           onDone={async (code, amount) => {
             setOverlay(null);
@@ -1014,10 +1033,10 @@ export function ProductReturnCaseView({
           }}
         />
       ) : null}
-      {overlay === 'correct' && refunds ? (
+      {overlay === 'correct' && refunds && refundSummary ? (
         <CorrectionDialog
           item={item}
-          summary={refunds.summary}
+          summary={refundSummary}
           onClose={() => setOverlay(null)}
           onDone={async () => {
             setOverlay(null);

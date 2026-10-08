@@ -37,9 +37,8 @@ Chủ duyệt R1 đến R12; **thay đổi ở R3**: chỉ Chủ được duyệ
 - Chủ mở hồ sơ quá hạn kèm `windowExceptionReason`; nhân viên (kể cả người giữ cả hai quyền) vẫn bị từ chối, Chủ không có lý do cũng bị từ chối, lý do để trống hoặc gửi khi chưa quá hạn bị từ chối (hồ sơ không ghi "ngoại lệ" khi không phải ngoại lệ).
 - Ghi ở ba chỗ: cột trên hồ sơ (ai, lúc nào, lý do), sự kiện lịch sử `WINDOW_EXCEPTION`, dòng nhật ký `PRODUCT_RETURN_WINDOW_EXCEPTION`. Hạn không đổi (`window_ends_at` vẫn là 168 giờ hoặc 48 giờ).
 - Cơ sở dữ liệu giữ chốt: người mở phải là tài khoản kiểu `OWNER`, hạn thực sự đã qua, lý do không trống, và có dòng lịch sử đi kèm khi commit. Migration `20261112000000` (chỉ thêm giá trị enum) và `20261112000001`; `20261111000000` không đụng tới.
-- Hồ sơ "giao nhầm hoặc hỏng" mở theo ngoại lệ chấp nhận với bất kỳ ảnh nào còn trên hồ sơ (vì không thể có ảnh trong hạn 48 giờ đã qua).
-- Màn hình: Chủ chọn được lý do đã quá hạn và phải nhập "Lý do ngoại lệ"; nhân viên thấy lý do bị khóa như cũ; trang hồ sơ hiện ngoại lệ (ai, lúc nào, vì sao).
-- Kiểm thử mới: 5 bài PostgreSQL thật (kể cả các lời từ chối của cơ sở dữ liệu), 1 bài đơn vị cho luật ảnh, 1 bài HTTP cho trường mới, 3 bài logic và 4 bài hiển thị ở web, 5 bài kiểm tĩnh hai migration. Các bài tích hợp của P6-12 trước đây chạy lẻ, nay đã nằm trong `scripts/test-auth-integration.mjs`.
+- Hồ sơ "giao nhầm hoặc hỏng" theo ngoại lệ chấp nhận với bất kỳ ảnh nào còn trên hồ sơ. Màn hình: Chủ chọn được lý do quá hạn và phải nhập "Lý do ngoại lệ"; nhân viên thấy lý do bị khóa như cũ; trang hồ sơ hiện ngoại lệ.
+- Kiểm thử mới: 5 bài PostgreSQL thật, 1 bài luật ảnh, 1 bài HTTP, 7 bài web, 5 bài kiểm tĩnh migration. Các bài tích hợp P6-12 trước chạy lẻ, nay đã nằm trong `scripts/test-auth-integration.mjs`.
 
 ## Câu hỏi mở
 

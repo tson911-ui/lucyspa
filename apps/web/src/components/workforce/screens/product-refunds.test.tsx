@@ -6,6 +6,7 @@ import type {
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { productRefundsDictionary } from '../../../i18n/product-refunds';
+import { productReturnsDictionary } from '../../../i18n/product-returns';
 import { owner, render } from '../../../test/support';
 import { ProductReturnCaseView } from './product-returns';
 import { RefundsSection } from './product-refunds';
@@ -134,8 +135,32 @@ test('the money is shown only when the person may see the refunds; everyone else
   const markup = view(accepted({ can: { ...accepted().can, refunds: false } }), null);
   assert.ok(!markup.includes(text.title));
   assert.equal(actions(markup), 0);
-  const none = view(accepted(), null);
-  assert.ok(!none.includes(text.title), 'the summary has not arrived (or is not allowed)');
+});
+
+test('the place of the refunds card is known at first paint: a loading card, no stale notice, no action yet; a failure offers a retry', () => {
+  const loading = view(accepted(), null);
+  assert.ok(loading.includes(text.title), 'the card is there');
+  assert.ok(loading.includes(text.loading));
+  assert.ok(
+    !loading.includes(productReturnsDictionary('vi').view.acceptedNotice),
+    'no notice that is taken away later',
+  );
+  assert.equal(actions(loading), 0);
+  const failed = render(
+    <ProductReturnCaseView
+      item={accepted()}
+      reload={noop}
+      refunds={{ summary: null, error: new Error('x'), reload: noop }}
+    />,
+    owner,
+  );
+  assert.ok(failed.includes(text.title));
+  assert.ok(!failed.includes(text.loading));
+  assert.ok(failed.includes('Tải lại'), 'a way to try again');
+  // A person who may not refund, or a case accepted for an exchange, never gets the card.
+  const exchange = view(accepted({ decidedOutcome: 'EXCHANGE' }), null);
+  assert.ok(!exchange.includes(text.title));
+  assert.ok(exchange.includes(productReturnsDictionary('vi').view.acceptedNotice));
 });
 
 test('a refund shows who, when, how much, how, the goods, the lots, the points and the reason', () => {

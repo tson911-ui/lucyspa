@@ -10,6 +10,7 @@ const vi = {
   action: 'Hoàn tiền',
   title: 'Các lần hoàn tiền',
   empty: 'Chưa hoàn tiền lần nào.',
+  loading: 'Đang tải các lần hoàn tiền…',
   states: {
     NOT_REFUNDED: 'Chưa hoàn',
     PARTIALLY_REFUNDED: 'Đã hoàn một phần',
@@ -122,6 +123,7 @@ const en: Dictionary = {
   action: 'Refund',
   title: 'Refunds made',
   empty: 'Nothing has been refunded yet.',
+  loading: 'Loading the refunds…',
   states: {
     NOT_REFUNDED: 'Not refunded',
     PARTIALLY_REFUNDED: 'Partly refunded',

@@ -38,7 +38,7 @@ import { withReauthentication } from '../../../lib/workforce/reauth';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useReauthentication } from '../reauth-dialog';
 import { useWorkforce } from '../session';
-import { Notice, Section } from '../ui';
+import { ErrorState, Notice, Section } from '../ui';
 
 const ZONE = 'Asia/Ho_Chi_Minh';
 const PATH = (caseId: string) => `/api/v1/product-returns/cases/${caseId}/refunds`;
@@ -106,6 +106,29 @@ export function RefundsSection({
             value: <RefundDetails refund={refund} when={when} />,
           }))}
         />
+      )}
+    </Section>
+  );
+}
+
+/** The card of the refunds before they arrive (and when they could not be loaded): its place is known from the case, so nothing jumps in later. */
+export function RefundsPending({
+  error,
+  onRetry,
+}: {
+  error: unknown;
+  onRetry: (() => Promise<void>) | undefined;
+}) {
+  const { t, locale } = useWorkforce();
+  const text = productRefundsDictionary(locale);
+  return (
+    <Section title={text.title}>
+      {error ? (
+        <ErrorState error={error} t={t} {...(onRetry ? { onRetry: () => void onRetry() } : {})} />
+      ) : (
+        <p className="ls-hint" role="status">
+          {text.loading}
+        </p>
       )}
     </Section>
   );

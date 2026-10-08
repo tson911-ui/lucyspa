@@ -25,7 +25,7 @@ Làm theo yêu cầu của Chủ (2026-10-08, nguyên văn ở mục 2.26 của 
 ## UX gate (đã mở từng ảnh để xem)
 
 - Ảnh `.local/uxui-screens/p613-*`: trang hồ sơ (chưa hoàn, hoàn một phần có chuyển khoản và sửa mã, đã hoàn hết, thiếu điểm), biểu mẫu hoàn (trống, lỗi, chữ 130%), biểu mẫu sửa mã, trang mở hồ sơ của Chủ với ngoại lệ, trang hồ sơ có ngoại lệ; 360, 768, 1440 sáng và 1440 tối.
-- Đã sửa sau khi xem: câu "chưa có tiền nào thay đổi" đã lỗi thời, ô nhập số lượng bị trình duyệt chặn bằng thông báo tiếng Anh, khoảng cách các dòng chi tiết lệch 2 px (DOM audit), chữ thường đầu câu.
+- Đã sửa sau khi xem (và chụp lại toàn bộ từ bản cuối, mở từng ảnh): thẻ hoàn tiền có chỗ đứng ngay lần vẽ đầu (đang tải, lỗi kèm "Tải lại") nên không còn thông báo cũ rồi biến mất, câu "chưa có tiền nào thay đổi" đã lỗi thời, ô nhập số lượng bị trình duyệt chặn bằng thông báo tiếng Anh, khoảng cách các dòng chi tiết lệch 2 px (DOM audit), chữ thường đầu câu.
 - DOM audit (CSDL `lucy_spa_uxaudit_20261001`): trang hoàn một phần và đã hoàn hết 0 phát hiện; không loại nào tăng so với baseline. Danh sách trả hàng có 1 phát hiện ở 360 px (độ cao dòng không đều do tên sản phẩm rất dài trong dữ liệu mẫu), màn này không đổi ở bước này.
 - Chưa sửa được: ở chữ 130% và 360 px thanh trên cùng của khu quản trị tràn ngang 392 > 360 (đã ghi ở `docs/UI_BACKLOG.md`); ô chọn tròn của kit 20 px nhưng cả dòng nhãn là vùng bấm; thông báo bắt buộc của trình duyệt (như các hộp thoại khác của dự án).
 
