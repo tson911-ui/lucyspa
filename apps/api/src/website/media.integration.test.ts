@@ -522,6 +522,11 @@ test(
               async () => {
                 const limited = await actor(['MANAGE_WEBSITE_CONTENT']);
                 const file = { buffer: await png(10, 64), originalname: 'dup.png' };
+                // The limiter counts in fixed UTC minutes: begin the burst early in a window so its 31 uploads cannot straddle two.
+                const untilNextWindow = 60_000 - (Date.now() % 60_000);
+                if (untilNextWindow < 15_000) {
+                  await new Promise((resolve) => setTimeout(resolve, untilNextWindow + 100));
+                }
                 for (let attempt = 0; attempt < 30; attempt += 1) {
                   assert.equal((await media.upload(limited.session, file, {})).duplicate, true);
                 }
