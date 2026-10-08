@@ -126,6 +126,18 @@ export class ProductOrderService {
     );
   }
 
+  declineCancel(
+    token: string | undefined,
+    lineId: string,
+    body: Record<string, unknown>,
+    requestId?: string,
+  ): Promise<ProductOrderDetailResponse> {
+    const id = this.id(lineId);
+    return this.run(token, requestId, (context) =>
+      commands.declineCancel(context, id, { ...body }),
+    );
+  }
+
   correctReference(
     token: string | undefined,
     lineId: string,

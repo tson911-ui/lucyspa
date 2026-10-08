@@ -322,6 +322,120 @@ test(
       );
 
       await suite.test(
+        'the ticket link expires 30 days after the order is closed: open orders never expire, an expired link is the same NOT_FOUND and no new link can be made',
+        async () => {
+          const waiting = await k.preOrderProduct('ticket-expiry', 90_000);
+          const sale = await k.paidPreOrder(waiting.variantId, 1);
+          const orderId = sale.order.id;
+          const link = await k.ok(() => k.orders.createTicketLink(people.cashier.token, orderId));
+          // Moves the dates of the order's lines back, as if the days had passed (test-only; every date moves alike).
+          const age = async (days: number) => {
+            await tx.$executeRawUnsafe('SAVEPOINT age_order');
+            try {
+              await tx.$executeRawUnsafe('SET LOCAL session_replication_role = replica');
+              await tx.$executeRawUnsafe(
+                `UPDATE product_order_lines SET paid_at = paid_at - interval '${days} days', ordered_at = ordered_at - interval '${days} days', arrived_at = arrived_at - interval '${days} days', handed_over_at = handed_over_at - interval '${days} days', cancelled_at = cancelled_at - interval '${days} days' WHERE order_id = '${orderId}'::uuid`,
+              );
+              await tx.$executeRawUnsafe('SET LOCAL session_replication_role = origin');
+              await tx.$executeRawUnsafe('RELEASE SAVEPOINT age_order');
+            } catch (error) {
+              await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT age_order');
+              throw error;
+            }
+          };
+          // Open (paid, not collected): no expiry, however old the payment is.
+          await age(90);
+          let view = await k.orderOf(sale.invoice.id);
+          assert.equal(view.ticketExpiresAt, null);
+          assert.equal(view.ticketLinkActive, true);
+          assert.equal((await k.publicTickets.ticket(link.token)).code, sale.order.code);
+          await age(-90);
+          // Handed over: 30 days from that moment, to the millisecond.
+          await k.receive(waiting.variantId, 1);
+          const row = await k.lineRow(sale.line.id);
+          await k.ok(() =>
+            k.orders.handOver(people.queue.token, sale.line.id, {
+              expectedVersion: row.rowVersion,
+              to: 'CUSTOMER',
+              representativeName: null,
+              orderCode: sale.order.code,
+              phoneLast4: '4567',
+              note: null,
+            }),
+          );
+          view = await k.orderOf(sale.invoice.id);
+          const handedOverAt = Date.parse(view.lines[0]!.handedOverAt!);
+          assert.equal(Date.parse(view.ticketExpiresAt!) - handedOverAt, 30 * 24 * 3600 * 1000);
+          assert.equal(view.ticketLinkActive, true);
+          // Day 29: still readable. Day 31: dead, the same NOT_FOUND as a wrong link; the staff card says it is no longer active.
+          await age(29);
+          assert.equal((await k.publicTickets.ticket(link.token)).code, sale.order.code);
+          assert.equal((await k.orderOf(sale.invoice.id)).ticketLinkActive, true);
+          await age(2);
+          await fails(() => k.publicTickets.ticket(link.token), 'NOT_FOUND');
+          view = await k.orderOf(sale.invoice.id);
+          assert.equal(view.ticketLinkActive, false);
+          assert.ok(view.ticketExpiresAt, 'the date it expired is still shown');
+          assert.equal(
+            (await k.orders.get(people.cashier.token, orderId)).ticketLinkActive,
+            false,
+            'the order page agrees',
+          );
+          // A new link of a closed, expired order would be born dead: refused.
+          await fails(
+            () => k.orders.createTicketLink(people.cashier.token, orderId),
+            'ORDER_TICKET_EXPIRED',
+          );
+          assert.equal(await tx.productOrderTicket.count({ where: { orderId } }), 1);
+          await k.reconcileAll();
+        },
+      );
+
+      await suite.test(
+        'a cancelled order closes the link too: 30 days after the cancellation; a new link is still possible before that',
+        async () => {
+          const waiting = await k.preOrderProduct('ticket-cancel', 90_000);
+          const sale = await k.preOrder(waiting.variantId, 1);
+          const orderId = sale.order.id;
+          const link = await k.ok(() => k.orders.createTicketLink(people.cashier.token, orderId));
+          assert.equal(
+            (await k.orderOf(sale.invoice.id)).ticketExpiresAt,
+            null,
+            'open while unpaid',
+          );
+          const cancelled = await k.ok(() =>
+            invoices.cancel(people.boss.token, sale.invoice.id, {
+              expectedVersion: sale.invoice.version,
+              reason: 'Khách đổi ý',
+            }),
+          );
+          const order = cancelled.productOrder!;
+          assert.equal(order.status, 'CANCELLED');
+          assert.equal(
+            Date.parse(order.ticketExpiresAt!) - Date.parse(order.lines[0]!.cancelledAt!),
+            30 * 24 * 3600 * 1000,
+          );
+          // Before the 30 days the link still opens (it says the order is cancelled) and a new one can be made.
+          assert.equal((await k.publicTickets.ticket(link.token)).status, 'CANCELLED');
+          const fresh = await k.ok(() => k.orders.createTicketLink(people.cashier.token, orderId));
+          assert.equal((await k.publicTickets.ticket(fresh.token)).status, 'CANCELLED');
+          await tx.$executeRawUnsafe('SAVEPOINT age_cancelled');
+          await tx.$executeRawUnsafe('SET LOCAL session_replication_role = replica');
+          await tx.$executeRawUnsafe(
+            `UPDATE product_order_lines SET cancelled_at = cancelled_at - interval '31 days' WHERE order_id = '${orderId}'::uuid`,
+          );
+          await tx.$executeRawUnsafe('SET LOCAL session_replication_role = origin');
+          await tx.$executeRawUnsafe('RELEASE SAVEPOINT age_cancelled');
+          await fails(() => k.publicTickets.ticket(fresh.token), 'NOT_FOUND');
+          await fails(
+            () => k.orders.createTicketLink(people.cashier.token, orderId),
+            'ORDER_TICKET_EXPIRED',
+          );
+          await k.reconcileAll();
+        },
+      );
+
+      await suite.test(
         'a member sees the ticket inside the invoice: the code, the status and the expected range, never the phone number or the staff',
         async () => {
           const member = await k.customer('member');

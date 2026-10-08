@@ -21,6 +21,7 @@ import {
   FormGrid,
   ListSection,
   ListToolbar,
+  MoneyInput,
   RadioGroup,
   RowActions,
   SearchInput,
@@ -42,6 +43,7 @@ import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workf
 import {
   cancelRequest,
   CANCEL_METHODS,
+  declineNoteProblem,
   emptyCancelDraft,
   emptyHandOverDraft,
   expectedText,
@@ -55,6 +57,7 @@ import {
   QUEUE_TABS,
   queueErrorText,
   queueTab,
+  validAmount,
   validateCancel,
   validateHandOver,
   type CancelDraft,
@@ -751,6 +754,7 @@ export function ProductOrderDetailScreen({ id }: { id: string }) {
 type Overlay =
   | { kind: 'handover'; line: ProductOrderDetailLine }
   | { kind: 'cancel'; line: ProductOrderDetailLine }
+  | { kind: 'decline'; line: ProductOrderDetailLine }
   | { kind: 'correct'; line: ProductOrderDetailLine }
   | { kind: 'mark'; line: ProductOrderDetailLine }
   | null;
@@ -850,6 +854,15 @@ export function ProductOrderDetailView({
                   label: d.cancel,
                   tone: 'danger' as const,
                   onSelect: () => setOverlay({ kind: 'cancel', line }),
+                },
+              ]
+            : []),
+          ...(line.actions.cancelCauses.includes('CUSTOMER_CHANGED_MIND')
+            ? [
+                {
+                  id: 'decline',
+                  label: d.decline,
+                  onSelect: () => setOverlay({ kind: 'decline', line }),
                 },
               ]
             : []),
@@ -1009,6 +1022,14 @@ export function ProductOrderDetailView({
           onConflict={reload}
         />
       ) : null}
+      {overlay?.kind === 'decline' ? (
+        <DeclineDialog
+          line={overlay.line}
+          onClose={() => setOverlay(null)}
+          onDone={() => done(text.decline.done)}
+          onConflict={reload}
+        />
+      ) : null}
       {overlay?.kind === 'correct' ? (
         <CorrectDialog
           line={overlay.line}
@@ -1041,14 +1062,22 @@ export function CancelDialog({
   const [draft, setDraft] = useState<CancelDraft>(() => ({
     ...emptyCancelDraft(),
     cause: line.actions.cancelCauses.length === 1 ? (line.actions.cancelCauses[0] as never) : '',
+    // A change of mind starts at the whole share; the Owner or a manager lowers it when they decide so.
+    amount: line.actions.cancelCauses.length === 1 ? line.actions.refundVnd : '',
   }));
   const [checked, setChecked] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(globalThis.crypto.randomUUID());
-  const problems = validateCancel(draft);
+  const share = line.actions.refundVnd;
+  const problems = validateCancel(draft, share);
   const set = (patch: Partial<CancelDraft>) => setDraft((state) => ({ ...state, ...patch }));
-  const money = line.actions.refundVnd !== '0';
+  const money = share !== '0';
+  const partial =
+    money &&
+    draft.cause === 'CUSTOMER_CHANGED_MIND' &&
+    validAmount(draft.amount, share) &&
+    draft.amount.trim() !== share;
   const causes = line.actions.cancelCauses.filter((cause) => cause !== 'INVOICE_CANCELLED');
   const arrived = line.status === 'ARRIVED';
 
@@ -1056,7 +1085,7 @@ export function CancelDialog({
     if (pending) return;
     setChecked(true);
     setError(null);
-    const body = cancelRequest(draft, line.rowVersion, requestId.current);
+    const body = cancelRequest(draft, line.rowVersion, requestId.current, share);
     if (!body) return;
     setPending(true);
     try {
@@ -1082,7 +1111,7 @@ export function CancelDialog({
         description={c.description}
         labels={{ ...formOverlayLabels(t, c.submit), submitting: c.submitting }}
         busy={pending}
-        dirty={draft.note !== '' || draft.bankReference !== ''}
+        dirty={draft.note !== '' || draft.bankReference !== '' || partial}
         error={error ? <Notice tone="error">{error}</Notice> : undefined}
         onClose={onClose}
         onSubmit={submit}
@@ -1107,10 +1136,35 @@ export function CancelDialog({
                     value,
                     label: text.card.cancelCause[value],
                   }))}
-                  onChange={(event) => set({ cause: event.target.value as CancelDraft['cause'] })}
+                  onChange={(event) => {
+                    const cause = event.target.value as CancelDraft['cause'];
+                    set({ cause, amount: cause === 'CUSTOMER_CHANGED_MIND' ? share : '' });
+                  }}
                 />
               )}
             </Field>
+            {money && draft.cause === 'CUSTOMER_CHANGED_MIND' ? (
+              <Field
+                label={c.amountField}
+                hint={c.amountHint}
+                error={
+                  checked && problems.amount
+                    ? fill(c.badAmount, { share: formatVnd(share, locale) })
+                    : undefined
+                }
+                required
+                full
+              >
+                {(control) => (
+                  <MoneyInput
+                    {...control}
+                    unit="₫"
+                    value={draft.amount === '' ? null : Number(draft.amount)}
+                    onValueChange={(value) => set({ amount: value === null ? '' : String(value) })}
+                  />
+                )}
+              </Field>
+            ) : null}
             {money ? (
               <Field label={c.method} required>
                 {(control) => (
@@ -1170,9 +1224,14 @@ export function CancelDialog({
             </Field>
           </FormGrid>
           <Notice tone="info">
-            {money
-              ? fill(c.amount, { amount: formatVnd(line.actions.refundVnd, locale) })
-              : c.noAmount}
+            {!money
+              ? c.noAmount
+              : partial
+                ? fill(c.partial, {
+                    amount: formatVnd(draft.amount.trim(), locale),
+                    share: formatVnd(share, locale),
+                  })
+                : fill(c.amount, { amount: formatVnd(share, locale) })}
           </Notice>
           {arrived ? <p className="ls-hint">{c.goods}</p> : null}
           {money ? <Notice tone="warning">{c.warning}</Notice> : null}
@@ -1181,6 +1240,84 @@ export function CancelDialog({
       </FormDialog>
       {dialog}
     </>
+  );
+}
+
+// ------------------------------------------------------------------------------------ decline a change of mind
+
+function DeclineDialog({
+  line,
+  onClose,
+  onDone,
+  onConflict,
+}: {
+  line: ProductOrderDetailLine;
+  onClose: () => void;
+  onDone: () => Promise<void>;
+  onConflict: () => Promise<void>;
+}) {
+  const { api, t, locale } = useWorkforce();
+  const text = productOrdersDictionary(locale);
+  const f = text.decline;
+  const [note, setNote] = useState('');
+  const [checked, setChecked] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const bad = declineNoteProblem(note);
+
+  async function submit() {
+    if (pending) return;
+    setChecked(true);
+    setError(null);
+    if (bad) return;
+    setPending(true);
+    try {
+      await api.post(`/api/v1/product-orders/lines/${line.id}/decline`, {
+        expectedVersion: line.rowVersion,
+        note: note.trim(),
+      });
+      await onDone();
+    } catch (failure) {
+      if (isQueueConflict(failure)) await onConflict();
+      setError(queueErrorText(failure, locale, (cause) => errorMessage(cause, t)));
+      setPending(false);
+    }
+  }
+
+  return (
+    <FormDialog
+      title={f.title}
+      description={f.description}
+      labels={{ ...formOverlayLabels(t, f.submit), submitting: f.submitting }}
+      busy={pending}
+      dirty={note !== ''}
+      error={error ? <Notice tone="error">{error}</Notice> : undefined}
+      onClose={onClose}
+      onSubmit={submit}
+    >
+      <Stack gap="page">
+        <Notice tone="info">{`${line.quantity} × ${productTitle(line, locale)}`}</Notice>
+        <FormGrid cols={1}>
+          <Field
+            label={f.reason}
+            hint={f.reasonHint}
+            error={checked && bad ? text.cancel.required : undefined}
+            required
+            full
+          >
+            {(control) => (
+              <Textarea
+                {...control}
+                rows={3}
+                maxLength={REASON_MAX}
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
+            )}
+          </Field>
+        </FormGrid>
+      </Stack>
+    </FormDialog>
   );
 }
 

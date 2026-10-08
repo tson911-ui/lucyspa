@@ -24,6 +24,7 @@ const order = (patch: Partial<ProductOrderResponse> = {}): ProductOrderResponse 
   customer: null,
   createdAt: '2026-10-08T03:00:00.000Z',
   ticketLinkActive: false,
+  ticketExpiresAt: null,
   lines: [
     {
       id: 'ol1',
@@ -97,6 +98,25 @@ test('a guest gets the ticket link action; a member sees the ticket inside the i
     new RegExp(d.ticket.make),
   );
   assert.doesNotMatch(card(order({ status: 'CANCELLED' })), new RegExp(d.ticket.make));
+});
+
+test('the link of a guest expires 30 days after the order is closed: the date is shown, and an expired link cannot be made again', () => {
+  const closed = (days: number) =>
+    order({
+      status: 'HANDED_OVER',
+      ticketLinkActive: days < 30,
+      ticketExpiresAt: new Date(Date.now() + (30 - days) * 86_400_000).toISOString(),
+      lines: [{ ...order().lines[0]!, status: 'HANDED_OVER' }],
+    });
+  const live = card(closed(2));
+  assert.match(live, /Đang có liên kết cho khách, dùng được đến /);
+  assert.match(live, new RegExp(d.ticket.revoke), 'a live link can still be revoked');
+  const dead = card(closed(40));
+  assert.match(dead, /Liên kết đã hết hạn ngày /);
+  assert.doesNotMatch(dead, new RegExp(d.ticket.make), 'no new link of a dead order');
+  assert.doesNotMatch(dead, new RegExp(d.ticket.revoke));
+  // An open order has no date: the plain sentence stays.
+  assert.match(card(order({ ticketLinkActive: true })), new RegExp(d.ticket.active));
 });
 
 test('a line waiting for payment has no range yet, and a cancelled or refunded line says so', () => {

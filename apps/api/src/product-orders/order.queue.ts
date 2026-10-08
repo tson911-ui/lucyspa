@@ -22,7 +22,7 @@ import {
   holdsAt,
   requireManageOrders,
 } from './order.access.js';
-import { presentProductOrderLine, productOrderSelect } from './order.core.js';
+import { presentProductOrderLine, productOrderSelect, ticketExpiry } from './order.core.js';
 
 /**
  * Phase 6 P6-17 (design 18.3, 18.4; T32, OQ-86, OQ-87): the screens of the people who work the orders. Reads only. A line is "late" when
@@ -129,6 +129,7 @@ export async function orderDetail(
   const refund = holdsAt(graph, 'REFUND_PRODUCTS', row.branchId);
   const link = canLinkTicketAt(graph, row.branchId);
   const showContact = work || link || refund;
+  const expiry = ticketExpiry(row, context.now);
   const today = await branchToday(tx, row.branchId);
   const allocations = await tx.invoiceLineAllocation.findMany({
     where: { invoiceLineId: { in: row.lines.map((line) => line.invoiceLineId) } },
@@ -198,7 +199,8 @@ export async function orderDetail(
     customer: row.customer ? { id: row.customer.id, displayName: row.customer.fullName } : null,
     createdAt: row.createdAt.toISOString(),
     lines,
-    ticketLinkActive: row.tickets.length > 0,
+    ticketLinkActive: expiry.linkActive,
+    ticketExpiresAt: expiry.expiresAt,
     can: { work, refund, ticketLink: link },
   };
 }

@@ -103,6 +103,18 @@ class CancelLineDto {
   @MaxLength(200)
   bankReference!: string | null;
   @ApiProperty() @IsString() @MaxLength(64) clientRequestId!: string;
+  @ApiProperty({
+    required: false,
+    description: 'Integer VND; only for the cause CUSTOMER_CHANGED_MIND.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(16)
+  amountVnd?: string;
+}
+class DeclineCancelDto {
+  @ApiProperty() @IsInt() @Min(1) @Max(2_147_483_647) expectedVersion!: number;
+  @ApiProperty() @IsString() @MaxLength(4000) note!: string;
 }
 class CorrectReferenceDto {
   @ApiProperty() @IsString() @MaxLength(200) bankReference!: string;
@@ -208,7 +220,7 @@ export class ProductOrderController {
   @HttpCode(200)
   @ApiOkResponse({
     description:
-      'Cancel a paid line with a cause and refund it in full by cash or manual transfer (REFUND_PRODUCTS, a fresh password when money is given back).',
+      'Cancel a paid line with a cause and refund it by cash or manual transfer: in full, or for a change of mind a part of it (REFUND_PRODUCTS, a fresh password when money is given back).',
   })
   cancelLine(
     @Param('lineId') lineId: string,
@@ -217,6 +229,26 @@ export class ProductOrderController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<ProductOrderDetailResponse> {
     return this.orders.cancelLine(
+      this.session(request),
+      lineId,
+      body as never,
+      this.requestId(response),
+    );
+  }
+
+  @Post('lines/:lineId/decline')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Decline the customer request to cancel after the supplier order: nothing moves, the decision and its reason are audited (REFUND_PRODUCTS).',
+  })
+  declineCancel(
+    @Param('lineId') lineId: string,
+    @Body() body: DeclineCancelDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<ProductOrderDetailResponse> {
+    return this.orders.declineCancel(
       this.session(request),
       lineId,
       body as never,

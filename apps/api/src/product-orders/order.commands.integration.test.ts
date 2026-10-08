@@ -5,7 +5,7 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { LocalDiskMediaStorage } from '@lucy-spa/server';
+import { LocalDiskMediaStorage, LOYALTY_EVENT_TYPES, processLoyaltyEvent } from '@lucy-spa/server';
 import { pino } from 'pino';
 import { ProductReturnService } from '../product-returns/return.service.js';
 import { phase6Fixture } from '../testing/phase6-fixture.js';
@@ -732,6 +732,354 @@ test(
             'the window starts when the goods were handed over, not when the invoice was paid',
           );
           assert.equal((await lookup()).lines.length, 1);
+          await k.reconcileAll();
+        },
+      );
+
+      await suite.test(
+        'a change of mind after the supplier order: the manager decides the amount (a part of the share, or all of it); no other cause takes an amount',
+        async () => {
+          const product = await k.preOrderProduct('mind-part', 100_000);
+          const sale = await k.paidPreOrder(product.variantId, 2);
+          await k.ok(() => mark([{ id: sale.line.id, rowVersion: sale.line.rowVersion }]));
+          const version = (await k.lineRow(sale.line.id)).rowVersion;
+          // The amount is whole VND from 1 up to the whole share (200 000), and only for the change of mind.
+          for (const amountVnd of ['200001', '0', '-5', '12.5', 'abc', '', '1e5', '0100000']) {
+            await fails(
+              () => cancel(sale.line.id, version, { amountVnd }),
+              'VALIDATION_FAILED',
+              'amountVnd',
+            );
+          }
+          await fails(
+            () => cancel(sale.line.id, version, { amountVnd: 120000 }),
+            'VALIDATION_FAILED',
+            'amountVnd',
+          );
+          await fails(
+            () =>
+              cancel(sale.line.id, version, {
+                cause: 'SUPPLIER_CANNOT_DELIVER',
+                amountVnd: '100000',
+              }),
+            'VALIDATION_FAILED',
+            'amountVnd',
+          );
+          assert.equal((await k.lineRow(sale.line.id)).status, 'ORDERED', 'nothing was written');
+          assert.equal(await tx.productRefund.count({ where: { orderLineId: sale.line.id } }), 0);
+
+          const clientRequestId = randomUUID();
+          const done = await k.ok(() =>
+            cancel(sale.line.id, version, { amountVnd: '120000', clientRequestId }),
+          );
+          assert.equal(done.lines[0]!.status, 'CANCELLED');
+          assert.equal(done.lines[0]!.cancelCause, 'CUSTOMER_CHANGED_MIND');
+          assert.equal(done.lines[0]!.refund?.amountVnd, '120000', 'the part that was decided');
+          assert.equal(
+            done.lines[0]!.actions.refundVnd,
+            '200000',
+            'the whole share is still shown',
+          );
+          const refund = await tx.productRefund.findFirstOrThrow({
+            where: { orderLineId: sale.line.id },
+          });
+          assert.equal(refund.amountVnd, 120_000n);
+          assert.equal(refund.quantity, 2, 'the whole line is cancelled');
+          assert.equal(refund.lineAmountAfterVnd, 120_000n);
+          assert.equal(refund.invoiceRefundedAfterVnd, 120_000n);
+          assert.equal(refund.reason, 'Khách đổi ý, đã hoàn tiền mặt', 'the written reason');
+          assert.equal(
+            await tx.refundReauthenticationUse.count({ where: { productRefundId: refund.id } }),
+            1,
+          );
+          const audit = await tx.auditEvent.findFirstOrThrow({
+            where: { action: 'PRODUCT_ORDER_LINE_CANCELLED', entityId: sale.order.id },
+          });
+          assert.equal(Reflect.get(Object(audit.after), 'cause'), 'CUSTOMER_CHANGED_MIND');
+          const refundAudit = await tx.auditEvent.findFirstOrThrow({
+            where: { action: 'PRODUCT_REFUNDED', entityId: refund.id },
+          });
+          assert.equal(Reflect.get(Object(refundAudit.after), 'partial'), true);
+          assert.equal(Reflect.get(Object(refundAudit.after), 'shareVnd'), '200000');
+          assert.equal(Reflect.get(Object(refundAudit.after), 'amountVnd'), '120000');
+          // The Owner is told the amount that was really refunded.
+          const notices = await tx.notification.findMany({
+            where: {
+              type: 'PRODUCT_REFUND_MADE',
+              entityType: 'ProductOrder',
+              entityId: sale.order.id,
+            },
+          });
+          assert.ok(notices.length >= 1);
+          assert.ok(notices.every((notice) => JSON.stringify(notice).includes('120')));
+
+          // The same request again reads back the result; the same id with another amount (or none) is a conflict.
+          const again = await orders.cancelLine(
+            refunder.token,
+            sale.line.id,
+            cancelBody(version, { amountVnd: '120000', clientRequestId }),
+          );
+          assert.equal(again.lines[0]!.refund?.amountVnd, '120000');
+          await fails(
+            () =>
+              orders.cancelLine(
+                refunder.token,
+                sale.line.id,
+                cancelBody(version, { amountVnd: '130000', clientRequestId }),
+              ),
+            'CONFLICT',
+          );
+          await fails(
+            () =>
+              orders.cancelLine(
+                refunder.token,
+                sale.line.id,
+                cancelBody(version, { clientRequestId }),
+              ),
+            'CONFLICT',
+          );
+          assert.equal(await tx.productRefund.count({ where: { orderLineId: sale.line.id } }), 1);
+          await k.reconcileAll();
+        },
+      );
+
+      await suite.test(
+        'a change of mind: no amount means the whole share, and the whole share written out is accepted too; 1 VND is the smallest part',
+        async () => {
+          const product = await k.preOrderProduct('mind-full', 100_000);
+          const first = await k.paidPreOrder(product.variantId, 1);
+          const second = await k.paidPreOrder(product.variantId, 1);
+          await k.ok(() =>
+            mark([
+              { id: first.line.id, rowVersion: first.line.rowVersion },
+              { id: second.line.id, rowVersion: second.line.rowVersion },
+            ]),
+          );
+          const a = await k.ok(async () =>
+            cancel(first.line.id, (await k.lineRow(first.line.id)).rowVersion, {}),
+          );
+          assert.equal(a.lines[0]!.refund?.amountVnd, '100000', 'left out = the whole share');
+          const b = await k.ok(async () =>
+            cancel(second.line.id, (await k.lineRow(second.line.id)).rowVersion, {
+              amountVnd: '1',
+            }),
+          );
+          assert.equal(b.lines[0]!.refund?.amountVnd, '1');
+          const refundB = await tx.productRefund.findFirstOrThrow({
+            where: { orderLineId: second.line.id },
+          });
+          assert.equal(refundB.amountVnd, 1n);
+          await k.reconcileAll();
+        },
+      );
+
+      await suite.test(
+        'a part refund takes back a proportional part of the Beauty points (the reversal reads the money refunded so far)',
+        async () => {
+          await tx.loyaltyGoLive.create({ data: { activatedByUserId: people.boss.id } });
+          const member = await k.customer('mind-points');
+          const product = await k.preOrderProduct('mind-points', 100_000);
+          const sale = await k.paidPreOrder(product.variantId, 2, { payer: member.id });
+          const consume = async (filter: object) => {
+            const outcomes: string[] = [];
+            const events = await tx.outboxEvent.findMany({
+              where: filter,
+              orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
+            });
+            for (const event of events) {
+              outcomes.push(await processLoyaltyEvent(tx, event.id));
+              await k.settle();
+            }
+            return outcomes;
+          };
+          await consume({ aggregateId: sale.invoice.id, eventType: { in: LOYALTY_EVENT_TYPES } });
+          const balance = async () =>
+            (
+              await tx.loyaltyWalletAccount.findUnique({
+                where: { userId_wallet: { userId: member.id, wallet: 'BEAUTY' } },
+              })
+            )?.balancePoints ?? 0;
+          assert.equal(await balance(), 200, '1 point per 1 000 VND of the 200 000 net');
+          await k.ok(() => mark([{ id: sale.line.id, rowVersion: sale.line.rowVersion }]));
+          const version = (await k.lineRow(sale.line.id)).rowVersion;
+          await k.ok(() => cancel(sale.line.id, version, { amountVnd: '120000' }));
+          const refund = await tx.productRefund.findFirstOrThrow({
+            where: { orderLineId: sale.line.id },
+          });
+          const outcomes = await consume({ aggregateId: refund.id, eventType: 'PRODUCT_REFUNDED' });
+          assert.equal(outcomes.length, 1);
+          const reversal = await tx.loyaltyLedgerEntry.findMany({
+            where: { invoiceId: sale.invoice.id, kind: 'REFUND_REVERSAL' },
+          });
+          assert.equal(reversal.length, 1);
+          assert.equal(
+            reversal[0]!.points,
+            -120,
+            '120 000 of 200 000 refunded: 120 of the 200 points',
+          );
+          assert.equal(await balance(), 80, 'the points of the 80 000 the shop kept');
+          await k.reconcileAll();
+        },
+      );
+
+      await suite.test(
+        'the database itself keeps every other refund at the whole share, and a change of mind between 1 VND and the share',
+        async () => {
+          const product = await k.preOrderProduct('mind-db', 100_000);
+          const supplier = await k.paidPreOrder(product.variantId, 2);
+          const mind = await k.paidPreOrder(product.variantId, 2);
+          const other = await k.paidPreOrder(product.variantId, 2);
+          await k.ok(() => mark([{ id: mind.line.id, rowVersion: mind.line.rowVersion }]));
+          // A real refund of the supplier case, to copy the shape of a valid record.
+          await k.ok(() =>
+            cancel(supplier.line.id, supplier.line.rowVersion, {
+              cause: 'SUPPLIER_CANNOT_DELIVER',
+            }),
+          );
+          const model = await tx.productRefund.findFirstOrThrow({
+            where: { orderLineId: supplier.line.id },
+          });
+          const copy = async (
+            target: typeof mind,
+            cause: 'SUPPLIER_CANNOT_DELIVER' | 'CUSTOMER_CHANGED_MIND',
+            amount: bigint,
+          ) => {
+            const row = await k.lineRow(target.line.id);
+            if (row.status !== 'CANCELLED') {
+              await tx.productOrderLine.update({
+                where: { id: target.line.id },
+                data: {
+                  status: 'CANCELLED',
+                  cancelCause: cause,
+                  cancelNote: 'DB guard',
+                  cancelledByUserId: refunder.id,
+                },
+                select: { id: true },
+              });
+            }
+            const [sequence] = await tx.$queryRaw<
+              { n: string }[]
+            >`SELECT nextval('product_refund_code_seq')::text AS n`;
+            return tx.productRefund.create({
+              data: {
+                code: `HT${sequence!.n.padStart(6, '0')}`,
+                branchId: model.branchId,
+                invoiceId: target.invoice.id,
+                invoiceLineId: target.line.invoiceLineId,
+                orderLineId: target.line.id,
+                paidSeq: model.paidSeq,
+                quantity: 2,
+                amountVnd: amount,
+                lineUnitsAfter: 2,
+                lineAmountAfterVnd: amount,
+                invoiceRefundedAfterVnd: amount,
+                method: 'CASH',
+                bankReference: null,
+                reason: 'DB guard',
+                restock: 'NOT_SELLABLE',
+                actorUserId: refunder.id,
+                reauthenticatedAt: model.reauthenticatedAt,
+                clientRequestId: randomUUID(),
+              },
+              select: { id: true },
+            });
+          };
+          const refuses = async (work: () => Promise<unknown>, pattern: RegExp) => {
+            await tx.$executeRawUnsafe('SAVEPOINT guard');
+            try {
+              await work();
+            } catch (error) {
+              await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT guard');
+              assert.match(String((error as Error).message), pattern);
+              return;
+            }
+            await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT guard');
+            assert.fail('the database accepted the refund');
+          };
+          // Any other cause: exactly the net share (200 000 for two units), nothing less.
+          await refuses(() => copy(other, 'SUPPLIER_CANNOT_DELIVER', 1n), /not another amount/i);
+          // A change of mind: 0 and more than the share are refused, 1 VND and the whole share are accepted.
+          await refuses(
+            () => copy(mind, 'CUSTOMER_CHANGED_MIND', 0n),
+            /from 1 VND up to the net share/,
+          );
+          await refuses(
+            () => copy(mind, 'CUSTOMER_CHANGED_MIND', 200_001n),
+            /from 1 VND up to the net share/,
+          );
+          // Both ends are accepted by the guard (this record has no password use, so it is not kept: rolled back to the savepoint).
+          for (const accepted of [1n, 200_000n]) {
+            await tx.$executeRawUnsafe('SAVEPOINT accepted');
+            await copy(mind, 'CUSTOMER_CHANGED_MIND', accepted);
+            await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT accepted');
+          }
+        },
+      );
+
+      await suite.test(
+        'the manager may decline a change of mind: a written reason is kept, nothing moves and the customer can still collect',
+        async () => {
+          const product = await k.preOrderProduct('mind-decline', 100_000);
+          const sale = await k.paidPreOrder(product.variantId, 1);
+          const decline = (
+            version: number,
+            patch: Record<string, unknown> = {},
+            actor = refunder,
+          ) =>
+            orders.declineCancel(actor.token, sale.line.id, {
+              expectedVersion: version,
+              note: 'Hàng đã đặt xong, shop không hoàn tiền',
+              ...patch,
+            });
+          // PAID: the customer cancels before the supplier order instead, so there is nothing to decline.
+          await fails(() => decline(sale.line.rowVersion), 'ORDER_CANCEL_CAUSE_INVALID', 'cause');
+          await k.ok(() => mark([{ id: sale.line.id, rowVersion: sale.line.rowVersion }]));
+          const ordered = await k.lineRow(sale.line.id);
+          // Only those who may refund decide; a reason is required; the version is checked.
+          await fails(() => decline(ordered.rowVersion, {}, worker), 'FORBIDDEN');
+          await fails(() => decline(ordered.rowVersion, {}, people.cashier), 'FORBIDDEN');
+          await fails(
+            () => decline(ordered.rowVersion, { note: '  ' }),
+            'VALIDATION_FAILED',
+            'note',
+          );
+          await fails(
+            () => decline(ordered.rowVersion, { note: undefined }),
+            'VALIDATION_FAILED',
+            'note',
+          );
+          await fails(() => decline(ordered.rowVersion + 3), 'CONFLICT');
+          const before = await k.lineRow(sale.line.id);
+          const refundsBefore = await tx.productRefund.count();
+          const done = await k.ok(() => decline(ordered.rowVersion));
+          assert.equal(done.lines[0]!.status, 'ORDERED', 'the line stays as it was');
+          const after = await k.lineRow(sale.line.id);
+          assert.equal(after.rowVersion, before.rowVersion, 'not even a version moved');
+          assert.equal(await tx.productRefund.count(), refundsBefore, 'no money moved');
+          const audit = await tx.auditEvent.findFirstOrThrow({
+            where: { action: 'PRODUCT_ORDER_CANCEL_DECLINED', entityId: sale.order.id },
+          });
+          assert.equal(audit.reason, 'Hàng đã đặt xong, shop không hoàn tiền');
+          // It can be asked again later and decided again; the line is still worked as usual (arrives, handed over).
+          await k.ok(() => decline(ordered.rowVersion));
+          await k.receive(product.variantId, 1);
+          const arrived = await k.lineRow(sale.line.id);
+          assert.equal(arrived.status, 'ARRIVED');
+          await k.ok(() => decline(arrived.rowVersion));
+          await k.ok(() =>
+            orders.handOver(worker.token, sale.line.id, {
+              expectedVersion: arrived.rowVersion,
+              to: 'CUSTOMER',
+              representativeName: null,
+              ...proof(sale.order),
+              note: null,
+            }),
+          );
+          await fails(
+            async () => decline((await k.lineRow(sale.line.id)).rowVersion),
+            'ORDER_CANCEL_CAUSE_INVALID',
+            'cause',
+          );
           await k.reconcileAll();
         },
       );

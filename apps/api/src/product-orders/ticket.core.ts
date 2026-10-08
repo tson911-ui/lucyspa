@@ -4,7 +4,7 @@ import type {
   ProductOrderTicketLinkResponse,
   ProductOrderTicketPublicResponse,
 } from '@lucy-spa/contracts';
-import { productOrderStatus } from '@lucy-spa/contracts';
+import { productOrderStatus, productOrderTicketExpiresAt } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
 import { AuthError } from '../auth/auth.error.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
@@ -18,7 +18,10 @@ import { presentProductOrder, productOrderSelect } from './order.core.js';
  * a wrong, revoked or unknown token reveals nothing (the same NOT_FOUND). The page it opens carries no phone number, no address, no
  * other order and no staff name.
  *
- * Lock order: the order row, then the ticket rows. The link has no expiry by itself (the Owner gave no validity number; asked).
+ * Lock order: the order row, then the ticket rows. The link expires 30 days after the order was closed, that is after its last line was
+ * handed over or cancelled (the Owner, 2026-10-09; `productOrderTicketExpiresAt`). The expiry is derived from the lines every time the link
+ * is read, so nothing is stored and no job runs; an expired link answers the same NOT_FOUND as a wrong one. The SQL comments of migrations
+ * 20261117000000 and 20261118000000 that say the link never expires are history (applied files are not edited); this is the rule.
  */
 
 /** 32 random bytes as base64url: 43 characters of [A-Za-z0-9_-]. */
@@ -49,6 +52,16 @@ export async function createTicketLink(
 ): Promise<ProductOrderTicketLinkResponse> {
   const { tx } = context;
   const order = await lockOrder(context, orderId);
+  // A new link of an order closed more than 30 days ago would be born expired: staff are told instead of handing out a dead link.
+  const expiresAt = productOrderTicketExpiresAt(
+    await tx.productOrderLine.findMany({
+      where: { orderId },
+      select: { status: true, handedOverAt: true, cancelledAt: true },
+    }),
+  );
+  if (expiresAt && expiresAt.getTime() <= context.now.getTime()) {
+    throw new AuthError('ORDER_TICKET_EXPIRED');
+  }
   const replaced = await tx.productOrderTicket.updateMany({
     where: { orderId, revokedAt: null },
     data: { revokedAt: context.now, revokedByUserId: context.actor.userId },
@@ -94,13 +107,14 @@ export async function revokeTicketLink(
     where: { id: orderId },
     select: productOrderSelect,
   });
-  return presentProductOrder(row);
+  return presentProductOrder(row, { showContact: true, now: context.now });
 }
 
 /** The read-only ticket of a link. Anything but a live token of the right shape is the same NOT_FOUND. */
 export async function readPublicTicket(
   tx: Prisma.TransactionClient,
   token: string,
+  now: Date = new Date(),
 ): Promise<ProductOrderTicketPublicResponse> {
   if (typeof token !== 'string' || !TICKET_TOKEN.test(token)) throw new AuthError('NOT_FOUND');
   const ticket = await tx.productOrderTicket.findFirst({
@@ -120,6 +134,8 @@ export async function readPublicTicket(
             orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
             select: {
               status: true,
+              handedOverAt: true,
+              cancelledAt: true,
               expectedFrom: true,
               expectedTo: true,
               quantity: true,
@@ -133,6 +149,9 @@ export async function readPublicTicket(
   });
   if (!ticket) throw new AuthError('NOT_FOUND');
   const { order } = ticket;
+  // Thirty days after the last line was handed over or cancelled the link is dead, and says nothing more than a wrong one.
+  const expiresAt = productOrderTicketExpiresAt(order.lines);
+  if (expiresAt && expiresAt.getTime() <= now.getTime()) throw new AuthError('NOT_FOUND');
   const day = (value: Date | null) => (value ? value.toISOString().slice(0, 10) : null);
   return {
     code: order.code,

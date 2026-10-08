@@ -11,7 +11,7 @@ import { test } from 'node:test';
 import { productOrdersDictionary } from '../../../i18n/product-orders';
 import { QUEUE_LIST_DEFAULTS } from '../../../lib/workforce/product-orders';
 import { owner, render } from '../../../test/support';
-import { ProductOrderDetailView, ProductOrdersList } from './product-orders';
+import { CancelDialog, ProductOrderDetailView, ProductOrdersList } from './product-orders';
 
 const text = productOrdersDictionary('vi');
 /** A pattern that matches the text literally (dictionary texts contain brackets and dots). */
@@ -270,6 +270,7 @@ const detail = (
   customer: null,
   createdAt: '2026-10-08T03:00:00.000Z',
   ticketLinkActive: false,
+  ticketExpiresAt: null,
   lines,
   invoiceStatus: 'PAID',
   can: { work: true, refund: true, ticketLink: true },
@@ -334,6 +335,44 @@ test('a refund is shown with its money, method, code and the corrected reference
   assert.match(html, /HT000003/);
   assert.match(html, /FT0002/);
   assert.match(html, /Đã sửa 1 lần/);
+});
+
+test('the cancel dialog asks for the amount only for a change of mind, starting at the whole share', () => {
+  const mind = detailLine({
+    status: 'ARRIVED',
+    actions: {
+      markOrdered: false,
+      handOver: true,
+      cancelCauses: ['CUSTOMER_CHANGED_MIND'],
+      refundVnd: '400000',
+      correctReference: false,
+    },
+  });
+  const html = render(
+    <CancelDialog line={mind} onClose={noop} onDone={noop} onConflict={noop} />,
+    owner,
+  );
+  assert.match(html, re(text.cancel.amountField));
+  assert.match(html, /value="400.000"/, 'the whole share is the starting amount');
+  assert.match(html, /400.000/);
+  const supplier = detailLine({
+    actions: {
+      markOrdered: true,
+      handOver: false,
+      cancelCauses: ['SUPPLIER_CANNOT_DELIVER'],
+      refundVnd: '400000',
+      correctReference: false,
+    },
+  });
+  const other = render(
+    <CancelDialog line={supplier} onClose={noop} onDone={noop} onConflict={noop} />,
+    owner,
+  );
+  assert.doesNotMatch(
+    other,
+    re(text.cancel.amountField),
+    'every other cause refunds the whole share',
+  );
 });
 
 test('English renders every new text', () => {

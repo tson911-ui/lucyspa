@@ -80,6 +80,8 @@ const vi = {
     memberNote: 'Khách có tài khoản xem phiếu ngay trong hóa đơn của mình.',
     guestNote: 'Khách không có tài khoản xem phiếu qua một liên kết riêng do bạn gửi (Zalo).',
     active: 'Đang có liên kết cho khách.',
+    activeUntil: 'Đang có liên kết cho khách, dùng được đến {date}.',
+    expired: 'Liên kết đã hết hạn ngày {date}. Khách không xem được phiếu nữa.',
     none: 'Chưa có liên kết.',
     make: 'Tạo liên kết',
     makeAgain: 'Tạo liên kết mới',
@@ -95,7 +97,7 @@ const vi = {
     copied: 'Đã sao chép liên kết.',
     copyFailed: 'Không sao chép được. Hãy chọn và sao chép liên kết bằng tay.',
     qrAlt: 'Mã QR của phiếu hẹn nhận hàng',
-    once: 'Liên kết chỉ hiện một lần. Tạo liên kết mới thì liên kết cũ ngừng dùng được.',
+    once: 'Liên kết chỉ hiện một lần. Tạo liên kết mới thì liên kết cũ ngừng dùng được. Liên kết hết hạn sau 30 ngày kể từ khi đơn được giao hết hoặc hủy.',
     close: 'Đóng',
   },
   errors: {
@@ -120,7 +122,7 @@ const vi = {
     bring: 'Khi đến nhận hàng, hãy đọc mã đơn cho nhân viên.',
     notFoundTitle: 'Không tìm thấy phiếu',
     notFoundBody:
-      'Liên kết này không đúng hoặc đã bị thu hồi. Hãy hỏi cửa hàng để nhận liên kết mới.',
+      'Liên kết này không đúng, đã bị thu hồi hoặc đã hết hạn. Hãy hỏi cửa hàng để nhận liên kết mới.',
     unavailableTitle: 'Chưa mở được phiếu',
     loadFailed: 'Không tải được phiếu. Hãy thử lại sau ít phút.',
     retry: 'Tải lại',
@@ -216,6 +218,7 @@ const vi = {
     markOrdered: 'Đã đặt hàng',
     handOver: 'Giao hàng',
     cancel: 'Hủy và hoàn tiền',
+    decline: 'Từ chối hủy',
     correct: 'Sửa mã giao dịch',
     invoiceCancelled: 'Hóa đơn đã bị hủy nên các dòng đã được hủy theo.',
     notPaid: 'Đơn chưa thanh toán. Hàng chỉ được đặt sau khi khách thanh toán.',
@@ -254,6 +257,10 @@ const vi = {
     reference: 'Mã giao dịch chuyển khoản',
     referenceHint: 'Mã trên biên lai chuyển khoản, tối đa 64 ký tự.',
     amount: 'Hoàn cho khách {amount}.',
+    amountField: 'Số tiền hoàn',
+    amountHint: 'Chủ hoặc quản lý quyết định số tiền, từ 1 ₫ đến toàn bộ số đã thu.',
+    badAmount: 'Nhập số tiền nguyên, ít nhất 1 ₫ và nhiều nhất {share}.',
+    partial: 'Hoàn cho khách {amount} trong tổng {share} đã thu.',
     noAmount: 'Dòng này chưa thu tiền nên không hoàn tiền.',
     warning: 'Khoản hoàn không sửa được sau khi lưu. Bạn sẽ được hỏi lại mật khẩu.',
     goods: 'Hàng đang giữ cho dòng này sẽ được trả về kho và cấp cho khách đặt trước kế tiếp.',
@@ -265,6 +272,16 @@ const vi = {
     required: 'Cần nhập.',
     badReference: 'Nhập mã giao dịch (tối đa 64 ký tự).',
     noCause: 'Dòng hàng này chưa thể hủy lúc này.',
+  },
+  decline: {
+    title: 'Từ chối yêu cầu hủy',
+    description:
+      'Khách đổi ý sau khi đã đặt hàng và shop không đồng ý hủy. Dòng hàng giữ nguyên, khách vẫn nhận hàng khi hàng về. Quyết định và lý do được lưu lại.',
+    reason: 'Lý do từ chối',
+    reasonHint: 'Ghi rõ vì sao không hủy. Nội dung này được lưu lại.',
+    submit: 'Lưu quyết định',
+    submitting: 'Đang lưu…',
+    done: 'Đã lưu quyết định từ chối.',
   },
   correct: {
     title: 'Sửa mã giao dịch',
@@ -279,6 +296,8 @@ const vi = {
     ORDER_LINE_STATE_INVALID: 'Dòng hàng đã đổi trạng thái. Hãy tải lại trang.',
     ORDER_HANDOVER_PROOF_INVALID: 'Mã đơn hoặc 4 số cuối không khớp với đơn. Hãy hỏi lại khách.',
     ORDER_CANCEL_CAUSE_INVALID: 'Lý do này không dùng được cho dòng hàng ở tình trạng hiện tại.',
+    ORDER_TICKET_EXPIRED:
+      'Đơn đã đóng quá 30 ngày nên liên kết phiếu đã hết hạn. Không tạo liên kết mới được.',
     CONFLICT: 'Dòng hàng vừa được người khác cập nhật. Hãy tải lại trang rồi thử lại.',
     REAUTHENTICATION_REQUIRED: 'Cần xác nhận lại mật khẩu của bạn.',
   },
@@ -369,6 +388,8 @@ const en: Dictionary = {
     guestNote:
       'A customer without an account sees the ticket through a private link that you send them (Zalo).',
     active: 'A link for the customer is active.',
+    activeUntil: 'A link for the customer is active until {date}.',
+    expired: 'The link expired on {date}. The customer can no longer open the ticket.',
     none: 'No link yet.',
     make: 'Create link',
     makeAgain: 'Create new link',
@@ -384,7 +405,7 @@ const en: Dictionary = {
     copied: 'Link copied.',
     copyFailed: 'Could not copy. Select the link and copy it by hand.',
     qrAlt: 'QR code of the pick-up ticket',
-    once: 'The link is shown only once. A new link stops the old one from working.',
+    once: 'The link is shown only once. A new link stops the old one from working. The link expires 30 days after the order is fully handed over or cancelled.',
     close: 'Close',
   },
   errors: {
@@ -409,7 +430,8 @@ const en: Dictionary = {
     afterPayment: 'After payment',
     bring: 'When you come to collect, tell the staff your order code.',
     notFoundTitle: 'Ticket not found',
-    notFoundBody: 'This link is not valid or has been revoked. Ask the shop for a new link.',
+    notFoundBody:
+      'This link is not valid, has been revoked or has expired. Ask the shop for a new link.',
     unavailableTitle: 'The ticket cannot be opened right now',
     loadFailed: 'The ticket could not be loaded. Please try again in a few minutes.',
     retry: 'Reload',
@@ -505,6 +527,7 @@ const en: Dictionary = {
     markOrdered: 'Mark ordered',
     handOver: 'Hand over',
     cancel: 'Cancel and refund',
+    decline: 'Decline cancelling',
     correct: 'Correct reference',
     invoiceCancelled: 'The invoice was cancelled, so its lines were cancelled with it.',
     notPaid: 'The order is not paid. The goods are ordered only after the customer pays.',
@@ -543,6 +566,10 @@ const en: Dictionary = {
     reference: 'Bank transfer reference',
     referenceHint: 'The reference on the transfer receipt, up to 64 characters.',
     amount: 'Refund to the customer: {amount}.',
+    amountField: 'Refund amount',
+    amountHint: 'The Owner or a manager decides the amount, from 1 ₫ up to everything collected.',
+    badAmount: 'Enter a whole amount, at least 1 ₫ and at most {share}.',
+    partial: 'Refund to the customer: {amount} of the {share} collected.',
     noAmount: 'Nothing was paid for this line, so nothing is refunded.',
     warning: 'A refund cannot be changed once saved. You will be asked for your password again.',
     goods:
@@ -555,6 +582,16 @@ const en: Dictionary = {
     required: 'Required.',
     badReference: 'Enter the transfer reference (up to 64 characters).',
     noCause: 'This line cannot be cancelled right now.',
+  },
+  decline: {
+    title: 'Decline the request to cancel',
+    description:
+      'The customer changed their mind after the goods were ordered and the shop does not agree to cancel. The line stays as it is and the customer can still collect the goods. The decision and its reason are kept on record.',
+    reason: 'Reason for declining',
+    reasonHint: 'Say why it is not cancelled. This is kept on record.',
+    submit: 'Save decision',
+    submitting: 'Saving…',
+    done: 'The decision was saved.',
   },
   correct: {
     title: 'Correct the reference',
@@ -571,6 +608,8 @@ const en: Dictionary = {
     ORDER_HANDOVER_PROOF_INVALID:
       'The order code or the last 4 digits do not match the order. Ask the customer again.',
     ORDER_CANCEL_CAUSE_INVALID: 'This reason cannot be used for the line in its current state.',
+    ORDER_TICKET_EXPIRED:
+      'The order was closed more than 30 days ago, so its ticket link has expired and a new one cannot be made.',
     CONFLICT: 'Someone else just updated the line. Reload the page and try again.',
     REAUTHENTICATION_REQUIRED: 'Please confirm your password again.',
   },

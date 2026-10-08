@@ -3,7 +3,7 @@ import type {
   ProductOrderLineResponse,
   ProductOrderResponse,
 } from '@lucy-spa/contracts';
-import { productOrderStatus } from '@lucy-spa/contracts';
+import { productOrderStatus, productOrderTicketExpiresAt } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
 import { AuthError } from '../auth/auth.error.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
@@ -107,9 +107,10 @@ export function presentProductOrderLine(
  */
 export function presentProductOrder(
   row: ProductOrderRow,
-  options: { showContact: boolean } = { showContact: true },
+  options: { showContact: boolean; now?: Date } = { showContact: true },
 ): ProductOrderResponse {
   const lines = row.lines.map(presentProductOrderLine);
+  const expiry = ticketExpiry(row, options.now ?? new Date());
   return {
     id: row.id,
     code: row.code,
@@ -123,7 +124,26 @@ export function presentProductOrder(
     customer: row.customer ? { id: row.customer.id, displayName: row.customer.fullName } : null,
     createdAt: row.createdAt.toISOString(),
     lines,
-    ticketLinkActive: row.tickets.length > 0,
+    ticketLinkActive: expiry.linkActive,
+    ticketExpiresAt: expiry.expiresAt,
+  };
+}
+
+/**
+ * The secret link of an order (the Owner, 2026-10-09): live while the order is open and for 30 days after its last line was handed over
+ * or cancelled. Derived from the lines whenever it is read, so nothing is stored and no job is needed. `linkActive` is true for a made,
+ * unrevoked link that has not expired.
+ */
+export function ticketExpiry(
+  row: Pick<ProductOrderRow, 'tickets' | 'lines'>,
+  now: Date,
+): { linkActive: boolean; expiresAt: string | null; expired: boolean } {
+  const at = productOrderTicketExpiresAt(row.lines);
+  const expired = at !== null && at.getTime() <= now.getTime();
+  return {
+    linkActive: row.tickets.length > 0 && !expired,
+    expiresAt: at ? at.toISOString() : null,
+    expired,
   };
 }
 

@@ -204,6 +204,8 @@ export interface CancelDraft {
   note: string;
   method: ProductRefundMethodName;
   bankReference: string;
+  /** Whole dong as typed; used only for a change of mind (a part of the share, the Owner or a manager decides). */
+  amount: string;
 }
 
 export const emptyCancelDraft = (): CancelDraft => ({
@@ -211,12 +213,30 @@ export const emptyCancelDraft = (): CancelDraft => ({
   note: '',
   method: 'CASH',
   bankReference: '',
+  amount: '',
 });
 
-export type CancelProblem = 'cause' | 'note' | 'bankReference';
+export type CancelProblem = 'cause' | 'note' | 'bankReference' | 'amount';
 
-export function validateCancel(draft: CancelDraft): Partial<Record<CancelProblem, true>> {
+/** Whole dong from 1 up to the whole share (a string of digits without a leading zero). */
+export function validAmount(amount: string, shareVnd: string): boolean {
+  const text = amount.trim();
+  return /^[1-9][0-9]{0,14}$/.test(text) && BigInt(text) <= BigInt(shareVnd);
+}
+
+/** `shareVnd` is the whole net share of the line; with a change of mind the amount must lie within it. */
+export function validateCancel(
+  draft: CancelDraft,
+  shareVnd = '0',
+): Partial<Record<CancelProblem, true>> {
   const problems: Partial<Record<CancelProblem, true>> = {};
+  if (
+    draft.cause === 'CUSTOMER_CHANGED_MIND' &&
+    shareVnd !== '0' &&
+    !validAmount(draft.amount, shareVnd)
+  ) {
+    problems.amount = true;
+  }
   if (draft.cause === '') problems.cause = true;
   if (draft.note.trim() === '') problems.note = true;
   const reference = draft.bankReference.trim();
@@ -230,8 +250,13 @@ export function cancelRequest(
   draft: CancelDraft,
   expectedVersion: number,
   clientRequestId: string,
+  shareVnd = '0',
 ): ProductOrderCancelRequest | null {
-  if (Object.keys(validateCancel(draft)).length > 0 || draft.cause === '') return null;
+  if (Object.keys(validateCancel(draft, shareVnd)).length > 0 || draft.cause === '') return null;
+  const part =
+    draft.cause === 'CUSTOMER_CHANGED_MIND' && shareVnd !== '0' && draft.amount.trim() !== shareVnd
+      ? { amountVnd: draft.amount.trim() }
+      : {};
   return {
     expectedVersion,
     cause: draft.cause,
@@ -239,8 +264,12 @@ export function cancelRequest(
     method: draft.method,
     bankReference: draft.method === 'BANK_TRANSFER_MANUAL' ? draft.bankReference.trim() : null,
     clientRequestId,
+    ...part,
   };
 }
+
+/** The note of a declined request to cancel (required). */
+export const declineNoteProblem = (note: string): boolean => note.trim() === '';
 
 /** True when a command was refused because the line moved on meanwhile: the screen then reloads. */
 export const isQueueConflict = (error: unknown): boolean =>

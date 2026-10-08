@@ -767,7 +767,7 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     comboLine,
     productLines,
     productOrder: row.productOrder
-      ? presentProductOrder(row.productOrder, { showContact: orderTicket })
+      ? presentProductOrder(row.productOrder, { showContact: orderTicket, now: context.now })
       : null,
     channel: row.channel,
     shippingFeeVnd: row.shippingFeeVnd.toString(),

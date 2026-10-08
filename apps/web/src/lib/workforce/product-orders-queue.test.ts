@@ -15,6 +15,8 @@ import {
   normalizeQueueList,
   queueErrorText,
   queueTab,
+  declineNoteProblem,
+  validAmount,
   validateCancel,
   validateHandOver,
 } from './product-orders';
@@ -92,6 +94,47 @@ test('a cancellation needs a cause and a note; a transfer needs its reference; c
   // A reference typed before switching back to cash is never sent.
   assert.equal(cancelRequest({ ...base, bankReference: 'FT0001' }, 5, 'r1')?.bankReference, null);
   assert.equal(cancelRequest({ ...base, cause: '' }, 5, 'r1'), null);
+});
+
+test('a change of mind may refund a part of the share: whole dong from 1 up to the share; whole share or no amount sends none', () => {
+  const share = '400000';
+  const mind = {
+    ...emptyCancelDraft(),
+    cause: 'CUSTOMER_CHANGED_MIND' as const,
+    note: 'Khách đổi ý',
+    amount: share,
+  };
+  assert.deepEqual(validateCancel(mind, share), {});
+  assert.equal(
+    cancelRequest(mind, 5, 'r1', share)?.amountVnd,
+    undefined,
+    'the whole share is the default',
+  );
+  assert.equal(cancelRequest({ ...mind, amount: ' 150000 ' }, 5, 'r1', share)?.amountVnd, '150000');
+  assert.equal(cancelRequest({ ...mind, amount: '1' }, 5, 'r1', share)?.amountVnd, '1');
+  for (const amount of [
+    '',
+    '0',
+    '-5',
+    '12.5',
+    '1e5',
+    'abc',
+    '0400',
+    '400001',
+    '99999999999999999999',
+  ]) {
+    assert.deepEqual(validateCancel({ ...mind, amount }, share), { amount: true }, amount);
+    assert.equal(cancelRequest({ ...mind, amount }, 5, 'r1', share), null, amount);
+  }
+  // Another cause never sends an amount, and a line nothing was paid for has none to check.
+  const supplier = { ...mind, cause: 'SUPPLIER_CANNOT_DELIVER' as const, amount: '100' };
+  assert.deepEqual(validateCancel(supplier, share), {});
+  assert.equal(cancelRequest(supplier, 5, 'r1', share)?.amountVnd, undefined);
+  assert.deepEqual(validateCancel({ ...mind, amount: '' }, '0'), {});
+  assert.equal(validAmount('400000', '400000'), true);
+  assert.equal(validAmount('400000', '399999'), false);
+  assert.equal(declineNoteProblem('  '), true);
+  assert.equal(declineNoteProblem('Đã đặt hàng xong'), false);
 });
 
 test('refused commands read as plain Vietnamese or English; a moved line asks for a reload', () => {

@@ -215,7 +215,14 @@ export function ProductOrderCard({
   const [working, setWorking] = useState<'make' | 'revoke' | null>(null);
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const member = order.customer !== null;
-  const mayLink = invoice.actions.orderTicket && !member && order.status !== 'CANCELLED';
+  // The link of a customer without an account dies 30 days after the order was closed (the Owner, 2026-10-09).
+  const expiresOn = order.ticketExpiresAt
+    ? formatDateTime(order.ticketExpiresAt, invoice.branch.timezone, locale)
+    : '';
+  const expired =
+    !member && order.ticketExpiresAt !== null && Date.parse(order.ticketExpiresAt) <= Date.now();
+  const mayLink =
+    invoice.actions.orderTicket && !member && order.status !== 'CANCELLED' && !expired;
 
   async function make() {
     setWorking('make');
@@ -342,9 +349,13 @@ export function ProductOrderCard({
             label: d.ticket.section,
             value: member
               ? d.ticket.memberNote
-              : order.ticketLinkActive
-                ? d.ticket.active
-                : d.ticket.none,
+              : expired
+                ? fill(d.ticket.expired, { date: expiresOn })
+                : order.ticketLinkActive
+                  ? order.ticketExpiresAt
+                    ? fill(d.ticket.activeUntil, { date: expiresOn })
+                    : d.ticket.active
+                  : d.ticket.none,
           },
         ]}
       />

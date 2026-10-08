@@ -288,7 +288,7 @@ export interface ProductReturnOpenedParams {
  * line or the money handed back by a cheaper exchange (P6-14).
  */
 export interface ProductRefundMadeParams {
-  /** `ORDER_CANCEL`: a pre-order line was cancelled and refunded in full (P6-17); the notice is about the order. */
+  /** `ORDER_CANCEL`: a pre-order line was cancelled and refunded (P6-17; in full, or a part when the customer changed their mind); the notice is about the order. */
   source: 'REFUND' | 'EXCHANGE' | 'ORDER_CANCEL';
   invoiceCode: string;
   sku: string;

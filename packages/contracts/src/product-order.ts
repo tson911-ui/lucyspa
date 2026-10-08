@@ -50,6 +50,37 @@ export function productOrderStatus(
   return least;
 }
 
+/**
+ * The secret link of a customer without an account stops working this many days after the order was closed, that is after the last of
+ * its lines was handed over or cancelled (the Owner, 2026-10-09). Read as 30 x 24 hours from that instant.
+ */
+export const PRODUCT_ORDER_TICKET_DAYS_AFTER_CLOSE = 30;
+
+/**
+ * When the link of an order expires: null while any line is still open (awaiting payment, paid, ordered or arrived), otherwise the
+ * latest hand-over or cancellation time plus 30 days. A cancelled line counts at its cancellation time (also an unpaid invoice that
+ * was cancelled), any other finished line at its hand-over time.
+ */
+export function productOrderTicketExpiresAt(
+  lines: readonly {
+    status: ProductOrderLineStatusName;
+    handedOverAt: Date | string | null;
+    cancelledAt: Date | string | null;
+  }[],
+): Date | null {
+  if (lines.length === 0) return null;
+  let latest = Number.NEGATIVE_INFINITY;
+  for (const line of lines) {
+    let at: Date | string | null;
+    if (line.status === 'CANCELLED') at = line.cancelledAt;
+    else if (line.status === 'HANDED_OVER' || line.status === 'COMPLETED') at = line.handedOverAt;
+    else return null;
+    if (at === null) return null;
+    latest = Math.max(latest, new Date(at).getTime());
+  }
+  return new Date(latest + PRODUCT_ORDER_TICKET_DAYS_AFTER_CLOSE * 24 * 60 * 60 * 1000);
+}
+
 /** The contact asked at the counter when the invoice has a pre-order line (OQ-34: a phone number is mandatory). */
 export interface PreOrderContactRequest {
   /** Any common Vietnamese format; stored as +84... */
@@ -100,8 +131,10 @@ export interface ProductOrderResponse {
   customer: { id: string; displayName: string } | null;
   createdAt: string;
   lines: ProductOrderLineResponse[];
-  /** True when a ticket link for a customer without an account is active. */
+  /** True when a ticket link for a customer without an account is active (made, not revoked and not expired). */
   ticketLinkActive: boolean;
+  /** When the order was closed the link expires then (30 days after the last hand-over or cancellation); null while it is open. */
+  ticketExpiresAt: string | null;
 }
 
 /** What a member sees of the order of their own invoice (the digital "phiếu hẹn nhận hàng"). Never the seller or the staff. */
@@ -265,7 +298,10 @@ export interface ProductOrderHandOverRequest {
 
 /**
  * POST /api/v1/product-orders/lines/:id/cancel (REFUND_PRODUCTS, a fresh password when money is given back): cancels a paid line with a
- * cause (OQ-32) and refunds its whole net share by cash or manual transfer; the goods held for it are released.
+ * cause (OQ-32) and refunds its whole net share by cash or manual transfer; the goods held for it are released. When the customer
+ * changed their mind after the supplier order the Owner or a manager decides case by case (the Owner, 2026-10-09; OQ-32): the refund
+ * may be a part of the share (`amountVnd`, 1 to the whole share; left out = the whole share). Every other cause refunds the whole share
+ * and refuses an amount.
  */
 export interface ProductOrderCancelRequest {
   expectedVersion: number;
@@ -274,6 +310,18 @@ export interface ProductOrderCancelRequest {
   method: 'CASH' | 'BANK_TRANSFER_MANUAL';
   bankReference: string | null;
   clientRequestId: string;
+  /** Integer VND as a string; only with the cause CUSTOMER_CHANGED_MIND. */
+  amountVnd?: string;
+}
+
+/**
+ * POST /api/v1/product-orders/lines/:id/decline (REFUND_PRODUCTS): the Owner or a manager declines the customer's request to cancel after
+ * the supplier order. Nothing moves: the line stays as it is and the customer can still collect the goods. The decision and its written
+ * reason are recorded in the audit log. Allowed while the line is ORDERED or ARRIVED and the customer may change their mind.
+ */
+export interface ProductOrderDeclineRequest {
+  expectedVersion: number;
+  note: string;
 }
 
 /** POST /api/v1/product-orders/lines/:id/reference-correction (REFUND_PRODUCTS): a new linked record; the refund itself never changes. */

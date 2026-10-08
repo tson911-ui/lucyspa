@@ -57,7 +57,9 @@ const CANCEL_KEYS = [
   'method',
   'bankReference',
   'clientRequestId',
+  'amountVnd',
 ] as const;
+const DECLINE_KEYS = ['expectedVersion', 'note'] as const;
 const ALLOCATE_KEYS = ['branchId', 'variantId'] as const;
 const NOTE_MAX = 500;
 const CAUSES = [
@@ -70,6 +72,19 @@ const HANDOVER_TO = ['CUSTOMER', 'REPRESENTATIVE'] as const;
 const METHODS = ['CASH', 'BANK_TRANSFER_MANUAL'] as const;
 
 const unique = (ids: readonly string[]) => [...new Set(ids)].sort();
+
+/** The optional amount of a refund: whole VND as a string, allowed only when the customer changed their mind (null = the whole share). */
+function partialAmount(value: unknown, cause: string): bigint | null {
+  if (value === undefined || value === null) return null;
+  if (
+    cause !== 'CUSTOMER_CHANGED_MIND' ||
+    typeof value !== 'string' ||
+    !/^[1-9][0-9]{0,14}$/.test(value)
+  ) {
+    throw new AuthError('VALIDATION_FAILED', 'amountVnd');
+  }
+  return BigInt(value);
+}
 
 /** The invoices (share) and then the lines (update) of the given order lines, in id order. Returns the lines as they now are. */
 async function lockLines(
@@ -246,8 +261,9 @@ export async function handOver(
 
 /**
  * A paid line is cancelled with a cause (OQ-32) and its whole net share is given back by cash or a manual transfer: the supplier cannot
- * deliver, the customer cancels before the supplier order, the customer changes their mind after it (REFUND_PRODUCTS decides, case by
- * case; this command refunds in full, a partial amount is a question for the Owner), or the goods are more than 7 days late. The goods
+ * deliver, the customer cancels before the supplier order, the customer changes their mind after it (the Owner or a manager decides case
+ * by case, 2026-10-09: the whole share, or a part of it given in `amountVnd`; to decline, see `declineCancel`), or the goods are more
+ * than 7 days late. Every cause but the change of mind refunds the whole share. The goods
  * held for the line are released in the same transaction. The refund is the same immutable record as every refund: one fresh password
  * confirmation used once, the Owner told in-app, the Beauty points taken back by the `loyalty` consumer. A line nothing was paid for
  * needs no refund and no password.
@@ -269,6 +285,7 @@ export async function cancelLine(
   const note = parse.requiredNote(body['note'], 'note', PRODUCT_REFUND_REASON_MAX);
   const method = pick<ProductRefundMethodName>(body['method'], METHODS, 'method');
   const clientRequestId = input.uuid(body['clientRequestId'], 'clientRequestId');
+  const requestedAmount = partialAmount(body['amountVnd'], cause);
   const reference =
     method === 'BANK_TRANSFER_MANUAL'
       ? bankReference(body['bankReference'])
@@ -288,20 +305,38 @@ export async function cancelLine(
   if (!hint) throw new AuthError('NOT_FOUND');
   requireRefund(context, hint.branchId);
 
+  const allocation = await tx.invoiceLineAllocation.findUnique({
+    where: { invoiceLineId: hint.invoiceLineId },
+    select: { netVnd: true, side: true },
+  });
+  const net = allocation?.side === 'BEAUTY' ? allocation.netVnd : 0n;
+  // A part of the share is for the cause 'changed their mind' only and never more than the whole share (nothing is refunded for a
+  // line nothing was paid for).
+  if (requestedAmount !== null && requestedAmount > net) {
+    throw new AuthError('VALIDATION_FAILED', 'amountVnd');
+  }
+
   // A repeat of the same request returns what it already did (no password needed to read it back).
   const replay = async (): Promise<ProductOrderDetailResponse | null> => {
     const prior = await tx.productRefund.findUnique({
       where: {
         actorUserId_clientRequestId: { actorUserId: context.actor.userId, clientRequestId },
       },
-      select: { orderLineId: true, method: true, reason: true, bankReference: true },
+      select: {
+        orderLineId: true,
+        method: true,
+        reason: true,
+        bankReference: true,
+        amountVnd: true,
+      },
     });
     if (!prior) return null;
     if (
       prior.orderLineId !== lineId ||
       prior.method !== method ||
       prior.reason !== note ||
-      prior.bankReference !== reference
+      prior.bankReference !== reference ||
+      prior.amountVnd !== (requestedAmount ?? net)
     ) {
       throw new AuthError('CONFLICT');
     }
@@ -309,11 +344,6 @@ export async function cancelLine(
   };
   const early = await replay();
   if (early) return early;
-  const allocation = await tx.invoiceLineAllocation.findUnique({
-    where: { invoiceLineId: hint.invoiceLineId },
-    select: { netVnd: true, side: true },
-  });
-  const net = allocation?.side === 'BEAUTY' ? allocation.netVnd : 0n;
   // The password is checked before any lock; it is spent only when a refund is written.
   const confirmedAt = net > 0n ? await takeFreshConfirmation(context, freshAuthSeconds) : null;
 
@@ -390,7 +420,9 @@ export async function cancelLine(
   let refundCode: string | null = null;
   if (net > 0n && confirmedAt) {
     const sold = invoice.lines[0]?.quantity ?? line.quantity;
-    const amount = productRefundAmount(net, sold, 0, line.quantity);
+    // The whole share, or - for a change of mind only - the part the Owner or the manager decided (1 to the whole share).
+    const share = productRefundAmount(net, sold, 0, line.quantity);
+    const amount = requestedAmount ?? share;
     const onInvoice = await tx.productRefund.aggregate({
       where: { invoiceId: line.invoiceId },
       _sum: { amountVnd: true },
@@ -444,6 +476,8 @@ export async function cancelLine(
         invoiceLineId: line.invoiceLineId,
         quantity: line.quantity,
         amountVnd: amount.toString(),
+        shareVnd: share.toString(),
+        partial: amount < share,
         method,
         bankReferenceRecorded: reference !== null,
         restock: 'NOT_SELLABLE',
@@ -498,6 +532,59 @@ export async function cancelLine(
       refundCode,
       goodsReleased: arrived,
       goodsGivenToLines: given.map((entry) => entry.orderLineId),
+    },
+  });
+  return orderDetail(context, line.orderId);
+}
+
+// ---------------------------------------------------------------------------------- decline a change of mind
+
+/**
+ * The Owner or a manager declines a customer's request to cancel after the supplier order (OQ-32, the Owner on 2026-10-09: "full
+ * refund, partial or decline, with a written reason"). Nothing moves: no money, no stock, no status; the line stays and the customer can
+ * still collect the goods. The decision and its reason are kept in the audit log. It is possible only where the change of mind is a
+ * cause that could be used (the line is ORDERED or ARRIVED) and the invoice is paid.
+ */
+export async function declineCancel(
+  context: AdminContext,
+  lineId: string,
+  request: Record<string, unknown>,
+): Promise<ProductOrderDetailResponse> {
+  const body = input.record(request, 'body', DECLINE_KEYS);
+  const expectedVersion = input.rowVersion(body['expectedVersion']);
+  const note = parse.requiredNote(body['note'], 'note', PRODUCT_REFUND_REASON_MAX);
+  const { tx } = context;
+  const hint = await tx.productOrderLine.findUnique({
+    where: { id: lineId },
+    select: { branchId: true },
+  });
+  if (!hint) throw new AuthError('NOT_FOUND');
+  requireRefund(context, hint.branchId);
+  const [line] = await lockLines(tx, [lineId]);
+  if (!line) throw new AuthError('NOT_FOUND');
+  if (line.rowVersion !== expectedVersion) throw new AuthError('CONFLICT');
+  if (line.status !== 'ORDERED' && line.status !== 'ARRIVED') {
+    throw new AuthError('ORDER_CANCEL_CAUSE_INVALID', 'cause');
+  }
+  const invoice = await tx.invoice.findUniqueOrThrow({
+    where: { id: line.invoiceId },
+    select: { status: true, channel: true },
+  });
+  if (invoice.status !== 'PAID' || invoice.channel !== 'COUNTER') {
+    throw new AuthError('INVOICE_STATE_INVALID');
+  }
+  await appendAdminAudit(context, {
+    action: 'PRODUCT_ORDER_CANCEL_DECLINED',
+    entityType: 'ProductOrder',
+    entityId: line.orderId,
+    branchId: line.branchId,
+    classification: 'FINANCIAL',
+    reason: note,
+    after: {
+      lineId,
+      orderCode: line.order.code,
+      status: line.status,
+      cause: 'CUSTOMER_CHANGED_MIND',
     },
   });
   return orderDetail(context, line.orderId);
