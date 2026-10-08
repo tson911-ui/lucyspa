@@ -33,6 +33,8 @@ import { InventoryController } from './inventory/inventory.controller.js';
 import { InventoryService } from './inventory/inventory.service.js';
 import { ProductReturnController } from './product-returns/return.controller.js';
 import { ProductReturnService } from './product-returns/return.service.js';
+import { ProductExchangeController } from './product-returns/exchange.controller.js';
+import { ProductExchangeService } from './product-returns/exchange.service.js';
 import { ProductRefundController } from './product-returns/refund.controller.js';
 import { ProductRefundService } from './product-returns/refund.service.js';
 import { ProductImportController } from './product-imports/import.controller.js';
@@ -156,6 +158,7 @@ export class AppModule {
         InventoryController,
         ProductReturnController,
         ProductRefundController,
+        ProductExchangeController,
         ProductImportController,
         RewardController,
         CustomerLoyaltyController,
@@ -229,6 +232,7 @@ export class AppModule {
         InventoryService,
         ProductReturnService,
         ProductRefundService,
+        ProductExchangeService,
         ProductImportService,
         RewardService,
         CustomerLoyaltyService,

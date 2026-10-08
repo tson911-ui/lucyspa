@@ -97,6 +97,8 @@ export interface ProductRefundSummaryResponse {
   /** Units already refunded on the whole line (every case). */
   lineRefundedQuantity: number;
   lineRefundedVnd: string;
+  /** Units claimed on the line by refunds AND exchanges (P6-14): the units before the next refund, and what the amount shown is cut from. */
+  lineClaimedQuantity: number;
   lineState: ProductRefundLineState;
   /** Units the case accepted and units of it still to refund. */
   caseQuantity: number;
@@ -105,7 +107,13 @@ export interface ProductRefundSummaryResponse {
   /** The invoice is still paid, the case accepted as a refund, and a unit is left: a refund can be made now. */
   refundable: boolean;
   /** Why not, when it cannot: a stable code the screen words. */
-  blocked: 'NOT_ACCEPTED_AS_REFUND' | 'INVOICE_NOT_PAID' | 'NOTHING_LEFT' | 'NOTHING_PAID' | null;
+  blocked:
+    | 'NOT_ACCEPTED_AS_REFUND'
+    | 'INVOICE_NOT_PAID'
+    | 'NOTHING_LEFT'
+    | 'NOTHING_PAID'
+    | 'OPEN_EXCHANGE'
+    | null;
   refunds: ProductRefundResponse[];
   can: { refund: boolean; correctReference: boolean };
 }

@@ -190,6 +190,30 @@ const errors = {
     409,
     'An invoice with a refund keeps its payments and stays paid; it cannot be reversed or cancelled',
   ],
+  // Phase 6 P6-14: exchanges of a returned product line (OQ-24, OQ-82, PRD 28.5).
+  EXCHANGE_CASE_NOT_READY: [
+    409,
+    'An exchange follows a return case that was accepted as an exchange',
+  ],
+  EXCHANGE_IN_PROGRESS: [
+    409,
+    'This line has an exchange that is not completed or cancelled yet; finish it first',
+  ],
+  EXCHANGE_ALREADY_DONE: [409, 'This return case has already been exchanged'],
+  EXCHANGE_NOTHING_PAID: [409, 'Nothing was paid for these units, so there is nothing to exchange'],
+  EXCHANGE_FIGURES_CHANGED: [
+    409,
+    'The price or the credit changed since the figures were shown; check them again',
+  ],
+  EXCHANGE_NOT_PAID: [409, 'The exchange invoice must be paid before the exchange is completed'],
+  EXCHANGE_STOCK_PENDING: [
+    409,
+    'The sale of these goods is not recorded in stock yet; try again in a moment, or record them as not sellable',
+  ],
+  INVOICE_HAS_EXCHANGE: [
+    409,
+    'An invoice with an exchange keeps its payments and stays paid; it cannot be reversed or cancelled',
+  ],
 } as const;
 
 export type AuthErrorCode = keyof typeof errors;

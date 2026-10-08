@@ -31,6 +31,7 @@ import {
   initialPricing,
   parseVnd,
 } from './invoice.calc.js';
+import { assertNoExchangeHold } from './exchange-guard.js';
 import {
   birthdayResponse,
   candidatesJson,
@@ -40,6 +41,7 @@ import {
   snapshotCandidatesJson,
   storedDiscount,
   storedSides,
+  type ExchangeCredit,
   type InvoiceEvaluation,
 } from './discount.eval.js';
 import { persistPricingV3, pricingAudit, PRICING_V3_VERSION } from './pricing.persist.js';
@@ -145,6 +147,15 @@ export const invoiceSelect = {
     },
   },
   payer: { select: userSummary },
+  /** Phase 6 P6-14: the exchange this invoice carries the replacement of, if it is the invoice of an exchange. */
+  exchangeFor: {
+    select: {
+      code: true,
+      appliedCreditVnd: true,
+      returnCaseId: true,
+      returnCase: { select: { code: true } },
+    },
+  },
   payments: {
     orderBy: [{ collectedAt: 'asc' }, { id: 'asc' }],
     select: {
@@ -741,6 +752,16 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     channel: row.channel,
     shippingFeeVnd: row.shippingFeeVnd.toString(),
     discount,
+    ...(row.exchangeFor
+      ? {
+          exchange: {
+            code: row.exchangeFor.code,
+            caseId: row.exchangeFor.returnCaseId,
+            caseCode: row.exchangeFor.returnCase.code,
+            appliedCreditVnd: row.exchangeFor.appliedCreditVnd.toString(),
+          },
+        }
+      : {}),
     payments,
     paidVnd: paidVnd.toString(),
     balanceVnd: balanceOf(row).toString(),
@@ -1347,7 +1368,28 @@ export async function finalizeInvoice(
   invoiceId: string,
   input: { expectedVersion: number },
 ): Promise<InvoiceResponse> {
-  const { hint, row: read } = await lockedInvoice(context, invoiceId, 'MANAGE_INVOICES');
+  return finalizeInvoiceCore(context, invoiceId, input, {});
+}
+
+/** What differs when the invoice being finalized is the invoice of an exchange (P6-14); an ordinary finalization passes nothing. */
+export interface FinalizeOptions {
+  /** The permission the caller needs at the invoice's branch (default MANAGE_INVOICES; an exchange is made by REFUND_PRODUCTS). */
+  permission?: string;
+  /** The exchange credit: the invoice is priced with it and no other benefit. */
+  exchange?: ExchangeCredit;
+}
+
+export async function finalizeInvoiceCore(
+  context: AdminContext,
+  invoiceId: string,
+  input: { expectedVersion: number },
+  options: FinalizeOptions,
+): Promise<InvoiceResponse> {
+  const { hint, row: read } = await lockedInvoice(
+    context,
+    invoiceId,
+    options.permission ?? 'MANAGE_INVOICES',
+  );
   const { tx } = context;
   const invoice = await read();
   if (
@@ -1371,7 +1413,7 @@ export async function finalizeInvoice(
     tx,
     { id: invoiceId, payerUserId: invoice.payerUserId },
     now,
-    { lockPrograms: true },
+    { lockPrograms: true, ...(options.exchange ? { exchange: options.exchange } : {}) },
   );
   const { result } = evaluation;
   // Phase 6 P6-9, OQ-59: an invoice with NO product line keeps the version 2 result as its only source of truth; the version 3
@@ -1599,6 +1641,15 @@ export async function finalizeInvoice(
         : {}),
       // Phase 6 P6-9: and, for the same invoices, the per-side pricing that was frozen.
       ...(v3 ? { pricing: pricingAudit(v3) } : {}),
+      // Phase 6 P6-14: the invoice of an exchange says so (the credit is what the customer paid for the returned units).
+      ...(options.exchange
+        ? {
+            exchange: {
+              creditVnd: options.exchange.creditVnd.toString(),
+              sameItem: options.exchange.sameItem,
+            },
+          }
+        : {}),
     },
   });
   // OQ-59: a difference between version 3 and the version 2 amount that was just charged is logged and recorded here, never acted on.
@@ -1679,6 +1730,8 @@ export async function cancelInvoice(
   if ((await tx.productRefund.count({ where: { invoiceId } })) > 0) {
     throw new AuthError('INVOICE_HAS_REFUND');
   }
+  // Phase 6 P6-14 (T22 extended): the original invoice of an exchange, and the invoice of a completed exchange, stay paid.
+  await assertNoExchangeHold(tx, invoiceId);
 
   let path: 'DRAFT' | 'UNPAID_FINALIZED' | 'ZERO_BALANCE_CORRECTION';
   if (invoice.status === 'DRAFT') {

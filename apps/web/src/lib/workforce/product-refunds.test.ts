@@ -24,6 +24,7 @@ const summary = (
   lineNetVnd: '29129',
   soldQuantity: 3,
   lineRefundedQuantity: 0,
+  lineClaimedQuantity: 0,
   lineRefundedVnd: '0',
   lineState: 'NOT_REFUNDED',
   caseQuantity: 3,
@@ -139,7 +140,12 @@ test('the amount shown is the net share of the units still to refund', () => {
   assert.equal(refundPreview(summary(), '3'), '29129');
   assert.equal(
     refundPreview(
-      summary({ lineRefundedQuantity: 1, caseRemainingQuantity: 2, caseRefundedQuantity: 1 }),
+      summary({
+        lineRefundedQuantity: 1,
+        lineClaimedQuantity: 1,
+        caseRemainingQuantity: 2,
+        caseRefundedQuantity: 1,
+      }),
       '1',
     ),
     '9709',

@@ -13,6 +13,7 @@ import {
   presentPayments,
   type InvoiceRow,
 } from './invoice.core.js';
+import { assertNoExchangeHold } from './exchange-guard.js';
 import { PAYMENT_METHOD_RULES } from './payment.methods.js';
 
 /**
@@ -264,6 +265,8 @@ export async function reversePayment(
   if ((await tx.productRefund.count({ where: { invoiceId } })) > 0) {
     throw new AuthError('INVOICE_HAS_REFUND');
   }
+  // Phase 6 P6-14 (T22 extended): the original invoice of an exchange, and the invoice of a completed exchange, keep their payments.
+  await assertNoExchangeHold(tx, invoiceId);
   if (!hasFreshReauthentication(context.actor.principal, context.now, freshAuthSeconds)) {
     throw new AuthError('REAUTHENTICATION_REQUIRED');
   }

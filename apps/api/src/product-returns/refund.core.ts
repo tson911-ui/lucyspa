@@ -52,7 +52,7 @@ const CORRECTION_KEYS = ['bankReference', 'reason'] as const;
 const METHODS = ['CASH', 'BANK_TRANSFER_MANUAL'] as const;
 const RESTOCKS = ['SELLABLE', 'NOT_SELLABLE'] as const;
 
-const pick = <T extends string>(value: unknown, allowed: readonly T[], field: string): T => {
+export const pick = <T extends string>(value: unknown, allowed: readonly T[], field: string): T => {
   if (typeof value !== 'string' || !(allowed as readonly string[]).includes(value)) {
     throw new AuthError('VALIDATION_FAILED', field);
   }
@@ -60,7 +60,7 @@ const pick = <T extends string>(value: unknown, allowed: readonly T[], field: st
 };
 
 /** The reference of a bank transfer: letters, digits and . _ / - only. Anything that looks like free text is refused (OQ-83). */
-function bankReference(value: unknown): string {
+export function bankReference(value: unknown): string {
   if (typeof value !== 'string') throw new AuthError('VALIDATION_FAILED', 'bankReference');
   const text = value.normalize('NFC').trim();
   if (!PRODUCT_REFUND_REFERENCE.test(text))
@@ -69,7 +69,7 @@ function bankReference(value: unknown): string {
 }
 
 /** Cash has no reference: absent or blank is none, anything else is refused. */
-function noReference(value: unknown): null {
+export function noReference(value: unknown): null {
   if (value === null || value === undefined) return null;
   if (typeof value === 'string' && value.trim() === '') return null;
   throw new AuthError('VALIDATION_FAILED', 'bankReference');
@@ -78,18 +78,37 @@ function noReference(value: unknown): null {
 const holdsRefund = (context: AdminContext, branchId: string): boolean =>
   holdsGraphAt(context.actor.graph, 'REFUND_PRODUCTS', branchId);
 
-function requireRefund(context: AdminContext, branchId: string): void {
+export function requireRefund(context: AdminContext, branchId: string): void {
   if (!holdsRefund(context, branchId)) throw new AuthError('FORBIDDEN');
 }
 
-async function lockInvoice(tx: Tx, invoiceId: string, exclusive: boolean): Promise<void> {
+export async function lockInvoice(tx: Tx, invoiceId: string, exclusive: boolean): Promise<void> {
   if (exclusive)
     await tx.$queryRaw`SELECT id FROM invoices WHERE id = ${invoiceId}::uuid FOR UPDATE`;
   else await tx.$queryRaw`SELECT id FROM invoices WHERE id = ${invoiceId}::uuid FOR SHARE`;
 }
 
-async function lockCase(tx: Tx, caseId: string): Promise<void> {
+export async function lockCase(tx: Tx, caseId: string): Promise<void> {
   await tx.$queryRaw`SELECT id FROM product_return_cases WHERE id = ${caseId}::uuid FOR UPDATE`;
+}
+
+/**
+ * The units and money of a line already claimed by refunds AND by exchanges (P6-14): one cumulative sequence for both, so the amounts of
+ * all of them add up to the line's net exactly. An exchange whose invoice was cancelled claims nothing. Read under the invoice lock.
+ */
+export async function lineClaims(tx: Tx, lineId: string): Promise<{ units: number; vnd: bigint }> {
+  const rows = await tx.$queryRaw<
+    { claimed_units: number; claimed_vnd: bigint }[]
+  >`SELECT claimed_units, claimed_vnd FROM lucy_line_claims(${lineId}::uuid)`;
+  return { units: rows[0]?.claimed_units ?? 0, vnd: rows[0]?.claimed_vnd ?? 0n };
+}
+
+/** An exchange of the line that is neither completed nor cancelled: it blocks every other claim on the line. */
+export async function openExchangeOnLine(tx: Tx, lineId: string): Promise<boolean> {
+  const rows = await tx.$queryRaw<
+    { open: boolean }[]
+  >`SELECT lucy_open_exchange_on_line(${lineId}::uuid) AS open`;
+  return rows[0]?.open === true;
 }
 
 // ------------------------------------------------------------------------------------------------- reading
@@ -194,15 +213,19 @@ export async function refundSummary(
   const accepted = kase.status === 'ACCEPTED' && kase.decidedOutcome === 'REFUND';
   const paid = kase.invoice.status === 'PAID';
   const netPaid = allocation !== null && allocation.netVnd > 0n;
+  const claims = await lineClaims(tx, kase.invoiceLineId);
+  const exchangeOpen = await openExchangeOnLine(tx, kase.invoiceLineId);
   const blocked: ProductRefundSummaryResponse['blocked'] = !accepted
     ? 'NOT_ACCEPTED_AS_REFUND'
     : !paid
       ? 'INVOICE_NOT_PAID'
       : !netPaid
         ? 'NOTHING_PAID'
-        : remaining === 0 || lineRefunded >= sold
+        : remaining === 0 || claims.units >= sold
           ? 'NOTHING_LEFT'
-          : null;
+          : exchangeOpen
+            ? 'OPEN_EXCHANGE'
+            : null;
   return {
     caseId: kase.id,
     caseCode: kase.code,
@@ -211,6 +234,7 @@ export async function refundSummary(
     soldQuantity: sold,
     lineRefundedQuantity: lineRefunded,
     lineRefundedVnd: (onLine._sum.amountVnd ?? 0n).toString(),
+    lineClaimedQuantity: claims.units,
     lineState: productRefundLineState(lineRefunded, sold),
     caseQuantity: kase.quantity,
     caseRefundedQuantity: caseRefunded,
@@ -227,7 +251,7 @@ export async function refundSummary(
 
 // ----------------------------------------------------------------------------------------------- commands
 
-interface StockSegment {
+export interface StockSegment {
   lotId: string;
   expiryDate: Date | null;
   unitCostVnd: bigint | null;
@@ -239,7 +263,7 @@ interface StockSegment {
  * units already refunded (sellable or not) are the first ones, so the units of this refund are the next `quantity`, and each keeps the
  * expiry of the lot it came out of.
  */
-async function soldSegments(
+export async function soldSegments(
   tx: Tx,
   line: { invoiceLineId: string; paidSeq: number; soldQuantity: number },
   unitsBefore: number,
@@ -413,12 +437,11 @@ export async function makeRefund(
   ) {
     throw new AuthError('REFUND_NOTHING_PAID');
   }
-  const onLine = await tx.productRefund.aggregate({
-    where: { invoiceLineId: hint.invoiceLineId },
-    _sum: { quantity: true, amountVnd: true },
-  });
-  const unitsBefore = onLine._sum.quantity ?? 0;
-  const amountBefore = onLine._sum.amountVnd ?? 0n;
+  // P6-14: refunds and exchanges share one cumulative sequence on the line, and a line with an open exchange takes no refund.
+  if (await openExchangeOnLine(tx, hint.invoiceLineId)) throw new AuthError('EXCHANGE_IN_PROGRESS');
+  const claims = await lineClaims(tx, hint.invoiceLineId);
+  const unitsBefore = claims.units;
+  const amountBefore = claims.vnd;
   const inCase = await tx.productRefund.aggregate({
     where: { returnCaseId: caseId },
     _sum: { quantity: true },

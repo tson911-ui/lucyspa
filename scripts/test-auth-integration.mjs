@@ -103,3 +103,5 @@ await import('../apps/api/dist/product-returns/return.exception.integration.test
 await import('../apps/api/dist/product-returns/return.race.integration.test.js');
 await import('../apps/api/dist/product-returns/refund.integration.test.js');
 await import('../apps/api/dist/product-returns/refund.race.integration.test.js');
+await import('../apps/api/dist/product-returns/exchange.integration.test.js');
+await import('../apps/api/dist/product-returns/exchange.race.integration.test.js');

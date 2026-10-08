@@ -29,6 +29,7 @@ import {
   type EngineVoucher,
   type MemberCandidate,
 } from './discount.engine.js';
+import { applyExchangeCredit } from './exchange-credit.js';
 import {
   evaluatePricingV3,
   type PricingV3Input,
@@ -99,6 +100,14 @@ export interface InvoiceEvaluation {
   pricing: PricingV3Input;
   /** The version 3 result; present exactly when the invoice has a product line (then it IS the result, version 3). */
   v3: PricingV3Result | null;
+  /** Phase 6 P6-14: set only for the invoice of an exchange (priced with its exchange credit and nothing else). */
+  exchange?: ExchangeCredit | null;
+}
+
+/** The exchange credit of the invoice of an exchange (P6-14): what the customer paid for the returned units, and the OQ-82 rule. */
+export interface ExchangeCredit {
+  creditVnd: bigint;
+  sameItem: boolean;
 }
 
 /**
@@ -310,7 +319,7 @@ export async function evaluateInvoice(
   tx: Prisma.TransactionClient,
   invoice: { id: string; payerUserId: string | null },
   now: Date,
-  options: { lockPrograms: boolean },
+  options: { lockPrograms: boolean; exchange?: ExchangeCredit },
 ): Promise<InvoiceEvaluation> {
   const header = await tx.invoice.findUniqueOrThrow({
     where: { id: invoice.id },
@@ -376,6 +385,30 @@ export async function evaluateInvoice(
       productCategoryId: null,
     };
   });
+
+  // Phase 6 P6-14: the invoice of an exchange has product lines only and ONE benefit, the exchange credit. No program, voucher, member
+  // discount or gift is read or locked for it (the customer's own discount is already inside the credit).
+  if (options.exchange) {
+    if (spaRows.length > 0 || !hasProducts) {
+      throw new Error('The invoice of an exchange has product lines only.');
+    }
+    const exchangePricing: PricingV3Input = {
+      lines: v3Lines,
+      promotions: [],
+      supplied: [],
+      hasMemberPayer: false,
+      members: {},
+      birthday: null,
+      now,
+    };
+    return {
+      result: emptyResult(),
+      entries: [],
+      pricing: exchangePricing,
+      v3: applyExchangeCredit(evaluatePricingV3(exchangePricing), options.exchange),
+      exchange: options.exchange,
+    };
+  }
 
   const entryRows = await tx.invoiceVoucherEntry.findMany({
     where: { invoiceId: invoice.id, removedAt: null },
@@ -521,13 +554,14 @@ export function evaluateFrozen(
   evaluation: InvoiceEvaluation,
   frozen: ReadonlyMap<string, { quantity: number; unitPriceVnd: bigint }>,
 ): PricingV3Result {
-  return evaluatePricingV3({
+  const priced = evaluatePricingV3({
     ...evaluation.pricing,
     lines: evaluation.pricing.lines.map((line) => {
       const price = frozen.get(line.lineId);
       return price ? { ...line, grossVnd: BigInt(price.quantity) * price.unitPriceVnd } : line;
     }),
   });
+  return evaluation.exchange ? applyExchangeCredit(priced, evaluation.exchange) : priced;
 }
 
 export function candidateResponse(

@@ -1,6 +1,7 @@
 'use client';
 
 import type {
+  ProductExchangeSummaryResponse,
   ProductRefundSummaryResponse,
   ProductReturnCaseResponse,
   ProductReturnContextResponse,
@@ -39,6 +40,7 @@ import {
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useRef, useState, type FormEvent } from 'react';
+import { productExchangesDictionary } from '../../../i18n/product-exchanges';
 import { productRefundsDictionary } from '../../../i18n/product-refunds';
 import { productReturnsDictionary } from '../../../i18n/product-returns';
 import { fill } from '../../../i18n/workforce';
@@ -75,9 +77,17 @@ import {
   type ReturnDraft,
   type ReturnListState,
 } from '../../../lib/workforce/product-returns';
+import { isExchangeConflict } from '../../../lib/workforce/product-exchanges';
 import { isRefundConflict } from '../../../lib/workforce/product-refunds';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { PrefetchLink as Link } from '../link';
+import {
+  CompleteExchangeDialog,
+  ExchangeCorrectionDialog,
+  ExchangeDrawer,
+  ExchangesPending,
+  ExchangesSection,
+} from './product-exchanges';
 import { CorrectionDialog, RefundDialog, RefundsPending, RefundsSection } from './product-refunds';
 import { useWorkforce } from '../session';
 import {
@@ -757,6 +767,20 @@ export function ProductReturnCaseScreen({ id }: { id: string }) {
         : Promise.resolve(null),
     [api, id, showRefunds],
   );
+  // The same for an accepted exchange case (P6-14): its card, its figures and its commands.
+  const showExchanges =
+    found.data?.can.refunds === true &&
+    found.data.status === 'ACCEPTED' &&
+    found.data.decidedOutcome === 'EXCHANGE';
+  const exchanges = useResource(
+    () =>
+      showExchanges
+        ? api.get<ProductExchangeSummaryResponse>(
+            `/api/v1/product-returns/cases/${encodeURIComponent(id)}/exchanges`,
+          )
+        : Promise.resolve(null),
+    [api, id, showExchanges],
+  );
   if (found.error && !found.data) {
     return <ErrorState error={found.error} t={t} onRetry={() => void found.reload()} />;
   }
@@ -768,11 +792,26 @@ export function ProductReturnCaseScreen({ id }: { id: string }) {
       refunds={
         showRefunds ? { summary: refunds.data, error: refunds.error, reload: refunds.reload } : null
       }
+      exchanges={
+        showExchanges
+          ? { summary: exchanges.data, error: exchanges.error, reload: exchanges.reload }
+          : null
+      }
     />
   );
 }
 
-type Overlay = 'accept' | 'decline' | 'cancel' | 'note' | 'refund' | 'correct' | null;
+type Overlay =
+  | 'accept'
+  | 'decline'
+  | 'cancel'
+  | 'note'
+  | 'refund'
+  | 'correct'
+  | 'exchange'
+  | 'complete'
+  | 'exchange-correct'
+  | null;
 
 /**
  * One case. An open case the person may decide carries the page's one primary action ("Chấp nhận"); "Từ chối" and "Hủy hồ sơ" sit in
@@ -783,6 +822,7 @@ export function ProductReturnCaseView({
   item,
   reload,
   refunds = null,
+  exchanges = null,
 }: {
   item: ProductReturnCaseResponse;
   reload: () => Promise<void>;
@@ -795,6 +835,12 @@ export function ProductReturnCaseView({
     error?: unknown;
     reload: () => Promise<void>;
   } | null;
+  /** The exchanges of an accepted exchange case (P6-14), the same way as the refunds above. */
+  exchanges?: {
+    summary: ProductExchangeSummaryResponse | null;
+    error?: unknown;
+    reload: () => Promise<void>;
+  } | null;
 }) {
   const { api, t, locale, base } = useWorkforce();
   const text = productReturnsDictionary(locale);
@@ -804,6 +850,9 @@ export function ProductReturnCaseView({
   const refundSlot =
     item.can.refunds && item.status === 'ACCEPTED' && item.decidedOutcome === 'REFUND';
   const refundSummary = refunds?.summary ?? null;
+  const exchangeSlot =
+    item.can.refunds && item.status === 'ACCEPTED' && item.decidedOutcome === 'EXCHANGE';
+  const exchangeSummary = exchanges?.summary ?? null;
   const path = `/api/v1/product-returns/cases/${item.id}`;
   const describeError = (error: unknown) => ({
     message: returnErrorText(error, locale, (cause) => errorMessage(cause, t)),
@@ -840,10 +889,14 @@ export function ProductReturnCaseView({
           <Button variant="primary" onClick={() => setOverlay('refund')}>
             {productRefundsDictionary(locale).action}
           </Button>
+        ) : exchangeSummary?.can.exchange ? (
+          <Button variant="primary" onClick={() => setOverlay('exchange')}>
+            {productExchangesDictionary(locale).action}
+          </Button>
         ) : null}
       </PageHeader>
       <Stack gap="page">
-        {item.status === 'ACCEPTED' && !refundSlot ? (
+        {item.status === 'ACCEPTED' && !refundSlot && !exchangeSlot ? (
           <Notice tone="info">{v.acceptedNotice}</Notice>
         ) : null}
         {item.status === 'DECLINED' || item.status === 'CANCELLED' ? (
@@ -970,6 +1023,17 @@ export function ProductReturnCaseView({
             <RefundsPending error={refunds?.error ?? null} onRetry={refunds?.reload} />
           )
         ) : null}
+        {exchangeSlot ? (
+          exchangeSummary ? (
+            <ExchangesSection
+              summary={exchangeSummary}
+              onComplete={() => setOverlay('complete')}
+              onCorrect={() => setOverlay('exchange-correct')}
+            />
+          ) : (
+            <ExchangesPending error={exchanges?.error ?? null} onRetry={exchanges?.reload} />
+          )
+        ) : null}
         <PhotosSection item={item} reload={reload} />
         <Section
           title={v.history}
@@ -1045,6 +1109,50 @@ export function ProductReturnCaseView({
           }}
           onFail={async (error) => {
             if (isRefundConflict(error)) await refunds.reload();
+          }}
+        />
+      ) : null}
+      {overlay === 'exchange' && exchanges ? (
+        <ExchangeDrawer
+          item={item}
+          onClose={() => setOverlay(null)}
+          onDone={async (code) => {
+            setOverlay(null);
+            await exchanges.reload();
+            notify(fill(productExchangesDictionary(locale).form.done, { code }));
+          }}
+          onFail={async (error) => {
+            if (isExchangeConflict(error)) await exchanges.reload();
+          }}
+        />
+      ) : null}
+      {overlay === 'complete' && exchanges && exchangeSummary ? (
+        <CompleteExchangeDialog
+          item={item}
+          summary={exchangeSummary}
+          onClose={() => setOverlay(null)}
+          onDone={async () => {
+            setOverlay(null);
+            await exchanges.reload();
+            notify(productExchangesDictionary(locale).complete.done);
+          }}
+          onFail={async (error) => {
+            if (isExchangeConflict(error)) await exchanges.reload();
+          }}
+        />
+      ) : null}
+      {overlay === 'exchange-correct' && exchanges && exchangeSummary ? (
+        <ExchangeCorrectionDialog
+          item={item}
+          summary={exchangeSummary}
+          onClose={() => setOverlay(null)}
+          onDone={async () => {
+            setOverlay(null);
+            await exchanges.reload();
+            notify(productExchangesDictionary(locale).correct.done);
+          }}
+          onFail={async (error) => {
+            if (isExchangeConflict(error)) await exchanges.reload();
           }}
         />
       ) : null}

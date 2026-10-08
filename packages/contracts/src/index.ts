@@ -2189,6 +2189,7 @@ export * from './contact-links.js';
 export * from './product-sale.js';
 export * from './product-return.js';
 export * from './product-refund.js';
+export * from './product-exchange.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;
@@ -2402,6 +2403,11 @@ export interface InvoiceResponse {
   shippingFeeVnd: string;
   /** The benefit: a live evaluation while DRAFT, the frozen application once finalized. */
   discount: InvoiceDiscountResponse;
+  /**
+   * Phase 6 P6-14: set only on the invoice of an exchange. Its discount is the exchange credit, what the customer already paid for the
+   * returned units (`appliedCreditVnd`), not a program; `caseId` opens the return case for people who may see it.
+   */
+  exchange?: { code: string; caseId: string; caseCode: string; appliedCreditVnd: string } | null;
   /** Every payment ever recorded, oldest first (reversed ones included, with their correction). */
   payments: InvoicePaymentResponse[];
   /** Sum of the effective payments (0 for a zero-balance invoice). */
@@ -4026,7 +4032,8 @@ export type StockMovementKindName =
   | 'SALE'
   | 'SALE_REVERSAL'
   /** Phase 6 P6-13: goods a customer brought back and the refunding person recorded as sellable. */
-  | 'REFUND_RETURN';
+  | 'REFUND_RETURN'
+  | 'EXCHANGE_RETURN';
 /** The reasons a person may choose for an adjustment (COUNT_CORRECTION is written only by an approved count). */
 export type StockAdjustmentReasonName =
   'INTERNAL_USE' | 'TESTER' | 'DAMAGED' | 'EXPIRED' | 'LOSS' | 'COUNT_CORRECTION';

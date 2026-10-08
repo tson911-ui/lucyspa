@@ -33,6 +33,8 @@ const vi = {
     INVOICE_NOT_PAID: 'Hóa đơn không còn ở trạng thái đã thanh toán nên không hoàn tiền được.',
     NOTHING_LEFT: 'Đã hoàn đủ số lượng của hồ sơ này.',
     NOTHING_PAID: 'Khách không phải trả tiền cho dòng hàng này nên không có gì để hoàn.',
+    OPEN_EXCHANGE:
+      'Dòng hàng này đang có một lần đổi chưa xong. Hoàn tất hoặc hủy lần đổi đó trước khi hoàn tiền.',
   },
   refund: {
     code: 'Mã hoàn tiền',
@@ -102,6 +104,8 @@ const vi = {
       'Kho chưa ghi nhận việc bán hàng này. Thử lại sau ít phút, hoặc chọn "Không bán lại được".',
     INVOICE_HAS_REFUND:
       'Hóa đơn đã có hoàn tiền nên giữ nguyên các lần thanh toán và không đảo hay hủy được.',
+    EXCHANGE_IN_PROGRESS:
+      'Dòng hàng này đang có một lần đổi chưa xong. Hoàn tất hoặc hủy lần đổi đó trước khi hoàn tiền.',
     INVOICE_STATE_INVALID: 'Hóa đơn không còn ở trạng thái đã thanh toán.',
     conflict:
       'Dữ liệu vừa được người khác thay đổi. Đã tải lại dữ liệu mới, hãy kiểm tra rồi thử lại.',
@@ -145,6 +149,8 @@ const en: Dictionary = {
     INVOICE_NOT_PAID: 'The invoice is no longer paid, so nothing can be refunded.',
     NOTHING_LEFT: 'Every unit of this case has been refunded.',
     NOTHING_PAID: 'The customer paid nothing for this line, so there is nothing to refund.',
+    OPEN_EXCHANGE:
+      'This line has an exchange that is not finished. Complete or cancel it before refunding.',
   },
   refund: {
     code: 'Refund code',
@@ -216,6 +222,8 @@ const en: Dictionary = {
       'Stock has not recorded this sale yet. Try again in a moment, or choose “Cannot be sold again”.',
     INVOICE_HAS_REFUND:
       'An invoice with a refund keeps its payments; they cannot be reversed or cancelled.',
+    EXCHANGE_IN_PROGRESS:
+      'This line has an exchange that is not finished. Complete or cancel it before refunding.',
     INVOICE_STATE_INVALID: 'The invoice is no longer paid.',
     conflict:
       'The data was just changed by someone else. The latest data was loaded; check it and try again.',

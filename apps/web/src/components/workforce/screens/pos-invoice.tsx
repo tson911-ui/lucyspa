@@ -24,6 +24,7 @@ import {
 import { PrefetchLink as Link } from '../link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { comboDictionary } from '../../../i18n/combo';
+import { productExchangesDictionary } from '../../../i18n/product-exchanges';
 import { productSaleDictionary } from '../../../i18n/product-sale';
 import { fill, type WorkforceDictionary } from '../../../i18n/workforce';
 import { organizationDictionary } from '../../../i18n/organization';
@@ -367,7 +368,14 @@ export function PosInvoiceScreen({ id }: { id: string }) {
   const totals = [
     { label: t.pos.subtotal, value: formatVnd(invoice.subtotalVnd, locale) },
     ...(invoice.discountTotalVnd !== '0'
-      ? [{ label: t.pos.discountRow, value: `− ${formatVnd(invoice.discountTotalVnd, locale)}` }]
+      ? [
+          {
+            label: invoice.exchange
+              ? productExchangesDictionary(locale).invoicePage.creditRow
+              : t.pos.discountRow,
+            value: `− ${formatVnd(invoice.discountTotalVnd, locale)}`,
+          },
+        ]
       : []),
     { label: t.pos.total, value: formatVnd(invoice.totalVnd, locale), strong: true },
   ];
@@ -382,9 +390,15 @@ export function PosInvoiceScreen({ id }: { id: string }) {
                 code: invoice.visit.code,
                 date: formatDate(invoice.visit.serviceDate, locale),
               })} · ${invoice.branch.name}`
-            : productOnly
-              ? fill(p.lines.intro, { branch: invoice.branch.name })
-              : fill(c.invoice.intro, { branch: invoice.branch.name })
+            : invoice.exchange
+              ? fill(productExchangesDictionary(locale).invoicePage.intro, {
+                  code: invoice.exchange.code,
+                  case: invoice.exchange.caseCode,
+                  branch: invoice.branch.name,
+                })
+              : productOnly
+                ? fill(p.lines.intro, { branch: invoice.branch.name })
+                : fill(c.invoice.intro, { branch: invoice.branch.name })
         }
         breadcrumbs={
           <Breadcrumbs
@@ -515,29 +529,32 @@ export function PosInvoiceScreen({ id }: { id: string }) {
 
       <ComboUseCard lines={invoice.lines} />
 
-      <SidesCard invoice={invoice} />
+      {/* The invoice of an exchange has no program or member benefit to explain: its one discount row says it is the credit. */}
+      {invoice.exchange ? null : <SidesCard invoice={invoice} />}
       {productOnly ? null : (
         <DiscountCard
           invoice={invoice}
           {...(invoice.discount.sides ? { title: p.sides.spaDetail } : {})}
         />
       )}
-      <VouchersCard
-        invoice={invoice}
-        working={!idle}
-        onEnter={() => setOverlay({ kind: 'voucher' })}
-        onRemove={(entry) =>
-          void command(
-            `voucher-${entry.id}`,
-            () =>
-              api.post<InvoiceResponse>(
-                `/api/v1/pos/invoices/${invoice.id}/vouchers/${entry.id}/remove`,
-                { expectedVersion: version },
-              ),
-            () => t.pos.voucherRemoved,
-          )
-        }
-      />
+      {invoice.exchange ? null : (
+        <VouchersCard
+          invoice={invoice}
+          working={!idle}
+          onEnter={() => setOverlay({ kind: 'voucher' })}
+          onRemove={(entry) =>
+            void command(
+              `voucher-${entry.id}`,
+              () =>
+                api.post<InvoiceResponse>(
+                  `/api/v1/pos/invoices/${invoice.id}/vouchers/${entry.id}/remove`,
+                  { expectedVersion: version },
+                ),
+              () => t.pos.voucherRemoved,
+            )
+          }
+        />
+      )}
       <PayerCard
         invoice={invoice}
         working={!idle}

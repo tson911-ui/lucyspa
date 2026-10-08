@@ -88,6 +88,7 @@ const summary = (
   lineNetVnd: '291000',
   soldQuantity: 3,
   lineRefundedQuantity: 0,
+  lineClaimedQuantity: 0,
   lineRefundedVnd: '0',
   lineState: 'NOT_REFUNDED',
   caseQuantity: 3,
@@ -157,10 +158,16 @@ test('the place of the refunds card is known at first paint: a loading card, no 
   assert.ok(failed.includes(text.title));
   assert.ok(!failed.includes(text.loading));
   assert.ok(failed.includes('Tải lại'), 'a way to try again');
-  // A person who may not refund, or a case accepted for an exchange, never gets the card.
+  // A case accepted for an exchange never gets the refund card; the person who may refund gets the exchange card instead (P6-14), and
+  // a person who may not sees the plain notice.
   const exchange = view(accepted({ decidedOutcome: 'EXCHANGE' }), null);
   assert.ok(!exchange.includes(text.title));
-  assert.ok(exchange.includes(productReturnsDictionary('vi').view.acceptedNotice));
+  const unable = view(
+    accepted({ decidedOutcome: 'EXCHANGE', can: { ...accepted().can, refunds: false } }),
+    null,
+  );
+  assert.ok(!unable.includes(text.title));
+  assert.ok(unable.includes(productReturnsDictionary('vi').view.acceptedNotice));
 });
 
 test('a refund shows who, when, how much, how, the goods, the lots, the points and the reason', () => {
@@ -169,6 +176,7 @@ test('a refund shows who, when, how much, how, the goods, the lots, the points a
     summary({
       lineState: 'PARTIALLY_REFUNDED',
       lineRefundedQuantity: 1,
+      lineClaimedQuantity: 1,
       lineRefundedVnd: '97000',
       caseRefundedQuantity: 1,
       caseRemainingQuantity: 2,
@@ -232,6 +240,7 @@ test('a fully refunded line has no action; a blocked case says why in plain word
     summary({
       lineState: 'REFUNDED',
       lineRefundedQuantity: 3,
+      lineClaimedQuantity: 3,
       lineRefundedVnd: '291000',
       caseRefundedQuantity: 3,
       caseRemainingQuantity: 0,

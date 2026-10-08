@@ -50,6 +50,7 @@ model Branch {
   stockReceipts           StockReceipt[]               @relation("StockReceiptBranch")
   productReturnCases      ProductReturnCase[]          @relation("ProductReturnBranch")
   productRefunds          ProductRefund[]              @relation("ProductRefundBranch")
+  productExchanges        ProductExchange[]            @relation("ProductExchangeBranch")
   inventoryLots           InventoryLot[]               @relation("InventoryLotBranch")
   stockLevels             StockLevel[]                 @relation("StockLevelBranch")
   inventoryLowStockAlerts InventoryLowStockAlert[]     @relation("LowStockAlertBranch")
@@ -526,6 +527,9 @@ model User {
   closedProductReturns           ProductReturnCase[]              @relation("ProductReturnCloser")
   windowExceptionReturns         ProductReturnCase[]              @relation("ProductReturnWindowException")
   productRefundsMade             ProductRefund[]                  @relation("ProductRefundActor")
+  productExchangesMade           ProductExchange[]                @relation("ProductExchangeActor")
+  productExchangeCompletions     ProductExchangeCompletion[]      @relation("ProductExchangeCompletionActor")
+  productExchangeCorrections     ProductExchangeCorrection[]      @relation("ProductExchangeCorrectionActor")
   productRefundCorrections       ProductRefundCorrection[]        @relation("ProductRefundCorrectionActor")
   refundReauthenticationUses     RefundReauthenticationUse[]      @relation("RefundReauthenticationUseActor")
   productReturnEvents            ProductReturnEvent[]             @relation("ProductReturnEventActor")
@@ -1718,6 +1722,8 @@ model Invoice {
   paymentSideAllocations PaymentSideAllocation[]
   productReturnCases   ProductReturnCase[]
   productRefunds       ProductRefund[]
+  productExchanges     ProductExchange[]    @relation("ProductExchangeOriginalInvoice")
+  exchangeFor          ProductExchange?     @relation("ProductExchangeInvoice")
 
   @@index([branchId, businessDate, status], map: "invoices_branch_date_idx")
   @@index([payerUserId, createdAt], map: "invoices_payer_idx")
@@ -1758,6 +1764,7 @@ model InvoiceLine {
   rewardRedemption RewardRedemption?        @relation("RewardRedemptionLine")
   productReturnCases ProductReturnCase[]    @relation("ProductReturnLine")
   productRefunds     ProductRefund[]        @relation("ProductRefundLine")
+  productExchanges   ProductExchange[]      @relation("ProductExchangeLine")
 
   @@unique([invoiceId, sequence], map: "invoice_lines_invoice_sequence_key")
   @@unique([invoiceId, id], map: "invoice_lines_invoice_id_id_key")
@@ -1850,6 +1857,7 @@ model InvoiceLineProduct {
   createdAt      DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   returnCases    ProductReturnCase[] @relation("ProductReturnProductLine")
   refunds        ProductRefund[]     @relation("ProductRefundProductLine")
+  exchanges      ProductExchange[]   @relation("ProductExchangeProductLine")
 
   @@index([invoiceId], map: "invoice_line_products_invoice_idx")
   @@index([variantId], map: "invoice_line_products_variant_idx")
@@ -3166,6 +3174,7 @@ enum StockMovementKind {
   SALE
   SALE_REVERSAL
   REFUND_RETURN
+  EXCHANGE_RETURN
 }
 
 enum StockAdjustmentReason {
@@ -3277,6 +3286,7 @@ model ProductVariant {
   lowStockAlerts    InventoryLowStockAlert[]
   countLines        StockCountLine[]
   movements         StockMovement[]
+  exchangeReplacements ProductExchange[] @relation("ProductExchangeReplacement")
 
   @@index([productId, sortOrder], map: "product_variants_product_idx")
   @@map("product_variants")
@@ -3484,6 +3494,9 @@ model InventoryLot {
   /// Phase 6 P6-13: a lot named after a refund (sellable goods the customer brought back); never together with a receipt line.
   sourceRefundId      String?           @map("source_refund_id") @db.Uuid
   sourceRefund        ProductRefund?    @relation("ProductRefundLot", fields: [sourceRefundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Phase 6 P6-14: a lot named after an exchange (sellable goods the customer gave back); never together with a receipt line or a refund.
+  sourceExchangeId    String?           @map("source_exchange_id") @db.Uuid
+  sourceExchange      ProductExchange?  @relation("ProductExchangeLot", fields: [sourceExchangeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   quantityOnHand      Int               @default(0) @map("quantity_on_hand")
   createdByUserId     String            @map("created_by_user_id") @db.Uuid
   createdBy           User              @relation("InventoryLotCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -3607,6 +3620,9 @@ model StockMovement {
   /// Phase 6 P6-13: the refund a REFUND_RETURN movement belongs to.
   productRefundId String?               @map("product_refund_id") @db.Uuid
   productRefund  ProductRefund?         @relation("ProductRefundMovement", fields: [productRefundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Phase 6 P6-14: the exchange an EXCHANGE_RETURN movement belongs to.
+  productExchangeId String?             @map("product_exchange_id") @db.Uuid
+  productExchange   ProductExchange?    @relation("ProductExchangeMovement", fields: [productExchangeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// The paid episode of the invoice a SALE or SALE_REVERSAL belongs to (P6-10).
   paidSeq        Int?                   @map("paid_seq")
   idempotencyKey String                 @unique(map: "stock_movements_idempotency_key") @map("idempotency_key")
@@ -3695,6 +3711,7 @@ model ProductReturnCase {
   events            ProductReturnEvent[]
   photos            ProductReturnPhoto[]
   refunds           ProductRefund[]
+  exchanges         ProductExchange[]
 
   @@unique([openedByUserId, clientRequestId], map: "product_return_cases_request_key")
   @@index([branchId, openedAt(sort: Desc), id], map: "product_return_cases_branch_idx")
@@ -3831,8 +3848,104 @@ model RefundReauthenticationUse {
   reauthenticatedAt DateTime       @map("reauthenticated_at") @db.Timestamptz(3)
   productRefundId   String?        @map("product_refund_id") @db.Uuid
   productRefund     ProductRefund? @relation("RefundReauthenticationUseRefund", fields: [productRefundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  productExchangeId String?        @map("product_exchange_id") @db.Uuid
+  productExchange   ProductExchange? @relation("RefundReauthenticationUseExchange", fields: [productExchangeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   usedAt            DateTime       @default(dbgenerated("clock_timestamp()")) @map("used_at") @db.Timestamptz(3)
 
   @@id([actorUserId, reauthenticatedAt])
   @@map("refund_reauthentication_uses")
+}
+
+// Phase 6 P6-14 (design 8.3, 8.5; OQ-24, OQ-82, PRD 28.5): one exchange. The units of ONE accepted EXCHANGE return case go back and the same
+// number of units of ONE replacement item (in stock now) are given on a NEW invoice (a normal product sale invoice whose only benefit is the
+// exchange credit). Immutable: never updated, never deleted (SQL refuses both). The credit is the line's net share of the returned units
+// (cumulative rounding, one sequence shared with the refunds); a same-item exchange has no difference (OQ-82). More expensive: the customer
+// pays the difference on the exchange invoice; cheaper: the difference is handed back by cash or manual transfer.
+enum ProductExchangeRule {
+  SAME_ITEM
+  PRICE_DIFFERENCE
+}
+
+model ProductExchange {
+  id                      String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                    String                @unique(map: "product_exchanges_code_key") @db.VarChar(40)
+  branchId                String                @map("branch_id") @db.Uuid
+  branch                  Branch                @relation("ProductExchangeBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// The ORIGINAL invoice and line (the returned goods).
+  invoiceId               String                @map("invoice_id") @db.Uuid
+  invoice                 Invoice               @relation("ProductExchangeOriginalInvoice", fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceLineId           String                @map("invoice_line_id") @db.Uuid
+  line                    InvoiceLine           @relation("ProductExchangeLine", fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "product_exchanges_line_fkey")
+  productLine             InvoiceLineProduct    @relation("ProductExchangeProductLine", fields: [invoiceLineId], references: [invoiceLineId], onDelete: Restrict, onUpdate: Restrict, map: "product_exchanges_product_line_fkey")
+  returnCaseId            String                @map("return_case_id") @db.Uuid
+  returnCase              ProductReturnCase     @relation(fields: [returnCaseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// The paid episode of the original invoice the exchange belongs to.
+  paidSeq                 Int                   @map("paid_seq")
+  quantity                Int
+  /// Running totals of the claims on the line after this exchange: units, and money (refunds plus exchange credits).
+  lineUnitsAfter          Int                   @map("line_units_after")
+  lineAmountAfterVnd      BigInt                @map("line_amount_after_vnd")
+  /// What the customer actually paid for the returned units.
+  creditVnd               BigInt                @map("credit_vnd")
+  rule                    ProductExchangeRule
+  replacementVariantId    String                @map("replacement_variant_id") @db.Uuid
+  replacementVariant      ProductVariant        @relation("ProductExchangeReplacement", fields: [replacementVariantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  replacementUnitPriceVnd BigInt                @map("replacement_unit_price_vnd")
+  replacementGrossVnd     BigInt                @map("replacement_gross_vnd")
+  /// What the exchange invoice takes off the replacement, what the customer pays more, what the spa hands back.
+  appliedCreditVnd        BigInt                @map("applied_credit_vnd")
+  payableVnd              BigInt                @map("payable_vnd")
+  refundVnd               BigInt                @map("refund_vnd")
+  refundMethod            ProductRefundMethod?  @map("refund_method")
+  refundBankReference     String?               @map("refund_bank_reference") @db.VarChar(64)
+  /// The new invoice that carries the replacement (one exchange per invoice).
+  exchangeInvoiceId       String                @map("exchange_invoice_id") @db.Uuid
+  exchangeInvoice         Invoice               @relation("ProductExchangeInvoice", fields: [exchangeInvoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reason                  String
+  actorUserId             String                @map("actor_user_id") @db.Uuid
+  actor                   User                  @relation("ProductExchangeActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// When the person confirmed their password for this exchange (spent once, like a refund).
+  reauthenticatedAt       DateTime              @map("reauthenticated_at") @db.Timestamptz(3)
+  clientRequestId         String                @map("client_request_id") @db.Uuid
+  occurredAt              DateTime              @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+  completion              ProductExchangeCompletion?
+  corrections             ProductExchangeCorrection[]
+  movements               StockMovement[]       @relation("ProductExchangeMovement")
+  lots                    InventoryLot[]        @relation("ProductExchangeLot")
+  reauthenticationUses    RefundReauthenticationUse[] @relation("RefundReauthenticationUseExchange")
+
+  @@unique([actorUserId, clientRequestId], map: "product_exchanges_request_key")
+  @@unique([exchangeInvoiceId], map: "product_exchanges_invoice_key")
+  @@index([invoiceLineId], map: "product_exchanges_line_idx")
+  @@index([returnCaseId], map: "product_exchanges_case_idx")
+  @@index([invoiceId], map: "product_exchanges_original_idx")
+  @@index([branchId, occurredAt(sort: Desc), id], map: "product_exchanges_branch_idx")
+  @@map("product_exchanges")
+}
+
+/// The returned goods taken in (one per exchange). Append-only.
+model ProductExchangeCompletion {
+  exchangeId  String               @id @map("exchange_id") @db.Uuid
+  exchange    ProductExchange      @relation(fields: [exchangeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  restock     ProductRefundRestock
+  actorUserId String               @map("actor_user_id") @db.Uuid
+  actor       User                 @relation("ProductExchangeCompletionActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  occurredAt  DateTime             @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+
+  @@map("product_exchange_completions")
+}
+
+/// Append-only corrections of a typed bank transfer reference of the money handed back; the exchange row itself never changes.
+model ProductExchangeCorrection {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  exchangeId    String          @map("exchange_id") @db.Uuid
+  exchange      ProductExchange @relation(fields: [exchangeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  bankReference String          @map("bank_reference") @db.VarChar(64)
+  reason        String
+  actorUserId   String          @map("actor_user_id") @db.Uuid
+  actor         User            @relation("ProductExchangeCorrectionActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  occurredAt    DateTime        @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+
+  @@index([exchangeId, occurredAt, id], map: "product_exchange_corrections_exchange_idx")
+  @@map("product_exchange_corrections")
 }

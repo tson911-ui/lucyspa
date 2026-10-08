@@ -97,7 +97,7 @@ export function refundRequest(
 export function refundPreview(
   summary: Pick<
     ProductRefundSummaryResponse,
-    'lineNetVnd' | 'soldQuantity' | 'lineRefundedQuantity' | 'caseRemainingQuantity'
+    'lineNetVnd' | 'soldQuantity' | 'lineClaimedQuantity' | 'caseRemainingQuantity'
   >,
   quantityText: string,
 ): string | null {
@@ -107,14 +107,14 @@ export function refundPreview(
     quantity === null ||
     quantity < 1 ||
     quantity > summary.caseRemainingQuantity ||
-    summary.lineRefundedQuantity + quantity > summary.soldQuantity
+    summary.lineClaimedQuantity + quantity > summary.soldQuantity
   ) {
     return null;
   }
   return productRefundAmount(
     BigInt(summary.lineNetVnd),
     summary.soldQuantity,
-    summary.lineRefundedQuantity,
+    summary.lineClaimedQuantity,
     quantity,
   ).toString();
 }
