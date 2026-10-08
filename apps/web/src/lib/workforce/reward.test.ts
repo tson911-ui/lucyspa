@@ -35,6 +35,7 @@ const item = (change: Partial<RewardCatalogItemResponse> = {}): RewardCatalogIte
   code: 'REWARD-ABC234',
   kind: 'FREE_SERVICE',
   service: { id: 'svc-1', nameVi: 'Massage', nameEn: 'Massage' },
+  variant: null,
   nameVi: 'Massage miễn phí',
   nameEn: 'Free massage',
   active: true,

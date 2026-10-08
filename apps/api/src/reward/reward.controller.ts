@@ -47,6 +47,12 @@ class CatalogCreateDto implements RewardCatalogCreateRequest {
   @IsString()
   @MaxLength(64)
   serviceId!: string | null;
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(64)
+  variantId?: string | null;
   @ApiProperty() @IsString() @MaxLength(200) nameVi!: string;
   @ApiProperty() @IsString() @MaxLength(200) nameEn!: string;
   @ApiProperty() @IsBoolean() active!: boolean;
@@ -56,6 +62,12 @@ class CatalogCreateDto implements RewardCatalogCreateRequest {
 
 class CatalogEditDto implements RewardCatalogEditRequest {
   @ApiProperty() @IsInt() expectedRowVersion!: number;
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(64)
+  variantId?: string | null;
   @ApiProperty() @IsString() @MaxLength(200) nameVi!: string;
   @ApiProperty() @IsString() @MaxLength(200) nameEn!: string;
   @ApiProperty() @IsBoolean() active!: boolean;

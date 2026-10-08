@@ -132,6 +132,10 @@ const errors = {
   REWARD_NOTHING_LEFT: [409, 'This reward has no unit left'],
   REWARD_ALREADY_VOIDED: [409, 'This reward was already revoked'],
   REWARD_USE_NOT_RESTORABLE: [409, 'This use was already restored, or its reward was revoked'],
+  // Phase 6 P6-18 (Q10): the stock of a product gift.
+  REWARD_OUT_OF_STOCK: [409, 'This gift is out of stock at this branch'],
+  REWARD_GIFT_LINK_LOCKED: [409, 'The stock link of a gift cannot change once a unit was used'],
+  REWARD_VARIANT_INVALID: [409, 'A gift can be linked only to an active product variant'],
   // Phase 6 P6-3: the product catalog. Each one names a database rule of the P6-2 migrations.
   PRODUCT_STATUS_INVALID: [409, 'This product cannot move to that status'],
   PRODUCT_PUBLISH_INCOMPLETE: [409, 'A product is published only with an active, priced variant'],

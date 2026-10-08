@@ -23,6 +23,13 @@ Chủ dặn (2026-10-08, mục 2.29 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN
 - **Phiếu hẹn nhận hàng, khách có tài khoản:** thấy ngay trong hóa đơn của mình (mã đơn, trạng thái, ngày dự kiến). **Khách vãng lai:** nhân viên tạo liên kết riêng + mã QR, tự gửi qua Zalo; liên kết chỉ hiện một lần, tạo liên kết mới thì liên kết cũ hết dùng, có thể thu hồi; trang chỉ đọc, không có số điện thoại.
 - **Câu hỏi cho Chủ:** liên kết phiếu có tự hết hạn sau khi đơn hoàn tất hoặc hủy không, và sau bao nhiêu ngày? Chủ chưa cho con số nên hiện **không tự hết hạn** (nhân viên thu hồi được bất cứ lúc nào).
 
+### P6-18 (kho của quà tặng sản phẩm, Q10): chờ Chủ xem lại
+
+- **Quà tặng gắn với một sản phẩm (không bắt buộc).** Khi nhân viên bấm "đã dùng" một lượt quà ở chi nhánh nào thì **kho của chi nhánh đó trừ 1 sản phẩm**, lấy từ lô hết hạn sớm nhất, không lấy lô đã hết hạn.
+- **Hàng đang giữ cho hóa đơn hoặc cho đơn đặt trước (hàng đã về) thì không được đem tặng.** Hết hàng thì báo "Hết hàng" và **không ghi lượt dùng**.
+- **Bấm nhầm:** quản lý hoàn lại lượt dùng thì sản phẩm **trả về đúng lô cũ**, một lần. Lượt dùng cũ vẫn nằm trong lịch sử.
+- Quà không gắn sản phẩm (kể cả quà tạo từ trước) **không trừ kho**. Không có tiền, hóa đơn hay điểm. Đã có người dùng quà thì không đổi sản phẩm gắn được nữa (tạo quà mới).
+
 ### P6-17 (làm việc với đơn đặt trước: danh sách cần đặt, hàng về, giao hàng, hủy và hoàn tiền): chờ Chủ xem lại
 
 - **Trang "Hàng đặt trước"** có năm nhóm: Cần đặt, Đã đặt, Hàng đã về, Đã giao, Đã hủy. "Cần đặt" gom theo **nhà cung cấp quen thuộc** của từng sản phẩm (ô mới ở biến thể, không bắt buộc); sản phẩm chưa có nhà cung cấp xếp cuối.

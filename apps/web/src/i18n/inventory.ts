@@ -91,6 +91,8 @@ const vi = {
       SALE_REVERSAL: 'Hoàn kho do hủy bán',
       REFUND_RETURN: 'Khách trả hàng, nhập lại kho',
       EXCHANGE_RETURN: 'Khách đổi hàng, nhập lại kho',
+      GIFT_OUT: 'Tặng quà cho khách',
+      GIFT_RETURN: 'Nhận lại quà tặng nhầm',
     },
     reasons: {
       INTERNAL_USE: 'Dùng nội bộ',
@@ -417,6 +419,8 @@ const en: Dictionary = {
       SALE_REVERSAL: 'Sale reversed',
       REFUND_RETURN: 'Returned by a customer',
       EXCHANGE_RETURN: 'Returned in an exchange',
+      GIFT_OUT: 'Gift handed to a customer',
+      GIFT_RETURN: 'Gift taken back (mistaken use)',
     },
     reasons: {
       INTERNAL_USE: 'Internal use',

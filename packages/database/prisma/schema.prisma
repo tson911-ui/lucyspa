@@ -3043,6 +3043,9 @@ model RewardCatalogItem {
   kind            RewardKind
   serviceId       String?               @map("service_id") @db.Uuid
   service         Service?              @relation("RewardItemService", fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Phase 6 P6-18 (Q10): the product variant a PRODUCT_GIFT item takes out of stock when staff mark a unit used. Null deducts nothing.
+  variantId       String?               @map("variant_id") @db.Uuid
+  variant         ProductVariant?       @relation("RewardItemVariant", fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   nameVi          String                @map("name_vi")
   nameEn          String                @map("name_en")
   active          Boolean               @default(true)
@@ -3127,6 +3130,7 @@ model RewardManualUse {
   usedAt        DateTime                    @default(dbgenerated("clock_timestamp()")) @map("used_at") @db.Timestamptz(3)
   note          String?
   restoration   RewardManualUseRestoration?
+  stockMovements StockMovement[]            @relation("RewardManualUseMovement")
 
   @@index([entitlementId, usedAt], map: "reward_manual_uses_entitlement_idx")
   @@map("reward_manual_uses")
@@ -3196,6 +3200,8 @@ enum StockMovementKind {
   SALE_REVERSAL
   REFUND_RETURN
   EXCHANGE_RETURN
+  GIFT_OUT
+  GIFT_RETURN
 }
 
 enum StockAdjustmentReason {
@@ -3312,6 +3318,7 @@ model ProductVariant {
   /// Phase 6 P6-17 (OQ-87): the supplier the "cần đặt" list groups this variant under (optional).
   usualSupplierId      String?            @map("usual_supplier_id") @db.Uuid
   usualSupplier        Supplier?          @relation("VariantUsualSupplier", fields: [usualSupplierId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rewardItems          RewardCatalogItem[] @relation("RewardItemVariant")
 
   @@index([productId, sortOrder], map: "product_variants_product_idx")
   @@map("product_variants")
@@ -3647,6 +3654,9 @@ model StockMovement {
   /// Phase 6 P6-13: the refund a REFUND_RETURN movement belongs to.
   productRefundId String?               @map("product_refund_id") @db.Uuid
   productRefund  ProductRefund?         @relation("ProductRefundMovement", fields: [productRefundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Phase 6 P6-18: the use of a product gift a GIFT_OUT or GIFT_RETURN movement belongs to.
+  rewardManualUseId String?             @map("reward_manual_use_id") @db.Uuid
+  rewardManualUse RewardManualUse?      @relation("RewardManualUseMovement", fields: [rewardManualUseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// Phase 6 P6-14: the exchange an EXCHANGE_RETURN movement belongs to.
   productExchangeId String?             @map("product_exchange_id") @db.Uuid
   productExchange   ProductExchange?    @relation("ProductExchangeMovement", fields: [productExchangeId], references: [id], onDelete: Restrict, onUpdate: Restrict)

@@ -4,6 +4,7 @@ import type {
   RewardCatalogItemResponse,
   RewardCatalogListResponse,
   RewardServiceOption,
+  RewardVariantOption,
 } from '@lucy-spa/contracts';
 import {
   CheckField,
@@ -41,12 +42,14 @@ import { Notice } from '../ui';
 export function RewardItemDrawer({
   item,
   services,
+  variants,
   onDone,
   onClose,
 }: {
   /** The item being edited, or null for a new one. */
   item: RewardCatalogItemResponse | null;
   services: readonly RewardServiceOption[];
+  variants: readonly RewardVariantOption[];
   onDone: () => void;
   onClose: () => void;
 }) {
@@ -68,7 +71,7 @@ export function RewardItemDrawer({
     if (pending) return;
     setChecked(true);
     setError(null);
-    const body = item ? editItemRequest(draft, item.rowVersion) : createItemRequest(draft);
+    const body = item ? editItemRequest(draft, item.rowVersion, item) : createItemRequest(draft);
     if (!body) return;
     setPending(true);
     try {
@@ -109,6 +112,7 @@ export function RewardItemDrawer({
                   set({
                     kind: event.target.value as RewardItemDraft['kind'],
                     serviceId: event.target.value === 'FREE_SERVICE' ? draft.serviceId : '',
+                    variantId: event.target.value === 'PRODUCT_GIFT' ? draft.variantId : '',
                   })
                 }
               />
@@ -143,6 +147,32 @@ export function RewardItemDrawer({
                 />
               )
             }
+          </Field>
+        ) : null}
+        {draft.kind === 'PRODUCT_GIFT' ? (
+          <Field label={f.variant} hint={f.variantHint} full>
+            {(control) => (
+              <Select
+                {...control}
+                value={draft.variantId}
+                placeholder={f.variantPlaceholder}
+                options={[
+                  // A product that was switched off after it was linked stays listed, so the link is never shown empty.
+                  ...(item?.variant && !variants.some((entry) => entry.id === item.variant?.id)
+                    ? [item.variant]
+                    : []),
+                  ...variants,
+                ].map((variant) => ({
+                  value: variant.id,
+                  label: `${rewardName(variant, locale)}${
+                    (locale === 'vi' ? variant.labelVi : variant.labelEn)
+                      ? ` · ${locale === 'vi' ? variant.labelVi : variant.labelEn}`
+                      : ''
+                  } (${variant.sku})`,
+                }))}
+                onChange={(event) => set({ variantId: event.target.value })}
+              />
+            )}
           </Field>
         ) : null}
         <Field label={f.nameVi} error={issueText(errors.nameVi)} required>

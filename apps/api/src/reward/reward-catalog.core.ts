@@ -44,10 +44,37 @@ const itemSelect = {
   createdAt: true,
   updatedAt: true,
   service: { select: { id: true, nameVi: true, nameEn: true } },
+  variant: {
+    select: {
+      id: true,
+      sku: true,
+      labelVi: true,
+      labelEn: true,
+      product: { select: { nameVi: true, nameEn: true } },
+    },
+  },
   createdBy: { select: { fullName: true } },
 } satisfies Prisma.RewardCatalogItemSelect;
 
 type ItemRow = Prisma.RewardCatalogItemGetPayload<{ select: typeof itemSelect }>;
+
+/** A variant as the gift picker and the catalog list name it. */
+export function presentVariant(variant: {
+  id: string;
+  sku: string;
+  labelVi: string | null;
+  labelEn: string | null;
+  product: { nameVi: string; nameEn: string };
+}) {
+  return {
+    id: variant.id,
+    sku: variant.sku,
+    nameVi: variant.product.nameVi,
+    nameEn: variant.product.nameEn,
+    labelVi: variant.labelVi,
+    labelEn: variant.labelEn,
+  };
+}
 
 export function presentItem(row: ItemRow): RewardCatalogItemResponse {
   return {
@@ -55,6 +82,7 @@ export function presentItem(row: ItemRow): RewardCatalogItemResponse {
     code: row.code,
     kind: row.kind,
     service: row.service,
+    variant: row.variant ? presentVariant(row.variant) : null,
     nameVi: row.nameVi,
     nameEn: row.nameEn,
     active: row.active,
@@ -70,7 +98,7 @@ export function presentItem(row: ItemRow): RewardCatalogItemResponse {
 export async function listCatalog(context: AdminContext): Promise<RewardCatalogListResponse> {
   requireManageCatalog(context);
   const { tx } = context;
-  const [rows, services, live] = await Promise.all([
+  const [rows, services, variants, live] = await Promise.all([
     tx.rewardCatalogItem.findMany({
       orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
       select: itemSelect,
@@ -80,9 +108,26 @@ export async function listCatalog(context: AdminContext): Promise<RewardCatalogL
       orderBy: [{ nameVi: 'asc' }, { id: 'asc' }],
       select: { id: true, code: true, nameVi: true, nameEn: true },
     }),
+    tx.productVariant.findMany({
+      where: { isActive: true, product: { status: 'PUBLISHED' } },
+      orderBy: [{ product: { nameVi: 'asc' } }, { sku: 'asc' }],
+      take: 500,
+      select: {
+        id: true,
+        sku: true,
+        labelVi: true,
+        labelEn: true,
+        product: { select: { nameVi: true, nameEn: true } },
+      },
+    }),
     tx.loyaltyGoLive.count(),
   ]);
-  return { items: rows.map(presentItem), serviceOptions: services, loyaltyLive: live > 0 };
+  return {
+    items: rows.map(presentItem),
+    serviceOptions: services,
+    variantOptions: variants.map(presentVariant),
+    loyaltyLive: live > 0,
+  };
 }
 
 function textField(value: unknown, field: string): string {
@@ -125,6 +170,29 @@ async function loadItem(tx: Prisma.TransactionClient, id: string) {
   return tx.rewardCatalogItem.findUniqueOrThrow({ where: { id }, select: itemSelect });
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * The stock link of a gift (Q10): only a `PRODUCT_GIFT` may name a variant, and it must be an active variant of a product that is not
+ * switched off. Absent or null means the gift moves no stock.
+ */
+async function giftVariant(
+  tx: Prisma.TransactionClient,
+  kind: RewardKindName,
+  value: unknown,
+): Promise<string | null> {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'string' || !UUID.test(value))
+    throw new AuthError('VALIDATION_FAILED', 'variantId');
+  if (kind !== 'PRODUCT_GIFT') throw new AuthError('VALIDATION_FAILED', 'variantId');
+  const variant = await tx.productVariant.findFirst({
+    where: { id: value.toLowerCase(), isActive: true, product: { status: { not: 'INACTIVE' } } },
+    select: { id: true },
+  });
+  if (!variant) throw new AuthError('REWARD_VARIANT_INVALID', 'variantId');
+  return variant.id;
+}
+
 /**
  * Creates an item. A `FREE_SERVICE` item must name an active service (so the service it grants is never vague); the other kinds
  * must not. The code is generated (the Owner never types one).
@@ -149,6 +217,7 @@ export async function createItem(
   } else if (input.serviceId !== null && input.serviceId !== undefined) {
     throw new AuthError('VALIDATION_FAILED', 'serviceId');
   }
+  const variantId = await giftVariant(tx, input.kind, input.variantId);
   let code = '';
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const candidate = newCode();
@@ -161,7 +230,14 @@ export async function createItem(
   }
   if (!code) throw new AuthError('SERVICE_UNAVAILABLE');
   const created = await tx.rewardCatalogItem.create({
-    data: { code, kind: input.kind, serviceId, createdByUserId: context.actor.userId, ...values },
+    data: {
+      code,
+      kind: input.kind,
+      serviceId,
+      variantId,
+      createdByUserId: context.actor.userId,
+      ...values,
+    },
     select: itemSelect,
   });
   const response = presentItem(created);
@@ -197,7 +273,20 @@ export async function editItem(
   await tx.$queryRaw`SELECT id FROM reward_catalog_items WHERE id = ${itemId}::uuid FOR UPDATE`;
   const current = await loadItem(tx, itemId);
   if (current.rowVersion !== expected) throw new AuthError('CONFLICT');
+  // The stock link: absent keeps it; a change is allowed only while no unit of the item was ever used (the database says the same).
+  let variantId: string | null = current.variant?.id ?? null;
+  if (input.variantId !== undefined) {
+    const wanted = await giftVariant(tx, current.kind, input.variantId);
+    if (wanted !== variantId) {
+      const used = await tx.rewardManualUse.count({
+        where: { entitlement: { catalogItemId: itemId } },
+      });
+      if (used > 0) throw new AuthError('REWARD_GIFT_LINK_LOCKED', 'variantId');
+      variantId = wanted;
+    }
+  }
   if (
+    variantId === (current.variant?.id ?? null) &&
     current.nameVi === values.nameVi &&
     current.nameEn === values.nameEn &&
     current.active === values.active &&
@@ -208,7 +297,7 @@ export async function editItem(
   }
   const saved = await tx.rewardCatalogItem.update({
     where: { id: itemId },
-    data: { ...values, rowVersion: current.rowVersion + 1 },
+    data: { ...values, variantId, rowVersion: current.rowVersion + 1 },
     select: itemSelect,
   });
   const response = presentItem(saved);

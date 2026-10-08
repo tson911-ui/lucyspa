@@ -575,6 +575,18 @@ Migration `20261118000000` (92 to 93): a refund may belong to a cancelled order 
 - **Existing tests changed (additive only):** web fixtures gained the new fields (`usualSupplier`, `contactMasked`, `branchTimezone`); the owner's navigation list gained `productOrders`; the database package script lists the new static test.
 - **Open for the Owner:** (1) does the ticket link expire (P16-5); (2) the e-mail of OQ-34; (3) a partial refund when the customer changes their mind after ordering (nothing invented: whole line only); (4) whether a system user may allocate arrivals in the background; (5) the payment-reversal safeguard of P15-4.
 
+### 2.33 P6-18 as built: the stock of product gifts (Wave 3b; Q10, T37; **every reading below is PENDING OWNER REVIEW**)
+
+Migrations `20261119000000` (two enum values) and `20261119000001` (93 to 95). Report `docs/PHASE6_STEP18_GIFT_STOCK.md`. No permission is added.
+
+- **P18-1 the link.** A `PRODUCT_GIFT` item may name a product variant (`variant_id`, optional, in the catalog form; the catalog list shows the product). A gift with no variant (every gift created before Phase 6) deducts nothing, as Q10 says. The link may change only while **no unit of the item has ever been used** (the API says `REWARD_GIFT_LINK_LOCKED`, the database refuses the same), so a movement can never point at a gift that was linked differently when it happened.
+- **P18-2 taking.** Marking one unit used takes ONE unit out of the stock of **the branch where staff mark it** (`GIFT_OUT`, quantity -1, one movement per use): from the sellable lot that expires first (FEFO), never from a lot already past its date, and only from stock nothing holds: the units free for sale (`lucy_available_stock`) must cover it, so goods reserved by an invoice or that **arrived for a pre-order** are never given away. Otherwise the answer is `REWARD_OUT_OF_STOCK` ("Hết hàng") and nothing is written (the use is not recorded).
+- **P18-3 restoring.** A manager's restore of a mistaken use writes `GIFT_RETURN` (+1) into **the same lot** the unit came from, once; the use and the restoration stay as history. The lot is used even if its date has passed meanwhile: it is the same physical unit.
+- **P18-4 locks and commit checks.** Lock order: the entitlement, then the lots, then the stock level (as every stock command). At commit the database checks that a use of a linked gift took exactly one unit, a restored use put exactly that unit back, and an unlinked gift moved no stock. No invoice, no money, no points, no cost of goods are written.
+- **P18-5 history.** The movements appear in the stock history as "Tặng quà cho khách" and "Nhận lại quà tặng nhầm"; the reconciliation (level = movements = lots) holds with them.
+- **Existing tests changed (additive only):** the web reward fixture gained `variant: null`; the stock history labels gained the two kinds; the database package script lists the new static test.
+- **Open for the Owner:** whether a gift's product link may be added after units were already used (now: no, a new gift item is made instead).
+
 ## 3. Catalog (PRD §23-24; T9-T12)
 
 ### 3.1 Model

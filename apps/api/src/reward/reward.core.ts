@@ -32,6 +32,34 @@ import { requireManageCatalog } from './reward-catalog.core.js';
 
 export const REWARD_PAGE_SIZE = 20;
 
+/**
+ * Phase 6 P6-18 (Q10): a unit of a gift linked to a product leaves the stock of the branch where staff mark it used. The lots and the
+ * level are locked (after the entitlement, the order every stock command uses: lots, then the level); the units on the shelf that no
+ * invoice or pre-order holds must cover it, or the answer is `REWARD_OUT_OF_STOCK` and nothing is written. The unit comes from the
+ * sellable lot that expires first (FEFO); a lot already past its date is never given away. Returns the lot the unit came from.
+ */
+async function takeGiftUnit(
+  tx: Prisma.TransactionClient,
+  branchId: string,
+  variantId: string,
+): Promise<string> {
+  await tx.$queryRaw`
+    SELECT id FROM inventory_lots WHERE branch_id = ${branchId}::uuid AND variant_id = ${variantId}::uuid ORDER BY id FOR UPDATE`;
+  await tx.$queryRaw`
+    SELECT 1 FROM stock_levels WHERE branch_id = ${branchId}::uuid AND variant_id = ${variantId}::uuid FOR UPDATE`;
+  const [available] = await tx.$queryRaw<{ n: number }[]>`
+    SELECT lucy_available_stock(${branchId}::uuid, ${variantId}::uuid) AS n`;
+  if (!available || available.n < 1) throw new AuthError('REWARD_OUT_OF_STOCK');
+  const [lot] = await tx.$queryRaw<{ id: string }[]>`
+    SELECT l.id FROM inventory_lots l JOIN branches b ON b.id = l.branch_id
+    WHERE l.branch_id = ${branchId}::uuid AND l.variant_id = ${variantId}::uuid AND l.quantity_on_hand > 0
+      AND (l.expiry_date IS NULL OR l.expiry_date >= (clock_timestamp() AT TIME ZONE b.timezone)::date)
+    ORDER BY l.expiry_date NULLS LAST, l.id
+    LIMIT 1`;
+  if (!lot) throw new AuthError('REWARD_OUT_OF_STOCK');
+  return lot.id;
+}
+
 function requireIssue(context: AdminContext, branchId: string): void {
   if (!decide(context.actor.graph, 'ISSUE_REWARDS', { kind: 'BRANCH', branchId })) {
     throw new AuthError('FORBIDDEN');
@@ -428,10 +456,31 @@ export async function useReward(
   const status = statusOf(row, context.now);
   if (status === 'VOIDED' || status === 'EXPIRED') throw new AuthError('REWARD_NOT_USABLE');
   if (status === 'USED_UP') throw new AuthError('REWARD_NOTHING_LEFT');
+  // A gift linked to a product takes one unit out of this branch's stock (Q10); one that is not linked deducts nothing.
+  const linked = await tx.rewardCatalogItem.findUniqueOrThrow({
+    where: { id: row.catalogItem.id },
+    select: { variantId: true },
+  });
+  const lotId = linked.variantId ? await takeGiftUnit(tx, branchId, linked.variantId) : null;
   const use = await tx.rewardManualUse.create({
     data: { entitlementId, branchId, usedByUserId: context.actor.userId, note },
     select: { id: true },
   });
+  if (linked.variantId && lotId) {
+    await tx.stockMovement.create({
+      data: {
+        branchId,
+        variantId: linked.variantId,
+        lotId,
+        kind: 'GIFT_OUT',
+        quantityDelta: -1,
+        rewardManualUseId: use.id,
+        idempotencyKey: `GIFT_OUT:${use.id}`,
+        actorUserId: context.actor.userId,
+      },
+      select: { id: true },
+    });
+  }
   await appendAdminAudit(context, {
     action: 'REWARD_USED',
     entityType: 'RewardEntitlement',
@@ -439,7 +488,11 @@ export async function useReward(
     subjectUserId: row.ownerUserId,
     branchId,
     reason: note,
-    after: { useId: use.id, catalogItemId: row.catalogItem.id },
+    after: {
+      useId: use.id,
+      catalogItemId: row.catalogItem.id,
+      ...(linked.variantId ? { variantId: linked.variantId, lotId } : {}),
+    },
   });
   await appendOutboxEvent(tx, {
     branchId,
@@ -532,10 +585,36 @@ export async function restoreUse(
   if (current.restoration || current.entitlement.voidedAt) {
     throw new AuthError('REWARD_USE_NOT_RESTORABLE');
   }
+  // The unit a linked gift took out of stock goes back into the SAME lot (the mistaken use never happened).
+  const taken = await tx.stockMovement.findFirst({
+    where: { rewardManualUseId: useId, kind: 'GIFT_OUT' },
+    select: { branchId: true, variantId: true, lotId: true },
+  });
+  if (taken) {
+    await tx.$queryRaw`
+      SELECT id FROM inventory_lots WHERE branch_id = ${taken.branchId}::uuid AND variant_id = ${taken.variantId}::uuid ORDER BY id FOR UPDATE`;
+    await tx.$queryRaw`
+      SELECT 1 FROM stock_levels WHERE branch_id = ${taken.branchId}::uuid AND variant_id = ${taken.variantId}::uuid FOR UPDATE`;
+  }
   const restoration = await tx.rewardManualUseRestoration.create({
     data: { useId, restoredByUserId: context.actor.userId, reason },
     select: { id: true },
   });
+  if (taken) {
+    await tx.stockMovement.create({
+      data: {
+        branchId: taken.branchId,
+        variantId: taken.variantId,
+        lotId: taken.lotId,
+        kind: 'GIFT_RETURN',
+        quantityDelta: 1,
+        rewardManualUseId: useId,
+        idempotencyKey: `GIFT_RETURN:${useId}`,
+        actorUserId: context.actor.userId,
+      },
+      select: { id: true },
+    });
+  }
   await appendAdminAudit(context, {
     action: 'REWARD_USE_RESTORED',
     entityType: 'RewardEntitlement',
@@ -543,7 +622,7 @@ export async function restoreUse(
     subjectUserId: current.entitlement.ownerUserId,
     branchId: found.branchId,
     reason,
-    after: { useId, restorationId: restoration.id },
+    after: { useId, restorationId: restoration.id, ...(taken ? { lotId: taken.lotId } : {}) },
   });
   await appendOutboxEvent(tx, {
     branchId: found.branchId,

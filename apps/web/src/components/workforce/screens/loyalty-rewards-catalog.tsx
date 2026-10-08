@@ -53,7 +53,7 @@ export function LoyaltyRewardCatalog() {
     return <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />;
   }
   if (!list.data) return <Loading t={t} />;
-  const { items, serviceOptions, loyaltyLive } = list.data;
+  const { items, serviceOptions, variantOptions, loyaltyLive } = list.data;
 
   const columns: DataTableColumn<RewardCatalogItemResponse>[] = [
     {
@@ -71,7 +71,12 @@ export function LoyaltyRewardCatalog() {
       hideBelow: 'lg',
       truncate: true,
       width: 'md',
-      cell: (item) => (item.service ? rewardName(item.service, locale) : '—'),
+      cell: (item) =>
+        item.service
+          ? rewardName(item.service, locale)
+          : item.variant
+            ? `${rewardName(item.variant, locale)} (${item.variant.sku})`
+            : '—',
     },
     {
       key: 'expiry',
@@ -141,6 +146,7 @@ export function LoyaltyRewardCatalog() {
         <RewardItemDrawer
           item={editing}
           services={serviceOptions}
+          variants={variantOptions}
           onDone={() => {
             setEditing(undefined);
             notify(r.form.done);

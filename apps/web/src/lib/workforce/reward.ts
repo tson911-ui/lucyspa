@@ -26,6 +26,8 @@ export const REWARD_KINDS: readonly RewardKindName[] = ['FREE_SERVICE', 'VOUCHER
 export interface RewardItemDraft {
   kind: RewardKindName | '';
   serviceId: string;
+  /** The product variant a gift takes out of stock; empty means none. */
+  variantId: string;
   nameVi: string;
   nameEn: string;
   /** `never` = no expiry, `days` = a number of days after the grant. */
@@ -42,6 +44,7 @@ export type RewardItemErrors = Partial<Record<RewardItemField, RewardIssue>>;
 export const emptyItemDraft = (): RewardItemDraft => ({
   kind: '',
   serviceId: '',
+  variantId: '',
   nameVi: '',
   nameEn: '',
   expiry: 'never',
@@ -54,6 +57,7 @@ export function draftFromItem(item: RewardCatalogItemResponse): RewardItemDraft 
   return {
     kind: item.kind,
     serviceId: item.service?.id ?? '',
+    variantId: item.variant?.id ?? '',
     nameVi: item.nameVi,
     nameEn: item.nameEn,
     expiry: item.expiryDays === null ? 'never' : 'days',
@@ -108,6 +112,7 @@ export function createItemRequest(draft: RewardItemDraft): RewardCatalogCreateRe
   return {
     kind: draft.kind,
     serviceId: draft.kind === 'FREE_SERVICE' ? draft.serviceId : null,
+    ...(draft.kind === 'PRODUCT_GIFT' && draft.variantId ? { variantId: draft.variantId } : {}),
     ...values,
   };
 }
@@ -115,9 +120,16 @@ export function createItemRequest(draft: RewardItemDraft): RewardCatalogCreateRe
 export function editItemRequest(
   draft: RewardItemDraft,
   expectedRowVersion: number,
+  item?: Pick<RewardCatalogItemResponse, 'kind' | 'variant'>,
 ): RewardCatalogEditRequest | null {
   const values = valuesOf(draft, true);
-  return values ? { expectedRowVersion, ...values } : null;
+  if (!values) return null;
+  // The stock link is sent only when it changed (an absent key keeps it; the server refuses a change once a unit was used).
+  const relink =
+    item?.kind === 'PRODUCT_GIFT' && draft.variantId !== (item.variant?.id ?? '')
+      ? { variantId: draft.variantId === '' ? null : draft.variantId }
+      : {};
+  return { expectedRowVersion, ...relink, ...values };
 }
 
 export const rewardName = (item: { nameVi: string; nameEn: string }, locale: Locale): string =>

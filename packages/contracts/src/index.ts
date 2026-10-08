@@ -4055,7 +4055,10 @@ export type StockMovementKindName =
   | 'SALE_REVERSAL'
   /** Phase 6 P6-13: goods a customer brought back and the refunding person recorded as sellable. */
   | 'REFUND_RETURN'
-  | 'EXCHANGE_RETURN';
+  | 'EXCHANGE_RETURN'
+  /** Phase 6 P6-18 (Q10): a product gift handed to a customer, and the same unit put back when the use is restored. */
+  | 'GIFT_OUT'
+  | 'GIFT_RETURN';
 /** The reasons a person may choose for an adjustment (COUNT_CORRECTION is written only by an approved count). */
 export type StockAdjustmentReasonName =
   'INTERNAL_USE' | 'TESTER' | 'DAMAGED' | 'EXPIRED' | 'LOSS' | 'COUNT_CORRECTION';

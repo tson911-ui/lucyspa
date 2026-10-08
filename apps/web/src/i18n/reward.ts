@@ -30,7 +30,7 @@ const vi = {
     add: 'Thêm quà',
     name: 'Tên quà',
     kind: 'Loại',
-    service: 'Dịch vụ',
+    service: 'Dịch vụ hoặc sản phẩm',
     expiry: 'Hạn dùng',
     status: 'Trạng thái',
     updated: 'Cập nhật',
@@ -49,6 +49,10 @@ const vi = {
     service: 'Dịch vụ',
     serviceHint: 'Dịch vụ khách được dùng miễn phí. Không đổi được sau khi tạo.',
     servicePlaceholder: 'Chọn dịch vụ',
+    variant: 'Sản phẩm trừ kho',
+    variantHint:
+      'Khi nhân viên bấm "đã dùng", kho của chi nhánh đó trừ một sản phẩm này. Để trống thì không trừ kho. Không đổi được sau khi đã có người dùng quà.',
+    variantPlaceholder: 'Không trừ kho',
     nameVi: 'Tên (tiếng Việt)',
     nameEn: 'Tên (tiếng Anh)',
     expiry: 'Hạn dùng',
@@ -174,6 +178,10 @@ const vi = {
   },
   errors: {
     REWARD_SERVICE_INVALID: 'Quà dịch vụ miễn phí cần một dịch vụ đang hoạt động.',
+    REWARD_OUT_OF_STOCK:
+      'Hết hàng. Chi nhánh này không còn sản phẩm để tặng nên chưa ghi là đã dùng.',
+    REWARD_GIFT_LINK_LOCKED: 'Quà này đã có người dùng nên không đổi được sản phẩm trừ kho.',
+    REWARD_VARIANT_INVALID: 'Chọn một sản phẩm đang bán để trừ kho.',
     REWARD_ITEM_INACTIVE: 'Loại quà này đang tạm ngưng nên chưa tặng được.',
     REWARD_NOT_USABLE: 'Quà này đã bị thu hồi hoặc đã hết hạn.',
     REWARD_NOTHING_LEFT: 'Quà này đã dùng hết.',
@@ -211,7 +219,7 @@ const en: Dictionary = {
     add: 'Add reward',
     name: 'Reward',
     kind: 'Kind',
-    service: 'Service',
+    service: 'Service or product',
     expiry: 'Validity',
     status: 'Status',
     updated: 'Updated',
@@ -231,6 +239,10 @@ const en: Dictionary = {
     serviceHint:
       'The service the customer receives for free. Cannot be changed after it is created.',
     servicePlaceholder: 'Choose a service',
+    variant: 'Product taken from stock',
+    variantHint:
+      'When staff mark a unit used, the stock of that branch loses one of this product. Leave empty to take nothing from stock. It cannot change once a unit has been used.',
+    variantPlaceholder: 'Nothing taken from stock',
     nameVi: 'Name (Vietnamese)',
     nameEn: 'Name (English)',
     expiry: 'Validity',
@@ -356,6 +368,10 @@ const en: Dictionary = {
   },
   errors: {
     REWARD_SERVICE_INVALID: 'A free-service reward needs an active service.',
+    REWARD_OUT_OF_STOCK:
+      'Out of stock. This branch has none of this product left, so the gift was not marked used.',
+    REWARD_GIFT_LINK_LOCKED: 'This gift has already been used, so its stock product cannot change.',
+    REWARD_VARIANT_INVALID: 'Choose a product that is on sale to take from stock.',
     REWARD_ITEM_INACTIVE: 'This reward is paused and cannot be granted.',
     REWARD_NOT_USABLE: 'This reward was revoked or has expired.',
     REWARD_NOTHING_LEFT: 'This reward is fully used.',

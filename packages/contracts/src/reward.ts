@@ -21,12 +21,24 @@ export interface RewardServiceOption {
   nameEn: string;
 }
 
+/** A product variant a gift can be linked to (the picker of the catalog form): an active variant of a published product. */
+export interface RewardVariantOption {
+  id: string;
+  sku: string;
+  nameVi: string;
+  nameEn: string;
+  labelVi: string | null;
+  labelEn: string | null;
+}
+
 export interface RewardCatalogItemResponse {
   id: string;
   code: string;
   kind: RewardKindName;
   /** Set exactly for a `FREE_SERVICE` item; never changes. */
   service: { id: string; nameVi: string; nameEn: string } | null;
+  /** Set only for a `PRODUCT_GIFT` linked to a product (Q10): marking a unit used takes one unit out of the stock of that branch. */
+  variant: RewardVariantOption | null;
   nameVi: string;
   nameEn: string;
   active: boolean;
@@ -43,6 +55,8 @@ export interface RewardCatalogItemResponse {
 export interface RewardCatalogListResponse {
   items: RewardCatalogItemResponse[];
   serviceOptions: RewardServiceOption[];
+  /** Active variants of published products, for the stock link of a gift (at most 500). */
+  variantOptions: RewardVariantOption[];
   loyaltyLive: boolean;
 }
 
@@ -59,11 +73,15 @@ export interface RewardCatalogValuesRequest {
 export interface RewardCatalogCreateRequest extends RewardCatalogValuesRequest {
   kind: RewardKindName;
   serviceId: string | null;
+  /** Only for `PRODUCT_GIFT`: the variant whose stock a use takes from. Absent or null: the gift moves no stock. */
+  variantId?: string | null;
 }
 
 /** POST /api/v1/rewards/catalog/:id/edit */
 export interface RewardCatalogEditRequest extends RewardCatalogValuesRequest {
   expectedRowVersion: number;
+  /** Absent keeps the link; a variant (or null) changes it, but only while no unit of the item has been used (`REWARD_GIFT_LINK_LOCKED`). */
+  variantId?: string | null;
 }
 
 /** GET /api/v1/rewards/branches/:branchId/options (ISSUE_REWARDS at the branch): the active items staff can grant. */
