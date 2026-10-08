@@ -209,7 +209,17 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 
 ## Production
 
-Status as of 2026-10-08, about 12:02 (+07) (Owner-reported; supersedes the blocks below): **Phase 6 Wave 2 is deployed.**
+Status as of 2026-10-08, about 21:45 (+07) (Owner-reported; supersedes the blocks below): **Phase 6 Wave 3a (returns, refunds, exchanges) is deployed.**
+
+- **Production runs `2076cc58ed7fd062f4b05576a67d8625e325c038`** (`2076cc5`), deployed by the Owner on 2026-10-08 at about 21:45 (+07). Previous: `1358725`. Docs commits after it (`40f882e`, `aa2f1fb` and later) are not installed.
+- Backup before the deploy: `/root/backups/lucyspa-pre-phase6-dot3a-20261008T144015Z.dump` (1,022,251 bytes, 1646 TOC lines); the pm2 dump is saved.
+- Rehearsal on a restored production copy: 9 migrations OK, about 0.47 s in total (slowest `product_returns` 0.191 s); `89|65|29|2|2`.
+- Production now: **89 migrations, 65 permissions** (`89|65|0|0|0|0|0|0` after the migration, the six gate numbers). Counts unchanged: users 9, bookings 4, invoices 2, payments 2, notifications 29.
+- `/opt/lucyspa-media/returns` created (root, 700). `nginx -T` exit 0: only root `/var/www/html`, 0 references to `lucyspa-media`.
+- pm2: api 1, worker 1, web 3, all online, no new errors (no booking lock errors this time). Health ok; 4 public pages 200; the evidence photo route without login answers 401. Outbox backlog 0/0.
+- **`REFUND_PRODUCTS`, `MANAGE_PRODUCT_RETURNS` and `SELL_PRODUCTS` are granted to nobody (`0|0|0`).**
+
+Previous status (superseded): as of 2026-10-08, about 12:02 (+07): **Phase 6 Wave 2 is deployed.**
 
 - **Production runs `135872558838e00436fa5ce829e70f0517d7be68`** (`1358725`), deployed by the Owner on 2026-10-08 at about 12:02 (+07). Previous: `6546c43`. Docs commits after it (`da54739`, `1e6d46d` and later) are not installed.
 - Backup before the deploy: `/root/backups/lucyspa-pre-phase6-dot2-20261008T045527Z.dump` (913,894 bytes, 1496 TOC lines); the pm2 dump is saved in `/root/backups`.

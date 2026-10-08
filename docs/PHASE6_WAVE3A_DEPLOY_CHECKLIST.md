@@ -1,5 +1,7 @@
 # Hướng dẫn đưa Phase 6 Đợt 3a (trả hàng, hoàn tiền, đổi hàng sản phẩm) lên máy chủ thật
 
+> **ĐÃ TRIỂN KHAI (Chủ báo 2026-10-08, khoảng 21:45 UTC+7):** commit `2076cc58ed7fd062f4b05576a67d8625e325c038`, trước đó `1358725`. Sao lưu `/root/backups/lucyspa-pre-phase6-dot3a-20261008T144015Z.dump`. Năm mục P14-2, P14-3, P14-4, P14-5, P14-15 đã được Chủ duyệt (lưu ý ở Bước 0 không còn hiệu lực). Hướng dẫn dưới đây giữ lại để tham khảo và để quay lại.
+
 Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, theo thứ tự**, trong **cùng một cửa sổ terminal web của iNET** đã đăng nhập vào máy chủ. Mỗi khối có dòng **Mong đợi**; kết quả khác thì **DỪNG, không chạy tiếp, chụp màn hình gửi Claude**. Chỉ làm khi Owner quyết (deploy từng mốc, sau kiểm tra mốc 3a). **Claude không chạm vào máy chủ.**
 
 **Bản sẽ cài:** commit `2076cc58ed7fd062f4b05576a67d8625e325c038` (viết tắt `2076cc5`), đã push lên `main`, **CI xanh** (2026-10-08). Các commit tài liệu đẩy sau đó (kể cả commit điền mã này) **không** được cài và không đổi mã chạy.
