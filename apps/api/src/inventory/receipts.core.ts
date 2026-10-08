@@ -9,11 +9,13 @@ import type {
   StockReceiptVersionRequest,
 } from '@lucy-spa/contracts';
 import { appendOutboxEvent, type Prisma } from '@lucy-spa/database';
+import { allocateWaitingLines, lockWaitingOrderLines } from '@lucy-spa/server';
 import { AuthError } from '../auth/auth.error.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
 import { canSeeCost, requireBranch, requireCost } from './inventory.access.js';
 import * as input from './inventory.input.js';
 import { branchToday, isoDate } from './inventory.view.js';
+import { tellMembersGoodsArrived } from '../product-orders/order.notice.js';
 
 /**
  * Phase 6 P6-4: stock receipts (design 4.3, PRD 27.1). `MANAGE_STOCK_RECEIPTS` at the receipt's branch for every command. A receipt
@@ -420,6 +422,10 @@ export async function confirmReceipt(
   const ordered = [...receipt.lines].sort(
     (a, b) => a.variantId.localeCompare(b.variantId) || a.lineNo - b.lineNo,
   );
+  // Phase 6 P6-17 (design 10.2): the pre-order lines that wait for these variants are locked (invoice, then line) BEFORE the first
+  // movement locks a stock level, so a receipt cannot meet a payment or a cancellation of the same invoice in the opposite order.
+  const receivedVariants = ordered.map((line) => line.variantId);
+  await lockWaitingOrderLines(tx, receipt.branchId, receivedVariants);
   for (const line of ordered) {
     const lot = await tx.inventoryLot.create({
       data: {
@@ -447,7 +453,15 @@ export async function confirmReceipt(
       select: { id: true },
     });
   }
-  // Ids and quantities only: no unit cost, no names. The order Wave (pre-orders) allocates arrivals from this event.
+  // The arrival is given to the waiting pre-orders in the same transaction, oldest paid first (T28), and the members are told.
+  const arrived = await allocateWaitingLines(tx, {
+    branchId: receipt.branchId,
+    variantIds: receivedVariants,
+    actorUserId: context.actor.userId,
+    receiptId: id,
+  });
+  await tellMembersGoodsArrived(tx, arrived);
+  // Ids and quantities only: no unit cost, no names.
   await appendOutboxEvent(tx, {
     branchId: receipt.branchId,
     aggregateType: 'StockReceipt',

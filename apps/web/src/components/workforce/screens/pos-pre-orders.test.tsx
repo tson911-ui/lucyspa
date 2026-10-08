@@ -19,6 +19,7 @@ const order = (patch: Partial<ProductOrderResponse> = {}): ProductOrderResponse 
   branchId: 'A',
   status: 'PAID',
   contactPhone: '+84901234567',
+  contactMasked: false,
   contactName: 'Chị Lan',
   customer: null,
   createdAt: '2026-10-08T03:00:00.000Z',
@@ -126,6 +127,7 @@ const ticket = {
   code: 'DT000012',
   status: 'PAID' as const,
   branchName: 'Chi nhánh A',
+  branchTimezone: 'Asia/Ho_Chi_Minh',
   paidAt: '2026-10-08T03:00:00.000Z',
   totalVnd: '400000',
   lines: [

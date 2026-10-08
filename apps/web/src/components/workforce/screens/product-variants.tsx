@@ -4,6 +4,7 @@ import type {
   ProductAccess,
   ProductDetailResponse,
   ProductVariantResponse,
+  SupplierListResponse,
 } from '@lucy-spa/contracts';
 import {
   CheckField,
@@ -17,6 +18,7 @@ import {
   ListSection,
   NumberInput,
   RowActions,
+  Select,
   Textarea,
   TextInput,
   type DataTableColumn,
@@ -53,7 +55,7 @@ import {
 } from '../../../lib/workforce/products';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useWorkforce } from '../session';
-import { Badge, Button, Empty, Notice, useSuccessToast } from '../ui';
+import { Badge, Button, Empty, Notice, useResource, useSuccessToast } from '../ui';
 import { useProductCommand } from './use-product-command';
 
 type Overlay = { kind: 'create' } | { kind: 'edit' | 'price' | 'promo' | 'active'; id: string };
@@ -340,7 +342,7 @@ const issueText = (
   show && issue ? (issue === 'required' ? p.required : p.invalid) : undefined;
 
 function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayProps) {
-  const { t, locale } = useWorkforce();
+  const { api, t, locale } = useWorkforce();
   const p = productDictionary(locale);
   const v = p.variants;
   const access: ProductAccess = product.access;
@@ -351,6 +353,17 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
   const [draft, setDraft] = useState<VariantDraft>(initial);
   const [checked, setChecked] = useState(false);
   const command = useProductCommand(reload);
+  // The usual supplier (OQ-87) is picked among the active suppliers; the one already chosen stays listed even when it was switched off.
+  const suppliers = useResource(
+    () =>
+      draft.sellOnOrder
+        ? api.get<SupplierListResponse>('/api/v1/suppliers')
+        : Promise.resolve(null),
+    [api, draft.sellOnOrder],
+  );
+  const supplierOptions = (suppliers.data?.suppliers ?? [])
+    .filter((supplier) => supplier.isActive || supplier.id === initial.usualSupplierId)
+    .map((supplier) => ({ value: supplier.id, label: supplier.name }));
   const errors = validateVariantDraft(draft, {
     creating,
     prices: access.prices,
@@ -534,6 +547,20 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
                 />
               )}
             </Field>
+          </FormGrid>
+          <FormGrid cols={1}>
+            <Field label={v.supplierField} hint={v.supplierHint} full>
+              {(control) => (
+                <Select
+                  {...control}
+                  value={draft.usualSupplierId}
+                  placeholder={v.supplierNone}
+                  options={supplierOptions}
+                  onChange={(event) => set({ usualSupplierId: event.target.value })}
+                />
+              )}
+            </Field>
+            {suppliers.error ? <Notice tone="warning">{v.supplierLoadFailed}</Notice> : null}
           </FormGrid>
         </>
       ) : null}

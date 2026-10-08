@@ -8,6 +8,7 @@ import type { Prisma } from '@lucy-spa/database';
 import { AuthError } from '../auth/auth.error.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
 import { IdentityValidationError, normalizePhone } from '../auth/identity.js';
+import { maskPhone } from '../operations/operations.state.js';
 
 /**
  * Phase 6 P6-15/P6-16 (design 18.3, 18.4; T28-T32; OQ-29, OQ-34): the goods record of a counter pre-order.
@@ -100,8 +101,14 @@ export function presentProductOrderLine(
   };
 }
 
-/** The staff view of an order (the phone number is shown in full: staff call the customer when the goods arrive, OQ-34). */
-export function presentProductOrder(row: ProductOrderRow): ProductOrderResponse {
+/**
+ * The staff view of an order. The phone number is shown in full to those who sell or work the orders (they call the customer when the
+ * goods arrive, OQ-34) and masked for everyone else who can open the invoice (a reading pending the Owner, like the payer's phone).
+ */
+export function presentProductOrder(
+  row: ProductOrderRow,
+  options: { showContact: boolean } = { showContact: true },
+): ProductOrderResponse {
   const lines = row.lines.map(presentProductOrderLine);
   return {
     id: row.id,
@@ -110,8 +117,9 @@ export function presentProductOrder(row: ProductOrderRow): ProductOrderResponse 
     invoiceCode: row.invoice.code,
     branchId: row.branchId,
     status: productOrderStatus(lines),
-    contactPhone: row.contactPhone,
-    contactName: row.contactName,
+    contactPhone: options.showContact ? row.contactPhone : (maskPhone(row.contactPhone) ?? '•••'),
+    contactMasked: !options.showContact,
+    contactName: options.showContact ? row.contactName : null,
     customer: row.customer ? { id: row.customer.id, displayName: row.customer.fullName } : null,
     createdAt: row.createdAt.toISOString(),
     lines,

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { TicketUnavailable, TicketView } from '../../../../../../components/public/ticket-view';
 import { isLocale } from '../../../../../../i18n/locales';
@@ -25,7 +26,8 @@ export async function generateMetadata({ params }: TicketPageProps): Promise<Met
 export default async function TicketPage({ params }: TicketPageProps) {
   const { locale, token } = await params;
   if (!isLocale(locale)) notFound();
-  const read = await fetchPublicTicket(token);
+  // The visitor's own address goes with the read: the API's public rate limit counts it per address, not the website as a whole.
+  const read = await fetchPublicTicket(token, fetch, (await headers()).get('x-forwarded-for'));
   // A wrong, revoked or unknown token is the same real 404; a failed read is a notice with a way to try again, not a 404.
   if (read.kind === 'missing') notFound();
   if (read.kind === 'error') {

@@ -14,6 +14,7 @@ export const NOTIFICATION_ENTITY_TYPES = [
   'Branch',
   'ProductVariant',
   'ProductReturnCase',
+  'ProductOrder',
 ] as const;
 export type NotificationEntityType = (typeof NOTIFICATION_ENTITY_TYPES)[number];
 
@@ -32,7 +33,8 @@ export type NotificationTargetKind =
   | 'INVOICE'
   | 'BRANCH'
   | 'PRODUCT_VARIANT'
-  | 'PRODUCT_RETURN';
+  | 'PRODUCT_RETURN'
+  | 'PRODUCT_ORDER';
 /** Shape of the structured `params` a type carries. Never free text. */
 export type NotificationParamsKind =
   | 'NONE'
@@ -47,7 +49,8 @@ export type NotificationParamsKind =
   | 'EXPIRY_ALERT'
   | 'EXPIRED_LOT_SOLD'
   | 'PRODUCT_RETURN_OPENED'
-  | 'PRODUCT_REFUND_MADE';
+  | 'PRODUCT_REFUND_MADE'
+  | 'PRODUCT_ORDER_ALERT';
 
 export interface NotificationTypeMetadata {
   readonly category: NotificationCategory;
@@ -72,6 +75,7 @@ export const NOTIFICATION_TARGET_BY_ENTITY = {
   Branch: 'BRANCH',
   ProductVariant: 'PRODUCT_VARIANT',
   ProductReturnCase: 'PRODUCT_RETURN',
+  ProductOrder: 'PRODUCT_ORDER',
 } as const satisfies Record<NotificationEntityType, NotificationTargetKind>;
 
 const operations = (severity: NotificationSeverity, i18nKey: string): NotificationTypeMetadata => ({
@@ -169,9 +173,20 @@ export const NOTIFICATION_TYPE_REGISTRY = {
   PRODUCT_REFUND_MADE: {
     category: 'FINANCE',
     severity: 'ATTENTION',
-    entityTypes: ['ProductReturnCase'],
+    entityTypes: ['ProductReturnCase', 'ProductOrder'],
     i18nKey: 'PRODUCT_REFUND_MADE',
     params: 'PRODUCT_REFUND_MADE',
+  },
+  // Phase 6 P6-17 (OQ-34): the goods of a pre-order arrived. Tells the member (the payer) about the invoice; the order code is the context.
+  PRODUCT_ORDER_ARRIVED: finance('INFO', 'PRODUCT_ORDER_ARRIVED', 'NONE'),
+  // Phase 6 P6-17 (OQ-86, OQ-34): the daily 08:00 alert for the holders of MANAGE_PRODUCT_ORDERS: pre-orders past their expected date and
+  // goods waiting to be collected for more than 7 days (staff call the customer; nothing is cancelled by itself).
+  PRODUCT_ORDER_ALERT: {
+    category: 'OPERATIONS',
+    severity: 'ATTENTION',
+    entityTypes: ['Branch'],
+    i18nKey: 'PRODUCT_ORDER_ALERT',
+    params: 'PRODUCT_ORDER_ALERT',
   },
 } as const satisfies Record<string, NotificationTypeMetadata>;
 
@@ -273,7 +288,8 @@ export interface ProductReturnOpenedParams {
  * line or the money handed back by a cheaper exchange (P6-14).
  */
 export interface ProductRefundMadeParams {
-  source: 'REFUND' | 'EXCHANGE';
+  /** `ORDER_CANCEL`: a pre-order line was cancelled and refunded in full (P6-17); the notice is about the order. */
+  source: 'REFUND' | 'EXCHANGE' | 'ORDER_CANCEL';
   invoiceCode: string;
   sku: string;
   quantity: number;
@@ -281,7 +297,13 @@ export interface ProductRefundMadeParams {
   method: 'CASH' | 'BANK_TRANSFER_MANUAL';
   refundedBy: string;
 }
+/** The daily order alert of a branch: lines past their expected date, and goods that have waited more than 7 days for the customer. */
+export interface ProductOrderAlertParams {
+  lateLines: number;
+  heldLines: number;
+}
 export type NotificationParams =
+  | ProductOrderAlertParams
   | ProductRefundMadeParams
   | ProductReturnOpenedParams
   | ExpiredLotSoldParams
@@ -408,7 +430,7 @@ export function parseNotificationParams(
       const quantity = count('quantity', record['quantity']);
       if (quantity < 1) throw new Error('Notification param quantity must be at least 1.');
       return {
-        source: oneOf('source', record['source'], ['REFUND', 'EXCHANGE'] as const),
+        source: oneOf('source', record['source'], ['REFUND', 'EXCHANGE', 'ORDER_CANCEL'] as const),
         invoiceCode: code('invoiceCode', record['invoiceCode']),
         sku: code('sku', record['sku']),
         quantity,
@@ -416,6 +438,13 @@ export function parseNotificationParams(
         method: oneOf('method', record['method'], ['CASH', 'BANK_TRANSFER_MANUAL'] as const),
         refundedBy: code('refundedBy', record['refundedBy']),
       };
+    }
+    case 'PRODUCT_ORDER_ALERT': {
+      exactKeys(type, record, ['lateLines', 'heldLines']);
+      const lateLines = count('lateLines', record['lateLines']);
+      const heldLines = count('heldLines', record['heldLines']);
+      if (lateLines + heldLines < 1) throw new Error('An order alert reports something.');
+      return { lateLines, heldLines };
     }
     case 'PRODUCT_RETURN_OPENED':
       exactKeys(type, record, ['reason']);

@@ -460,6 +460,16 @@ async function ownVariant(tx: Tx, productId: string, variantId: string) {
 }
 
 /** SKU and barcode are unique across the catalog: a clash names the field. */
+/** The usual supplier of a variant (OQ-87) must be an active supplier; none is allowed. */
+async function requireActiveSupplier(tx: Tx, supplierId: string | null) {
+  if (supplierId === null) return;
+  const supplier = await tx.supplier.findUnique({
+    where: { id: supplierId },
+    select: { isActive: true },
+  });
+  if (!supplier?.isActive) throw new AuthError('VALIDATION_FAILED', 'usualSupplierId');
+}
+
 async function checkIdentifiers(
   tx: Tx,
   sku: string | null,
@@ -499,12 +509,14 @@ export async function createVariant(
       request.sellOnOrder === undefined ? true : input.boolean(request.sellOnOrder, 'sellOnOrder'),
     leadTimeDaysMin: lead?.min ?? null,
     leadTimeDaysMax: lead?.max ?? null,
+    usualSupplierId: input.optionalUuid(request.usualSupplierId, 'usualSupplierId'),
   };
   const order = request.sortOrder === undefined ? null : input.sortOrder(request.sortOrder);
   const price = wantsPrice ? input.positiveMoney(request.listPriceVnd, 'listPriceVnd') : null;
   const costValue = wantsCost ? input.cost(request.costPriceVnd) : undefined;
   const { tx } = context;
   await lockRow(tx, 'products', productId);
+  await requireActiveSupplier(tx, values.usualSupplierId);
   await checkIdentifiers(tx, values.sku, values.barcode, null);
   const next =
     order ??
@@ -579,6 +591,10 @@ export async function editVariant(
       ? undefined
       : input.boolean(request.sellOnOrder, 'sellOnOrder');
   const lead = input.leadTime(request.leadTimeDaysMin, request.leadTimeDaysMax);
+  const usualSupplierId =
+    request.usualSupplierId === undefined
+      ? undefined
+      : input.optionalUuid(request.usualSupplierId, 'usualSupplierId');
   const expected = input.rowVersion(request.expectedRowVersion);
   const costValue = wantsCost ? input.cost(request.costPriceVnd) : undefined;
   const { tx } = context;
@@ -595,6 +611,7 @@ export async function editVariant(
       sellOnOrder: true,
       leadTimeDaysMin: true,
       leadTimeDaysMax: true,
+      usualSupplierId: true,
       sortOrder: true,
       isActive: true,
       rowVersion: true,
@@ -607,6 +624,7 @@ export async function editVariant(
     sellOnOrder: sellOnOrder ?? current.sellOnOrder,
     leadTimeDaysMin: lead ? lead.min : current.leadTimeDaysMin,
     leadTimeDaysMax: lead ? lead.max : current.leadTimeDaysMax,
+    usualSupplierId: usualSupplierId === undefined ? current.usualSupplierId : usualSupplierId,
   };
   const before = pickOf(current, values);
   const storedCost = current.costPriceVnd;
@@ -615,6 +633,9 @@ export async function editVariant(
     return loadDetail(context, productId, access);
   }
   await checkIdentifiers(tx, null, values.barcode, variantId);
+  if (values.usualSupplierId !== current.usualSupplierId) {
+    await requireActiveSupplier(tx, values.usualSupplierId);
+  }
   if (current.isActive && !values.isActive) {
     const product = await tx.product.findUniqueOrThrow({
       where: { id: productId },

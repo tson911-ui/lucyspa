@@ -150,6 +150,11 @@ class VariantCreateDto implements ProductVariantCreateRequest {
   @ValidateIf((_, value) => value !== null)
   @IsInt()
   leadTimeDaysMax?: number | null;
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  usualSupplierId?: string | null;
   @ApiProperty({ required: false }) @IsOptional() @IsInt() sortOrder?: number;
   @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(32) listPriceVnd?: string;
   @ApiProperty({ required: false, nullable: true })
@@ -191,6 +196,11 @@ class VariantEditDto implements ProductVariantEditRequest {
   @ValidateIf((_, value) => value !== null)
   @IsInt()
   leadTimeDaysMax?: number | null;
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  usualSupplierId?: string | null;
   @ApiProperty() @IsInt() sortOrder!: number;
   @ApiProperty() @IsBoolean() isActive!: boolean;
   @ApiProperty({ required: false, nullable: true })

@@ -40,6 +40,7 @@ const product = (
         sellOnOrder: true,
         leadTimeDaysMin: null,
         leadTimeDaysMax: null,
+        usualSupplier: null,
         sortOrder: 0,
         isActive: true,
         rowVersion: 1,

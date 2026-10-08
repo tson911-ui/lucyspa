@@ -39,8 +39,10 @@ export function noticeName(fullName: string): string {
 
 export interface RefundNoticeInput {
   branchId: string;
+  /** The return case, or (for the cancellation of a pre-order line) the order: the notification's entity. */
   caseId: string;
   caseCode: string;
+  entityType?: 'ProductReturnCase' | 'ProductOrder';
   recipients: readonly string[];
   source: ProductRefundMadeParams['source'];
   invoiceCode: string;
@@ -64,7 +66,7 @@ export async function tellOwnerAboutRefund(tx: Tx, input: RefundNoticeInput): Pr
   });
   const outbox = await appendOutboxEvent(tx, {
     branchId: input.branchId,
-    aggregateType: 'ProductReturnCase',
+    aggregateType: input.entityType ?? 'ProductReturnCase',
     aggregateId: input.caseId,
     eventType: 'PRODUCT_REFUND_MADE',
     schemaVersion: 1,
@@ -82,7 +84,7 @@ export async function tellOwnerAboutRefund(tx: Tx, input: RefundNoticeInput): Pr
       sourceEventId: outbox.id,
       branchId: input.branchId,
       type: 'PRODUCT_REFUND_MADE',
-      entityType: 'ProductReturnCase',
+      entityType: input.entityType ?? 'ProductReturnCase',
       entityId: input.caseId,
       contextCode: input.caseCode,
       actionAt: outbox.occurredAt,

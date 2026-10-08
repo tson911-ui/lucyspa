@@ -174,6 +174,10 @@ const vi = {
     preOrderField: 'Cho đặt trước',
     preOrderHint:
       'Bật nếu cửa hàng đặt nhà cung cấp sau khi khách thanh toán. Tắt với hàng cửa hàng giữ sẵn.',
+    supplierField: 'Nhà cung cấp quen thuộc',
+    supplierHint: 'Dùng để gom hàng cần đặt theo nhà cung cấp. Không bắt buộc.',
+    supplierNone: 'Chưa chọn',
+    supplierLoadFailed: 'Không tải được danh sách nhà cung cấp.',
     leadMinField: 'Chờ hàng từ (ngày)',
     leadMaxField: 'Đến (ngày)',
     leadHint:
@@ -510,6 +514,10 @@ const en: Dictionary = {
     preOrderField: 'Allow pre-order',
     preOrderHint:
       'Turn on if the shop orders the item from the supplier after the customer pays. Turn off for items the shop keeps in stock.',
+    supplierField: 'Usual supplier',
+    supplierHint: 'Used to group the goods to order by supplier. Optional.',
+    supplierNone: 'None',
+    supplierLoadFailed: 'The supplier list could not be loaded.',
     leadMinField: 'Waiting time from (days)',
     leadMaxField: 'To (days)',
     leadHint:

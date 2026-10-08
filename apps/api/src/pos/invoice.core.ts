@@ -665,6 +665,13 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     kind: 'BRANCH',
     branchId: row.branchId,
   });
+  // Phase 6 P6-16: the ticket link of a pre-order, and the customer's full phone number, belong to those who sell or work the orders.
+  const orderTicket =
+    sell ||
+    decide(context.actor.graph, 'MANAGE_PRODUCT_ORDERS', {
+      kind: 'BRANCH',
+      branchId: row.branchId,
+    });
   const comboLine = presentComboLine(row);
   const productLines = presentProductLines(row);
   const lines = row.lines
@@ -759,7 +766,9 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     lines,
     comboLine,
     productLines,
-    productOrder: row.productOrder ? presentProductOrder(row.productOrder) : null,
+    productOrder: row.productOrder
+      ? presentProductOrder(row.productOrder, { showContact: orderTicket })
+      : null,
     channel: row.channel,
     shippingFeeVnd: row.shippingFeeVnd.toString(),
     discount,
@@ -802,12 +811,7 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
       cancelNeedsReauth: !draft,
       sellProducts: sell && draft && !combo,
       // Phase 6 P6-16: the ticket link of a pre-order (SELL_PRODUCTS or MANAGE_PRODUCT_ORDERS at the branch), in any status.
-      orderTicket:
-        sell ||
-        decide(context.actor.graph, 'MANAGE_PRODUCT_ORDERS', {
-          kind: 'BRANCH',
-          branchId: row.branchId,
-        }),
+      orderTicket,
     },
   };
 }

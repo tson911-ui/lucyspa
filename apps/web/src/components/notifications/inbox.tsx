@@ -221,9 +221,11 @@ export function NotificationTable({
               ? t.finance.openInvoice
               : item.source.type === 'ProductReturnCase'
                 ? t.returns.openCase
-                : item.source.type === 'ProductVariant' || item.type === 'EXPIRY_ALERT'
-                  ? t.inventory.openStock
-                  : t.open;
+                : item.source.type === 'ProductOrder' || item.type === 'PRODUCT_ORDER_ALERT'
+                  ? t.orders.openOrders
+                  : item.source.type === 'ProductVariant' || item.type === 'EXPIRY_ALERT'
+                    ? t.inventory.openStock
+                    : t.open;
         return href ? (
           <Link className="ls-link" href={href} title={`${open}: ${message}`}>
             {message}

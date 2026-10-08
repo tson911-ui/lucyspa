@@ -54,7 +54,7 @@ export interface OrderReservationFacts {
 export async function productOrderKit(base: Phase6Kit) {
   const k = await productSaleKit(base);
   const { tx } = base;
-  const orders = new ProductOrderService(base.adapter, base.throttle);
+  const orders = new ProductOrderService(base.adapter, base.throttle, base.environment);
   const publicTickets = new PublicProductOrderService(base.adapter);
   const queue = await base.staff(['MANAGE_PRODUCT_ORDERS', 'VIEW_INVENTORY'], {
     branchId: k.A.id,

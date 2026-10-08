@@ -1,12 +1,19 @@
 import type {
   InvoiceResponse,
   PreOrderContactRequest,
+  ProductHandoverToName,
+  ProductOrderCancelCauseName,
+  ProductOrderCancelRequest,
+  ProductOrderHandOverRequest,
   ProductOrderLineStatusName,
+  ProductOrderQueueTab,
+  ProductRefundMethodName,
 } from '@lucy-spa/contracts';
 import type { Locale } from '../../i18n/locales';
 import { productOrdersDictionary } from '../../i18n/product-orders';
 import { ApiError } from './api';
 import { formatDate } from './format';
+import { normalizePage } from './list-view';
 
 /**
  * Counter pre-orders (Phase 6 P6-16/P6-17), the parts that are not drawing: the tone of a status, the expected range as text, the
@@ -109,4 +116,147 @@ export function preOrderErrorText(
   if (error.code === 'PRODUCT_PRE_ORDER_NOT_ALLOWED') return d.PRODUCT_PRE_ORDER_NOT_ALLOWED;
   if (error.code === 'PRE_ORDER_CONTACT_REQUIRED') return d.PRE_ORDER_CONTACT_REQUIRED;
   return null;
+}
+
+// ------------------------------------------------------------------------------------------------- the queue (P6-17)
+
+export const QUEUE_TABS: readonly ProductOrderQueueTab[] = [
+  'TO_ORDER',
+  'ORDERED',
+  'ARRIVED',
+  'DONE',
+  'CANCELLED',
+];
+
+export type QueueListState = { branch: string; tab: string; q: string; page: number };
+
+export const QUEUE_LIST_DEFAULTS: QueueListState = { branch: '', tab: 'TO_ORDER', q: '', page: 1 };
+
+export function normalizeQueueList(state: QueueListState): QueueListState {
+  return {
+    branch: state.branch.slice(0, 64),
+    tab: (QUEUE_TABS as readonly string[]).includes(state.tab) ? state.tab : 'TO_ORDER',
+    q: state.q.slice(0, 80),
+    page: normalizePage(state.page),
+  };
+}
+
+/** Changing the branch, the tab or the search starts again at the first page. */
+export const QUEUE_PAGE_KEYS = ['branch', 'tab', 'q'] as const;
+
+export const queueTab = (value: string): ProductOrderQueueTab =>
+  (QUEUE_TABS as readonly string[]).includes(value) ? (value as ProductOrderQueueTab) : 'TO_ORDER';
+
+// ------------------------------------------------------------------------------------------------- hand over
+
+export const HANDOVER_TARGETS: readonly ProductHandoverToName[] = ['CUSTOMER', 'REPRESENTATIVE'];
+
+export interface HandOverDraft {
+  to: ProductHandoverToName;
+  representative: string;
+  orderCode: string;
+  last4: string;
+  note: string;
+}
+
+export const emptyHandOverDraft = (): HandOverDraft => ({
+  to: 'CUSTOMER',
+  representative: '',
+  orderCode: '',
+  last4: '',
+  note: '',
+});
+
+export type HandOverProblem = 'representative' | 'orderCode' | 'last4';
+
+export function validateHandOver(draft: HandOverDraft): Partial<Record<HandOverProblem, true>> {
+  const problems: Partial<Record<HandOverProblem, true>> = {};
+  if (draft.to === 'REPRESENTATIVE' && draft.representative.trim() === '')
+    problems.representative = true;
+  if (draft.orderCode.trim() === '') problems.orderCode = true;
+  if (!/^[0-9]{4}$/.test(draft.last4.trim())) problems.last4 = true;
+  return problems;
+}
+
+/** The request body, or null while the draft has a problem. The server compares the code and the digits with the order. */
+export function handOverRequest(
+  draft: HandOverDraft,
+  expectedVersion: number,
+): ProductOrderHandOverRequest | null {
+  if (Object.keys(validateHandOver(draft)).length > 0) return null;
+  const note = draft.note.trim();
+  return {
+    expectedVersion,
+    to: draft.to,
+    representativeName: draft.to === 'REPRESENTATIVE' ? draft.representative.trim() : null,
+    orderCode: draft.orderCode.trim(),
+    phoneLast4: draft.last4.trim(),
+    note: note === '' ? null : note,
+  };
+}
+
+// ------------------------------------------------------------------------------------------------- cancel + refund
+
+export const CANCEL_METHODS: readonly ProductRefundMethodName[] = ['CASH', 'BANK_TRANSFER_MANUAL'];
+
+export interface CancelDraft {
+  cause: Exclude<ProductOrderCancelCauseName, 'INVOICE_CANCELLED'> | '';
+  note: string;
+  method: ProductRefundMethodName;
+  bankReference: string;
+}
+
+export const emptyCancelDraft = (): CancelDraft => ({
+  cause: '',
+  note: '',
+  method: 'CASH',
+  bankReference: '',
+});
+
+export type CancelProblem = 'cause' | 'note' | 'bankReference';
+
+export function validateCancel(draft: CancelDraft): Partial<Record<CancelProblem, true>> {
+  const problems: Partial<Record<CancelProblem, true>> = {};
+  if (draft.cause === '') problems.cause = true;
+  if (draft.note.trim() === '') problems.note = true;
+  const reference = draft.bankReference.trim();
+  if (draft.method === 'BANK_TRANSFER_MANUAL' && (reference === '' || [...reference].length > 64)) {
+    problems.bankReference = true;
+  }
+  return problems;
+}
+
+export function cancelRequest(
+  draft: CancelDraft,
+  expectedVersion: number,
+  clientRequestId: string,
+): ProductOrderCancelRequest | null {
+  if (Object.keys(validateCancel(draft)).length > 0 || draft.cause === '') return null;
+  return {
+    expectedVersion,
+    cause: draft.cause,
+    note: draft.note.trim(),
+    method: draft.method,
+    bankReference: draft.method === 'BANK_TRANSFER_MANUAL' ? draft.bankReference.trim() : null,
+    clientRequestId,
+  };
+}
+
+/** True when a command was refused because the line moved on meanwhile: the screen then reloads. */
+export const isQueueConflict = (error: unknown): boolean =>
+  error instanceof ApiError &&
+  (error.code === 'CONFLICT' || error.code === 'ORDER_LINE_STATE_INVALID');
+
+/** The text of a refused queue command; anything else falls back to the caller's message. */
+export function queueErrorText(
+  error: unknown,
+  locale: Locale,
+  fallback: (error: unknown) => string,
+): string {
+  if (error instanceof ApiError) {
+    const known = productOrdersDictionary(locale).queueErrors as Record<string, string>;
+    const text = known[error.code];
+    if (text) return text;
+  }
+  return fallback(error);
 }

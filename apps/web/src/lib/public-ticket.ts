@@ -36,11 +36,12 @@ const isStatus = (value: unknown): value is ProductOrderLineStatusName =>
 /** The shape of the answer, checked field by field; anything else is null. */
 export function parsePublicTicket(body: unknown): ProductOrderTicketPublicResponse | null {
   if (!isObject(body)) return null;
-  const { code, status, branchName, paidAt, totalVnd, lines } = body;
+  const { code, status, branchName, branchTimezone, paidAt, totalVnd, lines } = body;
   if (
     !text(code) ||
     !isStatus(status) ||
     !text(branchName) ||
+    !text(branchTimezone) ||
     !nullableText(paidAt) ||
     !text(totalVnd) ||
     !/^[0-9]+$/.test(totalVnd) ||
@@ -79,7 +80,7 @@ export function parsePublicTicket(body: unknown): ProductOrderTicketPublicRespon
       expectedTo: line['expectedTo'],
     });
   }
-  return { code, status, branchName, paidAt, totalVnd, lines: parsed };
+  return { code, status, branchName, branchTimezone, paidAt, totalVnd, lines: parsed };
 }
 
 export type TicketRead =
@@ -90,13 +91,18 @@ export type TicketRead =
 export async function fetchPublicTicket(
   token: string,
   fetcher: typeof fetch = fetch,
+  /** The visitor's address as the proxy in front of the website reported it; the API counts the read against it. */
+  forwardedFor: string | null = null,
 ): Promise<TicketRead> {
   if (!TICKET_TOKEN.test(token)) return { kind: 'missing' };
   try {
     const response = await fetcher(
       `${apiOrigin()}/api/v1/public/product-order-tickets/${encodeURIComponent(token)}`,
       {
-        headers: { accept: 'application/json' },
+        headers: {
+          accept: 'application/json',
+          ...(forwardedFor ? { 'x-forwarded-for': forwardedFor } : {}),
+        },
         credentials: 'omit',
         signal: AbortSignal.timeout(TICKET_FETCH_TIMEOUT_MS),
         cache: 'no-store',

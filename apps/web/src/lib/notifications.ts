@@ -9,6 +9,9 @@ import type { Locale } from '../i18n/locales';
 import { getNotificationDictionary } from '../i18n/notifications';
 import { canAt } from './workforce/permissions';
 
+/** The days after which arrived goods nobody collected are reported (OQ-34); the API scan uses the same number. */
+const ORDER_HELD_DAYS = 7;
+
 /**
  * Allowlisted internal destinations. The destination API still enforces current authority, and a
  * link is only produced when a real screen exists for the resource:
@@ -30,6 +33,20 @@ export function notificationHref(
       (canAt(account, 'MANAGE_PRODUCT_RETURNS', item.branch.id) ||
         canAt(account, 'REFUND_PRODUCTS', item.branch.id))
       ? `${base}/product-returns/${encodeURIComponent(item.source.id)}`
+      : null;
+  }
+  // A refund notice about a cancelled pre-order line opens that order for those who work the orders or refund at its branch.
+  if (item.source.type === 'ProductOrder') {
+    return item.branch !== null &&
+      (canAt(account, 'MANAGE_PRODUCT_ORDERS', item.branch.id) ||
+        canAt(account, 'REFUND_PRODUCTS', item.branch.id))
+      ? `${base}/product-orders/${encodeURIComponent(item.source.id)}`
+      : null;
+  }
+  // The daily pre-order alert opens the queue of its branch.
+  if (item.source.type === 'Branch' && item.type === 'PRODUCT_ORDER_ALERT') {
+    return item.branch !== null && canAt(account, 'MANAGE_PRODUCT_ORDERS', item.branch.id)
+      ? `${base}/product-orders?branch=${encodeURIComponent(item.branch.id)}`
       : null;
   }
   // A stock alert opens the inventory of its branch (the item page for one variant, the stock list for the daily expiry scan).
@@ -101,8 +118,13 @@ export function notificationMessage(item: NotificationItem, locale: Locale): str
       return fill(params.decision === 'APPROVED' ? t.leave.approved : t.leave.rejected, values);
     }
   }
+  if (item.type === 'PRODUCT_ORDER_ARRIVED' && item.source.type === 'Invoice') {
+    // The notice carries no params: the order code is the context code of the notification.
+    return fill(t.orders.arrived, { code: item.source.code });
+  }
   if (params) {
     return (
+      orderMessage(item, params, locale) ??
       financeMessage(item, params, locale) ??
       inventoryMessage(item, params, locale) ??
       returnMessage(item, params, locale) ??
@@ -114,6 +136,19 @@ export function notificationMessage(item: NotificationItem, locale: Locale): str
 
 const money = (value: string, locale: Locale) =>
   `${new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-US').format(BigInt(value))} ₫`;
+
+/** Pre-order alert (P6-17): counts only, and only what is true (no "0 lines"). */
+function orderMessage(
+  item: NotificationItem,
+  params: NonNullable<NotificationItem['params']>,
+  locale: Locale,
+): string | null {
+  if (item.type !== 'PRODUCT_ORDER_ALERT' || !('lateLines' in params)) return null;
+  const o = getNotificationDictionary(locale).orders;
+  const template =
+    params.heldLines === 0 ? o.alertLateOnly : params.lateLines === 0 ? o.alertHeldOnly : o.alert;
+  return fill(template, { late: params.lateLines, held: params.heldLines, days: ORDER_HELD_DAYS });
+}
 
 /** Finance messages render from validated params only; a missing/unknown shape falls back to the type text. */
 function financeMessage(
@@ -184,7 +219,13 @@ function returnMessage(
 ): string | null {
   const r = getNotificationDictionary(locale).returns;
   if (item.type === 'PRODUCT_REFUND_MADE' && 'refundedBy' in params) {
-    return fill(params.source === 'EXCHANGE' ? r.exchangeRefundMade : r.refundMade, {
+    const template =
+      params.source === 'EXCHANGE'
+        ? r.exchangeRefundMade
+        : params.source === 'ORDER_CANCEL'
+          ? r.orderCancelRefundMade
+          : r.refundMade;
+    return fill(template, {
       amount: money(params.amountVnd, locale),
       method: r.methods[params.method],
       quantity: params.quantity,

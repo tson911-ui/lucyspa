@@ -320,6 +320,99 @@ test(
           'expectedRowVersion',
         );
       });
+
+      await suite.test(
+        'P6-17 usual supplier (OQ-87): optional, an active supplier only, kept when absent, cleared by null, audited',
+        async () => {
+          const make = (name: string, isActive = true) =>
+            tx.supplier.create({
+              data: { name: `${name} ${run}`, isActive },
+              select: { id: true },
+            });
+          const active = await make('NCC chính');
+          const other = await make('NCC phụ');
+          const off = await make('NCC ngừng', false);
+          product = await catalog.createVariant(manager.token, product.id, {
+            ...base,
+            sku: `SUP-${run}-A`,
+            usualSupplierId: active.id,
+          });
+          let variant = variantOf(product, `SUP-${run}-A`);
+          assert.equal(variant.usualSupplier?.id, active.id);
+          assert.match(variant.usualSupplier?.name ?? '', /NCC chính/);
+          await fails(
+            () =>
+              catalog.createVariant(manager.token, product.id, {
+                ...base,
+                sku: `SUP-${run}-B`,
+                usualSupplierId: off.id,
+              }),
+            'VALIDATION_FAILED',
+            'usualSupplierId',
+          );
+          await fails(
+            () =>
+              catalog.createVariant(manager.token, product.id, {
+                ...base,
+                sku: `SUP-${run}-C`,
+                usualSupplierId: 'not-a-uuid',
+              }),
+            'VALIDATION_FAILED',
+            'usualSupplierId',
+          );
+          const edit = (patch: Record<string, unknown>) =>
+            catalog.editVariant(manager.token, product.id, variant.id, {
+              expectedRowVersion: variant.rowVersion,
+              labelVi: variant.labelVi,
+              labelEn: variant.labelEn,
+              barcode: variant.barcode,
+              lowStockThreshold: variant.lowStockThreshold,
+              sortOrder: variant.sortOrder,
+              isActive: variant.isActive,
+              ...patch,
+            } as never);
+          // Absent: unchanged (and nothing is written when nothing changes).
+          product = await edit({});
+          variant = variantOf(product, `SUP-${run}-A`);
+          assert.equal(variant.usualSupplier?.id, active.id);
+          assert.equal(variant.rowVersion, 1, 'no change, no new version');
+          product = await edit({ usualSupplierId: other.id });
+          variant = variantOf(product, `SUP-${run}-A`);
+          assert.equal(variant.usualSupplier?.id, other.id);
+          await fails(
+            () => edit({ usualSupplierId: off.id }),
+            'VALIDATION_FAILED',
+            'usualSupplierId',
+          );
+          product = await edit({ usualSupplierId: null });
+          variant = variantOf(product, `SUP-${run}-A`);
+          assert.equal(variant.usualSupplier, null);
+          // A supplier switched off later stays on the variant that already has it (history is not rewritten).
+          product = await edit({ usualSupplierId: other.id });
+          variant = variantOf(product, `SUP-${run}-A`);
+          await tx.supplier.update({
+            where: { id: other.id },
+            data: { isActive: false, rowVersion: { increment: 1 } },
+          });
+          product = await edit({ sortOrder: variant.sortOrder + 1 });
+          assert.equal(variantOf(product, `SUP-${run}-A`).usualSupplier?.id, other.id);
+          const audit = await tx.auditEvent.findFirst({
+            where: { action: 'PRODUCT_VARIANT_UPDATED', entityId: variant.id },
+            orderBy: { occurredAt: 'desc' },
+          });
+          assert.ok(audit);
+          // Nobody without the catalog permission can set it.
+          await fails(
+            () =>
+              catalog.createVariant(nobody.token, product.id, {
+                ...base,
+                sku: `SUP-${run}-D`,
+                usualSupplierId: active.id,
+              }),
+            'FORBIDDEN',
+          );
+        },
+      );
     });
   },
 );

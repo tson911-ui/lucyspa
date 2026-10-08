@@ -113,7 +113,7 @@ export async function readPublicTicket(
             select: {
               paidAt: true,
               totalVnd: true,
-              branch: { select: { name: true } },
+              branch: { select: { name: true, timezone: true } },
             },
           },
           lines: {
@@ -138,6 +138,7 @@ export async function readPublicTicket(
     code: order.code,
     status: productOrderStatus(order.lines),
     branchName: order.invoice.branch.name,
+    branchTimezone: order.invoice.branch.timezone,
     paidAt: order.invoice.paidAt ? order.invoice.paidAt.toISOString() : null,
     totalVnd: order.invoice.totalVnd.toString(),
     lines: order.lines.map((line) => ({

@@ -17,9 +17,9 @@ import { formatBusinessDate, formatVnd } from '../../lib/customer/invoice';
 import { orderStatusTone } from '../../lib/workforce/product-orders';
 
 /** An instant as the day it names in the shop's time zone (the ticket shows the day of payment, not the second). */
-function paidOn(instant: string, locale: Locale): string {
+function paidOn(instant: string, zone: string, locale: Locale): string {
   return new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
-    timeZone: 'Asia/Ho_Chi_Minh',
+    timeZone: zone,
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -70,7 +70,9 @@ export function TicketView({
                 ),
               },
               { label: p.branch, value: ticket.branchName },
-              ...(ticket.paidAt ? [{ label: p.paidAt, value: paidOn(ticket.paidAt, locale) }] : []),
+              ...(ticket.paidAt
+                ? [{ label: p.paidAt, value: paidOn(ticket.paidAt, ticket.branchTimezone, locale) }]
+                : []),
               { label: p.total, value: formatVnd(ticket.totalVnd, locale) },
             ]}
           />

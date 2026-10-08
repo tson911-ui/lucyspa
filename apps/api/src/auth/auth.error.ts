@@ -165,6 +165,10 @@ const errors = {
     'The stock already covers this product: sell it as an in-stock product',
   ],
   PRE_ORDER_CONTACT_REQUIRED: [400, 'A pre-order needs the customer phone number'],
+  // Phase 6 P6-17: working the orders.
+  ORDER_LINE_STATE_INVALID: [409, 'This order line is not in a state that allows this action'],
+  ORDER_HANDOVER_PROOF_INVALID: [409, 'The order code or the phone digits do not match this order'],
+  ORDER_CANCEL_CAUSE_INVALID: [409, 'This order line cannot be cancelled for that reason now'],
   // Phase 6 P6-5: the Excel/CSV import. The field of IMPORT_FILE_INVALID names the reason (never file content).
   IMPORT_FILE_INVALID: [422, 'The file cannot be imported'],
   IMPORT_JOB_NOT_PREVIEWED: [409, 'Only a previewed import can be applied or cancelled'],

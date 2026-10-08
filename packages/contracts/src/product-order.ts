@@ -93,7 +93,9 @@ export interface ProductOrderResponse {
   invoiceCode: string;
   branchId: string;
   status: ProductOrderLineStatusName;
+  /** In full for those who sell or work the orders; masked (`•••••••567`) for everyone else who can open the invoice. */
   contactPhone: string;
+  contactMasked: boolean;
   contactName: string | null;
   customer: { id: string; displayName: string } | null;
   createdAt: string;
@@ -130,11 +132,189 @@ export interface ProductOrderTicketLinkResponse {
   createdAt: string;
 }
 
+// ------------------------------------------------------------------------------------------------- the queue (P6-17)
+
+/** Who may do what with the order of the screen (the API decides again on every command). */
+export interface ProductOrderLineActions {
+  /** PAID: mark it ordered from the supplier (MANAGE_PRODUCT_ORDERS). */
+  markOrdered: boolean;
+  /** ARRIVED: hand the goods over (MANAGE_PRODUCT_ORDERS). */
+  handOver: boolean;
+  /** The causes a person with REFUND_PRODUCTS may cancel it with now (empty when nothing can be cancelled). */
+  cancelCauses: ProductOrderCancelCauseName[];
+  /** What a cancellation gives back: the net share of the whole line (0 when nothing was paid for it). */
+  refundVnd: string;
+  /** A refund by manual transfer exists: a mistyped reference can be corrected by a new linked record (REFUND_PRODUCTS). */
+  correctReference: boolean;
+}
+
+/** The refund of a cancelled line, shown to those who may refund (the money and the transfer reference are theirs to see). */
+export interface ProductOrderRefundInfo {
+  code: string;
+  amountVnd: string;
+  method: 'CASH' | 'BANK_TRANSFER_MANUAL';
+  /** The reference as last corrected; null for cash. */
+  bankReference: string | null;
+  corrections: number;
+  refundedAt: string;
+}
+
+export interface ProductOrderDetailLine extends ProductOrderLineResponse {
+  actions: ProductOrderLineActions;
+  refund: ProductOrderRefundInfo | null;
+  /** When the goods arrived more than 7 days ago and have not been collected: staff call the customer (OQ-34). */
+  heldTooLong: boolean;
+  /** Past the expected date and the goods have not arrived (OQ-86). */
+  late: boolean;
+}
+
+/** GET /api/v1/product-orders/:id (SELL_PRODUCTS, MANAGE_PRODUCT_ORDERS or REFUND_PRODUCTS at the branch). */
+export interface ProductOrderDetailResponse extends Omit<ProductOrderResponse, 'lines'> {
+  lines: ProductOrderDetailLine[];
+  invoiceStatus: 'PENDING_PAYMENT' | 'PAID' | 'CANCELLED';
+  can: { work: boolean; refund: boolean; ticketLink: boolean };
+}
+
+export type ProductOrderQueueTab = 'TO_ORDER' | 'ORDERED' | 'ARRIVED' | 'DONE' | 'CANCELLED';
+export const PRODUCT_ORDER_QUEUE_PAGE_SIZE = 20;
+
+export interface ProductOrderQueueRow {
+  lineId: string;
+  orderId: string;
+  orderCode: string;
+  invoiceId: string;
+  invoiceCode: string;
+  customerName: string | null;
+  contactPhone: string;
+  contactName: string | null;
+  variantId: string;
+  sku: string;
+  nameVi: string;
+  nameEn: string;
+  variantLabelVi: string | null;
+  variantLabelEn: string | null;
+  quantity: number;
+  status: ProductOrderLineStatusName;
+  paidAt: string | null;
+  expectedFrom: string | null;
+  expectedTo: string | null;
+  orderedAt: string | null;
+  arrivedAt: string | null;
+  late: boolean;
+  heldTooLong: boolean;
+  supplier: { id: string; name: string } | null;
+  rowVersion: number;
+}
+
+/** GET /api/v1/product-orders?branchId&tab&q&page (MANAGE_PRODUCT_ORDERS at the branch): 20 lines a page, oldest paid first. */
+export interface ProductOrderQueueResponse {
+  tab: ProductOrderQueueTab;
+  rows: ProductOrderQueueRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  /** One number per tab, so the tabs can say how much waits (shown in the table's own line, never next to a heading). */
+  counts: Record<ProductOrderQueueTab, number>;
+}
+
+/** One variant the shop has to order: the paid lines that wait for it, with the supplier it is usually ordered from (OQ-87). */
+export interface ProductOrderToOrderGroup {
+  variantId: string;
+  sku: string;
+  nameVi: string;
+  nameEn: string;
+  variantLabelVi: string | null;
+  variantLabelEn: string | null;
+  supplier: { id: string; name: string } | null;
+  totalQuantity: number;
+  lines: {
+    lineId: string;
+    orderCode: string;
+    quantity: number;
+    paidAt: string;
+    expectedFrom: string | null;
+    expectedTo: string | null;
+    rowVersion: number;
+  }[];
+}
+
+/** GET /api/v1/product-orders/to-order?branchId (MANAGE_PRODUCT_ORDERS): grouped by supplier (those without one last), then by product. */
+export interface ProductOrderToOrderResponse {
+  groups: ProductOrderToOrderGroup[];
+}
+
+/** POST /api/v1/product-orders/mark-ordered: the lines of one group (or one line) the shop has just ordered from the supplier. */
+export interface ProductOrderMarkOrderedRequest {
+  lines: { id: string; rowVersion: number }[];
+  note?: string | null;
+}
+
+/**
+ * POST /api/v1/product-orders/lines/:id/hand-over (MANAGE_PRODUCT_ORDERS): the goods of an ARRIVED line leave the shop. The person
+ * collecting says the order code and the last four digits of the phone number (OQ-85); the server compares them with the order and
+ * keeps neither the digits nor the answer. A representative is named. The stock leaves through the stock-sale consumer (T31).
+ */
+export interface ProductOrderHandOverRequest {
+  expectedVersion: number;
+  to: ProductHandoverToName;
+  representativeName?: string | null;
+  orderCode: string;
+  phoneLast4: string;
+  note?: string | null;
+}
+
+/**
+ * POST /api/v1/product-orders/lines/:id/cancel (REFUND_PRODUCTS, a fresh password when money is given back): cancels a paid line with a
+ * cause (OQ-32) and refunds its whole net share by cash or manual transfer; the goods held for it are released.
+ */
+export interface ProductOrderCancelRequest {
+  expectedVersion: number;
+  cause: Exclude<ProductOrderCancelCauseName, 'INVOICE_CANCELLED'>;
+  note: string;
+  method: 'CASH' | 'BANK_TRANSFER_MANUAL';
+  bankReference: string | null;
+  clientRequestId: string;
+}
+
+/** POST /api/v1/product-orders/lines/:id/reference-correction (REFUND_PRODUCTS): a new linked record; the refund itself never changes. */
+export interface ProductOrderCorrectReferenceRequest {
+  bankReference: string;
+  reason: string;
+}
+
+/** GET /api/v1/product-orders/context: the branches the caller may work the orders in and what they may do there. */
+export interface ProductOrderContextResponse {
+  branches: {
+    id: string;
+    code: string;
+    name: string;
+    /** MANAGE_PRODUCT_ORDERS: the queue, mark ordered, hand over, allocate. */
+    work: boolean;
+    /** REFUND_PRODUCTS: cancel a line and refund it. */
+    refund: boolean;
+  }[];
+}
+
+export interface ProductOrderMarkOrderedResponse {
+  ordered: number;
+}
+
+/** POST /api/v1/product-orders/allocate (MANAGE_PRODUCT_ORDERS): give free stock to the waiting lines now. */
+export interface ProductOrderAllocateRequest {
+  branchId: string;
+  variantId?: string;
+}
+export interface ProductOrderAllocateResponse {
+  allocated: number;
+}
+
 /** GET /api/v1/public/product-order-tickets/:token: the read-only ticket. No phone number, no address, no other order. */
 export interface ProductOrderTicketPublicResponse {
   code: string;
   status: ProductOrderLineStatusName;
   branchName: string;
+  /** The IANA zone of the branch: the day of payment is read in it. */
+  branchTimezone: string;
   paidAt: string | null;
   totalVnd: string;
   lines: {

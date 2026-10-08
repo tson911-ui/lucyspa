@@ -199,6 +199,14 @@ export {
   type LowStockOutcome,
 } from './inventory-alerts.js';
 export {
+  ORDER_ALERT_AGGREGATE,
+  ORDER_ALERT_EVENT,
+  ORDER_ALERT_PERMISSION,
+  ORDER_HELD_DAYS,
+  ORDER_SCAN_LOCAL_TIME,
+  runOrderScan,
+} from './order-alerts.js';
+export {
   ProviderRejectedError,
   ProviderUnavailableError,
   type NotificationCheck,

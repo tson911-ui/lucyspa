@@ -267,6 +267,11 @@ test(
           assert.equal(ticket.code, sale.order.code);
           assert.equal(ticket.status, 'PAID');
           assert.equal(ticket.branchName, 'Chi nhánh A');
+          assert.equal(
+            ticket.branchTimezone,
+            'Asia/Ho_Chi_Minh',
+            'the day of payment is read in the branch zone',
+          );
           assert.equal(ticket.totalVnd, sale.invoice.totalVnd);
           assert.equal(ticket.lines.length, 1);
           assert.equal(ticket.lines[0]!.quantity, 2);

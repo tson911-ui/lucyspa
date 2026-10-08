@@ -3,6 +3,7 @@ import {
   pendingLowStockAlerts,
   processLowStockAlert,
   runExpiryScan,
+  runOrderScan,
   type createLogger,
 } from '@lucy-spa/server';
 
@@ -34,7 +35,7 @@ export async function relayLowStockAlerts(
 
 /**
  * In-app stock alerts (design 4.6, P6-T16): the low-stock alerts written by the movement trigger, and the daily branch-local
- * expiry scan. One loop, no BullMQ, email or delivery table; independent of every other relay (it never reads `published_at`).
+ * expiry scan, plus the daily branch-local scan of the pre-orders (P6-17: late lines and goods nobody collected). One loop, no BullMQ, email or delivery table; independent of every other relay (it never reads `published_at`).
  */
 export function startInventoryAlerts(database: DatabaseClient, logger: Logger) {
   const failure = (error: unknown) =>
@@ -52,6 +53,7 @@ export function startInventoryAlerts(database: DatabaseClient, logger: Logger) {
     running = (async () => {
       try {
         await runExpiryScan(database);
+        await runOrderScan(database);
         await relayLowStockAlerts(database, outcome, failure);
       } catch (error) {
         failure(error);

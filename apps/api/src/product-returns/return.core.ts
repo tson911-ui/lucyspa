@@ -156,6 +156,15 @@ export async function lookupInvoice(
     _sum: { quantity: true },
   });
   const claimedBy = new Map(claimed.map((row) => [row.invoiceLineId, row._sum.quantity ?? 0]));
+  // A pre-order line has something to return only once its goods were handed over and sold; its window starts at the hand-over.
+  const preOrders = new Map(
+    (
+      await context.tx.productOrderLine.findMany({
+        where: { invoiceId: invoice.id },
+        select: { invoiceLineId: true, status: true, handedOverAt: true },
+      })
+    ).map((row) => [row.invoiceLineId, row]),
+  );
   return {
     invoice: {
       id: invoice.id,
@@ -166,6 +175,10 @@ export async function lookupInvoice(
     lines: invoice.lines.flatMap((line) => {
       const detail = line.productDetails[0];
       if (!detail || line.quantity === null) return [];
+      const preOrder = preOrders.get(line.id);
+      if (preOrder && (preOrder.status !== 'COMPLETED' || preOrder.handedOverAt === null))
+        return [];
+      const since = preOrder?.handedOverAt ?? paidAt;
       const claimedQuantity = claimedBy.get(line.id) ?? 0;
       return [
         {
@@ -180,7 +193,7 @@ export async function lookupInvoice(
           claimedQuantity,
           availableQuantity: Math.max(0, line.quantity - claimedQuantity),
           reasons: Object.fromEntries(
-            RETURN_REASONS.map((reason) => [reason, windowStatus(reason, paidAt, context.now)]),
+            RETURN_REASONS.map((reason) => [reason, windowStatus(reason, since, context.now)]),
           ) as ProductReturnLookupResponse['lines'][number]['reasons'],
         },
       ];
@@ -527,7 +540,16 @@ export async function openCase(
   if (reason === 'PERSONAL_PREFERENCE' && sealIntact !== true) {
     throw new AuthError('RETURN_SEAL_REQUIRED', 'sealIntact');
   }
-  const handoverAt = invoice.paidAt;
+  // The window runs from the hand-over of the goods. For a pre-order line that is the day the goods left the shop, and the line has a
+  // case only once it is COMPLETED (the database guard says the same); for a line sold from stock it is the payment.
+  const preOrder = await tx.productOrderLine.findUnique({
+    where: { invoiceLineId },
+    select: { status: true, handedOverAt: true },
+  });
+  if (preOrder && (preOrder.status !== 'COMPLETED' || preOrder.handedOverAt === null)) {
+    throw new AuthError('RETURN_NOT_ELIGIBLE');
+  }
+  const handoverAt = preOrder?.handedOverAt ?? invoice.paidAt;
   const windowOpen = windowStatus(reason, handoverAt, context.now).open;
   // The Owner alone may open a case after its window, with a written reason (P6-12 follow-up, 2026-10-08). The reason is refused when
   // it is not needed (the window is open) or not allowed (anyone but the Owner), so the record never claims an exception that was not one.

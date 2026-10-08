@@ -694,7 +694,7 @@ test('Phase 6 P6-15 product orders, order-line reservations and their guards (al
               await rejects(
                 () =>
                   exec(
-                    `UPDATE product_order_lines SET status = 'CANCELLED', cancel_cause = 'SUPPLIER_CANNOT_DELIVER' WHERE id = '${sale.orderLine}'::uuid`,
+                    `UPDATE product_order_lines SET status = 'CANCELLED', cancel_cause = 'CUSTOMER_CHANGED_MIND' WHERE id = '${sale.orderLine}'::uuid`,
                   ),
                 /product_order_lines_facts/,
               );
@@ -702,13 +702,13 @@ test('Phase 6 P6-15 product orders, order-line reservations and their guards (al
               await rejects(
                 () =>
                   exec(
-                    `UPDATE product_order_lines SET status = 'CANCELLED', cancel_cause = 'SUPPLIER_CANNOT_DELIVER',
+                    `UPDATE product_order_lines SET status = 'CANCELLED', cancel_cause = 'CUSTOMER_CHANGED_MIND',
                      cancelled_by_user_id = '${actor}'::uuid, cancel_note = 'NCC hết hàng' WHERE id = '${sale.orderLine}'::uuid`,
                   ),
                 /follow its status/,
               );
               await exec(
-                `UPDATE product_order_lines SET status = 'CANCELLED', cancel_cause = 'SUPPLIER_CANNOT_DELIVER',
+                `UPDATE product_order_lines SET status = 'CANCELLED', cancel_cause = 'CUSTOMER_CHANGED_MIND',
                  cancelled_by_user_id = '${actor}'::uuid, cancel_note = 'NCC hết hàng' WHERE id = '${sale.orderLine}'::uuid`,
               );
               await exec(
@@ -839,6 +839,48 @@ test('Phase 6 P6-15 product orders, order-line reservations and their guards (al
                  'REFUND', 1, true, '${handover}'::timestamptz, ${paidSeq}, '${handover}'::timestamptz + interval '168 hours',
                  '${actor}'::uuid, '${randomUUID()}'::uuid)`,
               );
+            },
+          );
+
+          // ============================================================ the cancellation causes
+          await context.test(
+            'a cancellation cause fits the state of the line (OQ-32), and lateness needs more than 7 days past the expected date',
+            async () => {
+              const cancel = (id: string, cause: string) =>
+                exec(
+                  `UPDATE product_order_lines SET status = 'CANCELLED', cancel_cause = '${cause}'::"ProductOrderCancelCause",
+                     cancelled_by_user_id = '${actor}'::uuid, cancel_note = 'ghi chú' WHERE id = '${id}'::uuid`,
+                );
+              const ordered = async () => {
+                const sale = await preOrder(preOrdered, 1);
+                await pay(sale.invoice, 200_000);
+                return sale;
+              };
+              const markOrdered = (id: string) =>
+                exec(
+                  `UPDATE product_order_lines SET status = 'ORDERED', ordered_by_user_id = '${actor}'::uuid WHERE id = '${id}'::uuid`,
+                );
+              // Before the supplier order: only for a line that was not ordered.
+              const fresh = await ordered();
+              await markOrdered(fresh.orderLine);
+              await rejects(
+                () => cancel(fresh.orderLine, 'CUSTOMER_CANCELLED_BEFORE_ORDERING'),
+                /only for a line that was not ordered yet/,
+              );
+              // A change of mind is for a line that was ordered (or arrived), not one that is only paid.
+              const paidOnly = await ordered();
+              await rejects(
+                () => cancel(paidOnly.orderLine, 'CUSTOMER_CHANGED_MIND'),
+                /for an ordered or arrived line/,
+              );
+              // The supplier cannot deliver: PAID or ORDERED, never arrived.
+              await rejects(
+                () => cancel(paidOnly.orderLine, 'LATE_OVER_7_DAYS'),
+                /more than 7 days after its expected date/,
+              );
+              // A paid line the supplier cannot deliver is cancelled with the right cause (the refund follows in the API command).
+              await cancel(paidOnly.orderLine, 'SUPPLIER_CANNOT_DELIVER');
+              assert.equal((await lineState(paidOnly.orderLine)).status, 'CANCELLED');
             },
           );
 

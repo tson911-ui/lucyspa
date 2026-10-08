@@ -53,6 +53,7 @@ model Branch {
   productExchanges        ProductExchange[]            @relation("ProductExchangeBranch")
   productOrders           ProductOrder[]               @relation("ProductOrderBranch")
   productOrderLines       ProductOrderLine[]           @relation("ProductOrderLineBranch")
+  productOrderScans       ProductOrderScan[]           @relation("ProductOrderScanBranch")
   inventoryLots           InventoryLot[]               @relation("InventoryLotBranch")
   stockLevels             StockLevel[]                 @relation("StockLevelBranch")
   inventoryLowStockAlerts InventoryLowStockAlert[]     @relation("LowStockAlertBranch")
@@ -3308,6 +3309,9 @@ model ProductVariant {
   movements         StockMovement[]
   exchangeReplacements ProductExchange[] @relation("ProductExchangeReplacement")
   productOrderLines    ProductOrderLine[] @relation("ProductOrderLineVariant")
+  /// Phase 6 P6-17 (OQ-87): the supplier the "cần đặt" list groups this variant under (optional).
+  usualSupplierId      String?            @map("usual_supplier_id") @db.Uuid
+  usualSupplier        Supplier?          @relation("VariantUsualSupplier", fields: [usualSupplierId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([productId, sortOrder], map: "product_variants_product_idx")
   @@map("product_variants")
@@ -3450,6 +3454,7 @@ model Supplier {
   createdAt   DateTime       @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime       @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   receipts    StockReceipt[]
+  usualFor    ProductVariant[] @relation("VariantUsualSupplier")
 
   @@map("suppliers")
 }
@@ -3810,12 +3815,15 @@ model ProductRefund {
   invoiceLineId           String               @map("invoice_line_id") @db.Uuid
   line                    InvoiceLine          @relation("ProductRefundLine", fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "product_refunds_line_fkey")
   productLine             InvoiceLineProduct   @relation("ProductRefundProductLine", fields: [invoiceLineId], references: [invoiceLineId], onDelete: Restrict, onUpdate: Restrict, map: "product_refunds_product_line_fkey")
-  returnCaseId            String               @map("return_case_id") @db.Uuid
-  returnCase              ProductReturnCase    @relation(fields: [returnCaseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// A refund follows an accepted return case OR the cancellation of a pre-order line (P6-17); exactly one of the two is set.
+  returnCaseId            String?              @map("return_case_id") @db.Uuid
+  returnCase              ProductReturnCase?   @relation(fields: [returnCaseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  orderLineId             String?              @unique(map: "product_refunds_order_line_key") @map("order_line_id") @db.Uuid
+  orderLine               ProductOrderLine?    @relation("ProductOrderLineRefund", fields: [orderLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// The paid episode of the invoice the refund belongs to.
   paidSeq                 Int                  @map("paid_seq")
   /// 1, 2, ... within the case; names the returned lot.
-  caseOrdinal             Int                  @map("case_ordinal")
+  caseOrdinal             Int?                 @map("case_ordinal")
   quantity                Int
   amountVnd               BigInt               @map("amount_vnd")
   /// Running totals after this refund: units and money of the line, money of the whole invoice (the Beauty side).
@@ -4075,6 +4083,7 @@ model ProductOrderLine {
   createdAt           DateTime                @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   updatedAt           DateTime                @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   events              ProductOrderEvent[]
+  refund              ProductRefund?          @relation("ProductOrderLineRefund")
 
   @@index([orderId], map: "product_order_lines_order_idx")
   @@index([invoiceId], map: "product_order_lines_invoice_idx")
@@ -4114,4 +4123,18 @@ model ProductOrderTicket {
 
   @@index([orderId, createdAt], map: "product_order_tickets_order_idx")
   @@map("product_order_tickets")
+}
+
+/// Phase 6 P6-17 (OQ-86, OQ-34): one row per branch and branch-local day once the 08:00 order alert was looked at (the claim of the scan).
+model ProductOrderScan {
+  branchId     String   @map("branch_id") @db.Uuid
+  branch       Branch   @relation("ProductOrderScanBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  businessDate DateTime @map("business_date") @db.Date
+  lateLines    Int      @map("late_lines")
+  heldLines    Int      @map("held_lines")
+  outcome      String
+  scannedAt    DateTime @default(dbgenerated("clock_timestamp()")) @map("scanned_at") @db.Timestamptz(3)
+
+  @@id([branchId, businessDate])
+  @@map("product_order_scans")
 }

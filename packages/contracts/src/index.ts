@@ -3851,6 +3851,8 @@ export interface ProductVariantResponse {
   /** This variant's own waiting time in days (both set or both null); null means the settings default applies. */
   leadTimeDaysMin: number | null;
   leadTimeDaysMax: number | null;
+  /** The supplier the shop usually orders this variant from (OQ-87): it groups the "cần đặt" list. Null when none is set. */
+  usualSupplier: { id: string; name: string } | null;
   sortOrder: number;
   isActive: boolean;
   rowVersion: number;
@@ -3942,6 +3944,8 @@ export interface ProductVariantCreateRequest {
   /** Both or neither (1 to 90 days, min <= max); absent or null means the settings default. */
   leadTimeDaysMin?: number | null;
   leadTimeDaysMax?: number | null;
+  /** An active supplier; absent or null means none. */
+  usualSupplierId?: string | null;
   sortOrder?: number;
   listPriceVnd?: string;
   costPriceVnd?: string | null;
@@ -3959,6 +3963,8 @@ export interface ProductVariantEditRequest {
   /** Both together, or both null to fall back to the settings default; absent leaves them unchanged. */
   leadTimeDaysMin?: number | null;
   leadTimeDaysMax?: number | null;
+  /** Absent leaves it unchanged; null clears it. */
+  usualSupplierId?: string | null;
   sortOrder: number;
   isActive: boolean;
   costPriceVnd?: string | null;

@@ -414,6 +414,8 @@ export interface VariantDraft {
   /** The variant's own waiting time in days; both empty means the settings default. */
   leadMin: string;
   leadMax: string;
+  /** The supplier this variant is usually ordered from (OQ-87); empty means none. */
+  usualSupplierId: string;
   sortOrder: string;
   listPrice: string;
   cost: string;
@@ -431,6 +433,7 @@ export const emptyVariantDraft = (): VariantDraft => ({
   sellOnOrder: true,
   leadMin: '',
   leadMax: '',
+  usualSupplierId: '',
   sortOrder: '0',
   listPrice: '',
   cost: '',
@@ -446,6 +449,7 @@ export const draftFromVariant = (variant: ProductVariantResponse): VariantDraft 
   sellOnOrder: variant.sellOnOrder,
   leadMin: variant.leadTimeDaysMin === null ? '' : String(variant.leadTimeDaysMin),
   leadMax: variant.leadTimeDaysMax === null ? '' : String(variant.leadTimeDaysMax),
+  usualSupplierId: variant.usualSupplier?.id ?? '',
   sortOrder: String(variant.sortOrder),
   listPrice: '',
   cost: variant.costPriceVnd ?? '',
@@ -549,6 +553,7 @@ export function variantCreateRequest(
     lowStockThreshold: optionalNumber(draft.threshold),
     sellOnOrder: draft.sellOnOrder,
     ...leadTimeKeys(draft),
+    ...(draft.usualSupplierId !== '' ? { usualSupplierId: draft.usualSupplierId } : {}),
     sortOrder: wholeNumber(draft.sortOrder, 100_000)!,
     ...(price ? { listPriceVnd: price } : {}),
     ...(access.cost && draft.cost.trim() !== '' ? { costPriceVnd: vndAmount(draft.cost, 0)! } : {}),
@@ -579,6 +584,10 @@ export function variantEditRequest(
     lowStockThreshold: optionalNumber(draft.threshold),
     sellOnOrder: draft.sellOnOrder,
     ...leadTimeKeys(draft),
+    // Sent only when it changed (an absent key keeps the stored supplier; null clears it).
+    ...(draft.usualSupplierId !== (variant.usualSupplier?.id ?? '')
+      ? { usualSupplierId: draft.usualSupplierId === '' ? null : draft.usualSupplierId }
+      : {}),
     sortOrder: wholeNumber(draft.sortOrder, 100_000)!,
     isActive: draft.isActive,
     ...(costChanged

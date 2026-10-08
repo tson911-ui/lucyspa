@@ -97,6 +97,15 @@ test('product order HTTP: guards, exact fields, no-store ticket, stable codes', 
     .useValue({
       createTicketLink: answer('createTicketLink', { token: 'a'.repeat(43), createdAt: 'now' }),
       revokeTicketLink: answer('revokeTicketLink'),
+      context: answer('context', { branches: [] }),
+      list: answer('list', { rows: [] }),
+      toOrder: answer('toOrder', { groups: [] }),
+      get: answer('get', { id: 'o' }),
+      markOrdered: answer('markOrdered', { ordered: 1 }),
+      handOver: answer('handOver'),
+      cancelLine: answer('cancelLine'),
+      correctReference: answer('correctReference'),
+      allocate: answer('allocate', { allocated: 0 }),
     })
     .overrideProvider(PublicProductOrderService)
     .useValue({ ticket: answer('ticket', { code: 'DT000001' }) })
@@ -187,6 +196,95 @@ test('product order HTTP: guards, exact fields, no-store ticket, stable codes', 
     assert.deepEqual(calls.at(-1)?.slice(0, 3), ['revokeTicketLink', token, orderId]);
     for (const verb of ['get', 'put', 'patch', 'delete'] as const) {
       await request(server)[verb](link).set(headers).send({}).expect(404);
+    }
+
+    // P6-17: the queue reads need only the session; every write also needs the Origin and the CSRF token and takes exact fields only.
+    const lineId = randomUUID();
+    const branchId = randomUUID();
+    await request(server).get(`/api/v1/product-orders/context`).set({ Cookie: cookie }).expect(200);
+    await request(server)
+      .get(`/api/v1/product-orders?branchId=${branchId}&tab=ARRIVED&q=abc&page=2`)
+      .set({ Cookie: cookie })
+      .expect(200);
+    assert.deepEqual(calls.at(-1)?.slice(0, 2), ['list', token]);
+    assert.equal((calls.at(-1)![2] as { page: number }).page, 2, 'the page arrives as a number');
+    await request(server)
+      .get(`/api/v1/product-orders?tab=ARRIVED`)
+      .set({ Cookie: cookie })
+      .expect(400);
+    await request(server)
+      .get(`/api/v1/product-orders?branchId=${branchId}&page=0`)
+      .set({ Cookie: cookie })
+      .expect(400);
+    await request(server)
+      .get(`/api/v1/product-orders/to-order?branchId=${branchId}`)
+      .set({ Cookie: cookie })
+      .expect(200);
+    await request(server)
+      .get(`/api/v1/product-orders/${orderId}`)
+      .set({ Cookie: cookie })
+      .expect(200);
+    assert.deepEqual(calls.at(-1)?.slice(0, 3), ['get', token, orderId]);
+    await request(server).get(`/api/v1/product-orders`).expect(400);
+
+    const writes: [string, object][] = [
+      [
+        '/api/v1/product-orders/mark-ordered',
+        { lines: [{ id: lineId, rowVersion: 2 }], note: 'Đã gọi nhà cung cấp' },
+      ],
+      [
+        `/api/v1/product-orders/lines/${lineId}/hand-over`,
+        { expectedVersion: 3, to: 'CUSTOMER', orderCode: 'DT000012', phoneLast4: '4567' },
+      ],
+      [
+        `/api/v1/product-orders/lines/${lineId}/cancel`,
+        {
+          expectedVersion: 3,
+          cause: 'SUPPLIER_CANNOT_DELIVER',
+          note: 'Hết hàng',
+          method: 'CASH',
+          bankReference: null,
+          clientRequestId: randomUUID(),
+        },
+      ],
+      [
+        `/api/v1/product-orders/lines/${lineId}/reference-correction`,
+        { bankReference: 'FT0002', reason: 'Gõ nhầm' },
+      ],
+      ['/api/v1/product-orders/allocate', { branchId }],
+    ];
+    for (const [path, body] of writes) {
+      const before = calls.length;
+      await request(server).post(path).set({ Cookie: cookie }).send(body).expect(403);
+      await request(server).post(path).send(body).expect(403);
+      assert.equal(calls.length, before, `${path} is guarded`);
+      await request(server).post(path).set(headers).send(body).expect(200);
+      assert.equal(calls.length, before + 1, `${path} reaches the service`);
+      // Only the contract's fields are accepted.
+      await request(server)
+        .post(path)
+        .set(headers)
+        .send({ ...body, status: 'COMPLETED' })
+        .expect(400);
+      assert.equal(calls.length, before + 1, `${path} refuses an unknown field`);
+    }
+    for (const [path, patch] of [
+      ['/api/v1/product-orders/mark-ordered', { lines: [] }],
+      ['/api/v1/product-orders/mark-ordered', { lines: [{ id: lineId }] }],
+      [`/api/v1/product-orders/lines/${lineId}/hand-over`, { to: 'SOMEONE' }],
+      [`/api/v1/product-orders/lines/${lineId}/hand-over`, { expectedVersion: 0 }],
+      [`/api/v1/product-orders/lines/${lineId}/cancel`, { cause: 'INVOICE_CANCELLED' }],
+      [`/api/v1/product-orders/lines/${lineId}/cancel`, { method: 'CARD' }],
+      [`/api/v1/product-orders/lines/${lineId}/cancel`, { bankReference: 7 }],
+    ] as const) {
+      const base = writes.find(([candidate]) => candidate === path)![1];
+      const before = calls.length;
+      await request(server)
+        .post(path)
+        .set(headers)
+        .send({ ...base, ...patch })
+        .expect(400);
+      assert.equal(calls.length, before, `${path} refuses ${JSON.stringify(patch)}`);
     }
 
     // The public ticket needs no session, no Origin and no CSRF; it is never cached or indexed.

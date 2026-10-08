@@ -163,6 +163,7 @@ export type NavKey =
   | 'import'
   | 'discounts'
   | 'loyalty'
+  | 'productOrders'
   | 'productReturns'
   | 'skills'
   | 'employees'
@@ -284,6 +285,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'loyalty',
       group: 'sales',
       path: '/loyalty',
+    },
+    // Phase 6 P6-17: pre-ordered goods (branch MANAGE_PRODUCT_ORDERS to work the queue, REFUND_PRODUCTS to cancel and refund a line).
+    (canAnywhere(account, 'MANAGE_PRODUCT_ORDERS') || canAnywhere(account, 'REFUND_PRODUCTS')) && {
+      key: 'productOrders',
+      group: 'sales',
+      path: '/product-orders',
     },
     // Phase 6 P6-12: product return cases (branch MANAGE_PRODUCT_RETURNS to work on them, REFUND_PRODUCTS to see and decide skin cases).
     (canAnywhere(account, 'MANAGE_PRODUCT_RETURNS') || canAnywhere(account, 'REFUND_PRODUCTS')) && {

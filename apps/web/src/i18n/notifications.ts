@@ -21,9 +21,19 @@ interface ReturnTexts {
   opened: string;
   refundMade: string;
   exchangeRefundMade: string;
+  orderCancelRefundMade: string;
   methods: Record<'CASH' | 'BANK_TRANSFER_MANUAL', string>;
   reasons: Record<'PERSONAL_PREFERENCE' | 'WRONG_OR_DAMAGED' | 'SKIN_IRRITATION', string>;
   openCase: string;
+}
+
+/** Pre-order notice templates (Phase 6 P6-17): the order code and counts only, never a name, a phone number or free text. */
+interface OrderTexts {
+  arrived: string;
+  alert: string;
+  alertLateOnly: string;
+  alertHeldOnly: string;
+  openOrders: string;
 }
 
 /** Stock alert templates (Phase 6 P6-4): counts and the SKU only, never a name or free text. */
@@ -102,6 +112,8 @@ const vi = {
     EXPIRED_LOT_SOLD: 'Hàng của một lô đã hết hạn vừa được giao cho khách.',
     PRODUCT_RETURN_OPENED: 'Có hồ sơ trả hàng mới cần bạn xem.',
     PRODUCT_REFUND_MADE: 'Vừa có một lần hoàn tiền sản phẩm.',
+    PRODUCT_ORDER_ARRIVED: 'Hàng đặt trước của bạn đã về. Mời bạn đến cửa hàng nhận hàng.',
+    PRODUCT_ORDER_ALERT: 'Có đơn đặt trước trễ hẹn hoặc hàng đã về chờ khách nhận quá lâu.',
   } satisfies Record<NotificationType, string>,
   leave: {
     requested: 'Có đơn xin nghỉ ({type}) từ {from} đến {to} cần bạn xử lý.',
@@ -145,12 +157,21 @@ const vi = {
     expiredLotSold: 'Lô {lot} hết hạn đã giao {quantity} {sku} (hóa đơn {invoice}).',
     openStock: 'Xem kho hàng',
   } satisfies InventoryTexts,
+  orders: {
+    arrived: 'Hàng đặt trước {code} của bạn đã về. Mời bạn đến cửa hàng nhận hàng.',
+    alert: 'Đặt trước: {late} dòng trễ hẹn, {held} dòng hàng đã về chờ khách nhận quá {days} ngày.',
+    alertLateOnly: 'Đặt trước: {late} dòng trễ hẹn so với ngày dự kiến.',
+    alertHeldOnly: 'Đặt trước: {held} dòng hàng đã về chờ khách nhận quá {days} ngày.',
+    openOrders: 'Xem hàng đặt trước',
+  } satisfies OrderTexts,
   returns: {
     opened: 'Có hồ sơ trả hàng mới {code}: {reason}.',
     refundMade:
       'Đã hoàn {amount} ({method}) cho {quantity} × {sku}, hóa đơn {invoice}. Người hoàn: {who}.',
     exchangeRefundMade:
       'Đổi hàng: đã hoàn phần chênh {amount} ({method}) cho {quantity} × {sku}, hóa đơn {invoice}. Người hoàn: {who}.',
+    orderCancelRefundMade:
+      'Hủy hàng đặt trước: đã hoàn {amount} ({method}) cho {quantity} × {sku}, hóa đơn {invoice}. Người hoàn: {who}.',
     methods: { CASH: 'tiền mặt', BANK_TRANSFER_MANUAL: 'chuyển khoản' },
     reasons: {
       PERSONAL_PREFERENCE: 'khách đổi ý',
@@ -169,16 +190,18 @@ type Dictionary = {
         ? FinanceTexts
         : K extends 'inventory'
           ? InventoryTexts
-          : K extends 'returns'
-            ? ReturnTexts
-            : K extends 'leave'
-              ? {
-                  requested: string;
-                  approved: string;
-                  rejected: string;
-                  types: Record<LeaveType, string>;
-                }
-              : string;
+          : K extends 'orders'
+            ? OrderTexts
+            : K extends 'returns'
+              ? ReturnTexts
+              : K extends 'leave'
+                ? {
+                    requested: string;
+                    approved: string;
+                    rejected: string;
+                    types: Record<LeaveType, string>;
+                  }
+                : string;
 };
 const en: Dictionary = {
   title: 'Notifications',
@@ -247,6 +270,10 @@ const en: Dictionary = {
     EXPIRED_LOT_SOLD: 'Stock from an expired lot was just handed to a customer.',
     PRODUCT_RETURN_OPENED: 'A new return case needs your attention.',
     PRODUCT_REFUND_MADE: 'A product refund was just made.',
+    PRODUCT_ORDER_ARRIVED:
+      'Your pre-ordered goods have arrived. Please come to the shop to collect them.',
+    PRODUCT_ORDER_ALERT:
+      'Some pre-orders are late or arrived goods have waited too long for the customer.',
   },
   leave: {
     requested: 'A leave request ({type}) from {from} to {to} needs your attention.',
@@ -288,12 +315,22 @@ const en: Dictionary = {
     expiredLotSold: 'Expired lot {lot}: {quantity} x {sku} handed out (invoice {invoice}).',
     openStock: 'View inventory',
   },
+  orders: {
+    arrived: 'Your pre-ordered goods {code} have arrived. Please come to the shop to collect them.',
+    alert:
+      'Pre-orders: {late} lines are past their expected date, {held} lines of arrived goods have waited over {days} days.',
+    alertLateOnly: 'Pre-orders: {late} lines are past their expected date.',
+    alertHeldOnly: 'Pre-orders: {held} lines of arrived goods have waited over {days} days.',
+    openOrders: 'View pre-orders',
+  },
   returns: {
     opened: 'New return case {code}: {reason}.',
     refundMade:
       'Refunded {amount} ({method}) for {quantity} × {sku}, invoice {invoice}. Refunded by: {who}.',
     exchangeRefundMade:
       'Exchange: refunded the price difference {amount} ({method}) for {quantity} × {sku}, invoice {invoice}. Refunded by: {who}.',
+    orderCancelRefundMade:
+      'Pre-order cancelled: refunded {amount} ({method}) for {quantity} × {sku}, invoice {invoice}. Refunded by: {who}.',
     methods: { CASH: 'cash', BANK_TRANSFER_MANUAL: 'bank transfer' },
     reasons: {
       PERSONAL_PREFERENCE: 'changed their mind',
