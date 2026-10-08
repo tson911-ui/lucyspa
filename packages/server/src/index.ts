@@ -174,10 +174,12 @@ export {
   type FinancialEventOutcome,
 } from './invoice-notifications.js';
 export {
+  EXPIRED_LOT_SOLD_EVENT,
   EXPIRY_ALERT_EVENT,
   EXPIRY_SCAN_LOCAL_TIME,
   INVENTORY_ALERT_AGGREGATE,
   LOW_STOCK_EVENT,
+  stockAlertRecipients,
   pendingLowStockAlerts,
   processLowStockAlert,
   runExpiryScan,

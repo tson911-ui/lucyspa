@@ -22,6 +22,7 @@ interface InventoryTexts {
   expiry: string;
   expiredOnly: string;
   expiringOnly: string;
+  expiredLotSold: string;
   openStock: string;
 }
 
@@ -88,6 +89,7 @@ const vi = {
     REVENUE_DAILY_SUMMARY: 'Tổng kết doanh thu trong ngày.',
     LOW_STOCK_REACHED: 'Một mặt hàng đã xuống đến mức sắp hết hàng.',
     EXPIRY_ALERT: 'Có lô hàng đã hết hạn hoặc sắp hết hạn.',
+    EXPIRED_LOT_SOLD: 'Hàng của một lô đã hết hạn vừa được giao cho khách.',
   } satisfies Record<NotificationType, string>,
   leave: {
     requested: 'Có đơn xin nghỉ ({type}) từ {from} đến {to} cần bạn xử lý.',
@@ -128,6 +130,8 @@ const vi = {
       'Cảnh báo hạn dùng: {expired} lô đã hết hạn, {expiring} lô sẽ hết hạn trong {days} ngày.',
     expiredOnly: 'Cảnh báo hạn dùng: {expired} lô đã hết hạn.',
     expiringOnly: 'Cảnh báo hạn dùng: {expiring} lô sẽ hết hạn trong {days} ngày.',
+    expiredLotSold:
+      'Đã giao {quantity} sản phẩm {sku} từ lô {lot} đã hết hạn (hóa đơn {invoice}). Hãy kiểm tra lại với khách.',
     openStock: 'Xem kho hàng',
   } satisfies InventoryTexts,
 };
@@ -213,6 +217,7 @@ const en: Dictionary = {
     REVENUE_DAILY_SUMMARY: 'Daily revenue summary.',
     LOW_STOCK_REACHED: 'An item has reached its low-stock level.',
     EXPIRY_ALERT: 'Some lots have expired or are about to expire.',
+    EXPIRED_LOT_SOLD: 'Stock from an expired lot was just handed to a customer.',
   },
   leave: {
     requested: 'A leave request ({type}) from {from} to {to} needs your attention.',
@@ -251,6 +256,8 @@ const en: Dictionary = {
     expiry: 'Expiry warning: {expired} lots expired, {expiring} lots expire within {days} days.',
     expiredOnly: 'Expiry warning: {expired} lots have expired.',
     expiringOnly: 'Expiry warning: {expiring} lots expire within {days} days.',
+    expiredLotSold:
+      '{quantity} x {sku} from expired lot {lot} was handed out (invoice {invoice}). Please check with the customer.',
     openStock: 'View inventory',
   },
 };

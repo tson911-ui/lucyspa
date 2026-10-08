@@ -11,6 +11,7 @@ const OTHER_EVENTS = [
   ['StockReceipt', 'STOCK_RECEIPT_CONFIRMED'],
   ['StockAlert', 'LOW_STOCK_REACHED'],
   ['StockAlert', 'EXPIRY_ALERT'],
+  ['StockAlert', 'EXPIRED_LOT_SOLD'],
   ['Booking', 'BOOKING_CONFIRMED'],
   ['Invoice', 'INVOICE_FINALIZED'],
   ['Invoice', 'PRICING_V3_MISMATCH'],

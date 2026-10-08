@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
-import type { InvoiceResponse } from '@lucy-spa/contracts';
+import { parseNotificationParams, type InvoiceResponse } from '@lucy-spa/contracts';
 import { processInventoryEvent, settleInvoiceStock } from '@lucy-spa/server';
 import { DiscountService } from '../discounts/discount.service.js';
 import { phase6Fixture } from '../testing/phase6-fixture.js';
@@ -25,6 +25,8 @@ test(
       const { tx, fails } = base;
       const { invoices, people, A } = k;
       const programs = new DiscountService(base.adapter, base.throttle);
+      // A holder of the inventory permission at ANOTHER branch: never told about a sale at branch A.
+      const outsiderViewer = await base.staff(['VIEW_INVENTORY'], { branchId: k.B.id });
       const plus = async (days: number) =>
         (
           await tx.$queryRawUnsafe<{ d: string }[]>(
@@ -55,6 +57,8 @@ test(
       const fresh = (id: string) => invoices.get(people.cashier.token, id);
       const buy = async (variantId: string, quantity: number, payer: string | null = null) =>
         k.finalize(await k.addLine(await k.openSale(people.cashier, payer), variantId, quantity));
+      const expiredLotAlerts = (variantId: string) =>
+        tx.notification.count({ where: { type: 'EXPIRED_LOT_SOLD', entityId: variantId } });
       const lotsOf = async (variantId: string) =>
         Object.fromEntries(
           (
@@ -98,6 +102,11 @@ test(
           });
           assert.deepEqual(await k.levelOf(variant.id), { onHand: 5, reserved: 0 });
           assert.equal(await k.availableOf(variant.id), 5);
+          assert.equal(
+            await expiredLotAlerts(variant.id),
+            0,
+            'a sale from sellable lots sends no expired-lot alert',
+          );
           const view = await fresh(invoice.id);
           assert.deepEqual(
             view.productLines.map((line) => line.reservation?.status),
@@ -415,6 +424,168 @@ test(
           );
           assert.deepEqual(await lotsOf(variant.id), { 'E-OLD': 1, 'E-OK': 0 });
           await tx.branch.update({ where: { id: A.id }, data: { timezone: 'Asia/Ho_Chi_Minh' } });
+
+          // OQ-75 as changed by the Owner (2026-10-08): the same transaction wrote an in-app alert naming the invoice, the
+          // product and the lot, for the holders of the inventory permission AT THIS BRANCH and nobody else.
+          const alerts = await tx.notification.findMany({
+            where: { type: 'EXPIRED_LOT_SOLD', entityId: variant.id },
+            select: {
+              recipientUserId: true,
+              branchId: true,
+              entityType: true,
+              contextCode: true,
+              params: true,
+              sourceEventId: true,
+            },
+          });
+          const recipients = alerts.map((alert) => alert.recipientUserId).sort();
+          assert.ok(
+            recipients.includes(people.receiver.id),
+            'a VIEW_INVENTORY holder of the branch is told',
+          );
+          assert.ok(recipients.includes(people.owner.id), 'the Owner holds every permission');
+          for (const outsider of [
+            people.cashier,
+            people.boss,
+            people.ktv,
+            people.otherBranch,
+            outsiderViewer,
+          ]) {
+            assert.ok(
+              !recipients.includes(outsider.id),
+              'nobody without the permission at this branch is told',
+            );
+          }
+          for (const alert of alerts) {
+            assert.equal(alert.branchId, A.id);
+            assert.equal(alert.entityType, 'ProductVariant');
+            assert.equal(alert.contextCode, variant.sku);
+            assert.deepEqual(parseNotificationParams('EXPIRED_LOT_SOLD', alert.params), {
+              invoiceCode: invoice.code,
+              lotCode: 'E-OLD',
+              quantity: 2,
+            });
+          }
+          const audit = await tx.auditEvent.findMany({
+            where: {
+              action: 'STOCK_EXPIRED_LOT_SOLD',
+              after: { path: ['invoiceId'], equals: invoice.id },
+            },
+            select: { entityType: true, after: true },
+          });
+          assert.equal(audit.length, 1, 'one audit event for the one expired lot');
+          assert.equal(audit[0]!.entityType, 'InventoryLot');
+          assert.equal(
+            (audit[0]!.after as { notifiedUsers: number }).notifiedUsers,
+            recipients.length,
+          );
+          // The alert exists exactly when the SALE movement does: a replay (the state is aligned) writes no second one.
+          const events = await tx.outboxEvent.count({
+            where: { eventType: 'EXPIRED_LOT_SOLD', aggregateType: 'StockAlert', branchId: A.id },
+          });
+          await settleInvoiceStock(tx, { id: invoice.id, status: 'PAID', paidSeq: 1 });
+          assert.deepEqual(await k.runInventory(invoice.id), []);
+          assert.equal(await expiredLotAlerts(variant.id), alerts.length);
+          assert.equal(
+            await tx.outboxEvent.count({
+              where: { eventType: 'EXPIRED_LOT_SOLD', aggregateType: 'StockAlert', branchId: A.id },
+            }),
+            events,
+          );
+          await k.reconcile();
+        },
+      );
+
+      await suite.test(
+        'an expired-lot sale with nobody to tell still goes through (stock stays reconciled) and is recorded in the audit',
+        async () => {
+          const product = await k.product('expiry-silent', [90_000]);
+          const variant = product.variants[0]!;
+          await tx.branch.update({ where: { id: A.id }, data: { timezone: 'Pacific/Pago_Pago' } });
+          const earliest = (
+            await tx.$queryRawUnsafe<{ d: string }[]>(
+              `SELECT to_char((clock_timestamp() AT TIME ZONE 'Pacific/Pago_Pago')::date, 'YYYY-MM-DD') AS d`,
+            )
+          )[0]!.d;
+          const draft = await k.inventory.createReceipt(people.receiver.token, {
+            branchId: A.id,
+            supplierId: null,
+            receiptDate: earliest,
+            notes: null,
+            lines: [{ variantId: variant.id, quantity: 2, lotCode: 'S-OLD', expiryDate: earliest }],
+          });
+          await k.inventory.confirmReceipt(people.receiver.token, draft.id, {
+            expectedRowVersion: draft.rowVersion,
+          });
+          const invoice = await buy(variant.id, 2);
+          await k.pay(invoice.id, Number(invoice.totalVnd));
+          await tx.branch.update({ where: { id: A.id }, data: { timezone: 'Pacific/Kiritimati' } });
+          // Nobody holds the permission: the branch is switched off after the sale was reserved (no holder is resolvable).
+          await tx.branch.update({ where: { id: A.id }, data: { isActive: false } });
+          assert.deepEqual(await k.runInventory(invoice.id), ['APPLIED']);
+          await tx.branch.update({
+            where: { id: A.id },
+            data: { isActive: true, timezone: 'Asia/Ho_Chi_Minh' },
+          });
+          assert.equal((await saleOf(invoice)).status, 'CONSUMED');
+          assert.deepEqual(await k.levelOf(variant.id), { onHand: 0, reserved: 0 });
+          assert.equal(await expiredLotAlerts(variant.id), 0);
+          const audit = await tx.auditEvent.findMany({
+            where: {
+              action: 'STOCK_EXPIRED_LOT_SOLD',
+              after: { path: ['invoiceId'], equals: invoice.id },
+            },
+            select: { after: true },
+          });
+          assert.equal(audit.length, 1);
+          assert.equal((audit[0]!.after as { notifiedUsers: number }).notifiedUsers, 0);
+          await k.reconcile();
+        },
+      );
+
+      await suite.test(
+        'a lot code that is not a plain code never stops the sale: the alert shows a cleaned code',
+        async () => {
+          const product = await k.product('expiry-odd-code', [90_000]);
+          const variant = product.variants[0]!;
+          await tx.branch.update({ where: { id: A.id }, data: { timezone: 'Pacific/Pago_Pago' } });
+          const earliest = (
+            await tx.$queryRawUnsafe<{ d: string }[]>(
+              `SELECT to_char((clock_timestamp() AT TIME ZONE 'Pacific/Pago_Pago')::date, 'YYYY-MM-DD') AS d`,
+            )
+          )[0]!.d;
+          const draft = await k.inventory.createReceipt(people.receiver.token, {
+            branchId: A.id,
+            supplierId: null,
+            receiptDate: earliest,
+            notes: null,
+            lines: [
+              { variantId: variant.id, quantity: 1, lotCode: 'ODD-LOT', expiryDate: earliest },
+            ],
+          });
+          await k.inventory.confirmReceipt(people.receiver.token, draft.id, {
+            expectedRowVersion: draft.rowVersion,
+          });
+          // The lot code as stored: padded and with a line break (the application never writes this, a restore or a script could).
+          await tx.$executeRawUnsafe(`ALTER TABLE inventory_lots DISABLE TRIGGER USER`);
+          await tx.$executeRawUnsafe(
+            `UPDATE inventory_lots SET lot_code = E'  ODD\\nLOT  ' WHERE branch_id = '${A.id}'::uuid AND variant_id = '${variant.id}'::uuid`,
+          );
+          await tx.$executeRawUnsafe(`ALTER TABLE inventory_lots ENABLE TRIGGER USER`);
+          const invoice = await buy(variant.id, 1);
+          await k.pay(invoice.id, Number(invoice.totalVnd));
+          await tx.branch.update({ where: { id: A.id }, data: { timezone: 'Pacific/Kiritimati' } });
+          assert.deepEqual(await k.runInventory(invoice.id), ['APPLIED']);
+          await tx.branch.update({ where: { id: A.id }, data: { timezone: 'Asia/Ho_Chi_Minh' } });
+          const alert = await tx.notification.findFirstOrThrow({
+            where: { type: 'EXPIRED_LOT_SOLD', entityId: variant.id },
+            select: { params: true },
+          });
+          assert.deepEqual(parseNotificationParams('EXPIRED_LOT_SOLD', alert.params), {
+            invoiceCode: invoice.code,
+            lotCode: 'ODD LOT',
+            quantity: 1,
+          });
           await k.reconcile();
         },
       );

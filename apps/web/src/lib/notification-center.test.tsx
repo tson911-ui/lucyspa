@@ -395,6 +395,36 @@ test('stock alerts render from counts and the SKU in VI and EN; missing params f
   }
 });
 
+test('the expired-lot alert names the quantity, the product, the lot and the invoice in VI and EN and opens the item page', () => {
+  const alert = {
+    ...lowStock,
+    id: 'stock-EXPIRED_LOT_SOLD',
+    type: 'EXPIRED_LOT_SOLD',
+    params: { invoiceCode: 'INV-2026-0042', lotCode: 'LOT 07/26', quantity: 2 },
+  } as NotificationItem;
+  assert.equal(
+    notificationMessage(alert, 'vi'),
+    'Đã giao 2 sản phẩm KEM-50 từ lô LOT 07/26 đã hết hạn (hóa đơn INV-2026-0042). Hãy kiểm tra lại với khách.',
+  );
+  assert.equal(
+    notificationMessage(alert, 'en'),
+    '2 x KEM-50 from expired lot LOT 07/26 was handed out (invoice INV-2026-0042). Please check with the customer.',
+  );
+  // Without its params it falls back to the type text; nothing raw is shown.
+  assert.equal(
+    notificationMessage({ ...alert, params: null }, 'vi'),
+    getNotificationDictionary('vi').types.EXPIRED_LOT_SOLD,
+  );
+  assert.ok(!getNotificationDictionary('vi').types.EXPIRED_LOT_SOLD.includes('khám'));
+  const viewer = employee([['VIEW_INVENTORY', 'A']]);
+  assert.equal(
+    notificationHref(alert, viewer, '/vi/workforce'),
+    '/vi/workforce/inventory/items/var-1?branch=A',
+    'it opens the item page for a holder of the permission',
+  );
+  assert.equal(notificationHref(alert, employee([]), '/vi/workforce'), null);
+});
+
 test('a stock alert opens the item page or the inventory of its branch for people who may view that branch only', () => {
   const viewer = employee([['VIEW_INVENTORY', 'A']]);
   assert.equal(

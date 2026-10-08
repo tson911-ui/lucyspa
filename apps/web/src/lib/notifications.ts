@@ -178,6 +178,14 @@ function inventoryMessage(
       threshold: params.threshold,
     });
   }
+  if (item.type === 'EXPIRED_LOT_SOLD' && 'lotCode' in params) {
+    return fill(i.expiredLotSold, {
+      quantity: params.quantity,
+      sku: item.source.code,
+      lot: params.lotCode,
+      invoice: params.invoiceCode,
+    });
+  }
   if (item.type === 'EXPIRY_ALERT' && 'expiredLots' in params) {
     // Say only what is true: no "0 lots expired".
     const template =

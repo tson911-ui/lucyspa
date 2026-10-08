@@ -37,7 +37,8 @@ export type NotificationParamsKind =
   | 'INVOICE_CANCELLED_ALERT'
   | 'REVENUE_SUMMARY'
   | 'LOW_STOCK'
-  | 'EXPIRY_ALERT';
+  | 'EXPIRY_ALERT'
+  | 'EXPIRED_LOT_SOLD';
 
 export interface NotificationTypeMetadata {
   readonly category: NotificationCategory;
@@ -144,6 +145,8 @@ export const NOTIFICATION_TYPE_REGISTRY = {
   // Phase 6 P6-4: stock alerts (VIEW_INVENTORY holders at the branch).
   LOW_STOCK_REACHED: inventory('ATTENTION', 'LOW_STOCK_REACHED', 'LOW_STOCK', 'ProductVariant'),
   EXPIRY_ALERT: inventory('ATTENTION', 'EXPIRY_ALERT', 'EXPIRY_ALERT', 'Branch'),
+  // Phase 6 P6-11 (Owner, 2026-10-08, OQ-75 changed): a paid invoice was handed stock from an expired lot (last resort).
+  EXPIRED_LOT_SOLD: inventory('WARNING', 'EXPIRED_LOT_SOLD', 'EXPIRED_LOT_SOLD', 'ProductVariant'),
 } as const satisfies Record<string, NotificationTypeMetadata>;
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPE_REGISTRY;
@@ -223,7 +226,18 @@ export interface ExpiryAlertParams {
   expiredLots: number;
   expiringLots: number;
 }
+/**
+ * A paid invoice took `quantity` units from an expired lot (the last resort of the sale, OQ-75). The product is the notification's
+ * entity (the SKU is its context code); the invoice and the lot are named by their codes, which are identifiers shown as plain text
+ * (checked: one line, at most 64 characters, no control characters), never free-form text.
+ */
+export interface ExpiredLotSoldParams {
+  invoiceCode: string;
+  lotCode: string;
+  quantity: number;
+}
 export type NotificationParams =
+  | ExpiredLotSoldParams
   | LowStockParams
   | ExpiryAlertParams
   | LeaveRequestedParams
@@ -253,6 +267,14 @@ const vnd = (name: string, value: unknown): string => {
 const count = (name: string, value: unknown): number => {
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
     throw new Error(`Notification param ${name} must be a non-negative integer.`);
+  }
+  return value;
+};
+/** An identifier shown as plain text: one line of 1 to 64 characters without control or format characters. */
+const CODE = /^[^\p{Cc}\p{Cf}\p{Zl}\p{Zp}]{1,64}$/u;
+const code = (name: string, value: unknown): string => {
+  if (typeof value !== 'string' || !CODE.test(value) || value.trim() !== value) {
+    throw new Error(`Notification param ${name} must be a plain code of at most 64 characters.`);
   }
   return value;
 };
@@ -316,6 +338,16 @@ export function parseNotificationParams(
         onHand: count('onHand', record['onHand']),
         threshold: count('threshold', record['threshold']),
       };
+    case 'EXPIRED_LOT_SOLD': {
+      exactKeys(type, record, ['invoiceCode', 'lotCode', 'quantity']);
+      const quantity = count('quantity', record['quantity']);
+      if (quantity < 1) throw new Error('Notification param quantity must be at least 1.');
+      return {
+        invoiceCode: code('invoiceCode', record['invoiceCode']),
+        lotCode: code('lotCode', record['lotCode']),
+        quantity,
+      };
+    }
     case 'EXPIRY_ALERT': {
       exactKeys(type, record, ['withinDays', 'expiredLots', 'expiringLots']);
       const withinDays = count('withinDays', record['withinDays']);

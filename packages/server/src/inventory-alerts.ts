@@ -18,14 +18,17 @@ import { resolvePermissionHolders } from './notification-routing.js';
  */
 export const LOW_STOCK_EVENT = 'LOW_STOCK_REACHED';
 export const EXPIRY_ALERT_EVENT = 'EXPIRY_ALERT';
+/** Phase 6 P6-11 (OQ-75 changed): stock of an expired lot was sold as a last resort. */
+export const EXPIRED_LOT_SOLD_EVENT = 'EXPIRED_LOT_SOLD';
 export const INVENTORY_ALERT_AGGREGATE = 'StockAlert';
 /** Branch-local time from which the daily expiry scan runs. */
 export const EXPIRY_SCAN_LOCAL_TIME = '08:00';
-const RECIPIENT_PERMISSION = 'VIEW_INVENTORY';
+export const INVENTORY_ALERT_PERMISSION = 'VIEW_INVENTORY';
+const RECIPIENT_PERMISSION = INVENTORY_ALERT_PERMISSION;
 
 export type LowStockOutcome = 'PUBLISHED' | 'STALE' | 'UNROUTABLE' | 'NOT_CLAIMED';
 
-async function deliver(
+export async function deliverStockAlert(
   tx: Prisma.TransactionClient,
   input: {
     branchId: string;
@@ -63,6 +66,25 @@ async function deliver(
       ...(params === null ? {} : { params: params as unknown as Prisma.InputJsonObject }),
     })),
   });
+}
+
+/**
+ * The holders of the inventory permission at the branch (an inactive branch has none). The caller holds the shared authorization
+ * graph lock. A caller that goes on to write notifications for a stock sale resolves them BEFORE it locks the stock and takes a
+ * key-share lock on these user rows with the ones it already locks, so the foreign key of the notification never waits behind a
+ * command that holds a user row while it waits for the lots (design 10.2).
+ */
+export async function stockAlertRecipients(
+  tx: Prisma.TransactionClient,
+  branchId: string,
+): Promise<readonly string[]> {
+  const branch = await tx.branch.findUnique({
+    where: { id: branchId },
+    select: { isActive: true },
+  });
+  return branch?.isActive
+    ? resolvePermissionHolders(tx, { branchId, permission: INVENTORY_ALERT_PERMISSION })
+    : [];
 }
 
 /** The pending alert rows, oldest first (a small page; the caller loops). */
@@ -120,7 +142,7 @@ export async function processLowStockAlert(
       })
     : [];
   if (recipients.length === 0) return settle('UNROUTABLE');
-  await deliver(tx, {
+  await deliverStockAlert(tx, {
     branchId: alert.branchId,
     aggregateId: alert.id,
     eventType: LOW_STOCK_EVENT,
@@ -200,7 +222,7 @@ async function scanBranch(
     if (recipients.length === 0) {
       outcome = 'UNROUTABLE';
     } else {
-      await deliver(tx, {
+      await deliverStockAlert(tx, {
         branchId,
         aggregateId: `${branchId}:${businessDate}`,
         eventType: EXPIRY_ALERT_EVENT,

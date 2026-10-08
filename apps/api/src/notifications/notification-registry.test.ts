@@ -34,7 +34,7 @@ const FINANCE = [
 ];
 
 // Phase 6 P6-4: stock alerts for the holders of VIEW_INVENTORY at the branch (operations).
-const INVENTORY = ['LOW_STOCK_REACHED', 'EXPIRY_ALERT'];
+const INVENTORY = ['LOW_STOCK_REACHED', 'EXPIRY_ALERT', 'EXPIRED_LOT_SOLD'];
 
 test('the registry keeps every Phase 3 type unchanged and adds the Leave, finance and stock alert types', () => {
   assert.deepEqual(
@@ -80,7 +80,7 @@ test('category filters are derived from the registry, and targets from the entit
     'LEAVE_REQUESTED',
   ]);
   assert.deepEqual([...notificationTypesInCategory('FINANCE')].sort(), [...FINANCE].sort());
-  assert.equal(notificationTypesInCategory('OPERATIONS').length, PHASE3.length + 2);
+  assert.equal(notificationTypesInCategory('OPERATIONS').length, PHASE3.length + INVENTORY.length);
   assert.equal(notificationTarget('ProductVariant'), 'PRODUCT_VARIANT');
   assert.equal(notificationTarget('Invoice'), 'INVOICE');
   assert.equal(notificationTarget('Branch'), 'BRANCH');
@@ -222,6 +222,33 @@ test('finance params carry only integer VND strings, counts and enums; never a r
   bad('REVENUE_DAILY_SUMMARY', { ...summary, pendingPaymentCount: 1.5 });
   bad('REVENUE_DAILY_SUMMARY', { ...summary, businessDate: '2026-13-01' });
   bad('REVENUE_DAILY_SUMMARY', { ...summary, note: 'Doanh thu' });
+});
+
+test('the expired-lot alert names the invoice and the lot by plain codes and the quantity, and nothing else', () => {
+  assert.deepEqual(notificationMetadata('EXPIRED_LOT_SOLD').entityTypes, ['ProductVariant']);
+  assert.equal(notificationMetadata('EXPIRED_LOT_SOLD').severity, 'WARNING');
+  assert.deepEqual(
+    parseNotificationParams('EXPIRED_LOT_SOLD', {
+      invoiceCode: 'INV-0001',
+      lotCode: 'LÔ 07/2026',
+      quantity: 2,
+    }),
+    { invoiceCode: 'INV-0001', lotCode: 'LÔ 07/2026', quantity: 2 },
+  );
+  const bad = (value: unknown) =>
+    assert.throws(() => parseNotificationParams('EXPIRED_LOT_SOLD', value));
+  const ok = { invoiceCode: 'INV-1', lotCode: 'L1', quantity: 1 };
+  bad(null);
+  bad({ ...ok, quantity: 0 });
+  bad({ ...ok, quantity: 1.5 });
+  bad({ ...ok, lotCode: '' });
+  bad({ ...ok, lotCode: 'x'.repeat(65) });
+  bad({ ...ok, lotCode: ' padded ' });
+  bad({ ...ok, lotCode: 'two\nlines' });
+  bad({ ...ok, invoiceCode: 'a\u0000b' });
+  bad({ ...ok, invoiceCode: 7 });
+  bad({ ...ok, note: 'free text' });
+  bad({ invoiceCode: 'INV-1', quantity: 1 });
 });
 
 test('stock alert params are counts only: no names, no free text', () => {

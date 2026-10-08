@@ -1,5 +1,10 @@
 import type { DatabaseClient, Prisma } from '@lucy-spa/database';
 import { takeSharedAuthGraphLock } from './auth-lock.js';
+import {
+  deliverStockAlert,
+  EXPIRED_LOT_SOLD_EVENT,
+  stockAlertRecipients,
+} from './inventory-alerts.js';
 
 /**
  * Phase 6 P6-10 (design 4.5, 10.1-10.3; T15, T27): the sale of reserved stock.
@@ -18,6 +23,11 @@ import { takeSharedAuthGraphLock } from './auth-lock.js';
  * writes nothing. The `inventory` consumer calls it for INVOICE_PAID / INVOICE_REOPENED / INVOICE_CANCELLED; the cancel command
  * calls it too (the P6-8 commit-time rule "a cancelled invoice holds no live reservation" must hold at the cancel's commit, so a sale
  * that the consumer has not yet reversed is reversed by the cancel itself; the consumer then finds nothing left to do).
+ *
+ * Expired lot (Owner, 2026-10-08, OQ-75 changed): a sale may still take from an expired lot, but only as the last resort (so the
+ * stock stays reconciled after payment). Then, in the same transaction as the SALE movement, it writes an audit event and an
+ * in-app alert to the holders of the inventory permission at the branch, naming the invoice, the product and the lot, so that a
+ * manager checks what was handed to the customer. Sales from sellable lots send nothing; a replay finds nothing to consume.
  *
  * Statement order is forced by `stock_levels_reserved` (reserved <= on_hand, immediate): consume = reservation first, movements
  * second; give back = movements first, reservation second. Lock order: lot rows (branch, variant, id), then level rows (branch,
@@ -58,6 +68,11 @@ export interface StockSettlementOptions {
   actorUserId?: string;
   /** The release cause when the invoice is CANCELLED (default `INVOICE_CANCELLED_UNPAID`). */
   releaseCause?: 'INVOICE_CANCELLED_UNPAID' | 'ZERO_BALANCE_CORRECTION';
+  /**
+   * The holders of the inventory permission per branch id, resolved (and their user rows locked) by the caller before the stock is
+   * locked. Only read when a sale takes from an expired lot; a branch missing here is resolved on the spot.
+   */
+  alertRecipients?: ReadonlyMap<string, readonly string[]>;
 }
 
 interface ReservationRow {
@@ -73,9 +88,18 @@ interface ReservationRow {
 
 interface LotState {
   id: string;
+  code: string;
   remaining: number;
   expiry: Date | null;
   expired: boolean;
+}
+
+interface Take {
+  lotId: string;
+  lotCode: string;
+  expiry: Date | null;
+  expired: boolean;
+  quantity: number;
 }
 
 const pairKey = (branchId: string, variantId: string) => `${branchId}:${variantId}`;
@@ -125,6 +149,7 @@ async function loadLots(
   const rows = await tx.$queryRaw<
     {
       id: string;
+      lot_code: string;
       branch_id: string;
       variant_id: string;
       quantity_on_hand: number;
@@ -132,7 +157,7 @@ async function loadLots(
       expired: boolean;
     }[]
   >`
-    SELECT l.id, l.branch_id, l.variant_id, l.quantity_on_hand, l.expiry_date,
+    SELECT l.id, l.lot_code, l.branch_id, l.variant_id, l.quantity_on_hand, l.expiry_date,
            (l.expiry_date IS NOT NULL AND l.expiry_date < (clock_timestamp() AT TIME ZONE b.timezone)::date) AS expired
     FROM inventory_lots l JOIN branches b ON b.id = l.branch_id
     WHERE (l.branch_id, l.variant_id) IN (SELECT * FROM unnest(${unique.map((p) => p.branchId)}::uuid[], ${unique.map((p) => p.variantId)}::uuid[]))
@@ -143,6 +168,7 @@ async function loadLots(
     const list = result.get(key) ?? [];
     list.push({
       id: row.id,
+      code: row.lot_code,
       remaining: row.quantity_on_hand,
       expiry: row.expiry_date,
       expired: row.expired,
@@ -173,15 +199,21 @@ async function consume(
   reservation: ReservationRow,
   paidSeq: number,
   lots: Map<string, LotState[]>,
-): Promise<void> {
+): Promise<Take[]> {
   const available = lots.get(pairKey(reservation.branchId, reservation.variantId)) ?? [];
   let needed = reservation.quantity;
-  const takes: { lotId: string; quantity: number }[] = [];
+  const takes: Take[] = [];
   for (const lot of available) {
     if (needed === 0) break;
     const take = Math.min(lot.remaining, needed);
     if (take > 0) {
-      takes.push({ lotId: lot.id, quantity: take });
+      takes.push({
+        lotId: lot.id,
+        lotCode: lot.code,
+        expiry: lot.expiry,
+        expired: lot.expired,
+        quantity: take,
+      });
       lot.remaining -= take;
       needed -= take;
     }
@@ -210,6 +242,82 @@ async function consume(
         actorUserId: reservation.createdByUserId,
       },
       select: { id: true },
+    });
+  }
+  return takes;
+}
+
+/** A lot code as an alert shows it: plain text, one line, at most 64 characters (a stored code can never stop a sale). */
+function plainCode(value: string, fallback: string): string {
+  const cleaned = value
+    .replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return (cleaned || fallback).slice(0, 64).trim() || fallback;
+}
+
+/**
+ * The sale took stock from an expired lot (the last resort, OQ-75 changed): an audit event for each lot, and one in-app alert for
+ * each lot to the holders of the inventory permission at the branch. Written in the sale's transaction, so the alert exists exactly
+ * when the SALE movement does; with nobody to tell, the audit event still records it.
+ */
+async function announceExpiredLots(
+  tx: Prisma.TransactionClient,
+  invoiceId: string,
+  reservation: ReservationRow,
+  paidSeq: number,
+  takes: readonly Take[],
+  options: StockSettlementOptions,
+): Promise<void> {
+  const expired = takes.filter((take) => take.expired);
+  if (expired.length === 0) return;
+  const [invoice, variant] = await Promise.all([
+    tx.invoice.findUniqueOrThrow({ where: { id: invoiceId }, select: { code: true } }),
+    tx.productVariant.findUniqueOrThrow({
+      where: { id: reservation.variantId },
+      select: { sku: true },
+    }),
+  ]);
+  const recipients =
+    options.alertRecipients?.get(reservation.branchId) ??
+    (await stockAlertRecipients(tx, reservation.branchId));
+  for (const take of expired) {
+    await tx.auditEvent.create({
+      data: {
+        action: 'STOCK_EXPIRED_LOT_SOLD',
+        actorKind: 'SYSTEM',
+        entityType: 'InventoryLot',
+        entityId: take.lotId,
+        branchId: reservation.branchId,
+        dataClassification: 'STANDARD',
+        after: {
+          invoiceId,
+          invoiceCode: invoice.code,
+          paidSeq,
+          variantId: reservation.variantId,
+          sku: variant.sku,
+          lotCode: take.lotCode,
+          expiryDate: take.expiry?.toISOString().slice(0, 10) ?? null,
+          quantity: take.quantity,
+          notifiedUsers: recipients.length,
+        },
+      },
+      select: { id: true },
+    });
+    if (recipients.length === 0) continue;
+    await deliverStockAlert(tx, {
+      branchId: reservation.branchId,
+      aggregateId: `${reservation.id}:${paidSeq}:${take.lotId}`,
+      eventType: EXPIRED_LOT_SOLD_EVENT,
+      recipients,
+      entityType: 'ProductVariant',
+      entityId: reservation.variantId,
+      contextCode: variant.sku,
+      params: {
+        invoiceCode: plainCode(invoice.code, invoiceId.slice(0, 8)),
+        lotCode: plainCode(take.lotCode, take.lotId.slice(0, 8)),
+        quantity: take.quantity,
+      },
     });
   }
 }
@@ -311,7 +419,8 @@ export async function settleInvoiceStock(
   if (toConsume.length > 0) {
     const lots = await loadLots(tx, toConsume);
     for (const reservation of toConsume) {
-      await consume(tx, reservation, invoice.paidSeq, lots);
+      const takes = await consume(tx, reservation, invoice.paidSeq, lots);
+      await announceExpiredLots(tx, invoice.id, reservation, invoice.paidSeq, takes, options);
       settlement.consumed += 1;
     }
   }
@@ -363,20 +472,31 @@ export async function processInventoryEvent(
   // user row for update would otherwise make this wait for while it waits for the lots (a real deadlock the race test found).
   const reservedBy = await tx.$queryRaw<{ id: string }[]>`
     SELECT DISTINCT created_by_user_id AS id FROM stock_reservations WHERE invoice_id = ${invoiceId}::uuid`;
-  if (reservedBy.length > 0) {
+  // The same goes for the people an expired-lot alert would go to (OQ-75 changed): the alert's notifications reference them, so they
+  // are resolved now, while nothing but the graph lock is held, and their rows are key-share locked with the reserving users' (sorted).
+  const alertRecipients = new Map<string, readonly string[]>();
+  const toSell = await tx.$queryRaw<{ branch_id: string }[]>`
+    SELECT DISTINCT branch_id FROM stock_reservations WHERE invoice_id = ${invoiceId}::uuid AND status = 'RESERVED'`;
+  for (const { branch_id } of toSell) {
+    alertRecipients.set(branch_id, await stockAlertRecipients(tx, branch_id));
+  }
+  const userIds = [
+    ...new Set([...reservedBy.map((row) => row.id), ...[...alertRecipients.values()].flat()]),
+  ].sort();
+  if (userIds.length > 0) {
     await tx.$queryRaw`
-      SELECT id FROM users WHERE id = ANY(${reservedBy.map((row) => row.id)}::uuid[]) ORDER BY id FOR KEY SHARE`;
+      SELECT id FROM users WHERE id = ANY(${userIds}::uuid[]) ORDER BY id FOR KEY SHARE`;
   }
   const rows = await tx.$queryRaw<{ id: string; status: string; paid_seq: number }[]>`
     SELECT i.id, i.status::text AS status, i.paid_seq FROM invoices i WHERE i.id = ${invoiceId}::uuid FOR SHARE`;
   const invoice = rows[0];
   let outcome: InventoryEventOutcome = 'NOOP';
   if (invoice) {
-    const settlement = await settleInvoiceStock(tx, {
-      id: invoice.id,
-      status: invoice.status,
-      paidSeq: invoice.paid_seq,
-    });
+    const settlement = await settleInvoiceStock(
+      tx,
+      { id: invoice.id, status: invoice.status, paidSeq: invoice.paid_seq },
+      { alertRecipients },
+    );
     if (settlement.consumed + settlement.givenBack + settlement.released > 0) {
       outcome = 'APPLIED';
     } else if (

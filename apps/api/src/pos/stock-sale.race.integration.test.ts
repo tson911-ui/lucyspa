@@ -625,6 +625,105 @@ test(
       );
 
       await suite.test(
+        'a sale from an expired lot (with its alert to every holder of the permission) racing a command of a holder: no deadlock, one sale, one alert each',
+        async () => {
+          const setZone = (timezone: string) =>
+            database.branch.update({ where: { id: ids.branch }, data: { timezone } });
+          try {
+            for (let round = 0; round < 6; round += 1) {
+              // A lot expiring on the earliest date on Earth today is sellable at UTC-11 and expired at UTC+14.
+              await setZone('Pacific/Pago_Pago');
+              const earliest = (
+                await database.$queryRaw<
+                  { d: string }[]
+                >`SELECT to_char((clock_timestamp() AT TIME ZONE 'Pacific/Pago_Pago')::date, 'YYYY-MM-DD') AS d`
+              )[0]!.d;
+              const v = await variant(80_000, 0);
+              const draft = await inventory.createReceipt(a.token, {
+                branchId: ids.branch,
+                supplierId: null,
+                receiptDate: earliest,
+                notes: null,
+                lines: [
+                  { variantId: v, quantity: 4, lotCode: `EXP-${round}`, expiryDate: earliest },
+                ],
+              });
+              await inventory.confirmReceipt(a.token, draft.id, {
+                expectedRowVersion: draft.rowVersion,
+              });
+              const invoice = await finalized([[v, 3]]);
+              await pay(a, invoice.id, Number(invoice.totalVnd));
+              await setZone('Pacific/Kiritimati');
+              const id = await eventOf(invoice.id, 'INVOICE_PAID');
+              const lot = await database.inventoryLot.findFirstOrThrow({
+                where: { branchId: ids.branch, variantId: v },
+              });
+              const holder = round % 2 === 0 ? b : boss;
+              // A recipient's own command (it takes that person's user row, then the lots) or a bare transaction that holds the
+              // recipient's user row for update and then the lots: neither may deadlock with the consumer's alert.
+              const command: () => Promise<unknown> =
+                round % 3 === 0
+                  ? () =>
+                      database.$transaction(
+                        async (tx) => {
+                          await takeSharedAuthGraphLock(tx);
+                          if (meet) await meet();
+                          await tx.$queryRaw`SELECT id FROM users WHERE id = ${holder.id}::uuid FOR UPDATE`;
+                          // Long enough for the consumer to take the lots and reach its alert: this is the interleaving that deadlocks
+                          // when the recipients' rows are locked after the stock.
+                          await tx.$queryRaw`SELECT pg_sleep(0.8)::text`;
+                          await tx.$queryRaw`
+                            SELECT id FROM inventory_lots WHERE branch_id = ${ids.branch}::uuid AND variant_id = ${v}::uuid FOR UPDATE`;
+                          return 'locked';
+                        },
+                        { timeout: 30_000, maxWait: 10_000 },
+                      )
+                  : () =>
+                      inventory.adjust(holder.token, {
+                        requestKey: randomUUID(),
+                        branchId: ids.branch,
+                        variantId: v,
+                        lotId: lot.id,
+                        quantity: 1,
+                        reason: 'LOSS',
+                        note: null,
+                      });
+              const results = await race(() => consume(id), command);
+              assert.equal(settled(results[0]!), 'APPLIED', `round ${round}`);
+              assert.equal(outcome(results[1]!), 'OK', `round ${round}`);
+              const sold = await stockOf(invoice.id);
+              assert.deepEqual([sold.status, sold.net], ['CONSUMED', -3]);
+              const alerts = await database.notification.findMany({
+                where: { type: 'EXPIRED_LOT_SOLD', entityId: v },
+                select: { recipientUserId: true, params: true },
+              });
+              const told = alerts.map((alert) => alert.recipientUserId);
+              assert.equal(new Set(told).size, told.length, 'one alert for each recipient');
+              for (const person of [a, b, boss]) {
+                assert.ok(
+                  told.includes(person.id),
+                  'every holder of the permission at the branch is told',
+                );
+              }
+              assert.equal(
+                await database.auditEvent.count({
+                  where: {
+                    action: 'STOCK_EXPIRED_LOT_SOLD',
+                    after: { path: ['invoiceId'], equals: invoice.id },
+                  },
+                }),
+                1,
+              );
+              await setZone('Asia/Ho_Chi_Minh');
+            }
+          } finally {
+            await setZone('Asia/Ho_Chi_Minh');
+          }
+          await audit();
+        },
+      );
+
+      await suite.test(
         'two invoices of the same variants sold at once, in opposite order: no deadlock, every sale whole',
         async () => {
           for (let round = 0; round < 6; round += 1) {
@@ -732,6 +831,7 @@ test(
                 select: { id: true },
               })
             ).map((row) => row.id);
+            await tx.notification.deleteMany({ where: { branchId: ids.branch } });
             await tx.outboxConsumption.deleteMany({ where: { event: { branchId: ids.branch } } });
             await tx.outboxEvent.deleteMany({
               where: {
