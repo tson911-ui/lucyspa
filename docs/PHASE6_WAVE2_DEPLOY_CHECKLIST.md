@@ -156,7 +156,7 @@ pnpm db:status
 docker exec lucy-spa-postgres-1 sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c "select (select count(*) from _prisma_migrations where finished_at is not null) as migrations, (select count(*) from permissions) as permissions, (select count(*) from invoice_lines where kind = \$\$PRODUCT\$\$) as product_lines, (select count(*) from invoices where channel <> \$\$COUNTER\$\$ or shipping_fee_vnd <> 0 or kind = \$\$PRODUCT_SALE\$\$) as product_invoices, (select count(*) from stock_movements where kind in (\$\$SALE\$\$, \$\$SALE_REVERSAL\$\$)) as sale_movements"'
 ```
 
-**Mong đợi:** lần 1 `All migrations have been successfully applied.`; lần 2 `Database schema is up to date!`; dòng cuối `80|65|0|0|0` (80 migration, quyền **vẫn 65**, chưa có dòng sản phẩm nào trên hóa đơn, chưa có hóa đơn sản phẩm, chưa có phiếu xuất kho bán hàng). Có lỗi: **DỪNG, không chạy lại**, xem Bước 9.
+**Mong đợi:** lần 1 `All migrations have been successfully applied.`; lần 2 `Database schema is up to date!`; dòng cuối `80|65|0|0|0` (80 migration, quyền **vẫn 65**, chưa có dòng sản phẩm nào trên hóa đơn, chưa có hóa đơn sản phẩm, chưa có phiếu xuất kho bán hàng). Có lỗi: **DỪNG, không chạy lại**, xem Bước 10.
 
 ## Bước 6. Khởi động lại (API và worker, rồi web), kiểm tra quyền
 
