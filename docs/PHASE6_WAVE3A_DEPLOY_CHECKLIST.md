@@ -14,7 +14,7 @@ Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, t
 
 - Trên GitHub, tab **Actions**, commit `<MÃ_COMMIT_MỚI>` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
 - Owner đã đọc `docs/PHASE6_WAVE3A_MILESTONE.md` và `docs/PHASE6_WAVE3A_ROLLBACK_PROOF.md` (cách quay lại đã thử thật).
-- Owner đã trả lời các mục chờ duyệt của P6-12 đến P6-14 (hoặc chấp nhận chạy với cách hiểu hiện có: chúng nằm ở `PHASE6_OWNER_DECISIONS_VI.md`). Deploy không bắt buộc phải có câu trả lời; nhưng **gán quyền cho nhân viên thì nên đợi**.
+- Năm mục của P14 (P14-2, P14-3, P14-4, P14-5, P14-15) chưa được Chủ duyệt, nhưng **không ảnh hưởng việc deploy**: hai quyền `MANAGE_PRODUCT_RETURNS` và `REFUND_PRODUCTS` chưa gán cho ai nên không nhân viên nào đổi hàng được. **Chỉ gán quyền cho nhân viên sau khi Chủ trả lời năm mục đó.**
 - Nếu có nhân viên đang thu tiền ở quầy, báo họ tạm dừng khoảng 10 phút ở Bước 5 và 6.
 
 ## Bước 1. Xem hiện trạng (chỉ đọc)
@@ -189,7 +189,7 @@ pm2 logs lucyspa-worker --err --lines 30 --nostream
 pnpm db:permissions:sync
 ```
 
-**Mong đợi:** `lucyspa-api` 1 dòng `online`, `lucyspa-worker` **đúng 1 dòng** `online`, `lucyspa-web` **3 dòng** `online`; không có dòng lỗi mới sau lúc khởi động lại; `Permission catalog synced: 0 inserted, 65 already present.` **Không bao giờ chạy `pm2 scale lucyspa-worker` hoặc `pm2 scale lucyspa-api`**: lập lịch của worker sẽ chạy hai lần. Báo nhân viên (nếu có) thu tiền lại được.
+**Mong đợi:** `lucyspa-api` 1 dòng `online`, `lucyspa-worker` **đúng 1 dòng** `online`, `lucyspa-web` **3 dòng** `online`; không có dòng lỗi mới sau lúc khởi động lại (**ngoại lệ vô hại:** tối đa vài dòng `Booking notification job failed` với `could not obtain lock on row in relation "visits"` ở **giây đầu** của worker, nếu có sự kiện đặt lịch tồn hoặc lượt đến đang làm dịch vụ; hành vi đã có từ trước, tự hết sau 1 đến 2 giây, không mất gì; dòng lỗi **lặp lại mãi** hoặc lỗi khác thì **DỪNG**); `Permission catalog synced: 0 inserted, 65 already present.` **Không bao giờ chạy `pm2 scale lucyspa-worker` hoặc `pm2 scale lucyspa-api`**: lập lịch của worker sẽ chạy hai lần. Báo nhân viên (nếu có) thu tiền lại được.
 
 ## Bước 7. Kiểm tra bằng lệnh (không tạo hay sửa dữ liệu thật)
 
