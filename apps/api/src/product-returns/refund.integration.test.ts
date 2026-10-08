@@ -52,7 +52,11 @@ test(
           new LocalDiskMediaStorage(folder),
           pino({ level: 'silent' }),
         );
-        const refunds = new ProductRefundService(base.adapter, base.throttle, base.environment);
+        const strictRefunds = new ProductRefundService(
+          base.adapter,
+          base.throttle,
+          base.environment,
+        );
         const programs = new DiscountService(base.adapter, base.throttle);
         const clerk = await base.staff(['MANAGE_PRODUCT_RETURNS'], { branchId: A.id });
         const refunder = await base.staff(['REFUND_PRODUCTS'], { branchId: A.id });
@@ -182,6 +186,37 @@ test(
               note: null,
             }),
           );
+        };
+        /**
+         * Gives a person a NEW password confirmation, as a real person re-entering their password would (P13-3: one confirmation covers
+         * one refund). The test-only way: the session row is rewritten with the replica role, like `ageSession`.
+         */
+        const confirmAgain = async (token: string) => {
+          const principal = await base.adapter.resolve(token);
+          assert.ok(principal?.userId, 'a signed-in person');
+          await tx.$executeRawUnsafe('SELECT pg_sleep(0.003)');
+          await tx.$executeRawUnsafe('SAVEPOINT confirm');
+          try {
+            await tx.$executeRawUnsafe('SET LOCAL session_replication_role = replica');
+            await tx.$executeRawUnsafe(
+              `UPDATE sessions SET reauthenticated_at = date_trunc('milliseconds', clock_timestamp()) WHERE user_id = '${principal.userId}'`,
+            );
+            await tx.$executeRawUnsafe('SET LOCAL session_replication_role = origin');
+            await tx.$executeRawUnsafe('RELEASE SAVEPOINT confirm');
+          } catch (error) {
+            await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT confirm');
+            throw error;
+          }
+        };
+        /** The service as the screens use it: the person confirms their password before each refund (a new confirmation every time). */
+        const refunds = {
+          summary: strictRefunds.summary.bind(strictRefunds),
+          correctReference: strictRefunds.correctReference.bind(strictRefunds),
+          refund: async (...args: Parameters<ProductRefundService['refund']>) => {
+            const [token] = args;
+            if (token !== undefined) await confirmAgain(token);
+            return strictRefunds.refund(...args);
+          },
         };
         const refundBody = (patch: Record<string, unknown> = {}) => ({
           quantity: 1,
@@ -383,33 +418,235 @@ test(
         );
 
         await suite.test(
-          'a fresh password confirmation is needed for every refund; reading back a repeat needs none',
+          'a stale password confirmation is refused, and a repeat of a request is read back without one',
           async () => {
             const s = await sale();
             const c = await accepted(s);
             // The session of `stale` confirmed its password ten minutes ago: older than the freshness window.
             await ageSession(stale.id);
             await fails(
-              () => refunds.refund(stale.token, c.id, refundBody() as never),
+              () => strictRefunds.refund(stale.token, c.id, refundBody() as never),
               'REAUTHENTICATION_REQUIRED',
             );
             assert.equal(await tx.productRefund.count({ where: { invoiceLineId: s.lineId } }), 0);
             // A fresh session refunds, and the repeat of the same request is read back without a new confirmation.
             const fleeting = await base.staff(['REFUND_PRODUCTS'], { branchId: A.id });
             const body = refundBody();
-            const made = await k.ok(() => refunds.refund(fleeting.token, c.id, body as never));
+            const made = await k.ok(() =>
+              strictRefunds.refund(fleeting.token, c.id, body as never),
+            );
             assert.equal(made.refunds.length, 1);
             const row = await refundRow(lastRefund(made).id);
             assert.ok(row.reauthenticatedAt, 'the confirmation is kept as evidence');
             await ageSession(fleeting.id);
-            const again = await refunds.refund(fleeting.token, c.id, body as never);
+            const again = await strictRefunds.refund(fleeting.token, c.id, body as never);
             assert.equal(again.refunds.length, 1, 'the repeat created nothing');
             assert.equal(lastRefund(again).id, lastRefund(made).id);
-            // ...but a new request now needs the confirmation.
+            // ...but a new request now needs a new confirmation.
             await fails(
-              () => refunds.refund(fleeting.token, c.id, refundBody() as never),
+              () => strictRefunds.refund(fleeting.token, c.id, refundBody() as never),
               'REAUTHENTICATION_REQUIRED',
             );
+          },
+        );
+
+        await suite.test(
+          'P13-3: one password confirmation covers ONE refund, even inside the freshness window',
+          async () => {
+            const s = await sale({ quantity: 3 });
+            const c = await accepted(s);
+            const person = await base.staff(['REFUND_PRODUCTS'], { branchId: A.id });
+            // The session was confirmed seconds ago (fresh): the first refund uses that confirmation...
+            const first = await k.ok(() =>
+              strictRefunds.refund(person.token, c.id, refundBody() as never),
+            );
+            assert.equal(first.refunds.length, 1);
+            const firstRow = await refundRow(lastRefund(first).id);
+            const spent = await tx.refundReauthenticationUse.findMany({
+              where: { actorUserId: person.id },
+            });
+            assert.equal(spent.length, 1, 'the confirmation is spent');
+            assert.equal(spent[0]!.productRefundId, firstRow.id);
+            assert.equal(
+              spent[0]!.reauthenticatedAt.getTime(),
+              firstRow.reauthenticatedAt.getTime(),
+            );
+            // ...the second refund, a few seconds later and still inside the 300 s window, is refused: nothing is written.
+            const countsBefore = await tx.productRefund.count({
+              where: { invoiceLineId: s.lineId },
+            });
+            await fails(
+              () => strictRefunds.refund(person.token, c.id, refundBody() as never),
+              'REAUTHENTICATION_REQUIRED',
+            );
+            assert.equal(
+              await tx.productRefund.count({ where: { invoiceLineId: s.lineId } }),
+              countsBefore,
+            );
+            assert.equal(
+              await tx.refundReauthenticationUse.count({ where: { actorUserId: person.id } }),
+              1,
+            );
+            // Typing the password again gives a new confirmation, and the refund goes through.
+            await confirmAgain(person.token);
+            const second = await k.ok(() =>
+              strictRefunds.refund(person.token, c.id, refundBody() as never),
+            );
+            assert.equal(second.refunds.length, 2);
+            assert.equal(
+              await tx.refundReauthenticationUse.count({ where: { actorUserId: person.id } }),
+              2,
+            );
+            // A refund that fails its own checks spends nothing (the whole transaction is undone).
+            await confirmAgain(person.token);
+            await fails(
+              () => strictRefunds.refund(person.token, c.id, refundBody({ quantity: 9 }) as never),
+              'REFUND_QUANTITY_EXCEEDED',
+            );
+            assert.equal(
+              await tx.refundReauthenticationUse.count({ where: { actorUserId: person.id } }),
+              2,
+            );
+            const third = await k.ok(() =>
+              strictRefunds.refund(person.token, c.id, refundBody() as never),
+            );
+            assert.equal(third.refunds.length, 3, 'the unspent confirmation still works');
+            await reconcileRefunds();
+          },
+        );
+
+        await suite.test(
+          'P13-3: the use of a confirmation is history, and the database refuses a refund without its own use',
+          async () => {
+            const s = await sale({ quantity: 2 });
+            const c = await accepted(s);
+            const person = await base.staff(['REFUND_PRODUCTS'], { branchId: A.id });
+            const made = lastRefund(
+              await k.ok(() => strictRefunds.refund(person.token, c.id, refundBody() as never)),
+            );
+            const use = await tx.refundReauthenticationUse.findFirstOrThrow({
+              where: { productRefundId: made.id },
+            });
+            const key = `actor_user_id = '${use.actorUserId}' AND reauthenticated_at = '${use.reauthenticatedAt.toISOString()}'`;
+            await refuses(
+              `UPDATE refund_reauthentication_uses SET product_refund_id = NULL WHERE ${key}`,
+              /history/,
+            );
+            await refuses(`DELETE FROM refund_reauthentication_uses WHERE ${key}`, /history/);
+            await refuses(
+              `TRUNCATE refund_reauthentication_uses`,
+              /never truncated|cannot truncate/,
+            );
+            // The same confirmation cannot be written twice, whatever the application does.
+            await refuses(
+              `INSERT INTO refund_reauthentication_uses (actor_user_id, reauthenticated_at, product_refund_id) VALUES ('${use.actorUserId}', '${use.reauthenticatedAt.toISOString()}', '${made.id}')`,
+              /duplicate key|refund_reauthentication_uses_pkey/,
+            );
+            // A refund row written without a use of its confirmation is refused at commit.
+            const row = await refundRow(made.id);
+            await refuses(
+              `INSERT INTO product_refunds (code, branch_id, invoice_id, invoice_line_id, return_case_id, paid_seq, case_ordinal, quantity, amount_vnd, line_units_after, line_amount_after_vnd, invoice_refunded_after_vnd, method, reason, restock, actor_user_id, reauthenticated_at, client_request_id) VALUES ('HT-Y${randomUUID().slice(0, 6)}', '${row.branchId}', '${row.invoiceId}', '${row.invoiceLineId}', '${row.returnCaseId}', 1, 2, 1, ${row.amountVnd}, 2, ${row.amountVnd * 2n}, ${row.amountVnd * 2n}, 'CASH', 'x', 'NOT_SELLABLE', '${row.actorUserId}', clock_timestamp(), '${randomUUID()}')`,
+              /uses its own password confirmation once/,
+              true,
+            );
+          },
+        );
+
+        await suite.test(
+          'every product refund tells the Owner in-app: invoice, product, quantity, amount, method and who refunded',
+          async () => {
+            const s = await sale({ quantity: 3 });
+            const sku = (
+              await tx.invoiceLineProduct.findUniqueOrThrow({
+                where: { invoiceLineId: s.lineId },
+                select: { sku: true },
+              })
+            ).sku;
+            const c = await accepted(s);
+            const owners = await tx.user.findMany({
+              where: { kind: 'OWNER', status: 'ACTIVE' },
+              select: { id: true },
+            });
+            assert.ok(owners.length >= 1, 'the fixture has an Owner');
+            const noticesOf = (userId: string) =>
+              tx.notification.findMany({
+                where: { recipientUserId: userId, type: 'PRODUCT_REFUND_MADE', entityId: c.id },
+                orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+              });
+            const bystander = await base.staff(['MANAGE_PRODUCT_RETURNS'], { branchId: A.id });
+            const outsider = await base.staff(['REFUND_PRODUCTS'], { branchId: B.id });
+
+            const made = lastRefund(
+              await refundNow(refunder, c, {
+                quantity: 2,
+                method: 'BANK_TRANSFER_MANUAL',
+                bankReference: 'FT26100801',
+              }),
+            );
+            for (const owner of owners) {
+              const notices = await noticesOf(owner.id);
+              assert.equal(notices.length, 1, 'one notice per Owner account');
+              const notice = notices[0]!;
+              assert.equal(notice.entityType, 'ProductReturnCase');
+              assert.equal(notice.branchId, A.id);
+              assert.equal(notice.contextCode, c.code);
+              const refunderName = (await tx.user.findUniqueOrThrow({ where: { id: refunder.id } }))
+                .fullName;
+              assert.deepEqual(notice.params, {
+                source: 'REFUND',
+                invoiceCode: s.code,
+                sku,
+                quantity: 2,
+                amountVnd: made.amountVnd,
+                method: 'BANK_TRANSFER_MANUAL',
+                refundedBy: refunderName,
+              });
+              assert.doesNotMatch(
+                JSON.stringify(notice.params),
+                /FT26100801/,
+                'the transfer reference is not copied into the notice',
+              );
+              const event = await tx.outboxEvent.findUniqueOrThrow({
+                where: { id: notice.sourceEventId },
+              });
+              assert.equal(event.eventType, 'PRODUCT_REFUND_MADE');
+              assert.ok(
+                event.publishedAt,
+                'written in the transaction: nothing is left to a relay',
+              );
+            }
+            // Nobody else is told: not the case clerk, not a holder at another branch, not the refunder.
+            for (const other of [bystander, outsider, refunder]) {
+              assert.equal(
+                await tx.notification.count({
+                  where: { recipientUserId: other.id, type: 'PRODUCT_REFUND_MADE' },
+                }),
+                0,
+              );
+            }
+            // A repeat of the same request writes nothing more; the next refund writes its own notice.
+            const body = refundBody({ quantity: 1 });
+            await refundNow(refunder, c, body);
+            await strictRefunds.refund(refunder.token, c.id, body as never);
+            for (const owner of owners) assert.equal((await noticesOf(owner.id)).length, 2);
+            // A refund that is refused leaves no notice.
+            await fails(() => refundNow(refunder, c, { quantity: 5 }), 'REFUND_QUANTITY_EXCEEDED');
+            for (const owner of owners) assert.equal((await noticesOf(owner.id)).length, 2);
+            // The Owner who refunds is told too (every refund), and a cash refund names its method.
+            const ownerCase = await accepted(await sale({ quantity: 1 }));
+            const byOwner = lastRefund(
+              await k.ok(() => refunds.refund(owner.token, ownerCase.id, refundBody() as never)),
+            );
+            const own = await tx.notification.findMany({
+              where: {
+                recipientUserId: owner.id,
+                type: 'PRODUCT_REFUND_MADE',
+                entityId: ownerCase.id,
+              },
+            });
+            assert.equal(own.length, 1);
+            assert.equal((own[0]!.params as { method?: string }).method, 'CASH');
+            assert.equal((own[0]!.params as { amountVnd?: string }).amountVnd, byOwner.amountVnd);
           },
         );
 
@@ -1253,7 +1490,10 @@ test(
               return `INSERT INTO product_refunds (${Object.keys(values).join(', ')}) VALUES (${Object.values(values).join(', ')})`;
             };
             // A valid second refund is accepted by the database, so each refusal below is about the rule, not the shape.
-            const valid = await raw(insert({}), true);
+            // (With the use of its own password confirmation, which the database requires of every new refund at commit.)
+            const withUse = (statement: string) =>
+              `WITH r AS (${statement} RETURNING id, actor_user_id, reauthenticated_at) INSERT INTO refund_reauthentication_uses (actor_user_id, reauthenticated_at, product_refund_id) SELECT actor_user_id, reauthenticated_at, id FROM r`;
+            const valid = await raw(withUse(insert({})), true);
             assert.equal(valid, null, `a valid refund passes: ${String(valid)}`);
             await refuses(
               insert({
@@ -1333,7 +1573,11 @@ test(
               /product_refunds_product_line_fkey|follows an accepted return case|paid invoice/,
             );
             // Stock: a sellable refund without its movement is refused at commit; a movement for a not-sellable refund is refused.
-            await refuses(insert({ restock: `'SELLABLE'` }), /puts back exactly its units/, true);
+            await refuses(
+              withUse(insert({ restock: `'SELLABLE'` })),
+              /puts back exactly its units/,
+              true,
+            );
             await refuses(
               `INSERT INTO stock_movements (branch_id, variant_id, lot_id, kind, quantity_delta, product_refund_id, idempotency_key, actor_user_id)
                SELECT branch_id, variant_id, id, 'REFUND_RETURN', 1, '${made.id}', 'X-${randomUUID()}', '${refunder.id}' FROM inventory_lots WHERE branch_id = '${A.id}' LIMIT 1`,

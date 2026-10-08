@@ -19,6 +19,9 @@ interface FinanceTexts {
 /** Product return notice templates (Phase 6 P6-12): the case code and a closed reason only, never a name or free text. */
 interface ReturnTexts {
   opened: string;
+  refundMade: string;
+  exchangeRefundMade: string;
+  methods: Record<'CASH' | 'BANK_TRANSFER_MANUAL', string>;
   reasons: Record<'PERSONAL_PREFERENCE' | 'WRONG_OR_DAMAGED' | 'SKIN_IRRITATION', string>;
   openCase: string;
 }
@@ -98,6 +101,7 @@ const vi = {
     EXPIRY_ALERT: 'Có lô hàng đã hết hạn hoặc sắp hết hạn.',
     EXPIRED_LOT_SOLD: 'Hàng của một lô đã hết hạn vừa được giao cho khách.',
     PRODUCT_RETURN_OPENED: 'Có hồ sơ trả hàng mới cần bạn xem.',
+    PRODUCT_REFUND_MADE: 'Vừa có một lần hoàn tiền sản phẩm.',
   } satisfies Record<NotificationType, string>,
   leave: {
     requested: 'Có đơn xin nghỉ ({type}) từ {from} đến {to} cần bạn xử lý.',
@@ -143,6 +147,11 @@ const vi = {
   } satisfies InventoryTexts,
   returns: {
     opened: 'Có hồ sơ trả hàng mới {code}: {reason}.',
+    refundMade:
+      'Đã hoàn {amount} ({method}) cho {quantity} × {sku}, hóa đơn {invoice}. Người hoàn: {who}.',
+    exchangeRefundMade:
+      'Đổi hàng: đã hoàn phần chênh {amount} ({method}) cho {quantity} × {sku}, hóa đơn {invoice}. Người hoàn: {who}.',
+    methods: { CASH: 'tiền mặt', BANK_TRANSFER_MANUAL: 'chuyển khoản' },
     reasons: {
       PERSONAL_PREFERENCE: 'khách đổi ý',
       WRONG_OR_DAMAGED: 'giao nhầm hoặc hỏng do đóng gói',
@@ -237,6 +246,7 @@ const en: Dictionary = {
     EXPIRY_ALERT: 'Some lots have expired or are about to expire.',
     EXPIRED_LOT_SOLD: 'Stock from an expired lot was just handed to a customer.',
     PRODUCT_RETURN_OPENED: 'A new return case needs your attention.',
+    PRODUCT_REFUND_MADE: 'A product refund was just made.',
   },
   leave: {
     requested: 'A leave request ({type}) from {from} to {to} needs your attention.',
@@ -280,6 +290,11 @@ const en: Dictionary = {
   },
   returns: {
     opened: 'New return case {code}: {reason}.',
+    refundMade:
+      'Refunded {amount} ({method}) for {quantity} × {sku}, invoice {invoice}. Refunded by: {who}.',
+    exchangeRefundMade:
+      'Exchange: refunded the price difference {amount} ({method}) for {quantity} × {sku}, invoice {invoice}. Refunded by: {who}.',
+    methods: { CASH: 'cash', BANK_TRANSFER_MANUAL: 'bank transfer' },
     reasons: {
       PERSONAL_PREFERENCE: 'changed their mind',
       WRONG_OR_DAMAGED: 'wrong product or damaged packing',

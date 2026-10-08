@@ -527,6 +527,7 @@ model User {
   windowExceptionReturns         ProductReturnCase[]              @relation("ProductReturnWindowException")
   productRefundsMade             ProductRefund[]                  @relation("ProductRefundActor")
   productRefundCorrections       ProductRefundCorrection[]        @relation("ProductRefundCorrectionActor")
+  refundReauthenticationUses     RefundReauthenticationUse[]      @relation("RefundReauthenticationUseActor")
   productReturnEvents            ProductReturnEvent[]             @relation("ProductReturnEventActor")
   uploadedReturnPhotos           ProductReturnPhoto[]             @relation("ProductReturnPhotoUploader")
   removedReturnPhotos            ProductReturnPhoto[]             @relation("ProductReturnPhotoRemover")
@@ -3796,6 +3797,7 @@ model ProductRefund {
   ledgerEntries           LoyaltyLedgerEntry[] @relation("ProductRefundLedger")
   movements               StockMovement[]      @relation("ProductRefundMovement")
   lots                    InventoryLot[]       @relation("ProductRefundLot")
+  reauthenticationUses    RefundReauthenticationUse[] @relation("RefundReauthenticationUseRefund")
 
   @@unique([actorUserId, clientRequestId], map: "product_refunds_request_key")
   @@unique([invoiceLineId, lineUnitsAfter], map: "product_refunds_line_units_key")
@@ -3818,4 +3820,19 @@ model ProductRefundCorrection {
 
   @@index([refundId, occurredAt, id], map: "product_refund_corrections_refund_idx")
   @@map("product_refund_corrections")
+}
+
+/// Phase 6 P6-13 follow-up (Owner, 2026-10-08, P13-3): a password confirmation is used by ONE refund (and, from P6-14, one exchange); the
+/// pair (person, instant of the confirmation) is the key. Append-only; SQL refuses update, delete and truncate, and keeps the partial
+/// unique index on `product_refund_id`.
+model RefundReauthenticationUse {
+  actorUserId       String         @map("actor_user_id") @db.Uuid
+  actor             User           @relation("RefundReauthenticationUseActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reauthenticatedAt DateTime       @map("reauthenticated_at") @db.Timestamptz(3)
+  productRefundId   String?        @map("product_refund_id") @db.Uuid
+  productRefund     ProductRefund? @relation("RefundReauthenticationUseRefund", fields: [productRefundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  usedAt            DateTime       @default(dbgenerated("clock_timestamp()")) @map("used_at") @db.Timestamptz(3)
+
+  @@id([actorUserId, reauthenticatedAt])
+  @@map("refund_reauthentication_uses")
 }

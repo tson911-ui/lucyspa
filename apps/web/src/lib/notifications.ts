@@ -144,7 +144,7 @@ function financeMessage(
           })
         : null;
     case 'PAYMENT_REVERSED':
-      return 'method' in params
+      return 'method' in params && !('refundedBy' in params)
         ? fill(f.reversed, {
             method: f.methods[params.method],
             amount: money(params.amountVnd, locale),
@@ -173,14 +173,27 @@ function financeMessage(
   }
 }
 
-/** A return notice names the case code (its context code) and the closed reason; anything else falls back. */
+/**
+ * A return notice names the case code (its context code) and the closed reason; a refund notice names the invoice, the SKU, the
+ * quantity, the amount, the method and who refunded (all validated params); anything else falls back.
+ */
 function returnMessage(
   item: NotificationItem,
   params: NonNullable<NotificationItem['params']>,
   locale: Locale,
 ): string | null {
-  if (item.type !== 'PRODUCT_RETURN_OPENED' || !('reason' in params)) return null;
   const r = getNotificationDictionary(locale).returns;
+  if (item.type === 'PRODUCT_REFUND_MADE' && 'refundedBy' in params) {
+    return fill(params.source === 'EXCHANGE' ? r.exchangeRefundMade : r.refundMade, {
+      amount: money(params.amountVnd, locale),
+      method: r.methods[params.method],
+      quantity: params.quantity,
+      sku: params.sku,
+      invoice: params.invoiceCode,
+      who: params.refundedBy,
+    });
+  }
+  if (item.type !== 'PRODUCT_RETURN_OPENED' || !('reason' in params)) return null;
   return fill(r.opened, { code: item.source.code, reason: r.reasons[params.reason] });
 }
 

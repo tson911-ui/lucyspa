@@ -46,7 +46,8 @@ export type NotificationParamsKind =
   | 'LOW_STOCK'
   | 'EXPIRY_ALERT'
   | 'EXPIRED_LOT_SOLD'
-  | 'PRODUCT_RETURN_OPENED';
+  | 'PRODUCT_RETURN_OPENED'
+  | 'PRODUCT_REFUND_MADE';
 
 export interface NotificationTypeMetadata {
   readonly category: NotificationCategory;
@@ -164,6 +165,14 @@ export const NOTIFICATION_TYPE_REGISTRY = {
     i18nKey: 'PRODUCT_RETURN_OPENED',
     params: 'PRODUCT_RETURN_OPENED',
   },
+  // Phase 6 P6-13 follow-up (Owner, 2026-10-08): every product refund, and the cash-out of a cheaper exchange, tells the Owner in-app.
+  PRODUCT_REFUND_MADE: {
+    category: 'FINANCE',
+    severity: 'ATTENTION',
+    entityTypes: ['ProductReturnCase'],
+    i18nKey: 'PRODUCT_REFUND_MADE',
+    params: 'PRODUCT_REFUND_MADE',
+  },
 } as const satisfies Record<string, NotificationTypeMetadata>;
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPE_REGISTRY;
@@ -257,7 +266,23 @@ export interface ExpiredLotSoldParams {
 export interface ProductReturnOpenedParams {
   reason: 'PERSONAL_PREFERENCE' | 'WRONG_OR_DAMAGED' | 'SKIN_IRRITATION';
 }
+/**
+ * A product refund was made (Owner, 2026-10-08: invoice, product, quantity, amount, method, who refunded). The case is the notification's
+ * entity (its code is the context code); the product is its SKU and the person is shown by name, both as plain text of at most 64
+ * characters (checked like a code: one line, no control characters), never free-form. `source` says whether it is a refund of a returned
+ * line or the money handed back by a cheaper exchange (P6-14).
+ */
+export interface ProductRefundMadeParams {
+  source: 'REFUND' | 'EXCHANGE';
+  invoiceCode: string;
+  sku: string;
+  quantity: number;
+  amountVnd: string;
+  method: 'CASH' | 'BANK_TRANSFER_MANUAL';
+  refundedBy: string;
+}
 export type NotificationParams =
+  | ProductRefundMadeParams
   | ProductReturnOpenedParams
   | ExpiredLotSoldParams
   | LowStockParams
@@ -368,6 +393,28 @@ export function parseNotificationParams(
         invoiceCode: code('invoiceCode', record['invoiceCode']),
         lotCode: code('lotCode', record['lotCode']),
         quantity,
+      };
+    }
+    case 'PRODUCT_REFUND_MADE': {
+      exactKeys(type, record, [
+        'source',
+        'invoiceCode',
+        'sku',
+        'quantity',
+        'amountVnd',
+        'method',
+        'refundedBy',
+      ]);
+      const quantity = count('quantity', record['quantity']);
+      if (quantity < 1) throw new Error('Notification param quantity must be at least 1.');
+      return {
+        source: oneOf('source', record['source'], ['REFUND', 'EXCHANGE'] as const),
+        invoiceCode: code('invoiceCode', record['invoiceCode']),
+        sku: code('sku', record['sku']),
+        quantity,
+        amountVnd: vnd('amountVnd', record['amountVnd']),
+        method: oneOf('method', record['method'], ['CASH', 'BANK_TRANSFER_MANUAL'] as const),
+        refundedBy: code('refundedBy', record['refundedBy']),
       };
     }
     case 'PRODUCT_RETURN_OPENED':

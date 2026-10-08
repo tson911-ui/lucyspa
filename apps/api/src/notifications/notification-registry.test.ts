@@ -39,10 +39,21 @@ const INVENTORY = ['LOW_STOCK_REACHED', 'EXPIRY_ALERT', 'EXPIRED_LOT_SOLD'];
 // Phase 6 P6-12 (T35): a new product return case tells the holders of REFUND_PRODUCTS at the branch (operations).
 const RETURNS = ['PRODUCT_RETURN_OPENED'];
 
+// Phase 6 P6-13 follow-up (Owner, 2026-10-08): every product refund tells the Owner (finance, about one return case).
+const REFUND_NOTICE = ['PRODUCT_REFUND_MADE'];
+
 test('the registry keeps every Phase 3 type unchanged and adds the Leave, finance and stock alert types', () => {
   assert.deepEqual(
     [...NOTIFICATION_TYPES].sort(),
-    [...PHASE3, 'LEAVE_REQUESTED', 'LEAVE_DECIDED', ...FINANCE, ...INVENTORY, ...RETURNS].sort(),
+    [
+      ...PHASE3,
+      'LEAVE_REQUESTED',
+      'LEAVE_DECIDED',
+      ...FINANCE,
+      ...INVENTORY,
+      ...RETURNS,
+      ...REFUND_NOTICE,
+    ].sort(),
   );
   assert.deepEqual(notificationMetadata('LOW_STOCK_REACHED').entityTypes, ['ProductVariant']);
   assert.deepEqual(notificationMetadata('EXPIRY_ALERT').entityTypes, ['Branch']);
@@ -82,7 +93,10 @@ test('category filters are derived from the registry, and targets from the entit
     'LEAVE_DECIDED',
     'LEAVE_REQUESTED',
   ]);
-  assert.deepEqual([...notificationTypesInCategory('FINANCE')].sort(), [...FINANCE].sort());
+  assert.deepEqual(
+    [...notificationTypesInCategory('FINANCE')].sort(),
+    [...FINANCE, ...REFUND_NOTICE].sort(),
+  );
   assert.equal(
     notificationTypesInCategory('OPERATIONS').length,
     PHASE3.length + INVENTORY.length + RETURNS.length,
@@ -285,6 +299,48 @@ test('the return-case notice names the entity, the reason and nothing else', () 
   bad({ reason: 'SKIN_IRRITATION', note: 'Khách bị đỏ da' });
   bad({ reason: 'SKIN_IRRITATION', customerName: 'A' });
   bad({ reason: 5 });
+});
+
+test('the refund notice (Owner) names invoice, product, quantity, amount, method and who, as plain checked text', () => {
+  assert.deepEqual(notificationMetadata('PRODUCT_REFUND_MADE').entityTypes, ['ProductReturnCase']);
+  assert.equal(notificationMetadata('PRODUCT_REFUND_MADE').category, 'FINANCE');
+  assert.ok(isAllowedNotificationEntity('PRODUCT_REFUND_MADE', 'ProductReturnCase'));
+  for (const entity of ['Booking', 'Visit', 'Invoice', 'Branch', 'ProductVariant'] as const) {
+    assert.ok(!isAllowedNotificationEntity('PRODUCT_REFUND_MADE', entity), entity);
+  }
+  const good = {
+    source: 'REFUND',
+    invoiceCode: 'HD20261008-0007',
+    sku: 'WH-001',
+    quantity: 2,
+    amountVnd: '180000',
+    method: 'BANK_TRANSFER_MANUAL',
+    refundedBy: 'Nguyễn Thị Lan',
+  };
+  assert.deepEqual(parseNotificationParams('PRODUCT_REFUND_MADE', good), good);
+  assert.deepEqual(
+    parseNotificationParams('PRODUCT_REFUND_MADE', { ...good, source: 'EXCHANGE', method: 'CASH' }),
+    { ...good, source: 'EXCHANGE', method: 'CASH' },
+  );
+  const bad = (patch: Record<string, unknown>) =>
+    assert.throws(() => parseNotificationParams('PRODUCT_REFUND_MADE', { ...good, ...patch }));
+  assert.throws(() => parseNotificationParams('PRODUCT_REFUND_MADE', null));
+  assert.throws(() => parseNotificationParams('PRODUCT_REFUND_MADE', {}));
+  bad({ source: 'GIFT' });
+  bad({ method: 'PAYOS' });
+  bad({ method: 'CARD' });
+  bad({ quantity: 0 });
+  bad({ quantity: 1.5 });
+  bad({ amountVnd: '-5' });
+  bad({ amountVnd: 180000 });
+  bad({ amountVnd: '01' });
+  bad({ refundedBy: '' });
+  bad({ refundedBy: 'x'.repeat(65) });
+  bad({ refundedBy: 'dòng 1\ndòng 2' });
+  bad({ sku: ' WH-001' });
+  bad({ invoiceCode: '' });
+  bad({ bankReference: 'FT26100801' });
+  bad({ accountNumber: '0123456789' });
 });
 
 test('stock alert params are counts only: no names, no free text', () => {

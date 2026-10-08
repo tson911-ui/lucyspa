@@ -91,7 +91,28 @@ test(
       storage,
       pino({ level: 'silent' }),
     );
-    const refunds = new ProductRefundService(adapter as never, throttle, environment);
+    const strictRefunds = new ProductRefundService(adapter as never, throttle, environment);
+    const personOf = new Map<string, string>();
+    /** A person typing their password again: a NEW confirmation (P13-3: one confirmation covers one refund). */
+    const confirm = async (token: string) => {
+      const userId = personOf.get(token);
+      assert.ok(userId, 'a known person');
+      await database.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe('SELECT pg_sleep(0.003)');
+        await tx.$executeRawUnsafe('SET LOCAL session_replication_role = replica');
+        await tx.$executeRawUnsafe(
+          `UPDATE sessions SET reauthenticated_at = date_trunc('milliseconds', clock_timestamp()) WHERE user_id = '${userId}'`,
+        );
+      });
+    };
+    /** The service as the screens use it: the person confirms their password before each refund. */
+    const refunds = {
+      summary: strictRefunds.summary.bind(strictRefunds),
+      refund: async (...args: Parameters<ProductRefundService['refund']>) => {
+        await confirm(args[0]!);
+        return strictRefunds.refund(...args);
+      },
+    };
     const ids = { branch: randomUUID(), role: randomUUID() };
     const userIds: string[] = [];
     const customerIds: string[] = [];
@@ -246,7 +267,9 @@ test(
           await tx.userRoleAssignment.create({
             data: { userId: id, roleId: ids.role, scopeKind: 'BRANCH', branchId: ids.branch },
           });
-          return { id, token: await login(tx, user, reauthenticated) };
+          const token = await login(tx, user, reauthenticated);
+          personOf.set(token, id);
+          return { id, token };
         });
       const a = await staff(false);
       const b = await staff(false);
@@ -270,7 +293,9 @@ test(
           createdOwner = row.id;
           userIds.push(row.id);
         }
-        return { id: row.id, token: await login(tx, row, false) };
+        const token = await login(tx, row, false);
+        personOf.set(token, row.id);
+        return { id: row.id, token };
       });
 
       const today = async () =>
@@ -599,6 +624,40 @@ test(
       );
 
       await suite.test(
+        'P13-3: two different refunds by one person on ONE password confirmation: one wins, the other must confirm again',
+        async () => {
+          for (let round = 0; round < 4; round += 1) {
+            const s = await sale(2);
+            await consumeStock(s.invoiceId);
+            const c = await accepted(s, 2);
+            await confirm(r1.token);
+            const results = await race(
+              () => strictRefunds.refund(r1.token, c.id, refundBody()),
+              () => strictRefunds.refund(r1.token, c.id, refundBody()),
+            );
+            assert.deepEqual(
+              results.map(outcome).sort(),
+              ['OK', 'REAUTHENTICATION_REQUIRED'],
+              `round ${round}`,
+            );
+            const rows = await refundsOf(s.lineId);
+            assert.equal(rows.length, 1, 'one refund');
+            assert.equal(
+              await database.refundReauthenticationUse.count({
+                where: { productRefundId: rows[0]!.id },
+              }),
+              1,
+              'one use of the confirmation',
+            );
+            // Typing the password again lets the second refund through.
+            await refunds.refund(r1.token, c.id, refundBody());
+            assert.equal((await refundsOf(s.lineId)).length, 2);
+          }
+          await audit();
+        },
+      );
+
+      await suite.test(
         'concurrent partial refunds of one line are serialized: every unit once, the amounts add up to the net exactly',
         async () => {
           for (let round = 0; round < 3; round += 1) {
@@ -854,6 +913,11 @@ test(
             });
             await tx.stockMovement.deleteMany({ where: { branchId: ids.branch } });
             await tx.inventoryLot.deleteMany({ where: { branchId: ids.branch } });
+            await tx.refundReauthenticationUse.deleteMany({
+              where: {
+                OR: [{ productRefundId: { in: refundRows } }, { actorUserId: { in: userIds } }],
+              },
+            });
             await tx.productRefund.deleteMany({ where: { branchId: ids.branch } });
             if (goLiveCreated) await tx.loyaltyGoLive.deleteMany({});
             await tx.productReturnEvent.deleteMany({ where: { caseId: { in: cases } } });

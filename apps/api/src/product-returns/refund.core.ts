@@ -14,15 +14,17 @@ import { hasFreshReauthentication } from '../auth/session.policy.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
 import * as input from '../inventory/inventory.input.js';
 import * as parse from './return.input.js';
+import { tellOwnerAboutRefund } from './refund.notice.js';
 import { holdsGraphAt } from './return.access.js';
 
 /**
  * Phase 6 P6-13: refunds per product line (design 8.2-8.4, 10.2, 10.3; Q3, Q4, Q5, OQ-19 option A, OQ-23, T21, T22, OQ-80, OQ-81, OQ-83;
  * PRD 28.6). A refund gives back some units of ONE product line of a paid counter invoice after a return case for that line was accepted
  * as a refund. Cash or a manual bank transfer only: nothing here calls PayOS, whatever the original payment was; the customer's bank
- * account is never stored, only the transfer reference. Only `REFUND_PRODUCTS` at the invoice's branch, with a recent password
- * confirmation (the same freshness window as a payment reversal). The refund record is immutable; a typed reference is corrected by a
- * new linked record.
+ * account is never stored, only the transfer reference. Only `REFUND_PRODUCTS` at the invoice's branch, with a password confirmation that
+ * is recent AND not yet used: one confirmation covers ONE refund (Owner, 2026-10-08, P13-3), enforced by the database through the use
+ * table. Every refund tells the Owner in-app, in the same transaction. The refund record is immutable; a typed reference is corrected
+ * by a new linked record.
  *
  * What a refund moves, and what it does not:
  *   - money: nothing moves in the system (the person hands over cash or sends a transfer by hand); the record is the hook the Phase 7 cash
@@ -287,11 +289,40 @@ async function soldSegments(
   return segments;
 }
 
+/**
+ * The password confirmation of this request, if it is still fresh AND nobody has used it yet (Owner, 2026-10-08, P13-3: "password re-entry
+ * once per refund, no 5-minute window"): one confirmation covers one refund. Returns the instant of the confirmation.
+ */
+export async function takeFreshConfirmation(
+  context: AdminContext,
+  freshAuthSeconds: number,
+): Promise<Date> {
+  const confirmedAt = context.actor.principal.reauthenticatedAt;
+  if (
+    confirmedAt === null ||
+    !hasFreshReauthentication(context.actor.principal, context.now, freshAuthSeconds)
+  ) {
+    throw new AuthError('REAUTHENTICATION_REQUIRED');
+  }
+  const used = await context.tx.refundReauthenticationUse.findUnique({
+    where: {
+      actorUserId_reauthenticatedAt: {
+        actorUserId: context.actor.userId,
+        reauthenticatedAt: confirmedAt,
+      },
+    },
+    select: { actorUserId: true },
+  });
+  if (used) throw new AuthError('REAUTHENTICATION_REQUIRED');
+  return confirmedAt;
+}
+
 export async function makeRefund(
   context: AdminContext,
   caseId: string,
   request: Record<string, unknown>,
   freshAuthSeconds: number,
+  owners: readonly string[],
 ): Promise<ProductRefundSummaryResponse> {
   const body = input.record(request, 'body', REFUND_KEYS);
   const quantity = input.quantity(body['quantity'], 'quantity');
@@ -342,9 +373,7 @@ export async function makeRefund(
   };
   const early = await replay();
   if (early) return early;
-  if (!hasFreshReauthentication(context.actor.principal, context.now, freshAuthSeconds)) {
-    throw new AuthError('REAUTHENTICATION_REQUIRED');
-  }
+  const confirmedAt = await takeFreshConfirmation(context, freshAuthSeconds);
 
   await lockInvoice(tx, hint.invoiceId, true);
   await lockCase(tx, caseId);
@@ -362,7 +391,7 @@ export async function makeRefund(
         select: { code: true, status: true, channel: true, paidSeq: true, branchId: true },
       },
       line: { select: { quantity: true } },
-      productLine: { select: { variantId: true } },
+      productLine: { select: { variantId: true, sku: true } },
     },
   });
   if (kase.status !== 'ACCEPTED' || kase.decidedOutcome !== 'REFUND') {
@@ -438,10 +467,19 @@ export async function makeRefund(
       reason,
       restock,
       actorUserId: context.actor.userId,
-      reauthenticatedAt: context.actor.principal.reauthenticatedAt ?? context.now,
+      reauthenticatedAt: confirmedAt,
       clientRequestId,
     },
     select: { id: true, occurredAt: true },
+  });
+  // The confirmation is spent by this refund (the key is the person and the instant; the database refuses a second use).
+  await tx.refundReauthenticationUse.create({
+    data: {
+      actorUserId: context.actor.userId,
+      reauthenticatedAt: confirmedAt,
+      productRefundId: refund.id,
+    },
+    select: { actorUserId: true },
   });
 
   // Sellable goods go back into new lots named after the return, one per lot the units were sold from.
@@ -493,8 +531,26 @@ export async function makeRefund(
       bankReferenceRecorded: reference !== null,
       restock,
       lots: segments.length,
-      reauthenticatedAt: context.actor.principal.reauthenticatedAt?.toISOString() ?? null,
+      reauthenticatedAt: confirmedAt.toISOString(),
     },
+  });
+  // The Owner is told in the same transaction (invoice, product, quantity, amount, method, who). The recipients were locked by the caller.
+  const refunder = await tx.user.findUniqueOrThrow({
+    where: { id: context.actor.userId },
+    select: { fullName: true },
+  });
+  await tellOwnerAboutRefund(tx, {
+    branchId: hint.branchId,
+    caseId,
+    caseCode: kase.code,
+    recipients: owners,
+    source: 'REFUND',
+    invoiceCode: kase.invoice.code,
+    sku: kase.productLine.sku,
+    quantity,
+    amountVnd: amount,
+    method,
+    refundedByName: refunder.fullName,
   });
   // Ids only. The Beauty points follow from the `loyalty` consumer (design 8.4, 10.1).
   await appendOutboxEvent(tx, {

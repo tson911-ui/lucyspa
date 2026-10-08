@@ -78,7 +78,7 @@ const vi = {
     submitting: 'Đang ghi nhận…',
     done: 'Đã ghi nhận hoàn tiền {code}: {amount}.',
     warning:
-      'Chỉ ghi nhận sau khi bạn đã đưa tiền hoặc chuyển khoản cho khách. Lần hoàn không sửa được; mã chuyển khoản gõ sai thì sửa ở mục "Sửa mã giao dịch".',
+      'Chỉ ghi nhận sau khi bạn đã đưa tiền hoặc chuyển khoản cho khách. Lần hoàn không sửa được; mã chuyển khoản gõ sai thì sửa ở mục "Sửa mã giao dịch". Mỗi lần hoàn cần nhập lại mật khẩu, và Chủ nhận thông báo về lần hoàn này.',
     pointsNote:
       'Điểm Beauty đã tích từ hóa đơn sẽ được thu hồi theo phần đã hoàn. Điểm giới thiệu và ví điểm Spa không bị trừ. Voucher hoặc quà đã dùng trên hóa đơn không tự trả lại.',
   },
@@ -191,7 +191,7 @@ const en: Dictionary = {
     submitting: 'Recording…',
     done: 'Refund {code} recorded: {amount}.',
     warning:
-      'Record it only after you have handed over the cash or sent the transfer. A refund cannot be edited; a mistyped transfer reference is fixed under “Correct reference”.',
+      'Record it only after you have handed over the cash or sent the transfer. A refund cannot be edited; a mistyped transfer reference is fixed under “Correct reference”. Every refund asks for your password again, and the Owner is notified.',
     pointsNote:
       'The Beauty points earned on the invoice are taken back in proportion to what is refunded. Referral points and the Spa wallet are not touched. A voucher or gift used on the invoice is not given back.',
   },

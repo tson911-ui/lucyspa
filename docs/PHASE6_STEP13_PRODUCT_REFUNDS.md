@@ -1,12 +1,12 @@
 # P6-13: Hoàn tiền từng dòng sản phẩm (báo cáo)
 
-Làm theo yêu cầu của Chủ (2026-10-08, nguyên văn ở mục 2.26 của `PHASE6_PRODUCTS_INVENTORY_DESIGN.md`). Chưa đẩy lên, chưa triển khai, chưa gán quyền cho ai. Các chỗ phải tự hiểu (P13-1 đến P13-9) **chờ Chủ**.
+Làm theo yêu cầu của Chủ (2026-10-08, nguyên văn ở mục 2.26 của `PHASE6_PRODUCTS_INVENTORY_DESIGN.md`). Chưa đẩy lên, chưa triển khai, chưa gán quyền cho ai. Chủ đã duyệt P13-1 đến P13-9 ngày 2026-10-08 (mục 2.27 của thiết kế), riêng **P13-3 được đổi** và Chủ thêm **thông báo cho Chủ**; phần bổ sung ở cuối.
 
 ## Đã làm
 
 - **Phiếu hoàn** (`product_refunds`): một lần hoàn một số lượng của một dòng sản phẩm, thuộc hồ sơ trả hàng đã chấp nhận theo cách "hoàn tiền". Chỉ **tiền mặt** hoặc **chuyển khoản thủ công**; không có đường gọi PayOS; chỉ lưu **mã giao dịch**, không có cột số tài khoản. Không sửa, không xóa (cơ sở dữ liệu chặn). Sửa mã gõ sai bằng một dòng liên kết mới (`product_refund_corrections`).
 - **Tiền:** số tiền = phần **khách thực trả** của số lượng hoàn (sau giảm giá), chia theo số lượng với làm tròn cộng dồn: hoàn hết thì cộng lại đúng bằng số khách đã trả. API tính, cơ sở dữ liệu tính lại và từ chối số khác; yêu cầu không mang số tiền. Dòng thành "đã hoàn" khi hoàn đủ số lượng; hóa đơn vẫn "đã thanh toán".
-- **Quyền:** `REFUND_PRODUCTS` ở chi nhánh của hóa đơn + xác nhận mật khẩu gần đây (như đảo thanh toán). Voucher và quà sinh nhật dùng trên hóa đơn **không** tự trả lại. Dịch vụ và combo không có đường hoàn tiền (khóa ngoại tới bảng sản phẩm).
+- **Quyền:** `REFUND_PRODUCTS` ở chi nhánh của hóa đơn + nhập lại mật khẩu **cho mỗi lần hoàn** (một lần nhập chỉ dùng cho đúng một lần hoàn, không còn cửa sổ 5 phút; xem phần bổ sung). Voucher và quà sinh nhật dùng trên hóa đơn **không** tự trả lại. Dịch vụ và combo không có đường hoàn tiền (khóa ngoại tới bảng sản phẩm).
 - **Điểm Beauty:** `loyalty` xử lý sự kiện `PRODUCT_REFUNDED`, ghi **một dòng trừ liên kết** cho mỗi phiếu (phương án A: điểm còn lại = floor((thực thu − đã hoàn)/1000)); dòng cộng điểm gốc giữ nguyên; hạng theo số dư (có thể tụt: 5.160 Kim cương về 4.400 Bạch kim); ví Spa và điểm giới thiệu không đổi; số dư không đủ thì ghi khoản thiếu vào "Ngoại lệ", không chặn việc hoàn tiền.
 - **Kho:** người hoàn chọn "bán lại được" hoặc không (không có mặc định). Bán lại được: nhập lại thành **lô mới** `{mã hồ sơ}-{số thứ tự}`, giữ hạn dùng (và giá vốn, không hiện ra ngoài) của lô đã bán; không bán lại được: kho không đổi. Cơ sở dữ liệu kiểm cuối giao dịch: số nhập lại đúng bằng số hoàn.
 - **T22:** hóa đơn đã có hoàn tiền thì không đảo thanh toán, không hủy (API và cơ sở dữ liệu).
@@ -14,7 +14,7 @@ Làm theo yêu cầu của Chủ (2026-10-08, nguyên văn ở mục 2.26 của 
 
 ## Migration
 
-`20261113000000` (hai giá trị enum) và `20261113000001`: 2 bảng, 2 kiểu, 1 dãy số `HT000001`, cột mới ở sổ điểm, chuyển kho và lô, các ràng buộc và trigger bảo vệ (thay thân hàm cũ có kèm `search_path`). Tổng 85 migration. Không đụng bảng thanh toán, hóa đơn, quyền.
+`20261113000000` (hai giá trị enum) và `20261113000001`: 2 bảng, 2 kiểu, 1 dãy số `HT000001`, cột mới ở sổ điểm, chuyển kho và lô, các ràng buộc và trigger bảo vệ (thay thân hàm cũ có kèm `search_path`). Tổng 85 migration, thêm `20261114000000` ở phần bổ sung (86). Không đụng bảng thanh toán, hóa đơn, quyền.
 
 ## Kiểm thử
 
@@ -29,6 +29,13 @@ Làm theo yêu cầu của Chủ (2026-10-08, nguyên văn ở mục 2.26 của 
 - DOM audit (CSDL `lucy_spa_uxaudit_20261001`): trang hoàn một phần và đã hoàn hết 0 phát hiện; không loại nào tăng so với baseline. Danh sách trả hàng có 1 phát hiện ở 360 px (độ cao dòng không đều do tên sản phẩm rất dài trong dữ liệu mẫu), màn này không đổi ở bước này.
 - Chưa sửa được: ở chữ 130% và 360 px thanh trên cùng của khu quản trị tràn ngang 392 > 360 (đã ghi ở `docs/UI_BACKLOG.md`); ô chọn tròn của kit 20 px nhưng cả dòng nhãn là vùng bấm; thông báo bắt buộc của trình duyệt (như các hộp thoại khác của dự án).
 
+## Bổ sung sau khi Chủ duyệt (2026-10-08, mục 2.27 của thiết kế)
+
+- **P13-3 đổi:** mỗi lần nhập mật khẩu chỉ dùng cho **một** lần hoàn. Bảng mới `refund_reauthentication_uses` (khóa = người + thời điểm nhập mật khẩu; chỉ thêm, không sửa, không xóa); mỗi phiếu hoàn mới phải có đúng một dòng dùng mật khẩu của chính nó (kiểm lúc commit). Hoàn tiền thất bại vì lý do khác thì chưa tiêu lần nhập. Gửi lại đúng yêu cầu cũ thì đọc lại kết quả, không cần mật khẩu. Màn hình tự hỏi lại mật khẩu khi API trả `REAUTHENTICATION_REQUIRED`; chỉ thêm một câu dặn vào biểu mẫu.
+- **Thông báo cho Chủ:** mỗi lần hoàn ghi một thông báo `PRODUCT_REFUND_MADE` cho các tài khoản Chủ đang hoạt động, trong cùng giao dịch: hóa đơn, mã SKU, số lượng, số tiền, cách hoàn, người hoàn. Khóa dòng tài khoản Chủ trước khi khóa hóa đơn (bài học P6-11).
+- **Migration:** `20261114000000` (tổng 86): một bảng, hai hàm bảo vệ, một kiểm tra hoãn, mở rộng hai CHECK của `notifications`.
+- **Kiểm thử thêm:** 3 bài PostgreSQL thật (một lần nhập một lần hoàn; lịch sử và kiểm tra của cơ sở dữ liệu; thông báo cho Chủ), 1 bài tranh chấp thật (hai lần hoàn của cùng một người trên một lần nhập: chỉ một thắng), bài kiểm tĩnh migration, bài registry và bài hiển thị. Các bài P6-13 cũ chỉ đổi cách chuẩn bị: người thao tác nhập lại mật khẩu trước mỗi lần hoàn (như màn hình).
+
 ## Câu hỏi mở
 
-Chờ Chủ trả lời P13-1 đến P13-9, nhất là P13-1 (phải có hồ sơ chấp nhận trước khi hoàn), P13-3 (xác nhận mật khẩu theo cửa sổ 5 phút hay đúng một lần cho mỗi phiếu) và P13-7 (chưa làm thông báo hoàn tiền bất thường).
+P13-1 đến P13-9 đã được duyệt. Còn chờ Chủ: N1 đến N4 (tên người hoàn có trong thông báo; Chủ tự hoàn cũng nhận thông báo; chỉ tài khoản Chủ nhận; khóa dòng Chủ trước hóa đơn).

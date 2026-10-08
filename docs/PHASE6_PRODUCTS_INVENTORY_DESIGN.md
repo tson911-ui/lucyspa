@@ -423,7 +423,7 @@ Owner's words, recorded exactly as given:
 - **Tests:** unit (rules, web), HTTP (the new field), 5 real-PostgreSQL tests (Owner opens after 168 h and 48 h, history and audit, photo rule, who may and may not, idempotent replay, the database refusals with their messages), a static guard on the two migrations.
 - **Also:** the integration files of P6-12 (`return.integration`, `return.race.integration`) were missing from `scripts/test-auth-integration.mjs` (they had been run one by one); they are listed there now, with the new exception file.
 
-### 2.26 P6-13 requested by the Owner (2026-10-08) and built: refunds per product line (my readings are **pending the Owner's own words**; report `docs/PHASE6_STEP13_PRODUCT_REFUNDS.md`)
+### 2.26 P6-13 requested by the Owner (2026-10-08) and built: refunds per product line (my readings **APPROVED by the Owner on 2026-10-08, P13-3 changed: see 2.27**; report `docs/PHASE6_STEP13_PRODUCT_REFUNDS.md`)
 
 Owner's words, recorded exactly as given (the second paragraph of the message recorded in 2.25):
 
@@ -450,7 +450,7 @@ Owner's words, recorded exactly as given (the second paragraph of the message re
 - **Screens**: on the case page of an accepted refund case, "Hoàn tiền" (the one primary action), the card "Các lần hoàn tiền" (state of the line, each refund with money, method, goods, lots, points, reason, corrections; "Sửa mã giao dịch" in the card menu) and the refund form (amount shown before saving).
 - **Locks** (10.2): invoice row, case row, then the line and the stock rows by the database guards; no lock is taken in another order.
 
-**My readings, all pending the Owner's own words:**
+**My readings (all approved by the Owner on 2026-10-08 as written, except P13-3, which the Owner changed to "once per refund, no 5-minute window": 2.27):**
 
 - **P13-1 a refund follows an accepted return case.** It needs a case ACCEPTED with decided outcome REFUND for that line (the windows, the seal and the Owner's exception of 2.25 are enforced there); the refund's quantity is capped by the case and by the line. A refund without a case (for example a pre-order cancelled before hand-over) comes with P6-15.
 - **P13-2 one line per refund**, by quantity, any number of refunds per case.
@@ -461,6 +461,30 @@ Owner's words, recorded exactly as given (the second paragraph of the message re
 - **P13-7 not built**: the notice `PRODUCT_REFUNDED` of 10.1 to the holders of `CORRECT_PAYMENTS` / `REFUND_PRODUCTS` on an exception; a shortfall is listed in the existing Exceptions screen instead.
 - **P13-8 the line state is shown on the case page only**, not on the invoice screens.
 - **P13-9 existing tests**: no POS or payment test changed. Additive edits only: the fixtures of the P6-12 screen test gain `can.refunds`, and the P6-12 integration files are listed in the runner (2.25).
+
+### 2.27 P6-13 APPROVED by the Owner (2026-10-08) with a stricter password rule and an Owner notice; P6-14 and the milestone 3a check requested
+
+Owner's words, recorded exactly as given:
+
+> P6-13 approved: E1–E6 and P13-2, P13-4 to P13-9 as you proposed. P13-1: yes, a refund requires an accepted return case. P13-3: password re-entry once per refund (no 5-minute window). Add: every product refund sends an in-app notification to the Owner (invoice, product, quantity, amount, method, who refunded). Add tests. Record everything in the design doc, owner-decisions doc and handoff.
+>
+> Then do P6-14 (exchanges), per the approved design (OQ-24, OQ-82, PRD 28.5):
+>
+> - Exchange only from an accepted return case whose outcome is exchange; replacement taken from in-stock items only (pre-orders come in 3b).
+> - Price difference = replacement price on the exchange date minus what the customer actually paid for the returned quantity. More expensive: customer pays the difference as a normal payment (cash/PayOS). Cheaper: refund the difference by cash or manual transfer, using the refund rules (REFUND_PRODUCTS, password once, owner notification).
+> - Beauty points: keep the original points; extra points only on the valid paid difference; equal price no change; cheaper no deduction.
+> - Returned item handled like P6-13 (resellable decision, no phantom stock); replacement consumes stock with reservation rules; full audit trail, nothing edited or deleted.
+>
+> Then the milestone 3a check, like Wave 2: full tests incl. race and reconciliation, UI gate, old-version tests against the new schema with a rollback gate, rehearsal on a production-like DB, and a 3a deploy guide (iNET terminal commands block by block, rollback steps). Commit locally, no push/deploy. Report in Vietnamese and stop.
+
+- **Approved as proposed:** E1 to E6 of 2.25, and P13-2, P13-4, P13-5, P13-6, P13-7, P13-8, P13-9 of 2.26. **P13-1 approved:** a refund requires an accepted return case. (P13-7 said the exception notice of 10.1 is not built; the Owner approved that and asked for the notice below instead.)
+- **P13-3 changed (the Owner's own words above):** it was "a confirmation no older than 300 s, as for a payment reversal". Now **one password confirmation covers ONE refund, with no 5-minute window**: a refund made a few seconds after another needs the password typed again. Built as follow-up of P6-13: table `refund_reauthentication_uses` (key = the person and the instant of the confirmation; append-only; a deferred check makes every new refund name its own use), `takeFreshConfirmation` in `refund.core.ts` (still recent, and not used before), and a refund that fails its checks spends nothing (the transaction is undone). A repeat of the same request (same `clientRequestId`) is read back without a password, as before. The login counts as a confirmation like any other (one use). The web already asks for the password whenever the API answers `REAUTHENTICATION_REQUIRED`, so the form needed only a sentence. Migration `20261114000000` (86).
+- **The Owner notice (added by the Owner):** every product refund writes, in the same transaction, an in-app notice `PRODUCT_REFUND_MADE` to each active Owner account: invoice, product (SKU), quantity, amount, method and who refunded (the person's name). It opens the case. My readings, pending the Owner:
+  - **N1 the name is in the notice.** The notification rules say params never carry a name; the Owner asked for "who refunded", so the person's display name is a checked plain text of at most 64 characters (no control characters), the one exception, and nothing else free-form is added (no reason, no transfer reference, no account number).
+  - **N2 the Owner is told even when the Owner refunds** (the Owner said "every product refund").
+  - **N3 category FINANCE**, severity ATTENTION, entity = the return case (like the case notice); the Owner's account only, not the holders of `REFUND_PRODUCTS`.
+  - **N4 locks:** the Owner accounts are resolved and their user rows locked, with the actor, before the invoice row (the P6-11 lesson), and only for someone who holds `REFUND_PRODUCTS` at the case's branch.
+- **Tests added:** real PostgreSQL: one confirmation covers one refund inside the window; a refund that fails spends nothing; the use is history and the database refuses a refund without its own use; the Owner notice (content, no reference, nobody else, repeat, refused refund, Owner as refunder); a race of two refunds by one person on one confirmation (exactly one wins); a static guard for the migration; registry and web message tests. The P6-13 integration and race tests give the person a NEW confirmation before each refund (the test-only way the screen's password dialog does it).
 
 ## 3. Catalog (PRD §23-24; T9-T12)
 
