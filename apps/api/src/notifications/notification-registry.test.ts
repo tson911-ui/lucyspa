@@ -42,6 +42,11 @@ const RETURNS = ['PRODUCT_RETURN_OPENED'];
 // Phase 6 P6-13 follow-up (Owner, 2026-10-08): every product refund tells the Owner (finance, about one return case).
 const REFUND_NOTICE = ['PRODUCT_REFUND_MADE'];
 
+// Phase 6 P6-17 (OQ-34, OQ-86): the member is told in-app that pre-ordered goods arrived (finance, about the invoice); the holders of
+// MANAGE_PRODUCT_ORDERS get one daily alert about late or uncollected pre-orders (operations, about the branch).
+const ORDER_ARRIVED = ['PRODUCT_ORDER_ARRIVED'];
+const ORDER_ALERT = ['PRODUCT_ORDER_ALERT'];
+
 test('the registry keeps every Phase 3 type unchanged and adds the Leave, finance and stock alert types', () => {
   assert.deepEqual(
     [...NOTIFICATION_TYPES].sort(),
@@ -53,6 +58,8 @@ test('the registry keeps every Phase 3 type unchanged and adds the Leave, financ
       ...INVENTORY,
       ...RETURNS,
       ...REFUND_NOTICE,
+      ...ORDER_ARRIVED,
+      ...ORDER_ALERT,
     ].sort(),
   );
   assert.deepEqual(notificationMetadata('LOW_STOCK_REACHED').entityTypes, ['ProductVariant']);
@@ -95,11 +102,11 @@ test('category filters are derived from the registry, and targets from the entit
   ]);
   assert.deepEqual(
     [...notificationTypesInCategory('FINANCE')].sort(),
-    [...FINANCE, ...REFUND_NOTICE].sort(),
+    [...FINANCE, ...REFUND_NOTICE, ...ORDER_ARRIVED].sort(),
   );
   assert.equal(
     notificationTypesInCategory('OPERATIONS').length,
-    PHASE3.length + INVENTORY.length + RETURNS.length,
+    PHASE3.length + INVENTORY.length + RETURNS.length + ORDER_ALERT.length,
   );
   assert.equal(notificationTarget('ProductVariant'), 'PRODUCT_VARIANT');
   assert.equal(notificationTarget('Invoice'), 'INVOICE');
@@ -302,7 +309,10 @@ test('the return-case notice names the entity, the reason and nothing else', () 
 });
 
 test('the refund notice (Owner) names invoice, product, quantity, amount, method and who, as plain checked text', () => {
-  assert.deepEqual(notificationMetadata('PRODUCT_REFUND_MADE').entityTypes, ['ProductReturnCase']);
+  assert.deepEqual(notificationMetadata('PRODUCT_REFUND_MADE').entityTypes, [
+    'ProductReturnCase',
+    'ProductOrder',
+  ]);
   assert.equal(notificationMetadata('PRODUCT_REFUND_MADE').category, 'FINANCE');
   assert.ok(isAllowedNotificationEntity('PRODUCT_REFUND_MADE', 'ProductReturnCase'));
   for (const entity of ['Booking', 'Visit', 'Invoice', 'Branch', 'ProductVariant'] as const) {
