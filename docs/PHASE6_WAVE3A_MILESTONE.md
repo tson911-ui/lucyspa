@@ -1,0 +1,42 @@
+# Phase 6 Đợt 3a: kiểm tra mốc (2026-10-08, chạy trên máy này)
+
+**Phạm vi Đợt 3a:** P6-12 (hồ sơ trả hàng), P6-13 (hoàn tiền theo dòng sản phẩm, mật khẩu một lần cho mỗi lần hoàn, thông báo cho Chủ), P6-14 (đổi hàng). **9 migration (80 thành 89), 0 quyền mới (vẫn 65).** `MANAGE_PRODUCT_RETURNS` và `REFUND_PRODUCTS` đã có từ Đợt 1 và **chưa gán cho ai**. Mọi migration chỉ thêm hoặc nới, không ghi lại dòng cũ; thay 6 hàm kiểm tra đang chạy (sổ điểm, chuyển kho, lô, giá bản 3, chặn đảo thanh toán, chặn hoàn). **Chưa có gì được đẩy lên hay triển khai.** Các mục đọc P12 đến P14 vẫn **chờ Chủ duyệt** (ghi ở `PHASE6_OWNER_DECISIONS_VI.md`).
+
+## Kết quả kiểm tra (mã nguồn tại commit mốc, cơ sở dữ liệu thử dựng từ số 0 bằng 89 migration)
+
+| Việc                                                  | Kết quả                                                                                                                               |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm lint`, `pnpm typecheck`                         | sạch                                                                                                                                  |
+| `pnpm format:check`                                   | sạch sau khi định dạng hai tài liệu mới (lần chạy đầu chỉ báo `PHASE6_WAVE3A_ROLLBACK_PROOF.md`, viết đúng lúc chạy)                  |
+| `pnpm test` (cả repo)                                 | database 63, server 53, worker 25 (+1 bỏ qua), ui 467, web 712, api 441 (+105 bài cần cơ sở dữ liệu, chạy ở dòng dưới); **không lỗi** |
+| `pnpm build` (có `API_UPSTREAM_ORIGIN`), `pnpm smoke` | đạt (web có ngôn ngữ, API/DB/Redis, OpenAPI, BullMQ)                                                                                  |
+| Kiểm thử tích hợp cơ sở dữ liệu                       | **123 đạt và 18 bài tranh chấp đạt**, 0 lỗi                                                                                           |
+| Kiểm thử tích hợp API (kể cả tranh chấp)              | **877 bài: 876 đạt, 1 bỏ qua, 0 lỗi** (kể cả bài tranh chấp của P6-12 đến P6-14)                                                      |
+
+**Bài của Đợt 3a (đều đạt):** trả hàng (`return.integration`, ngoại lệ hạn), hoàn tiền (`refund.integration` và `refund.race`), mật khẩu một lần (kể cả hai lần hoàn tranh một lần xác nhận), thông báo cho Chủ, đổi hàng (`exchange.integration` 21 bài: cả PayOS giả lập và webhook ký thật, khách xem hóa đơn đổi hàng, cấm trả hàng cho hàng thay thế) và `exchange.race` (bài tranh chấp trên kết nối thật: một lần đổi cho mỗi hồ sơ, tổng hoàn và đổi mỗi dòng không vượt số đã bán, đổi tranh với đảo thanh toán của hóa đơn gốc (T22), hai lần đổi lấy hàng của nhau không deadlock, đơn vị hàng cuối không bán hai lần, thanh toán tranh với hủy hóa đơn thay thế, hàng khách trả chỉ nhập một lần, hoàn tất đổi tranh với đảo thanh toán của hóa đơn thay thế). **Bằng chứng:** bỏ riêng phần khóa hai dòng tồn kho theo thứ tự (chi nhánh, biến thể) ra khỏi mã thì bài tranh chấp mới **báo deadlock** (đã thử, rồi hoàn lại); có phần đó thì đạt. **Đối chiếu sau từng bước của bài đổi hàng (`reconcileExchanges`):** hóa đơn thay thế có tổng bằng giá hàng mới trừ tín dụng và bằng phần khách trả thêm, phần chia theo dòng cộng lại đúng số đó; tín dụng bằng phần đã trừ cộng phần hoàn lại; mỗi dòng gốc: số đơn vị và số tiền đã yêu cầu (hoàn cộng đổi) không vượt số đã bán và số thực thu của dòng (`lucy_line_claims`); số đơn vị bán lại được bằng số phiếu nhập `EXCHANGE_RETURN`; cộng với đối chiếu chung của bộ kiểm thử (tổng hóa đơn, giữ hàng của hóa đơn, tồn kho bằng tổng phiếu và bằng tổng lô, số giữ không vượt tồn).
+
+## Diễn tập trên bản khôi phục (Chủ yêu cầu)
+
+**Giới hạn thật thà:** máy này **không có `pg_dump` của cơ sở dữ liệu thật**. Tôi dựng bản giống thật: chạy mã đang chạy thật `1358725` với đúng 80 migration và 65 quyền, thêm 300.000 thông báo và 20.000 hóa đơn đã thanh toán (kèm dòng, thanh toán; 234 MB), rồi làm **đúng các lệnh của hướng dẫn**: `pg_dump -Fc` (3 giây, 45 MB), `pg_restore` vào cơ sở dữ liệu tạm (8 giây, thoát 0), `db:status` (đúng 9 migration chờ), `db:deploy` (4 giây), `db:permissions:sync` ("0 inserted, 65 already present").
+
+- **Thời gian từng migration (giây):** `…11000000` 0,277 (hồ sơ trả hàng; kiểm lại 300.000 thông báo); `…12000000` 0,006; `…12000001` 0,012; `…13000000` 0,007; `…13000001` 0,045; `…14000000` 0,137 (kiểm lại thông báo); `…15000000` 0,006; `…15000001` 0,048; `…15000002` 0,006. **Cả 9 khoảng 0,54 giây.** Sau đó: 89 migration, 65 quyền, 300.000 thông báo, 20.000 hóa đơn nguyên vẹn (đều là hóa đơn lượt đến quầy, phí vận chuyển 0).
+- Các câu lệnh kiểm của hướng dẫn (Bước 5, 7, 9, cổng kiểm Bước 10) đã chạy **đúng nguyên văn** trên bản diễn tập: `89|65|0|0|0|0|0|0`, hai số việc tồn `0`, `0|0|0`, cổng `0|0|0|0|0|0`; trên bản có dữ liệu 3a cổng cho `55|5|10|8|3|3` (chặn đúng).
+- **Bước 4 của hướng dẫn cho Chủ làm đúng việc này trên bản sao lưu THẬT trước khi áp thật**; kết quả thật của Chủ thay cho số trên.
+
+## Quay lại bản cũ (đã thử thật, xem `PHASE6_WAVE3A_ROLLBACK_PROOF.md`)
+
+- Bản cũ `1358725` chạy được trên cơ sở dữ liệu 89 migration **khi chưa có dữ liệu 3a**: bộ kiểm thử API cũ 770 bài (769 đạt, 1 bỏ qua, 0 lỗi), bộ cơ sở dữ liệu cũ 123 và 18 bài đạt; worker cũ 40 giây không lỗi.
+- **Có dữ liệu 3a thì bản cũ hỏng một phần:** trang kho của sản phẩm có phiếu nhập trả hàng và sổ điểm của khách có dòng thu hồi do hoàn tiền trả **503**; worker cũ **không** thu hồi điểm khi hoàn tiền (chỉ khi đưa bản mới lên lại). Vì vậy hướng dẫn có **cổng kiểm 6 số** (phải bằng 0 mới được quay lại phần mềm), bước thu hồi hai quyền, bước chờ hai bộ xử lý nền về 0.
+
+## UI gate
+
+- Màn hình đổi hàng và hóa đơn thay thế dựng lại sau khi áp migration 89 và build mới: hồ sơ trả hàng (chờ thanh toán, đã hoàn tất) và hóa đơn thay thế ở 360, 768, 1440 sáng, 1440 tối. Đã mở từng ảnh: không cuộn ngang, không chồng chữ, một tiêu đề, nhãn "Trừ số tiền đã trả cho hàng cũ" đọc rõ, thẻ không lồng thẻ (ở 360 dòng sản phẩm của hóa đơn là thẻ con theo mẫu bảng-thành-thẻ có sẵn của POS). DOM audit 8 trang đổi hàng và hóa đơn: **0 lỗi mỗi trang**; không bộ đếm nào tăng so với `docs/uxui-audit-baseline.json`. Chi tiết ở `PHASE6_STEP14_PRODUCT_EXCHANGES.md`.
+- Chữ 130% (ngăn kéo đổi hàng) đã dựng ở lần gate của P6-14 (xem báo cáo); chưa dựng lại ở lượt này (mã giao diện không đổi từ đó).
+- Còn lại, đã biết: thanh trên cùng của quản trị tràn ở 360 px với chữ 130% (`UI_BACKLOG`, mọi trang).
+
+## Chưa làm được / Chủ cần biết
+
+- Chưa thử trên máy chủ thật: pm2, web Next cũ khi quay lại, bản Linux, nginx (kho `/opt/lucyspa-media/returns` không được phục vụ công khai: **hướng dẫn Bước 6 bắt Chủ kiểm bằng lệnh và DỪNG nếu nginx trỏ vào thư mục ảnh**; repo không có cấu hình nginx nên tôi không chứng minh được từ đây).
+- Hai lỗi "Inventory sales job failed" của worker trên dữ liệu xem thử (cả bản cũ lẫn mới, do hai hóa đơn của dữ liệu xem thử) và ba lỗi "Booking notification job failed" ở lần chạy worker cũ đầu tiên: chưa điều tra sâu, không do quay lui.
+- **Mục chờ Chủ duyệt:** P14-1 đến P14-16 (design 2.28), P13 đã duyệt, N1-N4, P12 còn lại: xem `PHASE6_OWNER_DECISIONS_VI.md`. Đặt hàng trước (đổi sang hàng chưa có) là mốc 3b.
+- Hướng dẫn deploy từng khối lệnh cho terminal web iNET: `docs/PHASE6_WAVE3A_DEPLOY_CHECKLIST.md` (mã commit điền sau khi Chủ push và CI xanh). Đợt 3a chỉ được deploy khi Chủ tự chạy hướng dẫn.
