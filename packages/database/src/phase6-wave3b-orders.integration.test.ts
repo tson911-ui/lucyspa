@@ -841,6 +841,63 @@ test('Phase 6 P6-15 product orders, order-line reservations and their guards (al
               );
             },
           );
+
+          // ============================================================ the ticket link
+          await context.test(
+            'a ticket link is history: one active link per order, revoked once, never rewritten or deleted',
+            async () => {
+              const sale = await preOrder(preOrdered, 1);
+              const hash = (letter: string) => letter.repeat(64);
+              const insert = (letter: string) =>
+                exec(
+                  `INSERT INTO product_order_tickets (order_id, token_hash, created_by_user_id)
+                   VALUES ('${sale.order}'::uuid, '${hash(letter)}', '${actor}'::uuid)`,
+                );
+              await insert('a');
+              await rejects(() => insert('b'), /product_order_tickets_active_key/);
+              await rejects(
+                () =>
+                  exec(
+                    `INSERT INTO product_order_tickets (order_id, token_hash, created_by_user_id)
+                     VALUES ('${sale.order}'::uuid, 'not-a-hash', '${actor}'::uuid)`,
+                  ),
+                /product_order_tickets_hash/,
+              );
+              await rejects(
+                () =>
+                  exec(
+                    `UPDATE product_order_tickets SET token_hash = '${hash('c')}' WHERE token_hash = '${hash('a')}'`,
+                  ),
+                /never rewritten/,
+              );
+              await rejects(
+                () => exec(`DELETE FROM product_order_tickets WHERE token_hash = '${hash('a')}'`),
+                /never deleted/,
+              );
+              await exec(
+                `UPDATE product_order_tickets SET revoked_at = now(), revoked_by_user_id = '${actor}'::uuid
+                 WHERE token_hash = '${hash('a')}'`,
+              );
+              await rejects(
+                () =>
+                  exec(
+                    `UPDATE product_order_tickets SET revoked_at = now(), revoked_by_user_id = '${actor}'::uuid
+                     WHERE token_hash = '${hash('a')}'`,
+                  ),
+                /revoked once/,
+              );
+              await insert('b');
+              await rejects(() => exec('TRUNCATE product_order_tickets'), /never truncated/);
+              assert.equal(
+                (
+                  await one<{ n: bigint }>(
+                    `SELECT count(*) AS n FROM product_order_tickets WHERE order_id = '${sale.order}'::uuid AND revoked_at IS NULL`,
+                  )
+                ).n,
+                1n,
+              );
+            },
+          );
           throw rollback;
         },
         { timeout: 120_000 },

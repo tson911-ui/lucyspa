@@ -545,6 +545,19 @@ Migrations `20261116000000` (two enum values: the permission `MANAGE_PRODUCT_ORD
 - **P15-10 codes.** Order code `DT000001` (the exchange sequence already uses `DH`); cancel causes are the four of OQ-32 plus the system cause `INVOICE_CANCELLED`; hand-over to somebody else names them (OQ-85, the check of code and last four phone digits is made by the API in P6-17).
 - **Existing tests changed (additive only):** the permission catalog count 65 to 66 in two integration tests, one extra row in `authorization.test`, the database package's script lists the three new test files.
 
+### 2.31 P6-16 as built: the counter pre-order and its digital ticket (Wave 3b; **every reading below is PENDING OWNER REVIEW**)
+
+Migration `20261117000000` (one table, `product_order_tickets`; 91 to 92). Report `docs/PHASE6_STEP16_COUNTER_PREORDER.md`.
+
+- **P16-1 the cashier chooses the mode** of each product line (`IN_STOCK` default or `PRE_ORDER`, field `fulfilmentMode` of the add request). A line is never silently turned into a pre-order (T29). A pre-order line needs a variant sold on order; a pre-order line grows only with another pre-order line of the same variant and seller.
+- **P16-2 a pre-order is for goods the stock does not cover.** At finalization, if the stock a new sale can take already covers the WHOLE quantity of a pre-order line, the finalization is refused with `PRODUCT_PRE_ORDER_NOT_NEEDED` (the lines are named): sell it as an in-stock product. A pre-order of more than the stock holds is allowed whole (no split, OQ-84). Choosing "Đặt trước" for goods that are on the shelf would otherwise leave the customer waiting for a receipt that may never come.
+- **P16-3 the contact.** The finalization takes `preOrderContact` (phone, optional name) when the invoice has a pre-order line and refuses it otherwise. The phone is normalized to +84 (any usual format in); the order stores it; the audit trail never does. A member's order keeps the member as the customer and still asks the phone (OQ-34 says it is mandatory).
+- **P16-4 the ticket.** A member sees "Phiếu hẹn nhận hàng" inside their own invoice (code, status, expected range; never the phone, staff or notes). A customer without an account gets the **secret link** approved in 2.9: 32 random bytes, only the SHA-256 stored, shown once to the cashier with a QR code made in the browser, replaced by the next link, revocable, a wrong or revoked link is the same 404, the page is read-only (code, branch, paid day, amount paid, products, status, expected range), `no-store`, `noindex`, `no-referrer`, rate limited like every public read. The system sends nothing (staff pass it on by Zalo, 2.9).
+- **P16-5 no expiry number invented.** 2.9 asked how long the link stays valid after completion and the Owner gave no number; the link therefore stays valid until a person revokes it (or makes a new one). **Question for the Owner** (report).
+- **P16-6 who.** Making and revoking the link: `SELL_PRODUCTS` or `MANAGE_PRODUCT_ORDERS` at the branch (`actions.orderTicket` on the invoice). Nothing is granted to anyone.
+- **P16-7 customer words.** A status badge is short ("Đã thanh toán", "Đã đặt hàng", "Hàng đã về", "Đã nhận hàng"); the sentence "Hàng đã về. Mời bạn đến cửa hàng nhận hàng." appears when a line has arrived. Dates are always "dự kiến, không phải cam kết".
+- **Existing tests changed (additive only):** the stock-sale kit's reconciliation counts only IN_STOCK lines for reservations (a pre-order line holds none until its goods arrive); web test fixtures gained the new fields; the QR hook moved to its own file; `uxui-screens.mjs` scrolls the element to be clicked into view before pressing it.
+
 ## 3. Catalog (PRD §23-24; T9-T12)
 
 ### 3.1 Model

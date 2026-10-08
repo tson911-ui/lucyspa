@@ -158,6 +158,13 @@ const errors = {
   PRODUCT_OUT_OF_STOCK: [409, 'There is not enough stock for one or more product lines'],
   PRODUCT_SELLER_INVALID: [409, 'The seller must be an active employee assigned to this branch'],
   PRODUCT_SELLER_REQUIRED: [400, 'Choose the seller of this product line'],
+  // Phase 6 P6-16: counter pre-orders (T29, OQ-34). The field of PRODUCT_PRE_ORDER_NOT_NEEDED lists the line ids that the stock already covers.
+  PRODUCT_PRE_ORDER_NOT_ALLOWED: [409, 'This product cannot be sold as a pre-order'],
+  PRODUCT_PRE_ORDER_NOT_NEEDED: [
+    409,
+    'The stock already covers this product: sell it as an in-stock product',
+  ],
+  PRE_ORDER_CONTACT_REQUIRED: [400, 'A pre-order needs the customer phone number'],
   // Phase 6 P6-5: the Excel/CSV import. The field of IMPORT_FILE_INVALID names the reason (never file content).
   IMPORT_FILE_INVALID: [422, 'The file cannot be imported'],
   IMPORT_JOB_NOT_PREVIEWED: [409, 'Only a previewed import can be applied or cancelled'],

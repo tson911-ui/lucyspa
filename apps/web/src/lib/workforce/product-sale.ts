@@ -1,14 +1,17 @@
 import type {
   InvoiceProductLineAddRequest,
+  ProductLineModeName,
   InvoiceProductLineResponse,
   InvoiceProductLineUpdateRequest,
   InvoiceResponse,
   PosProductOption,
 } from '@lucy-spa/contracts';
 import type { Locale } from '../../i18n/locales';
+import { productOrdersDictionary } from '../../i18n/product-orders';
 import { productSaleDictionary } from '../../i18n/product-sale';
 import { ApiError } from './api';
 import { formatVnd } from './format';
+import { preOrderErrorText } from './product-orders';
 
 /**
  * Selling products at the counter (Phase 6 P6-10). The browser only carries the cashier's choices: which variant, how many, who
@@ -47,13 +50,26 @@ export function productTitle(
     : `${name} · ${label}`;
 }
 
-/** One option of the product list: title, price, then what is left ("Hết hàng" when nothing is). */
+/**
+ * One option of the product list: title, price, then what is left ("Hết hàng" when nothing is; a variant that is sold on order says
+ * it can be pre-ordered with the expected days instead).
+ */
 export function optionLabel(option: PosProductOption, locale: Locale): string {
   const a = productSaleDictionary(locale).add;
+  const o = productOrdersDictionary(locale).mode;
+  const waiting =
+    option.available === 0 && option.sellOnOrder
+      ? (option.leadTimeDaysMin === option.leadTimeDaysMax ? o.optionOrderSame : o.optionOrder)
+          .replace('{min}', String(option.leadTimeDaysMin))
+          .replace('{max}', String(option.leadTimeDaysMax))
+      : null;
   const parts = [
     productTitle(option, locale),
     formatVnd(option.unitPriceVnd, locale),
-    option.available > 0 ? a.available.replace('{count}', String(option.available)) : a.outOfStock,
+    waiting ??
+      (option.available > 0
+        ? a.available.replace('{count}', String(option.available))
+        : a.outOfStock),
   ];
   return parts.join(' — ');
 }
@@ -65,13 +81,21 @@ export type AddProblem = 'product' | 'seller' | 'quantity' | 'stock';
  * available). The server checks all of it again, so a stale list can still be refused there.
  */
 export function addBody(
-  input: { option: PosProductOption | null; quantity: string; sellerUserId: string },
+  input: {
+    option: PosProductOption | null;
+    quantity: string;
+    sellerUserId: string;
+    /** `PRE_ORDER` sells goods the shop does not hold yet (a variant sold on order); the default is `IN_STOCK`. */
+    mode?: ProductLineModeName;
+  },
   expectedVersion: number,
 ): { body: InvoiceProductLineAddRequest } | { problem: AddProblem } {
   if (!input.option) return { problem: 'product' };
   const quantity = parseQuantity(input.quantity);
   if (quantity === null) return { problem: 'quantity' };
-  if (quantity > input.option.available) return { problem: 'stock' };
+  const mode = input.mode ?? 'IN_STOCK';
+  if (mode === 'PRE_ORDER' && !input.option.sellOnOrder) return { problem: 'product' };
+  if (mode === 'IN_STOCK' && quantity > input.option.available) return { problem: 'stock' };
   if (!input.sellerUserId) return { problem: 'seller' };
   return {
     body: {
@@ -79,6 +103,7 @@ export function addBody(
       variantId: input.option.variantId,
       quantity,
       sellerUserId: input.sellerUserId,
+      ...(mode === 'PRE_ORDER' ? { fulfilmentMode: mode } : {}),
     },
   };
 }
@@ -110,6 +135,10 @@ export function productErrorText(
 ): string {
   const d = productSaleDictionary(locale);
   if (error instanceof ApiError) {
+    const preOrder = preOrderErrorText(error, locale, invoice, (line) =>
+      productTitle(line, locale),
+    );
+    if (preOrder) return preOrder;
     if (error.code === 'PRODUCT_OUT_OF_STOCK') {
       const ids = (error.field ?? '').split(',').filter(Boolean);
       const names = ids

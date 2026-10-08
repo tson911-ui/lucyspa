@@ -13,6 +13,7 @@ import type {
   InvoiceResponse,
   InvoiceStatusName,
   PosBoardResponse,
+  PreOrderContactRequest,
 } from '@lucy-spa/contracts';
 import { appendOutboxEvent, generateInvoiceCode, type Prisma } from '@lucy-spa/database';
 import { expireStalePending } from '@lucy-spa/server';
@@ -54,6 +55,11 @@ import {
   releaseConsumedSessions,
   sessionStateOf,
 } from './combo-consume.js';
+import {
+  createProductOrderForFinalization,
+  presentProductOrder,
+  productOrderSelect,
+} from '../product-orders/order.core.js';
 import { releaseProductStock, repriceProductLines, reserveProductStock } from './product-stock.js';
 
 /**
@@ -240,6 +246,8 @@ export const invoiceSelect = {
       createdAt: true,
     },
   },
+  // Phase 6 P6-15: the goods record of the pre-order lines (null for every other invoice).
+  productOrder: { select: productOrderSelect },
   // Phase 6 P6-9: the Beauty side of a version 3 invoice (the Spa side is the application and snapshot above).
   beautyApplication: {
     select: { voucherId: true, candidates: true, selectionReason: true },
@@ -283,6 +291,7 @@ export const invoiceSelect = {
           listPriceVnd: true,
           promotionId: true,
           pricedAt: true,
+          fulfilmentMode: true,
         },
       },
       reservations: { select: { status: true, quantity: true } },
@@ -578,6 +587,7 @@ function presentProductLines(row: InvoiceRow): InvoiceProductLineResponse[] {
         reservation: reservation
           ? { status: reservation.status, quantity: reservation.quantity }
           : null,
+        fulfilmentMode: detail.fulfilmentMode,
       };
     });
 }
@@ -749,6 +759,7 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
     lines,
     comboLine,
     productLines,
+    productOrder: row.productOrder ? presentProductOrder(row.productOrder) : null,
     channel: row.channel,
     shippingFeeVnd: row.shippingFeeVnd.toString(),
     discount,
@@ -790,6 +801,13 @@ export async function present(context: AdminContext, row: InvoiceRow): Promise<I
       cancel: cancelPermitted && cancellable,
       cancelNeedsReauth: !draft,
       sellProducts: sell && draft && !combo,
+      // Phase 6 P6-16: the ticket link of a pre-order (SELL_PRODUCTS or MANAGE_PRODUCT_ORDERS at the branch), in any status.
+      orderTicket:
+        sell ||
+        decide(context.actor.graph, 'MANAGE_PRODUCT_ORDERS', {
+          kind: 'BRANCH',
+          branchId: row.branchId,
+        }),
     },
   };
 }
@@ -1366,7 +1384,7 @@ export async function setPayer(
 export async function finalizeInvoice(
   context: AdminContext,
   invoiceId: string,
-  input: { expectedVersion: number },
+  input: { expectedVersion: number; preOrderContact?: PreOrderContactRequest },
 ): Promise<InvoiceResponse> {
   return finalizeInvoiceCore(context, invoiceId, input, {});
 }
@@ -1382,7 +1400,7 @@ export interface FinalizeOptions {
 export async function finalizeInvoiceCore(
   context: AdminContext,
   invoiceId: string,
-  input: { expectedVersion: number },
+  input: { expectedVersion: number; preOrderContact?: PreOrderContactRequest },
   options: FinalizeOptions,
 ): Promise<InvoiceResponse> {
   const { hint, row: read } = await lockedInvoice(
@@ -1453,6 +1471,12 @@ export async function finalizeInvoiceCore(
   // product line does nothing here.
   const frozen = await repriceProductLines(tx, invoice, now, true);
   const reservedLines = await reserveProductStock(tx, invoice, context.actor.userId);
+  // Phase 6 P6-16: the goods record of the pre-order lines, written while the invoice is still a draft (like the reservations).
+  const productOrder = await createProductOrderForFinalization(
+    context,
+    invoice,
+    input.preOrderContact,
+  );
   // Version 3 prices the product lines at their prices FROZEN just above (the line rows still held the draft prices when the inputs
   // were loaded), per side; the version 2 result is used as is for every other invoice.
   const v3 = evaluation.v3 ? evaluateFrozen(evaluation, frozen) : null;
@@ -1636,8 +1660,12 @@ export async function finalizeInvoiceCore(
         };
       }),
       // Phase 6 P6-8: only an invoice with product lines carries these (a service-only audit entry is unchanged).
-      ...(reservedLines > 0
-        ? { stockReservations: reservedLines, shippingFeeVnd: invoice.shippingFeeVnd.toString() }
+      ...(reservedLines > 0 || productOrder
+        ? {
+            stockReservations: reservedLines,
+            shippingFeeVnd: invoice.shippingFeeVnd.toString(),
+            ...(productOrder ? { productOrder: productOrder.code } : {}),
+          }
         : {}),
       // Phase 6 P6-9: and, for the same invoices, the per-side pricing that was frozen.
       ...(v3 ? { pricing: pricingAudit(v3) } : {}),

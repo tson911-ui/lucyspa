@@ -27,6 +27,9 @@ interface Row {
   effective_price_vnd: bigint;
   on_promotion: boolean;
   available: number;
+  sell_on_order: boolean;
+  lead_min: number;
+  lead_max: number;
 }
 
 export async function productCounterOptions(
@@ -49,12 +52,15 @@ export async function productCounterOptions(
   const rows = await tx.$queryRaw<Row[]>`
     SELECT v.id AS variant_id, p.id AS product_id, v.sku, p.name_vi, p.name_en, v.label_vi, v.label_en,
            pr.list_price_vnd, pr.effective_price_vnd, (pr.promotion_id IS NOT NULL) AS on_promotion,
-           lucy_available_stock(${branchId}::uuid, v.id) AS available
+           lucy_available_stock(${branchId}::uuid, v.id) AS available, v.sell_on_order,
+           COALESCE(v.lead_time_days_min, st.lead_time_days_min)::int AS lead_min,
+           GREATEST(COALESCE(v.lead_time_days_max, st.lead_time_days_max), COALESCE(v.lead_time_days_min, st.lead_time_days_min))::int AS lead_max
     FROM products p
     JOIN product_variants v ON v.product_id = p.id AND v.is_active
     LEFT JOIN brands b ON b.id = p.brand_id
     CROSS JOIN LATERAL lucy_variant_price_at(v.id, ${now}::timestamptz) pr
-    WHERE p.status = 'PUBLISHED' AND pr.effective_price_vnd IS NOT NULL
+    CROSS JOIN product_settings st
+    WHERE st.id = 1 AND p.status = 'PUBLISHED' AND pr.effective_price_vnd IS NOT NULL
       AND (cardinality(${patterns}::text[]) = 0 OR NOT EXISTS (
         SELECT 1 FROM unnest(${patterns}::text[]) AS t(pat)
         WHERE translate(lower(normalize(
@@ -82,6 +88,9 @@ export async function productCounterOptions(
       listPriceVnd: row.list_price_vnd.toString(),
       onPromotion: row.on_promotion,
       available: Math.max(0, row.available),
+      sellOnOrder: row.sell_on_order,
+      leadTimeDaysMin: row.lead_min,
+      leadTimeDaysMax: row.lead_max,
     })),
     truncated: rows.length > LIMIT,
     sellers: sellers.map((seller) => ({ id: seller.id, displayName: seller.full_name })),

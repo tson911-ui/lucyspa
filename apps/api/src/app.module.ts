@@ -31,6 +31,11 @@ import { ComboController } from './combo/combo.controller.js';
 import { ComboService } from './combo/combo.service.js';
 import { InventoryController } from './inventory/inventory.controller.js';
 import { InventoryService } from './inventory/inventory.service.js';
+import {
+  ProductOrderController,
+  PublicProductOrderController,
+} from './product-orders/order.controller.js';
+import { ProductOrderService, PublicProductOrderService } from './product-orders/order.service.js';
 import { ProductReturnController } from './product-returns/return.controller.js';
 import { ProductReturnService } from './product-returns/return.service.js';
 import { ProductExchangeController } from './product-returns/exchange.controller.js';
@@ -157,6 +162,8 @@ export class AppModule {
         ProductCatalogController,
         InventoryController,
         ProductReturnController,
+        ProductOrderController,
+        PublicProductOrderController,
         ProductRefundController,
         ProductExchangeController,
         ProductImportController,
@@ -231,6 +238,8 @@ export class AppModule {
         ProductCatalogService,
         InventoryService,
         ProductReturnService,
+        ProductOrderService,
+        PublicProductOrderService,
         ProductRefundService,
         ProductExchangeService,
         ProductImportService,

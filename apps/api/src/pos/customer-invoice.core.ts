@@ -5,6 +5,7 @@ import type {
 } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
 import { AuthError } from '../auth/auth.error.js';
+import { productOrderStatus } from '@lucy-spa/contracts';
 import { balanceOf, effectivePaid } from './invoice.core.js';
 
 /**
@@ -54,6 +55,27 @@ const detailSelect = {
       amountVnd: true,
       collectedAt: true,
       correction: { select: { id: true } },
+    },
+  },
+  // Phase 6 P6-16 (OQ-35): the digital ticket of a pre-order: the code, the status and the expected range of each line. Never the contact
+  // phone, the staff who ordered or handed over, the supplier note, the cancel note or any internal id.
+  productOrder: {
+    select: {
+      code: true,
+      lines: {
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        select: {
+          invoiceLineId: true,
+          line: { select: { sequence: true } },
+          status: true,
+          quantity: true,
+          expectedFrom: true,
+          expectedTo: true,
+          arrivedAt: true,
+          handedOverAt: true,
+          cancelledAt: true,
+        },
+      },
     },
   },
   // Phase 6 P6-14: the invoice of an exchange has no program, only the credit of what was paid for the returned goods.
@@ -153,6 +175,24 @@ function detail(row: DetailRow, customerUserId: string): CustomerInvoiceDetail {
           productSequences: row.lines
             .filter((line) => line.productDetails.length > 0)
             .map((line) => line.sequence),
+        }
+      : {}),
+    ...(row.productOrder
+      ? {
+          productOrder: {
+            code: row.productOrder.code,
+            status: productOrderStatus(row.productOrder.lines),
+            lines: row.productOrder.lines.map((line) => ({
+              sequence: line.line.sequence,
+              status: line.status,
+              quantity: line.quantity,
+              expectedFrom: line.expectedFrom ? day(line.expectedFrom) : null,
+              expectedTo: line.expectedTo ? day(line.expectedTo) : null,
+              arrivedAt: line.arrivedAt ? line.arrivedAt.toISOString() : null,
+              handedOverAt: line.handedOverAt ? line.handedOverAt.toISOString() : null,
+              cancelledAt: line.cancelledAt ? line.cancelledAt.toISOString() : null,
+            })),
+          },
         }
       : {}),
     lines: row.lines.map((line) => {

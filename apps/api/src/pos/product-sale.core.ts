@@ -179,6 +179,7 @@ export async function addProductLine(
       labelVi: true,
       labelEn: true,
       isActive: true,
+      sellOnOrder: true,
       product: {
         select: {
           id: true,
@@ -194,6 +195,11 @@ export async function addProductLine(
   if (!variant || !variant.isActive || variant.product.status !== 'PUBLISHED') {
     throw new AuthError('PRODUCT_NOT_SELLABLE', 'variantId');
   }
+  // Phase 6 P6-16 (T29, OQ-30, OQ-37): a pre-order is for a variant that is sold on order; the cashier chooses it, it is never implied.
+  const mode = input.fulfilmentMode ?? 'IN_STOCK';
+  if (mode === 'PRE_ORDER' && !variant.sellOnOrder) {
+    throw new AuthError('PRODUCT_PRE_ORDER_NOT_ALLOWED', 'variantId');
+  }
   const now = await databaseClock(tx);
   const price = await effectivePriceAt(tx, variant.id, now);
   if (!price) throw new AuthError('PRODUCT_NOT_SELLABLE', 'variantId');
@@ -203,7 +209,8 @@ export async function addProductLine(
     (line) =>
       line.kind === 'PRODUCT' &&
       line.productDetails[0]?.variantId === variant.id &&
-      line.productDetails[0].sellerUserId === sellerUserId,
+      line.productDetails[0].sellerUserId === sellerUserId &&
+      line.productDetails[0].fulfilmentMode === mode,
   );
   let lineId: string;
   let finalQuantity = quantity;
@@ -255,6 +262,7 @@ export async function addProductLine(
         listPriceVnd: price.listPriceVnd,
         promotionId: price.promotionId,
         pricedAt: now,
+        fulfilmentMode: mode,
       },
       select: { invoiceLineId: true },
     });
@@ -279,6 +287,7 @@ export async function addProductLine(
         quantity: finalQuantity,
         merged: same !== undefined,
         sellerUserId,
+        ...(mode === 'PRE_ORDER' ? { fulfilmentMode: mode } : {}),
         subtotalVnd: amounts.subtotalVnd.toString(),
         discountTotalVnd: amounts.discountTotalVnd.toString(),
         totalVnd: amounts.totalVnd.toString(),

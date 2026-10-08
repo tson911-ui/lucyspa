@@ -202,6 +202,7 @@ export class InvoiceService {
         variantId: body.variantId.toLowerCase(),
         quantity: body.quantity,
         ...(sellerUserId === undefined ? {} : { sellerUserId }),
+        ...(body.fulfilmentMode === undefined ? {} : { fulfilmentMode: body.fulfilmentMode }),
       }),
     );
   }
@@ -373,7 +374,10 @@ export class InvoiceService {
   ): Promise<InvoiceResponse> {
     const expectedVersion = this.version(body.expectedVersion);
     return this.run(token, invoiceId, requestId, (context, id) =>
-      finalizeInvoice(context, id, { expectedVersion }),
+      finalizeInvoice(context, id, {
+        expectedVersion,
+        ...(body.preOrderContact === undefined ? {} : { preOrderContact: body.preOrderContact }),
+      }),
     );
   }
 

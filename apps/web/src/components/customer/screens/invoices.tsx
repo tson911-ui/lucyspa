@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { fill } from '../../../i18n/customer';
+import { productOrdersDictionary } from '../../../i18n/product-orders';
 import { getWorkforceDictionary } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/api/client';
 import { customerErrorMessage, formatDateTime } from '../../../lib/customer/booking';
@@ -33,6 +34,7 @@ import {
   invoiceTone,
 } from '../../../lib/customer/invoice';
 import { cursorLabels } from '../../../lib/workforce/list-view';
+import { expectedText, orderStatusTone } from '../../../lib/workforce/product-orders';
 import { useClientPaging } from '../../../lib/workforce/use-client-paging';
 import { Badge, Empty } from '../../workforce/ui';
 import { useCustomer } from '../session';
@@ -194,6 +196,8 @@ export function CustomerInvoiceDetailScreen({ id }: { id: string }) {
   }
   const invoice = detail.data;
   const zone = invoice.branch.timezone;
+  const status = productOrdersDictionary(locale);
+  const orders = status.accountBlock;
   // Phase 6 P6-10 (T26): services and combos first, then the products; each group is its own card and the totals close the last one.
   const productSequences = new Set(invoice.productSequences ?? []);
   const groups = [
@@ -322,6 +326,49 @@ export function CustomerInvoiceDetailScreen({ id }: { id: string }) {
           </Card>
         </Reveal>
       ))}
+      {invoice.productOrder ? (
+        <Reveal>
+          <Card as="section" aria-label={orders.title}>
+            <CardHeader title={orders.title} description={orders.note} />
+            {invoice.productOrder.lines.some((line) => line.status === 'ARRIVED') ? (
+              <Notice tone="success">{orders.arrivedHint}</Notice>
+            ) : null}
+            <DescriptionList
+              items={[
+                { label: orders.code, value: invoice.productOrder.code },
+                ...invoice.productOrder.lines.map((line) => {
+                  const source = invoice.lines.find(
+                    (candidate) => candidate.sequence === line.sequence,
+                  );
+                  return {
+                    label: `${line.sequence}. ${source ? (locale === 'vi' ? source.nameVi : source.nameEn) : ''}`,
+                    value: (
+                      <>
+                        <Badge tone={orderStatusTone(line.status)}>
+                          {status.customerStatus[line.status]}
+                        </Badge>
+                        {line.status === 'CANCELLED' ||
+                        line.status === 'ARRIVED' ||
+                        line.status === 'HANDED_OVER' ||
+                        line.status === 'COMPLETED' ? null : (
+                          <>
+                            <br />
+                            {orders.expected}:{' '}
+                            {expectedText(line, locale, {
+                              range: orders.range,
+                              afterPayment: orders.afterPayment,
+                            })}
+                          </>
+                        )}
+                      </>
+                    ),
+                  };
+                }),
+              ]}
+            />
+          </Card>
+        </Reveal>
+      ) : null}
       <Reveal>
         <Card as="section" aria-label={t.invoices.payments}>
           <CardHeader title={t.invoices.payments} />

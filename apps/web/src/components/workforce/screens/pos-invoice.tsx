@@ -29,6 +29,7 @@ import { productSaleDictionary } from '../../../i18n/product-sale';
 import { fill, type WorkforceDictionary } from '../../../i18n/workforce';
 import { organizationDictionary } from '../../../i18n/organization';
 import { comboErrorText, comboName, sessionsText } from '../../../lib/workforce/combo';
+import { hasPreOrderLine } from '../../../lib/workforce/product-orders';
 import { productErrorText } from '../../../lib/workforce/product-sale';
 import { formatDate, formatDateTime, formatVnd } from '../../../lib/workforce/format';
 import {
@@ -65,6 +66,7 @@ import {
 } from './pos-dialogs';
 import { ComboUseCard, ComboUseDialog } from './pos-combo-use';
 import { cashBalanceOf, PosPaymentsSection } from './pos-payments';
+import { PreOrderContactDialog, ProductOrderCard } from './pos-pre-orders';
 import { ProductAddDialog, ProductEditDialog, ProductLinesCard, SidesCard } from './pos-products';
 import { DiscountCard, PayerCard, VouchersCard } from './pos-sections';
 
@@ -76,6 +78,7 @@ type Overlay =
   | { kind: 'combo-use'; lineId: string }
   | { kind: 'product-add' }
   | { kind: 'product-edit'; lineId: string }
+  | { kind: 'pre-order-contact' }
   | { kind: 'voucher' }
   | { kind: 'payer' }
   | { kind: 'cash' }
@@ -428,14 +431,17 @@ export function PosInvoiceScreen({ id }: { id: string }) {
             disabled={!idle || !invoice.readiness.ready}
             loading={working === 'finalize'}
             onClick={() =>
-              void command(
-                'finalize',
-                () =>
-                  api.post<InvoiceResponse>(`/api/v1/pos/invoices/${invoice.id}/finalize`, {
-                    expectedVersion: version,
-                  }),
-                (result) => (result.status === 'PAID' ? t.pos.finalizedPaid : t.pos.finalized),
-              )
+              // Phase 6 P6-16: a pre-order needs the customer's phone number, asked in one dialog whose action is the finalization.
+              hasPreOrderLine(invoice)
+                ? setOverlay({ kind: 'pre-order-contact' })
+                : void command(
+                    'finalize',
+                    () =>
+                      api.post<InvoiceResponse>(`/api/v1/pos/invoices/${invoice.id}/finalize`, {
+                        expectedVersion: version,
+                      }),
+                    (result) => (result.status === 'PAID' ? t.pos.finalizedPaid : t.pos.finalized),
+                  )
             }
           >
             {working === 'finalize' ? t.pos.finalizing : t.pos.finalize}
@@ -527,6 +533,16 @@ export function PosInvoiceScreen({ id }: { id: string }) {
         />
       ) : null}
 
+      {invoice.productOrder ? (
+        <ProductOrderCard
+          invoice={invoice}
+          order={invoice.productOrder}
+          idle={idle}
+          api={api}
+          onChanged={() => void load()}
+        />
+      ) : null}
+
       <ComboUseCard lines={invoice.lines} />
 
       {/* The invoice of an exchange has no program or member benefit to explain: its one discount row says it is the credit. */}
@@ -577,6 +593,24 @@ export function PosInvoiceScreen({ id }: { id: string }) {
         />
       ) : null}
 
+      {overlay?.kind === 'pre-order-contact' ? (
+        <PreOrderContactDialog
+          working={working === 'finalize'}
+          error={dialogError}
+          onFinalize={(contact) =>
+            command(
+              'finalize',
+              () =>
+                api.post<InvoiceResponse>(`/api/v1/pos/invoices/${invoice.id}/finalize`, {
+                  expectedVersion: version,
+                  preOrderContact: contact,
+                }),
+              (result) => (result.status === 'PAID' ? t.pos.finalizedPaid : t.pos.finalized),
+            )
+          }
+          onClose={closeOverlay}
+        />
+      ) : null}
       {overlay?.kind === 'product-add' ? (
         <ProductAddDialog
           branchId={invoice.branch.id}

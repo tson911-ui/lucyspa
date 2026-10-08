@@ -482,9 +482,11 @@ export async function productSaleKit(kit: Phase6Kit) {
       SELECT i.id, i.status::text AS status, i.cancelled_from_status::text AS dropped, i.subtotal_vnd AS subtotal, i.discount_total_vnd AS discount,
              i.shipping_fee_vnd AS fee, i.total_vnd AS total,
              COALESCE((SELECT sum(l.gross_vnd) FROM invoice_lines l WHERE l.invoice_id = i.id), 0)::bigint AS lines,
-             (SELECT count(*) FROM invoice_lines l WHERE l.invoice_id = i.id AND l.kind = 'PRODUCT') AS product_lines,
-             (SELECT count(*) FROM stock_reservations r WHERE r.invoice_id = i.id) AS reservations,
-             (SELECT count(*) FROM stock_reservations r WHERE r.invoice_id = i.id AND r.status = 'RESERVED') AS open
+             (SELECT count(*) FROM invoice_lines l JOIN invoice_line_products d ON d.invoice_line_id = l.id
+              WHERE l.invoice_id = i.id AND l.kind = 'PRODUCT' AND d.fulfilment_mode = 'IN_STOCK') AS product_lines,
+             (SELECT count(*) FROM stock_reservations r WHERE r.invoice_id = i.id AND r.source = 'INVOICE_LINE') AS reservations,
+             (SELECT count(*) FROM stock_reservations r
+              WHERE r.invoice_id = i.id AND r.source = 'INVOICE_LINE' AND r.status = 'RESERVED') AS open
       FROM invoices i WHERE i.branch_id IN (${A.id}::uuid, ${B.id}::uuid)`;
     for (const row of invoiceRows) {
       assert.equal(row.total, row.subtotal - row.discount + row.fee, `total of ${row.id}`);

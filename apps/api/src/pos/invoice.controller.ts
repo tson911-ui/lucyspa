@@ -27,6 +27,8 @@ import type {
   PaymentReverseRequest,
   PosBoardResponse,
   PosProductOptionsResponse,
+  PreOrderContactRequest,
+  ProductLineModeName,
   ProductSaleRequest,
   WalkInMemberLookupResponse,
 } from '@lucy-spa/contracts';
@@ -53,7 +55,9 @@ import {
   MaxLength,
   Min,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import type { Request, Response } from 'express';
 import { sessionCookie } from '../auth/cookies.js';
 import { requireEmptyObject } from '../auth/session-auth.controller.js';
@@ -108,6 +112,10 @@ class ProductLineAddDto implements InvoiceProductLineAddRequest {
   @ApiProperty() @IsString() @MaxLength(64) variantId!: string;
   @ApiProperty() @IsInt() quantity!: number;
   @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(64) sellerUserId?: string;
+  @ApiProperty({ required: false, enum: ['IN_STOCK', 'PRE_ORDER'] })
+  @IsOptional()
+  @IsIn(['IN_STOCK', 'PRE_ORDER'])
+  fulfilmentMode?: ProductLineModeName;
 }
 
 class ProductLineUpdateDto implements InvoiceProductLineUpdateRequest {
@@ -159,8 +167,23 @@ class VoucherRemoveDto implements InvoiceVoucherRemoveRequest {
   @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
 }
 
+/** The contact of a pre-order (OQ-34): a phone number is mandatory, the name is optional. */
+class PreOrderContactDto implements PreOrderContactRequest {
+  @ApiProperty() @IsString() @MaxLength(128) phone!: string;
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  name?: string | null;
+}
+
 class VersionDto implements InvoiceFinalizeRequest {
   @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
+  @ApiProperty({ required: false, type: PreOrderContactDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PreOrderContactDto)
+  preOrderContact?: PreOrderContactDto;
 }
 
 /** The credited amount, the tendered amount and the idempotency UUID. No time, change or status field. */

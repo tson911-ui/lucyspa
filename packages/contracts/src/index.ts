@@ -12,6 +12,11 @@ import type {
   InvoiceLineComboUseResponse,
 } from './combo.js';
 import type { InvoiceMemberCandidate } from './loyalty.js';
+import type {
+  CustomerProductOrderResponse,
+  PreOrderContactRequest,
+  ProductOrderResponse,
+} from './product-order.js';
 import type { InvoiceChannelName, InvoiceProductLineResponse } from './product-sale.js';
 import type { SeasonDensity, SeasonSlot, SeasonSlotSwitches } from './season-registry.js';
 export type OrganizationLevel =
@@ -2191,6 +2196,8 @@ export * from './product-sale.js';
 export * from './product-return.js';
 export * from './product-refund.js';
 export * from './product-exchange.js';
+// Phase 6 P6-15 to P6-17 (Wave 3b): counter pre-orders, their order lines and the digital ticket.
+export * from './product-order.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;
@@ -2399,6 +2406,8 @@ export interface InvoiceResponse {
   comboLine: InvoiceComboLineResponse | null;
   /** Phase 6 P6-8: the product lines of a VISIT or PRODUCT_SALE invoice (empty for service-only invoices and combo sales). */
   productLines: InvoiceProductLineResponse[];
+  /** Phase 6 P6-15: the goods record of the pre-order lines of this invoice (null when it has none, and until it is finalized). */
+  productOrder: ProductOrderResponse | null;
   /** Phase 6 P6-8 (T33): `COUNTER` until the online channel exists; the shipping fee is 0 unless ONLINE. total = subtotal - discount + fee. */
   channel: InvoiceChannelName;
   shippingFeeVnd: string;
@@ -2445,6 +2454,8 @@ export interface InvoiceResponse {
     cancelNeedsReauth: boolean;
     /** Phase 6 P6-8: add, change or remove product lines (SELL_PRODUCTS at the branch) while DRAFT. */
     sellProducts: boolean;
+    /** Phase 6 P6-16: make or revoke the ticket link of a pre-order (SELL_PRODUCTS or MANAGE_PRODUCT_ORDERS at the branch). */
+    orderTicket: boolean;
   };
 }
 
@@ -2473,6 +2484,8 @@ export interface InvoicePayerRequest {
 /** POST /api/v1/pos/invoices/:id/finalize: DRAFT -> PENDING_PAYMENT, or directly PAID for a receivable of exactly 0. */
 export interface InvoiceFinalizeRequest {
   expectedVersion: number;
+  /** Phase 6 P6-16 (OQ-34): required when the invoice has a pre-order product line; refused otherwise. */
+  preOrderContact?: PreOrderContactRequest;
 }
 
 /** POST /api/v1/pos/invoices/:id/cancel (CANCEL_INVOICES; a finalized invoice needs fresh re-authentication). */
@@ -2902,6 +2915,8 @@ export interface CustomerInvoiceDetail extends CustomerInvoiceSummary {
    * name already carries its variant label; the seller, SKU, cost, lots and stock are never part of the customer view.
    */
   productSequences?: number[];
+  /** Phase 6 P6-16 (OQ-35): the digital "phiếu hẹn nhận hàng" of a pre-order, shown inside the invoice (null when there is none). */
+  productOrder?: CustomerProductOrderResponse | null;
   lines: CustomerInvoiceLine[];
   payments: CustomerInvoicePayment[];
 }

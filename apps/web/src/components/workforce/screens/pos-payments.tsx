@@ -17,6 +17,7 @@ import {
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useEffect, useState } from 'react';
+import { useQrImage } from '../use-qr-image';
 import { fill } from '../../../i18n/workforce';
 import { formatDateTime, formatVnd } from '../../../lib/workforce/format';
 import { paginationLabels } from '../../../lib/workforce/list-view';
@@ -284,32 +285,6 @@ function paymentDetails(
     );
   }
   return parts.join(' ') || '—';
-}
-
-/** The QR image, generated in the browser from the PayOS QR content (no third-party image service). */
-function useQrImage(content: string | null): string | null {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    if (!content) {
-      setUrl(null);
-      return;
-    }
-    void import('qrcode')
-      .then((module) =>
-        module.toDataURL(content, { margin: 1, width: 240, errorCorrectionLevel: 'M' }),
-      )
-      .then((dataUrl) => {
-        if (!cancelled) setUrl(dataUrl);
-      })
-      .catch(() => {
-        if (!cancelled) setUrl(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [content]);
-  return url;
 }
 
 /** The waiting request: the QR, the countdown, a re-check and a cancel. Nothing here marks it received. */

@@ -15,6 +15,14 @@ Chủ dặn (2026-10-08, mục 2.29 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN
 - **Quyền:** bán đặt trước = `SELL_PRODUCTS`; hàng đợi "cần đặt", đánh dấu đã đặt, giao hàng, liên kết phiếu = `MANAGE_PRODUCT_ORDERS` (quyền mới, chưa gán cho ai); hủy và hoàn tiền = `REFUND_PRODUCTS`.
 - Mã đơn `DT000001`; lý do hủy theo OQ-32.
 
+### P6-16 (bán đặt trước tại quầy và phiếu hẹn nhận hàng): chờ Chủ xem lại
+
+- **Thu ngân tự chọn** "Hàng có sẵn" hay "Đặt trước" cho từng dòng; chỉ sản phẩm "cho đặt trước" mới chọn được. Không bao giờ tự đổi một dòng thành đặt trước.
+- **Chốt hóa đơn có hàng đặt trước thì phải nhập số điện thoại khách** (tên không bắt buộc). Số được lưu dạng +84..., không ghi vào nhật ký kiểm toán.
+- **Nếu kho đang đủ hàng cho cả dòng** thì không cho chốt dưới dạng đặt trước ("Kho đang đủ hàng, hãy bán như hàng có sẵn"): tránh khách chờ hàng về trong khi hàng đang nằm trên kệ. Đặt trước nhiều hơn số tồn thì được, nguyên cả dòng.
+- **Phiếu hẹn nhận hàng, khách có tài khoản:** thấy ngay trong hóa đơn của mình (mã đơn, trạng thái, ngày dự kiến). **Khách vãng lai:** nhân viên tạo liên kết riêng + mã QR, tự gửi qua Zalo; liên kết chỉ hiện một lần, tạo liên kết mới thì liên kết cũ hết dùng, có thể thu hồi; trang chỉ đọc, không có số điện thoại.
+- **Câu hỏi cho Chủ:** liên kết phiếu có tự hết hạn sau khi đơn hoàn tất hoặc hủy không, và sau bao nhiêu ngày? Chủ chưa cho con số nên hiện **không tự hết hạn** (nhân viên thu hồi được bất cứ lúc nào).
+
 **Chủ đã duyệt (2026-10-08, nguyên văn): "Owner decisions: P14-2, P14-3, P14-4, P14-5, P14-15 approved as you recommended."** Vậy toàn bộ P14-1 đến P14-16 (đổi hàng) đã được duyệt: cùng sản phẩm thì đổi miễn phí; giá hàng mới là giá hôm nay, không áp giảm giá; khách chưa trả đồng nào cho dòng hàng thì không đổi; người đổi chỉ cần quyền hoàn tiền; hàng thay thế không được mở hồ sơ trả hàng. Đợt 3a đã lên máy chủ thật (mục 2.29 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`). Các lựa chọn kỹ thuật của P6-15 đến P6-18 (mốc 3b) ghi ở các mục sau với nhãn **chờ Chủ xem lại**.
 
 **Chủ nói (2026-10-08, nguyên văn): "P12–P14 and N1–N4: list each in the chat, one short line in plain Vietnamese with your recommendation. If none of them changes money policy (refund amounts, who can refund, return windows, points), treat them as approved as you proposed and record that. If any does change money policy, do not treat it as approved; ask me."** Tôi áp dụng từng mục: mục **không** đổi số tiền hoàn, người được hoàn, hạn trả hay điểm thì **coi là đã duyệt như đề xuất**: N1 to N4, P14-1, P14-6, P14-7, P14-8, P14-9, P14-10, P14-11, P14-12, P14-13, P14-14, P14-16. Mục **có** đụng tới một trong bốn thứ đó thì **không** coi là duyệt, chờ Chủ trả lời: **P14-2, P14-3, P14-4, P14-5, P14-15** (giá khi đổi cùng sản phẩm; giá hôm nay không áp giảm giá; khách chưa trả đồng nào thì không đổi; ai được đổi; hàng thay thế có được trả tiếp không). P12 và P13 Chủ đã duyệt bằng lời riêng (mục 2.25, 2.27).

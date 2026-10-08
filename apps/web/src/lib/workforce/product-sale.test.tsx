@@ -32,6 +32,9 @@ const option = (change: Partial<PosProductOption> = {}): PosProductOption => ({
   listPriceVnd: '200000',
   onPromotion: false,
   available: 5,
+  sellOnOrder: false,
+  leadTimeDaysMin: 3,
+  leadTimeDaysMax: 5,
   ...change,
 });
 
@@ -55,6 +58,7 @@ const productLine = (
   pricedAt: '2027-03-01T00:00:00.000Z',
   seller: { id: 'S1', displayName: 'Lan' },
   reservation: null,
+  fulfilmentMode: 'IN_STOCK',
   ...change,
 });
 

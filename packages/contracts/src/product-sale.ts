@@ -4,6 +4,8 @@
  * Until the pricing engine of P6-9 a product line gets no discount and earns no points.
  */
 
+import type { ProductLineModeName } from './product-order.js';
+
 export type InvoiceChannelName = 'COUNTER' | 'ONLINE';
 
 /** A product line of an invoice (the admin view; the seller is never shown to the customer). */
@@ -26,8 +28,10 @@ export interface InvoiceProductLineResponse {
   onPromotion: boolean;
   pricedAt: string;
   seller: { id: string; displayName: string };
-  /** The stock held for this line once the invoice is finalized (`null` while DRAFT). */
+  /** The stock held for this line once the invoice is finalized (`null` while DRAFT, and for a pre-order line until its goods arrive). */
   reservation: { status: 'RESERVED' | 'CONSUMED' | 'RELEASED'; quantity: number } | null;
+  /** Phase 6 P6-15: `PRE_ORDER` sells goods the shop does not hold yet (an order line follows the finalization). */
+  fulfilmentMode: ProductLineModeName;
 }
 
 /** POST /api/v1/pos/branches/:branchId/product-sales (SELL_PRODUCTS at the branch): a DRAFT product-only invoice. */
@@ -46,6 +50,12 @@ export interface InvoiceProductLineAddRequest {
   variantId: string;
   quantity: number;
   sellerUserId?: string;
+  /**
+   * Phase 6 P6-16 (T29): `IN_STOCK` (default) is taken at once and must be available; `PRE_ORDER` sells goods the shop does not hold
+   * yet and is allowed only for a variant that is sold on order and only when the stock does not already cover the quantity. A line
+   * is never silently turned into a pre-order: the cashier chooses.
+   */
+  fulfilmentMode?: ProductLineModeName;
 }
 
 /** PATCH /api/v1/pos/invoices/:id/product-lines/:lineId: change the quantity and/or the seller (DRAFT only). */
@@ -80,6 +90,10 @@ export interface PosProductOption {
   onPromotion: boolean;
   /** Units a new sale can still take at this branch (expired lots and reserved units excluded); 0 = "Hết hàng". */
   available: number;
+  /** Phase 6 P6-16: the variant may be sold as a pre-order (OQ-30); with the expected range in days after payment (OQ-31). */
+  sellOnOrder: boolean;
+  leadTimeDaysMin: number;
+  leadTimeDaysMax: number;
 }
 
 export interface PosSellerOption {

@@ -2,6 +2,7 @@
 
 import type {
   InvoiceProductLineAddRequest,
+  ProductLineModeName,
   InvoiceProductLineResponse,
   InvoiceProductLineUpdateRequest,
   InvoiceResponse,
@@ -26,15 +27,18 @@ import {
 } from '@lucy-spa/ui';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { loyaltyDictionary } from '../../../i18n/loyalty';
+import { productOrdersDictionary } from '../../../i18n/product-orders';
 import { productSaleDictionary } from '../../../i18n/product-sale';
 import { fill } from '../../../i18n/workforce';
 import { formatVnd } from '../../../lib/workforce/format';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { resultsText } from '../../../lib/workforce/list-view';
 import { posErrorMessage } from '../../../lib/workforce/pos';
+import { leadTimeText } from '../../../lib/workforce/product-orders';
 import {
   addBody,
   optionLabel,
+  parseQuantity,
   productTitle,
   stockTone,
   updateBody,
@@ -45,6 +49,10 @@ import { Badge, Button, Empty, Loading, Notice } from '../ui';
 
 const errorNotice = (error: string | null) =>
   error ? <Notice tone="error">{error}</Notice> : undefined;
+
+/** The quantity typed, or a value no stock can cover when it is not a number (so a hint about stock never shows for it). */
+const parseQuantityValue = (text: string): number =>
+  parseQuantity(text) ?? Number.POSITIVE_INFINITY;
 
 // ------------------------------------------------------------------------------------ product search
 
@@ -109,6 +117,7 @@ export function ProductLinesCard({
 }) {
   const { t, locale } = useWorkforce();
   const d = productSaleDictionary(locale);
+  const o = productOrdersDictionary(locale);
   const l = d.lines;
   const draft = invoice.status === 'DRAFT';
   const editable = draft && invoice.actions.sellProducts;
@@ -126,6 +135,12 @@ export function ProductLinesCard({
             <>
               {' '}
               <Badge tone="info">{l.onPromotion}</Badge>
+            </>
+          ) : null}
+          {line.fulfilmentMode === 'PRE_ORDER' ? (
+            <>
+              {' '}
+              <Badge tone="warning">{o.mode.badge}</Badge>
             </>
           ) : null}
         </>
@@ -251,8 +266,11 @@ export function ProductAddDialog({
   const { t, locale } = useWorkforce();
   const d = productSaleDictionary(locale);
   const a = d.add;
+  const o = productOrdersDictionary(locale);
   const options = useProductOptions(branchId);
   const [chosen, setChosen] = useState<PosProductOption | null>(null);
+  // The cashier chooses the mode. A sold-out variant that is sold on order starts as a pre-order; anything else starts in stock.
+  const [mode, setMode] = useState<ProductLineModeName>('IN_STOCK');
   const [quantity, setQuantity] = useState('1');
   const [sellerId, setSellerId] = useState('');
   const [problem, setProblem] = useState<AddProblem | null>(null);
@@ -269,7 +287,7 @@ export function ProductAddDialog({
   }, [loaded, chosen]);
 
   async function save() {
-    const result = addBody({ option: chosen, quantity, sellerUserId: sellerId }, version);
+    const result = addBody({ option: chosen, quantity, sellerUserId: sellerId, mode }, version);
     if ('problem' in result) {
       setProblem(result.problem);
       return;
@@ -306,11 +324,15 @@ export function ProductAddDialog({
               options={results.map((option) => ({
                 value: option.variantId,
                 label: optionLabel(option, locale),
-                disabled: option.available === 0,
+                disabled: option.available === 0 && !option.sellOnOrder,
               }))}
               value={chosen?.variantId ?? null}
               onValueChange={(value) => {
-                setChosen(results.find((option) => option.variantId === value) ?? null);
+                const next = results.find((option) => option.variantId === value) ?? null;
+                setChosen(next);
+                setMode(
+                  next && next.available === 0 && next.sellOnOrder ? 'PRE_ORDER' : 'IN_STOCK',
+                );
                 setProblem(null);
               }}
               onQueryChange={options.setQuery}
@@ -322,14 +344,45 @@ export function ProductAddDialog({
             />
           )}
         </Field>
+        {chosen?.sellOnOrder ? (
+          <Field
+            label={o.mode.label}
+            required
+            full
+            hint={
+              mode === 'PRE_ORDER'
+                ? leadTimeText(o.mode, chosen.leadTimeDaysMin, chosen.leadTimeDaysMax)
+                : chosen.available === 0
+                  ? o.mode.soldOutOrder
+                  : undefined
+            }
+          >
+            {(control) => (
+              <Select
+                {...control}
+                value={mode}
+                options={[
+                  { value: 'IN_STOCK', label: o.mode.IN_STOCK },
+                  { value: 'PRE_ORDER', label: o.mode.PRE_ORDER },
+                ]}
+                onChange={(event) => (
+                  setMode(event.target.value as ProductLineModeName),
+                  setProblem(null)
+                )}
+              />
+            )}
+          </Field>
+        ) : null}
         <Field
           label={a.quantity}
           required
           hint={
             chosen
-              ? chosen.available > 0
-                ? fill(a.quantityHint, { count: chosen.available })
-                : a.quantityHintNone
+              ? mode === 'PRE_ORDER'
+                ? undefined
+                : chosen.available > 0
+                  ? fill(a.quantityHint, { count: chosen.available })
+                  : a.quantityHintNone
               : undefined
           }
           {...(problem === 'quantity'
@@ -369,6 +422,9 @@ export function ProductAddDialog({
             />
           )}
         </Field>
+        {mode === 'PRE_ORDER' && chosen && parseQuantityValue(quantity) <= chosen.available ? (
+          <Notice tone="info">{o.mode.covered}</Notice>
+        ) : null}
         {loaded && loaded.sellers.length === 0 ? <Notice tone="info">{a.noSellers}</Notice> : null}
       </FormGrid>
     </FormDialog>
