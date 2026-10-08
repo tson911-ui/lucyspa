@@ -287,7 +287,7 @@ rồi làm A3 (đưa phần mềm về `$OLD_COMMIT`) và khởi động lại c
 
 ## Bước 11. Báo lại cho Claude
 
-Gửi: mã commit đang chạy, 9 dòng thời gian migration ở 4.3, dòng `89|65|0|0|0|0|0|0` ở Bước 5, `pm2 status`, kết quả Bước 6 (kể cả `KHONG_CO_ALIAS_NGINX`), kết quả Bước 7 (kể cả `401` và hai số `0` của việc tồn), kết quả `0|0|0` ở Bước 9 và đường dẫn tệp sao lưu. Claude ghi vào `LUCYSPA_HANDOFF.md`.
+Gửi: mã commit đang chạy, 9 dòng thời gian migration ở 4.3, dòng `89|65|0|0|0|0|0|0` ở Bước 5, `pm2 status`, kết quả Bước 6 (kể cả dòng `nginx -T exit=0`, các dòng `root`/`alias` và số cuối), kết quả Bước 7 (kể cả `401` và hai số `0` của việc tồn), kết quả `0|0|0` ở Bước 9 và đường dẫn tệp sao lưu. Claude ghi vào `LUCYSPA_HANDOFF.md`.
 
 ## Ghi chú kỹ thuật cho kỹ thuật viên
 
