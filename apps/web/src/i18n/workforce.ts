@@ -645,7 +645,7 @@ const vi = {
       'Không bắt buộc. Số Zalo (ví dụ 0934 936 101) hoặc liên kết https://zalo.me/.... Dùng cho biểu tượng ở chân trang và nút Zalo. Để trống thì ẩn cả hai.',
     imageSection: 'Ảnh đầu trang chủ',
     imageHint:
-      'Hiện ở đầu trang chủ khi không có slide nào đang bật. Để trống thì hiện khung thương hiệu.',
+      'Hiện ở đầu trang chủ, trong khung hình tròn lớn (ảnh ngang, khoảng 2400 x 1600 px; chủ thể nên ở giữa ảnh), khi không có slide nào đang bật. Để trống thì hiện khung giữ chỗ.',
     imageNone: 'Chưa chọn ảnh.',
     imageChoose: 'Chọn ảnh',
     imageChange: 'Đổi ảnh',
@@ -3256,7 +3256,7 @@ const en: Dictionary = {
       'Optional. A Zalo number (for example 0934 936 101) or a https://zalo.me/... link. Used for the footer icon and the Zalo button. When empty, both are hidden.',
     imageSection: 'Home page image',
     imageHint:
-      'Shown at the top of the home page when no slide is on. When empty, a brand panel is shown.',
+      'Shown at the top of the home page in the large round frame (a landscape photo, about 2400 x 1600 px; keep the subject in the middle) when no slide is on. When empty, a designed placeholder is shown.',
     imageNone: 'No image chosen.',
     imageChoose: 'Choose image',
     imageChange: 'Change image',

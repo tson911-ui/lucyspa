@@ -77,9 +77,10 @@ export function CampaignStrips({
 }
 
 /**
- * The offer line above the home hero: the most recent running campaign, in the Owner's words (badge, headline, last day,
- * button), as ONE link to its sale view. It shows only while the campaign runs (the API only sends the running ones), so it
- * follows the campaign's own schedule and needs nothing set up on the home page.
+ * The running offer on the home page: the most recent running campaign, in the Owner's words (badge, headline, message, last day,
+ * button) on one big soft ribbon, with the campaign's own banner beside the words when the Owner chose one (Admin > Website >
+ * Campaigns). The button leads to the sale view and says "Xem ưu đãi" while "Bán online" is OFF (the Owner's own words only when ON).
+ * It shows only while the campaign runs (the API only sends the running ones), so it follows the campaign's own schedule.
  */
 export function HomeOffer({
   locale,
@@ -94,24 +95,33 @@ export function HomeOffer({
   const [campaign] = stripCampaigns(campaigns);
   if (!campaign) return null;
   const text = getCampaignsPublicText(locale);
+  const banner = campaignBanner(campaign);
   return (
-    <Link
-      className="ls-offer"
-      href={campaignHref(locale, campaign.slug)}
-      aria-label={`${text.stripsLabel}: ${campaign.headline ?? campaign.name}`}
-    >
-      {campaign.badge ? <span className="ls-offer-badge">{campaign.badge}</span> : null}
-      <span className="ls-offer-text">
-        <span className="ls-offer-headline">{campaign.headline ?? campaign.name}</span>
-        <span className="ls-offer-end">
-          {fill(text.until, { date: campaignEndText(campaign.endsAt, locale) })}
-        </span>
-      </span>
-      <span className="ls-offer-cta">
-        {campaignCtaLabel(campaign, onlineOpen, text.stripCta)}
-        <Icon name="chevron-right" size={16} aria-hidden="true" />
-      </span>
-    </Link>
+    <section className="ls-offer-wrap" aria-label={text.stripsLabel}>
+      <div className="ls-container">
+        <div className="ls-offer-card" data-picture={banner ? 'true' : 'false'}>
+          <div className="ls-offer-body">
+            {campaign.badge ? <span className="ls-offer-badge">{campaign.badge}</span> : null}
+            <h2 className="ls-offer-title">{campaign.headline ?? campaign.name}</h2>
+            {campaign.message ? <p className="ls-offer-message">{campaign.message}</p> : null}
+            <p className="ls-offer-until">
+              {fill(text.until, { date: campaignEndText(campaign.endsAt, locale) })}
+            </p>
+            <Link
+              className={buttonClass('secondary', 'lg', 'ls-btn-offer')}
+              href={campaignHref(locale, campaign.slug)}
+            >
+              {campaignCtaLabel(campaign, onlineOpen, text.stripCta)}
+            </Link>
+          </div>
+          {banner ? (
+            <div className="ls-offer-picture">
+              <ProductImage image={banner} sizes="(min-width: 900px) 40vw, 100vw" />
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </section>
   );
 }
 

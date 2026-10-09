@@ -1,0 +1,658 @@
+/* The customer site's look: direction C, "Ấm áp thư giãn" (warm, soft, round), chosen by the Owner on 2026-10-10 (docs/CUSTOMER_SITE_C.md).
+   It loads after site.css and only re-themes what sits inside `.ls-site` (the public pages, the member area and the sign-in pages), so the staff
+   and admin screens keep their own palette, faces and radii. Order: tokens, page, header, controls, cards and forms, bands, home, footer,
+   photo slots, sign-in. Brand red and white stay the brand; no warm-metal tone; holiday themes keep working on top (they only set --ls-season-*
+   and --ls-art-*, which this file never touches). Colour literals live in the token blocks only; everything else reads a token. */
+
+/* ---------- the page ---------- */
+.ls-site {
+  font-family: var(--ls-font-sans);
+  /* A soft wash from the page colour to a warmer sand and back: the page is never one flat colour. */
+  background: linear-gradient(180deg, var(--ls-bg-page), var(--ls-c-sand) 60%, var(--ls-bg-page));
+}
+
+/* Titles: Fraunces at weight 400 with a little negative tracking (large sizes only), lining figures. */
+.ls-site-display,
+.ls-h1-display,
+.ls-site-h2,
+.ls-site-h2-sub,
+.ls-site-h3,
+.ls-site .ls-page-title,
+.ls-site .ls-list-section-title,
+.ls-site .ls-form-section-title,
+.ls-site .ls-card-title {
+  letter-spacing: -0.015em;
+}
+
+.ls-site-h3,
+.ls-site .ls-card-title,
+.ls-site .ls-form-section-title {
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+.ls-lead {
+  max-width: 34rem;
+}
+
+/* ---------- header: the same bar, softer ---------- */
+.ls-site-header::before {
+  border-bottom-color: transparent;
+  box-shadow: var(--ls-shadow-md);
+}
+
+.ls-site-brand a {
+  font-family: var(--ls-font-display);
+}
+
+.ls-site-nav a {
+  font-size: var(--ls-text-md);
+  font-weight: 600;
+}
+
+.ls-theme-cycle,
+.ls-site-tool {
+  border-color: transparent;
+  background: var(--ls-bg-surface);
+  box-shadow: var(--ls-shadow-sm);
+}
+
+/* The phone tab bar: round top corners and a soft rose lift instead of a hairline (same height, same flow, same targets). */
+.ls-tab-bar {
+  border-radius: var(--ls-radius-lg) var(--ls-radius-lg) 0 0;
+  box-shadow: 0 -8px 24px -12px color-mix(in srgb, var(--ls-brand) 32%, transparent);
+}
+
+/* ---------- controls: pills ---------- */
+.ls-site .ls-btn {
+  font-weight: 700;
+}
+
+.ls-site .ls-btn-secondary {
+  border-color: transparent;
+  background: var(--ls-brand-soft);
+  color: var(--ls-text);
+}
+
+.ls-site .ls-btn-lg {
+  min-height: 3.25rem;
+  padding-inline: var(--ls-space-7);
+  font-size: var(--ls-text-lg);
+}
+
+.ls-site .ls-input,
+.ls-site .ls-select {
+  background: var(--ls-bg-surface);
+}
+
+/* The promotional popup: the same pebble as every big card. */
+.ls-site .ls-promo-dialog,
+.ls-site .ls-promo {
+  border-color: transparent;
+  border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble) var(--ls-radius-pebble)
+    var(--ls-radius-pebble-tight);
+}
+
+.ls-site .ls-promo-body {
+  padding: var(--ls-space-7);
+}
+
+/* ---------- cards and lists: soft surfaces, no hard outline ---------- */
+.ls-site .ls-card,
+.ls-site-card {
+  border-color: color-mix(in srgb, var(--ls-border) 55%, transparent);
+  border-radius: var(--ls-radius-lg);
+  box-shadow: var(--ls-shadow-md);
+}
+
+/* ---------- bands ---------- */
+.ls-band-page {
+  background: transparent;
+}
+
+/* The rose band: the home page's services. A soft wave on its top edge (a mask, so it needs no extra markup). */
+.ls-band-surface {
+  position: relative;
+  margin-top: var(--ls-c-wave);
+  padding-block: 0 var(--ls-c-band);
+  background: var(--ls-c-rose);
+}
+
+.ls-band-surface::before,
+.ls-site-footer::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: calc(100% - 1px);
+  height: var(--ls-c-wave);
+  background: var(--ls-wave-fill);
+  -webkit-mask: var(--ls-wave) center / 100% 100% no-repeat;
+  mask: var(--ls-wave) center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+.ls-band-surface {
+  --ls-wave-fill: var(--ls-c-rose);
+}
+
+.ls-site-footer {
+  --ls-wave-fill: var(--ls-c-footer-bg);
+}
+
+.ls-site {
+  --ls-wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 90' preserveAspectRatio='none'%3E%3Cpath d='M0 52C180 12 330 8 520 36s330 52 520 22 290-44 400-26v58H0z'/%3E%3C/svg%3E");
+}
+
+.ls-band-surface > .ls-container {
+  padding-top: var(--ls-space-7);
+}
+
+.ls-section-head {
+  justify-items: center;
+  max-width: 38rem;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.ls-section-head > .ls-site-h2 {
+  font-size: var(--ls-type-feature);
+  line-height: var(--ls-lh-section);
+}
+
+.ls-section-head p {
+  font-size: var(--ls-type-lead);
+  line-height: var(--ls-lh-lead);
+}
+
+/* ---------- home: hero ---------- */
+.ls-hero {
+  padding-block: var(--ls-c-hero-top) var(--ls-space-7);
+}
+
+.ls-hero-grid {
+  gap: var(--ls-space-8);
+}
+
+.ls-hero-copy {
+  gap: var(--ls-space-6);
+}
+
+.ls-hero-title {
+  display: grid;
+}
+
+.ls-hero-title-2 {
+  color: var(--ls-brand);
+  font-style: italic;
+}
+
+@media (min-width: 1024px) {
+  .ls-hero-grid {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: var(--ls-space-10);
+  }
+}
+
+/* The picture of the hero: a ring that breathes very slowly (still under reduced motion) around the shop's own photo. */
+.ls-hero-media {
+  position: relative;
+  width: min(100%, 34rem);
+  margin-inline: auto;
+}
+
+.ls-hero-media[data-kind='photo'],
+.ls-hero-media[data-kind='slots'] {
+  aspect-ratio: 1;
+}
+
+.ls-hero-ring {
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ls-brand) 28%, transparent);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ls-hero-ring {
+    animation: ls-breathe 7s ease-in-out infinite;
+  }
+
+  /* The ring breathes inward and back, so it never grows past the picture box. */
+  @keyframes ls-breathe {
+    50% {
+      transform: scale(0.93);
+      opacity: 0.45;
+    }
+  }
+}
+
+html[data-ls-motion='reduced'] .ls-hero-ring {
+  animation: none;
+}
+
+.ls-hero-media .ls-hero-big {
+  position: absolute;
+  inset: 11% 8% 8% 14%;
+  overflow: hidden;
+  border-radius: 50%;
+  box-shadow: var(--ls-shadow-lg);
+}
+
+.ls-hero-media .ls-hero-small,
+.ls-hero-media .ls-hero-pill {
+  position: absolute;
+  border: var(--ls-space-2) solid var(--ls-bg-page);
+  box-shadow: var(--ls-shadow-md);
+}
+
+.ls-hero-media .ls-hero-small {
+  inset-block-end: 2%;
+  inset-inline-start: 0;
+  width: 34%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+
+.ls-hero-media .ls-hero-pill {
+  inset-block-start: 0;
+  inset-inline-end: 2%;
+  width: 26%;
+  aspect-ratio: 1 / 1.9;
+  border-radius: var(--ls-radius-full);
+}
+
+/* The owner's slider keeps its own picture, words and controls; its frame is one soft pebble (no outline, no card inside a card). */
+.ls-hero-media[data-kind='slider'] .ls-slider-viewport {
+  border: 0;
+  border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble) var(--ls-radius-pebble)
+    var(--ls-radius-pebble-tight);
+  background: var(--ls-bg-surface);
+  box-shadow: var(--ls-shadow-lg);
+}
+
+.ls-hero-media[data-kind='slider'] .ls-slider-caption {
+  padding: var(--ls-space-5) var(--ls-space-7) var(--ls-space-7);
+}
+
+.ls-hero-media[data-kind='slider'] .ls-hero-ring {
+  inset: -6% 0;
+  z-index: 0;
+}
+
+.ls-hero-media[data-kind='slider'] .ls-slider {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- home: facts as soft chips ---------- */
+.ls-band-facts::before {
+  display: none;
+}
+
+.ls-site-facts {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  gap: var(--ls-space-3);
+  padding-block: var(--ls-space-4) var(--ls-space-6);
+}
+
+.ls-site-fact {
+  flex: 0 1 auto;
+  padding: var(--ls-space-2) var(--ls-space-5);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-surface);
+  box-shadow: var(--ls-shadow-md);
+  white-space: normal;
+  color: var(--ls-text);
+}
+
+.ls-site-fact > span,
+.ls-site-fact > a {
+  overflow: visible;
+}
+
+.ls-site-fact > a strong,
+.ls-site-fact > strong {
+  display: inline;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-site-fact:has(> a:hover) {
+    background: var(--ls-hover-bg);
+    color: var(--ls-hover-text);
+  }
+
+  .ls-site-fact:has(> a:hover) .ls-icon-lead,
+  .ls-site-fact:has(> a:hover) strong {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+/* ---------- home: the service groups as four pebbles ---------- */
+.ls-pebbles {
+  display: grid;
+  gap: var(--ls-space-5);
+  max-width: var(--ls-site-max);
+  margin-inline: auto;
+}
+
+@media (min-width: 768px) {
+  .ls-pebbles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ls-pebble {
+  display: grid;
+  align-content: start;
+  gap: var(--ls-space-4);
+  padding: var(--ls-c-pad);
+  border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble) var(--ls-radius-pebble)
+    var(--ls-radius-pebble-tight);
+  background: var(--ls-bg-surface);
+  color: var(--ls-text);
+  box-shadow: var(--ls-shadow-md);
+}
+
+.ls-pebble[data-tone='sage'] {
+  border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble-tight) var(--ls-radius-pebble)
+    var(--ls-radius-pebble);
+  background: var(--ls-c-sage);
+  color: var(--ls-c-sage-ink);
+  --ls-text: var(--ls-c-sage-ink);
+  --ls-text-muted: var(--ls-c-sage-ink);
+}
+
+.ls-pebble[data-tone='blush'] {
+  border-radius: var(--ls-radius-pebble-tight) var(--ls-radius-pebble) var(--ls-radius-pebble)
+    var(--ls-radius-pebble);
+}
+
+.ls-pebble[data-tone='sand'] {
+  border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble) var(--ls-radius-pebble-tight)
+    var(--ls-radius-pebble);
+  background: var(--ls-c-sand);
+}
+
+.ls-pebble .ls-group-head {
+  gap: var(--ls-space-1);
+}
+
+.ls-pebble .ls-site-h2-sub {
+  font-size: var(--ls-type-sub);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.ls-pebble-meta {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
+}
+
+.ls-pebble .ls-group-desc {
+  color: var(--ls-text-muted);
+}
+
+/* The rows are soft pills in the group (no dotted leader); the price is a bold figure on the right. */
+.ls-pebble .ls-price-list {
+  gap: var(--ls-space-1);
+  margin-inline: calc(var(--ls-space-3) * -1);
+}
+
+.ls-pebble .ls-price-row {
+  min-height: 2.75rem;
+  border-radius: var(--ls-radius-full);
+  padding-inline: var(--ls-space-4);
+  font-size: var(--ls-type-body);
+}
+
+.ls-pebble .ls-price-dots {
+  display: none;
+}
+
+.ls-pebble .ls-price-name {
+  flex: 1 1 auto;
+}
+
+.ls-pebble .ls-price {
+  font-weight: 700;
+}
+
+.ls-pebble .ls-site-link {
+  justify-self: start;
+  padding-inline: 0;
+  color: var(--ls-brand);
+  font-weight: 700;
+}
+
+.ls-pebble[data-tone='sage'] .ls-site-link {
+  color: var(--ls-c-sage-ink);
+}
+
+/* ---------- home: why-us cards ---------- */
+.ls-site-grid-why .ls-site-card {
+  padding: var(--ls-space-7);
+  border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble) var(--ls-radius-pebble)
+    var(--ls-radius-pebble-tight);
+}
+
+.ls-icon-bubble {
+  background: var(--ls-brand-soft);
+}
+
+/* ---------- home: the running offer, one big soft ribbon ---------- */
+.ls-offer-wrap {
+  padding-block: var(--ls-c-band) 0;
+}
+
+.ls-offer-card {
+  position: relative;
+  display: grid;
+  gap: var(--ls-space-5);
+  justify-items: start;
+  overflow: hidden;
+  padding: var(--ls-c-pad-lg);
+  border-radius: var(--ls-radius-pebble);
+  background: linear-gradient(
+    135deg,
+    var(--ls-c-offer-from),
+    var(--ls-c-offer-via) 60%,
+    var(--ls-c-offer-to)
+  );
+  color: var(--ls-c-offer-text);
+  box-shadow: var(--ls-shadow-lg);
+}
+
+@media (min-width: 900px) {
+  .ls-offer-card[data-picture='true'] {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--ls-space-8);
+  }
+}
+
+.ls-offer-body {
+  display: grid;
+  gap: var(--ls-space-4);
+  justify-items: start;
+}
+
+.ls-offer-card .ls-offer-badge {
+  grid-area: auto;
+  background: var(--ls-c-offer-chip);
+  color: var(--ls-c-offer-text);
+}
+
+.ls-offer-title {
+  max-width: 20ch;
+  margin: 0;
+  color: inherit;
+  font-family: var(--ls-font-display);
+  font-size: var(--ls-type-feature);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-section);
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.ls-offer-message {
+  max-width: 34rem;
+  margin: 0;
+  color: var(--ls-c-offer-muted);
+  font-size: var(--ls-type-lead);
+  line-height: var(--ls-lh-lead);
+}
+
+.ls-offer-until {
+  margin: 0;
+  color: var(--ls-c-offer-muted);
+  font-size: var(--ls-type-small);
+}
+
+.ls-offer-picture {
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--ls-radius-pebble-tight) var(--ls-radius-pebble) var(--ls-radius-pebble)
+    var(--ls-radius-pebble);
+}
+
+@media (min-width: 900px) {
+  .ls-offer-picture {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+.ls-offer-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* A white button on the ribbon; it turns the ribbon's own deep colour with white text under the pointer. */
+.ls-offer-card .ls-btn-offer {
+  border-color: transparent;
+  background: var(--ls-c-footer-text);
+  color: var(--ls-c-ink-on-white);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-offer-card .ls-btn-offer:hover {
+    background: var(--ls-c-ink-on-white);
+    color: var(--ls-c-footer-text);
+  }
+}
+
+/* ---------- footer: the brand colour, with a wave on its top edge ---------- */
+.ls-site-footer {
+  --ls-text: var(--ls-c-footer-text);
+  --ls-text-muted: var(--ls-c-footer-muted);
+  --ls-brand: var(--ls-c-footer-text);
+  --ls-border: var(--ls-c-footer-line);
+  position: relative;
+  margin-top: var(--ls-c-wave);
+  border-top: 0;
+  background: var(--ls-c-footer-bg);
+  color: var(--ls-c-footer-text);
+}
+
+.ls-site .ls-site-footer-cta {
+  border-color: transparent;
+  background: var(--ls-c-footer-text);
+  color: var(--ls-c-footer-bg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-site .ls-site-footer-cta:hover:not([aria-disabled='true']) {
+    background: var(--ls-c-footer-muted);
+    color: var(--ls-c-footer-bg);
+  }
+}
+
+.ls-site-footer-title,
+.ls-site-footer-logo {
+  color: var(--ls-c-footer-text);
+}
+
+/* A short word ("Book") is still a full touch target wide. */
+.ls-site-footer-list a:not(.ls-footer-icon) {
+  min-width: var(--ls-control-h);
+}
+
+/* The Owner's round buttons sit on the brand colour: a light disc with a deep glyph, and a softer light disc under the pointer (the
+   shared hover colour is the footer's own colour, which would make the button vanish). */
+.ls-site-footer .ls-social-btn {
+  border-color: transparent;
+  background: var(--ls-c-footer-text);
+  color: var(--ls-c-footer-bg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-site-footer .ls-social-btn:hover {
+    border-color: transparent;
+    background: var(--ls-c-footer-muted);
+    color: var(--ls-c-footer-bg);
+  }
+}
+
+.ls-site-footer .ls-footer-icon {
+  --ls-footer-icon-hover: var(--ls-c-footer-text);
+}
+
+.ls-site-footer .ls-footer-icon[data-network] {
+  --ls-footer-icon-hover: var(--ls-c-footer-text);
+}
+
+/* ---------- photo slots: a place for the shop's own photo, drawn to be swapped ---------- */
+.ls-slot {
+  position: relative;
+  display: grid;
+  margin: 0;
+  overflow: hidden;
+  background: linear-gradient(145deg, var(--ls-c-slot-from), var(--ls-c-slot-to));
+  color: var(--ls-c-slot-ink);
+}
+
+.ls-slot-grain {
+  position: absolute;
+  inset: 0;
+  opacity: var(--ls-c-grain);
+  background:
+    radial-gradient(circle at 20% 15%, var(--ls-c-slot-light), transparent 45%),
+    radial-gradient(circle at 80% 90%, var(--ls-c-slot-shade), transparent 50%);
+}
+
+.ls-slot-caption {
+  position: relative;
+  align-self: end;
+  justify-self: center;
+  padding: 0 var(--ls-space-5) var(--ls-space-6);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
+  text-align: center;
+}
+
+.ls-slot-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ls-hero-small .ls-slot-caption,
+.ls-hero-pill .ls-slot-caption {
+  display: none;
+}
+
+@media (max-width: 599px) {
+  .ls-hero-big .ls-slot-caption {
+    display: none;
+  }
+}

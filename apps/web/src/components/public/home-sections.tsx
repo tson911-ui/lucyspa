@@ -93,45 +93,64 @@ export function FactsStrip({ locale, site }: { locale: Locale; site: PublicSiteR
   );
 }
 
+const TONES = ['rose', 'sage', 'blush', 'sand'] as const;
+
+/** The group's lowest price as one short line ("từ 15.000 ₫"), or null when it has no service. */
+function groupFrom(group: HomeGroup['group'], locale: Locale): string | null {
+  let best: (typeof group.services)[number] | null = null;
+  for (const service of group.services) {
+    if (best === null || BigInt(service.priceMinVnd) < BigInt(best.priceMinVnd)) best = service;
+  }
+  return best ? cardPrice(best, locale) : null;
+}
+
 /**
- * The menu board: the featured groups (the Owner's choice and order, else every live group) on one surface, like a printed
- * spa menu. Each group is its name, the Owner's short description, its first three services as rows (name, dotted leader,
- * price; each row opens the service) and "Xem tất cả →" under them.
+ * The price list as soft "pebbles" (direction C): one rounded card for each featured group (the Owner's choice and order, else every
+ * live group), each with its own tone. A pebble is the group's name, how many services it holds and the lowest price, the Owner's
+ * short description, its first three services as rows (name and price; each row opens the service) and "Xem tất cả".
  */
 export function ServiceGroups({ locale, groups }: { locale: Locale; groups: HomeGroup[] }) {
   const text = getSiteText(locale).home;
   return (
-    <Reveal>
-      <div className="ls-board">
-        {groups.map(({ group, description }) => (
-          <article key={group.code} className="ls-board-group">
-            <div className="ls-group-head">
-              <h3 className="ls-site-h2-sub">{group.name}</h3>
-              {description ? <p className="ls-group-desc">{description}</p> : null}
-            </div>
-            <PriceList
-              LinkComponent={Link}
-              items={featuredServices(group).map((service) => ({
-                key: service.code,
-                name: service.name,
-                price: cardPrice(service, locale),
-                href: serviceHref(locale, service.code),
-              }))}
-            />
-            <Link
-              className="ls-site-link"
-              href={`/${locale}/services?group=${encodeURIComponent(group.code)}`}
-              aria-label={fill(text.viewAllOf, { group: group.name })}
-            >
-              {text.viewAll}
-              <span aria-hidden="true" className="ls-link-arrow">
-                →
-              </span>
-            </Link>
-          </article>
-        ))}
-      </div>
-    </Reveal>
+    <div className="ls-pebbles">
+      {groups.map(({ group, description }, index) => {
+        const from = groupFrom(group, locale);
+        return (
+          <Reveal key={group.code} index={index}>
+            <article className="ls-pebble" data-tone={TONES[index % TONES.length]}>
+              <div className="ls-group-head">
+                <h3 className="ls-site-h2-sub">{group.name}</h3>
+                <p className="ls-pebble-meta">
+                  {from
+                    ? fill(text.groupMeta, { count: String(group.services.length), price: from })
+                    : fill(text.groupCount, { count: String(group.services.length) })}
+                </p>
+                {description ? <p className="ls-group-desc">{description}</p> : null}
+              </div>
+              <PriceList
+                LinkComponent={Link}
+                items={featuredServices(group).map((service) => ({
+                  key: service.code,
+                  name: service.name,
+                  price: cardPrice(service, locale),
+                  href: serviceHref(locale, service.code),
+                }))}
+              />
+              <Link
+                className="ls-site-link"
+                href={`/${locale}/services?group=${encodeURIComponent(group.code)}`}
+                aria-label={fill(text.viewAllOf, { group: group.name })}
+              >
+                {text.viewAll}
+                <span aria-hidden="true" className="ls-link-arrow">
+                  →
+                </span>
+              </Link>
+            </article>
+          </Reveal>
+        );
+      })}
+    </div>
   );
 }
 

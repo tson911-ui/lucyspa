@@ -17,7 +17,7 @@ export default function PublicNotFound() {
     // A pre-order ticket link that is wrong or was revoked: nothing is revealed about why.
     const ticket = productOrdersDictionary(locale).publicTicket;
     return (
-      <PublicPage title={ticket.notFoundTitle} lead={ticket.notFoundBody} width="narrow">
+      <PublicPage title={ticket.notFoundTitle} lead={ticket.notFoundBody} width="narrow" centered>
         <div className="ls-site-actions">
           <Link className={buttonClass('primary', 'lg')} href={`/${locale}`}>
             {ticket.home}
@@ -31,7 +31,7 @@ export default function PublicNotFound() {
   if (!isProduct && !isService) {
     // Any other address that does not exist: the same chrome, a plain explanation and two ways on.
     return (
-      <PublicPage title={site.errors.notFoundTitle} lead={site.errors.notFoundBody}>
+      <PublicPage title={site.errors.notFoundTitle} lead={site.errors.notFoundBody} centered>
         <div className="ls-site-actions">
           <Link className={buttonClass('primary', 'lg')} href={`/${locale}`}>
             {site.errors.home}
@@ -45,7 +45,7 @@ export default function PublicNotFound() {
   }
   const text = isProduct ? site.products : site.services;
   return (
-    <PublicPage title={text.notFoundTitle} lead={text.notFoundBody}>
+    <PublicPage title={text.notFoundTitle} lead={text.notFoundBody} centered>
       <div className="ls-site-actions">
         <Link
           className={buttonClass('primary', 'lg')}

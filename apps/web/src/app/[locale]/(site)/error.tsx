@@ -20,7 +20,7 @@ export default function SiteError({
   const locale = params.locale && isLocale(params.locale) ? params.locale : 'vi';
   const text = getSiteText(locale).errors;
   return (
-    <PublicPage title={text.errorTitle} lead={text.errorBody}>
+    <PublicPage title={text.errorTitle} lead={text.errorBody} centered>
       <div className="ls-site-actions">
         <Button variant="primary" size="lg" onClick={reset}>
           {text.retry}

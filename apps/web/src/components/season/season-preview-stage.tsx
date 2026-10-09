@@ -6,6 +6,7 @@ import type { Locale } from '../../i18n/locales';
 import { siteDecorSpec } from '../../lib/season-core';
 import { PREVIEW_SOURCE, parsePreviewMessage, seasonOfDraft } from '../../lib/season-preview';
 import { HomeContent } from '../public/home-content';
+import { siteFontClass } from '../public/site-fonts';
 import { PublicFooter, PublicHeader } from '../public/site-chrome';
 import { loadHomeDataInBrowser } from '../../lib/public-site-client';
 import type { HomeData } from '../../lib/public-site-core';
@@ -88,7 +89,7 @@ export function SeasonPreviewStage({ locale }: { locale: Locale }) {
   const footer = <PublicFooter locale={locale} site={data?.site ?? null} />;
   const home = data ? <HomeContent locale={locale} data={data} popup={false} /> : null;
   return (
-    <div ref={root} className="ls-season-preview-root ls-site">
+    <div ref={root} className={`ls-season-preview-root ls-site ${siteFontClass}`}>
       {decor ? (
         <SeasonSiteFrame decor={decor} locale={locale} header={header} footer={footer}>
           {home}

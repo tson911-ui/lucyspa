@@ -4,45 +4,58 @@ import Link from 'next/link';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import { homeGroups, type HomeData } from '../../lib/public-site-core';
+import { splitTagline } from '../../lib/tagline';
 import { HomeOffer } from './campaign-views';
 import { FactsStrip, LoadNotice, ServiceGroups, WhyCards } from './home-sections';
 import { HomeSlider } from './home-slider';
+import { PhotoSlot } from './photo-slot';
 import { PromoPopup } from './promo-popup';
 
-/** The hero picture the Owner chose in Shop info (same frame as the slider, so nothing moves). */
-function HeroImage({ image }: { image: NonNullable<PublicSiteResponse['heroImage']> }) {
-  const widest = image.sources[image.sources.length - 1];
-  if (!widest) return null;
+/**
+ * The picture of the hero (direction C): the Owner's slider when there are slides, else the hero picture chosen in Admin > Website >
+ * Shop info as one large circle, else a set of designed photo placeholders (a circle, a small circle and a tall pill) waiting for the
+ * shop's own photos. Never a made-up photo. A ring behind it breathes very slowly (still under reduced motion).
+ */
+function HeroMedia({
+  locale,
+  site,
+  slides,
+}: {
+  locale: Locale;
+  site: PublicSiteResponse | null;
+  slides: Parameters<typeof HomeSlider>[0]['slides'];
+}) {
+  const text = getSiteText(locale).home;
+  const image = site?.heroImage ?? null;
+  if (slides.length > 0) {
+    return (
+      <div className="ls-hero-media" data-kind="slider">
+        <span className="ls-hero-ring" aria-hidden="true" />
+        <HomeSlider locale={locale} slides={slides} />
+      </div>
+    );
+  }
+  if (image) {
+    return (
+      <div className="ls-hero-media" data-kind="photo">
+        <span className="ls-hero-ring" aria-hidden="true" />
+        <PhotoSlot className="ls-hero-big" image={image} caption={text.photoSpace} />
+      </div>
+    );
+  }
   return (
-    <div className="ls-photo">
-      {/* eslint-disable-next-line @next/next/no-img-element -- the media route already serves sized WebP renditions */}
-      <img
-        className="ls-hero-image"
-        src={widest.url}
-        srcSet={image.sources.map((source) => `${source.url} ${source.width}w`).join(', ')}
-        sizes="(min-width: 1024px) 50vw, 100vw"
-        width={image.width}
-        height={image.height}
-        alt={image.alt}
-        fetchPriority="high"
-        decoding="async"
-      />
-    </div>
-  );
-}
-
-/** A brand panel when there is neither a slide nor a chosen picture: never a made-up photo. */
-function BrandPanel() {
-  return (
-    <div className="ls-brand-panel" aria-hidden="true">
-      <span className="ls-brand-panel-mark">Lucy Spa</span>
+    <div className="ls-hero-media" data-kind="slots" aria-hidden="true">
+      <span className="ls-hero-ring" />
+      <PhotoSlot className="ls-hero-big" caption={text.photoSpace} />
+      <PhotoSlot className="ls-hero-small" caption={text.photoNails} />
+      <PhotoSlot className="ls-hero-pill" caption={text.photoHeadSpa} />
     </div>
   );
 }
 
 /**
- * The public home page's content (Part 2 contract 5.2). It only draws what it is given: the page reads the shop
- * profile, the catalogue and the slides on the server, and the admin's season preview reads them in the browser.
+ * The public home page's content (Part 2 contract 5.2, direction C since 2026-10-10). It only draws what it is given: the page reads
+ * the shop profile, the catalogue and the slides on the server, and the admin's season preview reads them in the browser.
  * A part that could not be read shows a notice and the rest still renders. The preview leaves the promotional popup
  * out (it is not part of a season's look and would cover the page).
  */
@@ -57,20 +70,15 @@ export function HomeContent({
 }) {
   const text = getSiteText(locale);
   const { site, services, slides, campaigns, onlineOpen } = data;
-  const media =
-    slides.length > 0 ? null : site?.heroImage ? (
-      <HeroImage image={site.heroImage} />
-    ) : (
-      <BrandPanel />
-    );
+  const [first, second] = splitTagline(site?.tagline ?? 'Lucy Spa');
   return (
     <PublicMain>
       <Band tone="page" labelledBy="home-title" className="ls-hero">
-        <HomeOffer locale={locale} campaigns={campaigns} onlineOpen={onlineOpen === true} />
         <div className="ls-hero-grid">
           <div className="ls-hero-copy">
-            <h1 className="ls-site-display" id="home-title">
-              {site?.tagline ?? 'Lucy Spa'}
+            <h1 className="ls-site-display ls-hero-title" id="home-title">
+              <span>{first}</span>
+              {second ? <span className="ls-hero-title-2">{second}</span> : null}
             </h1>
             <p className="ls-lead">{site?.intro ?? text.home.lead}</p>
             <div className="ls-hero-actions">
@@ -90,7 +98,7 @@ export function HomeContent({
               </Link>
             </div>
           </div>
-          {slides.length > 0 ? <HomeSlider locale={locale} slides={slides} /> : media}
+          <HeroMedia locale={locale} site={site} slides={slides} />
         </div>
       </Band>
 
@@ -130,6 +138,8 @@ export function HomeContent({
           <WhyCards why={site.why} />
         </Band>
       ) : null}
+
+      <HomeOffer locale={locale} campaigns={campaigns} onlineOpen={onlineOpen === true} />
       {popup ? <PromoPopup locale={locale} /> : null}
     </PublicMain>
   );

@@ -107,6 +107,14 @@ export interface SiteText {
     reload: string;
     sectionServices: string;
     noServices: string;
+    /** With {count} and {price}: under a group name ("4 dịch vụ, từ 15.000 ₫"). */
+    groupMeta: string;
+    /** With {count}: a group that has no price to show. */
+    groupCount: string;
+    /** The captions of the photo placeholders (the Owner replaces them with the shop's own photos). */
+    photoSpace: string;
+    photoNails: string;
+    photoHeadSpa: string;
   };
   services: {
     title: string;
@@ -281,6 +289,11 @@ const text = {
       reload: 'Tải lại trang',
       sectionServices: 'danh mục dịch vụ',
       noServices: 'Danh mục dịch vụ đang được cập nhật.',
+      groupMeta: '{count} dịch vụ, {price}',
+      groupCount: '{count} dịch vụ',
+      photoSpace: 'Ảnh của tiệm: không gian thư giãn',
+      photoNails: 'Ảnh của tiệm: làm nail',
+      photoHeadSpa: 'Ảnh của tiệm: gội đầu',
     },
     services: {
       title: 'Dịch vụ',
@@ -450,6 +463,11 @@ const text = {
       reload: 'Reload the page',
       sectionServices: 'service catalogue',
       noServices: 'The service catalogue is being updated.',
+      groupMeta: '{count} services, {price}',
+      groupCount: '{count} services',
+      photoSpace: 'The shop’s own photo: the relaxation space',
+      photoNails: 'The shop’s own photo: nails',
+      photoHeadSpa: 'The shop’s own photo: head spa',
     },
     services: {
       title: 'Services',

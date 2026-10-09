@@ -1,0 +1,270 @@
+/* Direction C on the inner pages of the customer site (services, catalogue, booking, member area, sign-in, notices). It follows customer.css, which
+   holds the tokens and the shared shapes; this file only arranges and shapes the pages. No colour literals: every colour is a token. */
+
+/* ---------- services: one pebble for each group, calm rows inside ---------- */
+.ls-svc-section {
+  --ls-pebble-bg: var(--ls-bg-surface);
+  gap: var(--ls-space-3);
+  padding: var(--ls-c-pad);
+  border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble) var(--ls-radius-pebble)
+    var(--ls-radius-pebble-tight);
+  background: var(--ls-pebble-bg);
+  box-shadow: var(--ls-shadow-md);
+}
+
+.ls-svc-section:nth-of-type(4n + 2) {
+  --ls-pebble-bg: var(--ls-c-sage);
+  --ls-text: var(--ls-c-sage-ink);
+  --ls-text-muted: var(--ls-c-sage-ink);
+  --ls-brand: var(--ls-c-sage-ink);
+  border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble-tight) var(--ls-radius-pebble)
+    var(--ls-radius-pebble);
+}
+
+.ls-svc-section:nth-of-type(4n + 3) {
+  border-radius: var(--ls-radius-pebble-tight) var(--ls-radius-pebble) var(--ls-radius-pebble)
+    var(--ls-radius-pebble);
+}
+
+.ls-svc-section:nth-of-type(4n) {
+  --ls-pebble-bg: var(--ls-c-sand);
+  border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble) var(--ls-radius-pebble-tight)
+    var(--ls-radius-pebble);
+}
+
+.ls-svc-section > .ls-site-h2-sub {
+  padding-inline: var(--ls-space-3);
+}
+
+.ls-svc-row + .ls-svc-row {
+  border-top: 0;
+}
+
+.ls-svc-main {
+  border-radius: var(--ls-radius-lg);
+}
+
+.ls-svc-dots {
+  display: none;
+}
+
+.ls-svc-main {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'name price'
+    'meta meta';
+}
+
+.ls-svc-book {
+  background: var(--ls-c-blush);
+}
+
+.ls-svc-section:nth-of-type(4n + 2) .ls-svc-book {
+  background: var(--ls-bg-surface);
+  color: var(--ls-c-sage-ink);
+}
+
+/* The related services of a service page share the same soft rows, in one pebble of their own. */
+.ls-detail-related {
+  padding: var(--ls-c-pad);
+  border-radius: var(--ls-radius-pebble-tight) var(--ls-radius-pebble) var(--ls-radius-pebble)
+    var(--ls-radius-pebble);
+  background: var(--ls-c-rose);
+  box-shadow: var(--ls-shadow-md);
+}
+
+.ls-detail-related .ls-svc-book {
+  background: var(--ls-bg-surface);
+}
+
+.ls-pills a {
+  border-color: transparent;
+  background: var(--ls-bg-surface);
+  box-shadow: var(--ls-shadow-sm);
+}
+
+.ls-pills a[aria-current='true'] {
+  background: var(--ls-brand-fill);
+  box-shadow: none;
+}
+
+/* ---------- catalogue and campaign: one soft pebble for the hero, round product cards ---------- */
+.ls-prod-hero {
+  border: 0;
+  border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble) var(--ls-radius-pebble)
+    var(--ls-radius-pebble-tight);
+  box-shadow: var(--ls-shadow-lg);
+}
+
+.ls-prod-hero .ls-site-display {
+  font-size: var(--ls-type-feature);
+  line-height: var(--ls-lh-section);
+}
+
+.ls-prod-hero-picture {
+  background: linear-gradient(145deg, var(--ls-c-slot-from), var(--ls-c-slot-to));
+}
+
+/* A service page: the booking card and the same-group list share the width, so a service name stays on one line. */
+@media (min-width: 1024px) {
+  .ls-detail-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* ---------- booking: choice rows are soft cards, the steps and the summary follow ---------- */
+.ls-choice {
+  border-color: transparent;
+  border-radius: var(--ls-radius-lg);
+  box-shadow: var(--ls-shadow-sm);
+}
+
+.ls-action-bar {
+  border-top: 0;
+  border-radius: var(--ls-radius-lg) var(--ls-radius-lg) 0 0;
+  box-shadow: 0 -8px 24px -12px color-mix(in srgb, var(--ls-brand) 32%, transparent);
+}
+
+.ls-booking-step-title {
+  letter-spacing: -0.01em;
+}
+
+/* Tables and tiers are cards too: the same large radius as every other surface of the customer pages. */
+.ls-site .ls-table-wrap,
+.ls-site .ls-tier-grid {
+  border-radius: var(--ls-radius-lg);
+}
+
+/* ---------- empty states: one round pebble in the middle of the page ---------- */
+.ls-site .ls-page > .ls-empty {
+  border: 0;
+  border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble) var(--ls-radius-pebble)
+    var(--ls-radius-pebble-tight);
+  box-shadow: var(--ls-shadow-md);
+}
+
+/* ---------- notices (page not found, a page that failed): centred under a soft ring ---------- */
+.ls-public-centered {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  padding-block: var(--ls-space-8) var(--ls-space-9);
+}
+
+.ls-public-centered::before {
+  content: '';
+  width: calc(var(--ls-space-10) * 2);
+  aspect-ratio: 1;
+  margin-top: var(--ls-space-5);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--ls-bg-surface), var(--ls-c-rose));
+  box-shadow:
+    0 0 0 var(--ls-space-3) color-mix(in srgb, var(--ls-brand) 10%, transparent),
+    0 0 0 var(--ls-space-6) color-mix(in srgb, var(--ls-brand) 5%, transparent),
+    var(--ls-shadow-md);
+}
+
+.ls-public-centered .ls-public-title {
+  justify-items: center;
+  margin-block: var(--ls-space-8) var(--ls-space-6);
+  padding-top: 0;
+}
+
+.ls-public-centered .ls-lead {
+  max-width: 32rem;
+}
+
+.ls-public-centered .ls-site-actions {
+  justify-content: center;
+}
+
+/* ---------- sign-in and registration: a soft rose panel beside one round card ---------- */
+.ls-member-auth {
+  align-items: start;
+  padding-block: var(--ls-space-7) var(--ls-space-9);
+}
+
+.ls-member-auth .ls-card {
+  padding: var(--ls-space-8);
+  border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble) var(--ls-radius-pebble)
+    var(--ls-radius-pebble-tight);
+  box-shadow: var(--ls-shadow-lg);
+}
+
+@media (max-width: 479px) {
+  .ls-member-auth .ls-card {
+    padding: var(--ls-space-6);
+    border-radius: var(--ls-radius-lg) var(--ls-radius-lg) var(--ls-radius-lg)
+      var(--ls-radius-pebble-tight);
+  }
+}
+
+.ls-member-title {
+  font-size: var(--ls-type-sub);
+}
+
+@media (min-width: 1024px) {
+  .ls-member-auth {
+    grid-template-columns: minmax(0, 24rem) minmax(0, 30rem);
+    gap: var(--ls-space-7);
+  }
+
+  /* The panel is as tall as its words and sticks under the header while a long form scrolls, so it never stretches into an empty area.
+     No background sits on any inline text: one soft surface, text straight on it. */
+  .ls-member-aside {
+    position: sticky;
+    top: calc(var(--ls-site-header-h) + var(--ls-space-5));
+    align-self: start;
+    gap: var(--ls-space-6);
+    padding: var(--ls-space-8);
+    border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble-tight) var(--ls-radius-pebble)
+      var(--ls-radius-pebble);
+    /* A soft ring in the top corner is part of the surface itself (a hard-stopped radial gradient), so nothing sticks out of the panel. */
+    background:
+      radial-gradient(
+        circle at 100% 0,
+        transparent 7.5rem,
+        color-mix(in srgb, var(--ls-brand) 22%, transparent) 7.5rem,
+        color-mix(in srgb, var(--ls-brand) 22%, transparent) 7.625rem,
+        transparent 7.625rem
+      ),
+      linear-gradient(160deg, var(--ls-c-rose), var(--ls-c-blush));
+    color: var(--ls-text);
+    box-shadow: var(--ls-shadow-md);
+  }
+
+  .ls-member-aside > * {
+    position: relative;
+    z-index: 1;
+    background: none;
+  }
+
+  .ls-member-aside > span {
+    color: var(--ls-brand);
+  }
+
+  .ls-member-aside .ls-member-aside-title {
+    color: var(--ls-text);
+    font-size: var(--ls-type-sub);
+    line-height: var(--ls-lh-sub);
+  }
+
+  .ls-member-aside ul {
+    color: var(--ls-text);
+  }
+
+  .ls-member-aside li {
+    align-items: center;
+    gap: var(--ls-space-3);
+  }
+
+  .ls-member-aside li svg {
+    flex: none;
+    box-sizing: content-box;
+    margin: 0;
+    padding: var(--ls-space-2);
+    border-radius: var(--ls-radius-full);
+    background: var(--ls-bg-surface);
+    color: var(--ls-brand);
+  }
+}

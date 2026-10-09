@@ -23,8 +23,6 @@ export const ROBOTS_DISALLOW: readonly string[] = [
   '/en/workforce',
   '/vi/season-preview',
   '/en/season-preview',
-  '/vi/design-preview',
-  '/en/design-preview',
   '/api/',
 ];
 

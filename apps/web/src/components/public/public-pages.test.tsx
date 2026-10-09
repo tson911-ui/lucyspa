@@ -102,7 +102,11 @@ const home = (data: HomeData, locale: 'vi' | 'en' = 'vi') =>
 test('home: the tagline is the one h1, facts and visit read the Owner data, no made-up claims', () => {
   const html = home(full);
   assert.equal(html.match(/<h1[ >]/g)?.length, 1);
-  assert.match(html, /<h1[^>]*>Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc<\/h1>/);
+  // Direction C draws the tagline over two lines (the dash is not drawn), the second one in the accent.
+  assert.match(
+    html,
+    /<h1[^>]*><span>Thư Giãn Tận Tâm<\/span><span class="ls-hero-title-2">Nâng Tầm Nhan Sắc<\/span><\/h1>/,
+  );
   assert.match(html, /04 Nguyễn Quang Bích, Đà Nẵng/);
   assert.match(html, /href="tel:\+84934936101"/);
   assert.match(html, /Thứ Hai – Thứ Bảy/);
@@ -139,7 +143,9 @@ test('home: an introduction set in Shop info replaces the built-in sentence; emp
 test('home: one card per live group with its prices and a link to all of them', () => {
   const html = home(full);
   assert.match(html, /Gội đầu/);
-  assert.doesNotMatch(html, /2 dịch vụ/);
+  // A pebble says how many services the group holds and its lowest price (a per-nail price stays one short line).
+  assert.match(html, /2 dịch vụ, 50\.000 ₫/);
+  assert.match(html, /1 dịch vụ, từ 5\.000 ₫\/ngón/);
   assert.match(html, /50\.000 ₫/);
   // A per-nail price on a card is one short line ("from"), not the range the services pages show.
   assert.match(html, /từ 5\.000 ₫\/ngón/);
@@ -156,12 +162,12 @@ test('home: a part that could not be read shows a notice and the rest still rend
   assert.match(noServices, /ls-site-facts/);
   const noSite = home({ ...full, site: null });
   assert.doesNotMatch(noSite, /ls-site-facts/);
-  assert.match(noSite, /<h1[^>]*>Lucy Spa<\/h1>/);
+  assert.match(noSite, /<h1[^>]*><span>Lucy Spa<\/span><\/h1>/);
   assert.match(noSite, /Gội đầu/);
   assert.match(home({ ...full, services: { groups: [] } }), /Danh mục dịch vụ đang được cập nhật/);
 });
 
-test('home: the hero shows the chosen picture when there is no slide, else a brand panel', () => {
+test('home: the hero shows the chosen picture when there is no slide, else designed photo placeholders', () => {
   const id = '0f6e0a52-2f0c-4a1b-9c55-1f4e2d6a7b8c';
   const withImage = home({
     ...full,
@@ -180,8 +186,14 @@ test('home: the hero shows the chosen picture when there is no slide, else a bra
   });
   assert.match(withImage, /<img[^>]*alt="Quầy lễ tân"/);
   assert.match(withImage, /srcSet="[^"]*\/md 960w, [^"]*\/lg 1920w"/);
-  assert.doesNotMatch(withImage, /ls-brand-panel/);
-  assert.match(home(full), /ls-brand-panel/);
+  assert.match(withImage, /data-kind="photo"/);
+  assert.doesNotMatch(withImage, /ls-slot-caption|data-kind="slots"/);
+  // Without a picture the placeholders say which of the shop's own photos belongs in each frame; none is made up.
+  const slots = home(full);
+  assert.match(slots, /data-kind="slots"/);
+  assert.match(slots, /Ảnh của tiệm: không gian thư giãn/);
+  assert.equal(slots.match(/<figure class="ls-slot /g)?.length, 3);
+  assert.doesNotMatch(slots, /<img/);
 });
 
 test('footer: Facebook and Zalo icons sit with the contact lines, each only when its link is set', () => {
@@ -507,21 +519,21 @@ test('home service groups: the Owner choice, order and description; none chosen 
   assert.ok(chosen.indexOf('Móng gọn gàng') < chosen.indexOf('Gội đầu'));
   assert.match(chosen, /<p class="ls-group-desc">Móng gọn gàng, sơn gel bền màu<\/p>/);
   assert.doesNotMatch(chosen, /Không còn/);
-  assert.equal(chosen.match(/ls-board-group/g)?.length, 2);
+  assert.equal(chosen.match(/class="ls-pebble"/g)?.length, 2);
   assert.match(chosen, /Xem tất cả/);
   const all = home(full);
-  assert.equal(all.match(/ls-board-group/g)?.length, 2);
+  assert.equal(all.match(/class="ls-pebble"/g)?.length, 2);
   assert.doesNotMatch(all, /ls-group-desc/);
   assert.match(all, /Bảng giá dịch vụ/);
 });
 
-test('home offer line: the most recent running campaign as one link, nothing without one', () => {
+test('home offer ribbon: the most recent running campaign after the services, nothing without one', () => {
   const campaign = {
     slug: 'ngay-hoi-thu',
     name: 'Ngày hội mùa thu',
     badge: 'Ưu đãi',
     headline: 'Giảm 20% mỹ phẩm chăm sóc da',
-    message: null,
+    message: 'Chỉ trong vài ngày.',
     ctaLabel: 'Mua ngay',
     bannerUrl: null,
     endsAt: '2026-10-31T16:59:59.000Z',
@@ -531,24 +543,26 @@ test('home offer line: the most recent running campaign as one link, nothing wit
     campaigns: [campaign, { ...campaign, slug: 'cu', name: 'Cũ' }],
     onlineOpen: true,
   });
+  assert.match(html, /<span class="ls-offer-badge">Ưu đãi<\/span>/);
+  assert.match(html, /<h2 class="ls-offer-title">Giảm 20% mỹ phẩm chăm sóc da<\/h2>/);
+  assert.match(html, /Chỉ trong vài ngày\./);
+  assert.match(html, /Đến hết ngày 31\/10\/2026/);
   assert.match(
     html,
-    /<a class="ls-offer" aria-label="[^"]*" href="\/vi\/products\?campaign=ngay-hoi-thu"/,
+    /<a class="[^"]*ls-btn-offer" href="\/vi\/products\?campaign=ngay-hoi-thu">Mua ngay<\/a>/,
   );
-  assert.match(html, /<span class="ls-offer-badge">Ưu đãi<\/span>/);
-  assert.match(html, /Giảm 20% mỹ phẩm chăm sóc da/);
-  assert.match(html, /Đến hết ngày 31\/10\/2026/);
-  assert.match(html, /Mua ngay/);
   // While "Bán online" is off (or could not be read) the button never promises a purchase: it says "Xem ưu đãi" and leads to the same page.
   for (const closed of [{}, { onlineOpen: false }]) {
     const off = home({ ...full, campaigns: [campaign], ...closed });
     assert.doesNotMatch(off, /Mua ngay/);
-    assert.match(off, /<span class="ls-offer-cta">Xem ưu đãi/);
-    assert.match(off, /href="\/vi\/products\?campaign=ngay-hoi-thu"/);
+    assert.match(
+      off,
+      /<a class="[^"]*ls-btn-offer" href="\/vi\/products\?campaign=ngay-hoi-thu">Xem ưu đãi<\/a>/,
+    );
   }
-  // One line only, above the hero; no campaign (or none readable) draws nothing.
-  assert.equal(html.match(/class="ls-offer"/g)?.length, 1);
-  assert.ok(html.indexOf('class="ls-offer"') < html.indexOf('id="home-title"'));
+  // One ribbon only, below the hero and the price list; no campaign (or none readable) draws nothing.
+  assert.equal(html.match(/class="ls-offer-card"/g)?.length, 1);
+  assert.ok(html.indexOf('ls-offer-card') > html.indexOf('id="groups-title"'));
   assert.doesNotMatch(home(full), /ls-offer/);
   assert.doesNotMatch(home({ ...full, campaigns: [] }), /ls-offer/);
   assert.doesNotMatch(home({ ...full, campaigns: null }), /ls-offer/);

@@ -1,11 +1,10 @@
 import type { PublicSiteResponse } from '@lucy-spa/contracts';
 import type { CSSProperties } from 'react';
-import './preview-shared.css';
 
 /**
  * A place for one of the shop's own photos. It is drawn to be swapped: the frame, ratio and tone are final, and the caption says
- * which photo belongs here (the list for the owner is in docs/DESIGN_PREVIEW_HOME.md). Never a stock or made-up photo.
- * When the shop already chose a hero picture in Shop info, `image` draws it instead.
+ * which photo belongs here (the list for the Owner is in docs/CUSTOMER_SITE_C.md). Never a stock or made-up photo.
+ * When the shop already chose a picture for the slot (the hero picture in Admin > Website > Shop info), `image` draws it instead.
  */
 export function PhotoSlot({
   className,
@@ -21,11 +20,11 @@ export function PhotoSlot({
 }) {
   const widest = image?.sources[image.sources.length - 1];
   return (
-    <figure className={`dp-slot${className ? ` ${className}` : ''}`} style={style}>
+    <figure className={`ls-slot${className ? ` ${className}` : ''}`} style={style}>
       {image && widest ? (
         // eslint-disable-next-line @next/next/no-img-element -- the media route already serves sized WebP renditions
         <img
-          className="dp-slot-img"
+          className="ls-slot-img"
           src={widest.url}
           srcSet={image.sources.map((source) => `${source.url} ${source.width}w`).join(', ')}
           sizes="(min-width: 1024px) 50vw, 100vw"
@@ -36,8 +35,8 @@ export function PhotoSlot({
         />
       ) : (
         <>
-          <span className="dp-slot-grain" aria-hidden="true" />
-          <figcaption className="dp-slot-caption">{caption}</figcaption>
+          <span className="ls-slot-grain" aria-hidden="true" />
+          <figcaption className="ls-slot-caption">{caption}</figcaption>
         </>
       )}
     </figure>

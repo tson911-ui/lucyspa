@@ -110,8 +110,12 @@ large imagery, clean grids, subtle refined motion, a fast and clear booking path
 - **Photos:** no stock photos without rights. Where the shop's photos are missing, use tasteful placeholders designed to be swapped for the
   shop's real photos later, and list the photos the owner should take.
 - **Staff, POS and admin screens keep the current rules** (rules 1-7 above and the UX quality gate); this section does not apply to them.
-- A direction for the customer home page is chosen by the owner before it replaces the current page; until then it lives only in
-  hidden preview routes (`/vi/design-preview/*`: noindex, not in menus, not in the sitemap).
+- **Approved style (Owner, 2026-10-10): direction C, "Ấm áp thư giãn".** Soft and round: Fraunces titles with Nunito Sans text
+  (self-hosted through `next/font`, set on the `.ls-site` frame only), a rose-cream page with a gentle wash, white / sage / blush / sand
+  "pebble" cards (three big corners, one small), pill buttons and fields, soft rose shadows, round photo frames with a slowly
+  breathing ring, soft waves between bands, a brand-red footer. All of it lives in `packages/ui/src/customer.css` (tokens scoped to
+  `.ls-site`; the staff area is untouched). Every customer page follows it; holiday themes sit on top. The hidden preview routes are
+  removed. Contract and the photo list: `docs/CUSTOMER_SITE_C.md`.
 
 ## Reporting (keep it short)
 

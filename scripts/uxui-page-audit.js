@@ -112,13 +112,15 @@
     'body',
     'small',
   ].map((role) => '--ls-type-' + role);
+  // The customer site (direction C) redefines the scale on its own frame and adds one larger title size: the probe reads it there.
+  publicScale.push('--ls-type-feature');
   // These sizes are accepted only inside the public site frame (`.ls-site`); the staff area keeps the older scale.
   const publicSizes = new Set();
   const sizeOf = (token) => {
     const probe = document.createElement('span');
     probe.style.fontSize = `var(${token})`;
     probe.style.position = 'absolute';
-    document.body.appendChild(probe);
+    (document.querySelector('.ls-site') ?? document.body).appendChild(probe);
     const size = Math.round(px(getComputedStyle(probe).fontSize) * 100) / 100;
     probe.remove();
     return size;

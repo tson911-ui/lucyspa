@@ -1,0 +1,184 @@
+/* The customer site tokens of direction C, "Ấm áp thư giãn" (Owner choice 2026-10-10): colours, shapes and the type scale, scoped to `.ls-site` (the public pages,
+   the member area and the sign-in pages). Colour literals live here and in tokens.css only; customer.css and customer-pages.css read them. The two dark blocks
+   (the toggle and the system preference) stay identical. The holiday themes set --ls-season-* and --ls-art-* only, so they are never touched. */
+/* ---------- tokens: light ---------- */
+.ls-site {
+  --ls-font-sans:
+    var(--font-nunito-sans, var(--font-be-vietnam-pro)), system-ui, 'Segoe UI', Roboto, Arial,
+    sans-serif;
+  --ls-font-display:
+    var(--font-fraunces, var(--font-playfair-display)), Georgia, 'Times New Roman', serif;
+
+  --ls-bg-page: #fdf4f2;
+  --ls-bg-surface: #ffffff;
+  --ls-bg-raised: #ffffff;
+  --ls-bg-sunken: #f7ece8;
+  --ls-text: #2b1a1e;
+  --ls-text-muted: #6a5558;
+  --ls-text-subtle: #735d60;
+  --ls-border: #efd9d9;
+  --ls-border-control: #8a7377;
+  --ls-brand-soft: #f6dde0;
+  --ls-row-hover-bg: #fbe9e6;
+  --ls-overlay: rgb(43 26 30 / 0.5);
+  --ls-shadow-sm: 0 1px 2px rgb(120 43 55 / 0.06);
+  --ls-shadow-md: 0 2px 4px rgb(120 43 55 / 0.05), 0 22px 44px -22px rgb(120 43 55 / 0.28);
+  --ls-shadow-lg: 0 4px 8px rgb(120 43 55 / 0.06), 0 32px 64px -24px rgb(120 43 55 / 0.38);
+
+  /* Soft shapes: pebbles have two big corners and one small, never a sharp one. */
+  --ls-radius-sm: 0.5rem;
+  --ls-radius-md: 1rem;
+  --ls-radius-lg: 1.5rem;
+  --ls-radius-pebble: 3rem;
+  --ls-radius-pebble-tight: 0.75rem;
+
+  /* The type scale (one scale for every customer page): larger and calmer than before. */
+  --ls-type-hero: clamp(2.75rem, 1.35rem + 5.1vw, 5.5rem);
+  --ls-lh-hero: 1.05;
+  --ls-type-page: clamp(2.25rem, 1.55rem + 2.5vw, 3.5rem);
+  --ls-lh-page: 1.1;
+  --ls-type-section: clamp(1.75rem, 1.25rem + 2vw, 2.75rem);
+  --ls-type-feature: clamp(2rem, 1.3rem + 2.9vw, 3.75rem);
+  --ls-lh-section: 1.1;
+  --ls-type-sub: clamp(1.5rem, 1.25rem + 1vw, 2rem);
+  --ls-lh-sub: 1.2;
+  --ls-type-card: 1.25rem;
+  --ls-lh-card: 1.3;
+  --ls-type-price: 1.25rem;
+  --ls-type-lead: 1.125rem;
+  --ls-lh-lead: 1.6;
+  --ls-type-body: 1rem;
+  --ls-lh-body: 1.6;
+  --ls-type-small: 0.875rem;
+  --ls-lh-small: 1.5;
+
+  /* Direction C's own tokens. */
+  --ls-c-rose: #f6dde0;
+  --ls-c-blush: #fbe9e6;
+  --ls-c-sage: #e0e9dd;
+  --ls-c-sage-ink: #2f4636;
+  --ls-c-sand: #f7ece8;
+  --ls-c-slot-from: #f2d8da;
+  --ls-c-slot-to: #d9a3aa;
+  --ls-c-slot-ink: #5a2d36;
+  --ls-c-grain: 0.4;
+  --ls-c-slot-light: rgb(255 255 255 / 0.5);
+  --ls-c-slot-shade: rgb(120 43 55 / 0.25);
+  --ls-c-footer-bg: #782b37;
+  --ls-c-footer-text: #ffffff;
+  --ls-c-footer-muted: #f3dde2;
+  --ls-c-footer-line: rgb(255 255 255 / 0.22);
+  --ls-c-offer-from: #a04656;
+  --ls-c-offer-via: #782b37;
+  --ls-c-offer-to: #5e1f2a;
+  --ls-c-offer-text: #ffffff;
+  --ls-c-offer-muted: rgb(255 255 255 / 0.86);
+  --ls-c-offer-chip: rgb(255 255 255 / 0.18);
+  --ls-c-ink-on-white: #2b1a1e;
+  /* Rhythm steps on the 4 px grid by width (never a fluid value): card padding, wave height, band padding, space above the hero. */
+  --ls-c-pad: 1.5rem;
+  --ls-c-pad-lg: 2rem;
+  --ls-c-wave: 2.5rem;
+  --ls-c-band: 3rem;
+  --ls-c-hero-top: 2rem;
+}
+
+/* ---------- tokens: dark (the two blocks below are identical) ---------- */
+:root[data-theme='dark'] .ls-site,
+[data-preview-theme='dark'] .ls-site {
+  --ls-bg-page: #171012;
+  --ls-bg-surface: #21171a;
+  --ls-bg-raised: #281d20;
+  --ls-bg-sunken: #120c0e;
+  --ls-text: #f6ebec;
+  --ls-text-muted: #bba8ab;
+  --ls-text-subtle: #a99598;
+  --ls-border: #3a2a2e;
+  --ls-border-control: #8a7377;
+  --ls-brand-soft: #2d1c21;
+  --ls-row-hover-bg: #2a1d21;
+  --ls-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --ls-shadow-md: 0 2px 4px rgb(0 0 0 / 0.4), 0 22px 44px -22px rgb(0 0 0 / 0.7);
+  --ls-shadow-lg: 0 4px 8px rgb(0 0 0 / 0.45), 0 32px 64px -24px rgb(0 0 0 / 0.8);
+  --ls-c-rose: #2d1c21;
+  --ls-c-blush: #261a1d;
+  --ls-c-sage: #1f2923;
+  --ls-c-sage-ink: #cfe0d3;
+  --ls-c-sand: #2a1e1f;
+  --ls-c-slot-from: #3a2429;
+  --ls-c-slot-to: #663743;
+  --ls-c-slot-ink: #f0d9dc;
+  --ls-c-grain: 0.25;
+  --ls-c-slot-light: rgb(255 255 255 / 0.35);
+  --ls-c-slot-shade: rgb(0 0 0 / 0.25);
+  --ls-c-footer-bg: #3a1d25;
+  --ls-c-footer-text: #f6ebec;
+  --ls-c-footer-muted: #d9c3c7;
+  --ls-c-footer-line: rgb(246 235 236 / 0.2);
+  --ls-c-offer-from: #5a2d38;
+  --ls-c-offer-via: #47232c;
+  --ls-c-offer-to: #3a1d25;
+  --ls-c-offer-text: #f6ebec;
+  --ls-c-offer-muted: #d9c3c7;
+  --ls-c-offer-chip: rgb(246 235 236 / 0.14);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ls-site {
+    --ls-bg-page: #171012;
+    --ls-bg-surface: #21171a;
+    --ls-bg-raised: #281d20;
+    --ls-bg-sunken: #120c0e;
+    --ls-text: #f6ebec;
+    --ls-text-muted: #bba8ab;
+    --ls-text-subtle: #a99598;
+    --ls-border: #3a2a2e;
+    --ls-border-control: #8a7377;
+    --ls-brand-soft: #2d1c21;
+    --ls-row-hover-bg: #2a1d21;
+    --ls-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --ls-shadow-md: 0 2px 4px rgb(0 0 0 / 0.4), 0 22px 44px -22px rgb(0 0 0 / 0.7);
+    --ls-shadow-lg: 0 4px 8px rgb(0 0 0 / 0.45), 0 32px 64px -24px rgb(0 0 0 / 0.8);
+    --ls-c-rose: #2d1c21;
+    --ls-c-blush: #261a1d;
+    --ls-c-sage: #1f2923;
+    --ls-c-sage-ink: #cfe0d3;
+    --ls-c-sand: #2a1e1f;
+    --ls-c-slot-from: #3a2429;
+    --ls-c-slot-to: #663743;
+    --ls-c-slot-ink: #f0d9dc;
+    --ls-c-grain: 0.25;
+    --ls-c-slot-light: rgb(255 255 255 / 0.35);
+    --ls-c-slot-shade: rgb(0 0 0 / 0.25);
+    --ls-c-footer-bg: #3a1d25;
+    --ls-c-footer-text: #f6ebec;
+    --ls-c-footer-muted: #d9c3c7;
+    --ls-c-footer-line: rgb(246 235 236 / 0.2);
+    --ls-c-offer-from: #5a2d38;
+    --ls-c-offer-via: #47232c;
+    --ls-c-offer-to: #3a1d25;
+    --ls-c-offer-text: #f6ebec;
+    --ls-c-offer-muted: #d9c3c7;
+    --ls-c-offer-chip: rgb(246 235 236 / 0.14);
+  }
+}
+
+@media (min-width: 768px) {
+  .ls-site {
+    --ls-c-pad: 2rem;
+    --ls-c-pad-lg: 3rem;
+    --ls-c-wave: 4rem;
+    --ls-c-band: 4rem;
+    --ls-c-hero-top: 3rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ls-site {
+    --ls-c-pad: 2.25rem;
+    --ls-c-pad-lg: 3.75rem;
+    --ls-c-wave: 5.5rem;
+    --ls-c-band: 6rem;
+    --ls-c-hero-top: 5rem;
+  }
+}

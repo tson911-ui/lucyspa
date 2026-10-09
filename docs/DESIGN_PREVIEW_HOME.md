@@ -2,13 +2,11 @@
 
 Yêu cầu của chủ (2026-10-09): trang khách hiện cũ; làm lại cho hiện đại, sang trọng, đơn giản, chuyên nghiệp, theo chuẩn UX/UI của các trang thương hiệu hàng đầu. Bản mẫu Lovable cũ **không còn là tham chiếu**. Quy tắc mới cho riêng trang khách đã ghi ở `CLAUDE.md`, mục "Customer site redesign".
 
-Trạng thái: **ba hướng đã dựng, chỉ xem thử; chưa thay trang chủ thật, chưa push, chưa deploy. Chờ chủ chọn.** Dùng kỹ năng `frontend-design`; mỗi hướng có kế hoạch riêng (màu, chữ, bố cục) và đã soát lại để không rơi vào lối mòn chung (kem và đất nung, đen và xanh chuối, báo giấy, thẻ SaaS giống nhau, nhãn viết hoa rải rác).
+## QUYẾT ĐỊNH (2026-10-10): chủ chọn hướng C, "Ấm áp thư giãn"
 
-## Xem ở đâu
+Chủ đã chọn **hướng C**. Hướng C được áp dụng cho **toàn bộ trang khách** (trang chủ, dịch vụ, đặt lịch, mỹ phẩm, chiến dịch, đăng nhập và đăng ký, tài khoản, giỏ hàng, phiếu hẹn, trang 404 và lỗi, đầu trang, thanh dưới trên điện thoại, chân trang, popup, thông báo; lớp trang trí ngày lễ vẫn chạy bên trên). Hướng **A và B đã bỏ**, và **các đường dẫn xem thử `/vi/design-preview/*` đã gỡ** (không còn gì ẩn). Hợp đồng thiết kế, cách thay ảnh và danh sách ảnh còn thiếu: `docs/CUSTOMER_SITE_C.md`. Phần dưới đây giữ lại như lịch sử của ba hướng.
 
-Ba đường dẫn ẩn (không có trong menu, không có trong sơ đồ trang, `noindex`, và `robots.txt` cấm): `/vi/design-preview/a`, `/vi/design-preview/b`, `/vi/design-preview/c` (thêm `/en/...` cho tiếng Anh). Ở góc dưới có nút nhỏ A, B, C để chuyển nhanh; thêm `?bare=1` để ẩn nút. Dữ liệu thật của tiệm: câu giới thiệu, giờ mở cửa, địa chỉ, hotline, bảng giá từng nhóm, chiến dịch đang chạy (ảnh bìa nếu chủ đã chọn trong Thông tin tiệm). Ảnh còn thiếu là **khung giữ chỗ** đã thiết kế sẵn, chờ thay bằng ảnh thật của tiệm (danh sách ảnh ở cuối).
-
-Ảnh chụp (360 và 1440 px, sáng và tối): `.local/uxui-screens/design-a-*.png`, `design-b-*.png`, `design-c-*.png`.
+Trạng thái lúc làm ba hướng (cũ): ba hướng chỉ để xem thử, chờ chủ chọn. Dùng kỹ năng `frontend-design`; mỗi hướng có kế hoạch riêng (màu, chữ, bố cục) và đã soát lại để không rơi vào lối mòn chung (kem và đất nung, đen và xanh chuối, báo giấy, thẻ SaaS giống nhau, nhãn viết hoa rải rác).
 
 ## A. "Biên tập": sang trọng kiểu tạp chí
 

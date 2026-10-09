@@ -151,18 +151,27 @@ export function PublicPage({
   lead,
   width = 'default',
   back,
+  centered = false,
   children,
 }: {
   title: string;
   lead?: string | undefined;
   width?: 'default' | 'narrow' | undefined;
+  /** A notice (not found, failed): centred under a soft ring, one way on below. */
+  centered?: boolean | undefined;
   /** The "← Back" row, drawn at the top-left above the title. */
   back?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <PublicMain>
-      <div className={cx('ls-container', width === 'narrow' && 'ls-container-narrow')}>
+      <div
+        className={cx(
+          'ls-container',
+          width === 'narrow' && 'ls-container-narrow',
+          centered && 'ls-public-centered',
+        )}
+      >
         {back}
         <div className="ls-public-title">
           <h1 className="ls-h1-display">{title}</h1>

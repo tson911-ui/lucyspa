@@ -819,3 +819,9 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - Deploy guide: `docs/DEPLOY_UI_POLISH_GROUP2_RUNBOOK.md` (web only reload; API and worker stay up). Gallery: `.local/polish2/gallery/index.html` (git-ignored).
 
 - CI note (2026-10-09): the group 2 push ran red three times (15:14-16:22 UTC) only in `test:auth:integration`, a time-window flake (15:00-17:00 UTC, see `apps/api/src/account/my-income.integration.test.ts`); green after 17:00 UTC: commit `2ed632d0e10787c9b85252082a7f480a92c1a15f`, run 37967549325 (same code as `7164c23`). The deploy guide names `2ed632d`.
+
+### Customer site, direction C "Ấm áp thư giãn" (Owner chose it 2026-10-10; UI only; pushed after CI, NOT deployed)
+
+- Owner chose C of the three hidden previews; applied to EVERY customer page (home, services, booking, cosmetics, campaign, sign-in, account, cart, ticket, 404 and error, header, tab bar, footer, popup, notifications; holiday themes sit on top). A and B and the `/vi/design-preview/*` routes are removed. Contract, photo slots and the photo list: `docs/CUSTOMER_SITE_C.md`; `CLAUDE.md` now records C as the approved style.
+- Code: `packages/ui/src/customer-tokens.css`, `customer.css`, `customer-pages.css` (scoped to `.ls-site`, staff area untouched); fonts Fraunces + Nunito Sans in `apps/web/src/components/public/site-fonts.ts`. Fixed: sign-in brand panel (no dark boxes, no stretching), footer social icons only with a link. No migration, no API change.
+- Release = group 2 (counter screens, `7164c23`) + this; web reload only. Deploy guide: `docs/DEPLOY_CUSTOMER_SITE_C_RUNBOOK.md`. Gallery: `.local/customer-c/gallery/index.html` (git-ignored). The 15:00-17:00 UTC CI flake: see `docs/CUSTOMER_SITE_C_STEP.md`.
