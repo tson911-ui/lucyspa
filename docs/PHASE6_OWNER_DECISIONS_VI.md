@@ -1,6 +1,6 @@
 # Phase 6: các mục chờ Chủ duyệt (giải thích bằng tiếng Việt)
 
-## Đợt 4: bán hàng online (P6-19 đến P6-24). **Chủ đã duyệt ngày 2026-10-09; đang xây (mục "Đã duyệt" ngay dưới)**
+## Đợt 4: bán hàng online (P6-19 đến P6-24). **Chủ đã duyệt ngày 2026-10-09; đã xây xong, đã push `4b91af6`, chưa triển khai (mục "Đã duyệt" ngay dưới; các cách hiểu kỹ thuật chờ xem lại ở cuối tệp)**
 
 ### Đã duyệt (Chủ, 2026-10-09, nguyên văn; đã khóa)
 

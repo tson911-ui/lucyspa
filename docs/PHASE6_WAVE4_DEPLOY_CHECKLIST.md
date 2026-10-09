@@ -1,10 +1,10 @@
 # Hướng dẫn đưa Phase 6 Đợt 4 (bán hàng online, gửi hàng, giao thất bại, khuyến mãi) lên máy chủ thật
 
-> **CHƯA TRIỂN KHAI.** Điền mã commit ở dòng "Bản sẽ cài" và ở Bước 3.1 sau khi push và CI xanh (Claude làm, ghi vào đầu tệp này).
+> **CHƯA TRIỂN KHAI.** Mã commit và lần chạy CI đã điền (Claude, 2026-10-09).
 
 Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, theo thứ tự**, trong **cùng một cửa sổ terminal web của iNET** đã đăng nhập vào máy chủ. Mỗi khối có dòng **Mong đợi**; khác với mong đợi thì **DỪNG** và gửi cho Claude kết quả. Mọi lệnh dưới đây Claude **chưa** chạy trên máy chủ thật (chỉ diễn tập trên bản sao ở máy phát triển).
 
-**Bản sẽ cài:** commit `@@COMMIT@@`, đã push lên `main`, **CI xanh** (@@CI@@). Các commit tài liệu đẩy sau đó (kể cả commit điền mã này) không đổi mã chạy.
+**Bản sẽ cài:** commit `4b91af65f5666ae8dd4f40fabbf9bfcde7b82c44`, đã push lên `main`, **CI xanh** (2026-10-09, lần chạy `37893962042`). Các commit tài liệu đẩy sau đó (kể cả commit điền mã này) không đổi mã chạy.
 **Bản đang chạy:** `43a1b29cef128d5555e1fd69b927d62c0ab276e5` (Đợt 3b, `43a1b29`, Chủ báo triển khai 2026-10-09).
 **Một lần triển khai duy nhất** (Chủ chọn ngày 2026-10-09: không tách 4a và 4b), kèm phần bổ sung 3b chưa đẩy lên (migration 96).
 **Cơ sở dữ liệu:** thêm **6 migration**: `20261120000000_phase6_wave3b_changed_mind_refund`, `20261121000000_phase6_wave4_kinds`, `20261121000001_phase6_wave4_online_checkout`, `20261122000000_phase6_wave4_fulfilment`, `20261123000000_phase6_wave4_refunds_returns`, `20261124000000_phase6_wave4_campaigns`: **95 thành 101**. **Quyền: không thêm quyền nào (vẫn 66).** Tất cả chỉ thêm hoặc nới; không xóa, không sửa dòng dữ liệu nào đang có (một dòng cài đặt mới: **"Bán online" TẮT**). Trên bản sao 20.000 hóa đơn, cả sáu migration chạy trong khoảng 1,5 giây.
@@ -15,7 +15,7 @@ Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, t
 
 ## Bước 0. Điều kiện
 
-- Trên GitHub, tab **Actions**, commit `@@COMMIT@@` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
+- Trên GitHub, tab **Actions**, commit `4b91af65f5666ae8dd4f40fabbf9bfcde7b82c44` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
 - Owner đã đọc `docs/PHASE6_WAVE4_ROLLBACK_PROOF.md` (cách quay lại đã thử thật: **chỉ quay lui được khi chưa có đơn online nào**) và danh sách "chờ Chủ xem lại" ở cuối `docs/PHASE6_OWNER_DECISIONS_VI.md` (các cách hiểu kỹ thuật W4-1 đến W4-12 và 4 câu hỏi mở).
 - Nếu có nhân viên đang thu tiền ở quầy, báo họ tạm dừng khoảng 10 phút ở Bước 5 và 6.
 
@@ -73,7 +73,7 @@ docker exec lucy-spa-postgres-1 sh -c 'pg_restore --list /tmp/check.dump | wc -l
 ```
 cd /opt/lucyspa
 git fetch origin
-git checkout @@COMMIT@@
+git checkout 4b91af65f5666ae8dd4f40fabbf9bfcde7b82c44
 git rev-parse HEAD
 ```
 
