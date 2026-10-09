@@ -51,7 +51,6 @@ import { useWorkforce } from '../session';
 import {
   Badge,
   Button,
-  Empty,
   ErrorState,
   Loading,
   Notice,
@@ -145,7 +144,7 @@ export function OnlineOrdersList({
 
   const branches = seeableBranches(context);
   const panel = (
-    <>
+    <Stack gap="block">
       <ListToolbar
         labels={toolbarLabels(t)}
         activeFilters={list.q ? 1 : 0}
@@ -180,7 +179,7 @@ export function OnlineOrdersList({
         list={list}
         updateList={updateList}
       />
-    </>
+    </Stack>
   );
 
   return (
@@ -243,6 +242,7 @@ function OrdersTable({
     {
       key: 'recipient',
       header: q.columns.recipient,
+      phoneEmphasis: true,
       truncate: true,
       width: 'md',
       cell: (row) => (
@@ -258,12 +258,14 @@ function OrdersTable({
       truncate: true,
       width: 'sm',
       hideBelow: 'xl',
+      hidePhone: true,
       cell: (row) => row.provinceName,
     },
     {
       key: 'items',
       header: q.columns.items,
       hideBelow: '2xl',
+      hidePhone: true,
       cell: (row) => (
         <span className="ls-cell-stack">
           <span>{fill(q.items, { lines: row.lineCount, quantity: row.quantity })}</span>
@@ -298,6 +300,7 @@ function OrdersTable({
               ? q.columns.placedAt
               : q.columns.paidAt,
       hideBelow: 'xl',
+      hidePhone: true,
       cell: when,
     },
     ...(shipped
@@ -331,9 +334,14 @@ function OrdersTable({
       ),
     },
   ];
+  // Nothing here is one quiet line, not a boxed empty state.
+  if (resource.data && !resource.error && rows.length === 0) {
+    return <p className="ls-hint">{list.q ? q.noMatch : q.empty[tab]}</p>;
+  }
   return (
     <DataTable
       mode="server"
+      phoneRows="compact"
       caption={fill(t.common.list.table, { list: q.tabs[tab] })}
       columns={columns}
       rows={rows}
@@ -345,7 +353,6 @@ function OrdersTable({
           <ErrorState error={resource.error} t={t} onRetry={() => void resource.reload()} />
         ) : undefined
       }
-      empty={resource.data ? <Empty>{list.q ? q.noMatch : q.empty[tab]}</Empty> : undefined}
       paging={{
         page: list.page,
         pageSize: PAGE_SIZE,

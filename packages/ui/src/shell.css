@@ -90,6 +90,15 @@
   .ls-topbar-extras {
     display: none;
   }
+
+  /* Menu button, logo, bell and account stay on one line at 130% text (the controls grow with the text): tighter gaps, not smaller targets. */
+  .ls-topbar {
+    gap: var(--ls-space-1);
+  }
+
+  .ls-topbar-end {
+    gap: 0;
+  }
 }
 
 .ls-shell-body {

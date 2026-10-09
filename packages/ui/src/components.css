@@ -2810,12 +2810,15 @@
     font-size: var(--ls-text-md);
   }
 
+  /* The title may wrap (a long code at 130% text) and the row grows with it: it is never clipped over the next line. */
   .ls-table.ls-table-compact td.ls-cell-title > *,
   .ls-table.ls-table-compact td.ls-cell-title a {
-    min-height: var(--ls-control-h);
+    display: flex;
     align-items: center;
-    -webkit-line-clamp: 1;
-    line-clamp: 1;
+    min-height: var(--ls-control-h);
+    overflow: visible;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
   }
 
   .ls-table.ls-table-compact tbody tr td.ls-cell-numeric {

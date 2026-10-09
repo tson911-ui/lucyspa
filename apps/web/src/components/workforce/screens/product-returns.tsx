@@ -199,6 +199,7 @@ export function ProductReturnsList({
     {
       key: 'product',
       header: l.columns.product,
+      phoneEmphasis: true,
       truncate: true,
       width: 'md',
       cell: (item) => returnProductName(item, locale),
@@ -207,6 +208,7 @@ export function ProductReturnsList({
       key: 'invoice',
       header: l.columns.invoice,
       hideBelow: 'md',
+      hidePhone: true,
       cell: (item) => item.invoiceCode,
     },
     {
@@ -214,12 +216,14 @@ export function ProductReturnsList({
       header: l.columns.quantity,
       numeric: true,
       hideBelow: 'md',
+      hidePhone: true,
       cell: (item) => item.quantity,
     },
     {
       key: 'wanted',
       header: l.columns.wanted,
       hideBelow: '2xl',
+      hidePhone: true,
       cell: (item) => text.outcomes[item.requestedOutcome],
     },
     {
@@ -241,6 +245,7 @@ export function ProductReturnsList({
       truncate: true,
       width: 'md',
       hideBelow: '2xl',
+      hidePhone: true,
       cell: (item) => text.reasons[item.reason],
     },
     {
@@ -249,6 +254,7 @@ export function ProductReturnsList({
       truncate: true,
       width: 'sm',
       hideBelow: '2xl',
+      hidePhone: true,
       cell: (item) => item.openedByName,
     },
     {
@@ -256,6 +262,7 @@ export function ProductReturnsList({
       header: l.columns.photos,
       numeric: true,
       hideBelow: '2xl',
+      hidePhone: true,
       cell: (item) => item.photoCount,
     },
     {
@@ -343,6 +350,7 @@ export function ProductReturnsList({
         />
         <DataTable
           mode="server"
+          phoneRows="compact"
           caption={fill(t.common.list.table, { list: text.title })}
           columns={columns}
           rows={rows}

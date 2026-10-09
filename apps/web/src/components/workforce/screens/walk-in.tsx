@@ -226,7 +226,7 @@ export function WalkInScreen() {
     people.flatMap((person) => (person.customerUserId ? [person.customerUserId] : [])),
   );
   return (
-    <Page>
+    <Page width="form">
       <PageHeader
         title={t.walkIn.title}
         intro={

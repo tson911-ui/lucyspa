@@ -48,7 +48,7 @@ const vi = {
   },
   list: {
     add: 'Mở hồ sơ',
-    search: 'Tìm theo mã hồ sơ, hóa đơn hoặc sản phẩm',
+    search: 'Tìm mã hồ sơ hoặc hóa đơn',
     status: 'Trạng thái',
     reason: 'Lý do',
     columns: {

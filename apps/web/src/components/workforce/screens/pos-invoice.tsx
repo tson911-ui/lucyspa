@@ -183,16 +183,8 @@ export function PosInvoiceScreen({ id }: { id: string }) {
   if (loadError && !invoice) {
     return (
       <>
-        <PageHeader
-          title={t.pos.title}
-          breadcrumbs={
-            <Breadcrumbs
-              label={text.breadcrumbs}
-              LinkComponent={Link}
-              items={[{ label: t.pos.title, href: `${base}/pos` }]}
-            />
-          }
-        />
+        {/* The page title is the list's name: a one-item breadcrumb with the same word would repeat it. */}
+        <PageHeader title={t.pos.title} />
         <ErrorState error={loadError} t={t} onRetry={() => void load()} />
       </>
     );

@@ -811,3 +811,9 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 ### UI polish group 2, Owner decisions (2026-10-09)
 
 - Owner approved the invoice-board sample and the order, and decided: (1) row hover follows rule 4 in ALL staff tables (solid #782b37, white text and icons; dark = existing pink accent); (2) staff date inputs are dd/mm/yyyy; (3) keep the status filter and add an accent-insensitive search on the invoice board; (4) payment block at the top of the invoice detail; (5) compact rows on the phone list. Then every remaining counter screen is polished (UI only). Recorded in `docs/UI_POLISH_GROUP2_POS.md` section 8.
+
+### UI polish group 2, all counter screens (2026-10-09, UI only; pushed after CI, NOT deployed)
+
+- Every counter screen polished (invoice board + search + compact phone rows, invoice detail with the payment block first, dialogs, walk-in, today's bookings, returns, pre-orders, online orders). Shared kit: staff table row hover = solid #782b37 (rule 4; customer tables keep the tint), staff dates typed dd/mm/yyyy (`DateTextInput`), `DataTable phoneRows="compact"`, money fields with thousands separators, staff top bar fits 360 px at 130% text. No migration, no API change. Report and gate: `docs/UI_POLISH_GROUP2_POS.md` sections 9-13.
+- Counter flows run through the UI on the scratch DB (cash, PayOS via the simulator, sell product, return + refund, pre-order mark ordered + handover). Not fixed: search by phone on the invoice board (the board data has no phone; needs an API field). DOM audit baseline refreshed (no count rose).
+- Deploy guide: `docs/DEPLOY_UI_POLISH_GROUP2_RUNBOOK.md` (web only reload; API and worker stay up). Gallery: `.local/polish2/gallery/index.html` (git-ignored).

@@ -74,7 +74,6 @@ import { useWorkforce } from '../session';
 import {
   Badge,
   Button,
-  Empty,
   ErrorState,
   Loading,
   Notice,
@@ -247,7 +246,7 @@ export function ProductOrdersList({
   const total = tab === 'TO_ORDER' ? groups.length : (queue.data?.total ?? 0);
 
   const panel = (
-    <>
+    <Stack gap="block">
       <ListToolbar
         labels={toolbarLabels(t)}
         activeFilters={list.q ? 1 : 0}
@@ -283,7 +282,7 @@ export function ProductOrdersList({
           onHandOver={setHanding}
         />
       )}
-    </>
+    </Stack>
   );
 
   return (
@@ -357,7 +356,7 @@ function ToOrderTable({
       key: 'supplier',
       header: q.columns.supplier,
       truncate: true,
-      width: 'md',
+      width: 'lg',
       sortable: true,
       sortValue: (group) => group.supplier?.name ?? '￿',
       cell: (group) => group.supplier?.name ?? q.noSupplier,
@@ -402,6 +401,10 @@ function ToOrderTable({
       ),
     },
   ];
+  // Nothing here is one quiet line, not a boxed empty state.
+  if (resource.data && !resource.error && groups.length === 0) {
+    return <p className="ls-hint">{searching ? q.noMatch : q.empty.TO_ORDER}</p>;
+  }
   return (
     <DataTable
       caption={fill(t.common.list.table, { list: q.tabs.TO_ORDER })}
@@ -416,7 +419,6 @@ function ToOrderTable({
           <ErrorState error={resource.error} t={t} onRetry={() => void resource.reload()} />
         ) : undefined
       }
-      empty={resource.data ? <Empty>{searching ? q.noMatch : q.empty.TO_ORDER}</Empty> : undefined}
       paging={paging}
     />
   );
@@ -455,17 +457,25 @@ function LinesTable({
     {
       key: 'product',
       header: q.columns.product,
+      phoneEmphasis: true,
       truncate: true,
       width: 'md',
       cell: (row) => productTitle(row, locale),
     },
-    { key: 'quantity', header: q.columns.quantity, numeric: true, cell: (row) => row.quantity },
+    {
+      key: 'quantity',
+      header: q.columns.quantity,
+      numeric: true,
+      hidePhone: true,
+      cell: (row) => row.quantity,
+    },
     {
       key: 'customer',
       header: q.columns.customer,
       truncate: true,
-      width: 'sm',
+      width: 'md',
       hideBelow: 'lg',
+      hidePhone: true,
       cell: (row) => row.customerName ?? row.contactName ?? '—',
     },
     {
@@ -473,6 +483,7 @@ function LinesTable({
       header: q.columns.phone,
       // The staff call the customer when the goods have arrived: there the number stays in view on a laptop.
       hideBelow: tab === 'ARRIVED' ? 'lg' : '2xl',
+      hidePhone: tab !== 'ARRIVED',
       cell: (row) => row.contactPhone,
     },
     {
@@ -492,12 +503,14 @@ function LinesTable({
           key: 'expected',
           header: q.columns.expected,
           hideBelow: 'lg',
+          hidePhone: true,
           cell: (row) => expectedText(row, locale, text.card),
         }
       : {
           key: 'when',
           header: tab === 'ARRIVED' ? q.columns.arrivedAt : q.columns.paidAt,
           hideBelow: tab === 'ARRIVED' ? 'lg' : 'xl',
+          hidePhone: true,
           cell: (row) => {
             const instant = tab === 'ARRIVED' ? row.arrivedAt : row.paidAt;
             return instant ? formatDateTime(instant, ZONE, locale) : '—';
@@ -527,8 +540,13 @@ function LinesTable({
       ),
     },
   ];
+  // Nothing here is one quiet line, not a boxed empty state.
+  if (resource.data && !resource.error && rows.length === 0) {
+    return <p className="ls-hint">{list.q ? q.noMatch : q.empty[tab]}</p>;
+  }
   return (
     <DataTable
+      phoneRows="compact"
       mode="server"
       caption={fill(t.common.list.table, { list: q.tabs[tab] })}
       columns={columns}
@@ -541,7 +559,6 @@ function LinesTable({
           <ErrorState error={resource.error} t={t} onRetry={() => void resource.reload()} />
         ) : undefined
       }
-      empty={resource.data ? <Empty>{list.q ? q.noMatch : q.empty[tab]}</Empty> : undefined}
       paging={{
         page: list.page,
         pageSize: PAGE_SIZE,
