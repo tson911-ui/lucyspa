@@ -788,5 +788,5 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 
 ### UI polish group 1, customer pages, Step A (2026-10-09, local, not pushed, not deployed; waits for the Owner's approval of the direction)
 
-- Plan, per-page problem list and design direction: `docs/UI_POLISH_GROUP1_CUSTOMER.md`. Sample built on the HOME PAGE only: campaign offer line above the hero (option A of Owner question 3; B and C wait for the Owner), the service menu board with dotted leaders (one signature element), slider polish, 130 % text header fix, slider touch-pause fix. UI only, no migration, no API change.
+- Plan, per-page problem list and design direction: `docs/UI_POLISH_GROUP1_CUSTOMER.md`. Sample built on the HOME PAGE only: campaign offer line above the hero (a provisional sample only: options A, B and C for Owner question 3 are ALL pending the Owner's approval), the service price list board with dotted leaders (one signature element; wording "Bảng giá dịch vụ" also pending), slider polish, 130 % text header fix, slider touch-pause fix. UI only, no migration, no API change.
 - Gate tooling: `scripts/uxui-screens.mjs` now captures the whole page below 1024 px (app-shell scroller) and has `--hover` and `--fresh-session`. Before/after gallery: `.local/polish1/gallery/index.html` (git-ignored).
