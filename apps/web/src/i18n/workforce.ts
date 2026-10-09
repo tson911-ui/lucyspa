@@ -2053,8 +2053,8 @@ const vi = {
   },
   pos: {
     title: 'Hóa đơn',
-    intro: 'Lập hóa đơn cho khách đã làm xong, thu tiền và bán sản phẩm.',
-    introBranch: '{branch}: lập hóa đơn cho khách đã làm xong, thu tiền và bán sản phẩm.',
+    intro: 'Lập hóa đơn cho khách đã làm xong và thu tiền.',
+    introBranch: '{branch}: lập hóa đơn cho khách đã làm xong và thu tiền.',
     noBranch: 'Bạn chưa có quyền xem hóa đơn ở chi nhánh nào.',
     branch: 'Chi nhánh',
     date: 'Đến ngày',
@@ -4676,8 +4676,8 @@ const en: Dictionary = {
   },
   pos: {
     title: 'Invoices',
-    intro: 'Create invoices for finished visits, take payment and sell products.',
-    introBranch: '{branch}: create invoices for finished visits, take payment and sell products.',
+    intro: 'Create invoices for finished visits and take payment.',
+    introBranch: '{branch}: create invoices for finished visits and take payment.',
     noBranch: 'You may not view invoices at any branch yet.',
     branch: 'Branch',
     date: 'Up to date',

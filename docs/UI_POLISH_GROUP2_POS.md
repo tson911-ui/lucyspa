@@ -94,7 +94,7 @@ Mỗi màn hình chụp 360, 768, 1440 px sáng và 360, 768, 1440 px tối (6 �
 
 ## 5. Bản mẫu đã làm: Bảng hóa đơn
 
-- **Lời dẫn một dòng:** "{tên chi nhánh}: lập hóa đơn cho khách đã làm xong, thu tiền và bán sản phẩm." Ghi chú cửa sổ thời gian ngắn: "7 ngày gần nhất, tính đến ngày đã chọn."
+- **Lời dẫn một dòng:** "{tên chi nhánh}: lập hóa đơn cho khách đã làm xong và thu tiền." (không nhắc "bán sản phẩm" vì thu ngân không có quyền đó sẽ không thấy nút). Ghi chú cửa sổ thời gian ngắn: "7 ngày gần nhất, tính đến ngày đã chọn."
 - **Ô chọn chi nhánh chỉ hiện khi có nhiều chi nhánh**; một chi nhánh thì tên nằm ở lời dẫn (hết bị cắt).
 - **Thêm bộ lọc "Trạng thái"** (Mọi trạng thái, Chờ thanh toán, Đã thanh toán, Bản nháp, Đã hủy) cùng hàng với ô ngày; lọc trên các dòng bảng đã tải (7 ngày), nút "Xóa bộ lọc" xóa cả ngày lẫn trạng thái. Không đổi API.
 - **Hóa đơn: cột mới theo thứ tự quan trọng:** Mã hóa đơn, **Lập lúc** (giờ theo chi nhánh; ngày khác thì có `dd/mm`), **Khách** (đầy đủ, "Khách lẻ" thay cho "Khách lẻ (không tài khoản)"), **Nội dung** ("Dịch vụ", "Dịch vụ + 2 sản phẩm", "3 sản phẩm", "Bán combo: tên"), Người bán, Trạng thái, Tổng tiền. Bỏ cột "Ngày ghi nhận".
@@ -103,7 +103,7 @@ Mỗi màn hình chụp 360, 768, 1440 px sáng và 360, 768, 1440 px tối (6 �
 - **Điện thoại:** thẻ hóa đơn còn 4 dòng (Khách, Nội dung, Trạng thái, Tổng tiền) thay vì 6, vì "Lập lúc" và "Người bán" không hiện trên điện thoại: mỗi thẻ cao khoảng 250 px thay vì 340 px (đo trên ảnh), 20 thẻ khoảng 5.000 px thay vì 6.800 px. Vẫn là thẻ cao; chưa có kiểu dòng gọn hơn cho điện thoại, xem câu hỏi 7. Cần tính năng chung mới của bảng: `hidePhone` (xem dưới).
 - **Chữ:** "Dịch vụ đã thực hiện" thành "Dịch vụ đã làm", "Người thanh toán" thành "Khách" trên bảng này (trang chi tiết vẫn dùng "Người thanh toán").
 
-**Tệp:** `apps/web/src/components/workforce/screens/pos.tsx`, `apps/web/src/lib/workforce/pos.ts` (hai hàm thuần mới: `boardStamp`, `invoiceContent`), `apps/web/src/i18n/workforce.ts` (vi và en), kiểm thử `apps/web/src/lib/workforce/pos.test.tsx`; **bộ dùng chung `packages/ui`:** thêm cột tùy chọn `hidePhone` cho `DataTable` (`data-table.tsx`, `components.css`, một kiểm thử). Tính năng này **chỉ có tác dụng ở bảng nào bật nó** (hiện chỉ bảng hóa đơn), nên mọi bảng admin khác không đổi; DOM audit và bộ đếm ratchet được chạy để chứng minh (mục 6).
+**Tệp:** `apps/web/src/components/workforce/screens/pos.tsx`, `apps/web/src/lib/workforce/pos.ts` (hai hàm thuần mới: `boardStamp`, `invoiceContent`), `apps/web/src/i18n/workforce.ts` (vi và en), kiểm thử `apps/web/src/lib/workforce/pos.test.tsx`; **bộ dùng chung `packages/ui`:** thêm cột tùy chọn `hidePhone` cho `DataTable` (`data-table.tsx`, `components.css`, một kiểm thử). Tính năng này **chỉ có tác dụng ở bảng nào bật nó** (hiện chỉ bảng hóa đơn), nên mọi bảng admin khác không đổi; DOM audit và bộ đếm ratchet cho thấy không loại nào tăng so với baseline (mục 6b), chưa so với bản ngay trước bước này.
 Không có migration, không đổi API, không có quyền mới, không đổi dữ liệu.
 
 ## 6. Cổng chất lượng (ghi chú UX gate)
@@ -122,7 +122,7 @@ Không có migration, không đổi API, không có quyền mới, không đổi
 
 ## 7. Việc chờ chủ (câu hỏi cho chủ, chưa tự quyết)
 
-1. **Hover của hàng bảng (luật 4).** Hàng bảng nhân viên hiện nền hồng nhạt khi rê chuột ở chế độ sáng; luật 4 nói hover ở chế độ sáng là đỏ đặc, chữ trắng. Đổi sẽ ảnh hưởng **mọi bảng nhân viên** (kể cả hàng không bấm được). Muốn (a) đổi cho mọi bảng, (b) chỉ cho bảng có hàng bấm được, hay (c) giữ hồng nhạt cho hàng bảng?
+1. **Hover của hàng bảng (luật 4).** Hàng bảng nhân viên hiện nền hồng nhạt khi rê chuột ở chế độ sáng; luật 4 nói hover ở chế độ sáng là đỏ đặc, chữ trắng. Đổi sẽ ảnh hưởng **mọi bảng nhân viên** (kể cả hàng không bấm được). **Đã thử dựng bằng cách chèn CSS (không nằm trong mã):** hàng đặc đỏ `#782b37` chữ trắng đọc rõ, link trắng gạch chân đọc rõ, nhãn trạng thái vẫn đọc được (nền nhạt giữ nguyên), nhưng **nút ⋮ cuối dòng gần như biến mất** (biểu tượng tối trên nền đỏ) nên phải đổi cả màu biểu tượng; đổi chữ trắng mà quên nền ô thì chữ trắng trên nền hồng nhạt không đọc được (ảnh `g2-hoversolid-D9JJJ3-1440-light.png`, `.local/uxui-screens/`). Muốn (a) đổi cho mọi bảng, (b) chỉ cho bảng có hàng bấm được, hay (c) giữ hồng nhạt cho hàng bảng?
 2. **Định dạng ngày** trên ô chọn ngày và dòng "Ngày 2026-10-09" ở Lịch hẹn hôm nay: dùng ô nhập `dd/mm/yyyy` như trang đăng ký của khách (nhóm 1) cho nhân viên không? Ô ngày gốc theo ngôn ngữ trình duyệt.
 3. **Bộ lọc trạng thái** trên bảng hóa đơn (lọc trên 7 ngày đã tải, không đổi API): giữ không? Nếu muốn **tìm theo mã hoặc tên khách** thì cần thêm ô tìm (làm được ở giao diện, vẫn trên các dòng đã tải).
 4. **Chi tiết hóa đơn:** đưa khối "Thanh toán" lên đầu trang (hai cột) có được không? Đây là thay đổi thứ tự lớn nhất, chỉ làm sau khi chủ đồng ý.
