@@ -790,3 +790,8 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 
 - Plan, per-page problem list and design direction: `docs/UI_POLISH_GROUP1_CUSTOMER.md`. Sample built on the HOME PAGE only: campaign offer line above the hero (**Owner approved 2026-10-09: option A only; B and C are not built**; the button says "Xem ưu đãi" while "Bán online" is OFF and only then "Mua ngay" when it is ON), the service price list board with dotted leaders (one signature element; the name "Bảng giá dịch vụ" approved), slider polish, 130 % text header fix, slider touch-pause fix. UI only, no migration, no API change.
 - Gate tooling: `scripts/uxui-screens.mjs` now captures the whole page below 1024 px (app-shell scroller) and has `--hover` and `--fresh-session`. Before/after gallery: `.local/polish1/gallery/index.html` (git-ignored).
+
+### UI polish group 1, all customer pages (2026-10-09, UI only; pushed after CI, NOT deployed)
+
+- Owner approved the direction, the name "Bảng giá dịch vụ" and campaign option A only; the offer strip says "Xem ưu đãi" while "Bán online" is OFF ("Mua ngay" only when ON; same rule on the cosmetics campaign strip and sale page). Every customer page was polished (shell, services + search, booking, catalog, ticket, auth, account, shop); report and gate: `docs/UI_POLISH_GROUP1_CUSTOMER.md` sections 8-10. No migration, no API change.
+- Deploy guide: `docs/DEPLOY_UI_POLISH_RUNBOOK.md` (web only; API and worker stay up; web rollback from a tarball in about a minute). Before/after gallery: `.local/polish1/gallery-all/index.html` (git-ignored).

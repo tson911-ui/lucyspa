@@ -4,7 +4,7 @@ Chỉ đổi giao diện. Không đổi nghiệp vụ, API, cơ sở dữ liệu
 (thương hiệu đỏ `#782b37` + trắng, không vàng, hover đỏ đặc chữ trắng ở chế độ sáng, hồng hiện có ở chế độ tối). Đã dùng skill
 `frontend-design` để nâng bố cục, chữ, chi tiết, chuyển động và lời văn, không đổi thương hiệu.
 
-Trạng thái: **hướng thiết kế đã được chủ duyệt (2026-10-09), xem mục 8**. Bước A xong; các lượt sửa tiếp theo (mục 3) đang làm. Chưa đụng các trang khác ngoài trang chủ. Commit cục bộ, chưa push, chưa deploy.
+Trạng thái: **hướng đã được chủ duyệt (2026-10-09, mục 8); toàn bộ trang khách đã chỉnh (mục 9); cổng chất lượng ở mục 10; chưa deploy**. Hướng dẫn triển khai: `docs/DEPLOY_UI_POLISH_RUNBOOK.md`. Chưa đụng các trang khác ngoài trang chủ. Commit cục bộ, chưa push, chưa deploy.
 
 ## 1. Danh sách trang của khách
 
@@ -90,10 +90,9 @@ Xem trang chủ trước/sau cạnh nhau: mở `.local/polish1/gallery/index.htm
 - Giỏ trống và "Bán online" tắt dùng thẻ viền nét đứt, khác các trạng thái rỗng còn lại (nét liền); thẻ rộng 720 px nằm lệch trái, nửa màn trống.
 - Ở 360 px mỗi dòng sản phẩm xếp 4 tầng (tên, giá, bộ đếm kèm thùng rác, thành tiền), nên giỏ 3 món đã dài hơn một màn rưỡi.
 
-## 3. Việc chưa xử lý ở bước này (để dành cho các lượt kế tiếp)
+## 3. Thứ tự các lượt sửa
 
-Tất cả mục trên ngoài trang chủ: để sau khi chủ duyệt hướng. Gợi ý thứ tự: (1) khung chung (chân trang, thanh tab, nút nổi, 404, "Quay lại");
-(2) dịch vụ và đặt lịch; (3) mỹ phẩm, chiến dịch, vé; (4) đăng nhập và tài khoản; (5) giỏ, thanh toán, đơn hàng.
+Đã làm hết theo thứ tự này sau khi chủ duyệt (mục 8, 9): (1) khung chung; (2) dịch vụ và đặt lịch; (3) mỹ phẩm, chiến dịch, vé; (4) đăng nhập và tài khoản; (5) giỏ, thanh toán, đơn hàng.
 
 ## 4. Hướng thiết kế cho cả site khách (đã duyệt, mục 8)
 
@@ -167,3 +166,42 @@ Chưa chạy: `pnpm test` toàn repo (chỉ cần trước khi push, chưa push)
 2. Chiến dịch trên trang chủ: **chỉ cách A** (dải ưu đãi trên hero); B và C không làm. Làm cho hoàn chỉnh.
 3. Khi "Bán online" TẮT, dải ưu đãi không được ghi "Mua ngay": ghi **"Xem ưu đãi"** và dẫn tới trang chiến dịch. Chỉ khi "Bán online" BẬT mới dùng lời của chủ (ví dụ "Mua ngay"). Chưa đọc được trạng thái bán online thì coi như TẮT. Cùng quy tắc áp dụng cho nút của dải khuyến mãi và đầu trang chiến dịch ở các trang mỹ phẩm.
 4. Sửa TẤT CẢ trang khách còn lại theo thứ tự ở mục 3, không dừng giữa các trang; chỉ đổi giao diện (không logic, API, CSDL); chạy lại các luồng người dùng để chứng minh không hỏng; push main, đợi CI xanh, viết hướng dẫn deploy cho bản chỉ-giao-diện này. Không đụng máy chủ.
+
+## 9. Đợt chỉnh toàn bộ trang khách (2026-10-09 và 10, theo quyết định ở mục 8)
+
+Chỉ giao diện: không đổi nghiệp vụ, API, cơ sở dữ liệu hay dữ liệu; không có migration. Mỗi dòng dưới đây là một lỗi ở mục 2 đã sửa, theo trang.
+
+**Dùng chung**
+
+- Nút đặt lịch ở mọi nơi ghi **"Đặt lịch"** (trước: "Đặt lịch ngay", "Đặt lịch mới", "Book an appointment").
+- Chân trang: hàng gọn hơn (36 px, vùng chạm vẫn 44 px), cột thương hiệu có nút "Đặt lịch", điện thoại xếp các liên kết thành một dòng; dải trống 88 px trên chân trang cùng màu với khối phía trên và bớt khoảng đệm.
+- Trang 404 và trang lỗi có khung site (menu, chân trang) và hai lối đi; trang lỗi có nút "Tải lại"; có cả bản tiếng Anh.
+- Hover đặc đỏ chữ trắng (sáng) / hồng (tối) cho: dòng bảng giá, dòng dịch vụ, dòng chọn dịch vụ khi đặt lịch, dải khuyến mãi, bộ lọc mỹ phẩm, hàng của bảng ở khu khách, "Truy cập nhanh". Thẻ chỉ có thông tin không còn nhấc lên khi rê chuột.
+- Ô chọn (sort, loại thông báo) có mũi tên riêng thay mũi tên của hệ điều hành; ô tìm không còn đè biểu tượng lên chữ.
+- Nút hành động của tiêu đề trang căn giữa khối tiêu đề.
+- Header ở chữ 130%: nút tài khoản không còn bị cắt (đã làm ở bản mẫu).
+
+**Dịch vụ**: danh sách dạng dòng (tên, dấu chấm, giá, thời gian, nút "Đặt lịch" riêng) thay lưới 3 cột; có **ô tìm không cần gõ dấu** và bộ lọc nhóm trên cùng một dòng. Chi tiết dịch vụ hai cột (thông tin và nút đặt lịch, dịch vụ cùng nhóm bên cạnh); số liệu bằng chữ không chân.
+
+**Đặt lịch**: ô tìm dịch vụ (từ 9 dịch vụ trở lên), dòng chọn gọn hơn và hover đặc; header không còn nút "Đặt lịch" thứ hai trên chính trang đặt lịch.
+
+**Mỹ phẩm, chiến dịch, vé**: mũi tên ô sắp xếp riêng; dải khuyến mãi xuống tối đa hai dòng thay vì cắt chữ; bớt khoảng trống trên trang chiến dịch; ảnh sản phẩm đứng yên khi đọc cột bên cạnh; nút chiến dịch **"Xem ưu đãi" / "Xem sản phẩm" khi "Bán online" tắt, "Mua ngay" chỉ khi bật** (cả dải ở danh sách, đầu trang chiến dịch và dải ở trang chủ). Phiếu hẹn nhận hàng: mã đơn lớn, trạng thái cùng dòng, sản phẩm là các dòng; nhãn "Tổng tiền" thay "Đã thanh toán" khi chưa trả.
+
+**Đăng nhập, đăng ký**: khung thương hiệu bên cạnh thẻ (màn hình ≥ 1024 px); ô ngày sinh nhập **ngày/tháng/năm** (gõ `15031990` thành `15/03/1990`, báo lỗi ngày không có thật) thay ô ngày của trình duyệt.
+
+**Tài khoản**: tổng quan có khối "Truy cập nhanh" (lịch hẹn, hóa đơn, điểm thưởng, đơn hàng, thông báo) và "Xem tất cả" là nút; lịch hẹn rỗng là một lời mời đặt lịch hoặc một dòng chữ nhỏ, không còn hai thẻ rỗng; chi tiết lịch hẹn, hóa đơn, đơn hàng hai cột, dòng dịch vụ có giá bên phải; cột chi nhánh ẩn khi chỉ có một chi nhánh; điểm thưởng: bảng hạng giữ ba cột trên điện thoại, mục chưa có gì thành một dòng chữ; thông báo: lời dẫn cho khách ("Tin về lịch hẹn, hóa đơn và đơn hàng của bạn"); đơn hàng: mã đơn ở dòng mô tả thay vì lặp trong tiêu đề và trường.
+
+**Giỏ hàng, thanh toán**: trạng thái rỗng (giỏ trống, "Bán online" tắt) là một thẻ gọn ở giữa, viền liền như các thẻ khác.
+
+**Không làm (có lý do):** nút "Quay lại" giữ nguyên trên mọi trang (quy tắc của chủ 2026-10-04; thu nhỏ khoảng cách thay vì bỏ); thanh hành động dính của trang đặt lịch (chưa ai báo lỗi); biểu tượng Facebook cạnh chữ "Zalo" ở chân trang (hai biểu tượng thật, đã đặt đúng chỗ); thanh tab điện thoại ở chữ 130% với 5 tab (nhãn xuống 2 dòng, vẫn đọc được).
+
+**Kiểm chứng luồng người dùng** (trình duyệt thật, `.local/polish1/flows.mjs`, bảy luồng đều qua): tìm dịch vụ có/không dấu và báo không khớp; từ chi tiết dịch vụ sang đặt lịch đúng dịch vụ; mỹ phẩm, dải khuyến mãi, trang chiến dịch, trang sản phẩm; form đăng ký (mặt nạ ngày sinh, báo ngày sai); đăng nhập rồi mở 7 trang tài khoản không lỗi; đặt lịch từ đầu đến hết (chọn dịch vụ, khách, ngày giờ, xác nhận, "Đặt lịch thành công"); trang 404.
+
+## 10. Cổng chất lượng của đợt chỉnh toàn bộ trang khách
+
+1. **DOM audit 30 trang khách, trước và sau cùng một cách chạy** (sáng, 360 / 768 / 1440 px; `.local/polish1/audit-all.mjs`): không có loại phát hiện nào tăng, trừ hai chỗ có lý do. (a) Trang 404: trước chỉ là trang trần (1 phát hiện), nay có header, chân trang, thanh tab nên có cùng 5 phát hiện nền như mọi trang (nút nổi và thanh tab đứng riêng); không so sánh được. (b) Chi tiết dịch vụ ở 1440 px: 1 lên 2 (`row-height-unequal`: thẻ thông tin cao 216 px bên cạnh danh sách "dịch vụ cùng nhóm" cao 446 px); đây là bố cục hai cột có chủ ý, thẻ không bị kéo giãn cho bằng nhau, chấp nhận. Số phát hiện của từng trang đang là 5 / 5 / 1 (360 / 768 / 1440) cho phần lớn trang, thấp hơn trước ở trang chủ (11 / 11 / 7 so với 12 / 12 / 8) và dịch vụ không đổi.
+2. **DOM audit 26 trang nhân viên so với `docs/uxui-audit-baseline.json`**: không loại nào tăng (chạy ở bước A; bản sửa sau đó không đụng CSS của khu nhân viên ngoài việc popup dùng chung đổi chữ tiêu đề, xem 4).
+3. **Kiểm thử và tĩnh**: `pnpm --filter @lucy-spa/ui test` 468/468; `pnpm --filter @lucy-spa/web test` 886/886; typecheck, eslint, prettier sạch; chạy lại toàn bộ `pnpm test`, `pnpm lint`, `pnpm typecheck`, `pnpm build` trước khi push (xem báo cáo cuối).
+4. **Phạm vi chung của CSS dùng chung**: đổi popup (chữ tiêu đề có chân), ô chọn (mũi tên riêng, `.ls-site` only), ô tìm (chừa chỗ cho biểu tượng, `.ls-site` only) chỉ có hiệu lực trong khung khách (`.ls-site`), trừ popup (cũng có bản xem trước trong admin: tiêu đề popup ở đó cũng đổi sang chữ có chân; không đổi nghiệp vụ).
+5. **Ảnh đã xem và chưa xem (nói đúng)**: không mở hết từng ảnh một (khoảng 330 ảnh sau). Đã mở và xem: trang chủ cả 6 kích cỡ/chế độ; popup 6; hover (sáng và tối); chữ 130% (4); trạng thái ngoại lệ (không ảnh trượt, tiêu đề dài, lỗi API, lớp Tết); và với các trang khác chủ yếu bản 1440 sáng (cả trang hoặc 1000 px đầu), 360 sáng, và 360 tối ở dịch vụ, điểm thưởng, chi tiết dịch vụ, đăng nhập; 768 sáng ở dịch vụ, đăng nhập. **Các ảnh còn lại (768 tối và đa số 360/1440 tối của từng trang) đã chụp nhưng chưa mở**; chúng dùng cùng mã với ảnh đã xem và token màu, và đã qua DOM audit ở chế độ sáng (chế độ tối chưa chạy audit). Xem tất cả trong thư viện ảnh.
+6. **Chưa kiểm tra / không sửa**: thao tác chạm thật trên điện thoại; bản xem trước theo mùa trong admin (không đọc chiến dịch); các mùa khác ngoài Tết mẫu; tiếng Anh chỉ kiểm bằng kiểm thử (không chụp ảnh `/en`); thanh tab 5 mục ở chữ 130% (nhãn xuống 2 dòng); hai ảnh mẫu của lớp Tết bị hỏng là dữ liệu mẫu, không phải lỗi của trang.

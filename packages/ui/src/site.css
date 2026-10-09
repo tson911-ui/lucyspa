@@ -1686,18 +1686,37 @@ a.ls-price-row:focus-visible {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       'name name'
-      'meta price';
+      'price price'
+      'meta meta';
+  }
+
+  .ls-svc-main .ls-svc-price {
+    justify-self: start;
+    white-space: normal;
   }
 
   .ls-svc-dots {
     display: none;
   }
+
+  /* Every row is as tall as a two-line name, so the list keeps one rhythm whatever the names are. */
+  .ls-svc-main {
+    min-height: calc(
+      var(--ls-type-card) * var(--ls-lh-card) * 3 + var(--ls-type-small) * var(--ls-lh-small) +
+        var(--ls-space-2) + var(--ls-space-4)
+    );
+    align-content: center;
+  }
 }
 
 .ls-svc-name {
+  display: -webkit-box;
   grid-area: name;
   min-width: 0;
+  overflow: hidden;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   font-size: var(--ls-type-card);
   line-height: var(--ls-lh-card);
   font-weight: 500;
@@ -1723,6 +1742,7 @@ a.ls-price-row:focus-visible {
 
 .ls-svc-meta {
   grid-area: meta;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--ls-space-2);
@@ -3232,7 +3252,7 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   display: grid;
   overflow: hidden;
   border: 1px solid var(--ls-border);
-  border-radius: var(--ls-radius-lg);
+  border-radius: var(--ls-radius-md);
   background: var(--ls-bg-surface);
   box-shadow: var(--ls-shadow-sm);
 }
@@ -3253,9 +3273,8 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   line-height: var(--ls-lh-small);
 }
 
-.ls-tier-row + .ls-tier-row,
-.ls-tier-head + .ls-tier-row {
-  border-top: 1px solid var(--ls-border);
+.ls-tier-row {
+  box-shadow: inset 0 1px 0 var(--ls-border);
 }
 
 .ls-tier-row[data-own='true'] {
