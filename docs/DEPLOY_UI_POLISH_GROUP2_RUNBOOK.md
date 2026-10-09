@@ -4,7 +4,7 @@
 
 Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, theo thứ tự**, trong **cùng một cửa sổ terminal web của iNET** đã đăng nhập vào máy chủ. Mỗi khối có dòng **Mong đợi**; khác với mong đợi thì **DỪNG** và gửi Claude nguyên văn những gì terminal in ra.
 
-**Bản sẽ cài:** commit `{{SHA}}`, đã push lên `main`, **CI xanh** (lần chạy `{{RUN}}`). Các commit tài liệu đẩy sau đó (nếu có) không đổi mã chạy.
+**Bản sẽ cài:** commit `2ed632d0e10787c9b85252082a7f480a92c1a15f`, đã push lên `main`, **CI xanh** (lần chạy `37967549325`). Mã chạy giống hệt commit `7164c236f859d5241c0f726e6493a196d4fbe672` (hai commit sau chỉ để chạy lại CI); các commit tài liệu đẩy sau đó không đổi mã chạy. Lưu ý: ba lần CI chạy trong khoảng 15:14-16:22 UTC (22:14-23:22 giờ Việt Nam) trượt ở bước `test:auth:integration` do một kiểm thử phụ thuộc giờ trong ngày (cửa sổ 15:00-17:00 UTC, khi Tokyo đã sang ngày mới còn Việt Nam thì chưa; chính kiểm thử đó đã ghi chú cửa sổ này); chạy lại sau 17:00 UTC thì xanh. Không liên quan tới thay đổi giao diện này.
 **Bản đang chạy:** `9a575894312b04768553b9fad35fc7a3ce4c34d0` (nhóm 1, giao diện trang khách; Owner báo triển khai 2026-10-09).
 **Chỉ đổi giao diện web** (`apps/web` và `packages/ui`). Không có migration, không đổi quyền, không đổi API, không đổi worker, không có thư viện mới, không đổi nginx, không đổi `.env`. API và worker **không dừng và không khởi động lại**: khách và nhân viên đang dùng vẫn dùng được; chỉ web được nạp lại (3 tiến trình nạp lần lượt).
 **Thời gian:** khoảng 20 phút (phần lớn là build).
@@ -19,7 +19,7 @@ Nhân viên sẽ thấy khác đi (để kiểm tra bằng mắt ở Bước 6):
 
 ## Bước 0. Điều kiện
 
-- Trên GitHub, tab **Actions**, commit `{{SHA}}` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
+- Trên GitHub, tab **Actions**, commit `2ed632d0e10787c9b85252082a7f480a92c1a15f` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
 - Nếu có nhân viên đang dùng máy, **không cần báo**: họ chỉ có thể phải nạp lại trang một lần. Nên làm ngoài giờ cao điểm của quầy.
 
 ## Bước 1. Xem hiện trạng (chỉ đọc)
@@ -77,7 +77,7 @@ tar tzf "$WEBBACKUP" | head -n 3
 ```
 cd /opt/lucyspa
 git fetch origin
-git checkout {{SHA}}
+git checkout 2ed632d0e10787c9b85252082a7f480a92c1a15f
 git rev-parse HEAD
 ```
 
