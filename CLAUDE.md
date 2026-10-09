@@ -74,6 +74,23 @@ Owner reviews every Step. Work only on the Step you are given.
   - Before reporting a UI Step: take the screenshots above, review them yourself against this checklist (and the Lovable
     reference where there is one), fix every issue, then report what was checked and anything that could not be fixed.
 
+## UI design rules (permanent; Owner, 2026-10-09)
+
+These add to the UX quality gate above; none of it is removed.
+
+1. Use the `frontend-design` skill for every UI task: new screens from Phase 9 onward and the polish pass of existing screens.
+   Where the skill and these rules disagree, these rules win. The brand is already decided, so the skill is used to raise
+   layout, detail, typography hierarchy, motion and copy quality, never to change the brand.
+2. Brand: primary red `#782b37` with white. Keep the existing light and dark modes, the approved fonts and the "LUCY SPA"
+   text logo. No new palette, no new fonts.
+3. No gold or yellow anywhere, except holiday decorations (Tết, Mid-Autumn, national days) in the seasonal theme layer.
+4. Hover: light mode = solid `#782b37` background with white text (not a pale pink tint); dark mode = the existing
+   dark-mode pink accent.
+5. Polish passes change UI only: no business logic, API, database or data changes. Never touch `apps/web/next-env.d.ts`.
+6. Every UI change still goes through the quality gate (screenshots at 360/768/1440 px, light and dark, 130% text, all
+   states, DOM audit vs baseline), with before/after screenshots for the Owner to approve.
+7. Copy stays natural Vietnamese. Lucy Spa is a spa; never use "khám".
+
 ## Reporting (keep it short)
 
 - Step report in `docs/`: max ~40 lines. What changed, migrations, permissions, tests run + result,
