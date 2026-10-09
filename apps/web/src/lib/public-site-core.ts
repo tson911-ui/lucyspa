@@ -31,6 +31,8 @@ export interface HomeData {
   slides: PublicSlide[];
   /** The promotion campaigns running now (the strip above the hero); absent or empty: no strip. */
   campaigns?: PublicCampaign[] | null;
+  /** Whether "Bán online" is ON: only then does the offer line say "Mua ngay"; otherwise it says "Xem ưu đãi". Absent: closed. */
+  onlineOpen?: boolean;
 }
 
 type Locale = 'vi' | 'en';

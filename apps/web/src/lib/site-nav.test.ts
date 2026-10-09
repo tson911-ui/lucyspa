@@ -87,7 +87,7 @@ test('the phone tab bar: four tabs for a visitor (cosmetics included), five for 
   assert.equal(member.filter((tab) => tab.current).length, 1);
   assert.equal(member.find((tab) => tab.current)?.key, 'bookings');
   const book = member.find((tab) => tab.key === 'book');
-  assert.equal(book?.label, 'Đặt lịch ngay');
+  assert.equal(book?.label, 'Đặt lịch');
   assert.equal(book?.emphasis, true);
   assert.ok(member.filter((tab) => tab.emphasis).length === 1);
   // No tab leads to the account overview: the account icon in the header does.

@@ -56,7 +56,7 @@ export function HomeContent({
   popup?: boolean;
 }) {
   const text = getSiteText(locale);
-  const { site, services, slides, campaigns } = data;
+  const { site, services, slides, campaigns, onlineOpen } = data;
   const media =
     slides.length > 0 ? null : site?.heroImage ? (
       <HeroImage image={site.heroImage} />
@@ -66,7 +66,7 @@ export function HomeContent({
   return (
     <PublicMain>
       <Band tone="page" labelledBy="home-title" className="ls-hero">
-        <HomeOffer locale={locale} campaigns={campaigns} />
+        <HomeOffer locale={locale} campaigns={campaigns} onlineOpen={onlineOpen === true} />
         <div className="ls-hero-grid">
           <div className="ls-hero-copy">
             <h1 className="ls-site-display" id="home-title">

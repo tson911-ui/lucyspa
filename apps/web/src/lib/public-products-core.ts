@@ -402,6 +402,17 @@ export const activeCampaign = (
     ? ((campaigns ?? []).find((entry) => entry.slug === state.campaign) ?? null)
     : null;
 
+/**
+ * The button of a campaign. The Owner's own words ("Mua ngay") are used only while online ordering is open; while "Bán online" is off the
+ * button only leads to the sale page with the neutral `closedLabel` ("Xem ưu đãi"), so a button never promises a purchase the shop cannot take.
+ */
+export const campaignCtaLabel = (
+  campaign: Pick<PublicCampaign, 'ctaLabel'>,
+  onlineOpen: boolean,
+  closedLabel: string,
+  openFallback: string = closedLabel,
+): string => (onlineOpen ? (campaign.ctaLabel ?? openFallback) : closedLabel);
+
 /** "31/10/2026" in the shop's time zone (the visitor reads the day the sale ends there). */
 export function campaignEndText(endsAt: string, locale: Locale): string {
   return new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {

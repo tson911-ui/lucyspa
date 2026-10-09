@@ -6,6 +6,7 @@ import type { Locale } from '../../i18n/locales';
 import { fill } from '../../lib/fill';
 import {
   campaignBanner,
+  campaignCtaLabel,
   campaignEndText,
   campaignHref,
   PRODUCTS_LIST_ID,
@@ -80,9 +81,12 @@ export function CampaignStrips({
 export function HomeOffer({
   locale,
   campaigns,
+  onlineOpen = false,
 }: {
   locale: Locale;
   campaigns: readonly PublicCampaign[] | null | undefined;
+  /** "Bán online" is ON: the button may use the Owner's words ("Mua ngay"); otherwise it says "Xem ưu đãi". */
+  onlineOpen?: boolean;
 }) {
   const [campaign] = stripCampaigns(campaigns);
   if (!campaign) return null;
@@ -101,7 +105,7 @@ export function HomeOffer({
         </span>
       </span>
       <span className="ls-offer-cta">
-        {campaign.ctaLabel ?? text.stripCta}
+        {campaignCtaLabel(campaign, onlineOpen, text.stripCta)}
         <Icon name="chevron-right" size={16} aria-hidden="true" />
       </span>
     </Link>

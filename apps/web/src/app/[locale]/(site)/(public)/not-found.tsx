@@ -27,6 +27,22 @@ export default function PublicNotFound() {
     );
   }
   const isProduct = pathname.startsWith(`/${locale}/products`);
+  const isService = pathname.startsWith(`/${locale}/services`);
+  if (!isProduct && !isService) {
+    // Any other address that does not exist: the same chrome, a plain explanation and two ways on.
+    return (
+      <PublicPage title={site.errors.notFoundTitle} lead={site.errors.notFoundBody}>
+        <div className="ls-site-actions">
+          <Link className={buttonClass('primary', 'lg')} href={`/${locale}`}>
+            {site.errors.home}
+          </Link>
+          <Link className={buttonClass('secondary', 'lg')} href={`/${locale}/services`}>
+            {site.errors.services}
+          </Link>
+        </div>
+      </PublicPage>
+    );
+  }
   const text = isProduct ? site.products : site.services;
   return (
     <PublicPage title={text.notFoundTitle} lead={text.notFoundBody}>

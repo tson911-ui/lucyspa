@@ -1,6 +1,12 @@
 import type { PublicSiteResponse } from '@lucy-spa/contracts';
 import Link from 'next/link';
-import { BrandIcon, BrandWordmark, SiteFooter, type FooterColumn } from '@lucy-spa/ui';
+import {
+  BrandIcon,
+  BrandWordmark,
+  buttonClass,
+  SiteFooter,
+  type FooterColumn,
+} from '@lucy-spa/ui';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import { fill } from '../../lib/fill';
@@ -147,6 +153,15 @@ export function PublicFooter({
           </Link>
           {/* The shop's own tagline (Admin > Website > Shop info), nothing written here. */}
           {site?.tagline ? <p className="ls-footer-tagline">{site.tagline}</p> : null}
+          {/* The one booking call to action closes the page (the same words as the header and the tab bar). */}
+          <Link
+            className={buttonClass('secondary', 'md', 'ls-site-footer-cta')}
+            href={`/${locale}/account/book`}
+            prefetch
+            transitionTypes={NAV_TRANSITION}
+          >
+            {text.header.bookNow}
+          </Link>
         </>
       }
       blocks={footerBlockItems(site?.footerBlocks ?? [], locale)}

@@ -155,5 +155,10 @@ test('ContactFab css: sticky row on the shared layer scale, lifted above the tab
     css,
     /\.ls-footer-icon \{\s*--ls-footer-icon-size: var\(--ls-space-6\);[^}]*width: var\(--ls-control-h\);[^}]*margin: calc\(\(var\(--ls-footer-icon-size\) - var\(--ls-control-h\)\) \/ 2\);/,
   );
-  assert.match(css, /\.ls-site-footer-list > li \{[^}]*min-height: var\(--ls-control-h\);/);
+  assert.match(css, /\.ls-site-footer-list > li \{[^}]*min-height: var\(--ls-footer-row\);/);
+  // A link keeps the full control height as its touch target through an invisible extension of its own box.
+  assert.match(
+    css,
+    /\.ls-site-footer-list a:not\(\.ls-footer-icon\)::after \{[^}]*inset: calc\(\(var\(--ls-control-h\) - var\(--ls-footer-row\)\) \/ -2\)/,
+  );
 });

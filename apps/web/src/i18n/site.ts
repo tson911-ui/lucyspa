@@ -27,6 +27,16 @@ export interface SiteText {
     /** Phase 5 P5-10: points, combos, referrals and gifts. */
     rewards: string;
   };
+  /** A page that does not exist and a page that failed: the site chrome stays, the way on is clear. */
+  errors: {
+    notFoundTitle: string;
+    notFoundBody: string;
+    home: string;
+    services: string;
+    errorTitle: string;
+    errorBody: string;
+    retry: string;
+  };
   header: {
     brand: string;
     language: string;
@@ -114,6 +124,10 @@ export interface SiteText {
     /** The "← Back" button above the page title (same as on the account pages). */
     backLabel: string;
     related: string;
+    /** The search field above the list, its clear button, and the line shown when nothing matches (with {query}). */
+    searchLabel: string;
+    searchClear: string;
+    noMatch: string;
     perNailNote: string;
     priceNote: string;
     notFoundTitle: string;
@@ -189,7 +203,7 @@ const text = {
       bookings: 'Lịch hẹn',
       invoices: 'Hóa đơn',
       account: 'Tài khoản',
-      bookNow: 'Đặt lịch ngay',
+      bookNow: 'Đặt lịch',
     },
     member: {
       signIn: 'Đăng nhập',
@@ -198,12 +212,21 @@ const text = {
       account: 'Tài khoản của tôi',
       rewards: 'Điểm thưởng',
     },
+    errors: {
+      notFoundTitle: 'Không tìm thấy trang này',
+      notFoundBody: 'Địa chỉ có thể đã gõ sai hoặc trang không còn nữa. Bạn có thể về trang chủ hoặc xem dịch vụ của tiệm.',
+      home: 'Về trang chủ',
+      services: 'Xem dịch vụ',
+      errorTitle: 'Trang chưa tải được',
+      errorBody: 'Có trục trặc khi mở trang này. Bạn thử tải lại sau ít phút; nếu vẫn lỗi, hãy gọi hotline của tiệm.',
+      retry: 'Tải lại',
+    },
     header: {
       brand: 'Lucy Spa, về trang chủ',
       language: 'Ngôn ngữ',
       switchLanguage: 'English',
       account: 'Tài khoản của tôi',
-      bookNow: 'Đặt lịch ngay',
+      bookNow: 'Đặt lịch',
       bell: { label: 'Thông báo', unread: '{count} chưa đọc', viewAll: 'Xem tất cả' },
       theme: {
         group: 'Giao diện',
@@ -242,7 +265,7 @@ const text = {
     },
     home: {
       lead: 'Chọn dịch vụ, chọn giờ còn trống và giữ chỗ trực tuyến trong vài phút.',
-      bookNow: 'Đặt lịch ngay',
+      bookNow: 'Đặt lịch',
       viewServices: 'Xem dịch vụ',
       factsLabel: 'Thông tin nhanh',
       groupsTitle: 'Bảng giá dịch vụ',
@@ -270,6 +293,9 @@ const text = {
       back: 'Tất cả dịch vụ',
       backLabel: 'Quay lại',
       related: 'Dịch vụ cùng nhóm',
+      searchLabel: 'Tìm dịch vụ',
+      searchClear: 'Xóa nội dung tìm',
+      noMatch: 'Không có dịch vụ nào khớp "{query}". Thử một tên khác hoặc bỏ nội dung tìm.',
       perNailNote: 'Tính theo số ngón; số ngón và giá cuối cùng được chốt tại tiệm.',
       priceNote: 'Thời gian là dự kiến; giá cuối cùng được chốt tại tiệm.',
       notFoundTitle: 'Không tìm thấy dịch vụ',
@@ -354,6 +380,15 @@ const text = {
       account: 'My account',
       rewards: 'Rewards',
     },
+    errors: {
+      notFoundTitle: 'We could not find this page',
+      notFoundBody: 'The address may be mistyped or the page is gone. You can go to the home page or see the shop services.',
+      home: 'Back to home',
+      services: 'See services',
+      errorTitle: 'This page did not load',
+      errorBody: 'Something went wrong opening this page. Try again in a few minutes; if it keeps failing, call the shop hotline.',
+      retry: 'Try again',
+    },
     header: {
       brand: 'Lucy Spa, back to the home page',
       language: 'Language',
@@ -425,6 +460,9 @@ const text = {
       back: 'All services',
       backLabel: 'Back',
       related: 'More in this group',
+      searchLabel: 'Find a service',
+      searchClear: 'Clear the search',
+      noMatch: 'No service matches "{query}". Try another name or clear the search.',
       perNailNote:
         'Priced per nail; the number of nails and the final price are settled at the shop.',
       priceNote: 'The time is an estimate; the final price is settled at the shop.',

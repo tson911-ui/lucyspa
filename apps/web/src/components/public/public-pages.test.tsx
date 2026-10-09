@@ -451,7 +451,7 @@ test('service detail: facts, the per-nail note, the booking link and the group n
 test('header call to action: the same on every page, "My bookings" and the booking page included', () => {
   assert.match(
     renderToStaticMarkup(<PublicHeaderCta locale="vi" />),
-    /href="\/vi\/account\/book"[^>]*>Đặt lịch ngay</,
+    /href="\/vi\/account\/book"[^>]*>Đặt lịch</,
   );
   assert.match(
     renderToStaticMarkup(<PublicHeaderCta locale="en" />),
@@ -524,7 +524,11 @@ test('home offer line: the most recent running campaign as one link, nothing wit
     bannerUrl: null,
     endsAt: '2026-10-31T16:59:59.000Z',
   };
-  const html = home({ ...full, campaigns: [campaign, { ...campaign, slug: 'cu', name: 'Cũ' }] });
+  const html = home({
+    ...full,
+    campaigns: [campaign, { ...campaign, slug: 'cu', name: 'Cũ' }],
+    onlineOpen: true,
+  });
   assert.match(
     html,
     /<a class="ls-offer" aria-label="[^"]*" href="\/vi\/products\?campaign=ngay-hoi-thu"/,
@@ -533,6 +537,13 @@ test('home offer line: the most recent running campaign as one link, nothing wit
   assert.match(html, /Giảm 20% mỹ phẩm chăm sóc da/);
   assert.match(html, /Đến hết ngày 31\/10\/2026/);
   assert.match(html, /Mua ngay/);
+  // While "Bán online" is off (or could not be read) the button never promises a purchase: it says "Xem ưu đãi" and leads to the same page.
+  for (const closed of [{}, { onlineOpen: false }]) {
+    const off = home({ ...full, campaigns: [campaign], ...closed });
+    assert.doesNotMatch(off, /Mua ngay/);
+    assert.match(off, /<span class="ls-offer-cta">Xem ưu đãi/);
+    assert.match(off, /href="\/vi\/products\?campaign=ngay-hoi-thu"/);
+  }
   // One line only, above the hero; no campaign (or none readable) draws nothing.
   assert.equal(html.match(/class="ls-offer"/g)?.length, 1);
   assert.ok(html.indexOf('class="ls-offer"') < html.indexOf('id="home-title"'));

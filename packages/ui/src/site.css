@@ -923,15 +923,29 @@ a.ls-price-row:focus-visible {
 
 .ls-site-footer-grid {
   display: grid;
-  gap: var(--ls-space-5);
+  gap: var(--ls-space-6);
   padding-block: var(--ls-space-8);
 }
 
+/* The brand column is a little wider than the two lists (logo, the shop's line, the one booking button), and the gap between
+   columns is wide enough for the columns to read as separate. */
 @media (min-width: 768px) {
   .ls-site-footer-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--ls-space-6);
+    grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr));
+    gap: var(--ls-space-6) var(--ls-space-8);
   }
+}
+
+.ls-site-footer-brand {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: var(--ls-space-2);
+  min-width: 0;
+}
+
+.ls-site-footer-cta {
+  margin-top: var(--ls-space-2);
 }
 
 /* Only the logo is brand-coloured; the links inside the Owner's blocks keep their own colours. */
@@ -1107,20 +1121,40 @@ a.ls-price-row:focus-visible {
   line-height: var(--ls-lh-body);
 }
 
-/* Every row of every column is one 40-44 px line (the touch target of a link), so the rows of the contact and the link
-   columns line up whatever they hold. */
+/* Every row of every column is one line of the same height (a little under a control), so the rows of the contact and the link
+   columns line up whatever they hold. A link keeps the full touch target (the control height) through an invisible
+   extension of its own box, not through taller rows: the footer reads as a quiet list, not as a column of buttons. */
+.ls-site-footer-list {
+  --ls-footer-row: calc(var(--ls-control-h) - var(--ls-space-2));
+}
+
 .ls-site-footer-list > li {
   display: flex;
   align-items: center;
-  min-height: var(--ls-control-h);
+  min-height: var(--ls-footer-row);
 }
 
 .ls-site-footer-list a:not(.ls-footer-icon) {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  min-width: var(--ls-control-h);
-  min-height: var(--ls-control-h);
+  min-height: var(--ls-footer-row);
   text-decoration: none;
+}
+
+.ls-site-footer-list a:not(.ls-footer-icon)::after {
+  content: '';
+  position: absolute;
+  inset: calc((var(--ls-control-h) - var(--ls-footer-row)) / -2) calc(var(--ls-space-2) * -1);
+}
+
+/* A phone: the links are one wrapping line of words instead of a tall column (the footer was longer than a screen). */
+@media (max-width: 767px) {
+  .ls-site-footer-grid [data-column='links'] .ls-site-footer-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--ls-space-6);
+  }
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -2767,6 +2801,16 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   pointer-events: none;
 }
 
+/* The slot takes the colour of the band above it, so it never reads as a strip of its own, and that band keeps only a little
+   bottom padding: the slot already gives it room (the blank band above the footer was about 130 px on a short page). */
+.ls-route-fade:has(> .ls-site-main > .ls-band-surface:last-child) + .ls-contact {
+  background: var(--ls-bg-surface);
+}
+
+.ls-route-fade:has(+ .ls-contact) > .ls-site-main > .ls-band:last-child {
+  padding-bottom: var(--ls-space-4);
+}
+
 /* On a phone the button sticks to the bottom of the scroller, which already ends above the tab bar (the app shell), so nothing
    is added for the bar; the booking flow's action bar is measured by ContactFab and lifts it. */
 @media (max-width: 1023.98px) {
@@ -3270,8 +3314,17 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 
 @media (hover: hover) and (pointer: fine) {
   .ls-prod-options a:hover {
-    background: var(--ls-brand-soft);
-    color: var(--ls-brand-on-soft);
+    background: var(--ls-hover-bg);
+    color: var(--ls-hover-text);
+  }
+
+  .ls-prod-options a:hover::before {
+    border-color: var(--ls-hover-text);
+  }
+
+  .ls-prod-options a[aria-current='true']:hover::before {
+    background: var(--ls-hover-text);
+    box-shadow: inset 0 0 0 2px var(--ls-hover-bg);
   }
 }
 
@@ -3533,7 +3586,13 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 
 @media (hover: hover) and (pointer: fine) {
   .ls-camp-strip:hover {
-    border-color: var(--ls-brand);
+    border-color: var(--ls-hover-border);
+    background: var(--ls-hover-bg);
+    color: var(--ls-hover-text);
+  }
+
+  .ls-camp-strip:hover .ls-camp-strip-cta {
+    color: inherit;
   }
 }
 

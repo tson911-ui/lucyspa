@@ -81,7 +81,7 @@ const vi = {
   home: {
     title: 'Tài khoản của tôi',
     intro: 'Quản lý lịch hẹn của bạn tại Lucy Spa.',
-    bookCta: 'Đặt lịch mới',
+    bookCta: 'Đặt lịch',
     upcoming: 'Lịch hẹn sắp tới',
     none: 'Bạn chưa có lịch hẹn sắp tới.',
     profile: 'Thông tin tài khoản',
@@ -352,7 +352,7 @@ const en: CustomerDictionaryShape = {
   home: {
     title: 'My account',
     intro: 'Manage your appointments at Lucy Spa.',
-    bookCta: 'Book an appointment',
+    bookCta: 'Book now',
     upcoming: 'Upcoming appointments',
     none: 'You have no upcoming appointments.',
     profile: 'Account details',

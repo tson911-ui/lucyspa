@@ -4,7 +4,7 @@ Chỉ đổi giao diện. Không đổi nghiệp vụ, API, cơ sở dữ liệu
 (thương hiệu đỏ `#782b37` + trắng, không vàng, hover đỏ đặc chữ trắng ở chế độ sáng, hồng hiện có ở chế độ tối). Đã dùng skill
 `frontend-design` để nâng bố cục, chữ, chi tiết, chuyển động và lời văn, không đổi thương hiệu.
 
-Trạng thái: **Bước A xong, chờ chủ duyệt hướng thiết kế (mục 4) và cách đưa chiến dịch lên trang chủ (mục 4, A/B/C đều chờ chủ)**. Chưa đụng các trang khác ngoài trang chủ. Commit cục bộ, chưa push, chưa deploy.
+Trạng thái: **hướng thiết kế đã được chủ duyệt (2026-10-09), xem mục 8**. Bước A xong; các lượt sửa tiếp theo (mục 3) đang làm. Chưa đụng các trang khác ngoài trang chủ. Commit cục bộ, chưa push, chưa deploy.
 
 ## 1. Danh sách trang của khách
 
@@ -95,7 +95,7 @@ Xem trang chủ trước/sau cạnh nhau: mở `.local/polish1/gallery/index.htm
 Tất cả mục trên ngoài trang chủ: để sau khi chủ duyệt hướng. Gợi ý thứ tự: (1) khung chung (chân trang, thanh tab, nút nổi, 404, "Quay lại");
 (2) dịch vụ và đặt lịch; (3) mỹ phẩm, chiến dịch, vé; (4) đăng nhập và tài khoản; (5) giỏ, thanh toán, đơn hàng.
 
-## 4. Hướng thiết kế cho cả site khách (chờ chủ duyệt)
+## 4. Hướng thiết kế cho cả site khách (đã duyệt, mục 8)
 
 **Giữ nguyên:** đỏ `#782b37` và trắng, nền ấm `#faf7f7`, chế độ sáng/tối, hai bộ chữ đã duyệt (chữ có chân cho tiêu đề, chữ không chân cho nội dung), chữ "LUCY SPA", header trong suốt rồi kính mờ, nút dạng viên thuốc, thanh tab điện thoại, chuyển trang mượt.
 
@@ -111,16 +111,16 @@ Tất cả mục trên ngoài trang chủ: để sau khi chủ duyệt hướng.
 tên dịch vụ, dải chấm dẫn, giá, trên một mặt phẳng duy nhất, tên nhóm bằng chữ có chân. Từng dòng bấm được (mở dịch vụ). Dùng lại ở danh sách dịch vụ (nhóm 2) và ở
 bước chọn dịch vụ khi đặt lịch. Không thêm màu, chữ, hay trang trí nào mới. Tên gọi "Bảng giá dịch vụ" là đề xuất lời văn, chờ chủ đối chiếu với cách gọi của spa (nhãn trong admin vẫn là "Nhóm dịch vụ nổi bật").
 
-### Chiến dịch trên hero và popup (câu hỏi mở số 3): cả A, B, C đều CHỜ CHỦ DUYỆT
+### Chiến dịch trên hero và popup (câu hỏi mở số 3): chủ chọn CHỈ cách A (mục 8)
 
 Dữ liệu chiến dịch đang chạy đã công khai sẵn (tên, nhãn, câu chính, ngày kết thúc, nút, ảnh banner). Có ba cách đặt lên trang chủ; đề xuất kỹ thuật của tôi: A, rồi B nếu chủ muốn.
 Chủ chưa trả lời, nên cách A trên trang chủ mẫu chỉ là **bản dựng tạm để chủ xem**, không phải quyết định.
 
-| Cách                                | Mô tả                                                                                                                   | Đổi dữ liệu?                                                                                | Trạng thái                           |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------ |
-| A. Dải ưu đãi trên hero             | Một dòng mỏng ngay trên hero: nhãn, câu chính, "Đến hết ngày ...", nút. Cả dòng là một liên kết tới trang chiến dịch.   | Không. Chạy và tắt đúng lịch của chiến dịch.                                                | Dựng tạm trên trang chủ mẫu, chờ chủ |
-| B. Chiến dịch là ảnh trượt đầu tiên | Trong lúc chạy, ảnh banner và lời của chiến dịch thành ảnh đầu của ảnh trượt (tối đa 8 ảnh), tự hết khi chiến dịch hết. | Không (ghép ở giao diện). Muốn chọn từng chiến dịch có/không thì cần thêm một cột công tắc. | Chờ chủ chọn                         |
-| C. Chiến dịch làm popup             | Khi không có popup tự đặt đang chạy, popup hiện chiến dịch (một lần mỗi lượt truy cập). Popup tự đặt luôn được ưu tiên. | Không                                                                                       | Chờ chủ chọn                         |
+| Cách                                | Mô tả                                                                                                                   | Đổi dữ liệu?                                                                                | Trạng thái                     |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------ |
+| A. Dải ưu đãi trên hero             | Một dòng mỏng ngay trên hero: nhãn, câu chính, "Đến hết ngày ...", nút. Cả dòng là một liên kết tới trang chiến dịch.   | Không. Chạy và tắt đúng lịch của chiến dịch.                                                | **Đã duyệt, làm xong** (mục 8) |
+| B. Chiến dịch là ảnh trượt đầu tiên | Trong lúc chạy, ảnh banner và lời của chiến dịch thành ảnh đầu của ảnh trượt (tối đa 8 ảnh), tự hết khi chiến dịch hết. | Không (ghép ở giao diện). Muốn chọn từng chiến dịch có/không thì cần thêm một cột công tắc. | Không làm (chủ chỉ chọn A)     |
+| C. Chiến dịch làm popup             | Khi không có popup tự đặt đang chạy, popup hiện chiến dịch (một lần mỗi lượt truy cập). Popup tự đặt luôn được ưu tiên. | Không                                                                                       | Không làm (chủ chỉ chọn A)     |
 
 Lịch riêng của ảnh trượt và popup vẫn giữ nguyên; A, B, C chỉ đọc lịch của chiến dịch. Với B và C, nếu chủ muốn công tắc "hiện ở trang chủ" riêng cho từng chiến dịch thì cần đổi dữ liệu (không làm khi chưa được duyệt).
 
@@ -160,3 +160,10 @@ Chưa chạy: `pnpm test` toàn repo (chỉ cần trước khi push, chưa push)
 2. Chọn cách A, B, C cho chiến dịch (mục 4) và có cần công tắc riêng không.
 3. Dải ưu đãi hiện nút "Mua ngay" kể cả khi "Bán online" đang TẮT (như production hiện nay). Có nên hiện không khi bán online tắt? (Chưa làm gì cho việc này.)
 4. Cho phép chạy tiếp theo thứ tự ở mục 3, hay đổi thứ tự.
+
+## 8. Quyết định của chủ (2026-10-09, bằng lời của chủ)
+
+1. Duyệt: trang chủ mẫu, hướng thiết kế (mục 4) và tên "Bảng giá dịch vụ".
+2. Chiến dịch trên trang chủ: **chỉ cách A** (dải ưu đãi trên hero); B và C không làm. Làm cho hoàn chỉnh.
+3. Khi "Bán online" TẮT, dải ưu đãi không được ghi "Mua ngay": ghi **"Xem ưu đãi"** và dẫn tới trang chiến dịch. Chỉ khi "Bán online" BẬT mới dùng lời của chủ (ví dụ "Mua ngay"). Chưa đọc được trạng thái bán online thì coi như TẮT. Cùng quy tắc áp dụng cho nút của dải khuyến mãi và đầu trang chiến dịch ở các trang mỹ phẩm.
+4. Sửa TẤT CẢ trang khách còn lại theo thứ tự ở mục 3, không dừng giữa các trang; chỉ đổi giao diện (không logic, API, CSDL); chạy lại các luồng người dùng để chứng minh không hỏng; push main, đợi CI xanh, viết hướng dẫn deploy cho bản chỉ-giao-diện này. Không đụng máy chủ.

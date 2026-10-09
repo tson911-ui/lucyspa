@@ -58,7 +58,7 @@ export const SITE_NAV: readonly SiteNavEntry[] = [
     needsProducts: true,
     footer: 'discover',
   },
-  // Booking is the header's call to action ("Đặt lịch ngay"), not a menu item; it is a tab on phones and a footer link.
+  // Booking is the header's call to action ("Đặt lịch"), not a menu item; it is a tab on phones and a footer link.
   {
     key: 'book',
     path: '/account/book',
@@ -143,7 +143,7 @@ export function headerNavItems(
   );
 }
 
-/** The phone tab bar: the booking tab reads "Đặt lịch ngay" (the one booking call to action) and stands out. */
+/** The phone tab bar: the booking tab reads "Đặt lịch" (the one booking call to action) and stands out. */
 export function tabBarItems(
   locale: string,
   pathname: string,

@@ -90,7 +90,7 @@ export function SiteFooter({
           ) : null}
         </div>
         {columns.map((column) => (
-          <div key={column.key}>
+          <div key={column.key} data-column={column.key}>
             <h2 className="ls-site-footer-title">{column.title}</h2>
             <ul className="ls-site-footer-list">
               {column.items.map((item, position) => (

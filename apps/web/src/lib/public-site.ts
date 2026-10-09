@@ -105,6 +105,16 @@ export async function fetchPublicCampaigns(locale: Locale, fetcher: typeof fetch
 }
 
 /**
+ * Whether online ordering is open (the Owner's master switch "Bán online"). A failed or malformed read is "closed": the pages then
+ * promise nothing the shop cannot keep (no "Mua ngay" while the shop is not selling online).
+ */
+export async function fetchOnlineOpen(fetcher: typeof fetch = fetch): Promise<boolean> {
+  const answer = await read('/api/v1/online-sales', fetcher);
+  const body = answer?.status === 200 ? answer.body : null;
+  return typeof body === 'object' && body !== null && (body as { enabled?: unknown }).enabled === true;
+}
+
+/**
  * Whether the shop has any published product, for the menus (the entry is left out while it has none). It is the first
  * page of the list in its default state, so the answer is the one the list page itself uses (remembered for a minute).
  * When the catalog cannot be read this is true: an outage must not hide the entry.
@@ -148,11 +158,12 @@ export async function loadHomeData(
   locale: Locale,
   fetcher: typeof fetch = fetch,
 ): Promise<HomeData> {
-  const [site, services, slides, campaigns] = await Promise.all([
+  const [site, services, slides, campaigns, onlineOpen] = await Promise.all([
     fetchPublicSite(locale, fetcher),
     fetchPublicServices(locale, fetcher),
     fetchPublicSlidesServer(locale, fetcher),
     fetchPublicCampaigns(locale, fetcher),
+    fetchOnlineOpen(fetcher),
   ]);
-  return { site, services, slides, campaigns };
+  return { site, services, slides, campaigns, onlineOpen };
 }
