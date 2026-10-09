@@ -4,7 +4,7 @@
 
 Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, theo thứ tự**, trong **cùng một cửa sổ terminal web của iNET** đã đăng nhập vào máy chủ. Mỗi khối có dòng **Mong đợi**; khác với mong đợi thì **DỪNG** và gửi Claude nguyên văn những gì terminal in ra.
 
-**Bản sẽ cài:** commit `__COMMIT__`, đã push lên `main`, **CI xanh** (lần chạy `__RUN__`). Các commit tài liệu đẩy sau đó không đổi mã chạy.
+**Bản sẽ cài:** commit `9a575894312b04768553b9fad35fc7a3ce4c34d0`, đã push lên `main`, **CI xanh** (lần chạy `37924671820`). Các commit tài liệu đẩy sau đó không đổi mã chạy.
 **Bản đang chạy:** `4b91af65f5666ae8dd4f40fabbf9bfcde7b82c44` (Phase 6 Đợt 4, Owner báo triển khai 2026-10-09).
 **Chỉ đổi giao diện web của trang khách.** Không có migration, không đổi quyền, không đổi API, không đổi worker, không có thư viện mới, không đổi nginx, không đổi `.env`. API và worker **không dừng và không khởi động lại**: khách đang dùng vẫn dùng được; chỉ web được nạp lại (3 tiến trình nạp lần lượt).
 **Thời gian:** khoảng 20 phút (phần lớn là build).
@@ -14,7 +14,7 @@ Những gì khách thấy khác đi (để kiểm tra bằng mắt ở Bước 7
 
 ## Bước 0. Điều kiện
 
-- Trên GitHub, tab **Actions**, commit `__COMMIT__` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
+- Trên GitHub, tab **Actions**, commit `9a575894312b04768553b9fad35fc7a3ce4c34d0` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
 - Nếu có nhân viên đang dùng máy, **không cần báo**: màn hình quầy và các trang nhân viên không đổi, chỉ có thể phải nạp lại trang một lần.
 
 ## Bước 1. Xem hiện trạng (chỉ đọc)
@@ -72,7 +72,7 @@ tar tzf "$WEBBACKUP" | head -n 3
 ```
 cd /opt/lucyspa
 git fetch origin
-git checkout __COMMIT__
+git checkout 9a575894312b04768553b9fad35fc7a3ce4c34d0
 git rev-parse HEAD
 ```
 
