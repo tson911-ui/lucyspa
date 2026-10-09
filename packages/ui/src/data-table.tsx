@@ -29,6 +29,8 @@ export interface DataTableColumn<Row> {
   sortValue?: ((row: Row) => SortValue) | undefined;
   /** Hidden on tablets narrower than this (contract section 13); a phone card list shows every field. */
   hideBelow?: 'md' | 'lg' | 'xl' | '2xl' | undefined;
+  /** Left out of the phone card list (a field that adds little next to the title); every other width shows it. */
+  hidePhone?: boolean | undefined;
   /** The card title on a phone: shown first, larger, without its label. */
   mobileTitle?: boolean | undefined;
   /** The trailing "Actions" column: heading visually hidden but present, cells right aligned. */
@@ -373,5 +375,6 @@ function cellClass<Row>(column: DataTableColumn<Row>): string {
     column.hideBelow === 'lg' && 'ls-hide-lg',
     column.hideBelow === 'xl' && 'ls-hide-xl',
     column.hideBelow === '2xl' && 'ls-hide-2xl',
+    column.hidePhone && 'ls-hide-phone',
   );
 }

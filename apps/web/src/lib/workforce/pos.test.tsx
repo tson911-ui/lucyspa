@@ -23,8 +23,10 @@ import { ApiError } from './api';
 import { navigationFor } from './permissions';
 import { ReauthenticationCancelled } from './reauth';
 import {
+  boardStamp,
   cancelBody,
   changePreview,
+  invoiceContent,
   hasPriceRange,
   hasQuantity,
   formatCountdown,
@@ -763,6 +765,47 @@ test('voucher dialog and cancel confirmation carry the same rules as before', ()
   assert.ok(cancel.includes(en.pos.cancelNeedsReauth));
   assert.ok(cancel.includes(en.pos.cancelReason));
   assert.ok(cancel.includes('role="alertdialog"'));
+});
+
+test('board time: the shown day carries the time only, an older day carries dd/mm as well, in branch time', () => {
+  // 17:41 UTC is 00:41 the next day in Ho Chi Minh City.
+  const iso = '2027-03-01T17:41:00.000Z';
+  assert.equal(boardStamp(iso, '2027-03-02', '2027-03-02', 'Asia/Ho_Chi_Minh', 'vi'), '00:41');
+  assert.equal(
+    boardStamp(iso, '2027-03-02', '2027-03-04', 'Asia/Ho_Chi_Minh', 'vi'),
+    '02/03 00:41',
+  );
+  assert.equal(
+    boardStamp(iso, '2027-03-02', '2027-03-04', 'Asia/Ho_Chi_Minh', 'en'),
+    '02/03 00:41',
+  );
+  assert.equal(boardStamp(iso, '2027-03-01', '2027-03-01', 'UTC', 'en'), '17:41');
+});
+
+test('board contents: services, products, both, and a combo with its name in the cashier’s language', () => {
+  const visit = { kind: 'VISIT', comboName: null } as const;
+  assert.equal(invoiceContent(visit, vi, 'vi', 'Bán combo'), vi.pos.typeService);
+  assert.equal(
+    invoiceContent({ ...visit, products: { quantity: 3 } }, vi, 'vi', 'Bán combo'),
+    'Dịch vụ + 3 sản phẩm',
+  );
+  assert.equal(
+    invoiceContent(
+      { kind: 'PRODUCT_SALE', comboName: null, products: { quantity: 2 } },
+      en,
+      'en',
+      'Combo sale',
+    ),
+    '2 products',
+  );
+  const combo = {
+    kind: 'COMBO_SALE',
+    comboName: { vi: 'Combo 10 buổi', en: 'Ten sessions' },
+  } as const;
+  assert.equal(invoiceContent(combo, vi, 'vi', 'Bán combo'), 'Bán combo: Combo 10 buổi');
+  assert.equal(invoiceContent(combo, en, 'en', 'Combo sale'), 'Combo sale: Ten sessions');
+  // The visit code is not part of the line: it is long and the same code is on the invoice itself.
+  assert.ok(!invoiceContent({ ...visit }, vi, 'vi', 'x').includes('VS-'));
 });
 
 test('a cancelled password confirmation is explained, not a generic failure', () => {

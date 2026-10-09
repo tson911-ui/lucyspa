@@ -3,6 +3,7 @@ import type {
   CurrentAccountResponse,
   InvoiceCancelRequest,
   InvoiceLineResponse,
+  InvoiceKindName,
   InvoiceLinePriceRequest,
   InvoicePayerRequest,
   InvoiceStatusName,
@@ -32,6 +33,51 @@ export function posBranches(
   return [...(branches?.values() ?? [])]
     .filter((branch) => branch.isActive && canAt(account, 'VIEW_INVOICES', branch.id))
     .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+}
+
+/**
+ * The time an invoice (or a finished visit) is listed with on the board, in branch time. The board holds a week: a
+ * time alone means the shown day, an older one carries its day and month (dd/mm), so no date column repeats down the list.
+ */
+export function boardStamp(
+  iso: string,
+  businessDate: string,
+  shownDate: string,
+  zone: string,
+  locale: string,
+): string {
+  const time = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
+    timeZone: zone,
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(iso));
+  if (businessDate === shownDate) return time;
+  const [, month, day] = businessDate.split('-');
+  return `${day}/${month} ${time}`;
+}
+
+/** What an invoice on the board is for, in the cashier's words (the visit code stays on the invoice itself). */
+export function invoiceContent(
+  invoice: {
+    kind: InvoiceKindName;
+    comboName: { vi: string; en: string } | null;
+    products?: { quantity: number } | undefined;
+  },
+  t: WorkforceDictionary,
+  locale: Locale,
+  comboLabel: string,
+): string {
+  if (invoice.kind === 'COMBO_SALE') {
+    const name = invoice.comboName
+      ? locale === 'vi'
+        ? invoice.comboName.vi
+        : invoice.comboName.en
+      : '—';
+    return `${comboLabel}: ${name}`;
+  }
+  const units = String(invoice.products?.quantity ?? 0);
+  if (invoice.kind === 'PRODUCT_SALE') return t.pos.typeProducts.replace('{count}', units);
+  return invoice.products ? t.pos.typeServiceProducts.replace('{count}', units) : t.pos.typeService;
 }
 
 export function invoiceTone(

@@ -2562,6 +2562,12 @@
     align-items: start;
   }
 
+  /* A column that adds little to a phone card (a time beside a status, a seller): as specific as the rule above, and later. */
+  .ls-table tbody tr td.ls-hide-phone,
+  .ls-table tbody tr:last-child td.ls-hide-phone {
+    display: none;
+  }
+
   .ls-table td[data-label]::before {
     content: attr(data-label);
     color: var(--ls-text-muted);

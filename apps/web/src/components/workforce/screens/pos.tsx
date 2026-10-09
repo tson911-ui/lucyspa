@@ -16,10 +16,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { comboDictionary } from '../../../i18n/combo';
 import { productSaleDictionary } from '../../../i18n/product-sale';
 import { fill } from '../../../i18n/workforce';
-import { BOARD_REFRESH_MS, branchTime } from '../../../lib/workforce/booking-board';
-import { formatDate, formatVnd, todayIn } from '../../../lib/workforce/format';
+import { BOARD_REFRESH_MS } from '../../../lib/workforce/booking-board';
+import { formatVnd, todayIn } from '../../../lib/workforce/format';
 import { paginationLabels, toolbarLabels } from '../../../lib/workforce/list-view';
-import { invoiceTone, posBranches, posErrorMessage } from '../../../lib/workforce/pos';
+import {
+  boardStamp,
+  invoiceContent,
+  invoiceTone,
+  posBranches,
+  posErrorMessage,
+} from '../../../lib/workforce/pos';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import { Badge, Button, Empty, Loading, Notice, PageHeader } from '../ui';
@@ -44,6 +50,7 @@ export function PosScreen() {
   const allowed = useMemo(() => posBranches(account, branches.data), [account, branches.data]);
   const [branchId, setBranchId] = useState('');
   const [date, setDate] = useState('');
+  const [status, setStatus] = useState<BoardInvoice['status'] | ''>('');
   const [board, setBoard] = useState<PosBoardResponse | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
   const [opening, setOpening] = useState<string | null>(null);
@@ -113,33 +120,36 @@ export function PosScreen() {
   const zone = board?.branch.timezone ?? 'UTC';
   const today = todayIn(zone);
   const loading = !board && !loadError;
+  // The board holds a week of invoices: a time alone says "today", an older one carries its day (dd/mm) too.
+  const shownDate = board?.date ?? today;
+  const stamp = (iso: string, businessDate: string) =>
+    boardStamp(iso, businessDate, shownDate, zone, locale);
+  // One branch: its name leads the intro and the picker is not needed (it also cut long names short).
+  const onlyBranch = allowed.length === 1 ? allowed[0] : null;
+  const intro = onlyBranch ? fill(t.pos.introBranch, { branch: onlyBranch.name }) : t.pos.intro;
+  const invoices = (board?.invoices ?? []).filter(
+    (invoice) => !status || invoice.status === status,
+  );
 
   const awaitingColumns: DataTableColumn<Awaiting>[] = [
     { key: 'visit', header: t.pos.visit, mobileTitle: true, cell: (visit) => visit.visitCode },
     {
-      key: 'date',
-      header: t.pos.businessDate,
-      cell: (visit) => formatDate(visit.serviceDate, locale),
-    },
-    {
       key: 'guests',
       header: t.pos.guests,
       truncate: true,
+      width: 'lg',
       cell: (visit) => visit.participants.join(', '),
     },
     {
       key: 'performed',
       header: t.pos.performed,
-      hideBelow: 'lg',
-      wrap: true,
-      width: 'lg',
-      cell: (visit) => visit.performedServices,
+      hideBelow: 'md',
+      cell: (visit) => fill(t.pos.serviceCount, { count: visit.performedServices }),
     },
     {
       key: 'completedAt',
       header: t.pos.completedAt,
-      hideBelow: 'md',
-      cell: (visit) => (visit.completedAt ? branchTime(visit.completedAt, zone, locale) : '—'),
+      cell: (visit) => (visit.completedAt ? stamp(visit.completedAt, visit.serviceDate) : '—'),
     },
     ...(board?.canManage
       ? [
@@ -166,7 +176,6 @@ export function PosScreen() {
       : []),
   ];
 
-  // Product figures add a column; the payer and seller columns then take a narrower width so the total and the menu stay in view.
   const hasProducts = board?.invoices.some((invoice) => invoice.products) ?? false;
   const invoiceColumns: DataTableColumn<BoardInvoice>[] = [
     {
@@ -180,27 +189,25 @@ export function PosScreen() {
       ),
     },
     {
-      key: 'date',
-      header: t.pos.businessDate,
-      cell: (invoice) => formatDate(invoice.businessDate, locale),
+      key: 'createdAt',
+      header: t.pos.createdAt,
+      hidePhone: true,
+      cell: (invoice) => stamp(invoice.createdAt, invoice.businessDate),
     },
     {
-      key: 'type',
-      header: c.invoice.typeColumn,
-      hideBelow: 'xl',
+      // The customer comes right after the code on every width: it is what the cashier looks for first.
+      key: 'payer',
+      header: t.pos.customer,
       truncate: true,
-      cell: (invoice) => {
-        if (invoice.kind === 'COMBO_SALE') {
-          return `${c.invoice.typeCombo}: ${invoice.comboName ? (locale === 'vi' ? invoice.comboName.vi : invoice.comboName.en) : '—'}`;
-        }
-        if (invoice.kind === 'PRODUCT_SALE') {
-          return fill(ps.board.typeProductUnits, { count: invoice.products?.quantity ?? 0 });
-        }
-        const visit = `${c.invoice.typeVisit} ${invoice.visitCode ?? ''}`.trim();
-        return invoice.products
-          ? fill(ps.board.typeWithProducts, { type: visit, count: invoice.products.quantity })
-          : visit;
-      },
+      width: 'lg',
+      cell: (invoice) => invoice.payerName ?? t.pos.guestShort,
+    },
+    {
+      key: 'content',
+      header: t.pos.content,
+      hideBelow: 'lg',
+      truncate: true,
+      cell: (invoice) => invoiceContent(invoice, t, locale, c.invoice.typeCombo),
     },
     ...(hasProducts
       ? [
@@ -208,6 +215,7 @@ export function PosScreen() {
             key: 'sellers',
             header: ps.board.sellers,
             hideBelow: 'xl' as const,
+            hidePhone: true,
             truncate: true,
             width: 'sm' as const,
             cell: (invoice: BoardInvoice) => invoice.products?.sellers.join(', ') || '—',
@@ -220,14 +228,6 @@ export function PosScreen() {
       cell: (invoice) => (
         <Badge tone={invoiceTone(invoice.status)}>{t.pos.statuses[invoice.status]}</Badge>
       ),
-    },
-    {
-      key: 'payer',
-      header: t.pos.payer,
-      hideBelow: 'lg',
-      truncate: true,
-      ...(hasProducts ? { width: 'xs' as const } : {}),
-      cell: (invoice) => invoice.payerName ?? t.pos.guestPayer,
     },
     {
       key: 'total',
@@ -258,7 +258,7 @@ export function PosScreen() {
 
   return (
     <>
-      <PageHeader title={t.pos.title} intro={t.pos.intro}>
+      <PageHeader title={t.pos.title} intro={intro}>
         {/* One primary action: selling products when the cashier may, otherwise the combo sale as before. */}
         {board?.canSellCombos ? (
           <Button
@@ -277,60 +277,86 @@ export function PosScreen() {
       </PageHeader>
       <ListToolbar
         labels={toolbarLabels(t)}
-        activeFilters={date ? 1 : 0}
+        activeFilters={(date ? 1 : 0) + (status ? 1 : 0)}
         resultCount={t.pos.windowNote}
-        onReset={() => setDate('')}
+        onReset={() => (setDate(''), setStatus(''))}
         reload={{ label: t.pos.refresh, onClick: () => void load(false) }}
         search={
-          <Select
-            id="pos-branch"
-            aria-label={t.pos.branch}
-            value={branchId}
-            options={allowed.map((branch) => ({ value: branch.id, label: branch.name }))}
-            onChange={(event) => (setBranchId(event.target.value), setDate(''))}
-          />
+          onlyBranch ? undefined : (
+            <Select
+              id="pos-branch"
+              aria-label={t.pos.branch}
+              value={branchId}
+              options={allowed.map((branch) => ({ value: branch.id, label: branch.name }))}
+              onChange={(event) => (setBranchId(event.target.value), setDate(''), setStatus(''))}
+            />
+          )
         }
         filters={
-          <DateInput
-            id="pos-date"
-            aria-label={t.pos.date}
-            title={t.pos.date}
-            value={date || (board?.date ?? today)}
-            max={today}
-            onChange={(event) => setDate(event.target.value)}
-          />
+          <>
+            <DateInput
+              id="pos-date"
+              aria-label={t.pos.date}
+              title={t.pos.date}
+              value={date || (board?.date ?? today)}
+              max={today}
+              onChange={(event) => setDate(event.target.value)}
+            />
+            <Select
+              id="pos-status"
+              aria-label={t.pos.status}
+              value={status}
+              options={[
+                { value: '', label: t.pos.allStatuses },
+                ...(['PENDING_PAYMENT', 'PAID', 'DRAFT', 'CANCELLED'] as const).map((value) => ({
+                  value,
+                  label: t.pos.statuses[value],
+                })),
+              ]}
+              onChange={(event) => {
+                setStatus(event.target.value as BoardInvoice['status'] | '');
+                setInvoicesPaging((current) => ({ ...current, page: 1 }));
+              }}
+            />
+          </>
         }
       />
       {message ? <Notice tone="error">{message}</Notice> : null}
       {loadError ? <Notice tone="error">{posErrorMessage(loadError, t)}</Notice> : null}
       <ListSection title={t.pos.awaitingTitle}>
-        <DataTable
-          mode="client"
-          caption={fill(t.common.list.table, { list: t.pos.awaitingTitle })}
-          columns={awaitingColumns}
-          rows={board?.awaiting ?? []}
-          rowKey={(visit) => visit.visitId}
-          loading={loading}
-          loadingLabel={t.common.loading}
-          empty={board ? <Empty>{t.pos.awaitingEmpty}</Empty> : undefined}
-          paging={{
-            ...awaitingPaging,
-            onPageChange: (page) => setAwaitingPaging((current) => ({ ...current, page })),
-            onPageSizeChange: (pageSize) => setAwaitingPaging({ page: 1, pageSize }),
-            labels: paginationLabels(t, t.pos.awaitingTitle),
-          }}
-        />
+        {board && board.awaiting.length === 0 ? (
+          // Nothing to do here is one quiet line, not a boxed empty state.
+          <p className="ls-hint">{t.pos.awaitingEmpty}</p>
+        ) : (
+          <DataTable
+            mode="client"
+            caption={fill(t.common.list.table, { list: t.pos.awaitingTitle })}
+            columns={awaitingColumns}
+            rows={board?.awaiting ?? []}
+            rowKey={(visit) => visit.visitId}
+            loading={loading}
+            loadingLabel={t.common.loading}
+            paging={{
+              ...awaitingPaging,
+              onPageChange: (page) => setAwaitingPaging((current) => ({ ...current, page })),
+              onPageSizeChange: (pageSize) => setAwaitingPaging({ page: 1, pageSize }),
+              labels: paginationLabels(t, t.pos.awaitingTitle),
+            }}
+          />
+        )}
       </ListSection>
       <ListSection title={t.pos.invoicesTitle}>
         <DataTable
           mode="client"
           caption={fill(t.common.list.table, { list: t.pos.invoicesTitle })}
           columns={invoiceColumns}
-          rows={board?.invoices ?? []}
+          rows={invoices}
           rowKey={(invoice) => invoice.id}
           loading={loading}
           loadingLabel={t.common.loading}
-          empty={board ? <Empty>{t.pos.invoicesEmpty}</Empty> : undefined}
+          empty={
+            board ? <Empty>{status ? t.pos.statusEmpty : t.pos.invoicesEmpty}</Empty> : undefined
+          }
           paging={{
             ...invoicesPaging,
             onPageChange: (page) => setInvoicesPaging((current) => ({ ...current, page })),

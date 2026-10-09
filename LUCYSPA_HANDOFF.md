@@ -801,3 +801,9 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - Production = `9a575894312b04768553b9fad35fc7a3ce4c34d0` (previous `4b91af6`). Web only reloaded (`pm2 reload lucyspa-web`); API and worker not restarted. Migrations unchanged (101), permissions 66. Online sales `"enabled":false`.
 - Backups: `/root/backups/lucyspa-pre-polish1-20261009T121951Z.dump` (1,328,082 bytes) and `/root/backups/lucyspa-web-pre-polish1-20261009T121952Z.tgz` (325,737,415 bytes). pm2: web 3, api 1, worker 1 online; health ok; `/vi`, `/vi/services`, `/vi/products`, `/vi/workforce/login` 200; unknown page 404.
 - The 404 page text is drawn by the browser (client component), so `curl | grep` for its title is always 0; the runbook check now counts `ls-site-footer` (0 on a bare framework 404). Soft 404: unknown `/vi/services/<code>` and `/vi/products/<code>` answer 200 (pre-existing, Owner to decide). Page unchanged. Details: `docs/UI_POLISH_GROUP1_CUSTOMER.md` section 11.
+
+### UI polish group 2, counter/POS screens, Step A (2026-10-09, local, not pushed, not deployed; waiting for Owner approval)
+
+- Plan, screen list, problem list, design direction and the one built sample (the invoice board `/workforce/pos`): `docs/UI_POLISH_GROUP2_POS.md`. UI only, no migration, no API change.
+- Shared kit change: optional `hidePhone` column flag on `DataTable` (only the invoice board uses it). Open Owner questions in section 7 of the doc (row hover vs rule 4, date format, status filter, invoice detail order, phone list style).
+- Scratch data/recipes: `.local/polish2/` (seed-visits.mjs, shots.mjs); stack from `.local/polish1/` (API 3101, web 3100, DB `lucy_spa_polish1_scratch`).

@@ -95,6 +95,26 @@ test('DataTable: an empty value shows an em dash; the value sits in its own span
   assert.match(markup, /<span class="ls-cell-value">Học viên<\/span>/);
 });
 
+test('DataTable: a hidePhone column is marked for the phone card list only; other widths still show it', () => {
+  const markup = html(
+    <DataTable
+      paging={{ off: 'test' }}
+      mode="server"
+      columns={[
+        { key: 'a', header: 'Mã', mobileTitle: true, cell: () => 'INV-1' },
+        { key: 'b', header: 'Lập lúc', hidePhone: true, cell: () => '19:41' },
+        { key: 'c', header: 'Khách', cell: () => 'Hoàng Thị Lan' },
+      ]}
+      rows={[{ id: '1' }]}
+      rowKey={(row) => row.id}
+      caption="t"
+    />,
+  );
+  assert.equal((markup.match(/ls-hide-phone/g) ?? []).length, 2, 'its heading and its cell');
+  assert.match(markup, /<td[^>]*ls-hide-phone[^>]*data-label="Lập lúc"/);
+  assert.doesNotMatch(markup, /<td[^>]*ls-hide-md|ls-hide-lg|ls-hide-xl/, 'no width is hidden');
+});
+
 test('DataTable: a leading picture column has a hidden heading, no card label, and MediaThumb keeps its square without a picture', () => {
   const markup = html(
     <DataTable
