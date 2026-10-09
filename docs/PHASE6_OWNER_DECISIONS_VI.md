@@ -1,6 +1,15 @@
 # Phase 6: các mục chờ Chủ duyệt (giải thích bằng tiếng Việt)
 
-## Đợt 4: bán hàng online (P6-19 đến P6-24). **Chỉ chuẩn bị tài liệu, chưa viết dòng mã nào**
+## Đợt 4: bán hàng online (P6-19 đến P6-24). **Chủ đã duyệt ngày 2026-10-09; đang xây (mục "Đã duyệt" ngay dưới)**
+
+### Đã duyệt (Chủ, 2026-10-09, nguyên văn; đã khóa)
+
+- **"F1–F4 (3b follow-up) approved as you described. The rollback proof for migration 96 is done together with the Wave 4 milestone."**
+- **"Wave 4: T39, T40, T41, T42, OQ-89 to OQ-103 approved as you recommended."** Vậy T39 đến T42 và OQ-89 đến OQ-103 là **đã duyệt đúng như cột "Tôi khuyên"** của bảng bên dưới, kể cả các con số tôi đề xuất (20 dòng, 10 cái mỗi dòng, 3 đơn chưa thanh toán, gửi trong 2 ngày làm việc, giao dự kiến 2 đến 5 ngày, nhắc lúc 08:00 đơn đã gửi quá 7 ngày chưa giao).
+- **"T38 changed: no split. Build all of Wave 4 (P6-19 to P6-24, including the full campaigns P6-23) and deploy ONCE, together with the unpushed 3b follow-up."** Không còn 4a/4b; một lần triển khai duy nhất, cùng migration 96.
+- **"Add a master switch 'Bán online' in admin, OFF by default after deploy, so online checkout stays closed until I turn it on."** Công tắc **"Bán online"** trong quản trị, **tắt mặc định** sau khi triển khai; tắt thì không đặt hàng được, trang sản phẩm không có nút mua.
+- Chủ dặn làm liên tục P6-19 đến P6-24; các lựa chọn kỹ thuật tôi tự chọn theo khuyến nghị, ghi **"chờ Chủ xem lại"** ở các mục P6-19 đến P6-24 bên dưới; không tự bịa tiền hay chính sách; câu nào thật sự cần Chủ thì ghi ở cuối. Chi tiết trong mục 2.37 của `docs/PHASE6_PRODUCTS_INVENTORY_DESIGN.md`.
+- Phần còn lại của mục này (bảng, T38 gốc, rủi ro) giữ nguyên làm lịch sử; **T38 gốc đã được thay như ở trên**.
 
 Đợt 3b đã chạy thật từ 2026-10-09 (bản `43a1b29`, 95 migration, 66 quyền; chưa quyền bán hàng, xử lý đơn hay hoàn tiền nào được gán). Đợt 4 là đợt đầu tiên **khách tự trả tiền qua mạng** và đầu tiên có **địa chỉ nhà khách** và **hàng gửi đi xa**. Mọi thứ dưới đây là đề xuất; **chưa có gì được duyệt cho đến khi Chủ trả lời bằng lời của Chủ**.
 
