@@ -116,13 +116,13 @@ curl -s -o /dev/null -w "my pham: %{http_code}\n" http://127.0.0.1:3000/vi/produ
 curl -s -o /dev/null -w "dang nhap khach: %{http_code}\n" http://127.0.0.1:3000/vi/account/login
 curl -s -o /dev/null -w "dang nhap nhan vien: %{http_code}\n" http://127.0.0.1:3000/vi/workforce/login
 curl -s -o /dev/null -w "trang khong co (phai la 404): %{http_code}\n" http://127.0.0.1:3000/vi/khong-co-trang-nay
-curl -s http://127.0.0.1:3000/vi/khong-co-trang-nay | grep -c "NEXT_HTTP_ERROR_FALLBACK;404"
+curl -s http://127.0.0.1:3000/vi/khong-co-trang-nay | grep -c "ls-site-footer"
 curl -s http://127.0.0.1:3000/vi/services | grep -c "ls-svc-row"
 curl -s http://127.0.0.1:3001/api/v1/online-sales | grep -o '"enabled":[a-z]*'
 pm2 jlist | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const l=JSON.parse(s);for(const n of ['lucyspa-web','lucyspa-api','lucyspa-worker'])console.log(n,l.filter(p=>p.name===n&&p.pm2_env.status==='online').length)})"
 ```
 
-**Mong đợi:** `/health/ready` có `"status":"ok"`; năm dòng `200` (vi, dịch vụ, mỹ phẩm, đăng nhập khách, đăng nhập nhân viên); dòng 404 in **`404`**; hai lệnh `grep -c` in số **lớn hơn 0** (trang 404 có dấu hiệu `NEXT_HTTP_ERROR_FALLBACK;404` của khung 404 mới; trang dịch vụ có các dòng mới). **Đừng** tìm chữ "Không tìm thấy trang này" bằng `curl`: chữ đó do trình duyệt vẽ sau khi tải trang (lấy từ tệp JS), không nằm trong HTML thô, nên `grep` luôn ra 0. Chữ này được kiểm bằng mắt ở Bước 6, mục 5; `"enabled":false`; web **3**, api **1**, worker **1**.
+**Mong đợi:** `/health/ready` có `"status":"ok"`; năm dòng `200` (vi, dịch vụ, mỹ phẩm, đăng nhập khách, đăng nhập nhân viên); dòng 404 in **`404`**; hai lệnh `grep -c` in số **lớn hơn 0** (trang 404 có chân trang của khung khách, `ls-site-footer`: trang 404 trần của framework thì ra 0, đã thử trên máy với địa chỉ `/xx/abc`; trang dịch vụ có các dòng mới); `"enabled":false`; web **3**, api **1**, worker **1**. **Đừng** tìm chữ "Không tìm thấy trang này" bằng `curl`: chữ đó không nằm trong HTML thô (trình duyệt dựng trang từ dữ liệu phát sau và tệp JS), nên `grep` luôn ra 0. Chữ tiêu đề được kiểm bằng mắt ở Bước 6, mục 5.
 
 ## Bước 6. Kiểm tra bằng mắt (Owner, chỉ để xem; không bấm đặt hay thanh toán)
 
