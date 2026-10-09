@@ -4,7 +4,7 @@
 
 Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, theo thứ tự**, trong **cùng một cửa sổ terminal web của iNET** đã đăng nhập vào máy chủ. Mỗi khối có dòng **Mong đợi**; khác với mong đợi thì **DỪNG** và gửi Claude nguyên văn những gì terminal in ra.
 
-**Bản sẽ cài:** commit `<<COMMIT>>`, đã push lên `main`, **CI xanh** (lần chạy `<<RUN>>`). Bản này gồm **hai phần** vì nhóm 2 (màn hình quầy, commit `7164c23`) chưa được triển khai: (1) màn hình quầy nhóm 2, (2) giao diện **toàn bộ trang khách theo hướng C** mà Owner đã chọn ngày 2026-10-10.
+**Bản sẽ cài:** commit `a907618993a49e2c563d28fd75b25ddb5f177d62`, đã push lên `main`, **CI xanh** (lần chạy `37998033826`; mã chạy giống hệt commit `5cd5163`, chỉ thêm một sửa nhỏ cho thẻ tiêu đề trang chủ, và các commit "ci: chạy lại" ở giữa không đổi mã). Lưu ý: các lần chạy trước đó đỏ vì GitHub không liên lạc được với Docker Hub ở bước `docker compose up` (lỗi hạ tầng, đã kiểm chứng bằng cách chạy lại cả commit xanh cũ `c674072` cũng đỏ), và một lần đỏ ở `pnpm smoke` do thẻ tiêu đề trang chủ, đã sửa trong commit này. Bản này gồm **hai phần** vì nhóm 2 (màn hình quầy, commit `7164c23`) chưa được triển khai: (1) màn hình quầy nhóm 2, (2) giao diện **toàn bộ trang khách theo hướng C** mà Owner đã chọn ngày 2026-10-10.
 **Bản đang chạy:** `9a575894312b04768553b9fad35fc7a3ce4c34d0` (nhóm 1; Owner báo triển khai 2026-10-09).
 **Chỉ đổi giao diện web** (`apps/web` và `packages/ui`). Không có migration, không đổi quyền, không đổi API, không đổi worker, không có thư viện mới, không đổi nginx, không đổi `.env`. API và worker **không dừng và không khởi động lại**: khách và nhân viên đang dùng vẫn dùng được; chỉ web được nạp lại (3 tiến trình nạp lần lượt). Hai phông chữ mới (Fraunces và Nunito Sans) được **tải về một lần lúc build** (giống cách hai phông hiện tại được lấy) rồi chạy từ chính máy chủ của mình; nếu Bước 3.3 báo lỗi tải phông chữ thì máy chủ cần ra internet: **DỪNG**, bản cũ vẫn đang chạy bình thường.
 **Thời gian:** khoảng 20 phút (phần lớn là build).
@@ -21,7 +21,7 @@ Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, t
 
 ## Bước 0. Điều kiện
 
-- Trên GitHub, tab **Actions**, commit `<<COMMIT>>` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
+- Trên GitHub, tab **Actions**, commit `a907618993a49e2c563d28fd75b25ddb5f177d62` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
 - Nếu có khách hay nhân viên đang dùng, **không cần báo**: họ chỉ có thể phải nạp lại trang một lần. Nên làm ngoài giờ cao điểm.
 
 ## Bước 1. Xem hiện trạng (chỉ đọc)
@@ -79,7 +79,7 @@ tar tzf "$WEBBACKUP" | head -n 3
 ```
 cd /opt/lucyspa
 git fetch origin
-git checkout <<COMMIT>>
+git checkout a907618993a49e2c563d28fd75b25ddb5f177d62
 git rev-parse HEAD
 ```
 

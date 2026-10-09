@@ -39,4 +39,4 @@ Chủ chọn hướng C "Ấm áp thư giãn" (xem `docs/CUSTOMER_SITE_C.md`). C
 - Hai khung ảnh phụ (vòng nhỏ "làm nail", viên thuốc "gội đầu") cần chỗ chọn ảnh trong Quản trị: đổi API và CSDL.
 - Ba kiểu rê chuột riêng trên nền đỏ (nút chân trang, nút tròn chân trang, nút ruy-băng) khác luật 4 (đỏ đặc sẽ biến mất trên nền đỏ).
 - Dải ưu đãi một dòng trên đầu trang (phương án A đã duyệt 2026-10-09) được thay bằng ruy-băng cuối trang chủ như bản xem thử C; đưa lại dải trên là việc nhỏ.
-- CI chạy lúc đẩy (ngoài khung 15:00-17:00 UTC) nên không chứng minh gì về cờ kiểm thử; nên chạy lại một lần trong khung 22:00-24:00 giờ Việt Nam.
+- CI xanh trên `a907618` (lần chạy 37998033826). Các lần đỏ trước đó: GitHub không liên lạc được Docker Hub ở bước `docker compose up` (cả commit xanh cũ `c674072` cũng đỏ lúc đó), và một lần ở `pnpm smoke` vì thẻ tiêu đề trang chủ (đã sửa, `smoke` qua cục bộ). Lần xanh chạy lúc 23:00 UTC, ngoài khung 15:00-17:00 UTC, nên **không** chứng minh gì về cờ kiểm thử: nên chạy lại một lần trong khung 22:00-24:00 giờ Việt Nam. Bộ tích hợp đầy đủ cũng đã chạy ở đồng hồ thật trên CSDL mới: 961 test, 959 qua, 0 lỗi, 2 bỏ qua.
