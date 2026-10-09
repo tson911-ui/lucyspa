@@ -1,6 +1,6 @@
 # Phase 6: các mục chờ Chủ duyệt (giải thích bằng tiếng Việt)
 
-## Đợt 4: bán hàng online (P6-19 đến P6-24). **Chủ đã duyệt ngày 2026-10-09; đã xây xong, đã push `4b91af6`, chưa triển khai (mục "Đã duyệt" ngay dưới; các cách hiểu kỹ thuật chờ xem lại ở cuối tệp)**
+## Đợt 4: bán hàng online (P6-19 đến P6-24). **Chủ đã duyệt ngày 2026-10-09; đã xây xong, đã triển khai (commit `4b91af6`, 2026-10-09 khoảng 14:02, Phase 6 hoàn tất) (mục "Đã duyệt" ngay dưới; các cách hiểu kỹ thuật chờ xem lại ở cuối tệp)**
 
 ### Đã duyệt (Chủ, 2026-10-09, nguyên văn; đã khóa)
 
@@ -1037,7 +1037,11 @@ Chi tiết: `docs/PHASE6_STEP7_LOAD_READINESS.md`. OQ-26 (chỉ web chạy nhi�
 - **Tôi khuyên:** làm bước kiểm. Nếu thiếu, sửa nginx thêm `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` (kỹ thuật viên của Chủ làm, tôi không đụng máy chủ).
 - **Nếu khác:** không thêm, chấp nhận không có giới hạn theo khách ở Đợt 1.
 
-## Đợt 4: các cách hiểu kỹ thuật **chờ Chủ xem lại** (đã xây xong 2026-10-09; chi tiết ở `PHASE6_PRODUCTS_INVENTORY_DESIGN.md` mục 2.38)
+## Đợt 4: các cách hiểu kỹ thuật (đã xây và triển khai 2026-10-09; chi tiết ở `PHASE6_PRODUCTS_INVENTORY_DESIGN.md` mục 2.38)
+
+**Chủ đã duyệt (2026-10-09, sau khi triển khai, lời Chủ):** "W4-1 to W4-12: approved as you proposed." Bốn câu hỏi mở: (1) tiền về sau khi đơn đã hủy: **giữ nguyên, báo quản lý và hoàn tiền bằng tay**; (2) đổi hàng cho đơn online: **chưa cần**; (3) chiến dịch trên hero trang chủ và popup: **đưa vào đợt chỉnh giao diện sắp tới**; (4) báo cáo doanh thu theo chiến dịch: **Phase 8**. Cửa hàng online vẫn tắt đến khi Chủ mở sau Phase 9.
+
+(Phần dưới giữ nguyên như đã trình bày trước khi duyệt.)
 
 Tiền và chính sách chỉ là lời Chủ đã duyệt (miễn phí giao hàng, trả trước PayOS, chỉ hội viên, nhân viên nhập mã vận đơn và phí hãng, công thức giao thất bại, đổi trả). Mọi mục dưới đây là cách tôi làm kỹ thuật; **chưa được duyệt**, Chủ nói "đồng ý" hoặc ghi mục nào khác.
 

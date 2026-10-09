@@ -1,6 +1,6 @@
 # Phase 6 Đợt 4: kiểm tra mốc (2026-10-09, chạy trên máy này, chỉ cơ sở dữ liệu thử)
 
-P6-19 đến P6-23 đã xây xong; mục này là P6-24. Chưa triển khai. Hướng dẫn triển khai: `PHASE6_WAVE4_DEPLOY_CHECKLIST.md`; quay lui: `PHASE6_WAVE4_ROLLBACK_PROOF.md`.
+P6-19 đến P6-23 đã xây xong; mục này là P6-24. **Đã triển khai (Chủ báo 2026-10-09, khoảng 14:02 UTC+7, commit `4b91af6`; kết quả ở đầu `PHASE6_WAVE4_DEPLOY_CHECKLIST.md`). Phase 6 hoàn tất.** Hướng dẫn triển khai: `PHASE6_WAVE4_DEPLOY_CHECKLIST.md`; quay lui: `PHASE6_WAVE4_ROLLBACK_PROOF.md`.
 
 ## Cổng đầy đủ (cơ sở dữ liệu thử mới, đủ 101 migration; `.local/w4-milestone.sh`)
 

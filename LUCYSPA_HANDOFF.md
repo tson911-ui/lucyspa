@@ -13,18 +13,18 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 
 ## Phase status
 
-| Phase                                     | Status                                                                                                                   |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Phase 0                                   | PASS                                                                                                                     |
-| Phase 1 (auth and security)               | COMPLETE                                                                                                                 |
-| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)                                                         |
-| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                                                                |
-| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                                                             |
-| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                                                             |
-| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `9b76789`)                                                                                        |
-| **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `f79572d`); go-live turned ON by the Owner about 17:20 (+07)**                       |
-| Phase 6 (products, inventory, Beauty)     | Waves 1 and 2 DEPLOYED (production = `1358725`, 2026-10-08); Wave 3: P6-12, P6-13 and P6-14 built locally (not deployed) |
-| Phase 7+ (payroll, cash, reports)         | NOT started                                                                                                              |
+| Phase                                     | Status                                                                                                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase 0                                   | PASS                                                                                                                                             |
+| Phase 1 (auth and security)               | COMPLETE                                                                                                                                         |
+| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)                                                                                 |
+| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                                                                                        |
+| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                                                                                     |
+| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                                                                                     |
+| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `9b76789`)                                                                                                                |
+| **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `f79572d`); go-live turned ON by the Owner about 17:20 (+07)**                                               |
+| **Phase 6 (products, inventory, Beauty)** | **COMPLETE: Waves 1, 2, 3a, 3b and 4 DEPLOYED (production = `4b91af6`, 2026-10-09 ~14:02 +07); online store stays OFF until the Owner opens it** |
+| Phase 7+ (payroll, cash, reports)         | NOT started                                                                                                                                      |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
 
@@ -210,7 +210,7 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 - **2026-10-09: Wave 3b follow-up built, local commit, NOT pushed, NOT deployed** (design 2.35, report `docs/PHASE6_WAVE3B_FOLLOWUP.md`, readings F1..F4 pending the Owner): ticket link of a walk-in expires 30 days after the last hand-over or cancellation (derived, no migration, `ORDER_TICKET_EXPIRED` for a new link); a change of mind after the supplier order may be refunded in part (`amountVnd`, 1 to the whole share) or declined with a reason (`POST /product-orders/lines/:id/decline`, audit only); migration `20261120000000_phase6_wave3b_changed_mind_refund` (96, replaces one guard function). Needs its own deploy guide, rehearsal and rollback proof before install. Questions 2 and 4 need no code.
 - **2026-10-09: Wave 4 prepared, docs only** (design 2.36, `docs/PHASE6_OWNER_DECISIONS_VI.md` section "Đợt 4": T38..T42, OQ-89..OQ-103, quick-answer table). Owner decisions recorded: free shipping on ALL online orders (fee always 0, replaces OQ-38), the shop pays the carrier and staff only enter the tracking code, a shipping-fee / free-threshold setting kept but OFF by default, failed delivery = staff retry, then refund of goods minus the two-way carrier cost the shop really paid (staff enter it with a reason). Everything else in the section is pending the Owner; no code written.
 - **2026-10-09: the Owner approved Wave 4** (design 2.37, his words): F1..F4 of the 3b follow-up; T39..T42 and OQ-89..OQ-103 as recommended; T38 changed (no split: build P6-19..P6-24 incl. full campaigns and deploy ONCE with migration 96); new master switch "Bán online" in admin, OFF by default after deploy. He asked for P6-19..P6-24 in one run (technical choices recorded "pending owner review", no invented money/policy, final milestone with rollback proof, rehearsal and iNET deploy guide, no server access). Nothing of Wave 4 is built yet when this line is written.
-- **2026-10-09: Wave 4 (online orders, P6-19..P6-24) built, pushed (`4b91af6`, CI green), NOT deployed** (reports `docs/PHASE6_STEP19_ONLINE_CHECKOUT.md`, `PHASE6_STEP20_ONLINE_FULFILMENT.md`, `PHASE6_STEP22_ONLINE_LOAD_SECURITY.md`, `PHASE6_STEP23_CAMPAIGNS.md` and the `_WEB` reports, design 2.38 W4-1..W4-12 all **pending Owner review**): online shop (cart, checkout, prepaid PayOS, 30-minute timeout, free shipping), fulfilment (carriers, tracking, delivered, failed delivery log and the one settlement, cancel/refund, returns from the delivery date), per-account budget of 120 requests/minute, full promotion campaigns (lowest price wins, frozen once published). Master switch "Bán online" is OFF by default.
+- **2026-10-09: Wave 4 (online orders, P6-19..P6-24) built, pushed (`4b91af6`, CI green), DEPLOYED the same day by the Owner (see Production)** (reports `docs/PHASE6_STEP19_ONLINE_CHECKOUT.md`, `PHASE6_STEP20_ONLINE_FULFILMENT.md`, `PHASE6_STEP22_ONLINE_LOAD_SECURITY.md`, `PHASE6_STEP23_CAMPAIGNS.md` and the `_WEB` reports, design 2.38 W4-1..W4-12 all **pending Owner review**): online shop (cart, checkout, prepaid PayOS, 30-minute timeout, free shipping), fulfilment (carriers, tracking, delivered, failed delivery log and the one settlement, cancel/refund, returns from the delivery date), per-account budget of 120 requests/minute, full promotion campaigns (lowest price wins, frozen once published). Master switch "Bán online" is OFF by default.
 - **Wave 4 + the 3b follow-up deploy as ONE deploy:** 6 migrations (95 to 101), still 66 permissions, no new dependency, no new pm2 process; stop API and worker while migrating. Rollback possible only while no online order exists (gate of 11 numbers in `docs/PHASE6_WAVE4_ROLLBACK_PROOF.md`). Guide: `docs/PHASE6_WAVE4_DEPLOY_CHECKLIST.md`; milestone: `docs/PHASE6_WAVE4_MILESTONE.md`.
 - Open questions for the Owner: tiền về muộn sau khi đơn đã hủy (W4-5); đổi hàng cho đơn online (chưa làm); gắn chiến dịch với hero/popup (chưa làm); report per campaign (no screen yet).
 - **2026-10-08: Wave 3 prepared, docs only** (`docs/PHASE6_OWNER_DECISIONS_VI.md`, new "Đợt 3" section; design 2.22): quick-answer table for P6-12..P6-18 (T34-T37, OQ-79..OQ-88), risks and the test plan. Nothing is approved and no code is written; the Owner answers first. Wave 2 is deployed; production stays `1358725`.
@@ -221,7 +221,18 @@ Report has the deployment checklist (10 pending migrations, PayOS env, webhook U
 
 ## Production
 
-Status as of 2026-10-09, about 04:52 (+07) (Owner-reported; supersedes the blocks below): **Phase 6 Wave 3b (counter pre-orders, pick-up tickets, gift stock) is deployed.**
+Status as of 2026-10-09, about 14:02 (+07) (Owner-reported; supersedes the blocks below): **Phase 6 Wave 4 (online orders, shipping, failed delivery, campaigns) together with the Wave 3b follow-up is deployed. Phase 6 is COMPLETE.**
+
+- **Production runs `4b91af65f5666ae8dd4f40fabbf9bfcde7b82c44`** (`4b91af6`), deployed by the Owner on 2026-10-09 at about 14:02 (+07). Previous: `43a1b29`. Docs commits after it (`4e71ddc` and later) are not installed.
+- Backup before the deploy: `/root/backups/lucyspa-pre-phase6-dot4-20261009T065540Z.dump` (1,220,003 bytes, 1938 TOC lines); the pm2 dump is saved.
+- Rehearsal on a restored production copy: 6 migrations OK (changed_mind_refund 0.025, kinds 0.009, online_checkout 0.146, fulfilment 0.068, refunds_returns 0.049, campaigns 0.088 s); `101|66|f|0|0`.
+- API and worker were stopped during the migration. Production now: **101 migrations, 66 permissions, "Bán online" OFF, 0 online orders, 0 campaigns** (`101|66|f|0|0`). Counts unchanged: users 9, bookings 4, invoices 2, payments 2, notifications 29.
+- pm2: api 1, worker 1, web 3 online, no new errors. Health ok; 4 public pages 200; `/api/v1/online-sales` 200 with `"enabled":false`; cart and online-orders context without login 401; public campaigns 200. Outbox backlog 0/0.
+- **The online store stays OFF until the Owner opens it after Phase 9 (real products).** Step 9 of `docs/PHASE6_WAVE4_DEPLOY_CHECKLIST.md` (permissions, carriers, branch, policy text, first small real order) is done then. No new permission was added; nobody holds the order/refund permissions yet except the Owner.
+- **2026-10-09 Owner decisions on Wave 4 (his words, summarised):** W4-1..W4-12 approved as proposed. Open question 1 (payment arriving after an order was cancelled): keep as is, alert the manager and refund manually. Question 2 (exchanges for online orders): not needed now. Question 3 (campaigns on the home hero and the popup): include in the upcoming UI polish pass. Question 4 (revenue report by campaign): Phase 8.
+- Rollback of Wave 4 is possible only while no online order exists (gate of 11 numbers in `docs/PHASE6_WAVE4_ROLLBACK_PROOF.md`).
+
+Previous status (superseded): as of 2026-10-09, about 04:52 (+07): **Phase 6 Wave 3b (counter pre-orders, pick-up tickets, gift stock) is deployed.**
 
 - **Production runs `43a1b29cef128d5555e1fd69b927d62c0ab276e5`** (`43a1b29`), deployed by the Owner on 2026-10-09 at about 04:52 (+07). Previous: `2076cc5`. Docs commits after it (`78d9470` and later) are not installed.
 - Backup before the deploy: `/root/backups/lucyspa-pre-phase6-dot3b-20261008T214713Z.dump` (1,144,759 bytes, 1834 TOC lines); the pm2 dump is saved.

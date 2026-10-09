@@ -1,6 +1,6 @@
 # Hướng dẫn đưa Phase 6 Đợt 4 (bán hàng online, gửi hàng, giao thất bại, khuyến mãi) lên máy chủ thật
 
-> **CHƯA TRIỂN KHAI.** Mã commit và lần chạy CI đã điền (Claude, 2026-10-09).
+> **ĐÃ TRIỂN KHAI (Chủ báo 2026-10-09, khoảng 14:02 UTC+7):** commit `4b91af65f5666ae8dd4f40fabbf9bfcde7b82c44`, trước đó `43a1b29`. Sao lưu `/root/backups/lucyspa-pre-phase6-dot4-20261009T065540Z.dump` (1.220.003 byte, 1938 dòng mục lục); đã lưu bản pm2. Diễn tập trên bản khôi phục: 6 migration (changed_mind_refund 0,025; kinds 0,009; online_checkout 0,146; fulfilment 0,068; refunds_returns 0,049; campaigns 0,088 giây); `101|66|f|0|0`. API và worker dừng trong lúc áp migration; trên máy chủ thật `101|66|f|0|0`, số liệu không đổi (users 9, bookings 4, invoices 2, payments 2, notifications 29). pm2: api 1, worker 1, web 3, không lỗi mới; health ok; bốn trang 200; `online-sales` 200 với `"enabled":false`; giỏ hàng và hàng đợi online khi chưa đăng nhập 401; chiến dịch công khai 200; việc tồn 0/0. **Cửa hàng online vẫn TẮT** đến khi Chủ mở sau Phase 9 (Bước 9 làm lúc đó). Các bước dưới đây giữ nguyên làm hồ sơ.
 
 Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, theo thứ tự**, trong **cùng một cửa sổ terminal web của iNET** đã đăng nhập vào máy chủ. Mỗi khối có dòng **Mong đợi**; khác với mong đợi thì **DỪNG** và gửi cho Claude kết quả. Mọi lệnh dưới đây Claude **chưa** chạy trên máy chủ thật (chỉ diễn tập trên bản sao ở máy phát triển).
 

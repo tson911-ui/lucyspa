@@ -3558,8 +3558,15 @@ Deliver:
 
 ### Phase 6 --- Products and Inventory
 
-See also section 24.1 (future Promotion/Campaign Management) for the
-"Promotions" deliverable.
+**Status: COMPLETE and deployed (Owner-reported, 2026-10-09; production
+commit `4b91af6`).** Waves 1, 2, 3a, 3b and 4 are in production. Wave 4
+added online orders for members (prepaid PayOS, free shipping, shipping by
+staff, failed-delivery settlement, returns) and the full Promotion/Campaign
+engine of section 24.1. The online store stays closed (master switch
+"Bán online" OFF) until the Owner opens it after Phase 9.
+
+See also section 24.1 (Promotion/Campaign Management, built in Phase 6
+Wave 4) for the "Promotions" deliverable.
 
 Deliver:
 
