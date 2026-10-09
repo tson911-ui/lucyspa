@@ -106,3 +106,11 @@ await import('../apps/api/dist/product-returns/refund.race.integration.test.js')
 await import('../apps/api/dist/product-returns/exchange.integration.test.js');
 await import('../apps/api/dist/product-returns/exchange.race.integration.test.js');
 await import('../apps/api/dist/product-orders/order.integration.test.js');
+await import('../apps/api/dist/product-orders/order.commands.integration.test.js');
+await import('../apps/api/dist/product-orders/order.race.integration.test.js');
+await import('../apps/api/dist/online-orders/online.checkout.integration.test.js');
+await import('../apps/api/dist/online-orders/online.fulfilment.integration.test.js');
+await import('../apps/api/dist/online-orders/online.refunds.integration.test.js');
+await import('../apps/api/dist/online-orders/online.limits.integration.test.js');
+await import('../apps/api/dist/online-orders/online.race.integration.test.js');
+await import('../apps/api/dist/campaigns/campaign.integration.test.js');

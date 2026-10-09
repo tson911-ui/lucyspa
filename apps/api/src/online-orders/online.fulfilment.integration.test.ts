@@ -870,7 +870,10 @@ test(
             $queryRaw: tx.$queryRaw.bind(tx),
             $transaction: (work: never) => base.adapter.withTransaction(work),
           } as never;
-          const at = new Date(Date.now() + 36 * 3_600_000);
+          // 10:00 local (UTC+7) on a day 12 to 36 hours ahead, whatever the time of day the test runs: the scan starts at 08:00.
+          const at = new Date(
+            Math.floor((Date.now() + 36 * 3_600_000) / 86_400_000) * 86_400_000 + 3 * 3_600_000,
+          );
           assert.ok((await runOnlineOrderScan(database, at)) >= 1);
           const notices = await tx.notification.findMany({
             where: { type: 'ONLINE_ORDER_ALERT', recipientUserId: packer.id },

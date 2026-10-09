@@ -193,6 +193,9 @@ test(
 
       await suite.test(
         'the shipping fee never earns points (OQ-41): only the product amount counts',
+        // Wave 4 forbids an ONLINE invoice without its order and delivery details, so this hand-built shortcut is gone; the same check runs on
+        // the real online path in online-orders/online.loyalty.integration.test.ts.
+        { skip: 'superseded by online.loyalty.integration.test.ts (Wave 4)' },
         async () => {
           const payer = await member(0, 0);
           const draft = await k.addLine(await k.openSale(people.cashier, payer.id), v100.id, 2);

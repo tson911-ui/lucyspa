@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { onlineOrderKit } from '../testing/online-order-kit.js';
 import { phase6Fixture } from '../testing/phase6-fixture.js';
+import { msToWindowEnd } from '../testing/throttle-window.js';
 import { ONLINE_LIMITS } from './online.input.js';
 
 /**
@@ -16,6 +17,9 @@ test(
     await phase6Fixture(async (base) => {
       const k = await onlineOrderKit(base);
       const { fails } = base;
+      // The budget counts in fixed one-minute windows: start when the current one has room for the whole test.
+      const left = msToWindowEnd(Date.now(), 60_000);
+      if (left < 15_000) await new Promise((done) => setTimeout(done, left + 1_000));
       await k.open();
       const noisy = await k.member('noisy');
       const quiet = await k.member('quiet');

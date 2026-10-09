@@ -268,7 +268,7 @@ BEGIN
       SELECT channel INTO ord_channel FROM product_orders WHERE id = pre_order.order_id;
       IF pre_order.status <> 'COMPLETED' THEN
         RAISE EXCEPTION USING ERRCODE = '23514',
-          MESSAGE = 'An order line has a return case only after its goods were handed over, sold or delivered';
+          MESSAGE = 'A pre-order line has a return case only after its goods were handed over and sold (an online line: delivered)';
       END IF;
       handover := CASE WHEN ord_channel = 'ONLINE' THEN pre_order.delivered_at ELSE pre_order.handed_over_at END;
     ELSE
