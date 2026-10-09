@@ -135,7 +135,7 @@ test('schedule actions follow MANAGE_WORK_SCHEDULE at the branch; pay needs the 
     managed.includes(vi.collaboratorWork.payNoPermission),
     'no pay field without pay permission',
   );
-  assert.doesNotMatch(managed, /id="edit-w1-pay"|inputMode="numeric"/);
+  assert.doesNotMatch(managed, /id="edit-w1-pay"/);
   const payManager = employee([
     ['MANAGE_WORK_SCHEDULE', A],
     ['MANAGE_EMPLOYEE_PAY', A],

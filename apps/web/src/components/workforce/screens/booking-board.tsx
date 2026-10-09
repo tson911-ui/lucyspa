@@ -19,6 +19,7 @@ import {
   branchTime,
   matchesSearch,
 } from '../../../lib/workforce/booking-board';
+import { formatDate } from '../../../lib/workforce/format';
 import { toolbarLabels } from '../../../lib/workforce/list-view';
 import type { resolveEndBody } from '../../../lib/workforce/visit-completion';
 import { reasonBody } from '../../../lib/workforce/visit-completion';
@@ -245,6 +246,7 @@ export function BookingBoardScreen() {
   }
   const zone = board?.branch.timezone ?? 'UTC';
   const time = (iso: string) => branchTime(iso, zone, locale);
+  const onlyBranch = allowed.length === 1 ? allowed[0] : null;
   const visible = board?.bookings.filter((booking) => matchesSearch(booking, search)) ?? [];
   const loading = !board && !loadError;
   const serviceName = (line: OperationalActiveVisitLine) =>
@@ -252,12 +254,24 @@ export function BookingBoardScreen() {
 
   return (
     <>
-      <PageHeader title={t.bookingBoard.title} intro={t.bookingBoard.intro} />
+      <PageHeader
+        title={t.bookingBoard.title}
+        intro={
+          onlyBranch
+            ? fill(t.bookingBoard.introBranch, { branch: onlyBranch.name })
+            : t.bookingBoard.intro
+        }
+      />
       <ListToolbar
         labels={toolbarLabels(t)}
         activeFilters={search ? 1 : 0}
         resultCount={
-          board ? fill(t.bookingBoard.date, { date: board.date, time: time(board.now) }) : undefined
+          board
+            ? fill(t.bookingBoard.date, {
+                date: formatDate(board.date, locale),
+                time: time(board.now),
+              })
+            : undefined
         }
         onReset={() => setSearch('')}
         reload={{ label: t.bookingBoard.refresh, onClick: () => void load(false) }}
@@ -272,13 +286,15 @@ export function BookingBoardScreen() {
           />
         }
         filters={
-          <Select
-            id="board-branch"
-            aria-label={t.bookingBoard.branch}
-            value={branchId}
-            options={allowed.map((branch) => ({ value: branch.id, label: branch.name }))}
-            onChange={(event) => setBranchId(event.target.value)}
-          />
+          onlyBranch ? undefined : (
+            <Select
+              id="board-branch"
+              aria-label={t.bookingBoard.branch}
+              value={branchId}
+              options={allowed.map((branch) => ({ value: branch.id, label: branch.name }))}
+              onChange={(event) => setBranchId(event.target.value)}
+            />
+          )
         }
       />
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}

@@ -7,7 +7,7 @@ import {
   type OnlineStaffReturnCase,
 } from '@lucy-spa/contracts';
 import {
-  DateInput,
+  DateTextInput,
   DescriptionList,
   Field,
   FormDialog,
@@ -451,7 +451,7 @@ export function DeliveredDialog({ order, onClose, onDone, onConflict }: DialogPr
             full
           >
             {(control) => (
-              <DateInput
+              <DateTextInput
                 {...control}
                 max={latestDeliveryDay()}
                 value={day}

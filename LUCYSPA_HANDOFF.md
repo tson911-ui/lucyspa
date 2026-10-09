@@ -807,3 +807,7 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - Plan, screen list, problem list, design direction and the one built sample (the invoice board `/workforce/pos`): `docs/UI_POLISH_GROUP2_POS.md`. UI only, no migration, no API change.
 - Shared kit change: optional `hidePhone` column flag on `DataTable` (only the invoice board uses it). Open Owner questions in section 7 of the doc (row hover vs rule 4, date format, status filter, invoice detail order, phone list style).
 - Scratch data/recipes: `.local/polish2/` (seed-visits.mjs, shots.mjs); stack from `.local/polish1/` (API 3101, web 3100, DB `lucy_spa_polish1_scratch`).
+
+### UI polish group 2, Owner decisions (2026-10-09)
+
+- Owner approved the invoice-board sample and the order, and decided: (1) row hover follows rule 4 in ALL staff tables (solid #782b37, white text and icons; dark = existing pink accent); (2) staff date inputs are dd/mm/yyyy; (3) keep the status filter and add an accent-insensitive search on the invoice board; (4) payment block at the top of the invoice detail; (5) compact rows on the phone list. Then every remaining counter screen is polished (UI only). Recorded in `docs/UI_POLISH_GROUP2_POS.md` section 8.

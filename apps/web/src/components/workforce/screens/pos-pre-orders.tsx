@@ -333,6 +333,7 @@ export function ProductOrderCard({
         }
       />
       <DescriptionList
+        columns={2}
         items={[
           { label: d.card.code, value: order.code },
           {

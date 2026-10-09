@@ -12,7 +12,7 @@ import {
   Card,
   CardHeader,
   DataTable,
-  DateInput,
+  DateTextInput,
   Field as KitField,
   FormDialog,
   FormGrid,
@@ -348,14 +348,14 @@ function BranchAttendance() {
         }
         filters={
           <>
-            <DateInput
+            <DateTextInput
               id="att-from"
               aria-label={t.common.from}
               title={t.common.from}
               value={filters.from}
               onChange={(event) => setFilters({ ...filters, from: event.target.value })}
             />
-            <DateInput
+            <DateTextInput
               id="att-to"
               aria-label={t.common.to}
               title={t.common.to}

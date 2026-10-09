@@ -17,6 +17,7 @@ import {
   Field,
   FormDialog,
   FormGrid,
+  MoneyInput,
   Select,
   Textarea,
   TextInput,
@@ -130,14 +131,10 @@ export function LineDialog({
             {...(problem === 'price' ? { error: t.pos.invalidPrice } : {})}
           >
             {(control) => (
-              <TextInput
-                {...control}
-                className="ls-input-number"
-                inputMode="numeric"
-                autoComplete="off"
-                maxLength={18}
+              <VndInput
+                control={control}
                 value={input.price}
-                onChange={(event) => setInput({ ...input, price: event.target.value })}
+                onChange={(price) => setInput({ ...input, price })}
               />
             )}
           </Field>
@@ -333,6 +330,30 @@ export function PayerDialog({
   );
 }
 
+/**
+ * An amount in whole đồng typed with thousands separators ("329.000"): the screens keep the digits as a string, as before, so the
+ * request the dialog builds is unchanged. An empty field is "".
+ */
+function VndInput({
+  control,
+  value,
+  onChange,
+}: {
+  control: object;
+  value: string;
+  onChange: (digits: string) => void;
+}) {
+  const number = value === '' ? null : Number(value);
+  return (
+    <MoneyInput
+      {...control}
+      unit="₫"
+      value={number !== null && Number.isSafeInteger(number) ? number : null}
+      onValueChange={(next) => onChange(next === null ? '' : String(next))}
+    />
+  );
+}
+
 /** Cash: the credited amount (default the whole cash-collectable balance) and what was handed over. */
 export function CashDialog({
   balance,
@@ -394,15 +415,10 @@ export function CashDialog({
           {...(problem === 'amount' ? { error: t.pos.invalidAmount } : {})}
         >
           {(control) => (
-            <TextInput
-              {...control}
-              className="ls-input-number"
-              inputMode="numeric"
-              autoComplete="off"
-              maxLength={18}
+            <VndInput
+              control={control}
               value={input.amount}
-              onChange={(event) => {
-                const amount = event.target.value;
+              onChange={(amount) => {
                 // Keep "exact tender" while the cashier has not typed a different tender.
                 setInput((current) => ({
                   amount,
@@ -421,14 +437,10 @@ export function CashDialog({
               : {})}
         >
           {(control) => (
-            <TextInput
-              {...control}
-              className="ls-input-number"
-              inputMode="numeric"
-              autoComplete="off"
-              maxLength={18}
+            <VndInput
+              control={control}
               value={input.tendered}
-              onChange={(event) => setInput({ ...input, tendered: event.target.value })}
+              onChange={(tendered) => setInput({ ...input, tendered })}
             />
           )}
         </Field>
@@ -496,17 +508,7 @@ export function PayosDialog({
           hint={t.pos.amountHint}
           {...(problem ? { error: t.pos.invalidAmount } : {})}
         >
-          {(control) => (
-            <TextInput
-              {...control}
-              className="ls-input-number"
-              inputMode="numeric"
-              autoComplete="off"
-              maxLength={18}
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-            />
-          )}
+          {(control) => <VndInput control={control} value={amount} onChange={setAmount} />}
         </Field>
       </FormGrid>
     </FormDialog>

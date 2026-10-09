@@ -115,6 +115,37 @@ test('DataTable: a hidePhone column is marked for the phone card list only; othe
   assert.doesNotMatch(markup, /<td[^>]*ls-hide-md|ls-hide-lg|ls-hide-xl/, 'no width is hidden');
 });
 
+test('DataTable: phoneRows="compact" marks the table, and phoneEmphasis the field that keeps the text color; cards stay the default', () => {
+  const columns = [
+    { key: 'a', header: 'Mã', mobileTitle: true, cell: () => 'INV-1' },
+    { key: 'b', header: 'Khách', phoneEmphasis: true, cell: () => 'Hoàng Thị Lan' },
+  ];
+  const compact = html(
+    <DataTable
+      paging={{ off: 'test' }}
+      mode="server"
+      phoneRows="compact"
+      columns={columns}
+      rows={[{ id: '1' }]}
+      rowKey={(row) => row.id}
+      caption="t"
+    />,
+  );
+  assert.match(compact, /<table class="ls-table ls-table-compact"/);
+  assert.match(compact, /<td[^>]*ls-phone-emphasis[^>]*data-label="Khách"/);
+  const cards = html(
+    <DataTable
+      paging={{ off: 'test' }}
+      mode="server"
+      columns={columns}
+      rows={[{ id: '1' }]}
+      rowKey={(row) => row.id}
+      caption="t"
+    />,
+  );
+  assert.doesNotMatch(cards, /ls-table-compact/);
+});
+
 test('DataTable: a leading picture column has a hidden heading, no card label, and MediaThumb keeps its square without a picture', () => {
   const markup = html(
     <DataTable

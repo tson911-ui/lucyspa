@@ -493,6 +493,22 @@ export function PosInvoiceScreen({ id }: { id: string }) {
         </Notice>
       ) : null}
 
+      {/* The payment block leads the page (Owner, 2026-10-09): what is owed and how to collect it come before the lines. */}
+      {invoice.status !== 'DRAFT' &&
+      (invoice.payments.length > 0 || invoice.status === 'PENDING_PAYMENT') ? (
+        <PosPaymentsSection
+          invoice={invoice}
+          working={working}
+          onCollect={() => setOverlay({ kind: 'cash' })}
+          onCreatePayos={() => setOverlay({ kind: 'payos' })}
+          onReverse={(paymentId) => setOverlay({ kind: 'reverse', paymentId })}
+          onRefreshPayos={(paymentId) => void refreshPayos(paymentId)}
+          onCancelPayos={(paymentId) => void cancelPayos(paymentId)}
+          onReviewAnomaly={(anomalyId) => setOverlay({ kind: 'anomaly', anomalyId })}
+          onAddNote={() => setOverlay({ kind: 'note' })}
+        />
+      ) : null}
+
       {productOnly ? null : (
         <Card as="section">
           <CardHeader title={comboSale ? c.invoice.linesTitle : t.pos.linesTitle} />
@@ -577,21 +593,6 @@ export function PosInvoiceScreen({ id }: { id: string }) {
         onFind={() => setOverlay({ kind: 'payer' })}
         onSetPayer={(payerUserId) => void setPayer(payerUserId)}
       />
-
-      {invoice.status !== 'DRAFT' &&
-      (invoice.payments.length > 0 || invoice.status === 'PENDING_PAYMENT') ? (
-        <PosPaymentsSection
-          invoice={invoice}
-          working={working}
-          onCollect={() => setOverlay({ kind: 'cash' })}
-          onCreatePayos={() => setOverlay({ kind: 'payos' })}
-          onReverse={(paymentId) => setOverlay({ kind: 'reverse', paymentId })}
-          onRefreshPayos={(paymentId) => void refreshPayos(paymentId)}
-          onCancelPayos={(paymentId) => void cancelPayos(paymentId)}
-          onReviewAnomaly={(anomalyId) => setOverlay({ kind: 'anomaly', anomalyId })}
-          onAddNote={() => setOverlay({ kind: 'note' })}
-        />
-      ) : null}
 
       {overlay?.kind === 'pre-order-contact' ? (
         <PreOrderContactDialog

@@ -5,7 +5,7 @@ import {
   Button,
   ConfirmDialog,
   DataTable,
-  DateInput,
+  DateTextInput,
   Field as KitField,
   FormDrawer,
   FormGrid,
@@ -115,7 +115,7 @@ export function CollaboratorScheduleScreen() {
         }
         filters={
           <>
-            <DateInput
+            <DateTextInput
               id="work-from"
               aria-label={texts.from}
               title={texts.from}
@@ -124,7 +124,7 @@ export function CollaboratorScheduleScreen() {
                 setRange((current) => ({ ...current, from: event.target.value }))
               }
             />
-            <DateInput
+            <DateTextInput
               id="work-to"
               aria-label={texts.to}
               title={texts.to}
@@ -432,7 +432,7 @@ export function WorkDrawer({
           {...(past ? { hint: texts.reasonHint } : {})}
         >
           {(control) => (
-            <DateInput
+            <DateTextInput
               {...control}
               value={form.workDate}
               onChange={(event) => {

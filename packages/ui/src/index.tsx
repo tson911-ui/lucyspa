@@ -119,6 +119,7 @@ export {
   Checkbox,
   Combobox,
   DateInput,
+  DateTextInput,
   Field,
   FormActions,
   FormSection,

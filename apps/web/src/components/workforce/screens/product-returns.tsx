@@ -217,14 +217,6 @@ export function ProductReturnsList({
       cell: (item) => item.quantity,
     },
     {
-      key: 'reason',
-      header: l.columns.reason,
-      truncate: true,
-      width: 'md',
-      hideBelow: 'lg',
-      cell: (item) => text.reasons[item.reason],
-    },
-    {
       key: 'wanted',
       header: l.columns.wanted,
       hideBelow: '2xl',
@@ -242,6 +234,14 @@ export function ProductReturnsList({
       header: l.columns.openedAt,
       hideBelow: 'xl',
       cell: (item) => formatDateTime(item.openedAt, ZONE, locale),
+    },
+    {
+      key: 'reason',
+      header: l.columns.reason,
+      truncate: true,
+      width: 'md',
+      hideBelow: '2xl',
+      cell: (item) => text.reasons[item.reason],
     },
     {
       key: 'openedBy',
@@ -1046,7 +1046,7 @@ export function ProductReturnCaseView({
           }
         >
           {item.events.length === 0 ? (
-            <Empty>{v.historyEmpty}</Empty>
+            <p className="ls-hint">{v.historyEmpty}</p>
           ) : (
             <DescriptionList
               columns={1}
@@ -1434,7 +1434,7 @@ function PhotosSection({
           </Notice>
         ) : null}
         {photos.length === 0 ? (
-          <Empty>{v.photosEmpty}</Empty>
+          <p className="ls-hint">{v.photosEmpty}</p>
         ) : (
           <MediaGrid label={v.photos}>
             {photos.map((photo, index) => (

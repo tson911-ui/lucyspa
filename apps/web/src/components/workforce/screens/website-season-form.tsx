@@ -16,6 +16,7 @@ import {
   Breadcrumbs,
   Card,
   Cluster,
+  DateTextInput,
   DescriptionList,
   Field,
   focusFirstInvalid,
@@ -372,9 +373,8 @@ function SeasonFormBody({ id, back }: { id: string | null; back: string }) {
                   error={error('startDate')}
                 >
                   {(control) => (
-                    <TextInput
+                    <DateTextInput
                       {...control}
-                      type="date"
                       value={form.startDate}
                       onChange={(event) => change({ startDate: event.target.value })}
                     />
@@ -387,9 +387,8 @@ function SeasonFormBody({ id, back }: { id: string | null; back: string }) {
                   error={error('lastDate')}
                 >
                   {(control) => (
-                    <TextInput
+                    <DateTextInput
                       {...control}
-                      type="date"
                       value={form.lastDate}
                       onChange={(event) => change({ lastDate: event.target.value })}
                     />

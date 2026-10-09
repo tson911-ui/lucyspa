@@ -188,9 +188,12 @@ test('hover is one theme: every interactive control reads the solid hover tokens
     assert.match(body, /background:\s*var\(--ls-hover-bg\)/, `${selector} fill`);
     assert.match(body, /color:\s*var\(--ls-hover-text\)/, `${selector} text`);
   }
-  // Rows (and the phone card rows) are the documented exception.
+  // A row of a customer table keeps the subtle tint; a row of a staff table is the same solid rule (Owner, 2026-10-09).
   assert.match(rule('.ls-table tbody tr:hover td'), /background:\s*var\(--ls-row-hover-bg\)/);
   assert.doesNotMatch(rule('.ls-table tbody tr:hover td'), /--ls-hover-bg/);
+  const staffRow = rule('.ls-shell .ls-table tbody tr:hover td');
+  assert.match(staffRow, /background:\s*var\(--ls-hover-bg\)/);
+  assert.match(staffRow, /color:\s*var\(--ls-hover-text\)/);
   // Destructive controls use the solid rule in the danger color.
   assert.match(
     rule(".ls-btn-danger-outline:hover:not([aria-disabled='true']):not(:disabled)"),

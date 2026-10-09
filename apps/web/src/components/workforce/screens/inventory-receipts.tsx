@@ -16,7 +16,7 @@ import {
   Combobox,
   ConfirmDialog,
   DataTable,
-  DateInput,
+  DateTextInput,
   DescriptionList,
   FacetedFilter,
   Field,
@@ -758,7 +758,7 @@ function ReceiptFormBody({
                 error={checked && errors.receiptDate ? text.errors.fields.receiptDate : undefined}
               >
                 {(control) => (
-                  <DateInput
+                  <DateTextInput
                     {...control}
                     value={draft.receiptDate}
                     onChange={(event) => set({ receiptDate: event.target.value })}
@@ -868,7 +868,7 @@ function ReceiptFormBody({
                     </Field>
                     <Field label={f.expiry} error={issues.expiryDate ? f.expiryPast : undefined}>
                       {(control) => (
-                        <DateInput
+                        <DateTextInput
                           {...control}
                           min={today}
                           value={line.expiryDate}

@@ -4,7 +4,7 @@ import type { BranchSummary, IncomePeriod, MyIncomeResponse } from '@lucy-spa/co
 import {
   Cluster,
   DataTable,
-  DateInput,
+  DateTextInput,
   DescriptionList,
   IconButton,
   ListSection,
@@ -56,7 +56,7 @@ export function MyIncomeScreen() {
               disabled={!anchor}
               onClick={() => anchor && setDate(shiftAnchor(anchor, period, -1))}
             />
-            <DateInput
+            <DateTextInput
               id="income-date"
               aria-label={texts.date}
               title={texts.date}

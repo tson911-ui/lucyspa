@@ -43,7 +43,7 @@
   --ls-season-line-w: 2px;
   /* Hover (Owner rule, one source for the whole app: menus, options, tabs, segments, pager, buttons,
      theme switch, sidebar): the solid brand fill with its on-brand text. Light = #782b37 + white. The
-     one exception is a whole table row, which keeps a subtle tint (--ls-row-hover-*) for readability. */
+     staff table rows included (Owner, 2026-10-09); only a row of a customer table keeps a subtle tint (--ls-row-hover-*). */
   --ls-hover-bg: #782b37;
   --ls-hover-text: #ffffff;
   --ls-hover-border: #782b37;

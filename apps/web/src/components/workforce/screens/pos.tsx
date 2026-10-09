@@ -3,10 +3,11 @@
 import type { InvoiceOpenedResponse, PosBoardResponse } from '@lucy-spa/contracts';
 import {
   DataTable,
-  DateInput,
+  DateTextInput,
   ListSection,
   ListToolbar,
   RowActions,
+  SearchInput,
   Select,
   type DataTableColumn,
 } from '@lucy-spa/ui';
@@ -22,6 +23,7 @@ import { paginationLabels, toolbarLabels } from '../../../lib/workforce/list-vie
 import {
   boardStamp,
   invoiceContent,
+  invoiceMatchesSearch,
   invoiceTone,
   posBranches,
   posErrorMessage,
@@ -51,6 +53,7 @@ export function PosScreen() {
   const [branchId, setBranchId] = useState('');
   const [date, setDate] = useState('');
   const [status, setStatus] = useState<BoardInvoice['status'] | ''>('');
+  const [query, setQuery] = useState('');
   const [board, setBoard] = useState<PosBoardResponse | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
   const [opening, setOpening] = useState<string | null>(null);
@@ -128,7 +131,7 @@ export function PosScreen() {
   const onlyBranch = allowed.length === 1 ? allowed[0] : null;
   const intro = onlyBranch ? fill(t.pos.introBranch, { branch: onlyBranch.name }) : t.pos.intro;
   const invoices = (board?.invoices ?? []).filter(
-    (invoice) => !status || invoice.status === status,
+    (invoice) => (!status || invoice.status === status) && invoiceMatchesSearch(invoice, query),
   );
 
   const awaitingColumns: DataTableColumn<Awaiting>[] = [
@@ -136,6 +139,7 @@ export function PosScreen() {
     {
       key: 'guests',
       header: t.pos.guests,
+      phoneEmphasis: true,
       truncate: true,
       width: 'lg',
       cell: (visit) => visit.participants.join(', '),
@@ -198,6 +202,7 @@ export function PosScreen() {
       // The customer comes right after the code on every width: it is what the cashier looks for first.
       key: 'payer',
       header: t.pos.customer,
+      phoneEmphasis: true,
       truncate: true,
       width: 'lg',
       cell: (invoice) => invoice.payerName ?? t.pos.guestShort,
@@ -240,6 +245,8 @@ export function PosScreen() {
       key: 'actions',
       header: t.common.actions,
       actions: true,
+      // The code is the link to the invoice, so the one-item menu is left out of the phone row, which gives the code its room.
+      hidePhone: true,
       cell: (invoice) => (
         <RowActions
           menuLabel={fill(t.common.list.actionsFor, { name: invoice.code })}
@@ -277,24 +284,40 @@ export function PosScreen() {
       </PageHeader>
       <ListToolbar
         labels={toolbarLabels(t)}
-        activeFilters={(date ? 1 : 0) + (status ? 1 : 0)}
+        activeFilters={(date ? 1 : 0) + (status ? 1 : 0) + (query ? 1 : 0)}
         resultCount={t.pos.windowNote}
-        onReset={() => (setDate(''), setStatus(''))}
+        onReset={() => (setDate(''), setStatus(''), setQuery(''))}
         reload={{ label: t.pos.refresh, onClick: () => void load(false) }}
         search={
-          onlyBranch ? undefined : (
-            <Select
-              id="pos-branch"
-              aria-label={t.pos.branch}
-              value={branchId}
-              options={allowed.map((branch) => ({ value: branch.id, label: branch.name }))}
-              onChange={(event) => (setBranchId(event.target.value), setDate(''), setStatus(''))}
-            />
-          )
+          <SearchInput
+            id="pos-search"
+            value={query}
+            label={t.pos.boardSearch}
+            placeholder={t.pos.boardSearch}
+            clearLabel={t.common.list.clearSearch}
+            onSearch={(value) => {
+              setQuery(value);
+              setInvoicesPaging((current) => ({ ...current, page: 1 }));
+            }}
+          />
         }
         filters={
           <>
-            <DateInput
+            {onlyBranch ? null : (
+              <Select
+                id="pos-branch"
+                aria-label={t.pos.branch}
+                value={branchId}
+                options={allowed.map((branch) => ({ value: branch.id, label: branch.name }))}
+                onChange={(event) => (
+                  setBranchId(event.target.value),
+                  setDate(''),
+                  setStatus(''),
+                  setQuery('')
+                )}
+              />
+            )}
+            <DateTextInput
               id="pos-date"
               aria-label={t.pos.date}
               title={t.pos.date}
@@ -333,6 +356,7 @@ export function PosScreen() {
             caption={fill(t.common.list.table, { list: t.pos.awaitingTitle })}
             columns={awaitingColumns}
             rows={board?.awaiting ?? []}
+            phoneRows="compact"
             rowKey={(visit) => visit.visitId}
             loading={loading}
             loadingLabel={t.common.loading}
@@ -351,11 +375,14 @@ export function PosScreen() {
           caption={fill(t.common.list.table, { list: t.pos.invoicesTitle })}
           columns={invoiceColumns}
           rows={invoices}
+          phoneRows="compact"
           rowKey={(invoice) => invoice.id}
           loading={loading}
           loadingLabel={t.common.loading}
           empty={
-            board ? <Empty>{status ? t.pos.statusEmpty : t.pos.invoicesEmpty}</Empty> : undefined
+            board ? (
+              <Empty>{status || query ? t.pos.statusEmpty : t.pos.invoicesEmpty}</Empty>
+            ) : undefined
           }
           paging={{
             ...invoicesPaging,

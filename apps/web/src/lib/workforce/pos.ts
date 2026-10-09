@@ -13,6 +13,7 @@ import type {
 } from '@lucy-spa/contracts';
 import type { Locale } from '../../i18n/locales';
 import type { WorkforceDictionary } from '../../i18n/workforce';
+import { matchesQuery } from '../search-core';
 import { ApiError } from './api';
 import { formatVnd, isVndInput } from './format';
 import { canAt } from './permissions';
@@ -78,6 +79,33 @@ export function invoiceContent(
   const units = String(invoice.products?.quantity ?? 0);
   if (invoice.kind === 'PRODUCT_SALE') return t.pos.typeProducts.replace('{count}', units);
   return invoice.products ? t.pos.typeServiceProducts.replace('{count}', units) : t.pos.typeService;
+}
+
+/**
+ * Whether a board invoice matches what the cashier typed: its code, the customer's name, the visit code or the combo's
+ * name, ignoring accents and case. The board does not carry phone numbers, so a phone cannot be matched here.
+ */
+export function invoiceMatchesSearch(
+  invoice: {
+    code: string;
+    payerName: string | null;
+    visitCode: string | null;
+    comboName: { vi: string; en: string } | null;
+  },
+  query: string,
+): boolean {
+  return matchesQuery(
+    [
+      invoice.code,
+      invoice.payerName,
+      invoice.visitCode,
+      invoice.comboName?.vi,
+      invoice.comboName?.en,
+    ]
+      .filter(Boolean)
+      .join(' '),
+    query,
+  );
 }
 
 export function invoiceTone(

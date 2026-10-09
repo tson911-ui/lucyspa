@@ -219,34 +219,43 @@ export function WalkInScreen() {
   }
 
   const adults = guardians(people);
+  // One branch: its name leads the intro and the picker is not needed (it also cut long names short).
+  const onlyBranch = allowed.length === 1 ? allowed[0] : null;
   const serviceById = new Map((options?.services ?? []).map((service) => [service.id, service]));
   const taken = new Set(
     people.flatMap((person) => (person.customerUserId ? [person.customerUserId] : [])),
   );
   return (
-    <Page width="form">
-      <PageHeader title={t.walkIn.title} intro={t.walkIn.intro} />
+    <Page>
+      <PageHeader
+        title={t.walkIn.title}
+        intro={
+          onlyBranch ? fill(t.walkIn.introBranch, { branch: onlyBranch.name }) : t.walkIn.intro
+        }
+      />
       {optionsError ? <Notice tone="error">{boardErrorMessage(optionsError, t)}</Notice> : null}
       {!options && !optionsError ? <Loading t={t} /> : null}
       <form noValidate onSubmit={(event) => void submit(event)} aria-label={t.walkIn.title}>
         <Stack gap="block">
           <Card>
             <Stack gap="page">
-              <FormGrid>
-                <Field label={t.walkIn.branch}>
-                  {(control) => (
-                    <Select
-                      {...control}
-                      value={branchId}
-                      options={allowed.map((branch) => ({
-                        value: branch.id,
-                        label: branch.name,
-                      }))}
-                      onChange={(event) => (reset(), setBranchId(event.target.value))}
-                    />
-                  )}
-                </Field>
-              </FormGrid>
+              {onlyBranch ? null : (
+                <FormGrid>
+                  <Field label={t.walkIn.branch}>
+                    {(control) => (
+                      <Select
+                        {...control}
+                        value={branchId}
+                        options={allowed.map((branch) => ({
+                          value: branch.id,
+                          label: branch.name,
+                        }))}
+                        onChange={(event) => (reset(), setBranchId(event.target.value))}
+                      />
+                    )}
+                  </Field>
+                </FormGrid>
+              )}
 
               <FormSection
                 title={t.walkIn.people}
@@ -279,7 +288,7 @@ export function WalkInScreen() {
                   </>
                 }
               >
-                {people.length === 0 ? <Empty>{t.walkIn.needPeople}</Empty> : null}
+                {people.length === 0 ? <p className="ls-hint">{t.walkIn.needPeople}</p> : null}
                 {options && options.services.length === 0 ? (
                   <Empty>{t.walkIn.noServices}</Empty>
                 ) : null}

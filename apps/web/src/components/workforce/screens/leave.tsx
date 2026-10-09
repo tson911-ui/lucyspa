@@ -11,7 +11,7 @@ import {
   Button,
   ConfirmDialog,
   DataTable,
-  DateInput,
+  DateTextInput,
   DescriptionList,
   Field as KitField,
   FormDialog,
@@ -245,7 +245,7 @@ function LeaveRequestDialog({
         </KitField>
         <KitField label={t.leave.startDate} required requiredLabel={t.common.required}>
           {(control) => (
-            <DateInput
+            <DateTextInput
               {...control}
               value={form.startDate}
               onChange={(event) =>
@@ -269,7 +269,7 @@ function LeaveRequestDialog({
               : {})}
         >
           {(control) => (
-            <DateInput
+            <DateTextInput
               {...control}
               min={form.startDate || undefined}
               value={form.endDate}

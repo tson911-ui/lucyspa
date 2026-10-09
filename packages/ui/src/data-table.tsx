@@ -31,6 +31,8 @@ export interface DataTableColumn<Row> {
   hideBelow?: 'md' | 'lg' | 'xl' | '2xl' | undefined;
   /** Left out of the phone card list (a field that adds little next to the title); every other width shows it. */
   hidePhone?: boolean | undefined;
+  /** In a `phoneRows="compact"` list: the field that stays in the normal text color (the others are muted), e.g. the customer. */
+  phoneEmphasis?: boolean | undefined;
   /** The card title on a phone: shown first, larger, without its label. */
   mobileTitle?: boolean | undefined;
   /** The trailing "Actions" column: heading visually hidden but present, cells right aligned. */
@@ -111,6 +113,7 @@ export function DataTable<Row>({
   empty,
   selectedKey,
   sortLabels,
+  phoneRows = 'cards',
   className,
 }: {
   columns: readonly DataTableColumn<Row>[];
@@ -138,6 +141,12 @@ export function DataTable<Row>({
    * user sorts). `ascending` / `descending` take a `{column}` placeholder. Without it there is none.
    */
   sortLabels?: DataTableSortLabels | undefined;
+  /**
+   * What a row becomes on a phone: `cards` (default, every field with its label) or `compact` (one list surface; the title, the
+   * numeric column and the row menu on the first line, the other fields without labels on the second). For a list a cashier
+   * scans quickly, whose fields explain themselves (a name, a status, an amount).
+   */
+  phoneRows?: 'cards' | 'compact' | undefined;
   className?: string | undefined;
 }) {
   const [ownSort, setOwnSort] = useState<SortState | null>(defaultSort);
@@ -215,7 +224,13 @@ export function DataTable<Row>({
         </div>
       ) : null}
       <div className="ls-table-wrap" aria-busy={loading || undefined}>
-        <table className={cx('ls-table', loading && !showSkeleton && 'ls-table-refreshing')}>
+        <table
+          className={cx(
+            'ls-table',
+            phoneRows === 'compact' && 'ls-table-compact',
+            loading && !showSkeleton && 'ls-table-refreshing',
+          )}
+        >
           <caption className="ls-visually-hidden">{caption}</caption>
           <thead>
             <tr>
@@ -376,5 +391,6 @@ function cellClass<Row>(column: DataTableColumn<Row>): string {
     column.hideBelow === 'xl' && 'ls-hide-xl',
     column.hideBelow === '2xl' && 'ls-hide-2xl',
     column.hidePhone && 'ls-hide-phone',
+    column.phoneEmphasis && 'ls-phone-emphasis',
   );
 }

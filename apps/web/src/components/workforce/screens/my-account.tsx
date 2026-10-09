@@ -8,7 +8,7 @@ import type {
 import {
   Button,
   DataTable,
-  DateInput,
+  DateTextInput,
   DescriptionList,
   Field as KitField,
   FormDialog,
@@ -354,7 +354,7 @@ export function ProfileDialog({
               requiredLabel={t.common.required}
             >
               {(control) => (
-                <DateInput
+                <DateTextInput
                   {...control}
                   value={form.dateOfBirth}
                   onChange={(event) => set('dateOfBirth', event.target.value)}

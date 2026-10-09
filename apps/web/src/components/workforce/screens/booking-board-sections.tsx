@@ -26,7 +26,7 @@ import { fill } from '../../../i18n/workforce';
 import { stateTone } from '../../../lib/workforce/booking-board';
 import { paginationLabels } from '../../../lib/workforce/list-view';
 import { useWorkforce } from '../session';
-import { Badge, Empty } from '../ui';
+import { Badge } from '../ui';
 import type { BoardCommand } from './booking-board-dialogs';
 
 type Time = (iso: string) => string;
@@ -200,22 +200,26 @@ export function BookingsSection({
   ];
   return (
     <ListSection title={b.bookings}>
-      <DataTable
-        mode="client"
-        caption={fill(t.common.list.table, { list: b.bookings })}
-        columns={columns}
-        rows={bookings}
-        rowKey={(booking) => booking.id}
-        loading={loading}
-        loadingLabel={t.common.loading}
-        empty={empty ? <Empty>{empty}</Empty> : undefined}
-        paging={{
-          ...paging,
-          onPageChange: (page) => setPaging((current) => ({ ...current, page })),
-          onPageSizeChange: (pageSize) => setPaging({ page: 1, pageSize }),
-          labels: paginationLabels(t, b.bookings),
-        }}
-      />
+      {empty && !loading && bookings.length === 0 ? (
+        // Nothing to do here is one quiet line, not a boxed empty state.
+        <p className="ls-hint">{empty}</p>
+      ) : (
+        <DataTable
+          mode="client"
+          caption={fill(t.common.list.table, { list: b.bookings })}
+          columns={columns}
+          rows={bookings}
+          rowKey={(booking) => booking.id}
+          loading={loading}
+          loadingLabel={t.common.loading}
+          paging={{
+            ...paging,
+            onPageChange: (page) => setPaging((current) => ({ ...current, page })),
+            onPageSizeChange: (pageSize) => setPaging({ page: 1, pageSize }),
+            labels: paginationLabels(t, b.bookings),
+          }}
+        />
+      )}
     </ListSection>
   );
 }
@@ -296,7 +300,8 @@ export function ActiveSection({
       key: 'timing',
       header: b.timing,
       hideBelow: 'xl',
-      truncate: true,
+      wrap: true,
+      width: 'lg',
       cell: (row) =>
         row.line?.execution
           ? fill(b.runningSince, {
@@ -356,22 +361,25 @@ export function ActiveSection({
   const rows = activeRows(board?.activeVisits ?? []);
   return (
     <ListSection title={b.active}>
-      <DataTable
-        mode="client"
-        caption={fill(t.common.list.table, { list: b.active })}
-        columns={columns}
-        rows={rows}
-        rowKey={(row) => row.key}
-        loading={loading}
-        loadingLabel={t.common.loading}
-        empty={board ? <Empty>{b.activeEmpty}</Empty> : undefined}
-        paging={{
-          ...paging,
-          onPageChange: (page) => setPaging((current) => ({ ...current, page })),
-          onPageSizeChange: (pageSize) => setPaging({ page: 1, pageSize }),
-          labels: paginationLabels(t, b.active),
-        }}
-      />
+      {board && rows.length === 0 ? (
+        <p className="ls-hint">{b.activeEmpty}</p>
+      ) : (
+        <DataTable
+          mode="client"
+          caption={fill(t.common.list.table, { list: b.active })}
+          columns={columns}
+          rows={rows}
+          rowKey={(row) => row.key}
+          loading={loading}
+          loadingLabel={t.common.loading}
+          paging={{
+            ...paging,
+            onPageChange: (page) => setPaging((current) => ({ ...current, page })),
+            onPageSizeChange: (pageSize) => setPaging({ page: 1, pageSize }),
+            labels: paginationLabels(t, b.active),
+          }}
+        />
+      )}
     </ListSection>
   );
 }
@@ -519,22 +527,25 @@ export function PoolSection({
   ];
   return (
     <ListSection title={b.pool}>
-      <DataTable
-        mode="client"
-        caption={fill(t.common.list.table, { list: b.pool })}
-        columns={columns}
-        rows={board?.waitingPool ?? []}
-        rowKey={(entry) => entry.participantId}
-        loading={loading}
-        loadingLabel={t.common.loading}
-        empty={board ? <Empty>{b.poolEmpty}</Empty> : undefined}
-        paging={{
-          ...paging,
-          onPageChange: (page) => setPaging((current) => ({ ...current, page })),
-          onPageSizeChange: (pageSize) => setPaging({ page: 1, pageSize }),
-          labels: paginationLabels(t, b.pool),
-        }}
-      />
+      {board && board.waitingPool.length === 0 ? (
+        <p className="ls-hint">{b.poolEmpty}</p>
+      ) : (
+        <DataTable
+          mode="client"
+          caption={fill(t.common.list.table, { list: b.pool })}
+          columns={columns}
+          rows={board?.waitingPool ?? []}
+          rowKey={(entry) => entry.participantId}
+          loading={loading}
+          loadingLabel={t.common.loading}
+          paging={{
+            ...paging,
+            onPageChange: (page) => setPaging((current) => ({ ...current, page })),
+            onPageSizeChange: (pageSize) => setPaging({ page: 1, pageSize }),
+            labels: paginationLabels(t, b.pool),
+          }}
+        />
+      )}
     </ListSection>
   );
 }
@@ -551,7 +562,7 @@ export function QueueSection({
   const b = t.bookingBoard;
   return (
     <ListSection title={b.queue}>
-      {board && board.queue.length === 0 ? <Empty>{b.queueEmpty}</Empty> : null}
+      {board && board.queue.length === 0 ? <p className="ls-hint">{b.queueEmpty}</p> : null}
       {board && board.queue.length > 0 ? (
         <Grid min="md">
           {board.queue.map((ktv) => (

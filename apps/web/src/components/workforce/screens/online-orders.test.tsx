@@ -450,8 +450,8 @@ test('the shipment correction asks for the cost only when the order carries it',
 test('the delivered dialog has an optional day that cannot be after today', () => {
   const html = render(<DeliveredDialog order={shipped()} {...props} />, owner);
   assert.match(html, re(text.delivered.day));
-  assert.match(html, /type="date"/);
-  assert.match(html, /max="\d{4}-\d{2}-\d{2}"/);
+  // Typed as dd/mm/yyyy; the field itself refuses a day after today (see date-text-input.test.tsx in the UI package).
+  assert.match(html, /placeholder="dd\/mm\/yyyy"/);
 });
 
 test('the log dialog offers only what the parcel allows', () => {

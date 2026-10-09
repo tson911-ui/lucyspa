@@ -9,7 +9,7 @@ import {
   CheckField,
   ConfirmDialog,
   DataTable,
-  DateInput,
+  DateTextInput,
   DescriptionList,
   Field,
   FormDialog,
@@ -178,7 +178,7 @@ export function ProfileDialog({
         </Field>
         <Field label={texts.dateOfBirth} required>
           {(control) => (
-            <DateInput
+            <DateTextInput
               {...control}
               value={form.dateOfBirth}
               onChange={(event) => set('dateOfBirth', event.target.value)}
@@ -423,7 +423,7 @@ export function PromoteDialog({
           {...(ownerOnly ? { error: texts.backdateOwnerOnly } : {})}
         >
           {(control) => (
-            <DateInput
+            <DateTextInput
               {...control}
               value={date}
               onChange={(event) => setDate(event.target.value)}
@@ -513,7 +513,7 @@ export function EndDialog({
           {...(ownerOnly ? { error: texts.backdateOwnerOnly } : {})}
         >
           {(control) => (
-            <DateInput
+            <DateTextInput
               {...control}
               value={date}
               onChange={(event) => setDate(event.target.value)}

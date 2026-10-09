@@ -18,6 +18,12 @@ import {
 import { IconButton } from './button';
 import { cx } from './cx';
 import {
+  isoToDayMonthYear,
+  isWithinRange,
+  maskDayMonthYear,
+  readTypedDate,
+} from './date-text-core';
+import {
   createDebouncer,
   describedBy,
   filterOptions,
@@ -200,6 +206,76 @@ export function NumberInput({ invalid, className, ...rest }: Omit<InputBase, 'ty
 /** `YYYY-MM-DD`. Business dates are interpreted in the branch timezone by the caller. */
 export function DateInput(props: Omit<InputBase, 'type'>) {
   return <TextInput {...props} type="date" />;
+}
+
+/**
+ * A date typed as `dd/mm/yyyy` (staff screens; the native date field follows the browser language and shows mm/dd/yyyy in
+ * English). The value and what `onChange` reports in `event.target.value` stay an ISO date (`YYYY-MM-DD`, or '' when empty),
+ * so a caller reads it exactly as it read the native field. A date is reported only once it is whole, real and inside
+ * `min`/`max`; while it is half typed nothing is reported and the field keeps the text, and on leaving it shows the
+ * caller's current date again, so the text on screen is always the date the screen uses.
+ */
+export function DateTextInput({
+  value,
+  min,
+  max,
+  onChange,
+  onBlur,
+  onFocus,
+  invalid,
+  className,
+  placeholder = 'dd/mm/yyyy',
+  ...rest
+}: Omit<InputBase, 'type' | 'value' | 'min' | 'max'> & {
+  /** ISO date or ''. */
+  value: string;
+  min?: string | undefined;
+  max?: string | undefined;
+}) {
+  const [text, setText] = useState(() => isoToDayMonthYear(value));
+  const focused = useRef(false);
+  // A date set by the screen (a "previous day" button, a reset) shows at once, unless the person is typing.
+  useEffect(() => {
+    if (!focused.current) setText(isoToDayMonthYear(value));
+  }, [value]);
+  const typed = readTypedDate(text);
+  const outOfRange = typed !== null && typed !== '' && !isWithinRange(typed, min, max);
+  return (
+    <TextInput
+      {...rest}
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      maxLength={10}
+      placeholder={placeholder}
+      value={text}
+      invalid={invalid || outOfRange}
+      className={className}
+      onFocus={(event) => {
+        focused.current = true;
+        onFocus?.(event);
+      }}
+      onBlur={(event) => {
+        focused.current = false;
+        setText(isoToDayMonthYear(value));
+        onBlur?.(event);
+      }}
+      onChange={(event) => {
+        const raw = event.target.value;
+        const iso = readTypedDate(raw);
+        setText(iso ? isoToDayMonthYear(iso) : maskDayMonthYear(raw));
+        if (iso === null || (iso !== '' && !isWithinRange(iso, min, max))) return;
+        // The caller reads event.target.value: hand it the same event with the ISO date as the value.
+        const target = { value: iso, id: event.target.id, name: event.target.name };
+        onChange?.(
+          Object.create(event, {
+            target: { value: target },
+            currentTarget: { value: target },
+          }) as ChangeEvent<HTMLInputElement>,
+        );
+      }}
+    />
+  );
 }
 
 /** `HH:mm`. */

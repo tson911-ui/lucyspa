@@ -845,15 +845,18 @@ export function OnlineOrderDetailView({
             ) : undefined
           }
         >
-          <DataTable
-            caption={fill(t.common.list.table, { list: d.log })}
-            columns={logColumns}
-            rows={order.logs}
-            rowKey={(log) => log.id}
-            loadingLabel={t.common.loading}
-            empty={<Empty>{d.logEmpty}</Empty>}
-            paging={logPaging}
-          />
+          {order.logs.length === 0 ? (
+            <p className="ls-hint">{d.logEmpty}</p>
+          ) : (
+            <DataTable
+              caption={fill(t.common.list.table, { list: d.log })}
+              columns={logColumns}
+              rows={order.logs}
+              rowKey={(log) => log.id}
+              loadingLabel={t.common.loading}
+              paging={logPaging}
+            />
+          )}
         </ListSection>
         {order.returns.length > 0 ? (
           <ListSection title={d.returns}>

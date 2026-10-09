@@ -9,7 +9,7 @@ import {
   Breadcrumbs,
   Card,
   CheckField,
-  DateInput,
+  DateTextInput,
   Field,
   FormActions,
   FormGrid,
@@ -223,7 +223,7 @@ export function EmployeeCreateForm({
                   </Field>
                   <Field label={texts.fields.dateOfBirth} required>
                     {(control) => (
-                      <DateInput
+                      <DateTextInput
                         {...control}
                         min="1900-01-01"
                         invalid={invalid('dateOfBirth')}
@@ -336,7 +336,7 @@ export function EmployeeCreateForm({
                     hint={texts.startHint}
                   >
                     {(control) => (
-                      <DateInput
+                      <DateTextInput
                         {...control}
                         min="2000-01-01"
                         max="2100-12-31"

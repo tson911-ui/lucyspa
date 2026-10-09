@@ -23,7 +23,7 @@ import { formatDateTime, formatVnd } from '../../../lib/workforce/format';
 import { paginationLabels } from '../../../lib/workforce/list-view';
 import { formatCountdown, remainingMs } from '../../../lib/workforce/pos';
 import { useWorkforce } from '../session';
-import { Badge, Empty, Notice, type Tone } from '../ui';
+import { Badge, Notice, type Tone } from '../ui';
 
 type Note = InvoiceResponse['managementNotes'][number];
 
@@ -194,15 +194,18 @@ export function PosPaymentsSection({
             {fill(t.pos.payosHeld, { amount: formatVnd(invoice.pendingProviderVnd, locale) })}
           </Notice>
         ) : null}
-        <DataTable
-          mode="client"
-          caption={fill(t.common.list.table, { list: t.pos.paymentTitle })}
-          columns={columns}
-          rows={invoice.payments}
-          rowKey={(payment) => payment.id}
-          empty={<Empty>{t.pos.noPayments}</Empty>}
-          paging={{ ...paging, labels: paginationLabels(t, t.pos.paymentTitle) }}
-        />
+        {invoice.payments.length === 0 ? (
+          <p className="ls-hint">{t.pos.noPayments}</p>
+        ) : (
+          <DataTable
+            mode="client"
+            caption={fill(t.common.list.table, { list: t.pos.paymentTitle })}
+            columns={columns}
+            rows={invoice.payments}
+            rowKey={(payment) => payment.id}
+            paging={{ ...paging, labels: paginationLabels(t, t.pos.paymentTitle) }}
+          />
+        )}
       </Card>
 
       {pendingPayment ? (
@@ -540,15 +543,18 @@ function NotesCard({
           ) : undefined
         }
       />
-      <DataTable
-        mode="client"
-        caption={fill(t.common.list.table, { list: t.pos.noteTitle })}
-        columns={columns}
-        rows={notes}
-        rowKey={(note) => note.id}
-        empty={<Empty>{t.pos.noNotes}</Empty>}
-        paging={{ ...paging, labels: paginationLabels(t, t.pos.noteTitle) }}
-      />
+      {notes.length === 0 ? (
+        <p className="ls-hint">{t.pos.noNotes}</p>
+      ) : (
+        <DataTable
+          mode="client"
+          caption={fill(t.common.list.table, { list: t.pos.noteTitle })}
+          columns={columns}
+          rows={notes}
+          rowKey={(note) => note.id}
+          paging={{ ...paging, labels: paginationLabels(t, t.pos.noteTitle) }}
+        />
+      )}
     </Card>
   );
 }

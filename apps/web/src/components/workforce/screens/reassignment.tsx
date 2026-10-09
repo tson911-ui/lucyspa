@@ -10,7 +10,7 @@ import type {
 import {
   CursorPagination,
   DataTable,
-  DateInput,
+  DateTextInput,
   ListToolbar,
   RowActions,
   Select,
@@ -294,7 +294,7 @@ export function ReassignmentScreen() {
           }
           filters={
             <>
-              <DateInput
+              <DateTextInput
                 id="reassignment-from"
                 aria-label={r.from}
                 title={r.from}
@@ -302,7 +302,7 @@ export function ReassignmentScreen() {
                 disabled={saving}
                 onChange={(event) => setFrom(event.target.value)}
               />
-              <DateInput
+              <DateTextInput
                 id="reassignment-to"
                 aria-label={r.to}
                 title={r.to}

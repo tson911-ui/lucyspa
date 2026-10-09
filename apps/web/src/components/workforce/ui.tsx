@@ -275,7 +275,7 @@ export {
   Checkbox,
   Combobox,
   ConfirmDialog,
-  DateInput,
+  DateTextInput,
   Dialog,
   Drawer,
   FormActions,

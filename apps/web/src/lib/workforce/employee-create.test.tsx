@@ -232,7 +232,7 @@ test('7–8, 13. the request: start date, branches, no salary or account fields'
   )) {
     assert.ok(markup.includes(label), label);
   }
-  assert.match(markup, /min="2000-01-01"[^>]*type="date"/);
+  assert.match(markup, /placeholder="dd\/mm\/yyyy"/);
   assert.match(inputTag(markup, 'new-branches', 'A'), /type="checkbox"/);
   assert.match(inputTag(markup, 'new-branches', 'B'), /type="checkbox"/);
   assert.doesNotMatch(markup, /value="C"/, 'inactive branches are not offered');

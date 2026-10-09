@@ -1662,6 +1662,7 @@ const vi = {
   bookingBoard: {
     title: 'Lịch hẹn hôm nay',
     intro: 'Lịch hẹn của chi nhánh trong ngày (theo giờ chi nhánh), khách đến và hàng chờ.',
+    introBranch: '{branch}: lịch hẹn trong ngày (theo giờ chi nhánh), khách đến và hàng chờ.',
     branch: 'Chi nhánh',
     noBranch: 'Bạn chưa có quyền xem lịch hẹn ở chi nhánh nào.',
     date: 'Ngày {date} · cập nhật lúc {time}',
@@ -2068,7 +2069,8 @@ const vi = {
     typeService: 'Dịch vụ',
     typeServiceProducts: 'Dịch vụ + {count} sản phẩm',
     typeProducts: '{count} sản phẩm',
-    statusEmpty: 'Không có hóa đơn nào ở trạng thái này.',
+    statusEmpty: 'Không có hóa đơn nào khớp.',
+    boardSearch: 'Tìm mã hóa đơn hoặc tên khách',
     refresh: 'Tải lại',
     awaitingTitle: 'Lượt khách chờ lập hóa đơn',
     awaitingEmpty: 'Không có lượt khách nào đang chờ lập hóa đơn.',
@@ -2213,7 +2215,7 @@ const vi = {
     voucherRemoved: 'Đã bỏ mã ưu đãi.',
     paymentTitle: 'Thanh toán',
     paymentNote:
-      'Thu tiền mặt hoặc chuyển khoản qua mã QR PayOS. Có thể thu từng phần (chia nhiều lần, ví dụ một phần tiền mặt, một phần chuyển khoản); tiền thối do hệ thống tính.',
+      'Thu tiền mặt hoặc quét mã QR PayOS. Có thể thu nhiều lần; tiền thối do hệ thống tính.',
     paidLabel: 'Đã thu',
     balanceLabel: 'Còn phải thu',
     noPayments: 'Chưa có khoản thu nào.',
@@ -2330,7 +2332,9 @@ const vi = {
   walkIn: {
     title: 'Khách vãng lai',
     intro:
-      'Ghi nhận khách đến không đặt lịch. Có nhân viên phù hợp đang rảnh thì xếp ngay; nếu chưa, khách vào danh sách chờ.',
+      'Ghi nhận khách đến không đặt lịch: có nhân viên rảnh thì xếp ngay, chưa thì vào danh sách chờ.',
+    introBranch:
+      '{branch}: ghi nhận khách đến không đặt lịch, có nhân viên rảnh thì xếp ngay, chưa thì vào danh sách chờ.',
     branch: 'Chi nhánh',
     noBranch: 'Bạn chưa có quyền tiếp nhận khách ở chi nhánh nào.',
     people: 'Khách',
@@ -4276,6 +4280,7 @@ const en: Dictionary = {
   bookingBoard: {
     title: 'Bookings today',
     intro: 'The branch bookings of the day (branch time), arrivals and the queue.',
+    introBranch: '{branch}: the bookings of the day (branch time), arrivals and the queue.',
     branch: 'Branch',
     noBranch: 'You may not view bookings at any branch yet.',
     date: '{date} · updated at {time}',
@@ -4691,7 +4696,8 @@ const en: Dictionary = {
     typeService: 'Services',
     typeServiceProducts: 'Services + {count} products',
     typeProducts: '{count} products',
-    statusEmpty: 'No invoice has this status.',
+    statusEmpty: 'No invoice matches.',
+    boardSearch: 'Search by invoice code or customer name',
     refresh: 'Refresh',
     awaitingTitle: 'Visits awaiting an invoice',
     awaitingEmpty: 'No visit is waiting for an invoice.',
@@ -4835,7 +4841,7 @@ const en: Dictionary = {
     voucherRemoved: 'The voucher code was removed.',
     paymentTitle: 'Payment',
     paymentNote:
-      'Cash or a PayOS QR bank transfer. A payment can be partial (split over several, for example part cash and part transfer); change is calculated by the system.',
+      'Cash or a PayOS QR code. A payment can be split over several; change is calculated by the system.',
     paidLabel: 'Paid',
     balanceLabel: 'Balance due',
     noPayments: 'No payment has been recorded.',
@@ -4952,7 +4958,9 @@ const en: Dictionary = {
   walkIn: {
     title: 'Walk-in',
     intro:
-      'Record customers who arrive without a booking. A suitable free staff member is assigned right away; otherwise the customer joins the waiting list.',
+      'Record customers who arrive without a booking: a free staff member is assigned right away, otherwise they join the waiting list.',
+    introBranch:
+      '{branch}: record customers who arrive without a booking; a free staff member is assigned right away, otherwise they join the waiting list.',
     branch: 'Branch',
     noBranch: 'You may not take walk-ins at any branch yet.',
     people: 'Customers',

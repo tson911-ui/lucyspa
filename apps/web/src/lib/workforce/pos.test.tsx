@@ -27,6 +27,7 @@ import {
   cancelBody,
   changePreview,
   invoiceContent,
+  invoiceMatchesSearch,
   hasPriceRange,
   hasQuantity,
   formatCountdown,
@@ -705,7 +706,12 @@ test('cash dialog: starts from the cash balance with exact tender, one Cancel th
     employee([['VIEW_INVOICES', 'A']]),
     'en',
   );
-  assert.equal(html.match(/value="80000"/g)?.length, 2, 'amount and tendered start at the balance');
+  // The amounts show with thousands separators (80.000); the request still carries the digits.
+  assert.equal(
+    html.match(/value="80.000"/g)?.length,
+    2,
+    'amount and tendered start at the balance',
+  );
   assert.ok(html.includes(en.pos.collectTitle));
   assert.ok(html.indexOf(en.common.cancel) < html.indexOf(en.pos.collect), 'primary last');
   assert.ok(html.includes('inputMode="numeric"') || html.includes('inputmode="numeric"'));
@@ -723,7 +729,7 @@ test('PayOS dialog: the amount defaults to the whole balance and the rules are s
     employee([['VIEW_INVOICES', 'A']]),
     'en',
   );
-  assert.ok(html.includes('value="200000"'));
+  assert.ok(html.includes('value="200.000"'));
   assert.ok(html.includes(en.pos.payosNote));
   assert.ok(html.includes(en.pos.payosCreate));
 });
@@ -806,6 +812,29 @@ test('board contents: services, products, both, and a combo with its name in the
   assert.equal(invoiceContent(combo, en, 'en', 'Combo sale'), 'Combo sale: Ten sessions');
   // The visit code is not part of the line: it is long and the same code is on the invoice itself.
   assert.ok(!invoiceContent({ ...visit }, vi, 'vi', 'x').includes('VS-'));
+});
+
+test('the board search matches the code, the customer, the visit code or the combo, ignoring accents and case', () => {
+  const invoice = {
+    code: 'INV-261009-5CSB55',
+    payerName: 'Hoàng Thị Lan',
+    visitCode: 'VS-G2-3',
+    comboName: null,
+  };
+  assert.ok(invoiceMatchesSearch(invoice, ''));
+  assert.ok(invoiceMatchesSearch(invoice, 'inv-261009-5csb'));
+  assert.ok(invoiceMatchesSearch(invoice, 'hoang thi lan'));
+  assert.ok(invoiceMatchesSearch(invoice, 'LAN hoàng'));
+  assert.ok(invoiceMatchesSearch(invoice, 'vs-g2'));
+  assert.ok(!invoiceMatchesSearch(invoice, 'nguyen'));
+  const combo = {
+    code: 'INV-1',
+    payerName: null,
+    visitCode: null,
+    comboName: { vi: 'Combo gội đầu', en: 'Hair wash set' },
+  };
+  assert.ok(invoiceMatchesSearch(combo, 'goi dau'));
+  assert.ok(invoiceMatchesSearch(combo, 'hair'));
 });
 
 test('a cancelled password confirmation is explained, not a generic failure', () => {

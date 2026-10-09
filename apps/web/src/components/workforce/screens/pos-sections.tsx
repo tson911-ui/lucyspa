@@ -25,7 +25,7 @@ import { giftText } from '../../../lib/workforce/birthday';
 import { formatDate, formatVnd } from '../../../lib/workforce/format';
 import { paginationLabels } from '../../../lib/workforce/list-view';
 import { useWorkforce } from '../session';
-import { Badge, Empty, Notice } from '../ui';
+import { Badge, Notice } from '../ui';
 
 type Candidate = InvoiceResponse['discount']['candidates'][number];
 
@@ -179,7 +179,7 @@ export function DiscountCard({ invoice, title }: { invoice: InvoiceResponse; tit
             : ''}
         </Notice>
       ) : (
-        <Empty>{t.pos.discountNone}</Empty>
+        <p className="ls-hint">{t.pos.discountNone}</p>
       )}
       {birthday ? (
         <Notice tone={birthday.applied ? 'success' : 'info'}>
@@ -289,15 +289,19 @@ export function VouchersCard({
           ) : undefined
         }
       />
-      <DataTable
-        mode="client"
-        caption={fill(t.common.list.table, { list: t.pos.voucherTitle })}
-        columns={columns}
-        rows={invoice.discount.vouchers}
-        rowKey={(voucher) => voucher.id}
-        empty={<Empty>{t.pos.voucherNone}</Empty>}
-        paging={{ ...paging, labels: paginationLabels(t, t.pos.voucherTitle) }}
-      />
+      {invoice.discount.vouchers.length === 0 ? (
+        // Nothing entered is one quiet line, not a boxed empty state.
+        <p className="ls-hint">{t.pos.voucherNone}</p>
+      ) : (
+        <DataTable
+          mode="client"
+          caption={fill(t.common.list.table, { list: t.pos.voucherTitle })}
+          columns={columns}
+          rows={invoice.discount.vouchers}
+          rowKey={(voucher) => voucher.id}
+          paging={{ ...paging, labels: paginationLabels(t, t.pos.voucherTitle) }}
+        />
+      )}
     </Card>
   );
 }

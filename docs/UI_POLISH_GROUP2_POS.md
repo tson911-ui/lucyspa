@@ -3,7 +3,7 @@
 Chỉ đổi giao diện. Không đổi nghiệp vụ, API, cơ sở dữ liệu hay dữ liệu. Luật nền: mục "UI design rules" và "UX quality gate" trong `CLAUDE.md`
 (đỏ `#782b37` + trắng, không vàng, giữ chữ và logo hiện có). Đã dùng skill `frontend-design` để nâng bố cục, thứ bậc thông tin và lời văn, không đổi thương hiệu.
 
-Trạng thái: **bản mẫu một màn hình (Bảng hóa đơn) đã làm, chờ chủ duyệt hướng**. Commit cục bộ, chưa push, chưa deploy. Các màn hình còn lại chưa đụng.
+Trạng thái: **chủ đã duyệt bản mẫu và thứ tự (2026-10-09), kèm 5 quyết định ở mục 8**; làm tiếp mọi màn hình quầy còn lại, không dừng giữa các màn hình. Commit cục bộ, chưa push, chưa deploy.
 
 ## 1. Danh sách màn hình của quầy
 
@@ -129,3 +129,15 @@ Không có migration, không đổi API, không có quyền mới, không đổi
 5. **Thứ tự các lượt** ở mục 4 (đề xuất của tôi): giữ hay đổi?
 6. **Bản mẫu này:** duyệt để làm tiếp, hay sửa gì?
 7. **Danh sách trên điện thoại:** muốn một kiểu dòng gọn hơn (mã + khách + tiền trong hai dòng) cho thu ngân dùng điện thoại, thay vì thẻ 4 dòng? Cần thay đổi thẻ của `DataTable` dùng chung, nên chỉ làm khi chủ muốn.
+
+## 8. Quyết định của chủ (2026-10-09, nguyên văn rút gọn) và cách làm
+
+Chủ duyệt bản mẫu Bảng hóa đơn và thứ tự ở mục 4 (câu hỏi 5, 6), rồi quyết định:
+
+1. **Hover hàng bảng (câu hỏi 1):** áp luật 4 cho **mọi bảng nhân viên**: chế độ sáng nền đỏ đặc `#782b37`, chữ trắng, biểu tượng (⋮, v.v.) cũng trắng; chế độ tối dùng màu hồng nhấn của chế độ tối. Kiểm lại mọi bảng nhân viên vẫn đọc tốt.
+2. **Ô ngày của nhân viên (câu hỏi 2):** nhập `dd/mm/yyyy` như trang đăng ký của khách.
+3. **Bảng hóa đơn (câu hỏi 3):** giữ bộ lọc trạng thái và **thêm ô tìm** (mã hóa đơn, tên hoặc số điện thoại khách, không phân biệt dấu).
+4. **Chi tiết hóa đơn (câu hỏi 4):** đưa khối thanh toán lên đầu trang.
+5. **Danh sách trên điện thoại (câu hỏi 7):** dòng gọn thay cho thẻ 4 dòng.
+
+Sau đó: làm mọi màn hình quầy còn lại theo thứ tự mục 4 (chi tiết hóa đơn, hộp thoại bán sản phẩm/combo, thanh toán và PayOS, trả hàng/đổi hàng/hoàn tiền, hàng đặt trước, đơn online, nhận khách/lịch hẹn và mọi thứ khác ở quầy), chỉ đổi giao diện; rồi đẩy `main`, chờ CI xanh, viết hướng dẫn deploy như nhóm 1. Chủ không muốn server bị đụng.
