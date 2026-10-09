@@ -1,12 +1,6 @@
 import type { PublicSiteResponse } from '@lucy-spa/contracts';
 import Link from 'next/link';
-import {
-  BrandIcon,
-  BrandWordmark,
-  buttonClass,
-  SiteFooter,
-  type FooterColumn,
-} from '@lucy-spa/ui';
+import { BrandIcon, BrandWordmark, buttonClass, SiteFooter, type FooterColumn } from '@lucy-spa/ui';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import { fill } from '../../lib/fill';

@@ -111,7 +111,9 @@ export async function fetchPublicCampaigns(locale: Locale, fetcher: typeof fetch
 export async function fetchOnlineOpen(fetcher: typeof fetch = fetch): Promise<boolean> {
   const answer = await read('/api/v1/online-sales', fetcher);
   const body = answer?.status === 200 ? answer.body : null;
-  return typeof body === 'object' && body !== null && (body as { enabled?: unknown }).enabled === true;
+  return (
+    typeof body === 'object' && body !== null && (body as { enabled?: unknown }).enabled === true
+  );
 }
 
 /**

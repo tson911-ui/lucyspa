@@ -1,55 +1,13 @@
-import type {
-  PublicService,
-  PublicServiceDetailResponse,
-  PublicServicesResponse,
-} from '@lucy-spa/contracts';
-import { buttonClass, Icon, Notice, PublicPage, Reveal } from '@lucy-spa/ui';
+import type { PublicServiceDetailResponse, PublicServicesResponse } from '@lucy-spa/contracts';
+import { buttonClass, Notice, PublicPage } from '@lucy-spa/ui';
 import Link from 'next/link';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
-import {
-  bookServiceHref,
-  serviceEstimate,
-  serviceHref,
-  servicePrice,
-} from '../../lib/public-site-core';
+import { bookServiceHref, serviceEstimate, servicePrice } from '../../lib/public-site-core';
 import { PageBack } from '../navigation/page-back';
 import { LoadNotice } from './home-sections';
+import { ServiceRow, ServicesList } from './services-list';
 import { PublicBreadcrumbs } from './public-breadcrumbs';
-
-/** One service as a card: name (a link to its page), estimated time, price, a short description and the booking action. */
-export function ServiceCard({
-  locale,
-  service,
-  level = 3,
-}: {
-  locale: Locale;
-  service: PublicService;
-  level?: 2 | 3;
-}) {
-  const text = getSiteText(locale).services;
-  const Heading = level === 2 ? 'h2' : 'h3';
-  return (
-    <article className="ls-service-card">
-      <Heading className="ls-site-h3">
-        <Link href={serviceHref(locale, service.code)} title={service.name}>
-          <span className="ls-service-name">{service.name}</span>
-        </Link>
-      </Heading>
-      <p className="ls-service-meta">
-        <Icon name="clock" />
-        <span>
-          {text.estimate}: {serviceEstimate(service, locale)}
-        </span>
-      </p>
-      <p className="ls-service-price">{servicePrice(service, locale)}</p>
-      {service.description ? <p className="ls-service-text">{service.description}</p> : null}
-      <Link className={buttonClass('primary')} href={bookServiceHref(locale, service.code)}>
-        {text.book}
-      </Link>
-    </article>
-  );
-}
 
 /** The "← Back" button of the service pages: back to where the visitor came from, else the list (detail) or the home (list). */
 function ServicesBack({ locale }: { locale: Locale }) {
@@ -91,47 +49,33 @@ export function ServicesView({
         <Notice tone="info">{text.services.empty}</Notice>
       ) : (
         <>
-          <nav className="ls-pills" aria-label={text.services.groupsLabel}>
-            <Link href={base} aria-current={group === '' ? 'true' : undefined}>
-              {text.services.all}
-            </Link>
-            {data.groups.map((entry) => (
-              <Link
-                key={entry.code}
-                href={`${base}?group=${encodeURIComponent(entry.code)}`}
-                aria-current={group === entry.code ? 'true' : undefined}
-              >
-                {entry.name}
+          <ServicesList locale={locale} groups={shown}>
+            <nav className="ls-pills" aria-label={text.services.groupsLabel}>
+              <Link href={base} aria-current={group === '' ? 'true' : undefined}>
+                {text.services.all}
               </Link>
-            ))}
-          </nav>
-          {shown.map((entry) => (
-            <section
-              key={entry.code}
-              className="ls-service-section"
-              aria-labelledby={`group-${entry.code}`}
-            >
-              <Reveal>
-                <h2 className="ls-site-h2-sub" id={`group-${entry.code}`}>
+              {data.groups.map((entry) => (
+                <Link
+                  key={entry.code}
+                  href={`${base}?group=${encodeURIComponent(entry.code)}`}
+                  aria-current={group === entry.code ? 'true' : undefined}
+                >
                   {entry.name}
-                </h2>
-              </Reveal>
-              <div className="ls-service-grid">
-                {entry.services.map((service, index) => (
-                  <Reveal key={service.code} index={index}>
-                    <ServiceCard locale={locale} service={service} />
-                  </Reveal>
-                ))}
-              </div>
-            </section>
-          ))}
+                </Link>
+              ))}
+            </nav>
+          </ServicesList>
         </>
       )}
     </PublicPage>
   );
 }
 
-/** One service on its own page: facts, description, the booking action and the other services of its group. */
+/**
+ * One service on its own page: its facts (time and price), the description, the booking action, and the other services of its
+ * group beside it (under it on a phone). The page uses the site's full width like every other page; the text keeps its own
+ * measure.
+ */
 export function ServiceDetailView({
   locale,
   detail,
@@ -152,7 +96,6 @@ export function ServiceDetailView({
     <PublicPage
       title={service.name}
       lead={text.services.detailLead}
-      width="narrow"
       back={<ServicesBack locale={locale} />}
     >
       <div className="ls-detail">
@@ -167,51 +110,49 @@ export function ServiceDetailView({
             { label: service.name },
           ]}
         />
-        <article className="ls-site-card">
-          <dl className="ls-detail-facts">
-            <div>
-              <dt>{text.services.groupsLabel}</dt>
-              <dd>{group.name}</dd>
+        <div className="ls-detail-grid">
+          <article className="ls-site-card ls-detail-main">
+            <dl className="ls-detail-facts">
+              <div>
+                <dt>{text.services.estimate}</dt>
+                <dd>{serviceEstimate(service, locale)}</dd>
+              </div>
+              <div>
+                <dt>{text.services.price}</dt>
+                <dd className="ls-detail-price">{servicePrice(service, locale)}</dd>
+              </div>
+            </dl>
+            {service.description ? <p className="ls-detail-copy">{service.description}</p> : null}
+            <p className="ls-detail-note">
+              {service.pricingUnit === 'PER_NAIL'
+                ? text.services.perNailNote
+                : text.services.priceNote}
+            </p>
+            <div className="ls-site-actions">
+              <Link
+                className={buttonClass('primary', 'lg')}
+                href={bookServiceHref(locale, service.code)}
+              >
+                {text.services.book}
+              </Link>
+              <Link className={buttonClass('secondary', 'lg')} href={`/${locale}/services`}>
+                {text.services.back}
+              </Link>
             </div>
-            <div>
-              <dt>{text.services.estimate}</dt>
-              <dd>{serviceEstimate(service, locale)}</dd>
-            </div>
-            <div>
-              <dt>{text.services.price}</dt>
-              <dd>{servicePrice(service, locale)}</dd>
-            </div>
-          </dl>
-          {service.description ? <p className="ls-detail-copy">{service.description}</p> : null}
-          <p className="ls-detail-note">
-            {service.pricingUnit === 'PER_NAIL'
-              ? text.services.perNailNote
-              : text.services.priceNote}
-          </p>
-          <div className="ls-site-actions">
-            <Link
-              className={buttonClass('primary', 'lg')}
-              href={bookServiceHref(locale, service.code)}
-            >
-              {text.services.book}
-            </Link>
-            <Link className={buttonClass('secondary', 'lg')} href={`/${locale}/services`}>
-              {text.services.back}
-            </Link>
-          </div>
-        </article>
-        {related.length > 0 ? (
-          <section aria-labelledby="related-title">
-            <h2 className="ls-site-h2-sub" id="related-title">
-              {text.services.related}
-            </h2>
-            <div className="ls-service-grid">
-              {related.map((entry) => (
-                <ServiceCard key={entry.code} locale={locale} service={entry} />
-              ))}
-            </div>
-          </section>
-        ) : null}
+          </article>
+          {related.length > 0 ? (
+            <section className="ls-detail-related" aria-labelledby="related-title">
+              <h2 className="ls-site-h2-sub" id="related-title">
+                {text.services.related}
+              </h2>
+              <ul className="ls-svc-list">
+                {related.map((entry) => (
+                  <ServiceRow key={entry.code} locale={locale} service={entry} />
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </div>
       </div>
     </PublicPage>
   );

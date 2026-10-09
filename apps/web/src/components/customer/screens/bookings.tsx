@@ -14,7 +14,9 @@ import {
   ConfirmDialog,
   DataTable,
   DescriptionList,
+  EmptyState,
   ErrorState,
+  Icon,
   ListSection,
   Notice,
   Page,
@@ -187,12 +189,14 @@ function BookingsTable({
       ),
     },
   ];
+  // One branch only: a column that says the same thing on every row is left out.
+  const oneBranch = new Set(items.map((item) => item.branch.name)).size <= 1;
   return (
     <DataTable
       mode="client"
       className="ls-cards-one-line"
       caption={fill(w.common.list.table, { list: listName })}
-      columns={columns}
+      columns={oneBranch ? columns.filter((column) => column.key !== 'branch') : columns}
       rows={items}
       rowKey={(item) => item.id}
       empty={empty}
@@ -226,13 +230,15 @@ export function CustomerHomeScreen() {
         <ListSection
           title={t.home.upcoming}
           actions={
-            <Link href={`${base}/bookings`} className={buttonClass('ghost')}>
+            <Link href={`${base}/bookings`} className={buttonClass('secondary')}>
               {t.home.viewAll}
             </Link>
           }
         >
           {list.error ? (
             <LoadState error={list.error} retry={list.retry} />
+          ) : list.data && list.data.upcoming.length === 0 ? (
+            <p className="ls-empty-line">{t.home.none}</p>
           ) : (
             <BookingsTable
               items={list.data ? list.data.upcoming.slice(0, 3) : []}
@@ -245,20 +251,46 @@ export function CustomerHomeScreen() {
           )}
         </ListSection>
       </Reveal>
-      <Reveal>
-        <Card as="section" aria-label={t.home.profile}>
-          <CardHeader title={t.home.profile} />
-          <DescriptionList
-            items={[
-              { label: t.home.name, value: account.displayName },
-              {
-                label: t.home.languagePref,
-                value: account.locale === 'vi' ? 'Tiếng Việt' : 'English',
-              },
-            ]}
-          />
-        </Card>
-      </Reveal>
+      <div className="ls-account-grid">
+        <Reveal>
+          <Card as="section" aria-label={t.home.profile}>
+            <CardHeader title={t.home.profile} />
+            <DescriptionList
+              items={[
+                { label: t.home.name, value: account.displayName },
+                {
+                  label: t.home.languagePref,
+                  value: account.locale === 'vi' ? 'Tiếng Việt' : 'English',
+                },
+              ]}
+            />
+          </Card>
+        </Reveal>
+        <Reveal>
+          <Card as="section" aria-label={t.home.hubTitle}>
+            <CardHeader title={t.home.hubTitle} />
+            <ul className="ls-hub">
+              {(
+                [
+                  ['calendar-check', t.home.hubBookings, `${base}/bookings`],
+                  ['receipt', t.home.hubInvoices, `${base}/invoices`],
+                  ['award', t.home.hubRewards, `${base}/loyalty`],
+                  ['cart', t.home.hubOrders, `${base}/orders`],
+                  ['bell', t.home.hubNotifications, `${base}/notifications`],
+                ] as const
+              ).map(([icon, label, href]) => (
+                <li key={href}>
+                  <Link href={href}>
+                    <Icon name={icon} aria-hidden="true" />
+                    <span>{label}</span>
+                    <Icon name="chevron-right" size={16} aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </Reveal>
+      </div>
     </Page>
   );
 }
@@ -277,24 +309,43 @@ export function CustomerBookingsScreen() {
           </Link>
         }
       />
-      {list.data ? (
+      {list.data && list.data.upcoming.length === 0 && list.data.history.length === 0 ? (
+        <EmptyState
+          icon="calendar-check"
+          action={
+            <Link href={`${base}/book`} className={buttonClass('primary')}>
+              {t.home.bookCta}
+            </Link>
+          }
+        >
+          {t.bookings.emptyAll}
+        </EmptyState>
+      ) : list.data ? (
         <>
           <Reveal>
             <ListSection title={t.bookings.upcoming}>
-              <BookingsTable
-                items={list.data.upcoming}
-                listName={t.bookings.upcoming}
-                empty={<Empty>{t.bookings.emptyUpcoming}</Empty>}
-              />
+              {list.data.upcoming.length === 0 ? (
+                <p className="ls-empty-line">{t.bookings.emptyUpcoming}</p>
+              ) : (
+                <BookingsTable
+                  items={list.data.upcoming}
+                  listName={t.bookings.upcoming}
+                  empty={<Empty>{t.bookings.emptyUpcoming}</Empty>}
+                />
+              )}
             </ListSection>
           </Reveal>
           <Reveal>
             <ListSection title={t.bookings.history}>
-              <BookingsTable
-                items={list.data.history}
-                listName={t.bookings.history}
-                empty={<Empty>{t.bookings.emptyHistory}</Empty>}
-              />
+              {list.data.history.length === 0 ? (
+                <p className="ls-empty-line">{t.bookings.emptyHistory}</p>
+              ) : (
+                <BookingsTable
+                  items={list.data.history}
+                  listName={t.bookings.history}
+                  empty={<Empty>{t.bookings.emptyHistory}</Empty>}
+                />
+              )}
             </ListSection>
           </Reveal>
         </>

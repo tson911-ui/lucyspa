@@ -7,7 +7,13 @@ export function CustomerNotificationsScreen() {
   const { account } = useCustomerAccount();
   return (
     <Page>
-      <NotificationInbox api={api} account={account} base={base} locale={locale} />
+      <NotificationInbox
+        api={api}
+        account={account}
+        base={base}
+        locale={locale}
+        audience="customer"
+      />
     </Page>
   );
 }

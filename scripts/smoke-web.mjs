@@ -47,7 +47,7 @@ async function main() {
   await root.body?.cancel();
 
   await Promise.all([
-    checkLocale('vi', /Chọn dịch vụ, chọn giờ còn trống/u, />Đặt lịch ngay</u),
+    checkLocale('vi', /Chọn dịch vụ, chọn giờ còn trống/u, />Đặt lịch</u),
     checkLocale('en', /Choose your services, pick a free time/u, />Book now</u),
   ]);
 

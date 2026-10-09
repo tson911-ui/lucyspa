@@ -307,11 +307,14 @@ export function NotificationInbox({
   account,
   base,
   locale,
+  audience = 'staff',
 }: {
   api: ApiClient;
   account: CurrentAccountResponse;
   base: string;
   locale: Locale;
+  /** A member reads the inbox in words about their own bookings and orders, not the staff's work. */
+  audience?: 'staff' | 'customer';
 }) {
   const t = getNotificationDictionary(locale);
   const w = getWorkforceDictionary(locale);
@@ -422,7 +425,7 @@ export function NotificationInbox({
 
   return (
     <>
-      <PageHeader title={t.title} intro={t.intro}>
+      <PageHeader title={t.title} intro={audience === 'customer' ? t.introCustomer : t.intro}>
         {!filters.archived ? (
           <Button
             variant="secondary"

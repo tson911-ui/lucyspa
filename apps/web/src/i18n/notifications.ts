@@ -53,6 +53,7 @@ interface InventoryTexts {
 const vi = {
   title: 'Thông báo',
   intro: 'Thông báo trong ứng dụng về lịch hẹn, dịch vụ và công việc của bạn.',
+  introCustomer: 'Tin về lịch hẹn, hóa đơn và đơn hàng của bạn tại Lucy Spa.',
   unread: 'Chưa đọc',
   read: 'Đã đọc',
   archivedBadge: 'Đã lưu trữ',
@@ -222,6 +223,7 @@ type Dictionary = {
 const en: Dictionary = {
   title: 'Notifications',
   intro: 'In-app updates about your bookings, service work and tasks.',
+  introCustomer: 'News about your appointments, invoices and orders at Lucy Spa.',
   unread: 'Unread',
   read: 'Read',
   archivedBadge: 'Archived',

@@ -224,10 +224,13 @@ export function ProductsView({
   data,
   state,
   campaigns = null,
+  onlineOpen = false,
 }: {
   locale: Locale;
   data: PublicProductsResponse | null;
   state: ProductsState;
+  /** "Bán online" is ON: only then do the campaign buttons use the Owner's words; otherwise they only lead to the sale. */
+  onlineOpen?: boolean;
   /** The campaigns running now (Wave 4 / P6-23); null when they could not be read or there is no news of them: nothing is drawn. */
   campaigns?: readonly PublicCampaign[] | null;
 }) {
@@ -249,7 +252,7 @@ export function ProductsView({
       <div className="ls-container">
         <ProductsBack locale={locale} />
         {sale ? (
-          <CampaignHero locale={locale} campaign={sale} />
+          <CampaignHero locale={locale} campaign={sale} onlineOpen={onlineOpen} />
         ) : hero ? (
           <section
             className={`ls-prod-hero${hero.image ? ' ls-prod-hero-image' : ''}`}
@@ -273,7 +276,9 @@ export function ProductsView({
             <p className="ls-lead">{t.lead}</p>
           </div>
         )}
-        {plain && !sale ? <CampaignStrips locale={locale} campaigns={campaigns} /> : null}
+        {plain && !sale ? (
+          <CampaignStrips locale={locale} campaigns={campaigns} onlineOpen={onlineOpen} />
+        ) : null}
         {data === null ? (
           <LoadNotice locale={locale} section={t.title} />
         ) : data.total === 0 &&

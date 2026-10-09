@@ -855,11 +855,8 @@ test('header tooltips open below the button and give way to the open account men
 });
 
 test('clickable cards share one gentle motion: lift, slight zoom, deeper shadow, a dip on press; none under reduced motion', () => {
-  for (const selector of [
-    '.ls-site-card',
-    '.ls-service-card',
-    '.ls-choice:not(.ls-choice-disabled)',
-  ]) {
+  // Only what can be clicked moves: product cards and booking choices, never a card that only holds information.
+  for (const selector of ['.ls-prod-card', '.ls-choice:not(.ls-choice-disabled)']) {
     assert.ok(css.includes(`${selector}:hover`), `${selector} hover`);
     assert.ok(css.includes(`${selector}:active`), `${selector} press`);
   }
@@ -1063,22 +1060,19 @@ test('the rhythm is stepped on the 4 px grid by width, never fluid; the site con
   assert.match(tokens, /--ls-site-max: 73rem;/);
 });
 
-test('service cards: five shared rows, a name that stops at two lines and a title link that stays a full-size target', () => {
-  assert.match(css, /\.ls-service-name \{[^}]*-webkit-line-clamp: 2;/);
+test('service rows: a link row with a leader, a separate booking button, and a toolbar of filter and search', () => {
   assert.match(
     css,
-    /\.ls-service-card h3 a \{\s*display: flex;\s*align-items: center;\s*min-height: var\(--ls-control-h\);/,
+    /\.ls-svc-row \{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) auto;/,
   );
+  assert.match(css, /\.ls-svc-main \{[^}]*min-height: var\(--ls-control-h\);/);
+  assert.match(css, /\.ls-svc-dots \{[^}]*border-bottom: 2px dotted var\(--ls-border-control\);/);
+  // A row answers the pointer with the brand tokens, price and time included (never a pale tint).
   assert.match(
     css,
-    /@supports \(grid-template-rows: subgrid\) \{\s*\.ls-service-grid > \.ls-reveal \{\s*display: grid;\s*grid-row: span 5;\s*grid-template-rows: subgrid;/,
+    /\.ls-svc-main:hover \{\s*background: var\(--ls-hover-bg\);\s*color: var\(--ls-hover-text\);/,
   );
-  assert.match(css, /\.ls-service-card > \.ls-btn \{\s*grid-row: 5;/);
-  // The reveal wrapper's flex fallback is declared BEFORE the subgrid rules, or it would win at equal specificity.
-  assert.ok(
-    css.indexOf('.ls-service-grid > .ls-reveal {\n  display: flex;') <
-      css.indexOf('grid-row: span 5;'),
-  );
+  assert.match(css, /\.ls-svc-toolbar \{\s*display: grid;/);
   // Group and why-us cards share three rows (head, list or text, link).
   assert.match(
     css,
@@ -1107,7 +1101,6 @@ test('public form fields are pills like the buttons; a multi-line field keeps a 
 
 test('phones: the service filter is one scrolling row, and cards sit 24 px apart', () => {
   assert.match(css, /@media \(max-width: 639px\) \{\s*\.ls-pills \{\s*flex-wrap: nowrap;/);
-  assert.match(css, /\.ls-service-grid \{\s*display: grid;\s*gap: var\(--ls-space-6\);/);
   assert.match(css, /\.ls-site-grid \{\s*display: grid;\s*gap: var\(--ls-space-6\);/);
 });
 

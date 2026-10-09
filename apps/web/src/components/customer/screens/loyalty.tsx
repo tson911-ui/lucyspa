@@ -231,6 +231,17 @@ function PagedSection<T extends { id: string }>({
   // The pager keeps its size while the next page loads.
   const total = useRef(0);
   if (list.data) total.current = list.data.total;
+  // Nothing in this section yet: its heading, what it is for and one quiet line, not an empty table in its own box.
+  if (list.data && list.data.total === 0) {
+    return (
+      <Reveal>
+        <ListSection title={title}>
+          {hint ? <p className="ls-hint">{hint}</p> : null}
+          <p className="ls-empty-line">{empty}</p>
+        </ListSection>
+      </Reveal>
+    );
+  }
   return (
     <Reveal>
       <ListSection title={title}>

@@ -394,15 +394,17 @@ test('services list: the filter links, one section per group, a chosen group alo
   assert.match(all, /<a class="[^"]*ls-back[^"]*" href="\/vi">.*Quay lại.*<h1/s);
   assert.match(all, /aria-current="true"[^>]*>Tất cả/);
   assert.match(all, /Gội thường/);
-  // A service name is a clamped span inside its link; the full name is the tooltip.
+  // A row is one link (the name, a leader, the price and the time) plus a separate booking button named after the service.
   assert.match(
     all,
-    /<a[^>]*title="Gội thường"[^>]*><span class="ls-service-name">Gội thường<\/span><\/a>/,
+    /<a class="ls-svc-main" href="\/vi\/services\/GOI_THUONG"><span class="ls-svc-name" title="Gội thường">Gội thường<\/span><span class="ls-svc-dots" aria-hidden="true"><\/span>/,
   );
+  assert.match(all, /aria-label="Đặt lịch: Gội thường"/);
+  assert.match(all, /role="search"/);
   assert.match(all, /Đính đá \/ charm/);
   assert.match(all, /href="\/vi\/services\/GOI_THUONG"/);
   assert.match(all, /href="\/vi\/account\/book\?service=GOI_THUONG"/);
-  assert.match(all, /Dự kiến: 30–45 phút/);
+  assert.match(all, /30–45 phút/);
   const nail = renderToStaticMarkup(<ServicesView locale="vi" data={services} group="NAIL" />);
   assert.match(nail, /Đính đá/);
   assert.doesNotMatch(nail, /Gội thường/);

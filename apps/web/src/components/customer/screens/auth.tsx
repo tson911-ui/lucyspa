@@ -1,10 +1,12 @@
 'use client';
 
 import {
+  BrandWordmark,
   Button,
   buttonClass,
   Card,
   Field,
+  Icon,
   Notice,
   PasswordInput,
   PublicMain,
@@ -28,6 +30,7 @@ import {
 } from '../../../lib/customer/auth';
 import { customerErrorMessage } from '../../../lib/customer/booking';
 import { announceSessionChange } from '../../../lib/site-session';
+import { dayMonthYearToIso, maskDayMonthYear } from '../../../lib/customer/date-input-core';
 import { useCustomer } from '../session';
 
 const PASSWORD = { min: 8, max: 128 };
@@ -53,6 +56,18 @@ function AuthCard({
   return (
     <PublicMain>
       <div className="ls-member-auth">
+        <aside className="ls-member-aside" aria-hidden="true">
+          <BrandWordmark serif />
+          <p className="ls-member-aside-title">{t.auth.asideTitle}</p>
+          <ul>
+            {[t.auth.asideOne, t.auth.asideTwo, t.auth.asideThree].map((line) => (
+              <li key={line}>
+                <Icon name="check" />
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+        </aside>
         <Card as="section" aria-labelledby={titleId} className="ls-member-card">
           <div className="ls-member-head">
             <h1 id={titleId} className="ls-member-title">
@@ -378,6 +393,8 @@ export function CustomerRegisterScreen() {
     phone: '',
     referrerPhone: '',
   });
+  // The birth date is typed as dd/mm/yyyy (what a browser set to English would not show); the form keeps the ISO date.
+  const [dobText, setDobText] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [flowToken, setFlowToken] = useState<string | null>(null);
@@ -453,15 +470,28 @@ export function CustomerRegisterScreen() {
             />
           )}
         </Field>
-        <Field label={t.auth.dateOfBirth} {...required}>
+        <Field
+          label={t.auth.dateOfBirth}
+          hint={t.auth.dateOfBirthHint}
+          error={
+            dobText.length === 10 && form.dateOfBirth === '' ? t.auth.dateOfBirthInvalid : undefined
+          }
+          {...required}
+        >
           {(control) => (
             <TextInput
               {...control}
-              type="date"
-              autoComplete="bday"
-              max={today}
-              value={form.dateOfBirth}
-              onChange={(event) => set('dateOfBirth')(event.target.value)}
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="dd/mm/yyyy"
+              maxLength={10}
+              value={dobText}
+              onChange={(event) => {
+                const text = maskDayMonthYear(event.target.value);
+                setDobText(text);
+                set('dateOfBirth')(dayMonthYearToIso(text, today) ?? '');
+              }}
             />
           )}
         </Field>

@@ -378,12 +378,24 @@ test('campaigns: a sale view opens with the banner, headline, message and button
       data={data({ items: [onSale()], total: 41 })}
       state={{ ...EMPTY_PRODUCTS_STATE, campaign: 'ngay-hoi-lam-dep', sort: 'newest', page: 2 }}
       campaigns={[campaign()]}
+      onlineOpen
     />,
   );
   assert.equal(count(text, /<h1\b/g), 1);
   assert.match(text, /<h1[^>]*>Ngày hội làm đẹp 10\.10<\/h1>/);
   assert.ok(text.includes('Giảm đến 25% cho chăm sóc da'));
   assert.ok(text.includes('Mua ngay') && text.includes('href="#products-list"'));
+  // While "Bán online" is off (or unknown) the button never promises a purchase: it only leads to the list.
+  const closed = html(
+    <ProductsView
+      locale="vi"
+      data={data({ items: [onSale()], total: 41 })}
+      state={{ ...EMPTY_PRODUCTS_STATE, campaign: 'ngay-hoi-lam-dep' }}
+      campaigns={[campaign()]}
+    />,
+  );
+  assert.ok(!closed.includes('Mua ngay'));
+  assert.ok(closed.includes('Xem sản phẩm') && closed.includes('href="#products-list"'));
   assert.ok(text.includes('Đến hết ngày 31/10/2026'));
   assert.ok(text.includes('/api/v1/public/media/22222222-2222-4222-8222-222222222222/lg'));
   assert.equal(count(text, /class="ls-camp-strip"/g), 0, 'no strips inside the sale view itself');

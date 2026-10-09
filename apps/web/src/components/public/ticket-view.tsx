@@ -57,64 +57,54 @@ export function TicketView({
         {ticket.lines.some((line) => line.status === 'ARRIVED') ? (
           <Notice tone="success">{p.arrivedHint}</Notice>
         ) : null}
-        <Card as="section" aria-label={p.title}>
+        <Card as="section" aria-label={p.title} className="ls-ticket">
+          <div className="ls-ticket-head">
+            <div>
+              <p className="ls-ticket-label">{p.code}</p>
+              <p className="ls-ticket-code">{ticket.code}</p>
+            </div>
+            <Badge tone={orderStatusTone(ticket.status)}>{d.customerStatus[ticket.status]}</Badge>
+          </div>
           <DescriptionList
             items={[
-              { label: p.code, value: <strong>{ticket.code}</strong> },
-              {
-                label: d.card.status,
-                value: (
-                  <Badge tone={orderStatusTone(ticket.status)}>
-                    {d.customerStatus[ticket.status]}
-                  </Badge>
-                ),
-              },
               { label: p.branch, value: ticket.branchName },
               ...(ticket.paidAt
                 ? [{ label: p.paidAt, value: paidOn(ticket.paidAt, ticket.branchTimezone, locale) }]
                 : []),
-              { label: p.total, value: formatVnd(ticket.totalVnd, locale) },
+              {
+                label: ticket.paidAt ? p.total : p.totalDue,
+                value: formatVnd(ticket.totalVnd, locale),
+              },
             ]}
           />
         </Card>
         <Card as="section" aria-label={p.items}>
           <CardHeader title={p.items} description={p.expectedNote} />
-          <Stack>
+          <ul className="ls-ticket-lines">
             {ticket.lines.map((line, index) => {
               const name = locale === 'vi' ? line.nameVi : line.nameEn;
               const waiting = line.status === 'PAID' || line.status === 'ORDERED';
               return (
-                <DescriptionList
-                  key={`${index}:${line.nameVi}`}
-                  items={[
-                    {
-                      label: `${index + 1}. ${name}`,
-                      value: `${p.colQuantity}: ${line.quantity} · ${formatVnd(line.grossVnd, locale)}`,
-                    },
-                    {
-                      label: d.card.status,
-                      value: (
-                        <Badge tone={orderStatusTone(line.status)}>
-                          {d.customerStatus[line.status]}
-                        </Badge>
-                      ),
-                    },
-                    ...(waiting
-                      ? [
-                          {
-                            label: p.expected,
-                            value: expected(line, locale, {
-                              range: p.range,
-                              afterPayment: p.afterPayment,
-                            }),
-                          },
-                        ]
-                      : []),
-                  ]}
-                />
+                <li key={`${index}:${line.nameVi}`} className="ls-ticket-line">
+                  <p className="ls-ticket-line-name">{name}</p>
+                  <p className="ls-ticket-line-price">
+                    {p.colQuantity} {line.quantity} · {formatVnd(line.grossVnd, locale)}
+                  </p>
+                  <p className="ls-ticket-line-state">
+                    <Badge tone={orderStatusTone(line.status)}>
+                      {d.customerStatus[line.status]}
+                    </Badge>
+                    {waiting ? (
+                      <span>
+                        {p.expected}:{' '}
+                        {expected(line, locale, { range: p.range, afterPayment: p.afterPayment })}
+                      </span>
+                    ) : null}
+                  </p>
+                </li>
               );
             })}
-          </Stack>
+          </ul>
         </Card>
       </Stack>
     </PublicPage>

@@ -147,6 +147,8 @@ export function CustomerInvoicesScreen() {
     },
   ];
 
+  // One branch only: a column that says the same thing on every row is left out (it was cut off and told nothing).
+  const oneBranch = new Set(shown.map((item) => item.branch.name)).size <= 1;
   return (
     <Page>
       <PageHeader title={t.invoices.title} description={t.invoices.intro} />
@@ -155,7 +157,7 @@ export function CustomerInvoicesScreen() {
         mode="client"
         className="ls-cards-one-line"
         caption={fill(w.common.list.table, { list: t.invoices.title })}
-        columns={columns}
+        columns={oneBranch ? columns.filter((column) => column.key !== 'branch') : columns}
         rows={shown}
         rowKey={(item) => item.id}
         empty={<Empty>{t.invoices.empty}</Empty>}

@@ -69,7 +69,7 @@ export function CartScreen() {
   }
   if (!isOpen(sales)) {
     return (
-      <Page width="form">
+      <Page>
         <PageHeader title={s.cart.title} />
         <EmptyState
           icon="cart"
@@ -105,7 +105,7 @@ export function CartScreen() {
 
   if (cart.lines.length === 0) {
     return (
-      <Page width="form">
+      <Page>
         <PageHeader title={s.cart.title} />
         <EmptyState
           icon="cart"

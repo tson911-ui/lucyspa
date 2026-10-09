@@ -22,6 +22,7 @@ import {
   Notice,
   PublicMain,
   Select,
+  SearchInput,
   Skeleton,
   Steps,
   TextInput,
@@ -47,6 +48,7 @@ import {
   type Person,
 } from '../../../lib/customer/booking';
 import { formatBusinessDate } from '../../../lib/customer/invoice';
+import { matchesQuery } from '../../../lib/search-core';
 import {
   bookingTotals,
   formatFixedTotal,
@@ -58,6 +60,8 @@ import {
 import { PageBack } from '../../navigation/page-back';
 import { useCustomer } from '../session';
 
+/** From this many services the first step offers a search box (a short list needs none). */
+const SEARCH_FROM = 8;
 const STEPS = ['services', 'guests', 'when', 'confirm'] as const;
 type Step = (typeof STEPS)[number];
 const OTHER_RELATIONS: Exclude<BookingRecipientRelationName, 'SELF'>[] = [
@@ -114,6 +118,7 @@ export function BookScreen() {
   const idempotencyKey = useRef<string>('');
   const heading = useRef<HTMLHeadingElement>(null);
   const preselected = useRef(false);
+  const [serviceQuery, setServiceQuery] = useState('');
 
   const branches = useLoad(
     () => api.get<CustomerBookingBranchesResponse>('/api/v1/me/booking/branches'),
@@ -410,8 +415,37 @@ export function BookScreen() {
                 {branch.data && branch.data.services.length === 0 ? (
                   <Notice tone="info">{t.book.noServices}</Notice>
                 ) : null}
+                {branch.data && branch.data.services.length > SEARCH_FROM ? (
+                  <div
+                    className="ls-booking-search"
+                    role="search"
+                    aria-label={t.book.searchServices}
+                  >
+                    <SearchInput
+                      label={t.book.searchServices}
+                      clearLabel={t.book.searchClear}
+                      placeholder={t.book.searchServices}
+                      debounceMs={150}
+                      onSearch={setServiceQuery}
+                    />
+                  </div>
+                ) : null}
+                {branch.data &&
+                serviceQuery !== '' &&
+                !branch.data.services.some((service) =>
+                  matchesQuery(serviceLabel(service), serviceQuery),
+                ) ? (
+                  <Notice tone="info">
+                    {fill(t.book.noServiceMatch, { query: serviceQuery })}
+                  </Notice>
+                ) : null}
                 {branch.data
-                  ? groupByCategory(branch.data.services, locale).map((group) => (
+                  ? groupByCategory(
+                      branch.data.services.filter((service) =>
+                        matchesQuery(serviceLabel(service), serviceQuery),
+                      ),
+                      locale,
+                    ).map((group) => (
                       <FormSection key={group.key} title={group.name}>
                         <div className="ls-choice-list">
                           {group.services.map((service) => (

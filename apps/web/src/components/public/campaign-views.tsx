@@ -46,9 +46,12 @@ export function PriceCampaignLine({
 export function CampaignStrips({
   locale,
   campaigns,
+  onlineOpen = false,
 }: {
   locale: Locale;
   campaigns: readonly PublicCampaign[] | null | undefined;
+  /** "Bán online" is ON: only then may the button use the Owner's words ("Mua ngay"). */
+  onlineOpen?: boolean;
 }) {
   const shown = stripCampaigns(campaigns);
   if (shown.length === 0) return null;
@@ -63,7 +66,7 @@ export function CampaignStrips({
               {campaign.headline ?? campaign.name}
             </span>
             <span className="ls-camp-strip-cta">
-              {campaign.ctaLabel ?? text.stripCta}
+              {campaignCtaLabel(campaign, onlineOpen, text.stripCta)}
               <Icon name="chevron-right" size={16} aria-hidden="true" />
             </span>
           </Link>
@@ -116,7 +119,15 @@ export function HomeOffer({
  * The top section of a campaign's sale view: the Owner's banner, headline (the page's one h1), message and button. It reuses the
  * catalog hero, so the picture sits above the words on a phone and beside them from 768 px.
  */
-export function CampaignHero({ locale, campaign }: { locale: Locale; campaign: PublicCampaign }) {
+export function CampaignHero({
+  locale,
+  campaign,
+  onlineOpen = false,
+}: {
+  locale: Locale;
+  campaign: PublicCampaign;
+  onlineOpen?: boolean;
+}) {
   const text = getCampaignsPublicText(locale);
   const banner = campaignBanner(campaign);
   return (
@@ -135,7 +146,7 @@ export function CampaignHero({ locale, campaign }: { locale: Locale; campaign: P
         {campaign.message ? <p className="ls-lead">{campaign.message}</p> : null}
         <div className="ls-site-actions">
           <a className={buttonClass('primary')} href={`#${PRODUCTS_LIST_ID}`}>
-            {campaign.ctaLabel ?? text.saleCta}
+            {campaignCtaLabel(campaign, onlineOpen, text.saleCta)}
           </a>
           <Link className={buttonClass('secondary')} href={`/${locale}/products`}>
             {text.allProducts}

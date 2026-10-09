@@ -10,7 +10,12 @@ import { getSiteText } from '../../../i18n/site';
  * A page of the customer side that failed while it was drawn: the site frame stays and the visitor is told what to do, in
  * the visitor's language, without the technical message (it is not shown, the server already logged it).
  */
-export default function SiteError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function SiteError({
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
   const params = useParams<{ locale?: string }>();
   const locale = params.locale && isLocale(params.locale) ? params.locale : 'vi';
   const text = getSiteText(locale).errors;

@@ -393,7 +393,7 @@ export function OnlineOrderDetailScreen({ id }: { id: string }) {
     : o.stateHint[order.state];
 
   return (
-    <Page width="form">
+    <Page>
       <PageHeader
         title={`${o.detailTitle} ${order.code}`}
         breadcrumbs={
@@ -429,121 +429,132 @@ export function OnlineOrderDetailScreen({ id }: { id: string }) {
         <Notice tone="info">{o.cancelledBack}</Notice>
       ) : null}
       {failure ? <Notice tone="danger">{failure}</Notice> : null}
-      <Reveal>
-        <Card as="section" aria-label={o.status}>
-          <CardHeader
-            title={o.status}
-            actions={<Badge tone={orderStateTone(order.state)}>{o.state[order.state]}</Badge>}
-          />
-          {checking ? (
-            <p className="ls-shop-checking" role="status">
-              <Spinner /> {o.checking}
-            </p>
-          ) : null}
-          <p
-            className="ls-shop-state"
-            data-urgent={awaiting && left !== null && left < 300 ? 'true' : undefined}
-          >
-            {timeIsUp ? o.expired : stateLine}
-          </p>
-          <DescriptionList
-            items={[
-              { label: o.code, value: order.code },
-              { label: o.placedAt, value: formatDateTime(order.placedAt, zone, locale) },
-              ...(order.paidAt
-                ? [{ label: o.paidAt, value: formatDateTime(order.paidAt, zone, locale) }]
-                : []),
-            ]}
-          />
-          {sales &&
-          sales !== 'failed' &&
-          (order.state === 'PAID' || order.state === 'READY_TO_SHIP') ? (
-            <p className="ls-hint">{fill(o.promise, promiseNumbers(sales))}</p>
-          ) : null}
-        </Card>
-      </Reveal>
-      <OrderFulfilment order={order} locale={locale} onUpdated={accept} />
-      <Reveal>
-        <Card as="section" aria-label={o.lines}>
-          <CardHeader title={o.lines} />
-          <DescriptionList
-            items={order.lines.map((line) => {
-              const name = locale === 'vi' ? line.nameVi : line.nameEn;
-              const label = locale === 'vi' ? line.variantLabelVi : line.variantLabelEn;
-              return {
-                // The name of an order line already carries its variant ("Kem - 50 ml"): the label is added only when it does not.
-                label: `${line.sequence}. ${name}${label && !name.includes(label) ? ` (${label})` : ''}`,
-                value: (
-                  <>
-                    {formatVnd(line.unitPriceVnd, locale)} × {line.quantity} ={' '}
-                    <strong>{formatVnd(line.lineTotalVnd, locale)}</strong>
-                    {line.mode === 'PRE_ORDER' || line.status === 'CANCELLED' ? (
-                      <span className="ls-shop-line-note">
-                        {line.mode === 'PRE_ORDER' ? <Badge tone="info">{o.preOrder}</Badge> : null}
-                        {line.status === 'CANCELLED' ? (
-                          <Badge tone="neutral">{o.lineCancelled}</Badge>
-                        ) : line.mode === 'PRE_ORDER' ? (
-                          <Badge tone={orderStatusTone(line.status)}>
-                            {status.customerStatus[line.status]}
-                          </Badge>
-                        ) : null}
-                        {line.mode === 'PRE_ORDER' &&
-                        line.status !== 'CANCELLED' &&
-                        order.state !== 'AWAITING_PAYMENT' ? (
-                          <span className="ls-hint">
-                            {fill(o.preOrderWait, {
-                              range: expectedText(line, locale, {
-                                range: words.range,
-                                afterPayment: words.afterPayment,
-                              }),
-                            })}
+      <div className="ls-order-layout">
+        <div className="ls-order-main">
+          <Reveal>
+            <Card as="section" aria-label={o.status}>
+              <CardHeader
+                title={o.status}
+                actions={<Badge tone={orderStateTone(order.state)}>{o.state[order.state]}</Badge>}
+              />
+              {checking ? (
+                <p className="ls-shop-checking" role="status">
+                  <Spinner /> {o.checking}
+                </p>
+              ) : null}
+              <p
+                className="ls-shop-state"
+                data-urgent={awaiting && left !== null && left < 300 ? 'true' : undefined}
+              >
+                {timeIsUp ? o.expired : stateLine}
+              </p>
+              <DescriptionList
+                items={[
+                  { label: o.placedAt, value: formatDateTime(order.placedAt, zone, locale) },
+                  ...(order.paidAt
+                    ? [{ label: o.paidAt, value: formatDateTime(order.paidAt, zone, locale) }]
+                    : []),
+                ]}
+              />
+              {sales &&
+              sales !== 'failed' &&
+              (order.state === 'PAID' || order.state === 'READY_TO_SHIP') ? (
+                <p className="ls-hint">{fill(o.promise, promiseNumbers(sales))}</p>
+              ) : null}
+            </Card>
+          </Reveal>
+          <OrderFulfilment order={order} locale={locale} onUpdated={accept} />
+          <Reveal>
+            <Card as="section" aria-label={o.lines}>
+              <CardHeader title={o.lines} />
+              <DescriptionList
+                items={order.lines.map((line) => {
+                  const name = locale === 'vi' ? line.nameVi : line.nameEn;
+                  const label = locale === 'vi' ? line.variantLabelVi : line.variantLabelEn;
+                  return {
+                    // The name of an order line already carries its variant ("Kem - 50 ml"): the label is added only when it does not.
+                    label: `${line.sequence}. ${name}${label && !name.includes(label) ? ` (${label})` : ''}`,
+                    value: (
+                      <>
+                        {formatVnd(line.unitPriceVnd, locale)} × {line.quantity} ={' '}
+                        <strong>{formatVnd(line.lineTotalVnd, locale)}</strong>
+                        {line.mode === 'PRE_ORDER' || line.status === 'CANCELLED' ? (
+                          <span className="ls-shop-line-note">
+                            {line.mode === 'PRE_ORDER' ? (
+                              <Badge tone="info">{o.preOrder}</Badge>
+                            ) : null}
+                            {line.status === 'CANCELLED' ? (
+                              <Badge tone="neutral">{o.lineCancelled}</Badge>
+                            ) : line.mode === 'PRE_ORDER' ? (
+                              <Badge tone={orderStatusTone(line.status)}>
+                                {status.customerStatus[line.status]}
+                              </Badge>
+                            ) : null}
+                            {line.mode === 'PRE_ORDER' &&
+                            line.status !== 'CANCELLED' &&
+                            order.state !== 'AWAITING_PAYMENT' ? (
+                              <span className="ls-hint">
+                                {fill(o.preOrderWait, {
+                                  range: expectedText(line, locale, {
+                                    range: words.range,
+                                    afterPayment: words.afterPayment,
+                                  }),
+                                })}
+                              </span>
+                            ) : null}
+                            {line.refundedVnd ? (
+                              <span className="ls-hint">
+                                {fill(o.lineRefunded, {
+                                  amount: formatVnd(line.refundedVnd, locale),
+                                })}
+                              </span>
+                            ) : null}
                           </span>
                         ) : null}
-                        {line.refundedVnd ? (
-                          <span className="ls-hint">
-                            {fill(o.lineRefunded, { amount: formatVnd(line.refundedVnd, locale) })}
-                          </span>
-                        ) : null}
-                      </span>
-                    ) : null}
-                  </>
-                ),
-              };
-            })}
-          />
-          <DescriptionList
-            layout="totals"
-            items={[
-              { label: o.subtotal, value: formatVnd(order.subtotalVnd, locale) },
-              ...(BigInt(order.discountVnd) > 0n
-                ? [{ label: o.discount, value: `−${formatVnd(order.discountVnd, locale)}` }]
-                : []),
-              {
-                label: o.shipping,
-                value: hasShipping ? formatVnd(order.shippingFeeVnd, locale) : o.free,
-              },
-              { label: o.total, value: formatVnd(order.totalVnd, locale), strong: true },
-            ]}
-          />
-        </Card>
-      </Reveal>
-      <Reveal>
-        <Card as="section" aria-label={o.delivery}>
-          <CardHeader title={o.delivery} />
-          <DescriptionList
-            items={[
-              { label: o.recipient, value: order.recipient.name },
-              { label: o.phone, value: nationalPhone(order.recipient.phone) },
-              {
-                label: o.address,
-                value: [order.recipient.street, order.recipient.ward, order.recipient.provinceName]
-                  .filter((part) => part !== '')
-                  .join(', '),
-              },
-            ]}
-          />
-        </Card>
-      </Reveal>
+                      </>
+                    ),
+                  };
+                })}
+              />
+              <DescriptionList
+                layout="totals"
+                items={[
+                  { label: o.subtotal, value: formatVnd(order.subtotalVnd, locale) },
+                  ...(BigInt(order.discountVnd) > 0n
+                    ? [{ label: o.discount, value: `−${formatVnd(order.discountVnd, locale)}` }]
+                    : []),
+                  {
+                    label: o.shipping,
+                    value: hasShipping ? formatVnd(order.shippingFeeVnd, locale) : o.free,
+                  },
+                  { label: o.total, value: formatVnd(order.totalVnd, locale), strong: true },
+                ]}
+              />
+            </Card>
+          </Reveal>
+        </div>
+        <Reveal>
+          <Card as="section" aria-label={o.delivery}>
+            <CardHeader title={o.delivery} />
+            <DescriptionList
+              items={[
+                { label: o.recipient, value: order.recipient.name },
+                { label: o.phone, value: nationalPhone(order.recipient.phone) },
+                {
+                  label: o.address,
+                  value: [
+                    order.recipient.street,
+                    order.recipient.ward,
+                    order.recipient.provinceName,
+                  ]
+                    .filter((part) => part !== '')
+                    .join(', '),
+                },
+              ]}
+            />
+          </Card>
+        </Reveal>
+      </div>
       {asking ? (
         <ConfirmDialog
           title={o.cancelTitle}

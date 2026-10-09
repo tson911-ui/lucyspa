@@ -214,11 +214,13 @@ const text = {
     },
     errors: {
       notFoundTitle: 'Không tìm thấy trang này',
-      notFoundBody: 'Địa chỉ có thể đã gõ sai hoặc trang không còn nữa. Bạn có thể về trang chủ hoặc xem dịch vụ của tiệm.',
+      notFoundBody:
+        'Địa chỉ có thể đã gõ sai hoặc trang không còn nữa. Bạn có thể về trang chủ hoặc xem dịch vụ của tiệm.',
       home: 'Về trang chủ',
       services: 'Xem dịch vụ',
       errorTitle: 'Trang chưa tải được',
-      errorBody: 'Có trục trặc khi mở trang này. Bạn thử tải lại sau ít phút; nếu vẫn lỗi, hãy gọi hotline của tiệm.',
+      errorBody:
+        'Có trục trặc khi mở trang này. Bạn thử tải lại sau ít phút; nếu vẫn lỗi, hãy gọi hotline của tiệm.',
       retry: 'Tải lại',
     },
     header: {
@@ -382,11 +384,13 @@ const text = {
     },
     errors: {
       notFoundTitle: 'We could not find this page',
-      notFoundBody: 'The address may be mistyped or the page is gone. You can go to the home page or see the shop services.',
+      notFoundBody:
+        'The address may be mistyped or the page is gone. You can go to the home page or see the shop services.',
       home: 'Back to home',
       services: 'See services',
       errorTitle: 'This page did not load',
-      errorBody: 'Something went wrong opening this page. Try again in a few minutes; if it keeps failing, call the shop hotline.',
+      errorBody:
+        'Something went wrong opening this page. Try again in a few minutes; if it keeps failing, call the shop hotline.',
       retry: 'Try again',
     },
     header: {
