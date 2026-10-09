@@ -103,9 +103,21 @@ export function completeCustomerReset(
   return api.post<void>('/api/v1/auth/password-reset/complete', body);
 }
 
-/** Only same-area relative paths are accepted as a post-login destination. */
+/** Pages outside the member area that a sign-in may return to (Phase 6 P6-19: the shop's product pages, cart and checkout). */
+const SHOP_RETURN_PAGES = ['products', 'cart', 'checkout'] as const;
+
+/** Only same-area relative paths (and the shop pages of the same language) are accepted as a post-login destination. */
 export function safeCustomerNext(next: string | null, base: string): string {
-  if (!next || next.includes('\\') || !(next === base || next.startsWith(`${base}/`))) return base;
+  if (!next || next.includes('\\') || next.startsWith('//')) return base;
+  const root = base.endsWith('/account') ? base.slice(0, -'/account'.length) : null;
+  const shopPage =
+    root !== null &&
+    SHOP_RETURN_PAGES.some((page) => {
+      const path = `${root}/${page}`;
+      return next === path || next.startsWith(`${path}/`) || next.startsWith(`${path}?`);
+    });
+  if (shopPage) return next;
+  if (!(next === base || next.startsWith(`${base}/`))) return base;
   const authPages = ['login', 'register', 'forgot-password'].map((page) => `${base}/${page}`);
   return authPages.some((page) => next.startsWith(page)) ? base : next;
 }

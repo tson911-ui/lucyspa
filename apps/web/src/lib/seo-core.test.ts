@@ -179,8 +179,8 @@ test('a product page description: its own text, else name and category; always t
     brand: null,
     images: [],
     variants: [
-      { label: '30 ml', price: price('150000'), stock },
-      { label: '50 ml', price: price('120000'), stock },
+      { id: 'v1', sellOnline: true, label: '30 ml', price: price('150000'), stock },
+      { id: 'v2', sellOnline: true, label: '50 ml', price: price('120000'), stock },
     ],
     priceMaxVnd: '150000',
     isNew: false,

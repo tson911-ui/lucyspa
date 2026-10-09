@@ -1,4 +1,5 @@
 import type {
+  PublicCampaign,
   PublicProductCard,
   PublicProductDetailResponse,
   PublicProductsCommitment,
@@ -11,10 +12,11 @@ import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import {
   activeFilterCount,
+  activeCampaign,
   cardPriceText,
-  discountText,
   moneyText,
   PRODUCTS_LIST_ID,
+  priceBadgeText,
   productHref,
   productsHref,
   stockLabel,
@@ -23,6 +25,7 @@ import {
 } from '../../lib/public-products-core';
 import { directionsUrl, hoursHeadline, telHref } from '../../lib/public-site-core';
 import { PageBack } from '../navigation/page-back';
+import { CampaignHero, CampaignStrips, PriceCampaignLine } from './campaign-views';
 import { LoadNotice } from './home-sections';
 import { ProductGallery } from './product-gallery';
 import { ProductImage } from './product-image';
@@ -59,7 +62,7 @@ export function ProductCardView({
 }) {
   const text = getSiteText(locale).products;
   const Heading = level === 2 ? 'h2' : 'h3';
-  const discount = discountText(card.price);
+  const discount = priceBadgeText(card.price);
   const stock = stockLabel(card.stock, text);
   return (
     <article className="ls-prod-card">
@@ -100,6 +103,7 @@ export function ProductCardView({
               <del>{moneyText(card.price.listPriceVnd, locale)}</del>
             ) : null}
           </p>
+          <PriceCampaignLine locale={locale} price={card.price} />
         </div>
       </div>
     </article>
@@ -219,10 +223,13 @@ export function ProductsView({
   locale,
   data,
   state,
+  campaigns = null,
 }: {
   locale: Locale;
   data: PublicProductsResponse | null;
   state: ProductsState;
+  /** The campaigns running now (Wave 4 / P6-23); null when they could not be read or there is no news of them: nothing is drawn. */
+  campaigns?: readonly PublicCampaign[] | null;
 }) {
   const text = getSiteText(locale);
   const t = text.products;
@@ -230,12 +237,20 @@ export function ProductsView({
   const filterGroups = data ? <FilterGroups locale={locale} state={state} data={data} /> : null;
   const hasFilters = data !== null && (data.categories.length > 0 || data.brands.length > 1);
   const title = hero?.title ?? t.title;
-  const reset = productsHref(locale, withFilter(state, { q: '', category: '', brand: '' }));
+  // A sale view of a campaign that is running replaces the Owner's hero; an unknown or ended one shows the normal page.
+  const sale = activeCampaign(campaigns, state);
+  const plain = !state.campaign;
+  const reset = productsHref(
+    locale,
+    withFilter(state, { q: '', category: '', brand: '', ...(sale ? {} : { campaign: '' }) }),
+  );
   return (
     <PublicMain>
       <div className="ls-container">
         <ProductsBack locale={locale} />
-        {hero ? (
+        {sale ? (
+          <CampaignHero locale={locale} campaign={sale} />
+        ) : hero ? (
           <section
             className={`ls-prod-hero${hero.image ? ' ls-prod-hero-image' : ''}`}
             aria-labelledby="products-title-h1"
@@ -258,6 +273,7 @@ export function ProductsView({
             <p className="ls-lead">{t.lead}</p>
           </div>
         )}
+        {plain && !sale ? <CampaignStrips locale={locale} campaigns={campaigns} /> : null}
         {data === null ? (
           <LoadNotice locale={locale} section={t.title} />
         ) : data.total === 0 &&
@@ -374,8 +390,7 @@ function StoreBlock({ locale, site }: { locale: Locale; site: PublicSiteResponse
 
 /**
  * One product on its own page (design 16.4): gallery, name, price and availability per variant, the description, where to buy
- * (the shop's own details) and the other products of the category. The place of a future buy button is `ProductOffer`'s
- * `action`, left empty for now.
+ * (the shop's own details) and the other products of the category.
  */
 export function ProductDetailView({
   locale,

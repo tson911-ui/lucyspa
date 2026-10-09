@@ -29,6 +29,7 @@ export function orderStatusTone(status: ProductOrderLineStatusName): StatusTone 
       return 'warning';
     case 'PAID':
     case 'ORDERED':
+    case 'SHIPPED':
       return 'info';
     case 'ARRIVED':
       return 'warning';

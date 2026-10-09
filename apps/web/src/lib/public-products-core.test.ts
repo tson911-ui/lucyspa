@@ -2,12 +2,17 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { PublicProductDetail } from '@lucy-spa/contracts';
 import {
+  activeCampaign,
   activeFilterCount,
+  campaignBanner,
+  campaignEndText,
+  campaignHref,
   cardPriceText,
   discountText,
   isPlainList,
   isProductCode,
   lastPage,
+  parsePublicCampaigns,
   parseProductCodes,
   parseProductDetail,
   parsePublicProducts,
@@ -15,8 +20,10 @@ import {
   productJsonLd,
   productsHref,
   productsQuery,
+  priceBadgeText,
   productsStateOf,
   stockLabel,
+  stripCampaigns,
   withFilter,
   EMPTY_PRODUCTS_STATE,
 } from './public-products-core';
@@ -176,8 +183,10 @@ const detail: PublicProductDetail = {
   brand: 'Thương hiệu',
   images: [image],
   variants: [
-    { label: '30 ml', price, stock: stock.IN_STOCK },
+    { id: 'v1', sellOnline: true, label: '30 ml', price, stock: stock.IN_STOCK },
     {
+      id: 'v2',
+      sellOnline: true,
       label: '50 ml',
       price: { priceVnd: '389000', listPriceVnd: null, discountPercent: null },
       stock: stock.PRE,
@@ -221,7 +230,7 @@ test('JSON-LD: a Product with one Offer per variant, price in VND, availability,
     ],
   );
   const one = productJsonLd(
-    { ...detail, variants: [{ label: null, price, stock: stock.OUT }] },
+    { ...detail, variants: [{ id: 'v1', sellOnline: true, label: null, price, stock: stock.OUT }] },
     { url: 'https://spa.example/p', images: [] },
   );
   assert.equal(
@@ -230,4 +239,126 @@ test('JSON-LD: a Product with one Offer per variant, price in VND, availability,
   );
   assert.ok(!('image' in one));
   assert.ok(!/quantity|inventoryLevel/i.test(JSON.stringify(data)));
+});
+
+const running = {
+  slug: 'ngay-hoi-lam-dep',
+  name: 'Ngày hội làm đẹp',
+  badge: '-25%',
+  headline: 'Ngày hội làm đẹp',
+  message: 'Giảm đến 25%',
+  ctaLabel: 'Mua ngay',
+  bannerUrl: '/api/v1/public/media/11111111-1111-4111-8111-111111111111/lg',
+  endsAt: '2026-10-31T16:59:59.000Z',
+};
+
+test('campaign address: a campaign name is kept in the state, in the address and through paging and sorting', () => {
+  const state = productsStateOf({ campaign: 'ngay-hoi-lam-dep', sort: 'newest', page: '2' });
+  assert.deepEqual(state, {
+    campaign: 'ngay-hoi-lam-dep',
+    q: '',
+    category: '',
+    brand: '',
+    sort: 'newest',
+    page: 2,
+  });
+  assert.equal(productsQuery(state), '?campaign=ngay-hoi-lam-dep&sort=newest&page=2');
+  assert.equal(
+    productsHref('en', withFilter(state, { q: 'kem' })),
+    '/en/products?campaign=ngay-hoi-lam-dep&q=kem&sort=newest',
+  );
+  assert.equal(campaignHref('vi', 'ngay-hoi-lam-dep'), '/vi/products?campaign=ngay-hoi-lam-dep');
+  // A malformed name falls back to the plain list; no empty field is added to the plain state.
+  for (const bad of ['Ngay Hoi', 'a b', '-x', 'x--y', '../x', '']) {
+    assert.deepEqual(productsStateOf({ campaign: bad }), EMPTY_PRODUCTS_STATE, bad);
+  }
+  assert.equal(isPlainList(state), false, 'a sale view is a view of the list, not the list');
+  assert.equal(isPlainList(productsStateOf({})), true);
+});
+
+test('prices: a campaign on a card or variant is read; a malformed one makes the answer unreadable', () => {
+  const campaign = { slug: 'ngay-hoi-lam-dep', name: 'Ngày hội', badge: null };
+  const withCampaign = { ...list, items: [{ ...card, price: { ...price, campaign } }] };
+  assert.deepEqual(parsePublicProducts(withCampaign)?.items[0]?.price.campaign, campaign);
+  assert.equal(parsePublicProducts(list)?.items[0]?.price.campaign, undefined);
+  for (const broken of [
+    { slug: 1, name: 'x', badge: null },
+    { slug: 'a-b', name: 'x', badge: 5 },
+    'x',
+  ]) {
+    assert.equal(
+      parsePublicProducts({ ...list, items: [{ ...card, price: { ...price, campaign: broken } }] }),
+      null,
+    );
+  }
+});
+
+test('the badge of a price: the words of the campaign, else the percent, else nothing', () => {
+  const named = { ...price, campaign: { slug: 'a-b', name: 'N', badge: 'Giảm sâu' } };
+  assert.equal(priceBadgeText(named), 'Giảm sâu');
+  assert.equal(
+    priceBadgeText({ ...named, campaign: { slug: 'a-b', name: 'N', badge: null } }),
+    '-15%',
+  );
+  assert.equal(
+    priceBadgeText({ ...named, campaign: { slug: 'a-b', name: 'N', badge: '  ' } }),
+    '-15%',
+  );
+  assert.equal(priceBadgeText(price), '-15%');
+  assert.equal(
+    priceBadgeText({ priceVnd: '1000', listPriceVnd: null, discountPercent: null }),
+    null,
+  );
+});
+
+test('running campaigns: parsed leniently, at most two strips, the sale view finds its campaign only while it runs', () => {
+  const parsed = parsePublicCampaigns({
+    campaigns: [
+      running,
+      { ...running, slug: 'Bad Slug' },
+      { ...running, slug: 'khong-banner', bannerUrl: 'https://evil.example/x.png' },
+      {
+        ...running,
+        slug: 'khong-chu',
+        badge: null,
+        headline: null,
+        message: null,
+        ctaLabel: null,
+        bannerUrl: null,
+      },
+      { slug: 'thieu' },
+    ],
+  });
+  assert.deepEqual(
+    parsed?.campaigns.map((entry) => [entry.slug, entry.bannerUrl]),
+    [
+      ['ngay-hoi-lam-dep', running.bannerUrl],
+      ['khong-banner', null],
+      ['khong-chu', null],
+    ],
+  );
+  assert.equal(parsePublicCampaigns(null), null);
+  assert.equal(parsePublicCampaigns({ campaigns: 'x' }), null);
+  assert.deepEqual(parsePublicCampaigns({ campaigns: [] }), { campaigns: [] });
+  const all = parsed?.campaigns ?? [];
+  assert.equal(stripCampaigns(all).length, 2);
+  assert.deepEqual(stripCampaigns(null), []);
+  assert.equal(activeCampaign(all, { campaign: 'khong-chu' })?.slug, 'khong-chu');
+  assert.equal(
+    activeCampaign(all, { campaign: 'da-het-han' }),
+    null,
+    'unknown or ended: no sale view',
+  );
+  assert.equal(activeCampaign(all, {}), null);
+  assert.equal(activeCampaign(null, { campaign: 'khong-chu' }), null);
+  const banner = campaignBanner(running);
+  assert.equal(banner?.sources[0]?.url, running.bannerUrl);
+  assert.equal(banner?.alt, running.name);
+  assert.equal(campaignBanner({ ...running, bannerUrl: null }), null);
+});
+
+test('the last day of a sale is read in the shop time zone', () => {
+  // 16:59 UTC on 31 October is 23:59 on 31 October in Da Nang; one minute later it is already 1 November there.
+  assert.equal(campaignEndText('2026-10-31T16:59:59.000Z', 'vi'), '31/10/2026');
+  assert.equal(campaignEndText('2026-10-31T17:00:00.000Z', 'en'), '01/11/2026');
 });

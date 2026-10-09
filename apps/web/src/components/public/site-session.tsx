@@ -25,6 +25,8 @@ interface SiteSession {
   /** The member's own account while signed in (the bell needs it to link a notification), else null. */
   account: CurrentAccountResponse | null;
   api: ApiClient;
+  /** False until the first answer (or failure) is in: a page that differs for members waits for it instead of flashing the guest view. */
+  ready: boolean;
   /** For a sign-out that has just completed, before the next read confirms it. */
   markSignedOut: () => void;
 }
@@ -33,6 +35,7 @@ interface SiteSession {
 const fallback: SiteSession = {
   signedIn: false,
   account: null,
+  ready: true,
   api: new ApiClient(),
   markSignedOut: () => undefined,
 };
@@ -43,6 +46,7 @@ export const useSiteSession = (): SiteSession => useContext(Context);
 export function SiteSessionProvider({ children }: { children: ReactNode }) {
   const api = useMemo(() => new ApiClient(), []);
   const [account, setAccount] = useState<CurrentAccountResponse | null>(null);
+  const [ready, setReady] = useState(false);
   const signedIn = account !== null;
 
   const refresh = useCallback(() => {
@@ -50,6 +54,7 @@ export function SiteSessionProvider({ children }: { children: ReactNode }) {
     // Known (either way) once the first answer or failure is in: the phone tab bar shows then (see site.css).
     const known = () => {
       document.documentElement.dataset['lsSession'] = 'ready';
+      if (active) setReady(true);
     };
     loadCustomerSession(api)
       .then((session) => {
@@ -81,8 +86,8 @@ export function SiteSessionProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo<SiteSession>(
-    () => ({ signedIn, account, api, markSignedOut: () => setAccount(null) }),
-    [signedIn, account, api],
+    () => ({ signedIn, account, api, ready, markSignedOut: () => setAccount(null) }),
+    [signedIn, account, api, ready],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

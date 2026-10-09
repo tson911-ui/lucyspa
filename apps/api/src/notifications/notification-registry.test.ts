@@ -47,6 +47,17 @@ const REFUND_NOTICE = ['PRODUCT_REFUND_MADE'];
 const ORDER_ARRIVED = ['PRODUCT_ORDER_ARRIVED'];
 const ORDER_ALERT = ['PRODUCT_ORDER_ALERT'];
 
+// Phase 6 Wave 4 (P6-19..P6-21): the member is told about the online order (finance, about the invoice); the people who work the orders are
+// told of a new paid order and of the daily alert (operations).
+const ONLINE_MEMBER = [
+  'ONLINE_ORDER_SHIPPED',
+  'ONLINE_ORDER_DELIVERED',
+  'ONLINE_ORDER_DELIVERY_FAILED',
+  'ONLINE_ORDER_CANCELLED',
+  'ONLINE_ORDER_REFUNDED',
+];
+const ONLINE_STAFF = ['ONLINE_ORDER_NEW', 'ONLINE_ORDER_ALERT'];
+
 test('the registry keeps every Phase 3 type unchanged and adds the Leave, finance and stock alert types', () => {
   assert.deepEqual(
     [...NOTIFICATION_TYPES].sort(),
@@ -60,6 +71,8 @@ test('the registry keeps every Phase 3 type unchanged and adds the Leave, financ
       ...REFUND_NOTICE,
       ...ORDER_ARRIVED,
       ...ORDER_ALERT,
+      ...ONLINE_MEMBER,
+      ...ONLINE_STAFF,
     ].sort(),
   );
   assert.deepEqual(notificationMetadata('LOW_STOCK_REACHED').entityTypes, ['ProductVariant']);
@@ -102,11 +115,11 @@ test('category filters are derived from the registry, and targets from the entit
   ]);
   assert.deepEqual(
     [...notificationTypesInCategory('FINANCE')].sort(),
-    [...FINANCE, ...REFUND_NOTICE, ...ORDER_ARRIVED].sort(),
+    [...FINANCE, ...REFUND_NOTICE, ...ORDER_ARRIVED, ...ONLINE_MEMBER].sort(),
   );
   assert.equal(
     notificationTypesInCategory('OPERATIONS').length,
-    PHASE3.length + INVENTORY.length + RETURNS.length + ORDER_ALERT.length,
+    PHASE3.length + INVENTORY.length + RETURNS.length + ORDER_ALERT.length + ONLINE_STAFF.length,
   );
   assert.equal(notificationTarget('ProductVariant'), 'PRODUCT_VARIANT');
   assert.equal(notificationTarget('Invoice'), 'INVOICE');

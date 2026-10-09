@@ -3271,6 +3271,106 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   margin-top: var(--ls-space-7);
 }
 
+/* Promotion campaigns (Wave 4 / P6-23). The campaign line under a price links to the sale view; on a card it sits above the card's
+   stretched name link so it stays clickable. */
+.ls-prod-campaign {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin: 0;
+  overflow: hidden;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ls-prod-campaign a {
+  color: var(--ls-brand);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-prod-campaign a:hover {
+    color: var(--ls-brand-fill-hover);
+  }
+}
+
+/* Slim strips above the plain list: one row per running campaign (two at most). */
+.ls-camp-strips {
+  display: grid;
+  gap: var(--ls-space-2);
+  margin: var(--ls-page-top) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-camp-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-3);
+  min-height: var(--ls-control-h);
+  padding: var(--ls-space-2) var(--ls-space-4);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-brand-soft);
+  color: var(--ls-text);
+  text-decoration: none;
+}
+
+.ls-camp-strip-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ls-camp-strip-cta {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ls-space-1);
+  color: var(--ls-brand);
+  font-size: var(--ls-type-small);
+  font-weight: 600;
+}
+
+.ls-camp-strip:focus-visible {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-camp-strip:hover {
+    border-color: var(--ls-brand);
+  }
+}
+
+/* The sale view's top section reuses the catalog hero; its small lines (badge, end date) and buttons sit under the words. */
+.ls-camp-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-2) var(--ls-space-3);
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
+}
+
+.ls-camp-hero-meta .ls-badge-brand {
+  border-color: var(--ls-brand-fill);
+  background: var(--ls-brand-fill);
+  color: var(--ls-on-brand);
+}
+
 /* The product's own page. */
 .ls-prod-detail {
   display: grid;
@@ -3510,4 +3610,317 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   .ls-prod-related .ls-prod-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+}
+
+/* ---------- Online shop (Phase 6 P6-19): purchase block, cart, checkout, online orders ---------- */
+
+/* The purchase block under the price of a product. While the shop's state is read it keeps the height of one action row,
+   so the page below does not move when the answer arrives. */
+.ls-shop-buy {
+  display: grid;
+  gap: var(--ls-space-4);
+  margin-top: var(--ls-space-2);
+}
+
+.ls-shop-buy[data-pending='true'] {
+  min-height: 52px;
+}
+
+.ls-shop-buy-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-3) var(--ls-space-4);
+}
+
+.ls-qty {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-1);
+}
+
+/* Beside the large buy button the three controls take its height (52 px), so the row has one line. */
+.ls-shop-buy-row .ls-qty {
+  --ls-control-h: 52px;
+}
+
+.ls-qty-input {
+  width: 4rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  appearance: textfield;
+}
+
+.ls-qty-input::-webkit-outer-spin-button,
+.ls-qty-input::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.ls-shop-facts {
+  display: grid;
+  gap: var(--ls-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-shop-facts li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ls-space-3);
+  color: var(--ls-text-muted);
+}
+
+.ls-shop-facts li > svg {
+  flex: none;
+  margin-top: var(--ls-space-1);
+  color: var(--ls-brand);
+}
+
+.ls-shop-facts li > span {
+  display: grid;
+  gap: var(--ls-space-1);
+  min-width: 0;
+}
+
+.ls-shop-facts strong {
+  color: var(--ls-text);
+  font-weight: 600;
+}
+
+.ls-shop-added {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ls-space-2) var(--ls-space-4);
+}
+
+/* The cart in the header sits left of the bell; a narrow phone has no room for it (the account menu carries it there). */
+.ls-site-cart {
+  position: relative;
+  display: inline-flex;
+}
+
+@media (max-width: 479px) {
+  .ls-site-cart {
+    display: none;
+  }
+}
+
+/* The cart and the checkout: the main column and the summary. */
+.ls-shop-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ls-space-6);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .ls-shop-layout {
+    grid-template-columns: minmax(0, 1fr) 24rem;
+  }
+
+  .ls-shop-summary {
+    position: sticky;
+    top: calc(var(--ls-space-10) + var(--ls-space-4));
+  }
+}
+
+.ls-shop-lines {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-shop-line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--ls-space-3) var(--ls-space-4);
+  padding-block: var(--ls-space-4);
+  border-top: 1px solid var(--ls-border);
+}
+
+.ls-shop-line:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.ls-shop-line:last-child {
+  padding-bottom: 0;
+}
+
+.ls-shop-line-thumb {
+  display: block;
+}
+
+.ls-shop-line-thumb .ls-thumb {
+  width: 5rem;
+  height: 5rem;
+  border-radius: var(--ls-radius-md);
+}
+
+.ls-shop-line-main {
+  display: grid;
+  gap: var(--ls-space-1);
+  align-content: start;
+  min-width: 0;
+}
+
+.ls-shop-line-name {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+  color: var(--ls-text);
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.ls-shop-line-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ls-space-1) var(--ls-space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.ls-shop-line-price del {
+  color: var(--ls-text-subtle);
+  font-size: var(--ls-text-sm);
+}
+
+.ls-shop-line-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-1) var(--ls-space-2);
+}
+
+.ls-shop-problem {
+  margin: 0;
+  color: var(--ls-danger);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-shop-line-side {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-3);
+}
+
+.ls-shop-line-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+}
+
+/* The line total always sits at the trailing edge, on the controls' row or the one below. */
+.ls-shop-line-total {
+  margin-inline-start: auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .ls-shop-line {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .ls-shop-line-side {
+    grid-column: auto;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-start;
+  }
+
+  .ls-shop-line-total {
+    margin-inline-start: 0;
+  }
+}
+
+.ls-shop-mini {
+  display: grid;
+  gap: var(--ls-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-shop-mini li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ls-space-3);
+}
+
+.ls-shop-mini-name {
+  display: grid;
+  gap: var(--ls-space-1);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ls-shop-mini-total {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ls-shop-voucher {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--ls-space-3);
+}
+
+.ls-shop-voucher-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.ls-shop-saved {
+  display: grid;
+  gap: var(--ls-space-2);
+}
+
+/* The policy text: a quiet, scrollable block (no border inside the card). */
+.ls-shop-policy {
+  display: grid;
+  gap: var(--ls-space-3);
+  max-height: 20rem;
+  padding: var(--ls-space-4);
+  overflow-y: auto;
+  border-radius: var(--ls-radius-md);
+  background: var(--ls-bg-sunken);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-shop-policy p {
+  margin: 0;
+}
+
+.ls-shop-checking {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  margin: 0;
+  color: var(--ls-text-muted);
+}
+
+.ls-shop-state {
+  margin: 0;
+  font-size: var(--ls-text-md);
+  line-height: var(--ls-leading-md);
+  font-weight: 600;
+}
+
+.ls-shop-state[data-urgent='true'] {
+  color: var(--ls-danger);
 }

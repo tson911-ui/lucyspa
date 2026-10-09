@@ -32,6 +32,12 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'services',
     // Phase 6 P6-3: the product catalog (GLOBAL MANAGE_PRODUCTS / MANAGE_PRODUCT_PRICES; the Owner holds all).
     'products',
+    // Phase 6 P6-23: promotion campaigns (GLOBAL MANAGE_PRODUCT_PRICES; the Owner holds all).
+    'productCampaigns',
+    // Phase 6 P6-19: the settings of online sales (GLOBAL MANAGE_PRODUCTS; the Owner holds all).
+    'onlineSales',
+    // Phase 6 P6-20: the carriers (GLOBAL MANAGE_PRODUCTS; the Owner holds all).
+    'shippingCarriers',
     // Phase 6 P6-4: the inventory (branch VIEW_INVENTORY / MANAGE_STOCK_RECEIPTS / ADJUST_STOCK or global MANAGE_PRODUCTS).
     'inventory',
     // Phase 6 P6-5: the Excel/CSV import (GLOBAL IMPORT_PRODUCT_DATA; the Owner holds all).
@@ -42,6 +48,8 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'loyalty',
     // Phase 6 P6-17: pre-ordered goods (branch MANAGE_PRODUCT_ORDERS / REFUND_PRODUCTS; the Owner holds all).
     'productOrders',
+    // Phase 6 P6-20/P6-21: online orders (branch MANAGE_PRODUCT_ORDERS / REFUND_PRODUCTS; the Owner holds all).
+    'onlineOrders',
     // Phase 6 P6-12: product return cases (branch MANAGE_PRODUCT_RETURNS / REFUND_PRODUCTS; the Owner holds all).
     'productReturns',
     'skills',
@@ -78,6 +86,27 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
   assert.ok(!keys(employee([['MANAGE_PRODUCTS', 'A']])).includes('products'));
   assert.ok(!keys(employee([['VIEW_PRODUCT_COST']])).includes('products'));
   assert.ok(!keys(customer).includes('products'));
+  // Campaigns are GLOBAL_ONLY MANAGE_PRODUCT_PRICES: managing products alone or a branch grant never opens them.
+  assert.ok(keys(employee([['MANAGE_PRODUCT_PRICES']])).includes('productCampaigns'));
+  assert.ok(!keys(employee([['MANAGE_PRODUCTS']])).includes('productCampaigns'));
+  assert.ok(!keys(employee([['MANAGE_PRODUCT_PRICES', 'A']])).includes('productCampaigns'));
+  assert.ok(!keys(customer).includes('productCampaigns'));
+  // The online sales settings are GLOBAL_ONLY MANAGE_PRODUCTS: the prices permission alone and a branch grant never open them.
+  assert.ok(keys(employee([['MANAGE_PRODUCTS']])).includes('onlineSales'));
+  assert.ok(!keys(employee([['MANAGE_PRODUCT_PRICES']])).includes('onlineSales'));
+  assert.ok(!keys(employee([['MANAGE_PRODUCTS', 'A']])).includes('onlineSales'));
+  assert.ok(!keys(customer).includes('onlineSales'));
+  // The carriers are GLOBAL_ONLY MANAGE_PRODUCTS as well.
+  assert.ok(keys(employee([['MANAGE_PRODUCTS']])).includes('shippingCarriers'));
+  assert.ok(!keys(employee([['MANAGE_PRODUCT_PRICES']])).includes('shippingCarriers'));
+  assert.ok(!keys(employee([['MANAGE_PRODUCTS', 'A']])).includes('shippingCarriers'));
+  assert.ok(!keys(customer).includes('shippingCarriers'));
+  // Online orders open with the branch permission to pack or the branch permission to refund; nothing global-only and no customer.
+  assert.ok(keys(employee([['MANAGE_PRODUCT_ORDERS', 'A']])).includes('onlineOrders'));
+  assert.ok(keys(employee([['REFUND_PRODUCTS', 'A']])).includes('onlineOrders'));
+  assert.ok(!keys(employee([['MANAGE_PRODUCTS']])).includes('onlineOrders'));
+  assert.ok(!keys(employee()).includes('onlineOrders'));
+  assert.ok(!keys(customer).includes('onlineOrders'));
   // The inventory opens with any of the three branch permissions at a branch, or the global product permission; nothing else.
   for (const code of ['VIEW_INVENTORY', 'MANAGE_STOCK_RECEIPTS', 'ADJUST_STOCK'] as const) {
     assert.ok(keys(employee([[code, 'A']])).includes('inventory'), code);

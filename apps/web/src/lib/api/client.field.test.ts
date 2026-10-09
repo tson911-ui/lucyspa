@@ -27,6 +27,8 @@ const B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 test('the field of an error is a name, one record id, or a list of record ids', async () => {
   const cases: [string, string | null][] = [
     ['Name is invalid: displayName', 'displayName'],
+    ['Phone is invalid: address.recipientPhone', 'address.recipientPhone'],
+    ['Phone is invalid: address.', null],
     [`This overlaps: ${A}`, A],
     [`There is not enough stock: ${A},${B}`, `${A},${B}`],
     [`There is not enough stock: ${A}, ${B}`, null],

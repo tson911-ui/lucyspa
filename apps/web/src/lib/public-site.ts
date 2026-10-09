@@ -13,6 +13,7 @@ import {
 import {
   parseProductCodes,
   parseProductDetail,
+  parsePublicCampaigns,
   parsePublicProducts,
   productsQuery,
   productsStateOf,
@@ -92,8 +93,15 @@ export async function fetchPublicProducts(
 ) {
   const query = productsQuery(state);
   const path = `/api/v1/public/products?locale=${locale}${query === '' ? '' : `&${query.slice(1)}`}`;
-  const answer = await read(path, fetcher, state.q === '');
+  // A campaign address is the visitor's own text like a search, so it is never remembered either.
+  const answer = await read(path, fetcher, state.q === '' && !state.campaign);
   return answer?.status === 200 ? parsePublicProducts(answer.body) : null;
+}
+
+/** The promotion campaigns running now (Wave 4 / P6-23), or null when they could not be read: the page then simply shows none. */
+export async function fetchPublicCampaigns(locale: Locale, fetcher: typeof fetch = fetch) {
+  const answer = await read(`/api/v1/public/campaigns?locale=${locale}`, fetcher);
+  return answer?.status === 200 ? (parsePublicCampaigns(answer.body)?.campaigns ?? null) : null;
 }
 
 /**

@@ -1,6 +1,8 @@
 import {
   PUBLIC_PRODUCT_SORTS,
   PUBLIC_PRODUCTS_PAGE_SIZE,
+  type PublicCampaign,
+  type PublicCampaignsResponse,
   type PublicProductCard,
   type PublicProductCodesResponse,
   type PublicProductDetail,
@@ -44,6 +46,8 @@ export interface ProductsState {
   brand: string;
   sort: PublicProductSort;
   page: number;
+  /** The address name of a campaign (Wave 4 / P6-23): only that campaign's products. Left out of the state when there is none. */
+  campaign?: string;
 }
 
 export const EMPTY_PRODUCTS_STATE: ProductsState = {
@@ -57,6 +61,8 @@ export const EMPTY_PRODUCTS_STATE: ProductsState = {
 type SearchParams = Record<string, string | string[] | undefined>;
 
 const CODE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$/;
+/** The address name of a campaign: lower case words joined by hyphens (3 to 60 characters, as the admin enforces). */
+const CAMPAIGN_SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const MAX_QUERY = 80;
 const MAX_PAGE = 500;
 
@@ -72,7 +78,9 @@ export function productsStateOf(params: SearchParams): ProductsState {
   const brand = first(params['brand']);
   const sort = first(params['sort']);
   const page = Number(first(params['page']));
+  const campaign = first(params['campaign']);
   return {
+    ...(CAMPAIGN_SLUG.test(campaign) ? { campaign } : {}),
     q: [...q].length > MAX_QUERY ? [...q].slice(0, MAX_QUERY).join('').trim() : q,
     category: CODE.test(category) ? category : '',
     brand: CODE.test(brand) ? brand : '',
@@ -86,6 +94,7 @@ export function productsStateOf(params: SearchParams): ProductsState {
 /** The query string of a state, defaults left out (so the plain list has a plain address). */
 export function productsQuery(state: ProductsState): string {
   const query = new URLSearchParams();
+  if (state.campaign) query.set('campaign', state.campaign);
   if (state.q !== '') query.set('q', state.q);
   if (state.category !== '') query.set('category', state.category);
   if (state.brand !== '') query.set('brand', state.brand);
@@ -114,7 +123,11 @@ export const activeFilterCount = (state: ProductsState): number =>
   (state.category !== '' ? 1 : 0) + (state.brand !== '' ? 1 : 0);
 
 export const isPlainList = (state: ProductsState): boolean =>
-  state.q === '' && state.category === '' && state.brand === '' && state.page === 1;
+  state.q === '' &&
+  state.category === '' &&
+  state.brand === '' &&
+  state.page === 1 &&
+  !state.campaign;
 
 export function lastPage(total: number): number {
   return Math.max(1, Math.ceil(total / PUBLIC_PRODUCTS_PAGE_SIZE));
@@ -160,7 +173,22 @@ function parsePrice(value: unknown): PublicProductPrice | null {
   const percent = value['discountPercent'];
   if (list !== null && !isMoney(list)) return null;
   if (percent !== null && (!isCount(percent) || percent < 1 || percent > 99)) return null;
-  return { priceVnd: value['priceVnd'], listPriceVnd: list, discountPercent: percent };
+  const campaign = parseCampaignRef(value['campaign']);
+  if (campaign === undefined) return null;
+  return {
+    priceVnd: value['priceVnd'],
+    listPriceVnd: list,
+    discountPercent: percent,
+    ...(campaign ? { campaign } : {}),
+  };
+}
+
+/** The campaign that gives a price: absent (null here) for a plain or promotion price, undefined when malformed. */
+function parseCampaignRef(value: unknown): PublicProductPrice['campaign'] | null | undefined {
+  if (value === undefined || value === null) return null;
+  if (!isRecord(value) || !isString(value['slug']) || !isString(value['name'])) return undefined;
+  if (!isNullableString(value['badge'])) return undefined;
+  return { slug: value['slug'], name: value['name'], badge: value['badge'] };
 }
 
 function parseCategoryRef(value: unknown): { code: string; name: string } | null | undefined {
@@ -261,9 +289,12 @@ export function parsePublicProducts(value: unknown): PublicProductsResponse | nu
 
 function parseVariant(value: unknown): PublicProductVariant | null {
   if (!isRecord(value) || !isNullableString(value['label'])) return null;
+  if (!isString(value['id']) || typeof value['sellOnline'] !== 'boolean') return null;
   const price = parsePrice(value['price']);
   const stock = parseStock(value['stock']);
-  return price && stock ? { label: value['label'], price, stock } : null;
+  return price && stock
+    ? { id: value['id'], sellOnline: value['sellOnline'], label: value['label'], price, stock }
+    : null;
 }
 
 function parseDetail(value: unknown): PublicProductDetail | null {
@@ -301,6 +332,84 @@ function parseDetail(value: unknown): PublicProductDetail | null {
     featured: value['featured'],
     stock,
   };
+}
+
+/** The banner of a campaign as a picture the catalog can draw (same-origin public media only); its shape is cropped by the CSS. */
+function bannerImage(url: unknown, name: string): PublicSlideImage | null {
+  if (!isString(url) || !/^\/api\/v1\/public\/media\/[0-9a-f-]{36}\/(md|lg)$/i.test(url)) {
+    return null;
+  }
+  return { alt: name, width: 1600, height: 1000, sources: [{ url, width: 1600 }] };
+}
+
+/** The campaigns running now (GET public/campaigns); a malformed entry is left out, a malformed answer is null. */
+export function parsePublicCampaigns(value: unknown): PublicCampaignsResponse | null {
+  if (!isRecord(value) || !Array.isArray(value['campaigns'])) return null;
+  const campaigns: PublicCampaign[] = [];
+  for (const item of value['campaigns']) {
+    if (
+      !isRecord(item) ||
+      !isString(item['slug']) ||
+      !CAMPAIGN_SLUG.test(item['slug']) ||
+      !isString(item['name']) ||
+      !isNullableString(item['badge']) ||
+      !isNullableString(item['headline']) ||
+      !isNullableString(item['message']) ||
+      !isNullableString(item['ctaLabel']) ||
+      !isString(item['endsAt']) ||
+      Number.isNaN(Date.parse(item['endsAt']))
+    ) {
+      continue;
+    }
+    campaigns.push({
+      slug: item['slug'],
+      name: item['name'],
+      badge: item['badge'],
+      headline: item['headline'],
+      message: item['message'],
+      ctaLabel: item['ctaLabel'],
+      bannerUrl: bannerImage(item['bannerUrl'], item['name'])
+        ? (item['bannerUrl'] as string)
+        : null,
+      endsAt: item['endsAt'],
+    });
+  }
+  return { campaigns };
+}
+
+/** The campaign's banner as a catalog picture, or null when it has none. */
+export const campaignBanner = (campaign: Pick<PublicCampaign, 'bannerUrl' | 'name'>) =>
+  bannerImage(campaign.bannerUrl, campaign.name);
+
+/** The address of a campaign's sale view (the catalog filtered by it). */
+export const campaignHref = (locale: Locale, slug: string): string =>
+  productsHref(locale, { ...EMPTY_PRODUCTS_STATE, campaign: slug });
+
+/** The one badge a price shows: the campaign's own words when it has some, else the percent ("-15%"), else nothing. */
+export const priceBadgeText = (price: PublicProductPrice): string | null =>
+  price.campaign?.badge?.trim() || discountText(price);
+
+/** Running campaigns for the strips of the plain list: at most two, most recent first (the API's order). */
+export const stripCampaigns = (campaigns: readonly PublicCampaign[] | null | undefined) =>
+  (campaigns ?? []).slice(0, 2);
+
+/** The running campaign a state asks for, or null (no campaign asked, unknown or ended: the list then shows its normal words). */
+export const activeCampaign = (
+  campaigns: readonly PublicCampaign[] | null | undefined,
+  state: Pick<ProductsState, 'campaign'>,
+): PublicCampaign | null =>
+  state.campaign
+    ? ((campaigns ?? []).find((entry) => entry.slug === state.campaign) ?? null)
+    : null;
+
+/** "31/10/2026" in the shop's time zone (the visitor reads the day the sale ends there). */
+export function campaignEndText(endsAt: string, locale: Locale): string {
+  return new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(new Date(endsAt));
 }
 
 export function parseProductDetail(value: unknown): PublicProductDetailResponse | null {

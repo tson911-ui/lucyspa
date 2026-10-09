@@ -167,6 +167,18 @@ export async function settleFailedDelivery(
     orderId,
     live.map((line) => line.id),
   );
+  // The sale of the goods is written by the inventory consumer after the parcel leaves; until it has, the reservation is still held and
+  // the lines cannot be closed (whatever the restock choice). The person retries in a moment.
+  const reservations = await tx.stockReservation.findMany({
+    where: { invoiceLineId: { in: figures.perLine.map((line) => line.invoiceLineId) } },
+    select: { status: true },
+  });
+  if (
+    reservations.length !== figures.perLine.length ||
+    reservations.some((reservation) => reservation.status !== 'CONSUMED')
+  ) {
+    throw new AuthError('REFUND_STOCK_PENDING');
+  }
   const refund = failedDeliveryRefund(figures.goods, figures.feeOut, back);
   if (refund > 0n !== (confirmedAt !== null)) throw new AuthError('CONFLICT');
   // Goods that are back but earn no refund have no refund to name a lot after: they enter stock through the stock count.

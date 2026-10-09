@@ -22,6 +22,7 @@ test('every status has a tone, a staff word and a customer word, in both languag
     'ORDERED',
     'ARRIVED',
     'HANDED_OVER',
+    'SHIPPED',
     'COMPLETED',
     'CANCELLED',
   ] as const;

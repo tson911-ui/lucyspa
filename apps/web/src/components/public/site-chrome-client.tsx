@@ -14,6 +14,7 @@ import type { ReactNode } from 'react';
 import { getSiteText } from '../../i18n/site';
 import type { Locale } from '../../i18n/locales';
 import { headerNavItems, otherLocalePath, tabBarItems } from '../../lib/site-nav';
+import { CartLink } from '../shop/cart-link';
 import { PublicAccountMenu } from './account-menu';
 import { NotificationBell } from './notification-bell';
 import { NAV_TRANSITION } from '../../lib/nav-transition';
@@ -81,13 +82,14 @@ export function PublicTabBar({
   );
 }
 
-/** Notifications (members), language, theme and account: round 44 px tools (40 px on a fine pointer). */
+/** The cart and notifications (members), language, theme and account: round 44 px tools (40 px on a fine pointer). */
 export function PublicTools({ locale }: { locale: Locale }) {
   const text = getSiteText(locale);
   const pathname = usePathname();
   const other = locale === 'vi' ? 'en' : 'vi';
   return (
     <>
+      <CartLink locale={locale} />
       <NotificationBell locale={locale} />
       <Link
         className="ls-site-tool"

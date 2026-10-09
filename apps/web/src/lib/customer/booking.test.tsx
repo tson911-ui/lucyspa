@@ -108,6 +108,19 @@ test('prices are catalog reference ranges; post-login destinations stay in the m
   assert.equal(safeCustomerNext('/vi/account/login?next=x', '/vi/account'), '/vi/account');
 });
 
+test('a sign-in may return to the shop pages of the same language, nowhere else outside the member area', () => {
+  const base = '/vi/account';
+  assert.equal(safeCustomerNext('/vi/products/kem-duong', base), '/vi/products/kem-duong');
+  assert.equal(safeCustomerNext('/vi/cart', base), '/vi/cart');
+  assert.equal(safeCustomerNext('/vi/checkout', base), '/vi/checkout');
+  assert.equal(safeCustomerNext('/vi/products?category=a', base), '/vi/products?category=a');
+  assert.equal(safeCustomerNext('/en/cart', base), base);
+  assert.equal(safeCustomerNext('/vi/cartoon', base), base);
+  assert.equal(safeCustomerNext('//evil.example/vi/cart', base), base);
+  assert.equal(safeCustomerNext('/vi/cart\\x', base), base);
+  assert.equal(safeCustomerNext('/vi/services', base), base);
+});
+
 test('login uses the CUSTOMER realm by email and refreshes CSRF; staff sessions are told apart', async () => {
   const { fetcher, calls } = scriptedFetch([
     context('anon'),

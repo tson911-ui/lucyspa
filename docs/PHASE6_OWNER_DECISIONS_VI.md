@@ -1036,3 +1036,18 @@ Chi tiết: `docs/PHASE6_STEP7_LOAD_READINESS.md`. OQ-26 (chỉ web chạy nhi�
 - **Ý nghĩa:** muốn giới hạn theo từng khách, API phải biết địa chỉ thật. Nếu nginx không gửi thì **giới hạn không có tác dụng** (không ai bị chặn nhầm, nhưng cũng không bảo vệ được). Tôi không xem được cấu hình nginx nên hướng dẫn deploy có một bước kiểm bằng lệnh (gọi 310 lần rồi đếm lỗi 429) và một bước xem cấu hình.
 - **Tôi khuyên:** làm bước kiểm. Nếu thiếu, sửa nginx thêm `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` (kỹ thuật viên của Chủ làm, tôi không đụng máy chủ).
 - **Nếu khác:** không thêm, chấp nhận không có giới hạn theo khách ở Đợt 1.
+
+## Đợt 4: các cách hiểu kỹ thuật **chờ Chủ xem lại** (đã xây xong 2026-10-09; chi tiết ở `PHASE6_PRODUCTS_INVENTORY_DESIGN.md` mục 2.38)
+
+Tiền và chính sách chỉ là lời Chủ đã duyệt (miễn phí giao hàng, trả trước PayOS, chỉ hội viên, nhân viên nhập mã vận đơn và phí hãng, công thức giao thất bại, đổi trả). Mọi mục dưới đây là cách tôi làm kỹ thuật; **chưa được duyệt**, Chủ nói "đồng ý" hoặc ghi mục nào khác.
+
+- **W4-1 Giữ và trừ kho.** Hàng có sẵn được giữ ngay khi khách đặt; chỉ trừ kho thật khi nhân viên bấm "Đã gửi". Đặt trước thì giữ khi hàng về, trừ khi gửi.
+- **W4-2 Không có người bán trên dòng online.** Không ai bị ghi là người bán; hoa hồng bán online để Phase 7 quyết.
+- **W4-3 Tự hủy quá 30 phút không có người thật.** Ghi là chính khách, nguyên nhân hệ thống, nhật ký kiểm toán loại SYSTEM; không tạo tài khoản hệ thống.
+- **W4-4 PayOS.** Liên kết hết hạn đúng lúc hết hạn đơn; trước khi hủy, hệ thống hỏi lại PayOS; webhook và đối soát không bao giờ bị công tắc "Bán online" chặn.
+- **W4-5 (câu hỏi) Tiền về muộn sau khi đơn đã hủy.** Hiện chỉ báo bất thường cho quản lý, tiền được giữ, hoàn bằng tay. Chủ có muốn tự động hoàn không?
+- **W4-6/7/9** Tối đa 3 đơn chưa trả được khóa theo tài khoản; lệnh của khách không giả làm nhân viên; danh sách tỉnh lấy từ nguồn chính thức.
+- **W4-8 Chiến dịch dùng quyền `MANAGE_PRODUCT_PRICES`**, không thêm quyền (vẫn 66 quyền).
+- **W4-10 Hủy, giao thất bại, đổi trả.** Hủy dòng chưa gửi dùng đúng lệnh hủy ở quầy; quyết toán giao thất bại chỉ sau "hàng đã về", một lần nhập mật khẩu cho cả quyết toán, hoàn 0 thì không hỏi và không nhập kho bán được; đổi trả tính hạn từ ngày giao; phí gửi trả ghi riêng, không trừ vào tiền hoàn. **Câu hỏi:** đơn online có cần "đổi hàng" (chưa làm)?
+- **W4-11 Chiến dịch khuyến mãi.** Giá thấp nhất thắng, không cộng dồn; giảm % làm tròn xuống đồng; đăng rồi thì đóng băng thời gian, quy tắc, sản phẩm; kết thúc sớm một lần có lý do. **Câu hỏi:** gắn chiến dịch với hero trang chủ và popup (chưa làm); báo cáo doanh thu theo chiến dịch (chưa có màn).
+- **W4-12 Ngân sách yêu cầu theo tài khoản:** 120 yêu cầu thành công mỗi phút cho các đường online của một hội viên (một trang dùng khoảng 20). Đo tải: một tiến trình API làm khoảng 8 lượt đặt hàng mỗi giây, nên **không thêm tiến trình API**.

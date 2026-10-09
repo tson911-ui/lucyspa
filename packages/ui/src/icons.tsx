@@ -83,6 +83,10 @@ const paths = {
     'M12 9a3 3 0 100 6 3 3 0 000-6zM12 9c-2-1-2-4 0-6 2 2 2 5 0 6zM12 15c-2 1-2 4 0 6 2-2 2-5 0-6zM9 12c-1-2-4-2-6 0 2 2 5 2 6 0zM15 12c1-2 4-2 6 0-2 2-5 2-6 0z',
   gem: 'M6 4h12l3 5-9 11L3 9l3-5zM3 9h18M9 4l-1.5 5L12 20M15 4l1.5 5L12 20',
   smile: 'M12 3a9 9 0 100 18 9 9 0 000-18zM8.5 14a4.5 4.5 0 007 0M9 9.5v.01M15 9.5v.01',
+  // Online shop (Phase 6 P6-19): the cart in the header and the delivery line
+  cart: 'M3 4h2.5l2.2 10.2a1 1 0 001 .8h8.6a1 1 0 001-.8L20 8H6.3M9.5 19.5v.01M17 19.5v.01',
+  truck:
+    'M3 6h11v10H3zM14 9h4l3 3.5V16h-7M7 19a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM17 19a1.5 1.5 0 100-3 1.5 1.5 0 000 3z',
   // Homepage slider (Step 13)
   pause: 'M9 5v14M15 5v14',
   play: 'M8 5l11 7-11 7V5z',

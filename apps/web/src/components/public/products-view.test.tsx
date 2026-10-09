@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type {
+  PublicCampaign,
   PublicProductCard,
   PublicProductDetailResponse,
   PublicProductsResponse,
@@ -225,11 +226,15 @@ const detail = (overrides: Partial<PublicProductDetailResponse['product']> = {})
       images: [image, { ...image, alt: 'Mặt bên' }],
       variants: [
         {
+          id: 'v1',
+          sellOnline: true,
           label: '30 ml',
           price: { priceVnd: '80000', listPriceVnd: '100000', discountPercent: 20 },
           stock: stock('IN_STOCK'),
         },
         {
+          id: 'v2',
+          sellOnline: true,
           label: '50 ml',
           price: { priceVnd: '150000', listPriceVnd: null, discountPercent: null },
           stock: stock('PRE_ORDER'),
@@ -276,6 +281,8 @@ test('detail: one variant has no picker; no picture shows a placeholder; no shop
     images: [],
     variants: [
       {
+        id: 'v1',
+        sellOnline: true,
         label: null,
         price: { priceVnd: '60000', listPriceVnd: null, discountPercent: null },
         stock: stock('OUT_OF_STOCK'),
@@ -310,4 +317,170 @@ test('the English page uses English wording and the English store block', () => 
   assert.ok(text.includes('Buy in the shop') && text.includes('Directions'));
   assert.ok(text.includes('Pre-order, expected 3–5 days'));
   assert.ok(text.includes('href="/en/products/khac"'));
+});
+
+const campaign = (overrides: Partial<PublicCampaign> = {}): PublicCampaign => ({
+  slug: 'ngay-hoi-lam-dep',
+  name: 'Ngày hội làm đẹp',
+  badge: '-25%',
+  headline: 'Ngày hội làm đẹp 10.10',
+  message: 'Giảm đến 25% cho chăm sóc da',
+  ctaLabel: 'Mua ngay',
+  bannerUrl: '/api/v1/public/media/22222222-2222-4222-8222-222222222222/lg',
+  endsAt: '2026-10-31T16:59:59.000Z',
+  ...overrides,
+});
+const onSale = (badge: string | null = '-25%') =>
+  card({
+    price: {
+      priceVnd: '216750',
+      listPriceVnd: '289000',
+      discountPercent: 25,
+      campaign: { slug: 'ngay-hoi-lam-dep', name: 'Ngày hội làm đẹp', badge },
+    },
+  });
+
+test('campaigns: the plain list shows a slim strip for each running campaign, two at most, each linking to its sale view', () => {
+  const three = [
+    campaign(),
+    campaign({
+      slug: 'tet-sale',
+      name: 'Tết',
+      badge: null,
+      headline: null,
+      bannerUrl: null,
+      ctaLabel: null,
+    }),
+    campaign({ slug: 'thu-ba', name: 'Thứ ba' }),
+  ];
+  const text = html(
+    <ProductsView locale="vi" data={data()} state={EMPTY_PRODUCTS_STATE} campaigns={three} />,
+  );
+  assert.equal(count(text, /class="ls-camp-strip"/g), 2);
+  assert.ok(text.includes('href="/vi/products?campaign=ngay-hoi-lam-dep"'));
+  assert.ok(text.includes('href="/vi/products?campaign=tet-sale"'));
+  assert.ok(!text.includes('thu-ba'));
+  assert.ok(text.includes('Xem ưu đãi'), 'a campaign without a button label gets the default');
+  assert.equal(count(text, /<h1\b/g), 1);
+  // Nothing is drawn when there is no news of campaigns (not read, or none running).
+  for (const none of [null, []]) {
+    const plain = html(
+      <ProductsView locale="vi" data={data()} state={EMPTY_PRODUCTS_STATE} campaigns={none} />,
+    );
+    assert.equal(count(plain, /ls-camp-strip/g), 0);
+  }
+});
+
+test('campaigns: a sale view opens with the banner, headline, message and button of its campaign and keeps the list', () => {
+  const text = html(
+    <ProductsView
+      locale="vi"
+      data={data({ items: [onSale()], total: 41 })}
+      state={{ ...EMPTY_PRODUCTS_STATE, campaign: 'ngay-hoi-lam-dep', sort: 'newest', page: 2 }}
+      campaigns={[campaign()]}
+    />,
+  );
+  assert.equal(count(text, /<h1\b/g), 1);
+  assert.match(text, /<h1[^>]*>Ngày hội làm đẹp 10\.10<\/h1>/);
+  assert.ok(text.includes('Giảm đến 25% cho chăm sóc da'));
+  assert.ok(text.includes('Mua ngay') && text.includes('href="#products-list"'));
+  assert.ok(text.includes('Đến hết ngày 31/10/2026'));
+  assert.ok(text.includes('/api/v1/public/media/22222222-2222-4222-8222-222222222222/lg'));
+  assert.equal(count(text, /class="ls-camp-strip"/g), 0, 'no strips inside the sale view itself');
+  // Paging keeps the campaign and the sort.
+  assert.ok(text.includes('campaign=ngay-hoi-lam-dep'));
+  assert.ok(text.includes('href="/vi/products"'), 'a way back to every product');
+  // A campaign with no picture and no words still has an h1 (its name) and no broken image.
+  const bare = html(
+    <ProductsView
+      locale="vi"
+      data={data()}
+      state={{ ...EMPTY_PRODUCTS_STATE, campaign: 'ngay-hoi-lam-dep' }}
+      campaigns={[
+        campaign({ headline: null, message: null, bannerUrl: null, badge: null, ctaLabel: null }),
+      ]}
+    />,
+  );
+  assert.match(bare, /<h1[^>]*>Ngày hội làm đẹp<\/h1>/);
+  assert.equal(count(bare, /ls-prod-hero-picture/g), 0);
+  assert.ok(bare.includes('Xem sản phẩm'));
+});
+
+test('campaigns: an unknown or ended campaign shows the normal page and its normal empty message', () => {
+  const text = html(
+    <ProductsView
+      locale="vi"
+      data={data({ items: [], total: 0 })}
+      state={{ ...EMPTY_PRODUCTS_STATE, campaign: 'da-het-han' }}
+      campaigns={[campaign()]}
+    />,
+  );
+  assert.equal(count(text, /<h1\b/g), 1);
+  assert.ok(text.includes('Mỹ phẩm'), 'the plain title');
+  assert.equal(count(text, /ls-camp-/g), 0);
+  assert.ok(text.includes('Mỹ phẩm sắp có tại Lucy Spa'));
+  // The campaigns could not be read at all: the same page.
+  const failed = html(
+    <ProductsView
+      locale="vi"
+      data={data({ items: [], total: 0 })}
+      state={{ ...EMPTY_PRODUCTS_STATE, campaign: 'ngay-hoi-lam-dep' }}
+      campaigns={null}
+    />,
+  );
+  assert.equal(count(failed, /<h1\b/g), 1);
+  assert.equal(count(failed, /ls-camp-/g), 0);
+});
+
+test('campaigns: a card and the product page show the badge of the campaign and a link to its sale view', () => {
+  const list = html(
+    <ProductsView locale="vi" data={data({ items: [onSale()] })} state={EMPTY_PRODUCTS_STATE} />,
+  );
+  assert.ok(list.includes('-25%'));
+  assert.ok(list.includes('<del>289.000 ₫</del>'));
+  assert.equal(count(list, /class="ls-prod-campaign"/g), 1);
+  assert.ok(list.includes('href="/vi/products?campaign=ngay-hoi-lam-dep"'));
+  assert.ok(list.includes('Khuyến mãi: '));
+  // Without badge words the percent is the badge; a plain price has no campaign line.
+  const percent = html(
+    <ProductsView
+      locale="vi"
+      data={data({ items: [onSale(null)] })}
+      state={EMPTY_PRODUCTS_STATE}
+    />,
+  );
+  assert.ok(percent.includes('-25%'));
+  const words = html(
+    <ProductsView
+      locale="vi"
+      data={data({ items: [onSale('Giảm sâu')] })}
+      state={EMPTY_PRODUCTS_STATE}
+    />,
+  );
+  assert.ok(words.includes('Giảm sâu') && !words.includes('-25%'));
+  assert.equal(
+    count(
+      html(<ProductsView locale="vi" data={data()} state={EMPTY_PRODUCTS_STATE} />),
+      /ls-prod-campaign/g,
+    ),
+    0,
+  );
+  const one = detail();
+  const page = html(
+    <ProductDetailView
+      locale="en"
+      detail={{
+        ...one,
+        product: {
+          ...one.product,
+          variants: [{ ...one.product.variants[0]!, price: onSale().price }],
+        },
+      }}
+      site={null}
+    />,
+    '/en/products/kem-duong',
+  );
+  assert.ok(page.includes('-25%'));
+  assert.ok(page.includes('Promotion: '));
+  assert.ok(page.includes('href="/en/products?campaign=ngay-hoi-lam-dep"'));
 });

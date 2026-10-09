@@ -119,7 +119,7 @@ export function updateBody(
   if (!input.sellerUserId) return { problem: 'seller' };
   const body: InvoiceProductLineUpdateRequest = { expectedVersion };
   if (quantity !== line.quantity) body.quantity = quantity;
-  if (input.sellerUserId !== line.seller.id) body.sellerUserId = input.sellerUserId;
+  if (input.sellerUserId !== line.seller?.id) body.sellerUserId = input.sellerUserId;
   return 'quantity' in body || 'sellerUserId' in body ? { body } : { problem: 'unchanged' };
 }
 

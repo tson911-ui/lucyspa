@@ -511,6 +511,12 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
         ) : null}
       </FormGrid>
       <CheckField
+        label={v.sellOnlineField}
+        hint={v.sellOnlineHint}
+        checked={draft.sellOnline}
+        onChange={(event) => set({ sellOnline: event.target.checked })}
+      />
+      <CheckField
         label={v.preOrderField}
         hint={v.preOrderHint}
         checked={draft.sellOnOrder}

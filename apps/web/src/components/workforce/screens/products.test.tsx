@@ -38,6 +38,7 @@ const product = (
         barcode: null,
         lowStockThreshold: 3,
         sellOnOrder: true,
+        sellOnline: true,
         leadTimeDaysMin: null,
         leadTimeDaysMax: null,
         usualSupplier: null,

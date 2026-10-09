@@ -127,6 +127,7 @@ export async function productsMetadata(locale: Locale, state: ProductsState): Pr
     // The plain first page is what a crawler reads; it is also the one already in the 60-second memory.
     fetchPublicProducts(locale, {
       ...state,
+      campaign: '',
       q: '',
       category: '',
       brand: '',

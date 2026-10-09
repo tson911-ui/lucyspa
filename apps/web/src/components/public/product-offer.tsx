@@ -2,24 +2,24 @@
 
 import type { PublicProductVariant } from '@lucy-spa/contracts';
 import { Badge, ChoiceCard } from '@lucy-spa/ui';
-import { useId, useState, type ReactNode } from 'react';
+import { useId, useState } from 'react';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
-import { discountText, moneyText, stockLabel } from '../../lib/public-products-core';
+import { moneyText, priceBadgeText, stockLabel } from '../../lib/public-products-core';
+import { PurchaseBlock } from '../shop/purchase-block';
+import { PriceCampaignLine } from './campaign-views';
 
 /**
  * The price and availability of the chosen variant and, when there are several, the picker. Each variant shows its own price and
- * its own availability ("Hết hàng", or the pre-order wait); a quantity is never shown. `action` is the reserved place of a buy
- * button: it stays empty until online orders exist (Wave 4), and nothing is drawn for it while it is.
+ * its own availability ("Hết hàng", or the pre-order wait); a quantity is never shown. Under them sits the purchase block (Phase 6 P6-19), a client
+ * island that reads the shop state and the session in the browser, so the page stays server-rendered.
  */
 export function ProductOffer({
   locale,
   variants,
-  action,
 }: {
   locale: Locale;
   variants: readonly PublicProductVariant[];
-  action?: ReactNode;
 }) {
   const text = getSiteText(locale).products;
   const group = useId();
@@ -41,10 +41,11 @@ export function ProductOffer({
         {variant.price.listPriceVnd ? (
           <del>{moneyText(variant.price.listPriceVnd, locale)}</del>
         ) : null}
-        {discountText(variant.price) ? (
-          <Badge tone="brand">{discountText(variant.price)}</Badge>
+        {priceBadgeText(variant.price) ? (
+          <Badge tone="brand">{priceBadgeText(variant.price)}</Badge>
         ) : null}
       </p>
+      <PriceCampaignLine locale={locale} price={variant.price} />
       {stock ? (
         <p className="ls-prod-stock" data-state={variant.stock.state}>
           {stock}
@@ -67,7 +68,7 @@ export function ProductOffer({
           ))}
         </div>
       ) : null}
-      {action ? <div className="ls-prod-action">{action}</div> : null}
+      <PurchaseBlock locale={locale} variant={variant} key={variant.id} />
     </div>
   );
 }

@@ -34,6 +34,10 @@ interface OrderTexts {
   alertLateOnly: string;
   alertHeldOnly: string;
   openOrders: string;
+  /** Online alert (Phase 6 P6-20): counts of orders not shipped in time and orders shipped long ago with no delivery date. */
+  onlineAlert: string;
+  onlineAlertUnshipped: string;
+  onlineAlertUndelivered: string;
 }
 
 /** Stock alert templates (Phase 6 P6-4): counts and the SKU only, never a name or free text. */
@@ -114,6 +118,14 @@ const vi = {
     PRODUCT_REFUND_MADE: 'Vừa có một lần hoàn tiền sản phẩm.',
     PRODUCT_ORDER_ARRIVED: 'Hàng đặt trước của bạn đã về. Mời bạn đến cửa hàng nhận hàng.',
     PRODUCT_ORDER_ALERT: 'Có đơn đặt trước trễ hẹn hoặc hàng đã về chờ khách nhận quá lâu.',
+    ONLINE_ORDER_SHIPPED: 'Đơn hàng online của bạn đã được gửi đi.',
+    ONLINE_ORDER_DELIVERED: 'Đơn hàng online của bạn đã giao xong. Cảm ơn bạn!',
+    ONLINE_ORDER_DELIVERY_FAILED: 'Giao hàng chưa thành công. Cửa hàng sẽ liên hệ với bạn.',
+    ONLINE_ORDER_CANCELLED: 'Đơn hàng online của bạn đã bị hủy.',
+    ONLINE_ORDER_REFUNDED: 'Đơn hàng online của bạn đã được hoàn tiền.',
+    ONLINE_ORDER_NEW: 'Có đơn hàng online mới đã thanh toán.',
+    ONLINE_ORDER_ALERT:
+      'Có đơn hàng online chưa gửi đúng hẹn hoặc đã gửi lâu mà chưa có ngày giao.',
   } satisfies Record<NotificationType, string>,
   leave: {
     requested: 'Có đơn xin nghỉ ({type}) từ {from} đến {to} cần bạn xử lý.',
@@ -163,6 +175,10 @@ const vi = {
     alertLateOnly: 'Đặt trước: {late} dòng trễ hẹn so với ngày dự kiến.',
     alertHeldOnly: 'Đặt trước: {held} dòng hàng đã về chờ khách nhận quá {days} ngày.',
     openOrders: 'Xem hàng đặt trước',
+    onlineAlert:
+      'Đơn online: {unshipped} đơn chưa gửi đúng hẹn, {undelivered} đơn đã gửi quá 7 ngày mà chưa có ngày giao.',
+    onlineAlertUnshipped: 'Đơn online: {unshipped} đơn chưa gửi đúng hẹn.',
+    onlineAlertUndelivered: 'Đơn online: {undelivered} đơn đã gửi quá 7 ngày mà chưa có ngày giao.',
   } satisfies OrderTexts,
   returns: {
     opened: 'Có hồ sơ trả hàng mới {code}: {reason}.',
@@ -274,6 +290,14 @@ const en: Dictionary = {
       'Your pre-ordered goods have arrived. Please come to the shop to collect them.',
     PRODUCT_ORDER_ALERT:
       'Some pre-orders are late or arrived goods have waited too long for the customer.',
+    ONLINE_ORDER_SHIPPED: 'Your online order has been sent.',
+    ONLINE_ORDER_DELIVERED: 'Your online order was delivered. Thank you!',
+    ONLINE_ORDER_DELIVERY_FAILED: 'Delivery did not succeed. The shop will contact you.',
+    ONLINE_ORDER_CANCELLED: 'Your online order was cancelled.',
+    ONLINE_ORDER_REFUNDED: 'Your online order was refunded.',
+    ONLINE_ORDER_NEW: 'A new paid online order came in.',
+    ONLINE_ORDER_ALERT:
+      'Some online orders were not shipped in time, or were shipped long ago with no delivery date.',
   },
   leave: {
     requested: 'A leave request ({type}) from {from} to {to} needs your attention.',
@@ -322,6 +346,11 @@ const en: Dictionary = {
     alertLateOnly: 'Pre-orders: {late} lines are past their expected date.',
     alertHeldOnly: 'Pre-orders: {held} lines of arrived goods have waited over {days} days.',
     openOrders: 'View pre-orders',
+    onlineAlert:
+      'Online orders: {unshipped} not shipped in time, {undelivered} shipped over 7 days ago with no delivery date.',
+    onlineAlertUnshipped: 'Online orders: {unshipped} not shipped in time.',
+    onlineAlertUndelivered:
+      'Online orders: {undelivered} shipped over 7 days ago with no delivery date.',
   },
   returns: {
     opened: 'New return case {code}: {reason}.',

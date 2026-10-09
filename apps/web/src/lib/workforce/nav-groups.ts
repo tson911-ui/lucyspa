@@ -12,12 +12,27 @@ const SIDEBAR_LAYOUT: ReadonlyArray<{ group: NavGroupId; order: readonly NavKey[
     group: 'operations',
     order: ['bookingBoard', 'walkIn', 'myServices', 'reassignment', 'collaboratorSchedule'],
   },
-  { group: 'sales', order: ['pos', 'discounts', 'loyalty', 'productOrders', 'productReturns'] },
+  {
+    group: 'sales',
+    order: ['pos', 'discounts', 'loyalty', 'productOrders', 'onlineOrders', 'productReturns'],
+  },
   {
     group: 'people',
     order: ['employees', 'attendance', 'leave', 'teams', 'organization', 'skills'],
   },
-  { group: 'catalog', order: ['services', 'products', 'inventory', 'import', 'branches'] },
+  {
+    group: 'catalog',
+    order: [
+      'services',
+      'products',
+      'productCampaigns',
+      'onlineSales',
+      'shippingCarriers',
+      'inventory',
+      'import',
+      'branches',
+    ],
+  },
   { group: 'administration', order: ['roles', 'websiteContent'] },
 ];
 
@@ -35,6 +50,7 @@ export const NAV_ICONS: Record<NavKey, IconName> = {
   discounts: 'tag',
   loyalty: 'gem',
   productOrders: 'clipboard',
+  onlineOrders: 'truck',
   productReturns: 'refresh',
   employees: 'users',
   attendance: 'calendar-check',
@@ -44,6 +60,9 @@ export const NAV_ICONS: Record<NavKey, IconName> = {
   skills: 'award',
   services: 'sparkles',
   products: 'gem',
+  productCampaigns: 'tag',
+  onlineSales: 'cart',
+  shippingCarriers: 'map-pin',
   inventory: 'table',
   import: 'upload',
   branches: 'map-pin',

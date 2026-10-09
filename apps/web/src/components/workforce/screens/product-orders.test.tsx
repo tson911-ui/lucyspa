@@ -28,6 +28,7 @@ const queueRow = (patch: Partial<ProductOrderQueueRow> = {}): ProductOrderQueueR
   lineId: 'l1',
   orderId: 'o1',
   orderCode: 'DT000012',
+  channel: 'COUNTER',
   invoiceId: 'i1',
   invoiceCode: 'HD000042',
   customerName: 'Chị Lan',

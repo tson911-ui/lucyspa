@@ -22,6 +22,7 @@ const STATUSES: readonly ProductOrderLineStatusName[] = [
   'ORDERED',
   'ARRIVED',
   'HANDED_OVER',
+  'SHIPPED',
   'COMPLETED',
   'CANCELLED',
 ];

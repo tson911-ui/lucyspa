@@ -2829,6 +2829,11 @@
   height: var(--ls-control-h);
 }
 
+/* A money box in a toolbar (a price bound) is as narrow as a small field, so a "from" and a "to" box fit one row with the filters. */
+.ls-toolbar-filters > .ls-money {
+  width: calc(var(--ls-field-sm) * 0.75);
+}
+
 /* Controls that belong together (previous, date, next) wrap as one unit, never one button alone on a line. */
 .ls-toolbar-group {
   display: inline-flex;
@@ -4616,4 +4621,35 @@
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+}
+
+/* Online sales settings (Phase 6 P6-19): the default policy drafts under the two policy boxes. */
+.ls-policy-default {
+  display: grid;
+  gap: var(--ls-space-2);
+  align-content: start;
+  min-width: 0;
+}
+
+.ls-policy-default-title {
+  margin: 0;
+  font-size: var(--ls-text-sm);
+  font-weight: 600;
+}
+
+.ls-policy-default-text {
+  display: grid;
+  gap: var(--ls-space-2);
+  max-height: 16rem;
+  padding: var(--ls-space-3) var(--ls-space-4);
+  overflow-y: auto;
+  border-radius: var(--ls-radius-md);
+  background: var(--ls-bg-sunken);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-policy-default-text p {
+  margin: 0;
 }

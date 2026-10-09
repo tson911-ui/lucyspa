@@ -41,7 +41,7 @@ test(
       };
       const view = (id: string, who: { token: string } = packer) =>
         k.online.staffOrder(who.token, id);
-      const ship = async (id: string, fee = '35000') => {
+      const ship = async (id: string, fee = '35000', consume = true) => {
         const order = await view(id);
         const shipped = await k.ok(() =>
           k.online.ship(packer.token, id, {
@@ -53,7 +53,7 @@ test(
             carrierFeeVnd: fee,
           }),
         );
-        await k.runInventory();
+        if (consume) await k.runInventory();
         return shipped;
       };
       /** Moves a person's sessions ten minutes back (the test-only way to make a password confirmation stale). */
@@ -562,6 +562,48 @@ test(
               client.onlineFailedDeliverySettlement.delete({ where: { id: row.id } }),
             ),
           );
+          await k.reconcileAll();
+        },
+      );
+
+      await suite.test(
+        'a settlement waits until the sale of the shipped goods is written, whatever the restock choice',
+        async () => {
+          const order = await paid([{ variantId: cream.variantId, quantity: 1 }]);
+          await ship(order.placed.id, '10000', false);
+          await k.ok(() =>
+            k.online.log(packer.token, order.placed.id, {
+              kind: 'DELIVERY_FAILED',
+              reasonCode: 'CUSTOMER_AWAY',
+              note: 'Khách đi vắng',
+            }),
+          );
+          await k.ok(() =>
+            k.online.log(packer.token, order.placed.id, {
+              kind: 'RETURN_STARTED',
+              note: 'Khách không nhận',
+            }),
+          );
+          await k.ok(() => k.online.returned(packer.token, order.placed.id, { note: 'Hàng về' }));
+          const detail = await view(order.placed.id, refunder);
+          for (const restock of ['NOT_SELLABLE', 'SELLABLE']) {
+            await k.reconfirm(refunder.token);
+            await fails(
+              () =>
+                k.online.settle(
+                  refunder.token,
+                  order.placed.id,
+                  settleBody(detail, { restock, carrierFeeBackVnd: '0' }),
+                ),
+              'REFUND_STOCK_PENDING',
+            );
+          }
+          await k.runInventory();
+          const done = await settle(order.placed.id, {
+            carrierFeeBackVnd: '0',
+            restock: 'NOT_SELLABLE',
+          });
+          assert.equal(done.settlement!.refundVnd, '190000');
           await k.reconcileAll();
         },
       );

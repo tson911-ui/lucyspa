@@ -35,12 +35,26 @@ export function notificationHref(
       ? `${base}/product-returns/${encodeURIComponent(item.source.id)}`
       : null;
   }
+  // A new paid online order opens its page for those who pack or refund at its branch (Phase 6 P6-20).
+  if (item.source.type === 'ProductOrder' && item.type === 'ONLINE_ORDER_NEW') {
+    return item.branch !== null &&
+      (canAt(account, 'MANAGE_PRODUCT_ORDERS', item.branch.id) ||
+        canAt(account, 'REFUND_PRODUCTS', item.branch.id))
+      ? `${base}/online-orders/${encodeURIComponent(item.source.id)}`
+      : null;
+  }
   // A refund notice about a cancelled pre-order line opens that order for those who work the orders or refund at its branch.
   if (item.source.type === 'ProductOrder') {
     return item.branch !== null &&
       (canAt(account, 'MANAGE_PRODUCT_ORDERS', item.branch.id) ||
         canAt(account, 'REFUND_PRODUCTS', item.branch.id))
       ? `${base}/product-orders/${encodeURIComponent(item.source.id)}`
+      : null;
+  }
+  // The daily online alert (late to ship, shipped over 7 days) opens the online queue of its branch.
+  if (item.source.type === 'Branch' && item.type === 'ONLINE_ORDER_ALERT') {
+    return item.branch !== null && canAt(account, 'MANAGE_PRODUCT_ORDERS', item.branch.id)
+      ? `${base}/online-orders?branch=${encodeURIComponent(item.branch.id)}`
       : null;
   }
   // The daily pre-order alert opens the queue of its branch.
@@ -143,8 +157,20 @@ function orderMessage(
   params: NonNullable<NotificationItem['params']>,
   locale: Locale,
 ): string | null {
-  if (item.type !== 'PRODUCT_ORDER_ALERT' || !('lateLines' in params)) return null;
   const o = getNotificationDictionary(locale).orders;
+  if (item.type === 'ONLINE_ORDER_ALERT' && 'unshippedOrders' in params) {
+    const template =
+      params.undeliveredOrders === 0
+        ? o.onlineAlertUnshipped
+        : params.unshippedOrders === 0
+          ? o.onlineAlertUndelivered
+          : o.onlineAlert;
+    return fill(template, {
+      unshipped: params.unshippedOrders,
+      undelivered: params.undeliveredOrders,
+    });
+  }
+  if (item.type !== 'PRODUCT_ORDER_ALERT' || !('lateLines' in params)) return null;
   const template =
     params.heldLines === 0 ? o.alertLateOnly : params.lateLines === 0 ? o.alertHeldOnly : o.alert;
   return fill(template, { late: params.lateLines, held: params.heldLines, days: ORDER_HELD_DAYS });

@@ -159,6 +159,10 @@ export type NavKey =
   | 'branches'
   | 'services'
   | 'products'
+  | 'productCampaigns'
+  | 'onlineSales'
+  | 'shippingCarriers'
+  | 'onlineOrders'
   | 'inventory'
   | 'import'
   | 'discounts'
@@ -255,6 +259,24 @@ export function navigationFor(account: Account): NavItem[] {
       group: 'catalog',
       path: '/products',
     },
+    // Phase 6 P6-23: promotion campaigns (GLOBAL_ONLY MANAGE_PRODUCT_PRICES, like the prices they change).
+    canGlobal(account, 'MANAGE_PRODUCT_PRICES') && {
+      key: 'productCampaigns',
+      group: 'catalog',
+      path: '/product-campaigns',
+    },
+    // Phase 6 P6-19: the settings of online sales (the master switch, limits, shipping promise, policy): GLOBAL_ONLY MANAGE_PRODUCTS.
+    canGlobal(account, 'MANAGE_PRODUCTS') && {
+      key: 'onlineSales',
+      group: 'catalog',
+      path: '/online-sales',
+    },
+    // Phase 6 P6-20: the carriers the shop ships with (GLOBAL_ONLY MANAGE_PRODUCTS, the API's rule).
+    canGlobal(account, 'MANAGE_PRODUCTS') && {
+      key: 'shippingCarriers',
+      group: 'catalog',
+      path: '/shipping-carriers',
+    },
     // Phase 6 P6-4: the inventory (branch-scoped VIEW_INVENTORY / MANAGE_STOCK_RECEIPTS / ADJUST_STOCK, global MANAGE_PRODUCTS for suppliers).
     (canAnywhere(account, 'VIEW_INVENTORY') ||
       canAnywhere(account, 'MANAGE_STOCK_RECEIPTS') ||
@@ -291,6 +313,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'productOrders',
       group: 'sales',
       path: '/product-orders',
+    },
+    // Phase 6 P6-20/P6-21: online orders to pack, ship and settle (branch MANAGE_PRODUCT_ORDERS; REFUND_PRODUCTS sees the costs and refunds).
+    (canAnywhere(account, 'MANAGE_PRODUCT_ORDERS') || canAnywhere(account, 'REFUND_PRODUCTS')) && {
+      key: 'onlineOrders',
+      group: 'sales',
+      path: '/online-orders',
     },
     // Phase 6 P6-12: product return cases (branch MANAGE_PRODUCT_RETURNS to work on them, REFUND_PRODUCTS to see and decide skin cases).
     (canAnywhere(account, 'MANAGE_PRODUCT_RETURNS') || canAnywhere(account, 'REFUND_PRODUCTS')) && {

@@ -411,6 +411,8 @@ export interface VariantDraft {
   threshold: string;
   /** Sold on order (on for a new variant, Owner OQ-P6-30). */
   sellOnOrder: boolean;
+  /** Sold online (OQ-91): a buy button on the public page; on for a new variant. */
+  sellOnline: boolean;
   /** The variant's own waiting time in days; both empty means the settings default. */
   leadMin: string;
   leadMax: string;
@@ -431,6 +433,7 @@ export const emptyVariantDraft = (): VariantDraft => ({
   barcode: '',
   threshold: '',
   sellOnOrder: true,
+  sellOnline: true,
   leadMin: '',
   leadMax: '',
   usualSupplierId: '',
@@ -447,6 +450,7 @@ export const draftFromVariant = (variant: ProductVariantResponse): VariantDraft 
   barcode: variant.barcode ?? '',
   threshold: variant.lowStockThreshold === null ? '' : String(variant.lowStockThreshold),
   sellOnOrder: variant.sellOnOrder,
+  sellOnline: variant.sellOnline,
   leadMin: variant.leadTimeDaysMin === null ? '' : String(variant.leadTimeDaysMin),
   leadMax: variant.leadTimeDaysMax === null ? '' : String(variant.leadTimeDaysMax),
   usualSupplierId: variant.usualSupplier?.id ?? '',
@@ -552,6 +556,8 @@ export function variantCreateRequest(
     barcode: optionalText(draft.barcode),
     lowStockThreshold: optionalNumber(draft.threshold),
     sellOnOrder: draft.sellOnOrder,
+    // On is the default: only the off switch is sent.
+    ...(draft.sellOnline ? {} : { sellOnline: false }),
     ...leadTimeKeys(draft),
     ...(draft.usualSupplierId !== '' ? { usualSupplierId: draft.usualSupplierId } : {}),
     sortOrder: wholeNumber(draft.sortOrder, 100_000)!,
@@ -583,6 +589,7 @@ export function variantEditRequest(
     barcode: optionalText(draft.barcode),
     lowStockThreshold: optionalNumber(draft.threshold),
     sellOnOrder: draft.sellOnOrder,
+    ...(draft.sellOnline !== variant.sellOnline ? { sellOnline: draft.sellOnline } : {}),
     ...leadTimeKeys(draft),
     // Sent only when it changed (an absent key keeps the stored supplier; null clears it).
     ...(draft.usualSupplierId !== (variant.usualSupplier?.id ?? '')

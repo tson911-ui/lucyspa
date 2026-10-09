@@ -152,7 +152,7 @@ export function ProductLinesCard({
       header: l.colSeller,
       hideBelow: 'lg',
       truncate: true,
-      cell: (line) => line.seller.displayName,
+      cell: (line) => line.seller?.displayName ?? '',
     },
     {
       key: 'price',
@@ -232,7 +232,9 @@ export function ProductLinesCard({
         caption={fill(t.common.list.table, { list: l.title })}
         columns={columns}
         rows={invoice.productLines}
-        rowKey={(line) => `${line.id}:${line.unitPriceVnd}:${line.quantity}:${line.seller.id}`}
+        rowKey={(line) =>
+          `${line.id}:${line.unitPriceVnd}:${line.quantity}:${line.seller?.id ?? ''}`
+        }
         empty={<Empty>{l.empty}</Empty>}
         paging={{ off: 'the product lines of one invoice' }}
       />
@@ -456,13 +458,15 @@ export function ProductEditDialog({
   const a = d.add;
   const options = useProductOptions(branchId);
   const [quantity, setQuantity] = useState(String(line.quantity));
-  const [sellerId, setSellerId] = useState(line.seller.id);
+  const [sellerId, setSellerId] = useState(line.seller?.id ?? '');
   const [problem, setProblem] = useState<'quantity' | 'seller' | 'unchanged' | null>(null);
   const sellers = options.data?.sellers ?? [];
   // The seller on the line is always offered, even if the list does not hold them any more (the server decides on save).
-  const sellerOptions = sellers.some((seller) => seller.id === line.seller.id)
+  const sellerOptions = sellers.some((seller) => seller.id === line.seller?.id)
     ? sellers
-    : [{ id: line.seller.id, displayName: line.seller.displayName }, ...sellers];
+    : line.seller
+      ? [{ id: line.seller.id, displayName: line.seller.displayName }, ...sellers]
+      : sellers;
   const failedLoad = !options.data && options.error ? posErrorMessage(options.error, t) : null;
 
   async function save() {
@@ -481,7 +485,7 @@ export function ProductEditDialog({
       description={productTitle(line, locale)}
       labels={{ ...formOverlayLabels(t, d.edit.submit), submitting: d.edit.submitting }}
       busy={working}
-      dirty={quantity !== String(line.quantity) || sellerId !== line.seller.id}
+      dirty={quantity !== String(line.quantity) || sellerId !== (line.seller?.id ?? '')}
       error={
         problem === 'unchanged' ? (
           <Notice tone="error">{d.edit.unchanged}</Notice>

@@ -64,6 +64,7 @@ const variant = (patch: Partial<ProductVariantResponse> = {}): ProductVariantRes
   barcode: null,
   lowStockThreshold: null,
   sellOnOrder: true,
+  sellOnline: true,
   leadTimeDaysMin: null,
   leadTimeDaysMax: null,
   usualSupplier: null,

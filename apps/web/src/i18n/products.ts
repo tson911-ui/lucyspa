@@ -171,6 +171,9 @@ const vi = {
     barcode: 'Mã vạch',
     thresholdField: 'Ngưỡng sắp hết hàng',
     thresholdHint: 'Số lượng tồn từ mức này trở xuống sẽ được cảnh báo. Để trống nếu chưa cần.',
+    sellOnlineField: 'Bán online',
+    sellOnlineHint:
+      'Tắt với món chỉ bán tại cửa hàng (cần tư vấn, dễ vỡ). Trang vẫn xem được và ghi "Mua tại cửa hàng".',
     preOrderField: 'Cho đặt trước',
     preOrderHint:
       'Bật nếu cửa hàng đặt nhà cung cấp sau khi khách thanh toán. Tắt với hàng cửa hàng giữ sẵn.',
@@ -511,6 +514,9 @@ const en: Dictionary = {
     barcode: 'Barcode',
     thresholdField: 'Low-stock level',
     thresholdHint: 'A stock at or below this number raises a warning. Leave empty if not needed.',
+    sellOnlineField: 'Sell online',
+    sellOnlineHint:
+      'Turn off for items sold in the shop only (they need advice, or are fragile). The page still shows and says "Buy in the shop".',
     preOrderField: 'Allow pre-order',
     preOrderHint:
       'Turn on if the shop orders the item from the supplier after the customer pays. Turn off for items the shop keeps in stock.',
