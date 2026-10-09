@@ -245,7 +245,7 @@ const text = {
       bookNow: 'Đặt lịch ngay',
       viewServices: 'Xem dịch vụ',
       factsLabel: 'Thông tin nhanh',
-      groupsTitle: 'Thực đơn dịch vụ',
+      groupsTitle: 'Bảng giá dịch vụ',
       groupsLead:
         'Giá niêm yết rõ ràng cho từng dịch vụ. Chọn một dịch vụ để xem chi tiết và đặt lịch.',
       viewAll: 'Xem tất cả',
@@ -401,7 +401,7 @@ const text = {
       bookNow: 'Book now',
       viewServices: 'View services',
       factsLabel: 'Quick facts',
-      groupsTitle: 'Our service menu',
+      groupsTitle: 'Service price list',
       groupsLead: 'Clear listed prices for every service. Pick one to see the details and book.',
       viewAll: 'View all',
       viewAllOf: 'View all {group} services',

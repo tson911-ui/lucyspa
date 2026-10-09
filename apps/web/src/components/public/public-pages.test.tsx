@@ -510,7 +510,7 @@ test('home service groups: the Owner choice, order and description; none chosen 
   const all = home(full);
   assert.equal(all.match(/ls-board-group/g)?.length, 2);
   assert.doesNotMatch(all, /ls-group-desc/);
-  assert.match(all, /Thực đơn dịch vụ/);
+  assert.match(all, /Bảng giá dịch vụ/);
 });
 
 test('home offer line: the most recent running campaign as one link, nothing without one', () => {

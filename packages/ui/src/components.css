@@ -1984,11 +1984,14 @@
   padding-inline-end: calc(var(--ls-control-h) + var(--ls-space-4));
 }
 
+/* The popup is part of the public site (and its admin preview mirrors it): its title is in the display face like every other title there. */
 .ls-promo-title {
   margin: 0;
+  font-family: var(--ls-font-display);
   font-size: var(--ls-text-xl);
-  font-weight: 600;
+  font-weight: var(--ls-weight-title);
   line-height: var(--ls-leading-xl);
+  text-wrap: balance;
   overflow-wrap: anywhere;
 }
 

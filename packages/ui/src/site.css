@@ -770,7 +770,6 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   border: 1px solid var(--ls-border);
   border-radius: var(--ls-radius-lg);
   background: var(--ls-bg-surface);
-  box-shadow: var(--ls-shadow-sm);
 }
 
 .ls-band-surface .ls-board {
