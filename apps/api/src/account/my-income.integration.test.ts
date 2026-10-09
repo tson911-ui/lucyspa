@@ -89,13 +89,30 @@ test(
                   select: { id: true },
                 })
               ).id;
+            // The two branches change day at different moments (Ho Chi Minh UTC+7, Tokyo UTC+9): between 15:00 and 17:00 UTC
+            // Tokyo is already on the next date. The test used to follow the wall clock, so it met that window only when CI
+            // happened to run then (and passed or failed by the hour). Now the transaction's `now()` is pinned to 16:30 UTC of
+            // the current UTC date (23:30 in Vietnam, 01:30 on the next date in Tokyo), so EVERY run is the day-rollover case,
+            // at any hour. A function in a schema of its own comes first in the search path, so SQL that calls `now()` reads the
+            // pin; the schema, the function and the path all vanish with the transaction's rollback. Test code only.
+            const pinned = new Date();
+            pinned.setUTCHours(16, 30, 0, 0);
+            await tx.$executeRawUnsafe(
+              `CREATE SCHEMA it_clock; CREATE FUNCTION it_clock.now() RETURNS timestamptz LANGUAGE sql STABLE AS $$ SELECT '${pinned.toISOString()}'::timestamptz $$`,
+            );
+            await tx.$executeRawUnsafe('SET LOCAL search_path = it_clock, pg_catalog, public');
             const A = await branch('A', 'Asia/Ho_Chi_Minh');
             const T = await branch('T', 'Asia/Tokyo');
             // Every member below is assigned to both branches, and the service takes the LATEST business date
             // across a member's branches. Computing "today" for A alone made the test fail every day while
             // Tokyo (UTC+9) was already on the next date but Ho Chi Minh (UTC+7) was not: 22:00-24:00 in
-            // Vietnam, 15:00-17:00 UTC. `now()` is frozen per transaction, so one value is stable all test.
+            // Vietnam, 15:00-17:00 UTC. The clock is pinned above, so this is Tokyo's date at 01:30 (the day after Vietnam's).
             const today = day(await businessToday(tx, [A, T]));
+            assert.equal(
+              today,
+              shift(day(await businessToday(tx, [A])), 1),
+              'the pinned clock puts Tokyo one date ahead of Ho Chi Minh',
+            );
             const phone = () => validVnMobile();
             const principal = async (
               kind: 'EMPLOYEE' | 'OWNER' | 'CUSTOMER',
