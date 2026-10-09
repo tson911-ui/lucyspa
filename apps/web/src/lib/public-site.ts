@@ -148,10 +148,11 @@ export async function loadHomeData(
   locale: Locale,
   fetcher: typeof fetch = fetch,
 ): Promise<HomeData> {
-  const [site, services, slides] = await Promise.all([
+  const [site, services, slides, campaigns] = await Promise.all([
     fetchPublicSite(locale, fetcher),
     fetchPublicServices(locale, fetcher),
     fetchPublicSlidesServer(locale, fetcher),
+    fetchPublicCampaigns(locale, fetcher),
   ]);
-  return { site, services, slides };
+  return { site, services, slides, campaigns };
 }

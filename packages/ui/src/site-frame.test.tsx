@@ -221,14 +221,24 @@ test('Steps marks the current step, the finished ones and offers a short label f
   assert.match(html, /class="ls-steps-short">Giờ</);
 });
 
-test('PriceList keeps a long price on the row as its own cell', () => {
+test('PriceList keeps a long price on the row as its own cell, with a dotted leader between name and price', () => {
   const html = renderToStaticMarkup(
     <ui.PriceList items={[{ key: 'a', name: 'Đính đá / charm', price: '5.000-30.000 ₫/ngón' }]} />,
   );
   assert.match(
     html,
-    /<span title="Đính đá \/ charm">Đính đá \/ charm<\/span><span class="ls-price">5\.000-30\.000 ₫\/ngón<\/span>/,
+    /<div class="ls-price-row"><span class="ls-price-name" title="Đính đá \/ charm">Đính đá \/ charm<\/span><span class="ls-price-dots" aria-hidden="true"><\/span><span class="ls-price">5\.000-30\.000 ₫\/ngón<\/span><\/div>/,
   );
+});
+
+test('PriceList rows with an address are links, and the leader is not read aloud', () => {
+  const html = renderToStaticMarkup(
+    <ui.PriceList
+      items={[{ key: 'a', name: 'Gội thường', price: '40.000 ₫', href: '/vi/services/GOI' }]}
+    />,
+  );
+  assert.match(html, /<li><a href="\/vi\/services\/GOI" class="ls-price-row">/);
+  assert.match(html, /<span class="ls-price-dots" aria-hidden="true"><\/span>/);
 });
 
 test('SiteFooter renders the logo alone by default, and the Owner blocks under it in order', () => {
@@ -873,15 +883,20 @@ test('the three-column footer and the featured group cards keep to the reference
     css,
     /\.ls-site-card \.ls-site-link \{\s*align-self: flex-start;\s*margin-top: auto;/,
   );
-  assert.match(css, /\.ls-price-list li > span:first-child \{[^}]*-webkit-line-clamp: 2;/);
+  assert.match(css, /\.ls-price-name \{[^}]*-webkit-line-clamp: 2;/);
+  // The home groups are one menu board; a row is a full-height target and its leader is a drawing between name and price.
+  assert.match(css, /\.ls-board \{\s*display: grid;[^}]*border: 1px solid var\(--ls-border\);/);
+  assert.match(css, /\.ls-price-row \{[^}]*min-height: var\(--ls-control-h\);/);
+  assert.match(css, /\.ls-price-dots \{[^}]*border-bottom: 2px dotted var\(--ls-border-control\);/);
+  // A linked row answers the pointer with the brand tokens (solid red and white in light mode), never a pale tint.
   assert.match(
     css,
-    /\.ls-group-card \.ls-site-link::after \{\s*content: '';\s*position: absolute;\s*inset: 0;/,
+    /a\.ls-price-row:hover \{\s*background: var\(--ls-hover-bg\);\s*color: var\(--ls-hover-text\);/,
   );
-  // Prices are a muted, regular-weight, right-aligned column that never wraps.
+  // Prices are a right-aligned column that never wraps.
   assert.match(
     css,
-    /\.ls-price \{[^}]*font-weight: 400;[^}]*text-align: end;[^}]*white-space: nowrap;/,
+    /\.ls-price \{[^}]*font-weight: 500;[^}]*text-align: end;[^}]*white-space: nowrap;/,
   );
 });
 

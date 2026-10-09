@@ -3,6 +3,7 @@ import {
   SHOP_FACT_ICONS,
   WHY_ICONS,
   type FooterSocialNetwork,
+  type PublicCampaign,
   type PublicFact,
   type PublicFeaturedGroup,
   type PublicFooterBlock,
@@ -28,6 +29,8 @@ export interface HomeData {
   site: PublicSiteResponse | null;
   services: PublicServicesResponse | null;
   slides: PublicSlide[];
+  /** The promotion campaigns running now (the strip above the hero); absent or empty: no strip. */
+  campaigns?: PublicCampaign[] | null;
 }
 
 type Locale = 'vi' | 'en';
@@ -397,7 +400,7 @@ export interface HomeGroup {
 }
 
 /**
- * The cards of "Nhóm dịch vụ nổi bật": the groups the Owner chose, in their order, each with its description. With none
+ * The groups of the home menu board: the groups the Owner chose, in their order, each with its description. With none
  * chosen (or the shop profile unreadable) every live group of the catalogue is listed without a description. A chosen
  * group that no longer has a visible service is skipped.
  */

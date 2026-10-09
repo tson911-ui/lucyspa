@@ -179,18 +179,47 @@ export interface PriceListItem {
   name: string;
   /** Already formatted, for example "5.000-30.000 ₫/ngón". */
   price: string;
+  /** The row is a link to this address (the whole row is the target). */
+  href?: string | undefined;
 }
 
-/** Name and price rows (home group cards): a name longer than two lines is cut with an ellipsis (its full text is the tooltip), the price stays whole in its own right-aligned column. */
-export function PriceList({ items }: { items: readonly PriceListItem[] }) {
+/**
+ * The home page's menu rows, like a printed spa menu: the name, a dotted leader and the price on one line. A name longer
+ * than two lines is cut with an ellipsis (its full text is the tooltip), the price stays whole in its own right-aligned
+ * column, and the leader fills what is left. A row with an `href` is one link.
+ */
+export function PriceList({
+  items,
+  LinkComponent = PlainLink,
+}: {
+  items: readonly PriceListItem[];
+  LinkComponent?: SiteLinkComponent | undefined;
+}) {
+  const Link = LinkComponent;
   return (
     <ul className="ls-price-list">
-      {items.map((item) => (
-        <li key={item.key}>
-          <span title={item.name}>{item.name}</span>
-          <span className="ls-price">{item.price}</span>
-        </li>
-      ))}
+      {items.map((item) => {
+        const cells = (
+          <>
+            <span className="ls-price-name" title={item.name}>
+              {item.name}
+            </span>
+            <span className="ls-price-dots" aria-hidden="true" />
+            <span className="ls-price">{item.price}</span>
+          </>
+        );
+        return (
+          <li key={item.key}>
+            {item.href ? (
+              <Link href={item.href} className="ls-price-row">
+                {cells}
+              </Link>
+            ) : (
+              <div className="ls-price-row">{cells}</div>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }

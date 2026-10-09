@@ -278,6 +278,12 @@ html[data-ls-motion='reduced'] .ls-site-lead {
 /* A 360 px phone with a member signed in holds the logo and four 44 px tools (bell, language, theme, account) between
    its gutters: the gaps narrow so the last tool ends on the gutter. */
 @media (max-width: 479px) {
+  /* The tools are a fixed 44 px each, so at a larger text size only the wordmark may give way: it never grows past 5% of the
+     screen width (18 px on a 360 px phone, as before at the normal text size), and the last tool stays on the screen. */
+  .ls-site-header {
+    --ls-wordmark-size: min(1.125rem, 5vw);
+  }
+
   .ls-site-header-row {
     gap: var(--ls-space-2);
   }
@@ -581,6 +587,140 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   white-space: nowrap;
 }
 
+/* The offer line above the hero: the running campaign in the Owner's words, one link in the soft brand tint (a quiet line, not a
+   second hero: the hero keeps the only solid button); it turns solid brand red with white text under the pointer. A phone puts the badge and the button on the first row and the words under them; from a tablet it is one row. */
+.ls-offer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'badge . cta'
+    'text text text';
+  align-items: center;
+  gap: var(--ls-space-1) var(--ls-space-3);
+  margin-bottom: var(--ls-space-6);
+  padding: var(--ls-space-3) var(--ls-space-4);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-brand-soft);
+  color: var(--ls-text);
+  text-decoration: none;
+  transition:
+    background var(--ls-dur-fast) var(--ls-ease-out),
+    color var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+@media (min-width: 768px) {
+  .ls-offer {
+    grid-template-areas: 'badge text cta';
+    padding-inline: var(--ls-space-5);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-offer:hover {
+    border-color: var(--ls-hover-border);
+    background: var(--ls-hover-bg);
+    color: var(--ls-hover-text);
+  }
+
+  .ls-offer:hover .ls-offer-badge {
+    background: var(--ls-hover-text);
+    color: var(--ls-hover-bg);
+  }
+
+  .ls-offer:hover .ls-offer-end,
+  .ls-offer:hover .ls-offer-cta {
+    color: inherit;
+  }
+}
+
+.ls-offer:focus-visible {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: 2px;
+}
+
+.ls-offer-badge {
+  grid-area: badge;
+  padding: var(--ls-space-1) var(--ls-space-3);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-brand-fill);
+  color: var(--ls-on-brand);
+  font-size: var(--ls-text-xs);
+  font-weight: 600;
+  line-height: var(--ls-leading-xs);
+  white-space: nowrap;
+}
+
+.ls-offer-text {
+  grid-area: text;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--ls-space-3);
+  min-width: 0;
+}
+
+.ls-offer-headline {
+  font-size: var(--ls-type-body);
+  font-weight: 600;
+  line-height: var(--ls-lh-body);
+  overflow-wrap: anywhere;
+}
+
+.ls-offer-end {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
+}
+
+.ls-offer-cta {
+  grid-area: cta;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-1);
+  min-height: var(--ls-control-h);
+  color: var(--ls-brand);
+  font-size: var(--ls-text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: translate var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-offer:hover .ls-offer-cta {
+    translate: var(--ls-arrow-nudge) 0;
+  }
+}
+
+/* The slider on the public site: the slide's title is in the display face like every other title, and its controls sit on
+   one row under the picture, on the frame's own edges (dots at the start, arrows and Pause at the end). */
+.ls-site .ls-slider {
+  gap: var(--ls-space-2);
+}
+
+.ls-site .ls-slider-title {
+  font-family: var(--ls-font-display);
+  font-size: var(--ls-type-sub);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-sub);
+  text-wrap: balance;
+}
+
+.ls-site .ls-slider-text {
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+.ls-site .ls-slider-controls {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+.ls-site .ls-slider-dots {
+  order: -1;
+  margin-inline-end: auto;
+}
+
 /* ---------- cards and lists ---------- */
 .ls-site-card {
   display: flex;
@@ -620,16 +760,46 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   }
 }
 
-/* Cards in one row are exactly the same size: equal columns, and the row's height is its tallest card's. Service names are
-   cut at two lines, so no card grows far, and "Xem tất cả" sits at the bottom of every card (same place in each). */
-/* Bands alternate warm and white; a group card stays white (with its border and shadow) on the white band, like the
-   "why" cards on the warm one. */
-.ls-band-surface .ls-group-card {
+/* The menu board (the home page's one signature element): the featured groups on ONE surface, like a printed spa menu. Two
+   columns from a tablet, one on a phone; each group is its serif name, then rows of name, dotted leader and price, then
+   "Xem tất cả". The board takes the page colour on the white band so it still reads as a surface. */
+.ls-board {
+  display: grid;
+  gap: var(--ls-space-7) var(--ls-space-9);
+  padding: var(--ls-space-5) var(--ls-space-3);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-lg);
   background: var(--ls-bg-surface);
+  box-shadow: var(--ls-shadow-sm);
 }
 
-.ls-group-card .ls-site-h3 {
-  font-weight: 500;
+.ls-band-surface .ls-board {
+  background: var(--ls-bg-page);
+}
+
+@media (min-width: 768px) {
+  .ls-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: var(--ls-space-7);
+  }
+}
+
+.ls-board-group {
+  display: grid;
+  align-content: start;
+  gap: var(--ls-space-3);
+  min-width: 0;
+}
+
+.ls-board-group .ls-site-link {
+  justify-self: start;
+}
+
+/* Every line of a group (its name, a row, its link) has its text one step in from the group's edge: the hover shape of a row
+   is the group's full width, so it never reaches outside its column. */
+.ls-board-group .ls-group-head,
+.ls-board-group .ls-site-link {
+  padding-inline: var(--ls-space-3);
 }
 
 .ls-group-head {
@@ -655,23 +825,31 @@ html[data-ls-motion='reduced'] .ls-site-lead {
 
 .ls-price-list {
   display: grid;
-  gap: var(--ls-space-2);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.ls-price-list li {
+/* One row of the menu: name, dotted leader, price. The row is a full-height touch target and its text starts on the same edge as
+   the group's name and link. */
+.ls-price-row {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--ls-space-3);
+  align-items: center;
+  gap: var(--ls-space-2);
+  min-height: var(--ls-control-h);
+  padding-inline: var(--ls-space-3);
+  border-radius: var(--ls-radius-md);
+  color: var(--ls-text);
   font-size: var(--ls-type-body);
   line-height: var(--ls-lh-body);
+  text-decoration: none;
+  transition:
+    background var(--ls-dur-fast) var(--ls-ease-out),
+    color var(--ls-dur-fast) var(--ls-ease-out);
 }
 
 /* A service name is at most two lines; the rest is an ellipsis (the full name is the tooltip). */
-.ls-price-list li > span:first-child {
+.ls-price-name {
   display: -webkit-box;
   min-width: 0;
   overflow: hidden;
@@ -680,14 +858,44 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   -webkit-line-clamp: 2;
 }
 
-/* The price is one short muted line in its own right-aligned column; a long name wraps instead of squeezing it. */
+/* The leader fills what the name and price leave; it sits on the text's baseline, and it is a drawing only. */
+.ls-price-dots {
+  flex: 1 1 var(--ls-space-4);
+  min-width: var(--ls-space-4);
+  height: 0;
+  border-bottom: 2px dotted var(--ls-border-control);
+  translate: 0 0.5em;
+}
+
+/* The price is one short line in its own right-aligned column; a long name wraps instead of squeezing it. */
 .ls-price {
   flex: none;
-  color: var(--ls-text-muted);
-  font-weight: 400;
+  color: var(--ls-text);
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   text-align: end;
   white-space: nowrap;
+}
+
+a.ls-price-row:focus-visible {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: 2px;
+}
+
+/* Hover (Owner rule): solid brand red with white text in light mode, the pink accent in dark mode. */
+@media (hover: hover) and (pointer: fine) {
+  a.ls-price-row:hover {
+    background: var(--ls-hover-bg);
+    color: var(--ls-hover-text);
+  }
+
+  a.ls-price-row:hover .ls-price {
+    color: inherit;
+  }
+
+  a.ls-price-row:hover .ls-price-dots {
+    border-bottom-color: color-mix(in srgb, var(--ls-hover-text) 45%, transparent);
+  }
 }
 
 .ls-site-link {
@@ -1255,28 +1463,6 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   .ls-site-grid-groups > .ls-reveal > .ls-site-card > .ls-icon-bubble {
     justify-self: start;
   }
-}
-
-/* The link of a group card covers the whole card (a stretched link): the card is one big target, and the link stays
-   the one real, focusable element inside it. */
-.ls-group-card {
-  position: relative;
-}
-
-.ls-group-card .ls-site-link::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: var(--ls-radius-lg);
-}
-
-.ls-group-card .ls-site-link:focus-visible {
-  outline: none;
-}
-
-.ls-group-card:has(.ls-site-link:focus-visible) {
-  outline: 2px solid var(--ls-focus);
-  outline-offset: 2px;
 }
 
 .ls-icon-bubble {
@@ -2353,8 +2539,7 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   }
 
   .ls-site-link:hover svg,
-  .ls-site-link:hover .ls-link-arrow,
-  .ls-group-card:hover .ls-link-arrow {
+  .ls-site-link:hover .ls-link-arrow {
     translate: var(--ls-arrow-nudge) 0;
   }
 }

@@ -14,7 +14,9 @@ export function BrandWordmark({
       style={{
         fontFamily: serif ? 'var(--ls-font-display)' : 'var(--ls-font-sans)',
         // `display` (twice `md`) is for the auth card, where the brand leads the page.
-        fontSize: size === 'display' ? '2.5rem' : serif ? '1.125rem' : '1.25rem',
+        // The public header narrows the wordmark on a phone (`--ls-wordmark-size`), so a larger text size never pushes the tools off the screen.
+        fontSize:
+          size === 'display' ? '2.5rem' : serif ? 'var(--ls-wordmark-size, 1.125rem)' : '1.25rem',
         fontWeight: 600,
         letterSpacing: serif ? '0.28em' : '0.18em',
         textTransform: 'uppercase',

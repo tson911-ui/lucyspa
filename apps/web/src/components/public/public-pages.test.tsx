@@ -505,12 +505,40 @@ test('home service groups: the Owner choice, order and description; none chosen 
   assert.ok(chosen.indexOf('Móng gọn gàng') < chosen.indexOf('Gội đầu'));
   assert.match(chosen, /<p class="ls-group-desc">Móng gọn gàng, sơn gel bền màu<\/p>/);
   assert.doesNotMatch(chosen, /Không còn/);
-  assert.equal(chosen.match(/ls-group-card/g)?.length, 2);
+  assert.equal(chosen.match(/ls-board-group/g)?.length, 2);
   assert.match(chosen, /Xem tất cả/);
   const all = home(full);
-  assert.equal(all.match(/ls-group-card/g)?.length, 2);
+  assert.equal(all.match(/ls-board-group/g)?.length, 2);
   assert.doesNotMatch(all, /ls-group-desc/);
-  assert.match(all, /Nhóm dịch vụ nổi bật/);
+  assert.match(all, /Thực đơn dịch vụ/);
+});
+
+test('home offer line: the most recent running campaign as one link, nothing without one', () => {
+  const campaign = {
+    slug: 'ngay-hoi-thu',
+    name: 'Ngày hội mùa thu',
+    badge: 'Ưu đãi',
+    headline: 'Giảm 20% mỹ phẩm chăm sóc da',
+    message: null,
+    ctaLabel: 'Mua ngay',
+    bannerUrl: null,
+    endsAt: '2026-10-31T16:59:59.000Z',
+  };
+  const html = home({ ...full, campaigns: [campaign, { ...campaign, slug: 'cu', name: 'Cũ' }] });
+  assert.match(
+    html,
+    /<a class="ls-offer" aria-label="[^"]*" href="\/vi\/products\?campaign=ngay-hoi-thu"/,
+  );
+  assert.match(html, /<span class="ls-offer-badge">Ưu đãi<\/span>/);
+  assert.match(html, /Giảm 20% mỹ phẩm chăm sóc da/);
+  assert.match(html, /Đến hết ngày 31\/10\/2026/);
+  assert.match(html, /Mua ngay/);
+  // One line only, above the hero; no campaign (or none readable) draws nothing.
+  assert.equal(html.match(/class="ls-offer"/g)?.length, 1);
+  assert.ok(html.indexOf('class="ls-offer"') < html.indexOf('id="home-title"'));
+  assert.doesNotMatch(home(full), /ls-offer/);
+  assert.doesNotMatch(home({ ...full, campaigns: [] }), /ls-offer/);
+  assert.doesNotMatch(home({ ...full, campaigns: null }), /ls-offer/);
 });
 
 test('home why section: only when the Owner wrote it, below the groups, in the visitor language', () => {

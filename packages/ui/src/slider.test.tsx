@@ -230,13 +230,20 @@ test('Slider: autoplay advances, and stops for Pause, hover, keyboard focus and 
   await wait(90);
   assert.notEqual(current(container), paused, 'play resumes');
 
-  // Hover pauses, leaving resumes.
+  // A tap on a phone enters the slider with a touch pointer: that is not a hover, so it must not pause (it once did, for good).
   const section = container.querySelector('section')!;
-  fire(section, 'mouseover', { relatedTarget: null });
+  fire(section, 'pointerover', { relatedTarget: null, pointerType: 'touch' });
+  const tapped = current(container);
+  await wait(90);
+  assert.notEqual(current(container), tapped, 'a touch pointer does not pause');
+  fire(section, 'pointerout', { relatedTarget: null, pointerType: 'touch' });
+
+  // A mouse hover pauses, leaving resumes.
+  fire(section, 'pointerover', { relatedTarget: null, pointerType: 'mouse' });
   const hovered = current(container);
   await wait(120);
   assert.equal(current(container), hovered, 'hover pauses');
-  fire(section, 'mouseout', { relatedTarget: null });
+  fire(section, 'pointerout', { relatedTarget: null, pointerType: 'mouse' });
   await wait(90);
   assert.notEqual(current(container), hovered, 'leaving resumes');
 

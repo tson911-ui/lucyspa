@@ -73,6 +73,42 @@ export function CampaignStrips({
 }
 
 /**
+ * The offer line above the home hero: the most recent running campaign, in the Owner's words (badge, headline, last day,
+ * button), as ONE link to its sale view. It shows only while the campaign runs (the API only sends the running ones), so it
+ * follows the campaign's own schedule and needs nothing set up on the home page.
+ */
+export function HomeOffer({
+  locale,
+  campaigns,
+}: {
+  locale: Locale;
+  campaigns: readonly PublicCampaign[] | null | undefined;
+}) {
+  const [campaign] = stripCampaigns(campaigns);
+  if (!campaign) return null;
+  const text = getCampaignsPublicText(locale);
+  return (
+    <Link
+      className="ls-offer"
+      href={campaignHref(locale, campaign.slug)}
+      aria-label={`${text.stripsLabel}: ${campaign.headline ?? campaign.name}`}
+    >
+      {campaign.badge ? <span className="ls-offer-badge">{campaign.badge}</span> : null}
+      <span className="ls-offer-text">
+        <span className="ls-offer-headline">{campaign.headline ?? campaign.name}</span>
+        <span className="ls-offer-end">
+          {fill(text.until, { date: campaignEndText(campaign.endsAt, locale) })}
+        </span>
+      </span>
+      <span className="ls-offer-cta">
+        {campaign.ctaLabel ?? text.stripCta}
+        <Icon name="chevron-right" size={16} aria-hidden="true" />
+      </span>
+    </Link>
+  );
+}
+
+/**
  * The top section of a campaign's sale view: the Owner's banner, headline (the page's one h1), message and button. It reuses the
  * catalog hero, so the picture sits above the words on a phone and beside them from 768 px.
  */

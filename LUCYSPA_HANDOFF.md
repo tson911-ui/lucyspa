@@ -785,3 +785,8 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - Cause: public and account each mounted their own site frame (header, tab bar, footer, session remounted), plus a fade from opacity 0 and a text-only session check. Now one `(site)` layout, view-transition cross-fade, skeleton guard (`docs/UXUI_REDESIGN_NAV_FLASH.md`).
 - Also: info strip stacks on phones, "Đặt lịch mới" hidden below 1024 px, tab bar only the current tab active with a raised "Đặt lịch ngay", contact button steps aside while reading. No migration.
 - Owner decision: the contact button stays as built (hides while scrolling down, shows on scroll up).
+
+### UI polish group 1, customer pages, Step A (2026-10-09, local, not pushed, not deployed; waits for the Owner's approval of the direction)
+
+- Plan, per-page problem list and design direction: `docs/UI_POLISH_GROUP1_CUSTOMER.md`. Sample built on the HOME PAGE only: campaign offer line above the hero (option A of Owner question 3; B and C wait for the Owner), the service menu board with dotted leaders (one signature element), slider polish, 130 % text header fix, slider touch-pause fix. UI only, no migration, no API change.
+- Gate tooling: `scripts/uxui-screens.mjs` now captures the whole page below 1024 px (app-shell scroller) and has `--hover` and `--fresh-session`. Before/after gallery: `.local/polish1/gallery/index.html` (git-ignored).

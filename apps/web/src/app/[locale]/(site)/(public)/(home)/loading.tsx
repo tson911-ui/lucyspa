@@ -8,9 +8,9 @@ export default function Loading() {
         <div aria-busy="true">
           <Skeleton lines={1} height="var(--ls-space-9)" width="60%" />
           <Skeleton lines={2} height="var(--ls-space-5)" width="80%" />
-          <div className="ls-site-grid ls-site-grid-groups">
-            {[0, 1, 2].map((index) => (
-              <div key={index} className="ls-site-card">
+          <div className="ls-board">
+            {[0, 1].map((index) => (
+              <div key={index}>
                 <Skeleton lines={4} height="var(--ls-space-5)" />
               </div>
             ))}

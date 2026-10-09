@@ -9,6 +9,7 @@ import {
   directionsUrl,
   featuredServices,
   hoursHeadline,
+  serviceHref,
   telHref,
   type HomeGroup,
 } from '../../lib/public-site-core';
@@ -93,26 +94,28 @@ export function FactsStrip({ locale, site }: { locale: Locale; site: PublicSiteR
 }
 
 /**
- * One card per featured group (the Owner's choice and order, else every live group): its name, the Owner's short
- * description, its first three services with muted right-aligned prices, and "Xem tất cả →" right under them. The link
- * stretches over the whole card, so the card itself is the click target.
+ * The menu board: the featured groups (the Owner's choice and order, else every live group) on one surface, like a printed
+ * spa menu. Each group is its name, the Owner's short description, its first three services as rows (name, dotted leader,
+ * price; each row opens the service) and "Xem tất cả →" under them.
  */
 export function ServiceGroups({ locale, groups }: { locale: Locale; groups: HomeGroup[] }) {
   const text = getSiteText(locale).home;
   return (
-    <div className="ls-site-grid ls-site-grid-groups">
-      {groups.map(({ group, description }, index) => (
-        <Reveal key={group.code} index={index}>
-          <article className="ls-site-card ls-group-card">
+    <Reveal>
+      <div className="ls-board">
+        {groups.map(({ group, description }) => (
+          <article key={group.code} className="ls-board-group">
             <div className="ls-group-head">
-              <h3 className="ls-site-h3">{group.name}</h3>
+              <h3 className="ls-site-h2-sub">{group.name}</h3>
               {description ? <p className="ls-group-desc">{description}</p> : null}
             </div>
             <PriceList
+              LinkComponent={Link}
               items={featuredServices(group).map((service) => ({
                 key: service.code,
                 name: service.name,
                 price: cardPrice(service, locale),
+                href: serviceHref(locale, service.code),
               }))}
             />
             <Link
@@ -126,9 +129,9 @@ export function ServiceGroups({ locale, groups }: { locale: Locale; groups: Home
               </span>
             </Link>
           </article>
-        </Reveal>
-      ))}
-    </div>
+        ))}
+      </div>
+    </Reveal>
   );
 }
 

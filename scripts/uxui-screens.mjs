@@ -41,6 +41,8 @@ for (let index = args.indexOf('--cookie'); index >= 0; index = args.indexOf('--c
 }
 // `--before <js>`: runs after the clicks and before the capture (for example scrolling a drawer to the part under review).
 const beforeExpression = flag('before', '');
+// `--hover <selector[@@text]>`: moves the pointer onto that element just before the capture, to review its hover state (the brand tokens).
+const hoverSpec = flag('hover', '');
 const evalExpression = flag('eval', '');
 const all = args.includes('--all');
 if (all) args.splice(args.indexOf('--all'), 1);
@@ -48,6 +50,9 @@ const allowStatus = args.includes('--allow-status');
 if (allowStatus) args.splice(args.indexOf('--allow-status'), 1);
 const expectText = flag('expect', '');
 const themeCookie = args.includes('--theme-cookie');
+// `--fresh-session`: clears sessionStorage before every render, so a once-per-visit part (the promotional popup) shows in each one.
+const freshSession = args.includes('--fresh-session');
+if (freshSession) args.splice(args.indexOf('--fresh-session'), 1);
 if (themeCookie) args.splice(args.indexOf('--theme-cookie'), 1);
 const waitMs = Number(flag('wait', '800'));
 const topHeight = Number(flag('top', '1000'));
@@ -201,6 +206,11 @@ try {
     });
 
   await send('Page.enable');
+  if (freshSession) {
+    await send('Page.addScriptToEvaluateOnNewDocument', {
+      source: 'try { sessionStorage.clear(); } catch (e) {}',
+    });
+  }
   await send('Network.enable');
   for (const scheme of ['light', 'dark']) {
     for (const width of widths) {
@@ -237,7 +247,8 @@ try {
       // A visitor scrolls: blocks that reveal as they enter the view (customer site motion tokens) are shown before the capture.
       await send('Runtime.evaluate', {
         expression:
-          '(async () => { const step = Math.max(300, window.innerHeight - 100); for (let y = 0; y < document.documentElement.scrollHeight; y += step) { window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 120)); } window.scrollTo(0, 0); await new Promise((r) => setTimeout(r, 900)); })()',
+          // Below 1024 px the customer pages are an app shell: the page scrolls inside `[data-ls-scroll]`, not the window.
+          '(async () => { const box = document.querySelector("[data-ls-scroll]"); const inner = box && box.scrollHeight > box.clientHeight + 1 ? box : null; const step = Math.max(300, window.innerHeight - 100); const total = () => (inner ? inner.scrollHeight : document.documentElement.scrollHeight); const to = (y) => (inner ? inner.scrollTo(0, y) : window.scrollTo(0, y)); for (let y = 0; y < total(); y += step) { to(y); await new Promise((r) => setTimeout(r, 120)); } to(0); await new Promise((r) => setTimeout(r, 900)); })()',
         awaitPromise: true,
       });
       // The gate: never photograph an error page, an empty page or a page that is not the one asked for.
@@ -295,7 +306,9 @@ try {
           ? 900
           : (
               await send('Runtime.evaluate', {
-                expression: 'document.documentElement.scrollHeight',
+                // The app shell's scroller holds the page: grow the frame by what it hides, so the capture shows the whole page.
+                expression:
+                  '(() => { const box = document.querySelector("[data-ls-scroll]"); const hidden = box ? Math.max(0, box.scrollHeight - box.clientHeight) : 0; return document.documentElement.scrollHeight + hidden; })()',
                 returnByValue: true,
               })
             ).result.value;
@@ -306,6 +319,19 @@ try {
         mobile: width < 640,
       });
       await sleep(150);
+      if (hoverSpec) {
+        const [hoverSelector, hoverText = ''] = hoverSpec.split('@@');
+        const spot = (
+          await send('Runtime.evaluate', {
+            expression: `(() => { const el = [...document.querySelectorAll(${JSON.stringify(hoverSelector)})].find((node) => (node.textContent || node.getAttribute('aria-label') || '').includes(${JSON.stringify(hoverText)})); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`,
+            returnByValue: true,
+          })
+        ).result.value;
+        if (spot)
+          await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: spot.x, y: spot.y });
+        else console.log(`CHECK ${name} ${width} ${scheme}: nothing matches --hover ${hoverSpec}`);
+        await sleep(500);
+      }
       const shot = await send('Page.captureScreenshot', { format: 'png' });
       const file = join(outDir, `${name}-${width}-${scheme}.png`);
       writeFileSync(file, Buffer.from(shot.data, 'base64'));

@@ -94,8 +94,13 @@ export function Slider({
       className={cx('ls-slider', hasPhoneImage && 'ls-slider-tall', className)}
       aria-roledescription="carousel"
       aria-label={labels.region}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
+      // Only a mouse hovers: a tap on a phone also fires the emulated `mouseenter`, which left the slider paused for good.
+      onPointerEnter={(event) => {
+        if (event.pointerType === 'mouse') setHovering(true);
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType === 'mouse') setHovering(false);
+      }}
       onFocus={() => setFocused(true)}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);

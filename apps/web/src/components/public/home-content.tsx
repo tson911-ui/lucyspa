@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import { homeGroups, type HomeData } from '../../lib/public-site-core';
+import { HomeOffer } from './campaign-views';
 import { FactsStrip, LoadNotice, ServiceGroups, WhyCards } from './home-sections';
 import { HomeSlider } from './home-slider';
 import { PromoPopup } from './promo-popup';
@@ -55,7 +56,7 @@ export function HomeContent({
   popup?: boolean;
 }) {
   const text = getSiteText(locale);
-  const { site, services, slides } = data;
+  const { site, services, slides, campaigns } = data;
   const media =
     slides.length > 0 ? null : site?.heroImage ? (
       <HeroImage image={site.heroImage} />
@@ -65,6 +66,7 @@ export function HomeContent({
   return (
     <PublicMain>
       <Band tone="page" labelledBy="home-title" className="ls-hero">
+        <HomeOffer locale={locale} campaigns={campaigns} />
         <div className="ls-hero-grid">
           <div className="ls-hero-copy">
             <h1 className="ls-site-display" id="home-title">
