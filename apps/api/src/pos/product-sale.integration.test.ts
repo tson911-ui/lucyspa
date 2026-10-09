@@ -115,7 +115,7 @@ test(
           const one = await k.addLine(draft, v50.id, 2);
           assert.equal(one.productLines.length, 1);
           const line = one.productLines[0]!;
-          assert.equal(line.seller.id, people.cashier.id);
+          assert.equal(line.seller!.id, people.cashier.id);
           assert.equal(line.unitPriceVnd, '200000');
           assert.equal(line.grossVnd, '400000');
           assert.equal(line.listPriceVnd, '200000');
@@ -145,7 +145,7 @@ test(
           const second = await k.addLine(grown, v50.id, 1, people.ktv.id);
           assert.equal(second.productLines.length, 2);
           assert.deepEqual(
-            second.productLines.map((entry) => [entry.quantity, entry.seller.id]),
+            second.productLines.map((entry) => [entry.quantity, entry.seller!.id]),
             [
               [3, people.cashier.id],
               [1, people.ktv.id],
@@ -154,7 +154,7 @@ test(
           assert.equal(second.subtotalVnd, '800000');
           // The Owner names the seller; the seller must be an active employee assigned to THIS branch.
           const ownerSold = await k.addLine(second, sv.id, 1, people.ktv.id, people.owner);
-          assert.equal(ownerSold.productLines.at(-1)!.seller.id, people.ktv.id);
+          assert.equal(ownerSold.productLines.at(-1)!.seller!.id, people.ktv.id);
           for (const sellerUserId of [
             people.otherBranch.id,
             member.id,
@@ -182,7 +182,7 @@ test(
             }),
           );
           assert.equal(changed.productLines[1]!.quantity, 2);
-          assert.equal(changed.productLines[1]!.seller.id, people.cashier.id);
+          assert.equal(changed.productLines[1]!.seller!.id, people.cashier.id);
           assert.equal(changed.subtotalVnd, String(3 * 200_000 + 2 * 200_000 + 120_000));
           const same = await invoices.updateProductLine(
             people.cashier.token,

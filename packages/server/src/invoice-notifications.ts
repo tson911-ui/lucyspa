@@ -39,7 +39,7 @@ export type FinancialEventOutcome =
 interface Delivery {
   readonly type: NotificationType;
   readonly recipients: readonly string[];
-  readonly entityType: 'Invoice' | 'Branch';
+  readonly entityType: 'Invoice' | 'Branch' | 'ProductOrder';
   readonly entityId: string;
   readonly contextCode: string;
   readonly params: NotificationParams | null;
@@ -109,22 +109,42 @@ async function onInvoicePaid(tx: Prisma.TransactionClient, event: Event): Promis
     return SKIP;
   }
   const payer = await payerRecipient(tx, invoice.payerUserId);
-  if (!payer) return SKIP;
-  return {
-    outcome: 'DELIVER',
-    deliveries: [
-      {
-        type: 'INVOICE_PAID',
-        recipients: [payer],
-        entityType: 'Invoice',
-        entityId: invoice.id,
-        contextCode: invoice.code,
-        params: parseNotificationParams('INVOICE_PAID', {
-          amountVnd: invoice.totalVnd.toString(),
-        }),
-      },
-    ],
-  };
+  // Phase 6 Wave 4: a paid ONLINE order is news for the people who pack and ship it (about the order, never its address or phone).
+  const online = await tx.productOrder.findFirst({
+    where: { invoiceId: invoice.id, channel: 'ONLINE' },
+    select: { id: true, code: true },
+  });
+  const packers = online
+    ? await resolvePermissionHolders(tx, {
+        branchId: invoice.branchId,
+        permission: 'MANAGE_PRODUCT_ORDERS',
+      })
+    : [];
+  if (!payer && packers.length === 0) return SKIP;
+  const deliveries: Delivery[] = [];
+  if (payer) {
+    deliveries.push({
+      type: 'INVOICE_PAID',
+      recipients: [payer],
+      entityType: 'Invoice',
+      entityId: invoice.id,
+      contextCode: invoice.code,
+      params: parseNotificationParams('INVOICE_PAID', {
+        amountVnd: invoice.totalVnd.toString(),
+      }),
+    });
+  }
+  if (online && packers.length > 0) {
+    deliveries.push({
+      type: 'ONLINE_ORDER_NEW',
+      recipients: packers,
+      entityType: 'ProductOrder',
+      entityId: online.id,
+      contextCode: online.code,
+      params: null,
+    });
+  }
+  return { outcome: 'DELIVER', deliveries };
 }
 
 async function onInvoiceCancelled(tx: Prisma.TransactionClient, event: Event): Promise<Handled> {
@@ -149,10 +169,14 @@ async function onInvoiceCancelled(tx: Prisma.TransactionClient, event: Event): P
       params: null,
     });
   }
-  const managers = await resolvePermissionHolders(tx, {
-    branchId: invoice.branchId,
-    permission: 'CORRECT_PAYMENTS',
-  });
+  // Phase 6 Wave 4: the cancel of an unpaid online order (by its customer, or by the system after the deadline) is routine; it does not call a manager.
+  const managers =
+    field(event.payload, 'routine') === true
+      ? []
+      : await resolvePermissionHolders(tx, {
+          branchId: invoice.branchId,
+          permission: 'CORRECT_PAYMENTS',
+        });
   if (managers.length > 0) {
     deliveries.push({
       type: 'INVOICE_CANCELLED_ALERT',

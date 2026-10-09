@@ -1,5 +1,6 @@
 import type {
   PublicPopupResponse,
+  PublicCampaignsResponse,
   PublicProductCodesResponse,
   PublicProductDetailResponse,
   PublicProductsResponse,
@@ -22,6 +23,7 @@ import { AuthError } from '../auth/auth.error.js';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { SessionService } from '../auth/session.service.js';
 import { runAdminCommand, type AdminContext } from '../authorization/admin-command.js';
+import { runningCampaigns } from '../campaigns/campaign.public.js';
 import { ShortCache } from '../platform/short-cache.js';
 import { MEDIA_STORAGE } from '../platform/tokens.js';
 import { mediaVariantObject } from './media.core.js';
@@ -148,6 +150,7 @@ export class PublicWebsiteService {
     products: new ShortCache<PublicProductsResponse>(PUBLIC_PRODUCT_CACHE_MS, 100),
     detail: new ShortCache<PublicProductDetailResponse>(PUBLIC_PRODUCT_CACHE_MS, 300),
     codes: new ShortCache<PublicProductCodesResponse>(PUBLIC_PRODUCT_CACHE_MS, 1),
+    campaigns: new ShortCache<PublicCampaignsResponse>(PUBLIC_PRODUCT_CACHE_MS, 2),
   };
 
   constructor(
@@ -195,6 +198,13 @@ export class PublicWebsiteService {
   productDetail(locale: PublicLocale, code: string): Promise<PublicProductDetailResponse> {
     return this.cache.detail.get(`${locale}:${code}`, () =>
       this.read((tx) => publicProductDetail(tx, locale, code)),
+    );
+  }
+
+  /** The campaigns running now (P6-23): remembered for a few seconds like the products they price. */
+  campaigns(locale: PublicLocale): Promise<PublicCampaignsResponse> {
+    return this.cache.campaigns.get(locale, () =>
+      this.read(async (tx) => runningCampaigns(tx, await this.throttle.now(tx), locale)),
     );
   }
 

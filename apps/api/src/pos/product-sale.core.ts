@@ -261,6 +261,7 @@ export async function addProductLine(
         sellerUserId,
         listPriceVnd: price.listPriceVnd,
         promotionId: price.promotionId,
+        campaignId: price.campaignId,
         pricedAt: now,
         fulfilmentMode: mode,
       },
@@ -313,6 +314,8 @@ export async function updateProductLine(
   const line = invoice.lines.find((candidate) => candidate.id === lineId);
   const detail = line?.productDetails[0];
   if (!line || line.kind !== 'PRODUCT' || !detail) throw new AuthError('NOT_FOUND');
+  // An online line has no seller and is never edited by staff (the customer owns that draft).
+  if (detail.sellerUserId === null) throw new AuthError('INVOICE_STATE_INVALID');
   const newQuantity = quantity ?? line.quantity ?? 0;
   const newSeller = input.sellerUserId ?? detail.sellerUserId;
   if (newQuantity === line.quantity && newSeller === detail.sellerUserId) {

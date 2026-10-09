@@ -3,6 +3,7 @@ import {
   pendingLowStockAlerts,
   processLowStockAlert,
   runExpiryScan,
+  runOnlineOrderScan,
   runOrderScan,
   type createLogger,
 } from '@lucy-spa/server';
@@ -54,6 +55,7 @@ export function startInventoryAlerts(database: DatabaseClient, logger: Logger) {
       try {
         await runExpiryScan(database);
         await runOrderScan(database);
+        await runOnlineOrderScan(database);
         await relayLowStockAlerts(database, outcome, failure);
       } catch (error) {
         failure(error);

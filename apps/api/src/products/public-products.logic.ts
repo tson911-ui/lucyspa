@@ -26,6 +26,8 @@ export interface PublicProductsQuery {
   brand: string | null;
   sort: PublicProductSort;
   page: number;
+  /** Wave 4 (P6-23): the address name of a running campaign; absent when the visitor did not ask for one. */
+  campaign?: string;
 }
 
 /** What the controller got from the URL, bounded: nothing here can make a query expensive or an unbounded cache key. */
@@ -35,6 +37,7 @@ export function parsePublicProductsQuery(raw: {
   brand?: unknown;
   sort?: unknown;
   page?: unknown;
+  campaign?: unknown;
 }): PublicProductsQuery {
   const one = (value: unknown): string | null =>
     typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
@@ -54,12 +57,14 @@ export function parsePublicProductsQuery(raw: {
   const pageText = one(raw.page) ?? '1';
   const page = /^[0-9]{1,4}$/.test(pageText) ? Number(pageText) : 0;
   if (page < 1 || page > PUBLIC_MAX_PAGE) throw new AuthError('VALIDATION_FAILED', 'page');
+  const campaign = code(raw.campaign, 'campaign');
   return {
     q,
     category: code(raw.category, 'category'),
     brand: code(raw.brand, 'brand'),
     sort,
     page,
+    ...(campaign === null ? {} : { campaign }),
   };
 }
 

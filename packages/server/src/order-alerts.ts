@@ -6,7 +6,9 @@ import { resolvePermissionHolders } from './notification-routing.js';
 /**
  * Phase 6 P6-17 (OQ-34, OQ-86; the Owner's words 2026-10-07): the daily in-app alert of the pre-orders, for the holders of
  * `MANAGE_PRODUCT_ORDERS` at the branch. It counts the paid lines whose goods have not arrived after their expected date (branch-local
- * date) and the arrived lines nobody collected for more than 7 days, and says so only when there is something to report. Staff then
+ * date) and the arrived lines nobody collected for more than 7 days, and says so only when there is something to report. Wave 4: only
+ * pre-order lines (an online order's in-stock lines are PAID too but hold their stock), and the goods that wait to be collected are the
+ * counter's (an online parcel waits to be shipped; the online scan watches it). Staff then
  * call the customers; NOTHING is cancelled or changed by the scan. One scan row per branch and branch-local day is the claim, so a
  * restart or a second worker repeats nothing; it runs from 08:00 branch-local time, like the expiry scan.
  */
@@ -58,10 +60,13 @@ async function scanBranch(
   if (existing) return false;
   const [counts] = await tx.$queryRaw<{ late: number; held: number }[]>`
     SELECT count(*) FILTER (WHERE o.status IN ('PAID', 'ORDERED') AND o.expected_to < ${businessDate}::date)::int AS late,
-           count(*) FILTER (WHERE o.status = 'ARRIVED'
+           count(*) FILTER (WHERE o.status = 'ARRIVED' AND p.channel = 'COUNTER'
                               AND o.arrived_at < ${now}::timestamptz - make_interval(days => ${ORDER_HELD_DAYS}))::int AS held
     FROM product_order_lines o
-    WHERE o.branch_id = ${branchId}::uuid AND o.status IN ('PAID', 'ORDERED', 'ARRIVED')`;
+      JOIN product_orders p ON p.id = o.order_id
+      JOIN invoice_line_products d ON d.invoice_line_id = o.invoice_line_id
+    WHERE o.branch_id = ${branchId}::uuid AND o.status IN ('PAID', 'ORDERED', 'ARRIVED')
+      AND d.fulfilment_mode = 'PRE_ORDER'`;
   const late = counts?.late ?? 0;
   const held = counts?.held ?? 0;
   let outcome: 'PUBLISHED' | 'NOTHING_TO_REPORT' | 'UNROUTABLE' = 'NOTHING_TO_REPORT';

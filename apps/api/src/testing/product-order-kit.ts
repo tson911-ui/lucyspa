@@ -155,7 +155,7 @@ export async function productOrderKit(base: Phase6Kit) {
     }) as Promise<OrderReservationFacts | null>;
 
   /**
-   * The Owner's reconciliation of the orders over the whole fixture: for every order line its status, its reservation (source
+   * The Owner's reconciliation of the COUNTER orders over the whole fixture (online orders have their own, in the online kit): for every order line its status, its reservation (source
    * ORDER_LINE), its stock sale and the history agree; the history has one event per status reached; nothing about money lives on an
    * order. Used with `k.reconcile` (stock levels, invoices) at the end of every test.
    */
@@ -185,6 +185,7 @@ export async function productOrderKit(base: Phase6Kit) {
               ORDER BY e.occurred_at DESC, e.id DESC LIMIT 1) AS last_event,
              (SELECT count(*) FROM product_refunds f WHERE f.invoice_line_id = o.invoice_line_id) AS refunds
       FROM product_order_lines o
+      JOIN product_orders po ON po.id = o.order_id AND po.channel = 'COUNTER'
       JOIN invoices i ON i.id = o.invoice_id
       LEFT JOIN stock_reservations r ON r.invoice_line_id = o.invoice_line_id AND r.source = 'ORDER_LINE'
       WHERE o.branch_id = ${k.A.id}::uuid`;

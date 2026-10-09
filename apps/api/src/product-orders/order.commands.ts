@@ -28,6 +28,8 @@ import {
 } from '../product-returns/refund.core.js';
 import { tellOwnerAboutRefund } from '../product-returns/refund.notice.js';
 import * as parse from '../product-returns/return.input.js';
+import { cancelCausesOnline } from '../online-orders/online.cancel.js';
+import { tellMember } from '../online-orders/online.notice.js';
 import { requireManageOrders, requireRefund } from './order.access.js';
 import { tellMembersGoodsArrived } from './order.notice.js';
 import { branchToday, cancelCausesFor, orderDetail } from './order.queue.js';
@@ -119,7 +121,8 @@ async function lockLines(
       status: true,
       expectedTo: true,
       rowVersion: true,
-      order: { select: { code: true, contactPhone: true } },
+      order: { select: { code: true, contactPhone: true, channel: true } },
+      productLine: { select: { fulfilmentMode: true } },
     },
   });
 }
@@ -155,6 +158,9 @@ export async function markOrdered(
   for (const line of lines) {
     if (line.rowVersion !== wanted.get(line.id)) throw new AuthError('CONFLICT');
     if (line.status !== 'PAID') throw new AuthError('ORDER_LINE_STATE_INVALID');
+    // An in-stock line of an online order is packed from the shelf: there is no supplier to order it from.
+    if (line.productLine.fulfilmentMode !== 'PRE_ORDER')
+      throw new AuthError('ORDER_LINE_STATE_INVALID');
   }
   for (const line of lines) {
     await tx.productOrderLine.update({
@@ -215,6 +221,8 @@ export async function handOver(
   if (!line) throw new AuthError('NOT_FOUND');
   if (line.rowVersion !== expectedVersion) throw new AuthError('CONFLICT');
   if (line.status !== 'ARRIVED') throw new AuthError('ORDER_LINE_STATE_INVALID');
+  // The goods of an online order are shipped, never handed over at the counter.
+  if (line.order.channel !== 'COUNTER') throw new AuthError('ORDER_LINE_STATE_INVALID');
   const invoice = await tx.invoice.findUniqueOrThrow({
     where: { id: line.invoiceId },
     select: { status: true, paidSeq: true },
@@ -268,13 +276,16 @@ export async function handOver(
  * confirmation used once, the Owner told in-app, the Beauty points taken back by the `loyalty` consumer. A line nothing was paid for
  * needs no refund and no password.
  */
-export async function cancelLine(
+export async function cancelLine<T = ProductOrderDetailResponse>(
   context: AdminContext,
   lineId: string,
   request: Record<string, unknown>,
   freshAuthSeconds: number,
   owners: readonly string[],
-): Promise<ProductOrderDetailResponse> {
+  /** What the command answers with once it is done: the counter order page, or (Wave 4) the page of an online order. */
+  render: (orderId: string) => Promise<T> = (orderId) =>
+    orderDetail(context, orderId) as Promise<T>,
+): Promise<T> {
   const body = input.record(request, 'body', CANCEL_KEYS);
   const expectedVersion = input.rowVersion(body['expectedVersion']);
   const cause = pick<Exclude<ProductOrderCancelCauseName, 'INVOICE_CANCELLED'>>(
@@ -300,6 +311,8 @@ export async function cancelLine(
       invoiceLineId: true,
       variantId: true,
       status: true,
+      order: { select: { channel: true } },
+      productLine: { select: { fulfilmentMode: true } },
     },
   });
   if (!hint) throw new AuthError('NOT_FOUND');
@@ -317,7 +330,7 @@ export async function cancelLine(
   }
 
   // A repeat of the same request returns what it already did (no password needed to read it back).
-  const replay = async (): Promise<ProductOrderDetailResponse | null> => {
+  const replay = async (): Promise<T | null> => {
     const prior = await tx.productRefund.findUnique({
       where: {
         actorUserId_clientRequestId: { actorUserId: context.actor.userId, clientRequestId },
@@ -340,7 +353,7 @@ export async function cancelLine(
     ) {
       throw new AuthError('CONFLICT');
     }
-    return orderDetail(context, hint.orderId);
+    return render(hint.orderId);
   };
   const early = await replay();
   if (early) return early;
@@ -349,7 +362,13 @@ export async function cancelLine(
 
   // The goods held for an ARRIVED line are given to the next waiting line when this one is cancelled, so the waiting lines of the variant
   // are locked FIRST (invoice, then line, in id order), before this line's own invoice and the stock (design 10.2).
-  const holdsGoods = hint.status === 'ARRIVED';
+  // Wave 4: the in-stock line of an online order holds its goods from checkout (an invoice-line reservation); they go back when it is
+  // cancelled, exactly like the goods of an arrived pre-order line.
+  const holdsGoods =
+    hint.status === 'ARRIVED' ||
+    (hint.status === 'PAID' &&
+      hint.order.channel === 'ONLINE' &&
+      hint.productLine.fulfilmentMode === 'IN_STOCK');
   if (holdsGoods) await lockWaitingOrderLines(tx, hint.branchId, [hint.variantId]);
   await lockInvoice(tx, hint.invoiceId, true);
   const [line] = await lockLines(tx, [lineId], 'UPDATE');
@@ -369,19 +388,25 @@ export async function cancelLine(
       lines: { where: { id: line.invoiceLineId }, select: { quantity: true } },
     },
   });
-  if (invoice.status !== 'PAID' || invoice.channel !== 'COUNTER')
-    throw new AuthError('INVOICE_STATE_INVALID');
+  if (invoice.status !== 'PAID') throw new AuthError('INVOICE_STATE_INVALID');
   const today = await branchToday(tx, line.branchId);
   const expectedTo = line.expectedTo ? line.expectedTo.toISOString().slice(0, 10) : null;
-  if (!cancelCausesFor({ status: line.status, expectedTo }, today).includes(cause)) {
+  const causes =
+    invoice.channel === 'ONLINE'
+      ? cancelCausesOnline(
+          { status: line.status, mode: line.productLine.fulfilmentMode, expectedTo },
+          today,
+        )
+      : cancelCausesFor({ status: line.status, expectedTo }, today);
+  if (!causes.includes(cause)) {
     throw new AuthError('ORDER_CANCEL_CAUSE_INVALID', 'cause');
   }
   if (await openExchangeOnLine(tx, line.invoiceLineId)) throw new AuthError('EXCHANGE_IN_PROGRESS');
   const claims = await lineClaims(tx, line.invoiceLineId);
   if (claims.units !== 0) throw new AuthError('ORDER_LINE_STATE_INVALID');
 
-  // The goods held for an arrived line go back to the shelf (the level first, then the reservation).
-  const arrived = line.status === 'ARRIVED';
+  // The goods held for an arrived line (or for an in-stock online line) go back to the shelf (the level first, then the reservation).
+  const arrived = holdsGoods;
   if (arrived) {
     await tx.$queryRaw`
       SELECT 1 FROM stock_levels WHERE branch_id = ${line.branchId}::uuid AND variant_id = ${line.variantId}::uuid FOR UPDATE`;
@@ -517,6 +542,39 @@ export async function cancelLine(
       payload: { refundId: refund.id, invoiceId: line.invoiceId, branchId: line.branchId },
     });
   }
+  // Wave 4 (OQ-101): the member of an online order is told in the app, with the amount when money goes back.
+  if (invoice.channel === 'ONLINE') {
+    const customer = await tx.productOrder.findUniqueOrThrow({
+      where: { id: line.orderId },
+      select: { customerUserId: true },
+    });
+    if (customer.customerUserId) {
+      const refunded = refundCode !== null;
+      await tellMember(tx, {
+        type: refunded ? 'ONLINE_ORDER_REFUNDED' : 'ONLINE_ORDER_CANCELLED',
+        userId: customer.customerUserId,
+        branchId: line.branchId,
+        invoiceId: line.invoiceId,
+        orderCode: line.order.code,
+        eventKey: `cancelled:${lineId}`,
+        ...(refunded
+          ? {
+              params: {
+                amountVnd: (
+                  requestedAmount ??
+                  productRefundAmount(
+                    net,
+                    invoice.lines[0]?.quantity ?? line.quantity,
+                    0,
+                    line.quantity,
+                  )
+                ).toString(),
+              },
+            }
+          : {}),
+      });
+    }
+  }
   await appendAdminAudit(context, {
     action: 'PRODUCT_ORDER_LINE_CANCELLED',
     entityType: 'ProductOrder',
@@ -534,7 +592,7 @@ export async function cancelLine(
       goodsGivenToLines: given.map((entry) => entry.orderLineId),
     },
   });
-  return orderDetail(context, line.orderId);
+  return render(line.orderId);
 }
 
 // ---------------------------------------------------------------------------------- decline a change of mind

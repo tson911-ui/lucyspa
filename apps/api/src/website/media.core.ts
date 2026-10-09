@@ -113,6 +113,12 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
     orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
     select: { product: { select: { id: true, nameVi: true, nameEn: true } } },
   });
+  // Phase 6 Wave 4 (P6-23): the banner of a campaign cannot be deleted (the foreign key is RESTRICT).
+  const campaigns = await tx.productCampaign.findMany({
+    where: { bannerMediaId: assetId },
+    orderBy: [{ startsAt: 'desc' }, { id: 'asc' }],
+    select: { id: true, nameVi: true },
+  });
   return [
     ...popups.map((popup) => ({
       kind: 'POPUP' as const,
@@ -131,6 +137,7 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
       id: row.product.id,
       title: row.product.nameVi,
     })),
+    ...campaigns.map((row) => ({ kind: 'CAMPAIGN' as const, id: row.id, title: row.nameVi })),
   ];
 };
 

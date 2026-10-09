@@ -148,10 +148,12 @@ export {
   processInventoryEvent,
   relayInventoryEvents,
   ORDER_HANDED_OVER_EVENT,
+  ORDER_SHIPPED_EVENT,
   orderSaleKey,
   saleKey,
   saleReversalKey,
   settleHandedOverOrderLines,
+  settleShippedOrderLines,
   settleInvoiceStock,
   type InventoryEventOutcome,
   type StockInvoiceState,
@@ -254,6 +256,23 @@ export {
   type SettlementActor,
   type SettlementResult,
 } from './payment-settlement.js';
+export {
+  ONLINE_ALERT_EVENT,
+  ONLINE_ALERT_PERMISSION,
+  ONLINE_SCAN_LOCAL_TIME,
+  ONLINE_UNDELIVERED_DAYS,
+  runOnlineOrderScan,
+} from './online-alerts.js';
+export {
+  cancelOverdueOnlineOrders,
+  cancelUnpaidOnlineInvoice,
+  ONLINE_CANCEL_GRACE_MS,
+  ONLINE_CUSTOMER_REASON,
+  ONLINE_TIMEOUT_REASON,
+  type OnlineCancelOutcome,
+  type OnlineCancelWho,
+  type OnlineTimeoutSummary,
+} from './online-orders.js';
 export * from './product-import/columns.js';
 export * from './product-import/spreadsheet.js';
 export * from './product-import/template.js';

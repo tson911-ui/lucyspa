@@ -52,6 +52,8 @@ export interface Phase6Kit {
     },
   ) => Promise<{ id: string; token: string }>;
   fails: (work: () => Promise<unknown>, code: string, field?: string) => Promise<void>;
+  /** A signed-in session token for any existing user (a member of the website too); the fixture user has a placeholder password. */
+  signIn: (userId: string) => Promise<string>;
 }
 
 export async function phase6Fixture(work: (kit: Phase6Kit) => Promise<void>): Promise<void> {
@@ -250,6 +252,8 @@ export async function phase6Fixture(work: (kit: Phase6Kit) => Promise<void>): Pr
               },
             );
           };
+          const signIn: Phase6Kit['signIn'] = async (userId) =>
+            login(await tx.user.findUniqueOrThrow({ where: { id: userId } }));
           await work({
             tx,
             database,
@@ -261,6 +265,7 @@ export async function phase6Fixture(work: (kit: Phase6Kit) => Promise<void>): Pr
             branch,
             staff,
             fails,
+            signIn,
           });
           throw rollback;
         },

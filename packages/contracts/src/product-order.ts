@@ -10,7 +10,15 @@
 export type ProductLineModeName = 'IN_STOCK' | 'PRE_ORDER';
 
 export type ProductOrderLineStatusName =
-  'AWAITING_PAYMENT' | 'PAID' | 'ORDERED' | 'ARRIVED' | 'HANDED_OVER' | 'COMPLETED' | 'CANCELLED';
+  | 'AWAITING_PAYMENT'
+  | 'PAID'
+  | 'ORDERED'
+  | 'ARRIVED'
+  | 'HANDED_OVER'
+  /** Wave 4: a line of an online order that left in a parcel; COMPLETED then means delivered. */
+  | 'SHIPPED'
+  | 'COMPLETED'
+  | 'CANCELLED';
 
 /** OQ-32. `INVOICE_CANCELLED` is the system cause (an unpaid invoice cancelled). */
 export type ProductOrderCancelCauseName =
@@ -18,7 +26,9 @@ export type ProductOrderCancelCauseName =
   | 'SUPPLIER_CANNOT_DELIVER'
   | 'CUSTOMER_CANCELLED_BEFORE_ORDERING'
   | 'CUSTOMER_CHANGED_MIND'
-  | 'LATE_OVER_7_DAYS';
+  | 'LATE_OVER_7_DAYS'
+  /** Wave 4 (OQ-98): the delivery failed, the customer no longer wants the order and the goods came back. */
+  | 'DELIVERY_FAILED';
 
 export type ProductHandoverToName = 'CUSTOMER' | 'REPRESENTATIVE';
 
@@ -29,6 +39,7 @@ export const PRODUCT_ORDER_STATUS_RANK: readonly ProductOrderLineStatusName[] = 
   'ORDERED',
   'ARRIVED',
   'HANDED_OVER',
+  'SHIPPED',
   'COMPLETED',
 ];
 
@@ -215,6 +226,8 @@ export interface ProductOrderQueueRow {
   lineId: string;
   orderId: string;
   orderCode: string;
+  /** ONLINE: the order of a member of the website (worked on the online orders screen); COUNTER: a pre-order made at the counter. */
+  channel: 'COUNTER' | 'ONLINE';
   invoiceId: string;
   invoiceCode: string;
   customerName: string | null;

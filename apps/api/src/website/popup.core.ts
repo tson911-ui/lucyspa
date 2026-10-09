@@ -601,6 +601,18 @@ export async function isPubliclyServed(
     select: { id: true },
   });
   if (productImage !== null) return true;
+  // The banner of a campaign that is running now (P6-23); a draft, scheduled or ended campaign's banner stays private.
+  const banner = await tx.productCampaign.findFirst({
+    where: {
+      bannerMediaId: assetId,
+      publishedAt: { not: null, lte: now },
+      startsAt: { lte: now },
+      endsAt: { gt: now },
+      OR: [{ endedEarlyAt: null }, { endedEarlyAt: { gt: now } }],
+    },
+    select: { id: true },
+  });
+  if (banner !== null) return true;
   // A picture of a visible footer block (the block names its asset inside the profile's JSON).
   const [footer] = await tx.$queryRaw<{ id: string }[]>`
     SELECT id FROM website_shop_info

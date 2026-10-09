@@ -1,10 +1,12 @@
 import {
   PUBLIC_PRODUCTS_PAGE_SIZE,
+  type PublicCampaignRef,
   type PublicProductCard,
   type PublicProductCategory,
   type PublicProductCategoryRef,
   type PublicProductCodesResponse,
   type PublicProductDetailResponse,
+  type PublicProductPrice,
   type PublicProductsCommitment,
   type PublicProductsHero,
   type PublicProductsResponse,
@@ -14,6 +16,7 @@ import {
 } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
 import { AuthError } from '../auth/auth.error.js';
+import { campaignRefs, runningCampaignId } from '../campaigns/campaign.public.js';
 import { TO_FOLDED, FROM_FOLDED } from '../employees/employee-search.js';
 import { pick, publicImageSources, type PublicLocale } from '../website/popup.core.js';
 import { readCommitmentItems } from './product-settings.core.js';
@@ -113,11 +116,14 @@ interface VariantRow {
   labelVi: string | null;
   labelEn: string | null;
   sellOnOrder: boolean;
+  sellOnline: boolean;
   leadTimeDaysMin: number | null;
   leadTimeDaysMax: number | null;
   listPriceVnd: bigint;
   effectivePriceVnd: bigint;
   available: number;
+  /** The running campaign that gives the price (Wave 4, P6-23), when one does. */
+  campaignId: string | null;
 }
 
 /** The priced, active variants of the products, in the shop's own order, with price and availability decided by the database. */
@@ -129,12 +135,17 @@ async function variantRows(
   if (productIds.length === 0) return [];
   return tx.$queryRaw<VariantRow[]>`
     SELECT v.id AS "variantId", v.product_id AS "productId",
-           v.label_vi AS "labelVi", v.label_en AS "labelEn", v.sell_on_order AS "sellOnOrder",
+           v.label_vi AS "labelVi", v.label_en AS "labelEn", v.sell_on_order AS "sellOnOrder", v.sell_online AS "sellOnline",
            v.lead_time_days_min::int AS "leadTimeDaysMin", v.lead_time_days_max::int AS "leadTimeDaysMax",
            pr.list_price_vnd AS "listPriceVnd", pr.effective_price_vnd AS "effectivePriceVnd",
-           COALESCE((SELECT sum(lucy_available_stock(b.id, v.id)) FROM branches b WHERE b.is_active), 0)::int AS "available"
+           COALESCE((SELECT sum(lucy_available_stock(b.id, v.id)) FROM branches b WHERE b.is_active), 0)::int AS "available",
+           cm.campaign_id AS "campaignId"
     FROM product_variants v
     CROSS JOIN LATERAL lucy_variant_price_at(v.id, ${now}::timestamptz) pr
+    LEFT JOIN LATERAL (
+      SELECT m.campaign_id FROM lucy_variant_campaign_at(v.id, ${now}::timestamptz) m
+      WHERE pr.promotion_id IS NULL AND m.price_vnd = pr.effective_price_vnd
+    ) cm ON true
     WHERE v.product_id = ANY(${productIds as string[]}::uuid[]) AND v.is_active
     ORDER BY v.product_id, v.sort_order, v.id`;
 }
@@ -183,6 +194,15 @@ interface Context {
   locale: PublicLocale;
   now: Date;
   settings: Settings;
+  /** The badge data of the campaigns that gave the prices of this page (Wave 4, P6-23). */
+  campaigns?: Map<string, PublicCampaignRef>;
+}
+
+/** The price of a variant, with the running campaign that gives it. */
+function priced(variant: VariantRow, context: Context): PublicProductPrice {
+  const block = priceBlock(variant.listPriceVnd, variant.effectivePriceVnd);
+  const campaign = variant.campaignId ? context.campaigns?.get(variant.campaignId) : undefined;
+  return campaign ? { ...block, campaign } : block;
 }
 
 function stockOf(rows: readonly VariantRow[], settings: Settings): PublicProductStock[] {
@@ -207,7 +227,7 @@ function presentCard(
     category: categoryRef(row, locale),
     brand: brandName(row, locale),
     image: first ? publicImage(first, locale, name) : null,
-    price: priceBlock(cheapest.listPriceVnd, cheapest.effectivePriceVnd),
+    price: priced(cheapest, context),
     priceMaxVnd: dearest.effectivePriceVnd.toString(),
     isNew: isNewProduct(row.publishedAt, now, settings.newBadgeDays),
     featured: row.featured,
@@ -230,11 +250,19 @@ async function cardsOf(
     variantRows(tx, ids, context.now),
   ]);
   const byId = new Map(rows.map((row) => [row.id, row]));
+  const withCampaigns: Context = {
+    ...context,
+    campaigns: await campaignRefs(
+      tx,
+      [...new Set(variants.flatMap((variant) => (variant.campaignId ? [variant.campaignId] : [])))],
+      context.locale,
+    ),
+  };
   const cards: PublicProductCard[] = [];
   for (const id of ids) {
     const row = byId.get(id);
     const own = variants.filter((variant) => variant.productId === id);
-    if (row && own.length > 0) cards.push(presentCard(row, own, context));
+    if (row && own.length > 0) cards.push(presentCard(row, own, withCampaigns));
   }
   return cards;
 }
@@ -245,6 +273,8 @@ interface Filters {
   categoryIds: string[] | null;
   brandId: string | null;
   excludeId: string | null;
+  /** Only products with a variant in this running campaign (Wave 4, P6-23). */
+  campaignId?: string | null;
   patterns: string[];
   sort: PublicProductsQuery['sort'];
   limit: number;
@@ -268,6 +298,8 @@ async function pageOfIds(
         AND (${filters.categoryIds}::uuid[] IS NULL OR p.category_id = ANY(${filters.categoryIds}::uuid[]))
         AND (${filters.brandId}::uuid IS NULL OR p.brand_id = ${filters.brandId}::uuid)
         AND (${filters.excludeId}::uuid IS NULL OR p.id <> ${filters.excludeId}::uuid)
+        AND (${filters.campaignId ?? null}::uuid IS NULL OR EXISTS (
+          SELECT 1 FROM product_campaign_items ci WHERE ci.variant_id = v.id AND ci.campaign_id = ${filters.campaignId ?? null}::uuid))
         AND (cardinality(${filters.patterns}::text[]) = 0 OR NOT EXISTS (
           SELECT 1 FROM unnest(${filters.patterns}::text[]) AS t(pat)
           WHERE translate(lower(normalize(
@@ -399,10 +431,17 @@ export async function publicProducts(
   ) {
     return { ...head, items: [], page: query.page, total: 0 };
   }
+  // An unknown or not running campaign matches nothing: the page says so instead of listing everything.
+  const campaignId =
+    query.campaign === undefined ? null : await runningCampaignId(tx, query.campaign, now);
+  if (query.campaign !== undefined && campaignId === null) {
+    return { ...head, items: [], page: query.page, total: 0 };
+  }
   const filters: Filters = {
     categoryIds,
     brandId: brand?.id ?? null,
     excludeId: null,
+    campaignId,
     patterns: searchPatterns(query.q),
     sort: query.sort,
     limit: PUBLIC_PRODUCTS_PAGE_SIZE,
@@ -437,13 +476,24 @@ export async function publicProductDetail(
   if (!row) throw new AuthError('NOT_FOUND');
   const variants = await variantRows(tx, [row.id], now);
   if (variants.length === 0) throw new AuthError('NOT_FOUND');
-  const context: Context = { locale, now, settings };
+  const context: Context = {
+    locale,
+    now,
+    settings,
+    campaigns: await campaignRefs(
+      tx,
+      [...new Set(variants.flatMap((variant) => (variant.campaignId ? [variant.campaignId] : [])))],
+      locale,
+    ),
+  };
   const card = presentCard(row, variants, context);
   const name = card.name;
   const stocks = stockOf(variants, settings);
   const presented: PublicProductVariant[] = variants.map((variant, index) => ({
+    id: variant.variantId,
+    sellOnline: variant.sellOnline,
     label: pick(variant.labelVi, variant.labelEn, locale),
-    price: priceBlock(variant.listPriceVnd, variant.effectivePriceVnd),
+    price: priced(variant, context),
     stock: stocks[index] ?? card.stock,
   }));
   const relatedIds =

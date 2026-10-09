@@ -53,6 +53,7 @@ model Branch {
   productExchanges        ProductExchange[]            @relation("ProductExchangeBranch")
   productOrders           ProductOrder[]               @relation("ProductOrderBranch")
   productOrderLines       ProductOrderLine[]           @relation("ProductOrderLineBranch")
+  onlineSalesSettings     OnlineSalesSettings[]        @relation("OnlineFulfilmentBranch")
   productOrderScans       ProductOrderScan[]           @relation("ProductOrderScanBranch")
   inventoryLots           InventoryLot[]               @relation("InventoryLotBranch")
   stockLevels             StockLevel[]                 @relation("StockLevelBranch")
@@ -521,6 +522,9 @@ model User {
   createdProducts                Product[]                        @relation("ProductCreator")
   createdPriceVersions           ProductPriceVersion[]            @relation("PriceVersionCreator")
   createdPromotions              ProductPromotion[]               @relation("PromotionCreator")
+  createdCampaigns               ProductCampaign[]                @relation("CampaignCreator")
+  publishedCampaigns             ProductCampaign[]                @relation("CampaignPublisher")
+  endedCampaigns                 ProductCampaign[]                @relation("CampaignEnder")
   endedPromotions                ProductPromotion[]               @relation("PromotionEnder")
   createdProductImages           ProductImage[]                   @relation("ProductImageCreator")
   updatedProductSettings         ProductSettings[]                @relation("ProductSettingsUpdater")
@@ -1866,11 +1870,15 @@ model InvoiceLineProduct {
   productNameEn  String            @map("product_name_en")
   variantLabelVi String?           @map("variant_label_vi")
   variantLabelEn String?           @map("variant_label_en")
-  sellerUserId   String            @map("seller_user_id") @db.Uuid
-  seller         User              @relation("InvoiceProductSeller", fields: [sellerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// NULL for a line of an online order (W4-2); required for a counter line (SQL guard).
+  sellerUserId   String?           @map("seller_user_id") @db.Uuid
+  seller         User?             @relation("InvoiceProductSeller", fields: [sellerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   listPriceVnd   BigInt            @map("list_price_vnd")
   promotionId    String?           @map("promotion_id") @db.Uuid
   promotion      ProductPromotion? @relation(fields: [promotionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Phase 6 Wave 4 (P6-23): the campaign whose rule gave the price, when one did.
+  campaignId     String?           @map("campaign_id") @db.Uuid
+  campaign       ProductCampaign?  @relation(fields: [campaignId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   pricedAt       DateTime          @map("priced_at") @db.Timestamptz(3)
   createdAt      DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   returnCases    ProductReturnCase[] @relation("ProductReturnProductLine")
@@ -2301,6 +2309,7 @@ model MediaAsset {
   updatedAt           DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   variants            MediaVariant[]
   popups              WebsitePopup[]
+  campaignBanners     ProductCampaign[]
   shopInfoHero        WebsiteShopInfo[]
   productSettingsHero ProductSettings[]        @relation("ProductSettingsHero")
   slides              WebsiteSlide[]           @relation("WebsiteSlideImage")
@@ -3297,6 +3306,8 @@ model ProductVariant {
   costPriceVnd      BigInt?                  @map("cost_price_vnd")
   lowStockThreshold Int?                     @map("low_stock_threshold")
   sellOnOrder       Boolean                  @default(true) @map("sell_on_order")
+  /// Phase 6 P6-19 (OQ-91): a buy button online unless switched off.
+  sellOnline        Boolean                  @default(true) @map("sell_online")
   leadTimeDaysMin   Int?                     @map("lead_time_days_min") @db.SmallInt
   leadTimeDaysMax   Int?                     @map("lead_time_days_max") @db.SmallInt
   sortOrder         Int                      @default(0) @map("sort_order")
@@ -3306,6 +3317,7 @@ model ProductVariant {
   updatedAt         DateTime                 @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   priceVersions     ProductPriceVersion[]
   promotions        ProductPromotion[]
+  campaignItems     ProductCampaignItem[]
   receiptLines      StockReceiptLine[]
   lots              InventoryLot[]
   stockLevels       StockLevel[]
@@ -3319,6 +3331,7 @@ model ProductVariant {
   usualSupplierId      String?            @map("usual_supplier_id") @db.Uuid
   usualSupplier        Supplier?          @relation("VariantUsualSupplier", fields: [usualSupplierId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   rewardItems          RewardCatalogItem[] @relation("RewardItemVariant")
+  cartLines            OnlineCartLine[]
 
   @@index([productId, sortOrder], map: "product_variants_product_idx")
   @@map("product_variants")
@@ -3356,6 +3369,85 @@ model ProductPromotion {
 
   @@index([variantId, startsAt], map: "product_promotions_variant_idx")
   @@map("product_promotions")
+}
+
+enum CampaignRuleKind {
+  PERCENT
+  AMOUNT
+  PRICE
+
+  @@map("CampaignRuleKind")
+}
+
+/// Phase 6 Wave 4 (P6-23; PRD 24.1): a promotion campaign. Draft until published; a published campaign never changes its window,
+/// groups or items (invoices priced by it must keep reproducing the price), it can only be ended early. The text and image can change.
+model ProductCampaign {
+  id                  String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug                String                 @unique(map: "product_campaigns_slug_key")
+  nameVi              String                 @map("name_vi")
+  nameEn              String                 @map("name_en")
+  internalNote        String?                @map("internal_note")
+  startsAt            DateTime               @map("starts_at") @db.Timestamptz(3)
+  endsAt              DateTime               @map("ends_at") @db.Timestamptz(3)
+  publishedAt         DateTime?              @map("published_at") @db.Timestamptz(3)
+  publishedByUserId   String?                @map("published_by_user_id") @db.Uuid
+  publishedBy         User?                  @relation("CampaignPublisher", fields: [publishedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  endedEarlyAt        DateTime?              @map("ended_early_at") @db.Timestamptz(3)
+  endedEarlyByUserId  String?                @map("ended_early_by_user_id") @db.Uuid
+  endedEarlyBy        User?                  @relation("CampaignEnder", fields: [endedEarlyByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  endedEarlyReason    String?                @map("ended_early_reason")
+  badgeVi             String?                @map("badge_vi")
+  badgeEn             String?                @map("badge_en")
+  headlineVi          String?                @map("headline_vi")
+  headlineEn          String?                @map("headline_en")
+  messageVi           String?                @map("message_vi")
+  messageEn           String?                @map("message_en")
+  ctaLabelVi          String?                @map("cta_label_vi")
+  ctaLabelEn          String?                @map("cta_label_en")
+  bannerMediaId       String?                @map("banner_media_id") @db.Uuid
+  bannerMedia         MediaAsset?            @relation(fields: [bannerMediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion          Int                    @default(1) @map("row_version")
+  createdByUserId     String                 @map("created_by_user_id") @db.Uuid
+  createdBy           User                   @relation("CampaignCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt           DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  groups              ProductCampaignGroup[]
+  items               ProductCampaignItem[]
+  soldLines           InvoiceLineProduct[]
+
+  @@index([bannerMediaId], map: "product_campaigns_banner_idx")
+  @@map("product_campaigns")
+}
+
+model ProductCampaignGroup {
+  id         String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campaignId String                @map("campaign_id") @db.Uuid
+  campaign   ProductCampaign       @relation(fields: [campaignId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  position   Int
+  ruleKind   CampaignRuleKind      @map("rule_kind")
+  ruleValue  BigInt                @map("rule_value")
+  createdAt  DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  items      ProductCampaignItem[]
+
+  @@unique([campaignId, position], map: "product_campaign_groups_position_key")
+  @@unique([id, campaignId], map: "product_campaign_groups_campaign_key")
+  @@map("product_campaign_groups")
+}
+
+model ProductCampaignItem {
+  id         String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campaignId String               @map("campaign_id") @db.Uuid
+  campaign   ProductCampaign      @relation(fields: [campaignId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  groupId    String               @map("group_id") @db.Uuid
+  group      ProductCampaignGroup @relation(fields: [groupId, campaignId], references: [id, campaignId], onDelete: Restrict, onUpdate: Restrict)
+  variantId  String               @map("variant_id") @db.Uuid
+  variant    ProductVariant       @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt  DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([campaignId, variantId], map: "product_campaign_items_variant_key")
+  @@index([variantId], map: "product_campaign_items_variant_idx")
+  @@index([groupId], map: "product_campaign_items_group_idx")
+  @@map("product_campaign_items")
 }
 
 model ProductImage {
@@ -3829,6 +3921,8 @@ model ProductRefund {
   returnCaseId            String?              @map("return_case_id") @db.Uuid
   returnCase              ProductReturnCase?   @relation(fields: [returnCaseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   orderLineId             String?              @unique(map: "product_refunds_order_line_key") @map("order_line_id") @db.Uuid
+  /// Phase 6 P6-21: the settlement of a failed delivery this refund belongs to (the foreign key is SQL only).
+  settlementId            String?              @map("settlement_id") @db.Uuid
   orderLine               ProductOrderLine?    @relation("ProductOrderLineRefund", fields: [orderLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// The paid episode of the invoice the refund belongs to.
   paidSeq                 Int                  @map("paid_seq")
@@ -3890,6 +3984,8 @@ model RefundReauthenticationUse {
   productRefund     ProductRefund? @relation("RefundReauthenticationUseRefund", fields: [productRefundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   productExchangeId String?        @map("product_exchange_id") @db.Uuid
   productExchange   ProductExchange? @relation("RefundReauthenticationUseExchange", fields: [productExchangeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// A settlement of a failed delivery used the confirmation (one refund; the foreign key is SQL only).
+  settlementId      String?        @map("settlement_id") @db.Uuid
   usedAt            DateTime       @default(dbgenerated("clock_timestamp()")) @map("used_at") @db.Timestamptz(3)
 
   @@id([actorUserId, reauthenticatedAt])
@@ -4007,6 +4103,7 @@ enum ProductOrderLineStatus {
   HANDED_OVER
   COMPLETED
   CANCELLED
+  SHIPPED
 }
 
 enum ProductOrderCancelCause {
@@ -4015,6 +4112,7 @@ enum ProductOrderCancelCause {
   CUSTOMER_CANCELLED_BEFORE_ORDERING
   CUSTOMER_CHANGED_MIND
   LATE_OVER_7_DAYS
+  DELIVERY_FAILED
 }
 
 enum ProductHandoverTo {
@@ -4042,6 +4140,10 @@ model ProductOrder {
   updatedAt       DateTime           @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   lines           ProductOrderLine[]
   tickets         ProductOrderTicket[]
+  onlineDetail    OnlineOrderDetail?
+  shipment        OnlineShipment?
+  logs            OnlineOrderLog[]
+  addressCorrections OnlineAddressCorrection[]
 
   @@index([branchId, createdAt(sort: Desc), id], map: "product_orders_branch_idx")
   @@index([contactPhone], map: "product_orders_phone_idx")
@@ -4094,6 +4196,13 @@ model ProductOrderLine {
   updatedAt           DateTime                @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   events              ProductOrderEvent[]
   refund              ProductRefund?          @relation("ProductOrderLineRefund")
+  /// Phase 6 P6-19 (Wave 4): an online line ships (SHIPPED) and is delivered (COMPLETED); the foreign keys to users are SQL only.
+  shippedAt           DateTime?               @map("shipped_at") @db.Timestamptz(3)
+  shippedByUserId     String?                 @map("shipped_by_user_id") @db.Uuid
+  deliveredAt         DateTime?               @map("delivered_at") @db.Timestamptz(3)
+  deliveredByUserId   String?                 @map("delivered_by_user_id") @db.Uuid
+  /// STAFF or CUSTOMER (the customer pressed "Tôi đã nhận hàng").
+  deliveredByKind     String?                 @map("delivered_by_kind") @db.VarChar(8)
 
   @@index([orderId], map: "product_order_lines_order_idx")
   @@index([invoiceId], map: "product_order_lines_invoice_idx")
@@ -4147,4 +4256,222 @@ model ProductOrderScan {
 
   @@id([branchId, businessDate])
   @@map("product_order_scans")
+}
+
+/// Phase 6 P6-19 (Wave 4): the ONE row of settings of online sales. The master switch "Bán online" is OFF by default (the Owner, 2026-10-09).
+model OnlineSalesSettings {
+  id                       Int      @id @default(1) @db.SmallInt
+  enabled                  Boolean  @default(false)
+  fulfilmentBranchId       String?  @map("fulfilment_branch_id") @db.Uuid
+  fulfilmentBranch         Branch?  @relation("OnlineFulfilmentBranch", fields: [fulfilmentBranchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  unpaidTimeoutMinutes     Int      @default(30) @map("unpaid_timeout_minutes") @db.SmallInt
+  maxUnpaidOrders          Int      @default(3) @map("max_unpaid_orders") @db.SmallInt
+  maxCartLines             Int      @default(20) @map("max_cart_lines") @db.SmallInt
+  maxLineQuantity          Int      @default(10) @map("max_line_quantity") @db.SmallInt
+  shipWithinWorkingDays    Int      @default(2) @map("ship_within_working_days") @db.SmallInt
+  transitDaysMin           Int      @default(2) @map("transit_days_min") @db.SmallInt
+  transitDaysMax           Int      @default(5) @map("transit_days_max") @db.SmallInt
+  shippingFeeEnabled       Boolean  @default(false) @map("shipping_fee_enabled")
+  shippingFeeVnd           BigInt   @default(0) @map("shipping_fee_vnd")
+  freeShippingThresholdVnd BigInt?  @map("free_shipping_threshold_vnd")
+  policyVersion            Int      @default(1) @map("policy_version")
+  policyVi                 String?  @map("policy_vi")
+  policyEn                 String?  @map("policy_en")
+  updatedByUserId          String?  @map("updated_by_user_id") @db.Uuid
+  rowVersion               Int      @default(1) @map("row_version")
+  createdAt                DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt                DateTime @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+
+  @@map("online_sales_settings")
+}
+
+/// One cart per account (OQ-89). Prices are never kept here.
+model OnlineCart {
+  id         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String           @unique(map: "online_carts_user_key") @map("user_id") @db.Uuid
+  rowVersion Int              @default(1) @map("row_version")
+  createdAt  DateTime         @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime         @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  lines      OnlineCartLine[]
+
+  @@map("online_carts")
+}
+
+model OnlineCartLine {
+  id        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cartId    String         @map("cart_id") @db.Uuid
+  cart      OnlineCart     @relation(fields: [cartId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  variantId String         @map("variant_id") @db.Uuid
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  quantity  Int
+  createdAt DateTime       @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime       @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([cartId, variantId], map: "online_cart_lines_variant_key")
+  @@map("online_cart_lines")
+}
+
+/// An address a member chose to keep (OQ-93). Personal data: only the owner reads it.
+model CustomerAddress {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  recipientName String   @map("recipient_name") @db.VarChar(120)
+  recipientPhone String  @map("recipient_phone") @db.VarChar(16)
+  provinceCode  String   @map("province_code") @db.VarChar(40)
+  ward          String   @db.VarChar(120)
+  street        String   @db.VarChar(200)
+  createdAt     DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([userId, createdAt, id], map: "customer_addresses_user_idx")
+  @@map("customer_addresses")
+}
+
+/// The delivery address of ONE online order, frozen at checkout (OQ-93), the deadline of the unpaid order and the accepted policy (OQ-103).
+model OnlineOrderDetail {
+  orderId          String       @id @map("order_id") @db.Uuid
+  order            ProductOrder @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  recipientName    String       @map("recipient_name") @db.VarChar(120)
+  recipientPhone   String       @map("recipient_phone") @db.VarChar(16)
+  provinceCode     String       @map("province_code") @db.VarChar(40)
+  provinceName     String       @map("province_name") @db.VarChar(80)
+  ward             String       @db.VarChar(120)
+  street           String       @db.VarChar(200)
+  deadlineAt       DateTime     @map("deadline_at") @db.Timestamptz(3)
+  policyVersion    Int          @map("policy_version")
+  policyAcceptedAt DateTime     @map("policy_accepted_at") @db.Timestamptz(3)
+  /// The idempotency key of the checkout request: a repeated request returns the same order.
+  clientRequestId  String       @unique(map: "online_order_details_request_key") @map("client_request_id") @db.Uuid
+  createdAt        DateTime     @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@map("online_order_details")
+}
+
+/// Phase 6 P6-20: a carrier the shop uses (entered by the Owner). Switched off, never deleted.
+model ShippingCarrier {
+  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String           @db.VarChar(80)
+  /// An https link with one {code} place, or null.
+  trackingUrlTemplate String?          @map("tracking_url_template") @db.VarChar(300)
+  isActive            Boolean          @default(true) @map("is_active")
+  createdByUserId     String           @map("created_by_user_id") @db.Uuid
+  rowVersion          Int              @default(1) @map("row_version")
+  createdAt           DateTime         @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime         @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  shipments           OnlineShipment[]
+
+  @@map("shipping_carriers")
+}
+
+/// ONE per online order: the carrier, the tracking code and the cost the shop paid the carrier for the way there (internal).
+model OnlineShipment {
+  id               String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId          String                     @unique(map: "online_shipments_order_key") @map("order_id") @db.Uuid
+  order            ProductOrder               @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  carrierId        String                     @map("carrier_id") @db.Uuid
+  carrier          ShippingCarrier            @relation(fields: [carrierId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  carrierName      String                     @map("carrier_name") @db.VarChar(80)
+  trackingCode     String                     @map("tracking_code") @db.VarChar(80)
+  carrierFeeOutVnd BigInt                     @map("carrier_fee_out_vnd")
+  shippedAt        DateTime                   @map("shipped_at") @db.Timestamptz(3)
+  shippedByUserId  String                     @map("shipped_by_user_id") @db.Uuid
+  createdAt        DateTime                   @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  corrections      OnlineShipmentCorrection[]
+
+  @@map("online_shipments")
+}
+
+model OnlineShipmentCorrection {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shipmentId       String         @map("shipment_id") @db.Uuid
+  shipment         OnlineShipment @relation(fields: [shipmentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  trackingCode     String         @map("tracking_code") @db.VarChar(80)
+  carrierFeeOutVnd BigInt         @map("carrier_fee_out_vnd")
+  reason           String
+  actorUserId      String         @map("actor_user_id") @db.Uuid
+  occurredAt       DateTime       @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+
+  @@index([shipmentId, occurredAt, id], map: "online_shipment_corrections_shipment_idx")
+  @@map("online_shipment_corrections")
+}
+
+model OnlineAddressCorrection {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId        String       @map("order_id") @db.Uuid
+  order          ProductOrder @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  recipientName  String       @map("recipient_name") @db.VarChar(120)
+  recipientPhone String       @map("recipient_phone") @db.VarChar(16)
+  provinceCode   String       @map("province_code") @db.VarChar(40)
+  provinceName   String       @map("province_name") @db.VarChar(80)
+  ward           String       @db.VarChar(120)
+  street         String       @db.VarChar(200)
+  reason         String
+  actorUserId    String       @map("actor_user_id") @db.Uuid
+  occurredAt     DateTime     @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+
+  @@index([orderId, occurredAt, id], map: "online_address_corrections_order_idx")
+  @@map("online_address_corrections")
+}
+
+/// The history of a delivery: a failed attempt, a contact, a new attempt, the customer no longer wanting the parcel, the parcel back at the shop, the delivery.
+model OnlineOrderLog {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId     String       @map("order_id") @db.Uuid
+  order       ProductOrder @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  kind        String       @db.VarChar(32)
+  reasonCode  String?      @map("reason_code") @db.VarChar(32)
+  note        String?
+  actorKind   String       @map("actor_kind") @db.VarChar(8)
+  actorUserId String?      @map("actor_user_id") @db.Uuid
+  occurredAt  DateTime     @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+
+  @@index([orderId, occurredAt, id], map: "online_order_logs_order_idx")
+  @@map("online_order_logs")
+}
+
+/// The daily 08:00 branch-local claim row of the online alert.
+model OnlineOrderScan {
+  branchId          String   @map("branch_id") @db.Uuid
+  businessDate      DateTime @map("business_date") @db.Date
+  unshippedOrders   Int      @map("unshipped_orders")
+  undeliveredOrders Int      @map("undelivered_orders")
+  outcome           String
+  scannedAt         DateTime @default(dbgenerated("clock_timestamp()")) @map("scanned_at") @db.Timestamptz(3)
+
+  @@id([branchId, businessDate])
+  @@map("online_order_scans")
+}
+
+/// Phase 6 P6-21 (OQ-98): ONE per online order whose delivery failed, the customer no longer wanted the parcel and the parcel came back.
+/// refund = max(0, goods paid - carrier cost out - carrier cost back). History: never changed or deleted.
+model OnlineFailedDeliverySettlement {
+  id                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId           String               @unique(map: "online_failed_delivery_settlements_order_key") @map("order_id") @db.Uuid
+  goodsPaidVnd      BigInt               @map("goods_paid_vnd")
+  carrierFeeOutVnd  BigInt               @map("carrier_fee_out_vnd")
+  carrierFeeBackVnd BigInt               @map("carrier_fee_back_vnd")
+  refundVnd         BigInt               @map("refund_vnd")
+  restock           ProductRefundRestock
+  method            ProductRefundMethod?
+  bankReference     String?              @map("bank_reference") @db.VarChar(80)
+  reason            String
+  actorUserId       String               @map("actor_user_id") @db.Uuid
+  reauthenticatedAt DateTime?            @map("reauthenticated_at") @db.Timestamptz(3)
+  clientRequestId   String               @map("client_request_id") @db.Uuid
+  occurredAt        DateTime             @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+
+  @@unique([actorUserId, clientRequestId], map: "online_failed_delivery_settlements_request_key")
+  @@map("online_failed_delivery_settlements")
+}
+
+/// Phase 6 P6-21 (OQ-100): what the shop paid to have goods come back from a customer after a delivery. A cost of the shop, never deducted.
+model OnlineReturnCost {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId      String   @map("case_id") @db.Uuid
+  costVnd     BigInt   @map("cost_vnd")
+  note        String?
+  actorUserId String   @map("actor_user_id") @db.Uuid
+  occurredAt  DateTime @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+
+  @@index([caseId, occurredAt, id], map: "online_return_costs_case_idx")
+  @@map("online_return_costs")
 }

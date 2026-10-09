@@ -2198,6 +2198,9 @@ export * from './product-refund.js';
 export * from './product-exchange.js';
 // Phase 6 P6-15 to P6-17 (Wave 3b): counter pre-orders, their order lines and the digital ticket.
 export * from './product-order.js';
+export * from './online-order.js';
+export * from './online-fulfilment.js';
+export * from './product-campaign.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;
@@ -2949,7 +2952,7 @@ export interface MediaAssetSummary {
 
 /** Where an image is used (filled by the popup and slider Steps); an image with any usage cannot be deleted. */
 export interface MediaUsage {
-  kind: 'POPUP' | 'SLIDE' | 'SEASON' | 'SHOP_INFO' | 'PRODUCT';
+  kind: 'POPUP' | 'SLIDE' | 'SEASON' | 'SHOP_INFO' | 'PRODUCT' | 'CAMPAIGN';
   id: string;
   title: string;
 }
@@ -3615,6 +3618,8 @@ export interface PublicProductPrice {
   listPriceVnd: string | null;
   /** Round half up of (list - price) / list in whole percent, 1 to 99; null when there is no promotion or it rounds to nothing. */
   discountPercent: number | null;
+  /** Wave 4 (P6-23): the running campaign that gives this price; absent when the price comes from a promotion or the list. */
+  campaign?: { slug: string; name: string; badge: string | null };
 }
 
 export interface PublicProductCategoryRef {
@@ -3671,7 +3676,11 @@ export interface PublicProductsResponse {
 }
 
 export interface PublicProductVariant {
+  /** The variant id: what the cart takes (Wave 4). */
+  id: string;
   label: string | null;
+  /** False for a variant sold in the shop only (OQ-91): the page shows "Mua tại cửa hàng". */
+  sellOnline: boolean;
   price: PublicProductPrice;
   stock: PublicProductStock;
 }
@@ -3848,6 +3857,8 @@ export interface ProductVariantResponse {
   lowStockThreshold: number | null;
   /** Sold on order: the shop orders it from the supplier after payment (Owner, OQ-P6-30; on by default). */
   sellOnOrder: boolean;
+  /** Sold online (OQ-91, Wave 4): a buy button on the public page unless switched off; on by default. */
+  sellOnline: boolean;
   /** This variant's own waiting time in days (both set or both null); null means the settings default applies. */
   leadTimeDaysMin: number | null;
   leadTimeDaysMax: number | null;
@@ -3941,6 +3952,8 @@ export interface ProductVariantCreateRequest {
   lowStockThreshold: number | null;
   /** Absent means on (OQ-P6-30). */
   sellOnOrder?: boolean;
+  /** Absent means on (OQ-91). */
+  sellOnline?: boolean;
   /** Both or neither (1 to 90 days, min <= max); absent or null means the settings default. */
   leadTimeDaysMin?: number | null;
   leadTimeDaysMax?: number | null;
@@ -3960,6 +3973,8 @@ export interface ProductVariantEditRequest {
   lowStockThreshold: number | null;
   /** Absent leaves the stored value unchanged. */
   sellOnOrder?: boolean;
+  /** Absent leaves the stored value unchanged. */
+  sellOnline?: boolean;
   /** Both together, or both null to fall back to the settings default; absent leaves them unchanged. */
   leadTimeDaysMin?: number | null;
   leadTimeDaysMax?: number | null;

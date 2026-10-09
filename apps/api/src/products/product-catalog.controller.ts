@@ -140,6 +140,7 @@ class VariantCreateDto implements ProductVariantCreateRequest {
   @IsInt()
   lowStockThreshold!: number | null;
   @ApiProperty({ required: false }) @IsOptional() @IsBoolean() sellOnOrder?: boolean;
+  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() sellOnline?: boolean;
   @ApiProperty({ required: false, nullable: true })
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
@@ -186,6 +187,7 @@ class VariantEditDto implements ProductVariantEditRequest {
   @IsInt()
   lowStockThreshold!: number | null;
   @ApiProperty({ required: false }) @IsOptional() @IsBoolean() sellOnOrder?: boolean;
+  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() sellOnline?: boolean;
   @ApiProperty({ required: false, nullable: true })
   @IsOptional()
   @ValidateIf((_, value) => value !== null)

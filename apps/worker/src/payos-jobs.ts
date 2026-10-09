@@ -1,8 +1,10 @@
 import type { DatabaseClient } from '@lucy-spa/database';
 import {
+  cancelOverdueOnlineOrders,
   createPayosProvider,
   reconcilePendingPayments,
   type createLogger,
+  type OnlineTimeoutSummary,
   type PaymentProvider,
   type PayosConfig,
   type ReconcileSummary,
@@ -24,6 +26,18 @@ export function reconcilePayos(
   provider: PaymentProvider,
 ): Promise<ReconcileSummary> {
   return reconcilePendingPayments(database, provider);
+}
+
+/**
+ * Phase 6 Wave 4 (P6-19; OQ-39, W4-3): the unpaid online orders whose deadline (plus a two-minute grace) has passed. For each one the
+ * provider is asked first whether the customer paid (a missed webhook is credited, never cancelled); only then is the order cancelled,
+ * its stock returned. Database-authoritative, one transaction per order; an unreachable provider cancels nothing.
+ */
+export function cancelOverdueOrders(
+  database: DatabaseClient,
+  provider: PaymentProvider,
+): Promise<OnlineTimeoutSummary> {
+  return cancelOverdueOnlineOrders(database, provider);
 }
 
 /**
@@ -49,6 +63,8 @@ export function startPayosReconciliation(
         const summary = await reconcilePayos(database, provider);
         if (summary.examined > 0)
           logger.info({ ...summary }, 'PayOS reconciliation pass completed');
+        const online = await cancelOverdueOrders(database, provider);
+        if (online.examined > 0) logger.info({ ...online }, 'Overdue online orders pass completed');
       } catch (error) {
         logger.error(
           { errorName: error instanceof Error ? error.name : 'UnknownError' },

@@ -102,6 +102,23 @@ export class ProductOrderService {
     body: Record<string, unknown>,
     requestId?: string,
   ): Promise<ProductOrderDetailResponse> {
+    return this.cancelLineAs(
+      token,
+      lineId,
+      body,
+      requestId,
+      (context) => (orderId) => queue.orderDetail(context, orderId),
+    );
+  }
+
+  /** The cancellation of a line with the answer of the caller's choice: the counter order page, or (Wave 4) the page of an online order. */
+  cancelLineAs<T>(
+    token: string | undefined,
+    lineId: string,
+    body: Record<string, unknown>,
+    requestId: string | undefined,
+    render: (context: AdminContext) => (orderId: string) => Promise<T>,
+  ): Promise<T> {
     const id = this.id(lineId);
     // The Owner is told in the same transaction: the Owner's account is resolved and locked (with the actor, sorted) BEFORE the invoice,
     // so the notice never waits for a user row another command holds while it waits for our invoice. Only a holder of REFUND_PRODUCTS at
@@ -117,6 +134,7 @@ export class ProductOrderService {
           { ...body },
           this.environment.auth.freshAuthSeconds,
           owners,
+          render(context),
         ),
       async (tx) => {
         if (!(await this.mayRefund(tx, token, id))) return [];

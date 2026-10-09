@@ -60,6 +60,10 @@ import {
   presentProductOrder,
   productOrderSelect,
 } from '../product-orders/order.core.js';
+import {
+  createOnlineOrderForFinalization,
+  type OnlineFinalizeInput,
+} from '../product-orders/online.order.js';
 import { releaseProductStock, repriceProductLines, reserveProductStock } from './product-stock.js';
 
 /**
@@ -290,6 +294,7 @@ export const invoiceSelect = {
           seller: { select: { id: true, fullName: true } },
           listPriceVnd: true,
           promotionId: true,
+          campaignId: true,
           pricedAt: true,
           fulfilmentMode: true,
         },
@@ -534,7 +539,7 @@ function productSummary(
   lines: readonly {
     kind: string;
     quantity: number | null;
-    productDetails: readonly { seller: { fullName: string } }[];
+    productDetails: readonly { seller: { fullName: string } | null }[];
   }[],
 ): { products?: { lines: number; quantity: number; sellers: string[] } } {
   const products = lines.filter((line) => line.kind === 'PRODUCT');
@@ -545,7 +550,11 @@ function productSummary(
       quantity: products.reduce((sum, line) => sum + (line.quantity ?? 0), 0),
       sellers: [
         ...new Set(
-          products.flatMap((line) => line.productDetails.map((detail) => detail.seller.fullName)),
+          products.flatMap((line) =>
+            line.productDetails.flatMap((detail) =>
+              detail.seller ? [detail.seller.fullName] : [],
+            ),
+          ),
         ),
       ].sort((a, b) => a.localeCompare(b, 'vi')),
     },
@@ -581,9 +590,11 @@ function presentProductLines(row: InvoiceRow): InvoiceProductLineResponse[] {
         unitPriceVnd: line.unitPriceVnd.toString(),
         grossVnd: line.grossVnd.toString(),
         listPriceVnd: detail.listPriceVnd.toString(),
-        onPromotion: detail.promotionId !== null,
+        onPromotion: detail.promotionId !== null || detail.campaignId !== null,
         pricedAt: detail.pricedAt.toISOString(),
-        seller: { id: detail.seller.id, displayName: detail.seller.fullName },
+        seller: detail.seller
+          ? { id: detail.seller.id, displayName: detail.seller.fullName }
+          : null,
         reservation: reservation
           ? { status: reservation.status, quantity: reservation.quantity }
           : null,
@@ -883,6 +894,29 @@ export async function lockedInvoice(
   await lockInvoice(tx, invoiceId);
   return {
     hint,
+    row: () => tx.invoice.findUniqueOrThrow({ where: { id: invoiceId }, select: invoiceSelect }),
+  };
+}
+
+/**
+ * Phase 6 Wave 4 (W4-7): the same lock as `lockedInvoice`, for the customer who owns an online invoice. There is no permission to decide: the
+ * invoice must be an ONLINE one whose payer is the acting customer; anything else is the same NOT_FOUND as a missing invoice.
+ */
+export async function lockedOnlineInvoice(
+  context: AdminContext,
+  invoiceId: string,
+): Promise<{ hint: { id: string; branchId: string }; row: () => Promise<InvoiceRow> }> {
+  const { tx } = context;
+  const hint = await tx.invoice.findUnique({
+    where: { id: invoiceId },
+    select: { id: true, branchId: true, channel: true, payerUserId: true },
+  });
+  if (!hint || hint.channel !== 'ONLINE' || hint.payerUserId !== context.actor.userId) {
+    throw new AuthError('NOT_FOUND');
+  }
+  await lockInvoice(tx, invoiceId);
+  return {
+    hint: { id: hint.id, branchId: hint.branchId },
     row: () => tx.invoice.findUniqueOrThrow({ where: { id: invoiceId }, select: invoiceSelect }),
   };
 }
@@ -1399,6 +1433,11 @@ export interface FinalizeOptions {
   permission?: string;
   /** The exchange credit: the invoice is priced with it and no other benefit. */
   exchange?: ExchangeCredit;
+  /**
+   * Phase 6 Wave 4: the checkout of an online order by its own customer (no permission: the invoice must be an online one whose payer is
+   * the acting customer). The order is written for every product line, with the delivery details.
+   */
+  online?: OnlineFinalizeInput;
 }
 
 export async function finalizeInvoiceCore(
@@ -1407,11 +1446,9 @@ export async function finalizeInvoiceCore(
   input: { expectedVersion: number; preOrderContact?: PreOrderContactRequest },
   options: FinalizeOptions,
 ): Promise<InvoiceResponse> {
-  const { hint, row: read } = await lockedInvoice(
-    context,
-    invoiceId,
-    options.permission ?? 'MANAGE_INVOICES',
-  );
+  const { hint, row: read } = options.online
+    ? await lockedOnlineInvoice(context, invoiceId)
+    : await lockedInvoice(context, invoiceId, options.permission ?? 'MANAGE_INVOICES');
   const { tx } = context;
   const invoice = await read();
   if (
@@ -1476,11 +1513,9 @@ export async function finalizeInvoiceCore(
   const frozen = await repriceProductLines(tx, invoice, now, true);
   const reservedLines = await reserveProductStock(tx, invoice, context.actor.userId);
   // Phase 6 P6-16: the goods record of the pre-order lines, written while the invoice is still a draft (like the reservations).
-  const productOrder = await createProductOrderForFinalization(
-    context,
-    invoice,
-    input.preOrderContact,
-  );
+  const productOrder = options.online
+    ? await createOnlineOrderForFinalization(context, invoice, options.online)
+    : await createProductOrderForFinalization(context, invoice, input.preOrderContact);
   // Version 3 prices the product lines at their prices FROZEN just above (the line rows still held the draft prices when the inputs
   // were loaded), per side; the version 2 result is used as is for every other invoice.
   const v3 = evaluation.v3 ? evaluateFrozen(evaluation, frozen) : null;
@@ -1951,24 +1986,11 @@ export function canonicalVoucherCode(value: unknown): string {
 }
 
 /**
- * Supplies a voucher code to a DRAFT (`APPLY_DISCOUNTS` at the invoice's branch). The code must belong to an
- * active voucher of an active, non-terminated program whose current version is inside its validity window;
- * otherwise ONE stable error (`VOUCHER_INVALID`, no hint which rule failed and nothing changes). Supplying is
- * NOT a guarantee of eligibility: the engine re-evaluates on every recalculation and at finalization. A repeat
- * of an already supplied code is a quiet no-op. Nothing about a percentage or amount can be typed here.
+ * The voucher a code names, when it may be supplied now: an active voucher of an active, non-terminated program whose current version is
+ * inside its validity window; otherwise ONE stable error (`VOUCHER_INVALID`, no hint which rule failed). Shared by the staff command and the
+ * checkout of an online order.
  */
-export async function supplyVoucher(
-  context: AdminContext,
-  invoiceId: string,
-  input: { expectedVersion: number; code: unknown },
-): Promise<InvoiceResponse> {
-  const code = canonicalVoucherCode(input.code);
-  const { hint, row: read } = await lockedInvoice(context, invoiceId, 'APPLY_DISCOUNTS');
-  const { tx } = context;
-  const invoice = await read();
-  if (invoice.rowVersion !== input.expectedVersion) throw new AuthError('CONFLICT');
-  if (invoice.status !== 'DRAFT') throw new AuthError('INVOICE_STATE_INVALID');
-  const now = await databaseClock(tx);
+export async function resolveVoucher(tx: Prisma.TransactionClient, code: string, now: Date) {
   const voucher = await tx.voucher.findUnique({
     where: { code },
     select: {
@@ -2002,6 +2024,29 @@ export async function supplyVoucher(
   ) {
     throw new AuthError('VOUCHER_INVALID');
   }
+  return voucher;
+}
+
+/**
+ * Supplies a voucher code to a DRAFT (`APPLY_DISCOUNTS` at the invoice's branch). The code must belong to an
+ * active voucher of an active, non-terminated program whose current version is inside its validity window;
+ * otherwise ONE stable error (`VOUCHER_INVALID`, no hint which rule failed and nothing changes). Supplying is
+ * NOT a guarantee of eligibility: the engine re-evaluates on every recalculation and at finalization. A repeat
+ * of an already supplied code is a quiet no-op. Nothing about a percentage or amount can be typed here.
+ */
+export async function supplyVoucher(
+  context: AdminContext,
+  invoiceId: string,
+  input: { expectedVersion: number; code: unknown },
+): Promise<InvoiceResponse> {
+  const code = canonicalVoucherCode(input.code);
+  const { hint, row: read } = await lockedInvoice(context, invoiceId, 'APPLY_DISCOUNTS');
+  const { tx } = context;
+  const invoice = await read();
+  if (invoice.rowVersion !== input.expectedVersion) throw new AuthError('CONFLICT');
+  if (invoice.status !== 'DRAFT') throw new AuthError('INVOICE_STATE_INVALID');
+  const now = await databaseClock(tx);
+  const voucher = await resolveVoucher(tx, code, now);
   if (invoice.voucherEntries.some((entry) => entry.voucher.id === voucher.id)) {
     return present(context, invoice);
   }

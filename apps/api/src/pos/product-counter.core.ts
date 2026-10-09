@@ -51,7 +51,7 @@ export async function productCounterOptions(
   const now = await databaseClock(tx);
   const rows = await tx.$queryRaw<Row[]>`
     SELECT v.id AS variant_id, p.id AS product_id, v.sku, p.name_vi, p.name_en, v.label_vi, v.label_en,
-           pr.list_price_vnd, pr.effective_price_vnd, (pr.promotion_id IS NOT NULL) AS on_promotion,
+           pr.list_price_vnd, pr.effective_price_vnd, (pr.effective_price_vnd < pr.list_price_vnd) AS on_promotion,
            lucy_available_stock(${branchId}::uuid, v.id) AS available, v.sell_on_order,
            COALESCE(v.lead_time_days_min, st.lead_time_days_min)::int AS lead_min,
            GREATEST(COALESCE(v.lead_time_days_max, st.lead_time_days_max), COALESCE(v.lead_time_days_min, st.lead_time_days_min))::int AS lead_max

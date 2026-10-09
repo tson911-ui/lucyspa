@@ -21,6 +21,8 @@ export interface EffectivePrice {
   listPriceVnd: bigint;
   effectivePriceVnd: bigint;
   promotionId: string | null;
+  /** Wave 4 (P6-23): the campaign whose rule gave the price, when one did. */
+  campaignId: string | null;
 }
 
 /** The effective price of a variant at `at`, or null when it has no list price yet (it cannot be sold). */
@@ -30,14 +32,23 @@ export async function effectivePriceAt(
   at: Date,
 ): Promise<EffectivePrice | null> {
   const rows = await tx.$queryRaw<
-    { list_price_vnd: bigint; effective_price_vnd: bigint; promotion_id: string | null }[]
-  >`SELECT list_price_vnd, effective_price_vnd, promotion_id FROM lucy_variant_price_at(${variantId}::uuid, ${at}::timestamptz)`;
+    {
+      list_price_vnd: bigint;
+      effective_price_vnd: bigint;
+      promotion_id: string | null;
+      campaign_id: string | null;
+    }[]
+  >`SELECT p.list_price_vnd, p.effective_price_vnd, p.promotion_id,
+           (SELECT m.campaign_id FROM lucy_variant_campaign_at(${variantId}::uuid, ${at}::timestamptz) m
+            WHERE p.promotion_id IS NULL AND m.price_vnd = p.effective_price_vnd) AS campaign_id
+    FROM lucy_variant_price_at(${variantId}::uuid, ${at}::timestamptz) p`;
   const row = rows[0];
   if (!row || row.list_price_vnd === null || row.effective_price_vnd === null) return null;
   return {
     listPriceVnd: row.list_price_vnd,
     effectivePriceVnd: row.effective_price_vnd,
     promotionId: row.promotion_id,
+    campaignId: row.campaign_id,
   };
 }
 
@@ -121,7 +132,12 @@ export async function repriceProductLines(
   );
   const sellers = requireSellable
     ? await eligibleSellers(tx, invoice.branchId, [
-        ...new Set(lines.map((line) => line.row.productDetails[0]!.sellerUserId)),
+        ...new Set(
+          lines.flatMap((line) => {
+            const seller = line.row.productDetails[0]!.sellerUserId;
+            return seller === null ? [] : [seller];
+          }),
+        ),
       ])
     : new Set<string>();
   for (const line of lines) {
@@ -134,7 +150,8 @@ export async function repriceProductLines(
     ) {
       throw new AuthError('PRODUCT_NOT_SELLABLE', line.row.id);
     }
-    if (requireSellable && !sellers.has(detail.sellerUserId)) {
+    // An online line has no seller (W4-2); the seller of a counter line must still be eligible.
+    if (requireSellable && detail.sellerUserId !== null && !sellers.has(detail.sellerUserId)) {
       throw new AuthError('PRODUCT_SELLER_INVALID', line.row.id);
     }
     // The line is rewritten only when its price moved (a line change bumps its version by one, SQL guard); the detail records the
@@ -155,6 +172,7 @@ export async function repriceProductLines(
       data: {
         listPriceVnd: price.listPriceVnd,
         promotionId: price.promotionId,
+        campaignId: price.campaignId,
         pricedAt: now,
       },
       select: { invoiceLineId: true },

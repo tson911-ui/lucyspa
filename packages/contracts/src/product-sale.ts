@@ -27,7 +27,8 @@ export interface InvoiceProductLineResponse {
   /** True when a promotion price was in force at `pricedAt`. */
   onPromotion: boolean;
   pricedAt: string;
-  seller: { id: string; displayName: string };
+  /** NULL for a line of an online order (it has no seller, W4-2). */
+  seller: { id: string; displayName: string } | null;
   /** The stock held for this line once the invoice is finalized (`null` while DRAFT, and for a pre-order line until its goods arrive). */
   reservation: { status: 'RESERVED' | 'CONSUMED' | 'RELEASED'; quantity: number } | null;
   /** Phase 6 P6-15: `PRE_ORDER` sells goods the shop does not hold yet (an order line follows the finalization). */

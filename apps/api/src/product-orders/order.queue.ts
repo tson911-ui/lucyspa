@@ -119,10 +119,12 @@ export async function orderDetail(
     where: { id: orderId },
     select: {
       ...productOrderSelect,
+      channel: true,
       invoice: { select: { code: true, status: true } },
     },
   });
-  if (!row) throw new AuthError('NOT_FOUND');
+  // An online order is worked on its own screen (P6-20): the counter screens never show it.
+  if (!row || row.channel === 'ONLINE') throw new AuthError('NOT_FOUND');
   const graph = context.actor.graph;
   if (!canViewOrderAt(graph, row.branchId)) throw new AuthError('FORBIDDEN');
   const work = canManageOrdersAt(graph, row.branchId);
@@ -207,6 +209,17 @@ export async function orderDetail(
 
 // ------------------------------------------------------------------------------------------------- the queue
 
+/**
+ * Phase 6 Wave 4: the queue is about the goods of PRE-ORDER lines. The lines of an online order that are simply in stock are shipped
+ * from the online orders screen; the lines of an online order that wait for the supplier ARE in the "cần đặt" and "đã đặt" lists
+ * (the supplier does not care about the channel), but they are collected or shipped on the online screen, so the tabs of goods that
+ * arrived and of finished work show the counter only.
+ */
+const preOrderOnly = (tab: ProductOrderQueueTab): Prisma.ProductOrderLineWhereInput => ({
+  productLine: { fulfilmentMode: 'PRE_ORDER' },
+  ...(tab === 'TO_ORDER' || tab === 'ORDERED' ? {} : { order: { channel: 'COUNTER' } }),
+});
+
 const TAB_STATUSES: Record<ProductOrderQueueTab, ProductOrderLineStatusName[]> = {
   TO_ORDER: ['PAID'],
   ORDERED: ['ORDERED'],
@@ -232,6 +245,7 @@ const queueSelect = {
   order: {
     select: {
       code: true,
+      channel: true,
       contactPhone: true,
       contactName: true,
       customer: { select: { fullName: true } },
@@ -252,6 +266,7 @@ function presentQueueRow(row: QueueRow, today: string, now: Date): ProductOrderQ
     lineId: row.id,
     orderId: row.orderId,
     orderCode: row.order.code,
+    channel: row.order.channel,
     invoiceId: row.invoiceId,
     invoiceCode: row.order.invoice.code,
     customerName: row.order.customer?.fullName ?? null,
@@ -318,6 +333,7 @@ export async function listQueue(
   const where: Prisma.ProductOrderLineWhereInput = {
     branchId: query.branchId,
     status: { in: TAB_STATUSES[tab as ProductOrderQueueTab] },
+    ...preOrderOnly(tab as ProductOrderQueueTab),
     ...search,
   };
   const [total, rows, grouped, today] = await Promise.all([
@@ -332,20 +348,21 @@ export async function listQueue(
       take: PRODUCT_ORDER_QUEUE_PAGE_SIZE,
       select: queueSelect,
     }),
-    tx.productOrderLine.groupBy({
-      by: ['status'],
-      where: { branchId: query.branchId },
-      _count: { _all: true },
-    }),
+    Promise.all(
+      QUEUE_TABS.map((name) =>
+        tx.productOrderLine.count({
+          where: {
+            branchId: query.branchId,
+            status: { in: TAB_STATUSES[name] },
+            ...preOrderOnly(name),
+          },
+        }),
+      ),
+    ),
     branchToday(tx, query.branchId),
   ]);
   const counts = Object.fromEntries(
-    QUEUE_TABS.map((name) => [
-      name,
-      grouped
-        .filter((entry) => TAB_STATUSES[name].includes(entry.status))
-        .reduce((sum, entry) => sum + entry._count._all, 0),
-    ]),
+    QUEUE_TABS.map((name, index) => [name, grouped[index]!]),
   ) as Record<ProductOrderQueueTab, number>;
   return {
     tab: tab as ProductOrderQueueTab,
@@ -367,7 +384,7 @@ export async function toOrder(
   if (!branch) throw new AuthError('NOT_FOUND');
   requireManageOrders(context, branchId);
   const rows = await tx.productOrderLine.findMany({
-    where: { branchId, status: 'PAID' },
+    where: { branchId, status: 'PAID', productLine: { fulfilmentMode: 'PRE_ORDER' } },
     orderBy: [{ paidAt: 'asc' }, { id: 'asc' }],
     select: queueSelect,
   });

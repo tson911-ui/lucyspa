@@ -1,5 +1,6 @@
 import type {
   PublicPopupResponse,
+  PublicCampaignsResponse,
   PublicProductCodesResponse,
   PublicProductDetailResponse,
   PublicProductsResponse,
@@ -301,6 +302,22 @@ export class PublicWebsiteController {
     const locale = query['locale'];
     if (locale !== 'vi' && locale !== 'en') throw new AuthError('VALIDATION_FAILED', 'locale');
     const result = await this.website.products(locale, parsePublicProductsQuery(query));
+    response.setHeader('cache-control', 'public, max-age=60');
+    response.setHeader('vary', 'Accept-Encoding');
+    return result;
+  }
+
+  @Get('campaigns')
+  @ApiOkResponse({
+    description:
+      'The promotion campaigns running now (`locale=vi|en`): name, badge, headline, message, button label, banner and the end time. Nothing about drafts, rules or products. Cached for 60 seconds.',
+  })
+  async campaigns(
+    @Query('locale') locale: string | undefined,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PublicCampaignsResponse> {
+    if (locale !== 'vi' && locale !== 'en') throw new AuthError('VALIDATION_FAILED', 'locale');
+    const result = await this.website.campaigns(locale);
     response.setHeader('cache-control', 'public, max-age=60');
     response.setHeader('vary', 'Accept-Encoding');
     return result;

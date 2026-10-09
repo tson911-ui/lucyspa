@@ -342,7 +342,7 @@ async function findOptions(
     .map((term) => `%${likeLiteral(term)}%`);
   return tx.$queryRaw<OptionRow[]>`
     SELECT v.id AS variant_id, p.id AS product_id, v.sku, p.name_vi, p.name_en, v.label_vi, v.label_en,
-           pr.list_price_vnd, pr.effective_price_vnd, (pr.promotion_id IS NOT NULL) AS on_promotion,
+           pr.list_price_vnd, pr.effective_price_vnd, (pr.effective_price_vnd < pr.list_price_vnd) AS on_promotion,
            lucy_available_stock(${branchId}::uuid, v.id) AS available
     FROM products p
     JOIN product_variants v ON v.product_id = p.id AND v.is_active
@@ -398,11 +398,12 @@ export async function exchangeOptions(
   const rows = await findOptions(tx, kase.branchId, now, q, null);
   const sellers = await branchSellers(tx, kase.branchId);
   const ids = new Set(sellers.map((seller) => seller.id));
-  const defaultSellerUserId = ids.has(kase.productLine.sellerUserId)
-    ? kase.productLine.sellerUserId
-    : ids.has(context.actor.userId)
-      ? context.actor.userId
-      : null;
+  const defaultSellerUserId =
+    kase.productLine.sellerUserId !== null && ids.has(kase.productLine.sellerUserId)
+      ? kase.productLine.sellerUserId
+      : ids.has(context.actor.userId)
+        ? context.actor.userId
+        : null;
   return {
     quantity: kase.quantity,
     options: rows.slice(0, LIST_LIMIT).map((row) => optionOf(row, kase.productLine.variantId)),
@@ -651,6 +652,7 @@ async function createExchangeDraft(
       sellerUserId: draft.sellerUserId,
       listPriceVnd: price.listPriceVnd,
       promotionId: price.promotionId,
+      campaignId: price.campaignId,
       pricedAt: now,
     },
     select: { invoiceLineId: true },

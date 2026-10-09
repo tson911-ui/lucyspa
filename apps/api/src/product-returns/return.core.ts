@@ -141,12 +141,7 @@ export async function lookupInvoice(
   });
   if (!invoice) throw new AuthError('NOT_FOUND');
   // P6-14 (PRD 28.4): the replacement of an exchange is not a new sale to return: no new window, nothing new to refund.
-  if (
-    invoice.status !== 'PAID' ||
-    invoice.paidAt === null ||
-    invoice.channel !== 'COUNTER' ||
-    invoice.exchangeFor !== null
-  ) {
+  if (invoice.status !== 'PAID' || invoice.paidAt === null || invoice.exchangeFor !== null) {
     throw new AuthError('RETURN_NOT_ELIGIBLE');
   }
   const paidAt = invoice.paidAt;
@@ -161,7 +156,7 @@ export async function lookupInvoice(
     (
       await context.tx.productOrderLine.findMany({
         where: { invoiceId: invoice.id },
-        select: { invoiceLineId: true, status: true, handedOverAt: true },
+        select: { invoiceLineId: true, status: true, handedOverAt: true, deliveredAt: true },
       })
     ).map((row) => [row.invoiceLineId, row]),
   );
@@ -176,9 +171,11 @@ export async function lookupInvoice(
       const detail = line.productDetails[0];
       if (!detail || line.quantity === null) return [];
       const preOrder = preOrders.get(line.id);
-      if (preOrder && (preOrder.status !== 'COMPLETED' || preOrder.handedOverAt === null))
-        return [];
-      const since = preOrder?.handedOverAt ?? paidAt;
+      // Wave 4: an online line has something to return only once it was delivered, and its window starts at the delivery (OQ-40).
+      const handedOver = preOrder?.deliveredAt ?? preOrder?.handedOverAt ?? null;
+      if (preOrder && (preOrder.status !== 'COMPLETED' || handedOver === null)) return [];
+      if (!preOrder && invoice.channel !== 'COUNTER') return [];
+      const since = handedOver ?? paidAt;
       const claimedQuantity = claimedBy.get(line.id) ?? 0;
       return [
         {
@@ -525,10 +522,13 @@ export async function openCase(
     sold.quantity === null ||
     invoice.status !== 'PAID' ||
     invoice.paidAt === null ||
-    invoice.channel !== 'COUNTER' ||
     invoice.exchangeFor !== null
   ) {
     throw new AuthError('RETURN_NOT_ELIGIBLE');
+  }
+  // Wave 4 (pending the Owner, W4-10): an online order can be refunded, not exchanged (the replacement of an exchange is a counter sale).
+  if (invoice.channel === 'ONLINE' && requestedOutcome === 'EXCHANGE') {
+    throw new AuthError('VALIDATION_FAILED', 'requestedOutcome');
   }
   const claimed = await tx.productReturnCase.aggregate({
     where: { invoiceLineId, status: { in: ['OPEN', 'ACCEPTED'] } },
@@ -544,12 +544,14 @@ export async function openCase(
   // case only once it is COMPLETED (the database guard says the same); for a line sold from stock it is the payment.
   const preOrder = await tx.productOrderLine.findUnique({
     where: { invoiceLineId },
-    select: { status: true, handedOverAt: true },
+    select: { status: true, handedOverAt: true, deliveredAt: true },
   });
-  if (preOrder && (preOrder.status !== 'COMPLETED' || preOrder.handedOverAt === null)) {
+  const goodsInHand = preOrder?.deliveredAt ?? preOrder?.handedOverAt ?? null;
+  if (preOrder && (preOrder.status !== 'COMPLETED' || goodsInHand === null)) {
     throw new AuthError('RETURN_NOT_ELIGIBLE');
   }
-  const handoverAt = preOrder?.handedOverAt ?? invoice.paidAt;
+  if (!preOrder && invoice.channel !== 'COUNTER') throw new AuthError('RETURN_NOT_ELIGIBLE');
+  const handoverAt = goodsInHand ?? invoice.paidAt;
   const windowOpen = windowStatus(reason, handoverAt, context.now).open;
   // The Owner alone may open a case after its window, with a written reason (P6-12 follow-up, 2026-10-08). The reason is refused when
   // it is not needed (the window is open) or not allowed (anyone but the Owner), so the record never claims an exception that was not one.
@@ -785,9 +787,12 @@ async function close(
     // needs a photo that is still present and was taken inside the 48 hours.
     const invoice = await tx.invoice.findUniqueOrThrow({
       where: { id: locked.invoiceId },
-      select: { status: true },
+      select: { status: true, channel: true },
     });
     if (invoice.status !== 'PAID') throw new AuthError('RETURN_NOT_ELIGIBLE');
+    // Wave 4: an online order is refunded, never exchanged (the replacement of an exchange is a counter sale; a question for the Owner).
+    if (invoice.channel === 'ONLINE' && outcome === 'EXCHANGE')
+      throw new AuthError('VALIDATION_FAILED', 'outcome');
     const photos = await tx.productReturnPhoto.findMany({
       where: { caseId: id },
       select: { uploadedAt: true, removedAt: true },

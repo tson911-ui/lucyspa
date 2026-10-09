@@ -421,7 +421,7 @@ export async function makeRefund(
   if (kase.status !== 'ACCEPTED' || kase.decidedOutcome !== 'REFUND') {
     throw new AuthError('REFUND_CASE_NOT_READY');
   }
-  if (kase.invoice.status !== 'PAID' || kase.invoice.channel !== 'COUNTER') {
+  if (kase.invoice.status !== 'PAID') {
     throw new AuthError('INVOICE_STATE_INVALID');
   }
   const sold = kase.line.quantity;

@@ -50,7 +50,8 @@ export type NotificationParamsKind =
   | 'EXPIRED_LOT_SOLD'
   | 'PRODUCT_RETURN_OPENED'
   | 'PRODUCT_REFUND_MADE'
-  | 'PRODUCT_ORDER_ALERT';
+  | 'PRODUCT_ORDER_ALERT'
+  | 'ONLINE_ORDER_ALERT';
 
 export interface NotificationTypeMetadata {
   readonly category: NotificationCategory;
@@ -188,6 +189,28 @@ export const NOTIFICATION_TYPE_REGISTRY = {
     i18nKey: 'PRODUCT_ORDER_ALERT',
     params: 'PRODUCT_ORDER_ALERT',
   },
+  // Phase 6 Wave 4 (P6-20, P6-21): online orders. To the member, about their own invoice: the parcel left, the delivery was made, the delivery
+  // failed, the order was cancelled, money was refunded. To the holders of MANAGE_PRODUCT_ORDERS: a new paid order (about the order), and the
+  // daily 08:00 alert of parcels not shipped in time / shipped long ago with no delivery date (about the branch).
+  ONLINE_ORDER_SHIPPED: finance('INFO', 'ONLINE_ORDER_SHIPPED', 'NONE'),
+  ONLINE_ORDER_DELIVERED: finance('INFO', 'ONLINE_ORDER_DELIVERED', 'NONE'),
+  ONLINE_ORDER_DELIVERY_FAILED: finance('WARNING', 'ONLINE_ORDER_DELIVERY_FAILED', 'NONE'),
+  ONLINE_ORDER_CANCELLED: finance('INFO', 'ONLINE_ORDER_CANCELLED', 'NONE'),
+  ONLINE_ORDER_REFUNDED: finance('INFO', 'ONLINE_ORDER_REFUNDED', 'INVOICE_AMOUNT'),
+  ONLINE_ORDER_NEW: {
+    category: 'OPERATIONS',
+    severity: 'INFO',
+    entityTypes: ['ProductOrder'],
+    i18nKey: 'ONLINE_ORDER_NEW',
+    params: 'NONE',
+  },
+  ONLINE_ORDER_ALERT: {
+    category: 'OPERATIONS',
+    severity: 'ATTENTION',
+    entityTypes: ['Branch'],
+    i18nKey: 'ONLINE_ORDER_ALERT',
+    params: 'ONLINE_ORDER_ALERT',
+  },
 } as const satisfies Record<string, NotificationTypeMetadata>;
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPE_REGISTRY;
@@ -289,7 +312,7 @@ export interface ProductReturnOpenedParams {
  */
 export interface ProductRefundMadeParams {
   /** `ORDER_CANCEL`: a pre-order line was cancelled and refunded (P6-17; in full, or a part when the customer changed their mind); the notice is about the order. */
-  source: 'REFUND' | 'EXCHANGE' | 'ORDER_CANCEL';
+  source: 'REFUND' | 'EXCHANGE' | 'ORDER_CANCEL' | 'DELIVERY_FAILED';
   invoiceCode: string;
   sku: string;
   quantity: number;
@@ -302,7 +325,13 @@ export interface ProductOrderAlertParams {
   lateLines: number;
   heldLines: number;
 }
+/** The daily online alert of a branch: paid parcels not shipped in time, and parcels shipped more than 7 days ago with no delivery date. */
+export interface OnlineOrderAlertParams {
+  unshippedOrders: number;
+  undeliveredOrders: number;
+}
 export type NotificationParams =
+  | OnlineOrderAlertParams
   | ProductOrderAlertParams
   | ProductRefundMadeParams
   | ProductReturnOpenedParams
@@ -430,7 +459,12 @@ export function parseNotificationParams(
       const quantity = count('quantity', record['quantity']);
       if (quantity < 1) throw new Error('Notification param quantity must be at least 1.');
       return {
-        source: oneOf('source', record['source'], ['REFUND', 'EXCHANGE', 'ORDER_CANCEL'] as const),
+        source: oneOf('source', record['source'], [
+          'REFUND',
+          'EXCHANGE',
+          'ORDER_CANCEL',
+          'DELIVERY_FAILED',
+        ] as const),
         invoiceCode: code('invoiceCode', record['invoiceCode']),
         sku: code('sku', record['sku']),
         quantity,
@@ -438,6 +472,14 @@ export function parseNotificationParams(
         method: oneOf('method', record['method'], ['CASH', 'BANK_TRANSFER_MANUAL'] as const),
         refundedBy: code('refundedBy', record['refundedBy']),
       };
+    }
+    case 'ONLINE_ORDER_ALERT': {
+      exactKeys(type, record, ['unshippedOrders', 'undeliveredOrders']);
+      const unshippedOrders = count('unshippedOrders', record['unshippedOrders']);
+      const undeliveredOrders = count('undeliveredOrders', record['undeliveredOrders']);
+      if (unshippedOrders + undeliveredOrders < 1)
+        throw new Error('An online alert reports something.');
+      return { unshippedOrders, undeliveredOrders };
     }
     case 'PRODUCT_ORDER_ALERT': {
       exactKeys(type, record, ['lateLines', 'heldLines']);

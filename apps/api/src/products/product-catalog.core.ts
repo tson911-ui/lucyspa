@@ -507,6 +507,8 @@ export async function createVariant(
     lowStockThreshold: input.threshold(request.lowStockThreshold),
     sellOnOrder:
       request.sellOnOrder === undefined ? true : input.boolean(request.sellOnOrder, 'sellOnOrder'),
+    sellOnline:
+      request.sellOnline === undefined ? true : input.boolean(request.sellOnline, 'sellOnline'),
     leadTimeDaysMin: lead?.min ?? null,
     leadTimeDaysMax: lead?.max ?? null,
     usualSupplierId: input.optionalUuid(request.usualSupplierId, 'usualSupplierId'),
@@ -590,6 +592,8 @@ export async function editVariant(
     request.sellOnOrder === undefined
       ? undefined
       : input.boolean(request.sellOnOrder, 'sellOnOrder');
+  const sellOnline =
+    request.sellOnline === undefined ? undefined : input.boolean(request.sellOnline, 'sellOnline');
   const lead = input.leadTime(request.leadTimeDaysMin, request.leadTimeDaysMax);
   const usualSupplierId =
     request.usualSupplierId === undefined
@@ -609,6 +613,7 @@ export async function editVariant(
       barcode: true,
       lowStockThreshold: true,
       sellOnOrder: true,
+      sellOnline: true,
       leadTimeDaysMin: true,
       leadTimeDaysMax: true,
       usualSupplierId: true,
@@ -622,6 +627,7 @@ export async function editVariant(
   const values = {
     ...base,
     sellOnOrder: sellOnOrder ?? current.sellOnOrder,
+    sellOnline: sellOnline ?? current.sellOnline,
     leadTimeDaysMin: lead ? lead.min : current.leadTimeDaysMin,
     leadTimeDaysMax: lead ? lead.max : current.leadTimeDaysMax,
     usualSupplierId: usualSupplierId === undefined ? current.usualSupplierId : usualSupplierId,

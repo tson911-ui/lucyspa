@@ -177,6 +177,26 @@ export function effectivePrice<T extends PromotionWindow>(
   return { effective: promo < list ? promo : list, active };
 }
 
+/**
+ * The price a running campaign gives each variant now (Wave 4, P6-23), decided by the database function the sale itself uses. A variant
+ * no campaign touches is absent from the map. The lowest price wins over the variant's own promotion and the list price.
+ */
+export async function campaignPricesAt(
+  tx: Prisma.TransactionClient,
+  variantIds: readonly string[],
+  now: Date,
+): Promise<Map<string, bigint>> {
+  if (variantIds.length === 0) return new Map();
+  const rows = await tx.$queryRaw<{ variant_id: string; price_vnd: bigint }[]>`
+    SELECT v.id AS variant_id, m.price_vnd
+    FROM unnest(${[...variantIds]}::uuid[]) AS v(id)
+    CROSS JOIN LATERAL lucy_variant_campaign_at(v.id, ${now}::timestamptz) m`;
+  return new Map(rows.map((row) => [row.variant_id, row.price_vnd]));
+}
+
+const lowest = (price: bigint | null, campaign: bigint | undefined): bigint | null =>
+  price === null || campaign === undefined || campaign >= price ? price : campaign;
+
 // ------------------------------------------------------------------------------------------------------ list
 
 /** Every product with a price range. A list row never carries a cost, whoever asks. */
@@ -204,6 +224,7 @@ export async function listProducts(context: AdminContext, access: ProductAccess)
       variants: {
         where: { isActive: true },
         select: {
+          id: true,
           priceVersions: {
             orderBy: { versionNo: 'desc' },
             take: 1,
@@ -217,10 +238,18 @@ export async function listProducts(context: AdminContext, access: ProductAccess)
       },
     },
   });
+  const campaigns = await campaignPricesAt(
+    tx,
+    rows.flatMap((row) => row.variants.map((variant) => variant.id)),
+    now,
+  );
   const products: ProductListItem[] = rows.map((row) => {
     const prices = row.variants.flatMap((variant) => {
       const list = variant.priceVersions[0]?.listPriceVnd ?? null;
-      const { effective } = effectivePrice(list, variant.promotions, now);
+      const effective = lowest(
+        effectivePrice(list, variant.promotions, now).effective,
+        campaigns.get(variant.id),
+      );
       return effective === null ? [] : [effective];
     });
     const sorted = [...prices].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
@@ -281,6 +310,7 @@ export async function loadDetail(
           barcode: true,
           lowStockThreshold: true,
           sellOnOrder: true,
+          sellOnline: true,
           leadTimeDaysMin: true,
           leadTimeDaysMax: true,
           usualSupplier: { select: { id: true, name: true } },
@@ -331,9 +361,16 @@ export async function loadDetail(
     });
     for (const row of rows) costs.set(row.id, row.costPriceVnd);
   }
+  const campaigns = await campaignPricesAt(
+    tx,
+    product.variants.map((variant) => variant.id),
+    now,
+  );
   const variants: ProductVariantResponse[] = product.variants.map((variant) => {
     const list = variant.priceVersions[0]?.listPriceVnd ?? null;
-    const { effective, active } = effectivePrice(list, variant.promotions, now);
+    const own = effectivePrice(list, variant.promotions, now);
+    const active = own.active;
+    const effective = lowest(own.effective, campaigns.get(variant.id));
     const base: ProductVariantResponse = {
       id: variant.id,
       sku: variant.sku,
@@ -342,6 +379,7 @@ export async function loadDetail(
       barcode: variant.barcode,
       lowStockThreshold: variant.lowStockThreshold,
       sellOnOrder: variant.sellOnOrder,
+      sellOnline: variant.sellOnline,
       leadTimeDaysMin: variant.leadTimeDaysMin,
       leadTimeDaysMax: variant.leadTimeDaysMax,
       usualSupplier: variant.usualSupplier,

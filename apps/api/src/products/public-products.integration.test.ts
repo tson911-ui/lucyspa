@@ -279,10 +279,10 @@ test(
           ];
           for (const answer of answers) {
             // Pictures are addressed by their public URL; remove those, then no UUID may remain anywhere.
-            const text = JSON.stringify(answer).replace(
-              /\/api\/v1\/public\/media\/[0-9a-f-]{36}\/\w+/g,
-              '',
-            );
+            // Wave 4: the id of a variant is the key the cart takes (public by design, OQ-91); it is the only id a visitor sees.
+            const text = JSON.stringify(answer)
+              .replace(/\/api\/v1\/public\/media\/[0-9a-f-]{36}\/\w+/g, '')
+              .replace(/"id":"[0-9a-f-]{36}"/g, '');
             assert.ok(
               !/cost|onHand|reserved|available|quantity|branch|supplier|sku|barcode|margin|rowVersion/i.test(
                 text,

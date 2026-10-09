@@ -40,6 +40,7 @@ const uniqueSorted = (ids: readonly string[]) => [...new Set(ids)].sort();
 /** The reservation key of an order line: one per line, whatever happens (the database holds one reservation per invoice line). */
 export const allocationKey = (orderLineId: string): string => `ALLOC:${orderLineId}`;
 
+// Phase 6 Wave 4: only PRE-ORDER lines wait for goods. A paid in-stock line of an online order is PAID too, but it already holds its stock.
 /** Locks the invoices and the order lines that wait for the given variants at the branch (step 1 and 2 of the lock order). */
 export async function lockWaitingOrderLines(
   tx: Prisma.TransactionClient,
@@ -51,6 +52,7 @@ export async function lockWaitingOrderLines(
   const invoices = await tx.$queryRaw<{ invoice_id: string }[]>`
     SELECT DISTINCT o.invoice_id FROM product_order_lines o
     WHERE o.branch_id = ${branchId}::uuid AND o.variant_id = ANY(${variants}::uuid[]) AND o.status IN ('PAID', 'ORDERED')
+      AND EXISTS (SELECT 1 FROM invoice_line_products d WHERE d.invoice_line_id = o.invoice_line_id AND d.fulfilment_mode = 'PRE_ORDER')
     ORDER BY o.invoice_id`;
   if (invoices.length > 0) {
     const ids = invoices.map((row) => row.invoice_id);
@@ -59,6 +61,7 @@ export async function lockWaitingOrderLines(
   await tx.$queryRaw`
     SELECT o.id FROM product_order_lines o
     WHERE o.branch_id = ${branchId}::uuid AND o.variant_id = ANY(${variants}::uuid[]) AND o.status IN ('PAID', 'ORDERED')
+      AND EXISTS (SELECT 1 FROM invoice_line_products d WHERE d.invoice_line_id = o.invoice_line_id AND d.fulfilment_mode = 'PRE_ORDER')
     ORDER BY o.id FOR UPDATE`;
 }
 
@@ -94,6 +97,7 @@ export async function allocateWaitingLines(
       SELECT o.id, o.order_id, o.invoice_id, o.invoice_line_id, o.quantity
       FROM product_order_lines o
       WHERE o.branch_id = ${input.branchId}::uuid AND o.variant_id = ${variantId}::uuid AND o.status IN ('PAID', 'ORDERED')
+      AND EXISTS (SELECT 1 FROM invoice_line_products d WHERE d.invoice_line_id = o.invoice_line_id AND d.fulfilment_mode = 'PRE_ORDER')
       ORDER BY o.paid_at, o.id`;
     if (waiting.length === 0) continue;
     const [row] = await tx.$queryRaw<{ available: number }[]>`
