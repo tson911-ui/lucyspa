@@ -215,7 +215,7 @@ export function CustomerInvoiceDetailScreen({ id }: { id: string }) {
     },
   ].filter((group) => group.lines.length > 0);
   return (
-    <Page width="form">
+    <Page>
       <PageHeader
         title={t.invoices.detailTitle}
         breadcrumbs={
@@ -226,177 +226,184 @@ export function CustomerInvoiceDetailScreen({ id }: { id: string }) {
           />
         }
       />
-      <Reveal>
-        <Card as="section" aria-label={t.invoices.detailTitle}>
-          <DescriptionList
-            items={[
-              { label: t.invoices.code, value: invoice.code },
-              {
-                label: t.invoices.statusLabel,
-                value: (
-                  <Badge tone={invoiceTone(invoice.status)}>
-                    {t.invoices.status[invoice.status]}
-                  </Badge>
-                ),
-              },
-              { label: t.invoices.branch, value: invoice.branch.name },
-              { label: t.invoices.date, value: formatBusinessDate(invoice.visitDate, locale) },
-              {
-                label: t.invoices.issuedAt,
-                value: formatDateTime(invoice.finalizedAt, zone, locale),
-              },
-              ...(invoice.paidAt
-                ? [
-                    {
-                      label: t.invoices.paidAt,
-                      value: formatDateTime(invoice.paidAt, zone, locale),
-                    },
-                  ]
-                : []),
-              ...(invoice.cancelledAt
-                ? [
-                    {
-                      label: t.invoices.cancelledAt,
-                      value: formatDateTime(invoice.cancelledAt, zone, locale),
-                    },
-                  ]
-                : []),
-            ]}
-          />
-        </Card>
-      </Reveal>
-      {groups.map((group, index) => (
-        <Reveal key={group.key}>
-          <Card as="section" aria-label={group.title}>
-            <CardHeader title={group.title} />
-            <DescriptionList
-              items={group.lines.map((line) => ({
-                label: `${line.sequence}. ${locale === 'vi' ? line.nameVi : line.nameEn}`,
-                value: (
-                  <>
-                    {group.key === 'services' ? (
-                      <>
-                        {line.forSelf
-                          ? t.invoices.forSelf
-                          : line.recipientName
-                            ? fill(t.invoices.forOther, { name: line.recipientName })
-                            : null}
-                        {line.forSelf || line.recipientName ? <br /> : null}
-                      </>
-                    ) : null}
-                    {formatVnd(line.unitPriceVnd, locale)} × {line.quantity} ={' '}
-                    <strong>{formatVnd(line.grossVnd, locale)}</strong>
-                  </>
-                ),
-              }))}
-            />
-            {index === groups.length - 1 ? (
-              <DescriptionList
-                layout="totals"
-                items={[
-                  { label: t.invoices.subtotal, value: formatVnd(invoice.subtotalVnd, locale) },
-                  ...(invoice.discount
-                    ? [
-                        {
-                          label: `${t.invoices.discount} (${locale === 'vi' ? invoice.discount.nameVi : invoice.discount.nameEn}${
-                            invoice.discount.voucherCode
-                              ? `, ${fill(t.invoices.voucher, { code: invoice.discount.voucherCode })}`
-                              : ''
-                          })`,
-                          value: `−${formatVnd(invoice.discount.amountVnd, locale)}`,
-                        },
-                      ]
-                    : []),
-                  {
-                    label: t.invoices.total,
-                    value: formatVnd(invoice.totalVnd, locale),
-                    strong: true,
-                  },
-                  { label: t.invoices.paid, value: formatVnd(invoice.paidVnd, locale) },
-                  ...(invoice.status === 'PENDING_PAYMENT'
-                    ? [
-                        {
-                          label: t.invoices.balance,
-                          value: formatVnd(invoice.balanceVnd, locale),
-                          strong: true,
-                        },
-                      ]
-                    : []),
-                ]}
-              />
-            ) : null}
-          </Card>
-        </Reveal>
-      ))}
-      {invoice.productOrder ? (
+      <div className="ls-order-layout ls-order-layout-aside-first">
         <Reveal>
-          <Card as="section" aria-label={orders.title}>
-            <CardHeader title={orders.title} description={orders.note} />
-            {invoice.productOrder.lines.some((line) => line.status === 'ARRIVED') ? (
-              <Notice tone="success">{orders.arrivedHint}</Notice>
-            ) : null}
+          <Card as="section" aria-label={t.invoices.detailTitle}>
             <DescriptionList
               items={[
-                { label: orders.code, value: invoice.productOrder.code },
-                ...invoice.productOrder.lines.map((line) => {
-                  const source = invoice.lines.find(
-                    (candidate) => candidate.sequence === line.sequence,
-                  );
-                  return {
-                    label: `${line.sequence}. ${source ? (locale === 'vi' ? source.nameVi : source.nameEn) : ''}`,
-                    value: (
-                      <>
-                        <Badge tone={orderStatusTone(line.status)}>
-                          {status.customerStatus[line.status]}
-                        </Badge>
-                        {line.status === 'CANCELLED' ||
-                        line.status === 'ARRIVED' ||
-                        line.status === 'HANDED_OVER' ||
-                        line.status === 'COMPLETED' ? null : (
-                          <>
-                            <br />
-                            {orders.expected}:{' '}
-                            {expectedText(line, locale, {
-                              range: orders.range,
-                              afterPayment: orders.afterPayment,
-                            })}
-                          </>
-                        )}
-                      </>
-                    ),
-                  };
-                }),
+                { label: t.invoices.code, value: invoice.code },
+                {
+                  label: t.invoices.statusLabel,
+                  value: (
+                    <Badge tone={invoiceTone(invoice.status)}>
+                      {t.invoices.status[invoice.status]}
+                    </Badge>
+                  ),
+                },
+                { label: t.invoices.branch, value: invoice.branch.name },
+                { label: t.invoices.date, value: formatBusinessDate(invoice.visitDate, locale) },
+                {
+                  label: t.invoices.issuedAt,
+                  value: formatDateTime(invoice.finalizedAt, zone, locale),
+                },
+                ...(invoice.paidAt
+                  ? [
+                      {
+                        label: t.invoices.paidAt,
+                        value: formatDateTime(invoice.paidAt, zone, locale),
+                      },
+                    ]
+                  : []),
+                ...(invoice.cancelledAt
+                  ? [
+                      {
+                        label: t.invoices.cancelledAt,
+                        value: formatDateTime(invoice.cancelledAt, zone, locale),
+                      },
+                    ]
+                  : []),
               ]}
             />
           </Card>
         </Reveal>
-      ) : null}
-      <Reveal>
-        <Card as="section" aria-label={t.invoices.payments}>
-          <CardHeader title={t.invoices.payments} />
-          {invoice.payments.length === 0 ? (
-            <Empty>{t.invoices.noPayments}</Empty>
-          ) : (
-            <DescriptionList
-              items={invoice.payments.map((payment) => ({
-                label: `${t.invoices.method[payment.method]} · ${formatDateTime(payment.paidAt, zone, locale)}`,
-                value: (
-                  <>
-                    <strong>{formatVnd(payment.amountVnd, locale)}</strong>
-                    {payment.reversed ? (
+        <div className="ls-order-main">
+          {groups.map((group, index) => (
+            <Reveal key={group.key}>
+              <Card as="section" aria-label={group.title}>
+                <CardHeader title={group.title} />
+                <ul className="ls-line-list">
+                  {group.lines.map((line) => {
+                    const recipientText =
+                      group.key === 'services'
+                        ? line.forSelf
+                          ? t.invoices.forSelf
+                          : line.recipientName
+                            ? fill(t.invoices.forOther, { name: line.recipientName })
+                            : null
+                        : null;
+                    return (
+                      <li key={line.sequence} className="ls-line-item">
+                        <p className="ls-line-title">
+                          {line.sequence}. {locale === 'vi' ? line.nameVi : line.nameEn}
+                        </p>
+                        <p className="ls-line-price">{formatVnd(line.grossVnd, locale)}</p>
+                        <p className="ls-line-meta">
+                          {recipientText ? `${recipientText} · ` : ''}
+                          {formatVnd(line.unitPriceVnd, locale)} × {line.quantity}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {index === groups.length - 1 ? (
+                  <DescriptionList
+                    layout="totals"
+                    items={[
+                      { label: t.invoices.subtotal, value: formatVnd(invoice.subtotalVnd, locale) },
+                      ...(invoice.discount
+                        ? [
+                            {
+                              label: `${t.invoices.discount} (${locale === 'vi' ? invoice.discount.nameVi : invoice.discount.nameEn}${
+                                invoice.discount.voucherCode
+                                  ? `, ${fill(t.invoices.voucher, { code: invoice.discount.voucherCode })}`
+                                  : ''
+                              })`,
+                              value: `−${formatVnd(invoice.discount.amountVnd, locale)}`,
+                            },
+                          ]
+                        : []),
+                      {
+                        label: t.invoices.total,
+                        value: formatVnd(invoice.totalVnd, locale),
+                        strong: true,
+                      },
+                      { label: t.invoices.paid, value: formatVnd(invoice.paidVnd, locale) },
+                      ...(invoice.status === 'PENDING_PAYMENT'
+                        ? [
+                            {
+                              label: t.invoices.balance,
+                              value: formatVnd(invoice.balanceVnd, locale),
+                              strong: true,
+                            },
+                          ]
+                        : []),
+                    ]}
+                  />
+                ) : null}
+              </Card>
+            </Reveal>
+          ))}
+          {invoice.productOrder ? (
+            <Reveal>
+              <Card as="section" aria-label={orders.title}>
+                <CardHeader title={orders.title} description={orders.note} />
+                {invoice.productOrder.lines.some((line) => line.status === 'ARRIVED') ? (
+                  <Notice tone="success">{orders.arrivedHint}</Notice>
+                ) : null}
+                <DescriptionList
+                  items={[
+                    { label: orders.code, value: invoice.productOrder.code },
+                    ...invoice.productOrder.lines.map((line) => {
+                      const source = invoice.lines.find(
+                        (candidate) => candidate.sequence === line.sequence,
+                      );
+                      return {
+                        label: `${line.sequence}. ${source ? (locale === 'vi' ? source.nameVi : source.nameEn) : ''}`,
+                        value: (
+                          <>
+                            <Badge tone={orderStatusTone(line.status)}>
+                              {status.customerStatus[line.status]}
+                            </Badge>
+                            {line.status === 'CANCELLED' ||
+                            line.status === 'ARRIVED' ||
+                            line.status === 'HANDED_OVER' ||
+                            line.status === 'COMPLETED' ? null : (
+                              <>
+                                <br />
+                                {orders.expected}:{' '}
+                                {expectedText(line, locale, {
+                                  range: orders.range,
+                                  afterPayment: orders.afterPayment,
+                                })}
+                              </>
+                            )}
+                          </>
+                        ),
+                      };
+                    }),
+                  ]}
+                />
+              </Card>
+            </Reveal>
+          ) : null}
+          <Reveal>
+            <Card as="section" aria-label={t.invoices.payments}>
+              <CardHeader title={t.invoices.payments} />
+              {invoice.payments.length === 0 ? (
+                <Empty>{t.invoices.noPayments}</Empty>
+              ) : (
+                <DescriptionList
+                  items={invoice.payments.map((payment) => ({
+                    label: `${t.invoices.method[payment.method]} · ${formatDateTime(payment.paidAt, zone, locale)}`,
+                    value: (
                       <>
-                        {' '}
-                        <Badge tone="warning">{t.invoices.reversed}</Badge>
+                        <strong>{formatVnd(payment.amountVnd, locale)}</strong>
+                        {payment.reversed ? (
+                          <>
+                            {' '}
+                            <Badge tone="warning">{t.invoices.reversed}</Badge>
+                          </>
+                        ) : null}
                       </>
-                    ) : null}
-                  </>
-                ),
-              }))}
-            />
-          )}
-          <p className="ls-detail-note">{t.invoices.note}</p>
-        </Card>
-      </Reveal>
+                    ),
+                  }))}
+                />
+              )}
+              <p className="ls-detail-note">{t.invoices.note}</p>
+            </Card>
+          </Reveal>
+        </div>
+      </div>
     </Page>
   );
 }

@@ -64,6 +64,8 @@
   letter-spacing: normal;
   white-space: normal;
   text-wrap: balance;
+  /* The display face draws old-style figures by default (a low "0" and "9"); codes and prices in a heading read as lining figures. */
+  font-variant-numeric: lining-nums;
 }
 
 /* The scale (tokens.css): hero, page title (h1 of a page), section title (home), subsection (member and in-page groups),
@@ -1805,13 +1807,13 @@ a.ls-price-row:focus-visible {
   line-height: var(--ls-lh-small);
 }
 
+/* Time and price are figures: the sans face draws them plainly (the display face has old-style figures: a low "0" and "9"). */
 .ls-detail-facts dd {
   margin: 0;
-  font-family: var(--ls-font-display);
-  font-variant-numeric: lining-nums tabular-nums;
   font-size: var(--ls-type-sub);
-  font-weight: var(--ls-weight-title);
+  font-weight: 600;
   line-height: var(--ls-lh-sub);
+  font-variant-numeric: tabular-nums;
 }
 
 .ls-detail-facts .ls-detail-price {
@@ -3150,6 +3152,60 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   .ls-order-layout {
     grid-template-columns: minmax(0, 1fr) 22rem;
   }
+
+  /* A page whose facts come first in the reading order (a phone shows them first) still puts them in the side column. */
+  .ls-order-layout-aside-first > :first-child {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .ls-order-layout-aside-first > :last-child {
+    grid-column: 1;
+    grid-row: 1;
+  }
+}
+
+/* The lines of a booking or an invoice: the name and the price on the first line, the time and the people under them, a hairline
+   between lines (no box inside the card). */
+.ls-line-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-line-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ls-space-1) var(--ls-space-4);
+  padding-block: var(--ls-space-3);
+}
+
+.ls-line-item + .ls-line-item {
+  border-top: 1px solid var(--ls-border);
+}
+
+.ls-line-item p {
+  margin: 0;
+}
+
+.ls-line-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ls-line-price {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.ls-line-meta {
+  grid-column: 1 / -1;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
 }
 
 /* A row of a table on the customer side answers the pointer like every other row of the site: solid brand red with white text in light
@@ -3168,6 +3224,56 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 /* The action of a page header sits on the middle of the title block (not on its last line) on the customer side. */
 .ls-site .ls-page-header-row {
   align-items: center;
+}
+
+/* The five tiers: three columns at every width (a phone does not turn five short rows into five cards). The customer's own tier(s)
+   carry the soft brand tint; there is no pointer reaction because nothing in the grid can be clicked. */
+.ls-tier-grid {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
+  box-shadow: var(--ls-shadow-sm);
+}
+
+.ls-tier-head,
+.ls-tier-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--ls-space-3);
+  padding: var(--ls-space-3) var(--ls-space-4);
+}
+
+.ls-tier-head {
+  background: var(--ls-bg-sunken);
+  font-size: var(--ls-type-small);
+  font-weight: 600;
+  line-height: var(--ls-lh-small);
+}
+
+.ls-tier-row + .ls-tier-row,
+.ls-tier-head + .ls-tier-row {
+  border-top: 1px solid var(--ls-border);
+}
+
+.ls-tier-row[data-own='true'] {
+  background: var(--ls-brand-soft);
+}
+
+.ls-tier-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-1) var(--ls-space-2);
+  font-weight: 600;
+}
+
+.ls-tier-head > :nth-child(n + 2),
+.ls-tier-number {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
 }
 
 /* ---------- member area: quiet empty lines, the account hub ---------- */
@@ -3265,12 +3371,10 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 .ls-ticket-code {
   margin: 0;
   color: var(--ls-brand);
-  font-family: var(--ls-font-display);
   font-size: var(--ls-type-section);
-  font-weight: var(--ls-weight-title);
+  font-weight: 600;
   line-height: var(--ls-lh-section);
-  letter-spacing: 0.04em;
-  font-variant-numeric: lining-nums;
+  letter-spacing: 0.06em;
 }
 
 .ls-ticket-lines {
@@ -3832,15 +3936,18 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   text-decoration: none;
 }
 
+/* The line of a strip is the campaign's own headline: it wraps to two lines on a phone instead of being cut. */
 .ls-camp-strip-text {
+  display: -webkit-box;
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  overflow-wrap: anywhere;
   font-size: var(--ls-type-small);
   line-height: var(--ls-lh-small);
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .ls-camp-strip-cta {

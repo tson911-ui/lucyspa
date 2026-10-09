@@ -14,7 +14,6 @@ import {
 import {
   Card,
   CardHeader,
-  Cluster,
   DataTable,
   DescriptionList,
   Grid,
@@ -41,7 +40,6 @@ import {
   referralTone,
   tierRows,
   usedByText,
-  type TierRow,
 } from '../../../lib/customer/loyalty';
 import { paginationLabels } from '../../../lib/workforce/list-view';
 import { formatPoints, tierTone } from '../../../lib/workforce/loyalty';
@@ -161,50 +159,45 @@ export function TiersSection({
   const text = customerLoyaltyDictionary(locale);
   const l = loyaltyDictionary(locale);
   const w = getWorkforceDictionary(locale);
-  const columns: DataTableColumn<TierRow>[] = [
-    {
-      key: 'tier',
-      header: text.tiers.columns.tier,
-      mobileTitle: true,
-      cell: (row) => (
-        <span>
-          <Cluster gap="inline">
-            {l.tiers[row.tier]}
-            {tierMarks(row.tier, spa, beauty, text.tiers, WALLET_BRANDS).map((mark) => (
-              <Badge key={mark} tone={tierTone(row.tier)}>
-                {mark}
-              </Badge>
-            ))}
-          </Cluster>
-        </span>
-      ),
-    },
-    {
-      key: 'points',
-      header: text.tiers.columns.points,
-      numeric: true,
-      cell: (row) => formatPoints(row.fromPoints, locale),
-    },
-    {
-      key: 'discount',
-      header: text.tiers.columns.discount,
-      numeric: true,
-      cell: (row) => `${row.discountPercent}%`,
-    },
-  ];
+  const own = spa === beauty && spa !== 'NONE' ? spa : null;
   return (
     <Reveal>
       <ListSection title={text.tiers.title}>
         <p className="ls-hint">{text.tiers.rule}</p>
-        <DataTable
-          mode="client"
-          caption={fill(w.common.list.table, { list: text.tiers.title })}
-          columns={columns}
-          rows={tierRows()}
-          rowKey={(row) => row.tier}
-          selectedKey={spa === beauty && spa !== 'NONE' ? spa : undefined}
-          paging={{ off: 'The five tiers of the locked tier table: a fixed short list.' }}
-        />
+        <div
+          className="ls-tier-grid"
+          role="table"
+          aria-label={fill(w.common.list.table, { list: text.tiers.title })}
+        >
+          <div role="row" className="ls-tier-head">
+            <span role="columnheader">{text.tiers.columns.tier}</span>
+            <span role="columnheader">{text.tiers.columns.points}</span>
+            <span role="columnheader">{text.tiers.columns.discount}</span>
+          </div>
+          {tierRows().map((row) => (
+            <div
+              key={row.tier}
+              role="row"
+              className="ls-tier-row"
+              data-own={own === row.tier ? 'true' : undefined}
+            >
+              <span role="cell" className="ls-tier-name">
+                {l.tiers[row.tier]}
+                {tierMarks(row.tier, spa, beauty, text.tiers, WALLET_BRANDS).map((mark) => (
+                  <Badge key={mark} tone={tierTone(row.tier)}>
+                    {mark}
+                  </Badge>
+                ))}
+              </span>
+              <span role="cell" className="ls-tier-number">
+                {formatPoints(row.fromPoints, locale)}
+              </span>
+              <span role="cell" className="ls-tier-number">
+                {row.discountPercent}%
+              </span>
+            </div>
+          ))}
+        </div>
       </ListSection>
     </Reveal>
   );

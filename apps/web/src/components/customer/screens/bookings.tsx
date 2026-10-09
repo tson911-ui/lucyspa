@@ -417,7 +417,7 @@ export function CustomerBookingDetailScreen({ id }: { id: string }) {
   }
 
   return (
-    <Page width="form">
+    <Page>
       <PageHeader
         title={t.bookings.detailTitle}
         breadcrumbs={
@@ -436,53 +436,59 @@ export function CustomerBookingDetailScreen({ id }: { id: string }) {
         }
       />
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
-      <Reveal>
-        <Card as="section" aria-label={t.bookings.detailTitle}>
-          <DescriptionList
-            items={[
-              { label: t.bookings.code, value: booking.code },
-              { label: t.book.branch, value: booking.branch.name },
-              {
-                label: t.book.when,
-                value: `${formatDateTime(booking.startsAt, zone, locale)} – ${formatTime(booking.endsAt, zone, locale)}`,
-              },
-              {
-                label: t.bookings.statusLabel,
-                value: (
-                  <Badge tone={statusTone(booking.status)}>
-                    {t.bookings.status[booking.status]}
-                  </Badge>
-                ),
-              },
-            ]}
-          />
-        </Card>
-      </Reveal>
-      <Reveal>
-        <Card as="section" aria-label={t.bookings.services}>
-          <CardHeader title={t.bookings.services} />
-          <DescriptionList
-            items={booking.lines.map((line) => ({
-              label: `${line.sequence}. ${locale === 'vi' ? line.serviceNameVi : line.serviceNameEn}`,
-              value: (
-                <>
-                  {formatTime(line.startsAt, zone, locale)}–{formatTime(line.endsAt, zone, locale)}{' '}
-                  · {fill(t.book.duration, { minutes: line.durationMinutes })}
-                  <br />
-                  {t.bookings.recipient}: {recipient(line.recipientKey)} · {t.bookings.staff}:{' '}
-                  {line.employee.displayName}
-                  {line.assignmentMode === 'ANY' ? ` (${t.bookings.anyAssigned})` : ''}
-                  <br />
-                  {t.book.referencePrice}:{' '}
-                  {formatVndRange(line.priceMinVnd, line.priceMaxVnd, locale)}
-                  {line.pricingUnit === 'PER_NAIL' ? ` ${t.book.perNail}` : ''}
-                </>
-              ),
-            }))}
-          />
-          <p className="ls-detail-note">{t.book.priceNote}</p>
-        </Card>
-      </Reveal>
+      <div className="ls-order-layout ls-order-layout-aside-first">
+        <Reveal>
+          <Card as="section" aria-label={t.bookings.detailTitle} className="ls-order-aside">
+            <DescriptionList
+              items={[
+                { label: t.bookings.code, value: booking.code },
+                { label: t.book.branch, value: booking.branch.name },
+                {
+                  label: t.book.when,
+                  value: `${formatDateTime(booking.startsAt, zone, locale)} – ${formatTime(booking.endsAt, zone, locale)}`,
+                },
+                {
+                  label: t.bookings.statusLabel,
+                  value: (
+                    <Badge tone={statusTone(booking.status)}>
+                      {t.bookings.status[booking.status]}
+                    </Badge>
+                  ),
+                },
+              ]}
+            />
+          </Card>
+        </Reveal>
+        <Reveal>
+          <Card as="section" aria-label={t.bookings.services} className="ls-order-main-card">
+            <CardHeader title={t.bookings.services} />
+            <ul className="ls-line-list">
+              {booking.lines.map((line) => (
+                <li key={line.sequence} className="ls-line-item">
+                  <p className="ls-line-title">
+                    {line.sequence}. {locale === 'vi' ? line.serviceNameVi : line.serviceNameEn}
+                  </p>
+                  <p className="ls-line-price">
+                    {formatVndRange(line.priceMinVnd, line.priceMaxVnd, locale)}
+                    {line.pricingUnit === 'PER_NAIL' ? ` ${t.book.perNail}` : ''}
+                  </p>
+                  <p className="ls-line-meta">
+                    {formatTime(line.startsAt, zone, locale)}–
+                    {formatTime(line.endsAt, zone, locale)} ·{' '}
+                    {fill(t.book.duration, { minutes: line.durationMinutes })}
+                  </p>
+                  <p className="ls-line-meta">
+                    {t.bookings.recipient}: {recipient(line.recipientKey)} · {t.bookings.staff}:{' '}
+                    {line.employee.displayName}
+                    {line.assignmentMode === 'ANY' ? ` (${t.bookings.anyAssigned})` : ''}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <p className="ls-detail-note">{t.book.priceNote}</p>
+          </Card>
+        </Reveal>
+      </div>
       {cancelling ? (
         <ConfirmDialog
           title={t.bookings.cancelTitle}

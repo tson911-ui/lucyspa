@@ -395,7 +395,8 @@ export function OnlineOrderDetailScreen({ id }: { id: string }) {
   return (
     <Page>
       <PageHeader
-        title={`${o.detailTitle} ${order.code}`}
+        title={o.detailTitle}
+        description={order.code}
         breadcrumbs={
           <Breadcrumbs
             label={t.nav.menu}
