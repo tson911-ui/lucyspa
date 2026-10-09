@@ -77,8 +77,13 @@ export function HomeContent({
         <div className="ls-hero-grid">
           <div className="ls-hero-copy">
             <h1 className="ls-site-display ls-hero-title" id="home-title">
-              <span>{first}</span>
-              {second ? <span className="ls-hero-title-2">{second}</span> : null}
+              {first}
+              {second ? (
+                <>
+                  {' '}
+                  <span className="ls-hero-title-2">{second}</span>
+                </>
+              ) : null}
             </h1>
             <p className="ls-lead">{site?.intro ?? text.home.lead}</p>
             <div className="ls-hero-actions">

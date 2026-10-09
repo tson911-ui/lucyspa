@@ -105,7 +105,7 @@ test('home: the tagline is the one h1, facts and visit read the Owner data, no m
   // Direction C draws the tagline over two lines (the dash is not drawn), the second one in the accent.
   assert.match(
     html,
-    /<h1[^>]*><span>Thư Giãn Tận Tâm<\/span><span class="ls-hero-title-2">Nâng Tầm Nhan Sắc<\/span><\/h1>/,
+    /<h1[^>]*>Thư Giãn Tận Tâm(?: |<!-- --> )<span class="ls-hero-title-2">Nâng Tầm Nhan Sắc<\/span><\/h1>/,
   );
   assert.match(html, /04 Nguyễn Quang Bích, Đà Nẵng/);
   assert.match(html, /href="tel:\+84934936101"/);
@@ -162,7 +162,7 @@ test('home: a part that could not be read shows a notice and the rest still rend
   assert.match(noServices, /ls-site-facts/);
   const noSite = home({ ...full, site: null });
   assert.doesNotMatch(noSite, /ls-site-facts/);
-  assert.match(noSite, /<h1[^>]*><span>Lucy Spa<\/span><\/h1>/);
+  assert.match(noSite, /<h1[^>]*>Lucy Spa<\/h1>/);
   assert.match(noSite, /Gội đầu/);
   assert.match(home({ ...full, services: { groups: [] } }), /Danh mục dịch vụ đang được cập nhật/);
 });
