@@ -1,0 +1,125 @@
+/* Shared by the three home-page directions (hidden preview routes): the photo slot and the page reset. Each direction sets the
+   --dp-* custom properties on its own root. */
+.dp {
+  min-height: 100vh;
+  color: var(--dp-ink);
+  background: var(--dp-bg);
+  font-family: var(--dp-body-font);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.dp *,
+.dp *::before,
+.dp *::after {
+  box-sizing: border-box;
+}
+
+/* Zero specificity (:where), so the buttons and headings of a direction win over these resets and over the global heading styles. */
+:where(.dp) a {
+  color: inherit;
+}
+
+:where(.dp) :is(h1, h2, h3) {
+  margin: 0;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+}
+
+.dp :focus-visible {
+  outline: 2px solid var(--dp-focus, var(--dp-accent));
+  outline-offset: 3px;
+}
+
+/* A place for one of the shop's own photos: final frame and tone, swapped for the real photo later. */
+.dp-slot {
+  position: relative;
+  display: grid;
+  align-items: end;
+  margin: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background: linear-gradient(155deg, var(--dp-slot-from), var(--dp-slot-to));
+}
+
+.dp-slot-grain {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: var(--dp-slot-grain, 0.5);
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+.dp-slot-caption {
+  max-width: 28ch;
+  padding: 1.25rem;
+  color: var(--dp-slot-ink);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.dp-slot-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dp-rise {
+    animation: dp-rise 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  @keyframes dp-rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+  }
+}
+
+/* The small switch between the three directions (hidden with ?bare=1, which the screenshots use). */
+.dp-switch {
+  position: fixed;
+  inset-block-end: 1rem;
+  inset-inline: 0;
+  z-index: 50;
+  display: flex;
+  gap: 0.25rem;
+  width: fit-content;
+  margin-inline: auto;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: rgb(20 14 16 / 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.dp-switch a {
+  display: grid;
+  place-items: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border-radius: 999px;
+  color: #ffffff;
+  font:
+    600 0.875rem system-ui,
+    sans-serif;
+  text-decoration: none;
+}
+
+.dp-switch a[aria-current='page'] {
+  color: #1c1416;
+  background: #ffffff;
+}
+
+.dp-switch a:hover:not([aria-current='page']) {
+  background: #782b37;
+}

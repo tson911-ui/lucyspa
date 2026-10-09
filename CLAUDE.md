@@ -82,7 +82,8 @@ These add to the UX quality gate above; none of it is removed.
    Where the skill and these rules disagree, these rules win. The brand is already decided, so the skill is used to raise
    layout, detail, typography hierarchy, motion and copy quality, never to change the brand.
 2. Brand: primary red `#782b37` with white. Keep the existing light and dark modes, the approved fonts and the "LUCY SPA"
-   text logo. No new palette, no new fonts.
+   text logo. No new palette, no new fonts. (Staff, POS and admin screens only; the customer site follows the section
+   "Customer site redesign" below, which replaces this rule and rule 1's "never change the look" for the customer site.)
 3. No gold or yellow anywhere, except holiday decorations (Tết, Mid-Autumn, national days) in the seasonal theme layer.
 4. Hover: light mode = solid `#782b37` background with white text (not a pale pink tint); dark mode = the existing
    dark-mode pink accent.
@@ -90,6 +91,27 @@ These add to the UX quality gate above; none of it is removed.
 6. Every UI change still goes through the quality gate (screenshots at 360/768/1440 px, light and dark, 130% text, all
    states, DOM audit vs baseline), with before/after screenshots for the Owner to approve.
 7. Copy stays natural Vietnamese. Lucy Spa is a spa; never use "khám".
+
+## Customer site redesign (permanent; Owner, 2026-10-09; the customer site only)
+
+The owner finds the current customer site dated. The customer site (public pages, booking, account, shop) is redesigned to feel
+modern, luxurious, simple and professional, like the current best brand websites. The owner's old Lovable prototype is no longer
+a reference (do not use or copy it, cosmetics pages included). Brief, in the owner's words and our reading: minimal and calm, lots of
+white space, a restrained palette (the brand red used sparingly as an accent), large confident typography, strong visual hierarchy,
+large imagery, clean grids, subtle refined motion, a fast and clear booking path; nothing cluttered or decorative for its own sake.
+
+- **Kept (unchanged):** `#782b37` as the brand accent, the "LUCY SPA" text logo, light and dark modes, no gold or yellow except holiday
+  decorations in the seasonal theme layer, the hover rule (rule 4), natural Vietnamese copy (never "khám"), UI-only changes (rule 5), and
+  the quality gate (rule 6, with before/after screenshots for the owner).
+- **Now allowed on the customer site:** a new modern font pairing with full Vietnamese support (self-hosted through `next/font`), a
+  refined secondary and neutral palette around the red, a larger type scale, generous spacing, bento and card layouts with large radius
+  and soft shadows, subtle gradients or texture, a translucent or blurred sticky header, tasteful motion (always honouring reduced motion),
+  modern icons.
+- **Photos:** no stock photos without rights. Where the shop's photos are missing, use tasteful placeholders designed to be swapped for the
+  shop's real photos later, and list the photos the owner should take.
+- **Staff, POS and admin screens keep the current rules** (rules 1-7 above and the UX quality gate); this section does not apply to them.
+- A direction for the customer home page is chosen by the owner before it replaces the current page; until then it lives only in
+  hidden preview routes (`/vi/design-preview/*`: noindex, not in menus, not in the sitemap).
 
 ## Reporting (keep it short)
 
