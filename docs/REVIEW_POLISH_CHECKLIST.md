@@ -2,13 +2,14 @@
 
 Thứ tự công việc còn lại do chủ đặt: **Phase 9 → Phase 7 → Phase 8 → bước rà soát và chỉnh toàn bộ (tài liệu này) → Phase 10 (cứng hóa và ra mắt)**. Bước rà soát chỉ đổi giao diện và sửa lỗi; không thêm tính năng, không đổi quy tắc nghiệp vụ. Mỗi mục phải qua cổng chất lượng của `CLAUDE.md` (ảnh chụp 360 / 768 / 1440 px sáng và 1440 px tối, chữ 130%, đủ trạng thái, kiểm DOM so với mốc) trước khi báo xong.
 
-> Tin nhắn của chủ ngày 2026-10-10 bị cắt sau chữ "trang chủ khách". Các mục A đến F dưới đây gom từ lời chủ đã ghi lại (bàn giao, `docs/UI_STAFF_C.md`, `docs/CUSTOMER_SITE_C.md`). **Trước khi bắt đầu bước này phải hỏi chủ xem còn mục nào cần thêm.**
+Danh sách này đầy đủ (chủ xác nhận 2026-10-10): các việc ở trang chủ khách chỉ gồm bốn mục ở phần B.
 
 ## A. Cân đối chung của giao diện
 
 - [ ] Duyệt lần lượt mọi màn hình khách, quầy và quản trị: cân đối khoảng trắng, căn lề, nhịp dọc, độ lớn chữ giữa các trang cùng loại.
 - [ ] Một thương hiệu thống nhất: trang khách, quản trị, quầy và đăng nhập nhân viên cùng một cảm giác (hướng C), không trang nào lệch.
 - [ ] Ba ngoại lệ rê chuột trên nền đỏ (`docs/CUSTOMER_SITE_C.md`): chốt với chủ rồi áp dụng nhất quán.
+- [ ] Quyết định của chủ đã ghi từ trước và còn treo (không phải mục mới): bố cục đầu trang chủ (giữ vòng tròn ảnh hay dùng khung trượt), vị trí ruy-băng ưu đãi, hai khung ảnh nhỏ ("làm nail", "gội đầu") chưa có chỗ chọn ảnh trong Quản trị, và chiến dịch trên ảnh đầu trang và popup (chủ đã đồng ý đưa vào bước này, 2026-10-09).
 - [ ] Sáng và tối, 360 / 768 / 1440 px, chữ 130%: không cuộn ngang trang, không chữ chồng nhau, không dịch bố cục.
 - [ ] Mọi màn hình đủ trạng thái: đang tải, trống, lỗi, thành công, bị khóa, chữ dài, nhiều mục, không có ảnh.
 
@@ -18,8 +19,6 @@ Thứ tự công việc còn lại do chủ đặt: **Phase 9 → Phase 7 → Ph
 - [ ] Thanh đầu trang (header) đổi sang phong cách C cho đồng bộ với phần còn lại của trang.
 - [ ] Chú thích ảnh bị vòng tròn nhỏ che mất chữ: dời hoặc đổi cách đặt để chữ luôn đọc được.
 - [ ] Ảnh thật thay cho các khung giữ chỗ (xem mục H, 11 ảnh).
-- [ ] Chủ quyết định còn treo: giữ bố cục vòng tròn ảnh hay dùng khung trượt; ruy-băng ưu đãi nằm trên hay dưới; hai khung ảnh nhỏ ("làm nail", "gội đầu") chưa có chỗ chọn ảnh trong Quản trị.
-- [ ] Chiến dịch trên ảnh đầu trang và popup (chủ đã đồng ý đưa vào bước này, 2026-10-09).
 
 ## C. Màn hình nhân viên và quầy
 
@@ -51,7 +50,6 @@ Mỗi luồng chạy từ đầu đến cuối trên cơ sở dữ liệu thử,
 
 ## F. Quy trình của bước này
 
-- [ ] Hỏi chủ phần còn thiếu của danh sách (xem lưu ý đầu trang) trước khi làm.
 - [ ] Làm theo nhóm nhỏ, mỗi nhóm có ảnh trước và sau cho chủ duyệt.
 - [ ] Chạy toàn bộ `pnpm check`, `pnpm test:integration`, `pnpm smoke` ở cuối bước, rồi mới sang Phase 10.
 
