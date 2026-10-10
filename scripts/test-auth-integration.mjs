@@ -115,3 +115,4 @@ await import('../apps/api/dist/online-orders/online.limits.integration.test.js')
 await import('../apps/api/dist/online-orders/online.race.integration.test.js');
 await import('../apps/api/dist/campaigns/campaign.integration.test.js');
 await import('../apps/api/dist/supplier-sources/supplier-source.integration.test.js');
+await import('../apps/api/dist/supplier-sources/supplier-source-scan.integration.test.js');

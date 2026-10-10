@@ -217,6 +217,8 @@ const errors = {
   SUPPLIER_SOURCE_TEST_ACTIVE: [409, 'A test of this source is already queued or running'],
   SUPPLIER_SOURCE_TEST_NOT_PASSED: [409, 'Only a passed test can be confirmed'],
   SUPPLIER_SOURCE_TEST_ALREADY_CONFIRMED: [409, 'This test is already confirmed'],
+  SUPPLIER_SOURCE_NOT_ENABLED: [409, 'Switch the source on before scanning it'],
+  SUPPLIER_SOURCE_SCAN_ACTIVE: [409, 'A scan of this source is already queued or running'],
   SUPPLIER_SOURCE_TEST_OUTDATED: [
     409,
     'A newer test exists or the address changed; confirm the latest test',

@@ -212,3 +212,57 @@ export interface SupplierSourceTestConfirmResponse {
   item: SupplierSourceItem;
   test: SupplierSourceTestItem;
 }
+
+// ------------------------------------------------------------------------------------------------------ sample scan (P9-4)
+
+export const SCAN_STATUSES = ['RUNNING', 'SUCCEEDED', 'PARTIAL', 'FAILED', 'SUSPECT'] as const;
+export type SupplierSourceScanStatus = (typeof SCAN_STATUSES)[number];
+
+/** One failure or warning of a scan: a code and where it happened (a product id, a picture address). Never page content. */
+export interface SupplierSourceScanError {
+  code: string;
+  key?: string;
+  url?: string;
+  detail?: string;
+}
+
+export interface SupplierSourceScanItem {
+  id: string;
+  status: SupplierSourceScanStatus;
+  /** True while the scan waits for the worker to pick it up. */
+  queued: boolean;
+  trigger: 'MANUAL' | 'SCHEDULE';
+  requestedBy: { id: string; name: string } | null;
+  startedAt: string;
+  finishedAt: string | null;
+  /** Live fetching is limited to a sample (20 products) until the Owner approves a bulk import. */
+  sampleLimit: number;
+  requestCount: number;
+  counts: {
+    discovered: number;
+    created: number;
+    unchanged: number;
+    priceChanged: number;
+    contentChanged: number;
+    imageChanged: number;
+    images: number;
+    imageFlags: number;
+    errors: number;
+  };
+  /** The first twenty errors. */
+  errors: SupplierSourceScanError[];
+}
+
+/** GET /api/v1/supplier-sources/:id/scans: the latest scans of one source, newest first (at most ten). */
+export interface SupplierSourceScanListResponse {
+  items: SupplierSourceScanItem[];
+}
+
+/** POST /api/v1/supplier-sources/:id/scans: queue a manual sample scan of an enabled, ready source (MANAGE_SUPPLIER_SOURCES). */
+export interface SupplierSourceScanRequest {
+  expectedVersion: number;
+}
+
+export interface SupplierSourceScanResponse {
+  item: SupplierSourceScanItem;
+}

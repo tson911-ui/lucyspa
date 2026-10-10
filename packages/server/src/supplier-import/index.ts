@@ -69,3 +69,20 @@ export {
   SOURCE_TEST_LEASE_MINUTES,
   type SourceTestDatabase,
 } from './source-test-runner.js';
+export {
+  failExpiredScans,
+  processNextScan,
+  SCAN_LEASE_MINUTES,
+  type ScanDatabase,
+  type ScanDeps,
+  type ScanError,
+} from './source-scan.js';
+export {
+  downloadImage,
+  imageFilename,
+  isPlaceholderImage,
+  MAX_IMAGES_PER_PRODUCT,
+  NEAR_DUPLICATE_DISTANCE,
+  type ImageFlag,
+} from './image-intake.js';
+export { checkRobots } from './source-test.js';

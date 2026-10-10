@@ -589,6 +589,7 @@ const vi = {
       usageShop: 'Thông tin tiệm',
       usageProduct: 'Sản phẩm',
       usageCampaign: 'Chiến dịch khuyến mãi',
+      usageImport: 'Nhập từ nhà cung cấp',
       altVi: 'Mô tả ảnh (tiếng Việt)',
       altViHint:
         'Bắt buộc trước khi dùng ảnh trên website. Mô tả ngắn nội dung ảnh cho người dùng trình đọc màn hình.',
@@ -3204,6 +3205,7 @@ const en: Dictionary = {
       usageShop: 'Shop info',
       usageProduct: 'Product',
       usageCampaign: 'Promotion campaign',
+      usageImport: 'Supplier import',
       altVi: 'Image description (Vietnamese)',
       altViHint:
         'Required before the image is used on the website. A short description of what the image shows, for screen reader users.',

@@ -4,6 +4,9 @@ import type {
   SupplierSourceListResponse,
   SupplierSourcePermissionRequest,
   SupplierSourceResponse,
+  SupplierSourceScanListResponse,
+  SupplierSourceScanRequest,
+  SupplierSourceScanResponse,
   SupplierSourceTestConfirmResponse,
   SupplierSourceTestListResponse,
   SupplierSourceTestRequest,
@@ -17,6 +20,7 @@ import { SessionService } from '../auth/session.service.js';
 import { runAdminCommand, type AdminContext } from '../authorization/admin-command.js';
 import { sqlStateOf } from '../booking/customer-command.js';
 import * as core from './supplier-source.core.js';
+import * as scanCore from './supplier-source-scan.core.js';
 import * as testCore from './supplier-source-test.core.js';
 
 /**
@@ -105,13 +109,28 @@ export class SupplierSourceService {
     return this.run(token, requestId, (context) => testCore.confirmTest(context, id, testId, body));
   }
 
+  scans(token: string | undefined, id: string): Promise<SupplierSourceScanListResponse> {
+    return this.run(token, undefined, (context) => scanCore.listScans(context, id));
+  }
+
+  requestScan(
+    token: string | undefined,
+    id: string,
+    body: SupplierSourceScanRequest,
+    requestId?: string,
+  ) {
+    return this.run(token, requestId, (context) => scanCore.requestScan(context, id, body));
+  }
+
   private run<
     T extends
       | SupplierSourceListResponse
       | SupplierSourceResponse
       | SupplierSourceTestListResponse
       | SupplierSourceTestResponse
-      | SupplierSourceTestConfirmResponse,
+      | SupplierSourceTestConfirmResponse
+      | SupplierSourceScanListResponse
+      | SupplierSourceScanResponse,
   >(
     token: string | undefined,
     requestId: string | undefined,

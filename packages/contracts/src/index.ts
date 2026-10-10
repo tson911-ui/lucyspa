@@ -2955,7 +2955,7 @@ export interface MediaAssetSummary {
 
 /** Where an image is used (filled by the popup and slider Steps); an image with any usage cannot be deleted. */
 export interface MediaUsage {
-  kind: 'POPUP' | 'SLIDE' | 'SEASON' | 'SHOP_INFO' | 'PRODUCT' | 'CAMPAIGN';
+  kind: 'POPUP' | 'SLIDE' | 'SEASON' | 'SHOP_INFO' | 'PRODUCT' | 'CAMPAIGN' | 'IMPORT_CANDIDATE';
   id: string;
   title: string;
 }

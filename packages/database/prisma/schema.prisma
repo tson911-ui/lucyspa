@@ -4661,6 +4661,12 @@ model ImportScan {
   duplicateCount      Int               @default(0) @map("duplicate_count")
   errorCount          Int               @default(0) @map("error_count")
   errors              Json              @default("[]") @db.JsonB
+  claimedAt           DateTime?         @map("claimed_at") @db.Timestamptz(3)
+  leaseExpiresAt      DateTime?         @map("lease_expires_at") @db.Timestamptz(3)
+  sampleLimit         Int               @default(20) @map("sample_limit") @db.SmallInt
+  requestCount        Int               @default(0) @map("request_count")
+  imageCount          Int               @default(0) @map("image_count")
+  imageFlagCount      Int               @default(0) @map("image_flag_count")
   createdAt           DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   firstSeenRecords    SourceRecord[]    @relation("SourceRecordFirstScan")
   lastSeenRecords     SourceRecord[]    @relation("SourceRecordLastScan")
@@ -4773,6 +4779,7 @@ model CandidateSource {
   matchedByUserId String?            @map("matched_by_user_id") @db.Uuid
   matchedBy       User?              @relation("CandidateSourceMatcher", fields: [matchedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   matchedAt       DateTime           @default(dbgenerated("clock_timestamp()")) @map("matched_at") @db.Timestamptz(3)
+  images          CandidateImage[]
 
   @@id([candidateId, sourceRecordId], map: "candidate_sources_pkey")
   @@map("candidate_sources")
@@ -4788,12 +4795,19 @@ model CandidateImage {
   sourceUrl    String          @map("source_url")
   sortOrder    Int             @map("sort_order") @db.SmallInt
   sha256       String          @db.VarChar(64)
-  phash        String?         @db.VarChar(16)
+  phash        String?         @db.VarChar(64)
+  sourceRecordId   String          @map("source_record_id") @db.Uuid
+  owner            CandidateSource @relation(fields: [candidateId, sourceRecordId], references: [candidateId, sourceRecordId], onDelete: Restrict, onUpdate: Restrict, map: "candidate_images_owner_fkey")
+  sourceProductKey String          @map("source_product_key") @db.VarChar(300)
+  variantKey       String?         @map("variant_key") @db.VarChar(300)
+  flag             String?         @db.VarChar(24)
+  verifiedAt       DateTime        @default(dbgenerated("clock_timestamp()")) @map("verified_at") @db.Timestamptz(3)
+  retiredAt        DateTime?       @map("retired_at") @db.Timestamptz(3)
   createdAt    DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
 
-  @@unique([candidateId, mediaAssetId], map: "candidate_images_asset_key")
   @@index([candidateId, sortOrder], map: "candidate_images_order_idx")
   @@index([mediaAssetId], map: "candidate_images_media_idx")
+  @@index([sourceRecordId], map: "candidate_images_record_idx")
   @@map("candidate_images")
 }
 

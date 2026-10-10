@@ -122,6 +122,43 @@ function groupProblems(
   return [...groups.values()].sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
 }
 
+/**
+ * robots.txt of the source's host, read before any other request: a missing file allows, an unreadable one or a Disallow for the
+ * products path stops everything (SourceReadError). A Crawl-delay slows the client down. Shared by Test Source and the scan.
+ */
+export async function checkRobots(
+  client: HttpClient,
+  baseUrl: string,
+  pageSize: number,
+): Promise<{ state: SourceTestSummary['robots']; crawlDelaySeconds: number | null }> {
+  const base = new URL(baseUrl);
+  let response;
+  try {
+    response = await client.get(new URL('/robots.txt', base).toString(), {
+      maxBytes: ROBOTS_MAX_BYTES,
+      accept: 'text/plain,*/*;q=0.5',
+    });
+  } catch (error) {
+    throw asSourceError(error);
+  }
+  const rules = interpretRobotsResponse(response.status, response.body.toString('utf8'));
+  if (rules === null) {
+    throw new SourceReadError('ROBOTS_UNAVAILABLE', 'SOURCE_ERROR', String(response.status));
+  }
+  if (rules.crawlDelaySeconds !== null) client.setMinInterval(rules.crawlDelaySeconds * 1000);
+  const productsPath = new URL(
+    'wp-json/wc/store/v1/products',
+    base.href.endsWith('/') ? base.href : `${base.href}/`,
+  ).pathname;
+  if (!robotsAllows(rules, `${productsPath}?page=1&per_page=${pageSize}`)) {
+    throw new SourceReadError('ROBOTS_DISALLOWED', 'SOURCE_ERROR');
+  }
+  return {
+    state: response.status >= 400 ? 'NO_FILE' : 'ALLOWED',
+    crawlDelaySeconds: rules.crawlDelaySeconds,
+  };
+}
+
 export async function runSourceTest(options: {
   client: HttpClient;
   baseUrl: string;
@@ -129,40 +166,11 @@ export async function runSourceTest(options: {
 }): Promise<SourceTestResult> {
   const { client } = options;
   const size = Math.min(options.sampleSize ?? SAMPLE_SIZE, SAMPLE_SIZE);
-  const base = new URL(options.baseUrl);
-  let robotsState: SourceTestSummary['robots'] = 'ALLOWED';
   try {
     // 1. robots.txt of the host, before anything else.
-    let robotsResponse;
-    try {
-      robotsResponse = await client.get(new URL('/robots.txt', base).toString(), {
-        maxBytes: ROBOTS_MAX_BYTES,
-        accept: 'text/plain,*/*;q=0.5',
-      });
-    } catch (error) {
-      throw asSourceError(error);
-    }
-    const rules = interpretRobotsResponse(
-      robotsResponse.status,
-      robotsResponse.body.toString('utf8'),
-    );
-    if (rules === null) {
-      throw new SourceReadError(
-        'ROBOTS_UNAVAILABLE',
-        'SOURCE_ERROR',
-        String(robotsResponse.status),
-      );
-    }
-    if (robotsResponse.status >= 400) robotsState = 'NO_FILE';
-    const crawlDelaySeconds = rules.crawlDelaySeconds;
-    if (crawlDelaySeconds !== null) client.setMinInterval(crawlDelaySeconds * 1000);
-    const productsPath = new URL(
-      'wp-json/wc/store/v1/products',
-      base.href.endsWith('/') ? base.href : `${base.href}/`,
-    ).pathname;
-    if (!robotsAllows(rules, `${productsPath}?page=1&per_page=${size}`)) {
-      throw new SourceReadError('ROBOTS_DISALLOWED', 'SOURCE_ERROR');
-    }
+    const robots = await checkRobots(client, options.baseUrl, size);
+    const robotsState = robots.state;
+    const crawlDelaySeconds = robots.crawlDelaySeconds;
 
     // 2. One page of the product list.
     const adapter = createStoreApiAdapter(client, options.baseUrl);

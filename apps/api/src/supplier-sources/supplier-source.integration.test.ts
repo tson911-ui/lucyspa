@@ -723,7 +723,7 @@ test(
           );
           assert.match(
             (await sql(
-              `INSERT INTO candidate_images (candidate_id, media_asset_id, source_url, sort_order, sha256) VALUES ('66666666-6666-4666-8666-666666666666', gen_random_uuid(), 'https://x.example.com/a.jpg', 6, '${'d'.repeat(64)}')`,
+              `INSERT INTO candidate_images (candidate_id, media_asset_id, source_url, sort_order, sha256, source_record_id, source_product_key) VALUES ('66666666-6666-4666-8666-666666666666', gen_random_uuid(), 'https://x.example.com/a.jpg', 6, '${'d'.repeat(64)}', '55555555-5555-4555-8555-555555555555', '1')`,
             )) ?? '',
             /candidate_images_position/,
             'at most six images: positions 0 to 5',

@@ -6,6 +6,7 @@ import type {
   MediaUsage,
 } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
+import { recordMediaAsset } from '@lucy-spa/server';
 import { AuthError } from '../auth/auth.error.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
 import { decide, type AuthorityGraph } from '../authorization/authorization.js';
@@ -119,6 +120,12 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
     orderBy: [{ startsAt: 'desc' }, { id: 'asc' }],
     select: { id: true, nameVi: true },
   });
+  // Phase 9 P9-4: a picture read from a supplier is kept by its import candidate (the foreign key is RESTRICT).
+  const candidates = await tx.candidateImage.findMany({
+    where: { mediaAssetId: assetId },
+    orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+    select: { candidate: { select: { id: true, nameVi: true } } },
+  });
   return [
     ...popups.map((popup) => ({
       kind: 'POPUP' as const,
@@ -138,6 +145,13 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
       title: row.product.nameVi,
     })),
     ...campaigns.map((row) => ({ kind: 'CAMPAIGN' as const, id: row.id, title: row.nameVi })),
+    ...[...new Map(candidates.map((row) => [row.candidate.id, row.candidate])).values()].map(
+      (row) => ({
+        kind: 'IMPORT_CANDIDATE' as const,
+        id: row.id,
+        title: row.nameVi,
+      }),
+    ),
   ];
 };
 
@@ -241,28 +255,16 @@ export async function createMedia(
   const altVi = altText(input.altVi, 'altVi');
   const altEn = altText(input.altEn, 'altEn');
   const filename = displayFilename(input.filename);
-  const created = await context.tx.mediaAsset.create({
-    data: {
-      storageKey: input.stored.originalKey,
-      originalFilename: filename,
-      mime: input.image.mime,
-      bytes: input.image.original.length,
-      width: input.image.width,
-      height: input.image.height,
-      sha256: input.image.sha256,
-      altVi,
-      altEn,
-      createdByUserId: context.actor.userId,
-      variants: {
-        create: input.image.variants.map((variant) => ({
-          kind: variant.kind,
-          storageKey: input.stored.variantKeys[variant.kind],
-          width: variant.width,
-          height: variant.height,
-          bytes: variant.bytes.length,
-        })),
-      },
-    },
+  const recorded = await recordMediaAsset(context.tx, {
+    image: input.image,
+    stored: input.stored,
+    filename,
+    altVi,
+    altEn,
+    createdByUserId: context.actor.userId,
+  });
+  const created = await context.tx.mediaAsset.findUniqueOrThrow({
+    where: { id: recorded.id },
     select: summarySelect,
   });
   await appendAdminAudit(context, {

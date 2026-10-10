@@ -6,6 +6,9 @@ import type {
   SupplierSourceListResponse,
   SupplierSourcePermissionRequest,
   SupplierSourceResponse,
+  SupplierSourceScanListResponse,
+  SupplierSourceScanRequest,
+  SupplierSourceScanResponse,
   SupplierSourceTestConfirmResponse,
   SupplierSourceTestListResponse,
   SupplierSourceTestRequest,
@@ -197,6 +200,32 @@ export class SupplierSourceController {
       id,
       testId,
       body,
+      this.requestId(response),
+    );
+  }
+
+  @Get(':id/scans')
+  @ApiOkResponse({ description: 'The latest sample scans of one source, newest first.' })
+  scans(@Param('id') id: string, @Req() request: Request): Promise<SupplierSourceScanListResponse> {
+    return this.sources.scans(this.session(request), id);
+  }
+
+  @Post(':id/scans')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Queues a manual sample scan (at most 20 products) of an enabled, ready source (MANAGE_SUPPLIER_SOURCES). The worker runs it.',
+  })
+  requestScan(
+    @Param('id') id: string,
+    @Body() body: VersionDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SupplierSourceScanResponse> {
+    return this.sources.requestScan(
+      this.session(request),
+      id,
+      body as SupplierSourceScanRequest,
       this.requestId(response),
     );
   }

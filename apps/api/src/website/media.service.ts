@@ -4,7 +4,7 @@ import type {
   MediaUpdateRequest,
   MediaUploadResponse,
 } from '@lucy-spa/contracts';
-import { MediaNotFoundError, newMediaKey, type MediaStorage } from '@lucy-spa/server';
+import { MediaNotFoundError, putProcessedImage, type MediaStorage } from '@lucy-spa/server';
 import { Inject, Injectable } from '@nestjs/common';
 import type { Readable } from 'node:stream';
 import type { Logger } from 'pino';
@@ -185,25 +185,11 @@ export class MediaService {
   }
 
   private async store(image: ProcessedImage): Promise<StoredMedia> {
-    const now = new Date();
-    const originalKey = newMediaKey(image.extension, now);
-    const variantKeys = Object.fromEntries(
-      image.variants.map((variant) => [
-        variant.kind,
-        newMediaKey('webp', now, variant.kind.toLowerCase()),
-      ]),
-    ) as StoredMedia['variantKeys'];
-    const stored: StoredMedia = { originalKey, variantKeys };
     try {
-      await this.storage.put(originalKey, image.original, image.mime);
-      for (const variant of image.variants) {
-        await this.storage.put(variantKeys[variant.kind], variant.bytes, 'image/webp');
-      }
+      return await putProcessedImage(this.storage, image);
     } catch {
-      await this.discard(this.keysOf(stored));
       throw new AuthError('SERVICE_UNAVAILABLE');
     }
-    return stored;
   }
 
   private keysOf(stored: StoredMedia): string[] {
