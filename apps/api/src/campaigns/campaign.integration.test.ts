@@ -213,7 +213,9 @@ test(
           );
           const p1 = await product('c1', 100_000);
           const p2 = await product('c2', 199_999);
-          const p3 = await product('c3', 50_000);
+          // The label is not hex: the search also reads the SKU, which carries the random 8-hex run id, so a label like `c3` matched the
+          // other products whenever that id happened to contain "c3" (about 1 run in 40) and the test failed at random.
+          const p3 = await product('w3', 50_000);
           const draftOnly = {
             variantId: (await k.product('c4', [80_000], { publish: false })).variants[0]!.id,
           };
@@ -265,7 +267,7 @@ test(
             picker.rows.every((r) => r.groupId !== null),
             'the picker says what is already chosen',
           );
-          const all = await campaigns.picker(owner.token, c.id, { q: 'san pham c3' });
+          const all = await campaigns.picker(owner.token, c.id, { q: 'san pham w3' });
           assert.equal(all.total, 1);
           assert.equal(all.rows[0]!.groupId, first.id);
           const fresh = await create();

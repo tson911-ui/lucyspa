@@ -89,11 +89,14 @@ test(
           sharp({ create: { width: 24, height: 16, channels: 3, background: color } })
             .png()
             .toBuffer();
+        // `occurred_at` has millisecond precision and the OPENED and WINDOW_EXCEPTION lines of one case are written back to back, so
+        // they often share a millisecond; a random uuid then decided the order and CI failed about every other run. The kind (the enum
+        // is declared in lifecycle order: OPENED first, WINDOW_EXCEPTION last) is the tie-break; distinct instants still decide first.
         const eventKinds = async (caseId: string) =>
           (
             await tx.productReturnEvent.findMany({
               where: { caseId },
-              orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
+              orderBy: [{ occurredAt: 'asc' }, { kind: 'asc' }],
               select: { kind: true },
             })
           ).map((event) => event.kind);
