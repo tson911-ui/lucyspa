@@ -320,12 +320,13 @@ test(
         async () => {
           for (let index = 0; index < 22; index += 1) {
             const extra = await k.product(`bulk${index}`, [10_000 + index]);
-            await rename(extra.id, `Hàng loạt ${String(index).padStart(2, '0')}`, `Bulk ${index}`);
+            // The token is not hex ("q07"): the fixture SKUs and codes contain a random hex run id that could otherwise match a narrow query.
+            await rename(extra.id, `Hàng loạt q${String(index).padStart(2, '0')}`, `Bulk ${index}`);
           }
           const response = await options(people.cashier, A.id, 'hang loat');
           assert.equal(response.products.length, 20);
           assert.equal(response.truncated, true);
-          const narrow = await options(people.cashier, A.id, 'hang loat 07');
+          const narrow = await options(people.cashier, A.id, 'hang loat q07');
           assert.equal(narrow.products.length, 1);
           assert.equal(narrow.truncated, false);
         },
