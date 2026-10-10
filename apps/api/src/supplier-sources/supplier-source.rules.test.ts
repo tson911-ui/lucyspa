@@ -5,6 +5,7 @@ import { normalizeSourceUrl, shopToday, sourceGaps } from './supplier-source.rul
 
 const complete = {
   isEnabled: false,
+  status: 'READY' as const,
   permissionGivenBy: 'Chị Hà',
   permissionMethod: 'Zalo',
   permissionDate: new Date('2026-10-01T00:00:00.000Z'),
@@ -33,6 +34,22 @@ test('the gate lists what is missing in the order a person fixes it', () => {
   assert.deepEqual(sourceGaps({ ...complete, permissionConfirmedAt: null }), [
     'PERMISSION_CONFIRMATION',
   ]);
+});
+
+test('from P9-3 a source also needs a confirmed Test Source: the status must be READY', () => {
+  for (const status of [
+    'PENDING_VALIDATION',
+    'ADAPTER_REQUIRED',
+    'AUTHENTICATION_REQUIRED',
+    'SOURCE_ERROR',
+  ] as const) {
+    assert.deepEqual(sourceGaps({ ...complete, status }), ['TEST_REQUIRED'], status);
+  }
+  assert.deepEqual(
+    sourceGaps({ ...complete, status: 'PENDING_VALIDATION', permissionConfirmedAt: null }),
+    ['PERMISSION_CONFIRMATION', 'TEST_REQUIRED'],
+    'the permission comes first',
+  );
 });
 
 test('permission to reuse prices is not part of the gate: text or images is enough', () => {

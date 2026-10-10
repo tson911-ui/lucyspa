@@ -60,6 +60,8 @@ const SELECT = {
   permissionConfirmedBy: { select: { id: true, fullName: true } },
 } satisfies Prisma.SupplierSourceSelect;
 
+export const SOURCE_ITEM_SELECT = SELECT;
+
 type Row = Prisma.SupplierSourceGetPayload<{ select: typeof SELECT }>;
 
 const day = (value: Date | null): string | null =>
@@ -446,6 +448,8 @@ export async function enableSource(
   if (gap === 'PERMISSION_CONFIRMATION') {
     throw new AuthError('SUPPLIER_SOURCE_PERMISSION_UNCONFIRMED');
   }
+  // From P9-3 a person must also have confirmed a successful Test Source of the current address (status READY).
+  if (gap === 'TEST_REQUIRED') throw new AuthError('SUPPLIER_SOURCE_NOT_READY');
   await tx.supplierSource.update({
     where: { id: row.id },
     data: { isEnabled: true, rowVersion: row.rowVersion + 1 },

@@ -276,3 +276,4 @@ export {
 export * from './product-import/columns.js';
 export * from './product-import/spreadsheet.js';
 export * from './product-import/template.js';
+export * from './supplier-import/index.js';

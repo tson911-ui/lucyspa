@@ -43,6 +43,7 @@ import {
   sourceActions,
   sourceCreateRequest,
   sourceErrorText,
+  statusTone,
   SUPPLIER_NAME_MAX,
   SUPPLIER_SOURCE_NAME_MAX,
   SUPPLIER_SOURCE_PERMISSION_FIELD_MAX,
@@ -57,6 +58,7 @@ import {
 import { useClientPaging } from '../../../lib/workforce/use-client-paging';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
+import { TestDrawer } from './supplier-source-test';
 import {
   Badge,
   Button,
@@ -123,6 +125,7 @@ type Overlay =
   | { kind: 'edit'; item: SupplierSourceItem }
   | { kind: 'permission'; item: SupplierSourceItem }
   | { kind: 'confirm'; item: SupplierSourceItem }
+  | { kind: 'test'; item: SupplierSourceItem }
   | { kind: 'enable'; item: SupplierSourceItem }
   | { kind: 'disable'; item: SupplierSourceItem }
   | null;
@@ -186,7 +189,7 @@ export function SourcesView({
       header: text.columns.address,
       truncate: true,
       width: 'lg',
-      hideBelow: 'wide',
+      hideBelow: '2xl',
       cell: (item) => item.baseUrl ?? text.noAddress,
     },
     {
@@ -202,6 +205,12 @@ export function SourcesView({
           </Badge>
         );
       },
+    },
+    {
+      key: 'status',
+      header: text.columns.status,
+      hideBelow: 'wide',
+      cell: (item) => <Badge tone={statusTone(item.status)}>{text.statuses[item.status]}</Badge>,
     },
     {
       key: 'state',
@@ -309,6 +318,21 @@ export function SourcesView({
           item={overlay.item}
           onClose={() => setOverlay(null)}
           onDone={finish(text.permissionSaved)}
+          onConflict={reload}
+        />
+      ) : null}
+      {overlay?.kind === 'test' ? (
+        <TestDrawer
+          item={list.items.find((source) => source.id === overlay.item.id) ?? overlay.item}
+          canManage={list.canManage}
+          onClose={() => setOverlay(null)}
+          onSource={(source) =>
+            onChange({
+              ...list,
+              items: list.items.map((entry) => (entry.id === source.id ? source : entry)),
+            })
+          }
+          onSettled={() => void reload()}
           onConflict={reload}
         />
       ) : null}

@@ -527,6 +527,8 @@ model User {
   createdCampaigns               ProductCampaign[]                @relation("CampaignCreator")
   createdSupplierSources         SupplierSource[]                 @relation("SupplierSourceCreator")
   confirmedSupplierSources       SupplierSource[]                 @relation("SupplierSourceConfirmer")
+  requestedSourceTests           SupplierSourceTest[]             @relation("SourceTestRequester")
+  confirmedSourceTests           SupplierSourceTest[]             @relation("SourceTestConfirmer")
   runImportScans                 ImportScan[]                     @relation("ImportScanActor")
   decidedImportCandidates        ImportCandidate[]                @relation("ImportCandidateDecider")
   matchedCandidateSources        CandidateSource[]                @relation("CandidateSourceMatcher")
@@ -4532,6 +4534,13 @@ enum ImportScanStatus {
   SUSPECT
 }
 
+enum SourceTestStatus {
+  QUEUED
+  RUNNING
+  PASSED
+  FAILED
+}
+
 enum SourceRecordState {
   PRESENT
   MISSING
@@ -4592,11 +4601,43 @@ model SupplierSource {
   updatedAt                    DateTime              @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   scans                        ImportScan[]
   records                      SourceRecord[]
+  tests                        SupplierSourceTest[]
 
   @@unique([supplierId, name], map: "supplier_sources_supplier_name_key")
   @@unique([supplierId, baseUrl], map: "supplier_sources_supplier_url_key")
   @@index([isEnabled, scanCadence], map: "supplier_sources_enabled_idx")
   @@map("supplier_sources")
+}
+
+/// P9-3: one Test Source run (the worker reads robots.txt and one page of at most 20 products). A person confirms a passed test; only a
+/// confirmed, passed test of the source's current address can make it READY (enforced by a database trigger).
+model SupplierSourceTest {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  seq                 BigInt                @default(autoincrement())
+  sourceId            String                @map("source_id") @db.Uuid
+  source              SupplierSource        @relation(fields: [sourceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  baseUrl             String                @map("base_url")
+  status              SourceTestStatus      @default(QUEUED)
+  requestedByUserId   String                @map("requested_by_user_id") @db.Uuid
+  requestedBy         User                  @relation("SourceTestRequester", fields: [requestedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  requestedAt         DateTime              @default(dbgenerated("clock_timestamp()")) @map("requested_at") @db.Timestamptz(3)
+  startedAt           DateTime?             @map("started_at") @db.Timestamptz(3)
+  finishedAt          DateTime?             @map("finished_at") @db.Timestamptz(3)
+  leaseExpiresAt      DateTime?             @map("lease_expires_at") @db.Timestamptz(3)
+  failureCode         String?               @map("failure_code") @db.VarChar(40)
+  failureDetail       String?               @map("failure_detail") @db.VarChar(200)
+  failureSourceStatus SupplierSourceStatus? @map("failure_source_status")
+  summary             Json                  @default("{}") @db.JsonB
+  sample              Json                  @default("[]") @db.JsonB
+  problems            Json                  @default("[]") @db.JsonB
+  requestCount        Int                   @default(0) @map("request_count")
+  confirmedByUserId   String?               @map("confirmed_by_user_id") @db.Uuid
+  confirmedBy         User?                 @relation("SourceTestConfirmer", fields: [confirmedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  confirmedAt         DateTime?             @map("confirmed_at") @db.Timestamptz(3)
+  createdAt           DateTime              @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([sourceId, seq(sort: Desc)], map: "supplier_source_tests_source_idx")
+  @@map("supplier_source_tests")
 }
 
 /// P9-2: one run of a source (the import history, PRD 30.7). A null actor means the schedule ran it.

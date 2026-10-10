@@ -208,6 +208,19 @@ const errors = {
   ],
   SUPPLIER_SOURCE_NOT_COVERED: [409, 'The permission must cover text or images'],
   SUPPLIER_SOURCE_PERMISSION_UNCONFIRMED: [409, 'Confirm the permission record first'],
+  // Phase 9 P9-3: Test Source.
+  SUPPLIER_SOURCE_NOT_READY: [
+    409,
+    'Run a Test Source and confirm the sample before enabling this source',
+  ],
+  SUPPLIER_SOURCE_TEST_UNSUPPORTED: [409, 'This kind of source cannot be tested yet'],
+  SUPPLIER_SOURCE_TEST_ACTIVE: [409, 'A test of this source is already queued or running'],
+  SUPPLIER_SOURCE_TEST_NOT_PASSED: [409, 'Only a passed test can be confirmed'],
+  SUPPLIER_SOURCE_TEST_ALREADY_CONFIRMED: [409, 'This test is already confirmed'],
+  SUPPLIER_SOURCE_TEST_OUTDATED: [
+    409,
+    'A newer test exists or the address changed; confirm the latest test',
+  ],
   // Phase 6 P6-5: the Excel/CSV import. The field of IMPORT_FILE_INVALID names the reason (never file content).
   IMPORT_FILE_INVALID: [422, 'The file cannot be imported'],
   IMPORT_JOB_NOT_PREVIEWED: [409, 'Only a previewed import can be applied or cancelled'],

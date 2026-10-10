@@ -5,6 +5,7 @@ import type {
   SupplierSourceItem,
   SupplierSourceKind,
   SupplierSourcePermissionRequest,
+  SupplierSourceTestItem,
 } from '@lucy-spa/contracts';
 import {
   SUPPLIER_NAME_MAX,
@@ -223,13 +224,15 @@ export function permissionState(item: SupplierSourceItem): PermissionState {
 }
 
 /** The menu a row offers, in order. Reviewers (who cannot manage) get none. */
-export type SourceAction = 'edit' | 'permission' | 'confirm' | 'enable' | 'disable';
+export type SourceAction = 'edit' | 'permission' | 'confirm' | 'test' | 'enable' | 'disable';
 
 export function sourceActions(item: SupplierSourceItem, canManage: boolean): SourceAction[] {
   if (!canManage) return [];
   const actions: SourceAction[] = ['edit', 'permission'];
   const state = permissionState(item);
   if (state === 'pending') actions.push('confirm');
+  // Nothing is read from a supplier's site before the permission is confirmed (and a file source has nothing to read yet).
+  if (state === 'confirmed' && item.kind !== 'FILE') actions.push('test');
   if (item.isEnabled) actions.push('disable');
   else if (item.gaps.length === 0) actions.push('enable');
   return actions;
@@ -255,3 +258,22 @@ export const isSourceConflict = (error: unknown): boolean =>
 /** The field a refused command names, so the form can mark it. */
 export const fieldOfSourceError = (error: unknown): string | null =>
   error instanceof ApiError ? (error.field ?? null) : null;
+
+/** Tone of the source status badge: READY is good, not tested yet is neutral, everything else needs attention. */
+export function statusTone(
+  status: SupplierSourceItem['status'],
+): 'success' | 'neutral' | 'warning' | 'error' {
+  if (status === 'READY') return 'success';
+  if (status === 'PENDING_VALIDATION') return 'neutral';
+  return status === 'SOURCE_ERROR' ? 'error' : 'warning';
+}
+
+/** Whether a test may be queued now: the permission is confirmed (no permission gap), the source has an address, none is running. */
+export function canRunTest(
+  item: SupplierSourceItem,
+  latest: SupplierSourceTestItem | null,
+): boolean {
+  const permissionGap = item.gaps.some((gap) => gap.startsWith('PERMISSION_'));
+  const active = latest?.status === 'QUEUED' || latest?.status === 'RUNNING';
+  return item.kind !== 'FILE' && item.baseUrl !== null && !permissionGap && !active;
+}

@@ -46,7 +46,7 @@ const source = (patch: Partial<SupplierSourceItem> = {}): SupplierSourceItem => 
     confirmedAt: null,
     confirmedBy: null,
   },
-  gaps: ['PERMISSION_RECORD', 'PERMISSION_COVERAGE', 'PERMISSION_CONFIRMATION'],
+  gaps: ['PERMISSION_RECORD', 'PERMISSION_COVERAGE', 'PERMISSION_CONFIRMATION', 'TEST_REQUIRED'],
   lastSuccessAt: null,
   rowVersion: 1,
   createdAt: '2026-10-10T03:00:00.000Z',
@@ -55,7 +55,7 @@ const source = (patch: Partial<SupplierSourceItem> = {}): SupplierSourceItem => 
 
 const recorded = (patch: Partial<SupplierSourceItem['permission']> = {}) =>
   source({
-    gaps: ['PERMISSION_CONFIRMATION'],
+    gaps: ['PERMISSION_CONFIRMATION', 'TEST_REQUIRED'],
     permission: {
       givenBy: 'Chị Hà',
       method: 'Tin nhắn Zalo',
@@ -70,14 +70,18 @@ const recorded = (patch: Partial<SupplierSourceItem['permission']> = {}) =>
     },
   });
 
-const ready = () =>
+/** Permission confirmed but no sample confirmed yet. */
+const tested = () =>
   source({
     ...recorded({
       confirmedAt: '2026-10-02T03:00:00.000Z',
       confirmedBy: { id: 'u1', name: 'Chủ' },
     }),
-    gaps: [],
+    gaps: ['TEST_REQUIRED'],
   });
+
+/** Permission confirmed and a person confirmed the sample: nothing is missing. */
+const ready = () => ({ ...tested(), status: 'READY' as const, gaps: [] });
 
 const list = (
   items: SupplierSourceItem[],
@@ -169,18 +173,25 @@ test('the permission column reads: not recorded, waiting for confirmation, confi
 test('the row menu follows the gate: confirm only when a record waits, enable only when nothing is missing', () => {
   assert.deepEqual(sourceActions(source(), true), ['edit', 'permission']);
   assert.deepEqual(sourceActions(recorded(), true), ['edit', 'permission', 'confirm']);
-  assert.deepEqual(sourceActions(ready(), true), ['edit', 'permission', 'enable']);
+  assert.deepEqual(sourceActions(tested(), true), ['edit', 'permission', 'test']);
+  assert.deepEqual(sourceActions(ready(), true), ['edit', 'permission', 'test', 'enable']);
   assert.deepEqual(sourceActions({ ...ready(), isEnabled: true, gaps: [] }, true), [
     'edit',
     'permission',
+    'test',
     'disable',
   ]);
+  assert.deepEqual(
+    sourceActions({ ...ready(), kind: 'FILE', baseUrl: null }, true),
+    ['edit', 'permission', 'enable'],
+    'a file source has nothing to read, so no test',
+  );
   // A recorded permission that covers neither text nor images can be confirmed but not enabled.
   assert.deepEqual(
     sourceActions(
       {
         ...recorded({ permitsText: false, permitsImages: false }),
-        gaps: ['PERMISSION_COVERAGE', 'PERMISSION_CONFIRMATION'],
+        gaps: ['PERMISSION_COVERAGE', 'PERMISSION_CONFIRMATION', 'TEST_REQUIRED'],
       },
       true,
     ),

@@ -6,6 +6,10 @@ import type {
   SupplierSourceListResponse,
   SupplierSourcePermissionRequest,
   SupplierSourceResponse,
+  SupplierSourceTestConfirmResponse,
+  SupplierSourceTestListResponse,
+  SupplierSourceTestRequest,
+  SupplierSourceTestResponse,
   SupplierSourceVersionRequest,
 } from '@lucy-spa/contracts';
 import { Body, Controller, Get, HttpCode, Inject, Param, Post, Req, Res } from '@nestjs/common';
@@ -144,6 +148,57 @@ export class SupplierSourceController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<SupplierSourceResponse> {
     return this.sources.enable(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Get(':id/tests')
+  @ApiOkResponse({
+    description:
+      'The latest Test Source runs of one source with their samples (supplier prices only for MANAGE_PRODUCT_PRICES).',
+  })
+  tests(@Param('id') id: string, @Req() request: Request): Promise<SupplierSourceTestListResponse> {
+    return this.sources.tests(this.session(request), id);
+  }
+
+  @Post(':id/tests')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Queues a Test Source (MANAGE_SUPPLIER_SOURCES; the permission must be recorded and confirmed). The worker runs it.',
+  })
+  requestTest(
+    @Param('id') id: string,
+    @Body() body: VersionDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SupplierSourceTestResponse> {
+    return this.sources.requestTest(
+      this.session(request),
+      id,
+      body as SupplierSourceTestRequest,
+      this.requestId(response),
+    );
+  }
+
+  @Post(':id/tests/:testId/confirm')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'A person confirms the passed sample of the latest test; the source becomes READY (MANAGE_SUPPLIER_SOURCES).',
+  })
+  confirmTest(
+    @Param('id') id: string,
+    @Param('testId') testId: string,
+    @Body() body: VersionDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SupplierSourceTestConfirmResponse> {
+    return this.sources.confirmTest(
+      this.session(request),
+      id,
+      testId,
+      body,
+      this.requestId(response),
+    );
   }
 
   @Post(':id/disable')

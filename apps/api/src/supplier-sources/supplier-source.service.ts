@@ -4,6 +4,10 @@ import type {
   SupplierSourceListResponse,
   SupplierSourcePermissionRequest,
   SupplierSourceResponse,
+  SupplierSourceTestConfirmResponse,
+  SupplierSourceTestListResponse,
+  SupplierSourceTestRequest,
+  SupplierSourceTestResponse,
   SupplierSourceVersionRequest,
 } from '@lucy-spa/contracts';
 import { Inject, Injectable } from '@nestjs/common';
@@ -13,6 +17,7 @@ import { SessionService } from '../auth/session.service.js';
 import { runAdminCommand, type AdminContext } from '../authorization/admin-command.js';
 import { sqlStateOf } from '../booking/customer-command.js';
 import * as core from './supplier-source.core.js';
+import * as testCore from './supplier-source-test.core.js';
 
 /**
  * Phase 9 P9-2: supplier source administration (`MANAGE_SUPPLIER_SOURCES`, `REVIEW_SUPPLIER_IMPORTS` to read; decided inside each
@@ -77,7 +82,37 @@ export class SupplierSourceService {
     return this.run(token, requestId, (context) => core.disableSource(context, id, body));
   }
 
-  private run<T extends SupplierSourceListResponse | SupplierSourceResponse>(
+  tests(token: string | undefined, id: string): Promise<SupplierSourceTestListResponse> {
+    return this.run(token, undefined, (context) => testCore.listTests(context, id));
+  }
+
+  requestTest(
+    token: string | undefined,
+    id: string,
+    body: SupplierSourceTestRequest,
+    requestId?: string,
+  ) {
+    return this.run(token, requestId, (context) => testCore.requestTest(context, id, body));
+  }
+
+  confirmTest(
+    token: string | undefined,
+    id: string,
+    testId: string,
+    body: SupplierSourceVersionRequest,
+    requestId?: string,
+  ) {
+    return this.run(token, requestId, (context) => testCore.confirmTest(context, id, testId, body));
+  }
+
+  private run<
+    T extends
+      | SupplierSourceListResponse
+      | SupplierSourceResponse
+      | SupplierSourceTestListResponse
+      | SupplierSourceTestResponse
+      | SupplierSourceTestConfirmResponse,
+  >(
     token: string | undefined,
     requestId: string | undefined,
     work: (context: AdminContext) => Promise<T>,

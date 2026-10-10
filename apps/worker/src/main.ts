@@ -16,6 +16,7 @@ import { startInvoiceNotifications } from './invoice-notification-jobs.js';
 import { startLeaveNotifications } from './leave-jobs.js';
 import { startLoyaltyPoints } from './loyalty-jobs.js';
 import { startPayosReconciliation } from './payos-jobs.js';
+import { startSourceTests } from './source-test-jobs.js';
 
 const bootstrapLogger = createLogger('worker', 'info');
 
@@ -34,6 +35,7 @@ async function bootstrap() {
   let loyaltyPoints: { stop(): Promise<void> } | undefined;
   let inventoryAlerts: { stop(): Promise<void> } | undefined;
   let inventorySales: { stop(): Promise<void> } | undefined;
+  let sourceTests: { stop(): Promise<void> } | undefined;
   try {
     await database.$queryRaw`SELECT 1`;
     worker = new Worker(SYSTEM_CHECK_QUEUE, async (job) => processSystemCheck(job), {
@@ -65,8 +67,10 @@ async function bootstrap() {
     loyaltyPoints = startLoyaltyPoints(database, logger);
     inventoryAlerts = startInventoryAlerts(database, logger);
     inventorySales = startInventorySales(database, logger);
+    sourceTests = startSourceTests(database, logger);
     logger.info({ queue: SYSTEM_CHECK_QUEUE }, 'Worker ready');
   } catch (error) {
+    await sourceTests?.stop();
     await inventorySales?.stop();
     await inventoryAlerts?.stop();
     await loyaltyPoints?.stop();
@@ -86,6 +90,7 @@ async function bootstrap() {
     const deadline = setTimeout(() => process.exit(1), 15000);
     deadline.unref();
     try {
+      await sourceTests?.stop();
       await inventorySales?.stop();
       await inventoryAlerts?.stop();
       await loyaltyPoints?.stop();

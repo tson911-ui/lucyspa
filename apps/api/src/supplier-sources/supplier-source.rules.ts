@@ -1,4 +1,4 @@
-import type { SupplierSourceGap } from '@lucy-spa/contracts';
+import type { SupplierSourceGap, SupplierSourceStatus } from '@lucy-spa/contracts';
 import { isIP } from 'node:net';
 import { AuthError } from '../auth/auth.error.js';
 
@@ -9,6 +9,7 @@ import { AuthError } from '../auth/auth.error.js';
 
 export interface GateFacts {
   isEnabled: boolean;
+  status: SupplierSourceStatus;
   permissionGivenBy: string | null;
   permissionMethod: string | null;
   permissionDate: Date | null;
@@ -26,6 +27,8 @@ export function sourceGaps(facts: GateFacts): SupplierSourceGap[] {
   }
   if (!facts.permitsText && !facts.permitsImages) gaps.push('PERMISSION_COVERAGE');
   if (facts.permissionConfirmedAt === null) gaps.push('PERMISSION_CONFIRMATION');
+  // From P9-3 a person must also have confirmed a successful Test Source of the current address: the status is then READY.
+  if (facts.status !== 'READY') gaps.push('TEST_REQUIRED');
   return gaps;
 }
 

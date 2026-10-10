@@ -27,7 +27,11 @@ export const SUPPLIER_NAME_MAX = 200;
 
 /** What still stops a source from being enabled, in the order a person fixes it. */
 export type SupplierSourceGap =
-  'PERMISSION_RECORD' | 'PERMISSION_COVERAGE' | 'PERMISSION_CONFIRMATION';
+  | 'PERMISSION_RECORD'
+  | 'PERMISSION_COVERAGE'
+  | 'PERMISSION_CONFIRMATION'
+  /** P9-3: no confirmed, successful Test Source yet (the status is not READY). */
+  | 'TEST_REQUIRED';
 
 export interface SupplierSourcePermission {
   givenBy: string | null;
@@ -118,4 +122,93 @@ export interface SupplierSourceVersionRequest {
 
 export interface SupplierSourceResponse {
   item: SupplierSourceItem;
+}
+
+// ---------------------------------------------------------------------------------------------------------- Test Source (P9-3)
+
+export const SOURCE_TEST_STATUSES = ['QUEUED', 'RUNNING', 'PASSED', 'FAILED'] as const;
+export type SourceTestStatus = (typeof SOURCE_TEST_STATUSES)[number];
+
+/** One product of the 20-product sample a Test Source reads (page 1 of the site's product list). */
+export interface SourceTestSampleEntry {
+  key: string;
+  name: string;
+  sku: string | null;
+  url: string;
+  type: string;
+  brandText: string | null;
+  categoryNames: string[];
+  /** Reference only. Absent for a caller without MANAGE_PRODUCT_PRICES. */
+  priceVnd?: number | null;
+  promoPriceVnd?: number | null;
+  currency: string;
+  imageCount: number;
+  firstImageUrl: string | null;
+  descriptionLength: number;
+  variationCount: number;
+  problems: string[];
+}
+
+export interface SourceTestSummary {
+  total: number | null;
+  sampled: number;
+  usable: number;
+  withSku: number;
+  withPrice: number;
+  withImages: number;
+  withCategory: number;
+  withDescription: number;
+  robots: 'ALLOWED' | 'NO_FILE';
+  crawlDelaySeconds: number | null;
+}
+
+export interface SourceTestProblemGroup {
+  code: string;
+  count: number;
+  keys: string[];
+}
+
+export interface SupplierSourceTestItem {
+  id: string;
+  status: SourceTestStatus;
+  baseUrl: string;
+  requestedAt: string;
+  requestedBy: { id: string; name: string };
+  startedAt: string | null;
+  finishedAt: string | null;
+  failure: {
+    code: string;
+    detail: string | null;
+    sourceStatus: SupplierSourceStatus | null;
+  } | null;
+  summary: SourceTestSummary | null;
+  sample: SourceTestSampleEntry[];
+  problems: SourceTestProblemGroup[];
+  requestCount: number;
+  confirmedAt: string | null;
+  confirmedBy: { id: string; name: string } | null;
+  /** True when a person may confirm this test now: passed, unconfirmed, the latest one, for the source's current address. */
+  canConfirm: boolean;
+}
+
+/** GET /api/v1/supplier-sources/:id/tests: the latest tests of one source, newest first (at most ten). */
+export interface SupplierSourceTestListResponse {
+  items: SupplierSourceTestItem[];
+  /** False when the supplier prices were removed from the sample (the caller lacks MANAGE_PRODUCT_PRICES). */
+  pricesVisible: boolean;
+}
+
+/** POST /api/v1/supplier-sources/:id/tests: queue a Test Source (MANAGE_SUPPLIER_SOURCES, permission confirmed first). */
+export interface SupplierSourceTestRequest {
+  expectedVersion: number;
+}
+
+export interface SupplierSourceTestResponse {
+  item: SupplierSourceTestItem;
+}
+
+/** POST /api/v1/supplier-sources/:id/tests/:testId/confirm: a person confirms the passed sample; the source becomes READY. */
+export interface SupplierSourceTestConfirmResponse {
+  item: SupplierSourceItem;
+  test: SupplierSourceTestItem;
 }
