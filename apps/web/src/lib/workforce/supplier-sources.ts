@@ -224,7 +224,8 @@ export function permissionState(item: SupplierSourceItem): PermissionState {
 }
 
 /** The menu a row offers, in order. Reviewers (who cannot manage) get none. */
-export type SourceAction = 'edit' | 'permission' | 'confirm' | 'test' | 'enable' | 'disable';
+export type SourceAction =
+  'edit' | 'permission' | 'confirm' | 'test' | 'scan' | 'enable' | 'disable';
 
 export function sourceActions(item: SupplierSourceItem, canManage: boolean): SourceAction[] {
   if (!canManage) return [];
@@ -233,6 +234,8 @@ export function sourceActions(item: SupplierSourceItem, canManage: boolean): Sou
   if (state === 'pending') actions.push('confirm');
   // Nothing is read from a supplier's site before the permission is confirmed (and a file source has nothing to read yet).
   if (state === 'confirmed' && item.kind !== 'FILE') actions.push('test');
+  // A sample scan needs a source that is switched on and ready (the server repeats the rule).
+  if (item.isEnabled && item.status === 'READY' && item.kind !== 'FILE') actions.push('scan');
   if (item.isEnabled) actions.push('disable');
   else if (item.gaps.length === 0) actions.push('enable');
   return actions;

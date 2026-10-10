@@ -104,6 +104,7 @@ export {
 } from './candidate-rules.js';
 export {
   evaluateCandidates,
+  reduceDecisions,
   saveMapping,
   type EvaluationSummary,
   type MappingInput,

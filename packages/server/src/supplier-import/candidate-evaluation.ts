@@ -122,7 +122,27 @@ const CANDIDATE_SELECT = {
     where: { retiredAt: null },
     select: { id: true, sourceUrl: true, flag: true },
   },
+  decisions: {
+    orderBy: { seq: 'asc' },
+    select: { kind: true, imageId: true, ref: true },
+  },
 } satisfies Prisma.ImportCandidateSelect;
+
+/** The latest decision of each picture and every look-alike kept separate (a later decision replaces an earlier one). */
+export function reduceDecisions(
+  rows: readonly { kind: string; imageId: string | null; ref: string | null }[],
+): { images: Map<string, 'KEEP' | 'DROP'>; keptSeparate: Set<string> } {
+  const images = new Map<string, 'KEEP' | 'DROP'>();
+  const keptSeparate = new Set<string>();
+  for (const row of rows) {
+    if (row.imageId !== null && (row.kind === 'IMAGE_KEEP' || row.kind === 'IMAGE_DROP')) {
+      images.set(row.imageId, row.kind === 'IMAGE_KEEP' ? 'KEEP' : 'DROP');
+    } else if (row.ref !== null && row.kind === 'DUPLICATE_KEEP_SEPARATE') {
+      keptSeparate.add(row.ref);
+    }
+  }
+  return { images, keptSeparate };
+}
 
 async function loadContext(
   tx: Tx,
@@ -286,6 +306,7 @@ export async function evaluateCandidates(
           },
           host: hostOf(link.source.baseUrl),
           images: row.images,
+          decisions: reduceDecisions(row.decisions),
         },
         {
           ...base,

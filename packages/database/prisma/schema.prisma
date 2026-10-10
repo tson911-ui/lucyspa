@@ -529,6 +529,7 @@ model User {
   confirmedSupplierSources       SupplierSource[]                 @relation("SupplierSourceConfirmer")
   requestedSourceTests           SupplierSourceTest[]             @relation("SourceTestRequester")
   confirmedSourceTests           SupplierSourceTest[]             @relation("SourceTestConfirmer")
+  reviewDecisions                CandidateReviewDecision[]        @relation("ReviewDecisionActor")
   runImportScans                 ImportScan[]                     @relation("ImportScanActor")
   decidedImportCandidates        ImportCandidate[]                @relation("ImportCandidateDecider")
   matchedCandidateSources        CandidateSource[]                @relation("CandidateSourceMatcher")
@@ -4565,6 +4566,12 @@ enum CandidateMatchKind {
   FUZZY
 }
 
+enum ReviewDecisionKind {
+  IMAGE_KEEP
+  IMAGE_DROP
+  DUPLICATE_KEEP_SEPARATE
+}
+
 enum SourceMappingKind {
   BRAND
   CATEGORY
@@ -4764,6 +4771,7 @@ model ImportCandidate {
   updatedAt         DateTime             @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   sources           CandidateSource[]
   images            CandidateImage[]
+  decisions         CandidateReviewDecision[]
 
   @@index([supplierId, state], map: "import_candidates_state_idx")
   @@map("import_candidates")
@@ -4803,6 +4811,7 @@ model CandidateImage {
   flag             String?         @db.VarChar(24)
   verifiedAt       DateTime        @default(dbgenerated("clock_timestamp()")) @map("verified_at") @db.Timestamptz(3)
   retiredAt        DateTime?       @map("retired_at") @db.Timestamptz(3)
+  decisions        CandidateReviewDecision[]
   createdAt    DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
 
   @@index([candidateId, sortOrder], map: "candidate_images_order_idx")
@@ -4828,4 +4837,24 @@ model SourceValueMapping {
 
   @@unique([supplierId, kind, sourceText], map: "source_value_mappings_text_key")
   @@map("source_value_mappings")
+}
+
+/// P9-6: a reviewer's remembered decision (keep or drop a flagged picture, keep two look-alike products separate). Append-only; the
+/// latest row for a picture or a reference wins.
+model CandidateReviewDecision {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  seq             BigInt             @default(autoincrement())
+  candidateId     String             @map("candidate_id") @db.Uuid
+  candidate       ImportCandidate    @relation(fields: [candidateId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  kind            ReviewDecisionKind
+  imageId         String?            @map("image_id") @db.Uuid
+  image           CandidateImage?    @relation(fields: [imageId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  ref             String?            @db.VarChar(80)
+  decidedByUserId String             @map("decided_by_user_id") @db.Uuid
+  decidedBy       User               @relation("ReviewDecisionActor", fields: [decidedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  decidedAt       DateTime           @default(dbgenerated("clock_timestamp()")) @map("decided_at") @db.Timestamptz(3)
+  note            String?            @db.VarChar(500)
+
+  @@index([candidateId, seq(sort: Desc)], map: "candidate_review_decisions_candidate_idx")
+  @@map("candidate_review_decisions")
 }

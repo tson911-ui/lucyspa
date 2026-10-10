@@ -163,6 +163,7 @@ export type NavKey =
   | 'onlineSales'
   | 'shippingCarriers'
   | 'supplierSources'
+  | 'supplierImports'
   | 'onlineOrders'
   | 'inventory'
   | 'import'
@@ -284,6 +285,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'supplierSources',
       group: 'catalog',
       path: '/supplier-sources',
+    },
+    // Phase 9 P9-6: the review of what the scans found (GLOBAL_ONLY REVIEW_SUPPLIER_IMPORTS).
+    canGlobal(account, 'REVIEW_SUPPLIER_IMPORTS') && {
+      key: 'supplierImports',
+      group: 'catalog',
+      path: '/supplier-imports',
     },
     // Phase 6 P6-4: the inventory (branch-scoped VIEW_INVENTORY / MANAGE_STOCK_RECEIPTS / ADJUST_STOCK, global MANAGE_PRODUCTS for suppliers).
     (canAnywhere(account, 'VIEW_INVENTORY') ||

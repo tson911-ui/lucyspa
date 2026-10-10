@@ -37,6 +37,8 @@ import {
 } from './product-orders/order.controller.js';
 import { ProductOrderService, PublicProductOrderService } from './product-orders/order.service.js';
 import { CampaignController } from './campaigns/campaign.controller.js';
+import { SupplierImportController } from './supplier-imports/supplier-import.controller.js';
+import { SupplierImportService } from './supplier-imports/supplier-import.service.js';
 import { SupplierSourceController } from './supplier-sources/supplier-source.controller.js';
 import { SupplierSourceService } from './supplier-sources/supplier-source.service.js';
 import { CampaignService } from './campaigns/campaign.service.js';
@@ -173,6 +175,7 @@ export class AppModule {
         OnlineOrderController,
         CampaignController,
         SupplierSourceController,
+        SupplierImportController,
         ProductRefundController,
         ProductExchangeController,
         ProductImportController,
@@ -252,6 +255,7 @@ export class AppModule {
         OnlineOrderService,
         CampaignService,
         SupplierSourceService,
+        SupplierImportService,
         ProductRefundService,
         ProductExchangeService,
         ProductImportService,

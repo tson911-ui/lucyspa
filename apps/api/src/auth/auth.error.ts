@@ -217,6 +217,10 @@ const errors = {
   SUPPLIER_SOURCE_TEST_ACTIVE: [409, 'A test of this source is already queued or running'],
   SUPPLIER_SOURCE_TEST_NOT_PASSED: [409, 'Only a passed test can be confirmed'],
   SUPPLIER_SOURCE_TEST_ALREADY_CONFIRMED: [409, 'This test is already confirmed'],
+  // Phase 9 P9-6: the review of supplier candidates. The field of CANDIDATE_BLOCKED names the first thing that stops the approval.
+  CANDIDATE_DECIDED: [409, 'This candidate has already been approved, rejected or ignored'],
+  CANDIDATE_BLOCKED: [409, 'Resolve what stops this candidate before approving it'],
+  CANDIDATE_NOT_READY: [409, 'This candidate is not ready any more'],
   SUPPLIER_SOURCE_NOT_ENABLED: [409, 'Switch the source on before scanning it'],
   SUPPLIER_SOURCE_SCAN_ACTIVE: [409, 'A scan of this source is already queued or running'],
   SUPPLIER_SOURCE_TEST_OUTDATED: [

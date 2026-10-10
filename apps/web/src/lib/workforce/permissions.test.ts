@@ -40,6 +40,8 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'shippingCarriers',
     // Phase 9 P9-2: supplier sources (GLOBAL MANAGE_SUPPLIER_SOURCES / REVIEW_SUPPLIER_IMPORTS; the Owner holds all).
     'supplierSources',
+    // Phase 9 P9-6: the review of what the scans found (GLOBAL REVIEW_SUPPLIER_IMPORTS; the Owner holds all).
+    'supplierImports',
     // Phase 6 P6-4: the inventory (branch VIEW_INVENTORY / MANAGE_STOCK_RECEIPTS / ADJUST_STOCK or global MANAGE_PRODUCTS).
     'inventory',
     // Phase 6 P6-5: the Excel/CSV import (GLOBAL IMPORT_PRODUCT_DATA; the Owner holds all).
@@ -109,6 +111,11 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
   assert.ok(!keys(employee([['MANAGE_PRODUCTS']])).includes('supplierSources'));
   assert.ok(!keys(employee([['MANAGE_SUPPLIER_SOURCES', 'A']])).includes('supplierSources'));
   assert.ok(!keys(customer).includes('supplierSources'));
+  // The review of imported products is for the reviewer only (not the source manager, no branch grant, no customer).
+  assert.ok(keys(employee([['REVIEW_SUPPLIER_IMPORTS']])).includes('supplierImports'));
+  assert.ok(!keys(employee([['MANAGE_SUPPLIER_SOURCES']])).includes('supplierImports'));
+  assert.ok(!keys(employee([['REVIEW_SUPPLIER_IMPORTS', 'A']])).includes('supplierImports'));
+  assert.ok(!keys(customer).includes('supplierImports'));
   // Online orders open with the branch permission to pack or the branch permission to refund; nothing global-only and no customer.
   assert.ok(keys(employee([['MANAGE_PRODUCT_ORDERS', 'A']])).includes('onlineOrders'));
   assert.ok(keys(employee([['REFUND_PRODUCTS', 'A']])).includes('onlineOrders'));

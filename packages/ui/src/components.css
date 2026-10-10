@@ -4817,3 +4817,50 @@
 .ls-policy-default-text p {
   margin: 0;
 }
+
+/* PictureReview: a picture beside the facts of the product it came from (the supplier import review drawer). */
+.ls-picture-review {
+  display: grid;
+  grid-template-columns: 10rem minmax(0, 1fr);
+  gap: var(--ls-space-4);
+  align-items: start;
+}
+
+.ls-picture-review-image {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: var(--ls-radius-sm);
+  color: var(--ls-text-muted);
+  background: var(--ls-bg-sunken);
+}
+
+.ls-picture-review-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.ls-picture-review-body {
+  display: grid;
+  gap: var(--ls-space-3);
+  min-width: 0;
+}
+
+.ls-picture-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2);
+}
+
+@media (max-width: 479px) {
+  .ls-picture-review {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ls-picture-review-image {
+    width: 10rem;
+  }
+}

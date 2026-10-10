@@ -251,6 +251,11 @@ export interface EvaluationInput {
   host: string | null;
   /** The candidate's active pictures. */
   images: readonly { id: string; sourceUrl: string; flag: string | null }[];
+  /** What the reviewer already decided: the latest decision of each picture, and the look-alikes kept separate (`PRODUCT:<id>`). */
+  decisions?: {
+    images: ReadonlyMap<string, 'KEEP' | 'DROP'>;
+    keptSeparate: ReadonlySet<string>;
+  };
 }
 
 export interface OtherCandidate {
@@ -361,8 +366,10 @@ export function evaluateCandidate(
   const key = nameKey(candidate.nameVi, record.attributeTexts);
   const compatible = (other: string | null) =>
     brandId === null || other === null || other === brandId;
+  // Two products the reviewer already said are different are not raised again.
+  const keptSeparate = input.decisions?.keptSeparate ?? new Set<string>();
   const sameProducts = context.products
-    .filter((product) => compatible(product.brandId))
+    .filter((product) => compatible(product.brandId) && !keptSeparate.has(`PRODUCT:${product.id}`))
     .filter(
       (product) =>
         nameKey(product.nameVi) === key ||
@@ -372,18 +379,29 @@ export function evaluateCandidate(
     .map((product) => ({ kind: 'PRODUCT', productId: product.id, name: product.nameVi }));
   const sameCandidates = context.otherCandidates
     .filter((other) => other.id !== candidate.id && !['REJECTED', 'IGNORED'].includes(other.state))
-    .filter((other) => compatible(other.brandId) && nameKey(other.nameVi) === key)
+    .filter(
+      (other) =>
+        compatible(other.brandId) &&
+        !keptSeparate.has(`CANDIDATE:${other.id}`) &&
+        nameKey(other.nameVi) === key,
+    )
     .slice(0, 5)
     .map((other) => ({ kind: 'CANDIDATE', candidateId: other.id, name: other.nameVi }));
   if (sameProducts.length + sameCandidates.length > 0) {
     warnings.push({ code: 'POSSIBLE_DUPLICATE', matches: [...sameProducts, ...sameCandidates] });
   }
 
-  // Pictures: missing while none is active; the picture import's own warnings stay only while they are still true.
-  if (input.images.length === 0) warnings.push({ code: 'IMAGE_MISSING' });
+  // Pictures: missing while none is active (a picture the reviewer dropped does not count); the picture import's own warnings stay
+  // only while they are still true. A flagged picture the reviewer decided about (keep or drop) raises no warning any more.
+  const decidedImages = input.decisions?.images ?? new Map<string, 'KEEP' | 'DROP'>();
+  if (input.images.filter((image) => decidedImages.get(image.id) !== 'DROP').length === 0) {
+    warnings.push({ code: 'IMAGE_MISSING' });
+  }
   const activeUrls = new Set(input.images.map((image) => image.sourceUrl));
   const flagged = new Set(
-    input.images.filter((image) => image.flag !== null).map((image) => image.id),
+    input.images
+      .filter((image) => image.flag !== null && !decidedImages.has(image.id))
+      .map((image) => image.id),
   );
   for (const old of candidate.warnings) {
     if (old.code === 'IMAGE_FAILED') {

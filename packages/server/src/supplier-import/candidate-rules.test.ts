@@ -29,6 +29,7 @@ const input = (
     record?: Partial<EvaluationInput['record']>;
     host?: string | null;
     images?: EvaluationInput['images'];
+    decisions?: EvaluationInput['decisions'];
   } = {},
 ): EvaluationInput => ({
   candidate: {
@@ -58,6 +59,7 @@ const input = (
   },
   host: patch.host === undefined ? 'haruohui.com' : patch.host,
   images: patch.images ?? [{ id: 'i1', sourceUrl: 'https://haruohui.com/a.png', flag: null }],
+  ...(patch.decisions ? { decisions: patch.decisions } : {}),
 });
 
 const codes = (result: ReturnType<typeof evaluateCandidate>) =>
@@ -359,4 +361,64 @@ test('the state: ready only without any warning; a flagged picture always keeps 
     ).filter((c) => /PRICE|DESCRIPTION|IMAGE/.test(c)),
     ['DESCRIPTION_EMPTY', 'IMAGE_MISSING', 'PRICE_MISSING'],
   );
+});
+
+test('a reviewer decision about a flagged picture removes its warning; a dropped picture does not count as a picture', () => {
+  const resolved = {
+    brandMappings: new Map([[foldText('OHUI'), 'b1']]),
+    categoryMappings: new Map([[foldText('Kem Dưỡng'), 'k1']]),
+  };
+  const flaggedInput = (decision?: 'KEEP' | 'DROP') =>
+    input({
+      candidate: { warnings: [{ code: 'IMAGE_SHARED', imageId: 'i1', kind: 'SAME_FILE' }] },
+      images: [{ id: 'i1', sourceUrl: 'https://haruohui.com/a.png', flag: 'SAME_FILE' }],
+      decisions: {
+        images: new Map(decision ? [['i1', decision]] : []),
+        keptSeparate: new Set(),
+      },
+    });
+  assert.equal(evaluateCandidate(flaggedInput(), context(resolved)).state, 'NEEDS_REVIEW');
+  const kept = evaluateCandidate(flaggedInput('KEEP'), context(resolved));
+  assert.deepEqual(kept.warnings, []);
+  assert.equal(kept.state, 'READY_FOR_REVIEW');
+  const dropped = evaluateCandidate(flaggedInput('DROP'), context(resolved));
+  assert.deepEqual(codes(dropped), ['IMAGE_MISSING'], 'the only picture was dropped');
+  assert.equal(dropped.state, 'NEEDS_REVIEW');
+});
+
+test('two look-alike products the reviewer kept separate are not raised again', () => {
+  const products = [{ id: 'p1', nameVi: 'Kem dưỡng ẩm Ohui 50ml', nameEn: '', brandId: null }];
+  const others = [
+    {
+      id: 'c2',
+      nameVi: 'Kem dưỡng ẩm Ohui 50ml',
+      proposedSku: null,
+      brandId: null,
+      state: 'EXTRACTED',
+    },
+  ];
+  const raised = evaluateCandidate(input(), context({ products, otherCandidates: others }));
+  assert.equal(
+    (raised.warnings.find((w) => w.code === 'POSSIBLE_DUPLICATE')?.['matches'] as unknown[]).length,
+    2,
+  );
+  const separate = evaluateCandidate(
+    input({ decisions: { images: new Map(), keptSeparate: new Set(['PRODUCT:p1']) } }),
+    context({ products, otherCandidates: others }),
+  );
+  assert.deepEqual(
+    (
+      separate.warnings.find((w) => w.code === 'POSSIBLE_DUPLICATE')?.['matches'] as {
+        candidateId: string;
+      }[]
+    ).map((m) => m.candidateId),
+    ['c2'],
+  );
+  const both = evaluateCandidate(
+    input({
+      decisions: { images: new Map(), keptSeparate: new Set(['PRODUCT:p1', 'CANDIDATE:c2']) },
+    }),
+    context({ products, otherCandidates: others }),
+  );
+  assert.ok(!both.warnings.some((w) => w.code === 'POSSIBLE_DUPLICATE'));
 });

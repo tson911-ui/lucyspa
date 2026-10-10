@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { cx } from './cx';
+import { DescriptionList, type DescriptionItem } from './description-list';
 import { Icon } from './icons';
 import { FallbackImage } from './image-fallback';
 
@@ -205,5 +206,46 @@ export function ListRow({
       </div>
       {actions ? <div className="ls-media-row-actions">{actions}</div> : null}
     </div>
+  );
+}
+
+/**
+ * One picture of a supplier product beside what a reviewer must know about it (design 9, Phase 9 P9-6): the picture, contained and
+ * never cropped, and the facts of the product it was read from (name, SKU, link to its page, where the file came from), the badges
+ * (a flag when the same file sits on another product) and the buttons that decide about it. No frame of its own: the drawer
+ * around it is the surface. On a narrow screen the picture takes its own line above the text.
+ */
+export function PictureReview({
+  src,
+  alt,
+  facts,
+  badges,
+  actions,
+}: {
+  /** A rendition of the picture. */
+  src: string;
+  /** Short text for assistive technology (the facts beside it carry the real information). */
+  alt: string;
+  facts: readonly DescriptionItem[];
+  badges?: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <article className="ls-picture-review">
+      <span className="ls-picture-review-image">
+        <FallbackImage
+          src={src}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          fallback={<ImageGone />}
+        />
+      </span>
+      <div className="ls-picture-review-body">
+        <DescriptionList items={facts} />
+        {badges ? <div className="ls-media-badges">{badges}</div> : null}
+        {actions ? <div className="ls-picture-review-actions">{actions}</div> : null}
+      </div>
+    </article>
   );
 }

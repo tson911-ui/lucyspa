@@ -58,6 +58,7 @@ import {
 import { useClientPaging } from '../../../lib/workforce/use-client-paging';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
+import { ScanDrawer } from './supplier-source-scan';
 import { TestDrawer } from './supplier-source-test';
 import {
   Badge,
@@ -126,6 +127,7 @@ type Overlay =
   | { kind: 'permission'; item: SupplierSourceItem }
   | { kind: 'confirm'; item: SupplierSourceItem }
   | { kind: 'test'; item: SupplierSourceItem }
+  | { kind: 'scan'; item: SupplierSourceItem }
   | { kind: 'enable'; item: SupplierSourceItem }
   | { kind: 'disable'; item: SupplierSourceItem }
   | null;
@@ -332,6 +334,15 @@ export function SourcesView({
               items: list.items.map((entry) => (entry.id === source.id ? source : entry)),
             })
           }
+          onSettled={() => void reload()}
+          onConflict={reload}
+        />
+      ) : null}
+      {overlay?.kind === 'scan' ? (
+        <ScanDrawer
+          item={list.items.find((source) => source.id === overlay.item.id) ?? overlay.item}
+          canManage={list.canManage}
+          onClose={() => setOverlay(null)}
           onSettled={() => void reload()}
           onConflict={reload}
         />

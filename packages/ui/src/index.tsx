@@ -217,7 +217,15 @@ export { ConfirmDialog } from './confirm-dialog';
 export type { ConfirmError, ConfirmFact } from './confirm-dialog';
 export { createConfirmController, typingMatches } from './confirm-core';
 export { FallbackImage, useImageFailure } from './image-fallback';
-export { ListRow, MediaGrid, MediaPreview, MediaRow, MediaThumb, MediaTile } from './media-grid';
+export {
+  ListRow,
+  MediaGrid,
+  MediaPreview,
+  MediaRow,
+  MediaThumb,
+  MediaTile,
+  PictureReview,
+} from './media-grid';
 export { IconPicker } from './icon-picker';
 export type { IconPickerOption } from './icon-picker';
 export { FileDropzone, ImageUploader } from './image-uploader';
