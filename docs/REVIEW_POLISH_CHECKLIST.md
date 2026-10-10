@@ -1,6 +1,6 @@
 # Rà soát toàn bộ và chỉnh giao diện lần cuối: danh sách kiểm (chủ chốt thứ tự 2026-10-10)
 
-Thứ tự công việc còn lại do chủ đặt: **Phase 9 → Phase 7 → Phase 8 → giai đoạn "Claude integration" (chủ thêm 2026-10-10) → bước rà soát và chỉnh toàn bộ (tài liệu này) → Phase 10 (cứng hóa và ra mắt)**. Bước rà soát chỉ đổi giao diện và sửa lỗi; không thêm tính năng, không đổi quy tắc nghiệp vụ. Mỗi mục phải qua cổng chất lượng của `CLAUDE.md` (ảnh chụp 360 / 768 / 1440 px sáng và 1440 px tối, chữ 130%, đủ trạng thái, kiểm DOM so với mốc) trước khi báo xong.
+Thứ tự công việc còn lại do chủ đặt: **Phase 9 → Phase 7 → Phase 8 → giai đoạn "Claude integration" (chủ thêm 2026-10-10, ngay sau Phase 8)**, rồi bước rà soát (tài liệu này) và Phase 10. **Chỗ đứng của bước rà soát sau giai đoạn Claude integration là cách hiểu của em, chờ chủ xác nhận** (lời chủ chỉ nói Claude integration đứng sau Phase 8). Bước rà soát chỉ đổi giao diện và sửa lỗi; không thêm tính năng, không đổi quy tắc nghiệp vụ. Mỗi mục phải qua cổng chất lượng của `CLAUDE.md` (ảnh chụp 360 / 768 / 1440 px sáng và 1440 px tối, chữ 130%, đủ trạng thái, kiểm DOM so với mốc) trước khi báo xong.
 
 Danh sách này đầy đủ (chủ xác nhận 2026-10-10): các việc ở trang chủ khách chỉ gồm bốn mục ở phần B.
 

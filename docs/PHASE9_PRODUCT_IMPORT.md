@@ -165,9 +165,22 @@ Chủ đã trả lời ngày 2026-10-10 (xem cuối mục này).
 14. **AI hỗ trợ phân loại.** Có muốn dùng AI để gợi ý nhóm và thương hiệu không? Có thể tốn phí và có thể sai (luôn chờ chủ xem). _Đề xuất: bản đầu không dùng AI._
 15. **Ai làm việc với nhà cung cấp.** Ai là người liên hệ xin phép và gửi lại giấy phép để em ghi vào hệ thống?
 
-### Chủ trả lời 2026-10-10 (Owner answers 2026-10-10)
+### Owner answers 2026-10-10 (verbatim, as last sent)
 
-Ghi lại theo lời chủ. Theo các câu trả lời này, **P9-T1 đến P9-T10 được xem là đã duyệt**.
+The Owner's words as he sent them (English). He sent the answers twice; this is the later message, which replaces the first (it changes answer 14 (no AI in Phase 9, plus the roadmap change) and drops the parenthetical "(message/screenshot)" from answer 2). Under the hard rule of `CLAUDE.md` these are the words that approve P9-T1..T10; the Vietnamese list that follows is a translation and summary for reading, not the record.
+
+> 1. One supplier source for now: https://haruohui.com/
+> 2. Supplier has fully permitted use of images and content. Permission for prices not stated → prices are reference only, never public. Owner keeps the written proof; permission_note must record who/how/date when the source is configured.
+>    3–5, 7–13: agree with all proposals (all fields except stock; name_en = name_vi + NEEDS_TRANSLATION; max 6 images; managers review content/images, only Owner or granted users set prices; bulk "approve ready" allowed; manual scans first then weekly off-hours; no auto-hide/delete; price changes are review items only; stock only via receipts; sample 20 products first; keep existing Lucy data, never overwrite).
+>    6: system only suggests prices, Owner confirms. Source price is reference only, do NOT write it to cost_price_vnd. Rounding: 1,000 VND.
+>    14: no AI in Phase 9. Roadmap change: Phase 9 → 7 → 8 → then "Claude integration" phase (Owner has an Anthropic API account with credit). First feature there: AI rewrite of product content into original Lucy Spa wording (avoid duplicate content with haruohui.com), always as drafts for review. Keep Phase 9 Lucy-owned text fields and review flow ready for that. Update the PRD roadmap and handoff.
+>    15: Owner himself handles supplier contact.
+>
+> Mark P9-T1..T10 as approved per these answers.
+
+### Bản dịch và tóm tắt tiếng Việt các câu trả lời của chủ 2026-10-10 (không phải nguyên văn; nguyên văn ở khối trên)
+
+Dịch từ lời chủ ở khối nguyên văn trên. Theo các câu trả lời này, **P9-T1 đến P9-T10 được xem là đã duyệt**.
 
 1. **Nhà cung cấp và website:** chỉ một nguồn lúc này: https://haruohui.com/
 2. **Giấy phép:** nhà cung cấp đã cho phép đầy đủ dùng **ảnh và nội dung**. **Giá chưa nói rõ được phép**, nên giá chỉ để tham khảo, **không bao giờ hiện công khai**. Chủ tự giữ bằng chứng bằng văn bản; khi cấu hình nguồn, hệ thống phải ghi `permission_note`: ai cho phép, bằng cách nào, ngày nào.
@@ -208,3 +221,11 @@ Method: 8 requests in total, at most one per second, `GET` only, identifying Use
 | Bundles            | Many products are sets ("Bộ ...", "Set ..."); how a set maps to Lucy products (one product, or a combo) is left for P9-5 and is a question for the Owner                                                                                                                                                                                                                                                            |
 
 **Recommended adapter (P9-T1 order):** no supplier file or official feed is known, so level 2: a **`woocommerce-store-api` adapter** (generic for any WooCommerce site, so it also serves future sources) that pages the Store API at 1 request per second (`per_page` 20 for the sample, up to 100 later). Discovery and change detection: the API list, with `product-sitemap.xml` `lastmod` as a cheap "did anything change" check before a weekly scan. Fallback if the API is closed or changes: sitemap plus JSON-LD adapter, then an HTML adapter (levels 2 and 3). No headless browser is needed. Images are fetched only for approved sample candidates, from the `src` URLs, through the existing media pipeline, and only because `permits_images` is set.
+
+### Decisions waiting for the Owner (found by the probe and by P9-2; none is decided)
+
+1. **Lucy SKU scheme.** `product_variants.sku` is required and unique, but 13 of 20 sampled source products have no SKU. Options: generate a Lucy SKU from brand + a counter (for example `OHUI-0001`), or from brand + the source's product id, or let the reviewer type one for each product. This blocks P9-5 (normalization and matching).
+2. **Sets and bundles** ("Bộ ...", "Set ..."). Many source products are bundles of other products. Options: import each as its own Lucy product, skip them in the first sample, or map them to a combo. Not decided.
+3. **Contact address in the importer's User-Agent.** The probe sent a User-Agent with a contact address; it was the Owner's personal account address, which should not have been sent without his say. Which address (a shop mailbox, a page URL) goes into the importer's User-Agent from P9-3 on?
+4. **Roadmap placement.** The Owner said Claude integration comes after Phase 8; the agent reads the full review and polish pass as coming after it, and Phase 10 last. Pending confirmation.
+5. **Four P9-2 choices** (report `docs/PHASE9_P9_2_SOURCES.md`): one person may record and confirm a permission; adding a source may create the supplier; enabling does not yet need `READY`; the permission note is at most 500 characters.

@@ -39,6 +39,7 @@ const vi = {
     pending: 'Chờ xác nhận',
     none: 'Chưa ghi',
   },
+  gapsIntro: 'Để bật nguồn còn thiếu:',
   gaps: {
     PERMISSION_RECORD: 'Chưa ghi giấy phép: ai cho phép, bằng cách nào, ngày nào.',
     PERMISSION_COVERAGE: 'Giấy phép cần bao gồm chữ hoặc ảnh.',
@@ -105,7 +106,7 @@ const vi = {
     status: {
       confirmed: 'Đã xác nhận bởi {name} lúc {time}.',
       confirmedNoName: 'Đã xác nhận lúc {time}.',
-      pending: 'Chưa xác nhận.',
+      pending: 'Đã ghi, chờ xác nhận.',
       none: 'Chưa ghi giấy phép.',
     },
     submit: 'Ghi giấy phép',
@@ -185,6 +186,7 @@ const en: SupplierSourcesText = {
     pending: 'Awaiting confirmation',
     none: 'Not recorded',
   },
+  gapsIntro: 'To switch the source on, still missing:',
   gaps: {
     PERMISSION_RECORD: 'No permission recorded: who gave it, how and when.',
     PERMISSION_COVERAGE: 'The permission must cover text or images.',
@@ -252,7 +254,7 @@ const en: SupplierSourcesText = {
     status: {
       confirmed: 'Confirmed by {name} at {time}.',
       confirmedNoName: 'Confirmed at {time}.',
-      pending: 'Not confirmed yet.',
+      pending: 'Recorded, awaiting confirmation.',
       none: 'No permission recorded.',
     },
     submit: 'Record permission',

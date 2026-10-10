@@ -29,6 +29,7 @@ Rehearsal: bản sao `lucy_spa_dev` (đang ở 68 migration) lên 101, rồi **1
 3. **DOM audit** trang mới: 1 phát hiện FR8 `row-height-uneven` ở **360 px** (thẻ cao thấp theo độ dài tên dài), 768 và 1440 không có; 26 trang mốc chạy lại (có thêm một mục trong thanh bên): **không số nào tăng** (tổng theo loại bằng hoặc thấp hơn; `list-height-uneven` giảm 4 → 3), `docs/uxui-audit-baseline.json` không đổi.
 4. Công cụ báo 3 ô tích 20 px trong ngăn giấy phép: dùng `CheckField` của bộ UI, **cả dòng 40/44 px là vùng bấm**; việc đổi cỡ ô tích là mục trong danh sách rà soát cuối.
 5. Không thêm `wf-*`, px/rem hay màu hex; không đổi thành phần chung.
+6. **Kỹ năng `frontend-design` (quy tắc UI 1) đã dùng để rà soát:** thương hiệu, bộ UI và kiểu C giữ nguyên (màn hình làm việc, không trang trí). Một chỗ được nâng: ngăn giấy phép **nói rõ còn thiếu gì để bật nguồn** (câu của máy chủ, ở đầu ngăn) thay vì chỉ có trạng thái; chữ nút, hộp thoại và thông báo cùng một động từ ("Thêm nguồn" → "Đã thêm nguồn"); trạng thái rỗng chỉ việc cần làm.
 
 ## Triển khai (khi chủ cho phép)
 

@@ -664,6 +664,14 @@ function PermissionDrawer({
         })
       : copy.status[state];
 
+  // First time: how to fill the form. Afterwards: what still stops the source from being switched on (the server's answer).
+  const guidance =
+    state === 'none'
+      ? copy.intro
+      : item.gaps.length > 0
+        ? `${text.gapsIntro} ${item.gaps.map((gap) => text.gaps[gap]).join(' ')}`
+        : '';
+
   async function submit() {
     if (form.pending) return;
     form.begin();
@@ -686,9 +694,9 @@ function PermissionDrawer({
       onSubmit={submit}
     >
       <Stack gap="page">
-        <Notice
-          tone={state === 'confirmed' ? 'success' : 'info'}
-        >{`${status} ${copy.intro}`}</Notice>
+        <Notice tone={state === 'confirmed' ? 'success' : 'info'}>
+          {`${status} ${guidance}`.trim()}
+        </Notice>
         <FormGrid cols={1}>
           <Field
             label={copy.givenBy}
