@@ -11,6 +11,7 @@ import {
   warnCandidate,
 } from './image-intake.js';
 import { createGuardedHttpClient, type HttpClient } from './http-client.js';
+import { evaluateCandidates } from './candidate-evaluation.js';
 import { checkRobots, SAMPLE_SIZE } from './source-test.js';
 import {
   asSourceError,
@@ -48,6 +49,8 @@ export interface ScanDeps {
   createClient?: ClientFactory;
   /** Where picture objects are written; null when the worker has no media directory (pictures are then reported, not skipped silently). */
   storage: MediaStorage | null;
+  /** SKU prefixes for sources that sell products without a SKU, by host (default: the Owner's approved list, haruohui only). */
+  skuPrefixes?: Readonly<Record<string, string>>;
 }
 
 export interface ScanError {
@@ -310,6 +313,20 @@ export async function processNextScan(
         note,
         renew,
       });
+    }
+    // 3. What a reviewer needs: proposed SKU, brand and category from the remembered mappings, duplicate suspicions, warnings, state.
+    if (work.length > 0) {
+      try {
+        await unit(database, (tx) =>
+          evaluateCandidates(
+            tx,
+            { candidateIds: work.map((item) => item.candidateId) },
+            deps.skuPrefixes ? { skuPrefixes: deps.skuPrefixes } : {},
+          ),
+        );
+      } catch {
+        note({ code: 'EVALUATE_FAILED' });
+      }
     }
     const status = errors.length === 0 ? 'SUCCEEDED' : 'PARTIAL';
     await finish(

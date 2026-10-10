@@ -86,3 +86,25 @@ export {
   type ImageFlag,
 } from './image-intake.js';
 export { checkRobots } from './source-test.js';
+export {
+  DECIDED_STATES,
+  evaluateCandidate,
+  EVALUATION_CODES,
+  extractVolumes,
+  foldText,
+  GENERATED_SKU_PREFIX_BY_HOST,
+  hostOf,
+  LUCY_SKU,
+  nameKey,
+  proposeSku,
+  type CandidateWarning,
+  type EvaluationContext,
+  type EvaluationInput,
+  type EvaluationResult,
+} from './candidate-rules.js';
+export {
+  evaluateCandidates,
+  saveMapping,
+  type EvaluationSummary,
+  type MappingInput,
+} from './candidate-evaluation.js';

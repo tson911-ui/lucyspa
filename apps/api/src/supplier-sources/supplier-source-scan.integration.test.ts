@@ -267,7 +267,8 @@ test(
           assert.equal(a.nameVi, 'Kem dưỡng A');
           assert.equal(a.nameEn, 'Kem dưỡng A');
           assert.equal(a.needsTranslation, true);
-          assert.equal(a.state, 'EXTRACTED');
+          // The scan ends with the candidate evaluation: brand and category are not mapped yet, so a person has to look.
+          assert.equal(a.state, 'NEEDS_REVIEW');
           const record = await tx.sourceRecord.findUniqueOrThrow({
             where: { sourceId_sourceKey: { sourceId: source.id, sourceKey: '101' } },
             select: {
@@ -492,7 +493,12 @@ test(
           for (const key of ['401', '402', '403']) {
             assert.equal((await candidateOf(source.id, key)).state, 'NEEDS_REVIEW', key);
           }
-          assert.equal((await candidateOf(source.id, '404')).state, 'EXTRACTED');
+          assert.ok(
+            !JSON.stringify((await candidateOf(source.id, '404')).warnings).includes(
+              'IMAGE_SHARED',
+            ),
+            'a different picture raises no picture warning',
+          );
           // Every picture still belongs to the product that listed it.
           const rows = await tx.candidateImage.findMany({
             where: { owner: { sourceRecord: { sourceId: source.id } } },

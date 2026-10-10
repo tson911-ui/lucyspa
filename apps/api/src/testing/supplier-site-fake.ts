@@ -22,6 +22,8 @@ export interface FakeProduct {
   type?: 'simple' | 'variable';
   variations?: FakeVariation[];
   priceVnd?: number;
+  /** Category names the shop lists (default: one, "Chăm sóc da"). */
+  categories?: string[];
 }
 
 export type ImageAnswer = Buffer | { status: number; body: Buffer };
@@ -59,7 +61,7 @@ export class FakeSite {
         currency_minor_unit: 0,
       },
       images: product.images.map((path) => ({ id: 1, src: `https://${host}${path}`, alt: '' })),
-      categories: [{ name: 'Chăm sóc da' }],
+      categories: (product.categories ?? ['Chăm sóc da']).map((name) => ({ name })),
       brands: [],
       attributes: [],
       variations: (product.variations ?? []).map((variation) => ({
