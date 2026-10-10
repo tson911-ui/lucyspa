@@ -3654,29 +3654,17 @@ Deliver:
 -   Operational documentation.
 -   Owner acceptance testing.
 
-### Owner roadmap order (2026-10-10)
+### Final roadmap after Phase 6 (Owner, confirmed 2026-10-10)
 
-The Owner set the order of the remaining work: **Phase 9 (Product
-Importer) → Phase 7 (Compensation and Cash) → Phase 8 (Reports and
-Administration) → one full review and polish pass of everything**
-(balance and alignment, the customer home page, ...). The Owner confirmed
-on 2026-10-10 that the checklist in `docs/REVIEW_POLISH_CHECKLIST.md` is
-complete; the home page items are only the oversized title, the top bar
-in style C, the photo caption covered by the circle and the real photos.
-Phase 10 stays last. This order replaces the numeric order of
-Phases 7 to 9 above; it does not change what each phase delivers.
+This replaces every older ordering (the numeric order of Phases 7 to 9 above, and the earlier "Phase 9 → 7 → 8 → polish" notes). What each phase delivers does not change.
 
-**Roadmap change (Owner, 2026-10-10): a new "Claude integration" phase
-comes after Phase 8** (Phase 9 → 7 → 8 → Claude integration). The Owner
-has an Anthropic API account with credit. Phase 9 itself uses no AI.
-The first feature of the new phase: AI rewrites imported product content
-into original Lucy Spa wording (so the shop does not duplicate the
-supplier's text, e.g. haruohui.com), always as a draft that a person
-reviews before anything is saved to the catalog. Phase 9 keeps the
-Lucy-owned text fields separate from the text observed at the source and
-its review flow ready for this. Confirmed by the Owner on 2026-10-10:
-the order is Phase 9 → 7 → 8 → Claude integration → full review and
-polish pass → Phase 10.
+1.  **Phase 9 (Product Importer) → Phase 7 (Compensation and Cash) → Phase 8 (Reports and Administration)**, with the same process as now (a Step at a time, the Owner reviews each, nothing deployed without his word).
+2.  **Claude integration phase.** The Owner has an Anthropic API account with credit. Phase 9 itself uses no AI. First feature: AI rewrites imported product content into original Lucy Spa wording (so the shop does not duplicate the supplier's text, e.g. haruohui.com), always as drafts for review; nothing is saved to the catalog without a person's approval. Phase 9 keeps the Lucy-owned text fields separate from the text observed at the source for this.
+3.  **Skills step.** `frontend-design` is already installed (verified 2026-10-10: it is the only skill plugin present). To install, with the Owner guided step by step outside Claude Code: `webapp-testing` (anthropics/skills) and `web-design-guidelines`, `react-view-transitions`, `react-best-practices` (vercel-labs/agent-skills). Then add to `CLAUDE.md` the mandatory UI rules (most are already in its "UI design rules" section; this step makes them one explicit list naming the skills): keep the brand `#782b37` and white, the existing light and dark modes, the approved fonts and the "LUCY SPA" wordmark; no yellow except Tết, Mid-Autumn and national-holiday decorations; light-mode hover = `#782b37` background with white text, dark-mode hover = the dark-mode pink accent; UI-only changes (no logic or data changes); never touch `apps/web/next-env.d.ts`.
+4.  **Full polish pass, in groups: customer site → counter/POS → admin.** Per group: audit with `web-design-guidelines`, polish with `frontend-design`, smooth page transitions with `react-view-transitions`; before/after screenshots (mobile and desktop, light and dark) for the Owner's approval; fix small leftovers (for example the top bar overflowing at 130% text size). After each group, re-test the key flows with `webapp-testing`: booking, POS, PayOS payment, loyalty points, cosmetics, online orders. **Each group is deployed separately, with a database backup first**, and the commit and the migration state are recorded in `LUCYSPA_HANDOFF.md`.
+5.  **Phase 10 (Hardening and Launch), before the site is opened to customers.**
+
+The Owner confirmed on 2026-10-10 that the checklist in `docs/REVIEW_POLISH_CHECKLIST.md` is complete; its home page items are only the oversized title, the top bar in style C, the photo caption covered by the circle and the real photos.
 
 The review and polish pass checklist (UI balance, customer home fixes,
 touch targets, wide tables, re-test of every flow, pre-launch items) is
