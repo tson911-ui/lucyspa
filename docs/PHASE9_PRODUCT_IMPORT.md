@@ -56,19 +56,19 @@ No change to `products` columns is required. `products.source` (JSONB) gets a sm
 
 ## 5. Mapping to the catalog
 
-| Source field                   | Lucy target                            | Rule                                                                                                                                                      |
-| ------------------------------ | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| name                           | `products.name_vi` (and `name_en`)     | `name_en` is NOT NULL: **P9-T3** (approved) = start equal to the Vietnamese name and flag `NEEDS_TRANSLATION` (ask Owner, Q4)                             |
-| SKU / model                    | `product_variants.sku` (unique, 64)    | the stable business key; deterministic code `products.code` = slug of brand + model                                                                       |
-| barcode                        | `product_variants.barcode`             | checked against existing variants                                                                                                                         |
-| brand text                     | `products.brand_id`                    | matched through `source_value_mappings`; **never auto-created** (as in P6-5): an unknown brand is a review item with "create brand" for `MANAGE_PRODUCTS` |
-| category path                  | `products.category_id`                 | same: mapped or reviewed, never silently created                                                                                                          |
-| description, usage, attributes | `description_vi/en`                    | text only; sections joined with headings                                                                                                                  |
-| variants (size, volume)        | `product_variants` (`label_vi/en`)     | one variant per SKU                                                                                                                                       |
-| images                         | `product_images` + `media_assets`      | section 7                                                                                                                                                 |
-| source price                   | `source_price_observations` only       | reference; see section 6                                                                                                                                  |
-| source URL                     | `products.source`, `candidate_sources` | traceability                                                                                                                                              |
-| stock                          | **not imported**                       | stock only enters through receipts and opening-stock import                                                                                               |
+| Source field                   | Lucy target                            | Rule                                                                                                                                                                           |
+| ------------------------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| name                           | `products.name_vi` (and `name_en`)     | `name_en` is NOT NULL: **P9-T3** (approved) = start equal to the Vietnamese name and flag `NEEDS_TRANSLATION` (ask Owner, Q4)                                                  |
+| SKU / model                    | `product_variants.sku` (unique, 64)    | the supplier SKU exactly as shown; none: `HARU-<WooCommerce id>`; a collision with another Lucy product is a review item (see the resolved decisions at the end of section 16) |
+| barcode                        | `product_variants.barcode`             | checked against existing variants                                                                                                                                              |
+| brand text                     | `products.brand_id`                    | matched through `source_value_mappings`; **never auto-created** (as in P6-5): an unknown brand is a review item with "create brand" for `MANAGE_PRODUCTS`                      |
+| category path                  | `products.category_id`                 | same: mapped or reviewed, never silently created                                                                                                                               |
+| description, usage, attributes | `description_vi/en`                    | text only; sections joined with headings                                                                                                                                       |
+| variants (size, volume)        | `product_variants` (`label_vi/en`)     | one variant per SKU                                                                                                                                                            |
+| images                         | `product_images` + `media_assets`      | section 7                                                                                                                                                                      |
+| source price                   | `source_price_observations` only       | reference; see section 6                                                                                                                                                       |
+| source URL                     | `products.source`, `candidate_sources` | traceability                                                                                                                                                                   |
+| stock                          | **not imported**                       | stock only enters through receipts and opening-stock import                                                                                                                    |
 
 Approval creates the product as `DRAFT` (or, for a matched existing product, updates **only** supplier-owned content fields the reviewer ticks) in one transaction with an audit entry. Publishing stays the existing action and its existing validation (`PRODUCT_HAS_ERRORS`).
 
@@ -141,7 +141,7 @@ Reuse: `IMPORT_PRODUCT_DATA` for file imports (unchanged), `MANAGE_PRODUCT_PRICE
 
 ## 14. Build steps (each waits for Owner review)
 
-P9-1 this design (done). P9-2 migration (tables, 2 permissions, granted to nobody, 66 -> 68) and the source configuration screen with the permission gate (built, see `docs/PHASE9_P9_2_SOURCES.md`). P9-3 generic adapter + Test Source on one real source; for haruohui.com the recommended adapter is the WooCommerce Store API one (section 16). P9-4 image pipeline. P9-5 normalization, mapping memory, duplicate detection. P9-6 review screen and approval. P9-7 re-sync, change detection, schedule, notification. P9-8 ZIP bulk images and bulk price export/re-import (31.3, 31.4, finishing `PRICE_UPDATE`). P9-9 sample validation across all sources, then Owner review. P9-10 milestone and deploy guide. The online store stays OFF until the Owner opens it after Phase 9.
+P9-1 this design (done). P9-2 migration (tables, 2 permissions, granted to nobody, 66 -> 68) and the source configuration screen with the permission gate (built, see `docs/PHASE9_P9_2_SOURCES.md`). P9-3 generic adapter + Test Source on one real source (enabling a source then also needs a successful Test Source, status `READY`: Owner, 2026-10-10); for haruohui.com the recommended adapter is the WooCommerce Store API one (section 16). P9-4 image pipeline. P9-5 normalization, mapping memory, duplicate detection. P9-6 review screen and approval. P9-7 re-sync, change detection, schedule, notification. P9-8 ZIP bulk images and bulk price export/re-import (31.3, 31.4, finishing `PRICE_UPDATE`). P9-9 sample validation across all sources, then Owner review. P9-10 milestone and deploy guide. The online store stays OFF until the Owner opens it after Phase 9.
 
 ---
 
@@ -222,10 +222,20 @@ Method: 8 requests in total, at most one per second, `GET` only, identifying Use
 
 **Recommended adapter (P9-T1 order):** no supplier file or official feed is known, so level 2: a **`woocommerce-store-api` adapter** (generic for any WooCommerce site, so it also serves future sources) that pages the Store API at 1 request per second (`per_page` 20 for the sample, up to 100 later). Discovery and change detection: the API list, with `product-sitemap.xml` `lastmod` as a cheap "did anything change" check before a weekly scan. Fallback if the API is closed or changes: sitemap plus JSON-LD adapter, then an HTML adapter (levels 2 and 3). No headless browser is needed. Images are fetched only for approved sample candidates, from the `src` URLs, through the existing media pipeline, and only because `permits_images` is set.
 
-### Decisions waiting for the Owner (found by the probe and by P9-2; none is decided)
+### Decisions waiting for the Owner: RESOLVED by the Owner on 2026-10-10 (second round)
 
-1. **Lucy SKU scheme.** `product_variants.sku` is required and unique, but 13 of 20 sampled source products have no SKU. Options: generate a Lucy SKU from brand + a counter (for example `OHUI-0001`), or from brand + the source's product id, or let the reviewer type one for each product. This blocks P9-5 (normalization and matching).
-2. **Sets and bundles** ("Bộ ...", "Set ..."). Many source products are bundles of other products. Options: import each as its own Lucy product, skip them in the first sample, or map them to a combo. Not decided.
-3. **Contact address in the importer's User-Agent.** The probe sent a User-Agent with a contact address; it was the Owner's personal account address, which should not have been sent without his say. Which address (a shop mailbox, a page URL) goes into the importer's User-Agent from P9-3 on?
-4. **Roadmap placement.** The Owner said Claude integration comes after Phase 8; the agent reads the full review and polish pass as coming after it, and Phase 10 last. Pending confirmation.
-5. **Four P9-2 choices** (report `docs/PHASE9_P9_2_SOURCES.md`): one person may record and confirm a permission; adding a source may create the supplier; enabling does not yet need `READY`; the permission note is at most 500 characters.
+The Owner's words as he sent them (English), on the five questions above:
+
+> 1. Importer User-Agent contact: hotro@lucyspa.vn (with https://lucyspa.vn). Never send the Owner's personal email again; remove it anywhere it appears in code/config.
+> 2. Lucy SKU = the supplier's SKU exactly as shown on haruohui.com. If a product has no SKU, generate HARU-<WooCommerce product id> (stable). If a supplier SKU collides with an existing Lucy SKU on a different product, do not auto-resolve: make it a review item.
+> 3. Sets/bundles ("Bộ…/Set…"): each set is its own standalone product with its own SKU, sold as one item; no component linking in this phase.
+> 4. Order: Phase 9 → 7 → 8 → Claude integration → full review & polish pass → Phase 10.
+> 5. Accept all four P9-2 choices, with one change: from P9-3 on, enabling a source requires a successful Test Source (READY).
+
+How the design reads them (the agent's reading; the Owner's words above are the record):
+
+1. **User-Agent:** the importer sends `LucySpaCatalogBot/1.0 (+https://lucyspa.vn; hotro@lucyspa.vn)` and nothing else personal. The earlier probe's address appears in no file of the repository (checked); it remains only as the author address of the git history, which is not rewritten.
+2. **SKU rule:** `product_variants.sku` = the source SKU exactly as shown; no SKU → `HARU-<WooCommerce product id>`. A supplier SKU that already belongs to a **different** Lucy product is never resolved automatically: the candidate gets the warning `SKU_COLLISION` and goes to `NEEDS_REVIEW`. A source SKU that does not fit the Lucy SKU format (`A-Z`, `0-9`, `.`, `_`, `-`, 64 characters at most, no spaces) is not changed silently either: it is a review item `SKU_FORMAT` (the reviewer decides, for example to keep it after the format is widened). This second point is my reading of "exactly as shown" and needs the Owner's yes when P9-5 is built.
+3. **Sets:** a set is one candidate and one product with its own SKU, with no link to its parts. The first sample of 20 may therefore contain sets.
+4. **Order:** Phase 9 → 7 → 8 → Claude integration → full review and polish pass → Phase 10 (recorded in PRD section 56, the handoff and `docs/REVIEW_POLISH_CHECKLIST.md`).
+5. **P9-2 choices accepted** (record and confirm by one person; the supplier may be created inside the add-source box; the permission note is at most 500 characters; enabling needs no `READY` yet). **Change:** from P9-3 on, enabling a source needs a successful Test Source (status `READY`) as well as the confirmed permission. The `READY` rule is built in P9-3 together with Test Source.

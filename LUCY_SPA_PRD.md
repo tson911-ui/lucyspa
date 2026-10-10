@@ -3674,9 +3674,9 @@ into original Lucy Spa wording (so the shop does not duplicate the
 supplier's text, e.g. haruohui.com), always as a draft that a person
 reviews before anything is saved to the catalog. Phase 9 keeps the
 Lucy-owned text fields separate from the text observed at the source and
-its review flow ready for this. My reading, pending Owner confirmation:
-the full review and polish pass then follows the Claude integration
-phase, so it also covers the new screens; Phase 10 stays last.
+its review flow ready for this. Confirmed by the Owner on 2026-10-10:
+the order is Phase 9 → 7 → 8 → Claude integration → full review and
+polish pass → Phase 10.
 
 The review and polish pass checklist (UI balance, customer home fixes,
 touch targets, wide tables, re-test of every flow, pre-launch items) is

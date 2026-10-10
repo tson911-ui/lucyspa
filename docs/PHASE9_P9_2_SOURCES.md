@@ -11,7 +11,7 @@ Trạng thái: **làm xong, chưa deploy.** Căn cứ: `docs/PHASE9_PRODUCT_IMPO
 - **API** `/api/v1/supplier-sources`: danh sách, thêm, sửa, ghi giấy phép, xác nhận, bật, tắt; mỗi lệnh mang số phiên bản dòng, có nhật ký kiểm toán. Chọn nhà cung cấp có sẵn hoặc gõ tên (dùng lại nếu trùng tên, tạo mới nếu chưa có). Địa chỉ nguồn: chỉ `https`, tên miền thật, không cổng/tài khoản/`?`/`#`.
 - **Màn hình** "Nguồn nhà cung cấp" (Danh mục, kiểu C): bảng 20 dòng/trang, hộp thêm nguồn, hộp sửa, ngăn "Giấy phép sử dụng", hộp xác nhận/bật/tắt; người chỉ có quyền xem chỉ thấy danh sách.
 
-## Em tự đặt trong bước này (chờ chủ xác nhận)
+## Em tự đặt trong bước này (chủ đã chấp nhận cả bốn ngày 2026-10-10; riêng điểm 3 đổi: từ P9-3, bật nguồn đòi cả Test Source thành công)
 
 1. Người ghi giấy phép **có thể tự xác nhận** (một người). Muốn "hai người" (người ghi khác người xác nhận) thì cần quyết định.
 2. Thêm nguồn có thể **tạo nhà cung cấp mới** ngay trong hộp thêm (người có `MANAGE_SUPPLIER_SOURCES`, có nhật ký), không cần quyền kho.
