@@ -30,7 +30,7 @@ jobs:
       - run: pnpm db:status
       - run: pnpm check
       - run: pnpm test:integration
-      - run: pnpm test:auth:integration
+      - run: bash scripts/ci-auth-integration.sh
       - run: pnpm smoke
       - name: Stop local infrastructure
         if: always()
