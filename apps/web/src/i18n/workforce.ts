@@ -157,6 +157,7 @@ const vi = {
     productCampaigns: 'Chiến dịch',
     onlineSales: 'Bán online',
     shippingCarriers: 'Đơn vị vận chuyển',
+    supplierSources: 'Nguồn nhà cung cấp',
     onlineOrders: 'Đơn online',
     inventory: 'Kho hàng',
     productOrders: 'Hàng đặt trước',
@@ -1399,6 +1400,10 @@ const vi = {
       MANAGE_PRODUCT_CAMPAIGNS: 'Quản lý chiến dịch khuyến mãi sản phẩm',
       MANAGE_PRODUCT_ORDERS:
         'Xử lý đơn đặt trước: đặt hàng nhà cung cấp, báo hàng về, giao hàng cho khách',
+      MANAGE_SUPPLIER_SOURCES:
+        'Thêm nguồn nhà cung cấp, ghi và xác nhận giấy phép sử dụng, bật hoặc tắt nguồn',
+      REVIEW_SUPPLIER_IMPORTS:
+        'Xem nguồn nhà cung cấp và duyệt nội dung, ảnh sản phẩm lấy từ nguồn (không đặt giá)',
     },
     duplicateCode: 'Mã vai trò này đã tồn tại.',
     managerGroupHolders:
@@ -2768,6 +2773,7 @@ const en: Dictionary = {
     productCampaigns: 'Campaigns',
     onlineSales: 'Online sales',
     shippingCarriers: 'Carriers',
+    supplierSources: 'Supplier sources',
     onlineOrders: 'Online orders',
     inventory: 'Inventory',
     productOrders: 'Pre-orders',
@@ -4016,6 +4022,10 @@ const en: Dictionary = {
       MANAGE_PRODUCT_CAMPAIGNS: 'Manage product promotion campaigns',
       MANAGE_PRODUCT_ORDERS:
         'Handle pre-orders: order from the supplier, mark goods arrived, hand over to the customer',
+      MANAGE_SUPPLIER_SOURCES:
+        'Add supplier sources, record and confirm the permission to use them, switch them on or off',
+      REVIEW_SUPPLIER_IMPORTS:
+        'View supplier sources and review the content and images taken from them (no prices)',
     },
     duplicateCode: 'This role code already exists.',
     managerGroupHolders:

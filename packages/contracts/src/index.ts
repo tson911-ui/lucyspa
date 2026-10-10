@@ -760,6 +760,8 @@ export type PermissionCodeName =
   | 'REFUND_PRODUCTS'
   | 'MANAGE_PRODUCT_CAMPAIGNS'
   | 'MANAGE_PRODUCT_ORDERS'
+  | 'MANAGE_SUPPLIER_SOURCES'
+  | 'REVIEW_SUPPLIER_IMPORTS'
   | 'ACTIVATE_LOYALTY'
   | 'CHANGE_REFERRER';
 
@@ -2201,6 +2203,7 @@ export * from './product-order.js';
 export * from './online-order.js';
 export * from './online-fulfilment.js';
 export * from './product-campaign.js';
+export * from './supplier-source.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;

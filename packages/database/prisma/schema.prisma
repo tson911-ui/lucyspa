@@ -386,6 +386,8 @@ enum PermissionCode {
   REFUND_PRODUCTS
   MANAGE_PRODUCT_CAMPAIGNS
   MANAGE_PRODUCT_ORDERS
+  MANAGE_SUPPLIER_SOURCES
+  REVIEW_SUPPLIER_IMPORTS
 }
 
 enum LeaveStatus {
@@ -523,6 +525,12 @@ model User {
   createdPriceVersions           ProductPriceVersion[]            @relation("PriceVersionCreator")
   createdPromotions              ProductPromotion[]               @relation("PromotionCreator")
   createdCampaigns               ProductCampaign[]                @relation("CampaignCreator")
+  createdSupplierSources         SupplierSource[]                 @relation("SupplierSourceCreator")
+  confirmedSupplierSources       SupplierSource[]                 @relation("SupplierSourceConfirmer")
+  runImportScans                 ImportScan[]                     @relation("ImportScanActor")
+  decidedImportCandidates        ImportCandidate[]                @relation("ImportCandidateDecider")
+  matchedCandidateSources        CandidateSource[]                @relation("CandidateSourceMatcher")
+  createdSourceMappings          SourceValueMapping[]             @relation("SourceMappingCreator")
   publishedCampaigns             ProductCampaign[]                @relation("CampaignPublisher")
   endedCampaigns                 ProductCampaign[]                @relation("CampaignEnder")
   endedPromotions                ProductPromotion[]               @relation("PromotionEnder")
@@ -2316,6 +2324,7 @@ model MediaAsset {
   mobileSlides        WebsiteSlide[]           @relation("WebsiteSlideMobileImage")
   seasonSlots         WebsiteSeasonSlotMedia[]
   productImages       ProductImage[]
+  candidateImages     CandidateImage[]
 
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "media_assets_created_idx")
   @@map("media_assets")
@@ -3240,6 +3249,8 @@ model Brand {
   products   Product[]
   soldLines  InvoiceLineProduct[]
   discountVersions DiscountVersionBrand[]
+  importCandidates ImportCandidate[]
+  valueMappings    SourceValueMapping[]
 
   @@map("brands")
 }
@@ -3260,6 +3271,8 @@ model ProductCategory {
   products   Product[]
   soldLines  InvoiceLineProduct[]
   discountVersions DiscountVersionProductCategory[]
+  importCandidates ImportCandidate[]
+  valueMappings    SourceValueMapping[]
 
   @@index([parentId], map: "product_categories_parent_idx")
   @@map("product_categories")
@@ -3289,6 +3302,8 @@ model Product {
   images          ProductImage[]
   invoiceLines    InvoiceLineProduct[]
   discountVersions DiscountVersionProduct[]
+  matchedCandidates  ImportCandidate[] @relation("CandidateMatchedProduct")
+  importedCandidates ImportCandidate[] @relation("CandidateImportedProduct")
 
   @@index([status, categoryId], map: "products_status_idx")
   @@index([brandId], map: "products_brand_idx")
@@ -3554,6 +3569,9 @@ model Supplier {
   updatedAt   DateTime       @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   receipts    StockReceipt[]
   usualFor    ProductVariant[] @relation("VariantUsualSupplier")
+  sources          SupplierSource[]
+  importCandidates ImportCandidate[]
+  valueMappings    SourceValueMapping[]
 
   @@map("suppliers")
 }
@@ -4474,4 +4492,285 @@ model OnlineReturnCost {
 
   @@index([caseId, occurredAt, id], map: "online_return_costs_case_idx")
   @@map("online_return_costs")
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------
+// Phase 9 P9-2 (supplier product import; design PHASE9_PRODUCT_IMPORT.md). The tables are history-like: nothing here is deleted, price
+// observations are append-only, and supplier prices are internal reference data (never the selling price, never the cost).
+
+enum SupplierSourceKind {
+  FILE
+  API
+  WEBSITE
+  FEED
+}
+
+enum SupplierSourceStatus {
+  PENDING_VALIDATION
+  READY
+  ADAPTER_REQUIRED
+  AUTHENTICATION_REQUIRED
+  SOURCE_ERROR
+}
+
+enum SupplierSourceCadence {
+  MANUAL
+  DAILY
+  WEEKLY
+}
+
+enum ImportScanTrigger {
+  MANUAL
+  SCHEDULE
+}
+
+enum ImportScanStatus {
+  RUNNING
+  SUCCEEDED
+  PARTIAL
+  FAILED
+  SUSPECT
+}
+
+enum SourceRecordState {
+  PRESENT
+  MISSING
+}
+
+enum ImportCandidateState {
+  DETECTED
+  EXTRACTED
+  NORMALIZED
+  MATCHED
+  READY_FOR_REVIEW
+  NEEDS_REVIEW
+  APPROVED
+  REJECTED
+  IGNORED
+  IMPORTED
+}
+
+enum CandidateMatchKind {
+  EXACT
+  MANUAL
+  FUZZY
+}
+
+enum SourceMappingKind {
+  BRAND
+  CATEGORY
+}
+
+/// P9-2: one authorized place a supplier's catalog can be read from. The permission record (who, how, when, which content) must be
+/// complete and confirmed before the source can be enabled (T9); the database refuses an enabled source without it.
+model SupplierSource {
+  id                           String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  supplierId                   String                @map("supplier_id") @db.Uuid
+  supplier                     Supplier              @relation(fields: [supplierId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  name                         String
+  kind                         SupplierSourceKind
+  baseUrl                      String?               @map("base_url")
+  adapterKey                   String?               @map("adapter_key") @db.VarChar(64)
+  status                       SupplierSourceStatus  @default(PENDING_VALIDATION)
+  isEnabled                    Boolean               @default(false) @map("is_enabled")
+  scanCadence                  SupplierSourceCadence @default(MANUAL) @map("scan_cadence")
+  permissionGivenBy            String?               @map("permission_given_by")
+  permissionMethod             String?               @map("permission_method")
+  permissionDate               DateTime?             @map("permission_date") @db.Date
+  permissionNote               String?               @map("permission_note")
+  permitsText                  Boolean               @default(false) @map("permits_text")
+  permitsImages                Boolean               @default(false) @map("permits_images")
+  permitsPrices                Boolean               @default(false) @map("permits_prices")
+  permissionConfirmedByUserId  String?               @map("permission_confirmed_by_user_id") @db.Uuid
+  permissionConfirmedBy        User?                 @relation("SupplierSourceConfirmer", fields: [permissionConfirmedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  permissionConfirmedAt        DateTime?             @map("permission_confirmed_at") @db.Timestamptz(3)
+  lastSuccessAt                DateTime?             @map("last_success_at") @db.Timestamptz(3)
+  rowVersion                   Int                   @default(1) @map("row_version")
+  createdByUserId              String                @map("created_by_user_id") @db.Uuid
+  createdBy                    User                  @relation("SupplierSourceCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt                    DateTime              @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt                    DateTime              @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  scans                        ImportScan[]
+  records                      SourceRecord[]
+
+  @@unique([supplierId, name], map: "supplier_sources_supplier_name_key")
+  @@unique([supplierId, baseUrl], map: "supplier_sources_supplier_url_key")
+  @@index([isEnabled, scanCadence], map: "supplier_sources_enabled_idx")
+  @@map("supplier_sources")
+}
+
+/// P9-2: one run of a source (the import history, PRD 30.7). A null actor means the schedule ran it.
+model ImportScan {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceId            String            @map("source_id") @db.Uuid
+  source              SupplierSource    @relation(fields: [sourceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  trigger             ImportScanTrigger
+  status              ImportScanStatus  @default(RUNNING)
+  actorUserId         String?           @map("actor_user_id") @db.Uuid
+  actor               User?             @relation("ImportScanActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  startedAt           DateTime          @default(dbgenerated("clock_timestamp()")) @map("started_at") @db.Timestamptz(3)
+  finishedAt          DateTime?         @map("finished_at") @db.Timestamptz(3)
+  discoveredCount     Int               @default(0) @map("discovered_count")
+  newCount            Int               @default(0) @map("new_count")
+  unchangedCount      Int               @default(0) @map("unchanged_count")
+  priceChangedCount   Int               @default(0) @map("price_changed_count")
+  contentChangedCount Int               @default(0) @map("content_changed_count")
+  imageChangedCount   Int               @default(0) @map("image_changed_count")
+  removedCount        Int               @default(0) @map("removed_count")
+  duplicateCount      Int               @default(0) @map("duplicate_count")
+  errorCount          Int               @default(0) @map("error_count")
+  errors              Json              @default("[]") @db.JsonB
+  createdAt           DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  firstSeenRecords    SourceRecord[]    @relation("SourceRecordFirstScan")
+  lastSeenRecords     SourceRecord[]    @relation("SourceRecordLastScan")
+  priceObservations   SourcePriceObservation[]
+
+  @@index([sourceId, startedAt(sort: Desc)], map: "import_scans_source_idx")
+  @@map("import_scans")
+}
+
+/// P9-2: what one source says about one supplier product, as normalized text. The key is the source's own id, not the SKU.
+model SourceRecord {
+  id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceId         String                   @map("source_id") @db.Uuid
+  source           SupplierSource           @relation(fields: [sourceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sourceKey        String                   @map("source_key") @db.VarChar(300)
+  url              String
+  name             String
+  sku              String?                  @db.VarChar(100)
+  barcode          String?                  @db.VarChar(100)
+  brandText        String?                  @map("brand_text")
+  categoryPath     Json                     @default("[]") @map("category_path") @db.JsonB
+  descriptionText  String?                  @map("description_text")
+  attributes       Json                     @default("{}") @db.JsonB
+  imageUrls        Json                     @default("[]") @map("image_urls") @db.JsonB
+  contentHash      String                   @map("content_hash") @db.VarChar(64)
+  priceHash        String?                  @map("price_hash") @db.VarChar(64)
+  imagesHash       String?                  @map("images_hash") @db.VarChar(64)
+  state            SourceRecordState        @default(PRESENT)
+  lastChanges      Json                     @default("[]") @map("last_changes") @db.JsonB
+  missingScans     Int                      @default(0) @map("missing_scans")
+  firstSeenScanId  String                   @map("first_seen_scan_id") @db.Uuid
+  firstSeenScan    ImportScan               @relation("SourceRecordFirstScan", fields: [firstSeenScanId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  lastSeenScanId   String                   @map("last_seen_scan_id") @db.Uuid
+  lastSeenScan     ImportScan               @relation("SourceRecordLastScan", fields: [lastSeenScanId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  firstSeenAt      DateTime                 @default(dbgenerated("clock_timestamp()")) @map("first_seen_at") @db.Timestamptz(3)
+  lastSeenAt       DateTime                 @default(dbgenerated("clock_timestamp()")) @map("last_seen_at") @db.Timestamptz(3)
+  createdAt        DateTime                 @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime                 @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  priceObservations SourcePriceObservation[]
+  candidateLink    CandidateSource?
+
+  @@unique([sourceId, sourceKey], map: "source_records_source_key_key")
+  @@index([sourceId, state], map: "source_records_state_idx")
+  @@map("source_records")
+}
+
+/// P9-2: append-only. A price seen on a source is reference data only (Owner answers 2 and 6).
+model SourcePriceObservation {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceRecordId String       @map("source_record_id") @db.Uuid
+  sourceRecord   SourceRecord @relation(fields: [sourceRecordId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  scanId         String       @map("scan_id") @db.Uuid
+  scan           ImportScan   @relation(fields: [scanId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  priceVnd       BigInt?      @map("price_vnd")
+  promoPriceVnd  BigInt?      @map("promo_price_vnd")
+  currency       String       @default("VND") @db.VarChar(3)
+  originalAmount Decimal?     @map("original_amount") @db.Decimal(20, 4)
+  observedAt     DateTime     @default(dbgenerated("clock_timestamp()")) @map("observed_at") @db.Timestamptz(3)
+
+  @@unique([sourceRecordId, scanId], map: "source_price_observations_scan_key")
+  @@index([scanId], map: "source_price_observations_scan_idx")
+  @@map("source_price_observations")
+}
+
+/// P9-2: the Lucy-side draft of one underlying supplier product. The text columns are Lucy-owned and never overwritten by a sync.
+model ImportCandidate {
+  id                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  supplierId        String               @map("supplier_id") @db.Uuid
+  supplier          Supplier             @relation(fields: [supplierId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  state             ImportCandidateState @default(DETECTED)
+  nameVi            String               @map("name_vi")
+  nameEn            String               @map("name_en")
+  needsTranslation  Boolean              @default(true) @map("needs_translation")
+  descriptionVi     String?              @map("description_vi")
+  descriptionEn     String?              @map("description_en")
+  brandText         String?              @map("brand_text")
+  brandId           String?              @map("brand_id") @db.Uuid
+  brand             Brand?               @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  categoryPath      Json                 @default("[]") @map("category_path") @db.JsonB
+  categoryId        String?              @map("category_id") @db.Uuid
+  category          ProductCategory?     @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  proposedSku       String?              @map("proposed_sku") @db.VarChar(64)
+  proposedVariants  Json                 @default("[]") @map("proposed_variants") @db.JsonB
+  warnings          Json                 @default("[]") @db.JsonB
+  matchedProductId  String?              @map("matched_product_id") @db.Uuid
+  matchedProduct    Product?             @relation("CandidateMatchedProduct", fields: [matchedProductId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  importedProductId String?              @map("imported_product_id") @db.Uuid
+  importedProduct   Product?             @relation("CandidateImportedProduct", fields: [importedProductId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  decidedByUserId   String?              @map("decided_by_user_id") @db.Uuid
+  decidedBy         User?                @relation("ImportCandidateDecider", fields: [decidedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  decidedAt         DateTime?            @map("decided_at") @db.Timestamptz(3)
+  decisionNote      String?              @map("decision_note")
+  rowVersion        Int                  @default(1) @map("row_version")
+  createdAt         DateTime             @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime             @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  sources           CandidateSource[]
+  images            CandidateImage[]
+
+  @@index([supplierId, state], map: "import_candidates_state_idx")
+  @@map("import_candidates")
+}
+
+/// P9-2: links a candidate to the source records it was built from (several sources can describe one product).
+model CandidateSource {
+  candidateId     String             @map("candidate_id") @db.Uuid
+  candidate       ImportCandidate    @relation(fields: [candidateId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sourceRecordId  String             @unique(map: "candidate_sources_record_key") @map("source_record_id") @db.Uuid
+  sourceRecord    SourceRecord       @relation(fields: [sourceRecordId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  matchKind       CandidateMatchKind @map("match_kind")
+  matchedByUserId String?            @map("matched_by_user_id") @db.Uuid
+  matchedBy       User?              @relation("CandidateSourceMatcher", fields: [matchedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  matchedAt       DateTime           @default(dbgenerated("clock_timestamp()")) @map("matched_at") @db.Timestamptz(3)
+
+  @@id([candidateId, sourceRecordId], map: "candidate_sources_pkey")
+  @@map("candidate_sources")
+}
+
+/// P9-2: at most six images per candidate (Owner answer 5); sort order is 0..5.
+model CandidateImage {
+  id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  candidateId  String          @map("candidate_id") @db.Uuid
+  candidate    ImportCandidate @relation(fields: [candidateId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  mediaAssetId String          @map("media_asset_id") @db.Uuid
+  mediaAsset   MediaAsset      @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sourceUrl    String          @map("source_url")
+  sortOrder    Int             @map("sort_order") @db.SmallInt
+  sha256       String          @db.VarChar(64)
+  phash        String?         @db.VarChar(16)
+  createdAt    DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([candidateId, mediaAssetId], map: "candidate_images_asset_key")
+  @@index([candidateId, sortOrder], map: "candidate_images_order_idx")
+  @@index([mediaAssetId], map: "candidate_images_media_idx")
+  @@map("candidate_images")
+}
+
+/// P9-2: "supplier text X means brand or category Y", remembered so each value is mapped once.
+model SourceValueMapping {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  supplierId      String            @map("supplier_id") @db.Uuid
+  supplier        Supplier          @relation(fields: [supplierId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  kind            SourceMappingKind
+  sourceText      String            @map("source_text") @db.VarChar(300)
+  brandId         String?           @map("brand_id") @db.Uuid
+  brand           Brand?            @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  categoryId      String?           @map("category_id") @db.Uuid
+  category        ProductCategory?  @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdByUserId String            @map("created_by_user_id") @db.Uuid
+  createdBy       User              @relation("SourceMappingCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([supplierId, kind, sourceText], map: "source_value_mappings_text_key")
+  @@map("source_value_mappings")
 }

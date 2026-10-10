@@ -3666,6 +3666,18 @@ in style C, the photo caption covered by the circle and the real photos.
 Phase 10 stays last. This order replaces the numeric order of
 Phases 7 to 9 above; it does not change what each phase delivers.
 
+**Roadmap change (Owner, 2026-10-10): a new "Claude integration" phase
+comes after Phase 8** (Phase 9 → 7 → 8 → Claude integration). The Owner
+has an Anthropic API account with credit. Phase 9 itself uses no AI.
+The first feature of the new phase: AI rewrites imported product content
+into original Lucy Spa wording (so the shop does not duplicate the
+supplier's text, e.g. haruohui.com), always as a draft that a person
+reviews before anything is saved to the catalog. Phase 9 keeps the
+Lucy-owned text fields separate from the text observed at the source and
+its review flow ready for this. My reading, pending Owner confirmation:
+the full review and polish pass then follows the Claude integration
+phase, so it also covers the new screens; Phase 10 stays last.
+
 The review and polish pass checklist (UI balance, customer home fixes,
 touch targets, wide tables, re-test of every flow, pre-launch items) is
 in `docs/REVIEW_POLISH_CHECKLIST.md`.

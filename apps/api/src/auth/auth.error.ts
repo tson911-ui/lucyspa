@@ -198,6 +198,16 @@ const errors = {
   CAMPAIGN_NO_DISCOUNT: [409, 'No chosen product gets a discount from its rule'],
   CAMPAIGN_GROUP_LIMIT: [409, 'A campaign has at most ten groups'],
   CAMPAIGN_VARIANT_NOT_SELLABLE: [409, 'A chosen product is not published or has no price'],
+  // Phase 9 P9-2: supplier sources and their permission gate (P9-T9).
+  SUPPLIER_SOURCE_NAME_TAKEN: [409, 'This supplier already has a source with this name'],
+  SUPPLIER_SOURCE_URL_TAKEN: [409, 'This supplier already has a source at this address'],
+  SUPPLIER_SOURCE_ENABLED: [409, 'Disable the source before changing its address'],
+  SUPPLIER_SOURCE_PERMISSION_INCOMPLETE: [
+    409,
+    'Record who gave the permission, how and when before this step',
+  ],
+  SUPPLIER_SOURCE_NOT_COVERED: [409, 'The permission must cover text or images'],
+  SUPPLIER_SOURCE_PERMISSION_UNCONFIRMED: [409, 'Confirm the permission record first'],
   // Phase 6 P6-5: the Excel/CSV import. The field of IMPORT_FILE_INVALID names the reason (never file content).
   IMPORT_FILE_INVALID: [422, 'The file cannot be imported'],
   IMPORT_JOB_NOT_PREVIEWED: [409, 'Only a previewed import can be applied or cancelled'],

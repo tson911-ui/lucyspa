@@ -445,6 +445,8 @@ test('the code-owned catalog is exactly the Phase 1, Phase 2 and follow-up Step 
       ['REFUND_PRODUCTS', 'BRANCH_CAPABLE', 'FINANCIAL'],
       ['MANAGE_PRODUCT_CAMPAIGNS', 'GLOBAL_ONLY', 'FINANCIAL'],
       ['MANAGE_PRODUCT_ORDERS', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['MANAGE_SUPPLIER_SOURCES', 'GLOBAL_ONLY', 'STANDARD'],
+      ['REVIEW_SUPPLIER_IMPORTS', 'GLOBAL_ONLY', 'STANDARD'],
     ],
   );
 });

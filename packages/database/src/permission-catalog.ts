@@ -204,6 +204,18 @@ export const PERMISSION_CATALOG = Object.freeze([
     scopeCapability: 'BRANCH_CAPABLE',
     dataClassification: 'STANDARD',
   },
+  // Phase 9 P9-2 (P9-T8, approved by the Owner on 2026-10-10): supplier sources (add, record the permission, enable, scan) and the review of
+  // imported products (content, images, mapping, approval; no prices: those stay MANAGE_PRODUCT_PRICES). Granted to nobody.
+  {
+    code: 'MANAGE_SUPPLIER_SOURCES',
+    scopeCapability: 'GLOBAL_ONLY',
+    dataClassification: 'STANDARD',
+  },
+  {
+    code: 'REVIEW_SUPPLIER_IMPORTS',
+    scopeCapability: 'GLOBAL_ONLY',
+    dataClassification: 'STANDARD',
+  },
 ] as const satisfies readonly PermissionDefinition[]);
 
 /** Codes that only the virtual Owner holds: no role and no override may carry them (SQL refuses too). */
