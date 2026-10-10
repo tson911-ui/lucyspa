@@ -211,10 +211,10 @@ test(
             g2.groups.map((g) => g.position),
             [1, 2],
           );
-          const p1 = await product('c1', 100_000);
-          const p2 = await product('c2', 199_999);
-          // The label is not hex: the search also reads the SKU, which carries the random 8-hex run id, so a label like `c3` matched the
-          // other products whenever that id happened to contain "c3" (about 1 run in 40) and the test failed at random.
+          const p1 = await product('g1', 100_000);
+          const p2 = await product('g2', 199_999);
+          // The labels are not hex: the search also reads the SKU, which carries the random 10-hex run id, so a label like `c1` or `c3`
+          // matched the other products whenever that id happened to contain it (a few runs in a hundred) and the test failed at random.
           const p3 = await product('w3', 50_000);
           const draftOnly = {
             variantId: (await k.product('c4', [80_000], { publish: false })).variants[0]!.id,
@@ -302,7 +302,7 @@ test(
             'VALIDATION_FAILED',
           );
           // The chosen products with their prices, searchable, 20 a page.
-          const page = await campaigns.items(owner.token, c.id, { q: 'san pham c1' });
+          const page = await campaigns.items(owner.token, c.id, { q: 'san pham g1' });
           assert.equal(page.total, 1);
           assert.deepEqual(
             {

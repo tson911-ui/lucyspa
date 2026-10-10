@@ -10,7 +10,7 @@ Em báo "bộ tích hợp đỏ vào buổi tối". Đó là **sai**: 220 test �
 
 1. **Lỗi của em ở P9-2 (đỏ ở `5ee604c` và `4c8dbba`).** Hai quyền mới làm danh mục thành 68; `role-admin.integration.test.ts` còn đếm cứng 63 quyền và danh sách quyền GLOBAL_ONLY cũ. Đã sửa (65 = 68 trừ 3 quyền chỉ của chủ; thêm hai mã vào danh sách).
 2. **Cờ ngẫu nhiên (đỏ ở `295d6fb`, commit chỉ có tài liệu).** `return.exception.integration.test.ts` sắp xếp dòng lịch sử theo `occurred_at` (độ chính xác mili giây) rồi theo `id` ngẫu nhiên; hai dòng OPENED và WINDOW_EXCEPTION ghi liền nhau nên hay trùng mili giây, thứ tự lật gần một nửa số lần chạy. Đã sửa: dùng `kind` để phá thế hòa (enum khai báo theo vòng đời); hai thời điểm khác nhau vẫn quyết định trước. Không nới điều khẳng định.
-3. **Cờ ngẫu nhiên khác (tìm thấy khi chạy giả đồng hồ lúc 23:50).** `campaign.integration.test.ts` tìm "san pham c3"; ô tìm cũng đọc SKU, mà SKU chứa mã chạy ngẫu nhiên 8 ký tự hex: khi mã đó có "c3" (khoảng 1 lần chạy trong 40) cả ba sản phẩm khớp. Đã đổi nhãn sang chữ không phải hex (`w3`).
+3. **Cờ ngẫu nhiên khác (tìm thấy khi chạy giả đồng hồ lúc 23:50).** `campaign.integration.test.ts` tìm "san pham c3"; ô tìm cũng đọc SKU, mà SKU chứa mã chạy ngẫu nhiên 8 ký tự hex: khi mã đó có "c3" (khoảng 1 lần chạy trong 40) cả ba sản phẩm khớp. Đã đổi các nhãn sang chữ không phải hex (`g1`, `g2`, `w3`).
 
 Không test nào hóa ra phụ thuộc giờ trong ngày. Các test hay phụ thuộc giờ (`operations`, `walk-in`, `reassignment`...) đã tự chọn múi giờ có giờ trưa; `my-income` đã ghim giờ từ bước trước.
 
@@ -32,4 +32,6 @@ Cách làm (`scripts/it-fake-clock.sh <HH:MM> [số ngày]`): Postgres một l�
 
 ## Chưa làm
 
-- Phụ thuộc **ngày** (không phải giờ): nhiều test dùng ngày cố định như `2026-10-11`; chưa chạy giả ngày sau nhiều tuần (`it-fake-clock.sh 13:00 30` làm được).
+## Thử thêm: ngày
+
+`it-fake-clock.sh 13:00 30` (đồng hồ ở 30 ngày sau, 13:00): 794 test, 8 đỏ (đếm cả bộ cha), **không có lỗi nào do ngày**: 6 là một chuỗi bắt đầu từ bài `concurrent bootstrap` bị `57014 statement timeout` (lỗi công cụ của libfaketime), 2 là chính cờ ngẫu nhiên của bộ chọn sản phẩm chiến dịch ở một nhãn khác (`c1`); em đã đổi cả `c1`, `c2`, `c3` sang nhãn không phải hex (`g1`, `g2`, `w3`) và bộ đó qua 8/8.
