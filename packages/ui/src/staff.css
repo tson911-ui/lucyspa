@@ -1,0 +1,191 @@
+/* The staff screens in direction C (Owner, 2026-10-10): the admin, the counter and the staff sign-in follow the same soft, warm look as the
+   customer site, adapted for work screens: compact, data-dense, fast to scan. Same faces, palette, radii, soft rose shadows, header and
+   sidebar styling and motion rules as the customer site; none of its decoration (no waves, photo frames, hero type, lifting buttons).
+   Scope: `.ls-shell` (every staff page, its dialogs, drawers and menus render inside it) and `.ls-auth` (the staff sign-in pages), so
+   the customer site (`.ls-site`) never reads a rule of this file. The values come from tokens.css (colours, radii, shadows, faces);
+   there is no colour literal here. The hover rule (solid brand fill) and the focus ring stay as the kit defines them. */
+
+/* ---------- the page: a faint blush at the top that fades into the page colour ---------- */
+.ls-shell {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ls-brand) 3%, var(--ls-bg-page)),
+    var(--ls-bg-page) 20rem
+  );
+  font-family: var(--ls-font-sans);
+}
+
+/* ---------- titles: Fraunces at the staff sizes ---------- */
+.ls-shell .ls-page-title,
+.ls-shell .ls-card-title,
+.ls-shell .ls-dialog-title,
+.ls-shell .ls-list-section-title,
+.ls-shell .ls-form-section-title,
+.ls-auth h1 {
+  font-family: var(--ls-font-staff-title);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+.ls-shell .ls-page-title {
+  letter-spacing: -0.015em;
+}
+
+/* ---------- topbar and sidebar: a soft rose shadow instead of a hairline ---------- */
+.ls-topbar {
+  border-bottom-color: transparent;
+  box-shadow:
+    0 var(--ls-season-line-w) 0 0 var(--ls-season-line),
+    var(--ls-shadow-md);
+}
+
+/* The logo keeps the size it had in the staff bar (the customer header sets its own). */
+.ls-topbar-brand {
+  --ls-wordmark-size: 1.25rem;
+}
+
+/* On a phone the logo never grows past 5% of the screen, so a larger text size cannot push the account button off it. */
+@media (max-width: 639px) {
+  .ls-topbar-brand {
+    --ls-wordmark-size: min(1.125rem, 5vw);
+  }
+}
+
+.ls-sidebar {
+  border-inline-end-color: transparent;
+  box-shadow: var(--ls-shadow-md);
+}
+
+/* Nav items are pills; the current page keeps the solid brand fill, the group headings stay quiet labels. */
+.ls-sidebar-pill,
+.ls-nav-link,
+.ls-sidebar-toggle,
+.ls-nav-heading-button {
+  border-radius: var(--ls-radius-full);
+}
+
+.ls-nav-link,
+.ls-sidebar-toggle {
+  font-weight: 600;
+}
+
+.ls-nav-heading-button {
+  padding-inline: var(--ls-space-3);
+}
+
+/* ---------- buttons and fields: pills (the textarea keeps a soft rectangle) ---------- */
+.ls-shell .ls-btn,
+.ls-auth .ls-btn {
+  border-radius: var(--ls-radius-full);
+}
+
+.ls-shell .ls-btn-secondary,
+.ls-auth .ls-btn-secondary {
+  border-color: transparent;
+  background: var(--ls-brand-soft);
+}
+
+.ls-shell .ls-input:not(textarea),
+.ls-auth .ls-input:not(textarea),
+.ls-shell .ls-page-btn {
+  border-radius: var(--ls-radius-full);
+}
+
+/* One notch more room at the start of a pill; a field with an icon or a unit keeps its own larger padding (this rule is lower in
+   specificity than theirs on purpose). */
+:where(.ls-shell, .ls-auth) .ls-input:where(:not(textarea)) {
+  padding-inline-start: var(--ls-space-4);
+}
+
+/* ---------- surfaces: soft cards and tables, no hard outline ---------- */
+.ls-shell .ls-card,
+.ls-shell .ls-chart-frame,
+.ls-shell .ls-kpi,
+.ls-shell .ls-table-wrap {
+  border-color: color-mix(in srgb, var(--ls-border) 60%, transparent);
+  border-radius: var(--ls-radius-lg);
+  box-shadow: var(--ls-shadow-md);
+}
+
+/* A table inside a card is a plain bordered block (nothing lifts inside a card). */
+.ls-shell .ls-card .ls-table-wrap {
+  border-color: var(--ls-border);
+  border-radius: var(--ls-radius-md);
+  box-shadow: none;
+}
+
+/* A toolbar that opens a tab panel keeps 16 px between itself and the list or grid below it (the panel has no gap of its own). */
+.ls-shell .ls-tabpanel > .ls-toolbar + * {
+  margin-block-start: var(--ls-space-4);
+}
+
+.ls-shell .ls-dialog {
+  border-color: transparent;
+  border-radius: var(--ls-radius-lg);
+}
+
+/* A drawer is a soft panel too: its free edge is rounded (the side that meets the screen edge stays square). */
+.ls-shell .ls-drawer-end {
+  border-start-start-radius: var(--ls-radius-lg);
+  border-end-start-radius: var(--ls-radius-lg);
+  border-inline-start-color: transparent;
+}
+
+.ls-shell .ls-drawer-start {
+  border-start-end-radius: var(--ls-radius-lg);
+  border-end-end-radius: var(--ls-radius-lg);
+  border-inline-end-color: transparent;
+}
+
+/* A form page's column starts on the same edge as the back button, the title and every list page, instead of floating in the middle.
+   A page inside the shell's own page frame takes no second gutter and no second top space. */
+.ls-shell .ls-page-form {
+  margin-inline: 0;
+}
+
+.ls-shell .ls-page .ls-page {
+  padding-block-start: 0;
+  padding-inline: 0;
+}
+
+/* The faces are lighter than the old ones at the same weight, so labels, buttons and table headers go one step bolder. */
+.ls-shell .ls-label,
+.ls-shell .ls-btn,
+.ls-auth .ls-btn,
+.ls-shell .ls-table thead th {
+  font-weight: 700;
+}
+
+/* Tables are data-dense: 8 px between a column and the next (16 px at the two edges of a row), so a wide table fits a 1280 px screen
+   without cutting its last column. A cell with its own padding rule (the leading picture, the actions) keeps it. */
+:where(.ls-shell) .ls-table :is(th, td) {
+  padding-inline: var(--ls-space-2);
+}
+
+:where(.ls-shell) .ls-table :is(th, td):first-child {
+  padding-inline-start: var(--ls-space-4);
+}
+
+:where(.ls-shell) .ls-table :is(th, td):last-child {
+  padding-inline-end: var(--ls-space-4);
+}
+
+/* A badge in a clipped cell is cut with an ellipsis instead of wrapping to a second line. */
+.ls-shell .ls-cell-truncate .ls-badge {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- the staff sign-in ---------- */
+/* The big logo of the sign-in card is 28 px on a phone, so it fits the card even at a larger text size. */
+@media (max-width: 639px) {
+  .ls-auth {
+    --ls-wordmark-display: 1.75rem;
+  }
+}
+
+.ls-auth-card {
+  border-radius: var(--ls-radius-lg);
+}

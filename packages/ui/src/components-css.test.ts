@@ -20,6 +20,7 @@ function sourceFiles(directory: string): string[] {
 const css = [
   'components.css',
   'shell.css',
+  'staff.css',
   'site.css',
   'customer.css',
   'customer-pages.css',

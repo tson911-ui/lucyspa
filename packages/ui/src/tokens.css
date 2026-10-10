@@ -5,26 +5,26 @@
   color-scheme: light;
 
   /* Surfaces */
-  --ls-bg-page: #faf7f7;
+  --ls-bg-page: #fdf4f2;
   --ls-bg-surface: #ffffff;
   --ls-bg-raised: #ffffff;
-  --ls-bg-sunken: #f3eeee;
+  --ls-bg-sunken: #f7ece8;
 
   /* Text */
-  --ls-text: #221a1c;
-  --ls-text-muted: #5c4e51;
-  --ls-text-subtle: #6f6164;
+  --ls-text: #2b1a1e;
+  --ls-text-muted: #6a5558;
+  --ls-text-subtle: #735d60;
 
   /* Lines */
-  --ls-border: #e6dcdd;
-  --ls-border-control: #8c7d80;
+  --ls-border: #efd9d9;
+  --ls-border-control: #8a7377;
 
   /* Brand */
   --ls-brand: #782b37;
   --ls-brand-fill: #782b37;
   --ls-on-brand: #ffffff;
   --ls-brand-fill-hover: #632330;
-  --ls-brand-soft: #f8edef;
+  --ls-brand-soft: #f6dde0;
   --ls-brand-on-soft: #782b37;
   --ls-focus: #782b37;
   /* Season layer (docs/UXUI_REDESIGN_DESIGN.md 20.2): neutral defaults equal the brand, so nothing changes
@@ -48,7 +48,7 @@
   --ls-hover-text: #ffffff;
   --ls-hover-border: #782b37;
   --ls-hover-ghost-border: #782b37;
-  --ls-row-hover-bg: #fbf1f3;
+  --ls-row-hover-bg: #fbe9e6;
   /* Sidebar items (Owner rule): solid brand red with white text on hover and for the current page. */
   --ls-nav-hover-bg: #782b37;
   --ls-nav-hover-text: #ffffff;
@@ -76,14 +76,14 @@
   --ls-info: #22518a;
   --ls-info-bg: #e8f0fa;
 
-  --ls-overlay: rgb(34 26 28 / 0.5);
-  --ls-shadow-sm: 0 1px 2px rgb(34 26 28 / 0.06);
-  --ls-shadow-md: 0 4px 16px rgb(34 26 28 / 0.1);
-  --ls-shadow-lg: 0 12px 32px rgb(34 26 28 / 0.16);
+  --ls-overlay: rgb(43 26 30 / 0.5);
+  --ls-shadow-sm: 0 1px 2px rgb(120 43 55 / 0.06);
+  --ls-shadow-md: 0 1px 3px rgb(120 43 55 / 0.05), 0 12px 28px -16px rgb(120 43 55 / 0.24);
+  --ls-shadow-lg: 0 4px 8px rgb(120 43 55 / 0.06), 0 28px 56px -24px rgb(120 43 55 / 0.4);
 
   /* Charts (contract 6.5): fixed order, six slots, never cycled */
   --ls-chart-surface: #ffffff;
-  --ls-chart-grid: #e6dcdd;
+  --ls-chart-grid: #efd9d9;
   --ls-chart-1: #a03a4c;
   --ls-chart-2: #2b6cb0;
   --ls-chart-3: #d2691e;
@@ -95,7 +95,12 @@
   --ls-series: var(--ls-chart-1);
 
   /* Typography (contract 5). The font variable is set by next/font in the root layout. */
-  --ls-font-sans: var(--font-be-vietnam-pro), system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+  --ls-font-sans:
+    var(--font-nunito-sans, var(--font-be-vietnam-pro)), system-ui, 'Segoe UI', Roboto, Arial,
+    sans-serif;
+  /* Titles of the staff screens (page title, card title, dialog title): Fraunces, never above the staff type scale. */
+  --ls-font-staff-title:
+    var(--font-fraunces, var(--font-playfair-display)), Georgia, 'Times New Roman', serif;
   --ls-text-xs: 0.75rem;
   --ls-leading-xs: 1rem;
   --ls-text-sm: 0.875rem;
@@ -133,9 +138,9 @@
   --ls-safe-bottom: env(safe-area-inset-bottom, 0px);
   --ls-safe-left: env(safe-area-inset-left, 0px);
   --ls-safe-right: env(safe-area-inset-right, 0px);
-  --ls-radius-sm: 6px;
-  --ls-radius-md: 10px;
-  --ls-radius-lg: 16px;
+  --ls-radius-sm: 8px;
+  --ls-radius-md: 16px;
+  --ls-radius-lg: 24px;
   --ls-radius-full: 999px;
   --ls-control-h: 40px;
   --ls-row-h: 48px;
@@ -335,15 +340,15 @@
 :root[data-theme='dark'],
 [data-preview-theme='dark'] {
   color-scheme: dark;
-  --ls-bg-page: #140f10;
-  --ls-bg-surface: #1d1618;
-  --ls-bg-raised: #261d20;
-  --ls-bg-sunken: #100b0c;
-  --ls-text: #f4ecec;
-  --ls-text-muted: #c4b5b8;
-  --ls-text-subtle: #a4949a;
-  --ls-border: #372b2e;
-  --ls-border-control: #7d6c70;
+  --ls-bg-page: #171012;
+  --ls-bg-surface: #21171a;
+  --ls-bg-raised: #281d20;
+  --ls-bg-sunken: #120c0e;
+  --ls-text: #f6ebec;
+  --ls-text-muted: #bba8ab;
+  --ls-text-subtle: #a99598;
+  --ls-border: #3a2a2e;
+  --ls-border-control: #8a7377;
   --ls-brand: #e08a9a;
   --ls-brand-fill: #e08a9a;
   --ls-on-brand: #2a0f16;
@@ -355,7 +360,7 @@
   --ls-hover-text: #2a0f16;
   --ls-hover-border: #e08a9a;
   --ls-hover-ghost-border: #e08a9a;
-  --ls-row-hover-bg: #100b0c;
+  --ls-row-hover-bg: #2a1d21;
   --ls-nav-hover-bg: #e08a9a;
   --ls-nav-hover-text: #2a0f16;
   --ls-nav-active-bg: #e08a9a;
@@ -385,9 +390,9 @@
   --ls-info: #8ebcf0;
   --ls-info-bg: #14283f;
   --ls-overlay: rgb(0 0 0 / 0.65);
-  --ls-shadow-sm: none;
-  --ls-shadow-md: none;
-  --ls-shadow-lg: none;
+  --ls-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --ls-shadow-md: 0 1px 3px rgb(0 0 0 / 0.4), 0 12px 28px -16px rgb(0 0 0 / 0.7);
+  --ls-shadow-lg: 0 4px 8px rgb(0 0 0 / 0.45), 0 28px 56px -24px rgb(0 0 0 / 0.8);
   --ls-chart-surface: #1b1416;
   --ls-chart-grid: #4a3d40;
   --ls-chart-1: #c9647a;
@@ -402,15 +407,15 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-    --ls-bg-page: #140f10;
-    --ls-bg-surface: #1d1618;
-    --ls-bg-raised: #261d20;
-    --ls-bg-sunken: #100b0c;
-    --ls-text: #f4ecec;
-    --ls-text-muted: #c4b5b8;
-    --ls-text-subtle: #a4949a;
-    --ls-border: #372b2e;
-    --ls-border-control: #7d6c70;
+    --ls-bg-page: #171012;
+    --ls-bg-surface: #21171a;
+    --ls-bg-raised: #281d20;
+    --ls-bg-sunken: #120c0e;
+    --ls-text: #f6ebec;
+    --ls-text-muted: #bba8ab;
+    --ls-text-subtle: #a99598;
+    --ls-border: #3a2a2e;
+    --ls-border-control: #8a7377;
     --ls-brand: #e08a9a;
     --ls-brand-fill: #e08a9a;
     --ls-on-brand: #2a0f16;
@@ -422,7 +427,7 @@
     --ls-hover-text: #2a0f16;
     --ls-hover-border: #e08a9a;
     --ls-hover-ghost-border: #e08a9a;
-    --ls-row-hover-bg: #100b0c;
+    --ls-row-hover-bg: #2a1d21;
     --ls-nav-hover-bg: #e08a9a;
     --ls-nav-hover-text: #2a0f16;
     --ls-nav-active-bg: #e08a9a;
@@ -452,9 +457,9 @@
     --ls-info: #8ebcf0;
     --ls-info-bg: #14283f;
     --ls-overlay: rgb(0 0 0 / 0.65);
-    --ls-shadow-sm: none;
-    --ls-shadow-md: none;
-    --ls-shadow-lg: none;
+    --ls-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --ls-shadow-md: 0 1px 3px rgb(0 0 0 / 0.4), 0 12px 28px -16px rgb(0 0 0 / 0.7);
+    --ls-shadow-lg: 0 4px 8px rgb(0 0 0 / 0.45), 0 28px 56px -24px rgb(0 0 0 / 0.8);
     --ls-chart-surface: #1b1416;
     --ls-chart-grid: #4a3d40;
     --ls-chart-1: #c9647a;
@@ -473,27 +478,27 @@
    this block equal to the light values. */
 [data-preview-theme='light'] {
   color-scheme: light;
-  --ls-bg-page: #faf7f7;
+  --ls-bg-page: #fdf4f2;
   --ls-bg-surface: #ffffff;
   --ls-bg-raised: #ffffff;
-  --ls-bg-sunken: #f3eeee;
-  --ls-text: #221a1c;
-  --ls-text-muted: #5c4e51;
-  --ls-text-subtle: #6f6164;
-  --ls-border: #e6dcdd;
-  --ls-border-control: #8c7d80;
+  --ls-bg-sunken: #f7ece8;
+  --ls-text: #2b1a1e;
+  --ls-text-muted: #6a5558;
+  --ls-text-subtle: #735d60;
+  --ls-border: #efd9d9;
+  --ls-border-control: #8a7377;
   --ls-brand: #782b37;
   --ls-brand-fill: #782b37;
   --ls-on-brand: #ffffff;
   --ls-brand-fill-hover: #632330;
-  --ls-brand-soft: #f8edef;
+  --ls-brand-soft: #f6dde0;
   --ls-brand-on-soft: #782b37;
   --ls-focus: #782b37;
   --ls-hover-bg: #782b37;
   --ls-hover-text: #ffffff;
   --ls-hover-border: #782b37;
   --ls-hover-ghost-border: #782b37;
-  --ls-row-hover-bg: #fbf1f3;
+  --ls-row-hover-bg: #fbe9e6;
   --ls-nav-hover-bg: #782b37;
   --ls-nav-hover-text: #ffffff;
   --ls-nav-active-bg: #782b37;
@@ -522,12 +527,12 @@
   --ls-warning-bg: #fdeedd;
   --ls-info: #22518a;
   --ls-info-bg: #e8f0fa;
-  --ls-overlay: rgb(34 26 28 / 0.5);
-  --ls-shadow-sm: 0 1px 2px rgb(34 26 28 / 0.06);
-  --ls-shadow-md: 0 4px 16px rgb(34 26 28 / 0.1);
-  --ls-shadow-lg: 0 12px 32px rgb(34 26 28 / 0.16);
+  --ls-overlay: rgb(43 26 30 / 0.5);
+  --ls-shadow-sm: 0 1px 2px rgb(120 43 55 / 0.06);
+  --ls-shadow-md: 0 1px 3px rgb(120 43 55 / 0.05), 0 12px 28px -16px rgb(120 43 55 / 0.24);
+  --ls-shadow-lg: 0 4px 8px rgb(120 43 55 / 0.06), 0 28px 56px -24px rgb(120 43 55 / 0.4);
   --ls-chart-surface: #ffffff;
-  --ls-chart-grid: #e6dcdd;
+  --ls-chart-grid: #efd9d9;
   --ls-chart-1: #a03a4c;
   --ls-chart-2: #2b6cb0;
   --ls-chart-3: #d2691e;

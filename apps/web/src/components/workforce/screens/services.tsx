@@ -157,6 +157,8 @@ export function ServicesScreen() {
     {
       key: 'code',
       header: t.common.code,
+      truncate: true,
+      width: 'md',
       sortable: true,
       sortValue: (service) => serviceSortValue(service, 'code', locale, categoryName),
       cell: (service) => service.code,
@@ -201,7 +203,7 @@ export function ServicesScreen() {
       key: 'estimate',
       header: t.services.estimate,
       numeric: true,
-      hideBelow: 'xl',
+      hideBelow: 'wide',
       cell: (service) =>
         formatEstimate(service.estimatedMinMinutes, service.estimatedMaxMinutes, t),
     },

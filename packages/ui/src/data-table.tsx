@@ -28,7 +28,7 @@ export interface DataTableColumn<Row> {
   /** What `mode="client"` sorts by; without it the column cannot be sorted in the browser. */
   sortValue?: ((row: Row) => SortValue) | undefined;
   /** Hidden on tablets narrower than this (contract section 13); a phone card list shows every field. */
-  hideBelow?: 'md' | 'lg' | 'xl' | '2xl' | undefined;
+  hideBelow?: 'md' | 'lg' | 'xl' | 'wide' | '2xl' | undefined;
   /** Left out of the phone card list (a field that adds little next to the title); every other width shows it. */
   hidePhone?: boolean | undefined;
   /** In a `phoneRows="compact"` list: the field that stays in the normal text color (the others are muted), e.g. the customer. */
@@ -389,6 +389,7 @@ function cellClass<Row>(column: DataTableColumn<Row>): string {
     column.hideBelow === 'md' && 'ls-hide-md',
     column.hideBelow === 'lg' && 'ls-hide-lg',
     column.hideBelow === 'xl' && 'ls-hide-xl',
+    column.hideBelow === 'wide' && 'ls-hide-wide',
     column.hideBelow === '2xl' && 'ls-hide-2xl',
     column.hidePhone && 'ls-hide-phone',
     column.phoneEmphasis && 'ls-phone-emphasis',

@@ -6,7 +6,7 @@ export function BrandWordmark({
   serif = false,
 }: {
   size?: 'md' | 'display';
-  /** The public site's logo: the serif display face with wide tracking (the staff area and sign-in keep the sans). */
+  /** The logo: the serif display face with wide tracking (the customer site and, since direction C, the staff area and its sign-in). */
   serif?: boolean;
 }) {
   return (
@@ -16,14 +16,22 @@ export function BrandWordmark({
         // `display` (twice `md`) is for the auth card, where the brand leads the page.
         // The public header narrows the wordmark on a phone (`--ls-wordmark-size`), so a larger text size never pushes the tools off the screen.
         fontSize:
-          size === 'display' ? '2.5rem' : serif ? 'var(--ls-wordmark-size, 1.125rem)' : '1.25rem',
+          size === 'display'
+            ? serif
+              ? 'var(--ls-wordmark-display, 2.5rem)'
+              : '2.5rem'
+            : serif
+              ? 'var(--ls-wordmark-size, 1.125rem)'
+              : '1.25rem',
         fontWeight: 600,
         letterSpacing: serif ? '0.28em' : '0.18em',
         textTransform: 'uppercase',
         whiteSpace: 'nowrap',
         // Centered use: a tight line box, and a leading space equal to the trailing letter-spacing so the
         // letters (not the letters plus a gap) sit on the center line.
-        ...(size === 'display' ? { lineHeight: 1.2, paddingInlineStart: '0.18em' } : {}),
+        ...(size === 'display'
+          ? { lineHeight: 1.2, paddingInlineStart: serif ? '0.28em' : '0.18em' }
+          : {}),
       }}
     >
       Lucy Spa

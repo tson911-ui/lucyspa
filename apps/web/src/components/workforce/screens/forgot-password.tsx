@@ -101,7 +101,7 @@ export function ForgotPasswordScreen() {
       onConfirmation={setConfirmation}
       onRequest={request}
       onComplete={complete}
-      brand={<BrandWordmark size="display" />}
+      brand={<BrandWordmark size="display" serif />}
       topActions={<AuthTopActions />}
       onRestart={() => {
         setStep('email');

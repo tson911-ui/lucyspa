@@ -74,7 +74,7 @@ export function DiscountsScreen() {
       header: d.colProgram,
       mobileTitle: true,
       truncate: true,
-      width: 'lg',
+      width: 'md',
       sortable: true,
       sortValue: (program) => discountSortValue(program, 'name', locale),
       cell: (program) => (
@@ -112,7 +112,7 @@ export function DiscountsScreen() {
     {
       key: 'window',
       header: d.colWindow,
-      hideBelow: 'md',
+      hideBelow: 'wide',
       sortable: true,
       sortValue: (program) => discountSortValue(program, 'window', locale),
       cell: (program) =>

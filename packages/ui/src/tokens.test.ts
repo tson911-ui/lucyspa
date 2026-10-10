@@ -153,22 +153,23 @@ for (const [themeName, theme] of Object.entries(themes)) {
   });
 }
 
+// Re-measured on 2026-10-10 when the staff palette moved to direction C (the rose-cream page, the warmer text and border values).
 test('contract 6.2 ratios are reproduced (one decimal, as published)', () => {
   const published: Array<[Record<string, string>, string, string, number]> = [
-    [light, 'text', 'bg-surface', 17.0],
-    [dark, 'text', 'bg-surface', 15.3],
-    [light, 'text-muted', 'bg-surface', 7.9],
-    [dark, 'text-muted', 'bg-surface', 9.0],
-    [light, 'text-subtle', 'bg-surface', 5.9],
+    [light, 'text', 'bg-surface', 16.6],
+    [dark, 'text', 'bg-surface', 15.0],
+    [light, 'text-muted', 'bg-surface', 6.9],
+    [dark, 'text-muted', 'bg-surface', 7.7],
+    [light, 'text-subtle', 'bg-surface', 6.1],
     [dark, 'text-subtle', 'bg-surface', 6.2],
-    [light, 'border-control', 'bg-surface', 3.9],
-    [dark, 'border-control', 'bg-surface', 3.6],
+    [light, 'border-control', 'bg-surface', 4.4],
+    [dark, 'border-control', 'bg-surface', 4.0],
     [light, 'brand', 'bg-surface', 9.6],
-    [dark, 'brand', 'bg-surface', 7.0],
+    [dark, 'brand', 'bg-surface', 6.9],
     [light, 'on-brand', 'brand-fill-hover', 11.6],
     [dark, 'on-brand', 'brand-fill-hover', 8.6],
     [light, 'danger', 'bg-surface', 6.5],
-    [dark, 'danger', 'bg-surface', 8.3],
+    [dark, 'danger', 'bg-surface', 8.2],
     [light, 'danger', 'danger-bg', 5.7],
     [dark, 'danger', 'danger-bg', 7.1],
     [light, 'warning', 'warning-bg', 6.2],

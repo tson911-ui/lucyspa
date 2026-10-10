@@ -3,7 +3,7 @@
 Chỉ đổi giao diện. Không đổi nghiệp vụ, API, cơ sở dữ liệu hay dữ liệu. Luật nền: mục "UI design rules" và "UX quality gate" trong `CLAUDE.md`
 (đỏ `#782b37` + trắng, không vàng, giữ chữ và logo hiện có). Đã dùng skill `frontend-design` để nâng bố cục, thứ bậc thông tin và lời văn, không đổi thương hiệu.
 
-Trạng thái: **xong toàn bộ nhóm 2 (mục 9 đến 13), chờ chủ triển khai**. Chủ đã duyệt bản mẫu và thứ tự (2026-10-09), kèm 5 quyết định ở mục 8. Hướng dẫn triển khai: `docs/DEPLOY_UI_POLISH_GROUP2_RUNBOOK.md`.
+Trạng thái: **xong toàn bộ nhóm 2 (mục 9 đến 13) và ĐÃ TRIỂN KHAI** cùng giao diện trang khách hướng C: commit `a907618993a49e2c563d28fd75b25ddb5f177d62`, Owner báo 2026-10-10 khoảng 10:29 (UTC+7), bản trước `9a57589`. Chỉ nạp lại web (API và worker không khởi động lại), không migration (101), quyền 66. Sao lưu: `/root/backups/lucyspa-pre-giao-dien-c-20261010T032519Z.dump` (1.328.681 byte) và `/root/backups/web-pre-giao-dien-c-20261010T032520Z.tgz` (373.169.448 byte). Hướng dẫn đã dùng: `docs/DEPLOY_CUSTOMER_SITE_C_RUNBOOK.md` (thay `docs/DEPLOY_UI_POLISH_GROUP2_RUNBOOK.md`). Chi tiết kiểm tra sau cài: `docs/CUSTOMER_SITE_C.md`. Chủ đã duyệt bản mẫu và thứ tự (2026-10-09), kèm 5 quyết định ở mục 8.
 
 ## 1. Danh sách màn hình của quầy
 

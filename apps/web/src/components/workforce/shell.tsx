@@ -47,7 +47,7 @@ export function WorkforceShell({ children }: { children: ReactNode }) {
         LinkComponent={Link}
         brand={
           <Link href={base} aria-label="Lucy Spa">
-            <BrandWordmark />
+            <BrandWordmark serif />
           </Link>
         }
         nav={sidebarGroups(items, t, base, (href, exact) => isPathActive(pathname, href, exact))}

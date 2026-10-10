@@ -2259,6 +2259,13 @@
   box-shadow: none;
 }
 
+/* A column that fits from a 1440 px screen up (the staff sidebar takes 264 px of a 1280 px laptop). */
+@media (min-width: 640px) and (max-width: 1439px) {
+  .ls-hide-wide {
+    display: none;
+  }
+}
+
 /* The lowest-priority columns of a wide table (cost, profit): shown only on a very wide desktop screen. */
 @media (min-width: 640px) and (max-width: 1535px) {
   .ls-hide-2xl {

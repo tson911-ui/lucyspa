@@ -1,6 +1,14 @@
 # Trang khách: hướng C, "Ấm áp thư giãn" (chủ đã chọn 2026-10-10)
 
-Chủ đã chọn hướng C trong ba hướng xem thử (`docs/DESIGN_PREVIEW_HOME.md`). Hướng C được áp dụng cho **toàn bộ trang khách**. Chỉ đổi giao diện: không đổi logic, API, cơ sở dữ liệu. Khu nhân viên, quầy và quản trị **không đổi** (các luật cũ vẫn áp dụng cho chúng).
+Chủ đã chọn hướng C trong ba hướng xem thử (`docs/DESIGN_PREVIEW_HOME.md`). Hướng C được áp dụng cho **toàn bộ trang khách**. Chỉ đổi giao diện: không đổi logic, API, cơ sở dữ liệu. Khu nhân viên, quầy và quản trị **không đổi trong bước này**; ngay sau đó (2026-10-10) Owner quyết định chúng cũng theo hướng C, thu gọn cho màn hình làm việc: xem `docs/UI_STAFF_C.md`.
+
+## Đã triển khai (Owner báo, 2026-10-10 khoảng 10:29, giờ UTC+7)
+
+- Commit chạy trên máy chủ: `a907618993a49e2c563d28fd75b25ddb5f177d62` (bản trước: `9a57589`), cùng với nhóm 2 (màn hình quầy). Chỉ nạp lại web; API và worker không khởi động lại. Không migration (vẫn 101), quyền vẫn 66. Phông chữ tải về bình thường lúc build.
+- Sao lưu: `/root/backups/lucyspa-pre-giao-dien-c-20261010T032519Z.dump` (1.328.681 byte) và `/root/backups/web-pre-giao-dien-c-20261010T032520Z.tgz` (373.169.448 byte).
+- Sau khi cài: pm2 web 3, api 1, worker 1 `online`; health ok; `/vi`, `/en`, `/vi/services`, `/vi/account/login`, `/vi/workforce/login` trả 200; `/vi/design-preview/c` và một trang không có trả 404; `ls-hero-title` 1; `ls-site-footer` ở trang 404 là 1; bán online `"enabled":false`.
+- **Việc Owner chưa quyết (chưa làm gì cả):** (1) trang chủ: giữ bố cục vòng tròn ảnh của C hay không, và xử lý khung trượt (slider) thế nào; (2) vị trí dải ưu đãi: dải một dòng trên đầu trang hay ruy-băng cuối trang; (3) các ngoại lệ rê chuột trên nền đỏ (tin nhắn của Owner bị cắt ở đây; ghi theo ba ngoại lệ ở mục "Rê chuột" bên dưới, chờ xác nhận). Còn mở: hai khung ảnh phụ chưa có chỗ chọn ảnh trong Quản trị.
+- **Tinh chỉnh trang chủ khách: CHỜ LÀM (Owner, 2026-10-10; chưa bắt đầu):** cân đối và căn lề trang chủ, cỡ chữ tiêu đề lớn, thanh đầu trang theo kiểu C, chú thích ảnh bị vòng tròn nhỏ che mất, và ảnh thật của tiệm.
 
 ## Hợp đồng thiết kế
 

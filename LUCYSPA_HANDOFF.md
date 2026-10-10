@@ -820,8 +820,22 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 
 - CI note (2026-10-09): the group 2 push ran red three times (15:14-16:22 UTC) only in `test:auth:integration`, a time-window flake (15:00-17:00 UTC, see `apps/api/src/account/my-income.integration.test.ts`); green after 17:00 UTC: commit `2ed632d0e10787c9b85252082a7f480a92c1a15f`, run 37967549325 (same code as `7164c23`). The deploy guide names `2ed632d`.
 
-### Customer site, direction C "Ấm áp thư giãn" (Owner chose it 2026-10-10; UI only; pushed, CI green on `a907618`, run 37998033826; NOT deployed)
+### Customer site, direction C "Ấm áp thư giãn" (Owner chose it 2026-10-10; UI only; pushed, CI green on `a907618`, run 37998033826; DEPLOYED, see the next section)
 
 - Owner chose C of the three hidden previews; applied to EVERY customer page (home, services, booking, cosmetics, campaign, sign-in, account, cart, ticket, 404 and error, header, tab bar, footer, popup, notifications; holiday themes sit on top). A and B and the `/vi/design-preview/*` routes are removed. Contract, photo slots and the photo list: `docs/CUSTOMER_SITE_C.md`; `CLAUDE.md` now records C as the approved style.
 - Code: `packages/ui/src/customer-tokens.css`, `customer.css`, `customer-pages.css` (scoped to `.ls-site`, staff area untouched); fonts Fraunces + Nunito Sans in `apps/web/src/components/public/site-fonts.ts`. Fixed: sign-in brand panel (no dark boxes, no stretching), footer social icons only with a link. No migration, no API change.
 - Release = group 2 (counter screens, `7164c23`) + this; web reload only. Deploy guide: `docs/DEPLOY_CUSTOMER_SITE_C_RUNBOOK.md` (names `a907618`). Gallery: `.local/customer-c/gallery/index.html` (git-ignored). The 15:00-17:00 UTC CI flake: see `docs/CUSTOMER_SITE_C_STEP.md`.
+
+### Customer site direction C + UI polish group 2: DEPLOYED (Owner report, 2026-10-10 ~10:29 UTC+7)
+
+- Production = `a907618993a49e2c563d28fd75b25ddb5f177d62` (previous `9a57589`). Web only reloaded (`pm2 reload lucyspa-web`); API and worker not restarted. No migrations (101), permissions 66. Online sales `"enabled":false`. Fonts downloaded fine at build.
+- Backups: `/root/backups/lucyspa-pre-giao-dien-c-20261010T032519Z.dump` (1,328,681 bytes) and `/root/backups/web-pre-giao-dien-c-20261010T032520Z.tgz` (373,169,448 bytes).
+- pm2: web 3, api 1, worker 1 online. Health ok; `/vi`, `/en`, `/vi/services`, `/vi/account/login`, `/vi/workforce/login` 200; `/vi/design-preview/c` and an unknown page 404; `ls-hero-title` 1; `ls-site-footer` on the 404 page 1.
+- **Pending Owner decisions (do not act yet):** home hero (keep the C photo-circle composition, and what to do with the slider); offer strip position (top strip vs bottom ribbon); hover exceptions on... (the Owner message was cut off here; read as the three hover exceptions on red surfaces in `docs/CUSTOMER_SITE_C.md`, to be confirmed). Also still open: the two hero photo slots without an Admin slot.
+- **Customer home fine-tuning: PENDING (Owner, 2026-10-10; not started):** balance and alignment of the home page, hero heading size, the header in the C style, the photo caption hidden behind the small circle, and the real photos.
+
+### Staff screens in direction C (Owner decision 2026-10-10; UI only; pushed, NOT deployed)
+
+- Owner: staff screens (admin, counter/POS, staff sign-in) follow direction C so the whole product is one brand; no sample round. `CLAUDE.md` has the new section "Staff screens in direction C". Report: `docs/UI_STAFF_C.md`; gallery `.local/staff-c/gallery/index.html` (git-ignored); recipes `.local/staff-c/` (shots, overflow, flows2, rebuild.ps1).
+- Code: staff tokens in `packages/ui/src/tokens.css`, new `packages/ui/src/staff.css` (scoped to `.ls-shell` and `.ls-auth`), Fraunces + Nunito Sans on `<html>`, serif wordmark in the staff bar and sign-in, `DataTable hideBelow: 'wide'` (< 1440 px), column fixes (Services, Staff, Discounts, Inventory, POS board). No migration, no API change, customer site unchanged.
+- Gate: no cut table column at 1280 and 1440 on 57 screens; DOM audit no count above baseline (baseline refreshed); counter and admin flows driven through the UI passed; 130% text no sideways scroll. Open: wide tables still scroll inside their frame at 768 and 1024 px; four forms keep 20 px checkboxes. Deploy guide: `docs/DEPLOY_STAFF_C_RUNBOOK.md` (web reload only).

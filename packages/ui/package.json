@@ -9,6 +9,7 @@
     "./base.css": "./src/base.css",
     "./components.css": "./src/components.css",
     "./shell.css": "./src/shell.css",
+    "./staff.css": "./src/staff.css",
     "./site.css": "./src/site.css",
     "./customer-tokens.css": "./src/customer-tokens.css",
     "./customer.css": "./src/customer.css",

@@ -1,6 +1,6 @@
 # Hướng dẫn đưa giao diện trang khách hướng C ("Ấm áp thư giãn") và màn hình quầy nhóm 2 lên máy chủ thật (chỉ giao diện web)
 
-> **CHƯA TRIỂN KHAI.** Khi Owner báo đã triển khai, ghi mã commit, ngày giờ và đường dẫn bản sao lưu vào `LUCYSPA_HANDOFF.md`.
+> **ĐÃ TRIỂN KHAI** (Owner báo 2026-10-10 khoảng 10:29, UTC+7): commit `a907618993a49e2c563d28fd75b25ddb5f177d62`; sao lưu và kết quả kiểm tra đã ghi ở `LUCYSPA_HANDOFF.md` và `docs/CUSTOMER_SITE_C.md`. Giữ tệp này để quay lại (Bước 7) hoặc làm lại.
 
 Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, theo thứ tự**, trong **cùng một cửa sổ terminal web của iNET** đã đăng nhập vào máy chủ. Mỗi khối có dòng **Mong đợi**; khác với mong đợi thì **DỪNG** và gửi Claude nguyên văn những gì terminal in ra.
 

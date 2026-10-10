@@ -192,7 +192,7 @@ export function StockList({
       key: 'expired',
       header: s.columns.expired,
       numeric: true,
-      hideBelow: 'xl',
+      hideBelow: '2xl',
       cell: (item) => (item.expiredQuantity > 0 ? item.expiredQuantity : text.none),
     },
     {

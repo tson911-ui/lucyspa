@@ -204,7 +204,7 @@ export function PosScreen() {
       header: t.pos.customer,
       phoneEmphasis: true,
       truncate: true,
-      width: 'lg',
+      width: 'md',
       cell: (invoice) => invoice.payerName ?? t.pos.guestShort,
     },
     {
@@ -222,7 +222,7 @@ export function PosScreen() {
             hideBelow: 'xl' as const,
             hidePhone: true,
             truncate: true,
-            width: 'sm' as const,
+            width: 'xs' as const,
             cell: (invoice: BoardInvoice) => invoice.products?.sellers.join(', ') || '—',
           },
         ]

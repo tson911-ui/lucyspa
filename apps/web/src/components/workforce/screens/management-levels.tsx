@@ -42,7 +42,7 @@ export function ManagementLevels({
   return (
     <>
       {labels.map((label, index) => (
-        <div key={`${appointments[index]!.id}`}>
+        <div key={`${appointments[index]!.id}`} title={label}>
           <Badge tone="info">{label}</Badge>
         </div>
       ))}

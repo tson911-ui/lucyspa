@@ -272,6 +272,8 @@ export function DirectoryGroupView({
             key: 'level',
             header: text.level,
             hideBelow: 'xl' as const,
+            truncate: true,
+            width: 'md' as const,
             cell: (employee: EmployeeDirectoryEntry) => (
               <ManagementLevels
                 appointments={employee.organizationAppointments}

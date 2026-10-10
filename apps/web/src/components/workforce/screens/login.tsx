@@ -80,7 +80,7 @@ function LoginForm() {
   }
 
   return (
-    <AuthLayout brand={<BrandWordmark size="display" />} topActions={<AuthTopActions />}>
+    <AuthLayout brand={<BrandWordmark size="display" serif />} topActions={<AuthTopActions />}>
       <h1>{t.auth.loginTitle}</h1>
       <p>{t.auth.loginIntro}</p>
       {params.get('expired') ? (

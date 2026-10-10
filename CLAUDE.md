@@ -82,8 +82,9 @@ These add to the UX quality gate above; none of it is removed.
    Where the skill and these rules disagree, these rules win. The brand is already decided, so the skill is used to raise
    layout, detail, typography hierarchy, motion and copy quality, never to change the brand.
 2. Brand: primary red `#782b37` with white. Keep the existing light and dark modes, the approved fonts and the "LUCY SPA"
-   text logo. No new palette, no new fonts. (Staff, POS and admin screens only; the customer site follows the section
-   "Customer site redesign" below, which replaces this rule and rule 1's "never change the look" for the customer site.)
+   text logo. No new palette, no new fonts. (This rule describes the brand. Since 2026-10-10 the look of both the customer
+   site and the staff screens is direction C, see "Customer site redesign" and "Staff screens in direction C" below; those
+   sections replace this rule's "no new palette, no new fonts" and rule 1's "never change the look".)
 3. No gold or yellow anywhere, except holiday decorations (Tết, Mid-Autumn, national days) in the seasonal theme layer.
 4. Hover: light mode = solid `#782b37` background with white text (not a pale pink tint); dark mode = the existing
    dark-mode pink accent.
@@ -109,13 +110,29 @@ large imagery, clean grids, subtle refined motion, a fast and clear booking path
   modern icons.
 - **Photos:** no stock photos without rights. Where the shop's photos are missing, use tasteful placeholders designed to be swapped for the
   shop's real photos later, and list the photos the owner should take.
-- **Staff, POS and admin screens keep the current rules** (rules 1-7 above and the UX quality gate); this section does not apply to them.
+- **Staff, POS and admin screens** follow direction C too, adapted for work screens: see the next section. Rules 1-7 above and the UX
+  quality gate still bind them.
 - **Approved style (Owner, 2026-10-10): direction C, "Ấm áp thư giãn".** Soft and round: Fraunces titles with Nunito Sans text
   (self-hosted through `next/font`, set on the `.ls-site` frame only), a rose-cream page with a gentle wash, white / sage / blush / sand
   "pebble" cards (three big corners, one small), pill buttons and fields, soft rose shadows, round photo frames with a slowly
   breathing ring, soft waves between bands, a brand-red footer. All of it lives in `packages/ui/src/customer.css` (tokens scoped to
-  `.ls-site`; the staff area is untouched). Every customer page follows it; holiday themes sit on top. The hidden preview routes are
+  `.ls-site`). Every customer page follows it; holiday themes sit on top. The hidden preview routes are
   removed. Contract and the photo list: `docs/CUSTOMER_SITE_C.md`.
+
+## Staff screens in direction C (permanent; Owner, 2026-10-10)
+
+The whole product (customer site, admin, counter/POS, staff login) must feel like one brand, so direction C applies to every staff
+screen. No sample round: it is applied to all staff screens.
+
+- **Use from C:** the fonts (Fraunces for page titles, Nunito Sans for text, self-hosted through `next/font`), the palette (rose-cream
+  page, white surfaces, the brand red), the radii (pill buttons and fields, soft cards), the soft rose shadows, the header and sidebar
+  styling, and the motion rules (subtle, honouring reduced motion).
+- **Adapted for work screens:** compact, data-dense, fast to scan. No decorative circles, waves, photo frames or large hero typography
+  on a work screen; titles stay at the staff type scale; tables and forms stay efficient (row height, 20 rows per page, 40/44 px targets).
+  The staff tokens live in `packages/ui/src/tokens.css` and the kit (`components.css`, `shell.css`); `.ls-site` still overrides them for
+  the customer site.
+- **Kept:** `#782b37` as the accent, the "LUCY SPA" text logo, light and dark modes, the hover rule (rule 4), no gold or yellow except
+  holiday decorations, UI only (no logic, API or database change), and the quality gate (UX gate, rules FR1-FR15, rule 6).
 
 ## Reporting (keep it short)
 

@@ -12,12 +12,15 @@ import '@lucy-spa/ui/season-preview.css';
 import '@lucy-spa/ui/base.css';
 import '@lucy-spa/ui/components.css';
 import '@lucy-spa/ui/shell.css';
+import '@lucy-spa/ui/staff.css';
 import '@lucy-spa/ui/site.css';
 import '@lucy-spa/ui/customer-tokens.css';
 import '@lucy-spa/ui/customer.css';
 import '@lucy-spa/ui/customer-pages.css';
 import { getDictionary } from '../../i18n/dictionaries';
 import { RouteHistoryTracker } from '../../components/navigation/page-back';
+// Direction C's two faces (Owner, 2026-10-10): the variables sit on the root now, so the staff screens use them too.
+import { siteFontClass } from '../../components/public/site-fonts';
 import { isLocale, locales } from '../../i18n/locales';
 import { ADMIN_HIDE_COOKIE, seasonRootAttributes } from '../../lib/season-core';
 import { fetchActiveSeason } from '../../lib/season-server';
@@ -94,7 +97,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
     // The pre-paint script may set data-theme from the ls-theme cookie before hydration.
     <html
       lang={locale}
-      className={`${beVietnamPro.variable} ${playfairDisplay.variable}`}
+      className={`${beVietnamPro.variable} ${playfairDisplay.variable} ${siteFontClass}`}
       suppressHydrationWarning
       {...seasonRootAttributes(season, adminHidden)}
     >
