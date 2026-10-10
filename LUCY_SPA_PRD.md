@@ -3665,6 +3665,10 @@ list is not recorded and must be asked of the Owner before that pass
 starts. Phase 10 stays last. This order replaces the numeric order of
 Phases 7 to 9 above; it does not change what each phase delivers.
 
+The review and polish pass checklist (UI balance, customer home fixes,
+touch targets, wide tables, re-test of every flow, pre-launch items) is
+in `docs/REVIEW_POLISH_CHECKLIST.md`.
+
 ------------------------------------------------------------------------
 
 ## 57. Definition of Done --- Every Phase

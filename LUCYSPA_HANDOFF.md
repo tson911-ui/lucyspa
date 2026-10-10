@@ -841,6 +841,11 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - pm2: web 3, api 1, worker 1 online. Health ok; `/vi`, `/vi/services`, `/vi/account/login`, `/vi/workforce/login`, `/vi/workforce/forgot-password` 200; unknown page 404; `ls-hero-title` 2; `ls-font-staff-title` found in the staff CSS.
 - **Owner roadmap (2026-10-10):** Phase 9 → Phase 7 → Phase 8 → one full review/polish pass of everything (balance and alignment, customer home, ...; the Owner message was cut off there, ask before that pass). Also in PRD section 56. The customer home fine-tuning above stays pending until that pass.
 
+- **Review and polish pass checklist written (2026-10-10, docs only):** `docs/REVIEW_POLISH_CHECKLIST.md` (UI balance, customer home fixes, 20 px checkboxes, wide tables at 768/1024, re-test of every flow, pre-launch items: Cloudflare, off-server backups, private repo, remove Lovable template, Zalo/Facebook links, 11 real photos). The Owner's cut-off message still has to be completed by asking him before the pass starts.
+
+- **Phase 9 P9-1 design written (2026-10-10, docs only, no code, no migration):** `docs/PHASE9_PRODUCT_IMPORT.md` (sources and adapters, tables, mapping to products/variants/images, price handling, duplicates, review flow, re-sync, permissions, legal notes, risks) plus a 15-question Vietnamese Owner questionnaire in section 15. Every technical proposal (P9-T1..T10) is **pending Owner approval**; P9-2 waits for the Owner's answers and approval.
+- Local cleanup (2026-10-10, local machine only): three old worktrees handled (details in the chat report); the scratch Postgres databases await the Owner's "ok" before dropping.
+
 ### Staff screens in direction C (Owner decision 2026-10-10; UI only; pushed `8b7c3413a0827f21e8973e45be56c94b10e5d9c2`, CI green run 38033720488; now DEPLOYED, see above)
 
 - Owner: staff screens (admin, counter/POS, staff sign-in) follow direction C so the whole product is one brand; no sample round. `CLAUDE.md` has the new section "Staff screens in direction C". Report: `docs/UI_STAFF_C.md`; gallery `.local/staff-c/gallery/index.html` (git-ignored); recipes `.local/staff-c/` (shots, overflow, flows2, rebuild.ps1).
