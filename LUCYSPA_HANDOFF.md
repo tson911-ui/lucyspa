@@ -834,7 +834,14 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - **Pending Owner decisions (do not act yet):** home hero (keep the C photo-circle composition, and what to do with the slider); offer strip position (top strip vs bottom ribbon); hover exceptions on... (the Owner message was cut off here; read as the three hover exceptions on red surfaces in `docs/CUSTOMER_SITE_C.md`, to be confirmed). Also still open: the two hero photo slots without an Admin slot.
 - **Customer home fine-tuning: PENDING (Owner, 2026-10-10; not started):** balance and alignment of the home page, hero heading size, the header in the C style, the photo caption hidden behind the small circle, and the real photos.
 
-### Staff screens in direction C (Owner decision 2026-10-10; UI only; pushed `8b7c3413a0827f21e8973e45be56c94b10e5d9c2`, CI green run 38033720488; NOT deployed)
+### Staff screens in direction C: DEPLOYED (Owner report, 2026-10-10 ~15:52 UTC+7)
+
+- Production = `8b7c3413a0827f21e8973e45be56c94b10e5d9c2` (previous `a907618`). Web only reloaded; API and worker not restarted. No migrations (101), permissions 66. Online sales `"enabled":false`.
+- Backups: `/root/backups/lucyspa-pre-giao-dien-nhan-vien-c-20261010T084705Z.dump` (1,328,919 bytes, 2104 TOC lines) and `/root/backups/web-pre-giao-dien-nhan-vien-c-20261010T084706Z.tgz` (325,982,283 bytes).
+- pm2: web 3, api 1, worker 1 online. Health ok; `/vi`, `/vi/services`, `/vi/account/login`, `/vi/workforce/login`, `/vi/workforce/forgot-password` 200; unknown page 404; `ls-hero-title` 2; `ls-font-staff-title` found in the staff CSS.
+- **Owner roadmap (2026-10-10):** Phase 9 → Phase 7 → Phase 8 → one full review/polish pass of everything (balance and alignment, customer home, ...; the Owner message was cut off there, ask before that pass). Also in PRD section 56. The customer home fine-tuning above stays pending until that pass.
+
+### Staff screens in direction C (Owner decision 2026-10-10; UI only; pushed `8b7c3413a0827f21e8973e45be56c94b10e5d9c2`, CI green run 38033720488; now DEPLOYED, see above)
 
 - Owner: staff screens (admin, counter/POS, staff sign-in) follow direction C so the whole product is one brand; no sample round. `CLAUDE.md` has the new section "Staff screens in direction C". Report: `docs/UI_STAFF_C.md`; gallery `.local/staff-c/gallery/index.html` (git-ignored); recipes `.local/staff-c/` (shots, overflow, flows2, rebuild.ps1).
 - Code: staff tokens in `packages/ui/src/tokens.css`, new `packages/ui/src/staff.css` (scoped to `.ls-shell` and `.ls-auth`), Fraunces + Nunito Sans on `<html>`, serif wordmark in the staff bar and sign-in, `DataTable hideBelow: 'wide'` (< 1440 px), column fixes (Services, Staff, Discounts, Inventory, POS board). No migration, no API change, customer site unchanged.

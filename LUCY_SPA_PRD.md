@@ -3654,6 +3654,17 @@ Deliver:
 -   Operational documentation.
 -   Owner acceptance testing.
 
+### Owner roadmap order (2026-10-10)
+
+The Owner set the order of the remaining work: **Phase 9 (Product
+Importer) → Phase 7 (Compensation and Cash) → Phase 8 (Reports and
+Administration) → one full review and polish pass of everything**
+(balance and alignment, the customer home page, ...). The Owner's
+message was cut off after "customer home"; the rest of the polish-pass
+list is not recorded and must be asked of the Owner before that pass
+starts. Phase 10 stays last. This order replaces the numeric order of
+Phases 7 to 9 above; it does not change what each phase delivers.
+
 ------------------------------------------------------------------------
 
 ## 57. Definition of Done --- Every Phase

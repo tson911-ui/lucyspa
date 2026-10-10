@@ -2,6 +2,12 @@
 
 Owner: mọi màn hình nhân viên (quản trị, quầy/POS, đăng nhập nhân viên) theo hướng C "Ấm áp thư giãn" để cả sản phẩm là một thương hiệu; không làm bản mẫu. `CLAUDE.md` có mục mới "Staff screens in direction C" (dùng phông, bảng màu, bo góc, bóng hồng, kiểu thanh trên và thanh bên, chuyển động của C; giữ màn hình làm việc gọn, dày dữ liệu; giữ `#782b37`, logo chữ, sáng/tối, luật rê chuột, không vàng, chỉ giao diện, cổng chất lượng).
 
+## Đã triển khai (Owner báo, 2026-10-10 ~15:52 UTC+7)
+
+- Commit `8b7c3413a0827f21e8973e45be56c94b10e5d9c2` (trước đó `a907618`). Chỉ nạp lại web; API và worker không khởi động lại. Không migration (101), quyền 66.
+- Sao lưu: `/root/backups/lucyspa-pre-giao-dien-nhan-vien-c-20261010T084705Z.dump` (1.328.919 byte, 2104 dòng TOC) và `/root/backups/web-pre-giao-dien-nhan-vien-c-20261010T084706Z.tgz` (325.982.283 byte).
+- pm2: web 3, api 1, worker 1 online. Health ok; `/vi`, `/vi/services`, `/vi/account/login`, `/vi/workforce/login`, `/vi/workforce/forgot-password` 200; trang không có 404; `ls-hero-title` 2; `ls-font-staff-title` có trong CSS nhân viên; bán online `"enabled":false`.
+
 ## Đã đổi
 
 - **Token (`packages/ui/src/tokens.css`):** nền hồng kem `#fdf4f2`, chữ ấm, viền hồng nhạt, bóng hồng mềm, bo góc 8/16/24 px (sáng và tối). Khu khách ghi đè lại trong `.ls-site` nên **trang khách không đổi** (so kích thước ảnh chụp trang chủ, dịch vụ, đăng nhập, mỹ phẩm với lần gate trước: đầu trang giống hệt; ảnh toàn trang mỹ phẩm tối khác kích thước vì ảnh gate trước chụp lúc các thẻ còn đang hiện dần, cùng chiều cao 4027 px, đã mở cả hai ảnh; lớp `.ls-auth` chỉ dùng ở đăng nhập nhân viên). Các tỉ lệ tương phản "đã công bố" trong `tokens.test.ts` đo lại cho màu mới (vẫn đạt ≥ 4,5:1).
@@ -23,5 +29,5 @@ Owner: mọi màn hình nhân viên (quản trị, quầy/POS, đăng nhập nh�
 - Bảng rộng ở 768 và 1024 px (Hóa đơn, Dịch vụ, Ưu đãi, Kho, Điểm danh...) vẫn cuộn ngang bên trong khung bảng (luật 11 của bộ thành phần, không đổi); chỉ 1280 trở lên là không cắt.
 - Bốn biểu mẫu có ô chọn 20 x 20 px nhỏ hơn 44 px trên điện thoại (thêm nhân sự, thêm sản phẩm, thêm ưu đãi, nhóm): có từ trước, công cụ chụp vẫn báo.
 - Nunito Sans chỉ nạp 400/600/700 (như trang khách): chữ cỡ 500 hiện ở 400. Chữ bảng vẫn 14 px.
-- `pnpm build` và `node scripts/smoke.mjs` (CSDL scratch) đạt. Chưa chạy `pnpm test:integration` (UI only; CI chạy). Chưa triển khai.
+- `pnpm build` và `node scripts/smoke.mjs` (CSDL scratch) đạt. Chưa chạy `pnpm test:integration` (UI only; CI chạy). Đã triển khai (xem trên).
 - Tinh chỉnh trang chủ khách (cân đối, cỡ tiêu đề, thanh đầu trang, chú thích ảnh) vẫn **chờ**, ghi ở `LUCYSPA_HANDOFF.md`.
