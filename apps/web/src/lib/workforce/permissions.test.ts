@@ -9,7 +9,7 @@ const keys = (account: Parameters<typeof navigationFor>[0]) =>
 test('navigation follows effective permissions, not hard-coded roles', () => {
   assert.deepEqual(
     keys(employee()),
-    ['dashboard', 'myAccount', 'myIncome', 'attendance', 'leave'],
+    ['dashboard', 'myAccount', 'myIncome', 'myPayslips', 'attendance', 'leave'],
     'self-service only',
   );
   assert.deepEqual(keys(customer), [], 'customers get no workforce navigation');
@@ -59,6 +59,9 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'cash',
     // Phase 7 P7-11: pay and commission (shop-wide pay permissions, or a branch pay permission for the salaries tab).
     'pay',
+    // Phase 7 P7-15: payroll and salary advances (shop-wide payroll permissions; the Owner holds all).
+    'payroll',
+    'advances',
     'skills',
     'employees',
     // Organization hierarchy + teams (VIEW/MANAGE_ORGANIZATION, VIEW/MANAGE_TEAMS; Owner holds all).
@@ -75,7 +78,16 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
         ['MANAGE_SKILLS', 'A'],
       ]),
     ),
-    ['dashboard', 'myAccount', 'myIncome', 'attendance', 'leave', 'skills', 'employees'],
+    [
+      'dashboard',
+      'myAccount',
+      'myIncome',
+      'myPayslips',
+      'attendance',
+      'leave',
+      'skills',
+      'employees',
+    ],
   );
   assert.ok(keys(employee([['MANAGE_SERVICE_PRICES']])).includes('services'));
   // Roles & permissions: MANAGE_PERMISSIONS in any scope (branch administrators read only).

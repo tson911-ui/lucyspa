@@ -426,6 +426,8 @@ model User {
   advancesPaid                   SalaryAdvance[]                  @relation("AdvancePayer")
   advancesCancelled              SalaryAdvance[]                  @relation("AdvanceCanceller")
   advancesWrittenOff             SalaryAdvance[]                  @relation("AdvanceWriter")
+  payslipsPaid                   Payslip[]                        @relation("PayslipPayer")
+  payslipsReversed               Payslip[]                        @relation("PayslipReverser")
   payRunsCreated                 PayRun[]                         @relation("PayRunCreator")
   payRunsRefreshed               PayRun[]                         @relation("PayRunRefresher")
   payRunsClosed                  PayRun[]                         @relation("PayRunCloser")
@@ -624,6 +626,7 @@ model EmployeeProfile {
   userId                  String                           @id @map("user_id") @db.Uuid
   salaryAdvances          SalaryAdvance[]
   payRunLines             PayRunLine[]
+  payslips                Payslip[]
   referralCodes           EmployeeReferralCode[]
   orderReferrals          OrderReferral[]
   tips                    Tip[]
@@ -1197,6 +1200,8 @@ model CollaboratorWorkOccurrence {
   cancelledAt       DateTime?              @map("cancelled_at") @db.Timestamptz(3)
   cancelReason      String?                @map("cancel_reason")
   rowVersion        Int                    @default(1) @map("row_version")
+  payRunId          String?                @map("pay_run_id") @db.Uuid
+  payRun            PayRun?                @relation(fields: [payRunId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([employeeUserId, workDate, status], map: "collaborator_work_employee_date_idx")
   @@index([branchId, workDate, status], map: "collaborator_work_branch_date_idx")
@@ -5007,6 +5012,7 @@ model ReauthUse {
 model CashFund {
   id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   advances         SalaryAdvance[]
+  payslips         Payslip[]
   kind             FundKind
   branchId         String?      @map("branch_id") @db.Uuid
   branch           Branch?      @relation("CashFundBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -5028,6 +5034,8 @@ model CashFund {
 model FundEntry {
   id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   advance           SalaryAdvance?
+  payslipNet        Payslip?          @relation("PayslipNetEntry")
+  payslipTips       Payslip?          @relation("PayslipTipsEntry")
   tips              Tip[]
   seq               BigInt            @default(autoincrement())
   fundId            String            @map("fund_id") @db.Uuid
@@ -5192,6 +5200,7 @@ model PayEarning {
   sourceKey      String          @unique(map: "pay_earnings_source_key") @map("source_key")
   /// The payroll run that claimed the row (P7-12); set once.
   runId          String?         @map("run_id") @db.Uuid
+  run              PayRun?  @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   createdAt      DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
 
   @@index([employeeUserId, businessDate, kind], map: "pay_earnings_employee_date_idx")
@@ -5254,6 +5263,7 @@ model Tip {
   fundEntryId      String      @map("fund_entry_id") @db.Uuid
   fundEntry        FundEntry   @relation(fields: [fundEntryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   runId            String?     @map("run_id") @db.Uuid
+  run              PayRun?     @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   recordedAt       DateTime    @default(dbgenerated("clock_timestamp()")) @map("recorded_at") @db.Timestamptz(3)
 
   @@unique([recordedByUserId, clientRequestId], map: "tips_request_key")
@@ -5341,6 +5351,10 @@ model PayRun {
   paidAt            DateTime?    @map("paid_at") @db.Timestamptz(3)
   lines             PayRunLine[]
   items             PayRunItem[]
+  payslips          Payslip[]
+  earnings          PayEarning[]
+  tips              Tip[]
+  collaboratorWork  CollaboratorWorkOccurrence[]
 
   @@index([createdByUserId], map: "pay_runs_creator_idx")
   @@map("pay_runs")
@@ -5355,6 +5369,7 @@ model PayRunLine {
   employee       EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
   createdAt      DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   items          PayRunItem[]
+  payslip        Payslip?
 
   @@unique([runId, employeeUserId], map: "pay_run_lines_person_key")
   @@index([employeeUserId], map: "pay_run_lines_employee_idx")
@@ -5445,4 +5460,45 @@ model SalaryAdvance {
   @@index([employeeUserId, seq], map: "salary_advances_employee_idx")
   @@index([status], map: "salary_advances_status_idx")
   @@map("salary_advances")
+}
+
+enum PayslipStatus {
+  PENDING
+  PAID
+  REVERSED
+}
+
+/// P7-14: one person's payslip of a closed run, with its own printed totals (net pay and tips are separate and never added together). Marking it
+/// paid writes the fund outflows; a mistaken paid mark is reversed by an explicit record (the book gets correcting entries), never reopened.
+model Payslip {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId            String          @map("run_id") @db.Uuid
+  run              PayRun          @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  lineId           String          @unique(map: "payslips_line_key") @map("line_id") @db.Uuid
+  line             PayRunLine      @relation(fields: [lineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId   String          @map("employee_user_id") @db.Uuid
+  employee         EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  netVnd           BigInt          @map("net_vnd")
+  tipsVnd          BigInt          @map("tips_vnd")
+  status           PayslipStatus   @default(PENDING)
+  rowVersion       Int             @default(1) @map("row_version")
+  createdAt        DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  paidAt           DateTime?       @map("paid_at") @db.Timestamptz(3)
+  paidByUserId     String?         @map("paid_by_user_id") @db.Uuid
+  paidBy           User?           @relation("PayslipPayer", fields: [paidByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  paidFundId       String?         @map("paid_fund_id") @db.Uuid
+  paidFund         CashFund?       @relation(fields: [paidFundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  netEntryId       String?         @unique(map: "payslips_net_entry_key") @map("net_entry_id") @db.Uuid
+  netEntry         FundEntry?      @relation("PayslipNetEntry", fields: [netEntryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  tipsEntryId      String?         @unique(map: "payslips_tips_entry_key") @map("tips_entry_id") @db.Uuid
+  tipsEntry        FundEntry?      @relation("PayslipTipsEntry", fields: [tipsEntryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reversedAt       DateTime?       @map("reversed_at") @db.Timestamptz(3)
+  reversedByUserId String?         @map("reversed_by_user_id") @db.Uuid
+  reversedBy       User?           @relation("PayslipReverser", fields: [reversedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reversalReason   String?         @map("reversal_reason")
+
+  @@unique([runId, employeeUserId], map: "payslips_person_key")
+  @@index([employeeUserId, createdAt], map: "payslips_employee_idx")
+  @@index([runId, status], map: "payslips_status_idx")
+  @@map("payslips")
 }

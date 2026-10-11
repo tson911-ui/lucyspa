@@ -2,6 +2,12 @@ import type {
   CommissionRuleRequest,
   InvoiceEarningsResponse,
   InvoiceTipsResponse,
+  MyPayslipsResponse,
+  PayRunCloseRequest,
+  PayslipListResponse,
+  PayslipPayRequest,
+  PayslipReverseRequest,
+  PayslipView,
   SalaryAdvanceApproveRequest,
   SalaryAdvanceCancelRequest,
   SalaryAdvancePayRequest,
@@ -44,6 +50,7 @@ import * as earnings from './pay-earnings.core.js';
 import * as rules from './pay-rules.core.js';
 import * as salary from './pay-salary.core.js';
 import * as advances from './pay-advances.core.js';
+import * as close from './pay-close.core.js';
 import * as runs from './pay-runs.core.js';
 import * as codes from './staff-codes.core.js';
 import * as tips from './tips.core.js';
@@ -283,6 +290,60 @@ export class PayService {
     return this.run(token, requestId, (context) =>
       advances.writeOffAdvance(context, id, { ...body }, this.environment.auth.freshAuthSeconds),
     );
+  }
+
+  closePayRun(
+    token: string | undefined,
+    runId: string,
+    body: PayRunCloseRequest,
+    requestId?: string,
+  ): Promise<PayRunDetailResponse> {
+    return this.run(token, requestId, (context) =>
+      close.closeRun(context, runId, { ...body }, this.environment.auth.freshAuthSeconds),
+    );
+  }
+
+  payslips(token: string | undefined, runId: string): Promise<PayslipListResponse> {
+    return this.run(token, undefined, (context) => close.listPayslips(context, runId));
+  }
+
+  payslip(token: string | undefined, payslipId: string): Promise<PayslipView> {
+    return this.run(token, undefined, (context) => close.payslipOf(context, payslipId));
+  }
+
+  payPayslips(
+    token: string | undefined,
+    runId: string,
+    body: PayslipPayRequest,
+    requestId?: string,
+  ): Promise<PayslipListResponse> {
+    return this.run(token, requestId, (context) =>
+      close.payPayslips(context, runId, { ...body }, this.environment.auth.freshAuthSeconds),
+    );
+  }
+
+  reversePayslip(
+    token: string | undefined,
+    payslipId: string,
+    body: PayslipReverseRequest,
+    requestId?: string,
+  ): Promise<PayslipView> {
+    return this.run(token, requestId, (context) =>
+      close.reversePayslipPayment(
+        context,
+        payslipId,
+        { ...body },
+        this.environment.auth.freshAuthSeconds,
+      ),
+    );
+  }
+
+  myPayslips(token: string | undefined): Promise<MyPayslipsResponse> {
+    return this.run(token, undefined, (context) => close.myPayslips(context));
+  }
+
+  myPayslip(token: string | undefined, payslipId: string): Promise<PayslipView> {
+    return this.run(token, undefined, (context) => close.myPayslip(context, payslipId));
   }
 
   private run<T>(

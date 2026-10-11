@@ -26,7 +26,17 @@ const SIDEBAR_LAYOUT: ReadonlyArray<{ group: NavGroupId; order: readonly NavKey[
   },
   {
     group: 'people',
-    order: ['employees', 'attendance', 'leave', 'pay', 'teams', 'organization', 'skills'],
+    order: [
+      'employees',
+      'attendance',
+      'leave',
+      'pay',
+      'payroll',
+      'advances',
+      'teams',
+      'organization',
+      'skills',
+    ],
   },
   {
     group: 'catalog',
@@ -47,7 +57,7 @@ const SIDEBAR_LAYOUT: ReadonlyArray<{ group: NavGroupId; order: readonly NavKey[
 ];
 
 /** Personal pages live in the user menu, not in the sidebar (contract 4.2). */
-const USER_MENU_ORDER: readonly NavKey[] = ['myAccount', 'myIncome'];
+const USER_MENU_ORDER: readonly NavKey[] = ['myAccount', 'myIncome', 'myPayslips'];
 
 export const NAV_ICONS: Record<NavKey, IconName> = {
   dashboard: 'home',
@@ -64,6 +74,8 @@ export const NAV_ICONS: Record<NavKey, IconName> = {
   productReturns: 'refresh',
   cash: 'wallet',
   pay: 'bar-chart',
+  payroll: 'receipt',
+  advances: 'wallet',
   employees: 'users',
   attendance: 'calendar-check',
   leave: 'sun',
@@ -84,6 +96,7 @@ export const NAV_ICONS: Record<NavKey, IconName> = {
   websiteContent: 'image',
   myAccount: 'user',
   myIncome: 'wallet',
+  myPayslips: 'receipt',
 };
 
 const inOrder = (items: readonly NavItem[], order: readonly NavKey[]): NavItem[] =>

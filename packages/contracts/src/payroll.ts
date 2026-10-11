@@ -120,6 +120,8 @@ export interface PayRunDetailResponse {
   /** True when the sources have changed since the draft was last built (a refresh would change it). */
   stale: boolean;
   canManage: boolean;
+  /** May the signed-in person close the run and pay the payslips? (APPROVE_PAYROLL) */
+  canApprove: boolean;
 }
 
 export interface PayRunCreateRequest {
@@ -148,4 +150,74 @@ export interface PayRunItemRequest {
 export interface PayRunItemVoidRequest {
   expectedVersion: number;
   reason: string;
+}
+
+// ------------------------------------------------------------------------------------------------ closing, payslips, paying
+/**
+ * P7-14 (design 4.3; P7-T3, P7-T10, P7-T12). Closing is the Owner's approval (APPROVE_PAYROLL + a fresh password): it freezes the run, takes the
+ * earnings, tips and collaborator work it shows (nothing else can change them afterwards) and makes one payslip per person with its own printed
+ * totals; nobody is paid. A payslip is marked paid by a separate act (APPROVE_PAYROLL + a fresh password, not before the payment day) that writes
+ * the fund outflows in the same transaction: net pay and tips are two separate amounts and two separate entries. A mistaken paid mark is
+ * reversed by an explicit record (the book gets correcting entries); the run is never reopened and the correction is an adjustment in the next run.
+ */
+export const PAYSLIP_STATUSES = ['PENDING', 'PAID', 'REVERSED'] as const;
+export type PayslipStatusName = (typeof PAYSLIP_STATUSES)[number];
+
+export interface PayRunCloseRequest {
+  expectedVersion: number;
+}
+
+export interface PayslipSummary {
+  id: string;
+  runId: string;
+  /** `YYYY-MM` */
+  month: string;
+  employee: { id: string; name: string; code: string };
+  /** Everything except tips; never negative on a payslip. */
+  netVnd: string;
+  /** Tips owed, a separate amount paid out with the payslip. */
+  tipsVnd: string;
+  status: PayslipStatusName;
+  paymentDay: string | null;
+  paidAt: string | null;
+  version: number;
+}
+
+export interface PayslipView extends PayslipSummary {
+  periodFrom: string;
+  periodTo: string;
+  /** The items as they were when the run was closed (voided ones left out), tips last. */
+  items: PayRunItemView[];
+  paidBy: { id: string; name: string } | null;
+  paidFund: { id: string; name: string } | null;
+  reversedAt: string | null;
+  reversedBy: { id: string; name: string } | null;
+  reversalReason: string | null;
+}
+
+export interface PayslipListResponse {
+  run: PayRunSummary & { periodFrom: string; periodTo: string; closedAt: string | null };
+  items: PayslipSummary[];
+  /** The funds a payslip can be paid from, and whether the signed-in person may pay. */
+  funds: { id: string; name: string; kind: 'CASH' | 'BANK'; balanceVnd: string }[];
+  canPay: boolean;
+  /** Today is on or after the payment day (paying earlier is refused). */
+  payable: boolean;
+}
+
+export interface PayslipPayRequest {
+  expectedVersion: number;
+  fundId: string;
+  /** The payslips to pay; null pays every pending one of the run. */
+  payslipIds: string[] | null;
+  clientRequestId: string;
+}
+
+export interface PayslipReverseRequest {
+  expectedVersion: number;
+  reason: string;
+}
+
+export interface MyPayslipsResponse {
+  items: PayslipSummary[];
 }

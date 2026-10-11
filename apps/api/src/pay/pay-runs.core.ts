@@ -24,7 +24,13 @@ import { financeGoLive } from '../finance/cash.core.js';
 import { exactKeys, reason, uuid } from '../finance/finance.input.js';
 import { advanceBalances } from './pay-advances.core.js';
 import { officialEmployees } from './pay-rules.core.js';
-import { addDays, canManagePayroll, holdsPayrollShopWide, shopToday } from './pay.access.js';
+import {
+  addDays,
+  canApprovePayroll,
+  canManagePayroll,
+  holdsPayrollShopWide,
+  shopToday,
+} from './pay.access.js';
 
 /**
  * Phase 7 P7-12 (design 4.3; P7-T3, P7-T11, P7-T14; Owner answers 5 and 10): the monthly payroll run, as a draft. One run per calendar month
@@ -148,22 +154,25 @@ async function generate(tx: Tx, first: string, runId: string | null = null): Pro
     });
   }
 
-  // Collaborator work agreed for the month; work without an agreed amount is counted, never added as 0.
+  // Collaborator work not yet in a closed run, up to the end of the month (earlier work agreed late is a late item). Work without an agreed
+  // amount is counted and flagged, never added as 0, and stays out of the run so it can still be agreed.
   const work = await tx.$queryRaw<
-    { employee: string; total: bigint; count: bigint; unagreed: bigint }[]
+    { employee: string; total: bigint; late: bigint; agreed: bigint; unagreed: bigint }[]
   >`
     SELECT o.employee_user_id::text AS employee, COALESCE(SUM(o.agreed_pay_vnd), 0)::bigint AS total,
-           COUNT(*)::bigint AS count, COUNT(*) FILTER (WHERE o.agreed_pay_vnd IS NULL)::bigint AS unagreed
+           COALESCE(SUM(CASE WHEN o.work_date < ${first}::date THEN o.agreed_pay_vnd ELSE 0 END), 0)::bigint AS late,
+           COUNT(*) FILTER (WHERE o.agreed_pay_vnd IS NOT NULL)::bigint AS agreed,
+           COUNT(*) FILTER (WHERE o.agreed_pay_vnd IS NULL)::bigint AS unagreed
     FROM collaborator_work_occurrences o
-    WHERE o.status = 'SCHEDULED' AND o.work_date BETWEEN ${first}::date AND ${last}::date
+    WHERE o.status = 'SCHEDULED' AND o.pay_run_id IS NULL AND o.work_date <= ${last}::date
     GROUP BY o.employee_user_id`;
   for (const row of work) {
     out.push({
       employeeUserId: row.employee,
       kind: 'CTV_WORK',
       amountVnd: row.total,
-      quantity: Number(row.count),
-      lateVnd: 0n,
+      quantity: Number(row.agreed),
+      lateVnd: row.late,
       flag: row.unagreed > 0n ? 'UNAGREED' : null,
       note: row.unagreed > 0n ? String(row.unagreed) : null,
     });
@@ -560,10 +569,11 @@ export async function runDetail(
     warnings,
     stale,
     canManage: canManagePayroll(context),
+    canApprove: canApprovePayroll(context),
   };
 }
 
-function presentItem(item: {
+export function presentItem(item: {
   id: string;
   kind: PayRunItemKindName;
   amountVnd: bigint;

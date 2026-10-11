@@ -2,6 +2,12 @@ import type {
   CommissionRuleRequest,
   InvoiceEarningsResponse,
   InvoiceTipsResponse,
+  MyPayslipsResponse,
+  PayRunCloseRequest,
+  PayslipListResponse,
+  PayslipPayRequest,
+  PayslipReverseRequest,
+  PayslipView,
   SalaryAdvanceApproveRequest,
   SalaryAdvanceCancelRequest,
   SalaryAdvancePayRequest,
@@ -46,7 +52,17 @@ import {
   Res,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 import type { Request, Response } from 'express';
 import { sessionCookie } from '../auth/cookies.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
@@ -87,6 +103,28 @@ class CommissionRuleDto implements CommissionRuleRequest {
   @IsString()
   @MaxLength(2000)
   reason!: string | null;
+}
+
+class RunCloseDto implements PayRunCloseRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(2_147_483_647) expectedVersion!: number;
+}
+
+class SlipPayDto implements PayslipPayRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(2_147_483_647) expectedVersion!: number;
+  @ApiProperty() @IsString() @MaxLength(64) fundId!: string;
+  @ApiProperty({ nullable: true, type: [String] })
+  @ValidateIf((_object: unknown, value: unknown) => value !== null)
+  @IsArray()
+  @ArrayMaxSize(500)
+  @IsString({ each: true })
+  @MaxLength(64, { each: true })
+  payslipIds!: string[] | null;
+  @ApiProperty() @IsString() @MaxLength(64) clientRequestId!: string;
+}
+
+class SlipReverseDto implements PayslipReverseRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(2_147_483_647) expectedVersion!: number;
+  @ApiProperty() @IsString() @MaxLength(2000) reason!: string;
 }
 
 class AdvanceDto implements SalaryAdvanceRequest {
@@ -581,6 +619,71 @@ export class PayController {
     return this.pay.writeOffAdvance(this.session(request), id, body, this.requestId(response));
   }
 
+  @Post('runs/:runId/close')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Closes a draft (APPROVE_PAYROLL + a fresh password): freezes it, takes its sources, makes the payslips. Nobody is paid.',
+  })
+  closePayRun(
+    @Param('runId') runId: string,
+    @Body() body: RunCloseDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PayRunDetailResponse> {
+    return this.pay.closePayRun(this.session(request), runId, body, this.requestId(response));
+  }
+
+  @Get('runs/:runId/payslips')
+  @ApiOkResponse({
+    description:
+      'The payslips of a closed run and the funds they can be paid from (MANAGE_PAYROLL or APPROVE_PAYROLL).',
+  })
+  payslips(@Param('runId') runId: string, @Req() request: Request): Promise<PayslipListResponse> {
+    return this.pay.payslips(this.session(request), runId);
+  }
+
+  @Get('payslips/:payslipId')
+  @ApiOkResponse({ description: 'One payslip with its items (MANAGE_PAYROLL or APPROVE_PAYROLL).' })
+  payslip(@Param('payslipId') payslipId: string, @Req() request: Request): Promise<PayslipView> {
+    return this.pay.payslip(this.session(request), payslipId);
+  }
+
+  @Post('runs/:runId/pay')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Marks payslips paid and writes the fund outflows (APPROVE_PAYROLL + a fresh password; not before the payment day).',
+  })
+  payPayslips(
+    @Param('runId') runId: string,
+    @Body() body: SlipPayDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PayslipListResponse> {
+    return this.pay.payPayslips(this.session(request), runId, body, this.requestId(response));
+  }
+
+  @Post('payslips/:payslipId/reverse')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Reverses a mistaken paid mark with correcting book entries (APPROVE_PAYROLL + a fresh password, reason).',
+  })
+  reversePayslip(
+    @Param('payslipId') payslipId: string,
+    @Body() body: SlipReverseDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PayslipView> {
+    return this.pay.reversePayslip(
+      this.session(request),
+      payslipId,
+      body,
+      this.requestId(response),
+    );
+  }
+
   private session(request: Request) {
     return sessionCookie(request.headers.cookie, this.environment.auth.cookieName);
   }
@@ -592,3 +695,32 @@ export class PayController {
 }
 
 void IsOptional;
+
+/**
+ * "Phiếu lương của tôi / My payslips": the signed-in employee's own payslips, read-only. No permission is needed for one's own pay and nobody
+ * else's is ever returned (a payslip that is not theirs is "not found").
+ */
+@Controller('api/v1/me/payslips')
+export class MyPayslipsController {
+  constructor(
+    @Inject(API_ENVIRONMENT) private readonly environment: ApiEnvironment,
+    @Inject(PayService) private readonly pay: PayService,
+  ) {}
+
+  @Get()
+  @ApiOkResponse({ description: 'Own payslips, newest first.' })
+  list(@Req() request: Request): Promise<MyPayslipsResponse> {
+    return this.pay.myPayslips(
+      sessionCookie(request.headers.cookie, this.environment.auth.cookieName),
+    );
+  }
+
+  @Get(':payslipId')
+  @ApiOkResponse({ description: 'One own payslip with its items.' })
+  one(@Param('payslipId') payslipId: string, @Req() request: Request): Promise<PayslipView> {
+    return this.pay.myPayslip(
+      sessionCookie(request.headers.cookie, this.environment.auth.cookieName),
+      payslipId,
+    );
+  }
+}

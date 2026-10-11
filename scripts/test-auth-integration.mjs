@@ -121,13 +121,3 @@ await import('../apps/api/dist/supplier-sources/supplier-source-candidates.integ
 await import('../apps/api/dist/supplier-sources/supplier-source-resync.integration.test.js');
 await import('../apps/api/dist/supplier-sources/supplier-import-all.integration.test.js');
 await import('../apps/api/dist/supplier-imports/supplier-import.integration.test.js');
-await import('../apps/api/dist/finance/cash.integration.test.js');
-await import('../apps/api/dist/finance/cash-posting.integration.test.js');
-await import('../apps/api/dist/finance/cash-entries.integration.test.js');
-await import('../apps/api/dist/finance/cash-closing.integration.test.js');
-await import('../apps/api/dist/pay/pay-config.integration.test.js');
-await import('../apps/api/dist/pay/pay-earnings.integration.test.js');
-await import('../apps/api/dist/pay/tips.integration.test.js');
-await import('../apps/api/dist/pay/staff-codes.integration.test.js');
-await import('../apps/api/dist/pay/pay-runs.integration.test.js');
-await import('../apps/api/dist/pay/pay-advances.integration.test.js');

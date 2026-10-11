@@ -101,6 +101,13 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
     'cancelAdvance',
     'payAdvance',
     'writeOffAdvance',
+    'closePayRun',
+    'payslips',
+    'payslip',
+    'payPayslips',
+    'reversePayslip',
+    'myPayslips',
+    'myPayslip',
   ] as const;
   const module = await Test.createTestingModule({
     imports: [AppModule.forRoot(environment, pino({ level: 'silent' }))],
@@ -172,6 +179,8 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
       ['referral-codes', 'staffCodes', []],
       ['runs', 'payRuns', []],
       ['advances', 'advances', []],
+      [`runs/${service}/payslips`, 'payslips', [service]],
+      [`payslips/${service}`, 'payslip', [service]],
       [`runs/${service}`, 'payRun', [service]],
       [`salaries/${employee}/history`, 'salaryHistory', [employee]],
     ] as const) {
@@ -410,6 +419,62 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
       await request(server).post(`${base}/${path}`).set(headers).send(body).expect(400);
       assert.equal(calls.length, before);
     }
+    // Closing, paying and reversing: exact fields on every write.
+    await request(server)
+      .post(`${base}/runs/${service}/close`)
+      .set({ Cookie: cookie })
+      .send({ expectedVersion: 4 })
+      .expect(403);
+    await request(server)
+      .post(`${base}/runs/${service}/close`)
+      .set(headers)
+      .send({ expectedVersion: 4 })
+      .expect(200);
+    assert.equal(calls.at(-1)?.[0], 'closePayRun');
+    assert.equal(calls.at(-1)?.[2], service);
+    const payRun = {
+      expectedVersion: 5,
+      fundId: service,
+      payslipIds: null,
+      clientRequestId: '11111111-1111-4111-8111-111111111111',
+    };
+    await request(server).post(`${base}/runs/${service}/pay`).set(headers).send(payRun).expect(200);
+    assert.equal(calls.at(-1)?.[0], 'payPayslips');
+    assert.deepEqual(json(calls.at(-1)![3]), payRun);
+    await request(server)
+      .post(`${base}/runs/${service}/pay`)
+      .set(headers)
+      .send({ ...payRun, payslipIds: [service] })
+      .expect(200);
+    const slipReverse = { expectedVersion: 2, reason: 'Chuyển nhầm' };
+    await request(server)
+      .post(`${base}/payslips/${service}/reverse`)
+      .set(headers)
+      .send(slipReverse)
+      .expect(200);
+    assert.equal(calls.at(-1)?.[0], 'reversePayslip');
+    assert.deepEqual(json(calls.at(-1)![3]), slipReverse);
+    for (const [path, body] of [
+      [`runs/${service}/close`, {}],
+      [`runs/${service}/close`, { expectedVersion: 4, extra: 1 }],
+      [`runs/${service}/pay`, { ...payRun, payslipIds: 'all' }],
+      [
+        `runs/${service}/pay`,
+        { expectedVersion: 5, fundId: service, clientRequestId: payRun.clientRequestId },
+      ],
+      [`runs/${service}/pay`, { ...payRun, extra: 1 }],
+      [`payslips/${service}/reverse`, { expectedVersion: 2 }],
+    ] as const) {
+      const before = calls.length;
+      await request(server).post(`${base}/${path}`).set(headers).send(body).expect(400);
+      assert.equal(calls.length, before);
+    }
+    // An employee's own payslips are read without a pay permission.
+    await request(server).get('/api/v1/me/payslips').set({ Cookie: cookie }).expect(200);
+    assert.equal(calls.at(-1)?.[0], 'myPayslips');
+    await request(server).get(`/api/v1/me/payslips/${service}`).set({ Cookie: cookie }).expect(200);
+    assert.equal(calls.at(-1)?.[0], 'myPayslip');
+    assert.equal(calls.at(-1)?.[2], service);
     // Only the contract's fields, with the right types.
     const refused = calls.length;
     for (const [path, body] of [

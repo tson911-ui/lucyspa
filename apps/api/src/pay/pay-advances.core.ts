@@ -417,7 +417,15 @@ export async function payAdvance(
         orderBy: { id: 'asc' },
         select: { branch: { select: { id: true, timezone: true } } },
       });
-  const branch = fund.branch ?? assignment?.branch ?? null;
+  // The bank account is the shop's: when the person works at no active branch the entry is booked at the first active branch.
+  const branch =
+    fund.branch ??
+    assignment?.branch ??
+    (await tx.branch.findFirst({
+      where: { isActive: true },
+      orderBy: { code: 'asc' },
+      select: { id: true, timezone: true },
+    }));
   if (!branch) throw new AuthError('VALIDATION_FAILED', 'fundId');
   await lockFunds(tx, [fund.id], true);
   if (fund.kind === 'CASH' && (await fundBalance(tx, fund)) < advance.amountVnd)

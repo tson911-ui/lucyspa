@@ -421,7 +421,15 @@ test(
             assert.equal(view.items[0]?.amountVnd, '10000');
             // A payroll run claims a row once (P7-12); afterwards a correction only adds new rows.
             const earn = (await rows(sale.invoiceId))[0]!;
-            const claim = id();
+            const claim = (
+              await tx.payRun.create({
+                data: {
+                  periodMonth: new Date('2019-03-01T00:00:00.000Z'),
+                  createdByUserId: owner.id,
+                },
+                select: { id: true },
+              })
+            ).id;
             await tx.$executeRawUnsafe(
               `UPDATE pay_earnings SET run_id = '${claim}'::uuid WHERE id = '${earn.id}'::uuid`,
             );

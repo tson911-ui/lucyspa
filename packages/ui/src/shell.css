@@ -1056,3 +1056,22 @@ html[data-ls-motion='reduced'] .ls-shell {
 .ls-auth-card [aria-invalid='true'] {
   border-color: var(--ls-danger);
 }
+
+/* ---- Print: a payslip prints on its own, without the app around it (Phase 7 P7-15) --------------- */
+@media print {
+  .ls-topbar,
+  .ls-sidebar-slot,
+  .ls-sidebar-scrim,
+  .ls-page-crumbs,
+  .ls-page-actions,
+  .ls-toast-region,
+  .ls-no-print {
+    display: none !important;
+  }
+
+  .ls-shell,
+  .ls-shell-body {
+    display: block;
+    min-height: 0;
+  }
+}

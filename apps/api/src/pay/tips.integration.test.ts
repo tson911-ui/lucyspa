@@ -276,11 +276,16 @@ test(
             }),
             /in full/,
           );
+          // A payroll run takes the tip (the run is a real row now: the column has a foreign key).
+          const taking = await tx.payRun.create({
+            data: { periodMonth: new Date('2019-03-01T00:00:00.000Z'), createdByUserId: owner.id },
+            select: { id: true },
+          });
           await tx.$executeRawUnsafe(
-            `UPDATE tips SET run_id = '${id()}'::uuid WHERE id = '${tip.id}'::uuid`,
+            `UPDATE tips SET run_id = '${taking.id}'::uuid WHERE id = '${tip.id}'::uuid`,
           );
           await refuses(
-            `UPDATE tips SET run_id = '${id()}'::uuid WHERE id = '${tip.id}'::uuid`,
+            `UPDATE tips SET run_id = '${taking.id}'::uuid WHERE id = '${tip.id}'::uuid`,
             /never changes/,
           );
           await fails(

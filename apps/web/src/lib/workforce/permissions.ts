@@ -148,6 +148,7 @@ export type NavKey =
   | 'dashboard'
   | 'myAccount'
   | 'myIncome'
+  | 'myPayslips'
   | 'attendance'
   | 'leave'
   | 'collaboratorSchedule'
@@ -173,6 +174,8 @@ export type NavKey =
   | 'productReturns'
   | 'cash'
   | 'pay'
+  | 'payroll'
+  | 'advances'
   | 'skills'
   | 'employees'
   | 'roles'
@@ -204,6 +207,8 @@ export function navigationFor(account: Account): NavItem[] {
     // Every workforce account (Owner included) has its own account page.
     { key: 'myAccount', group: 'personal', path: '/account' },
     { key: 'myIncome', group: 'personal', path: '/income' },
+    // Phase 7 P7-15: an employee's own payslips (no permission is needed for one's own pay).
+    employee && { key: 'myPayslips', group: 'personal', path: '/my-payslips' },
     ((employee && account.attendanceRequired !== false) ||
       canAnywhere(account, 'VIEW_ATTENDANCE')) && {
       key: 'attendance',
@@ -358,6 +363,17 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'pay',
       group: 'people',
       path: '/pay',
+    },
+    // Phase 7 P7-15: the monthly payroll and salary advances (shop-wide payroll permissions).
+    (canGlobal(account, 'MANAGE_PAYROLL') || canGlobal(account, 'APPROVE_PAYROLL')) && {
+      key: 'payroll',
+      group: 'people',
+      path: '/payroll',
+    },
+    (canGlobal(account, 'MANAGE_PAYROLL') || canGlobal(account, 'APPROVE_PAYROLL')) && {
+      key: 'advances',
+      group: 'people',
+      path: '/advances',
     },
     canAnywhere(account, 'MANAGE_SKILLS') && {
       key: 'skills',

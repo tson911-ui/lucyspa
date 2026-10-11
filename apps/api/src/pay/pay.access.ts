@@ -21,6 +21,9 @@ export const canReadRules = (context: AdminContext): boolean =>
 export const canManagePayroll = (context: AdminContext): boolean =>
   decide(context.actor.graph, 'MANAGE_PAYROLL', GLOBAL);
 
+export const canApprovePayroll = (context: AdminContext): boolean =>
+  decide(context.actor.graph, 'APPROVE_PAYROLL', GLOBAL);
+
 export const holdsPayrollShopWide = (context: AdminContext): boolean =>
   decide(context.actor.graph, 'MANAGE_PAYROLL', GLOBAL) ||
   decide(context.actor.graph, 'APPROVE_PAYROLL', GLOBAL);

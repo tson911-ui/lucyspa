@@ -207,7 +207,7 @@ test(
           const work = item(created, ctv.id, 'CTV_WORK');
           assert.deepEqual(
             [work?.amountVnd, work?.quantity, work?.flag, work?.note],
-            ['200000', 2, 'UNAGREED', '1'],
+            ['200000', 1, 'UNAGREED', '1'],
           );
           assert.equal(line(created, ctv.id)?.classification, 'COLLABORATOR');
           assert.equal(
