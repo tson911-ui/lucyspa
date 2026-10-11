@@ -227,6 +227,13 @@ const errors = {
     409,
     'A newer test exists or the address changed; confirm the latest test',
   ],
+  // Phase 7 Wave A: the shop funds (cash book). No error reveals another branch's money.
+  FINANCE_ALREADY_LIVE: [409, 'The cash book and payroll were already started'],
+  FINANCE_NOT_LIVE: [409, 'The cash book and payroll have not been started yet'],
+  CASH_OPENING_INVALID: [
+    422,
+    'The opening balances must cover exactly the active branches and the bank',
+  ],
   // Phase 6 P6-5: the Excel/CSV import. The field of IMPORT_FILE_INVALID names the reason (never file content).
   IMPORT_FILE_INVALID: [422, 'The file cannot be imported'],
   IMPORT_JOB_NOT_PREVIEWED: [409, 'Only a previewed import can be applied or cancelled'],

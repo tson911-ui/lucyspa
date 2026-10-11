@@ -762,6 +762,11 @@ export type PermissionCodeName =
   | 'MANAGE_PRODUCT_ORDERS'
   | 'MANAGE_SUPPLIER_SOURCES'
   | 'REVIEW_SUPPLIER_IMPORTS'
+  | 'MANAGE_PAY_RULES'
+  | 'MANAGE_PAYROLL'
+  | 'APPROVE_PAYROLL'
+  | 'VIEW_CASH'
+  | 'MANAGE_CASH'
   | 'ACTIVATE_LOYALTY'
   | 'CHANGE_REFERRER';
 
@@ -2204,6 +2209,7 @@ export * from './online-order.js';
 export * from './online-fulfilment.js';
 export * from './product-campaign.js';
 export * from './supplier-source.js';
+export * from './cash.js';
 export interface NotificationItem {
   id: string;
   type: NotificationType;

@@ -338,6 +338,17 @@ export async function takeFreshConfirmation(
     select: { actorUserId: true },
   });
   if (used) throw new AuthError('REAUTHENTICATION_REQUIRED');
+  // Phase 7: a confirmation already spent on a cash or payroll action (reauth_uses) is spent for refunds too.
+  const spentElsewhere = await context.tx.reauthUse.findUnique({
+    where: {
+      actorUserId_reauthenticatedAt: {
+        actorUserId: context.actor.userId,
+        reauthenticatedAt: confirmedAt,
+      },
+    },
+    select: { actorUserId: true },
+  });
+  if (spentElsewhere) throw new AuthError('REAUTHENTICATION_REQUIRED');
   return confirmedAt;
 }
 

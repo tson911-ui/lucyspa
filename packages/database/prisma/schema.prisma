@@ -61,6 +61,9 @@ model Branch {
   inventoryExpiryScans    InventoryExpiryScan[]        @relation("ExpiryScanBranch")
   stockCounts             StockCountSession[]          @relation("StockCountBranch")
   stockMovements          StockMovement[]              @relation("StockMovementBranch")
+  cashFunds               CashFund[]                   @relation("CashFundBranch")
+  fundEntries             FundEntry[]                  @relation("FundEntryBranch")
+  cashDayClosings         CashDayClosing[]             @relation("CashDayClosingBranch")
 
   @@index([areaId], map: "branches_area_idx")
   @@map("branches")
@@ -388,6 +391,11 @@ enum PermissionCode {
   MANAGE_PRODUCT_ORDERS
   MANAGE_SUPPLIER_SOURCES
   REVIEW_SUPPLIER_IMPORTS
+  MANAGE_PAY_RULES
+  MANAGE_PAYROLL
+  APPROVE_PAYROLL
+  VIEW_CASH
+  MANAGE_CASH
 }
 
 enum LeaveStatus {
@@ -574,6 +582,11 @@ model User {
   soldProductLines               InvoiceLineProduct[]             @relation("InvoiceProductSeller")
   reservationsCreated            StockReservation[]               @relation("StockReservationCreator")
   reservationsReleased           StockReservation[]               @relation("StockReservationReleaser")
+  financeGoLiveSet               FinanceGoLive[]                  @relation("FinanceGoLiveSetter")
+  reauthUses                     ReauthUse[]                      @relation("ReauthUseActor")
+  openedCashFunds                CashFund[]                       @relation("CashFundOpener")
+  fundEntries                    FundEntry[]                      @relation("FundEntryActor")
+  cashDayClosings                CashDayClosing[]                 @relation("CashDayClosingActor")
 
   @@index([kind, status, id], map: "users_kind_status_idx")
   @@map("users")
@@ -4892,4 +4905,141 @@ model CandidateReviewDecision {
 
   @@index([candidateId, seq(sort: Desc)], map: "candidate_review_decisions_candidate_idx")
   @@map("candidate_review_decisions")
+}
+
+// ---------------------------------------------------------------- Phase 7 (payroll, tips and shop funds)
+// docs/PHASE7_PAYROLL_FUNDS.md. SQL-only: the append-only and closed-day guards, the closing arithmetic, the partial unique indexes,
+// the category/direction rules and the shared re-authentication check.
+
+enum FundKind {
+  CASH
+  BANK
+}
+
+enum FundDirection {
+  IN
+  OUT
+}
+
+enum FundEntryCategory {
+  SALE_CASH
+  SALE_BANK
+  PAYMENT_REVERSAL
+  PRODUCT_REFUND
+  EXCHANGE_DIFFERENCE
+  FAILED_DELIVERY_REFUND
+  TIP_IN
+  TIP_OUT
+  SALARY_PAYOUT
+  ADVANCE
+  MANUAL_INCOME
+  MANUAL_EXPENSE
+  OWNER_WITHDRAWAL
+  DEPOSIT
+  FUND_TRANSFER
+  COUNT_DIFFERENCE
+  CORRECTION
+}
+
+/// P7-2 (P7-T15): the moment the Owner started the cash book and payroll. One row, written once, never moved. Empty = nothing posts.
+model FinanceGoLive {
+  id                Int      @id @default(1) @db.SmallInt
+  at                DateTime @db.Timestamptz(3)
+  setByUserId       String   @map("set_by_user_id") @db.Uuid
+  setBy             User     @relation("FinanceGoLiveSetter", fields: [setByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reauthenticatedAt DateTime @map("reauthenticated_at") @db.Timestamptz(3)
+  createdAt         DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@map("finance_go_live")
+}
+
+/// P7-T12: a fresh password confirmation covers one action. The key is the person and the instant (shared with refund confirmations).
+model ReauthUse {
+  actorUserId       String   @map("actor_user_id") @db.Uuid
+  actor             User     @relation("ReauthUseActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reauthenticatedAt DateTime @map("reauthenticated_at") @db.Timestamptz(3)
+  purpose           String   @db.VarChar(40)
+  subjectId         String?  @map("subject_id") @db.Uuid
+  usedAt            DateTime @default(dbgenerated("clock_timestamp()")) @map("used_at") @db.Timestamptz(3)
+
+  @@id([actorUserId, reauthenticatedAt])
+  @@map("reauth_uses")
+}
+
+/// One CASH fund per branch and one shared BANK fund. The opening balance is counted by a person at go-live and never changes.
+model CashFund {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind             FundKind
+  branchId         String?      @map("branch_id") @db.Uuid
+  branch           Branch?      @relation("CashFundBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  name             String
+  openingBalanceVnd BigInt      @map("opening_balance_vnd")
+  openingAt        DateTime     @map("opening_at") @db.Timestamptz(3)
+  openingByUserId  String       @map("opening_by_user_id") @db.Uuid
+  openingBy        User         @relation("CashFundOpener", fields: [openingByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  isActive         Boolean      @default(true) @map("is_active")
+  createdAt        DateTime     @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  entries          FundEntry[]
+  closings         CashDayClosing[]
+
+  @@index([openingByUserId], map: "cash_funds_opening_by_idx")
+  @@map("cash_funds")
+}
+
+/// Append-only book of money movements (immutable; a correction is a new CORRECTION entry that reverses one earlier entry).
+model FundEntry {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  seq               BigInt            @default(autoincrement())
+  fundId            String            @map("fund_id") @db.Uuid
+  fund              CashFund          @relation(fields: [fundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId          String            @map("branch_id") @db.Uuid
+  branch            Branch            @relation("FundEntryBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  businessDate      DateTime          @map("business_date") @db.Date
+  direction         FundDirection
+  category          FundEntryCategory
+  amountVnd         BigInt            @map("amount_vnd")
+  sourceType        String?           @map("source_type") @db.VarChar(40)
+  sourceId          String?           @map("source_id") @db.Uuid
+  sourceLeg         Int               @default(0) @map("source_leg") @db.SmallInt
+  reversesEntryId   String?           @map("reverses_entry_id") @db.Uuid
+  reversesEntry     FundEntry?        @relation("FundEntryReversal", fields: [reversesEntryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reversedBy        FundEntry[]       @relation("FundEntryReversal")
+  reason            String?
+  actorUserId       String?           @map("actor_user_id") @db.Uuid
+  actor             User?             @relation("FundEntryActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  clientRequestId   String?           @map("client_request_id") @db.Uuid
+  occurredAt        DateTime          @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+  sourceOccurredAt  DateTime?         @map("source_occurred_at") @db.Timestamptz(3)
+
+  @@index([fundId, businessDate, seq], map: "fund_entries_fund_date_idx")
+  @@index([branchId, businessDate], map: "fund_entries_branch_date_idx")
+  @@index([actorUserId], map: "fund_entries_actor_idx")
+  @@map("fund_entries")
+}
+
+/// One closed day of one cash fund (immutable). The count difference and the withdrawal are entries of the same day (CASH_CLOSING).
+model CashDayClosing {
+  id                String   @id @db.Uuid
+  fundId            String   @map("fund_id") @db.Uuid
+  fund              CashFund @relation(fields: [fundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId          String   @map("branch_id") @db.Uuid
+  branch            Branch   @relation("CashDayClosingBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  businessDate      DateTime @map("business_date") @db.Date
+  openingFloatVnd   BigInt   @map("opening_float_vnd")
+  cashInVnd         BigInt   @map("cash_in_vnd")
+  cashOutVnd        BigInt   @map("cash_out_vnd")
+  expectedVnd       BigInt   @map("expected_vnd")
+  countedVnd        BigInt   @map("counted_vnd")
+  differenceVnd     BigInt   @map("difference_vnd")
+  reason            String?
+  withdrawalVnd     BigInt   @default(0) @map("withdrawal_vnd")
+  nextFloatVnd      BigInt   @map("next_float_vnd")
+  closedByUserId    String   @map("closed_by_user_id") @db.Uuid
+  closedBy          User     @relation("CashDayClosingActor", fields: [closedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reauthenticatedAt DateTime @map("reauthenticated_at") @db.Timestamptz(3)
+  clientRequestId   String   @map("client_request_id") @db.Uuid
+  closedAt          DateTime @default(dbgenerated("clock_timestamp()")) @map("closed_at") @db.Timestamptz(3)
+
+  @@index([branchId, businessDate], map: "cash_day_closings_branch_date_idx")
+  @@map("cash_day_closings")
 }

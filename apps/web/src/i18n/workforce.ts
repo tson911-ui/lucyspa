@@ -1406,6 +1406,11 @@ const vi = {
         'Thêm nguồn nhà cung cấp, ghi và xác nhận giấy phép sử dụng, bật hoặc tắt nguồn',
       REVIEW_SUPPLIER_IMPORTS:
         'Xem nguồn nhà cung cấp và duyệt nội dung, ảnh sản phẩm lấy từ nguồn (không đặt giá)',
+      MANAGE_PAY_RULES: 'Đặt mức tiền tour, hoa hồng và mã giới thiệu của nhân viên',
+      MANAGE_PAYROLL: 'Lập bảng lương tháng, thưởng, điều chỉnh, khấu trừ và tạm ứng',
+      APPROVE_PAYROLL: 'Chốt kỳ lương, ghi đã trả lương, duyệt và chi tạm ứng',
+      VIEW_CASH: 'Xem sổ quỹ, chốt ngày và đối chiếu của chi nhánh',
+      MANAGE_CASH: 'Ghi thu chi, nộp tiền, đếm quỹ và chốt ngày của chi nhánh',
     },
     duplicateCode: 'Mã vai trò này đã tồn tại.',
     managerGroupHolders:
@@ -4030,6 +4035,11 @@ const en: Dictionary = {
         'Add supplier sources, record and confirm the permission to use them, switch them on or off',
       REVIEW_SUPPLIER_IMPORTS:
         'View supplier sources and review the content and images taken from them (no prices)',
+      MANAGE_PAY_RULES: 'Set tour amounts, commission rates and staff referral codes',
+      MANAGE_PAYROLL: 'Prepare the monthly payroll, bonuses, adjustments, deductions and advances',
+      APPROVE_PAYROLL: 'Close a payroll period, mark pay as paid, approve and pay advances',
+      VIEW_CASH: 'View the cash book, day closings and reconciliation of the branch',
+      MANAGE_CASH: 'Record money in and out, deposits, cash counts and close the day of the branch',
     },
     duplicateCode: 'This role code already exists.',
     managerGroupHolders:

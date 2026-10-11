@@ -169,7 +169,7 @@ test('Phase 6 P6-2 catalog / import / inventory database foundation (all fixture
                   code,
                 );
               }
-              assert.equal(PERMISSION_CATALOG.length, 68);
+              assert.equal(PERMISSION_CATALOG.length, 73);
               await syncPermissionCatalog(tx);
               const stored = await tx.permission.findMany({
                 where: { code: { in: [...PHASE6_CODES] } },
