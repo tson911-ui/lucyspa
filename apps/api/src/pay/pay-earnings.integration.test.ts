@@ -40,7 +40,7 @@ test(
         const k = await productSaleKit(base);
         const { tx, fails } = base;
         const { A, invoices, people, exact } = k;
-        const pay = new PayService(base.adapter, base.throttle);
+        const pay = new PayService(base.adapter, base.throttle, base.environment);
         const returns = new ProductReturnService(
           base.adapter,
           base.throttle,

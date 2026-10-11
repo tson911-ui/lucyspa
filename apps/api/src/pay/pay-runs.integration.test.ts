@@ -22,7 +22,7 @@ test(
       const k = await productSaleKit(base);
       const { tx, fails } = base;
       const { A, people, exact } = k;
-      const pay = new PayService(base.adapter, base.throttle);
+      const pay = new PayService(base.adapter, base.throttle, base.environment);
       const today = shopToday(new Date());
       const month = today.slice(0, 7);
       const rules = await base.staff([], { globalCodes: ['MANAGE_PAY_RULES'] });

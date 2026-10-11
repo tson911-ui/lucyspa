@@ -95,6 +95,12 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
     'setPayRunPaymentDay',
     'addPayRunItem',
     'voidPayRunItem',
+    'advances',
+    'requestAdvance',
+    'approveAdvance',
+    'cancelAdvance',
+    'payAdvance',
+    'writeOffAdvance',
   ] as const;
   const module = await Test.createTestingModule({
     imports: [AppModule.forRoot(environment, pino({ level: 'silent' }))],
@@ -165,6 +171,7 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
       [`invoices/${service}/tips`, 'invoiceTips', [service]],
       ['referral-codes', 'staffCodes', []],
       ['runs', 'payRuns', []],
+      ['advances', 'advances', []],
       [`runs/${service}`, 'payRun', [service]],
       [`salaries/${employee}/history`, 'salaryHistory', [employee]],
     ] as const) {
@@ -337,6 +344,67 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
       [`runs/${service}/items`, { ...itemBody, amountVnd: 1000 }],
       [`runs/${service}/items`, { ...itemBody, extra: 1 }],
       [`runs/${service}/items/${employee}/void`, { reason: 'x' }],
+    ] as const) {
+      const before = calls.length;
+      await request(server).post(`${base}/${path}`).set(headers).send(body).expect(400);
+      assert.equal(calls.length, before);
+    }
+    // Salary advances: exact fields on every write.
+    const advance = {
+      employeeUserId: employee,
+      amountVnd: '1000000',
+      reason: 'Việc gấp',
+      clientRequestId: '11111111-1111-4111-8111-111111111111',
+    };
+    await request(server)
+      .post(`${base}/advances`)
+      .set({ Cookie: cookie })
+      .send(advance)
+      .expect(403);
+    await request(server).post(`${base}/advances`).set(headers).send(advance).expect(200);
+    assert.equal(calls.at(-1)?.[0], 'requestAdvance');
+    assert.deepEqual(json(calls.at(-1)![2]), advance);
+    await request(server)
+      .post(`${base}/advances/${service}/approve`)
+      .set(headers)
+      .send({ expectedVersion: 1 })
+      .expect(200);
+    assert.equal(calls.at(-1)?.[0], 'approveAdvance');
+    assert.equal(calls.at(-1)?.[2], service);
+    const cancel = { expectedVersion: 1, reason: 'Hủy' };
+    await request(server)
+      .post(`${base}/advances/${service}/cancel`)
+      .set(headers)
+      .send(cancel)
+      .expect(200);
+    assert.equal(calls.at(-1)?.[0], 'cancelAdvance');
+    const payBody = {
+      expectedVersion: 2,
+      fundId: service,
+      clientRequestId: advance.clientRequestId,
+    };
+    await request(server)
+      .post(`${base}/advances/${service}/pay`)
+      .set(headers)
+      .send(payBody)
+      .expect(200);
+    assert.equal(calls.at(-1)?.[0], 'payAdvance');
+    assert.deepEqual(json(calls.at(-1)![3]), payBody);
+    const writeOff = { expectedVersion: 3, reason: 'Không thu được' };
+    await request(server)
+      .post(`${base}/advances/${service}/write-off`)
+      .set(headers)
+      .send(writeOff)
+      .expect(200);
+    assert.equal(calls.at(-1)?.[0], 'writeOffAdvance');
+    for (const [path, body] of [
+      ['advances', { ...advance, extra: 1 }],
+      ['advances', { ...advance, amountVnd: 1000000 }],
+      [`advances/${service}/approve`, {}],
+      [`advances/${service}/approve`, { expectedVersion: 1, extra: 1 }],
+      [`advances/${service}/cancel`, { expectedVersion: 1 }],
+      [`advances/${service}/pay`, { expectedVersion: 1, fundId: service }],
+      [`advances/${service}/write-off`, { reason: 'x' }],
     ] as const) {
       const before = calls.length;
       await request(server).post(`${base}/${path}`).set(headers).send(body).expect(400);

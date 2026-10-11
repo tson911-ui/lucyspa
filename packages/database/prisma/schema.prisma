@@ -421,6 +421,11 @@ enum LeaveType {
 // canonical identities, credential state and protected sole-Owner invariants.
 model User {
   id                             String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  advancesRequested              SalaryAdvance[]                  @relation("AdvanceRequester")
+  advancesApproved               SalaryAdvance[]                  @relation("AdvanceApprover")
+  advancesPaid                   SalaryAdvance[]                  @relation("AdvancePayer")
+  advancesCancelled              SalaryAdvance[]                  @relation("AdvanceCanceller")
+  advancesWrittenOff             SalaryAdvance[]                  @relation("AdvanceWriter")
   payRunsCreated                 PayRun[]                         @relation("PayRunCreator")
   payRunsRefreshed               PayRun[]                         @relation("PayRunRefresher")
   payRunsClosed                  PayRun[]                         @relation("PayRunCloser")
@@ -617,6 +622,7 @@ model CustomerProfile {
 
 model EmployeeProfile {
   userId                  String                           @id @map("user_id") @db.Uuid
+  salaryAdvances          SalaryAdvance[]
   payRunLines             PayRunLine[]
   referralCodes           EmployeeReferralCode[]
   orderReferrals          OrderReferral[]
@@ -5000,6 +5006,7 @@ model ReauthUse {
 /// One CASH fund per branch and one shared BANK fund. The opening balance is counted by a person at go-live and never changes.
 model CashFund {
   id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  advances         SalaryAdvance[]
   kind             FundKind
   branchId         String?      @map("branch_id") @db.Uuid
   branch           Branch?      @relation("CashFundBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -5020,6 +5027,7 @@ model CashFund {
 /// Append-only book of money movements (immutable; a correction is a new CORRECTION entry that reverses one earlier entry).
 model FundEntry {
   id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  advance           SalaryAdvance?
   tips              Tip[]
   seq               BigInt            @default(autoincrement())
   fundId            String            @map("fund_id") @db.Uuid
@@ -5367,6 +5375,8 @@ model PayRunItem {
   quantity        Int?
   lateVnd         BigInt         @default(0) @map("late_vnd")
   flag            String?        @db.VarChar(24)
+  advanceId       String?        @map("advance_id") @db.Uuid
+  advance         SalaryAdvance? @relation(fields: [advanceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   note            String?
   reason          String?
   clientRequestId String?        @map("client_request_id") @db.Uuid
@@ -5379,7 +5389,60 @@ model PayRunItem {
   voidReason      String?        @map("void_reason")
 
   @@unique([createdByUserId, clientRequestId], map: "pay_run_items_request_key")
+  @@index([advanceId], map: "pay_run_items_advance_idx")
   @@index([lineId], map: "pay_run_items_line_idx")
   @@index([runId, kind], map: "pay_run_items_run_idx")
   @@map("pay_run_items")
+}
+
+enum SalaryAdvanceStatus {
+  REQUESTED
+  APPROVED
+  PAID
+  RECOVERED
+  WRITTEN_OFF
+  CANCELLED
+}
+
+/// P7-13 (OQ-110): a salary advance. REQUESTED -> APPROVED -> PAID -> RECOVERED | WRITTEN_OFF (or CANCELLED before it is paid). Paying writes the
+/// fund outflow (`paidEntryId`); recovery is by ADVANCE_RECOVERY payroll items of closed runs; what is left can be written off with a reason.
+model SalaryAdvance {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  seq                BigInt              @default(autoincrement())
+  employeeUserId     String              @map("employee_user_id") @db.Uuid
+  employee           EmployeeProfile     @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  amountVnd          BigInt              @map("amount_vnd")
+  status             SalaryAdvanceStatus @default(REQUESTED)
+  reason             String
+  requestedByUserId  String              @map("requested_by_user_id") @db.Uuid
+  requestedBy        User                @relation("AdvanceRequester", fields: [requestedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  requestedAt        DateTime            @default(dbgenerated("clock_timestamp()")) @map("requested_at") @db.Timestamptz(3)
+  clientRequestId    String              @map("client_request_id") @db.Uuid
+  approvedByUserId   String?             @map("approved_by_user_id") @db.Uuid
+  approvedBy         User?               @relation("AdvanceApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  approvedAt         DateTime?           @map("approved_at") @db.Timestamptz(3)
+  paidByUserId       String?             @map("paid_by_user_id") @db.Uuid
+  paidBy             User?               @relation("AdvancePayer", fields: [paidByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  paidAt             DateTime?           @map("paid_at") @db.Timestamptz(3)
+  paidFundId         String?             @map("paid_fund_id") @db.Uuid
+  paidFund           CashFund?           @relation(fields: [paidFundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  paidEntryId        String?             @unique(map: "salary_advances_entry_key") @map("paid_entry_id") @db.Uuid
+  paidEntry          FundEntry?          @relation(fields: [paidEntryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelledByUserId  String?             @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy        User?               @relation("AdvanceCanceller", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelledAt        DateTime?           @map("cancelled_at") @db.Timestamptz(3)
+  cancelReason       String?             @map("cancel_reason")
+  writtenOffByUserId String?             @map("written_off_by_user_id") @db.Uuid
+  writtenOffBy       User?               @relation("AdvanceWriter", fields: [writtenOffByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  writtenOffAt       DateTime?           @map("written_off_at") @db.Timestamptz(3)
+  writtenOffVnd      BigInt?             @map("written_off_vnd")
+  writeOffReason     String?             @map("write_off_reason")
+  recoveredAt        DateTime?           @map("recovered_at") @db.Timestamptz(3)
+  rowVersion         Int                 @default(1) @map("row_version")
+  recoveries         PayRunItem[]
+
+  @@unique([requestedByUserId, clientRequestId], map: "salary_advances_request_key")
+  @@index([employeeUserId, seq], map: "salary_advances_employee_idx")
+  @@index([status], map: "salary_advances_status_idx")
+  @@map("salary_advances")
 }

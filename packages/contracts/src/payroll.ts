@@ -73,6 +73,8 @@ export interface PayRunItemView {
   lateVnd: string;
   flag: 'UNCONFIRMED_BASE' | 'NO_BASE' | 'UNAGREED' | null;
   note: string | null;
+  /** ADVANCE_RECOVERY only: the advance it takes back. */
+  advanceId: string | null;
   reason: string | null;
   voided: boolean;
   voidReason: string | null;

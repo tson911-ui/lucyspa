@@ -231,6 +231,12 @@ const errors = {
   // Phase 7 Wave A: the shop funds (cash book). No error reveals another branch's money.
   FINANCE_ALREADY_LIVE: [409, 'The cash book and payroll were already started'],
   FINANCE_NOT_LIVE: [409, 'The cash book and payroll have not been started yet'],
+  ADVANCE_NOT_ELIGIBLE: [
+    409,
+    'Only an official employee with a confirmed salary can have an advance',
+  ],
+  ADVANCE_OPEN_EXISTS: [409, 'This person already has an open advance'],
+  ADVANCE_LIMIT: [409, 'An advance is at most half of the monthly salary'],
   PAY_RUN_NOT_DRAFT: [409, 'This payroll run is already closed'],
   PAY_RUN_EXISTS: [409, 'A payroll run already exists for this month'],
   TIP_EXISTS: [409, 'This person already has a tip for this invoice'],

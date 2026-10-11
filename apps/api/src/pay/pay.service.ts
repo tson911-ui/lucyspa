@@ -2,6 +2,12 @@ import type {
   CommissionRuleRequest,
   InvoiceEarningsResponse,
   InvoiceTipsResponse,
+  SalaryAdvanceApproveRequest,
+  SalaryAdvanceCancelRequest,
+  SalaryAdvancePayRequest,
+  SalaryAdvanceRequest,
+  SalaryAdvanceWriteOffRequest,
+  SalaryAdvancesResponse,
   PayRunCreateRequest,
   PayRunDetailResponse,
   PayRunItemRequest,
@@ -30,12 +36,14 @@ import type {
 import { Inject, Injectable } from '@nestjs/common';
 import { AuthError } from '../auth/auth.error.js';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
+import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import { SessionService } from '../auth/session.service.js';
 import { runAdminCommand, type AdminContext } from '../authorization/admin-command.js';
 import { sqlStateOf } from '../booking/customer-command.js';
 import * as earnings from './pay-earnings.core.js';
 import * as rules from './pay-rules.core.js';
 import * as salary from './pay-salary.core.js';
+import * as advances from './pay-advances.core.js';
 import * as runs from './pay-runs.core.js';
 import * as codes from './staff-codes.core.js';
 import * as tips from './tips.core.js';
@@ -53,6 +61,7 @@ export class PayService {
       'withTransaction' | 'withExclusiveTransaction' | 'resolveForMutation'
     >,
     @Inject(AuthThrottleService) private readonly throttle: Pick<AuthThrottleService, 'now'>,
+    @Inject(API_ENVIRONMENT) private readonly environment: ApiEnvironment,
   ) {}
 
   tourRules(token: string | undefined): Promise<TourRulesResponse> {
@@ -217,6 +226,62 @@ export class PayService {
   ): Promise<PayRunDetailResponse> {
     return this.run(token, requestId, (context) =>
       runs.voidItem(context, runId, itemId, { ...body }),
+    );
+  }
+
+  advances(token: string | undefined): Promise<SalaryAdvancesResponse> {
+    return this.run(token, undefined, (context) => advances.listAdvances(context));
+  }
+
+  requestAdvance(
+    token: string | undefined,
+    body: SalaryAdvanceRequest,
+    requestId?: string,
+  ): Promise<SalaryAdvancesResponse> {
+    return this.run(token, requestId, (context) => advances.requestAdvance(context, { ...body }));
+  }
+
+  approveAdvance(
+    token: string | undefined,
+    id: string,
+    body: SalaryAdvanceApproveRequest,
+    requestId?: string,
+  ): Promise<SalaryAdvancesResponse> {
+    return this.run(token, requestId, (context) =>
+      advances.approveAdvance(context, id, { ...body }),
+    );
+  }
+
+  cancelAdvance(
+    token: string | undefined,
+    id: string,
+    body: SalaryAdvanceCancelRequest,
+    requestId?: string,
+  ): Promise<SalaryAdvancesResponse> {
+    return this.run(token, requestId, (context) =>
+      advances.cancelAdvance(context, id, { ...body }),
+    );
+  }
+
+  payAdvance(
+    token: string | undefined,
+    id: string,
+    body: SalaryAdvancePayRequest,
+    requestId?: string,
+  ): Promise<SalaryAdvancesResponse> {
+    return this.run(token, requestId, (context) =>
+      advances.payAdvance(context, id, { ...body }, this.environment.auth.freshAuthSeconds),
+    );
+  }
+
+  writeOffAdvance(
+    token: string | undefined,
+    id: string,
+    body: SalaryAdvanceWriteOffRequest,
+    requestId?: string,
+  ): Promise<SalaryAdvancesResponse> {
+    return this.run(token, requestId, (context) =>
+      advances.writeOffAdvance(context, id, { ...body }, this.environment.auth.freshAuthSeconds),
     );
   }
 

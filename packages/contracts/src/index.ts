@@ -2228,6 +2228,7 @@ export * from './online-fulfilment.js';
 export * from './product-campaign.js';
 export * from './supplier-source.js';
 export * from './cash.js';
+export * from './advance.js';
 export * from './pay.js';
 export * from './payroll.js';
 export * from './staff-code.js';

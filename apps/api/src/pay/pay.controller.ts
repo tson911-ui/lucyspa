@@ -2,6 +2,12 @@ import type {
   CommissionRuleRequest,
   InvoiceEarningsResponse,
   InvoiceTipsResponse,
+  SalaryAdvanceApproveRequest,
+  SalaryAdvanceCancelRequest,
+  SalaryAdvancePayRequest,
+  SalaryAdvanceRequest,
+  SalaryAdvanceWriteOffRequest,
+  SalaryAdvancesResponse,
   PayRunCreateRequest,
   PayRunDetailResponse,
   PayRunItemRequest,
@@ -81,6 +87,33 @@ class CommissionRuleDto implements CommissionRuleRequest {
   @IsString()
   @MaxLength(2000)
   reason!: string | null;
+}
+
+class AdvanceDto implements SalaryAdvanceRequest {
+  @ApiProperty() @IsString() @MaxLength(64) employeeUserId!: string;
+  @ApiProperty() @IsString() @MaxLength(20) amountVnd!: string;
+  @ApiProperty() @IsString() @MaxLength(2000) reason!: string;
+  @ApiProperty() @IsString() @MaxLength(64) clientRequestId!: string;
+}
+
+class AdvanceApproveDto implements SalaryAdvanceApproveRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(2_147_483_647) expectedVersion!: number;
+}
+
+class AdvanceCancelDto implements SalaryAdvanceCancelRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(2_147_483_647) expectedVersion!: number;
+  @ApiProperty() @IsString() @MaxLength(2000) reason!: string;
+}
+
+class AdvancePayDto implements SalaryAdvancePayRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(2_147_483_647) expectedVersion!: number;
+  @ApiProperty() @IsString() @MaxLength(64) fundId!: string;
+  @ApiProperty() @IsString() @MaxLength(64) clientRequestId!: string;
+}
+
+class AdvanceWriteOffDto implements SalaryAdvanceWriteOffRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(2_147_483_647) expectedVersion!: number;
+  @ApiProperty() @IsString() @MaxLength(2000) reason!: string;
 }
 
 class RunCreateDto implements PayRunCreateRequest {
@@ -467,6 +500,85 @@ export class PayController {
       body,
       this.requestId(response),
     );
+  }
+
+  @Get('advances')
+  @ApiOkResponse({
+    description:
+      'Salary advances, who can have one, and the funds one can be paid from (MANAGE_PAYROLL or APPROVE_PAYROLL).',
+  })
+  advances(@Req() request: Request): Promise<SalaryAdvancesResponse> {
+    return this.pay.advances(this.session(request));
+  }
+
+  @Post('advances')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Requests an advance for an official employee with a confirmed salary: at most half of it (MANAGE_PAYROLL).',
+  })
+  requestAdvance(
+    @Body() body: AdvanceDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SalaryAdvancesResponse> {
+    return this.pay.requestAdvance(this.session(request), body, this.requestId(response));
+  }
+
+  @Post('advances/:id/approve')
+  @HttpCode(200)
+  @ApiOkResponse({ description: 'Approves a request (APPROVE_PAYROLL). Nothing is paid.' })
+  approveAdvance(
+    @Param('id') id: string,
+    @Body() body: AdvanceApproveDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SalaryAdvancesResponse> {
+    return this.pay.approveAdvance(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Post('advances/:id/cancel')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description: 'Cancels a request or an approved advance that has not been paid, with a reason.',
+  })
+  cancelAdvance(
+    @Param('id') id: string,
+    @Body() body: AdvanceCancelDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SalaryAdvancesResponse> {
+    return this.pay.cancelAdvance(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Post('advances/:id/pay')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Pays an approved advance out of a fund (APPROVE_PAYROLL + a fresh password). Writes the fund outflow in the same transaction.',
+  })
+  payAdvance(
+    @Param('id') id: string,
+    @Body() body: AdvancePayDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SalaryAdvancesResponse> {
+    return this.pay.payAdvance(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Post('advances/:id/write-off')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Writes off what is still owed on a paid advance, with a reason (APPROVE_PAYROLL + a fresh password).',
+  })
+  writeOffAdvance(
+    @Param('id') id: string,
+    @Body() body: AdvanceWriteOffDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SalaryAdvancesResponse> {
+    return this.pay.writeOffAdvance(this.session(request), id, body, this.requestId(response));
   }
 
   private session(request: Request) {

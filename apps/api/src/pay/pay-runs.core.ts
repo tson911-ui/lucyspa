@@ -22,6 +22,7 @@ import { AuthError } from '../auth/auth.error.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
 import { financeGoLive } from '../finance/cash.core.js';
 import { exactKeys, reason, uuid } from '../finance/finance.input.js';
+import { advanceBalances } from './pay-advances.core.js';
 import { officialEmployees } from './pay-rules.core.js';
 import { addDays, canManagePayroll, holdsPayrollShopWide, shopToday } from './pay.access.js';
 
@@ -66,10 +67,11 @@ interface Generated {
   lateVnd: bigint;
   flag: 'UNCONFIRMED_BASE' | 'NO_BASE' | 'UNAGREED' | null;
   note: string | null;
+  advanceId?: string | null;
 }
 
 /** Everything the draft is made of, read from the sources (writes nothing). */
-async function generate(tx: Tx, first: string): Promise<Generated[]> {
+async function generate(tx: Tx, first: string, runId: string | null = null): Promise<Generated[]> {
   const last = lastDayOf(first);
   const out: Generated[] = [];
 
@@ -189,6 +191,52 @@ async function generate(tx: Tx, first: string): Promise<Generated[]> {
       note: null,
     });
   }
+
+  // Suggested recovery of paid advances: what is still owed, never more than the net pay available (the rest waits for the next run).
+  const owing = await tx.salaryAdvance.findMany({
+    where: { status: 'PAID' },
+    orderBy: { seq: 'asc' },
+    select: { id: true, employeeUserId: true },
+  });
+  if (owing.length > 0) {
+    const balances = await advanceBalances(
+      tx,
+      owing.map((row) => row.id),
+    );
+    const net = new Map<string, bigint>();
+    for (const item of out) {
+      if (item.kind !== 'TIP') {
+        net.set(item.employeeUserId, (net.get(item.employeeUserId) ?? 0n) + item.amountVnd);
+      }
+    }
+    if (runId) {
+      const manual = await tx.payRunItem.findMany({
+        where: { runId, generated: false, voidedAt: null },
+        select: { amountVnd: true, line: { select: { employeeUserId: true } } },
+      });
+      for (const item of manual) {
+        const who = item.line.employeeUserId;
+        net.set(who, (net.get(who) ?? 0n) + item.amountVnd);
+      }
+    }
+    for (const row of owing) {
+      const outstanding = balances.get(row.id)?.outstanding ?? 0n;
+      const available = net.get(row.employeeUserId) ?? 0n;
+      const take = outstanding < available ? outstanding : available;
+      if (outstanding <= 0n || take <= 0n) continue;
+      out.push({
+        employeeUserId: row.employeeUserId,
+        kind: 'ADVANCE_RECOVERY',
+        amountVnd: -take,
+        quantity: null,
+        lateVnd: 0n,
+        flag: null,
+        note: null,
+        advanceId: row.id,
+      });
+      net.set(row.employeeUserId, available - take);
+    }
+  }
   return out;
 }
 
@@ -201,12 +249,13 @@ const signature = (item: Generated): string =>
     item.lateVnd,
     item.flag ?? '',
     item.note ?? '',
+    item.advanceId ?? '',
   ].join('|');
 
 /** Writes the generated items of a DRAFT run again from the sources; manual items and the lines they sit on are kept. */
 async function rebuild(context: AdminContext, runId: string, first: string): Promise<void> {
   const { tx } = context;
-  const items = await generate(tx, first);
+  const items = await generate(tx, first, runId);
   await tx.payRunItem.deleteMany({ where: { runId, generated: true } });
   const lines = new Map(
     (
@@ -234,6 +283,7 @@ async function rebuild(context: AdminContext, runId: string, first: string): Pro
         lateVnd: item.lateVnd,
         flag: item.flag,
         note: item.note,
+        advanceId: item.advanceId ?? null,
         createdByUserId: context.actor.userId,
       })),
     });
@@ -258,6 +308,7 @@ const ITEM_SELECT = {
   lateVnd: true,
   flag: true,
   note: true,
+  advanceId: true,
   reason: true,
   voidedAt: true,
   voidReason: true,
@@ -461,7 +512,7 @@ export async function runDetail(
   }
   let stale = false;
   if (run.status === 'DRAFT') {
-    const fresh = (await generate(tx, first)).map(signature).sort();
+    const fresh = (await generate(tx, first, runId)).map(signature).sort();
     const stored = items
       .filter((item) => item.generated)
       .map((item) => {
@@ -474,6 +525,7 @@ export async function runDetail(
           lateVnd: item.lateVnd,
           flag: item.flag as Generated['flag'],
           note: item.note,
+          advanceId: item.advanceId,
         });
       })
       .sort();
@@ -520,6 +572,7 @@ function presentItem(item: {
   lateVnd: bigint;
   flag: string | null;
   note: string | null;
+  advanceId: string | null;
   reason: string | null;
   voidedAt: Date | null;
   voidReason: string | null;
@@ -535,6 +588,7 @@ function presentItem(item: {
     lateVnd: item.lateVnd.toString(),
     flag: item.flag as PayRunItemView['flag'],
     note: item.note,
+    advanceId: item.advanceId,
     reason: item.reason,
     voided: item.voidedAt !== null,
     voidReason: item.voidReason,

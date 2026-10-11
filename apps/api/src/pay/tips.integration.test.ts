@@ -22,7 +22,7 @@ test(
       const k = await productSaleKit(base);
       const { tx, fails } = base;
       const { A, people, exact } = k;
-      const pay = new PayService(base.adapter, base.throttle);
+      const pay = new PayService(base.adapter, base.throttle, base.environment);
       const payroll = await base.staff([], { globalCodes: ['MANAGE_PAYROLL'] });
       const viewer = await base.staff(['VIEW_INVOICES'], { branchId: A.id });
       const collector = await base.staff(['COLLECT_PAYMENTS'], { branchId: A.id });

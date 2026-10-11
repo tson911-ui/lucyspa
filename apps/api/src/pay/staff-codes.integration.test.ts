@@ -20,7 +20,7 @@ test(
     await phase6Fixture(async (base) => {
       const k = await onlineOrderKit(base);
       const { tx, fails } = base;
-      const pay = new PayService(base.adapter, base.throttle);
+      const pay = new PayService(base.adapter, base.throttle, base.environment);
       const today = shopToday(new Date());
       const rules = await base.staff([], { globalCodes: ['MANAGE_PAY_RULES'] });
       const reader = await base.staff([], { globalCodes: ['APPROVE_PAYROLL'] });
