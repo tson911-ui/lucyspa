@@ -421,6 +421,11 @@ enum LeaveType {
 // canonical identities, credential state and protected sole-Owner invariants.
 model User {
   id                             String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  payRunsCreated                 PayRun[]                         @relation("PayRunCreator")
+  payRunsRefreshed               PayRun[]                         @relation("PayRunRefresher")
+  payRunsClosed                  PayRun[]                         @relation("PayRunCloser")
+  payRunItemsCreated             PayRunItem[]                     @relation("PayRunItemCreator")
+  payRunItemsVoided              PayRunItem[]                     @relation("PayRunItemVoider")
   referralCodesCreated           EmployeeReferralCode[]           @relation("ReferralCodeCreator")
   referralCodesDeactivated       EmployeeReferralCode[]           @relation("ReferralCodeDeactivator")
   tipsRecorded                   Tip[]                            @relation("TipRecorder")
@@ -612,6 +617,7 @@ model CustomerProfile {
 
 model EmployeeProfile {
   userId                  String                           @id @map("user_id") @db.Uuid
+  payRunLines             PayRunLine[]
   referralCodes           EmployeeReferralCode[]
   orderReferrals          OrderReferral[]
   tips                    Tip[]
@@ -5287,4 +5293,93 @@ model OrderReferral {
   @@index([employeeUserId], map: "order_referrals_employee_idx")
   @@index([codeId], map: "order_referrals_code_idx")
   @@map("order_referrals")
+}
+
+enum PayRunStatus {
+  DRAFT
+  CLOSED
+  PAID
+}
+
+enum PayRunItemKind {
+  BASE_SALARY
+  TOUR
+  COMMISSION
+  CTV_WORK
+  TIP
+  BONUS
+  ADJUSTMENT
+  DEDUCTION
+  ADVANCE_RECOVERY
+}
+
+/// P7-12 (P7-T11): one payroll run per calendar month for the whole shop. DRAFT -> CLOSED -> PAID, never backwards. `rowVersion` moves with every
+/// change of the draft so a person who closes it can be told it changed since they looked.
+model PayRun {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  periodMonth       DateTime     @unique(map: "pay_runs_month_key") @map("period_month") @db.Date
+  status            PayRunStatus @default(DRAFT)
+  paymentDay        DateTime?    @map("payment_day") @db.Date
+  rowVersion        Int          @default(1) @map("row_version")
+  createdByUserId   String       @map("created_by_user_id") @db.Uuid
+  createdBy         User         @relation("PayRunCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt         DateTime     @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  refreshedAt       DateTime?    @map("refreshed_at") @db.Timestamptz(3)
+  refreshedByUserId String?      @map("refreshed_by_user_id") @db.Uuid
+  refreshedBy       User?        @relation("PayRunRefresher", fields: [refreshedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  closedAt          DateTime?    @map("closed_at") @db.Timestamptz(3)
+  closedByUserId    String?      @map("closed_by_user_id") @db.Uuid
+  closedBy          User?        @relation("PayRunCloser", fields: [closedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  paidAt            DateTime?    @map("paid_at") @db.Timestamptz(3)
+  lines             PayRunLine[]
+  items             PayRunItem[]
+
+  @@index([createdByUserId], map: "pay_runs_creator_idx")
+  @@map("pay_runs")
+}
+
+/// P7-12: one person in one run (a payslip once the run is closed).
+model PayRunLine {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId          String          @map("run_id") @db.Uuid
+  run            PayRun          @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId String          @map("employee_user_id") @db.Uuid
+  employee       EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  createdAt      DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  items          PayRunItem[]
+
+  @@unique([runId, employeeUserId], map: "pay_run_lines_person_key")
+  @@index([employeeUserId], map: "pay_run_lines_employee_idx")
+  @@map("pay_run_lines")
+}
+
+/// P7-12: what a line is made of. Generated items are rebuilt from the sources on refresh; manual items (bonus, adjustment, deduction) are
+/// kept and can only be voided with a reason. Amounts are signed whole dong; TIP is shown on its own and is not part of the net.
+model PayRunItem {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId           String         @map("run_id") @db.Uuid
+  run             PayRun         @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  lineId          String         @map("line_id") @db.Uuid
+  line            PayRunLine     @relation(fields: [lineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  kind            PayRunItemKind
+  amountVnd       BigInt         @map("amount_vnd")
+  generated       Boolean
+  quantity        Int?
+  lateVnd         BigInt         @default(0) @map("late_vnd")
+  flag            String?        @db.VarChar(24)
+  note            String?
+  reason          String?
+  clientRequestId String?        @map("client_request_id") @db.Uuid
+  createdByUserId String         @map("created_by_user_id") @db.Uuid
+  createdBy       User           @relation("PayRunItemCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime       @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  voidedAt        DateTime?      @map("voided_at") @db.Timestamptz(3)
+  voidedByUserId  String?        @map("voided_by_user_id") @db.Uuid
+  voidedBy        User?          @relation("PayRunItemVoider", fields: [voidedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  voidReason      String?        @map("void_reason")
+
+  @@unique([createdByUserId, clientRequestId], map: "pay_run_items_request_key")
+  @@index([lineId], map: "pay_run_items_line_idx")
+  @@index([runId, kind], map: "pay_run_items_run_idx")
+  @@map("pay_run_items")
 }

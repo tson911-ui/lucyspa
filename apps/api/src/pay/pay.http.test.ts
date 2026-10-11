@@ -88,6 +88,13 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
     'staffCodes',
     'createStaffCode',
     'resetStaffCode',
+    'payRuns',
+    'payRun',
+    'createPayRun',
+    'refreshPayRun',
+    'setPayRunPaymentDay',
+    'addPayRunItem',
+    'voidPayRunItem',
   ] as const;
   const module = await Test.createTestingModule({
     imports: [AppModule.forRoot(environment, pino({ level: 'silent' }))],
@@ -157,6 +164,8 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
       [`invoices/${service}/earnings`, 'invoiceEarnings', [service]],
       [`invoices/${service}/tips`, 'invoiceTips', [service]],
       ['referral-codes', 'staffCodes', []],
+      ['runs', 'payRuns', []],
+      [`runs/${service}`, 'payRun', [service]],
       [`salaries/${employee}/history`, 'salaryHistory', [employee]],
     ] as const) {
       await request(server).get(`${base}/${path}`).set({ Cookie: cookie }).expect(200);
@@ -270,6 +279,64 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
       ['referral-codes', {}],
       [`referral-codes/${employee}/reset`, { ...resetBody, extra: 1 }],
       [`referral-codes/${employee}/reset`, {}],
+    ] as const) {
+      const before = calls.length;
+      await request(server).post(`${base}/${path}`).set(headers).send(body).expect(400);
+      assert.equal(calls.length, before);
+    }
+    // Payroll runs: every write needs the Origin and CSRF headers and the exact contract fields.
+    const run = { month: '2026-10' };
+    await request(server).post(`${base}/runs`).set({ Cookie: cookie }).send(run).expect(403);
+    await request(server).post(`${base}/runs`).set(headers).send(run).expect(200);
+    assert.equal(calls.at(-1)?.[0], 'createPayRun');
+    assert.deepEqual(json(calls.at(-1)![2]), run);
+    const refresh = { expectedVersion: 3 };
+    await request(server)
+      .post(`${base}/runs/${service}/refresh`)
+      .set(headers)
+      .send(refresh)
+      .expect(200);
+    assert.equal(calls.at(-1)?.[0], 'refreshPayRun');
+    assert.equal(calls.at(-1)?.[2], service);
+    const day = { expectedVersion: 3, paymentDay: '2026-11-05' };
+    await request(server)
+      .post(`${base}/runs/${service}/payment-day`)
+      .set(headers)
+      .send(day)
+      .expect(200);
+    assert.equal(calls.at(-1)?.[0], 'setPayRunPaymentDay');
+    assert.deepEqual(json(calls.at(-1)![3]), day);
+    const itemBody = {
+      employeeUserId: employee,
+      kind: 'BONUS',
+      amountVnd: '100000',
+      reason: 'Thưởng',
+      clientRequestId: '11111111-1111-4111-8111-111111111111',
+    };
+    await request(server)
+      .post(`${base}/runs/${service}/items`)
+      .set(headers)
+      .send(itemBody)
+      .expect(200);
+    assert.equal(calls.at(-1)?.[0], 'addPayRunItem');
+    assert.deepEqual(json(calls.at(-1)![3]), itemBody);
+    const voidBody = { expectedVersion: 4, reason: 'Nhập nhầm' };
+    await request(server)
+      .post(`${base}/runs/${service}/items/${employee}/void`)
+      .set(headers)
+      .send(voidBody)
+      .expect(200);
+    assert.equal(calls.at(-1)?.[0], 'voidPayRunItem');
+    assert.equal(calls.at(-1)?.[3], employee);
+    for (const [path, body] of [
+      ['runs', { ...run, extra: 1 }],
+      ['runs', {}],
+      [`runs/${service}/refresh`, { expectedVersion: '3' }],
+      [`runs/${service}/refresh`, { ...refresh, extra: 1 }],
+      [`runs/${service}/payment-day`, { expectedVersion: 3 }],
+      [`runs/${service}/items`, { ...itemBody, amountVnd: 1000 }],
+      [`runs/${service}/items`, { ...itemBody, extra: 1 }],
+      [`runs/${service}/items/${employee}/void`, { reason: 'x' }],
     ] as const) {
       const before = calls.length;
       await request(server).post(`${base}/${path}`).set(headers).send(body).expect(400);

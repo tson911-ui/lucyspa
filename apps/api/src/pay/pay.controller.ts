@@ -2,6 +2,13 @@ import type {
   CommissionRuleRequest,
   InvoiceEarningsResponse,
   InvoiceTipsResponse,
+  PayRunCreateRequest,
+  PayRunDetailResponse,
+  PayRunItemRequest,
+  PayRunItemVoidRequest,
+  PayRunListResponse,
+  PayRunPaymentDayRequest,
+  PayRunRefreshRequest,
   StaffCodeCreateRequest,
   StaffCodeResetRequest,
   StaffCodesResponse,
@@ -33,7 +40,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength, ValidateIf } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 import type { Request, Response } from 'express';
 import { sessionCookie } from '../auth/cookies.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
@@ -74,6 +81,33 @@ class CommissionRuleDto implements CommissionRuleRequest {
   @IsString()
   @MaxLength(2000)
   reason!: string | null;
+}
+
+class RunCreateDto implements PayRunCreateRequest {
+  @ApiProperty() @IsString() @MaxLength(7) month!: string;
+}
+
+class RunRefreshDto implements PayRunRefreshRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(2_147_483_647) expectedVersion!: number;
+}
+
+class RunPaymentDayDto implements PayRunPaymentDayRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(2_147_483_647) expectedVersion!: number;
+  @ApiProperty() @IsString() @MaxLength(10) paymentDay!: string;
+}
+
+class RunItemDto implements PayRunItemRequest {
+  @ApiProperty() @IsString() @MaxLength(64) employeeUserId!: string;
+  @ApiProperty({ enum: ['BONUS', 'ADJUSTMENT', 'DEDUCTION'] }) @IsString() @MaxLength(16) kind!:
+    'BONUS' | 'ADJUSTMENT' | 'DEDUCTION';
+  @ApiProperty() @IsString() @MaxLength(20) amountVnd!: string;
+  @ApiProperty() @IsString() @MaxLength(2000) reason!: string;
+  @ApiProperty() @IsString() @MaxLength(64) clientRequestId!: string;
+}
+
+class RunItemVoidDto implements PayRunItemVoidRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(2_147_483_647) expectedVersion!: number;
+  @ApiProperty() @IsString() @MaxLength(2000) reason!: string;
 }
 
 class StaffCodeDto implements StaffCodeCreateRequest {
@@ -329,6 +363,107 @@ export class PayController {
     return this.pay.resetStaffCode(
       this.session(request),
       employeeId,
+      body,
+      this.requestId(response),
+    );
+  }
+
+  @Get('runs')
+  @ApiOkResponse({
+    description: 'The payroll runs, newest month first (MANAGE_PAYROLL or APPROVE_PAYROLL).',
+  })
+  payRuns(@Req() request: Request): Promise<PayRunListResponse> {
+    return this.pay.payRuns(this.session(request));
+  }
+
+  @Get('runs/:runId')
+  @ApiOkResponse({
+    description:
+      'One payroll run with its people, items, warnings and totals (the preview of a draft).',
+  })
+  payRun(@Param('runId') runId: string, @Req() request: Request): Promise<PayRunDetailResponse> {
+    return this.pay.payRun(this.session(request), runId);
+  }
+
+  @Post('runs')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description: 'Starts the draft of one month (MANAGE_PAYROLL). Nothing is paid.',
+  })
+  createPayRun(
+    @Body() body: RunCreateDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PayRunDetailResponse> {
+    return this.pay.createPayRun(this.session(request), body, this.requestId(response));
+  }
+
+  @Post('runs/:runId/refresh')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Rebuilds the generated items of a draft from the sources; manual items stay (MANAGE_PAYROLL).',
+  })
+  refreshPayRun(
+    @Param('runId') runId: string,
+    @Body() body: RunRefreshDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PayRunDetailResponse> {
+    return this.pay.refreshPayRun(this.session(request), runId, body, this.requestId(response));
+  }
+
+  @Post('runs/:runId/payment-day')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Chooses the day the payslips and tips are paid out, while the run is a draft (MANAGE_PAYROLL).',
+  })
+  setPayRunPaymentDay(
+    @Param('runId') runId: string,
+    @Body() body: RunPaymentDayDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PayRunDetailResponse> {
+    return this.pay.setPayRunPaymentDay(
+      this.session(request),
+      runId,
+      body,
+      this.requestId(response),
+    );
+  }
+
+  @Post('runs/:runId/items')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description: 'Adds a bonus, adjustment or deduction with a reason to a draft (MANAGE_PAYROLL).',
+  })
+  addPayRunItem(
+    @Param('runId') runId: string,
+    @Body() body: RunItemDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PayRunDetailResponse> {
+    return this.pay.addPayRunItem(this.session(request), runId, body, this.requestId(response));
+  }
+
+  @Post('runs/:runId/items/:itemId/void')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Voids a manual item of a draft, with a reason; it is never edited or deleted (MANAGE_PAYROLL).',
+  })
+  voidPayRunItem(
+    @Param('runId') runId: string,
+    @Param('itemId') itemId: string,
+    @Body() body: RunItemVoidDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PayRunDetailResponse> {
+    return this.pay.voidPayRunItem(
+      this.session(request),
+      runId,
+      itemId,
       body,
       this.requestId(response),
     );

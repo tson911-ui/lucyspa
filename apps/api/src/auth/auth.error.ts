@@ -231,6 +231,8 @@ const errors = {
   // Phase 7 Wave A: the shop funds (cash book). No error reveals another branch's money.
   FINANCE_ALREADY_LIVE: [409, 'The cash book and payroll were already started'],
   FINANCE_NOT_LIVE: [409, 'The cash book and payroll have not been started yet'],
+  PAY_RUN_NOT_DRAFT: [409, 'This payroll run is already closed'],
+  PAY_RUN_EXISTS: [409, 'A payroll run already exists for this month'],
   TIP_EXISTS: [409, 'This person already has a tip for this invoice'],
   TIP_WINDOW_CLOSED: [409, 'The time to record a tip for this invoice has passed'],
   TIP_CLAIMED: [409, 'A payroll run has taken this tip'],

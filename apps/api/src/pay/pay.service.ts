@@ -2,6 +2,13 @@ import type {
   CommissionRuleRequest,
   InvoiceEarningsResponse,
   InvoiceTipsResponse,
+  PayRunCreateRequest,
+  PayRunDetailResponse,
+  PayRunItemRequest,
+  PayRunItemVoidRequest,
+  PayRunListResponse,
+  PayRunPaymentDayRequest,
+  PayRunRefreshRequest,
   StaffCodeCreateRequest,
   StaffCodeResetRequest,
   StaffCodesResponse,
@@ -29,6 +36,7 @@ import { sqlStateOf } from '../booking/customer-command.js';
 import * as earnings from './pay-earnings.core.js';
 import * as rules from './pay-rules.core.js';
 import * as salary from './pay-salary.core.js';
+import * as runs from './pay-runs.core.js';
 import * as codes from './staff-codes.core.js';
 import * as tips from './tips.core.js';
 
@@ -154,6 +162,61 @@ export class PayService {
   ): Promise<StaffCodesResponse> {
     return this.run(token, requestId, (context) =>
       codes.resetStaffCode(context, employeeId, { ...body }),
+    );
+  }
+
+  payRuns(token: string | undefined): Promise<PayRunListResponse> {
+    return this.run(token, undefined, (context) => runs.listRuns(context));
+  }
+
+  payRun(token: string | undefined, runId: string): Promise<PayRunDetailResponse> {
+    return this.run(token, undefined, (context) => runs.runDetail(context, runId));
+  }
+
+  createPayRun(
+    token: string | undefined,
+    body: PayRunCreateRequest,
+    requestId?: string,
+  ): Promise<PayRunDetailResponse> {
+    return this.run(token, requestId, (context) => runs.createRun(context, { ...body }));
+  }
+
+  refreshPayRun(
+    token: string | undefined,
+    runId: string,
+    body: PayRunRefreshRequest,
+    requestId?: string,
+  ): Promise<PayRunDetailResponse> {
+    return this.run(token, requestId, (context) => runs.refreshRun(context, runId, { ...body }));
+  }
+
+  setPayRunPaymentDay(
+    token: string | undefined,
+    runId: string,
+    body: PayRunPaymentDayRequest,
+    requestId?: string,
+  ): Promise<PayRunDetailResponse> {
+    return this.run(token, requestId, (context) => runs.setPaymentDay(context, runId, { ...body }));
+  }
+
+  addPayRunItem(
+    token: string | undefined,
+    runId: string,
+    body: PayRunItemRequest,
+    requestId?: string,
+  ): Promise<PayRunDetailResponse> {
+    return this.run(token, requestId, (context) => runs.addItem(context, runId, { ...body }));
+  }
+
+  voidPayRunItem(
+    token: string | undefined,
+    runId: string,
+    itemId: string,
+    body: PayRunItemVoidRequest,
+    requestId?: string,
+  ): Promise<PayRunDetailResponse> {
+    return this.run(token, requestId, (context) =>
+      runs.voidItem(context, runId, itemId, { ...body }),
     );
   }
 
