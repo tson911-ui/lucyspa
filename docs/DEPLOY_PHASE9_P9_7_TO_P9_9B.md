@@ -1,8 +1,8 @@
-# Hướng dẫn đưa Phase 9 (P9-7 đến P9-9b: quét lại, giá và ảnh hàng loạt, nhập một lần bấm) lên máy chủ thật
+# Hướng dẫn đưa Phase 9 (P9-7 đến P9-9c: quét lại, giá và ảnh hàng loạt, nhập một lần bấm, giá giảm như Haruohui) lên máy chủ thật
 
 Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, theo thứ tự**, trong **cùng một cửa sổ terminal web của iNET** đã đăng nhập vào máy chủ. Mỗi khối có dòng **Mong đợi**; khác với mong đợi thì **DỪNG**, không chạy lại, và gửi cho Claude kết quả (chụp màn hình hoặc chép chữ). Claude **không** đụng tới máy chủ; chỉ Owner chạy các lệnh này.
 
-**Bản sẽ cài:** commit `2b064e9f16ae5d189e43b69ed613fef3be099588` (viết tắt `2b064e9`), đã push lên `main` (CI: xem Bước 0). Các commit tài liệu đẩy sau đó (kể cả commit của tệp này) không đổi mã chạy.
+**Bản sẽ cài:** commit `ac74013bb6a9ef681c7d4e306216de1a3565e639` (viết tắt `ac74013`), đã push lên `main` (CI: xem Bước 0). Các commit tài liệu đẩy sau đó (kể cả commit của tệp này) không đổi mã chạy.
 **Bản đang chạy:** `638afde4980694b9851db2d858c92a227f88065e` (Phase 9 P9-2 đến P9-6, Owner báo triển khai 2026-10-11; **106 migration, 68 quyền**). Máy chủ thật **đã có dữ liệu nhập thử** (Owner đã thử nguồn Haruohui): hướng dẫn này không giả định các bảng nhập còn trống.
 **Cơ sở dữ liệu:** thêm **2 migration** (106 → **108**), chỉ **thêm** (một bảng mới, một cột mới, nới rộng các ràng buộc; **không đổi, không xóa dòng dữ liệu cũ nào**):
 `20261129000000_phase9_resync_changes` (bảng `source_changes`: ghi chú thay đổi ở nguồn, chỉ thêm; nới danh sách loại thông báo để có thông báo "nguồn có thay đổi") và `20261130000000_phase9_full_scan` (cột `import_scans.scope`: `SAMPLE` mặc định cho mọi lần quét cũ, hoặc `FULL`; nới giới hạn mẫu và trần 2.000 sản phẩm mỗi nguồn). P9-8 (giá và ảnh hàng loạt) **không có migration**.
@@ -10,13 +10,13 @@ Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, t
 **Biến môi trường (`.env`) mới:** **không có.** Không đổi nginx, không có tiến trình pm2 mới, không có thư viện mới.
 **Worker cần ra internet không?** **Có, chỉ khi có người bấm, và chỉ tới `haruohui.com` cổng 443** (như lần trước). Thêm lần này: **"Quét toàn bộ"** đọc cả 352 sản phẩm theo trang 100 sản phẩm (khoảng 5 yêu cầu cho danh sách, rồi **1 yêu cầu mỗi giây cho từng ảnh** nếu giấy phép cho dùng ảnh: khoảng 6 đến 20 phút). **Quét theo lịch** (mới) **TẮT** cho tới khi Owner đặt "Lịch kiểm tra" của nguồn khác "Chạy tay"; khi bật chỉ chạy từ 1 đến 5 giờ sáng.
 **Worker phải khởi động lại** (vòng kiểm tra lịch quét mỗi 5 phút, và quét toàn bộ). Bước 6 làm việc này. **Worker vẫn đúng một tiến trình.**
-**Sau khi triển khai, "Bán online" VẪN TẮT** (không bước nào đụng tới công tắc). **Chú ý:** "Nhập và đăng tất cả" đặt sản phẩm ở trạng thái **đang bán**, nên sản phẩm đó sẽ hiện ở trang **Mỹ phẩm** của khách (nút "Mua tại cửa hàng") dù Bán online tắt. Đó là việc của buổi thử sau khi triển khai, không phải của lúc triển khai.
+**Sau khi triển khai, "Bán online" VẪN TẮT** (không bước nào đụng tới công tắc). **Chú ý (chủ đã duyệt 2026-10-11):** "Nhập và đăng tất cả" đặt sản phẩm ở trạng thái **đang bán**, nên sản phẩm đó hiện ở trang **Mỹ phẩm** của khách (nút "Mua tại cửa hàng") dù Bán online tắt. **Giá phản chiếu Haruohui:** giá niêm yết là **giá gốc** của Haruohui (làm tròn 1.000 đồng); sản phẩm đang giảm giá ở Haruohui (khoảng 296 trên 308 sản phẩm lần quét thử) được thêm **khuyến mãi** giá giảm, không có ngày kết thúc (API của Haruohui không cho ngày), nên trang khách hiện giá gạch ngang, "-N%" và "Tiết kiệm X"; **không có đếm ngược** cho các khuyến mãi này. Thay đổi giá hay giảm giá ở nguồn về sau chỉ hiện ở tab "Thay đổi", không tự sửa giá của cửa hàng. Tất cả là việc của buổi thử sau khi triển khai, không phải của lúc triển khai.
 **Thời gian:** khoảng 35 phút. Trong lúc áp migration (Bước 5) API và worker **dừng khoảng 2 phút**: POS tạm gián đoạn; báo nhân viên.
 
 ## Bước 0. Điều kiện
 
-- Trên GitHub, tab **Actions**, commit `2b064e9` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
-- Owner đã xem các báo cáo `docs/PHASE9_P9_7_RESYNC.md`, `docs/PHASE9_P9_8_BULK_PRICES_IMAGES.md`, `docs/PHASE9_P9_9B_ONE_CLICK.md` (mục "Em tự đặt, chờ chủ duyệt" của từng báo cáo: giá khuyến mãi, SKU dạng chữ, thực phẩm chức năng vào "Khác", lịch quét; chúng không chặn việc triển khai nhưng nên duyệt trước khi bấm "Nhập và đăng tất cả" trên máy thật).
+- Trên GitHub, tab **Actions**, commit `ac74013` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
+- Owner đã xem các báo cáo `docs/PHASE9_P9_7_RESYNC.md`, `docs/PHASE9_P9_8_BULK_PRICES_IMAGES.md`, `docs/PHASE9_P9_9B_ONE_CLICK.md`. Các điều của P9-7, P9-3 và P9-9b **chủ đã quyết ngày 2026-10-11** (`docs/PHASE9_PRODUCT_IMPORT.md` mục 18). **Còn chờ chủ:** các điều "Em tự đặt" của P9-8 (giá hàng loạt, ảnh ZIP cho sản phẩm đang bán): không chặn việc triển khai, nhưng nên duyệt trước khi dùng giá hàng loạt trên máy thật.
 - Báo nhân viên đang thu tiền ở quầy: tạm dừng khoảng 5 phút ở Bước 5 và 6.
 
 ## Bước 1. Xem hiện trạng (chỉ đọc)
@@ -90,11 +90,11 @@ tar -tzf "$WEBBACKUP" | wc -l
 ```
 cd /opt/lucyspa
 git fetch origin
-git checkout 2b064e9f16ae5d189e43b69ed613fef3be099588
+git checkout ac74013bb6a9ef681c7d4e306216de1a3565e639
 git rev-parse HEAD
 ```
 
-**Mong đợi:** in đúng `2b064e9f16ae5d189e43b69ed613fef3be099588` (`detached HEAD` là bình thường). Mã khác: **DỪNG**.
+**Mong đợi:** in đúng `ac74013bb6a9ef681c7d4e306216de1a3565e639` (`detached HEAD` là bình thường). Mã khác: **DỪNG**.
 
 3.2. Cài thư viện và tạo lại Prisma client:
 
@@ -224,12 +224,12 @@ free -m
 2. **Sản phẩm nhập:** có tab **Chờ duyệt** và tab **Thay đổi**, và nút **"Nhập và đăng tất cả"** ở đầu trang. Số ứng viên cũ **giữ nguyên** (bằng số Bước 2.1).
 3. **Nhập dữ liệu:** có hai nút **"Nhập ảnh từ ZIP"** và **"Tải tệp lên"**; hộp "Tải tệp lên" có loại **"Cập nhật giá bán hàng loạt"** kèm nút tải bảng giá hiện tại.
 4. Mục "Lịch kiểm tra" của nguồn (Sửa nguồn) đang là **Chạy tay** (không tự quét).
-5. **Chỉ xem, đừng bấm** "Quét toàn bộ", "Nhập và đăng tất cả", "Xác nhận" trong lúc triển khai. Việc đó để buổi thử riêng (xem `docs/OWNER_TEST_SCRIPT_PHASE9.md`).
+5. Mở một sản phẩm đã có ở trang khách: giá hiện như cũ (chưa có sản phẩm nào có khuyến mãi từ nguồn). **Chỉ xem, đừng bấm** "Quét toàn bộ", "Nhập và đăng tất cả", "Xác nhận" trong lúc triển khai. Việc đó để buổi thử riêng (xem `docs/OWNER_TEST_SCRIPT_PHASE9.md`).
 6. Công tắc **Bán online** vẫn **tắt**; trang khách `https://lucyspa.vn/vi/products` hiện như cũ. Quầy (POS) và vài trang cũ mở bình thường.
 
 ## Bước 9. Quay lại nếu có sự cố
 
-**Đọc trước:** hai migration chỉ **thêm** (một bảng, một cột có giá trị mặc định, ràng buộc nới rộng) nên bản cũ `638afde` chạy được trên cơ sở dữ liệu 108 migration. Quyền vẫn 68 nên **không phải xóa hàng quyền nào**. Bản cũ bỏ qua cột `scope`, bỏ qua bảng `source_changes` và bỏ qua thông báo loại mới. **Sản phẩm đã được "Nhập và đăng tất cả" đăng bán (nếu Owner đã dùng) vẫn ở lại là sản phẩm thường**; muốn ẩn thì đặt trạng thái ngừng bán ở màn Sản phẩm (hỏi Claude trước khi xóa bất cứ thứ gì).
+**Đọc trước:** hai migration chỉ **thêm** (một bảng, một cột có giá trị mặc định, ràng buộc nới rộng) nên bản cũ `638afde` chạy được trên cơ sở dữ liệu 108 migration. Quyền vẫn 68 nên **không phải xóa hàng quyền nào**. Bản cũ bỏ qua cột `scope`, bỏ qua bảng `source_changes` và bỏ qua thông báo loại mới. **Khuyến mãi và nhóm "Thực phẩm chức năng" đã tạo bởi "Nhập và đăng tất cả" (nếu có) vẫn ở lại** (bảng khuyến mãi và nhóm sản phẩm có từ Phase 6, bản cũ đọc được; chỉ khối giá mới ở trang khách quay về kiểu cũ). **Sản phẩm đã được "Nhập và đăng tất cả" đăng bán (nếu Owner đã dùng) vẫn ở lại là sản phẩm thường**; muốn ẩn thì đặt trạng thái ngừng bán ở màn Sản phẩm (hỏi Claude trước khi xóa bất cứ thứ gì).
 
 **Cách A: quay lại phần mềm, giữ nguyên cơ sở dữ liệu.**
 
