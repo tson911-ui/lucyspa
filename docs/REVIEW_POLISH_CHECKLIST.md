@@ -80,3 +80,11 @@ Cần chủ hoặc người quản trị máy chủ làm; Claude chỉ soạn h�
 11. Ảnh bìa chiến dịch (ngang, sáng, ít chữ), mỗi khi mở một chiến dịch.
 
 Chụp bằng ánh sáng tự nhiên, nền gọn, tông ấm; có giấy đồng ý của khách nếu thấy mặt. Hai khung ảnh nhỏ ở đầu trang chủ (nail, gội đầu) cần thêm chỗ chọn ảnh trong Quản trị trước khi thay được.
+
+## I. Từ lần nhập Haruohui thật (chủ ghi nhận 2026-10-11, sau khi triển khai ac74013)
+
+Chủ đã quét toàn bộ Haruohui (đọc 352, mới 332) và bấm "Nhập và đăng tất cả": đăng 348 sản phẩm, giữ lại 4 để duyệt (2 cần quyết định ảnh trùng, 2 không có giá nguồn). Khi xem dữ liệu thật, chủ thấy các việc dưới đây; làm trong đợt chỉnh sau Phase 8.
+
+- [ ] Thẻ sản phẩm ở trang Mỹ phẩm công khai quá to: trên máy tính chỉ 3 thẻ một hàng, tiêu đề serif lớn bị cắt. Thu nhỏ thẻ, thêm cột, tiêu đề vừa cỡ và đọc được hết.
+- [ ] Nhóm sản phẩm do công cụ nhập tự xếp sai trên dữ liệu thật: các bộ (set) bị xếp vào "Trang điểm" hoặc "Chống nắng" thay vì "Bộ sản phẩm/Set"; "Serum" và "Dưỡng ẩm" lại trống. Cần sửa luật phân nhóm và thêm thao tác **phân nhóm lại** cho sản phẩm đã nhập (có xem trước, chủ xác nhận, không đổi giá hay trạng thái đăng).
+- [ ] Một số ảnh trong bộ ảnh của Haruohui có định dạng không được hỗ trợ (có thể AVIF hoặc GIF) nên bị bỏ qua khi nhập. Kiểm tra định dạng nào bị bỏ, quyết định hỗ trợ hay chuyển đổi, và cho chủ thấy sản phẩm nào thiếu ảnh.
