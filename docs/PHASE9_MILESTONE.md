@@ -24,7 +24,7 @@ Trạng thái 2026-10-11: **P9-2 đến P9-6 đã chạy thật (commit `638afde
 ## Chủ đã quyết và còn chờ
 
 - **Đã quyết 2026-10-11** (nguyên văn ở `PHASE9_PRODUCT_IMPORT.md` mục 18): giá niêm yết là giá gốc và giá giảm thành khuyến mãi (không có ngày kết thúc vì API không cho ngày; chỉ có đếm ngược khi khuyến mãi có ngày kết thúc); SKU `HARU-<mã>`; nhóm "Thực phẩm chức năng"; "đăng" là hiện ở trang Mỹ phẩm; quét theo lịch dùng phạm vi toàn bộ (lịch tắt cho tới khi chủ bật); 7 điều của P9-7 và P9-3 số 1, số 3; bảy điều của P9-3..P9-5 đã duyệt trước đó.
-- **Còn chờ chủ:** các điều "Em tự đặt" của P9-8 (giá hàng loạt chỉ đổi giá bán, xuất bảng giá cần hai quyền, ảnh ZIP cho sản phẩm đang bán cần tích riêng, giới hạn ZIP).
+- **P9-8 cũng đã được duyệt** (2026-10-11): giá hàng loạt chỉ đổi giá bán, xuất bảng giá cần hai quyền, ảnh ZIP cho sản phẩm đang bán cần tích riêng; cả hai đều cần chủ xem trước rồi xác nhận. **Không còn điều nào chờ chủ** trong Phase 9.
 
 ## Việc còn lại
 

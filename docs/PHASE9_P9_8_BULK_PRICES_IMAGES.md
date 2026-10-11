@@ -24,7 +24,9 @@ Server (đơn vị): 10 bài mới và cũ cho ZIP, tên tệp, mẫu/xuất gi�
 
 Ảnh ở `.local/uxui-screens/p98-*`. **Đã mở và xem:** màn nhập dữ liệu với hai nút trên đầu trang (360), hộp "Tải tệp lên" chọn "Cập nhật giá" kèm tải bảng giá (1440), hộp "Nhập ảnh từ ZIP" (360), trang xem trước giá có cột giá hiện tại và giá trong tệp (1440). Đã sửa sau khi xem: ô giá không phải số ("abc") hiện đúng chữ trong tệp thay vì dấu gạch. Xem thêm ngày 2026-10-11 (giao diện tối thật): bảng nhập dữ liệu 1440 sáng, hộp ZIP 1440 tối, hộp "Tải tệp lên" chọn "Cập nhật giá" ở 360, trang chi tiết lần nhập 1440; DOM audit của "Nhập dữ liệu": 0. **Chưa xem từng ảnh:** 768, tiếng Anh, chữ 130%, **trạng thái đã xem trước của hộp ZIP** (trạng thái trong hộp, không dựng được bằng công cụ chụp, vì cần chọn tệp thật); kiểm tra bằng kiểm thử API.
 
-## Em tự đặt, chờ chủ duyệt (đụng giá, đăng bán nên chủ hãy xem)
+## Em tự đặt: chủ đã duyệt cả năm điều (2026-10-11)
+
+Chủ đã duyệt ngày 2026-10-11 (nguyên văn): "P9-8 readings (bulk price file, ZIP pictures on live products): approved as written — both require the Owner's preview + confirm." Cả hai đều đã đòi xem trước rồi xác nhận rõ ràng (giá hàng loạt: xem trước, rồi người có quyền đặt giá xác nhận; ảnh ZIP cho sản phẩm đang bán: tích riêng sau khi xem trước).
 
 1. Giá hàng loạt chỉ đổi giá bán (phiên bản giá mới), không đụng giá vốn; lý do ghi trong phiên bản: "Cập nhật giá hàng loạt từ tệp".
 2. Xuất bảng giá cần cả quyền nhập dữ liệu và quyền đổi giá.

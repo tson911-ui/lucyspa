@@ -16,7 +16,7 @@ Dành cho Owner, không cần rành kỹ thuật. Làm **từng khối lệnh, t
 ## Bước 0. Điều kiện
 
 - Trên GitHub, tab **Actions**, commit `ac74013` có dấu **xanh**. Đỏ hoặc đang chạy: **DỪNG**.
-- Owner đã xem các báo cáo `docs/PHASE9_P9_7_RESYNC.md`, `docs/PHASE9_P9_8_BULK_PRICES_IMAGES.md`, `docs/PHASE9_P9_9B_ONE_CLICK.md`. Các điều của P9-7, P9-3 và P9-9b **chủ đã quyết ngày 2026-10-11** (`docs/PHASE9_PRODUCT_IMPORT.md` mục 18). **Còn chờ chủ:** các điều "Em tự đặt" của P9-8 (giá hàng loạt, ảnh ZIP cho sản phẩm đang bán): không chặn việc triển khai, nhưng nên duyệt trước khi dùng giá hàng loạt trên máy thật.
+- Owner đã xem các báo cáo `docs/PHASE9_P9_7_RESYNC.md`, `docs/PHASE9_P9_8_BULK_PRICES_IMAGES.md`, `docs/PHASE9_P9_9B_ONE_CLICK.md`. Các điều của P9-7, P9-3 và P9-9b **chủ đã quyết ngày 2026-10-11** (`docs/PHASE9_PRODUCT_IMPORT.md` mục 18). Các điều "Em tự đặt" của P9-8 (giá hàng loạt, ảnh ZIP cho sản phẩm đang bán) **chủ cũng đã duyệt** (2026-10-11, cả hai đều cần xem trước rồi xác nhận). Không còn điều nào chờ chủ.
 - Báo nhân viên đang thu tiền ở quầy: tạm dừng khoảng 5 phút ở Bước 5 và 6.
 
 ## Bước 1. Xem hiện trạng (chỉ đọc)

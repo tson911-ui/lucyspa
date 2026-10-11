@@ -904,3 +904,5 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - `docs/PHASE9_MILESTONE.md`, Vietnamese deploy guide `docs/DEPLOY_PHASE9_P9_7_TO_P9_9B.md` (production 638afde -> 2b064e9: 106 -> 108 migrations, permissions stay 68, worker restart, no env change; production already holds the Owner's trial data so counts are compared, not assumed zero) and `docs/OWNER_TEST_SCRIPT_PHASE9.md`. Nothing deployed; waiting for the Owner to run the guide. Code commits: P9-7 d79c312, P9-8 0dc200d, P9-9 5054b8a, P9-9b 2b064e9.
 
 - P9-9c final: deploy guide, Owner test script and milestone re-targeted to code commit `ac74013` (docs commit follows it); P9-8 readings are the only ones still pending the Owner.
+
+- Owner 2026-10-11: P9-8 readings (bulk price file, ZIP pictures on live products) approved as written, both already require the Owner's preview + confirm (recorded in `docs/PHASE9_PRODUCT_IMPORT.md` section 18 and the P9-8 report). No Phase 9 reading is pending any more.

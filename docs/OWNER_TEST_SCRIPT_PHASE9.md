@@ -28,4 +28,4 @@ Nếu nguồn Haruohui đã có từ lần thử trước, bỏ qua bước 1 v�
 
 ## Điều không làm trong buổi thử
 
-Không đặt "Lịch kiểm tra" khác **Chạy tay** (quét theo lịch vẫn tắt cho tới khi Owner quyết). Không bật "Bán online". Các quyết định của chủ về giá, SKU và nhóm nằm ở `docs/PHASE9_PRODUCT_IMPORT.md` mục 18 và `docs/PHASE9_P9_9B_ONE_CLICK.md`; chỉ còn các điều của P9-8 (giá hàng loạt, ảnh ZIP cho sản phẩm đang bán) chờ chủ duyệt.
+Không đặt "Lịch kiểm tra" khác **Chạy tay** (quét theo lịch vẫn tắt cho tới khi Owner quyết). Không bật "Bán online". Các quyết định của chủ về giá, SKU và nhóm nằm ở `docs/PHASE9_PRODUCT_IMPORT.md` mục 18 và `docs/PHASE9_P9_9B_ONE_CLICK.md`; các điều của P9-8 (giá hàng loạt, ảnh ZIP) cũng đã được duyệt, và cả hai vẫn luôn đòi bạn xem trước rồi xác nhận.
