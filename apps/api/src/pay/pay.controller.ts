@@ -1,5 +1,7 @@
 import type {
   CommissionRuleRequest,
+  InvoiceEarningsResponse,
+  SellerCorrectionRequest,
   CommissionRuleResponse,
   CommissionRulesResponse,
   CommissionTargetsResponse,
@@ -66,6 +68,11 @@ class CommissionRuleDto implements CommissionRuleRequest {
   @IsString()
   @MaxLength(2000)
   reason!: string | null;
+}
+
+class SellerDto implements SellerCorrectionRequest {
+  @ApiProperty() @IsString() @MaxLength(64) employeeUserId!: string;
+  @ApiProperty() @IsString() @MaxLength(2000) reason!: string;
 }
 
 class SalaryVersionDto implements SalaryVersionRequest {
@@ -187,6 +194,33 @@ export class PayController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<SalaryVersionResponse> {
     return this.pay.addSalaryVersion(this.session(request), body, this.requestId(response));
+  }
+
+  @Get('invoices/:invoiceId/earnings')
+  @ApiOkResponse({
+    description:
+      'The tour and commission earnings of one invoice, with the lines (MANAGE_PAYROLL or APPROVE_PAYROLL).',
+  })
+  invoiceEarnings(
+    @Param('invoiceId') invoiceId: string,
+    @Req() request: Request,
+  ): Promise<InvoiceEarningsResponse> {
+    return this.pay.invoiceEarnings(this.session(request), invoiceId);
+  }
+
+  @Post('product-lines/:lineId/seller')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Corrects who sold a product line after finalization (MANAGE_PAYROLL, reason). Audited; the old earning is reversed, the new seller earns.',
+  })
+  correctSeller(
+    @Param('lineId') lineId: string,
+    @Body() body: SellerDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<InvoiceEarningsResponse> {
+    return this.pay.correctSeller(this.session(request), lineId, body, this.requestId(response));
   }
 
   private session(request: Request) {

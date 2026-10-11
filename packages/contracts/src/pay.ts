@@ -169,3 +169,50 @@ export interface SalaryVersionRequest {
 export interface SalaryVersionResponse {
   item: SalaryItem;
 }
+
+// ------------------------------------------------------------------------------------------------- earnings
+export const PAY_EARNING_KINDS = ['TOUR', 'PRODUCT_COMMISSION'] as const;
+export type PayEarningKindName = (typeof PAY_EARNING_KINDS)[number];
+
+export interface PayEarningItem {
+  id: string;
+  kind: PayEarningKindName;
+  employee: PayActorRef;
+  /** Signed: positive for an earning, negative for a reversal. */
+  amountVnd: string;
+  businessDate: string;
+  /** The line's net (commission) the amount was calculated on. */
+  baseVnd: string | null;
+  quantity: number | null;
+  /** EPISODE_ENDED, SELLER_CHANGED or REFUND for a reversal; null for an earning. */
+  reason: string | null;
+  reversesId: string | null;
+  /** A payroll run has claimed the row (it can no longer be part of another draft). */
+  claimed: boolean;
+  invoiceLineId: string;
+  createdAt: string;
+}
+
+export interface InvoiceEarningLine {
+  lineId: string;
+  kind: 'SERVICE' | 'PRODUCT' | 'COMBO_PURCHASE';
+  name: string;
+  /** The KTV (service line) or the seller in force (product line), if any. */
+  person: PayActorRef | null;
+  /** Product lines only: the seller on the invoice line, when an override has changed it. */
+  originalSeller: PayActorRef | null;
+}
+
+export interface InvoiceEarningsResponse {
+  invoiceId: string;
+  invoiceCode: string;
+  status: 'DRAFT' | 'PENDING_PAYMENT' | 'PAID' | 'CANCELLED';
+  lines: InvoiceEarningLine[];
+  items: PayEarningItem[];
+  canCorrectSeller: boolean;
+}
+
+export interface SellerCorrectionRequest {
+  employeeUserId: string;
+  reason: string;
+}

@@ -14,6 +14,7 @@ datasource db {
 // Phase 0 branch identity, extended only with Phase 1 authorization relations.
 model Branch {
   id                      String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  payEarnings             PayEarning[]                 @relation("PayEarningBranch")
   code                    String                       @unique
   name                    String
   timezone                String                       @default("Asia/Ho_Chi_Minh")
@@ -419,6 +420,7 @@ enum LeaveType {
 // canonical identities, credential state and protected sole-Owner invariants.
 model User {
   id                             String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paySellerOverridesMade         PaySellerOverride[]              @relation("PaySellerOverrideActor")
   recordedSalaryVersions         EmployeeSalaryVersion[]          @relation("SalaryVersionRecorder")
   createdTourRules               TourRule[]                       @relation("TourRuleCreator")
   createdCommissionRules         CommissionRule[]                 @relation("CommissionRuleCreator")
@@ -606,6 +608,8 @@ model CustomerProfile {
 
 model EmployeeProfile {
   userId                  String                           @id @map("user_id") @db.Uuid
+  payEarnings             PayEarning[]
+  paySellerOverrides      PaySellerOverride[]
   salaryVersions          EmployeeSalaryVersion[]
   commissionRules         CommissionRule[]
   user                    User                             @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -1721,6 +1725,7 @@ enum DiscountReleaseCause {
 // the receivable and may be 0. Status transitions and freezing are guarded in SQL.
 model Invoice {
   id                   String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  payEarnings          PayEarning[]
   code                 String                      @unique(map: "invoices_code_key")
   branchId             String                      @map("branch_id") @db.Uuid
   branch               Branch                      @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -1786,6 +1791,8 @@ model Invoice {
 // Quantity and price stay NULL until set (a DRAFT may be unpriced); gross = quantity x price.
 model InvoiceLine {
   id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  payEarnings      PayEarning[]
+  paySellerOverrides PaySellerOverride[]
   invoiceId        String                   @map("invoice_id") @db.Uuid
   invoice          Invoice                  @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   sequence         Int                      @db.SmallInt
@@ -5124,4 +5131,70 @@ model CommissionRule {
   @@index([scope, effectiveFrom], map: "commission_rules_lookup_idx")
   @@index([createdByUserId], map: "commission_rules_creator_idx")
   @@map("commission_rules")
+}
+
+enum PayEarningKind {
+  TOUR
+  PRODUCT_COMMISSION
+}
+
+/// P7-9 (P7-T4): a tour or product-commission amount earned by an employee at the PAID episode of an invoice. Immutable: a reversal
+/// (episode ended, refund, exchange, seller changed) is a NEGATIVE row that points at the earning. Only `runId` is set, once, by payroll.
+model PayEarning {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  seq            BigInt          @default(autoincrement())
+  kind           PayEarningKind
+  employeeUserId String          @map("employee_user_id") @db.Uuid
+  employee       EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  branchId       String          @map("branch_id") @db.Uuid
+  branch         Branch          @relation("PayEarningBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceId      String          @map("invoice_id") @db.Uuid
+  invoice        Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceLineId  String          @map("invoice_line_id") @db.Uuid
+  invoiceLine    InvoiceLine     @relation(fields: [invoiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  paidSeq        Int             @map("paid_seq")
+  businessDate   DateTime        @map("business_date") @db.Date
+  /// Positive for an earning, negative for a reversal.
+  amountVnd      BigInt          @map("amount_vnd")
+  baseVnd        BigInt?         @map("base_vnd")
+  quantity       Int?
+  ruleId         String?         @map("rule_id") @db.Uuid
+  ruleKind       String?         @map("rule_kind") @db.VarChar(20)
+  ruleValue      BigInt?         @map("rule_value")
+  reversesId     String?         @map("reverses_id") @db.Uuid
+  reverses       PayEarning?     @relation("PayEarningReversal", fields: [reversesId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reversals      PayEarning[]    @relation("PayEarningReversal")
+  reason         String?         @db.VarChar(40)
+  sourceKey      String          @unique(map: "pay_earnings_source_key") @map("source_key")
+  /// The payroll run that claimed the row (P7-12); set once.
+  runId          String?         @map("run_id") @db.Uuid
+  createdAt      DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([employeeUserId, businessDate, kind], map: "pay_earnings_employee_date_idx")
+  @@index([invoiceId, invoiceLineId], map: "pay_earnings_invoice_idx")
+  @@index([reversesId], map: "pay_earnings_reverses_idx")
+  @@index([runId], map: "pay_earnings_run_idx")
+  @@index([branchId, businessDate], map: "pay_earnings_branch_date_idx")
+  @@map("pay_earnings")
+}
+
+/// P7-9 (design 5.3, closes OQ-P6-25): an audited correction of who sold a product line after finalization. Append-only; the latest row of a
+/// line wins; the invoice line itself is never rewritten.
+model PaySellerOverride {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  seq            BigInt          @default(autoincrement())
+  invoiceLineId  String          @map("invoice_line_id") @db.Uuid
+  invoiceLine    InvoiceLine     @relation(fields: [invoiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId String          @map("employee_user_id") @db.Uuid
+  employee       EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  reason         String
+  actorUserId    String          @map("actor_user_id") @db.Uuid
+  actor          User            @relation("PaySellerOverrideActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt      DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([seq], map: "pay_seller_overrides_seq_key")
+  @@index([invoiceLineId, seq(sort: Desc)], map: "pay_seller_overrides_line_idx")
+  @@index([employeeUserId], map: "pay_seller_overrides_employee_idx")
+  @@index([actorUserId], map: "pay_seller_overrides_actor_idx")
+  @@map("pay_seller_overrides")
 }

@@ -80,6 +80,8 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
     'salaries',
     'salaryHistory',
     'addSalaryVersion',
+    'invoiceEarnings',
+    'correctSeller',
   ] as const;
   const module = await Test.createTestingModule({
     imports: [AppModule.forRoot(environment, pino({ level: 'silent' }))],
@@ -146,6 +148,7 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
       ['commission-rules', 'commissionRules', []],
       ['commission-rules/products?q=son', 'commissionProducts', ['son']],
       ['salaries', 'salaries', []],
+      [`invoices/${service}/earnings`, 'invoiceEarnings', [service]],
       [`salaries/${employee}/history`, 'salaryHistory', [employee]],
     ] as const) {
       await request(server).get(`${base}/${path}`).set({ Cookie: cookie }).expect(200);
@@ -177,6 +180,33 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
       await request(server).post(`${base}/${path}`).set(headers).send(body).expect(200);
       assert.equal(calls.at(-1)?.[0], name);
       assert.deepEqual(json(calls.at(-1)![2]), body);
+    }
+    const seller = { employeeUserId: employee, reason: 'Nhập nhầm người bán' };
+    await request(server)
+      .post(`${base}/product-lines/${service}/seller`)
+      .set({ Cookie: cookie })
+      .send(seller)
+      .expect(403);
+    await request(server)
+      .post(`${base}/product-lines/${service}/seller`)
+      .set(headers)
+      .send(seller)
+      .expect(200);
+    assert.equal(calls.at(-1)?.[0], 'correctSeller');
+    assert.equal(calls.at(-1)?.[2], service);
+    assert.deepEqual(json(calls.at(-1)![3]), seller);
+    for (const body of [
+      { ...seller, extra: 1 },
+      { employeeUserId: employee },
+      { ...seller, reason: 5 },
+    ]) {
+      const before = calls.length;
+      await request(server)
+        .post(`${base}/product-lines/${service}/seller`)
+        .set(headers)
+        .send(body)
+        .expect(400);
+      assert.equal(calls.length, before);
     }
     // Only the contract's fields, with the right types.
     const refused = calls.length;

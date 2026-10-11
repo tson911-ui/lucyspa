@@ -1,5 +1,7 @@
 import type {
   CommissionRuleRequest,
+  InvoiceEarningsResponse,
+  SellerCorrectionRequest,
   CommissionRuleResponse,
   CommissionRulesResponse,
   CommissionTargetsResponse,
@@ -18,6 +20,7 @@ import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { SessionService } from '../auth/session.service.js';
 import { runAdminCommand, type AdminContext } from '../authorization/admin-command.js';
 import { sqlStateOf } from '../booking/customer-command.js';
+import * as earnings from './pay-earnings.core.js';
 import * as rules from './pay-rules.core.js';
 import * as salary from './pay-salary.core.js';
 
@@ -85,6 +88,21 @@ export class PayService {
     requestId?: string,
   ): Promise<SalaryVersionResponse> {
     return this.run(token, requestId, (context) => salary.addSalaryVersion(context, { ...body }));
+  }
+
+  invoiceEarnings(token: string | undefined, invoiceId: string): Promise<InvoiceEarningsResponse> {
+    return this.run(token, undefined, (context) => earnings.invoiceEarnings(context, invoiceId));
+  }
+
+  correctSeller(
+    token: string | undefined,
+    lineId: string,
+    body: SellerCorrectionRequest,
+    requestId?: string,
+  ): Promise<InvoiceEarningsResponse> {
+    return this.run(token, requestId, (context) =>
+      earnings.correctSeller(context, lineId, { ...body }),
+    );
   }
 
   private run<T>(

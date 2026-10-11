@@ -126,3 +126,4 @@ await import('../apps/api/dist/finance/cash-posting.integration.test.js');
 await import('../apps/api/dist/finance/cash-entries.integration.test.js');
 await import('../apps/api/dist/finance/cash-closing.integration.test.js');
 await import('../apps/api/dist/pay/pay-config.integration.test.js');
+await import('../apps/api/dist/pay/pay-earnings.integration.test.js');

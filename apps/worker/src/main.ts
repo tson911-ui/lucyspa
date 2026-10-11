@@ -13,6 +13,7 @@ import { startBookingJobs } from './booking-jobs.js';
 import { startInventoryAlerts } from './inventory-jobs.js';
 import { startInventorySales } from './inventory-sales-jobs.js';
 import { startCashPosting } from './cash-jobs.js';
+import { startCompensation } from './compensation-jobs.js';
 import { startInvoiceNotifications } from './invoice-notification-jobs.js';
 import { startLeaveNotifications } from './leave-jobs.js';
 import { startLoyaltyPoints } from './loyalty-jobs.js';
@@ -38,6 +39,7 @@ async function bootstrap() {
   let inventoryAlerts: { stop(): Promise<void> } | undefined;
   let inventorySales: { stop(): Promise<void> } | undefined;
   let cashPosting: { stop(): Promise<void> } | undefined;
+  let compensation: { stop(): Promise<void> } | undefined;
   let sourceTests: { stop(): Promise<void> } | undefined;
   let sourceScans: { stop(): Promise<void> } | undefined;
   try {
@@ -72,12 +74,14 @@ async function bootstrap() {
     inventoryAlerts = startInventoryAlerts(database, logger);
     inventorySales = startInventorySales(database, logger);
     cashPosting = startCashPosting(database, logger);
+    compensation = startCompensation(database, logger);
     sourceTests = startSourceTests(database, logger);
     sourceScans = startSourceScans(database, config.nodeEnv, logger);
     logger.info({ queue: SYSTEM_CHECK_QUEUE }, 'Worker ready');
   } catch (error) {
     await sourceScans?.stop();
     await sourceTests?.stop();
+    await compensation?.stop();
     await cashPosting?.stop();
     await inventorySales?.stop();
     await inventoryAlerts?.stop();
@@ -100,6 +104,7 @@ async function bootstrap() {
     try {
       await sourceScans?.stop();
       await sourceTests?.stop();
+      await compensation?.stop();
       await cashPosting?.stop();
       await inventorySales?.stop();
       await inventoryAlerts?.stop();

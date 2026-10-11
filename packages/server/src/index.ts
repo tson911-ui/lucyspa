@@ -190,6 +190,13 @@ export {
   type TourRuleRow,
 } from './pay-rules.js';
 export {
+  candidateInvoices,
+  loadPayRules,
+  reconcileInvoiceEarnings,
+  type PayRules,
+  type ReconcileResult,
+} from './compensation.js';
+export {
   bindReferral,
   canBindReferrer,
   completedVisitsOf,
