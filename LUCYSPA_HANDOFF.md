@@ -24,7 +24,7 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `9b76789`)                                                                                                                |
 | **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `f79572d`); go-live turned ON by the Owner about 17:20 (+07)**                                               |
 | **Phase 6 (products, inventory, Beauty)** | **COMPLETE: Waves 1, 2, 3a, 3b and 4 DEPLOYED (production = `4b91af6`, 2026-10-09 ~14:02 +07); online store stays OFF until the Owner opens it** |
-| Phase 7+ (payroll, cash, reports)         | NOT started                                                                                                                                      |
+| Phase 7 (payroll, tips, funds)            | P7-1 DESIGN written (`docs/PHASE7_PAYROLL_FUNDS.md`), nothing approved or built; Phase 8+ not started                                            |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
 
@@ -915,3 +915,8 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - After the deploy the Owner ran a full Haruohui scan (352 read, 332 new) and "Nhập và đăng tất cả": **348 products published, 4 held for review** (2 image-duplicate decisions, 2 without a source price).
 - Owner's findings on the real data, queued in `docs/REVIEW_POLISH_CHECKLIST.md` section I (polish pass after Phase 8): public cosmetics cards too big (3 per row on desktop, large serif titles cut off); importer category mapping wrong on real data (sets land in Trang điểm/Chống nắng instead of Bộ sản phẩm/Set; Serum and Dưỡng ẩm empty) and needs a re-categorize action; some Haruohui gallery images in unsupported formats (AVIF/GIF?) were skipped.
 - Backups: `/root/backups/lucyspa-pre-p97-20261011T094627Z.dump` and `/root/backups/lucyspa-web-pre-p97-20261011T094627Z.tar.gz`; deploy log `/root/backups/deploy-p97-log.txt`.
+
+### Phase 7 P7-1 (payroll, tips, shop funds; design only, 2026-10-11)
+
+- `docs/PHASE7_PAYROLL_FUNDS.md`: reuse map, design (salary history, tour, product commission, tips, monthly run `DRAFT -> CLOSED -> PAID`, advances, sổ quỹ with daily closing), P7-T1..T15, 5 proposed permissions (68 -> 73), steps P7-2..P7-16 in two waves (A cash book, B compensation), risks.
+- Owner questionnaire OQ-104..OQ-113 (10 questions, each with a default); **all pending Owner approval**. No code, migration or permission was created; production is unchanged (`ac74013`).
