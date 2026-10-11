@@ -225,7 +225,9 @@ export function NotificationTable({
                   ? t.orders.openOrders
                   : item.source.type === 'ProductVariant' || item.type === 'EXPIRY_ALERT'
                     ? t.inventory.openStock
-                    : t.open;
+                    : item.source.type === 'SupplierSource'
+                      ? t.supplier.open
+                      : t.open;
         return href ? (
           <Link className="ls-link" href={href} title={`${open}: ${message}`}>
             {message}

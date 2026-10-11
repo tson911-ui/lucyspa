@@ -7,7 +7,7 @@ import type {
 import { fill } from '../i18n/workforce';
 import type { Locale } from '../i18n/locales';
 import { getNotificationDictionary } from '../i18n/notifications';
-import { canAt } from './workforce/permissions';
+import { canAt, canGlobal } from './workforce/permissions';
 
 /** The days after which arrived goods nobody collected are reported (OQ-34); the API scan uses the same number. */
 const ORDER_HELD_DAYS = 7;
@@ -26,6 +26,12 @@ export function notificationHref(
 ): string | null {
   if (item.source.type === 'LeaveRequest') {
     return account.kind === 'EMPLOYEE' || account.kind === 'OWNER' ? `${base}/leave` : null;
+  }
+  // A supplier import notice opens the changes of the review screen for those who review supplier imports (a source has no branch).
+  if (item.source.type === 'SupplierSource') {
+    return canGlobal(account, 'REVIEW_SUPPLIER_IMPORTS')
+      ? `${base}/supplier-imports?tab=changes`
+      : null;
   }
   // A return notice opens the case page for people who handle returns or refunds at its branch.
   if (item.source.type === 'ProductReturnCase') {
@@ -138,6 +144,7 @@ export function notificationMessage(item: NotificationItem, locale: Locale): str
   }
   if (params) {
     return (
+      supplierMessage(item, params, locale) ??
       orderMessage(item, params, locale) ??
       financeMessage(item, params, locale) ??
       inventoryMessage(item, params, locale) ??
@@ -150,6 +157,30 @@ export function notificationMessage(item: NotificationItem, locale: Locale): str
 
 const money = (value: string, locale: Locale) =>
   `${new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-US').format(BigInt(value))} ₫`;
+
+/** Supplier import notice (P9-7): the source name and only the counts that are not zero. */
+function supplierMessage(
+  item: NotificationItem,
+  params: NonNullable<NotificationItem['params']>,
+  locale: Locale,
+): string | null {
+  if (item.type !== 'SUPPLIER_IMPORT_CHANGES' || !('priceChanged' in params)) return null;
+  const s = getNotificationDictionary(locale).supplier;
+  const parts = (
+    [
+      [params.created, s.created],
+      [params.priceChanged, s.priceChanged],
+      [params.contentChanged, s.contentChanged],
+      [params.imageChanged, s.imageChanged],
+      [params.removed, s.removed],
+    ] as const
+  )
+    .filter(([n]) => n > 0)
+    .map(([n, template]) => fill(template, { n }));
+  return parts.length === 0
+    ? null
+    : fill(s.notice, { source: item.source.code, parts: parts.join(', ') });
+}
 
 /** Pre-order alert (P6-17): counts only, and only what is true (no "0 lines"). */
 function orderMessage(

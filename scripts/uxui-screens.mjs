@@ -30,6 +30,11 @@ const flag = (name, fallback) => {
   return index >= 0 ? args.splice(index, 2)[1] : fallback;
 };
 const widths = flag('widths', '360,768,1440').split(',').map(Number);
+// `--hover <selector[@@text]>`: after the clicks, moves the pointer onto that element so its hover state is captured.
+const hovers = [];
+for (let index = args.indexOf('--hover'); index >= 0; index = args.indexOf('--hover')) {
+  hovers.push(args.splice(index, 2)[1]);
+}
 const clicks = [];
 for (let index = args.indexOf('--click'); index >= 0; index = args.indexOf('--click')) {
   clicks.push(args.splice(index, 2)[1]);
@@ -295,6 +300,18 @@ try {
         }
         if (!clicked)
           console.log(`CHECK ${name} ${width} ${scheme}: nothing matches --click ${spec}`);
+        await sleep(400);
+      }
+      for (const spec of hovers) {
+        const [selector, text = ''] = spec.split('@@');
+        const box = (
+          await send('Runtime.evaluate', {
+            expression: `(() => { const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find((node) => (node.textContent || node.getAttribute('aria-label') || '').includes(${JSON.stringify(text)})); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`,
+            returnByValue: true,
+          })
+        ).result.value;
+        if (box) await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: box.x, y: box.y });
+        else console.log(`CHECK ${name} ${width} ${scheme}: nothing matches --hover ${spec}`);
         await sleep(400);
       }
       if (beforeExpression) {

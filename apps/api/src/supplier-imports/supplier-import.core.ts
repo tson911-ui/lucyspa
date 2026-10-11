@@ -57,13 +57,13 @@ const MAX_PRICE = 100_000_000_000n;
 const DECIDED = ['APPROVED', 'REJECTED', 'IGNORED', 'IMPORTED'] as const;
 const isDecided = (state: string) => (DECIDED as readonly string[]).includes(state);
 
-function requireReview(context: AdminContext): void {
+export function requireReview(context: AdminContext): void {
   if (!decide(context.actor.graph, 'REVIEW_SUPPLIER_IMPORTS', GLOBAL)) {
     throw new AuthError('FORBIDDEN');
   }
 }
 
-const canSeePrices = (context: AdminContext): boolean =>
+export const canSeePrices = (context: AdminContext): boolean =>
   decide(context.actor.graph, 'MANAGE_PRODUCT_PRICES', GLOBAL);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

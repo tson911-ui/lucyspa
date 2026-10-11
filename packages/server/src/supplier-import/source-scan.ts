@@ -10,8 +10,19 @@ import {
   recordIntake,
   warnCandidate,
 } from './image-intake.js';
+import { takeSharedAuthGraphLock } from '../auth-lock.js';
 import { createGuardedHttpClient, type HttpClient } from './http-client.js';
 import { evaluateCandidates } from './candidate-evaluation.js';
+import { notifySupplierImportChanges } from './import-notice.js';
+import {
+  contentDiff,
+  imageDiff,
+  isSuspectCount,
+  nextMissing,
+  returnedAfterRemoval,
+  type PriceChangeDetail,
+  type ScanChangeCounts,
+} from './resync.js';
 import { checkRobots, SAMPLE_SIZE } from './source-test.js';
 import {
   asSourceError,
@@ -61,7 +72,7 @@ export interface ScanError {
 }
 
 /** One unit of work in its own transaction; inside a test's transaction client a savepoint isolates a failing unit. */
-async function unit<T>(database: ScanDatabase, work: (tx: Tx) => Promise<T>): Promise<T> {
+export async function inUnit<T>(database: ScanDatabase, work: (tx: Tx) => Promise<T>): Promise<T> {
   if ('$transaction' in database) {
     return (database as DatabaseClient).$transaction(work, { timeout: 60_000 });
   }
@@ -96,6 +107,19 @@ interface Claimed {
   sample_limit: number;
 }
 
+/** The last healthy scan of the source (SUCCEEDED or PARTIAL): how many products it found. Null for a source never scanned. */
+async function healthyBaseline(
+  database: ScanDatabase,
+  sourceId: string,
+  scanId: string,
+): Promise<number | null> {
+  const rows = await database.$queryRaw<{ discovered_count: number }[]>`
+    SELECT discovered_count FROM import_scans
+     WHERE source_id = ${sourceId}::uuid AND id <> ${scanId}::uuid AND status IN ('SUCCEEDED', 'PARTIAL')
+     ORDER BY started_at DESC, id DESC LIMIT 1`;
+  return rows[0]?.discovered_count ?? null;
+}
+
 async function claim(database: ScanDatabase): Promise<Claimed | null> {
   const rows = await database.$queryRaw<Claimed[]>`
     UPDATE import_scans
@@ -109,6 +133,9 @@ async function claim(database: ScanDatabase): Promise<Claimed | null> {
 
 interface SourceFacts {
   supplierId: string;
+  name: string;
+  /** Who confirmed the permission: the owner of pictures a scheduled scan (no person) downloads. */
+  confirmedByUserId: string | null;
   baseUrl: string | null;
   kind: string;
   status: string;
@@ -125,6 +152,8 @@ interface Counters {
   priceChanged: number;
   contentChanged: number;
   imageChanged: number;
+  /** Products raised as no longer on the source (missing from the third healthy scan in a row). */
+  removed: number;
   images: number;
   /** Distinct pictures flagged during the scan (not flag events). */
   flaggedImages: Set<string>;
@@ -136,6 +165,8 @@ interface Work {
   candidateId: string;
 }
 
+type SourceChangeKind =
+  'PRICE_CHANGED' | 'CONTENT_CHANGED' | 'IMAGE_CHANGED' | 'SOURCE_REMOVED' | 'SOURCE_RETURNED';
 const json = (value: unknown) => value as Prisma.InputJsonValue;
 
 function recordData(record: SourceProductRecord, permitsText: boolean) {
@@ -157,42 +188,81 @@ function recordData(record: SourceProductRecord, permitsText: boolean) {
   };
 }
 
-/** Finishes a scan row. `listed` says whether the product list was read at all (a failed listing is not a "success"). */
+/**
+ * Finishes a scan row. `listed` says whether the product list was read at all and the scan was healthy (a failed or suspect listing
+ * is not a "success"). A healthy scan that found something tells the holders of the review permission, in the same transaction.
+ */
 async function finish(
   database: ScanDatabase,
-  scanId: string,
-  sourceId: string,
-  status: 'SUCCEEDED' | 'PARTIAL' | 'FAILED',
+  scan: { id: string; sourceId: string; actorUserId: string | null; sourceName: string | null },
+  status: 'SUCCEEDED' | 'PARTIAL' | 'FAILED' | 'SUSPECT',
   counters: Counters,
   errors: ScanError[],
   requests: number,
   listed: boolean,
 ): Promise<void> {
-  await unit(database, async (tx) => {
+  const scanId = scan.id;
+  const sourceId = scan.sourceId;
+  const done = await inUnit(database, async (tx) => {
+    // Lock order of the whole system: the authorization graph first (the notice reads who holds the permission), then the source.
+    await takeSharedAuthGraphLock(tx);
     await tx.$queryRaw`SELECT id FROM supplier_sources WHERE id = ${sourceId}::uuid FOR UPDATE`;
-    await tx.$executeRaw`
+    const finished = await tx.$executeRaw`
       UPDATE import_scans
          SET status = ${status}::"ImportScanStatus", finished_at = clock_timestamp(),
              discovered_count = ${counters.discovered}, new_count = ${counters.fresh},
              unchanged_count = ${counters.unchanged}, price_changed_count = ${counters.priceChanged},
              content_changed_count = ${counters.contentChanged}, image_changed_count = ${counters.imageChanged},
+             removed_count = ${counters.removed},
              duplicate_count = ${counters.flaggedImages.size}, error_count = ${errors.length},
              errors = ${JSON.stringify(errors.slice(0, MAX_ERRORS))}::jsonb,
              request_count = ${requests}, image_count = ${counters.images}, image_flag_count = ${counters.flaggedImages.size}
        WHERE id = ${scanId}::uuid AND status = 'RUNNING'`;
+    if (finished === 0) return false;
     if (listed) {
       await tx.$executeRaw`
         UPDATE supplier_sources SET last_success_at = clock_timestamp(), row_version = row_version + 1
          WHERE id = ${sourceId}::uuid`;
     }
+    return true;
   });
+  if (
+    !done ||
+    !listed ||
+    (status !== 'SUCCEEDED' && status !== 'PARTIAL') ||
+    scan.sourceName === null
+  )
+    return;
+  // The notice is its own unit: a failure here loses the notice but can never leave the scan unfinished.
+  try {
+    const counts: ScanChangeCounts = {
+      created: counters.fresh,
+      priceChanged: counters.priceChanged,
+      contentChanged: counters.contentChanged,
+      imageChanged: counters.imageChanged,
+      removed: counters.removed,
+    };
+    const sourceName = scan.sourceName;
+    await inUnit(database, async (tx) => {
+      await takeSharedAuthGraphLock(tx);
+      await notifySupplierImportChanges(tx, {
+        sourceId,
+        sourceName,
+        scanId,
+        actorUserId: scan.actorUserId,
+        counts,
+      });
+    });
+  } catch {
+    // Nothing to do: the scan is final and the sources screen shows its counts.
+  }
 }
 
 /** Runs at most one queued scan. Returns its final status, or null when nothing was queued. */
 export async function processNextScan(
   database: ScanDatabase,
   deps: ScanDeps,
-): Promise<'SUCCEEDED' | 'PARTIAL' | 'FAILED' | null> {
+): Promise<'SUCCEEDED' | 'PARTIAL' | 'FAILED' | 'SUSPECT' | null> {
   await failExpiredScans(database);
   const scan = await claim(database);
   if (!scan) return null;
@@ -203,16 +273,25 @@ export async function processNextScan(
     priceChanged: 0,
     contentChanged: 0,
     imageChanged: 0,
+    removed: 0,
     images: 0,
     flaggedImages: new Set<string>(),
   };
   const errors: ScanError[] = [];
+  const scanInfo = {
+    id: scan.id,
+    sourceId: scan.source_id,
+    actorUserId: scan.actor_user_id,
+    sourceName: null as string | null,
+  };
   const note = (error: ScanError) => {
     if (errors.length < MAX_ERRORS * 2) errors.push(error);
   };
   const [row] = await database.$queryRaw<
     {
       supplier_id: string;
+      name: string;
+      confirmed_by: string | null;
       base_url: string | null;
       kind: string;
       status: string;
@@ -222,12 +301,14 @@ export async function processNextScan(
       permits_images: boolean;
     }[]
   >`
-    SELECT supplier_id, base_url, kind::text AS kind, status::text AS status, is_enabled,
+    SELECT supplier_id, name, permission_confirmed_by_user_id AS confirmed_by, base_url, kind::text AS kind, status::text AS status, is_enabled,
            permission_confirmed_at IS NOT NULL AS confirmed, permits_text, permits_images
       FROM supplier_sources WHERE id = ${scan.source_id}::uuid`;
   const source: SourceFacts | null = row
     ? {
         supplierId: row.supplier_id,
+        name: row.name,
+        confirmedByUserId: row.confirmed_by,
         baseUrl: row.base_url,
         kind: row.kind,
         status: row.status,
@@ -237,6 +318,7 @@ export async function processNextScan(
         permitsImages: row.permits_images,
       }
     : null;
+  scanInfo.sourceName = source?.name ?? null;
   // Nothing is requested from a site unless the source is enabled, READY and still has a confirmed permission.
   if (
     !source ||
@@ -248,7 +330,7 @@ export async function processNextScan(
     (!source.permitsText && !source.permitsImages)
   ) {
     note({ code: 'SOURCE_NOT_READY' });
-    await finish(database, scan.id, scan.source_id, 'FAILED', counters, errors, 0, false);
+    await finish(database, scanInfo, 'FAILED', counters, errors, 0, false);
     return 'FAILED';
   }
 
@@ -274,27 +356,46 @@ export async function processNextScan(
     listed = true;
     const records = page.records.slice(0, limit);
     counters.discovered = records.length;
-    for (const missing of known.filter(
-      (entry) => !records.some((record) => record.sourceKey === entry.source_key),
-    )) {
-      note({ code: 'PRODUCT_NOT_RETURNED', key: missing.source_key });
-    }
+    const returnedKeys = new Set(records.map((record) => record.sourceKey));
+    const problemKeys = new Set(page.problems.flatMap((group) => (group.key ? [group.key] : [])));
+    const absent = known.filter((entry) => !returnedKeys.has(entry.source_key));
+    for (const missing of absent) note({ code: 'PRODUCT_NOT_RETURNED', key: missing.source_key });
     for (const group of page.problems) {
       for (const problem of group.problems.filter((p) => p.fatal)) {
         note({ code: `PRODUCT_${problem.code}`, ...(group.key ? { key: group.key } : {}) });
       }
     }
 
+    // 0. Health, BEFORE anything is written: a read that found fewer than 70% of what the last healthy scan found is suspect (a broken
+    // adapter, a half-loaded site, an outage). A suspect scan writes only its own row: no record changes, nothing counted as missing,
+    // no pictures, no notice, and the source is not marked as successfully read.
+    const baseline = await healthyBaseline(database, scan.source_id, scan.id);
+    if (isSuspectCount(records.length, baseline)) {
+      note({ code: 'SCAN_SUSPECT', detail: `${records.length} of ${baseline}` });
+      await finish(database, scanInfo, 'SUSPECT', counters, errors, client.requestCount(), false);
+      return 'SUSPECT';
+    }
+
     // 1. Records, prices and minimal candidates.
     const work: Work[] = [];
     for (const record of records) {
       try {
-        const saved = await unit(database, (tx) =>
+        const saved = await inUnit(database, (tx) =>
           upsertRecord(tx, scan.id, scan.source_id, source, record, counters),
         );
         work.push({ record, ...saved });
       } catch {
         note({ code: 'RECORD_FAILED', key: record.sourceKey });
+      }
+    }
+    // 1b. Products this healthy scan did not get back. A product the site returned a fatal problem for is not missing, only unreadable.
+    for (const entry of absent.filter((candidate) => !problemKeys.has(candidate.source_key))) {
+      try {
+        await inUnit(database, (tx) =>
+          markMissing(tx, scan.id, scan.source_id, entry.source_key, counters),
+        );
+      } catch {
+        note({ code: 'MISSING_FAILED', key: entry.source_key });
       }
     }
     await renew();
@@ -307,7 +408,8 @@ export async function processNextScan(
         client,
         adapter,
         source,
-        scanActor: scan.actor_user_id,
+        // A scheduled scan has no person: its pictures belong to the person who confirmed the permission of the source.
+        scanActor: scan.actor_user_id ?? source.confirmedByUserId,
         work,
         counters,
         note,
@@ -317,7 +419,7 @@ export async function processNextScan(
     // 3. What a reviewer needs: proposed SKU, brand and category from the remembered mappings, duplicate suspicions, warnings, state.
     if (work.length > 0) {
       try {
-        await unit(database, (tx) =>
+        await inUnit(database, (tx) =>
           evaluateCandidates(
             tx,
             { candidateIds: work.map((item) => item.candidateId) },
@@ -329,30 +431,12 @@ export async function processNextScan(
       }
     }
     const status = errors.length === 0 ? 'SUCCEEDED' : 'PARTIAL';
-    await finish(
-      database,
-      scan.id,
-      scan.source_id,
-      status,
-      counters,
-      errors,
-      client.requestCount(),
-      listed,
-    );
+    await finish(database, scanInfo, status, counters, errors, client.requestCount(), listed);
     return status;
   } catch (error) {
     const failure = asSourceError(error);
     note({ code: failure.code, ...(failure.detail ? { detail: failure.detail } : {}) });
-    await finish(
-      database,
-      scan.id,
-      scan.source_id,
-      'FAILED',
-      counters,
-      errors,
-      client.requestCount(),
-      listed,
-    );
+    await finish(database, scanInfo, 'FAILED', counters, errors, client.requestCount(), listed);
     return 'FAILED';
   }
 }
@@ -372,6 +456,14 @@ async function upsertRecord(
       contentHash: true,
       priceHash: true,
       imagesHash: true,
+      missingScans: true,
+      name: true,
+      sku: true,
+      brandText: true,
+      categoryPath: true,
+      descriptionText: true,
+      attributes: true,
+      imageUrls: true,
       candidateLink: { select: { candidateId: true } },
     },
   });
@@ -385,6 +477,53 @@ async function upsertRecord(
     if (existing.contentHash !== record.contentHash) changes.push('CONTENT_CHANGED');
     if (existing.priceHash !== record.priceHash) changes.push('PRICE_CHANGED');
     if (existing.imagesHash !== record.imagesHash) changes.push('IMAGE_CHANGED');
+    // The note a person reads (design section 10): what differs, small and structured. Written before the record is overwritten.
+    const notes: { kind: SourceChangeKind; detail: object }[] = [];
+    if (changes.includes('CONTENT_CHANGED')) {
+      notes.push({
+        kind: 'CONTENT_CHANGED',
+        detail: contentDiff(existing, record, source.permitsText),
+      });
+    }
+    if (changes.includes('PRICE_CHANGED')) {
+      const before = await tx.sourcePriceObservation.findFirst({
+        where: { sourceRecordId: existing.id },
+        orderBy: [{ observedAt: 'desc' }, { id: 'desc' }],
+        select: { priceVnd: true, promoPriceVnd: true },
+      });
+      const detail: PriceChangeDetail = {
+        before: {
+          priceVnd: before?.priceVnd == null ? null : Number(before.priceVnd),
+          promoPriceVnd: before?.promoPriceVnd == null ? null : Number(before.promoPriceVnd),
+        },
+        after: { priceVnd: record.priceVnd, promoPriceVnd: record.promoPriceVnd },
+      };
+      notes.push({ kind: 'PRICE_CHANGED', detail });
+    }
+    if (changes.includes('IMAGE_CHANGED')) {
+      notes.push({
+        kind: 'IMAGE_CHANGED',
+        detail: imageDiff(
+          existing.imageUrls,
+          record.images.map((image) => image.url),
+        ),
+      });
+    }
+    // The product was missing and is back. Only a product that had been raised as removed is worth a note.
+    if (returnedAfterRemoval(existing.missingScans)) {
+      notes.push({ kind: 'SOURCE_RETURNED', detail: { missingScans: existing.missingScans } });
+    }
+    if (notes.length > 0) {
+      await tx.sourceChange.createMany({
+        data: notes.map((entry) => ({
+          sourceRecordId: existing.id,
+          scanId,
+          kind: entry.kind,
+          detail: json(entry.detail),
+        })),
+        skipDuplicates: true,
+      });
+    }
     await tx.sourceRecord.update({
       where: { id: existing.id },
       data: {
@@ -392,6 +531,9 @@ async function upsertRecord(
         lastSeenScanId: scanId,
         lastSeenAt: new Date(),
         lastChanges: json(changes.map((type) => ({ type, scanId }))),
+        // Seen again: the count of healthy scans without it starts over.
+        missingScans: 0,
+        state: 'PRESENT',
       },
       select: { id: true },
     });
@@ -439,6 +581,42 @@ async function upsertRecord(
   });
   counters.fresh += 1;
   return { recordId: created.id, candidateId: candidate.id };
+}
+
+/**
+ * One more healthy scan in which the list did not return this known product. Only the count moves (the record, its candidate, its
+ * pictures and any product made from it are untouched). The third scan in a row raises one removal note; later scans only count.
+ */
+async function markMissing(
+  tx: Tx,
+  scanId: string,
+  sourceId: string,
+  sourceKey: string,
+  counters: Counters,
+): Promise<void> {
+  const rows = await tx.$queryRaw<{ id: string; missing_scans: number }[]>`
+    SELECT id, missing_scans FROM source_records
+     WHERE source_id = ${sourceId}::uuid AND source_key = ${sourceKey} FOR UPDATE`;
+  const row = rows[0];
+  if (!row) return;
+  const step = nextMissing(row.missing_scans);
+  await tx.$executeRaw`
+    UPDATE source_records SET missing_scans = ${step.missingScans}, state = 'MISSING', updated_at = clock_timestamp()
+     WHERE id = ${row.id}::uuid`;
+  if (step.removed) {
+    await tx.sourceChange.createMany({
+      data: [
+        {
+          sourceRecordId: row.id,
+          scanId,
+          kind: 'SOURCE_REMOVED',
+          detail: json({ missingScans: step.missingScans }),
+        },
+      ],
+      skipDuplicates: true,
+    });
+    counters.removed += 1;
+  }
 }
 
 // ------------------------------------------------------------------------------------------------------------- pictures
@@ -555,7 +733,7 @@ async function intakeProduct(context: {
   const desired = wanted.slice(0, MAX_IMAGES_PER_PRODUCT);
 
   if (desired.length === 0) {
-    await unit(database, (tx) =>
+    await inUnit(database, (tx) =>
       warnCandidate(tx, candidateId, [{ code: 'IMAGE_MISSING' }], { needsReview: false }),
     );
   }
@@ -567,7 +745,7 @@ async function intakeProduct(context: {
   });
   const stale = active.filter((row) => !desired.some((entry) => entry.url === row.sourceUrl));
   if (stale.length > 0) {
-    await unit(database, async (tx) => {
+    await inUnit(database, async (tx) => {
       await tx.$executeRaw`
         UPDATE candidate_images SET retired_at = clock_timestamp()
          WHERE id = ANY(${stale.map((row) => row.id)}::uuid[]) AND retired_at IS NULL`;
@@ -601,7 +779,7 @@ async function intakeProduct(context: {
         url: entry.url,
         ...(downloaded.failure.detail ? { detail: downloaded.failure.detail } : {}),
       });
-      await unit(database, (tx) =>
+      await inUnit(database, (tx) =>
         warnCandidate(
           tx,
           candidateId,
@@ -614,7 +792,7 @@ async function intakeProduct(context: {
     }
     const stored = await putProcessedImage(deps.storage, downloaded.value.image);
     try {
-      const result = await unit(database, (tx) =>
+      const result = await inUnit(database, (tx) =>
         recordIntake({
           tx,
           supplierId: source.supplierId,

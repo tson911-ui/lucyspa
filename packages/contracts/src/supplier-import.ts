@@ -229,3 +229,77 @@ export interface SupplierApproveReadyResponse {
   approved: number;
   skipped: { id: string; reason: string }[];
 }
+
+// ------------------------------------------------------------------------------------------------------ P9-7: what changed
+
+/**
+ * Phase 9 P9-7: the "Thay đổi" queue (docs/PHASE9_PRODUCT_IMPORT.md section 10). A scan that finds a product different on the source
+ * leaves a note here until a reviewer says it was seen. A note changes nothing: no candidate, product, price or picture. The source
+ * price inside a price note is reference data and is cut from the response of anyone without MANAGE_PRODUCT_PRICES.
+ */
+export const SOURCE_CHANGE_KINDS = [
+  'PRICE_CHANGED',
+  'CONTENT_CHANGED',
+  'IMAGE_CHANGED',
+  'SOURCE_REMOVED',
+  'SOURCE_RETURNED',
+] as const;
+export type SourceChangeKind = (typeof SOURCE_CHANGE_KINDS)[number];
+
+export const CHANGE_PAGE_SIZE = 20;
+export const CHANGE_ACKNOWLEDGE_MAX = 20;
+
+export interface SupplierChangeDetail {
+  /** CONTENT_CHANGED: the stored fields that differ, with the short before and after of each. */
+  fields?: string[];
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  /** IMAGE_CHANGED: how many pictures the source lists now and before, and how many were added or taken away. */
+  images?: { before: number; after: number; added: number; removed: number };
+  /** SOURCE_REMOVED / SOURCE_RETURNED: how many healthy scans in a row the product was missing. */
+  missingScans?: number;
+  /** PRICE_CHANGED: absent without MANAGE_PRODUCT_PRICES. */
+  price?: {
+    before: { priceVnd: number | null; promoPriceVnd: number | null };
+    after: { priceVnd: number | null; promoPriceVnd: number | null };
+  };
+}
+
+export interface SupplierChangeRow {
+  id: string;
+  kind: SourceChangeKind;
+  detectedAt: string;
+  acknowledgedAt: string | null;
+  acknowledgedBy: string | null;
+  scanId: string;
+  source: { id: string; name: string };
+  /** The product as the source names it, its SKU there, and its page. */
+  productName: string;
+  productSku: string | null;
+  productUrl: string;
+  candidate: { id: string; nameVi: string; state: CandidateState } | null;
+  detail: SupplierChangeDetail;
+}
+
+/** GET /api/v1/supplier-imports/changes?status=OPEN|DONE&kind=&page= (20 per page). */
+export interface SupplierChangeListResponse {
+  items: SupplierChangeRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  /** Notes nobody has acknowledged yet, in total and per kind (for the filter). */
+  openCount: number;
+  kindCounts: Partial<Record<SourceChangeKind, number>>;
+  canSeePrices: boolean;
+}
+
+/** POST /api/v1/supplier-imports/changes/acknowledge: says the listed notes were seen. */
+export interface SupplierChangeAcknowledgeRequest {
+  ids: string[];
+}
+
+export interface SupplierChangeAcknowledgeResponse {
+  acknowledged: number;
+  /** Notes that were already acknowledged. */
+  alreadyDone: number;
+}

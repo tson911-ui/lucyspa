@@ -131,6 +131,8 @@ export function ScanDrawer({
       <Notice tone="error">{copy.failed}</Notice>
     ) : scan.status === 'PARTIAL' ? (
       <Notice tone="warning">{copy.partial}</Notice>
+    ) : scan.status === 'SUSPECT' ? (
+      <Notice tone="warning">{copy.suspect}</Notice>
     ) : (
       <Notice tone="success">{copy.succeeded}</Notice>
     );
@@ -167,10 +169,12 @@ export function ScanDrawer({
           <Stack gap="page">
             {notice(latest)}
             <p className="ls-hint">
-              {fill(copy.lastRun, {
-                time: when(latest.startedAt),
-                name: latest.requestedBy?.name ?? '—',
-              })}
+              {latest.requestedBy === null
+                ? fill(copy.lastRunScheduled, { time: when(latest.startedAt) })
+                : fill(copy.lastRun, {
+                    time: when(latest.startedAt),
+                    name: latest.requestedBy.name,
+                  })}
             </p>
             <DescriptionList
               columns={2}
@@ -178,6 +182,10 @@ export function ScanDrawer({
                 { label: copy.summary.discovered, value: String(latest.counts.discovered) },
                 { label: copy.summary.created, value: String(latest.counts.created) },
                 { label: copy.summary.unchanged, value: String(latest.counts.unchanged) },
+                { label: copy.summary.priceChanged, value: String(latest.counts.priceChanged) },
+                { label: copy.summary.contentChanged, value: String(latest.counts.contentChanged) },
+                { label: copy.summary.imageChanged, value: String(latest.counts.imageChanged) },
+                { label: copy.summary.removed, value: String(latest.counts.removed) },
                 { label: copy.summary.images, value: String(latest.counts.images) },
                 { label: copy.summary.flags, value: String(latest.counts.imageFlags) },
                 { label: copy.summary.requests, value: String(latest.requestCount) },

@@ -40,6 +40,17 @@ interface OrderTexts {
   onlineAlertUndelivered: string;
 }
 
+/** Supplier import notice (Phase 9 P9-7): the source name and counts only, never a product name, a price or a link. */
+interface SupplierTexts {
+  notice: string;
+  created: string;
+  priceChanged: string;
+  contentChanged: string;
+  imageChanged: string;
+  removed: string;
+  open: string;
+}
+
 /** Stock alert templates (Phase 6 P6-4): counts and the SKU only, never a name or free text. */
 interface InventoryTexts {
   lowStock: string;
@@ -127,6 +138,7 @@ const vi = {
     ONLINE_ORDER_NEW: 'Có đơn hàng online mới đã thanh toán.',
     ONLINE_ORDER_ALERT:
       'Có đơn hàng online chưa gửi đúng hẹn hoặc đã gửi lâu mà chưa có ngày giao.',
+    SUPPLIER_IMPORT_CHANGES: 'Có cập nhật mới từ nhà cung cấp.',
   } satisfies Record<NotificationType, string>,
   leave: {
     requested: 'Có đơn xin nghỉ ({type}) từ {from} đến {to} cần bạn xử lý.',
@@ -181,6 +193,15 @@ const vi = {
     onlineAlertUnshipped: 'Đơn online: {unshipped} đơn chưa gửi đúng hẹn.',
     onlineAlertUndelivered: 'Đơn online: {undelivered} đơn đã gửi quá 7 ngày mà chưa có ngày giao.',
   } satisfies OrderTexts,
+  supplier: {
+    notice: 'Cập nhật từ nhà cung cấp ({source}): {parts}.',
+    created: '{n} sản phẩm mới',
+    priceChanged: '{n} đổi giá',
+    contentChanged: '{n} đổi nội dung',
+    imageChanged: '{n} đổi ảnh',
+    removed: '{n} không còn trên nguồn',
+    open: 'Xem thay đổi',
+  } satisfies SupplierTexts,
   returns: {
     opened: 'Có hồ sơ trả hàng mới {code}: {reason}.',
     refundMade:
@@ -209,16 +230,18 @@ type Dictionary = {
           ? InventoryTexts
           : K extends 'orders'
             ? OrderTexts
-            : K extends 'returns'
-              ? ReturnTexts
-              : K extends 'leave'
-                ? {
-                    requested: string;
-                    approved: string;
-                    rejected: string;
-                    types: Record<LeaveType, string>;
-                  }
-                : string;
+            : K extends 'supplier'
+              ? SupplierTexts
+              : K extends 'returns'
+                ? ReturnTexts
+                : K extends 'leave'
+                  ? {
+                      requested: string;
+                      approved: string;
+                      rejected: string;
+                      types: Record<LeaveType, string>;
+                    }
+                  : string;
 };
 const en: Dictionary = {
   title: 'Notifications',
@@ -300,6 +323,7 @@ const en: Dictionary = {
     ONLINE_ORDER_NEW: 'A new paid online order came in.',
     ONLINE_ORDER_ALERT:
       'Some online orders were not shipped in time, or were shipped long ago with no delivery date.',
+    SUPPLIER_IMPORT_CHANGES: 'There is something new from a supplier.',
   },
   leave: {
     requested: 'A leave request ({type}) from {from} to {to} needs your attention.',
@@ -353,6 +377,15 @@ const en: Dictionary = {
     onlineAlertUnshipped: 'Online orders: {unshipped} not shipped in time.',
     onlineAlertUndelivered:
       'Online orders: {undelivered} shipped over 7 days ago with no delivery date.',
+  },
+  supplier: {
+    notice: 'Supplier update ({source}): {parts}.',
+    created: '{n} new products',
+    priceChanged: '{n} price changes',
+    contentChanged: '{n} content changes',
+    imageChanged: '{n} picture changes',
+    removed: '{n} no longer on the source',
+    open: 'View changes',
   },
   returns: {
     opened: 'New return case {code}: {reason}.',

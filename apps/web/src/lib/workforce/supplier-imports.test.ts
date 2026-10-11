@@ -1,10 +1,14 @@
-import type { SupplierCandidateDetail } from '@lucy-spa/contracts';
+import type { SupplierCandidateDetail, SupplierChangeRow } from '@lucy-spa/contracts';
 import { applyUrlPatch } from '@lucy-spa/ui';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { supplierImportsDictionary } from '../../i18n/supplier-imports';
 import { ApiError } from './api';
 import {
+  changeListQuery,
+  changeSummary,
+  changeTone,
+  shortValue,
   draftOf,
   duplicateMatches,
   editRequest,
@@ -78,8 +82,16 @@ const detail = (patch: Partial<SupplierCandidateDetail> = {}): SupplierCandidate
 
 test('the list state keeps to known values and builds the server query', () => {
   assert.deepEqual(
-    normalizeImportList({ filter: 'WHATEVER', warning: 'bad code', page: -3, review: 'x' }),
-    { filter: 'OPEN', warning: '', page: 1, review: '' },
+    normalizeImportList({
+      filter: 'WHATEVER',
+      warning: 'bad code',
+      page: -3,
+      review: 'x',
+      tab: 'x',
+      seen: 'x',
+      kind: 'x',
+    }),
+    { filter: 'OPEN', warning: '', page: 1, review: '', tab: 'candidates', seen: 'OPEN', kind: '' },
   );
   assert.deepEqual(
     normalizeImportList({
@@ -87,24 +99,44 @@ test('the list state keeps to known values and builds the server query', () => {
       warning: 'SKU_FORMAT',
       page: 2,
       review: '8b195417-e076-45d3-a262-97fefb8e7d15',
+      tab: 'changes',
+      seen: 'DONE',
+      kind: 'PRICE_CHANGED',
     }),
     {
       filter: 'READY_FOR_REVIEW',
       warning: 'SKU_FORMAT',
       page: 2,
       review: '8b195417-e076-45d3-a262-97fefb8e7d15',
+      tab: 'changes',
+      seen: 'DONE',
+      kind: 'PRICE_CHANGED',
     },
   );
-  assert.deepEqual(importListQuery({ filter: 'OPEN', warning: '', page: 1, review: '' }), {
-    page: 1,
-    state: 'OPEN',
-  });
+  assert.deepEqual(
+    importListQuery({
+      filter: 'OPEN',
+      warning: '',
+      page: 1,
+      review: '',
+      tab: 'candidates',
+      seen: 'OPEN',
+      kind: '',
+    }),
+    {
+      page: 1,
+      state: 'OPEN',
+    },
+  );
   assert.deepEqual(
     importListQuery({
       filter: 'IMPORTED',
       warning: 'IMAGE_SHARED',
       page: 3,
       review: '',
+      tab: 'candidates',
+      seen: 'OPEN',
+      kind: '',
     }),
     {
       page: 3,
@@ -230,4 +262,80 @@ test('states, pictures and dictionaries', () => {
       : [path];
   assert.deepEqual(shape(supplierImportsDictionary('en')), shape(supplierImportsDictionary('vi')));
   assert.doesNotMatch(JSON.stringify(supplierImportsDictionary('vi')), /khám/i);
+});
+
+test('the changes tab keeps to known values, builds its query and says each note in words', () => {
+  const base = { ...IMPORT_LIST_DEFAULTS, tab: 'changes' };
+  assert.deepEqual(changeListQuery(base), { page: 1, status: 'OPEN' });
+  assert.deepEqual(changeListQuery({ ...base, seen: 'DONE', kind: 'SOURCE_REMOVED', page: 2 }), {
+    page: 2,
+    status: 'DONE',
+    kind: 'SOURCE_REMOVED',
+  });
+  const row = (
+    kind: SupplierChangeRow['kind'],
+    detail: SupplierChangeRow['detail'],
+  ): SupplierChangeRow => ({
+    id: 'c1',
+    kind,
+    detectedAt: '2026-10-12T01:00:00.000Z',
+    acknowledgedAt: null,
+    acknowledgedBy: null,
+    scanId: 's1',
+    source: { id: 'src', name: 'Haruohui' },
+    productName: 'Kem A',
+    productSku: 'KD-A',
+    productUrl: 'https://haruohui.com/san-pham/1/',
+    candidate: null,
+    detail,
+  });
+  const money = (vnd: number | null) => (vnd === null ? '—' : String(vnd) + ' ₫');
+  assert.equal(
+    changeSummary(
+      row('PRICE_CHANGED', {
+        price: {
+          before: { priceVnd: 350_000, promoPriceVnd: null },
+          after: { priceVnd: 400_000, promoPriceVnd: null },
+        },
+      }),
+      'vi',
+      money,
+    ).headline,
+    'Giá nguồn: 350000 ₫ thành 400000 ₫',
+  );
+  assert.equal(
+    changeSummary(row('PRICE_CHANGED', {}), 'vi', money).headline,
+    'Giá ở nguồn đã đổi.',
+    'without price authority no number is shown',
+  );
+  const content = changeSummary(
+    row('CONTENT_CHANGED', {
+      fields: ['name', 'description'],
+      before: { name: 'Kem A', description: 'x' },
+      after: { name: 'Kem A mới', description: 'y' },
+    }),
+    'vi',
+    money,
+  );
+  assert.equal(content.headline, 'Đã đổi: Tên, Mô tả');
+  assert.equal(content.sub, 'Kem A thành Kem A mới');
+  assert.equal(
+    changeSummary(
+      row('IMAGE_CHANGED', { images: { before: 1, after: 2, added: 1, removed: 0 } }),
+      'en',
+      money,
+    ).headline,
+    'Pictures: 1 to 2 (1 added, 0 removed)',
+  );
+  assert.match(
+    changeSummary(row('SOURCE_REMOVED', { missingScans: 3 }), 'vi', money).headline,
+    /3 lần quét liền.*không bị ẩn hay xóa/,
+  );
+  assert.equal(
+    changeSummary(row('SOURCE_RETURNED', {}), 'vi', money).headline,
+    'Đã có lại ở nguồn.',
+  );
+  assert.equal(shortValue(null, '(trống)'), '(trống)');
+  assert.equal(shortValue('x'.repeat(100), '').length, 61);
+  assert.equal(changeTone('SOURCE_REMOVED'), 'warning');
 });

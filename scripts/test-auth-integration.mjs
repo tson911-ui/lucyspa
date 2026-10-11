@@ -117,4 +117,5 @@ await import('../apps/api/dist/campaigns/campaign.integration.test.js');
 await import('../apps/api/dist/supplier-sources/supplier-source.integration.test.js');
 await import('../apps/api/dist/supplier-sources/supplier-source-scan.integration.test.js');
 await import('../apps/api/dist/supplier-sources/supplier-source-candidates.integration.test.js');
+await import('../apps/api/dist/supplier-sources/supplier-source-resync.integration.test.js');
 await import('../apps/api/dist/supplier-imports/supplier-import.integration.test.js');

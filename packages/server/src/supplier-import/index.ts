@@ -109,3 +109,29 @@ export {
   type EvaluationSummary,
   type MappingInput,
 } from './candidate-evaluation.js';
+export { queueScheduledScans } from './scan-schedule.js';
+export {
+  notifySupplierImportChanges,
+  SUPPLIER_IMPORT_EVENT,
+  SUPPLIER_IMPORT_PERMISSION,
+  type ImportNoticeOutcome,
+} from './import-notice.js';
+export {
+  CADENCE_HOURS,
+  contentDiff,
+  hasChanges,
+  imageDiff,
+  inOffHours,
+  isScanDue,
+  isSuspectCount,
+  nextMissing,
+  OFF_HOURS_END,
+  OFF_HOURS_START,
+  REMOVAL_AFTER_SCANS,
+  returnedAfterRemoval,
+  type ContentChangeDetail,
+  type ImageChangeDetail,
+  type PriceChangeDetail,
+  type ScanChangeCounts,
+  type ScheduleCadence,
+} from './resync.js';

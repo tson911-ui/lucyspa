@@ -530,6 +530,7 @@ model User {
   requestedSourceTests           SupplierSourceTest[]             @relation("SourceTestRequester")
   confirmedSourceTests           SupplierSourceTest[]             @relation("SourceTestConfirmer")
   reviewDecisions                CandidateReviewDecision[]        @relation("ReviewDecisionActor")
+  acknowledgedSourceChanges      SourceChange[]                   @relation("SourceChangeAcknowledger")
   runImportScans                 ImportScan[]                     @relation("ImportScanActor")
   decidedImportCandidates        ImportCandidate[]                @relation("ImportCandidateDecider")
   matchedCandidateSources        CandidateSource[]                @relation("CandidateSourceMatcher")
@@ -4577,6 +4578,14 @@ enum SourceMappingKind {
   CATEGORY
 }
 
+enum SourceChangeKind {
+  PRICE_CHANGED
+  CONTENT_CHANGED
+  IMAGE_CHANGED
+  SOURCE_REMOVED
+  SOURCE_RETURNED
+}
+
 /// P9-2: one authorized place a supplier's catalog can be read from. The permission record (who, how, when, which content) must be
 /// complete and confirmed before the source can be enabled (T9); the database refuses an enabled source without it.
 model SupplierSource {
@@ -4678,6 +4687,7 @@ model ImportScan {
   firstSeenRecords    SourceRecord[]    @relation("SourceRecordFirstScan")
   lastSeenRecords     SourceRecord[]    @relation("SourceRecordLastScan")
   priceObservations   SourcePriceObservation[]
+  changes             SourceChange[]
 
   @@index([sourceId, startedAt(sort: Desc)], map: "import_scans_source_idx")
   @@map("import_scans")
@@ -4713,11 +4723,34 @@ model SourceRecord {
   createdAt        DateTime                 @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime                 @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   priceObservations SourcePriceObservation[]
+  changes          SourceChange[]
   candidateLink    CandidateSource?
 
   @@unique([sourceId, sourceKey], map: "source_records_source_key_key")
   @@index([sourceId, state], map: "source_records_state_idx")
   @@map("source_records")
+}
+
+/// P9-7: what a scan found different on a supplier product, kept until a person acknowledges it (the "Thay đổi" queue). A note only: it
+/// never edits a candidate, a product, a price or a picture. Append-only except the one acknowledgement.
+model SourceChange {
+  id                   String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  seq                  BigInt           @default(autoincrement())
+  sourceRecordId       String           @map("source_record_id") @db.Uuid
+  sourceRecord         SourceRecord     @relation(fields: [sourceRecordId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  scanId               String           @map("scan_id") @db.Uuid
+  scan                 ImportScan       @relation(fields: [scanId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  kind                 SourceChangeKind
+  detail               Json             @default("{}") @db.JsonB
+  detectedAt           DateTime         @default(dbgenerated("clock_timestamp()")) @map("detected_at") @db.Timestamptz(3)
+  acknowledgedByUserId String?          @map("acknowledged_by_user_id") @db.Uuid
+  acknowledgedBy       User?            @relation("SourceChangeAcknowledger", fields: [acknowledgedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  acknowledgedAt       DateTime?        @map("acknowledged_at") @db.Timestamptz(3)
+
+  @@unique([sourceRecordId, scanId, kind], map: "source_changes_scan_key")
+  @@index([sourceRecordId, seq(sort: Desc)], map: "source_changes_record_idx")
+  @@index([scanId], map: "source_changes_scan_idx")
+  @@map("source_changes")
 }
 
 /// P9-2: append-only. A price seen on a source is reference data only (Owner answers 2 and 6).

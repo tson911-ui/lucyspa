@@ -2435,7 +2435,7 @@
 
   /* Staff tables (Owner, 2026-10-09, rule 4): the same solid hover as every control. Text, links, muted text and row
      icons take the hover text color (the status badge keeps its own colors), and the row menu button gets a ring so it
-     does not melt into the row it sits on. */
+     does not melt into the row it sits on. The open row menu keeps its own colors (it sits inside the row, on a white panel). */
   .ls-shell .ls-table tbody tr:hover td {
     color: var(--ls-hover-text);
     background: var(--ls-hover-bg);
@@ -2446,7 +2446,12 @@
     tbody
     tr:hover
     td
-    :is(a, button, span, small, strong, p, div, svg):not(.ls-badge, .ls-badge *) {
+    :is(a, button, span, small, strong, p, div, svg):not(
+      .ls-badge,
+      .ls-badge *,
+      .ls-popover,
+      .ls-popover *
+    ) {
     color: inherit;
   }
 

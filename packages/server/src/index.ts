@@ -97,6 +97,7 @@ export {
 export { redisConnectionOptions, SYSTEM_CHECK_QUEUE, QUEUE_PREFIX } from './redis.js';
 export {
   holdsPermissionAt,
+  resolveGlobalPermissionHolders,
   resolvePermissionHolders,
   resolveSupervisorRecipients,
   type PermissionHoldersInput,

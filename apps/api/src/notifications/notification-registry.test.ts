@@ -57,6 +57,7 @@ const ONLINE_MEMBER = [
   'ONLINE_ORDER_REFUNDED',
 ];
 const ONLINE_STAFF = ['ONLINE_ORDER_NEW', 'ONLINE_ORDER_ALERT'];
+const SUPPLIER_IMPORT = ['SUPPLIER_IMPORT_CHANGES'];
 
 test('the registry keeps every Phase 3 type unchanged and adds the Leave, finance and stock alert types', () => {
   assert.deepEqual(
@@ -73,8 +74,10 @@ test('the registry keeps every Phase 3 type unchanged and adds the Leave, financ
       ...ORDER_ALERT,
       ...ONLINE_MEMBER,
       ...ONLINE_STAFF,
+      ...SUPPLIER_IMPORT,
     ].sort(),
   );
+  assert.deepEqual(notificationMetadata('SUPPLIER_IMPORT_CHANGES').entityTypes, ['SupplierSource']);
   assert.deepEqual(notificationMetadata('LOW_STOCK_REACHED').entityTypes, ['ProductVariant']);
   assert.deepEqual(notificationMetadata('EXPIRY_ALERT').entityTypes, ['Branch']);
   for (const type of INVENTORY) {
@@ -119,11 +122,17 @@ test('category filters are derived from the registry, and targets from the entit
   );
   assert.equal(
     notificationTypesInCategory('OPERATIONS').length,
-    PHASE3.length + INVENTORY.length + RETURNS.length + ORDER_ALERT.length + ONLINE_STAFF.length,
+    PHASE3.length +
+      INVENTORY.length +
+      RETURNS.length +
+      ORDER_ALERT.length +
+      ONLINE_STAFF.length +
+      SUPPLIER_IMPORT.length,
   );
   assert.equal(notificationTarget('ProductVariant'), 'PRODUCT_VARIANT');
   assert.equal(notificationTarget('Invoice'), 'INVOICE');
   assert.equal(notificationTarget('Branch'), 'BRANCH');
+  assert.equal(notificationTarget('SupplierSource'), 'SUPPLIER_IMPORTS');
   assert.equal(notificationTarget('Booking'), 'BOOKING');
   assert.equal(notificationTarget('Visit'), 'VISIT');
   assert.equal(notificationTarget('LeaveRequest'), 'LEAVE_REQUEST');
@@ -386,4 +395,11 @@ test('stock alert params are counts only: no names, no free text', () => {
   bad('EXPIRY_ALERT', { withinDays: 90, expiredLots: -1, expiringLots: 1 });
   bad('EXPIRY_ALERT', { withinDays: 90, expiredLots: 0 });
   bad('EXPIRY_ALERT', { withinDays: 90, expiredLots: 0, expiringLots: 1, note: 'x' });
+  // Phase 9 P9-7: a supplier import notice is counts only, and says something.
+  const counts = { created: 1, priceChanged: 2, contentChanged: 0, imageChanged: 0, removed: 0 };
+  assert.deepEqual(parseNotificationParams('SUPPLIER_IMPORT_CHANGES', counts), counts);
+  bad('SUPPLIER_IMPORT_CHANGES', { ...counts, created: 0, priceChanged: 0 });
+  bad('SUPPLIER_IMPORT_CHANGES', { ...counts, price: 350000 });
+  bad('SUPPLIER_IMPORT_CHANGES', { ...counts, removed: -1 });
+  bad('SUPPLIER_IMPORT_CHANGES', null);
 });

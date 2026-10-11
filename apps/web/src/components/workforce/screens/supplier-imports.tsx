@@ -13,6 +13,7 @@ import {
   ListToolbar,
   MediaThumb,
   RowActions,
+  Tabs,
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useState } from 'react';
@@ -49,6 +50,7 @@ import {
   useResource,
   useSuccessToast,
 } from '../ui';
+import { ChangesPanel } from './supplier-import-changes';
 import { ReviewDrawer } from './supplier-import-review';
 import { useUrlState } from '@lucy-spa/ui';
 
@@ -293,7 +295,7 @@ function ImportsPage() {
   return (
     <>
       <PageHeader title={text.title} intro={text.intro}>
-        {(data?.readyCount ?? 0) > 0 ? (
+        {list.tab === 'candidates' && (data?.readyCount ?? 0) > 0 ? (
           <Button
             variant="primary"
             icon="check"
@@ -304,70 +306,92 @@ function ImportsPage() {
           </Button>
         ) : null}
       </PageHeader>
-      {notice ? <Notice tone="info">{notice}</Notice> : null}
-      {data ? (
-        <ListToolbar
-          labels={toolbarLabels(t)}
-          activeFilters={active}
-          resultCount={resultsText(t, data.total)}
-          onReset={() => updateList({ filter: 'OPEN', warning: '' })}
-          reload={{ label: t.common.reload, onClick: () => void loaded.reload() }}
-          filters={
-            <>
-              <FacetedFilter
-                label={text.filters.state}
-                clearLabel={t.common.list.clearChoice}
-                options={IMPORT_FILTERS.map((value) => ({
-                  value,
-                  label: text.filterStates[value],
-                }))}
-                selected={[list.filter]}
-                onChange={([value]) => updateList({ filter: value ?? 'OPEN' })}
-              />
-              <FacetedFilter
-                label={text.filters.warning}
-                clearLabel={t.common.list.clearChoice}
-                options={IMPORT_WARNING_FILTERS.map((value) => ({
-                  value,
-                  label: warningText(value, locale),
-                }))}
-                selected={list.warning ? [list.warning] : []}
-                onChange={([value]) => updateList({ warning: value ?? '' })}
-              />
-            </>
-          }
-        />
-      ) : null}
-      <DataTable
-        mode="server"
-        className="ls-cards-one-line"
-        caption={fill(t.common.list.table, { list: text.title })}
-        columns={columns}
-        rows={rows}
-        rowKey={(row) => `${row.id}:${row.rowVersion}`}
-        loading={loaded.loading}
-        loadingLabel={t.common.loading}
-        error={
-          loaded.error && !data ? (
-            <ErrorState error={loaded.error} t={t} onRetry={() => void loaded.reload()} />
-          ) : undefined
-        }
-        empty={data ? <Empty>{active > 0 ? text.emptyFiltered : text.empty}</Empty> : undefined}
-        paging={{
-          page: list.page,
-          pageSize: data?.pageSize ?? 20,
-          total: data?.total ?? 0,
-          onPageChange: (page) => updateList({ page }),
-          labels: paginationLabels(t, text.title),
-        }}
+      <Tabs
+        label={text.tabs.label}
+        value={list.tab}
+        onChange={(id) => updateList({ tab: id })}
+        tabs={[
+          {
+            id: 'candidates',
+            label: text.tabs.candidates,
+            panel: (
+              <>
+                {notice ? <Notice tone="info">{notice}</Notice> : null}
+                {data ? (
+                  <ListToolbar
+                    labels={toolbarLabels(t)}
+                    activeFilters={active}
+                    resultCount={resultsText(t, data.total)}
+                    onReset={() => updateList({ filter: 'OPEN', warning: '' })}
+                    reload={{ label: t.common.reload, onClick: () => void loaded.reload() }}
+                    filters={
+                      <>
+                        <FacetedFilter
+                          label={text.filters.state}
+                          clearLabel={t.common.list.clearChoice}
+                          options={IMPORT_FILTERS.map((value) => ({
+                            value,
+                            label: text.filterStates[value],
+                          }))}
+                          selected={[list.filter]}
+                          onChange={([value]) => updateList({ filter: value ?? 'OPEN' })}
+                        />
+                        <FacetedFilter
+                          label={text.filters.warning}
+                          clearLabel={t.common.list.clearChoice}
+                          options={IMPORT_WARNING_FILTERS.map((value) => ({
+                            value,
+                            label: warningText(value, locale),
+                          }))}
+                          selected={list.warning ? [list.warning] : []}
+                          onChange={([value]) => updateList({ warning: value ?? '' })}
+                        />
+                      </>
+                    }
+                  />
+                ) : null}
+                <DataTable
+                  mode="server"
+                  className="ls-cards-one-line"
+                  caption={fill(t.common.list.table, { list: text.title })}
+                  columns={columns}
+                  rows={rows}
+                  rowKey={(row) => `${row.id}:${row.rowVersion}`}
+                  loading={loaded.loading}
+                  loadingLabel={t.common.loading}
+                  error={
+                    loaded.error && !data ? (
+                      <ErrorState error={loaded.error} t={t} onRetry={() => void loaded.reload()} />
+                    ) : undefined
+                  }
+                  empty={
+                    data ? <Empty>{active > 0 ? text.emptyFiltered : text.empty}</Empty> : undefined
+                  }
+                  paging={{
+                    page: list.page,
+                    pageSize: data?.pageSize ?? 20,
+                    total: data?.total ?? 0,
+                    onPageChange: (page) => updateList({ page }),
+                    labels: paginationLabels(t, text.title),
+                  }}
+                />
+                {list.review !== '' ? (
+                  <ReviewDrawer
+                    id={list.review}
+                    onClose={() => updateList({ review: '' })}
+                    onChanged={() => void loaded.reload()}
+                  />
+                ) : null}
+              </>
+            ),
+          },
+          {
+            id: 'changes',
+            label: text.tabs.changes,
+            panel: <ChangesPanel list={list} updateList={updateList} />,
+          },
+        ]}
       />
-      {list.review !== '' ? (
-        <ReviewDrawer
-          id={list.review}
-          onClose={() => updateList({ review: '' })}
-          onChanged={() => void loaded.reload()}
-        />
-      ) : null}
       {overlay?.kind === 'reject' ? decideDialog('reject', overlay.row) : null}
       {overlay?.kind === 'ignore' ? decideDialog('ignore', overlay.row) : null}
       {overlay?.kind === 'bulk' ? (

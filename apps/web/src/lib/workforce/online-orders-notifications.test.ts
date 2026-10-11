@@ -88,3 +88,47 @@ test('every online order notice has a text in both languages', () => {
     }
   }
 });
+
+const supplier = (params: NotificationItem['params']): NotificationItem => ({
+  ...base,
+  branch: null,
+  id: 'n3',
+  type: 'SUPPLIER_IMPORT_CHANGES',
+  source: { type: 'SupplierSource', id: 'src-1', code: 'Haruohui' },
+  params,
+});
+
+test('a supplier import notice names the source and only the counts that are not zero, and opens the changes tab for reviewers', () => {
+  const item = supplier({
+    created: 0,
+    priceChanged: 8,
+    contentChanged: 0,
+    imageChanged: 2,
+    removed: 1,
+  });
+  assert.equal(
+    notificationMessage(item, 'vi'),
+    'Cập nhật từ nhà cung cấp (Haruohui): 8 đổi giá, 2 đổi ảnh, 1 không còn trên nguồn.',
+  );
+  assert.equal(
+    notificationMessage(item, 'en'),
+    'Supplier update (Haruohui): 8 price changes, 2 picture changes, 1 no longer on the source.',
+  );
+  assert.equal(
+    notificationHref(item, employee([['REVIEW_SUPPLIER_IMPORTS']]), '/vi/workforce'),
+    '/vi/workforce/supplier-imports?tab=changes',
+  );
+  assert.equal(
+    notificationHref(item, owner, '/vi/workforce'),
+    '/vi/workforce/supplier-imports?tab=changes',
+  );
+  assert.equal(
+    notificationHref(item, employee([['MANAGE_SUPPLIER_SOURCES']]), '/vi/workforce'),
+    null,
+    'managing sources is not reviewing',
+  );
+  assert.equal(
+    notificationMessage(supplier(null), 'vi'),
+    getNotificationDictionary('vi').types.SUPPLIER_IMPORT_CHANGES,
+  );
+});

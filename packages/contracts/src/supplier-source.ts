@@ -245,6 +245,8 @@ export interface SupplierSourceScanItem {
     priceChanged: number;
     contentChanged: number;
     imageChanged: number;
+    /** Products raised as no longer on the source (missing from three healthy scans in a row). Nothing is deleted or hidden because of it. */
+    removed: number;
     images: number;
     imageFlags: number;
     errors: number;

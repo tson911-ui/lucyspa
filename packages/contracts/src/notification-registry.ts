@@ -15,6 +15,7 @@ export const NOTIFICATION_ENTITY_TYPES = [
   'ProductVariant',
   'ProductReturnCase',
   'ProductOrder',
+  'SupplierSource',
 ] as const;
 export type NotificationEntityType = (typeof NOTIFICATION_ENTITY_TYPES)[number];
 
@@ -34,7 +35,8 @@ export type NotificationTargetKind =
   | 'BRANCH'
   | 'PRODUCT_VARIANT'
   | 'PRODUCT_RETURN'
-  | 'PRODUCT_ORDER';
+  | 'PRODUCT_ORDER'
+  | 'SUPPLIER_IMPORTS';
 /** Shape of the structured `params` a type carries. Never free text. */
 export type NotificationParamsKind =
   | 'NONE'
@@ -51,7 +53,8 @@ export type NotificationParamsKind =
   | 'PRODUCT_RETURN_OPENED'
   | 'PRODUCT_REFUND_MADE'
   | 'PRODUCT_ORDER_ALERT'
-  | 'ONLINE_ORDER_ALERT';
+  | 'ONLINE_ORDER_ALERT'
+  | 'SUPPLIER_IMPORT_CHANGES';
 
 export interface NotificationTypeMetadata {
   readonly category: NotificationCategory;
@@ -77,6 +80,7 @@ export const NOTIFICATION_TARGET_BY_ENTITY = {
   ProductVariant: 'PRODUCT_VARIANT',
   ProductReturnCase: 'PRODUCT_RETURN',
   ProductOrder: 'PRODUCT_ORDER',
+  SupplierSource: 'SUPPLIER_IMPORTS',
 } as const satisfies Record<NotificationEntityType, NotificationTargetKind>;
 
 const operations = (severity: NotificationSeverity, i18nKey: string): NotificationTypeMetadata => ({
@@ -211,6 +215,14 @@ export const NOTIFICATION_TYPE_REGISTRY = {
     i18nKey: 'ONLINE_ORDER_ALERT',
     params: 'ONLINE_ORDER_ALERT',
   },
+  // Phase 9 P9-7: a scan of a supplier source found something new or different; tells the holders of REVIEW_SUPPLIER_IMPORTS (counts only).
+  SUPPLIER_IMPORT_CHANGES: {
+    category: 'OPERATIONS',
+    severity: 'INFO',
+    entityTypes: ['SupplierSource'],
+    i18nKey: 'SUPPLIER_IMPORT_CHANGES',
+    params: 'SUPPLIER_IMPORT_CHANGES',
+  },
 } as const satisfies Record<string, NotificationTypeMetadata>;
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPE_REGISTRY;
@@ -330,7 +342,16 @@ export interface OnlineOrderAlertParams {
   unshippedOrders: number;
   undeliveredOrders: number;
 }
+/** A scan of a supplier source found something: counts only, never a price or a name. */
+export interface SupplierImportChangesParams {
+  created: number;
+  priceChanged: number;
+  contentChanged: number;
+  imageChanged: number;
+  removed: number;
+}
 export type NotificationParams =
+  | SupplierImportChangesParams
   | OnlineOrderAlertParams
   | ProductOrderAlertParams
   | ProductRefundMadeParams
@@ -472,6 +493,25 @@ export function parseNotificationParams(
         method: oneOf('method', record['method'], ['CASH', 'BANK_TRANSFER_MANUAL'] as const),
         refundedBy: code('refundedBy', record['refundedBy']),
       };
+    }
+    case 'SUPPLIER_IMPORT_CHANGES': {
+      exactKeys(type, record, [
+        'created',
+        'priceChanged',
+        'contentChanged',
+        'imageChanged',
+        'removed',
+      ]);
+      const counts = {
+        created: count('created', record['created']),
+        priceChanged: count('priceChanged', record['priceChanged']),
+        contentChanged: count('contentChanged', record['contentChanged']),
+        imageChanged: count('imageChanged', record['imageChanged']),
+        removed: count('removed', record['removed']),
+      };
+      if (Object.values(counts).reduce((sum, value) => sum + value, 0) < 1)
+        throw new Error('A supplier import notice reports something.');
+      return counts;
     }
     case 'ONLINE_ORDER_ALERT': {
       exactKeys(type, record, ['unshippedOrders', 'undeliveredOrders']);

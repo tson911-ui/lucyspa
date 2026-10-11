@@ -10,6 +10,9 @@ import type {
   SupplierCandidateImageDecisionRequest,
   SupplierCandidateKeepSeparateRequest,
   SupplierCandidateListResponse,
+  SupplierChangeAcknowledgeRequest,
+  SupplierChangeAcknowledgeResponse,
+  SupplierChangeListResponse,
   SupplierMappingRequest,
   SupplierMappingResponse,
 } from '@lucy-spa/contracts';
@@ -109,6 +112,15 @@ class DecideDto extends VersionDto implements SupplierCandidateDecideRequest {
   note?: string | null;
 }
 
+class AcknowledgeDto implements SupplierChangeAcknowledgeRequest {
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(64, { each: true })
+  ids!: string[];
+}
+
 class MappingDto implements SupplierMappingRequest {
   @ApiProperty() @IsString() @MaxLength(64) candidateId!: string;
   @ApiProperty({ enum: ['BRAND', 'CATEGORY'] }) @IsIn(['BRAND', 'CATEGORY']) kind!:
@@ -166,6 +178,42 @@ export class SupplierImportController {
       warning,
       page: page === undefined ? undefined : Number(page),
     });
+  }
+
+  @Get('changes')
+  @ApiOkResponse({
+    description:
+      'What the scans found different on the supplier products, 20 per page (REVIEW_SUPPLIER_IMPORTS). Source prices only with MANAGE_PRODUCT_PRICES.',
+  })
+  changes(
+    @Req() request: Request,
+    @Query('status') status?: string,
+    @Query('kind') kind?: string,
+    @Query('page') page?: string,
+  ): Promise<SupplierChangeListResponse> {
+    for (const value of [status, kind]) {
+      if (value !== undefined && typeof value !== 'string')
+        throw new AuthError('VALIDATION_FAILED', 'query');
+    }
+    if (page !== undefined && !/^[0-9]{1,6}$/.test(String(page))) {
+      throw new AuthError('VALIDATION_FAILED', 'page');
+    }
+    return this.imports.listChanges(this.session(request), {
+      status,
+      kind,
+      page: page === undefined ? undefined : Number(page),
+    });
+  }
+
+  @Post('changes/acknowledge')
+  @HttpCode(200)
+  @ApiOkResponse({ description: 'Says the listed change notes were seen. Changes nothing else.' })
+  acknowledgeChanges(
+    @Body() body: AcknowledgeDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SupplierChangeAcknowledgeResponse> {
+    return this.imports.acknowledgeChanges(this.session(request), body, this.requestId(response));
   }
 
   @Get('candidates/:id')

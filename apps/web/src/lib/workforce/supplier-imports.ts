@@ -1,13 +1,16 @@
 import type {
+  SourceChangeKind,
+  SupplierChangeRow,
   CandidateBlocker,
   CandidateState,
   CandidateWarningItem,
   SupplierCandidateDetail,
   SupplierCandidateEditRequest,
 } from '@lucy-spa/contracts';
-import { OPEN_CANDIDATE_STATES } from '@lucy-spa/contracts';
+import { OPEN_CANDIDATE_STATES, SOURCE_CHANGE_KINDS } from '@lucy-spa/contracts';
 import { supplierImportsDictionary } from '../../i18n/supplier-imports';
 import type { Locale } from '../../i18n/locales';
+import { fill } from '../../i18n/workforce';
 import { ApiError, type Query } from './api';
 
 /**
@@ -25,6 +28,12 @@ export type ImportListState = {
   page: number;
   /** The candidate open in the review drawer (a link to it can be shared); empty when none. */
   review: string;
+  /** `candidates` (default) or `changes`: what the scans found different at the source (Phase 9 P9-7). */
+  tab: string;
+  /** The changes tab: `OPEN` (not yet seen) or `DONE` (seen). */
+  seen: string;
+  /** The changes tab: one kind of change, or empty for all. */
+  kind: string;
 };
 
 /** The order warnings are shown in a row: what blocks an approval first, the routine gaps last. */
@@ -53,6 +62,9 @@ export const IMPORT_LIST_DEFAULTS: ImportListState = {
   warning: '',
   page: 1,
   review: '',
+  tab: 'candidates',
+  seen: 'OPEN',
+  kind: '',
 };
 /** The keys that go back to their default when a filter changes: the page and the open candidate. */
 export const IMPORT_PAGE_KEYS = ['page', 'review'] as const;
@@ -73,7 +85,16 @@ export function normalizeImportList(state: ImportListState): ImportListState {
     warning: /^[A-Z_]{3,40}$/.test(state.warning) ? state.warning : '',
     page: Number.isSafeInteger(state.page) && state.page >= 1 ? state.page : 1,
     review: /^[0-9a-f-]{36}$/.test(state.review) ? state.review : '',
+    tab: state.tab === 'changes' ? 'changes' : 'candidates',
+    seen: state.seen === 'DONE' ? 'DONE' : 'OPEN',
+    kind: (SOURCE_CHANGE_KINDS as readonly string[]).includes(state.kind) ? state.kind : '',
   };
+}
+
+export function changeListQuery(state: ImportListState): Query {
+  const query: Query = { page: state.page, status: state.seen };
+  if (state.kind !== '') query['kind'] = state.kind;
+  return query;
 }
 
 export function importListQuery(state: ImportListState): Query {
@@ -290,4 +311,87 @@ export function pictureUrl(
   variant: 'thumb' | 'md' | 'lg',
 ): string {
   return `/api/v1/supplier-imports/candidates/${candidateId}/images/${imageId}/${variant}`;
+}
+
+// ------------------------------------------------------------------------------------------------------------- changes (P9-7)
+
+export const CHANGE_KIND_FILTERS: readonly SourceChangeKind[] = SOURCE_CHANGE_KINDS;
+
+export function changeTone(kind: SourceChangeKind): StateTone {
+  if (kind === 'SOURCE_REMOVED') return 'warning';
+  if (kind === 'SOURCE_RETURNED') return 'success';
+  if (kind === 'PRICE_CHANGED') return 'info';
+  return 'neutral';
+}
+
+const FIELD_VALUE_MAX = 60;
+
+/** A short, readable value for the before/after of one field; never more than a line. */
+export function shortValue(value: unknown, empty: string): string {
+  const text = Array.isArray(value)
+    ? value.map((entry) => String(entry)).join(', ')
+    : value === null || value === undefined
+      ? ''
+      : String(value);
+  const trimmed = text.replace(/\s+/g, ' ').trim();
+  if (trimmed === '') return empty;
+  return trimmed.length > FIELD_VALUE_MAX ? `${trimmed.slice(0, FIELD_VALUE_MAX)}…` : trimmed;
+}
+
+/** What a note says in words: the first line, and (for a text change) the first field's before and after. */
+export function changeSummary(
+  change: SupplierChangeRow,
+  locale: Locale,
+  money: (vnd: number | null) => string,
+): { headline: string; sub: string | null } {
+  const c = supplierImportsDictionary(locale).changes;
+  const detail = change.detail;
+  if (change.kind === 'PRICE_CHANGED') {
+    return detail.price
+      ? {
+          headline: fill(c.detail.price, {
+            before: money(detail.price.before.priceVnd),
+            after: money(detail.price.after.priceVnd),
+          }),
+          sub: null,
+        }
+      : { headline: c.detail.priceHidden, sub: null };
+  }
+  if (change.kind === 'CONTENT_CHANGED') {
+    const fields = detail.fields ?? [];
+    const names = fields.map((field) => c.fieldNames[field as keyof typeof c.fieldNames] ?? field);
+    const first = fields[0];
+    return {
+      headline:
+        names.length === 0
+          ? c.detail.contentOther
+          : fill(c.detail.fields, { fields: names.join(', ') }),
+      sub:
+        first === undefined || first === 'attributes'
+          ? null
+          : fill(c.detail.fieldValue, {
+              before: shortValue(detail.before?.[first], c.emptyValue),
+              after: shortValue(detail.after?.[first], c.emptyValue),
+            }),
+    };
+  }
+  if (change.kind === 'IMAGE_CHANGED') {
+    const images = detail.images ?? { before: 0, after: 0, added: 0, removed: 0 };
+    return {
+      headline: fill(c.detail.images, {
+        before: String(images.before),
+        after: String(images.after),
+        added: String(images.added),
+        removed: String(images.removed),
+      }),
+      sub: null,
+    };
+  }
+  if (change.kind === 'SOURCE_REMOVED') {
+    return {
+      headline: fill(c.detail.removed, { count: String(detail.missingScans ?? 0) }),
+      sub: null,
+    };
+  }
+  return { headline: c.detail.returned, sub: null };
 }

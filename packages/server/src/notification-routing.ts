@@ -226,6 +226,51 @@ export async function resolvePermissionHolders(
   return holders.sort();
 }
 
+/**
+ * Everyone who effectively holds a GLOBAL-scope permission (one that belongs to no branch, like the supplier import permissions),
+ * by the same authority primitives: role grants + overrides, DENY respected. Eligible means an ACTIVE account, and for an employee
+ * employment not ended on today's date in UTC (there is no branch to take a local date from). The caller holds the shared
+ * authorization-graph lock.
+ */
+export async function resolveGlobalPermissionHolders(
+  tx: Prisma.TransactionClient,
+  input: { readonly permission: string; readonly exclude?: readonly string[]; readonly now?: Date },
+): Promise<readonly string[]> {
+  assertAuthTransaction(tx);
+  if (!isKnownPermission(input.permission)) return [];
+  const permission = input.permission;
+  const candidates = await tx.user.findMany({
+    where: {
+      status: 'ACTIVE',
+      id: { notIn: [...(input.exclude ?? [])] },
+      OR: [
+        { kind: 'OWNER' },
+        {
+          kind: 'EMPLOYEE',
+          OR: [
+            { roleAssignments: { some: {} } },
+            {
+              permissionOverrides: { some: { effect: 'ALLOW', permission: { code: permission } } },
+            },
+          ],
+        },
+      ],
+    },
+    select: { id: true },
+    orderBy: { id: 'asc' },
+  });
+  const now = input.now ?? new Date();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const holders: string[] = [];
+  for (const candidate of candidates) {
+    const graph = await loadAuthorityGraph(tx, candidate.id);
+    if (!graph || !decide(graph, input.permission, { kind: 'GLOBAL' })) continue;
+    if (graph.kind === 'EMPLOYEE' && !(await employedOn(tx, candidate.id, today))) continue;
+    holders.push(candidate.id);
+  }
+  return holders.sort();
+}
+
 /** The single-person form of `resolvePermissionHolders` (same eligibility rule). */
 export async function holdsPermissionAt(
   tx: Prisma.TransactionClient,

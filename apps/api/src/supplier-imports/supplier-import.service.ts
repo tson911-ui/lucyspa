@@ -10,6 +10,9 @@ import type {
   SupplierCandidateImageDecisionRequest,
   SupplierCandidateKeepSeparateRequest,
   SupplierCandidateListResponse,
+  SupplierChangeAcknowledgeRequest,
+  SupplierChangeAcknowledgeResponse,
+  SupplierChangeListResponse,
   SupplierMappingRequest,
   SupplierMappingResponse,
 } from '@lucy-spa/contracts';
@@ -27,6 +30,7 @@ import * as input from '../inventory/inventory.input.js';
 import { MEDIA_STORAGE } from '../platform/tokens.js';
 import { mediaVariantObject } from '../website/media.core.js';
 import type { VariantKind } from '../website/media.processing.js';
+import * as changes from './supplier-import.changes.js';
 import * as core from './supplier-import.core.js';
 
 /**
@@ -50,6 +54,21 @@ export class SupplierImportService {
     query: { state?: string | undefined; warning?: string | undefined; page?: number | undefined },
   ): Promise<SupplierCandidateListResponse> {
     return this.run(token, undefined, (context) => core.listCandidates(context, query));
+  }
+
+  listChanges(
+    token: string | undefined,
+    query: { status?: string | undefined; kind?: string | undefined; page?: number | undefined },
+  ): Promise<SupplierChangeListResponse> {
+    return this.run(token, undefined, (context) => changes.listChanges(context, query));
+  }
+
+  acknowledgeChanges(
+    token: string | undefined,
+    body: SupplierChangeAcknowledgeRequest,
+    requestId?: string,
+  ): Promise<SupplierChangeAcknowledgeResponse> {
+    return this.run(token, requestId, (context) => changes.acknowledgeChanges(context, body));
   }
 
   get(token: string | undefined, id: string): Promise<SupplierCandidateDetailResponse> {
