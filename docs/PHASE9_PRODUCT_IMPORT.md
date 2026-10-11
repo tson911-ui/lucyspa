@@ -253,13 +253,14 @@ The Owner's words: "Owner decision on the pending readings (P9-3 ×4, P9-4 ×3, 
 The Owner's words as he sent them (English), in two messages. They **change** earlier Phase 9 decisions where they say so (the selling price, the 20-product cap, brands and categories, publishing); the earlier text of this document above is kept as history and section 17 wins where they differ.
 
 > Owner feedback after testing on production: importing is far too many steps. Before the P9-10 deploy guide, add a one-click path. The Owner does not want to make these decisions himself; apply them as stated:
+>
 > - One button "Nhập và đăng tất cả" on the import screen, and a per-source "Quét toàn bộ" that scans all products (352 on haruohui.com), not just 20. It also covers the 20 candidates already scanned.
 > - Brands: auto-create from the supplier's brand text when missing (today the brand dropdown is empty with no way to create one), remembered for next time.
 > - Categories: use this fixed Lucy category list (create it if missing): Làm sạch, Nước hoa hồng/Toner, Serum/Tinh chất, Dưỡng ẩm/Kem dưỡng, Chăm sóc mắt, Chống nắng, Mặt nạ, Trang điểm, Chăm sóc cơ thể, Chăm sóc tóc, Bộ sản phẩm/Set, Khác. Map each product automatically using the supplier's product-type categories first, then keywords in the product name (Vietnamese and English, e.g. sữa rửa mặt/tẩy trang/cleanser → Làm sạch; nước hoa hồng/toner/softener → Toner; serum/tinh chất/essence/ampoule → Serum; kem dưỡng/sữa dưỡng/cream/emulsion → Dưỡng ẩm; mắt/eye → Chăm sóc mắt; chống nắng/sun → Chống nắng; mặt nạ/mask → Mặt nạ; son/phấn/cushion/foundation → Trang điểm; bộ/set → Bộ sản phẩm). Brand and product-line names are never categories. Unmatched → Khác, still published. Remember mappings; the Owner can move products later. Add tests for the mapping on the 20 sampled products.
 > - Selling price = the supplier's listed price (Owner decision), rounded to 1,000 VND, recorded as a normal price version; editable later.
 > - Approve and publish in one action, with one preview dialog showing counts (new brands, products per category). Skip only real blockers (missing name/SKU, SKU collision, flagged image) and list them.
 > - Also fix: the "Giấy phép" item in the source row menu is invisible on hover (text color).
-> Keep audit and safety checks underneath; only the clicks change.
+>   Keep audit and safety checks underneath; only the clicks change.
 
 > Addition: the "Nhập và đăng tất cả" preview is a list with ONE CHECKBOX PER PRODUCT (image, name, SKU, category, price), all ticked by default, plus "Chọn tất cả / Bỏ chọn tất cả", search, and filters by category and brand. Only ticked products are imported and published. Unticked products become IGNORED and are not re-proposed on later scans unless their source content changes. Checkboxes must have a 44px tap area on mobile. Published products can still be hidden later with the existing inactive status.
 
