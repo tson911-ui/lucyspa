@@ -4,7 +4,7 @@ Dành cho Owner, không cần rành kỹ thuật. Chỉ có **MỘT khối lện
 
 **Khối này đưa cả Đợt A (sổ quỹ) và Đợt B (lương) lên một lần**, vì `handoff` chưa ghi Đợt A đã triển khai. Nếu Owner đã triển khai Đợt A bằng `docs/DEPLOY_PHASE7_WAVE_A.md` rồi, khối tự nhận ra (đang ở `110|73`) và chỉ làm phần của Đợt B. Đang ở số khác hai số đó: khối dừng.
 
-**Bản sẽ cài:** commit `1cd8ffb48949a5d6a4ee3e328c49b296c015fb5e`, đã push lên `main`. Các commit tài liệu đẩy sau đó (kể cả commit của tệp này) không đổi mã chạy.
+**Bản sẽ cài:** commit `d42ab4e84814f4fb82c1e0de3c26a1c18ffe3a85`, đã push lên `main`. Các commit tài liệu đẩy sau đó (kể cả commit của tệp này) không đổi mã chạy.
 **Bản đang chạy:** `ac74013bb6a9ef681c7d4e306216de1a3565e639` (Phase 9, **108 migration, 68 quyền**) hoặc bản Đợt A `b11c21e09803cbd22c1789918b35664d5dea9b2f` (**110 migration, 73 quyền**).
 **Cơ sở dữ liệu:** từ 108 lên **118 migration** (hoặc 110 lên 118), chỉ **thêm**: **19 bảng mới rỗng** (5 của sổ quỹ, 14 của lương và tip), vài giá trị kiểu mới, 5 giá trị quyền mới, **không đổi, không xóa dòng dữ liệu cũ nào**. Migration `20261203000000`, `20261208000000` và `20261209000000` (tip do khách chọn: thêm cột `payment_id` để trống vào `tips`) thêm khóa ngoại và một cột để trống vào bảng cũ (`pay_earnings`/`tips` đều rỗng, bảng công CTV thêm cột `pay_run_id` để trống).
 **Tip:** chỉ do khách chọn khi thanh toán PayOS (tiền mặt không ghi vào hệ thống); chỉ hiện sau khi Chủ bắt đầu sổ quỹ. Xem `docs/PHASE7_PAYROLL_FUNDS.md` mục 15.
@@ -15,7 +15,7 @@ Dành cho Owner, không cần rành kỹ thuật. Chỉ có **MỘT khối lện
 
 ## Trước khi dán
 
-- Trên GitHub, tab **Actions**, commit `1cd8ffb48949a5d6a4ee3e328c49b296c015fb5e` có dấu **xanh**. Đỏ hoặc đang chạy: **đừng làm**.
+- Trên GitHub, tab **Actions**, commit `d42ab4e84814f4fb82c1e0de3c26a1c18ffe3a85` có dấu **xanh**. Đỏ hoặc đang chạy: **đừng làm**.
 - Báo nhân viên thu tiền ở quầy: tạm dừng khoảng 5 phút.
 
 ## Khối lệnh (dán nguyên khối)
@@ -24,7 +24,7 @@ Dành cho Owner, không cần rành kỹ thuật. Chỉ có **MỘT khối lện
 (
 set -u
 cd /opt/lucyspa || { echo "DUNG LAI: khong co thu muc /opt/lucyspa"; exit 1; }
-NEW=1cd8ffb48949a5d6a4ee3e328c49b296c015fb5e
+NEW=d42ab4e84814f4fb82c1e0de3c26a1c18ffe3a85
 DB=lucy_spa_dev
 SCRATCH=lucy_spa_rehearsal_scratch
 dung() { echo; echo "DUNG LAI: $1"; echo "Chup man hinh tu dong DUNG LAI tro len va gui Claude. KHONG chay lai."; exit 1; }
