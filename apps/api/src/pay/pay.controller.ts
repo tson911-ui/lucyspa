@@ -1,6 +1,9 @@
 import type {
   CommissionRuleRequest,
   InvoiceEarningsResponse,
+  InvoiceTipsResponse,
+  TipRequest,
+  TipReverseRequest,
   SellerCorrectionRequest,
   CommissionRuleResponse,
   CommissionRulesResponse,
@@ -68,6 +71,20 @@ class CommissionRuleDto implements CommissionRuleRequest {
   @IsString()
   @MaxLength(2000)
   reason!: string | null;
+}
+
+class TipDto implements TipRequest {
+  @ApiProperty() @IsString() @MaxLength(64) invoiceId!: string;
+  @ApiProperty() @IsString() @MaxLength(64) employeeUserId!: string;
+  @ApiProperty() @IsString() @MaxLength(20) amountVnd!: string;
+  @ApiProperty({ enum: ['CASH', 'TRANSFER'] }) @IsString() @MaxLength(16) method!:
+    'CASH' | 'TRANSFER';
+  @ApiProperty() @IsString() @MaxLength(64) clientRequestId!: string;
+}
+
+class TipReverseDto implements TipReverseRequest {
+  @ApiProperty() @IsString() @MaxLength(2000) reason!: string;
+  @ApiProperty() @IsString() @MaxLength(64) clientRequestId!: string;
 }
 
 class SellerDto implements SellerCorrectionRequest {
@@ -221,6 +238,47 @@ export class PayController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<InvoiceEarningsResponse> {
     return this.pay.correctSeller(this.session(request), lineId, body, this.requestId(response));
+  }
+
+  @Get('invoices/:invoiceId/tips')
+  @ApiOkResponse({
+    description:
+      'The tips of one invoice and whether one can be recorded now (COLLECT_PAYMENTS, VIEW_INVOICES or a payroll permission).',
+  })
+  invoiceTips(
+    @Param('invoiceId') invoiceId: string,
+    @Req() request: Request,
+  ): Promise<InvoiceTipsResponse> {
+    return this.pay.invoiceTips(this.session(request), invoiceId);
+  }
+
+  @Post('tips')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Records a tip for a KTV who served on a PAID invoice (COLLECT_PAYMENTS at its branch). Enters the cash book; paid out with the payslip.',
+  })
+  recordTip(
+    @Body() body: TipDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<InvoiceTipsResponse> {
+    return this.pay.recordTip(this.session(request), body, this.requestId(response));
+  }
+
+  @Post('tips/:tipId/reverse')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Reverses a tip in full while no payroll run has taken it (COLLECT_PAYMENTS at its branch, reason).',
+  })
+  reverseTip(
+    @Param('tipId') tipId: string,
+    @Body() body: TipReverseDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<InvoiceTipsResponse> {
+    return this.pay.reverseTip(this.session(request), tipId, body, this.requestId(response));
   }
 
   private session(request: Request) {

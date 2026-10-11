@@ -1,6 +1,9 @@
 import type {
   CommissionRuleRequest,
   InvoiceEarningsResponse,
+  InvoiceTipsResponse,
+  TipRequest,
+  TipReverseRequest,
   SellerCorrectionRequest,
   CommissionRuleResponse,
   CommissionRulesResponse,
@@ -23,6 +26,7 @@ import { sqlStateOf } from '../booking/customer-command.js';
 import * as earnings from './pay-earnings.core.js';
 import * as rules from './pay-rules.core.js';
 import * as salary from './pay-salary.core.js';
+import * as tips from './tips.core.js';
 
 /**
  * Phase 7 Wave B: pay configuration (tour rules, commission rules, salary versions). Authority is decided inside every command; a retryable
@@ -103,6 +107,27 @@ export class PayService {
     return this.run(token, requestId, (context) =>
       earnings.correctSeller(context, lineId, { ...body }),
     );
+  }
+
+  invoiceTips(token: string | undefined, invoiceId: string): Promise<InvoiceTipsResponse> {
+    return this.run(token, undefined, (context) => tips.invoiceTips(context, invoiceId));
+  }
+
+  recordTip(
+    token: string | undefined,
+    body: TipRequest,
+    requestId?: string,
+  ): Promise<InvoiceTipsResponse> {
+    return this.run(token, requestId, (context) => tips.recordTip(context, { ...body }));
+  }
+
+  reverseTip(
+    token: string | undefined,
+    tipId: string,
+    body: TipReverseRequest,
+    requestId?: string,
+  ): Promise<InvoiceTipsResponse> {
+    return this.run(token, requestId, (context) => tips.reverseTip(context, tipId, { ...body }));
   }
 
   private run<T>(

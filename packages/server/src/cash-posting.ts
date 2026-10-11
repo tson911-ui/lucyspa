@@ -142,6 +142,25 @@ export async function postCashSources(
   return { live: true, posted };
 }
 
+/** The cash fund of a branch, created with an opening balance of 0 when it does not exist yet (only after the Owner started the book). */
+export async function ensureCashFund(
+  tx: Prisma.TransactionClient,
+  branchId: string,
+): Promise<string | null> {
+  if (!(await tx.financeGoLive.findUnique({ where: { id: 1 }, select: { id: true } }))) return null;
+  await tx.$executeRaw`
+    INSERT INTO cash_funds (kind, branch_id, name, opening_balance_vnd, opening_at, opening_by_user_id)
+    SELECT 'CASH', b.id, 'Quỹ tiền mặt ' || b.name, 0, clock_timestamp(), g.set_by_user_id
+    FROM branches b CROSS JOIN finance_go_live g
+    WHERE b.id = ${branchId}::uuid AND b.is_active
+    ON CONFLICT (branch_id) WHERE kind = 'CASH' DO NOTHING`;
+  const fund = await tx.cashFund.findFirst({
+    where: { kind: 'CASH', branchId },
+    select: { id: true },
+  });
+  return fund?.id ?? null;
+}
+
 export interface UnpostedSummary {
   /** Source rows of the branch (dated on or before `upToDate`) that have no entry yet, by source type. */
   items: Record<PostingSourceType, number>;

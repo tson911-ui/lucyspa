@@ -79,7 +79,7 @@ async function needFund(tx: Tx, id: string): Promise<FundRow> {
 }
 
 /** Locks funds in id order: FOR UPDATE when the command takes money out (it checks the balance), else FOR SHARE. */
-async function lockFunds(tx: Tx, ids: readonly string[], exclusive: boolean): Promise<void> {
+export async function lockFunds(tx: Tx, ids: readonly string[], exclusive: boolean): Promise<void> {
   const sorted = [...new Set(ids)].sort();
   if (sorted.length === 0) return;
   if (exclusive) {
@@ -130,7 +130,12 @@ const localDay = (instant: Date, timeZone: string): string =>
   }).format(instant);
 
 /** The day a new entry of the fund counts for: today in the branch's calendar, or the day after the last closing. */
-async function openDay(tx: Tx, fund: FundRow, timeZone: string, now: Date): Promise<Date> {
+export async function openDay(
+  tx: Tx,
+  fund: Pick<FundRow, 'id' | 'kind'>,
+  timeZone: string,
+  now: Date,
+): Promise<Date> {
   const today = localDay(now, timeZone);
   let day = today;
   if (fund.kind === 'CASH') {

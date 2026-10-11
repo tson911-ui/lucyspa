@@ -14,6 +14,7 @@ datasource db {
 // Phase 0 branch identity, extended only with Phase 1 authorization relations.
 model Branch {
   id                      String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tips                    Tip[]                        @relation("TipBranch")
   payEarnings             PayEarning[]                 @relation("PayEarningBranch")
   code                    String                       @unique
   name                    String
@@ -420,6 +421,7 @@ enum LeaveType {
 // canonical identities, credential state and protected sole-Owner invariants.
 model User {
   id                             String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tipsRecorded                   Tip[]                            @relation("TipRecorder")
   paySellerOverridesMade         PaySellerOverride[]              @relation("PaySellerOverrideActor")
   recordedSalaryVersions         EmployeeSalaryVersion[]          @relation("SalaryVersionRecorder")
   createdTourRules               TourRule[]                       @relation("TourRuleCreator")
@@ -608,6 +610,7 @@ model CustomerProfile {
 
 model EmployeeProfile {
   userId                  String                           @id @map("user_id") @db.Uuid
+  tips                    Tip[]
   payEarnings             PayEarning[]
   paySellerOverrides      PaySellerOverride[]
   salaryVersions          EmployeeSalaryVersion[]
@@ -1725,6 +1728,7 @@ enum DiscountReleaseCause {
 // the receivable and may be 0. Status transitions and freezing are guarded in SQL.
 model Invoice {
   id                   String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tips                 Tip[]
   payEarnings          PayEarning[]
   code                 String                      @unique(map: "invoices_code_key")
   branchId             String                      @map("branch_id") @db.Uuid
@@ -5005,6 +5009,7 @@ model CashFund {
 /// Append-only book of money movements (immutable; a correction is a new CORRECTION entry that reverses one earlier entry).
 model FundEntry {
   id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tips              Tip[]
   seq               BigInt            @default(autoincrement())
   fundId            String            @map("fund_id") @db.Uuid
   fund              CashFund          @relation(fields: [fundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -5197,4 +5202,46 @@ model PaySellerOverride {
   @@index([employeeUserId], map: "pay_seller_overrides_employee_idx")
   @@index([actorUserId], map: "pay_seller_overrides_actor_idx")
   @@map("pay_seller_overrides")
+}
+
+enum TipMethod {
+  CASH
+  TRANSFER
+}
+
+/// P7-10 (P7-T7): a customer's tip for the KTV who served, a record SEPARATE from the invoice and its payment (not revenue, no points).
+/// Immutable: a mistake is a negative row that reverses it. `fundEntryId` is the TIP_IN entry (or the reversing CORRECTION). `runId` is the
+/// payroll run that pays it out with the payslip, set once.
+model Tip {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  seq              BigInt      @default(autoincrement())
+  branchId         String      @map("branch_id") @db.Uuid
+  branch           Branch      @relation("TipBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceId        String      @map("invoice_id") @db.Uuid
+  invoice          Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId   String      @map("employee_user_id") @db.Uuid
+  employee         EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  /// Positive for a tip, negative for a reversal.
+  amountVnd        BigInt      @map("amount_vnd")
+  method           TipMethod
+  businessDate     DateTime    @map("business_date") @db.Date
+  reversesId       String?     @map("reverses_id") @db.Uuid
+  reverses         Tip?        @relation("TipReversal", fields: [reversesId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reversals        Tip[]       @relation("TipReversal")
+  reason           String?
+  recordedByUserId String      @map("recorded_by_user_id") @db.Uuid
+  recordedBy       User        @relation("TipRecorder", fields: [recordedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  clientRequestId  String      @map("client_request_id") @db.Uuid
+  fundEntryId      String      @map("fund_entry_id") @db.Uuid
+  fundEntry        FundEntry   @relation(fields: [fundEntryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  runId            String?     @map("run_id") @db.Uuid
+  recordedAt       DateTime    @default(dbgenerated("clock_timestamp()")) @map("recorded_at") @db.Timestamptz(3)
+
+  @@unique([recordedByUserId, clientRequestId], map: "tips_request_key")
+  @@index([invoiceId, employeeUserId], map: "tips_invoice_idx")
+  @@index([employeeUserId, businessDate], map: "tips_employee_idx")
+  @@index([branchId, businessDate], map: "tips_branch_date_idx")
+  @@index([runId], map: "tips_run_idx")
+  @@index([fundEntryId], map: "tips_fund_entry_idx")
+  @@map("tips")
 }

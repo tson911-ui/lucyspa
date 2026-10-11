@@ -170,6 +170,7 @@ export {
 } from './order-allocation.js';
 export {
   countUnposted,
+  ensureCashFund,
   postCashSources,
   POSTING_SOURCE_TYPES,
   type PostingResult,
