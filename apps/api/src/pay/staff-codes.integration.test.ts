@@ -257,6 +257,10 @@ test(
           assert.equal(earning?.baseVnd, 400_000n);
           assert.equal(earning?.amountVnd, 20_000n);
           assert.deepEqual(await reconcileInvoiceEarnings(tx, invoice.id), { written: 0 });
+          // The earnings view names the person the code points to.
+          const earned = await pay.invoiceEarnings(reader.token, invoice.id);
+          assert.equal(earned.lines[0]?.person?.id, seller.id);
+          assert.equal(earned.items[0]?.employee.id, seller.id);
           // A reset later does not touch the order: it keeps the code it was placed with, and nothing can change it.
           await pay.resetStaffCode(rules.token, seller.id, { reason: 'Đổi mã định kỳ' });
           assert.equal(

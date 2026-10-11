@@ -9,6 +9,7 @@ import {
   candidateInvoices,
   LocalDiskMediaStorage,
   loadPayRules,
+  payRulesStamp,
   reconcileInvoiceEarnings,
 } from '@lucy-spa/server';
 import { pino } from 'pino';
@@ -498,6 +499,37 @@ test(
           assert.ok(loaded.tour.length >= 2);
           assert.ok(loaded.commission.length >= 3);
         });
+
+        await suite.test(
+          'the worker walks the candidates page by page and notices a changed rule',
+          async () => {
+            const all = await candidateInvoices(tx, { since: null, limit: 500 });
+            assert.ok(all.length >= 4);
+            const walked: string[] = [];
+            let after: { touchedAt: Date; id: string } | null = null;
+            for (;;) {
+              const page = await candidateInvoices(tx, { since: null, limit: 2, after });
+              walked.push(...page.map((item) => item.id));
+              if (page.length < 2) break;
+              const last = page[page.length - 1]!;
+              after = { touchedAt: last.touchedAt, id: last.id };
+            }
+            assert.deepEqual(
+              walked,
+              all.map((item) => item.id),
+              'pages join up with no gap and no repeat',
+            );
+            const before = await payRulesStamp(tx);
+            assert.equal(await payRulesStamp(tx), before);
+            await pay.addTourRule(rules.token, {
+              serviceId: exact.id,
+              amountVnd: '1000',
+              effectiveFrom: addDays(today, 30),
+              reason: null,
+            });
+            assert.notEqual(await payRulesStamp(tx), before);
+          },
+        );
       });
     } finally {
       await rm(folder, { recursive: true, force: true });

@@ -1,4 +1,10 @@
-import type { IncomePeriod, MyIncomeResponse, UnavailableIncomeSource } from '@lucy-spa/contracts';
+import type { Prisma } from '@lucy-spa/database';
+import type {
+  IncomePeriod,
+  MyEarnings,
+  MyIncomeResponse,
+  UnavailableIncomeSource,
+} from '@lucy-spa/contracts';
 import { Inject, Injectable } from '@nestjs/common';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { AuthError } from '../auth/auth.error.js';
@@ -8,13 +14,14 @@ import { formatMinute, parseWorkDate } from '../collaborator-work/collaborator-w
 import { businessToday, day } from '../employees/employment.js';
 import { currentClassification, titleOfEmployee } from '../employees/workforce-title.js';
 
-/** Sources a later module will provide; shown as "not yet available", never as 0. */
+/** Sources not provided yet; shown as "not yet available", never as 0. Tour, commission and tips are provided once payroll has started. */
 const FUTURE_SOURCES: UnavailableIncomeSource[] = [
   'SERVICE_TOUR',
   'COMMISSION',
   'TIPS',
   'ADJUSTMENTS',
 ];
+const STILL_UNAVAILABLE: UnavailableIncomeSource[] = ['ADJUSTMENTS'];
 
 const DAY_MS = 86_400_000;
 
@@ -100,6 +107,7 @@ export class MyIncomeService {
             period,
             baseSalary: null,
             collaboratorWork: null,
+            earnings: null,
             unavailableSources: [],
           };
         }
@@ -123,6 +131,7 @@ export class MyIncomeService {
           },
         });
         const collaborator = classification === 'COLLABORATOR' || rows.length > 0;
+        const earnings = await earningsOf(tx, actor.userId, range);
         return {
           kind: 'EMPLOYEE',
           title: await titleOfEmployee(tx, actor.userId, branchIds),
@@ -132,11 +141,64 @@ export class MyIncomeService {
             ? { amountVnd: profile.baseSalaryVnd?.toString() ?? null, unit: 'MONTH' }
             : null,
           collaboratorWork: collaborator ? summarize(rows) : null,
-          unavailableSources: official || collaborator ? FUTURE_SOURCES : [],
+          earnings,
+          unavailableSources:
+            official || collaborator ? (earnings ? STILL_UNAVAILABLE : FUTURE_SOURCES) : [],
         };
       },
     );
   }
+}
+
+/**
+ * Tour, commission and tips earned by one employee between two business dates (Phase 7 P7-11): the signed sums of the append-only
+ * earnings and tips, so reversals and refunds are already taken off. Null until the Owner has started the cash book and payroll.
+ */
+async function earningsOf(
+  tx: Prisma.TransactionClient,
+  employeeUserId: string,
+  range: { from: Date; to: Date },
+): Promise<MyEarnings | null> {
+  if (!(await tx.financeGoLive.findUnique({ where: { id: 1 }, select: { id: true } }))) return null;
+  const from = day(range.from);
+  const to = day(range.to);
+  const [sums, counts, tipSum, tipCount] = await Promise.all([
+    tx.payEarning.groupBy({
+      by: ['kind'],
+      where: { employeeUserId, businessDate: { gte: range.from, lte: range.to } },
+      _sum: { amountVnd: true },
+    }),
+    // How many earnings still stand: an earning whose reversals have not taken all of it back.
+    tx.$queryRaw<{ kind: string; standing: bigint }[]>`
+      SELECT e.kind::text AS kind, count(*)::bigint AS standing
+      FROM pay_earnings e
+      WHERE e.employee_user_id = ${employeeUserId}::uuid AND e.reverses_id IS NULL
+        AND e.business_date BETWEEN ${from}::date AND ${to}::date
+        AND e.amount_vnd + COALESCE((SELECT sum(r.amount_vnd) FROM pay_earnings r WHERE r.reverses_id = e.id), 0) > 0
+      GROUP BY e.kind`,
+    tx.tip.aggregate({
+      where: { employeeUserId, businessDate: { gte: range.from, lte: range.to } },
+      _sum: { amountVnd: true },
+    }),
+    tx.$queryRaw<{ standing: bigint }[]>`
+      SELECT count(*)::bigint AS standing
+      FROM tips t
+      WHERE t.employee_user_id = ${employeeUserId}::uuid AND t.reverses_id IS NULL
+        AND t.business_date BETWEEN ${from}::date AND ${to}::date
+        AND NOT EXISTS (SELECT 1 FROM tips r WHERE r.reverses_id = t.id)`,
+  ]);
+  const sum = (kind: 'TOUR' | 'PRODUCT_COMMISSION') =>
+    (sums.find((row) => row.kind === kind)?._sum.amountVnd ?? 0n).toString();
+  const standing = (kind: 'TOUR' | 'PRODUCT_COMMISSION') =>
+    Number(counts.find((row) => row.kind === kind)?.standing ?? 0n);
+  return {
+    tourVnd: sum('TOUR'),
+    tourCount: standing('TOUR'),
+    commissionVnd: sum('PRODUCT_COMMISSION'),
+    commissionCount: standing('PRODUCT_COMMISSION'),
+    tipsVnd: (tipSum._sum.amountVnd ?? 0n).toString(),
+    tipCount: Number(tipCount[0]?.standing ?? 0n),
+  };
 }
 
 interface Row {

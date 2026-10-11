@@ -193,7 +193,9 @@ export {
 export {
   candidateInvoices,
   loadPayRules,
+  payRulesStamp,
   reconcileInvoiceEarnings,
+  type CandidateCursor,
   type PayRules,
   type ReconcileResult,
 } from './compensation.js';

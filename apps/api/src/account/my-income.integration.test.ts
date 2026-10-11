@@ -371,6 +371,11 @@ test(
                 const response = await view(await login(official), 'MONTH', '2026-10-01');
                 assert.deepEqual(response.baseSalary, { amountVnd: '9000000', unit: 'MONTH' });
                 assert.equal(response.collaboratorWork, null, 'no invented collaborator income');
+                assert.equal(
+                  response.earnings,
+                  null,
+                  'payroll has not started: tour, commission and tips are unavailable',
+                );
                 assert.deepEqual(response.unavailableSources, [
                   'SERVICE_TOUR',
                   'COMMISSION',
@@ -382,6 +387,7 @@ test(
                   'baseSalary',
                   'classification',
                   'collaboratorWork',
+                  'earnings',
                   'kind',
                   'period',
                   'title',

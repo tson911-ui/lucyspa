@@ -1551,6 +1551,22 @@ export type IncomePeriod = 'DAY' | 'WEEK' | 'MONTH';
 export type UnavailableIncomeSource = 'SERVICE_TOUR' | 'COMMISSION' | 'TIPS' | 'ADJUSTMENTS';
 
 /**
+ * What the signed-in employee earned in the period from the tour of their services, the commission on products they sold and the tips
+ * customers left for them (Phase 7 P7-11). Net of reversals and refunds; by the business date of each earning. Present only after the
+ * Owner has started the cash book and payroll (before that these sources are listed as unavailable, never as 0). These are amounts
+ * EARNED, not pay: they reach a payslip only when a payroll run is closed.
+ */
+export interface MyEarnings {
+  tourVnd: string;
+  /** Services that earned a tour in the period (reversed ones not counted). */
+  tourCount: number;
+  commissionVnd: string;
+  commissionCount: number;
+  tipsVnd: string;
+  tipCount: number;
+}
+
+/**
  * GET /api/v1/me/income?period&date: the signed-in member's own compensation information,
  * read from the authoritative sources that exist (no income ledger). Amounts are integer
  * VND strings. Nothing here is payroll, paid, net or attendance-adjusted.
@@ -1593,7 +1609,9 @@ export interface MyIncomeResponse {
       agreedPayVnd: string | null;
     }[];
   } | null;
-  /** Future sources (not implemented yet) for this classification; never zeroes. */
+  /** Tour, commission and tips earned in the period; null before the cash book and payroll have started (then those sources are unavailable). */
+  earnings: MyEarnings | null;
+  /** Sources that do not exist yet for this classification; never zeroes. */
   unavailableSources: UnavailableIncomeSource[];
 }
 

@@ -54,7 +54,7 @@ test('the Owner sees the contract groups in the contract order', () => {
       'productReturns',
       'cash',
     ],
-    people: ['employees', 'attendance', 'leave', 'teams', 'organization', 'skills'],
+    people: ['employees', 'attendance', 'leave', 'pay', 'teams', 'organization', 'skills'],
     catalog: [
       'services',
       'products',

@@ -97,7 +97,14 @@ export function MyIncomeView({
   const nothing =
     income.baseSalary === null &&
     income.collaboratorWork === null &&
+    income.earnings === null &&
     income.unavailableSources.length === 0;
+  const earned = (amount: string, count: number) => (
+    <>
+      <strong>{formatVnd(amount, locale)}</strong>
+      {count > 0 ? ` · ${fill(texts.earningsCount, { count })}` : null}
+    </>
+  );
   const items = income.collaboratorWork?.items ?? [];
   const byBranch = income.collaboratorWork?.byBranch ?? [];
 
@@ -166,6 +173,27 @@ export function MyIncomeView({
               : `${formatVnd(income.baseSalary.amountVnd, locale)} ${texts.perMonth}`}
           </p>
           <p className="ls-hint">{texts.baseSalaryNote}</p>
+        </Section>
+      ) : null}
+      {income.earnings ? (
+        <Section title={texts.earningsTitle}>
+          <DescriptionList
+            items={[
+              {
+                label: texts.earningsTour,
+                value: earned(income.earnings.tourVnd, income.earnings.tourCount),
+              },
+              {
+                label: texts.earningsCommission,
+                value: earned(income.earnings.commissionVnd, income.earnings.commissionCount),
+              },
+              {
+                label: texts.earningsTips,
+                value: earned(income.earnings.tipsVnd, income.earnings.tipCount),
+              },
+            ]}
+          />
+          <p className="ls-hint">{texts.earningsNote}</p>
         </Section>
       ) : null}
       {income.collaboratorWork ? (

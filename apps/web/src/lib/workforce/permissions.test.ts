@@ -57,6 +57,8 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     // Phase 6 P6-12: product return cases (branch MANAGE_PRODUCT_RETURNS / REFUND_PRODUCTS; the Owner holds all).
     'productReturns',
     'cash',
+    // Phase 7 P7-11: pay and commission (shop-wide pay permissions, or a branch pay permission for the salaries tab).
+    'pay',
     'skills',
     'employees',
     // Organization hierarchy + teams (VIEW/MANAGE_ORGANIZATION, VIEW/MANAGE_TEAMS; Owner holds all).

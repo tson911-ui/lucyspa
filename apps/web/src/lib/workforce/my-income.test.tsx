@@ -91,6 +91,7 @@ const ctv: MyIncomeResponse = {
       },
     ],
   },
+  earnings: null,
   unavailableSources: [...FUTURE],
 };
 const official: MyIncomeResponse = {
@@ -100,6 +101,7 @@ const official: MyIncomeResponse = {
   period: { kind: 'MONTH', date: '2026-10-08', from: '2026-10-01', to: '2026-10-31' },
   baseSalary: { amountVnd: '12000000', unit: 'MONTH' },
   collaboratorWork: null,
+  earnings: null,
   unavailableSources: [...FUTURE],
 };
 const view = (income: MyIncomeResponse, locale: 'vi' | 'en' = 'vi') =>
@@ -178,12 +180,42 @@ test('official / manager: configured monthly base salary only; no derived or fak
   assert.ok(view(official, 'en').includes('12,000,000 ₫ / month'));
 });
 
+test('once payroll has started: tour, commission and tips are shown, with counts; only adjustments stay unavailable', () => {
+  const live = view({
+    ...official,
+    earnings: {
+      tourVnd: '45000',
+      tourCount: 3,
+      commissionVnd: '20000',
+      commissionCount: 1,
+      tipsVnd: '0',
+      tipCount: 0,
+    },
+    unavailableSources: ['ADJUSTMENTS'],
+  });
+  for (const text of [
+    vi.myIncome.earningsTitle,
+    vi.myIncome.earningsTour,
+    '45.000 ₫',
+    '3 lượt',
+    '20.000 ₫',
+    vi.myIncome.earningsNote,
+  ]) {
+    assert.ok(live.includes(text), text);
+  }
+  assert.ok(live.includes(vi.myIncome.sources.ADJUSTMENTS));
+  assert.ok(!live.includes(vi.myIncome.sources.SERVICE_TOUR + '</li>'));
+  // Before payroll starts the section is absent and the sources are listed as unavailable.
+  assert.ok(!view(official).includes(vi.myIncome.earningsTitle));
+});
+
 test('trainee and Owner: honest empty states', () => {
   const trainee = view({
     ...official,
     title: 'TRAINEE',
     classification: 'TRAINEE',
     baseSalary: null,
+    earnings: null,
     unavailableSources: [],
   });
   assert.ok(trainee.includes(vi.myIncome.empty));
@@ -196,6 +228,7 @@ test('trainee and Owner: honest empty states', () => {
         title: 'OWNER',
         classification: null,
         baseSalary: null,
+        earnings: null,
         unavailableSources: [],
       }}
       branches={branches}

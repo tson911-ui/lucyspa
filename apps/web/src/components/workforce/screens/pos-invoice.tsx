@@ -64,6 +64,7 @@ import {
   VoucherDialog,
   type Attempt,
 } from './pos-dialogs';
+import { InvoiceEarningsCard, InvoiceTipsCard } from './pay-invoice-cards';
 import { ComboUseCard, ComboUseDialog } from './pos-combo-use';
 import { cashBalanceOf, PosPaymentsSection } from './pos-payments';
 import { PreOrderContactDialog, ProductOrderCard } from './pos-pre-orders';
@@ -585,6 +586,8 @@ export function PosInvoiceScreen({ id }: { id: string }) {
         onFind={() => setOverlay({ kind: 'payer' })}
         onSetPayer={(payerUserId) => void setPayer(payerUserId)}
       />
+      {invoice.status === 'PAID' ? <InvoiceTipsCard invoiceId={invoice.id} /> : null}
+      {invoice.status === 'PAID' ? <InvoiceEarningsCard invoiceId={invoice.id} /> : null}
 
       {overlay?.kind === 'pre-order-contact' ? (
         <PreOrderContactDialog

@@ -49,6 +49,7 @@ export async function invoiceEarnings(
       id: true,
       code: true,
       status: true,
+      orderReferral: { select: { employeeUserId: true } },
       lines: {
         orderBy: { sequence: 'asc' },
         select: {
@@ -87,6 +88,8 @@ export async function invoiceEarnings(
     },
   });
   const people = new Set<string>();
+  const referral = invoice.orderReferral?.employeeUserId ?? null;
+  if (referral) people.add(referral);
   for (const line of invoice.lines) {
     const service = line.serviceDetails[0]?.employeeUserId;
     const seller = line.productDetails[0]?.sellerUserId;
@@ -102,7 +105,8 @@ export async function invoiceEarnings(
     const override = line.paySellerOverrides[0]?.employeeUserId ?? null;
     const seller = line.productDetails[0]?.sellerUserId ?? null;
     const service = line.serviceDetails[0]?.employeeUserId ?? null;
-    const person = override ?? seller ?? service;
+    // An online line has no seller; the staff code on the order names who earns (P7-T16).
+    const person = override ?? seller ?? service ?? (line.kind === 'PRODUCT' ? referral : null);
     return {
       lineId: line.id,
       kind: line.kind,

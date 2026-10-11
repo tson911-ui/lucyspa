@@ -441,29 +441,53 @@ export interface SweepResult {
 }
 
 /**
- * One pass over the invoices that may need their earnings brought in line: those paid since `since`, those that already have earnings
- * and changed since then, and those with a refund or exchange since then. `since = null` looks at everything since go-live. Each
- * invoice runs in the caller's transaction one after the other (the worker gives each its own transaction).
+ * One page of the invoices that may need their earnings brought in line: those paid since `since`, those that already have earnings
+ * and changed since then, and those with a refund or exchange since then. `since = null` looks at everything since go-live. Newest
+ * first; `after` is the last row of the previous page, so a caller can walk the whole list however long it is. Each invoice runs in
+ * its own transaction in the worker.
  */
+export interface CandidateCursor {
+  touchedAt: Date;
+  id: string;
+}
+
 export async function candidateInvoices(
   tx: Tx,
-  options: { since: Date | null; limit: number },
+  options: { since: Date | null; limit: number; after?: CandidateCursor | null },
 ): Promise<{ id: string; touchedAt: Date }[]> {
   const live = await tx.financeGoLive.findUnique({ where: { id: 1 }, select: { at: true } });
   if (!live) return [];
   const floor = options.since && options.since > live.at ? options.since : live.at;
+  const after = options.after ?? null;
   const rows = await tx.$queryRaw<{ id: string; touched: Date }[]>`
-    SELECT i.id,
-           GREATEST(i.updated_at,
-                    COALESCE((SELECT max(r.occurred_at) FROM product_refunds r WHERE r.invoice_id = i.id), 'epoch'::timestamptz),
-                    COALESCE((SELECT max(x.occurred_at) FROM product_exchanges x WHERE x.invoice_id = i.id), 'epoch'::timestamptz)) AS touched
-    FROM invoices i
-    WHERE (i.paid_at >= ${floor})
-       OR (${options.since === null} AND EXISTS (SELECT 1 FROM pay_earnings e WHERE e.invoice_id = i.id))
-       OR (i.updated_at >= ${floor} AND EXISTS (SELECT 1 FROM pay_earnings e WHERE e.invoice_id = i.id))
-       OR EXISTS (SELECT 1 FROM product_refunds r WHERE r.invoice_id = i.id AND r.occurred_at >= ${floor})
-       OR EXISTS (SELECT 1 FROM product_exchanges x WHERE x.invoice_id = i.id AND x.occurred_at >= ${floor})
-    ORDER BY touched DESC, i.id
+    SELECT c.id, c.touched
+    FROM (
+      SELECT i.id,
+             GREATEST(i.updated_at,
+                      COALESCE((SELECT max(r.occurred_at) FROM product_refunds r WHERE r.invoice_id = i.id), 'epoch'::timestamptz),
+                      COALESCE((SELECT max(x.occurred_at) FROM product_exchanges x WHERE x.invoice_id = i.id), 'epoch'::timestamptz)) AS touched
+      FROM invoices i
+      WHERE (i.paid_at >= ${floor})
+         OR (${options.since === null} AND EXISTS (SELECT 1 FROM pay_earnings e WHERE e.invoice_id = i.id))
+         OR (i.updated_at >= ${floor} AND EXISTS (SELECT 1 FROM pay_earnings e WHERE e.invoice_id = i.id))
+         OR EXISTS (SELECT 1 FROM product_refunds r WHERE r.invoice_id = i.id AND r.occurred_at >= ${floor})
+         OR EXISTS (SELECT 1 FROM product_exchanges x WHERE x.invoice_id = i.id AND x.occurred_at >= ${floor})
+    ) c
+    WHERE ${after === null} OR (c.touched, c.id) < (${after?.touchedAt ?? new Date(0)}::timestamptz, ${after?.id ?? '00000000-0000-0000-0000-000000000000'}::uuid)
+    ORDER BY c.touched DESC, c.id DESC
     LIMIT ${options.limit}`;
   return rows.map((row) => ({ id: row.id, touchedAt: row.touched }));
+}
+
+/**
+ * A fingerprint of everything that decides WHO earns and HOW MUCH besides the invoice itself: the tour and commission rules, the seller
+ * corrections and the staff codes on orders. When it changes, invoices that were already looked at are looked at again (a rule entered
+ * after a sale must reach that sale if the rule's start date covers it).
+ */
+export async function payRulesStamp(tx: Tx): Promise<string> {
+  const [row] = await tx.$queryRaw<{ stamp: string }[]>`
+    SELECT (SELECT count(*) FROM tour_rules)::text || '/' || (SELECT count(*) FROM commission_rules)::text || '/' ||
+           (SELECT count(*) FROM pay_seller_overrides)::text || '/' || (SELECT count(*) FROM order_referrals)::text || '/' ||
+           (SELECT count(*) FROM employment_classification_changes)::text AS stamp`;
+  return row?.stamp ?? '';
 }

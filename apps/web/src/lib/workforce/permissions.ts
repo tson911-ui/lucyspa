@@ -172,6 +172,7 @@ export type NavKey =
   | 'productOrders'
   | 'productReturns'
   | 'cash'
+  | 'pay'
   | 'skills'
   | 'employees'
   | 'roles'
@@ -347,6 +348,16 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'cash',
       group: 'sales',
       path: '/cash',
+    },
+    // Phase 7 P7-11: base salaries, tour pay, commission rules and staff codes (shop-wide pay permissions; salaries also open to branch pay permissions).
+    (canGlobal(account, 'MANAGE_PAY_RULES') ||
+      canGlobal(account, 'MANAGE_PAYROLL') ||
+      canGlobal(account, 'APPROVE_PAYROLL') ||
+      canAnywhere(account, 'VIEW_EMPLOYEE_PAY') ||
+      canAnywhere(account, 'MANAGE_EMPLOYEE_PAY')) && {
+      key: 'pay',
+      group: 'people',
+      path: '/pay',
     },
     canAnywhere(account, 'MANAGE_SKILLS') && {
       key: 'skills',

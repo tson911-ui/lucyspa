@@ -164,6 +164,7 @@ const vi = {
     productOrders: 'Hàng đặt trước',
     productReturns: 'Trả hàng',
     cash: 'Sổ quỹ',
+    pay: 'Lương và hoa hồng',
     import: 'Nhập dữ liệu',
     skills: 'Kỹ năng',
     employees: 'Nhân viên',
@@ -1614,6 +1615,14 @@ const vi = {
     baseSalaryNote:
       'Mức lương cơ bản hằng tháng đang được cấu hình cho bạn. Đây không phải số tiền đã nhận và không được chia theo ngày hay tuần.',
     baseSalaryNotSet: 'Chưa được cấu hình.',
+    earningsTitle: 'Tour, hoa hồng và tip',
+    earningsTour: 'Tiền tour dịch vụ',
+    earningsCommission: 'Hoa hồng bán hàng',
+    earningsTips: 'Tiền tip',
+    /** With {count}. */
+    earningsCount: '{count} lượt',
+    earningsNote:
+      'Số tiền được ghi nhận cho bạn trong khoảng thời gian này, đã trừ các khoản hoàn lại. Đây chưa phải tiền lương đã trả: khoản này chỉ vào phiếu lương khi kỳ lương được chốt.',
     unavailableTitle: 'Chưa có trong hệ thống',
     unavailableNote: 'Các khoản sau sẽ xuất hiện khi có các chức năng tương ứng:',
     sources: {
@@ -2788,6 +2797,7 @@ const en: Dictionary = {
     productOrders: 'Pre-orders',
     productReturns: 'Returns',
     cash: 'Cash book',
+    pay: 'Pay and commission',
     import: 'Data import',
     skills: 'Skills',
     employees: 'Employees',
@@ -4245,6 +4255,13 @@ const en: Dictionary = {
     baseSalaryNote:
       'The monthly base salary currently configured for you. It is not money received and is never split by day or week.',
     baseSalaryNotSet: 'Not configured.',
+    earningsTitle: 'Tour, commission and tips',
+    earningsTour: 'Service tour pay',
+    earningsCommission: 'Product sales commission',
+    earningsTips: 'Tips',
+    earningsCount: '{count} items',
+    earningsNote:
+      'Amounts recorded for you in this period, after refunds are taken off. This is not pay that has been paid: it reaches a payslip only when the payroll period is closed.',
     unavailableTitle: 'Not in the system yet',
     unavailableNote: 'These will appear once their modules exist:',
     sources: {

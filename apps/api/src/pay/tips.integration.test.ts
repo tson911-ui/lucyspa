@@ -2,8 +2,11 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
+import { reconcileInvoiceEarnings } from '@lucy-spa/server';
+import { MyIncomeService } from '../account/my-income.service.js';
 import { phase6Fixture } from '../testing/phase6-fixture.js';
 import { productSaleKit } from '../testing/product-sale-kit.js';
+import { shopToday } from './pay.access.js';
 import { PayService } from './pay.service.js';
 
 /**
@@ -291,6 +294,45 @@ test(
           const view = await pay.invoiceTips(collector.token, sale.invoiceId);
           assert.equal(view.items[0]?.claimed, true);
           assert.equal(view.items[0]?.canReverse, false);
+        },
+      );
+
+      await suite.test(
+        'My Income shows what was earned: tour and tips, net of a reversal',
+        async () => {
+          const today = shopToday(new Date());
+          const income = new MyIncomeService(base.adapter, base.throttle);
+          const read = async () => {
+            const response = await income.get(people.ktv.token, { period: 'DAY', date: today });
+            assert.ok(response.earnings, 'live: the sources are available');
+            assert.deepEqual(response.unavailableSources, ['ADJUSTMENTS']);
+            return response.earnings;
+          };
+          const before = await read();
+          const rules = await base.staff([], { globalCodes: ['MANAGE_PAY_RULES'] });
+          await pay.addTourRule(rules.token, {
+            serviceId: exact.id,
+            amountVnd: '15000',
+            effectiveFrom: today,
+            reason: null,
+          });
+          const sale = await serviceSale();
+          await reconcileInvoiceEarnings(tx, sale.invoiceId);
+          await record(collector.token, sale.invoiceId, { amountVnd: '40000' });
+          const after = await read();
+          assert.equal(BigInt(after.tourVnd) - BigInt(before.tourVnd), 15_000n);
+          assert.equal(after.tourCount - before.tourCount, 1);
+          assert.equal(BigInt(after.tipsVnd) - BigInt(before.tipsVnd), 40_000n);
+          assert.equal(after.tipCount - before.tipCount, 1);
+          assert.equal(after.commissionVnd, before.commissionVnd);
+          // A reversed tip is taken off; a colleague sees none of it.
+          const tip = await tx.tip.findFirstOrThrow({ where: { invoiceId: sale.invoiceId } });
+          await pay.reverseTip(collector.token, tip.id, { reason: 'Nhầm', clientRequestId: id() });
+          const undone = await read();
+          assert.equal(undone.tipsVnd, before.tipsVnd);
+          assert.equal(undone.tipCount, before.tipCount);
+          const colleague = await income.get(people.cashier.token, { period: 'DAY', date: today });
+          assert.equal(colleague.earnings?.tourVnd, '0');
         },
       );
     });
