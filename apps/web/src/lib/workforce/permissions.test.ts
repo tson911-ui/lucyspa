@@ -56,6 +56,7 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'onlineOrders',
     // Phase 6 P6-12: product return cases (branch MANAGE_PRODUCT_RETURNS / REFUND_PRODUCTS; the Owner holds all).
     'productReturns',
+    'cash',
     'skills',
     'employees',
     // Organization hierarchy + teams (VIEW/MANAGE_ORGANIZATION, VIEW/MANAGE_TEAMS; Owner holds all).

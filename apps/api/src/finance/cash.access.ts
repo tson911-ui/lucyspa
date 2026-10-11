@@ -48,6 +48,9 @@ export function accessOf(
     branch: { id: branch.id, code: branch.code, name: branch.name },
     view: canViewAt(context, branch.id),
     manage: canManageAt(context, branch.id),
+    deposit:
+      canManageAt(context, branch.id) ||
+      decide(context.actor.graph, 'COLLECT_PAYMENTS', { kind: 'BRANCH', branchId: branch.id }),
   }));
 }
 

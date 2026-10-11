@@ -65,6 +65,8 @@ export interface CashBranchAccess {
   branch: CashBranchRef;
   view: boolean;
   manage: boolean;
+  /** May hand collected cash in at this branch (MANAGE_CASH or COLLECT_PAYMENTS). */
+  deposit: boolean;
 }
 
 export interface CashOverviewResponse {

@@ -14,7 +14,15 @@ const SIDEBAR_LAYOUT: ReadonlyArray<{ group: NavGroupId; order: readonly NavKey[
   },
   {
     group: 'sales',
-    order: ['pos', 'discounts', 'loyalty', 'productOrders', 'onlineOrders', 'productReturns'],
+    order: [
+      'pos',
+      'discounts',
+      'loyalty',
+      'productOrders',
+      'onlineOrders',
+      'productReturns',
+      'cash',
+    ],
   },
   {
     group: 'people',
@@ -54,6 +62,7 @@ export const NAV_ICONS: Record<NavKey, IconName> = {
   productOrders: 'clipboard',
   onlineOrders: 'truck',
   productReturns: 'refresh',
+  cash: 'wallet',
   employees: 'users',
   attendance: 'calendar-check',
   leave: 'sun',

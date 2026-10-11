@@ -171,6 +171,7 @@ export type NavKey =
   | 'loyalty'
   | 'productOrders'
   | 'productReturns'
+  | 'cash'
   | 'skills'
   | 'employees'
   | 'roles'
@@ -340,6 +341,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'productReturns',
       group: 'sales',
       path: '/product-returns',
+    },
+    // Phase 7 P7-6: the cash book (branch-scoped VIEW_CASH / MANAGE_CASH).
+    (canAnywhere(account, 'VIEW_CASH') || canAnywhere(account, 'MANAGE_CASH')) && {
+      key: 'cash',
+      group: 'sales',
+      path: '/cash',
     },
     canAnywhere(account, 'MANAGE_SKILLS') && {
       key: 'skills',
