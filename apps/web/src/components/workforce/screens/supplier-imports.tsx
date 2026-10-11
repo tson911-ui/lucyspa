@@ -162,20 +162,14 @@ function ImportsPage() {
       hideBelow: 'lg',
       cell: (row) =>
         row.warnings.length === 0 ? (
-          text.none
+          <Badge tone="neutral">{text.noIssues}</Badge>
         ) : (
-          <span className="ls-media-badges">
-            {sortWarnings(row.warnings)
-              .slice(0, SHOWN_WARNINGS)
-              .map((code) => (
-                <Badge key={code} tone="warning">
-                  {warningText(code, locale)}
-                </Badge>
-              ))}
-            {row.warnings.length > SHOWN_WARNINGS ? (
-              <Badge tone="neutral">+{row.warnings.length - SHOWN_WARNINGS}</Badge>
-            ) : null}
-          </span>
+          <Badge tone="warning">
+            {warningText(sortWarnings(row.warnings)[0] ?? '', locale)}
+            {row.warnings.length > SHOWN_WARNINGS
+              ? ` +${row.warnings.length - SHOWN_WARNINGS}`
+              : ''}
+          </Badge>
         ),
     },
     ...(prices
@@ -346,6 +340,7 @@ function ImportsPage() {
       ) : null}
       <DataTable
         mode="server"
+        className="ls-cards-one-line"
         caption={fill(t.common.list.table, { list: text.title })}
         columns={columns}
         rows={rows}

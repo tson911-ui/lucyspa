@@ -24,6 +24,7 @@
     "service-detail": { "path": "services/{service}", "baseline": true },
     "services": { "path": "services", "baseline": true },
     "skills": { "path": "skills", "baseline": true },
+    "supplier-imports": { "path": "supplier-imports" },
     "supplier-sources": { "path": "supplier-sources" },
     "team-detail": { "path": "teams/{team}", "baseline": true },
     "teams": { "path": "teams", "baseline": true },

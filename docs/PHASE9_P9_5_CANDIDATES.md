@@ -19,9 +19,9 @@ Trạng thái: **làm xong, chưa deploy.** Căn cứ: `docs/PHASE9_PRODUCT_IMPO
 
 Server 119 (13 mới, thuần: luật SKU, gợi ý, ánh xạ, nghi trùng, ảnh, trạng thái), web 912, api 352, database 112, ui 486, worker 24; tích hợp trên PostgreSQL thật **5/5** (SKU nguyên văn, `HARU-` chỉ cho nguồn được duyệt, trùng SKU hai kiểu, ánh xạ nhớ + chạy lại không ghi, ảnh cắm cờ giữ ở xét duyệt, chữ Lucy và ứng viên đã quyết không bị ghi đè) cùng 13/13 quét và 18/18 nguồn; `lint`, `typecheck`, `format:check` sạch.
 
-## Em tự đặt, chờ chủ duyệt
+## Em tự đặt (điều 1 đã duyệt; điều 2-3 chờ chủ duyệt)
 
-1. Dịch tên EN **không** giữ ứng viên lại (tên EN bắt đầu bằng tên VI và vẫn đánh dấu "cần dịch"); thiết kế mục 9 liệt kê "thiếu bản dịch" là cảnh báo bắt buộc xem lại, nhưng như vậy không ứng viên nào sẵn sàng để "Duyệt tất cả sản phẩm sẵn sàng".
+1. **[Chủ đã duyệt 2026-10-11]** Dịch tên EN **không** giữ ứng viên lại (tên EN bắt đầu bằng tên VI và vẫn đánh dấu "cần dịch"); thiết kế mục 9 liệt kê "thiếu bản dịch" là cảnh báo bắt buộc xem lại, nhưng như vậy không ứng viên nào sẵn sàng để "Duyệt tất cả sản phẩm sẵn sàng".
 2. Chữ nguồn không có ánh xạ thì để trống chứ không đoán thương hiệu từ chữ in hoa; gợi ý chỉ khi trùng tên với thương hiệu Lucy.
 3. Mã vạch chưa dùng (nguồn không cung cấp); nghi trùng chỉ khi tên (đã gấp dấu) và dung tích giống hệt.
 

@@ -1,6 +1,6 @@
 # Phase 9 P9-6: màn hình duyệt sản phẩm nhập và duyệt tạo sản phẩm nháp
 
-Trạng thái: **làm xong, chưa deploy.** Căn cứ: `docs/PHASE9_PRODUCT_IMPORT.md` (mục 5, 9, 12) và lời chủ 2026-10-10 (giá do chủ đặt, giá nhà cung cấp chỉ tham khảo, ảnh không bao giờ lẫn). Có migration `20261128000000_phase9_review_decisions` (105 → **106**), quyền vẫn **68** (`REVIEW_SUPPLIER_IMPORTS` có từ P9-2, GLOBAL).
+Trạng thái: **làm xong, chủ đã duyệt các cách hiểu (2026-10-11), chưa deploy.** Căn cứ: `docs/PHASE9_PRODUCT_IMPORT.md` (mục 5, 9, 12) và lời chủ 2026-10-10 (giá do chủ đặt, giá nhà cung cấp chỉ tham khảo, ảnh không bao giờ lẫn). Có migration `20261128000000_phase9_review_decisions` (105 → **106**), quyền vẫn **68** (`REVIEW_SUPPLIER_IMPORTS` có từ P9-2, GLOBAL).
 
 ## Đã làm
 
@@ -20,7 +20,9 @@ Server 121, web 921, api 352, database 112, ui 488, worker 24 (`pnpm test` cả 
 Đã sửa sau khi xem: liên kết tên là `<a>` đúng kit, một nhãn cảnh báo mỗi dòng (nhãn chặn trước), tiêu đề ngăn kéo không lặp tên sản phẩm, bỏ nút lẻ trong ngăn kéo quét, gợi ý chữ nguồn chỉ khi chưa chọn, thông báo "duyệt được nhưng còn mục cần xem", tên menu rút còn "Sản phẩm nhập" (nhãn dài làm xuống dòng ở lối tắt trang tổng quan).
 **DOM audit** (26 trang mốc + 2 trang, chạy sạch vào thư mục riêng): `list-height-uneven` 4 → 6 và `row-height-uneven` 8 → 10. `dashboard` 9 → 11 là khoản đã ghi ở `docs/PHASE9_P9_3_ADAPTER_TEST_SOURCE.md` và `docs/PHASE9_P9_4_SCAN_IMAGES.md` (dữ liệu scratch), không do bước này; `supplier-sources` 0 → 1 và `supplier-imports` 0 → 1 là hai trang chưa có trong mốc. Phát hiện của trang mới: thẻ 360 px cao 300-360 px (SKU dạng chữ dài như `nuoc-hoa-hong-…` xuống dòng trên điện thoại; cùng loại với màn Nguồn nhà cung cấp, chưa sửa). Ô chọn 20 px của kit (CheckField) bị đo nhỏ hơn 44 px: chung bộ kit.
 
-## Em tự đặt, chờ chủ duyệt
+## Em tự đặt: CHỦ ĐÃ DUYỆT (2026-10-11)
+
+Chủ đã duyệt ngày 2026-10-11 (nguyên văn: "Owner approves all 7 of your P9-6 readings, exactly as you wrote them"). Cả 5 điều dưới đây, cùng điều 1 của P9-5 (bản dịch EN không chặn "sẵn sàng") và nhãn menu "Sản phẩm nhập", đều đã duyệt.
 
 1. Duyệt chỉ tạo sản phẩm **nháp** (chưa đăng); "Duyệt sản phẩm sẵn sàng" chỉ lấy ứng viên không còn cảnh báo, tối đa 20 mỗi lần, không đặt giá.
 2. Ảnh bị cắm cờ **phải** có quyết định giữ/bỏ trước khi duyệt; nghi trùng phải bấm "giữ riêng". Quyết định được nhớ qua các lần quét lại.

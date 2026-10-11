@@ -290,6 +290,7 @@ export function SourcesView({
       </PageHeader>
       {list.canManage ? null : <Notice tone="info">{text.readOnly}</Notice>}
       <DataTable
+        className="ls-cards-one-line"
         caption={fill(t.common.list.table, { list: text.title })}
         columns={columns}
         rows={list.items}

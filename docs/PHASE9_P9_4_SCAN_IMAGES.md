@@ -21,6 +21,8 @@ Không có màn hình mới (phía máy chủ). Chỉ một nhãn mới ở thư
 
 ## Em tự đặt, chờ chủ duyệt
 
+Lời duyệt 2026-10-11 của chủ chỉ nêu 7 cách hiểu của P9-6 (và điều bản dịch EN của P9-5); 3 điều dưới đây **chưa** nằm trong đó, vẫn chờ chủ.
+
 1. Ảnh biến thể tính vào 6 ảnh của sản phẩm (ảnh chính trước); biến thể dùng lại ảnh chính thì không thêm.
 2. Ngưỡng "gần giống" 12/256 bit và việc cắm cờ cả hai phía; ảnh quá lớn (> 6000 px hoặc 10 MB) hiện chỉ báo lỗi, chưa có bước dùng bản nhỏ hơn.
 3. Quét lại chỉ đọc đúng các sản phẩm đã biết (mẫu không tự lớn); sản phẩm không còn trả về chỉ ghi `PRODUCT_NOT_RETURNED`, chưa đánh dấu biến mất (P9-7).

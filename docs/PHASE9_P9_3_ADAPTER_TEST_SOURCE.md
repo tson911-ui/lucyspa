@@ -24,6 +24,8 @@ Server 101 (48 mới: bảo vệ địa chỉ, kết nối/robots/trần byte, c
 
 ## Em tự đặt, chờ chủ duyệt
 
+Lời duyệt 2026-10-11 của chủ chỉ nêu 7 cách hiểu của P9-6 (và điều bản dịch EN của P9-5); 4 điều dưới đây **chưa** nằm trong đó, vẫn chờ chủ.
+
 1. Chạy thử đòi giấy phép đã ghi **và xác nhận** trước (không gửi yêu cầu nào tới website trước đó).
 2. Chạy lại thất bại với nguồn đã bật: trạng thái nguồn đổi sang lỗi nhưng **không tự tắt**; việc quét (P9-4) sẽ đòi `READY`. Chạy lại đạt không tự đặt `READY`, phải xác nhận lại.
 3. Ngưỡng đạt (90% / 50% / 50%) và mẫu = 20 sản phẩm đầu theo mã.
