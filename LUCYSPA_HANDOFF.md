@@ -872,3 +872,7 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - pm2: api 1 / worker 1 / web 3 online; health ok; the new pages answer 200 and the new APIs 401 unauthenticated; outbound `haruohui.com:443` is open from the server.
 - Backups: `/root/backups/lucyspa-pre-phase9-20261011T015420Z.dump` and `/root/backups/lucyspa-web-pre-phase9-20261011T015439Z.tar.gz`.
 - Build printed a Prisma 8 upgrade notice: ignored on purpose, **do not upgrade Prisma** unless the Owner asks. Supplier import is deployed but unused: no source exists and nothing contacts haruohui.com until the Owner adds a source, records the permission, confirms and runs Test Source. Readings still pending Owner approval: P9-3 (4), P9-4 (3), P9-5 (items 2-3). Next: P9-7.
+
+### Phase 9 readings decided by the Owner (2026-10-11)
+
+- Owner: "approved as you wrote them, EXCEPT any reading that touches prices, publishing, deleting/hiding data, or permissions — for those, stop and ask." **Approved:** P9-3 #2 and #4, P9-4 #1-#3, P9-5 #2-#3. **Held, pending the Owner:** P9-3 #1 (Test Source needs the supplier permission recorded and confirmed; code already does this) and P9-3 #3 (pass thresholds 90/50/50, the price share touches prices). Recorded in the P9-3/4/5 reports and `docs/PHASE9_PRODUCT_IMPORT.md`. Unattended run P9-7..P9-10 starts from production 638afde.

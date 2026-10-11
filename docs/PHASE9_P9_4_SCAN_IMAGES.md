@@ -19,13 +19,13 @@ Server 106 (5 mới: mã băm, quy trình ảnh, ảnh giả, tên tệp), web 9
 
 Không có màn hình mới (phía máy chủ). Chỉ một nhãn mới ở thư viện ảnh ("Nhập từ nhà cung cấp"). DOM audit chạy lại: trang `supplier-sources` 1 phát hiện như P9-2; trang `dashboard` 9 → 11 `list-height-uneven` (dữ liệu scratch: các mục danh sách dài ngắn khác nhau; tính từ mốc P9-2 chỉ 8 tệp web đổi, toàn là màn nguồn nhà cung cấp, thư viện ảnh và từ điển, **không có tệp bảng điều khiển hay bộ UI nào**; chạy lại với worker tắt vẫn 11, nên không phải do worker).
 
-## Em tự đặt, chờ chủ duyệt
+## Em tự đặt: chủ đã duyệt cả 3 điều (2026-10-11)
 
-Lời duyệt 2026-10-11 của chủ chỉ nêu 7 cách hiểu của P9-6 (và điều bản dịch EN của P9-5); 3 điều dưới đây **chưa** nằm trong đó, vẫn chờ chủ.
+Lời chủ ngày 2026-10-11 (nguyên văn): "Owner decision on the pending readings (P9-3 ×4, P9-4 ×3, P9-5 items 2–3): approved as you wrote them, EXCEPT any reading that touches prices, publishing, deleting/hiding data, or permissions — for those, stop and ask." Cả 3 điều dưới đây không đụng giá, đăng bán, xóa/ẩn dữ liệu hay quyền, nên **đã duyệt**.
 
 1. Ảnh biến thể tính vào 6 ảnh của sản phẩm (ảnh chính trước); biến thể dùng lại ảnh chính thì không thêm.
 2. Ngưỡng "gần giống" 12/256 bit và việc cắm cờ cả hai phía; ảnh quá lớn (> 6000 px hoặc 10 MB) hiện chỉ báo lỗi, chưa có bước dùng bản nhỏ hơn.
-3. Quét lại chỉ đọc đúng các sản phẩm đã biết (mẫu không tự lớn); sản phẩm không còn trả về chỉ ghi `PRODUCT_NOT_RETURNED`, chưa đánh dấu biến mất (P9-7).
+3. Quét lại chỉ đọc đúng các sản phẩm đã biết (mẫu không tự lớn); sản phẩm không còn trả về chỉ ghi `PRODUCT_NOT_RETURNED`, chưa đánh dấu biến mất. (P9-7 bổ sung việc đánh dấu "biến mất" theo luật bảo vệ 3 lần quét đã duyệt ở P9-T7; mẫu vẫn không tự lớn.)
 
 ## Triển khai (khi chủ cho phép)
 
