@@ -3621,6 +3621,11 @@ export interface PublicProductPrice {
   listPriceVnd: string | null;
   /** Round half up of (list - price) / list in whole percent, 1 to 99; null when there is no promotion or it rounds to nothing. */
   discountPercent: number | null;
+  /**
+   * When the running promotion ends (ISO instant), for the countdown. Absent when there is no promotion or it has no end date: a sale
+   * mirrored from a supplier runs open-ended (its end is more than five years away), and then nothing counts down.
+   */
+  saleEndsAt?: string;
   /** Wave 4 (P6-23): the running campaign that gives this price; absent when the price comes from a promotion or the list. */
   campaign?: { slug: string; name: string; badge: string | null };
 }

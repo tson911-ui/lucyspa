@@ -6,6 +6,8 @@ import {
   activeFilterCount,
   campaignBanner,
   campaignEndText,
+  countdownParts,
+  saleSaving,
   campaignHref,
   cardPriceText,
   discountText,
@@ -361,4 +363,59 @@ test('the last day of a sale is read in the shop time zone', () => {
   // 16:59 UTC on 31 October is 23:59 on 31 October in Da Nang; one minute later it is already 1 November there.
   assert.equal(campaignEndText('2026-10-31T16:59:59.000Z', 'vi'), '31/10/2026');
   assert.equal(campaignEndText('2026-10-31T17:00:00.000Z', 'en'), '01/11/2026');
+});
+
+test('the saving and the countdown of a sale: whole VND, days and HH:MM:SS, nothing after the end or without a sale', () => {
+  assert.equal(saleSaving({ priceVnd: '580000', listPriceVnd: '750000' }), '170000');
+  assert.equal(saleSaving({ priceVnd: '750000', listPriceVnd: null }), null);
+  assert.equal(saleSaving({ priceVnd: '750000', listPriceVnd: '750000' }), null);
+  const end = Date.parse('2026-10-20T10:00:00.000Z');
+  assert.deepEqual(countdownParts('2026-10-20T10:00:00.000Z', end - 2 * 86_400_000 - 3_723_000), {
+    days: 2,
+    time: '01:02:03',
+  });
+  assert.deepEqual(countdownParts('2026-10-20T10:00:00.000Z', end - 59_000), {
+    days: 0,
+    time: '00:00:59',
+  });
+  assert.equal(countdownParts('2026-10-20T10:00:00.000Z', end), null, 'over');
+  assert.equal(countdownParts('not a date', end), null);
+});
+
+test('the price parser keeps the end of a sale only when it is a date', () => {
+  const base = { priceVnd: '580000', listPriceVnd: '750000', discountPercent: 23 };
+  const card = (price: object) => ({
+    items: [
+      {
+        code: 'a',
+        name: 'A',
+        category: null,
+        brand: null,
+        image: null,
+        price,
+        priceMaxVnd: '580000',
+        isNew: false,
+        featured: false,
+        stock: { state: 'IN_STOCK', leadTimeDaysMin: null, leadTimeDaysMax: null },
+      },
+    ],
+    total: 1,
+    page: 1,
+    pageSize: 20,
+  });
+  const parsed = (price: object) =>
+    parsePublicProducts({
+      ...card(price),
+      categories: [],
+      brands: [],
+      hero: null,
+      commitment: null,
+      campaigns: [],
+    })?.items[0]?.price;
+  assert.equal(
+    parsed({ ...base, saleEndsAt: '2026-10-20T10:00:00.000Z' })?.saleEndsAt,
+    '2026-10-20T10:00:00.000Z',
+  );
+  assert.equal(parsed({ ...base, saleEndsAt: 'soon' })?.saleEndsAt, undefined);
+  assert.equal(parsed(base)?.saleEndsAt, undefined);
 });

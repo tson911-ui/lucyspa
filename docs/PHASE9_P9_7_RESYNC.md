@@ -19,7 +19,9 @@ Server (đơn vị): luật đáng ngờ / 3 lần / so sánh / lịch. API tíc
 
 Ảnh ở `.local/uxui-screens/p97-*`. **Đã mở và xem:** tab Thay đổi (360, 1440 sáng; 360 với chữ 130%), người duyệt không có quyền giá (1440), menu hàng khi rê chuột (1440, trước và sau khi sửa). Đã sửa sau khi xem: nút trên thanh công cụ tràn ngang ở 360 → nhãn ngắn "Đã xem hết"; dòng chi tiết bị cắt ở thẻ 360 → cho xuống dòng; menu hàng mất chữ khi rê chuột (lỗi có sẵn, Chủ báo). **Chưa xem từng ảnh:** 768, 1440 tối, tiếng Anh, trang 2, bộ lọc rỗng và ngăn quét (đã dựng bằng bài kiểm thử, ảnh đã chụp). DOM audit: `supplier-imports` 0, `supplier-sources` 0 phát hiện, không số nào tăng.
 
-## Em tự đặt, chờ chủ duyệt
+## Em tự đặt: chủ đã duyệt cả 7 điều (2026-10-11, mục 18 của PHASE9_PRODUCT_IMPORT.md)
+
+Không điều nào đổi giá hay tự đăng bán khi chủ chưa bấm (lần quét theo lịch chỉ đọc nguồn, tạo ứng viên và ghi chú thay đổi), nên không cần phương án an toàn hơn.
 
 1. Lần quét theo lịch không có người: ảnh mới thuộc về **người đã xác nhận giấy phép** của nguồn (giấy phép là điều kiện bật nguồn).
 2. Lịch chỉ chạy sau khi nguồn đã được quét tay thành công một lần; từ 1 đến 5 giờ sáng giờ Việt Nam; hằng tuần cách ít nhất 6 ngày 20 giờ, hằng ngày cách ít nhất 20 giờ (mặc định vẫn là Chạy tay; cả hằng tuần và hằng ngày vốn có từ P9-2).

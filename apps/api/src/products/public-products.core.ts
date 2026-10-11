@@ -25,6 +25,7 @@ import {
   isProductCode,
   pageOffset,
   priceBlock,
+  saleEnd,
   productStock,
   searchPatterns,
   variantStock,
@@ -124,6 +125,8 @@ interface VariantRow {
   available: number;
   /** The running campaign that gives the price (Wave 4, P6-23), when one does. */
   campaignId: string | null;
+  /** When the running promotion that gives the price ends (the earlier of its window and an early end), when one does. */
+  promoEndsAt: Date | null;
 }
 
 /** The priced, active variants of the products, in the shop's own order, with price and availability decided by the database. */
@@ -139,7 +142,8 @@ async function variantRows(
            v.lead_time_days_min::int AS "leadTimeDaysMin", v.lead_time_days_max::int AS "leadTimeDaysMax",
            pr.list_price_vnd AS "listPriceVnd", pr.effective_price_vnd AS "effectivePriceVnd",
            COALESCE((SELECT sum(lucy_available_stock(b.id, v.id)) FROM branches b WHERE b.is_active), 0)::int AS "available",
-           cm.campaign_id AS "campaignId"
+           cm.campaign_id AS "campaignId",
+           (SELECT LEAST(pp.ends_at, COALESCE(pp.ended_early_at, pp.ends_at)) FROM product_promotions pp WHERE pp.id = pr.promotion_id) AS "promoEndsAt"
     FROM product_variants v
     CROSS JOIN LATERAL lucy_variant_price_at(v.id, ${now}::timestamptz) pr
     LEFT JOIN LATERAL (
@@ -201,6 +205,8 @@ interface Context {
 /** The price of a variant, with the running campaign that gives it. */
 function priced(variant: VariantRow, context: Context): PublicProductPrice {
   const block = priceBlock(variant.listPriceVnd, variant.effectivePriceVnd);
+  const saleEndsAt = saleEnd(variant.promoEndsAt, context.now);
+  if (saleEndsAt !== null) block.saleEndsAt = saleEndsAt;
   const campaign = variant.campaignId ? context.campaigns?.get(variant.campaignId) : undefined;
   return campaign ? { ...block, campaign } : block;
 }

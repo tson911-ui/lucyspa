@@ -1,13 +1,14 @@
 'use client';
 
 import type { PublicProductVariant } from '@lucy-spa/contracts';
-import { Badge, ChoiceCard } from '@lucy-spa/ui';
+import { ChoiceCard } from '@lucy-spa/ui';
 import { useId, useState } from 'react';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
-import { moneyText, priceBadgeText, stockLabel } from '../../lib/public-products-core';
+import { moneyText, stockLabel } from '../../lib/public-products-core';
 import { PurchaseBlock } from '../shop/purchase-block';
 import { PriceCampaignLine } from './campaign-views';
+import { SalePrice } from './sale-price';
 
 /**
  * The price and availability of the chosen variant and, when there are several, the picker. Each variant shows its own price and
@@ -36,15 +37,12 @@ export function ProductOffer({
   const stock = label(variant);
   return (
     <div className="ls-prod-offer">
-      <p className="ls-prod-detail-price" aria-live="polite">
-        <strong>{moneyText(variant.price.priceVnd, locale)}</strong>
-        {variant.price.listPriceVnd ? (
-          <del>{moneyText(variant.price.listPriceVnd, locale)}</del>
-        ) : null}
-        {priceBadgeText(variant.price) ? (
-          <Badge tone="brand">{priceBadgeText(variant.price)}</Badge>
-        ) : null}
-      </p>
+      <SalePrice
+        locale={locale}
+        price={variant.price}
+        nowText={moneyText(variant.price.priceVnd, locale)}
+        size="page"
+      />
       <PriceCampaignLine locale={locale} price={variant.price} />
       {stock ? (
         <p className="ls-prod-stock" data-state={variant.stock.state}>

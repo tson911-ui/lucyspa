@@ -160,6 +160,11 @@ export interface SiteText {
     brands: string;
     allBrands: string;
     badgeNew: string;
+    /** "Tiết kiệm {amount}": the saving of a sale price, a small line under it. */
+    saleSave: string;
+    /** "Còn {days} ngày {time}" / "Còn {time}": the countdown of a sale that has an end date. */
+    saleLeftDays: string;
+    saleLeft: string;
     outOfStock: string;
     /** With {days}: "Đặt trước, dự kiến 3–5 ngày". */
     preOrder: string;
@@ -339,6 +344,9 @@ const text = {
       brands: 'Thương hiệu',
       allBrands: 'Tất cả thương hiệu',
       badgeNew: 'Mới',
+      saleSave: 'Tiết kiệm {amount}',
+      saleLeftDays: 'Còn {days} ngày {time}',
+      saleLeft: 'Còn {time}',
       outOfStock: 'Hết hàng',
       preOrder: 'Đặt trước, dự kiến {days} ngày',
       empty: 'Mỹ phẩm sắp có tại Lucy Spa. Trong lúc chờ, mời bạn xem các dịch vụ của tiệm.',
@@ -514,6 +522,9 @@ const text = {
       brands: 'Brand',
       allBrands: 'All brands',
       badgeNew: 'New',
+      saleSave: 'You save {amount}',
+      saleLeftDays: '{days} days {time} left',
+      saleLeft: '{time} left',
       outOfStock: 'Out of stock',
       preOrder: 'Pre-order, expected {days} days',
       empty: 'Cosmetics are coming soon to Lucy Spa. In the meantime, have a look at our services.',

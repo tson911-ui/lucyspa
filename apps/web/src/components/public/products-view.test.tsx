@@ -444,7 +444,7 @@ test('campaigns: an unknown or ended campaign shows the normal page and its norm
   assert.equal(count(failed, /ls-camp-/g), 0);
 });
 
-test('campaigns: a card and the product page show the badge of the campaign and a link to its sale view', () => {
+test('campaigns: a card and the product page show the sale block and a link to the campaign sale view, no badge', () => {
   const list = html(
     <ProductsView locale="vi" data={data({ items: [onSale()] })} state={EMPTY_PRODUCTS_STATE} />,
   );
@@ -453,7 +453,7 @@ test('campaigns: a card and the product page show the badge of the campaign and 
   assert.equal(count(list, /class="ls-prod-campaign"/g), 1);
   assert.ok(list.includes('href="/vi/products?campaign=ngay-hoi-lam-dep"'));
   assert.ok(list.includes('Khuyến mãi: '));
-  // Without badge words the percent is the badge; a plain price has no campaign line.
+  // The percent is the brand-coloured text of the price block (never a badge on the picture); a plain price has no campaign line.
   const percent = html(
     <ProductsView
       locale="vi"
@@ -469,7 +469,8 @@ test('campaigns: a card and the product page show the badge of the campaign and 
       state={EMPTY_PRODUCTS_STATE}
     />,
   );
-  assert.ok(words.includes('Giảm sâu') && !words.includes('-25%'));
+  assert.ok(words.includes('-25%'), "the campaign's badge words no longer replace the percent");
+  assert.ok(!words.includes('ls-prod-badges'), 'no badge on the picture');
   assert.equal(
     count(
       html(<ProductsView locale="vi" data={data()} state={EMPTY_PRODUCTS_STATE} />),
@@ -495,4 +496,64 @@ test('campaigns: a card and the product page show the badge of the campaign and 
   assert.ok(page.includes('-25%'));
   assert.ok(page.includes('Promotion: '));
   assert.ok(page.includes('href="/en/products?campaign=ngay-hoi-lam-dep"'));
+});
+
+test('sale price block: struck list price with the percent, the sale price large, the saving; a countdown only with an end date; nothing extra without a sale', () => {
+  const sale = card({
+    code: 'dang-giam',
+    name: 'Nước hoa hồng',
+    price: { priceVnd: '580000', listPriceVnd: '750000', discountPercent: 23 },
+    priceMaxVnd: '580000',
+  });
+  const plain = card({ code: 'khong-giam', name: 'Kem dưỡng' });
+  const list = html(
+    <ProductsView
+      locale="vi"
+      data={data({ items: [sale, plain], total: 2 })}
+      state={EMPTY_PRODUCTS_STATE}
+    />,
+  );
+  assert.ok(list.includes('<del>750.000 ₫</del>'));
+  assert.ok(list.includes('class="ls-sale-pct">-23%</span>'));
+  assert.ok(list.includes('class="ls-sale-now"><strong>580.000 ₫</strong>'));
+  assert.ok(list.includes('Tiết kiệm <span class="ls-nowrap">170.000 ₫</span>'));
+  assert.equal(count(list, /class="ls-sale"/g), 1, 'only the product on sale has the block');
+  assert.ok(!list.includes('ls-sale-count'), 'no end date, no countdown');
+  assert.ok(
+    !list.includes('ls-prod-badges') || !/ls-prod-badges[^>]*>[^<]*<[^>]*>-23%/.test(list),
+    'no discount badge on the picture',
+  );
+  // The page: same block, larger; with an end date the countdown line is there (the digits tick in the browser).
+  const ends = new Date(Date.now() + 3 * 86_400_000).toISOString();
+  const page = html(
+    <ProductDetailView
+      locale="vi"
+      detail={detail({
+        variants: [
+          {
+            id: 'v1',
+            sellOnline: true,
+            label: null,
+            price: {
+              priceVnd: '580000',
+              listPriceVnd: '750000',
+              discountPercent: 23,
+              saleEndsAt: ends,
+            },
+            stock: stock('IN_STOCK'),
+          },
+        ],
+      })}
+      site={site}
+    />,
+    '/vi/products/kem-duong',
+  );
+  assert.ok(page.includes('data-size="page"'));
+  assert.ok(page.includes('Tiết kiệm <span class="ls-nowrap">170.000 ₫</span>'));
+  assert.ok(page.includes('ls-sale-count'));
+  const block = /<div class="ls-sale"[\s\S]*?<\/div>/.exec(page)?.[0] ?? '';
+  assert.ok(
+    block.includes('ls-sale-now') && !block.includes('ls-badge'),
+    'no badge in the price block',
+  );
 });

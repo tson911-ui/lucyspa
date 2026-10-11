@@ -22,13 +22,13 @@ Server 101 (48 mới: bảo vệ địa chỉ, kết nối/robots/trần byte, c
 3. **DOM audit:** trang mới 1 phát hiện (như P9-2); 26 trang mốc: không số nào tăng do Step này, riêng `dashboard` 9 → 11 `list-height-uneven` do dữ liệu scratch (worker đang chạy tạo thông báo), trang không bị đụng.
 4. Không thêm `wf-*`, px/rem, màu hex; dùng `Drawer`, `DataTable`, `DescriptionList` của bộ UI. Kỹ năng `frontend-design` đã dùng để rà soát: giữ thương hiệu và kiểu C; câu chữ nói rõ bước kế tiếp.
 
-## Em tự đặt: 2 điều chủ đã duyệt (2026-10-11), 2 điều còn chờ chủ
+## Em tự đặt: cả 4 điều chủ đã duyệt (2026-10-11; số 1 và số 3 duyệt ở mục 18 của PHASE9_PRODUCT_IMPORT.md)
 
 Lời chủ ngày 2026-10-11 (nguyên văn): "Owner decision on the pending readings (P9-3 ×4, P9-4 ×3, P9-5 items 2–3): approved as you wrote them, EXCEPT any reading that touches prices, publishing, deleting/hiding data, or permissions — for those, stop and ask." Theo đó em duyệt các điều không đụng giá, đăng bán, xóa/ẩn dữ liệu hay quyền; điều nào đụng thì **giữ lại, hỏi chủ**.
 
-1. **[CÒN CHỜ CHỦ: đụng đến giấy phép/quyền]** Chạy thử đòi giấy phép đã ghi **và xác nhận** trước (không gửi yêu cầu nào tới website trước đó). Mã đang làm đúng như vậy (chặt hơn lời duyệt P9-T9); chưa coi là đã duyệt.
+1. **[Chủ đã duyệt 2026-10-11, vòng 3]** Chạy thử đòi giấy phép đã ghi **và xác nhận** trước (không gửi yêu cầu nào tới website trước đó). Mã đang làm đúng như vậy (chặt hơn lời duyệt P9-T9); đã được duyệt.
 2. **[Chủ đã duyệt 2026-10-11]** Chạy lại thất bại với nguồn đã bật: trạng thái nguồn đổi sang lỗi nhưng **không tự tắt**; việc quét (P9-4) sẽ đòi `READY`. Chạy lại đạt không tự đặt `READY`, phải xác nhận lại.
-3. **[CÒN CHỜ CHỦ: ngưỡng "≥ 50% có giá" đụng đến giá]** Ngưỡng đạt (90% / 50% / 50%) và mẫu = 20 sản phẩm đầu theo mã. Mã đang chạy với các ngưỡng này; chưa coi là đã duyệt.
+3. **[Chủ đã duyệt 2026-10-11, vòng 3; ngưỡng chỉ quyết bài chạy thử đạt hay không, không đổi giá nào]** Ngưỡng đạt (90% / 50% / 50%) và mẫu = 20 sản phẩm đầu theo mã. Mã đang chạy với các ngưỡng này; chưa coi là đã duyệt.
 4. **[Chủ đã duyệt 2026-10-11]** Nguồn loại tệp chưa chạy thử được, nên chưa bật được cho tới khi có bộ đọc tệp (P9-8). _Ghi chú 2026-10-11: P9-8 làm ảnh ZIP và bảng giá, không làm bộ đọc tệp nguồn; nguồn loại tệp vẫn chưa bật được._
 
 ## Triển khai (khi chủ cho phép)

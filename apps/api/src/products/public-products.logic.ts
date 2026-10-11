@@ -102,6 +102,16 @@ export function priceBlock(list: bigint, effective: bigint): PublicProductPrice 
   };
 }
 
+/** A promotion that ends more than five years from now has no end date worth showing (a supplier sale is mirrored open-ended). */
+export const OPEN_ENDED_SALE_MS = 5 * 365 * 24 * 60 * 60 * 1000;
+
+/** The end of a running promotion as an ISO instant, or null when it is open-ended, already over, or there is none. */
+export function saleEnd(endsAt: Date | null, now: Date): string | null {
+  if (endsAt === null) return null;
+  const left = endsAt.getTime() - now.getTime();
+  return left > 0 && left <= OPEN_ENDED_SALE_MS ? endsAt.toISOString() : null;
+}
+
 // ------------------------------------------------------------------------------------------------------ stock
 
 export interface VariantStockInput {

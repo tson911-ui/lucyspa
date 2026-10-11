@@ -14,7 +14,7 @@ const run = (key: string) => {
   return classifyProduct({ name: item.name, categoryNames: item.categories });
 };
 
-test('the fixed list has the twelve categories of the Owner, in his order and with his words', () => {
+test('the fixed list has the thirteen categories of the Owner (twelve plus Thực phẩm chức năng, 2026-10-11), "Khác" last', () => {
   assert.deepEqual(
     LUCY_CATEGORIES.map((category) => category.nameVi),
     [
@@ -29,6 +29,7 @@ test('the fixed list has the twelve categories of the Owner, in his order and wi
       'Chăm sóc cơ thể',
       'Chăm sóc tóc',
       'Bộ sản phẩm/Set',
+      'Thực phẩm chức năng',
       'Khác',
     ],
   );
@@ -168,25 +169,20 @@ test('the brand: the supplier brand text first, then the category the lines star
   assert.equal(lines.category.key, 'CLEANSE');
 });
 
-test('the selling price is the supplier price (the sale price when lower), rounded to 1,000 VND, never below 1,000', () => {
+test('the selling price is the supplier REGULAR price, never the sale price, rounded to 1,000 VND, never below 1,000', () => {
   assert.equal(supplierSellingPrice(350_000), 350_000n);
   assert.equal(supplierSellingPrice(350_400), 350_000n);
   assert.equal(supplierSellingPrice(350_500), 351_000n);
+  // The real case of the Owner: regular 750.000, sale 580.000. The function takes only the regular price, so the sale price cannot leak in.
+  assert.equal(supplierSellingPrice(750_000), 750_000n);
+  assert.equal(supplierSellingPrice.length, 1, 'there is no way to pass a sale price');
   assert.equal(
-    supplierSellingPrice(400_000, 350_000),
-    350_000n,
-    'the sale price is what a buyer pays',
+    supplierSellingPrice(null),
+    null,
+    'a product with only a sale price has no selling price',
   );
-  assert.equal(supplierSellingPrice(350_000, 350_000), 350_000n);
-  assert.equal(
-    supplierSellingPrice(350_000, 400_000),
-    350_000n,
-    'a "sale" price above the regular price is ignored',
-  );
-  assert.equal(supplierSellingPrice(null, 90_000), 90_000n);
   assert.equal(supplierSellingPrice(300), 1_000n);
-  assert.equal(supplierSellingPrice(null, null), null);
-  assert.equal(supplierSellingPrice(0, 0), null);
+  assert.equal(supplierSellingPrice(0), null);
   assert.equal(supplierSellingPrice(5_000_000_000), 5_000_000_000n);
 });
 
@@ -265,10 +261,25 @@ test('a gift-set group, supplements and "Trang Điểm Makeup" are never brands;
   });
   assert.equal(
     supplement.category.key,
-    'OTHER',
+    'SUPPLEMENT',
     'a supplement is not a serum because the word ampoule is in its name',
   );
   assert.equal(supplement.brand, null);
+  // By the supplier category, by the abbreviation in the name, and a set of supplements stays a supplement in this order of rules.
+  assert.equal(
+    classifyProduct({ name: 'Viên Uống Omega 3', categoryNames: ['Thực phẩm chức năng trẻ em'] })
+      .category.key,
+    'SUPPLEMENT',
+  );
+  assert.equal(
+    classifyProduct({ name: 'Lộc nhung lên men TPCN SHJW Nokyoungwon LG', categoryNames: [] })
+      .category.key,
+    'SUPPLEMENT',
+  );
+  assert.equal(
+    classifyProduct({ name: 'Kem dưỡng Ohui', categoryNames: ['OHUI', 'Kem Dưỡng'] }).category.key,
+    'MOISTURE',
+  );
 });
 
 test('a cleanser is a cleanser even when it names the eyes; a set is a set even when only its name says so', () => {

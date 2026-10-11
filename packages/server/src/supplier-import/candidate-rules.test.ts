@@ -84,8 +84,19 @@ test('the Lucy SKU format is the database rule, applied exactly: no upper-casing
   }
 });
 
-test('SKU proposal: the supplier SKU exactly as shown; HARU-<id> only for haruohui.com; nothing for another source', () => {
+test('SKU proposal: a usable supplier SKU exactly as shown; HARU-<id> for haruohui.com without one or with an unusable one; the text kept for another source', () => {
+  assert.deepEqual(proposeSku({ sku: 'KD-101', sourceKey: '9' }, 'haruohui.com'), {
+    sku: 'KD-101',
+    origin: 'SOURCE',
+  });
+  // Owner, 2026-10-11: a source SKU that does not fit Lucy's format (a URL slug, lower case) is not usable: HARU-<WooCommerce id>.
   assert.deepEqual(proposeSku({ sku: 'kd-101', sourceKey: '9' }, 'haruohui.com'), {
+    sku: 'HARU-9',
+    origin: 'GENERATED',
+    replacedSourceSku: 'kd-101',
+  });
+  // A host with no approved prefix keeps the supplier's text and the format review item.
+  assert.deepEqual(proposeSku({ sku: 'kd-101', sourceKey: '9' }, 'other-shop.vn'), {
     sku: 'kd-101',
     origin: 'SOURCE',
   });
@@ -108,19 +119,28 @@ test('SKU proposal: the supplier SKU exactly as shown; HARU-<id> only for haruoh
   assert.equal(hostOf('https://www.HaruOhui.com/'), 'haruohui.com');
 });
 
-test('a SKU that does not fit is a review item and is kept as written (lowercase slug SKUs of the real sample)', () => {
+test('a SKU that does not fit is a review item and is kept as written for a source with no approved prefix', () => {
   const slug = 'nuoc-hoa-hong-duong-trang-da-ohui-extreme-white-skin-softener';
-  const result = evaluateCandidate(input({ record: { sku: slug } }), context());
+  const result = evaluateCandidate(
+    input({ record: { sku: slug }, host: 'other-shop.vn' }),
+    context(),
+  );
   assert.equal(result.proposedSku, slug, 'never upper-cased or shortened');
   const warning = result.warnings.find((w) => w.code === 'SKU_FORMAT');
   assert.ok(warning);
   assert.equal(warning['sku'], slug);
   assert.equal(result.state, 'NEEDS_REVIEW');
   // The upper-case form is only SHOWN when it would fit (and a long slug in upper case does not fit 64 characters either way).
-  const short = evaluateCandidate(input({ record: { sku: 'kd-101' } }), context());
+  const short = evaluateCandidate(
+    input({ record: { sku: 'kd-101' }, host: 'other-shop.vn' }),
+    context(),
+  );
   assert.equal(short.warnings.find((w) => w.code === 'SKU_FORMAT')?.['upperCaseWouldBe'], 'KD-101');
   // Longer than a Lucy SKU can be: no proposal is stored, the review item says so.
-  const long = evaluateCandidate(input({ record: { sku: `A${'B'.repeat(70)}` } }), context());
+  const long = evaluateCandidate(
+    input({ record: { sku: `A${'B'.repeat(70)}` }, host: 'other-shop.vn' }),
+    context(),
+  );
   assert.equal(long.proposedSku, null);
   assert.equal(long.warnings.find((w) => w.code === 'SKU_FORMAT')?.['tooLong'], true);
 });
@@ -129,7 +149,10 @@ test('a lowercase supplier SKU that would collide once upper-cased says so, and 
   const variants = new Map([
     ['KD-101', { variantId: 'v1', productId: 'p1', productName: 'Hàng có sẵn' }],
   ]);
-  const result = evaluateCandidate(input({ record: { sku: 'kd-101' } }), context({ variants }));
+  const result = evaluateCandidate(
+    input({ record: { sku: 'kd-101' }, host: 'other-shop.vn' }),
+    context({ variants }),
+  );
   assert.equal(result.proposedSku, 'kd-101');
   const format = result.warnings.find((w) => w.code === 'SKU_FORMAT');
   assert.deepEqual(format?.['upperCaseCollidesWith'], { productId: 'p1', variantId: 'v1' });
@@ -421,4 +444,45 @@ test('two look-alike products the reviewer kept separate are not raised again', 
     context({ products, otherCandidates: others }),
   );
   assert.ok(!both.warnings.some((w) => w.code === 'POSSIBLE_DUPLICATE'));
+});
+
+test('haruohui.com slug SKUs (Owner, 2026-10-11): a new candidate gets HARU-<id> with no SKU warning, and so does one scanned before the rule', () => {
+  const slug = 'nuoc-hoa-hong-duong-trang-da-ohui-extreme-white-skin-softener';
+  const fresh = evaluateCandidate(input({ record: { sku: slug, sourceKey: '777' } }), context());
+  assert.equal(fresh.proposedSku, 'HARU-777');
+  assert.ok(!fresh.warnings.some((w) => w.code === 'SKU_FORMAT'));
+  // The candidate already holds the slug exactly as the source gave it (never edited): it is replaced, and the stale warning goes.
+  const old = evaluateCandidate(
+    input({
+      record: { sku: slug, sourceKey: '777' },
+      candidate: {
+        proposedSku: slug,
+        state: 'NEEDS_REVIEW',
+        warnings: [{ code: 'SKU_FORMAT', sku: slug, origin: 'SOURCE' }],
+      },
+    }),
+    context(),
+  );
+  assert.equal(old.proposedSku, 'HARU-777');
+  assert.ok(!old.warnings.some((w) => w.code === 'SKU_FORMAT'));
+  // A SKU a person typed (different from the source's text) is never replaced.
+  const typed = evaluateCandidate(
+    input({
+      record: { sku: slug, sourceKey: '777' },
+      candidate: { proposedSku: 'MY-SKU-1', state: 'NEEDS_REVIEW' },
+    }),
+    context(),
+  );
+  assert.equal(typed.proposedSku, 'MY-SKU-1');
+  // A real collision of the generated SKU with a Lucy product stays a review item.
+  const variants = new Map([
+    ['HARU-777', { variantId: 'v1', productId: 'p1', productName: 'Có sẵn' }],
+  ]);
+  const clash = evaluateCandidate(
+    input({ record: { sku: slug, sourceKey: '777' } }),
+    context({ variants }),
+  );
+  assert.equal(clash.proposedSku, 'HARU-777');
+  assert.ok(clash.warnings.some((w) => w.code === 'SKU_COLLISION'));
+  assert.equal(clash.state, 'NEEDS_REVIEW');
 });

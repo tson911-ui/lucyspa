@@ -257,8 +257,10 @@ export interface SupplierImportAllRow {
   brand: { name: string; isNew: boolean } | null;
   /** One of the twelve fixed categories (`key` is the stable code, `name` the Vietnamese name). */
   category: { key: string; name: string };
-  /** The selling price proposed: the supplier's listed price rounded to 1,000 VND, whole VND as text. Null when the source gave none. */
+  /** The list price proposed: the supplier's REGULAR price rounded to 1,000 VND, whole VND as text. Null when the source gave none. */
   priceVnd: string | null;
+  /** The promotional price while the supplier has the product on sale (rounded to 1,000 VND), shown beside the struck list price. Null when not on sale. */
+  promoPriceVnd: string | null;
   /** Why this product cannot be imported now (empty when it can). */
   blockers: ImportAllBlocker[];
 }

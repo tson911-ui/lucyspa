@@ -14,9 +14,7 @@ import {
   activeFilterCount,
   activeCampaign,
   cardPriceText,
-  moneyText,
   PRODUCTS_LIST_ID,
-  priceBadgeText,
   productHref,
   productsHref,
   stockLabel,
@@ -27,6 +25,7 @@ import { directionsUrl, hoursHeadline, telHref } from '../../lib/public-site-cor
 import { PageBack } from '../navigation/page-back';
 import { CampaignHero, CampaignStrips, PriceCampaignLine } from './campaign-views';
 import { LoadNotice } from './home-sections';
+import { SalePrice } from './sale-price';
 import { ProductGallery } from './product-gallery';
 import { ProductImage } from './product-image';
 import { ProductOffer } from './product-offer';
@@ -62,7 +61,6 @@ export function ProductCardView({
 }) {
   const text = getSiteText(locale).products;
   const Heading = level === 2 ? 'h2' : 'h3';
-  const discount = priceBadgeText(card.price);
   const stock = stockLabel(card.stock, text);
   return (
     <article className="ls-prod-card">
@@ -72,9 +70,8 @@ export function ProductCardView({
         ) : (
           <Icon name="droplet" size={40} aria-hidden="true" />
         )}
-        {discount || card.isNew || card.stock.state === 'OUT_OF_STOCK' ? (
+        {card.isNew || card.stock.state === 'OUT_OF_STOCK' ? (
           <div className="ls-prod-badges">
-            {discount ? <Badge tone="brand">{discount}</Badge> : null}
             {card.isNew ? <Badge tone="brand">{text.badgeNew}</Badge> : null}
             {card.stock.state === 'OUT_OF_STOCK' ? (
               <Badge tone="neutral">{text.outOfStock}</Badge>
@@ -97,12 +94,7 @@ export function ProductCardView({
               {stock}
             </p>
           ) : null}
-          <p className="ls-prod-price">
-            <strong>{cardPriceText(card, locale)}</strong>
-            {card.price.listPriceVnd ? (
-              <del>{moneyText(card.price.listPriceVnd, locale)}</del>
-            ) : null}
-          </p>
+          <SalePrice locale={locale} price={card.price} nowText={cardPriceText(card, locale)} />
           <PriceCampaignLine locale={locale} price={card.price} />
         </div>
       </div>

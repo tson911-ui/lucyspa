@@ -137,10 +137,11 @@ test(
         ],
       });
       await receive(skuOf(A, '30 ml').id, 5);
+      const saleEndsAt = new Date(Date.now() + 3_600_000).toISOString();
       await catalog.createPromotion(full.token, A.id, skuOf(A, '30 ml').id, {
         promoPriceVnd: '80000',
         startsAt: new Date(Date.now() - 60_000).toISOString(),
-        endsAt: new Date(Date.now() + 3_600_000).toISOString(),
+        endsAt: saleEndsAt,
       });
       // B: no stock, on order with the shop's default waiting time.
       const B = await make('Sữa rửa mặt', { variants: [{ label: '100 ml', price: 200_000 }] });
@@ -201,6 +202,7 @@ test(
             priceVnd: '80000',
             listPriceVnd: '100000',
             discountPercent: 20,
+            saleEndsAt,
           });
           assert.equal(card.priceMaxVnd, '150000');
           const plain = result.items.find((item) => item.code === B.code)!;

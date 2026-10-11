@@ -175,10 +175,13 @@ function parsePrice(value: unknown): PublicProductPrice | null {
   if (percent !== null && (!isCount(percent) || percent < 1 || percent > 99)) return null;
   const campaign = parseCampaignRef(value['campaign']);
   if (campaign === undefined) return null;
+  const ends = value['saleEndsAt'];
+  const saleEndsAt = isString(ends) && !Number.isNaN(Date.parse(ends)) ? ends : null;
   return {
     priceVnd: value['priceVnd'],
     listPriceVnd: list,
     discountPercent: percent,
+    ...(saleEndsAt ? { saleEndsAt } : {}),
     ...(campaign ? { campaign } : {}),
   };
 }
@@ -453,6 +456,32 @@ export function cardPriceText(
   const price = format(card.price.priceVnd, locale);
   if (card.priceMaxVnd === card.price.priceVnd) return price;
   return locale === 'vi' ? `từ ${price}` : `from ${price}`;
+}
+
+/** The saving of a sale price as whole VND text (list price minus price), or null when there is no sale. */
+export function saleSaving(
+  price: Pick<PublicProductPrice, 'priceVnd' | 'listPriceVnd'>,
+): string | null {
+  if (price.listPriceVnd === null) return null;
+  const saving = BigInt(price.listPriceVnd) - BigInt(price.priceVnd);
+  return saving > 0n ? saving.toString() : null;
+}
+
+/** Days and HH:MM:SS left until `endsAt`, or null when it has passed (or is not a date). */
+export function countdownParts(
+  endsAt: string,
+  nowMs: number,
+): { days: number; time: string } | null {
+  const end = Date.parse(endsAt);
+  if (Number.isNaN(end) || end <= nowMs) return null;
+  const total = Math.floor((end - nowMs) / 1000);
+  const days = Math.floor(total / 86_400);
+  const rest = total % 86_400;
+  const two = (value: number) => String(value).padStart(2, '0');
+  return {
+    days,
+    time: `${two(Math.floor(rest / 3600))}:${two(Math.floor((rest % 3600) / 60))}:${two(rest % 60)}`,
+  };
 }
 
 /** "-15%" (the percent is display only; the struck list price is the fact). */

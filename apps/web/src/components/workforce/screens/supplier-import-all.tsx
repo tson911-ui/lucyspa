@@ -246,7 +246,18 @@ export function Chooser({ data }: { data: SupplierImportAllPreview }) {
       key: 'price',
       header: copy.columns.price,
       numeric: true,
-      cell: (row) => (row.priceVnd === null ? text.none : formatVnd(row.priceVnd, locale)),
+      cell: (row) =>
+        row.priceVnd === null ? (
+          text.none
+        ) : row.promoPriceVnd === null ? (
+          formatVnd(row.priceVnd, locale)
+        ) : (
+          // Like the supplier's shop: the regular price struck through, the sale price beside it.
+          <span className="ls-cell-stack">
+            <strong>{formatVnd(row.promoPriceVnd, locale)}</strong>
+            <del className="ls-cell-sub">{formatVnd(row.priceVnd, locale)}</del>
+          </span>
+        ),
     },
   ];
 

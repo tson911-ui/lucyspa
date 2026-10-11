@@ -140,6 +140,7 @@ export {
   classifyProduct,
   deriveBrands,
   LUCY_CATEGORIES,
+  supplierPromoPrice,
   supplierSellingPrice,
   type Classification,
   type ClassifyInput,

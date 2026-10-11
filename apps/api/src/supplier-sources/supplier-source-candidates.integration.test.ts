@@ -124,7 +124,7 @@ test(
         ) as Record<string, unknown> | undefined;
 
       await suite.test(
-        'SKUs: the supplier SKU exactly as shown (a slug SKU stays lowercase and is a review item), HARU-<id> for a source without one, collisions are suggestions only',
+        'SKUs: a usable supplier SKU exactly as shown, HARU-<id> for a source without one or with an unusable one (a slug), collisions are suggestions only',
         async () => {
           const { source, host } = await readySource();
           // A Lucy product that already owns the SKU "KD-DA-CO" and a name the supplier also sells.
@@ -169,14 +169,11 @@ test(
           assert.equal((await by('11')).proposedSku, 'KD-11');
           assert.equal(
             (await by('12')).proposedSku,
-            slug,
-            'never upper-cased, shortened or repaired',
+            'HARU-12',
+            'a slug is not a usable SKU (Owner, 2026-10-11): the generated one, never an upper-cased or shortened slug',
           );
           assert.equal((await by('13')).proposedSku, `HARU-13`);
-          const format = warningOf((await by('12')).warnings, 'SKU_FORMAT');
-          assert.equal(format?.['sku'], slug);
-          // Shown to the reviewer as a fact, never applied: the proposal stays as the supplier wrote it.
-          assert.equal(format?.['upperCaseWouldBe'], slug.toUpperCase());
+          assert.equal(warningOf((await by('12')).warnings, 'SKU_FORMAT'), undefined);
           assert.ok(!codesOf((await by('13')).warnings).includes('SKU_MISSING'));
           const collision = warningOf((await by('14')).warnings, 'SKU_COLLISION');
           assert.equal(collision?.['productId'], owner.id);
@@ -205,7 +202,7 @@ test(
           assert.equal(await tx.product.count(), 1, 'only the Lucy product made above exists');
           assert.equal(
             await tx.productVariant.count({
-              where: { sku: { in: ['KD-11', slug, 'HARU-13', 'SRM-16'] } },
+              where: { sku: { in: ['KD-11', slug, 'HARU-12', 'HARU-13', 'SRM-16'] } },
             }),
             0,
           );

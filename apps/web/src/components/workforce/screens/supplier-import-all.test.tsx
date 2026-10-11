@@ -40,6 +40,7 @@ const preview = (): SupplierImportAllPreview => ({
       brand: { name: 'OHUI', isNew: true },
       category: { key: 'TONER', name: 'Nước hoa hồng/Toner' },
       priceVnd: '350000',
+      promoPriceVnd: null,
       blockers: [],
     },
     {
@@ -50,7 +51,9 @@ const preview = (): SupplierImportAllPreview => ({
       thumbImageId: null,
       brand: { name: 'OHUI', isNew: true },
       category: { key: 'CLEANSE', name: 'Làm sạch' },
-      priceVnd: '300000',
+      // The supplier's real case: regular 750.000, on sale for 580.000.
+      priceVnd: '750000',
+      promoPriceVnd: '580000',
       blockers: [],
     },
     {
@@ -62,6 +65,7 @@ const preview = (): SupplierImportAllPreview => ({
       brand: null,
       category: { key: 'OTHER', name: 'Khác' },
       priceVnd: null,
+      promoPriceVnd: null,
       blockers: ['SKU_INVALID', 'PRICE_MISSING'],
     },
   ],

@@ -3901,6 +3901,62 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   white-space: nowrap;
 }
 
+/* A product on sale, like a phone-store card in the shop's own style: the struck list price with the percent, the sale price large and
+   bold, the saving small, and a countdown only for a sale that has an end date. No badge on the picture, nothing that blinks. */
+.ls-sale {
+  display: grid;
+  gap: var(--ls-space-1);
+}
+
+.ls-sale p {
+  margin: 0;
+}
+
+.ls-sale-was {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--ls-space-2);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
+}
+
+.ls-sale-was del {
+  color: var(--ls-text-subtle);
+  white-space: nowrap;
+}
+
+.ls-sale-pct {
+  color: var(--ls-brand);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ls-sale-now strong {
+  color: var(--ls-text);
+  font-size: var(--ls-type-card);
+  line-height: var(--ls-lh-card);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ls-sale[data-size='page'] .ls-sale-now strong {
+  font-size: var(--ls-type-sub);
+  line-height: var(--ls-lh-sub);
+}
+
+.ls-nowrap {
+  white-space: nowrap;
+}
+
+.ls-sale-save,
+.ls-sale-count {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-small);
+  line-height: var(--ls-lh-small);
+  font-variant-numeric: tabular-nums;
+}
+
 .ls-prod-pager {
   margin-top: var(--ls-space-7);
 }

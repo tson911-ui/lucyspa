@@ -265,3 +265,35 @@ The Owner's words as he sent them (English), in two messages. They **change** ea
 > Addition: the "Nhập và đăng tất cả" preview is a list with ONE CHECKBOX PER PRODUCT (image, name, SKU, category, price), all ticked by default, plus "Chọn tất cả / Bỏ chọn tất cả", search, and filters by category and brand. Only ticked products are imported and published. Unticked products become IGNORED and are not re-proposed on later scans unless their source content changes. Checkboxes must have a 44px tap area on mobile. Published products can still be hidden later with the existing inactive status.
 
 **How the design reads them (the agent's reading; the words above are the record).** Built as step P9-9b, after P9-8 and P9-9 and before the deploy guide (P9-10). Server-side the safety checks stay: the one action needs `REVIEW_SUPPLIER_IMPORTS`, publishing needs `MANAGE_PRODUCTS` and the selling price needs `MANAGE_PRODUCT_PRICES` (a person without them can import nothing through the button); every product, brand, mapping, price version and publication writes the audit log; the supplier price is never written to `cost_price_vnd`. Note for the Owner: the supplier did **not** state permission for prices (section 15, answer 2); making the supplier price the public selling price is the Owner's decision above, and the system does not block it on `permits_prices`.
+
+## 18. Owner decisions on the six open readings, and the price correction (2026-10-11, after the P9-9b report)
+
+The Owner's words (verbatim, English as given):
+
+> Owner decisions on your 6 items:
+>
+> 1. NO: selling price = WooCommerce REGULAR price (e.g. 750.000), never the sale price (580.000). Store the sale price only as a reference observation. Round to 1,000 VND.
+> 2. NO: products without a usable supplier SKU get HARU-<WooCommerce product id> (Owner decision 2026-10-10), so the 16 slug-SKU products import automatically like the rest. Apply to already-scanned candidates too. Real collisions still stay review items.
+> 3. Add a 13th category "Thực phẩm chức năng" and map the supplements there instead of "Khác".
+> 4. Approved: published = on the public cosmetics page, "Mua tại cửa hàng" while online selling is off.
+> 5. Approved: scheduled scans use full scope; schedule stays OFF until the Owner turns it on.
+> 6. P9-7's 7 readings and P9-3 #1/#3: approved, except any that would change a price or publish without the Owner's click — for those, pick the safer option and note it.
+>    Record all of this, add regression tests (regular vs sale price, HARU-<id> fallback, supplements category), keep CI green, then update docs/DEPLOY_PHASE9_P9_7_TO_P9_9B.md and the Owner test script for the new final commit. No deploy. Report the final commit hash and migration count.
+
+Correction to item 1 (supersedes it; verbatim):
+
+> Correction to item 1 (supersedes what I just sent): mirror Haruohui's prices exactly. List price = WooCommerce regular price; when the product is on sale, also import the sale price as the current promotional price (with Woo's sale start/end dates if provided) and show it like Haruohui: regular price struck through + sale price. Products not on sale show the regular price only. Use the existing price/promotion mechanism if one fits, otherwise add the minimum needed. Round to 1,000 VND. Later price or sale changes stay review items, never applied silently. Regression test: regular + sale price display. Items 2–6 unchanged.
+
+Display instruction (supersedes the discount badge; verbatim):
+
+> Replace the discount badge instruction: on sale products, show the price block like a phone-store card, in Lucy style C: line 1 = regular price struck through + "-N%" in brand #782b37; line 2 = sale price, large and bold; line 3 = "Tiết kiệm X đ", small. Show a countdown "Còn N ngày HH:MM:SS" only when the sale has an end date. No badge on the image, no blinking, no green or yellow. Same on product cards and the product page; nothing extra when there is no sale.
+
+**How the design reads them (the agent's reading; the words above are the record).**
+
+- **List price** = the supplier's regular price rounded to 1,000 VND (`supplierSellingPrice` takes only the regular price). **Sale** = the existing shop promotion (`product_promotions`: price below the list price, a window, no overlap, ended by hand only): created by "Nhập và đăng tất cả" when the source has the product on sale (sale price rounded to 1,000 VND, still below the rounded list price), audit `PRODUCT_PROMOTION_CREATED` (financial) with `via: SUPPLIER_IMPORT_ALL`. **No schema change.** The source price observation keeps both prices as a reference.
+- **Sale dates:** the WooCommerce Store API this source uses gives the CURRENT sale price and no start or end date, so the promotion starts at the import and has no end in practice (ten years; the public site counts down only for an end within five years). If a source ever gives dates they can be used the same way; none is invented.
+- **Later changes** (the source changes or ends its sale, or the regular price) are only change notes (P9-7); the shop's price and promotion are never touched silently; a person ends a promotion by hand with the existing "end promotion" action.
+- **Slug SKUs:** a source SKU that does not fit Lucy's format gets `HARU-<WooCommerce id>` for haruohui.com (the Owner's prefix); a host with no approved prefix keeps the SKU as written and the format review item. Candidates scanned before this rule are shown, checked and imported with the generated SKU (the import re-evaluates and stores it); a SKU a person typed is never replaced; a real collision (a Lucy product or another candidate already has it) stays a review item. Lowercase real codes are also "not usable" and also get `HARU-<id>`.
+- **13th category:** "Thực phẩm chức năng" (English "Dietary supplements"), placed before "Khác", which stays last; a supplier category or a name saying supplement or TPCN maps there.
+- **Item 6:** none of the P9-7 readings or P9-3 #1/#3 changes a price or publishes without the Owner's click (scheduled scans only read the source and write change notes and candidates; the Test Source pass thresholds only decide whether a test passes), so all are approved as written; no safer alternative was needed.
+- **P9-8 readings** (bulk price file, ZIP pictures on live products) were not in this list: they stay pending the Owner.

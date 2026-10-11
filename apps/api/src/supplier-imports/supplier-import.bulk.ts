@@ -14,11 +14,14 @@ import type { Prisma } from '@lucy-spa/database';
 import {
   classifyProduct,
   deriveBrands,
+  hostOf,
+  proposeSku,
   evaluateCandidates,
   foldText,
   LUCY_CATEGORIES,
   reduceDecisions,
   saveMapping,
+  supplierPromoPrice,
   supplierSellingPrice,
   type LucyCategoryKey,
 } from '@lucy-spa/server';
@@ -46,6 +49,8 @@ type Tx = Prisma.TransactionClient;
 const GLOBAL = { kind: 'GLOBAL' } as const;
 const MAX_CODE = 64;
 const IGNORE_NOTE = 'Bỏ chọn khi nhập hàng loạt';
+/** A sale the source gives no end date for runs ten years (no end in practice); a person ends it by hand when the source's sale ends. */
+const OPEN_ENDED_PROMOTION_MS = 10 * 365 * 24 * 60 * 60 * 1000;
 
 function requireImportAll(context: AdminContext): void {
   const graph = context.actor.graph;
@@ -86,6 +91,9 @@ const CANDIDATE = {
       sourceRecord: {
         select: {
           categoryPath: true,
+          sku: true,
+          sourceKey: true,
+          source: { select: { baseUrl: true } },
           priceObservations: {
             orderBy: { observedAt: 'desc' },
             take: 1,
@@ -182,6 +190,9 @@ interface Plan {
   brandTerm: { text: string; by: string } | null;
   category: { key: LucyCategoryKey; term: string | null; by: string };
   price: bigint | null;
+  /** The supplier's sale, mirrored as a promotion (null when the product is not on sale). */
+  promo: bigint | null;
+  sku: string | null;
 }
 
 /** The supplier's category names of a candidate (its own, else those of its source record). */
@@ -204,6 +215,25 @@ async function loadDictionary(tx: Tx, brands: readonly BrandRow[]): Promise<stri
     select: CANDIDATE,
   });
   return dictionaryOf(rows, brands);
+}
+
+/**
+ * The SKU the product will have (Owner, 2026-10-11): a candidate scanned before the HARU-<id> rule still holds the supplier's unusable
+ * text (a URL slug). It is shown, checked and imported with HARU-<WooCommerce id> now; the import re-evaluates the candidate and stores
+ * it. A SKU a person typed is never replaced.
+ */
+function skuOf(row: CandidateRow): string | null {
+  const record = row.sources[0]?.sourceRecord;
+  if (!record) return row.proposedSku;
+  const proposed = proposeSku(
+    { sku: record.sku, sourceKey: record.sourceKey },
+    hostOf(record.source.baseUrl),
+  );
+  // No SKU stored (an over-long supplier slug is stored as none), or the unedited unusable supplier text: the proposal.
+  const stale =
+    row.proposedSku === null ||
+    (proposed.replacedSourceSku !== undefined && row.proposedSku === proposed.replacedSourceSku);
+  return stale ? (proposed.sku ?? row.proposedSku) : row.proposedSku;
 }
 
 function planOf(
@@ -232,7 +262,10 @@ function planOf(
       term: classified.category.term,
       by: classified.category.by,
     },
-    price: supplierSellingPrice(observation?.priceVnd ?? null, observation?.promoPriceVnd ?? null),
+    // The REGULAR price only (Owner, 2026-10-11): the sale price stays a reference observation on the source record.
+    price: supplierSellingPrice(observation?.priceVnd ?? null),
+    promo: supplierPromoPrice(observation?.priceVnd ?? null, observation?.promoPriceVnd ?? null),
+    sku: skuOf(row),
   };
 }
 
@@ -240,7 +273,7 @@ function blockersOf(plan: Plan, skuTaken: boolean): ImportAllBlocker[] {
   const out: ImportAllBlocker[] = [
     ...approvalBlockers({
       nameVi: plan.row.nameVi,
-      sku: plan.row.proposedSku,
+      sku: plan.sku,
       skuTaken,
       warnings: warningsOf(plan.row.warnings),
     }),
@@ -266,7 +299,7 @@ export async function previewImportAll(context: AdminContext): Promise<SupplierI
     loadCategories(tx),
   ]);
   const dictionary = dictionaryOf(rows, brands);
-  const skus = [...new Set(rows.flatMap((row) => (row.proposedSku ? [row.proposedSku] : [])))];
+  const skus = [...new Set(rows.flatMap((row) => skuOf(row) ?? []))];
   const taken = new Set(
     (await tx.productVariant.findMany({ where: { sku: { in: skus } }, select: { sku: true } })).map(
       (variant) => variant.sku,
@@ -278,7 +311,7 @@ export async function previewImportAll(context: AdminContext): Promise<SupplierI
   let importable = 0;
   for (const row of rows) {
     const plan = planOf(row, brands, dictionary);
-    const blockers = blockersOf(plan, row.proposedSku !== null && taken.has(row.proposedSku));
+    const blockers = blockersOf(plan, plan.sku !== null && taken.has(plan.sku));
     const decisions = reduceDecisions(row.decisions).images;
     const shown = row.images.filter((image) => decisions.get(image.id) !== 'DROP');
     // The brand already on the candidate (a person chose it) wins over the one the system would pick.
@@ -299,11 +332,12 @@ export async function previewImportAll(context: AdminContext): Promise<SupplierI
       id: row.id,
       rowVersion: row.rowVersion,
       nameVi: row.nameVi,
-      sku: row.proposedSku,
+      sku: plan.sku,
       thumbImageId: shown[0]?.id ?? null,
       brand: brandName,
       category: { key, name: categoryName(key) },
       priceVnd: plan.price === null ? null : plan.price.toString(),
+      promoPriceVnd: plan.promo === null ? null : plan.promo.toString(),
       blockers,
     });
     if (blockers.length === 0) {
@@ -462,6 +496,40 @@ async function importOne(
 
   // 4. The same approval as a single product (DRAFT, the numbered price version, the kept pictures, the provenance), then publish.
   const approved = await approveInTransaction(context, id, fresh.rowVersion, freshPlan.price);
+  // The supplier's sale, as the shop's own promotion (price below the list price, from now). The Store API gives no sale dates, so it
+  // runs open-ended: a later change at the source is a review item (the change notes) and a person ends it by hand.
+  if (freshPlan.promo !== null) {
+    const variant = await tx.productVariant.findFirstOrThrow({
+      where: { productId: approved.productId },
+      orderBy: { sortOrder: 'asc' },
+      select: { id: true },
+    });
+    const startsAt = context.now;
+    const endsAt = new Date(startsAt.getTime() + OPEN_ENDED_PROMOTION_MS);
+    const promotion = await tx.productPromotion.create({
+      data: {
+        variantId: variant.id,
+        promoPriceVnd: freshPlan.promo,
+        startsAt,
+        endsAt,
+        createdByUserId: context.actor.userId,
+      },
+      select: { id: true },
+    });
+    await appendAdminAudit(context, {
+      action: 'PRODUCT_PROMOTION_CREATED',
+      entityType: 'ProductPromotion',
+      entityId: promotion.id,
+      classification: 'FINANCIAL',
+      after: {
+        variantId: variant.id,
+        promoPriceVnd: freshPlan.promo.toString(),
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        via: 'SUPPLIER_IMPORT_ALL',
+      },
+    });
+  }
   const published = await tx.product.update({
     where: { id: approved.productId },
     data: { status: 'PUBLISHED', rowVersion: { increment: 1 } },

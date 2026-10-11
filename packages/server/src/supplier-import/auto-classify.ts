@@ -4,7 +4,7 @@ import { foldText } from './candidate-rules.js';
  * Phase 9 P9-9b (Owner, 2026-10-11, docs/PHASE9_PRODUCT_IMPORT.md section 17): the automatic brand and category of an imported
  * product, so a person does not have to map every value by hand. Pure: no database, no network, no AI (P9-T10).
  *
- * Categories: the Owner's fixed list of twelve. Each product is mapped from the supplier's PRODUCT-TYPE categories first, then from
+ * Categories: the Owner's fixed list of thirteen (twelve, plus "Thực phẩm chức năng" added by the Owner on 2026-10-11). Each product is mapped from the supplier's PRODUCT-TYPE categories first, then from
  * keywords in the product name (Vietnamese and English). Brand and product-line names are never categories. Nothing matched: "Khác".
  * Brand: the supplier's brand text when it gives one; otherwise the supplier category that is the brand (the one the product-line
  * categories start with, which the whole batch of products teaches: a product that lists only a line still finds its brand); otherwise
@@ -26,6 +26,7 @@ export type LucyCategoryKey =
   | 'BODY'
   | 'HAIR'
   | 'SET'
+  | 'SUPPLEMENT'
   | 'OTHER';
 
 /** The fixed list, in the Owner's order. Names are exactly the Owner's words. */
@@ -42,6 +43,7 @@ export const LUCY_CATEGORIES: readonly { key: LucyCategoryKey; nameVi: string; n
     { key: 'BODY', nameVi: 'Chăm sóc cơ thể', nameEn: 'Body care' },
     { key: 'HAIR', nameVi: 'Chăm sóc tóc', nameEn: 'Hair care' },
     { key: 'SET', nameVi: 'Bộ sản phẩm/Set', nameEn: 'Sets' },
+    { key: 'SUPPLEMENT', nameVi: 'Thực phẩm chức năng', nameEn: 'Dietary supplements' },
     { key: 'OTHER', nameVi: 'Khác', nameEn: 'Other' },
   ];
 
@@ -54,7 +56,10 @@ const any = (...values: string[]) => phrase(`(?:${values.join('|')})`);
  * The keyword rules in PRIORITY order: the first rule that matches decides. A specific kind comes before a generic one ("kem dưỡng
  * mắt" is eye care before "kem dưỡng" is a moisturizer; "body cleanser" is body care before "cleanser" is a cleanser).
  */
-const RULES: readonly { key: Exclude<LucyCategoryKey, 'OTHER' | 'SET'>; test: RegExp }[] = [
+const RULES: readonly {
+  key: Exclude<LucyCategoryKey, 'OTHER' | 'SET' | 'SUPPLEMENT'>;
+  test: RegExp;
+}[] = [
   {
     key: 'SUN',
     test: any(
@@ -210,7 +215,7 @@ const isGeneric = (term: string) => {
   return GENERIC_TERMS.some((entry) => value === entry || value.startsWith(`${entry} `));
 };
 
-/** Supplements ("Thực phẩm chức năng", "TPCN") are not beauty products: no Lucy category fits them, so they go to "Khác". */
+/** Supplements ("Thực phẩm chức năng", "TPCN") are not beauty products: they have their own category, the 13th (Owner, 2026-10-11). */
 const SUPPLEMENT = any('thực phẩm chức năng', 'tpcn');
 
 /**
@@ -395,13 +400,17 @@ export function classifyProduct(
     ? lines.map((line) => ({ line, rest: withoutBrandPrefix(line, brand!.text) }))
     : [];
 
-  // 0. Supplements are not beauty products: no category of the fixed list fits, so they go to "Khác".
+  // 0. Supplements are not beauty products: they have their own category (the 13th).
   const supplement = terms.find((term) => SUPPLEMENT.test(norm(term)));
   if (supplement !== undefined || SUPPLEMENT.test(norm(input.name))) {
     return {
       brand,
       lines,
-      category: { key: 'OTHER', by: 'SUPPLIER_CATEGORY', term: supplement ?? null },
+      category: {
+        key: 'SUPPLEMENT',
+        by: supplement === undefined ? 'NAME' : 'SUPPLIER_CATEGORY',
+        term: supplement ?? null,
+      },
     };
   }
   // 1. A set or gift box says so in a supplier category.
@@ -445,18 +454,29 @@ export function classifyProduct(
 }
 
 /**
- * The selling price taken from the supplier's listed price (Owner decision, section 17): the price a buyer pays on the supplier's site
- * (the sale price when one is lower than the regular price), rounded to the nearest 1,000 VND, never below 1,000. Null when the source
- * gave no usable price: such a product cannot be published and is listed as a blocker.
+ * The list price (Owner, section 17, corrected 2026-10-11): the supplier's REGULAR price, rounded to the nearest 1,000 VND, never below
+ * 1,000. The sale price is NEVER the list price: while the source has the product on sale it becomes a promotion (`supplierPromoPrice`).
+ * Null when the source gave no regular price: such a product cannot be published and is listed as a blocker.
  */
 export function supplierSellingPrice(
-  priceVnd: number | bigint | null | undefined,
-  promoPriceVnd?: number | bigint | null,
+  regularPriceVnd: number | bigint | null | undefined,
 ): bigint | null {
-  const regular = priceVnd === null || priceVnd === undefined ? 0n : BigInt(priceVnd);
-  const promo = promoPriceVnd === null || promoPriceVnd === undefined ? 0n : BigInt(promoPriceVnd);
-  const listed = promo > 0n && (regular === 0n || promo < regular) ? promo : regular;
-  if (listed <= 0n) return null;
-  const rounded = ((listed + 500n) / 1000n) * 1000n;
+  const regular =
+    regularPriceVnd === null || regularPriceVnd === undefined ? 0n : BigInt(regularPriceVnd);
+  if (regular <= 0n) return null;
+  const rounded = ((regular + 500n) / 1000n) * 1000n;
   return rounded < 1000n ? 1000n : rounded;
+}
+
+/**
+ * The promotional price that mirrors the supplier's sale (Owner, 2026-10-11): the sale price rounded to 1,000 VND, only when it is still
+ * below the rounded list price (a sale that rounds to the list price is no sale). Null when the product is not on sale.
+ */
+export function supplierPromoPrice(
+  regularPriceVnd: number | bigint | null | undefined,
+  salePriceVnd: number | bigint | null | undefined,
+): bigint | null {
+  const list = supplierSellingPrice(regularPriceVnd);
+  const sale = supplierSellingPrice(salePriceVnd);
+  return list !== null && sale !== null && sale < list ? sale : null;
 }

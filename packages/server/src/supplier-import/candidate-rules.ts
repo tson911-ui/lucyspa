@@ -95,17 +95,32 @@ export function nameKey(name: string, extraTexts: readonly string[] = []): strin
 export interface SkuProposal {
   sku: string | null;
   origin: 'SOURCE' | 'GENERATED' | 'NONE';
+  /** The supplier's own text when it was not usable and the generated one replaced it (shown, never applied). */
+  replacedSourceSku?: string;
 }
 
-/** The SKU a candidate starts with: the supplier's exactly as shown, else the approved generated one, else none. */
+/**
+ * The SKU a candidate starts with: the supplier's exactly as shown when it fits Lucy's format, else the approved generated one
+ * (Owner, 2026-10-11: a source SKU that is not usable, such as a URL slug, gets the same `HARU-<id>` as no SKU at all), else none.
+ * A host with no approved prefix keeps the supplier's text and the `SKU_FORMAT` review item.
+ */
 export function proposeSku(
   record: { sku: string | null; sourceKey: string },
   host: string | null,
   prefixes: Readonly<Record<string, string>> = GENERATED_SKU_PREFIX_BY_HOST,
 ): SkuProposal {
-  if (record.sku !== null && record.sku !== '') return { sku: record.sku, origin: 'SOURCE' };
   const prefix = host === null ? undefined : prefixes[host];
-  if (prefix !== undefined) return { sku: `${prefix}${record.sourceKey}`, origin: 'GENERATED' };
+  const given = record.sku !== null && record.sku !== '' ? record.sku : null;
+  if (given !== null && (LUCY_SKU.test(given) || prefix === undefined)) {
+    return { sku: given, origin: 'SOURCE' };
+  }
+  if (prefix !== undefined) {
+    return {
+      sku: `${prefix}${record.sourceKey}`,
+      origin: 'GENERATED',
+      ...(given === null ? {} : { replacedSourceSku: given }),
+    };
+  }
   return { sku: null, origin: 'NONE' };
 }
 
@@ -312,8 +327,13 @@ export function evaluateCandidate(
 
   // SKU: a value already on the candidate wins; otherwise the proposal from the source.
   const proposed = proposeSku(record, input.host, context.skuPrefixes);
+  // A candidate scanned before the rule above still carries the unusable supplier text (never edited by a person: it is exactly the
+  // source's own SKU). It takes the generated SKU too; a SKU a person typed is never replaced.
+  const staleSource =
+    proposed.replacedSourceSku !== undefined &&
+    candidate.proposedSku === proposed.replacedSourceSku;
   const proposal: { sku: string | null; origin: SkuProposal['origin'] | 'CURRENT' } =
-    candidate.proposedSku === null
+    candidate.proposedSku === null || staleSource
       ? proposed
       : {
           sku: candidate.proposedSku,
@@ -420,7 +440,7 @@ export function evaluateCandidate(
     brandId,
     brandText,
     categoryId,
-    proposedSku: candidate.proposedSku ?? sku,
+    proposedSku: staleSource ? sku : (candidate.proposedSku ?? sku),
     warnings,
     // Translation does not hold a candidate back (the English name starts equal to the Vietnamese one and stays flagged).
     state: decided ? candidate.state : warnings.length === 0 ? 'READY_FOR_REVIEW' : 'NEEDS_REVIEW',

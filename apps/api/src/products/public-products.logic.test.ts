@@ -6,6 +6,7 @@ import {
   pageOffset,
   parsePublicProductsQuery,
   priceBlock,
+  saleEnd,
   productStock,
   searchPatterns,
   variantStock,
@@ -160,4 +161,12 @@ test('product code shape: slug characters only, up to 96', () => {
   assert.equal(isProductCode('a/b'), false);
   assert.equal(isProductCode(''), false);
   assert.equal(isProductCode('-start'), false);
+});
+
+test('the end of a sale is shown only when it is a real end: a window of a few days yes, an open-ended supplier sale or a finished one no', () => {
+  const now = new Date('2026-10-12T00:00:00.000Z');
+  assert.equal(saleEnd(new Date('2026-10-15T00:00:00.000Z'), now), '2026-10-15T00:00:00.000Z');
+  assert.equal(saleEnd(null, now), null, 'no promotion');
+  assert.equal(saleEnd(new Date('2026-10-11T00:00:00.000Z'), now), null, 'already over');
+  assert.equal(saleEnd(new Date('2036-10-10T00:00:00.000Z'), now), null, 'ten years: open-ended');
 });
