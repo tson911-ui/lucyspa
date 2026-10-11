@@ -22,7 +22,11 @@ import { ApiError } from './api';
 /** The size limit as people read it: whole megabytes (5 MB = 5 × 1024 × 1024 bytes). */
 export const megabytes = (bytes: number): string => `${Math.round(bytes / 1024 / 1024)} MB`;
 
-export const IMPORT_KINDS: readonly ProductImportKindName[] = ['CATALOG', 'OPENING_STOCK'];
+export const IMPORT_KINDS: readonly ProductImportKindName[] = [
+  'CATALOG',
+  'OPENING_STOCK',
+  'PRICE_UPDATE',
+];
 export const IMPORT_EXTENSIONS = ['.xlsx', '.csv'] as const;
 
 export type ImportRowFilter = 'all' | 'invalid' | 'valid';
@@ -54,6 +58,11 @@ export function templateUrl(
   locale: Locale,
 ): string {
   return `/api/v1/product-imports/template?kind=${kind}&format=${format}&lang=${locale}`;
+}
+
+/** The current price list as a file to edit and import again (Phase 9 P9-8; needs the price permission). */
+export function exportPricesUrl(format: 'xlsx' | 'csv', locale: Locale): string {
+  return `/api/v1/product-imports/export-prices?format=${format}&lang=${locale}`;
 }
 
 /** The header the template shows for a column key (the key itself when the column is unknown). */

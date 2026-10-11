@@ -20,6 +20,12 @@ import {
 } from './import.apply.js';
 import type { Access, Issues } from './import.parse.js';
 import {
+  applyPriceUpdate,
+  lockAndPlanPrices,
+  planPriceUpdate,
+  priceExportRows,
+} from './import.price.js';
+import {
   planCatalog,
   planOpeningStock,
   toResponse,
@@ -231,10 +237,14 @@ export async function uploadJob(
   const sources = sourceRows(upload.sheet, upload.map);
   if (sources.length === 0) throw new AuthError('IMPORT_FILE_INVALID', 'empty');
 
+  // The price file changes selling prices: only a person holding MANAGE_PRODUCT_PRICES may even preview one.
+  if (upload.kind === 'PRICE_UPDATE' && !access.prices) throw new AuthError('FORBIDDEN');
   const plan =
     upload.kind === 'CATALOG'
       ? await planCatalog(context, sources, access)
-      : await planOpeningStock(context, branch!, sources, access);
+      : upload.kind === 'PRICE_UPDATE'
+        ? await planPriceUpdate(context, sources, access)
+        : await planOpeningStock(context, branch!, sources, access);
   const rows = plan.rows;
 
   const warnings: Issues = upload.map.unknown.slice(0, 20).map((header) => ({
@@ -368,7 +378,9 @@ function sameOutcome(
       row.rowNo === now.rowNo &&
       row.status === now.status &&
       row.action === now.action &&
-      row.raw.changes.join(',') === now.changes.join(',')
+      row.raw.changes.join(',') === now.changes.join(',') &&
+      // A price file stores the price it saw: a price someone changed since the preview makes the preview stale.
+      (row.raw.cells['current_price'] ?? '') === (now.cells['current_price'] ?? '')
     );
   });
 }
@@ -407,6 +419,12 @@ export async function applyJob(
     if (!sameOutcome(rows, plan.rows)) throw new AuthError('IMPORT_PREVIEW_STALE');
     if (plan.lots.length === 0) throw new AuthError('IMPORT_NOTHING_TO_APPLY');
     done = await applyOpeningStock(context, id, branch.id, plan);
+  } else if (job.kind === 'PRICE_UPDATE') {
+    if (!access.prices) throw new AuthError('FORBIDDEN');
+    const plan = await lockAndPlanPrices(context, sources, access);
+    if (!sameOutcome(rows, plan.rows)) throw new AuthError('IMPORT_PREVIEW_STALE');
+    if (plan.changes.length === 0) throw new AuthError('IMPORT_NOTHING_TO_APPLY');
+    done = await applyPriceUpdate(context, id, plan);
   } else {
     throw new AuthError('VALIDATION_FAILED', 'kind');
   }
@@ -433,4 +451,17 @@ export async function applyJob(
     after: { kind: job.kind, applied: done.applied, skippedInvalid: job.invalidCount },
   });
   return detail(context, id, access);
+}
+
+/** The price list as the rows of the PRICE_UPDATE template (MANAGE_PRODUCT_PRICES and IMPORT_PRODUCT_DATA). */
+export async function exportPrices(context: AdminContext): Promise<string[][]> {
+  const access = requireImport(context);
+  if (!access.prices) throw new AuthError('FORBIDDEN');
+  await appendAdminAudit(context, {
+    action: 'PRODUCT_PRICE_LIST_EXPORTED',
+    entityType: 'ProductImportJob',
+    entityId: context.actor.userId,
+    classification: 'FINANCIAL',
+  });
+  return priceExportRows(context.tx);
 }

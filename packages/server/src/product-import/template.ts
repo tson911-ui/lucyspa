@@ -21,11 +21,18 @@ const TEXT = {
     example: 'Ví dụ',
     yes: 'Có',
     no: 'Không',
-    file: { CATALOG: 'mau-san-pham', OPENING_STOCK: 'mau-ton-dau-ky' },
+    file: {
+      CATALOG: 'mau-san-pham',
+      OPENING_STOCK: 'mau-ton-dau-ky',
+      PRICE_UPDATE: 'mau-cap-nhat-gia',
+    },
+    exportFile: 'bang-gia',
     lines: (kind: ProductImportKindName) => [
       kind === 'CATALOG'
         ? 'Nhập sản phẩm và phân loại. Mỗi dòng là một phân loại (một SKU).'
-        : 'Nhập số lượng tồn đầu kỳ cho một chi nhánh. Mỗi dòng là một lô của một phân loại.',
+        : kind === 'PRICE_UPDATE'
+          ? 'Cập nhật giá bán hàng loạt. Mỗi dòng là một phân loại (một SKU) đã có; sửa cột giá rồi nhập lại tệp.'
+          : 'Nhập số lượng tồn đầu kỳ cho một chi nhánh. Mỗi dòng là một lô của một phân loại.',
       'Sheet "Dữ liệu" chỉ có dòng tiêu đề: nhập dữ liệu từ dòng 2 và giữ nguyên tiêu đề.',
       'Không lưu gì cho đến khi bạn xem trước kết quả và bấm xác nhận.',
       `Tối đa ${IMPORT_LIMITS.maxRows.toLocaleString('vi-VN')} dòng và ${IMPORT_LIMITS.maxBytes / 1024 / 1024} MB mỗi tệp. Tệp .xlsx hoặc .csv (UTF-8).`,
@@ -34,9 +41,14 @@ const TEXT = {
             'Cập nhật: ô để trống thì giữ nguyên giá trị hiện tại. Ô trống không xóa dữ liệu.',
             'Sản phẩm mới được tạo ở trạng thái nháp; đăng bán trong màn hình sản phẩm.',
           ]
-        : [
-            'Mỗi phân loại chỉ nhập tồn đầu kỳ một lần, khi chưa có nhập hay xuất kho tại chi nhánh.',
-          ]),
+        : kind === 'PRICE_UPDATE'
+          ? [
+              'Giá mới chỉ có hiệu lực sau khi bạn xem so sánh giá cũ và giá mới rồi xác nhận. Mỗi thay đổi thành một phiên bản giá mới; giá cũ vẫn được lưu lại.',
+              'Cần quyền đổi giá bán. Dòng có giá không đổi sẽ được bỏ qua.',
+            ]
+          : [
+              'Mỗi phân loại chỉ nhập tồn đầu kỳ một lần, khi chưa có nhập hay xuất kho tại chi nhánh.',
+            ]),
     ],
   },
   en: {
@@ -48,11 +60,18 @@ const TEXT = {
     example: 'Example',
     yes: 'Yes',
     no: 'No',
-    file: { CATALOG: 'products-template', OPENING_STOCK: 'opening-stock-template' },
+    file: {
+      CATALOG: 'products-template',
+      OPENING_STOCK: 'opening-stock-template',
+      PRICE_UPDATE: 'price-update-template',
+    },
+    exportFile: 'price-list',
     lines: (kind: ProductImportKindName) => [
       kind === 'CATALOG'
         ? 'Import products and variants. One row is one variant (one SKU).'
-        : 'Import opening stock for one branch. One row is one lot of one variant.',
+        : kind === 'PRICE_UPDATE'
+          ? 'Bulk selling price update. One row is one existing variant (one SKU); edit the price column and import the file again.'
+          : 'Import opening stock for one branch. One row is one lot of one variant.',
       'The "Data" sheet holds the header row only: type from row 2 and keep the header.',
       'Nothing is saved until you review the preview and confirm.',
       `Up to ${IMPORT_LIMITS.maxRows.toLocaleString('en-US')} rows and ${IMPORT_LIMITS.maxBytes / 1024 / 1024} MB per file. .xlsx or .csv (UTF-8).`,
@@ -61,7 +80,12 @@ const TEXT = {
             'Update: a blank cell keeps the current value. A blank never deletes data.',
             'New products are created as drafts; publish them on the products screen.',
           ]
-        : ['A variant gets opening stock once, while it has no stock history at the branch.']),
+        : kind === 'PRICE_UPDATE'
+          ? [
+              'A new price takes effect only after you review the old and new prices and confirm. Each change becomes a new price version; the old one is kept.',
+              'Needs the permission to change selling prices. A row whose price did not change is skipped.',
+            ]
+          : ['A variant gets opening stock once, while it has no stock history at the branch.']),
     ],
   },
 } as const;
@@ -90,19 +114,26 @@ function csvField(value: string): string {
   return /[",\r\n;]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
+/**
+ * The template of a kind: the header row only. With `entries` (the price export, Phase 9 P9-8) the data sheet also carries those rows,
+ * one array of cell texts per row in the order of the kind's columns.
+ */
 export function buildTemplate(
   kind: ProductImportKindName,
   format: TemplateFormat,
   language: TemplateLanguage,
+  entries?: readonly (readonly string[])[],
 ): TemplateFile {
   const text = TEXT[language];
   const columns = PRODUCT_IMPORT_COLUMNS[kind];
-  const base = text.file[kind];
+  const base = entries === undefined ? text.file[kind] : text.exportFile;
+  const dataRows = entries ?? [];
   if (format === 'csv') {
     // A byte order mark so Excel opens the file as UTF-8. Header only: any example row would be imported as data.
     const line = columns.map((column) => csvField(column.header[language])).join(',');
+    const body = dataRows.map((row) => row.map(csvField).join(',')).join('\r\n');
     return {
-      bytes: strToU8(`\uFEFF${line}\r\n`),
+      bytes: strToU8(`\uFEFF${line}\r\n${body === '' ? '' : `${body}\r\n`}`),
       filename: `${base}.csv`,
       contentType: 'text/csv; charset=utf-8',
     };
@@ -119,7 +150,12 @@ export function buildTemplate(
     .join('');
   const dataSheet =
     `${DECLARATION}<worksheet xmlns="${MAIN}"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>` +
-    `<sheetFormatPr defaultRowHeight="18"/><cols>${cols}</cols><sheetData><row r="1" ht="24" customHeight="1">${header}</row></sheetData></worksheet>`;
+    `<sheetFormatPr defaultRowHeight="18"/><cols>${cols}</cols><sheetData><row r="1" ht="24" customHeight="1">${header}</row>${dataRows
+      .map(
+        (row, r) =>
+          `<row r="${r + 2}">${row.map((value, c) => cell(`${letters(c)}${r + 2}`, value, TEXT_COLUMNS.has(columns[c]?.key ?? '') ? 1 : 0)).join('')}</row>`,
+      )
+      .join('')}</sheetData></worksheet>`;
 
   const rows: string[] = [];
   let n = 1;

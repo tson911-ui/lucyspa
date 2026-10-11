@@ -51,6 +51,8 @@ import { ProductExchangeService } from './product-returns/exchange.service.js';
 import { ProductRefundController } from './product-returns/refund.controller.js';
 import { ProductRefundService } from './product-returns/refund.service.js';
 import { ProductImportController } from './product-imports/import.controller.js';
+import { ProductImageZipController } from './product-imports/image-zip.controller.js';
+import { ProductImageZipService } from './product-imports/image-zip.service.js';
 import { ProductImportService } from './product-imports/import.service.js';
 import { ProductCatalogController } from './products/product-catalog.controller.js';
 import { ProductCatalogService } from './products/product-catalog.service.js';
@@ -179,6 +181,7 @@ export class AppModule {
         ProductRefundController,
         ProductExchangeController,
         ProductImportController,
+        ProductImageZipController,
         RewardController,
         CustomerLoyaltyController,
         LoyaltyController,
@@ -259,6 +262,7 @@ export class AppModule {
         ProductRefundService,
         ProductExchangeService,
         ProductImportService,
+        ProductImageZipService,
         RewardService,
         CustomerLoyaltyService,
         LoyaltyService,

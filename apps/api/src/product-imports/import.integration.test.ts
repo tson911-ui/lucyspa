@@ -86,9 +86,14 @@ test(
           const file = await imports.template(plain.token, 'CATALOG', 'xlsx', 'vi');
           assert.equal(file.filename, 'mau-san-pham.xlsx');
           await fails(
-            () => imports.template(plain.token, 'PRICE_UPDATE', 'xlsx', 'vi'),
+            () => imports.template(plain.token, 'NOT_A_KIND', 'xlsx', 'vi'),
             'VALIDATION_FAILED',
             'kind',
+          );
+          // Phase 9 P9-8: the price update is a kind of its own.
+          assert.equal(
+            (await imports.template(plain.token, 'PRICE_UPDATE', 'csv', 'vi')).filename,
+            'mau-cap-nhat-gia.csv',
           );
           await fails(() => upload(nobody.token, [head, 'A']), 'FORBIDDEN');
           const list = await imports.list(plain.token);

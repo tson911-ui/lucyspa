@@ -4411,7 +4411,7 @@ export interface StockCountLinesRequest {
 // in Vietnamese or English.
 // ---------------------------------------------------------------------------------------------------------------
 
-export type ProductImportKindName = 'CATALOG' | 'OPENING_STOCK';
+export type ProductImportKindName = 'CATALOG' | 'OPENING_STOCK' | 'PRICE_UPDATE';
 export type ProductImportStatusName = 'UPLOADED' | 'PREVIEWED' | 'APPLIED' | 'FAILED' | 'CANCELLED';
 export type ProductImportActionName = 'CREATE' | 'UPDATE' | 'NONE';
 
@@ -4541,6 +4541,58 @@ export interface ProductImportApplyRequest {
 export interface ProductImportCancelRequest {
   expectedRowVersion: number;
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Phase 9 P9-8 (PRD 31.3): bulk pictures. A ZIP of pictures named after the SKU is previewed (nothing is saved), then applied by the
+// same person with the same file. Pictures are only ADDED to a product (never replaced, never removed). Needs IMPORT_PRODUCT_DATA
+// and MANAGE_PRODUCTS (GLOBAL). A picture for a PUBLISHED product changes the live site, so it is applied only when the person says so.
+// ---------------------------------------------------------------------------------------------------------------
+
+export const PRODUCT_IMAGE_ZIP_REASONS = [
+  'NOT_AN_IMAGE',
+  'TOO_BIG',
+  'NAME_DUPLICATE',
+  'SKU_NOT_FOUND',
+  'SKU_AMBIGUOUS',
+  'VARIANT_INACTIVE',
+  'SAME_FILE_IN_ZIP',
+  'ALREADY_ON_PRODUCT',
+  'PUBLISHED_NOT_ALLOWED',
+  'IMAGE_INVALID',
+] as const;
+export type ProductImageZipReason = (typeof PRODUCT_IMAGE_ZIP_REASONS)[number];
+
+export interface ProductImageZipItem {
+  fileName: string;
+  status: 'READY' | 'SKIPPED' | 'ADDED';
+  reason?: ProductImageZipReason;
+  sku: string | null;
+  /** The position among the product's pictures that the file name asked for. */
+  position: number | null;
+  product: { id: string; name: string; published: boolean } | null;
+}
+
+export interface ProductImageZipResponse {
+  /** SHA-256 of the archive: the apply must be sent with the same file. */
+  sha256: string;
+  items: ProductImageZipItem[];
+  ready: number;
+  skipped: number;
+  /** Pictures that would go onto PUBLISHED products (they are applied only with `allowPublished`). */
+  publishedPictures: number;
+  /** Products that would get at least one picture. */
+  products: number;
+  /** Set by the apply: how many pictures were added. */
+  added: number;
+}
+
+export const PRODUCT_IMAGE_ZIP_FAILURES = [
+  'tooLarge',
+  'corrupt',
+  'empty',
+  'tooManyFiles',
+  'tooBigInside',
+] as const;
 
 /**
  * The columns of the two import templates. The key is stable (stored with the preview, used in messages); the header is what the
@@ -4764,6 +4816,41 @@ export const PRODUCT_IMPORT_COLUMNS: Record<ProductImportKindName, readonly Prod
         needs: 'cost',
         note: { vi: 'Giá vốn một đơn vị, số nguyên đồng.', en: 'Cost of one unit, whole VND.' },
         example: '120000',
+      },
+    ],
+    // Phase 9 P9-8 (PRD 31.4): export the price list, edit prices, re-import, preview the differences, confirm. The export has exactly
+    // these columns with the current prices filled in; a row whose price did not change is "unchanged".
+    PRICE_UPDATE: [
+      {
+        key: 'sku',
+        header: { vi: 'Mã SKU', en: 'SKU' },
+        required: true,
+        note: {
+          vi: 'SKU của phân loại đã có trong danh mục. Không đổi cột này.',
+          en: 'The SKU of a variant that already exists in the catalog. Do not change this column.',
+        },
+        example: 'KEM-DUONG-50',
+      },
+      {
+        key: 'name',
+        header: { vi: 'Tên sản phẩm', en: 'Product name' },
+        required: false,
+        note: {
+          vi: 'Chỉ để bạn đọc cho dễ. Hệ thống bỏ qua cột này khi nhập lại.',
+          en: 'For your reading only. The system ignores this column on re-import.',
+        },
+        example: 'Kem dưỡng da',
+      },
+      {
+        key: 'price',
+        header: { vi: 'Giá bán (₫)', en: 'Selling price (VND)' },
+        required: true,
+        needs: 'prices',
+        note: {
+          vi: 'Giá bán mới, số nguyên đồng, lớn hơn 0. Giá giữ nguyên thì dòng đó không đổi.',
+          en: 'The new selling price, whole VND, above 0. An unchanged price leaves the row as it is.',
+        },
+        example: '350000',
       },
     ],
   };

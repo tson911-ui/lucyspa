@@ -78,6 +78,25 @@ export class ProductImportController {
     response.end(Buffer.from(file.bytes));
   }
 
+  @Get('export-prices')
+  @ApiOkResponse({
+    description:
+      'The price list to edit and import again (IMPORT_PRODUCT_DATA and MANAGE_PRODUCT_PRICES): ?format=xlsx|csv&lang=vi|en.',
+  })
+  async exportPrices(
+    @Query('format') format: string,
+    @Query('lang') lang: string | undefined,
+    @Req() request: Request,
+    @Res() response: Response,
+  ): Promise<void> {
+    const file = await this.imports.exportPrices(this.session(request), format, lang ?? 'vi');
+    response.setHeader('content-type', file.contentType);
+    response.setHeader('content-length', String(file.bytes.length));
+    response.setHeader('content-disposition', `attachment; filename="${file.filename}"`);
+    response.setHeader('cache-control', 'no-store');
+    response.end(Buffer.from(file.bytes));
+  }
+
   @Get(':id')
   @ApiOkResponse({
     description: 'One job with its rows (price and cost cells only for who may see them).',

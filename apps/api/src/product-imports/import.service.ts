@@ -27,7 +27,7 @@ import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import * as core from './import.core.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const KINDS: readonly ProductImportKindName[] = ['CATALOG', 'OPENING_STOCK'];
+const KINDS: readonly ProductImportKindName[] = ['CATALOG', 'OPENING_STOCK', 'PRICE_UPDATE'];
 
 /** The reason a file is refused, as the camelCase field the API reports (the screen writes the sentence). */
 const REASONS: Record<SpreadsheetFailure, string> = {
@@ -100,6 +100,24 @@ export class ProductImportService {
       kind as ProductImportKindName,
       format as TemplateFormat,
       language as TemplateLanguage,
+    );
+  }
+
+  /** The price list, ready to edit and import again (Phase 9 P9-8). Needs both the import and the price permission. */
+  async exportPrices(
+    token: string | undefined,
+    format: string,
+    language: string,
+    requestId?: string,
+  ): Promise<TemplateFile> {
+    if (format !== 'xlsx' && format !== 'csv') throw new AuthError('VALIDATION_FAILED', 'format');
+    if (language !== 'vi' && language !== 'en') throw new AuthError('VALIDATION_FAILED', 'lang');
+    const rows = await this.run(token, requestId, true, (context) => core.exportPrices(context));
+    return buildTemplate(
+      'PRICE_UPDATE',
+      format as TemplateFormat,
+      language as TemplateLanguage,
+      rows,
     );
   }
 

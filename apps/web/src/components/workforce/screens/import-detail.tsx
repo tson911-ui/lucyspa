@@ -23,7 +23,7 @@ import { importDictionary } from '../../../i18n/imports';
 import { fill } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/workforce/api';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
-import { formatDateTime } from '../../../lib/workforce/format';
+import { formatDateTime, formatVnd } from '../../../lib/workforce/format';
 import {
   applyRequest,
   columnLabel,
@@ -183,6 +183,12 @@ export function ImportView({
                 { label: d.stats.rows, value: job.rowCount },
                 { label: d.stats.valid, value: job.validCount },
                 { label: d.stats.invalid, value: job.invalidCount },
+                ...(job.kind === 'PRICE_UPDATE'
+                  ? [
+                      { label: d.stats.update, value: job.updateCount },
+                      { label: d.stats.unchanged, value: job.unchangedCount },
+                    ]
+                  : []),
                 ...(job.kind === 'CATALOG'
                   ? [
                       { label: d.stats.create, value: job.createCount },
@@ -326,6 +332,14 @@ function ImportRows({ job }: { job: ProductImportDetailResponse }) {
     resetOnChange: IMPORT_ROWS_PAGE_KEYS,
   });
   const opening = job.kind === 'OPENING_STOCK';
+  const pricing = job.kind === 'PRICE_UPDATE';
+  const money = (value: string | undefined) => {
+    if (value === undefined || value === '') return text.none;
+    // A cell that is not an amount (the file said "abc") is shown as written, so the row problem is understood.
+    return /^[\d.,\s₫đ]+$/u.test(value)
+      ? formatVnd(value.replace(/[^0-9]/g, ''), locale)
+      : value.slice(0, 30);
+  };
   const [viewing, setViewing] = useState<ProductImportRowResponse | null>(null);
   const rows = filterImportRows(job.rows, list.filter, list.q);
   const active = (list.q ? 1 : 0) + (list.filter !== 'all' ? 1 : 0);
@@ -357,6 +371,22 @@ function ImportRows({ job }: { job: ProductImportDetailResponse }) {
             cell: (row: ProductImportRowResponse) =>
               [row.cells['lot_code'], row.cells['expiry_date']].filter(Boolean).join(' · ') ||
               text.none,
+          },
+        ]
+      : []),
+    ...(pricing
+      ? [
+          {
+            key: 'oldPrice',
+            header: d.columns.oldPrice,
+            numeric: true,
+            cell: (row: ProductImportRowResponse) => money(row.cells['current_price']),
+          },
+          {
+            key: 'newPrice',
+            header: d.columns.newPrice,
+            numeric: true,
+            cell: (row: ProductImportRowResponse) => money(row.cells['price']),
           },
         ]
       : []),

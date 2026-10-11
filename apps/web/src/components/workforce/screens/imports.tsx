@@ -22,10 +22,12 @@ import {
 import { useState } from 'react';
 import { importDictionary } from '../../../i18n/imports';
 import { fill } from '../../../i18n/workforce';
+import { ImageZipDialog } from './import-zip';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { formatDateTime } from '../../../lib/workforce/format';
 import {
   emptyUploadDraft,
+  exportPricesUrl,
   IMPORT_KINDS,
   megabytes,
   importErrorText,
@@ -63,6 +65,7 @@ export function ImportsView({ data }: { data: ProductImportListResponse }) {
   const { t, locale, base, navigate } = useWorkforce();
   const text = importDictionary(locale);
   const [uploading, setUploading] = useState(false);
+  const [zipping, setZipping] = useState(false);
   const [page, setPage] = useState({ page: 1, pageSize: 20 });
   const open = (job: ProductImportJobResponse) => `${base}/import/${job.id}`;
 
@@ -137,6 +140,9 @@ export function ImportsView({ data }: { data: ProductImportListResponse }) {
   return (
     <>
       <PageHeader title={text.title}>
+        <Button variant="secondary" icon="upload" onClick={() => setZipping(true)}>
+          {text.zip.open}
+        </Button>
         <Button variant="primary" icon="upload" onClick={() => setUploading(true)}>
           {text.upload}
         </Button>
@@ -155,6 +161,7 @@ export function ImportsView({ data }: { data: ProductImportListResponse }) {
           labels: paginationLabels(t, text.list.table),
         }}
       />
+      {zipping ? <ImageZipDialog onClose={() => setZipping(false)} /> : null}
       {uploading ? (
         <UploadDialog
           data={data}
@@ -272,6 +279,30 @@ export function UploadDialog({
                 options={data.branches.map((branch) => ({ value: branch.id, label: branch.name }))}
                 onChange={(event) => set({ branchId: event.target.value })}
               />
+            )}
+          </Field>
+        ) : null}
+        {draft.kind === 'PRICE_UPDATE' ? (
+          <Field label={d.exportLabel} hint={d.exportHint} full>
+            {() => (
+              <Cluster>
+                <ButtonLink
+                  variant="secondary"
+                  icon="download"
+                  href={exportPricesUrl('xlsx', locale)}
+                  download
+                >
+                  {d.exportXlsx}
+                </ButtonLink>
+                <ButtonLink
+                  variant="secondary"
+                  icon="download"
+                  href={exportPricesUrl('csv', locale)}
+                  download
+                >
+                  {d.exportCsv}
+                </ButtonLink>
+              </Cluster>
             )}
           </Field>
         ) : null}
