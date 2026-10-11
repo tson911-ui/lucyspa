@@ -1,7 +1,8 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from './generated/prisma/client.js';
 
-export type { Prisma, Branch, OutboxEvent } from './generated/prisma/client.js';
+export { Prisma } from './generated/prisma/client.js';
+export type { Branch, OutboxEvent } from './generated/prisma/client.js';
 export { appendOutboxEvent, type AppendOutboxEventInput } from './outbox.js';
 export {
   generateInvoiceCode,

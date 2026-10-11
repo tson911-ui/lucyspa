@@ -169,6 +169,14 @@ export {
   type AllocationInput,
 } from './order-allocation.js';
 export {
+  countUnposted,
+  postCashSources,
+  POSTING_SOURCE_TYPES,
+  type PostingResult,
+  type PostingSourceType,
+  type UnpostedSummary,
+} from './cash-posting.js';
+export {
   bindReferral,
   canBindReferrer,
   completedVisitsOf,
