@@ -539,7 +539,13 @@ test('Phase 4 Step 4 POS database foundation invariants (all fixtures roll back)
               for (const row of others) {
                 assert.equal(
                   row.dataClassification,
-                  ['VIEW_EMPLOYEE_PAY', 'MANAGE_EMPLOYEE_PAY'].includes(row.code)
+                  [
+                    'VIEW_EMPLOYEE_PAY',
+                    'MANAGE_EMPLOYEE_PAY',
+                    'MANAGE_PAY_RULES',
+                    'MANAGE_PAYROLL',
+                    'APPROVE_PAYROLL',
+                  ].includes(row.code)
                     ? 'EMPLOYEE_PAY'
                     : [
                           'ADJUST_LOYALTY_POINTS',
@@ -550,6 +556,8 @@ test('Phase 4 Step 4 POS database foundation invariants (all fixtures roll back)
                           'IMPORT_PRODUCT_DATA',
                           'REFUND_PRODUCTS',
                           'MANAGE_PRODUCT_CAMPAIGNS',
+                          'VIEW_CASH',
+                          'MANAGE_CASH',
                         ].includes(row.code)
                       ? 'FINANCIAL'
                       : 'STANDARD',
