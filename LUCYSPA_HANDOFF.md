@@ -906,3 +906,10 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - P9-9c final: deploy guide, Owner test script and milestone re-targeted to code commit `ac74013` (docs commit follows it); P9-8 readings are the only ones still pending the Owner.
 
 - Owner 2026-10-11: P9-8 readings (bulk price file, ZIP pictures on live products) approved as written, both already require the Owner's preview + confirm (recorded in `docs/PHASE9_PRODUCT_IMPORT.md` section 18 and the P9-8 report). No Phase 9 reading is pending any more.
+
+### Phase 9 P9-7..P9-9c: DEPLOYED (Owner report, 2026-10-11 ~16:50 UTC+7)
+
+- Production = `ac74013bb6a9ef681c7d4e306216de1a3565e639` (previous `638afde`). Guide: `docs/DEPLOY_PHASE9_P9_7_TO_P9_9B.md`. **108 migrations** (rehearsal times: `20261129000000_phase9_resync_changes` 0.074 s, `20261130000000_phase9_full_scan` 0.010 s), **68 permissions**; check line `108|68|1|1|0|1|20|0|t`.
+- pm2: web 3 / api 1 / worker 1 online; health ok; all pages answer 200 and the new APIs 401 unauthenticated.
+- **"Bán online" was found ENABLED in the database at deploy time** (it was OFF at the morning deploy). The deploy did not change it; who or when it was switched on is not recorded here. Earlier handoff lines saying it is OFF are true only up to the morning deploy.
+- Backups: `/root/backups/lucyspa-pre-p97-20261011T094627Z.dump` and `/root/backups/lucyspa-web-pre-p97-20261011T094627Z.tar.gz`; deploy log `/root/backups/deploy-p97-log.txt`.
