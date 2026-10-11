@@ -27,6 +27,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { invalidatePendingDeliveries } from '../auth/auth-delivery.js';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { AuthError } from '../auth/auth.error.js';
+import { shopToday } from '../pay/pay.access.js';
+import { appendSalaryVersionRow } from '../pay/pay-salary.core.js';
 import { text } from '../auth/registration.js';
 import { generateCapability, identityDigest } from '../auth/crypto.js';
 import { flowTokenDigest, OTP_POLICY } from '../auth/otp-flow.js';
@@ -291,6 +293,13 @@ export class EmployeeService {
         },
       });
       if (candidate.baseSalaryVnd !== null) {
+        await appendSalaryVersionRow(tx, {
+          employeeUserId: id,
+          amountVnd: candidate.baseSalaryVnd,
+          effectiveFrom: day(candidate.employmentStartDate),
+          reason: candidate.employmentReason ?? null,
+          recordedByUserId: actor.userId,
+        });
         await this.audit(context, id, candidate.branchIds, 'BASE_SALARY_CHANGED', {
           before: { baseSalaryVnd: null },
           after: { baseSalaryVnd: candidate.baseSalaryVnd.toString() },
@@ -811,6 +820,14 @@ export class EmployeeService {
           employeeProfile: { update: { baseSalaryVnd: salary } },
         },
         select: { id: true },
+      });
+      // P7-T1: the salary history follows every change of the number (effective today); a second change on the same day is refused.
+      await appendSalaryVersionRow(tx, {
+        employeeUserId: target.id,
+        amountVnd: salary,
+        effectiveFrom: shopToday(context.now),
+        reason,
+        recordedByUserId: actor.userId,
       });
       await this.audit(context, target.id, branchIds, 'BASE_SALARY_CHANGED', {
         reason,

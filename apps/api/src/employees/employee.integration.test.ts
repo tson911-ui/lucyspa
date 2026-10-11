@@ -382,6 +382,13 @@ test(
               });
               assert.equal(paid.baseSalaryVnd, '8500000');
               assert.equal(paid.version, inA.version + 1);
+              // Phase 7 P7-T1: the change is also a salary version dated today, so the history never loses a number.
+              const versions = await tx.employeeSalaryVersion.findMany({
+                where: { employeeUserId: inA.id },
+              });
+              assert.equal(versions.length, 1);
+              assert.equal(versions[0]?.amountVnd, 8_500_000n);
+              assert.equal(versions[0]?.reason, 'Contract signed');
               assert.equal((await employees.get(managerSession, inA.id)).baseSalaryVnd, undefined);
               assert.equal((await employees.get(paySession, inA.id)).baseSalaryVnd, '8500000');
               const [event] = await auditOf(inA.id, 'BASE_SALARY_CHANGED');

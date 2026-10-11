@@ -43,6 +43,8 @@ import { SupplierSourceController } from './supplier-sources/supplier-source.con
 import { SupplierSourceService } from './supplier-sources/supplier-source.service.js';
 import { CashController } from './finance/cash.controller.js';
 import { CashService } from './finance/cash.service.js';
+import { PayController } from './pay/pay.controller.js';
+import { PayService } from './pay/pay.service.js';
 import { CampaignService } from './campaigns/campaign.service.js';
 import { OnlineOrderController } from './online-orders/online.controller.js';
 import { OnlineOrderService } from './online-orders/online.service.js';
@@ -180,6 +182,7 @@ export class AppModule {
         CampaignController,
         SupplierSourceController,
         CashController,
+        PayController,
         SupplierImportController,
         ProductRefundController,
         ProductExchangeController,
@@ -262,6 +265,7 @@ export class AppModule {
         CampaignService,
         SupplierSourceService,
         CashService,
+        PayService,
         SupplierImportService,
         ProductRefundService,
         ProductExchangeService,

@@ -177,6 +177,19 @@ export {
   type UnpostedSummary,
 } from './cash-posting.js';
 export {
+  commissionAmount,
+  pickCommissionRule,
+  pickSalaryVersion,
+  pickTourRule,
+  proportionalShare,
+  type CommissionContext,
+  type CommissionKindName,
+  type CommissionRuleRow,
+  type CommissionScopeName,
+  type SalaryVersionRow,
+  type TourRuleRow,
+} from './pay-rules.js';
+export {
   bindReferral,
   canBindReferrer,
   completedVisitsOf,

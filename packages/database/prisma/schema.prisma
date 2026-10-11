@@ -419,6 +419,9 @@ enum LeaveType {
 // canonical identities, credential state and protected sole-Owner invariants.
 model User {
   id                             String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recordedSalaryVersions         EmployeeSalaryVersion[]          @relation("SalaryVersionRecorder")
+  createdTourRules               TourRule[]                       @relation("TourRuleCreator")
+  createdCommissionRules         CommissionRule[]                 @relation("CommissionRuleCreator")
   kind                           UserKind
   status                         UserStatus
   fullName                       String                           @map("full_name")
@@ -603,6 +606,8 @@ model CustomerProfile {
 
 model EmployeeProfile {
   userId                  String                           @id @map("user_id") @db.Uuid
+  salaryVersions          EmployeeSalaryVersion[]
+  commissionRules         CommissionRule[]
   user                    User                             @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   employeeCodeCanonical   String                           @unique(map: "employee_profiles_employee_code_canonical_key") @map("employee_code_canonical") @db.VarChar(64)
   dateOfBirth             DateTime                         @map("date_of_birth") @db.Date
@@ -957,6 +962,7 @@ enum ServicePricingUnit {
 
 model Service {
   id                      String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tourRules               TourRule[]
   code                    String                      @unique(map: "services_code_key")
   categoryId              String                      @map("category_id") @db.Uuid
   category                ServiceCategory             @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -3256,6 +3262,7 @@ enum StockCountStatus {
 
 model Brand {
   id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commissionRules CommissionRule[]
   code       String    @unique(map: "brands_code_key") @db.VarChar(64)
   nameVi     String    @map("name_vi")
   nameEn     String    @map("name_en")
@@ -3274,6 +3281,7 @@ model Brand {
 
 model ProductCategory {
   id         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commissionRules CommissionRule[]
   parentId   String?           @map("parent_id") @db.Uuid
   parent     ProductCategory?  @relation("ProductCategoryTree", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   children   ProductCategory[] @relation("ProductCategoryTree")
@@ -3297,6 +3305,7 @@ model ProductCategory {
 
 model Product {
   id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commissionRules CommissionRule[]
   code            String           @unique(map: "products_code_key") @db.VarChar(96)
   brandId         String?          @map("brand_id") @db.Uuid
   brand           Brand?           @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -5042,4 +5051,77 @@ model CashDayClosing {
 
   @@index([branchId, businessDate], map: "cash_day_closings_branch_date_idx")
   @@map("cash_day_closings")
+}
+
+enum CommissionScope {
+  SHOP
+  BRAND
+  CATEGORY
+  PRODUCT
+}
+
+enum CommissionKind {
+  PERCENT
+  FIXED_PER_UNIT
+}
+
+/// P7-8 (P7-T1): effective-dated base salary history (append-only). NULL amount = no salary from that date. No row is created from the
+/// old `baseSalaryVnd` automatically: the Owner enters the first version.
+model EmployeeSalaryVersion {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeUserId   String          @map("employee_user_id") @db.Uuid
+  employee         EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  amountVnd        BigInt?         @map("amount_vnd")
+  effectiveFrom    DateTime        @map("effective_from") @db.Date
+  reason           String?
+  recordedByUserId String          @map("recorded_by_user_id") @db.Uuid
+  recordedBy       User            @relation("SalaryVersionRecorder", fields: [recordedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  recordedAt       DateTime        @default(dbgenerated("clock_timestamp()")) @map("recorded_at") @db.Timestamptz(3)
+
+  @@unique([employeeUserId, effectiveFrom], map: "employee_salary_versions_date_key")
+  @@index([recordedByUserId], map: "employee_salary_versions_recorder_idx")
+  @@map("employee_salary_versions")
+}
+
+/// P7-8 (PRD 33): the fixed tour amount of a service from a date (append-only; 0 = pays nothing).
+model TourRule {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serviceId       String   @map("service_id") @db.Uuid
+  service         Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  amountVnd       BigInt   @map("amount_vnd")
+  effectiveFrom   DateTime @map("effective_from") @db.Date
+  reason          String?
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  createdBy       User     @relation("TourRuleCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([serviceId, effectiveFrom], map: "tour_rules_date_key")
+  @@index([createdByUserId], map: "tour_rules_creator_idx")
+  @@map("tour_rules")
+}
+
+/// P7-8 (PRD 26): a product commission rule (append-only). value = basis points for PERCENT, dong per unit for FIXED_PER_UNIT. The
+/// unique index over the scope, its target, the employee and the date is SQL-only (it uses COALESCE).
+model CommissionRule {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scope           CommissionScope
+  brandId         String?         @map("brand_id") @db.Uuid
+  brand           Brand?          @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  categoryId      String?         @map("category_id") @db.Uuid
+  category        ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  productId       String?         @map("product_id") @db.Uuid
+  product         Product?        @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId  String?         @map("employee_user_id") @db.Uuid
+  employee        EmployeeProfile? @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  kind            CommissionKind
+  value           BigInt
+  effectiveFrom   DateTime        @map("effective_from") @db.Date
+  reason          String?
+  createdByUserId String          @map("created_by_user_id") @db.Uuid
+  createdBy       User            @relation("CommissionRuleCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([scope, effectiveFrom], map: "commission_rules_lookup_idx")
+  @@index([createdByUserId], map: "commission_rules_creator_idx")
+  @@map("commission_rules")
 }
