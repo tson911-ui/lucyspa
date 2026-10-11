@@ -21,6 +21,8 @@ Quyết định của Owner (2026-10-12, nguyên văn ở `PHASE7_PAYROLL_FUNDS.
 - Quét DOM hóa đơn (đã thu và chờ): thẻ tip 0 phát hiện; 3 phát hiện FR8 cũ ở 360 trên bảng dịch vụ và bảng ưu đãi (không đụng tới). Hộp đóng 28px là của bộ UI chung.
 - Chưa kiểm: người dùng thật trên máy chạm; ở 1440 nhóm radio xuống dòng 4+1 (chấp nhận được, không chồng).
 
-## Chờ Owner xác nhận (chưa đánh dấu là đã duyệt)
+## Owner đã duyệt (2026-10-12, nguyên văn)
 
-Mức gợi ý 20.000/50.000/100.000; khách chọn trên màn hình quầy (máy không phân biệt ai bấm); đơn online chỉ có sản phẩm nên không có bước tip; PayOS không hoàn tiền trong hệ thống nên "hoàn tiền thì đảo tip" = Chủ hoàn tác tip bằng tay.
+> Owner approves: preset tip amounts 20.000 / 50.000 / 100.000 + Khác; no tip step in online product checkout; customer picks on the counter screen; manual Owner reversal for refunds outside the system; tip step only after the cash book is started.
+
+Cả năm điểm tôi đọc ở trên đã được duyệt: mức gợi ý 20.000/50.000/100.000 + Khác; đơn online (chỉ có sản phẩm) không có bước tip; khách chọn trên màn hình quầy; hoàn tiền ngoài hệ thống thì Chủ hoàn tác tip bằng tay; bước tip chỉ hiện sau khi sổ quỹ đã bắt đầu. Không còn điểm nào chờ Owner cho tip.

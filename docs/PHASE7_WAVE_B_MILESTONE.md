@@ -30,5 +30,5 @@ Hoa hồng online chỉ qua mã nhân viên; tip trả cùng ngày trả lương
 ## Chờ Owner
 
 - Đọc `docs/DEPLOY_PHASE7_WAVE_B.md` (một khối lệnh cho cả Đợt A và B) và `docs/OWNER_TEST_SCRIPT_PHASE7_B.md`.
-- Tip (quyết định của Owner 2026-10-12, `PHASE7_PAYROLL_FUNDS.md` mục 15): các chỗ tôi đọc và chờ Owner xác nhận: mức tip gợi ý 20.000/50.000/100.000; khách chọn trên màn hình quầy; đơn online chỉ có sản phẩm nên không có bước tip; hoàn tiền PayOS ngoài hệ thống thì Chủ hoàn tác tip bằng tay.
+- Tip (quyết định của Owner 2026-10-12, `PHASE7_PAYROLL_FUNDS.md` mục 15): **năm điểm đọc đã được Owner duyệt cùng ngày** (mức 20.000/50.000/100.000 + Khác; đơn online không có bước tip; khách chọn trên màn hình quầy; hoàn tiền ngoài hệ thống thì Chủ hoàn tác tay; chỉ sau khi sổ quỹ bắt đầu). Không còn gì chờ cho tip.
 - Trả lời các điểm khác biệt đã ghi trong từng báo cáo (không có điểm nào cần quyết trước khi triển khai).
