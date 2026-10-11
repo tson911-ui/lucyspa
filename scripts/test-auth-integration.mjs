@@ -122,3 +122,5 @@ await import('../apps/api/dist/supplier-sources/supplier-source-resync.integrati
 await import('../apps/api/dist/supplier-sources/supplier-import-all.integration.test.js');
 await import('../apps/api/dist/supplier-imports/supplier-import.integration.test.js');
 await import('../apps/api/dist/finance/cash.integration.test.js');
+await import('../apps/api/dist/finance/cash-posting.integration.test.js');
+await import('../apps/api/dist/finance/cash-entries.integration.test.js');

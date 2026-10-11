@@ -91,3 +91,81 @@ export interface CashGoLiveRequest {
   /** The counted opening balance of the bank account. */
   bankVnd: string;
 }
+
+/** The manual entries a person records (P7-4). Everything else in the book is posted from its source. */
+export const CASH_MANUAL_KINDS = [
+  'MANUAL_INCOME',
+  'MANUAL_EXPENSE',
+  'DEPOSIT',
+  'OWNER_WITHDRAWAL',
+] as const;
+export type CashManualKind = (typeof CASH_MANUAL_KINDS)[number];
+
+export const CASH_PAGE_SIZE = 20;
+
+export interface CashEntryItem {
+  id: string;
+  /** The order of the book, a decimal string. */
+  seq: string;
+  /** The branch-local day the entry counts for, YYYY-MM-DD. */
+  businessDate: string;
+  direction: FundDirectionName;
+  category: FundEntryCategoryName;
+  amountVnd: string;
+  /** The invoice, refund or exchange code the money belongs to; null for a manual entry. */
+  reference: string | null;
+  reason: string | null;
+  actor: { id: string; name: string } | null;
+  occurredAt: string;
+  /** This entry reverses that one (a correction), or is reversed by that one. */
+  reversesEntryId: string | null;
+  reversedByEntryId: string | null;
+  /** May the signed-in person reverse it (a manual entry that is not reversed yet)? */
+  canReverse: boolean;
+}
+
+export interface CashEntryListResponse {
+  fund: CashFundItem;
+  items: CashEntryItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+  /** Money in and out of the entries matching the filter (all pages). */
+  inVnd: string;
+  outVnd: string;
+  /** What the person may do with this fund. */
+  can: { record: boolean; deposit: boolean; transfer: boolean };
+}
+
+export interface CashEntryResponse {
+  item: CashEntryItem;
+}
+
+export interface CashManualEntryRequest {
+  fundId: string;
+  /** The branch the money belongs to: required for the shared bank fund, omitted for a branch cash fund. */
+  branchId?: string;
+  kind: CashManualKind;
+  amountVnd: string;
+  reason: string;
+  clientRequestId: string;
+}
+
+export interface CashReverseRequest {
+  reason: string;
+  clientRequestId: string;
+}
+
+export interface CashTransferRequest {
+  fromFundId: string;
+  /** The branch of the transfer when it is not given by a cash fund (never needed: one side is always a cash fund). */
+  branchId?: string;
+  toFundId: string;
+  amountVnd: string;
+  reason: string;
+  clientRequestId: string;
+}
+
+export interface CashTransferResponse {
+  items: CashEntryItem[];
+}

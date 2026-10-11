@@ -1,4 +1,13 @@
-import type { CashGoLiveRequest, CashOverviewResponse } from '@lucy-spa/contracts';
+import type {
+  CashEntryListResponse,
+  CashEntryResponse,
+  CashGoLiveRequest,
+  CashManualEntryRequest,
+  CashOverviewResponse,
+  CashReverseRequest,
+  CashTransferRequest,
+  CashTransferResponse,
+} from '@lucy-spa/contracts';
 import { Inject, Injectable } from '@nestjs/common';
 import { AuthError } from '../auth/auth.error.js';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
@@ -7,6 +16,7 @@ import { runAdminCommand, type AdminContext } from '../authorization/admin-comma
 import { sqlStateOf } from '../booking/customer-command.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import * as core from './cash.core.js';
+import * as entries from './cash-entries.core.js';
 
 /**
  * Phase 7 Wave A: the cash book (funds, go-live now; entries, closing and reconciliation in the next Steps). Authority is decided inside
@@ -35,6 +45,45 @@ export class CashService {
   ): Promise<CashOverviewResponse> {
     return this.run(token, requestId, (context) =>
       core.startCashBook(context, { ...body }, this.environment.auth.freshAuthSeconds),
+    );
+  }
+
+  entries(
+    token: string | undefined,
+    fundId: string,
+    query: entries.EntryQuery,
+  ): Promise<CashEntryListResponse> {
+    return this.run(token, undefined, (context) => entries.listEntries(context, fundId, query));
+  }
+
+  record(
+    token: string | undefined,
+    body: CashManualEntryRequest,
+    requestId?: string,
+  ): Promise<CashEntryResponse> {
+    return this.run(token, requestId, (context) =>
+      entries.recordManualEntry(context, { ...body }, this.environment.auth.freshAuthSeconds),
+    );
+  }
+
+  reverse(
+    token: string | undefined,
+    entryId: string,
+    body: CashReverseRequest,
+    requestId?: string,
+  ): Promise<CashEntryResponse> {
+    return this.run(token, requestId, (context) =>
+      entries.reverseEntry(context, entryId, { ...body }),
+    );
+  }
+
+  transfer(
+    token: string | undefined,
+    body: CashTransferRequest,
+    requestId?: string,
+  ): Promise<CashTransferResponse> {
+    return this.run(token, requestId, (context) =>
+      entries.transferBetweenFunds(context, { ...body }, this.environment.auth.freshAuthSeconds),
     );
   }
 
