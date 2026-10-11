@@ -8,12 +8,12 @@
 
 ## Kết quả
 
-| Việc                                                                                | Kết quả                                                                                                                    |
-| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Máy khách Prisma cũ đọc mọi bảng của nó (`.local/p7/rollback-reads.mjs`)            | **173 trên 173** (14 bảng mới của đợt B (thêm cột `payment_id` của tips) được bản cũ bỏ qua; bảng công CTV có thêm một cột, bản cũ không đọc nó)            |
-| `db:permissions:sync` của bản cũ                                                    | "0 inserted, 73 already present" (không phải xóa quyền nào vì bản cũ đã biết cả 73)                                        |
-| API cũ: `/health/ready`, đăng nhập Owner, 13 phép đọc kể cả `/api/v1/cash/overview` | tất cả **200**                                                                                                             |
-| Worker cũ chạy 2 phút                                                               | chỉ 4 dòng "Inventory sales job failed" đã có sẵn trong dữ liệu xem thử (cùng lỗi ở các lần quay lui trước); không lỗi mới |
+| Việc                                                                                | Kết quả                                                                                                                                          |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Máy khách Prisma cũ đọc mọi bảng của nó (`.local/p7/rollback-reads.mjs`)            | **173 trên 173** (14 bảng mới của đợt B (thêm cột `payment_id` của tips) được bản cũ bỏ qua; bảng công CTV có thêm một cột, bản cũ không đọc nó) |
+| `db:permissions:sync` của bản cũ                                                    | "0 inserted, 73 already present" (không phải xóa quyền nào vì bản cũ đã biết cả 73)                                                              |
+| API cũ: `/health/ready`, đăng nhập Owner, 13 phép đọc kể cả `/api/v1/cash/overview` | tất cả **200**                                                                                                                                   |
+| Worker cũ chạy 2 phút                                                               | chỉ 4 dòng "Inventory sales job failed" đã có sẵn trong dữ liệu xem thử (cùng lỗi ở các lần quay lui trước); không lỗi mới                       |
 
 ## Thứ tự quay lui đã kiểm
 
