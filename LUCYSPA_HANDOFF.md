@@ -894,3 +894,7 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 
 - Migration `20261130000000_phase9_full_scan` (107 -> 108, `import_scans.scope`), permissions still 68. "Quét toàn bộ" (pages of 100, cap 2000, same-scope comparison) and "Nhập và đăng tất cả" (`/supplier-imports/all`: checkbox per product, auto brand/12 categories/price rounded to 1,000, ticked = imported + published, unticked = IGNORED, reopened only on content change). New kit piece: DataTable `select` column + `ls-toolbar-end-below`. Real data: 352 products read, 19 blocked, 40 imported in a scratch copy.
 - Owner readings pending (price/publish): sale price when lower than list, 16 slug SKUs not auto-imported, supplements in "Khác", schedule uses FULL after a first full scan. Report `docs/PHASE9_P9_9B_ONE_CLICK.md`.
+
+### Phase 9 P9-10 (milestone and deploy guide, 2026-10-11; docs only)
+
+- `docs/PHASE9_MILESTONE.md`, Vietnamese deploy guide `docs/DEPLOY_PHASE9_P9_7_TO_P9_9B.md` (production 638afde -> 2b064e9: 106 -> 108 migrations, permissions stay 68, worker restart, no env change; production already holds the Owner's trial data so counts are compared, not assumed zero) and `docs/OWNER_TEST_SCRIPT_PHASE9.md`. Nothing deployed; waiting for the Owner to run the guide. Code commits: P9-7 d79c312, P9-8 0dc200d, P9-9 5054b8a, P9-9b 2b064e9.
