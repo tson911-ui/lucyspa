@@ -9,7 +9,7 @@
     "start": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.auth.local dist/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --test \"dist/**/*.test.js\"",
-    "test:integration": "node --env-file-if-exists=../../.env --test ../../scripts/test-auth-integration.mjs && node --env-file-if-exists=../../.env --test ../../scripts/test-phase7-integration.mjs",
+    "test:integration": "node --env-file-if-exists=../../.env --test ../../scripts/test-auth-integration.mjs && node --env-file-if-exists=../../.env --test ../../scripts/test-product-integration.mjs && node --env-file-if-exists=../../.env --test ../../scripts/test-phase7-integration.mjs",
     "owner:bootstrap": "node --env-file-if-exists=../../.env dist/bootstrap/bootstrap-owner.cli.js",
     "organization:bootstrap": "node --env-file-if-exists=../../.env dist/bootstrap/organization-bootstrap.cli.js",
     "owner:reset-password": "node --env-file-if-exists=../../.env dist/bootstrap/owner-password-reset.cli.js"

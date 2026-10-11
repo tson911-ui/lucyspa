@@ -453,6 +453,7 @@ const payos = (change: Partial<InvoicePaymentResponse> = {}): InvoicePaymentResp
       expiresAt: '2099-01-01T00:15:00.000Z',
       reference: null,
       late: false,
+      tipVnd: '0',
     },
     ...change,
   });
@@ -721,6 +722,7 @@ test('cash dialog: starts from the cash balance with exact tender, one Cancel th
 test('PayOS dialog: the amount defaults to the whole balance and the rules are said once', () => {
   const html = render(
     <PayosDialog
+      invoiceId="inv-1"
       balance="200000"
       attempt={attempt()}
       {...dialogHandlers}

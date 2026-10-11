@@ -14,6 +14,7 @@ import {
   type ProviderPaymentSnapshot,
   type VerifiedProviderNotification,
 } from './payment-provider.js';
+import { pledgedTips, recordPledgedTips } from './payment-tips.js';
 
 /**
  * Phase 4 Step 8: how a PayOS payment reaches its final state. This is the ONLY place where a provider
@@ -28,6 +29,11 @@ import {
  * - ANOMALY: the amount differs (Q7 item 6), the invoice is already paid/cancelled (Q7 item 5) or the amount no
  *   longer fits the balance. Nothing is credited; an open anomaly is flagged for management review.
  * - IGNORED: unknown order, or the order was already applied (replay).
+ *
+ * P7-17: a request may carry the customer's tip (pledges frozen with it). The provider is asked for the invoice part PLUS the tip, so
+ * the confirmed amount must equal that total; only the invoice part is credited (revenue, points and commission never see the tip) and the
+ * tips are recorded in this same transaction. A total that does not match is an AMOUNT_MISMATCH like any other: nothing is credited and no
+ * tip is written.
  *
  * Lock order (design 14): the invoice row first, then its payments. Every timestamp is the database clock.
  * A provider payment is never reversed (Q6): there is no reversal path for it anywhere.
@@ -262,6 +268,7 @@ async function flagAnomaly(
   confirmation: ProviderConfirmation,
   kind: PaymentAnomalyKind,
   now: Date,
+  expectedVnd: bigint = payment.amountVnd,
 ): Promise<SettlementResult> {
   const existing = await tx.paymentAnomaly.findUnique({
     where: {
@@ -290,7 +297,7 @@ async function flagAnomaly(
       providerEventId: confirmation.providerEventId,
       orderCode: confirmation.orderCode,
       providerReference: confirmation.reference,
-      expectedAmountVnd: payment.amountVnd,
+      expectedAmountVnd: expectedVnd,
       receivedAmountVnd: confirmation.amountVnd,
       invoiceStatus: invoice.status,
     },
@@ -309,7 +316,7 @@ async function flagAnomaly(
       paymentId: payment.id,
       orderCode: confirmation.orderCode.toString(),
       providerReference: confirmation.reference,
-      expectedAmountVnd: payment.amountVnd.toString(),
+      expectedAmountVnd: expectedVnd.toString(),
       receivedAmountVnd: confirmation.amountVnd.toString(),
       invoiceStatus: invoice.status,
       source: confirmation.source,
@@ -373,17 +380,23 @@ export async function applyProviderConfirmation(
   const now = await providerClock(tx);
   const paidBefore = await effectivePaidVnd(tx, invoice.id);
   const balance = invoice.status === 'PENDING_PAYMENT' ? invoice.totalVnd - paidBefore : 0n;
+  // P7-17: the customer transfers the invoice part plus the tip they chose; only the invoice part is credited.
+  const tip = (await pledgedTips(tx, payment.id)).totalVnd;
+  const expected = payment.amountVnd + tip;
   // Q7 item 6: a different amount never marks anything paid. Q7 item 5: a fully paid (or cancelled) invoice
-  // never auto-applies. The amount must also still fit the balance (another payment may have used it).
+  // never auto-applies. The invoice part must also still fit the balance (another payment may have used it).
   const anomaly: PaymentAnomalyKind | null =
-    confirmation.amountVnd !== payment.amountVnd
+    confirmation.amountVnd !== expected
       ? 'AMOUNT_MISMATCH'
       : invoice.status !== 'PENDING_PAYMENT'
         ? 'INVOICE_NOT_PAYABLE'
-        : confirmation.amountVnd > balance
+        : payment.amountVnd > balance
           ? 'EXCEEDS_BALANCE'
           : null;
-  if (anomaly) return flagAnomaly(tx, actor, invoice, payment, confirmation, anomaly, now);
+  if (anomaly) {
+    return flagAnomaly(tx, actor, invoice, payment, confirmation, anomaly, now, expected);
+  }
+  const credited = payment.amountVnd;
 
   const late = payment.status !== 'PENDING';
   let paymentId: string;
@@ -408,8 +421,8 @@ export async function applyProviderConfirmation(
         method: 'PAYOS',
         status: 'SUCCEEDED',
         amountDueVnd: balance,
-        amountVnd: confirmation.amountVnd,
-        tenderedVnd: confirmation.amountVnd,
+        amountVnd: credited,
+        tenderedVnd: credited,
         changeVnd: 0n,
         collectedByUserId: payment.collectedByUserId,
         idempotencyKey: randomUUID(),
@@ -427,7 +440,7 @@ export async function applyProviderConfirmation(
     select: { collectedAt: true },
   });
   const at = confirmedRow.collectedAt;
-  const paidAfter = paidBefore + confirmation.amountVnd;
+  const paidAfter = paidBefore + credited;
   const completes = paidAfter === invoice.totalVnd;
   if (completes) {
     await tx.invoice.update({
@@ -445,7 +458,8 @@ export async function applyProviderConfirmation(
       method: 'PAYOS',
       orderCode: confirmation.orderCode.toString(),
       providerReference: confirmation.reference,
-      amountVnd: confirmation.amountVnd.toString(),
+      amountVnd: credited.toString(),
+      ...(tip > 0n ? { tipVnd: tip.toString() } : {}),
       amountDueVnd: balance.toString(),
       late,
       source: confirmation.source,
@@ -465,9 +479,19 @@ export async function applyProviderConfirmation(
       ...eventBase(invoice),
       paymentId,
       method: 'PAYOS',
-      amountVnd: confirmation.amountVnd.toString(),
+      amountVnd: credited.toString(),
     },
   });
+  // P7-17: the customer's tips, recorded in this transaction (no tip without the confirmed total).
+  if (tip > 0n) {
+    await recordPledgedTips(tx, {
+      paymentId,
+      pledgeOwnerPaymentId: payment.id,
+      invoice,
+      collectedByUserId: payment.collectedByUserId,
+      at,
+    });
+  }
   if (completes) {
     const paidSeq = invoice.paidSeq + 1;
     await audit(tx, actor, at, {

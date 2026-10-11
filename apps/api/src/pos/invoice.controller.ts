@@ -46,6 +46,8 @@ import {
 } from '@nestjs/common';
 import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsIn,
   IsInt,
   IsOptional,
@@ -196,9 +198,22 @@ class PaymentRecordDto implements PaymentRecordRequest {
 }
 
 /** A PayOS request: only the amount and the idempotency UUID. The API decides expiry, order and status. */
+class TipChoiceDto {
+  @ApiProperty() @IsString() @MaxLength(36) employeeUserId!: string;
+  @ApiProperty() @IsString() @Matches(VND) amountVnd!: string;
+}
+
 class PaymentPayosDto implements PaymentPayosRequest {
   @ApiProperty() @IsString() @Matches(VND) amountVnd!: string;
   @ApiProperty() @IsString() @MaxLength(64) idempotencyKey!: string;
+  /** P7-17: the tip the customer chose ("Thêm tip"): at most one entry per KTV of the invoice. */
+  @ApiProperty({ type: [TipChoiceDto], required: false })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => TipChoiceDto)
+  tips?: TipChoiceDto[];
 }
 
 class ManagementNoteDto implements InvoiceManagementNoteRequest {

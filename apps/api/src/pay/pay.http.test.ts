@@ -83,7 +83,6 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
     'invoiceEarnings',
     'correctSeller',
     'invoiceTips',
-    'recordTip',
     'reverseTip',
     'staffCodes',
     'createStaffCode',
@@ -241,18 +240,13 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
         .expect(400);
       assert.equal(calls.length, before);
     }
-    const tip = {
-      invoiceId: service,
-      employeeUserId: employee,
-      amountVnd: '50000',
-      method: 'CASH',
-      clientRequestId: '11111111-1111-4111-8111-111111111111',
-    };
-    await request(server).post(`${base}/tips`).set({ Cookie: cookie }).send(tip).expect(403);
-    await request(server).post(`${base}/tips`).set(headers).send(tip).expect(200);
-    assert.equal(calls.at(-1)?.[0], 'recordTip');
-    assert.deepEqual(json(calls.at(-1)![2]), tip);
-    const reverse = { reason: 'Ghi nhầm', clientRequestId: tip.clientRequestId };
+    // P7-17: staff cannot record a tip any more; the route is gone.
+    await request(server)
+      .post(`${base}/tips`)
+      .set(headers)
+      .send({ invoiceId: service, employeeUserId: employee, amountVnd: '50000' })
+      .expect(404);
+    const reverse = { reason: 'Ghi nhầm', clientRequestId: '11111111-1111-4111-8111-111111111111' };
     await request(server)
       .post(`${base}/tips/${service}/reverse`)
       .set(headers)
@@ -262,9 +256,6 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
     assert.equal(calls.at(-1)?.[2], service);
     assert.deepEqual(json(calls.at(-1)![3]), reverse);
     for (const [path, body] of [
-      ['tips', { ...tip, extra: 1 }],
-      ['tips', { ...tip, amountVnd: 50000 }],
-      ['tips', { invoiceId: service }],
       [`tips/${service}/reverse`, { ...reverse, extra: 1 }],
       [`tips/${service}/reverse`, { reason: 'x' }],
     ] as const) {

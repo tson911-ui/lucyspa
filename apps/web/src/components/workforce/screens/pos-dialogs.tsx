@@ -5,9 +5,11 @@ import type {
   InvoiceLineResponse,
   InvoicePaymentResponse,
   InvoiceResponse,
+  InvoiceTipsResponse,
   PaymentPayosRequest,
   PaymentRecordRequest,
   PaymentReverseRequest,
+  TipChoice,
   WalkInMemberLookupResponse,
 } from '@lucy-spa/contracts';
 import {
@@ -23,11 +25,13 @@ import {
   TextInput,
 } from '@lucy-spa/ui';
 import { useState, type MutableRefObject } from 'react';
+import { payDictionary } from '../../../i18n/pay';
 import { fill, type WorkforceDictionary } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/workforce/api';
 import { voucherCodeOf } from '../../../lib/workforce/discounts';
 import { formatVnd } from '../../../lib/workforce/format';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
+import { emptyTipDrafts, tipChoices, type TipDraft } from '../../../lib/workforce/pay';
 import {
   cancelBody,
   changePreview,
@@ -47,7 +51,8 @@ import {
   type PaymentProblem,
 } from '../../../lib/workforce/pos';
 import { useWorkforce } from '../session';
-import { Notice } from '../ui';
+import { Notice, useResource } from '../ui';
+import { TipStep } from './pos-tip-step';
 
 // Every dialog here only collects a choice and hands it to the screen's `command()`, which sends it to the
 // API exactly as the inline forms did. A dialog stays open when the command fails, so the same input (and,
@@ -455,8 +460,13 @@ export function CashDialog({
   );
 }
 
-/** PayOS: the amount (default the whole balance; less is a split with cash). One idempotency key per choice. */
+/**
+ * PayOS: the amount (default the whole balance; less is a split with cash). One idempotency key per choice. When the invoice has KTVs and
+ * the cash book is live, a second step "Thêm tip" follows (P7-17): the customer chooses a tip for the technicians who served them, and the QR
+ * code is created for the invoice amount plus the tip. The step is skipped (no request, no delay) when no tip can be offered.
+ */
 export function PayosDialog({
+  invoiceId,
   balance,
   attempt,
   working,
@@ -464,6 +474,7 @@ export function PayosDialog({
   onCreate,
   onClose,
 }: {
+  invoiceId: string;
   balance: string;
   attempt: Attempt;
   working: boolean;
@@ -471,33 +482,102 @@ export function PayosDialog({
   onCreate: (body: PaymentPayosRequest) => Promise<boolean>;
   onClose: () => void;
 }) {
-  const { t } = useWorkforce();
+  const { t, api, locale } = useWorkforce();
+  const c = payDictionary(locale).tips.step;
+  const offer = useResource(
+    () => api.get<InvoiceTipsResponse>(`/api/v1/pay/invoices/${invoiceId}/tips`),
+    [api, invoiceId],
+  );
   const [amount, setAmount] = useState(balance);
   const [problem, setProblem] = useState(false);
+  const [step, setStep] = useState<'amount' | 'tip'>('amount');
+  const [drafts, setDrafts] = useState<TipDraft[] | null>(null);
+  const [checked, setChecked] = useState(false);
+  // Only a person who may see the tips gets the step; any refusal or failure simply leaves it out.
+  const served =
+    offer.data?.offer.available === true && offer.data.served.length > 0 ? offer.data.served : null;
 
-  async function submit() {
-    if (!attempt.current || attempt.current.amount !== amount) {
-      attempt.current = { key: newPaymentKey(), amount, tendered: '' };
+  async function create(tips: TipChoice[]) {
+    const signature = `${amount}|${tips.map((tip) => `${tip.employeeUserId}:${tip.amountVnd}`).join(',')}`;
+    if (!attempt.current || attempt.current.amount !== signature) {
+      attempt.current = { key: newPaymentKey(), amount: signature, tendered: '' };
     }
     const result = payosBody(amount, balance, attempt.current.key);
     if ('problem' in result) {
       setProblem(true);
+      setStep('amount');
       return;
     }
     setProblem(false);
-    if (await onCreate(result.body)) {
+    const body: PaymentPayosRequest = tips.length > 0 ? { ...result.body, tips } : result.body;
+    if (await onCreate(body)) {
       attempt.current = null;
       onClose();
     }
+  }
+
+  async function submit() {
+    if (step === 'amount') {
+      const result = payosBody(amount, balance, 'check');
+      if ('problem' in result) {
+        setProblem(true);
+        return;
+      }
+      setProblem(false);
+      if (served) {
+        setDrafts((current) => current ?? emptyTipDrafts(served.map((item) => item.employee.id)));
+        setStep('tip');
+        return;
+      }
+      await create([]);
+      return;
+    }
+    const tips = drafts ? tipChoices(drafts) : [];
+    if (tips === null) {
+      setChecked(true);
+      return;
+    }
+    await create(tips);
+  }
+
+  if (step === 'tip' && served && drafts) {
+    return (
+      <FormDialog
+        title={c.title}
+        description={c.lead}
+        labels={{
+          ...formOverlayLabels(t, c.createQr),
+          cancel: c.back,
+          submitting: t.pos.payosCreating,
+        }}
+        busy={working}
+        dirty={false}
+        error={errorNotice(error)}
+        onClose={() => setStep('amount')}
+        onSubmit={submit}
+      >
+        <TipStep
+          served={served}
+          drafts={drafts}
+          onChange={setDrafts}
+          invoiceVnd={amount}
+          showProblems={checked}
+        />
+      </FormDialog>
+    );
   }
 
   return (
     <FormDialog
       title={t.pos.payosCreate}
       description={t.pos.payosNote}
-      labels={{ ...formOverlayLabels(t, t.pos.payosCreate), submitting: t.pos.payosCreating }}
+      labels={{
+        ...formOverlayLabels(t, served ? c.next : t.pos.payosCreate),
+        submitting: t.pos.payosCreating,
+      }}
       busy={working}
       dirty={amount !== balance}
+      submitDisabled={offer.loading}
       error={errorNotice(error)}
       onClose={onClose}
       onSubmit={submit}

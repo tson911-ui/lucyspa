@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { reconcileInvoiceEarnings } from '@lucy-spa/server';
 import { phase6Fixture } from '../testing/phase6-fixture.js';
 import { productSaleKit } from '../testing/product-sale-kit.js';
+import { seedTip } from '../testing/tip-fixture.js';
 import { addDays, shopToday } from './pay.access.js';
 import { PayService } from './pay.service.js';
 
@@ -108,12 +109,11 @@ test(
       const service = await serviceSale();
       await reconcileInvoiceEarnings(tx, sale);
       await reconcileInvoiceEarnings(tx, service);
-      await pay.recordTip(collector.token, {
+      await seedTip(tx, {
         invoiceId: service,
         employeeUserId: ktv.id,
-        amountVnd: '40000',
-        method: 'CASH',
-        clientRequestId: id(),
+        amountVnd: 40_000n,
+        recordedByUserId: collector.id,
       });
       await pay
         .addSalaryVersion(payroll.token, {

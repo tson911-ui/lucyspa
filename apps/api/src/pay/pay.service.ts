@@ -24,7 +24,6 @@ import type {
   StaffCodeCreateRequest,
   StaffCodeResetRequest,
   StaffCodesResponse,
-  TipRequest,
   TipReverseRequest,
   SellerCorrectionRequest,
   CommissionRuleResponse,
@@ -139,14 +138,6 @@ export class PayService {
 
   invoiceTips(token: string | undefined, invoiceId: string): Promise<InvoiceTipsResponse> {
     return this.run(token, undefined, (context) => tips.invoiceTips(context, invoiceId));
-  }
-
-  recordTip(
-    token: string | undefined,
-    body: TipRequest,
-    requestId?: string,
-  ): Promise<InvoiceTipsResponse> {
-    return this.run(token, requestId, (context) => tips.recordTip(context, { ...body }));
   }
 
   reverseTip(

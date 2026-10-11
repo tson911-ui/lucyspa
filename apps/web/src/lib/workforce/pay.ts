@@ -8,9 +8,11 @@ import {
   type CommissionRuleItem,
   type CommissionRuleRequest,
   type CommissionScopeNameValue,
+  TIP_MAX_VND,
+  TIP_STEP_VND,
+  type TIP_PRESETS_VND,
   type SalaryVersionRequest,
-  type TipMethodName,
-  type TipRequest,
+  type TipChoice,
   type TourRuleRequest,
 } from '@lucy-spa/contracts';
 import { payDictionary } from '../../i18n/pay';
@@ -242,32 +244,56 @@ export function commissionBody(
   };
 }
 
+/**
+ * P7-17: the customer's "Thêm tip" choice for one KTV: nothing, one of the preset amounts, or an amount of their own. The choice is made
+ * by the customer on the counter screen before the QR code is created; nothing here can change it afterwards.
+ */
+export type TipPick = 'NONE' | (typeof TIP_PRESETS_VND)[number] | 'OTHER';
+
 export interface TipDraft {
   employeeUserId: string;
-  amount: number | null;
-  method: TipMethodName;
+  pick: TipPick;
+  /** The typed amount when `pick` is OTHER (whole dong). */
+  other: number | null;
 }
 
-export function tipProblems(draft: TipDraft): string[] {
+/** One empty draft (no tip) per KTV of the invoice. */
+export const emptyTipDrafts = (employeeIds: readonly string[]): TipDraft[] =>
+  employeeIds.map((employeeUserId) => ({ employeeUserId, pick: 'NONE', other: null }));
+
+/** The amount of a draft in dong (0 for none, null when the typed amount is not a valid tip). */
+export function tipDraftAmount(draft: TipDraft): number | null {
+  if (draft.pick === 'NONE') return 0;
+  if (draft.pick !== 'OTHER') return Number(draft.pick);
+  const value = draft.other;
+  if (value === null || !Number.isSafeInteger(value)) return null;
+  if (value < TIP_STEP_VND || value % TIP_STEP_VND !== 0 || value > TIP_MAX_VND) return null;
+  return value;
+}
+
+/** The people whose entered amount is not a valid tip, or `TOTAL` when the tips add up to more than one payment may carry. */
+export function tipProblems(drafts: readonly TipDraft[]): string[] {
   const problems: string[] = [];
-  if (draft.employeeUserId === '') problems.push('employee');
-  if (vndString(draft.amount) === null || draft.amount === 0) problems.push('amount');
+  let total = 0;
+  for (const draft of drafts) {
+    const amount = tipDraftAmount(draft);
+    if (amount === null) problems.push(draft.employeeUserId);
+    else total += amount;
+  }
+  if (total > TIP_MAX_VND) problems.push('TOTAL');
   return problems;
 }
 
-export function tipBody(
-  invoiceId: string,
-  draft: TipDraft,
-  clientRequestId: string,
-): TipRequest | null {
-  if (tipProblems(draft).length > 0) return null;
-  return {
-    invoiceId,
-    employeeUserId: draft.employeeUserId,
-    amountVnd: vndString(draft.amount)!,
-    method: draft.method,
-    clientRequestId,
-  };
+export const tipTotal = (drafts: readonly TipDraft[]): number =>
+  drafts.reduce((sum, draft) => sum + (tipDraftAmount(draft) ?? 0), 0);
+
+/** What goes to the API: only the people who were given something, as decimal strings; `null` when a choice is invalid. */
+export function tipChoices(drafts: readonly TipDraft[]): TipChoice[] | null {
+  if (tipProblems(drafts).length > 0) return null;
+  return drafts
+    .map((draft) => ({ employeeUserId: draft.employeeUserId, amount: tipDraftAmount(draft) ?? 0 }))
+    .filter((entry) => entry.amount > 0)
+    .map((entry) => ({ employeeUserId: entry.employeeUserId, amountVnd: String(entry.amount) }));
 }
 
 /** A required reason of at most 500 characters (reversals, resets and seller changes). */

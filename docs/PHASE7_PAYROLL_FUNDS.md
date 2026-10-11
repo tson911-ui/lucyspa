@@ -395,3 +395,26 @@ toàn hơn và ghi chú.
   (they follow a payment reversal or refund that a person already clicked), but they only change a **draft** until the Owner closes it.
 - New permission count unchanged: **68 + 5 = 73**, granted to nobody (no role is changed by any migration).
 - Build steps: the staff referral code and its checkout field become **P7-10b** in Wave B, between tips and the rule screens.
+
+## 15. Owner decision on tips (2026-10-12): replaces OQ-P7-10a, the staff "record a tip" form and the 7-day window
+
+**Owner (English, as sent):**
+
+> Owner decision on tips — replaces OQ-P7-10a and any staff-entered tip flow:
+>
+> - Cash tips are NOT recorded in the system at all.
+> - Tips in the system are chosen by the CUSTOMER during payment (online checkout and the counter QR/PayOS payment), as an optional "Thêm tip" step: preset amounts + custom amount, added to the same payment.
+> - Recipients are only the technicians (KTV) who performed services on that visit/booking. If there is one KTV, show that KTV only and assign the tip to them. If several KTVs (e.g. one per service), show all of them and let the customer choose who gets the tip and how much each (one or more). Customer choice only; staff cannot reassign.
+> - The tip is recorded to that KTV automatically when the payment succeeds, appears on their payslip as a separate line, is paid on the payroll payment day chosen by the Owner, and stays outside revenue, loyalty points and commission base. A refund of the payment reverses its tip.
+> - Remove the staff "record a tip" form and the 7-day recording window (keep only an Owner-only correction with a reason, audited).
+
+**How it was built (P7-17; readings of mine are marked "pending Owner confirmation", none is marked approved):**
+
+- **Money model.** `payments.amount_vnd` stays the amount credited to the invoice (revenue, points and commission read only that). The customer's choice is frozen in `payment_tip_pledges` (migration 118) when the PayOS request is created; PayOS is asked for the invoice part PLUS the pledges. The settlement transaction (webhook, status read and worker sweep share it) accepts only that exact total; it credits the invoice part and writes one tip per KTV with a `TIP_IN` entry of the bank fund. A different total (for example only the invoice part) is an `AMOUNT_MISMATCH` anomaly: nothing credited, no tip.
+- **Only KTVs of the invoice** (the database checks it); one KTV: that person only; several: every one, each with their own amount; amounts are whole multiples of 1,000 VND, total at most 10,000,000 per payment.
+- **Counter:** the "Thêm tip" step is the second step of the PayOS dialog, before the QR code exists. It is handed to the customer on the counter screen; the server cannot tell who tapped (pending Owner confirmation that this is what "chosen by the customer" means at the counter). No endpoint edits a recorded choice.
+- **Online checkout:** the online shop sells products only, so an online order never has a technician to tip; the step is not shown there. If online service bookings paid at checkout are added later, the same request field applies (pending Owner confirmation).
+- **Cash tips** are not recorded; the staff route `POST /api/v1/pay/tips`, its contract, the form and `TIP_WINDOW_DAYS` are removed. The tip step is offered only after the Owner has started the cash book (a tip needs the bank fund).
+- **Preset amounts** 20,000 / 50,000 / 100,000 VND (one constant, `TIP_PRESETS_VND`): a default pending Owner confirmation.
+- **Refund of the payment.** A PayOS payment has no in-system refund in V1 (Q7 item 8); product refunds are per line and do not touch the tip. The only reversal is the Owner-only correction: `APPROVE_PAYROLL` shop-wide, a reason, audited, full amount, while no payroll run has taken the tip (afterwards: a deduction in the next payroll draft). Whether a refund made outside the system should also reverse the tip automatically is pending Owner confirmation.
+- Permissions: 73 unchanged. Migrations: 117 → **118**.

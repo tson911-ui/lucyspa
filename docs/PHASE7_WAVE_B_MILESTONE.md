@@ -4,17 +4,18 @@ Ngày 2026-10-12. Đợt B được xây xong phía mã, **chưa triển khai**.
 
 ## Đã làm (mỗi bước một báo cáo trong `docs/`)
 
-| Bước   | Nội dung                                                                                                                          | Migration |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| P7-8   | Lương cơ bản theo ngày hiệu lực, tiền tour theo dịch vụ, quy tắc hoa hồng (tất cả rỗng, chỉ thêm), chọn quy tắc cụ thể nhất       | 111       |
-| P7-9   | Máy tính tiền tour và hoa hồng theo trạng thái hóa đơn (bất biến, đảo bằng dòng âm, hoàn tiền theo tỷ lệ), đổi người bán có lý do | 112       |
-| P7-10  | Tip tách khỏi hóa đơn, vào sổ quỹ cùng giao dịch, hoàn tác bằng dòng âm                                                           | 113       |
-| P7-10b | Mã nhân viên cho đơn online (Owner tạo, đổi mã, khóa trên đơn), hoa hồng cho người có mã                                          | 114       |
-| P7-11  | Màn Lương và hoa hồng (4 tab), thẻ tip và thẻ tiền tour/hoa hồng trên hóa đơn, "Thu nhập của tôi"                                 | -         |
-| P7-12  | Bảng lương tháng: bản nháp, xem trước, làm mới, ngày trả, khoản thưởng/điều chỉnh/khấu trừ                                        | 115       |
-| P7-13  | Tạm ứng lương: yêu cầu, duyệt, chi (mật khẩu, quỹ), thu hồi trong bảng lương, xóa nợ                                              | 116       |
-| P7-14  | Chốt bảng lương (mật khẩu, khóa nguồn), phiếu lương, trả lương (hai khoản chi riêng), hoàn tác, phiếu lương của tôi               | 117       |
-| P7-15  | Màn Bảng lương, phiếu lương (in), Tạm ứng lương, Phiếu lương của tôi                                                              | -         |
+| Bước   | Nội dung                                                                                                                                                               | Migration |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| P7-8   | Lương cơ bản theo ngày hiệu lực, tiền tour theo dịch vụ, quy tắc hoa hồng (tất cả rỗng, chỉ thêm), chọn quy tắc cụ thể nhất                                            | 111       |
+| P7-9   | Máy tính tiền tour và hoa hồng theo trạng thái hóa đơn (bất biến, đảo bằng dòng âm, hoàn tiền theo tỷ lệ), đổi người bán có lý do                                      | 112       |
+| P7-10  | Tip tách khỏi hóa đơn, vào sổ quỹ cùng giao dịch, hoàn tác bằng dòng âm                                                                                                | 113       |
+| P7-10b | Mã nhân viên cho đơn online (Owner tạo, đổi mã, khóa trên đơn), hoa hồng cho người có mã                                                                               | 114       |
+| P7-11  | Màn Lương và hoa hồng (4 tab), thẻ tip và thẻ tiền tour/hoa hồng trên hóa đơn, "Thu nhập của tôi"                                                                      | -         |
+| P7-12  | Bảng lương tháng: bản nháp, xem trước, làm mới, ngày trả, khoản thưởng/điều chỉnh/khấu trừ                                                                             | 115       |
+| P7-13  | Tạm ứng lương: yêu cầu, duyệt, chi (mật khẩu, quỹ), thu hồi trong bảng lương, xóa nợ                                                                                   | 116       |
+| P7-14  | Chốt bảng lương (mật khẩu, khóa nguồn), phiếu lương, trả lương (hai khoản chi riêng), hoàn tác, phiếu lương của tôi                                                    | 117       |
+| P7-17  | Tip do KHÁCH chọn khi thanh toán PayOS (thay tip nhân viên ghi tay và hạn 7 ngày): chọn KTV và số tiền, một lần chuyển khoản, ghi khi PayOS xác nhận; chỉ Chủ hoàn tác | 118       |
+| P7-15  | Màn Bảng lương, phiếu lương (in), Tạm ứng lương, Phiếu lương của tôi                                                                                                   | -         |
 
 ## Kiểm tra toàn bộ (2026-10-12)
 
@@ -29,5 +30,5 @@ Hoa hồng online chỉ qua mã nhân viên; tip trả cùng ngày trả lương
 ## Chờ Owner
 
 - Đọc `docs/DEPLOY_PHASE7_WAVE_B.md` (một khối lệnh cho cả Đợt A và B) và `docs/OWNER_TEST_SCRIPT_PHASE7_B.md`.
-- OQ-P7-10a: thời hạn 7 ngày để ghi tip sau khi thu tiền (mặc định đang là 7).
+- Tip (quyết định của Owner 2026-10-12, `PHASE7_PAYROLL_FUNDS.md` mục 15): các chỗ tôi đọc và chờ Owner xác nhận: mức tip gợi ý 20.000/50.000/100.000; khách chọn trên màn hình quầy; đơn online chỉ có sản phẩm nên không có bước tip; hoàn tiền PayOS ngoài hệ thống thì Chủ hoàn tác tip bằng tay.
 - Trả lời các điểm khác biệt đã ghi trong từng báo cáo (không có điểm nào cần quyết trước khi triển khai).

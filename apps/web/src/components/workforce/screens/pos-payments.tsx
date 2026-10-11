@@ -18,6 +18,7 @@ import {
 } from '@lucy-spa/ui';
 import { useEffect, useState } from 'react';
 import { useQrImage } from '../use-qr-image';
+import { payDictionary } from '../../../i18n/pay';
 import { fill } from '../../../i18n/workforce';
 import { formatDateTime, formatVnd } from '../../../lib/workforce/format';
 import { paginationLabels } from '../../../lib/workforce/list-view';
@@ -359,6 +360,22 @@ function PayosPending({
         layout="totals"
         items={[
           { label: t.pos.colCredited, value: formatVnd(payment.amountVnd, locale), strong: true },
+          ...(provider.tipVnd !== '0'
+            ? [
+                {
+                  label: payDictionary(locale).tips.step.total,
+                  value: formatVnd(provider.tipVnd, locale),
+                },
+                {
+                  label: payDictionary(locale).tips.step.transfer,
+                  value: formatVnd(
+                    (BigInt(payment.amountVnd) + BigInt(provider.tipVnd)).toString(),
+                    locale,
+                  ),
+                  strong: true,
+                },
+              ]
+            : []),
         ]}
       />
       <Notice tone={left > 0 ? 'info' : 'warning'}>

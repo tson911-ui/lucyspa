@@ -45,6 +45,7 @@ import { decide } from '../authorization/authorization.js';
 import { sqlStateOf } from '../booking/customer-command.js';
 import { normalizeReason } from '../operations/service-execution.service.js';
 import { API_ENVIRONMENT, PAYMENT_PROVIDER, type ApiEnvironment } from '../platform/tokens.js';
+import { parseTipChoices } from '../pay/tips.core.js';
 import { lookupMember } from '../walkin/walkin.core.js';
 import { comboSaleOptions, openComboSale } from './combo-sale.core.js';
 import { productCounterOptions } from './product-counter.core.js';
@@ -461,8 +462,9 @@ export class InvoiceService {
       throw new AuthError('VALIDATION_FAILED', 'idempotencyKey');
     }
     const idempotencyKey = body.idempotencyKey.toLowerCase();
+    const tips = parseTipChoices(body.tips);
     const reserved = await this.run(token, invoiceId, requestId, (context, id) =>
-      reservePayosRequest(context, id, { amountVnd, idempotencyKey }),
+      reservePayosRequest(context, id, { amountVnd, idempotencyKey, tips }),
     );
     if (reserved.kind === 'DONE') return reserved.result;
     let outcome: CreateOutcome;

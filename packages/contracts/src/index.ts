@@ -2376,6 +2376,8 @@ export interface InvoicePaymentProvider {
   /** The bank transaction reference, once PayOS confirmed the transfer. */
   reference: string | null;
   late: boolean;
+  /** The tip the customer added to this request (P7-17): NOT part of `amountVnd` of the payment; the customer transfers amount + tip. "0" when none. */
+  tipVnd: string;
 }
 
 export type PaymentAnomalyKindName = 'AMOUNT_MISMATCH' | 'INVOICE_NOT_PAYABLE' | 'EXCEEDS_BALANCE';
@@ -2553,6 +2555,11 @@ export interface PaymentRecordRequest {
 export interface PaymentPayosRequest {
   amountVnd: string;
   idempotencyKey: string;
+  /**
+   * P7-17: the tip the CUSTOMER chose in the "Thêm tip" step: one entry per KTV who performed a service on the invoice, each a whole multiple
+   * of 1,000 VND. The customer transfers `amountVnd` plus the tips; only `amountVnd` is credited to the invoice. Frozen with the request.
+   */
+  tips?: { employeeUserId: string; amountVnd: string }[];
 }
 
 /** POST /api/v1/pos/invoices/:id/management-notes (CORRECT_PAYMENTS; PayOS-settled invoices only). */

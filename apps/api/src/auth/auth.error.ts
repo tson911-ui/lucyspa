@@ -243,8 +243,10 @@ const errors = {
   PAY_RUN_NOT_YET: [409, 'It is not the payment day yet'],
   PAY_RUN_NOT_DRAFT: [409, 'This payroll run is already closed'],
   PAY_RUN_EXISTS: [409, 'A payroll run already exists for this month'],
-  TIP_EXISTS: [409, 'This person already has a tip for this invoice'],
-  TIP_WINDOW_CLOSED: [409, 'The time to record a tip for this invoice has passed'],
+  TIP_NOT_ALLOWED: [
+    409,
+    'A tip can only be added for a KTV who performed a service on the invoice',
+  ],
   TIP_CLAIMED: [409, 'A payroll run has taken this tip'],
   PAY_VERSION_EXISTS: [409, 'A pay version already starts on this date'],
   CASH_DAY_CLOSED: [409, 'This day is already closed'],

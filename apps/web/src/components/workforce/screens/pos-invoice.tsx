@@ -711,6 +711,7 @@ export function PosInvoiceScreen({ id }: { id: string }) {
       {overlay?.kind === 'payos' ? (
         <PayosDialog
           key={`${invoice.id}:${invoice.balanceVnd}:payos`}
+          invoiceId={invoice.id}
           balance={invoice.balanceVnd}
           attempt={payosAttempt}
           working={working === 'payos-create'}

@@ -1,42 +1,36 @@
 import {
   CASH_REASON_MAX,
-  TIP_METHODS,
-  TIP_WINDOW_DAYS,
+  TIP_MAX_VND,
+  TIP_STEP_VND,
   type InvoiceTipsResponse,
+  type TipChoice,
   type TipItem,
-  type TipMethodName,
-  type TipRequest,
   type TipReverseRequest,
 } from '@lucy-spa/contracts';
-import { ensureCashFund } from '@lucy-spa/server';
 import type { Prisma } from '@lucy-spa/database';
-import { randomUUID } from 'node:crypto';
 import { AuthError } from '../auth/auth.error.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
 import { decide } from '../authorization/authorization.js';
 import { fundBalance, lockFunds, openDay } from '../finance/cash-entries.core.js';
 import { financeGoLive } from '../finance/cash.core.js';
 import { exactKeys, money, reason, uuid } from '../finance/finance.input.js';
-import { holdsPayrollShopWide } from './pay.access.js';
+import { canApprovePayroll, holdsPayrollShopWide } from './pay.access.js';
 
 /**
- * Phase 7 P7-10 (design 6; P7-T7; Owner answer 5): customers' tips. A tip is a SEPARATE record (never part of the invoice or its payment,
- * not revenue, no loyalty points, outside the commission base), recorded after the invoice is PAID, within `TIP_WINDOW_DAYS`, by someone who
- * may collect payments at the invoice's branch, for a KTV who performed a service on that invoice. It enters the cash book in the same
- * transaction (cash: the branch's cash fund; a transfer the shop recorded: the bank fund). It is paid out WITH THE PAYSLIP (P7-12..P7-14),
- * never at the daily closing. A mistake is reversed in full by a negative record and a reversing book entry while no payroll run has
- * taken the tip. Nothing is written before the Owner has started the cash book and payroll.
+ * Phase 7 P7-17 (Owner decision of 2026-10-12; replaces P7-10's staff-recorded tips and the 7-day window): cash tips are NOT recorded. A tip
+ * exists only when the CUSTOMER adds it to a PayOS payment and chooses which of the KTVs who performed a service on the invoice get how much
+ * (see `pledgeTips` below and `recordPledgedTips` in `packages/server`: the tip is written by the settlement when the provider confirms the
+ * invoice part plus the tip). It is a SEPARATE record: not revenue, no loyalty points, outside the commission base; it enters the bank fund
+ * as TIP_IN and is paid out WITH THE PAYSLIP on the payroll payment day. Nobody can reassign or edit it; the only correction is the full
+ * reversal below (Owner-level payroll approval, a reason, audited) while no payroll run has taken the tip.
  */
 type Tx = Prisma.TransactionClient;
 const day = (value: Date): string => value.toISOString().slice(0, 10);
-const WINDOW_MS = TIP_WINDOW_DAYS * 86_400_000;
-const METHODS = new Set<string>(TIP_METHODS);
 
 const TIP_SELECT = {
   id: true,
   employeeUserId: true,
   amountVnd: true,
-  method: true,
   businessDate: true,
   reversesId: true,
   reason: true,
@@ -65,7 +59,6 @@ async function loadInvoice(tx: Tx, invoiceId: string) {
       code: true,
       status: true,
       branchId: true,
-      paidAt: true,
       branch: { select: { id: true, name: true } },
       lines: {
         where: { kind: 'SERVICE' },
@@ -77,11 +70,22 @@ async function loadInvoice(tx: Tx, invoiceId: string) {
   return invoice;
 }
 
+const servedOf = (invoice: Awaited<ReturnType<typeof loadInvoice>>): string[] => [
+  ...new Set(
+    invoice.lines.flatMap((line) => line.serviceDetails.map((detail) => detail.employeeUserId)),
+  ),
+];
+
+/** The cash book is live and has its bank fund (the only fund a customer's tip can enter). */
+async function bookReady(tx: Tx): Promise<boolean> {
+  if (!(await financeGoLive(tx))) return false;
+  return (await tx.cashFund.findFirst({ where: { kind: 'BANK' }, select: { id: true } })) !== null;
+}
+
 async function view(context: AdminContext, invoiceId: string): Promise<InvoiceTipsResponse> {
   const { tx } = context;
   const invoice = await loadInvoice(tx, invoiceId);
   if (!canSee(context, invoice.branchId)) throw new AuthError('FORBIDDEN');
-  const live = await financeGoLive(tx);
   const tips = await tx.tip.findMany({
     where: { invoiceId },
     orderBy: { seq: 'asc' },
@@ -90,11 +94,7 @@ async function view(context: AdminContext, invoiceId: string): Promise<InvoiceTi
   const reversed = new Set(
     tips.filter((tip) => tip.reversesId !== null).map((tip) => tip.reversesId),
   );
-  const ktvIds = [
-    ...new Set(
-      invoice.lines.flatMap((line) => line.serviceDetails.map((detail) => detail.employeeUserId)),
-    ),
-  ];
+  const ktvIds = servedOf(invoice);
   const people = await tx.employeeProfile.findMany({
     where: { userId: { in: ktvIds } },
     select: { userId: true, user: { select: { fullName: true } } },
@@ -102,24 +102,23 @@ async function view(context: AdminContext, invoiceId: string): Promise<InvoiceTi
   const net = new Map<string, bigint>();
   for (const tip of tips)
     net.set(tip.employeeUserId, (net.get(tip.employeeUserId) ?? 0n) + tip.amountVnd);
-  const windowEnd = invoice.paidAt ? new Date(invoice.paidAt.getTime() + WINDOW_MS) : null;
-  const mayCollect = canCollectAt(context, invoice.branchId);
-  const blockedBy: InvoiceTipsResponse['blockedBy'] = !mayCollect
+  const mayCorrect = canApprovePayroll(context);
+  const blockedBy: InvoiceTipsResponse['offer']['blockedBy'] = !canCollectAt(
+    context,
+    invoice.branchId,
+  )
     ? 'NO_PERMISSION'
-    : invoice.status !== 'PAID'
-      ? 'NOT_PAID'
+    : invoice.status !== 'PENDING_PAYMENT'
+      ? 'NOT_PAYABLE'
       : ktvIds.length === 0
         ? 'NO_SERVICE'
-        : !live
+        : !(await bookReady(tx))
           ? 'NOT_LIVE'
-          : windowEnd !== null && context.now > windowEnd
-            ? 'WINDOW_CLOSED'
-            : null;
+          : null;
   const items: TipItem[] = tips.map((tip) => ({
     id: tip.id,
     employee: { id: tip.employeeUserId, name: tip.employee.user.fullName },
     amountVnd: tip.amountVnd.toString(),
-    method: tip.method,
     businessDate: day(tip.businessDate),
     reversesId: tip.reversesId,
     reason: tip.reason,
@@ -127,7 +126,7 @@ async function view(context: AdminContext, invoiceId: string): Promise<InvoiceTi
     recordedAt: tip.recordedAt.toISOString(),
     claimed: tip.runId !== null,
     canReverse:
-      mayCollect && tip.reversesId === null && !reversed.has(tip.id) && tip.runId === null,
+      mayCorrect && tip.reversesId === null && !reversed.has(tip.id) && tip.runId === null,
   }));
   return {
     invoiceId: invoice.id,
@@ -145,9 +144,7 @@ async function view(context: AdminContext, invoiceId: string): Promise<InvoiceTi
           a.employee.id.localeCompare(b.employee.id),
       ),
     items,
-    canRecord: blockedBy === null,
-    blockedBy,
-    windowEndsAt: windowEnd ? windowEnd.toISOString() : null,
+    offer: { available: blockedBy === null, blockedBy },
   };
 }
 
@@ -158,134 +155,79 @@ export function invoiceTips(
   return view(context, uuid(invoiceIdRaw, 'id'));
 }
 
-const TIP_KEYS = ['invoiceId', 'employeeUserId', 'amountVnd', 'method', 'clientRequestId'] as const;
+// ------------------------------------------------------------------------------------------- the customer's choice
 
-export async function recordTip(
-  context: AdminContext,
-  request: TipRequest,
-): Promise<InvoiceTipsResponse> {
-  const { tx } = context;
-  const body = exactKeys(request, TIP_KEYS, 'body');
-  const invoiceId = uuid(body['invoiceId'], 'invoiceId');
-  const employeeUserId = uuid(body['employeeUserId'], 'employeeUserId');
-  const amount = money(body['amountVnd'], 'amountVnd', { positive: true });
-  const method = body['method'];
-  if (typeof method !== 'string' || !METHODS.has(method))
-    throw new AuthError('VALIDATION_FAILED', 'method');
-  const methodName = method as TipMethodName;
-  const clientRequestId = uuid(body['clientRequestId'], 'clientRequestId');
-  const early = await tx.invoice.findUnique({
-    where: { id: invoiceId },
-    select: { branchId: true },
-  });
-  if (!early) throw new AuthError('NOT_FOUND');
-  if (!canCollectAt(context, early.branchId)) throw new AuthError('FORBIDDEN');
-  if (!(await financeGoLive(tx))) throw new AuthError('FINANCE_NOT_LIVE');
-
-  const replay = async (): Promise<InvoiceTipsResponse | null> => {
-    const prior = await tx.tip.findFirst({
-      where: { recordedByUserId: context.actor.userId, clientRequestId },
-      select: {
-        invoiceId: true,
-        employeeUserId: true,
-        amountVnd: true,
-        method: true,
-        reversesId: true,
-      },
-    });
-    if (!prior) return null;
-    if (
-      prior.invoiceId !== invoiceId ||
-      prior.employeeUserId !== employeeUserId ||
-      prior.amountVnd !== amount ||
-      prior.method !== methodName ||
-      prior.reversesId !== null
-    ) {
-      throw new AuthError('CONFLICT');
-    }
-    return view(context, invoiceId);
-  };
-  const first = await replay();
-  if (first) return first;
-
-  await tx.$queryRaw`SELECT id FROM invoices WHERE id = ${invoiceId}::uuid FOR UPDATE`;
-  const settled = await replay();
-  if (settled) return settled;
-  const invoice = await loadInvoice(tx, invoiceId);
-  if (invoice.status !== 'PAID' || invoice.paidAt === null) throw new AuthError('CONFLICT');
-  if (context.now.getTime() > invoice.paidAt.getTime() + WINDOW_MS)
-    throw new AuthError('TIP_WINDOW_CLOSED');
-  const served = new Set(
-    invoice.lines.flatMap((line) => line.serviceDetails.map((detail) => detail.employeeUserId)),
-  );
-  if (!served.has(employeeUserId)) throw new AuthError('VALIDATION_FAILED', 'employeeUserId');
-  const net = await tx.tip.aggregate({
-    where: { invoiceId, employeeUserId },
-    _sum: { amountVnd: true },
-  });
-  if ((net._sum.amountVnd ?? 0n) !== 0n) throw new AuthError('TIP_EXISTS');
-
-  const fund =
-    methodName === 'CASH'
-      ? await ensureCashFund(tx, invoice.branchId)
-      : ((await tx.cashFund.findFirst({ where: { kind: 'BANK' }, select: { id: true } }))?.id ??
-        null);
-  if (fund === null) throw new AuthError('FINANCE_NOT_LIVE');
-  await lockFunds(tx, [fund], false);
-  const fundRow = await tx.cashFund.findUniqueOrThrow({
-    where: { id: fund },
-    select: { id: true, kind: true },
-  });
-  const branch = await tx.branch.findUniqueOrThrow({
-    where: { id: invoice.branchId },
-    select: { timezone: true },
-  });
-  const businessDate = await openDay(tx, fundRow, branch.timezone, context.now);
-  const tipId = randomUUID();
-  const entry = await tx.fundEntry.create({
-    data: {
-      fundId: fund,
-      branchId: invoice.branchId,
-      businessDate,
-      direction: 'IN',
-      category: 'TIP_IN',
-      amountVnd: amount,
-      sourceType: 'TIP',
-      sourceId: tipId,
-      sourceLeg: 0,
-      actorUserId: context.actor.userId,
-    },
-    select: { id: true },
-  });
-  await tx.tip.create({
-    data: {
-      id: tipId,
-      branchId: invoice.branchId,
-      invoiceId,
-      employeeUserId,
-      amountVnd: amount,
-      method: methodName,
-      businessDate,
-      recordedByUserId: context.actor.userId,
-      clientRequestId,
-      fundEntryId: entry.id,
-    },
-    select: { id: true },
-  });
-  await appendAdminAudit(context, {
-    action: 'TIP_RECORDED',
-    entityType: 'Tip',
-    entityId: tipId,
-    subjectUserId: employeeUserId,
-    branchId: invoice.branchId,
-    classification: 'FINANCIAL',
-    after: { invoiceId, amountVnd: amount.toString(), method: methodName },
-  });
-  return view(context, invoiceId);
+/** The tips a customer chose, checked for shape: a list of {employeeUserId, amountVnd}, each a positive multiple of 1,000, one per person. */
+export function parseTipChoices(raw: unknown): TipChoice[] {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw) || raw.length > 20) throw new AuthError('VALIDATION_FAILED', 'tips');
+  const seen = new Set<string>();
+  const choices: TipChoice[] = [];
+  let total = 0n;
+  for (const entry of raw as unknown[]) {
+    const body = exactKeys(entry, ['employeeUserId', 'amountVnd'] as const, 'tips');
+    const employeeUserId = uuid(body['employeeUserId'], 'tips.employeeUserId');
+    const amount = money(body['amountVnd'], 'tips.amountVnd', { positive: true });
+    if (amount % BigInt(TIP_STEP_VND) !== 0n)
+      throw new AuthError('VALIDATION_FAILED', 'tips.amountVnd');
+    if (seen.has(employeeUserId)) throw new AuthError('VALIDATION_FAILED', 'tips.employeeUserId');
+    seen.add(employeeUserId);
+    total += amount;
+    choices.push({ employeeUserId, amountVnd: amount.toString() });
+  }
+  if (total > BigInt(TIP_MAX_VND)) throw new AuthError('VALIDATION_FAILED', 'tips.amountVnd');
+  return choices.sort((a, b) => a.employeeUserId.localeCompare(b.employeeUserId));
 }
+
+/**
+ * Checks the customer's choice against the invoice and the book (called by the PayOS command under the invoice lock): every tip is for a KTV
+ * who performed a service on the invoice, and the cash book is live with its bank fund. Throws, and writes nothing, otherwise.
+ */
+export async function checkTipChoices(
+  tx: Tx,
+  invoiceId: string,
+  choices: readonly TipChoice[],
+): Promise<void> {
+  if (choices.length === 0) return;
+  const invoice = await loadInvoice(tx, invoiceId);
+  if (!(await bookReady(tx))) throw new AuthError('FINANCE_NOT_LIVE');
+  const served = new Set(servedOf(invoice));
+  if (served.size === 0) throw new AuthError('TIP_NOT_ALLOWED');
+  for (const choice of choices) {
+    if (!served.has(choice.employeeUserId))
+      throw new AuthError('VALIDATION_FAILED', 'tips.employeeUserId');
+  }
+}
+
+/** The pledges of a payment as {employeeUserId, amountVnd}: the same choice, in a stable order, for an idempotent replay. */
+export async function pledgesOf(tx: Tx, paymentId: string): Promise<TipChoice[]> {
+  const rows = await tx.paymentTipPledge.findMany({
+    where: { paymentId },
+    orderBy: { employeeUserId: 'asc' },
+    select: { employeeUserId: true, amountVnd: true },
+  });
+  return rows.map((row) => ({
+    employeeUserId: row.employeeUserId,
+    amountVnd: row.amountVnd.toString(),
+  }));
+}
+
+export const sameChoice = (a: readonly TipChoice[], b: readonly TipChoice[]): boolean =>
+  a.length === b.length &&
+  a.every(
+    (entry, index) =>
+      entry.employeeUserId === b[index]?.employeeUserId && entry.amountVnd === b[index]?.amountVnd,
+  );
+
+// ------------------------------------------------------------------------------------------- the Owner's correction
 
 const REVERSE_KEYS = ['reason', 'clientRequestId'] as const;
 
+/**
+ * Reverses a tip IN FULL (never reassigns, never edits): `APPROVE_PAYROLL` (shop-wide), a reason and an audit event; a negative record and a
+ * reversing book entry. Not possible once a payroll run has taken the tip (a tip already on a closed payslip is corrected by a deduction in
+ * the next payroll draft).
+ */
 export async function reverseTip(
   context: AdminContext,
   tipIdRaw: string,
@@ -296,6 +238,7 @@ export async function reverseTip(
   const body = exactKeys(request, REVERSE_KEYS, 'body');
   const why = reason(body['reason'], 'reason', CASH_REASON_MAX)!;
   const clientRequestId = uuid(body['clientRequestId'], 'clientRequestId');
+  if (!canApprovePayroll(context)) throw new AuthError('FORBIDDEN');
   const tip = await tx.tip.findUnique({
     where: { id: tipId },
     select: {
@@ -308,11 +251,10 @@ export async function reverseTip(
       reversesId: true,
       runId: true,
       fundEntryId: true,
-      businessDate: true,
+      paymentId: true,
     },
   });
   if (!tip) throw new AuthError('NOT_FOUND');
-  if (!canCollectAt(context, tip.branchId)) throw new AuthError('FORBIDDEN');
   if (!(await financeGoLive(tx))) throw new AuthError('FINANCE_NOT_LIVE');
   const prior = await tx.tip.findFirst({
     where: { recordedByUserId: context.actor.userId, clientRequestId },
@@ -389,7 +331,7 @@ export async function reverseTip(
     branchId: tip.branchId,
     reason: why,
     classification: 'FINANCIAL',
-    before: { amountVnd: tip.amountVnd.toString(), method: tip.method },
+    before: { amountVnd: tip.amountVnd.toString(), paymentId: tip.paymentId },
   });
   return view(context, tip.invoiceId);
 }

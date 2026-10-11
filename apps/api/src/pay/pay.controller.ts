@@ -24,7 +24,6 @@ import type {
   StaffCodeCreateRequest,
   StaffCodeResetRequest,
   StaffCodesResponse,
-  TipRequest,
   TipReverseRequest,
   SellerCorrectionRequest,
   CommissionRuleResponse,
@@ -189,15 +188,6 @@ class StaffCodeResetDto implements StaffCodeResetRequest {
   @ApiProperty() @IsString() @MaxLength(2000) reason!: string;
 }
 
-class TipDto implements TipRequest {
-  @ApiProperty() @IsString() @MaxLength(64) invoiceId!: string;
-  @ApiProperty() @IsString() @MaxLength(64) employeeUserId!: string;
-  @ApiProperty() @IsString() @MaxLength(20) amountVnd!: string;
-  @ApiProperty({ enum: ['CASH', 'TRANSFER'] }) @IsString() @MaxLength(16) method!:
-    'CASH' | 'TRANSFER';
-  @ApiProperty() @IsString() @MaxLength(64) clientRequestId!: string;
-}
-
 class TipReverseDto implements TipReverseRequest {
   @ApiProperty() @IsString() @MaxLength(2000) reason!: string;
   @ApiProperty() @IsString() @MaxLength(64) clientRequestId!: string;
@@ -359,7 +349,7 @@ export class PayController {
   @Get('invoices/:invoiceId/tips')
   @ApiOkResponse({
     description:
-      'The tips of one invoice and whether one can be recorded now (COLLECT_PAYMENTS, VIEW_INVOICES or a payroll permission).',
+      'The tips the customer added to the payments of one invoice, the KTVs who served on it and whether "Thêm tip" can be offered with the next PayOS payment (COLLECT_PAYMENTS, VIEW_INVOICES or a payroll permission). Tips are never recorded by staff.',
   })
   invoiceTips(
     @Param('invoiceId') invoiceId: string,
@@ -368,25 +358,11 @@ export class PayController {
     return this.pay.invoiceTips(this.session(request), invoiceId);
   }
 
-  @Post('tips')
-  @HttpCode(200)
-  @ApiOkResponse({
-    description:
-      'Records a tip for a KTV who served on a PAID invoice (COLLECT_PAYMENTS at its branch). Enters the cash book; paid out with the payslip.',
-  })
-  recordTip(
-    @Body() body: TipDto,
-    @Req() request: Request,
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<InvoiceTipsResponse> {
-    return this.pay.recordTip(this.session(request), body, this.requestId(response));
-  }
-
   @Post('tips/:tipId/reverse')
   @HttpCode(200)
   @ApiOkResponse({
     description:
-      'Reverses a tip in full while no payroll run has taken it (COLLECT_PAYMENTS at its branch, reason).',
+      'The Owner-only correction: reverses a tip in full while no payroll run has taken it (APPROVE_PAYROLL, shop-wide; reason; audited).',
   })
   reverseTip(
     @Param('tipId') tipId: string,

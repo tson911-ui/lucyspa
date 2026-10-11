@@ -6,7 +6,8 @@ Dành cho Owner, không cần rành kỹ thuật. Chỉ có **MỘT khối lện
 
 **Bản sẽ cài:** commit `1cd8ffb48949a5d6a4ee3e328c49b296c015fb5e`, đã push lên `main`. Các commit tài liệu đẩy sau đó (kể cả commit của tệp này) không đổi mã chạy.
 **Bản đang chạy:** `ac74013bb6a9ef681c7d4e306216de1a3565e639` (Phase 9, **108 migration, 68 quyền**) hoặc bản Đợt A `b11c21e09803cbd22c1789918b35664d5dea9b2f` (**110 migration, 73 quyền**).
-**Cơ sở dữ liệu:** từ 108 lên **117 migration** (hoặc 110 lên 117), chỉ **thêm**: **18 bảng mới rỗng** (5 của sổ quỹ, 13 của lương), vài giá trị kiểu mới, 5 giá trị quyền mới, **không đổi, không xóa dòng dữ liệu cũ nào**. Migration `20261203000000` và `20261208000000` thêm khóa ngoại và một cột để trống vào bảng cũ (`pay_earnings`/`tips` đều rỗng, bảng công CTV thêm cột `pay_run_id` để trống).
+**Cơ sở dữ liệu:** từ 108 lên **118 migration** (hoặc 110 lên 118), chỉ **thêm**: **19 bảng mới rỗng** (5 của sổ quỹ, 14 của lương và tip), vài giá trị kiểu mới, 5 giá trị quyền mới, **không đổi, không xóa dòng dữ liệu cũ nào**. Migration `20261203000000`, `20261208000000` và `20261209000000` (tip do khách chọn: thêm cột `payment_id` để trống vào `tips`) thêm khóa ngoại và một cột để trống vào bảng cũ (`pay_earnings`/`tips` đều rỗng, bảng công CTV thêm cột `pay_run_id` để trống).
+**Tip:** chỉ do khách chọn khi thanh toán PayOS (tiền mặt không ghi vào hệ thống); chỉ hiện sau khi Chủ bắt đầu sổ quỹ. Xem `docs/PHASE7_PAYROLL_FUNDS.md` mục 15.
 **Quyền:** 68 → **73**: `MANAGE_PAY_RULES`, `MANAGE_PAYROLL`, `APPROVE_PAYROLL`, `VIEW_CASH`, `MANAGE_CASH`. **Không cấp cho ai** (chỉ tài khoản Owner có sẵn mọi quyền). Sau triển khai Owner vào Quản trị → Vai trò để gán.
 **Chưa có gì chạy sau khi triển khai:** chưa có ngày bắt đầu sổ quỹ và lương nên **không ghi gì**: không tour, không hoa hồng, không tip, không bảng lương. Chỉ khi Owner đếm tiền thật và bấm "Bắt đầu sổ quỹ" (`docs/OWNER_TEST_SCRIPT_PHASE7_A.md`) thì mọi thứ mới bắt đầu, **không nhập bù ngày cũ**. **Không có gì tự trả tiền**: chốt bảng lương, trả lương, chi tạm ứng đều do chính Owner bấm và nhập lại mật khẩu.
 **Biến môi trường (`.env`) mới:** không có. Không đổi nginx, không có tiến trình pm2 mới, không có thư viện mới, worker **không** cần ra internet thêm. **Worker phải khởi động lại** (có hai việc mới, nằm im tới khi sổ quỹ bắt đầu). **"Bán online" không bị đụng tới**; ô "Mã nhân viên giới thiệu" ở trang thanh toán đơn online chỉ có tác dụng sau khi Owner tạo mã.
@@ -31,8 +32,8 @@ sqlq() { printf '%s\n' "$2" | docker exec -i lucy-spa-postgres-1 sh -c 'psql -U 
 expect() { [ "$2" = "$3" ] || dung "$1: duoc '$2', mong doi '$3'"; echo "OK  $1: $2"; }
 count_online() { pm2 jlist | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const l=JSON.parse(s);console.log(l.filter(p=>p.name===process.argv[1]&&p.pm2_env.status==='online').length)})" "$1"; }
 http() { curl -s -o /dev/null -w '%{http_code}' "$1"; }
-TABLES="select count(*) from information_schema.tables where table_schema='public' and table_name in ('finance_go_live','reauth_uses','cash_funds','fund_entries','cash_day_closings','employee_salary_versions','tour_rules','commission_rules','pay_earnings','pay_seller_overrides','tips','employee_referral_codes','order_referrals','pay_runs','pay_run_lines','pay_run_items','salary_advances','payslips')"
-EMPTY="select (select count(*) from tour_rules)+(select count(*) from commission_rules)+(select count(*) from employee_salary_versions)+(select count(*) from pay_earnings)+(select count(*) from tips)+(select count(*) from employee_referral_codes)+(select count(*) from order_referrals)+(select count(*) from pay_runs)+(select count(*) from salary_advances)+(select count(*) from payslips)"
+TABLES="select count(*) from information_schema.tables where table_schema='public' and table_name in ('finance_go_live','reauth_uses','cash_funds','fund_entries','cash_day_closings','employee_salary_versions','tour_rules','commission_rules','pay_earnings','pay_seller_overrides','tips','employee_referral_codes','order_referrals','pay_runs','pay_run_lines','pay_run_items','salary_advances','payslips','payment_tip_pledges')"
+EMPTY="select (select count(*) from tour_rules)+(select count(*) from commission_rules)+(select count(*) from employee_salary_versions)+(select count(*) from pay_earnings)+(select count(*) from tips)+(select count(*) from employee_referral_codes)+(select count(*) from order_referrals)+(select count(*) from pay_runs)+(select count(*) from salary_advances)+(select count(*) from payslips)+(select count(*) from payment_tip_pledges)"
 COUNTS="select (select count(*) from _prisma_migrations where finished_at is not null)||'|'||(select count(*) from permissions)"
 echo "=== 0. Dieu kien ==="
 START=$(sqlq $DB "$COUNTS")
@@ -92,9 +93,9 @@ SYNC=$(pnpm db:permissions:sync 2>&1); echo "$SYNC" | tail -n 1
 echo "$SYNC" | grep -q "$NEWPERM" || dung "danh muc quyen tren ban tam khong phai '$NEWPERM'"
 unset DATABASE_URL
 expect "khong con DATABASE_URL trong moi truong" "$(env | grep -c '^DATABASE_URL=' || true)" "0"
-expect "ban tam: migration va quyen" "$(sqlq $SCRATCH "$COUNTS")" "117|73"
-expect "ban tam: 18 bang moi" "$(sqlq $SCRATCH "$TABLES")" "18"
-expect "ban tam: 13 bang cua dot B deu rong" "$(sqlq $SCRATCH "$EMPTY")" "0"
+expect "ban tam: migration va quyen" "$(sqlq $SCRATCH "$COUNTS")" "118|73"
+expect "ban tam: 19 bang moi" "$(sqlq $SCRATCH "$TABLES")" "19"
+expect "ban tam: 14 bang cua dot B deu rong" "$(sqlq $SCRATCH "$EMPTY")" "0"
 expect "ban tam: so nguoi dung giu nguyen" "$(sqlq $SCRATCH "select count(*) from users")" "$USERS_BEFORE"
 expect "ban tam: so hoa don giu nguyen" "$(sqlq $SCRATCH "select count(*) from invoices")" "$INVOICES_BEFORE"
 echo "Thoi gian tung migration tren ban tam (gui Claude):"
@@ -110,9 +111,9 @@ expect "khong co DATABASE_URL trong moi truong" "$(env | grep -c '^DATABASE_URL=
 pnpm db:deploy || dung "db:deploy that loi: KHONG chay lai, hoi Claude (API va worker dang dung)"
 SYNC=$(pnpm db:permissions:sync 2>&1); echo "$SYNC" | tail -n 1
 echo "$SYNC" | grep -q "$NEWPERM" || dung "danh muc quyen that khong phai '$NEWPERM'"
-expect "migration va quyen sau" "$(sqlq $DB "$COUNTS")" "117|73"
-expect "18 bang moi co mat" "$(sqlq $DB "$TABLES")" "18"
-expect "13 bang cua dot B deu rong" "$(sqlq $DB "$EMPTY")" "0"
+expect "migration va quyen sau" "$(sqlq $DB "$COUNTS")" "118|73"
+expect "19 bang moi co mat" "$(sqlq $DB "$TABLES")" "19"
+expect "14 bang cua dot B deu rong" "$(sqlq $DB "$EMPTY")" "0"
 if [ "$TABLES_BEFORE" = "0" ]; then
   expect "so quy chua bat dau (cash_funds)" "$(sqlq $DB "select count(*) from cash_funds")" "0"
   expect "so quy chua bat dau (finance_go_live)" "$(sqlq $DB "select count(*) from finance_go_live")" "0"
@@ -155,7 +156,7 @@ if [ "$(sqlq $DB "select count(*) from finance_go_live")" = "0" ]; then
 fi
 echo "=== XONG: khong co DUNG LAI nao. Gui Claude cac dong sau ==="
 echo "ma dang chay: $(git rev-parse HEAD)"
-echo "so lieu sau: $(sqlq $DB "$COUNTS") (mong doi 117|73)"
+echo "so lieu sau: $(sqlq $DB "$COUNTS") (mong doi 118|73)"
 echo "sao luu co so du lieu: $BACKUP"
 echo "sao luu web: $WEBBACKUP"
 pm2 status
@@ -171,7 +172,7 @@ pm2 status
 
 ## Quay lại nếu có sự cố
 
-**Đọc trước:** mọi migration chỉ **thêm**. Bản cũ chạy được trên cơ sở dữ liệu 117 migration **sau khi xóa 5 hàng quyền mới** nếu bản cũ là Phase 9 (`ac74013`); nếu bản cũ là Đợt A (`b11c21e`) thì **không cần xóa gì** (đã thử: `docs/PHASE7_WAVE_B_ROLLBACK_PROOF.md`; Phase 9 trên 110 migration đã thử ở `docs/PHASE7_WAVE_A_ROLLBACK_PROOF.md`, 7 migration sau chỉ thêm bảng nên cùng kết luận, **chưa thử riêng** Phase 9 trên 117). Nếu sổ quỹ hoặc bảng lương **đã bắt đầu**, quay lại chỉ làm chúng đứng yên; dữ liệu vẫn nguyên.
+**Đọc trước:** mọi migration chỉ **thêm**. Bản cũ chạy được trên cơ sở dữ liệu 118 migration **sau khi xóa 5 hàng quyền mới** nếu bản cũ là Phase 9 (`ac74013`); nếu bản cũ là Đợt A (`b11c21e`) thì **không cần xóa gì** (đã thử: `docs/PHASE7_WAVE_B_ROLLBACK_PROOF.md`; Phase 9 trên 110 migration đã thử ở `docs/PHASE7_WAVE_A_ROLLBACK_PROOF.md`, 7 migration sau chỉ thêm bảng nên cùng kết luận, **chưa thử riêng** Phase 9 trên 117). Nếu sổ quỹ hoặc bảng lương **đã bắt đầu**, quay lại chỉ làm chúng đứng yên; dữ liệu vẫn nguyên.
 
 **Cách A1: quay về Phase 9 (`ac74013`), giữ cơ sở dữ liệu** (dán nguyên khối):
 
@@ -201,4 +202,4 @@ _Nếu `pnpm build` làm hỏng trang web:_ `tar -xzf <tệp sao lưu web ở tr
 
 ## Báo lại cho Claude
 
-Gửi các dòng cuối của khối ("XONG…": mã đang chạy, số liệu `117|73`, đường dẫn hai tệp sao lưu), các dòng thời gian migration và `pm2 status`. Claude ghi vào `LUCYSPA_HANDOFF.md`: commit, các migration đã áp, ngày giờ.
+Gửi các dòng cuối của khối ("XONG…": mã đang chạy, số liệu `118|73`, đường dẫn hai tệp sao lưu), các dòng thời gian migration và `pm2 status`. Claude ghi vào `LUCYSPA_HANDOFF.md`: commit, các migration đã áp, ngày giờ.

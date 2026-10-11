@@ -17,12 +17,15 @@ import {
   salaryBody,
   salaryProblems,
   startWindow,
-  tipBody,
+  emptyTipDrafts,
+  tipChoices,
   tipProblems,
+  tipTotal,
   tourBody,
   validStart,
   vndString,
   type CommissionDraft,
+  type TipDraft,
 } from './pay';
 import { employee, owner } from '../../test/support';
 
@@ -158,22 +161,35 @@ test('a commission rule needs a target unless it is for the whole shop, and a va
   assert.equal(commissionBody({ ...base, targetId: 'leftover' }, TODAY)?.targetId, null);
 });
 
-test('a tip needs a KTV and an amount above 0; reversals and resets need a reason', () => {
-  assert.deepEqual(tipProblems({ employeeUserId: '', amount: 0, method: 'CASH' }), [
-    'employee',
-    'amount',
+test('the customer tip: nothing, a preset or their own amount per KTV; only people given something are sent', () => {
+  const none = emptyTipDrafts(['a', 'b']);
+  assert.deepEqual(tipChoices(none), []);
+  assert.equal(tipTotal(none), 0);
+  const chosen: TipDraft[] = [
+    { employeeUserId: 'a', pick: '50000', other: null },
+    { employeeUserId: 'b', pick: 'OTHER', other: 30_000 },
+  ];
+  assert.deepEqual(tipChoices(chosen), [
+    { employeeUserId: 'a', amountVnd: '50000' },
+    { employeeUserId: 'b', amountVnd: '30000' },
   ]);
+  assert.equal(tipTotal(chosen), 80_000);
+  // One person given nothing is left out.
+  assert.deepEqual(tipChoices([{ employeeUserId: 'a', pick: 'NONE', other: null }, chosen[1]!]), [
+    { employeeUserId: 'b', amountVnd: '30000' },
+  ]);
+  // A typed amount must be a whole number of thousands, at least 1,000, and the tips of one payment add up to at most 10,000,000.
+  for (const other of [null, 0, 500, 1_500, 10_001_000, 12.5]) {
+    assert.deepEqual(tipProblems([{ employeeUserId: 'a', pick: 'OTHER', other }]), ['a']);
+    assert.equal(tipChoices([{ employeeUserId: 'a', pick: 'OTHER', other }]), null);
+  }
   assert.deepEqual(
-    tipBody('inv', { employeeUserId: 'e1', amount: 50_000, method: 'TRANSFER' }, 'req'),
-    {
-      invoiceId: 'inv',
-      employeeUserId: 'e1',
-      amountVnd: '50000',
-      method: 'TRANSFER',
-      clientRequestId: 'req',
-    },
+    tipProblems([
+      { employeeUserId: 'a', pick: 'OTHER', other: 6_000_000 },
+      { employeeUserId: 'b', pick: 'OTHER', other: 5_000_000 },
+    ]),
+    ['TOTAL'],
   );
-  assert.equal(tipBody('inv', { employeeUserId: 'e1', amount: null, method: 'CASH' }, 'req'), null);
   assert.equal(reasonProblem('  '), true);
   assert.equal(reasonProblem('x'.repeat(501)), true);
   assert.equal(reasonProblem('Nhầm'), false);

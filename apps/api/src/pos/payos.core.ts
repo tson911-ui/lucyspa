@@ -4,6 +4,7 @@ import type {
   PaymentAnomalyListItem,
   PaymentAnomalyListResponse,
   PaymentResultResponse,
+  TipChoice,
 } from '@lucy-spa/contracts';
 import {
   applyProviderRead,
@@ -29,7 +30,11 @@ import {
   load,
   lockedInvoice,
 } from './invoice.core.js';
+import { checkTipChoices, pledgesOf, sameChoice } from '../pay/tips.core.js';
 import { paymentResult } from './payment.core.js';
+
+const byPerson = (a: TipChoice, b: TipChoice): number =>
+  a.employeeUserId.localeCompare(b.employeeUserId);
 
 /**
  * Phase 4 Step 8: the staff-facing PayOS commands. The PayOS calls themselves happen OUTSIDE any database
@@ -59,7 +64,14 @@ function newOrderCode(now: Date): number {
 
 export type ReserveOutcome =
   | { kind: 'DONE'; result: PaymentResultResponse }
-  | { kind: 'CREATED'; paymentId: string; orderCode: number; amountVnd: number; expiresAt: Date };
+  | {
+      kind: 'CREATED';
+      paymentId: string;
+      orderCode: number;
+      /** What PayOS is asked for: the invoice part PLUS the tip the customer chose (P7-17). */
+      amountVnd: number;
+      expiresAt: Date;
+    };
 
 /**
  * First half of "create a PayOS request": authority, idempotency, the one-pending rule and the amount check,
@@ -69,8 +81,9 @@ export type ReserveOutcome =
 export async function reservePayosRequest(
   context: AdminContext,
   invoiceId: string,
-  input: { amountVnd: bigint; idempotencyKey: string },
+  input: { amountVnd: bigint; idempotencyKey: string; tips?: readonly TipChoice[] },
 ): Promise<ReserveOutcome> {
+  const tips = input.tips ?? [];
   const { hint, row: read } = await lockedInvoice(context, invoiceId, 'COLLECT_PAYMENTS');
   const { tx } = context;
   let invoice = await read();
@@ -91,6 +104,10 @@ export async function reservePayosRequest(
     ) {
       throw new AuthError('CONFLICT');
     }
+    // The same request again must carry the same tip choice (the choice is frozen with the request).
+    if (!sameChoice(await pledgesOf(tx, prior.id), [...tips].sort(byPerson))) {
+      throw new AuthError('CONFLICT');
+    }
     return { kind: 'DONE', result: await paymentResult(context, invoiceId, prior.id) };
   }
   if (invoice.status !== 'PENDING_PAYMENT') throw new AuthError('INVOICE_STATE_INVALID');
@@ -104,6 +121,9 @@ export async function reservePayosRequest(
   }
   const balance = balanceOf(invoice);
   if (input.amountVnd > balance) throw new AuthError('PAYMENT_AMOUNT_INVALID');
+  // P7-17: the tip is for a KTV of this invoice and needs the cash book; nothing is written otherwise.
+  await checkTipChoices(tx, invoiceId, tips);
+  const tipTotal = tips.reduce((sum, choice) => sum + BigInt(choice.amountVnd), 0n);
 
   const orderCode = newOrderCode(now);
   const expiresAt = new Date(now.getTime() + PROVIDER_REQUEST_LIFETIME_MS);
@@ -124,6 +144,15 @@ export async function reservePayosRequest(
     },
     select: { id: true, collectedAt: true },
   });
+  if (tips.length > 0) {
+    await tx.paymentTipPledge.createMany({
+      data: tips.map((choice) => ({
+        paymentId: payment.id,
+        employeeUserId: choice.employeeUserId,
+        amountVnd: BigInt(choice.amountVnd),
+      })),
+    });
+  }
   await appendAdminAudit(
     { ...context, now: payment.collectedAt },
     {
@@ -139,6 +168,7 @@ export async function reservePayosRequest(
         orderCode: String(orderCode),
         amountDueVnd: balance.toString(),
         amountVnd: input.amountVnd.toString(),
+        ...(tipTotal > 0n ? { tipVnd: tipTotal.toString() } : {}),
         expiresAt: expiresAt.toISOString(),
         collectedByUserId: context.actor.userId,
       },
@@ -148,7 +178,7 @@ export async function reservePayosRequest(
     kind: 'CREATED',
     paymentId: payment.id,
     orderCode,
-    amountVnd: Number(input.amountVnd),
+    amountVnd: Number(input.amountVnd + tipTotal),
     expiresAt,
   };
 }

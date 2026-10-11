@@ -7,9 +7,7 @@ import type {
   InvoiceTipsResponse,
   PayEarningItem,
   TipItem,
-  TipMethodName,
 } from '@lucy-spa/contracts';
-import { TIP_METHODS } from '@lucy-spa/contracts';
 import {
   Card,
   CardHeader,
@@ -17,7 +15,6 @@ import {
   Field,
   FormDialog,
   FormGrid,
-  MoneyInput,
   RowActions,
   Select,
   Textarea,
@@ -30,9 +27,9 @@ import { signedVnd, vndNumber } from '../../../lib/workforce/cash';
 import { formatDate, formatDateTime } from '../../../lib/workforce/format';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { canGlobal } from '../../../lib/workforce/permissions';
-import { reasonProblem, tipBody, tipProblems, type TipDraft } from '../../../lib/workforce/pay';
+import { reasonProblem } from '../../../lib/workforce/pay';
 import { useAccount, useWorkforce } from '../session';
-import { Badge, Button, Empty, ErrorState, Notice, useResource, useSuccessToast } from '../ui';
+import { Badge, Empty, ErrorState, Notice, useResource, useSuccessToast } from '../ui';
 import { usePayCommand } from './pay-command';
 
 const ZONE = 'Asia/Ho_Chi_Minh';
@@ -51,7 +48,6 @@ export function InvoiceTipsCard({ invoiceId }: { invoiceId: string }) {
     () => api.get<InvoiceTipsResponse>(`/api/v1/pay/invoices/${invoiceId}/tips`),
     [api, invoiceId, bump],
   );
-  const [recording, setRecording] = useState(false);
   const [reversing, setReversing] = useState<TipItem | null>(null);
   const notify = useSuccessToast();
   const view = data.data;
@@ -60,11 +56,8 @@ export function InvoiceTipsCard({ invoiceId }: { invoiceId: string }) {
     return null;
   }
   if (!view) return null;
-  const hidden =
-    view.items.length === 0 &&
-    !view.canRecord &&
-    ['NO_SERVICE', 'NOT_LIVE', 'NO_PERMISSION', 'NOT_PAID'].includes(view.blockedBy ?? '');
-  if (hidden) return null;
+  // Tips exist only when a customer added one to a PayOS payment: nothing to show (and nothing to do here) without one.
+  if (view.items.length === 0) return null;
   const columns: DataTableColumn<TipItem>[] = [
     {
       key: 'employee',
@@ -82,12 +75,6 @@ export function InvoiceTipsCard({ invoiceId }: { invoiceId: string }) {
           {signedVnd(vndNumber(row.amountVnd), locale)}
         </span>
       ),
-    },
-    {
-      key: 'method',
-      header: c.columns.method,
-      hidePhone: true,
-      cell: (row) => c.methods[row.method],
     },
     {
       key: 'date',
@@ -131,24 +118,8 @@ export function InvoiceTipsCard({ invoiceId }: { invoiceId: string }) {
   return (
     <>
       <Card as="section" aria-label={c.title}>
-        <CardHeader
-          title={c.title}
-          actions={
-            view.canRecord ? (
-              <Button variant="secondary" icon="plus" onClick={() => setRecording(true)}>
-                {c.record}
-              </Button>
-            ) : undefined
-          }
-        />
+        <CardHeader title={c.title} />
         <p className="ls-hint">{c.intro}</p>
-        {!view.canRecord && view.blockedBy ? (
-          <Notice tone="info">{c.blocked[view.blockedBy]}</Notice>
-        ) : view.windowEndsAt ? (
-          <p className="ls-hint">
-            {fill(c.windowNote, { date: formatDateTime(view.windowEndsAt, ZONE, locale) })}
-          </p>
-        ) : null}
         <DataTable
           mode="client"
           caption={fill(t.common.list.table, { list: c.title })}
@@ -159,17 +130,6 @@ export function InvoiceTipsCard({ invoiceId }: { invoiceId: string }) {
           paging={{ off: 'the tips of one invoice' }}
         />
       </Card>
-      {recording ? (
-        <TipDialog
-          view={view}
-          onDone={() => {
-            setRecording(false);
-            notify(c.done);
-            setBump((value) => value + 1);
-          }}
-          onClose={() => setRecording(false)}
-        />
-      ) : null}
       {reversing ? (
         <ReverseTipDialog
           tip={reversing}
@@ -182,91 +142,6 @@ export function InvoiceTipsCard({ invoiceId }: { invoiceId: string }) {
         />
       ) : null}
     </>
-  );
-}
-
-function TipDialog({
-  view,
-  onDone,
-  onClose,
-}: {
-  view: InvoiceTipsResponse;
-  onDone: () => void;
-  onClose: () => void;
-}) {
-  const { t, locale } = useWorkforce();
-  const c = payDictionary(locale).tips;
-  // Only a KTV without a live tip on this invoice can be chosen (the API refuses a second one).
-  const choices = view.served.filter((item) => item.netVnd === '0');
-  const [draft, setDraft] = useState<TipDraft>({
-    employeeUserId: choices.length === 1 ? choices[0]!.employee.id : '',
-    amount: null,
-    method: 'CASH',
-  });
-  const [checked, setChecked] = useState(false);
-  const command = usePayCommand();
-  const problems = tipProblems(draft);
-  const invalid = (name: string) =>
-    checked && problems.includes(name) ? t.errors.validation : undefined;
-
-  async function submit() {
-    setChecked(true);
-    const body = tipBody(view.invoiceId, draft, command.requestId);
-    if (!body) return;
-    await command.run<InvoiceTipsResponse>('/api/v1/pay/tips', body, onDone);
-  }
-
-  return (
-    <FormDialog
-      title={c.recordTitle}
-      description={c.recordDescription}
-      labels={{ ...formOverlayLabels(t, c.submit), submitting: c.submitting }}
-      busy={command.pending}
-      dirty={draft.amount !== null}
-      error={command.error ? <Notice tone="error">{command.error}</Notice> : undefined}
-      onClose={onClose}
-      onSubmit={submit}
-    >
-      <FormGrid>
-        <Field label={c.employee} error={invalid('employee')} required full>
-          {(control) => (
-            <Select
-              {...control}
-              value={draft.employeeUserId}
-              placeholder={payDictionary(locale).common.choose}
-              options={choices.map((item) => ({
-                value: item.employee.id,
-                label: item.employee.name,
-              }))}
-              onChange={(event) => setDraft({ ...draft, employeeUserId: event.target.value })}
-            />
-          )}
-        </Field>
-        <Field label={c.amount} error={invalid('amount')} required full>
-          {(control) => (
-            <MoneyInput
-              {...control}
-              unit="₫"
-              separator={locale === 'vi' ? '.' : ','}
-              value={draft.amount}
-              onValueChange={(amount) => setDraft({ ...draft, amount })}
-            />
-          )}
-        </Field>
-        <Field label={c.method} required full>
-          {(control) => (
-            <Select
-              {...control}
-              value={draft.method}
-              options={TIP_METHODS.map((method) => ({ value: method, label: c.methods[method] }))}
-              onChange={(event) =>
-                setDraft({ ...draft, method: event.target.value as TipMethodName })
-              }
-            />
-          )}
-        </Field>
-      </FormGrid>
-    </FormDialog>
   );
 }
 

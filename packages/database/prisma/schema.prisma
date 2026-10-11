@@ -624,6 +624,7 @@ model CustomerProfile {
 
 model EmployeeProfile {
   userId                  String                           @id @map("user_id") @db.Uuid
+  tipPledges              PaymentTipPledge[]
   salaryAdvances          SalaryAdvance[]
   payRunLines             PayRunLine[]
   payslips                Payslip[]
@@ -2025,6 +2026,8 @@ model Payment {
   attempts              PaymentAttempt[]
   anomalies             PaymentAnomaly[]
   sideAllocations       PaymentSideAllocation[]
+  tipPledges            PaymentTipPledge[]
+  tips                  Tip[]
 
   @@unique([collectedByUserId, idempotencyKey], map: "payments_collector_idempotency_key")
   @@index([invoiceId], map: "payments_invoice_idx")
@@ -5264,15 +5267,35 @@ model Tip {
   fundEntry        FundEntry   @relation(fields: [fundEntryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   runId            String?     @map("run_id") @db.Uuid
   run              PayRun?     @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// P7-17: the PayOS payment the customer added the tip to (NULL for a reversal).
+  paymentId        String?     @map("payment_id") @db.Uuid
+  payment          Payment?    @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   recordedAt       DateTime    @default(dbgenerated("clock_timestamp()")) @map("recorded_at") @db.Timestamptz(3)
 
   @@unique([recordedByUserId, clientRequestId], map: "tips_request_key")
+  @@index([paymentId], map: "tips_payment_idx")
   @@index([invoiceId, employeeUserId], map: "tips_invoice_idx")
   @@index([employeeUserId, businessDate], map: "tips_employee_idx")
   @@index([branchId, businessDate], map: "tips_branch_date_idx")
   @@index([runId], map: "tips_run_idx")
   @@index([fundEntryId], map: "tips_fund_entry_idx")
   @@map("tips")
+}
+
+/// P7-17 (Owner decision 2026-10-12): what the customer chose to tip, frozen with the PayOS request. The provider is asked for the invoice
+/// part plus the sum of these; the tip itself is written by the settlement when that exact total is confirmed.
+model PaymentTipPledge {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId      String          @map("payment_id") @db.Uuid
+  payment        Payment         @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId String          @map("employee_user_id") @db.Uuid
+  employee       EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  amountVnd      BigInt          @map("amount_vnd")
+  createdAt      DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([paymentId, employeeUserId], map: "payment_tip_pledges_person_key")
+  @@index([employeeUserId], map: "payment_tip_pledges_employee_idx")
+  @@map("payment_tip_pledges")
 }
 
 /// P7-10b (P7-T16): a staff member's referral code for online orders. Created only by the Owner's click; one active code per person; a reset

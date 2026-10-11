@@ -184,6 +184,7 @@ export const invoiceSelect = {
       expiresAt: true,
       providerReference: true,
       lateOfPaymentId: true,
+      tipPledges: { select: { amountVnd: true } },
       collectedBy: { select: { id: true, fullName: true } },
       correction: {
         select: {
@@ -431,6 +432,9 @@ export function presentPayments(context: AdminContext, row: InvoiceRow): Invoice
               expiresAt: payment.expiresAt.toISOString(),
               reference: payment.providerReference,
               late: payment.lateOfPaymentId !== null,
+              tipVnd: payment.tipPledges
+                .reduce((sum, pledge) => sum + pledge.amountVnd, 0n)
+                .toString(),
             }
           : null,
       cancellable: collect && pending && payment.providerOrderCode !== null,

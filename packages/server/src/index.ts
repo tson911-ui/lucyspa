@@ -295,6 +295,7 @@ export {
   type SettlementActor,
   type SettlementResult,
 } from './payment-settlement.js';
+export { pledgedTips, recordPledgedTips, type PledgedTip } from './payment-tips.js';
 export {
   ONLINE_ALERT_EVENT,
   ONLINE_ALERT_PERMISSION,
