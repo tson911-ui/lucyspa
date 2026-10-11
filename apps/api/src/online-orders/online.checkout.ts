@@ -8,6 +8,7 @@ import {
   cancelUnpaidOnlineInvoice,
   endPendingPayment,
   expireStalePending,
+  resolveStaffCode,
   type OnlineCancelOutcome,
 } from '@lucy-spa/server';
 import { randomInt, randomUUID } from 'node:crypto';
@@ -94,6 +95,8 @@ export interface QuoteResponse {
   totalVnd: string;
   hasPreOrder: boolean;
   voucherCode: string | null;
+  /** The staff code that was accepted (upper-case), or null when none was given. */
+  referralCode: string | null;
   /** True when the code lowered the price; a code that is valid but not the best benefit is kept out of the way (one benefit per side). */
   voucherEffective: boolean | null;
   unpaidOrders: number;
@@ -134,6 +137,7 @@ async function nextInvoiceCode(
 async function build(
   context: CustomerContext,
   voucherCodeRaw: string | null | undefined,
+  referralCodeRaw: string | null | undefined = null,
 ): Promise<Built> {
   const { tx, customerUserId } = context;
   const settings = await requireOpen(tx);
@@ -156,6 +160,20 @@ async function build(
       : canonicalVoucherCode(voucherCodeRaw);
   const voucher = voucherCode === null ? null : await resolveVoucher(tx, voucherCode, now);
 
+  // The staff code is checked before anything is built, with one answer for every failure (P7-T16).
+  const referral =
+    referralCodeRaw === undefined || referralCodeRaw === null || referralCodeRaw.trim() === ''
+      ? null
+      : await resolveStaffCode(tx, referralCodeRaw, shopDay(now));
+  if (
+    referralCodeRaw !== undefined &&
+    referralCodeRaw !== null &&
+    referralCodeRaw.trim() !== '' &&
+    !referral
+  ) {
+    throw new AuthError('REFERRAL_CODE_INVALID');
+  }
+
   const header = await nextInvoiceCode(tx, branchId);
   const invoice = await tx.invoice.create({
     data: {
@@ -174,6 +192,17 @@ async function build(
     },
     select: { id: true, payerUserId: true },
   });
+  if (referral) {
+    await tx.orderReferral.create({
+      data: {
+        invoiceId: invoice.id,
+        employeeUserId: referral.employeeUserId,
+        codeId: referral.id,
+        code: referral.code,
+      },
+      select: { invoiceId: true },
+    });
+  }
   let sequence = 0;
   for (const line of planned) {
     sequence += 1;
@@ -264,19 +293,42 @@ async function build(
     totalVnd: total.toString(),
     hasPreOrder: planned.some((line) => line.mode === 'PRE_ORDER'),
     voucherCode,
+    referralCode: referral?.code ?? null,
     voucherEffective,
     unpaidOrders: await countUnpaidOrders(tx, customerUserId),
   };
   return { invoiceId: invoice.id, rowVersion: updated.rowVersion, planned, quote, settings };
 }
 
+/** An optional short text: absent or null is none; anything else must be a string of a sensible length. */
+function optionalText(value: unknown, field: string): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'string' || value.length > 40)
+    throw new AuthError('VALIDATION_FAILED', field);
+  return value;
+}
+
+/** The shop day (YYYY-MM-DD) of an instant: all branches are in Vietnam. */
+function shopDay(at: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(at);
+}
+
 /** The price of the cart as the checkout would place it, with nothing saved (the build is rolled back). */
 export async function quoteCheckout(
   context: CustomerContext,
-  request: { voucherCode?: string | null },
+  request: { voucherCode?: string | null; referralCode?: string | null },
 ): Promise<never> {
-  const raw = input.record(request, 'quote', ['voucherCode']);
-  const built = await build(context, raw['voucherCode'] as string | null | undefined);
+  const raw = input.record(request, 'quote', ['voucherCode', 'referralCode']);
+  const built = await build(
+    context,
+    raw['voucherCode'] as string | null | undefined,
+    optionalText(raw['referralCode'], 'referralCode'),
+  );
   throw new CommandRollback<QuoteResponse>(built.quote);
 }
 
@@ -284,6 +336,7 @@ const REQUEST_KEYS = [
   'address',
   'saveAddress',
   'voucherCode',
+  'referralCode',
   'acceptedPolicyVersion',
   'clientRequestId',
 ] as const;
@@ -342,7 +395,11 @@ export async function placeOrder(
     if (prior.order.customerUserId !== customerUserId) throw new AuthError('CONFLICT');
     return getOrder(context, prior.order.id);
   }
-  const built = await build(context, raw['voucherCode'] as string | null | undefined);
+  const built = await build(
+    context,
+    raw['voucherCode'] as string | null | undefined,
+    optionalText(raw['referralCode'], 'referralCode'),
+  );
   if (policyVersion !== built.settings.policyVersion) throw new AuthError('ONLINE_POLICY_STALE');
   const now = await databaseClock(tx);
   const deadlineAt = new Date(now.getTime() + built.settings.unpaidTimeoutMinutes * 60_000);

@@ -2,6 +2,9 @@ import type {
   CommissionRuleRequest,
   InvoiceEarningsResponse,
   InvoiceTipsResponse,
+  StaffCodeCreateRequest,
+  StaffCodeResetRequest,
+  StaffCodesResponse,
   TipRequest,
   TipReverseRequest,
   SellerCorrectionRequest,
@@ -71,6 +74,14 @@ class CommissionRuleDto implements CommissionRuleRequest {
   @IsString()
   @MaxLength(2000)
   reason!: string | null;
+}
+
+class StaffCodeDto implements StaffCodeCreateRequest {
+  @ApiProperty() @IsString() @MaxLength(64) employeeUserId!: string;
+}
+
+class StaffCodeResetDto implements StaffCodeResetRequest {
+  @ApiProperty() @IsString() @MaxLength(2000) reason!: string;
 }
 
 class TipDto implements TipRequest {
@@ -279,6 +290,48 @@ export class PayController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<InvoiceTipsResponse> {
     return this.pay.reverseTip(this.session(request), tipId, body, this.requestId(response));
+  }
+
+  @Get('referral-codes')
+  @ApiOkResponse({
+    description:
+      'The staff referral codes for online orders: official employees and their code (MANAGE_PAY_RULES, MANAGE_PAYROLL or APPROVE_PAYROLL).',
+  })
+  staffCodes(@Req() request: Request): Promise<StaffCodesResponse> {
+    return this.pay.staffCodes(this.session(request));
+  }
+
+  @Post('referral-codes')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description: 'Gives an official employee a referral code (MANAGE_PAY_RULES). Never automatic.',
+  })
+  createStaffCode(
+    @Body() body: StaffCodeDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StaffCodesResponse> {
+    return this.pay.createStaffCode(this.session(request), body, this.requestId(response));
+  }
+
+  @Post('referral-codes/:employeeId/reset')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Switches the current code of an official employee off and issues a new one (MANAGE_PAY_RULES, reason). The old code stays as history.',
+  })
+  resetStaffCode(
+    @Param('employeeId') employeeId: string,
+    @Body() body: StaffCodeResetDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StaffCodesResponse> {
+    return this.pay.resetStaffCode(
+      this.session(request),
+      employeeId,
+      body,
+      this.requestId(response),
+    );
   }
 
   private session(request: Request) {

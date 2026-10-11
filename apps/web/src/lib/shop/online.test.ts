@@ -31,6 +31,7 @@ import {
   shopErrorMessage,
   shouldPoll,
   signInHref,
+  staffCodeOf,
   voucherOf,
   waitRange,
   POLL_WINDOW_MS,
@@ -261,6 +262,18 @@ test('the checkout request carries the version of the policy read, one voucher a
     clientRequestId: 'id-1',
   });
   assert.ok(!('voucherCode' in without));
+  assert.ok(!('referralCode' in without));
+  const staff = checkoutRequest({
+    draft,
+    saveAddress: false,
+    voucher: '',
+    staffCode: '  ab3cde ',
+    policyVersion: 3,
+    clientRequestId: 'id-1',
+  });
+  assert.equal(staff.referralCode, 'ab3cde');
+  assert.equal(staffCodeOf('   '), null);
+  assert.equal(staffCodeOf(' x '), 'x');
   assert.equal(voucherOf(''), null);
   assert.equal(voucherOf(' a '), 'a');
 });

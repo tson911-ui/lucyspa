@@ -66,7 +66,11 @@ export async function loadPayRules(tx: Tx): Promise<PayRules> {
 }
 
 /** The people who are OFFICIAL employees on a date: the latest classification change on or before it. */
-async function officialOn(tx: Tx, ids: readonly string[], date: string): Promise<Set<string>> {
+export async function officialOn(
+  tx: Tx,
+  ids: readonly string[],
+  date: string,
+): Promise<Set<string>> {
   if (ids.length === 0) return new Set();
   const changes = await tx.employmentClassificationChange.findMany({
     where: {
@@ -106,9 +110,18 @@ export async function reconcileInvoiceEarnings(
   await tx.$queryRaw`SELECT id FROM invoices WHERE id = ${invoiceId}::uuid FOR UPDATE`;
   const invoice = await tx.invoice.findUnique({
     where: { id: invoiceId },
-    select: { id: true, status: true, paidSeq: true, paidAt: true, branchId: true },
+    select: {
+      id: true,
+      status: true,
+      paidSeq: true,
+      paidAt: true,
+      branchId: true,
+      orderReferral: { select: { employeeUserId: true } },
+    },
   });
   if (!invoice) return { written: 0 };
+  // An online line has no seller; the staff code the customer entered at checkout names who earns on it (P7-T16).
+  const referral = invoice.orderReferral?.employeeUserId ?? null;
   const episode =
     invoice.status === 'PAID' && invoice.paidAt !== null && invoice.paidAt >= live.at
       ? invoice.paidSeq
@@ -162,7 +175,9 @@ export async function reconcileInvoiceEarnings(
       const product = line.productDetails[0];
       if (service) candidates.add(service.employeeUserId);
       if (product)
-        candidates.add(line.paySellerOverrides[0]?.employeeUserId ?? product.sellerUserId ?? '');
+        candidates.add(
+          line.paySellerOverrides[0]?.employeeUserId ?? product.sellerUserId ?? referral ?? '',
+        );
     }
     candidates.delete('');
     const official = await officialOn(tx, [...candidates], date);
@@ -195,7 +210,8 @@ export async function reconcileInvoiceEarnings(
         });
       }
       if (line.kind === 'PRODUCT' && product) {
-        const seller = line.paySellerOverrides[0]?.employeeUserId ?? product.sellerUserId;
+        const seller =
+          line.paySellerOverrides[0]?.employeeUserId ?? product.sellerUserId ?? referral;
         const net = line.allocations[0]?.netVnd;
         if (!seller || net === undefined || line.quantity === null || !official.has(seller))
           continue;
@@ -281,7 +297,7 @@ export async function reconcileInvoiceEarnings(
         invoiceId,
         episode,
         existing,
-        new Map(lines.map((line) => [line.id, wantedRecipient(line)])),
+        new Map(lines.map((line) => [line.id, wantedRecipient(line, referral)])),
       )),
     );
   } else {
@@ -301,11 +317,12 @@ type LineForRecipient = {
 };
 
 /** Who should be earning on a line right now (the KTV of a service line, the seller or the named override of a product line). */
-function wantedRecipient(line: LineForRecipient): string | null {
+function wantedRecipient(line: LineForRecipient, referral: string | null): string | null {
   const service = line.serviceDetails[0];
   if (service) return service.employeeUserId;
   const product = line.productDetails[0];
-  if (product) return line.paySellerOverrides[0]?.employeeUserId ?? product.sellerUserId;
+  if (product)
+    return line.paySellerOverrides[0]?.employeeUserId ?? product.sellerUserId ?? referral;
   return null;
 }
 

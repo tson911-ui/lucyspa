@@ -152,7 +152,7 @@ export class OnlineOrderService {
 
   async quote(
     token: string | undefined,
-    body: { voucherCode?: string | null },
+    body: { voucherCode?: string | null; referralCode?: string | null },
   ): Promise<QuoteResponse> {
     try {
       await this.customer(token, undefined, (context) => quoteCheckout(context, body));

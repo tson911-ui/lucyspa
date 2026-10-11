@@ -64,6 +64,7 @@ const errors = {
   ],
   INVOICE_CANCEL_NOT_ALLOWED: [409, 'This invoice cannot be cancelled here'],
   // Phase 4 Step 6: discounts / vouchers.
+  REFERRAL_CODE_INVALID: [409, 'This staff code cannot be used'],
   VOUCHER_INVALID: [409, 'This voucher code cannot be used'],
   DISCOUNT_STATE_INVALID: [409, 'The discount program does not allow this change'],
   DISCOUNT_CODE_TAKEN: [409, 'This code is already in use'],

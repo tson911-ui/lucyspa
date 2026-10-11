@@ -85,6 +85,9 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
     'invoiceTips',
     'recordTip',
     'reverseTip',
+    'staffCodes',
+    'createStaffCode',
+    'resetStaffCode',
   ] as const;
   const module = await Test.createTestingModule({
     imports: [AppModule.forRoot(environment, pino({ level: 'silent' }))],
@@ -153,6 +156,7 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
       ['salaries', 'salaries', []],
       [`invoices/${service}/earnings`, 'invoiceEarnings', [service]],
       [`invoices/${service}/tips`, 'invoiceTips', [service]],
+      ['referral-codes', 'staffCodes', []],
       [`salaries/${employee}/history`, 'salaryHistory', [employee]],
     ] as const) {
       await request(server).get(`${base}/${path}`).set({ Cookie: cookie }).expect(200);
@@ -238,6 +242,34 @@ test('pay HTTP: guards, exact fields, stable codes', async () => {
       ['tips', { invoiceId: service }],
       [`tips/${service}/reverse`, { ...reverse, extra: 1 }],
       [`tips/${service}/reverse`, { reason: 'x' }],
+    ] as const) {
+      const before = calls.length;
+      await request(server).post(`${base}/${path}`).set(headers).send(body).expect(400);
+      assert.equal(calls.length, before);
+    }
+    const codeBody = { employeeUserId: employee };
+    await request(server)
+      .post(`${base}/referral-codes`)
+      .set({ Cookie: cookie })
+      .send(codeBody)
+      .expect(403);
+    await request(server).post(`${base}/referral-codes`).set(headers).send(codeBody).expect(200);
+    assert.equal(calls.at(-1)?.[0], 'createStaffCode');
+    assert.deepEqual(json(calls.at(-1)![2]), codeBody);
+    const resetBody = { reason: 'Lộ mã' };
+    await request(server)
+      .post(`${base}/referral-codes/${employee}/reset`)
+      .set(headers)
+      .send(resetBody)
+      .expect(200);
+    assert.equal(calls.at(-1)?.[0], 'resetStaffCode');
+    assert.equal(calls.at(-1)?.[2], employee);
+    assert.deepEqual(json(calls.at(-1)![3]), resetBody);
+    for (const [path, body] of [
+      ['referral-codes', { ...codeBody, extra: 1 }],
+      ['referral-codes', {}],
+      [`referral-codes/${employee}/reset`, { ...resetBody, extra: 1 }],
+      [`referral-codes/${employee}/reset`, {}],
     ] as const) {
       const before = calls.length;
       await request(server).post(`${base}/${path}`).set(headers).send(body).expect(400);

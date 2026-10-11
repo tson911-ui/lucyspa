@@ -198,6 +198,13 @@ export {
   type ReconcileResult,
 } from './compensation.js';
 export {
+  generateStaffCode,
+  normalizeStaffCode,
+  resolveStaffCode,
+  STAFF_CODE_LENGTH,
+  type ResolvedStaffCode,
+} from './staff-referral.js';
+export {
   bindReferral,
   canBindReferrer,
   completedVisitsOf,

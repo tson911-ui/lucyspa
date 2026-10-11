@@ -241,6 +241,8 @@ export interface OnlineCheckoutRequest {
   saveAddress?: boolean;
   /** One voucher code at most (OQ-102). */
   voucherCode?: string | null;
+  /** The staff member's referral code, when the customer has one (Phase 7 P7-T16); an unknown or switched-off code is refused. */
+  referralCode?: string | null;
   /** The version of the policy text the customer read and accepted (OQ-103); must be the current version. */
   acceptedPolicyVersion: number;
   /** A fresh UUID per attempt: repeating it returns the same order. */

@@ -32,6 +32,8 @@ export interface QuoteResponse {
   totalVnd: string;
   hasPreOrder: boolean;
   voucherCode: string | null;
+  /** The staff code that was accepted, or null when none was given. */
+  referralCode: string | null;
   /** True when the code lowered the price. */
   voucherEffective: boolean | null;
   unpaidOrders: number;
@@ -238,6 +240,12 @@ export function addressFieldOf(error: unknown): AddressField | null {
 
 // --------------------------------------------------------------------------------------------------------- checkout
 
+/** An empty staff-code field is no code. */
+export function staffCodeOf(value: string): string | null {
+  const code = value.trim();
+  return code === '' ? null : code;
+}
+
 /** An empty voucher field is no voucher. */
 export function voucherOf(value: string): string | null {
   const code = value.trim();
@@ -248,14 +256,17 @@ export function checkoutRequest(input: {
   draft: AddressDraft;
   saveAddress: boolean;
   voucher: string;
+  staffCode?: string;
   policyVersion: number;
   clientRequestId: string;
 }): OnlineCheckoutRequest {
   const voucherCode = voucherOf(input.voucher);
+  const referralCode = staffCodeOf(input.staffCode ?? '');
   return {
     address: addressRequest(input.draft),
     saveAddress: input.saveAddress,
     ...(voucherCode ? { voucherCode } : {}),
+    ...(referralCode ? { referralCode } : {}),
     acceptedPolicyVersion: input.policyVersion,
     clientRequestId: input.clientRequestId,
   };

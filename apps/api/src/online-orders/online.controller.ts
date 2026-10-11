@@ -74,6 +74,11 @@ class QuoteDto {
   @IsString()
   @MaxLength(80)
   voucherCode?: string | null;
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  referralCode?: string | null;
 }
 class AddressDto {
   @ApiProperty() @IsString() @MaxLength(400) recipientName!: string;
@@ -93,6 +98,11 @@ class CheckoutDto {
   @IsString()
   @MaxLength(80)
   voucherCode?: string | null;
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  referralCode?: string | null;
   @ApiProperty() @IsInt() @Min(1) @Max(2_147_483_647) acceptedPolicyVersion!: number;
   @ApiProperty() @IsString() @MaxLength(64) clientRequestId!: string;
 }

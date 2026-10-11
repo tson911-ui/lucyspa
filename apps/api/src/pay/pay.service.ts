@@ -2,6 +2,9 @@ import type {
   CommissionRuleRequest,
   InvoiceEarningsResponse,
   InvoiceTipsResponse,
+  StaffCodeCreateRequest,
+  StaffCodeResetRequest,
+  StaffCodesResponse,
   TipRequest,
   TipReverseRequest,
   SellerCorrectionRequest,
@@ -26,6 +29,7 @@ import { sqlStateOf } from '../booking/customer-command.js';
 import * as earnings from './pay-earnings.core.js';
 import * as rules from './pay-rules.core.js';
 import * as salary from './pay-salary.core.js';
+import * as codes from './staff-codes.core.js';
 import * as tips from './tips.core.js';
 
 /**
@@ -128,6 +132,29 @@ export class PayService {
     requestId?: string,
   ): Promise<InvoiceTipsResponse> {
     return this.run(token, requestId, (context) => tips.reverseTip(context, tipId, { ...body }));
+  }
+
+  staffCodes(token: string | undefined): Promise<StaffCodesResponse> {
+    return this.run(token, undefined, (context) => codes.listStaffCodes(context));
+  }
+
+  createStaffCode(
+    token: string | undefined,
+    body: StaffCodeCreateRequest,
+    requestId?: string,
+  ): Promise<StaffCodesResponse> {
+    return this.run(token, requestId, (context) => codes.createStaffCode(context, { ...body }));
+  }
+
+  resetStaffCode(
+    token: string | undefined,
+    employeeId: string,
+    body: StaffCodeResetRequest,
+    requestId?: string,
+  ): Promise<StaffCodesResponse> {
+    return this.run(token, requestId, (context) =>
+      codes.resetStaffCode(context, employeeId, { ...body }),
+    );
   }
 
   private run<T>(

@@ -421,6 +421,8 @@ enum LeaveType {
 // canonical identities, credential state and protected sole-Owner invariants.
 model User {
   id                             String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referralCodesCreated           EmployeeReferralCode[]           @relation("ReferralCodeCreator")
+  referralCodesDeactivated       EmployeeReferralCode[]           @relation("ReferralCodeDeactivator")
   tipsRecorded                   Tip[]                            @relation("TipRecorder")
   paySellerOverridesMade         PaySellerOverride[]              @relation("PaySellerOverrideActor")
   recordedSalaryVersions         EmployeeSalaryVersion[]          @relation("SalaryVersionRecorder")
@@ -610,6 +612,8 @@ model CustomerProfile {
 
 model EmployeeProfile {
   userId                  String                           @id @map("user_id") @db.Uuid
+  referralCodes           EmployeeReferralCode[]
+  orderReferrals          OrderReferral[]
   tips                    Tip[]
   payEarnings             PayEarning[]
   paySellerOverrides      PaySellerOverride[]
@@ -1728,6 +1732,7 @@ enum DiscountReleaseCause {
 // the receivable and may be 0. Status transitions and freezing are guarded in SQL.
 model Invoice {
   id                   String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderReferral        OrderReferral?
   tips                 Tip[]
   payEarnings          PayEarning[]
   code                 String                      @unique(map: "invoices_code_key")
@@ -5244,4 +5249,42 @@ model Tip {
   @@index([runId], map: "tips_run_idx")
   @@index([fundEntryId], map: "tips_fund_entry_idx")
   @@map("tips")
+}
+
+/// P7-10b (P7-T16): a staff member's referral code for online orders. Created only by the Owner's click; one active code per person; a reset
+/// switches the old one off (kept as history, never reused). Case-insensitive by being stored upper-case without ambiguous characters.
+model EmployeeReferralCode {
+  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  seq                 BigInt          @default(autoincrement())
+  employeeUserId      String          @map("employee_user_id") @db.Uuid
+  employee            EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  code                String          @unique(map: "employee_referral_codes_code_key") @db.VarChar(12)
+  isActive            Boolean         @default(true) @map("is_active")
+  createdByUserId     String          @map("created_by_user_id") @db.Uuid
+  createdBy           User            @relation("ReferralCodeCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt           DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  deactivatedAt       DateTime?       @map("deactivated_at") @db.Timestamptz(3)
+  deactivatedByUserId String?         @map("deactivated_by_user_id") @db.Uuid
+  deactivatedBy       User?           @relation("ReferralCodeDeactivator", fields: [deactivatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  deactivationReason  String?         @map("deactivation_reason")
+  orders              OrderReferral[]
+
+  @@index([employeeUserId, seq], map: "employee_referral_codes_employee_idx")
+  @@map("employee_referral_codes")
+}
+
+/// P7-10b: the code an online order was placed with (written once while the order is built, never changed). It names who earns commission.
+model OrderReferral {
+  invoiceId      String               @id @map("invoice_id") @db.Uuid
+  invoice        Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId String               @map("employee_user_id") @db.Uuid
+  employee       EmployeeProfile      @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
+  codeId         String               @map("code_id") @db.Uuid
+  codeRow        EmployeeReferralCode @relation(fields: [codeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  code           String               @db.VarChar(12)
+  createdAt      DateTime             @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([employeeUserId], map: "order_referrals_employee_idx")
+  @@index([codeId], map: "order_referrals_code_idx")
+  @@map("order_referrals")
 }

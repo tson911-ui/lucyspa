@@ -48,6 +48,7 @@ import {
   promiseNumbers,
   reloadsPolicy,
   shopErrorMessage,
+  staffCodeOf,
   voucherOf,
   type AddressDraft,
   type AddressField,
@@ -92,6 +93,11 @@ export function CheckoutScreen() {
     tone: 'success' | 'info' | 'danger';
     text: string;
   } | null>(null);
+  const [staffInput, setStaffInput] = useState('');
+  const [staff, setStaff] = useState<string | null>(null);
+  const [staffNote, setStaffNote] = useState<{ tone: 'success' | 'danger'; text: string } | null>(
+    null,
+  );
   const [checking, setChecking] = useState(false);
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [quoteFailure, setQuoteFailure] = useState<{ message: string; cart: boolean } | null>(null);
@@ -116,15 +122,17 @@ export function CheckoutScreen() {
     }
   }, [addressRead.data, saved]);
 
-  // The quote is read when the page opens and when the voucher changes. It saves nothing.
+  // The quote is read when the page opens and when the voucher or the staff code changes. It saves nothing.
   const readQuote = useCallback(
-    async (code: string | null): Promise<boolean> => {
+    async (code: string | null, staffCode: string | null = null): Promise<boolean> => {
       setChecking(true);
       try {
         const next = await api.post<QuoteResponse>('/api/v1/me/checkout/quote', {
           ...(code ? { voucherCode: code } : {}),
+          ...(staffCode ? { referralCode: staffCode } : {}),
         });
         setQuote(next);
+        setStaffNote(staffCode ? { tone: 'success', text: c.staffApplied } : null);
         setQuoteFailure(null);
         setVoucherNote(
           code && next.voucherEffective === false
@@ -141,8 +149,15 @@ export function CheckoutScreen() {
         if (error instanceof ApiError && error.code === 'VOUCHER_INVALID' && code) {
           // The code is refused: the order is priced without it, and the field says why.
           setVoucher(null);
-          const ok = await readQuote(null);
+          const ok = await readQuote(null, staffCode);
           setVoucherNote({ tone: 'danger', text: s.errors.VOUCHER_INVALID });
+          return ok;
+        }
+        if (error instanceof ApiError && error.code === 'REFERRAL_CODE_INVALID' && staffCode) {
+          // The staff code is refused with one answer; the order goes on without it.
+          setStaff(null);
+          const ok = await readQuote(code, null);
+          setStaffNote({ tone: 'danger', text: s.errors.REFERRAL_CODE_INVALID });
           return ok;
         }
         setQuote(null);
@@ -268,7 +283,15 @@ export function CheckoutScreen() {
     setVoucher(code);
     setFailure(null);
     setVoucherNote(null);
-    await readQuote(code);
+    await readQuote(code, staff);
+  }
+
+  async function applyStaff() {
+    const code = staffCodeOf(staffInput);
+    setStaff(code);
+    setFailure(null);
+    setStaffNote(null);
+    await readQuote(voucher, code);
   }
 
   async function submit(event: FormEvent) {
@@ -295,6 +318,7 @@ export function CheckoutScreen() {
             draft,
             saveAddress: selected === null && saveAddress,
             voucher: voucher ?? '',
+            staffCode: staff ?? '',
             policyVersion: sales.policyVersion,
             clientRequestId: requestId.current,
           }),
@@ -312,7 +336,7 @@ export function CheckoutScreen() {
         await reloadSales();
       }
       if (needsCart(error)) {
-        void readQuote(voucher);
+        void readQuote(voucher, staff);
         void cartRead.retry();
       }
       setFailure(
@@ -461,6 +485,36 @@ export function CheckoutScreen() {
                 </Button>
               </div>
               {voucherNote ? <Notice tone={voucherNote.tone}>{voucherNote.text}</Notice> : null}
+              <div className="ls-shop-voucher">
+                <Field label={c.staffLabel} className="ls-shop-voucher-field">
+                  {(control) => (
+                    <TextInput
+                      {...control}
+                      autoComplete="off"
+                      autoCapitalize="characters"
+                      maxLength={40}
+                      value={staffInput}
+                      disabled={busy}
+                      onChange={(event) => setStaffInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          void applyStaff();
+                        }
+                      }}
+                    />
+                  )}
+                </Field>
+                <Button
+                  variant="secondary"
+                  loading={checking}
+                  disabled={busy}
+                  onClick={() => void applyStaff()}
+                >
+                  {checking ? c.voucherApplying : c.voucherApply}
+                </Button>
+              </div>
+              {staffNote ? <Notice tone={staffNote.tone}>{staffNote.text}</Notice> : null}
               <DescriptionList
                 layout="totals"
                 items={[

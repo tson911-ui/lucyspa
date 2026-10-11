@@ -113,6 +113,8 @@ const vi = {
     voucherApplied: 'Đã áp dụng mã giảm giá, bạn tiết kiệm {amount}.',
     voucherNotEffective:
       'Mã này không làm giảm giá cho đơn này nên không được áp dụng. Ưu đãi thành viên tốt hơn đã được tính.',
+    staffLabel: 'Mã nhân viên giới thiệu (nếu có)',
+    staffApplied: 'Đã ghi nhận mã nhân viên.',
     summary: 'Đơn hàng của bạn',
     /** With {quantity}. */
     quantityTimes: '× {quantity}',
@@ -243,6 +245,7 @@ const vi = {
     ONLINE_ORDER_STATE_INVALID: 'Đơn hàng đã thay đổi. Hãy tải lại trang để xem trạng thái mới.',
     ONLINE_ORDER_EXPIRED: 'Đơn hàng đã hết hạn thanh toán và bị hủy.',
     VOUCHER_INVALID: 'Mã giảm giá không hợp lệ hoặc đã hết hạn.',
+    REFERRAL_CODE_INVALID: 'Mã nhân viên chưa đúng hoặc không còn dùng được.',
     PAYMENT_PROVIDER_REJECTED: 'PayOS chưa nhận được yêu cầu thanh toán. Vui lòng thử lại.',
     PAYMENT_PROVIDER_UNAVAILABLE: 'Chưa kết nối được PayOS. Vui lòng thử lại sau ít phút.',
     PAYMENT_PROVIDER_PENDING: 'Đang xử lý thanh toán. Vui lòng đợi một chút rồi kiểm tra lại.',
@@ -353,6 +356,8 @@ const en: ShopText = {
     voucherApplied: 'Voucher applied, you save {amount}.',
     voucherNotEffective:
       'This code does not lower the price of this order, so it is not applied. A better member offer was already counted.',
+    staffLabel: 'Staff referral code (optional)',
+    staffApplied: 'Staff code noted.',
     summary: 'Your order',
     quantityTimes: '× {quantity}',
     subtotal: 'Subtotal',
@@ -476,6 +481,7 @@ const en: ShopText = {
     ONLINE_ORDER_STATE_INVALID: 'The order changed. Reload the page to see its new state.',
     ONLINE_ORDER_EXPIRED: 'The order passed its payment time and was cancelled.',
     VOUCHER_INVALID: 'The voucher code is not valid or has expired.',
+    REFERRAL_CODE_INVALID: 'The staff code is not correct or can no longer be used.',
     PAYMENT_PROVIDER_REJECTED: 'PayOS did not accept the payment request. Please try again.',
     PAYMENT_PROVIDER_UNAVAILABLE: 'Cannot reach PayOS. Please try again in a few minutes.',
     PAYMENT_PROVIDER_PENDING: 'The payment is being processed. Wait a moment, then check again.',
