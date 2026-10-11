@@ -1,8 +1,8 @@
 # Phase 7: Payroll, tips, commission and shop funds (sổ quỹ) — design contract
 
-Status: **P7-1 (design only). Nothing here is approved.** No code, no migration, no permission is created by this document.
-Every `P7-Tn` is a **proposed technical decision, pending Owner approval**. Every `OQ-n` is **open, pending Owner approval**, with a
-recommended default. Production state is whatever `LUCYSPA_HANDOFF.md` records (`ac74013`, 108 migrations, 68 permissions).
+Status: **P7-1 design, APPROVED by the Owner on 2026-10-11 with the changes of section 14** (his answers are recorded there verbatim).
+Sections 8, 9 and 12 read as approved; where section 14 differs, section 14 wins (referral code `P7-T16`, tips paid with payroll, go-live as
+a setting with no default date, "safer option" rule). Production state is whatever `LUCYSPA_HANDOFF.md` records (`ac74013`, 108 migrations, 68 permissions).
 
 | Label     | Meaning                                                                                                            |
 | --------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -334,3 +334,64 @@ Read in the repository for this design: `CLAUDE.md`, `LUCYSPA_HANDOFF.md` (statu
 `PermissionCode`; `apps/api/src/account/my-income.service.ts`; `apps/api/src/employees/employment.ts`; the P4 Q5/OP-6 and P6-T5/OQ-P6-25/W4-2
 decisions. Names of the payment/refund outbox events and the exact shape of the re-auth record are confirmed by reading code at the start
 of P7-2/P7-3, not assumed here. No code, migration or permission was created; no PRD section was changed.
+
+## 14. Owner answers (2026-10-11) and what they change
+
+Recorded as given. Numbers 1-10 are `OQ-104`…`OQ-113` in order. **Status of sections 8, 9, 12: APPROVED by the Owner** except where this
+section changes them.
+
+**Owner (English, as sent):**
+
+> 1, 2, 4, 6, 7, 8, 9: OK as proposed.
+>
+> 3: Online sales earn commission only when the customer enters a staff member's referral code at checkout; that staff member gets the
+> commission (same base and refund rules as answer 2; official employees only per answer 4). Each eligible staff member gets a unique,
+> stable referral code the Owner can view/reset; invalid or inactive codes are rejected at checkout with a clear message; the code is
+> stored on the order and cannot be changed after payment.
+>
+> 5: Tips are paid out on the payroll payment day, which the Owner chooses for each payroll run. Tips appear as a separate line on the
+> payslip and stay outside revenue, loyalty points and commission base.
+>
+> 10: Go-live date for the cash book and payroll will be chosen later by the Owner: make it a setting (no default date), with the counted
+> opening balance entered on that day; nothing posts before it.
+>
+> Technical decisions P7-T1..T15 and the 5 new permissions (68 → 73, granted to nobody): approved as written, except anything that would
+> pay money or change an amount without the Owner's explicit click — for those, choose the safer option and note it.
+
+**Tóm tắt tiếng Việt (nguyên ý của Chủ):** các câu 1, 2, 4, 6, 7, 8, 9 đồng ý như đề xuất. Câu 3: đơn online chỉ có hoa hồng khi khách nhập
+**mã giới thiệu của nhân viên** lúc thanh toán; nhân viên đó nhận hoa hồng (cùng cách tính và hoàn tiền như câu 2; chỉ nhân viên chính thức);
+mỗi nhân viên đủ điều kiện có **một mã duy nhất, ổn định**, Chủ xem và đặt lại được; mã sai hoặc đã tắt bị từ chối với thông báo rõ; mã lưu
+trên đơn và **không đổi được sau khi đã thanh toán**. Câu 5: **tip trả vào ngày trả lương**, Chủ chọn ngày cho từng kỳ lương; tip là một dòng
+riêng trên phiếu lương, nằm ngoài doanh thu, điểm thưởng và nền tính hoa hồng. Câu 10: **ngày bắt đầu** sổ quỹ và lương do Chủ chọn sau, là
+một **cài đặt không có ngày mặc định**; số dư đầu kỳ đếm thật nhập đúng ngày đó; trước ngày đó không ghi gì. Quyết định kỹ thuật P7-T1…T15 và
+5 quyền mới (68 → 73, chưa gán cho ai): duyệt như viết, **trừ** việc nào trả tiền hoặc đổi số tiền mà Chủ chưa bấm xác nhận: chọn phương án an
+toàn hơn và ghi chú.
+
+**Changes to the design (these replace the earlier text where they differ):**
+
+- **OQ-106 → staff referral code (new `P7-T16`).** `employee_referral_codes` (employee, code, active, created/reset history; append-only
+  resets, one active code per employee, globally unique, case-insensitive, no ambiguous characters). Only people who are OFFICIAL_EMPLOYEE
+  on the day get one (created by the Owner's click, never automatically: it is shown in the staff list and the Owner can view or reset it
+  with `MANAGE_PAY_RULES`; a reset keeps the old code as inactive history). The online checkout gets an optional field; an unknown, inactive
+  or ineligible code is **rejected with a clear message** (the customer can clear it and continue). The code is stored on the order and
+  **frozen once the order is paid** (a database guard rejects any change). Commission on an online line uses the same base and refund
+  rules as the counter (`P7-T6`). A counter line keeps its `sellerUserId`; an online line without a code earns nothing; nobody is invented.
+- **OQ-108 → tips paid with payroll (replaces 6 "cash flow" and 4.1/OQ-108 default).** A tip stays a fund `TIP_IN` when received (cash at
+  the counter) and an owed balance per person. It is **not** paid out at the daily closing. The payroll run has a **payment day chosen by
+  the Owner for that run** (a date on the run, set before closing); the owed tips of the period are shown as a **separate payslip line**
+  and paid out (`TIP_OUT`) when the payslip is marked paid. Tips remain outside revenue, loyalty points and the commission base.
+  The tip total is not part of net pay; the payslip shows "Net pay" and "Tips" as two separate amounts and the mark-paid action pays both
+  (two fund entries) only on the explicit click.
+- **OQ-113 → go-live is a setting, no default (replaces `P7-T15` default).** `cash_go_live_at` (instant) in settings, **empty until the
+  Owner sets it**. While empty the cash book, the `cash` and `compensation` consumers and payroll do nothing (they record "skipped,
+  not live"). Setting it needs `MANAGE_CASH` + fresh password and requires the counted opening balance of every fund in the same
+  action; it can be set once, cannot be moved earlier, and nothing before it is ever posted or earned. First payroll period is chosen by
+  the Owner (no assumption about the 1st of the month).
+- **"Safer option" rule (Owner's exception to T1-T15).** Anything that would pay money or change an amount needs the Owner's explicit
+  click: the draft never closes itself; suggested advance recoveries and late items are only **suggestions in the draft** until the
+  Owner closes the run; `PAID` is a manual mark and never moves money outside the system; a salary-version backfill is **not
+  created automatically** (the Owner enters the first salary version; until then the current `baseSalaryVnd` is shown as "chưa xác nhận" and the
+  draft marks the base as unconfirmed); no referral code is created without the Owner's click; reversals of earnings are automatic records
+  (they follow a payment reversal or refund that a person already clicked), but they only change a **draft** until the Owner closes it.
+- New permission count unchanged: **68 + 5 = 73**, granted to nobody (no role is changed by any migration).
+- Build steps: the staff referral code and its checkout field become **P7-10b** in Wave B, between tips and the rule screens.

@@ -24,7 +24,7 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 | UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `9b76789`)                                                                                                                |
 | **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `f79572d`); go-live turned ON by the Owner about 17:20 (+07)**                                               |
 | **Phase 6 (products, inventory, Beauty)** | **COMPLETE: Waves 1, 2, 3a, 3b and 4 DEPLOYED (production = `4b91af6`, 2026-10-09 ~14:02 +07); online store stays OFF until the Owner opens it** |
-| Phase 7 (payroll, tips, funds)            | P7-1 DESIGN written (`docs/PHASE7_PAYROLL_FUNDS.md`), nothing approved or built; Phase 8+ not started                                            |
+| Phase 7 (payroll, tips, funds)            | P7-1 design APPROVED 2026-10-11 (`docs/PHASE7_PAYROLL_FUNDS.md` s.14); Wave A (cash book) building; Phase 8+ not started                         |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
 
@@ -920,3 +920,4 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 
 - `docs/PHASE7_PAYROLL_FUNDS.md`: reuse map, design (salary history, tour, product commission, tips, monthly run `DRAFT -> CLOSED -> PAID`, advances, sổ quỹ with daily closing), P7-T1..T15, 5 proposed permissions (68 -> 73), steps P7-2..P7-16 in two waves (A cash book, B compensation), risks.
 - Owner questionnaire OQ-104..OQ-113 (10 questions, each with a default); **all pending Owner approval**. No code, migration or permission was created; production is unchanged (`ac74013`).
+- **Owner answers 2026-10-11 (verbatim in design section 14): APPROVED.** Changes: online commission only via a staff referral code entered at checkout (frozen after payment); tips paid on the payroll payment day chosen per run; go-live is a setting with no default date (nothing posts before it); T1..T15 + 5 permissions (68 -> 73, granted to nobody) approved, with the "safer option" rule for anything that pays or changes an amount. Owner asked to build Phase 7 unattended, Wave A (cash book) then Wave B; no deploy, no server access.
