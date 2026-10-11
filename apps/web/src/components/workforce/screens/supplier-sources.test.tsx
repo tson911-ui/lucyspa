@@ -175,11 +175,12 @@ test('the row menu follows the gate: confirm only when a record waits, enable on
   assert.deepEqual(sourceActions(recorded(), true), ['edit', 'permission', 'confirm']);
   assert.deepEqual(sourceActions(tested(), true), ['edit', 'permission', 'test']);
   assert.deepEqual(sourceActions(ready(), true), ['edit', 'permission', 'test', 'enable']);
-  // An enabled, ready source can also be scanned (a sample of at most 20 products).
+  // An enabled, ready source can also be scanned: everything (P9-9b) or a sample of at most 20 products.
   assert.deepEqual(sourceActions({ ...ready(), isEnabled: true, gaps: [] }, true), [
     'edit',
     'permission',
     'test',
+    'scanFull',
     'scan',
     'disable',
   ]);

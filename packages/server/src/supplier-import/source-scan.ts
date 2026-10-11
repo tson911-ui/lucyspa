@@ -44,6 +44,8 @@ import {
  */
 
 export const SCAN_LEASE_MINUTES = 3;
+/** The most products one full scan reads (and one source keeps; the database says the same). */
+export const FULL_SCAN_LIMIT = 2000;
 const MAX_ERRORS = 50;
 const MAX_VARIATIONS_READ = 10;
 const DECIDED = ['APPROVED', 'REJECTED', 'IGNORED', 'IMPORTED'];
@@ -105,6 +107,7 @@ interface Claimed {
   source_id: string;
   actor_user_id: string | null;
   sample_limit: number;
+  scope: string;
 }
 
 /** The last healthy scan of the source (SUCCEEDED or PARTIAL): how many products it found. Null for a source never scanned. */
@@ -112,10 +115,12 @@ async function healthyBaseline(
   database: ScanDatabase,
   sourceId: string,
   scanId: string,
+  scope: string,
 ): Promise<number | null> {
+  // Only a scan of the same scope is comparable: a 20-product sample next to a full read of 352 is not a drop.
   const rows = await database.$queryRaw<{ discovered_count: number }[]>`
     SELECT discovered_count FROM import_scans
-     WHERE source_id = ${sourceId}::uuid AND id <> ${scanId}::uuid AND status IN ('SUCCEEDED', 'PARTIAL')
+     WHERE source_id = ${sourceId}::uuid AND id <> ${scanId}::uuid AND scope = ${scope} AND status IN ('SUCCEEDED', 'PARTIAL')
      ORDER BY started_at DESC, id DESC LIMIT 1`;
   return rows[0]?.discovered_count ?? null;
 }
@@ -127,7 +132,7 @@ async function claim(database: ScanDatabase): Promise<Claimed | null> {
            lease_expires_at = clock_timestamp() + make_interval(mins => ${SCAN_LEASE_MINUTES})
      WHERE id = (SELECT id FROM import_scans WHERE status = 'RUNNING' AND claimed_at IS NULL
                   ORDER BY started_at, id FOR UPDATE SKIP LOCKED LIMIT 1)
-    RETURNING id, source_id, actor_user_id, sample_limit`;
+    RETURNING id, source_id, actor_user_id, sample_limit, scope`;
   return rows[0] ?? null;
 }
 
@@ -343,16 +348,20 @@ export async function processNextScan(
   };
   let listed = false;
   try {
-    const limit = Math.min(scan.sample_limit, SAMPLE_SIZE);
-    await checkRobots(client, source.baseUrl, limit);
+    // A sample reads at most 20 products; a full scan reads every product of the source (up to its own limit).
+    const full = scan.scope === 'FULL';
+    const limit = full ? scan.sample_limit : Math.min(scan.sample_limit, SAMPLE_SIZE);
+    await checkRobots(client, source.baseUrl, Math.min(limit, SAMPLE_SIZE));
     const adapter = createStoreApiAdapter(client, source.baseUrl);
     const known = await database.$queryRaw<{ source_key: string }[]>`
       SELECT source_key FROM source_records WHERE source_id = ${scan.source_id}::uuid ORDER BY source_key LIMIT ${limit}`;
-    // First scan: the first page of the list. Rescan: only the products already known (the sample never grows by itself).
-    const page =
-      known.length === 0
+    // A full scan lists every product. A sample: the first page of the list on the first scan, then only the products already known
+    // (the sample never grows by itself).
+    const page = full
+      ? await adapter.listAll(limit)
+      : known.length === 0
         ? await adapter.listPage(1, limit)
-        : await adapter.fetchProducts(known.map((entry) => entry.source_key));
+        : await adapter.fetchMany(known.map((entry) => entry.source_key));
     listed = true;
     const records = page.records.slice(0, limit);
     counters.discovered = records.length;
@@ -369,7 +378,7 @@ export async function processNextScan(
     // 0. Health, BEFORE anything is written: a read that found fewer than 70% of what the last healthy scan found is suspect (a broken
     // adapter, a half-loaded site, an outage). A suspect scan writes only its own row: no record changes, nothing counted as missing,
     // no pictures, no notice, and the source is not marked as successfully read.
-    const baseline = await healthyBaseline(database, scan.source_id, scan.id);
+    const baseline = await healthyBaseline(database, scan.source_id, scan.id, scan.scope);
     if (isSuspectCount(records.length, baseline)) {
       note({ code: 'SCAN_SUSPECT', detail: `${records.length} of ${baseline}` });
       await finish(database, scanInfo, 'SUSPECT', counters, errors, client.requestCount(), false);
@@ -464,7 +473,7 @@ async function upsertRecord(
       descriptionText: true,
       attributes: true,
       imageUrls: true,
-      candidateLink: { select: { candidateId: true } },
+      candidateLink: { select: { candidateId: true, candidate: { select: { state: true } } } },
     },
   });
   const observation = {
@@ -546,6 +555,19 @@ async function upsertRecord(
     if (changes.includes('PRICE_CHANGED')) counters.priceChanged += 1;
     if (changes.includes('IMAGE_CHANGED')) counters.imageChanged += 1;
     if (!existing.candidateLink) throw new Error('source record without a candidate');
+    // A product a person rejected or ignored is not proposed again, UNLESS its content at the source changed: then it is open again
+    // for review (Owner, section 17). Its decision, person and note are cleared; the history stays in the audit trail and the notes.
+    if (
+      changes.includes('CONTENT_CHANGED') &&
+      (existing.candidateLink.candidate.state === 'IGNORED' ||
+        existing.candidateLink.candidate.state === 'REJECTED')
+    ) {
+      await tx.$executeRaw`
+        UPDATE import_candidates
+           SET state = 'EXTRACTED'::"ImportCandidateState", decided_by_user_id = NULL, decided_at = NULL, decision_note = NULL,
+               row_version = row_version + 1
+         WHERE id = ${existing.candidateLink.candidateId}::uuid AND state IN ('IGNORED', 'REJECTED')`;
+    }
     return { recordId: existing.id, candidateId: existing.candidateLink.candidateId };
   }
   const created = await tx.sourceRecord.create({
@@ -649,7 +671,7 @@ async function intakeAllImages(context: {
   // id lists it.
   let verified: Map<string, SourceProductRecord>;
   try {
-    const fresh = await adapter.fetchProducts(work.map((item) => item.record.sourceKey));
+    const fresh = await adapter.fetchMany(work.map((item) => item.record.sourceKey));
     verified = new Map(fresh.records.map((record) => [record.sourceKey, record]));
   } catch (error) {
     note({ code: 'IMAGE_VERIFY_FAILED', detail: asSourceError(error).code });

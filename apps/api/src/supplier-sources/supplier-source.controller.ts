@@ -17,7 +17,7 @@ import type {
 } from '@lucy-spa/contracts';
 import { Body, Controller, Get, HttpCode, Inject, Param, Post, Req, Res } from '@nestjs/common';
 import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import type { Request, Response } from 'express';
 import { sessionCookie } from '../auth/cookies.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
@@ -63,6 +63,14 @@ class PermissionDto implements SupplierSourcePermissionRequest {
   @ApiProperty() @IsBoolean() permitsText!: boolean;
   @ApiProperty() @IsBoolean() permitsImages!: boolean;
   @ApiProperty() @IsBoolean() permitsPrices!: boolean;
+}
+
+class ScanDto {
+  @ApiProperty() @IsInt() @Min(1) @Max(2_147_483_647) expectedVersion!: number;
+  @ApiProperty({ required: false, enum: ['SAMPLE', 'FULL'] })
+  @IsOptional()
+  @IsIn(['SAMPLE', 'FULL'])
+  scope?: 'SAMPLE' | 'FULL';
 }
 
 class VersionDto implements SupplierSourceVersionRequest {
@@ -214,11 +222,11 @@ export class SupplierSourceController {
   @HttpCode(200)
   @ApiOkResponse({
     description:
-      'Queues a manual sample scan (at most 20 products) of an enabled, ready source (MANAGE_SUPPLIER_SOURCES). The worker runs it.',
+      'Queues a manual scan of an enabled, ready source (MANAGE_SUPPLIER_SOURCES): a sample (at most 20 products, default) or scope FULL (every product). The worker runs it.',
   })
   requestScan(
     @Param('id') id: string,
-    @Body() body: VersionDto,
+    @Body() body: ScanDto,
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<SupplierSourceScanResponse> {

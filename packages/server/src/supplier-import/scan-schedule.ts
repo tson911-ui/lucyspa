@@ -1,5 +1,5 @@
 import { isScanDue, type ScheduleCadence } from './resync.js';
-import { inUnit, type ScanDatabase } from './source-scan.js';
+import { FULL_SCAN_LIMIT, inUnit, type ScanDatabase } from './source-scan.js';
 
 /**
  * Phase 9 P9-7: per-source scheduled scans (design section 10). The schedule only QUEUES a scan row (trigger SCHEDULE, no actor); the
@@ -38,8 +38,20 @@ export async function queueScheduledScans(
       const latest = await tx.$queryRaw<{ started_at: Date }[]>`
           SELECT started_at FROM import_scans WHERE source_id = ${candidate.id}::uuid ORDER BY started_at DESC, id DESC LIMIT 1`;
       if (!isScanDue(source.cadence, latest[0]?.started_at ?? null, now)) return false;
+      // A source that has had a full scan is scanned in full again (new products show up, the notice can say "15 mới"); until then the
+      // schedule only re-reads the sample.
+      const fullBefore = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM import_scans
+         WHERE source_id = ${candidate.id}::uuid AND scope = 'FULL' AND status IN ('SUCCEEDED', 'PARTIAL') LIMIT 1`;
+      const full = fullBefore.length > 0;
       await tx.importScan.create({
-        data: { sourceId: candidate.id, trigger: 'SCHEDULE', actorUserId: null },
+        data: {
+          sourceId: candidate.id,
+          trigger: 'SCHEDULE',
+          actorUserId: null,
+          scope: full ? 'FULL' : 'SAMPLE',
+          sampleLimit: full ? FULL_SCAN_LIMIT : 20,
+        },
         select: { id: true },
       });
       return true;

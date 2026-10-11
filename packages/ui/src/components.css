@@ -2323,6 +2323,13 @@
   padding-inline-end: 0;
 }
 
+/* The selection column is as wide as its checkbox row target. */
+.ls-table th.ls-cell-select,
+.ls-table td.ls-cell-select {
+  width: var(--ls-control-h);
+  padding-inline-end: 0;
+}
+
 /* Widest a clipped cell grows: xs 96, sm 144, md 224, lg 320 px. */
 .ls-col-xs {
   --ls-col-w: 6rem;
@@ -2736,6 +2743,32 @@
     padding-inline-end: var(--ls-control-h);
   }
 
+  /* A row checkbox sits at the top end of the card, a full touch target, like the row menu. */
+  .ls-table td.ls-cell-select {
+    position: absolute;
+    inset-block-start: var(--ls-space-2);
+    inset-inline-end: var(--ls-space-2);
+    display: block;
+    width: auto;
+    padding: 0;
+    border-top: 0;
+  }
+
+  .ls-table .ls-cell-select .ls-check-field {
+    width: var(--ls-control-h);
+    min-height: var(--ls-control-h);
+    padding-inline: 0;
+    justify-content: center;
+  }
+
+  .ls-table tbody tr:has(.ls-cell-select) .ls-cell-title {
+    padding-inline-end: var(--ls-control-h);
+  }
+
+  .ls-table tbody tr:has(.ls-cell-select) .ls-cell-stack .ls-cell-title {
+    padding-inline-end: 0;
+  }
+
   /* A two-line title cell (name and code) keeps both lines at the start; the menu's room is the cell's, not the line's. */
   .ls-table td.ls-cell-title,
   .ls-table td.ls-cell-title * {
@@ -3100,6 +3133,16 @@
   .ls-toolbar-row > .ls-btn,
   .ls-toolbar-end {
     flex: none;
+  }
+
+  /* A toolbar whose actions are text buttons (select all / clear) puts them on a row of their own, so the search keeps its room. */
+  .ls-toolbar-end-below .ls-toolbar-row {
+    flex-wrap: wrap;
+  }
+
+  .ls-toolbar-end-below .ls-toolbar-end {
+    flex: 1 1 100%;
+    margin-inline-start: 0;
   }
 }
 

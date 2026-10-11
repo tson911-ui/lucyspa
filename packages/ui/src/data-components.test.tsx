@@ -175,6 +175,27 @@ test('DataTable: a leading picture column has a hidden heading, no card label, a
   assert.match(markup, /<span class="ls-thumb"><svg/, 'placeholder icon when there is no picture');
 });
 
+test('DataTable: a selection column has a hidden heading and no card label, and sits apart from a leading picture', () => {
+  const markup = html(
+    <DataTable
+      paging={{ off: 'test' }}
+      mode="server"
+      columns={[
+        { key: 'pick', header: 'Chọn', select: true, cell: () => <input type="checkbox" /> },
+        { key: 'image', header: 'Ảnh', leading: true, cell: () => <MediaThumb src={null} /> },
+        { key: 'name', header: 'Tên', mobileTitle: true, cell: () => 'Sữa rửa mặt' },
+      ]}
+      rows={[{ id: '1' }]}
+      rowKey={(row) => row.id}
+      caption="t"
+    />,
+  );
+  assert.match(markup, /<th[^>]*ls-cell-select[^>]*><span class="ls-visually-hidden">Chọn<\/span>/);
+  assert.doesNotMatch(markup, /<td[^>]*ls-cell-select[^>]*data-label/, 'no label in the card');
+  assert.doesNotMatch(markup, /<td[^>]*ls-cell-select[^>]*ls-cell-leading/, 'not the picture slot');
+  assert.doesNotMatch(markup, /<td[^>]*ls-cell-leading[^>]*ls-cell-select/, 'not the picture slot');
+});
+
 test('DataTable: semantic table, labelled cells, hidden actions heading, responsive classes', () => {
   const markup = html(
     <DataTable

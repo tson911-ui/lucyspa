@@ -53,6 +53,7 @@ const vi = {
     confirm: 'Xác nhận giấy phép',
     test: 'Chạy thử',
     scan: 'Quét mẫu',
+    scanFull: 'Quét toàn bộ',
     enable: 'Bật nguồn',
     disable: 'Tắt nguồn',
   },
@@ -256,7 +257,7 @@ const vi = {
   },
 
   scan: {
-    title: 'Quét mẫu',
+    title: 'Quét nguồn',
     intro:
       'Quét mẫu đọc tối đa 20 sản phẩm của website và tải ảnh của chính từng sản phẩm. Chưa có gì thành sản phẩm: kết quả hiện ở "Sản phẩm nhập" để bạn xem và duyệt.',
     notReady: 'Nguồn phải đang bật và sẵn sàng mới quét được.',
@@ -268,8 +269,14 @@ const vi = {
     suspect:
       'Lần quét đáng ngờ: website trả về ít sản phẩm hơn nhiều so với lần trước nên chưa ghi gì cả. Dữ liệu cũ được giữ nguyên và không sản phẩm nào bị tính là biến mất.',
     run: 'Quét mẫu',
+    runFull: 'Quét toàn bộ',
     queuing: 'Đang xếp hàng…',
     queuedToast: 'Đã xếp hàng quét mẫu.',
+    queuedFullToast: 'Đã xếp hàng quét toàn bộ. Việc này mất vài phút đến vài chục phút.',
+    fullHint:
+      '"Quét toàn bộ" đọc mọi sản phẩm của nguồn (không chỉ 20 sản phẩm mẫu) và tải ảnh của từng sản phẩm, chậm rãi, mỗi giây một yêu cầu. Kết quả hiện ở "Sản phẩm nhập"; chưa có gì được đăng bán.',
+    scopeFull: 'Quét toàn bộ',
+    scopeSample: 'Quét mẫu',
     lastRun: 'Lần quét lúc {time}, bởi {name}',
     lastRunScheduled: 'Lần quét tự động lúc {time}',
     none: 'Chưa quét lần nào.',
@@ -389,6 +396,7 @@ const en: SupplierSourcesText = {
     confirm: 'Confirm permission',
     test: 'Run test',
     scan: 'Sample scan',
+    scanFull: 'Scan everything',
     enable: 'Switch on',
     disable: 'Switch off',
   },
@@ -598,7 +606,7 @@ const en: SupplierSourcesText = {
     },
   },
   scan: {
-    title: 'Sample scan',
+    title: 'Scan source',
     intro:
       'A sample scan reads up to 20 products of the website and downloads each product\'s own pictures. Nothing becomes a product: the result appears in "Review imports" for you to look at and approve.',
     notReady: 'The source must be switched on and ready to be scanned.',
@@ -610,8 +618,14 @@ const en: SupplierSourcesText = {
     suspect:
       'Suspect scan: the website returned far fewer products than last time, so nothing was written. The earlier data is kept and no product is counted as gone.',
     run: 'Run sample scan',
+    runFull: 'Scan everything',
     queuing: 'Queuing…',
     queuedToast: 'Sample scan queued.',
+    queuedFullToast: 'Full scan queued. It takes a few minutes to a few dozen minutes.',
+    fullHint:
+      '"Scan everything" reads every product of the source (not only the 20 sample products) and downloads each product\'s pictures, slowly, one request a second. The result appears in "Review imports"; nothing is put on sale yet.',
+    scopeFull: 'Full scan',
+    scopeSample: 'Sample scan',
     lastRun: 'Scan at {time}, by {name}',
     lastRunScheduled: 'Scheduled scan at {time}',
     none: 'No scan has been run yet.',

@@ -43,6 +43,11 @@ export interface DataTableColumn<Row> {
    */
   leading?: boolean | undefined;
   /**
+   * A row checkbox (`CheckField`): heading visually hidden but present, no label in the phone card, where the box sits at the top end of the
+   * card (44 px target) and the title makes room for it. A table with a selection column has no actions column.
+   */
+  select?: boolean | undefined;
+  /**
    * Widest the column's content may grow (`xs` 96, `sm` 144, `md` 224, `lg` 320 px). Only `truncate`
    * and `wrap` cells are held to it; a column without either stays on one line at its natural width.
    */
@@ -261,7 +266,7 @@ export function DataTable<Row>({
                         )}
                       />
                     </button>
-                  ) : column.actions || column.leading ? (
+                  ) : column.actions || column.leading || column.select ? (
                     <span className="ls-visually-hidden">{column.header}</span>
                   ) : (
                     column.header
@@ -294,7 +299,7 @@ export function DataTable<Row>({
                           key={column.key}
                           className={cellClass(column)}
                           data-label={
-                            column.actions || column.leading || column.mobileTitle
+                            column.actions || column.leading || column.select || column.mobileTitle
                               ? undefined
                               : column.header
                           }
@@ -332,7 +337,7 @@ export function DataTable<Row>({
 function renderCell<Row>(column: DataTableColumn<Row>, row: Row): ReactNode {
   const clipped = column.truncate || column.wrap;
   const content = column.cell(row);
-  if (column.actions || column.leading) return content;
+  if (column.actions || column.leading || column.select) return content;
   const clip = cx(column.truncate ? 'ls-cell-truncate' : column.wrap && 'ls-cell-wrap');
   if (column.mobileTitle) {
     return clipped ? (
@@ -385,6 +390,7 @@ function cellClass<Row>(column: DataTableColumn<Row>): string {
     column.align === 'center' && 'ls-cell-center',
     column.actions && 'ls-cell-actions',
     column.leading && 'ls-cell-leading',
+    column.select && 'ls-cell-select',
     column.mobileTitle && 'ls-cell-title',
     column.hideBelow === 'md' && 'ls-hide-md',
     column.hideBelow === 'lg' && 'ls-hide-lg',

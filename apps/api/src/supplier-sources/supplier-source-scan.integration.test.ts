@@ -740,7 +740,7 @@ test(
       );
 
       await suite.test(
-        'the sample is at most 20 products, a decided candidate keeps its pictures, a robots.txt that disallows stops everything, a lost worker fails after its lease',
+        'the sample is at most 20 products (a scan row cannot ask for more unless it is a full scan), a decided candidate keeps its pictures, a robots.txt that disallows stops everything, a lost worker fails after its lease',
         async () => {
           const { source, host } = await readySource();
           const products: FakeProduct[] = Array.from({ length: 25 }, (_, i) => ({
@@ -753,16 +753,26 @@ test(
           assert.equal(first.item.counts.discovered, 20);
           assert.equal(await tx.sourceRecord.count({ where: { sourceId: source.id } }), 20);
           assert.match(site.urls[1] ?? '', /per_page=20/);
-          // The database refuses a 21st product whatever the code does.
+          // The sample stays 20 whatever the code does: a SAMPLE scan row cannot ask for more (P9-9b lifted the cap of the whole source to
+          // 2,000 for full scans, but only a FULL scan may read more than 20).
           const scanRow = await tx.importScan.findFirstOrThrow({
             where: { sourceId: source.id },
             select: { id: true },
           });
           assert.match(
+            (await sql(`UPDATE import_scans SET sample_limit = 50 WHERE id = '${scanRow.id}'`)) ??
+              '',
+            /import_scans_scope_limit/,
+          );
+          assert.match(
             (await sql(
-              `INSERT INTO source_records (source_id, source_key, url, name, content_hash, first_seen_scan_id, last_seen_scan_id) VALUES ('${source.id}', 'x21', 'https://${host}/x/', 'Thứ 21', '${'a'.repeat(64)}', '${scanRow.id}', '${scanRow.id}')`,
+              `UPDATE import_scans SET sample_limit = 2001, scope = 'FULL' WHERE id = '${scanRow.id}'`,
             )) ?? '',
-            /at most 20 sampled products/,
+            /import_scans_sample_limit/,
+          );
+          assert.match(
+            (await sql(`UPDATE import_scans SET scope = 'ALL' WHERE id = '${scanRow.id}'`)) ?? '',
+            /import_scans_scope/,
           );
           // A decided candidate keeps its pictures.
           const imageSource = await readySource();

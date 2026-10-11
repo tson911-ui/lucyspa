@@ -476,6 +476,59 @@ export function createStoreApiAdapter(client: HttpClient, baseUrl: string) {
       };
     },
 
+    /**
+     * Re-reads any number of products by id, in batches of 100 (the page size the Store API allows). The answers are put together; a
+     * product the site no longer returns is simply absent from `records`.
+     */
+    async fetchMany(keys: readonly string[]): Promise<ProductPage> {
+      const merged: ProductPage = {
+        records: [],
+        problems: [],
+        total: null,
+        totalPages: null,
+        keys: [],
+      };
+      for (let from = 0; from < keys.length; from += 100) {
+        const batch = await this.fetchProducts(keys.slice(from, from + 100));
+        merged.records.push(...batch.records);
+        merged.problems.push(...batch.problems);
+        merged.keys.push(...batch.keys);
+      }
+      return merged;
+    },
+
+    /**
+     * Every product of the site, 100 a page in id order, until the site's own total is reached, a page comes back short, or `max`
+     * products were read (a site that never stops listing cannot fill the database). Pages are read one after the other.
+     */
+    async listAll(max: number): Promise<ProductPage> {
+      const merged: ProductPage = {
+        records: [],
+        problems: [],
+        total: null,
+        totalPages: null,
+        keys: [],
+      };
+      const seen = new Set<string>();
+      for (let pageNumber = 1; pageNumber <= Math.ceil(max / 100) + 1; pageNumber += 1) {
+        const batch = await this.listPage(pageNumber, 100);
+        merged.total = batch.total ?? merged.total;
+        merged.totalPages = batch.totalPages ?? merged.totalPages;
+        for (const record of batch.records) {
+          if (seen.has(record.sourceKey)) continue;
+          seen.add(record.sourceKey);
+          merged.records.push(record);
+        }
+        merged.problems.push(...batch.problems);
+        merged.keys.push(...batch.keys);
+        if (batch.keys.length < 100) break;
+        if (merged.totalPages !== null && pageNumber >= merged.totalPages) break;
+        if (merged.keys.length >= max) break;
+      }
+      merged.records = merged.records.slice(0, max);
+      return merged;
+    },
+
     /** One product or variation by its own id. The answer must carry that same id, otherwise it is an error. */
     async fetchProduct(key: string): Promise<SourceProductRecord | null> {
       const { json } = await getJson(`products/${encodeURIComponent(key)}`, {});

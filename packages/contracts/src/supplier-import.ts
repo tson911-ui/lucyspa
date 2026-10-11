@@ -230,6 +230,66 @@ export interface SupplierApproveReadyResponse {
   skipped: { id: string; reason: string }[];
 }
 
+// ------------------------------------------------------------------------------------------------ P9-9b: import and publish all
+
+/**
+ * Phase 9 P9-9b (Owner, docs/PHASE9_PRODUCT_IMPORT.md section 17): "Nhập và đăng tất cả". One preview lists every open candidate with
+ * the brand, category and selling price the system chose (brand and category automatically, the price = the supplier's listed price
+ * rounded to 1,000 VND); the person ticks what to import. Only ticked products are imported AND published; unticked ones become
+ * IGNORED (not proposed again unless their content at the source changes). It needs REVIEW_SUPPLIER_IMPORTS, MANAGE_PRODUCTS and
+ * MANAGE_PRODUCT_PRICES, so the proposed price may be shown. Real blockers are skipped and listed, never forced.
+ */
+export const IMPORT_ALL_BLOCKERS = [...CANDIDATE_BLOCKERS, 'PRICE_MISSING', 'NOT_OPEN'] as const;
+export type ImportAllBlocker = (typeof IMPORT_ALL_BLOCKERS)[number];
+
+/** One call imports at most this many ticked products and ignores at most `IMPORT_ALL_IGNORE_MAX`; the screen sends several calls. */
+export const IMPORT_ALL_IMPORT_MAX = 20;
+export const IMPORT_ALL_IGNORE_MAX = 100;
+
+export interface SupplierImportAllRow {
+  id: string;
+  rowVersion: number;
+  nameVi: string;
+  sku: string | null;
+  /** The first picture, served by the candidate's own picture route. */
+  thumbImageId: string | null;
+  /** The brand to use; `isNew` when Lucy Spa has none of that name yet (it is created when the import runs). */
+  brand: { name: string; isNew: boolean } | null;
+  /** One of the twelve fixed categories (`key` is the stable code, `name` the Vietnamese name). */
+  category: { key: string; name: string };
+  /** The selling price proposed: the supplier's listed price rounded to 1,000 VND, whole VND as text. Null when the source gave none. */
+  priceVnd: string | null;
+  /** Why this product cannot be imported now (empty when it can). */
+  blockers: ImportAllBlocker[];
+}
+
+export interface SupplierImportAllPreview {
+  rows: SupplierImportAllRow[];
+  total: number;
+  importable: number;
+  blocked: number;
+  /** The brands that would be created, with how many importable products each has. */
+  newBrands: { name: string; count: number }[];
+  /** Importable products per category (every one of the twelve, so the Owner sees where they go). */
+  categories: { key: string; name: string; count: number }[];
+  /** The categories of the fixed list Lucy Spa does not have yet (created when the import runs). */
+  categoriesToCreate: string[];
+}
+
+export interface SupplierImportAllRequest {
+  import: { id: string; expectedVersion: number }[];
+  ignore: { id: string; expectedVersion: number }[];
+}
+
+export interface SupplierImportAllResponse {
+  imported: number;
+  ignored: number;
+  newBrands: number;
+  createdCategories: number;
+  /** Products that could not be imported (or ignored) now, with every reason. Nothing was changed for them. */
+  skipped: { id: string; reasons: string[] }[];
+}
+
 // ------------------------------------------------------------------------------------------------------ P9-7: what changed
 
 /**

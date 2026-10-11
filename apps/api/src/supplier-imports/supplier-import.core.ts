@@ -469,7 +469,7 @@ export async function getCandidate(
 
 // -------------------------------------------------------------------------------------------------------------- commands
 
-async function lockCandidate(tx: Tx, id: string, expected: number) {
+export async function lockCandidate(tx: Tx, id: string, expected: number) {
   const rows = await tx.$queryRaw<{ row_version: number; state: string }[]>`
     SELECT row_version, state::text AS state FROM import_candidates WHERE id = ${id}::uuid FOR UPDATE`;
   const row = rows[0];
@@ -810,7 +810,7 @@ export const ignoreCandidate = (
  * product with its one variant (SKU exactly as reviewed), the optional selling price, the kept pictures in order and the provenance,
  * and closes the candidate as IMPORTED. The supplier's price and any cost are never written.
  */
-async function approveInTransaction(
+export async function approveInTransaction(
   context: AdminContext,
   candidateId: string,
   expected: number,

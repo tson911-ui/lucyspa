@@ -22,6 +22,10 @@ export interface FakeProduct {
   type?: 'simple' | 'variable';
   variations?: FakeVariation[];
   priceVnd?: number;
+  /** A sale price lower than the regular price (default: the same as the regular price). */
+  salePriceVnd?: number;
+  /** The shop's own brand list (default: none, like haruohui.com). */
+  brandNames?: string[];
   /** Category names the shop lists (default: one, "Chăm sóc da"). */
   categories?: string[];
 }
@@ -56,13 +60,13 @@ export class FakeSite {
       description: '<p>Mô tả</p>',
       prices: {
         regular_price: String(product.priceVnd ?? 250_000),
-        sale_price: String(product.priceVnd ?? 250_000),
+        sale_price: String(product.salePriceVnd ?? product.priceVnd ?? 250_000),
         currency_code: 'VND',
         currency_minor_unit: 0,
       },
       images: product.images.map((path) => ({ id: 1, src: `https://${host}${path}`, alt: '' })),
       categories: (product.categories ?? ['Chăm sóc da']).map((name) => ({ name })),
-      brands: [],
+      brands: (product.brandNames ?? []).map((name) => ({ name })),
       attributes: [],
       variations: (product.variations ?? []).map((variation) => ({
         id: variation.id,

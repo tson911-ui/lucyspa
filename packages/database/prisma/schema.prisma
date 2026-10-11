@@ -4680,6 +4680,8 @@ model ImportScan {
   claimedAt           DateTime?         @map("claimed_at") @db.Timestamptz(3)
   leaseExpiresAt      DateTime?         @map("lease_expires_at") @db.Timestamptz(3)
   sampleLimit         Int               @default(20) @map("sample_limit") @db.SmallInt
+  /// SAMPLE (the first read: at most 20 products, or a re-read of the known ones) or FULL (every product of the source).
+  scope               String            @default("SAMPLE") @db.VarChar(8)
   requestCount        Int               @default(0) @map("request_count")
   imageCount          Int               @default(0) @map("image_count")
   imageFlagCount      Int               @default(0) @map("image_flag_count")

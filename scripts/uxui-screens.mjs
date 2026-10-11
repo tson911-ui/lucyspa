@@ -160,7 +160,9 @@ const AUDIT = `(() => {
     .filter((el) => !(el.tagName === 'A' && getComputedStyle(el).display === 'inline'))
     .filter((el) => !el.closest('.skip-link'))
     .map((el) => {
-      const r = el.getBoundingClientRect();
+      // A checkbox or radio inside its label is tapped through the label: the label is the target.
+      const wrapper = el.tagName === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio') ? el.closest('label') : null;
+      const r = (wrapper ?? el).getBoundingClientRect();
       return { tag: el.tagName.toLowerCase(), label: (el.getAttribute('aria-label') || el.textContent || el.name || '').trim().slice(0, 40), w: Math.round(r.width), h: Math.round(r.height) };
     })
     .filter((item) => item.h < min || item.w < min);

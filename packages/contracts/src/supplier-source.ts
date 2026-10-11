@@ -232,6 +232,8 @@ export interface SupplierSourceScanItem {
   /** True while the scan waits for the worker to pick it up. */
   queued: boolean;
   trigger: 'MANUAL' | 'SCHEDULE';
+  /** SAMPLE or FULL (every product of the source). */
+  scope: 'SAMPLE' | 'FULL';
   requestedBy: { id: string; name: string } | null;
   startedAt: string;
   finishedAt: string | null;
@@ -263,6 +265,8 @@ export interface SupplierSourceScanListResponse {
 /** POST /api/v1/supplier-sources/:id/scans: queue a manual sample scan of an enabled, ready source (MANAGE_SUPPLIER_SOURCES). */
 export interface SupplierSourceScanRequest {
   expectedVersion: number;
+  /** `SAMPLE` (default: the first 20 products, or a re-read of the known ones) or `FULL` (every product of the source). */
+  scope?: 'SAMPLE' | 'FULL';
 }
 
 export interface SupplierSourceScanResponse {

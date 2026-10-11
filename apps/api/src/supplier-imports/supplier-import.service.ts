@@ -10,6 +10,9 @@ import type {
   SupplierCandidateImageDecisionRequest,
   SupplierCandidateKeepSeparateRequest,
   SupplierCandidateListResponse,
+  SupplierImportAllPreview,
+  SupplierImportAllRequest,
+  SupplierImportAllResponse,
   SupplierChangeAcknowledgeRequest,
   SupplierChangeAcknowledgeResponse,
   SupplierChangeListResponse,
@@ -30,6 +33,7 @@ import * as input from '../inventory/inventory.input.js';
 import { MEDIA_STORAGE } from '../platform/tokens.js';
 import { mediaVariantObject } from '../website/media.core.js';
 import type { VariantKind } from '../website/media.processing.js';
+import * as bulk from './supplier-import.bulk.js';
 import * as changes from './supplier-import.changes.js';
 import * as core from './supplier-import.core.js';
 
@@ -54,6 +58,19 @@ export class SupplierImportService {
     query: { state?: string | undefined; warning?: string | undefined; page?: number | undefined },
   ): Promise<SupplierCandidateListResponse> {
     return this.run(token, undefined, (context) => core.listCandidates(context, query));
+  }
+
+  importAllPreview(token: string | undefined): Promise<SupplierImportAllPreview> {
+    return this.run(token, undefined, (context) => bulk.previewImportAll(context));
+  }
+
+  importAll(
+    token: string | undefined,
+    body: SupplierImportAllRequest,
+    requestId?: string,
+  ): Promise<SupplierImportAllResponse> {
+    // Twenty products, each with its pictures, price and audit lines, in one transaction: well above the default, still bounded.
+    return this.run(token, requestId, (context) => bulk.importAll(context, body), 120_000);
   }
 
   listChanges(
@@ -193,11 +210,12 @@ export class SupplierImportService {
     token: string | undefined,
     requestId: string | undefined,
     work: (context: AdminContext) => Promise<T>,
+    timeoutMs?: number,
   ): Promise<T> {
     return runAdminCommand(
       { sessions: this.sessions, throttle: this.throttle },
       token,
-      { exclusive: false, requestId },
+      { exclusive: false, requestId, ...(timeoutMs ? { timeoutMs } : {}) },
       async (context) => {
         try {
           return await work(context);

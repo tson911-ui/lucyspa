@@ -71,6 +71,7 @@ export {
 } from './source-test-runner.js';
 export {
   failExpiredScans,
+  FULL_SCAN_LIMIT,
   processNextScan,
   SCAN_LEASE_MINUTES,
   type ScanDatabase,
@@ -135,3 +136,12 @@ export {
   type ScanChangeCounts,
   type ScheduleCadence,
 } from './resync.js';
+export {
+  classifyProduct,
+  deriveBrands,
+  LUCY_CATEGORIES,
+  supplierSellingPrice,
+  type Classification,
+  type ClassifyInput,
+  type LucyCategoryKey,
+} from './auto-classify.js';

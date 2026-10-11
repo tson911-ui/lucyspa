@@ -235,7 +235,7 @@ export function SourcesView({
             label: text.menu[action],
             icon: action === 'edit' ? ('edit' as const) : undefined,
             tone: action === 'disable' ? ('danger' as const) : ('default' as const),
-            onSelect: () => setOverlay({ kind: action, item }),
+            onSelect: () => setOverlay({ kind: action === 'scanFull' ? 'scan' : action, item }),
           }))}
         />
       ),

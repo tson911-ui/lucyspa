@@ -10,6 +10,9 @@ import type {
   SupplierCandidateImageDecisionRequest,
   SupplierCandidateKeepSeparateRequest,
   SupplierCandidateListResponse,
+  SupplierImportAllPreview,
+  SupplierImportAllRequest,
+  SupplierImportAllResponse,
   SupplierChangeAcknowledgeRequest,
   SupplierChangeAcknowledgeResponse,
   SupplierChangeListResponse,
@@ -141,6 +144,22 @@ class ApproveReadyDto implements SupplierApproveReadyRequest {
   @ValidateNested({ each: true })
   @Type(() => ReadyEntryDto)
   candidates!: ReadyEntryDto[];
+}
+
+class ImportAllDto implements SupplierImportAllRequest {
+  @ApiProperty({ type: [ReadyEntryDto] })
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => ReadyEntryDto)
+  import!: ReadyEntryDto[];
+
+  @ApiProperty({ type: [ReadyEntryDto] })
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => ReadyEntryDto)
+  ignore!: ReadyEntryDto[];
 }
 
 const VARIANTS = { thumb: 'THUMB', md: 'MD', lg: 'LG' } as const satisfies Record<
@@ -347,6 +366,29 @@ export class SupplierImportController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<SupplierMappingResponse> {
     return this.imports.mapping(this.session(request), body, this.requestId(response));
+  }
+
+  @Get('import-all/preview')
+  @ApiOkResponse({
+    description:
+      'Every open candidate with the brand, category and selling price the system chose, and why some cannot go (REVIEW_SUPPLIER_IMPORTS, MANAGE_PRODUCTS and MANAGE_PRODUCT_PRICES).',
+  })
+  importAllPreview(@Req() request: Request): Promise<SupplierImportAllPreview> {
+    return this.imports.importAllPreview(this.session(request));
+  }
+
+  @Post('import-all')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Imports AND publishes the ticked products (at most 20 per call) and ignores the unticked ones (at most 100). Real blockers are skipped and listed.',
+  })
+  importAll(
+    @Body() body: ImportAllDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SupplierImportAllResponse> {
+    return this.imports.importAll(this.session(request), body, this.requestId(response));
   }
 
   @Post('approve-ready')

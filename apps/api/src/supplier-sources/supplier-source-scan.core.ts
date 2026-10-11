@@ -6,6 +6,7 @@ import type {
   SupplierSourceScanResponse,
 } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
+import { FULL_SCAN_LIMIT } from '@lucy-spa/server';
 import { AuthError } from '../auth/auth.error.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
 import { decide } from '../authorization/authorization.js';
@@ -26,6 +27,7 @@ const SELECT = {
   id: true,
   status: true,
   trigger: true,
+  scope: true,
   actor: { select: { id: true, fullName: true } },
   claimedAt: true,
   startedAt: true,
@@ -70,6 +72,7 @@ export function presentScan(row: Row): SupplierSourceScanItem {
     status: row.status,
     queued: row.status === 'RUNNING' && row.claimedAt === null,
     trigger: row.trigger,
+    scope: row.scope === 'FULL' ? 'FULL' : 'SAMPLE',
     requestedBy: row.actor ? { id: row.actor.id, name: row.actor.fullName } : null,
     startedAt: row.startedAt.toISOString(),
     finishedAt: row.finishedAt?.toISOString() ?? null,
@@ -146,7 +149,9 @@ export async function requestScan(
   request: SupplierSourceScanRequest,
 ): Promise<SupplierSourceScanResponse> {
   if (!canManage(context)) throw new AuthError('FORBIDDEN');
-  const body = input.record(request, 'body', ['expectedVersion']);
+  const body = input.record(request, 'body', ['expectedVersion', 'scope']);
+  const scope = body['scope'] === undefined ? 'SAMPLE' : body['scope'];
+  if (scope !== 'SAMPLE' && scope !== 'FULL') throw new AuthError('VALIDATION_FAILED', 'scope');
   const expected = input.rowVersion(body['expectedVersion']);
   const { tx } = context;
   const source = await lockSource(tx, input.uuid(id, 'id'));
@@ -168,14 +173,20 @@ export async function requestScan(
   });
   if (running) throw new AuthError('SUPPLIER_SOURCE_SCAN_ACTIVE');
   const created = await tx.importScan.create({
-    data: { sourceId: source.id, trigger: 'MANUAL', actorUserId: context.actor.userId },
+    data: {
+      sourceId: source.id,
+      trigger: 'MANUAL',
+      actorUserId: context.actor.userId,
+      scope,
+      sampleLimit: scope === 'FULL' ? FULL_SCAN_LIMIT : 20,
+    },
     select: { id: true },
   });
   await appendAdminAudit(context, {
     action: 'SUPPLIER_SOURCE_SCAN_REQUESTED',
     entityType: 'SupplierSource',
     entityId: source.id,
-    after: { scanId: created.id },
+    after: { scanId: created.id, scope },
   });
   const row = await tx.importScan.findUniqueOrThrow({ where: { id: created.id }, select: SELECT });
   return { item: presentScan(row) };

@@ -881,3 +881,16 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 
 - Change notes (`source_changes`, append-only, tab "Thay đổi"), removal guard (3 healthy scans; SUSPECT/FAILED scans write only their own row), per-source schedule (default MANUAL; WEEKLY/DAILY only 01:00-05:00 +07, only after a first manual success), in-app counts-only notice `SUPPLIER_IMPORT_CHANGES` (new notification type, branchless entity `SupplierSource`). Migration `20261129000000_phase9_resync_changes` (106 -> **107**; rehearsed 68 -> 107), permissions still **68**. Report `docs/PHASE9_P9_7_RESYNC.md` (7 readings pending Owner approval). Also fixed: row menu text invisible on row hover (`components.css`).
 - **Owner change of plan (2026-10-11, verbatim in `docs/PHASE9_PRODUCT_IMPORT.md` section 17):** a one-click path "Nhập và đăng tất cả" (+ per-source "Quét toàn bộ" of all 352 products, fixed 12 Lucy categories, auto-created brands, selling price = supplier price rounded to 1,000 VND, one preview list with a checkbox per product, unticked = IGNORED). New step **P9-9b** between P9-9 and P9-10. Order now: P9-8, P9-9, P9-9b, P9-10.
+
+### Phase 9 P9-8 (bulk prices and ZIP images, 2026-10-11; NOT deployed; commit in the chat report)
+
+- PRICE_UPDATE finished (export `GET /api/v1/product-imports/export-prices`, preview shows current vs file price, confirm by MANAGE_PRODUCT_PRICES only, append-only price versions) and "Nhập ảnh từ ZIP" (add-only, SKU file names, live products need a tick). No migration, permissions 68. Report `docs/PHASE9_P9_8_BULK_PRICES_IMAGES.md`; tests `import-price-zip.integration.test.ts` (4).
+
+### Phase 9 P9-9 (sample validation, 2026-10-11; NOT deployed)
+
+- Real 20-product haruohui.com scan + rescan checked (no duplicates, SKUs, one picture each, change detection); no bulk import. Report `docs/PHASE9_P9_9_SAMPLE_VALIDATION.md`. Rigs only under `.local/p9/` (validate-sample.mjs, live-fullscan.mjs, live-import.mjs, classify-trial.mjs, shots-resync.mjs with `--theme-cookie`).
+
+### Phase 9 P9-9b (one click, 2026-10-11; NOT deployed; commit in the chat report)
+
+- Migration `20261130000000_phase9_full_scan` (107 -> 108, `import_scans.scope`), permissions still 68. "Quét toàn bộ" (pages of 100, cap 2000, same-scope comparison) and "Nhập và đăng tất cả" (`/supplier-imports/all`: checkbox per product, auto brand/12 categories/price rounded to 1,000, ticked = imported + published, unticked = IGNORED, reopened only on content change). New kit piece: DataTable `select` column + `ls-toolbar-end-below`. Real data: 352 products read, 19 blocked, 40 imported in a scratch copy.
+- Owner readings pending (price/publish): sale price when lower than list, 16 slug SKUs not auto-imported, supplements in "Khác", schedule uses FULL after a first full scan. Report `docs/PHASE9_P9_9B_ONE_CLICK.md`.

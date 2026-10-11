@@ -1,12 +1,12 @@
 'use client';
 
 import type {
-  SupplierApproveReadyResponse,
   SupplierCandidateDecideResponse,
   SupplierCandidateListResponse,
   SupplierCandidateRow,
 } from '@lucy-spa/contracts';
 import {
+  ButtonLink,
   ConfirmDialog,
   DataTable,
   FacetedFilter,
@@ -40,16 +40,7 @@ import {
 } from '../../../lib/workforce/supplier-imports';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
-import {
-  Badge,
-  Button,
-  Empty,
-  ErrorState,
-  Notice,
-  PageHeader,
-  useResource,
-  useSuccessToast,
-} from '../ui';
+import { Badge, Empty, ErrorState, PageHeader, useResource, useSuccessToast } from '../ui';
 import { ChangesPanel } from './supplier-import-changes';
 import { ReviewDrawer } from './supplier-import-review';
 import { useUrlState } from '@lucy-spa/ui';
@@ -57,10 +48,7 @@ import { useUrlState } from '@lucy-spa/ui';
 const BASE = '/api/v1/supplier-imports';
 const SHOWN_WARNINGS = 1;
 
-type Overlay =
-  | { kind: 'reject' | 'ignore'; row: SupplierCandidateRow }
-  | { kind: 'bulk'; rows: SupplierCandidateRow[]; total: number }
-  | null;
+type Overlay = { kind: 'reject' | 'ignore'; row: SupplierCandidateRow } | null;
 
 /**
  * "Duyệt sản phẩm nhập" (Phase 9 P9-6): what the scans found, to be looked at before anything becomes a product. REVIEW_SUPPLIER_IMPORTS
@@ -84,16 +72,18 @@ export function SupplierImportsScreen() {
 }
 
 function ImportsPage() {
-  const { api, t, locale } = useWorkforce();
+  const { api, t, locale, base } = useWorkforce();
+  const { account } = useAccount();
   const text = supplierImportsDictionary(locale);
+  // The one-click page needs all three: review, products (brands, categories, publishing) and prices.
+  const canImportAll =
+    canGlobal(account, 'MANAGE_PRODUCTS') && canGlobal(account, 'MANAGE_PRODUCT_PRICES');
   const notify = useSuccessToast();
   const [list, updateList] = useUrlState(IMPORT_LIST_DEFAULTS, {
     normalize: normalizeImportList,
     resetOnChange: IMPORT_PAGE_KEYS,
   });
   const [overlay, setOverlay] = useState<Overlay>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [reading, setReading] = useState(false);
   const loaded = useResource(
     () => api.get<SupplierCandidateListResponse>(`${BASE}/candidates`, importListQuery(list)),
     [api, list.filter, list.warning, list.page],
@@ -228,25 +218,6 @@ function ImportsPage() {
     },
   ];
 
-  /** Reads the first 20 ready candidates, then asks before approving them (the preview states the count). */
-  async function startBulk() {
-    if (reading) return;
-    setReading(true);
-    setNotice(null);
-    try {
-      const ready = await api.get<SupplierCandidateListResponse>(`${BASE}/candidates`, {
-        state: 'READY_FOR_REVIEW',
-        page: 1,
-      });
-      if (ready.items.length === 0) setNotice(text.bulk.none);
-      else setOverlay({ kind: 'bulk', rows: ready.items, total: ready.readyCount });
-    } catch (failure) {
-      setNotice(importErrorText(failure, locale, (cause) => errorMessage(cause, t)));
-    } finally {
-      setReading(false);
-    }
-  }
-
   const describeError = (failure: unknown) => ({
     ...confirmError(t)(failure),
     message: importErrorText(failure, locale, (cause) => errorMessage(cause, t)),
@@ -295,15 +266,10 @@ function ImportsPage() {
   return (
     <>
       <PageHeader title={text.title} intro={text.intro}>
-        {list.tab === 'candidates' && (data?.readyCount ?? 0) > 0 ? (
-          <Button
-            variant="primary"
-            icon="check"
-            onClick={() => void startBulk()}
-            disabled={reading}
-          >
-            {reading ? text.bulk.reading : text.approveReady}
-          </Button>
+        {canImportAll && list.tab === 'candidates' && (data?.total ?? 0) > 0 ? (
+          <ButtonLink variant="primary" icon="check" href={`${base}/supplier-imports/all`}>
+            {text.all.open}
+          </ButtonLink>
         ) : null}
       </PageHeader>
       <Tabs
@@ -316,7 +282,6 @@ function ImportsPage() {
             label: text.tabs.candidates,
             panel: (
               <>
-                {notice ? <Notice tone="info">{notice}</Notice> : null}
                 {data ? (
                   <ListToolbar
                     labels={toolbarLabels(t)}
@@ -394,36 +359,6 @@ function ImportsPage() {
       />
       {overlay?.kind === 'reject' ? decideDialog('reject', overlay.row) : null}
       {overlay?.kind === 'ignore' ? decideDialog('ignore', overlay.row) : null}
-      {overlay?.kind === 'bulk' ? (
-        <ConfirmDialog
-          title={text.bulk.title}
-          description={fill(text.bulk.body, { count: String(overlay.rows.length) })}
-          tone="neutral"
-          confirmLabel={fill(text.bulk.confirm, { count: String(overlay.rows.length) })}
-          busyLabel={text.dialogs.busy}
-          cancelLabel={text.dialogs.keep}
-          referenceLabel={t.errors.reference}
-          describeError={describeError}
-          onCancel={() => setOverlay(null)}
-          onConfirm={async () => {
-            const result = await api.post<SupplierApproveReadyResponse>(`${BASE}/approve-ready`, {
-              candidates: overlay.rows.map((row) => ({
-                id: row.id,
-                expectedVersion: row.rowVersion,
-              })),
-            });
-            setOverlay(null);
-            notify(
-              `${fill(text.bulk.done, { approved: String(result.approved) })}${
-                result.skipped.length > 0
-                  ? ` ${fill(text.bulk.skipped, { skipped: String(result.skipped.length) })}`
-                  : ''
-              }`,
-            );
-            await loaded.reload();
-          }}
-        />
-      ) : null}
     </>
   );
 }

@@ -77,15 +77,16 @@ export function ScanDrawer({
   const when = (value: string) => formatDateTime(value, zone, locale);
   const known = copy.errors as Record<string, string>;
 
-  async function run() {
+  async function run(scope: 'SAMPLE' | 'FULL') {
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
       await api.post<SupplierSourceScanResponse>(`/api/v1/supplier-sources/${item.id}/scans`, {
         expectedVersion: item.rowVersion,
+        ...(scope === 'FULL' ? { scope } : {}),
       });
-      notify(copy.queuedToast);
+      notify(scope === 'FULL' ? copy.queuedFullToast : copy.queuedToast);
       await loaded.reload();
     } catch (failure) {
       if (isSourceConflict(failure)) await onConflict();
@@ -151,9 +152,18 @@ export function ScanDrawer({
             {t.common.close}
           </Button>
           {canManage && ready ? (
-            <Button variant="primary" onClick={() => void run()} disabled={busy || active}>
-              {busy ? copy.queuing : copy.run}
-            </Button>
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => void run('SAMPLE')}
+                disabled={busy || active}
+              >
+                {busy ? copy.queuing : copy.run}
+              </Button>
+              <Button variant="primary" onClick={() => void run('FULL')} disabled={busy || active}>
+                {busy ? copy.queuing : copy.runFull}
+              </Button>
+            </>
           ) : null}
         </>
       }
@@ -161,6 +171,7 @@ export function ScanDrawer({
       <Stack gap="page">
         {error ? <Notice tone="error">{error}</Notice> : null}
         {!ready ? <Notice tone="warning">{copy.notReady}</Notice> : null}
+        {ready ? <p className="ls-hint">{copy.fullHint}</p> : null}
         {loaded.error && !loaded.data ? (
           <ErrorState error={loaded.error} t={t} onRetry={() => void loaded.reload()} />
         ) : !loaded.data ? (
@@ -168,6 +179,7 @@ export function ScanDrawer({
         ) : latest ? (
           <Stack gap="page">
             {notice(latest)}
+            <p className="ls-hint">{latest.scope === 'FULL' ? copy.scopeFull : copy.scopeSample}</p>
             <p className="ls-hint">
               {latest.requestedBy === null
                 ? fill(copy.lastRunScheduled, { time: when(latest.startedAt) })
