@@ -1,4 +1,9 @@
-import type { CashFundItem, CashGoLiveRequest, CashOverviewResponse } from '@lucy-spa/contracts';
+import {
+  CASH_DIFFERENCE_ALERT_DEFAULT_VND,
+  type CashFundItem,
+  type CashGoLiveRequest,
+  type CashOverviewResponse,
+} from '@lucy-spa/contracts';
 import { AuthError } from '../auth/auth.error.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
 import {
@@ -31,7 +36,18 @@ export async function financeGoLive(tx: AdminContext['tx']) {
   });
 }
 
-async function nextFloatDefault(tx: AdminContext['tx']): Promise<bigint> {
+export async function alertThreshold(tx: AdminContext['tx']): Promise<bigint> {
+  const row = await tx.appSetting.findUnique({
+    where: { key: 'cash.difference_alert_vnd' },
+    select: { value: true },
+  });
+  const value = row?.value;
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+    ? BigInt(value)
+    : BigInt(CASH_DIFFERENCE_ALERT_DEFAULT_VND);
+}
+
+export async function nextFloatDefault(tx: AdminContext['tx']): Promise<bigint> {
   const row = await tx.appSetting.findUnique({
     where: { key: 'cash.default_next_float_vnd' },
     select: { value: true },
@@ -79,6 +95,7 @@ export async function cashOverview(context: AdminContext): Promise<CashOverviewR
             SELECT fund_id, MAX(business_date) AS last_date
             FROM cash_day_closings WHERE fund_id = ANY(${ids}::uuid[]) GROUP BY fund_id`,
         ]);
+  const threshold = await alertThreshold(tx);
   const net = new Map(sums.map((row) => [row.fund_id, row.net]));
   const closed = new Map(closings.map((row) => [row.fund_id, day(row.last_date)]));
   const items: CashFundItem[] = visible.map((fund) => ({
@@ -98,7 +115,22 @@ export async function cashOverview(context: AdminContext): Promise<CashOverviewR
     canGoLive: live === null && holdsEverywhere(context, branches, 'manage'),
     funds: items,
     defaultNextFloatVnd: (await nextFloatDefault(tx)).toString(),
+    differenceAlerts: await countDifferenceAlerts(tx, ids, threshold),
+    alertThresholdVnd: threshold.toString(),
   };
+}
+
+async function countDifferenceAlerts(
+  tx: AdminContext['tx'],
+  fundIds: readonly string[],
+  threshold: bigint,
+): Promise<number> {
+  if (fundIds.length === 0) return 0;
+  const rows = await tx.$queryRaw<{ n: bigint }[]>`
+    SELECT count(*)::bigint AS n FROM cash_day_closings
+    WHERE fund_id = ANY(${[...fundIds]}::uuid[]) AND abs(difference_vnd) >= ${threshold}
+      AND closed_at >= clock_timestamp() - interval '30 days'`;
+  return Number(rows[0]?.n ?? 0n);
 }
 
 interface ParsedGoLive {

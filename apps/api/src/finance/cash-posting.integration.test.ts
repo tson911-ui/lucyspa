@@ -399,7 +399,66 @@ test(
             assert.equal(dup[0]?.n, 0n);
             assert.ok(today().length === 10);
             void B;
-            void fails;
+          },
+        );
+
+        await suite.test(
+          'the reconciliation proves it: balanced when everything is posted, the missing ones named when not',
+          async () => {
+            const query = { branchId: A.id, from: '2020-01-01', to: '2099-12-31' };
+            const settled = await cash.reconcile(base.ownerToken, query);
+            assert.equal(settled.balanced, true);
+            assert.equal(settled.unposted, 0);
+            assert.deepEqual(
+              settled.rows.map((row) => row.key),
+              [
+                'PAYMENT_CASH',
+                'PAYMENT_BANK',
+                'PAYMENT_REVERSAL',
+                'REFUND_CASH',
+                'REFUND_BANK',
+                'EXCHANGE_CASH',
+                'EXCHANGE_BANK',
+              ],
+            );
+            const cashRow = settled.rows.find((row) => row.key === 'PAYMENT_CASH')!;
+            assert.ok(cashRow.sourceCount >= 5);
+            assert.equal(cashRow.sourceVnd, cashRow.bookVnd);
+            assert.equal(cashRow.sourceCount, cashRow.bookCount);
+            assert.equal(
+              settled.rows.find((row) => row.key === 'PAYMENT_BANK')?.sourceVnd,
+              '70000',
+            );
+            assert.equal(
+              settled.rows.find((row) => row.key === 'EXCHANGE_CASH')?.sourceVnd,
+              '80000',
+            );
+            await cashSale(40_000, 1);
+            const behind = await cash.reconcile(base.ownerToken, query);
+            assert.equal(behind.balanced, false);
+            assert.equal(behind.unposted, 1);
+            const missing = behind.rows.find((row) => row.key === 'PAYMENT_CASH')!;
+            assert.equal(missing.unposted, 1);
+            assert.equal(missing.deltaVnd, '40000');
+            await post();
+            assert.equal((await cash.reconcile(base.ownerToken, query)).balanced, true);
+            // A narrower period and a person without access.
+            const none = await cash.reconcile(base.ownerToken, {
+              ...query,
+              from: '2020-01-01',
+              to: '2020-01-02',
+            });
+            assert.equal(none.balanced, true);
+            assert.ok(none.rows.every((row) => row.sourceCount === 0));
+            await fails(() => cash.reconcile(people.cashier.token, query), 'FORBIDDEN');
+            await fails(
+              () => cash.reconcile(base.ownerToken, { ...query, to: '2019-01-01' }),
+              'VALIDATION_FAILED',
+            );
+            await fails(
+              () => cash.reconcile(base.ownerToken, { ...query, branchId: 'x' }),
+              'VALIDATION_FAILED',
+            );
           },
         );
       });

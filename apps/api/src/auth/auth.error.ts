@@ -230,6 +230,8 @@ const errors = {
   // Phase 7 Wave A: the shop funds (cash book). No error reveals another branch's money.
   FINANCE_ALREADY_LIVE: [409, 'The cash book and payroll were already started'],
   FINANCE_NOT_LIVE: [409, 'The cash book and payroll have not been started yet'],
+  CASH_DAY_CLOSED: [409, 'This day is already closed'],
+  CASH_UNPOSTED: [409, 'Some payments are not in the book yet; try again in a moment'],
   CASH_INSUFFICIENT: [409, 'The fund does not hold that much money'],
   CASH_ENTRY_NOT_REVERSIBLE: [409, 'This entry cannot be reversed'],
   CASH_OPENING_INVALID: [

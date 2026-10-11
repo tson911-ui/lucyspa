@@ -77,6 +77,9 @@ export interface CashOverviewResponse {
   funds: CashFundItem[];
   /** The default float left for the next day (settings; the Owner may change it per closing). */
   defaultNextFloatVnd: string;
+  /** Closings of the last 30 days, in the funds the person may see, whose difference reached the alert threshold. */
+  differenceAlerts: number;
+  alertThresholdVnd: string;
 }
 
 export interface CashGoLiveBranchBalance {
@@ -168,4 +171,113 @@ export interface CashTransferRequest {
 
 export interface CashTransferResponse {
   items: CashEntryItem[];
+}
+
+export const CASH_RECONCILIATION_KEYS = [
+  'PAYMENT_CASH',
+  'PAYMENT_BANK',
+  'PAYMENT_REVERSAL',
+  'REFUND_CASH',
+  'REFUND_BANK',
+  'EXCHANGE_CASH',
+  'EXCHANGE_BANK',
+] as const;
+export type CashReconciliationKey = (typeof CASH_RECONCILIATION_KEYS)[number];
+
+/** One kind of money source of a branch against the entries the book made from it. */
+export interface CashReconciliationRow {
+  key: CashReconciliationKey;
+  sourceCount: number;
+  sourceVnd: string;
+  bookCount: number;
+  bookVnd: string;
+  /** Source minus book: zero when every source is in the book with its exact amount. */
+  deltaVnd: string;
+  /** Source rows with no entry yet. */
+  unposted: number;
+}
+
+export interface CashReconciliationResponse {
+  branch: CashBranchRef;
+  from: string;
+  to: string;
+  goLiveAt: string;
+  rows: CashReconciliationRow[];
+  unposted: number;
+  balanced: boolean;
+}
+
+/** The default size of a cash difference (VND) that the Owner is shown as an alert; a setting, never code. */
+export const CASH_DIFFERENCE_ALERT_DEFAULT_VND = 50_000;
+
+export interface CashClosingPreviewRequest {
+  /** The branch-local day to close, YYYY-MM-DD (the day after the last closing up to today). */
+  date: string;
+}
+
+/**
+ * What the book says for the day about to be closed. Opening the preview first posts every payment, reversal and refund of the fund
+ * that is not in the book yet, so the figures are complete (`unposted` is then 0; anything else blocks the closing).
+ */
+export interface CashClosingPreviewResponse {
+  fund: CashFundItem;
+  businessDate: string;
+  /** The previous closing's next-day float, or the opening balance on the first day. */
+  openingFloatVnd: string;
+  cashInVnd: string;
+  cashOutVnd: string;
+  /** Opening float + cash in - cash out. */
+  expectedVnd: string;
+  unposted: number;
+  lastClosedDate: string | null;
+  defaultNextFloatVnd: string;
+  alertThresholdVnd: string;
+  closable: boolean;
+  /** Why the day cannot be closed, when it cannot. */
+  blockedBy: 'ALREADY_CLOSED' | 'FUTURE_DAY' | 'UNPOSTED' | null;
+}
+
+export interface CashCloseRequest {
+  date: string;
+  /** The cash actually counted in the drawer and safe. */
+  countedVnd: string;
+  /** What the Owner takes out when closing; the rest stays as the next day's float. */
+  withdrawalVnd: string;
+  /** Required whenever the count differs from the book. */
+  reason: string | null;
+  clientRequestId: string;
+}
+
+export interface CashClosingItem {
+  id: string;
+  fundId: string;
+  businessDate: string;
+  openingFloatVnd: string;
+  cashInVnd: string;
+  cashOutVnd: string;
+  expectedVnd: string;
+  countedVnd: string;
+  /** Counted minus expected: negative = short, positive = over. */
+  differenceVnd: string;
+  reason: string | null;
+  withdrawalVnd: string;
+  nextFloatVnd: string;
+  closedBy: { id: string; name: string };
+  closedAt: string;
+  /** The difference reaches the alert threshold. */
+  alert: boolean;
+}
+
+export interface CashClosingResponse {
+  item: CashClosingItem;
+  fund: CashFundItem;
+}
+
+export interface CashClosingListResponse {
+  fund: CashFundItem;
+  items: CashClosingItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+  alertThresholdVnd: string;
 }

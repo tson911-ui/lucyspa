@@ -1,10 +1,16 @@
 import {
   CASH_MANUAL_KINDS,
+  type CashCloseRequest,
+  type CashClosingListResponse,
+  type CashClosingPreviewRequest,
+  type CashClosingPreviewResponse,
+  type CashClosingResponse,
   type CashEntryListResponse,
   type CashEntryResponse,
   type CashGoLiveRequest,
   type CashManualEntryRequest,
   type CashOverviewResponse,
+  type CashReconciliationResponse,
   type CashReverseRequest,
   type CashTransferRequest,
   type CashTransferResponse,
@@ -30,6 +36,7 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import type { Request, Response } from 'express';
@@ -69,6 +76,22 @@ class ManualDto implements CashManualEntryRequest {
 
 class ReverseDto implements CashReverseRequest {
   @ApiProperty() @IsString() @MaxLength(2000) reason!: string;
+  @ApiProperty() @IsString() @MaxLength(64) clientRequestId!: string;
+}
+
+class PreviewDto implements CashClosingPreviewRequest {
+  @ApiProperty() @IsString() @MaxLength(10) date!: string;
+}
+
+class CloseDto implements CashCloseRequest {
+  @ApiProperty() @IsString() @MaxLength(10) date!: string;
+  @ApiProperty() @IsString() @MaxLength(20) countedVnd!: string;
+  @ApiProperty() @IsString() @MaxLength(20) withdrawalVnd!: string;
+  @ApiProperty({ nullable: true })
+  @ValidateIf((_object: unknown, value: unknown) => value !== null)
+  @IsString()
+  @MaxLength(2000)
+  reason!: string | null;
   @ApiProperty() @IsString() @MaxLength(64) clientRequestId!: string;
 }
 
@@ -130,6 +153,63 @@ export class CashController {
     @Req() request: Request,
   ): Promise<CashEntryListResponse> {
     return this.cash.entries(this.session(request), id, { from, to, category, direction, page });
+  }
+
+  @Get('reconciliation')
+  @ApiOkResponse({
+    description:
+      'For one branch and a period: the money sources recorded since go-live against the book entries made from them, and what is still missing (VIEW_CASH or MANAGE_CASH).',
+  })
+  reconciliation(
+    @Query('branchId') branchId: string | undefined,
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Req() request: Request,
+  ): Promise<CashReconciliationResponse> {
+    return this.cash.reconcile(this.session(request), { branchId, from, to });
+  }
+
+  @Get('funds/:id/closings')
+  @ApiOkResponse({
+    description:
+      'The closed days of one cash fund, 20 a page, newest first (VIEW_CASH or MANAGE_CASH at the branch).',
+  })
+  closings(
+    @Param('id') id: string,
+    @Query('page') page: string | undefined,
+    @Req() request: Request,
+  ): Promise<CashClosingListResponse> {
+    return this.cash.closings(this.session(request), id, { page });
+  }
+
+  @Post('funds/:id/closing-preview')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'The figures of the day about to be closed. Posts the fund sources that are not in the book yet first (MANAGE_CASH at the branch).',
+  })
+  previewClosing(
+    @Param('id') id: string,
+    @Body() body: PreviewDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<CashClosingPreviewResponse> {
+    return this.cash.previewClosing(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Post('funds/:id/close')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Closes a day of a cash fund: the counted cash, the reason for a difference, the Owner withdrawal; fresh password. The day is locked afterwards.',
+  })
+  closeDay(
+    @Param('id') id: string,
+    @Body() body: CloseDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<CashClosingResponse> {
+    return this.cash.closeDay(this.session(request), id, body, this.requestId(response));
   }
 
   @Post('entries')

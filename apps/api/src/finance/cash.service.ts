@@ -1,9 +1,15 @@
 import type {
+  CashCloseRequest,
+  CashClosingListResponse,
+  CashClosingPreviewRequest,
+  CashClosingPreviewResponse,
+  CashClosingResponse,
   CashEntryListResponse,
   CashEntryResponse,
   CashGoLiveRequest,
   CashManualEntryRequest,
   CashOverviewResponse,
+  CashReconciliationResponse,
   CashReverseRequest,
   CashTransferRequest,
   CashTransferResponse,
@@ -16,7 +22,9 @@ import { runAdminCommand, type AdminContext } from '../authorization/admin-comma
 import { sqlStateOf } from '../booking/customer-command.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
 import * as core from './cash.core.js';
+import * as closing from './cash-closing.core.js';
 import * as entries from './cash-entries.core.js';
+import * as reconciliation from './cash-reconciliation.core.js';
 
 /**
  * Phase 7 Wave A: the cash book (funds, go-live now; entries, closing and reconciliation in the next Steps). Authority is decided inside
@@ -85,6 +93,43 @@ export class CashService {
     return this.run(token, requestId, (context) =>
       entries.transferBetweenFunds(context, { ...body }, this.environment.auth.freshAuthSeconds),
     );
+  }
+
+  closings(
+    token: string | undefined,
+    fundId: string,
+    query: { page?: unknown },
+  ): Promise<CashClosingListResponse> {
+    return this.run(token, undefined, (context) => closing.listClosings(context, fundId, query));
+  }
+
+  previewClosing(
+    token: string | undefined,
+    fundId: string,
+    body: CashClosingPreviewRequest,
+    requestId?: string,
+  ): Promise<CashClosingPreviewResponse> {
+    return this.run(token, requestId, (context) =>
+      closing.previewClosing(context, fundId, { ...body }),
+    );
+  }
+
+  closeDay(
+    token: string | undefined,
+    fundId: string,
+    body: CashCloseRequest,
+    requestId?: string,
+  ): Promise<CashClosingResponse> {
+    return this.run(token, requestId, (context) =>
+      closing.closeDay(context, fundId, { ...body }, this.environment.auth.freshAuthSeconds),
+    );
+  }
+
+  reconcile(
+    token: string | undefined,
+    query: { branchId?: unknown; from?: unknown; to?: unknown },
+  ): Promise<CashReconciliationResponse> {
+    return this.run(token, undefined, (context) => reconciliation.reconcile(context, query));
   }
 
   private run<T>(

@@ -70,7 +70,18 @@ test('cash HTTP: guards, exact fields, stable codes', async () => {
       calls.push([name, ...args]);
       return outcome ? Promise.reject(outcome) : Promise.resolve({ ok: name });
     };
-  const names = ['overview', 'goLive', 'entries', 'record', 'reverse', 'transfer'] as const;
+  const names = [
+    'overview',
+    'goLive',
+    'entries',
+    'record',
+    'reverse',
+    'transfer',
+    'closings',
+    'previewClosing',
+    'closeDay',
+    'reconcile',
+  ] as const;
   const module = await Test.createTestingModule({
     imports: [AppModule.forRoot(environment, pino({ level: 'silent' }))],
   })
@@ -122,6 +133,13 @@ test('cash HTTP: guards, exact fields, stable codes', async () => {
     reason: 'Nộp ngân hàng',
     clientRequestId: randomUUID(),
   };
+  const closeBody = {
+    date: '2026-10-11',
+    countedVnd: '1000000',
+    withdrawalVnd: '0',
+    reason: null,
+    clientRequestId: randomUUID(),
+  };
   const goLive = {
     branches: [{ branchId: randomUUID(), countedVnd: '1000000' }],
     bankVnd: '2000000',
@@ -144,6 +162,20 @@ test('cash HTTP: guards, exact fields, stable codes', async () => {
     ]);
     await request(server).get(`${base}/overview`).expect(200);
     assert.equal(calls.at(-1)?.[1], undefined);
+    await request(server)
+      .get(`${base}/funds/${fund}/closings?page=3`)
+      .set({ Cookie: cookie })
+      .expect(200);
+    assert.deepEqual(calls.at(-1), ['closings', token, fund, { page: '3' }]);
+    await request(server)
+      .get(`${base}/reconciliation?branchId=${other}&from=2026-10-01&to=2026-10-31`)
+      .set({ Cookie: cookie })
+      .expect(200);
+    assert.deepEqual(calls.at(-1), [
+      'reconcile',
+      token,
+      { branchId: other, from: '2026-10-01', to: '2026-10-31' },
+    ]);
 
     // Writes need the Origin and the CSRF token; without them nothing reaches the service.
     const guarded = calls.length;
@@ -152,6 +184,8 @@ test('cash HTTP: guards, exact fields, stable codes', async () => {
       ['entries', manual],
       [`entries/${entry}/reverse`, { reason: 'Nhầm', clientRequestId: randomUUID() }],
       ['transfers', transfer],
+      [`funds/${fund}/closing-preview`, { date: '2026-10-11' }],
+      [`funds/${fund}/close`, closeBody],
     ] as const) {
       await request(server).post(`${base}/${path}`).set({ Cookie: cookie }).send(body).expect(403);
       await request(server)
@@ -177,6 +211,19 @@ test('cash HTTP: guards, exact fields, stable codes', async () => {
     assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1)![3])), reverse);
     await request(server).post(`${base}/transfers`).set(headers).send(transfer).expect(200);
     assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1)![2])), transfer);
+    await request(server)
+      .post(`${base}/funds/${fund}/closing-preview`)
+      .set(headers)
+      .send({ date: '2026-10-11' })
+      .expect(200);
+    assert.deepEqual(calls.at(-1)?.[2], fund);
+    assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1)![3])), { date: '2026-10-11' });
+    await request(server)
+      .post(`${base}/funds/${fund}/close`)
+      .set(headers)
+      .send(closeBody)
+      .expect(200);
+    assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1)![3])), closeBody);
 
     // Only the contract's fields, with the right types: nothing else reaches the service.
     const refused = calls.length;
@@ -194,6 +241,11 @@ test('cash HTTP: guards, exact fields, stable codes', async () => {
       [`entries/${entry}/reverse`, { ...reverse, amountVnd: '1' }],
       ['transfers', { ...transfer, extra: 1 }],
       ['transfers', { ...transfer, amountVnd: 5000 }],
+      [`funds/${fund}/closing-preview`, { date: '2026-10-11', extra: 1 }],
+      [`funds/${fund}/closing-preview`, {}],
+      [`funds/${fund}/close`, { ...closeBody, extra: 1 }],
+      [`funds/${fund}/close`, { ...closeBody, countedVnd: 1000000 }],
+      [`funds/${fund}/close`, { ...closeBody, reason: 5 }],
     ] as const) {
       await request(server).post(`${base}/${path}`).set(headers).send(body).expect(400);
     }
@@ -223,6 +275,8 @@ test('cash HTTP: guards, exact fields, stable codes', async () => {
       ['FINANCE_ALREADY_LIVE', 409],
       ['CASH_OPENING_INVALID', 422],
       ['CASH_INSUFFICIENT', 409],
+      ['CASH_DAY_CLOSED', 409],
+      ['CASH_UNPOSTED', 409],
       ['CASH_ENTRY_NOT_REVERSIBLE', 409],
       ['CONFLICT', 409],
     ] as const) {

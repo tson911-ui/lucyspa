@@ -52,23 +52,31 @@ const dated = (sourceDate: Prisma.Sql, fund: string) =>
  */
 export async function postCashSources(
   tx: Prisma.TransactionClient,
-  options: { since?: Date | null; limit?: number } = {},
+  options: { since?: Date | null; limit?: number; fundId?: string | null } = {},
 ): Promise<PostingResult> {
   const live = await tx.financeGoLive.findUnique({ where: { id: 1 }, select: { at: true } });
   if (!live) return { live: false, posted: none() };
   const floor = options.since && options.since > live.at ? options.since : live.at;
   const limit = options.limit ?? 500;
+  // A closing posts only the fund it is closing (and locks only that one); the worker posts every fund.
+  const only = options.fundId ?? null;
 
   // Wait for a running closing (it holds the fund row FOR UPDATE), then keep the funds stable for this pass.
-  await tx.$queryRaw`SELECT id FROM cash_funds ORDER BY id FOR SHARE`;
+  if (only) {
+    await tx.$queryRaw`SELECT id FROM cash_funds WHERE id = ${only}::uuid FOR SHARE`;
+  } else {
+    await tx.$queryRaw`SELECT id FROM cash_funds ORDER BY id FOR SHARE`;
+  }
   // A branch added after go-live gets its cash fund with an opening balance of 0 the first time it is needed.
-  await tx.$executeRaw`
+  if (!only) {
+    await tx.$executeRaw`
     INSERT INTO cash_funds (kind, branch_id, name, opening_balance_vnd, opening_at, opening_by_user_id)
     SELECT 'CASH', b.id, 'Quỹ tiền mặt ' || b.name, 0, clock_timestamp(), g.set_by_user_id
     FROM branches b CROSS JOIN finance_go_live g
     WHERE b.is_active AND NOT EXISTS (SELECT 1 FROM cash_funds f WHERE f.kind = 'CASH' AND f.branch_id = b.id)
     ON CONFLICT (branch_id) WHERE kind = 'CASH' DO NOTHING`;
-  await tx.$queryRaw`SELECT id FROM cash_funds ORDER BY id FOR SHARE`;
+    await tx.$queryRaw`SELECT id FROM cash_funds ORDER BY id FOR SHARE`;
+  }
 
   const posted = none();
 
@@ -81,6 +89,7 @@ export async function postCashSources(
     FROM payments p
     JOIN cash_funds f ON (p.method = 'CASH' AND f.kind = 'CASH' AND f.branch_id = p.branch_id) OR (p.method <> 'CASH' AND f.kind = 'BANK')
     WHERE p.status = 'SUCCEEDED' AND p.collected_at >= ${floor}
+      AND (${only}::uuid IS NULL OR f.id = ${only}::uuid)
       AND NOT EXISTS (SELECT 1 FROM fund_entries e WHERE e.source_type = 'PAYMENT' AND e.source_id = p.id AND e.source_leg = 0)
     ORDER BY p.collected_at, p.id
     LIMIT ${limit}
@@ -95,6 +104,7 @@ export async function postCashSources(
     JOIN payments p ON p.id = pc.payment_id AND p.method = 'CASH'
     JOIN cash_funds f ON f.kind = 'CASH' AND f.branch_id = p.branch_id
     WHERE pc.occurred_at >= ${floor}
+      AND (${only}::uuid IS NULL OR f.id = ${only}::uuid)
       AND NOT EXISTS (SELECT 1 FROM fund_entries e WHERE e.source_type = 'PAYMENT_CORRECTION' AND e.source_id = pc.id AND e.source_leg = 0)
     ORDER BY pc.occurred_at, pc.id
     LIMIT ${limit}
@@ -109,6 +119,7 @@ export async function postCashSources(
     FROM product_refunds r
     JOIN cash_funds f ON (r.method = 'CASH' AND f.kind = 'CASH' AND f.branch_id = r.branch_id) OR (r.method <> 'CASH' AND f.kind = 'BANK')
     WHERE r.amount_vnd > 0 AND r.occurred_at >= ${floor}
+      AND (${only}::uuid IS NULL OR f.id = ${only}::uuid)
       AND NOT EXISTS (SELECT 1 FROM fund_entries e WHERE e.source_type = 'PRODUCT_REFUND' AND e.source_id = r.id AND e.source_leg = 0)
     ORDER BY r.occurred_at, r.id
     LIMIT ${limit}
@@ -122,6 +133,7 @@ export async function postCashSources(
     FROM product_exchanges x
     JOIN cash_funds f ON (x.refund_method = 'CASH' AND f.kind = 'CASH' AND f.branch_id = x.branch_id) OR (x.refund_method <> 'CASH' AND f.kind = 'BANK')
     WHERE x.refund_vnd > 0 AND x.refund_method IS NOT NULL AND x.occurred_at >= ${floor}
+      AND (${only}::uuid IS NULL OR f.id = ${only}::uuid)
       AND NOT EXISTS (SELECT 1 FROM fund_entries e WHERE e.source_type = 'PRODUCT_EXCHANGE' AND e.source_id = x.id AND e.source_leg = 0)
     ORDER BY x.occurred_at, x.id
     LIMIT ${limit}
