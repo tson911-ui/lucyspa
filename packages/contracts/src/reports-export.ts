@@ -19,6 +19,10 @@ export interface ReportExportRequest {
   branchId?: string;
   bucket?: string;
   compare?: string;
+  /** Product report only: `variant` (default), `brand` or `category`. */
+  by?: string;
+  /** Stock reports only: the look-back (slow movers) or look-ahead (expiry) window in days; default 60. */
+  days?: string;
   /** Language of the column headers and labels in the file; the default is Vietnamese. */
   locale?: 'vi' | 'en';
 }

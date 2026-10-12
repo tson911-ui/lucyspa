@@ -200,6 +200,19 @@ SELECT 'DH' || row_number() OVER (), i.branch_id, i.id, l.id, gen_random_uuid(),
 FROM p8_inv i JOIN p8_line l ON l.invoice_id = i.id
 WHERE i.status = 'PAID' AND i.channel = 'COUNTER' AND l.kind = 'PRODUCT' AND l.gross - l.share > 40000 AND random() < 0.004;
 
+-- What each line was: 40 services and 350 product variants (so the by-service and by-product reports have something to group).
+INSERT INTO invoice_line_services (invoice_line_id, invoice_id, visit_service_line_id, service_id, participant_id, employee_user_id,
+                                   pricing_unit, catalog_price_min_vnd, catalog_price_max_vnd, quantity_limit, added_on_behalf)
+SELECT l.id, l.invoice_id, gen_random_uuid(), md5('svc' || (abs(hashtext(l.id::text)) % 40)::text)::uuid, gen_random_uuid(),
+       '00000000-0000-4000-8000-0000000000a1', 'PER_SERVICE', l.gross, l.gross, 1, false
+FROM p8_line l WHERE l.kind = 'SERVICE';
+
+INSERT INTO invoice_line_products (invoice_line_id, invoice_id, product_id, variant_id, sku, product_name_vi, product_name_en,
+                                   list_price_vnd, priced_at, fulfilment_mode)
+SELECT l.id, l.invoice_id, md5('prd' || (abs(hashtext(l.id::text)) % 350)::text)::uuid, md5('var' || (abs(hashtext(l.id::text)) % 350)::text)::uuid,
+       'SKU-' || (abs(hashtext(l.id::text)) % 350), 'Sản phẩm thử', 'Test product', l.gross, now(), 'IN_STOCK'
+FROM p8_line l WHERE l.kind = 'PRODUCT';
+
 COMMIT;
 ANALYZE;
 SELECT (SELECT count(*) FROM invoices) AS invoices, (SELECT count(*) FROM invoice_lines) AS lines,

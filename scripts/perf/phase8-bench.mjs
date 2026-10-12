@@ -5,6 +5,29 @@
 import { createDatabaseClient } from '../../packages/database/dist/index.js';
 import { revenueReport } from '../../apps/api/dist/reports/revenue.core.js';
 import { refundReport } from '../../apps/api/dist/reports/refunds.core.js';
+import {
+  comboReport,
+  discountReport,
+  onlineOrderReport,
+  productRevenue,
+  serviceRevenue,
+} from '../../apps/api/dist/reports/sales.core.js';
+import {
+  bookingFunnel,
+  customerVisits,
+  loyaltyReport,
+  staffActivity,
+  topCustomers,
+} from '../../apps/api/dist/reports/people.core.js';
+import {
+  bestSellers,
+  expiringLots,
+  lowStock,
+  slowMovers,
+  stockMovements,
+  stockReceipts,
+  stockValue,
+} from '../../apps/api/dist/reports/stock.core.js';
 import { factsStatement } from '../../apps/api/dist/reports/revenue.sql.js';
 import { Prisma } from '../../packages/database/dist/index.js';
 
@@ -91,6 +114,30 @@ for (const [name, target, days, compare] of cases) {
 allOk &&= await measure('refunds list 366 days', 2000, () =>
   inFrame((context) => refundReport(context, { from: addDays(LAST, -365), to: LAST, page: '1' })),
 );
+
+const wide = { from: addDays(LAST, -365), to: LAST };
+const waveB = [
+  ['services 366 days', serviceRevenue],
+  ['products by variant 366 days', productRevenue],
+  ['combos 366 days', comboReport],
+  ['discounts and campaigns 366 days', discountReport],
+  ['online orders 366 days', onlineOrderReport],
+  ['customers: visits, new vs returning 366 days', customerVisits],
+  ['bookings funnel 366 days', bookingFunnel],
+  ['loyalty 366 days', loyaltyReport],
+  ['top customers 366 days', topCustomers],
+  ['staff activity 366 days', staffActivity],
+  ['stock best sellers 366 days', bestSellers],
+  ['stock low', lowStock],
+  ['stock slow movers 60 days', slowMovers],
+  ['stock expiry 60 days', expiringLots],
+  ['stock value', stockValue],
+  ['stock movements 366 days', stockMovements],
+  ['stock receipts 366 days', stockReceipts],
+];
+for (const [name, run] of waveB) {
+  allOk &&= await measure(name, 2000, () => inFrame((context) => run(context, wide)));
+}
 
 if (process.argv.includes('explain')) {
   const scope = {

@@ -1,15 +1,58 @@
 import {
   REPORT_DEFINITIONS,
+  type BookingFunnelReport,
+  type BestSellerReport,
+  type ComboReport,
+  type ExpiryReport,
+  type LowStockReport,
+  type SlowMoverReport,
+  type StockMovementReport,
+  type StockReceiptReport,
+  type StockValueReport,
+  type CustomerVisitsReport,
+  type LoyaltyReport,
+  type StaffActivityReport,
+  type TopCustomersReport,
+  type DiscountReport,
+  type OnlineOrderReport,
+  type ProductRevenueReport,
   type RefundReport,
   type ReportRegistryResponse,
   type RevenueReport,
+  type ServiceRevenueReport,
 } from '@lucy-spa/contracts';
 import { Inject, Injectable } from '@nestjs/common';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { SessionService } from '../auth/session.service.js';
 import { refundReport, type RefundQuery } from './refunds.core.js';
 import { runReport, type ReportContext, type ReportKind } from './report.frame.js';
+import {
+  bookingFunnel,
+  customerVisits,
+  loyaltyReport,
+  staffActivity,
+  topCustomers,
+  type PeopleQuery,
+} from './people.core.js';
 import { revenueReport, type RevenueQuery } from './revenue.core.js';
+import {
+  bestSellers,
+  expiringLots,
+  lowStock,
+  slowMovers,
+  stockMovements,
+  stockReceipts,
+  stockValue,
+  type StockQuery,
+} from './stock.core.js';
+import {
+  comboReport,
+  discountReport,
+  onlineOrderReport,
+  productRevenue,
+  serviceRevenue,
+  type SalesQuery,
+} from './sales.core.js';
 
 /**
  * Phase 8: the reports. Every method runs in the read-only frame (`runReport`); nothing here writes. The one write of the whole area
@@ -62,6 +105,97 @@ export class ReportsService {
   /** R10: refunds, exchange differences and reversed payments of a period. */
   refunds(token: string | undefined, query: RefundQuery): Promise<RefundReport> {
     return this.run(token, 'report', (context) => refundReport(context, query));
+  }
+
+  /** R5: revenue by service. */
+  serviceRevenue(token: string | undefined, query: SalesQuery): Promise<ServiceRevenueReport> {
+    return this.run(token, 'report', (context) => serviceRevenue(context, query));
+  }
+
+  /** R6: revenue by product, brand or category. */
+  productRevenue(
+    token: string | undefined,
+    query: SalesQuery & { by?: unknown },
+  ): Promise<ProductRevenueReport> {
+    return this.run(token, 'report', (context) => productRevenue(context, query));
+  }
+
+  /** R7: combo packages sold, used, remaining and expired. */
+  combos(token: string | undefined, query: SalesQuery): Promise<ComboReport> {
+    return this.run(token, 'report', (context) => comboReport(context, query));
+  }
+
+  /** R8: discounts given by source, and revenue by campaign. */
+  discounts(token: string | undefined, query: SalesQuery): Promise<DiscountReport> {
+    return this.run(token, 'report', (context) => discountReport(context, query));
+  }
+
+  /** R9: online orders of the period. */
+  onlineOrders(
+    token: string | undefined,
+    query: SalesQuery & { page?: unknown },
+  ): Promise<OnlineOrderReport> {
+    return this.run(token, 'report', (context) => onlineOrderReport(context, query));
+  }
+
+  /** C1: completed visits (lượt đến), people, new and returning. */
+  customerVisits(token: string | undefined, query: PeopleQuery): Promise<CustomerVisitsReport> {
+    return this.run(token, 'report', (context) => customerVisits(context, query));
+  }
+
+  /** C2: bookings, check-ins, cancellations and no-shows. */
+  bookingFunnel(token: string | undefined, query: PeopleQuery): Promise<BookingFunnelReport> {
+    return this.run(token, 'report', (context) => bookingFunnel(context, query));
+  }
+
+  /** C3: points, tiers, referrals, rewards and birthdays. */
+  loyalty(token: string | undefined, query: PeopleQuery): Promise<LoyaltyReport> {
+    return this.run(token, 'report', (context) => loyaltyReport(context, query));
+  }
+
+  /** C4: the customers who paid most in the period. */
+  topCustomers(token: string | undefined, query: PeopleQuery): Promise<TopCustomersReport> {
+    return this.run(token, 'report', (context) => topCustomers(context, query));
+  }
+
+  /** S1: what each employee did in the period (facts only). */
+  staffActivity(token: string | undefined, query: PeopleQuery): Promise<StaffActivityReport> {
+    return this.run(token, 'report', (context) => staffActivity(context, query));
+  }
+
+  /** P8-9: Units and money per product. */
+  bestSellers(token: string | undefined, query: StockQuery): Promise<BestSellerReport> {
+    return this.run(token, 'report', (context) => bestSellers(context, query));
+  }
+
+  /** P8-9: Variants at or below their threshold now. */
+  lowStock(token: string | undefined, query: StockQuery): Promise<LowStockReport> {
+    return this.run(token, 'report', (context) => lowStock(context, query));
+  }
+
+  /** P8-9: Stock with no sale for N days. */
+  slowMovers(token: string | undefined, query: StockQuery): Promise<SlowMoverReport> {
+    return this.run(token, 'report', (context) => slowMovers(context, query));
+  }
+
+  /** P8-9: Lots expired or expiring soon. */
+  expiringLots(token: string | undefined, query: StockQuery): Promise<ExpiryReport> {
+    return this.run(token, 'report', (context) => expiringLots(context, query));
+  }
+
+  /** P8-9: Stock at cost with coverage. */
+  stockValue(token: string | undefined, query: StockQuery): Promise<StockValueReport> {
+    return this.run(token, 'report', (context) => stockValue(context, query));
+  }
+
+  /** P8-9: Movements by kind and reason. */
+  stockMovements(token: string | undefined, query: StockQuery): Promise<StockMovementReport> {
+    return this.run(token, 'report', (context) => stockMovements(context, query));
+  }
+
+  /** P8-9: Receipts by supplier. */
+  stockReceipts(token: string | undefined, query: StockQuery): Promise<StockReceiptReport> {
+    return this.run(token, 'report', (context) => stockReceipts(context, query));
   }
 
   /** The single entry for the reports of the later Steps. */

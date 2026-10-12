@@ -6,3 +6,6 @@ process.env['RUN_AUTH_INTEGRATION'] = 'true';
 await import('../apps/api/dist/reports/reports.integration.test.js');
 await import('../apps/api/dist/reports/revenue.integration.test.js');
 await import('../apps/api/dist/reports/export.integration.test.js');
+await import('../apps/api/dist/reports/sales.integration.test.js');
+await import('../apps/api/dist/reports/people.integration.test.js');
+await import('../apps/api/dist/reports/stock.integration.test.js');

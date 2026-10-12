@@ -140,7 +140,10 @@ export class ReportExportService {
               ...(definition.area === 'revenue' ? [[words.info.definition, words.definition]] : []),
             ],
           };
-          const bytes = request.format === 'csv' ? toCsv(built.main) : toXlsx([built.main, info]);
+          const bytes =
+            request.format === 'csv'
+              ? toCsv(built.main)
+              : toXlsx([built.main, ...(built.extra ?? []), info]);
           const stamp = built.period
             ? `${built.period.from}_${built.period.to}`
             : context.now.toISOString().slice(0, 10);
