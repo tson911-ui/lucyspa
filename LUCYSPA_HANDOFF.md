@@ -947,3 +947,8 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - pm2: web 3 / api 1 / worker 1 online; health ok; all pages answer 200 and the new APIs 401 unauthenticated.
 - Backups: `/root/backups/lucyspa-pre-p7-20261011T235308Z.dump` and `/root/backups/lucyspa-web-pre-p7-20261011T235308Z.tar.gz`.
 - Next for the Owner (not for the agent): start the cash book and payroll with `docs/OWNER_TEST_SCRIPT_PHASE7_A.md`, then `docs/OWNER_TEST_SCRIPT_PHASE7_B.md`. Rollback: see the guide (Wave A code keeps working on 118; going back to Phase 9 needs the 5 permission rows deleted).
+
+### Phase 8 P8-1 (reports design, 2026-10-12, docs only, NOT built)
+
+- `docs/PHASE8_REPORTS.md`: data map, revenue definition (proposed: money collected minus money returned, by payment day, tips excluded), reports R1-R10/C1-C4/staff/stock/cash/payroll/profit, Owner dashboard, export (xlsx+CSV, print for PDF), audit-log screen, reviews (last, optional), P8-T1..T15, 4 new permissions (73 -> 77, granted to nobody), steps P8-2..P8-18 in waves A-D, risks.
+- Questionnaire OQ-P8-1..10 is **pending the Owner**; nothing is approved; no code or migration yet. Items that change daily work (dashboard money widget, staff metrics visibility, cost entry on receipts, export re-auth, customer review prompt) are flagged in section 11.
