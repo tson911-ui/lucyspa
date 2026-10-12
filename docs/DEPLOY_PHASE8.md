@@ -51,7 +51,7 @@ FREE=$(df -BG / | awk 'NR==2{gsub("G","",$4);print $4}')
 [ "$FREE" -ge 2 ] || dung "o dia con $FREE GB, can it nhat 2 GB"
 echo "OK  o dia con trong: $FREE GB"
 expect "so bang moi truoc" "$(sqlq $DB "$TABLES")" "0"
-expect "quyen moi chua co" "$(sqlq $DB "select count(*) from permissions where code in ($CODES)")" "0"
+expect "quyen moi chua co" "$(sqlq $DB "select count(*) from permissions where code::text in ($CODES)")" "0"
 ONLINE_BEFORE=$(sqlq $DB "select enabled from online_sales_settings")
 USERS_BEFORE=$(sqlq $DB "select count(*) from users")
 INVOICES_BEFORE=$(sqlq $DB "select count(*) from invoices")
@@ -119,7 +119,7 @@ expect "migration va quyen sau" "$(sqlq $DB "$COUNTS")" "122|77"
 expect "2 bang moi co mat" "$(sqlq $DB "$TABLES")" "2"
 expect "2 bang moi deu rong" "$(sqlq $DB "$EMPTY")" "0"
 expect "6 chi muc moi co mat" "$(sqlq $DB "$INDEXES")" "6"
-expect "4 quyen moi chua cap cho ai" "$(sqlq $DB "select count(*) from role_permissions rp join permissions p on p.id = rp.permission_id where p.code in ($CODES)")" "0"
+expect "4 quyen moi chua cap cho ai" "$(sqlq $DB "select count(*) from role_permissions rp join permissions p on p.id = rp.permission_id where p.code::text in ($CODES)")" "0"
 expect "so nguoi dung giu nguyen" "$(sqlq $DB "select count(*) from users")" "$USERS_BEFORE"
 expect "so hoa don giu nguyen" "$(sqlq $DB "select count(*) from invoices")" "$INVOICES_BEFORE"
 expect "so thanh toan giu nguyen" "$(sqlq $DB "select count(*) from payments")" "$PAYMENTS_BEFORE"
@@ -183,7 +183,7 @@ cd /opt/lucyspa || exit 1
 OLD=d42ab4e84814f4fb82c1e0de3c26a1c18ffe3a85
 pm2 stop lucyspa-api lucyspa-worker
 CODES="'EXPORT_REPORTS','VIEW_STAFF_REPORTS','VIEW_PROFIT','VIEW_REVIEWS'"
-printf '%s\n' "delete from role_permissions where permission_id in (select id from permissions where code in ($CODES)); delete from user_permission_overrides where permission_id in (select id from permissions where code in ($CODES)); delete from permissions where code in ($CODES);" | docker exec -i lucy-spa-postgres-1 sh -c 'psql -U "$POSTGRES_USER" -d lucy_spa_dev -At'
+printf '%s\n' "delete from role_permissions where permission_id in (select id from permissions where code::text in ($CODES)); delete from user_permission_overrides where permission_id in (select id from permissions where code::text in ($CODES)); delete from permissions where code::text in ($CODES);" | docker exec -i lucy-spa-postgres-1 sh -c 'psql -U "$POSTGRES_USER" -d lucy_spa_dev -At'
 git checkout "$OLD" && pnpm install --frozen-lockfile && pnpm db:generate && pnpm build || { echo "DUNG LAI: build loi"; exit 1; }
 pm2 restart lucyspa-api lucyspa-worker lucyspa-web --update-env
 sleep 20

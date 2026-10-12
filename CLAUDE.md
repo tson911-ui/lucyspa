@@ -152,6 +152,8 @@ screen. No sample round: it is applied to all staff screens.
   that exact action; "add it to the same commit" after a push is not enough, ask first. Follow-ups after a push are new commits.
 - Do not print or edit `.env`; never commit secrets.
 - Windows shell: never use heredocs; write multi-line scripts to a scratch file first.
+- Deploy-guide SQL that tests a database enum column (e.g. a permission `code`) for values that do not exist yet must cast it to text
+  (`code::text in (...)`): comparing an enum to an unknown literal fails with "invalid input value for enum". Found in the Phase 8 deploy (2026-10-12).
 - Migrations are additive; never reset the DB, never delete volumes, never `db push`.
 - Authorization is permission + branch scope server-side; never check role names.
 - Money is integer VND. Timestamps are UTC; business dates use the branch timezone.
