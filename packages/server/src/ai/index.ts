@@ -60,3 +60,17 @@ export {
 } from './product-rewrite.js';
 export { FakeAnthropic, type FakeReply, type FakeRequest } from './fake-anthropic.js';
 export { processKeyCheck, type KeyCheckStatus } from './key-check.js';
+export {
+  MAX_ATTEMPTS,
+  attributesOf,
+  buildProductSnapshot,
+  leaseRewriteItems,
+  runRewriteTick,
+  shopCity,
+  snapshotOf,
+  type LeasedItem,
+  type ProductSnapshot,
+  type RewriteEngineOptions,
+  type RewriteEngineState,
+  type TickResult,
+} from './rewrite-engine.js';

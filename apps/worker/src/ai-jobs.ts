@@ -1,5 +1,11 @@
 import type { DatabaseClient } from '@lucy-spa/database';
-import { ClaudeClient, processKeyCheck, type createLogger } from '@lucy-spa/server';
+import {
+  ClaudeClient,
+  processKeyCheck,
+  runRewriteTick,
+  type RewriteEngineState,
+  type createLogger,
+} from '@lucy-spa/server';
 
 type Logger = ReturnType<typeof createLogger>;
 
@@ -9,7 +15,7 @@ const TICK_MS = 3000;
  * Claude integration Wave A: the worker's AI job family. It is the only process (with the API for the interactive features of later
  * waves) that holds `ANTHROPIC_API_KEY`; a missing key is not an error: the family runs, answers a pending key check with KEY_MISSING and
  * does nothing else. Nothing here is on the path of booking, POS, payments, reports or the public site: when Anthropic or the key is down
- * only the AI page notices. One tick handles the key check; the rewrite runs are added by their own step and share this loop.
+ * only the AI page notices. One tick answers the key check, then works on the queued rewrite items (draft engine).
  */
 export function startAiJobs(database: DatabaseClient, env: NodeJS.ProcessEnv, logger: Logger) {
   const client = new ClaudeClient({ apiKey: env['ANTHROPIC_API_KEY']?.trim() || undefined });
@@ -19,6 +25,7 @@ export function startAiJobs(database: DatabaseClient, env: NodeJS.ProcessEnv, lo
       { errorName: error instanceof Error ? error.name : 'UnknownError' },
       'AI job failed',
     );
+  const rewriteState: RewriteEngineState = { consecutiveFailures: 0 };
   let stopped = false;
   let running: Promise<void> | undefined;
   let timer: NodeJS.Timeout;
@@ -27,6 +34,9 @@ export function startAiJobs(database: DatabaseClient, env: NodeJS.ProcessEnv, lo
       try {
         const checked = await processKeyCheck(database, client);
         if (checked !== null) logger.info({ status: checked }, 'AI key check answered');
+        const rewrite = await runRewriteTick(database, client, rewriteState, { onError: failure });
+        if (rewrite.leased > 0)
+          logger.info({ items: rewrite.leased }, 'AI rewrite items processed');
       } catch (error) {
         failure(error);
       }
