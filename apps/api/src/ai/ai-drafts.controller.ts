@@ -8,6 +8,10 @@ import type {
   AiDraftRegenerateRequest,
   AiDraftRejectRequest,
   AiDraftRetryRequest,
+  AiPageApproveRequest,
+  AiPageApproveResponse,
+  AiPageResponse,
+  AiPageViewRequest,
 } from '@lucy-spa/contracts';
 import {
   Body,
@@ -23,6 +27,9 @@ import {
 } from '@nestjs/common';
 import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
   IsBoolean,
   IsInt,
   IsObject,
@@ -66,6 +73,26 @@ class RegenerateDto extends VersionDto implements AiDraftRegenerateRequest {
 
 class RetryDto extends VersionDto implements AiDraftRetryRequest {}
 
+class PageViewDto implements AiPageViewRequest {
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
+  itemIds!: string[];
+}
+
+class PageApproveDto implements AiPageApproveRequest {
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
+  itemIds!: string[];
+}
+
 @Controller('api/v1/ai/product-drafts')
 export class AiDraftsController {
   constructor(
@@ -85,6 +112,43 @@ export class AiDraftsController {
       status,
       page: parsed !== undefined && Number.isFinite(parsed) ? parsed : undefined,
     });
+  }
+
+  @Get('page')
+  @ApiOkResponse({
+    description:
+      'One page (20) of ready drafts as the text that would go on the website, for reading before a page approval.',
+  })
+  page(@Req() request: Request, @Query('page') page?: string): Promise<AiPageResponse> {
+    const parsed = page === undefined ? undefined : Number(page);
+    return this.ai.pageOfDrafts(this.session(request), {
+      page: parsed !== undefined && Number.isFinite(parsed) ? parsed : undefined,
+    });
+  }
+
+  @Post('page-view')
+  @HttpCode(200)
+  @ApiOkResponse({ description: 'Records that this reviewer was shown these drafts.' })
+  pageView(
+    @Body() body: PageViewDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ marked: number }> {
+    return this.ai.viewPage(this.session(request), body, this.requestId(response));
+  }
+
+  @Post('page-approve')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'One confirm for up to 20 ready drafts without warnings that this reviewer has seen; allowed after three drafts were applied one by one. Audited per product.',
+  })
+  pageApprove(
+    @Body() body: PageApproveDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<AiPageApproveResponse> {
+    return this.ai.approvePage(this.session(request), body, this.requestId(response));
   }
 
   @Get(':id')

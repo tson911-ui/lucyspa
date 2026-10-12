@@ -1,6 +1,7 @@
 import {
   AI_DRAFT_LIMITS,
   AI_DRAFT_STATUSES,
+  AI_RUN_LIMITS,
   type AiDraftApplyRequest,
   type AiDraftApplyResponse,
   type AiDraftContent,
@@ -16,6 +17,11 @@ import {
   type AiDraftSections,
   type AiDraftStatus,
   type AiDraftWarning,
+  type AiPageApproveRequest,
+  type AiPageApproveResponse,
+  type AiPageItem,
+  type AiPageResponse,
+  type AiPageViewRequest,
 } from '@lucy-spa/contracts';
 import { Prisma } from '@lucy-spa/database';
 import {
@@ -490,6 +496,80 @@ const sectionsJson = (sections: AiDraftSections): Prisma.InputJsonObject => ({ .
 const hasSections = (sections: AiDraftSections): boolean =>
   Object.values(sections).some((entry) => entry !== null);
 
+interface ApplyWrite {
+  item: ItemRow;
+  product: ProductRow;
+  base: ProductRewriteDraft;
+  content: AiDraftContent;
+  edited: boolean;
+  useNameSuggestion: boolean;
+  via: 'SINGLE' | 'PAGE';
+  acknowledged: string[];
+}
+
+/**
+ * The one place a draft is written to a product: the draft's fields only, `content_origin` (LUCY_AI, or LUCY_MANUAL when a person edited
+ * it), the item as APPLIED with how it was applied, and the audit event with the full before and after. The caller has locked the item and
+ * the product and has decided that the draft may be applied.
+ */
+async function writeApply(context: AdminContext, input: ApplyWrite): Promise<ItemRow> {
+  const { tx } = context;
+  const { item, product, base, content, edited, useNameSuggestion, via, acknowledged } = input;
+  const nameVi =
+    useNameSuggestion && base.nameViSuggestion !== null ? base.nameViSuggestion : product.nameVi;
+  const origin = edited ? 'LUCY_MANUAL' : 'LUCY_AI';
+  const before = {
+    ...currentOf(product),
+    contentOrigin: product.contentOrigin,
+  };
+  const data: Prisma.ProductUncheckedUpdateInput = {
+    nameVi,
+    nameEn: content.nameEn,
+    descriptionVi: content.descriptionVi,
+    descriptionEn: content.descriptionEn,
+    descriptionSectionsVi: hasSections(content.sectionsVi)
+      ? sectionsJson(content.sectionsVi)
+      : Prisma.DbNull,
+    descriptionSectionsEn: hasSections(content.sectionsEn)
+      ? sectionsJson(content.sectionsEn)
+      : Prisma.DbNull,
+    seoTitleVi: content.seoTitleVi,
+    seoTitleEn: content.seoTitleEn,
+    seoDescriptionVi: content.seoDescriptionVi,
+    seoDescriptionEn: content.seoDescriptionEn,
+    contentOrigin: origin,
+    contentOriginAt: context.now,
+    rowVersion: product.rowVersion + 1,
+  };
+  await tx.product.update({ where: { id: product.id }, data });
+  const applied = await touch(context, item, {
+    status: 'APPLIED',
+    appliedAt: context.now,
+    appliedByUserId: context.actor.userId,
+    appliedVia: via,
+    reviewedAt: context.now,
+    reviewedByUserId: context.actor.userId,
+    errorCode: null,
+    lockedUntil: null,
+  });
+  await appendAdminAudit(context, {
+    action: 'AI_DRAFT_APPLIED',
+    entityType: 'Product',
+    entityId: product.id,
+    before: before as unknown as Prisma.InputJsonObject,
+    after: {
+      nameVi,
+      ...content,
+      contentOrigin: origin,
+      aiItemId: item.id,
+      runId: item.runId,
+      appliedVia: via,
+      acknowledgedWarnings: acknowledged,
+    } as unknown as Prisma.InputJsonObject,
+  });
+  return applied;
+}
+
 export async function applyDraft(
   context: AdminContext,
   id: string,
@@ -533,57 +613,15 @@ export async function applyDraft(
     throw new AuthError('VALIDATION_FAILED', 'acknowledgeWarnings');
   }
 
-  const nameVi =
-    useNameSuggestion && base.nameViSuggestion !== null ? base.nameViSuggestion : product.nameVi;
-  const origin = edited ? 'LUCY_MANUAL' : 'LUCY_AI';
-  const before = {
-    ...currentOf(product),
-    contentOrigin: product.contentOrigin,
-  };
-  const data: Prisma.ProductUncheckedUpdateInput = {
-    nameVi,
-    nameEn: content.nameEn,
-    descriptionVi: content.descriptionVi,
-    descriptionEn: content.descriptionEn,
-    descriptionSectionsVi: hasSections(content.sectionsVi)
-      ? sectionsJson(content.sectionsVi)
-      : Prisma.DbNull,
-    descriptionSectionsEn: hasSections(content.sectionsEn)
-      ? sectionsJson(content.sectionsEn)
-      : Prisma.DbNull,
-    seoTitleVi: content.seoTitleVi,
-    seoTitleEn: content.seoTitleEn,
-    seoDescriptionVi: content.seoDescriptionVi,
-    seoDescriptionEn: content.seoDescriptionEn,
-    contentOrigin: origin,
-    contentOriginAt: context.now,
-    rowVersion: product.rowVersion + 1,
-  };
-  await tx.product.update({ where: { id: product.id }, data });
-  const applied = await touch(context, item, {
-    status: 'APPLIED',
-    appliedAt: context.now,
-    appliedByUserId: context.actor.userId,
-    appliedVia: 'SINGLE',
-    reviewedAt: context.now,
-    reviewedByUserId: context.actor.userId,
-    errorCode: null,
-    lockedUntil: null,
-  });
-  await appendAdminAudit(context, {
-    action: 'AI_DRAFT_APPLIED',
-    entityType: 'Product',
-    entityId: product.id,
-    before: before as unknown as Prisma.InputJsonObject,
-    after: {
-      nameVi,
-      ...content,
-      contentOrigin: origin,
-      aiItemId: item.id,
-      runId: item.runId,
-      appliedVia: 'SINGLE',
-      acknowledgedWarnings: warnings.map((warning) => warning.code),
-    } as unknown as Prisma.InputJsonObject,
+  const applied = await writeApply(context, {
+    item,
+    product,
+    base,
+    content,
+    edited,
+    useNameSuggestion,
+    via: 'SINGLE',
+    acknowledged: warnings.map((warning) => warning.code),
   });
   return { result: 'APPLIED', detail: await buildDetail(context, applied) };
 }
@@ -700,4 +738,167 @@ export async function retryDraft(
     after: { productId: item.targetId, fromStatus: item.status },
   });
   return buildDetail(context, updated);
+}
+
+// ------------------------------------------------------------------------------------------------------------------ page approval
+
+const ITEM_IDS_MAX = AI_RUN_LIMITS.pageApprovalMax;
+
+function itemIds(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length === 0 || value.length > ITEM_IDS_MAX) {
+    throw new AuthError('VALIDATION_FAILED', 'itemIds');
+  }
+  const ids = [...new Set(value as unknown[])];
+  if (ids.length !== value.length || ids.some((id) => typeof id !== 'string' || !ID.test(id))) {
+    throw new AuthError('VALIDATION_FAILED', 'itemIds');
+  }
+  return (ids as string[]).sort();
+}
+
+const singleApplied = (context: AdminContext): Promise<number> =>
+  context.tx.aiItem.count({
+    where: { kind: 'PRODUCT_TEXT', status: 'APPLIED', appliedVia: 'SINGLE' },
+  });
+
+/** One page (20) of drafts that are ready, as the text that would go on the page, for reading before the one confirm. */
+export async function pageOfDrafts(
+  context: AdminContext,
+  query: { page?: number | undefined },
+): Promise<AiPageResponse> {
+  requireUse(context);
+  const { tx } = context;
+  const page = Math.max(1, Math.trunc(query.page ?? 1));
+  const where = { kind: 'PRODUCT_TEXT', status: 'DRAFT_READY' } as const;
+  const [total, rows, applied] = await Promise.all([
+    tx.aiItem.count({ where }),
+    tx.aiItem.findMany({
+      where,
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      skip: (page - 1) * ITEM_IDS_MAX,
+      take: ITEM_IDS_MAX,
+    }),
+    singleApplied(context),
+  ]);
+  const products = await tx.product.findMany({
+    where: { id: { in: rows.map((row) => row.targetId) } },
+    select: { id: true, code: true, nameVi: true, rowVersion: true },
+  });
+  const byId = new Map(products.map((product) => [product.id, product]));
+  const items: AiPageItem[] = rows.flatMap((row) => {
+    const base = storedDraft(row);
+    const product = byId.get(row.targetId);
+    if (base === null || !product) return [];
+    const { content } = finalContent(row, base);
+    const warnings = storedWarnings(row).length;
+    return [
+      {
+        id: row.id,
+        rowVersion: row.rowVersion,
+        productName: product.nameVi,
+        productCode: product.code,
+        descriptionVi: content.descriptionVi,
+        seoTitleVi: content.seoTitleVi,
+        warnings,
+        eligible: warnings === 0 && product.rowVersion === row.baseRowVersion,
+      },
+    ];
+  });
+  return {
+    items,
+    page,
+    total,
+    singleApplied: applied,
+    canApprove:
+      applied >= AI_RUN_LIMITS.singleApprovalsNeeded &&
+      decide(context.actor.graph, 'MANAGE_PRODUCTS', GLOBAL),
+  };
+}
+
+/** Records that this reviewer has been shown these drafts (the page approval counts only drafts this person has seen). */
+export async function viewPage(context: AdminContext, request: AiPageViewRequest): Promise<number> {
+  requireUse(context);
+  const ids = itemIds(request.itemIds);
+  let marked = 0;
+  for (const id of ids) {
+    await context.tx.$queryRaw`SELECT id FROM ai_items WHERE id = ${id}::uuid FOR UPDATE`;
+    const item = await context.tx.aiItem.findUnique({ where: { id } });
+    if (item === null || item.kind !== 'PRODUCT_TEXT' || item.status !== 'DRAFT_READY') continue;
+    if (item.viewedByUserId === context.actor.userId && item.viewedAt !== null) continue;
+    await touch(context, item, { viewedAt: context.now, viewedByUserId: context.actor.userId });
+    marked += 1;
+  }
+  return marked;
+}
+
+/**
+ * One confirm for a page of up to 20 drafts (Owner answer to OQ-CI-3). Allowed only after three drafts were applied one by one. Each
+ * draft must be ready, free of any warning, fresh (its product unchanged) and seen by this reviewer; a draft that is not is skipped with
+ * its reason, never applied. Every applied product gets its own audit event (applied via PAGE) and one summary event covers the page.
+ */
+export async function approvePage(
+  context: AdminContext,
+  request: AiPageApproveRequest,
+): Promise<AiPageApproveResponse> {
+  requireApply(context);
+  const ids = itemIds(request.itemIds);
+  if ((await singleApplied(context)) < AI_RUN_LIMITS.singleApprovalsNeeded) {
+    throw new AuthError('VALIDATION_FAILED', 'singleApprovals');
+  }
+  const { tx } = context;
+  const skipped: AiPageApproveResponse['skipped'] = [];
+  const done: string[] = [];
+  for (const id of ids) {
+    await tx.$queryRaw`SELECT id FROM ai_items WHERE id = ${id}::uuid FOR UPDATE`;
+    const item = await tx.aiItem.findUnique({ where: { id } });
+    if (item === null || item.kind !== 'PRODUCT_TEXT') throw new AuthError('NOT_FOUND');
+    const base = item.status === 'DRAFT_READY' ? storedDraft(item) : null;
+    if (base === null) {
+      skipped.push({ id, reason: 'NOT_READY' });
+      continue;
+    }
+    await tx.$queryRaw`SELECT id FROM products WHERE id = ${item.targetId}::uuid FOR UPDATE`;
+    const product = await tx.product.findUniqueOrThrow({
+      where: { id: item.targetId },
+      select: PRODUCT_SELECT,
+    });
+    if (product.rowVersion !== item.baseRowVersion) {
+      await touch(context, item, { status: 'STALE' });
+      skipped.push({ id, reason: 'STALE' });
+      continue;
+    }
+    if (item.viewedByUserId !== context.actor.userId || item.viewedAt === null) {
+      skipped.push({ id, reason: 'NOT_VIEWED' });
+      continue;
+    }
+    const { content, edited, useNameSuggestion } = finalContent(item, base);
+    // The notes the draft already carries count (some, like a title shared with another product, only exist at write time), and the
+    // checks run again on the text that would be applied (the settings may have changed since).
+    if (
+      storedWarnings(item).length > 0 ||
+      (await checkContent(context, item, content, base)).length > 0
+    ) {
+      skipped.push({ id, reason: 'WARNINGS' });
+      continue;
+    }
+    await writeApply(context, {
+      item,
+      product,
+      base,
+      content,
+      edited,
+      useNameSuggestion,
+      via: 'PAGE',
+      acknowledged: [],
+    });
+    done.push(id);
+  }
+  if (done.length > 0) {
+    await appendAdminAudit(context, {
+      action: 'AI_PAGE_APPROVED',
+      entityType: 'AiItem',
+      entityId: done[0]!,
+      after: { applied: done.length, skipped: skipped.length, itemIds: done },
+    });
+  }
+  return { applied: done.length, skipped };
 }

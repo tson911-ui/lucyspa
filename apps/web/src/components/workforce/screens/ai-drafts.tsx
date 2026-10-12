@@ -3,6 +3,7 @@
 import {
   AI_DRAFT_STATUSES,
   type AiDraftList,
+  type AiRunList,
   type AiDraftRow,
   type AiDraftStatus,
 } from '@lucy-spa/contracts';
@@ -15,7 +16,7 @@ import {
   useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { aiDraftsDictionary } from '../../../i18n/ai-drafts';
 import { fill } from '../../../i18n/workforce';
 import {
@@ -31,9 +32,11 @@ import { paginationLabels, toolbarLabels } from '../../../lib/workforce/list-vie
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { PrefetchLink as Link } from '../link';
 import { useAccount, useWorkforce } from '../session';
-import { Badge, Empty, ErrorState, PageHeader, useResource } from '../ui';
+import { PageApprovalDrawer, RunsPanel, StartRunDialog } from './ai-runs';
+import { Badge, Button, Empty, ErrorState, PageHeader, useResource, useSuccessToast } from '../ui';
 
 const BASE = '/api/v1/ai/product-drafts';
+const RUNS = '/api/v1/ai/product-runs';
 const POLL_MS = 5000;
 const ZONE = 'Asia/Ho_Chi_Minh';
 
@@ -73,13 +76,21 @@ function AiDraftsPage() {
     [api, state.status, state.page],
   );
   const data = list.data;
+  const runs = useResource(() => api.get<AiRunList>(RUNS), [api]);
+  const notify = useSuccessToast();
+  const [starting, setStarting] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const runData = runs.data;
+  const reloadAll = async () => {
+    await Promise.all([list.reload(), runs.reload()]);
+  };
   const working =
     data !== null && data.counts.byStatus.QUEUED + data.counts.byStatus.GENERATING > 0;
   useEffect(() => {
     if (!working) return;
-    const timer = setInterval(() => void list.reload(), POLL_MS);
+    const timer = setInterval(() => void Promise.all([list.reload(), runs.reload()]), POLL_MS);
     return () => clearInterval(timer);
-  }, [working, list]);
+  }, [working, list, runs]);
 
   const columns: DataTableColumn<AiDraftRow>[] = [
     {
@@ -167,7 +178,17 @@ function AiDraftsPage() {
 
   return (
     <>
-      <PageHeader title={text.title} intro={text.intro} />
+      <PageHeader title={text.title} intro={text.intro}>
+        <Button
+          variant="primary"
+          icon="sparkles"
+          onClick={() => setStarting(true)}
+          disabled={!runData}
+        >
+          {text.runs.start}
+        </Button>
+      </PageHeader>
+      {runData ? <RunsPanel data={runData} onChanged={reloadAll} /> : null}
       <ListSection title={text.table}>
         <ListToolbar
           labels={toolbarLabels(t)}
@@ -175,6 +196,15 @@ function AiDraftsPage() {
           onReset={() => update({ status: '' })}
           reload={{ label: t.common.reload, onClick: () => void list.reload() }}
           resultCount={data ? String(data.total) : undefined}
+          {...(runData && runData.singleApplied >= 3
+            ? {
+                actions: (
+                  <Button variant="secondary" icon="check" onClick={() => setApproving(true)}>
+                    {text.page.open}
+                  </Button>
+                ),
+              }
+            : {})}
           filters={
             <FacetedFilter
               label={text.filterStatus}
@@ -211,6 +241,27 @@ function AiDraftsPage() {
           }}
         />
       </ListSection>
+      {starting && runData ? (
+        <StartRunDialog
+          data={runData}
+          onClose={() => setStarting(false)}
+          onStarted={async () => {
+            setStarting(false);
+            notify(text.runs.started);
+            await reloadAll();
+          }}
+        />
+      ) : null}
+      {approving ? (
+        <PageApprovalDrawer
+          onClose={() => setApproving(false)}
+          onDone={async (message) => {
+            setApproving(false);
+            notify(message);
+            await reloadAll();
+          }}
+        />
+      ) : null}
     </>
   );
 }

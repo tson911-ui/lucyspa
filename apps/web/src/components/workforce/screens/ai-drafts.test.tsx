@@ -52,6 +52,48 @@ test('the dictionaries are complete in both languages, name every warning code a
   ]) {
     assert.ok(Reflect.get(text.warnings, code) && Reflect.get(en.warnings, code), code);
   }
+  // The words of runs and page approval: every run status, scope, block reason and pause reason has a sentence.
+  for (const key of [
+    'QUEUED',
+    'RUNNING',
+    'PAUSED_CAP',
+    'PAUSED_USER',
+    'PAUSED_ERROR',
+    'DONE',
+    'CANCELLED',
+  ]) {
+    assert.ok(Reflect.get(text.runs.statuses, key) && Reflect.get(en.runs.statuses, key), key);
+  }
+  for (const key of [
+    'OFF',
+    'REWRITE_OFF',
+    'NO_RATE',
+    'NOTHING_TO_WRITE',
+    'FIRST_THREE_DONE',
+    'LOCKED',
+    'RUN_ACTIVE',
+  ]) {
+    assert.ok(Reflect.get(text.runs.blocked, key) && Reflect.get(en.runs.blocked, key), key);
+  }
+  for (const key of [
+    'CAP_MONTH',
+    'CAP_FEATURE',
+    'NO_RATE',
+    'KEY_MISSING',
+    'AUTH_FAILED',
+    'LIMIT_REACHED',
+    'CIRCUIT',
+    'USER',
+    'OTHER',
+  ]) {
+    assert.ok(
+      Reflect.get(text.runs.pauseReasons, key) && Reflect.get(en.runs.pauseReasons, key),
+      key,
+    );
+  }
+  for (const key of ['NOT_READY', 'WARNINGS', 'NOT_VIEWED', 'STALE']) {
+    assert.ok(Reflect.get(text.page.reasons, key), key);
+  }
   for (const status of [
     'QUEUED',
     'GENERATING',

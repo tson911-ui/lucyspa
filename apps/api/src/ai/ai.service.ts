@@ -8,6 +8,16 @@ import type {
   AiDraftRejectRequest,
   AiDraftRetryRequest,
   AiKeyCheckRequest,
+  AiPageApproveRequest,
+  AiPageApproveResponse,
+  AiPageResponse,
+  AiPageViewRequest,
+  AiRunCommandRequest,
+  AiRunCreateRequest,
+  AiRunList,
+  AiRunPreview,
+  AiRunRow,
+  AiRunUnlockRequest,
   AiSettingsEditRequest,
   AiSettingsResponse,
 } from '@lucy-spa/contracts';
@@ -18,6 +28,7 @@ import { SessionService } from '../auth/session.service.js';
 import { runAdminCommand, type AdminContext } from '../authorization/admin-command.js';
 import { sqlStateOf } from '../booking/customer-command.js';
 import * as drafts from './ai-drafts.core.js';
+import * as runs from './ai-runs.core.js';
 import * as settings from './ai-settings.core.js';
 
 /**
@@ -119,6 +130,70 @@ export class AiService {
     requestId?: string,
   ): Promise<AiDraftDetail> {
     return this.run(token, requestId, (context) => drafts.retryDraft(context, id, body));
+  }
+
+  pageOfDrafts(
+    token: string | undefined,
+    query: { page?: number | undefined },
+  ): Promise<AiPageResponse> {
+    return this.run(token, undefined, (context) => drafts.pageOfDrafts(context, query));
+  }
+
+  async viewPage(
+    token: string | undefined,
+    body: AiPageViewRequest,
+    requestId?: string,
+  ): Promise<{ marked: number }> {
+    return {
+      marked: await this.run(token, requestId, (context) => drafts.viewPage(context, body)),
+    };
+  }
+
+  approvePage(
+    token: string | undefined,
+    body: AiPageApproveRequest,
+    requestId?: string,
+  ): Promise<AiPageApproveResponse> {
+    // A page approval writes up to 20 products and their audit rows: it is allowed more time than one command.
+    return this.run(token, requestId, (context) => drafts.approvePage(context, body), 60_000);
+  }
+
+  previewRun(
+    token: string | undefined,
+    query: { scope?: unknown; limit?: unknown; productIds?: unknown },
+  ): Promise<AiRunPreview> {
+    return this.run(token, undefined, (context) => runs.previewRun(context, query));
+  }
+
+  createRun(
+    token: string | undefined,
+    body: AiRunCreateRequest,
+    requestId?: string,
+  ): Promise<AiRunRow> {
+    // Up to 400 product snapshots are read and written in one step.
+    return this.run(token, requestId, (context) => runs.createRun(context, body), 120_000);
+  }
+
+  listRuns(token: string | undefined): Promise<AiRunList> {
+    return this.run(token, undefined, (context) => runs.listRuns(context));
+  }
+
+  commandRun(
+    token: string | undefined,
+    id: string,
+    command: 'pause' | 'resume' | 'cancel',
+    body: AiRunCommandRequest,
+    requestId?: string,
+  ): Promise<AiRunRow> {
+    return this.run(token, requestId, (context) => runs.commandRun(context, id, command, body));
+  }
+
+  unlockRuns(
+    token: string | undefined,
+    body: AiRunUnlockRequest,
+    requestId?: string,
+  ): Promise<AiRunList> {
+    return this.run(token, requestId, (context) => runs.unlockRuns(context, body));
   }
 
   private run<T>(
