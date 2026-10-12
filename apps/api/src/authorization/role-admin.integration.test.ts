@@ -317,8 +317,8 @@ test(
                 );
                 const listed = await roles.listRoles(ownerSession);
                 assert.ok(listed.roles.some((entry) => entry.id === role.id));
-                // The catalog (73 codes since Phase 7 P7-2) minus the three Owner-only ones.
-                assert.equal(listed.permissions.length, 70);
+                // The catalog (77 codes since Phase 8 P8-2) minus the three Owner-only ones.
+                assert.equal(listed.permissions.length, 74);
                 // Scope capability comes from the code-owned catalog (Step 4B role UI).
                 assert.deepEqual(
                   listed.permissionCatalog.map((entry) => entry.code),
@@ -349,6 +349,7 @@ test(
                     'MANAGE_PAY_RULES',
                     'MANAGE_PAYROLL',
                     'APPROVE_PAYROLL',
+                    'VIEW_PROFIT',
                   ],
                 );
                 const events = await tx.auditEvent.findMany({

@@ -452,6 +452,10 @@ test('the code-owned catalog is exactly the Phase 1, Phase 2 and follow-up Step 
       ['APPROVE_PAYROLL', 'GLOBAL_ONLY', 'EMPLOYEE_PAY'],
       ['VIEW_CASH', 'BRANCH_CAPABLE', 'FINANCIAL'],
       ['MANAGE_CASH', 'BRANCH_CAPABLE', 'FINANCIAL'],
+      ['EXPORT_REPORTS', 'BRANCH_CAPABLE', 'FINANCIAL'],
+      ['VIEW_STAFF_REPORTS', 'BRANCH_CAPABLE', 'STANDARD'],
+      ['VIEW_PROFIT', 'GLOBAL_ONLY', 'FINANCIAL'],
+      ['VIEW_REVIEWS', 'BRANCH_CAPABLE', 'STANDARD'],
     ],
   );
 });

@@ -227,6 +227,12 @@ export const PERMISSION_CATALOG = Object.freeze([
   { code: 'APPROVE_PAYROLL', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'EMPLOYEE_PAY' },
   { code: 'VIEW_CASH', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'FINANCIAL' },
   { code: 'MANAGE_CASH', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'FINANCIAL' },
+  // Phase 8 P8-2 (design PHASE8_REPORTS.md section 7, approved by the Owner on 2026-10-12): taking a report out as a file, the factual
+  // per-employee report, the Owner-only provisional profit and the review report. Granted to nobody.
+  { code: 'EXPORT_REPORTS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'FINANCIAL' },
+  { code: 'VIEW_STAFF_REPORTS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  { code: 'VIEW_PROFIT', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'FINANCIAL' },
+  { code: 'VIEW_REVIEWS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
 ] as const satisfies readonly PermissionDefinition[]);
 
 /** Codes that only the virtual Owner holds: no role and no override may carry them (SQL refuses too). */

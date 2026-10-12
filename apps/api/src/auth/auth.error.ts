@@ -228,6 +228,16 @@ const errors = {
     409,
     'A newer test exists or the address changed; confirm the latest test',
   ],
+  // Phase 8: reports. A report never reveals what the person may not read: a branch outside their scope is simply FORBIDDEN.
+  REPORT_RANGE_INVALID: [422, 'The dates are not a valid range'],
+  REPORT_RANGE_TOO_LONG: [422, 'A report covers at most 366 days at a time'],
+  REPORT_TIMEOUT: [503, 'The report took too long; choose a shorter period'],
+  REPORT_TOO_MANY_ROWS: [
+    422,
+    'The file would have more than 100,000 rows; choose a shorter period',
+  ],
+  REPORT_TOTALS_DIFFER: [500, 'The parts of the report do not add up to its total'],
+  EXPORT_BUSY: [429, 'Two files are already being prepared; wait a moment'],
   // Phase 7 Wave A: the shop funds (cash book). No error reveals another branch's money.
   FINANCE_ALREADY_LIVE: [409, 'The cash book and payroll were already started'],
   FINANCE_NOT_LIVE: [409, 'The cash book and payroll have not been started yet'],

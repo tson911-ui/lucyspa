@@ -57,6 +57,31 @@ export class SessionService {
   }
 
   /**
+   * Phase 8 (P8-T1): the frame of every report. One snapshot (REPEATABLE READ) so the parts of a report always add up to its total
+   * even while payments arrive, READ ONLY so the database itself refuses any write, and a statement timeout so a slow query can
+   * never hold a connection. The shared graph lock is the only lock taken (an advisory lock, allowed in a read-only transaction).
+   * `SET TRANSACTION` must be the first statement, so nothing runs before it.
+   */
+  async withReadOnlyTransaction<T>(
+    work: (transaction: Prisma.TransactionClient) => Promise<T>,
+    options: { statementTimeoutMs: number },
+  ): Promise<T> {
+    return this.prisma.client.$transaction(
+      async (transaction) => {
+        await transaction.$executeRawUnsafe(
+          'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY',
+        );
+        await transaction.$executeRawUnsafe(
+          `SET LOCAL statement_timeout = ${Math.trunc(options.statementTimeoutMs)}`,
+        );
+        await takeSharedAuthGraphLock(transaction);
+        return work(transaction);
+      },
+      { timeout: options.statementTimeoutMs + 10_000, maxWait: 5_000 },
+    );
+  }
+
+  /**
    * Security-graph writers (membership/scope changes): the exclusive graph lock is the
    * first statement, so no authentication mutation observes a partially applied graph.
    * Later shared-lock requests by this same transaction are granted by PostgreSQL.

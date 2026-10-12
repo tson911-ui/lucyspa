@@ -1416,6 +1416,11 @@ const vi = {
       APPROVE_PAYROLL: 'Chốt kỳ lương, ghi đã trả lương, duyệt và chi tạm ứng',
       VIEW_CASH: 'Xem sổ quỹ, chốt ngày và đối chiếu của chi nhánh',
       MANAGE_CASH: 'Ghi thu chi, nộp tiền, đếm quỹ và chốt ngày của chi nhánh',
+      EXPORT_REPORTS: 'Tải báo cáo về máy dưới dạng tệp Excel hoặc CSV',
+      VIEW_STAFF_REPORTS:
+        'Xem số liệu làm việc của từng nhân viên (lượt làm dịch vụ, thời gian, chấm công)',
+      VIEW_PROFIT: 'Xem lãi tạm tính của cả cửa hàng (chỉ Chủ)',
+      VIEW_REVIEWS: 'Xem đánh giá của khách theo chi nhánh',
     },
     duplicateCode: 'Mã vai trò này đã tồn tại.',
     managerGroupHolders:
@@ -4058,6 +4063,11 @@ const en: Dictionary = {
       APPROVE_PAYROLL: 'Close a payroll period, mark pay as paid, approve and pay advances',
       VIEW_CASH: 'View the cash book, day closings and reconciliation of the branch',
       MANAGE_CASH: 'Record money in and out, deposits, cash counts and close the day of the branch',
+      EXPORT_REPORTS: 'Download reports as Excel or CSV files',
+      VIEW_STAFF_REPORTS:
+        'View the work figures of each employee (services performed, time, attendance)',
+      VIEW_PROFIT: 'View the shop-wide provisional profit',
+      VIEW_REVIEWS: 'View customer reviews of the branch',
     },
     duplicateCode: 'This role code already exists.',
     managerGroupHolders:

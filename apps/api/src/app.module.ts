@@ -43,6 +43,8 @@ import { SupplierSourceController } from './supplier-sources/supplier-source.con
 import { SupplierSourceService } from './supplier-sources/supplier-source.service.js';
 import { CashController } from './finance/cash.controller.js';
 import { CashService } from './finance/cash.service.js';
+import { ReportsController } from './reports/reports.controller.js';
+import { ReportsService } from './reports/reports.service.js';
 import { MyPayslipsController, PayController } from './pay/pay.controller.js';
 import { PayService } from './pay/pay.service.js';
 import { CampaignService } from './campaigns/campaign.service.js';
@@ -182,6 +184,7 @@ export class AppModule {
         CampaignController,
         SupplierSourceController,
         CashController,
+        ReportsController,
         PayController,
         MyPayslipsController,
         SupplierImportController,
@@ -266,6 +269,7 @@ export class AppModule {
         CampaignService,
         SupplierSourceService,
         CashService,
+        ReportsService,
         PayService,
         SupplierImportService,
         ProductRefundService,

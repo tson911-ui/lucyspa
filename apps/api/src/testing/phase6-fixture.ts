@@ -29,7 +29,11 @@ export interface Phase6Kit {
   /** The adapter every service takes in place of `SessionService`, bound to the outer transaction (savepoints). */
   adapter: Pick<
     SessionService,
-    'withTransaction' | 'withExclusiveTransaction' | 'resolveForMutation' | 'resolve'
+    | 'withTransaction'
+    | 'withExclusiveTransaction'
+    | 'resolveForMutation'
+    | 'resolve'
+    | 'withReadOnlyTransaction'
   >;
   throttle: AuthThrottleService;
   /** A short unique token of this run, for codes and names. */
@@ -95,7 +99,27 @@ export async function phase6Fixture(work: (kit: Phase6Kit) => Promise<void>): Pr
               throw error;
             }
           };
+          // Phase 8: the report frame. The real one opens a READ ONLY REPEATABLE READ transaction; inside the fixture's outer transaction (which
+          // already wrote rows) the same guarantee is a savepoint with transaction_read_only = on, undone afterwards.
+          const readOnly = async <T>(
+            job: (client: Prisma.TransactionClient) => Promise<T>,
+            options: { statementTimeoutMs: number },
+          ) => {
+            const name = `p8_ro_${++savepoint}`;
+            await tx.$executeRawUnsafe(`SAVEPOINT ${name}`);
+            try {
+              await tx.$executeRawUnsafe('SET LOCAL transaction_read_only = on');
+              await tx.$executeRawUnsafe(
+                `SET LOCAL statement_timeout = ${Math.trunc(options.statementTimeoutMs)}`,
+              );
+              return await job(tx);
+            } finally {
+              await tx.$executeRawUnsafe(`ROLLBACK TO SAVEPOINT ${name}`);
+              await tx.$executeRawUnsafe(`RELEASE SAVEPOINT ${name}`);
+            }
+          };
           const adapter = {
+            withReadOnlyTransaction: readOnly,
             withTransaction: isolated,
             withExclusiveTransaction: isolated,
             resolveForMutation: (token: string) => sessions.resolveForMutation(token, tx),

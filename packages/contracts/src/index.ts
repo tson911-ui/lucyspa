@@ -767,6 +767,10 @@ export type PermissionCodeName =
   | 'APPROVE_PAYROLL'
   | 'VIEW_CASH'
   | 'MANAGE_CASH'
+  | 'EXPORT_REPORTS'
+  | 'VIEW_STAFF_REPORTS'
+  | 'VIEW_PROFIT'
+  | 'VIEW_REVIEWS'
   | 'ACTIVATE_LOYALTY'
   | 'CHANGE_REFERRER';
 
@@ -2228,6 +2232,7 @@ export * from './online-fulfilment.js';
 export * from './product-campaign.js';
 export * from './supplier-source.js';
 export * from './cash.js';
+export * from './reports.js';
 export * from './advance.js';
 export * from './pay.js';
 export * from './payroll.js';
