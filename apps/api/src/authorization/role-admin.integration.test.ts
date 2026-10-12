@@ -317,8 +317,8 @@ test(
                 );
                 const listed = await roles.listRoles(ownerSession);
                 assert.ok(listed.roles.some((entry) => entry.id === role.id));
-                // The catalog (77 codes since Phase 8 P8-2) minus the three Owner-only ones.
-                assert.equal(listed.permissions.length, 74);
+                // The catalog (79 codes since the Claude integration Wave A) minus the three Owner-only ones.
+                assert.equal(listed.permissions.length, 76);
                 // Scope capability comes from the code-owned catalog (Step 4B role UI).
                 assert.deepEqual(
                   listed.permissionCatalog.map((entry) => entry.code),
@@ -350,6 +350,8 @@ test(
                     'MANAGE_PAYROLL',
                     'APPROVE_PAYROLL',
                     'VIEW_PROFIT',
+                    'MANAGE_AI_SETTINGS',
+                    'USE_AI_CONTENT',
                   ],
                 );
                 const events = await tx.auditEvent.findMany({

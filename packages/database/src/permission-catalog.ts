@@ -233,6 +233,10 @@ export const PERMISSION_CATALOG = Object.freeze([
   { code: 'VIEW_STAFF_REPORTS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
   { code: 'VIEW_PROFIT', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'FINANCIAL' },
   { code: 'VIEW_REVIEWS', scopeCapability: 'BRANCH_CAPABLE', dataClassification: 'STANDARD' },
+  // Claude integration Wave A (design PHASE_CLAUDE_INTEGRATION.md section 9.4, Owner answers of 2026-10-12): the AI settings and the AI draft
+  // review. Both GLOBAL_ONLY and STANDARD (no customer or pay data); granted to nobody.
+  { code: 'MANAGE_AI_SETTINGS', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'STANDARD' },
+  { code: 'USE_AI_CONTENT', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'STANDARD' },
 ] as const satisfies readonly PermissionDefinition[]);
 
 /** Codes that only the virtual Owner holds: no role and no override may carry them (SQL refuses too). */

@@ -402,6 +402,8 @@ enum PermissionCode {
   VIEW_STAFF_REPORTS
   VIEW_PROFIT
   VIEW_REVIEWS
+  MANAGE_AI_SETTINGS
+  USE_AI_CONTENT
 }
 
 enum LeaveStatus {
@@ -1753,65 +1755,65 @@ enum DiscountReleaseCause {
 // customer account or NULL (guest). Amounts are integer VND; total = subtotal - discountTotal is
 // the receivable and may be 0. Status transitions and freezing are guarded in SQL.
 model Invoice {
-  id                   String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderReferral        OrderReferral?
-  tips                 Tip[]
-  payEarnings          PayEarning[]
-  code                 String                      @unique(map: "invoices_code_key")
-  branchId             String                      @map("branch_id") @db.Uuid
-  branch               Branch                      @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  id                     String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderReferral          OrderReferral?
+  tips                   Tip[]
+  payEarnings            PayEarning[]
+  code                   String                      @unique(map: "invoices_code_key")
+  branchId               String                      @map("branch_id") @db.Uuid
+  branch                 Branch                      @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// Phase 5 P5-7: a combo sale (kind COMBO_SALE) is not tied to a Visit; SQL keeps visit_id NULL exactly for that kind.
-  kind                 InvoiceKind                 @default(VISIT)
+  kind                   InvoiceKind                 @default(VISIT)
   /// Phase 6 P6-8 (T33): sales channel (COUNTER until Wave 4) and shipping fee (0 unless ONLINE). total = subtotal - discount + fee.
-  channel              InvoiceChannel              @default(COUNTER)
-  shippingFeeVnd       BigInt                      @default(0) @map("shipping_fee_vnd")
-  visitId              String?                     @map("visit_id") @db.Uuid
-  visit                Visit?                      @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  status               InvoiceStatus               @default(DRAFT)
-  payerUserId          String?                     @map("payer_user_id") @db.Uuid
-  payer                User?                       @relation("InvoicePayer", fields: [payerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  businessDate         DateTime                    @map("business_date") @db.Date
-  calculationVersion   Int                         @map("calculation_version")
-  subtotalVnd          BigInt                      @default(0) @map("subtotal_vnd")
-  discountTotalVnd     BigInt                      @default(0) @map("discount_total_vnd")
-  totalVnd             BigInt                      @default(0) @map("total_vnd")
-  finalizedAt          DateTime?                   @map("finalized_at") @db.Timestamptz(3)
-  finalizedByUserId    String?                     @map("finalized_by_user_id") @db.Uuid
-  finalizedBy          User?                       @relation("InvoiceFinalizedBy", fields: [finalizedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  cancelledAt          DateTime?                   @map("cancelled_at") @db.Timestamptz(3)
-  cancelledByUserId    String?                     @map("cancelled_by_user_id") @db.Uuid
-  cancelledBy          User?                       @relation("InvoiceCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  cancelledFromStatus  InvoiceStatus?              @map("cancelled_from_status")
-  cancelReason         String?                     @map("cancel_reason")
-  paidAt               DateTime?                   @map("paid_at") @db.Timestamptz(3)
-  paidSeq              Int                         @default(0) @map("paid_seq")
-  createdByUserId      String                      @map("created_by_user_id") @db.Uuid
-  createdBy            User                        @relation("InvoiceCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  rowVersion           Int                         @default(1) @map("row_version")
-  createdAt            DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt            DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  lines                InvoiceLine[]
-  payments             Payment[]
-  paymentAnomalies     PaymentAnomaly[]
-  managementNotes      InvoiceManagementNote[]
-  voucherEntries       InvoiceVoucherEntry[]
-  discountApplication  InvoiceDiscountApplication?
+  channel                InvoiceChannel              @default(COUNTER)
+  shippingFeeVnd         BigInt                      @default(0) @map("shipping_fee_vnd")
+  visitId                String?                     @map("visit_id") @db.Uuid
+  visit                  Visit?                      @relation(fields: [visitId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  status                 InvoiceStatus               @default(DRAFT)
+  payerUserId            String?                     @map("payer_user_id") @db.Uuid
+  payer                  User?                       @relation("InvoicePayer", fields: [payerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  businessDate           DateTime                    @map("business_date") @db.Date
+  calculationVersion     Int                         @map("calculation_version")
+  subtotalVnd            BigInt                      @default(0) @map("subtotal_vnd")
+  discountTotalVnd       BigInt                      @default(0) @map("discount_total_vnd")
+  totalVnd               BigInt                      @default(0) @map("total_vnd")
+  finalizedAt            DateTime?                   @map("finalized_at") @db.Timestamptz(3)
+  finalizedByUserId      String?                     @map("finalized_by_user_id") @db.Uuid
+  finalizedBy            User?                       @relation("InvoiceFinalizedBy", fields: [finalizedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelledAt            DateTime?                   @map("cancelled_at") @db.Timestamptz(3)
+  cancelledByUserId      String?                     @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy            User?                       @relation("InvoiceCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelledFromStatus    InvoiceStatus?              @map("cancelled_from_status")
+  cancelReason           String?                     @map("cancel_reason")
+  paidAt                 DateTime?                   @map("paid_at") @db.Timestamptz(3)
+  paidSeq                Int                         @default(0) @map("paid_seq")
+  createdByUserId        String                      @map("created_by_user_id") @db.Uuid
+  createdBy              User                        @relation("InvoiceCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion             Int                         @default(1) @map("row_version")
+  createdAt              DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  lines                  InvoiceLine[]
+  payments               Payment[]
+  paymentAnomalies       PaymentAnomaly[]
+  managementNotes        InvoiceManagementNote[]
+  voucherEntries         InvoiceVoucherEntry[]
+  discountApplication    InvoiceDiscountApplication?
   /// Phase 6 P6-9 (T19): one redemption per (invoice, program); a program that wins both sides is redeemed once.
-  discountRedemptions  DiscountRedemption[]
-  birthdayRedemption   BirthdayRedemption?
-  loyaltyLedgerEntries LoyaltyLedgerEntry[]        @relation("LoyaltyLedgerInvoice")
-  awardedReferrals     Referral[]                  @relation("ReferralAwardInvoice")
-  loyaltySnapshot      InvoiceLoyaltySnapshot?
+  discountRedemptions    DiscountRedemption[]
+  birthdayRedemption     BirthdayRedemption?
+  loyaltyLedgerEntries   LoyaltyLedgerEntry[]        @relation("LoyaltyLedgerInvoice")
+  awardedReferrals       Referral[]                  @relation("ReferralAwardInvoice")
+  loyaltySnapshot        InvoiceLoyaltySnapshot?
   /// Phase 6 P6-9: the Beauty side of a version 3 invoice (the Spa side is the three rows above).
-  beautyApplication    InvoiceBeautyApplication?
-  beautySnapshot       InvoiceBeautySnapshot?
+  beautyApplication      InvoiceBeautyApplication?
+  beautySnapshot         InvoiceBeautySnapshot?
   paymentSideAllocations PaymentSideAllocation[]
-  productReturnCases   ProductReturnCase[]
-  productRefunds       ProductRefund[]
-  productExchanges     ProductExchange[]    @relation("ProductExchangeOriginalInvoice")
-  exchangeFor          ProductExchange?     @relation("ProductExchangeInvoice")
-  productOrder         ProductOrder?
-  productOrderLines    ProductOrderLine[]
+  productReturnCases     ProductReturnCase[]
+  productRefunds         ProductRefund[]
+  productExchanges       ProductExchange[]           @relation("ProductExchangeOriginalInvoice")
+  exchangeFor            ProductExchange?            @relation("ProductExchangeInvoice")
+  productOrder           ProductOrder?
+  productOrderLines      ProductOrderLine[]
 
   @@index([branchId, businessDate, status], map: "invoices_branch_date_idx")
   @@index([payerUserId, createdAt], map: "invoices_payer_idx")
@@ -1821,41 +1823,41 @@ model Invoice {
 // Generic invoice line; kind selects the 1:1 detail table (Phase 4 defines only SERVICE).
 // Quantity and price stay NULL until set (a DRAFT may be unpriced); gross = quantity x price.
 model InvoiceLine {
-  id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  payEarnings      PayEarning[]
+  id                 String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  payEarnings        PayEarning[]
   paySellerOverrides PaySellerOverride[]
-  invoiceId        String                   @map("invoice_id") @db.Uuid
-  invoice          Invoice                  @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  sequence         Int                      @db.SmallInt
-  kind             InvoiceLineKind          @default(SERVICE)
-  itemCode         String                   @map("item_code")
-  nameVi           String                   @map("name_vi")
-  nameEn           String                   @map("name_en")
-  quantity         Int?
-  unitPriceVnd     BigInt?                  @map("unit_price_vnd")
-  grossVnd         BigInt?                  @map("gross_vnd")
-  priceSetByUserId String?                  @map("price_set_by_user_id") @db.Uuid
-  priceSetBy       User?                    @relation("InvoiceLinePriceSetBy", fields: [priceSetByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  priceSetAt       DateTime?                @map("price_set_at") @db.Timestamptz(3)
-  rowVersion       Int                      @default(1) @map("row_version")
-  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  invoiceId          String                   @map("invoice_id") @db.Uuid
+  invoice            Invoice                  @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sequence           Int                      @db.SmallInt
+  kind               InvoiceLineKind          @default(SERVICE)
+  itemCode           String                   @map("item_code")
+  nameVi             String                   @map("name_vi")
+  nameEn             String                   @map("name_en")
+  quantity           Int?
+  unitPriceVnd       BigInt?                  @map("unit_price_vnd")
+  grossVnd           BigInt?                  @map("gross_vnd")
+  priceSetByUserId   String?                  @map("price_set_by_user_id") @db.Uuid
+  priceSetBy         User?                    @relation("InvoiceLinePriceSetBy", fields: [priceSetByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  priceSetAt         DateTime?                @map("price_set_at") @db.Timestamptz(3)
+  rowVersion         Int                      @default(1) @map("row_version")
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   // SQL: exactly one detail row per SERVICE line (its primary key is the line id).
-  serviceDetails   InvoiceLineService[]
-  comboDetails     InvoiceLineCombo[]
+  serviceDetails     InvoiceLineService[]
+  comboDetails       InvoiceLineCombo[]
   // SQL: exactly one detail row per PRODUCT line (its primary key is the line id); one reservation once the invoice is finalized.
-  productDetails   InvoiceLineProduct[]
-  reservations     StockReservation[]
-  stockMovements   StockMovement[]        @relation("StockMovementInvoiceLine")
-  allocations      InvoiceLineAllocation[]
-  comboPurchases   ComboPurchase[]          @relation("ComboPurchaseLine")
-  comboConsumption ComboSessionConsumption? @relation("ComboConsumptionLine")
-  comboUsages      InvoiceLineComboUsage[]
-  rewardRedemption RewardRedemption?        @relation("RewardRedemptionLine")
-  productReturnCases ProductReturnCase[]    @relation("ProductReturnLine")
-  productRefunds     ProductRefund[]        @relation("ProductRefundLine")
-  productExchanges   ProductExchange[]      @relation("ProductExchangeLine")
-  productOrderLines  ProductOrderLine[]      @relation("ProductOrderLineInvoiceLine")
+  productDetails     InvoiceLineProduct[]
+  reservations       StockReservation[]
+  stockMovements     StockMovement[]          @relation("StockMovementInvoiceLine")
+  allocations        InvoiceLineAllocation[]
+  comboPurchases     ComboPurchase[]          @relation("ComboPurchaseLine")
+  comboConsumption   ComboSessionConsumption? @relation("ComboConsumptionLine")
+  comboUsages        InvoiceLineComboUsage[]
+  rewardRedemption   RewardRedemption?        @relation("RewardRedemptionLine")
+  productReturnCases ProductReturnCase[]      @relation("ProductReturnLine")
+  productRefunds     ProductRefund[]          @relation("ProductRefundLine")
+  productExchanges   ProductExchange[]        @relation("ProductExchangeLine")
+  productOrderLines  ProductOrderLine[]       @relation("ProductOrderLineInvoiceLine")
 
   @@unique([invoiceId, sequence], map: "invoice_lines_invoice_sequence_key")
   @@unique([invoiceId, id], map: "invoice_lines_invoice_id_id_key")
@@ -1923,33 +1925,33 @@ model InvoiceLineCombo {
 // (required: an active employee assigned to the invoice branch) and the price resolution (list price, promotion, instant). SQL
 // re-derives the line price from the effective price at `pricedAt` and, once finalized, requires `pricedAt = finalizedAt`.
 model InvoiceLineProduct {
-  invoiceLineId  String            @id @map("invoice_line_id") @db.Uuid
-  invoiceId      String            @map("invoice_id") @db.Uuid
-  line           InvoiceLine       @relation(fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_line_products_line_fkey")
-  productId      String            @map("product_id") @db.Uuid
-  product        Product           @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  variantId      String            @map("variant_id") @db.Uuid
-  variant        ProductVariant    @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  sku            String            @db.VarChar(64)
-  brandId        String?           @map("brand_id") @db.Uuid
-  brand          Brand?            @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  categoryId     String?           @map("category_id") @db.Uuid
-  category       ProductCategory?  @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  productNameVi  String            @map("product_name_vi")
-  productNameEn  String            @map("product_name_en")
-  variantLabelVi String?           @map("variant_label_vi")
-  variantLabelEn String?           @map("variant_label_en")
+  invoiceLineId  String              @id @map("invoice_line_id") @db.Uuid
+  invoiceId      String              @map("invoice_id") @db.Uuid
+  line           InvoiceLine         @relation(fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_line_products_line_fkey")
+  productId      String              @map("product_id") @db.Uuid
+  product        Product             @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  variantId      String              @map("variant_id") @db.Uuid
+  variant        ProductVariant      @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sku            String              @db.VarChar(64)
+  brandId        String?             @map("brand_id") @db.Uuid
+  brand          Brand?              @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  categoryId     String?             @map("category_id") @db.Uuid
+  category       ProductCategory?    @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  productNameVi  String              @map("product_name_vi")
+  productNameEn  String              @map("product_name_en")
+  variantLabelVi String?             @map("variant_label_vi")
+  variantLabelEn String?             @map("variant_label_en")
   /// NULL for a line of an online order (W4-2); required for a counter line (SQL guard).
-  sellerUserId   String?           @map("seller_user_id") @db.Uuid
-  seller         User?             @relation("InvoiceProductSeller", fields: [sellerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  listPriceVnd   BigInt            @map("list_price_vnd")
-  promotionId    String?           @map("promotion_id") @db.Uuid
-  promotion      ProductPromotion? @relation(fields: [promotionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sellerUserId   String?             @map("seller_user_id") @db.Uuid
+  seller         User?               @relation("InvoiceProductSeller", fields: [sellerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  listPriceVnd   BigInt              @map("list_price_vnd")
+  promotionId    String?             @map("promotion_id") @db.Uuid
+  promotion      ProductPromotion?   @relation(fields: [promotionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// Phase 6 Wave 4 (P6-23): the campaign whose rule gave the price, when one did.
-  campaignId     String?           @map("campaign_id") @db.Uuid
-  campaign       ProductCampaign?  @relation(fields: [campaignId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  pricedAt       DateTime          @map("priced_at") @db.Timestamptz(3)
-  createdAt      DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  campaignId     String?             @map("campaign_id") @db.Uuid
+  campaign       ProductCampaign?    @relation(fields: [campaignId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  pricedAt       DateTime            @map("priced_at") @db.Timestamptz(3)
+  createdAt      DateTime            @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   returnCases    ProductReturnCase[] @relation("ProductReturnProductLine")
   refunds        ProductRefund[]     @relation("ProductRefundProductLine")
   exchanges      ProductExchange[]   @relation("ProductExchangeProductLine")
@@ -1998,34 +2000,34 @@ model StockReservation {
 // payment and a zero-balance invoice has no payment row. A PayOS request that is confirmed after it
 // expired or was cancelled is recorded as a NEW succeeded row that points at the original (lateOfPaymentId).
 model Payment {
-  id                    String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  invoiceId             String             @map("invoice_id") @db.Uuid
-  invoice               Invoice            @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  branchId              String             @map("branch_id") @db.Uuid
-  branch                Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId             String                  @map("invoice_id") @db.Uuid
+  invoice               Invoice                 @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId              String                  @map("branch_id") @db.Uuid
+  branch                Branch                  @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   method                PaymentMethod
   status                PaymentStatus
-  amountDueVnd          BigInt             @map("amount_due_vnd")
-  amountVnd             BigInt             @map("amount_vnd")
-  tenderedVnd           BigInt             @map("tendered_vnd")
-  changeVnd             BigInt             @map("change_vnd")
-  collectedByUserId     String             @map("collected_by_user_id") @db.Uuid
-  collectedBy           User               @relation("PaymentCollector", fields: [collectedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  collectedAt           DateTime           @default(dbgenerated("clock_timestamp()")) @map("collected_at") @db.Timestamptz(3)
-  businessDate          DateTime           @default(dbgenerated("CURRENT_DATE")) @map("business_date") @db.Date
-  idempotencyKey        String             @map("idempotency_key") @db.Uuid
-  providerOrderCode     BigInt?            @map("provider_order_code")
-  providerPaymentLinkId String?            @map("provider_payment_link_id")
-  checkoutUrl           String?            @map("checkout_url")
-  qrCode                String?            @map("qr_code")
-  expiresAt             DateTime?          @map("expires_at") @db.Timestamptz(3)
-  providerReference     String?            @map("provider_reference")
-  lateOfPaymentId       String?            @map("late_of_payment_id") @db.Uuid
-  lateOf                Payment?           @relation("PaymentLateConfirmation", fields: [lateOfPaymentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  lateConfirmations     Payment[]          @relation("PaymentLateConfirmation")
-  rowVersion            Int                @default(1) @map("row_version")
-  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt             DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  amountDueVnd          BigInt                  @map("amount_due_vnd")
+  amountVnd             BigInt                  @map("amount_vnd")
+  tenderedVnd           BigInt                  @map("tendered_vnd")
+  changeVnd             BigInt                  @map("change_vnd")
+  collectedByUserId     String                  @map("collected_by_user_id") @db.Uuid
+  collectedBy           User                    @relation("PaymentCollector", fields: [collectedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  collectedAt           DateTime                @default(dbgenerated("clock_timestamp()")) @map("collected_at") @db.Timestamptz(3)
+  businessDate          DateTime                @default(dbgenerated("CURRENT_DATE")) @map("business_date") @db.Date
+  idempotencyKey        String                  @map("idempotency_key") @db.Uuid
+  providerOrderCode     BigInt?                 @map("provider_order_code")
+  providerPaymentLinkId String?                 @map("provider_payment_link_id")
+  checkoutUrl           String?                 @map("checkout_url")
+  qrCode                String?                 @map("qr_code")
+  expiresAt             DateTime?               @map("expires_at") @db.Timestamptz(3)
+  providerReference     String?                 @map("provider_reference")
+  lateOfPaymentId       String?                 @map("late_of_payment_id") @db.Uuid
+  lateOf                Payment?                @relation("PaymentLateConfirmation", fields: [lateOfPaymentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  lateConfirmations     Payment[]               @relation("PaymentLateConfirmation")
+  rowVersion            Int                     @default(1) @map("row_version")
+  createdAt             DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   correction            PaymentCorrection?
   attempts              PaymentAttempt[]
   anomalies             PaymentAnomaly[]
@@ -2163,24 +2165,24 @@ model Discount {
 // Immutable configuration (append-only): a percentage in basis points (1..10000) or a fixed VND
 // amount, validity window, minimum spend, scope, and NULL-means-unlimited usage limits.
 model DiscountVersion {
-  id                    String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  discountId            String                       @map("discount_id") @db.Uuid
-  discount              Discount                     @relation(fields: [discountId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  versionNo             Int                          @map("version_no")
+  id                    String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  discountId            String                           @map("discount_id") @db.Uuid
+  discount              Discount                         @relation(fields: [discountId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  versionNo             Int                              @map("version_no")
   kind                  DiscountKind
-  percentBp             Int?                         @map("percent_bp")
-  fixedAmountVnd        BigInt?                      @map("fixed_amount_vnd")
-  validFrom             DateTime                     @map("valid_from") @db.Timestamptz(3)
-  validUntil            DateTime                     @map("valid_until") @db.Timestamptz(3)
-  minSpendVnd           BigInt                       @default(0) @map("min_spend_vnd")
-  scopeMode             DiscountScopeMode            @map("scope_mode")
+  percentBp             Int?                             @map("percent_bp")
+  fixedAmountVnd        BigInt?                          @map("fixed_amount_vnd")
+  validFrom             DateTime                         @map("valid_from") @db.Timestamptz(3)
+  validUntil            DateTime                         @map("valid_until") @db.Timestamptz(3)
+  minSpendVnd           BigInt                           @default(0) @map("min_spend_vnd")
+  scopeMode             DiscountScopeMode                @map("scope_mode")
   /// Phase 6 P6-9 (Q7): SERVICES (every program before Phase 6), PRODUCTS or BOTH. `scopeMode` ALL_SERVICES = every item of this scope.
-  scope                 DiscountScope                @default(SERVICES)
-  usageLimitTotal       Int?                         @map("usage_limit_total")
-  usageLimitPerCustomer Int?                         @map("usage_limit_per_customer")
-  createdByUserId       String                       @map("created_by_user_id") @db.Uuid
-  createdBy             User                         @relation("DiscountVersionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdAt             DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
+  scope                 DiscountScope                    @default(SERVICES)
+  usageLimitTotal       Int?                             @map("usage_limit_total")
+  usageLimitPerCustomer Int?                             @map("usage_limit_per_customer")
+  createdByUserId       String                           @map("created_by_user_id") @db.Uuid
+  createdBy             User                             @relation("DiscountVersionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt             DateTime                         @default(now()) @map("created_at") @db.Timestamptz(3)
   services              DiscountVersionService[]
   categories            DiscountVersionCategory[]
   brands                DiscountVersionBrand[]
@@ -2251,20 +2253,20 @@ model DiscountVersionProduct {
 
 // A redeemable code under a requiresCode program (canonical upper-case).
 model Voucher {
-  id              String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  discountId      String                       @map("discount_id") @db.Uuid
-  discount        Discount                     @relation(fields: [discountId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  code            String                       @unique(map: "vouchers_code_key")
-  isActive        Boolean                      @default(true) @map("is_active")
-  createdByUserId String                       @map("created_by_user_id") @db.Uuid
-  createdBy       User                         @relation("VoucherCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  rowVersion      Int                          @default(1) @map("row_version")
-  createdAt       DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  entries         InvoiceVoucherEntry[]
-  applications    InvoiceDiscountApplication[]
+  id                 String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  discountId         String                       @map("discount_id") @db.Uuid
+  discount           Discount                     @relation(fields: [discountId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  code               String                       @unique(map: "vouchers_code_key")
+  isActive           Boolean                      @default(true) @map("is_active")
+  createdByUserId    String                       @map("created_by_user_id") @db.Uuid
+  createdBy          User                         @relation("VoucherCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion         Int                          @default(1) @map("row_version")
+  createdAt          DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  entries            InvoiceVoucherEntry[]
+  applications       InvoiceDiscountApplication[]
   beautyApplications InvoiceBeautyApplication[]
-  redemptions     DiscountRedemption[]
+  redemptions        DiscountRedemption[]
 
   @@map("vouchers")
 }
@@ -2290,27 +2292,27 @@ model InvoiceVoucherEntry {
 // The single winning benefit, written once at finalization (immutable). SQL enforces the Q3 amount
 // rule (percent half up to 1 VND; fixed capped by the eligible subtotal).
 model InvoiceDiscountApplication {
-  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  invoiceId           String          @unique(map: "invoice_discount_applications_invoice_key") @map("invoice_id") @db.Uuid
-  invoice             Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  discountId          String          @map("discount_id") @db.Uuid
-  versionId           String          @map("version_id") @db.Uuid
-  version             DiscountVersion @relation(fields: [discountId, versionId], references: [discountId, id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_discount_applications_version_fkey")
-  voucherId           String?         @map("voucher_id") @db.Uuid
-  voucher             Voucher?        @relation(fields: [voucherId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  kind                DiscountKind
-  percentBp           Int?            @map("percent_bp")
-  fixedAmountVnd      BigInt?         @map("fixed_amount_vnd")
-  eligibleSubtotalVnd BigInt          @map("eligible_subtotal_vnd")
-  computedAmountVnd   BigInt          @map("computed_amount_vnd")
+  id                        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId                 String          @unique(map: "invoice_discount_applications_invoice_key") @map("invoice_id") @db.Uuid
+  invoice                   Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  discountId                String          @map("discount_id") @db.Uuid
+  versionId                 String          @map("version_id") @db.Uuid
+  version                   DiscountVersion @relation(fields: [discountId, versionId], references: [discountId, id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_discount_applications_version_fkey")
+  voucherId                 String?         @map("voucher_id") @db.Uuid
+  voucher                   Voucher?        @relation(fields: [voucherId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  kind                      DiscountKind
+  percentBp                 Int?            @map("percent_bp")
+  fixedAmountVnd            BigInt?         @map("fixed_amount_vnd")
+  eligibleSubtotalVnd       BigInt          @map("eligible_subtotal_vnd")
+  computedAmountVnd         BigInt          @map("computed_amount_vnd")
   /// Phase 6 P6-9 (T18): a shared (BOTH) program under version 3 records the program-level eligible subtotal and amount that were split.
-  sharedEligibleSubtotalVnd BigInt?   @map("shared_eligible_subtotal_vnd")
-  sharedAmountVnd     BigInt?         @map("shared_amount_vnd")
-  candidates          Json            @db.JsonB
-  selectionReason     String          @map("selection_reason")
-  finalizedByUserId   String          @map("finalized_by_user_id") @db.Uuid
-  finalizedBy         User            @relation("DiscountApplicationFinalizer", fields: [finalizedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  appliedAt           DateTime        @default(dbgenerated("clock_timestamp()")) @map("applied_at") @db.Timestamptz(3)
+  sharedEligibleSubtotalVnd BigInt?         @map("shared_eligible_subtotal_vnd")
+  sharedAmountVnd           BigInt?         @map("shared_amount_vnd")
+  candidates                Json            @db.JsonB
+  selectionReason           String          @map("selection_reason")
+  finalizedByUserId         String          @map("finalized_by_user_id") @db.Uuid
+  finalizedBy               User            @relation("DiscountApplicationFinalizer", fields: [finalizedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  appliedAt                 DateTime        @default(dbgenerated("clock_timestamp()")) @map("applied_at") @db.Timestamptz(3)
 
   @@map("invoice_discount_applications")
 }
@@ -3201,17 +3203,17 @@ model RewardRedemptionRelease {
 
 // P5-9: a unit of an entitlement marked used by staff with no invoice (append-only; the remaining quantity is derived).
 model RewardManualUse {
-  id            String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  entitlementId String                      @map("entitlement_id") @db.Uuid
-  entitlement   RewardEntitlement           @relation(fields: [entitlementId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  branchId      String                      @map("branch_id") @db.Uuid
-  branch        Branch                      @relation("RewardManualUseBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  usedByUserId  String                      @map("used_by_user_id") @db.Uuid
-  usedBy        User                        @relation("RewardManualUseActor", fields: [usedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  usedAt        DateTime                    @default(dbgenerated("clock_timestamp()")) @map("used_at") @db.Timestamptz(3)
-  note          String?
-  restoration   RewardManualUseRestoration?
-  stockMovements StockMovement[]            @relation("RewardManualUseMovement")
+  id             String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entitlementId  String                      @map("entitlement_id") @db.Uuid
+  entitlement    RewardEntitlement           @relation(fields: [entitlementId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId       String                      @map("branch_id") @db.Uuid
+  branch         Branch                      @relation("RewardManualUseBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  usedByUserId   String                      @map("used_by_user_id") @db.Uuid
+  usedBy         User                        @relation("RewardManualUseActor", fields: [usedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  usedAt         DateTime                    @default(dbgenerated("clock_timestamp()")) @map("used_at") @db.Timestamptz(3)
+  note           String?
+  restoration    RewardManualUseRestoration?
+  stockMovements StockMovement[]             @relation("RewardManualUseMovement")
 
   @@index([entitlementId, usedAt], map: "reward_manual_uses_entitlement_idx")
   @@map("reward_manual_uses")
@@ -3301,17 +3303,17 @@ enum StockCountStatus {
 }
 
 model Brand {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  commissionRules CommissionRule[]
-  code       String    @unique(map: "brands_code_key") @db.VarChar(64)
-  nameVi     String    @map("name_vi")
-  nameEn     String    @map("name_en")
-  isActive   Boolean   @default(true) @map("is_active")
-  rowVersion Int       @default(1) @map("row_version")
-  createdAt  DateTime  @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  updatedAt  DateTime  @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
-  products   Product[]
-  soldLines  InvoiceLineProduct[]
+  id               String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commissionRules  CommissionRule[]
+  code             String                 @unique(map: "brands_code_key") @db.VarChar(64)
+  nameVi           String                 @map("name_vi")
+  nameEn           String                 @map("name_en")
+  isActive         Boolean                @default(true) @map("is_active")
+  rowVersion       Int                    @default(1) @map("row_version")
+  createdAt        DateTime               @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime               @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  products         Product[]
+  soldLines        InvoiceLineProduct[]
   discountVersions DiscountVersionBrand[]
   importCandidates ImportCandidate[]
   valueMappings    SourceValueMapping[]
@@ -3320,21 +3322,21 @@ model Brand {
 }
 
 model ProductCategory {
-  id         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  commissionRules CommissionRule[]
-  parentId   String?           @map("parent_id") @db.Uuid
-  parent     ProductCategory?  @relation("ProductCategoryTree", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  children   ProductCategory[] @relation("ProductCategoryTree")
-  code       String            @unique(map: "product_categories_code_key") @db.VarChar(64)
-  nameVi     String            @map("name_vi")
-  nameEn     String            @map("name_en")
-  sortOrder  Int               @default(0) @map("sort_order")
-  isActive   Boolean           @default(true) @map("is_active")
-  rowVersion Int               @default(1) @map("row_version")
-  createdAt  DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  updatedAt  DateTime          @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
-  products   Product[]
-  soldLines  InvoiceLineProduct[]
+  id               String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commissionRules  CommissionRule[]
+  parentId         String?                          @map("parent_id") @db.Uuid
+  parent           ProductCategory?                 @relation("ProductCategoryTree", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  children         ProductCategory[]                @relation("ProductCategoryTree")
+  code             String                           @unique(map: "product_categories_code_key") @db.VarChar(64)
+  nameVi           String                           @map("name_vi")
+  nameEn           String                           @map("name_en")
+  sortOrder        Int                              @default(0) @map("sort_order")
+  isActive         Boolean                          @default(true) @map("is_active")
+  rowVersion       Int                              @default(1) @map("row_version")
+  createdAt        DateTime                         @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime                         @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  products         Product[]
+  soldLines        InvoiceLineProduct[]
   discountVersions DiscountVersionProductCategory[]
   importCandidates ImportCandidate[]
   valueMappings    SourceValueMapping[]
@@ -3344,32 +3346,42 @@ model ProductCategory {
 }
 
 model Product {
-  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  commissionRules CommissionRule[]
-  code            String           @unique(map: "products_code_key") @db.VarChar(96)
-  brandId         String?          @map("brand_id") @db.Uuid
-  brand           Brand?           @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  categoryId      String?          @map("category_id") @db.Uuid
-  category        ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  nameVi          String           @map("name_vi")
-  nameEn          String           @map("name_en")
-  descriptionVi   String?          @map("description_vi")
-  descriptionEn   String?          @map("description_en")
-  status          ProductStatus    @default(DRAFT)
-  featured        Boolean          @default(false)
-  publishedAt     DateTime?        @map("published_at") @db.Timestamptz(3)
-  source          Json?            @db.JsonB
-  createdByUserId String           @map("created_by_user_id") @db.Uuid
-  createdBy       User             @relation("ProductCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  rowVersion      Int              @default(1) @map("row_version")
-  createdAt       DateTime         @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime         @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
-  variants        ProductVariant[]
-  images          ProductImage[]
-  invoiceLines    InvoiceLineProduct[]
-  discountVersions DiscountVersionProduct[]
-  matchedCandidates  ImportCandidate[] @relation("CandidateMatchedProduct")
-  importedCandidates ImportCandidate[] @relation("CandidateImportedProduct")
+  id                    String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commissionRules       CommissionRule[]
+  code                  String                   @unique(map: "products_code_key") @db.VarChar(96)
+  brandId               String?                  @map("brand_id") @db.Uuid
+  brand                 Brand?                   @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  categoryId            String?                  @map("category_id") @db.Uuid
+  category              ProductCategory?         @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  nameVi                String                   @map("name_vi")
+  nameEn                String                   @map("name_en")
+  descriptionVi         String?                  @map("description_vi")
+  descriptionEn         String?                  @map("description_en")
+  status                ProductStatus            @default(DRAFT)
+  featured              Boolean                  @default(false)
+  publishedAt           DateTime?                @map("published_at") @db.Timestamptz(3)
+  source                Json?                    @db.JsonB
+  createdByUserId       String                   @map("created_by_user_id") @db.Uuid
+  createdBy             User                     @relation("ProductCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Claude integration Wave A: who wrote the text (SUPPLIER_COPY | LUCY_AI | LUCY_MANUAL); everything but the supplier's copy is locked against imports.
+  contentOrigin         String                   @default("LUCY_MANUAL") @map("content_origin")
+  contentOriginAt       DateTime?                @map("content_origin_at") @db.Timestamptz(3)
+  seoTitleVi            String?                  @map("seo_title_vi")
+  seoTitleEn            String?                  @map("seo_title_en")
+  seoDescriptionVi      String?                  @map("seo_description_vi")
+  seoDescriptionEn      String?                  @map("seo_description_en")
+  /// { benefits, ingredients, usage, suitableFor }: plain text, an empty section is not shown.
+  descriptionSectionsVi Json?                    @map("description_sections_vi") @db.JsonB
+  descriptionSectionsEn Json?                    @map("description_sections_en") @db.JsonB
+  rowVersion            Int                      @default(1) @map("row_version")
+  createdAt             DateTime                 @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime                 @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  variants              ProductVariant[]
+  images                ProductImage[]
+  invoiceLines          InvoiceLineProduct[]
+  discountVersions      DiscountVersionProduct[]
+  matchedCandidates     ImportCandidate[]        @relation("CandidateMatchedProduct")
+  importedCandidates    ImportCandidate[]        @relation("CandidateImportedProduct")
 
   @@index([status, categoryId], map: "products_status_idx")
   @@index([brandId], map: "products_brand_idx")
@@ -3377,41 +3389,41 @@ model Product {
 }
 
 model ProductVariant {
-  id                String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  productId         String                   @map("product_id") @db.Uuid
-  product           Product                  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  sku               String                   @unique(map: "product_variants_sku_key") @db.VarChar(64)
-  labelVi           String?                  @map("label_vi")
-  labelEn           String?                  @map("label_en")
-  barcode           String?                  @db.VarChar(64)
-  costPriceVnd      BigInt?                  @map("cost_price_vnd")
-  lowStockThreshold Int?                     @map("low_stock_threshold")
-  sellOnOrder       Boolean                  @default(true) @map("sell_on_order")
+  id                   String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId            String                   @map("product_id") @db.Uuid
+  product              Product                  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sku                  String                   @unique(map: "product_variants_sku_key") @db.VarChar(64)
+  labelVi              String?                  @map("label_vi")
+  labelEn              String?                  @map("label_en")
+  barcode              String?                  @db.VarChar(64)
+  costPriceVnd         BigInt?                  @map("cost_price_vnd")
+  lowStockThreshold    Int?                     @map("low_stock_threshold")
+  sellOnOrder          Boolean                  @default(true) @map("sell_on_order")
   /// Phase 6 P6-19 (OQ-91): a buy button online unless switched off.
-  sellOnline        Boolean                  @default(true) @map("sell_online")
-  leadTimeDaysMin   Int?                     @map("lead_time_days_min") @db.SmallInt
-  leadTimeDaysMax   Int?                     @map("lead_time_days_max") @db.SmallInt
-  sortOrder         Int                      @default(0) @map("sort_order")
-  isActive          Boolean                  @default(true) @map("is_active")
-  rowVersion        Int                      @default(1) @map("row_version")
-  createdAt         DateTime                 @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime                 @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
-  priceVersions     ProductPriceVersion[]
-  promotions        ProductPromotion[]
-  campaignItems     ProductCampaignItem[]
-  receiptLines      StockReceiptLine[]
-  lots              InventoryLot[]
-  stockLevels       StockLevel[]
-  invoiceLines      InvoiceLineProduct[]
-  lowStockAlerts    InventoryLowStockAlert[]
-  countLines        StockCountLine[]
-  movements         StockMovement[]
-  exchangeReplacements ProductExchange[] @relation("ProductExchangeReplacement")
-  productOrderLines    ProductOrderLine[] @relation("ProductOrderLineVariant")
+  sellOnline           Boolean                  @default(true) @map("sell_online")
+  leadTimeDaysMin      Int?                     @map("lead_time_days_min") @db.SmallInt
+  leadTimeDaysMax      Int?                     @map("lead_time_days_max") @db.SmallInt
+  sortOrder            Int                      @default(0) @map("sort_order")
+  isActive             Boolean                  @default(true) @map("is_active")
+  rowVersion           Int                      @default(1) @map("row_version")
+  createdAt            DateTime                 @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime                 @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  priceVersions        ProductPriceVersion[]
+  promotions           ProductPromotion[]
+  campaignItems        ProductCampaignItem[]
+  receiptLines         StockReceiptLine[]
+  lots                 InventoryLot[]
+  stockLevels          StockLevel[]
+  invoiceLines         InvoiceLineProduct[]
+  lowStockAlerts       InventoryLowStockAlert[]
+  countLines           StockCountLine[]
+  movements            StockMovement[]
+  exchangeReplacements ProductExchange[]        @relation("ProductExchangeReplacement")
+  productOrderLines    ProductOrderLine[]       @relation("ProductOrderLineVariant")
   /// Phase 6 P6-17 (OQ-87): the supplier the "cần đặt" list groups this variant under (optional).
-  usualSupplierId      String?            @map("usual_supplier_id") @db.Uuid
-  usualSupplier        Supplier?          @relation("VariantUsualSupplier", fields: [usualSupplierId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  rewardItems          RewardCatalogItem[] @relation("RewardItemVariant")
+  usualSupplierId      String?                  @map("usual_supplier_id") @db.Uuid
+  usualSupplier        Supplier?                @relation("VariantUsualSupplier", fields: [usualSupplierId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rewardItems          RewardCatalogItem[]      @relation("RewardItemVariant")
   cartLines            OnlineCartLine[]
 
   @@index([productId, sortOrder], map: "product_variants_product_idx")
@@ -3434,18 +3446,18 @@ model ProductPriceVersion {
 }
 
 model ProductPromotion {
-  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  variantId          String         @map("variant_id") @db.Uuid
-  variant            ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  promoPriceVnd      BigInt         @map("promo_price_vnd")
-  startsAt           DateTime       @map("starts_at") @db.Timestamptz(3)
-  endsAt             DateTime       @map("ends_at") @db.Timestamptz(3)
-  endedEarlyAt       DateTime?      @map("ended_early_at") @db.Timestamptz(3)
-  endedEarlyByUserId String?        @map("ended_early_by_user_id") @db.Uuid
-  endedEarlyBy       User?          @relation("PromotionEnder", fields: [endedEarlyByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdByUserId    String         @map("created_by_user_id") @db.Uuid
-  createdBy          User           @relation("PromotionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdAt          DateTime       @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variantId          String               @map("variant_id") @db.Uuid
+  variant            ProductVariant       @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  promoPriceVnd      BigInt               @map("promo_price_vnd")
+  startsAt           DateTime             @map("starts_at") @db.Timestamptz(3)
+  endsAt             DateTime             @map("ends_at") @db.Timestamptz(3)
+  endedEarlyAt       DateTime?            @map("ended_early_at") @db.Timestamptz(3)
+  endedEarlyByUserId String?              @map("ended_early_by_user_id") @db.Uuid
+  endedEarlyBy       User?                @relation("PromotionEnder", fields: [endedEarlyByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdByUserId    String               @map("created_by_user_id") @db.Uuid
+  createdBy          User                 @relation("PromotionCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt          DateTime             @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   soldLines          InvoiceLineProduct[]
 
   @@index([variantId, startsAt], map: "product_promotions_variant_idx")
@@ -3463,38 +3475,38 @@ enum CampaignRuleKind {
 /// Phase 6 Wave 4 (P6-23; PRD 24.1): a promotion campaign. Draft until published; a published campaign never changes its window,
 /// groups or items (invoices priced by it must keep reproducing the price), it can only be ended early. The text and image can change.
 model ProductCampaign {
-  id                  String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  slug                String                 @unique(map: "product_campaigns_slug_key")
-  nameVi              String                 @map("name_vi")
-  nameEn              String                 @map("name_en")
-  internalNote        String?                @map("internal_note")
-  startsAt            DateTime               @map("starts_at") @db.Timestamptz(3)
-  endsAt              DateTime               @map("ends_at") @db.Timestamptz(3)
-  publishedAt         DateTime?              @map("published_at") @db.Timestamptz(3)
-  publishedByUserId   String?                @map("published_by_user_id") @db.Uuid
-  publishedBy         User?                  @relation("CampaignPublisher", fields: [publishedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  endedEarlyAt        DateTime?              @map("ended_early_at") @db.Timestamptz(3)
-  endedEarlyByUserId  String?                @map("ended_early_by_user_id") @db.Uuid
-  endedEarlyBy        User?                  @relation("CampaignEnder", fields: [endedEarlyByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  endedEarlyReason    String?                @map("ended_early_reason")
-  badgeVi             String?                @map("badge_vi")
-  badgeEn             String?                @map("badge_en")
-  headlineVi          String?                @map("headline_vi")
-  headlineEn          String?                @map("headline_en")
-  messageVi           String?                @map("message_vi")
-  messageEn           String?                @map("message_en")
-  ctaLabelVi          String?                @map("cta_label_vi")
-  ctaLabelEn          String?                @map("cta_label_en")
-  bannerMediaId       String?                @map("banner_media_id") @db.Uuid
-  bannerMedia         MediaAsset?            @relation(fields: [bannerMediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  rowVersion          Int                    @default(1) @map("row_version")
-  createdByUserId     String                 @map("created_by_user_id") @db.Uuid
-  createdBy           User                   @relation("CampaignCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdAt           DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  groups              ProductCampaignGroup[]
-  items               ProductCampaignItem[]
-  soldLines           InvoiceLineProduct[]
+  id                 String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug               String                 @unique(map: "product_campaigns_slug_key")
+  nameVi             String                 @map("name_vi")
+  nameEn             String                 @map("name_en")
+  internalNote       String?                @map("internal_note")
+  startsAt           DateTime               @map("starts_at") @db.Timestamptz(3)
+  endsAt             DateTime               @map("ends_at") @db.Timestamptz(3)
+  publishedAt        DateTime?              @map("published_at") @db.Timestamptz(3)
+  publishedByUserId  String?                @map("published_by_user_id") @db.Uuid
+  publishedBy        User?                  @relation("CampaignPublisher", fields: [publishedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  endedEarlyAt       DateTime?              @map("ended_early_at") @db.Timestamptz(3)
+  endedEarlyByUserId String?                @map("ended_early_by_user_id") @db.Uuid
+  endedEarlyBy       User?                  @relation("CampaignEnder", fields: [endedEarlyByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  endedEarlyReason   String?                @map("ended_early_reason")
+  badgeVi            String?                @map("badge_vi")
+  badgeEn            String?                @map("badge_en")
+  headlineVi         String?                @map("headline_vi")
+  headlineEn         String?                @map("headline_en")
+  messageVi          String?                @map("message_vi")
+  messageEn          String?                @map("message_en")
+  ctaLabelVi         String?                @map("cta_label_vi")
+  ctaLabelEn         String?                @map("cta_label_en")
+  bannerMediaId      String?                @map("banner_media_id") @db.Uuid
+  bannerMedia        MediaAsset?            @relation(fields: [bannerMediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion         Int                    @default(1) @map("row_version")
+  createdByUserId    String                 @map("created_by_user_id") @db.Uuid
+  createdBy          User                   @relation("CampaignCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt          DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  groups             ProductCampaignGroup[]
+  items              ProductCampaignItem[]
+  soldLines          InvoiceLineProduct[]
 
   @@index([bannerMediaId], map: "product_campaigns_banner_idx")
   @@map("product_campaigns")
@@ -3622,19 +3634,19 @@ model ProductImportRow {
 }
 
 model Supplier {
-  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String
-  contactName String?        @map("contact_name")
-  phone       String?
-  email       String?
-  address     String?
-  notes       String?
-  isActive    Boolean        @default(true) @map("is_active")
-  rowVersion  Int            @default(1) @map("row_version")
-  createdAt   DateTime       @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime       @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
-  receipts    StockReceipt[]
-  usualFor    ProductVariant[] @relation("VariantUsualSupplier")
+  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String
+  contactName      String?              @map("contact_name")
+  phone            String?
+  email            String?
+  address          String?
+  notes            String?
+  isActive         Boolean              @default(true) @map("is_active")
+  rowVersion       Int                  @default(1) @map("row_version")
+  createdAt        DateTime             @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime             @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  receipts         StockReceipt[]
+  usualFor         ProductVariant[]     @relation("VariantUsualSupplier")
   sources          SupplierSource[]
   importCandidates ImportCandidate[]
   valueMappings    SourceValueMapping[]
@@ -3719,16 +3731,16 @@ model InventoryLot {
 }
 
 model StockLevel {
-  branchId        String         @map("branch_id") @db.Uuid
-  branch          Branch         @relation("StockLevelBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  variantId       String         @map("variant_id") @db.Uuid
-  variant         ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  onHand          Int            @default(0) @map("on_hand")
-  reserved        Int            @default(0)
-  lowStockAlerted Boolean        @default(false) @map("low_stock_alerted")
-  rowVersion      Int            @default(1) @map("row_version")
-  createdAt       DateTime       @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime       @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  branchId        String             @map("branch_id") @db.Uuid
+  branch          Branch             @relation("StockLevelBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  variantId       String             @map("variant_id") @db.Uuid
+  variant         ProductVariant     @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  onHand          Int                @default(0) @map("on_hand")
+  reserved        Int                @default(0)
+  lowStockAlerted Boolean            @default(false) @map("low_stock_alerted")
+  rowVersion      Int                @default(1) @map("row_version")
+  createdAt       DateTime           @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime           @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   reservations    StockReservation[]
 
   @@id([branchId, variantId])
@@ -3808,40 +3820,40 @@ model StockCountLine {
 }
 
 model StockMovement {
-  id             String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  branchId       String                 @map("branch_id") @db.Uuid
-  branch         Branch                 @relation("StockMovementBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  variantId      String                 @map("variant_id") @db.Uuid
-  variant        ProductVariant         @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  lotId          String                 @map("lot_id") @db.Uuid
-  lot            InventoryLot           @relation(fields: [branchId, variantId, lotId], references: [branchId, variantId, id], onDelete: Restrict, onUpdate: Restrict, map: "stock_movements_lot_fkey")
-  kind           StockMovementKind
-  quantityDelta  Int                    @map("quantity_delta")
-  reason         StockAdjustmentReason?
-  note           String?
-  receiptLineId  String?                @map("receipt_line_id") @db.Uuid
-  receiptLine    StockReceiptLine?      @relation(fields: [receiptLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  countLineId    String?                @map("count_line_id") @db.Uuid
-  countLine      StockCountLine?        @relation(fields: [countLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  importJobId    String?                @map("import_job_id") @db.Uuid
-  importJob      ProductImportJob?      @relation(fields: [importJobId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  invoiceLineId  String?                @map("invoice_line_id") @db.Uuid
-  invoiceLine    InvoiceLine?           @relation("StockMovementInvoiceLine", fields: [invoiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  id                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId          String                 @map("branch_id") @db.Uuid
+  branch            Branch                 @relation("StockMovementBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  variantId         String                 @map("variant_id") @db.Uuid
+  variant           ProductVariant         @relation(fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  lotId             String                 @map("lot_id") @db.Uuid
+  lot               InventoryLot           @relation(fields: [branchId, variantId, lotId], references: [branchId, variantId, id], onDelete: Restrict, onUpdate: Restrict, map: "stock_movements_lot_fkey")
+  kind              StockMovementKind
+  quantityDelta     Int                    @map("quantity_delta")
+  reason            StockAdjustmentReason?
+  note              String?
+  receiptLineId     String?                @map("receipt_line_id") @db.Uuid
+  receiptLine       StockReceiptLine?      @relation(fields: [receiptLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  countLineId       String?                @map("count_line_id") @db.Uuid
+  countLine         StockCountLine?        @relation(fields: [countLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  importJobId       String?                @map("import_job_id") @db.Uuid
+  importJob         ProductImportJob?      @relation(fields: [importJobId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceLineId     String?                @map("invoice_line_id") @db.Uuid
+  invoiceLine       InvoiceLine?           @relation("StockMovementInvoiceLine", fields: [invoiceLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// Phase 6 P6-13: the refund a REFUND_RETURN movement belongs to.
-  productRefundId String?               @map("product_refund_id") @db.Uuid
-  productRefund  ProductRefund?         @relation("ProductRefundMovement", fields: [productRefundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  productRefundId   String?                @map("product_refund_id") @db.Uuid
+  productRefund     ProductRefund?         @relation("ProductRefundMovement", fields: [productRefundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// Phase 6 P6-18: the use of a product gift a GIFT_OUT or GIFT_RETURN movement belongs to.
-  rewardManualUseId String?             @map("reward_manual_use_id") @db.Uuid
-  rewardManualUse RewardManualUse?      @relation("RewardManualUseMovement", fields: [rewardManualUseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rewardManualUseId String?                @map("reward_manual_use_id") @db.Uuid
+  rewardManualUse   RewardManualUse?       @relation("RewardManualUseMovement", fields: [rewardManualUseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// Phase 6 P6-14: the exchange an EXCHANGE_RETURN movement belongs to.
-  productExchangeId String?             @map("product_exchange_id") @db.Uuid
-  productExchange   ProductExchange?    @relation("ProductExchangeMovement", fields: [productExchangeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  productExchangeId String?                @map("product_exchange_id") @db.Uuid
+  productExchange   ProductExchange?       @relation("ProductExchangeMovement", fields: [productExchangeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// The paid episode of the invoice a SALE or SALE_REVERSAL belongs to (P6-10).
-  paidSeq        Int?                   @map("paid_seq")
-  idempotencyKey String                 @unique(map: "stock_movements_idempotency_key") @map("idempotency_key")
-  actorUserId    String                 @map("actor_user_id") @db.Uuid
-  actor          User                   @relation("StockMovementActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdAt      DateTime               @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  paidSeq           Int?                   @map("paid_seq")
+  idempotencyKey    String                 @unique(map: "stock_movements_idempotency_key") @map("idempotency_key")
+  actorUserId       String                 @map("actor_user_id") @db.Uuid
+  actor             User                   @relation("StockMovementActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt         DateTime               @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
 
   @@index([branchId, variantId, createdAt], map: "stock_movements_level_idx")
   @@index([lotId], map: "stock_movements_lot_idx")
@@ -3881,50 +3893,50 @@ enum ProductReturnEventKind {
 }
 
 model ProductReturnCase {
-  id                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code              String                @unique(map: "product_return_cases_code_key") @db.VarChar(40)
-  branchId          String                @map("branch_id") @db.Uuid
-  branch            Branch                @relation("ProductReturnBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  invoiceId         String                @map("invoice_id") @db.Uuid
-  invoice           Invoice               @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  invoiceLineId     String                @map("invoice_line_id") @db.Uuid
-  line              InvoiceLine           @relation("ProductReturnLine", fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "product_return_cases_line_fkey")
-  productLine       InvoiceLineProduct    @relation("ProductReturnProductLine", fields: [invoiceLineId], references: [invoiceLineId], onDelete: Restrict, onUpdate: Restrict, map: "product_return_cases_product_line_fkey")
-  reason            ProductReturnReason
+  id                      String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                    String                @unique(map: "product_return_cases_code_key") @db.VarChar(40)
+  branchId                String                @map("branch_id") @db.Uuid
+  branch                  Branch                @relation("ProductReturnBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceId               String                @map("invoice_id") @db.Uuid
+  invoice                 Invoice               @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceLineId           String                @map("invoice_line_id") @db.Uuid
+  line                    InvoiceLine           @relation("ProductReturnLine", fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "product_return_cases_line_fkey")
+  productLine             InvoiceLineProduct    @relation("ProductReturnProductLine", fields: [invoiceLineId], references: [invoiceLineId], onDelete: Restrict, onUpdate: Restrict, map: "product_return_cases_product_line_fkey")
+  reason                  ProductReturnReason
   /// What the customer asked for. It is a request, not an approved remedy; the remedy is `decidedOutcome` once ACCEPTED.
-  requestedOutcome  ProductReturnOutcome  @map("requested_outcome")
-  quantity          Int
+  requestedOutcome        ProductReturnOutcome  @map("requested_outcome")
+  quantity                Int
   /// The seal/packaging check made at the counter (required true for PERSONAL_PREFERENCE).
-  sealIntact        Boolean?              @map("seal_intact")
+  sealIntact              Boolean?              @map("seal_intact")
   /// The opening note; later notes are events. Notes record what was said and seen, never a diagnosis (PRD 28.3).
-  notes             String?
+  notes                   String?
   /// The start of the return window: hand-over to the customer (for an in-stock counter sale, the invoice's paid time).
-  handoverAt        DateTime              @map("handover_at") @db.Timestamptz(3)
-  paidSeq           Int                   @map("paid_seq")
+  handoverAt              DateTime              @map("handover_at") @db.Timestamptz(3)
+  paidSeq                 Int                   @map("paid_seq")
   /// handover + 7 days (PERSONAL_PREFERENCE) or + 48 hours (WRONG_OR_DAMAGED); NULL for SKIN_IRRITATION (case by case).
-  windowEndsAt      DateTime?             @map("window_ends_at") @db.Timestamptz(3)
+  windowEndsAt            DateTime?             @map("window_ends_at") @db.Timestamptz(3)
   /// P6-12 follow-up (Owner, 2026-10-08): only the Owner opens a case after its window, with a written reason (all three set or none).
-  windowExceptionByUserId String?         @map("window_exception_by_user_id") @db.Uuid
-  windowExceptionBy User?                 @relation("ProductReturnWindowException", fields: [windowExceptionByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  windowExceptionReason String?           @map("window_exception_reason")
-  windowExceptionAt DateTime?             @map("window_exception_at") @db.Timestamptz(3)
-  status            ProductReturnStatus   @default(OPEN)
-  decidedOutcome    ProductReturnOutcome? @map("decided_outcome")
-  closedByUserId    String?               @map("closed_by_user_id") @db.Uuid
-  closedBy          User?                 @relation("ProductReturnCloser", fields: [closedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  closedAt          DateTime?             @map("closed_at") @db.Timestamptz(3)
-  closingNote       String?               @map("closing_note")
-  openedByUserId    String                @map("opened_by_user_id") @db.Uuid
-  openedBy          User                  @relation("ProductReturnOpener", fields: [openedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  openedAt          DateTime              @default(dbgenerated("clock_timestamp()")) @map("opened_at") @db.Timestamptz(3)
-  clientRequestId   String                @map("client_request_id") @db.Uuid
-  rowVersion        Int                   @default(1) @map("row_version")
-  createdAt         DateTime              @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime              @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
-  events            ProductReturnEvent[]
-  photos            ProductReturnPhoto[]
-  refunds           ProductRefund[]
-  exchanges         ProductExchange[]
+  windowExceptionByUserId String?               @map("window_exception_by_user_id") @db.Uuid
+  windowExceptionBy       User?                 @relation("ProductReturnWindowException", fields: [windowExceptionByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  windowExceptionReason   String?               @map("window_exception_reason")
+  windowExceptionAt       DateTime?             @map("window_exception_at") @db.Timestamptz(3)
+  status                  ProductReturnStatus   @default(OPEN)
+  decidedOutcome          ProductReturnOutcome? @map("decided_outcome")
+  closedByUserId          String?               @map("closed_by_user_id") @db.Uuid
+  closedBy                User?                 @relation("ProductReturnCloser", fields: [closedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  closedAt                DateTime?             @map("closed_at") @db.Timestamptz(3)
+  closingNote             String?               @map("closing_note")
+  openedByUserId          String                @map("opened_by_user_id") @db.Uuid
+  openedBy                User                  @relation("ProductReturnOpener", fields: [openedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  openedAt                DateTime              @default(dbgenerated("clock_timestamp()")) @map("opened_at") @db.Timestamptz(3)
+  clientRequestId         String                @map("client_request_id") @db.Uuid
+  rowVersion              Int                   @default(1) @map("row_version")
+  createdAt               DateTime              @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime              @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  events                  ProductReturnEvent[]
+  photos                  ProductReturnPhoto[]
+  refunds                 ProductRefund[]
+  exchanges               ProductExchange[]
 
   @@unique([openedByUserId, clientRequestId], map: "product_return_cases_request_key")
   @@index([branchId, openedAt(sort: Desc), id], map: "product_return_cases_branch_idx")
@@ -3992,46 +4004,46 @@ enum ProductRefundRestock {
 }
 
 model ProductRefund {
-  id                      String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code                    String               @unique(map: "product_refunds_code_key") @db.VarChar(40)
-  branchId                String               @map("branch_id") @db.Uuid
-  branch                  Branch               @relation("ProductRefundBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  invoiceId               String               @map("invoice_id") @db.Uuid
-  invoice                 Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  invoiceLineId           String               @map("invoice_line_id") @db.Uuid
-  line                    InvoiceLine          @relation("ProductRefundLine", fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "product_refunds_line_fkey")
-  productLine             InvoiceLineProduct   @relation("ProductRefundProductLine", fields: [invoiceLineId], references: [invoiceLineId], onDelete: Restrict, onUpdate: Restrict, map: "product_refunds_product_line_fkey")
+  id                      String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                    String                      @unique(map: "product_refunds_code_key") @db.VarChar(40)
+  branchId                String                      @map("branch_id") @db.Uuid
+  branch                  Branch                      @relation("ProductRefundBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceId               String                      @map("invoice_id") @db.Uuid
+  invoice                 Invoice                     @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceLineId           String                      @map("invoice_line_id") @db.Uuid
+  line                    InvoiceLine                 @relation("ProductRefundLine", fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "product_refunds_line_fkey")
+  productLine             InvoiceLineProduct          @relation("ProductRefundProductLine", fields: [invoiceLineId], references: [invoiceLineId], onDelete: Restrict, onUpdate: Restrict, map: "product_refunds_product_line_fkey")
   /// A refund follows an accepted return case OR the cancellation of a pre-order line (P6-17); exactly one of the two is set.
-  returnCaseId            String?              @map("return_case_id") @db.Uuid
-  returnCase              ProductReturnCase?   @relation(fields: [returnCaseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  orderLineId             String?              @unique(map: "product_refunds_order_line_key") @map("order_line_id") @db.Uuid
+  returnCaseId            String?                     @map("return_case_id") @db.Uuid
+  returnCase              ProductReturnCase?          @relation(fields: [returnCaseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  orderLineId             String?                     @unique(map: "product_refunds_order_line_key") @map("order_line_id") @db.Uuid
   /// Phase 6 P6-21: the settlement of a failed delivery this refund belongs to (the foreign key is SQL only).
-  settlementId            String?              @map("settlement_id") @db.Uuid
-  orderLine               ProductOrderLine?    @relation("ProductOrderLineRefund", fields: [orderLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  settlementId            String?                     @map("settlement_id") @db.Uuid
+  orderLine               ProductOrderLine?           @relation("ProductOrderLineRefund", fields: [orderLineId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// The paid episode of the invoice the refund belongs to.
-  paidSeq                 Int                  @map("paid_seq")
+  paidSeq                 Int                         @map("paid_seq")
   /// 1, 2, ... within the case; names the returned lot.
-  caseOrdinal             Int?                 @map("case_ordinal")
+  caseOrdinal             Int?                        @map("case_ordinal")
   quantity                Int
-  amountVnd               BigInt               @map("amount_vnd")
+  amountVnd               BigInt                      @map("amount_vnd")
   /// Running totals after this refund: units and money of the line, money of the whole invoice (the Beauty side).
-  lineUnitsAfter          Int                  @map("line_units_after")
-  lineAmountAfterVnd      BigInt               @map("line_amount_after_vnd")
-  invoiceRefundedAfterVnd BigInt               @map("invoice_refunded_after_vnd")
+  lineUnitsAfter          Int                         @map("line_units_after")
+  lineAmountAfterVnd      BigInt                      @map("line_amount_after_vnd")
+  invoiceRefundedAfterVnd BigInt                      @map("invoice_refunded_after_vnd")
   method                  ProductRefundMethod
-  bankReference           String?              @map("bank_reference") @db.VarChar(64)
+  bankReference           String?                     @map("bank_reference") @db.VarChar(64)
   reason                  String
   restock                 ProductRefundRestock
-  actorUserId             String               @map("actor_user_id") @db.Uuid
-  actor                   User                 @relation("ProductRefundActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  actorUserId             String                      @map("actor_user_id") @db.Uuid
+  actor                   User                        @relation("ProductRefundActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// When the person confirmed their password for this refund (evidence of the fresh re-authentication).
-  reauthenticatedAt       DateTime             @map("reauthenticated_at") @db.Timestamptz(3)
-  clientRequestId         String               @map("client_request_id") @db.Uuid
-  occurredAt              DateTime             @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+  reauthenticatedAt       DateTime                    @map("reauthenticated_at") @db.Timestamptz(3)
+  clientRequestId         String                      @map("client_request_id") @db.Uuid
+  occurredAt              DateTime                    @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
   corrections             ProductRefundCorrection[]
-  ledgerEntries           LoyaltyLedgerEntry[] @relation("ProductRefundLedger")
-  movements               StockMovement[]      @relation("ProductRefundMovement")
-  lots                    InventoryLot[]       @relation("ProductRefundLot")
+  ledgerEntries           LoyaltyLedgerEntry[]        @relation("ProductRefundLedger")
+  movements               StockMovement[]             @relation("ProductRefundMovement")
+  lots                    InventoryLot[]              @relation("ProductRefundLot")
   reauthenticationUses    RefundReauthenticationUse[] @relation("RefundReauthenticationUseRefund")
 
   @@unique([actorUserId, clientRequestId], map: "product_refunds_request_key")
@@ -4061,16 +4073,16 @@ model ProductRefundCorrection {
 /// pair (person, instant of the confirmation) is the key. Append-only; SQL refuses update, delete and truncate, and keeps the partial
 /// unique index on `product_refund_id`.
 model RefundReauthenticationUse {
-  actorUserId       String         @map("actor_user_id") @db.Uuid
-  actor             User           @relation("RefundReauthenticationUseActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  reauthenticatedAt DateTime       @map("reauthenticated_at") @db.Timestamptz(3)
-  productRefundId   String?        @map("product_refund_id") @db.Uuid
-  productRefund     ProductRefund? @relation("RefundReauthenticationUseRefund", fields: [productRefundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  productExchangeId String?        @map("product_exchange_id") @db.Uuid
+  actorUserId       String           @map("actor_user_id") @db.Uuid
+  actor             User             @relation("RefundReauthenticationUseActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reauthenticatedAt DateTime         @map("reauthenticated_at") @db.Timestamptz(3)
+  productRefundId   String?          @map("product_refund_id") @db.Uuid
+  productRefund     ProductRefund?   @relation("RefundReauthenticationUseRefund", fields: [productRefundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  productExchangeId String?          @map("product_exchange_id") @db.Uuid
   productExchange   ProductExchange? @relation("RefundReauthenticationUseExchange", fields: [productExchangeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// A settlement of a failed delivery used the confirmation (one refund; the foreign key is SQL only).
-  settlementId      String?        @map("settlement_id") @db.Uuid
-  usedAt            DateTime       @default(dbgenerated("clock_timestamp()")) @map("used_at") @db.Timestamptz(3)
+  settlementId      String?          @map("settlement_id") @db.Uuid
+  usedAt            DateTime         @default(dbgenerated("clock_timestamp()")) @map("used_at") @db.Timestamptz(3)
 
   @@id([actorUserId, reauthenticatedAt])
   @@map("refund_reauthentication_uses")
@@ -4087,51 +4099,51 @@ enum ProductExchangeRule {
 }
 
 model ProductExchange {
-  id                      String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code                    String                @unique(map: "product_exchanges_code_key") @db.VarChar(40)
-  branchId                String                @map("branch_id") @db.Uuid
-  branch                  Branch                @relation("ProductExchangeBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  id                      String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                    String                      @unique(map: "product_exchanges_code_key") @db.VarChar(40)
+  branchId                String                      @map("branch_id") @db.Uuid
+  branch                  Branch                      @relation("ProductExchangeBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// The ORIGINAL invoice and line (the returned goods).
-  invoiceId               String                @map("invoice_id") @db.Uuid
-  invoice                 Invoice               @relation("ProductExchangeOriginalInvoice", fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  invoiceLineId           String                @map("invoice_line_id") @db.Uuid
-  line                    InvoiceLine           @relation("ProductExchangeLine", fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "product_exchanges_line_fkey")
-  productLine             InvoiceLineProduct    @relation("ProductExchangeProductLine", fields: [invoiceLineId], references: [invoiceLineId], onDelete: Restrict, onUpdate: Restrict, map: "product_exchanges_product_line_fkey")
-  returnCaseId            String                @map("return_case_id") @db.Uuid
-  returnCase              ProductReturnCase     @relation(fields: [returnCaseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceId               String                      @map("invoice_id") @db.Uuid
+  invoice                 Invoice                     @relation("ProductExchangeOriginalInvoice", fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceLineId           String                      @map("invoice_line_id") @db.Uuid
+  line                    InvoiceLine                 @relation("ProductExchangeLine", fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "product_exchanges_line_fkey")
+  productLine             InvoiceLineProduct          @relation("ProductExchangeProductLine", fields: [invoiceLineId], references: [invoiceLineId], onDelete: Restrict, onUpdate: Restrict, map: "product_exchanges_product_line_fkey")
+  returnCaseId            String                      @map("return_case_id") @db.Uuid
+  returnCase              ProductReturnCase           @relation(fields: [returnCaseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// The paid episode of the original invoice the exchange belongs to.
-  paidSeq                 Int                   @map("paid_seq")
+  paidSeq                 Int                         @map("paid_seq")
   quantity                Int
   /// Running totals of the claims on the line after this exchange: units, and money (refunds plus exchange credits).
-  lineUnitsAfter          Int                   @map("line_units_after")
-  lineAmountAfterVnd      BigInt                @map("line_amount_after_vnd")
+  lineUnitsAfter          Int                         @map("line_units_after")
+  lineAmountAfterVnd      BigInt                      @map("line_amount_after_vnd")
   /// What the customer actually paid for the returned units.
-  creditVnd               BigInt                @map("credit_vnd")
+  creditVnd               BigInt                      @map("credit_vnd")
   rule                    ProductExchangeRule
-  replacementVariantId    String                @map("replacement_variant_id") @db.Uuid
-  replacementVariant      ProductVariant        @relation("ProductExchangeReplacement", fields: [replacementVariantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  replacementUnitPriceVnd BigInt                @map("replacement_unit_price_vnd")
-  replacementGrossVnd     BigInt                @map("replacement_gross_vnd")
+  replacementVariantId    String                      @map("replacement_variant_id") @db.Uuid
+  replacementVariant      ProductVariant              @relation("ProductExchangeReplacement", fields: [replacementVariantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  replacementUnitPriceVnd BigInt                      @map("replacement_unit_price_vnd")
+  replacementGrossVnd     BigInt                      @map("replacement_gross_vnd")
   /// What the exchange invoice takes off the replacement, what the customer pays more, what the spa hands back.
-  appliedCreditVnd        BigInt                @map("applied_credit_vnd")
-  payableVnd              BigInt                @map("payable_vnd")
-  refundVnd               BigInt                @map("refund_vnd")
-  refundMethod            ProductRefundMethod?  @map("refund_method")
-  refundBankReference     String?               @map("refund_bank_reference") @db.VarChar(64)
+  appliedCreditVnd        BigInt                      @map("applied_credit_vnd")
+  payableVnd              BigInt                      @map("payable_vnd")
+  refundVnd               BigInt                      @map("refund_vnd")
+  refundMethod            ProductRefundMethod?        @map("refund_method")
+  refundBankReference     String?                     @map("refund_bank_reference") @db.VarChar(64)
   /// The new invoice that carries the replacement (one exchange per invoice).
-  exchangeInvoiceId       String                @map("exchange_invoice_id") @db.Uuid
-  exchangeInvoice         Invoice               @relation("ProductExchangeInvoice", fields: [exchangeInvoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  exchangeInvoiceId       String                      @map("exchange_invoice_id") @db.Uuid
+  exchangeInvoice         Invoice                     @relation("ProductExchangeInvoice", fields: [exchangeInvoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   reason                  String
-  actorUserId             String                @map("actor_user_id") @db.Uuid
-  actor                   User                  @relation("ProductExchangeActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  actorUserId             String                      @map("actor_user_id") @db.Uuid
+  actor                   User                        @relation("ProductExchangeActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// When the person confirmed their password for this exchange (spent once, like a refund).
-  reauthenticatedAt       DateTime              @map("reauthenticated_at") @db.Timestamptz(3)
-  clientRequestId         String                @map("client_request_id") @db.Uuid
-  occurredAt              DateTime              @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+  reauthenticatedAt       DateTime                    @map("reauthenticated_at") @db.Timestamptz(3)
+  clientRequestId         String                      @map("client_request_id") @db.Uuid
+  occurredAt              DateTime                    @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
   completion              ProductExchangeCompletion?
   corrections             ProductExchangeCorrection[]
-  movements               StockMovement[]       @relation("ProductExchangeMovement")
-  lots                    InventoryLot[]        @relation("ProductExchangeLot")
+  movements               StockMovement[]             @relation("ProductExchangeMovement")
+  lots                    InventoryLot[]              @relation("ProductExchangeLot")
   reauthenticationUses    RefundReauthenticationUse[] @relation("RefundReauthenticationUseExchange")
 
   @@unique([actorUserId, clientRequestId], map: "product_exchanges_request_key")
@@ -4206,27 +4218,27 @@ enum ProductHandoverTo {
 
 /// One per invoice that has a pre-order product line. Created by the finalization of the invoice; only the contact can change afterwards.
 model ProductOrder {
-  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code            String             @unique(map: "product_orders_code_key") @db.VarChar(40)
-  invoiceId       String             @unique(map: "product_orders_invoice_key") @map("invoice_id") @db.Uuid
-  invoice         Invoice            @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  branchId        String             @map("branch_id") @db.Uuid
-  branch          Branch             @relation("ProductOrderBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  channel         InvoiceChannel     @default(COUNTER)
-  customerUserId  String?            @map("customer_user_id") @db.Uuid
-  customer        User?              @relation("ProductOrderCustomer", fields: [customerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  id                 String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code               String                    @unique(map: "product_orders_code_key") @db.VarChar(40)
+  invoiceId          String                    @unique(map: "product_orders_invoice_key") @map("invoice_id") @db.Uuid
+  invoice            Invoice                   @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId           String                    @map("branch_id") @db.Uuid
+  branch             Branch                    @relation("ProductOrderBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  channel            InvoiceChannel            @default(COUNTER)
+  customerUserId     String?                   @map("customer_user_id") @db.Uuid
+  customer           User?                     @relation("ProductOrderCustomer", fields: [customerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// Canonical +84 form; mandatory (OQ-34).
-  contactPhone    String             @map("contact_phone") @db.VarChar(16)
-  contactName     String?            @map("contact_name") @db.VarChar(120)
-  createdByUserId String             @map("created_by_user_id") @db.Uuid
-  createdBy       User               @relation("ProductOrderCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdAt       DateTime           @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime           @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
-  lines           ProductOrderLine[]
-  tickets         ProductOrderTicket[]
-  onlineDetail    OnlineOrderDetail?
-  shipment        OnlineShipment?
-  logs            OnlineOrderLog[]
+  contactPhone       String                    @map("contact_phone") @db.VarChar(16)
+  contactName        String?                   @map("contact_name") @db.VarChar(120)
+  createdByUserId    String                    @map("created_by_user_id") @db.Uuid
+  createdBy          User                      @relation("ProductOrderCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt          DateTime                  @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime                  @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  lines              ProductOrderLine[]
+  tickets            ProductOrderTicket[]
+  onlineDetail       OnlineOrderDetail?
+  shipment           OnlineShipment?
+  logs               OnlineOrderLog[]
   addressCorrections OnlineAddressCorrection[]
 
   @@index([branchId, createdAt(sort: Desc), id], map: "product_orders_branch_idx")
@@ -4236,57 +4248,57 @@ model ProductOrder {
 
 /// One per PRE_ORDER invoice line. The status machine and its facts are enforced by SQL (lucy_guard_product_order_line).
 model ProductOrderLine {
-  id                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId             String                  @map("order_id") @db.Uuid
-  order               ProductOrder            @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  invoiceId           String                  @map("invoice_id") @db.Uuid
-  invoice             Invoice                 @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "product_order_lines_invoice_fkey")
-  invoiceLineId       String                  @unique(map: "product_order_lines_line_key") @map("invoice_line_id") @db.Uuid
-  line                InvoiceLine             @relation("ProductOrderLineInvoiceLine", fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "product_order_lines_line_fkey")
-  productLine         InvoiceLineProduct      @relation("ProductOrderLineProductLine", fields: [invoiceLineId], references: [invoiceLineId], onDelete: Restrict, onUpdate: Restrict, map: "product_order_lines_product_line_fkey")
-  branchId            String                  @map("branch_id") @db.Uuid
-  branch              Branch                  @relation("ProductOrderLineBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  variantId           String                  @map("variant_id") @db.Uuid
-  variant             ProductVariant          @relation("ProductOrderLineVariant", fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  quantity            Int
-  status              ProductOrderLineStatus  @default(AWAITING_PAYMENT)
-  paidAt              DateTime?               @map("paid_at") @db.Timestamptz(3)
+  id                 String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId            String                   @map("order_id") @db.Uuid
+  order              ProductOrder             @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceId          String                   @map("invoice_id") @db.Uuid
+  invoice            Invoice                  @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "product_order_lines_invoice_fkey")
+  invoiceLineId      String                   @unique(map: "product_order_lines_line_key") @map("invoice_line_id") @db.Uuid
+  line               InvoiceLine              @relation("ProductOrderLineInvoiceLine", fields: [invoiceId, invoiceLineId], references: [invoiceId, id], onDelete: Restrict, onUpdate: Restrict, map: "product_order_lines_line_fkey")
+  productLine        InvoiceLineProduct       @relation("ProductOrderLineProductLine", fields: [invoiceLineId], references: [invoiceLineId], onDelete: Restrict, onUpdate: Restrict, map: "product_order_lines_product_line_fkey")
+  branchId           String                   @map("branch_id") @db.Uuid
+  branch             Branch                   @relation("ProductOrderLineBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  variantId          String                   @map("variant_id") @db.Uuid
+  variant            ProductVariant           @relation("ProductOrderLineVariant", fields: [variantId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  quantity           Int
+  status             ProductOrderLineStatus   @default(AWAITING_PAYMENT)
+  paidAt             DateTime?                @map("paid_at") @db.Timestamptz(3)
   /// "Dự kiến, không phải cam kết": the branch-local paid date plus the lead time (variant override or the settings default).
-  expectedFrom        DateTime?               @map("expected_from") @db.Date
-  expectedTo          DateTime?               @map("expected_to") @db.Date
-  orderedAt           DateTime?               @map("ordered_at") @db.Timestamptz(3)
-  orderedByUserId     String?                 @map("ordered_by_user_id") @db.Uuid
-  orderedBy           User?                   @relation("ProductOrderLineOrderedBy", fields: [orderedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  orderedNote         String?                 @map("ordered_note")
-  arrivedAt           DateTime?               @map("arrived_at") @db.Timestamptz(3)
-  arrivedByUserId     String?                 @map("arrived_by_user_id") @db.Uuid
-  arrivedBy           User?                   @relation("ProductOrderLineArrivedBy", fields: [arrivedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  arrivalReceiptId    String?                 @map("arrival_receipt_id") @db.Uuid
-  arrivalReceipt      StockReceipt?           @relation("ProductOrderLineArrivalReceipt", fields: [arrivalReceiptId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  handedOverAt        DateTime?               @map("handed_over_at") @db.Timestamptz(3)
-  handedOverByUserId  String?                 @map("handed_over_by_user_id") @db.Uuid
-  handedOverBy        User?                   @relation("ProductOrderLineHandedOverBy", fields: [handedOverByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  handedOverTo        ProductHandoverTo?      @map("handed_over_to")
-  handedOverToName    String?                 @map("handed_over_to_name") @db.VarChar(120)
-  handedOverNote      String?                 @map("handed_over_note")
-  completedAt         DateTime?               @map("completed_at") @db.Timestamptz(3)
-  cancelledAt         DateTime?               @map("cancelled_at") @db.Timestamptz(3)
-  cancelledByUserId   String?                 @map("cancelled_by_user_id") @db.Uuid
-  cancelledBy         User?                   @relation("ProductOrderLineCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  cancelCause         ProductOrderCancelCause? @map("cancel_cause")
-  cancelNote          String?                 @map("cancel_note")
-  rowVersion          Int                     @default(1) @map("row_version")
-  createdAt           DateTime                @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime                @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
-  events              ProductOrderEvent[]
-  refund              ProductRefund?          @relation("ProductOrderLineRefund")
+  expectedFrom       DateTime?                @map("expected_from") @db.Date
+  expectedTo         DateTime?                @map("expected_to") @db.Date
+  orderedAt          DateTime?                @map("ordered_at") @db.Timestamptz(3)
+  orderedByUserId    String?                  @map("ordered_by_user_id") @db.Uuid
+  orderedBy          User?                    @relation("ProductOrderLineOrderedBy", fields: [orderedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  orderedNote        String?                  @map("ordered_note")
+  arrivedAt          DateTime?                @map("arrived_at") @db.Timestamptz(3)
+  arrivedByUserId    String?                  @map("arrived_by_user_id") @db.Uuid
+  arrivedBy          User?                    @relation("ProductOrderLineArrivedBy", fields: [arrivedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  arrivalReceiptId   String?                  @map("arrival_receipt_id") @db.Uuid
+  arrivalReceipt     StockReceipt?            @relation("ProductOrderLineArrivalReceipt", fields: [arrivalReceiptId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  handedOverAt       DateTime?                @map("handed_over_at") @db.Timestamptz(3)
+  handedOverByUserId String?                  @map("handed_over_by_user_id") @db.Uuid
+  handedOverBy       User?                    @relation("ProductOrderLineHandedOverBy", fields: [handedOverByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  handedOverTo       ProductHandoverTo?       @map("handed_over_to")
+  handedOverToName   String?                  @map("handed_over_to_name") @db.VarChar(120)
+  handedOverNote     String?                  @map("handed_over_note")
+  completedAt        DateTime?                @map("completed_at") @db.Timestamptz(3)
+  cancelledAt        DateTime?                @map("cancelled_at") @db.Timestamptz(3)
+  cancelledByUserId  String?                  @map("cancelled_by_user_id") @db.Uuid
+  cancelledBy        User?                    @relation("ProductOrderLineCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  cancelCause        ProductOrderCancelCause? @map("cancel_cause")
+  cancelNote         String?                  @map("cancel_note")
+  rowVersion         Int                      @default(1) @map("row_version")
+  createdAt          DateTime                 @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime                 @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  events             ProductOrderEvent[]
+  refund             ProductRefund?           @relation("ProductOrderLineRefund")
   /// Phase 6 P6-19 (Wave 4): an online line ships (SHIPPED) and is delivered (COMPLETED); the foreign keys to users are SQL only.
-  shippedAt           DateTime?               @map("shipped_at") @db.Timestamptz(3)
-  shippedByUserId     String?                 @map("shipped_by_user_id") @db.Uuid
-  deliveredAt         DateTime?               @map("delivered_at") @db.Timestamptz(3)
-  deliveredByUserId   String?                 @map("delivered_by_user_id") @db.Uuid
+  shippedAt          DateTime?                @map("shipped_at") @db.Timestamptz(3)
+  shippedByUserId    String?                  @map("shipped_by_user_id") @db.Uuid
+  deliveredAt        DateTime?                @map("delivered_at") @db.Timestamptz(3)
+  deliveredByUserId  String?                  @map("delivered_by_user_id") @db.Uuid
   /// STAFF or CUSTOMER (the customer pressed "Tôi đã nhận hàng").
-  deliveredByKind     String?                 @map("delivered_by_kind") @db.VarChar(8)
+  deliveredByKind    String?                  @map("delivered_by_kind") @db.VarChar(8)
 
   @@index([orderId], map: "product_order_lines_order_idx")
   @@index([invoiceId], map: "product_order_lines_invoice_idx")
@@ -4397,14 +4409,14 @@ model OnlineCartLine {
 
 /// An address a member chose to keep (OQ-93). Personal data: only the owner reads it.
 model CustomerAddress {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId        String   @map("user_id") @db.Uuid
-  recipientName String   @map("recipient_name") @db.VarChar(120)
-  recipientPhone String  @map("recipient_phone") @db.VarChar(16)
-  provinceCode  String   @map("province_code") @db.VarChar(40)
-  ward          String   @db.VarChar(120)
-  street        String   @db.VarChar(200)
-  createdAt     DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  recipientName  String   @map("recipient_name") @db.VarChar(120)
+  recipientPhone String   @map("recipient_phone") @db.VarChar(16)
+  provinceCode   String   @map("province_code") @db.VarChar(40)
+  ward           String   @db.VarChar(120)
+  street         String   @db.VarChar(200)
+  createdAt      DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
 
   @@index([userId, createdAt, id], map: "customer_addresses_user_idx")
   @@map("customer_addresses")
@@ -4651,35 +4663,35 @@ enum SourceChangeKind {
 /// P9-2: one authorized place a supplier's catalog can be read from. The permission record (who, how, when, which content) must be
 /// complete and confirmed before the source can be enabled (T9); the database refuses an enabled source without it.
 model SupplierSource {
-  id                           String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  supplierId                   String                @map("supplier_id") @db.Uuid
-  supplier                     Supplier              @relation(fields: [supplierId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  name                         String
-  kind                         SupplierSourceKind
-  baseUrl                      String?               @map("base_url")
-  adapterKey                   String?               @map("adapter_key") @db.VarChar(64)
-  status                       SupplierSourceStatus  @default(PENDING_VALIDATION)
-  isEnabled                    Boolean               @default(false) @map("is_enabled")
-  scanCadence                  SupplierSourceCadence @default(MANUAL) @map("scan_cadence")
-  permissionGivenBy            String?               @map("permission_given_by")
-  permissionMethod             String?               @map("permission_method")
-  permissionDate               DateTime?             @map("permission_date") @db.Date
-  permissionNote               String?               @map("permission_note")
-  permitsText                  Boolean               @default(false) @map("permits_text")
-  permitsImages                Boolean               @default(false) @map("permits_images")
-  permitsPrices                Boolean               @default(false) @map("permits_prices")
-  permissionConfirmedByUserId  String?               @map("permission_confirmed_by_user_id") @db.Uuid
-  permissionConfirmedBy        User?                 @relation("SupplierSourceConfirmer", fields: [permissionConfirmedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  permissionConfirmedAt        DateTime?             @map("permission_confirmed_at") @db.Timestamptz(3)
-  lastSuccessAt                DateTime?             @map("last_success_at") @db.Timestamptz(3)
-  rowVersion                   Int                   @default(1) @map("row_version")
-  createdByUserId              String                @map("created_by_user_id") @db.Uuid
-  createdBy                    User                  @relation("SupplierSourceCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdAt                    DateTime              @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  updatedAt                    DateTime              @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
-  scans                        ImportScan[]
-  records                      SourceRecord[]
-  tests                        SupplierSourceTest[]
+  id                          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  supplierId                  String                @map("supplier_id") @db.Uuid
+  supplier                    Supplier              @relation(fields: [supplierId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  name                        String
+  kind                        SupplierSourceKind
+  baseUrl                     String?               @map("base_url")
+  adapterKey                  String?               @map("adapter_key") @db.VarChar(64)
+  status                      SupplierSourceStatus  @default(PENDING_VALIDATION)
+  isEnabled                   Boolean               @default(false) @map("is_enabled")
+  scanCadence                 SupplierSourceCadence @default(MANUAL) @map("scan_cadence")
+  permissionGivenBy           String?               @map("permission_given_by")
+  permissionMethod            String?               @map("permission_method")
+  permissionDate              DateTime?             @map("permission_date") @db.Date
+  permissionNote              String?               @map("permission_note")
+  permitsText                 Boolean               @default(false) @map("permits_text")
+  permitsImages               Boolean               @default(false) @map("permits_images")
+  permitsPrices               Boolean               @default(false) @map("permits_prices")
+  permissionConfirmedByUserId String?               @map("permission_confirmed_by_user_id") @db.Uuid
+  permissionConfirmedBy       User?                 @relation("SupplierSourceConfirmer", fields: [permissionConfirmedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  permissionConfirmedAt       DateTime?             @map("permission_confirmed_at") @db.Timestamptz(3)
+  lastSuccessAt               DateTime?             @map("last_success_at") @db.Timestamptz(3)
+  rowVersion                  Int                   @default(1) @map("row_version")
+  createdByUserId             String                @map("created_by_user_id") @db.Uuid
+  createdBy                   User                  @relation("SupplierSourceCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt                   DateTime              @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt                   DateTime              @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  scans                       ImportScan[]
+  records                     SourceRecord[]
+  tests                       SupplierSourceTest[]
 
   @@unique([supplierId, name], map: "supplier_sources_supplier_name_key")
   @@unique([supplierId, baseUrl], map: "supplier_sources_supplier_url_key")
@@ -4720,36 +4732,36 @@ model SupplierSourceTest {
 
 /// P9-2: one run of a source (the import history, PRD 30.7). A null actor means the schedule ran it.
 model ImportScan {
-  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sourceId            String            @map("source_id") @db.Uuid
-  source              SupplierSource    @relation(fields: [sourceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  id                  String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceId            String                   @map("source_id") @db.Uuid
+  source              SupplierSource           @relation(fields: [sourceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   trigger             ImportScanTrigger
-  status              ImportScanStatus  @default(RUNNING)
-  actorUserId         String?           @map("actor_user_id") @db.Uuid
-  actor               User?             @relation("ImportScanActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  startedAt           DateTime          @default(dbgenerated("clock_timestamp()")) @map("started_at") @db.Timestamptz(3)
-  finishedAt          DateTime?         @map("finished_at") @db.Timestamptz(3)
-  discoveredCount     Int               @default(0) @map("discovered_count")
-  newCount            Int               @default(0) @map("new_count")
-  unchangedCount      Int               @default(0) @map("unchanged_count")
-  priceChangedCount   Int               @default(0) @map("price_changed_count")
-  contentChangedCount Int               @default(0) @map("content_changed_count")
-  imageChangedCount   Int               @default(0) @map("image_changed_count")
-  removedCount        Int               @default(0) @map("removed_count")
-  duplicateCount      Int               @default(0) @map("duplicate_count")
-  errorCount          Int               @default(0) @map("error_count")
-  errors              Json              @default("[]") @db.JsonB
-  claimedAt           DateTime?         @map("claimed_at") @db.Timestamptz(3)
-  leaseExpiresAt      DateTime?         @map("lease_expires_at") @db.Timestamptz(3)
-  sampleLimit         Int               @default(20) @map("sample_limit") @db.SmallInt
+  status              ImportScanStatus         @default(RUNNING)
+  actorUserId         String?                  @map("actor_user_id") @db.Uuid
+  actor               User?                    @relation("ImportScanActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  startedAt           DateTime                 @default(dbgenerated("clock_timestamp()")) @map("started_at") @db.Timestamptz(3)
+  finishedAt          DateTime?                @map("finished_at") @db.Timestamptz(3)
+  discoveredCount     Int                      @default(0) @map("discovered_count")
+  newCount            Int                      @default(0) @map("new_count")
+  unchangedCount      Int                      @default(0) @map("unchanged_count")
+  priceChangedCount   Int                      @default(0) @map("price_changed_count")
+  contentChangedCount Int                      @default(0) @map("content_changed_count")
+  imageChangedCount   Int                      @default(0) @map("image_changed_count")
+  removedCount        Int                      @default(0) @map("removed_count")
+  duplicateCount      Int                      @default(0) @map("duplicate_count")
+  errorCount          Int                      @default(0) @map("error_count")
+  errors              Json                     @default("[]") @db.JsonB
+  claimedAt           DateTime?                @map("claimed_at") @db.Timestamptz(3)
+  leaseExpiresAt      DateTime?                @map("lease_expires_at") @db.Timestamptz(3)
+  sampleLimit         Int                      @default(20) @map("sample_limit") @db.SmallInt
   /// SAMPLE (the first read: at most 20 products, or a re-read of the known ones) or FULL (every product of the source).
-  scope               String            @default("SAMPLE") @db.VarChar(8)
-  requestCount        Int               @default(0) @map("request_count")
-  imageCount          Int               @default(0) @map("image_count")
-  imageFlagCount      Int               @default(0) @map("image_flag_count")
-  createdAt           DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  firstSeenRecords    SourceRecord[]    @relation("SourceRecordFirstScan")
-  lastSeenRecords     SourceRecord[]    @relation("SourceRecordLastScan")
+  scope               String                   @default("SAMPLE") @db.VarChar(8)
+  requestCount        Int                      @default(0) @map("request_count")
+  imageCount          Int                      @default(0) @map("image_count")
+  imageFlagCount      Int                      @default(0) @map("image_flag_count")
+  createdAt           DateTime                 @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  firstSeenRecords    SourceRecord[]           @relation("SourceRecordFirstScan")
+  lastSeenRecords     SourceRecord[]           @relation("SourceRecordLastScan")
   priceObservations   SourcePriceObservation[]
   changes             SourceChange[]
 
@@ -4759,36 +4771,36 @@ model ImportScan {
 
 /// P9-2: what one source says about one supplier product, as normalized text. The key is the source's own id, not the SKU.
 model SourceRecord {
-  id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sourceId         String                   @map("source_id") @db.Uuid
-  source           SupplierSource           @relation(fields: [sourceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  sourceKey        String                   @map("source_key") @db.VarChar(300)
-  url              String
-  name             String
-  sku              String?                  @db.VarChar(100)
-  barcode          String?                  @db.VarChar(100)
-  brandText        String?                  @map("brand_text")
-  categoryPath     Json                     @default("[]") @map("category_path") @db.JsonB
-  descriptionText  String?                  @map("description_text")
-  attributes       Json                     @default("{}") @db.JsonB
-  imageUrls        Json                     @default("[]") @map("image_urls") @db.JsonB
-  contentHash      String                   @map("content_hash") @db.VarChar(64)
-  priceHash        String?                  @map("price_hash") @db.VarChar(64)
-  imagesHash       String?                  @map("images_hash") @db.VarChar(64)
-  state            SourceRecordState        @default(PRESENT)
-  lastChanges      Json                     @default("[]") @map("last_changes") @db.JsonB
-  missingScans     Int                      @default(0) @map("missing_scans")
-  firstSeenScanId  String                   @map("first_seen_scan_id") @db.Uuid
-  firstSeenScan    ImportScan               @relation("SourceRecordFirstScan", fields: [firstSeenScanId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  lastSeenScanId   String                   @map("last_seen_scan_id") @db.Uuid
-  lastSeenScan     ImportScan               @relation("SourceRecordLastScan", fields: [lastSeenScanId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  firstSeenAt      DateTime                 @default(dbgenerated("clock_timestamp()")) @map("first_seen_at") @db.Timestamptz(3)
-  lastSeenAt       DateTime                 @default(dbgenerated("clock_timestamp()")) @map("last_seen_at") @db.Timestamptz(3)
-  createdAt        DateTime                 @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime                 @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  id                String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceId          String                   @map("source_id") @db.Uuid
+  source            SupplierSource           @relation(fields: [sourceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sourceKey         String                   @map("source_key") @db.VarChar(300)
+  url               String
+  name              String
+  sku               String?                  @db.VarChar(100)
+  barcode           String?                  @db.VarChar(100)
+  brandText         String?                  @map("brand_text")
+  categoryPath      Json                     @default("[]") @map("category_path") @db.JsonB
+  descriptionText   String?                  @map("description_text")
+  attributes        Json                     @default("{}") @db.JsonB
+  imageUrls         Json                     @default("[]") @map("image_urls") @db.JsonB
+  contentHash       String                   @map("content_hash") @db.VarChar(64)
+  priceHash         String?                  @map("price_hash") @db.VarChar(64)
+  imagesHash        String?                  @map("images_hash") @db.VarChar(64)
+  state             SourceRecordState        @default(PRESENT)
+  lastChanges       Json                     @default("[]") @map("last_changes") @db.JsonB
+  missingScans      Int                      @default(0) @map("missing_scans")
+  firstSeenScanId   String                   @map("first_seen_scan_id") @db.Uuid
+  firstSeenScan     ImportScan               @relation("SourceRecordFirstScan", fields: [firstSeenScanId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  lastSeenScanId    String                   @map("last_seen_scan_id") @db.Uuid
+  lastSeenScan      ImportScan               @relation("SourceRecordLastScan", fields: [lastSeenScanId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  firstSeenAt       DateTime                 @default(dbgenerated("clock_timestamp()")) @map("first_seen_at") @db.Timestamptz(3)
+  lastSeenAt        DateTime                 @default(dbgenerated("clock_timestamp()")) @map("last_seen_at") @db.Timestamptz(3)
+  createdAt         DateTime                 @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime                 @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   priceObservations SourcePriceObservation[]
-  changes          SourceChange[]
-  candidateLink    CandidateSource?
+  changes           SourceChange[]
+  candidateLink     CandidateSource?
 
   @@unique([sourceId, sourceKey], map: "source_records_source_key_key")
   @@index([sourceId, state], map: "source_records_state_idx")
@@ -4837,35 +4849,35 @@ model SourcePriceObservation {
 
 /// P9-2: the Lucy-side draft of one underlying supplier product. The text columns are Lucy-owned and never overwritten by a sync.
 model ImportCandidate {
-  id                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  supplierId        String               @map("supplier_id") @db.Uuid
-  supplier          Supplier             @relation(fields: [supplierId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  state             ImportCandidateState @default(DETECTED)
-  nameVi            String               @map("name_vi")
-  nameEn            String               @map("name_en")
-  needsTranslation  Boolean              @default(true) @map("needs_translation")
-  descriptionVi     String?              @map("description_vi")
-  descriptionEn     String?              @map("description_en")
-  brandText         String?              @map("brand_text")
-  brandId           String?              @map("brand_id") @db.Uuid
-  brand             Brand?               @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  categoryPath      Json                 @default("[]") @map("category_path") @db.JsonB
-  categoryId        String?              @map("category_id") @db.Uuid
-  category          ProductCategory?     @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  proposedSku       String?              @map("proposed_sku") @db.VarChar(64)
-  proposedVariants  Json                 @default("[]") @map("proposed_variants") @db.JsonB
-  warnings          Json                 @default("[]") @db.JsonB
-  matchedProductId  String?              @map("matched_product_id") @db.Uuid
-  matchedProduct    Product?             @relation("CandidateMatchedProduct", fields: [matchedProductId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  importedProductId String?              @map("imported_product_id") @db.Uuid
-  importedProduct   Product?             @relation("CandidateImportedProduct", fields: [importedProductId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  decidedByUserId   String?              @map("decided_by_user_id") @db.Uuid
-  decidedBy         User?                @relation("ImportCandidateDecider", fields: [decidedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  decidedAt         DateTime?            @map("decided_at") @db.Timestamptz(3)
-  decisionNote      String?              @map("decision_note")
-  rowVersion        Int                  @default(1) @map("row_version")
-  createdAt         DateTime             @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime             @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  id                String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  supplierId        String                    @map("supplier_id") @db.Uuid
+  supplier          Supplier                  @relation(fields: [supplierId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  state             ImportCandidateState      @default(DETECTED)
+  nameVi            String                    @map("name_vi")
+  nameEn            String                    @map("name_en")
+  needsTranslation  Boolean                   @default(true) @map("needs_translation")
+  descriptionVi     String?                   @map("description_vi")
+  descriptionEn     String?                   @map("description_en")
+  brandText         String?                   @map("brand_text")
+  brandId           String?                   @map("brand_id") @db.Uuid
+  brand             Brand?                    @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  categoryPath      Json                      @default("[]") @map("category_path") @db.JsonB
+  categoryId        String?                   @map("category_id") @db.Uuid
+  category          ProductCategory?          @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  proposedSku       String?                   @map("proposed_sku") @db.VarChar(64)
+  proposedVariants  Json                      @default("[]") @map("proposed_variants") @db.JsonB
+  warnings          Json                      @default("[]") @db.JsonB
+  matchedProductId  String?                   @map("matched_product_id") @db.Uuid
+  matchedProduct    Product?                  @relation("CandidateMatchedProduct", fields: [matchedProductId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  importedProductId String?                   @map("imported_product_id") @db.Uuid
+  importedProduct   Product?                  @relation("CandidateImportedProduct", fields: [importedProductId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  decidedByUserId   String?                   @map("decided_by_user_id") @db.Uuid
+  decidedBy         User?                     @relation("ImportCandidateDecider", fields: [decidedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  decidedAt         DateTime?                 @map("decided_at") @db.Timestamptz(3)
+  decisionNote      String?                   @map("decision_note")
+  rowVersion        Int                       @default(1) @map("row_version")
+  createdAt         DateTime                  @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime                  @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
   sources           CandidateSource[]
   images            CandidateImage[]
   decisions         CandidateReviewDecision[]
@@ -4892,24 +4904,24 @@ model CandidateSource {
 
 /// P9-2: at most six images per candidate (Owner answer 5); sort order is 0..5.
 model CandidateImage {
-  id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  candidateId  String          @map("candidate_id") @db.Uuid
-  candidate    ImportCandidate @relation(fields: [candidateId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  mediaAssetId String          @map("media_asset_id") @db.Uuid
-  mediaAsset   MediaAsset      @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  sourceUrl    String          @map("source_url")
-  sortOrder    Int             @map("sort_order") @db.SmallInt
-  sha256       String          @db.VarChar(64)
-  phash        String?         @db.VarChar(64)
-  sourceRecordId   String          @map("source_record_id") @db.Uuid
-  owner            CandidateSource @relation(fields: [candidateId, sourceRecordId], references: [candidateId, sourceRecordId], onDelete: Restrict, onUpdate: Restrict, map: "candidate_images_owner_fkey")
-  sourceProductKey String          @map("source_product_key") @db.VarChar(300)
-  variantKey       String?         @map("variant_key") @db.VarChar(300)
-  flag             String?         @db.VarChar(24)
-  verifiedAt       DateTime        @default(dbgenerated("clock_timestamp()")) @map("verified_at") @db.Timestamptz(3)
-  retiredAt        DateTime?       @map("retired_at") @db.Timestamptz(3)
+  id               String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  candidateId      String                    @map("candidate_id") @db.Uuid
+  candidate        ImportCandidate           @relation(fields: [candidateId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  mediaAssetId     String                    @map("media_asset_id") @db.Uuid
+  mediaAsset       MediaAsset                @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sourceUrl        String                    @map("source_url")
+  sortOrder        Int                       @map("sort_order") @db.SmallInt
+  sha256           String                    @db.VarChar(64)
+  phash            String?                   @db.VarChar(64)
+  sourceRecordId   String                    @map("source_record_id") @db.Uuid
+  owner            CandidateSource           @relation(fields: [candidateId, sourceRecordId], references: [candidateId, sourceRecordId], onDelete: Restrict, onUpdate: Restrict, map: "candidate_images_owner_fkey")
+  sourceProductKey String                    @map("source_product_key") @db.VarChar(300)
+  variantKey       String?                   @map("variant_key") @db.VarChar(300)
+  flag             String?                   @db.VarChar(24)
+  verifiedAt       DateTime                  @default(dbgenerated("clock_timestamp()")) @map("verified_at") @db.Timestamptz(3)
+  retiredAt        DateTime?                 @map("retired_at") @db.Timestamptz(3)
   decisions        CandidateReviewDecision[]
-  createdAt    DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  createdAt        DateTime                  @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
 
   @@index([candidateId, sortOrder], map: "candidate_images_order_idx")
   @@index([mediaAssetId], map: "candidate_images_media_idx")
@@ -5017,21 +5029,21 @@ model ReauthUse {
 
 /// One CASH fund per branch and one shared BANK fund. The opening balance is counted by a person at go-live and never changes.
 model CashFund {
-  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  advances         SalaryAdvance[]
-  payslips         Payslip[]
-  kind             FundKind
-  branchId         String?      @map("branch_id") @db.Uuid
-  branch           Branch?      @relation("CashFundBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  name             String
-  openingBalanceVnd BigInt      @map("opening_balance_vnd")
-  openingAt        DateTime     @map("opening_at") @db.Timestamptz(3)
-  openingByUserId  String       @map("opening_by_user_id") @db.Uuid
-  openingBy        User         @relation("CashFundOpener", fields: [openingByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  isActive         Boolean      @default(true) @map("is_active")
-  createdAt        DateTime     @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  entries          FundEntry[]
-  closings         CashDayClosing[]
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  advances          SalaryAdvance[]
+  payslips          Payslip[]
+  kind              FundKind
+  branchId          String?          @map("branch_id") @db.Uuid
+  branch            Branch?          @relation("CashFundBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  name              String
+  openingBalanceVnd BigInt           @map("opening_balance_vnd")
+  openingAt         DateTime         @map("opening_at") @db.Timestamptz(3)
+  openingByUserId   String           @map("opening_by_user_id") @db.Uuid
+  openingBy         User             @relation("CashFundOpener", fields: [openingByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  isActive          Boolean          @default(true) @map("is_active")
+  createdAt         DateTime         @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  entries           FundEntry[]
+  closings          CashDayClosing[]
 
   @@index([openingByUserId], map: "cash_funds_opening_by_idx")
   @@map("cash_funds")
@@ -5039,32 +5051,32 @@ model CashFund {
 
 /// Append-only book of money movements (immutable; a correction is a new CORRECTION entry that reverses one earlier entry).
 model FundEntry {
-  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  advance           SalaryAdvance?
-  payslipNet        Payslip?          @relation("PayslipNetEntry")
-  payslipTips       Payslip?          @relation("PayslipTipsEntry")
-  tips              Tip[]
-  seq               BigInt            @default(autoincrement())
-  fundId            String            @map("fund_id") @db.Uuid
-  fund              CashFund          @relation(fields: [fundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  branchId          String            @map("branch_id") @db.Uuid
-  branch            Branch            @relation("FundEntryBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  businessDate      DateTime          @map("business_date") @db.Date
-  direction         FundDirection
-  category          FundEntryCategory
-  amountVnd         BigInt            @map("amount_vnd")
-  sourceType        String?           @map("source_type") @db.VarChar(40)
-  sourceId          String?           @map("source_id") @db.Uuid
-  sourceLeg         Int               @default(0) @map("source_leg") @db.SmallInt
-  reversesEntryId   String?           @map("reverses_entry_id") @db.Uuid
-  reversesEntry     FundEntry?        @relation("FundEntryReversal", fields: [reversesEntryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  reversedBy        FundEntry[]       @relation("FundEntryReversal")
-  reason            String?
-  actorUserId       String?           @map("actor_user_id") @db.Uuid
-  actor             User?             @relation("FundEntryActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  clientRequestId   String?           @map("client_request_id") @db.Uuid
-  occurredAt        DateTime          @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
-  sourceOccurredAt  DateTime?         @map("source_occurred_at") @db.Timestamptz(3)
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  advance          SalaryAdvance?
+  payslipNet       Payslip?          @relation("PayslipNetEntry")
+  payslipTips      Payslip?          @relation("PayslipTipsEntry")
+  tips             Tip[]
+  seq              BigInt            @default(autoincrement())
+  fundId           String            @map("fund_id") @db.Uuid
+  fund             CashFund          @relation(fields: [fundId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  branchId         String            @map("branch_id") @db.Uuid
+  branch           Branch            @relation("FundEntryBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  businessDate     DateTime          @map("business_date") @db.Date
+  direction        FundDirection
+  category         FundEntryCategory
+  amountVnd        BigInt            @map("amount_vnd")
+  sourceType       String?           @map("source_type") @db.VarChar(40)
+  sourceId         String?           @map("source_id") @db.Uuid
+  sourceLeg        Int               @default(0) @map("source_leg") @db.SmallInt
+  reversesEntryId  String?           @map("reverses_entry_id") @db.Uuid
+  reversesEntry    FundEntry?        @relation("FundEntryReversal", fields: [reversesEntryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reversedBy       FundEntry[]       @relation("FundEntryReversal")
+  reason           String?
+  actorUserId      String?           @map("actor_user_id") @db.Uuid
+  actor            User?             @relation("FundEntryActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  clientRequestId  String?           @map("client_request_id") @db.Uuid
+  occurredAt       DateTime          @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+  sourceOccurredAt DateTime?         @map("source_occurred_at") @db.Timestamptz(3)
 
   @@index([fundId, businessDate, seq], map: "fund_entries_fund_date_idx")
   @@index([branchId, businessDate], map: "fund_entries_branch_date_idx")
@@ -5149,23 +5161,23 @@ model TourRule {
 /// P7-8 (PRD 26): a product commission rule (append-only). value = basis points for PERCENT, dong per unit for FIXED_PER_UNIT. The
 /// unique index over the scope, its target, the employee and the date is SQL-only (it uses COALESCE).
 model CommissionRule {
-  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   scope           CommissionScope
-  brandId         String?         @map("brand_id") @db.Uuid
-  brand           Brand?          @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  categoryId      String?         @map("category_id") @db.Uuid
+  brandId         String?          @map("brand_id") @db.Uuid
+  brand           Brand?           @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  categoryId      String?          @map("category_id") @db.Uuid
   category        ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  productId       String?         @map("product_id") @db.Uuid
-  product         Product?        @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  employeeUserId  String?         @map("employee_user_id") @db.Uuid
+  productId       String?          @map("product_id") @db.Uuid
+  product         Product?         @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId  String?          @map("employee_user_id") @db.Uuid
   employee        EmployeeProfile? @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
   kind            CommissionKind
   value           BigInt
-  effectiveFrom   DateTime        @map("effective_from") @db.Date
+  effectiveFrom   DateTime         @map("effective_from") @db.Date
   reason          String?
-  createdByUserId String          @map("created_by_user_id") @db.Uuid
-  createdBy       User            @relation("CommissionRuleCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdAt       DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  createdByUserId String           @map("created_by_user_id") @db.Uuid
+  createdBy       User             @relation("CommissionRuleCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt       DateTime         @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
 
   @@index([scope, effectiveFrom], map: "commission_rules_lookup_idx")
   @@index([createdByUserId], map: "commission_rules_creator_idx")
@@ -5207,7 +5219,7 @@ model PayEarning {
   sourceKey      String          @unique(map: "pay_earnings_source_key") @map("source_key")
   /// The payroll run that claimed the row (P7-12); set once.
   runId          String?         @map("run_id") @db.Uuid
-  run              PayRun?  @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  run            PayRun?         @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   createdAt      DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
 
   @@index([employeeUserId, businessDate, kind], map: "pay_earnings_employee_date_idx")
@@ -5248,33 +5260,33 @@ enum TipMethod {
 /// Immutable: a mistake is a negative row that reverses it. `fundEntryId` is the TIP_IN entry (or the reversing CORRECTION). `runId` is the
 /// payroll run that pays it out with the payslip, set once.
 model Tip {
-  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  seq              BigInt      @default(autoincrement())
-  branchId         String      @map("branch_id") @db.Uuid
-  branch           Branch      @relation("TipBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  invoiceId        String      @map("invoice_id") @db.Uuid
-  invoice          Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  employeeUserId   String      @map("employee_user_id") @db.Uuid
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  seq              BigInt          @default(autoincrement())
+  branchId         String          @map("branch_id") @db.Uuid
+  branch           Branch          @relation("TipBranch", fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  invoiceId        String          @map("invoice_id") @db.Uuid
+  invoice          Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  employeeUserId   String          @map("employee_user_id") @db.Uuid
   employee         EmployeeProfile @relation(fields: [employeeUserId], references: [userId], onDelete: Restrict, onUpdate: Restrict)
   /// Positive for a tip, negative for a reversal.
-  amountVnd        BigInt      @map("amount_vnd")
+  amountVnd        BigInt          @map("amount_vnd")
   method           TipMethod
-  businessDate     DateTime    @map("business_date") @db.Date
-  reversesId       String?     @map("reverses_id") @db.Uuid
-  reverses         Tip?        @relation("TipReversal", fields: [reversesId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  reversals        Tip[]       @relation("TipReversal")
+  businessDate     DateTime        @map("business_date") @db.Date
+  reversesId       String?         @map("reverses_id") @db.Uuid
+  reverses         Tip?            @relation("TipReversal", fields: [reversesId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reversals        Tip[]           @relation("TipReversal")
   reason           String?
-  recordedByUserId String      @map("recorded_by_user_id") @db.Uuid
-  recordedBy       User        @relation("TipRecorder", fields: [recordedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  clientRequestId  String      @map("client_request_id") @db.Uuid
-  fundEntryId      String      @map("fund_entry_id") @db.Uuid
-  fundEntry        FundEntry   @relation(fields: [fundEntryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  runId            String?     @map("run_id") @db.Uuid
-  run              PayRun?     @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  recordedByUserId String          @map("recorded_by_user_id") @db.Uuid
+  recordedBy       User            @relation("TipRecorder", fields: [recordedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  clientRequestId  String          @map("client_request_id") @db.Uuid
+  fundEntryId      String          @map("fund_entry_id") @db.Uuid
+  fundEntry        FundEntry       @relation(fields: [fundEntryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  runId            String?         @map("run_id") @db.Uuid
+  run              PayRun?         @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// P7-17: the PayOS payment the customer added the tip to (NULL for a reversal).
-  paymentId        String?     @map("payment_id") @db.Uuid
-  payment          Payment?    @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  recordedAt       DateTime    @default(dbgenerated("clock_timestamp()")) @map("recorded_at") @db.Timestamptz(3)
+  paymentId        String?         @map("payment_id") @db.Uuid
+  payment          Payment?        @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  recordedAt       DateTime        @default(dbgenerated("clock_timestamp()")) @map("recorded_at") @db.Timestamptz(3)
 
   @@unique([recordedByUserId, clientRequestId], map: "tips_request_key")
   @@index([paymentId], map: "tips_payment_idx")
@@ -5361,21 +5373,21 @@ enum PayRunItemKind {
 /// P7-12 (P7-T11): one payroll run per calendar month for the whole shop. DRAFT -> CLOSED -> PAID, never backwards. `rowVersion` moves with every
 /// change of the draft so a person who closes it can be told it changed since they looked.
 model PayRun {
-  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  periodMonth       DateTime     @unique(map: "pay_runs_month_key") @map("period_month") @db.Date
-  status            PayRunStatus @default(DRAFT)
-  paymentDay        DateTime?    @map("payment_day") @db.Date
-  rowVersion        Int          @default(1) @map("row_version")
-  createdByUserId   String       @map("created_by_user_id") @db.Uuid
-  createdBy         User         @relation("PayRunCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdAt         DateTime     @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
-  refreshedAt       DateTime?    @map("refreshed_at") @db.Timestamptz(3)
-  refreshedByUserId String?      @map("refreshed_by_user_id") @db.Uuid
-  refreshedBy       User?        @relation("PayRunRefresher", fields: [refreshedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  closedAt          DateTime?    @map("closed_at") @db.Timestamptz(3)
-  closedByUserId    String?      @map("closed_by_user_id") @db.Uuid
-  closedBy          User?        @relation("PayRunCloser", fields: [closedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  paidAt            DateTime?    @map("paid_at") @db.Timestamptz(3)
+  id                String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  periodMonth       DateTime                     @unique(map: "pay_runs_month_key") @map("period_month") @db.Date
+  status            PayRunStatus                 @default(DRAFT)
+  paymentDay        DateTime?                    @map("payment_day") @db.Date
+  rowVersion        Int                          @default(1) @map("row_version")
+  createdByUserId   String                       @map("created_by_user_id") @db.Uuid
+  createdBy         User                         @relation("PayRunCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt         DateTime                     @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  refreshedAt       DateTime?                    @map("refreshed_at") @db.Timestamptz(3)
+  refreshedByUserId String?                      @map("refreshed_by_user_id") @db.Uuid
+  refreshedBy       User?                        @relation("PayRunRefresher", fields: [refreshedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  closedAt          DateTime?                    @map("closed_at") @db.Timestamptz(3)
+  closedByUserId    String?                      @map("closed_by_user_id") @db.Uuid
+  closedBy          User?                        @relation("PayRunCloser", fields: [closedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  paidAt            DateTime?                    @map("paid_at") @db.Timestamptz(3)
   lines             PayRunLine[]
   items             PayRunItem[]
   payslips          Payslip[]
@@ -5557,4 +5569,126 @@ model CustomerReviewStaffRating {
   @@id([reviewId, employeeUserId])
   @@index([employeeUserId], map: "customer_review_staff_ratings_employee_idx")
   @@map("customer_review_staff_ratings")
+}
+
+// Claude integration Wave A (design docs/PHASE_CLAUDE_INTEGRATION.md sections 4.2, 5.4; migration 20261212000002). No relations are declared on
+// purpose (the foreign keys live in the migration); the key is never stored here, only in the server environment.
+model AiSettings {
+  id                      Int       @id @default(1) @db.SmallInt
+  enabled                 Boolean   @default(false)
+  rewriteEnabled          Boolean   @default(false) @map("rewrite_enabled")
+  monthlyCapVnd           BigInt    @default(3000000) @map("monthly_cap_vnd")
+  featureCapsVnd          Json      @default("{\"PRODUCT_REWRITE\":2000000,\"SEO\":300000,\"ASSISTANT\":300000,\"BRIEF\":200000}") @map("feature_caps_vnd") @db.JsonB
+  vndPerUsd               Int?      @map("vnd_per_usd")
+  rewriteModel            String    @default("claude-opus-5-5") @map("rewrite_model")
+  rewriteEffort           String    @default("medium") @map("rewrite_effort")
+  concurrency             Int       @default(2) @db.SmallInt
+  refusalFallback         Boolean   @default(true) @map("refusal_fallback")
+  allowAuthenticityClaims Boolean   @default(false) @map("allow_authenticity_claims")
+  bannedPhrases           Json      @default("[]") @map("banned_phrases") @db.JsonB
+  runAllUnlockedAt        DateTime? @map("run_all_unlocked_at") @db.Timestamptz(3)
+  runAllUnlockedByUserId  String?   @map("run_all_unlocked_by_user_id") @db.Uuid
+  checkRequestedAt        DateTime? @map("check_requested_at") @db.Timestamptz(3)
+  lastCheckAt             DateTime? @map("last_check_at") @db.Timestamptz(3)
+  lastCheckStatus         String?   @map("last_check_status")
+  rowVersion              Int       @default(1) @map("row_version")
+  updatedByUserId         String?   @map("updated_by_user_id") @db.Uuid
+  createdAt               DateTime  @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime  @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+
+  @@map("ai_settings")
+}
+
+model AiRun {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind                  String
+  scope                 String
+  status                String    @default("QUEUED")
+  model                 String
+  effort                String
+  promptVersion         String    @map("prompt_version")
+  estimatedCostMicroUsd BigInt    @default(0) @map("estimated_cost_micro_usd")
+  pauseReason           String?   @map("pause_reason")
+  startedByUserId       String    @map("started_by_user_id") @db.Uuid
+  startedAt             DateTime? @map("started_at") @db.Timestamptz(3)
+  finishedAt            DateTime? @map("finished_at") @db.Timestamptz(3)
+  rowVersion            Int       @default(1) @map("row_version")
+  createdAt             DateTime  @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+  items                 AiItem[]
+
+  @@index([status, createdAt], map: "ai_runs_status_idx")
+  @@map("ai_runs")
+}
+
+model AiItem {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId            String    @map("run_id") @db.Uuid
+  run              AiRun     @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  kind             String
+  targetType       String    @map("target_type")
+  targetId         String    @map("target_id") @db.Uuid
+  status           String    @default("QUEUED")
+  attempts         Int       @default(0) @db.SmallInt
+  lockedUntil      DateTime? @map("locked_until") @db.Timestamptz(3)
+  baseRowVersion   Int       @map("base_row_version")
+  baseSnapshot     Json      @default("{}") @map("base_snapshot") @db.JsonB
+  draft            Json?     @db.JsonB
+  edited           Json?     @db.JsonB
+  warnings         Json      @default("[]") @db.JsonB
+  errorCode        String?   @map("error_code")
+  instruction      String?
+  regenerations    Int       @default(0) @db.SmallInt
+  inputTokens      Int       @default(0) @map("input_tokens")
+  cacheReadTokens  Int       @default(0) @map("cache_read_tokens")
+  cacheWriteTokens Int       @default(0) @map("cache_write_tokens")
+  outputTokens     Int       @default(0) @map("output_tokens")
+  costMicroUsd     BigInt    @default(0) @map("cost_micro_usd")
+  viewedByUserId   String?   @map("viewed_by_user_id") @db.Uuid
+  viewedAt         DateTime? @map("viewed_at") @db.Timestamptz(3)
+  reviewedByUserId String?   @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt       DateTime? @map("reviewed_at") @db.Timestamptz(3)
+  appliedByUserId  String?   @map("applied_by_user_id") @db.Uuid
+  appliedAt        DateTime? @map("applied_at") @db.Timestamptz(3)
+  rowVersion       Int       @default(1) @map("row_version")
+  createdAt        DateTime  @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+
+  @@index([runId, status], map: "ai_items_run_idx")
+  @@index([status, lockedUntil], map: "ai_items_queue_idx")
+  @@index([targetId], map: "ai_items_target_idx")
+  @@map("ai_items")
+}
+
+model AiUsageLedger {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  feature          String
+  runId            String?  @map("run_id") @db.Uuid
+  itemId           String?  @map("item_id") @db.Uuid
+  provider         String   @default("ANTHROPIC")
+  model            String
+  outcome          String
+  inputTokens      Int      @default(0) @map("input_tokens")
+  cacheReadTokens  Int      @default(0) @map("cache_read_tokens")
+  cacheWriteTokens Int      @default(0) @map("cache_write_tokens")
+  outputTokens     Int      @default(0) @map("output_tokens")
+  costMicroUsd     BigInt   @default(0) @map("cost_micro_usd")
+  requestId        String?  @map("request_id")
+  occurredAt       DateTime @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+
+  @@index([occurredAt, id], map: "ai_usage_ledger_time_idx")
+  @@index([feature, occurredAt], map: "ai_usage_ledger_feature_idx")
+  @@map("ai_usage_ledger")
+}
+
+model AiReservation {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  feature        String
+  itemId         String?  @map("item_id") @db.Uuid
+  amountMicroUsd BigInt   @map("amount_micro_usd")
+  createdAt      DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(3)
+
+  @@index([expiresAt], map: "ai_reservations_open_idx")
+  @@map("ai_reservations")
 }

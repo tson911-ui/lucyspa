@@ -7,6 +7,7 @@ import {
   SYSTEM_CHECK_QUEUE,
 } from '@lucy-spa/server';
 import { Worker } from 'bullmq';
+import { startAiJobs } from './ai-jobs.js';
 import { parseAuthJobsEnvironment, startAuthJobs } from './auth-jobs.js';
 import { processSystemCheck } from './processor.js';
 import { startBookingJobs } from './booking-jobs.js';
@@ -42,6 +43,7 @@ async function bootstrap() {
   let compensation: { stop(): Promise<void> } | undefined;
   let sourceTests: { stop(): Promise<void> } | undefined;
   let sourceScans: { stop(): Promise<void> } | undefined;
+  let aiJobs: { stop(): Promise<void> } | undefined;
   try {
     await database.$queryRaw`SELECT 1`;
     worker = new Worker(SYSTEM_CHECK_QUEUE, async (job) => processSystemCheck(job), {
@@ -77,8 +79,10 @@ async function bootstrap() {
     compensation = startCompensation(database, logger);
     sourceTests = startSourceTests(database, logger);
     sourceScans = startSourceScans(database, config.nodeEnv, logger);
+    aiJobs = startAiJobs(database, process.env, logger);
     logger.info({ queue: SYSTEM_CHECK_QUEUE }, 'Worker ready');
   } catch (error) {
+    await aiJobs?.stop();
     await sourceScans?.stop();
     await sourceTests?.stop();
     await compensation?.stop();
@@ -102,6 +106,7 @@ async function bootstrap() {
     const deadline = setTimeout(() => process.exit(1), 15000);
     deadline.unref();
     try {
+      await aiJobs?.stop();
       await sourceScans?.stop();
       await sourceTests?.stop();
       await compensation?.stop();

@@ -45,5 +45,5 @@ test('the four new permissions are in the catalogue with the agreed scope', () =
   assert.equal(scope('VIEW_STAFF_REPORTS'), 'BRANCH_CAPABLE');
   assert.equal(scope('VIEW_PROFIT'), 'GLOBAL_ONLY');
   assert.equal(scope('VIEW_REVIEWS'), 'BRANCH_CAPABLE');
-  assert.equal(PERMISSION_CATALOG.length, 77);
+  assert.equal(PERMISSION_CATALOG.length, 79);
 });

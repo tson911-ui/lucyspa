@@ -771,6 +771,8 @@ export type PermissionCodeName =
   | 'VIEW_STAFF_REPORTS'
   | 'VIEW_PROFIT'
   | 'VIEW_REVIEWS'
+  | 'MANAGE_AI_SETTINGS'
+  | 'USE_AI_CONTENT'
   | 'ACTIVATE_LOYALTY'
   | 'CHANGE_REFERRER';
 
@@ -4913,3 +4915,4 @@ export const PRODUCT_IMPORT_COLUMNS: Record<ProductImportKindName, readonly Prod
   };
 export * from './supplier-import.js';
 export * from './product-text-cleanup.js';
+export * from './ai.js';

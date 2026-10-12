@@ -160,6 +160,7 @@ const vi = {
     supplierSources: 'Nguồn nhà cung cấp',
     supplierImports: 'Sản phẩm nhập',
     productTextCleanup: 'Dọn lời đánh giá',
+    aiSettings: 'Cài đặt AI',
     onlineOrders: 'Đơn online',
     inventory: 'Kho hàng',
     productOrders: 'Hàng đặt trước',
@@ -1428,6 +1429,9 @@ const vi = {
         'Xem số liệu làm việc của từng nhân viên (lượt làm dịch vụ, thời gian, chấm công)',
       VIEW_PROFIT: 'Xem lãi tạm tính của cả cửa hàng (chỉ Chủ)',
       VIEW_REVIEWS: 'Xem đánh giá của khách theo chi nhánh',
+      MANAGE_AI_SETTINGS:
+        'Bật tính năng AI, đặt hạn mức chi phí, chọn mô hình, kiểm tra kết nối khóa (chỉ Chủ)',
+      USE_AI_CONTENT: 'Chạy AI viết lại nội dung sản phẩm, xem, sửa, từ chối và áp dụng bản nháp',
     },
     duplicateCode: 'Mã vai trò này đã tồn tại.',
     managerGroupHolders:
@@ -2808,6 +2812,7 @@ const en: Dictionary = {
     supplierSources: 'Supplier sources',
     supplierImports: 'Review imports',
     productTextCleanup: 'Clean supplier comments',
+    aiSettings: 'AI settings',
     onlineOrders: 'Online orders',
     inventory: 'Inventory',
     productOrders: 'Pre-orders',
@@ -4082,6 +4087,10 @@ const en: Dictionary = {
         'View the work figures of each employee (services performed, time, attendance)',
       VIEW_PROFIT: 'View the shop-wide provisional profit',
       VIEW_REVIEWS: 'View customer reviews of the branch',
+      MANAGE_AI_SETTINGS:
+        'Switch the AI features on, set spending caps, choose the model, check the key connection',
+      USE_AI_CONTENT:
+        'Run the AI product-text rewrite and review, edit, reject and apply the drafts',
     },
     duplicateCode: 'This role code already exists.',
     managerGroupHolders:

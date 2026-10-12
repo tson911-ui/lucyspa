@@ -132,6 +132,8 @@ const GROUP_OF: Readonly<Record<string, PermissionGroup>> = {
   VIEW_STAFF_REPORTS: 'finance',
   VIEW_PROFIT: 'finance',
   VIEW_REVIEWS: 'finance',
+  USE_AI_CONTENT: 'products',
+  MANAGE_AI_SETTINGS: 'admin',
   MANAGE_PERMISSIONS: 'admin',
   VIEW_AUDIT_LOG: 'admin',
   MANAGE_WEBSITE_CONTENT: 'admin',

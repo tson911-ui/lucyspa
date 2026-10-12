@@ -83,6 +83,8 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'roles',
     // UX/UI Step 11: the website media library (GLOBAL MANAGE_WEBSITE_CONTENT; the Owner holds all).
     'websiteContent',
+    // Claude integration Wave A: the AI settings (GLOBAL MANAGE_AI_SETTINGS; the Owner holds all).
+    'aiSettings',
   ]);
   assert.deepEqual(
     keys(

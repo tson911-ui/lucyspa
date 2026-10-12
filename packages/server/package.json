@@ -15,6 +15,7 @@
     "test": "node --test \"dist/**/*.test.js\""
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.129.0",
     "@lucy-spa/contracts": "workspace:*",
     "@lucy-spa/database": "workspace:*",
     "bullmq": "5.81.5",

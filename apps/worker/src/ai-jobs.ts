@@ -1,0 +1,45 @@
+import type { DatabaseClient } from '@lucy-spa/database';
+import { ClaudeClient, processKeyCheck, type createLogger } from '@lucy-spa/server';
+
+type Logger = ReturnType<typeof createLogger>;
+
+const TICK_MS = 3000;
+
+/**
+ * Claude integration Wave A: the worker's AI job family. It is the only process (with the API for the interactive features of later
+ * waves) that holds `ANTHROPIC_API_KEY`; a missing key is not an error: the family runs, answers a pending key check with KEY_MISSING and
+ * does nothing else. Nothing here is on the path of booking, POS, payments, reports or the public site: when Anthropic or the key is down
+ * only the AI page notices. One tick handles the key check; the rewrite runs are added by their own step and share this loop.
+ */
+export function startAiJobs(database: DatabaseClient, env: NodeJS.ProcessEnv, logger: Logger) {
+  const client = new ClaudeClient({ apiKey: env['ANTHROPIC_API_KEY']?.trim() || undefined });
+  if (!client.hasKey) logger.info('ANTHROPIC_API_KEY is not set: the AI features stay off');
+  const failure = (error: unknown) =>
+    logger.error(
+      { errorName: error instanceof Error ? error.name : 'UnknownError' },
+      'AI job failed',
+    );
+  let stopped = false;
+  let running: Promise<void> | undefined;
+  let timer: NodeJS.Timeout;
+  const tick = () => {
+    running = (async () => {
+      try {
+        const checked = await processKeyCheck(database, client);
+        if (checked !== null) logger.info({ status: checked }, 'AI key check answered');
+      } catch (error) {
+        failure(error);
+      }
+    })().finally(() => {
+      if (!stopped) timer = setTimeout(tick, TICK_MS);
+    });
+  };
+  timer = setTimeout(tick, 0);
+  return {
+    async stop() {
+      stopped = true;
+      clearTimeout(timer);
+      await running;
+    },
+  };
+}

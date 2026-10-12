@@ -58,6 +58,8 @@ import { ProductExchangeService } from './product-returns/exchange.service.js';
 import { ProductRefundController } from './product-returns/refund.controller.js';
 import { ProductRefundService } from './product-returns/refund.service.js';
 import { ProductImportController } from './product-imports/import.controller.js';
+import { AiController } from './ai/ai.controller.js';
+import { AiService } from './ai/ai.service.js';
 import { ProductTextCleanupController } from './products/product-text-cleanup.controller.js';
 import { ProductTextCleanupService } from './products/product-text-cleanup.service.js';
 import { ProductImageZipController } from './product-imports/image-zip.controller.js';
@@ -197,6 +199,7 @@ export class AppModule {
         ProductExchangeController,
         ProductImportController,
         ProductTextCleanupController,
+        AiController,
         ProductImageZipController,
         RewardController,
         CustomerLoyaltyController,
@@ -284,6 +287,7 @@ export class AppModule {
         ProductExchangeService,
         ProductImportService,
         ProductTextCleanupService,
+        AiService,
         ProductImageZipService,
         RewardService,
         CustomerLoyaltyService,

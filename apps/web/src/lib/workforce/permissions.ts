@@ -166,6 +166,7 @@ export type NavKey =
   | 'supplierSources'
   | 'supplierImports'
   | 'productTextCleanup'
+  | 'aiSettings'
   | 'onlineOrders'
   | 'inventory'
   | 'import'
@@ -491,6 +492,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'websiteContent',
       group: 'administration',
       path: '/website',
+    },
+    // Claude integration Wave A: the AI settings (GLOBAL_ONLY MANAGE_AI_SETTINGS; the Owner holds all).
+    canGlobal(account, 'MANAGE_AI_SETTINGS') && {
+      key: 'aiSettings',
+      group: 'administration',
+      path: '/ai-settings',
     },
   ];
   return items.filter((item): item is NavItem => item !== false);

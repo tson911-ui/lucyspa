@@ -871,6 +871,8 @@ export async function approveInTransaction(
       brandId: row.brandId,
       categoryId: row.categoryId,
       source: provenance as unknown as Prisma.InputJsonValue,
+      // The text is the supplier's copy until a person or the AI rewrite replaces it (Claude integration: Lucy-owned text is locked).
+      contentOrigin: 'SUPPLIER_COPY',
       createdByUserId: context.actor.userId,
     },
     select: { id: true },

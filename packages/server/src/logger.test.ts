@@ -49,3 +49,35 @@ test('authentication secrets and request envelopes are redacted without serializ
   assert.match(lines.join(''), /safe-id/);
   assert.match(lines.join(''), /REDACTED/);
 });
+
+test('the Anthropic key and the bot secrets are redacted wherever they appear (Claude integration)', async () => {
+  const lines: string[] = [];
+  const stream = new Writable({
+    write(chunk: Buffer, _encoding, callback) {
+      lines.push(chunk.toString());
+      callback();
+    },
+  });
+  const logger = createLogger('test', 'info', stream);
+  const canary = 'sk-ant-canary-never-logged';
+  logger.info(
+    {
+      apiKey: canary,
+      ANTHROPIC_API_KEY: canary,
+      nested: {
+        apiKey: canary,
+        ANTHROPIC_API_KEY: canary,
+        'x-api-key': canary,
+        BOT_DATA_KEY: canary,
+        CHAT_WEBHOOK_SECRET: canary,
+      },
+      headers: { 'x-api-key': canary },
+      req: { headers: { 'x-api-key': canary } },
+      requestId: 'safe-id',
+    },
+    'Safe event',
+  );
+  await new Promise<void>((resolve) => logger.flush(() => resolve()));
+  assert.doesNotMatch(lines.join(''), /canary/);
+  assert.match(lines.join(''), /safe-id/);
+});
