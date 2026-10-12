@@ -85,6 +85,7 @@ test('the Owner sees the contract groups in the contract order', () => {
       'shippingCarriers',
       'supplierSources',
       'supplierImports',
+      'productTextCleanup',
       'inventory',
       'import',
       'branches',

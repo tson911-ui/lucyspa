@@ -42,6 +42,8 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'supplierSources',
     // Phase 9 P9-6: the review of what the scans found (GLOBAL REVIEW_SUPPLIER_IMPORTS; the Owner holds all).
     'supplierImports',
+    // Claude integration CI-0b: the supplier-comment cleanup (GLOBAL MANAGE_PRODUCTS; the Owner holds all).
+    'productTextCleanup',
     // Phase 6 P6-4: the inventory (branch VIEW_INVENTORY / MANAGE_STOCK_RECEIPTS / ADJUST_STOCK or global MANAGE_PRODUCTS).
     'inventory',
     // Phase 6 P6-5: the Excel/CSV import (GLOBAL IMPORT_PRODUCT_DATA; the Owner holds all).

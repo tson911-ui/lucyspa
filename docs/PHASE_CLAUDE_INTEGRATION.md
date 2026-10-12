@@ -103,6 +103,7 @@ followed by a closing paragraph.
 - **Apply (server):** receives the product ids and a preview token (hash of each id with its `row_version` and description hash). In one transaction per batch of 100 it locks the row, requires `row_version` and the text to be unchanged and recomputes the same cleaned text (a mismatch skips the product and reports it), writes **only `description_vi`** (and `description_en` if it matches),
   bumps `row_version`, and appends an audit event per product, `PRODUCT_SUPPLIER_REVIEW_TEXT_REMOVED`, carrying the **full before and after text** and the actor (the removed text stays recoverable; history is not rewritten). One summary audit row per click. Idempotent: a second click finds nothing. `content_origin` (Wave A) is not changed by a cleanup.
 - Not touched: `source_records` (the supplier's own snapshot; the next scan stores the cleaned text), the Excel/CSV import (the Owner's own file), invoice history.
+- Built as designed, with one change: **candidates not yet approved are not listed** (approval cleans them, CI-0a), so the page lists products only.
 - **Customer-visible (⚠):** the testimonial block disappears from the affected public product pages within the existing short page cache. Removal only; nothing new is shown. The UX gate applies to this page (screenshots at 360/768/1440 light and dark 1440, all states, DOM audit).
 - Order: CI-0 needs no AI and can be deployed on its own, before anything else in this phase. Until the rewrite (4) is approved, this is how the live pages get clean.
 

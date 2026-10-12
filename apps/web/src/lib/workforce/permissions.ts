@@ -165,6 +165,7 @@ export type NavKey =
   | 'shippingCarriers'
   | 'supplierSources'
   | 'supplierImports'
+  | 'productTextCleanup'
   | 'onlineOrders'
   | 'inventory'
   | 'import'
@@ -316,6 +317,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'supplierImports',
       group: 'catalog',
       path: '/supplier-imports',
+    },
+    // Claude integration CI-0b: the cleanup of the supplier's customer comments in product descriptions (GLOBAL_ONLY MANAGE_PRODUCTS).
+    canGlobal(account, 'MANAGE_PRODUCTS') && {
+      key: 'productTextCleanup',
+      group: 'catalog',
+      path: '/product-text-cleanup',
     },
     // Phase 6 P6-4: the inventory (branch-scoped VIEW_INVENTORY / MANAGE_STOCK_RECEIPTS / ADJUST_STOCK, global MANAGE_PRODUCTS for suppliers).
     (canAnywhere(account, 'VIEW_INVENTORY') ||

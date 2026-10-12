@@ -4912,3 +4912,4 @@ export const PRODUCT_IMPORT_COLUMNS: Record<ProductImportKindName, readonly Prod
     ],
   };
 export * from './supplier-import.js';
+export * from './product-text-cleanup.js';
