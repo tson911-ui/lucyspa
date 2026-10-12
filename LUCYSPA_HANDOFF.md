@@ -13,18 +13,18 @@ Phase 4 Step 1-6 summaries): [docs/HANDOFF_HISTORY.md](docs/HANDOFF_HISTORY.md).
 
 ## Phase status
 
-| Phase                                     | Status                                                                                                                                           |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase 0                                   | PASS                                                                                                                                             |
-| Phase 1 (auth and security)               | COMPLETE                                                                                                                                         |
-| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)                                                                                 |
-| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                                                                                        |
-| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                                                                                     |
-| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                                                                                     |
-| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `9b76789`)                                                                                                                |
-| **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `f79572d`); go-live turned ON by the Owner about 17:20 (+07)**                                               |
-| **Phase 6 (products, inventory, Beauty)** | **COMPLETE: Waves 1, 2, 3a, 3b and 4 DEPLOYED (production = `4b91af6`, 2026-10-09 ~14:02 +07); online store stays OFF until the Owner opens it** |
-| Phase 7 (payroll, tips, funds)            | P7-1 design APPROVED 2026-10-11 (`docs/PHASE7_PAYROLL_FUNDS.md` s.14); Wave A (cash book) building; Phase 8+ not started                         |
+| Phase                                     | Status                                                                                                                                            |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 0                                   | PASS                                                                                                                                              |
+| Phase 1 (auth and security)               | COMPLETE                                                                                                                                          |
+| Phase 2 (services, employees, operations) | CLOSED / PRODUCTION ACCEPTED (follow-up Steps 1-7 also accepted)                                                                                  |
+| Phase 3 (booking, walk-in, queue)         | COMPLETE / OWNER APPROVED                                                                                                                         |
+| Notification Center (in-app, V1)          | CLOSED / PRODUCTION VERIFIED                                                                                                                      |
+| **Phase 4 (POS, invoices, payments)**     | **CLOSED / OWNER APPROVED (Steps 1-11), LIVE IN PRODUCTION**                                                                                      |
+| UX/UI redesign Part 1 + Part 2            | DEPLOYED (production = `9b76789`)                                                                                                                 |
+| **Phase 5 (loyalty and combos)**          | **DEPLOYED 2026-10-05 (production = `f79572d`); go-live turned ON by the Owner about 17:20 (+07)**                                                |
+| **Phase 6 (products, inventory, Beauty)** | **COMPLETE: Waves 1, 2, 3a, 3b and 4 DEPLOYED (production = `4b91af6`, 2026-10-09 ~14:02 +07); online store stays OFF until the Owner opens it**  |
+| **Phase 7 (payroll, tips, funds)**        | **Waves A + B DEPLOYED together 2026-10-12 ~07:00 (+07) (production = `d42ab4e`); cash book NOT started (Owner clicks it); Phase 8+ not started** |
 
 ## Phase 4 steps (docs: `docs/PHASE4_*`)
 
@@ -938,3 +938,12 @@ Status as of 2026-10-04 14:50 (Owner-confirmed; replaces every older "not deploy
 - **P7-15 (payroll screens, Wave B, NOT deployed):** `/workforce/payroll`, run page, payslip (print), `/advances`, `/my-payslips`; UX gate done; report `docs/PHASE7_P7_15_PAYROLL_SCREENS.md`. **CI note:** the API integration suite outgrew Node's 4 GB heap in one process; Phase 7 tests now run in a second process (`scripts/test-phase7-integration.mjs`). Next: P7-16 Wave B milestone.
 - **P7-16 (Wave B milestone, docs):** one-block deploy guide for A+B `docs/DEPLOY_PHASE7_WAVE_B.md` (108 or 110 -> 117 migrations, 68 -> 73 permissions, "DUNG LAI" on any mismatch; checked with `bash -n` and the SQL on the audit DB), rollback proof `docs/PHASE7_WAVE_B_ROLLBACK_PROOF.md` (Wave A code on 117: 173/173 models, old API 13 reads 200), Owner test script `docs/OWNER_TEST_SCRIPT_PHASE7_B.md`, `docs/PHASE7_WAVE_B_MILESTONE.md`. **Wave A is still not recorded as deployed, so the guide covers both.** NOT deployed; nothing pushed to production.
 - **P7-17 (customer tips, Owner decision 2026-10-12, NOT deployed):** migration 118 (`payment_tip_pledges`, `tips.payment_id`): the customer adds a tip in the PayOS dialog ("Thêm tip"), PayOS is asked for invoice part + tip, the settlement writes the tips + TIP_IN when that exact total is confirmed; staff recording route and the 7-day window removed; reversal Owner-only (APPROVE_PAYROLL). Deploy guide now 118|73, 19 tables. **The Owner APPROVED the five readings on 2026-10-12 (his words, verbatim in `PHASE7_PAYROLL_FUNDS.md` section 15):** presets 20.000 / 50.000 / 100.000 + Khác; no tip step in the online product checkout; the customer picks on the counter screen; manual Owner reversal for refunds outside the system; the tip step only after the cash book is started. Nothing is pending for tips. Report `docs/PHASE7_P7_17_CUSTOMER_TIPS.md`.
+
+### Phase 7 Wave A + Wave B (cash book, pay rules, earnings, customer tips, staff codes, payroll, advances): DEPLOYED (Owner report, 2026-10-12 ~07:00 UTC+7)
+
+- **Production = `d42ab4e84814f4fb82c1e0de3c26a1c18ffe3a85`** (previous `ac74013`). Guide: `docs/DEPLOY_PHASE7_WAVE_B.md` (both waves in one block). Docs commits after `d42ab4e` (`7f6ed9d`, `d8cb30c`, `61fb0f0` and later) are not installed. Every earlier line that says a Phase 7 step is "NOT deployed" is true only up to this deploy.
+- **118 migrations** (10 applied, rehearsal times: `20261201000000` 0.021 s, `20261201000001` 0.194, `20261202000000` 0.082, `20261203000000` 0.105, `20261204000000` 0.062, `20261205000000` 0.050, `20261206000000` 0.074, `20261207000000` 0.068, `20261208000000` 0.068, `20261209000000` 0.035). **73 permissions** (5 new, granted to nobody). **19 new tables**; the Wave B tables are empty.
+- **The cash book is NOT started** (`finance_go_live` has 0 rows): nothing is posted, no tour, commission, tip or payroll exists yet, and the "Thêm tip" step stays hidden until the Owner starts the book. Users 9, invoices 2, products 348: unchanged. **"Bán online" is still enabled** (the deploy did not touch it).
+- pm2: web 3 / api 1 / worker 1 online; health ok; all pages answer 200 and the new APIs 401 unauthenticated.
+- Backups: `/root/backups/lucyspa-pre-p7-20261011T235308Z.dump` and `/root/backups/lucyspa-web-pre-p7-20261011T235308Z.tar.gz`.
+- Next for the Owner (not for the agent): start the cash book and payroll with `docs/OWNER_TEST_SCRIPT_PHASE7_A.md`, then `docs/OWNER_TEST_SCRIPT_PHASE7_B.md`. Rollback: see the guide (Wave A code keeps working on 118; going back to Phase 9 needs the 5 permission rows deleted).
