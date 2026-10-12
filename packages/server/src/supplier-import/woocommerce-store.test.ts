@@ -44,6 +44,69 @@ test('a normal product becomes a plain-text record keyed by its WooCommerce id',
   assert.match(record.contentHash, /^[0-9a-f]{64}$/);
 });
 
+test("the supplier's customer comments never enter a record (CI-0 regression)", () => {
+  const html =
+    '<p>Làm sạch da nhẹ nhàng.</p><h3>Đánh giá người dùng Việt Nam</h3>' +
+    '<ul><li>Minh Thư (35 tuổi) 🌸: Chất kem rất đặc, da mình căng mướt.</li>' +
+    '<li>Ngọc Lan (42 tuổi) ✨: Mùi thơm dễ chịu, da mình bớt khô.</li></ul>' +
+    '<p>Sở hữu ngay hôm nay.</p>';
+  const { record, problems } = normalize(
+    storeProduct(55, {
+      description: html,
+      short_description: html,
+      // WooCommerce's own review fields are never read, whatever the site sends.
+      reviews: [{ reviewer: 'Lan', review: 'Rất tốt', rating: 5 }],
+      average_rating: '4.9',
+      review_count: 120,
+      rating_count: 130,
+    }),
+  );
+  assert.ok(record);
+  assert.equal(record.descriptionText, 'Làm sạch da nhẹ nhàng.\nSở hữu ngay hôm nay.');
+  assert.equal(record.shortDescriptionText, 'Làm sạch da nhẹ nhàng.\nSở hữu ngay hôm nay.');
+  const serialised = JSON.stringify(record);
+  for (const marker of [
+    'Minh Thư',
+    'Ngọc Lan',
+    'tuổi',
+    '🌸',
+    'Đánh giá',
+    'average_rating',
+    'review_count',
+    'rating',
+    'Rất tốt',
+  ]) {
+    assert.ok(!serialised.includes(marker), marker);
+  }
+  assert.deepEqual(
+    problems.map((problem) => [problem.code, problem.fatal, problem.detail]),
+    [['REVIEW_TEXT_REMOVED', false, '4']],
+  );
+  // The hash follows the cleaned text: the same product with and without the comments hashes the same.
+  const plain = normalize(
+    storeProduct(55, {
+      description: '<p>Làm sạch da nhẹ nhàng.</p><p>Sở hữu ngay hôm nay.</p>',
+      short_description: '<p>Làm sạch da nhẹ nhàng.</p><p>Sở hữu ngay hôm nay.</p>',
+    }),
+  );
+  assert.equal(plain.record?.contentHash, record.contentHash);
+});
+
+test('a description that is only comments leaves an empty description and says so', () => {
+  const { record, problems } = normalize(
+    storeProduct(56, {
+      short_description: '',
+      description:
+        '<h3>Đánh giá</h3><p>Minh Thư (35 tuổi) 🌸: Da mình căng mướt.</p><p>Ngọc Lan (42 tuổi) ✨: Mùi thơm dễ chịu.</p>',
+    }),
+  );
+  assert.equal(record?.descriptionText, null);
+  assert.deepEqual(
+    problems.map((problem) => problem.code),
+    ['REVIEW_TEXT_REMOVED', 'DESCRIPTION_EMPTY'],
+  );
+});
+
 test('a missing SKU is a warning (HARU-<id> fills in later), not a failure', () => {
   const { record, problems } = normalize(storeProduct(7, { sku: '' }));
   assert.equal(record?.sku, null);

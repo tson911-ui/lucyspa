@@ -1,5 +1,5 @@
 import { HttpFetchError, type HttpClient } from './http-client.js';
-import { hashOf, htmlToPlainText, plainLine } from './text.js';
+import { hashOf, htmlToPlainText, plainLine, stripSupplierReviewText } from './text.js';
 
 /**
  * Phase 9 P9-3: the `woocommerce-store-api` adapter (design section 16). It reads the public WooCommerce Store API
@@ -57,6 +57,8 @@ export interface RecordProblem {
     | 'SKU_TOO_LONG'
     | 'CATEGORY_MISSING'
     | 'DESCRIPTION_EMPTY'
+    | 'REVIEW_TEXT_REMOVED'
+    | 'REVIEW_TEXT_SUSPECTED'
     | 'DUPLICATE_KEY';
   /** Fatal problems make the record unusable; the others are warnings for the review. */
   fatal: boolean;
@@ -248,8 +250,21 @@ export function normalizeStoreProduct(raw: unknown, sourceHost: string): Normali
     .filter((entry) => entry !== '');
   const brandText = brandNames[0] ?? null;
 
-  const description = htmlToPlainText(text(raw['description']) ?? '');
-  const shortDescription = htmlToPlainText(text(raw['short_description']) ?? '', 2000);
+  // Claude integration CI-0: the supplier's own "customer comments" inside the description text never enter a record. WooCommerce's
+  // review fields (`reviews`, `average_rating`, `review_count`, `rating_count`) are not read at all.
+  const descriptionStrip = stripSupplierReviewText(htmlToPlainText(text(raw['description']) ?? ''));
+  const shortStrip = stripSupplierReviewText(
+    htmlToPlainText(text(raw['short_description']) ?? '', 2000),
+  );
+  const description = descriptionStrip.text;
+  const shortDescription = shortStrip.text;
+  const removedEntries = descriptionStrip.removed + shortStrip.removed;
+  if (removedEntries > 0) {
+    problems.push({ code: 'REVIEW_TEXT_REMOVED', fatal: false, detail: String(removedEntries) });
+  }
+  if (descriptionStrip.suspected || shortStrip.suspected) {
+    problems.push({ code: 'REVIEW_TEXT_SUSPECTED', fatal: false });
+  }
   if (description === '' && shortDescription === '') {
     problems.push({ code: 'DESCRIPTION_EMPTY', fatal: false });
   }

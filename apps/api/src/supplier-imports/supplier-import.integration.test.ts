@@ -775,6 +775,64 @@ test(
           assert.equal(list.stateCounts.REJECTED !== undefined, true);
         },
       );
+
+      await suite.test(
+        "Claude integration CI-0: the supplier's customer comments never reach source records, candidates or products (scan, and approval of an old dirty candidate)",
+        async () => {
+          const { source } = await readySource();
+          const comments =
+            '<h3>Đánh giá người dùng Việt Nam</h3><ul>' +
+            '<li>Minh Thư (35 tuổi) 🌸: Chất kem rất đặc, da mình căng mướt.</li>' +
+            '<li>Ngọc Lan (42 tuổi) ✨: Mùi thơm dễ chịu, da mình bớt khô.</li>' +
+            '<li>Hồng Hạnh (29 tuổi) 💖: Mua cả set dùng rất hời.</li></ul>';
+          const site = await shop([
+            catalog({
+              id: 811,
+              name: 'Kem 811',
+              descriptionHtml: `<p>Làm sạch da nhẹ nhàng.</p>${comments}<p>Sở hữu ngay hôm nay.</p>`,
+            }),
+            catalog({ id: 812, name: 'Kem 812', descriptionHtml: '<p>Dung tích 50ml.</p>' }),
+          ]);
+          await scan(source.id, site);
+          const markers = ['Minh Thư', 'Ngọc Lan', 'tuổi', '🌸', 'Đánh giá'];
+          const record = await tx.sourceRecord.findFirstOrThrow({
+            where: { sourceId: source.id, sourceKey: '811' },
+            select: { descriptionText: true },
+          });
+          assert.equal(record.descriptionText, 'Làm sạch da nhẹ nhàng.\nSở hữu ngay hôm nay.');
+          const id = await candidateId(source.id, '811');
+          const candidate = await tx.importCandidate.findUniqueOrThrow({
+            where: { id },
+            select: { descriptionVi: true },
+          });
+          assert.equal(candidate.descriptionVi, 'Làm sạch da nhẹ nhàng.\nSở hữu ngay hôm nay.');
+          // Another product with no comments keeps its text exactly.
+          const plain = await tx.sourceRecord.findFirstOrThrow({
+            where: { sourceId: source.id, sourceKey: '812' },
+            select: { descriptionText: true },
+          });
+          assert.equal(plain.descriptionText, 'Dung tích 50ml.');
+          // An old candidate saved before the fix still carries the comments: the approval removes them again.
+          await tx.importCandidate.update({
+            where: { id },
+            data: {
+              rowVersion: { increment: 1 },
+              descriptionVi: `Làm sạch da nhẹ nhàng.\nĐánh giá người dùng Việt Nam\n- Minh Thư (35 tuổi) 🌸: Da mình căng mướt.\n- Ngọc Lan (42 tuổi) ✨: Mùi thơm dễ chịu.\nSở hữu ngay hôm nay.`,
+            },
+          });
+          await resolveTexts('', id);
+          const item = await detail(reviewer.token, id);
+          const done = await imports.approve(reviewer.token, id, {
+            expectedVersion: item.rowVersion,
+          });
+          const product = await tx.product.findUniqueOrThrow({
+            where: { id: done.productId },
+            select: { descriptionVi: true },
+          });
+          assert.equal(product.descriptionVi, 'Làm sạch da nhẹ nhàng.\nSở hữu ngay hôm nay.');
+          for (const marker of markers) assert.ok(!product.descriptionVi?.includes(marker), marker);
+        },
+      );
     });
   },
 );

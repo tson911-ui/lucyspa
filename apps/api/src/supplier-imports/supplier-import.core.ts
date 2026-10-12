@@ -35,6 +35,7 @@ import {
   NEAR_DUPLICATE_DISTANCE,
   reduceDecisions,
   saveMapping,
+  stripSupplierReviewText,
 } from '@lucy-spa/server';
 import { randomUUID } from 'node:crypto';
 import { AuthError } from '../auth/auth.error.js';
@@ -862,7 +863,10 @@ export async function approveInTransaction(
       code,
       nameVi: row.nameVi,
       nameEn: row.nameEn,
-      descriptionVi: row.descriptionVi,
+      // Defence in depth (Claude integration CI-0): a candidate saved before the importer learned to drop the supplier's
+      // "customer comments" must not carry them into a product.
+      descriptionVi:
+        row.descriptionVi === null ? null : stripSupplierReviewText(row.descriptionVi).text,
       descriptionEn: row.descriptionEn,
       brandId: row.brandId,
       categoryId: row.categoryId,

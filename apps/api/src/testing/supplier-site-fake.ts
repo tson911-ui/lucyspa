@@ -28,6 +28,8 @@ export interface FakeProduct {
   brandNames?: string[];
   /** Category names the shop lists (default: one, "Chăm sóc da"). */
   categories?: string[];
+  /** The description HTML the shop sends (default: a one-line paragraph). */
+  descriptionHtml?: string;
 }
 
 export type ImageAnswer = Buffer | { status: number; body: Buffer };
@@ -57,7 +59,7 @@ export class FakeSite {
       type: product.type ?? 'simple',
       permalink: `https://${host}/san-pham/${product.id}/`,
       sku: product.sku ?? '',
-      description: '<p>Mô tả</p>',
+      description: product.descriptionHtml ?? '<p>Mô tả</p>',
       prices: {
         regular_price: String(product.priceVnd ?? 250_000),
         sale_price: String(product.salePriceVnd ?? product.priceVnd ?? 250_000),

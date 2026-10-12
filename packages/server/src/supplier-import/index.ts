@@ -35,6 +35,8 @@ export {
   htmlToPlainText,
   plainLine,
   sha256Text,
+  stripSupplierReviewText,
+  type ReviewTextStrip,
 } from './text.js';
 export {
   asSourceError,

@@ -228,6 +228,8 @@ test('every failure the server or the worker can record has plain words in both 
     'CURRENCY_NOT_VND',
     'CATEGORY_MISSING',
     'DESCRIPTION_EMPTY',
+    'REVIEW_TEXT_REMOVED',
+    'REVIEW_TEXT_SUSPECTED',
     'NAME_MISSING',
     'URL_MISSING',
     'URL_OFF_HOST',

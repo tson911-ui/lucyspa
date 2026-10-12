@@ -1,7 +1,6 @@
 # Claude integration phase (CI-1): design
 
-Status: **design only, 2026-10-12 (revised the same day after the Owner's second message). No code, no migration, no dependency, no permission was created.** Every `CI-*` step and every `OQ-CI-n` is **pending Owner approval**; the only things decided are the
-Owner's own scope decisions, recorded in section 14. Production = `06badcf` (122 migrations, 77 permissions); Phases 7, 8, 9 are deployed. Roadmap source: PRD section 56 ("Final roadmap after Phase 6", item 2). After this phase the roadmap continues
+Status: **design approved by the Owner on 2026-10-12 (answers verbatim in section 14); Wave 0 and Wave A are being built, Waves B to D wait until the Owner has seen the first 3 rewritten products.** Where an answer changed the design, the change is marked "(Owner answer)" below. Production = `06badcf` (122 migrations, 77 permissions); Phases 7, 8, 9 are deployed. Roadmap source: PRD section 56 ("Final roadmap after Phase 6", item 2). After this phase the roadmap continues
 with the skills step, the full polish pass and Phase 10.
 
 **Scope after the Owner's decisions of 2026-10-12:** feature 3 (review-reply drafts) is **removed** with its question; feature 5 (Lucy-branded product images) is **postponed** (a short parking note is in section 15, nothing is planned, costed or asked);
@@ -114,8 +113,8 @@ followed by a closing paragraph.
 - New admin page **"Viết lại nội dung"** under the cosmetics catalog menu: `Page` + `PageHeader`, tabs **Chờ duyệt**, **Cần xử lý**, **Đã áp dụng**, **Lần chạy**, `DataTable` 20 per page, a Drawer per item, one primary action **Chạy viết lại**. The same page handles every draft kind (product text, product SEO, service SEO, home/page SEO,
   English translation of site blocks) through a kind filter, so there is one review habit.
 - Drawer: **old text on the left, new draft on the right**, editable; footer Cancel, **Từ chối**, **Tạo lại** (optional one-line instruction, at most 3), **Áp dụng** (primary). Warnings from the checks (4.5) sit above the draft. A card "Chi phí AI tháng này" on the AI settings page, Owner only.
-- **No "apply all" button by default.** Google's guidance (checked 2026-10-12) says to manually fact-check and review all AI-generated content, including titles, meta descriptions, structured data and alt text, and warns that mass-generated pages without added value can be scaled content abuse.
-  The review flow is one-by-one with **Áp dụng và xem tiếp** (keyboard friendly). A bulk apply of warning-free drafts is an option the Owner may choose (OQ-CI-5).
+- **Review rule (Owner answer to OQ-CI-5):** the **first 3 products are reviewed one by one** (old text against new, editable, **Áp dụng và xem tiếp**). Only after at least 3 drafts of that kind have been applied one by one, a **page** of up to 20 drafts can be approved at once, and only after the reviewer has **viewed that page**
+  (the page view is recorded; a draft with a warning, an edited-since-viewed draft or a stale product is left out). One confirm per page, one audit row per page listing every product. There is still no "apply everything" across pages. Google's guidance (checked 2026-10-12) says to manually fact-check and review AI-generated content, including titles, meta descriptions, structured data and alt text.
 
 ### 4.2 Data model (additive, names provisional)
 
@@ -129,7 +128,7 @@ followed by a closing paragraph.
 
 ### 4.3 Flow
 
-1. Owner/manager chooses scope (sample of 20 / selected rows / all `SUPPLIER_COPY` without an open draft) and **Chạy viết lại**. A dialog shows count, model, an estimate from `count_tokens` on the real inputs plus an output allowance, and the cap left. The API writes run + items and an audit row; it makes **no** Anthropic call.
+1. Owner/manager chooses scope (**the first 3 products: real drafts, kept if approved (Owner answer to OQ-CI-3)** / selected rows / all `SUPPLIER_COPY` without an open draft; "all" and more than 3 rows stay disabled until the Owner presses **Cho phép chạy tiếp** after reviewing the first 3) and **Chạy viết lại**. A dialog shows count, model, an estimate from `count_tokens` on the real inputs plus an output allowance, and the cap left. The API writes run + items and an audit row; it makes **no** Anthropic call.
 2. The worker takes items (2 at a time). Per item: re-check settings, **reserve** cost (5.4), **clean the source with `stripSupplierReviewText` (3.2)** and the other cleaning, call Claude, validate, store the draft, write the ledger row and the item in **one** transaction.
 3. A summary notification (counts only) goes to holders of `USE_AI_CONTENT`.
 4. Apply = one transaction: lock the target, require `row_version` equal to the snapshot (else `STALE`), write the fields, bump `row_version`, set `content_origin` (`LUCY_AI`, or `LUCY_MANUAL` if the reviewer edited), append audit `AI_DRAFT_APPLIED` with **before and after**. Apply also needs the target's own permission
@@ -145,12 +144,12 @@ followed by a closing paragraph.
 
 ### 4.5 Server-side checks (independent of the model)
 
-Each failure is recorded as a warning; a warning blocks bulk apply and shows above the draft:
+Each failure is recorded as a warning; a warning keeps the draft out of the page approval and shows above the draft:
 
-- **Forbidden words and claims:** the forbidden clinic word (list in code), plus a default list of medical/exaggerated claims (cure, treat, guarantee, permanent, "100%", "number 1", replace medicine, weight-loss promises), Owner-editable. "chính hãng" and similar authenticity claims appear only if the Owner has enabled them (OQ-CI-8).
+- **Forbidden words and claims:** the forbidden clinic word (list in code), plus a default list of medical/exaggerated claims (cure, treat, guarantee, permanent, "100%", "number 1", replace medicine, weight-loss promises), Owner-editable. "chính hãng" and similar authenticity claims are **never written** until the Owner switches the setting `allow_authenticity_claims` on after confirming the supplier is an official distributor (Owner answer to OQ-CI-8; default off, and a draft that contains such a claim while it is off gets a warning).
 - **No testimonials:** the output must not contain a testimonial shape (a first name with an age, city or emoji followed by a colon or quotation, first-person praise, "khách hàng nói", star characters or rating numbers, review headings). The same detector as 3.2 runs on the draft; a hit is a warning and the draft cannot be applied until edited.
 - **Facts kept:** numbers with units in the source (`ml`, `g`, `%`, `SPF n`, counts) must appear in the output; ingredients may not be dropped or added; the `ingredients` section may contain only what the supplier attributes list.
-- **Originality:** overlap of 5-word shingles with the (cleaned) source above a threshold (start 25 %, tuned on the sample) is a warning: it directly measures "not the same text as haruohui.com".
+- **Originality:** overlap of 5-word shingles with the (cleaned) source above a threshold (start 25 %, tuned on the first 3 drafts) is a warning: it directly measures "not the same text as haruohui.com".
 - **Hygiene:** no URLs, e-mails, phone numbers, HTML or markdown, no emoji; length bounds; language check per field.
 - **SEO limits (house rules):** `seo_title` at most **60 characters**, `seo_description` at most **155**, counted on the final string. Google publishes **no** length limit and truncates by device width (Search Central "Title links", "Snippets"), so 60/155 are the Owner's working targets; what Google asks for is uniqueness per page.
   Title pattern: product name + brand + "Lucy Spa" (the name is shortened first, never the brand or "Lucy Spa"); description: one natural sentence with the benefit, size and "tại Lucy Spa, <city>" where it fits; the city comes from Shop info/a setting. Near-duplicates between two titles or descriptions are flagged.
@@ -347,7 +346,7 @@ With no swap, the failure mode is the kernel killing something (possibly Postgre
 | #   | Feature (model)                               | One-off                                                                                          | Per month                                                                      | Notes                                                                                                                                                                   |
 | --- | --------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0   | Review text cleanup                           | 0                                                                                                | 0                                                                              | no AI; plain code                                                                                                                                                       |
-| 1   | Rewrite + SEO fields, 348 products (Opus 5.5) | about 40 USD (up to 80 with retries); sample of 20 about 2.3 USD                                 | new Haruohui products only, on demand                                          | Sonnet 5.5 about 20 USD; ~1,200 uncached + 2,500 cached input, ~5,500 output tokens each. The text is about 17 % shorter once testimonials are stripped, a small saving |
+| 1   | Rewrite + SEO fields, 348 products (Opus 5.5) | about 40 USD (up to 80 with retries); first 3 products about 0.3 USD                             | new Haruohui products only, on demand                                          | Sonnet 5.5 about 20 USD; ~1,200 uncached + 2,500 cached input, ~5,500 output tokens each. The text is about 17 % shorter once testimonials are stripped, a small saving |
 | 8   | SEO + English for services/home (Opus 5.5)    | about 3 USD                                                                                      | about 0                                                                        | tens of items                                                                                                                                                           |
 | 2   | Website chat via n8n (the Owner's key/model)  | Haiku 5.5 about 0.001 USD per turn; Sonnet 5.5 about 0.02 USD per turn with ~9,000 prompt tokens | 300 conversations x 6 turns: Haiku about 2 USD, Sonnet about 36 USD (uncached) | **outside the app cap**; the app caps messages relayed per day; the Console limit on `lucyspa-n8n` is the real cap                                                      |
 | 4   | Assistant (Sonnet 5.5)                        | -                                                                                                | 200 questions about 8-20 USD                                                   | about 12K input + 1.5K output per question                                                                                                                              |
@@ -402,7 +401,7 @@ new optional env variables (5.1). pm2: **no new process**; the API gets a second
 | **C: report assistant**                    | CI-S1 tools over the Phase 8 modules, permission-filtered, number check, audit and the 30-day question log. Milestone.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | about +2 / +1            |
 | **D: customer-aware staff features**       | CI-S2 KTV summary, CI-S3 suggestions (after the lawyer item). Final milestone for the phase.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | about +2 / +1            |
 
-Owner path: Wave 0 first (the live pages get clean). Wave A after deploy: create the `lucyspa` workspace and key (11.1), run the 20-product sample, judge tone and facts, unlock, run the rest, review product by product; in parallel switch the n8n bots to the bot data API (11.3).
+Owner path: Wave 0 first (the live pages get clean). Wave A after deploy: create the `lucyspa` workspace and key (11.1), run the rewrite for 3 products, review them one by one (they are real drafts, kept if approved), press **Cho phép chạy tiếp**, run the rest, approve page by page; in parallel switch the n8n bots to the bot data API (11.3).
 Nothing else on the public site changes until a person presses **Áp dụng**. Deploy follows the usual self-checking one-block guide per wave, with rollback (an old build needs the new permission rows deleted first).
 
 ## 11. Hướng dẫn cho chủ (bản nháp, hoàn thiện ở bước milestone sau khi em xem workflow n8n thật của bạn)
@@ -483,8 +482,8 @@ Tên nút và menu có thể khác theo phiên bản n8n của bạn. Khi làm b
 | Bot mentions an internal discount                          | Only discounts the Owner ticked (`bot_visible`, default off), never code-based or member/employee/manager discounts                                                                               |
 | Chat abuse, prompt injection, off-topic use                | Rate limits, size limits, global cap, read-only bot, plain-text reply, API builds links, fallback form                                                                                            |
 | Privacy law (Law 91/2025), advertising and review rules    | Lawyer item before Waves B and D; data minimisation; notice text pending; policy defaults in section 9                                                                                            |
-| Invented or dropped facts in product text                  | Server fact checks, originality check, no-testimonial check, every draft approved by a person, sample first                                                                                       |
-| Google quality policy on mass AI content                   | No bulk publish by default; human review; real added value                                                                                                                                        |
+| Invented or dropped facts in product text                  | Server fact checks, originality check, no-testimonial check, every draft approved by a person, 3 products first                                                                                   |
+| Google quality policy on mass AI content                   | No publish without a person: first 3 one by one, then a page of at most 20 after the reviewer viewed it; real added value                                                                         |
 | Medical or exaggerated claims; authenticity wording        | Prompt + server checks + Owner list; "chính hãng" only when the Owner confirms                                                                                                                    |
 | Overwrite of Lucy text by imports                          | Origin lock, import preview lock, trigger, end-to-end test                                                                                                                                        |
 | Staff summaries misused or too revealing                   | Assigned staff only, time window, audit, no health inference, review comments excluded                                                                                                            |
@@ -493,7 +492,7 @@ Tên nút và menu có thể khác theo phiên bản n8n của bạn. Khi làm b
 | Provider outage or model retirement                        | Public pages never call a provider; allow-listed models; golden sets before a switch                                                                                                              |
 | New dependency / supply chain                              | One official SDK, exact pin, lockfile reviewed                                                                                                                                                    |
 
-## 13. Câu hỏi cho chủ (10 câu; trả lời "ok" là nhận đề xuất; **chưa có gì được duyệt**)
+## 13. Câu hỏi cho chủ (10 câu; **đã được chủ trả lời ngày 2026-10-12, nguyên văn ở mục 14**)
 
 Mục có **⚠** là việc làm đổi điều khách hoặc nhân viên thấy hay làm hằng ngày.
 
@@ -528,7 +527,20 @@ Sau khi bạn trả lời, em ghi **nguyên văn** vào mục 14 và chỉ bắt
   The importer must never import supplier customer reviews/comments again (fix in the adapter/normalizer + regression test). The rewrite (feature 1) must drop any such text and keep only real product facts. Until the rewrite is approved, show me a one-click cleanup that removes that text from the current descriptions (preview + confirm, audited).
   Remaining scope: 1 rewrite, 2 bot data API + website chat via n8n, 4 report assistant, 6 KTV customer summary, 7 cosmetics suggestions, 8 SEO meta + English. Re-plan the waves and the cost estimate accordingly, renumber the questionnaire (max 10 questions, defaults, ⚠ for day-to-day changes)."
 
-**Answers to OQ-CI-1..10:** _none yet. Record verbatim here when given._ (The question numbers changed with this revision: the old OQ-CI-9 and OQ-CI-12 are gone, the cleanup is the new OQ-CI-1.)
+**Answers to OQ-CI-1..10, 2026-10-12 (the Owner's own message, verbatim):**
+
+> 1. OK — build CI-0 (supplier review-text cleanup + importer fix) first.
+> 2. OK.
+> 3. Use the strongest model. NO 20-product trial: run the rewrite for real on 3 products first; the Owner reviews them; then the remaining products run on his command. The 3 are real drafts, kept if approved.
+> 4. OK — separate key groups (app vs n8n), monthly app cap 3,000,000 đ (Owner can change it in settings), 5 new permissions granted to nobody.
+> 5. Changed: review the first 3 products one by one (old vs new, editable). After that, allow approving a whole page of up to 20 products at once after the reviewer has viewed that page (one confirm per page, audited). Rewritten text is never overwritten by Haruohui rescans or Excel/CSV imports unless explicitly ticked with a reason.
+>    6, 7, 9, 10: OK as proposed.
+> 6. OK, but do NOT write "chính hãng" until the Owner confirms the supplier is an official distributor (leave it as a setting he can switch on later).
+
+Build instruction (same message): build unattended, same per-step process as Phases 7-8, **Wave 0 and Wave A, then STOP**; one Vietnamese deploy guide for Wave 0 + A as a single self-checking bash block ("DUNG LAI", enum checks cast with `::text`), a short Vietnamese guide to paste the Anthropic key into the server `.env`, an Owner test script (run the cleanup, then rewrite 3 products and review them);
+no deploy, no server access; Waves B to D wait until the Owner has seen the first 3 rewritten products.
+
+Reading used while building: "the strongest model" = Claude Opus 5.5, the model named in OQ-CI-3 (Fable 5.1 stays out, see 5.2). The 5 new permissions are added wave by wave (Wave A adds two, 77 to 79); all are granted to nobody.
 
 ## 15. Parked: feature 5, Lucy-branded product images (postponed by the Owner; nothing planned, costed or asked)
 

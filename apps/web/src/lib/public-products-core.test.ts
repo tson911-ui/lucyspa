@@ -243,6 +243,17 @@ test('JSON-LD: a Product with one Offer per variant, price in VND, availability,
   assert.ok(!/quantity|inventoryLevel/i.test(JSON.stringify(data)));
 });
 
+test('JSON-LD never carries reviews or ratings (Claude integration CI-0: no star markup, reviews are private)', () => {
+  const data = productJsonLd(detail, {
+    url: 'https://spa.example/vi/products/kem-duong',
+    images: ['https://spa.example/x.webp'],
+  });
+  const text = JSON.stringify(data);
+  for (const key of ['review', 'aggregateRating', 'ratingValue', 'reviewCount']) {
+    assert.ok(!text.toLowerCase().includes(key.toLowerCase()), key);
+  }
+});
+
 const running = {
   slug: 'ngay-hoi-lam-dep',
   name: 'Ngày hội làm đẹp',
