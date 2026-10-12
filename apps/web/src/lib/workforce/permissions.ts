@@ -166,6 +166,7 @@ export type NavKey =
   | 'supplierSources'
   | 'supplierImports'
   | 'productTextCleanup'
+  | 'aiDrafts'
   | 'aiSettings'
   | 'onlineOrders'
   | 'inventory'
@@ -324,6 +325,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'productTextCleanup',
       group: 'catalog',
       path: '/product-text-cleanup',
+    },
+    // Claude integration CI-R2: the review of AI drafts of product text (GLOBAL_ONLY USE_AI_CONTENT; applying also needs MANAGE_PRODUCTS).
+    canGlobal(account, 'USE_AI_CONTENT') && {
+      key: 'aiDrafts',
+      group: 'catalog',
+      path: '/product-rewrites',
     },
     // Phase 6 P6-4: the inventory (branch-scoped VIEW_INVENTORY / MANAGE_STOCK_RECEIPTS / ADJUST_STOCK, global MANAGE_PRODUCTS for suppliers).
     (canAnywhere(account, 'VIEW_INVENTORY') ||

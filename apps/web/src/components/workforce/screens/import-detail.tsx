@@ -9,12 +9,14 @@ import {
   Dialog,
   DescriptionList,
   FacetedFilter,
+  Field,
   FormDialog,
   ListSection,
   ListToolbar,
   RowActions,
   SearchInput,
   Stack,
+  Textarea,
   useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
@@ -34,7 +36,9 @@ import {
   IMPORT_ROWS_PAGE_KEYS,
   importErrorText,
   isImportConflict,
+  lockedSkus,
   normalizeImportRows,
+  overrideReasonOk,
   outcomeTone,
   rowNotes,
   rowOutcome,
@@ -269,14 +273,25 @@ function ApplyDialog({
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const needsSkip = summary.skipped > 0;
+  const locked = lockedSkus(job);
+  const [override, setOverride] = useState(false);
+  const [reason, setReason] = useState('');
+  const reasonMissing = override && !overrideReasonOk(reason);
 
   async function submit() {
     setChecked(true);
-    if (pending || (needsSkip && !skip)) return;
+    if (pending || (needsSkip && !skip) || reasonMissing) return;
     setPending(true);
     setFailure(null);
     try {
-      await api.post(`/api/v1/product-imports/${job.id}/apply`, applyRequest(job, needsSkip));
+      await api.post(
+        `/api/v1/product-imports/${job.id}/apply`,
+        applyRequest(
+          job,
+          needsSkip,
+          override ? { skus: locked, reason: reason.trim() } : undefined,
+        ),
+      );
       await onApplied();
     } catch (error) {
       if (isImportConflict(error)) await onConflict().catch(() => undefined);
@@ -316,6 +331,33 @@ function ApplyDialog({
             onChange={(event) => setSkip(event.target.checked)}
             {...(checked && !skip ? { error: d.skipRequired } : {})}
           />
+        ) : null}
+        {locked.length > 0 ? (
+          <>
+            <Notice tone="info">{fill(d.lock.notice, { count: locked.length })}</Notice>
+            <CheckField
+              label={fill(d.lock.tick, { count: locked.length })}
+              checked={override}
+              onChange={(event) => setOverride(event.target.checked)}
+            />
+            {override ? (
+              <Field
+                label={d.lock.reason}
+                hint={d.lock.reasonHint}
+                {...(checked && reasonMissing ? { error: d.lock.reasonRequired } : {})}
+              >
+                {(control) => (
+                  <Textarea
+                    {...control}
+                    rows={3}
+                    maxLength={300}
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                  />
+                )}
+              </Field>
+            ) : null}
+          </>
         ) : null}
       </Stack>
     </FormDialog>

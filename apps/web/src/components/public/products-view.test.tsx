@@ -221,6 +221,9 @@ const detail = (overrides: Partial<PublicProductDetailResponse['product']> = {})
       code: 'kem-duong',
       name: 'Kem dưỡng ẩm',
       description: 'Dưỡng ẩm cho da.\nDùng mỗi tối.',
+      sections: [],
+      seoTitle: null,
+      seoDescription: null,
       category: { code: 'da', name: 'Chăm sóc da' },
       brand: 'Hãng thử',
       images: [image, { ...image, alt: 'Mặt bên' }],
@@ -556,4 +559,42 @@ test('sale price block: struck list price with the percent, the sale price large
     block.includes('ls-sale-now') && !block.includes('ls-badge'),
     'no badge in the price block',
   );
+});
+
+test('detail: the four description sections come in their fixed order with their own headings; none, no block', () => {
+  const page = html(
+    <ProductDetailView
+      locale="vi"
+      detail={detail({
+        sections: [
+          { key: 'benefits', text: 'Dưỡng ẩm cả ngày.' },
+          { key: 'usage', text: 'Thoa mỗi tối.' },
+          { key: 'suitableFor', text: 'Da khô.' },
+        ],
+      })}
+      site={null}
+    />,
+  );
+  const order = ['Công dụng', 'Cách dùng', 'Phù hợp với ai'].map((title) => page.indexOf(title));
+  assert.ok(order.every((at) => at > 0));
+  assert.deepEqual(
+    [...order].sort((a, b) => a - b),
+    order,
+  );
+  assert.ok(!page.includes('Thành phần'), 'an empty section is not shown');
+  assert.match(page, /<h3[^>]*>Công dụng<\/h3>/);
+  assert.ok(page.includes('Dưỡng ẩm cả ngày.'));
+  assert.ok(
+    !html(<ProductDetailView locale="vi" detail={detail()} site={null} />).includes(
+      'ls-prod-sections',
+    ),
+  );
+  const english = html(
+    <ProductDetailView
+      locale="en"
+      detail={detail({ sections: [{ key: 'ingredients', text: 'Glycerin.' }] })}
+      site={null}
+    />,
+  );
+  assert.match(english, /<h3[^>]*>Ingredients<\/h3>/);
 });

@@ -266,6 +266,21 @@ export type WarningCode =
   | 'BRAND_CHANGED'
   | 'INJECTION_SIGN';
 
+/**
+ * Quality notes a reviewer may accept after reading them (facts, originality, SEO length, duplicates); every other warning (claims, the
+ * clinic word, authenticity, testimonials, links and contacts, markup, language, empty fields, brand, injection signs) must be edited away.
+ */
+const SOFT_WARNINGS: ReadonlySet<WarningCode> = new Set<WarningCode>([
+  'FACT_MISSING',
+  'INGREDIENT_ADDED',
+  'TOO_SIMILAR',
+  'SEO_DUPLICATE',
+  'SEO_TITLE_LONG',
+  'SEO_DESCRIPTION_LONG',
+]);
+
+export const isBlockingWarning = (code: WarningCode): boolean => !SOFT_WARNINGS.has(code);
+
 export interface DraftWarning {
   code: WarningCode;
   /** The field and, when useful, the offending piece (kept short; shown to the reviewer). */

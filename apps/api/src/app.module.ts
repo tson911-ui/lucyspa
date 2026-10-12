@@ -59,6 +59,7 @@ import { ProductRefundController } from './product-returns/refund.controller.js'
 import { ProductRefundService } from './product-returns/refund.service.js';
 import { ProductImportController } from './product-imports/import.controller.js';
 import { AiController } from './ai/ai.controller.js';
+import { AiDraftsController } from './ai/ai-drafts.controller.js';
 import { AiService } from './ai/ai.service.js';
 import { ProductTextCleanupController } from './products/product-text-cleanup.controller.js';
 import { ProductTextCleanupService } from './products/product-text-cleanup.service.js';
@@ -200,6 +201,7 @@ export class AppModule {
         ProductImportController,
         ProductTextCleanupController,
         AiController,
+        AiDraftsController,
         ProductImageZipController,
         RewardController,
         CustomerLoyaltyController,

@@ -200,7 +200,34 @@ export function uploadForm(draft: ImportUploadDraft): FormData {
 export const applyRequest = (
   job: Pick<ProductImportDetailResponse, 'rowVersion'>,
   skipInvalid: boolean,
-): ProductImportApplyRequest => ({ expectedRowVersion: job.rowVersion, skipInvalid });
+  textOverride?: { skus: string[]; reason: string },
+): ProductImportApplyRequest => ({
+  expectedRowVersion: job.rowVersion,
+  skipInvalid,
+  ...(textOverride ? { textOverride } : {}),
+});
+
+/** The SKUs of the rows whose product text Lucy wrote: the file's text columns are skipped for them unless overridden. */
+export const lockedSkus = (job: Pick<ProductImportDetailResponse, 'kind' | 'rows'>): string[] =>
+  job.kind !== 'CATALOG'
+    ? []
+    : [
+        ...new Set(
+          job.rows
+            .filter(
+              (row) =>
+                row.status === 'VALID' &&
+                row.warnings.some((warning) => warning.code === 'TEXT_LOCKED'),
+            )
+            .map((row) => row.sku.toUpperCase()),
+        ),
+      ];
+
+/** The reason typed for an override: 3 to 300 characters after trimming. */
+export const overrideReasonOk = (reason: string): boolean => {
+  const length = reason.normalize('NFC').replace(/\s+/g, ' ').trim().length;
+  return length >= 3 && length <= 300;
+};
 
 /** What a confirmation says: how many rows enter and how many are skipped. */
 export function applySummary(

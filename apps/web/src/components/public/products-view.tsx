@@ -456,6 +456,22 @@ export function ProductDetailView({
                 <p className="ls-prod-copy">{product.description}</p>
               </section>
             ) : null}
+            {product.sections.length > 0 ? (
+              <div className="ls-prod-sections">
+                {product.sections.map((section) => (
+                  <section
+                    key={section.key}
+                    className="ls-prod-section"
+                    aria-labelledby={`product-section-${section.key}`}
+                  >
+                    <h3 className="ls-prod-section-title" id={`product-section-${section.key}`}>
+                      {t.sections[section.key]}
+                    </h3>
+                    <p className="ls-prod-copy">{section.text}</p>
+                  </section>
+                ))}
+              </div>
+            ) : null}
             {site ? <StoreBlock locale={locale} site={site} /> : null}
             {commitment ? <CommitmentBox commitment={commitment} headingLevel={2} /> : null}
           </div>

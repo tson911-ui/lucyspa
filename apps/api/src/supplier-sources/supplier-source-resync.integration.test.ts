@@ -604,7 +604,11 @@ test(
             imageChanged: 0,
             removed: 0,
           });
-          const text = JSON.stringify(last);
+          // The words of the notice (not its ids and timestamps, which can contain any digits): no price and no private note leaks.
+          const text = JSON.stringify({
+            params: last.params,
+            contextCode: last.contextCode,
+          });
           assert.equal(text.includes('999'), false);
           assert.equal(text.includes('riêng'), false);
           // The price holder, who also reviews, is told the same.

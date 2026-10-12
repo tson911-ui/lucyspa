@@ -171,8 +171,11 @@ export async function productMetadata(locale: Locale, code: string): Promise<Met
     locale,
     origin,
     path: `/products/${encodeURIComponent(detail.product.code)}`,
-    title: `${detail.product.name} · ${SITE_NAME}`,
-    description: productDescription(detail.product, locale, SITE_NAME, site?.address ?? null),
+    // The title and description the shop approved (already with the brand and "Lucy Spa"); the page builds its own until then.
+    title: detail.product.seoTitle ?? `${detail.product.name} · ${SITE_NAME}`,
+    description:
+      detail.product.seoDescription ??
+      productDescription(detail.product, locale, SITE_NAME, site?.address ?? null),
     image: origin ? absoluteImage(origin, widest?.url) : null,
   });
 }

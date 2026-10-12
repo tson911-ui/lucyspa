@@ -385,6 +385,46 @@ function sameOutcome(
   });
 }
 
+/**
+ * The explicit tick: the SKUs of rows whose Lucy-owned text the file may overwrite, with a reason. Needs MANAGE_PRODUCTS (GLOBAL) on top
+ * of the import permission, a reason of 3 to 300 characters, and only SKUs of rows that really are locked (a SKU the preview did not
+ * flag is refused, so the tick can never reach a product the person was not shown).
+ */
+function textOverrideOf(
+  context: AdminContext,
+  request: ProductImportApplyRequest,
+  plain: { entities: Map<string, { lockedFields: unknown[] }>; rows: PlannedRow[] },
+): { skus: Set<string>; reason: string } | null {
+  const given = request.textOverride;
+  if (given === undefined) return null;
+  if (!decide(context.actor.graph, 'MANAGE_PRODUCTS', { kind: 'GLOBAL' })) {
+    throw new AuthError('FORBIDDEN');
+  }
+  if (
+    typeof given !== 'object' ||
+    given === null ||
+    !Array.isArray(given.skus) ||
+    given.skus.length === 0 ||
+    given.skus.length > 5_000 ||
+    given.skus.some((sku) => typeof sku !== 'string' || sku.length > 64) ||
+    typeof given.reason !== 'string'
+  ) {
+    throw new AuthError('VALIDATION_FAILED', 'textOverride');
+  }
+  const reason = given.reason.normalize('NFC').replace(/\s+/g, ' ').trim();
+  if (reason.length < 3 || reason.length > 300) throw new AuthError('VALIDATION_FAILED', 'reason');
+  const lockedRows = new Set(
+    plain.rows
+      .filter((row) => row.warnings.some((entry) => entry.code === 'TEXT_LOCKED'))
+      .map((row) => row.sku.toUpperCase()),
+  );
+  const skus = new Set(given.skus.map((sku) => sku.trim().toUpperCase()));
+  for (const sku of skus) {
+    if (!lockedRows.has(sku)) throw new AuthError('VALIDATION_FAILED', 'textOverride');
+  }
+  return { skus, reason };
+}
+
 export async function applyJob(
   context: AdminContext,
   id: string,
@@ -409,10 +449,16 @@ export async function applyJob(
 
   let done: { applied: number };
   if (job.kind === 'CATALOG') {
-    const plan = await lockAndPlanCatalog(context, sources, access);
-    if (!sameOutcome(rows, plan.rows)) throw new AuthError('IMPORT_PREVIEW_STALE');
+    // The preview never overrides anything, so the stale check compares against the plain plan; an override changes only what is written.
+    const plain = await lockAndPlanCatalog(context, sources, access);
+    if (!sameOutcome(rows, plain.rows)) throw new AuthError('IMPORT_PREVIEW_STALE');
+    const override = textOverrideOf(context, request, plain);
+    const plan =
+      override === null
+        ? plain
+        : await lockAndPlanCatalog(context, sources, access, { overrideSkus: override.skus });
     if (plan.variants.length === 0) throw new AuthError('IMPORT_NOTHING_TO_APPLY');
-    done = await applyCatalog(context, id, plan);
+    done = await applyCatalog(context, id, plan, override?.reason ?? null);
   } else if (job.kind === 'OPENING_STOCK' && job.branchId !== null) {
     const branch = await branchOf(tx, job.branchId);
     const plan = await lockAndPlanOpening(context, branch, sources, access);

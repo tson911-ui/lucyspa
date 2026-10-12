@@ -4,7 +4,11 @@ import { ProductDetailView } from '../../../../../../components/public/products-
 import { isLocale } from '../../../../../../i18n/locales';
 import { productMetadata, requestOrigin } from '../../../../../../lib/public-metadata';
 import { productHref, productJsonLd } from '../../../../../../lib/public-products-core';
-import { fetchPublicProduct, fetchPublicSite } from '../../../../../../lib/public-site';
+import {
+  fetchOnlineOpen,
+  fetchPublicProduct,
+  fetchPublicSite,
+} from '../../../../../../lib/public-site';
 import { absoluteImage, jsonLdString } from '../../../../../../lib/seo-core';
 
 interface ProductPageProps {
@@ -20,10 +24,11 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 export default async function ProductPage({ params }: ProductPageProps) {
   const { locale, code } = await params;
   if (!isLocale(locale)) notFound();
-  const [detail, site, origin] = await Promise.all([
+  const [detail, site, origin, onlineOpen] = await Promise.all([
     fetchPublicProduct(locale, code),
     fetchPublicSite(locale),
     requestOrigin(),
+    fetchOnlineOpen(),
   ]);
   // An unknown, unpublished or discontinued product is a real 404; a failed read is a notice, not a 404.
   if (detail === 'missing') notFound();
@@ -31,6 +36,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     detail && origin
       ? productJsonLd(detail.product, {
           url: `${origin}${productHref(locale, detail.product.code)}`,
+          onlineOpen,
           images: detail.product.images.flatMap((image) => {
             const widest = image.sources[image.sources.length - 1];
             const url = widest ? absoluteImage(origin, widest.url) : null;

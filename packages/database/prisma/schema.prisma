@@ -5650,6 +5650,8 @@ model AiItem {
   reviewedAt       DateTime? @map("reviewed_at") @db.Timestamptz(3)
   appliedByUserId  String?   @map("applied_by_user_id") @db.Uuid
   appliedAt        DateTime? @map("applied_at") @db.Timestamptz(3)
+  /// SINGLE (one reviewer, one draft) or PAGE (the page approval of up to 20).
+  appliedVia       String?   @map("applied_via")
   rowVersion       Int       @default(1) @map("row_version")
   createdAt        DateTime  @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime  @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)

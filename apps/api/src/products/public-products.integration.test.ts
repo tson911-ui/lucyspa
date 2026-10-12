@@ -612,6 +612,47 @@ test(
         },
       );
 
+      await suite.test(
+        'Claude integration: the page carries the four sections and the approved search text; empty ones are absent',
+        async () => {
+          const plain = await publicProductDetail(tx, 'vi', B.code);
+          assert.deepEqual(plain.product.sections, []);
+          assert.equal(plain.product.seoTitle, null);
+          assert.equal(plain.product.seoDescription, null);
+          await tx.product.update({
+            where: { id: B.id },
+            data: {
+              seoTitleVi: 'Sữa rửa mặt 100ml | Lucy Spa',
+              seoTitleEn: 'Cleanser 100ml | Lucy Spa',
+              seoDescriptionVi: 'Sữa rửa mặt 100ml tại Lucy Spa, Đà Nẵng.',
+              seoDescriptionEn: null,
+              descriptionSectionsVi: {
+                benefits: 'Làm sạch nhẹ nhàng.',
+                ingredients: '  ',
+                usage: 'Dùng mỗi sáng và tối.',
+                suitableFor: null,
+              },
+              descriptionSectionsEn: { benefits: 'Gentle cleansing.', usage: null },
+              rowVersion: { increment: 1 },
+            },
+          });
+          const vi = (await publicProductDetail(tx, 'vi', B.code)).product;
+          assert.deepEqual(vi.sections, [
+            { key: 'benefits', text: 'Làm sạch nhẹ nhàng.' },
+            { key: 'usage', text: 'Dùng mỗi sáng và tối.' },
+          ]);
+          assert.equal(vi.seoTitle, 'Sữa rửa mặt 100ml | Lucy Spa');
+          // English: the English text where it exists, the Vietnamese text standing in where it was not written.
+          const en = (await publicProductDetail(tx, 'en', B.code)).product;
+          assert.deepEqual(en.sections, [
+            { key: 'benefits', text: 'Gentle cleansing.' },
+            { key: 'usage', text: 'Dùng mỗi sáng và tối.' },
+          ]);
+          assert.equal(en.seoTitle, 'Cleanser 100ml | Lucy Spa');
+          assert.equal(en.seoDescription, 'Sữa rửa mặt 100ml tại Lucy Spa, Đà Nẵng.');
+        },
+      );
+
       await suite.test('the public catalog writes nothing and reads no money tables', async () => {
         const writes = await tx.$queryRaw<{ n: number }[]>`
           SELECT (SELECT count(*) FROM invoices)::int + (SELECT count(*) FROM payments)::int AS n`;

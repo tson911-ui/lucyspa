@@ -112,6 +112,23 @@ export interface EntityPlan {
   carrierRowNo: number | null;
   /** Product columns that change (an existing product) with the stored values they replace. */
   changes: ProductField[];
+  /** Text columns the file would change on a product Lucy wrote: skipped (the row says TEXT_LOCKED), unless overridden. */
+  lockedFields: ProductField[];
+  /** Text columns that change under an explicit override (the apply sets the database guard's override for them). */
+  overriddenFields: ProductField[];
+}
+
+const TEXT_COLUMNS = ['name_vi', 'name_en', 'description_vi', 'description_en'] as const;
+const TEXT_VALUE: Record<(typeof TEXT_COLUMNS)[number], keyof ProductValues> = {
+  name_vi: 'nameVi',
+  name_en: 'nameEn',
+  description_vi: 'descriptionVi',
+  description_en: 'descriptionEn',
+};
+
+export interface CatalogPlanOptions {
+  /** SKUs (upper case) of rows whose product text may be overwritten although Lucy wrote it. */
+  overrideSkus?: ReadonlySet<string>;
 }
 
 export interface VariantPlan {
@@ -171,6 +188,7 @@ export async function planCatalog(
   context: { tx: Tx; now: Date },
   sources: readonly SourceRow[],
   access: Access,
+  options: CatalogPlanOptions = {},
 ): Promise<CatalogPlan> {
   const { tx, now } = context;
   const parsed = sources.map((source) => ({
@@ -226,6 +244,7 @@ export async function planCatalog(
           brandId: true,
           categoryId: true,
           featured: true,
+          contentOrigin: true,
         },
       },
       priceVersions: { orderBy: { versionNo: 'desc' }, take: 1, select: { listPriceVnd: true } },
@@ -381,7 +400,36 @@ export async function planCatalog(
       if (values.nameVi === undefined) first.issues.push(issue('NAME_REQUIRED', 'name_vi'));
       if (values.nameEn === undefined) first.issues.push(issue('NAME_REQUIRED', 'name_en'));
     }
-    entities.set(key, { key, existingId, values, carrierRowNo: null, changes });
+    // Text Lucy wrote (anything but the supplier's copy) is not overwritten by a file: those columns are skipped and the row says so,
+    // unless a person overrides them with a reason at apply (design 4.6, Owner answer to OQ-CI-5).
+    const lockedFields: ProductField[] = [];
+    const overriddenFields: ProductField[] = [];
+    if (storedProduct && storedProduct.contentOrigin !== 'SUPPLIER_COPY') {
+      const entityRows = byEntity.get(key) ?? [];
+      const overridden = entityRows.some(
+        (row) => row.values.sku !== null && options.overrideSkus?.has(row.values.sku),
+      );
+      for (const column of TEXT_COLUMNS) {
+        const at = changes.indexOf(column);
+        if (at < 0) continue;
+        if (overridden) {
+          overriddenFields.push(column);
+        } else {
+          lockedFields.push(column);
+          changes.splice(at, 1);
+          delete values[TEXT_VALUE[column]];
+        }
+      }
+    }
+    entities.set(key, {
+      key,
+      existingId,
+      values,
+      carrierRowNo: null,
+      changes,
+      lockedFields,
+      overriddenFields,
+    });
   }
   // A new product with a problem in any of its product columns is not created from the other rows of its group.
   for (const [key, rows] of byEntity) {
@@ -537,6 +585,11 @@ export async function planCatalog(
       row.warnings.push(issue('PRODUCT_NAME_EXISTS', 'name_vi'));
     }
     if (carrier && entity.existingId !== null) row.changes.unshift(...entity.changes);
+    if (carrier && entity.lockedFields.length > 0) {
+      row.warnings.push(
+        issue('TEXT_LOCKED', entity.lockedFields[0], { fields: entity.lockedFields.join(',') }),
+      );
+    }
     const changesSomething =
       plan.create ||
       Object.keys(plan.set).length > 0 ||

@@ -1,4 +1,5 @@
 import {
+  PUBLIC_PRODUCT_SECTION_KEYS,
   PUBLIC_PRODUCT_SORTS,
   PUBLIC_PRODUCTS_PAGE_SIZE,
   type PublicCampaign,
@@ -8,6 +9,7 @@ import {
   type PublicProductDetail,
   type PublicProductDetailResponse,
   type PublicProductPrice,
+  type PublicProductSection,
   type PublicProductsCommitment,
   type PublicProductsHero,
   type PublicProductsResponse,
@@ -296,8 +298,34 @@ function parseVariant(value: unknown): PublicProductVariant | null {
   const price = parsePrice(value['price']);
   const stock = parseStock(value['stock']);
   return price && stock
-    ? { id: value['id'], sellOnline: value['sellOnline'], label: value['label'], price, stock }
+    ? {
+        id: value['id'],
+        sellOnline: value['sellOnline'],
+        label: value['label'],
+        price,
+        stock,
+      }
     : null;
+}
+
+/** The page sections that arrived: known keys, non-empty text, in the fixed order; anything else is left out (never an error). */
+function parseSections(value: unknown): PublicProductSection[] {
+  if (!Array.isArray(value)) return [];
+  const byKey = new Map<string, string>();
+  for (const entry of value) {
+    if (
+      isRecord(entry) &&
+      isString(entry['key']) &&
+      isString(entry['text']) &&
+      entry['text'].trim() !== ''
+    ) {
+      byKey.set(entry['key'], entry['text']);
+    }
+  }
+  return PUBLIC_PRODUCT_SECTION_KEYS.flatMap((key) => {
+    const text = byKey.get(key);
+    return text === undefined ? [] : [{ key, text }];
+  });
 }
 
 function parseDetail(value: unknown): PublicProductDetail | null {
@@ -326,6 +354,9 @@ function parseDetail(value: unknown): PublicProductDetail | null {
     code: value['code'],
     name: value['name'],
     description: value['description'],
+    sections: parseSections(value['sections']),
+    seoTitle: isNullableString(value['seoTitle']) ? value['seoTitle'] : null,
+    seoDescription: isNullableString(value['seoDescription']) ? value['seoDescription'] : null,
     category,
     brand: value['brand'],
     images,
@@ -515,18 +546,28 @@ const AVAILABILITY = {
   IN_STOCK: 'https://schema.org/InStock',
   PRE_ORDER: 'https://schema.org/PreOrder',
   OUT_OF_STOCK: 'https://schema.org/OutOfStock',
+  /** Sold in the shop only: while online ordering is closed, or for a variant not sold online. */
+  IN_STORE_ONLY: 'https://schema.org/InStoreOnly',
 } as const;
 
-/** schema.org `Product` with one `Offer` per variant: price in VND and availability (never a quantity). */
+/**
+ * schema.org `Product` with one `Offer` per variant (never an `AggregateOffer`): the price in VND and the availability, never a
+ * quantity. While online ordering is closed (the Owner's switch) or for a variant not sold online the availability is `InStoreOnly`,
+ * the truth the page itself shows ("Mua tại cửa hàng"); otherwise it follows the stock. No rating or review is ever marked up: the
+ * shop's reviews are private and not on the page.
+ */
 export function productJsonLd(
   product: PublicProductDetail,
-  options: { url: string; images: readonly string[] },
+  options: { url: string; images: readonly string[]; onlineOpen?: boolean },
 ) {
   const offers = product.variants.map((variant) => ({
     '@type': 'Offer',
     priceCurrency: 'VND',
     price: variant.price.priceVnd,
-    availability: AVAILABILITY[variant.stock.state],
+    availability:
+      options.onlineOpen === true && variant.sellOnline
+        ? AVAILABILITY[variant.stock.state]
+        : AVAILABILITY.IN_STORE_ONLY,
     url: options.url,
     ...(variant.label ? { name: variant.label } : {}),
   }));
@@ -535,6 +576,8 @@ export function productJsonLd(
     '@type': 'Product',
     name: product.name,
     url: options.url,
+    // The product's public code is the merchant identifier: the internal SKUs of the variants are never public (Phase 6 design 16).
+    sku: product.code,
     ...(product.description ? { description: product.description } : {}),
     ...(product.brand ? { brand: { '@type': 'Brand', name: product.brand } } : {}),
     ...(product.category ? { category: product.category.name } : {}),

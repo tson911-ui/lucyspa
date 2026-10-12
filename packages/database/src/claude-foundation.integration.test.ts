@@ -238,8 +238,23 @@ test('Claude integration Wave A permissions, tables and guards (all fixtures rol
                   ),
                 /ai_items_applied_status|applied/,
               );
+              // applied_via follows applied_at: neither alone, and only SINGLE or PAGE.
+              await rejects(
+                () =>
+                  exec(
+                    `UPDATE ai_items SET status = 'APPLIED', applied_at = now(), applied_by_user_id = '${owner.id}', row_version = row_version + 1 WHERE id = '${first!.id}'`,
+                  ),
+                /ai_items_applied_via/,
+              );
+              await rejects(
+                () =>
+                  exec(
+                    `UPDATE ai_items SET status = 'APPLIED', applied_at = now(), applied_by_user_id = '${owner.id}', applied_via = 'BULK', row_version = row_version + 1 WHERE id = '${first!.id}'`,
+                  ),
+                /ai_items_applied_via/,
+              );
               await exec(
-                `UPDATE ai_items SET status = 'APPLIED', applied_at = now(), applied_by_user_id = '${owner.id}', row_version = row_version + 1 WHERE id = '${first!.id}'`,
+                `UPDATE ai_items SET status = 'APPLIED', applied_at = now(), applied_by_user_id = '${owner.id}', applied_via = 'SINGLE', row_version = row_version + 1 WHERE id = '${first!.id}'`,
               );
               await rejects(
                 () =>

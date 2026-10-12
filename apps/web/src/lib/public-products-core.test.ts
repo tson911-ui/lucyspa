@@ -181,6 +181,9 @@ const detail: PublicProductDetail = {
   code: 'kem-duong',
   name: 'Kem dưỡng',
   description: 'Mô tả',
+  sections: [],
+  seoTitle: null,
+  seoDescription: null,
   category: { code: 'da', name: 'Chăm sóc da' },
   brand: 'Thương hiệu',
   images: [image],
@@ -219,6 +222,7 @@ test('JSON-LD: a Product with one Offer per variant, price in VND, availability,
   const data = productJsonLd(detail, {
     url: 'https://spa.example/vi/products/kem-duong',
     images: ['https://spa.example/x.webp'],
+    onlineOpen: true,
   });
   assert.equal(data['@type'], 'Product');
   assert.equal(data.name, 'Kem dưỡng');
@@ -232,8 +236,11 @@ test('JSON-LD: a Product with one Offer per variant, price in VND, availability,
     ],
   );
   const one = productJsonLd(
-    { ...detail, variants: [{ id: 'v1', sellOnline: true, label: null, price, stock: stock.OUT }] },
-    { url: 'https://spa.example/p', images: [] },
+    {
+      ...detail,
+      variants: [{ id: 'v1', sellOnline: true, label: null, price, stock: stock.OUT }],
+    },
+    { url: 'https://spa.example/p', images: [], onlineOpen: true },
   );
   assert.equal(
     (one.offers as { availability: string }).availability,
@@ -241,6 +248,77 @@ test('JSON-LD: a Product with one Offer per variant, price in VND, availability,
   );
   assert.ok(!('image' in one));
   assert.ok(!/quantity|inventoryLevel/i.test(JSON.stringify(data)));
+});
+
+test('JSON-LD: InStoreOnly while online ordering is closed or for a variant not sold online; the product code is the identifier, never an internal SKU', () => {
+  const offersOf = (data: ReturnType<typeof productJsonLd>) =>
+    data.offers as { sku?: string; availability: string }[];
+  const open = productJsonLd(detail, {
+    url: 'https://spa.example/p',
+    images: [],
+    onlineOpen: true,
+  });
+  assert.deepEqual(
+    offersOf(open).map((offer) => offer.availability),
+    ['https://schema.org/InStock', 'https://schema.org/PreOrder'],
+  );
+  assert.equal(
+    open['sku'],
+    'kem-duong',
+    'the public product code, the one identifier a visitor already sees',
+  );
+  assert.ok(offersOf(open).every((offer) => !('sku' in offer)));
+  // Closed, and the default when the shop's state is not known: the truth the page shows ("Mua tại cửa hàng").
+  for (const options of [{ onlineOpen: false }, {}]) {
+    const closed = productJsonLd(detail, { url: 'https://spa.example/p', images: [], ...options });
+    assert.deepEqual(
+      offersOf(closed).map((offer) => offer.availability),
+      ['https://schema.org/InStoreOnly', 'https://schema.org/InStoreOnly'],
+    );
+  }
+  const mixed = productJsonLd(
+    {
+      ...detail,
+      variants: [{ ...detail.variants[0]!, sellOnline: false }, detail.variants[1]!],
+    },
+    { url: 'https://spa.example/p', images: [], onlineOpen: true },
+  );
+  assert.deepEqual(
+    offersOf(mixed).map((offer) => offer.availability),
+    ['https://schema.org/InStoreOnly', 'https://schema.org/PreOrder'],
+  );
+});
+
+test('the detail answer: sections in the fixed order without empty ones, the approved SEO text, unknown keys left out', () => {
+  const response = {
+    product: {
+      ...detail,
+      sections: [
+        { key: 'usage', text: 'Thoa mỗi tối.' },
+        { key: 'benefits', text: 'Dưỡng ẩm.' },
+        { key: 'ingredients', text: '   ' },
+        { key: 'madeUp', text: 'x' },
+        { key: 'suitableFor' },
+      ],
+      seoTitle: 'Kem dưỡng | Lucy Spa',
+      seoDescription: 'Kem dưỡng tại Lucy Spa.',
+    },
+    commitment: null,
+    related: [],
+  };
+  const parsed = parseProductDetail(response)!;
+  assert.deepEqual(parsed.product.sections, [
+    { key: 'benefits', text: 'Dưỡng ẩm.' },
+    { key: 'usage', text: 'Thoa mỗi tối.' },
+  ]);
+  assert.equal(parsed.product.seoTitle, 'Kem dưỡng | Lucy Spa');
+  assert.equal(parsed.product.seoDescription, 'Kem dưỡng tại Lucy Spa.');
+  // An older server sends none of it: the page still works.
+  const older: Record<string, unknown> = { ...detail };
+  for (const key of ['sections', 'seoTitle', 'seoDescription']) delete older[key];
+  const legacy = parseProductDetail({ product: older, commitment: null, related: [] })!;
+  assert.deepEqual(legacy.product.sections, []);
+  assert.equal(legacy.product.seoTitle, null);
 });
 
 test('JSON-LD never carries reviews or ratings (Claude integration CI-0: no star markup, reviews are private)', () => {

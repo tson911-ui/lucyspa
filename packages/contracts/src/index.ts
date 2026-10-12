@@ -3747,10 +3747,28 @@ export interface PublicProductVariant {
   stock: PublicProductStock;
 }
 
+/** The four text sections of a product page, in this order; an empty section is not listed (Claude integration, design 4.2). */
+export const PUBLIC_PRODUCT_SECTION_KEYS = [
+  'benefits',
+  'ingredients',
+  'usage',
+  'suitableFor',
+] as const;
+export type PublicProductSectionKey = (typeof PUBLIC_PRODUCT_SECTION_KEYS)[number];
+export interface PublicProductSection {
+  key: PublicProductSectionKey;
+  text: string;
+}
+
 export interface PublicProductDetail {
   code: string;
   name: string;
   description: string | null;
+  /** The structured sections in the visitor's language (the Vietnamese text where the English one is missing); only non-empty ones. */
+  sections: PublicProductSection[];
+  /** The search-result title and description the shop approved for this product, when there are any (else the page builds its own). */
+  seoTitle: string | null;
+  seoDescription: string | null;
   category: PublicProductCategoryRef | null;
   brand: string | null;
   images: PublicSlideImage[];
@@ -4519,6 +4537,8 @@ export const PRODUCT_IMPORT_ISSUE_CODES = [
   'PRODUCT_NAME_EXISTS',
   'UNKNOWN_COLUMN',
   'SAME_FILE_APPLIED',
+  // Claude integration: the product's text was written by Lucy (AI or a person), so the file's text columns are skipped unless overridden.
+  'TEXT_LOCKED',
 ] as const;
 export type ProductImportIssueCode = (typeof PRODUCT_IMPORT_ISSUE_CODES)[number];
 
@@ -4595,6 +4615,11 @@ export interface ProductImportListResponse {
 export interface ProductImportApplyRequest {
   expectedRowVersion: number;
   skipInvalid: boolean;
+  /**
+   * Claude integration: overwrite the text of Lucy-owned products (rows that carry the TEXT_LOCKED warning) with the file's text. Needs
+   * MANAGE_PRODUCTS, the SKUs of the rows ticked and a reason (3 to 300 characters); audited per product.
+   */
+  textOverride?: { skus: string[]; reason: string };
 }
 
 export interface ProductImportCancelRequest {
@@ -4916,3 +4941,4 @@ export const PRODUCT_IMPORT_COLUMNS: Record<ProductImportKindName, readonly Prod
 export * from './supplier-import.js';
 export * from './product-text-cleanup.js';
 export * from './ai.js';
+export * from './ai-drafts.js';

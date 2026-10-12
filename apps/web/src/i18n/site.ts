@@ -190,6 +190,8 @@ export interface SiteText {
     pictureN: string;
     variants: string;
     descriptionTitle: string;
+    /** The fixed headings of the four description sections (Claude integration); the text under each comes from the product. */
+    sections: { benefits: string; ingredients: string; usage: string; suitableFor: string };
     related: string;
     notFoundTitle: string;
     notFoundBody: string;
@@ -369,6 +371,12 @@ const text = {
       pictureN: 'Xem ảnh {n}',
       variants: 'Loại',
       descriptionTitle: 'Mô tả',
+      sections: {
+        benefits: 'Công dụng',
+        ingredients: 'Thành phần',
+        usage: 'Cách dùng',
+        suitableFor: 'Phù hợp với ai',
+      },
       related: 'Sản phẩm cùng danh mục',
       notFoundTitle: 'Không tìm thấy sản phẩm',
       notFoundBody:
@@ -547,6 +555,12 @@ const text = {
       pictureN: 'Show picture {n}',
       variants: 'Option',
       descriptionTitle: 'Description',
+      sections: {
+        benefits: 'Benefits',
+        ingredients: 'Ingredients',
+        usage: 'How to use',
+        suitableFor: 'Who it suits',
+      },
       related: 'More in this category',
       notFoundTitle: 'Product not found',
       notFoundBody: 'This product is no longer sold or is paused. See the shop other products.',

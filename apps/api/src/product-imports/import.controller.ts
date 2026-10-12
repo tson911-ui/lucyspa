@@ -21,7 +21,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsInt, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
 import type { Request, Response } from 'express';
 import { sessionCookie } from '../auth/cookies.js';
 import { MultipartUpload } from '../auth/multipart-upload.js';
@@ -37,6 +37,10 @@ class UploadDto {
 class ApplyDto implements ProductImportApplyRequest {
   @ApiProperty() @IsInt() expectedRowVersion!: number;
   @ApiProperty() @IsBoolean() skipInvalid!: boolean;
+  @ApiProperty({ required: false, type: Object })
+  @IsOptional()
+  @IsObject()
+  textOverride?: { skus: string[]; reason: string };
 }
 
 class CancelDto implements ProductImportCancelRequest {
@@ -143,7 +147,13 @@ export class ProductImportController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<ProductImportDetailResponse> {
-    return this.imports.apply(this.session(request), id, body, this.requestId(response));
+    // Only the contract's keys travel on (an absent override stays absent).
+    const request_: ProductImportApplyRequest = {
+      expectedRowVersion: body.expectedRowVersion,
+      skipInvalid: body.skipInvalid,
+      ...(body.textOverride ? { textOverride: body.textOverride } : {}),
+    };
+    return this.imports.apply(this.session(request), id, request_, this.requestId(response));
   }
 
   @Post(':id/cancel')

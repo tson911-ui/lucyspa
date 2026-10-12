@@ -4233,6 +4233,25 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   white-space: pre-line;
 }
 
+/* The four description sections of a product (Công dụng, Thành phần, Cách dùng, Phù hợp với ai): text headings, no decoration. */
+.ls-prod-sections {
+  display: grid;
+  gap: var(--ls-space-4);
+}
+
+.ls-prod-section {
+  display: grid;
+  gap: var(--ls-space-1);
+}
+
+.ls-prod-section-title {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-type-body);
+  font-weight: 600;
+  line-height: var(--ls-lh-body);
+}
+
 .ls-prod-page {
   padding-top: var(--ls-space-2);
 }

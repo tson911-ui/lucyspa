@@ -49,6 +49,7 @@ export {
   checkProductRewrite,
   cleanForModel,
   factNumbers,
+  isBlockingWarning,
   overlapShare,
   parseProductRewrite,
   type CheckOptions,

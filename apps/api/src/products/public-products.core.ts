@@ -1,4 +1,5 @@
 import {
+  PUBLIC_PRODUCT_SECTION_KEYS,
   PUBLIC_PRODUCTS_PAGE_SIZE,
   type PublicCampaignRef,
   type PublicProductCard,
@@ -7,6 +8,7 @@ import {
   type PublicProductCodesResponse,
   type PublicProductDetailResponse,
   type PublicProductPrice,
+  type PublicProductSection,
   type PublicProductsCommitment,
   type PublicProductsHero,
   type PublicProductsResponse,
@@ -170,6 +172,12 @@ const productSelect = {
   nameEn: true,
   descriptionVi: true,
   descriptionEn: true,
+  seoTitleVi: true,
+  seoTitleEn: true,
+  seoDescriptionVi: true,
+  seoDescriptionEn: true,
+  descriptionSectionsVi: true,
+  descriptionSectionsEn: true,
   featured: true,
   publishedAt: true,
   category: { select: { id: true, code: true, nameVi: true, nameEn: true, isActive: true } },
@@ -189,6 +197,25 @@ function categoryRef(row: ProductRow, locale: PublicLocale): PublicProductCatego
     code: category.code,
     name: pick(category.nameVi, category.nameEn, locale) ?? category.code,
   };
+}
+
+/** Text of one stored section value, or null when it is not a non-empty string. */
+const sectionText = (value: unknown, key: string): string | null => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const entry = Reflect.get(value, key) as unknown;
+  return typeof entry === 'string' && entry.trim() !== '' ? entry.trim() : null;
+};
+
+/** The four sections in the visitor's language, the Vietnamese text standing in for an English one that was not written. */
+function sectionsOf(row: ProductRow, locale: PublicLocale): PublicProductSection[] {
+  const sections: PublicProductSection[] = [];
+  for (const key of PUBLIC_PRODUCT_SECTION_KEYS) {
+    const vi = sectionText(row.descriptionSectionsVi, key);
+    const en = sectionText(row.descriptionSectionsEn, key);
+    const text = locale === 'en' ? (en ?? vi) : vi;
+    if (text !== null) sections.push({ key, text });
+  }
+  return sections;
 }
 
 const brandName = (row: ProductRow, locale: PublicLocale): string | null =>
@@ -521,6 +548,9 @@ export async function publicProductDetail(
       code: row.code,
       name,
       description: pick(row.descriptionVi, row.descriptionEn, locale),
+      sections: sectionsOf(row, locale),
+      seoTitle: pick(row.seoTitleVi, row.seoTitleEn, locale),
+      seoDescription: pick(row.seoDescriptionVi, row.seoDescriptionEn, locale),
       category: card.category,
       brand: card.brand,
       images: row.images.map((image) => publicImage(image.mediaAsset, locale, name)),

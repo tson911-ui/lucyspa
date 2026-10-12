@@ -5,6 +5,7 @@ import {
   planCatalog,
   planOpeningStock,
   type CatalogPlan,
+  type CatalogPlanOptions,
   type OpeningPlan,
   type SourceRow,
 } from './import.plan.js';
@@ -23,6 +24,7 @@ export async function lockAndPlanCatalog(
   context: AdminContext,
   sources: readonly SourceRow[],
   access: Access,
+  options: CatalogPlanOptions = {},
 ): Promise<CatalogPlan> {
   const { tx } = context;
   const skus = [
@@ -39,7 +41,7 @@ export async function lockAndPlanCatalog(
   for (const id of found.map((variant) => variant.id).sort()) {
     await tx.$queryRaw`SELECT id FROM product_variants WHERE id = ${id}::uuid FOR UPDATE`;
   }
-  return planCatalog(context, sources, access);
+  return planCatalog(context, sources, access, options);
 }
 
 export async function lockAndPlanOpening(
@@ -68,8 +70,12 @@ export async function applyCatalog(
   context: AdminContext,
   jobId: string,
   plan: CatalogPlan,
+  textOverrideReason: string | null = null,
 ): Promise<{ applied: number }> {
   const { tx } = context;
+  // The database refuses to change the text of a product Lucy wrote while this declaration stands (defence in depth: the plan already
+  // skips those columns); an overridden product lifts it for its own update only.
+  await tx.$executeRaw`SELECT set_config('lucy.text_change_source', 'FILE_IMPORT', true)`;
   const productIds = new Map<string, string>();
   const nextOrder = new Map<string, number>();
   let applied = 0;
@@ -168,16 +174,26 @@ export async function applyCatalog(
       const before = Object.fromEntries(
         Object.keys(next).map((key) => [key, Reflect.get(current, key) as string | boolean | null]),
       );
+      const overriding = entity.overriddenFields.length > 0;
+      if (overriding)
+        await tx.$executeRaw`SELECT set_config('lucy.text_lock_override', 'on', true)`;
       await tx.product.update({
         where: { id: entity.existingId },
         data: { ...next, rowVersion: current.rowVersion + 1 },
       });
+      if (overriding)
+        await tx.$executeRaw`SELECT set_config('lucy.text_lock_override', 'off', true)`;
       await appendAdminAudit(context, {
         action: 'PRODUCT_UPDATED',
         entityType: 'Product',
         entityId: entity.existingId,
+        ...(overriding ? { reason: textOverrideReason } : {}),
         before,
-        after: { ...next, importJobId: jobId },
+        after: {
+          ...next,
+          importJobId: jobId,
+          ...(overriding ? { textOverride: entity.overriddenFields.join(',') } : {}),
+        },
       });
     }
     const productId = entity.existingId ?? productIds.get(entity.key)!;

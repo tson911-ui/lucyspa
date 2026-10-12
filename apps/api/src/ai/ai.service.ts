@@ -1,4 +1,12 @@
 import type {
+  AiDraftApplyRequest,
+  AiDraftApplyResponse,
+  AiDraftDetail,
+  AiDraftEditRequest,
+  AiDraftList,
+  AiDraftRegenerateRequest,
+  AiDraftRejectRequest,
+  AiDraftRetryRequest,
   AiKeyCheckRequest,
   AiSettingsEditRequest,
   AiSettingsResponse,
@@ -9,6 +17,7 @@ import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { SessionService } from '../auth/session.service.js';
 import { runAdminCommand, type AdminContext } from '../authorization/admin-command.js';
 import { sqlStateOf } from '../booking/customer-command.js';
+import * as drafts from './ai-drafts.core.js';
 import * as settings from './ai-settings.core.js';
 
 /**
@@ -50,6 +59,66 @@ export class AiService {
     return this.run(token, requestId, (context) =>
       settings.requestKeyCheck(context, body, this.env),
     );
+  }
+
+  listDrafts(
+    token: string | undefined,
+    query: { status?: string | undefined; page?: number | undefined },
+  ): Promise<AiDraftList> {
+    return this.run(token, undefined, (context) => drafts.listDrafts(context, query));
+  }
+
+  getDraft(token: string | undefined, id: string): Promise<AiDraftDetail> {
+    return this.run(token, undefined, (context) => drafts.getDraft(context, id));
+  }
+
+  viewDraft(token: string | undefined, id: string, requestId?: string): Promise<AiDraftDetail> {
+    return this.run(token, requestId, (context) => drafts.viewDraft(context, id));
+  }
+
+  editDraft(
+    token: string | undefined,
+    id: string,
+    body: AiDraftEditRequest,
+    requestId?: string,
+  ): Promise<AiDraftDetail> {
+    return this.run(token, requestId, (context) => drafts.editDraft(context, id, body));
+  }
+
+  applyDraft(
+    token: string | undefined,
+    id: string,
+    body: AiDraftApplyRequest,
+    requestId?: string,
+  ): Promise<AiDraftApplyResponse> {
+    return this.run(token, requestId, (context) => drafts.applyDraft(context, id, body));
+  }
+
+  rejectDraft(
+    token: string | undefined,
+    id: string,
+    body: AiDraftRejectRequest,
+    requestId?: string,
+  ): Promise<AiDraftDetail> {
+    return this.run(token, requestId, (context) => drafts.rejectDraft(context, id, body));
+  }
+
+  regenerateDraft(
+    token: string | undefined,
+    id: string,
+    body: AiDraftRegenerateRequest,
+    requestId?: string,
+  ): Promise<AiDraftDetail> {
+    return this.run(token, requestId, (context) => drafts.regenerateDraft(context, id, body));
+  }
+
+  retryDraft(
+    token: string | undefined,
+    id: string,
+    body: AiDraftRetryRequest,
+    requestId?: string,
+  ): Promise<AiDraftDetail> {
+    return this.run(token, requestId, (context) => drafts.retryDraft(context, id, body));
   }
 
   private run<T>(
