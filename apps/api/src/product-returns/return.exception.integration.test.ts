@@ -57,7 +57,8 @@ test(
         const aged = async (invoiceId: string, interval: string) => {
           await tx.$executeRawUnsafe('SET LOCAL session_replication_role = replica');
           await tx.$executeRawUnsafe(
-            `UPDATE invoices SET created_at = LEAST(created_at, clock_timestamp() - interval '${interval}'), finalized_at = LEAST(finalized_at, clock_timestamp() - interval '${interval}'), paid_at = clock_timestamp() - interval '${interval}' WHERE id = '${invoiceId}'`,
+            // One timestamp for all three columns (separate clock_timestamp() calls can break invoices_time_order by a millisecond).
+            `WITH aged AS (SELECT clock_timestamp() - interval '${interval}' AS t) UPDATE invoices SET created_at = LEAST(created_at, aged.t), finalized_at = LEAST(finalized_at, aged.t), paid_at = aged.t FROM aged WHERE invoices.id = '${invoiceId}'`,
           );
           await tx.$executeRawUnsafe('SET LOCAL session_replication_role = origin');
         };
