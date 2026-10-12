@@ -1057,8 +1057,26 @@ html[data-ls-motion='reduced'] .ls-shell {
   border-color: var(--ls-danger);
 }
 
-/* ---- Print: a payslip prints on its own, without the app around it (Phase 7 P7-15) --------------- */
+/* ---- Print: a payslip or a report prints on its own, without the app around it (Phase 7 P7-15, Phase 8 P8-5) ---- */
+/* Lines that exist only on paper (a report's period and branches, which the toolbar shows on screen). */
+.ls-print-only {
+  display: none;
+}
+
 @media print {
+  .ls-print-only {
+    display: grid;
+    gap: var(--ls-space-1);
+    color: var(--ls-text-muted);
+    font-size: var(--ls-text-sm);
+  }
+
+  .ls-kpi,
+  .ls-chart-frame,
+  .ls-table-wrap {
+    break-inside: avoid;
+  }
+
   .ls-topbar,
   .ls-sidebar-slot,
   .ls-sidebar-scrim,

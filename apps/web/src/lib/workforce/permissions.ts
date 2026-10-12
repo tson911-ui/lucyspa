@@ -173,6 +173,8 @@ export type NavKey =
   | 'productOrders'
   | 'productReturns'
   | 'cash'
+  | 'reportsRevenue'
+  | 'reportsRefunds'
   | 'pay'
   | 'payroll'
   | 'advances'
@@ -185,7 +187,14 @@ export type NavKey =
 
 /** Task-oriented groups (docs/UXUI_REDESIGN_DESIGN.md 4.2). Moving an entry between groups never changes who sees it. */
 export type NavGroupId =
-  'overview' | 'operations' | 'sales' | 'people' | 'catalog' | 'administration' | 'personal';
+  | 'overview'
+  | 'operations'
+  | 'sales'
+  | 'reports'
+  | 'people'
+  | 'catalog'
+  | 'administration'
+  | 'personal';
 
 export interface NavItem {
   key: NavKey;
@@ -353,6 +362,17 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'cash',
       group: 'sales',
       path: '/cash',
+    },
+    // Phase 8 P8-5: the revenue report and the refunds list (branch VIEW_REVENUE).
+    canAnywhere(account, 'VIEW_REVENUE') && {
+      key: 'reportsRevenue',
+      group: 'reports',
+      path: '/reports/revenue',
+    },
+    canAnywhere(account, 'VIEW_REVENUE') && {
+      key: 'reportsRefunds',
+      group: 'reports',
+      path: '/reports/refunds',
     },
     // Phase 7 P7-11: base salaries, tour pay, commission rules and staff codes (shop-wide pay permissions; salaries also open to branch pay permissions).
     (canGlobal(account, 'MANAGE_PAY_RULES') ||

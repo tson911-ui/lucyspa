@@ -19,9 +19,7 @@ export const WIDGET_COMPONENTS: Record<WidgetId, WidgetComponent> = {
   paymentAlerts: lazy(() =>
     import('./invoice-widgets').then((m) => ({ default: m.PaymentAlertsWidget })),
   ),
-  paidInvoices: lazy(() =>
-    import('./invoice-widgets').then((m) => ({ default: m.PaidInvoicesWidget })),
-  ),
+  revenue: lazy(() => import('./revenue-widget').then((m) => ({ default: m.RevenueWidget }))),
   pendingLeave: lazy(() =>
     import('./personal-widgets').then((m) => ({ default: m.PendingLeaveWidget })),
   ),

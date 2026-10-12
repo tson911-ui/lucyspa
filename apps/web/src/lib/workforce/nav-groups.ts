@@ -24,6 +24,7 @@ const SIDEBAR_LAYOUT: ReadonlyArray<{ group: NavGroupId; order: readonly NavKey[
       'cash',
     ],
   },
+  { group: 'reports', order: ['reportsRevenue', 'reportsRefunds'] },
   {
     group: 'people',
     order: [
@@ -73,6 +74,8 @@ export const NAV_ICONS: Record<NavKey, IconName> = {
   onlineOrders: 'truck',
   productReturns: 'refresh',
   cash: 'wallet',
+  reportsRevenue: 'bar-chart',
+  reportsRefunds: 'refresh',
   pay: 'bar-chart',
   payroll: 'receipt',
   advances: 'wallet',

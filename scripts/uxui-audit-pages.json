@@ -6,6 +6,8 @@
     "booking-board": { "path": "booking-board", "baseline": true },
     "branch-detail": { "path": "branches/{branch}", "baseline": true },
     "cash": { "path": "cash" },
+    "reports-revenue": { "path": "reports/revenue" },
+    "reports-refunds": { "path": "reports/refunds" },
     "pay-salaries": { "path": "pay" },
     "pay-tour": { "path": "pay?tab=tour" },
     "pay-commission": { "path": "pay?tab=commission" },

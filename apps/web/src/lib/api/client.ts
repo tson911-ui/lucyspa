@@ -53,6 +53,14 @@ async function toError(response: Response): Promise<ApiError> {
   return errorFromBody(response.status, body);
 }
 
+/** A file the API answered with (a report export). */
+export interface DownloadedFile {
+  readonly blob: Blob;
+  readonly filename: string;
+  /** The number of data rows in the file. */
+  readonly rows: number;
+}
+
 /** Progress and cancellation of one file upload. */
 export interface UploadControl {
   /** 0-100, as the browser sends the body. */
@@ -202,6 +210,55 @@ export class ApiClient {
       control.signal?.addEventListener('abort', abort, { once: true });
       xhr.send(form);
     });
+  }
+
+  /**
+   * A POST that answers with a file (a report export). Same CSRF token, same retry on a rotated session and same 401 handling as
+   * `post`; the body is the JSON request, the result the file and the name the server gave it.
+   */
+  async postFile(path: string, body: object = {}): Promise<DownloadedFile> {
+    if (this.csrfToken === null) await this.context();
+    try {
+      return await this.sendFile(path, body);
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'REQUEST_NOT_ALLOWED') {
+        await this.context();
+        return this.sendFile(path, body);
+      }
+      throw error;
+    }
+  }
+
+  private async sendFile(path: string, body: object): Promise<DownloadedFile> {
+    const headers: Record<string, string> = { Accept: '*/*', 'Content-Type': 'application/json' };
+    if (this.csrfToken) headers['X-CSRF-Token'] = this.csrfToken;
+    let response: Response;
+    try {
+      response = await this.fetcher(path, {
+        method: 'POST',
+        headers,
+        credentials: 'same-origin',
+        cache: 'no-store',
+        body: JSON.stringify(body),
+      });
+    } catch {
+      throw new ApiError(0, 'NETWORK');
+    }
+    if (!response.ok) {
+      const error = await toError(response);
+      if (error.status === 401 && error.code === 'AUTHENTICATION_REQUIRED') {
+        this.options.onUnauthenticated?.('POST', error.reason);
+      }
+      throw error;
+    }
+    this.options.onAuthenticatedResponse?.();
+    const disposition = response.headers.get('Content-Disposition') ?? '';
+    const named = /filename="?([^";]+)"?/.exec(disposition);
+    return {
+      blob: await response.blob(),
+      filename: named?.[1] ?? 'report',
+      rows: Number(response.headers.get('X-Report-Rows') ?? '0') || 0,
+    };
   }
 
   /** Forget the token (after logout the anonymous session gets a new one). */

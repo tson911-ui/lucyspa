@@ -4401,6 +4401,8 @@
 .ls-kpi {
   align-content: start;
   gap: var(--ls-space-2);
+  /* The value shrinks with the card (never splits its digits) at a large text size on a narrow screen. */
+  container-type: inline-size;
 }
 
 .ls-kpi-head {
@@ -4426,6 +4428,19 @@
   font-weight: 600;
   line-height: var(--ls-leading-2xl);
   overflow-wrap: anywhere;
+}
+
+/* A big number never splits its digits: on a narrow card (a large text size on a phone) it steps down the type scale. */
+@container (max-width: 20rem) {
+  .ls-kpi-value {
+    font-size: var(--ls-text-xl);
+  }
+}
+
+@container (max-width: 15rem) {
+  .ls-kpi-value {
+    font-size: var(--ls-text-lg);
+  }
 }
 
 .ls-kpi-foot {

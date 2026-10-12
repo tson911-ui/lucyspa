@@ -5,6 +5,9 @@ import { canAnywhere, canAt, type Account } from '../permissions';
 // gating are pure and tested; `registry.ts` attaches the lazy components. The title of a widget is
 // `t.dashboard.widgets[id]`. Everything below is a UX hint: the API authorizes every request again.
 
+/** `take` of the "awaiting an invoice" query in the API: a full page means there may be more. */
+export const AWAITING_LIMIT = 100;
+
 export type WidgetSize = 's' | 'm' | 'l' | 'xl';
 
 /** Grid columns of each size on a 12-column desktop grid (contract 14.1). */
@@ -19,7 +22,7 @@ export type WidgetId =
   | 'pendingLeave'
   | 'myAttendance'
   | 'myLeave'
-  | 'paidInvoices'
+  | 'revenue'
   | 'notifications'
   | 'quickLinks';
 
@@ -116,13 +119,12 @@ export const WIDGETS: readonly WidgetMeta[] = [
     requires: employeeOnly,
   },
   {
-    id: 'paidInvoices',
-    scope: 'branch',
+    // Phase 8 P8-5 (Owner, OQ-P8-2): replaces "paid invoices"; money collected minus money given back, every branch the person may read.
+    id: 'revenue',
+    scope: 'global',
     sizes: ['m', 'xl'],
     defaultSize: 'xl',
-    atBranch: ['VIEW_INVOICES', 'VIEW_REVENUE'],
-    requires: (account) =>
-      canAnywhere(account, 'VIEW_INVOICES') && canAnywhere(account, 'VIEW_REVENUE'),
+    requires: (account) => canAnywhere(account, 'VIEW_REVENUE'),
   },
   {
     id: 'notifications',

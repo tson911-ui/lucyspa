@@ -39,7 +39,7 @@ test('widgets follow permissions; the Owner sees management widgets but no perso
     'notifications',
     'quickLinks',
   ]);
-  assert.doesNotMatch(manager, new RegExp(vi.dashboard.widgets.paidInvoices));
+  assert.doesNotMatch(manager, new RegExp(vi.dashboard.widgets.revenue));
 
   const ownerHtml = render(<DashboardScreen />, owner);
   assert.deepEqual(
@@ -56,7 +56,7 @@ test('a branch widget without a resolved branch says so instead of staying blank
   assert.match(html, /ls-sortable-bare ls-widget-grid/);
 });
 
-test('size classes come from the layout: the paid invoices widget is wide by default', () => {
+test('size classes come from the layout: the revenue widget is wide by default', () => {
   const html = render(
     <DashboardScreen />,
     employee([

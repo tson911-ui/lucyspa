@@ -27,7 +27,7 @@ test('default layout per permission set: what the account may see, in default or
     'awaitingInvoice',
     'paymentAlerts',
     'pendingLeave',
-    'paidInvoices',
+    'revenue',
     'notifications',
     'quickLinks',
   ]);
@@ -45,19 +45,12 @@ test('default layout per permission set: what the account may see, in default or
   assert.ok(!ids(employee()).includes('pendingLeave'));
 });
 
-test('paid invoices need both VIEW_INVOICES and VIEW_REVENUE; awaiting invoices only the first', () => {
+test('revenue needs VIEW_REVENUE (anywhere); awaiting invoices need VIEW_INVOICES', () => {
   const invoicesOnly = employee([['VIEW_INVOICES', 'A']]);
   assert.ok(ids(invoicesOnly).includes('awaitingInvoice'));
-  assert.ok(!ids(invoicesOnly).includes('paidInvoices'));
-  assert.ok(
-    ids(
-      employee([
-        ['VIEW_INVOICES', 'A'],
-        ['VIEW_REVENUE', 'A'],
-      ]),
-    ).includes('paidInvoices'),
-  );
-  assert.ok(!ids(employee([['VIEW_REVENUE', 'A']])).includes('paidInvoices'));
+  assert.ok(!ids(invoicesOnly).includes('revenue'));
+  assert.ok(ids(employee([['VIEW_REVENUE', 'A']])).includes('revenue'));
+  assert.ok(!ids(employee([['VIEW_BOOKINGS', 'A']])).includes('revenue'));
 });
 
 test('employees without attendance duty do not get the attendance widget; the Owner has no personal ones', () => {
@@ -73,10 +66,7 @@ test('branch widgets follow the selected branch; the selector lists branches wit
     ['VIEW_INVOICES', 'B'],
     ['VIEW_REVENUE', 'B'],
   ]);
-  const paid = WIDGETS.find((widget) => widget.id === 'paidInvoices')!;
   const today = WIDGETS.find((widget) => widget.id === 'todayBookings')!;
-  assert.equal(allowedAtBranch(account, paid, 'B'), true);
-  assert.equal(allowedAtBranch(account, paid, 'A'), false);
   assert.equal(allowedAtBranch(account, today, 'A'), true);
   assert.equal(allowedAtBranch(account, today, 'B'), false);
   assert.deepEqual(widgetBranchIds(account, ['A', 'B', 'C']), ['A', 'B']);
@@ -90,7 +80,7 @@ test('no saved layout resolves to the defaults; a saved one applies order, hidin
     available.map((widget) => widget.id),
   );
   assert.equal(fresh.hidden.length, 0);
-  assert.equal(fresh.visible.find((placed) => placed.meta.id === 'paidInvoices')!.size, 'xl');
+  assert.equal(fresh.visible.find((placed) => placed.meta.id === 'revenue')!.size, 'xl');
 
   const saved = parseLayout(
     JSON.stringify({

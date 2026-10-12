@@ -5,6 +5,7 @@
 export {
   ACTIVITY_HEADER,
   ApiClient as WorkforceApi,
+  type DownloadedFile,
   ApiError,
   type ApiClientOptions as WorkforceApiOptions,
   type Query,
