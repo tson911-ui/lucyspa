@@ -521,6 +521,25 @@ test('Breadcrumb links are full-size targets, even a one-word name such as "Nail
   assert.match(link, /min-height: var\(--ls-control-h\)/);
 });
 
+test('SegmentedControl: with nothing chosen no option looks selected, and the first one can still be reached by keyboard', () => {
+  const markup = renderToStaticMarkup(
+    <ui.SegmentedControl<string>
+      label="Số sao"
+      value=""
+      onChange={() => undefined}
+      options={[
+        { value: '1', label: '1' },
+        { value: '2', label: '2' },
+      ]}
+    />,
+  );
+  assert.match(markup, /ls-segmented-thumb ls-segmented-thumb-none/, 'the thumb is not drawn');
+  assert.doesNotMatch(markup, /ls-segment-active/);
+  assert.equal(markup.match(/aria-checked="true"/g), null);
+  assert.equal(markup.match(/tabindex="0"/g)?.length, 1, 'one tab stop: the first option');
+  assert.match(markup, /aria-checked="false" tabindex="0"[^>]*>1</);
+});
+
 test('SegmentedControl: one sliding thumb positioned by the selected index, solid brand fill, no border', () => {
   const markup = renderToStaticMarkup(
     <ui.SegmentedControl

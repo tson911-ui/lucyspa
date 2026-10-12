@@ -182,6 +182,7 @@ export type NavKey =
   | 'reportsCash'
   | 'reportsPay'
   | 'reportsProfit'
+  | 'reportsReviews'
   | 'auditLog'
   | 'pay'
   | 'payroll'
@@ -418,6 +419,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'reportsProfit',
       group: 'reports',
       path: '/reports/profit',
+    },
+    // Phase 8 P8-17: what customers rated (branch VIEW_REVIEWS).
+    canAnywhere(account, 'VIEW_REVIEWS') && {
+      key: 'reportsReviews',
+      group: 'reports',
+      path: '/reports/reviews',
     },
     // Phase 8 P8-14: the audit log (VIEW_AUDIT_LOG at a branch or shop-wide; the API decides which rows).
     canAnywhere(account, 'VIEW_AUDIT_LOG') && {

@@ -11,3 +11,4 @@ await import('../apps/api/dist/reports/people.integration.test.js');
 await import('../apps/api/dist/reports/stock.integration.test.js');
 await import('../apps/api/dist/reports/money.integration.test.js');
 await import('../apps/api/dist/reports/profit.integration.test.js');
+await import('../apps/api/dist/reports/reviews.integration.test.js');

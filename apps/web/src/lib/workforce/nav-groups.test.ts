@@ -64,6 +64,7 @@ test('the Owner sees the contract groups in the contract order', () => {
       'reportsCash',
       'reportsPay',
       'reportsProfit',
+      'reportsReviews',
     ],
     people: [
       'employees',

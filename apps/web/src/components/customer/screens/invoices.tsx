@@ -39,6 +39,7 @@ import { useClientPaging } from '../../../lib/workforce/use-client-paging';
 import { Badge, Empty } from '../../workforce/ui';
 import { useCustomer } from '../session';
 import { LoadState, NotFoundPage, useFetch } from './bookings';
+import { ReviewCard } from './review-card';
 
 /** "Hóa đơn của tôi": the invoices the signed-in customer paid for, newest first, from the server. */
 export function CustomerInvoicesScreen() {
@@ -402,6 +403,7 @@ export function CustomerInvoiceDetailScreen({ id }: { id: string }) {
               <p className="ls-detail-note">{t.invoices.note}</p>
             </Card>
           </Reveal>
+          {invoice.status === 'PAID' ? <ReviewCard invoiceId={invoice.id} /> : null}
         </div>
       </div>
     </Page>

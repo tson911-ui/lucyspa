@@ -2243,6 +2243,7 @@ export * from './reports-people.js';
 export * from './reports-stock.js';
 export * from './reports-money.js';
 export * from './reports-profit.js';
+export * from './reviews.js';
 export * from './advance.js';
 export * from './pay.js';
 export * from './payroll.js';

@@ -38,6 +38,7 @@ export function SegmentedControl<T extends string>({
   className?: string | undefined;
 }) {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
+  const selected = options.findIndex((option) => option.value === value);
 
   function onKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const target = segmentedTarget(event.key, index, options.length);
@@ -55,14 +56,15 @@ export function SegmentedControl<T extends string>({
       style={
         {
           '--seg-count': options.length,
-          '--seg-index': Math.max(
-            0,
-            options.findIndex((option) => option.value === value),
-          ),
+          '--seg-index': Math.max(0, selected),
         } as CSSProperties
       }
     >
-      <span className="ls-segmented-thumb" aria-hidden />
+      {/* With nothing chosen yet (a rating not given) no thumb is drawn, so no option looks pre-selected. */}
+      <span
+        className={cx('ls-segmented-thumb', selected < 0 && 'ls-segmented-thumb-none')}
+        aria-hidden
+      />
       {options.map((option, index) => {
         const checked = option.value === value;
         return (
@@ -74,7 +76,7 @@ export function SegmentedControl<T extends string>({
             type="button"
             role="radio"
             aria-checked={checked}
-            tabIndex={checked ? 0 : -1}
+            tabIndex={checked || (selected < 0 && index === 0) ? 0 : -1}
             className={cx('ls-segment', checked && 'ls-segment-active')}
             onClick={() => onChange(option.value)}
             onKeyDown={(event) => onKeyDown(event, index)}

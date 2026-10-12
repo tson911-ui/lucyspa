@@ -25,6 +25,7 @@
     "reports-pay-labour": { "path": "reports/pay?tab=labour" },
     "reports-profit": { "path": "reports/profit" },
     "audit-log": { "path": "audit-log" },
+    "reports-reviews": { "path": "reports/reviews" },
     "pay-salaries": { "path": "pay" },
     "pay-tour": { "path": "pay?tab=tour" },
     "pay-commission": { "path": "pay?tab=commission" },

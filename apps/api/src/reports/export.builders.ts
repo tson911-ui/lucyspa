@@ -19,6 +19,7 @@ import {
 } from './sales.core.js';
 import { parseRange } from './report.dates.js';
 import { profitReport } from './profit.core.js';
+import { reviewsReport } from './reviews.core.js';
 import {
   advancesReport,
   cashDaily,
@@ -1184,6 +1185,65 @@ const profitBuilder: ExportBuilder = async (context, covered, request, words) =>
   };
 };
 
+const reviewsBuilder: ExportBuilder = async (context, covered, request, words) => {
+  const report = await reviewsReport(context, {
+    from: request.from,
+    to: request.to,
+    restrictTo: covered,
+  });
+  const c = words.col;
+  const columns = (first: ExportColumn[]): ExportColumn[] => [
+    ...first,
+    { header: c['ratings']!, kind: 'int' },
+    { header: c['average']!, kind: 'text' },
+    ...[1, 2, 3, 4, 5].map((n) => ({ header: c['star' + n]!, kind: 'int' as const })),
+  ];
+  // The average is withheld below the minimum number of ratings, as on the screen.
+  const average = (r: { enough: boolean; averageHundredths: number | null }): string =>
+    r.averageHundredths === null
+      ? ''
+      : r.enough
+        ? (r.averageHundredths / 100).toFixed(2)
+        : c['notEnough']!;
+  const branchRows: ExportCell[][] = report.byBranch.map((r) => [
+    r.branch.code,
+    r.branch.name,
+    r.count,
+    average(r),
+    ...r.distribution,
+  ]);
+  const staffRows: ExportCell[][] = report.staff.map((r) => [
+    r.name,
+    r.employeeCode ?? '',
+    r.count,
+    average(r),
+    ...r.distribution,
+  ]);
+  return {
+    main: {
+      name: words.sheetData,
+      columns: columns([
+        { header: c['branchCode']!, kind: 'text' },
+        { header: c['branch']!, kind: 'text' },
+      ]),
+      rows: branchRows,
+    },
+    extra: [
+      {
+        name: c['sheetStaff']!,
+        columns: columns([
+          { header: c['name']!, kind: 'text' },
+          { header: c['employeeCode']!, kind: 'text' },
+        ]),
+        rows: staffRows,
+      },
+    ],
+    rows: branchRows.length,
+    period: { from: report.period.from, to: report.period.to },
+    compared: null,
+  };
+};
+
 /** The exportable reports that are built. A listed report without a builder answers NOT_FOUND (it arrives in a later Step). */
 export const EXPORT_BUILDERS: Readonly<Record<string, ExportBuilder>> = {
   'revenue-overview': overview,
@@ -1216,6 +1276,7 @@ export const EXPORT_BUILDERS: Readonly<Record<string, ExportBuilder>> = {
   'labour-cost': labourBuilder,
   advances: advancesBuilder,
   profit: profitBuilder,
+  reviews: reviewsBuilder,
 };
 
 export function builderFor(report: string): ExportBuilder {

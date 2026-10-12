@@ -5529,3 +5529,32 @@ model Payslip {
   @@index([runId, status], map: "payslips_status_idx")
   @@map("payslips")
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// Phase 8 P8-16 (customer reviews, design PHASE8_REPORTS.md 4.9): private ratings of a paid invoice by the customer who paid it, and of the people
+// who served. SQL-only guards (migration 20261211000000): a review needs a PAID invoice of its customer, a rating names someone who performed a
+// service on that invoice, nothing is ever changed or deleted. No relations are declared on purpose: the tables are written and read by raw SQL
+// and the services below, and the foreign keys live in the migration.
+model CustomerReview {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId      String   @unique(map: "customer_reviews_invoice_key") @map("invoice_id") @db.Uuid
+  customerUserId String   @map("customer_user_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  rating         Int      @db.SmallInt
+  comment        String?
+  createdAt      DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@index([branchId, createdAt], map: "customer_reviews_branch_idx")
+  @@index([customerUserId, createdAt], map: "customer_reviews_customer_idx")
+  @@map("customer_reviews")
+}
+
+model CustomerReviewStaffRating {
+  reviewId       String @map("review_id") @db.Uuid
+  employeeUserId String @map("employee_user_id") @db.Uuid
+  rating         Int    @db.SmallInt
+
+  @@id([reviewId, employeeUserId])
+  @@index([employeeUserId], map: "customer_review_staff_ratings_employee_idx")
+  @@map("customer_review_staff_ratings")
+}

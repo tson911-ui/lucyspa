@@ -362,7 +362,6 @@ test(
               ...patch,
             } as never);
           await fails(() => csv({ report: 'nope' }), 'VALIDATION_FAILED', 'report');
-          await fails(() => csv({ report: 'reviews' }), 'NOT_FOUND');
           await fails(() => csv({ format: 'pdf' }), 'VALIDATION_FAILED', 'format');
           await fails(() => csv({ locale: 'fr' }), 'VALIDATION_FAILED', 'locale');
           await fails(() => csv({ from: undefined }), 'VALIDATION_FAILED', 'from');

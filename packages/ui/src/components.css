@@ -3552,6 +3552,10 @@
   pointer-events: none;
 }
 
+.ls-segmented-thumb-none {
+  opacity: 0;
+}
+
 .ls-segment {
   position: relative;
   flex: 1 1 0;

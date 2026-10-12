@@ -9,6 +9,7 @@ import {
   type LabourCostReport,
   type PayrollMonthlyReport,
   type ProfitReport,
+  type ReviewsReport,
   type TipsReport,
   type ComboReport,
   type ExpiryReport,
@@ -458,6 +459,20 @@ export class ReportsController {
     @Req() request: Request,
   ): Promise<ProfitReport> {
     return this.reports.profit(this.session(request), { from, to });
+  }
+
+  @Get('reviews')
+  @ApiOkResponse({
+    description:
+      'What customers rated: average and distribution per branch and per person, with the number of ratings (VIEW_REVIEWS at the branch). Private; no comments.',
+  })
+  reviews(
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Query('branchId') branchId: string | undefined,
+    @Req() request: Request,
+  ): Promise<ReviewsReport> {
+    return this.reports.reviews(this.session(request), { from, to, branchId });
   }
 
   @Post('export')

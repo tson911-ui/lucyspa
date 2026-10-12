@@ -26,11 +26,11 @@ import {
 } from './chart-core';
 
 const plain = (text: string) => text.replace(new RegExp('[\u00a0\u202f]', 'g'), ' ');
-const vi = (valueFormat: 'vnd' | 'count' | 'percent' | 'duration') => ({
+const vi = (valueFormat: 'vnd' | 'count' | 'percent' | 'duration' | 'decimal') => ({
   valueFormat,
   locale: 'vi' as const,
 });
-const en = (valueFormat: 'vnd' | 'count' | 'percent' | 'duration') => ({
+const en = (valueFormat: 'vnd' | 'count' | 'percent' | 'duration' | 'decimal') => ({
   valueFormat,
   locale: 'en' as const,
 });
@@ -48,6 +48,9 @@ test('VND has grouping and no decimals; counts are integers; percent has one dec
   assert.equal(plain(formatValue(1234567, vi('vnd'))), '1.234.567 ₫');
   assert.equal(plain(formatValue(1234567.6, en('vnd'))), '₫1,234,568');
   assert.equal(formatValue(1234.4, vi('count')), '1.234');
+  assert.equal(formatValue(4.1667, vi('decimal')), '4,17');
+  assert.equal(formatValue(4.1667, en('decimal')), '4.17');
+  assert.equal(formatValue(3, en('decimal')), '3.00');
   assert.equal(formatValue(12.5, vi('percent')), '12,5%');
   assert.equal(formatValue(12.5, en('percent')), '12.5%');
   assert.equal(plain(formatValue(45, vi('duration'))), '45 phút');

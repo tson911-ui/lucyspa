@@ -9,6 +9,7 @@ import {
   type LabourCostReport,
   type PayrollMonthlyReport,
   type ProfitReport,
+  type ReviewsReport,
   type TipsReport,
   type ComboReport,
   type ExpiryReport,
@@ -54,6 +55,7 @@ import {
   type MoneyQuery,
 } from './money.core.js';
 import { profitReport, type ProfitQuery } from './profit.core.js';
+import { reviewsReport, type ReviewsQuery } from './reviews.core.js';
 import {
   bestSellers,
   expiringLots,
@@ -257,6 +259,11 @@ export class ReportsService {
   /** P8-13: provisional profit of the whole shop (the Owner's VIEW_PROFIT). */
   profit(token: string | undefined, query: ProfitQuery): Promise<ProfitReport> {
     return this.run(token, 'report', (context) => profitReport(context, query));
+  }
+
+  /** P8-17: what customers rated, per branch and per person (VIEW_REVIEWS). */
+  reviews(token: string | undefined, query: ReviewsQuery): Promise<ReviewsReport> {
+    return this.run(token, 'report', (context) => reviewsReport(context, query));
   }
 
   /** The single entry for the reports of the later Steps. */

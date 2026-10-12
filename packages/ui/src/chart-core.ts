@@ -2,7 +2,7 @@
 // series preparation, comparison alignment and small geometry helpers. The chart components only draw.
 
 export type ChartLocale = 'vi' | 'en';
-export type ValueFormat = 'vnd' | 'count' | 'percent' | 'duration';
+export type ValueFormat = 'vnd' | 'count' | 'percent' | 'duration' | 'decimal';
 export type SlotIndex = 1 | 2 | 3 | 4 | 5 | 6;
 
 /** One categorical slot per series, in fixed order; a 7th is never generated (contract 6.5). */
@@ -51,7 +51,7 @@ function numberFormat(key: string, locale: string, options: Intl.NumberFormatOpt
 
 /**
  * Full value: VND with grouping and no decimals, counts as integers, percentages with one decimal
- * (the value is already a percentage, 12.5 = 12.5%), durations in minutes.
+ * (the value is already a percentage, 12.5 = 12.5%), durations in minutes, decimals (an average) with two digits.
  */
 export function formatValue(value: number, { valueFormat, locale }: Format): string {
   const tag = intlLocale(locale);
@@ -64,6 +64,12 @@ export function formatValue(value: number, { valueFormat, locale }: Format): str
       }).format(Math.round(value));
     case 'count':
       return numberFormat('count', tag, { maximumFractionDigits: 0 }).format(Math.round(value));
+    case 'decimal':
+      // A plain number with two decimals (an average of stars).
+      return numberFormat('decimal', tag, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(value);
     case 'percent':
       return (
         numberFormat('percent', tag, {

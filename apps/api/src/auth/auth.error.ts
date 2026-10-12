@@ -238,6 +238,9 @@ const errors = {
   ],
   REPORT_TOTALS_DIFFER: [500, 'The parts of the report do not add up to its total'],
   EXPORT_BUSY: [429, 'Two files are already being prepared; wait a moment'],
+  // Phase 8 P8-16: customer reviews.
+  REVIEW_ALREADY_SUBMITTED: [409, 'This invoice was already reviewed'],
+  REVIEW_NOT_AVAILABLE: [409, 'This invoice cannot be reviewed yet'],
   // Phase 7 Wave A: the shop funds (cash book). No error reveals another branch's money.
   FINANCE_ALREADY_LIVE: [409, 'The cash book and payroll were already started'],
   FINANCE_NOT_LIVE: [409, 'The cash book and payroll have not been started yet'],

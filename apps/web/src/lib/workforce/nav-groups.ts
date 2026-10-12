@@ -36,6 +36,7 @@ const SIDEBAR_LAYOUT: ReadonlyArray<{ group: NavGroupId; order: readonly NavKey[
       'reportsCash',
       'reportsPay',
       'reportsProfit',
+      'reportsReviews',
     ],
   },
   {
@@ -96,6 +97,7 @@ export const NAV_ICONS: Record<NavKey, IconName> = {
   reportsCash: 'wallet',
   reportsPay: 'clipboard',
   reportsProfit: 'bar-chart',
+  reportsReviews: 'heart',
   auditLog: 'shield',
   pay: 'bar-chart',
   payroll: 'receipt',
