@@ -46,6 +46,8 @@ export interface RevenueQuery {
   branchId?: unknown;
   bucket?: unknown;
   compare?: unknown;
+  /** Set by an export: the branches where the person may both see the report and take it out (never wider than VIEW_REVENUE). */
+  restrictTo?: readonly ReportBranch[];
 }
 
 const zero = (): Totals => ({ collected: 0n, refunds: 0n, exchanges: 0n });
@@ -131,12 +133,26 @@ function branchRef(branch: ReportBranch): ReportBranchRef {
   return { id: branch.id, code: branch.code, name: branch.name };
 }
 
+export interface RevenueData {
+  report: RevenueReport;
+  /** The facts of the period (the exports regroup them). */
+  facts: readonly FactRow[];
+}
+
 /** R1-R4: the revenue report of a period, with the optional comparison to the equal period before it. */
 export async function revenueReport(
   context: ReportContext,
   query: RevenueQuery,
 ): Promise<RevenueReport> {
-  const covered = context.scope(['VIEW_REVENUE'], query.branchId);
+  return (await revenueData(context, query)).report;
+}
+
+/** The report and the facts it was made from (one snapshot). */
+export async function revenueData(
+  context: ReportContext,
+  query: RevenueQuery,
+): Promise<RevenueData> {
+  const covered = query.restrictTo ?? context.scope(['VIEW_REVENUE'], query.branchId);
   const range = parseRange(query);
   const bucket = parseBucket(query.bucket, range);
   const compare = query.compare === undefined || query.compare === '' ? 'none' : query.compare;
@@ -227,7 +243,7 @@ export async function revenueReport(
   const beforeTotals = zero();
   if (before) for (const fact of before.facts) add(beforeTotals, fact);
 
-  return {
+  const report: RevenueReport = {
     generatedAt: context.now.toISOString(),
     period: {
       from: range.from,
@@ -256,4 +272,5 @@ export async function revenueReport(
     onlineHeldVnd: str(held),
     unclassifiedVnd: str(bySide.get('UNCLASSIFIED') ?? 0n),
   };
+  return { report, facts: current.facts };
 }

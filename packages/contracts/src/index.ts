@@ -2234,6 +2234,7 @@ export * from './supplier-source.js';
 export * from './cash.js';
 export * from './reports.js';
 export * from './reports-revenue.js';
+export * from './reports-export.js';
 export * from './advance.js';
 export * from './pay.js';
 export * from './payroll.js';

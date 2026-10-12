@@ -43,6 +43,7 @@ import { SupplierSourceController } from './supplier-sources/supplier-source.con
 import { SupplierSourceService } from './supplier-sources/supplier-source.service.js';
 import { CashController } from './finance/cash.controller.js';
 import { CashService } from './finance/cash.service.js';
+import { ReportExportService } from './reports/export.service.js';
 import { ReportsController } from './reports/reports.controller.js';
 import { ReportsService } from './reports/reports.service.js';
 import { MyPayslipsController, PayController } from './pay/pay.controller.js';
@@ -270,6 +271,7 @@ export class AppModule {
         SupplierSourceService,
         CashService,
         ReportsService,
+        ReportExportService,
         PayService,
         SupplierImportService,
         ProductRefundService,

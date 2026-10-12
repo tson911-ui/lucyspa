@@ -16,7 +16,8 @@ export type ConfirmationPurpose =
   | 'PAYROLL_CLOSE'
   | 'PAYROLL_PAY'
   | 'ADVANCE_PAY'
-  | 'ADVANCE_WRITE_OFF';
+  | 'ADVANCE_WRITE_OFF'
+  | 'REPORT_EXPORT';
 
 export async function takeFreshConfirmation(
   context: AdminContext,

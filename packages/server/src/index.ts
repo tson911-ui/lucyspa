@@ -320,3 +320,4 @@ export * from './product-import/template.js';
 export * from './media-assets.js';
 export * from './media-processing.js';
 export * from './supplier-import/index.js';
+export * from './report-export.js';
