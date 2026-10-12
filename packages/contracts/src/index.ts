@@ -887,7 +887,10 @@ export interface AuditEventResponse {
   occurredAt: string;
   actorKind: 'USER' | 'BOOTSTRAP' | 'SYSTEM';
   actorUserId: string | null;
+  /** The names behind the two ids (null when there is no such person), so the audit screen reads without a lookup. */
+  actorName: string | null;
   subjectUserId: string | null;
+  subjectName: string | null;
   entityType: string;
   entityId: string;
   branchId: string | null;

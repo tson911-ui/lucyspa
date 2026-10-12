@@ -33,6 +33,9 @@ const SIDEBAR_LAYOUT: ReadonlyArray<{ group: NavGroupId; order: readonly NavKey[
       'reportsCustomers',
       'reportsStaff',
       'reportsStock',
+      'reportsCash',
+      'reportsPay',
+      'reportsProfit',
     ],
   },
   {
@@ -64,7 +67,7 @@ const SIDEBAR_LAYOUT: ReadonlyArray<{ group: NavGroupId; order: readonly NavKey[
       'branches',
     ],
   },
-  { group: 'administration', order: ['roles', 'websiteContent'] },
+  { group: 'administration', order: ['roles', 'auditLog', 'websiteContent'] },
 ];
 
 /** Personal pages live in the user menu, not in the sidebar (contract 4.2). */
@@ -90,6 +93,10 @@ export const NAV_ICONS: Record<NavKey, IconName> = {
   reportsCustomers: 'users',
   reportsStaff: 'clipboard',
   reportsStock: 'table',
+  reportsCash: 'wallet',
+  reportsPay: 'clipboard',
+  reportsProfit: 'bar-chart',
+  auditLog: 'shield',
   pay: 'bar-chart',
   payroll: 'receipt',
   advances: 'wallet',

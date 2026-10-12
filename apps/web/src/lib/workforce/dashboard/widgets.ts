@@ -1,5 +1,5 @@
 import type { PermissionCodeName } from '@lucy-spa/contracts';
-import { canAnywhere, canAt, type Account } from '../permissions';
+import { canAnywhere, canAt, canGlobal, type Account } from '../permissions';
 
 // Widget metadata (docs/UXUI_REDESIGN_DESIGN.md 14.1). No React here: layout derivation and permission
 // gating are pure and tested; `registry.ts` attaches the lazy components. The title of a widget is
@@ -26,6 +26,8 @@ export type WidgetId =
   | 'stockAlerts'
   | 'refundsToday'
   | 'onlineOrders'
+  | 'cashAlerts'
+  | 'payrollAlerts'
   | 'notifications'
   | 'quickLinks';
 
@@ -152,6 +154,22 @@ export const WIDGETS: readonly WidgetMeta[] = [
     sizes: ['s', 'm'],
     defaultSize: 's',
     requires: (account) => canAnywhere(account, 'VIEW_REVENUE'),
+  },
+  {
+    // Phase 8 P8-14: days in the last 30 whose cash count was off, at the branches the person may read.
+    id: 'cashAlerts',
+    scope: 'global',
+    sizes: ['s', 'm'],
+    defaultSize: 's',
+    requires: (account) => canAnywhere(account, 'VIEW_CASH'),
+  },
+  {
+    // Phase 8 P8-14: pay runs of earlier months not paid yet and salary advances not recovered (shop-wide pay data).
+    id: 'payrollAlerts',
+    scope: 'global',
+    sizes: ['s', 'm'],
+    defaultSize: 's',
+    requires: (account) => canGlobal(account, 'VIEW_EMPLOYEE_PAY'),
   },
   {
     id: 'notifications',

@@ -193,6 +193,20 @@ export class AuditReadService {
         });
         const page = rows.slice(0, limit);
         const last = page.at(-1);
+        const people = new Set(
+          page
+            .flatMap((row) => [row.actorUserId, row.subjectUserId])
+            .filter((id): id is string => id !== null),
+        );
+        const names = new Map(
+          (people.size === 0
+            ? []
+            : await tx.user.findMany({
+                where: { id: { in: [...people] } },
+                select: { id: true, fullName: true },
+              })
+          ).map((user) => [user.id, user.fullName]),
+        );
         return {
           items: page.map((row): AuditEventResponse => ({
             id: row.id,
@@ -200,7 +214,9 @@ export class AuditReadService {
             occurredAt: row.occurredAt.toISOString(),
             actorKind: row.actorKind,
             actorUserId: row.actorUserId,
+            actorName: row.actorUserId === null ? null : (names.get(row.actorUserId) ?? null),
             subjectUserId: row.subjectUserId,
+            subjectName: row.subjectUserId === null ? null : (names.get(row.subjectUserId) ?? null),
             entityType: row.entityType,
             entityId: row.entityId,
             branchId: row.branchId,

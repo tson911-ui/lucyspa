@@ -179,6 +179,10 @@ export type NavKey =
   | 'reportsCustomers'
   | 'reportsStaff'
   | 'reportsStock'
+  | 'reportsCash'
+  | 'reportsPay'
+  | 'reportsProfit'
+  | 'auditLog'
   | 'pay'
   | 'payroll'
   | 'advances'
@@ -398,6 +402,28 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'reportsStock',
       group: 'reports',
       path: '/reports/stock',
+    },
+    // Phase 8 P8-14: cash report (branch VIEW_CASH), pay report (branch VIEW_EMPLOYEE_PAY), provisional profit (shop-wide VIEW_PROFIT).
+    canAnywhere(account, 'VIEW_CASH') && {
+      key: 'reportsCash',
+      group: 'reports',
+      path: '/reports/cash',
+    },
+    canAnywhere(account, 'VIEW_EMPLOYEE_PAY') && {
+      key: 'reportsPay',
+      group: 'reports',
+      path: '/reports/pay',
+    },
+    canGlobal(account, 'VIEW_PROFIT') && {
+      key: 'reportsProfit',
+      group: 'reports',
+      path: '/reports/profit',
+    },
+    // Phase 8 P8-14: the audit log (VIEW_AUDIT_LOG at a branch or shop-wide; the API decides which rows).
+    canAnywhere(account, 'VIEW_AUDIT_LOG') && {
+      key: 'auditLog',
+      group: 'administration',
+      path: '/audit-log',
     },
     // Phase 7 P7-11: base salaries, tour pay, commission rules and staff codes (shop-wide pay permissions; salaries also open to branch pay permissions).
     (canGlobal(account, 'MANAGE_PAY_RULES') ||

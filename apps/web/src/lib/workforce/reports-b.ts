@@ -120,3 +120,8 @@ export function formatCount(value: number, locale: Locale): string {
     maximumFractionDigits: 0,
   }).format(Math.round(value));
 }
+
+/** A pay month as "10/2026". */
+export function monthLabel(firstOfMonth: string): string {
+  return `${firstOfMonth.slice(5, 7)}/${firstOfMonth.slice(0, 4)}`;
+}

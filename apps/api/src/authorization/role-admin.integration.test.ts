@@ -787,6 +787,21 @@ test(
                 [4, 3],
               );
               assert.ok(first.nextCursor);
+              // The names behind the two ids come with each row (null where there is no such person), so the screen needs no lookup.
+              for (const item of first.items) {
+                assert.equal(
+                  item.actorUserId === null
+                    ? item.actorName === null
+                    : typeof item.actorName === 'string',
+                  true,
+                );
+                assert.equal(
+                  item.subjectUserId === null
+                    ? item.subjectName === null
+                    : typeof item.subjectName === 'string',
+                  true,
+                );
+              }
               const second = await audit.list(all, {
                 entityType,
                 limit: 2,

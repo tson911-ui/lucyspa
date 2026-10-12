@@ -61,6 +61,9 @@ test('the Owner sees the contract groups in the contract order', () => {
       'reportsCustomers',
       'reportsStaff',
       'reportsStock',
+      'reportsCash',
+      'reportsPay',
+      'reportsProfit',
     ],
     people: [
       'employees',
@@ -85,7 +88,7 @@ test('the Owner sees the contract groups in the contract order', () => {
       'import',
       'branches',
     ],
-    administration: ['roles', 'websiteContent'],
+    administration: ['roles', 'auditLog', 'websiteContent'],
   });
   assert.deepEqual(
     personalEntries(navigationFor(owner)).map((item) => item.key),

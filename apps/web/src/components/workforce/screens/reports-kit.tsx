@@ -62,6 +62,8 @@ export interface ReportTabDef {
   kind: 'range' | 'days' | 'asof';
   /** The export dialog entry label. */
   exportLabel: string;
+  /** The report is about the whole shop: no branch choice, no branch in the request or the file. */
+  noBranch?: boolean;
   /** The tab's export honours the grouping (visits and bookings). */
   bucketed?: boolean;
   /** The tab's export honours "view by" (products). */
@@ -141,7 +143,8 @@ export function ReportView({
       </>
     );
   }
-  const branch = allowed.some((item) => item.id === state.branch) ? state.branch : '';
+  const branch =
+    !active.noBranch && allowed.some((item) => item.id === state.branch) ? state.branch : '';
   const range: DateRange | null =
     active.kind === 'range' && today ? revenueRange(state, today) : null;
   const ready = active.kind !== 'range' || range !== null;
@@ -204,7 +207,7 @@ export function ReportView({
                   }))}
                 />
               ) : null}
-              {allowed.length > 1 ? (
+              {allowed.length > 1 && !active.noBranch ? (
                 <Select
                   aria-label={w.common.branch}
                   value={branch}
@@ -249,7 +252,7 @@ export function ReportView({
               format,
               {
                 range: tab.kind === 'range' ? range : null,
-                branch,
+                branch: tab.noBranch ? '' : branch,
                 ...(tab.bucketed && state.bucket !== '' ? { bucket: state.bucket } : {}),
                 ...(tab.grouped ? { by: state.by } : {}),
                 ...(tab.kind === 'days' ? { days: state.days } : {}),
