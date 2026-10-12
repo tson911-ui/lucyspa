@@ -74,6 +74,11 @@ export class SessionService {
         await transaction.$executeRawUnsafe(
           `SET LOCAL statement_timeout = ${Math.trunc(options.statementTimeoutMs)}`,
         );
+        // A report is short and its row estimates are rough (CTEs): the planner then believes it is huge and JIT-compiles it for
+        // two seconds. Measured on the load fixture (docs/PHASE8_P8_3_REVENUE.md): off is 2-3 times faster.
+        await transaction.$executeRawUnsafe('SET LOCAL jit = off');
+        // Sorts and hashes of a report stay in memory (the default 4 MB spills to disk); per node, and a report runs alone in its transaction.
+        await transaction.$executeRawUnsafe("SET LOCAL work_mem = '64MB'");
         await takeSharedAuthGraphLock(transaction);
         return work(transaction);
       },

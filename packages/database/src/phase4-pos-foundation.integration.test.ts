@@ -558,6 +558,8 @@ test('Phase 4 Step 4 POS database foundation invariants (all fixtures roll back)
                           'MANAGE_PRODUCT_CAMPAIGNS',
                           'VIEW_CASH',
                           'MANAGE_CASH',
+                          'EXPORT_REPORTS',
+                          'VIEW_PROFIT',
                         ].includes(row.code)
                       ? 'FINANCIAL'
                       : 'STANDARD',
@@ -2290,6 +2292,7 @@ test('Phase 4 Step 4 POS database foundation invariants (all fixtures roll back)
                 [
                   'invoices_branch_date_idx',
                   'invoices_code_key',
+                  'invoices_paid_at_idx',
                   'invoices_payer_idx',
                   'invoices_pkey',
                   'invoices_visit_active_key',

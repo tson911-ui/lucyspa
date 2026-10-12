@@ -1,8 +1,15 @@
-import { REPORT_DEFINITIONS, type ReportRegistryResponse } from '@lucy-spa/contracts';
+import {
+  REPORT_DEFINITIONS,
+  type RefundReport,
+  type ReportRegistryResponse,
+  type RevenueReport,
+} from '@lucy-spa/contracts';
 import { Inject, Injectable } from '@nestjs/common';
 import { AuthThrottleService } from '../auth/auth-throttle.service.js';
 import { SessionService } from '../auth/session.service.js';
+import { refundReport, type RefundQuery } from './refunds.core.js';
 import { runReport, type ReportContext, type ReportKind } from './report.frame.js';
+import { revenueReport, type RevenueQuery } from './revenue.core.js';
 
 /**
  * Phase 8: the reports. Every method runs in the read-only frame (`runReport`); nothing here writes. The one write of the whole area
@@ -45,6 +52,16 @@ export class ReportsService {
         reports,
       };
     });
+  }
+
+  /** R1-R4: revenue overview, by branch, side and kind, channel and method (one payload; the screens regroup it). */
+  revenue(token: string | undefined, query: RevenueQuery): Promise<RevenueReport> {
+    return this.run(token, 'report', (context) => revenueReport(context, query));
+  }
+
+  /** R10: refunds, exchange differences and reversed payments of a period. */
+  refunds(token: string | undefined, query: RefundQuery): Promise<RefundReport> {
+    return this.run(token, 'report', (context) => refundReport(context, query));
   }
 
   /** The single entry for the reports of the later Steps. */
