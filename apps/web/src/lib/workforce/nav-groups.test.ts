@@ -54,7 +54,14 @@ test('the Owner sees the contract groups in the contract order', () => {
       'productReturns',
       'cash',
     ],
-    reports: ['reportsRevenue', 'reportsRefunds'],
+    reports: [
+      'reportsRevenue',
+      'reportsSales',
+      'reportsRefunds',
+      'reportsCustomers',
+      'reportsStaff',
+      'reportsStock',
+    ],
     people: [
       'employees',
       'attendance',

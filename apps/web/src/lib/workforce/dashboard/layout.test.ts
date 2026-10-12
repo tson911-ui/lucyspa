@@ -28,6 +28,9 @@ test('default layout per permission set: what the account may see, in default or
     'paymentAlerts',
     'pendingLeave',
     'revenue',
+    'stockAlerts',
+    'refundsToday',
+    'onlineOrders',
     'notifications',
     'quickLinks',
   ]);

@@ -24,7 +24,17 @@ const SIDEBAR_LAYOUT: ReadonlyArray<{ group: NavGroupId; order: readonly NavKey[
       'cash',
     ],
   },
-  { group: 'reports', order: ['reportsRevenue', 'reportsRefunds'] },
+  {
+    group: 'reports',
+    order: [
+      'reportsRevenue',
+      'reportsSales',
+      'reportsRefunds',
+      'reportsCustomers',
+      'reportsStaff',
+      'reportsStock',
+    ],
+  },
   {
     group: 'people',
     order: [
@@ -76,6 +86,10 @@ export const NAV_ICONS: Record<NavKey, IconName> = {
   cash: 'wallet',
   reportsRevenue: 'bar-chart',
   reportsRefunds: 'refresh',
+  reportsSales: 'receipt',
+  reportsCustomers: 'users',
+  reportsStaff: 'clipboard',
+  reportsStock: 'table',
   pay: 'bar-chart',
   payroll: 'receipt',
   advances: 'wallet',

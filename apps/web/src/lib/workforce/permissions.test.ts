@@ -59,6 +59,10 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     'cash',
     'reportsRevenue',
     'reportsRefunds',
+    'reportsSales',
+    'reportsCustomers',
+    'reportsStaff',
+    'reportsStock',
     // Phase 7 P7-11: pay and commission (shop-wide pay permissions, or a branch pay permission for the salaries tab).
     'pay',
     // Phase 7 P7-15: payroll and salary advances (shop-wide payroll permissions; the Owner holds all).

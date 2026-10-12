@@ -186,6 +186,8 @@ export function exportRequest(
     branch: string;
     compare?: 'none' | 'previous';
     bucket?: string;
+    by?: string;
+    days?: string;
   },
   locale: Locale,
 ): ReportExportRequest {
@@ -196,6 +198,8 @@ export function exportRequest(
     ...(state.branch !== '' ? { branchId: state.branch } : {}),
     ...(state.compare && state.compare !== 'none' ? { compare: state.compare } : {}),
     ...(state.bucket ? { bucket: state.bucket } : {}),
+    ...(state.by ? { by: state.by } : {}),
+    ...(state.days ? { days: state.days } : {}),
     locale,
   };
 }

@@ -20,6 +20,15 @@ export const WIDGET_COMPONENTS: Record<WidgetId, WidgetComponent> = {
     import('./invoice-widgets').then((m) => ({ default: m.PaymentAlertsWidget })),
   ),
   revenue: lazy(() => import('./revenue-widget').then((m) => ({ default: m.RevenueWidget }))),
+  stockAlerts: lazy(() =>
+    import('./report-widgets').then((m) => ({ default: m.StockAlertsWidget })),
+  ),
+  refundsToday: lazy(() =>
+    import('./report-widgets').then((m) => ({ default: m.RefundsTodayWidget })),
+  ),
+  onlineOrders: lazy(() =>
+    import('./report-widgets').then((m) => ({ default: m.OnlineOrdersWidget })),
+  ),
   pendingLeave: lazy(() =>
     import('./personal-widgets').then((m) => ({ default: m.PendingLeaveWidget })),
   ),

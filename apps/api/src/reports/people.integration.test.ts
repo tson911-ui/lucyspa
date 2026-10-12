@@ -62,6 +62,7 @@ test(
             error instanceof Error ? error.message.replace(/\s+/g, ' ') : String(error);
           throw new Error(
             `fixture row failed: ${sql.slice(0, 160).replace(/\s+/g, ' ')} -> ${detail.slice(-300)}`,
+            { cause: error },
           );
         } finally {
           await tx.$executeRawUnsafe('SET LOCAL session_replication_role = origin');

@@ -23,6 +23,9 @@ export type WidgetId =
   | 'myAttendance'
   | 'myLeave'
   | 'revenue'
+  | 'stockAlerts'
+  | 'refundsToday'
+  | 'onlineOrders'
   | 'notifications'
   | 'quickLinks';
 
@@ -124,6 +127,30 @@ export const WIDGETS: readonly WidgetMeta[] = [
     scope: 'global',
     sizes: ['m', 'xl'],
     defaultSize: 'xl',
+    requires: (account) => canAnywhere(account, 'VIEW_REVENUE'),
+  },
+  {
+    // Phase 8 P8-10: items under their alert threshold and lots expired or expiring within 30 days, every branch the person may read.
+    id: 'stockAlerts',
+    scope: 'global',
+    sizes: ['s', 'm'],
+    defaultSize: 's',
+    requires: (account) => canAnywhere(account, 'VIEW_INVENTORY'),
+  },
+  {
+    // Phase 8 P8-10: what was given back to customers today (refunds, exchange differences), the page's own report for one day.
+    id: 'refundsToday',
+    scope: 'global',
+    sizes: ['s', 'm'],
+    defaultSize: 's',
+    requires: (account) => canAnywhere(account, 'VIEW_REVENUE'),
+  },
+  {
+    // Phase 8 P8-10: online orders placed in the last 30 days that wait for delivery, with the money collected for them.
+    id: 'onlineOrders',
+    scope: 'global',
+    sizes: ['s', 'm'],
+    defaultSize: 's',
     requires: (account) => canAnywhere(account, 'VIEW_REVENUE'),
   },
   {
