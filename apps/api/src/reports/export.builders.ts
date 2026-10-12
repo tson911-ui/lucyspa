@@ -18,6 +18,16 @@ import {
   serviceRevenue,
 } from './sales.core.js';
 import { parseRange } from './report.dates.js';
+import { profitReport } from './profit.core.js';
+import {
+  advancesReport,
+  cashDaily,
+  cashDifferences,
+  cashFunds,
+  labourCost,
+  payrollMonthly,
+  tipsReport,
+} from './money.core.js';
 import {
   bestSellers,
   expiringLots,
@@ -840,6 +850,340 @@ const stockReceiptsBuilder: ExportBuilder = async (context, covered, request, wo
   };
 };
 
+const moneyQuery = (covered: readonly ReportBranch[], request: ReportExportRequest) => ({
+  from: request.from,
+  to: request.to,
+  restrictTo: covered,
+});
+
+const optMoney = (value: string | null): ExportCell => (value === null ? '' : money(value));
+
+const cashDailyBuilder: ExportBuilder = async (context, covered, request, words) => {
+  const report = await cashDaily(context, moneyQuery(covered, request));
+  const c = words.col;
+  const rows: ExportCell[][] = report.rows.map((r) => [
+    r.branch.code,
+    r.branch.name,
+    day(r.date),
+    r.closed ? c['yes']! : c['no']!,
+    money(r.openingFloatVnd),
+    money(r.cashInVnd),
+    money(r.cashOutVnd),
+    money(r.expectedVnd),
+    optMoney(r.countedVnd),
+    optMoney(r.differenceVnd),
+    r.reason ?? '',
+    optMoney(r.withdrawalVnd),
+  ]);
+  const categories: ExportCell[][] = report.byCategory.map((r) => [
+    c['cat_' + r.category] ?? r.category,
+    money(r.inVnd),
+    money(r.outVnd),
+  ]);
+  return {
+    main: {
+      name: words.sheetData,
+      columns: [
+        { header: c['branchCode']!, kind: 'text' },
+        { header: c['branch']!, kind: 'text' },
+        { header: c['date']!, kind: 'date' },
+        { header: c['closedState']!, kind: 'text' },
+        { header: c['openingFloat']!, kind: 'money' },
+        { header: c['cashInLabel']!, kind: 'money' },
+        { header: c['cashOutLabel']!, kind: 'money' },
+        { header: c['expectedCash']!, kind: 'money' },
+        { header: c['countedCash']!, kind: 'money' },
+        { header: c['differenceCash']!, kind: 'money' },
+        { header: c['reason']!, kind: 'text' },
+        { header: c['withdrawal']!, kind: 'money' },
+      ],
+      rows,
+    },
+    extra: [
+      {
+        name: c['sheetCategories']!,
+        columns: [
+          { header: c['cashCategory']!, kind: 'text' },
+          { header: c['cashInLabel']!, kind: 'money' },
+          { header: c['cashOutLabel']!, kind: 'money' },
+        ],
+        rows: categories,
+      },
+    ],
+    rows: rows.length,
+    period: { from: report.period.from, to: report.period.to },
+    compared: null,
+  };
+};
+
+const cashFundsBuilder: ExportBuilder = async (context, covered, request, words) => {
+  const report = await cashFunds(context, moneyQuery(covered, request));
+  const c = words.col;
+  const rows: ExportCell[][] = report.rows.map((r) => [
+    r.name,
+    r.kind === 'CASH' ? c['fundCash']! : c['fundBank']!,
+    r.branch?.code ?? '',
+    money(r.openingBalanceVnd),
+    money(r.inVnd),
+    money(r.outVnd),
+    money(r.balanceVnd),
+    r.lastClosedDate === null ? '' : day(r.lastClosedDate),
+  ]);
+  return {
+    main: {
+      name: words.sheetData,
+      columns: [
+        { header: c['fund']!, kind: 'text' },
+        { header: c['fundKind']!, kind: 'text' },
+        { header: c['branchCode']!, kind: 'text' },
+        { header: c['openingBalance']!, kind: 'money' },
+        { header: c['cashInLabel']!, kind: 'money' },
+        { header: c['cashOutLabel']!, kind: 'money' },
+        { header: c['balanceEnd']!, kind: 'money' },
+        { header: c['lastClosed']!, kind: 'date' },
+      ],
+      rows,
+    },
+    rows: rows.length,
+    period: { from: report.period.from, to: report.period.to },
+    compared: null,
+  };
+};
+
+const cashDifferencesBuilder: ExportBuilder = async (context, covered, request, words) => {
+  const report = await cashDifferences(context, moneyQuery(covered, request));
+  const c = words.col;
+  const rows: ExportCell[][] = report.rows.map((r) => [
+    r.branch.code,
+    r.branch.name,
+    day(r.date),
+    money(r.expectedVnd),
+    money(r.countedVnd),
+    money(r.differenceVnd),
+    r.reason ?? '',
+    r.closedByName ?? '',
+    r.alert ? c['yes']! : c['no']!,
+  ]);
+  return {
+    main: {
+      name: words.sheetData,
+      columns: [
+        { header: c['branchCode']!, kind: 'text' },
+        { header: c['branch']!, kind: 'text' },
+        { header: c['date']!, kind: 'date' },
+        { header: c['expectedCash']!, kind: 'money' },
+        { header: c['countedCash']!, kind: 'money' },
+        { header: c['differenceCash']!, kind: 'money' },
+        { header: c['reason']!, kind: 'text' },
+        { header: c['closedBy']!, kind: 'text' },
+        { header: c['alertFlag']!, kind: 'text' },
+      ],
+      rows,
+    },
+    rows: rows.length,
+    period: { from: report.period.from, to: report.period.to },
+    compared: null,
+  };
+};
+
+const tipsBuilder: ExportBuilder = async (context, covered, request, words) => {
+  const report = await tipsReport(context, moneyQuery(covered, request));
+  const c = words.col;
+  const rows: ExportCell[][] = report.rows.map((r) => [
+    r.name,
+    r.employeeCode ?? '',
+    money(r.cashVnd),
+    money(r.transferVnd),
+    money(r.totalVnd),
+    money(r.inRunVnd),
+    money(r.owedVnd),
+    r.entries,
+  ]);
+  return {
+    main: {
+      name: words.sheetData,
+      columns: [
+        { header: c['name']!, kind: 'text' },
+        { header: c['employeeCode']!, kind: 'text' },
+        { header: c['tipsCash']!, kind: 'money' },
+        { header: c['tipsTransfer']!, kind: 'money' },
+        { header: c['tipsTotal']!, kind: 'money' },
+        { header: c['tipsInRun']!, kind: 'money' },
+        { header: c['tipsOwed']!, kind: 'money' },
+        { header: c['entries']!, kind: 'int' },
+      ],
+      rows,
+    },
+    rows: rows.length,
+    period: { from: report.period.from, to: report.period.to },
+    compared: null,
+  };
+};
+
+const PAYROLL_COLUMNS = [
+  'BASE_SALARY',
+  'CTV_WORK',
+  'TOUR',
+  'COMMISSION',
+  'BONUS',
+  'ADJUSTMENT',
+  'DEDUCTION',
+  'ADVANCE_RECOVERY',
+] as const;
+
+const payrollBuilder: ExportBuilder = async (context, covered, request, words) => {
+  const report = await payrollMonthly(context, moneyQuery(covered, request));
+  const c = words.col;
+  const rows: ExportCell[][] = report.rows.map((r) => [
+    day(r.month),
+    c['status_' + r.status] ?? r.status,
+    r.paymentDay === null ? '' : day(r.paymentDay),
+    r.people,
+    ...PAYROLL_COLUMNS.map((kind) => money(r.byKind[kind])),
+    money(r.netVnd),
+    money(r.tipsVnd),
+  ]);
+  return {
+    main: {
+      name: words.sheetData,
+      columns: [
+        { header: c['payMonth']!, kind: 'date' },
+        { header: c['payStatus']!, kind: 'text' },
+        { header: c['paymentDay']!, kind: 'date' },
+        { header: c['payPeople']!, kind: 'int' },
+        ...PAYROLL_COLUMNS.map((kind) => ({ header: c['kind_' + kind]!, kind: 'money' as const })),
+        { header: c['payNet']!, kind: 'money' },
+        { header: c['tips']!, kind: 'money' },
+      ],
+      rows,
+    },
+    rows: rows.length,
+    period: { from: report.period.from, to: report.period.to },
+    compared: null,
+  };
+};
+
+const labourBuilder: ExportBuilder = async (context, covered, request, words) => {
+  const report = await labourCost(context, moneyQuery(covered, request));
+  const c = words.col;
+  const rows: ExportCell[][] = report.rows.map((r) => [
+    day(r.month),
+    c['status_' + r.status] ?? r.status,
+    money(r.labourVnd),
+    money(r.revenueVnd),
+    r.shareBp === null ? '' : pct(r.shareBp),
+  ]);
+  return {
+    main: {
+      name: words.sheetData,
+      columns: [
+        { header: c['payMonth']!, kind: 'date' },
+        { header: c['payStatus']!, kind: 'text' },
+        { header: c['labour']!, kind: 'money' },
+        { header: c['net']!, kind: 'money' },
+        { header: c['labourShare']!, kind: 'percent' },
+      ],
+      rows,
+    },
+    rows: rows.length,
+    period: { from: report.period.from, to: report.period.to },
+    compared: null,
+  };
+};
+
+const advancesBuilder: ExportBuilder = async (context, covered, request, words) => {
+  const report = await advancesReport(context, moneyQuery(covered, request));
+  const c = words.col;
+  const rows: ExportCell[][] = report.rows.map((r) => [
+    r.name,
+    r.employeeCode ?? '',
+    money(r.paidVnd),
+    money(r.recoveredVnd),
+    money(r.outstandingVnd),
+    r.pendingCount,
+    money(r.pendingVnd),
+  ]);
+  return {
+    main: {
+      name: words.sheetData,
+      columns: [
+        { header: c['name']!, kind: 'text' },
+        { header: c['employeeCode']!, kind: 'text' },
+        { header: c['advPaid']!, kind: 'money' },
+        { header: c['advRecovered']!, kind: 'money' },
+        { header: c['advOutstanding']!, kind: 'money' },
+        { header: c['advPendingCount']!, kind: 'int' },
+        { header: c['advPending']!, kind: 'money' },
+      ],
+      rows,
+    },
+    rows: rows.length,
+    period: null,
+    compared: null,
+  };
+};
+
+const fill = (template: string, values: Record<string, string | number>): string =>
+  template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? ''));
+
+const profitBuilder: ExportBuilder = async (context, covered, request, words) => {
+  const report = await profitReport(context, {
+    from: request.from,
+    to: request.to,
+    restrictTo: covered,
+  });
+  const c = words.col;
+  const l = report.lines;
+  const negative = (value: string) => money(value === '0' ? '0' : '-' + value);
+  const coverage = fill(c['profitCoverage']!, {
+    percent: `${(report.goods.coverageBp / 100).toFixed(1)}%`,
+  });
+  const salaryNote = fill(c['profitSalaryNote']!, {
+    counted: report.salaries.monthsCounted,
+    missing: report.salaries.monthsMissing,
+    partial: report.salaries.monthsPartial,
+  });
+  const rows: ExportCell[][] = [
+    [c['line_revenue']!, money(l.revenueVnd), ''],
+    [c['line_cogs']!, negative(l.costOfGoodsVnd), coverage],
+    [c['line_tour']!, negative(l.tourVnd), ''],
+    [c['line_commission']!, negative(l.commissionVnd), ''],
+    [c['line_salaries']!, negative(l.salariesVnd), salaryNote],
+    [c['line_expenses']!, negative(l.manualExpensesVnd), ''],
+    [c['line_profit']!, money(l.profitVnd), c['profitDisclaimer']!],
+  ];
+  const noCost: ExportCell[][] = report.withoutCost.map((r) => [
+    r.sku,
+    name(words, r.nameVi, r.nameEn),
+    r.unitsWithoutCost,
+  ]);
+  return {
+    main: {
+      name: words.sheetData,
+      columns: [
+        { header: c['profitLine']!, kind: 'text' },
+        { header: c['profitAmount']!, kind: 'money' },
+        { header: c['profitNote']!, kind: 'text' },
+      ],
+      rows,
+    },
+    extra: [
+      {
+        name: c['sheetNoCost']!,
+        columns: [
+          { header: c['sku']!, kind: 'text' },
+          { header: c['product']!, kind: 'text' },
+          { header: c['unitsNoCost']!, kind: 'int' },
+        ],
+        rows: noCost,
+      },
+    ],
+    rows: rows.length,
+    period: { from: report.period.from, to: report.period.to },
+    compared: null,
+  };
+};
+
 /** The exportable reports that are built. A listed report without a builder answers NOT_FOUND (it arrives in a later Step). */
 export const EXPORT_BUILDERS: Readonly<Record<string, ExportBuilder>> = {
   'revenue-overview': overview,
@@ -864,6 +1208,14 @@ export const EXPORT_BUILDERS: Readonly<Record<string, ExportBuilder>> = {
   'stock-value': stockValueBuilder,
   'stock-movements': stockMovementsBuilder,
   'stock-receipts': stockReceiptsBuilder,
+  'cash-daily': cashDailyBuilder,
+  'cash-funds': cashFundsBuilder,
+  'cash-differences': cashDifferencesBuilder,
+  tips: tipsBuilder,
+  'payroll-monthly': payrollBuilder,
+  'labour-cost': labourBuilder,
+  advances: advancesBuilder,
+  profit: profitBuilder,
 };
 
 export function builderFor(report: string): ExportBuilder {

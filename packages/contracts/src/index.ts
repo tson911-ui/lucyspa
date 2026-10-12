@@ -2238,6 +2238,8 @@ export * from './reports-export.js';
 export * from './reports-sales.js';
 export * from './reports-people.js';
 export * from './reports-stock.js';
+export * from './reports-money.js';
+export * from './reports-profit.js';
 export * from './advance.js';
 export * from './pay.js';
 export * from './payroll.js';

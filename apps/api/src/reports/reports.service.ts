@@ -1,7 +1,15 @@
 import {
   REPORT_DEFINITIONS,
   type BookingFunnelReport,
+  type AdvancesReport,
   type BestSellerReport,
+  type CashDailyReport,
+  type CashDifferencesReport,
+  type CashFundsReport,
+  type LabourCostReport,
+  type PayrollMonthlyReport,
+  type ProfitReport,
+  type TipsReport,
   type ComboReport,
   type ExpiryReport,
   type LowStockReport,
@@ -35,6 +43,17 @@ import {
   type PeopleQuery,
 } from './people.core.js';
 import { revenueReport, type RevenueQuery } from './revenue.core.js';
+import {
+  advancesReport,
+  cashDaily,
+  cashDifferences,
+  cashFunds,
+  labourCost,
+  payrollMonthly,
+  tipsReport,
+  type MoneyQuery,
+} from './money.core.js';
+import { profitReport, type ProfitQuery } from './profit.core.js';
 import {
   bestSellers,
   expiringLots,
@@ -80,7 +99,9 @@ export class ReportsService {
           id: definition.id,
           area: definition.area,
           wave: definition.wave,
-          available: covered.length > 0,
+          available:
+            covered.length > 0 &&
+            (!definition.shopWide || covered.length === context.allBranches.length),
           exportable,
           exportReauth: definition.exportReauth,
           branchIds: covered.map((branch) => branch.id),
@@ -196,6 +217,46 @@ export class ReportsService {
   /** P8-9: Receipts by supplier. */
   stockReceipts(token: string | undefined, query: StockQuery): Promise<StockReceiptReport> {
     return this.run(token, 'report', (context) => stockReceipts(context, query));
+  }
+
+  /** P8-12: K1: the cash of each day: opening float, in, out, expected, counted, difference. */
+  cashDaily(token: string | undefined, query: MoneyQuery): Promise<CashDailyReport> {
+    return this.run(token, 'report', (context) => cashDaily(context, query));
+  }
+
+  /** P8-12: K2: the balance of each fund up to the end of the period. */
+  cashFunds(token: string | undefined, query: MoneyQuery): Promise<CashFundsReport> {
+    return this.run(token, 'report', (context) => cashFunds(context, query));
+  }
+
+  /** P8-12: K3: closed days whose count differed from the book. */
+  cashDifferences(token: string | undefined, query: MoneyQuery): Promise<CashDifferencesReport> {
+    return this.run(token, 'report', (context) => cashDifferences(context, query));
+  }
+
+  /** P8-12: T1: tips by person, by method, and what is still owed. */
+  tips(token: string | undefined, query: MoneyQuery): Promise<TipsReport> {
+    return this.run(token, 'report', (context) => tipsReport(context, query));
+  }
+
+  /** P8-12: P1: pay runs by month, by kind of pay item. */
+  payrollMonthly(token: string | undefined, query: MoneyQuery): Promise<PayrollMonthlyReport> {
+    return this.run(token, 'report', (context) => payrollMonthly(context, query));
+  }
+
+  /** P8-12: P2: labour cost against revenue by month. */
+  labourCost(token: string | undefined, query: MoneyQuery): Promise<LabourCostReport> {
+    return this.run(token, 'report', (context) => labourCost(context, query));
+  }
+
+  /** P8-12: P3: salary advances paid and not yet recovered. */
+  advances(token: string | undefined, query: MoneyQuery): Promise<AdvancesReport> {
+    return this.run(token, 'report', (context) => advancesReport(context, query));
+  }
+
+  /** P8-13: provisional profit of the whole shop (the Owner's VIEW_PROFIT). */
+  profit(token: string | undefined, query: ProfitQuery): Promise<ProfitReport> {
+    return this.run(token, 'report', (context) => profitReport(context, query));
   }
 
   /** The single entry for the reports of the later Steps. */

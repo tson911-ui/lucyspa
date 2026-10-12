@@ -9,3 +9,5 @@ await import('../apps/api/dist/reports/export.integration.test.js');
 await import('../apps/api/dist/reports/sales.integration.test.js');
 await import('../apps/api/dist/reports/people.integration.test.js');
 await import('../apps/api/dist/reports/stock.integration.test.js');
+await import('../apps/api/dist/reports/money.integration.test.js');
+await import('../apps/api/dist/reports/profit.integration.test.js');

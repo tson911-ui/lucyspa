@@ -158,12 +158,18 @@ test(
       const sold = await sell(null, 2, ktv); // the KTV sells 2 x 150,000 = 300,000
       const service = await k.finalize(await k.serviceDraft([k.exact, k.ranged]));
       await k.pay(service.id, Number(service.totalVnd)); // 200,000 + 100,000 performed by the KTV
-      await seedTip(tx, {
+      const tipId = await seedTip(tx, {
         invoiceId: service.id,
         employeeUserId: ktv,
         amountVnd: 20_000n,
         recordedByUserId: owner,
       });
+      // Part of the tip was reversed: a reversal is stored as a negative amount, so the KTV keeps 15,000.
+      const tipRow = await tx.tip.findUniqueOrThrow({ where: { id: tipId } });
+      await replica(
+        `INSERT INTO tips (id, branch_id, invoice_id, employee_user_id, amount_vnd, method, business_date, reverses_id, reason, recorded_by_user_id, client_request_id, fund_entry_id)
+         VALUES ('${randomUUID()}', '${tipRow.branchId}', '${tipRow.invoiceId}', '${ktv}', -5000, '${tipRow.method}', '${tipRow.businessDate.toISOString().slice(0, 10)}', '${tipId}', 'Nhập nhầm', '${owner}', '${randomUUID()}', '${tipRow.fundEntryId}')`,
+      );
       const line = await tx.invoiceLine.findFirstOrThrow({
         where: { invoiceId: sold.id },
         select: { id: true },
@@ -365,7 +371,7 @@ test(
           const owned = await reports.staffActivity(people.owner.token, range);
           const full = owned.rows.find((x) => x.userId === ktv)!;
           assert.deepEqual(owned.columns, { sales: true, pay: true });
-          assert.equal(full.tipsVnd, '20000');
+          assert.equal(full.tipsVnd, '15000');
           assert.equal(full.tourVnd, '30000');
           assert.equal(full.commissionVnd, '5000');
           const onlyStaff = (await reports.staffActivity(staffOnly.token, range)).rows.find(
@@ -386,7 +392,7 @@ test(
           const withPay = (await reports.staffActivity(staffPay.token, range)).rows.find(
             (x) => x.userId === ktv,
           )!;
-          assert.equal(withPay.tipsVnd, '20000');
+          assert.equal(withPay.tipsVnd, '15000');
           assert.equal(withPay.serviceSalesVnd, null);
           // No ranking: the rows come in name order whatever the figures.
           const names = r.rows.map((x) => x.name);

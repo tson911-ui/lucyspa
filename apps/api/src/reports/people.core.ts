@@ -451,7 +451,7 @@ export async function staffActivity(
     ),
     tip AS (
       SELECT t.employee_user_id AS user_id,
-             sum(CASE WHEN t.reverses_id IS NULL THEN t.amount_vnd ELSE -t.amount_vnd END) AS amount
+             sum(t.amount_vnd) AS amount
       FROM tips t
       WHERE t.branch_id = ANY(${f.ids}::uuid[]) AND t.business_date BETWEEN ${f.range.from}::date AND ${f.range.to}::date
       GROUP BY t.employee_user_id

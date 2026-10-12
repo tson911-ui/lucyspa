@@ -30,6 +30,8 @@ export interface ReportDefinition {
   readonly requires: readonly PermissionCodeName[];
   /** Extra permissions that unlock more columns of the same report (omitted, never zero-filled, without them). */
   readonly columnPermissions?: readonly PermissionCodeName[];
+  /** The report is about the whole shop (one pay run a month): it is open only to a person who holds its permissions at EVERY active branch. */
+  readonly shopWide: boolean;
   /** A file of this report needs the fresh password (pay and profit data, design 6). */
   readonly exportReauth: boolean;
   /** False for the screens that are not tables to take away (the audit log). */
@@ -45,6 +47,7 @@ const report = (
     columnPermissions?: readonly PermissionCodeName[];
     exportReauth?: boolean;
     exportable?: boolean;
+    shopWide?: boolean;
   } = {},
 ): ReportDefinition => ({
   id,
@@ -52,6 +55,7 @@ const report = (
   wave,
   requires,
   ...(options.columnPermissions ? { columnPermissions: options.columnPermissions } : {}),
+  shopWide: options.shopWide ?? false,
   exportReauth: options.exportReauth ?? false,
   exportable: options.exportable ?? true,
 });
@@ -92,13 +96,17 @@ export const REPORT_DEFINITIONS: readonly ReportDefinition[] = Object.freeze([
   report('cash-funds', 'money', 'C', ['VIEW_CASH']),
   report('cash-differences', 'money', 'C', ['VIEW_CASH']),
   report('tips', 'money', 'C', ['VIEW_EMPLOYEE_PAY'], { exportReauth: true }),
-  report('payroll-monthly', 'money', 'C', ['VIEW_EMPLOYEE_PAY'], { exportReauth: true }),
+  report('payroll-monthly', 'money', 'C', ['VIEW_EMPLOYEE_PAY'], {
+    exportReauth: true,
+    shopWide: true,
+  }),
   report('labour-cost', 'money', 'C', ['VIEW_EMPLOYEE_PAY', 'VIEW_REVENUE'], {
     exportReauth: true,
+    shopWide: true,
   }),
-  report('advances', 'money', 'C', ['VIEW_EMPLOYEE_PAY'], { exportReauth: true }),
+  report('advances', 'money', 'C', ['VIEW_EMPLOYEE_PAY'], { exportReauth: true, shopWide: true }),
   // Provisional profit (Wave C, Owner only: GLOBAL_ONLY permission).
-  report('profit', 'profit', 'C', ['VIEW_PROFIT'], { exportReauth: true }),
+  report('profit', 'profit', 'C', ['VIEW_PROFIT'], { exportReauth: true, shopWide: true }),
   // Customer reviews (Wave D).
   report('reviews', 'reviews', 'D', ['VIEW_REVIEWS']),
 ]);

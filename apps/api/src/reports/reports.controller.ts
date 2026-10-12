@@ -1,7 +1,15 @@
 import {
   REPORT_EXPORT_FORMATS,
   type BookingFunnelReport,
+  type AdvancesReport,
   type BestSellerReport,
+  type CashDailyReport,
+  type CashDifferencesReport,
+  type CashFundsReport,
+  type LabourCostReport,
+  type PayrollMonthlyReport,
+  type ProfitReport,
+  type TipsReport,
   type ComboReport,
   type ExpiryReport,
   type LowStockReport,
@@ -346,6 +354,110 @@ export class ReportsController {
     @Req() request: Request,
   ): Promise<StockReceiptReport> {
     return this.reports.stockReceipts(this.session(request), { from, to, branchId });
+  }
+
+  @Get('cash/daily')
+  @ApiOkResponse({
+    description:
+      'The cash of each day: opening float, in, out, expected, counted, difference (VIEW_CASH at the branch; before the cash book starts the report says so).',
+  })
+  cashDaily(
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Query('branchId') branchId: string | undefined,
+    @Req() request: Request,
+  ): Promise<CashDailyReport> {
+    return this.reports.cashDaily(this.session(request), { from, to, branchId });
+  }
+
+  @Get('cash/funds')
+  @ApiOkResponse({
+    description:
+      'The balance of each fund up to the end of the period (VIEW_CASH; the shared bank only for a person who holds it at every branch).',
+  })
+  cashFunds(
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Query('branchId') branchId: string | undefined,
+    @Req() request: Request,
+  ): Promise<CashFundsReport> {
+    return this.reports.cashFunds(this.session(request), { from, to, branchId });
+  }
+
+  @Get('cash/differences')
+  @ApiOkResponse({
+    description: 'Closed days whose count differed from the book (VIEW_CASH at the branch).',
+  })
+  cashDifferences(
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Query('branchId') branchId: string | undefined,
+    @Req() request: Request,
+  ): Promise<CashDifferencesReport> {
+    return this.reports.cashDifferences(this.session(request), { from, to, branchId });
+  }
+
+  @Get('tips')
+  @ApiOkResponse({
+    description:
+      'Tips by person and method, and what is still owed (VIEW_EMPLOYEE_PAY at the branch).',
+  })
+  tips(
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Query('branchId') branchId: string | undefined,
+    @Req() request: Request,
+  ): Promise<TipsReport> {
+    return this.reports.tips(this.session(request), { from, to, branchId });
+  }
+
+  @Get('payroll/monthly')
+  @ApiOkResponse({ description: 'Pay runs by month and kind (VIEW_EMPLOYEE_PAY at every branch).' })
+  payrollMonthly(
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Query('branchId') branchId: string | undefined,
+    @Req() request: Request,
+  ): Promise<PayrollMonthlyReport> {
+    return this.reports.payrollMonthly(this.session(request), { from, to, branchId });
+  }
+
+  @Get('payroll/labour-cost')
+  @ApiOkResponse({
+    description:
+      'Labour cost against revenue by month (VIEW_EMPLOYEE_PAY and VIEW_REVENUE at every branch).',
+  })
+  labourCost(
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Query('branchId') branchId: string | undefined,
+    @Req() request: Request,
+  ): Promise<LabourCostReport> {
+    return this.reports.labourCost(this.session(request), { from, to, branchId });
+  }
+
+  @Get('payroll/advances')
+  @ApiOkResponse({
+    description: 'Salary advances paid and not yet recovered (VIEW_EMPLOYEE_PAY at every branch).',
+  })
+  advances(
+    @Query('branchId') branchId: string | undefined,
+    @Req() request: Request,
+  ): Promise<AdvancesReport> {
+    return this.reports.advances(this.session(request), { branchId });
+  }
+
+  @Get('profit')
+  @ApiOkResponse({
+    description:
+      'Provisional profit of the whole shop, line by line: revenue, cost of goods, tour, commission, salaries, manual expenses (VIEW_PROFIT, shop-wide). Not a tax report.',
+  })
+  profit(
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Req() request: Request,
+  ): Promise<ProfitReport> {
+    return this.reports.profit(this.session(request), { from, to });
   }
 
   @Post('export')

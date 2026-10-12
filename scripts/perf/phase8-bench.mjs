@@ -28,6 +28,16 @@ import {
   stockReceipts,
   stockValue,
 } from '../../apps/api/dist/reports/stock.core.js';
+import {
+  advancesReport,
+  cashDaily,
+  cashDifferences,
+  cashFunds,
+  labourCost,
+  payrollMonthly,
+  tipsReport,
+} from '../../apps/api/dist/reports/money.core.js';
+import { profitReport } from '../../apps/api/dist/reports/profit.core.js';
 import { factsStatement } from '../../apps/api/dist/reports/revenue.sql.js';
 import { Prisma } from '../../packages/database/dist/index.js';
 
@@ -134,6 +144,14 @@ const waveB = [
   ['stock value', stockValue],
   ['stock movements 366 days', stockMovements],
   ['stock receipts 366 days', stockReceipts],
+  ['cash by day 366 days', cashDaily],
+  ['cash funds 366 days', cashFunds],
+  ['cash differences 366 days', cashDifferences],
+  ['tips 366 days', tipsReport],
+  ['payroll by month 12 months', payrollMonthly],
+  ['labour cost 12 months (12 revenue months)', labourCost],
+  ['advances', advancesReport],
+  ['provisional profit 366 days', profitReport],
 ];
 for (const [name, run] of waveB) {
   allOk &&= await measure(name, 2000, () => inFrame((context) => run(context, wide)));
