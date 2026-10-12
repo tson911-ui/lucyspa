@@ -2,7 +2,7 @@
 
 Dành cho Owner, không cần rành kỹ thuật. Chỉ có **MỘT khối lệnh** dưới đây. Mở cửa sổ terminal web của iNET đã đăng nhập vào máy chủ, **chép toàn bộ khối** (từ dấu `(` ở dòng đầu đến dấu `)` ở dòng cuối) và dán vào, rồi nhấn Enter. Khối tự kiểm tra từng bước; **khác mong đợi ở bất kỳ chỗ nào là nó in `DUNG LAI` và tự dừng** (không chạy tiếp, không làm gì nguy hiểm). Khi thấy `DUNG LAI`: **không chạy lại**, chụp màn hình từ dòng `DUNG LAI` trở lên và gửi cho Claude. Claude **không** đụng tới máy chủ; chỉ Owner chạy lệnh.
 
-**Bản sẽ cài:** commit `__NEW__`, đã push lên `main`. Các commit tài liệu đẩy sau đó (kể cả commit của tệp này) không đổi mã chạy.
+**Bản sẽ cài:** commit `7e194b338c944a8b30160c051fdf022a0d424f5f`, đã push lên `main`. Các commit tài liệu đẩy sau đó (kể cả commit của tệp này) không đổi mã chạy.
 **Bản đang chạy:** `06badcf1ab922c4240f67f1c43481f9d9ce549f4` (Phase 7, 8, 9: **122 migration, 77 quyền**).
 **Cơ sở dữ liệu:** từ 122 lên **127 migration**, chỉ **thêm**: **5 bảng mới rỗng** (`ai_settings` có sẵn **một dòng, mọi thứ tắt**; `ai_usage_ledger`, `ai_reservations`, `ai_runs`, `ai_items`), 8 cột mới ở bảng `products` (nguồn chữ, tiêu đề/mô tả tìm kiếm, bốn mục mô tả), 2 cột ở `ai_items`/`discounts` (`applied_via`, `bot_visible`), các quy tắc bảo vệ ở cơ sở dữ liệu (nhật ký chi tiêu AI chỉ thêm, không sửa; chữ đã viết lại không bị nhập Excel ghi đè). Migration cũng **đánh dấu** các sản phẩm nhập từ nhà cung cấp là "bản sao của nhà cung cấp" (cập nhật số phiên bản của các dòng đó); **không đổi chữ, giá hay tồn kho nào.**
 **Quyền:** 77 → **79**: `MANAGE_AI_SETTINGS` (Cài đặt AI), `USE_AI_CONTENT` (xem và duyệt bản nháp AI). **Không cấp cho ai** (chỉ tài khoản Owner có sẵn mọi quyền). Sau triển khai Owner vào Quản trị → Vai trò để gán cho quản lý nào cần.
@@ -13,7 +13,7 @@ Dành cho Owner, không cần rành kỹ thuật. Chỉ có **MỘT khối lện
 
 ## Trước khi dán
 
-- Trên GitHub, tab **Actions**, commit `__NEW__` có dấu **xanh**. Đỏ hoặc đang chạy: **đừng làm**.
+- Trên GitHub, tab **Actions**, commit `7e194b338c944a8b30160c051fdf022a0d424f5f` có dấu **xanh**. Đỏ hoặc đang chạy: **đừng làm**.
 - Báo nhân viên thu tiền ở quầy: tạm dừng khoảng 5 phút.
 
 ## Khối lệnh (dán nguyên khối)
@@ -22,7 +22,7 @@ Dành cho Owner, không cần rành kỹ thuật. Chỉ có **MỘT khối lện
 (
 set -u
 cd /opt/lucyspa || { echo "DUNG LAI: khong co thu muc /opt/lucyspa"; exit 1; }
-NEW=__NEW__
+NEW=7e194b338c944a8b30160c051fdf022a0d424f5f
 OLD=06badcf1ab922c4240f67f1c43481f9d9ce549f4
 DB=lucy_spa_dev
 SCRATCH=lucy_spa_rehearsal_scratch
