@@ -159,6 +159,7 @@ test('a new version starts from what is in force; benefits are shown in the read
     nameVi: 'Tết',
     nameEn: 'Tet',
     requiresCode: true,
+    botVisible: false,
     isActive: true,
     terminatedAt: null,
     status: 'ACTIVE',

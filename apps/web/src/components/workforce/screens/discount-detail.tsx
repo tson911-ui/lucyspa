@@ -160,6 +160,24 @@ function DiscountDetail({
               program.isActive ? d.paused : d.resumed,
             ),
         },
+        ...(program.requiresCode
+          ? []
+          : [
+              {
+                id: 'bot',
+                label: program.botVisible ? d.botStop : d.botAllow,
+                disabled: working,
+                onSelect: () =>
+                  void quick(
+                    () =>
+                      api.post<DiscountDetailResponse>(
+                        `/api/v1/discounts/${program.id}/bot-visible`,
+                        { expectedVersion: program.version, botVisible: !program.botVisible },
+                      ),
+                    program.botVisible ? d.botStopped : d.botAllowed,
+                  ),
+              },
+            ]),
         {
           id: 'terminate',
           label: d.terminate,
@@ -196,6 +214,7 @@ function DiscountDetail({
       <Cluster gap="inline">
         <span className="ls-hint">{t.common.status}:</span>
         <Badge tone={statusTone(program.status)}>{d.statuses[program.status]}</Badge>
+        {program.botVisible ? <Badge tone="info">{d.botBadge}</Badge> : null}
       </Cluster>
       {error ? <Notice tone="error">{error}</Notice> : null}
       {terminated ? (

@@ -1,5 +1,6 @@
 import type {
   DiscountActiveRequest,
+  DiscountBotVisibleRequest,
   DiscountCreateRequest,
   DiscountDetailResponse,
   DiscountKindName,
@@ -110,6 +111,11 @@ class ActiveDto implements DiscountActiveRequest, VoucherActiveRequest {
   @ApiProperty() @IsBoolean() isActive!: boolean;
 }
 
+class BotVisibleDto implements DiscountBotVisibleRequest {
+  @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
+  @ApiProperty() @IsBoolean() botVisible!: boolean;
+}
+
 class TerminateDto implements DiscountTerminateRequest {
   @ApiProperty() @IsInt() @Min(1) @Max(MAX_VERSION) expectedVersion!: number;
   @ApiProperty() @IsString() @MaxLength(2_048) reason!: string;
@@ -185,6 +191,21 @@ export class DiscountController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<DiscountDetailResponse> {
     return this.discounts.setActive(this.session(request), id, body, this.requestId(response));
+  }
+
+  @Post(':id/bot-visible')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'Allow or stop the chat bot mentioning a code-free program (MANAGE_DISCOUNTS, GLOBAL; audited).',
+  })
+  setBotVisible(
+    @Param('id') id: string,
+    @Body() body: BotVisibleDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<DiscountDetailResponse> {
+    return this.discounts.setBotVisible(this.session(request), id, body, this.requestId(response));
   }
 
   @Post(':id/terminate')

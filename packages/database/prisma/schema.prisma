@@ -2147,6 +2147,8 @@ model Discount {
   nameVi             String               @map("name_vi")
   nameEn             String               @map("name_en")
   requiresCode       Boolean              @map("requires_code")
+  /// Claude integration: the Owner ticked "bot may mention" (default false).
+  botVisible         Boolean              @default(false) @map("bot_visible")
   isActive           Boolean              @default(true) @map("is_active")
   terminatedAt       DateTime?            @map("terminated_at") @db.Timestamptz(3)
   terminatedByUserId String?              @map("terminated_by_user_id") @db.Uuid

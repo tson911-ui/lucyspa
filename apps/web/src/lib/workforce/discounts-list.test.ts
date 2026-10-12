@@ -23,6 +23,7 @@ function program(
     nameVi,
     nameEn,
     requiresCode: false,
+    botVisible: false,
     isActive: status !== 'PAUSED',
     terminatedAt: null,
     status,

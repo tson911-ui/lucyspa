@@ -61,6 +61,8 @@ import { ProductImportController } from './product-imports/import.controller.js'
 import { AiController } from './ai/ai.controller.js';
 import { AiDraftsController } from './ai/ai-drafts.controller.js';
 import { AiRunsController } from './ai/ai-runs.controller.js';
+import { BotDataServer } from './bot/bot.server.js';
+import { BotDataService } from './bot/bot.service.js';
 import { AiService } from './ai/ai.service.js';
 import { ProductTextCleanupController } from './products/product-text-cleanup.controller.js';
 import { ProductTextCleanupService } from './products/product-text-cleanup.service.js';
@@ -244,6 +246,8 @@ export class AppModule {
         PublicRateLimitService,
         PublicRateLimitGuard,
         PrismaService,
+        BotDataService,
+        BotDataServer,
         SessionService,
         ContextThrottleService,
         AuthThrottleService,

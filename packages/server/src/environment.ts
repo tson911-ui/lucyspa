@@ -30,6 +30,10 @@ const api = shared.extend({
     return ['http:', 'https:'].includes(url.protocol) && url.origin === value;
   }),
   SWAGGER_ENABLED: z.enum(['true', 'false']).optional(),
+  // Claude integration (CI-B1): the read-only bot data listener (design 6.2). Without a key there is no listener.
+  BOT_DATA_KEY: z.string().min(32).max(200).optional(),
+  BOT_DATA_HOST: z.string().min(1).default('127.0.0.1'),
+  BOT_DATA_PORT: port.default(3101),
 });
 
 function validate<S extends z.ZodType>(schema: S, env: NodeJS.ProcessEnv): z.output<S> {
@@ -71,6 +75,18 @@ export function parseWorkerEnvironment(env: NodeJS.ProcessEnv) {
   };
 }
 
+/** The bot data listener: null without a key; the port must differ from the API's own (two listeners cannot share one). */
+function botDataOf(config: {
+  API_PORT: number;
+  BOT_DATA_KEY?: string | undefined;
+  BOT_DATA_HOST: string;
+  BOT_DATA_PORT: number;
+}): { key: string; host: string; port: number } | null {
+  if (config.BOT_DATA_KEY === undefined) return null;
+  if (config.BOT_DATA_PORT === config.API_PORT) throw new Error('BOT_DATA_PORT');
+  return { key: config.BOT_DATA_KEY, host: config.BOT_DATA_HOST, port: config.BOT_DATA_PORT };
+}
+
 export function parseApiEnvironment(env: NodeJS.ProcessEnv) {
   const config = validate(api, env);
   return {
@@ -84,6 +100,7 @@ export function parseApiEnvironment(env: NodeJS.ProcessEnv) {
     auth: parseAuthEnvironment(env, config.NODE_ENV, config.WEB_ORIGIN),
     payos: parsePayosEnvironment(env),
     mediaStorageDir: parseMediaStorageDirectory(env, config.NODE_ENV),
+    botData: botDataOf(config),
     swaggerEnabled:
       config.SWAGGER_ENABLED === undefined
         ? config.NODE_ENV !== 'production'

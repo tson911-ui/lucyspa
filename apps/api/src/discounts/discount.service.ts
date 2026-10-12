@@ -1,5 +1,6 @@
 import type {
   DiscountActiveRequest,
+  DiscountBotVisibleRequest,
   DiscountCreateRequest,
   DiscountDetailResponse,
   DiscountListResponse,
@@ -22,6 +23,7 @@ import {
   getDiscount,
   listDiscounts,
   setDiscountActive,
+  setDiscountBotVisible,
   setVoucherActive,
   terminateDiscount,
 } from './discount.core.js';
@@ -87,6 +89,18 @@ export class DiscountService {
     const expectedVersion = this.version(body.expectedVersion);
     return this.runOn(token, id, requestId, (context, programId) =>
       setDiscountActive(context, programId, { expectedVersion, isActive: body.isActive }),
+    );
+  }
+
+  async setBotVisible(
+    token: string | undefined,
+    id: string,
+    body: DiscountBotVisibleRequest,
+    requestId?: string,
+  ): Promise<DiscountDetailResponse> {
+    const expectedVersion = this.version(body.expectedVersion);
+    return this.runOn(token, id, requestId, (context, programId) =>
+      setDiscountBotVisible(context, programId, { expectedVersion, botVisible: body.botVisible }),
     );
   }
 

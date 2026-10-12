@@ -82,6 +82,7 @@ const programSelect = {
   nameVi: true,
   nameEn: true,
   requiresCode: true,
+  botVisible: true,
   isActive: true,
   terminatedAt: true,
   terminatedReason: true,
@@ -157,6 +158,7 @@ function summary(row: ProgramRow, redemptions: number, now: Date): DiscountSumma
     nameVi: row.nameVi,
     nameEn: row.nameEn,
     requiresCode: row.requiresCode,
+    botVisible: row.botVisible,
     isActive: row.isActive,
     terminatedAt: row.terminatedAt ? row.terminatedAt.toISOString() : null,
     status: programStatus(row, current, now),
@@ -612,6 +614,44 @@ export async function setDiscountActive(
       classification: 'FINANCIAL',
       before: { code: program.code, isActive: program.isActive },
       after: { code: program.code, isActive: input.isActive },
+    },
+  );
+  return detail(context, id);
+}
+
+/**
+ * The Owner's "bot may mention" tick (Claude integration, OQ-CI-7). Only a program without a code can be ticked (a code is never
+ * given out by the bot), and a terminated one cannot. Audited with before and after; the bot reads the flag on every request.
+ */
+export async function setDiscountBotVisible(
+  context: AdminContext,
+  id: string,
+  input: { expectedVersion: number; botVisible: boolean },
+): Promise<DiscountDetailResponse> {
+  requireGlobal(context, 'MANAGE_DISCOUNTS');
+  const { tx } = context;
+  if (typeof input.botVisible !== 'boolean') throw new AuthError('VALIDATION_FAILED', 'botVisible');
+  const program = await lockedProgram(context, id, input.expectedVersion);
+  if (program.terminatedAt) throw new AuthError('DISCOUNT_STATE_INVALID');
+  if (input.botVisible && program.requiresCode) {
+    throw new AuthError('VALIDATION_FAILED', 'botVisible');
+  }
+  if (program.botVisible === input.botVisible) return detail(context, id);
+  const now = await databaseClock(tx);
+  await tx.discount.update({
+    where: { id },
+    data: { botVisible: input.botVisible, rowVersion: { increment: 1 }, updatedAt: now },
+    select: { id: true },
+  });
+  await appendAdminAudit(
+    { ...context, now },
+    {
+      action: 'DISCOUNT_BOT_VISIBLE_CHANGED',
+      entityType: 'Discount',
+      entityId: id,
+      classification: 'FINANCIAL',
+      before: { code: program.code, botVisible: program.botVisible },
+      after: { code: program.code, botVisible: input.botVisible },
     },
   );
   return detail(context, id);

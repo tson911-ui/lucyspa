@@ -2825,6 +2825,8 @@ export interface DiscountSummaryResponse {
   nameVi: string;
   nameEn: string;
   requiresCode: boolean;
+  /** Claude integration: the Owner allows the chat bot to mention this program (never a code-based one). */
+  botVisible: boolean;
   isActive: boolean;
   terminatedAt: string | null;
   /** Derived now from the active flag, termination and the current version's validity window. */
@@ -2834,6 +2836,12 @@ export interface DiscountSummaryResponse {
   redemptions: number;
   voucherCount: number;
   version: number;
+}
+
+/** POST /api/v1/discounts/:id/bot-visible (MANAGE_DISCOUNTS, GLOBAL): allow or stop the chat bot mentioning a code-free program. */
+export interface DiscountBotVisibleRequest {
+  expectedVersion: number;
+  botVisible: boolean;
 }
 
 export interface DiscountListResponse {

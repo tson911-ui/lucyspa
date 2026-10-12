@@ -81,6 +81,8 @@ test(
             nameEn: `Run product ${counter}`,
             descriptionVi: patch.text ?? SUPPLIER,
             contentOrigin: patch.origin ?? 'SUPPLIER_COPY',
+            // Added one second apart, so "the order they were added" is real (rows made within one millisecond would tie).
+            createdAt: new Date(Date.UTC(2026, 0, 1) + counter * 1000),
             createdByUserId: worker.id,
           },
           select: { id: true },
@@ -431,12 +433,15 @@ test(
           );
           const approved = await ai.approvePage(worker.token, { itemIds: ids });
           assert.equal(approved.applied, 2);
+          // The skipped ones come in the order the ids were processed (sorted); compare by id.
+          const byId = (list: [string, string][]) =>
+            [...list].sort((a, b) => a[0].localeCompare(b[0]));
           assert.deepEqual(
-            approved.skipped.map((entry) => [entry.id, entry.reason]),
-            [
+            byId(approved.skipped.map((entry) => [entry.id, entry.reason])),
+            byId([
               [ids[1]!, 'WARNINGS'],
               [ids[3]!, 'STALE'],
-            ].sort((a, b) => ids.indexOf(a[0]!) - ids.indexOf(b[0]!)),
+            ]),
           );
           const [applied] = await rows<{ applied_via: string; status: string }>(
             `SELECT applied_via, status FROM ai_items WHERE id = $1::uuid`,

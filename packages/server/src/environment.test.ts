@@ -56,6 +56,35 @@ test('production docs are disabled by default and explicit false is not truthy',
   assert.throws(() => parseApiEnvironment({ ...valid, SWAGGER_ENABLED: 'yes' }));
 });
 
+test('the bot data listener exists only with a long key and its own port', () => {
+  assert.equal(parseApiEnvironment(valid).botData, null);
+  const key = randomBytes(48).toString('base64url');
+  assert.deepEqual(parseApiEnvironment({ ...valid, BOT_DATA_KEY: key }).botData, {
+    key,
+    host: '127.0.0.1',
+    port: 3101,
+  });
+  assert.equal(
+    parseApiEnvironment({ ...valid, BOT_DATA_KEY: key, BOT_DATA_PORT: '3201' }).botData?.port,
+    3201,
+  );
+  // A short key, the API's own port, or an invalid port is refused; the error names the variable only, never the key.
+  assert.throws(() => parseApiEnvironment({ ...valid, BOT_DATA_KEY: 'short' }), /BOT_DATA_KEY/);
+  assert.throws(
+    () => parseApiEnvironment({ ...valid, BOT_DATA_KEY: key, BOT_DATA_PORT: '3001' }),
+    /BOT_DATA_PORT/,
+  );
+  assert.throws(
+    () => parseApiEnvironment({ ...valid, BOT_DATA_KEY: key, BOT_DATA_PORT: '0' }),
+    /BOT_DATA_PORT/,
+  );
+  try {
+    parseApiEnvironment({ ...valid, BOT_DATA_KEY: 'short-secret-value' });
+  } catch (error) {
+    assert.ok(!String(error).includes('short-secret-value'));
+  }
+});
+
 test('queue connections distinguish bounded HTTP calls from persistent workers', () => {
   const producer = redisConnectionOptions('rediss://worker:abc%21@localhost:6380/2', 'producer');
   assert.deepEqual(producer, {
