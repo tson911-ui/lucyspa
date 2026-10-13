@@ -25,6 +25,39 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* v2 type roles (DESIGN.md 6.3; the values are tokens in tokens.css). The frame reads as body text: 17 px / 1.6, weight 400. Headings are
+   600 and never tighter than 1.2, because stacked Vietnamese marks (for example "Ệ", "Ở") clip below that; a class that sets its own size
+   and line height wins (`:where` keeps these defaults at zero specificity), so nothing here fights a page. */
+[data-ui='v2'] {
+  color: var(--ls-text);
+  font-family: var(--ls-font-sans);
+  font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-body);
+  line-height: var(--ls-lh-body);
+}
+
+:where([data-ui='v2']) :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--ls-font-display);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-title);
+  text-wrap: balance;
+}
+
+:where([data-ui='v2']) h1 {
+  font-size: var(--ls-type-title-xl);
+  line-height: var(--ls-lh-title-xl);
+  letter-spacing: var(--ls-tracking-display);
+}
+
+:where([data-ui='v2']) h2 {
+  font-size: var(--ls-type-title);
+}
+
+:where([data-ui='v2']) :is(h3, h4, h5, h6) {
+  font-size: var(--ls-type-heading);
+  line-height: var(--ls-lh-heading);
+}
+
 a {
   color: inherit;
 }

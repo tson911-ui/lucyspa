@@ -7,28 +7,33 @@
 /* ---------- the page ---------- */
 .ls-site {
   font-family: var(--ls-font-sans);
-  /* A soft wash from the page colour to a warmer sand and back: the page is never one flat colour. */
-  background: linear-gradient(180deg, var(--ls-bg-page), var(--ls-c-sand) 60%, var(--ls-bg-page));
+  /* DESIGN.md 6.5: no gradient in the base UI; the page is the base band. */
+  background: var(--ls-bg-page);
 }
 
-/* Titles: Fraunces at weight 400 with a little negative tracking (large sizes only), lining figures. */
+/* Titles: Be Vietnam Pro 600 (DESIGN.md 6.3). The display and page titles carry -0.01em; every other title has no tracking. */
 .ls-site-display,
 .ls-h1-display,
+.ls-site .ls-page-title {
+  letter-spacing: var(--ls-tracking-display);
+}
+
 .ls-site-h2,
 .ls-site-h2-sub,
 .ls-site-h3,
-.ls-site .ls-page-title,
 .ls-site .ls-list-section-title,
 .ls-site .ls-form-section-title,
 .ls-site .ls-card-title {
-  letter-spacing: -0.015em;
+  letter-spacing: 0;
 }
 
 .ls-site-h3,
+.ls-site .ls-page-title,
 .ls-site .ls-card-title,
+.ls-site .ls-dialog-title,
+.ls-site .ls-list-section-title,
 .ls-site .ls-form-section-title {
-  font-weight: 500;
-  letter-spacing: -0.005em;
+  font-weight: var(--ls-weight-title);
 }
 
 .ls-lead {
@@ -133,6 +138,8 @@
 
 .ls-band-surface {
   --ls-wave-fill: var(--ls-c-rose);
+  /* A card takes the opposite of its container (DESIGN.md 6.1): on this alternate band it is the other step. */
+  --ls-bg-surface: var(--ls-bg-surface-alt);
 }
 
 .ls-site-footer {
@@ -183,7 +190,8 @@
 
 .ls-hero-title-2 {
   color: var(--ls-brand);
-  font-style: italic;
+  /* One family without an italic face (DESIGN.md 6.3): the second line is set apart by the accent color alone. */
+  font-style: normal;
 }
 
 @media (min-width: 1024px) {
@@ -361,7 +369,7 @@ html[data-ls-motion='reduced'] .ls-hero-ring {
 .ls-pebble[data-tone='sage'] {
   border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble-tight) var(--ls-radius-pebble)
     var(--ls-radius-pebble);
-  background: var(--ls-c-sage);
+  background: var(--ls-bg-surface);
   color: var(--ls-c-sage-ink);
   --ls-text: var(--ls-c-sage-ink);
   --ls-text-muted: var(--ls-c-sage-ink);
@@ -375,7 +383,7 @@ html[data-ls-motion='reduced'] .ls-hero-ring {
 .ls-pebble[data-tone='sand'] {
   border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble) var(--ls-radius-pebble-tight)
     var(--ls-radius-pebble);
-  background: var(--ls-c-sand);
+  background: var(--ls-bg-surface);
 }
 
 .ls-pebble .ls-group-head {
@@ -384,9 +392,9 @@ html[data-ls-motion='reduced'] .ls-hero-ring {
 
 .ls-pebble .ls-site-h2-sub {
   font-size: var(--ls-type-sub);
-  font-weight: 500;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-sub);
+  letter-spacing: 0;
 }
 
 .ls-pebble-meta {
@@ -498,7 +506,7 @@ html[data-ls-motion='reduced'] .ls-hero-ring {
   font-size: var(--ls-type-feature);
   font-weight: var(--ls-weight-title);
   line-height: var(--ls-lh-section);
-  letter-spacing: -0.015em;
+  letter-spacing: var(--ls-tracking-display);
   text-wrap: balance;
 }
 

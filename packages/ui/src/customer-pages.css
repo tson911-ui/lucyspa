@@ -13,7 +13,7 @@
 }
 
 .ls-svc-section:nth-of-type(4n + 2) {
-  --ls-pebble-bg: var(--ls-c-sage);
+  --ls-pebble-bg: var(--ls-bg-surface);
   --ls-text: var(--ls-c-sage-ink);
   --ls-text-muted: var(--ls-c-sage-ink);
   --ls-brand: var(--ls-c-sage-ink);
@@ -27,7 +27,7 @@
 }
 
 .ls-svc-section:nth-of-type(4n) {
-  --ls-pebble-bg: var(--ls-c-sand);
+  --ls-pebble-bg: var(--ls-bg-surface);
   border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble) var(--ls-radius-pebble-tight)
     var(--ls-radius-pebble);
 }
@@ -126,7 +126,7 @@
 }
 
 .ls-booking-step-title {
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 /* Tables and tiers are cards too: the same large radius as every other surface of the customer pages. */

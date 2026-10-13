@@ -1,41 +1,16 @@
 /* What is left of the customer site tokens of direction C, "Ấm áp thư giãn" (Owner choice 2026-10-10), scoped to `.ls-site` (the public pages, the member area
-   and the sign-in pages). DESIGN.md (Owner, 2026-10-14) replaced direction C: the palette, radius steps and shadows are the v2 scope of
-   tokens.css now. Only the faces, the type scale, the pebble shapes, the footer and offer colours and the rhythm steps remain here, until C9-C16 retire them page by page and C18
+   and the sign-in pages). DESIGN.md (Owner, 2026-10-14) replaced direction C: the palette, faces, radius steps, shadows and type scale are the v2 scope of
+   tokens.css now. Only the pebble shapes, the footer and offer colours and the rhythm steps remain here, until C9-C16 retire them page by page and C18
    deletes the file's dead rules. The two dark blocks (the toggle and the system preference) stay identical. The holiday themes set --ls-season-* and
    --ls-art-* only, so they are never touched. */
 /* ---------- tokens: light ---------- */
 .ls-site {
-  --ls-font-sans:
-    var(--font-nunito-sans, var(--font-be-vietnam-pro)), system-ui, 'Segoe UI', Roboto, Arial,
-    sans-serif;
-  --ls-font-display:
-    var(--font-fraunces, var(--font-playfair-display)), Georgia, 'Times New Roman', serif;
-
-  /* Colors, shadows and the radius steps moved to the v2 scope of tokens.css (DESIGN.md 6; `data-ui="v2"` is on this frame). */
+  /* Colors, shadows, the radius steps, the faces and the type scale moved to the v2 scope of tokens.css (DESIGN.md 6; `data-ui="v2"` is
+     on this frame). */
 
   /* Soft shapes: pebbles have two big corners and one small, never a sharp one. */
   --ls-radius-pebble: 3rem;
   --ls-radius-pebble-tight: 0.75rem;
-
-  /* The type scale (one scale for every customer page): larger and calmer than before. */
-  --ls-type-hero: clamp(2.75rem, 1.35rem + 5.1vw, 5.5rem);
-  --ls-lh-hero: 1.05;
-  --ls-type-page: clamp(2.25rem, 1.55rem + 2.5vw, 3.5rem);
-  --ls-lh-page: 1.1;
-  --ls-type-section: clamp(1.75rem, 1.25rem + 2vw, 2.75rem);
-  --ls-type-feature: clamp(2rem, 1.3rem + 2.9vw, 3.75rem);
-  --ls-lh-section: 1.1;
-  --ls-type-sub: clamp(1.5rem, 1.25rem + 1vw, 2rem);
-  --ls-lh-sub: 1.2;
-  --ls-type-card: 1.25rem;
-  --ls-lh-card: 1.3;
-  --ls-type-price: 1.25rem;
-  --ls-type-lead: 1.125rem;
-  --ls-lh-lead: 1.6;
-  --ls-type-body: 1rem;
-  --ls-lh-body: 1.6;
-  --ls-type-small: 0.875rem;
-  --ls-lh-small: 1.5;
 
   /* Direction C's own tokens. The pastel pebble colors and the photo-slot gradient are now the neutral band and ink of the v2 scope
      (DESIGN.md 6), so they follow the theme without a dark value; C10-C16 retire the tokens with the pages that read them. */

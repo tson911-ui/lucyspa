@@ -43,9 +43,9 @@ a:focus-visible {
   flex: none;
 }
 
-/* Legacy global h1 (staff pages and the member area still inherit it); the public site sets its own heading
-   classes, so nothing here leaks into the new pages. */
-h1 {
+/* Legacy global h1 (the staff pages still inherit it); the public site sets its own heading classes. A heading inside a v2 frame
+   (data-ui="v2", DESIGN.md 6.3) takes the v2 roles of base.css instead; `:where` keeps this rule at its old specificity. */
+h1:where(:not([data-ui='v2'] h1)) {
   margin: 0;
   color: var(--ls-brand);
   font-family: var(--lucy-font-display);

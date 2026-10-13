@@ -32,21 +32,25 @@ Status values: `todo` / `done` (with commit hash).
 
 ### Session 1
 
-- **C1: before baseline (S).** Status: done.
+- **C1: before baseline (S).** Status: done (312dc3e).
   Capture current-look screenshots and the DOM audit for every group 1 page, in all states. Add the page list to
   `uxui-screens`/`uxui-audit-pages.json` and write down the scratch-DB seed recipe.
   Verify: the images are opened and kept in `.local/uxui-screens/before/`. No app code.
 
-- **C2: token v2 scope (L).** Status: done.
+- **C2: token v2 scope (L).** Status: done (7e05d0e).
   Add the v2 blocks to `tokens.css` and set `data-ui="v2"` on the customer frame. The blocks cover: light, and dark declared twice
   (identical); the preview scope; `--ls-bg-pressed`, `--ls-nav-hover-bg`, `--ls-dur-hero`; shadows set to none; radius 8/18/pill; the
   `data-density` hook. Also settle the portal question. Update `tokens.test.ts`, `customer-tokens.test.ts` and the ratchet baseline.
   Verify: the contrast ratios from DESIGN.md section 6 are asserted in tests, and the season layer renders as before.
 
-- **C3: Be Vietnam Pro and type roles (M).** Status: todo.
+- **C3: Be Vietnam Pro and type roles (M).** Status: done.
   In `site-fonts.ts`, replace Fraunces and Nunito with Be Vietnam Pro (400/500/600, vietnamese subset) on the customer frame. Set the
   section 6.3 type roles in `base.css` (heading line height at least 1.2). Make the wordmark 600 weight, typeface only.
   Verify: Vietnamese stacked marks are not clipped, and text holds at 130% and 200%.
+  As built: `site-fonts.ts` is unchanged, because its Fraunces and Nunito variables sit on the root `<html>` and the staff screens read them
+  until groups 2 and 3 (the plan's own shared-CSS rule). Be Vietnam Pro is already loaded at the root, so the customer frame reads it
+  through the v2 tokens (`--ls-font-sans`, `--ls-font-display`, the role sizes). The roles live in `tokens.css`; `base.css` carries the
+  element defaults; `customer.css` follows the tokens.
 
 ### Session 2
 
