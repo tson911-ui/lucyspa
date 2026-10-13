@@ -2,19 +2,20 @@
 
 Dành cho Owner, không cần rành kỹ thuật. Chỉ có **MỘT khối lệnh** dưới đây. Mở cửa sổ terminal web của iNET đã đăng nhập vào máy chủ, **chép toàn bộ khối** (từ dấu `(` ở dòng đầu đến dấu `)` ở dòng cuối) và dán vào, rồi nhấn Enter. Khối tự kiểm tra từng bước; **khác mong đợi ở bất kỳ chỗ nào là nó in `DUNG LAI` và tự dừng**. Khi thấy `DUNG LAI`: **không chạy lại**, chụp màn hình từ dòng `DUNG LAI` trở lên và gửi cho Claude. Claude **không** đụng tới máy chủ; chỉ Owner chạy lệnh.
 
-**Bản sẽ cài:** commit `bcd7bb68eb118de4de2667f00e38e8500a5e3140`, đã push lên `main`. Các commit tài liệu đẩy sau đó (kể cả commit của tệp này) không đổi mã chạy.
+**Bản sẽ cài:** commit `0e60254d28940077e78eb5016b82903ed59d810e`, đã push lên `main`. Các commit tài liệu đẩy sau đó (kể cả commit của tệp này) không đổi mã chạy.
 **Bản đang chạy:** `c6b85ecc99e2636c459b35cc1a2240be89142a5a` (**127 migration, 79 quyền**).
 **Cơ sở dữ liệu:** từ 127 lên **134 migration**, chỉ **thêm**: bảng `chat_callback_requests` (yêu cầu gọi lại), `ai_seo_drafts` (bản nháp mô tả tìm kiếm), `ai_assistant_questions` (nhật ký câu hỏi của trợ lý, chữ giữ 30 ngày rồi xóa), `ai_customer_briefs` (bộ nhớ đệm thẻ khách, xóa sau 7 ngày kể từ ngày làm dịch vụ); 8 cột mới ở `ai_settings` (công tắc chat, mô tả tìm kiếm, trợ lý, thẻ khách, trần chat 300 tin mỗi ngày, mô hình từng tính năng); 4 cột mô tả tìm kiếm ở `services` và `website_shop_info`; hai giá trị mới được phép ở nhật ký chi tiêu (`REPAIRED`, `REPAIR_FAILED`: chi phí sửa bản nháp tách riêng) và ở cách duyệt hàng loạt (`ALL`); loại thông báo mới "yêu cầu gọi lại". **Không đổi chữ, giá, tồn kho hay tiền nào.**
 **Quyền:** 79 → **82**: `MANAGE_CHAT_REQUESTS` (xử lý yêu cầu gọi lại), `USE_AI_ASSISTANT` (hỏi trợ lý báo cáo), `VIEW_CUSTOMER_BRIEF` (xem thẻ khách, theo chi nhánh). **Không cấp cho ai** (chỉ Owner có sẵn mọi quyền).
 **Mọi tính năng mới TẮT sau khi cài** (công tắc ở **Cài đặt AI**, mặc định tắt): chat website, mô tả tìm kiếm, trợ lý báo cáo, thẻ khách. Trang khách **không đổi** cho đến khi bạn bật chat (cần nối n8n, xem `docs/N8N_BOT_DATA_GUIDE.md`) hoặc áp dụng một bản nháp.
 **Quy trình bản nháp viết lại sản phẩm đổi theo quyết định của Owner ngày 13/10/2026:** bản nháp được **tự sửa trước khi lưu** (sửa bằng mã, miễn phí; chỗ nào mã không sửa được thì **một** lần nhờ AI viết lại **đúng mục đó**); **lưu ý không còn chặn việc duyệt**; trong danh sách có **ô chọn từng bài, "Chọn tất cả" và nút "Duyệt các bài đã chọn"** (một lần xác nhận, có nhật ký); bản nháp **không bao giờ tự đăng**. Khối lệnh cũng **áp dụng cách sửa miễn phí cho mọi bản nháp đang chờ duyệt** và, **chỉ khi còn chỗ thật sự lỗi**, nhờ AI sửa (có tốn tiền, trong hạn mức đã đặt); nó in ra **số bài đã sửa miễn phí, số bài cần AI sửa và chi phí**.
+**Bản nháp mô tả tìm kiếm (dịch vụ, trang chủ) cũng theo quy tắc đó (Owner, 13/10/2026):** lưu ý chỉ để tham khảo, **không bao giờ chặn** nút Áp dụng.
 **Biến môi trường (`.env`):** **không bắt buộc đổi gì để cài.** Bật chat sau cần thêm `N8N_CHAT_WEBHOOK_URL` và `CHAT_WEBHOOK_SECRET` (`docs/N8N_BOT_DATA_GUIDE.md` mục D). Trợ lý báo cáo và thẻ khách dùng **khóa Anthropic đã có** trong `.env`.
 **Mới về hạ tầng:** không có thư viện mới, không có tiến trình pm2 mới, không đổi nginx. Khối lệnh chạy **một lệnh một lần** của worker (`ai-fix-pending`).
 **Thời gian:** khoảng 25 phút. Trong lúc áp migration API và worker **dừng khoảng 1 đến 2 phút**: POS tạm gián đoạn; báo nhân viên trước.
 
 ## Trước khi dán
 
-- Trên GitHub, tab **Actions**, commit `bcd7bb68eb118de4de2667f00e38e8500a5e3140` có dấu **xanh**. Đỏ hoặc đang chạy: **đừng làm**.
+- Trên GitHub, tab **Actions**, commit `0e60254d28940077e78eb5016b82903ed59d810e` có dấu **xanh**. Đỏ hoặc đang chạy: **đừng làm**.
 - Trang **Viết lại nội dung**: không có dòng "Đang chờ" hoặc "Đang viết" và lần chạy gần nhất không ở trạng thái đang chạy. Nếu còn, bấm **Tạm dừng** rồi **Hủy** lần chạy đó, hoặc đợi xong.
 - **Trong lúc khối chạy, không bấm Duyệt hay Áp dụng** ở bất cứ đâu (khối so chữ của sản phẩm trước và sau).
 - Báo nhân viên thu tiền ở quầy: tạm dừng khoảng 5 phút.
@@ -25,7 +26,7 @@ Dành cho Owner, không cần rành kỹ thuật. Chỉ có **MỘT khối lện
 (
 set -u
 cd /opt/lucyspa || { echo "DUNG LAI: khong co thu muc /opt/lucyspa"; exit 1; }
-NEW=bcd7bb68eb118de4de2667f00e38e8500a5e3140
+NEW=0e60254d28940077e78eb5016b82903ed59d810e
 OLD=c6b85ecc99e2636c459b35cc1a2240be89142a5a
 DB=lucy_spa_dev
 SCRATCH=lucy_spa_rehearsal_scratch
@@ -108,6 +109,7 @@ pnpm build || dung "pnpm build loi (neu trang web bao loi: xem phan Quay lai)"
 expect "ban moi co tro ly bao cao" "$(grep -c "assistant.v1" packages/server/dist/ai/assistant.js)" "1"
 expect "ban moi co the khach" "$(grep -c "CUSTOMER_BRIEF_VIEWED" apps/api/dist/brief/brief.core.js)" "1"
 expect "ban moi co lenh sua ban nhap dang cho" "$(test -f apps/worker/dist/ai-fix-pending.js && echo co)" "co"
+expect "ban moi: ban nhap mo ta tim kiem khong con bi chan boi luu y" "$(grep -c "acknowledgeWarnings" apps/api/dist/ai/ai-seo.core.js)" "0"
 expect "ban moi co buoc sua bang ma truoc khi luu" "$(grep -c "fixDraft" packages/server/dist/ai/rewrite-engine.js | awk '{print ($1>0)?"co":"khong"}')" "co"
 echo "=== 3. Dien tap tren ban khoi phuc cua co so du lieu that ==="
 docker exec lucy-spa-postgres-1 sh -c "dropdb -U \"\$POSTGRES_USER\" --if-exists $SCRATCH && createdb -U \"\$POSTGRES_USER\" $SCRATCH" || dung "khong tao duoc co so du lieu tam"

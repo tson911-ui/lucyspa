@@ -16,7 +16,7 @@ Cần có: khối lệnh trong `docs/DEPLOY_CLAUDE_WAVES_B_C_D.md` đã chạy x
 ## 2. Mô tả tìm kiếm và bản tiếng Anh cho dịch vụ, trang chủ (bật "Mô tả tìm kiếm" trong Cài đặt AI)
 
 7. **Cài đặt AI:** bật công tắc **Mô tả tìm kiếm và tiếng Anh** (cần AI đang bật và đã nhập tỷ giá). **Danh mục → Mô tả tìm kiếm → Tạo bản nháp**: chọn "Mọi dịch vụ chưa có mô tả tìm kiếm", xem **chi phí tối đa**, tạo.
-8. Mở một bản nháp: **mô tả tiếng Việt** (≤ 155 ký tự), **mô tả tiếng Anh**, và (nếu dịch vụ chưa có tiếng Anh) **văn bản tiếng Anh**. Chữ tiếng Việt của tiệm **không** bị đổi. Sửa, **Áp dụng**. Mở trang dịch vụ ở trang khách: thẻ mô tả khi chia sẻ/tìm kiếm là chữ vừa áp dụng. Trang **tiếng Anh** của dịch vụ chỉ được Google lập chỉ mục **sau khi** bản tiếng Anh được áp dụng.
+8. Mở một bản nháp: **mô tả tiếng Việt** (≤ 155 ký tự), **mô tả tiếng Anh**, và (nếu dịch vụ chưa có tiếng Anh) **văn bản tiếng Anh**. Chữ tiếng Việt của tiệm **không** bị đổi. Sửa, **Áp dụng** (khung **Lưu ý của hệ thống** chỉ để tham khảo, **không** khóa nút Áp dụng). Mở trang dịch vụ ở trang khách: thẻ mô tả khi chia sẻ/tìm kiếm là chữ vừa áp dụng. Trang **tiếng Anh** của dịch vụ chỉ được Google lập chỉ mục **sau khi** bản tiếng Anh được áp dụng.
 
 ## 3. Trợ lý hỏi đáp về báo cáo (bật "Trợ lý hỏi đáp về báo cáo", cấp quyền "Dùng trợ lý AI")
 
@@ -29,11 +29,11 @@ Cần có: khối lệnh trong `docs/DEPLOY_CLAUDE_WAVES_B_C_D.md` đã chạy x
 ## 4. Chat trên website (cần nối n8n trước: `docs/N8N_BOT_DATA_GUIDE.md` mục D)
 
 14. Làm đủ mục D của hướng dẫn n8n (webhook `lucy-chat`, hai biến `.env`, khởi động lại API). **Cài đặt AI:** bật **Chat với Lucy trên website**, trần **300 tin mỗi ngày**. **Vai trò:** cấp **Xử lý yêu cầu gọi lại** cho người sẽ gọi khách.
-15. Mở trang chủ (cửa sổ ẩn danh), bấm nút liên hệ nổi → **Chat với Lucy**. Đọc dòng chào (**bản tạm, cần luật sư xem trước khi bật thật cho khách**). Hỏi 5 câu: giá một dịch vụ, giờ mở cửa, khuyến mãi, một sản phẩm, giờ trống ngày mai. **Mong đợi:** trả lời đúng số liệu của tiệm; khi bot đưa giờ cụ thể có nút **Đặt lịch giờ này** mở đúng trang đặt lịch (`/vi/account/book?...`), khách đăng nhập rồi tự xác nhận.
+15. Mở trang chủ (cửa sổ ẩn danh), bấm nút liên hệ nổi → **Chat với Lucy**. Đọc dòng chào (**bản tạm, chỉ thử nội bộ; luật sư xem trước Phase 10**). Hỏi 5 câu: giá một dịch vụ, giờ mở cửa, khuyến mãi, một sản phẩm, giờ trống ngày mai. **Mong đợi:** trả lời đúng số liệu của tiệm; khi bot đưa giờ cụ thể có nút **Đặt lịch giờ này** mở đúng trang đặt lịch (`/vi/account/book?...`), khách đăng nhập rồi tự xác nhận.
 16. **Thử bot hỏng:** tắt workflow `Lucy Chat Web` trong n8n một phút, gửi tin. **Mong đợi:** khung hiện **"Để lại số điện thoại, tiệm sẽ gọi lại"**. Điền số thật của bạn, tích đồng ý, gửi. **Quản trị/Vận hành → Yêu cầu gọi lại:** thấy yêu cầu mới (người có quyền còn nhận thông báo, **không** hiện số trong thông báo). Bấm **Đã gọi**, rồi **Đóng yêu cầu**. Bật lại workflow.
 17. Gửi 9 tin liên tiếp trong 1 phút: từ tin thứ 9 khung báo "bạn gửi hơi nhiều, đợi một lát".
 
-## 5. Thẻ khách và gợi ý mỹ phẩm cho KTV (**chỉ thử sau khi luật sư xem**; tính năng tắt cho đến lúc đó)
+## 5. Thẻ khách và gợi ý mỹ phẩm cho KTV (**chỉ thử nội bộ**; luật sư sẽ xem lời chào chat và việc dùng dữ liệu trước Phase 10, đã ghi vào danh sách Phase 10)
 
 18. Khi đã sẵn sàng: **Cài đặt AI:** bật **Tóm tắt khách, gợi ý sản phẩm**. **Vai trò:** cấp **Xem thông tin khách** cho một KTV **theo chi nhánh** của KTV đó.
 19. Đăng nhập KTV có một khách đã đến từ trước (khách có tài khoản, có ghi chú của nhân viên). **Dịch vụ của tôi:** ở thẻ dịch vụ của khách, menu ⋮ → **Thông tin khách**. **Mong đợi:** ngăn bên phải: **Từ các lượt trước** (số lượt, lần gần nhất, người phục vụ lần trước, khoảng cách giữa các lần, dịch vụ hay dùng, mỹ phẩm đã mua), **Ghi chú của nhân viên** (2 đến 3 dòng chỉ nhắc lại điều nhân viên đã ghi, ghi rõ do AI viết) và **Gợi ý nói chuyện về mỹ phẩm** (tối đa 3, chỉ để tham khảo). Không có tên hay số điện thoại khách.
@@ -44,4 +44,4 @@ Cần có: khối lệnh trong `docs/DEPLOY_CLAUDE_WAVES_B_C_D.md` đã chạy x
 - Ba con số của bước 1 (miễn phí / AI / chi phí) và ảnh một bản nháp có "Đã tự sửa".
 - Câu trả lời của trợ lý ở bước 10 và 11 (đúng/sai số, có trả lời quá phạm vi không).
 - Kết quả bước 15 và 16 (chat đúng không, mẫu để lại số hiện đúng lúc không).
-- Ý kiến của luật sư về lời chào chat và về thẻ khách; và **câu hỏi mở**: bản nháp mô tả tìm kiếm (mục 2) có nên **không bị chặn bởi lưu ý** như bản viết lại sản phẩm không (hiện vẫn chặn lỗi nặng).
+- Ý kiến của luật sư về lời chào chat và về thẻ khách.
