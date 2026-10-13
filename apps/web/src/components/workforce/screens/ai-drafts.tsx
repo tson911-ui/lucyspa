@@ -5,6 +5,7 @@ import {
   AI_RUN_LIMITS,
   type AiApproveAllPreview,
   type AiApproveAllResponse,
+  type AiApproveAllSkipReason,
   type AiDraftList,
   type AiRunList,
   type AiDraftRow,
@@ -32,6 +33,7 @@ import {
   draftHref,
   errorKey,
   normalizeAiDraftList,
+  skipReasonsLine,
   statusTone,
 } from '../../../lib/workforce/ai-drafts';
 import { confirmError } from '../../../lib/workforce/form-labels';
@@ -102,6 +104,7 @@ function AiDraftsPage() {
   const [picked, setPicked] = useState<Map<string, number>>(new Map());
   const [selectingAll, setSelectingAll] = useState(false);
   const [selectFailure, setSelectFailure] = useState<string | null>(null);
+  const [selectNote, setSelectNote] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const runData = runs.data;
@@ -132,9 +135,17 @@ function AiDraftsPage() {
   async function selectAll() {
     setSelectingAll(true);
     setSelectFailure(null);
+    setSelectNote(null);
     try {
       const all = await api.get<AiApproveAllPreview>(`${BASE}/approve-all`);
       setPicked(new Map(all.items.map((item) => [item.id, item.rowVersion])));
+      // What the server will not take, said up front (it decides again at the confirm).
+      const left = skipReasonsLine(text.select, { STALE: all.changed, EMPTY_FIELD: all.blocked });
+      if (left !== null) {
+        setSelectNote(
+          fill(text.select.notPicked, { count: String(all.changed + all.blocked), reasons: left }),
+        );
+      }
     } catch {
       setSelectFailure(text.select.loadFailed);
     } finally {
@@ -147,6 +158,7 @@ function AiDraftsPage() {
     const items = [...picked].map(([id, rowVersion]) => ({ id, rowVersion }));
     let applied = 0;
     let skipped = 0;
+    const reasons: Partial<Record<AiApproveAllSkipReason, number>> = {};
     setProgress({ done: 0, total: items.length });
     try {
       for (let from = 0; from < items.length; from += AI_RUN_LIMITS.approveBatchMax) {
@@ -156,6 +168,8 @@ function AiDraftsPage() {
         });
         applied += result.applied;
         skipped += result.skipped.length;
+        for (const entry of result.skipped)
+          reasons[entry.reason] = (reasons[entry.reason] ?? 0) + 1;
         setProgress({ done: Math.min(from + batch.length, items.length), total: items.length });
       }
     } catch (error) {
@@ -167,7 +181,12 @@ function AiDraftsPage() {
     setPicked(new Map());
     notify(
       fill(text.select.done, { applied: String(applied) }) +
-        (skipped > 0 ? fill(text.select.doneSkipped, { skipped: String(skipped) }) : ''),
+        (skipped > 0
+          ? fill(text.select.doneSkipped, {
+              skipped: String(skipped),
+              reasons: skipReasonsLine(text.select, reasons) ?? '',
+            })
+          : ''),
     );
     await reloadAll();
   }
@@ -347,6 +366,7 @@ function AiDraftsPage() {
           />
         )}
         {selectFailure ? <Notice tone="error">{selectFailure}</Notice> : null}
+        {selectNote ? <Notice tone="info">{selectNote}</Notice> : null}
         {runData && !canSelect && pending > 0 && mayApprove && singles < 3 ? (
           <Notice tone="info">{fill(text.select.needSingles, { done: String(singles) })}</Notice>
         ) : null}

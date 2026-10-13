@@ -123,10 +123,9 @@ test(
           seoTitleVi:
             'Sữa rửa mặt cấp ẩm chuyên sâu Gongjinhyang The Whoo 180ml cho da khô | Lucy Spa',
         };
-        const hopeless = {
-          ...CLEAN,
-          descriptionVi: 'Minh Thư (35 tuổi) nói rất thích. Cam kết hiệu quả vĩnh viễn.',
-        };
+        // Every sentence is a comment or a claim: the free fixes cannot drop it without leaving the field empty (they never do that).
+        const HOPELESS_TEXT = 'Minh Thư (35 tuổi) nói rất thích. Cam kết hiệu quả vĩnh viễn.';
+        const hopeless = { ...CLEAN, descriptionVi: HOPELESS_TEXT };
         const fixable = await make(dirty);
         const clean = await make(CLEAN);
         const editedDirty = await make({ ...dirty }, true);
@@ -141,7 +140,7 @@ test(
             assert.equal(report.pending, 4);
             assert.equal(report.skippedEdited, 1);
             assert.equal(report.skippedBusy, 0);
-            assert.equal(report.fixedFree, 2);
+            assert.equal(report.fixedFree, 1);
             assert.equal(report.alreadyClean, 1);
             assert.equal(report.needRepair, 1);
             assert.equal(report.repairSkipped, 1);
@@ -167,11 +166,17 @@ test(
             );
             assert.equal(kept.row_version, 1);
             const hopelessNow = await read(needsRepair);
-            assert.equal(hopelessNow.draft['descriptionVi'], '');
-            assert.deepEqual(
-              hopelessNow.warnings.map((warning) => warning.code),
-              ['EMPTY_FIELD'],
+            assert.equal(
+              hopelessNow.draft['descriptionVi'],
+              HOPELESS_TEXT,
+              'a required field is never emptied',
             );
+            assert.ok(hopelessNow.warnings.some((warning) => warning.code === 'TESTIMONIAL'));
+            assert.ok(!hopelessNow.warnings.some((warning) => warning.code === 'EMPTY_FIELD'));
+            assert.equal(report.blankedDrafts, 0);
+            assert.equal(report.notesRefreshed, 1, 'the hopeless draft had no notes stored');
+            assert.ok((report.needRepairByCode['TESTIMONIAL'] ?? 0) >= 1);
+            assert.equal(report.needRepairAfter, 1);
             assert.equal(before.cost_micro_usd, hopelessNow.cost_micro_usd);
             assert.equal(
               await tx.product.count({ where: { contentOrigin: 'SUPPLIER_COPY' } }),
@@ -220,6 +225,104 @@ test(
             assert.equal(again.needRepair, 0);
             assert.equal(again.repairCalls, 0);
             assert.equal(fake.requests.length, 1);
+            assert.equal(report.needRepairAfter, 0);
+            assert.deepEqual(report.remainingByCode, {});
+          },
+        );
+
+        await suite.test(
+          'stored notes are brought up to date without a change to the draft; a product named with a banned word is not flagged or emptied',
+          async () => {
+            const stale = await make(CLEAN);
+            await tx.$executeRawUnsafe(
+              `UPDATE ai_items SET warnings = '[{"code":"TESTIMONIAL","field":"descriptionVi"}]'::jsonb, row_version = row_version + 1 WHERE id = $1::uuid`,
+              stale,
+            );
+            // The product is named with words that only look like claims: manicure, semi-permanent, 100%.
+            const named = await make({
+              ...CLEAN,
+              nameEn: 'The Whoo Manicure Set Semi-permanent Gel 100% Pure 180ml',
+              seoTitleEn: 'The Whoo Manicure Set 180ml | Lucy Spa',
+            });
+            await tx.$executeRawUnsafe(
+              `UPDATE ai_items SET base_snapshot = jsonb_set(base_snapshot, '{nameVi}', '"The Whoo Manicure Set Semi-permanent Gel 100% Pure 180ml"'), row_version = row_version + 1 WHERE id = $1::uuid`,
+              named,
+            );
+            const before = await read(stale);
+            const report = await fixPendingDrafts(tx, client, { repair: false });
+            assert.equal(report.notesRefreshed, 1);
+            assert.equal(report.fixedFree, 0);
+            assert.equal(report.needRepair, 0);
+            const after = await read(stale);
+            assert.deepEqual(after.draft, before.draft, 'the draft text is untouched');
+            assert.deepEqual(after.warnings, []);
+            assert.equal(after.row_version, before.row_version + 1);
+            const keptName = await read(named);
+            assert.equal(
+              keptName.draft['nameEn'],
+              'The Whoo Manicure Set Semi-permanent Gel 100% Pure 180ml',
+            );
+            assert.deepEqual(keptName.warnings, []);
+          },
+        );
+
+        await suite.test(
+          'a blank required field is counted, repaired for that field only, and no longer blank afterwards',
+          async () => {
+            const blank = await make({ ...CLEAN, nameEn: '' });
+            fake.enqueue({
+              kind: 'message',
+              text: JSON.stringify({ name_en: 'The Whoo Gongjinhyang Cleansing Foam 180ml' }),
+              usage: { input: 1200, output: 300 },
+              requestId: 'req_blank_repair',
+            });
+            const free = await fixPendingDrafts(tx, client, { repair: false });
+            assert.equal(free.blankedDrafts, 1);
+            assert.equal(free.needRepairByCode['EMPTY_FIELD'], 1);
+            const sent = fake.requests.length;
+            const report = await fixPendingDrafts(tx, client, { repair: true });
+            assert.equal(report.repairCalls, 1);
+            assert.equal(fake.requests.length, sent + 1);
+            assert.equal(report.blankedDrafts, 1, 'counted at the start of the run');
+            assert.equal(report.needRepairAfter, 0);
+            assert.equal(
+              (await read(blank)).draft['nameEn'],
+              'The Whoo Gongjinhyang Cleansing Foam 180ml',
+            );
+            assert.equal((await fixPendingDrafts(tx, client, { repair: false })).blankedDrafts, 0);
+          },
+        );
+
+        await suite.test(
+          'the repair stops before a call that could pass the spending limit; what is left is counted per code',
+          async () => {
+            await make({ ...CLEAN, descriptionVi: HOPELESS_TEXT });
+            await make({ ...CLEAN, descriptionVi: HOPELESS_TEXT });
+            const sent = fake.requests.length;
+            const capped = await fixPendingDrafts(tx, client, { repair: true, maxSpendVnd: 1 });
+            assert.equal(capped.stoppedByBudget, true);
+            assert.equal(capped.repairCalls, 0);
+            assert.equal(capped.repairSkipped, 2);
+            assert.equal(fake.requests.length, sent, 'no call was made');
+            assert.equal(capped.needRepairAfter, 2);
+            assert.ok((capped.remainingByCode['TESTIMONIAL'] ?? 0) >= 2);
+            // A limit that fits both calls: both are made. The answers still hold a claim, so the codes stay in the report.
+            for (const requestId of ['req_cap_1', 'req_cap_2']) {
+              fake.enqueue({
+                kind: 'message',
+                text: JSON.stringify({ description_vi: 'Khách Lan (40 tuổi) nói dùng rất thích.' }),
+                usage: { input: 1200, output: 200 },
+                requestId,
+              });
+            }
+            const open = await fixPendingDrafts(tx, client, {
+              repair: true,
+              maxSpendVnd: 1_000_000,
+            });
+            assert.equal(open.stoppedByBudget, false);
+            assert.equal(open.repairCalls, 2);
+            assert.equal(open.needRepairAfter, 2);
+            assert.ok((open.remainingByCode['TESTIMONIAL'] ?? 0) >= 2);
           },
         );
       });

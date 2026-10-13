@@ -1,5 +1,6 @@
 import {
   AI_DRAFT_STATUSES,
+  type AiApproveAllSkipReason,
   type AiDraftContent,
   type AiDraftDetail,
   type AiDraftEditRequest,
@@ -186,3 +187,15 @@ export function serverField(error: unknown): string | null {
 
 export const isConflict = (error: unknown): boolean =>
   Reflect.get(Object(error), 'code') === 'CONFLICT';
+
+/** "reason (n), reason (n)" for the drafts a confirm left out, most common first; null when none were left out. */
+export function skipReasonsLine(
+  select: { skipReasons: Record<AiApproveAllSkipReason, string> },
+  counts: Partial<Record<AiApproveAllSkipReason, number>>,
+): string | null {
+  const parts = (Object.entries(counts) as [AiApproveAllSkipReason, number][])
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([reason, count]) => `${select.skipReasons[reason]} (${count})`);
+  return parts.length === 0 ? null : parts.join(', ');
+}

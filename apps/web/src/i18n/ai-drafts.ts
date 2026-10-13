@@ -151,7 +151,16 @@ const vi = {
     confirm: 'Duyệt {count} bài',
     progress: 'Đang duyệt {done}/{total}…',
     done: 'Đã duyệt {applied} bài.',
-    doneSkipped: ' {skipped} bài không duyệt được vì sản phẩm đã đổi hoặc bài đã được xử lý.',
+    doneSkipped: ' Đã bỏ qua {skipped} bài: {reasons}.',
+    notPicked: 'Chưa chọn {count} bài: {reasons}.',
+    skipReasons: {
+      NOT_READY: 'bài đã được xử lý',
+      CHANGED: 'bài vừa được sửa tay',
+      STALE: 'chữ nguồn của sản phẩm đã đổi',
+      EMPTY_FIELD: 'còn trường trống',
+      TOO_LONG: 'chữ tìm kiếm quá dài',
+      REJECTED: 'danh mục từ chối ghi',
+    },
   },
   // ---------------------------------------------------------------------------------------------------------------- detail
   breadcrumbs: 'Đường dẫn',
@@ -273,6 +282,9 @@ const vi = {
   fieldErrors: {
     descriptionVi: 'Mô tả tiếng Việt quá dài hoặc có ký tự không hợp lệ.',
     descriptionEn: 'Mô tả tiếng Anh quá dài hoặc có ký tự không hợp lệ.',
+    emptyFields:
+      'Bản nháp còn trường trống (tên tiếng Anh, tiêu đề hoặc mô tả). Viết lại bản nháp hoặc điền vào rồi lưu, sau đó duyệt.',
+    tooLong: 'Tiêu đề hoặc mô tả tìm kiếm quá dài. Rút ngắn rồi lưu.',
     generic: 'Có chỗ chưa hợp lệ. Kiểm tra độ dài và ký tự rồi lưu lại.',
     regenerations: 'Đã viết lại đủ 3 lần.',
   },
@@ -428,8 +440,16 @@ const en: DraftsText = {
     confirm: 'Approve {count}',
     progress: 'Approving {done}/{total}…',
     done: 'Approved {applied} drafts.',
-    doneSkipped:
-      ' {skipped} could not be approved because the product changed or the draft was already handled.',
+    doneSkipped: ' Skipped {skipped}: {reasons}.',
+    notPicked: 'Not selected, {count}: {reasons}.',
+    skipReasons: {
+      NOT_READY: 'already handled',
+      CHANGED: 'just edited by hand',
+      STALE: 'the product source text changed',
+      EMPTY_FIELD: 'a field is empty',
+      TOO_LONG: 'a search text is too long',
+      REJECTED: 'the catalogue refused the write',
+    },
   },
   breadcrumbs: 'Breadcrumbs',
   detail: {
@@ -551,6 +571,9 @@ const en: DraftsText = {
   fieldErrors: {
     descriptionVi: 'The Vietnamese description is too long or has an invalid character.',
     descriptionEn: 'The English description is too long or has an invalid character.',
+    emptyFields:
+      'The draft has an empty field (English name, title or description). Rewrite the draft or fill it in, save, then approve.',
+    tooLong: 'A search title or description is too long. Shorten it and save.',
     generic: 'Something is not valid. Check the length and characters, then save again.',
     regenerations: 'Already rewritten 3 times.',
   },

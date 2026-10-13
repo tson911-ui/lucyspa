@@ -380,6 +380,15 @@ export interface RepairDone {
   changed: boolean;
 }
 
+/** The most one repair call can cost (what it reserves): used to keep a batch of repairs under a spending limit before any call is made. */
+export function repairMaxCost(
+  args: Pick<RepairArgs, 'input' | 'draft' | 'targets' | 'model'>,
+): bigint {
+  const user = buildRepairUserMessage(args.input, args.draft, args.targets);
+  const estimatedInput = Math.ceil((PRODUCT_REPAIR_SYSTEM.length + user.length) / 2) + 500;
+  return maxCostMicroUsd(args.model, estimatedInput, REPAIR_MAX_TOKENS);
+}
+
 export interface RepairArgs {
   item: { id: string; runId: string | null };
   model: AiModel;
@@ -407,11 +416,10 @@ export async function repairOnce(
   const settings = await loadAiSettings(database);
   if (!settings.enabled || !settings.rewriteEnabled) return null;
   const user = buildRepairUserMessage(args.input, args.draft, args.targets);
-  const estimatedInput = Math.ceil((PRODUCT_REPAIR_SYSTEM.length + user.length) / 2) + 500;
   const reservation = await reserveSpend(database, {
     feature: 'PRODUCT_REWRITE',
     itemId: args.item.id,
-    amountMicroUsd: maxCostMicroUsd(args.model, estimatedInput, REPAIR_MAX_TOKENS),
+    amountMicroUsd: repairMaxCost(args),
     settings,
     now: args.now(),
   });

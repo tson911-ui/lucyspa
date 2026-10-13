@@ -14,6 +14,7 @@ import {
   shortenTitle,
   sourceIngredients,
 } from './rewrite-fix.js';
+import { buildRepairUserMessage } from './rewrite-repair.js';
 
 const SUPPLIER = [
   'Kem dưỡng ẩm Laneige Water Bank 50ml giúp cấp nước cho da khô.',
@@ -242,7 +243,9 @@ test('a field the code cannot repair is a target for one model call; a fix that 
     options(),
   );
   assert.ok(emptied.targets.some((target) => target.field === 'descriptionVi'));
-  assert.ok(emptied.warnings.some((warning) => warning.code === 'EMPTY_FIELD'));
+  // Never emptied (Owner, 2026-10-13): the text stays as it was and is left for the repair; no EMPTY_FIELD is made.
+  assert.notEqual(emptied.draft.descriptionVi.trim(), '');
+  assert.ok(!emptied.warnings.some((warning) => warning.code === 'EMPTY_FIELD'));
   const english = fixDraft(
     withDraft({ descriptionEn: 'Kem dưỡng ẩm rất tốt cho làn da khô, thấm nhanh và dịu nhẹ.' }),
     options(),
@@ -274,4 +277,106 @@ test('the official name and the numbers are never changed by a fix', () => {
   assert.equal(result.draft.nameViSuggestion, null);
   assert.match(result.draft.nameEn, /^Laneige /);
   assert.match(result.draft.nameEn, /50ml/);
+});
+
+// ---- Owner decision 2026-10-13 (production run): whole-word phrases, official names, never blank a required field
+
+test('a banned word inside an ordinary word or inside the product\u2019s own name is not a claim', () => {
+  const named = (name: string, nameEn: string, patch: Partial<ProductRewriteDraft> = {}) =>
+    codes(
+      withDraft({
+        nameEn,
+        seoTitleEn: `${nameEn} | Lucy Spa`,
+        descriptionEn: `${nameEn}, a gentle product for daily care at home.`,
+        ...patch,
+      }),
+      { nameVi: name },
+    );
+  for (const [name, nameEn] of [
+    ['Laneige Bộ làm móng Manicure Set', 'Laneige Manicure Set'],
+    ['Laneige Pedicure Kit', 'Laneige Pedicure Kit'],
+    ['Laneige Secure Hold Spray', 'Laneige Secure Hold Spray'],
+    ['Laneige Sơn gel Semi-permanent', 'Laneige Semi-permanent Gel Polish'],
+    ['Laneige 100% Pure Argan Oil', 'Laneige 100% Pure Argan Oil'],
+  ] as const) {
+    assert.ok(
+      !named(name, nameEn).some((code) => code.startsWith('FORBIDDEN_PHRASE')),
+      `${nameEn}`,
+    );
+  }
+  // A real claim is still found, also in the plural, and also when the name merely sits next to it.
+  assert.ok(
+    codes(withDraft({ descriptionEn: 'It cures dry skin for good.' })).includes(
+      'FORBIDDEN_PHRASE@descriptionEn',
+    ),
+  );
+  assert.ok(
+    codes(withDraft({ descriptionEn: 'A permanent glow.' })).includes(
+      'FORBIDDEN_PHRASE@descriptionEn',
+    ),
+  );
+  assert.ok(
+    codes(withDraft({ descriptionEn: 'Laneige 100% Pure Argan Oil with a permanent glow.' }), {
+      nameVi: 'Laneige 100% Pure Argan Oil',
+    }).includes('FORBIDDEN_PHRASE@descriptionEn'),
+  );
+});
+
+test('a fix never empties a required field; the same draft is a fixed point and a target for the repair', () => {
+  // The only sentence of the description is a claim: before the decision it was dropped and the field left empty.
+  const claim = withDraft({ descriptionEn: 'Guaranteed permanent results.' });
+  const first = fixDraft(claim, options());
+  assert.notEqual(first.draft.descriptionEn.trim(), '');
+  assert.ok(first.targets.some((target) => target.field === 'descriptionEn'));
+  const second = fixDraft(first.draft, options());
+  assert.equal(second.fixes.length, 0, 'a second pass changes nothing');
+  assert.deepEqual(second.draft, first.draft);
+  // A section the supplier may leave out can still become empty.
+  const section = fixDraft(
+    withDraft({ sectionsVi: { ...CLEAN.sectionsVi, benefits: 'Cam kết vĩnh viễn.' } }),
+    options(),
+  );
+  assert.equal(section.draft.sectionsVi.benefits, null);
+  // Every required field, one at a time: the free pass leaves none of them empty.
+  for (const field of [
+    'descriptionVi',
+    'descriptionEn',
+    'nameEn',
+    'seoTitleEn',
+    'seoDescriptionVi',
+  ] as const) {
+    const offending = withDraft({ [field]: 'Cam kết vĩnh viễn 100%.' });
+    const fixed = fixDraft(offending, options());
+    assert.notEqual(String(fixed.draft[field]).trim(), '', field);
+  }
+});
+
+test('the repair rule for ingredients asks for a comma list, the shape the checks accept', () => {
+  const good = CLEAN;
+  assert.deepEqual(codes(good), []);
+  const sentence = withDraft({
+    sectionsVi: {
+      ...CLEAN.sectionsVi,
+      ingredients:
+        'Thành phần gồm Aqua, Glycerin, Sodium Hyaluronate, Niacinamide, Centella Asiatica Extract.',
+    },
+  });
+  assert.ok(codes(sentence).includes('INGREDIENT_ADDED@sectionsVi.ingredients'));
+  const message = buildRepairUserMessage(
+    {
+      nameVi: 'Kem dưỡng ẩm Laneige Water Bank 50ml',
+      brand: 'Laneige',
+      category: null,
+      variantLabels: [],
+      supplierText: SUPPLIER,
+      attributes: [],
+      city: 'Đà Nẵng',
+      authenticityClaimsAllowed: false,
+      instruction: null,
+    },
+    good,
+    [{ field: 'sectionsVi.ingredients', codes: ['INGREDIENT_ADDED'], details: [] }],
+  );
+  assert.match(message, /comma-separated list/);
+  assert.doesNotMatch(message, /one short sentence/);
 });

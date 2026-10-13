@@ -1,6 +1,8 @@
 # Vì sao 77 bản nháp vẫn "cần AI sửa" ngay sau khi đã sửa (chẩn đoán, 2026-10-13)
 
-Trạng thái: **chỉ đọc mã và chạy thử trên chữ giả; chưa đụng máy chủ, chưa sửa mã.** Cần Owner duyệt hướng sửa (mục 4) trước khi làm. Không chạy thêm lần sửa trả phí nào cho tới khi Owner quyết.
+Trạng thái: **Owner đã duyệt cả 5 hướng sửa (mục 4) và thêm 3 việc ngày 13/10/2026; đã làm xong, xem `docs/CLAUDE_CI_F3_REPAIR_FIXES.md`.** Chẩn đoán ban đầu: chỉ đọc mã và chạy thử trên chữ giả. Mục 3 (truy vấn) nằm trong khối lệnh của `docs/DEPLOY_CLAUDE_REPAIR_FIXES.md`, chạy trước và sau khi sửa.
+
+**Bổ sung sau khi làm (nguyên nhân của lỗi "Dữ liệu vừa được thay đổi ở nơi khác"):** cơ sở dữ liệu từ chối ghi một bản nháp có tên tiếng Anh hay tiêu đề/mô tả tìm kiếm rỗng (ràng buộc `products_names`, `products_seo_text`), lỗi đó bị gom thành "xung đột" và làm hỏng cả lượt 10 bài. Sản phẩm đã duyệt thì không thể có các trường đó rỗng; chỉ mô tả và "Phù hợp với ai" có thể rỗng (đã có lệnh sửa dữ liệu).
 
 ## 1. Số liệu cần đọc cho đúng
 

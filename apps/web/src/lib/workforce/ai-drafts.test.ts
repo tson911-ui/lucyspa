@@ -11,10 +11,12 @@ import {
   readField,
   rowsFor,
   serverField,
+  skipReasonsLine,
   statusTone,
   workingContent,
   writeField,
 } from './ai-drafts';
+import { aiDraftsDictionary } from '../../i18n/ai-drafts';
 
 const content: AiDraftContent = {
   descriptionVi: 'Mô tả tiếng Việt.',
@@ -146,4 +148,31 @@ test('status colours, error keys, server field and conflict', () => {
   assert.equal(isConflict(new Error('x')), false);
   assert.equal(rowsFor(''), 3);
   assert.equal(rowsFor('x'.repeat(2000)), 14);
+});
+
+test('the reasons a confirm left drafts out read in plain words, most common first, in both languages; no reason, no line', () => {
+  for (const locale of ['vi', 'en'] as const) {
+    const select = aiDraftsDictionary(locale).select;
+    assert.equal(skipReasonsLine(select, {}), null);
+    assert.equal(skipReasonsLine(select, { EMPTY_FIELD: 0 }), null);
+    const line = skipReasonsLine(select, { STALE: 2, EMPTY_FIELD: 5, REJECTED: 1 });
+    assert.equal(
+      line,
+      [
+        select.skipReasons.EMPTY_FIELD + ' (5)',
+        select.skipReasons.STALE + ' (2)',
+        select.skipReasons.REJECTED + ' (1)',
+      ].join(', '),
+    );
+  }
+});
+
+test('an apply refused for an empty or too long field says so plainly, never as a conflict', () => {
+  for (const locale of ['vi', 'en'] as const) {
+    const errors = aiDraftsDictionary(locale).fieldErrors as Record<string, string>;
+    assert.ok((errors['emptyFields'] ?? '').length > 20);
+    assert.ok((errors['tooLong'] ?? '').length > 10);
+  }
+  assert.equal(serverField({ code: 'VALIDATION_FAILED', field: 'emptyFields' }), 'emptyFields');
+  assert.equal(isConflict({ code: 'VALIDATION_FAILED', field: 'emptyFields' }), false);
 });

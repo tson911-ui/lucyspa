@@ -10,6 +10,7 @@ await import('../apps/api/dist/ai/ai-spend.integration.test.js');
 await import('../apps/api/dist/ai/ai-key-check.integration.test.js');
 await import('../apps/api/dist/ai/rewrite-engine.integration.test.js');
 await import('../apps/api/dist/ai/rewrite-pending.integration.test.js');
+await import('../apps/api/dist/ai/rewrite-blanks.integration.test.js');
 await import('../apps/api/dist/ai/ai-drafts.integration.test.js');
 await import('../apps/api/dist/ai/ai-runs.integration.test.js');
 await import('../apps/api/dist/ai/ai-approve-all.integration.test.js');

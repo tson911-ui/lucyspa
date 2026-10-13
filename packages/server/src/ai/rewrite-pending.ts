@@ -1,6 +1,6 @@
 import type { Prisma } from '@lucy-spa/database';
 import type { ClaudeClient } from './claude-client.js';
-import { isAiModel } from './prices.js';
+import { isAiModel, vndToMicroUsd } from './prices.js';
 import {
   parseProductRewrite,
   type DraftWarning,
@@ -8,12 +8,13 @@ import {
 } from './product-rewrite.js';
 import {
   fixOptionsOf,
+  repairMaxCost,
   repairOnce,
   rewriteInputOf,
   shopCity,
   snapshotOf,
 } from './rewrite-engine.js';
-import { fixDraft } from './rewrite-fix.js';
+import { fixDraft, readField, type FieldName } from './rewrite-fix.js';
 import { loadAiSettings, type AiDatabase } from './spend.js';
 
 /**
@@ -24,7 +25,22 @@ import { loadAiSettings, type AiDatabase } from './spend.js';
  * Safe to run again and again (a second run changes nothing), safe beside the worker and the API: a draft is locked while it is read and
  * written (`FOR UPDATE SKIP LOCKED`), its row version advances by one, and a draft a person has edited is never touched (that text is the
  * Owner's own). Nothing is published: a draft stays a draft.
+ *
+ * Owner decision 2026-10-13 (after the first production run): the stored notes of every draft are refreshed to what the checks find now
+ * (a refresh does not change the draft text), the report counts what is left per error code after the repair, and the repair
+ * can be capped in VND (`maxSpendVnd`): a call whose worst-case cost does not fit in what is left of the cap is not made.
  */
+
+/** The fields a draft must have to be applied (the catalogue refuses an empty name or search text, and an empty description would wipe the page). */
+export const REQUIRED_DRAFT_FIELDS: readonly FieldName[] = [
+  'descriptionVi',
+  'descriptionEn',
+  'nameEn',
+  'seoTitleVi',
+  'seoTitleEn',
+  'seoDescriptionVi',
+  'seoDescriptionEn',
+];
 
 export interface PendingFixOptions {
   /** Also run the targeted model call for drafts that still have a real problem after the free fixes. */
@@ -33,6 +49,8 @@ export interface PendingFixOptions {
   timeoutMs?: number;
   /** Stop after this many drafts (for a rehearsal). */
   limit?: number;
+  /** Stop making repair calls when the next one could take the repair spending of this run past this many VND (needs the exchange rate). */
+  maxSpendVnd?: number;
   onProgress?: (done: number, total: number) => void;
 }
 
@@ -58,7 +76,34 @@ export interface PendingFixReport {
   repairCostMicroUsd: string;
   /** Drafts that still carry notes (informational) after the run. */
   withNotes: number;
+  /** Drafts whose stored notes were brought up to date without a change to the draft. */
+  notesRefreshed: number;
+  /** Drafts that have an empty required field (they cannot be applied until a repair writes it). */
+  blankedDrafts: number;
+  /** Drafts per error code that the free fixes left for the repair (a draft counts once per code). */
+  needRepairByCode: Record<string, number>;
+  /** Drafts still having a real problem at the end of the run (after the repair when it ran), and their codes. */
+  needRepairAfter: number;
+  remainingByCode: Record<string, number>;
+  /** The repair stopped because the next call did not fit in `maxSpendVnd`. */
+  stoppedByBudget: boolean;
 }
+
+const noteKey = (value: unknown): string =>
+  (Array.isArray(value) ? (value as unknown[]) : [])
+    .flatMap((entry) =>
+      isObject(entry) && typeof entry['code'] === 'string'
+        ? [`${entry['code']}|${typeof entry['field'] === 'string' ? entry['field'] : ''}`]
+        : [],
+    )
+    .sort()
+    .join(';');
+
+const tally = (into: Record<string, number>, targets: readonly { codes: readonly string[] }[]) => {
+  for (const code of new Set(targets.flatMap((target) => target.codes))) {
+    into[code] = (into[code] ?? 0) + 1;
+  }
+};
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -157,6 +202,12 @@ export async function fixPendingDrafts(
     repairSkipped: 0,
     repairCostMicroUsd: '0',
     withNotes: 0,
+    notesRefreshed: 0,
+    blankedDrafts: 0,
+    needRepairByCode: {},
+    needRepairAfter: 0,
+    remainingByCode: {},
+    stoppedByBudget: false,
   };
   let spent = 0n;
   const city = await shopCity(database);
@@ -182,6 +233,10 @@ export async function fixPendingDrafts(
       const fixed = fixDraft(draft, fixOptions);
       const warnings = mergeNotes(fixed.warnings, row.warnings);
       const changed = fixed.fixes.length > 0;
+      const blanked = REQUIRED_DRAFT_FIELDS.some(
+        (field) => (readField(fixed.draft, field) ?? '').trim() === '',
+      );
+      let refreshed = false;
       let version = row.row_version;
       if (changed) {
         const next = {
@@ -194,10 +249,19 @@ export async function fixPendingDrafts(
                  row_version = row_version + 1, updated_at = clock_timestamp()
            WHERE id = ${id}::uuid`;
         version += 1;
+      } else if (noteKey(row.warnings) !== noteKey(warnings)) {
+        // Only the notes differ from what the checks find now: bring them up to date, the draft itself is left as it is.
+        await tx.$executeRaw`
+          UPDATE ai_items SET warnings = ${JSON.stringify(warnings)}::jsonb, row_version = row_version + 1, updated_at = clock_timestamp()
+           WHERE id = ${id}::uuid`;
+        refreshed = true;
+        version += 1;
       }
       return {
         kind: 'READ' as const,
         changed,
+        refreshed,
+        blanked,
         version,
         runId: row.run_id,
         model: row.model,
@@ -217,18 +281,35 @@ export async function fixPendingDrafts(
     if (outcome.kind === 'CLEAN') continue;
     if (outcome.changed) report.fixedFree += 1;
     else if (outcome.targets.length === 0) report.alreadyClean += 1;
+    if (outcome.refreshed) report.notesRefreshed += 1;
+    if (outcome.blanked) report.blankedDrafts += 1;
     let notes = outcome.notes;
+    let finalTargets = outcome.targets;
     if (outcome.targets.length > 0) {
       report.needRepair += 1;
+      tally(report.needRepairByCode, outcome.targets);
       const model = outcome.model;
+      const input = rewriteInputOf(outcome.snapshot, settings, city, null);
+      const left =
+        options.maxSpendVnd === undefined
+          ? null
+          : (settings.vndPerUsd === null
+              ? 0n
+              : vndToMicroUsd(BigInt(Math.floor(options.maxSpendVnd)), settings.vndPerUsd)) - spent;
       if (!options.repair || client === null || model === null || !isAiModel(model)) {
+        report.repairSkipped += 1;
+      } else if (
+        left !== null &&
+        repairMaxCost({ input, draft: outcome.draft, targets: outcome.targets, model }) > left
+      ) {
+        report.stoppedByBudget = true;
         report.repairSkipped += 1;
       } else {
         const repaired = await repairOnce(database, client, {
           item: { id, runId: outcome.runId },
           model,
           settings,
-          input: rewriteInputOf(outcome.snapshot, settings, city, null),
+          input,
           draft: outcome.draft,
           targets: outcome.targets,
           fixOptions: outcome.fixOptions,
@@ -254,8 +335,13 @@ export async function fixPendingDrafts(
           spent += repaired.cost;
           if (repaired.changed) report.repaired += 1;
           notes = repaired.warnings.length;
+          finalTargets = repaired.targets;
         }
       }
+    }
+    if (finalTargets.length > 0) {
+      report.needRepairAfter += 1;
+      tally(report.remainingByCode, finalTargets);
     }
     if (notes > 0) report.withNotes += 1;
   }

@@ -50,6 +50,8 @@ export {
   PRODUCT_REWRITE_SYSTEM,
   SEO_DESCRIPTION_MAX,
   SEO_TITLE_MAX,
+  activeBannedPhrases,
+  bannedHit,
   buildProductRewriteUserMessage,
   checkProductRewrite,
   cleanForModel,
@@ -71,6 +73,7 @@ export {
   attributesOf,
   buildProductSnapshot,
   leaseRewriteItems,
+  repairMaxCost,
   runRewriteTick,
   shopCity,
   snapshotOf,
@@ -94,11 +97,19 @@ export {
   PRODUCT_REPAIR_SYSTEM,
 } from './rewrite-repair.js';
 export {
+  REQUIRED_DRAFT_FIELDS,
   fixPendingDrafts,
   storedDraftOf,
   type PendingFixOptions,
   type PendingFixReport,
 } from './rewrite-pending.js';
+export {
+  fixBlankedFields,
+  planBlankFix,
+  type BlankFixRow,
+  type BlankFixOptions,
+  type BlankFixReport,
+} from './rewrite-blanks.js';
 export {
   ASSISTANT_PROMPT_VERSION,
   ASSISTANT_SYSTEM,

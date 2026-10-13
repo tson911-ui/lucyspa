@@ -1,7 +1,6 @@
 import {
   AUTHENTICITY,
   CLINIC_PATTERN,
-  DEFAULT_BANNED_PHRASES,
   DESCRIPTORS,
   EMOJI,
   INJECTION_SIGNS,
@@ -9,6 +8,8 @@ import {
   SEO_TITLE_MAX,
   SKIN_CONDITIONS,
   TESTIMONIAL,
+  activeBannedPhrases,
+  bannedHit,
   checkProductRewrite,
   known,
   norm,
@@ -170,7 +171,7 @@ function offends(piece: string, rules: Rules): boolean {
   const text = `${norm(piece)} `;
   return (
     CLINIC_PATTERN.test(text) ||
-    rules.banned.some((phrase) => phrase !== '' && text.includes(phrase)) ||
+    bannedHit(piece, rules.banned) !== undefined ||
     (!rules.authenticityAllowed && AUTHENTICITY.some((pattern) => pattern.test(piece))) ||
     TESTIMONIAL.some((pattern) => pattern.test(piece)) ||
     INJECTION_SIGNS.some((pattern) => pattern.test(piece)) ||
@@ -295,8 +296,9 @@ function fixIngredients(
 const key = (warning: DraftWarning): string => `${warning.code}|${warning.field ?? ''}`;
 
 /**
- * A change is kept when it leaves the other fields no worse and the changed field with no more warnings than before. A field that ends up
- * empty swaps its old warning for EMPTY_FIELD (a repair target), which is not worse.
+ * A change is kept when it leaves the other fields no worse and the changed field with no more warnings than before. A required field is
+ * never emptied by a fix (Owner decision 2026-10-13): an official name or a title that carries a banned word stays as it was and is left to
+ * the targeted repair; only a section the supplier text may leave out can become empty.
  */
 function acceptable(before: DraftWarning[], after: DraftWarning[], field: string): boolean {
   // Notes that stay notes (like a title shared with another product) never stop a fix.
@@ -360,7 +362,7 @@ export function fixDraft(input: ProductRewriteDraft, options: FixOptions): FixRe
   let draft = input;
   const fixes: AutoFix[] = [];
   const rules = (suitability: boolean): Rules => ({
-    banned: [...DEFAULT_BANNED_PHRASES, ...options.bannedPhrases].map((phrase) => norm(phrase)),
+    banned: activeBannedPhrases(options),
     authenticityAllowed: options.authenticityClaimsAllowed,
     suitability,
   });
@@ -373,6 +375,7 @@ export function fixDraft(input: ProductRewriteDraft, options: FixOptions): FixRe
   ): boolean => {
     const before = readField(draft, field);
     if (value === before) return false;
+    if ((value === null || value.trim() === '') && !NULLABLE.has(field)) return false;
     const candidate = withField(draft, field, value);
     const after = checkProductRewrite(candidate, options);
     if (!acceptable(warnings, after, field)) return false;

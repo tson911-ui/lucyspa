@@ -23,7 +23,7 @@ import {
  * facts rule). The answer is read into those fields only; every other field of the draft is untouched.
  */
 
-export const PRODUCT_REPAIR_PROMPT_VERSION = 'product-repair.v1';
+export const PRODUCT_REPAIR_PROMPT_VERSION = 'product-repair.v2';
 
 const RULES: Record<string, string> = {
   CLINIC_WORD:
@@ -45,7 +45,7 @@ const RULES: Record<string, string> = {
   SUITABILITY_CONDITION:
     'never name or promise help for a skin condition (acne, eczema, rosacea, sensitivity, inflammation, pigmentation); one cautious general line',
   INGREDIENT_ADDED:
-    'list only ingredients that the supplier text lists, as one short sentence; no other ingredient, no number',
+    'a plain comma-separated list of ingredient names, only those the supplier text lists, in the supplier\u2019s words; no sentence, no verb, no "contains" or "thành phần gồm", no other ingredient, no number',
 };
 
 export const PRODUCT_REPAIR_SYSTEM = [

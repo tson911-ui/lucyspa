@@ -162,12 +162,18 @@ export class AiService {
       appliedIds.push(...chunk.map((entry) => entry.id).filter((id) => !skippedIds.has(id)));
     }
     if (applied > 0) {
+      const skippedByReason: Record<string, number> = {};
+      for (const entry of skipped) {
+        skippedByReason[entry.reason] = (skippedByReason[entry.reason] ?? 0) + 1;
+      }
       await this.run(token, requestId, (context) =>
         drafts.recordApproveAll(context, {
           requested: items.length,
           applied,
           skipped: skipped.length,
           itemIds: appliedIds,
+          firstId: items[0]!.id,
+          skippedByReason,
         }),
       );
     }

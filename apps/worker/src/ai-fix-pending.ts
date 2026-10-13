@@ -16,6 +16,10 @@ import {
  *   node apps/worker/dist/ai-fix-pending.js            free fixes only
  *   node apps/worker/dist/ai-fix-pending.js --repair   free fixes, then the repair calls (the only part that costs money)
  *   --limit=N                                          stop after N drafts
+ *   --max-vnd=N                                        with --repair: stop before a call that could take the repair spending past N VND
+ *
+ * Besides the counts it prints the drafts left per error code before and after, and the estimated cost of the repair (the number of drafts
+ * that need it times the average of the repair calls already in the ledger; 400 VND when there are none yet).
  *
  * Needs DATABASE_URL (and ANTHROPIC_API_KEY for --repair). Prints one summary line, `key=value` pairs, and exits 0.
  */
@@ -24,6 +28,8 @@ async function main() {
   const repair = args.includes('--repair');
   const limitArg = args.find((arg) => arg.startsWith('--limit='));
   const limit = limitArg === undefined ? undefined : Number(limitArg.slice('--limit='.length));
+  const capArg = args.find((arg) => arg.startsWith('--max-vnd='));
+  const maxSpendVnd = capArg === undefined ? undefined : Number(capArg.slice('--max-vnd='.length));
   const url = process.env['DATABASE_URL'];
   if (!url) throw new Error('DATABASE_URL is not set');
   const database = createDatabaseClient(url);
@@ -39,6 +45,9 @@ async function main() {
       {
         repair: repair && client.hasKey,
         ...(limit !== undefined && Number.isInteger(limit) && limit > 0 ? { limit } : {}),
+        ...(maxSpendVnd !== undefined && Number.isFinite(maxSpendVnd) && maxSpendVnd >= 0
+          ? { maxSpendVnd }
+          : {}),
         onProgress: (done, total) => {
           if (done % 25 === 0 || done === total) console.log(`... ${done}/${total}`);
         },
@@ -48,6 +57,23 @@ async function main() {
     const micro = BigInt(report.repairCostMicroUsd);
     const vnd =
       settings.vndPerUsd === null ? 'unknown' : String(microUsdToVnd(micro, settings.vndPerUsd));
+    const average = await database.$queryRaw<{ micro: bigint | null; calls: bigint }[]>`
+      SELECT avg(cost_micro_usd)::bigint AS micro, count(*) AS calls
+        FROM ai_usage_ledger WHERE outcome IN ('REPAIRED', 'REPAIR_FAILED')`;
+    const perCallMicro = average[0]?.micro ?? null;
+    const estimate =
+      settings.vndPerUsd === null
+        ? 'unknown'
+        : String(
+            perCallMicro === null
+              ? report.needRepair * 400
+              : microUsdToVnd(perCallMicro * BigInt(report.needRepair), settings.vndPerUsd),
+          );
+    const byCode = (counts: Record<string, number>): string =>
+      Object.entries(counts)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([code, n]) => `${code}:${n}`)
+        .join(',') || '-';
     console.log(
       [
         `pending=${report.pending}`,
@@ -62,6 +88,13 @@ async function main() {
         `withNotes=${report.withNotes}`,
         `repairCostMicroUsd=${report.repairCostMicroUsd}`,
         `repairCostVnd=${vnd}`,
+        `notesRefreshed=${report.notesRefreshed}`,
+        `blankedDrafts=${report.blankedDrafts}`,
+        `needRepairAfter=${report.needRepairAfter}`,
+        `stoppedByBudget=${report.stoppedByBudget}`,
+        `estimatedRepairVnd=${estimate}`,
+        `codesBefore=${byCode(report.needRepairByCode)}`,
+        `codesAfter=${byCode(report.remainingByCode)}`,
       ].join(' '),
     );
   } finally {

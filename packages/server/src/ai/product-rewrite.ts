@@ -422,6 +422,58 @@ export const INJECTION_SIGNS = [
 
 export const norm = (text: string) => text.normalize('NFC').toLowerCase();
 
+/** A prefix that turns a banned word into an ordinary trade term ("semi-permanent" nail polish is not a promise of permanence). */
+const PHRASE_EXCEPTIONS: Readonly<Record<string, RegExp>> = {
+  permanent: /(?:semi|demi)[\s-]$/u,
+  permanently: /(?:semi|demi)[\s-]$/u,
+};
+const phrasePatterns = new Map<string, RegExp>();
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The first banned phrase found in the text, matched as a whole word or phrase (Owner decision 2026-10-13): "cure" is not found in
+ * "manicure", "pedicure" or "secure", "treat" is not found in "mistreat", "số 1" is not found in "số 15". Case is folded.
+ */
+export function bannedHit(value: string, banned: readonly string[]): string | undefined {
+  const text = norm(value);
+  for (const raw of banned) {
+    const phrase = norm(raw).trim();
+    if (phrase === '') continue;
+    let pattern = phrasePatterns.get(phrase);
+    if (pattern === undefined) {
+      // A plural "s" still counts ("cures", "guarantees"); any other letter after the phrase makes it a different word.
+      const plural = /[a-z]$/u.test(phrase) ? 's?' : '';
+      pattern = new RegExp(
+        `(?<![\\p{L}\\p{N}])${escapeRegExp(phrase)}${plural}(?![\\p{L}\\p{N}])`,
+        'gu',
+      );
+      phrasePatterns.set(phrase, pattern);
+    }
+    pattern.lastIndex = 0;
+    const exception = PHRASE_EXCEPTIONS[phrase];
+    for (let found = pattern.exec(text); found !== null; found = pattern.exec(text)) {
+      if (exception !== undefined && exception.test(text.slice(0, found.index))) continue;
+      return phrase;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The banned phrases that apply to this product: the default list and the Owner's, less any phrase that the product's own name or brand
+ * contains ("100% Pure Argan Oil" names the product; it is a fact about it, not a claim the shop makes).
+ */
+export function activeBannedPhrases(options: {
+  nameVi: string;
+  brand: string | null;
+  bannedPhrases: readonly string[];
+}): string[] {
+  const official = `${options.nameVi} ${options.brand ?? ''}`;
+  return [...DEFAULT_BANNED_PHRASES, ...options.bannedPhrases]
+    .map((phrase) => norm(phrase).trim())
+    .filter((phrase) => phrase !== '' && bannedHit(official, [phrase]) === undefined);
+}
+
 /** Lower case without diacritics (đ is d): the form ingredient names are compared in. */
 export const fold = (text: string): string =>
   text.normalize('NFD').replace(/\p{M}/gu, '').replace(/[đĐ]/g, 'd').toLowerCase();
@@ -586,14 +638,12 @@ export function checkProductRewrite(
     }
   }
 
-  const banned = [...DEFAULT_BANNED_PHRASES, ...options.bannedPhrases].map((phrase) =>
-    norm(phrase),
-  );
+  const banned = activeBannedPhrases(options);
   for (const [field, value] of fields) {
     const text = norm(value);
     if (CLINIC_PATTERN.test(text)) push({ code: 'CLINIC_WORD', field });
-    const hit = banned.find((phrase) => phrase !== '' && text.includes(phrase));
-    if (hit !== undefined) push({ code: 'FORBIDDEN_PHRASE', field, detail: hit.trim() });
+    const hit = bannedHit(value, banned);
+    if (hit !== undefined) push({ code: 'FORBIDDEN_PHRASE', field, detail: hit });
     if (!options.authenticityClaimsAllowed && AUTHENTICITY.some((pattern) => pattern.test(value))) {
       push({ code: 'AUTHENTICITY_CLAIM', field });
     }
@@ -713,9 +763,7 @@ export function checkPlainTexts(
     if (!warnings.some((entry) => entry.code === warning.code && entry.field === warning.field))
       warnings.push(warning);
   };
-  const banned = [...DEFAULT_BANNED_PHRASES, ...options.bannedPhrases].map((phrase) =>
-    norm(phrase),
-  );
+  const banned = [...DEFAULT_BANNED_PHRASES, ...options.bannedPhrases];
   for (const { field, value, language, required } of fields) {
     if (value.trim() === '') {
       if (required) push({ code: 'EMPTY_FIELD', field });
@@ -723,8 +771,8 @@ export function checkPlainTexts(
     }
     const text = norm(value);
     if (CLINIC_PATTERN.test(text)) push({ code: 'CLINIC_WORD', field });
-    const hit = banned.find((phrase) => phrase !== '' && text.includes(phrase));
-    if (hit !== undefined) push({ code: 'FORBIDDEN_PHRASE', field, detail: hit.trim() });
+    const hit = bannedHit(value, banned);
+    if (hit !== undefined) push({ code: 'FORBIDDEN_PHRASE', field, detail: hit });
     if (!options.authenticityClaimsAllowed && AUTHENTICITY.some((pattern) => pattern.test(value))) {
       push({ code: 'AUTHENTICITY_CLAIM', field });
     }

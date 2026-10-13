@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { AI_RUN_LIMITS, type AiDraftContent } from '@lucy-spa/contracts';
+import { buildProductSnapshot } from '@lucy-spa/server';
 import { phase6Fixture } from '../testing/phase6-fixture.js';
 import { AiService } from './ai.service.js';
 
@@ -69,7 +70,17 @@ test(
       });
       /** A product with an item in the given state (a ready draft by default). */
       const make = async (
-        state: { status?: string; warnings?: unknown[]; via?: string } = {},
+        state: {
+          status?: string;
+          warnings?: unknown[];
+          via?: string;
+          /** Fields of the draft replaced (an empty required field, a name the catalogue refuses, ...). */
+          draftPatch?: Partial<AiDraftContent>;
+          /** Store the product's real source snapshot with the draft (a draft written from that text). */
+          snapshot?: boolean;
+          /** A person edited the draft. */
+          edited?: boolean;
+        } = {},
       ): Promise<{ productId: string; itemId: string }> => {
         counter += 1;
         const product = await tx.product.create({
@@ -82,25 +93,30 @@ test(
             createdAt: new Date(Date.UTC(2026, 0, 1) + counter * 1000),
             createdByUserId: worker.id,
           },
-          select: { id: true },
+          select: { id: true, rowVersion: true },
         });
+        const built = state.snapshot ? await buildProductSnapshot(tx, product.id) : null;
+        const content = { ...CLEAN, ...state.draftPatch };
         const status = state.status ?? 'DRAFT_READY';
         const applied = status === 'APPLIED';
         const [item] = await rows<{ id: string }>(
-          `INSERT INTO ai_items (run_id, kind, target_type, target_id, status, base_row_version, draft, warnings, created_at,
+          `INSERT INTO ai_items (run_id, kind, target_type, target_id, status, base_row_version, base_snapshot, draft, edited, warnings, created_at,
                                  applied_at, applied_by_user_id, applied_via)
-           VALUES ($1::uuid, 'PRODUCT_TEXT', 'PRODUCT', $2::uuid, $3, 1, $4::jsonb, $5::jsonb, $6::timestamptz,
+           VALUES ($1::uuid, 'PRODUCT_TEXT', 'PRODUCT', $2::uuid, $3, $10, $11::jsonb, $4::jsonb, $12::jsonb, $5::jsonb, $6::timestamptz,
                    CASE WHEN $7 THEN now() END, CASE WHEN $7 THEN $8::uuid END, CASE WHEN $7 THEN $9 END)
            RETURNING id`,
           runId,
           product.id,
           status,
-          draftJson,
+          JSON.stringify({ ...JSON.parse(draftJson), ...content }),
           JSON.stringify(state.warnings ?? []),
           new Date(Date.UTC(2026, 0, 1) + counter * 1000).toISOString(),
           applied,
           worker.id,
           state.via ?? 'SINGLE',
+          built ? built.rowVersion : 1,
+          JSON.stringify(built ? built.snapshot : {}),
+          state.edited ? JSON.stringify({ content, useNameSuggestion: false }) : null,
         );
         return { productId: product.id, itemId: item!.id };
       };
@@ -181,9 +197,10 @@ test(
           const list = asList(preview);
           // A draft that became ready after the preview is never picked up.
           const late = await make();
-          // A draft edited after the preview (its row version moved) is skipped.
+          // A draft a person edited after the preview (its row version moved) is skipped: it is no longer what the list showed.
           await tx.$executeRawUnsafe(
-            `UPDATE ai_items SET row_version = row_version + 1 WHERE id = '${list[0]!.id}'`,
+            `UPDATE ai_items SET edited = $1::jsonb, row_version = row_version + 1 WHERE id = '${list[0]!.id}'`,
+            JSON.stringify({ content: CLEAN, useNameSuggestion: false }),
           );
           // The last draft of the list carries a note: a note never skips a draft.
           const result = await ai.approveAll(worker.token, { items: list });
@@ -296,12 +313,152 @@ test(
           'VALIDATION_FAILED',
           'items',
         );
-        // An id that is not a draft of product text is refused, not skipped silently.
-        await fails(
-          () => ai.approveAll(worker.token, { items: [{ id, rowVersion: 1 }] }),
-          'NOT_FOUND',
-        );
+        // An id that is not a draft of product text is reported as skipped, never as an error for the whole confirm.
+        assert.deepEqual(await ai.approveAll(worker.token, { items: [{ id, rowVersion: 1 }] }), {
+          applied: 0,
+          skipped: [{ id, reason: 'NOT_READY' }],
+        });
       });
+
+      await suite.test(
+        'a draft that cannot be applied is reported with its reason and never fails the others (Owner, 2026-10-13)',
+        async () => {
+          await tx.$executeRawUnsafe(
+            `UPDATE ai_items SET status = 'REJECTED', row_version = row_version + 1 WHERE status = 'DRAFT_READY'`,
+          );
+          const good = [await make(), await make(), await make()];
+          const emptyName = await make({ draftPatch: { nameEn: '' } });
+          const emptyTitle = await make({ draftPatch: { seoTitleEn: '' } });
+          const emptyDescription = await make({ draftPatch: { descriptionEn: '   ' } });
+          const longTitle = await make({ draftPatch: { seoTitleVi: 'x'.repeat(201) } });
+          const refused = await make({ draftPatch: { nameEn: 'Refuse me' } });
+          // A catalogue rule the pre-checks do not know: this one write is refused by the database.
+          await tx.$executeRawUnsafe(
+            `CREATE FUNCTION ai_test_refuse() RETURNS trigger AS $$ BEGIN
+               IF NEW.name_en = 'Refuse me' THEN RAISE EXCEPTION 'refused by the catalogue' USING ERRCODE = '23514'; END IF;
+               RETURN NEW; END; $$ LANGUAGE plpgsql`,
+          );
+          await tx.$executeRawUnsafe(
+            `CREATE TRIGGER ai_test_refuse BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION ai_test_refuse()`,
+          );
+          const preview = await ai.previewApproveAll(worker.token);
+          assert.equal(preview.ready, 8);
+          assert.equal(preview.blocked, 4, 'empty fields and a too-long title are not offered');
+          assert.equal(preview.eligible, 4);
+          // The confirm is sent with every draft, blocked ones too (a stale tab, another reviewer): the server decides again.
+          const sent = [
+            good[0],
+            emptyName,
+            good[1],
+            emptyTitle,
+            emptyDescription,
+            longTitle,
+            refused,
+            good[2],
+          ].map((entry) => ({ id: entry!.itemId, rowVersion: 1 }));
+          const result = await ai.approveAll(worker.token, { items: sent });
+          assert.equal(result.applied, 3);
+          assert.deepEqual(
+            result.skipped,
+            [
+              [emptyName, 'EMPTY_FIELD'],
+              [emptyTitle, 'EMPTY_FIELD'],
+              [emptyDescription, 'EMPTY_FIELD'],
+              [longTitle, 'TOO_LONG'],
+              [refused, 'REJECTED'],
+            ].map(([entry, reason]) => ({ id: (entry as { itemId: string }).itemId, reason })),
+          );
+          for (const entry of good) {
+            const [row] = await rows<{ status: string }>(
+              `SELECT status FROM ai_items WHERE id = $1::uuid`,
+              entry.itemId,
+            );
+            assert.equal(row!.status, 'APPLIED');
+          }
+          const [still] = await rows<{ status: string }>(
+            `SELECT status FROM ai_items WHERE id = $1::uuid`,
+            refused.itemId,
+          );
+          assert.equal(still!.status, 'DRAFT_READY', 'a refused write leaves the draft as it was');
+          const [untouched] = await rows<{ name_en: string }>(
+            `SELECT name_en FROM products WHERE id = $1::uuid`,
+            emptyName.productId,
+          );
+          assert.notEqual(untouched!.name_en, '');
+          const summaries = await audit('AI_APPROVE_ALL');
+          const last = summaries.at(-1)!.after as Record<string, unknown>;
+          assert.equal(last['applied'], 3);
+          assert.equal(last['skipped'], 5);
+          assert.deepEqual(last['skippedByReason'], { EMPTY_FIELD: 3, TOO_LONG: 1, REJECTED: 1 });
+          await tx.$executeRawUnsafe(`DROP TRIGGER ai_test_refuse ON products`);
+          await tx.$executeRawUnsafe(`DROP FUNCTION ai_test_refuse()`);
+        },
+      );
+
+      await suite.test(
+        'one draft with an empty field fails alone with a plain message, not a conflict',
+        async () => {
+          const blank = await make({ draftPatch: { nameEn: '' } });
+          await fails(
+            () => ai.applyDraft(worker.token, blank.itemId, { expectedRowVersion: 1 }),
+            'VALIDATION_FAILED',
+            'emptyFields',
+          );
+          const long = await make({ draftPatch: { seoDescriptionEn: 'y'.repeat(401) } });
+          await fails(
+            () => ai.applyDraft(worker.token, long.itemId, { expectedRowVersion: 1 }),
+            'VALIDATION_FAILED',
+            'tooLong',
+          );
+          const [row] = await rows<{ status: string }>(
+            `SELECT status FROM ai_items WHERE id = $1::uuid`,
+            blank.itemId,
+          );
+          assert.equal(row!.status, 'DRAFT_READY');
+        },
+      );
+
+      await suite.test(
+        'a product changed only by a system pass is still approvable; one whose source text changed is stale',
+        async () => {
+          await tx.$executeRawUnsafe(
+            `UPDATE ai_items SET status = 'REJECTED', row_version = row_version + 1 WHERE status = 'DRAFT_READY'`,
+          );
+          const bumped = await make({ snapshot: true });
+          const bumpedTwice = await make({ snapshot: true });
+          const reworded = await make({ snapshot: true });
+          // A pass that does not touch the source text moves the version (a price edit, a stock note, a re-save).
+          for (const entry of [bumped, bumpedTwice, reworded]) {
+            await tx.$executeRawUnsafe(
+              `UPDATE products SET row_version = row_version + 1 WHERE id = '${entry.productId}'`,
+            );
+          }
+          await tx.$executeRawUnsafe(
+            `UPDATE products SET row_version = row_version + 1 WHERE id = '${bumpedTwice.productId}'`,
+          );
+          await tx.$executeRawUnsafe(
+            `UPDATE products SET description_vi = description_vi || ' Câu mới của nhà cung cấp.', row_version = row_version + 1 WHERE id = '${reworded.productId}'`,
+          );
+          const preview = await ai.previewApproveAll(worker.token);
+          assert.equal(preview.changed, 1);
+          assert.equal(preview.eligible, 2);
+          assert.equal((await ai.getDraft(worker.token, bumped.itemId)).stale, false);
+          const single = await ai.applyDraft(worker.token, bumped.itemId, {
+            expectedRowVersion: 1,
+          });
+          assert.equal(single.result, 'APPLIED');
+          const result = await ai.approveAll(worker.token, {
+            items: [bumpedTwice, reworded].map((entry) => ({ id: entry.itemId, rowVersion: 1 })),
+          });
+          assert.equal(result.applied, 1);
+          assert.deepEqual(result.skipped, [{ id: reworded.itemId, reason: 'STALE' }]);
+          const [product] = await rows<{ description_vi: string }>(
+            `SELECT description_vi FROM products WHERE id = $1::uuid`,
+            reworded.productId,
+          );
+          assert.match(product!.description_vi, /Câu mới của nhà cung cấp\.$/);
+        },
+      );
     });
   },
 );

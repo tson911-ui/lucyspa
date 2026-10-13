@@ -296,6 +296,62 @@ async function loadItem(context: AdminContext, id: string, lock: boolean): Promi
   return item;
 }
 
+/** The same value with its object keys in order, so two snapshots compare by what they say. */
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (isObject(value)) {
+    return Object.fromEntries(
+      Object.keys(value)
+        .sort()
+        .map((key) => [key, canonical(value[key])]),
+    );
+  }
+  return value;
+}
+
+/**
+ * Whether the draft is about text the product no longer has. The product's row version moves for many reasons (a cleaning pass, a price
+ * or stock edit, an import); only a change to what the draft was written from makes it old (Owner, 2026-10-13: a draft whose product was
+ * changed only by system passes is still approvable). So when the version differs, the source of the draft (name, brand, category,
+ * variants, cleaned supplier text, attributes) is read again and compared with the one stored with the draft.
+ */
+async function productChanged(
+  context: AdminContext,
+  item: ItemRow,
+  product: { rowVersion: number },
+): Promise<boolean> {
+  if (product.rowVersion === item.baseRowVersion) return false;
+  const stored = snapshotOf(item.baseSnapshot);
+  const now = await buildProductSnapshot(context.tx, item.targetId);
+  if (stored === null || now === null) return true;
+  return JSON.stringify(canonical(stored)) !== JSON.stringify(canonical(now.snapshot));
+}
+
+const REQUIRED_CONTENT_FIELDS = [
+  'descriptionVi',
+  'descriptionEn',
+  'nameEn',
+  'seoTitleVi',
+  'seoTitleEn',
+  'seoDescriptionVi',
+  'seoDescriptionEn',
+] as const satisfies readonly (keyof AiDraftContent)[];
+
+/** The catalogue refuses an empty name or search text and an over-long search text, and an empty description would wipe the page. */
+function unappliable(content: AiDraftContent): 'EMPTY_FIELD' | 'TOO_LONG' | null {
+  if (REQUIRED_CONTENT_FIELDS.some((field) => content[field].trim() === '')) return 'EMPTY_FIELD';
+  const long = (value: string, max: number) => [...value].length > max;
+  if (
+    long(content.seoTitleVi, 200) ||
+    long(content.seoTitleEn, 200) ||
+    long(content.seoDescriptionVi, 400) ||
+    long(content.seoDescriptionEn, 400)
+  ) {
+    return 'TOO_LONG';
+  }
+  return null;
+}
+
 function expectVersion(item: ItemRow, expected: unknown): void {
   if (!Number.isInteger(expected) || (expected as number) < 1) {
     throw new AuthError('VALIDATION_FAILED', 'expectedRowVersion');
@@ -328,7 +384,10 @@ async function buildDetail(context: AdminContext, item: ItemRow): Promise<AiDraf
       rowVersion: product.rowVersion,
       contentOrigin: product.contentOrigin,
     },
-    stale: product.rowVersion !== item.baseRowVersion,
+    stale:
+      item.status === 'DRAFT_READY'
+        ? await productChanged(context, item, product)
+        : product.rowVersion !== item.baseRowVersion,
     current: currentOf(product),
     draft: draft === null ? null : contentOfDraft(draft),
     edited: edit?.content ?? null,
@@ -598,8 +657,8 @@ export async function applyDraft(
     where: { id: item.targetId },
     select: PRODUCT_SELECT,
   });
-  if (product.rowVersion !== item.baseRowVersion) {
-    // The product was changed after the draft was made: the draft is about old text. Nothing is written; the item says why.
+  if (await productChanged(context, item, product)) {
+    // The product's source text was changed after the draft was made: the draft is about old text. Nothing is written; the item says why.
     const stale = await touch(context, item, { status: 'STALE' });
     await appendAdminAudit(context, {
       action: 'AI_DRAFT_STALE',
@@ -610,6 +669,11 @@ export async function applyDraft(
     return { result: 'STALE', detail: await buildDetail(context, stale) };
   }
   const { content, edited, useNameSuggestion } = finalContent(item, base);
+  // Never a generic conflict: the screen says which kind of field stops the apply.
+  const problem = unappliable(content);
+  if (problem !== null) {
+    throw new AuthError('VALIDATION_FAILED', problem === 'EMPTY_FIELD' ? 'emptyFields' : 'tooLong');
+  }
   const warnings = (await checkContent(context, item, content, base, useNameSuggestion)).map(
     present,
   );
@@ -771,16 +835,21 @@ export async function previewApproveAll(context: AdminContext): Promise<AiApprov
   const byId = new Map(products.map((product) => [product.id, product]));
   const items: AiApproveAllItem[] = [];
   let changed = 0;
+  let blocked = 0;
   let eligible = 0;
   for (const row of rows) {
     const product = byId.get(row.targetId);
     const base = storedDraft(row);
     if (!product || base === null) continue;
-    if (product.rowVersion !== row.baseRowVersion) {
+    if (await productChanged(context, row, product)) {
       changed += 1;
       continue;
     }
     const { content } = finalContent(row, base);
+    if (unappliable(content) !== null) {
+      blocked += 1;
+      continue;
+    }
     eligible += 1;
     if (items.length < AI_RUN_LIMITS.approveAllMax) {
       items.push({
@@ -797,6 +866,7 @@ export async function previewApproveAll(context: AdminContext): Promise<AiApprov
   return {
     ready: rows.length,
     changed,
+    blocked,
     eligible,
     items,
     singleApplied: applied,
@@ -834,10 +904,12 @@ export function approveAllList(value: unknown): { id: string; rowVersion: number
 }
 
 /**
- * Applies one chunk of the confirmed list (its own transaction). Everything is decided again here: the draft must still be ready and carry
- * the row version the list showed (an edit, a regeneration or another reviewer since then skips it) and its product must be unchanged;
- * notes never skip a draft. A skipped draft is reported with its reason and never applied; a draft that was not in the list is
- * never touched. Each applied product gets its own audit event (applied via ALL).
+ * Applies one chunk of the confirmed list (its own transaction). Everything is decided again here: the draft must still be ready, a draft a
+ * person edited must still be the version the list showed (an unedited draft only moves through system passes, so it is applied as it is
+ * now), its product's source text must be unchanged, and no required field may be empty; notes never skip a draft. A skipped draft is
+ * reported with its reason and never applied. One draft's failure never fails the others: each is applied under a savepoint, and a write the
+ * catalogue refuses is rolled back and reported as `REJECTED`. A draft that was not in the list is never touched. Each applied product gets
+ * its own audit event (applied via ALL).
  */
 export async function approveAllChunk(
   context: AdminContext,
@@ -853,13 +925,16 @@ export async function approveAllChunk(
   for (const { id, rowVersion } of items) {
     await tx.$queryRaw`SELECT id FROM ai_items WHERE id = ${id}::uuid FOR UPDATE`;
     const item = await tx.aiItem.findUnique({ where: { id } });
-    if (item === null || item.kind !== 'PRODUCT_TEXT') throw new AuthError('NOT_FOUND');
+    if (item === null || item.kind !== 'PRODUCT_TEXT') {
+      skipped.push({ id, reason: 'NOT_READY' });
+      continue;
+    }
     const base = item.status === 'DRAFT_READY' ? storedDraft(item) : null;
     if (base === null) {
       skipped.push({ id, reason: 'NOT_READY' });
       continue;
     }
-    if (item.rowVersion !== rowVersion) {
+    if (item.rowVersion !== rowVersion && item.edited !== null) {
       skipped.push({ id, reason: 'CHANGED' });
       continue;
     }
@@ -868,23 +943,37 @@ export async function approveAllChunk(
       where: { id: item.targetId },
       select: PRODUCT_SELECT,
     });
-    if (product.rowVersion !== item.baseRowVersion) {
+    if (await productChanged(context, item, product)) {
       await touch(context, item, { status: 'STALE' });
       skipped.push({ id, reason: 'STALE' });
       continue;
     }
     const { content, edited, useNameSuggestion } = finalContent(item, base);
-    await writeApply(context, {
-      item,
-      product,
-      base,
-      content,
-      edited,
-      useNameSuggestion,
-      via: 'ALL',
-      acknowledged: storedWarnings(item).map((warning) => warning.code),
-    });
-    applied += 1;
+    const problem = unappliable(content);
+    if (problem !== null) {
+      skipped.push({ id, reason: problem });
+      continue;
+    }
+    await tx.$executeRaw`SAVEPOINT approve_one`;
+    try {
+      await writeApply(context, {
+        item,
+        product,
+        base,
+        content,
+        edited,
+        useNameSuggestion,
+        via: 'ALL',
+        acknowledged: storedWarnings(item).map((warning) => warning.code),
+      });
+      await tx.$executeRaw`RELEASE SAVEPOINT approve_one`;
+      applied += 1;
+    } catch (error) {
+      if (error instanceof AuthError) throw error;
+      // The catalogue refused this one write (a rule the pre-checks could not see): undo it alone and carry on with the rest.
+      await tx.$executeRaw`ROLLBACK TO SAVEPOINT approve_one`;
+      skipped.push({ id, reason: 'REJECTED' });
+    }
   }
   return { applied, skipped };
 }
@@ -892,13 +981,26 @@ export async function approveAllChunk(
 /** The one summary event of a whole "Duyệt các bài đã chọn" (the per-product events were written by the chunks). */
 export async function recordApproveAll(
   context: AdminContext,
-  summary: { requested: number; applied: number; skipped: number; itemIds: string[] },
+  summary: {
+    requested: number;
+    applied: number;
+    skipped: number;
+    itemIds: string[];
+    firstId: string;
+    skippedByReason?: Record<string, number>;
+  },
 ): Promise<void> {
   requireApply(context);
   await appendAdminAudit(context, {
     action: 'AI_APPROVE_ALL',
     entityType: 'AiItem',
-    entityId: summary.itemIds[0]!,
-    after: summary as unknown as Prisma.InputJsonObject,
+    entityId: summary.itemIds[0] ?? summary.firstId,
+    after: {
+      requested: summary.requested,
+      applied: summary.applied,
+      skipped: summary.skipped,
+      itemIds: summary.itemIds,
+      ...(summary.skippedByReason ? { skippedByReason: summary.skippedByReason } : {}),
+    } as unknown as Prisma.InputJsonObject,
   });
 }

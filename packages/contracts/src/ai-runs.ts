@@ -33,8 +33,8 @@ export const AI_RUN_LIMITS = {
   singleApprovalsNeeded: 3,
   /** Drafts one "Duyệt các bài đã chọn" confirm may cover (Owner, 2026-10-13: every pending draft, warnings or not). */
   approveAllMax: 1000,
-  /** Drafts one confirm request carries; a longer selection is sent in several requests (each is audited). */
-  approveBatchMax: 100,
+  /** Drafts one confirm request carries: the whole selection in one request (the server applies it ten at a time). */
+  approveBatchMax: 1000,
 } as const;
 
 /** Why running is not possible right now; the screen says each in plain words. */
@@ -146,8 +146,10 @@ export interface AiApproveAllItem {
 export interface AiApproveAllPreview {
   /** Drafts waiting for review (status ready). */
   ready: number;
-  /** Of those, whose product changed since the draft was written: not included. */
+  /** Of those, whose product's source text changed since the draft was written: not included. */
   changed: number;
+  /** Of those, with an empty required field or a search text too long for the catalogue: they cannot be applied, so not included. */
+  blocked: number;
   /** Drafts this confirm would apply (the list below holds at most `approveAllMax` of them). */
   eligible: number;
   items: AiApproveAllItem[];
@@ -161,7 +163,13 @@ export interface AiApproveAllRequest {
   items: { id: string; rowVersion: number }[];
 }
 
-export type AiApproveAllSkipReason = 'NOT_READY' | 'CHANGED' | 'STALE';
+/**
+ * Why a draft of the confirmed list was left out: already handled (`NOT_READY`), edited by a person since the list (`CHANGED`), its
+ * product's source text changed (`STALE`), a required field is empty (`EMPTY_FIELD`) or a search text is too long (`TOO_LONG`), or the
+ * catalogue refused the write for another reason (`REJECTED`).
+ */
+export type AiApproveAllSkipReason =
+  'NOT_READY' | 'CHANGED' | 'STALE' | 'EMPTY_FIELD' | 'TOO_LONG' | 'REJECTED';
 
 export interface AiApproveAllResponse {
   applied: number;
