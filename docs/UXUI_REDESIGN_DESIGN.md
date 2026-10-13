@@ -1,3 +1,5 @@
+> **SUPERSEDED by `/DESIGN.md`** for look, tokens, components, layout and motion; sections 6.1 (theme mechanism), 20 (seasonal layer) and 21 (UX gate, FR1-FR15, audit) stay in force.
+
 # UX/UI Redesign: design contract
 
 **Status: Step 1 of 14 (Design Contract), CLOSED / OWNER APPROVED.** The Owner accepted every recommended default in section 17

@@ -2,6 +2,7 @@
 
 Lucy Spa is a spa management + customer web app (Vietnam, VI/EN). pnpm monorepo, strict TypeScript, Node 24.
 Owner reviews every Step. Work only on the Step you are given.
+UI work must follow DESIGN.md.
 
 ## Repo map
 
@@ -85,15 +86,22 @@ These add to the UX quality gate above; none of it is removed.
    text logo. No new palette, no new fonts. (This rule describes the brand. Since 2026-10-10 the look of both the customer
    site and the staff screens is direction C, see "Customer site redesign" and "Staff screens in direction C" below; those
    sections replace this rule's "no new palette, no new fonts" and rule 1's "never change the look".)
+   **Superseded in part by `DESIGN.md` (Owner, 2026-10-14):** the fonts and palette named in rules 1-2 and the direction C look
+   described above. The brand red, the light and dark modes and the text logo stay.
 3. No gold or yellow anywhere, except holiday decorations (Tết, Mid-Autumn, national days) in the seasonal theme layer.
 4. Hover: light mode = solid `#782b37` background with white text (not a pale pink tint); dark mode = the existing
-   dark-mode pink accent.
+   dark-mode pink accent (now `#e48f9f`, see `DESIGN.md`). Exception (Owner delegation, 2026-10-14): hover on staff table rows
+   and staff sidebar items is a neutral tint, not the solid accent; the current page in the sidebar stays solid accent.
 5. Polish passes change UI only: no business logic, API, database or data changes. Never touch `apps/web/next-env.d.ts`.
 6. Every UI change still goes through the quality gate (screenshots at 360/768/1440 px, light and dark, 130% text, all
    states, DOM audit vs baseline), with before/after screenshots for the Owner to approve.
 7. Copy stays natural Vietnamese. Lucy Spa is a spa; never use "khám".
 
 ## Customer site redesign (permanent; Owner, 2026-10-09; the customer site only)
+
+> **SUPERSEDED by `DESIGN.md` (Owner, 2026-10-14).** Follow DESIGN.md for the look: fonts, palette, shapes, shadows, gradients and
+> direction C no longer apply. What this section keeps (accent `#782b37`, text logo, modes, no gold, rule 4, copy, UI-only, quality
+> gate, photo policy) is restated in DESIGN.md. Kept below for history.
 
 The owner finds the current customer site dated. The customer site (public pages, booking, account, shop) is redesigned to feel
 modern, luxurious, simple and professional, like the current best brand websites. The owner's old Lovable prototype is no longer
@@ -120,6 +128,9 @@ large imagery, clean grids, subtle refined motion, a fast and clear booking path
   removed. Contract and the photo list: `docs/CUSTOMER_SITE_C.md`.
 
 ## Staff screens in direction C (permanent; Owner, 2026-10-10)
+
+> **SUPERSEDED by `DESIGN.md` (Owner, 2026-10-14).** Staff and POS screens follow DESIGN.md (shared DNA, compact density only).
+> Fraunces, Nunito Sans, the rose-cream palette and soft rose shadows no longer apply. Kept below for history.
 
 The whole product (customer site, admin, counter/POS, staff login) must feel like one brand, so direction C applies to every staff
 screen. No sample round: it is applied to all staff screens.

@@ -1,5 +1,7 @@
 # Trang khách: hướng C, "Ấm áp thư giãn" (chủ đã chọn 2026-10-10)
 
+> **ĐÃ THAY BẰNG `/DESIGN.md`** (Owner, 2026-10-14) về giao diện: phông, bảng màu, hình khối, đổ bóng, bố cục. Hai phần về ảnh ("Ảnh: chỗ nào thay được từ Quản trị → Website" và "Ảnh chủ nên chụp") vẫn còn hiệu lực.
+
 Chủ đã chọn hướng C trong ba hướng xem thử (`docs/DESIGN_PREVIEW_HOME.md`). Hướng C được áp dụng cho **toàn bộ trang khách**. Chỉ đổi giao diện: không đổi logic, API, cơ sở dữ liệu. Khu nhân viên, quầy và quản trị **không đổi trong bước này**; ngay sau đó (2026-10-10) Owner quyết định chúng cũng theo hướng C, thu gọn cho màn hình làm việc: xem `docs/UI_STAFF_C.md`.
 
 ## Đã triển khai (Owner báo, 2026-10-10 khoảng 10:29, giờ UTC+7)
