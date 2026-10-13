@@ -43,7 +43,7 @@ Status values: `todo` / `done` (with commit hash).
   `data-density` hook. Also settle the portal question. Update `tokens.test.ts`, `customer-tokens.test.ts` and the ratchet baseline.
   Verify: the contrast ratios from DESIGN.md section 6 are asserted in tests, and the season layer renders as before.
 
-- **C3: Be Vietnam Pro and type roles (M).** Status: done.
+- **C3: Be Vietnam Pro and type roles (M).** Status: done (dc4590c, follow-up e3d9ade).
   In `site-fonts.ts`, replace Fraunces and Nunito with Be Vietnam Pro (400/500/600, vietnamese subset) on the customer frame. Set the
   section 6.3 type roles in `base.css` (heading line height at least 1.2). Make the wordmark 600 weight, typeface only.
   Verify: Vietnamese stacked marks are not clipped, and text holds at 130% and 200%.
