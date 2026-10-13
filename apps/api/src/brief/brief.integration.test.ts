@@ -94,6 +94,12 @@ test(
           },
         });
 
+        /** The branch-local calendar date of a moment (the catalogue refuses any other service date; it differs from the UTC date after 17:00 UTC). */
+        const localDay = async (when: Date): Promise<string> =>
+          (
+            await tx.$queryRaw<{ day: string }[]>`
+              SELECT to_char(lucy_branch_local_date(${branch.id}::uuid, ${when}::timestamptz), 'YYYY-MM-DD') AS day`
+          )[0]!.day;
         let visitNo = 0;
         /** A visit of the customer (or a guest) with one line per service for the person; `done` makes it a completed one. */
         const visit = async (options: {
@@ -106,13 +112,7 @@ test(
           plannedStart?: Date;
         }) => {
           visitNo += 1;
-          const day = new Date(
-            Date.UTC(
-              options.when.getUTCFullYear(),
-              options.when.getUTCMonth(),
-              options.when.getUTCDate(),
-            ),
-          );
+          const day = new Date(`${await localDay(options.when)}T00:00:00.000Z`);
           const created = await tx.visit.create({
             data: {
               code: `VS-BR-${run}-${visitNo}`,
@@ -291,10 +291,7 @@ test(
             );
             assert.equal(facts.averageGapDays, 16);
             assert.equal(facts.notes, 1);
-            assert.equal(
-              facts.lastVisitDate,
-              new Date(now.getTime() - 14 * DAY).toISOString().slice(0, 10),
-            );
+            assert.equal(facts.lastVisitDate, await localDay(new Date(now.getTime() - 14 * DAY)));
             assert.ok(
               !JSON.stringify(result).includes(customer.fullName),
               'the customer’s name is never in the brief',
