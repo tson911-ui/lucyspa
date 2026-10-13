@@ -153,7 +153,7 @@ test('ContactFab css: sticky row on the shared layer scale, lifted above the tab
   // negative margin makes it take only its glyph's width in the row; every footer row is one control-height line.
   assert.match(
     css,
-    /\.ls-footer-icon \{\s*--ls-footer-icon-size: var\(--ls-space-6\);[^}]*width: var\(--ls-control-h\);[^}]*margin: calc\(\(var\(--ls-footer-icon-size\) - var\(--ls-control-h\)\) \/ 2\);/,
+    /\.ls-footer-icon \{\s*--ls-footer-icon-size: var\(--ls-space-6\);[^}]*width: var\(--ls-space-9\);[^}]*margin: calc\(\(var\(--ls-footer-icon-size\) - var\(--ls-space-9\)\) \/ 2\);/,
   );
   assert.match(css, /\.ls-site-footer-list > li \{[^}]*min-height: var\(--ls-footer-row\);/);
   // A link is a full control-height target; a negative margin gives the extra height back to the row.

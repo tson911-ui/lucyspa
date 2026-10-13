@@ -3251,19 +3251,19 @@ button.ls-contact-link {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--ls-space-4);
+  gap: var(--ls-space-6);
 }
 
 /* The glyph sits on the left edge of the text column: the link is a full touch target (40-44 px) but a negative margin makes
    it take only its glyph's width in the row (a plain 40-44 px round box with the glyph centred pushed the glyph about 10 px
-   inside). The 16 px gap between glyphs is the overhang of the two targets (10 + 6), so neighbouring targets just touch. */
+   inside). The target is 48 px so the overhang (12 + 8) stays on the 4 px grid; the 24 px gap between glyphs leaves 4 px between targets. */
 .ls-footer-icon {
   --ls-footer-icon-size: var(--ls-space-6);
   display: inline-grid;
   place-items: center;
-  width: var(--ls-control-h);
-  height: var(--ls-control-h);
-  margin: calc((var(--ls-footer-icon-size) - var(--ls-control-h)) / 2);
+  width: var(--ls-space-9);
+  height: var(--ls-space-9);
+  margin: calc((var(--ls-footer-icon-size) - var(--ls-space-9)) / 2);
   border-radius: var(--ls-radius-full);
   color: var(--ls-text-muted);
   transition: color var(--ls-dur-base) var(--ls-ease-out);
@@ -4037,6 +4037,16 @@ button.ls-contact-link {
   line-height: var(--ls-lh-card);
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* The two-column grid of a phone leaves a card about 120 px of text: the sale price takes the body role there (17 px) so
+   "từ 231.200 ₫" stays inside its card; from 640 px it is the price role. */
+@media (max-width: 639px) {
+  .ls-sale:not([data-size='page']) .ls-sale-now strong,
+  .ls-prod-price strong {
+    font-size: var(--ls-type-body);
+    line-height: var(--ls-lh-body);
+  }
 }
 
 .ls-prod-price del {
