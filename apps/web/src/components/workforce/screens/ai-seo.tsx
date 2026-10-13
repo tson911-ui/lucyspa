@@ -26,7 +26,6 @@ import {
   Select,
   Stack,
   Textarea,
-  CheckField,
   useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
@@ -151,12 +150,8 @@ function AiSeoPage() {
       truncate: true,
       width: 'md',
       cell: (row) => {
-        const soft = row.warnings - row.blockingWarnings;
         const parts = [
-          row.blockingWarnings > 0
-            ? fill(text.notes.blocking, { count: String(row.blockingWarnings) })
-            : null,
-          soft > 0 ? fill(text.notes.soft, { count: String(soft) }) : null,
+          row.warnings > 0 ? fill(text.notes.soft, { count: String(row.warnings) }) : null,
         ].filter((part): part is string => part !== null);
         const line = parts.length === 0 ? text.notes.none : parts.join(' · ');
         return <span title={line}>{line}</span>;
@@ -380,7 +375,6 @@ function DraftDrawer({
   const detailResource = useResource(() => api.get<AiSeoDetail>(`${BASE}/${id}`), [api, id]);
   const detail = detailResource.data;
   const [form, setForm] = useState<SeoForm | null>(null);
-  const [acknowledged, setAcknowledged] = useState(false);
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [fieldProblem, setFieldProblem] = useState<keyof SeoForm | null>(null);
@@ -392,7 +386,6 @@ function DraftDrawer({
   useEffect(() => {
     if (detail) {
       setForm(formOf(detail));
-      setAcknowledged(false);
     }
   }, [detail?.id, detail?.rowVersion]);
   // A draft being written reloads itself.
@@ -424,14 +417,8 @@ function DraftDrawer({
   const editable =
     detail !== null && (detail.status === 'DRAFT_READY' || detail.status === 'NEEDS_ATTENTION');
   const dirty = detail && form ? isDirty(form, detail) : false;
-  const soft = detail ? detail.warnings.filter((warning) => !warning.blocking) : [];
   const canApply =
-    detail !== null &&
-    detail.status === 'DRAFT_READY' &&
-    detail.draft !== null &&
-    !dirty &&
-    !detail.blocking &&
-    (soft.length === 0 || acknowledged);
+    detail !== null && detail.status === 'DRAFT_READY' && detail.draft !== null && !dirty;
 
   const box = (name: keyof SeoForm, title: string, now: string, limit: number | null) => (
     <Stack gap="field" key={name}>
@@ -518,7 +505,7 @@ function DraftDrawer({
                     void run(async () => {
                       const result = await api.post<AiSeoApplyResponse>(
                         `${BASE}/${id}/apply`,
-                        applyRequest(detail, acknowledged),
+                        applyRequest(detail),
                       );
                       return result.result === 'APPLIED' ? d.applied : d.staleNow;
                     })
@@ -577,11 +564,8 @@ function DraftDrawer({
             <Stack gap="field">
               <h3>{d.warningsTitle}</h3>
               {detail.warnings.map((warning, index) => (
-                <Notice
-                  key={`${warning.code}-${warning.field ?? ''}-${index}`}
-                  tone={warning.blocking ? 'error' : 'warning'}
-                >
-                  <strong>{warning.blocking ? d.blockingTag : d.noteTag}: </strong>
+                <Notice key={`${warning.code}-${warning.field ?? ''}-${index}`} tone="warning">
+                  <strong>{d.noteTag}: </strong>
                   {text.warnings[warning.code] ?? text.warnings['OTHER']}
                   {warning.field && text.fields[warning.field]
                     ? ` (${text.fields[warning.field]})`
@@ -615,14 +599,6 @@ function DraftDrawer({
                 ]}
               />
             </>
-          ) : null}
-          {soft.length > 0 && detail.status === 'DRAFT_READY' && !detail.blocking ? (
-            <CheckField
-              label={d.acknowledge}
-              checked={acknowledged}
-              disabled={pending || dirty}
-              onChange={(event) => setAcknowledged(event.target.checked)}
-            />
           ) : null}
         </Stack>
       )}

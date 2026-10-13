@@ -5,7 +5,6 @@ import {
   SEO_DRAFT_SYSTEM,
   buildSeoUserMessage,
   checkSeoDraft,
-  isBlockingSeoWarning,
   parseSeoDraft,
   type SeoSnapshot,
 } from './seo-draft.js';
@@ -131,7 +130,7 @@ test('a good draft has no note; the stated duration and price may be the service
   );
 });
 
-test('claims, links, markup, the clinic word, a wrong language and a wrong fact are blocking notes; length and duplicates are soft', () => {
+test('claims, links, markup, the clinic word, a wrong language and a wrong fact and length and duplicates are all reported as notes', () => {
   const run = (patch: Partial<typeof GOOD>, snapshot = SERVICE, options = {}) =>
     checkSeoDraft({ ...GOOD, ...patch }, snapshot, { ...OPTIONS, ...options });
   assert.ok(
@@ -218,16 +217,11 @@ test('claims, links, markup, the clinic word, a wrong language and a wrong fact 
   // Soft: too long, and the same as another page.
   const long = run({ seoDescriptionVi: `${GOOD.seoDescriptionVi} ${'Thư giãn. '.repeat(10)}` });
   assert.ok(long.some((warning) => warning.code === 'SEO_DESCRIPTION_LONG'));
-  assert.equal(isBlockingSeoWarning('SEO_DESCRIPTION_LONG'), false);
   const dup = checkSeoDraft(GOOD, SERVICE, {
     ...OPTIONS,
     seenDescriptions: new Set([GOOD.seoDescriptionVi.toLowerCase()]),
   });
   assert.deepEqual(codes(dup), ['SEO_DUPLICATE']);
-  assert.equal(isBlockingSeoWarning('SEO_DUPLICATE'), false);
-  for (const code of ['FACT_WRONG', 'FORBIDDEN_PHRASE', 'EMPTY_FIELD', 'URL_OR_CONTACT'] as const) {
-    assert.equal(isBlockingSeoWarning(code), true, code);
-  }
 });
 
 test('an English text is required only when asked for, and an unrequested one is flagged', () => {

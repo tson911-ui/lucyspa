@@ -241,7 +241,6 @@ test(
             assert.doesNotMatch(sent, /"tools"/);
             const first = await open('SERVICE', s1);
             assert.equal(first.status, 'DRAFT_READY');
-            assert.equal(first.blocking, false);
             assert.equal(first.warnings.length, 0);
             assert.ok(first.draft?.englishText?.startsWith('A slow herbal'));
             assert.equal(first.current.englishLabel, 'DESCRIPTION');
@@ -252,7 +251,7 @@ test(
             assert.ok(Number(ledger!.n) >= 4);
             // A price and a duration the service does not have, and a "chính hãng" claim, are caught by the server.
             const wrong = await open('SERVICE', s2);
-            assert.equal(wrong.blocking, true);
+            assert.ok(wrong.warnings.length >= 2);
             assert.ok(wrong.warnings.some((warning) => warning.code === 'FACT_WRONG'));
             assert.ok(wrong.warnings.some((warning) => warning.code === 'AUTHENTICITY_CLAIM'));
             assert.equal((await open('SERVICE', s3)).status, 'DRAFT_READY');
@@ -261,7 +260,7 @@ test(
         );
 
         await suite.test(
-          'review one by one: only the permitted may apply; the reader may read, edit and reject; blocking notes refuse',
+          'review one by one: only the permitted may apply; the reader may read, edit and reject; notes never refuse an apply',
           async () => {
             const list = await seo.list(reader.token, { kind: 'SERVICE' });
             assert.ok(list.items.length >= 3);
@@ -279,11 +278,7 @@ test(
               'CONFLICT',
             );
             const wrong = await open('SERVICE', s2);
-            await fails(
-              () => seo.apply(manager.token, wrong.id, { expectedRowVersion: wrong.rowVersion }),
-              'VALIDATION_FAILED',
-              'warnings',
-            );
+            assert.ok(wrong.warnings.length > 0);
             const edited = await seo.edit(reader.token, wrong.id, {
               expectedRowVersion: wrong.rowVersion,
               content: {
@@ -294,7 +289,7 @@ test(
                 englishText: null,
               },
             });
-            assert.equal(edited.blocking, false);
+            assert.equal(edited.warnings.length, 0);
             assert.ok(edited.edited);
             assert.equal((await audit('AI_SEO_DRAFT_EDITED')).length, 1);
             await fails(
@@ -310,7 +305,7 @@ test(
               'VALIDATION_FAILED',
               'seoDescriptionVi',
             );
-            // A link in an edit is flagged and refuses the apply, however the text got there.
+            // A link in an edit is flagged as a note; the notes are shown but do not stop the apply (Owner, 2026-10-13).
             const bad = await seo.edit(reader.token, edited.id, {
               expectedRowVersion: edited.rowVersion,
               content: {
@@ -320,12 +315,7 @@ test(
                 englishText: null,
               },
             });
-            assert.equal(bad.blocking, true);
-            await fails(
-              () => seo.apply(manager.token, bad.id, { expectedRowVersion: bad.rowVersion }),
-              'VALIDATION_FAILED',
-              'warnings',
-            );
+            assert.ok(bad.warnings.some((warning) => warning.code === 'URL_OR_CONTACT'));
             // Put the good edit back for the next step.
             await seo.edit(reader.token, bad.id, {
               expectedRowVersion: bad.rowVersion,
@@ -451,16 +441,13 @@ test(
             const draft = await open('SHOP', 'shop');
             assert.equal(draft.status, 'DRAFT_READY');
             assert.equal(draft.current.englishLabel, 'INTRO');
-            assert.equal(draft.blocking, false);
             await fails(
               () =>
                 seo.apply(servicesOnly.token, draft.id, { expectedRowVersion: draft.rowVersion }),
               'FORBIDDEN',
             );
-            const ack = draft.warnings.length > 0 ? { acknowledgeWarnings: true } : {};
             const applied = await seo.apply(manager.token, draft.id, {
               expectedRowVersion: draft.rowVersion,
-              ...ack,
             });
             assert.equal(applied.result, 'APPLIED');
             const [shop] = await rows<Record<string, unknown>>(`SELECT * FROM website_shop_info`);

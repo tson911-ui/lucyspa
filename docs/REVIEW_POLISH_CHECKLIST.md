@@ -63,6 +63,7 @@ Cần chủ hoặc người quản trị máy chủ làm; Claude chỉ soạn h�
 - [ ] **Gỡ bản mẫu Lovable:** xóa bản mẫu Lovable cũ (không dùng làm tham chiếu nữa) khỏi mọi nơi còn giữ.
 - [ ] **Nhập liên kết Zalo và Facebook** trong Quản trị → Website → Thông tin tiệm (chân trang và nút liên hệ chỉ hiện biểu tượng khi có liên kết).
 - [ ] Chủ mở "Bán online" sau Phase 9 (bước 9 của `docs/PHASE6_WAVE4_DEPLOY_CHECKLIST.md`: quyền, đơn vị vận chuyển, chi nhánh, chữ chính sách, đơn thật nhỏ đầu tiên).
+- [ ] **Luật sư xem trước Phase 10 (chủ quyết định 2026-10-13):** lời chào và lời đồng ý của chat trên website (thông báo dữ liệu, số điện thoại để lại), và thẻ khách cho KTV (ghi chú nhân viên do AI tóm tắt, gợi ý mỹ phẩm, cách dùng dữ liệu). Hai tính năng này được bật để **thử nội bộ** trước; chỉ mở cho khách thật sau khi luật sư đã xem và chủ đã đồng ý bằng lời.
 - [ ] Phiên bán thử có giám sát (OQ-60) khi đã có sản phẩm thật; cấp quyền bán sản phẩm sau đó.
 
 ## H. Ảnh thật cần chụp (11 ảnh, danh sách đầy đủ trong `docs/CUSTOMER_SITE_C.md`, mục "Ảnh chủ nên chụp")

@@ -23,7 +23,6 @@ import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   IsArray,
-  IsBoolean,
   IsIn,
   IsInt,
   IsObject,
@@ -66,9 +65,7 @@ class EditDto extends VersionDto {
   content!: AiSeoContent;
 }
 
-class ApplyDto extends VersionDto {
-  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() acknowledgeWarnings?: boolean;
-}
+class ApplyDto extends VersionDto {}
 
 class RejectDto extends VersionDto {
   @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(600) reason?: string;

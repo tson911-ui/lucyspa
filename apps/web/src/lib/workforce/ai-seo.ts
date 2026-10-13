@@ -79,11 +79,8 @@ export function editRequest(form: SeoForm, detail: AiSeoDetail): AiSeoEditReques
   return { expectedRowVersion: detail.rowVersion, content };
 }
 
-export function applyRequest(detail: AiSeoDetail, acknowledge: boolean): AiSeoApplyRequest {
-  return {
-    expectedRowVersion: detail.rowVersion,
-    ...(acknowledge ? { acknowledgeWarnings: true } : {}),
-  };
+export function applyRequest(detail: AiSeoDetail): AiSeoApplyRequest {
+  return { expectedRowVersion: detail.rowVersion };
 }
 
 /** The most the search description may be, in characters (the house target; the box counts against it). */

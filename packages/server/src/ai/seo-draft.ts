@@ -177,9 +177,6 @@ export interface SeoDraftWarning {
   detail?: string;
 }
 
-const SOFT = new Set<SeoWarningCode>(['SEO_DESCRIPTION_LONG', 'SEO_DUPLICATE']);
-export const isBlockingSeoWarning = (code: SeoWarningCode): boolean => !SOFT.has(code);
-
 const norm = (text: string) => text.normalize('NFC').toLowerCase();
 const digits = (text: string) => text.replace(/\D/g, '');
 

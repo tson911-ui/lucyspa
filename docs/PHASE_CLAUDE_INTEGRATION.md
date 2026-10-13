@@ -582,3 +582,10 @@ that edited/composited images are covered (the recorded permission says "images 
    Report: how many pending drafts were fixed for free, how many needed AI repair, the repair cost. Bundle into the B+C+D deploy guide (one single self-checking block, enum checks cast to ::text). No deploy, no server access."
 
 Our reading (built in CI-F1, `docs/CLAUDE_CI_F1_REWRITE_FLOW.md`): the "4 sections" rule and "facts only from the source" meet when the source has nothing for a section: the section stays empty and is never filled by a repair (an invented ingredient list would break the facts rule); "Phù hợp với ai" is always written (cautious general line, marked inferred). The search-description drafts of CI-E1 are not part of this decision and keep their own review rules; asked of the Owner as a question.
+
+## 17. Owner answers to the two open questions, 2026-10-13 (recorded as given in substance; built as CI-F2)
+
+1. **Search-description drafts work like the product rewrites.** Warnings are informational and never block approval. If it is a small change, include it in the B+C+D deploy (update the deploy guide and tell the Owner the new commit), otherwise do it right after.
+2. **The chat notice and the customer card may be switched on for internal testing now.** A lawyer will review the wording and the data use before Phase 10. Add that to the Phase 10 checklist.
+
+Built (small change, so it goes into the B+C+D deploy): `docs/CLAUDE_CI_F2_SEO_NOTES.md`. The `blocking` and `blockingWarnings` fields, `acknowledgeWarnings` and `isBlockingSeoWarning` are gone; apply never refuses because of a note; the notes are shown in the drawer (titled "Lưu ý của hệ thống (chỉ để tham khảo)") and the codes are written in the audit event as `noteCodes`. An empty search description is stored as no text. Phase 10 checklist: `docs/REVIEW_POLISH_CHECKLIST.md`, section G (lawyer review of the chat notice and consent, and of the customer card and its data use).

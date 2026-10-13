@@ -37,7 +37,6 @@ const detail = (patch: Partial<AiSeoDetail> = {}): AiSeoDetail => ({
   },
   edited: null,
   warnings: [],
-  blocking: false,
   instruction: null,
   regenerations: 0,
   canRegenerate: true,
@@ -65,7 +64,7 @@ test('the form starts from the saved edit, else the draft; a change is dirty unt
   assert.equal(hasEnglishText(detail({ draft: null })), false);
 });
 
-test('an edit carries the row version and trimmed text, and no English text when the draft has none; apply asks to acknowledge only when told', () => {
+test('an edit carries the row version and trimmed text, and no English text when the draft has none; apply carries only the row version', () => {
   const fresh = detail();
   assert.deepEqual(
     editRequest({ seoDescriptionVi: '  a ', seoDescriptionEn: ' b', englishText: ' c  ' }, fresh),
@@ -82,8 +81,7 @@ test('an edit carries the row version and trimmed text, and no English text when
       .content.englishText,
     null,
   );
-  assert.deepEqual(applyRequest(fresh, false), { expectedRowVersion: 4 });
-  assert.deepEqual(applyRequest(fresh, true), { expectedRowVersion: 4, acknowledgeWarnings: true });
+  assert.deepEqual(applyRequest(fresh), { expectedRowVersion: 4 });
 });
 
 test('list state, status tones, working states and server fields are read strictly', () => {

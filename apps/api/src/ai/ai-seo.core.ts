@@ -24,7 +24,6 @@ import { Prisma } from '@lucy-spa/database';
 import {
   buildSeoSnapshot,
   checkSeoDraft,
-  isBlockingSeoWarning,
   loadAiSettings,
   maxCostMicroUsd,
   microUsdToVnd,
@@ -45,7 +44,8 @@ import { requireUse } from './ai-drafts.core.js';
  * Authority: `USE_AI_CONTENT` (GLOBAL) for everything; applying a service draft also needs `MANAGE_SERVICES` (GLOBAL) and applying the home
  * page draft `MANAGE_WEBSITE_CONTENT` (GLOBAL). Every command takes the draft's row version and locks the draft; apply also locks the target
  * and refuses a target that changed since the draft was written (the draft becomes STALE, nothing is written). The checks run again on the
- * FINAL text (a reviewer's edit is checked like the model's answer): a blocking note refuses, a soft note needs `acknowledgeWarnings`.
+ * FINAL text (a reviewer's edit is checked like the model's answer) and records the notes in the audit event; notes are informational and
+ * never refuse an apply (Owner, 2026-10-13, same rule as the product rewrite).
  * Only the search descriptions, and an English text that is still empty, are written; Owner-written text is never replaced. Creating
  * drafts, rejecting, regenerating and retrying never touch a service or the shop profile.
  */
@@ -81,7 +81,6 @@ const present = (warning: SeoDraftWarning): AiSeoWarning => ({
   code: warning.code,
   ...(warning.field ? { field: warning.field } : {}),
   ...(warning.detail ? { detail: warning.detail } : {}),
-  blocking: isBlockingSeoWarning(warning.code),
 });
 
 function storedWarnings(row: Row): AiSeoWarning[] {
@@ -187,7 +186,6 @@ async function buildDetail(context: AdminContext, row: Row): Promise<AiSeoDetail
     draft: contentOf(row.draft),
     edited: contentOf(row.edited),
     warnings,
-    blocking: warnings.some((warning) => warning.blocking),
     instruction: row.instruction,
     regenerations: row.regenerations,
     canRegenerate:
@@ -243,7 +241,6 @@ export async function listSeoDrafts(
       errorCode: row.errorCode,
       label: snapshot?.label ?? '',
       warnings: warnings.length,
-      blockingWarnings: warnings.filter((warning) => warning.blocking).length,
       edited: row.edited !== null,
       regenerations: row.regenerations,
       updatedAt: row.updatedAt.toISOString(),
@@ -544,20 +541,9 @@ export async function applySeoDraft(
     });
     return { result: 'STALE', detail: await buildDetail(context, stale) };
   }
-  if (
-    request.acknowledgeWarnings !== undefined &&
-    typeof request.acknowledgeWarnings !== 'boolean'
-  ) {
-    throw new AuthError('VALIDATION_FAILED', 'acknowledgeWarnings');
-  }
   const edited = contentOf(row.edited);
   const content = edited ?? base;
   const warnings = await recheck(context, row, snapshot, content);
-  if (warnings.some((warning) => warning.blocking))
-    throw new AuthError('VALIDATION_FAILED', 'warnings');
-  if (warnings.length > 0 && request.acknowledgeWarnings !== true) {
-    throw new AuthError('VALIDATION_FAILED', 'acknowledgeWarnings');
-  }
   // An English text is written only into an empty field (re-read now: someone may have written it since).
   const writeEnglish =
     snapshot.needsEnglishText &&
@@ -572,8 +558,8 @@ export async function applySeoDraft(
     await tx.websiteShopInfo.update({
       where: { id: 'shop' },
       data: {
-        seoDescriptionVi: content.seoDescriptionVi,
-        seoDescriptionEn: content.seoDescriptionEn,
+        seoDescriptionVi: content.seoDescriptionVi.trim() === '' ? null : content.seoDescriptionVi,
+        seoDescriptionEn: content.seoDescriptionEn.trim() === '' ? null : content.seoDescriptionEn,
         ...(writeEnglish ? { introEn: content.englishText } : {}),
         rowVersion: found.rowVersion + 1,
         updatedByUserId: context.actor.userId,
@@ -583,8 +569,8 @@ export async function applySeoDraft(
     await tx.service.update({
       where: { id: row.targetId },
       data: {
-        seoDescriptionVi: content.seoDescriptionVi,
-        seoDescriptionEn: content.seoDescriptionEn,
+        seoDescriptionVi: content.seoDescriptionVi.trim() === '' ? null : content.seoDescriptionVi,
+        seoDescriptionEn: content.seoDescriptionEn.trim() === '' ? null : content.seoDescriptionEn,
         ...(writeEnglish ? { descriptionEn: content.englishText } : {}),
         rowVersion: found.rowVersion + 1,
       },
@@ -610,7 +596,7 @@ export async function applySeoDraft(
       english: writeEnglish ? content.englishText : null,
       aiDraftId: row.id,
       edited: edited !== null,
-      acknowledgedWarnings: warnings.map((warning) => warning.code),
+      noteCodes: warnings.map((warning) => warning.code),
     } as unknown as Prisma.InputJsonObject,
   });
   return { result: 'APPLIED', detail: await buildDetail(context, applied) };

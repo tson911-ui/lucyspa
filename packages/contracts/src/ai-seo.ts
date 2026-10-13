@@ -60,8 +60,6 @@ export interface AiSeoWarning {
   code: AiSeoWarningCode;
   field?: string;
   detail?: string;
-  /** A blocking note must be edited away; the others may be accepted after reading. */
-  blocking: boolean;
 }
 
 export interface AiSeoCurrent {
@@ -83,8 +81,8 @@ export interface AiSeoRow {
   status: AiSeoStatus;
   errorCode: string | null;
   label: string;
+  /** Notes the checks find (informational: they never block an apply, Owner 2026-10-13). */
   warnings: number;
-  blockingWarnings: number;
   edited: boolean;
   regenerations: number;
   updatedAt: string;
@@ -112,7 +110,6 @@ export interface AiSeoDetail {
   draft: AiSeoContent | null;
   edited: AiSeoContent | null;
   warnings: AiSeoWarning[];
-  blocking: boolean;
   instruction: string | null;
   regenerations: number;
   canRegenerate: boolean;
@@ -152,10 +149,7 @@ export interface AiSeoEditRequest extends AiSeoVersioned {
   content: AiSeoContent;
 }
 
-export interface AiSeoApplyRequest extends AiSeoVersioned {
-  /** Needed when only soft notes remain. */
-  acknowledgeWarnings?: boolean;
-}
+export type AiSeoApplyRequest = AiSeoVersioned;
 
 export interface AiSeoApplyResponse {
   result: 'APPLIED' | 'STALE';

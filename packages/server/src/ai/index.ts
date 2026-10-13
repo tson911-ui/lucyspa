@@ -134,7 +134,6 @@ export {
   SEO_PROMPT_VERSION,
   buildSeoUserMessage,
   checkSeoDraft,
-  isBlockingSeoWarning,
   parseSeoDraft,
   seoDraftContent,
   type SeoCheckOptions,
