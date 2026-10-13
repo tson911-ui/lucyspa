@@ -110,6 +110,7 @@ function storedDraft(item: ItemRow): ProductRewriteDraft | null {
     seo_title_en: value['seoTitleEn'],
     seo_description_vi: value['seoDescriptionVi'],
     seo_description_en: value['seoDescriptionEn'],
+    suitable_for_inferred: value['suitableForInferred'] === true,
     facts_kept: value['factsKept'] ?? [],
     uncertain: value['uncertain'] ?? [],
   });
@@ -237,12 +238,14 @@ async function checkContent(
   item: ItemRow,
   content: AiDraftContent,
   base: ProductRewriteDraft,
+  useNameSuggestion: boolean,
 ): Promise<DraftWarning[]> {
   const snapshot = snapshotOf(item.baseSnapshot);
   if (snapshot === null) return [];
   const settings = await loadAiSettings(context.tx);
   return checkProductRewrite(
-    { ...base, ...content },
+    // The suggested name is checked only when the reviewer ticked it: otherwise the official name stays and the suggestion is not used.
+    { ...base, ...content, nameViSuggestion: useNameSuggestion ? base.nameViSuggestion : null },
     {
       supplierText: snapshot.supplierText,
       attributes: snapshot.attributes,
@@ -334,6 +337,7 @@ async function buildDetail(context: AdminContext, item: ItemRow): Promise<AiDraf
     edited: edit?.content ?? null,
     nameViSuggestion: draft?.nameViSuggestion ?? null,
     useNameSuggestion: edit?.useNameSuggestion ?? false,
+    suitableForInferred: draft?.suitableForInferred ?? false,
     factsKept: draft?.factsKept ?? [],
     uncertain: draft?.uncertain ?? [],
     warnings,
@@ -462,11 +466,13 @@ export async function editDraft(
     throw new AuthError('VALIDATION_FAILED', 'useNameSuggestion');
   }
   const useNameSuggestion = request.useNameSuggestion === true && base.nameViSuggestion !== null;
-  const warnings = (await checkContent(context, item, content, base)).map((warning) => ({
-    code: warning.code,
-    ...(warning.field ? { field: warning.field } : {}),
-    ...(warning.detail ? { detail: warning.detail } : {}),
-  }));
+  const warnings = (await checkContent(context, item, content, base, useNameSuggestion)).map(
+    (warning) => ({
+      code: warning.code,
+      ...(warning.field ? { field: warning.field } : {}),
+      ...(warning.detail ? { detail: warning.detail } : {}),
+    }),
+  );
   const updated = await touch(context, item, {
     edited: { content, useNameSuggestion } as unknown as Prisma.InputJsonObject,
     warnings: warnings as unknown as Prisma.InputJsonArray,
@@ -605,7 +611,9 @@ export async function applyDraft(
     throw new AuthError('VALIDATION_FAILED', 'acknowledgeWarnings');
   }
   const { content, edited, useNameSuggestion } = finalContent(item, base);
-  const warnings = (await checkContent(context, item, content, base)).map(present);
+  const warnings = (await checkContent(context, item, content, base, useNameSuggestion)).map(
+    present,
+  );
   if (warnings.some((warning) => warning.blocking)) {
     throw new AuthError('VALIDATION_FAILED', 'warnings');
   }
@@ -875,7 +883,7 @@ export async function approvePage(
     // checks run again on the text that would be applied (the settings may have changed since).
     if (
       storedWarnings(item).length > 0 ||
-      (await checkContent(context, item, content, base)).length > 0
+      (await checkContent(context, item, content, base, useNameSuggestion)).length > 0
     ) {
       skipped.push({ id, reason: 'WARNINGS' });
       continue;

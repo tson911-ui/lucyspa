@@ -10,7 +10,7 @@ import { stripSupplierReviewText } from '../supplier-import/text.js';
  * randomly delimited block and the system prompt says it is data, never instructions. The model has no tools and no web.
  */
 
-export const PRODUCT_REWRITE_PROMPT_VERSION = 'product-rewrite.v1';
+export const PRODUCT_REWRITE_PROMPT_VERSION = 'product-rewrite.v2';
 
 /** The Vietnamese word a spa must never use (Lucy Spa is a spa, not a clinic); written with an escape so no text scan finds it in the source. */
 const CLINIC_WORD = 'khám';
@@ -49,7 +49,12 @@ export interface ProductRewriteDraft {
   seoTitleEn: string;
   seoDescriptionVi: string;
   seoDescriptionEn: string;
-  /** What the model says it kept and what it left out as unverifiable; shown to the reviewer, never trusted. */
+  /**
+   * True when the "who it suits" line was inferred from the product type and purpose (the supplier named no skin type), false when the
+   * supplier stated it. The reviewer sees it in the AI notes; it is never shown to customers.
+   */
+  suitableForInferred: boolean;
+  /** What the model says it kept and what it left out as unverifiable (Vietnamese, reviewer only); shown to the reviewer, never trusted. */
   factsKept: string[];
   uncertain: string[];
 }
@@ -57,13 +62,14 @@ export interface ProductRewriteDraft {
 /** The strict JSON schema of the answer (`output_config.format`). */
 export const PRODUCT_REWRITE_SCHEMA = (() => {
   const section = { type: ['string', 'null'] };
+  // "Who it suits" is always written (a cautious general line when the supplier names no skin type); the other sections may be null.
   const sections = {
     type: 'object',
     properties: {
       benefits: section,
       ingredients: section,
       usage: section,
-      suitable_for: section,
+      suitable_for: { type: 'string' },
     },
     required: ['benefits', 'ingredients', 'usage', 'suitable_for'],
     additionalProperties: false,
@@ -83,6 +89,7 @@ export const PRODUCT_REWRITE_SCHEMA = (() => {
       seo_title_en: text,
       seo_description_vi: text,
       seo_description_en: text,
+      suitable_for_inferred: { type: 'boolean' },
       facts_kept: list,
       uncertain: list,
     },
@@ -97,6 +104,7 @@ export const PRODUCT_REWRITE_SCHEMA = (() => {
       'seo_title_en',
       'seo_description_vi',
       'seo_description_en',
+      'suitable_for_inferred',
       'facts_kept',
       'uncertain',
     ],
@@ -121,7 +129,11 @@ export const PRODUCT_REWRITE_SYSTEM = [
   '',
   'CLAIMS. This is a cosmetic product. Do not claim to treat, cure, heal or prevent any condition or disease; do not promise results, guarantees, "100%", "number one", permanent or instant effects, or replacing medicine; do not give medical advice. Describe what the product is designed for (hydrating, cleansing, soothing, protecting from the sun) and how it feels. Say "can help" or "designed to", not "will".',
   '',
-  'FIELDS. description_vi and description_en: one lead paragraph of 40 to 90 words in your own words. sections_vi and sections_en: benefits (what it is for), ingredients (only what the supplier text lists, as a short list in one sentence), usage (how to use it, in the supplier’s steps but reworded), suitable_for (who it suits, only if the supplier says so); each a short plain-text paragraph, or null when the supplier text has nothing for it. name_en: a natural English product name; the brand and the official line name stay unchanged. name_vi_suggestion: only a light clean-up of the Vietnamese name (remove supplier marketing words); otherwise null; never change the brand, the line name or any number. seo_title_vi and seo_title_en: at most 60 characters, product name + brand + "Lucy Spa", the name shortened first if needed, never the brand or "Lucy Spa". seo_description_vi and seo_description_en: at most 155 characters, one natural sentence with what the product is for and its size, and "at Lucy Spa" with the city where it fits; never stuff keywords, use each keyword at most once. Plain text only: no markdown, no HTML, no emoji, no line breaks inside a field.',
+  'FIELDS. description_vi and description_en: one lead paragraph of 40 to 90 words in your own words. sections_vi and sections_en: benefits (what it is for), ingredients (only what the supplier text lists, as a short list in one sentence), usage (how to use it, in the supplier’s steps but reworded), suitable_for (who it suits: ALWAYS written, in both languages, never null; see WHO IT SUITS below); each a short plain-text paragraph, or null when the supplier text has nothing for it (suitable_for excepted). name_en: a natural English product name; the brand and the official line name stay unchanged. name_vi_suggestion: only a light clean-up of the Vietnamese name (remove supplier marketing words); otherwise null; never change the brand, the line name or any number. seo_title_vi and seo_title_en: at most 60 characters, product name + brand + "Lucy Spa", the name shortened first if needed, never the brand or "Lucy Spa". seo_description_vi and seo_description_en: at most 155 characters, one natural sentence with what the product is for and its size, and "at Lucy Spa" with the city where it fits; never stuff keywords, use each keyword at most once. Plain text only: no markdown, no HTML, no emoji, no line breaks inside a field.',
+  '',
+  'WHO IT SUITS. If the supplier text names skin types or who the product is for, use exactly that. If it names none, write one cautious, general line inferred only from the product type and its stated purpose (for a hydrating toner, for example: Phù hợp với hầu hết các loại da, đặc biệt da khô hoặc da cần bổ sung độ ẩm sau khi rửa mặt; in English: Suitable for most skin types, especially dry skin or skin that needs extra hydration after cleansing). Never a medical claim, a guarantee, or a skin condition (acne, eczema, rosacea, sensitivity, inflammation, pigmentation); never a skin type that contradicts the supplier text. Set suitable_for_inferred to true when you inferred the line, false when the supplier stated it.',
+  '',
+  'REVIEWER NOTES. facts_kept and uncertain are notes for the shop’s reviewer, never shown to customers: write them in Vietnamese, short, one fact or doubt per entry, even though some fields are in English.',
   '',
   'The user message states whether authenticity claims ("chính hãng", "genuine", "authentic", "official distributor") are allowed. When they are not allowed, never use such words.',
 ].join('\n');
@@ -210,6 +222,7 @@ export function parseProductRewrite(value: unknown): ProductRewriteDraft | null 
   const seoDescriptionVi = str(value['seo_description_vi']);
   const seoDescriptionEn = str(value['seo_description_en']);
   const suggestion = value['name_vi_suggestion'];
+  const inferred = value['suitable_for_inferred'];
   const facts = value['facts_kept'];
   const uncertain = value['uncertain'];
   if (
@@ -241,6 +254,8 @@ export function parseProductRewrite(value: unknown): ProductRewriteDraft | null 
     seoTitleEn: seoTitleEn.trim(),
     seoDescriptionVi: seoDescriptionVi.trim(),
     seoDescriptionEn: seoDescriptionEn.trim(),
+    // An answer without the flag (an older draft) is read as stated by the supplier.
+    suitableForInferred: inferred === true,
     factsKept: strings(facts),
     uncertain: strings(uncertain),
   };
@@ -264,7 +279,8 @@ export type WarningCode =
   | 'WRONG_LANGUAGE'
   | 'EMPTY_FIELD'
   | 'BRAND_CHANGED'
-  | 'INJECTION_SIGN';
+  | 'INJECTION_SIGN'
+  | 'SUITABILITY_CONDITION';
 
 /**
  * Quality notes a reviewer may accept after reading them (facts, originality, SEO length, duplicates); every other warning (claims, the
@@ -322,6 +338,25 @@ export const DEFAULT_BANNED_PHRASES: readonly string[] = [
   'replace medication',
 ];
 
+/** Skin conditions: "who it suits" may not name or promise help with any of them (it would read as a treatment claim). */
+const SKIN_CONDITIONS = [
+  /\bmụn\b/i,
+  /trứng cá/i,
+  /\bviêm\b/i,
+  /\bchàm\b/i,
+  /vảy nến/i,
+  /\bnám\b/i,
+  /rosacea/i,
+  /\bacne\b/i,
+  /eczema/i,
+  /dermatitis/i,
+  /psoriasis/i,
+  /\binflam/i,
+  /\bmelasma\b/i,
+  /\bdị ứng\b/i,
+  /\ballerg/i,
+];
+
 const AUTHENTICITY = [
   /chính hãng/i,
   /hàng chính hãng/i,
@@ -356,6 +391,57 @@ const INJECTION_SIGNS = [
 ];
 
 const norm = (text: string) => text.normalize('NFC').toLowerCase();
+
+/** Lower case without diacritics (đ is d): the form ingredient names are compared in. */
+export const fold = (text: string): string =>
+  text.normalize('NFD').replace(/\p{M}/gu, '').replace(/[đĐ]/g, 'd').toLowerCase();
+
+/** Vietnamese spellings of INCI words that appear in ingredient lists, mapped to the English word (compared after `fold`). */
+const INGREDIENT_ALIASES: readonly [RegExp, string][] = [
+  [/\bnatri\b/g, 'sodium'],
+  [/\bkali\b/g, 'potassium'],
+  [/\bcanxi\b/g, 'calcium'],
+  [/\bmagie\b/g, 'magnesium'],
+  [/\baxit\b/g, 'acid'],
+  [/\bchiet xuat\b/g, 'extract'],
+  [/\bnuoc\b/g, 'water'],
+  [/\baqua\b/g, 'water'],
+  [/\bnicotinamide\b/g, 'niacinamide'],
+  [/\bhyaluronat(e)?\b/g, 'hyaluronate'],
+  [/\bglycerine\b/g, 'glycerin'],
+];
+
+/** The words of an ingredient text: folded, aliased, split at everything that is not a letter or digit (hyphens, brackets, slashes). */
+export function tokens(text: string): string[] {
+  let folded = fold(text);
+  for (const [pattern, word] of INGREDIENT_ALIASES) folded = folded.replace(pattern, word);
+  return folded.split(/[^a-z0-9]+/).filter((word) => word !== '');
+}
+
+/** Words that describe the form of an ingredient, not which one it is: they need not occur in the source. */
+const DESCRIPTORS: ReadonlySet<string> = new Set([
+  'extract',
+  'oil',
+  'butter',
+  'acid',
+  'complex',
+  'essence',
+  'powder',
+  'chiet',
+  'xuat',
+]);
+
+/** The same word, allowing the spelling variants of a name (hyaluronate/hyaluronic, peptide/peptides, glycerin/glycerine). */
+const related = (a: string, b: string): boolean => {
+  if (a === b) return true;
+  if (a.length < 5 || b.length < 5) return false;
+  let shared = 0;
+  while (shared < a.length && shared < b.length && a[shared] === b[shared]) shared += 1;
+  return shared >= Math.max(5, Math.min(a.length, b.length) - 2);
+};
+
+const known = (word: string, source: readonly string[]): boolean =>
+  source.some((entry) => related(word, entry));
 
 /** Numbers with a unit in the source: `50ml`, `15 g`, `SPF35`, `PA++`, `28 ống`: the draft must keep them (in Vietnamese or English). */
 export function factNumbers(source: string): string[] {
@@ -459,6 +545,14 @@ export function checkProductRewrite(
   ] as [string, string][]) {
     if (value.trim() === '') push({ code: 'EMPTY_FIELD', field });
   }
+  for (const [field, value] of [
+    ['sectionsVi.suitableFor', draft.sectionsVi.suitableFor],
+    ['sectionsEn.suitableFor', draft.sectionsEn.suitableFor],
+  ] as [string, string | null][]) {
+    if (value !== null && SKIN_CONDITIONS.some((pattern) => pattern.test(value))) {
+      push({ code: 'SUITABILITY_CONDITION', field });
+    }
+  }
 
   const banned = [...DEFAULT_BANNED_PHRASES, ...options.bannedPhrases].map((phrase) =>
     norm(phrase),
@@ -485,9 +579,10 @@ export function checkProductRewrite(
   for (const fact of factNumbers(options.supplierText)) {
     if (!everything.includes(squash(fact))) push({ code: 'FACT_MISSING', detail: fact });
   }
-  // Ingredients may not add what the source does not list: every comma-separated item of the Vietnamese list must occur in the source or the
-  // attributes, and the English list may not be longer than the Vietnamese one (a translation cannot be matched word by word).
-  const sourcePool = norm(
+  // Ingredients may not add what the source does not list: every comma-separated item of the Vietnamese list must be found in the source or
+  // the attributes, by name in either language (diacritics, Vietnamese transliterations of INCI names and spelling variants such as
+  // hyaluronate/hyaluronat/hyaluronic count as the same word), and the English list may not be longer than the Vietnamese one.
+  const sourceTokens = tokens(
     `${options.supplierText} ${options.attributes.map((a) => `${a.name} ${a.values.join(' ')}`).join(' ')}`,
   );
   const items = (list: string | null) =>
@@ -495,18 +590,12 @@ export function checkProductRewrite(
       ? []
       : list
           .split(/[,;:]| và | and /)
-          .map((entry) =>
-            norm(entry)
-              .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
-              .trim(),
-          )
+          .map((entry) => entry.replace(/[()]/g, ' ').trim())
           .filter((entry) => entry.length >= 4);
   const viItems = items(draft.sectionsVi.ingredients);
   for (const item of viItems) {
-    if (
-      !sourcePool.includes(item) &&
-      !item.split(/\s+/).every((word) => sourcePool.includes(word))
-    ) {
+    const words = tokens(item).filter((word) => word.length >= 3 && !DESCRIPTORS.has(word));
+    if (!words.every((word) => known(word, sourceTokens))) {
       push({ code: 'INGREDIENT_ADDED', detail: item.slice(0, 60) });
       break;
     }

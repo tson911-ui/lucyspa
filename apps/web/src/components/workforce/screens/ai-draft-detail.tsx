@@ -419,10 +419,14 @@ function DraftPanel({
                 ))}
               </Stack>
             </Card>
-            {detail.factsKept.length > 0 || detail.uncertain.length > 0 ? (
+            {detail.factsKept.length > 0 ||
+            detail.uncertain.length > 0 ||
+            detail.suitableForInferred ? (
               <Card as="section" aria-label={d.aiNotes}>
                 <CardHeader title={d.aiNotes} />
                 <Stack gap="field">
+                  <p className="ls-hint">{d.adminOnly}</p>
+                  {detail.suitableForInferred ? <p>{d.suitableInferred}</p> : null}
                   {detail.factsKept.length > 0 ? (
                     <p>
                       <strong>{d.factsKept}:</strong> {detail.factsKept.join(', ')}

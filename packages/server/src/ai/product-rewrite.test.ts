@@ -64,6 +64,7 @@ const CLEAN: ProductRewriteDraft = {
     'Sữa rửa mặt cấp ẩm The Whoo Gongjinhyang 180ml cho da khô, mua tại Lucy Spa, Đà Nẵng.',
   seoDescriptionEn:
     'The Whoo hydrating cleansing foam, 180ml, for dry skin. Available at Lucy Spa in Da Nang.',
+  suitableForInferred: false,
   factsKept: ['180ml', 'hoa sen', 'Glycerin'],
   uncertain: [],
 };
@@ -169,6 +170,7 @@ test('the answer is read into a draft or refused when its shape is wrong', () =>
     seo_title_en: 't',
     seo_description_vi: 'd',
     seo_description_en: 'd',
+    suitable_for_inferred: true,
     facts_kept: ['x', 3],
     uncertain: [],
   };
@@ -181,6 +183,11 @@ test('the answer is read into a draft or refused when its shape is wrong', () =>
     suitableFor: 'B',
   });
   assert.equal(draft.nameViSuggestion, null);
+  assert.equal(draft.suitableForInferred, true);
+  assert.equal(
+    parseProductRewrite({ ...answer, suitable_for_inferred: undefined })!.suitableForInferred,
+    false,
+  );
   assert.deepEqual(draft.factsKept, ['x']);
   assert.equal(parseProductRewrite({ ...answer, sections_vi: { benefits: 1 } }), null);
   assert.equal(parseProductRewrite({ ...answer, description_vi: undefined }), null);
@@ -376,4 +383,106 @@ test('cleaning the text for the model never leaves a link, an address or a phone
   assert.doesNotMatch(cleaned, /www|haruohui|@|\d{3}/);
   assert.match(cleaned, /Xem/);
   assert.match(cleaned, /nhé/);
+});
+
+const OHUI_SOURCE = [
+  'Nước hoa hồng tái sinh da Ohui The First Skin Softener 150ml giúp cấp ẩm và làm mềm da.',
+  'Thành phần chính: Water, Butylene Glycol, Glycerin, Sodium Hyaluronate, Oligopeptide-1, Niacinamide, Panthenol, Betaine.',
+  'Hướng dẫn sử dụng: thấm lên bông hoặc vỗ nhẹ lên da sau khi rửa mặt.',
+].join('\n');
+const ohui = (ingredients: string) =>
+  checkProductRewrite(
+    { ...CLEAN, sectionsVi: { ...CLEAN.sectionsVi, ingredients } },
+    options({ supplierText: OHUI_SOURCE, attributes: [] }),
+  ).map((warning) => `${warning.code}${warning.detail ? `:${warning.detail}` : ''}`);
+
+test("ingredients in the supplier's full list are not flagged, in Vietnamese or English names, with or without diacritics", () => {
+  for (const list of [
+    'Natri hyaluronate, oligopeptide, glycerin.',
+    'Natri hyaluronat, Oligopeptide-1, Glycerine, Niacinamide.',
+    'Sodium hyaluronate, nước, glycerin và panthenol.',
+    'Nicotinamide, betaine, butylene glycol.',
+    'Chiết xuất betaine, axit hyaluronic.',
+    'NATRI HYALURONATE; OLIGOPEPTIDE',
+  ]) {
+    assert.deepEqual(
+      ohui(list).filter((entry) => entry.startsWith('INGREDIENT_ADDED')),
+      [],
+      list,
+    );
+  }
+});
+
+test('an ingredient the supplier does not list is still flagged', () => {
+  for (const list of [
+    'Natri hyaluronate, Retinol.',
+    'Glycerin, Collagen biển.',
+    'Niacinamide, Ceramide NP.',
+    'Squalane',
+  ]) {
+    assert.ok(
+      ohui(list).some((entry) => entry.startsWith('INGREDIENT_ADDED')),
+      list,
+    );
+  }
+  // Only the first missing item is named, and the detail is the item as written.
+  assert.deepEqual(
+    ohui('Glycerin, Retinol, Squalane').filter((entry) => entry.startsWith('INGREDIENT_ADDED')),
+    ['INGREDIENT_ADDED:Retinol'],
+  );
+});
+
+test('"who it suits": always written by the prompt and the schema, flagged when inferred, never a skin condition', () => {
+  const schema = PRODUCT_REWRITE_SCHEMA as unknown as {
+    required: string[];
+    properties: Record<string, { properties?: Record<string, { type: unknown }> }>;
+  };
+  assert.ok(schema.required.includes('suitable_for_inferred'));
+  for (const key of ['sections_vi', 'sections_en']) {
+    assert.equal(schema.properties[key]!.properties!['suitable_for']!.type, 'string', 'never null');
+    assert.equal(
+      (schema.properties[key]!.properties!['benefits']!.type as string[]).includes('null'),
+      true,
+    );
+  }
+  assert.ok(PRODUCT_REWRITE_SYSTEM.includes('WHO IT SUITS'));
+  assert.ok(PRODUCT_REWRITE_SYSTEM.includes('Phù hợp với hầu hết các loại da'));
+  assert.ok(PRODUCT_REWRITE_SYSTEM.includes('REVIEWER NOTES'));
+  assert.ok(PRODUCT_REWRITE_SYSTEM.includes('write them in Vietnamese'));
+  const general =
+    'Phù hợp với hầu hết các loại da, đặc biệt da khô hoặc da cần bổ sung độ ẩm sau khi rửa mặt.';
+  const generalEn =
+    'Suitable for most skin types, especially dry skin or skin that needs extra hydration after cleansing.';
+  const inferred = withDraft({
+    suitableForInferred: true,
+    sectionsVi: { ...CLEAN.sectionsVi, suitableFor: general },
+    sectionsEn: { ...CLEAN.sectionsEn, suitableFor: generalEn },
+  });
+  assert.deepEqual(codes(inferred), [], 'the cautious general line is clean');
+  for (const [vi, en] of [
+    ['Phù hợp với da mụn và da viêm.', generalEn],
+    [general, 'Helps with acne-prone skin and eczema.'],
+    ['Cho da nám, da bị dị ứng.', generalEn],
+  ] as const) {
+    const flagged = codes(
+      withDraft({
+        sectionsVi: { ...CLEAN.sectionsVi, suitableFor: vi },
+        sectionsEn: { ...CLEAN.sectionsEn, suitableFor: en },
+      }),
+    );
+    assert.ok(
+      flagged.some((entry) => entry.startsWith('SUITABILITY_CONDITION')),
+      `${vi} / ${en}`,
+    );
+  }
+  // A claim of cure or guarantee in that line is caught by the ordinary claim rules too.
+  assert.ok(
+    codes(
+      withDraft({
+        sectionsVi: { ...CLEAN.sectionsVi, suitableFor: 'Điều trị da khô, cam kết hiệu quả.' },
+      }),
+    ).some((entry) => entry.startsWith('FORBIDDEN_PHRASE')),
+  );
+  // A draft written before this rule (no "who it suits") still checks clean.
+  assert.deepEqual(codes(CLEAN), []);
 });

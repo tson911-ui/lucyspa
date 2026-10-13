@@ -110,7 +110,11 @@ export interface AiDraftDetail {
   /** The reviewer's edit of the draft, if any; apply uses this when present. */
   edited: AiDraftContent | null;
   nameViSuggestion: string | null;
+  /** Off until the reviewer ticks it: the official Vietnamese name is kept by default. */
   useNameSuggestion: boolean;
+  /** The "who it suits" line was inferred from the product type (the supplier named no skin type). Reviewer only. */
+  suitableForInferred: boolean;
+  /** Reviewer notes in Vietnamese; never part of any customer-facing answer. */
   factsKept: string[];
   uncertain: string[];
   warnings: AiDraftWarning[];

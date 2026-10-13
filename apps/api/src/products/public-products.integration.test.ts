@@ -653,6 +653,50 @@ test(
         },
       );
 
+      await suite.test(
+        'the reviewer-only AI notes (what the AI kept, what it was unsure of, the inferred suitability) never reach a public answer',
+        async () => {
+          const [aiRun] = await tx.$queryRawUnsafe<{ id: string }[]>(
+            `INSERT INTO ai_runs (kind, scope, model, effort, prompt_version, started_by_user_id)
+             VALUES ('PRODUCT_TEXT', 'FIRST_THREE', 'claude-opus-5-5', 'medium', 'product-rewrite.v2', $1::uuid) RETURNING id`,
+            full.id,
+          );
+          const note = 'GHI-CHU-NOI-BO-CHI-NGUOI-DUYET';
+          const draft = {
+            descriptionVi: 'Mô tả nháp',
+            suitableForInferred: true,
+            factsKept: [note, 'Dung tích 100ml'],
+            uncertain: [`${note}-khong-chac`],
+          };
+          await tx.$executeRawUnsafe(
+            `INSERT INTO ai_items (run_id, kind, target_type, target_id, base_row_version, status, draft)
+             VALUES ($1::uuid, 'PRODUCT_TEXT', 'PRODUCT', $2::uuid, 1, 'DRAFT_READY', $3::jsonb)`,
+            aiRun!.id,
+            B.id,
+            JSON.stringify(draft),
+          );
+          const answers = [
+            await publicProductDetail(tx, 'vi', B.code),
+            await publicProductDetail(tx, 'en', B.code),
+            await list(),
+            await list({}, 'en'),
+          ];
+          for (const answer of answers) {
+            const text = JSON.stringify(answer);
+            for (const secret of [
+              note,
+              'factsKept',
+              'uncertain',
+              'suitableForInferred',
+              'ai_items',
+              'Mô tả nháp',
+            ]) {
+              assert.ok(!text.includes(secret), secret);
+            }
+          }
+        },
+      );
+
       await suite.test('the public catalog writes nothing and reads no money tables', async () => {
         const writes = await tx.$queryRaw<{ n: number }[]>`
           SELECT (SELECT count(*) FROM invoices)::int + (SELECT count(*) FROM payments)::int AS n`;

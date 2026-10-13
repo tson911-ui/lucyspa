@@ -174,6 +174,9 @@ const vi = {
     blockingTag: 'Cần sửa',
     noteTag: 'Lưu ý',
     aiNotes: 'AI ghi chú',
+    suitableInferred:
+      'Mục “Phù hợp với ai”: suy luận từ loại sản phẩm (nhà cung cấp không nêu loại da). Đọc kỹ trước khi áp dụng.',
+    adminOnly: 'Chỉ người duyệt thấy; không hiện trên trang khách.',
     factsKept: 'AI đã giữ các thông tin',
     uncertain: 'AI không chắc về',
     nameSuggestion: 'Tên tiếng Việt gợi ý',
@@ -263,6 +266,7 @@ const vi = {
     EMPTY_FIELD: 'Còn trống.',
     BRAND_CHANGED: 'Thương hiệu hoặc tên sản phẩm bị đổi.',
     INJECTION_SIGN: 'Có dấu hiệu làm theo chỉ dẫn lạ trong nội dung gốc.',
+    SUITABILITY_CONDITION: 'Mục “Phù hợp với ai” nhắc đến bệnh lý da; chỉ nói chung về loại da.',
     OTHER: 'Có điều cần xem.',
   },
   fieldErrors: {
@@ -447,6 +451,9 @@ const en: DraftsText = {
     blockingTag: 'To fix',
     noteTag: 'Note',
     aiNotes: 'AI notes',
+    suitableInferred:
+      'Who it suits: inferred from the product type (the supplier named no skin type). Read it before applying.',
+    adminOnly: 'Only reviewers see this; it never appears on the customer pages.',
     factsKept: 'Facts the AI kept',
     uncertain: 'What the AI was unsure about',
     nameSuggestion: 'Suggested Vietnamese name',
@@ -537,6 +544,8 @@ const en: DraftsText = {
     EMPTY_FIELD: 'Empty.',
     BRAND_CHANGED: 'The brand or the product name was changed.',
     INJECTION_SIGN: 'Shows signs of following odd instructions from the source text.',
+    SUITABILITY_CONDITION:
+      'The “Who it suits” line names a skin condition; keep it to general skin types.',
     OTHER: 'Something to look at.',
   },
   fieldErrors: {

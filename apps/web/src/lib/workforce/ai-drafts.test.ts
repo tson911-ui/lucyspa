@@ -46,6 +46,7 @@ const detail = (patch: Partial<AiDraftDetail> = {}): AiDraftDetail => ({
   edited: null,
   nameViSuggestion: null,
   useNameSuggestion: false,
+  suitableForInferred: false,
   factsKept: [],
   uncertain: [],
   warnings: [],

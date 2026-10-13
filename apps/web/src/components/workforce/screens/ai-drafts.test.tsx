@@ -49,6 +49,7 @@ test('the dictionaries are complete in both languages, name every warning code a
     'EMPTY_FIELD',
     'BRAND_CHANGED',
     'INJECTION_SIGN',
+    'SUITABILITY_CONDITION',
   ]) {
     assert.ok(Reflect.get(text.warnings, code) && Reflect.get(en.warnings, code), code);
   }

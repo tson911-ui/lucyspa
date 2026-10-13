@@ -70,6 +70,7 @@ test(
           status?: string;
           draft?: Record<string, unknown> | null;
           nameViSuggestion?: string | null;
+          inferred?: boolean;
           warnings?: unknown[];
         } = {},
       ) => {
@@ -90,6 +91,7 @@ test(
             ? {
                 ...CLEAN,
                 nameViSuggestion: patch.nameViSuggestion ?? null,
+                suitableForInferred: patch.inferred ?? false,
                 factsKept: ['180ml'],
                 uncertain: [],
               }
@@ -371,10 +373,22 @@ test(
           });
           assert.equal(result.result, 'APPLIED');
           assert.equal((await product(plain.productId)).contentOrigin, 'LUCY_AI');
+          // A suggestion that is never ticked changes nothing: the official name stays, and the box starts off.
+          const untouched = await make({ nameViSuggestion: 'Tên gợi ý chưa được chọn' });
+          const seen = await ai.getDraft(editor.token, untouched.id);
+          assert.equal(seen.nameViSuggestion, 'Tên gợi ý chưa được chọn');
+          assert.equal(seen.useNameSuggestion, false);
+          assert.equal(seen.suitableForInferred, false);
+          const guessed = await make({ inferred: true });
+          assert.equal((await ai.getDraft(editor.token, guessed.id)).suitableForInferred, true);
+          const official = (await product(untouched.productId)).nameVi;
+          await ai.applyDraft(editor.token, untouched.id, { expectedRowVersion: seen.rowVersion });
+          assert.equal((await product(untouched.productId)).nameVi, official);
           const named = await make({
             nameViSuggestion: 'Sữa Rửa Mặt Cấp Ẩm The Whoo Gongjinhyang 180ml',
           });
           let view = await ai.getDraft(editor.token, named.id);
+          assert.equal(view.useNameSuggestion, false);
           assert.equal(view.nameViSuggestion, 'Sữa Rửa Mặt Cấp Ẩm The Whoo Gongjinhyang 180ml');
           view = await ai.editDraft(editor.token, named.id, {
             expectedRowVersion: view.rowVersion,
