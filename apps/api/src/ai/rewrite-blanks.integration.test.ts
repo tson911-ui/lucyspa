@@ -120,9 +120,10 @@ test(
         descriptionEn: '',
         before: {
           descriptionEn: 'The English text before.',
-          sectionsVi: { suitableFor: 'Cho da khô.' },
+          // An older benefits text is not restored (that section may be empty on purpose); "who it suits" is.
+          sectionsVi: { suitableFor: 'Cho da khô.', benefits: 'Older benefits text.' },
         },
-        sectionsNow: { ...SECTIONS, suitableFor: null },
+        sectionsNow: { ...SECTIONS, suitableFor: null, benefits: null },
       });
       const fromName = await applied({ descriptionVi: null, descriptionEn: '   ', before: {} });
       const unrestorable = await applied({
@@ -200,6 +201,7 @@ test(
           );
           assert.deepEqual(one.description_sections_vi, {
             ...SECTIONS,
+            benefits: null,
             suitableFor: 'Cho da khô.',
           });
           assert.equal(one.row_version, versions.get(fromBefore.productId)! + 1);

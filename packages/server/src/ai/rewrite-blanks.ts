@@ -6,9 +6,9 @@ import type { AiDatabase } from './spend.js';
  * fix of the same day, the free fixes could blank a field that held the product's official name, so a draft applied before the Owner
  * heard of it may have written an empty description or an empty "who it suits". This restores such a field with no model and no cost:
  * from the product's own value before the apply (the before-values kept in the audit trail of that apply), or, for a description, from the
- * official name. Search texts are optional, so one is restored only when the audit shows it had a value before.
+ * official name. Search texts are optional, so one is restored only when the audit shows it had a value before. Of the sections only "who it suits" is restored (the others may legitimately be empty).
  *
- * Dry run by default: it only counts. With \`apply\` each product is changed in its own transaction, under a lock, with one audit event that
+ * Dry run by default: it only counts. With `apply` each product is changed in its own transaction, under a lock, with one audit event that
  * keeps the old and the new values. It never touches: a draft a person edited, a product whose text is not marked as written by the AI, or a
  * product changed by anyone after the apply (its row version moved). Safe to run again.
  */
@@ -24,7 +24,7 @@ export interface BlankFixReport {
   appliedItems: number;
   /** Products with at least one field this fix could restore or that stays empty. */
   productsWithBlank: number;
-  /** Fields per name (\`descriptionVi\`, \`sectionsVi.suitableFor\`, ...). */
+  /** Fields per name (`descriptionVi`, `sectionsVi.suitableFor`, ...). */
   blankByField: Record<string, number>;
   /** Fields this run restores (or would, in a dry run) from the value before the apply and from the official name; and fields nothing can restore (reported, left empty). */
   fromBefore: number;
@@ -34,7 +34,7 @@ export interface BlankFixReport {
   skippedEdited: number;
   skippedManual: number;
   skippedChanged: number;
-  /** With \`apply\`: products and fields written. */
+  /** With `apply`: products and fields written. */
   restoredProducts: number;
   restoredFields: number;
 }
@@ -126,7 +126,9 @@ export function planBlankFix(row: BlankFixRow): Plan {
       ? (before[`sections${language}`] as Record<string, unknown>)
       : {};
     for (const key of SECTION_KEYS) {
-      if (!blank(now[key])) continue;
+      // Only "who it suits" is always written. An empty benefits, ingredients or usage section is a valid result (the supplier text may have
+      // nothing for it), and an older value may be supplier copy that the review cleanup removed, so those are never restored.
+      if (key !== 'suitableFor' || !blank(now[key])) continue;
       const value = text(earlier[key]);
       if (value !== null) plan.sections[language][key] = value;
       else if (key === 'suitableFor') plan.unrestorable.push(`sections${language}.suitableFor`);
