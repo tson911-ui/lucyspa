@@ -22,6 +22,9 @@ import {
   executionErrorMessage,
 } from '../../../lib/workforce/service-execution';
 import { AddServiceDialog } from './add-service';
+import { CustomerBriefDrawer } from './customer-brief';
+import { briefDictionary } from '../../../i18n/brief';
+import { canAt } from '../../../lib/workforce/permissions';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import { Badge, Empty, Loading, Notice, PageHeader, useSuccessToast } from '../ui';
@@ -46,6 +49,7 @@ export function MyServicesScreen() {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [adding, setAdding] = useState<ServiceExecutionWork | null>(null);
+  const [briefLine, setBriefLine] = useState<ServiceExecutionWork | null>(null);
   const [loading, setLoading] = useState(false);
   const generation = useRef(0);
   const mutating = useRef(false);
@@ -170,6 +174,36 @@ export function MyServicesScreen() {
     ];
   }
 
+  /** The card's menu: add a service, and (for the person who may) the customer card of this visit (open visits only). */
+  function menuItems(line: ServiceExecutionWork) {
+    const brief = briefDictionary(locale);
+    return [
+      ...(line.actions.addService
+        ? [
+            {
+              id: 'add',
+              label: t.bookingBoard.addService,
+              icon: 'plus' as const,
+              disabled: pending !== null,
+              onSelect: () => setAdding(line),
+            },
+          ]
+        : []),
+      ...(canAt(account, 'VIEW_CUSTOMER_BRIEF', line.branchId) &&
+      (line.visitStatus === 'OPEN' || line.visitStatus === 'IN_SERVICE') &&
+      line.status !== 'CANCELLED'
+        ? [
+            {
+              id: 'brief',
+              label: brief.open,
+              icon: 'user' as const,
+              onSelect: () => setBriefLine(line),
+            },
+          ]
+        : []),
+    ];
+  }
+
   function primaryAction(line: ServiceExecutionWork) {
     if (line.status !== 'PLANNED' && line.status !== 'IN_PROGRESS') return null;
     const action = line.status === 'PLANNED' ? 'start' : 'end';
@@ -240,18 +274,10 @@ export function MyServicesScreen() {
                   headingLevel={3}
                   clamp
                   actions={
-                    line.actions.addService ? (
+                    menuItems(line).length > 0 ? (
                       <RowActions
                         menuLabel={fill(t.common.list.actionsFor, { name: line.visitCode })}
-                        items={[
-                          {
-                            id: 'add',
-                            label: t.bookingBoard.addService,
-                            icon: 'plus',
-                            disabled: pending !== null,
-                            onSelect: () => setAdding(line),
-                          },
-                        ]}
+                        items={menuItems(line)}
                       />
                     ) : undefined
                   }
@@ -288,6 +314,13 @@ export function MyServicesScreen() {
             );
           })}
         </Grid>
+      ) : null}
+      {briefLine ? (
+        <CustomerBriefDrawer
+          lineId={briefLine.lineId}
+          serviceName={locale === 'vi' ? briefLine.service.nameVi : briefLine.service.nameEn}
+          onClose={() => setBriefLine(null)}
+        />
       ) : null}
       {adding ? (
         <AddServiceDialog

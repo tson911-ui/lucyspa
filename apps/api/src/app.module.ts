@@ -67,6 +67,8 @@ import { AiService } from './ai/ai.service.js';
 import { AiSeoController } from './ai/ai-seo.controller.js';
 import { AssistantController } from './assistant/assistant.controller.js';
 import { AssistantService } from './assistant/assistant.service.js';
+import { BriefController } from './brief/brief.controller.js';
+import { BriefService } from './brief/brief.service.js';
 import { AiSeoService } from './ai/ai-seo.service.js';
 import { ChatRequestController, PublicChatController } from './chat/chat.controller.js';
 import { ChatRequestService } from './chat/chat-requests.service.js';
@@ -213,6 +215,7 @@ export class AppModule {
         AiController,
         AiSeoController,
         AssistantController,
+        BriefController,
         PublicChatController,
         ChatRequestController,
         AiDraftsController,
@@ -309,6 +312,7 @@ export class AppModule {
         AiService,
         AiSeoService,
         AssistantService,
+        BriefService,
         PublicChatService,
         ChatRequestService,
         ProductImageZipService,

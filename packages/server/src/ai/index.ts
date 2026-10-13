@@ -109,6 +109,23 @@ export {
   collectNumbers,
   spokenNumbers,
 } from './assistant.js';
+export {
+  BRIEF_PROMPT_VERSION,
+  BRIEF_SCHEMA,
+  BRIEF_SYSTEM,
+  SUGGESTION_PROMPT_VERSION,
+  SUGGESTION_SYSTEM,
+  buildBriefUserMessage,
+  buildSuggestionUserMessage,
+  checkBriefSummary,
+  checkSuggestionLine,
+  cleanNote,
+  parseBrief,
+  parseSuggestions,
+  suggestionSchema,
+  type BriefCheckOptions,
+  type SuggestionCandidate,
+} from './brief.js';
 export { RETENTION_DAYS, runAiRetention, type RetentionResult } from './retention.js';
 export {
   SEO_DESCRIPTION_TARGET,

@@ -17,6 +17,7 @@ export const RETENTION_DAYS = Object.freeze({
 export interface RetentionResult {
   callbackRequestsCleared: number;
   assistantTextsCleared: number;
+  briefsDeleted: number;
 }
 
 export async function runAiRetention(
@@ -32,5 +33,12 @@ export async function runAiRetention(
        SET question = NULL, answer = NULL, purged_at = clock_timestamp()
      WHERE purged_at IS NULL
        AND created_at < clock_timestamp() - make_interval(days => ${RETENTION_DAYS.assistantQuestion})`;
-  return { callbackRequestsCleared: Number(cleared), assistantTextsCleared: Number(questions) };
+  // A customer brief or a set of product talking points lives until 7 days after the service (its expiry is set when it is made).
+  const briefs = await database.$executeRaw`
+    DELETE FROM ai_customer_briefs WHERE expires_at < clock_timestamp()`;
+  return {
+    callbackRequestsCleared: Number(cleared),
+    assistantTextsCleared: Number(questions),
+    briefsDeleted: Number(briefs),
+  };
 }

@@ -15,6 +15,7 @@ await import('../apps/api/dist/ai/ai-runs.integration.test.js');
 await import('../apps/api/dist/ai/ai-approve-all.integration.test.js');
 await import('../apps/api/dist/ai/ai-seo.integration.test.js');
 await import('../apps/api/dist/assistant/assistant.integration.test.js');
+await import('../apps/api/dist/brief/brief.integration.test.js');
 await import('../apps/api/dist/bot/bot.integration.test.js');
 await import('../apps/api/dist/chat/chat.integration.test.js');
 await import('../apps/api/dist/product-imports/import-text-lock.integration.test.js');

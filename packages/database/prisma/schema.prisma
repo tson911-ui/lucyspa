@@ -5698,6 +5698,24 @@ model AiAssistantQuestion {
   @@map("ai_assistant_questions")
 }
 
+/// Claude integration Wave D: the cached summary of staff notes and the product talking points of one visit participant; deleted 7 days after the service.
+model AiCustomerBrief {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  visitId       String   @map("visit_id") @db.Uuid
+  participantId String   @map("participant_id") @db.Uuid
+  kind          String
+  inputHash     String   @map("input_hash")
+  payload       Json     @db.JsonB
+  model         String
+  costMicroUsd  BigInt   @default(0) @map("cost_micro_usd")
+  createdAt     DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  expiresAt     DateTime @map("expires_at") @db.Timestamptz(3)
+
+  @@unique([visitId, participantId, kind], map: "ai_customer_briefs_key")
+  @@index([expiresAt], map: "ai_customer_briefs_expiry_idx")
+  @@map("ai_customer_briefs")
+}
+
 model AiRun {
   id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   kind                  String
