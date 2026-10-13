@@ -12,6 +12,7 @@ import {
   FacetedFilter,
   ListSection,
   ListToolbar,
+  Menu,
   RowActions,
   useUrlState,
   type DataTableColumn,
@@ -32,7 +33,7 @@ import { paginationLabels, toolbarLabels } from '../../../lib/workforce/list-vie
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { PrefetchLink as Link } from '../link';
 import { useAccount, useWorkforce } from '../session';
-import { PageApprovalDrawer, RunsPanel, StartRunDialog } from './ai-runs';
+import { ApproveAllDrawer, PageApprovalDrawer, RunsPanel, StartRunDialog } from './ai-runs';
 import { Badge, Button, Empty, ErrorState, PageHeader, useResource, useSuccessToast } from '../ui';
 
 const BASE = '/api/v1/ai/product-drafts';
@@ -80,6 +81,7 @@ function AiDraftsPage() {
   const notify = useSuccessToast();
   const [starting, setStarting] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [approvingAll, setApprovingAll] = useState(false);
   const runData = runs.data;
   const reloadAll = async () => {
     await Promise.all([list.reload(), runs.reload()]);
@@ -199,9 +201,24 @@ function AiDraftsPage() {
           {...(runData && runData.singleApplied >= 3
             ? {
                 actions: (
-                  <Button variant="secondary" icon="check" onClick={() => setApproving(true)}>
-                    {text.page.open}
-                  </Button>
+                  <Menu
+                    label={text.approveMenu}
+                    icon="check"
+                    items={[
+                      {
+                        id: 'all',
+                        label: text.approveAll.open,
+                        icon: 'check',
+                        onSelect: () => setApprovingAll(true),
+                      },
+                      {
+                        id: 'page',
+                        label: text.page.open,
+                        icon: 'check',
+                        onSelect: () => setApproving(true),
+                      },
+                    ]}
+                  />
                 ),
               }
             : {})}
@@ -248,6 +265,16 @@ function AiDraftsPage() {
           onStarted={async () => {
             setStarting(false);
             notify(text.runs.started);
+            await reloadAll();
+          }}
+        />
+      ) : null}
+      {approvingAll ? (
+        <ApproveAllDrawer
+          onClose={() => setApprovingAll(false)}
+          onDone={async (message) => {
+            setApprovingAll(false);
+            notify(message);
             await reloadAll();
           }}
         />

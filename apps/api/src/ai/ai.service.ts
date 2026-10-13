@@ -1,4 +1,7 @@
 import type {
+  AiApproveAllPreview,
+  AiApproveAllRequest,
+  AiApproveAllResponse,
   AiDraftApplyRequest,
   AiDraftApplyResponse,
   AiDraftDetail,
@@ -156,6 +159,49 @@ export class AiService {
   ): Promise<AiPageApproveResponse> {
     // A page approval writes up to 20 products and their audit rows: it is allowed more time than one command.
     return this.run(token, requestId, (context) => drafts.approvePage(context, body), 60_000);
+  }
+
+  previewApproveAll(token: string | undefined): Promise<AiApproveAllPreview> {
+    return this.run(token, undefined, (context) => drafts.previewApproveAll(context), 60_000);
+  }
+
+  /**
+   * "Duyệt tất cả": the confirmed list is applied in chunks of ten, each its own transaction (a long confirm must not hold the catalog
+   * locked), then one summary event. The per-product audit events are written by the chunks.
+   */
+  async approveAll(
+    token: string | undefined,
+    body: AiApproveAllRequest,
+    requestId?: string,
+  ): Promise<AiApproveAllResponse> {
+    const items = drafts.approveAllList(body.items);
+    let applied = 0;
+    const skipped: AiApproveAllResponse['skipped'] = [];
+    const appliedIds: string[] = [];
+    for (let at = 0; at < items.length; at += drafts.APPROVE_ALL_CHUNK) {
+      const chunk = items.slice(at, at + drafts.APPROVE_ALL_CHUNK);
+      const result = await this.run(
+        token,
+        requestId,
+        (context) => drafts.approveAllChunk(context, chunk),
+        60_000,
+      );
+      applied += result.applied;
+      skipped.push(...result.skipped);
+      const skippedIds = new Set(result.skipped.map((entry) => entry.id));
+      appliedIds.push(...chunk.map((entry) => entry.id).filter((id) => !skippedIds.has(id)));
+    }
+    if (applied > 0) {
+      await this.run(token, requestId, (context) =>
+        drafts.recordApproveAll(context, {
+          requested: items.length,
+          applied,
+          skipped: skipped.length,
+          itemIds: appliedIds,
+        }),
+      );
+    }
+    return { applied, skipped };
   }
 
   previewRun(

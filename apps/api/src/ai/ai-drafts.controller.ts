@@ -1,4 +1,7 @@
 import type {
+  AiApproveAllPreview,
+  AiApproveAllRequest,
+  AiApproveAllResponse,
   AiDraftApplyRequest,
   AiDraftApplyResponse,
   AiDraftContent,
@@ -38,7 +41,9 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import type { Request, Response } from 'express';
 import { sessionCookie } from '../auth/cookies.js';
 import { API_ENVIRONMENT, type ApiEnvironment } from '../platform/tokens.js';
@@ -81,6 +86,21 @@ class PageViewDto implements AiPageViewRequest {
   @IsString({ each: true })
   @MaxLength(40, { each: true })
   itemIds!: string[];
+}
+
+class ApproveAllItemDto {
+  @ApiProperty() @IsString() @MaxLength(40) id!: string;
+  @ApiProperty() @IsInt() @Min(1) @Max(2_147_483_647) rowVersion!: number;
+}
+
+class ApproveAllDto implements AiApproveAllRequest {
+  @ApiProperty({ type: [ApproveAllItemDto] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(400)
+  @ValidateNested({ each: true })
+  @Type(() => ApproveAllItemDto)
+  items!: ApproveAllItemDto[];
 }
 
 class PageApproveDto implements AiPageApproveRequest {
@@ -149,6 +169,29 @@ export class AiDraftsController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<AiPageApproveResponse> {
     return this.ai.approvePage(this.session(request), body, this.requestId(response));
+  }
+
+  @Get('approve-all')
+  @ApiOkResponse({
+    description:
+      '"Duyệt tất cả": every ready draft with zero warnings (the list a confirm must send back), plus how many were left out and why.',
+  })
+  approveAllPreview(@Req() request: Request): Promise<AiApproveAllPreview> {
+    return this.ai.previewApproveAll(this.session(request));
+  }
+
+  @Post('approve-all')
+  @HttpCode(200)
+  @ApiOkResponse({
+    description:
+      'One confirm for the previewed drafts with zero warnings; each is checked again and applied in its own transaction, audited per product plus a summary. Allowed after three drafts were applied one by one.',
+  })
+  approveAll(
+    @Body() body: ApproveAllDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<AiApproveAllResponse> {
+    return this.ai.approveAll(this.session(request), body, this.requestId(response));
   }
 
   @Get(':id')

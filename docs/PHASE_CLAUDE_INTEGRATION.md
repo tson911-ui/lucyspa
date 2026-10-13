@@ -543,6 +543,18 @@ no deploy, no server access; Waves B to D wait until the Owner has seen the firs
 
 Reading used while building: "the strongest model" = Claude Opus 5.5, the model named in OQ-CI-3 (Fable 5.1 stays out, see 5.2). The 5 new permissions are added wave by wave (Wave A adds two, 77 to 79); all are granted to nobody.
 
+**Owner message of 2026-10-13 (verbatim; it releases Waves B to D and changes one review rule):**
+
+> Owner has seen and approved the first 3 rewritten products in production; rewrite v2 is live (c6b85ec) and the remaining 340 products are being rewritten now. Continue the Claude integration phase: build Waves B, C and D unattended, same per-step process as before (tests, lint, typecheck, format, migration rehearsal on a scratch copy, UX gate with frontend-design loaded before any UI, commit + push each step, CI green, handoff updated after each step):
+>
+> - Wave B: website chat widget routed through the web server to the n8n bot on localhost (rate limits, abuse protection, fallback "để lại số điện thoại" stored for staff when n8n is down), bot data API usable by n8n, booking deep link with prefilled slot; SEO meta descriptions + English translation drafts for public pages. Finalize docs/N8N_BOT_DATA_GUIDE.md as a step-by-step Vietnamese guide; mark clearly which node settings need the Owner's real workflow export to confirm.
+> - Wave C: Owner/manager report assistant (read-only, permission-limited, aggregate figures only in v1).
+> - Wave D: KTV customer summary and staff-only cosmetics suggestions.
+>   Also add a "Duyệt tất cả" option for rewrite drafts that have zero warnings (one preview + confirm, audited); drafts with warnings still need a per-page or single review.
+>   At the end write ONE Vietnamese deploy guide for B+C+D as a single self-checking bash block (enum checks cast to ::text; status checks tolerant of exact counts where sensible), plus an Owner test script. No deploy, no server access. Stop and report if an Owner decision is needed, CI stays red after a real fix attempt, or context is near full (update the handoff first).
+
+Reading used while building: "Duyệt tất cả" reverses the earlier "no apply-everything" rule only for drafts with zero warnings, only for product text; it keeps the three single approvals, `MANAGE_PRODUCTS`, a fresh check per draft and one audit event per product (built as CI-B0, migration 128 `applied_via` also allows `ALL`). The lawyer item of 9.3 stays open: the chat notice and the summary notice are shipped as provisional wording and listed as a pre-deploy item for the Owner; the features are built switched off.
+
 ## 15. Parked: feature 5, Lucy-branded product images (postponed by the Owner; nothing planned, costed or asked)
 
 Kept only so the thinking is not lost. If it is ever taken up: generate only an empty Lucy-style scene with an image model and composite the **original supplier pixels** (cutout) over it, never asking a model to redraw packaging or labels; check the pixels inside the cutout are unchanged; keep the supplier photo out of the image API; get the supplier's written confirmation

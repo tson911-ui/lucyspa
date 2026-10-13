@@ -33,6 +33,8 @@ export const AI_RUN_LIMITS = {
   pageApprovalMax: 20,
   /** Drafts that must have been applied one by one before a page may be approved at once. */
   singleApprovalsNeeded: 3,
+  /** Drafts "Duyệt tất cả" may cover in one confirm (Owner, 2026-10-13: only drafts with zero warnings). */
+  approveAllMax: 400,
 } as const;
 
 /** Why running is not possible right now; the screen says each in plain words. */
@@ -161,4 +163,47 @@ export interface AiPageResponse {
   /** Drafts applied one by one; the approval is offered when this reaches three. */
   singleApplied: number;
   canApprove: boolean;
+}
+
+/**
+ * "Duyệt tất cả" (Owner, 2026-10-13): one preview and one confirm for EVERY ready product draft that has zero warnings. The preview lists
+ * them (each with its row version); the confirm sends back exactly that list, and the server applies a draft only if it is still ready,
+ * unchanged since the preview, free of any warning (checked again) and its product is untouched. Drafts with warnings are never in it:
+ * they are approved one by one or page by page.
+ */
+export interface AiApproveAllItem {
+  id: string;
+  rowVersion: number;
+  productName: string;
+  productCode: string;
+  descriptionVi: string;
+  seoTitleVi: string;
+}
+
+/** GET /api/v1/ai/product-drafts/approve-all : the preview. */
+export interface AiApproveAllPreview {
+  /** Drafts waiting for review (status ready). */
+  ready: number;
+  /** Of those, with at least one note: not included. */
+  withWarnings: number;
+  /** Of those, whose product changed since the draft was written: not included. */
+  changed: number;
+  /** Drafts this confirm would apply (the list below holds at most `approveAllMax` of them). */
+  eligible: number;
+  items: AiApproveAllItem[];
+  singleApplied: number;
+  /** Three single approvals are done and the viewer may apply products. */
+  canApprove: boolean;
+}
+
+/** POST /api/v1/ai/product-drafts/approve-all : the confirm, with the list the preview showed. */
+export interface AiApproveAllRequest {
+  items: { id: string; rowVersion: number }[];
+}
+
+export type AiApproveAllSkipReason = 'NOT_READY' | 'CHANGED' | 'WARNINGS' | 'STALE';
+
+export interface AiApproveAllResponse {
+  applied: number;
+  skipped: { id: string; reason: AiApproveAllSkipReason }[];
 }

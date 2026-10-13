@@ -1,6 +1,9 @@
 'use client';
 
 import type {
+  AiApproveAllItem,
+  AiApproveAllPreview,
+  AiApproveAllResponse,
   AiPageApproveResponse,
   AiPageResponse,
   AiRunList,
@@ -13,6 +16,7 @@ import {
   CardHeader,
   Cluster,
   ConfirmDialog,
+  DataTable,
   DescriptionList,
   Drawer,
   Field,
@@ -20,12 +24,14 @@ import {
   NumberInput,
   Select,
   Stack,
+  type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useEffect, useState } from 'react';
 import { aiDraftsDictionary } from '../../../i18n/ai-drafts';
 import { fill } from '../../../i18n/workforce';
 import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { formatVnd } from '../../../lib/workforce/format';
+import { paginationLabels } from '../../../lib/workforce/list-view';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useWorkforce } from '../session';
 import { Badge, Button, Empty, Loading, Notice, useResource, useSuccessToast } from '../ui';
@@ -343,6 +349,145 @@ export function StartRunDialog({
         )}
       </Stack>
     </FormDialog>
+  );
+}
+
+/**
+ * "Duyệt tất cả" (Owner, 2026-10-13): every ready draft with zero warnings, listed once (20 a page) and approved with one confirm. The list
+ * is the one the server previewed; the server checks each draft again and skips any that changed. Drafts with notes are never in it.
+ */
+export function ApproveAllDrawer({
+  onClose,
+  onDone,
+}: {
+  onClose: () => void;
+  onDone: (message: string) => Promise<void>;
+}) {
+  const { api, t, locale } = useWorkforce();
+  const text = aiDraftsDictionary(locale);
+  const a = text.approveAll;
+  const loaded = useResource(() => api.get<AiApproveAllPreview>(`${DRAFTS}/approve-all`), [api]);
+  const preview = loaded.data;
+  const [confirming, setConfirming] = useState(false);
+  const [page, setPage] = useState(1);
+  const count = preview?.eligible ?? 0;
+  const columns: DataTableColumn<AiApproveAllItem>[] = [
+    {
+      key: 'product',
+      header: text.columns.product,
+      mobileTitle: true,
+      truncate: true,
+      width: 'md',
+      cell: (row) => <span title={row.productName}>{row.productName}</span>,
+    },
+    { key: 'code', header: text.columns.code, cell: (row) => row.productCode },
+  ];
+
+  async function approve() {
+    if (!preview) return;
+    const result = await api.post<AiApproveAllResponse>(`${DRAFTS}/approve-all`, {
+      items: preview.items.map((item) => ({ id: item.id, rowVersion: item.rowVersion })),
+    });
+    setConfirming(false);
+    await onDone(
+      fill(a.done, { applied: String(result.applied) }) +
+        (result.skipped.length > 0
+          ? fill(a.doneSkipped, { skipped: String(result.skipped.length) })
+          : ''),
+    );
+  }
+
+  return (
+    <Drawer
+      open
+      title={a.title}
+      closeLabel={t.common.close}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            {a.close}
+          </Button>
+          <Button
+            variant="primary"
+            icon="check"
+            disabled={!preview || count === 0 || !preview.canApprove}
+            onClick={() => setConfirming(true)}
+          >
+            {count === 0 ? a.approveNone : fill(a.approve, { count: String(count) })}
+          </Button>
+        </>
+      }
+    >
+      {loaded.error && !preview ? (
+        <Notice tone="error">{a.loadFailed}</Notice>
+      ) : !preview ? (
+        <Loading t={t} />
+      ) : (
+        <Stack gap="page">
+          <p>{a.intro}</p>
+          {!preview.canApprove ? (
+            <Notice tone="warning">
+              {preview.singleApplied < 3
+                ? fill(text.page.needSingles, { done: String(preview.singleApplied) })
+                : a.noPermission}
+            </Notice>
+          ) : null}
+          <DescriptionList
+            items={[
+              { label: a.facts.ready, value: String(preview.ready) },
+              { label: a.facts.eligible, value: String(preview.eligible) },
+              { label: a.facts.withWarnings, value: String(preview.withWarnings) },
+              { label: a.facts.changed, value: String(preview.changed) },
+            ]}
+          />
+          {preview.eligible > preview.items.length ? (
+            <Notice tone="info">
+              {fill(a.truncated, { shown: String(preview.items.length) })}
+            </Notice>
+          ) : null}
+          <DataTable
+            mode="client"
+            caption={fill(t.common.list.table, { list: a.listName })}
+            columns={columns}
+            rows={preview.items}
+            rowKey={(row) => row.id}
+            empty={<Empty>{a.empty}</Empty>}
+            paging={{
+              page,
+              pageSize: 20,
+              onPageChange: setPage,
+              labels: paginationLabels(t, a.listName),
+            }}
+          />
+        </Stack>
+      )}
+      {confirming ? (
+        <ConfirmDialog
+          title={fill(a.confirmTitle, { count: String(count) })}
+          description={fill(a.confirmBody, { count: String(count) })}
+          facts={[
+            { label: a.confirmFacts.products, value: String(count) },
+            ...(preview && preview.withWarnings + preview.changed > 0
+              ? [
+                  {
+                    label: a.confirmFacts.left,
+                    value: String(preview.withWarnings + preview.changed),
+                  },
+                ]
+              : []),
+          ]}
+          tone="warning"
+          confirmLabel={fill(a.confirm, { count: String(count) })}
+          busyLabel={t.common.saving}
+          cancelLabel={t.common.cancel}
+          referenceLabel={t.errors.reference}
+          describeError={confirmError(t)}
+          onConfirm={approve}
+          onCancel={() => setConfirming(false)}
+        />
+      ) : null}
+    </Drawer>
   );
 }
 

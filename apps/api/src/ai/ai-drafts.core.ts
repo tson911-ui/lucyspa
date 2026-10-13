@@ -2,6 +2,9 @@ import {
   AI_DRAFT_LIMITS,
   AI_DRAFT_STATUSES,
   AI_RUN_LIMITS,
+  type AiApproveAllItem,
+  type AiApproveAllPreview,
+  type AiApproveAllResponse,
   type AiDraftApplyRequest,
   type AiDraftApplyResponse,
   type AiDraftContent,
@@ -509,7 +512,7 @@ interface ApplyWrite {
   content: AiDraftContent;
   edited: boolean;
   useNameSuggestion: boolean;
-  via: 'SINGLE' | 'PAGE';
+  via: 'SINGLE' | 'PAGE' | 'ALL';
   acknowledged: string[];
 }
 
@@ -909,4 +912,176 @@ export async function approvePage(
     });
   }
   return { applied: done.length, skipped };
+}
+
+// ------------------------------------------------------------------------------------------------------------------ approve all
+
+/** Drafts one transaction applies; each chunk is its own transaction so a long confirm never holds the catalog locked. */
+export const APPROVE_ALL_CHUNK = 10;
+
+/**
+ * "Duyệt tất cả" preview (Owner, 2026-10-13): every ready draft with zero warnings, oldest first, with the row version the confirm must
+ * send back. Reading only; nothing is recorded and nothing is changed. A draft is left out when it has any stored note, when the checks
+ * find one now, or when its product changed since the draft was written.
+ */
+export async function previewApproveAll(context: AdminContext): Promise<AiApproveAllPreview> {
+  requireUse(context);
+  const { tx } = context;
+  const rows = await tx.aiItem.findMany({
+    where: { kind: 'PRODUCT_TEXT', status: 'DRAFT_READY' },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+  });
+  const products = await tx.product.findMany({
+    where: { id: { in: rows.map((row) => row.targetId) } },
+    select: { id: true, code: true, nameVi: true, rowVersion: true },
+  });
+  const byId = new Map(products.map((product) => [product.id, product]));
+  const items: AiApproveAllItem[] = [];
+  let withWarnings = 0;
+  let changed = 0;
+  let eligible = 0;
+  for (const row of rows) {
+    const product = byId.get(row.targetId);
+    const base = storedDraft(row);
+    if (!product || base === null) continue;
+    if (product.rowVersion !== row.baseRowVersion) {
+      changed += 1;
+      continue;
+    }
+    const { content, useNameSuggestion } = finalContent(row, base);
+    if (
+      storedWarnings(row).length > 0 ||
+      (await checkContent(context, row, content, base, useNameSuggestion)).length > 0
+    ) {
+      withWarnings += 1;
+      continue;
+    }
+    eligible += 1;
+    if (items.length < AI_RUN_LIMITS.approveAllMax) {
+      items.push({
+        id: row.id,
+        rowVersion: row.rowVersion,
+        productName: product.nameVi,
+        productCode: product.code,
+        descriptionVi: content.descriptionVi.slice(0, 240),
+        seoTitleVi: content.seoTitleVi,
+      });
+    }
+  }
+  const applied = await singleApplied(context);
+  return {
+    ready: rows.length,
+    withWarnings,
+    changed,
+    eligible,
+    items,
+    singleApplied: applied,
+    canApprove:
+      applied >= AI_RUN_LIMITS.singleApprovalsNeeded &&
+      decide(context.actor.graph, 'MANAGE_PRODUCTS', GLOBAL),
+  };
+}
+
+/** The list the confirm sends: at most `approveAllMax` distinct draft ids with the row version each was shown with. */
+export function approveAllList(value: unknown): { id: string; rowVersion: number }[] {
+  if (!Array.isArray(value) || value.length === 0 || value.length > AI_RUN_LIMITS.approveAllMax) {
+    throw new AuthError('VALIDATION_FAILED', 'items');
+  }
+  const seen = new Set<string>();
+  const out: { id: string; rowVersion: number }[] = [];
+  for (const entry of value as unknown[]) {
+    if (!isObject(entry)) throw new AuthError('VALIDATION_FAILED', 'items');
+    const id = entry['id'];
+    const rowVersion = entry['rowVersion'];
+    if (
+      typeof id !== 'string' ||
+      !ID.test(id) ||
+      seen.has(id) ||
+      typeof rowVersion !== 'number' ||
+      !Number.isInteger(rowVersion) ||
+      rowVersion < 1
+    ) {
+      throw new AuthError('VALIDATION_FAILED', 'items');
+    }
+    seen.add(id);
+    out.push({ id, rowVersion });
+  }
+  return out;
+}
+
+/**
+ * Applies one chunk of the confirmed list (its own transaction). Everything is decided again here: the draft must still be ready and carry
+ * the row version the preview showed (an edit, a regeneration or another reviewer since then skips it), have no note stored or found now,
+ * and its product must be unchanged. A skipped draft is reported with its reason and never applied; a draft that was not in the list is
+ * never touched. Each applied product gets its own audit event (applied via ALL).
+ */
+export async function approveAllChunk(
+  context: AdminContext,
+  items: { id: string; rowVersion: number }[],
+): Promise<AiApproveAllResponse> {
+  requireApply(context);
+  if ((await singleApplied(context)) < AI_RUN_LIMITS.singleApprovalsNeeded) {
+    throw new AuthError('VALIDATION_FAILED', 'singleApprovals');
+  }
+  const { tx } = context;
+  const skipped: AiApproveAllResponse['skipped'] = [];
+  let applied = 0;
+  for (const { id, rowVersion } of items) {
+    await tx.$queryRaw`SELECT id FROM ai_items WHERE id = ${id}::uuid FOR UPDATE`;
+    const item = await tx.aiItem.findUnique({ where: { id } });
+    if (item === null || item.kind !== 'PRODUCT_TEXT') throw new AuthError('NOT_FOUND');
+    const base = item.status === 'DRAFT_READY' ? storedDraft(item) : null;
+    if (base === null) {
+      skipped.push({ id, reason: 'NOT_READY' });
+      continue;
+    }
+    if (item.rowVersion !== rowVersion) {
+      skipped.push({ id, reason: 'CHANGED' });
+      continue;
+    }
+    await tx.$queryRaw`SELECT id FROM products WHERE id = ${item.targetId}::uuid FOR UPDATE`;
+    const product = await tx.product.findUniqueOrThrow({
+      where: { id: item.targetId },
+      select: PRODUCT_SELECT,
+    });
+    if (product.rowVersion !== item.baseRowVersion) {
+      await touch(context, item, { status: 'STALE' });
+      skipped.push({ id, reason: 'STALE' });
+      continue;
+    }
+    const { content, edited, useNameSuggestion } = finalContent(item, base);
+    if (
+      storedWarnings(item).length > 0 ||
+      (await checkContent(context, item, content, base, useNameSuggestion)).length > 0
+    ) {
+      skipped.push({ id, reason: 'WARNINGS' });
+      continue;
+    }
+    await writeApply(context, {
+      item,
+      product,
+      base,
+      content,
+      edited,
+      useNameSuggestion,
+      via: 'ALL',
+      acknowledged: [],
+    });
+    applied += 1;
+  }
+  return { applied, skipped };
+}
+
+/** The one summary event of a whole "Duyệt tất cả" (the per-product events were written by the chunks). */
+export async function recordApproveAll(
+  context: AdminContext,
+  summary: { requested: number; applied: number; skipped: number; itemIds: string[] },
+): Promise<void> {
+  requireApply(context);
+  await appendAdminAudit(context, {
+    action: 'AI_APPROVE_ALL',
+    entityType: 'AiItem',
+    entityId: summary.itemIds[0]!,
+    after: summary as unknown as Prisma.InputJsonObject,
+  });
 }
