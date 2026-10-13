@@ -194,7 +194,8 @@ done
 for DUONG in ai/seo-drafts chat-requests ai/assistant ai/product-drafts/approve-all briefs/lines/00000000-0000-4000-8000-000000000000; do
   expect "API $DUONG khi chua dang nhap" "$(http "http://127.0.0.1:3001/api/v1/$DUONG")" "401"
 done
-expect "chat website con tat (chua co N8N_CHAT_WEBHOOK_URL)" "$(curl -s http://127.0.0.1:3001/api/v1/public/site | grep -c '"chatEnabled":false')" "1"
+expect "chat website con tat: cong tat trong co so du lieu" "$(sqlq $DB "select chat_enabled::text from ai_settings")" "false"
+expect "chat website con tat: trang cong khai /public/site?locale=vi (bat buoc co locale)" "$(curl -s "http://127.0.0.1:3001/api/v1/public/site?locale=vi" | grep -c '"chatEnabled":false')" "1"
 KQ=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"message":"xin chao","sessionId":"thu"}' http://127.0.0.1:3001/api/v1/public/chat/messages)
 case "$KQ" in 400|403|404|503) echo "OK  gui tin chat khi chua co dau CSRF/khi chat tat bi tu choi: $KQ";; *) dung "gui tin chat tra $KQ (mong doi 400, 403, 404 hoac 503)";; esac
 sleep 10
