@@ -3570,6 +3570,10 @@ export interface PublicSiteResponse {
   timezone: string;
   hours: PublicHoursGroup[];
   heroImage: PublicSiteImage | null;
+  /** The approved search description of the home page in the visitor language; null until one is applied. */
+  seoDescription: string | null;
+  /** The home page has an approved English search description: its English page is indexed and listed in the sitemap. */
+  englishApproved: boolean;
   /** The chat entry is shown (AI master switch and the chat switch are both on); the widget still falls back to the callback form. */
   chatEnabled: boolean;
 }
@@ -3642,6 +3646,10 @@ export interface PublicService {
   pricingUnit: PublicPricingUnit;
   estimatedMinMinutes: number;
   estimatedMaxMinutes: number;
+  /** The approved search description in the visitor language; null until one is applied (the page then builds its own). */
+  seoDescription: string | null;
+  /** The service has a real English text (an English description or an approved English search description): its English page is indexed. */
+  englishApproved: boolean;
 }
 
 export interface PublicServiceGroup {
@@ -3782,6 +3790,8 @@ export interface PublicProductDetail {
   /** The search-result title and description the shop approved for this product, when there are any (else the page builds its own). */
   seoTitle: string | null;
   seoDescription: string | null;
+  /** A person approved this product's English text (content origin other than the supplier's copy, English description present). */
+  englishApproved: boolean;
   category: PublicProductCategoryRef | null;
   brand: string | null;
   images: PublicSlideImage[];
@@ -3804,6 +3814,8 @@ export interface PublicProductDetailResponse {
 /** GET /api/v1/public/products/codes : the codes of every visible product, for the sitemap (at most 5000). */
 export interface PublicProductCodesResponse {
   codes: string[];
+  /** The codes among them whose English text a person approved (the sitemap lists their English pages). */
+  english: string[];
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -4956,4 +4968,5 @@ export * from './product-text-cleanup.js';
 export * from './ai.js';
 export * from './ai-drafts.js';
 export * from './ai-runs.js';
+export * from './ai-seo.js';
 export * from './chat.js';

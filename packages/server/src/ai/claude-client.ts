@@ -76,6 +76,53 @@ export interface GenerateResult {
   stopReason: string | null;
 }
 
+/** A tool the model may call (Wave C, the report assistant). Always `strict`: the input is exactly the schema. */
+export interface ConverseTool {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+}
+
+export interface ConverseToolCall {
+  id: string;
+  name: string;
+  input: unknown;
+}
+
+export interface ConverseRequest {
+  model: AiModel;
+  effort: AiEffort;
+  system: string;
+  user: string;
+  tools: readonly ConverseTool[];
+  maxTokens: number;
+  /** The whole question, all calls together. */
+  timeoutMs: number;
+  /** More tool calls than this end the question (`TOO_MANY_TOOLS`); the model is never told to go on. */
+  maxToolCalls: number;
+  refusalFallback: boolean;
+  /**
+   * Runs one call and returns the text the model sees. A thrown error is shown to the model as a failed call (`is_error`), never
+   * as a stack; the caller decides what the text holds, this client adds nothing to it.
+   */
+  runTool: (call: ConverseToolCall) => Promise<string>;
+}
+
+export type ConverseOutcome = 'OK' | 'REFUSED' | 'MAX_TOKENS' | 'TOO_MANY_TOOLS' | 'TIMEOUT';
+
+export interface ConverseResult {
+  outcome: ConverseOutcome;
+  /** The final text answer when `outcome` is OK. */
+  text: string;
+  /** Every call that ran, in order (name, input, result text). */
+  calls: { name: string; input: unknown; result: string; failed: boolean }[];
+  /** Summed over every request of the question. */
+  usage: TokenUsage;
+  requestId: string | null;
+  modelUsed: string;
+  requests: number;
+}
+
 export interface ClaudeClientOptions {
   apiKey: string | undefined;
   /** Tests point this at the fake; production leaves it unset. */
@@ -231,4 +278,121 @@ export class ClaudeClient {
       throw codeOf(error);
     }
   }
+
+  /**
+   * One question with tools: the loop is ours (the model asks, the caller's `runTool` answers, at most `maxToolCalls` calls and
+   * `timeoutMs` in all). The assistant turns are sent back exactly as received (thinking blocks included). Every request's usage is
+   * summed so the caller bills one total. `tool_choice` stays automatic: forced use is rejected by these models.
+   */
+  async converse(request: ConverseRequest): Promise<ConverseResult> {
+    if (this.client === null) throw new AiCallError('KEY_MISSING');
+    const startedAt = Date.now();
+    const usage: TokenUsage = {
+      inputTokens: 0,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      outputTokens: 0,
+    };
+    const calls: ConverseResult['calls'] = [];
+    const messages: { role: 'user' | 'assistant'; content: unknown }[] = [
+      { role: 'user', content: request.user },
+    ];
+    let requestId: string | null = null;
+    let modelUsed: string = request.model;
+    let requests = 0;
+    const finish = (outcome: ConverseOutcome, text: string): ConverseResult => ({
+      outcome,
+      text,
+      calls,
+      usage,
+      requestId,
+      modelUsed,
+      requests,
+    });
+    const tools = request.tools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      input_schema: tool.inputSchema,
+      strict: true,
+    }));
+    try {
+      for (;;) {
+        const left = request.timeoutMs - (Date.now() - startedAt);
+        if (left <= 500) return finish('TIMEOUT', '');
+        const params = {
+          model: request.model,
+          max_tokens: request.maxTokens,
+          system: [
+            {
+              type: 'text' as const,
+              text: request.system,
+              cache_control: { type: 'ephemeral' as const },
+            },
+          ],
+          messages,
+          tools,
+          output_config: { effort: request.effort },
+        };
+        const stream = request.refusalFallback
+          ? this.client.beta.messages.stream(
+              { ...params, betas: [FALLBACK_BETA], fallbacks: 'default' } as never,
+              { timeout: left },
+            )
+          : this.client.messages.stream(params as never, { timeout: left });
+        const message = (await stream.finalMessage()) as unknown as FinalMessage;
+        requests += 1;
+        requestId = stream.request_id ?? requestId;
+        usage.inputTokens += message.usage.input_tokens ?? 0;
+        usage.cacheReadTokens += message.usage.cache_read_input_tokens ?? 0;
+        usage.cacheWriteTokens += message.usage.cache_creation_input_tokens ?? 0;
+        usage.outputTokens += message.usage.output_tokens ?? 0;
+        if (typeof message.model === 'string') modelUsed = message.model;
+        if (message.stop_reason === 'refusal') return finish('REFUSED', '');
+        if (message.stop_reason === 'max_tokens') return finish('MAX_TOKENS', '');
+        const uses = message.content.filter(
+          (block): block is ToolUseBlock => block.type === 'tool_use',
+        );
+        if (message.stop_reason !== 'tool_use' || uses.length === 0) {
+          const text = message.content
+            .map((block) => (block.type === 'text' ? (block.text ?? '') : ''))
+            .join('')
+            .trim();
+          return finish('OK', text);
+        }
+        if (calls.length + uses.length > request.maxToolCalls) {
+          return finish('TOO_MANY_TOOLS', '');
+        }
+        messages.push({ role: 'assistant', content: message.content });
+        const results: unknown[] = [];
+        // One user message carries every result of the turn (parallel calls).
+        for (const use of uses) {
+          let result: string;
+          let failed = false;
+          try {
+            result = await request.runTool({ id: use.id, name: use.name, input: use.input });
+          } catch {
+            result = 'The call failed.';
+            failed = true;
+          }
+          calls.push({ name: use.name, input: use.input, result, failed });
+          results.push({
+            type: 'tool_result',
+            tool_use_id: use.id,
+            content: result,
+            ...(failed ? { is_error: true } : {}),
+          });
+        }
+        messages.push({ role: 'user', content: results });
+      }
+    } catch (error) {
+      throw codeOf(error);
+    }
+  }
+}
+
+interface ToolUseBlock {
+  type: 'tool_use';
+  id: string;
+  name: string;
+  input: unknown;
 }

@@ -178,6 +178,7 @@ const productSelect = {
   seoDescriptionEn: true,
   descriptionSectionsVi: true,
   descriptionSectionsEn: true,
+  contentOrigin: true,
   featured: true,
   publishedAt: true,
   category: { select: { id: true, code: true, nameVi: true, nameEn: true, isActive: true } },
@@ -551,6 +552,8 @@ export async function publicProductDetail(
       sections: sectionsOf(row, locale),
       seoTitle: pick(row.seoTitleVi, row.seoTitleEn, locale),
       seoDescription: pick(row.seoDescriptionVi, row.seoDescriptionEn, locale),
+      englishApproved:
+        row.contentOrigin !== 'SUPPLIER_COPY' && (row.descriptionEn ?? '').trim() !== '',
       category: card.category,
       brand: card.brand,
       images: row.images.map((image) => publicImage(image.mediaAsset, locale, name)),
@@ -568,8 +571,9 @@ export async function publicProductDetail(
 /** The codes of every visible product, for the sitemap. */
 export async function publicProductCodes(tx: Tx): Promise<PublicProductCodesResponse> {
   const now = await databaseNow(tx);
-  const rows = await tx.$queryRaw<{ code: string }[]>`
-    SELECT p.code
+  const rows = await tx.$queryRaw<{ code: string; english: boolean }[]>`
+    SELECT p.code,
+           (p.content_origin <> 'SUPPLIER_COPY' AND coalesce(btrim(p.description_en), '') <> '') AS english
     FROM products p
     WHERE p.status = 'PUBLISHED' AND EXISTS (
       SELECT 1 FROM product_variants v
@@ -577,5 +581,8 @@ export async function publicProductCodes(tx: Tx): Promise<PublicProductCodesResp
       WHERE v.product_id = p.id AND v.is_active)
     ORDER BY p.code
     LIMIT ${SITEMAP_LIMIT}`;
-  return { codes: rows.map((row) => row.code) };
+  return {
+    codes: rows.map((row) => row.code),
+    english: rows.filter((row) => row.english).map((row) => row.code),
+  };
 }

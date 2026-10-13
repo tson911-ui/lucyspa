@@ -51,6 +51,8 @@ const site: PublicSiteResponse = {
   ],
   heroImage: null,
   chatEnabled: false,
+  seoDescription: null,
+  englishApproved: false,
 };
 
 const unit = {
@@ -60,6 +62,8 @@ const unit = {
   pricingUnit: 'PER_SERVICE' as const,
   estimatedMinMinutes: 30,
   estimatedMaxMinutes: 45,
+  seoDescription: null,
+  englishApproved: false,
 };
 
 const services: PublicServicesResponse = {

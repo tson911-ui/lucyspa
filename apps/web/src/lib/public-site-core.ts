@@ -298,6 +298,8 @@ export function parsePublicSite(value: unknown): PublicSiteResponse | null {
     timezone: value['timezone'],
     hours,
     heroImage,
+    seoDescription: isNullableString(value['seoDescription']) ? value['seoDescription'] : null,
+    englishApproved: value['englishApproved'] === true,
     chatEnabled: value['chatEnabled'] === true,
   };
 }
@@ -326,6 +328,8 @@ function parseService(value: unknown): PublicService | null {
     pricingUnit: value['pricingUnit'],
     estimatedMinMinutes: value['estimatedMinMinutes'],
     estimatedMaxMinutes: value['estimatedMaxMinutes'],
+    seoDescription: isNullableString(value['seoDescription']) ? value['seoDescription'] : null,
+    englishApproved: value['englishApproved'] === true,
   };
 }
 

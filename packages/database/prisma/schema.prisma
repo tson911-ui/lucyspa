@@ -1006,6 +1006,9 @@ model Service {
   nameEn                  String                      @map("name_en")
   descriptionVi           String?                     @map("description_vi")
   descriptionEn           String?                     @map("description_en")
+  /// Claude integration Wave B (CI-E1): the search description, written only by applying a reviewed draft or by hand.
+  seoDescriptionVi        String?                     @map("seo_description_vi")
+  seoDescriptionEn        String?                     @map("seo_description_en")
   /// Minimum price per pricing unit (the price itself when exact); SQL: 0 <= min <= max.
   priceVnd                BigInt                      @map("price_vnd")
   priceMaxVnd             BigInt                      @map("price_max_vnd")
@@ -2455,6 +2458,9 @@ model WebsiteShopInfo {
   taglineEn       String      @map("tagline_en")
   introVi         String?     @map("intro_vi")
   introEn         String?     @map("intro_en")
+  /// Claude integration Wave B (CI-E1): the home page search description, written only by applying a reviewed draft or by hand.
+  seoDescriptionVi String?    @map("seo_description_vi")
+  seoDescriptionEn String?    @map("seo_description_en")
   address         String
   hotline         String
   mapUrl          String?     @map("map_url")
@@ -5633,6 +5639,44 @@ model ChatCallbackRequest {
 
   @@index([status, createdAt(sort: Desc)], map: "chat_callback_requests_inbox_idx")
   @@map("chat_callback_requests")
+}
+
+// Claude integration Wave B (migration 20261213000003): drafts of the search descriptions and English texts of services and the home page,
+// read and applied one by one. No relations are declared on purpose (the foreign keys live in the migration).
+model AiSeoDraft {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind              String
+  /// A service id, or `shop` for the home page.
+  targetId          String    @map("target_id")
+  status            String    @default("QUEUED")
+  attempts          Int       @default(0) @db.SmallInt
+  lockedUntil       DateTime? @map("locked_until") @db.Timestamptz(3)
+  baseRowVersion    Int       @map("base_row_version")
+  baseSnapshot      Json      @default("{}") @map("base_snapshot") @db.JsonB
+  draft             Json?     @db.JsonB
+  edited            Json?     @db.JsonB
+  warnings          Json      @default("[]") @db.JsonB
+  errorCode         String?   @map("error_code")
+  instruction       String?
+  regenerations     Int       @default(0) @db.SmallInt
+  model             String
+  effort            String
+  inputTokens       Int       @default(0) @map("input_tokens")
+  cacheReadTokens   Int       @default(0) @map("cache_read_tokens")
+  cacheWriteTokens  Int       @default(0) @map("cache_write_tokens")
+  outputTokens      Int       @default(0) @map("output_tokens")
+  costMicroUsd      BigInt    @default(0) @map("cost_micro_usd")
+  requestedByUserId String    @map("requested_by_user_id") @db.Uuid
+  reviewedByUserId  String?   @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt        DateTime? @map("reviewed_at") @db.Timestamptz(3)
+  appliedByUserId   String?   @map("applied_by_user_id") @db.Uuid
+  appliedAt         DateTime? @map("applied_at") @db.Timestamptz(3)
+  rowVersion        Int       @default(1) @map("row_version")
+  createdAt         DateTime  @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+
+  @@index([status, lockedUntil], map: "ai_seo_drafts_queue_idx")
+  @@map("ai_seo_drafts")
 }
 
 model AiRun {

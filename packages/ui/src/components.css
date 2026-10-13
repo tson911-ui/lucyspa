@@ -3486,6 +3486,24 @@
   text-underline-offset: 0.2em;
 }
 
+/* The same look on a real button, for a name cell that opens a drawer instead of a page: a full-size target, one line, cut with an ellipsis. */
+button.ls-link {
+  display: block;
+  max-inline-size: 100%;
+  block-size: var(--ls-control-h);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  line-height: var(--ls-control-h);
+  text-align: start;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .ls-link:hover {
     color: var(--ls-brand-fill-hover);

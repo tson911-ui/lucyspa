@@ -167,6 +167,7 @@ export type NavKey =
   | 'supplierImports'
   | 'productTextCleanup'
   | 'aiDrafts'
+  | 'aiSeo'
   | 'aiSettings'
   | 'chatRequests'
   | 'onlineOrders'
@@ -332,6 +333,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'aiDrafts',
       group: 'catalog',
       path: '/product-rewrites',
+    },
+    // Claude integration Wave B: the search descriptions and English texts of services and the home page (GLOBAL_ONLY USE_AI_CONTENT).
+    canGlobal(account, 'USE_AI_CONTENT') && {
+      key: 'aiSeo',
+      group: 'catalog',
+      path: '/seo-drafts',
     },
     // Phase 6 P6-4: the inventory (branch-scoped VIEW_INVENTORY / MANAGE_STOCK_RECEIPTS / ADJUST_STOCK, global MANAGE_PRODUCTS for suppliers).
     (canAnywhere(account, 'VIEW_INVENTORY') ||

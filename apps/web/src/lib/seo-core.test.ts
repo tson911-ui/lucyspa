@@ -40,6 +40,8 @@ const site: PublicSiteResponse = {
   ],
   heroImage: null,
   chatEnabled: false,
+  seoDescription: null,
+  englishApproved: false,
 };
 
 const headersOf = (values: Record<string, string>) => (name: string) => values[name] ?? null;
@@ -71,6 +73,11 @@ test('language alternates cover both languages and default to Vietnamese', () =>
     en: 'https://x.vn/en/services',
     'x-default': 'https://x.vn/vi/services',
   });
+  // Until a person approves the English text, the English address is not offered as an alternate.
+  assert.deepEqual(languageAlternates('https://x.vn', '/services', false), {
+    vi: 'https://x.vn/vi/services',
+    'x-default': 'https://x.vn/vi/services',
+  });
 });
 
 test('descriptions are clipped at a word with an ellipsis', () => {
@@ -93,6 +100,8 @@ test('a service description uses the Owner’s text, else a sentence from the ca
       pricingUnit: 'PER_SERVICE',
       estimatedMinMinutes: 30,
       estimatedMaxMinutes: 45,
+      seoDescription: null,
+      englishApproved: false,
     },
     group: { code: 'G', name: 'Gội đầu' },
     related: [],
@@ -135,8 +144,15 @@ test('the LocalBusiness data comes only from the shop profile and is safe inside
   assert.deepEqual(JSON.parse(script), { name: '</script><b>&' });
 });
 
-test('the sitemap lists home, the service list, each service, the cosmetics list and each product in both languages with alternates', () => {
-  const entries = sitemapEntries('https://lucyspa.vn', ['GOI', 'NAIL 1'], ['kem-duong', 'mat na']);
+const target = (code: string, english: boolean) => ({ code, english });
+
+test('the sitemap lists every Vietnamese page, and an English page only once its English text is approved', () => {
+  const entries = sitemapEntries(
+    'https://lucyspa.vn',
+    [target('GOI', true), target('NAIL 1', false)],
+    [target('kem-duong', true), target('mat na', false)],
+    true,
+  );
   assert.deepEqual(
     entries.map((entry) => entry.url),
     [
@@ -147,26 +163,86 @@ test('the sitemap lists home, the service list, each service, the cosmetics list
       'https://lucyspa.vn/vi/services/GOI',
       'https://lucyspa.vn/en/services/GOI',
       'https://lucyspa.vn/vi/services/NAIL%201',
-      'https://lucyspa.vn/en/services/NAIL%201',
       'https://lucyspa.vn/vi/products',
       'https://lucyspa.vn/en/products',
       'https://lucyspa.vn/vi/products/kem-duong',
       'https://lucyspa.vn/en/products/kem-duong',
       'https://lucyspa.vn/vi/products/mat%20na',
-      'https://lucyspa.vn/en/products/mat%20na',
     ],
   );
+  // An approved page names both languages; an unapproved one only itself and the default.
   assert.equal(entries[0]?.alternates['en'], 'https://lucyspa.vn/en');
+  assert.deepEqual(
+    entries.find((entry) => entry.url.endsWith('/vi/services/NAIL%201'))?.alternates,
+    {
+      vi: 'https://lucyspa.vn/vi/services/NAIL%201',
+      'x-default': 'https://lucyspa.vn/vi/services/NAIL%201',
+    },
+  );
   assert.equal(
     entries.find((entry) => entry.url.endsWith('/vi/products'))?.alternates['en'],
     'https://lucyspa.vn/en/products',
   );
   assert.ok(!entries.some((entry) => /account|workforce/.test(entry.url)));
+  // Nothing approved yet: the Vietnamese pages only, the English home page included.
+  const none = sitemapEntries('https://lucyspa.vn', [target('GOI', false)], [target('kem', false)]);
+  assert.equal(
+    none.some((entry) => entry.url.includes('/en')),
+    false,
+  );
+  assert.equal(none.length, 5);
   // Without product codes (nothing published, or the list could not be read) the cosmetics list is left out too.
   assert.equal(
     sitemapEntries('https://lucyspa.vn', []).filter((entry) => /products/.test(entry.url)).length,
     0,
   );
+});
+
+test('a service page description is the one the shop approved; a LocalBusiness carries the shop’s own Facebook page and description, nothing invented', () => {
+  const detail: PublicServiceDetailResponse = {
+    service: {
+      code: 'GOI',
+      name: 'Gội thường',
+      description: null,
+      priceMinVnd: '50000',
+      priceMaxVnd: '50000',
+      pricingUnit: 'PER_SERVICE',
+      estimatedMinMinutes: 30,
+      estimatedMaxMinutes: 45,
+      englishApproved: false,
+      seoDescription: 'Gội đầu dưỡng sinh nhẹ nhàng tại Lucy Spa, Đà Nẵng.',
+    },
+    group: { code: 'g', name: 'Gội đầu' },
+    related: [],
+  };
+  assert.equal(
+    serviceDescription(detail, 'vi', 'Lucy Spa'),
+    'Gội đầu dưỡng sinh nhẹ nhàng tại Lucy Spa, Đà Nẵng.',
+  );
+  assert.notEqual(
+    serviceDescription(
+      { ...detail, service: { ...detail.service, seoDescription: null } },
+      'vi',
+      'Lucy Spa',
+    ),
+    detail.service.seoDescription,
+  );
+  const data = localBusinessJsonLd(
+    {
+      ...site,
+      facebookUrl: 'https://www.facebook.com/lucyspa',
+      seoDescription: 'Lucy Spa, Đà Nẵng.',
+    },
+    'https://lucyspa.vn',
+    'vi',
+    null,
+  );
+  assert.deepEqual(data.sameAs, ['https://www.facebook.com/lucyspa']);
+  assert.equal(data.description, 'Lucy Spa, Đà Nẵng.');
+  const bare = localBusinessJsonLd(site, 'https://lucyspa.vn', 'vi', null);
+  for (const key of ['sameAs', 'description', 'aggregateRating', 'review', 'priceRange', 'geo']) {
+    assert.ok(!(key in bare), key);
+  }
 });
 
 test('a product page description: its own text, else name and category; always the price (from, when sizes differ) and the shop address', () => {
@@ -179,6 +255,7 @@ test('a product page description: its own text, else name and category; always t
     sections: [],
     seoTitle: null,
     seoDescription: null,
+    englishApproved: false,
     category: { code: 'da', name: 'Chăm sóc da' },
     brand: null,
     images: [],

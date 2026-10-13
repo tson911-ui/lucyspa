@@ -660,3 +660,48 @@ export function checkProductRewrite(
   }
   return warnings;
 }
+
+/**
+ * The claim and hygiene checks of the product rewrite, for any other short public text a model drafts (the search descriptions and English
+ * texts of services and the home page): the clinic word, medical or absolute claims (default list plus the Owner's), authenticity claims
+ * while they are off, testimonial shapes, links and contacts, markup, injection signs, the language of each field, and a field left empty.
+ */
+export function checkPlainTexts(
+  fields: readonly { field: string; value: string; language: 'vi' | 'en'; required: boolean }[],
+  options: { authenticityClaimsAllowed: boolean; bannedPhrases: readonly string[] },
+): DraftWarning[] {
+  const warnings: DraftWarning[] = [];
+  const push = (warning: DraftWarning) => {
+    if (!warnings.some((entry) => entry.code === warning.code && entry.field === warning.field))
+      warnings.push(warning);
+  };
+  const banned = [...DEFAULT_BANNED_PHRASES, ...options.bannedPhrases].map((phrase) =>
+    norm(phrase),
+  );
+  for (const { field, value, language, required } of fields) {
+    if (value.trim() === '') {
+      if (required) push({ code: 'EMPTY_FIELD', field });
+      continue;
+    }
+    const text = norm(value);
+    if (text.includes(CLINIC_WORD)) push({ code: 'CLINIC_WORD', field });
+    const hit = banned.find((phrase) => phrase !== '' && text.includes(phrase));
+    if (hit !== undefined) push({ code: 'FORBIDDEN_PHRASE', field, detail: hit.trim() });
+    if (!options.authenticityClaimsAllowed && AUTHENTICITY.some((pattern) => pattern.test(value))) {
+      push({ code: 'AUTHENTICITY_CLAIM', field });
+    }
+    if (TESTIMONIAL.some((pattern) => pattern.test(value))) push({ code: 'TESTIMONIAL', field });
+    if (FORBIDDEN_FOR_OUTPUT.some((pattern) => pattern.test(value)))
+      push({ code: 'URL_OR_CONTACT', field });
+    if (MARKUP.some((pattern) => pattern.test(value)) || value.includes('\n'))
+      push({ code: 'MARKUP_OR_EMOJI', field });
+    if (INJECTION_SIGNS.some((pattern) => pattern.test(value)))
+      push({ code: 'INJECTION_SIGN', field });
+    if (value.length > 30) {
+      const share = diacriticShare(value);
+      if (language === 'vi' && share < 0.05) push({ code: 'WRONG_LANGUAGE', field });
+      if (language === 'en' && share > 0.08) push({ code: 'WRONG_LANGUAGE', field });
+    }
+  }
+  return warnings;
+}

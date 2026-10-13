@@ -87,6 +87,7 @@ test('the Owner sees the contract groups in the contract order', () => {
       'supplierImports',
       'productTextCleanup',
       'aiDrafts',
+      'aiSeo',
       'inventory',
       'import',
       'branches',

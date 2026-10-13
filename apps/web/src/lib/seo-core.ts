@@ -44,11 +44,19 @@ export function siteOrigin(read: (name: string) => string | null | undefined): s
   return `${protocol}://${host}`;
 }
 
-/** The same page in both languages plus the default, for `<link rel="alternate" hreflang>` and the sitemap. */
-export function languageAlternates(origin: string, path: string): Record<string, string> {
+/**
+ * The same page in both languages plus the default, for `<link rel="alternate" hreflang>` and the sitemap. The English address is named
+ * only when its English text has been approved by a person (Owner answer OQ-CI-8): until then the English page would duplicate the
+ * Vietnamese one, so it is neither listed nor offered as an alternate.
+ */
+export function languageAlternates(
+  origin: string,
+  path: string,
+  english = true,
+): Record<string, string> {
   return {
     vi: `${origin}/vi${path}`,
-    en: `${origin}/en${path}`,
+    ...(english ? { en: `${origin}/en${path}` } : {}),
     'x-default': `${origin}/vi${path}`,
   };
 }
@@ -70,6 +78,8 @@ export function serviceDescription(
   siteName: string,
 ): string {
   const { service } = detail;
+  // The description the shop approved (already with the city and "Lucy Spa"); the page builds its own until then.
+  if (service.seoDescription?.trim()) return clip(service.seoDescription);
   const price = servicePrice(service, locale);
   const lead =
     service.description?.trim() ||
@@ -140,11 +150,14 @@ export function localBusinessJsonLd(
     '@type': 'DaySpa',
     name: 'Lucy Spa',
     slogan: site.tagline,
+    ...(site.seoDescription ? { description: site.seoDescription } : {}),
     url: `${origin}/${locale}`,
     telephone: site.hotlineTel,
     address: { '@type': 'PostalAddress', streetAddress: site.address, addressCountry: 'VN' },
     ...(image ? { image } : {}),
     ...(site.mapUrl ? { hasMap: site.mapUrl } : {}),
+    // The shop's own Facebook page (only what the Owner entered in Shop info); no rating, no review, no price range or coordinates unless he enters them.
+    ...(site.facebookUrl ? { sameAs: [site.facebookUrl] } : {}),
     openingHoursSpecification: openingHoursSpecification(site.hours),
   };
 }
@@ -162,24 +175,43 @@ export interface SitemapEntry {
   alternates: Record<string, string>;
 }
 
-/** Every indexable page in both languages, each with its alternates: home, the service list and each service's page, the cosmetics list and each product's page. */
+/** A service or a product the sitemap lists, and whether its English text has been approved (its English page is listed only then). */
+export interface SitemapTarget {
+  code: string;
+  english: boolean;
+}
+
+/**
+ * Every indexable page, each with its alternates: home, the service list and each service's page, the cosmetics list and each product's
+ * page. The Vietnamese address is always listed; the English one only when its English text has been approved (the home page by
+ * `homeEnglish`, a list when any of its pages is approved, a page by its own flag).
+ */
 export function sitemapEntries(
   origin: string,
-  serviceCodes: readonly string[],
-  productCodes: readonly string[] = [],
+  services: readonly SitemapTarget[],
+  products: readonly SitemapTarget[] = [],
+  homeEnglish = false,
 ): SitemapEntry[] {
-  const paths = [
-    '',
-    '/services',
-    ...serviceCodes.map((code) => `/services/${encodeURIComponent(code)}`),
+  const pages: { path: string; english: boolean }[] = [
+    { path: '', english: homeEnglish },
+    { path: '/services', english: services.some((entry) => entry.english) },
+    ...services.map((entry) => ({
+      path: `/services/${encodeURIComponent(entry.code)}`,
+      english: entry.english,
+    })),
     // The cosmetics list is a destination only while a product is published (the menus leave it out otherwise).
-    ...(productCodes.length > 0 ? ['/products'] : []),
-    ...productCodes.map((code) => `/products/${encodeURIComponent(code)}`),
+    ...(products.length > 0
+      ? [{ path: '/products', english: products.some((entry) => entry.english) }]
+      : []),
+    ...products.map((entry) => ({
+      path: `/products/${encodeURIComponent(entry.code)}`,
+      english: entry.english,
+    })),
   ];
-  return paths.flatMap((path) =>
-    SEO_LOCALES.map((locale) => ({
-      url: `${origin}/${locale}${path}`,
-      alternates: languageAlternates(origin, path),
+  return pages.flatMap((page) =>
+    SEO_LOCALES.filter((locale) => locale === 'vi' || page.english).map((locale) => ({
+      url: `${origin}/${locale}${page.path}`,
+      alternates: languageAlternates(origin, page.path, page.english),
     })),
   );
 }

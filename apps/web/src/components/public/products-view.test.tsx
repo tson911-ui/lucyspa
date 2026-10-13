@@ -79,6 +79,8 @@ const site: PublicSiteResponse = {
   hours: [{ weekdays: [1, 2, 3, 4, 5, 6], closed: false, opensAt: '09:00', closesAt: '21:00' }],
   heroImage: null,
   chatEnabled: false,
+  seoDescription: null,
+  englishApproved: false,
 };
 
 test('list: no hero from the Owner means a plain title; the page has exactly one h1', () => {
@@ -225,6 +227,7 @@ const detail = (overrides: Partial<PublicProductDetailResponse['product']> = {})
       sections: [],
       seoTitle: null,
       seoDescription: null,
+      englishApproved: false,
       category: { code: 'da', name: 'Chăm sóc da' },
       brand: 'Hãng thử',
       images: [image, { ...image, alt: 'Mặt bên' }],

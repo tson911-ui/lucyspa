@@ -357,6 +357,7 @@ function parseDetail(value: unknown): PublicProductDetail | null {
     sections: parseSections(value['sections']),
     seoTitle: isNullableString(value['seoTitle']) ? value['seoTitle'] : null,
     seoDescription: isNullableString(value['seoDescription']) ? value['seoDescription'] : null,
+    englishApproved: value['englishApproved'] === true,
     category,
     brand: value['brand'],
     images,
@@ -469,7 +470,10 @@ export function parseProductDetail(value: unknown): PublicProductDetailResponse 
 export function parseProductCodes(value: unknown): PublicProductCodesResponse | null {
   if (!isRecord(value) || !Array.isArray(value['codes'])) return null;
   const codes = value['codes'].filter((code): code is string => isString(code) && CODE.test(code));
-  return { codes };
+  const english = Array.isArray(value['english'])
+    ? value['english'].filter((code): code is string => isString(code) && codes.includes(code))
+    : [];
+  return { codes, english };
 }
 
 // ------------------------------------------------------------------------------------------------ wording

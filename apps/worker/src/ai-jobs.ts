@@ -4,7 +4,9 @@ import {
   processKeyCheck,
   runAiRetention,
   runRewriteTick,
+  runSeoTick,
   type RewriteEngineState,
+  type SeoEngineState,
   type createLogger,
 } from '@lucy-spa/server';
 
@@ -29,6 +31,7 @@ export function startAiJobs(database: DatabaseClient, env: NodeJS.ProcessEnv, lo
       'AI job failed',
     );
   const rewriteState: RewriteEngineState = { consecutiveFailures: 0 };
+  const seoState: SeoEngineState = { consecutiveFailures: 0 };
   let stopped = false;
   let lastRetention = 0;
   let running: Promise<void> | undefined;
@@ -41,6 +44,9 @@ export function startAiJobs(database: DatabaseClient, env: NodeJS.ProcessEnv, lo
         const rewrite = await runRewriteTick(database, client, rewriteState, { onError: failure });
         if (rewrite.leased > 0)
           logger.info({ items: rewrite.leased }, 'AI rewrite items processed');
+        const seo = await runSeoTick(database, client, seoState, { onError: failure });
+        if (seo.leased > 0)
+          logger.info({ items: seo.leased }, 'AI search-description drafts processed');
         if (Date.now() - lastRetention >= RETENTION_EVERY_MS) {
           lastRetention = Date.now();
           const kept = await runAiRetention(database);

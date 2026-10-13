@@ -12,7 +12,9 @@ export type FakeReply =
       /** The text of the single text block (a JSON string for the rewrite). */
       text: string;
       model?: string;
-      stopReason?: 'end_turn' | 'max_tokens' | 'refusal';
+      stopReason?: 'end_turn' | 'max_tokens' | 'refusal' | 'tool_use';
+      /** Tool calls the model makes in this turn (Wave C); the stop reason becomes `tool_use` unless set. */
+      toolUses?: { id: string; name: string; input: unknown }[];
       usage?: { input?: number; output?: number; cacheRead?: number; cacheWrite?: number };
       /** Sent as the `request-id` header. */
       requestId?: string;
@@ -165,7 +167,9 @@ export class FakeAnthropic {
           },
         }),
       );
-      if (reply.stopReason !== 'refusal') {
+      const toolUses = reply.toolUses ?? [];
+      const stopReason = reply.stopReason ?? (toolUses.length > 0 ? 'tool_use' : 'end_turn');
+      if (reply.stopReason !== 'refusal' && (reply.text !== '' || toolUses.length === 0)) {
         response.write(
           sse('content_block_start', {
             type: 'content_block_start',
@@ -186,11 +190,31 @@ export class FakeAnthropic {
         }
         response.write(sse('content_block_stop', { type: 'content_block_stop', index: 0 }));
       }
+      if (reply.stopReason !== 'refusal') {
+        toolUses.forEach((use, at) => {
+          const index = at + 1;
+          response.write(
+            sse('content_block_start', {
+              type: 'content_block_start',
+              index,
+              content_block: { type: 'tool_use', id: use.id, name: use.name, input: {} },
+            }),
+          );
+          response.write(
+            sse('content_block_delta', {
+              type: 'content_block_delta',
+              index,
+              delta: { type: 'input_json_delta', partial_json: JSON.stringify(use.input) },
+            }),
+          );
+          response.write(sse('content_block_stop', { type: 'content_block_stop', index }));
+        });
+      }
       response.write(
         sse('message_delta', {
           type: 'message_delta',
           delta: {
-            stop_reason: reply.stopReason ?? 'end_turn',
+            stop_reason: stopReason,
             stop_sequence: null,
             ...(reply.stopReason === 'refusal'
               ? {

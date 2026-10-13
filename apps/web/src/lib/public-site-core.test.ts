@@ -27,6 +27,8 @@ const service = (patch: Partial<PublicService> = {}): PublicService => ({
   pricingUnit: 'PER_SERVICE',
   estimatedMinMinutes: 30,
   estimatedMaxMinutes: 45,
+  seoDescription: null,
+  englishApproved: false,
   ...patch,
 });
 
@@ -52,6 +54,8 @@ const site: PublicSiteResponse = {
   hours: [{ weekdays: [1, 2, 3, 4, 5, 6, 7], closed: false, opensAt: '09:00', closesAt: '21:00' }],
   heroImage: null,
   chatEnabled: false,
+  seoDescription: null,
+  englishApproved: false,
 };
 
 test('footer blocks: kept when well formed, an unsafe link or a malformed or unknown block is dropped alone', () => {

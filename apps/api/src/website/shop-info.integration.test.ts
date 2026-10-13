@@ -889,6 +889,8 @@ test(
                   pricingUnit: 'PER_NAIL',
                   estimatedMinMinutes: 60,
                   estimatedMaxMinutes: 90,
+                  seoDescription: null,
+                  englishApproved: false,
                 });
                 assert.equal(group.services[1]?.description, 'Nhẹ nhàng');
                 const wire = JSON.stringify(catalogue);

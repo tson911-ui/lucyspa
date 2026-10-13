@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import { AiCallError, ClaudeClient, type GenerateRequest } from './claude-client.js';
+import {
+  AiCallError,
+  ClaudeClient,
+  type ConverseRequest,
+  type GenerateRequest,
+} from './claude-client.js';
 import { FakeAnthropic } from './fake-anthropic.js';
 
 const fake = new FakeAnthropic();
@@ -237,6 +242,158 @@ test('the key check lists a model (free) and maps a bad key', async () => {
   );
   await assert.rejects(
     new ClaudeClient({ apiKey: undefined }).checkConnection(),
+    (error: unknown) => error instanceof AiCallError && error.code === 'KEY_MISSING',
+  );
+});
+
+const converseRequest = (patch: Partial<ConverseRequest> = {}): ConverseRequest => ({
+  model: 'claude-sonnet-5-5',
+  effort: 'low',
+  system: 'SYSTEM',
+  user: 'Doanh thu tuần này?',
+  tools: [
+    {
+      name: 'revenue',
+      description: 'Revenue totals',
+      inputSchema: {
+        type: 'object',
+        properties: { from: { type: 'string' } },
+        required: ['from'],
+        additionalProperties: false,
+      },
+    },
+  ],
+  maxTokens: 2000,
+  timeoutMs: 5000,
+  maxToolCalls: 3,
+  refusalFallback: false,
+  runTool: async () => '{"total":1200000}',
+  ...patch,
+});
+
+test('a question with tools: calls are run and answered in one user message, usage is summed, tools are strict and the choice stays automatic', async () => {
+  reset();
+  fake.enqueue(
+    {
+      kind: 'message',
+      text: '',
+      toolUses: [
+        { id: 'toolu_1', name: 'revenue', input: { from: '2026-10-01' } },
+        { id: 'toolu_2', name: 'revenue', input: { from: '2026-09-01' } },
+      ],
+      usage: { input: 1000, output: 40 },
+    },
+    { kind: 'message', text: 'Doanh thu là 1.200.000 đ.', usage: { input: 1500, output: 60 } },
+  );
+  const seen: string[] = [];
+  const result = await client().converse(
+    converseRequest({
+      runTool: async (call) => {
+        seen.push(call.id);
+        return '{"total":1200000}';
+      },
+    }),
+  );
+  assert.equal(result.outcome, 'OK');
+  assert.equal(result.text, 'Doanh thu là 1.200.000 đ.');
+  assert.deepEqual(seen, ['toolu_1', 'toolu_2']);
+  assert.equal(result.calls.length, 2);
+  assert.equal(result.requests, 2);
+  assert.equal(result.usage.inputTokens, 2500);
+  assert.equal(result.usage.outputTokens, 100);
+  const first = fake.requests[0]!.body;
+  assert.equal(first['tool_choice'], undefined);
+  const tool = (first['tools'] as Record<string, unknown>[])[0]!;
+  assert.equal(tool['strict'], true);
+  assert.equal(first['temperature'], undefined);
+  const second = fake.requests[1]!.body['messages'] as { role: string; content: unknown }[];
+  assert.equal(second.length, 3);
+  const back = second[2]!.content as { type: string; tool_use_id: string; content: string }[];
+  assert.deepEqual(
+    back.map((block) => [block.type, block.tool_use_id]),
+    [
+      ['tool_result', 'toolu_1'],
+      ['tool_result', 'toolu_2'],
+    ],
+  );
+});
+
+test('a failing tool is shown to the model as an error, too many calls end the question, and a refusal or cut-off is an outcome', async () => {
+  reset();
+  fake.enqueue(
+    {
+      kind: 'message',
+      text: '',
+      toolUses: [{ id: 'toolu_1', name: 'revenue', input: { from: 'x' } }],
+    },
+    { kind: 'message', text: 'Không lấy được số liệu.' },
+  );
+  const failed = await client().converse(
+    converseRequest({
+      runTool: async () => {
+        throw new Error('database detail that must not reach the model');
+      },
+    }),
+  );
+  assert.equal(failed.outcome, 'OK');
+  assert.equal(failed.calls[0]!.failed, true);
+  const sent = JSON.stringify(fake.requests[1]!.body);
+  assert.match(sent, /"is_error":true/);
+  assert.doesNotMatch(sent, /database detail/);
+
+  reset();
+  fake.enqueue({
+    kind: 'message',
+    text: '',
+    toolUses: [
+      { id: 'a', name: 'revenue', input: { from: '1' } },
+      { id: 'b', name: 'revenue', input: { from: '2' } },
+    ],
+  });
+  let ran = 0;
+  const many = await client().converse(
+    converseRequest({
+      maxToolCalls: 1,
+      runTool: async () => {
+        ran += 1;
+        return '{}';
+      },
+    }),
+  );
+  assert.equal(many.outcome, 'TOO_MANY_TOOLS');
+  assert.equal(ran, 0, 'nothing ran past the limit');
+
+  reset();
+  fake.enqueue({ kind: 'message', text: '', stopReason: 'refusal', usage: { input: 10 } });
+  assert.equal((await client().converse(converseRequest())).outcome, 'REFUSED');
+  reset();
+  fake.enqueue({ kind: 'message', text: 'cut', stopReason: 'max_tokens' });
+  assert.equal((await client().converse(converseRequest())).outcome, 'MAX_TOKENS');
+});
+
+test('the whole question has one deadline: a slow tool ends it as a timeout, and no key sends nothing', async () => {
+  reset();
+  fake.enqueue(
+    {
+      kind: 'message',
+      text: '',
+      toolUses: [{ id: 'a', name: 'revenue', input: { from: '1' } }],
+    },
+    { kind: 'message', text: 'late' },
+  );
+  const slow = await client().converse(
+    converseRequest({
+      timeoutMs: 1500,
+      runTool: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        return '{}';
+      },
+    }),
+  );
+  assert.equal(slow.outcome, 'TIMEOUT');
+  assert.equal(fake.requests.length, 1);
+  await assert.rejects(
+    new ClaudeClient({ apiKey: undefined, baseUrl }).converse(converseRequest()),
     (error: unknown) => error instanceof AiCallError && error.code === 'KEY_MISSING',
   );
 });

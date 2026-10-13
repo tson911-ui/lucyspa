@@ -144,10 +144,13 @@ export async function fetchPublicProduct(
   return answer?.status === 200 ? parseProductDetail(answer.body) : null;
 }
 
-/** The codes of every visible product, for the sitemap (empty when they cannot be read). */
-export async function fetchPublicProductCodes(fetcher: typeof fetch = fetch): Promise<string[]> {
+/** The codes of every visible product and those with an approved English text, for the sitemap (both empty when they cannot be read). */
+export async function fetchPublicProductCodes(
+  fetcher: typeof fetch = fetch,
+): Promise<{ codes: string[]; english: string[] }> {
   const answer = await read('/api/v1/public/products/codes', fetcher);
-  return (answer?.status === 200 ? parseProductCodes(answer.body)?.codes : undefined) ?? [];
+  const parsed = answer?.status === 200 ? parseProductCodes(answer.body) : null;
+  return { codes: parsed?.codes ?? [], english: parsed?.english ?? [] };
 }
 
 export async function fetchPublicSlidesServer(locale: Locale, fetcher: typeof fetch = fetch) {

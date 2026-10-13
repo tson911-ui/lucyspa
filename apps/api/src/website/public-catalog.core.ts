@@ -31,6 +31,8 @@ const selectService = {
   pricingUnit: true,
   estimatedMinMinutes: true,
   estimatedMaxMinutes: true,
+  seoDescriptionVi: true,
+  seoDescriptionEn: true,
 } satisfies Prisma.ServiceSelect;
 
 type ServiceRow = Prisma.ServiceGetPayload<{ select: typeof selectService }>;
@@ -44,6 +46,10 @@ const publicService = (row: ServiceRow, locale: PublicLocale): PublicService => 
   pricingUnit: row.pricingUnit,
   estimatedMinMinutes: row.estimatedMinMinutes,
   estimatedMaxMinutes: row.estimatedMaxMinutes,
+  // Only the language asked for: the English page never shows the Vietnamese description as its own.
+  seoDescription: (locale === 'vi' ? row.seoDescriptionVi : row.seoDescriptionEn)?.trim() || null,
+  englishApproved:
+    (row.descriptionEn ?? '').trim() !== '' || (row.seoDescriptionEn ?? '').trim() !== '',
 });
 
 /** Cheapest first, then by name in the visitor's language: no per-service order exists (design Q-P2-8). */

@@ -93,6 +93,8 @@ const selectShopInfo = {
   taglineEn: true,
   introVi: true,
   introEn: true,
+  seoDescriptionVi: true,
+  seoDescriptionEn: true,
   address: true,
   hotline: true,
   mapUrl: true,
@@ -532,6 +534,8 @@ export async function publicSite(
           sources: publicImageSources(media.id, media.variants),
         }
       : null,
+    seoDescription: (locale === 'vi' ? row.seoDescriptionVi : row.seoDescriptionEn)?.trim() || null,
+    englishApproved: (row.seoDescriptionEn ?? '').trim() !== '',
     chatEnabled: Boolean(chat?.enabled && chat.chatEnabled),
   };
 }

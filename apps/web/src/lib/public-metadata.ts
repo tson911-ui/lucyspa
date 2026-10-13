@@ -19,6 +19,7 @@ import {
   productDescription,
   serviceDescription,
   siteOrigin,
+  type SitemapTarget,
 } from './seo-core';
 
 // Titles, descriptions, canonical and language links, Open Graph and Twitter data of the three indexable pages
@@ -39,15 +40,23 @@ function indexable(input: {
   title: string;
   description: string;
   image: string | null;
+  /** The page's English text has been approved by a person; until then its English page stays out of the index (Owner answer OQ-CI-8). */
+  english: boolean;
 }): Metadata {
-  const { locale, origin, path, title, description, image } = input;
+  const { locale, origin, path, title, description, image, english } = input;
   const url = origin ? `${origin}/${locale}${path}` : undefined;
   return {
     title,
     description,
-    robots: { index: true, follow: true },
+    robots:
+      locale === 'en' && !english ? { index: false, follow: true } : { index: true, follow: true },
     ...(origin && url
-      ? { alternates: { canonical: url, languages: languageAlternates(origin, path) } }
+      ? {
+          alternates: {
+            canonical: url,
+            languages: languageAlternates(origin, path, english),
+          },
+        }
       : {}),
     openGraph: {
       type: 'website',
@@ -72,17 +81,28 @@ export async function homeMetadata(locale: Locale): Promise<Metadata> {
     origin,
     path: '',
     title: site ? `${SITE_NAME} — ${site.tagline}` : SITE_NAME,
-    description: clip(site ? `${lead} ${site.address}` : lead),
+    // The description the shop approved; the page builds its own until then.
+    description: site?.seoDescription?.trim()
+      ? clip(site.seoDescription)
+      : clip(site ? `${lead} ${site.address}` : lead),
     image: origin ? absoluteImage(origin, widest?.url) : null,
+    english: site?.englishApproved ?? false,
   });
 }
 
 export async function servicesMetadata(locale: Locale): Promise<Metadata> {
-  const [site, origin] = await Promise.all([fetchPublicSite(locale), requestOrigin()]);
+  const [site, origin, catalogue] = await Promise.all([
+    fetchPublicSite(locale),
+    requestOrigin(),
+    fetchPublicServices(locale),
+  ]);
   const text = getSiteText(locale);
   return indexable({
     locale,
     origin,
+    english:
+      catalogue?.groups.some((group) => group.services.some((entry) => entry.englishApproved)) ??
+      false,
     path: '/services',
     title: `${text.services.title} · ${SITE_NAME}`,
     description: clip(
@@ -106,15 +126,23 @@ export async function serviceMetadata(locale: Locale, code: string): Promise<Met
     title: `${detail.service.name} · ${SITE_NAME}`,
     description: serviceDescription(detail, locale, SITE_NAME),
     image: null,
+    english: detail.service.englishApproved,
   });
 }
 
-/** The codes of every service the public catalogue shows, for the sitemap (empty when it cannot be read). */
-export async function publicServiceCodes(): Promise<string[]> {
+/** Every service the public catalogue shows, with whether its English text is approved, for the sitemap (empty when it cannot be read). */
+export async function publicServiceTargets(): Promise<SitemapTarget[]> {
   const catalogue = await fetchPublicServices('vi');
   return catalogue
-    ? catalogue.groups.flatMap((group) => group.services.map((entry) => entry.code))
+    ? catalogue.groups.flatMap((group) =>
+        group.services.map((entry) => ({ code: entry.code, english: entry.englishApproved })),
+      )
     : [];
+}
+
+/** Whether the home page has an approved English search description (its English page is listed in the sitemap only then). */
+export async function homeEnglishApproved(): Promise<boolean> {
+  return (await fetchPublicSite('vi'))?.englishApproved ?? false;
 }
 
 /**
@@ -147,6 +175,7 @@ export async function productsMetadata(locale: Locale, state: ProductsState): Pr
     title: `${title} · ${SITE_NAME}`,
     description: clip(site ? `${lead} ${SITE_NAME}, ${site.address}` : lead),
     image: origin ? absoluteImage(origin, widest?.url) : null,
+    english: (await fetchPublicProductCodes()).english.length > 0,
   });
   // A list with nothing in it (no published product yet) is not worth indexing either.
   const empty = data !== null && data.total === 0;
@@ -177,8 +206,13 @@ export async function productMetadata(locale: Locale, code: string): Promise<Met
       detail.product.seoDescription ??
       productDescription(detail.product, locale, SITE_NAME, site?.address ?? null),
     image: origin ? absoluteImage(origin, widest?.url) : null,
+    english: detail.product.englishApproved,
   });
 }
 
-/** The codes of every visible product, for the sitemap (empty when they cannot be read). */
-export const publicProductCodes = (): Promise<string[]> => fetchPublicProductCodes();
+/** Every visible product, with whether its English text was approved by a person, for the sitemap (empty when they cannot be read). */
+export async function publicProductTargets(): Promise<SitemapTarget[]> {
+  const { codes, english } = await fetchPublicProductCodes();
+  const approved = new Set(english);
+  return codes.map((code) => ({ code, english: approved.has(code) }));
+}

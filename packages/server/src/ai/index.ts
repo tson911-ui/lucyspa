@@ -34,6 +34,11 @@ export {
   ClaudeClient,
   type AiErrorCode,
   type ClaudeClientOptions,
+  type ConverseOutcome,
+  type ConverseRequest,
+  type ConverseResult,
+  type ConverseTool,
+  type ConverseToolCall,
   type GenerateOutcome,
   type GenerateRequest,
   type GenerateResult,
@@ -76,3 +81,28 @@ export {
   type TickResult,
 } from './rewrite-engine.js';
 export { RETENTION_DAYS, runAiRetention, type RetentionResult } from './retention.js';
+export {
+  SEO_DESCRIPTION_TARGET,
+  SEO_DRAFT_SCHEMA,
+  SEO_DRAFT_SYSTEM,
+  SEO_PROMPT_VERSION,
+  buildSeoUserMessage,
+  checkSeoDraft,
+  isBlockingSeoWarning,
+  parseSeoDraft,
+  seoDraftContent,
+  type SeoCheckOptions,
+  type SeoDraft,
+  type SeoDraftWarning,
+  type SeoSnapshot,
+  type SeoWarningCode,
+} from './seo-draft.js';
+export {
+  buildSeoSnapshot,
+  leaseSeoItems,
+  runSeoTick,
+  seoSeenDescriptions,
+  seoSnapshotOf,
+  type SeoEngineOptions,
+  type SeoEngineState,
+} from './seo-engine.js';

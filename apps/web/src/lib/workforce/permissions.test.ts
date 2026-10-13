@@ -45,6 +45,7 @@ test('navigation follows effective permissions, not hard-coded roles', () => {
     // Claude integration CI-0b: the supplier-comment cleanup (GLOBAL MANAGE_PRODUCTS; the Owner holds all).
     'productTextCleanup',
     'aiDrafts',
+    'aiSeo',
     // Phase 6 P6-4: the inventory (branch VIEW_INVENTORY / MANAGE_STOCK_RECEIPTS / ADJUST_STOCK or global MANAGE_PRODUCTS).
     'inventory',
     // Phase 6 P6-5: the Excel/CSV import (GLOBAL IMPORT_PRODUCT_DATA; the Owner holds all).

@@ -176,6 +176,8 @@ test('shop, services and products are shaped from the public readers without ext
             pricingUnit: 'PER_SERVICE',
             estimatedMinMinutes: 45,
             estimatedMaxMinutes: 60,
+            seoDescription: null,
+            englishApproved: false,
           },
         ],
       },
