@@ -1,0 +1,249 @@
+{
+  "note": "Pages of redesign group 1 (the customer site), for the screenshot gate and the DOM audit (docs/REDESIGN_GROUP1_PLAN.md, C1). `path` is relative to /{locale}/. `as` is the seeded member to sign in as (empty, cart, pre, problem, orders, checkout). {id:key} and {prod:key} are ids and product codes of the scratch seed (docs/REDESIGN_GROUP1_BASELINE.md). Every page is shot at 360, 768 and 1440 px light plus 1440 px dark.",
+  "extras": [
+    "home: hero with the slider, with no slide (placeholders), with a chosen picture",
+    "home: 130 % text at 360 px; services row hover at 1440 px",
+    "forgot-password at 360 and 1440 px with footer blocks switched on",
+    "home with a Tết season on",
+    "home with the promotional popup open",
+    "members (130 % text): cart at 360 px"
+  ],
+  "pages": [
+    {
+      "name": "home",
+      "path": "",
+      "note": "Home; the hero shows the slider (sample slide off). Hero, footer-block, season and popup states are in `extras`."
+    },
+    {
+      "name": "services",
+      "path": "services",
+      "note": "Service list, 114 services in the imported catalog"
+    },
+    {
+      "name": "service-detail",
+      "path": "services/CHAM_DA_CO_BAN",
+      "note": "A published service"
+    },
+    {
+      "name": "products",
+      "path": "products",
+      "note": "Product list with pictures, pre-order, sold out, shop-only and no-picture items"
+    },
+    {
+      "name": "product-detail",
+      "path": "products/{prod:serum}",
+      "note": "Product with a promotion and a picture (restoring-serum)"
+    },
+    {
+      "name": "campaign",
+      "path": "products?campaign=ngay-hoi-lam-dep-mv0qetvl",
+      "note": "A running campaign with a banner"
+    },
+    {
+      "name": "login",
+      "path": "account/login",
+      "note": "Customer sign-in"
+    },
+    {
+      "name": "register",
+      "path": "account/register",
+      "note": "Customer registration"
+    },
+    {
+      "name": "forgot",
+      "path": "account/forgot-password",
+      "note": "Forgot password"
+    },
+    {
+      "name": "ticket",
+      "path": "ticket/{id:ticketToken}",
+      "note": "Pickup ticket by token (public)"
+    },
+    {
+      "name": "not-found",
+      "path": "no-such-page",
+      "allowStatus": true,
+      "note": "404 inside the site frame (needs --allow-status)"
+    },
+    {
+      "name": "account",
+      "path": "account",
+      "as": "orders",
+      "note": "Account home of a member with orders, bookings, invoices and points"
+    },
+    {
+      "name": "account-empty",
+      "path": "account",
+      "as": "empty",
+      "note": "Account home of a new member (empty states)"
+    },
+    {
+      "name": "book",
+      "path": "account/book",
+      "as": "orders",
+      "note": "Booking flow, first step"
+    },
+    {
+      "name": "bookings",
+      "path": "account/bookings",
+      "as": "orders",
+      "note": "Booking list (upcoming, cancelled)"
+    },
+    {
+      "name": "booking-detail",
+      "path": "account/bookings/{id:bookingFirst}",
+      "as": "orders",
+      "note": "An upcoming booking"
+    },
+    {
+      "name": "booking-cancelled",
+      "path": "account/bookings/{id:bookingCancelled}",
+      "as": "orders",
+      "note": "A cancelled booking"
+    },
+    {
+      "name": "bookings-empty",
+      "path": "account/bookings",
+      "as": "empty",
+      "note": "Booking list, empty"
+    },
+    {
+      "name": "invoices",
+      "path": "account/invoices",
+      "as": "orders",
+      "note": "Invoice list"
+    },
+    {
+      "name": "invoice-detail",
+      "path": "account/invoices/{id:invoiceFirst}",
+      "as": "orders",
+      "note": "An invoice"
+    },
+    {
+      "name": "invoices-empty",
+      "path": "account/invoices",
+      "as": "empty",
+      "note": "Invoice list, empty"
+    },
+    {
+      "name": "loyalty",
+      "path": "account/loyalty",
+      "as": "orders",
+      "note": "Points with history"
+    },
+    {
+      "name": "loyalty-empty",
+      "path": "account/loyalty",
+      "as": "empty",
+      "note": "Points, new member"
+    },
+    {
+      "name": "notifications",
+      "path": "account/notifications",
+      "as": "orders",
+      "note": "Notification list"
+    },
+    {
+      "name": "orders",
+      "path": "account/orders",
+      "as": "orders",
+      "note": "Online orders in every state"
+    },
+    {
+      "name": "order-detail",
+      "path": "account/orders/{id:orderPaid}",
+      "as": "orders",
+      "note": "A paid order"
+    },
+    {
+      "name": "orders-empty",
+      "path": "account/orders",
+      "as": "empty",
+      "note": "Orders, empty"
+    },
+    {
+      "name": "cart",
+      "path": "cart",
+      "as": "cart",
+      "note": "Cart with a promotion line, a variant and a long name"
+    },
+    {
+      "name": "cart-empty",
+      "path": "cart",
+      "as": "empty",
+      "note": "Cart, empty"
+    },
+    {
+      "name": "checkout",
+      "path": "checkout",
+      "as": "cart",
+      "note": "Checkout of the cart member"
+    },
+    {
+      "name": "product-cream",
+      "path": "products/night-moisturizer-4",
+      "note": "Product with variants"
+    },
+    {
+      "name": "product-mask",
+      "path": "products/hydrating-sleeping-mask-pre-order",
+      "note": "Pre-order product (lead time)"
+    },
+    {
+      "name": "product-sun",
+      "path": "products/broad-spectrum-sunscreen-spf-50",
+      "note": "Low stock product"
+    },
+    {
+      "name": "product-store",
+      "path": "products/herbal-shampoo-shop-only",
+      "note": "Shop-only product (no online purchase)"
+    },
+    {
+      "name": "product-soldout",
+      "path": "products/clay-mask-sold-out",
+      "note": "Sold-out product"
+    },
+    {
+      "name": "product-noimage",
+      "path": "products/floral-body-wash-no-picture",
+      "note": "Product without a picture"
+    },
+    {
+      "name": "order-unpaid",
+      "path": "account/orders/{id:orderUnpaid}",
+      "as": "orders",
+      "note": "Order waiting for payment"
+    },
+    {
+      "name": "order-waiting",
+      "path": "account/orders/{id:orderWaiting}",
+      "as": "orders",
+      "note": "Paid order waiting for the shop"
+    },
+    {
+      "name": "order-cancelled",
+      "path": "account/orders/{id:orderCancelled}",
+      "as": "orders",
+      "note": "Cancelled order"
+    },
+    {
+      "name": "order-soon",
+      "path": "account/orders/{id:orderSoon}",
+      "as": "orders",
+      "note": "Unpaid order close to its deadline"
+    },
+    {
+      "name": "cart-pre",
+      "path": "cart",
+      "as": "pre",
+      "note": "Cart with an in-stock and a pre-order line"
+    },
+    {
+      "name": "cart-problem",
+      "path": "cart",
+      "as": "problem",
+      "note": "Cart with more than the shop holds and a line without a picture"
+    }
+  ]
+}
