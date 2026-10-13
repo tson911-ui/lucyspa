@@ -54,9 +54,9 @@ export {
   checkProductRewrite,
   cleanForModel,
   factNumbers,
-  isBlockingWarning,
   overlapShare,
   parseProductRewrite,
+  type AutoFix,
   type CheckOptions,
   type DraftWarning,
   type ProductRewriteDraft,
@@ -80,6 +80,25 @@ export {
   type RewriteEngineState,
   type TickResult,
 } from './rewrite-engine.js';
+export {
+  fixDraft,
+  isInformational,
+  repairTargets,
+  sourceIngredients,
+  type FixResult,
+  type RepairTarget,
+} from './rewrite-fix.js';
+export {
+  PRODUCT_REPAIR_PROMPT_VERSION,
+  PRODUCT_REPAIR_SCHEMA,
+  PRODUCT_REPAIR_SYSTEM,
+} from './rewrite-repair.js';
+export {
+  fixPendingDrafts,
+  storedDraftOf,
+  type PendingFixOptions,
+  type PendingFixReport,
+} from './rewrite-pending.js';
 export { RETENTION_DAYS, runAiRetention, type RetentionResult } from './retention.js';
 export {
   SEO_DESCRIPTION_TARGET,

@@ -9,7 +9,8 @@
     "dev": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.auth.local --import tsx --watch src/main.ts",
     "start": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.auth.local dist/main.js",
     "test": "node --test \"dist/**/*.test.js\"",
-    "smoke": "node --env-file-if-exists=../../.env dist/smoke.js"
+    "smoke": "node --env-file-if-exists=../../.env dist/smoke.js",
+    "ai:fix-pending": "node --env-file-if-exists=../../.env dist/ai-fix-pending.js"
   },
   "dependencies": {
     "@lucy-spa/database": "workspace:*",

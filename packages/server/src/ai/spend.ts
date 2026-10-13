@@ -214,7 +214,8 @@ export interface LedgerEntry {
   runId: string | null;
   itemId: string | null;
   model: string;
-  outcome: 'SUCCEEDED' | 'REFUSED' | 'FAILED';
+  /** `REPAIRED` and `REPAIR_FAILED` mark the targeted repair call of a rewrite draft (CI-F1), so its cost can be told apart. */
+  outcome: 'SUCCEEDED' | 'REFUSED' | 'FAILED' | 'REPAIRED' | 'REPAIR_FAILED';
   usage: TokenUsage;
   costMicroUsd: bigint;
   requestId: string | null;

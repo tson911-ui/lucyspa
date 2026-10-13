@@ -14,6 +14,16 @@ export const PRODUCT_REWRITE_PROMPT_VERSION = 'product-rewrite.v2';
 
 /** The Vietnamese word a spa must never use (Lucy Spa is a spa, not a clinic); written with an escape so no text scan finds it in the source. */
 const CLINIC_WORD = 'khám';
+/** The clinic word as a word of its own text; "khám phá" (explore) is a different word the Owner kept (CLAUDE.md), so it never counts. */
+export const CLINIC_PATTERN = new RegExp(`${CLINIC_WORD}(?!\\s+phá)`, 'u');
+
+/** A change made to a draft before it was saved (CI-F1): by code or by the one targeted model call. Shown beside the draft, never public. */
+export interface AutoFix {
+  /** The warning this removed (or `LENGTH`, `INGREDIENTS`, `NAME` for the other tidying). */
+  code: WarningCode | 'LENGTH' | 'INGREDIENTS' | 'NAME';
+  field: string;
+  how: 'CODE' | 'AI';
+}
 
 export interface ProductRewriteInput {
   nameVi: string;
@@ -57,6 +67,8 @@ export interface ProductRewriteDraft {
   /** What the model says it kept and what it left out as unverifiable (Vietnamese, reviewer only); shown to the reviewer, never trusted. */
   factsKept: string[];
   uncertain: string[];
+  /** What the worker fixed before saving (set by the engine, never by the model). */
+  autoFixes?: AutoFix[];
 }
 
 /** The strict JSON schema of the answer (`output_config.format`). */
@@ -138,11 +150,8 @@ export const PRODUCT_REWRITE_SYSTEM = [
   'The user message states whether authenticity claims ("chính hãng", "genuine", "authentic", "official distributor") are allowed. When they are not allowed, never use such words.',
 ].join('\n');
 
-/** The user turn: the product data inside a random boundary, and the few instructions that belong to this call. */
-export function buildProductRewriteUserMessage(
-  input: ProductRewriteInput,
-  boundary = randomBytes(8).toString('hex'),
-): string {
+/** The product data inside a random boundary (the same block for the rewrite and for a repair); the instructions follow outside it. */
+export function productDataBlock(input: ProductRewriteInput, boundary: string): string[] {
   // The supplier's text is cleaned again here (comments, links, e-mails, phone numbers) so no caller can forget it.
   const supplier = cleanForModel(stripSupplierReviewText(input.supplierText).text);
   const lines: string[] = [];
@@ -157,6 +166,14 @@ export function buildProductRewriteUserMessage(
     add(`Attribute ${attribute.name}`, attribute.values.join(', '));
   }
   lines.push('Supplier description:', supplier === '' ? '(none)' : supplier);
+  return [`BEGIN-DATA ${boundary}`, ...lines, `END-DATA ${boundary}`];
+}
+
+/** The user turn: the product data inside a random boundary, and the few instructions that belong to this call. */
+export function buildProductRewriteUserMessage(
+  input: ProductRewriteInput,
+  boundary = randomBytes(8).toString('hex'),
+): string {
   const ask = [
     `City of the shop (for local search): ${input.city}`,
     `Authenticity claims: ${input.authenticityClaimsAllowed ? 'allowed' : 'NOT allowed'}`,
@@ -165,7 +182,7 @@ export function buildProductRewriteUserMessage(
       : []),
     'Write the product page fields now, following the system prompt. Answer with the JSON object only.',
   ];
-  return [`BEGIN-DATA ${boundary}`, ...lines, `END-DATA ${boundary}`, '', ...ask].join('\n');
+  return [...productDataBlock(input, boundary), '', ...ask].join('\n');
 }
 
 /** Links, e-mail addresses and phone numbers never reach the model; the boundary words cannot be forged from inside the data. */
@@ -243,6 +260,7 @@ export function parseProductRewrite(value: unknown): ProductRewriteDraft | null 
   }
   const strings = (entries: unknown[]) =>
     entries.filter((entry): entry is string => typeof entry === 'string').slice(0, 40);
+  const autoFixes = parseAutoFixes(value['auto_fixes']);
   return {
     descriptionVi: descriptionVi.trim(),
     sectionsVi,
@@ -258,7 +276,21 @@ export function parseProductRewrite(value: unknown): ProductRewriteDraft | null 
     suitableForInferred: inferred === true,
     factsKept: strings(facts),
     uncertain: strings(uncertain),
+    ...(autoFixes.length > 0 ? { autoFixes } : {}),
   };
+}
+
+/** The fixes a stored draft carries (`auto_fixes`, written by the engine); anything unreadable is dropped. */
+function parseAutoFixes(value: unknown): AutoFix[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry): AutoFix[] =>
+    isObject(entry) &&
+    typeof entry['code'] === 'string' &&
+    typeof entry['field'] === 'string' &&
+    (entry['how'] === 'CODE' || entry['how'] === 'AI')
+      ? [{ code: entry['code'] as AutoFix['code'], field: entry['field'], how: entry['how'] }]
+      : [],
+  );
 }
 
 // ------------------------------------------------------------------------------------------------------------------ the checks
@@ -283,20 +315,9 @@ export type WarningCode =
   | 'SUITABILITY_CONDITION';
 
 /**
- * Quality notes a reviewer may accept after reading them (facts, originality, SEO length, duplicates); every other warning (claims, the
- * clinic word, authenticity, testimonials, links and contacts, markup, language, empty fields, brand, injection signs) must be edited away.
+ * A note about a draft. Every warning is informational (Owner decision of 2026-10-13, design section 15): none of them blocks applying a
+ * draft. The worker fixes what it can before saving (`rewrite-fix.ts`, `rewrite-repair.ts`); what is left is shown beside the draft.
  */
-const SOFT_WARNINGS: ReadonlySet<WarningCode> = new Set<WarningCode>([
-  'FACT_MISSING',
-  'INGREDIENT_ADDED',
-  'TOO_SIMILAR',
-  'SEO_DUPLICATE',
-  'SEO_TITLE_LONG',
-  'SEO_DESCRIPTION_LONG',
-]);
-
-export const isBlockingWarning = (code: WarningCode): boolean => !SOFT_WARNINGS.has(code);
-
 export interface DraftWarning {
   code: WarningCode;
   /** The field and, when useful, the offending piece (kept short; shown to the reviewer). */
@@ -339,7 +360,7 @@ export const DEFAULT_BANNED_PHRASES: readonly string[] = [
 ];
 
 /** Skin conditions: "who it suits" may not name or promise help with any of them (it would read as a treatment claim). */
-const SKIN_CONDITIONS = [
+export const SKIN_CONDITIONS = [
   /\bmụn\b/i,
   /trứng cá/i,
   /\bviêm\b/i,
@@ -357,7 +378,7 @@ const SKIN_CONDITIONS = [
   /\ballerg/i,
 ];
 
-const AUTHENTICITY = [
+export const AUTHENTICITY = [
   /chính hãng/i,
   /hàng chính hãng/i,
   /nhà phân phối (chính thức|độc quyền)/i,
@@ -366,23 +387,32 @@ const AUTHENTICITY = [
   /official (distributor|retailer|dealer)/i,
 ];
 
-const TESTIMONIAL = [
+/**
+ * Real emoji only (default emoji presentation, or a pictograph with the emoji variation selector). `\p{Extended_Pictographic}` alone also
+ * matches the signs ™ ® © and arrows that stand in ingredient lists and routines, which are never praise (Owner, 2026-10-13).
+ */
+export const EMOJI = /\p{Emoji_Presentation}|\p{Extended_Pictographic}\u{FE0F}/u;
+
+export const TESTIMONIAL = [
   /\(\s*\d{1,2}\s*tuổi\s*\)/i,
   /khách hàng (nói|chia sẻ|đánh giá|phản hồi)/i,
   /customers? (say|said|rave|love|report)/i,
-  /\p{Extended_Pictographic}/u,
-  /[⭐★☆]|\b[1-5]\s*(\/|trên)\s*5\b/u,
+  EMOJI,
+  // A star rating: star signs, "4/5 sao", or a score next to the word rating. Steps ("bước 3 trên 5") and ratios are not ratings.
+  /[★☆]/u,
+  /(?<![\d/.,])[1-5](?:[.,]\d)?\s*(?:\/|trên|out of)\s*5\s*(?:sao|stars?|điểm)(?![\p{L}])/iu,
+  /(?:đánh giá|điểm|rated|rating)[^.\n]{0,20}(?<![\d/.,])[1-5](?:[.,]\d)?\s*(?:\/|trên|out of)\s*5(?![\d%])/iu,
   /^(đánh giá|review|nhận xét|cảm nhận khách)/im,
 ];
 
-const FORBIDDEN_FOR_OUTPUT = [
+export const FORBIDDEN_FOR_OUTPUT = [
   /https?:\/\//i,
   /www\./i,
   /[\w.+-]+@[\w-]+\.\w+/,
   /(?:\+?84|0)(?:[\s.-]?\d){8,10}\b/,
 ];
-const MARKUP = [/<[a-z/][^>]*>/i, /(^|\n)\s{0,3}(#{1,6}\s|[*-]\s|\d+\.\s)/, /\*\*|__|`/];
-const INJECTION_SIGNS = [
+export const MARKUP = [/<[a-z/][^>]*>/i, /(^|\n)\s{0,3}(#{1,6}\s|[*-]\s|\d+\.\s)/, /\*\*|__|`/];
+export const INJECTION_SIGNS = [
   /ignore (all |the )?(previous|above)/i,
   /bỏ qua (các |mọi )?(hướng dẫn|lệnh)/i,
   /system prompt/i,
@@ -390,7 +420,7 @@ const INJECTION_SIGNS = [
   /as an ai (language )?model/i,
 ];
 
-const norm = (text: string) => text.normalize('NFC').toLowerCase();
+export const norm = (text: string) => text.normalize('NFC').toLowerCase();
 
 /** Lower case without diacritics (đ is d): the form ingredient names are compared in. */
 export const fold = (text: string): string =>
@@ -419,7 +449,7 @@ export function tokens(text: string): string[] {
 }
 
 /** Words that describe the form of an ingredient, not which one it is: they need not occur in the source. */
-const DESCRIPTORS: ReadonlySet<string> = new Set([
+export const DESCRIPTORS: ReadonlySet<string> = new Set([
   'extract',
   'oil',
   'butter',
@@ -440,7 +470,7 @@ const related = (a: string, b: string): boolean => {
   return shared >= Math.max(5, Math.min(a.length, b.length) - 2);
 };
 
-const known = (word: string, source: readonly string[]): boolean =>
+export const known = (word: string, source: readonly string[]): boolean =>
   source.some((entry) => related(word, entry));
 
 /** Numbers with a unit in the source: `50ml`, `15 g`, `SPF35`, `PA++`, `28 ống`: the draft must keep them (in Vietnamese or English). */
@@ -448,7 +478,7 @@ export function factNumbers(source: string): string[] {
   const found = new Set<string>();
   const text = norm(source);
   for (const match of text.matchAll(
-    /\b(\d+(?:[.,]\d+)?)\s?(ml|g|gr|kg|mg|l|%|spf|pa\+*|ống|viên|gói|cái|miếng|chiếc|món|set|pcs)\b/giu,
+    /\b(\d+(?:[.,]\d+)?)\s?(ml|g|gr|kg|mg|l|spf|pa\+*|ống|viên|gói|cái|miếng|chiếc|món|set|pcs)\b/giu,
   )) {
     found.add(`${(match[1] ?? '').replace(',', '.')}${match[2] ?? ''}`);
   }
@@ -549,6 +579,8 @@ export function checkProductRewrite(
     ['sectionsVi.suitableFor', draft.sectionsVi.suitableFor],
     ['sectionsEn.suitableFor', draft.sectionsEn.suitableFor],
   ] as [string, string | null][]) {
+    // "Who it suits" is one of the four sections and is always written.
+    if (value === null || value.trim() === '') push({ code: 'EMPTY_FIELD', field });
     if (value !== null && SKIN_CONDITIONS.some((pattern) => pattern.test(value))) {
       push({ code: 'SUITABILITY_CONDITION', field });
     }
@@ -559,7 +591,7 @@ export function checkProductRewrite(
   );
   for (const [field, value] of fields) {
     const text = norm(value);
-    if (text.includes(CLINIC_WORD)) push({ code: 'CLINIC_WORD', field });
+    if (CLINIC_PATTERN.test(text)) push({ code: 'CLINIC_WORD', field });
     const hit = banned.find((phrase) => phrase !== '' && text.includes(phrase));
     if (hit !== undefined) push({ code: 'FORBIDDEN_PHRASE', field, detail: hit.trim() });
     if (!options.authenticityClaimsAllowed && AUTHENTICITY.some((pattern) => pattern.test(value))) {
@@ -596,7 +628,11 @@ export function checkProductRewrite(
   for (const item of viItems) {
     const words = tokens(item).filter((word) => word.length >= 3 && !DESCRIPTORS.has(word));
     if (!words.every((word) => known(word, sourceTokens))) {
-      push({ code: 'INGREDIENT_ADDED', detail: item.slice(0, 60) });
+      push({
+        code: 'INGREDIENT_ADDED',
+        field: 'sectionsVi.ingredients',
+        detail: item.slice(0, 60),
+      });
       break;
     }
   }
@@ -618,12 +654,14 @@ export function checkProductRewrite(
     push({ code: 'BRAND_CHANGED', field: 'nameEn' });
   }
 
-  // Originality: too many 5-word runs copied from the supplier text.
+  // Originality: too many 5-word runs copied from the supplier text. An ingredient list is a fact and is kept as the supplier wrote it.
   const threshold = options.overlapThreshold ?? 0.25;
   for (const [field, value] of [
     ['descriptionVi', draft.descriptionVi],
     ...Object.entries(draft.sectionsVi).flatMap(([key, entry]) =>
-      entry === null ? [] : [[`sectionsVi.${key}`, entry] as [string, string]],
+      entry === null || key === 'ingredients'
+        ? []
+        : [[`sectionsVi.${key}`, entry] as [string, string]],
     ),
   ] as [string, string][]) {
     if (overlapShare(value, options.supplierText) > threshold) push({ code: 'TOO_SIMILAR', field });
@@ -684,7 +722,7 @@ export function checkPlainTexts(
       continue;
     }
     const text = norm(value);
-    if (text.includes(CLINIC_WORD)) push({ code: 'CLINIC_WORD', field });
+    if (CLINIC_PATTERN.test(text)) push({ code: 'CLINIC_WORD', field });
     const hit = banned.find((phrase) => phrase !== '' && text.includes(phrase));
     if (hit !== undefined) push({ code: 'FORBIDDEN_PHRASE', field, detail: hit.trim() });
     if (!options.authenticityClaimsAllowed && AUTHENTICITY.some((pattern) => pattern.test(value))) {

@@ -6,10 +6,10 @@ import { phase6Fixture } from '../testing/phase6-fixture.js';
 import { AiService } from './ai.service.js';
 
 /**
- * Claude integration Wave B ("Duyệt tất cả", Owner 2026-10-13) against real PostgreSQL: one preview and one confirm for every ready
- * product draft with zero warnings. Needs three single approvals first and `MANAGE_PRODUCTS`; the confirm applies exactly the previewed
- * list and re-checks each draft (ready, same row version, no note, product unchanged); a draft that became ready after the preview is
- * never picked up; applied in chunks, each product audited, one summary event. Fixtures roll back.
+ * Claude integration Wave B ("Chọn tất cả" and "Duyệt các bài đã chọn", Owner 2026-10-13) against real PostgreSQL: the list of every
+ * pending product draft and one confirm for the selected ones. Needs three single approvals first and `MANAGE_PRODUCTS`; the confirm
+ * applies exactly the sent list and re-checks each draft (ready, same row version, product unchanged); notes never skip a draft; a draft
+ * that became ready after the list is never picked up; applied in chunks, each product audited, one summary event per request. Fixtures roll back.
  */
 const CLEAN: AiDraftContent = {
   descriptionVi:
@@ -18,7 +18,7 @@ const CLEAN: AiDraftContent = {
     benefits: 'Làm sạch sâu và giữ độ ẩm tự nhiên cho da khô.',
     ingredients: 'Chiết xuất hoa sen, Glycerin.',
     usage: null,
-    suitableFor: null,
+    suitableFor: 'Phù hợp với hầu hết các loại da.',
   },
   descriptionEn:
     'A soft, creamy foam that lifts away dirt gently and leaves dry skin feeling soft and comfortably hydrated. The 180ml size fits a daily skincare routine.',
@@ -26,7 +26,7 @@ const CLEAN: AiDraftContent = {
     benefits: 'Deep cleansing that keeps the skin’s natural moisture.',
     ingredients: 'Lotus extract, Glycerin.',
     usage: null,
-    suitableFor: null,
+    suitableFor: 'Suitable for most skin types.',
   },
   nameEn: 'The Whoo Gongjinhyang Soo Hydrating Cleansing Foam 180ml',
   seoTitleVi: 'Sữa rửa mặt Gongjinhyang The Whoo 180ml | Lucy Spa',
@@ -38,7 +38,7 @@ const CLEAN: AiDraftContent = {
 };
 
 test(
-  'Claude integration Wave B approve all: zero-warning drafts only, previewed list only, checked again, chunked, audited; fixtures roll back',
+  'Claude integration Wave B approve selected: every pending draft listed (notes never block), the sent list only, checked again, chunked, audited; fixtures roll back',
   { skip: process.env['RUN_AUTH_INTEGRATION'] !== 'true' },
   async (suite) => {
     await phase6Fixture(async (base) => {
@@ -135,7 +135,7 @@ test(
       );
 
       await suite.test(
-        'the preview lists only clean, fresh drafts and counts the rest; a reader may look but not confirm',
+        'the list holds every pending draft whose product is unchanged, with or without notes; a reader may look but not confirm',
         async () => {
           const clean = [await make(), await make(), await make()];
           const noted = await make({
@@ -147,14 +147,13 @@ test(
           );
           const preview = await ai.previewApproveAll(worker.token);
           assert.equal(preview.ready, 5);
-          assert.equal(preview.eligible, 3);
-          assert.equal(preview.withWarnings, 1);
+          assert.equal(preview.eligible, 4);
           assert.equal(preview.changed, 1);
           assert.equal(preview.singleApplied >= AI_RUN_LIMITS.singleApprovalsNeeded, true);
           assert.equal(preview.canApprove, true);
           assert.deepEqual(
             preview.items.map((entry) => entry.id),
-            clean.map((entry) => entry.itemId),
+            [...clean, noted].map((entry) => entry.itemId),
           );
           assert.equal(
             preview.items.every((entry) => entry.rowVersion >= 1),
@@ -172,7 +171,6 @@ test(
             )[0]!.n,
             5n,
           );
-          void noted;
         },
       );
 
@@ -187,19 +185,10 @@ test(
           await tx.$executeRawUnsafe(
             `UPDATE ai_items SET row_version = row_version + 1 WHERE id = '${list[0]!.id}'`,
           );
-          // A draft that gained a note after the preview is skipped by the fresh check.
-          await tx.$executeRawUnsafe(
-            `UPDATE ai_items SET warnings = '[{"code":"FACT_MISSING"}]'::jsonb, row_version = row_version + 1 WHERE id = '${list[1]!.id}'`,
-          );
+          // The last draft of the list carries a note: a note never skips a draft.
           const result = await ai.approveAll(worker.token, { items: list });
-          assert.equal(result.applied, 1);
-          assert.deepEqual(
-            result.skipped.map((entry) => [entry.id, entry.reason]).sort(),
-            [
-              [list[0]!.id, 'CHANGED'],
-              [list[1]!.id, 'CHANGED'],
-            ].sort(),
-          );
+          assert.equal(result.applied, 3);
+          assert.deepEqual(result.skipped, [{ id: list[0]!.id, reason: 'CHANGED' }]);
           const [done] = await rows<{ status: string; applied_via: string }>(
             `SELECT status, applied_via FROM ai_items WHERE id = $1::uuid`,
             list[2]!.id,
@@ -213,7 +202,7 @@ test(
           const events = (await audit('AI_DRAFT_APPLIED')).filter(
             (event) => (event.after as Record<string, unknown>)['appliedVia'] === 'ALL',
           );
-          assert.equal(events.length, 1);
+          assert.equal(events.length, 3);
           assert.equal((await audit('AI_APPROVE_ALL')).length, 1);
           // The single approvals still number three or more by singles only; "all" is not one of them.
           assert.equal(
@@ -222,7 +211,7 @@ test(
                 `SELECT count(*) AS n FROM ai_items WHERE applied_via = 'ALL'`,
               )
             )[0]!.n,
-            1n,
+            3n,
           );
           // The same list again changes nothing (the draft is applied already).
           const again = await ai.approveAll(worker.token, { items: [list[2]!] });
@@ -277,7 +266,7 @@ test(
         await fails(
           () =>
             ai.approveAll(worker.token, {
-              items: Array.from({ length: AI_RUN_LIMITS.approveAllMax + 1 }, (_, n) => ({
+              items: Array.from({ length: AI_RUN_LIMITS.approveBatchMax + 1 }, (_, n) => ({
                 id: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
                 rowVersion: 1,
               })),

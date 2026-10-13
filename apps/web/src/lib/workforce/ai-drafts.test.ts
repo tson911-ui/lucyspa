@@ -50,7 +50,7 @@ const detail = (patch: Partial<AiDraftDetail> = {}): AiDraftDetail => ({
   factsKept: [],
   uncertain: [],
   warnings: [],
-  blocking: false,
+  autoFixes: [],
   instruction: null,
   regenerations: 0,
   canRegenerate: true,

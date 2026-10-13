@@ -155,11 +155,32 @@ function warningRows(warnings: readonly AiDraftWarning[], text: Text) {
       <div>
         {list.map((warning, index) => (
           <div key={`${warning.code}:${index}`}>
-            <Badge tone={warning.blocking ? 'warning' : 'neutral'}>
-              {warning.blocking ? text.detail.blockingTag : text.detail.noteTag}
-            </Badge>{' '}
-            {warningMessage(warning, text)}
+            <Badge tone="neutral">{text.detail.noteTag}</Badge> {warningMessage(warning, text)}
           </div>
+        ))}
+      </div>
+    ),
+  }));
+}
+
+/** What the worker fixed before saving, one row per field: what was wrong (or what was tidied) and who fixed it. */
+function autoFixRows(detail: AiDraftDetail, text: Text) {
+  const groups = new Map<string, string[]>();
+  for (const fix of detail.autoFixes) {
+    const label = warningField(fix.field, text) || text.detail.warningsGeneral;
+    const what =
+      (text.detail.autoFixCodes as Record<string, string>)[fix.code] ??
+      (text.warnings as Record<string, string>)[fix.code] ??
+      text.warnings.OTHER;
+    const how = text.detail.autoFixHow[fix.how];
+    groups.set(label, [...(groups.get(label) ?? []), `${what.replace(/[.]$/u, '')} (${how})`]);
+  }
+  return [...groups].map(([label, list]) => ({
+    label,
+    value: (
+      <div>
+        {list.map((line, index) => (
+          <div key={`${index}:${line}`}>{line}</div>
         ))}
       </div>
     ),
@@ -194,7 +215,6 @@ function DraftPanel({
   useUnsavedChangesGuard(dirty && !pending);
   const ready = detail.status === 'DRAFT_READY' && working !== null;
   const editable = ready && !detail.stale;
-  const soft = detail.warnings.filter((warning) => !warning.blocking);
 
   const fail = async (error: unknown) => {
     if (isConflict(error)) {
@@ -287,11 +307,9 @@ function DraftPanel({
     ? d.forbiddenApply
     : dirty
       ? d.blockedReason.unsaved
-      : detail.blocking
-        ? d.blockedReason.blocking
-        : detail.stale
-          ? d.blockedReason.stale
-          : undefined;
+      : detail.stale
+        ? d.blockedReason.stale
+        : undefined;
 
   const specs = fieldSpecs(language);
   const failureReason = (): string => {
@@ -357,7 +375,19 @@ function DraftPanel({
         {detail.warnings.length > 0 && working !== null ? (
           <Card as="section" aria-label={d.warningsTitle}>
             <CardHeader title={d.warningsTitle} />
-            <DescriptionList items={warningRows(detail.warnings, text)} />
+            <Stack gap="field">
+              <p className="ls-hint">{d.warningsHint}</p>
+              <DescriptionList items={warningRows(detail.warnings, text)} />
+            </Stack>
+          </Card>
+        ) : null}
+        {detail.autoFixes.length > 0 && working !== null ? (
+          <Card as="section" aria-label={d.autoFixTitle}>
+            <CardHeader title={d.autoFixTitle} />
+            <Stack gap="field">
+              <p className="ls-hint">{d.autoFixHint}</p>
+              <DescriptionList items={autoFixRows(detail, text)} />
+            </Stack>
           </Card>
         ) : null}
 
@@ -468,7 +498,7 @@ function DraftPanel({
       {overlay === 'apply' ? (
         <ApplyDialog
           detail={detail}
-          soft={soft}
+          notes={detail.warnings.length}
           onClose={() => setOverlay(null)}
           onResult={(result) => {
             setOverlay(null);
@@ -566,13 +596,13 @@ function FieldRow({
 
 function ApplyDialog({
   detail,
-  soft,
+  notes,
   onClose,
   onResult,
   onConflict,
 }: {
   detail: AiDraftDetail;
-  soft: AiDraftWarning[];
+  notes: number;
   onClose: () => void;
   onResult: (result: AiDraftApplyResponse) => void;
   onConflict: () => Promise<void>;
@@ -580,21 +610,17 @@ function ApplyDialog({
   const { api, t, locale } = useWorkforce();
   const text = aiDraftsDictionary(locale);
   const d = text.detail;
-  const [ack, setAck] = useState(false);
-  const [checked, setChecked] = useState(false);
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
   async function submit() {
-    setChecked(true);
-    if (pending || (soft.length > 0 && !ack)) return;
+    if (pending) return;
     setPending(true);
     setFailure(null);
     try {
       onResult(
         await api.post<AiDraftApplyResponse>(`${BASE}/${detail.id}/apply`, {
           expectedRowVersion: detail.rowVersion,
-          ...(soft.length > 0 ? { acknowledgeWarnings: true } : {}),
         }),
       );
     } catch (error) {
@@ -624,16 +650,8 @@ function ApplyDialog({
       onClose={onClose}
       onSubmit={submit}
     >
-      {soft.length > 0 ? (
-        <Stack gap="field">
-          <Notice tone="info">{fill(d.applyNotes, { count: String(soft.length) })}</Notice>
-          <CheckField
-            label={d.applyAck}
-            checked={ack}
-            onChange={(event) => setAck(event.target.checked)}
-            {...(checked && !ack ? { error: text.fieldErrors.acknowledgeWarnings } : {})}
-          />
-        </Stack>
+      {notes > 0 ? (
+        <Notice tone="info">{fill(d.applyNotes, { count: String(notes) })}</Notice>
       ) : null}
     </FormDialog>
   );

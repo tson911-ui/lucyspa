@@ -1,20 +1,37 @@
 import type { Prisma } from '@lucy-spa/database';
 import { AiCallError, type ClaudeClient, type GenerateResult } from './claude-client.js';
-import { isAiEffort, isAiModel, costMicroUsd, maxCostMicroUsd, type AiModel } from './prices.js';
+import {
+  isAiEffort,
+  isAiModel,
+  costMicroUsd,
+  maxCostMicroUsd,
+  type AiModel,
+  type TokenUsage,
+} from './prices.js';
 import {
   PRODUCT_REWRITE_SCHEMA,
   PRODUCT_REWRITE_SYSTEM,
   buildProductRewriteUserMessage,
-  checkProductRewrite,
   parseProductRewrite,
+  type DraftWarning,
+  type ProductRewriteDraft,
   type ProductRewriteInput,
 } from './product-rewrite.js';
+import {
+  PRODUCT_REPAIR_SCHEMA,
+  PRODUCT_REPAIR_SYSTEM,
+  applyRepair,
+  buildRepairUserMessage,
+  parseRepair,
+} from './rewrite-repair.js';
+import { fixDraft, sourceIngredients, type FixOptions, type RepairTarget } from './rewrite-fix.js';
 import {
   loadAiSettings,
   releaseReservation,
   reserveSpend,
   writeLedger,
   type AiDatabase,
+  type AiSettings,
 } from './spend.js';
 import { stripSupplierReviewText } from '../supplier-import/text.js';
 
@@ -312,6 +329,159 @@ export async function runRewriteTick(
   return { leased: items.length };
 }
 
+const REPAIR_MAX_TOKENS = 4_000;
+
+/** The input of a rewrite (and of its repair) from the stored snapshot and the current settings. */
+export function rewriteInputOf(
+  snapshot: ProductSnapshot,
+  settings: AiSettings,
+  city: string,
+  instruction: string | null,
+): ProductRewriteInput {
+  return {
+    nameVi: snapshot.nameVi,
+    brand: snapshot.brand,
+    category: snapshot.category,
+    variantLabels: snapshot.variantLabels,
+    supplierText: snapshot.supplierText,
+    attributes: snapshot.attributes,
+    city,
+    authenticityClaimsAllowed: settings.allowAuthenticityClaims,
+    instruction,
+  };
+}
+
+/** What the checks and the free fixes need to know about one product. */
+export function fixOptionsOf(
+  snapshot: ProductSnapshot,
+  settings: AiSettings,
+  seen: { titles?: ReadonlySet<string>; descriptions?: ReadonlySet<string> } = {},
+): FixOptions {
+  return {
+    supplierText: snapshot.supplierText,
+    attributes: snapshot.attributes,
+    brand: snapshot.brand,
+    nameVi: snapshot.nameVi,
+    authenticityClaimsAllowed: settings.allowAuthenticityClaims,
+    bannedPhrases: settings.bannedPhrases,
+    ingredientList: sourceIngredients(snapshot.supplierText, snapshot.attributes),
+    ...(seen.titles ? { seenTitles: seen.titles } : {}),
+    ...(seen.descriptions ? { seenDescriptions: seen.descriptions } : {}),
+  };
+}
+
+export interface RepairDone {
+  draft: ProductRewriteDraft;
+  warnings: DraftWarning[];
+  targets: RepairTarget[];
+  usage: TokenUsage;
+  cost: bigint;
+  /** The model rewrote at least one field. */
+  changed: boolean;
+}
+
+export interface RepairArgs {
+  item: { id: string; runId: string | null };
+  model: AiModel;
+  settings: AiSettings;
+  input: ProductRewriteInput;
+  draft: ProductRewriteDraft;
+  targets: readonly RepairTarget[];
+  fixOptions: FixOptions;
+  now: () => Date;
+  timeoutMs: number;
+  /** Stores the repaired draft in the same transaction as the ledger row (so money is never spent without a record). */
+  persist: (tx: Prisma.TransactionClient, done: RepairDone) => Promise<void>;
+}
+
+/**
+ * The one targeted repair of a draft (CI-F1): reserve, one call that rewrites only the failing fields, free fixes again on the result,
+ * check, then the ledger row (`REPAIRED`, or `REPAIR_FAILED` when nothing usable came back) and `persist` in one transaction. Returns null
+ * when nothing was spent: the switches are off, the cap refuses, or the request failed before any token; the caller then keeps the draft as it is.
+ */
+export async function repairOnce(
+  database: AiDatabase,
+  client: ClaudeClient,
+  args: RepairArgs,
+): Promise<RepairDone | null> {
+  const settings = await loadAiSettings(database);
+  if (!settings.enabled || !settings.rewriteEnabled) return null;
+  const user = buildRepairUserMessage(args.input, args.draft, args.targets);
+  const estimatedInput = Math.ceil((PRODUCT_REPAIR_SYSTEM.length + user.length) / 2) + 500;
+  const reservation = await reserveSpend(database, {
+    feature: 'PRODUCT_REWRITE',
+    itemId: args.item.id,
+    amountMicroUsd: maxCostMicroUsd(args.model, estimatedInput, REPAIR_MAX_TOKENS),
+    settings,
+    now: args.now(),
+  });
+  if (!reservation.ok) return null;
+  let result: GenerateResult;
+  try {
+    result = await client.generateJson({
+      model: args.model,
+      effort: 'low',
+      system: PRODUCT_REPAIR_SYSTEM,
+      user,
+      schema: PRODUCT_REPAIR_SCHEMA as unknown as Record<string, unknown>,
+      maxTokens: REPAIR_MAX_TOKENS,
+      timeoutMs: args.timeoutMs,
+      refusalFallback: settings.refusalFallback,
+    });
+  } catch {
+    await releaseReservation(database, reservation.reservationId);
+    return null;
+  }
+  const billedModel = isAiModel(result.modelUsed) ? result.modelUsed : args.model;
+  const cost = costMicroUsd(billedModel, result.usage);
+  const repaired = result.outcome === 'OK' ? parseRepair(result.json, args.targets) : null;
+  let draft = args.draft;
+  let changed = false;
+  if (repaired !== null && repaired.size > 0) {
+    const applied = applyRepair(args.draft, repaired, args.targets);
+    // The model's text gets the same free tidying (lengths, markup) and is kept only when it leaves no more problems than before.
+    const tidy = fixDraft(applied.draft, args.fixOptions);
+    const before = fixDraft(args.draft, args.fixOptions);
+    if (tidy.targets.length <= before.targets.length) {
+      changed = applied.fixes.length > 0;
+      draft = {
+        ...tidy.draft,
+        autoFixes: [...(args.draft.autoFixes ?? []), ...applied.fixes, ...tidy.fixes],
+      };
+    }
+  }
+  const final = fixDraft(draft, args.fixOptions);
+  const done: RepairDone = {
+    draft:
+      final.fixes.length > 0
+        ? { ...final.draft, autoFixes: [...(draft.autoFixes ?? []), ...final.fixes] }
+        : final.draft,
+    warnings: final.warnings,
+    targets: final.targets,
+    usage: result.usage,
+    cost,
+    changed,
+  };
+  await inTransaction(database, async (tx) => {
+    await writeLedger(
+      tx,
+      {
+        feature: 'PRODUCT_REWRITE',
+        runId: args.item.runId,
+        itemId: args.item.id,
+        model: result.modelUsed,
+        outcome: changed ? 'REPAIRED' : 'REPAIR_FAILED',
+        usage: result.usage,
+        costMicroUsd: cost,
+        requestId: result.requestId,
+      },
+      reservation.reservationId,
+    );
+    await args.persist(tx, done);
+  });
+  return done;
+}
+
 async function processItem(
   database: AiDatabase,
   client: ClaudeClient,
@@ -334,17 +504,7 @@ async function processItem(
     return;
   }
   const model: AiModel = item.model;
-  const input: ProductRewriteInput = {
-    nameVi: snapshot.nameVi,
-    brand: snapshot.brand,
-    category: snapshot.category,
-    variantLabels: snapshot.variantLabels,
-    supplierText: snapshot.supplierText,
-    attributes: snapshot.attributes,
-    city,
-    authenticityClaimsAllowed: settings.allowAuthenticityClaims,
-    instruction: item.instruction,
-  };
+  const input = rewriteInputOf(snapshot, settings, city, item.instruction);
   const user = buildProductRewriteUserMessage(input);
   // Vietnamese costs about one token per two characters; the estimate is deliberately high so the reservation covers the call.
   const estimatedInput = Math.ceil((PRODUCT_REWRITE_SYSTEM.length + user.length) / 2) + 500;
@@ -416,31 +576,44 @@ async function processItem(
   const outcome: 'SUCCEEDED' | 'REFUSED' | 'FAILED' =
     result.outcome === 'REFUSED' ? 'REFUSED' : draft === null ? 'FAILED' : 'SUCCEEDED';
 
+  // CI-F1: the draft is made complete before it is saved. Free code fixes first; what they cannot repair gets one targeted model call.
   let warnings: unknown[] = [];
+  let stored = draft;
+  let targets: RepairTarget[] = [];
+  let fixOptions: FixOptions | null = null;
   if (draft !== null) {
     const seen = await database.$queryRaw<{ title: string | null; description: string | null }[]>`
       SELECT draft ->> 'seoTitleVi' AS title, draft ->> 'seoDescriptionVi' AS description
         FROM ai_items
        WHERE run_id = ${item.run_id}::uuid AND id <> ${item.id}::uuid AND draft IS NOT NULL`;
-    warnings = checkProductRewrite(draft, {
-      supplierText: snapshot.supplierText,
-      attributes: snapshot.attributes,
-      brand: snapshot.brand,
-      nameVi: snapshot.nameVi,
-      authenticityClaimsAllowed: settings.allowAuthenticityClaims,
-      bannedPhrases: settings.bannedPhrases,
-      seenTitles: new Set(seen.flatMap((row) => (row.title ? [row.title] : []))),
-      seenDescriptions: new Set(seen.flatMap((row) => (row.description ? [row.description] : []))),
+    fixOptions = fixOptionsOf(snapshot, settings, {
+      titles: new Set(seen.flatMap((row) => (row.title ? [row.title] : []))),
+      descriptions: new Set(seen.flatMap((row) => (row.description ? [row.description] : []))),
     });
+    const fixed = fixDraft(draft, fixOptions);
+    stored = fixed.fixes.length > 0 ? { ...fixed.draft, autoFixes: fixed.fixes } : fixed.draft;
+    warnings = fixed.warnings;
+    targets = fixed.targets;
   }
+  // The repair call happens after the first call's ledger row is written; the item stays leased (GENERATING) until it is done.
+  const needsRepair = stored !== null && fixOptions !== null && targets.length > 0;
 
   // A refusal is final (a person decides); an answer that was cut off or not valid JSON is tried once more, then needs a person.
   const retryAnswer = outcome === 'FAILED' && item.attempts < MAX_ATTEMPTS;
-  const status = draft !== null ? 'DRAFT_READY' : retryAnswer ? 'QUEUED' : 'NEEDS_ATTENTION';
+  const status =
+    draft !== null
+      ? needsRepair
+        ? 'GENERATING'
+        : 'DRAFT_READY'
+      : retryAnswer
+        ? 'QUEUED'
+        : 'NEEDS_ATTENTION';
   const errorCode = draft !== null ? null : outcome === 'REFUSED' ? 'REFUSED' : result.outcome;
   const lockedUntil = retryAnswer
     ? new Date(clock().getTime() + ((options.backoffMs ?? BACKOFF_MS)[0] ?? 30_000))
-    : null;
+    : needsRepair
+      ? new Date(clock().getTime() + LEASE_MINUTES * 60_000)
+      : null;
   await inTransaction(database, async (tx) => {
     await writeLedger(
       tx,
@@ -459,7 +632,7 @@ async function processItem(
     await tx.$executeRaw`
       UPDATE ai_items
          SET status = ${status}, error_code = ${errorCode}, locked_until = ${lockedUntil}::timestamptz,
-             draft = coalesce(${draft === null ? null : JSON.stringify(draft)}::jsonb, draft),
+             draft = coalesce(${stored === null ? null : JSON.stringify(stored)}::jsonb, draft),
              warnings = CASE WHEN ${draft !== null} THEN ${JSON.stringify(warnings)}::jsonb ELSE warnings END,
              input_tokens = input_tokens + ${result.usage.inputTokens},
              cache_read_tokens = cache_read_tokens + ${result.usage.cacheReadTokens},
@@ -469,5 +642,42 @@ async function processItem(
              row_version = row_version + 1, updated_at = clock_timestamp()
        WHERE id = ${item.id}::uuid AND status = 'GENERATING'`;
   });
+  if (needsRepair && stored !== null && fixOptions !== null) {
+    const done = await repairOnce(database, client, {
+      item: { id: item.id, runId: item.run_id },
+      model,
+      settings,
+      input,
+      draft: stored,
+      targets,
+      fixOptions,
+      now: clock,
+      timeoutMs: options.timeoutMs ?? CALL_TIMEOUT_MS,
+      persist: async (tx, repaired) => {
+        await tx.$executeRaw`
+          UPDATE ai_items
+             SET status = 'DRAFT_READY', locked_until = NULL,
+                 draft = ${JSON.stringify(repaired.draft)}::jsonb,
+                 warnings = ${JSON.stringify(repaired.warnings)}::jsonb,
+                 input_tokens = input_tokens + ${repaired.usage.inputTokens},
+                 cache_read_tokens = cache_read_tokens + ${repaired.usage.cacheReadTokens},
+                 cache_write_tokens = cache_write_tokens + ${repaired.usage.cacheWriteTokens},
+                 output_tokens = output_tokens + ${repaired.usage.outputTokens},
+                 cost_micro_usd = cost_micro_usd + ${repaired.cost},
+                 row_version = row_version + 1, updated_at = clock_timestamp()
+           WHERE id = ${item.id}::uuid AND status = 'GENERATING'`;
+      },
+    }).catch((error: unknown) => {
+      options.onError?.(error);
+      return null;
+    });
+    if (done === null) {
+      // Nothing was spent (switches off, cap, a failed request): the free-fixed draft is the draft, its notes stay for the Owner to read.
+      await database.$executeRaw`
+        UPDATE ai_items
+           SET status = 'DRAFT_READY', locked_until = NULL, row_version = row_version + 1, updated_at = clock_timestamp()
+         WHERE id = ${item.id}::uuid AND status = 'GENERATING'`;
+    }
+  }
   await closeFinishedRuns(database, item.run_id);
 }

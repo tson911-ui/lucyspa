@@ -11,10 +11,6 @@ import type {
   AiDraftRegenerateRequest,
   AiDraftRejectRequest,
   AiDraftRetryRequest,
-  AiPageApproveRequest,
-  AiPageApproveResponse,
-  AiPageResponse,
-  AiPageViewRequest,
 } from '@lucy-spa/contracts';
 import {
   Body,
@@ -64,9 +60,7 @@ class EditDto extends VersionDto implements AiDraftEditRequest {
   @ApiProperty({ required: false }) @IsOptional() @IsBoolean() useNameSuggestion?: boolean;
 }
 
-class ApplyDto extends VersionDto implements AiDraftApplyRequest {
-  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() acknowledgeWarnings?: boolean;
-}
+class ApplyDto extends VersionDto implements AiDraftApplyRequest {}
 
 class RejectDto extends VersionDto implements AiDraftRejectRequest {
   @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(600) reason?: string;
@@ -78,16 +72,6 @@ class RegenerateDto extends VersionDto implements AiDraftRegenerateRequest {
 
 class RetryDto extends VersionDto implements AiDraftRetryRequest {}
 
-class PageViewDto implements AiPageViewRequest {
-  @ApiProperty({ type: [String] })
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(20)
-  @IsString({ each: true })
-  @MaxLength(40, { each: true })
-  itemIds!: string[];
-}
-
 class ApproveAllItemDto {
   @ApiProperty() @IsString() @MaxLength(40) id!: string;
   @ApiProperty() @IsInt() @Min(1) @Max(2_147_483_647) rowVersion!: number;
@@ -97,20 +81,10 @@ class ApproveAllDto implements AiApproveAllRequest {
   @ApiProperty({ type: [ApproveAllItemDto] })
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(400)
+  @ArrayMaxSize(100)
   @ValidateNested({ each: true })
   @Type(() => ApproveAllItemDto)
   items!: ApproveAllItemDto[];
-}
-
-class PageApproveDto implements AiPageApproveRequest {
-  @ApiProperty({ type: [String] })
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(20)
-  @IsString({ each: true })
-  @MaxLength(40, { each: true })
-  itemIds!: string[];
 }
 
 @Controller('api/v1/ai/product-drafts')
@@ -134,47 +108,10 @@ export class AiDraftsController {
     });
   }
 
-  @Get('page')
-  @ApiOkResponse({
-    description:
-      'One page (20) of ready drafts as the text that would go on the website, for reading before a page approval.',
-  })
-  page(@Req() request: Request, @Query('page') page?: string): Promise<AiPageResponse> {
-    const parsed = page === undefined ? undefined : Number(page);
-    return this.ai.pageOfDrafts(this.session(request), {
-      page: parsed !== undefined && Number.isFinite(parsed) ? parsed : undefined,
-    });
-  }
-
-  @Post('page-view')
-  @HttpCode(200)
-  @ApiOkResponse({ description: 'Records that this reviewer was shown these drafts.' })
-  pageView(
-    @Body() body: PageViewDto,
-    @Req() request: Request,
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<{ marked: number }> {
-    return this.ai.viewPage(this.session(request), body, this.requestId(response));
-  }
-
-  @Post('page-approve')
-  @HttpCode(200)
-  @ApiOkResponse({
-    description:
-      'One confirm for up to 20 ready drafts without warnings that this reviewer has seen; allowed after three drafts were applied one by one. Audited per product.',
-  })
-  pageApprove(
-    @Body() body: PageApproveDto,
-    @Req() request: Request,
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<AiPageApproveResponse> {
-    return this.ai.approvePage(this.session(request), body, this.requestId(response));
-  }
-
   @Get('approve-all')
   @ApiOkResponse({
     description:
-      '"Duyệt tất cả": every ready draft with zero warnings (the list a confirm must send back), plus how many were left out and why.',
+      '"Chọn tất cả": every pending draft (the list a confirm sends back from), plus how many were left out because their product changed.',
   })
   approveAllPreview(@Req() request: Request): Promise<AiApproveAllPreview> {
     return this.ai.previewApproveAll(this.session(request));
@@ -184,7 +121,7 @@ export class AiDraftsController {
   @HttpCode(200)
   @ApiOkResponse({
     description:
-      'One confirm for the previewed drafts with zero warnings; each is checked again and applied in its own transaction, audited per product plus a summary. Allowed after three drafts were applied one by one.',
+      'One confirm for up to 100 selected drafts; each is checked again and applied in its own transaction, audited per product plus a summary. Notes never block. Allowed after three drafts were applied one by one.',
   })
   approveAll(
     @Body() body: ApproveAllDto,

@@ -569,3 +569,16 @@ that edited/composited images are covered (the recorded permission says "images 
 - Google Search Central: "Title links" (no length limit, truncation by width, distinct titles, no keyword stuffing), "Snippets" (no limit on meta description, unique per page), "Product snippet structured data" (`name` + one of offers/review/rating; `offers.price`; do not use `AggregateOffer` for variants), "Using generative AI content" (review and fact-check titles, descriptions, structured data and alt text; scaled content abuse).
 - n8n documentation and third-party sizing guides (heap setting `--max-old-space-size`; idle memory figures are third-party, not official).
 - Vietnam Law on Personal Data Protection 91/2025/QH15 (in force 2026-01-01): law-firm and advisory summaries only; **not legal advice, not verified against the statute text.**
+
+## 15. Owner decision on the product rewrite flow, 2026-10-13 (recorded as given; replaces all earlier warning and approval change requests)
+
+"Owner decision on the product rewrite flow — replaces all earlier warning/approval change requests:
+
+1. Claude must deliver COMPLETE drafts that already meet all the criteria (SEO title ≤ 60, meta ≤ 155, 4 sections incl. "Phù hợp với ai", facts only from the source, no supplier customer reviews/testimonials, no medical/unverifiable claims, never "khám", official name kept). Before saving, the worker runs the checks and FIXES problems itself: free code fixes first (strip review/testimonial text, normalize ingredient names, remove forbidden claims, enforce length limits), then if needed one targeted AI repair of only the failing section within the spending cap. Fix the false positives (ingredient lists/INCI/percentages are never "customer review"; ingredients present in the source and intentionally removed marketing claims are not problems).
+2. Drafts are NOT published automatically; they wait for the Owner.
+3. Warnings are informational only and NEVER block approval. Remove every block on Áp dụng, page approve and bulk approve caused by warnings. Show the notes beside each draft so the Owner can decide.
+4. Review list: a checkbox on every draft plus "Chọn tất cả" (all pending drafts, not just the page) and one "Duyệt các bài đã chọn" button with a single confirm (audited). The Owner can open any draft and press "Viết lại" if he doesn't like it.
+5. Apply the free fixes to all existing pending drafts now (no AI cost), and run the targeted repair only where a real problem remains.
+   Report: how many pending drafts were fixed for free, how many needed AI repair, the repair cost. Bundle into the B+C+D deploy guide (one single self-checking block, enum checks cast to ::text). No deploy, no server access."
+
+Our reading (built in CI-F1, `docs/CLAUDE_CI_F1_REWRITE_FLOW.md`): the "4 sections" rule and "facts only from the source" meet when the source has nothing for a section: the section stays empty and is never filled by a repair (an invented ingredient list would break the facts rule); "Phù hợp với ai" is always written (cautious general line, marked inferred). The search-description drafts of CI-E1 are not part of this decision and keep their own review rules; asked of the Owner as a question.

@@ -1,43 +1,28 @@
 'use client';
 
-import type {
-  AiApproveAllItem,
-  AiApproveAllPreview,
-  AiApproveAllResponse,
-  AiPageApproveResponse,
-  AiPageResponse,
-  AiRunList,
-  AiRunPreview,
-  AiRunRow,
-  AiRunScope,
-} from '@lucy-spa/contracts';
+import type { AiRunList, AiRunPreview, AiRunRow, AiRunScope } from '@lucy-spa/contracts';
 import {
   Card,
   CardHeader,
   Cluster,
   ConfirmDialog,
-  DataTable,
   DescriptionList,
-  Drawer,
   Field,
   FormDialog,
   NumberInput,
   Select,
   Stack,
-  type DataTableColumn,
 } from '@lucy-spa/ui';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { aiDraftsDictionary } from '../../../i18n/ai-drafts';
 import { fill } from '../../../i18n/workforce';
 import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { formatVnd } from '../../../lib/workforce/format';
-import { paginationLabels } from '../../../lib/workforce/list-view';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useWorkforce } from '../session';
-import { Badge, Button, Empty, Loading, Notice, useResource, useSuccessToast } from '../ui';
+import { Badge, Button, Loading, Notice, useResource, useSuccessToast } from '../ui';
 
 const RUNS = '/api/v1/ai/product-runs';
-const DRAFTS = '/api/v1/ai/product-drafts';
 
 const OPEN_STATUSES = ['QUEUED', 'RUNNING', 'PAUSED_CAP', 'PAUSED_USER', 'PAUSED_ERROR'];
 
@@ -349,265 +334,5 @@ export function StartRunDialog({
         )}
       </Stack>
     </FormDialog>
-  );
-}
-
-/**
- * "Duyệt tất cả" (Owner, 2026-10-13): every ready draft with zero warnings, listed once (20 a page) and approved with one confirm. The list
- * is the one the server previewed; the server checks each draft again and skips any that changed. Drafts with notes are never in it.
- */
-export function ApproveAllDrawer({
-  onClose,
-  onDone,
-}: {
-  onClose: () => void;
-  onDone: (message: string) => Promise<void>;
-}) {
-  const { api, t, locale } = useWorkforce();
-  const text = aiDraftsDictionary(locale);
-  const a = text.approveAll;
-  const loaded = useResource(() => api.get<AiApproveAllPreview>(`${DRAFTS}/approve-all`), [api]);
-  const preview = loaded.data;
-  const [confirming, setConfirming] = useState(false);
-  const [page, setPage] = useState(1);
-  const count = preview?.eligible ?? 0;
-  const columns: DataTableColumn<AiApproveAllItem>[] = [
-    {
-      key: 'product',
-      header: text.columns.product,
-      mobileTitle: true,
-      truncate: true,
-      width: 'md',
-      cell: (row) => <span title={row.productName}>{row.productName}</span>,
-    },
-    { key: 'code', header: text.columns.code, cell: (row) => row.productCode },
-  ];
-
-  async function approve() {
-    if (!preview) return;
-    const result = await api.post<AiApproveAllResponse>(`${DRAFTS}/approve-all`, {
-      items: preview.items.map((item) => ({ id: item.id, rowVersion: item.rowVersion })),
-    });
-    setConfirming(false);
-    await onDone(
-      fill(a.done, { applied: String(result.applied) }) +
-        (result.skipped.length > 0
-          ? fill(a.doneSkipped, { skipped: String(result.skipped.length) })
-          : ''),
-    );
-  }
-
-  return (
-    <Drawer
-      open
-      title={a.title}
-      closeLabel={t.common.close}
-      onClose={onClose}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            {a.close}
-          </Button>
-          <Button
-            variant="primary"
-            icon="check"
-            disabled={!preview || count === 0 || !preview.canApprove}
-            onClick={() => setConfirming(true)}
-          >
-            {count === 0 ? a.approveNone : fill(a.approve, { count: String(count) })}
-          </Button>
-        </>
-      }
-    >
-      {loaded.error && !preview ? (
-        <Notice tone="error">{a.loadFailed}</Notice>
-      ) : !preview ? (
-        <Loading t={t} />
-      ) : (
-        <Stack gap="page">
-          <p>{a.intro}</p>
-          {!preview.canApprove ? (
-            <Notice tone="warning">
-              {preview.singleApplied < 3
-                ? fill(text.page.needSingles, { done: String(preview.singleApplied) })
-                : a.noPermission}
-            </Notice>
-          ) : null}
-          <DescriptionList
-            items={[
-              { label: a.facts.ready, value: String(preview.ready) },
-              { label: a.facts.eligible, value: String(preview.eligible) },
-              { label: a.facts.withWarnings, value: String(preview.withWarnings) },
-              { label: a.facts.changed, value: String(preview.changed) },
-            ]}
-          />
-          {preview.eligible > preview.items.length ? (
-            <Notice tone="info">
-              {fill(a.truncated, { shown: String(preview.items.length) })}
-            </Notice>
-          ) : null}
-          <DataTable
-            mode="client"
-            caption={fill(t.common.list.table, { list: a.listName })}
-            columns={columns}
-            rows={preview.items}
-            rowKey={(row) => row.id}
-            empty={<Empty>{a.empty}</Empty>}
-            paging={{
-              page,
-              pageSize: 20,
-              onPageChange: setPage,
-              labels: paginationLabels(t, a.listName),
-            }}
-          />
-        </Stack>
-      )}
-      {confirming ? (
-        <ConfirmDialog
-          title={fill(a.confirmTitle, { count: String(count) })}
-          description={fill(a.confirmBody, { count: String(count) })}
-          facts={[
-            { label: a.confirmFacts.products, value: String(count) },
-            ...(preview && preview.withWarnings + preview.changed > 0
-              ? [
-                  {
-                    label: a.confirmFacts.left,
-                    value: String(preview.withWarnings + preview.changed),
-                  },
-                ]
-              : []),
-          ]}
-          tone="warning"
-          confirmLabel={fill(a.confirm, { count: String(count) })}
-          busyLabel={t.common.saving}
-          cancelLabel={t.common.cancel}
-          referenceLabel={t.errors.reference}
-          describeError={confirmError(t)}
-          onConfirm={approve}
-          onCancel={() => setConfirming(false)}
-        />
-      ) : null}
-    </Drawer>
-  );
-}
-
-/**
- * "Duyệt cả trang": the ready drafts of one page are shown as the text that would go on the website; opening it records that this
- * reviewer saw them; one confirm approves those without any note. Offered only after three drafts were applied one by one.
- */
-export function PageApprovalDrawer({
-  onClose,
-  onDone,
-}: {
-  onClose: () => void;
-  onDone: (message: string) => Promise<void>;
-}) {
-  const { api, t, locale } = useWorkforce();
-  const text = aiDraftsDictionary(locale);
-  const p = text.page;
-  const loaded = useResource(() => api.get<AiPageResponse>(`${DRAFTS}/page`), [api]);
-  const page = loaded.data;
-  const [confirming, setConfirming] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
-  const [viewed, setViewed] = useState(false);
-  const eligible = page?.items.filter((item) => item.eligible) ?? [];
-
-  // Showing the page is what "seen" means: it is recorded once the drafts are on screen.
-  useEffect(() => {
-    if (!page || viewed || page.items.length === 0) return;
-    setViewed(true);
-    api.post(`${DRAFTS}/page-view`, { itemIds: page.items.map((item) => item.id) }).catch(() => {
-      setFailure(p.loadFailed);
-    });
-  }, [api, page, viewed, p.loadFailed]);
-
-  async function approve() {
-    const result = await api.post<AiPageApproveResponse>(`${DRAFTS}/page-approve`, {
-      itemIds: eligible.map((item) => item.id),
-    });
-    setConfirming(false);
-    await onDone(
-      fill(p.done, { applied: String(result.applied) }) +
-        (result.skipped.length > 0
-          ? fill(p.doneSkipped, { skipped: String(result.skipped.length) })
-          : ''),
-    );
-  }
-
-  return (
-    <Drawer
-      open
-      title={p.title}
-      closeLabel={t.common.close}
-      onClose={onClose}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            {p.close}
-          </Button>
-          <Button
-            variant="primary"
-            icon="check"
-            disabled={eligible.length === 0 || !viewed}
-            onClick={() => setConfirming(true)}
-          >
-            {eligible.length === 0
-              ? p.approveNone
-              : fill(p.approve, { count: String(eligible.length) })}
-          </Button>
-        </>
-      }
-    >
-      {loaded.error && !page ? (
-        <Notice tone="error">{p.loadFailed}</Notice>
-      ) : !page ? (
-        <Loading t={t} />
-      ) : (
-        <Stack gap="page">
-          <p>{p.intro}</p>
-          {failure ? <Notice tone="error">{failure}</Notice> : null}
-          {page.items.length === 0 ? <Empty>{p.empty}</Empty> : null}
-          {page.items.map((item) => (
-            <section key={item.id} aria-label={item.productName}>
-              <Stack gap="field">
-                <h3>{item.productName}</h3>
-                <DescriptionList
-                  items={[
-                    { label: p.description, value: item.descriptionVi },
-                    { label: p.seoTitle, value: item.seoTitleVi },
-                  ]}
-                />
-                {!item.eligible ? <Badge tone="warning">{p.notEligible}</Badge> : null}
-              </Stack>
-            </section>
-          ))}
-        </Stack>
-      )}
-      {confirming ? (
-        <ConfirmDialog
-          title={fill(p.confirmTitle, { count: String(eligible.length) })}
-          description={fill(p.confirmBody, { count: String(eligible.length) })}
-          facts={[
-            { label: p.confirmFacts.products, value: String(eligible.length) },
-            ...(page && page.items.length > eligible.length
-              ? [
-                  {
-                    label: p.confirmFacts.skipped,
-                    value: String(page.items.length - eligible.length),
-                  },
-                ]
-              : []),
-          ]}
-          tone="warning"
-          confirmLabel={fill(p.confirm, { count: String(eligible.length) })}
-          busyLabel={t.common.saving}
-          cancelLabel={t.common.cancel}
-          referenceLabel={t.errors.reference}
-          describeError={confirmError(t)}
-          onConfirm={approve}
-          onCancel={() => setConfirming(false)}
-        />
-      ) : null}
-    </Drawer>
   );
 }

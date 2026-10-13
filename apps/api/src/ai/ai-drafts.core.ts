@@ -20,17 +20,11 @@ import {
   type AiDraftSections,
   type AiDraftStatus,
   type AiDraftWarning,
-  type AiPageApproveRequest,
-  type AiPageApproveResponse,
-  type AiPageItem,
-  type AiPageResponse,
-  type AiPageViewRequest,
 } from '@lucy-spa/contracts';
 import { Prisma } from '@lucy-spa/database';
 import {
   buildProductSnapshot,
   checkProductRewrite,
-  isBlockingWarning,
   loadAiSettings,
   microUsdToVnd,
   parseProductRewrite,
@@ -48,8 +42,8 @@ import { decide } from '../authorization/authorization.js';
  * `apply` also needs `MANAGE_PRODUCTS`, GLOBAL (a person who may not edit products cannot change them through a draft either).
  * Every command takes the item row version the screen read (a stale one is a conflict) and locks the item; apply also locks the product
  * and refuses a product that changed since the draft was made (the item becomes `STALE`, nothing is written). Apply recomputes the
- * server checks on the FINAL text (a reviewer's edit is checked like the model's answer): a blocking warning refuses, a quality note
- * needs `acknowledgeWarnings`. Applying writes only the draft's fields, sets `content_origin` (LUCY_AI, or LUCY_MANUAL when edited) and
+ * server checks on the FINAL text (a reviewer's edit is checked like the model's answer) and records the notes in the audit event; notes
+ * are informational and never refuse an apply (Owner, 2026-10-13). Applying writes only the draft's fields, sets `content_origin` (LUCY_AI, or LUCY_MANUAL when edited) and
  * audits the full before and after. Rejecting, regenerating and retrying never touch the catalog.
  */
 
@@ -116,6 +110,7 @@ function storedDraft(item: ItemRow): ProductRewriteDraft | null {
     suitable_for_inferred: value['suitableForInferred'] === true,
     facts_kept: value['factsKept'] ?? [],
     uncertain: value['uncertain'] ?? [],
+    auto_fixes: value['autoFixes'] ?? [],
   });
 }
 
@@ -217,7 +212,6 @@ const present = (warning: DraftWarning): AiDraftWarning => ({
   code: warning.code,
   ...(warning.field ? { field: warning.field } : {}),
   ...(warning.detail ? { detail: warning.detail } : {}),
-  blocking: isBlockingWarning(warning.code),
 });
 
 function storedWarnings(item: ItemRow): AiDraftWarning[] {
@@ -344,7 +338,11 @@ async function buildDetail(context: AdminContext, item: ItemRow): Promise<AiDraf
     factsKept: draft?.factsKept ?? [],
     uncertain: draft?.uncertain ?? [],
     warnings,
-    blocking: warnings.some((warning) => warning.blocking),
+    autoFixes: (draft?.autoFixes ?? []).map((fix) => ({
+      code: fix.code,
+      field: fix.field,
+      how: fix.how,
+    })),
     instruction: item.instruction,
     regenerations: item.regenerations,
     canRegenerate:
@@ -407,8 +405,12 @@ export async function listDrafts(
       productId: row.targetId,
       productCode: product?.code ?? '',
       productName: product?.nameVi ?? '',
-      blockingWarnings: warnings.filter((warning) => warning.blocking).length,
       warnings: warnings.length,
+      autoFixes:
+        isObject(row.draft) && Array.isArray(row.draft['autoFixes'])
+          ? row.draft['autoFixes'].length
+          : 0,
+      rowVersion: row.rowVersion,
       edited: row.edited !== null,
       viewed: row.viewedAt !== null,
       regenerations: row.regenerations,
@@ -573,7 +575,7 @@ async function writeApply(context: AdminContext, input: ApplyWrite): Promise<Ite
       aiItemId: item.id,
       runId: item.runId,
       appliedVia: via,
-      acknowledgedWarnings: acknowledged,
+      noteCodes: acknowledged,
     } as unknown as Prisma.InputJsonObject,
   });
   return applied;
@@ -607,22 +609,10 @@ export async function applyDraft(
     });
     return { result: 'STALE', detail: await buildDetail(context, stale) };
   }
-  if (
-    request.acknowledgeWarnings !== undefined &&
-    typeof request.acknowledgeWarnings !== 'boolean'
-  ) {
-    throw new AuthError('VALIDATION_FAILED', 'acknowledgeWarnings');
-  }
   const { content, edited, useNameSuggestion } = finalContent(item, base);
   const warnings = (await checkContent(context, item, content, base, useNameSuggestion)).map(
     present,
   );
-  if (warnings.some((warning) => warning.blocking)) {
-    throw new AuthError('VALIDATION_FAILED', 'warnings');
-  }
-  if (warnings.length > 0 && request.acknowledgeWarnings !== true) {
-    throw new AuthError('VALIDATION_FAILED', 'acknowledgeWarnings');
-  }
 
   const applied = await writeApply(context, {
     item,
@@ -751,168 +741,12 @@ export async function retryDraft(
   return buildDetail(context, updated);
 }
 
-// ------------------------------------------------------------------------------------------------------------------ page approval
-
-const ITEM_IDS_MAX = AI_RUN_LIMITS.pageApprovalMax;
-
-function itemIds(value: unknown): string[] {
-  if (!Array.isArray(value) || value.length === 0 || value.length > ITEM_IDS_MAX) {
-    throw new AuthError('VALIDATION_FAILED', 'itemIds');
-  }
-  const ids = [...new Set(value as unknown[])];
-  if (ids.length !== value.length || ids.some((id) => typeof id !== 'string' || !ID.test(id))) {
-    throw new AuthError('VALIDATION_FAILED', 'itemIds');
-  }
-  return (ids as string[]).sort();
-}
+// ------------------------------------------------------------------------------------------------------------------ review list
 
 const singleApplied = (context: AdminContext): Promise<number> =>
   context.tx.aiItem.count({
     where: { kind: 'PRODUCT_TEXT', status: 'APPLIED', appliedVia: 'SINGLE' },
   });
-
-/** One page (20) of drafts that are ready, as the text that would go on the page, for reading before the one confirm. */
-export async function pageOfDrafts(
-  context: AdminContext,
-  query: { page?: number | undefined },
-): Promise<AiPageResponse> {
-  requireUse(context);
-  const { tx } = context;
-  const page = Math.max(1, Math.trunc(query.page ?? 1));
-  const where = { kind: 'PRODUCT_TEXT', status: 'DRAFT_READY' } as const;
-  const [total, rows, applied] = await Promise.all([
-    tx.aiItem.count({ where }),
-    tx.aiItem.findMany({
-      where,
-      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      skip: (page - 1) * ITEM_IDS_MAX,
-      take: ITEM_IDS_MAX,
-    }),
-    singleApplied(context),
-  ]);
-  const products = await tx.product.findMany({
-    where: { id: { in: rows.map((row) => row.targetId) } },
-    select: { id: true, code: true, nameVi: true, rowVersion: true },
-  });
-  const byId = new Map(products.map((product) => [product.id, product]));
-  const items: AiPageItem[] = rows.flatMap((row) => {
-    const base = storedDraft(row);
-    const product = byId.get(row.targetId);
-    if (base === null || !product) return [];
-    const { content } = finalContent(row, base);
-    const warnings = storedWarnings(row).length;
-    return [
-      {
-        id: row.id,
-        rowVersion: row.rowVersion,
-        productName: product.nameVi,
-        productCode: product.code,
-        descriptionVi: content.descriptionVi,
-        seoTitleVi: content.seoTitleVi,
-        warnings,
-        eligible: warnings === 0 && product.rowVersion === row.baseRowVersion,
-      },
-    ];
-  });
-  return {
-    items,
-    page,
-    total,
-    singleApplied: applied,
-    canApprove:
-      applied >= AI_RUN_LIMITS.singleApprovalsNeeded &&
-      decide(context.actor.graph, 'MANAGE_PRODUCTS', GLOBAL),
-  };
-}
-
-/** Records that this reviewer has been shown these drafts (the page approval counts only drafts this person has seen). */
-export async function viewPage(context: AdminContext, request: AiPageViewRequest): Promise<number> {
-  requireUse(context);
-  const ids = itemIds(request.itemIds);
-  let marked = 0;
-  for (const id of ids) {
-    await context.tx.$queryRaw`SELECT id FROM ai_items WHERE id = ${id}::uuid FOR UPDATE`;
-    const item = await context.tx.aiItem.findUnique({ where: { id } });
-    if (item === null || item.kind !== 'PRODUCT_TEXT' || item.status !== 'DRAFT_READY') continue;
-    if (item.viewedByUserId === context.actor.userId && item.viewedAt !== null) continue;
-    await touch(context, item, { viewedAt: context.now, viewedByUserId: context.actor.userId });
-    marked += 1;
-  }
-  return marked;
-}
-
-/**
- * One confirm for a page of up to 20 drafts (Owner answer to OQ-CI-3). Allowed only after three drafts were applied one by one. Each
- * draft must be ready, free of any warning, fresh (its product unchanged) and seen by this reviewer; a draft that is not is skipped with
- * its reason, never applied. Every applied product gets its own audit event (applied via PAGE) and one summary event covers the page.
- */
-export async function approvePage(
-  context: AdminContext,
-  request: AiPageApproveRequest,
-): Promise<AiPageApproveResponse> {
-  requireApply(context);
-  const ids = itemIds(request.itemIds);
-  if ((await singleApplied(context)) < AI_RUN_LIMITS.singleApprovalsNeeded) {
-    throw new AuthError('VALIDATION_FAILED', 'singleApprovals');
-  }
-  const { tx } = context;
-  const skipped: AiPageApproveResponse['skipped'] = [];
-  const done: string[] = [];
-  for (const id of ids) {
-    await tx.$queryRaw`SELECT id FROM ai_items WHERE id = ${id}::uuid FOR UPDATE`;
-    const item = await tx.aiItem.findUnique({ where: { id } });
-    if (item === null || item.kind !== 'PRODUCT_TEXT') throw new AuthError('NOT_FOUND');
-    const base = item.status === 'DRAFT_READY' ? storedDraft(item) : null;
-    if (base === null) {
-      skipped.push({ id, reason: 'NOT_READY' });
-      continue;
-    }
-    await tx.$queryRaw`SELECT id FROM products WHERE id = ${item.targetId}::uuid FOR UPDATE`;
-    const product = await tx.product.findUniqueOrThrow({
-      where: { id: item.targetId },
-      select: PRODUCT_SELECT,
-    });
-    if (product.rowVersion !== item.baseRowVersion) {
-      await touch(context, item, { status: 'STALE' });
-      skipped.push({ id, reason: 'STALE' });
-      continue;
-    }
-    if (item.viewedByUserId !== context.actor.userId || item.viewedAt === null) {
-      skipped.push({ id, reason: 'NOT_VIEWED' });
-      continue;
-    }
-    const { content, edited, useNameSuggestion } = finalContent(item, base);
-    // The notes the draft already carries count (some, like a title shared with another product, only exist at write time), and the
-    // checks run again on the text that would be applied (the settings may have changed since).
-    if (
-      storedWarnings(item).length > 0 ||
-      (await checkContent(context, item, content, base, useNameSuggestion)).length > 0
-    ) {
-      skipped.push({ id, reason: 'WARNINGS' });
-      continue;
-    }
-    await writeApply(context, {
-      item,
-      product,
-      base,
-      content,
-      edited,
-      useNameSuggestion,
-      via: 'PAGE',
-      acknowledged: [],
-    });
-    done.push(id);
-  }
-  if (done.length > 0) {
-    await appendAdminAudit(context, {
-      action: 'AI_PAGE_APPROVED',
-      entityType: 'AiItem',
-      entityId: done[0]!,
-      after: { applied: done.length, skipped: skipped.length, itemIds: done },
-    });
-  }
-  return { applied: done.length, skipped };
-}
 
 // ------------------------------------------------------------------------------------------------------------------ approve all
 
@@ -920,9 +754,8 @@ export async function approvePage(
 export const APPROVE_ALL_CHUNK = 10;
 
 /**
- * "Duyệt tất cả" preview (Owner, 2026-10-13): every ready draft with zero warnings, oldest first, with the row version the confirm must
- * send back. Reading only; nothing is recorded and nothing is changed. A draft is left out when it has any stored note, when the checks
- * find one now, or when its product changed since the draft was written.
+ * "Chọn tất cả" (Owner, 2026-10-13): every pending draft, oldest first, with the row version the confirm must send back. Reading only;
+ * nothing is recorded and nothing is changed. Notes never leave a draft out; only a product that changed since the draft was written does.
  */
 export async function previewApproveAll(context: AdminContext): Promise<AiApproveAllPreview> {
   requireUse(context);
@@ -937,7 +770,6 @@ export async function previewApproveAll(context: AdminContext): Promise<AiApprov
   });
   const byId = new Map(products.map((product) => [product.id, product]));
   const items: AiApproveAllItem[] = [];
-  let withWarnings = 0;
   let changed = 0;
   let eligible = 0;
   for (const row of rows) {
@@ -948,14 +780,7 @@ export async function previewApproveAll(context: AdminContext): Promise<AiApprov
       changed += 1;
       continue;
     }
-    const { content, useNameSuggestion } = finalContent(row, base);
-    if (
-      storedWarnings(row).length > 0 ||
-      (await checkContent(context, row, content, base, useNameSuggestion)).length > 0
-    ) {
-      withWarnings += 1;
-      continue;
-    }
+    const { content } = finalContent(row, base);
     eligible += 1;
     if (items.length < AI_RUN_LIMITS.approveAllMax) {
       items.push({
@@ -971,7 +796,6 @@ export async function previewApproveAll(context: AdminContext): Promise<AiApprov
   const applied = await singleApplied(context);
   return {
     ready: rows.length,
-    withWarnings,
     changed,
     eligible,
     items,
@@ -982,9 +806,9 @@ export async function previewApproveAll(context: AdminContext): Promise<AiApprov
   };
 }
 
-/** The list the confirm sends: at most `approveAllMax` distinct draft ids with the row version each was shown with. */
+/** The list the confirm sends: at most `approveBatchMax` distinct draft ids with the row version each was shown with. */
 export function approveAllList(value: unknown): { id: string; rowVersion: number }[] {
-  if (!Array.isArray(value) || value.length === 0 || value.length > AI_RUN_LIMITS.approveAllMax) {
+  if (!Array.isArray(value) || value.length === 0 || value.length > AI_RUN_LIMITS.approveBatchMax) {
     throw new AuthError('VALIDATION_FAILED', 'items');
   }
   const seen = new Set<string>();
@@ -1011,8 +835,8 @@ export function approveAllList(value: unknown): { id: string; rowVersion: number
 
 /**
  * Applies one chunk of the confirmed list (its own transaction). Everything is decided again here: the draft must still be ready and carry
- * the row version the preview showed (an edit, a regeneration or another reviewer since then skips it), have no note stored or found now,
- * and its product must be unchanged. A skipped draft is reported with its reason and never applied; a draft that was not in the list is
+ * the row version the list showed (an edit, a regeneration or another reviewer since then skips it) and its product must be unchanged;
+ * notes never skip a draft. A skipped draft is reported with its reason and never applied; a draft that was not in the list is
  * never touched. Each applied product gets its own audit event (applied via ALL).
  */
 export async function approveAllChunk(
@@ -1050,13 +874,6 @@ export async function approveAllChunk(
       continue;
     }
     const { content, edited, useNameSuggestion } = finalContent(item, base);
-    if (
-      storedWarnings(item).length > 0 ||
-      (await checkContent(context, item, content, base, useNameSuggestion)).length > 0
-    ) {
-      skipped.push({ id, reason: 'WARNINGS' });
-      continue;
-    }
     await writeApply(context, {
       item,
       product,
@@ -1065,14 +882,14 @@ export async function approveAllChunk(
       edited,
       useNameSuggestion,
       via: 'ALL',
-      acknowledged: [],
+      acknowledged: storedWarnings(item).map((warning) => warning.code),
     });
     applied += 1;
   }
   return { applied, skipped };
 }
 
-/** The one summary event of a whole "Duyệt tất cả" (the per-product events were written by the chunks). */
+/** The one summary event of a whole "Duyệt các bài đã chọn" (the per-product events were written by the chunks). */
 export async function recordApproveAll(
   context: AdminContext,
   summary: { requested: number; applied: number; skipped: number; itemIds: string[] },

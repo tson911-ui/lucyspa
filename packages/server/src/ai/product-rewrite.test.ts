@@ -46,7 +46,7 @@ const CLEAN: ProductRewriteDraft = {
     benefits: 'Làm sạch sâu và giữ độ ẩm tự nhiên cho da khô.',
     ingredients: 'Chiết xuất hoa sen, Glycerin.',
     usage: 'Tạo bọt với một lượng vừa đủ, massage nhẹ rồi rửa lại với nước mát.',
-    suitableFor: null,
+    suitableFor: 'Phù hợp với hầu hết các loại da.',
   },
   descriptionEn:
     'A soft, creamy foam that lifts away dirt gently and leaves dry skin feeling soft and comfortably hydrated. The 180ml size fits a daily skincare routine.',
@@ -54,7 +54,7 @@ const CLEAN: ProductRewriteDraft = {
     benefits: 'Deep cleansing that keeps the skin’s natural moisture.',
     ingredients: 'Lotus extract, Glycerin.',
     usage: 'Work a small amount into a foam with water, massage gently and rinse with cool water.',
-    suitableFor: null,
+    suitableFor: 'Suitable for most skin types.',
   },
   nameEn: 'The Whoo Gongjinhyang Soo Hydrating Cleansing Foam 180ml',
   nameViSuggestion: null,

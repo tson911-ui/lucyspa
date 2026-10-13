@@ -29,7 +29,7 @@ const CLEAN: AiDraftContent = {
     benefits: 'Làm sạch sâu và giữ độ ẩm tự nhiên cho da khô.',
     ingredients: 'Chiết xuất hoa sen, Glycerin.',
     usage: null,
-    suitableFor: null,
+    suitableFor: 'Phù hợp với hầu hết các loại da.',
   },
   descriptionEn:
     'A soft, creamy foam that lifts away dirt gently and leaves dry skin feeling soft and comfortably hydrated. The 180ml size fits a daily skincare routine.',
@@ -37,7 +37,7 @@ const CLEAN: AiDraftContent = {
     benefits: 'Deep cleansing that keeps the skin’s natural moisture.',
     ingredients: 'Lotus extract, Glycerin.',
     usage: null,
-    suitableFor: null,
+    suitableFor: 'Suitable for most skin types.',
   },
   nameEn: 'The Whoo Gongjinhyang Soo Hydrating Cleansing Foam 180ml',
   seoTitleVi: 'Sữa rửa mặt Gongjinhyang The Whoo 180ml | Lucy Spa',
@@ -142,13 +142,11 @@ test(
         },
       );
 
-      let firstRunId = '';
       await suite.test(
         'the first run is exactly three products, writes no change and calls nothing; a second first run is refused',
         async () => {
           const before = await tx.product.count({ where: { contentOrigin: 'SUPPLIER_COPY' } });
           const run = await ai.createRun(worker.token, { scope: 'FIRST_THREE' });
-          firstRunId = run.id;
           assert.equal(run.status, 'QUEUED');
           assert.equal(run.scope, 'FIRST_THREE');
           assert.equal(run.counts.total, 3);
@@ -382,126 +380,6 @@ test(
             ),
             true,
           );
-          firstRunId = rest.id;
-        },
-      );
-
-      await suite.test(
-        'page approval: needs three applied singly, drafts without warnings that this reviewer saw, fresh products; skipped ones say why',
-        async () => {
-          const run = (await ai.listRuns(worker.token)).runs.find(
-            (entry) => entry.id === firstRunId,
-          )!;
-          const items = await itemsOf(run.id);
-          assert.equal(items.length, 4);
-          const draft = { ...CLEAN, nameViSuggestion: null, factsKept: [], uncertain: [] };
-          const withWarning = [{ code: 'FACT_MISSING', field: 'descriptionVi' }];
-          for (const [index, item] of items.entries()) {
-            await tx.$executeRawUnsafe(
-              `UPDATE ai_items SET status = 'DRAFT_READY', draft = $1::jsonb, warnings = $2::jsonb, row_version = row_version + 1 WHERE id = $3::uuid`,
-              JSON.stringify(draft),
-              JSON.stringify(index === 1 ? withWarning : []),
-              item.id,
-            );
-          }
-          const page = await ai.pageOfDrafts(worker.token, {});
-          assert.equal(page.canApprove, true);
-          assert.equal(page.singleApplied, 3);
-          assert.equal(page.items.length, 4);
-          assert.deepEqual(
-            page.items.map((item) => item.eligible),
-            [true, false, true, true],
-          );
-          await fails(() => ai.pageOfDrafts(nobody.token, {}), 'FORBIDDEN');
-          const ids = items.map((item) => item.id);
-          // Not seen yet: nothing is applied.
-          const unseen = await ai.approvePage(worker.token, { itemIds: ids });
-          assert.equal(unseen.applied, 0);
-          assert.deepEqual(
-            unseen.skipped.map((entry) => entry.reason),
-            ['NOT_VIEWED', 'NOT_VIEWED', 'NOT_VIEWED', 'NOT_VIEWED'],
-          );
-          assert.deepEqual(await ai.viewPage(worker.token, { itemIds: ids }), {
-            marked: 4,
-          } as never);
-          // The reader (no MANAGE_PRODUCTS) cannot apply; someone else's view does not count for the worker.
-          await fails(() => ai.approvePage(reader.token, { itemIds: ids }), 'FORBIDDEN');
-          // One product changes after its draft was written: stale.
-          const staleTarget = items[3]!.target_id;
-          await tx.$executeRawUnsafe(
-            `UPDATE products SET description_vi = description_vi || ' (sửa)', row_version = row_version + 1 WHERE id = '${staleTarget}'`,
-          );
-          const approved = await ai.approvePage(worker.token, { itemIds: ids });
-          assert.equal(approved.applied, 2);
-          // The skipped ones come in the order the ids were processed (sorted); compare by id.
-          const byId = (list: [string, string][]) =>
-            [...list].sort((a, b) => a[0].localeCompare(b[0]));
-          assert.deepEqual(
-            byId(approved.skipped.map((entry) => [entry.id, entry.reason])),
-            byId([
-              [ids[1]!, 'WARNINGS'],
-              [ids[3]!, 'STALE'],
-            ]),
-          );
-          const [applied] = await rows<{ applied_via: string; status: string }>(
-            `SELECT applied_via, status FROM ai_items WHERE id = $1::uuid`,
-            ids[0]!,
-          );
-          assert.deepEqual(applied, { applied_via: 'PAGE', status: 'APPLIED' });
-          const product = await tx.product.findUniqueOrThrow({
-            where: { id: items[0]!.target_id },
-            select: { descriptionVi: true, contentOrigin: true },
-          });
-          assert.equal(product.descriptionVi, CLEAN.descriptionVi);
-          assert.equal(product.contentOrigin, 'LUCY_AI');
-          const events = await audit('AI_DRAFT_APPLIED');
-          assert.equal(
-            events.filter(
-              (event) => (event.after as Record<string, unknown>)['appliedVia'] === 'PAGE',
-            ).length,
-            2,
-          );
-          assert.equal((await audit('AI_PAGE_APPROVED')).length, 1);
-          // The single approvals still number three (a page approval is not one of them).
-          assert.equal((await ai.pageOfDrafts(worker.token, {})).singleApplied, 3);
-          // Limits of one approval.
-          await fails(
-            () => ai.approvePage(worker.token, { itemIds: [] }),
-            'VALIDATION_FAILED',
-            'itemIds',
-          );
-          await fails(
-            () =>
-              ai.approvePage(worker.token, {
-                itemIds: Array.from(
-                  { length: 21 },
-                  (_, n) => `00000000-0000-4000-8000-0000000000${String(n).padStart(2, '0')}`,
-                ),
-              }),
-            'VALIDATION_FAILED',
-            'itemIds',
-          );
-          await fails(
-            () => ai.approvePage(worker.token, { itemIds: [ids[0]!, ids[0]!] }),
-            'VALIDATION_FAILED',
-            'itemIds',
-          );
-        },
-      );
-
-      await suite.test(
-        'a page cannot be approved before three drafts were applied one by one',
-        async () => {
-          await tx.$executeRawUnsafe(
-            `UPDATE ai_items SET applied_via = 'PAGE', row_version = row_version + 1 WHERE applied_via = 'SINGLE'`,
-          );
-          await fails(
-            () =>
-              ai.approvePage(worker.token, { itemIds: ['00000000-0000-4000-8000-000000000001'] }),
-            'VALIDATION_FAILED',
-            'singleApprovals',
-          );
-          assert.equal((await ai.pageOfDrafts(worker.token, {})).canApprove, false);
         },
       );
     });

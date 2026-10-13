@@ -92,8 +92,20 @@ test('the dictionaries are complete in both languages, name every warning code a
       key,
     );
   }
-  for (const key of ['NOT_READY', 'WARNINGS', 'NOT_VIEWED', 'STALE']) {
-    assert.ok(Reflect.get(text.page.reasons, key), key);
+  for (const key of [
+    'column',
+    'pickRow',
+    'summary',
+    'selectAll',
+    'clear',
+    'approve',
+    'confirmTitle',
+    'confirmBody',
+    'confirm',
+    'done',
+    'doneSkipped',
+  ]) {
+    assert.ok(Reflect.get(text.select, key) && Reflect.get(en.select, key), key);
   }
   for (const status of [
     'QUEUED',

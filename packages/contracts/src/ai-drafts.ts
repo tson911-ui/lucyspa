@@ -16,12 +16,18 @@ export const AI_DRAFT_STATUSES = [
 ] as const;
 export type AiDraftStatus = (typeof AI_DRAFT_STATUSES)[number];
 
-/** Warning codes of the server-side checks (see `checkProductRewrite`); `blocking` ones must be fixed by editing before apply. */
+/** A note from the server-side checks (see `checkProductRewrite`). Notes are informational: none of them blocks an apply (Owner, 2026-10-13). */
 export interface AiDraftWarning {
   code: string;
   field?: string;
   detail?: string;
-  blocking: boolean;
+}
+
+/** A change the worker made to the draft before saving it: by code (free) or by the one targeted model call. */
+export interface AiDraftAutoFix {
+  code: string;
+  field: string;
+  how: 'CODE' | 'AI';
 }
 
 export interface AiDraftSections {
@@ -67,9 +73,12 @@ export interface AiDraftRow {
   productId: string;
   productCode: string;
   productName: string;
-  /** Warnings that stop an apply, and all warnings. */
-  blockingWarnings: number;
+  /** Notes the checks still find (informational). */
   warnings: number;
+  /** Changes the worker made before saving the draft. */
+  autoFixes: number;
+  /** The row version the review list sends back when this draft is selected for approval. */
+  rowVersion: number;
   edited: boolean;
   viewed: boolean;
   regenerations: number;
@@ -118,8 +127,8 @@ export interface AiDraftDetail {
   factsKept: string[];
   uncertain: string[];
   warnings: AiDraftWarning[];
-  /** At least one blocking warning: apply is refused until it is edited away. */
-  blocking: boolean;
+  /** What the worker fixed before saving the draft (shown beside it; reviewer only). */
+  autoFixes: AiDraftAutoFix[];
   instruction: string | null;
   regenerations: number;
   canRegenerate: boolean;
@@ -138,8 +147,6 @@ export interface AiDraftEditRequest {
 /** POST /api/v1/ai/product-drafts/:id/apply */
 export interface AiDraftApplyRequest {
   expectedRowVersion: number;
-  /** Needed when the draft has warnings that do not block (quality notes the reviewer has read). */
-  acknowledgeWarnings?: boolean;
 }
 
 export interface AiDraftApplyResponse {

@@ -183,6 +183,12 @@ test('Claude integration Wave A permissions, tables and guards (all fixtures rol
                 ),
               /ai_usage_ledger_outcome/,
             );
+            // CI-F1: the targeted repair call of a draft is told apart from the rewrite.
+            for (const outcome of ['REPAIRED', 'REPAIR_FAILED']) {
+              await exec(
+                `INSERT INTO ai_usage_ledger (feature, model, outcome) VALUES ('PRODUCT_REWRITE', 'x', '${outcome}')`,
+              );
+            }
             await rejects(
               () =>
                 exec(

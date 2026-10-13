@@ -36,8 +36,8 @@ const vi = {
   menu: { open: 'Xem và duyệt' },
   notesCell: {
     none: 'Không có',
-    blocking: '{count} cần sửa',
     notes: '{count} lưu ý',
+    fixed: '{count} chỗ đã tự sửa',
     edited: 'Đã sửa tay',
   },
   errors: {
@@ -130,61 +130,28 @@ const vi = {
       RUN_ACTIVE: 'Đang có một lần chạy chưa xong. Đợi xong hoặc hủy nó.',
     },
   },
-  page: {
-    open: 'Duyệt cả trang',
-    title: 'Duyệt cả trang',
-    intro:
-      'Đọc các bản nháp bên dưới. Chỉ những bản không có lưu ý nào mới được duyệt cùng lúc; bản còn lại hãy mở và duyệt riêng.',
-    close: 'Đóng',
-    approve: 'Duyệt {count} bản nháp',
-    approveNone: 'Chưa có bản nào để duyệt',
-    confirmTitle: 'Duyệt {count} bản nháp?',
-    confirmBody:
-      'Nội dung của {count} sản phẩm được thay bằng bản nháp và hiển thị trên trang web ngay. Bản cũ vẫn được giữ trong nhật ký hoạt động.',
-    confirmFacts: { products: 'Sản phẩm', skipped: 'Bản có lưu ý (không duyệt)' },
-    confirm: 'Duyệt {count} bản nháp',
-    notEligible: 'Có lưu ý hoặc sản phẩm đã đổi: mở riêng để duyệt.',
-    done: 'Đã duyệt {applied} bản nháp.',
-    doneSkipped: ' {skipped} bản không duyệt được.',
-    reasons: {
-      NOT_READY: 'chưa sẵn sàng',
-      WARNINGS: 'có lưu ý',
-      NOT_VIEWED: 'chưa xem',
-      STALE: 'sản phẩm đã đổi',
-    },
-    needSingles: 'Duyệt riêng 3 bản nháp trước ({done}/3), sau đó mới duyệt cả trang được.',
-    empty: 'Không có bản nháp nào chờ duyệt.',
-    description: 'Mô tả',
-    seoTitle: 'Tiêu đề tìm kiếm',
-    loadFailed: 'Không tải được trang bản nháp.',
-  },
-  approveMenu: 'Duyệt hàng loạt',
-  approveAll: {
-    open: 'Duyệt tất cả',
-    title: 'Duyệt tất cả',
-    listName: 'Bản nháp không có lưu ý',
-    intro:
-      'Danh sách bên dưới là mọi bản nháp đã sẵn sàng và không có lưu ý nào. Bản có lưu ý hoặc sản phẩm đã đổi không nằm trong danh sách: hãy mở và duyệt riêng. Trước khi áp dụng, hệ thống kiểm tra lại từng bản.',
-    close: 'Đóng',
-    facts: {
-      ready: 'Bản nháp chờ duyệt',
-      eligible: 'Sẽ được duyệt',
-      withWarnings: 'Có lưu ý (không duyệt)',
-      changed: 'Sản phẩm đã đổi (không duyệt)',
-    },
-    truncated: 'Mỗi lần duyệt tối đa {shown} bản. Duyệt xong, mở lại để duyệt phần còn lại.',
-    approve: 'Duyệt {count} bản nháp',
-    approveNone: 'Chưa có bản nào để duyệt',
-    confirmTitle: 'Duyệt tất cả {count} bản nháp?',
-    confirmBody:
-      'Nội dung của {count} sản phẩm được thay bằng bản nháp và hiển thị trên trang web ngay. Bản cũ vẫn được giữ trong nhật ký hoạt động.',
-    confirmFacts: { products: 'Sản phẩm', left: 'Bản không duyệt (có lưu ý hoặc đã đổi)' },
-    confirm: 'Duyệt {count} bản nháp',
-    done: 'Đã duyệt {applied} bản nháp.',
-    doneSkipped: ' {skipped} bản không duyệt được vì đã đổi.',
+  select: {
+    column: 'Chọn',
+    pickRow: 'Chọn {name}',
+    summary: 'Đã chọn: {count}',
+    actions: 'Thao tác với các bài đã chọn',
+    selectAll: 'Chọn tất cả ({count})',
+    selectAllShort: 'Chọn tất cả',
+    selectingAll: 'Đang chọn…',
+    clear: 'Bỏ chọn',
+    approve: 'Duyệt các bài đã chọn ({count})',
+    needSingles:
+      'Duyệt riêng 3 bản nháp trước ({done}/3), sau đó mới chọn và duyệt nhiều bài cùng lúc được.',
     noPermission: 'Bạn cần quyền sửa sản phẩm để duyệt.',
-    empty: 'Không có bản nháp nào để duyệt cùng lúc.',
-    loadFailed: 'Không tải được danh sách bản nháp.',
+    loadFailed: 'Không lấy được danh sách bài chờ duyệt. Thử lại.',
+    confirmTitle: 'Duyệt {count} bài đã chọn?',
+    confirmBody:
+      'Nội dung của {count} sản phẩm được thay bằng bản nháp và hiển thị trên trang web ngay. Lưu ý của hệ thống chỉ để tham khảo, không chặn việc duyệt. Bản cũ vẫn được giữ trong nhật ký hoạt động.',
+    confirmFacts: { products: 'Số bài' },
+    confirm: 'Duyệt {count} bài',
+    progress: 'Đang duyệt {done}/{total}…',
+    done: 'Đã duyệt {applied} bài.',
+    doneSkipped: ' {skipped} bài không duyệt được vì sản phẩm đã đổi hoặc bài đã được xử lý.',
   },
   // ---------------------------------------------------------------------------------------------------------------- detail
   breadcrumbs: 'Đường dẫn',
@@ -197,9 +164,17 @@ const vi = {
     en: 'English',
     sections: 'Nội dung',
     searchTitle: 'Tìm kiếm trên Google',
-    warningsTitle: 'Cần xem trước khi áp dụng',
+    warningsTitle: 'Lưu ý của hệ thống',
+    warningsHint: 'Chỉ để bạn tham khảo; lưu ý không chặn việc duyệt.',
+    autoFixTitle: 'Đã tự sửa trước khi lưu',
+    autoFixHint: 'Hệ thống đã sửa các chỗ này trước khi đưa bản nháp cho bạn.',
+    autoFixHow: { CODE: 'Sửa tự động', AI: 'AI viết lại phần này' },
+    autoFixCodes: {
+      LENGTH: 'Rút gọn cho đúng độ dài',
+      INGREDIENTS: 'Chỉ giữ thành phần có trong nội dung gốc',
+      NAME: 'Bỏ tên gợi ý',
+    },
     warningsGeneral: 'Cả bản nháp',
-    blockingTag: 'Cần sửa',
     noteTag: 'Lưu ý',
     aiNotes: 'AI ghi chú',
     suitableInferred:
@@ -220,7 +195,6 @@ const vi = {
     infoRejected: 'Bản nháp này đã bị từ chối. Sản phẩm không đổi.',
     stale:
       'Sản phẩm đã được sửa sau khi bản nháp được viết, nên không thể áp dụng. Bấm Viết lại từ nội dung hiện tại để AI viết lại.',
-    blocking: 'Còn chỗ cần sửa. Sửa các chỗ ghi “Cần sửa” rồi lưu, sau đó mới áp dụng được.',
     failed: 'Chưa viết được bản nháp: {reason}',
     save: 'Lưu chỉnh sửa',
     saving: 'Đang lưu…',
@@ -231,8 +205,8 @@ const vi = {
     applyTitle: 'Áp dụng bản nháp này?',
     applyBody:
       'Nội dung của sản phẩm được thay bằng bản nháp và hiển thị trên trang web ngay. Bản cũ vẫn được giữ trong nhật ký hoạt động.',
-    applyNotes: 'Bản nháp có {count} lưu ý, và bạn đã đọc.',
-    applyAck: 'Tôi đã đọc các lưu ý và vẫn muốn áp dụng',
+    applyNotes:
+      'Bản nháp có {count} lưu ý của hệ thống. Chúng chỉ để tham khảo, không chặn việc áp dụng.',
     applyConfirm: 'Áp dụng',
     applied: 'Đã áp dụng cho sản phẩm.',
     staleNow:
@@ -259,7 +233,6 @@ const vi = {
     forbiddenApply: 'Bạn cần quyền sửa sản phẩm để áp dụng.',
     blockedReason: {
       unsaved: 'Lưu chỉnh sửa trước',
-      blocking: 'Còn chỗ cần sửa',
       stale: 'Sản phẩm đã đổi',
     },
   },
@@ -301,8 +274,6 @@ const vi = {
     descriptionVi: 'Mô tả tiếng Việt quá dài hoặc có ký tự không hợp lệ.',
     descriptionEn: 'Mô tả tiếng Anh quá dài hoặc có ký tự không hợp lệ.',
     generic: 'Có chỗ chưa hợp lệ. Kiểm tra độ dài và ký tự rồi lưu lại.',
-    warnings: 'Còn chỗ cần sửa. Sửa các chỗ ghi “Cần sửa” rồi lưu lại.',
-    acknowledgeWarnings: 'Hãy tích vào ô xác nhận đã đọc các lưu ý.',
     regenerations: 'Đã viết lại đủ 3 lần.',
   },
 };
@@ -341,8 +312,8 @@ const en: DraftsText = {
   menu: { open: 'Review' },
   notesCell: {
     none: 'None',
-    blocking: '{count} to fix',
     notes: '{count} notes',
+    fixed: '{count} fixed automatically',
     edited: 'Edited by hand',
   },
   errors: {
@@ -436,61 +407,29 @@ const en: DraftsText = {
       RUN_ACTIVE: 'A run is still open. Wait for it to finish or cancel it.',
     },
   },
-  page: {
-    open: 'Approve a page',
-    title: 'Approve a page',
-    intro:
-      'Read the drafts below. Only drafts with no notes are approved together; open the others and approve them one by one.',
-    close: 'Close',
-    approve: 'Approve {count} drafts',
-    approveNone: 'Nothing to approve yet',
-    confirmTitle: 'Approve {count} drafts?',
+  select: {
+    column: 'Select',
+    pickRow: 'Select {name}',
+    summary: 'Selected: {count}',
+    actions: 'Actions for the selected drafts',
+    selectAll: 'Select all ({count})',
+    selectAllShort: 'Select all',
+    selectingAll: 'Selecting…',
+    clear: 'Clear selection',
+    approve: 'Approve the selected drafts ({count})',
+    needSingles:
+      'Approve 3 drafts one by one first ({done}/3); then you can select and approve many at once.',
+    noPermission: 'You need the right to edit products to approve.',
+    loadFailed: 'Could not load the drafts waiting for review. Try again.',
+    confirmTitle: 'Approve {count} selected drafts?',
     confirmBody:
-      'The text of {count} products is replaced by the drafts and appears on the website right away. The old text stays in the activity log.',
-    confirmFacts: { products: 'Products', skipped: 'Drafts with notes (not approved)' },
-    confirm: 'Approve {count} drafts',
-    notEligible: 'Has notes or the product changed: open it on its own.',
+      'The content of {count} products is replaced by the drafts and shows on the website at once. The system’s notes are for your information and never stop an approval. The old text stays in the activity log.',
+    confirmFacts: { products: 'Drafts' },
+    confirm: 'Approve {count}',
+    progress: 'Approving {done}/{total}…',
     done: 'Approved {applied} drafts.',
-    doneSkipped: ' {skipped} could not be approved.',
-    reasons: {
-      NOT_READY: 'not ready',
-      WARNINGS: 'has notes',
-      NOT_VIEWED: 'not viewed',
-      STALE: 'product changed',
-    },
-    needSingles: 'Approve 3 drafts one by one first ({done}/3); then a whole page can be approved.',
-    empty: 'No drafts are waiting for review.',
-    description: 'Description',
-    seoTitle: 'Search title',
-    loadFailed: 'The page of drafts could not be loaded.',
-  },
-  approveMenu: 'Bulk approval',
-  approveAll: {
-    open: 'Approve all',
-    title: 'Approve all',
-    listName: 'Drafts without notes',
-    intro:
-      'The list below is every draft that is ready and has no notes. Drafts with notes, or whose product changed, are not in it: open and approve those one by one. Each draft is checked again before it is applied.',
-    close: 'Close',
-    facts: {
-      ready: 'Drafts waiting for review',
-      eligible: 'Will be approved',
-      withWarnings: 'With notes (not approved)',
-      changed: 'Product changed (not approved)',
-    },
-    truncated: 'At most {shown} drafts are approved at a time. Reopen this to approve the rest.',
-    approve: 'Approve {count} drafts',
-    approveNone: 'Nothing to approve yet',
-    confirmTitle: 'Approve all {count} drafts?',
-    confirmBody:
-      'The text of {count} products is replaced by the drafts and appears on the website right away. The old text stays in the activity log.',
-    confirmFacts: { products: 'Products', left: 'Drafts not approved (notes or changed)' },
-    confirm: 'Approve {count} drafts',
-    done: 'Approved {applied} drafts.',
-    doneSkipped: ' {skipped} could not be approved because they changed.',
-    noPermission: 'You need permission to edit products to approve.',
-    empty: 'No drafts can be approved together.',
-    loadFailed: 'The list of drafts could not be loaded.',
+    doneSkipped:
+      ' {skipped} could not be approved because the product changed or the draft was already handled.',
   },
   breadcrumbs: 'Breadcrumbs',
   detail: {
@@ -502,9 +441,17 @@ const en: DraftsText = {
     en: 'English',
     sections: 'Content',
     searchTitle: 'Search results',
-    warningsTitle: 'To look at before applying',
+    warningsTitle: 'System notes',
+    warningsHint: 'For your information only; notes never stop an approval.',
+    autoFixTitle: 'Fixed before saving',
+    autoFixHint: 'The system fixed these before handing you the draft.',
+    autoFixHow: { CODE: 'Fixed automatically', AI: 'Rewritten by AI' },
+    autoFixCodes: {
+      LENGTH: 'Shortened to the right length',
+      INGREDIENTS: 'Kept only ingredients the source lists',
+      NAME: 'Dropped the suggested name',
+    },
     warningsGeneral: 'The whole draft',
-    blockingTag: 'To fix',
     noteTag: 'Note',
     aiNotes: 'AI notes',
     suitableInferred:
@@ -525,8 +472,6 @@ const en: DraftsText = {
     infoRejected: 'This draft was rejected. The product is unchanged.',
     stale:
       'The product was edited after this draft was written, so it cannot be applied. Press Rewrite from the current text to have it written again.',
-    blocking:
-      'Something still needs fixing. Fix the items marked “To fix” and save; then you can apply.',
     failed: 'The draft could not be written: {reason}',
     save: 'Save changes',
     saving: 'Saving…',
@@ -537,8 +482,8 @@ const en: DraftsText = {
     applyTitle: 'Apply this draft?',
     applyBody:
       'The product’s text is replaced by the draft and appears on the website right away. The old text stays in the activity log.',
-    applyNotes: 'The draft has {count} notes, and you have read them.',
-    applyAck: 'I have read the notes and still want to apply',
+    applyNotes:
+      'The draft has {count} system notes. They are for your information and do not stop applying.',
     applyConfirm: 'Apply',
     applied: 'Applied to the product.',
     staleNow:
@@ -565,7 +510,6 @@ const en: DraftsText = {
     forbiddenApply: 'You need the right to edit products to apply a draft.',
     blockedReason: {
       unsaved: 'Save your changes first',
-      blocking: 'Something needs fixing',
       stale: 'The product changed',
     },
   },
@@ -608,8 +552,6 @@ const en: DraftsText = {
     descriptionVi: 'The Vietnamese description is too long or has an invalid character.',
     descriptionEn: 'The English description is too long or has an invalid character.',
     generic: 'Something is not valid. Check the length and characters, then save again.',
-    warnings: 'Something still needs fixing. Fix the items marked “To fix” and save again.',
-    acknowledgeWarnings: 'Tick the box to confirm you have read the notes.',
     regenerations: 'Already rewritten 3 times.',
   },
 };

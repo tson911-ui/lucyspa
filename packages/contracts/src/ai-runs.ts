@@ -29,12 +29,12 @@ export const AI_RUN_LIMITS = {
   runMax: 400,
   /** Products one selection may name. */
   selectionMax: 100,
-  /** Drafts one page approval may cover. */
-  pageApprovalMax: 20,
   /** Drafts that must have been applied one by one before a page may be approved at once. */
   singleApprovalsNeeded: 3,
-  /** Drafts "Duyệt tất cả" may cover in one confirm (Owner, 2026-10-13: only drafts with zero warnings). */
-  approveAllMax: 400,
+  /** Drafts one "Duyệt các bài đã chọn" confirm may cover (Owner, 2026-10-13: every pending draft, warnings or not). */
+  approveAllMax: 1000,
+  /** Drafts one confirm request carries; a longer selection is sent in several requests (each is audited). */
+  approveBatchMax: 100,
 } as const;
 
 /** Why running is not possible right now; the screen says each in plain words. */
@@ -128,48 +128,10 @@ export interface AiRunUnlockRequest {
   expectedRowVersion: number;
 }
 
-/** POST /api/v1/ai/product-drafts/page-view: the reviewer has opened this page of drafts (records the view of each). */
-export interface AiPageViewRequest {
-  itemIds: string[];
-}
-
-/** POST /api/v1/ai/product-drafts/page-approve: one confirm for a page of drafts that have no warnings. */
-export interface AiPageApproveRequest {
-  itemIds: string[];
-}
-
-export interface AiPageApproveResponse {
-  applied: number;
-  /** Drafts that were not applied, with the reason (a changed product, a warning, not viewed, not ready). */
-  skipped: { id: string; reason: 'NOT_READY' | 'WARNINGS' | 'NOT_VIEWED' | 'STALE' }[];
-}
-
-/** GET /api/v1/ai/product-drafts/page?status=DRAFT_READY&page= : the page of drafts shown to be read, with the text that would be applied. */
-export interface AiPageItem {
-  id: string;
-  rowVersion: number;
-  productName: string;
-  productCode: string;
-  descriptionVi: string;
-  seoTitleVi: string;
-  warnings: number;
-  eligible: boolean;
-}
-
-export interface AiPageResponse {
-  items: AiPageItem[];
-  page: number;
-  total: number;
-  /** Drafts applied one by one; the approval is offered when this reaches three. */
-  singleApplied: number;
-  canApprove: boolean;
-}
-
 /**
- * "Duyệt tất cả" (Owner, 2026-10-13): one preview and one confirm for EVERY ready product draft that has zero warnings. The preview lists
- * them (each with its row version); the confirm sends back exactly that list, and the server applies a draft only if it is still ready,
- * unchanged since the preview, free of any warning (checked again) and its product is untouched. Drafts with warnings are never in it:
- * they are approved one by one or page by page.
+ * "Chọn tất cả" and "Duyệt các bài đã chọn" (Owner, 2026-10-13): the review list selects drafts with a checkbox, or every pending draft at
+ * once. The list of all pending drafts (each with its row version) comes from the preview; the confirm sends back the selected ones, and
+ * the server applies a draft only if it is still ready, unchanged since it was listed and its product is untouched. Notes never block.
  */
 export interface AiApproveAllItem {
   id: string;
@@ -184,8 +146,6 @@ export interface AiApproveAllItem {
 export interface AiApproveAllPreview {
   /** Drafts waiting for review (status ready). */
   ready: number;
-  /** Of those, with at least one note: not included. */
-  withWarnings: number;
   /** Of those, whose product changed since the draft was written: not included. */
   changed: number;
   /** Drafts this confirm would apply (the list below holds at most `approveAllMax` of them). */
@@ -201,7 +161,7 @@ export interface AiApproveAllRequest {
   items: { id: string; rowVersion: number }[];
 }
 
-export type AiApproveAllSkipReason = 'NOT_READY' | 'CHANGED' | 'WARNINGS' | 'STALE';
+export type AiApproveAllSkipReason = 'NOT_READY' | 'CHANGED' | 'STALE';
 
 export interface AiApproveAllResponse {
   applied: number;

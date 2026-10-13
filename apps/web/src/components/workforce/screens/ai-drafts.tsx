@@ -2,18 +2,24 @@
 
 import {
   AI_DRAFT_STATUSES,
+  AI_RUN_LIMITS,
+  type AiApproveAllPreview,
+  type AiApproveAllResponse,
   type AiDraftList,
   type AiRunList,
   type AiDraftRow,
   type AiDraftStatus,
 } from '@lucy-spa/contracts';
 import {
+  CheckField,
+  ConfirmDialog,
   DataTable,
   FacetedFilter,
   ListSection,
   ListToolbar,
-  Menu,
   RowActions,
+  SelectionBar,
+  VisuallyHidden,
   useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
@@ -28,13 +34,24 @@ import {
   normalizeAiDraftList,
   statusTone,
 } from '../../../lib/workforce/ai-drafts';
+import { confirmError } from '../../../lib/workforce/form-labels';
 import { formatDateTime, formatVnd } from '../../../lib/workforce/format';
 import { paginationLabels, toolbarLabels } from '../../../lib/workforce/list-view';
 import { canGlobal } from '../../../lib/workforce/permissions';
+import { errorMessage } from '../../../lib/workforce/workflows';
 import { PrefetchLink as Link } from '../link';
 import { useAccount, useWorkforce } from '../session';
-import { ApproveAllDrawer, PageApprovalDrawer, RunsPanel, StartRunDialog } from './ai-runs';
-import { Badge, Button, Empty, ErrorState, PageHeader, useResource, useSuccessToast } from '../ui';
+import { RunsPanel, StartRunDialog } from './ai-runs';
+import {
+  Badge,
+  Button,
+  Empty,
+  ErrorState,
+  Notice,
+  PageHeader,
+  useResource,
+  useSuccessToast,
+} from '../ui';
 
 const BASE = '/api/v1/ai/product-drafts';
 const RUNS = '/api/v1/ai/product-runs';
@@ -63,6 +80,7 @@ export function AiDraftsScreen() {
 
 function AiDraftsPage() {
   const { api, t, locale, base } = useWorkforce();
+  const { account } = useAccount();
   const text = aiDraftsDictionary(locale);
   const [state, update] = useUrlState(AI_DRAFT_LIST_DEFAULTS, {
     normalize: normalizeAiDraftList,
@@ -80,9 +98,18 @@ function AiDraftsPage() {
   const runs = useResource(() => api.get<AiRunList>(RUNS), [api]);
   const notify = useSuccessToast();
   const [starting, setStarting] = useState(false);
-  const [approving, setApproving] = useState(false);
-  const [approvingAll, setApprovingAll] = useState(false);
+  // The drafts ticked for approval (id -> the row version they were listed with), kept while the page or the filter changes.
+  const [picked, setPicked] = useState<Map<string, number>>(new Map());
+  const [selectingAll, setSelectingAll] = useState(false);
+  const [selectFailure, setSelectFailure] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const runData = runs.data;
+  const singles = runData?.singleApplied ?? 0;
+  const mayApprove = canGlobal(account, 'MANAGE_PRODUCTS');
+  // Selecting many at once opens after three drafts were approved one by one (the Owner's rule); the server checks it again.
+  const canSelect = runData !== null && singles >= 3 && mayApprove;
+  const pending = data?.counts.byStatus.DRAFT_READY ?? 0;
   const reloadAll = async () => {
     await Promise.all([list.reload(), runs.reload()]);
   };
@@ -94,7 +121,79 @@ function AiDraftsPage() {
     return () => clearInterval(timer);
   }, [working, list, runs]);
 
+  const pick = (row: AiDraftRow, on: boolean) =>
+    setPicked((current) => {
+      const next = new Map(current);
+      if (on) next.set(row.id, row.rowVersion);
+      else next.delete(row.id);
+      return next;
+    });
+
+  async function selectAll() {
+    setSelectingAll(true);
+    setSelectFailure(null);
+    try {
+      const all = await api.get<AiApproveAllPreview>(`${BASE}/approve-all`);
+      setPicked(new Map(all.items.map((item) => [item.id, item.rowVersion])));
+    } catch {
+      setSelectFailure(text.select.loadFailed);
+    } finally {
+      setSelectingAll(false);
+    }
+  }
+
+  /** One confirm, sent in batches the server accepts (each batch is audited per product and once in all). */
+  async function approveSelected() {
+    const items = [...picked].map(([id, rowVersion]) => ({ id, rowVersion }));
+    let applied = 0;
+    let skipped = 0;
+    setProgress({ done: 0, total: items.length });
+    try {
+      for (let from = 0; from < items.length; from += AI_RUN_LIMITS.approveBatchMax) {
+        const batch = items.slice(from, from + AI_RUN_LIMITS.approveBatchMax);
+        const result = await api.post<AiApproveAllResponse>(`${BASE}/approve-all`, {
+          items: batch,
+        });
+        applied += result.applied;
+        skipped += result.skipped.length;
+        setProgress({ done: Math.min(from + batch.length, items.length), total: items.length });
+      }
+    } catch (error) {
+      // What was approved stays approved; the rest is shown as it is now, with the reason.
+      setSelectFailure(errorMessage(error, t));
+    }
+    setProgress(null);
+    setConfirming(false);
+    setPicked(new Map());
+    notify(
+      fill(text.select.done, { applied: String(applied) }) +
+        (skipped > 0 ? fill(text.select.doneSkipped, { skipped: String(skipped) }) : ''),
+    );
+    await reloadAll();
+  }
+
   const columns: DataTableColumn<AiDraftRow>[] = [
+    ...(canSelect
+      ? [
+          {
+            key: 'pick',
+            header: text.select.column,
+            select: true,
+            cell: (row: AiDraftRow) =>
+              row.status === 'DRAFT_READY' ? (
+                <CheckField
+                  label={
+                    <VisuallyHidden>
+                      {fill(text.select.pickRow, { name: row.productName })}
+                    </VisuallyHidden>
+                  }
+                  checked={picked.has(row.id)}
+                  onChange={(event) => pick(row, event.target.checked)}
+                />
+              ) : null,
+          } satisfies DataTableColumn<AiDraftRow>,
+        ]
+      : []),
     {
       key: 'product',
       header: text.columns.product,
@@ -133,12 +232,8 @@ function AiDraftsPage() {
             : null;
         const parts = [
           reason,
-          row.blockingWarnings > 0
-            ? fill(text.notesCell.blocking, { count: String(row.blockingWarnings) })
-            : null,
-          row.warnings - row.blockingWarnings > 0
-            ? fill(text.notesCell.notes, { count: String(row.warnings - row.blockingWarnings) })
-            : null,
+          row.warnings > 0 ? fill(text.notesCell.notes, { count: String(row.warnings) }) : null,
+          row.autoFixes > 0 ? fill(text.notesCell.fixed, { count: String(row.autoFixes) }) : null,
           row.edited ? text.notesCell.edited : null,
         ].filter((part): part is string => part !== null);
         const line = parts.length === 0 ? text.notesCell.none : parts.join(' · ');
@@ -158,24 +253,29 @@ function AiDraftsPage() {
       hideBelow: 'lg',
       cell: (row) => (row.costVnd === null ? '—' : formatVnd(row.costVnd, locale)),
     },
-    {
-      key: 'actions',
-      header: t.common.actions,
-      actions: true,
-      cell: (row) => (
-        <RowActions
-          menuLabel={fill(t.common.list.actionsFor, { name: row.productName })}
-          items={[
-            {
-              id: 'open',
-              label: text.menu.open,
-              icon: 'eye',
-              href: draftHref(base, row.id),
-            },
-          ]}
-        />
-      ),
-    },
+    // A table with a selection column has no actions column (the product name opens the draft).
+    ...(canSelect
+      ? []
+      : [
+          {
+            key: 'actions',
+            header: t.common.actions,
+            actions: true,
+            cell: (row: AiDraftRow) => (
+              <RowActions
+                menuLabel={fill(t.common.list.actionsFor, { name: row.productName })}
+                items={[
+                  {
+                    id: 'open',
+                    label: text.menu.open,
+                    icon: 'eye',
+                    href: draftHref(base, row.id),
+                  },
+                ]}
+              />
+            ),
+          },
+        ]),
   ];
 
   return (
@@ -192,49 +292,64 @@ function AiDraftsPage() {
       </PageHeader>
       {runData ? <RunsPanel data={runData} onChanged={reloadAll} /> : null}
       <ListSection title={text.table}>
-        <ListToolbar
-          labels={toolbarLabels(t)}
-          activeFilters={state.status ? 1 : 0}
-          onReset={() => update({ status: '' })}
-          reload={{ label: t.common.reload, onClick: () => void list.reload() }}
-          resultCount={data ? String(data.total) : undefined}
-          {...(runData && runData.singleApplied >= 3
-            ? {
-                actions: (
-                  <Menu
-                    label={text.approveMenu}
-                    icon="check"
-                    items={[
-                      {
-                        id: 'all',
-                        label: text.approveAll.open,
-                        icon: 'check',
-                        onSelect: () => setApprovingAll(true),
-                      },
-                      {
-                        id: 'page',
-                        label: text.page.open,
-                        icon: 'check',
-                        onSelect: () => setApproving(true),
-                      },
-                    ]}
-                  />
-                ),
-              }
-            : {})}
-          filters={
-            <FacetedFilter
-              label={text.filterStatus}
-              clearLabel={t.common.list.clearChoice}
-              options={AI_DRAFT_STATUSES.map((value: AiDraftStatus) => ({
-                value,
-                label: `${text.statuses[value]} (${data?.counts.byStatus[value] ?? 0})`,
-              }))}
-              selected={state.status ? [state.status] : []}
-              onChange={([value]) => update({ status: value ?? '' })}
-            />
-          }
-        />
+        {canSelect && picked.size > 0 ? (
+          <SelectionBar
+            label={text.select.actions}
+            summary={fill(text.select.summary, { count: String(picked.size) })}
+          >
+            {picked.size < pending ? (
+              <Button variant="ghost" disabled={selectingAll} onClick={() => void selectAll()}>
+                {selectingAll
+                  ? text.select.selectingAll
+                  : fill(text.select.selectAll, { count: String(pending) })}
+              </Button>
+            ) : null}
+            <Button variant="ghost" onClick={() => setPicked(new Map())}>
+              {text.select.clear}
+            </Button>
+            <Button variant="primary" icon="check" onClick={() => setConfirming(true)}>
+              {fill(text.select.approve, { count: String(picked.size) })}
+            </Button>
+          </SelectionBar>
+        ) : (
+          <ListToolbar
+            labels={toolbarLabels(t)}
+            activeFilters={state.status ? 1 : 0}
+            onReset={() => update({ status: '' })}
+            reload={{ label: t.common.reload, onClick: () => void list.reload() }}
+            resultCount={data ? String(data.total) : undefined}
+            {...(canSelect && pending > 0
+              ? {
+                  actions: (
+                    <Button
+                      variant="secondary"
+                      icon="check"
+                      disabled={selectingAll}
+                      onClick={() => void selectAll()}
+                    >
+                      {selectingAll ? text.select.selectingAll : text.select.selectAllShort}
+                    </Button>
+                  ),
+                }
+              : {})}
+            filters={
+              <FacetedFilter
+                label={text.filterStatus}
+                clearLabel={t.common.list.clearChoice}
+                options={AI_DRAFT_STATUSES.map((value: AiDraftStatus) => ({
+                  value,
+                  label: `${text.statuses[value]} (${data?.counts.byStatus[value] ?? 0})`,
+                }))}
+                selected={state.status ? [state.status] : []}
+                onChange={([value]) => update({ status: value ?? '' })}
+              />
+            }
+          />
+        )}
+        {selectFailure ? <Notice tone="error">{selectFailure}</Notice> : null}
+        {runData && !canSelect && pending > 0 && mayApprove && singles < 3 ? (
+          <Notice tone="info">{fill(text.select.needSingles, { done: String(singles) })}</Notice>
+        ) : null}
         <DataTable
           mode="server"
           caption={fill(t.common.list.table, { list: text.table })}
@@ -269,24 +384,33 @@ function AiDraftsPage() {
           }}
         />
       ) : null}
-      {approvingAll ? (
-        <ApproveAllDrawer
-          onClose={() => setApprovingAll(false)}
-          onDone={async (message) => {
-            setApprovingAll(false);
-            notify(message);
-            await reloadAll();
-          }}
-        />
-      ) : null}
-      {approving ? (
-        <PageApprovalDrawer
-          onClose={() => setApproving(false)}
-          onDone={async (message) => {
-            setApproving(false);
-            notify(message);
-            await reloadAll();
-          }}
+      {confirming ? (
+        <ConfirmDialog
+          title={fill(text.select.confirmTitle, { count: String(picked.size) })}
+          description={
+            progress
+              ? fill(text.select.progress, {
+                  done: String(progress.done),
+                  total: String(progress.total),
+                })
+              : fill(text.select.confirmBody, { count: String(picked.size) })
+          }
+          facts={[{ label: text.select.confirmFacts.products, value: String(picked.size) }]}
+          tone="warning"
+          confirmLabel={fill(text.select.confirm, { count: String(picked.size) })}
+          busyLabel={
+            progress
+              ? fill(text.select.progress, {
+                  done: String(progress.done),
+                  total: String(progress.total),
+                })
+              : t.common.saving
+          }
+          cancelLabel={t.common.cancel}
+          referenceLabel={t.errors.reference}
+          describeError={confirmError(t)}
+          onConfirm={approveSelected}
+          onCancel={() => setConfirming(false)}
         />
       ) : null}
     </>

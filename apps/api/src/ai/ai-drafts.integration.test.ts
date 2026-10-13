@@ -7,8 +7,7 @@ import { AiService } from './ai.service.js';
 
 /**
  * Claude integration Wave A (CI-R2) against real PostgreSQL: the review of AI drafts. Authority (USE_AI_CONTENT for the review, plus
- * MANAGE_PRODUCTS to apply), the list and the detail next to the current text, view, edit with new checks, apply (blocking warnings
- * refuse, quality notes need an acknowledgement, a changed product is STALE, the origin follows the edit, the audit keeps the full
+ * MANAGE_PRODUCTS to apply), the list and the detail next to the current text, view, edit with new checks, apply (notes never refuse, a changed product is STALE, the origin follows the edit, the audit keeps the full
  * before and after), reject, regenerate (three times at most) and retry. The catalog changes only on apply. Fixtures roll back.
  */
 const SNAPSHOT = {
@@ -28,7 +27,7 @@ const CLEAN: AiDraftContent = {
     benefits: 'Làm sạch sâu và giữ độ ẩm tự nhiên cho da khô.',
     ingredients: 'Chiết xuất hoa sen, Glycerin.',
     usage: 'Tạo bọt với một lượng vừa đủ, massage nhẹ rồi rửa lại với nước mát.',
-    suitableFor: null,
+    suitableFor: 'Phù hợp với hầu hết các loại da.',
   },
   descriptionEn:
     'A soft, creamy foam that lifts away dirt gently and leaves dry skin feeling soft and comfortably hydrated. The 180ml size fits a daily skincare routine.',
@@ -36,7 +35,7 @@ const CLEAN: AiDraftContent = {
     benefits: 'Deep cleansing that keeps the skin’s natural moisture.',
     ingredients: 'Lotus extract, Glycerin.',
     usage: 'Work a small amount into a foam with water, massage gently and rinse with cool water.',
-    suitableFor: null,
+    suitableFor: 'Suitable for most skin types.',
   },
   nameEn: 'The Whoo Gongjinhyang Soo Hydrating Cleansing Foam 180ml',
   seoTitleVi: 'Sữa rửa mặt Gongjinhyang The Whoo 180ml | Lucy Spa',
@@ -181,7 +180,7 @@ test(
           const detail = await ai.getDraft(reviewer.token, made.id);
           assert.equal(detail.status, 'DRAFT_READY');
           assert.equal(detail.stale, false);
-          assert.equal(detail.blocking, false);
+          assert.deepEqual(detail.autoFixes, []);
           assert.equal(detail.current.descriptionVi, 'Mô tả cũ của nhà cung cấp');
           assert.equal(detail.current.seoTitleVi, '');
           assert.equal(detail.draft?.seoTitleVi, CLEAN.seoTitleVi);
@@ -218,7 +217,7 @@ test(
             content: { ...CLEAN, descriptionVi: `${CLEAN.descriptionVi}  Rất nhẹ nhàng.` },
           });
           assert.equal(edited.edited?.descriptionVi.endsWith('Rất nhẹ nhàng.'), true);
-          assert.equal(edited.blocking, false);
+          assert.deepEqual(edited.warnings, []);
           assert.equal(edited.rowVersion, detail.rowVersion + 1);
           // A stale version, a bad value, a clinic word.
           await fails(
@@ -254,10 +253,7 @@ test(
               descriptionVi: `${CLEAN.descriptionVi} Đặt lịch khám da miễn phí.`,
             },
           });
-          assert.equal(flagged.blocking, true);
-          assert.ok(
-            flagged.warnings.some((warning) => warning.code === 'CLINIC_WORD' && warning.blocking),
-          );
+          assert.ok(flagged.warnings.some((warning) => warning.code === 'CLINIC_WORD'));
           // Only a draft can be edited.
           const failed = await make({ status: 'FAILED', draft: null });
           await fails(
@@ -270,22 +266,18 @@ test(
       );
 
       await suite.test(
-        'apply: blocking warnings refuse, quality notes need an acknowledgement, the product changes only here',
+        'apply: notes never refuse and need no acknowledgement; the product changes only here',
         async () => {
           const { id, productId } = await make();
           let detail = await ai.getDraft(editor.token, id);
-          // A blocking edit refuses.
+          // An edit with a phone number carries a note; saving it changes nothing on the product.
           detail = await ai.editDraft(editor.token, id, {
             expectedRowVersion: detail.rowVersion,
             content: { ...CLEAN, descriptionVi: `${CLEAN.descriptionVi} Gọi 0905 123 456.` },
           });
-          await fails(
-            () => ai.applyDraft(editor.token, id, { expectedRowVersion: detail.rowVersion }),
-            'VALIDATION_FAILED',
-            'warnings',
-          );
+          assert.ok(detail.warnings.some((warning) => warning.code === 'URL_OR_CONTACT'));
           assert.equal((await product(productId)).descriptionVi, 'Mô tả cũ của nhà cung cấp');
-          // A quality note (a title over 60 characters) needs the acknowledgement.
+          // A note (a title over 60 characters) is shown and does not stop the apply.
           detail = await ai.editDraft(editor.token, id, {
             expectedRowVersion: detail.rowVersion,
             content: {
@@ -293,19 +285,9 @@ test(
               seoTitleVi: `${CLEAN.seoTitleVi} - chăm sóc da mặt mỗi ngày tại Đà Nẵng`,
             },
           });
-          assert.ok(
-            detail.warnings.some(
-              (warning) => warning.code === 'SEO_TITLE_LONG' && !warning.blocking,
-            ),
-          );
-          await fails(
-            () => ai.applyDraft(editor.token, id, { expectedRowVersion: detail.rowVersion }),
-            'VALIDATION_FAILED',
-            'acknowledgeWarnings',
-          );
+          assert.ok(detail.warnings.some((warning) => warning.code === 'SEO_TITLE_LONG'));
           const result = await ai.applyDraft(editor.token, id, {
             expectedRowVersion: detail.rowVersion,
-            acknowledgeWarnings: true,
           });
           assert.equal(result.result, 'APPLIED');
           assert.equal(result.detail.status, 'APPLIED');
@@ -348,7 +330,7 @@ test(
           assert.equal(before['contentOrigin'], 'SUPPLIER_COPY');
           assert.equal(afterJson['descriptionVi'], CLEAN.descriptionVi);
           assert.equal(afterJson['aiItemId'], id);
-          assert.deepEqual(afterJson['acknowledgedWarnings'], ['SEO_TITLE_LONG']);
+          assert.deepEqual(afterJson['noteCodes'], ['SEO_TITLE_LONG']);
           // Applied is history.
           await fails(
             () => ai.applyDraft(editor.token, id, { expectedRowVersion: result.detail.rowVersion }),

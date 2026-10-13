@@ -11,10 +11,6 @@ import type {
   AiDraftRejectRequest,
   AiDraftRetryRequest,
   AiKeyCheckRequest,
-  AiPageApproveRequest,
-  AiPageApproveResponse,
-  AiPageResponse,
-  AiPageViewRequest,
   AiRunCommandRequest,
   AiRunCreateRequest,
   AiRunList,
@@ -135,38 +131,12 @@ export class AiService {
     return this.run(token, requestId, (context) => drafts.retryDraft(context, id, body));
   }
 
-  pageOfDrafts(
-    token: string | undefined,
-    query: { page?: number | undefined },
-  ): Promise<AiPageResponse> {
-    return this.run(token, undefined, (context) => drafts.pageOfDrafts(context, query));
-  }
-
-  async viewPage(
-    token: string | undefined,
-    body: AiPageViewRequest,
-    requestId?: string,
-  ): Promise<{ marked: number }> {
-    return {
-      marked: await this.run(token, requestId, (context) => drafts.viewPage(context, body)),
-    };
-  }
-
-  approvePage(
-    token: string | undefined,
-    body: AiPageApproveRequest,
-    requestId?: string,
-  ): Promise<AiPageApproveResponse> {
-    // A page approval writes up to 20 products and their audit rows: it is allowed more time than one command.
-    return this.run(token, requestId, (context) => drafts.approvePage(context, body), 60_000);
-  }
-
   previewApproveAll(token: string | undefined): Promise<AiApproveAllPreview> {
     return this.run(token, undefined, (context) => drafts.previewApproveAll(context), 60_000);
   }
 
   /**
-   * "Duyệt tất cả": the confirmed list is applied in chunks of ten, each its own transaction (a long confirm must not hold the catalog
+   * "Duyệt các bài đã chọn": the confirmed list is applied in chunks of ten, each its own transaction (a long confirm must not hold the catalog
    * locked), then one summary event. The per-product audit events are written by the chunks.
    */
   async approveAll(
