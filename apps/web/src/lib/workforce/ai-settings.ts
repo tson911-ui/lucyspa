@@ -20,12 +20,25 @@ export interface AiSettingsDraft {
   concurrency: string;
   refusalFallback: boolean;
   allowAuthenticityClaims: boolean;
+  chatEnabled: boolean;
+  chatDailyCap: string;
+  seoEnabled: boolean;
+  seoModel: AiModelId;
+  assistantEnabled: boolean;
+  assistantModel: AiModelId;
+  briefEnabled: boolean;
+  briefModel: AiModelId;
   /** One phrase per line. */
   bannedPhrases: string;
 }
 
 export type AiSettingsField =
-  'vndPerUsd' | 'monthlyCapVnd' | 'featureCapsVnd' | 'concurrency' | 'bannedPhrases';
+  | 'vndPerUsd'
+  | 'monthlyCapVnd'
+  | 'featureCapsVnd'
+  | 'concurrency'
+  | 'bannedPhrases'
+  | 'chatDailyCap';
 
 export function draftFromSettings(settings: AiSettings): AiSettingsDraft {
   return {
@@ -39,6 +52,14 @@ export function draftFromSettings(settings: AiSettings): AiSettingsDraft {
     concurrency: String(settings.concurrency),
     refusalFallback: settings.refusalFallback,
     allowAuthenticityClaims: settings.allowAuthenticityClaims,
+    chatEnabled: settings.chatEnabled,
+    chatDailyCap: String(settings.chatDailyCap),
+    seoEnabled: settings.seoEnabled,
+    seoModel: settings.seoModel,
+    assistantEnabled: settings.assistantEnabled,
+    assistantModel: settings.assistantModel,
+    briefEnabled: settings.briefEnabled,
+    briefModel: settings.briefModel,
     bannedPhrases: settings.bannedPhrases.join('\n'),
   };
 }
@@ -66,6 +87,15 @@ export function validateDraft(draft: AiSettingsDraft): Partial<Record<AiSettings
   const concurrency = Number(draft.concurrency);
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > AI_LIMITS.concurrencyMax) {
     problems.concurrency = true;
+  }
+  const chatCap = Number(draft.chatDailyCap);
+  if (
+    draft.chatDailyCap.trim() === '' ||
+    !Number.isInteger(chatCap) ||
+    chatCap < 0 ||
+    chatCap > AI_LIMITS.chatDailyCapMax
+  ) {
+    problems.chatDailyCap = true;
   }
   const phrases = phrasesOf(draft.bannedPhrases);
   if (
@@ -109,6 +139,15 @@ export function editRequest(draft: AiSettingsDraft, settings: AiSettings): AiSet
   if (draft.allowAuthenticityClaims !== settings.allowAuthenticityClaims) {
     request.allowAuthenticityClaims = draft.allowAuthenticityClaims;
   }
+  for (const key of ['chatEnabled', 'seoEnabled', 'assistantEnabled', 'briefEnabled'] as const) {
+    if (draft[key] !== settings[key]) request[key] = draft[key];
+  }
+  for (const key of ['seoModel', 'assistantModel', 'briefModel'] as const) {
+    if (draft[key] !== settings[key]) request[key] = draft[key];
+  }
+  if (Number(draft.chatDailyCap) !== settings.chatDailyCap) {
+    request.chatDailyCap = Number(draft.chatDailyCap);
+  }
   const phrases = phrasesOf(draft.bannedPhrases);
   if (JSON.stringify(phrases) !== JSON.stringify(settings.bannedPhrases))
     request.bannedPhrases = phrases;
@@ -121,7 +160,7 @@ export function serverField(error: unknown): AiSettingsField | null {
   if (typeof field !== 'string') return null;
   if (field.startsWith('featureCapsVnd')) return 'featureCapsVnd';
   return (
-    (['vndPerUsd', 'monthlyCapVnd', 'concurrency', 'bannedPhrases'] as const).find(
+    (['vndPerUsd', 'monthlyCapVnd', 'concurrency', 'bannedPhrases', 'chatDailyCap'] as const).find(
       (name) => name === field,
     ) ?? null
   );

@@ -52,7 +52,7 @@ test('Phase 9 P9-2 permissions and tables (all fixtures roll back)', async (cont
             tx.$queryRawUnsafe<T[]>(sql, ...params);
 
           await context.test(
-            'the catalog has 79 codes and the two new ones are global and standard',
+            'the catalog has 82 codes and the two new ones are global and standard',
             async () => {
               const labels = (
                 await rows<{ labels: string[] }>(
@@ -66,7 +66,7 @@ test('Phase 9 P9-2 permissions and tables (all fixtures roll back)', async (cont
                   code,
                 );
               }
-              assert.equal(PERMISSION_CATALOG.length, 79);
+              assert.equal(PERMISSION_CATALOG.length, 82);
               await syncPermissionCatalog(tx);
               const stored = await tx.permission.findMany({
                 where: { code: { in: [...PHASE9_CODES] } },
@@ -77,7 +77,7 @@ test('Phase 9 P9-2 permissions and tables (all fixtures roll back)', async (cont
                 assert.equal(row.scopeCapability, 'GLOBAL_ONLY', row.code);
                 assert.equal(row.dataClassification, 'STANDARD', row.code);
               }
-              assert.equal(await tx.permission.count(), 79);
+              assert.equal(await tx.permission.count(), 82);
             },
           );
 

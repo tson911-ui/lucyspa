@@ -7,6 +7,7 @@ import { planAssignment } from '../booking/booking.planner.js';
 import { PrismaService } from '../platform/prisma.service.js';
 import { API_ENVIRONMENT, API_LOGGER, type ApiEnvironment } from '../platform/tokens.js';
 import { parsePublicProductsQuery } from '../products/public-products.logic.js';
+import { bookingUrl as bookingLink } from '../chat/chat.rules.js';
 import { PublicWebsiteService } from '../website/popup.service.js';
 import {
   botProducts,
@@ -181,7 +182,13 @@ export class BotDataService {
       return out;
     });
     // Bookings are member-only: the link opens the booking page; the customer signs in and confirms there.
-    const bookingUrl = `${this.environment.webOrigin}/${locale}/book?branch=${encodeURIComponent(branch.code)}&services=${codes.map(encodeURIComponent).join(',')}&date=${date}`;
+    // The one builder of this link (the page is /{locale}/account/book; the website chat uses the same function).
+    const bookingUrl = bookingLink(this.environment.webOrigin, locale, {
+      branch: branch.code,
+      services: codes,
+      date,
+      time: null,
+    });
     return { locale, availability: { branch: branch.code, date, starts, bookingUrl } };
   }
 

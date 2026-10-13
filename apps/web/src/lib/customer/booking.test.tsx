@@ -14,7 +14,7 @@ import { getCustomerDictionary } from '../../i18n/customer';
 import type { Locale } from '../../i18n/locales';
 import { context, customer, failure, json, scriptedFetch } from '../../test/support';
 import { ApiClient, ApiError } from '../api/client';
-import { customerLogin, loadCustomerSession, safeCustomerNext } from './auth';
+import { customerLogin, loadCustomerSession, loginHref, safeCustomerNext } from './auth';
 import {
   createRequest,
   customerErrorMessage,
@@ -119,6 +119,25 @@ test('a sign-in may return to the shop pages of the same language, nowhere else 
   assert.equal(safeCustomerNext('//evil.example/vi/cart', base), base);
   assert.equal(safeCustomerNext('/vi/cart\\x', base), base);
   assert.equal(safeCustomerNext('/vi/services', base), base);
+});
+
+test('a booking link keeps what it chose through sign-in: the query string travels in next and is accepted back', () => {
+  const base = '/vi/account';
+  const search = '?branch=hai-chau&services=goi-dau&date=2026-11-05&time=14%3A30';
+  const href = loginHref(base, '/vi/account/book', search);
+  assert.equal(href, `/vi/account/login?next=${encodeURIComponent(`/vi/account/book${search}`)}`);
+  const carried = new URL(href, 'https://x.example').searchParams.get('next');
+  assert.equal(carried, `/vi/account/book${search}`);
+  assert.equal(safeCustomerNext(carried, base), `/vi/account/book${search}`);
+  // No query, or a lone question mark, adds nothing.
+  assert.equal(
+    loginHref(base, '/vi/account/book', ''),
+    '/vi/account/login?next=%2Fvi%2Faccount%2Fbook',
+  );
+  assert.equal(
+    loginHref(base, '/vi/account/book', '?'),
+    '/vi/account/login?next=%2Fvi%2Faccount%2Fbook',
+  );
 });
 
 test('login uses the CUSTOMER realm by email and refreshes CSRF; staff sessions are told apart', async () => {

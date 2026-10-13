@@ -103,3 +103,47 @@ test('queue connections distinguish bounded HTTP calls from persistent workers',
   assert.equal('maxRetriesPerRequest' in worker && worker.maxRetriesPerRequest, null);
   assert.equal('commandTimeout' in worker, false);
 });
+
+test('the website chat webhook is all or none, and plain http only reaches this machine or a private address', () => {
+  const secret = 'a-long-random-secret-1234567890';
+  assert.equal(parseApiEnvironment(valid).chatWebhook, null);
+  const make = (url: string) =>
+    parseApiEnvironment({ ...valid, N8N_CHAT_WEBHOOK_URL: url, CHAT_WEBHOOK_SECRET: secret })
+      .chatWebhook;
+  assert.deepEqual(make('http://127.0.0.1:5678/webhook/lucy-chat-abc'), {
+    url: 'http://127.0.0.1:5678/webhook/lucy-chat-abc',
+    secret,
+  });
+  assert.ok(make('http://localhost:5678/webhook/x'));
+  assert.ok(make('http://172.17.0.1:5678/webhook/x'));
+  assert.ok(make('http://[::1]:5678/webhook/x'));
+  assert.ok(make('https://n8n.example.vn/webhook/x'));
+  // A public host over plain http, a user in the address and a non-web scheme are refused, naming only the variable.
+  for (const bad of [
+    'http://n8n.example.vn/webhook/x',
+    'http://203.0.113.9/webhook/x',
+    'http://user:pass@127.0.0.1/webhook/x',
+    'ftp://127.0.0.1/x',
+    'not a url',
+  ]) {
+    assert.throws(() => make(bad), /N8N_CHAT_WEBHOOK_URL/, bad);
+  }
+  // Half a configuration fails closed and never prints a value.
+  assert.throws(
+    () => parseApiEnvironment({ ...valid, N8N_CHAT_WEBHOOK_URL: 'http://127.0.0.1/x' }),
+    /CHAT_WEBHOOK_SECRET/,
+  );
+  assert.throws(
+    () => parseApiEnvironment({ ...valid, CHAT_WEBHOOK_SECRET: secret }),
+    (error: Error) => /N8N_CHAT_WEBHOOK_URL/.test(error.message) && !error.message.includes(secret),
+  );
+  assert.throws(
+    () =>
+      parseApiEnvironment({
+        ...valid,
+        N8N_CHAT_WEBHOOK_URL: 'http://127.0.0.1/x',
+        CHAT_WEBHOOK_SECRET: 'short',
+      }),
+    /CHAT_WEBHOOK_SECRET/,
+  );
+});

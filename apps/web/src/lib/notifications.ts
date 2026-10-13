@@ -33,6 +33,10 @@ export function notificationHref(
       ? `${base}/supplier-imports?tab=changes`
       : null;
   }
+  // A callback request from the website chat opens the callback inbox for those who handle it.
+  if (item.source.type === 'ChatCallbackRequest') {
+    return canGlobal(account, 'MANAGE_CHAT_REQUESTS') ? `${base}/chat-requests` : null;
+  }
   // A return notice opens the case page for people who handle returns or refunds at its branch.
   if (item.source.type === 'ProductReturnCase') {
     return item.branch !== null &&

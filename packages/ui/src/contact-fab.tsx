@@ -13,6 +13,16 @@ export interface ContactFabItem {
   label: string;
 }
 
+/**
+ * The one item that is not a link: "Chat với Lucy" (Claude integration Wave B, design 6.3). It sits first in the group and opens the chat
+ * panel the page provides; the control itself knows nothing about the chat.
+ */
+export interface ContactFabChat {
+  /** The accessible name and the visible label. */
+  label: string;
+  onOpen: () => void;
+}
+
 const PULSED_KEY = 'lucy-contact-pulsed';
 
 /** On a phone the button steps aside while the visitor reads down the page (see the effect below). */
@@ -36,11 +46,13 @@ export function ContactFab({
   openLabel,
   closeLabel,
   groupLabel,
+  chat,
 }: {
   items: readonly ContactFabItem[];
   openLabel: string;
   closeLabel: string;
   groupLabel: string;
+  chat?: ContactFabChat | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const [pulse, setPulse] = useState(false);
@@ -157,7 +169,8 @@ export function ContactFab({
     };
   }, []);
 
-  if (items.length === 0) return null;
+  if (items.length === 0 && !chat) return null;
+  const count = items.length + (chat ? 1 : 0);
   return (
     <div
       ref={root}
@@ -168,6 +181,23 @@ export function ContactFab({
     >
       <div className="ls-contact-stack">
         <div id={listId} className="ls-contact-items" role="group" aria-label={groupLabel}>
+          {chat ? (
+            <button
+              type="button"
+              className="ls-contact-link"
+              data-kind="chat"
+              style={{ '--ls-fab-index': count - 1 } as CSSProperties}
+              onClick={() => {
+                setOpen(false);
+                chat.onOpen();
+              }}
+            >
+              <span className="ls-contact-label">{chat.label}</span>
+              <span className="ls-contact-icon" aria-hidden="true">
+                <Icon name="sparkles" size={24} />
+              </span>
+            </button>
+          ) : null}
           {items.map((item, position) => (
             <a
               key={item.key}

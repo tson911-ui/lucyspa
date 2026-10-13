@@ -28,6 +28,14 @@ export interface AiSettings {
   refusalFallback: boolean;
   allowAuthenticityClaims: boolean;
   bannedPhrases: string[];
+  chatEnabled: boolean;
+  chatDailyCap: number;
+  seoEnabled: boolean;
+  seoModel: string;
+  assistantEnabled: boolean;
+  assistantModel: string;
+  briefEnabled: boolean;
+  briefModel: string;
   runAllUnlockedAt: Date | null;
   checkRequestedAt: Date | null;
   lastCheckAt: Date | null;
@@ -47,6 +55,14 @@ interface SettingsRow {
   refusal_fallback: boolean;
   allow_authenticity_claims: boolean;
   banned_phrases: unknown;
+  chat_enabled: boolean;
+  chat_daily_cap: number;
+  seo_enabled: boolean;
+  seo_model: string;
+  assistant_enabled: boolean;
+  assistant_model: string;
+  brief_enabled: boolean;
+  brief_model: string;
   run_all_unlocked_at: Date | null;
   check_requested_at: Date | null;
   last_check_at: Date | null;
@@ -75,7 +91,8 @@ export function readFeatureCaps(value: unknown): Partial<Record<AiFeature, numbe
 export async function loadAiSettings(database: AiDatabase): Promise<AiSettings> {
   const rows = await database.$queryRaw<SettingsRow[]>`
     SELECT enabled, rewrite_enabled, monthly_cap_vnd, feature_caps_vnd, vnd_per_usd, rewrite_model, rewrite_effort, concurrency,
-           refusal_fallback, allow_authenticity_claims, banned_phrases, run_all_unlocked_at, check_requested_at, last_check_at,
+           refusal_fallback, allow_authenticity_claims, banned_phrases, chat_enabled, chat_daily_cap, seo_enabled, seo_model,
+           assistant_enabled, assistant_model, brief_enabled, brief_model, run_all_unlocked_at, check_requested_at, last_check_at,
            last_check_status, row_version
       FROM ai_settings WHERE id = 1`;
   const row = rows[0];
@@ -96,6 +113,14 @@ export async function loadAiSettings(database: AiDatabase): Promise<AiSettings> 
           (entry): entry is string => typeof entry === 'string',
         )
       : [],
+    chatEnabled: row.chat_enabled,
+    chatDailyCap: Number(row.chat_daily_cap),
+    seoEnabled: row.seo_enabled,
+    seoModel: row.seo_model,
+    assistantEnabled: row.assistant_enabled,
+    assistantModel: row.assistant_model,
+    briefEnabled: row.brief_enabled,
+    briefModel: row.brief_model,
     runAllUnlockedAt: row.run_all_unlocked_at,
     checkRequestedAt: row.check_requested_at,
     lastCheckAt: row.last_check_at,

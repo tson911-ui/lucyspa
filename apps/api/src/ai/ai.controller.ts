@@ -64,6 +64,28 @@ class SettingsEditDto extends VersionDto implements AiSettingsEditRequest {
   concurrency?: number;
   @ApiProperty({ required: false }) @IsOptional() @IsBoolean() refusalFallback?: boolean;
   @ApiProperty({ required: false }) @IsOptional() @IsBoolean() allowAuthenticityClaims?: boolean;
+  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() chatEnabled?: boolean;
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(AI_LIMITS.chatDailyCapMax)
+  chatDailyCap?: number;
+  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() seoEnabled?: boolean;
+  @ApiProperty({ required: false, enum: AI_MODEL_IDS })
+  @IsOptional()
+  @IsIn(AI_MODEL_IDS as unknown as string[])
+  seoModel?: (typeof AI_MODEL_IDS)[number];
+  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() assistantEnabled?: boolean;
+  @ApiProperty({ required: false, enum: AI_MODEL_IDS })
+  @IsOptional()
+  @IsIn(AI_MODEL_IDS as unknown as string[])
+  assistantModel?: (typeof AI_MODEL_IDS)[number];
+  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() briefEnabled?: boolean;
+  @ApiProperty({ required: false, enum: AI_MODEL_IDS })
+  @IsOptional()
+  @IsIn(AI_MODEL_IDS as unknown as string[])
+  briefModel?: (typeof AI_MODEL_IDS)[number];
   @ApiProperty({ required: false, type: [String] })
   @IsOptional()
   @IsArray()

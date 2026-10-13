@@ -16,7 +16,7 @@ import {
 import { getCustomerDictionary, type CustomerDictionary } from '../../i18n/customer';
 import type { Locale } from '../../i18n/locales';
 import { ApiClient } from '../../lib/api/client';
-import { customerLogout, loadCustomerSession } from '../../lib/customer/auth';
+import { customerLogout, loadCustomerSession, loginHref } from '../../lib/customer/auth';
 import { announceSessionChange } from '../../lib/site-session';
 import { useSiteSession } from '../public/site-session';
 
@@ -112,7 +112,7 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
       .then((session) => {
         if (!active) return;
         if (session.kind === 'anonymous') {
-          router.replace(`${base}/login?next=${encodeURIComponent(pathname)}`);
+          router.replace(loginHref(base, pathname, window.location.search));
         } else if (session.kind === 'workforce') {
           setState({ kind: 'workforce' });
         } else {

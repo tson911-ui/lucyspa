@@ -298,6 +298,7 @@ export function parsePublicSite(value: unknown): PublicSiteResponse | null {
     timezone: value['timezone'],
     hours,
     heroImage,
+    chatEnabled: value['chatEnabled'] === true,
   };
 }
 

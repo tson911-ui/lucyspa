@@ -67,7 +67,7 @@ export type {
   TabBarItem,
 } from './site';
 export { BrandIcon } from './brand-icons';
-export { ContactFab, type ContactFabItem } from './contact-fab';
+export { ContactFab, type ContactFabChat, type ContactFabItem } from './contact-fab';
 export type { BrandIconName } from './brand-icons';
 export {
   FooterLinkList,

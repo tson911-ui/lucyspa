@@ -3079,6 +3079,20 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   );
 }
 
+/* "Chat với Lucy" is a button, not a link: it wears the shop's own colour and drops the button chrome. */
+button.ls-contact-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ls-contact-link[data-kind='chat'] .ls-contact-icon {
+  color: var(--ls-on-brand);
+  background: var(--ls-brand-fill);
+}
+
 .ls-contact-link[data-kind='call'] .ls-contact-icon {
   color: var(--ls-on-network);
   background: var(--ls-brand-call);
@@ -3099,6 +3113,137 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 .ls-contact-link:active .ls-contact-icon {
   scale: var(--ls-press-scale);
   transition-duration: var(--ls-dur-fast);
+}
+
+/* ---------- website chat (Claude integration Wave B) ---------- */
+/* A conversation in soft pebbles: the assistant's on the left in rose cream with one tight corner at the bottom left, the visitor's
+   on the right in the brand red with the tight corner at the bottom right. The panel is the shared Dialog (a sheet on a phone). */
+.ls-chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ls-space-3);
+  min-height: calc(var(--ls-space-10) * 2);
+  max-height: 50dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-block: var(--ls-space-1);
+}
+
+.ls-chat-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ls-space-2);
+  align-self: flex-start;
+  max-width: 85%;
+  padding: var(--ls-space-3) var(--ls-space-4);
+  border-radius: var(--ls-radius-lg) var(--ls-radius-lg) var(--ls-radius-lg) var(--ls-radius-sm);
+  background: var(--ls-bg-sunken);
+  color: var(--ls-text);
+}
+
+.ls-chat-msg[data-from='visitor'] {
+  align-self: flex-end;
+  border-radius: var(--ls-radius-lg) var(--ls-radius-lg) var(--ls-radius-sm) var(--ls-radius-lg);
+  background: var(--ls-brand-fill);
+  color: var(--ls-on-brand);
+}
+
+.ls-chat-text {
+  margin: 0;
+  font-size: var(--ls-text-md);
+  line-height: var(--ls-leading-md);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ls-chat-typing {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+  animation: ls-chat-breathe var(--ls-dur-loop) var(--ls-ease-out) infinite alternate;
+}
+
+@keyframes ls-chat-breathe {
+  from {
+    opacity: 0.45;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ls-chat-typing {
+    animation: none;
+  }
+}
+
+.ls-chat-note {
+  margin: 0;
+  padding: var(--ls-space-3) var(--ls-space-4);
+  border-radius: var(--ls-radius-md);
+  background: var(--ls-bg-sunken);
+  color: var(--ls-text);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-chat-error {
+  margin: 0;
+  color: var(--ls-danger);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+}
+
+.ls-chat-composer {
+  display: grid;
+  gap: var(--ls-space-3);
+  width: 100%;
+}
+
+.ls-chat-send {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+}
+
+.ls-chat-send .ls-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The send button keeps its word on one line whatever the input does. */
+.ls-chat-send .ls-btn {
+  flex: none;
+  white-space: nowrap;
+}
+
+.ls-chat-form {
+  display: grid;
+  gap: var(--ls-space-4);
+}
+
+.ls-chat-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ls-space-3);
+}
+
+.ls-chat-sent {
+  display: grid;
+  justify-items: center;
+  gap: var(--ls-space-4);
+  padding-block: var(--ls-space-5);
+  color: var(--ls-text);
+  text-align: center;
+}
+
+.ls-chat-sent p {
+  margin: 0;
 }
 
 /* Footer: the Facebook and Zalo icons beside the contact lines. Monochrome like the footer links; the official colour on hover. */

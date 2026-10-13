@@ -168,6 +168,7 @@ export type NavKey =
   | 'productTextCleanup'
   | 'aiDrafts'
   | 'aiSettings'
+  | 'chatRequests'
   | 'onlineOrders'
   | 'inventory'
   | 'import'
@@ -499,6 +500,12 @@ export function navigationFor(account: Account): NavItem[] {
       key: 'websiteContent',
       group: 'administration',
       path: '/website',
+    },
+    // Claude integration Wave B: the callback inbox of the website chat (GLOBAL_ONLY MANAGE_CHAT_REQUESTS).
+    canGlobal(account, 'MANAGE_CHAT_REQUESTS') && {
+      key: 'chatRequests',
+      group: 'operations',
+      path: '/chat-requests',
     },
     // Claude integration Wave A: the AI settings (GLOBAL_ONLY MANAGE_AI_SETTINGS; the Owner holds all).
     canGlobal(account, 'MANAGE_AI_SETTINGS') && {

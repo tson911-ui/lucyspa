@@ -162,3 +162,44 @@ test('ContactFab css: sticky row on the shared layer scale, lifted above the tab
     /\.ls-site-footer-list a:not\(\.ls-footer-icon\) \{[^}]*min-height: var\(--ls-control-h\);[^}]*margin-block: calc\(\(var\(--ls-footer-row\) - var\(--ls-control-h\)\) \/ 2\)/,
   );
 });
+
+test('ContactFab: the chat item comes first, is a button that closes the group and opens the chat; chat alone is enough to show the control', () => {
+  const html = renderToStaticMarkup(
+    <ContactFab
+      items={items}
+      {...labels}
+      chat={{ label: 'Chat với Lucy', onOpen: () => undefined }}
+    />,
+  );
+  assert.match(html, /<button type="button" class="ls-contact-link" data-kind="chat"/);
+  assert.ok(html.indexOf('data-kind="chat"') < html.indexOf('data-kind="zalo"'));
+  assert.match(html, /Chat với Lucy<\/span>/);
+  // The index counts the chat item: it unfolds last, from the top of the stack.
+  assert.match(html, /data-kind="chat" style="--ls-fab-index:3"/);
+  assert.notEqual(
+    renderToStaticMarkup(
+      <ContactFab items={[]} {...labels} chat={{ label: 'Chat', onOpen: () => undefined }} />,
+    ),
+    '',
+  );
+  const container = window.document.createElement('div');
+  window.document.body.appendChild(container);
+  const root = createRoot(container);
+  let opened = 0;
+  act(() =>
+    root.render(
+      <ContactFab
+        items={items}
+        {...labels}
+        chat={{ label: 'Chat với Lucy', onOpen: () => (opened += 1) }}
+      />,
+    ),
+  );
+  const toggle = () => container.querySelector('.ls-contact-toggle') as HTMLButtonElement;
+  act(() => toggle().click());
+  assert.equal((container.querySelector('.ls-contact') as HTMLElement).dataset['open'], 'true');
+  act(() => (container.querySelector('[data-kind="chat"]') as HTMLButtonElement).click());
+  assert.equal(opened, 1);
+  assert.equal((container.querySelector('.ls-contact') as HTMLElement).dataset['open'], 'false');
+  act(() => root.unmount());
+});

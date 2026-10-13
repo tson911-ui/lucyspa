@@ -2,6 +2,7 @@ import type { PublicSiteResponse } from '@lucy-spa/contracts';
 import { ContactFab, type ContactFabItem } from '@lucy-spa/ui';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
+import { ChatContact } from './chat-contact';
 
 /**
  * The ways to reach the spa for the floating button, in order: Zalo, Messenger, phone. An empty link is left out; the
@@ -33,6 +34,16 @@ export function ContactWidget({
 }) {
   const text = getSiteText(locale).contactFab;
   const items = contactItems(site, text);
+  // The chat entry (Claude integration Wave B) is part of the same control; it exists only while the Owner has the chat switched on.
+  if (site?.chatEnabled) {
+    return (
+      <ChatContact
+        locale={locale}
+        items={items}
+        labels={{ open: text.open, close: text.close, group: text.group, chat: text.chat }}
+      />
+    );
+  }
   if (items.length === 0) return null;
   return (
     <ContactFab

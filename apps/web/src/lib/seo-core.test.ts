@@ -39,6 +39,7 @@ const site: PublicSiteResponse = {
     { weekdays: [7], closed: true, opensAt: null, closesAt: null },
   ],
   heroImage: null,
+  chatEnabled: false,
 };
 
 const headersOf = (values: Record<string, string>) => (name: string) => values[name] ?? null;

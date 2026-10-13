@@ -162,6 +162,7 @@ const vi = {
     productTextCleanup: 'Dọn lời đánh giá',
     aiDrafts: 'Viết lại nội dung',
     aiSettings: 'Cài đặt AI',
+    chatRequests: 'Yêu cầu gọi lại',
     onlineOrders: 'Đơn online',
     inventory: 'Kho hàng',
     productOrders: 'Hàng đặt trước',
@@ -1433,6 +1434,12 @@ const vi = {
       MANAGE_AI_SETTINGS:
         'Bật tính năng AI, đặt hạn mức chi phí, chọn mô hình, kiểm tra kết nối khóa (chỉ Chủ)',
       USE_AI_CONTENT: 'Chạy AI viết lại nội dung sản phẩm, xem, sửa, từ chối và áp dụng bản nháp',
+      MANAGE_CHAT_REQUESTS:
+        'Xem và xử lý các yêu cầu gọi lại khách để lại trong khung chat của website',
+      USE_AI_ASSISTANT:
+        'Hỏi trợ lý AI về số liệu báo cáo (chỉ đọc, chỉ trong phạm vi bạn được xem)',
+      VIEW_CUSTOMER_BRIEF:
+        'Xem tóm tắt khách và gợi ý sản phẩm cho lịch hẹn của chính mình (kỹ thuật viên được giao)',
     },
     duplicateCode: 'Mã vai trò này đã tồn tại.',
     managerGroupHolders:
@@ -2820,6 +2827,7 @@ const en: Dictionary = {
     productTextCleanup: 'Clean supplier comments',
     aiDrafts: 'Rewrite content',
     aiSettings: 'AI settings',
+    chatRequests: 'Callback requests',
     onlineOrders: 'Online orders',
     inventory: 'Inventory',
     productOrders: 'Pre-orders',
@@ -4098,6 +4106,12 @@ const en: Dictionary = {
         'Switch the AI features on, set spending caps, choose the model, check the key connection',
       USE_AI_CONTENT:
         'Run the AI product-text rewrite and review, edit, reject and apply the drafts',
+      MANAGE_CHAT_REQUESTS:
+        'View and handle the callback requests visitors leave in the website chat',
+      USE_AI_ASSISTANT:
+        'Ask the AI assistant about report figures (read-only, only what you may already see)',
+      VIEW_CUSTOMER_BRIEF:
+        'See the customer summary and product talking points for your own assigned bookings',
     },
     duplicateCode: 'This role code already exists.',
     managerGroupHolders:

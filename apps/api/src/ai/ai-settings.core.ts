@@ -59,6 +59,14 @@ function presentSettings(row: Row): AiSettings {
           (entry): entry is string => typeof entry === 'string',
         )
       : [],
+    chatEnabled: row.chatEnabled,
+    chatDailyCap: row.chatDailyCap,
+    seoEnabled: row.seoEnabled,
+    seoModel: row.seoModel as AiModelId,
+    assistantEnabled: row.assistantEnabled,
+    assistantModel: row.assistantModel as AiModelId,
+    briefEnabled: row.briefEnabled,
+    briefModel: row.briefModel as AiModelId,
     runAllUnlockedAt: row.runAllUnlockedAt === null ? null : row.runAllUnlockedAt.toISOString(),
     rowVersion: row.rowVersion,
   };
@@ -98,6 +106,12 @@ export async function loadSettingsResponse(
           ? (status as AiKeyCheckStatus)
           : null,
       checkPending,
+    },
+    integrations: {
+      chatWebhookConfigured:
+        (env['N8N_CHAT_WEBHOOK_URL'] ?? '').trim() !== '' &&
+        (env['CHAT_WEBHOOK_SECRET'] ?? '').trim() !== '',
+      botDataConfigured: (env['BOT_DATA_KEY'] ?? '').trim() !== '',
     },
     usage: {
       spentVnd: toVnd(all.spentMicroUsd),
@@ -271,6 +285,37 @@ export async function editSettings(
     if (value !== current.concurrency) {
       data.concurrency = value;
       note('concurrency', current.concurrency, value);
+    }
+  }
+  // The switches of the later features (Waves B to D): each is its own boolean, off until the Owner turns it on.
+  for (const key of ['chatEnabled', 'seoEnabled', 'assistantEnabled', 'briefEnabled'] as const) {
+    if (request[key] === undefined) continue;
+    const next = bool(request[key], key);
+    if (next !== current[key]) {
+      data[key] = next;
+      note(key, current[key], next);
+    }
+  }
+  // A model per feature, chosen from the same allow-list as the rewrite.
+  for (const key of ['seoModel', 'assistantModel', 'briefModel'] as const) {
+    const value = request[key];
+    if (value === undefined) continue;
+    if (!(AI_MODEL_IDS as readonly string[]).includes(value)) {
+      throw new AuthError('VALIDATION_FAILED', key);
+    }
+    if (value !== current[key]) {
+      data[key] = value;
+      note(key, current[key], value);
+    }
+  }
+  if (request.chatDailyCap !== undefined) {
+    const value = request.chatDailyCap;
+    if (!Number.isInteger(value) || value < 0 || value > AI_LIMITS.chatDailyCapMax) {
+      throw new AuthError('VALIDATION_FAILED', 'chatDailyCap');
+    }
+    if (value !== current.chatDailyCap) {
+      data.chatDailyCap = value;
+      note('chatDailyCap', current.chatDailyCap, value);
     }
   }
   if (request.bannedPhrases !== undefined) {

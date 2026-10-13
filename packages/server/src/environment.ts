@@ -34,6 +34,9 @@ const api = shared.extend({
   BOT_DATA_KEY: z.string().min(32).max(200).optional(),
   BOT_DATA_HOST: z.string().min(1).default('127.0.0.1'),
   BOT_DATA_PORT: port.default(3101),
+  // Claude integration (CI-B2): the website chat relays one visitor message to this n8n webhook, with this header secret. Both or none.
+  N8N_CHAT_WEBHOOK_URL: z.string().max(500).optional(),
+  CHAT_WEBHOOK_SECRET: z.string().max(200).optional(),
 });
 
 function validate<S extends z.ZodType>(schema: S, env: NodeJS.ProcessEnv): z.output<S> {
@@ -87,6 +90,49 @@ function botDataOf(config: {
   return { key: config.BOT_DATA_KEY, host: config.BOT_DATA_HOST, port: config.BOT_DATA_PORT };
 }
 
+/**
+ * The website chat's n8n webhook (design 6.3): an address and a header secret, both or none (a half configuration fails closed at startup,
+ * naming only the variables). The visitor's message is sent there, so a typo must never send it to a stranger: plain http is accepted
+ * only for localhost and private addresses (n8n runs on the same server, or on the Docker bridge), https for any host.
+ */
+export function parseChatWebhook(env: NodeJS.ProcessEnv): { url: string; secret: string } | null {
+  const url = env['N8N_CHAT_WEBHOOK_URL']?.trim() ?? '';
+  const secret = env['CHAT_WEBHOOK_SECRET']?.trim() ?? '';
+  if (url === '' && secret === '') return null;
+  if (url === '') throw new Error('Invalid environment configuration: N8N_CHAT_WEBHOOK_URL');
+  if (secret.length < 16) throw new Error('Invalid environment configuration: CHAT_WEBHOOK_SECRET');
+  if (!URL.canParse(url))
+    throw new Error('Invalid environment configuration: N8N_CHAT_WEBHOOK_URL');
+  const parsed = new URL(url);
+  const host = parsed.hostname.replace(/^\[|\]$/g, '');
+  const local = host === 'localhost' || isPrivateHost(host);
+  if (
+    parsed.username !== '' ||
+    parsed.password !== '' ||
+    !(parsed.protocol === 'https:' || (parsed.protocol === 'http:' && local))
+  ) {
+    throw new Error('Invalid environment configuration: N8N_CHAT_WEBHOOK_URL');
+  }
+  return { url: parsed.toString(), secret };
+}
+
+/** An IP literal in a loopback, private, link-local or carrier-grade range (a host name other than localhost never counts). */
+function isPrivateHost(host: string): boolean {
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (v4) {
+    const [a = 0, b = 0] = [Number(v4[1]), Number(v4[2])];
+    return (
+      a === 127 ||
+      a === 10 ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 169 && b === 254) ||
+      (a === 100 && b >= 64 && b <= 127)
+    );
+  }
+  return host === '::1' || /^f[cd][0-9a-f]{2}:/i.test(host) || /^fe80:/i.test(host);
+}
+
 export function parseApiEnvironment(env: NodeJS.ProcessEnv) {
   const config = validate(api, env);
   return {
@@ -101,6 +147,7 @@ export function parseApiEnvironment(env: NodeJS.ProcessEnv) {
     payos: parsePayosEnvironment(env),
     mediaStorageDir: parseMediaStorageDirectory(env, config.NODE_ENV),
     botData: botDataOf(config),
+    chatWebhook: parseChatWebhook(env),
     swaggerEnabled:
       config.SWAGGER_ENABLED === undefined
         ? config.NODE_ENV !== 'production'

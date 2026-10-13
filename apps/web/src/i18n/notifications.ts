@@ -139,6 +139,7 @@ const vi = {
     ONLINE_ORDER_ALERT:
       'Có đơn hàng online chưa gửi đúng hẹn hoặc đã gửi lâu mà chưa có ngày giao.',
     SUPPLIER_IMPORT_CHANGES: 'Có cập nhật mới từ nhà cung cấp.',
+    CHAT_CALLBACK_REQUEST: 'Có khách để lại số điện thoại trên website, nhờ tiệm gọi lại.',
   } satisfies Record<NotificationType, string>,
   leave: {
     requested: 'Có đơn xin nghỉ ({type}) từ {from} đến {to} cần bạn xử lý.',
@@ -324,6 +325,8 @@ const en: Dictionary = {
     ONLINE_ORDER_ALERT:
       'Some online orders were not shipped in time, or were shipped long ago with no delivery date.',
     SUPPLIER_IMPORT_CHANGES: 'There is something new from a supplier.',
+    CHAT_CALLBACK_REQUEST:
+      'A visitor left a phone number on the website and asks to be called back.',
   },
   leave: {
     requested: 'A leave request ({type}) from {from} to {to} needs your attention.',

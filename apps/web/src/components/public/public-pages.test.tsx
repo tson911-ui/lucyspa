@@ -50,6 +50,7 @@ const site: PublicSiteResponse = {
     { weekdays: [7], closed: true, opensAt: null, closesAt: null },
   ],
   heroImage: null,
+  chatEnabled: false,
 };
 
 const unit = {

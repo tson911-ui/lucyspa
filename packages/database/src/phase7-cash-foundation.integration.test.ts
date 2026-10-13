@@ -58,7 +58,7 @@ test('Phase 7 P7-2 permissions, tables and guards (all fixtures roll back)', asy
           const exec = (sql: string, ...params: unknown[]) => tx.$executeRawUnsafe(sql, ...params);
 
           await context.test(
-            'the catalog has 79 codes; the five new ones have the right semantics',
+            'the catalog has 82 codes; the five new ones have the right semantics',
             async () => {
               const labels = (
                 await rows<{ labels: string[] }>(
@@ -72,7 +72,7 @@ test('Phase 7 P7-2 permissions, tables and guards (all fixtures roll back)', asy
                   code,
                 );
               }
-              assert.equal(PERMISSION_CATALOG.length, 79);
+              assert.equal(PERMISSION_CATALOG.length, 82);
               await syncPermissionCatalog(tx);
               for (const [code, scope, classification] of PHASE7_CODES) {
                 const stored = await tx.permission.findFirstOrThrow({
@@ -82,7 +82,7 @@ test('Phase 7 P7-2 permissions, tables and guards (all fixtures roll back)', asy
                 assert.equal(stored.scopeCapability, scope, code);
                 assert.equal(stored.dataClassification, classification, code);
               }
-              assert.equal(await tx.permission.count(), 79);
+              assert.equal(await tx.permission.count(), 82);
             },
           );
 

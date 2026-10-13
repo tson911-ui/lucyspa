@@ -404,6 +404,9 @@ enum PermissionCode {
   VIEW_REVIEWS
   MANAGE_AI_SETTINGS
   USE_AI_CONTENT
+  MANAGE_CHAT_REQUESTS
+  USE_AI_ASSISTANT
+  VIEW_CUSTOMER_BRIEF
 }
 
 enum LeaveStatus {
@@ -5588,6 +5591,14 @@ model AiSettings {
   refusalFallback         Boolean   @default(true) @map("refusal_fallback")
   allowAuthenticityClaims Boolean   @default(false) @map("allow_authenticity_claims")
   bannedPhrases           Json      @default("[]") @map("banned_phrases") @db.JsonB
+  chatEnabled             Boolean   @default(false) @map("chat_enabled")
+  chatDailyCap            Int       @default(300) @map("chat_daily_cap")
+  seoEnabled              Boolean   @default(false) @map("seo_enabled")
+  seoModel                String    @default("claude-opus-5-5") @map("seo_model")
+  assistantEnabled        Boolean   @default(false) @map("assistant_enabled")
+  assistantModel          String    @default("claude-sonnet-5-5") @map("assistant_model")
+  briefEnabled            Boolean   @default(false) @map("brief_enabled")
+  briefModel              String    @default("claude-sonnet-5-5") @map("brief_model")
   runAllUnlockedAt        DateTime? @map("run_all_unlocked_at") @db.Timestamptz(3)
   runAllUnlockedByUserId  String?   @map("run_all_unlocked_by_user_id") @db.Uuid
   checkRequestedAt        DateTime? @map("check_requested_at") @db.Timestamptz(3)
@@ -5599,6 +5610,29 @@ model AiSettings {
   updatedAt               DateTime  @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
 
   @@map("ai_settings")
+}
+
+// Claude integration Wave B (migration 20261213000002): what the website chat stores when it cannot answer. No relations are declared on purpose
+// (the foreign keys live in the migration); the chat transcript is never stored.
+model ChatCallbackRequest {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  status            String    @default("NEW")
+  reason            String
+  locale            String    @default("vi")
+  phone             String?
+  name              String?
+  note              String?
+  preferredBranchId String?   @map("preferred_branch_id") @db.Uuid
+  handledByUserId   String?   @map("handled_by_user_id") @db.Uuid
+  handledAt         DateTime? @map("handled_at") @db.Timestamptz(3)
+  closedAt          DateTime? @map("closed_at") @db.Timestamptz(3)
+  purgedAt          DateTime? @map("purged_at") @db.Timestamptz(3)
+  rowVersion        Int       @default(1) @map("row_version")
+  createdAt         DateTime  @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
+
+  @@index([status, createdAt(sort: Desc)], map: "chat_callback_requests_inbox_idx")
+  @@map("chat_callback_requests")
 }
 
 model AiRun {

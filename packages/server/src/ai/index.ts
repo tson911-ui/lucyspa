@@ -75,3 +75,4 @@ export {
   type RewriteEngineState,
   type TickResult,
 } from './rewrite-engine.js';
+export { RETENTION_DAYS, runAiRetention, type RetentionResult } from './retention.js';

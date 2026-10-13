@@ -3,7 +3,10 @@ import { test } from 'node:test';
 import {
   bookingTotals,
   formatFixedTotal,
+  bookingPrefillFromSearch,
   groupByCategory,
+  prefillBranchId,
+  prefillDate,
   preselectServiceIds,
   serviceCodesFromSearch,
   type BranchService,
@@ -88,4 +91,41 @@ test('totals add the fixed prices; per-nail services add time but no figure, onl
   const onlyNail = bookingTotals([nail]);
   assert.equal(formatFixedTotal(onlyNail, 'vi'), null);
   assert.equal(formatFixedTotal(bookingTotals([]), 'vi'), '0 ₫');
+});
+
+test('the chat booking link names services with services=, and the old service= links still work', () => {
+  assert.deepEqual(serviceCodesFromSearch('?services=goi-dau,massage'), ['goi-dau', 'massage']);
+  assert.deepEqual(serviceCodesFromSearch('?service=A&services=B,A'), ['A', 'B']);
+});
+
+test('the booking link names a branch, a real day and a start time; anything malformed is left out', () => {
+  assert.deepEqual(
+    bookingPrefillFromSearch('?branch=hai-chau&services=a&date=2026-11-05&time=14%3A30'),
+    { branchCode: 'hai-chau', date: '2026-11-05', time: '14:30' },
+  );
+  assert.deepEqual(bookingPrefillFromSearch(''), { branchCode: null, date: null, time: null });
+  assert.deepEqual(
+    bookingPrefillFromSearch('?branch=https%3A%2F%2Fevil.example&date=2026-02-30&time=25:00'),
+    { branchCode: null, date: null, time: null },
+  );
+  assert.deepEqual(bookingPrefillFromSearch('?date=05/11/2026&time=2pm'), {
+    branchCode: null,
+    date: null,
+    time: null,
+  });
+});
+
+test('the linked branch and day are used only when the customer has that branch and the day is bookable', () => {
+  const branches = [
+    { id: 'b1', code: 'hai-chau' },
+    { id: 'b2', code: 'son-tra' },
+  ];
+  assert.equal(prefillBranchId('son-tra', branches), 'b2');
+  assert.equal(prefillBranchId('gone', branches), null);
+  assert.equal(prefillBranchId(null, branches), null);
+  assert.equal(prefillDate('2026-11-05', '2026-11-01', '2026-12-31'), '2026-11-05');
+  assert.equal(prefillDate('2026-11-01', '2026-11-01', '2026-12-31'), '2026-11-01');
+  assert.equal(prefillDate('2026-10-31', '2026-11-01', '2026-12-31'), null);
+  assert.equal(prefillDate('2027-01-01', '2026-11-01', '2026-12-31'), null);
+  assert.equal(prefillDate(null, '2026-11-01', '2026-12-31'), null);
 });

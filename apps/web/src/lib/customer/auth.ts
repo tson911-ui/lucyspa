@@ -103,6 +103,16 @@ export function completeCustomerReset(
   return api.post<void>('/api/v1/auth/password-reset/complete', body);
 }
 
+/**
+ * The sign-in page an anonymous visitor of a member page is sent to, carrying the page to come back to. The query string travels too
+ * (a booking link names the services, the branch, the day and the time; `?service=CODE` of a "Đặt lịch" button): without it the visitor
+ * would return to the bare page and lose what the link chose.
+ */
+export function loginHref(base: string, pathname: string, search: string): string {
+  const query = search.startsWith('?') && search.length > 1 ? search : '';
+  return `${base}/login?next=${encodeURIComponent(`${pathname}${query}`)}`;
+}
+
 /** Pages outside the member area that a sign-in may return to (Phase 6 P6-19: the shop's product pages, cart and checkout). */
 const SHOP_RETURN_PAGES = ['products', 'cart', 'checkout'] as const;
 

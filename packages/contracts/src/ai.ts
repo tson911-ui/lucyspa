@@ -30,6 +30,7 @@ export const AI_LIMITS = Object.freeze({
   vndPerUsdMin: 1_000,
   vndPerUsdMax: 1_000_000,
   concurrencyMax: 4,
+  chatDailyCapMax: 5_000,
   bannedPhrasesMax: 100,
   bannedPhraseMin: 2,
   bannedPhraseMax: 80,
@@ -52,6 +53,19 @@ export interface AiSettings {
   /** "chính hãng" and similar claims may be written only when this is on (default off, Owner answer to OQ-CI-8). */
   allowAuthenticityClaims: boolean;
   bannedPhrases: string[];
+  /** The website chat (feature 2): visitors may talk to the n8n bot; off = no chat entry on the site. */
+  chatEnabled: boolean;
+  /** Most messages the chat relays to the bot per day (shop time); past it the widget shows the callback form. */
+  chatDailyCap: number;
+  /** SEO descriptions and English drafts of services, the home page and site blocks (feature 8). */
+  seoEnabled: boolean;
+  seoModel: AiModelId;
+  /** The report question box (feature 4). */
+  assistantEnabled: boolean;
+  assistantModel: AiModelId;
+  /** The customer summary for the KTV and the cosmetics talking points (features 6 and 7). */
+  briefEnabled: boolean;
+  briefModel: AiModelId;
   /** The Owner pressed "Cho phép chạy tiếp" after reviewing the first 3 products. */
   runAllUnlockedAt: string | null;
   rowVersion: number;
@@ -82,10 +96,17 @@ export interface AiUsageCard {
   byFeature: AiUsageLine[];
 }
 
+/** What the server's environment has for the n8n side (never the secrets): the chat needs the webhook, the bot data port needs its key. */
+export interface AiIntegrationStatus {
+  chatWebhookConfigured: boolean;
+  botDataConfigured: boolean;
+}
+
 /** GET /api/v1/ai/settings, and the answer of every change. */
 export interface AiSettingsResponse {
   settings: AiSettings;
   key: AiKeyStatus;
+  integrations: AiIntegrationStatus;
   usage: AiUsageCard;
 }
 
@@ -103,6 +124,14 @@ export interface AiSettingsEditRequest {
   refusalFallback?: boolean;
   allowAuthenticityClaims?: boolean;
   bannedPhrases?: string[];
+  chatEnabled?: boolean;
+  chatDailyCap?: number;
+  seoEnabled?: boolean;
+  seoModel?: AiModelId;
+  assistantEnabled?: boolean;
+  assistantModel?: AiModelId;
+  briefEnabled?: boolean;
+  briefModel?: AiModelId;
 }
 
 /** POST /api/v1/ai/settings/check: asks the worker to test the key (a free call). */

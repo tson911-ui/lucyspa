@@ -773,6 +773,9 @@ export type PermissionCodeName =
   | 'VIEW_REVIEWS'
   | 'MANAGE_AI_SETTINGS'
   | 'USE_AI_CONTENT'
+  | 'MANAGE_CHAT_REQUESTS'
+  | 'USE_AI_ASSISTANT'
+  | 'VIEW_CUSTOMER_BRIEF'
   | 'ACTIVATE_LOYALTY'
   | 'CHANGE_REFERRER';
 
@@ -3567,6 +3570,8 @@ export interface PublicSiteResponse {
   timezone: string;
   hours: PublicHoursGroup[];
   heroImage: PublicSiteImage | null;
+  /** The chat entry is shown (AI master switch and the chat switch are both on); the widget still falls back to the callback form. */
+  chatEnabled: boolean;
 }
 
 export interface WebsiteShopInfoInput {
@@ -4951,3 +4956,4 @@ export * from './product-text-cleanup.js';
 export * from './ai.js';
 export * from './ai-drafts.js';
 export * from './ai-runs.js';
+export * from './chat.js';

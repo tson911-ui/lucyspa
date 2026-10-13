@@ -212,6 +212,105 @@ test(
           );
         },
       );
+
+      await suite.test(
+        'the switches of Waves B to D: off by default, changed one by one and audited, models from the allow-list, the chat cap bounded, environment flags without secrets',
+        async () => {
+          const read = await ai.getSettings(manager.token);
+          assert.equal(read.settings.chatEnabled, false);
+          assert.equal(read.settings.chatDailyCap, 300);
+          assert.equal(read.settings.seoEnabled, false);
+          assert.equal(read.settings.assistantEnabled, false);
+          assert.equal(read.settings.briefEnabled, false);
+          assert.equal(read.settings.seoModel, 'claude-opus-5-5');
+          assert.equal(read.settings.assistantModel, 'claude-sonnet-5-5');
+          assert.equal(read.settings.briefModel, 'claude-sonnet-5-5');
+          ai.env = {};
+          assert.deepEqual((await ai.getSettings(manager.token)).integrations, {
+            chatWebhookConfigured: false,
+            botDataConfigured: false,
+          });
+          // Both the address and the secret are needed for the chat.
+          ai.env = { N8N_CHAT_WEBHOOK_URL: 'http://127.0.0.1:5678/webhook/x' };
+          assert.equal(
+            (await ai.getSettings(manager.token)).integrations.chatWebhookConfigured,
+            false,
+          );
+          ai.env = {
+            N8N_CHAT_WEBHOOK_URL: 'http://127.0.0.1:5678/webhook/x',
+            CHAT_WEBHOOK_SECRET: 'secret-that-must-never-appear',
+            BOT_DATA_KEY: 'bot-key-that-must-never-appear',
+          };
+          const withEnv = await ai.getSettings(manager.token);
+          assert.deepEqual(withEnv.integrations, {
+            chatWebhookConfigured: true,
+            botDataConfigured: true,
+          });
+          assert.ok(!JSON.stringify(withEnv).includes('must-never-appear'));
+          const changed = await ai.editSettings(manager.token, {
+            expectedRowVersion: read.settings.rowVersion,
+            chatEnabled: true,
+            chatDailyCap: 150,
+            seoEnabled: true,
+            assistantEnabled: true,
+            briefEnabled: true,
+            assistantModel: 'claude-haiku-5-5',
+            briefModel: 'claude-opus-5-5',
+          });
+          assert.equal(changed.settings.chatEnabled, true);
+          assert.equal(changed.settings.chatDailyCap, 150);
+          assert.equal(changed.settings.seoEnabled, true);
+          assert.equal(changed.settings.assistantModel, 'claude-haiku-5-5');
+          assert.equal(changed.settings.briefModel, 'claude-opus-5-5');
+          assert.equal(changed.settings.seoModel, 'claude-opus-5-5');
+          const events = await tx.auditEvent.findMany({
+            where: { action: 'AI_SETTINGS_CHANGED' },
+            orderBy: { occurredAt: 'desc' },
+            take: 1,
+          });
+          const after = events[0]!.after as Record<string, unknown>;
+          assert.equal(after['chatDailyCap'], 150);
+          assert.equal(after['assistantModel'], 'claude-haiku-5-5');
+          await fails(
+            () =>
+              ai.editSettings(manager.token, {
+                expectedRowVersion: changed.settings.rowVersion,
+                chatDailyCap: 5001,
+              }),
+            'VALIDATION_FAILED',
+            'chatDailyCap',
+          );
+          await fails(
+            () =>
+              ai.editSettings(manager.token, {
+                expectedRowVersion: changed.settings.rowVersion,
+                chatDailyCap: 1.5,
+              }),
+            'VALIDATION_FAILED',
+            'chatDailyCap',
+          );
+          await fails(
+            () =>
+              ai.editSettings(manager.token, {
+                expectedRowVersion: changed.settings.rowVersion,
+                seoModel: 'gpt-4' as never,
+              }),
+            'VALIDATION_FAILED',
+            'seoModel',
+          );
+          await fails(
+            () =>
+              ai.editSettings(manager.token, {
+                expectedRowVersion: changed.settings.rowVersion,
+                chatEnabled: 'yes' as never,
+              }),
+            'VALIDATION_FAILED',
+            'chatEnabled',
+          );
+          // Put the environment back for any step after this one.
+          ai.env = { ANTHROPIC_API_KEY: 'sk-ant-secret-key-that-must-never-appear' };
+        },
+      );
     });
   },
 );

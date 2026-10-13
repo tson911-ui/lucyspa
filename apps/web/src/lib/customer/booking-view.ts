@@ -8,16 +8,69 @@ export type BranchService = CustomerBookingBranchResponse['services'][number];
 
 const MAX_PRESELECT = 10;
 
-/** The codes of `?service=A,B` (also repeated `service=` parameters): trimmed, without repeats, at most ten. */
+/**
+ * The codes of `?service=A,B` (also repeated `service=` parameters, and `services=A,B` as the website chat's booking link names
+ * them): trimmed, without repeats, at most ten.
+ */
 export function serviceCodesFromSearch(search: string): string[] {
   const codes: string[] = [];
-  for (const value of new URLSearchParams(search).getAll('service')) {
+  const params = new URLSearchParams(search);
+  for (const value of [...params.getAll('service'), ...params.getAll('services')]) {
     for (const part of value.split(',')) {
       const code = part.trim();
       if (code && code.length <= 64 && !codes.includes(code)) codes.push(code);
     }
   }
   return codes.slice(0, MAX_PRESELECT);
+}
+
+export interface BookingPrefill {
+  /** The branch code of `?branch=`. */
+  branchCode: string | null;
+  /** A real calendar date of `?date=YYYY-MM-DD`. */
+  date: string | null;
+  /** A start time `HH:MM` of `?time=`. */
+  time: string | null;
+}
+
+const CODE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+
+/**
+ * What the booking link of the website chat (and the n8n bots) names beyond the services: the branch, the day and the start time.
+ * Read only and forgiving: a value that is not well formed is simply left out, so a wrong link opens the ordinary booking page. The
+ * customer still signs in, still sees every step and confirms; the server re-checks the slot like any other.
+ */
+export function bookingPrefillFromSearch(search: string): BookingPrefill {
+  const params = new URLSearchParams(search);
+  const branch = params.get('branch')?.trim() ?? '';
+  const date = params.get('date')?.trim() ?? '';
+  const time = params.get('time')?.trim() ?? '';
+  const realDate =
+    /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+    new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date;
+  return {
+    branchCode: CODE.test(branch) ? branch : null,
+    date: realDate ? date : null,
+    time: /^([01]\d|2[0-3]):[0-5]\d$/.test(time) ? time : null,
+  };
+}
+
+/** The branch id for a code the link named; null when no branch of the customer's list has it. */
+export function prefillBranchId(
+  code: string | null,
+  branches: readonly { id: string; code: string }[],
+): string | null {
+  if (code === null) return null;
+  return branches.find((branch) => branch.code === code)?.id ?? null;
+}
+
+/** The linked day when it is inside the bookable range of the branch, otherwise null. */
+export function prefillDate(
+  date: string | null,
+  firstDate: string,
+  lastDate: string,
+): string | null {
+  return date !== null && date >= firstDate && date <= lastDate ? date : null;
 }
 
 /** Service ids for the codes, in the order of the codes; a code the branch does not offer is dropped. */

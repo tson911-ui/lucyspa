@@ -237,6 +237,15 @@ export const PERMISSION_CATALOG = Object.freeze([
   // review. Both GLOBAL_ONLY and STANDARD (no customer or pay data); granted to nobody.
   { code: 'MANAGE_AI_SETTINGS', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'STANDARD' },
   { code: 'USE_AI_CONTENT', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'STANDARD' },
+  // Claude integration Waves B to D (Owner, 2026-10-13): the website chat's callback inbox, the report question box and the customer brief
+  // (KTV summary and cosmetics talking points; branch-capable, with the assigned-staff and time-window rule on top). Granted to nobody.
+  { code: 'MANAGE_CHAT_REQUESTS', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'STANDARD' },
+  { code: 'USE_AI_ASSISTANT', scopeCapability: 'GLOBAL_ONLY', dataClassification: 'STANDARD' },
+  {
+    code: 'VIEW_CUSTOMER_BRIEF',
+    scopeCapability: 'BRANCH_CAPABLE',
+    dataClassification: 'STANDARD',
+  },
 ] as const satisfies readonly PermissionDefinition[]);
 
 /** Codes that only the virtual Owner holds: no role and no override may carry them (SQL refuses too). */

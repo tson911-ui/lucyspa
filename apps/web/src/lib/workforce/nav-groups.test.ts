@@ -44,7 +44,7 @@ test('regrouping never changes who sees what: sidebar + user menu hold exactly n
 test('the Owner sees the contract groups in the contract order', () => {
   assert.deepEqual(shape(owner), {
     overview: ['dashboard'],
-    operations: ['bookingBoard', 'walkIn', 'reassignment', 'collaboratorSchedule'],
+    operations: ['bookingBoard', 'walkIn', 'reassignment', 'collaboratorSchedule', 'chatRequests'],
     sales: [
       'pos',
       'discounts',

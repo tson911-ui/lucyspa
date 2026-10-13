@@ -51,6 +51,7 @@ const site: PublicSiteResponse = {
   timezone: 'Asia/Ho_Chi_Minh',
   hours: [{ weekdays: [1, 2, 3, 4, 5, 6, 7], closed: false, opensAt: '09:00', closesAt: '21:00' }],
   heroImage: null,
+  chatEnabled: false,
 };
 
 test('footer blocks: kept when well formed, an unsafe link or a malformed or unknown block is dropped alone', () => {

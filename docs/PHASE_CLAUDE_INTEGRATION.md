@@ -266,7 +266,7 @@ Endpoints (all `GET`, JSON, plain text fields, server cache 60 s, `ETag`):
 
 - **Excluded for good:** cost and margin, supplier reference prices (Phase 9: never public), voucher/redemption codes, exact stock, customers, bookings of others, invoices, payments, staff pay, KTV schedules, internal notes, **any customer comment or testimonial**.
 - **Availability** needs an anonymous variant of the booking planner: `loadAvailabilityFacts` is called with `customerUserId = null` and every line `ANY`; CI-B1 first checks that the engine accepts that (it uses the customer id to avoid overlapping the customer's own bookings) and adds the smallest change if not. Times are advisory, as for members.
-- **Deep link:** bookings stay **member-only**, so the bot cannot create one. Replies may include `https://<site>/vi/book?branch=..&services=..&date=..&time=..`. The book screen reads no URL parameters today, so a **web step** adds read-only prefill (customer still signs in and confirms; invalid parameters are ignored); whether sign-in returns the customer to the prefilled page is checked there.
+- **Deep link:** bookings stay **member-only**, so the bot cannot create one. Replies may include `https://<site>/vi/account/book?branch=..&services=..&date=..&time=..`. The book screen reads no URL parameters today, so a **web step** adds read-only prefill (customer still signs in and confirms; invalid parameters are ignored); whether sign-in returns the customer to the prefilled page is checked there.
 
 ### 6.3 Website chat widget (CI-B2, ⚠)
 

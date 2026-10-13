@@ -64,6 +64,9 @@ import { AiRunsController } from './ai/ai-runs.controller.js';
 import { BotDataServer } from './bot/bot.server.js';
 import { BotDataService } from './bot/bot.service.js';
 import { AiService } from './ai/ai.service.js';
+import { ChatRequestController, PublicChatController } from './chat/chat.controller.js';
+import { ChatRequestService } from './chat/chat-requests.service.js';
+import { PublicChatService } from './chat/chat.service.js';
 import { ProductTextCleanupController } from './products/product-text-cleanup.controller.js';
 import { ProductTextCleanupService } from './products/product-text-cleanup.service.js';
 import { ProductImageZipController } from './product-imports/image-zip.controller.js';
@@ -204,6 +207,8 @@ export class AppModule {
         ProductImportController,
         ProductTextCleanupController,
         AiController,
+        PublicChatController,
+        ChatRequestController,
         AiDraftsController,
         AiRunsController,
         ProductImageZipController,
@@ -296,6 +301,8 @@ export class AppModule {
         ProductImportService,
         ProductTextCleanupService,
         AiService,
+        PublicChatService,
+        ChatRequestService,
         ProductImageZipService,
         RewardService,
         CustomerLoyaltyService,

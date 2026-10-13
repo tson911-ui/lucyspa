@@ -58,6 +58,7 @@ const ONLINE_MEMBER = [
 ];
 const ONLINE_STAFF = ['ONLINE_ORDER_NEW', 'ONLINE_ORDER_ALERT'];
 const SUPPLIER_IMPORT = ['SUPPLIER_IMPORT_CHANGES'];
+const CHAT_CALLBACK = ['CHAT_CALLBACK_REQUEST'];
 
 test('the registry keeps every Phase 3 type unchanged and adds the Leave, finance and stock alert types', () => {
   assert.deepEqual(
@@ -75,6 +76,7 @@ test('the registry keeps every Phase 3 type unchanged and adds the Leave, financ
       ...ONLINE_MEMBER,
       ...ONLINE_STAFF,
       ...SUPPLIER_IMPORT,
+      ...CHAT_CALLBACK,
     ].sort(),
   );
   assert.deepEqual(notificationMetadata('SUPPLIER_IMPORT_CHANGES').entityTypes, ['SupplierSource']);
@@ -127,12 +129,17 @@ test('category filters are derived from the registry, and targets from the entit
       RETURNS.length +
       ORDER_ALERT.length +
       ONLINE_STAFF.length +
-      SUPPLIER_IMPORT.length,
+      SUPPLIER_IMPORT.length +
+      CHAT_CALLBACK.length,
   );
   assert.equal(notificationTarget('ProductVariant'), 'PRODUCT_VARIANT');
   assert.equal(notificationTarget('Invoice'), 'INVOICE');
   assert.equal(notificationTarget('Branch'), 'BRANCH');
   assert.equal(notificationTarget('SupplierSource'), 'SUPPLIER_IMPORTS');
+  assert.equal(notificationTarget('ChatCallbackRequest'), 'CHAT_REQUESTS');
+  assert.deepEqual(notificationMetadata('CHAT_CALLBACK_REQUEST').entityTypes, [
+    'ChatCallbackRequest',
+  ]);
   assert.equal(notificationTarget('Booking'), 'BOOKING');
   assert.equal(notificationTarget('Visit'), 'VISIT');
   assert.equal(notificationTarget('LeaveRequest'), 'LEAVE_REQUEST');

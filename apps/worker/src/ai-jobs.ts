@@ -2,6 +2,7 @@ import type { DatabaseClient } from '@lucy-spa/database';
 import {
   ClaudeClient,
   processKeyCheck,
+  runAiRetention,
   runRewriteTick,
   type RewriteEngineState,
   type createLogger,
@@ -10,6 +11,8 @@ import {
 type Logger = ReturnType<typeof createLogger>;
 
 const TICK_MS = 3000;
+/** What the AI features keep is cleaned up about once an hour (see runAiRetention). */
+const RETENTION_EVERY_MS = 60 * 60 * 1000;
 
 /**
  * Claude integration Wave A: the worker's AI job family. It is the only process (with the API for the interactive features of later
@@ -27,6 +30,7 @@ export function startAiJobs(database: DatabaseClient, env: NodeJS.ProcessEnv, lo
     );
   const rewriteState: RewriteEngineState = { consecutiveFailures: 0 };
   let stopped = false;
+  let lastRetention = 0;
   let running: Promise<void> | undefined;
   let timer: NodeJS.Timeout;
   const tick = () => {
@@ -37,6 +41,13 @@ export function startAiJobs(database: DatabaseClient, env: NodeJS.ProcessEnv, lo
         const rewrite = await runRewriteTick(database, client, rewriteState, { onError: failure });
         if (rewrite.leased > 0)
           logger.info({ items: rewrite.leased }, 'AI rewrite items processed');
+        if (Date.now() - lastRetention >= RETENTION_EVERY_MS) {
+          lastRetention = Date.now();
+          const kept = await runAiRetention(database);
+          if (kept.callbackRequestsCleared > 0) {
+            logger.info({ cleared: kept.callbackRequestsCleared }, 'Old callback requests cleared');
+          }
+        }
       } catch (error) {
         failure(error);
       }

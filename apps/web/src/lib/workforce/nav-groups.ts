@@ -10,7 +10,14 @@ const SIDEBAR_LAYOUT: ReadonlyArray<{ group: NavGroupId; order: readonly NavKey[
   { group: 'overview', order: ['dashboard'] },
   {
     group: 'operations',
-    order: ['bookingBoard', 'walkIn', 'myServices', 'reassignment', 'collaboratorSchedule'],
+    order: [
+      'bookingBoard',
+      'walkIn',
+      'myServices',
+      'reassignment',
+      'collaboratorSchedule',
+      'chatRequests',
+    ],
   },
   {
     group: 'sales',
@@ -125,6 +132,7 @@ export const NAV_ICONS: Record<NavKey, IconName> = {
   roles: 'shield',
   websiteContent: 'image',
   aiSettings: 'settings',
+  chatRequests: 'phone',
   myAccount: 'user',
   myIncome: 'wallet',
   myPayslips: 'receipt',

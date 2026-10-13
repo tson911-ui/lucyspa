@@ -27,6 +27,14 @@ const settings: AiSettings = {
   concurrency: 2,
   refusalFallback: true,
   allowAuthenticityClaims: false,
+  chatEnabled: false,
+  chatDailyCap: 300,
+  seoEnabled: false,
+  seoModel: 'claude-opus-5-5',
+  assistantEnabled: false,
+  assistantModel: 'claude-sonnet-5-5',
+  briefEnabled: false,
+  briefModel: 'claude-sonnet-5-5',
   bannedPhrases: ['số 1'],
   runAllUnlockedAt: null,
   rowVersion: 7,
@@ -62,6 +70,29 @@ test('only what changed is sent: switches, the rate, one cap, the model, the phr
   });
   assert.equal(isDirty(draft, settings), true);
   assert.deepEqual(phrasesOf(' a \n\n b  c '), ['a', 'b c']);
+});
+
+test('the switches of the later features and the chat cap are sent only when they change, and the cap is bounded', () => {
+  const base = draftFromSettings(settings);
+  assert.equal(base.chatDailyCap, '300');
+  const draft = {
+    ...base,
+    chatEnabled: true,
+    chatDailyCap: '120',
+    seoEnabled: true,
+    assistantModel: 'claude-haiku-5-5' as const,
+  };
+  assert.deepEqual(editRequest(draft, settings), {
+    expectedRowVersion: 7,
+    chatEnabled: true,
+    seoEnabled: true,
+    assistantModel: 'claude-haiku-5-5',
+    chatDailyCap: 120,
+  });
+  assert.deepEqual(validateDraft({ ...base, chatDailyCap: '5001' }), { chatDailyCap: true });
+  assert.deepEqual(validateDraft({ ...base, chatDailyCap: '' }), { chatDailyCap: true });
+  assert.deepEqual(validateDraft({ ...base, chatDailyCap: '0' }), {});
+  assert.equal(serverField({ field: 'chatDailyCap' }), 'chatDailyCap');
 });
 
 test('clearing the rate sends null; typing the same value sends nothing', () => {

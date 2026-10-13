@@ -16,6 +16,7 @@ export const NOTIFICATION_ENTITY_TYPES = [
   'ProductReturnCase',
   'ProductOrder',
   'SupplierSource',
+  'ChatCallbackRequest',
 ] as const;
 export type NotificationEntityType = (typeof NOTIFICATION_ENTITY_TYPES)[number];
 
@@ -36,7 +37,8 @@ export type NotificationTargetKind =
   | 'PRODUCT_VARIANT'
   | 'PRODUCT_RETURN'
   | 'PRODUCT_ORDER'
-  | 'SUPPLIER_IMPORTS';
+  | 'SUPPLIER_IMPORTS'
+  | 'CHAT_REQUESTS';
 /** Shape of the structured `params` a type carries. Never free text. */
 export type NotificationParamsKind =
   | 'NONE'
@@ -81,6 +83,7 @@ export const NOTIFICATION_TARGET_BY_ENTITY = {
   ProductReturnCase: 'PRODUCT_RETURN',
   ProductOrder: 'PRODUCT_ORDER',
   SupplierSource: 'SUPPLIER_IMPORTS',
+  ChatCallbackRequest: 'CHAT_REQUESTS',
 } as const satisfies Record<NotificationEntityType, NotificationTargetKind>;
 
 const operations = (severity: NotificationSeverity, i18nKey: string): NotificationTypeMetadata => ({
@@ -222,6 +225,15 @@ export const NOTIFICATION_TYPE_REGISTRY = {
     entityTypes: ['SupplierSource'],
     i18nKey: 'SUPPLIER_IMPORT_CHANGES',
     params: 'SUPPLIER_IMPORT_CHANGES',
+  },
+  // Claude integration Wave B: a visitor of the website chat left a phone number to be called back; tells the holders of MANAGE_CHAT_REQUESTS
+  // (no personal data in the message: the inbox page shows the request).
+  CHAT_CALLBACK_REQUEST: {
+    category: 'OPERATIONS',
+    severity: 'ATTENTION',
+    entityTypes: ['ChatCallbackRequest'],
+    i18nKey: 'CHAT_CALLBACK_REQUEST',
+    params: 'NONE',
   },
 } as const satisfies Record<string, NotificationTypeMetadata>;
 

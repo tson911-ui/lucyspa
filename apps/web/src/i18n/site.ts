@@ -62,6 +62,47 @@ export interface SiteText {
     zalo: string;
     messenger: string;
     call: string;
+    /** The "Chat với Lucy" item (Claude integration Wave B). */
+    chat: string;
+  };
+  /**
+   * The website chat panel and its callback form (Claude integration Wave B, design 6.3). The notice at the top is PROVISIONAL wording
+   * (the Owner's lawyer item, design 9.3): it says the assistant is automatic, that staff do not read the chat and not to type a phone
+   * number or health details.
+   */
+  chat: {
+    title: string;
+    close: string;
+    notice: string;
+    greeting: string;
+    messageLabel: string;
+    messagePlaceholder: string;
+    send: string;
+    typing: string;
+    you: string;
+    assistant: string;
+    bookSlot: string;
+    leaveNumber: string;
+    wait: string;
+    fallbackDown: string;
+    fallbackCap: string;
+    form: {
+      title: string;
+      phone: string;
+      phoneExample: string;
+      phoneError: string;
+      name: string;
+      note: string;
+      consent: string;
+      consentError: string;
+      submit: string;
+      submitting: string;
+      back: string;
+      sendError: string;
+      sentTitle: string;
+      sentBody: string;
+      sentClose: string;
+    };
   };
   footer: {
     links: string;
@@ -260,6 +301,45 @@ const text = {
       zalo: 'Nhắn Zalo',
       messenger: 'Nhắn Messenger',
       call: 'Gọi Lucy Spa',
+      chat: 'Chat với Lucy',
+    },
+    chat: {
+      title: 'Chat với Lucy',
+      close: 'Đóng khung chat',
+      notice:
+        'Đây là trợ lý tự động, nhân viên không đọc cuộc trò chuyện này. Bạn đừng nhập số điện thoại hay thông tin sức khỏe vào khung chat.',
+      greeting:
+        'Xin chào! Mình có thể giúp bạn về giá dịch vụ, giờ mở cửa, khuyến mãi, sản phẩm và giờ còn trống.',
+      messageLabel: 'Tin nhắn của bạn',
+      messagePlaceholder: 'Nhập câu hỏi của bạn',
+      send: 'Gửi',
+      typing: 'Lucy đang trả lời…',
+      you: 'Bạn',
+      assistant: 'Lucy',
+      bookSlot: 'Đặt lịch giờ này',
+      leaveNumber: 'Để lại số điện thoại, tiệm gọi lại',
+      wait: 'Bạn nhắn hơi nhanh. Vui lòng chờ một chút rồi thử lại.',
+      fallbackDown:
+        'Lúc này trợ lý chưa trả lời được. Bạn để lại số điện thoại, tiệm sẽ gọi lại cho bạn.',
+      fallbackCap:
+        'Hôm nay trợ lý đã trả lời rất nhiều tin. Bạn để lại số điện thoại, tiệm sẽ gọi lại cho bạn.',
+      form: {
+        title: 'Để tiệm gọi lại',
+        phone: 'Số điện thoại',
+        phoneExample: 'Ví dụ: 0905 123 456',
+        phoneError: 'Số điện thoại chưa đúng.',
+        name: 'Tên (không bắt buộc)',
+        note: 'Bạn muốn hỏi gì? (không bắt buộc)',
+        consent: 'Tôi đồng ý để Lucy Spa gọi lại vào số này.',
+        consentError: 'Hãy tích ô đồng ý để tiệm gọi lại.',
+        submit: 'Gửi số điện thoại',
+        submitting: 'Đang gửi…',
+        back: 'Quay lại chat',
+        sendError: 'Chưa gửi được. Bạn thử lại sau ít phút hoặc gọi số hotline của tiệm.',
+        sentTitle: 'Tiệm đã nhận số của bạn',
+        sentBody: 'Nhân viên sẽ gọi lại cho bạn trong giờ mở cửa.',
+        sentClose: 'Đóng',
+      },
     },
     footer: {
       links: 'Liên kết',
@@ -444,6 +524,45 @@ const text = {
       zalo: 'Message on Zalo',
       messenger: 'Message on Messenger',
       call: 'Call Lucy Spa',
+      chat: 'Chat with Lucy',
+    },
+    chat: {
+      title: 'Chat with Lucy',
+      close: 'Close the chat',
+      notice:
+        'This is an automatic assistant; the shop’s staff do not read this chat. Please do not type a phone number or health details here.',
+      greeting:
+        'Hello! I can help with service prices, opening hours, promotions, products and free time slots.',
+      messageLabel: 'Your message',
+      messagePlaceholder: 'Type your question',
+      send: 'Send',
+      typing: 'Lucy is replying…',
+      you: 'You',
+      assistant: 'Lucy',
+      bookSlot: 'Book this time',
+      leaveNumber: 'Leave a phone number, we call you back',
+      wait: 'You are writing a little fast. Please wait a moment and try again.',
+      fallbackDown:
+        'The assistant cannot answer right now. Leave a phone number and the shop will call you back.',
+      fallbackCap:
+        'The assistant has answered a lot of messages today. Leave a phone number and the shop will call you back.',
+      form: {
+        title: 'Ask the shop to call you',
+        phone: 'Phone number',
+        phoneExample: 'Example: 0905 123 456',
+        phoneError: 'This phone number does not look right.',
+        name: 'Name (optional)',
+        note: 'What would you like to ask? (optional)',
+        consent: 'I agree that Lucy Spa may call me on this number.',
+        consentError: 'Please tick the box so the shop may call you.',
+        submit: 'Send my number',
+        submitting: 'Sending…',
+        back: 'Back to the chat',
+        sendError: 'It was not sent. Please try again in a few minutes or call the shop’s hotline.',
+        sentTitle: 'The shop has your number',
+        sentBody: 'A staff member will call you back during opening hours.',
+        sentClose: 'Close',
+      },
     },
     footer: {
       links: 'Links',

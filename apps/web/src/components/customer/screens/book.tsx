@@ -50,11 +50,15 @@ import {
 import { formatBusinessDate } from '../../../lib/customer/invoice';
 import { matchesQuery } from '../../../lib/search-core';
 import {
+  bookingPrefillFromSearch,
   bookingTotals,
   formatFixedTotal,
   groupByCategory,
+  prefillBranchId,
+  prefillDate,
   preselectServiceIds,
   serviceCodesFromSearch,
+  type BookingPrefill,
   type BranchService,
 } from '../../../lib/customer/booking-view';
 import { PageBack } from '../../navigation/page-back';
@@ -118,13 +122,28 @@ export function BookScreen() {
   const idempotencyKey = useRef<string>('');
   const heading = useRef<HTMLHeadingElement>(null);
   const preselected = useRef(false);
+  // The branch, the day and the start time a booking link named (the website chat's link); applied once each.
+  const prefill = useRef<BookingPrefill | null>(null);
+  const branchPrefilled = useRef(false);
+  const timePrefill = useRef<string | null>(null);
   const [serviceQuery, setServiceQuery] = useState('');
 
   const branches = useLoad(
     () => api.get<CustomerBookingBranchesResponse>('/api/v1/me/booking/branches'),
     'branches',
   );
+  const linked = () => {
+    prefill.current ??= bookingPrefillFromSearch(window.location.search);
+    return prefill.current;
+  };
   const onlyBranch = branches.data?.branches.length === 1 ? branches.data.branches[0] : undefined;
+  useEffect(() => {
+    // A link that names a branch chooses it (when the customer has more than one to choose from).
+    if (branchPrefilled.current || !branches.data || branches.data.branches.length < 2) return;
+    branchPrefilled.current = true;
+    const id = prefillBranchId(linked().branchCode, branches.data.branches);
+    if (id) setDraft((current) => (current.branchId ? current : { ...current, branchId: id }));
+  }, [branches.data]);
   useEffect(() => {
     // One active branch: no question to ask.
     if (onlyBranch && !draft.branchId) setDraft({ ...emptyDraft(), branchId: onlyBranch.id });
@@ -167,6 +186,12 @@ export function BookScreen() {
   useEffect(() => {
     if (preselected.current || !branch.data) return;
     preselected.current = true;
+    // The linked day (inside the bookable range) and start time wait for the "when" step, where the times are loaded.
+    const day = prefillDate(linked().date, branch.data.firstDate, branch.data.lastDate);
+    if (day) {
+      timePrefill.current = linked().time;
+      update((current) => (current.date ? current : { ...current, date: day }));
+    }
     const ids = preselectServiceIds(
       serviceCodesFromSearch(window.location.search),
       branch.data.services,
@@ -180,6 +205,16 @@ export function BookScreen() {
       );
     }
   }, [branch.data]);
+
+  // The linked start time is chosen once, when the times of the linked day arrive and it is one of them.
+  useEffect(() => {
+    const wanted = timePrefill.current;
+    if (wanted === null || !times.data || times.data.date !== draft.date) return;
+    timePrefill.current = null;
+    if (times.data.starts.includes(wanted)) {
+      update((current) => (current.startTime ? current : { ...current, startTime: wanted }));
+    }
+  }, [times.data]);
 
   const servicesById = useMemo(
     () => new Map((branch.data?.services ?? []).map((service) => [service.id, service])),

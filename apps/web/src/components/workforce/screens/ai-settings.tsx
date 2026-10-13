@@ -132,7 +132,7 @@ function AiSettingsPanel({
   const { api, t, locale } = useWorkforce();
   const text = aiSettingsDictionary(locale);
   const notify = useSuccessToast();
-  const { settings, key, usage } = data;
+  const { settings, key, usage, integrations } = data;
   const formRef = useRef<HTMLFormElement | null>(null);
   const [draft, setDraft] = useState<AiSettingsDraft>(() => draftFromSettings(settings));
   const [problems, setProblems] = useState<Partial<Record<AiSettingsField, true>>>({});
@@ -293,7 +293,58 @@ function AiSettingsPanel({
                       label={text.switches.rewrite}
                       disabled={pending}
                     />
+                    <Switch
+                      checked={draft.seoEnabled}
+                      onCheckedChange={(checked) => change({ seoEnabled: checked })}
+                      label={text.switches.seo}
+                      disabled={pending}
+                    />
+                    <Switch
+                      checked={draft.chatEnabled}
+                      onCheckedChange={(checked) => change({ chatEnabled: checked })}
+                      label={text.switches.chat}
+                      disabled={pending}
+                    />
+                    <Switch
+                      checked={draft.assistantEnabled}
+                      onCheckedChange={(checked) => change({ assistantEnabled: checked })}
+                      label={text.switches.assistant}
+                      disabled={pending}
+                    />
+                    <Switch
+                      checked={draft.briefEnabled}
+                      onCheckedChange={(checked) => change({ briefEnabled: checked })}
+                      label={text.switches.brief}
+                      disabled={pending}
+                    />
                   </Stack>
+                </FormSection>
+                <FormSection title={text.chat.title} description={text.chat.hint}>
+                  {draft.chatEnabled && !integrations.chatWebhookConfigured ? (
+                    <Notice tone="warning">{text.chat.webhookMissing}</Notice>
+                  ) : null}
+                  <FormGrid cols={2}>
+                    <Field
+                      label={text.chat.dailyCap}
+                      hint={text.chat.dailyCapHint}
+                      error={error('chatDailyCap')}
+                    >
+                      {(control) => (
+                        <NumberInput
+                          {...control}
+                          min={0}
+                          max={5000}
+                          step={1}
+                          value={draft.chatDailyCap}
+                          disabled={pending}
+                          onChange={(event) => change({ chatDailyCap: event.target.value })}
+                        />
+                      )}
+                    </Field>
+                  </FormGrid>
+                  <p className="ls-hint">
+                    {integrations.botDataConfigured ? text.chat.botDataOn : text.chat.botDataOff}
+                  </p>
                 </FormSection>
                 <FormSection title={text.cost.title} description={text.cost.hint}>
                   <FormGrid cols={2}>
@@ -427,6 +478,34 @@ function AiSettingsPanel({
                     disabled={pending}
                   />
                   <p className="ls-hint">{text.model.fallbackHint}</p>
+                </FormSection>
+                <FormSection title={text.models.title} description={text.models.hint}>
+                  <FormGrid cols={2}>
+                    {(
+                      [
+                        ['seoModel', text.models.seo],
+                        ['assistantModel', text.models.assistant],
+                        ['briefModel', text.models.brief],
+                      ] as const
+                    ).map(([name, label]) => (
+                      <Field key={name} label={label}>
+                        {(control) => (
+                          <Select
+                            {...control}
+                            options={AI_MODEL_IDS.map((id) => ({
+                              value: id,
+                              label: text.model.models[id],
+                            }))}
+                            value={draft[name]}
+                            disabled={pending}
+                            onChange={(event) =>
+                              change({ [name]: event.target.value as AiSettingsDraft[typeof name] })
+                            }
+                          />
+                        )}
+                      </Field>
+                    ))}
+                  </FormGrid>
                 </FormSection>
                 <FormSection title={text.words.title} description={text.words.hint}>
                   <Switch

@@ -493,6 +493,10 @@ export async function publicSite(
     ]),
   );
   const facebook = row.facebookUrl === null ? null : facebookPageLinks(row.facebookUrl);
+  const chat = await tx.aiSettings.findUnique({
+    where: { id: 1 },
+    select: { enabled: true, chatEnabled: true },
+  });
   return {
     tagline,
     footerBlocks: publicFooterBlocks(footerBlocks, locale, tagline, images),
@@ -528,5 +532,6 @@ export async function publicSite(
           sources: publicImageSources(media.id, media.variants),
         }
       : null,
+    chatEnabled: Boolean(chat?.enabled && chat.chatEnabled),
   };
 }

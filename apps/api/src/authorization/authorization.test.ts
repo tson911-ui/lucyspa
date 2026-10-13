@@ -458,6 +458,9 @@ test('the code-owned catalog is exactly the Phase 1, Phase 2 and follow-up Step 
       ['VIEW_REVIEWS', 'BRANCH_CAPABLE', 'STANDARD'],
       ['MANAGE_AI_SETTINGS', 'GLOBAL_ONLY', 'STANDARD'],
       ['USE_AI_CONTENT', 'GLOBAL_ONLY', 'STANDARD'],
+      ['MANAGE_CHAT_REQUESTS', 'GLOBAL_ONLY', 'STANDARD'],
+      ['USE_AI_ASSISTANT', 'GLOBAL_ONLY', 'STANDARD'],
+      ['VIEW_CUSTOMER_BRIEF', 'BRANCH_CAPABLE', 'STANDARD'],
     ],
   );
 });
