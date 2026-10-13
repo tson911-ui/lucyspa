@@ -66,6 +66,7 @@ UI work must follow DESIGN.md.
   consistent and detailed, at the level of a professional product designer.
   - Existing design system, tokens, components and spacing scale only; no ad-hoc colors, fonts, sizes or one-off styles.
     Match the current lucyspa.vn site and admin exactly.
+    (Superseded by `DESIGN.md`, Owner 2026-10-14: match the DESIGN.md tokens and components instead; the rest of this rule stands.)
   - Clear visual hierarchy, consistent alignment, spacing and typography; nothing cramped or crowded, no overlapping text,
     no layout shift.
   - Every screen designed and checked for all states: loading, empty, error, success, disabled, long text, many items, no image.
