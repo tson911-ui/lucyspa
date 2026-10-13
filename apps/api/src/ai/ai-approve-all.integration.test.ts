@@ -50,7 +50,11 @@ test(
       const nobody = await base.staff([]);
       const rows = async <T>(sql: string, ...values: unknown[]) =>
         tx.$queryRawUnsafe<T[]>(sql, ...values);
-      const audit = (action: string) => tx.auditEvent.findMany({ where: { action } });
+      const audit = (action: string) =>
+        tx.auditEvent.findMany({
+          where: { action },
+          orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
+        });
       // The database may hold other drafts (it is shared): they are set aside so the counts below are exactly ours.
       await tx.$executeRawUnsafe(
         `UPDATE ai_items SET status = 'REJECTED', row_version = row_version + 1 WHERE status NOT IN ('APPLIED', 'REJECTED')`,

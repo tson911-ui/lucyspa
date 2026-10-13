@@ -75,6 +75,8 @@ test(
           data: { code: `SEO_CAT_${base.run}`, nameVi: 'Gội đầu', nameEn: 'Hair wash' },
           select: { id: true },
         });
+        const serviceClock = Date.now();
+        let serviceCount = 0;
         const service = async (
           code: string,
           patch: {
@@ -86,6 +88,8 @@ test(
           (
             await tx.service.create({
               data: {
+                // Apart by whole seconds: the drafts are queued, and so answered, in the order the services were made.
+                createdAt: new Date(serviceClock + 1000 * (serviceCount += 1)),
                 code: `SEO_${code}_${base.run}`,
                 categoryId: category.id,
                 nameVi: `Gội đầu ${code}`,
