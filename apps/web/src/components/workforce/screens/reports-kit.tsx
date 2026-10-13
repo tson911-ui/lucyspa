@@ -36,6 +36,7 @@ import {
   type ReportPageState,
 } from '../../../lib/workforce/reports-b';
 import { useWorkforce } from '../session';
+import { AssistantBox } from './assistant-box';
 import { Button, Empty, ErrorState, Loading, Notice, PageHeader, useResource } from '../ui';
 import { ExportDialog, type ExportChoice } from './reports-export';
 
@@ -176,6 +177,7 @@ export function ReportView({
         ) : null}
       </PageHeader>
       <Stack gap="page">
+        <AssistantBox />
         <ListToolbar
           className="ls-no-print"
           labels={toolbarLabels(t)}

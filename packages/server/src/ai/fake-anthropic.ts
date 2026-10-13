@@ -192,7 +192,7 @@ export class FakeAnthropic {
       }
       if (reply.stopReason !== 'refusal') {
         toolUses.forEach((use, at) => {
-          const index = at + 1;
+          const index = at + (reply.text !== '' || toolUses.length === 0 ? 1 : 0);
           response.write(
             sse('content_block_start', {
               type: 'content_block_start',

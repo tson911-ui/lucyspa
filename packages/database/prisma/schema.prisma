@@ -5679,6 +5679,25 @@ model AiSeoDraft {
   @@map("ai_seo_drafts")
 }
 
+/// Claude integration Wave C: one row per question of the report assistant; the text is cleared after 30 days (purged_at), the row stays.
+model AiAssistantQuestion {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  status       String
+  question     String?
+  answer       String?
+  tools        Json      @default("[]") @db.JsonB
+  model        String
+  requests     Int       @default(0)
+  costMicroUsd BigInt    @default(0) @map("cost_micro_usd")
+  errorCode    String?   @map("error_code")
+  createdAt    DateTime  @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+  purgedAt     DateTime? @map("purged_at") @db.Timestamptz(3)
+
+  @@index([userId, createdAt], map: "ai_assistant_questions_user_idx")
+  @@map("ai_assistant_questions")
+}
+
 model AiRun {
   id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   kind                  String

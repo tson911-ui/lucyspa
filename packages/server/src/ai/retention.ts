@@ -16,6 +16,7 @@ export const RETENTION_DAYS = Object.freeze({
 
 export interface RetentionResult {
   callbackRequestsCleared: number;
+  assistantTextsCleared: number;
 }
 
 export async function runAiRetention(
@@ -26,5 +27,10 @@ export async function runAiRetention(
        SET phone = NULL, name = NULL, note = NULL, purged_at = clock_timestamp(), row_version = row_version + 1
      WHERE status = 'CLOSED' AND purged_at IS NULL
        AND closed_at < clock_timestamp() - make_interval(days => ${RETENTION_DAYS.callbackAfterClose})`;
-  return { callbackRequestsCleared: Number(cleared) };
+  const questions = await database.$executeRaw`
+    UPDATE ai_assistant_questions
+       SET question = NULL, answer = NULL, purged_at = clock_timestamp()
+     WHERE purged_at IS NULL
+       AND created_at < clock_timestamp() - make_interval(days => ${RETENTION_DAYS.assistantQuestion})`;
+  return { callbackRequestsCleared: Number(cleared), assistantTextsCleared: Number(questions) };
 }

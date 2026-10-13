@@ -53,6 +53,9 @@ export function startAiJobs(database: DatabaseClient, env: NodeJS.ProcessEnv, lo
           if (kept.callbackRequestsCleared > 0) {
             logger.info({ cleared: kept.callbackRequestsCleared }, 'Old callback requests cleared');
           }
+          if (kept.assistantTextsCleared > 0) {
+            logger.info({ cleared: kept.assistantTextsCleared }, 'Old assistant questions cleared');
+          }
         }
       } catch (error) {
         failure(error);

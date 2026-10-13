@@ -44,6 +44,7 @@ import {
   type RevenuePageState,
 } from '../../../lib/workforce/reports';
 import { useWorkforce } from '../session';
+import { AssistantBox } from './assistant-box';
 import { Button, Empty, ErrorState, Loading, Notice, PageHeader, useResource } from '../ui';
 import { ExportDialog, type ExportChoice } from './reports-export';
 
@@ -135,6 +136,7 @@ export function RevenueView({ registry }: { registry: ReportRegistryResponse }) 
         ) : null}
       </PageHeader>
       <Stack gap="page">
+        <AssistantBox />
         <ListToolbar
           className="ls-no-print"
           labels={toolbarLabels(t)}

@@ -247,6 +247,63 @@ test('Claude integration Waves B-D permissions, switches, callback requests and 
               );
             },
           );
+          await context.test(
+            'assistant questions: checked, the text is cleared once and nothing else changes, and a row is never deleted',
+            async () => {
+              const [user] = await rows<{ id: string }>(
+                `SELECT id FROM users ORDER BY created_at LIMIT 1`,
+              );
+              assert.ok(user, 'the database holds at least one user');
+              const add = (status: string, question: string | null) =>
+                exec(
+                  `INSERT INTO ai_assistant_questions (user_id, status, question, model) VALUES ($1::uuid, $2, $3, 'claude-sonnet-5-5')`,
+                  user.id,
+                  status,
+                  question,
+                );
+              await add('ANSWERED', 'Doanh thu hôm nay?');
+              await rejects(() => add('MAYBE', 'x'), /ai_assistant_questions_status/);
+              await rejects(() => add('ANSWERED', 'x'.repeat(601)), /ai_assistant_questions_text/);
+              // A row with no text must say it was cleared.
+              await rejects(() => add('ANSWERED', null), /ai_assistant_questions_purge/);
+              const [row] = await rows<{ id: string }>(
+                `SELECT id FROM ai_assistant_questions WHERE user_id = $1::uuid ORDER BY created_at DESC LIMIT 1`,
+                user.id,
+              );
+              await rejects(
+                () =>
+                  exec(
+                    `UPDATE ai_assistant_questions SET cost_micro_usd = 1 WHERE id = $1::uuid`,
+                    row!.id,
+                  ),
+                /only have its text cleared/,
+              );
+              await rejects(
+                () =>
+                  exec(
+                    `UPDATE ai_assistant_questions SET question = NULL, purged_at = now(), status = 'FAILED' WHERE id = $1::uuid`,
+                    row!.id,
+                  ),
+                /only have its text cleared/,
+              );
+              await exec(
+                `UPDATE ai_assistant_questions SET question = NULL, answer = NULL, purged_at = now() WHERE id = $1::uuid`,
+                row!.id,
+              );
+              await rejects(
+                () =>
+                  exec(
+                    `UPDATE ai_assistant_questions SET purged_at = now() + interval '1 day' WHERE id = $1::uuid`,
+                    row!.id,
+                  ),
+                /only have its text cleared/,
+              );
+              await rejects(
+                () => exec(`DELETE FROM ai_assistant_questions WHERE id = $1::uuid`, row!.id),
+                /never deleted/,
+              );
+            },
+          );
           throw rollback;
         },
         { timeout: 60_000 },

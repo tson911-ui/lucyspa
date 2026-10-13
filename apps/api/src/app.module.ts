@@ -65,6 +65,8 @@ import { BotDataServer } from './bot/bot.server.js';
 import { BotDataService } from './bot/bot.service.js';
 import { AiService } from './ai/ai.service.js';
 import { AiSeoController } from './ai/ai-seo.controller.js';
+import { AssistantController } from './assistant/assistant.controller.js';
+import { AssistantService } from './assistant/assistant.service.js';
 import { AiSeoService } from './ai/ai-seo.service.js';
 import { ChatRequestController, PublicChatController } from './chat/chat.controller.js';
 import { ChatRequestService } from './chat/chat-requests.service.js';
@@ -210,6 +212,7 @@ export class AppModule {
         ProductTextCleanupController,
         AiController,
         AiSeoController,
+        AssistantController,
         PublicChatController,
         ChatRequestController,
         AiDraftsController,
@@ -305,6 +308,7 @@ export class AppModule {
         ProductTextCleanupService,
         AiService,
         AiSeoService,
+        AssistantService,
         PublicChatService,
         ChatRequestService,
         ProductImageZipService,

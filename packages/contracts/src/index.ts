@@ -4969,4 +4969,5 @@ export * from './ai.js';
 export * from './ai-drafts.js';
 export * from './ai-runs.js';
 export * from './ai-seo.js';
+export * from './ai-assistant.js';
 export * from './chat.js';

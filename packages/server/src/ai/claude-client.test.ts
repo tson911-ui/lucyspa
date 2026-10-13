@@ -286,10 +286,12 @@ test('a question with tools: calls are run and answered in one user message, usa
     { kind: 'message', text: 'Doanh thu là 1.200.000 đ.', usage: { input: 1500, output: 60 } },
   );
   const seen: string[] = [];
+  const inputs: unknown[] = [];
   const result = await client().converse(
     converseRequest({
       runTool: async (call) => {
         seen.push(call.id);
+        inputs.push(call.input);
         return '{"total":1200000}';
       },
     }),
@@ -297,6 +299,11 @@ test('a question with tools: calls are run and answered in one user message, usa
   assert.equal(result.outcome, 'OK');
   assert.equal(result.text, 'Doanh thu là 1.200.000 đ.');
   assert.deepEqual(seen, ['toolu_1', 'toolu_2']);
+  assert.deepEqual(
+    inputs,
+    [{ from: '2026-10-01' }, { from: '2026-09-01' }],
+    'the arguments arrive whole',
+  );
   assert.equal(result.calls.length, 2);
   assert.equal(result.requests, 2);
   assert.equal(result.usage.inputTokens, 2500);

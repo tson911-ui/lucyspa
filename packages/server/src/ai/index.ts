@@ -99,6 +99,16 @@ export {
   type PendingFixOptions,
   type PendingFixReport,
 } from './rewrite-pending.js';
+export {
+  ASSISTANT_PROMPT_VERSION,
+  ASSISTANT_SYSTEM,
+  UNSURE_ANSWER,
+  answerIsClean,
+  buildAssistantUserMessage,
+  checkAnswerNumbers,
+  collectNumbers,
+  spokenNumbers,
+} from './assistant.js';
 export { RETENTION_DAYS, runAiRetention, type RetentionResult } from './retention.js';
 export {
   SEO_DESCRIPTION_TARGET,
