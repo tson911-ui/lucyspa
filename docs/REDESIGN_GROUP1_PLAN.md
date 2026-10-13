@@ -37,7 +37,7 @@ Status values: `todo` / `done` (with commit hash).
   `uxui-screens`/`uxui-audit-pages.json` and write down the scratch-DB seed recipe.
   Verify: the images are opened and kept in `.local/uxui-screens/before/`. No app code.
 
-- **C2: token v2 scope (L).** Status: todo.
+- **C2: token v2 scope (L).** Status: done.
   Add the v2 blocks to `tokens.css` and set `data-ui="v2"` on the customer frame. The blocks cover: light, and dark declared twice
   (identical); the preview scope; `--ls-bg-pressed`, `--ls-nav-hover-bg`, `--ls-dur-hero`; shadows set to none; radius 8/18/pill; the
   `data-density` hook. Also settle the portal question. Update `tokens.test.ts`, `customer-tokens.test.ts` and the ratchet baseline.

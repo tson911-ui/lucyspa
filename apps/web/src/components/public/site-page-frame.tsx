@@ -33,7 +33,9 @@ export async function SitePageFrame({ locale, children }: { locale: Locale; chil
   );
 
   return (
-    <div className={`ls-site ${siteFontClass}`}>
+    // data-ui="v2": the DESIGN.md token scope (tokens.css). Every dialog, menu and the tab bar render inside this frame, so
+    // none of them needs the attribute of its own; nothing here is portaled to the document body.
+    <div className={`ls-site ${siteFontClass}`} data-ui="v2">
       <SiteSessionProvider>
         {/* Below 1024 px this is the one scroll container of the page (the app shell, site.css); the tab bar below it is in
             the flow. From 1024 px it is display: contents and the document scrolls. */}

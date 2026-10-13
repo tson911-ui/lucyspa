@@ -541,3 +541,242 @@
   --ls-chart-6: #3f8f3a;
   --ls-chart-other: #6f6164;
 }
+
+/* ==========================================================================================================
+   v2 scope (DESIGN.md section 6, redesign groups 1-3). The same token names as above, new values, switched on per group by
+   `data-ui="v2"` on the layout root: group 1 sets it on the customer frame (`.ls-site`, which also holds every dialog, menu and
+   the tab bar, because nothing is portaled out of it); groups 2 and 3 set it on the counter and the workforce shell. Until then
+   the staff areas read the values above, so they do not change. The dark block is declared twice (toggle and system preference)
+   and stays identical (tokens-v2.test.ts). A color or radius is declared here only; customer.css and staff.css never redefine one.
+   Colors: white and #f5f5f7 bands (dark: black and stepped greys), no shadow, no gradient, radius 8 / 18 / pill, one accent. */
+[data-ui='v2'] {
+  /* Surfaces: --ls-bg-page is the base band, --ls-bg-sunken the alternate band. --ls-bg-surface is a card on the BASE band; on an
+     alternate band (`.ls-band--alt`) a card takes the other step (--ls-bg-surface-alt). */
+  --ls-band-base: #ffffff;
+  --ls-band-alt: #f5f5f7;
+  --ls-bg-page: #ffffff;
+  --ls-bg-sunken: #f5f5f7;
+  --ls-bg-surface: #f5f5f7;
+  --ls-bg-surface-alt: #ffffff;
+  --ls-bg-raised: #ffffff;
+  --ls-bg-pressed: #e2e2e5;
+  --ls-text: #1d1d1f;
+  --ls-text-muted: #515154;
+  --ls-text-subtle: #6e6e73;
+  --ls-border: #d2d2d7;
+  --ls-border-control: #86868b;
+  --ls-brand: #782b37;
+  --ls-brand-fill: #782b37;
+  --ls-on-brand: #ffffff;
+  --ls-brand-fill-hover: #632330;
+  --ls-brand-soft: #f3e7e9;
+  --ls-brand-on-soft: #782b37;
+  --ls-focus: #782b37;
+  /* Hover (Owner rule 4): the solid accent with its text. A table row and a staff sidebar item hover with a neutral tint (Q3). */
+  --ls-hover-bg: #782b37;
+  --ls-hover-text: #ffffff;
+  --ls-hover-border: #782b37;
+  --ls-hover-ghost-border: #782b37;
+  --ls-row-hover-bg: #f5f5f7;
+  --ls-nav-hover-bg: #e2e2e5;
+  --ls-nav-hover-text: #1d1d1f;
+  --ls-nav-active-bg: #782b37;
+  --ls-nav-active-text: #ffffff;
+  --ls-overlay: rgb(0 0 0 / 0.4);
+
+  /* No shadows: layers separate by the scrim, a surface step or a hairline. The seasonal layer keeps its own. */
+  --ls-shadow-sm: none;
+  --ls-shadow-md: none;
+  --ls-shadow-lg: none;
+
+  /* Radius: 8 fields and small media, 18 cards, dialogs and large media, pill for buttons and tags. `md` is no longer a step: it
+     follows `lg` until the components that still read it are migrated (C4-C6). */
+  --ls-radius-sm: 8px;
+  --ls-radius-md: 18px;
+  --ls-radius-lg: 18px;
+  --ls-radius-full: 980px;
+
+  /* Comfortable density (the default); [data-density='compact'] below is the staff variant. */
+  --ls-control-h: 44px;
+  --ls-row-h: 56px;
+
+  /* Customer motion (DESIGN.md 11.3). Reduced motion zeroes every one of them below. */
+  --ls-dur-fast: 150ms;
+  --ls-dur-base: 240ms;
+  --ls-dur-slow: 320ms;
+  --ls-dur-reveal: 560ms;
+  --ls-dur-hero: 800ms;
+}
+
+/* The alternate band and the card on it: a card takes the opposite of its container. */
+[data-ui='v2'] .ls-band--base {
+  background: var(--ls-band-base);
+}
+
+[data-ui='v2'] .ls-band--alt {
+  --ls-bg-surface: var(--ls-bg-surface-alt);
+  background: var(--ls-band-alt);
+}
+
+/* Dark: black base, stepped greys (the closer to the user, the lighter), accent #e48f9f, near-black text on it. Keep the three
+   selectors' blocks below identical (tokens-v2.test.ts). */
+:root[data-theme='dark'] [data-ui='v2'],
+[data-preview-theme='dark'] [data-ui='v2'],
+[data-preview-theme='dark'][data-ui='v2'] {
+  color-scheme: dark;
+  --ls-band-base: #000000;
+  --ls-band-alt: #1c1c1e;
+  --ls-bg-page: #000000;
+  --ls-bg-sunken: #1c1c1e;
+  --ls-bg-surface: #1c1c1e;
+  --ls-bg-surface-alt: #2c2c2e;
+  --ls-bg-raised: #2c2c2e;
+  --ls-bg-pressed: #3a3a3c;
+  --ls-text: #f5f5f7;
+  --ls-text-muted: #a1a1a6;
+  --ls-text-subtle: #a1a1a6;
+  --ls-border: #38383a;
+  --ls-border-control: #86868b;
+  --ls-brand: #e48f9f;
+  --ls-brand-fill: #e48f9f;
+  --ls-on-brand: #000000;
+  --ls-brand-fill-hover: #eca5b2;
+  --ls-brand-soft: #3a2227;
+  --ls-brand-on-soft: #e48f9f;
+  --ls-focus: #e48f9f;
+  --ls-hover-bg: #e48f9f;
+  --ls-hover-text: #000000;
+  --ls-hover-border: #e48f9f;
+  --ls-hover-ghost-border: #e48f9f;
+  --ls-row-hover-bg: #2c2c2e;
+  --ls-nav-hover-bg: #3a3a3c;
+  --ls-nav-hover-text: #f5f5f7;
+  --ls-nav-active-bg: #e48f9f;
+  --ls-nav-active-text: #000000;
+  --ls-overlay: rgb(0 0 0 / 0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) [data-ui='v2'] {
+    color-scheme: dark;
+    --ls-band-base: #000000;
+    --ls-band-alt: #1c1c1e;
+    --ls-bg-page: #000000;
+    --ls-bg-sunken: #1c1c1e;
+    --ls-bg-surface: #1c1c1e;
+    --ls-bg-surface-alt: #2c2c2e;
+    --ls-bg-raised: #2c2c2e;
+    --ls-bg-pressed: #3a3a3c;
+    --ls-text: #f5f5f7;
+    --ls-text-muted: #a1a1a6;
+    --ls-text-subtle: #a1a1a6;
+    --ls-border: #38383a;
+    --ls-border-control: #86868b;
+    --ls-brand: #e48f9f;
+    --ls-brand-fill: #e48f9f;
+    --ls-on-brand: #000000;
+    --ls-brand-fill-hover: #eca5b2;
+    --ls-brand-soft: #3a2227;
+    --ls-brand-on-soft: #e48f9f;
+    --ls-focus: #e48f9f;
+    --ls-hover-bg: #e48f9f;
+    --ls-hover-text: #000000;
+    --ls-hover-border: #e48f9f;
+    --ls-hover-ghost-border: #e48f9f;
+    --ls-row-hover-bg: #2c2c2e;
+    --ls-nav-hover-bg: #3a3a3c;
+    --ls-nav-hover-text: #f5f5f7;
+    --ls-nav-active-bg: #e48f9f;
+    --ls-nav-active-text: #000000;
+    --ls-overlay: rgb(0 0 0 / 0.6);
+  }
+}
+
+/* Forced light inside a dark page (the admin season preview): the light value of every token the dark block overrides. Same
+   specificity as the dark selectors above and later, so it wins. */
+:root [data-preview-theme='light'] [data-ui='v2'],
+:root [data-preview-theme='light'][data-ui='v2'] {
+  color-scheme: light;
+  --ls-band-base: #ffffff;
+  --ls-band-alt: #f5f5f7;
+  --ls-bg-page: #ffffff;
+  --ls-bg-sunken: #f5f5f7;
+  --ls-bg-surface: #f5f5f7;
+  --ls-bg-surface-alt: #ffffff;
+  --ls-bg-raised: #ffffff;
+  --ls-bg-pressed: #e2e2e5;
+  --ls-text: #1d1d1f;
+  --ls-text-muted: #515154;
+  --ls-text-subtle: #6e6e73;
+  --ls-border: #d2d2d7;
+  --ls-border-control: #86868b;
+  --ls-brand: #782b37;
+  --ls-brand-fill: #782b37;
+  --ls-on-brand: #ffffff;
+  --ls-brand-fill-hover: #632330;
+  --ls-brand-soft: #f3e7e9;
+  --ls-brand-on-soft: #782b37;
+  --ls-focus: #782b37;
+  --ls-hover-bg: #782b37;
+  --ls-hover-text: #ffffff;
+  --ls-hover-border: #782b37;
+  --ls-hover-ghost-border: #782b37;
+  --ls-row-hover-bg: #f5f5f7;
+  --ls-nav-hover-bg: #e2e2e5;
+  --ls-nav-hover-text: #1d1d1f;
+  --ls-nav-active-bg: #782b37;
+  --ls-nav-active-text: #ffffff;
+  --ls-overlay: rgb(0 0 0 / 0.4);
+}
+
+/* The document behind the v2 frame (overscroll, the safe-area strips, the page before the frame paints) takes the base band too,
+   so no rose-cream edge shows. Only a document that holds a v2 frame changes; the staff areas keep the values above. */
+:root:has([data-ui='v2']) {
+  --ls-bg-page: #ffffff;
+}
+
+:root[data-theme='dark']:has([data-ui='v2']) {
+  --ls-bg-page: #000000;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):has([data-ui='v2']) {
+    --ls-bg-page: #000000;
+  }
+}
+
+/* Density hook (DESIGN.md 6.7): only the control height, the row height and the shorter motion differ. Set on the staff shell
+   root in groups 2 and 3; nothing sets it yet. The type and spacing steps of 6.3 and 6.4 join it with those groups. Coarse pointers
+   and narrow screens keep the comfortable sizes. */
+[data-density='compact'] {
+  --ls-control-h: 40px;
+  --ls-row-h: 48px;
+  --ls-dur-fast: 120ms;
+  --ls-dur-base: 200ms;
+  --ls-dur-slow: 200ms;
+}
+
+@media (pointer: coarse), (max-width: 1023px) {
+  [data-density='compact'] {
+    --ls-control-h: 44px;
+    --ls-row-h: 56px;
+  }
+}
+
+/* The first reduced-motion block above sits on :root; a v2 scope or a compact scope declares its own durations, so each one
+   is zeroed here as well (HIG: no tweens at all). The hero duration is new and zeroed on the root too. */
+:root {
+  --ls-dur-hero: 800ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  [data-ui='v2'],
+  [data-density='compact'] {
+    --ls-dur-fast: 0ms;
+    --ls-dur-base: 0ms;
+    --ls-dur-slow: 0ms;
+    --ls-dur-reveal: 0ms;
+    --ls-dur-hero: 0ms;
+  }
+}

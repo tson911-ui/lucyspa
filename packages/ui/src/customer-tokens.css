@@ -1,6 +1,8 @@
-/* The customer site tokens of direction C, "Ấm áp thư giãn" (Owner choice 2026-10-10): colours, shapes and the type scale, scoped to `.ls-site` (the public pages,
-   the member area and the sign-in pages). Colour literals live here and in tokens.css only; customer.css and customer-pages.css read them. The two dark blocks
-   (the toggle and the system preference) stay identical. The holiday themes set --ls-season-* and --ls-art-* only, so they are never touched. */
+/* What is left of the customer site tokens of direction C, "Ấm áp thư giãn" (Owner choice 2026-10-10), scoped to `.ls-site` (the public pages, the member area
+   and the sign-in pages). DESIGN.md (Owner, 2026-10-14) replaced direction C: the palette, radius steps and shadows are the v2 scope of
+   tokens.css now. Only the faces, the type scale, the pebble shapes, the footer and offer colours and the rhythm steps remain here, until C9-C16 retire them page by page and C18
+   deletes the file's dead rules. The two dark blocks (the toggle and the system preference) stay identical. The holiday themes set --ls-season-* and
+   --ls-art-* only, so they are never touched. */
 /* ---------- tokens: light ---------- */
 .ls-site {
   --ls-font-sans:
@@ -9,26 +11,9 @@
   --ls-font-display:
     var(--font-fraunces, var(--font-playfair-display)), Georgia, 'Times New Roman', serif;
 
-  --ls-bg-page: #fdf4f2;
-  --ls-bg-surface: #ffffff;
-  --ls-bg-raised: #ffffff;
-  --ls-bg-sunken: #f7ece8;
-  --ls-text: #2b1a1e;
-  --ls-text-muted: #6a5558;
-  --ls-text-subtle: #735d60;
-  --ls-border: #efd9d9;
-  --ls-border-control: #8a7377;
-  --ls-brand-soft: #f6dde0;
-  --ls-row-hover-bg: #fbe9e6;
-  --ls-overlay: rgb(43 26 30 / 0.5);
-  --ls-shadow-sm: 0 1px 2px rgb(120 43 55 / 0.06);
-  --ls-shadow-md: 0 2px 4px rgb(120 43 55 / 0.05), 0 22px 44px -22px rgb(120 43 55 / 0.28);
-  --ls-shadow-lg: 0 4px 8px rgb(120 43 55 / 0.06), 0 32px 64px -24px rgb(120 43 55 / 0.38);
+  /* Colors, shadows and the radius steps moved to the v2 scope of tokens.css (DESIGN.md 6; `data-ui="v2"` is on this frame). */
 
   /* Soft shapes: pebbles have two big corners and one small, never a sharp one. */
-  --ls-radius-sm: 0.5rem;
-  --ls-radius-md: 1rem;
-  --ls-radius-lg: 1.5rem;
   --ls-radius-pebble: 3rem;
   --ls-radius-pebble-tight: 0.75rem;
 
@@ -52,15 +37,16 @@
   --ls-type-small: 0.875rem;
   --ls-lh-small: 1.5;
 
-  /* Direction C's own tokens. */
-  --ls-c-rose: #f6dde0;
-  --ls-c-blush: #fbe9e6;
-  --ls-c-sage: #e0e9dd;
-  --ls-c-sage-ink: #2f4636;
-  --ls-c-sand: #f7ece8;
-  --ls-c-slot-from: #f2d8da;
-  --ls-c-slot-to: #d9a3aa;
-  --ls-c-slot-ink: #5a2d36;
+  /* Direction C's own tokens. The pastel pebble colors and the photo-slot gradient are now the neutral band and ink of the v2 scope
+     (DESIGN.md 6), so they follow the theme without a dark value; C10-C16 retire the tokens with the pages that read them. */
+  --ls-c-rose: var(--ls-bg-sunken);
+  --ls-c-blush: var(--ls-bg-sunken);
+  --ls-c-sage: var(--ls-bg-sunken);
+  --ls-c-sage-ink: var(--ls-text);
+  --ls-c-sand: var(--ls-bg-sunken);
+  --ls-c-slot-from: var(--ls-bg-sunken);
+  --ls-c-slot-to: var(--ls-bg-sunken);
+  --ls-c-slot-ink: var(--ls-text-muted);
   --ls-c-grain: 0.4;
   --ls-c-slot-light: rgb(255 255 255 / 0.5);
   --ls-c-slot-shade: rgb(120 43 55 / 0.25);
@@ -86,28 +72,6 @@
 /* ---------- tokens: dark (the two blocks below are identical) ---------- */
 :root[data-theme='dark'] .ls-site,
 [data-preview-theme='dark'] .ls-site {
-  --ls-bg-page: #171012;
-  --ls-bg-surface: #21171a;
-  --ls-bg-raised: #281d20;
-  --ls-bg-sunken: #120c0e;
-  --ls-text: #f6ebec;
-  --ls-text-muted: #bba8ab;
-  --ls-text-subtle: #a99598;
-  --ls-border: #3a2a2e;
-  --ls-border-control: #8a7377;
-  --ls-brand-soft: #2d1c21;
-  --ls-row-hover-bg: #2a1d21;
-  --ls-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-  --ls-shadow-md: 0 2px 4px rgb(0 0 0 / 0.4), 0 22px 44px -22px rgb(0 0 0 / 0.7);
-  --ls-shadow-lg: 0 4px 8px rgb(0 0 0 / 0.45), 0 32px 64px -24px rgb(0 0 0 / 0.8);
-  --ls-c-rose: #2d1c21;
-  --ls-c-blush: #261a1d;
-  --ls-c-sage: #1f2923;
-  --ls-c-sage-ink: #cfe0d3;
-  --ls-c-sand: #2a1e1f;
-  --ls-c-slot-from: #3a2429;
-  --ls-c-slot-to: #663743;
-  --ls-c-slot-ink: #f0d9dc;
   --ls-c-grain: 0.25;
   --ls-c-slot-light: rgb(255 255 255 / 0.35);
   --ls-c-slot-shade: rgb(0 0 0 / 0.25);
@@ -125,28 +89,6 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .ls-site {
-    --ls-bg-page: #171012;
-    --ls-bg-surface: #21171a;
-    --ls-bg-raised: #281d20;
-    --ls-bg-sunken: #120c0e;
-    --ls-text: #f6ebec;
-    --ls-text-muted: #bba8ab;
-    --ls-text-subtle: #a99598;
-    --ls-border: #3a2a2e;
-    --ls-border-control: #8a7377;
-    --ls-brand-soft: #2d1c21;
-    --ls-row-hover-bg: #2a1d21;
-    --ls-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-    --ls-shadow-md: 0 2px 4px rgb(0 0 0 / 0.4), 0 22px 44px -22px rgb(0 0 0 / 0.7);
-    --ls-shadow-lg: 0 4px 8px rgb(0 0 0 / 0.45), 0 32px 64px -24px rgb(0 0 0 / 0.8);
-    --ls-c-rose: #2d1c21;
-    --ls-c-blush: #261a1d;
-    --ls-c-sage: #1f2923;
-    --ls-c-sage-ink: #cfe0d3;
-    --ls-c-sand: #2a1e1f;
-    --ls-c-slot-from: #3a2429;
-    --ls-c-slot-to: #663743;
-    --ls-c-slot-ink: #f0d9dc;
     --ls-c-grain: 0.25;
     --ls-c-slot-light: rgb(255 255 255 / 0.35);
     --ls-c-slot-shade: rgb(0 0 0 / 0.25);

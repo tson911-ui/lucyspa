@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-// The customer site's direction-C tokens (docs/CUSTOMER_SITE_C.md): both dark blocks agree, and every text pair the pages draw clears WCAG 2.x AA.
+// The customer frame's own tokens (direction C leftovers until C10-C16 retire them) on top of the v2 scope of tokens.css (DESIGN.md 6): both
+// dark blocks agree, and every text pair the pages draw clears WCAG 2.x AA.
 const css = readFileSync(new URL('./customer-tokens.css', import.meta.url), 'utf8');
 const base = readFileSync(new URL('./tokens.css', import.meta.url), 'utf8');
 
@@ -34,12 +35,14 @@ const darkAttribute = block(
   /^:root\[data-theme=['"]dark['"]\]\s*\.ls-site,\s*\[data-preview-theme=['"]dark['"]\]\s*\.ls-site\s*\{/m,
 );
 const darkSystem = block(css, /:root:not\(\[data-theme=['"]light['"]\]\)\s*\.ls-site\s*\{/m);
-// The brand colours come from tokens.css (the customer site keeps them).
-const brandLight = block(base, /^:root\s*\{/m)['--ls-brand']!;
-const brandDark = block(
+// Colours, text and the accent come from the v2 scope of tokens.css (`data-ui="v2"` is on the frame).
+const v2Light = block(base, /^\[data-ui='v2'\]\s*\{/m);
+const v2Dark = block(
   base,
-  /^:root\[data-theme=['"]dark['"]\],\s*\[data-preview-theme=['"]dark['"]\]\s*\{/m,
-)['--ls-brand']!;
+  /^:root\[data-theme='dark'\]\s*\[data-ui='v2'\],\s*\[data-preview-theme='dark'\]\s*\[data-ui='v2'\],\s*\[data-preview-theme='dark'\]\[data-ui='v2'\]\s*\{/m,
+);
+const brandLight = v2Light['--ls-brand']!;
+const brandDark = v2Dark['--ls-brand']!;
 
 function luminance(hex: string): number {
   const value = parseInt(hex.slice(1), 16);
@@ -55,15 +58,21 @@ function ratio(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
+// A token may point at another one (`var(--ls-bg-sunken)`); follow it inside the same theme.
 const hex = (theme: Record<string, string>, name: string): string => {
-  const value = theme[`--ls-${name}`];
+  let value = theme[`--ls-${name}`];
+  for (let hops = 0; hops < 4; hops++) {
+    const reference = /^var\((--[\w-]+)\)$/.exec(value ?? '');
+    if (!reference) break;
+    value = theme[reference[1]!];
+  }
   assert.match(value ?? '', /^#[0-9a-f]{6}$/, `--ls-${name} must be a 6-digit hex`);
   return value!;
 };
 
 test('the two dark blocks of the customer tokens are identical', () => {
   assert.deepEqual(darkSystem, darkAttribute);
-  assert.ok(Object.keys(darkAttribute).length >= 20);
+  assert.ok(Object.keys(darkAttribute).length >= 10);
 });
 
 test('the dark blocks only override tokens the light block defines', () => {
@@ -73,8 +82,8 @@ test('the dark blocks only override tokens the light block defines', () => {
 });
 
 const themes = {
-  light: { tokens: { ...light }, brand: brandLight },
-  dark: { tokens: { ...light, ...darkAttribute }, brand: brandDark },
+  light: { tokens: { ...v2Light, ...light }, brand: brandLight },
+  dark: { tokens: { ...v2Light, ...light, ...v2Dark, ...darkAttribute }, brand: brandDark },
 } as const;
 
 for (const [themeName, { tokens, brand }] of Object.entries(themes)) {
