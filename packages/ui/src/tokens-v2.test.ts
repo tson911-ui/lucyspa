@@ -243,6 +243,17 @@ test('text on a photo: white over one flat scrim that holds 4.5:1 even over a pu
   assert.equal(darkAttribute['--ls-scrim'], undefined, 'a photo does not follow the theme');
 });
 
+test('Q4: the flat sign-in panel is the accent (dark #1c1c1e) with white text at 4.5:1, and the card on it is a raised surface', () => {
+  assert.equal(light['--ls-auth-flat'], '#782b37');
+  assert.equal(darkAttribute['--ls-auth-flat'], '#1c1c1e');
+  assert.equal(light['--ls-on-auth-flat'], '#ffffff');
+  assert.ok(ratio(light['--ls-on-auth-flat']!, light['--ls-auth-flat']!) >= 4.5);
+  assert.ok(ratio(light['--ls-on-auth-flat']!, darkAttribute['--ls-auth-flat']!) >= 4.5);
+  // The card is told from the panel by its own step: white on the accent, #2c2c2e on #1c1c1e.
+  assert.notEqual(light['--ls-bg-raised'], light['--ls-auth-flat']);
+  assert.notEqual(darkAttribute['--ls-bg-raised'], darkAttribute['--ls-auth-flat']);
+});
+
 test('no gold, yellow or gradient in the v2 scope', () => {
   const v2 = css.slice(css.lastIndexOf('/*', css.indexOf('v2 scope (DESIGN.md')));
   assert.doesNotMatch(v2.replace(/\/\*[\s\S]*?\*\//g, ''), /gold|ivory|amber|yellow|gradient/i);

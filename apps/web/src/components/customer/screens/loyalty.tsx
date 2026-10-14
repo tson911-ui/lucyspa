@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  LOYALTY_TIERS_V1,
   REFERRAL_AWARD_POINTS,
   type CustomerComboResponse,
   type CustomerComboUseResponse,
@@ -19,8 +20,7 @@ import {
   Grid,
   ListSection,
   Notice,
-  Page,
-  PageHeader,
+  ProgressBar,
   Reveal,
   Stat,
   type DataTableColumn,
@@ -44,6 +44,7 @@ import {
 import { paginationLabels } from '../../../lib/workforce/list-view';
 import { formatPoints, tierTone } from '../../../lib/workforce/loyalty';
 import { Badge, Empty } from '../../workforce/ui';
+import { AccountScreen } from '../account-frame';
 import { useCustomer } from '../session';
 import { LoadState, useFetch } from './bookings';
 
@@ -59,26 +60,22 @@ export function CustomerLoyaltyScreen() {
     () => api.get<CustomerLoyaltySummaryResponse>('/api/v1/me/loyalty'),
     'summary',
   );
-  const head = <PageHeader title={text.title} description={text.intro} />;
   if (!summary.data) {
     return (
-      <Page>
-        {head}
+      <AccountScreen title={text.title} description={text.intro}>
         <LoadState error={summary.error} retry={summary.retry} />
-      </Page>
+      </AccountScreen>
     );
   }
   if (!summary.data.live) {
     return (
-      <Page>
-        {head}
+      <AccountScreen title={text.title} description={text.intro}>
         <Notice tone="info">{text.notLive}</Notice>
-      </Page>
+      </AccountScreen>
     );
   }
   return (
-    <Page>
-      {head}
+    <AccountScreen title={text.title} description={text.intro}>
       <Grid min="md" gap="page">
         {summary.data.wallets.map((wallet) => (
           <WalletCard key={wallet.wallet} wallet={wallet} />
@@ -93,7 +90,7 @@ export function CustomerLoyaltyScreen() {
       <ComboUsesSection />
       <ReferralsSection />
       <GiftsSection />
-    </Page>
+    </AccountScreen>
   );
 }
 
@@ -105,6 +102,20 @@ export function WalletCard({ wallet }: { wallet: LoyaltyWalletResponse }) {
   const { locale } = useCustomer();
   const text = customerLoyaltyDictionary(locale);
   const l = loyaltyDictionary(locale);
+  const toGo =
+    wallet.nextTier && wallet.pointsToNextTier !== null
+      ? fill(text.points.toGo, {
+          n: formatPoints(wallet.pointsToNextTier, locale),
+          tier: l.tiers[wallet.nextTier],
+        })
+      : text.points.topTier;
+  // Where the balance sits between the lowest balance of its tier and the lowest balance of the next one (the shared tier table).
+  const from = LOYALTY_TIERS_V1.find((entry) => entry.tier === wallet.tier)?.fromPoints ?? 0;
+  const upTo = LOYALTY_TIERS_V1.find((entry) => entry.tier === wallet.nextTier)?.fromPoints;
+  const progress =
+    upTo !== undefined && upTo > from
+      ? ((wallet.balancePoints - from) / (upTo - from)) * 100
+      : undefined;
   return (
     <Reveal>
       <Card as="section" aria-label={l.wallets[wallet.wallet]}>
@@ -116,15 +127,14 @@ export function WalletCard({ wallet }: { wallet: LoyaltyWalletResponse }) {
           label={text.points.balance}
           value={wallet.balancePoints}
           format={{ valueFormat: 'count', locale }}
-          note={
-            wallet.nextTier && wallet.pointsToNextTier !== null
-              ? fill(text.points.toGo, {
-                  n: formatPoints(wallet.pointsToNextTier, locale),
-                  tier: l.tiers[wallet.nextTier],
-                })
-              : text.points.topTier
-          }
+          note={progress === undefined ? toGo : undefined}
         />
+        {progress !== undefined ? (
+          <div className="ls-acct-progress">
+            <ProgressBar value={progress} label={toGo} />
+            <p className="ls-acct-progress-text">{toGo}</p>
+          </div>
+        ) : null}
         <DescriptionList
           items={[
             {

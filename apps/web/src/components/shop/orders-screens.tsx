@@ -8,7 +8,6 @@ import type {
 } from '@lucy-spa/contracts';
 import {
   Badge,
-  Breadcrumbs,
   Button,
   Card,
   CardHeader,
@@ -19,8 +18,6 @@ import {
   EmptyState,
   Icon,
   Notice,
-  Page,
-  PageHeader,
   Reveal,
   RowActions,
   Spinner,
@@ -54,6 +51,7 @@ import {
 import { cursorLabels } from '../../lib/workforce/list-view';
 import { expectedText, orderStatusTone } from '../../lib/workforce/product-orders';
 import { useClientPaging } from '../../lib/workforce/use-client-paging';
+import { AccountScreen } from '../customer/account-frame';
 import { useCustomer } from '../customer/session';
 import { LoadState, NotFoundPage, useFetch } from '../customer/screens/bookings';
 import { OrderFulfilment } from './order-fulfilment';
@@ -90,10 +88,9 @@ export function OnlineOrdersScreen() {
 
   if (!first.data) {
     return (
-      <Page>
-        <PageHeader title={s.orders.title} description={s.orders.intro} />
+      <AccountScreen title={s.orders.title} description={s.orders.intro}>
         <LoadState error={first.error} retry={first.retry} />
-      </Page>
+      </AccountScreen>
     );
   }
   const next = more.cursor === undefined ? first.data.nextCursor : more.cursor;
@@ -180,8 +177,7 @@ export function OnlineOrdersScreen() {
   ];
 
   return (
-    <Page>
-      <PageHeader title={s.orders.title} description={s.orders.intro} />
+    <AccountScreen title={s.orders.title} description={s.orders.intro}>
       {failure ? <Notice tone="danger">{failure}</Notice> : null}
       <DataTable
         mode="client"
@@ -212,7 +208,7 @@ export function OnlineOrdersScreen() {
           labels={{ ...cursorLabels(w, s.orders.title), loadMore: s.orders.loadMore }}
         />
       ) : null}
-    </Page>
+    </AccountScreen>
   );
 }
 
@@ -396,9 +392,9 @@ export function OnlineOrderDetailScreen({ id }: { id: string }) {
       return <NotFoundPage message={o.notFound} backHref={`${base}/orders`} backLabel={o.title} />;
     }
     return (
-      <Page width="form">
+      <AccountScreen title={o.detailTitle} narrow>
         <LoadState error={detail.error} retry={detail.retry} />
-      </Page>
+      </AccountScreen>
     );
   }
 
@@ -445,18 +441,7 @@ export function OnlineOrderDetailScreen({ id }: { id: string }) {
     : o.stateHint[order.state];
 
   return (
-    <Page>
-      <PageHeader
-        title={o.detailTitle}
-        description={order.code}
-        breadcrumbs={
-          <Breadcrumbs
-            label={t.nav.menu}
-            LinkComponent={Link}
-            items={[{ label: o.title, href: `${base}/orders` }, { label: order.code }]}
-          />
-        }
-      />
+    <AccountScreen title={o.detailTitle} description={order.code}>
       {paidNow ? <Notice tone="success">{o.paidNow}</Notice> : null}
       {cancelledNow ? <Notice tone="info">{o.cancelledDone}</Notice> : null}
       {arrival?.payFailed && awaiting && !failure ? (
@@ -636,6 +621,6 @@ export function OnlineOrderDetailScreen({ id }: { id: string }) {
           onCancel={() => setAsking(false)}
         />
       ) : null}
-    </Page>
+    </AccountScreen>
   );
 }

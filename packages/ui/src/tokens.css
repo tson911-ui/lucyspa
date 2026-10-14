@@ -590,6 +590,9 @@
   --ls-nav-active-text: #ffffff;
   --ls-overlay: rgb(0 0 0 / 0.4);
   --ls-image-filter: none;
+  /* The flat panel of the sign-in pages (Q4): the accent in light, #1c1c1e in dark, with white text; the card on it is a hairline card. */
+  --ls-auth-flat: #782b37;
+  --ls-on-auth-flat: #ffffff;
   /* Text on a photo (DESIGN.md 9): white over one flat black scrim, the same in both modes (a photo does not follow the theme).
      0.55 keeps white text at 4.5:1 or better even over a pure-white photo (tokens-v2.test.ts). */
   --ls-on-photo: #ffffff;
@@ -730,6 +733,8 @@
   --ls-overlay: rgb(0 0 0 / 0.6);
   /* A photo with a white background must not glow on a black page (DESIGN.md 6.2): dimmed a little in dark. */
   --ls-image-filter: brightness(0.92);
+  --ls-auth-flat: #1c1c1e;
+  --ls-on-auth-flat: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -767,6 +772,8 @@
     --ls-overlay: rgb(0 0 0 / 0.6);
     /* A photo with a white background must not glow on a black page (DESIGN.md 6.2): dimmed a little in dark. */
     --ls-image-filter: brightness(0.92);
+    --ls-auth-flat: #1c1c1e;
+    --ls-on-auth-flat: #ffffff;
   }
 }
 
@@ -806,6 +813,8 @@
   --ls-nav-active-text: #ffffff;
   --ls-overlay: rgb(0 0 0 / 0.4);
   --ls-image-filter: none;
+  --ls-auth-flat: #782b37;
+  --ls-on-auth-flat: #ffffff;
 }
 
 /* The document behind the v2 frame (overscroll, the safe-area strips, the page before the frame paints) takes the base band too,

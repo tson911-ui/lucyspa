@@ -192,3 +192,34 @@ test('C14 booking: one 720 px column with a sticky summary from 1024 px, a flat 
     /min-height:\s*var\(--ls-control-h\)/,
   );
 });
+
+test('C15 sign-in: the flat panel is a token (no gradient), the card is a hairline raised surface, 26 rem wide', () => {
+  const panel = body("[data-ui='v2'] .ls-auth-panel");
+  assert.match(panel, /background:\s*var\(--ls-auth-flat\)/);
+  assert.match(panel, /color:\s*var\(--ls-on-auth-flat\)/);
+  assert.match(body("[data-ui='v2'] .ls-auth-stack"), /max-width:\s*26rem/);
+  const card = body("[data-ui='v2'] .ls-auth-panel .ls-member-card");
+  assert.match(card, /border:\s*1px solid var\(--ls-border\)/);
+  assert.match(card, /background:\s*var\(--ls-bg-raised\)/);
+  assert.match(card, /box-shadow:\s*none/);
+  // Staff sign-in is its own layout: nothing here may reach `.ls-auth`.
+  assert.doesNotMatch(stripped, /\.ls-auth\b(?!-)/);
+});
+
+test('C15 member area: the tabs show from 768 px, the phone gets the list, a summary card is one link whose pill takes the hover', () => {
+  assert.match(
+    css,
+    /@media \(min-width: 768px\) \{\s*\[data-ui='v2'\] \.ls-acct-tabs \{\s*display: flex;/,
+  );
+  assert.match(body("[data-ui='v2'] .ls-acct-tabs"), /display:\s*none/);
+  assert.match(
+    css,
+    /@media \(min-width: 768px\) \{\s*\[data-ui='v2'\] \.ls-acct-list \{\s*display: none;/,
+  );
+  assert.match(
+    body("[data-ui='v2'] .ls-acct-card:hover .ls-acct-card-cta"),
+    /background:\s*var\(--ls-hover-bg\)/,
+  );
+  assert.doesNotMatch(body("[data-ui='v2'] .ls-acct-card"), /hover|transform/);
+  assert.match(body("[data-ui='v2'] .ls-acct-content[data-narrow='true']"), /max-width:\s*45rem/);
+});

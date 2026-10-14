@@ -6,15 +6,12 @@ import type {
   CustomerInvoiceSummary,
 } from '@lucy-spa/contracts';
 import {
-  Breadcrumbs,
   Card,
   CardHeader,
   CursorPagination,
   DataTable,
   DescriptionList,
   Notice,
-  Page,
-  PageHeader,
   Reveal,
   RowActions,
   type DataTableColumn,
@@ -37,6 +34,7 @@ import { cursorLabels } from '../../../lib/workforce/list-view';
 import { expectedText, orderStatusTone } from '../../../lib/workforce/product-orders';
 import { useClientPaging } from '../../../lib/workforce/use-client-paging';
 import { Badge, Empty } from '../../workforce/ui';
+import { AccountScreen } from '../account-frame';
 import { useCustomer } from '../session';
 import { LoadState, NotFoundPage, useFetch } from './bookings';
 import { ReviewCard } from './review-card';
@@ -60,10 +58,9 @@ export function CustomerInvoicesScreen() {
 
   if (!first.data) {
     return (
-      <Page>
-        <PageHeader title={t.invoices.title} description={t.invoices.intro} />
+      <AccountScreen title={t.invoices.title} description={t.invoices.intro}>
         <LoadState error={first.error} retry={first.retry} />
-      </Page>
+      </AccountScreen>
     );
   }
   // `undefined` = no further page fetched yet: continue from the first response.
@@ -151,8 +148,7 @@ export function CustomerInvoicesScreen() {
   // One branch only: a column that says the same thing on every row is left out (it was cut off and told nothing).
   const oneBranch = new Set(shown.map((item) => item.branch.name)).size <= 1;
   return (
-    <Page>
-      <PageHeader title={t.invoices.title} description={t.invoices.intro} />
+    <AccountScreen title={t.invoices.title} description={t.invoices.intro}>
       {failure ? <Notice tone="danger">{failure}</Notice> : null}
       <DataTable
         mode="client"
@@ -172,7 +168,7 @@ export function CustomerInvoicesScreen() {
           labels={{ ...cursorLabels(w, t.invoices.title), loadMore: t.invoices.loadMore }}
         />
       ) : null}
-    </Page>
+    </AccountScreen>
   );
 }
 
@@ -192,9 +188,9 @@ export function CustomerInvoiceDetailScreen({ id }: { id: string }) {
       );
     }
     return (
-      <Page width="form">
+      <AccountScreen title={t.invoices.detailTitle} narrow>
         <LoadState error={detail.error} retry={detail.retry} />
-      </Page>
+      </AccountScreen>
     );
   }
   const invoice = detail.data;
@@ -216,17 +212,7 @@ export function CustomerInvoiceDetailScreen({ id }: { id: string }) {
     },
   ].filter((group) => group.lines.length > 0);
   return (
-    <Page>
-      <PageHeader
-        title={t.invoices.detailTitle}
-        breadcrumbs={
-          <Breadcrumbs
-            label={t.nav.menu}
-            LinkComponent={Link}
-            items={[{ label: t.invoices.title, href: `${base}/invoices` }, { label: invoice.code }]}
-          />
-        }
-      />
+    <AccountScreen title={t.invoices.detailTitle} description={invoice.code}>
       <div className="ls-order-layout ls-order-layout-aside-first">
         <Reveal>
           <Card as="section" aria-label={t.invoices.detailTitle}>
@@ -406,6 +392,6 @@ export function CustomerInvoiceDetailScreen({ id }: { id: string }) {
           {invoice.status === 'PAID' ? <ReviewCard invoiceId={invoice.id} /> : null}
         </div>
       </div>
-    </Page>
+    </AccountScreen>
   );
 }

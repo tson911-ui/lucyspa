@@ -4,9 +4,10 @@ import type {
   CustomerBookingDetail,
   CustomerBookingListResponse,
   CustomerBookingSummary,
+  CustomerInvoiceListResponse,
+  CustomerLoyaltySummaryResponse,
 } from '@lucy-spa/contracts';
 import {
-  Breadcrumbs,
   Button,
   buttonClass,
   Card,
@@ -19,8 +20,6 @@ import {
   Icon,
   ListSection,
   Notice,
-  Page,
-  PageHeader,
   Reveal,
   RowActions,
   Skeleton,
@@ -30,6 +29,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { fill } from '../../../i18n/customer';
+import { customerLoyaltyDictionary } from '../../../i18n/customer-loyalty';
+import { loyaltyDictionary } from '../../../i18n/loyalty';
 import { getWorkforceDictionary } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/api/client';
 import {
@@ -39,8 +40,12 @@ import {
   formatVndRange,
   statusTone,
 } from '../../../lib/customer/booking';
+import { formatBusinessDate, formatVnd, invoiceTone } from '../../../lib/customer/invoice';
+import { formatPoints } from '../../../lib/workforce/loyalty';
 import { useClientPaging } from '../../../lib/workforce/use-client-paging';
+import { useUnreadCount } from '../../notifications/inbox';
 import { Badge, Empty } from '../../workforce/ui';
+import { AccountScreen, accountSections } from '../account-frame';
 import { useCustomer, useCustomerAccount } from '../session';
 
 export function useFetch<T>(load: () => Promise<T>, key: string) {
@@ -99,14 +104,14 @@ export function NotFoundPage({
   backLabel: string;
 }) {
   return (
-    <Page width="form">
+    <AccountScreen title={backLabel} narrow>
       <Notice tone="warning">{message}</Notice>
       <div>
         <Link href={backHref} className={buttonClass('secondary')}>
           {backLabel}
         </Link>
       </div>
-    </Page>
+    </AccountScreen>
   );
 }
 
@@ -210,88 +215,168 @@ function BookingsTable({
   );
 }
 
-/** The member area home: the booking entry point, upcoming bookings and the account details. */
-export function CustomerHomeScreen() {
-  const { api, t, base } = useCustomer();
-  const { account } = useCustomerAccount();
-  const list = useFetch(() => api.get<CustomerBookingListResponse>('/api/v1/me/bookings'), 'home');
+/**
+ * One summary card of the account home (DESIGN.md 9.2): a heading, a short line or two, and a pill that says where the card goes. The whole
+ * card is one link; hovering it fills the pill (rule 4), not the card.
+ */
+function SummaryCard({
+  href,
+  title,
+  cta,
+  children,
+}: {
+  href: string;
+  title: string;
+  cta: string;
+  children: ReactNode;
+}) {
   return (
-    <Page>
-      <PageHeader
-        title={t.home.title}
-        description={t.home.intro}
-        actions={
-          <Link href={`${base}/book`} className={buttonClass('primary', 'md', 'ls-hide-on-tabbar')}>
-            {t.home.bookCta}
-          </Link>
-        }
-      />
-      <Reveal>
-        <ListSection
-          title={t.home.upcoming}
-          actions={
-            <Link href={`${base}/bookings`} className={buttonClass('secondary')}>
-              {t.home.viewAll}
-            </Link>
-          }
-        >
-          {list.error ? (
-            <LoadState error={list.error} retry={list.retry} />
-          ) : list.data && list.data.upcoming.length === 0 ? (
-            <p className="ls-empty-line">{t.home.none}</p>
-          ) : (
-            <BookingsTable
-              items={list.data ? list.data.upcoming.slice(0, 3) : []}
-              listName={t.home.upcoming}
-              empty={<Empty>{t.home.none}</Empty>}
-              paged={false}
-              loading={!list.data}
-              skeletonRows={3}
-            />
-          )}
-        </ListSection>
-      </Reveal>
-      <div className="ls-account-grid">
+    <Link href={href} className="ls-acct-card">
+      <h2 className="ls-acct-card-title">{title}</h2>
+      <div className="ls-acct-card-body">{children}</div>
+      <span className="ls-acct-card-cta">
+        {cta}
+        <Icon name="chevron-right" size={16} aria-hidden="true" />
+      </span>
+    </Link>
+  );
+}
+
+/** The member area home: a greeting and four cards (next appointment, points, latest invoice, notifications), each one link. */
+export function CustomerHomeScreen() {
+  const { api, t, locale, base } = useCustomer();
+  const { account } = useCustomerAccount();
+  const bookings = useFetch(
+    () => api.get<CustomerBookingListResponse>('/api/v1/me/bookings'),
+    'home',
+  );
+  const loyalty = useFetch(
+    () => api.get<CustomerLoyaltySummaryResponse>('/api/v1/me/loyalty'),
+    'home-loyalty',
+  );
+  const invoices = useFetch(
+    () => api.get<CustomerInvoiceListResponse>('/api/v1/me/invoices'),
+    'home-invoices',
+  );
+  const unread = useUnreadCount(api);
+  const points = customerLoyaltyDictionary(locale);
+  const l = loyaltyDictionary(locale);
+  const next = bookings.data?.upcoming[0];
+  const latest = invoices.data?.invoices[0];
+  const quiet = (text: string) => <p className="ls-acct-card-note">{text}</p>;
+  const loading = <Skeleton lines={2} />;
+  return (
+    <AccountScreen
+      title={t.home.title}
+      description={`${fill(t.home.greeting, { name: account.displayName })} ${t.home.intro}`}
+    >
+      <div className="ls-acct-grid">
         <Reveal>
-          <Card as="section" aria-label={t.home.profile}>
-            <CardHeader title={t.home.profile} />
-            <DescriptionList
-              items={[
-                { label: t.home.name, value: account.displayName },
-                {
-                  label: t.home.languagePref,
-                  value: account.locale === 'vi' ? 'Tiếng Việt' : 'English',
-                },
-              ]}
-            />
-          </Card>
+          <SummaryCard
+            href={next ? `${base}/bookings/${next.id}` : `${base}/book`}
+            title={t.home.upcoming}
+            cta={next ? t.home.openBooking : t.home.bookCta}
+          >
+            {bookings.error ? (
+              quiet(customerErrorMessage(bookings.error, t))
+            ) : !bookings.data ? (
+              loading
+            ) : next ? (
+              <>
+                <p className="ls-acct-card-figure">
+                  {formatDateTime(next.startsAt, next.branch.timezone, locale)}
+                </p>
+                <p className="ls-acct-card-note">
+                  {next.serviceNames
+                    .map((name) => (locale === 'vi' ? name.vi : name.en))
+                    .join(', ')}
+                </p>
+                <Badge tone={statusTone(next.status)}>{t.bookings.status[next.status]}</Badge>
+              </>
+            ) : (
+              quiet(t.home.none)
+            )}
+          </SummaryCard>
         </Reveal>
         <Reveal>
-          <Card as="section" aria-label={t.home.hubTitle}>
-            <CardHeader title={t.home.hubTitle} />
-            <ul className="ls-hub">
-              {(
-                [
-                  ['calendar-check', t.home.hubBookings, `${base}/bookings`],
-                  ['receipt', t.home.hubInvoices, `${base}/invoices`],
-                  ['award', t.home.hubRewards, `${base}/loyalty`],
-                  ['cart', t.home.hubOrders, `${base}/orders`],
-                  ['bell', t.home.hubNotifications, `${base}/notifications`],
-                ] as const
-              ).map(([icon, label, href]) => (
-                <li key={href}>
-                  <Link href={href}>
-                    <Icon name={icon} aria-hidden="true" />
-                    <span>{label}</span>
-                    <Icon name="chevron-right" size={16} aria-hidden="true" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </Card>
+          <SummaryCard href={`${base}/loyalty`} title={t.home.hubRewards} cta={t.home.openPoints}>
+            {loyalty.error ? (
+              quiet(customerErrorMessage(loyalty.error, t))
+            ) : !loyalty.data ? (
+              loading
+            ) : !loyalty.data.live ? (
+              quiet(points.notLive)
+            ) : (
+              <dl className="ls-acct-points">
+                {loyalty.data.wallets.map((wallet) => (
+                  <div key={wallet.wallet}>
+                    <dt>{l.wallets[wallet.wallet]}</dt>
+                    <dd>
+                      {formatPoints(wallet.balancePoints, locale)} · {l.tiers[wallet.tier]}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </SummaryCard>
+        </Reveal>
+        <Reveal>
+          <SummaryCard
+            href={latest ? `${base}/invoices/${latest.id}` : `${base}/invoices`}
+            title={t.home.lastInvoice}
+            cta={t.home.openInvoices}
+          >
+            {invoices.error ? (
+              quiet(customerErrorMessage(invoices.error, t))
+            ) : !invoices.data ? (
+              loading
+            ) : latest ? (
+              <>
+                <p className="ls-acct-card-figure">{formatVnd(latest.totalVnd, locale)}</p>
+                <p className="ls-acct-card-note">
+                  {formatBusinessDate(latest.businessDate, locale)}
+                </p>
+                <Badge tone={invoiceTone(latest.status)}>{t.invoices.status[latest.status]}</Badge>
+              </>
+            ) : (
+              quiet(t.home.noInvoice)
+            )}
+          </SummaryCard>
+        </Reveal>
+        <Reveal>
+          <SummaryCard
+            href={`${base}/notifications`}
+            title={t.home.hubNotifications}
+            cta={t.home.openNotifications}
+          >
+            {unread.failed
+              ? quiet(t.errors.unavailable)
+              : unread.count === null
+                ? loading
+                : quiet(
+                    unread.count > 0
+                      ? fill(t.home.unreadCount, { count: unread.count })
+                      : t.home.unreadNone,
+                  )}
+          </SummaryCard>
         </Reveal>
       </div>
-    </Page>
+      {/* A phone has no tabs: the same six places as one list. */}
+      <nav aria-label={t.nav.menu} className="ls-acct-list">
+        <ul className="ls-hub">
+          {accountSections(t, base)
+            .filter((section) => section.key !== 'home')
+            .map((section) => (
+              <li key={section.key}>
+                <Link href={section.href}>
+                  <span>{section.label}</span>
+                  <Icon name="chevron-right" size={16} aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
+        </ul>
+      </nav>
+    </AccountScreen>
   );
 }
 
@@ -300,15 +385,7 @@ export function CustomerBookingsScreen() {
   const { api, t, base } = useCustomer();
   const list = useFetch(() => api.get<CustomerBookingListResponse>('/api/v1/me/bookings'), 'list');
   return (
-    <Page>
-      <PageHeader
-        title={t.bookings.title}
-        actions={
-          <Link href={`${base}/book`} className={buttonClass('primary', 'md', 'ls-hide-on-tabbar')}>
-            {t.home.bookCta}
-          </Link>
-        }
-      />
+    <AccountScreen title={t.bookings.title}>
       {list.data && list.data.upcoming.length === 0 && list.data.history.length === 0 ? (
         <EmptyState
           icon="calendar-check"
@@ -352,7 +429,7 @@ export function CustomerBookingsScreen() {
       ) : (
         <LoadState error={list.error} retry={list.retry} />
       )}
-    </Page>
+    </AccountScreen>
   );
 }
 
@@ -377,9 +454,9 @@ export function CustomerBookingDetailScreen({ id }: { id: string }) {
       );
     }
     return (
-      <Page width="form">
+      <AccountScreen title={t.bookings.detailTitle} narrow>
         <LoadState error={detail.error} retry={detail.retry} />
-      </Page>
+      </AccountScreen>
     );
   }
   const booking = detail.data;
@@ -417,24 +494,17 @@ export function CustomerBookingDetailScreen({ id }: { id: string }) {
   }
 
   return (
-    <Page>
-      <PageHeader
-        title={t.bookings.detailTitle}
-        breadcrumbs={
-          <Breadcrumbs
-            label={t.nav.menu}
-            LinkComponent={Link}
-            items={[{ label: t.bookings.title, href: `${base}/bookings` }, { label: booking.code }]}
-          />
-        }
-        actions={
-          booking.canCancel ? (
-            <Button variant="danger-outline" onClick={() => setCancelling(true)}>
-              {t.bookings.cancelTitle}
-            </Button>
-          ) : undefined
-        }
-      />
+    <AccountScreen
+      title={t.bookings.detailTitle}
+      description={booking.code}
+      actions={
+        booking.canCancel ? (
+          <Button variant="danger-outline" onClick={() => setCancelling(true)}>
+            {t.bookings.cancelTitle}
+          </Button>
+        ) : undefined
+      }
+    >
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
       <div className="ls-order-layout ls-order-layout-aside-first">
         <Reveal>
@@ -511,6 +581,6 @@ export function CustomerBookingDetailScreen({ id }: { id: string }) {
           onConfirm={(reason) => cancel(reason)}
         />
       ) : null}
-    </Page>
+    </AccountScreen>
   );
 }

@@ -1,12 +1,12 @@
 'use client';
 
 import {
+  Band,
   BrandWordmark,
   Button,
   buttonClass,
   Card,
   Field,
-  Icon,
   Notice,
   PasswordInput,
   PublicMain,
@@ -37,7 +37,7 @@ const PASSWORD = { min: 8, max: 128 };
 const OTP = /^[0-9]{6}$/;
 const passwordLength = (value: string) => [...value.normalize('NFC')].length;
 
-/** The centered card on the page band (Part 2 contract 5.4): the shared header and footer stay around it. */
+/** The centered card on the flat panel (DESIGN.md 9.2, Q4): the wordmark above it; the shared header and footer stay around it. */
 function AuthCard({
   title,
   intro,
@@ -54,47 +54,40 @@ function AuthCard({
   const router = useRouter();
   const titleId = useId();
   return (
-    <PublicMain>
-      <div className="ls-member-auth">
-        <aside className="ls-member-aside" aria-hidden="true">
-          <BrandWordmark serif />
-          <p className="ls-member-aside-title">{t.auth.asideTitle}</p>
-          <ul>
-            {[t.auth.asideOne, t.auth.asideTwo, t.auth.asideThree].map((line) => (
-              <li key={line}>
-                <Icon name="check" />
-                <span>{line}</span>
-              </li>
-            ))}
-          </ul>
-        </aside>
-        <Card as="section" aria-labelledby={titleId} className="ls-member-card">
-          <div className="ls-member-head">
-            <h1 id={titleId} className="ls-member-title">
-              {title}
-            </h1>
-            {intro ? <p>{intro}</p> : null}
+    <PublicMain className="ls-main-tall">
+      <Band tone="page" className="ls-auth-panel">
+        <div className="ls-auth-stack">
+          <div className="ls-auth-brand" aria-hidden="true">
+            <BrandWordmark size="display" serif />
           </div>
-          {mode ? (
-            <SegmentedControl
-              label={t.auth.modes}
-              value={mode}
-              options={[
-                { value: 'login', label: t.auth.signIn },
-                { value: 'register', label: t.auth.registerTab },
-              ]}
-              onChange={(next) => {
-                if (next === mode) return;
-                // The page to return to travels with the visitor between the two forms.
-                const carry = new URLSearchParams(window.location.search).get('next');
-                const query = carry ? `?${new URLSearchParams({ next: carry }).toString()}` : '';
-                router.push(`${base}/${next}${query}`);
-              }}
-            />
-          ) : null}
-          {children}
-        </Card>
-      </div>
+          <Card as="section" aria-labelledby={titleId} className="ls-member-card">
+            <div className="ls-member-head">
+              <h1 id={titleId} className="ls-member-title">
+                {title}
+              </h1>
+              {intro ? <p>{intro}</p> : null}
+            </div>
+            {mode ? (
+              <SegmentedControl
+                label={t.auth.modes}
+                value={mode}
+                options={[
+                  { value: 'login', label: t.auth.signIn },
+                  { value: 'register', label: t.auth.registerTab },
+                ]}
+                onChange={(next) => {
+                  if (next === mode) return;
+                  // The page to return to travels with the visitor between the two forms.
+                  const carry = new URLSearchParams(window.location.search).get('next');
+                  const query = carry ? `?${new URLSearchParams({ next: carry }).toString()}` : '';
+                  router.push(`${base}/${next}${query}`);
+                }}
+              />
+            ) : null}
+            {children}
+          </Card>
+        </div>
+      </Band>
     </PublicMain>
   );
 }
@@ -369,7 +362,7 @@ function OtpStep({ flowToken, onVerified }: { flowToken: string; onVerified: () 
           before={
             <Button
               type="button"
-              variant="secondary"
+              variant="neutral"
               disabled={pending || wait > 0}
               onClick={() => void resend()}
             >

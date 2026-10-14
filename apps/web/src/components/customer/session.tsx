@@ -1,7 +1,7 @@
 'use client';
 
 import type { CurrentAccountResponse } from '@lucy-spa/contracts';
-import { Button, PublicMain, Skeleton } from '@lucy-spa/ui';
+import { Band, Button, PublicMain, Skeleton } from '@lucy-spa/ui';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   createContext,
@@ -138,15 +138,15 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
   if (state.kind === 'loading') {
     return (
       <PublicMain className="ls-main-tall">
-        <div className="ls-container" aria-busy="true">
-          <div className="ls-member-page">
-            <span className="ls-visually-hidden" role="status">
-              {t.auth.checking}
-            </span>
-            <Skeleton lines={1} height="var(--ls-space-9)" width="60%" />
-            <Skeleton lines={3} height="var(--ls-space-5)" />
-          </div>
-        </div>
+        <Band tone="page" className="ls-band--alt ls-acct-title" label={t.auth.checking}>
+          <span className="ls-visually-hidden" role="status">
+            {t.auth.checking}
+          </span>
+          <Skeleton lines={1} height="var(--ls-space-9)" width="60%" />
+        </Band>
+        <Band tone="page" className="ls-band--base ls-acct-body" label={t.auth.checking}>
+          <Skeleton lines={3} height="var(--ls-space-5)" />
+        </Band>
       </PublicMain>
     );
   }

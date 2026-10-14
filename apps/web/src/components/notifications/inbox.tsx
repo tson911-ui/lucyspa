@@ -310,6 +310,7 @@ export function NotificationInbox({
   base,
   locale,
   audience = 'staff',
+  frame,
 }: {
   api: ApiClient;
   account: CurrentAccountResponse;
@@ -317,6 +318,8 @@ export function NotificationInbox({
   locale: Locale;
   /** A member reads the inbox in words about their own bookings and orders, not the staff's work. */
   audience?: 'staff' | 'customer';
+  /** The page frame around the inbox when the screen draws its own title (the member's title band takes the one action). */
+  frame?: ((parts: { actions: ReactNode; children: ReactNode }) => ReactNode) | undefined;
 }) {
   const t = getNotificationDictionary(locale);
   const w = getWorkforceDictionary(locale);
@@ -425,21 +428,26 @@ export function NotificationInbox({
     (filters.archived ? 1 : 0);
   const items = page?.items ?? [];
 
-  return (
+  const markAll = filters.archived ? null : (
+    <Button
+      variant={frame ? 'neutral' : 'secondary'}
+      icon="check-circle"
+      loading={pending === 'all'}
+      disabled={busy || loading || unread === 0}
+      onClick={() => void readAll()}
+    >
+      {pending === 'all' ? t.working : t.markAllRead}
+    </Button>
+  );
+
+  // With a frame (the member's title band) the frame holds the heading and takes the one action; without one the inbox draws its own.
+  const content = (
     <>
-      <PageHeader title={t.title} intro={audience === 'customer' ? t.introCustomer : t.intro}>
-        {!filters.archived ? (
-          <Button
-            variant="secondary"
-            icon="check-circle"
-            loading={pending === 'all'}
-            disabled={busy || loading || unread === 0}
-            onClick={() => void readAll()}
-          >
-            {pending === 'all' ? t.working : t.markAllRead}
-          </Button>
-        ) : null}
-      </PageHeader>
+      {frame ? null : (
+        <PageHeader title={t.title} intro={audience === 'customer' ? t.introCustomer : t.intro}>
+          {markAll}
+        </PageHeader>
+      )}
       <ListToolbar
         labels={toolbarLabels(w)}
         activeFilters={activeFilters}
@@ -512,4 +520,5 @@ export function NotificationInbox({
       ) : null}
     </>
   );
+  return frame ? <>{frame({ actions: markAll, children: content })}</> : content;
 }

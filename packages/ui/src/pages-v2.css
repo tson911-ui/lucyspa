@@ -1807,3 +1807,315 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
 [data-ui='v2'] .ls-booking-done {
   max-width: 45rem;
 }
+
+/* ---- Sign-in, register, forgot password (C15, DESIGN.md 9.2, Q4) ------------------------------------------------------------------------ */
+/* One band of the flat panel color (the accent; #1c1c1e in dark; no gradient, no shadow) that fills the page between the header and the footer,
+   the wordmark above one 26 rem card in the raised surface with a hairline. Staff sign-in is another layout (`.ls-auth`) and keeps its own. */
+[data-ui='v2'] .ls-site-main:has(> .ls-auth-panel) {
+  display: flex;
+  flex-direction: column;
+}
+
+[data-ui='v2'] .ls-auth-panel {
+  display: grid;
+  flex: 1 1 auto;
+  align-items: center;
+  padding-block: var(--ls-space-9);
+  background: var(--ls-auth-flat);
+  color: var(--ls-on-auth-flat);
+}
+
+[data-ui='v2'] .ls-auth-stack {
+  display: grid;
+  gap: var(--ls-space-6);
+  justify-items: center;
+  width: 100%;
+  max-width: 26rem;
+  margin-inline: auto;
+}
+
+[data-ui='v2'] .ls-auth-brand {
+  --ls-wordmark-display: var(--ls-type-title);
+}
+
+/* The card: a raised surface with a hairline; a field on it is the band-alt step (the card is not that step). */
+[data-ui='v2'] .ls-auth-panel .ls-member-card {
+  --ls-bg-field: var(--ls-band-alt);
+  width: 100%;
+  padding: var(--ls-space-6);
+  border: 1px solid var(--ls-border);
+  background: var(--ls-bg-raised);
+  color: var(--ls-text);
+  box-shadow: none;
+}
+
+@media (min-width: 480px) {
+  [data-ui='v2'] .ls-auth-panel .ls-member-card {
+    padding: var(--ls-space-7);
+  }
+}
+
+[data-ui='v2'] .ls-auth-panel .ls-member-head p {
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+/* ---- Member area (C15, DESIGN.md 9.2): account home, bookings, invoices, loyalty, notifications, orders ---------------------------------- */
+/* The title band: the back link, the one h1 with its sentence and, at the trailing edge, the page's one action; from 768 px the account tabs.
+   Then the content band. The old member frame (a container with its own Back row, no band) is gone. */
+[data-ui='v2'] .ls-acct-title .ls-public-title {
+  margin-bottom: 0;
+}
+
+[data-ui='v2'] .ls-acct-head {
+  padding-top: var(--ls-space-6);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ls-space-4) var(--ls-space-6);
+}
+
+[data-ui='v2'] .ls-acct-head > .ls-public-title {
+  flex: 1 1 20rem;
+  min-width: 0;
+  padding-top: 0;
+}
+
+[data-ui='v2'] .ls-acct-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-acct-content {
+  display: grid;
+  gap: var(--ls-space-6);
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-acct-content[data-narrow='true'] {
+  max-width: 45rem;
+}
+
+/* A list with nothing in it (no appointments at all): the same hairline box as the table's own empty state, so the empty lists agree. */
+[data-ui='v2'] .ls-acct-content > .ls-empty {
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* The tabs: the header menu's look (14 / 500 ink; the current page is accent text with a 2 px underline; hover and focus are the solid accent pill). */
+[data-ui='v2'] .ls-acct-tabs {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  [data-ui='v2'] .ls-acct-tabs {
+    display: flex;
+    gap: var(--ls-space-2);
+    /* The first label sits on the title's left edge: the link's own 16 px of padding is pulled back out of the gutter. */
+    margin-inline-start: calc(var(--ls-space-4) * -1);
+    padding-block: var(--ls-space-6) 0;
+  }
+}
+
+/* Below 1024 px the six labels take 12 px of padding and no gap, so all of them show at 768 px (a hidden tab in a scrolling strip is not found). */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  [data-ui='v2'] .ls-acct-tabs {
+    gap: 0;
+    margin-inline-start: calc(var(--ls-space-3) * -1);
+  }
+
+  [data-ui='v2'] .ls-acct-tabs a {
+    padding-inline: var(--ls-space-3);
+  }
+}
+
+[data-ui='v2'] .ls-acct-tabs a {
+  color: var(--ls-text);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-acct-tabs a[aria-current='page'],
+[data-ui='v2'] .ls-acct-tabs:not([data-pill='still'], [data-pill='slide']) a[aria-current='page'] {
+  background: transparent;
+  color: var(--ls-brand);
+  text-decoration: underline;
+  text-decoration-color: currentcolor;
+  text-decoration-thickness: 2px;
+  text-underline-offset: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-acct-tabs > .ls-nav-pill {
+  opacity: 0;
+  transition:
+    translate var(--ls-dur-glide) var(--ls-ease-premium),
+    width var(--ls-dur-glide) var(--ls-ease-premium),
+    opacity var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+[data-ui='v2'] .ls-acct-tabs:is([data-pill='still'], [data-pill='slide']) > a[data-under] {
+  color: var(--ls-text);
+}
+
+[data-ui='v2'] .ls-acct-tabs:is([data-pill='still'], [data-pill='slide']) > a[aria-current='page'] {
+  color: var(--ls-brand);
+}
+
+[data-ui='v2'] .ls-acct-tabs:has(> a:focus-visible) > .ls-nav-pill {
+  opacity: 1;
+}
+
+[data-ui='v2']
+  .ls-acct-tabs:is([data-pill='still'], [data-pill='slide'])
+  > a[data-under]:focus-visible {
+  color: var(--ls-nav-active-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-acct-tabs:has(> a:hover) > .ls-nav-pill {
+    opacity: 1;
+  }
+
+  [data-ui='v2'] .ls-acct-tabs:is([data-pill='still'], [data-pill='slide']) > a[data-under]:hover {
+    color: var(--ls-nav-active-text);
+  }
+}
+
+/* The account home: four summary cards, each one link (a pill says where it goes; hover fills the pill, not the card). */
+[data-ui='v2'] .ls-acct-grid {
+  display: grid;
+  gap: var(--ls-space-6);
+  align-items: stretch;
+}
+
+@media (min-width: 768px) {
+  [data-ui='v2'] .ls-acct-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+[data-ui='v2'] .ls-acct-grid > .ls-reveal {
+  display: grid;
+}
+
+[data-ui='v2'] .ls-acct-card {
+  display: grid;
+  gap: var(--ls-space-4);
+  align-content: start;
+  padding: var(--ls-space-6);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
+  color: var(--ls-text);
+  text-decoration: none;
+}
+
+[data-ui='v2'] .ls-acct-card:focus-visible {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: 2px;
+}
+
+[data-ui='v2'] .ls-acct-card-title {
+  margin: 0;
+  font-size: var(--ls-type-heading);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-acct-card-body {
+  display: grid;
+  gap: var(--ls-space-2);
+  justify-items: start;
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-acct-card-figure {
+  margin: 0;
+  font-size: var(--ls-type-price);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-price);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+[data-ui='v2'] .ls-acct-card-note {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-acct-card-cta {
+  display: inline-flex;
+  gap: var(--ls-space-1);
+  align-items: center;
+  align-self: end;
+  justify-self: start;
+  min-height: var(--ls-control-h);
+  padding-inline: var(--ls-space-4);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-field-in-card);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+  transition:
+    background-color var(--ls-dur-fast) var(--ls-ease-out),
+    color var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-acct-card:hover .ls-acct-card-cta {
+    background: var(--ls-hover-bg);
+    color: var(--ls-hover-text);
+  }
+}
+
+[data-ui='v2'] .ls-acct-points {
+  display: grid;
+  gap: var(--ls-space-2);
+  width: 100%;
+  margin: 0;
+}
+
+[data-ui='v2'] .ls-acct-points > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--ls-space-1) var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-acct-points dt {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-acct-points dd {
+  margin: 0;
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+/* A phone has no tabs: the six places as one list under the cards (the rows hover with the solid accent, as every row of the site). */
+@media (min-width: 768px) {
+  [data-ui='v2'] .ls-acct-list {
+    display: none;
+  }
+}
+
+/* The loyalty wallet: the points, then a bar to the next tier with its words. */
+[data-ui='v2'] .ls-acct-progress {
+  display: grid;
+  gap: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-acct-progress-text {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
