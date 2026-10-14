@@ -1,10 +1,12 @@
-/* The customer site chrome in the v2 look (DESIGN.md 6.5, 8.5, D2): header, menu, tools and the booking call to action; the footer, phone tab
-   bar, contact button and promotional popup join with C9. Every rule sits under `[data-ui='v2']`, like components-v2.css, and loads after it.
+/* The customer site chrome in the v2 look (DESIGN.md 6.5, 8.5, D2): header, menu, tools and the booking call to action (C8), the footer, phone tab
+   bar, contact button and promotional popup (C9). Every rule sits under `[data-ui='v2']`, like components-v2.css, and loads after it.
    Tokens only: no color, no spacing literal, no shadow, no gradient. The direction C rules it replaces stay in site.css until C18. */
 
 /* Hover is the color rule (DESIGN.md 11.2): the small scale-up of the round header tools is direction C. */
 [data-ui='v2'] {
   --ls-tool-zoom: 1;
+  /* The compact bar keeps the logo and menu at full size: a 0.92 scale left the wordmark link 40 px high, under the 44 px target (H3). */
+  --ls-header-lead-scale: 1;
 }
 
 /* ---- Header surface (6.5) ----------------------------------------------------------------------------- */
@@ -136,4 +138,183 @@
   [data-ui='v2'] .ls-site-cta {
     display: block;
   }
+}
+
+/* ---- Footer (8.5) ------------------------------------------------------------------------------------- */
+/* The alternate band (#f5f5f7, dark #1c1c1e) under a hairline: no brand-red fill, no wave. Two columns on a phone, twelve from 1024 px; column
+   titles are 14 / 600, links 14 / 400 muted, the legal line is 12 px under a hairline. The content is the shop's footer blocks. */
+[data-ui='v2'] .ls-site-footer {
+  margin-top: 0;
+  border-top: 1px solid var(--ls-border);
+  background: var(--ls-bg-sunken);
+  color: var(--ls-text);
+}
+
+[data-ui='v2'] .ls-site-footer-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ls-space-7) var(--ls-space-6);
+  padding-block: var(--ls-space-9);
+}
+
+[data-ui='v2'] .ls-site-footer-grid > .ls-site-footer-brand {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-site-footer-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--ls-space-6);
+  }
+
+  [data-ui='v2'] .ls-site-footer-grid > .ls-site-footer-brand {
+    grid-column: span 6;
+  }
+
+  [data-ui='v2'] .ls-site-footer-grid > [data-column] {
+    grid-column: span 3;
+  }
+}
+
+[data-ui='v2'] .ls-site-footer-title,
+[data-ui='v2'] .ls-footer-links-title {
+  font-family: var(--ls-font-sans);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-site-footer-list,
+[data-ui='v2'] .ls-footer-text {
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-body);
+  line-height: var(--ls-lh-label);
+}
+
+/* The links stay a column on a phone too (two columns share the row): a wrapping line of words is the old layout. */
+[data-ui='v2'] .ls-site-footer-grid [data-column='links'] .ls-site-footer-list {
+  display: grid;
+  gap: 0;
+}
+
+[data-ui='v2'] .ls-social-btn {
+  border-color: var(--ls-border);
+  background: var(--ls-bg-page);
+  color: var(--ls-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-social-btn:hover {
+    border-color: var(--ls-hover-border);
+    background: var(--ls-hover-bg);
+    color: var(--ls-hover-text);
+  }
+}
+
+[data-ui='v2'] .ls-site-footer-base {
+  font-size: var(--ls-type-caption);
+  line-height: var(--ls-lh-caption);
+}
+
+/* ---- Phone tab bar (8.5) ------------------------------------------------------------------------------ */
+/* The app shell is unchanged (in flow, opaque, the safe area as padding inside it). The bar is the page color under a hairline; tabs are 12 / 500
+   with the label under the icon, the current one is accent. The booking tab is a flat accent disc raised over the hairline, no shadow; on the
+   booking page the disc carries an accent ring (an outline, not a shadow). */
+[data-ui='v2'] .ls-tab-bar {
+  background: var(--ls-bg-page);
+  box-shadow: none;
+}
+
+/* The hairline sits just above the bar, outside its box: the bar stays exactly its tabs plus the safe area, and every row of it is its own color. */
+[data-ui='v2'] .ls-tab-bar::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: -1px;
+  height: 1px;
+  background: var(--ls-border);
+  pointer-events: none;
+}
+
+@media (max-width: 1023.98px) {
+  html:has([data-ui='v2'] .ls-site-scroll) {
+    background: var(--ls-bg-page);
+  }
+}
+
+[data-ui='v2'] .ls-tab-bar a {
+  font-size: var(--ls-type-caption);
+  line-height: var(--ls-lh-caption);
+  font-weight: var(--ls-weight-label);
+}
+
+[data-ui='v2'] .ls-tab-bar a[aria-current='page'],
+[data-ui='v2'] .ls-tab-bar a[data-emphasis='true'][aria-current='page'] {
+  color: var(--ls-brand);
+}
+
+[data-ui='v2'] .ls-tab-bar a[data-emphasis='true'] svg {
+  box-shadow: none;
+  background: var(--ls-brand-fill);
+  color: var(--ls-on-brand);
+}
+
+[data-ui='v2'] .ls-tab-bar a[data-emphasis='true'][aria-current='page'] svg {
+  box-shadow: none;
+  outline: 2px solid var(--ls-brand);
+  outline-offset: var(--ls-space-1);
+}
+
+/* ---- Contact button (8.9): a primary icon pill with the shop's ways to reach it ------------------------ */
+[data-ui='v2'] .ls-contact-toggle {
+  background: var(--ls-brand-fill);
+  box-shadow: none;
+}
+
+[data-ui='v2'] .ls-contact-label {
+  background: var(--ls-bg-raised);
+  box-shadow: none;
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-contact-icon {
+  box-shadow: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-contact-toggle:hover {
+    background: var(--ls-brand-fill-hover);
+  }
+}
+
+/* ---- Promotional popup (8.6): the dialog surface, 18 px, a hairline, no shadow ------------------------- */
+[data-ui='v2'] .ls-promo-dialog,
+[data-ui='v2'] .ls-promo {
+  border-radius: var(--ls-radius-lg);
+  box-shadow: none;
+}
+
+[data-ui='v2'] .ls-promo {
+  border-color: var(--ls-border);
+  background: var(--ls-bg-raised);
+}
+
+[data-ui='v2'] .ls-promo-close {
+  border: 1px solid var(--ls-border);
+  box-shadow: none;
+}
+
+[data-ui='v2'] .ls-promo-body {
+  padding: var(--ls-space-6);
+}
+
+[data-ui='v2'] .ls-promo-close + .ls-promo-body {
+  padding-inline-end: calc(var(--ls-control-h) + var(--ls-space-4));
+}
+
+[data-ui='v2'] .ls-promo-title {
+  font-family: var(--ls-font-sans);
+  font-size: var(--ls-type-heading);
+  line-height: var(--ls-lh-heading);
 }

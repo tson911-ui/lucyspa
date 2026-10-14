@@ -42,25 +42,11 @@
 
 /* The header (surface, wordmark, menu, tools) and its call to action: `chrome-v2.css` (DESIGN.md 6.5, 8.5). */
 
-/* The phone tab bar: round top corners and a soft rose lift instead of a hairline (same height, same flow, same targets). */
-.ls-tab-bar {
-  border-radius: var(--ls-radius-lg) var(--ls-radius-lg) 0 0;
-  box-shadow: 0 -8px 24px -12px color-mix(in srgb, var(--ls-brand) 32%, transparent);
-}
+/* The phone tab bar: `chrome-v2.css` (DESIGN.md 8.5). */
 
 /* Buttons, fields and the other kit controls on the frame: `components-v2.css` (DESIGN.md 8.1, 8.2). */
 
-/* The promotional popup: the same pebble as every big card. */
-.ls-site .ls-promo-dialog,
-.ls-site .ls-promo {
-  border-color: transparent;
-  border-radius: var(--ls-radius-pebble) var(--ls-radius-pebble) var(--ls-radius-pebble)
-    var(--ls-radius-pebble-tight);
-}
-
-.ls-site .ls-promo-body {
-  padding: var(--ls-space-7);
-}
+/* The promotional popup: `chrome-v2.css` (DESIGN.md 8.6). */
 
 /* ---------- cards and lists: soft surfaces, no hard outline ---------- */
 .ls-site .ls-card,
@@ -83,8 +69,7 @@
   background: var(--ls-c-rose);
 }
 
-.ls-band-surface::before,
-.ls-site-footer::before {
+.ls-band-surface::before {
   content: '';
   position: absolute;
   inset-inline: 0;
@@ -100,10 +85,6 @@
   --ls-wave-fill: var(--ls-c-rose);
   /* A card takes the opposite of its container (DESIGN.md 6.1): on this alternate band it is the other step. */
   --ls-bg-surface: var(--ls-bg-surface-alt);
-}
-
-.ls-site-footer {
-  --ls-wave-fill: var(--ls-c-footer-bg);
 }
 
 .ls-site {
@@ -519,64 +500,11 @@ html[data-ls-motion='reduced'] .ls-hero-ring {
   }
 }
 
-/* ---------- footer: the brand colour, with a wave on its top edge ---------- */
-.ls-site-footer {
-  --ls-text: var(--ls-c-footer-text);
-  --ls-text-muted: var(--ls-c-footer-muted);
-  --ls-brand: var(--ls-c-footer-text);
-  --ls-border: var(--ls-c-footer-line);
-  position: relative;
-  margin-top: var(--ls-c-wave);
-  border-top: 0;
-  background: var(--ls-c-footer-bg);
-  color: var(--ls-c-footer-text);
-}
-
-.ls-site .ls-site-footer-cta {
-  border-color: transparent;
-  background: var(--ls-c-footer-text);
-  color: var(--ls-c-footer-bg);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ls-site .ls-site-footer-cta:hover:not([aria-disabled='true']) {
-    background: var(--ls-c-footer-muted);
-    color: var(--ls-c-footer-bg);
-  }
-}
-
-.ls-site-footer-title,
-.ls-site-footer-logo {
-  color: var(--ls-c-footer-text);
-}
+/* ---------- footer: `chrome-v2.css` (DESIGN.md 8.5): the base band, no brand-red fill, no wave ---------- */
 
 /* A short word ("Book") is still a full touch target wide. */
 .ls-site-footer-list a:not(.ls-footer-icon) {
   min-width: var(--ls-control-h);
-}
-
-/* The Owner's round buttons sit on the brand colour: a light disc with a deep glyph, and a softer light disc under the pointer (the
-   shared hover colour is the footer's own colour, which would make the button vanish). */
-.ls-site-footer .ls-social-btn {
-  border-color: transparent;
-  background: var(--ls-c-footer-text);
-  color: var(--ls-c-footer-bg);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ls-site-footer .ls-social-btn:hover {
-    border-color: transparent;
-    background: var(--ls-c-footer-muted);
-    color: var(--ls-c-footer-bg);
-  }
-}
-
-.ls-site-footer .ls-footer-icon {
-  --ls-footer-icon-hover: var(--ls-c-footer-text);
-}
-
-.ls-site-footer .ls-footer-icon[data-network] {
-  --ls-footer-icon-hover: var(--ls-c-footer-text);
 }
 
 /* ---------- photo slots: a place for the shop's own photo, drawn to be swapped ---------- */

@@ -104,7 +104,7 @@ Status values: `todo` / `done` (with commit hash).
   Measured (gzip, home `/vi`): first load 340.4 to 342.4 KB (+2.0), lazy GSAP 44.6 KB (core 27.2 + ScrollTrigger 17.4; 114 KB raw), loaded
   after first paint only. A build with `NEXT_PUBLIC_LS_MOTION=off` emits no GSAP chunk at all.
 
-- **C8: header, nav, theme and language (L).** Status: done (238bf10).
+- **C8: header, nav, theme and language (L).** Status: done (43c0dda).
   Wordmark, translucent sticky header with blur, the always-visible "Đặt lịch" pill, compact-on-scroll (64 to 52), the three-option theme
   toggle, bell and account menu. Files: `site-chrome*`, `site.css` header part.
   Verify: `uxui-touch-check`, no layout shift, and the season layer renders as before.
@@ -122,10 +122,16 @@ Status values: `todo` / `done` (with commit hash).
   colors differ afterwards; with `ls-theme=auto` it only flags when the clock resolves to dark, with a fixed cookie it always flagged. The tool now takes
   `--theme` and compares the theme button with an untouched tool in the new theme; light, dark and auto all pass.
 
-- **C9: footer, tab bar, contact button, popup (M).** Status: todo.
+- **C9: footer, tab bar, contact button, popup (M).** Status: done (d6b1f7a).
   Footer from the existing footer blocks (no brand-red band, no waves), phone tab bar and app shell, contact button, promo popup.
   Verify: `uxui-tabbar-check` and safe areas.
   Carry-over (Owner, session 1 review): footer icon spacing. Targets are 48 px with 4 px between neighbours; DESIGN.md 12 wants 8 px. Fix here.
+  As built: all in `chrome-v2.css`; the direction C footer (brand-red fill, wave, light-on-red colors), the tab bar's rose lift and the popup pebble are deleted from
+  `customer.css`. Footer: the alternate band under a hairline, 2 columns on a phone and 12 from 1024 px (brand 6, the others 3), 14/600 titles, 14/400 links, 12 px legal
+  line; the footer icons now sit 32 px apart, which measures 12 px between their 48 px targets (was 4). Tab bar: page color, the hairline is a pseudo-element above the bar
+  (a border would add a non-bar row to the bar box and `uxui-tabbar-check` fails it), flat accent disc for the booking tab, an outline ring on the booking page. Contact
+  button: no shadows, hover darkens the fill. Popup: 18 px, hairline, no shadow, 21/600 title. The compact header no longer scales the logo and menu (0.92 left the
+  wordmark link 40 px high, under the 44 px target). The Messenger icon of the contact panel keeps its official gradient (a brand mark).
 
 ### Session 4
 

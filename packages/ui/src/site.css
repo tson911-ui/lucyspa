@@ -3215,12 +3215,12 @@ button.ls-contact-link {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--ls-space-6);
+  gap: var(--ls-space-7);
 }
 
 /* The glyph sits on the left edge of the text column: the link is a full touch target (40-44 px) but a negative margin makes
    it take only its glyph's width in the row (a plain 40-44 px round box with the glyph centred pushed the glyph about 10 px
-   inside). The target is 48 px so the overhang (12 + 8) stays on the 4 px grid; the 24 px gap between glyphs leaves 4 px between targets. */
+   inside). The target is 48 px so the overhang stays on the 4 px grid; the 32 px gap between glyphs leaves 12 px between the targets, measured (DESIGN.md 12: no two targets closer than 8 px). */
 .ls-footer-icon {
   --ls-footer-icon-size: var(--ls-space-6);
   display: inline-grid;

@@ -12,9 +12,12 @@ const body = (selector: string) => all.find((rule) => rule.selector === selector
 test('chrome-v2.css: every selector sits under the v2 attribute, tokens only, no shadow, gradient or literal spacing', () => {
   assert.ok(all.length > 10, `rules found: ${all.length}`);
   const loose = all.flatMap((rule) =>
-    selectors(rule.selector).filter((part) => !part.startsWith("[data-ui='v2']")),
+    selectors(rule.selector).filter(
+      (part) => !part.startsWith("[data-ui='v2']") && !part.startsWith("html:has([data-ui='v2']"),
+    ),
   );
   assert.deepEqual(loose, [], 'a selector outside the v2 scope would change the staff screens');
+  // The only non-prefixed selector is the document background behind the phone shell, and it needs a v2 frame inside it.
   assert.doesNotMatch(stripped, /#[0-9a-f]{3,8}\b/i, 'no hex color');
   assert.doesNotMatch(stripped, /\b(?:rgb|rgba|hsl|hsla)\(/i, 'no color function');
   assert.doesNotMatch(stripped, /gradient\(/, 'no gradient');
@@ -91,4 +94,50 @@ test('tools: bare ink circles, hover is the solid accent on a fine pointer only,
     /@media \(min-width: 640px\) \{\s*\[data-ui='v2'\] \.ls-site-cta \{\s*display: block;/,
   );
   assert.match(css, /--ls-tool-zoom:\s*1/);
+});
+
+test('footer: the alternate band under a hairline, two columns on a phone and twelve from 1024 px, 14 / 600 titles, a 12 px legal line', () => {
+  const footer = body("[data-ui='v2'] .ls-site-footer");
+  assert.match(footer, /background:\s*var\(--ls-bg-sunken\)/);
+  assert.match(footer, /border-top:\s*1px solid var\(--ls-border\)/);
+  assert.match(footer, /margin-top:\s*0/);
+  assert.match(
+    body("[data-ui='v2'] .ls-site-footer-grid"),
+    /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/,
+  );
+  assert.match(
+    css,
+    /@media \(min-width: 1024px\) \{\s*\[data-ui='v2'\] \.ls-site-footer-grid \{\s*grid-template-columns: repeat\(12, minmax\(0, 1fr\)\)/,
+  );
+  const title = all.find((rule) => rule.selector.includes('.ls-site-footer-title'))?.body ?? '';
+  assert.match(title, /font-size:\s*var\(--ls-type-label\)/);
+  assert.match(title, /font-weight:\s*var\(--ls-weight-title\)/);
+  assert.match(
+    body("[data-ui='v2'] .ls-site-footer-base"),
+    /font-size:\s*var\(--ls-type-caption\)/,
+  );
+  const direction = readFileSync(new URL('customer.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(direction, /\.ls-site-footer::before/, 'no wave on the footer');
+  assert.doesNotMatch(direction, /background:\s*var\(--ls-c-footer-bg\)/, 'no brand-red footer');
+});
+
+test('footer icons: a 32 px gap leaves 12 px between their 48 px targets (at least 8)', () => {
+  const site = readFileSync(new URL('site.css', import.meta.url), 'utf8');
+  assert.match(site, /\.ls-footer-icons \{[^}]*gap:\s*var\(--ls-space-7\)/);
+});
+
+test('tab bar, contact button and popup: no shadow, a hairline, a flat accent disc, the dialog radius', () => {
+  const bar = body("[data-ui='v2'] .ls-tab-bar");
+  assert.doesNotMatch(
+    bar,
+    /border/,
+    'the bar box is exactly its tabs; the hairline is a pseudo-element above it',
+  );
+  assert.match(body("[data-ui='v2'] .ls-tab-bar::before"), /top:\s*-1px/);
+  assert.match(bar, /background:\s*var\(--ls-bg-page\)/);
+  assert.match(css, /outline: 2px solid var\(--ls-brand\)/);
+  assert.match(body("[data-ui='v2'] .ls-contact-toggle"), /box-shadow:\s*none/);
+  assert.match(body("[data-ui='v2'] .ls-promo"), /background:\s*var\(--ls-bg-raised\)/);
+  const radius = all.find((rule) => rule.selector.includes('.ls-promo-dialog'))?.body ?? '';
+  assert.match(radius, /border-radius:\s*var\(--ls-radius-lg\)/);
 });
