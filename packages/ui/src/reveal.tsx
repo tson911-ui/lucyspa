@@ -10,7 +10,7 @@ import { staggerIndex, startsVisible } from './reveal-core';
  * Content reveal (Part 2 contract 7, pattern M1; DESIGN.md 11.4): a block below the fold eases in once (opacity and a small
  * translate up) when it first enters the viewport, through the GSAP wrapper (`ScrollTrigger`, `once`, `top 85%`, no scrub). It is
  * visible in the server markup and without JavaScript; only after mount, and only for blocks that are not on screen yet, does it
- * start hidden, so the first paint (and the largest contentful paint) never waits for motion. When motion is off (reduced motion,
+ * start hidden, and only once GSAP has loaded, so the first paint (and the largest contentful paint) never waits for motion and a slow connection never leaves blank blocks. When motion is off (reduced motion,
  * data saver, low memory, the `ls-fx` switch) or GSAP cannot load, the block is simply shown.
  */
 export function Reveal({
@@ -30,25 +30,28 @@ export function Reveal({
     const element = ref.current;
     if (!element || !motion.enabled) return;
     // Below 1024 px the page scrolls inside the shell's scroller: measure against it, not against the window.
-    const scroller = findScroller(element);
-    const rect = element.getBoundingClientRect();
-    const frame = scroller?.getBoundingClientRect();
-    const top = rect.top - (frame?.top ?? 0);
-    if (
-      startsVisible(
+    const belowTheFold = () => {
+      const scroller = findScroller(element);
+      const rect = element.getBoundingClientRect();
+      const frame = scroller?.getBoundingClientRect();
+      const top = rect.top - (frame?.top ?? 0);
+      return !startsVisible(
         { top, bottom: top + rect.height },
         scroller ? scroller.clientHeight : window.innerHeight,
         scroller ? scroller.scrollTop : window.scrollY,
-      )
-    )
-      return;
-    element.dataset.reveal = 'hidden';
+      );
+    };
+    // A block on screen at mount never loads GSAP at all.
+    if (!belowTheFold()) return;
     const show = () => {
       delete element.dataset.reveal;
     };
     return motion.run(
       element,
       (kit) => {
+        // Hidden only once GSAP is here and the block is still below the fold: until then (a slow connection) the content is simply there.
+        if (!belowTheFold()) return;
+        element.dataset.reveal = 'hidden';
         kit.ScrollTrigger.create({
           trigger: element,
           scroller: kit.scroller(),
