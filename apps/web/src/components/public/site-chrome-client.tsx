@@ -2,6 +2,7 @@
 
 import {
   buttonClass,
+  Icon,
   SiteHeader,
   SiteNav,
   TabBar,
@@ -113,9 +114,10 @@ export function PublicHeaderCta({ locale }: { locale: Locale }) {
     <Link
       prefetch
       transitionTypes={NAV_TRANSITION}
-      className={buttonClass('primary', 'md', 'ls-btn-sheen')}
+      className={buttonClass('primary', 'md')}
       href={`/${locale}/account/book`}
     >
+      <Icon name="calendar" />
       {text.header.bookNow}
     </Link>
   );

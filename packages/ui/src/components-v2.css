@@ -188,10 +188,43 @@
   line-height: var(--ls-lh-body);
 }
 
-/* A select keeps the platform's own arrow and list (the arrow follows the color scheme); only the box is restyled. */
+/* A select keeps the platform's own list. The kit Select inside the frame (SelectIconScope) is wrapped and draws the chevron of the icon set,
+   positioned over its trailing edge (Owner 2026-10-14: no gradient, no colored image); a raw .ls-select keeps the platform arrow. */
 [data-ui='v2'] .ls-select {
   appearance: auto;
   padding-inline-end: var(--ls-space-3);
+}
+
+[data-ui='v2'] .ls-select-wrap {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-select-wrap > .ls-select {
+  appearance: none;
+  padding-inline-end: var(--ls-space-8);
+  text-overflow: ellipsis;
+}
+
+[data-ui='v2'] .ls-select-icon {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: var(--ls-space-3);
+  display: flex;
+  align-items: center;
+  color: var(--ls-text-muted);
+  pointer-events: none;
+}
+
+[data-ui='v2'] .ls-select-wrap > .ls-select:disabled + .ls-select-icon {
+  color: var(--ls-text-subtle);
+}
+
+@media (forced-colors: active) {
+  [data-ui='v2'] .ls-select-icon {
+    color: ButtonText;
+  }
 }
 
 /* The compact density of a field: 40 px and a 14 px value, on a fine pointer at 1024 px and up (a phone keeps 44 px and 16 px so the

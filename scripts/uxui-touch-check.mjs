@@ -20,6 +20,9 @@ const flag = (name, fallback) => {
 const inject = args.includes('--inject-sticky');
 if (inject) args.splice(args.indexOf('--inject-sticky'), 1);
 const page = flag('page', '/vi');
+// --theme light|dark|auto: starts with that stored choice (the ls-theme cookie). The theme button changes the theme on tap, so its colours
+// legitimately differ afterwards; this shows when that happens (see the theme note below).
+const theme = flag('theme', '');
 const width = Number(flag('width', '390'));
 const [base] = args;
 if (!base) {
@@ -104,6 +107,14 @@ try {
   };
 
   await send('Page.enable');
+  if (theme) {
+    await send('Network.enable');
+    await send('Network.setCookie', {
+      name: 'ls-theme',
+      value: theme,
+      url: new URL(page, base).href,
+    });
+  }
   await send('Emulation.setDeviceMetricsOverride', {
     width,
     height: 780,
@@ -135,11 +146,13 @@ try {
   // Controls to tap: header tools, the contact button, the first tab bar tab and the first menu entry (never followed).
   const targets = await evaluate(`(() => {
     const picks = [];
-    const add = (name, selector) => {
+    const add = (name, selector, rest) => {
       const el = document.querySelector(selector);
-      if (el && el.getBoundingClientRect().width > 0) picks.push({ name, selector });
+      if (el && el.getBoundingClientRect().width > 0) picks.push({ name, selector, rest });
     };
-    add('theme button', '.ls-theme-cycle');
+    // The theme button changes the theme on tap, so its colours differ afterwards by design: it is compared with a tool nobody
+    // touched (the language button, same rule) in the new theme instead of with itself before the tap.
+    add('theme button', '.ls-theme-cycle', document.querySelector('.ls-site-tool') ? '.ls-site-tool' : undefined);
     add('language button', '.ls-site-tool');
     add('bell', '.ls-site-bell .ls-btn-icon');
     add('account button', '.ls-site-tools .ls-btn-icon:not(.ls-site-bell .ls-btn-icon)');
@@ -197,9 +210,10 @@ try {
       await sleep(700);
     }
     const after = await look(target.selector);
-    if (before !== after) {
+    const expected = target.rest ? await look(target.rest) : before;
+    if (expected !== after) {
       failures += 1;
-      console.log(`FAIL ${target.name}: hover ${stuck}; before [${before}] after [${after}]`);
+      console.log(`FAIL ${target.name}: hover ${stuck}; expected [${expected}] after [${after}]`);
     } else {
       console.log(`ok   ${target.name}: back to rest after the tap (:hover is ${stuck})`);
     }

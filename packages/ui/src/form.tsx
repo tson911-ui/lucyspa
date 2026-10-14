@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  createContext,
   useContext,
   useEffect,
   useId,
@@ -354,6 +355,16 @@ export interface SelectOption {
   disabled?: boolean | undefined;
 }
 
+/**
+ * Inside a v2 frame (the customer site) a native select draws the chevron icon of the icon set instead of the platform arrow (DESIGN.md 8.2,
+ * Owner 2026-10-14): the select sits in a wrapper with a positioned icon. Elsewhere it is the plain element, so the staff areas keep their markup.
+ */
+const SelectIconContext = createContext(false);
+
+export function SelectIconScope({ children }: { children: ReactNode }) {
+  return <SelectIconContext value={true}>{children}</SelectIconContext>;
+}
+
 /** Native select (best on touch). Use `Combobox` when the list is long or searchable. */
 export function Select({
   options,
@@ -371,10 +382,11 @@ export function Select({
   className?: string | undefined;
   ref?: Ref<HTMLSelectElement> | undefined;
 }) {
-  return (
+  const withIcon = useContext(SelectIconContext) && !rest.multiple && (rest.size ?? 1) <= 1;
+  const select = (
     <select
       {...rest}
-      className={cx('ls-input', 'ls-select', compact && 'ls-input-compact', className)}
+      className={cx('ls-input', 'ls-select', compact && 'ls-input-compact', !withIcon && className)}
       aria-invalid={invalid || rest['aria-invalid'] || undefined}
     >
       {placeholder !== undefined ? <option value="">{placeholder}</option> : null}
@@ -384,6 +396,16 @@ export function Select({
         </option>
       ))}
     </select>
+  );
+  if (!withIcon) return select;
+  // The caller's class (a flex size, a width) moves to the wrapper, which is the box the layout sees.
+  return (
+    <span className={cx('ls-select-wrap', className)}>
+      {select}
+      <span className="ls-select-icon" aria-hidden="true">
+        <Icon name="chevron-down" size={20} />
+      </span>
+    </span>
   );
 }
 

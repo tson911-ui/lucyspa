@@ -141,6 +141,7 @@ export {
   RadioGroup,
   SearchInput,
   Select,
+  SelectIconScope,
   Switch,
   TextInput,
   Textarea,

@@ -40,27 +40,7 @@
   max-width: 34rem;
 }
 
-/* ---------- header: the same bar, softer ---------- */
-.ls-site-header::before {
-  border-bottom-color: transparent;
-  box-shadow: var(--ls-shadow-md);
-}
-
-.ls-site-brand a {
-  font-family: var(--ls-font-display);
-}
-
-.ls-site-nav a {
-  font-size: var(--ls-text-md);
-  font-weight: 600;
-}
-
-.ls-theme-cycle,
-.ls-site-tool {
-  border-color: transparent;
-  background: var(--ls-bg-surface);
-  box-shadow: var(--ls-shadow-sm);
-}
+/* The header (surface, wordmark, menu, tools) and its call to action: `chrome-v2.css` (DESIGN.md 6.5, 8.5). */
 
 /* The phone tab bar: round top corners and a soft rose lift instead of a hairline (same height, same flow, same targets). */
 .ls-tab-bar {

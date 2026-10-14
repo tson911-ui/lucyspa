@@ -8,6 +8,7 @@ import {
   MoneyInput,
   NumberInput,
   Select,
+  SelectIconScope,
   TextInput,
   Textarea,
   buttonClass,
@@ -59,4 +60,25 @@ test('inputs take the compact prop as a class and keep it off the DOM', () => {
   assert.equal(html.match(/ls-input-compact/g)?.length, 5);
   assert.doesNotMatch(html, /compact=/);
   assert.doesNotMatch(renderToStaticMarkup(<TextInput aria-label="a" />), /ls-input-compact/);
+});
+
+test('Select: plain outside the v2 frame; inside SelectIconScope it is wrapped with the chevron icon and the caller class moves to the wrapper', () => {
+  const options = [{ value: '1', label: 'Một' }];
+  const plain = renderToStaticMarkup(<Select aria-label="s" className="x" options={options} />);
+  assert.doesNotMatch(plain, /ls-select-wrap|ls-select-icon/);
+  assert.match(plain, /^<select [^>]*class="ls-input ls-select x"/);
+  const framed = renderToStaticMarkup(
+    <SelectIconScope>
+      <Select aria-label="s" className="x" options={options} />
+    </SelectIconScope>,
+  );
+  assert.match(framed, /^<span class="ls-select-wrap x"><select [^>]*class="ls-input ls-select"/);
+  assert.match(framed, /<span class="ls-select-icon" aria-hidden="true"><svg/);
+  assert.match(framed, /M6 9l6 6 6-6/, 'the chevron-down path of the icon set');
+  const multiple = renderToStaticMarkup(
+    <SelectIconScope>
+      <Select aria-label="s" multiple options={options} />
+    </SelectIconScope>,
+  );
+  assert.doesNotMatch(multiple, /ls-select-wrap/, 'a list box has no arrow');
 });

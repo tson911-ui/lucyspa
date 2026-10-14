@@ -87,7 +87,7 @@ Status values: `todo` / `done` (with commit hash).
 
 ### Session 3
 
-- **C7: GSAP wrapper (M).** Status: done (see the commit below).
+- **C7: GSAP wrapper (M).** Status: done (238bf10).
   License check on gsap.com, then add `gsap` core + ScrollTrigger with a dynamic import. Set the bundle budget and measure it. Add the
   `useMotion` hook (durations from tokens, clamped to 200 ms in the compact scope). Extend `MotionGate` and `ls-fx=off` into the global off
   switch, with the staff-wide motion setting stubbed. Re-base `Reveal` on the wrapper.
@@ -104,13 +104,23 @@ Status values: `todo` / `done` (with commit hash).
   Measured (gzip, home `/vi`): first load 340.4 to 342.4 KB (+2.0), lazy GSAP 44.6 KB (core 27.2 + ScrollTrigger 17.4; 114 KB raw), loaded
   after first paint only. A build with `NEXT_PUBLIC_LS_MOTION=off` emits no GSAP chunk at all.
 
-- **C8: header, nav, theme and language (L).** Status: todo.
+- **C8: header, nav, theme and language (L).** Status: done (238bf10).
   Wordmark, translucent sticky header with blur, the always-visible "Đặt lịch" pill, compact-on-scroll (64 to 52), the three-option theme
   toggle, bell and account menu. Files: `site-chrome*`, `site.css` header part.
   Verify: `uxui-touch-check`, no layout shift, and the season layer renders as before.
   Carry-over (Owner, session 1 review): `uxui-touch-check` flags the theme button, which changes theme on tap. Verify against HEAD whether
   this is a time-of-day artifact or a real failure, and say which.
   Owner decision (session 2 review): the v2 select drops the platform arrow for the `icons.tsx` chevron (customer scope only), done here.
+  As built: new `chrome-v2.css` (under `[data-ui='v2']`, loaded after `components-v2.css`; the direction C header rules in `customer.css` are removed,
+  the ones in `site.css` stay until C18). Surface: page color at 96 % with 16 px blur and a hairline, no shadow, opaque without blur, under reduced
+  transparency and in forced colors; clear at the top as before (DESIGN.md does not say to drop it; open reading for the Owner), the surface switches
+  without a fade and only the 64 to 52 shrink slides. Menu: 14/500 ink, current = accent text + 2 px underline offset 8, the sliding pill is drawn only
+  on hover or focus. Tools: bare 44 px circles, hover = solid accent. Header call to action (icon + text, no sheen) from 640 px; below 640 px the
+  booking tab of the phone tab bar is the always-visible call to action, because a 360 px member bar has 9 px free (measured; decision for the Owner).
+  The theme control stays the single cycle button. Select: `SelectIconScope` (provided by the site frame) makes the kit `Select` a wrapper with a positioned
+  chevron; staff selects keep their markup. Touch-check carry-over, answered: not a real failure. Tapping the theme button changes the theme, so its own
+  colors differ afterwards; with `ls-theme=auto` it only flags when the clock resolves to dark, with a fixed cookie it always flagged. The tool now takes
+  `--theme` and compares the theme button with an untouched tool in the new theme; light, dark and auto all pass.
 
 - **C9: footer, tab bar, contact button, popup (M).** Status: todo.
   Footer from the existing footer blocks (no brand-red band, no waves), phone tab bar and app shell, contact button, promo popup.

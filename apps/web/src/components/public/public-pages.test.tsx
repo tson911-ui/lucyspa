@@ -470,11 +470,11 @@ test('service detail: facts, the per-nail note, the booking link and the group n
 test('header call to action: the same on every page, "My bookings" and the booking page included', () => {
   assert.match(
     renderToStaticMarkup(<PublicHeaderCta locale="vi" />),
-    /href="\/vi\/account\/book"[^>]*>Đặt lịch</,
+    /href="\/vi\/account\/book"[^>]*><svg[^>]*aria-hidden="true"[\s\S]*<\/svg>Đặt lịch</,
   );
   assert.match(
     renderToStaticMarkup(<PublicHeaderCta locale="en" />),
-    /href="\/en\/account\/book"[^>]*>Book now</,
+    /href="\/en\/account\/book"[^>]*><svg[^>]*aria-hidden="true"[\s\S]*<\/svg>Book now</,
   );
 });
 

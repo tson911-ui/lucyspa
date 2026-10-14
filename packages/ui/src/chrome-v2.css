@@ -1,0 +1,139 @@
+/* The customer site chrome in the v2 look (DESIGN.md 6.5, 8.5, D2): header, menu, tools and the booking call to action; the footer, phone tab
+   bar, contact button and promotional popup join with C9. Every rule sits under `[data-ui='v2']`, like components-v2.css, and loads after it.
+   Tokens only: no color, no spacing literal, no shadow, no gradient. The direction C rules it replaces stay in site.css until C18. */
+
+/* Hover is the color rule (DESIGN.md 11.2): the small scale-up of the round header tools is direction C. */
+[data-ui='v2'] {
+  --ls-tool-zoom: 1;
+}
+
+/* ---- Header surface (6.5) ----------------------------------------------------------------------------- */
+/* The base color at 96 % with a 16 px blur and a 1 px bottom hairline, no shadow. It is clear at the top of the page and appears
+   once the page has scrolled (the sentinel); blur is not animated (HIG), so the surface switches at once and only the 64 to 52 px
+   shrink slides. Solid where there is no blur, under reduced transparency and in forced colors. */
+[data-ui='v2'] .ls-site-header::before {
+  background: var(--ls-bg-page);
+  border-bottom: 1px solid var(--ls-border);
+  box-shadow: none;
+  transition: translate var(--ls-dur-header) var(--ls-ease-premium);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  [data-ui='v2'] .ls-site-header::before {
+    background: color-mix(in srgb, var(--ls-bg-page) var(--ls-header-glass-mix), transparent);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  [data-ui='v2'] .ls-site-header::before {
+    background: var(--ls-bg-page);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (forced-colors: active) {
+  [data-ui='v2'] .ls-site-header::before {
+    background: Canvas;
+    border-bottom-color: CanvasText;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* ---- Wordmark (D2, Q12): Be Vietnam Pro 600 in the brand color; spacing and color are unchanged ---- */
+[data-ui='v2'] .ls-site-brand a {
+  font-family: var(--ls-font-display);
+  font-weight: var(--ls-weight-title);
+}
+
+/* ---- Menu (8.5) --------------------------------------------------------------------------------------- */
+/* Links are 14 / 500 ink. The current page is accent text with a 2 px accent underline, offset 8 px: never a fill in the bar. Hover and
+   keyboard focus are the solid accent pill (Owner rule 4); it is the sliding pill of the menu, which rests under the current entry
+   without being drawn and appears only while an entry is hovered or focused. */
+[data-ui='v2'] .ls-site-nav a {
+  color: var(--ls-text);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-site-nav a[aria-current='page'],
+[data-ui='v2'] .ls-site-nav:not([data-pill='still'], [data-pill='slide']) a[aria-current='page'] {
+  background: transparent;
+  color: var(--ls-brand);
+  text-decoration: underline;
+  text-decoration-color: currentcolor;
+  text-decoration-thickness: 2px;
+  text-underline-offset: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-site-nav > .ls-nav-pill {
+  opacity: 0;
+  transition:
+    translate var(--ls-dur-glide) var(--ls-ease-premium),
+    width var(--ls-dur-glide) var(--ls-ease-premium),
+    opacity var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+/* The entry under the pill keeps its own color until the pill is drawn. */
+[data-ui='v2'] .ls-site-nav:is([data-pill='still'], [data-pill='slide']) > a[data-under] {
+  color: var(--ls-text);
+}
+
+[data-ui='v2'] .ls-site-nav:is([data-pill='still'], [data-pill='slide']) > a[aria-current='page'] {
+  color: var(--ls-brand);
+}
+
+[data-ui='v2'] .ls-site-nav:has(> a:focus-visible) > .ls-nav-pill {
+  opacity: 1;
+}
+
+[data-ui='v2']
+  .ls-site-nav:is([data-pill='still'], [data-pill='slide'])
+  > a[data-under]:focus-visible {
+  color: var(--ls-nav-active-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-site-nav:has(> a:hover) > .ls-nav-pill {
+    opacity: 1;
+  }
+
+  [data-ui='v2'] .ls-site-nav:is([data-pill='still'], [data-pill='slide']) > a[data-under]:hover {
+    color: var(--ls-nav-active-text);
+  }
+}
+
+/* ---- Tools (8.1 icon button): language, theme, cart, bell, account --------------------------------------- */
+/* Bare 44 px circles in ink; hover is the solid accent, with the on-accent icon (Owner rule 4). A tool inside a panel (the bell's list) is
+   not a tool of the bar and keeps its own rules. */
+[data-ui='v2'] .ls-theme-cycle,
+[data-ui='v2'] .ls-site-tool,
+[data-ui='v2'] .ls-site-tools .ls-btn-icon:not(.ls-popover .ls-btn-icon) {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ls-text);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-theme-cycle:hover,
+  [data-ui='v2'] .ls-site-tool:hover,
+  [data-ui='v2'] .ls-site-tools .ls-btn-icon:not(.ls-popover .ls-btn-icon):hover {
+    border-color: var(--ls-hover-border);
+    background: var(--ls-hover-bg);
+    color: var(--ls-hover-text);
+  }
+}
+
+/* ---- "Đặt lịch" call to action (8.5) --------------------------------------------------------------------- */
+/* The primary pill at the trailing edge, icon and text, from 640 px. A 360 px phone has no room for it next to the wordmark and four or five
+   44 px tools (measured: 9 px free for a member), so there the booking tab of the phone tab bar is the always-visible call to action. */
+@media (min-width: 640px) {
+  [data-ui='v2'] .ls-site-cta {
+    display: block;
+  }
+}
