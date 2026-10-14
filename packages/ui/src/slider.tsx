@@ -47,12 +47,15 @@ export function Slider({
   autoplayMs = SLIDER_AUTOPLAY_MS,
   LinkComponent,
   className,
+  ctaVariant = 'primary',
 }: {
   slides: readonly SliderSlide[];
   labels: SliderLabels;
   autoplayMs?: number | undefined;
   LinkComponent?: PromoLink | undefined;
   className?: string | undefined;
+  /** The look of a slide's button: primary by default; a page that already has its primary action nearby passes secondary. */
+  ctaVariant?: 'primary' | 'secondary' | undefined;
 }) {
   const count = slides.length;
   const [index, setIndex] = useState(0);
@@ -88,7 +91,7 @@ export function Slider({
   }
 
   const Link = LinkComponent;
-  const ctaClass = buttonClass('primary', 'md');
+  const ctaClass = buttonClass(ctaVariant, 'md');
   return (
     <section
       className={cx('ls-slider', hasPhoneImage && 'ls-slider-tall', className)}

@@ -8,6 +8,9 @@ import {
   type PublicFeaturedGroup,
   type PublicFooterBlock,
   type PublicHoursGroup,
+  type PublicProductCard,
+  type PublicProductCategory,
+  type PublicProductsResponse,
   type PublicService,
   type PublicServiceDetailResponse,
   type PublicServiceGroup,
@@ -33,6 +36,8 @@ export interface HomeData {
   campaigns?: PublicCampaign[] | null;
   /** Whether "Bán online" is ON: only then does the offer line say "Mua ngay"; otherwise it says "Xem ưu đãi". Absent: closed. */
   onlineOpen?: boolean;
+  /** The first page of the cosmetics catalog (the home page's product row and category grid); null when it could not be read, absent: none. */
+  products?: PublicProductsResponse | null;
 }
 
 type Locale = 'vi' | 'en';
@@ -429,6 +434,41 @@ export function homeGroups(
 export const featuredServices = (group: PublicServiceGroup, count = 3): PublicService[] =>
   group.services.slice(0, count);
 
+/**
+ * The home page's "top services" list (DESIGN.md 9.1, item 3): the first `columns` groups in the Owner's order (the featured groups,
+ * else every live group), each with its first `rows` services. A group beyond the first three is still reached from the category grid.
+ */
+export function topServiceColumns(
+  groups: readonly HomeGroup[],
+  columns = 3,
+  rows = 3,
+): HomeGroup[] {
+  return groups
+    .filter((entry) => entry.group.services.length > 0)
+    .slice(0, columns)
+    .map((entry) => ({
+      description: entry.description,
+      group: { ...entry.group, services: featuredServices(entry.group, rows) },
+    }));
+}
+
+/**
+ * The home page's product row: the products the Owner marked "Nổi bật" (`featured`) among the first page of the catalog, in the list's own
+ * order (featured first), at most `limit`. Nothing here claims they sell best: no sales figure is public.
+ */
+export function homeFeaturedProducts(
+  products: PublicProductsResponse | null | undefined,
+  limit = 8,
+): PublicProductCard[] {
+  return (products?.items ?? []).filter((card) => card.featured).slice(0, limit);
+}
+
+/** The top-level cosmetics categories for the home page's category grid (a sub-category is reached through its parent). */
+export const homeProductCategories = (
+  products: PublicProductsResponse | null | undefined,
+): PublicProductCategory[] =>
+  (products?.categories ?? []).filter((category) => category.parentCode === null);
+
 /** One line for the facts strip: the first open group ("Mỗi ngày: 09:00 – 21:00"), or null when the shop is never open. */
 export function hoursHeadline(
   groups: readonly PublicHoursGroup[],
@@ -453,6 +493,11 @@ export const telHref = (site: Pick<PublicSiteResponse, 'hotlineTel'>): string =>
 
 export function serviceHref(locale: Locale, code: string): string {
   return `/${locale}/services/${encodeURIComponent(code)}`;
+}
+
+/** The service list narrowed to one group. */
+export function serviceGroupHref(locale: Locale, code: string): string {
+  return `/${locale}/services?group=${encodeURIComponent(code)}`;
 }
 
 /** The booking entry for a service: the member booking page with the service preselected (handled there). */

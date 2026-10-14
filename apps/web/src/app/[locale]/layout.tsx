@@ -19,6 +19,7 @@ import '@lucy-spa/ui/customer.css';
 import '@lucy-spa/ui/customer-pages.css';
 import '@lucy-spa/ui/components-v2.css';
 import '@lucy-spa/ui/chrome-v2.css';
+import '@lucy-spa/ui/pages-v2.css';
 import { getDictionary } from '../../i18n/dictionaries';
 import { RouteHistoryTracker } from '../../components/navigation/page-back';
 // Direction C's two faces (Owner, 2026-10-10): the variables sit on the root now, so the staff screens use them too.

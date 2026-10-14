@@ -148,14 +148,23 @@ export interface SiteText {
     reload: string;
     sectionServices: string;
     noServices: string;
-    /** With {count} and {price}: under a group name ("4 dịch vụ, từ 15.000 ₫"). */
-    groupMeta: string;
-    /** With {count}: a group that has no price to show. */
-    groupCount: string;
+    /** The caption of a fact in the trust band (the hotline's is `hotline`). */
+    factAddress: string;
+    /** The link under the top services. */
+    viewAllServices: string;
+    /** The product row: its heading (the Owner's "Nổi bật" flag, never a sales claim), its link, and its two arrow buttons. */
+    productsTitle: string;
+    viewAllProducts: string;
+    rowPrevious: string;
+    rowNext: string;
+    /** The category grid: the heading, its sentence and the names of its two groups. */
+    categoriesTitle: string;
+    categoriesLead: string;
+    categoryServices: string;
+    categoryProducts: string;
     /** The captions of the photo placeholders (the Owner replaces them with the shop's own photos). */
     photoSpace: string;
-    photoNails: string;
-    photoHeadSpa: string;
+    photoIntro: string;
   };
   services: {
     title: string;
@@ -376,11 +385,18 @@ const text = {
       reload: 'Tải lại trang',
       sectionServices: 'danh mục dịch vụ',
       noServices: 'Danh mục dịch vụ đang được cập nhật.',
-      groupMeta: '{count} dịch vụ, {price}',
-      groupCount: '{count} dịch vụ',
+      factAddress: 'Địa chỉ',
+      viewAllServices: 'Xem tất cả dịch vụ',
+      productsTitle: 'Sản phẩm nổi bật',
+      viewAllProducts: 'Xem tất cả mỹ phẩm',
+      rowPrevious: 'Sản phẩm trước',
+      rowNext: 'Sản phẩm tiếp theo',
+      categoriesTitle: 'Chọn theo nhóm',
+      categoriesLead: 'Chọn nhóm dịch vụ hoặc danh mục mỹ phẩm bạn quan tâm.',
+      categoryServices: 'Dịch vụ',
+      categoryProducts: 'Mỹ phẩm',
       photoSpace: 'Ảnh của tiệm: không gian thư giãn',
-      photoNails: 'Ảnh của tiệm: làm nail',
-      photoHeadSpa: 'Ảnh của tiệm: gội đầu',
+      photoIntro: 'Ảnh của tiệm: kỹ thuật viên đang làm dịch vụ',
     },
     services: {
       title: 'Dịch vụ',
@@ -598,11 +614,18 @@ const text = {
       reload: 'Reload the page',
       sectionServices: 'service catalogue',
       noServices: 'The service catalogue is being updated.',
-      groupMeta: '{count} services, {price}',
-      groupCount: '{count} services',
+      factAddress: 'Address',
+      viewAllServices: 'View all services',
+      productsTitle: 'Featured products',
+      viewAllProducts: 'View all cosmetics',
+      rowPrevious: 'Previous products',
+      rowNext: 'Next products',
+      categoriesTitle: 'Browse by group',
+      categoriesLead: 'Pick a service group or a cosmetics category you like.',
+      categoryServices: 'Services',
+      categoryProducts: 'Cosmetics',
       photoSpace: 'The shop’s own photo: the relaxation space',
-      photoNails: 'The shop’s own photo: nails',
-      photoHeadSpa: 'The shop’s own photo: head spa',
+      photoIntro: 'The shop’s own photo: a technician at work',
     },
     services: {
       title: 'Services',

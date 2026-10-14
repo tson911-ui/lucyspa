@@ -133,6 +133,13 @@ Status values: `todo` / `done` (with commit hash).
   button: no shadows, hover darkens the fill. Popup: 18 px, hairline, no shadow, 21/600 title. The compact header no longer scales the logo and menu (0.92 left the
   wordmark link 40 px high, under the 44 px target). The Messenger icon of the contact panel keeps its official gradient (a brand mark).
 
+### Owner decisions on the session 3 report (2026-10-14)
+
+- Header "Đặt lịch" pill from 640 px; below that the tab bar's booking tab is the call to action: accepted. `DESIGN.md` 8.5 updated.
+- Clear-at-top (transparent) header over the home hero: keep. Recorded in `DESIGN.md` 8.5.
+- Bundle budget approved: first load +3 KB gzip at most, lazy GSAP 50 KB gzip at most. Recorded in `DESIGN.md` 11.6.
+- Home offer ribbon "Mua ngay" contrast: fix in C10.
+
 ### Session 4
 
 - **C10: home (L).** Status: todo.

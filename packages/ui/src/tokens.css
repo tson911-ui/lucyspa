@@ -590,6 +590,10 @@
   --ls-nav-active-text: #ffffff;
   --ls-overlay: rgb(0 0 0 / 0.4);
   --ls-image-filter: none;
+  /* Text on a photo (DESIGN.md 9): white over one flat black scrim, the same in both modes (a photo does not follow the theme).
+     0.55 keeps white text at 4.5:1 or better even over a pure-white photo (tokens-v2.test.ts). */
+  --ls-on-photo: #ffffff;
+  --ls-scrim: rgb(0 0 0 / 0.55);
 
   /* No shadows: layers separate by the scrim, a surface step or a hairline. The seasonal layer keeps its own. */
   --ls-shadow-sm: none;

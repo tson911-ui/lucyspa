@@ -229,6 +229,20 @@ test('no shadows, radius 8 / 18 / pill, the scrim and the comfortable sizes (DES
   assert.equal(light['--ls-row-h'], '56px');
 });
 
+test('text on a photo: white over one flat scrim that holds 4.5:1 even over a pure-white photo (DESIGN.md 9)', () => {
+  assert.equal(light['--ls-on-photo'], '#ffffff');
+  const alpha = /^rgb\(0 0 0 \/ ([\d.]+)\)$/.exec(light['--ls-scrim'] ?? '');
+  assert.ok(alpha, 'the scrim is a flat black with an alpha');
+  // The worst case is a white photo: the scrim over white is the grey (1 - alpha) * 255, and the text is white on it.
+  const grey = Math.round((1 - Number(alpha[1])) * 255);
+  const hexGrey = `#${grey.toString(16).padStart(2, '0').repeat(3)}`;
+  assert.ok(
+    ratio('#ffffff', hexGrey) >= 4.5,
+    `white on the scrim over white: ${ratio('#ffffff', hexGrey).toFixed(2)}`,
+  );
+  assert.equal(darkAttribute['--ls-scrim'], undefined, 'a photo does not follow the theme');
+});
+
 test('no gold, yellow or gradient in the v2 scope', () => {
   const v2 = css.slice(css.lastIndexOf('/*', css.indexOf('v2 scope (DESIGN.md')));
   assert.doesNotMatch(v2.replace(/\/\*[\s\S]*?\*\//g, ''), /gold|ivory|amber|yellow|gradient/i);

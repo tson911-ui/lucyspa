@@ -366,7 +366,7 @@ style, not size. Footers are Cancel then primary, primary last (kept).
 ### 8.5 Navigation and header
 
 - **Customer header:** wordmark at the leading edge; the existing 3-item menu and bell (unchanged function); language switch and theme
-  toggle; one **"Đặt lịch" primary pill always visible** at the trailing edge (from 360 up it is icon + text). Height 64, compacting to 52 on scroll (existing tokens). Link style: 14/500 ink, current page = accent text + 2 px accent underline offset 8 (never a fill in the bar);
+  toggle; one **"Đặt lịch" primary pill** at the trailing edge from 640 px (icon + text); below 640 px the booking tab of the phone tab bar is the always-visible call to action (a 360 px member bar has 9 px free; Owner, 2026-10-14). The header is clear (transparent) at the top over the home hero and turns to the translucent surface on scroll (Owner, 2026-10-14). Height 64, compacting to 52 on scroll (existing tokens). Link style: 14/500 ink, current page = accent text + 2 px accent underline offset 8 (never a fill in the bar);
   hover = rule 4 pill.
 - **Phone:** the existing app shell with the bottom tab bar (44 px+ items, label under icon, current = accent) stays. Safe-area
   padding included.
@@ -580,7 +580,7 @@ compact scope**, so the staff cap is enforced in code, not left to each componen
 starts a tween on an element that holds focus in a text field. When GSAP is added in group 1, check the current license text on gsap.com first (search results say GSAP is free including its former
 paid plugins, but no license text was read when this was written; sources: [GSAP README on jsDelivr](https://cdn.jsdelivr.net/npm/gsap@3.15.0/README.md),
 [GreenSock forum](https://gsap.com/community/forums/topic/44709-clarification-on-gsap-licensing-for-a-wordpress-plugin/)).
-Set the bundle budget at the same time, in the group 1 Step plan.
+**Bundle budget (Owner approved, 2026-10-14):** the wrapper may add at most 3 KB gzip to the first load, and the lazy GSAP chunks (core + ScrollTrigger) stay at or under 50 KB gzip together. Measured in C7: +2.0 KB first load, 44.6 KB lazy.
 
 ## 12. Accessibility
 

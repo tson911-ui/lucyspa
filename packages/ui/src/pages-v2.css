@@ -1,0 +1,797 @@
+/* The customer pages in the v2 look (DESIGN.md 9): the home page (C10) and the service pages (C11), and the pages that follow in the later Steps.
+   Every rule sits under `[data-ui='v2']`, like components-v2.css and chrome-v2.css, and loads after them. Tokens only: no color, no spacing
+   literal, no shadow, no gradient. The direction C rules it replaces are deleted from customer.css as each page is rebuilt (site.css keeps
+   its own until C18). Bands alternate `.ls-band--base` and `.ls-band--alt` (tokens.css); inside a band a card or a tile takes the step the
+   band is not (`--ls-bg-surface`), and a field or a placeholder the same (`--ls-bg-field`). */
+
+/* ---- Home: hero (9.1, item 1) -------------------------------------------------------------------------------------------------------- */
+/* Full width, about 80 % of the screen and never under 35 rem. With the shop's photo: the photo under one flat scrim, white text, the
+   secondary button in its outline-white form. Without it: the alternate band with ink text and the normal buttons. The header above is
+   in the page flow (clear at the top, solid on scroll), so the photo never sits under the wordmark. */
+[data-ui='v2'] .ls-home-hero {
+  position: relative;
+  display: grid;
+  min-height: min(max(35rem, 80svh), 52rem);
+  align-content: center;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+[data-ui='v2'] .ls-home-hero[data-media='photo'] {
+  align-content: end;
+  --ls-focus: var(--ls-on-photo);
+}
+
+[data-ui='v2'] .ls-home-hero-img {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: var(--ls-image-filter);
+}
+
+[data-ui='v2'] .ls-home-hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--ls-scrim);
+}
+
+[data-ui='v2'] .ls-home-hero-caption {
+  position: absolute;
+  inset-block-end: var(--ls-space-4);
+  inset-inline-end: var(--ls-gutter);
+  color: var(--ls-text-subtle);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-home-hero-copy {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: var(--ls-space-6);
+  justify-items: start;
+  padding-block: var(--ls-space-9);
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-home-hero-copy {
+    padding-block: var(--ls-space-10);
+  }
+}
+
+[data-ui='v2'] .ls-home-hero-copy .ls-hero-title {
+  max-width: 24ch;
+}
+
+[data-ui='v2'] .ls-home-hero-copy .ls-lead {
+  max-width: 36rem;
+  text-wrap: pretty;
+}
+
+[data-ui='v2'] .ls-home-hero[data-media='photo'] :is(.ls-site-display, .ls-lead) {
+  color: var(--ls-on-photo);
+}
+
+/* On the photo only the secondary button switches to the outline-white form (its hover is the kit's solid accent). */
+[data-ui='v2'] [data-media='photo'] .ls-btn-on-photo {
+  border-color: var(--ls-on-photo);
+  color: var(--ls-on-photo);
+}
+
+/* ---- Home: trust band (9.1, item 2) -------------------------------------------------------------------------------------------------- */
+/* The Owner's facts as a title figure and a small caption: stacked with a hairline between on a phone, one row with a hairline between
+   the columns from 768 px. */
+[data-ui='v2'] .ls-home-facts {
+  display: grid;
+}
+
+[data-ui='v2'] .ls-home-fact {
+  display: grid;
+  gap: var(--ls-space-1);
+  align-content: start;
+  min-width: 0;
+  padding-block: var(--ls-space-5);
+  border-top: 1px solid var(--ls-border);
+}
+
+[data-ui='v2'] .ls-home-fact:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+[data-ui='v2'] .ls-home-fact:last-child {
+  padding-bottom: 0;
+}
+
+@media (min-width: 768px) {
+  [data-ui='v2'] .ls-home-facts {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+
+  [data-ui='v2'] .ls-home-fact,
+  [data-ui='v2'] .ls-home-fact:first-child,
+  [data-ui='v2'] .ls-home-fact:last-child {
+    padding: var(--ls-space-2) var(--ls-space-6);
+    border-top: 0;
+    border-inline-start: 1px solid var(--ls-border);
+  }
+
+  [data-ui='v2'] .ls-home-fact:first-child {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+}
+
+[data-ui='v2'] .ls-home-fact-figure {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-type-title);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-title);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+[data-ui='v2'] .ls-home-fact-figure a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-home-fact-figure a:hover {
+    color: var(--ls-brand);
+    text-decoration: underline;
+    text-underline-offset: var(--ls-space-1);
+  }
+}
+
+[data-ui='v2'] .ls-home-fact-caption {
+  display: flex;
+  gap: var(--ls-space-2);
+  align-items: center;
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-home-fact-caption .ls-icon-lead {
+  flex: none;
+  color: var(--ls-brand);
+}
+
+/* ---- Home: split intro and top services (9.1, item 3) --------------------------------------------------------------------------------- */
+[data-ui='v2'] .ls-home-split {
+  display: grid;
+  gap: var(--ls-space-7);
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-home-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--ls-space-10);
+  }
+}
+
+[data-ui='v2'] .ls-home-split-copy {
+  display: grid;
+  gap: var(--ls-space-4);
+  justify-items: start;
+  align-content: center;
+}
+
+[data-ui='v2'] .ls-home-split-copy > p {
+  margin: 0;
+  max-width: 34rem;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+[data-ui='v2'] .ls-home-split-copy .ls-hero-actions {
+  align-items: center;
+  gap: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-home-split-media {
+  min-width: 0;
+}
+
+/* The shop's photo slot: a flat placeholder on the step a field takes (the opposite of the band), 4:3, the caption at its bottom-left. */
+[data-ui='v2'] .ls-slot {
+  position: relative;
+  display: grid;
+  margin: 0;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-field);
+  color: var(--ls-text-muted);
+}
+
+[data-ui='v2'] .ls-slot-caption {
+  align-self: end;
+  justify-self: start;
+  padding: var(--ls-space-4) var(--ls-space-5);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-slot-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: var(--ls-image-filter);
+}
+
+/* The Owner's slider keeps its picture, words and controls. Here the picture is the 18 px framed photo, the words sit under it (never on
+   the photo), and the controls are one row under them. */
+[data-ui='v2'] .ls-home-split-media .ls-slider {
+  gap: var(--ls-space-3);
+}
+
+[data-ui='v2'] .ls-home-split-media .ls-slider-viewport {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+[data-ui='v2'] .ls-home-split-media .ls-slider-media {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-field);
+}
+
+[data-ui='v2'] .ls-home-split-media .ls-slider-media img {
+  filter: var(--ls-image-filter);
+}
+
+[data-ui='v2'] .ls-home-split-media .ls-slider-caption {
+  padding: var(--ls-space-4) 0 0;
+}
+
+[data-ui='v2'] .ls-home-split-media .ls-slider-title {
+  font-size: var(--ls-type-heading);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-home-split-media .ls-slider-text {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+[data-ui='v2'] .ls-home-top {
+  display: grid;
+  gap: var(--ls-space-7);
+  margin-top: var(--ls-space-9);
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-home-top {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--ls-space-9);
+  }
+}
+
+[data-ui='v2'] .ls-home-top-col {
+  display: grid;
+  gap: var(--ls-space-2);
+  align-content: start;
+}
+
+[data-ui='v2'] .ls-home-top-title {
+  margin: 0;
+  font-size: var(--ls-type-heading);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-home-top-desc {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-home-top-list {
+  display: grid;
+  margin: var(--ls-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A row: the service, its price and an arrow, one link. Hover is a neutral tint (the opposite step of the band), never the solid accent. */
+[data-ui='v2'] .ls-home-top-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: var(--ls-space-3);
+  align-items: center;
+  min-height: var(--ls-control-h);
+  padding-block: var(--ls-space-3);
+  border-radius: var(--ls-radius-sm);
+  color: var(--ls-text);
+  text-decoration: none;
+}
+
+[data-ui='v2'] .ls-home-top-list li + li {
+  border-top: 1px solid var(--ls-border);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  /* The tint reaches 8 px past the text through an outline, so the row keeps the column's edges (no overflow, no negative margin). */
+  [data-ui='v2'] .ls-home-top-row:hover {
+    background: var(--ls-bg-field);
+    outline: var(--ls-space-2) solid var(--ls-bg-field);
+  }
+}
+
+[data-ui='v2'] .ls-home-top-name {
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-heading);
+  overflow-wrap: anywhere;
+}
+
+[data-ui='v2'] .ls-home-top-price {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+  white-space: nowrap;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+[data-ui='v2'] .ls-home-top-row svg {
+  color: var(--ls-brand);
+}
+
+[data-ui='v2'] .ls-home-empty {
+  margin: var(--ls-space-7) 0 0;
+  color: var(--ls-text-muted);
+}
+
+/* A band's heading row: the title (and its sentence) at the leading edge, the link at the trailing edge. */
+[data-ui='v2'] .ls-home-band-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-4);
+  align-items: end;
+  justify-content: space-between;
+}
+
+[data-ui='v2'] .ls-home-band-title {
+  display: grid;
+  gap: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-home-band-title > p {
+  margin: 0;
+  max-width: 34rem;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+/* ---- Home: product row (9.1, item 4; 8.3 the product card) ----------------------------------------------------------------------------- */
+[data-ui='v2'] .ls-snap-row {
+  margin-top: var(--ls-space-7);
+}
+
+/* The row scrolls inside itself (the page never scrolls sideways) with snap; the smooth movement is switched off with the motion rules. */
+[data-ui='v2'] .ls-snap-track {
+  display: flex;
+  gap: var(--ls-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+[data-ui='v2'] .ls-snap-track::-webkit-scrollbar {
+  display: none;
+}
+
+html[data-ls-motion='reduced'] [data-ui='v2'] .ls-snap-track {
+  scroll-behavior: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ui='v2'] .ls-snap-track {
+    scroll-behavior: auto;
+  }
+}
+
+[data-ui='v2'] .ls-snap-track:focus-visible {
+  outline-offset: calc(var(--ls-space-1) * -1);
+}
+
+[data-ui='v2'] .ls-snap-item {
+  flex: 0 0 62%;
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+@media (min-width: 640px) {
+  [data-ui='v2'] .ls-snap-item {
+    flex-basis: 34%;
+  }
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-snap-item {
+    flex-basis: calc((100% - 3 * var(--ls-space-4)) / 4);
+  }
+}
+
+/* The two arrows are the pointer alternative to a swipe, from 1024 px. */
+[data-ui='v2'] .ls-snap-arrows {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-snap-arrows {
+    display: flex;
+    gap: var(--ls-space-2);
+    justify-content: flex-end;
+    margin-top: var(--ls-space-4);
+  }
+}
+
+[data-ui='v2'] .ls-home-prod {
+  position: relative;
+  display: grid;
+  gap: var(--ls-space-3);
+  align-content: start;
+  height: 100%;
+}
+
+[data-ui='v2'] .ls-home-prod-media {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  aspect-ratio: 1;
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
+  color: var(--ls-text-subtle);
+}
+
+[data-ui='v2'] .ls-home-prod-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: var(--ls-image-filter);
+  transition: scale var(--ls-dur-base) var(--ls-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-home-prod:hover .ls-home-prod-media img {
+    scale: 1.02;
+  }
+}
+
+html[data-ls-motion='reduced'] [data-ui='v2'] .ls-home-prod-media img {
+  transition: none;
+}
+
+[data-ui='v2'] .ls-home-prod-labels {
+  position: absolute;
+  inset-block-start: var(--ls-space-3);
+  inset-inline-start: var(--ls-space-3);
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-home-prod-body {
+  display: grid;
+  gap: var(--ls-space-1);
+  align-content: start;
+}
+
+[data-ui='v2'] .ls-home-prod-meta {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-caption);
+  line-height: var(--ls-lh-caption);
+}
+
+/* The price is ink at the price role (21 / 600), not the accent; the struck list price stays muted beside it. */
+[data-ui='v2'] .ls-home-prod :is(.ls-prod-price, .ls-sale-now) strong {
+  color: var(--ls-text);
+  font-size: var(--ls-type-price);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-price);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* The name is the card's one link, stretched over the whole card; the campaign link keeps its own target above it. */
+[data-ui='v2'] .ls-home-prod-name {
+  margin: 0;
+  font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-heading);
+}
+
+/* Two lines tall at least, so the link box is a 44 px target even for a one-line name (the stretched ::after covers the whole card). */
+[data-ui='v2'] .ls-home-prod-name a {
+  display: -webkit-box;
+  overflow: hidden;
+  min-height: 2.6em;
+  color: var(--ls-text);
+  text-decoration: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+[data-ui='v2'] .ls-home-prod-name a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+/* The saving line and the countdown stay on the product page; a card shows the label, the struck price and the price. */
+[data-ui='v2'] .ls-home-prod .ls-sale-save {
+  display: none;
+}
+
+/* The campaign line may wrap: the kit's one-line ellipsis clipped a long campaign name by a few pixels in a card. */
+[data-ui='v2'] .ls-home-prod .ls-prod-campaign {
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+[data-ui='v2'] .ls-home-prod .ls-prod-campaign a {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Home: category grid (9.1, item 6) -------------------------------------------------------------------------------------------------- */
+[data-ui='v2'] .ls-home-cats-group {
+  margin-top: var(--ls-space-7);
+}
+
+[data-ui='v2'] .ls-home-cats-group + .ls-home-cats-group {
+  margin-top: var(--ls-space-7);
+}
+
+[data-ui='v2'] .ls-home-cats-title {
+  margin: 0 0 var(--ls-space-4);
+  font-size: var(--ls-type-heading);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-home-cats {
+  display: grid;
+  gap: var(--ls-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 640px) {
+  [data-ui='v2'] .ls-home-cats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-home-cats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* A tile: the flat placeholder (the card step), the name at the bottom-left, the whole tile one link. Hover is the solid accent (rule 4). */
+[data-ui='v2'] .ls-home-cat {
+  display: flex;
+  align-items: flex-end;
+  aspect-ratio: 16 / 9;
+  padding: var(--ls-space-5);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
+  color: var(--ls-text);
+  text-decoration: none;
+}
+
+@media (min-width: 640px) {
+  [data-ui='v2'] .ls-home-cat {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-home-cat:hover {
+    background: var(--ls-hover-bg);
+    color: var(--ls-hover-text);
+  }
+}
+
+[data-ui='v2'] .ls-home-cat-name {
+  font-size: var(--ls-type-heading);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+  overflow-wrap: anywhere;
+}
+
+/* ---- Home: the Owner's "why choose us" cards ------------------------------------------------------------------------------------------- */
+[data-ui='v2'] .ls-home-why {
+  display: grid;
+  gap: var(--ls-space-4);
+  margin: var(--ls-space-7) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 640px) {
+  [data-ui='v2'] .ls-home-why {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-home-why {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+[data-ui='v2'] .ls-home-why-card {
+  display: grid;
+  gap: var(--ls-space-2);
+  align-content: start;
+  height: 100%;
+  padding: var(--ls-space-6);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
+}
+
+[data-ui='v2'] .ls-home-why-card svg {
+  color: var(--ls-brand);
+}
+
+[data-ui='v2'] .ls-home-why-title {
+  margin: var(--ls-space-2) 0 0;
+  font-size: var(--ls-type-heading);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-home-why-text {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+/* ---- Home: the running offer ----------------------------------------------------------------------------------------------------------- */
+/* One flat accent block (no gradient, no shadow) in the Owner's words, with the campaign's banner beside them when there is one. The
+   button is the inverse of the block (on-brand fill, brand text), so it reads in both modes; its hover darkens the fill and keeps an
+   on-brand outline, because the solid-accent hover would vanish on the accent block. */
+[data-ui='v2'] .ls-offer-wrap {
+  padding-block: var(--ls-band-pad);
+}
+
+[data-ui='v2'] .ls-offer-card {
+  position: relative;
+  display: grid;
+  gap: var(--ls-space-5);
+  justify-items: start;
+  overflow: hidden;
+  padding: var(--ls-space-7);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-brand-fill);
+  color: var(--ls-on-brand);
+  box-shadow: none;
+}
+
+@media (min-width: 900px) {
+  [data-ui='v2'] .ls-offer-card[data-picture='true'] {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--ls-space-8);
+  }
+}
+
+[data-ui='v2'] .ls-offer-body {
+  display: grid;
+  gap: var(--ls-space-4);
+  justify-items: start;
+}
+
+[data-ui='v2'] .ls-offer-card .ls-offer-badge {
+  grid-area: auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-badge-h);
+  padding: 0 var(--ls-badge-pad-x);
+  border: 1px solid var(--ls-on-brand);
+  border-radius: var(--ls-radius-full);
+  background: transparent;
+  color: var(--ls-on-brand);
+  font-size: var(--ls-type-caption);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-caption);
+}
+
+[data-ui='v2'] .ls-offer-title {
+  max-width: 20ch;
+  margin: 0;
+  color: inherit;
+  font-family: var(--ls-font-display);
+  font-size: var(--ls-type-title-xl);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-title-xl);
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+[data-ui='v2'] .ls-offer-message {
+  max-width: 34rem;
+  margin: 0;
+  color: inherit;
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+[data-ui='v2'] .ls-offer-until {
+  margin: 0;
+  color: inherit;
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-offer-picture {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
+  color: var(--ls-text-subtle);
+}
+
+@media (min-width: 900px) {
+  [data-ui='v2'] .ls-offer-picture {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+[data-ui='v2'] .ls-offer-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: var(--ls-image-filter);
+}
+
+[data-ui='v2'] .ls-offer-card .ls-btn-offer {
+  border-color: transparent;
+  background: var(--ls-on-brand);
+  color: var(--ls-brand-fill);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-offer-card .ls-btn-offer:hover:not([aria-disabled='true']):not(:disabled) {
+    border-color: var(--ls-on-brand);
+    background: var(--ls-brand-fill-hover);
+    color: var(--ls-on-brand);
+  }
+}

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type {
+  PublicProductCard,
+  PublicProductsResponse,
   PublicServiceDetailResponse,
   PublicServicesResponse,
   PublicSiteResponse,
@@ -107,11 +109,8 @@ const home = (data: HomeData, locale: 'vi' | 'en' = 'vi') =>
 test('home: the tagline is the one h1, facts and visit read the Owner data, no made-up claims', () => {
   const html = home(full);
   assert.equal(html.match(/<h1[ >]/g)?.length, 1);
-  // Direction C draws the tagline over two lines (the dash is not drawn), the second one in the accent.
-  assert.match(
-    html,
-    /<h1[^>]*>Thư Giãn Tận Tâm(?: |<!-- --> )<span class="ls-hero-title-2">Nâng Tầm Nhan Sắc<\/span><\/h1>/,
-  );
+  // The tagline is plain text in the one h1 (the smoke check reads it), whole as the Owner wrote it.
+  assert.match(html, /<h1[^>]*>Thư Giãn Tận Tâm – Nâng Tầm Nhan Sắc<\/h1>/);
   assert.match(html, /04 Nguyễn Quang Bích, Đà Nẵng/);
   assert.match(html, /href="tel:\+84934936101"/);
   assert.match(html, /Thứ Hai – Thứ Bảy/);
@@ -148,9 +147,8 @@ test('home: an introduction set in Shop info replaces the built-in sentence; emp
 test('home: one card per live group with its prices and a link to all of them', () => {
   const html = home(full);
   assert.match(html, /Gội đầu/);
-  // A pebble says how many services the group holds and its lowest price (a per-nail price stays one short line).
-  assert.match(html, /2 dịch vụ, 50\.000 ₫/);
-  assert.match(html, /1 dịch vụ, từ 5\.000 ₫\/ngón/);
+  // No count beside a group name (Owner rule: counts live in the table line and in empty states only).
+  assert.doesNotMatch(html, /\d dịch vụ/);
   assert.match(html, /50\.000 ₫/);
   // A per-nail price on a card is one short line ("from"), not the range the services pages show.
   assert.match(html, /từ 5\.000 ₫\/ngón/);
@@ -164,15 +162,15 @@ test('home: one card per live group with its prices and a link to all of them', 
 test('home: a part that could not be read shows a notice and the rest still renders', () => {
   const noServices = home({ ...full, services: null });
   assert.match(noServices, /Không tải được danh mục dịch vụ/);
-  assert.match(noServices, /ls-site-facts/);
+  assert.match(noServices, /ls-home-facts/);
   const noSite = home({ ...full, site: null });
-  assert.doesNotMatch(noSite, /ls-site-facts/);
+  assert.doesNotMatch(noSite, /ls-home-facts/);
   assert.match(noSite, /<h1[^>]*>Lucy Spa<\/h1>/);
   assert.match(noSite, /Gội đầu/);
   assert.match(home({ ...full, services: { groups: [] } }), /Danh mục dịch vụ đang được cập nhật/);
 });
 
-test('home: the hero shows the chosen picture when there is no slide, else designed photo placeholders', () => {
+test('home: the hero is the Owner picture under one flat scrim, else a flat band; the slider keeps its place in the intro', () => {
   const id = '0f6e0a52-2f0c-4a1b-9c55-1f4e2d6a7b8c';
   const withImage = home({
     ...full,
@@ -191,14 +189,18 @@ test('home: the hero shows the chosen picture when there is no slide, else desig
   });
   assert.match(withImage, /<img[^>]*alt="Quầy lễ tân"/);
   assert.match(withImage, /srcSet="[^"]*\/md 960w, [^"]*\/lg 1920w"/);
-  assert.match(withImage, /data-kind="photo"/);
-  assert.doesNotMatch(withImage, /ls-slot-caption|data-kind="slots"/);
-  // Without a picture the placeholders say which of the shop's own photos belongs in each frame; none is made up.
-  const slots = home(full);
-  assert.match(slots, /data-kind="slots"/);
-  assert.match(slots, /Ảnh của tiệm: không gian thư giãn/);
-  assert.equal(slots.match(/<figure class="ls-slot /g)?.length, 3);
-  assert.doesNotMatch(slots, /<img/);
+  assert.match(withImage, /data-media="photo"/);
+  assert.match(withImage, /class="ls-home-hero-scrim"/);
+  assert.doesNotMatch(withImage, /ls-home-hero-caption/);
+  // Without a picture the hero is a flat band, and each frame says which of the shop's own photos belongs in it; none is made up.
+  const flat = home(full);
+  assert.match(flat, /data-media="flat"/);
+  assert.doesNotMatch(flat, /ls-home-hero-scrim/);
+  assert.match(flat, /Ảnh của tiệm: không gian thư giãn/);
+  assert.match(flat, /Ảnh của tiệm: kỹ thuật viên đang làm dịch vụ/);
+  assert.doesNotMatch(flat, /<img/);
+  // The primary action keeps its place; the outline-white form is the secondary button's, drawn only over a photo (pages-v2.css).
+  assert.equal(withImage.match(/ls-btn-primary/g)?.length, 1);
 });
 
 test('footer: Facebook and Zalo icons sit with the contact lines, each only when its link is set', () => {
@@ -502,11 +504,12 @@ test('home facts strip: the Owner order, custom lines, hidden items; the whole s
     html,
     /<a href="https:\/\/maps\.example\.com\/lucy" target="_blank" rel="noopener noreferrer">/,
   );
-  // A stacked list on a phone and one row from a tablet up (site.css), not a column grid.
-  assert.match(html, /<div class="ls-site-facts">/);
+  // A stacked list on a phone and one row from a tablet up (pages-v2.css); each fact is a figure with a caption.
+  assert.match(html, /<div class="ls-home-facts">/);
+  assert.match(html, /<p class="ls-home-fact-figure">Miễn phí gửi xe<\/p>/);
   assert.doesNotMatch(html, /--ls-facts-cols/);
   // The whole strip off: no band at all.
-  assert.doesNotMatch(home({ ...full, site: { ...site, facts: [] } }), /ls-site-facts/);
+  assert.doesNotMatch(home({ ...full, site: { ...site, facts: [] } }), /ls-home-facts/);
 });
 
 test('home service groups: the Owner choice, order and description; none chosen lists every group', () => {
@@ -522,13 +525,15 @@ test('home service groups: the Owner choice, order and description; none chosen 
     },
   });
   assert.ok(chosen.indexOf('Móng gọn gàng') < chosen.indexOf('Gội đầu'));
-  assert.match(chosen, /<p class="ls-group-desc">Móng gọn gàng, sơn gel bền màu<\/p>/);
+  assert.match(chosen, /<p class="ls-home-top-desc">Móng gọn gàng, sơn gel bền màu<\/p>/);
   assert.doesNotMatch(chosen, /Không còn/);
-  assert.equal(chosen.match(/class="ls-pebble"/g)?.length, 2);
-  assert.match(chosen, /Xem tất cả/);
+  // One column of top services and one category tile for each group, and a link to all the services.
+  assert.equal(chosen.match(/class="ls-home-top-col"/g)?.length, 2);
+  assert.equal(chosen.match(/class="ls-home-cat"/g)?.length, 2);
+  assert.match(chosen, /Xem tất cả dịch vụ/);
   const all = home(full);
-  assert.equal(all.match(/class="ls-pebble"/g)?.length, 2);
-  assert.doesNotMatch(all, /ls-group-desc/);
+  assert.equal(all.match(/class="ls-home-top-col"/g)?.length, 2);
+  assert.doesNotMatch(all, /ls-home-top-desc/);
   assert.match(all, /Bảng giá dịch vụ/);
 });
 
@@ -567,7 +572,7 @@ test('home offer ribbon: the most recent running campaign after the services, no
   }
   // One ribbon only, below the hero and the price list; no campaign (or none readable) draws nothing.
   assert.equal(html.match(/class="ls-offer-card"/g)?.length, 1);
-  assert.ok(html.indexOf('ls-offer-card') > html.indexOf('id="groups-title"'));
+  assert.ok(html.indexOf('ls-offer-card') > html.indexOf('id="intro-title"'));
   assert.doesNotMatch(home(full), /ls-offer/);
   assert.doesNotMatch(home({ ...full, campaigns: [] }), /ls-offer/);
   assert.doesNotMatch(home({ ...full, campaigns: null }), /ls-offer/);
@@ -584,7 +589,94 @@ test('home why section: only when the Owner wrote it, below the groups, in the v
   const html = home({ ...full, site: { ...site, why } });
   assert.match(html, /<h2[^>]*id="why-title"[^>]*>Điều khách yêu mến<\/h2>/);
   assert.match(html, /<h3[^>]*>Dụng cụ sạch<\/h3>/);
-  assert.equal(html.match(/ls-icon-bubble/g)?.length, 2);
-  assert.ok(html.indexOf('groups-title') < html.indexOf('why-title'));
+  assert.equal(html.match(/class="ls-home-why-card"/g)?.length, 2);
+  assert.ok(html.indexOf('intro-title') < html.indexOf('why-title'));
   assert.doesNotMatch(home(full), /why-title/);
+});
+
+const card = (code: string, patch: Partial<PublicProductCard> = {}): PublicProductCard => ({
+  code,
+  name: `Sản phẩm ${code}`,
+  category: { code: 'skin', name: 'Chăm sóc da' },
+  brand: null,
+  image: null,
+  price: { priceVnd: '300000', listPriceVnd: null, discountPercent: null },
+  priceMaxVnd: '300000',
+  isNew: false,
+  featured: false,
+  stock: { state: 'IN_STOCK', leadTimeDaysMin: null, leadTimeDaysMax: null },
+  ...patch,
+});
+
+const catalog: PublicProductsResponse = {
+  hero: null,
+  commitment: null,
+  categories: [
+    { code: 'skin', name: 'Chăm sóc da', parentCode: null },
+    { code: 'skin-face', name: 'Mặt', parentCode: 'skin' },
+  ],
+  brands: [],
+  items: [
+    card('a', { featured: true, isNew: true }),
+    card('b'),
+    card('c', {
+      featured: true,
+      price: { priceVnd: '240000', listPriceVnd: '300000', discountPercent: 20 },
+    }),
+  ],
+  page: 1,
+  pageSize: 20,
+  total: 3,
+};
+
+test('home product row: only the Owner-marked products, labelled Mới and the sale percent once, never "Bán chạy"', () => {
+  const html = home({ ...full, products: catalog });
+  assert.match(html, /<h2[^>]*id="products-title"[^>]*>Sản phẩm nổi bật<\/h2>/);
+  assert.equal(html.match(/class="ls-home-prod"/g)?.length, 2);
+  assert.match(html, /href="\/vi\/products\/a"/);
+  assert.doesNotMatch(html, /href="\/vi\/products\/b"/);
+  // The labels come from real data: Mới (outline) from `isNew`, the percent (ink) from the promotion; the percent is drawn once.
+  assert.match(html, /ls-badge-outline[^>]*>Mới</);
+  assert.equal(html.match(/-20%|-20 %/g)?.length, 1);
+  assert.match(html, /ls-badge-ink/);
+  assert.doesNotMatch(html, /Bán chạy/);
+  // The row is a labelled, focusable scroller with two arrow buttons (shown from 1024 px by the stylesheet).
+  assert.match(html, /<ul class="ls-snap-track" aria-label="Sản phẩm nổi bật" tabindex="0">/);
+  assert.match(html, /aria-label="Sản phẩm trước"/);
+  assert.match(html, /aria-label="Sản phẩm tiếp theo"/);
+  assert.match(html, /href="\/vi\/products"/);
+});
+
+test('home product row: no band when nothing is marked, when the catalog is empty or when it could not be read', () => {
+  const none = { ...catalog, items: catalog.items.map((item) => ({ ...item, featured: false })) };
+  for (const products of [none, { ...catalog, items: [] }, null]) {
+    const html = home({ ...full, products });
+    assert.doesNotMatch(html, /products-title|ls-snap-row/);
+  }
+  assert.doesNotMatch(home(full), /products-title|ls-snap-row/);
+});
+
+test('home category grid: a tile for each service group and each top-level cosmetics category, no counts', () => {
+  const html = home({ ...full, products: catalog });
+  assert.match(html, /<h2[^>]*id="categories-title"[^>]*>Chọn theo nhóm<\/h2>/);
+  assert.match(html, /<a class="ls-home-cat" href="\/vi\/services\?group=GOI">/);
+  // A sub-category is reached through its parent: only the parent has a tile.
+  assert.match(html, /<a class="ls-home-cat" href="\/vi\/products\?category=skin">/);
+  assert.doesNotMatch(html, /category=skin-face/);
+  assert.equal(html.match(/class="ls-home-cat"/g)?.length, 3);
+  assert.doesNotMatch(html, /\d+ (?:dịch vụ|sản phẩm)/);
+  // Without products the services alone fill the grid; without anything at all there is no grid.
+  assert.equal(home(full).match(/class="ls-home-cat"/g)?.length, 2);
+  assert.doesNotMatch(home({ ...full, services: null }), /categories-title/);
+});
+
+test('home: no reviews band (Owner decision Q5) and bands alternate the two colors from the hero down', () => {
+  const html = home({ ...full, products: catalog });
+  assert.doesNotMatch(html, /Đánh giá|reviews/i);
+  const tones = [...html.matchAll(/<section class="ls-band ls-band-page ls-band--(base|alt)/g)].map(
+    (match) => match[1],
+  );
+  assert.ok(tones.length >= 3);
+  // The hero is the alternate color, so the first band after it is the base color, then alternating.
+  tones.forEach((tone, index) => assert.equal(tone, index % 2 === 0 ? 'base' : 'alt'));
 });

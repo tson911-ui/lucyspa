@@ -1,63 +1,37 @@
-import type { PublicSiteResponse } from '@lucy-spa/contracts';
-import { Band, buttonClass, PublicMain, Reveal } from '@lucy-spa/ui';
+import { Band, buttonClass, Icon, PublicMain, Reveal } from '@lucy-spa/ui';
 import Link from 'next/link';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
-import { homeGroups, type HomeData } from '../../lib/public-site-core';
-import { splitTagline } from '../../lib/tagline';
+import {
+  homeFeaturedProducts,
+  homeGroups,
+  homeProductCategories,
+  serviceGroupHref,
+  topServiceColumns,
+  type HomeData,
+} from '../../lib/public-site-core';
 import { HomeOffer } from './campaign-views';
-import { FactsStrip, LoadNotice, ServiceGroups, WhyCards } from './home-sections';
+import {
+  categoryItems,
+  CategoryGrid,
+  FactsStrip,
+  HomeProductCard,
+  LoadNotice,
+  TopServices,
+  WhyCards,
+} from './home-sections';
 import { HomeSlider } from './home-slider';
 import { PhotoSlot } from './photo-slot';
 import { PromoPopup } from './promo-popup';
+import { ScrollRow } from './scroll-row';
 
 /**
- * The picture of the hero (direction C): the Owner's slider when there are slides, else the hero picture chosen in Admin > Website >
- * Shop info as one large circle, else a set of designed photo placeholders (a circle, a small circle and a tall pill) waiting for the
- * shop's own photos. Never a made-up photo. A ring behind it breathes very slowly (still under reduced motion).
- */
-function HeroMedia({
-  locale,
-  site,
-  slides,
-}: {
-  locale: Locale;
-  site: PublicSiteResponse | null;
-  slides: Parameters<typeof HomeSlider>[0]['slides'];
-}) {
-  const text = getSiteText(locale).home;
-  const image = site?.heroImage ?? null;
-  if (slides.length > 0) {
-    return (
-      <div className="ls-hero-media" data-kind="slider">
-        <span className="ls-hero-ring" aria-hidden="true" />
-        <HomeSlider locale={locale} slides={slides} />
-      </div>
-    );
-  }
-  if (image) {
-    return (
-      <div className="ls-hero-media" data-kind="photo">
-        <span className="ls-hero-ring" aria-hidden="true" />
-        <PhotoSlot className="ls-hero-big" image={image} caption={text.photoSpace} />
-      </div>
-    );
-  }
-  return (
-    <div className="ls-hero-media" data-kind="slots" aria-hidden="true">
-      <span className="ls-hero-ring" />
-      <PhotoSlot className="ls-hero-big" caption={text.photoSpace} />
-      <PhotoSlot className="ls-hero-small" caption={text.photoNails} />
-      <PhotoSlot className="ls-hero-pill" caption={text.photoHeadSpa} />
-    </div>
-  );
-}
-
-/**
- * The public home page's content (Part 2 contract 5.2, direction C since 2026-10-10). It only draws what it is given: the page reads
- * the shop profile, the catalogue and the slides on the server, and the admin's season preview reads them in the browser.
- * A part that could not be read shows a notice and the rest still renders. The preview leaves the promotional popup
- * out (it is not part of a season's look and would cover the page).
+ * The public home page's content (DESIGN.md 9.1; the order is fixed): hero, trust band, split intro and top services, the product row,
+ * the category grid, then the Owner's optional "why choose us" cards and the running offer. It only draws what it is given: the page
+ * reads the shop profile, the catalogue and the slides on the server, and the admin's season preview reads them in the browser.
+ * A part that could not be read shows a notice (or is left out) and the rest still renders. There is no reviews band (Q5: reviews are
+ * private until the Owner decides to publish them). The preview leaves the promotional popup out (it is not part of a season's look
+ * and would cover the page). Bands alternate the base and the alternate color from the hero down, whichever bands are present.
  */
 export function HomeContent({
   locale,
@@ -69,72 +43,181 @@ export function HomeContent({
   popup?: boolean;
 }) {
   const text = getSiteText(locale);
-  const { site, services, slides, campaigns, onlineOpen } = data;
-  const [first, second] = splitTagline(site?.tagline ?? 'Lucy Spa');
+  const { site, services, slides, campaigns, onlineOpen, products } = data;
+  const heroImage = site?.heroImage ?? null;
+  const heroWidest = heroImage?.sources[heroImage.sources.length - 1];
+
+  // The hero is the alternate color (or a photo); each band after it takes the other color.
+  let position = 1;
+  const nextTone = (): 'base' | 'alt' => (position++ % 2 === 0 ? 'alt' : 'base');
+
+  const groups = services && services.groups.length > 0 ? homeGroups(services, site) : [];
+  const columns = topServiceColumns(groups);
+  const featured = homeFeaturedProducts(products);
+  const productCategories = homeProductCategories(products);
+
   return (
     <PublicMain>
-      <Band tone="page" labelledBy="home-title" className="ls-hero">
-        <div className="ls-hero-grid">
-          <div className="ls-hero-copy">
-            <h1 className="ls-site-display ls-hero-title" id="home-title">
-              {first}
-              {second ? (
-                <>
-                  {' '}
-                  <span className="ls-hero-title-2">{second}</span>
-                </>
-              ) : null}
-            </h1>
-            <p className="ls-lead">{site?.intro ?? text.home.lead}</p>
-            <div className="ls-hero-actions">
-              <Link
-                className={buttonClass('primary', 'lg', 'ls-btn-sheen')}
-                href={`/${locale}/account/book`}
-                prefetch
-              >
-                {text.home.bookNow}
-              </Link>
-              <Link
-                className={buttonClass('secondary', 'lg')}
-                href={`/${locale}/services`}
-                prefetch
-              >
-                {text.home.viewServices}
-              </Link>
-            </div>
+      <section
+        className="ls-home-hero ls-band--alt"
+        data-media={heroImage && heroWidest ? 'photo' : 'flat'}
+        aria-labelledby="home-title"
+      >
+        {heroImage && heroWidest ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- the media route already serves sized WebP renditions */}
+            <img
+              className="ls-home-hero-img"
+              src={heroWidest.url}
+              srcSet={heroImage.sources
+                .map((source) => `${source.url} ${source.width}w`)
+                .join(', ')}
+              sizes="100vw"
+              width={heroImage.width}
+              height={heroImage.height}
+              alt={heroImage.alt}
+              fetchPriority="high"
+              decoding="async"
+            />
+            <span className="ls-home-hero-scrim" aria-hidden="true" />
+          </>
+        ) : (
+          <span className="ls-home-hero-caption" aria-hidden="true">
+            {text.home.photoSpace}
+          </span>
+        )}
+        <div className="ls-container ls-home-hero-copy">
+          <h1 className="ls-site-display ls-hero-title" id="home-title">
+            {site?.tagline ?? 'Lucy Spa'}
+          </h1>
+          <p className="ls-lead">{site?.intro ?? text.home.lead}</p>
+          <div className="ls-hero-actions">
+            <Link
+              className={buttonClass('primary', 'lg')}
+              href={`/${locale}/account/book`}
+              prefetch
+            >
+              {text.home.bookNow}
+            </Link>
+            <Link
+              className={buttonClass('secondary', 'lg', 'ls-btn-on-photo')}
+              href={`/${locale}/services`}
+              prefetch
+            >
+              {text.home.viewServices}
+            </Link>
           </div>
-          <HeroMedia locale={locale} site={site} slides={slides} />
         </div>
-      </Band>
+      </section>
 
       {site && site.facts.length > 0 ? (
-        <Band tone="page" label={text.home.factsLabel} className="ls-band-flush ls-band-facts">
+        <Band
+          tone="page"
+          label={text.home.factsLabel}
+          className={`ls-band--${nextTone()} ls-band-facts`}
+        >
           <FactsStrip locale={locale} site={site} />
         </Band>
       ) : null}
 
-      <Band tone="surface" labelledBy="groups-title">
-        <Reveal>
-          <div className="ls-section-head">
-            <h2 className="ls-site-h2" id="groups-title">
-              {text.home.groupsTitle}
-            </h2>
-            <p>{text.home.groupsLead}</p>
-          </div>
-        </Reveal>
+      <Band tone="page" labelledBy="intro-title" className={`ls-band--${nextTone()}`}>
+        <div className="ls-home-split">
+          <Reveal>
+            <div className="ls-home-split-copy">
+              <h2 className="ls-site-h2" id="intro-title">
+                {text.home.groupsTitle}
+              </h2>
+              <p>{text.home.groupsLead}</p>
+              <div className="ls-hero-actions">
+                <Link className={buttonClass('secondary')} href={`/${locale}/account/book`}>
+                  {text.home.bookNow}
+                </Link>
+                <Link className="ls-site-link" href={`/${locale}/services`}>
+                  {text.home.viewAllServices}
+                  <Icon name="chevron-right" size={16} aria-hidden="true" />
+                </Link>
+              </div>
+            </div>
+          </Reveal>
+          {slides.length > 0 ? (
+            <div className="ls-home-split-media" data-kind="slider">
+              <HomeSlider locale={locale} slides={slides} />
+            </div>
+          ) : (
+            <div className="ls-home-split-media" data-kind="slot">
+              <PhotoSlot className="ls-home-split-slot" caption={text.home.photoIntro} />
+            </div>
+          )}
+        </div>
         {services === null ? (
           <LoadNotice locale={locale} section={text.home.sectionServices} />
-        ) : services.groups.length === 0 ? (
-          <p className="ls-group-count">{text.home.noServices}</p>
+        ) : columns.length === 0 ? (
+          <p className="ls-home-empty">{text.home.noServices}</p>
         ) : (
-          <ServiceGroups locale={locale} groups={homeGroups(services, site)} />
+          <TopServices locale={locale} columns={columns} />
         )}
       </Band>
 
-      {site?.why ? (
-        <Band tone="page" labelledBy="why-title">
+      {featured.length > 0 ? (
+        <Band tone="page" labelledBy="products-title" className={`ls-band--${nextTone()}`}>
           <Reveal>
-            <div className="ls-section-head">
+            <div className="ls-home-band-head">
+              <h2 className="ls-site-h2" id="products-title">
+                {text.home.productsTitle}
+              </h2>
+              <Link className="ls-site-link" href={`/${locale}/products`}>
+                {text.home.viewAllProducts}
+                <Icon name="chevron-right" size={16} aria-hidden="true" />
+              </Link>
+            </div>
+          </Reveal>
+          <ScrollRow
+            label={text.home.productsTitle}
+            previous={text.home.rowPrevious}
+            next={text.home.rowNext}
+          >
+            {featured.map((card, index) => (
+              <HomeProductCard key={card.code} locale={locale} card={card} priority={index < 2} />
+            ))}
+          </ScrollRow>
+        </Band>
+      ) : null}
+
+      {groups.length > 0 || productCategories.length > 0 ? (
+        <Band tone="page" labelledBy="categories-title" className={`ls-band--${nextTone()}`}>
+          <Reveal>
+            <div className="ls-home-band-head">
+              <div className="ls-home-band-title">
+                <h2 className="ls-site-h2" id="categories-title">
+                  {text.home.categoriesTitle}
+                </h2>
+                <p>{text.home.categoriesLead}</p>
+              </div>
+            </div>
+          </Reveal>
+          {groups.length > 0 ? (
+            <CategoryGrid
+              title={text.home.categoryServices}
+              items={groups.map(({ group }) => ({
+                key: group.code,
+                name: group.name,
+                href: serviceGroupHref(locale, group.code),
+              }))}
+            />
+          ) : null}
+          {productCategories.length > 0 ? (
+            <CategoryGrid
+              title={text.home.categoryProducts}
+              items={categoryItems(locale, productCategories)}
+            />
+          ) : null}
+        </Band>
+      ) : null}
+
+      {site?.why ? (
+        <Band tone="page" labelledBy="why-title" className={`ls-band--${nextTone()}`}>
+          <Reveal>
+            <div className="ls-home-band-head">
               <h2 className="ls-site-h2" id="why-title">
                 {site.why.title}
               </h2>
@@ -144,7 +227,12 @@ export function HomeContent({
         </Band>
       ) : null}
 
-      <HomeOffer locale={locale} campaigns={campaigns} onlineOpen={onlineOpen === true} />
+      <HomeOffer
+        locale={locale}
+        campaigns={campaigns}
+        onlineOpen={onlineOpen === true}
+        tone={nextTone()}
+      />
       {popup ? <PromoPopup locale={locale} /> : null}
     </PublicMain>
   );

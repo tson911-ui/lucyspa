@@ -2,9 +2,9 @@ import type { PublicSiteResponse } from '@lucy-spa/contracts';
 import type { CSSProperties } from 'react';
 
 /**
- * A place for one of the shop's own photos. It is drawn to be swapped: the frame, ratio and tone are final, and the caption says
- * which photo belongs here (the list for the Owner is in docs/CUSTOMER_SITE_C.md). Never a stock or made-up photo.
- * When the shop already chose a picture for the slot (the hero picture in Admin > Website > Shop info), `image` draws it instead.
+ * A place for one of the shop's own photos (DESIGN.md 9: a flat placeholder, no gradient). It is drawn to be swapped: the frame and ratio
+ * are final, and the caption says which photo belongs here (the list for the Owner is in docs/CUSTOMER_SITE_C.md and the Step report).
+ * Never a stock or made-up photo. When the shop already chose a picture for the slot, `image` draws it instead.
  */
 export function PhotoSlot({
   className,
@@ -34,10 +34,7 @@ export function PhotoSlot({
           decoding="async"
         />
       ) : (
-        <>
-          <span className="ls-slot-grain" aria-hidden="true" />
-          <figcaption className="ls-slot-caption">{caption}</figcaption>
-        </>
+        <figcaption className="ls-slot-caption">{caption}</figcaption>
       )}
     </figure>
   );

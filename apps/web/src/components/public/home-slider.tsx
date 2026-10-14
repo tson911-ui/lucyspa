@@ -41,5 +41,7 @@ export function HomeSlider({
     goTo: text.sliderGoTo,
   };
   if (items.length === 0) return fallback;
-  return <Slider slides={items} labels={labels} LinkComponent={RouterLink} />;
+  return (
+    <Slider slides={items} labels={labels} LinkComponent={RouterLink} ctaVariant="secondary" />
+  );
 }

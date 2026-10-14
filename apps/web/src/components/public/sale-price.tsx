@@ -15,12 +15,15 @@ export function SalePrice({
   price,
   nowText,
   size = 'card',
+  percent: showPercent = true,
 }: {
   locale: Locale;
   price: PublicProductPrice;
   /** The sale price line as the page words it ("từ 329.000 ₫" on a card whose variants differ in price). */
   nowText: string;
   size?: 'card' | 'page';
+  /** Show the percent beside the struck price; a card that draws it as a label on its picture (DESIGN.md 8.7) turns this off. */
+  percent?: boolean;
 }) {
   if (!price.listPriceVnd) {
     return (
@@ -33,7 +36,7 @@ export function SalePrice({
     );
   }
   const text = getSiteText(locale).products;
-  const percent = discountText(price);
+  const percent = showPercent ? discountText(price) : null;
   const saving = saleSaving(price);
   return (
     <div className="ls-sale" data-size={size} aria-live={size === 'page' ? 'polite' : undefined}>
