@@ -105,7 +105,15 @@ test('text-bearing controls never fix width or forbid wrapping (long Vietnamese 
 });
 
 test('classes used by the components exist in the stylesheet', () => {
-  const declared = new Set([...css.matchAll(/\.(ls-[\w-]+)/g)].map((match) => match[1]));
+  // The token file and the v2 sheets declare classes too (bands, chrome, pages). They are not part of `css` above because the token
+  // rules of the other tests do not apply to them.
+  const declaredIn = [
+    css,
+    ...['tokens.css', 'chrome-v2.css', 'pages-v2.css'].map((name) =>
+      readFileSync(new URL(name, here), 'utf8'),
+    ),
+  ].join('\n');
+  const declared = new Set([...declaredIn.matchAll(/\.(ls-[\w-]+)/g)].map((match) => match[1]));
   const used = new Set<string>();
   for (const file of sourceFiles(uiSrc)) {
     const text = readFileSync(file, 'utf8');

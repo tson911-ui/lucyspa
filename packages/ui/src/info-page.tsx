@@ -54,7 +54,7 @@ export function InfoPage({
   return (
     <PublicMain>
       <InfoTitle title={title} lead={lead} back={back} />
-      <Band tone="page" className="ls-band--base ls-info-body">
+      <Band tone="page" className="ls-band--base">
         <div className="ls-info-layout" data-toc={toc ? 'true' : undefined}>
           <article className="ls-info-article">
             {sections.map((section) => (
@@ -116,7 +116,7 @@ export function ContactPage({
   return (
     <PublicMain>
       <InfoTitle title={title} lead={lead} back={back} />
-      <Band tone="page" className={cx('ls-band--base ls-info-body', className)}>
+      <Band tone="page" className={cx('ls-band--base', className)}>
         <div className="ls-info-split">
           <div className="ls-info-place">{place}</div>
           <div className="ls-info-details">
