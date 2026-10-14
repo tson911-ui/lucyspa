@@ -206,12 +206,14 @@ Items 3, 4 and 5 are Step C11b below. Answers 1 and 2 close the matching "pendin
 
 ### Session 6
 
-- **C14: booking flow (L).** Status: todo.
+- **C14: booking flow (L).** Status: done (3db551a).
   `book.tsx` (903 lines): stepper, sticky footer, summary card and success state. Logic untouched.
+  As built (`docs/REDESIGN_GROUP1_S6_REPORT.md`): title band + content band, a 720 px column with a sticky 22 rem summary from 1024 px, the phone summary as an `Accordion` row above a flat action bar, neutral Back, flat `ChoiceCard` (shared rule in `components-v2.css`), time pills, success state in the same bands. The step names and order are unchanged (services, guests, staff and time, confirm).
 
-- **C15: auth and account (L).** Status: todo.
+- **C15: auth and account (L).** Status: done (e3e2da5).
   Customer login, register and forgot pages as a centered card, then account home, bookings, invoices (with detail), loyalty,
   notifications and the review card. The shared auth layout's flat panel is used by staff too, so check it against staff login.
+  As built: the customer sign-in does not use the staff `AuthLayout`; they share only root tokens. New v2 tokens `--ls-auth-flat` and `--ls-on-auth-flat` (Q4), the panel is a band with the wordmark above one 26 rem hairline card (aside dropped; PENDING Owner, see the S6 report). Staff login and forgot password screenshots are byte-identical before and after. New `AccountScreen` (title band, `SiteSubNav` tabs from 768 px, content band) carries the account home (four summary cards), bookings, invoices, loyalty, notifications, orders and their details; `CustomerShell` is only `main`. Direction C rules for booking, sign-in and the member frame stay in `site.css` until C18 (`.ls-booking-*`, `.ls-member-auth`, `.ls-member-aside`, `.ls-member-page`, `.ls-choice*`, `.ls-hub`, `.ls-account-grid`).
 
 ### Session 7
 
