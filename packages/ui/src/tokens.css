@@ -560,6 +560,12 @@
   --ls-bg-surface-alt: #ffffff;
   --ls-bg-raised: #ffffff;
   --ls-bg-pressed: #e2e2e5;
+  /* The fill of a field and of a neutral button is the opposite step of what it sits on (DESIGN.md 8.2): on the base band it is the
+     alternate band color, on an alternate band it is the base color. A card, a dialog or a drawer is a surface of its own, so inside
+     it a field takes the step the card is not (`--ls-bg-field-in-card`, set per band below). Both read the band tokens, which the dark
+     blocks replace, so neither needs a dark value. */
+  --ls-bg-field: var(--ls-band-alt);
+  --ls-bg-field-in-card: var(--ls-band-base);
   --ls-text: #1d1d1f;
   --ls-text-muted: #515154;
   --ls-text-subtle: #6e6e73;
@@ -599,6 +605,8 @@
   /* Comfortable density (the default); [data-density='compact'] below is the staff variant. */
   --ls-control-h: 44px;
   --ls-row-h: 56px;
+  /* A control marked compact (the `compact` prop, or inside `data-density='compact'`) is 40 px on a fine pointer at 1024 px and up. */
+  --ls-control-h-compact: 40px;
 
   /* Customer motion (DESIGN.md 11.3). Reduced motion zeroes every one of them below. */
   --ls-dur-fast: 150ms;
@@ -660,7 +668,19 @@
 
 [data-ui='v2'] .ls-band--alt {
   --ls-bg-surface: var(--ls-bg-surface-alt);
+  --ls-bg-field: var(--ls-band-base);
+  --ls-bg-field-in-card: var(--ls-band-alt);
   background: var(--ls-band-alt);
+}
+
+/* A card is a surface of its own: a field inside it takes the step the card is not. A dialog and a drawer are the raised surface, so
+   a field there is the alternate band color whatever band the page behind them is on. */
+[data-ui='v2'] .ls-card {
+  --ls-bg-field: var(--ls-bg-field-in-card);
+}
+
+[data-ui='v2'] :is(.ls-dialog, .ls-drawer, .ls-menu-panel, .ls-popover) {
+  --ls-bg-field: var(--ls-band-alt);
 }
 
 /* Dark: black base, stepped greys (the closer to the user, the lighter), accent #e48f9f, near-black text on it. Keep the three

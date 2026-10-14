@@ -1093,9 +1093,13 @@ test('phones: per-nail booking rows put the price under the name; a section titl
   assert.doesNotMatch(css, /ls-list-section-count/);
 });
 
-test('public form fields are pills like the buttons; a multi-line field keeps a soft rectangle', () => {
-  assert.match(css, /\.ls-site \.ls-input \{\s*border-radius: var\(--ls-radius-full\);/);
-  assert.match(css, /\.ls-site \.ls-textarea \{\s*border-radius: var\(--ls-radius-lg\);/);
+test('public form fields are boxed at the 8 px radius (v2), only the search field is a pill, the member card keeps its width', () => {
+  const v2 = readFileSync(new URL('components-v2.css', import.meta.url), 'utf8');
+  assert.match(v2, /\[data-ui='v2'\] \.ls-input \{[^}]*border-radius: var\(--ls-radius-sm\);/);
+  assert.match(
+    v2,
+    /\[data-ui='v2'\] \.ls-search \.ls-input \{[^}]*border-radius: var\(--ls-radius-full\);/,
+  );
   assert.match(css, /\.ls-member-card \{[^}]*width: min\(100%, 28rem\);/);
 });
 

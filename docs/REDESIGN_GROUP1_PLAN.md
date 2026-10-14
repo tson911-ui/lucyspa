@@ -79,10 +79,13 @@ Status values: `todo` / `done` (with commit hash).
   Wordmark, translucent sticky header with blur, the always-visible "Đặt lịch" pill, compact-on-scroll (64 to 52), the three-option theme
   toggle, bell and account menu. Files: `site-chrome*`, `site.css` header part.
   Verify: `uxui-touch-check`, no layout shift, and the season layer renders as before.
+  Carry-over (Owner, session 1 review): `uxui-touch-check` flags the theme button, which changes theme on tap. Verify against HEAD whether
+  this is a time-of-day artifact or a real failure, and say which.
 
 - **C9: footer, tab bar, contact button, popup (M).** Status: todo.
   Footer from the existing footer blocks (no brand-red band, no waves), phone tab bar and app shell, contact button, promo popup.
   Verify: `uxui-tabbar-check` and safe areas.
+  Carry-over (Owner, session 1 review): footer icon spacing. Targets are 48 px with 4 px between neighbours; DESIGN.md 12 wants 8 px. Fix here.
 
 ### Session 4
 
@@ -127,6 +130,8 @@ Status values: `todo` / `done` (with commit hash).
   A sweep of all states and long text, plus a keyboard/focus/label audit. The DOM audit compared with the C1 baseline, then ratchets
   lowered and dead direction C rules deleted from `site.css`/`customer.css`. A copy review (no "khám"), season-layer and toggle
   regression, and a performance check. Full `pnpm test` and `format:check`, then the before/after pairs for Owner approval (G10).
+  Carry-overs (Owner, session 1 review): the 200 % text check and the full 42-page "after" set with the full DOM audit are done here.
+  Also accepted by the Owner: `site-fonts.ts` unchanged (Be Vietnam Pro through the v2 tokens on the customer frame only).
 
 - **C19: deploy guide (S).** Status: todo.
   A single `docs/DEPLOY_REDESIGN_GROUP1.md` for the Owner to run. Not a deploy; group 1 ships once, after the Owner approves C18.

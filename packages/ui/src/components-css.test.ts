@@ -24,6 +24,7 @@ const css = [
   'site.css',
   'customer.css',
   'customer-pages.css',
+  'components-v2.css',
   'season-decor.css',
   'season-art.css',
   'season-preview.css',
@@ -119,7 +120,7 @@ test('classes used by the components exist in the stylesheet', () => {
     (name) => !declared.has(name) && !dynamic.some((prefix) => name === prefix.slice(0, -1)),
   );
   assert.deepEqual(missing, [], 'classes with no CSS rule');
-  for (const variant of ['primary', 'secondary', 'ghost', 'danger-outline', 'danger']) {
+  for (const variant of ['primary', 'secondary', 'neutral', 'ghost', 'danger-outline', 'danger']) {
     assert.ok(declared.has(`ls-btn-${variant}`), variant);
   }
   for (const tone of ['success', 'warning', 'danger', 'info', 'neutral', 'brand']) {

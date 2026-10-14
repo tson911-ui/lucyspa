@@ -80,7 +80,9 @@
 }
 
 .ls-shell .ls-btn-secondary,
-.ls-auth .ls-btn-secondary {
+.ls-shell .ls-btn-neutral,
+.ls-auth .ls-btn-secondary,
+.ls-auth .ls-btn-neutral {
   border-color: transparent;
   background: var(--ls-brand-soft);
 }

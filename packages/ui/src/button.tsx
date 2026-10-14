@@ -23,6 +23,8 @@ interface CommonProps {
   /** Leading icon. */
   icon?: IconName | undefined;
   className?: string | undefined;
+  /** The compact density (DESIGN.md 8.1): 14 px label, 8 x 16 padding, 40 px high on a fine pointer. Inside `data-density='compact'` it is automatic. */
+  compact?: boolean | undefined;
 }
 
 export type ButtonProps = CommonProps &
@@ -43,6 +45,7 @@ export function Button({
   disabled,
   disabledReason,
   fullWidth,
+  compact,
   className,
   type = 'button',
   onClick,
@@ -58,7 +61,7 @@ export function Button({
       {...rest}
       ref={ref}
       type={type}
-      className={buttonClass(variant, size, cx(fullWidth && 'ls-btn-block', className))}
+      className={buttonClass(variant, size, cx(fullWidth && 'ls-btn-block', className), compact)}
       disabled={loading || (disabled && !blocked) || undefined}
       aria-disabled={blocked ? true : rest['aria-disabled']}
       aria-busy={loading || undefined}
@@ -127,13 +130,14 @@ export function ButtonLink({
   variant = 'secondary',
   size = 'md',
   icon,
+  compact,
   className,
   children,
   ref,
   ...rest
 }: ButtonLinkProps) {
   return (
-    <a {...rest} ref={ref} className={buttonClass(variant, size, className)}>
+    <a {...rest} ref={ref} className={buttonClass(variant, size, className, compact)}>
       {icon ? <Icon name={icon} /> : null}
       <span className="ls-btn-label">{children}</span>
     </a>

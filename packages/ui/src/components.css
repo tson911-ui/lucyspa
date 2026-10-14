@@ -69,6 +69,20 @@
   }
 }
 
+/* Neutral (the quiet pill for Cancel and filters) looks like secondary outside the v2 scope, where nothing uses it yet. */
+.ls-btn-neutral {
+  border-color: var(--ls-border-control);
+  background: var(--ls-bg-surface);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-btn-neutral:hover:not([aria-disabled='true']):not(:disabled) {
+    border-color: var(--ls-hover-border);
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
+}
+
 .ls-btn-secondary {
   border-color: var(--ls-border-control);
   background: var(--ls-bg-surface);

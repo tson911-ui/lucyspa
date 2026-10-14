@@ -135,16 +135,18 @@ export function Field({
 
 type InputBase = Omit<InputHTMLAttributes<HTMLInputElement>, 'size' | 'className'> & {
   invalid?: boolean | undefined;
+  /** The compact density (DESIGN.md 8.2): 40 px high and a 14 px value on a fine pointer. Inside `data-density='compact'` it is automatic. */
+  compact?: boolean | undefined;
   className?: string | undefined;
   ref?: Ref<HTMLInputElement> | undefined;
 };
 
-export function TextInput({ invalid, className, type = 'text', ...rest }: InputBase) {
+export function TextInput({ invalid, compact, className, type = 'text', ...rest }: InputBase) {
   return (
     <input
       {...rest}
       type={type}
-      className={cx('ls-input', className)}
+      className={cx('ls-input', compact && 'ls-input-compact', className)}
       aria-invalid={invalid || rest['aria-invalid'] || undefined}
     />
   );
@@ -191,13 +193,13 @@ export function PasswordInput({
 }
 
 /** Numeric input for quantities and percentages. Money uses `MoneyInput`. */
-export function NumberInput({ invalid, className, ...rest }: Omit<InputBase, 'type'>) {
+export function NumberInput({ invalid, compact, className, ...rest }: Omit<InputBase, 'type'>) {
   return (
     <input
       {...rest}
       type="number"
       inputMode="decimal"
-      className={cx('ls-input', 'ls-input-number', className)}
+      className={cx('ls-input', 'ls-input-number', compact && 'ls-input-compact', className)}
       aria-invalid={invalid || rest['aria-invalid'] || undefined}
     />
   );
@@ -293,6 +295,7 @@ export function MoneyInput({
   unit,
   separator = '.',
   invalid,
+  compact,
   className,
   ...rest
 }: Omit<InputBase, 'type' | 'value' | 'defaultValue' | 'onChange'> & {
@@ -308,7 +311,7 @@ export function MoneyInput({
         type="text"
         inputMode="numeric"
         autoComplete="off"
-        className="ls-input ls-input-number"
+        className={cx('ls-input ls-input-number', compact && 'ls-input-compact')}
         value={formatMoney(value, separator)}
         aria-invalid={invalid || rest['aria-invalid'] || undefined}
         onChange={(event: ChangeEvent<HTMLInputElement>) => {
@@ -327,17 +330,19 @@ export function MoneyInput({
 
 export function Textarea({
   invalid,
+  compact,
   className,
   ...rest
 }: Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'className'> & {
   invalid?: boolean | undefined;
+  compact?: boolean | undefined;
   className?: string | undefined;
   ref?: Ref<HTMLTextAreaElement> | undefined;
 }) {
   return (
     <textarea
       {...rest}
-      className={cx('ls-input', 'ls-textarea', className)}
+      className={cx('ls-input', 'ls-textarea', compact && 'ls-input-compact', className)}
       aria-invalid={invalid || rest['aria-invalid'] || undefined}
     />
   );
@@ -354,6 +359,7 @@ export function Select({
   options,
   placeholder,
   invalid,
+  compact,
   className,
   ...rest
 }: Omit<SelectHTMLAttributes<HTMLSelectElement>, 'className' | 'children'> & {
@@ -361,13 +367,14 @@ export function Select({
   /** Text of the empty first option. */
   placeholder?: string | undefined;
   invalid?: boolean | undefined;
+  compact?: boolean | undefined;
   className?: string | undefined;
   ref?: Ref<HTMLSelectElement> | undefined;
 }) {
   return (
     <select
       {...rest}
-      className={cx('ls-input', 'ls-select', className)}
+      className={cx('ls-input', 'ls-select', compact && 'ls-input-compact', className)}
       aria-invalid={invalid || rest['aria-invalid'] || undefined}
     >
       {placeholder !== undefined ? <option value="">{placeholder}</option> : null}

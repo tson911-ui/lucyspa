@@ -1,0 +1,403 @@
+/* The kit parts restyled for the v2 look (DESIGN.md section 8), redesign group 1. Every rule here sits under `[data-ui='v2']`, so the
+   staff areas keep the look of components.css until groups 2 and 3 switch them on. It loads after customer-pages.css, so at equal
+   specificity it wins over the direction C rules still in site.css and customer.css (those are deleted in C18). Tokens only: no color,
+   no spacing literal, no shadow, no gradient (the seasonal layer keeps its own). Order: buttons, fields, checkbox / radio / switch;
+   surfaces and feedback and the overlays and data parts follow with C5 and C6. */
+
+/* Hover lifts and zooms are direction C; v2 hover is the color rule only (DESIGN.md 11.2), and the press scale stays. */
+[data-ui='v2'] {
+  --ls-ctl-lift: 0px;
+  --ls-ctl-zoom: 1;
+}
+
+/* ---- Buttons (8.1) ----------------------------------------------------------------------------- */
+[data-ui='v2'] .ls-btn {
+  gap: var(--ls-space-2);
+  min-width: var(--ls-control-h);
+  min-height: var(--ls-control-h);
+  padding: var(--ls-space-2) var(--ls-space-6);
+  border: 1px solid transparent;
+  border-radius: var(--ls-radius-full);
+  font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-btn-lg {
+  min-height: calc(var(--ls-control-h) + var(--ls-space-2));
+  padding-inline: var(--ls-space-7);
+}
+
+[data-ui='v2'] .ls-btn-icon {
+  padding: 0;
+}
+
+/* The compact density (the `compact` prop, or inside `data-density='compact'`): 14 px label, 8 x 16 padding, 40 px on a fine pointer
+   at 1024 px and up (the density block in tokens.css already sets the control height inside a compact scope). */
+[data-ui='v2'] .ls-btn-compact,
+[data-ui='v2'] [data-density='compact'] .ls-btn,
+[data-ui='v2'][data-density='compact'] .ls-btn {
+  padding-inline: var(--ls-space-4);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-btn-compact.ls-btn-icon,
+[data-ui='v2'] [data-density='compact'] .ls-btn-icon,
+[data-ui='v2'][data-density='compact'] .ls-btn-icon {
+  padding: 0;
+}
+
+[data-ui='v2'] .ls-btn-compact {
+  min-width: var(--ls-control-h-compact);
+  min-height: var(--ls-control-h-compact);
+}
+
+@media (pointer: coarse), (max-width: 1023px) {
+  [data-ui='v2'] .ls-btn-compact {
+    min-width: var(--ls-control-h);
+    min-height: var(--ls-control-h);
+  }
+}
+
+/* Primary: the filled pill (one per view). It darkens on hover (components.css). */
+[data-ui='v2'] .ls-btn-primary {
+  color: var(--ls-on-brand);
+  background: var(--ls-brand-fill);
+}
+
+/* Secondary: an accent outline, paired with a primary. Hover is the solid accent (rule 4). */
+[data-ui='v2'] .ls-btn-secondary {
+  border-color: var(--ls-brand);
+  color: var(--ls-brand);
+  background: transparent;
+}
+
+/* Neutral: the quiet pill (Cancel, filters, toolbar actions). Its fill is the step a field takes, so it shows on either band. */
+[data-ui='v2'] .ls-btn-neutral {
+  border-color: transparent;
+  color: var(--ls-text);
+  background: var(--ls-bg-field);
+}
+
+[data-ui='v2'] .ls-btn-ghost {
+  color: var(--ls-text);
+}
+
+[data-ui='v2'] .ls-btn-danger-outline {
+  border-color: var(--ls-danger);
+  color: var(--ls-danger);
+  background: transparent;
+}
+
+/* Disabled: the pressed neutral fill and subtle text, a word or reason beside it where it matters; no opacity, no hover. */
+[data-ui='v2'] .ls-btn:is(:disabled, [aria-disabled='true']) {
+  border-color: transparent;
+  color: var(--ls-text-subtle);
+  background: var(--ls-bg-pressed);
+  opacity: 1;
+}
+
+[data-ui='v2'] .ls-btn[aria-busy='true'] {
+  color: var(--ls-on-brand);
+  background: var(--ls-brand-fill);
+  opacity: 1;
+}
+
+[data-ui='v2'] .ls-btn[aria-busy='true']:not(.ls-btn-primary) {
+  color: var(--ls-text-subtle);
+  background: var(--ls-bg-pressed);
+}
+
+[data-ui='v2'] .ls-btn-reason {
+  color: var(--ls-text-subtle);
+  font-size: var(--ls-type-caption);
+  line-height: var(--ls-lh-caption);
+}
+
+/* "Đặt lịch ngay" used a sweeping gradient band: no gradient in the base UI. */
+[data-ui='v2'] .ls-btn-sheen::after {
+  display: none;
+}
+
+/* ---- Fields (8.2) ------------------------------------------------------------------------------ */
+[data-ui='v2'] .ls-field {
+  gap: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-label {
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-required {
+  color: var(--ls-text-subtle);
+  font-weight: var(--ls-weight-body);
+}
+
+[data-ui='v2'] .ls-hint {
+  color: var(--ls-text-subtle);
+  font-size: var(--ls-type-caption);
+  line-height: var(--ls-lh-caption);
+}
+
+[data-ui='v2'] .ls-error {
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-body);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-label-action {
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-form,
+[data-ui='v2'] .ls-form-grid {
+  gap: var(--ls-space-6);
+}
+
+[data-ui='v2'] .ls-input {
+  min-height: var(--ls-control-h);
+  padding: var(--ls-space-2) var(--ls-space-4);
+  border-color: var(--ls-border-control);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-field);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-input:focus-visible {
+  border-color: var(--ls-focus);
+}
+
+[data-ui='v2'] .ls-input[aria-invalid='true'] {
+  border-color: var(--ls-danger);
+}
+
+[data-ui='v2'] .ls-input:disabled {
+  border-color: var(--ls-border);
+  color: var(--ls-text-subtle);
+  background: var(--ls-bg-pressed);
+  opacity: 1;
+}
+
+[data-ui='v2'] .ls-textarea {
+  min-height: 6rem;
+  line-height: var(--ls-lh-body);
+}
+
+/* A select keeps the platform's own arrow and list (the arrow follows the color scheme); only the box is restyled. */
+[data-ui='v2'] .ls-select {
+  appearance: auto;
+  padding-inline-end: var(--ls-space-3);
+}
+
+/* The compact density of a field: 40 px and a 14 px value, on a fine pointer at 1024 px and up (a phone keeps 44 px and 16 px so the
+   page does not zoom when the field is focused). */
+@media (pointer: fine) and (min-width: 1024px) {
+  [data-ui='v2'] .ls-input-compact,
+  [data-ui='v2'] [data-density='compact'] .ls-input,
+  [data-ui='v2'][data-density='compact'] .ls-input {
+    min-height: var(--ls-control-h-compact);
+    font-size: var(--ls-type-label);
+    line-height: var(--ls-lh-label);
+  }
+}
+
+/* Search: a pill with the icon at the start and a 44 px clear button at the end. */
+[data-ui='v2'] .ls-search .ls-input {
+  padding-inline: var(--ls-space-9) var(--ls-space-4);
+  border-radius: var(--ls-radius-full);
+}
+
+[data-ui='v2'] .ls-search .ls-input:not(:placeholder-shown) {
+  padding-inline-end: var(--ls-space-9);
+}
+
+[data-ui='v2'] .ls-search-icon {
+  inset-inline-start: var(--ls-space-4);
+  color: var(--ls-text-subtle);
+}
+
+[data-ui='v2'] .ls-password-input,
+[data-ui='v2'] .ls-combobox .ls-input {
+  padding-inline-end: var(--ls-space-9);
+}
+
+[data-ui='v2'] .ls-money .ls-input {
+  padding-inline-end: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-money-unit {
+  inset-inline-end: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-money:has(.ls-money-unit) .ls-input {
+  padding-inline-end: var(--ls-space-9);
+}
+
+[data-ui='v2'] .ls-password-toggle {
+  border-radius: var(--ls-radius-full);
+}
+
+/* ---- Checkbox, radio, switch (8.2) ------------------------------------------------------------- */
+/* A 20 px box (8 px radius) or circle, drawn on the native input so the label, keyboard and form behavior stay the platform's. The row
+   is the 44 px target. The mark colors are two properties so the hover row (solid accent, rule 4) can swap them. */
+[data-ui='v2'] .ls-check {
+  --ls-box-fill: var(--ls-brand-fill);
+  --ls-box-mark: var(--ls-on-brand);
+  --ls-box-edge: var(--ls-border-control);
+  --ls-box-size: 1.25rem;
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+[data-ui='v2'] .ls-check input {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: var(--ls-box-size);
+  height: var(--ls-box-size);
+  margin: calc((1lh - var(--ls-box-size)) / 2) 0 0;
+  border: 1px solid var(--ls-box-edge);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-field);
+  font: inherit;
+  cursor: pointer;
+}
+
+[data-ui='v2'] .ls-check-field input {
+  margin: 0;
+}
+
+[data-ui='v2'] .ls-check input[type='radio'] {
+  border-radius: var(--ls-radius-full);
+}
+
+[data-ui='v2'] .ls-check input::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+[data-ui='v2'] .ls-check input[type='checkbox']::after {
+  background: var(--ls-box-mark);
+  clip-path: polygon(20% 52%, 29% 43%, 42% 56%, 71% 27%, 80% 36%, 42% 74%);
+}
+
+[data-ui='v2'] .ls-check input[type='radio']::after {
+  inset: var(--ls-space-1);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-box-fill);
+}
+
+[data-ui='v2'] .ls-check input:checked::after {
+  opacity: 1;
+}
+
+[data-ui='v2'] .ls-check input[type='checkbox']:checked {
+  border-color: var(--ls-box-fill);
+  background: var(--ls-box-fill);
+}
+
+[data-ui='v2'] .ls-check input[type='radio']:checked {
+  border-color: var(--ls-box-fill);
+}
+
+[data-ui='v2'] .ls-check input[aria-invalid='true'] {
+  border-color: var(--ls-danger);
+}
+
+[data-ui='v2'] .ls-check input:disabled {
+  border-color: var(--ls-border);
+  background: var(--ls-bg-pressed);
+  cursor: not-allowed;
+}
+
+[data-ui='v2'] .ls-check input[type='checkbox']:disabled:checked {
+  --ls-box-fill: var(--ls-text-subtle);
+  --ls-box-mark: var(--ls-bg-pressed);
+}
+
+[data-ui='v2'] .ls-check input[type='radio']:disabled:checked {
+  --ls-box-fill: var(--ls-text-subtle);
+}
+
+[data-ui='v2'] .ls-check:has(input:disabled) {
+  color: var(--ls-text-subtle);
+  cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  /* The whole row turns solid accent (rule 4): the box keeps showing against it. */
+  [data-ui='v2'] .ls-check-field:hover {
+    --ls-box-fill: var(--ls-hover-text);
+    --ls-box-mark: var(--ls-hover-bg);
+    --ls-box-edge: var(--ls-hover-text);
+  }
+
+  [data-ui='v2'] .ls-check-field:hover input {
+    background: transparent;
+  }
+}
+
+@media (forced-colors: active) {
+  [data-ui='v2'] .ls-check input {
+    appearance: auto;
+  }
+
+  [data-ui='v2'] .ls-check input::after {
+    display: none;
+  }
+}
+
+/* Switch: a 44 x 28 track with a 22 px thumb; the label beside it says what it controls. */
+[data-ui='v2'] .ls-switch {
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+[data-ui='v2'] .ls-switch-track {
+  width: 2.75rem;
+  height: 1.75rem;
+  border-color: var(--ls-border-control);
+  background: var(--ls-bg-field);
+}
+
+[data-ui='v2'] .ls-switch-thumb {
+  inset-block: 0;
+  inset-inline-start: calc(var(--ls-space-1) / 2);
+  width: 1.375rem;
+  height: 1.375rem;
+  margin-block: auto;
+}
+
+[data-ui='v2'] .ls-switch[aria-checked='true'] .ls-switch-thumb {
+  transform: translateX(1rem);
+}
+
+[data-ui='v2'] .ls-switch:disabled {
+  color: var(--ls-text-subtle);
+  opacity: 1;
+}
+
+[data-ui='v2'] .ls-switch:disabled .ls-switch-track {
+  border-color: var(--ls-border);
+  background: var(--ls-bg-pressed);
+}
+
+[data-ui='v2'] .ls-switch:disabled .ls-switch-thumb {
+  background: var(--ls-text-subtle);
+}
+
+[data-ui='v2'] .ls-switch:disabled[aria-checked='true'] .ls-switch-track {
+  border-color: var(--ls-text-subtle);
+  background: var(--ls-text-subtle);
+}
+
+[data-ui='v2'] .ls-switch:disabled[aria-checked='true'] .ls-switch-thumb {
+  background: var(--ls-bg-pressed);
+}

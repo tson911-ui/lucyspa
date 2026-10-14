@@ -2016,21 +2016,7 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   }
 }
 
-/* ---------- forms of the site: fields are pills, like every button of the site ---------- */
-/* A one-line field has the same round shape as the buttons next to it; a multi-line field keeps a soft rounded rectangle.
-   The text stays at 16 px: a smaller field text makes phones zoom the page when a field is focused. */
-.ls-site .ls-input {
-  border-radius: var(--ls-radius-full);
-  padding-inline: var(--ls-space-4);
-}
-
-.ls-site .ls-textarea {
-  border-radius: var(--ls-radius-lg);
-}
-
-.ls-site .ls-password-toggle {
-  border-radius: var(--ls-radius-full);
-}
+/* Fields of the site (boxed, 8 px radius): `components-v2.css` (DESIGN.md 8.2). */
 
 /* ---------- member area: kit headings take the site's type scale ---------- */
 /* The member pages are built from the kit's Page, Card and list components, whose headings are the staff area's sans
@@ -2143,21 +2129,6 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   justify-items: center;
   padding-block: var(--ls-space-9);
   text-align: center;
-}
-
-/* The select of the public site is a pill like its other fields, with a chevron of its own (two hairline strokes) instead of the
-   system arrow. */
-.ls-site .ls-select {
-  appearance: none;
-  padding-inline-end: var(--ls-space-8);
-  background-image:
-    linear-gradient(45deg, transparent 50%, currentColor 50%),
-    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position:
-    calc(100% - var(--ls-space-5)) 50%,
-    calc(100% - var(--ls-space-4)) 50%;
-  background-size: 0.3125rem 0.3125rem;
-  background-repeat: no-repeat;
 }
 
 /* ---------- member auth: one centered card on the page band ---------- */
