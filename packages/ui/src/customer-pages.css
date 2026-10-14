@@ -30,19 +30,7 @@
   background: linear-gradient(145deg, var(--ls-c-slot-from), var(--ls-c-slot-to));
 }
 
-/* ---------- booking: choice rows are soft cards, the steps and the summary follow ---------- */
-.ls-choice {
-  border-color: transparent;
-  border-radius: var(--ls-radius-lg);
-  box-shadow: var(--ls-shadow-sm);
-}
-
-.ls-action-bar {
-  border-top: 0;
-  border-radius: var(--ls-radius-lg) var(--ls-radius-lg) 0 0;
-  box-shadow: 0 -8px 24px -12px color-mix(in srgb, var(--ls-brand) 32%, transparent);
-}
-
+/* ---------- booking: `pages-v2.css` (DESIGN.md 9.2) ---------- */
 .ls-booking-step-title {
   letter-spacing: 0;
 }

@@ -884,7 +884,9 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
     .ls-svd-hero > .ls-container,
     .ls-prod-title > .ls-container,
     .ls-pd-hero > .ls-container,
-    .ls-shop-title > .ls-container
+    .ls-shop-title > .ls-container,
+    .ls-book-title > .ls-container,
+    .ls-acct-title > .ls-container
   )
   > .ls-back-row {
   margin-block-end: 0;
@@ -1671,4 +1673,137 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
 
 [data-ui='v2'] .ls-timeline-label {
   font-weight: var(--ls-weight-label);
+}
+
+/* ---- Booking (C14, DESIGN.md 9.2) ------------------------------------------------------------------------------------------------------- */
+/* The title band: the back link, the one h1 and the stepper (four pills); then the content band: one column of 720 px, and from 1024 px the
+   summary card beside it, sticky under the compact header. The steps, their order and the data they ask for are the screen's own. */
+[data-ui='v2'] .ls-book-title .ls-public-title {
+  margin-bottom: 0;
+}
+
+/* The title carries its own 24 px above it (the back row is 0 from it), so the stepper does too: the three blocks are 0 / 0 apart. */
+[data-ui='v2'] .ls-book-title .ls-steps {
+  margin: 0;
+  padding-top: var(--ls-space-6);
+}
+
+[data-ui='v2'] .ls-book-body .ls-booking-layout {
+  gap: var(--ls-space-7);
+  padding-bottom: 0;
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-book-body .ls-booking-layout {
+    grid-template-columns: minmax(0, 45rem) 22rem;
+    justify-content: space-between;
+    gap: var(--ls-space-9);
+  }
+
+  [data-ui='v2'] .ls-book-body .ls-summary {
+    top: calc(var(--ls-site-header-h-compact) + var(--ls-space-4));
+  }
+}
+
+[data-ui='v2'] .ls-booking-main {
+  gap: var(--ls-space-6);
+}
+
+[data-ui='v2'] .ls-booking-step-title {
+  font-size: var(--ls-type-title);
+  line-height: var(--ls-lh-title);
+}
+
+/* The sentence under the title of the services step is the step's own text, not a caption. */
+[data-ui='v2'] .ls-book-body .ls-detail-note {
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-choice-list {
+  gap: var(--ls-space-3);
+}
+
+/* A time is a pill: 44 px high, several to a row. */
+[data-ui='v2'] .ls-slot-grid {
+  gap: var(--ls-space-3);
+}
+
+[data-ui='v2'] .ls-slot-grid .ls-choice {
+  min-height: var(--ls-control-h);
+  border-radius: var(--ls-radius-full);
+}
+
+[data-ui='v2'] .ls-order-list li {
+  min-height: var(--ls-control-h);
+}
+
+/* The summary: a card; the total line is the price role. */
+[data-ui='v2'] .ls-summary {
+  gap: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-summary-total {
+  font-size: var(--ls-type-price);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-price);
+}
+
+[data-ui='v2'] .ls-summary-total small {
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-summary-fact {
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+/* Back (neutral) then Continue (primary, last): in the summary card they share the row. */
+[data-ui='v2'] .ls-summary-actions > .ls-btn {
+  flex: 1 1 auto;
+}
+
+/* The phone's fold: the same summary under the steps, in an accordion row; from 1024 px the aside takes its place. */
+[data-ui='v2'] .ls-summary-fold .ls-accordion-panel:not([hidden]) {
+  display: grid;
+  gap: var(--ls-space-4);
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-summary-fold {
+    display: none;
+  }
+}
+
+/* The phone's action bar: flat, a hairline on top, no radius and no shadow; Back (neutral) and Continue (primary) share the row. */
+[data-ui='v2'] .ls-action-bar {
+  border-top: 1px solid var(--ls-border);
+  border-radius: 0;
+  background: var(--ls-bg-page);
+  box-shadow: none;
+}
+
+/* Each button takes the room its label needs (the kit's equal halves wrapped "Xác nhận đặt lịch" onto three lines at 130 % text). */
+[data-ui='v2'] .ls-action-buttons {
+  flex-wrap: wrap;
+}
+
+[data-ui='v2'] .ls-action-buttons > .ls-btn {
+  flex: 1 1 auto;
+}
+
+[data-ui='v2'] .ls-action-tally {
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-action-tally strong {
+  font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-title);
+}
+
+/* The success page: the record and its two buttons, in one 720 px column. */
+[data-ui='v2'] .ls-booking-done {
+  max-width: 45rem;
 }

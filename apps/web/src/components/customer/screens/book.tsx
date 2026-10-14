@@ -9,6 +9,8 @@ import type {
   CustomerBookingEmployeesResponse,
 } from '@lucy-spa/contracts';
 import {
+  Accordion,
+  Band,
   Button,
   buttonClass,
   Card,
@@ -283,15 +285,17 @@ export function BookScreen() {
 
   if (created) {
     return (
-      <PublicMain>
-        <div className="ls-container ls-container-narrow">
+      <PublicMain className="ls-main-tall">
+        <Band tone="page" className="ls-band--alt ls-book-title">
           <PageBack root={base} publicHome={`/${locale}`} label={t.common.back} />
           <div className="ls-public-title" aria-live="polite">
             <h1 ref={heading} tabIndex={-1} className="ls-h1-display">
               {t.book.successTitle}
             </h1>
           </div>
-          <div className="ls-booking-main">
+        </Band>
+        <Band tone="page" className="ls-band--base ls-book-body">
+          <div className="ls-booking-main ls-booking-done">
             <Card as="section" aria-label={t.book.successTitle}>
               <Notice tone="success">{fill(t.book.successIntro, { code: created.code })}</Notice>
               <DescriptionList
@@ -310,7 +314,7 @@ export function BookScreen() {
             </Card>
             <div className="ls-member-actions">
               <Button
-                variant="secondary"
+                variant="neutral"
                 onClick={() => {
                   setCreated(null);
                   setDraft(emptyDraft());
@@ -325,7 +329,7 @@ export function BookScreen() {
               </Link>
             </div>
           </div>
-        </div>
+        </Band>
       </PublicMain>
     );
   }
@@ -376,7 +380,7 @@ export function BookScreen() {
   const stepButtons = (
     <>
       {nav.back ? (
-        <Button variant="secondary" disabled={pending} onClick={nav.back}>
+        <Button variant="neutral" disabled={pending} onClick={nav.back}>
           {t.common.back}
         </Button>
       ) : null}
@@ -393,7 +397,7 @@ export function BookScreen() {
 
   return (
     <PublicMain className={totals.count > 0 ? 'ls-main-tall ls-booking-bar' : 'ls-main-tall'}>
-      <div className="ls-container">
+      <Band tone="page" className="ls-band--alt ls-book-title">
         <PageBack root={base} publicHome={`/${locale}`} label={t.common.back} />
         <div className="ls-public-title">
           <h1 className="ls-h1-display">{t.book.title}</h1>
@@ -407,6 +411,8 @@ export function BookScreen() {
             shortLabel: t.book.stepsShort[key],
           }))}
         />
+      </Band>
+      <Band tone="page" className="ls-band--base ls-book-body">
         {sessionLost ? <Notice tone="warning">{t.errors.sessionLost}</Notice> : null}
         <div className="ls-booking-layout">
           <div className="ls-booking-main">
@@ -744,6 +750,36 @@ export function BookScreen() {
                 />
               </Card>
             ) : null}
+
+            {/* A phone has no aside: the same summary folds under the steps, and the action bar below keeps the total in view. */}
+            {totals.count > 0 ? (
+              <aside className="ls-summary-fold" aria-label={t.book.summaryTitle}>
+                <Accordion
+                  headingLevel={2}
+                  items={[
+                    {
+                      id: 'summary',
+                      title: t.book.summaryTitle,
+                      content: (
+                        <Summary
+                          lines={chosen.map((service) => ({
+                            key: service.id,
+                            name: serviceLabel(service),
+                            price: priceText(service),
+                          }))}
+                          empty={t.book.summaryEmpty}
+                          estimate={fill(t.book.estimate, { minutes: totals.minutes })}
+                          subtotal={t.book.subtotal}
+                          total={totalLine}
+                          totalNote={totalNote}
+                          note={t.book.priceNote}
+                        />
+                      ),
+                    },
+                  ]}
+                />
+              </aside>
+            ) : null}
           </div>
 
           <aside className="ls-summary" aria-label={t.book.summaryTitle}>
@@ -766,7 +802,7 @@ export function BookScreen() {
             </Card>
           </aside>
         </div>
-      </div>
+      </Band>
       {/* Mounted with the first chosen service, so it slides up then (M7); the phone tab bar leaves while it is here. */}
       {totals.count > 0 ? (
         <div className="ls-action-bar">
@@ -797,7 +833,8 @@ function Summary({
   totalNote,
   note,
 }: {
-  title: string;
+  /** The aside shows its own heading; the phone's fold has the accordion row for it. */
+  title?: string;
   lines: { key: string; name: string; price: string }[];
   empty: string;
   estimate: string;
@@ -808,7 +845,7 @@ function Summary({
 }): ReactNode {
   return (
     <>
-      <h2 className="ls-site-h3">{title}</h2>
+      {title ? <h2 className="ls-site-h3">{title}</h2> : null}
       {lines.length === 0 ? (
         <p className="ls-summary-fact">{empty}</p>
       ) : (
@@ -852,7 +889,7 @@ function PersonEditor({
         title={t.book.other}
         headingLevel={3}
         actions={
-          <Button variant="ghost" onClick={onRemove}>
+          <Button variant="neutral" onClick={onRemove}>
             {t.book.remove}
           </Button>
         }

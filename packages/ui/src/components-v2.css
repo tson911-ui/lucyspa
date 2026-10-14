@@ -1124,3 +1124,41 @@
   background: transparent;
   text-align: center;
 }
+
+/* ---- Choice card (8.9): a service, a time, a branch, the payment method ------------------------------------------------------------------ */
+/* A surface-step row with a 1 px edge that is clear until the row is chosen (so choosing never moves it): the chosen row has the accent
+   edge and the tick fills with its check, so the state is not color alone. Hover is rule 4 (the site.css rule); the lift and the shadow of
+   direction C are gone, the press keeps its dip. */
+[data-ui='v2'] .ls-choice {
+  border: 1px solid transparent;
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
+  box-shadow: none;
+}
+
+[data-ui='v2'] .ls-choice[data-checked='true'] {
+  border-color: var(--ls-brand);
+  background: var(--ls-bg-surface);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-choice:not(.ls-choice-disabled):hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* The chosen row keeps the accent edge, so its hover has to say the fill again (it is the same specificity as the chosen rule above). */
+  [data-ui='v2'] .ls-choice[data-checked='true']:not(.ls-choice-disabled):hover {
+    border-color: var(--ls-hover-border);
+    background: var(--ls-hover-bg);
+  }
+}
+
+[data-ui='v2'] .ls-choice-tick {
+  background: var(--ls-bg-field-in-card);
+}
+
+[data-ui='v2'] .ls-choice-title,
+[data-ui='v2'] .ls-choice-price {
+  font-weight: var(--ls-weight-label);
+}

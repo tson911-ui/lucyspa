@@ -177,3 +177,18 @@ test('C11b: the optional service bands are one text column, the steps are number
   assert.match(skeleton, /background:\s*var\(--ls-bg-surface\)/);
   assert.doesNotMatch(skeleton, /animation|gradient/);
 });
+
+test('C14 booking: one 720 px column with a sticky summary from 1024 px, a flat phone action bar, a folded phone summary', () => {
+  assert.match(css, /grid-template-columns:\s*minmax\(0,\s*45rem\)\s*22rem/);
+  assert.match(body("[data-ui='v2'] .ls-action-bar"), /border-radius:\s*0/);
+  assert.match(body("[data-ui='v2'] .ls-action-bar"), /box-shadow:\s*none/);
+  // A closed accordion panel is `hidden`; a display rule must not show it.
+  assert.match(
+    body("[data-ui='v2'] .ls-summary-fold .ls-accordion-panel:not([hidden])"),
+    /display:\s*grid/,
+  );
+  assert.match(
+    body("[data-ui='v2'] .ls-slot-grid .ls-choice"),
+    /min-height:\s*var\(--ls-control-h\)/,
+  );
+});
