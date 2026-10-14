@@ -28,7 +28,7 @@ test('Badge: the three shop labels are tones of one accent family', () => {
     /\.ls-badge-ink \{[^}]*color: var\(--ls-bg-page\);[^}]*background: var\(--ls-text\)/,
   );
   assert.match(css, /\.ls-badge \{[^}]*min-height: var\(--ls-badge-h\);[^}]*white-space: nowrap/);
-  assert.match(tokens, /--ls-badge-h: 24px;\s*--ls-badge-pad-x: 10px;/);
+  assert.match(tokens, /--ls-badge-h: 24px;\s*--ls-badge-pad-x: var\(--ls-space-3\);/);
 });
 
 test('ImageFrame: a ratio, alt text, and a flat placeholder when there is no picture', () => {

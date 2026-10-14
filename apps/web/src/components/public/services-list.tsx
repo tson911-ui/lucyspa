@@ -36,7 +36,7 @@ export function ServiceRow({ locale, service }: { locale: Locale; service: Publi
         </span>
       </Link>
       <Link
-        className={buttonClass('secondary', 'md', 'ls-svc-book')}
+        className={buttonClass('secondary', 'md', 'ls-svc-book', true)}
         href={bookServiceHref(locale, service.code)}
         aria-label={`${text.book}: ${service.name}`}
       >

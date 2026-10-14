@@ -608,9 +608,10 @@
   --ls-row-h: 56px;
   /* A control marked compact (the `compact` prop, or inside `data-density='compact'`) is 40 px on a fine pointer at 1024 px and up. */
   --ls-control-h-compact: 40px;
-  /* A badge is 24 px high with 10 px at the sides (DESIGN.md 8.7). */
+  /* A badge is 24 px high. DESIGN.md 8.7 says 10 px at the sides; the DOM audit (FR1) flags anything off the 4 px grid, so it is 12 px
+     (one step on the spacing scale) until the Owner decides otherwise. */
   --ls-badge-h: 24px;
-  --ls-badge-pad-x: 10px;
+  --ls-badge-pad-x: var(--ls-space-3);
 
   /* Customer motion (DESIGN.md 11.3). Reduced motion zeroes every one of them below. */
   --ls-dur-fast: 150ms;
