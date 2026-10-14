@@ -28,6 +28,7 @@ import {
   Skeleton,
   Steps,
   TextInput,
+  useStepSlide,
   type DescriptionItem,
 } from '@lucy-spa/ui';
 import Link from 'next/link';
@@ -123,6 +124,9 @@ export function BookScreen() {
   const [created, setCreated] = useState<CustomerBookingDetail | null>(null);
   const idempotencyKey = useRef<string>('');
   const heading = useRef<HTMLHeadingElement>(null);
+  // The step slides in along the direction of the sequence (C17); before the success branch below, so the hook order never changes.
+  const slide = useRef<HTMLDivElement>(null);
+  useStepSlide(slide, STEPS.indexOf(step));
   const preselected = useRef(false);
   // The branch, the day and the start time a booking link named (the website chat's link); applied once each.
   const prefill = useRef<BookingPrefill | null>(null);
@@ -415,7 +419,7 @@ export function BookScreen() {
       <Band tone="page" className="ls-band--base ls-book-body">
         {sessionLost ? <Notice tone="warning">{t.errors.sessionLost}</Notice> : null}
         <div className="ls-booking-layout">
-          <div className="ls-booking-main">
+          <div ref={slide} className="ls-booking-main">
             <h2 ref={heading} tabIndex={-1} className="ls-booking-step-title">
               {t.book.steps[step]}
             </h2>

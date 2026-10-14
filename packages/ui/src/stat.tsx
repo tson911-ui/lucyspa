@@ -6,6 +6,7 @@ import {
   type DeltaWords,
   type Format,
 } from './chart-core';
+import { CountUp } from './count-up';
 import { cx } from './cx';
 import { Icon } from './icons';
 
@@ -67,6 +68,7 @@ export function Stat({
   labels,
   note,
   className,
+  countUp,
 }: {
   label: string;
   value: number;
@@ -79,11 +81,19 @@ export function Stat({
   /** One short line under the value, e.g. "Longest wait 12 min". */
   note?: string | undefined;
   className?: string | undefined;
+  /** The number counts up once when it first comes into view (the customer loyalty points only; staff screens never count). */
+  countUp?: boolean | undefined;
 }) {
   return (
     <div className={cx('ls-stat', className)}>
       <p className="ls-stat-label">{label}</p>
-      <p className="ls-stat-value">{formatValue(value, format)}</p>
+      <p className="ls-stat-value">
+        {countUp ? (
+          <CountUp value={value} format={(n) => formatValue(n, format)} />
+        ) : (
+          formatValue(value, format)
+        )}
+      </p>
       {labels && previous !== undefined ? (
         <DeltaLine
           value={value}

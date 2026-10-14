@@ -2494,6 +2494,30 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   animation-timing-function: var(--ls-ease-out);
 }
 
+/* The photo that travels from a list card to its page (SharedPhoto, C17): the group moves over the page token duration and the old and
+   the new picture are cropped the same way, so the morph never squashes the photo. */
+::view-transition-group(.ls-morph) {
+  animation-duration: var(--ls-dur-slow);
+  animation-timing-function: var(--ls-ease);
+}
+
+::view-transition-old(.ls-morph),
+::view-transition-new(.ls-morph) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The off switch and reduced motion (the gate's mark): the route changes without any tween, the new page is simply there. */
+html[data-ls-motion='reduced']::view-transition-group(ls-page),
+html[data-ls-motion='reduced']::view-transition-old(ls-page),
+html[data-ls-motion='reduced']::view-transition-new(ls-page),
+html[data-ls-motion='reduced']::view-transition-group(.ls-morph),
+html[data-ls-motion='reduced']::view-transition-old(.ls-morph),
+html[data-ls-motion='reduced']::view-transition-new(.ls-morph) {
+  animation: none;
+}
+
 /* ---------- menu pill (M8) ---------- */
 /* One pill under the current entry; it slides to the next entry on a route change. Until it is placed (no scripts, first
    paint) the current link carries its own highlight, so the menu is never without one. */

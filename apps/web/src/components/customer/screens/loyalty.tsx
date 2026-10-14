@@ -127,6 +127,7 @@ export function WalletCard({ wallet }: { wallet: LoyaltyWalletResponse }) {
           label={text.points.balance}
           value={wallet.balancePoints}
           format={{ valueFormat: 'count', locale }}
+          countUp
           note={progress === undefined ? toGo : undefined}
         />
         {progress !== undefined ? (

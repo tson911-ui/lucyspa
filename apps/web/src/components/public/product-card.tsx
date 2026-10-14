@@ -12,6 +12,7 @@ import {
 import { PriceCampaignLine } from './campaign-views';
 import { ProductImage } from './product-image';
 import { SalePrice } from './sale-price';
+import { SharedPhoto } from './shared-photo';
 
 const CARD_SIZES =
   '(min-width: 1280px) 22vw, (min-width: 1024px) 30vw, (min-width: 640px) 34vw, 46vw';
@@ -27,33 +28,39 @@ export function ProductCard({
   card,
   priority = false,
   level = 3,
+  sharePhoto = false,
 }: {
   locale: Locale;
   card: PublicProductCard;
   priority?: boolean;
   level?: 2 | 3;
+  /** The picture travels to the product page (the list page only: the name must be unique on a page). */
+  sharePhoto?: boolean;
 }) {
   const text = getSiteText(locale).products;
   const Heading = level === 2 ? 'h2' : 'h3';
   const percent = discountText(card.price);
   const stock = stockLabel(card.stock, text);
   const outOfStock = card.stock.state === 'OUT_OF_STOCK';
+  const media = (
+    <div className="ls-pcard-media">
+      {card.image ? (
+        <ProductImage image={card.image} sizes={CARD_SIZES} priority={priority} />
+      ) : (
+        <Icon name="droplet" size={40} aria-hidden="true" />
+      )}
+      {card.isNew || percent || outOfStock ? (
+        <div className="ls-pcard-labels">
+          {card.isNew ? <Badge tone="outline">{text.badgeNew}</Badge> : null}
+          {percent ? <Badge tone="ink">{percent}</Badge> : null}
+          {outOfStock ? <Badge tone="neutral">{text.outOfStock}</Badge> : null}
+        </div>
+      ) : null}
+    </div>
+  );
   return (
     <article className="ls-pcard">
-      <div className="ls-pcard-media">
-        {card.image ? (
-          <ProductImage image={card.image} sizes={CARD_SIZES} priority={priority} />
-        ) : (
-          <Icon name="droplet" size={40} aria-hidden="true" />
-        )}
-        {card.isNew || percent || outOfStock ? (
-          <div className="ls-pcard-labels">
-            {card.isNew ? <Badge tone="outline">{text.badgeNew}</Badge> : null}
-            {percent ? <Badge tone="ink">{percent}</Badge> : null}
-            {outOfStock ? <Badge tone="neutral">{text.outOfStock}</Badge> : null}
-          </div>
-        ) : null}
-      </div>
+      {sharePhoto ? <SharedPhoto name={`ls-photo-prod-${card.code}`}>{media}</SharedPhoto> : media}
       <div className="ls-pcard-body">
         {card.category || card.brand ? (
           <span className="ls-pcard-meta">{card.category?.name ?? card.brand}</span>

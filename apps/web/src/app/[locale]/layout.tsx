@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Be_Vietnam_Pro, Playfair_Display } from 'next/font/google';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
-import { ThemeInitScript } from '@lucy-spa/ui';
+import { FX_COOKIE, ThemeInitScript } from '@lucy-spa/ui';
 import '@lucy-spa/ui/tokens.css';
 // Seasonal presets (docs/UXUI_REDESIGN_DESIGN.md 20): inert until an element carries data-season (set below, S5).
 import '@lucy-spa/ui/season.css';
@@ -94,7 +94,10 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   const dictionary = getDictionary(locale);
   // The active season (cached 60 s, fail closed) and this device's choice to hide the admin touch.
   const season = await fetchActiveSeason(locale);
-  const adminHidden = (await cookies()).get(ADMIN_HIDE_COOKIE)?.value === 'off';
+  const jar = await cookies();
+  const adminHidden = jar.get(ADMIN_HIDE_COOKIE)?.value === 'off';
+  // The visitor's effects switch is known on the server, so the CSS-only hero sequence is off from the first paint (data-ls-fx).
+  const effectsOff = jar.get(FX_COOKIE)?.value === 'off';
 
   return (
     // The pre-paint script may set data-theme from the ls-theme cookie before hydration.
@@ -103,6 +106,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
       className={`${beVietnamPro.variable} ${playfairDisplay.variable} ${siteFontClass}`}
       suppressHydrationWarning
       {...seasonRootAttributes(season, adminHidden)}
+      {...(effectsOff ? { 'data-ls-fx': 'off' } : {})}
     >
       <head>
         <ThemeInitScript />

@@ -9,6 +9,7 @@ import { getSiteText } from '../../i18n/site';
 import { fill } from '../../lib/fill';
 import { frameImage } from '../../lib/public-image';
 import { matchesQuery } from '../../lib/search-core';
+import { SharedPhoto } from './shared-photo';
 import {
   bookServiceHref,
   cardPrice,
@@ -25,44 +26,57 @@ export function ServiceCard({
   locale,
   service,
   className,
+  index,
+  sharePhoto = false,
 }: {
   locale: Locale;
   service: PublicService;
   className?: string;
+  /** Position in its grid: the card then reveals on scroll with the stagger of its place (C17). */
+  index?: number;
+  /** The photo travels to the service's page (the list page only: the name must be unique on a page). */
+  sharePhoto?: boolean;
 }) {
   const text = getSiteText(locale).services;
+  const photo = (
+    <ImageFrame
+      {...frameImage(service.image, '(min-width: 1024px) 320px, (min-width: 640px) 50vw, 100vw')}
+      alt=""
+      ratio="4/3"
+      className="ls-svc-media"
+    />
+  );
+  const card = (
+    <article className="ls-svc-card">
+      {sharePhoto ? (
+        <SharedPhoto name={`ls-photo-svc-${service.code}`}>{photo}</SharedPhoto>
+      ) : (
+        photo
+      )}
+      <div className="ls-svc-card-body">
+        <h3 className="ls-svc-card-name">
+          <Link href={serviceHref(locale, service.code)} title={service.name}>
+            {service.name}
+          </Link>
+        </h3>
+        <p className="ls-svc-card-meta">
+          <Icon name="clock" size={16} aria-hidden="true" />
+          {serviceEstimate(service, locale)}
+        </p>
+        <p className="ls-svc-card-price">{cardPrice(service, locale)}</p>
+      </div>
+      <Link
+        className={buttonClass('secondary', 'md', 'ls-svc-card-book')}
+        href={bookServiceHref(locale, service.code)}
+        aria-label={`${text.book}: ${service.name}`}
+      >
+        {text.book}
+      </Link>
+    </article>
+  );
   return (
     <li className={className ? `ls-svc-item ${className}` : 'ls-svc-item'}>
-      <article className="ls-svc-card">
-        <ImageFrame
-          {...frameImage(
-            service.image,
-            '(min-width: 1024px) 320px, (min-width: 640px) 50vw, 100vw',
-          )}
-          alt=""
-          ratio="4/3"
-          className="ls-svc-media"
-        />
-        <div className="ls-svc-card-body">
-          <h3 className="ls-svc-card-name">
-            <Link href={serviceHref(locale, service.code)} title={service.name}>
-              {service.name}
-            </Link>
-          </h3>
-          <p className="ls-svc-card-meta">
-            <Icon name="clock" size={16} aria-hidden="true" />
-            {serviceEstimate(service, locale)}
-          </p>
-          <p className="ls-svc-card-price">{cardPrice(service, locale)}</p>
-        </div>
-        <Link
-          className={buttonClass('secondary', 'md', 'ls-svc-card-book')}
-          href={bookServiceHref(locale, service.code)}
-          aria-label={`${text.book}: ${service.name}`}
-        >
-          {text.book}
-        </Link>
-      </article>
+      {index === undefined ? card : <Reveal index={index}>{card}</Reveal>}
     </li>
   );
 }
@@ -135,8 +149,14 @@ export function ServicesList({
               </h2>
             </Reveal>
             <ul className="ls-svc-grid">
-              {group.services.map((service) => (
-                <ServiceCard key={service.code} locale={locale} service={service} />
+              {group.services.map((service, position) => (
+                <ServiceCard
+                  key={service.code}
+                  locale={locale}
+                  service={service}
+                  index={position % 6}
+                  sharePhoto
+                />
               ))}
             </ul>
           </Band>

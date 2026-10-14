@@ -4,6 +4,7 @@ import type { PublicSlideImage } from '@lucy-spa/contracts';
 import { FallbackImage, Icon, IconButton } from '@lucy-spa/ui';
 import { useRef, useState } from 'react';
 import { ProductImage } from './product-image';
+import { SharedPhoto } from './shared-photo';
 
 /**
  * The pictures of a product: one frame you can swipe (or scroll with the arrow keys once it has focus) and a row of small
@@ -12,12 +13,15 @@ import { ProductImage } from './product-image';
  */
 export function ProductGallery({
   images,
+  shareName,
   label,
   thumbLabel,
   previousLabel,
   nextLabel,
 }: {
   images: readonly PublicSlideImage[];
+  /** The first picture is the one a list card's photo travels to (the card names it the same). */
+  shareName?: string | undefined;
   /** The frame's accessible name, e.g. "Ảnh sản phẩm". */
   label: string;
   /** With {n}: the name of the thumbnail that shows picture n. */
@@ -57,16 +61,25 @@ export function ProductGallery({
               <Icon name="droplet" size={48} />
             </div>
           ) : (
-            images.map((image, index) => (
-              <figure key={image.sources[0]?.url ?? index} className="ls-prod-slide">
-                <ProductImage
-                  placeholderSize={48}
-                  image={image}
-                  sizes="(min-width: 1024px) 50vw, 100vw"
-                  priority={index === 0}
-                />
-              </figure>
-            ))
+            images.map((image, index) => {
+              const slide = (
+                <figure key={image.sources[0]?.url ?? index} className="ls-prod-slide">
+                  <ProductImage
+                    placeholderSize={48}
+                    image={image}
+                    sizes="(min-width: 1024px) 50vw, 100vw"
+                    priority={index === 0}
+                  />
+                </figure>
+              );
+              return index === 0 && shareName ? (
+                <SharedPhoto key={shareName} name={shareName}>
+                  {slide}
+                </SharedPhoto>
+              ) : (
+                slide
+              );
+            })
           )}
         </div>
         {images.length > 1 ? (

@@ -271,7 +271,7 @@ export function CustomerHomeScreen() {
       description={`${fill(t.home.greeting, { name: account.displayName })} ${t.home.intro}`}
     >
       <div className="ls-acct-grid">
-        <Reveal>
+        <Reveal index={0}>
           <SummaryCard
             href={next ? `${base}/bookings/${next.id}` : `${base}/book`}
             title={t.home.upcoming}
@@ -298,7 +298,7 @@ export function CustomerHomeScreen() {
             )}
           </SummaryCard>
         </Reveal>
-        <Reveal>
+        <Reveal index={1}>
           <SummaryCard href={`${base}/loyalty`} title={t.home.hubRewards} cta={t.home.openPoints}>
             {loyalty.error ? (
               quiet(customerErrorMessage(loyalty.error, t))
@@ -320,7 +320,7 @@ export function CustomerHomeScreen() {
             )}
           </SummaryCard>
         </Reveal>
-        <Reveal>
+        <Reveal index={2}>
           <SummaryCard
             href={latest ? `${base}/invoices/${latest.id}` : `${base}/invoices`}
             title={t.home.lastInvoice}
@@ -343,7 +343,7 @@ export function CustomerHomeScreen() {
             )}
           </SummaryCard>
         </Reveal>
-        <Reveal>
+        <Reveal index={3}>
           <SummaryCard
             href={`${base}/notifications`}
             title={t.home.hubNotifications}

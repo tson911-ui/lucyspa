@@ -16,6 +16,7 @@ import { PublicBreadcrumbs } from './public-breadcrumbs';
 import { ScrollRow } from './scroll-row';
 import { ServiceBookBar } from './service-book-bar';
 import { ServiceCard, ServicesList } from './services-list';
+import { SharedPhoto } from './shared-photo';
 
 /** The "← Back" button of the service pages: back to where the visitor came from, else the list (detail) or the home (list). */
 function ServicesBack({ locale }: { locale: Locale }) {
@@ -149,11 +150,13 @@ export function ServiceDetailView({
           ]}
         />
         <div className="ls-svd-grid">
-          <PhotoSlot
-            className="ls-svd-slot"
-            caption={text.services.photoService}
-            image={service.image}
-          />
+          <SharedPhoto name={`ls-photo-svc-${service.code}`}>
+            <PhotoSlot
+              className="ls-svd-slot"
+              caption={text.services.photoService}
+              image={service.image}
+            />
+          </SharedPhoto>
           <div className="ls-svd-copy">
             <h1 className="ls-h1-display" id="service-title">
               {service.name}

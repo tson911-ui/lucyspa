@@ -340,7 +340,7 @@ export function ProductsView({
                 {data.items.map((card, index) => (
                   <li key={card.code}>
                     <Reveal index={index % 6}>
-                      <ProductCard locale={locale} card={card} priority={index < 2} />
+                      <ProductCard locale={locale} card={card} priority={index < 2} sharePhoto />
                     </Reveal>
                   </li>
                 ))}
@@ -461,6 +461,7 @@ export function ProductDetailView({
         <div className="ls-prod-detail">
           <ProductGallery
             images={product.images}
+            shareName={`ls-photo-prod-${product.code}`}
             label={t.gallery}
             thumbLabel={t.pictureN}
             previousLabel={t.galleryPrevious}

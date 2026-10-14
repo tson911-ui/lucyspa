@@ -2356,3 +2356,79 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   flex-wrap: wrap;
   gap: var(--ls-space-2) var(--ls-space-3);
 }
+
+/* ---- Motion pass (C17, DESIGN.md 11) ---------------------------------------------------------------------------------------------------- */
+/* The home hero sequence, once on load: the photo settles (scale 1.04 to 1 over the hero duration) and the headline, the sentence and the
+   buttons rise by the reveal shift one after another (each takes 70 % of the hero duration, the three finish together inside it). Only
+   transform moves and nothing is hidden: the copy is in the first paint at full opacity, so the first paint and the largest contentful
+   paint never wait for it. It runs only when the visitor allows motion; the gate (`data-ls-motion`) and the `ls-fx` off switch cancel it,
+   and the duration token is 0 under reduced motion. */
+@keyframes ls-hero-settle {
+  from {
+    transform: scale(1.04);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@keyframes ls-hero-rise {
+  from {
+    transform: translateY(var(--ls-reveal-shift));
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-ui='v2'] .ls-home-hero-img {
+    animation: ls-hero-settle var(--ls-dur-hero) var(--ls-ease-premium) both;
+  }
+
+  [data-ui='v2'] .ls-home-hero-copy > * {
+    animation: ls-hero-rise calc(var(--ls-dur-hero) * 0.7) var(--ls-ease-premium) both;
+  }
+
+  [data-ui='v2'] .ls-home-hero-copy > :nth-child(2) {
+    animation-delay: calc(var(--ls-dur-hero) * 0.15);
+  }
+
+  [data-ui='v2'] .ls-home-hero-copy > :nth-child(3) {
+    animation-delay: calc(var(--ls-dur-hero) * 0.3);
+  }
+}
+
+html[data-ls-motion='reduced'] [data-ui='v2'] .ls-home-hero-img,
+html[data-ls-motion='reduced'] [data-ui='v2'] .ls-home-hero-copy > *,
+html[data-ls-fx='off'] [data-ui='v2'] .ls-home-hero-img,
+html[data-ls-fx='off'] [data-ui='v2'] .ls-home-hero-copy > * {
+  animation: none;
+}
+
+/* A service card that reveals on its own (the grid's stagger) fills its cell. */
+[data-ui='v2'] .ls-svc-item > .ls-reveal {
+  display: block;
+  height: 100%;
+}
+
+/* The loyalty counter: the final number is the text in the flow; while it counts a second layer draws the steps over it and the final text
+   is transparent, so the width never changes and readers always hear the final number. */
+[data-ui='v2'] .ls-count {
+  position: relative;
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-ui='v2'] .ls-count[data-counting] .ls-count-final {
+  color: transparent;
+}
+
+[data-ui='v2'] .ls-count-live {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  white-space: nowrap;
+}

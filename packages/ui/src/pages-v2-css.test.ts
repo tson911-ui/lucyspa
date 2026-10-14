@@ -16,7 +16,8 @@ test('pages-v2.css: every selector sits under the v2 attribute, tokens only, no 
     selectors(rule.selector).filter(
       (part) =>
         !part.startsWith("[data-ui='v2']") &&
-        !part.startsWith("html[data-ls-motion='reduced'] [data-ui='v2']"),
+        !part.startsWith("html[data-ls-motion='reduced'] [data-ui='v2']") &&
+        !part.startsWith("html[data-ls-fx='off'] [data-ui='v2']"),
     ),
   );
   assert.deepEqual(loose, [], 'a selector outside the v2 scope would change the staff screens');
@@ -260,4 +261,41 @@ test('C16 info pages: a 680 px article, the table of contents only from 1024 px,
     stripped,
     /@media \(min-width: 768px\) \{\s*\[data-ui='v2'\] \.ls-info-split \{\s*grid-template-columns: repeat\(2/,
   );
+});
+
+test('C17 hero sequence: transform only, nothing hidden, from tokens, cancelled by the gate and the off switch', () => {
+  const keyframes = stripped.match(/@keyframes ls-hero-(?:settle|rise) \{[\s\S]*?\n\}/g) ?? [];
+  assert.equal(keyframes.length, 2);
+  for (const frames of keyframes) {
+    assert.doesNotMatch(frames, /opacity|filter|width|height|margin|top|left/);
+    assert.match(frames, /transform:/);
+  }
+  assert.match(
+    stripped,
+    /@media \(prefers-reduced-motion: no-preference\) \{\s*\[data-ui='v2'\] \.ls-home-hero-img \{\s*animation: ls-hero-settle var\(--ls-dur-hero\) var\(--ls-ease-premium\) both;/,
+  );
+  assert.match(
+    body("[data-ui='v2'] .ls-home-hero-copy > *"),
+    /animation: ls-hero-rise calc\(var\(--ls-dur-hero\) \* 0\.7\) var\(--ls-ease-premium\) both/,
+  );
+  // No literal duration anywhere in the sequence.
+  assert.doesNotMatch(
+    keyframes.join('') + body("[data-ui='v2'] .ls-home-hero-copy > *"),
+    /\d(?:ms|s)\b/,
+  );
+  for (const mark of ["data-ls-motion='reduced'", "data-ls-fx='off'"]) {
+    assert.ok(
+      stripped.includes(`html[${mark}] [data-ui='v2'] .ls-home-hero-copy > *`),
+      `${mark} cancels the hero sequence`,
+    );
+  }
+});
+
+test('C17 counter: the final number stays in the flow and the width never changes while it counts', () => {
+  assert.match(body("[data-ui='v2'] .ls-count"), /font-variant-numeric:\s*tabular-nums/);
+  assert.match(
+    body("[data-ui='v2'] .ls-count[data-counting] .ls-count-final"),
+    /color:\s*transparent/,
+  );
+  assert.match(body("[data-ui='v2'] .ls-count-live"), /position:\s*absolute/);
 });

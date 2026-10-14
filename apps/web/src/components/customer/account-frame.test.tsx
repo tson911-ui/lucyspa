@@ -63,6 +63,15 @@ test('C15: the tabs are the seven places of the account (profile last), in the o
       ['home', 'bookings', 'invoices', 'loyalty', 'orders', 'notifications', 'profile'],
     );
     assert.equal(accountSections(t, base)[0]?.href, base);
+    // The tab row is one line at 768 px: the bookings tab says what the header menu says, the list keeps the long label.
+    assert.equal(
+      accountSections(t, base)[1]?.tabLabel,
+      locale === 'vi' ? 'Lịch hẹn' : 'Appointments',
+    );
+    assert.ok(
+      (accountSections(t, base)[1]?.label.length ?? 0) >
+        (accountSections(t, base)[1]?.tabLabel?.length ?? 99),
+    );
   }
 });
 

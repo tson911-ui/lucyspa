@@ -18,10 +18,15 @@ const MemberLink: SiteLinkComponent = ({ children, ...rest }) => (
 export function accountSections(
   t: ReturnType<typeof useCustomer>['t'],
   base: string,
-): { key: string; label: string; href: string }[] {
+): { key: string; label: string; tabLabel?: string; href: string }[] {
   return [
     { key: 'home', label: t.home.overview, href: base },
-    { key: 'bookings', label: t.home.hubBookings, href: `${base}/bookings` },
+    {
+      key: 'bookings',
+      label: t.home.hubBookings,
+      tabLabel: t.home.tabBookings,
+      href: `${base}/bookings`,
+    },
     { key: 'invoices', label: t.home.hubInvoices, href: `${base}/invoices` },
     { key: 'loyalty', label: t.home.hubRewards, href: `${base}/loyalty` },
     { key: 'orders', label: t.home.hubOrders, href: `${base}/orders` },
@@ -34,8 +39,9 @@ export function accountSections(
 function AccountTabs() {
   const { t, base } = useCustomer();
   const pathname = usePathname() ?? '';
-  const items = accountSections(t, base).map((section) => ({
+  const items = accountSections(t, base).map(({ tabLabel, ...section }) => ({
     ...section,
+    label: tabLabel ?? section.label,
     current: section.key === 'home' ? pathname === base : pathname.startsWith(section.href),
   }));
   return (
