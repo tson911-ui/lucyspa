@@ -127,6 +127,8 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
   const commands: [string, object, number][] = [
     ['/api/v1/service-categories', { code: 'HAIR', nameVi: 'Gội', nameEn: 'Hair' }, 201],
     [`/api/v1/service-categories/${id}`, { expectedVersion: 1, nameEn: 'Hair care' }, 200],
+    [`/api/v1/service-categories/${id}`, { expectedVersion: 1, photoMediaId: randomUUID() }, 200],
+    [`/api/v1/service-categories/${id}`, { expectedVersion: 1, photoMediaId: null }, 200],
     [
       `/api/v1/service-categories/${id}/status`,
       { expectedVersion: 1, isActive: false, reason: 'x' },
@@ -143,6 +145,19 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
       },
       200,
     ],
+    [
+      `/api/v1/services/${id}`,
+      {
+        expectedVersion: 1,
+        includedVi: ['Gội đầu', 'Massage'],
+        stepsEn: ['Rinse'],
+        faqVi: [{ question: 'Có đau không?', answer: 'Không.' }],
+        faqEn: [],
+        photoMediaId: randomUUID(),
+      },
+      200,
+    ],
+    [`/api/v1/services/${id}`, { expectedVersion: 1, photoMediaId: null }, 200],
     [`/api/v1/services/${id}/status`, { expectedVersion: 1, isActive: false, reason: 'x' }, 200],
     [
       `/api/v1/services/${id}/price`,
@@ -180,6 +195,15 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
       // Price never travels with master data, and codes never change.
       [`/api/v1/services/${id}`, { expectedVersion: 1, priceVnd: '1' }],
       [`/api/v1/services/${id}`, { expectedVersion: 1, code: 'NEW' }],
+      // C11b: content lists are arrays (bounded), the photo is an id or null.
+      [`/api/v1/services/${id}`, { expectedVersion: 1, includedVi: 'one' }],
+      [
+        `/api/v1/services/${id}`,
+        { expectedVersion: 1, stepsVi: Array.from({ length: 49 }, () => 'x') },
+      ],
+      [`/api/v1/services/${id}`, { expectedVersion: 1, faqEn: 'x' }],
+      [`/api/v1/services/${id}`, { expectedVersion: 1, photoMediaId: 5 }],
+      [`/api/v1/service-categories/${id}`, { expectedVersion: 1, photoMediaId: 5 }],
       [`/api/v1/service-categories/${id}`, { expectedVersion: 1, code: 'NEW' }],
       ['/api/v1/services', { ...service, priceVnd: 150000 }],
       ['/api/v1/services', { ...service, priceVnd: '-1' }],
@@ -244,14 +268,14 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
       .set({ Cookie: headers.Cookie })
       .expect(400);
     // The duration estimate reaches the service unchanged (create and update).
-    assert.deepEqual(JSON.parse(JSON.stringify(calls[3]?.[2])), service);
+    assert.deepEqual(JSON.parse(JSON.stringify(calls[5]?.[2])), service);
     assert.deepEqual(
-      (JSON.parse(JSON.stringify(calls[4]?.[3])) as Record<string, unknown>)['estimatedMaxMinutes'],
+      (JSON.parse(JSON.stringify(calls[6]?.[3])) as Record<string, unknown>)['estimatedMaxMinutes'],
       35,
     );
-    assert.deepEqual(calls[6]?.slice(0, 3), ['setPrice', token, id]);
+    assert.deepEqual(calls[10]?.slice(0, 3), ['setPrice', token, id]);
     // The price range and pricing unit reach the price command unchanged.
-    assert.deepEqual(JSON.parse(JSON.stringify(calls[6]?.[3])), {
+    assert.deepEqual(JSON.parse(JSON.stringify(calls[10]?.[3])), {
       expectedVersion: 1,
       priceVnd: '5000',
       priceMaxVnd: '10000',
@@ -259,7 +283,7 @@ test('service catalog commands enforce CSRF/origin, strict DTOs and their contra
       maxQuantity: 10,
       reason: 'Menu',
     });
-    assert.deepEqual(calls[7]?.slice(0, 4), ['setAvailability', token, id, branchId]);
+    assert.deepEqual(calls[11]?.slice(0, 4), ['setAvailability', token, id, branchId]);
     assert.deepEqual(calls.at(-2)?.slice(0, 2), ['listServices', token]);
     assert.deepEqual(calls.at(-2)?.[2], { categoryId: id, branchId });
 

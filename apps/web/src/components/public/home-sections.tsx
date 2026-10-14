@@ -1,20 +1,14 @@
 import type {
-  PublicProductCard,
   PublicProductCategory,
   PublicSiteResponse,
+  PublicSlideImage,
   PublicWhy,
 } from '@lucy-spa/contracts';
-import { Badge, buttonClass, Icon, Notice, Reveal } from '@lucy-spa/ui';
+import { buttonClass, Icon, Notice, Reveal } from '@lucy-spa/ui';
 import Link from 'next/link';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import { fill } from '../../lib/fill';
-import {
-  cardPriceText,
-  discountText,
-  productHref,
-  stockLabel,
-} from '../../lib/public-products-core';
 import {
   cardPrice,
   directionsUrl,
@@ -23,9 +17,7 @@ import {
   telHref,
   type HomeGroup,
 } from '../../lib/public-site-core';
-import { PriceCampaignLine } from './campaign-views';
-import { ProductImage } from './product-image';
-import { SalePrice } from './sale-price';
+import { CategoryTile } from './category-tile';
 
 /** A section that could not be read: a notice with a way to try again; the rest of the page still renders. */
 export function LoadNotice({ locale, section }: { locale: Locale; section: string }) {
@@ -138,81 +130,17 @@ export function TopServices({ locale, columns }: { locale: Locale; columns: Home
   );
 }
 
-const CARD_SIZES = '(min-width: 1024px) 22vw, (min-width: 640px) 34vw, 62vw';
-
-/**
- * One product in the home row (DESIGN.md 8.3): the picture on the sunken step (a droplet when there is none), the labels over its top-left
- * corner (Mới = accent outline, the sale percent = ink fill, Hết hàng), then the name (the card's one link, stretched over the card), the
- * price with the struck list price, and the campaign line. The percent is drawn once, as the label; the price block does not repeat it.
- */
-export function HomeProductCard({
-  locale,
-  card,
-  priority = false,
-}: {
-  locale: Locale;
-  card: PublicProductCard;
-  priority?: boolean;
-}) {
-  const text = getSiteText(locale).products;
-  const percent = discountText(card.price);
-  const stock = stockLabel(card.stock, text);
-  const outOfStock = card.stock.state === 'OUT_OF_STOCK';
-  return (
-    <li className="ls-snap-item">
-      <article className="ls-home-prod">
-        <div className="ls-home-prod-media">
-          {card.image ? (
-            <ProductImage image={card.image} sizes={CARD_SIZES} priority={priority} />
-          ) : (
-            <Icon name="droplet" size={40} aria-hidden="true" />
-          )}
-          {card.isNew || percent || outOfStock ? (
-            <div className="ls-home-prod-labels">
-              {card.isNew ? <Badge tone="outline">{text.badgeNew}</Badge> : null}
-              {percent ? <Badge tone="ink">{percent}</Badge> : null}
-              {outOfStock ? <Badge tone="neutral">{text.outOfStock}</Badge> : null}
-            </div>
-          ) : null}
-        </div>
-        <div className="ls-home-prod-body">
-          {card.category || card.brand ? (
-            <span className="ls-home-prod-meta">{card.category?.name ?? card.brand}</span>
-          ) : null}
-          <h3 className="ls-home-prod-name">
-            <Link href={productHref(locale, card.code)} title={card.name}>
-              {card.name}
-            </Link>
-          </h3>
-          {stock && card.stock.state === 'PRE_ORDER' ? (
-            <p className="ls-prod-stock" data-state={card.stock.state}>
-              {stock}
-            </p>
-          ) : null}
-          <SalePrice
-            locale={locale}
-            price={card.price}
-            nowText={cardPriceText(card, locale)}
-            percent={false}
-          />
-          <PriceCampaignLine locale={locale} price={card.price} />
-        </div>
-      </article>
-    </li>
-  );
-}
-
 /**
  * The category grid (DESIGN.md 9.1, item 6): one tile for each group, the name at the bottom-left and the whole tile one link. No count
- * or badge beside a name. The shop has no photo for a group yet (no field holds one), so a tile is the flat placeholder; a real photo
- * will sit under a flat scrim with the name in white.
+ * or badge beside a name. A tile with a photo the Owner chose draws it under one flat scrim with the name in white; without one the tile
+ * is the flat placeholder.
  */
 export function CategoryGrid({
   title,
   items,
 }: {
   title: string;
-  items: readonly { key: string; name: string; href: string }[];
+  items: readonly { key: string; name: string; href: string; image?: PublicSlideImage | null }[];
 }) {
   return (
     <section className="ls-home-cats-group" aria-label={title}>
@@ -221,9 +149,7 @@ export function CategoryGrid({
         {items.map((item, index) => (
           <li key={item.key}>
             <Reveal index={index}>
-              <Link className="ls-home-cat" href={item.href}>
-                <span className="ls-home-cat-name">{item.name}</span>
-              </Link>
+              <CategoryTile name={item.name} href={item.href} image={item.image ?? null} />
             </Reveal>
           </li>
         ))}
@@ -236,11 +162,12 @@ export function CategoryGrid({
 export const categoryItems = (
   locale: Locale,
   categories: readonly PublicProductCategory[],
-): { key: string; name: string; href: string }[] =>
+): { key: string; name: string; href: string; image: PublicSlideImage | null }[] =>
   categories.map((category) => ({
     key: category.code,
     name: category.name,
     href: `/${locale}/products?category=${encodeURIComponent(category.code)}`,
+    image: category.image,
   }));
 
 /**

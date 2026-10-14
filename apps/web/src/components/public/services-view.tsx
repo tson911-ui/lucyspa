@@ -1,5 +1,5 @@
 import type { PublicServiceDetailResponse, PublicServicesResponse } from '@lucy-spa/contracts';
-import { Band, buttonClass, EmptyState, PublicMain, Reveal } from '@lucy-spa/ui';
+import { Accordion, Band, buttonClass, EmptyState, Icon, PublicMain, Reveal } from '@lucy-spa/ui';
 import Link from 'next/link';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
@@ -104,9 +104,9 @@ export function ServicesView({
 
 /**
  * One service on its own page (DESIGN.md 9.2): a split hero with the photo (a flat placeholder) on the left and the name, time, price, the
- * Owner's description and the "Đặt lịch" primary on the right; then the other services of the group as a row, and a booking band. On a
- * phone a bar with the price and the button stays at the bottom while the page's own buttons are out of view. The service data has no
- * "what is included", steps or FAQ, so there is no band for them.
+ * Owner's description and the "Đặt lịch" primary on the right; then the optional bands the Owner fills in the service form (what is
+ * included, the steps, the FAQ: each is drawn only when it has content), the other services of the group as a row, and a booking band. On
+ * a phone a bar with the price and the button stays at the bottom while the page's own buttons are out of view.
  */
 export function ServiceDetailView({
   locale,
@@ -128,8 +128,11 @@ export function ServiceDetailView({
       </PublicMain>
     );
   }
-  const { service, group, related } = detail;
+  const { service, group, related, content } = detail;
   const book = bookServiceHref(locale, service.code);
+  // The hero band is the alternate color; the bands after it alternate down the page.
+  let tone: 'alt' | 'base' = 'alt';
+  const nextTone = () => (tone = tone === 'alt' ? 'base' : 'alt');
   return (
     <PublicMain>
       <Band tone="page" labelledBy="service-title" className="ls-band--alt ls-svd-hero">
@@ -146,7 +149,11 @@ export function ServiceDetailView({
           ]}
         />
         <div className="ls-svd-grid">
-          <PhotoSlot className="ls-svd-slot" caption={text.services.photoService} />
+          <PhotoSlot
+            className="ls-svd-slot"
+            caption={text.services.photoService}
+            image={service.image}
+          />
           <div className="ls-svd-copy">
             <h1 className="ls-h1-display" id="service-title">
               {service.name}
@@ -178,8 +185,64 @@ export function ServiceDetailView({
           </div>
         </div>
       </Band>
+      {content.included.length > 0 ? (
+        <Band tone="page" labelledBy="included-title" className={`ls-band--${nextTone()}`}>
+          <Reveal>
+            <div className="ls-svd-block">
+              <h2 className="ls-site-h2" id="included-title">
+                {text.services.included}
+              </h2>
+              <ul className="ls-svd-list">
+                {content.included.map((item, index) => (
+                  <li key={index}>
+                    <span className="ls-svd-check">
+                      <Icon name="check" size={20} aria-hidden="true" />
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Reveal>
+        </Band>
+      ) : null}
+      {content.steps.length > 0 ? (
+        <Band tone="page" labelledBy="steps-title" className={`ls-band--${nextTone()}`}>
+          <Reveal>
+            <div className="ls-svd-block">
+              <h2 className="ls-site-h2" id="steps-title">
+                {text.services.steps}
+              </h2>
+              <ol className="ls-svd-steps">
+                {content.steps.map((item, index) => (
+                  <li key={index}>{item}</li>
+                ))}
+              </ol>
+            </div>
+          </Reveal>
+        </Band>
+      ) : null}
+      {content.faq.length > 0 ? (
+        <Band tone="page" labelledBy="faq-title" className={`ls-band--${nextTone()}`}>
+          <Reveal>
+            <div className="ls-svd-block">
+              <h2 className="ls-site-h2" id="faq-title">
+                {text.services.faq}
+              </h2>
+              <Accordion
+                headingLevel={3}
+                items={content.faq.map((entry, index) => ({
+                  id: `faq-${index}`,
+                  title: entry.question,
+                  content: <p className="ls-svd-answer">{entry.answer}</p>,
+                }))}
+              />
+            </div>
+          </Reveal>
+        </Band>
+      ) : null}
       {related.length > 0 ? (
-        <Band tone="page" labelledBy="related-title" className="ls-band--base">
+        <Band tone="page" labelledBy="related-title" className={`ls-band--${nextTone()}`}>
           <Reveal>
             <h2 className="ls-site-h2" id="related-title">
               {text.services.related}
@@ -201,11 +264,7 @@ export function ServiceDetailView({
           </ScrollRow>
         </Band>
       ) : null}
-      <Band
-        tone="page"
-        labelledBy="cta-title"
-        className={`ls-band--${related.length > 0 ? 'alt' : 'base'} ls-svd-cta`}
-      >
+      <Band tone="page" labelledBy="cta-title" className={`ls-band--${nextTone()} ls-svd-cta`}>
         <Reveal>
           <div className="ls-svd-cta-copy">
             <h2 className="ls-site-h2" id="cta-title">

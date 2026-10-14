@@ -22,6 +22,7 @@ import type {
 import type { Prisma } from '@lucy-spa/database';
 import { AuthError } from '../auth/auth.error.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
+import { requireUsableMedia } from '../website/popup.core.js';
 import * as input from './product-catalog.input.js';
 import {
   brandSelect,
@@ -247,6 +248,11 @@ export async function editCategory(
     sortOrder: input.sortOrder(request.sortOrder),
     isActive: input.boolean(request.isActive, 'isActive'),
   };
+  // C11b: the photo is optional in the request; leaving it out keeps the current one (older callers send a full replace without it).
+  const photo =
+    request.photoMediaId === undefined
+      ? undefined
+      : input.optionalUuid(request.photoMediaId, 'photoMediaId');
   const expected = input.rowVersion(request.expectedRowVersion);
   const { tx } = context;
   await lockRow(tx, 'product_categories', id);
@@ -255,14 +261,27 @@ export async function editCategory(
     select: categorySelect,
   });
   if (current.rowVersion !== expected) throw new AuthError('CONFLICT');
+  const photoChanged = photo !== undefined && photo !== current.photoMediaId;
   if (
     current.parentId === values.parentId &&
     current.nameVi === values.nameVi &&
     current.nameEn === values.nameEn &&
     current.sortOrder === values.sortOrder &&
-    current.isActive === values.isActive
+    current.isActive === values.isActive &&
+    !photoChanged
   ) {
     return presentCategory(current);
+  }
+  if (photoChanged && photo !== null && photo !== undefined) {
+    try {
+      await requireUsableMedia(tx, photo);
+    } catch (error) {
+      // The shared helper names its own field.
+      if (error instanceof AuthError && error.field === 'mediaId') {
+        throw new AuthError(error.code, 'photoMediaId');
+      }
+      throw error;
+    }
   }
   if (values.parentId !== current.parentId) {
     if (values.parentId !== null) {
@@ -274,7 +293,11 @@ export async function editCategory(
   }
   const saved = await tx.productCategory.update({
     where: { id },
-    data: { ...values, rowVersion: current.rowVersion + 1 },
+    data: {
+      ...values,
+      ...(photoChanged ? { photoMediaId: photo } : {}),
+      rowVersion: current.rowVersion + 1,
+    },
     select: categorySelect,
   });
   await appendAdminAudit(context, {
@@ -287,8 +310,9 @@ export async function editCategory(
       nameEn: current.nameEn,
       sortOrder: current.sortOrder,
       isActive: current.isActive,
+      ...(photoChanged ? { photoMediaId: current.photoMediaId } : {}),
     },
-    after: values,
+    after: { ...values, ...(photoChanged ? { photoMediaId: photo ?? null } : {}) },
   });
   return presentCategory(saved);
 }

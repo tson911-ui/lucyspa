@@ -273,7 +273,14 @@ export function parsePublicProducts(value: unknown): PublicProductsResponse | nu
     ) {
       return null;
     }
-    categories.push({ code: item['code'], name: item['name'], parentCode: item['parentCode'] });
+    const image = item['image'] === undefined ? null : parseImage(item['image']);
+    if (image === undefined) return null;
+    categories.push({
+      code: item['code'],
+      name: item['name'],
+      parentCode: item['parentCode'],
+      image,
+    });
   }
   const brands: PublicProductsResponse['brands'] = [];
   for (const item of value['brands']) {

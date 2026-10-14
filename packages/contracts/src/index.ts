@@ -999,6 +999,8 @@ export interface ServiceCategoryResponse {
   nameEn: string;
   sortOrder: number;
   isActive: boolean;
+  /** The optional photo of the group on the public pages (a media-library image); null shows the flat placeholder. */
+  photoMediaId: string | null;
   version: number;
 }
 
@@ -1025,6 +1027,8 @@ export interface ServiceCategoryUpdateRequest {
   nameVi?: string;
   nameEn?: string;
   sortOrder?: number;
+  /** A media-library image with Vietnamese alt text, or null to remove the photo; omitted = unchanged. */
+  photoMediaId?: string | null;
   reason?: string;
 }
 
@@ -1055,6 +1059,21 @@ export interface CatalogDeleteResponse {
   id: string;
   deleted: true;
 }
+
+/** One question and its answer, on a service page (redesign group 1, C11b). */
+export interface ServiceFaqItem {
+  question: string;
+  answer: string;
+}
+
+/** Limits of the optional service page content; the API refuses more, the admin form stops at the same numbers. */
+export const SERVICE_CONTENT_LIMITS = Object.freeze({
+  listItems: 12,
+  listItemMaxCodePoints: 300,
+  faqItems: 10,
+  faqQuestionMaxCodePoints: 200,
+  faqAnswerMaxCodePoints: 1_000,
+});
 
 /** Whether a branch offers the service. No row means the service is not offered there. */
 export interface ServiceBranchAvailabilityEntry {
@@ -1105,6 +1124,15 @@ export interface ServiceResponse {
   durationMinutes: number;
   estimatedMinMinutes: number;
   estimatedMaxMinutes: number;
+  /** C11b: what the service includes, its steps and its FAQ, per language; an empty list hides that band on the public page. */
+  includedVi: string[];
+  includedEn: string[];
+  stepsVi: string[];
+  stepsEn: string[];
+  faqVi: ServiceFaqItem[];
+  faqEn: ServiceFaqItem[];
+  /** C11b: the photo of the service (a media-library image); null shows the flat placeholder. */
+  photoMediaId: string | null;
   isActive: boolean;
   version: number;
   availability: ServiceBranchAvailabilityEntry[];
@@ -1164,6 +1192,15 @@ export interface ServiceUpdateRequest {
   durationMinutes?: number;
   estimatedMinMinutes?: number;
   estimatedMaxMinutes?: number;
+  /** C11b: omitted = unchanged; an empty list clears it. Texts are trimmed, empty items dropped. */
+  includedVi?: string[];
+  includedEn?: string[];
+  stepsVi?: string[];
+  stepsEn?: string[];
+  faqVi?: ServiceFaqItem[];
+  faqEn?: ServiceFaqItem[];
+  /** C11b: a media-library image with Vietnamese alt text, or null to remove the photo; omitted = unchanged. */
+  photoMediaId?: string | null;
   reason?: string;
 }
 
@@ -3020,7 +3057,17 @@ export interface MediaAssetSummary {
 
 /** Where an image is used (filled by the popup and slider Steps); an image with any usage cannot be deleted. */
 export interface MediaUsage {
-  kind: 'POPUP' | 'SLIDE' | 'SEASON' | 'SHOP_INFO' | 'PRODUCT' | 'CAMPAIGN' | 'IMPORT_CANDIDATE';
+  kind:
+    | 'POPUP'
+    | 'SLIDE'
+    | 'SEASON'
+    | 'SHOP_INFO'
+    | 'PRODUCT'
+    | 'CAMPAIGN'
+    | 'IMPORT_CANDIDATE'
+    | 'SERVICE'
+    | 'SERVICE_GROUP'
+    | 'PRODUCT_CATEGORY';
   id: string;
   title: string;
 }
@@ -3650,11 +3697,15 @@ export interface PublicService {
   seoDescription: string | null;
   /** The service has a real English text (an English description or an approved English search description): its English page is indexed. */
   englishApproved: boolean;
+  /** C11b: the photo the Owner chose; null shows the flat placeholder. */
+  image: PublicSlideImage | null;
 }
 
 export interface PublicServiceGroup {
   code: string;
   name: string;
+  /** C11b: the photo the Owner chose for the group; null shows the flat placeholder. */
+  image: PublicSlideImage | null;
   services: PublicService[];
 }
 
@@ -3662,8 +3713,16 @@ export interface PublicServicesResponse {
   groups: PublicServiceGroup[];
 }
 
+/** C11b: the optional page content of one service in the visitor language; an empty list means the band is not drawn. */
+export interface PublicServiceContent {
+  included: string[];
+  steps: string[];
+  faq: ServiceFaqItem[];
+}
+
 export interface PublicServiceDetailResponse {
   service: PublicService;
+  content: PublicServiceContent;
   group: { code: string; name: string };
   /** The other services of the same group, in catalogue order. */
   related: PublicService[];
@@ -3728,6 +3787,8 @@ export interface PublicProductCard {
 export interface PublicProductCategory extends PublicProductCategoryRef {
   /** The parent's code when it is a sub-category; filtering by a parent includes its sub-categories. */
   parentCode: string | null;
+  /** C11b: the photo the Owner chose for the category; null shows the flat placeholder. */
+  image: PublicSlideImage | null;
 }
 
 /** The hero of the page as the Owner wrote it; null while the Owner has written none of it. */
@@ -3873,6 +3934,8 @@ export interface ProductCategoryResponse {
   nameEn: string;
   sortOrder: number;
   isActive: boolean;
+  /** C11b: the optional photo of the category on the public pages (a media-library image); null shows the flat placeholder. */
+  photoMediaId: string | null;
   rowVersion: number;
   productCount: number;
 }
@@ -3898,6 +3961,8 @@ export interface ProductCategoryEditRequest {
   nameEn: string;
   sortOrder: number;
   isActive: boolean;
+  /** C11b: a media-library image with Vietnamese alt text, or null to remove the photo; omitted = unchanged. */
+  photoMediaId?: string | null;
 }
 
 export interface ProductNameRef {

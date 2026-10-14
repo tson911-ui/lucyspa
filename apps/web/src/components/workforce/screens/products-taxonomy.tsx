@@ -7,6 +7,7 @@ import {
   Field,
   FormDialog,
   FormGrid,
+  FormSection,
   NumberInput,
   RowActions,
   Select,
@@ -38,6 +39,7 @@ import {
 import { ApiError } from '../../../lib/workforce/api';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useWorkforce } from '../session';
+import { MediaPhotoField } from './media-photo-field';
 import { Badge, Empty, ErrorState, Notice, useSuccessToast, type Resource } from '../ui';
 
 /** The record was changed by someone else: the list is reloaded and the dialog closes with a message. */
@@ -511,6 +513,14 @@ function CategoryDialog({
           </>
         ) : null}
       </FormGrid>
+      {category ? (
+        <FormSection title={t.services.photoSection} description={t.services.photoHint}>
+          <MediaPhotoField
+            mediaId={draft.photoMediaId}
+            onChange={(photoMediaId) => set({ photoMediaId })}
+          />
+        </FormSection>
+      ) : null}
     </FormDialog>
   );
 }

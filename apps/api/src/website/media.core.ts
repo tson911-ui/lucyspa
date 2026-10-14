@@ -126,6 +126,22 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
     orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
     select: { candidate: { select: { id: true, nameVi: true } } },
   });
+  // Redesign group 1 (C11b): the photo of a service, a service group or a cosmetics category (the foreign keys are RESTRICT).
+  const services = await tx.service.findMany({
+    where: { photoMediaId: assetId },
+    orderBy: [{ code: 'asc' }],
+    select: { id: true, nameVi: true },
+  });
+  const serviceGroups = await tx.serviceCategory.findMany({
+    where: { photoMediaId: assetId },
+    orderBy: [{ code: 'asc' }],
+    select: { id: true, nameVi: true },
+  });
+  const productCategories = await tx.productCategory.findMany({
+    where: { photoMediaId: assetId },
+    orderBy: [{ code: 'asc' }],
+    select: { id: true, nameVi: true },
+  });
   return [
     ...popups.map((popup) => ({
       kind: 'POPUP' as const,
@@ -145,6 +161,17 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
       title: row.product.nameVi,
     })),
     ...campaigns.map((row) => ({ kind: 'CAMPAIGN' as const, id: row.id, title: row.nameVi })),
+    ...services.map((row) => ({ kind: 'SERVICE' as const, id: row.id, title: row.nameVi })),
+    ...serviceGroups.map((row) => ({
+      kind: 'SERVICE_GROUP' as const,
+      id: row.id,
+      title: row.nameVi,
+    })),
+    ...productCategories.map((row) => ({
+      kind: 'PRODUCT_CATEGORY' as const,
+      id: row.id,
+      title: row.nameVi,
+    })),
     ...[...new Map(candidates.map((row) => [row.candidate.id, row.candidate])).values()].map(
       (row) => ({
         kind: 'IMPORT_CANDIDATE' as const,

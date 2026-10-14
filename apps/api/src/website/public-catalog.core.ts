@@ -1,12 +1,14 @@
 import type {
   PublicService,
+  PublicServiceContent,
   PublicServiceDetailResponse,
   PublicServiceGroup,
   PublicServicesResponse,
 } from '@lucy-spa/contracts';
 import type { Prisma } from '@lucy-spa/database';
 import { AuthError } from '../auth/auth.error.js';
-import { pick, type PublicLocale } from './popup.core.js';
+import { readFaqList, readTextList } from '../catalog/service-content.js';
+import { pick, publicImageSources, type PublicLocale } from './popup.core.js';
 
 /**
  * UX/UI Part 2 (P2-2): the service catalogue a visitor reads without signing in (docs/UXUI_REDESIGN_PART2_DESIGN.md
@@ -19,6 +21,31 @@ const visibleService = {
   category: { isActive: true },
   branches: { some: { isActive: true, branch: { isActive: true } } },
 } satisfies Prisma.ServiceWhereInput;
+
+/** The photo of a service or group: the two public renditions, like a slide image. */
+const selectPhoto = {
+  select: {
+    id: true,
+    altVi: true,
+    altEn: true,
+    width: true,
+    height: true,
+    variants: { where: { kind: { in: ['MD', 'LG'] } }, select: { kind: true, width: true } },
+  },
+} satisfies { select: Prisma.MediaAssetSelect };
+
+type PhotoRow = Prisma.MediaAssetGetPayload<typeof selectPhoto>;
+
+function publicPhoto(media: PhotoRow | null, locale: PublicLocale, fallbackAlt: string) {
+  return media
+    ? {
+        alt: pick(media.altVi, media.altEn, locale) ?? fallbackAlt,
+        width: media.width,
+        height: media.height,
+        sources: publicImageSources(media.id, media.variants),
+      }
+    : null;
+}
 
 const selectService = {
   code: true,
@@ -33,6 +60,7 @@ const selectService = {
   estimatedMaxMinutes: true,
   seoDescriptionVi: true,
   seoDescriptionEn: true,
+  photo: selectPhoto,
 } satisfies Prisma.ServiceSelect;
 
 type ServiceRow = Prisma.ServiceGetPayload<{ select: typeof selectService }>;
@@ -50,6 +78,7 @@ const publicService = (row: ServiceRow, locale: PublicLocale): PublicService => 
   seoDescription: (locale === 'vi' ? row.seoDescriptionVi : row.seoDescriptionEn)?.trim() || null,
   englishApproved:
     (row.descriptionEn ?? '').trim() !== '' || (row.seoDescriptionEn ?? '').trim() !== '',
+  image: publicPhoto(row.photo, locale, pick(row.nameVi, row.nameEn, locale) ?? row.code),
 });
 
 /** Cheapest first, then by name in the visitor's language: no per-service order exists (design Q-P2-8). */
@@ -76,12 +105,18 @@ export async function publicServices(
       code: true,
       nameVi: true,
       nameEn: true,
+      photo: selectPhoto,
       services: { where: visibleService, select: selectService },
     },
   });
   const groups: PublicServiceGroup[] = categories.map((category) => ({
     code: category.code,
     name: pick(category.nameVi, category.nameEn, locale) ?? category.code,
+    image: publicPhoto(
+      category.photo,
+      locale,
+      pick(category.nameVi, category.nameEn, locale) ?? category.code,
+    ),
     services: inMenuOrder(category.services, locale),
   }));
   return { groups };
@@ -97,6 +132,12 @@ export async function publicServiceDetail(
     where: { code, ...visibleService },
     select: {
       ...selectService,
+      includedVi: true,
+      includedEn: true,
+      stepsVi: true,
+      stepsEn: true,
+      faqVi: true,
+      faqEn: true,
       category: { select: { id: true, code: true, nameVi: true, nameEn: true } },
     },
   });
@@ -105,8 +146,15 @@ export async function publicServiceDetail(
     where: { categoryId: found.category.id, code: { not: found.code }, ...visibleService },
     select: selectService,
   });
+  const vi = locale === 'vi';
+  const content: PublicServiceContent = {
+    included: readTextList(vi ? found.includedVi : found.includedEn),
+    steps: readTextList(vi ? found.stepsVi : found.stepsEn),
+    faq: readFaqList(vi ? found.faqVi : found.faqEn),
+  };
   return {
     service: publicService(found, locale),
+    content,
     group: {
       code: found.category.code,
       name: pick(found.category.nameVi, found.category.nameEn, locale) ?? found.category.code,

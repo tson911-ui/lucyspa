@@ -25,6 +25,13 @@ function service(overrides: Partial<ServiceResponse>): ServiceResponse {
     durationMinutes: 60,
     estimatedMinMinutes: 60,
     estimatedMaxMinutes: 60,
+    includedVi: [],
+    includedEn: [],
+    stepsVi: [],
+    stepsEn: [],
+    faqVi: [],
+    faqEn: [],
+    photoMediaId: null,
     isActive: true,
     version: 1,
     availability: [],
@@ -108,6 +115,7 @@ test('categories follow their configured order, then code', () => {
     nameEn: code,
     sortOrder,
     isActive: true,
+    photoMediaId: null,
     version: 1,
   });
   assert.deepEqual(

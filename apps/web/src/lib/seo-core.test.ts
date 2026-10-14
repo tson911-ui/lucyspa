@@ -102,7 +102,9 @@ test('a service description uses the Owner’s text, else a sentence from the ca
       estimatedMaxMinutes: 45,
       seoDescription: null,
       englishApproved: false,
+      image: null,
     },
+    content: { included: [], steps: [], faq: [] },
     group: { code: 'G', name: 'Gội đầu' },
     related: [],
   };
@@ -211,7 +213,9 @@ test('a service page description is the one the shop approved; a LocalBusiness c
       estimatedMaxMinutes: 45,
       englishApproved: false,
       seoDescription: 'Gội đầu dưỡng sinh nhẹ nhàng tại Lucy Spa, Đà Nẵng.',
+      image: null,
     },
+    content: { included: [], steps: [], faq: [] },
     group: { code: 'g', name: 'Gội đầu' },
     related: [],
   };

@@ -74,13 +74,13 @@ test('home: the product row scrolls inside itself with snap, the arrows appear f
 });
 
 test('home: product media is 1:1 on the step the band is not, 18 px clipped; the card zooms 1.02 on a fine pointer only', () => {
-  const media = body("[data-ui='v2'] .ls-home-prod-media");
+  const media = body("[data-ui='v2'] .ls-pcard-media");
   assert.match(media, /aspect-ratio:\s*1;/);
   assert.match(media, /border-radius:\s*var\(--ls-radius-lg\)/);
   assert.match(media, /background:\s*var\(--ls-bg-surface\)/);
   assert.match(
     css,
-    /@media \(hover: hover\) and \(pointer: fine\) \{\s*\[data-ui='v2'\] \.ls-home-prod:hover \.ls-home-prod-media img \{\s*scale: 1\.02;/,
+    /@media \(hover: hover\) and \(pointer: fine\) \{\s*\[data-ui='v2'\] \.ls-pcard:hover \.ls-pcard-media img \{\s*scale: 1\.02;/,
   );
 });
 
@@ -147,4 +147,33 @@ test('service detail: the phone bar is drawn only below 1024 px and only when th
     '';
   assert.match(shown, /box-shadow:\s*none/);
   assert.match(shown, /border-radius:\s*0/);
+});
+
+test('C11b: a category tile with a photo is the picture under one flat scrim with the name in white, hover tints the scrim', () => {
+  const tile = body("[data-ui='v2'] .ls-home-cat[data-media='photo']");
+  assert.match(tile, /position:\s*relative/);
+  assert.match(tile, /color:\s*var\(--ls-on-photo\)/);
+  assert.match(body("[data-ui='v2'] .ls-home-cat-img"), /object-fit:\s*cover/);
+  assert.match(
+    body("[data-ui='v2'] .ls-home-cat[data-media='photo']::after"),
+    /background:\s*var\(--ls-scrim\)/,
+  );
+  assert.match(
+    body("[data-ui='v2'] .ls-home-cat[data-media='photo']:hover::after"),
+    /background:\s*var\(--ls-hover-bg\)/,
+  );
+  // The name stays above the picture and the scrim.
+  assert.match(
+    body("[data-ui='v2'] .ls-home-cat[data-media='photo'] .ls-home-cat-name"),
+    /z-index:\s*1/,
+  );
+});
+
+test('C11b: the optional service bands are one text column, the steps are numbered by a counter, the row skeleton is flat', () => {
+  assert.match(body("[data-ui='v2'] .ls-svd-block"), /max-width:\s*44rem/);
+  assert.match(body("[data-ui='v2'] .ls-svd-steps"), /counter-reset:\s*svd-step/);
+  assert.match(body("[data-ui='v2'] .ls-svd-steps li::before"), /counter-increment:\s*svd-step/);
+  const skeleton = body("[data-ui='v2'] .ls-skel");
+  assert.match(skeleton, /background:\s*var\(--ls-bg-surface\)/);
+  assert.doesNotMatch(skeleton, /animation|gradient/);
 });

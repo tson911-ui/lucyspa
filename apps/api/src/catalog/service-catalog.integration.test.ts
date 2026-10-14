@@ -17,6 +17,9 @@ import { AuthError } from '../auth/auth.error.js';
 import { PasswordService } from '../auth/password.service.js';
 import { SessionService } from '../auth/session.service.js';
 import type { PrismaService } from '../platform/prisma.service.js';
+import { isPubliclyServed } from '../website/popup.core.js';
+import { mediaUsages } from '../website/media.core.js';
+import { publicServiceDetail, publicServices } from '../website/public-catalog.core.js';
 import { ServiceCatalogService } from './service-catalog.service.js';
 import { validVnMobile } from '../testing/phone.js';
 
@@ -1228,6 +1231,217 @@ test(
                   expectedVersion: used.version,
                 });
                 assert.equal(await tx.serviceCategory.count({ where: { id: used.id } }), 0);
+              },
+            );
+
+            await context.test(
+              'C11b: service page content and photos (service and group), media rules, public pages',
+              async () => {
+                const media = (altVi: string | null, tag: string) =>
+                  tx.mediaAsset.create({
+                    data: {
+                      storageKey: `svc-${run}-${tag}`,
+                      originalFilename: `${tag}.jpg`,
+                      mime: 'image/jpeg',
+                      bytes: 10,
+                      width: 800,
+                      height: 600,
+                      sha256: randomUUID().replaceAll('-', '').repeat(2),
+                      altVi,
+                      createdByUserId: userIds[0]!,
+                      variants: {
+                        create: [
+                          {
+                            kind: 'MD',
+                            storageKey: `svc-${run}-${tag}-md`,
+                            width: 640,
+                            height: 480,
+                            bytes: 5,
+                          },
+                        ],
+                      },
+                    },
+                    select: { id: true },
+                  });
+                const picture = await media('Ảnh dịch vụ', 'pic');
+                const noAlt = await media(null, 'noalt');
+                const group = await catalog.createCategory(catalogManager, {
+                  code: `C11B_${run}`,
+                  nameVi: 'Nhóm thử',
+                  nameEn: 'Trial group',
+                });
+                const created = await catalog.createService(ownerSession, {
+                  code: `C11B_S_${run}`,
+                  categoryId: group.id,
+                  nameVi: 'Dịch vụ thử',
+                  nameEn: 'Trial service',
+                  priceVnd: '100000',
+                  durationMinutes: 30,
+                });
+                assert.deepEqual(
+                  [created.includedVi, created.stepsEn, created.faqVi, created.photoMediaId],
+                  [[], [], [], null],
+                  'a new service has no content and no photo',
+                );
+                await catalog.setAvailability(catalogManager, created.id, A, {
+                  expectedVersion: null,
+                  isActive: true,
+                });
+
+                // Content round trip, normalised; an empty list is NULL in the database.
+                const withContent = await catalog.updateService(catalogManager, created.id, {
+                  expectedVersion: created.version,
+                  includedVi: [' Gội đầu ', '', 'Massage cổ'],
+                  stepsVi: ['Rửa', 'Xả'],
+                  faqVi: [{ question: ' Có đau không? ', answer: ' Không. ' }],
+                  includedEn: [],
+                });
+                assert.equal(withContent.version, created.version + 1);
+                assert.deepEqual(withContent.includedVi, ['Gội đầu', 'Massage cổ']);
+                assert.deepEqual(withContent.faqVi, [
+                  { question: 'Có đau không?', answer: 'Không.' },
+                ]);
+                assert.deepEqual(withContent.includedEn, []);
+                const [raw] = await tx.$queryRaw<
+                  { included_en: unknown; included_vi: unknown; faq_en: unknown }[]
+                >`SELECT included_en, included_vi, faq_en FROM services WHERE id = ${created.id}::uuid`;
+                assert.equal(raw?.included_en, null);
+                assert.equal(raw?.faq_en, null);
+                assert.deepEqual(raw?.included_vi, ['Gội đầu', 'Massage cổ']);
+                const [event] = await audit(created.id, 'SERVICE_UPDATED');
+                assert.deepEqual(event?.before, { includedVi: [], stepsVi: [], faqVi: [] });
+                assert.deepEqual(event?.after, {
+                  includedVi: ['Gội đầu', 'Massage cổ'],
+                  stepsVi: ['Rửa', 'Xả'],
+                  faqVi: [{ question: 'Có đau không?', answer: 'Không.' }],
+                });
+                // Saving the same content is not a change: no version bump, no audit row.
+                await fails(
+                  catalog.updateService(catalogManager, created.id, {
+                    expectedVersion: withContent.version,
+                    includedVi: ['Gội đầu', 'Massage cổ'],
+                    includedEn: [],
+                  }),
+                  'VALIDATION_FAILED',
+                );
+                assert.equal((await audit(created.id, 'SERVICE_UPDATED')).length, 1);
+                await fails(
+                  catalog.updateService(catalogManager, created.id, {
+                    expectedVersion: withContent.version,
+                    stepsVi: Array.from({ length: 13 }, (_, i) => `Bước ${i}`),
+                  }),
+                  'VALIDATION_FAILED',
+                );
+                await fails(
+                  catalog.updateService(catalogManager, created.id, {
+                    expectedVersion: withContent.version,
+                    faqVi: [{ question: 'Chỉ có câu hỏi', answer: ' ' }],
+                  }),
+                  'VALIDATION_FAILED',
+                );
+                // Same authority as the other master data: a branch manager and a price manager cannot edit it.
+                for (const denied of [branchManager, priceManager, staff]) {
+                  await fails(
+                    catalog.updateService(denied, created.id, {
+                      expectedVersion: withContent.version,
+                      includedVi: ['x'],
+                    }),
+                    'FORBIDDEN',
+                  );
+                }
+
+                // Photo: needs an existing image with Vietnamese alt text.
+                await fails(
+                  catalog.updateService(catalogManager, created.id, {
+                    expectedVersion: withContent.version,
+                    photoMediaId: noAlt.id,
+                  }),
+                  'MEDIA_ALT_REQUIRED',
+                );
+                await fails(
+                  catalog.updateService(catalogManager, created.id, {
+                    expectedVersion: withContent.version,
+                    photoMediaId: randomUUID(),
+                  }),
+                  'VALIDATION_FAILED',
+                );
+                const photographed = await catalog.updateService(catalogManager, created.id, {
+                  expectedVersion: withContent.version,
+                  photoMediaId: picture.id,
+                });
+                assert.equal(photographed.photoMediaId, picture.id);
+                const groupPhotographed = await catalog.updateCategory(catalogManager, group.id, {
+                  expectedVersion: group.version,
+                  photoMediaId: picture.id,
+                });
+                assert.equal(groupPhotographed.photoMediaId, picture.id);
+                await fails(
+                  catalog.updateCategory(catalogManager, group.id, {
+                    expectedVersion: groupPhotographed.version,
+                    photoMediaId: noAlt.id,
+                  }),
+                  'MEDIA_ALT_REQUIRED',
+                );
+
+                // The media library: usage is listed, deletion is blocked (RESTRICT), and the picture is public while the rows are shown.
+                assert.deepEqual(
+                  (await mediaUsages(tx, picture.id)).map((usage) => usage.kind).sort(),
+                  ['SERVICE', 'SERVICE_GROUP'],
+                );
+                await tx.$executeRawUnsafe('SAVEPOINT c11b_delete');
+                await assert.rejects(tx.mediaAsset.delete({ where: { id: picture.id } }), /./);
+                await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT c11b_delete');
+                const now = new Date();
+                assert.equal(await isPubliclyServed(tx, picture.id, now), true);
+                assert.equal(await isPubliclyServed(tx, noAlt.id, now), false);
+
+                // Public pages: the photo on the card, the group tile, and the content only on the detail, in the visitor's language.
+                const listed = await publicServices(tx, 'vi');
+                const publicGroup = listed.groups.find((entry) => entry.code === group.code)!;
+                assert.equal(publicGroup.image?.sources[0]?.url.includes(picture.id), true);
+                assert.equal(publicGroup.image?.alt, 'Ảnh dịch vụ');
+                assert.equal(publicGroup.services[0]?.image?.width, 800);
+                assert.equal(
+                  'included' in (publicGroup.services[0] ?? {}),
+                  false,
+                  'the list stays light',
+                );
+                const detail = await publicServiceDetail(tx, 'vi', created.code);
+                assert.deepEqual(detail.content, {
+                  included: ['Gội đầu', 'Massage cổ'],
+                  steps: ['Rửa', 'Xả'],
+                  faq: [{ question: 'Có đau không?', answer: 'Không.' }],
+                });
+                const english = await publicServiceDetail(tx, 'en', created.code);
+                assert.deepEqual(english.content, { included: [], steps: [], faq: [] });
+                const bare = await catalog.createService(ownerSession, {
+                  code: `C11B_B_${run}`,
+                  categoryId: group.id,
+                  nameVi: 'Dịch vụ trống',
+                  nameEn: 'Bare service',
+                  priceVnd: '90000',
+                  durationMinutes: 30,
+                });
+                await catalog.setAvailability(catalogManager, bare.id, A, {
+                  expectedVersion: null,
+                  isActive: true,
+                });
+                const bareDetail = await publicServiceDetail(tx, 'vi', bare.code);
+                assert.deepEqual(bareDetail.content, { included: [], steps: [], faq: [] });
+                assert.equal(bareDetail.service.image, null);
+
+                // Removing the photo with null, and an inactive service's picture is no longer public.
+                const removed = await catalog.updateService(catalogManager, created.id, {
+                  expectedVersion: photographed.version,
+                  photoMediaId: null,
+                });
+                assert.equal(removed.photoMediaId, null);
+                await catalog.updateCategory(catalogManager, group.id, {
+                  expectedVersion: groupPhotographed.version,
+                  photoMediaId: null,
+                });
+                assert.deepEqual(await mediaUsages(tx, picture.id), []);
+                assert.equal(await isPubliclyServed(tx, picture.id, now), false);
               },
             );
 

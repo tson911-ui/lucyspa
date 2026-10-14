@@ -974,6 +974,9 @@ model ServiceCategory {
   nameEn                    String                    @map("name_en")
   sortOrder                 Int                       @default(0) @map("sort_order")
   isActive                  Boolean                   @default(true) @map("is_active")
+  /// Redesign group 1 (C11b): the optional photo of the group on the public pages; null shows the flat placeholder.
+  photoMediaId              String?                   @map("photo_media_id") @db.Uuid
+  photo                     MediaAsset?               @relation("ServiceCategoryPhoto", fields: [photoMediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   rowVersion                Int                       @default(1) @map("row_version")
   createdAt                 DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                 DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -985,6 +988,7 @@ model ServiceCategory {
   invoiceComboLines         InvoiceLineCombo[]        @relation("InvoiceComboCategory")
 
   @@index([isActive, sortOrder, id], map: "service_categories_active_order_idx")
+  @@index([photoMediaId], map: "service_categories_photo_idx")
   @@map("service_categories")
 }
 
@@ -1009,6 +1013,17 @@ model Service {
   /// Claude integration Wave B (CI-E1): the search description, written only by applying a reviewed draft or by hand.
   seoDescriptionVi        String?                     @map("seo_description_vi")
   seoDescriptionEn        String?                     @map("seo_description_en")
+  /// Redesign group 1 (C11b): optional detail-page content. Lists of text (included, steps) and question/answer pairs (faq), one
+  /// JSON array per language; null (never an empty array) means "none", and the public page then hides that band.
+  includedVi              Json?                       @map("included_vi") @db.JsonB
+  includedEn              Json?                       @map("included_en") @db.JsonB
+  stepsVi                 Json?                       @map("steps_vi") @db.JsonB
+  stepsEn                 Json?                       @map("steps_en") @db.JsonB
+  faqVi                   Json?                       @map("faq_vi") @db.JsonB
+  faqEn                   Json?                       @map("faq_en") @db.JsonB
+  /// Redesign group 1 (C11b): the optional photo of the service; null shows the flat placeholder.
+  photoMediaId            String?                     @map("photo_media_id") @db.Uuid
+  photo                   MediaAsset?                 @relation("ServicePhoto", fields: [photoMediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// Minimum price per pricing unit (the price itself when exact); SQL: 0 <= min <= max.
   priceVnd                BigInt                      @map("price_vnd")
   priceMaxVnd             BigInt                      @map("price_max_vnd")
@@ -1037,6 +1052,7 @@ model Service {
   discountVersionServices DiscountVersionService[]
 
   @@index([categoryId, isActive, id], map: "services_category_idx")
+  @@index([photoMediaId], map: "services_photo_idx")
   @@map("services")
 }
 
@@ -2373,31 +2389,34 @@ enum MediaVariantKind {
 // allowed while nothing references the asset. `storageKey` and variant keys are opaque random keys, never
 // paths or URLs; the original is kept (PRD 53) and three WebP variants are derived from it.
 model MediaAsset {
-  id                  String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  storageKey          String                   @unique(map: "media_assets_storage_key_key") @map("storage_key")
-  originalFilename    String                   @map("original_filename")
-  mime                String
-  bytes               Int
-  width               Int
-  height              Int
-  sha256              String                   @unique(map: "media_assets_sha256_key")
-  altVi               String?                  @map("alt_vi")
-  altEn               String?                  @map("alt_en")
-  createdByUserId     String                   @map("created_by_user_id") @db.Uuid
-  createdBy           User                     @relation("MediaAssetCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  rowVersion          Int                      @default(1) @map("row_version")
-  createdAt           DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  variants            MediaVariant[]
-  popups              WebsitePopup[]
-  campaignBanners     ProductCampaign[]
-  shopInfoHero        WebsiteShopInfo[]
-  productSettingsHero ProductSettings[]        @relation("ProductSettingsHero")
-  slides              WebsiteSlide[]           @relation("WebsiteSlideImage")
-  mobileSlides        WebsiteSlide[]           @relation("WebsiteSlideMobileImage")
-  seasonSlots         WebsiteSeasonSlotMedia[]
-  productImages       ProductImage[]
-  candidateImages     CandidateImage[]
+  id                    String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storageKey            String                   @unique(map: "media_assets_storage_key_key") @map("storage_key")
+  originalFilename      String                   @map("original_filename")
+  mime                  String
+  bytes                 Int
+  width                 Int
+  height                Int
+  sha256                String                   @unique(map: "media_assets_sha256_key")
+  altVi                 String?                  @map("alt_vi")
+  altEn                 String?                  @map("alt_en")
+  createdByUserId       String                   @map("created_by_user_id") @db.Uuid
+  createdBy             User                     @relation("MediaAssetCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rowVersion            Int                      @default(1) @map("row_version")
+  createdAt             DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  variants              MediaVariant[]
+  popups                WebsitePopup[]
+  campaignBanners       ProductCampaign[]
+  shopInfoHero          WebsiteShopInfo[]
+  productSettingsHero   ProductSettings[]        @relation("ProductSettingsHero")
+  slides                WebsiteSlide[]           @relation("WebsiteSlideImage")
+  mobileSlides          WebsiteSlide[]           @relation("WebsiteSlideMobileImage")
+  seasonSlots           WebsiteSeasonSlotMedia[]
+  productImages         ProductImage[]
+  candidateImages       CandidateImage[]
+  servicePhotos         Service[]                @relation("ServicePhoto")
+  serviceCategoryPhotos ServiceCategory[]        @relation("ServiceCategoryPhoto")
+  productCategoryPhotos ProductCategory[]        @relation("ProductCategoryPhoto")
 
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "media_assets_created_idx")
   @@map("media_assets")
@@ -2453,43 +2472,43 @@ model WebsitePopup {
 // header, footer and home; opening hours are NOT stored here: they are read from the branch's operating hours (the
 // same rows the booking engine uses). Both keys are RESTRICT. The migration seeds the Owner's real values.
 model WebsiteShopInfo {
-  id              String      @id @default("shop")
-  taglineVi       String      @map("tagline_vi")
-  taglineEn       String      @map("tagline_en")
-  introVi         String?     @map("intro_vi")
-  introEn         String?     @map("intro_en")
+  id               String      @id @default("shop")
+  taglineVi        String      @map("tagline_vi")
+  taglineEn        String      @map("tagline_en")
+  introVi          String?     @map("intro_vi")
+  introEn          String?     @map("intro_en")
   /// Claude integration Wave B (CI-E1): the home page search description, written only by applying a reviewed draft or by hand.
-  seoDescriptionVi String?    @map("seo_description_vi")
-  seoDescriptionEn String?    @map("seo_description_en")
-  address         String
-  hotline         String
-  mapUrl          String?     @map("map_url")
+  seoDescriptionVi String?     @map("seo_description_vi")
+  seoDescriptionEn String?     @map("seo_description_en")
+  address          String
+  hotline          String
+  mapUrl           String?     @map("map_url")
   // Optional contact links the Owner types himself (Owner request 2026-10-06): the Facebook page (footer icon and
   // Messenger as m.me/<page>) and the Zalo number or zalo.me link. Empty until he fills them in.
-  facebookUrl     String?     @map("facebook_url")
-  zaloContact     String?     @map("zalo_contact")
-  hoursBranchId   String?     @map("hours_branch_id") @db.Uuid
-  hoursBranch     Branch?     @relation(fields: [hoursBranchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  heroMediaId     String?     @map("hero_media_id") @db.Uuid
-  heroMedia       MediaAsset? @relation(fields: [heroMediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  facebookUrl      String?     @map("facebook_url")
+  zaloContact      String?     @map("zalo_contact")
+  hoursBranchId    String?     @map("hours_branch_id") @db.Uuid
+  hoursBranch      Branch?     @relation(fields: [hoursBranchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  heroMediaId      String?     @map("hero_media_id") @db.Uuid
+  heroMedia        MediaAsset? @relation(fields: [heroMediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   // The home page's facts strip and featured service groups: small ordered lists the Owner edits with the profile.
   // `[]` means "default" (the three built-in facts shown; every group listed), so no row change is needed.
-  factsVisible    Boolean     @default(true) @map("facts_visible")
-  factsItems      Json        @default("[]") @map("facts_items") @db.JsonB
-  featuredGroups  Json        @default("[]") @map("featured_groups") @db.JsonB
+  factsVisible     Boolean     @default(true) @map("facts_visible")
+  factsItems       Json        @default("[]") @map("facts_items") @db.JsonB
+  featuredGroups   Json        @default("[]") @map("featured_groups") @db.JsonB
   // The optional "why choose us" section: hidden and empty until the Owner writes it (nothing is seeded).
-  whyVisible      Boolean     @default(false) @map("why_visible")
-  whyTitleVi      String?     @map("why_title_vi")
-  whyTitleEn      String?     @map("why_title_en")
-  whyCards        Json        @default("[]") @map("why_cards") @db.JsonB
+  whyVisible       Boolean     @default(false) @map("why_visible")
+  whyTitleVi       String?     @map("why_title_vi")
+  whyTitleEn       String?     @map("why_title_en")
+  whyCards         Json        @default("[]") @map("why_cards") @db.JsonB
   // The blocks under the footer logo (social icons, app badges, text, links, image, slogan): empty until the Owner adds
   // some, so the footer shows only the logo (nothing is seeded). An image block names a media asset inside this JSON.
-  footerBlocks    Json        @default("[]") @map("footer_blocks") @db.JsonB
-  rowVersion      Int         @default(1) @map("row_version")
-  updatedByUserId String?     @map("updated_by_user_id") @db.Uuid
-  updatedBy       User?       @relation("WebsiteShopInfoUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  footerBlocks     Json        @default("[]") @map("footer_blocks") @db.JsonB
+  rowVersion       Int         @default(1) @map("row_version")
+  updatedByUserId  String?     @map("updated_by_user_id") @db.Uuid
+  updatedBy        User?       @relation("WebsiteShopInfoUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@index([heroMediaId], map: "website_shop_info_media_idx")
   @@index([hoursBranchId], map: "website_shop_info_branch_idx")
@@ -3343,6 +3362,9 @@ model ProductCategory {
   nameEn           String                           @map("name_en")
   sortOrder        Int                              @default(0) @map("sort_order")
   isActive         Boolean                          @default(true) @map("is_active")
+  /// Redesign group 1 (C11b): the optional photo of the category on the public pages; null shows the flat placeholder.
+  photoMediaId     String?                          @map("photo_media_id") @db.Uuid
+  photo            MediaAsset?                      @relation("ProductCategoryPhoto", fields: [photoMediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   rowVersion       Int                              @default(1) @map("row_version")
   createdAt        DateTime                         @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime                         @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
@@ -3353,6 +3375,7 @@ model ProductCategory {
   valueMappings    SourceValueMapping[]
 
   @@index([parentId], map: "product_categories_parent_idx")
+  @@index([photoMediaId], map: "product_categories_photo_idx")
   @@map("product_categories")
 }
 

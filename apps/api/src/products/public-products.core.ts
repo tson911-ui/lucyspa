@@ -370,7 +370,14 @@ async function taxonomy(tx: Tx, now: Date, locale: PublicLocale): Promise<Taxono
     tx.productCategory.findMany({
       where: { isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
-      select: { id: true, parentId: true, code: true, nameVi: true, nameEn: true },
+      select: {
+        id: true,
+        parentId: true,
+        code: true,
+        nameVi: true,
+        nameEn: true,
+        photo: { select: mediaSelect() },
+      },
     }),
     tx.brand.findMany({
       where: { isActive: true },
@@ -392,15 +399,19 @@ async function taxonomy(tx: Tx, now: Date, locale: PublicLocale): Promise<Taxono
   return {
     categories: categories
       .filter((category) => held.has(category.id))
-      .map((category) => ({
-        id: category.id,
-        code: category.code,
-        name: pick(category.nameVi, category.nameEn, locale) ?? category.code,
-        parentCode:
-          categories.find(
-            (candidate) => candidate.id === category.parentId && held.has(candidate.id),
-          )?.code ?? null,
-      })),
+      .map((category) => {
+        const name = pick(category.nameVi, category.nameEn, locale) ?? category.code;
+        return {
+          id: category.id,
+          code: category.code,
+          name,
+          image: category.photo ? publicImage(category.photo, locale, name) : null,
+          parentCode:
+            categories.find(
+              (candidate) => candidate.id === category.parentId && held.has(candidate.id),
+            )?.code ?? null,
+        };
+      }),
     brands: brands
       .filter((brand) => usedBrands.has(brand.id))
       .map((brand) => ({
@@ -445,7 +456,12 @@ export async function publicProducts(
   const now = await databaseNow(tx);
   const [settings, tax] = await Promise.all([readSettings(tx), taxonomy(tx, now, locale)]);
   const publicTaxonomy = {
-    categories: tax.categories.map(({ code, name, parentCode }) => ({ code, name, parentCode })),
+    categories: tax.categories.map(({ code, name, parentCode, image }) => ({
+      code,
+      name,
+      parentCode,
+      image,
+    })),
     brands: tax.brands.map(({ code, name }) => ({ code, name })),
   };
   const head = {

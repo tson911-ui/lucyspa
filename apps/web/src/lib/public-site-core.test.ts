@@ -29,6 +29,7 @@ const service = (patch: Partial<PublicService> = {}): PublicService => ({
   estimatedMaxMinutes: 45,
   seoDescription: null,
   englishApproved: false,
+  image: null,
   ...patch,
 });
 
@@ -197,7 +198,9 @@ test('the shop profile is accepted as sent and drops anything unsafe or malforme
 });
 
 test('the catalogue and a service detail are checked field by field', () => {
-  const groups = { groups: [{ code: 'GOI', name: 'Gội đầu', services: [service()] }] };
+  const groups = {
+    groups: [{ code: 'GOI', name: 'Gội đầu', image: null, services: [service()] }],
+  };
   assert.deepEqual(parsePublicServices(groups), groups);
   assert.deepEqual(parsePublicServices({ groups: [] }), { groups: [] });
   assert.equal(parsePublicServices({}), null);
@@ -216,10 +219,72 @@ test('the catalogue and a service detail are checked field by field', () => {
     }),
     null,
   );
-  const detail = { service: service(), group: { code: 'GOI', name: 'Gội đầu' }, related: [] };
+  const detail = {
+    service: service(),
+    content: { included: [], steps: [], faq: [] },
+    group: { code: 'GOI', name: 'Gội đầu' },
+    related: [],
+  };
   assert.deepEqual(parseServiceDetail(detail), detail);
   assert.equal(parseServiceDetail({ ...detail, group: null }), null);
   assert.equal(parseServiceDetail({ ...detail, service: { code: 'x y' } }), null);
+});
+
+test('service photos (C11b): only the public media route is drawn; an older API without the field reads as no photo', () => {
+  const id = '0f6e0a52-2f0c-4a1b-9c55-1f4e2d6a7b8c';
+  const image = {
+    alt: 'Ảnh',
+    width: 800,
+    height: 600,
+    sources: [{ url: `/api/v1/public/media/${id}/md`, width: 640 }],
+  };
+  const withPhoto = {
+    groups: [{ code: 'GOI', name: 'x', image, services: [service({ image })] }],
+  };
+  assert.deepEqual(parsePublicServices(withPhoto), withPhoto);
+  const bare: Record<string, unknown> = { ...service() };
+  delete bare['image'];
+  const older = { groups: [{ code: 'GOI', name: 'x', services: [bare] }] };
+  assert.equal(parsePublicServices(older)?.groups[0]?.image, null);
+  assert.equal(parsePublicServices(older)?.groups[0]?.services[0]?.image, null);
+  const evil = { ...image, sources: [{ url: 'https://evil.example/x.png', width: 640 }] };
+  assert.equal(
+    parsePublicServices({ groups: [{ code: 'G', name: 'x', image: evil, services: [] }] }),
+    null,
+  );
+  assert.equal(
+    parsePublicServices({
+      groups: [{ code: 'G', name: 'x', image: null, services: [service({ image: evil })] }],
+    }),
+    null,
+  );
+});
+
+test('service page content (C11b): lists and FAQ pairs are kept, anything malformed or blank is dropped, absent means none', () => {
+  const detail = { service: service(), group: { code: 'GOI', name: 'Gội đầu' }, related: [] };
+  const none = { included: [], steps: [], faq: [] };
+  assert.deepEqual(parseServiceDetail(detail)?.content, none);
+  assert.deepEqual(parseServiceDetail({ ...detail, content: 'x' })?.content, none);
+  assert.deepEqual(
+    parseServiceDetail({
+      ...detail,
+      content: {
+        included: ['Gội đầu', '', 3, 'Massage'],
+        steps: ['Rửa'],
+        faq: [
+          { question: 'Có đau không?', answer: 'Không.' },
+          { question: 'Chỉ có hỏi', answer: '' },
+          { question: 5, answer: 'x' },
+          'x',
+        ],
+      },
+    })?.content,
+    {
+      included: ['Gội đầu', 'Massage'],
+      steps: ['Rửa'],
+      faq: [{ question: 'Có đau không?', answer: 'Không.' }],
+    },
+  );
 });
 
 test('prices: exact, range, per nail, in both languages', () => {
@@ -248,6 +313,7 @@ test('home helpers: first three services, hours headline, links', () => {
   const group: PublicServiceGroup = {
     code: 'G',
     name: 'G',
+    image: null,
     services: ['A', 'B', 'C', 'D'].map((code) => service({ code })),
   };
   assert.deepEqual(
@@ -276,7 +342,7 @@ test('home helpers: first three services, hours headline, links', () => {
 });
 
 test('the group filter accepts only a group that exists', () => {
-  const groups = [{ code: 'GOI', name: 'a', services: [] }];
+  const groups = [{ code: 'GOI', name: 'a', image: null, services: [] }];
   assert.equal(groupFilter('GOI', groups), 'GOI');
   assert.equal(groupFilter(['GOI', 'x'], groups), 'GOI');
   assert.equal(groupFilter('NOPE', groups), '');
@@ -327,7 +393,7 @@ test('facts, featured groups and the why section: parsed strictly, absent means 
 });
 
 test('home groups: the chosen ones in order with descriptions; none chosen lists everything', () => {
-  const group = (code: string) => ({ code, name: code, services: [] });
+  const group = (code: string) => ({ code, name: code, image: null, services: [] });
   const services = { groups: [group('A'), group('B'), group('C')] };
   assert.deepEqual(
     homeGroups(services, { featuredGroups: [] }).map((entry) => entry.group.code),

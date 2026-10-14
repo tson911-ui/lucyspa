@@ -15,7 +15,6 @@ import {
   categoryItems,
   CategoryGrid,
   FactsStrip,
-  HomeProductCard,
   LoadNotice,
   TopServices,
   WhyCards,
@@ -23,7 +22,7 @@ import {
 import { HomeSlider } from './home-slider';
 import { PhotoSlot } from './photo-slot';
 import { PromoPopup } from './promo-popup';
-import { ScrollRow } from './scroll-row';
+import { LazyProductRow } from './lazy-product-row';
 
 /**
  * The public home page's content (DESIGN.md 9.1; the order is fixed): hero, trust band, split intro and top services, the product row,
@@ -171,15 +170,7 @@ export function HomeContent({
               </Link>
             </div>
           </Reveal>
-          <ScrollRow
-            label={text.home.productsTitle}
-            previous={text.home.rowPrevious}
-            next={text.home.rowNext}
-          >
-            {featured.map((card, index) => (
-              <HomeProductCard key={card.code} locale={locale} card={card} priority={index < 2} />
-            ))}
-          </ScrollRow>
+          <LazyProductRow locale={locale} cards={featured} label={text.home.productsTitle} />
         </Band>
       ) : null}
 
@@ -202,6 +193,7 @@ export function HomeContent({
                 key: group.code,
                 name: group.name,
                 href: serviceGroupHref(locale, group.code),
+                image: group.image,
               }))}
             />
           ) : null}

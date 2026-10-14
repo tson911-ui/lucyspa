@@ -158,9 +158,9 @@ test('cards: image, category, name link, price, struck list price, percent, "M�
 test('filters: category links with the chosen one marked, sub-categories under their parent, brands only when there are several', () => {
   const rich = data({
     categories: [
-      { code: 'da', name: 'Chăm sóc da', parentCode: null },
-      { code: 'rua', name: 'Sữa rửa mặt', parentCode: 'da' },
-      { code: 'mat-na', name: 'Mặt nạ', parentCode: null },
+      { code: 'da', name: 'Chăm sóc da', parentCode: null, image: null },
+      { code: 'rua', name: 'Sữa rửa mặt', parentCode: 'da', image: null },
+      { code: 'mat-na', name: 'Mặt nạ', parentCode: null, image: null },
     ],
     brands: [{ code: 'b1', name: 'Hãng một' }],
   });
@@ -205,7 +205,7 @@ test('states: nothing published, nothing matches (with a way out), and a list th
       data={data({
         items: [],
         total: 0,
-        categories: [{ code: 'da', name: 'Chăm sóc da', parentCode: null }],
+        categories: [{ code: 'da', name: 'Chăm sóc da', parentCode: null, image: null }],
       })}
       state={{ ...EMPTY_PRODUCTS_STATE, q: 'zzz', category: 'da' }}
     />,

@@ -7,6 +7,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import { fill } from '../../lib/fill';
+import { frameImage } from '../../lib/public-image';
 import { matchesQuery } from '../../lib/search-core';
 import {
   bookServiceHref,
@@ -16,7 +17,7 @@ import {
 } from '../../lib/public-site-core';
 
 /**
- * One service as a card (DESIGN.md 9.2): the photo (a flat placeholder: no field holds a service photo yet), the name (the card's one link,
+ * One service as a card (DESIGN.md 9.2): the photo the Owner chose (the flat placeholder while there is none), the name (the card's one link,
  * stretched over the card), the estimated time, the price ("from" for a per-nail price) and the "Đặt lịch" pill, which keeps its own target
  * above the stretched link. A card is a list item; `className` lets a row of cards (the related services) add its snap item class.
  */
@@ -33,7 +34,15 @@ export function ServiceCard({
   return (
     <li className={className ? `ls-svc-item ${className}` : 'ls-svc-item'}>
       <article className="ls-svc-card">
-        <ImageFrame src={null} alt="" ratio="4/3" className="ls-svc-media" />
+        <ImageFrame
+          {...frameImage(
+            service.image,
+            '(min-width: 1024px) 320px, (min-width: 640px) 50vw, 100vw',
+          )}
+          alt=""
+          ratio="4/3"
+          className="ls-svc-media"
+        />
         <div className="ls-svc-card-body">
           <h3 className="ls-svc-card-name">
             <Link href={serviceHref(locale, service.code)} title={service.name}>

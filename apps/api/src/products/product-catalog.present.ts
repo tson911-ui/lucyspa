@@ -97,6 +97,7 @@ const categorySelect = {
   nameEn: true,
   sortOrder: true,
   isActive: true,
+  photoMediaId: true,
   rowVersion: true,
   _count: { select: { products: true } },
 } satisfies Prisma.ProductCategorySelect;
@@ -112,6 +113,7 @@ export function presentCategory(
     nameEn: row.nameEn,
     sortOrder: row.sortOrder,
     isActive: row.isActive,
+    photoMediaId: row.photoMediaId,
     rowVersion: row.rowVersion,
     productCount: row._count.products,
   };

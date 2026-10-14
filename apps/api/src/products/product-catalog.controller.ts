@@ -81,6 +81,11 @@ class CategoryEditDto implements ProductCategoryEditRequest {
   @ApiProperty() @IsString() @MaxLength(400) nameEn!: string;
   @ApiProperty() @IsInt() sortOrder!: number;
   @ApiProperty() @IsBoolean() isActive!: boolean;
+  @ApiProperty({ required: false, nullable: true })
+  @ValidateIf((_, value) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(64)
+  photoMediaId?: string | null;
 }
 
 class ProductCreateDto implements ProductCreateRequest {

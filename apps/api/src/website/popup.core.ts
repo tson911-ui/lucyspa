@@ -613,6 +613,22 @@ export async function isPubliclyServed(
     select: { id: true },
   });
   if (banner !== null) return true;
+  // The photo of a service, a service group or a cosmetics category (C11b): public while the owner row is shown on the site.
+  const servicePhoto = await tx.service.findFirst({
+    where: { photoMediaId: assetId, isActive: true, category: { isActive: true } },
+    select: { id: true },
+  });
+  if (servicePhoto !== null) return true;
+  const groupPhoto = await tx.serviceCategory.findFirst({
+    where: { photoMediaId: assetId, isActive: true },
+    select: { id: true },
+  });
+  if (groupPhoto !== null) return true;
+  const categoryPhoto = await tx.productCategory.findFirst({
+    where: { photoMediaId: assetId, isActive: true },
+    select: { id: true },
+  });
+  if (categoryPhoto !== null) return true;
   // A picture of a visible footer block (the block names its asset inside the profile's JSON).
   const [footer] = await tx.$queryRaw<{ id: string }[]>`
     SELECT id FROM website_shop_info

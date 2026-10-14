@@ -18,6 +18,7 @@ import {
   FormDialog,
   FormDrawer,
   FormGrid,
+  FormSection,
   ListSection,
   RowActions,
   Select,
@@ -42,10 +43,19 @@ import {
   quantityProblem,
   type PriceForm,
 } from '../../../lib/workforce/pricing';
+import {
+  contentChanges,
+  contentDirty,
+  contentOf,
+  contentProblem,
+  type ServiceContentForm,
+} from '../../../lib/workforce/service-content';
 import { localizedName } from '../../../lib/workforce/services-list';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
+import { MediaPhotoField } from './media-photo-field';
+import { ServiceContentFields } from './service-content-fields';
 import { DurationFields } from './service-durations';
 import { PriceFields } from './service-price-fields';
 import { StatusConfirm } from './services';
@@ -222,6 +232,22 @@ function MasterData({ service }: { service: ServiceResponse }) {
             value: formatEstimate(service.estimatedMinMinutes, service.estimatedMaxMinutes, t),
           },
           { label: t.services.duration, value: service.durationMinutes },
+          {
+            label: t.services.photoSection,
+            value: service.photoMediaId ? t.services.photoPreview : t.services.photoNone,
+          },
+          { label: t.services.includedVi, value: service.includedVi.join('; ') || null },
+          { label: t.services.includedEn, value: service.includedEn.join('; ') || null },
+          { label: t.services.stepsVi, value: service.stepsVi.join('; ') || null },
+          { label: t.services.stepsEn, value: service.stepsEn.join('; ') || null },
+          {
+            label: t.services.faqVi,
+            value: service.faqVi.map((row) => row.question).join('; ') || null,
+          },
+          {
+            label: t.services.faqEn,
+            value: service.faqEn.map((row) => row.question).join('; ') || null,
+          },
         ]}
       />
     </Section>
@@ -293,14 +319,21 @@ function ServiceEdit({
     estimatedMaxMinutes: String(service.estimatedMaxMinutes),
   };
   const [form, setForm] = useState(initial);
+  const [content, setContent] = useState<ServiceContentForm>(() => contentOf(service));
+  const [photoMediaId, setPhotoMediaId] = useState(service.photoMediaId ?? '');
   const submit = useSubmit();
-  const dirty = (Object.keys(initial) as Array<keyof typeof initial>).some(
-    (key) => form[key] !== initial[key],
-  );
+  const photoChanged = photoMediaId !== (service.photoMediaId ?? '');
+  const dirty =
+    (Object.keys(initial) as Array<keyof typeof initial>).some(
+      (key) => form[key] !== initial[key],
+    ) ||
+    contentDirty(content, service) ||
+    photoChanged;
   const durationsValid = durationProblem(form) === null;
+  const contentValid = contentProblem(content) === null;
 
   async function save() {
-    if (!durationsValid || !dirty) return;
+    if (!durationsValid || !contentValid || !dirty) return;
     const text = (value: string) => (value.trim() === '' ? null : value);
     const durations = durationNumbers(form);
     const body: ServiceUpdateRequest = {
@@ -324,6 +357,8 @@ function ServiceEdit({
       ...(durations.estimatedMaxMinutes !== service.estimatedMaxMinutes
         ? { estimatedMaxMinutes: durations.estimatedMaxMinutes }
         : {}),
+      ...contentChanges(content, service),
+      ...(photoChanged ? { photoMediaId: photoMediaId === '' ? null : photoMediaId } : {}),
     };
     const ok = await submit.run(
       () => runMutation(() => api.post(`/api/v1/services/${service.id}`, body), reload),
@@ -341,7 +376,9 @@ function ServiceEdit({
       labels={formOverlayLabels(t, t.common.save)}
       busy={submit.pending}
       dirty={dirty}
-      submitDisabled={!dirty || !durationsValid || !form.nameVi.trim() || !form.nameEn.trim()}
+      submitDisabled={
+        !dirty || !durationsValid || !contentValid || !form.nameVi.trim() || !form.nameEn.trim()
+      }
       error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
       onClose={onClose}
       onSubmit={save}
@@ -407,6 +444,10 @@ function ServiceEdit({
         onChange={(next) => setForm({ ...form, ...next })}
         t={t}
       />
+      <FormSection title={t.services.photoSection} description={t.services.photoHint}>
+        <MediaPhotoField mediaId={photoMediaId} onChange={setPhotoMediaId} />
+      </FormSection>
+      <ServiceContentFields value={content} onChange={setContent} />
     </FormDrawer>
   );
 }

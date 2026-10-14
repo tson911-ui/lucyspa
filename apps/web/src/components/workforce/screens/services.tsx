@@ -16,6 +16,7 @@ import {
   FormDialog,
   FormDrawer,
   FormGrid,
+  FormSection,
   ListToolbar,
   NumberInput,
   RowActions,
@@ -64,6 +65,7 @@ import {
 import { ApiError } from '../../../lib/workforce/api';
 import { runMutation } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
+import { MediaPhotoField } from './media-photo-field';
 import { DurationFields } from './service-durations';
 import { PriceFields } from './service-price-fields';
 import {
@@ -731,12 +733,14 @@ function CategoryEdit({
     nameVi: category.nameVi,
     nameEn: category.nameEn,
     sortOrder: String(category.sortOrder),
+    photoMediaId: category.photoMediaId ?? '',
   });
   const submit = useSubmit();
   const changed =
     form.nameVi !== category.nameVi ||
     form.nameEn !== category.nameEn ||
-    Number(form.sortOrder) !== category.sortOrder;
+    Number(form.sortOrder) !== category.sortOrder ||
+    form.photoMediaId !== (category.photoMediaId ?? '');
 
   async function save() {
     const ok = await submit.run(
@@ -749,6 +753,9 @@ function CategoryEdit({
               ...(form.nameEn !== category.nameEn ? { nameEn: form.nameEn } : {}),
               ...(Number(form.sortOrder) !== category.sortOrder
                 ? { sortOrder: Number(form.sortOrder) }
+                : {}),
+              ...(form.photoMediaId !== (category.photoMediaId ?? '')
+                ? { photoMediaId: form.photoMediaId === '' ? null : form.photoMediaId }
                 : {}),
             }),
           onSaved,
@@ -803,6 +810,12 @@ function CategoryEdit({
           )}
         </Field>
       </FormGrid>
+      <FormSection title={t.services.photoSection} description={t.services.photoHint}>
+        <MediaPhotoField
+          mediaId={form.photoMediaId}
+          onChange={(photoMediaId) => setForm({ ...form, photoMediaId })}
+        />
+      </FormSection>
     </FormDialog>
   );
 }

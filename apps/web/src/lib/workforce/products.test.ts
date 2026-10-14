@@ -217,6 +217,7 @@ const category = (patch: Partial<ProductCategoryResponse>): ProductCategoryRespo
   nameEn: 'C',
   sortOrder: 0,
   isActive: true,
+  photoMediaId: null,
   rowVersion: 1,
   productCount: 0,
   ...patch,

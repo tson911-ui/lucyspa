@@ -166,6 +166,7 @@ test('shop, services and products are shaped from the public readers without ext
       {
         code: 'cham-soc',
         name: 'Chăm sóc',
+        image: null,
         services: [
           {
             code: 'goi-dau',
@@ -178,6 +179,7 @@ test('shop, services and products are shaped from the public readers without ext
             estimatedMaxMinutes: 60,
             seoDescription: null,
             englishApproved: false,
+            image: null,
           },
         ],
       },

@@ -29,6 +29,7 @@ import {
 } from '../authorization/admin-command.js';
 import { decide, GLOBAL } from '../authorization/authorization.js';
 import { isUuid } from '../employees/employee.input.js';
+import { requireUsableMedia } from '../website/popup.core.js';
 import {
   catalogDescription,
   catalogName,
@@ -43,6 +44,13 @@ import {
   servicePrice,
   sortOrder,
 } from './catalog.input.js';
+import {
+  contentChanges,
+  contentData,
+  parseContentPatch,
+  readContent,
+  type ServiceContent,
+} from './service-content.js';
 
 const categorySelect = {
   id: true,
@@ -51,6 +59,7 @@ const categorySelect = {
   nameEn: true,
   sortOrder: true,
   isActive: true,
+  photoMediaId: true,
   rowVersion: true,
 } satisfies Prisma.ServiceCategorySelect;
 
@@ -69,6 +78,13 @@ const serviceSelect = {
   durationMinutes: true,
   estimatedMinMinutes: true,
   estimatedMaxMinutes: true,
+  includedVi: true,
+  includedEn: true,
+  stepsVi: true,
+  stepsEn: true,
+  faqVi: true,
+  faqEn: true,
+  photoMediaId: true,
   isActive: true,
   rowVersion: true,
   branches: { select: { branchId: true, isActive: true, rowVersion: true } },
@@ -93,6 +109,7 @@ function presentCategory(row: CategoryRow): ServiceCategoryResponse {
     nameEn: row.nameEn,
     sortOrder: row.sortOrder,
     isActive: row.isActive,
+    photoMediaId: row.photoMediaId,
     version: row.rowVersion,
   };
 }
@@ -163,10 +180,12 @@ export class ServiceCatalogService {
     requestId?: string,
   ): Promise<ServiceCategoryResponse> {
     const id = this.id(categoryId);
-    const patch: Partial<Pick<CategoryRow, 'nameVi' | 'nameEn' | 'sortOrder'>> = {};
+    const patch: Partial<Pick<CategoryRow, 'nameVi' | 'nameEn' | 'sortOrder' | 'photoMediaId'>> =
+      {};
     if (input.nameVi !== undefined) patch.nameVi = catalogName(input.nameVi, 'nameVi');
     if (input.nameEn !== undefined) patch.nameEn = catalogName(input.nameEn, 'nameEn');
     if (input.sortOrder !== undefined) patch.sortOrder = sortOrder(input.sortOrder);
+    if (input.photoMediaId !== undefined) patch.photoMediaId = this.photoId(input.photoMediaId);
     if (Object.keys(patch).length === 0) throw new AuthError('VALIDATION_FAILED');
     const reason = optionalReason(input.reason);
     return this.frame(sessionToken, requestId, async (context) => {
@@ -174,6 +193,7 @@ export class ServiceCatalogService {
       requireAcross(context.actor, 'MANAGE_SERVICES', []);
       const current = await this.lockCategory(tx, id, input.expectedVersion);
       const changes = this.changed(current, patch);
+      if (changes.photoMediaId) await this.requirePhoto(tx, changes.photoMediaId);
       const row = await tx.serviceCategory.update({
         where: { id },
         data: { ...changes, rowVersion: { increment: 1 } },
@@ -396,8 +416,11 @@ export class ServiceCatalogService {
         | 'durationMinutes'
         | 'estimatedMinMinutes'
         | 'estimatedMaxMinutes'
+        | 'photoMediaId'
       >
     > = {};
+    const content = parseContentPatch(input);
+    if (input.photoMediaId !== undefined) patch.photoMediaId = this.photoId(input.photoMediaId);
     if (input.categoryId !== undefined) patch.categoryId = this.id(input.categoryId, 'categoryId');
     if (input.nameVi !== undefined) patch.nameVi = catalogName(input.nameVi, 'nameVi');
     if (input.nameEn !== undefined) patch.nameEn = catalogName(input.nameEn, 'nameEn');
@@ -416,7 +439,9 @@ export class ServiceCatalogService {
     if (input.estimatedMaxMinutes !== undefined) {
       patch.estimatedMaxMinutes = estimateMinutes(input.estimatedMaxMinutes, 'estimatedMaxMinutes');
     }
-    if (Object.keys(patch).length === 0) throw new AuthError('VALIDATION_FAILED');
+    if (Object.keys(patch).length === 0 && Object.keys(content).length === 0) {
+      throw new AuthError('VALIDATION_FAILED');
+    }
     const reason = optionalReason(input.reason);
     return this.frame(sessionToken, requestId, async (context) => {
       const { tx, actor } = context;
@@ -427,17 +452,25 @@ export class ServiceCatalogService {
         estimatedMinMinutes: patch.estimatedMinMinutes ?? current.estimatedMinMinutes,
         estimatedMaxMinutes: patch.estimatedMaxMinutes ?? current.estimatedMaxMinutes,
       });
-      const changes = this.changed(current, patch);
+      const changes = this.diff(current, patch);
+      const contentDiff = contentChanges(current, content);
+      if (Object.keys(changes).length === 0 && Object.keys(contentDiff).length === 0) {
+        throw new AuthError('VALIDATION_FAILED');
+      }
       if (changes.categoryId !== undefined) await this.requireCategory(tx, changes.categoryId);
+      if (changes.photoMediaId) await this.requirePhoto(tx, changes.photoMediaId);
       const row = await tx.service.update({
         where: { id },
-        data: { ...changes, rowVersion: { increment: 1 } },
+        data: { ...changes, ...contentData(contentDiff), rowVersion: { increment: 1 } },
         select: serviceSelect,
       });
       await this.audit(context, 'SERVICE_UPDATED', 'Service', id, {
         reason,
-        before: this.pick(current, changes),
-        after: changes,
+        before: {
+          ...this.pick(current, changes),
+          ...this.contentJson(readContent(current), contentDiff),
+        },
+        after: { ...changes, ...this.contentJson(contentDiff, contentDiff) },
       });
       return this.present(actor, row);
     });
@@ -770,6 +803,8 @@ export class ServiceCatalogService {
       durationMinutes: row.durationMinutes,
       estimatedMinMinutes: row.estimatedMinMinutes,
       estimatedMaxMinutes: row.estimatedMaxMinutes,
+      ...readContent(row),
+      photoMediaId: row.photoMediaId,
       isActive: row.isActive,
       version: row.rowVersion,
       availability: row.branches
@@ -810,13 +845,45 @@ export class ServiceCatalogService {
     }
   }
 
-  /** Only the fields that actually change; an update that changes nothing is rejected. */
-  private changed<T extends object>(current: T, patch: Partial<T>): Partial<T> {
-    const changes = Object.fromEntries(
+  /** Only the fields that actually change (possibly none). */
+  private diff<T extends object>(current: T, patch: Partial<T>): Partial<T> {
+    return Object.fromEntries(
       Object.entries(patch).filter(([key, value]) => current[key as keyof T] !== value),
     ) as Partial<T>;
+  }
+
+  /** Only the fields that actually change; an update that changes nothing is rejected. */
+  private changed<T extends object>(current: T, patch: Partial<T>): Partial<T> {
+    const changes = this.diff(current, patch);
     if (Object.keys(changes).length === 0) throw new AuthError('VALIDATION_FAILED');
     return changes;
+  }
+
+  /** The audit detail of the content fields named in `keys`, taken from `values`. */
+  private contentJson(
+    values: Partial<ServiceContent>,
+    keys: Partial<ServiceContent>,
+  ): Prisma.InputJsonObject {
+    return Object.fromEntries(
+      Object.keys(keys).map((key) => [key, values[key as keyof ServiceContent] ?? []]),
+    ) as Prisma.InputJsonObject;
+  }
+
+  /** A photo id from a request: null removes the photo, otherwise a uuid. */
+  private photoId(value: string | null): string | null {
+    return value === null ? null : this.id(value, 'photoMediaId');
+  }
+
+  /** The picked photo must exist and carry Vietnamese alt text (the media rule shared with popups, slides and the shop hero). */
+  private async requirePhoto(tx: Prisma.TransactionClient, mediaId: string): Promise<void> {
+    try {
+      await requireUsableMedia(tx, mediaId);
+    } catch (error) {
+      if (error instanceof AuthError && error.field === 'mediaId') {
+        throw new AuthError(error.code, 'photoMediaId');
+      }
+      throw error;
+    }
   }
 
   private pick<T extends object>(current: T, changes: Partial<T>): Prisma.InputJsonObject {

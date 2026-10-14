@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import type { ProductDetailResponse } from '@lucy-spa/contracts';
 import { InventoryService } from '../inventory/inventory.service.js';
@@ -367,6 +367,53 @@ test(
             result.categories.find((entry) => entry.code === child.code)!.parentCode,
             category.code,
           );
+          // C11b: a category photo reaches the public list (null until the Owner chooses one).
+          assert.equal(
+            result.categories.find((entry) => entry.code === category.code)!.image,
+            null,
+          );
+          const photo = await tx.mediaAsset.create({
+            data: {
+              storageKey: `pub-cat-${run}`,
+              originalFilename: 'category.jpg',
+              mime: 'image/jpeg',
+              bytes: 10,
+              width: 800,
+              height: 600,
+              sha256: randomUUID().replaceAll('-', '').repeat(2),
+              altVi: 'Ảnh nhóm da',
+              createdByUserId: full.id,
+              variants: {
+                create: [
+                  {
+                    kind: 'MD',
+                    storageKey: `pub-cat-${run}-md`,
+                    width: 640,
+                    height: 480,
+                    bytes: 5,
+                  },
+                ],
+              },
+            },
+            select: { id: true },
+          });
+          const current = (await catalog.categories(full.token)).categories.find(
+            (entry) => entry.id === category.id,
+          )!;
+          await catalog.editCategory(full.token, category.id, {
+            expectedRowVersion: current.rowVersion,
+            parentId: null,
+            nameVi: current.nameVi,
+            nameEn: current.nameEn,
+            sortOrder: current.sortOrder,
+            isActive: true,
+            photoMediaId: photo.id,
+          });
+          const withPhoto = (await list()).categories.find(
+            (entry) => entry.code === category.code,
+          )!;
+          assert.equal(withPhoto.image?.alt, 'Ảnh nhóm da');
+          assert.equal(withPhoto.image?.sources[0]?.url.includes(photo.id), true);
           const noCategory = result.items.find((item) => item.code === F.code)!;
           assert.equal(noCategory.category, null, 'a retired category shows no label');
           assert.deepEqual(result.brands.map((entry) => entry.code).includes(brand.code), true);

@@ -318,12 +318,15 @@ export function brandEditRequest(
 export interface CategoryDraft extends BrandDraft {
   parentId: string;
   sortOrder: string;
+  /** C11b: the library photo of the category ('' = none). Edited on an existing category only. */
+  photoMediaId: string;
 }
 
 export const draftFromCategory = (category: ProductCategoryResponse | null): CategoryDraft => ({
   ...draftFromBrand(category),
   parentId: category?.parentId ?? '',
   sortOrder: String(category?.sortOrder ?? 0),
+  photoMediaId: category?.photoMediaId ?? '',
 });
 
 const wholeNumber = (text: string, max: number): number | null => {
@@ -361,6 +364,7 @@ export function categoryEditRequest(
     nameEn: clean(draft.nameEn),
     sortOrder: wholeNumber(draft.sortOrder, 100_000)!,
     isActive: draft.isActive,
+    photoMediaId: draft.photoMediaId === '' ? null : draft.photoMediaId,
   };
 }
 

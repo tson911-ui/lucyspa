@@ -13,6 +13,8 @@ import type { ReactElement } from 'react';
 import { renderToStaticMarkup as render } from 'react-dom/server';
 import type { HomeData } from '../../lib/public-site-core';
 import { HomeContent } from './home-content';
+import { HomeProductRow } from './home-product-row';
+import { homeFeaturedProducts } from '../../lib/public-site-core';
 import { getSiteText } from '../../i18n/site';
 import { ContactWidget, contactItems } from './contact-widget';
 import { PublicFooter } from './site-chrome';
@@ -66,6 +68,7 @@ const unit = {
   estimatedMaxMinutes: 45,
   seoDescription: null,
   englishApproved: false,
+  image: null,
 };
 
 const services: PublicServicesResponse = {
@@ -73,6 +76,7 @@ const services: PublicServicesResponse = {
     {
       code: 'GOI',
       name: 'Gội đầu',
+      image: null,
       services: [
         { ...unit, code: 'GOI_THUONG', name: 'Gội thường' },
         {
@@ -88,6 +92,7 @@ const services: PublicServicesResponse = {
     {
       code: 'NAIL',
       name: 'Nail',
+      image: null,
       services: [
         {
           ...unit,
@@ -452,9 +457,97 @@ test('services list: the filter links, one section per group, a chosen group alo
   }
 });
 
+const photo = {
+  alt: 'Ảnh dịch vụ',
+  width: 800,
+  height: 600,
+  sources: [
+    { url: '/api/v1/public/media/0f6e0a52-2f0c-4a1b-9c55-1f4e2d6a7b8c/md', width: 640 },
+    { url: '/api/v1/public/media/0f6e0a52-2f0c-4a1b-9c55-1f4e2d6a7b8c/lg', width: 1280 },
+  ],
+};
+
+test('service detail (C11b): the Owner’s photo replaces the placeholder, and each optional band appears only with content', () => {
+  const base: PublicServiceDetailResponse = {
+    service: { ...services.groups[0]!.services[0]!, image: photo },
+    content: { included: [], steps: [], faq: [] },
+    group: { code: 'GOI', name: 'Gội đầu' },
+    related: [],
+  };
+  const bare = renderToStaticMarkup(<ServiceDetailView locale="vi" detail={base} />);
+  assert.match(bare, /<img[^>]*class="ls-slot-img"[^>]*alt="Ảnh dịch vụ"/);
+  assert.match(bare, /srcSet="[^"]*\/md 640w, [^"]*\/lg 1280w"/);
+  assert.doesNotMatch(bare, /Ảnh của tiệm/);
+  assert.doesNotMatch(bare, /Dịch vụ bao gồm|Các bước thực hiện|Câu hỏi thường gặp/);
+  assert.doesNotMatch(bare, /id="(included|steps|faq)-title"/);
+
+  const full = renderToStaticMarkup(
+    <ServiceDetailView
+      locale="vi"
+      detail={{
+        ...base,
+        service: { ...base.service, image: null },
+        content: {
+          included: ['Gội đầu thảo dược', 'Massage cổ vai'],
+          steps: ['Rửa tóc', 'Xả sạch'],
+          faq: [{ question: 'Có đau không?', answer: 'Không đau.' }],
+        },
+      }}
+    />,
+  );
+  assert.match(full, /Ảnh của tiệm/, 'no photo: the flat placeholder with its caption');
+  assert.match(full, /<h2[^>]*id="included-title"[^>]*>Dịch vụ bao gồm<\/h2>/);
+  assert.match(
+    full,
+    /<li><span class="ls-svd-check"><svg[^>]*aria-hidden="true"[^>]*>.*<\/svg><\/span><span>Gội đầu thảo dược<\/span><\/li>/s,
+  );
+  assert.match(full, /<h2[^>]*id="steps-title"[^>]*>Các bước thực hiện<\/h2>/);
+  assert.match(full, /<ol class="ls-svd-steps"><li>Rửa tóc<\/li><li>Xả sạch<\/li><\/ol>/);
+  assert.match(full, /<h2[^>]*id="faq-title"[^>]*>Câu hỏi thường gặp<\/h2>/);
+  assert.match(full, /aria-expanded="false"[^>]*>.*Có đau không\?/s);
+  // The bands keep alternating from the hero (alt): included base, steps alt, faq base, then the booking band alt.
+  assert.deepEqual(
+    [...full.matchAll(/ls-band--(base|alt)/g)].map((match) => match[1]),
+    ['alt', 'base', 'alt', 'base', 'alt'],
+  );
+  // Only one language's content reaches the page: an English visitor gets the English headings.
+  assert.match(
+    renderToStaticMarkup(
+      <ServiceDetailView
+        locale="en"
+        detail={{ ...base, content: { included: ['Towel'], steps: [], faq: [] } }}
+      />,
+    ),
+    /What is included/,
+  );
+});
+
+test('service cards and category tiles (C11b): a chosen photo is drawn, otherwise the flat placeholder', () => {
+  const withPhoto = renderToStaticMarkup(
+    <ServicesView
+      locale="vi"
+      data={{
+        groups: [
+          {
+            ...services.groups[0]!,
+            image: photo,
+            services: [{ ...services.groups[0]!.services[0]!, image: photo }],
+          },
+        ],
+      }}
+      group=""
+    />,
+  );
+  assert.match(withPhoto, /<img[^>]*src="\/api\/v1\/public\/media\/[^"]*\/md"[^>]*alt=""/);
+  const without = renderToStaticMarkup(<ServicesView locale="vi" data={services} group="" />);
+  assert.doesNotMatch(without, /<img/);
+  assert.match(without, /ls-image-frame-fallback/);
+});
+
 test('service detail: facts, the per-nail note, the booking link and the group neighbours', () => {
   const detail: PublicServiceDetailResponse = {
     service: services.groups[1]!.services[0]!,
+    content: { included: [], steps: [], faq: [] },
     group: { code: 'NAIL', name: 'Nail' },
     related: [{ ...unit, code: 'SON_GEL', name: 'Sơn gel' }],
   };
@@ -471,7 +564,7 @@ test('service detail: facts, the per-nail note, the booking link and the group n
   assert.match(html, /Sơn gel/);
   assert.match(html, /href="\/vi\/services\?group=NAIL"/);
   // Split hero: the photo placeholder beside the copy; one primary in the hero and one in the booking band, the phone bar (hidden until the
-  // page has measured) and the related services as a scroll row of cards. No FAQ, steps or "what is included": the data has none.
+  // page has measured) and the related services as a scroll row of cards. No FAQ, steps or "what is included" band while the Owner wrote none.
   assert.match(html, /class="ls-slot ls-svd-slot"/);
   assert.equal(html.match(/data-book-cta=/g)?.length, 2);
   assert.match(
@@ -641,8 +734,8 @@ const catalog: PublicProductsResponse = {
   hero: null,
   commitment: null,
   categories: [
-    { code: 'skin', name: 'Chăm sóc da', parentCode: null },
-    { code: 'skin-face', name: 'Mặt', parentCode: 'skin' },
+    { code: 'skin', name: 'Chăm sóc da', parentCode: null, image: null },
+    { code: 'skin-face', name: 'Mặt', parentCode: 'skin', image: null },
   ],
   brands: [],
   items: [
@@ -658,10 +751,23 @@ const catalog: PublicProductsResponse = {
   total: 3,
 };
 
-test('home product row: only the Owner-marked products, labelled Mới and the sale percent once, never "Bán chạy"', () => {
+test('home product row (C11b): the page ships only a skeleton shell; the row’s code and cards load after the first paint', () => {
   const html = home({ ...full, products: catalog });
   assert.match(html, /<h2[^>]*id="products-title"[^>]*>Sản phẩm nổi bật<\/h2>/);
-  assert.equal(html.match(/class="ls-home-prod"/g)?.length, 2);
+  assert.match(html, /href="\/vi\/products"/);
+  // One quiet card for each marked product, hidden from assistive technology; none of the real card markup is in the first HTML.
+  assert.match(html, /<div class="ls-pcard-lazy"><div class="ls-snap-row" aria-hidden="true">/);
+  assert.equal(html.match(/ls-skel-name/g)?.length, 2);
+  assert.doesNotMatch(html, /href="\/vi\/products\/a"|ls-badge-|aria-label="Sản phẩm trước"/);
+});
+
+test('home product row cards: only the Owner-marked products, labelled Mới and the sale percent once, never "Bán chạy"', () => {
+  const cards = homeFeaturedProducts(catalog);
+  assert.equal(cards.length, 2);
+  const html = renderToStaticMarkup(
+    <HomeProductRow locale="vi" cards={cards} label="Sản phẩm nổi bật" />,
+  );
+  assert.equal(html.match(/class="ls-pcard"/g)?.length, 2);
   assert.match(html, /href="\/vi\/products\/a"/);
   assert.doesNotMatch(html, /href="\/vi\/products\/b"/);
   // The labels come from real data: Mới (outline) from `isNew`, the percent (ink) from the promotion; the percent is drawn once.
@@ -673,7 +779,6 @@ test('home product row: only the Owner-marked products, labelled Mới and the s
   assert.match(html, /<ul class="ls-snap-track" aria-label="Sản phẩm nổi bật" tabindex="0">/);
   assert.match(html, /aria-label="Sản phẩm trước"/);
   assert.match(html, /aria-label="Sản phẩm tiếp theo"/);
-  assert.match(html, /href="\/vi\/products"/);
 });
 
 test('home product row: no band when nothing is marked, when the catalog is empty or when it could not be read', () => {

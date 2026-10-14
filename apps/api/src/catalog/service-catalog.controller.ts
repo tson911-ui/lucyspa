@@ -1,4 +1,5 @@
 import type {
+  ServiceFaqItem,
   ServicePricingUnit,
   CatalogDeleteRequest,
   CatalogDeleteResponse,
@@ -71,6 +72,11 @@ class CategoryUpdateDto extends VersionedDto implements ServiceCategoryUpdateReq
   @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(1_024) nameVi?: string;
   @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(1_024) nameEn?: string;
   @ApiProperty({ required: false }) @IsOptional() @IsInt() sortOrder?: number;
+  @ApiProperty({ required: false, nullable: true })
+  @ValidateIf((_object: unknown, value: unknown) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(36)
+  photoMediaId?: string | null;
   @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(2_048) reason?: string;
 }
 
@@ -153,6 +159,42 @@ class ServiceUpdateDto extends VersionedDto implements ServiceUpdateRequest {
   @ApiProperty({ required: false }) @IsOptional() @IsInt() durationMinutes?: number;
   @ApiProperty({ required: false }) @IsOptional() @IsInt() estimatedMinMinutes?: number;
   @ApiProperty({ required: false }) @IsOptional() @IsInt() estimatedMaxMinutes?: number;
+  // C11b: the list items are validated and normalised by the service (limits in SERVICE_CONTENT_LIMITS).
+  @ApiProperty({ required: false, type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(48)
+  includedVi?: string[];
+  @ApiProperty({ required: false, type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(48)
+  includedEn?: string[];
+  @ApiProperty({ required: false, type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(48)
+  stepsVi?: string[];
+  @ApiProperty({ required: false, type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(48)
+  stepsEn?: string[];
+  @ApiProperty({ required: false, type: [Object] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(40)
+  faqVi?: ServiceFaqItem[];
+  @ApiProperty({ required: false, type: [Object] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(40)
+  faqEn?: ServiceFaqItem[];
+  @ApiProperty({ required: false, nullable: true })
+  @ValidateIf((_object: unknown, value: unknown) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(36)
+  photoMediaId?: string | null;
   @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(2_048) reason?: string;
 }
 

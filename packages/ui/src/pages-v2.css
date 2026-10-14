@@ -451,7 +451,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-snap-track {
   }
 }
 
-[data-ui='v2'] .ls-home-prod {
+[data-ui='v2'] .ls-pcard {
   position: relative;
   display: grid;
   gap: var(--ls-space-3);
@@ -459,7 +459,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-snap-track {
   height: 100%;
 }
 
-[data-ui='v2'] .ls-home-prod-media {
+[data-ui='v2'] .ls-pcard-media {
   position: relative;
   display: grid;
   place-items: center;
@@ -470,7 +470,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-snap-track {
   color: var(--ls-text-subtle);
 }
 
-[data-ui='v2'] .ls-home-prod-media img {
+[data-ui='v2'] .ls-pcard-media img {
   display: block;
   width: 100%;
   height: 100%;
@@ -480,16 +480,16 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-snap-track {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  [data-ui='v2'] .ls-home-prod:hover .ls-home-prod-media img {
+  [data-ui='v2'] .ls-pcard:hover .ls-pcard-media img {
     scale: 1.02;
   }
 }
 
-html[data-ls-motion='reduced'] [data-ui='v2'] .ls-home-prod-media img {
+html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   transition: none;
 }
 
-[data-ui='v2'] .ls-home-prod-labels {
+[data-ui='v2'] .ls-pcard-labels {
   position: absolute;
   inset-block-start: var(--ls-space-3);
   inset-inline-start: var(--ls-space-3);
@@ -499,20 +499,20 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-home-prod-media img {
   gap: var(--ls-space-2);
 }
 
-[data-ui='v2'] .ls-home-prod-body {
+[data-ui='v2'] .ls-pcard-body {
   display: grid;
   gap: var(--ls-space-1);
   align-content: start;
 }
 
-[data-ui='v2'] .ls-home-prod-meta {
+[data-ui='v2'] .ls-pcard-meta {
   color: var(--ls-text-muted);
   font-size: var(--ls-type-caption);
   line-height: var(--ls-lh-caption);
 }
 
 /* The price is ink at the price role (21 / 600), not the accent; the struck list price stays muted beside it. */
-[data-ui='v2'] .ls-home-prod :is(.ls-prod-price, .ls-sale-now) strong {
+[data-ui='v2'] .ls-pcard :is(.ls-prod-price, .ls-sale-now) strong {
   color: var(--ls-text);
   font-size: var(--ls-type-price);
   font-weight: var(--ls-weight-title);
@@ -521,7 +521,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-home-prod-media img {
 }
 
 /* The name is the card's one link, stretched over the whole card; the campaign link keeps its own target above it. */
-[data-ui='v2'] .ls-home-prod-name {
+[data-ui='v2'] .ls-pcard-name {
   margin: 0;
   font-size: var(--ls-type-body);
   font-weight: var(--ls-weight-label);
@@ -529,7 +529,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-home-prod-media img {
 }
 
 /* Two lines tall at least, so the link box is a 44 px target even for a one-line name (the stretched ::after covers the whole card). */
-[data-ui='v2'] .ls-home-prod-name a {
+[data-ui='v2'] .ls-pcard-name a {
   display: -webkit-box;
   overflow: hidden;
   min-height: 2.6em;
@@ -540,25 +540,45 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-home-prod-media img {
   line-clamp: 2;
 }
 
-[data-ui='v2'] .ls-home-prod-name a::after {
+[data-ui='v2'] .ls-pcard-name a::after {
   content: '';
   position: absolute;
   inset: 0;
 }
 
+/* The row's stand-in until its code is loaded (and without scripts): quiet bars where the words go, the same box as a card. */
+[data-ui='v2'] .ls-skel {
+  display: block;
+  width: 60%;
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-surface);
+  color: transparent;
+}
+
+[data-ui='v2'] .ls-skel-name {
+  width: 85%;
+  min-height: 2.6em;
+}
+
+[data-ui='v2'] .ls-skel-price {
+  width: 40%;
+  font-size: var(--ls-type-price);
+  line-height: var(--ls-lh-price);
+}
+
 /* The saving line and the countdown stay on the product page; a card shows the label, the struck price and the price. */
-[data-ui='v2'] .ls-home-prod .ls-sale-save {
+[data-ui='v2'] .ls-pcard .ls-sale-save {
   display: none;
 }
 
 /* The campaign line may wrap: the kit's one-line ellipsis clipped a long campaign name by a few pixels in a card. */
-[data-ui='v2'] .ls-home-prod .ls-prod-campaign {
+[data-ui='v2'] .ls-pcard .ls-prod-campaign {
   overflow-wrap: anywhere;
   text-overflow: clip;
   white-space: normal;
 }
 
-[data-ui='v2'] .ls-home-prod .ls-prod-campaign a {
+[data-ui='v2'] .ls-pcard .ls-prod-campaign a {
   position: relative;
   z-index: 1;
 }
@@ -621,6 +641,48 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-home-prod-media img {
   [data-ui='v2'] .ls-home-cat:hover {
     background: var(--ls-hover-bg);
     color: var(--ls-hover-text);
+  }
+}
+
+/* With a photo (C11b) the tile is the framed picture under one flat scrim, the name in white (4.5:1 asserted on the token); hover
+   tints the scrim with the accent instead of repainting a background the photo hides. */
+[data-ui='v2'] .ls-home-cat[data-media='photo'] {
+  position: relative;
+  overflow: hidden;
+  color: var(--ls-on-photo);
+  --ls-focus: var(--ls-on-photo);
+}
+
+[data-ui='v2'] .ls-home-cat-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: var(--ls-image-filter);
+}
+
+[data-ui='v2'] .ls-home-cat[data-media='photo']::after {
+  position: absolute;
+  inset: 0;
+  background: var(--ls-scrim);
+  content: '';
+}
+
+[data-ui='v2'] .ls-home-cat[data-media='photo'] .ls-home-cat-name {
+  position: relative;
+  z-index: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-home-cat[data-media='photo']:hover {
+    background: var(--ls-bg-surface);
+    color: var(--ls-on-photo);
+  }
+
+  [data-ui='v2'] .ls-home-cat[data-media='photo']:hover::after {
+    background: var(--ls-hover-bg);
+    opacity: 0.85;
   }
 }
 
@@ -816,7 +878,12 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-home-prod-media img {
 }
 
 /* The Back row pulls its container's gap in by 8 px; here the gaps are even, so the pull is taken back. */
-[data-ui='v2'] :is(.ls-svc-intro, .ls-svd-hero > .ls-container) > .ls-back-row {
+[data-ui='v2']
+  :is(
+    .ls-svc-intro,
+    .ls-svd-hero > .ls-container
+  )
+  > .ls-back-row {
   margin-block-end: 0;
 }
 
@@ -1011,6 +1078,62 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-home-prod-media img {
   color: var(--ls-text-muted);
   font-size: var(--ls-type-body);
   line-height: var(--ls-lh-body);
+}
+
+/* The optional bands the Owner fills in the service form: what is included, the steps and the FAQ. One text column, drawn only when
+   the field has content. */
+[data-ui='v2'] .ls-svd-block {
+  display: grid;
+  gap: var(--ls-space-6);
+  max-width: 44rem;
+}
+
+[data-ui='v2'] .ls-svd-list,
+[data-ui='v2'] .ls-svd-steps {
+  display: grid;
+  gap: var(--ls-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-ui='v2'] .ls-svd-list li,
+[data-ui='v2'] .ls-svd-steps li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--ls-space-4);
+  align-items: start;
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+  overflow-wrap: anywhere;
+}
+
+/* The 20 px check is centred on the first line of text. */
+[data-ui='v2'] .ls-svd-check {
+  display: grid;
+  height: calc(1em * var(--ls-lh-body));
+  place-items: center;
+  color: var(--ls-brand);
+}
+
+[data-ui='v2'] .ls-svd-steps {
+  counter-reset: svd-step;
+}
+
+[data-ui='v2'] .ls-svd-steps li::before {
+  min-width: var(--ls-space-6);
+  color: var(--ls-text-muted);
+  font-weight: var(--ls-weight-title);
+  font-variant-numeric: lining-nums tabular-nums;
+  counter-increment: svd-step;
+  content: counter(svd-step);
+}
+
+[data-ui='v2'] .ls-svd-answer {
+  margin: 0;
+  color: var(--ls-text-muted);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 
 /* The phone has its own booking bar (below), so the booking band is for the larger screens. */

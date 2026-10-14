@@ -12,6 +12,7 @@ import {
   type PublicProductCategory,
   type PublicProductsResponse,
   type PublicService,
+  type PublicServiceContent,
   type PublicServiceDetailResponse,
   type PublicServiceGroup,
   type PublicServicesResponse,
@@ -309,6 +310,11 @@ export function parsePublicSite(value: unknown): PublicSiteResponse | null {
   };
 }
 
+/** A photo the API may not send yet (an older API during a restart): absent reads as no photo, a malformed one is refused. */
+function parseOptionalImage(value: unknown): PublicSiteResponse['heroImage'] | undefined {
+  return value === undefined ? null : parseSiteImage(value);
+}
+
 function parseService(value: unknown): PublicService | null {
   if (!isRecord(value)) return null;
   if (
@@ -324,6 +330,8 @@ function parseService(value: unknown): PublicService | null {
   ) {
     return null;
   }
+  const image = parseOptionalImage(value['image']);
+  if (image === undefined) return null;
   return {
     code: value['code'],
     name: value['name'],
@@ -335,6 +343,7 @@ function parseService(value: unknown): PublicService | null {
     estimatedMaxMinutes: value['estimatedMaxMinutes'],
     seoDescription: isNullableString(value['seoDescription']) ? value['seoDescription'] : null,
     englishApproved: value['englishApproved'] === true,
+    image,
   };
 }
 
@@ -356,9 +365,32 @@ export function parsePublicServices(value: unknown): PublicServicesResponse | nu
     if (!isRecord(item) || !isString(item['code']) || !isString(item['name'])) return null;
     const services = parseServiceList(item['services']);
     if (!services) return null;
-    groups.push({ code: item['code'], name: item['name'], services });
+    const image = parseOptionalImage(item['image']);
+    if (image === undefined) return null;
+    groups.push({ code: item['code'], name: item['name'], image, services });
   }
   return { groups };
+}
+
+const EMPTY_CONTENT: PublicServiceContent = { included: [], steps: [], faq: [] };
+
+/** The optional bands of a service page. They are an extra: anything missing or malformed reads as "none" and the band is not drawn. */
+function parseServiceContent(value: unknown): PublicServiceContent {
+  if (!isRecord(value)) return EMPTY_CONTENT;
+  const texts = (list: unknown): string[] =>
+    Array.isArray(list) ? list.filter((item): item is string => isString(item) && item !== '') : [];
+  const faq = Array.isArray(value['faq'])
+    ? value['faq'].flatMap((item: unknown) =>
+        isRecord(item) &&
+        isString(item['question']) &&
+        isString(item['answer']) &&
+        item['question'] !== '' &&
+        item['answer'] !== ''
+          ? [{ question: item['question'], answer: item['answer'] }]
+          : [],
+      )
+    : [];
+  return { included: texts(value['included']), steps: texts(value['steps']), faq };
 }
 
 export function parseServiceDetail(value: unknown): PublicServiceDetailResponse | null {
@@ -368,7 +400,12 @@ export function parseServiceDetail(value: unknown): PublicServiceDetailResponse 
   if (!service || !related) return null;
   const group = value['group'];
   if (!isString(group['code']) || !isString(group['name'])) return null;
-  return { service, group: { code: group['code'], name: group['name'] }, related };
+  return {
+    service,
+    content: parseServiceContent(value['content']),
+    group: { code: group['code'], name: group['name'] },
+    related,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------------------------

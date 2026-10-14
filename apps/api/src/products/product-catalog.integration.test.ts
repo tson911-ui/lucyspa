@@ -655,6 +655,102 @@ test(
                   category.id,
                   'a childless category may become a child',
                 );
+                // C11b: the optional category photo. Omitting it keeps the current one; null removes it; a picture needs Vietnamese alt text.
+                assert.equal(moved.photoMediaId, null);
+                const media = (altVi: string | null) =>
+                  tx.mediaAsset.create({
+                    data: {
+                      storageKey: `pcat-${run}-${randomUUID()}`,
+                      originalFilename: 'category.jpg',
+                      mime: 'image/jpeg',
+                      bytes: 10,
+                      width: 100,
+                      height: 100,
+                      sha256: randomUUID().replaceAll('-', '').repeat(2),
+                      altVi,
+                      createdByUserId: actors.manager.id,
+                    },
+                    select: { id: true },
+                  });
+                const picture = await media('Ảnh danh mục');
+                const noAlt = await media(null);
+                const same = {
+                  parentId: category.id,
+                  nameVi: other.nameVi,
+                  nameEn: other.nameEn,
+                  sortOrder: 5,
+                  isActive: true,
+                };
+                await fails(
+                  () =>
+                    catalog.editCategory(actors.manager.token, other.id, {
+                      ...same,
+                      expectedRowVersion: moved.rowVersion,
+                      photoMediaId: noAlt.id,
+                    }),
+                  'MEDIA_ALT_REQUIRED',
+                  'photoMediaId',
+                );
+                await fails(
+                  () =>
+                    catalog.editCategory(actors.manager.token, other.id, {
+                      ...same,
+                      expectedRowVersion: moved.rowVersion,
+                      photoMediaId: randomUUID(),
+                    }),
+                  'VALIDATION_FAILED',
+                  'photoMediaId',
+                );
+                const photographed = await catalog.editCategory(actors.manager.token, other.id, {
+                  ...same,
+                  expectedRowVersion: moved.rowVersion,
+                  photoMediaId: picture.id,
+                });
+                assert.equal(photographed.photoMediaId, picture.id);
+                assert.equal(photographed.rowVersion, moved.rowVersion + 1);
+                const kept = await catalog.editCategory(actors.manager.token, other.id, {
+                  ...same,
+                  sortOrder: 6,
+                  expectedRowVersion: photographed.rowVersion,
+                });
+                assert.equal(
+                  kept.photoMediaId,
+                  picture.id,
+                  'a request without the field keeps the photo',
+                );
+                const unchanged = await catalog.editCategory(actors.manager.token, other.id, {
+                  ...same,
+                  sortOrder: 6,
+                  expectedRowVersion: kept.rowVersion,
+                  photoMediaId: picture.id,
+                });
+                assert.equal(
+                  unchanged.rowVersion,
+                  kept.rowVersion,
+                  'the same photo is not a change',
+                );
+                // A picture in use cannot be deleted (RESTRICT), and the usage names the category.
+                await assert.rejects(async () => {
+                  await tx.$executeRawUnsafe('SAVEPOINT pcat_photo');
+                  try {
+                    await tx.mediaAsset.delete({ where: { id: picture.id } });
+                  } catch (error) {
+                    await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT pcat_photo');
+                    throw error;
+                  }
+                }, /./);
+                assert.deepEqual(
+                  (await mediaUsages(tx, picture.id)).map((usage) => [usage.kind, usage.id]),
+                  [['PRODUCT_CATEGORY', other.id]],
+                );
+                const cleared = await catalog.editCategory(actors.manager.token, other.id, {
+                  ...same,
+                  sortOrder: 6,
+                  expectedRowVersion: kept.rowVersion,
+                  photoMediaId: null,
+                });
+                assert.equal(cleared.photoMediaId, null);
+                assert.deepEqual(await mediaUsages(tx, picture.id), []);
                 const list = await catalog.categories(actors.pricer.token);
                 assert.ok(list.categories.some((row) => row.id === moved.id));
                 assert.ok(

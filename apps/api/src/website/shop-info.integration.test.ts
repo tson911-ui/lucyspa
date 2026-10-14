@@ -891,6 +891,7 @@ test(
                   estimatedMaxMinutes: 90,
                   seoDescription: null,
                   englishApproved: false,
+                  image: null,
                 });
                 assert.equal(group.services[1]?.description, 'Nhẹ nhàng');
                 const wire = JSON.stringify(catalogue);

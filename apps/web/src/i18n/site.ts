@@ -182,6 +182,10 @@ export interface SiteText {
     /** The "← Back" button above the page title (same as on the account pages). */
     backLabel: string;
     related: string;
+    /** The optional bands of a service page (the Owner writes them in the service form; an empty one is not drawn). */
+    included: string;
+    steps: string;
+    faq: string;
     /** The search field above the list, its clear button, and the line shown when nothing matches (with {query}). */
     searchLabel: string;
     searchClear: string;
@@ -417,6 +421,9 @@ const text = {
       back: 'Tất cả dịch vụ',
       backLabel: 'Quay lại',
       related: 'Dịch vụ cùng nhóm',
+      included: 'Dịch vụ bao gồm',
+      steps: 'Các bước thực hiện',
+      faq: 'Câu hỏi thường gặp',
       searchLabel: 'Tìm dịch vụ',
       searchClear: 'Xóa nội dung tìm',
       noMatch: 'Không có dịch vụ nào khớp "{query}". Thử một tên khác hoặc bỏ nội dung tìm.',
@@ -650,6 +657,9 @@ const text = {
       back: 'All services',
       backLabel: 'Back',
       related: 'More in this group',
+      included: 'What is included',
+      steps: 'How it goes',
+      faq: 'Frequently asked questions',
       searchLabel: 'Find a service',
       searchClear: 'Clear the search',
       noMatch: 'No service matches "{query}". Try another name or clear the search.',
