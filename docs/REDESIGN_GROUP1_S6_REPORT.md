@@ -1,6 +1,6 @@
 # Redesign group 1, session 6 report (C14, C15). Local only: not pushed, not deployed.
 
-Commits: C14 `3db551a`, C15 `e3e2da5`. No migration, no API change, no permission change. Booking logic (`lib/customer/*`), auth calls and the APIs are untouched.
+Commits: C14 `3db551a`, C15 `e3e2da5`. No migration, no API change, no permission change. The booking logic files (`lib/customer/booking*.ts`), auth calls and the APIs are untouched; one test in `lib/customer/invoice.test.tsx` was updated for the new frame.
 
 ## What changed
 
@@ -19,12 +19,12 @@ Commits: C14 `3db551a`, C15 `e3e2da5`. No migration, no API change, no permissio
 - `ui` 563 and `web` 1105 tests pass (one test updated: the invoice list now asserts the member frame); `booking.test.tsx` and `booking-view.test.ts` pass unedited. New tests: `account-frame.test.tsx`, C14/C15 CSS tests, auth-panel token test. Typecheck, eslint, `pnpm format:check` clean.
 - DOM audit (customer pages, light 360/768/1440, after the contact pulse ends) against the C1 baseline: no count rises on the 19 pages of the two Steps. `uxui-touch-check` passes (light and dark). `uxui-tabbar-check` on the three sign-in pages: all pass except
   the login keyboard probe, which flakes on some runs (as in sessions 3 to 5; passed 1 of 2 repeats).
-- Staff login and staff forgot password: screenshots byte-identical before and after (md5, 5 images). Real booking on the scratch stack reached the success state.
+- Staff login and staff forgot password: screenshots byte-identical before and after (md5, 5 images). `inbox.tsx` is shared with staff: its staff path keeps the same header, intro and secondary button (covered by `notification-center.test.tsx`, not screenshotted). Real booking on the scratch stack reached the success state (that sheet, `book-success`, has no before: it is after-only).
 
 ## UX gate (`.local/uxui-screens/group1-session6/`, 108 before | after sheets)
 
 Booking: four steps, other-person form, no selection, member with no appointments, success, 360/768/1440 light, 1440 dark, 130 % text. Sign-in: login, error notice, register, forgot. Account: home (full and empty), bookings, detail, cancelled, not found, invoices, loyalty,
-notifications, orders, order detail, empty lists. Opened and reviewed: about 45 sheets and single shots, every page and state at least at 360 and 1440 light, dark for booking, sign-in, account, invoices and loyalty, 130 % for booking, sign-in and booking detail. Not opened one by one: the 768 and 130 % sheets of the other pages and the dark sheets of orders, notifications and booking detail (the DOM audit covers them). Not captured: loading skeletons, 200 % text, dark at 360. Fixed during the gate: the folded summary showed open (a display rule beat `hidden`), the action buttons wrapped to three lines at 130 %, tabs were indented from the title and the sixth tab was cut off at 768 px, the empty appointment list had no box.
+notifications, orders, order detail, empty lists. All 108 sheets were opened and reviewed. The rig is custom (`.local/g6/harness.mjs`, a CDP driver, not `uxui-screens.mjs`): it fails a combination when the page is a browser error page or has no site frame, and never writes an image for it. Not captured: loading skeletons, 200 % text, dark at 360. Fixed during the gate: the folded summary showed open (a display rule beat `hidden`), the action buttons wrapped to three lines at 130 %, tabs were indented from the title and the sixth tab was cut off at 768 px, the empty appointment list had no box, and on a short phone the contact button sat on the sign-in button (the card now starts at the top of the panel below 1024 px). In the full-page register shots the panel stretches to the screen height; that is a capture artifact.
 
 ## Needs your decision (provisional until you answer)
 

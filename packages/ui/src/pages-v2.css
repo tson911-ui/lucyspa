@@ -1825,6 +1825,15 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   color: var(--ls-on-auth-flat);
 }
 
+/* Below 1024 px the card starts under the wordmark at the top of the panel instead of being centered, so on a short phone the floating contact
+   button (bottom right of the screen) is not on top of the card's primary button. From 1024 px the pair is centered. */
+@media (max-width: 1023.98px) {
+  [data-ui='v2'] .ls-auth-panel {
+    align-items: start;
+    padding-block: var(--ls-space-7) var(--ls-space-9);
+  }
+}
+
 [data-ui='v2'] .ls-auth-stack {
   display: grid;
   gap: var(--ls-space-6);
