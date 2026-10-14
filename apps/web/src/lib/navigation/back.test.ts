@@ -41,6 +41,8 @@ test('the member area: home returns to the public home, lists to the home, detai
   assert.equal(parentPath(`${MEMBER}/book`, MEMBER, '/vi'), MEMBER);
   assert.equal(parentPath(`${MEMBER}/bookings/b1`, MEMBER, '/vi'), `${MEMBER}/bookings`);
   assert.equal(parentPath(`${MEMBER}/invoices/i1`, MEMBER, '/vi'), `${MEMBER}/invoices`);
+  assert.equal(parentPath(`${MEMBER}/orders/o1`, MEMBER, '/vi'), `${MEMBER}/orders`);
+  assert.equal(parentPath(`${MEMBER}/profile`, MEMBER, '/vi'), MEMBER);
 });
 
 test('the public services pages: a service returns to the list, the list to the home', () => {

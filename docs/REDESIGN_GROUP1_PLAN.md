@@ -213,7 +213,17 @@ Items 3, 4 and 5 are Step C11b below. Answers 1 and 2 close the matching "pendin
 - **C15: auth and account (L).** Status: done (e3e2da5).
   Customer login, register and forgot pages as a centered card, then account home, bookings, invoices (with detail), loyalty,
   notifications and the review card. The shared auth layout's flat panel is used by staff too, so check it against staff login.
-  As built: the customer sign-in does not use the staff `AuthLayout`; they share only root tokens. New v2 tokens `--ls-auth-flat` and `--ls-on-auth-flat` (Q4), the panel is a band with the wordmark above one 26 rem hairline card (aside dropped; PENDING Owner, see the S6 report). Staff login and forgot password screenshots are byte-identical before and after. New `AccountScreen` (title band, `SiteSubNav` tabs from 768 px, content band) carries the account home (four summary cards), bookings, invoices, loyalty, notifications, orders and their details; `CustomerShell` is only `main`. Direction C rules for booking, sign-in and the member frame stay in `site.css` until C18 (`.ls-booking-*`, `.ls-member-auth`, `.ls-member-aside`, `.ls-member-page`, `.ls-choice*`, `.ls-hub`, `.ls-account-grid`).
+  As built: the customer sign-in does not use the staff `AuthLayout`; they share only root tokens. New v2 tokens `--ls-auth-flat` and `--ls-on-auth-flat` (Q4), the panel is a band with the wordmark above one 26 rem hairline card (aside dropped; accepted by the Owner, see the decisions below). Staff login and forgot password screenshots are byte-identical before and after. New `AccountScreen` (title band, `SiteSubNav` tabs from 768 px, content band) carries the account home (four summary cards), bookings, invoices, loyalty, notifications, orders and their details; `CustomerShell` is only `main`. Direction C rules for booking, sign-in and the member frame stay in `site.css` until C18 (`.ls-booking-*`, `.ls-member-auth`, `.ls-member-aside`, `.ls-member-page`, `.ls-choice*`, `.ls-hub`, `.ls-account-grid`).
+
+### Owner decisions on the session 6 report (2026-10-14)
+
+1. Sign-in is one centered card on a flat panel band, aside dropped: accepted. The unused copy keys are removed.
+2. Booking step names and order stay as built (services, guests, staff and time, confirm): accepted. DESIGN.md 9.2 updated.
+3. Account area: dropping the title "Đặt lịch" button on the account home is accepted. The profile has a "Hồ sơ" tab (last of the account tabs and
+   quick links, `/account/profile`); every account detail page (booking, invoice, order) has a visible "← Quay lại" link to its list.
+   As built: there is **no customer profile API** (`/me/account` is workforce only and refuses customers), and the old account home card was
+   read only (name, language), so the tab is read only and edit is **pending Owner approval** (it needs a new customer endpoint). The back link
+   already existed on every detail page (`PageBack`); it goes to the page the person came from and to the list when opened directly.
 
 ### Session 7
 

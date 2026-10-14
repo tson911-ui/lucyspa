@@ -12,6 +12,7 @@ import { CustomerAccountContext, CustomerContext } from './session';
 import { CustomerLoginScreen } from './screens/auth';
 import { CustomerNotificationsScreen } from './screens/notifications';
 import { CustomerLoyaltyScreen } from './screens/loyalty';
+import { CustomerProfileScreen } from './screens/profile';
 
 function paint(node: ReactNode, locale: Locale = 'vi', sessionLost = false): string {
   const api = new ApiClient({ fetch: () => new Promise<Response>(() => undefined) });
@@ -53,13 +54,13 @@ test('C15: a member screen is a title band (one h1, the account tabs) and a cont
   assert.ok(html.includes('nội dung'));
 });
 
-test('C15: the tabs are the six places of the account, in the order of the quick-links list, in both languages', () => {
+test('C15: the tabs are the seven places of the account (profile last), in the order of the quick-links list, in both languages', () => {
   for (const locale of ['vi', 'en'] as const) {
     const t = getCustomerDictionary(locale);
     const base = `/${locale}/account`;
     assert.deepEqual(
       accountSections(t, base).map((section) => section.key),
-      ['home', 'bookings', 'invoices', 'loyalty', 'orders', 'notifications'],
+      ['home', 'bookings', 'invoices', 'loyalty', 'orders', 'notifications', 'profile'],
     );
     assert.equal(accountSections(t, base)[0]?.href, base);
   }
@@ -91,4 +92,14 @@ test('C15: sign-in is the wordmark above one centered card on the flat panel, no
   assert.match(html, /class="ls-auth-brand" aria-hidden="true"/);
   assert.match(html, /class="ls-card ls-member-card"/);
   assert.doesNotMatch(html, /ls-member-aside|ls-member-auth/);
+});
+
+test('S7: the profile tab shows the name and language of the signed-in member inside the frame, with no form', () => {
+  for (const locale of ['vi', 'en'] as const) {
+    const html = paint(<CustomerProfileScreen />, locale);
+    assert.equal(html.match(/<h1\b/g)?.length, 1);
+    assert.ok(html.includes('Lan'));
+    assert.ok(html.includes(locale === 'vi' ? 'Hồ sơ' : 'Profile'));
+    assert.doesNotMatch(html, /<form|<input|<textarea/);
+  }
 });

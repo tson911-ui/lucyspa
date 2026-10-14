@@ -1930,15 +1930,23 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   }
 }
 
-/* Below 1024 px the six labels take 12 px of padding and no gap, so all of them show at 768 px (a hidden tab in a scrolling strip is not found). */
+/* Below 1024 px the seven labels take 8 px of padding and no gap (the row also reaches 8 px into each gutter), so all of them show on one line at 768 px (a hidden tab in a scrolling strip is not found);
+   at a larger text size the row wraps onto a second line instead of scrolling. */
+@media (min-width: 768px) {
+  [data-ui='v2'] .ls-acct-tabs {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}
+
 @media (min-width: 768px) and (max-width: 1023.98px) {
   [data-ui='v2'] .ls-acct-tabs {
     gap: 0;
-    margin-inline-start: calc(var(--ls-space-3) * -1);
+    margin-inline: calc(var(--ls-space-2) * -1);
   }
 
   [data-ui='v2'] .ls-acct-tabs a {
-    padding-inline: var(--ls-space-3);
+    padding-inline: var(--ls-space-2);
   }
 }
 
@@ -2109,7 +2117,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   line-height: var(--ls-lh-label);
 }
 
-/* A phone has no tabs: the six places as one list under the cards (the rows hover with the solid accent, as every row of the site). */
+/* A phone has no tabs: the places as one list under the cards (the rows hover with the solid accent, as every row of the site). */
 @media (min-width: 768px) {
   [data-ui='v2'] .ls-acct-list {
     display: none;

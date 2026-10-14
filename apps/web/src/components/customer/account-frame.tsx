@@ -14,7 +14,7 @@ const MemberLink: SiteLinkComponent = ({ children, ...rest }) => (
   </Link>
 );
 
-/** The member areas in the order of the quick-links list. */
+/** The member areas in the order of the quick-links list (the profile is last, as in every account menu). */
 export function accountSections(
   t: ReturnType<typeof useCustomer>['t'],
   base: string,
@@ -26,6 +26,7 @@ export function accountSections(
     { key: 'loyalty', label: t.home.hubRewards, href: `${base}/loyalty` },
     { key: 'orders', label: t.home.hubOrders, href: `${base}/orders` },
     { key: 'notifications', label: t.home.hubNotifications, href: `${base}/notifications` },
+    { key: 'profile', label: t.home.hubProfile, href: `${base}/profile` },
   ];
 }
 
