@@ -125,6 +125,7 @@ export function Dialog({
   size = 'md',
   role = 'dialog',
   busy = false,
+  suspended = false,
   closeLabel,
   initialFocus,
   footer,
@@ -140,6 +141,11 @@ export function Dialog({
   role?: 'dialog' | 'alertdialog' | undefined;
   /** While busy, Escape, the backdrop and the close button do nothing. */
   busy?: boolean | undefined;
+  /**
+   * Another modal is asking something over this one (the discard prompt of a form): the v2 look hides this surface until the question
+   * is answered, so two modals are never on the screen at once (DESIGN.md H13). Focus and the form stay where they are.
+   */
+  suspended?: boolean | undefined;
   /** Accessible name of the close button. Omit to draw no close button (confirmations). */
   closeLabel?: string | undefined;
   /** Element to focus first; defaults to the first focusable element. */
@@ -158,7 +164,11 @@ export function Dialog({
   });
   if (!open) return null;
   return (
-    <div className="ls-backdrop" onMouseDown={onBackdropMouseDown}>
+    <div
+      className="ls-backdrop"
+      data-suspended={suspended || undefined}
+      onMouseDown={onBackdropMouseDown}
+    >
       <div
         ref={panelRef}
         className={cx('ls-dialog', `ls-dialog-${size}`, className)}
@@ -252,6 +262,7 @@ export function Drawer({
   side = 'end',
   closeLabel,
   busy = false,
+  suspended = false,
   initialFocus,
   footer,
   children,
@@ -265,6 +276,8 @@ export function Drawer({
   closeLabel: string;
   /** While busy, Escape, the backdrop and the close button do nothing. */
   busy?: boolean | undefined;
+  /** Another modal is asking something over this one: see `Dialog`. */
+  suspended?: boolean | undefined;
   /** Element to focus first; defaults to the first focusable element. */
   initialFocus?: RefObject<HTMLElement | null> | undefined;
   footer?: ReactNode | undefined;
@@ -280,7 +293,11 @@ export function Drawer({
   });
   if (!open) return null;
   return (
-    <div className="ls-backdrop ls-backdrop-drawer" onMouseDown={onBackdropMouseDown}>
+    <div
+      className="ls-backdrop ls-backdrop-drawer"
+      data-suspended={suspended || undefined}
+      onMouseDown={onBackdropMouseDown}
+    >
       <div
         ref={panelRef}
         className={cx('ls-drawer', `ls-drawer-${side}`, className)}

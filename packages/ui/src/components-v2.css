@@ -706,3 +706,388 @@
   place-items: center;
   color: var(--ls-text-subtle);
 }
+
+/* ---- Dialog, drawer and sheet (8.6) ---------------------------------------------------------------- */
+/* The raised surface with a hairline over the scrim (the scrim is a token, the surface has no shadow); 18 px, 24 px inside; the title
+   names the task; the footer is Cancel (neutral) then the primary, 8 px apart. Below 640 px a small or medium dialog is a bottom sheet
+   with its own Close button. */
+[data-ui='v2'] .ls-dialog {
+  gap: var(--ls-space-4);
+  border-color: var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-raised);
+}
+
+[data-ui='v2'] .ls-dialog-title {
+  font-size: var(--ls-type-heading);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-dialog-description {
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+/* A question asked over a form (the discard prompt) hides the form's own surface and scrim, so two modals are never on the screen at
+   once; the form and its focus are untouched and it is back as soon as the question is answered. */
+[data-ui='v2'] .ls-backdrop[data-suspended] {
+  visibility: hidden;
+}
+
+[data-ui='v2'] .ls-facts {
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-field);
+}
+
+@media (max-width: 639px) {
+  [data-ui='v2'] .ls-dialog-sm,
+  [data-ui='v2'] .ls-dialog-md {
+    border-start-start-radius: var(--ls-radius-lg);
+    border-start-end-radius: var(--ls-radius-lg);
+  }
+}
+
+/* A drawer is the same surface from the trailing edge: 512 wide, the full width below 640. Its free corners are rounded. */
+[data-ui='v2'] .ls-drawer {
+  gap: var(--ls-space-4);
+  width: min(100%, var(--ls-drawer-form));
+  padding: var(--ls-space-6);
+  background: var(--ls-bg-raised);
+}
+
+[data-ui='v2'] .ls-drawer-end {
+  border-start-start-radius: var(--ls-radius-lg);
+  border-end-start-radius: var(--ls-radius-lg);
+}
+
+[data-ui='v2'] .ls-drawer-start {
+  border-start-end-radius: var(--ls-radius-lg);
+  border-end-end-radius: var(--ls-radius-lg);
+}
+
+[data-ui='v2'] .ls-drawer-bottom {
+  width: 100%;
+  border-start-start-radius: var(--ls-radius-lg);
+  border-start-end-radius: var(--ls-radius-lg);
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
+}
+
+@media (max-width: 639px) {
+  [data-ui='v2'] .ls-drawer-end,
+  [data-ui='v2'] .ls-drawer-start {
+    width: 100%;
+    border-radius: 0;
+  }
+}
+
+/* ---- Menu, popover and option list (8.6) ------------------------------------------------------------ */
+[data-ui='v2'] .ls-popover,
+[data-ui='v2'] .ls-listbox {
+  border-color: var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-raised);
+}
+
+[data-ui='v2'] .ls-menu-item {
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-menu-item-disabled {
+  color: var(--ls-text-subtle);
+  opacity: 1;
+}
+
+[data-ui='v2'] .ls-menu-item-reason {
+  font-size: var(--ls-type-caption);
+  line-height: var(--ls-lh-caption);
+}
+
+[data-ui='v2'] .ls-option {
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-option[aria-disabled='true'] {
+  color: var(--ls-text-subtle);
+  opacity: 1;
+}
+
+/* ---- Toast (8.6) ---------------------------------------------------------------------------------- */
+/* A raised card (18 px, hairline) with the status icon in the status color and the words in ink; bottom center on a phone, above the
+   tab bar; bottom trailing from 640 px. */
+[data-ui='v2'] .ls-toast {
+  align-items: center;
+  padding: var(--ls-space-4);
+  border-color: var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+  color: var(--ls-text);
+  background: var(--ls-bg-raised);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-small);
+}
+
+[data-ui='v2'] .ls-toast-title {
+  font-weight: var(--ls-weight-label);
+}
+
+[data-ui='v2'] .ls-toast-icon {
+  margin-top: 0;
+}
+
+[data-ui='v2'] .ls-toast-success .ls-toast-icon {
+  color: var(--ls-success);
+}
+
+[data-ui='v2'] .ls-toast-info .ls-toast-icon {
+  color: var(--ls-info);
+}
+
+[data-ui='v2'] .ls-toast-warning .ls-toast-icon {
+  color: var(--ls-warning);
+}
+
+[data-ui='v2'] .ls-toast-danger .ls-toast-icon {
+  color: var(--ls-danger);
+}
+
+[data-ui='v2'] .ls-toast .ls-notice-close {
+  margin-block: calc(var(--ls-space-3) * -1);
+}
+
+/* ---- Pagination (8.8) ----------------------------------------------------------------------------- */
+/* The summary at the leading edge; prev / next icon buttons and the page-number pills (the current one accent, the rest neutral, hover
+   is rule 4). Below 768 only prev, "Page 2 / 7" and next. First and last are not shown. */
+[data-ui='v2'] .ls-pagination-summary {
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-page-btn {
+  padding: 0 var(--ls-space-3);
+  border: 0;
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-field);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-ui='v2'] .ls-page-btn:disabled {
+  color: var(--ls-text-subtle);
+  background: transparent;
+}
+
+[data-ui='v2'] .ls-page-current {
+  color: var(--ls-on-brand);
+  background: var(--ls-brand-fill);
+}
+
+[data-ui='v2'] .ls-page-edge,
+[data-ui='v2'] .ls-pagination-of {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  [data-ui='v2'] .ls-pagination-nav:has(.ls-pagination-of) :is(.ls-page-num, .ls-page-gap) {
+    display: none;
+  }
+
+  [data-ui='v2'] .ls-pagination-of {
+    display: inline-flex;
+    align-items: center;
+    padding-inline: var(--ls-space-2);
+    color: var(--ls-text-muted);
+    font-size: var(--ls-type-label);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ---- Data table (8.4) ------------------------------------------------------------------------------ */
+/* One single-border surface (18 px, hairline) on the page color; the header row on the alternate step, 14/500 muted; a hairline
+   between rows, no zebra; one row height (56); money and counts right-aligned, one line, tabular. Hover is the neutral row step. */
+[data-ui='v2'] .ls-table-wrap,
+[data-ui='v2'] .ls-table-state {
+  border-color: var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-page);
+}
+
+[data-ui='v2'] .ls-card .ls-table-wrap,
+[data-ui='v2'] .ls-card .ls-table-state {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+[data-ui='v2'] .ls-table {
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-heading);
+}
+
+@media (min-width: 640px) {
+  [data-ui='v2'] .ls-table th,
+  [data-ui='v2'] .ls-table td {
+    padding-inline: var(--ls-space-4);
+  }
+}
+
+/* On a phone the table is a stack of cards: the surface step is the card (no hairline too), the label is 14/500 muted, the value the body size. */
+@media (max-width: 639px) {
+  [data-ui='v2'] .ls-table tbody tr {
+    padding: var(--ls-space-4);
+    border: 0;
+  }
+
+  [data-ui='v2'] .ls-table td[data-label]::before {
+    font-size: var(--ls-type-label);
+    font-weight: var(--ls-weight-label);
+    line-height: var(--ls-lh-small);
+  }
+
+  [data-ui='v2'] .ls-table .ls-cell-title {
+    font-size: var(--ls-type-body);
+  }
+}
+
+[data-ui='v2'] .ls-table thead th {
+  color: var(--ls-text-muted);
+  background: var(--ls-bg-sunken);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-table .ls-cell-end {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---- Breadcrumbs (8.9) ----------------------------------------------------------------------------- */
+[data-ui='v2'] .ls-crumbs ol {
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-crumbs [aria-current='page'] {
+  font-weight: var(--ls-weight-label);
+}
+
+/* ---- Accordion (8.9) ------------------------------------------------------------------------------- */
+/* A button with a chevron, a hairline between rows. The row hovers with the solid accent (rule 4), so the text sits inside a
+   16 px inset that the panel shares, and the left edges line up. */
+[data-ui='v2'] .ls-accordion {
+  border-block-start: 1px solid var(--ls-border);
+}
+
+[data-ui='v2'] .ls-accordion-item {
+  border-block-end: 1px solid var(--ls-border);
+}
+
+[data-ui='v2'] .ls-accordion-heading {
+  margin: 0;
+  font: inherit;
+}
+
+[data-ui='v2'] .ls-accordion-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ls-space-4);
+  width: 100%;
+  min-height: calc(var(--ls-control-h) + var(--ls-space-2));
+  padding: var(--ls-space-2) var(--ls-space-4);
+  border: 0;
+  border-radius: var(--ls-radius-sm);
+  color: var(--ls-text);
+  background: transparent;
+  font: inherit;
+  font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-heading);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color var(--ls-dur-fast) var(--ls-ease-out),
+    color var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-accordion-trigger:hover {
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
+}
+
+[data-ui='v2'] .ls-accordion-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+[data-ui='v2'] .ls-accordion-trigger svg {
+  flex: none;
+  transition: transform var(--ls-dur-base) var(--ls-ease);
+}
+
+[data-ui='v2'] .ls-accordion-trigger[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+[data-ui='v2'] .ls-accordion-panel {
+  padding: var(--ls-space-1) var(--ls-space-4) var(--ls-space-4);
+  color: var(--ls-text-muted);
+  line-height: var(--ls-lh-body);
+}
+
+/* ---- Stepper and progress bar (8.9) ----------------------------------------------------------------- */
+/* The booking stepper is a sequence, so its labels keep their numbers; the bar segments are the 4 px pills of the progress bar. */
+[data-ui='v2'] .ls-steps li {
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-small);
+  font-weight: var(--ls-weight-label);
+}
+
+[data-ui='v2'] .ls-steps li::before {
+  background: var(--ls-bg-pressed);
+}
+
+[data-ui='v2'] .ls-steps li[data-done='true']::before,
+[data-ui='v2'] .ls-steps li[aria-current='step']::before {
+  background: var(--ls-brand-fill);
+}
+
+[data-ui='v2'] .ls-progress {
+  height: var(--ls-space-1);
+  background: var(--ls-bg-pressed);
+}
+
+/* ---- Quantity stepper (8.9) ------------------------------------------------------------------------- */
+/* Minus, the number and plus on one pill in the field color; the two buttons are 44 px circles that take the hover rule. */
+[data-ui='v2'] .ls-qty {
+  gap: 0;
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-field);
+}
+
+[data-ui='v2'] .ls-qty .ls-btn {
+  border-color: transparent;
+  color: var(--ls-text);
+  background: transparent;
+}
+
+[data-ui='v2'] .ls-qty .ls-btn:is(:disabled, [aria-disabled='true']) {
+  color: var(--ls-text-subtle);
+  background: transparent;
+}
+
+[data-ui='v2'] .ls-qty .ls-qty-input {
+  width: 3rem;
+  padding-inline: 0;
+  border-color: transparent;
+  border-radius: var(--ls-radius-sm);
+  background: transparent;
+  text-align: center;
+}

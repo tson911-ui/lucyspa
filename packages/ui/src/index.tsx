@@ -261,6 +261,8 @@ export type { FilterChip, ListToolbarLabels } from './list-toolbar';
 export { DescriptionList } from './description-list';
 export type { DescriptionItem } from './description-list';
 export { Tabs } from './tabs';
+export { Accordion } from './accordion';
+export type { AccordionItem } from './accordion';
 export type { TabItem } from './tabs';
 export { useUrlState } from './use-url-state';
 export type { UrlStateChange, UrlStateOptions } from './use-url-state';

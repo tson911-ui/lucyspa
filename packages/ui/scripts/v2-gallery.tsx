@@ -12,28 +12,38 @@ import { fileURLToPath } from 'node:url';
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
+  Accordion,
   Badge,
+  Breadcrumbs,
   Button,
   ButtonLink,
   Card,
   CardHeader,
   Checkbox,
+  ConfirmDialog,
+  DataTable,
+  Dialog,
+  Drawer,
   EmptyState,
   ErrorState,
   Field,
   FilterChips,
+  Icon,
   IconButton,
   ImageFrame,
   LoadingState,
   Notice,
   NumberInput,
+  Pagination,
   PasswordInput,
+  ProgressBar,
   RadioGroup,
   SearchInput,
   Select,
   SegmentedControl,
   Skeleton,
   Spinner,
+  Steps,
   Switch,
   Tabs,
   TextInput,
@@ -320,14 +330,306 @@ function Surfaces({ inCard }: { inCard: boolean }) {
   );
 }
 
+function Stage({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div>
+      <p className="g-caption">{title}</p>
+      <div className="g-stage">{children}</div>
+    </div>
+  );
+}
+
 function Overlays() {
-  return <div className="g-stack">Overlays are added with C6.</div>;
+  return (
+    <div className="g-stack">
+      <Stage title="Dialog (md): task title, form, Cancel then Save">
+        <Dialog
+          title="Thông tin liên hệ"
+          description="Chúng tôi dùng số này để nhắc lịch hẹn."
+          closeLabel="Đóng"
+          onClose={noop}
+          footer={
+            <>
+              <Button variant="neutral">Hủy</Button>
+              <Button variant="primary">Lưu thay đổi</Button>
+            </>
+          }
+        >
+          <Field label="Họ và tên" required requiredLabel="bắt buộc">
+            {(control) => <TextInput {...control} defaultValue="Nguyễn Thị Lan" />}
+          </Field>
+          <Field label="Số điện thoại" error="Số điện thoại cần 10 chữ số.">
+            {(control) => <TextInput {...control} defaultValue="09012" />}
+          </Field>
+        </Dialog>
+      </Stage>
+      <Stage title="Confirm dialog (alertdialog): focus starts on Cancel">
+        <ConfirmDialog
+          title="Hủy lịch hẹn?"
+          description="Lịch hẹn lúc 14:00 ngày 20/10 sẽ được hủy. Bạn có thể đặt lại sau."
+          facts={[
+            { label: 'Dịch vụ', value: 'Massage thư giãn toàn thân' },
+            { label: 'Giờ hẹn', value: '14:00, 20/10/2026' },
+          ]}
+          confirmLabel="Hủy lịch hẹn"
+          cancelLabel="Giữ lịch hẹn"
+          describeError={() => ({ message: 'Không hủy được lịch hẹn.' })}
+          onConfirm={() => Promise.resolve()}
+          onCancel={noop}
+        />
+      </Stage>
+      <Stage title="Drawer from the trailing edge (512)">
+        <Drawer
+          open
+          title="Bộ lọc dịch vụ"
+          closeLabel="Đóng"
+          onClose={noop}
+          footer={
+            <>
+              <Button variant="neutral">Xóa lọc</Button>
+              <Button variant="primary">Áp dụng</Button>
+            </>
+          }
+        >
+          <Field label="Nhóm dịch vụ">
+            {(control) => (
+              <Select
+                {...control}
+                placeholder="Tất cả"
+                options={[
+                  { value: 'a', label: 'Massage' },
+                  { value: 'b', label: 'Chăm sóc da' },
+                ]}
+              />
+            )}
+          </Field>
+          <Checkbox label="Chỉ dịch vụ đang giảm giá" />
+        </Drawer>
+      </Stage>
+      <Stage title="Bottom sheet">
+        <Drawer
+          open
+          side="bottom"
+          title="Sắp xếp"
+          closeLabel="Đóng"
+          onClose={noop}
+          footer={<Button variant="primary">Xong</Button>}
+        >
+          <RadioGroup
+            legend="Sắp xếp theo"
+            name="sort-sheet"
+            value="price"
+            onValueChange={noop}
+            options={[
+              { value: 'price', label: 'Giá thấp đến cao' },
+              { value: 'new', label: 'Mới nhất' },
+            ]}
+          />
+        </Drawer>
+      </Stage>
+      <Stage title="Menu and popover">
+        <div className="g-pop">
+          <div className="ls-popover" style={{ position: 'static' }} role="menu">
+            <div className="ls-menu-panel">
+              <button type="button" role="menuitem" className="ls-menu-item">
+                <Icon name="edit" />
+                <span className="ls-menu-item-text">Đổi lịch hẹn</span>
+              </button>
+              <button type="button" role="menuitem" className="ls-menu-item">
+                <Icon name="user" />
+                <span className="ls-menu-item-text">Hồ sơ của tôi</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="ls-menu-item ls-menu-item-disabled"
+                aria-disabled="true"
+              >
+                <Icon name="trash" />
+                <span className="ls-menu-item-text">
+                  Xóa tài khoản
+                  <span className="ls-menu-item-reason">Liên hệ chi nhánh để xóa</span>
+                </span>
+              </button>
+              <div className="ls-menu-divider" role="separator" />
+              <button type="button" role="menuitem" className="ls-menu-item ls-menu-item-danger">
+                <Icon name="close" />
+                <span className="ls-menu-item-text">Đăng xuất</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Stage>
+      <Stage title="Toasts (success, info, warning, danger)">
+        <div className="ls-toast-region" role="region" aria-label="Thông báo">
+          {(
+            [
+              ['success', 'check-circle', 'Đã lưu', 'Thông tin đã được cập nhật.'],
+              ['info', 'info', 'Lịch hẹn mới', 'Bạn có lịch hẹn lúc 14:00 ngày 20/10.'],
+              ['warning', 'alert-triangle', 'Sắp hết giờ', 'Lịch hẹn được giữ thêm 2 phút.'],
+              ['danger', 'x-circle', 'Không lưu được', 'Kiểm tra kết nối rồi thử lại.'],
+            ] as const
+          ).map(([tone, icon, title, message]) => (
+            <div key={tone} className={`ls-toast ls-toast-${tone}`} role="status">
+              <Icon name={icon} className="ls-toast-icon" />
+              <div className="ls-toast-body">
+                <p className="ls-toast-title">{title}</p>
+                <p>{message}</p>
+              </div>
+              <button type="button" className="ls-notice-close" aria-label="Đóng">
+                <Icon name="close" size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </Stage>
+    </div>
+  );
+}
+
+const pagerLabels = {
+  nav: 'Các trang',
+  first: 'Trang đầu',
+  previous: 'Trang trước',
+  next: 'Trang sau',
+  last: 'Trang cuối',
+  pageNumber: 'Trang {page}',
+  summary: 'Hiển thị {from}–{to} trong {total}',
+  pageSize: 'Số dòng mỗi trang',
+  pageSizeOption: '{size} dòng',
+  pageOf: 'Trang {page} / {pages}',
+};
+
+const invoices = [
+  {
+    id: 'HD-2041',
+    name: 'Massage thư giãn toàn thân',
+    date: '20/10/2026',
+    status: 'paid',
+    amount: '1.200.000 ₫',
+  },
+  {
+    id: 'HD-2040',
+    name: 'Chăm sóc da mặt',
+    date: '18/10/2026',
+    status: 'pending',
+    amount: '850.000 ₫',
+  },
+  {
+    id: 'HD-2039',
+    name: 'Gói 5 buổi gội đầu dưỡng sinh',
+    date: '12/10/2026',
+    status: 'paid',
+    amount: '2.450.000 ₫',
+  },
+  {
+    id: 'HD-2038',
+    name: 'Tẩy da chết toàn thân',
+    date: '05/10/2026',
+    status: 'cancelled',
+    amount: '600.000 ₫',
+  },
+];
+
+function DataParts({ inCard }: { inCard: boolean }) {
+  return (
+    <div className="g-stack">
+      <Breadcrumbs
+        label="Đường dẫn"
+        items={[
+          { label: 'Tài khoản', href: '#' },
+          { label: 'Hóa đơn', href: '#' },
+          { label: 'HD-2041' },
+        ]}
+      />
+      <DataTable
+        caption="Hóa đơn của tôi"
+        mode="server"
+        rows={inCard ? invoices.slice(0, 2) : invoices}
+        rowKey={(row) => row.id}
+        columns={[
+          { key: 'name', header: 'Dịch vụ', mobileTitle: true, cell: (row) => row.name },
+          { key: 'date', header: 'Ngày', cell: (row) => row.date },
+          {
+            key: 'status',
+            header: 'Trạng thái',
+            cell: (row) =>
+              row.status === 'paid' ? (
+                <Badge tone="success" icon="check-circle">
+                  Đã thanh toán
+                </Badge>
+              ) : row.status === 'pending' ? (
+                <Badge tone="warning" icon="alert-triangle">
+                  Chờ thanh toán
+                </Badge>
+              ) : (
+                <Badge tone="danger" icon="x-circle">
+                  Đã hủy
+                </Badge>
+              ),
+          },
+          { key: 'amount', header: 'Số tiền', numeric: true, cell: (row) => row.amount },
+        ]}
+        paging={{ page: 2, pageSize: 4, total: 132, onPageChange: noop, labels: pagerLabels }}
+      />
+      <Pagination
+        page={7}
+        pageSize={20}
+        total={310}
+        onPageChange={noop}
+        onPageSizeChange={noop}
+        labels={pagerLabels}
+      />
+      <Accordion
+        defaultOpen={['b']}
+        items={[
+          {
+            id: 'a',
+            title: 'Tôi có thể đổi lịch hẹn không?',
+            content: <p>Có, đổi trước giờ hẹn 2 tiếng.</p>,
+          },
+          {
+            id: 'b',
+            title: 'Spa có nhận thanh toán chuyển khoản không?',
+            content: (
+              <p>
+                Có. Bạn chọn chuyển khoản ở bước thanh toán, hệ thống xác nhận ngay khi nhận tiền.
+              </p>
+            ),
+          },
+          {
+            id: 'c',
+            title: 'Trẻ em có dùng dịch vụ được không?',
+            content: <p>Chỉ với một số dịch vụ.</p>,
+          },
+        ]}
+      />
+      <Steps
+        label="Các bước đặt lịch"
+        current="time"
+        steps={[
+          { key: 'service', label: 'Chọn dịch vụ', shortLabel: 'Dịch vụ' },
+          { key: 'time', label: 'Chọn giờ', shortLabel: 'Giờ' },
+          { key: 'info', label: 'Thông tin', shortLabel: 'Thông tin' },
+          { key: 'confirm', label: 'Xác nhận', shortLabel: 'Xác nhận' },
+        ]}
+      />
+      <ProgressBar value={60} label="Tiến độ" />
+      <ProgressBar label="Đang xử lý" />
+      <div className="ls-qty" role="group" aria-label="Số lượng">
+        <IconButton icon="minus" variant="secondary" label="Giảm" disabled />
+        <NumberInput className="ls-qty-input" aria-label="Số lượng" defaultValue={1} />
+        <IconButton icon="plus" variant="secondary" label="Tăng" />
+      </div>
+    </div>
+  );
 }
 
 const SECTIONS: Record<string, (props: { inCard: boolean }) => ReactNode> = {
   controls: Controls,
   surfaces: Surfaces,
   overlays: Overlays,
+  data: DataParts,
 };
 const Specimen = SECTIONS[section] ?? Controls;
 
@@ -393,10 +695,12 @@ ${sheetLinks}
   .g-title { margin: 0 0 16px; font-size: 14px; font-weight: 600; color: var(--ls-text-muted); }
   .g-stack { display: grid; gap: 24px; }
   .g-form { display: grid; gap: 24px; }
+  .g-caption { margin: 0 0 8px; font-size: 12px; color: var(--ls-text-muted); }
+  .g-stage { position: relative; height: 640px; overflow: hidden; transform: translateZ(0); border: 1px dashed var(--ls-border); }
+  .g-pop { padding: 24px; }
   .g-thumb { width: 160px; }
   .g-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
   .g-dialog { position: static; transform: none; margin: 0; }
-  .g-stage { position: relative; min-height: 620px; transform: translateZ(0); overflow: hidden; }
 </style>
 </head>
 <body>

@@ -25,6 +25,11 @@ export interface PaginationLabels {
   pageNumber: string;
   /** With `{from}`, `{to}` and `{total}`, e.g. "Showing {from}-{to} of {total}". */
   summary: string;
+  /**
+   * With `{page}` and `{pages}`, e.g. "Page {page} / {pages}". The v2 pager shows it on a phone in place of the numbered pages
+   * (DESIGN.md 8.8); without it the numbers stay.
+   */
+  pageOf?: string | undefined;
   /** Accessible name of the page-size select. */
   pageSize: string;
   /** With `{size}`, e.g. "{size} per page". */
@@ -82,7 +87,7 @@ export function Pagination({
         <nav className="ls-pagination-nav" aria-label={labels.nav}>
           <button
             type="button"
-            className="ls-page-btn"
+            className="ls-page-btn ls-page-edge"
             aria-label={labels.first}
             disabled={state.previousDisabled}
             onClick={() => onPageChange(1)}
@@ -98,6 +103,11 @@ export function Pagination({
           >
             <Icon name="chevron-left" />
           </button>
+          {labels.pageOf ? (
+            <span className="ls-pagination-of">
+              {fillTemplate(labels.pageOf, { page: current, pages })}
+            </span>
+          ) : null}
           {state.items.map((item, index) =>
             item === 'gap' ? (
               <span key={`gap-${index}`} className="ls-page-gap" aria-hidden="true">
@@ -107,7 +117,7 @@ export function Pagination({
               <button
                 key={item}
                 type="button"
-                className={cx('ls-page-btn', item === current && 'ls-page-current')}
+                className={cx('ls-page-btn ls-page-num', item === current && 'ls-page-current')}
                 aria-current={item === current ? 'page' : undefined}
                 aria-label={fillTemplate(labels.pageNumber, { page: item })}
                 onClick={() => onPageChange(item)}
@@ -127,7 +137,7 @@ export function Pagination({
           </button>
           <button
             type="button"
-            className="ls-page-btn"
+            className="ls-page-btn ls-page-edge"
             aria-label={labels.last}
             disabled={state.nextDisabled}
             onClick={() => onPageChange(pages)}

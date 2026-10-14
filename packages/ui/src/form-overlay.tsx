@@ -119,7 +119,7 @@ function useFormOverlay({
     </form>
   );
 
-  return { formId, initialFocus, requestClose, guard, form };
+  return { formId, initialFocus, requestClose, guard, asking, form };
 }
 
 function FooterButtons({
@@ -137,7 +137,7 @@ function FooterButtons({
 }) {
   return (
     <>
-      <Button variant="secondary" onClick={onCancel} disabled={busy}>
+      <Button variant="neutral" onClick={onCancel} disabled={busy}>
         {labels.cancel}
       </Button>
       <Button type="submit" form={formId} variant="primary" loading={busy} disabled={disabled}>
@@ -162,7 +162,7 @@ export function FormDialog({
   labels,
   children,
 }: FormOverlayProps & { description?: string | undefined; size?: DialogSize | undefined }) {
-  const { formId, initialFocus, requestClose, guard, form } = useFormOverlay({
+  const { formId, initialFocus, requestClose, guard, asking, form } = useFormOverlay({
     dirty,
     busy,
     error,
@@ -178,6 +178,7 @@ export function FormDialog({
         description={description}
         size={size}
         busy={busy}
+        suspended={asking}
         closeLabel={labels.close}
         initialFocus={initialFocus}
         onClose={requestClose}
@@ -213,7 +214,7 @@ export function FormDrawer({
   children,
 }: FormOverlayProps & { className?: string | undefined }) {
   const phone = useMediaQuery(PHONE_QUERY);
-  const { formId, initialFocus, requestClose, guard, form } = useFormOverlay({
+  const { formId, initialFocus, requestClose, guard, asking, form } = useFormOverlay({
     dirty,
     busy,
     error,
@@ -228,6 +229,7 @@ export function FormDrawer({
         title={title}
         side={phone ? 'bottom' : 'end'}
         busy={busy}
+        suspended={asking}
         closeLabel={labels.close}
         initialFocus={initialFocus}
         onClose={requestClose}

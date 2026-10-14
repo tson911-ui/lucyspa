@@ -120,7 +120,7 @@ export function ConfirmDialog({
         <>
           <Button
             ref={cancelRef}
-            variant="secondary"
+            variant="neutral"
             onClick={() => controller.cancel()}
             disabled={state.pending}
           >
