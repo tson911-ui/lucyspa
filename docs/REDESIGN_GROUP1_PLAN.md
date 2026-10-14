@@ -239,6 +239,20 @@ Items 3, 4 and 5 are Step C11b below. Answers 1 and 2 close the matching "pendin
   As built: hero sequence in CSS (transform only, nothing hidden), `data-ls-fx` from the `ls-fx` cookie, `SharedPhoto`, `useStepSlide`, `CountUp` (`Stat countUp`). G6 was run
   in a real browser on 22 pages in full, off and reduced (`.local/g7/motion-check.mjs`). History Back does not morph the photo back (it cross-fades).
 
+### Owner decisions on the session 7 report (2026-10-14)
+
+1. The "← Quay lại" link returns to the previous page (browser history): accepted.
+2. The error page's primary action is "Tải lại": accepted.
+3. Customer profile edit is approved: a customer self-service API and an edit form on `/account/profile` (name, email, birthday; phone read only;
+   birthday editable by the customer only while empty, then staff only). See session 7b.
+4. Info pages are approved as a managed website-admin section ("Trang thông tin"), with the footer policy column, legal line and a contact map. See session 7b.
+
+### Session 7b (between 7 and 8)
+
+- **Item 0:** pnpm shim block (NVM4306) investigated and cleared, see the session 7b report.
+- **Item 2:** customer profile edit. Status: todo.
+- **Item 3:** info pages (admin editor, public rendering, footer, contact). Status: todo.
+
 ### Session 8
 
 - **C18: closing gate (L).** Status: todo.
