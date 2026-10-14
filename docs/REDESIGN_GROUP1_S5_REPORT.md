@@ -1,6 +1,6 @@
 # Redesign group 1, session 5 report (C11b, C12, C13). Local only: not pushed, not deployed.
 
-Commits: C11b `@C11B@`, C12 `@C12@`, C13 `@C13@`. Owner decisions on the session 4 report are in the plan file (items 1 to 5).
+Commits: C11b `46fe6bf`, C12 `9ae12ea`, C13 `8308b67`. Owner decisions on the session 4 report are in the plan file (items 1 to 5).
 **Migration (new): `20261214000000_redesign_service_content_photos`**: additive and nullable only (see below). Group 1 is therefore no longer a web-only reload:
 the deploy guide (C19) must run the migration, restart the API, then reload the web.
 
@@ -27,7 +27,7 @@ the deploy guide (C19) must run the migration, restart the API, then reload the 
 ## Checks (all run)
 
 - API: 412 unit/HTTP tests pass; integration (clean scratch DB built from every migration): service catalog, product catalog, public products, media and shop info suites pass (round trip, audit, alt rule, RESTRICT, public serving).
-  `ui` 559, `web` 1100+ pass; typecheck, eslint, `pnpm format:check` clean. DOM audit vs the C1 baseline: no count rises (the 3 first rises were fixed). `uxui-tabbar-check` and `uxui-touch-check` pass (one login keyboard probe flaked once, as in sessions 3 and 4).
+  `ui` 559 and `web` 1100 pass (ratchet unchanged); typecheck, eslint, `pnpm format:check` clean. DOM audit vs the C1 baseline: no count rises (the 3 first rises were fixed). `uxui-tabbar-check` and `uxui-touch-check` pass (one login keyboard probe flaked once, as in sessions 3 and 4).
 - End to end on the scratch stack (browser): home row loads after paint; service bands show and hide; category chips; cart, checkout and a real order placement reached the PayOS link; order page timeline.
 
 ## UX gate (`.local/uxui-screens/group1-session5/`, 45 sheets, each opened)

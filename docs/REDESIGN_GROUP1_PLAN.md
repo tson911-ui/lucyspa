@@ -163,15 +163,46 @@ Status values: `todo` / `done` (with commit hash).
   that shows only while the hero and band buttons are out of view and lifts the contact button. NOT built (pending the Owner): the FAQ accordion,
   "what is included" and steps, because the service data has no such text and writing it would invent policy; the `Accordion` stays unused.
 
+### Owner decisions on the session 4 report (2026-10-14)
+
+1. The slider moved into the split intro's photo slot and the hero uses one hero photo: accepted.
+2. The product row stays "Sản phẩm nổi bật" and uses the Nổi bật flag. No "Bán chạy" label for now; a real sales-based "Bán chạy" label comes later.
+3. Service detail content, option A: optional CMS fields per service, "what's included" (list), "steps" (ordered list) and "FAQ" (question/answer pairs),
+   editable in the existing admin service form, VI/EN like the other service text. An empty field hides its band.
+4. Photo upload for each service, each service group and each cosmetics category, through the existing media library and upload flow, in the existing admin
+   forms. Customer pages show the photo, or the flat placeholder when empty.
+5. The home product row loads after first paint (below the fold), to remove the +12.4 KB from the first load.
+
+Items 3, 4 and 5 are Step C11b below. Answers 1 and 2 close the matching "pending" notes in the C10 entry.
+
 ### Session 5
 
-- **C12: products list and detail (L).** Status: todo.
-  Toolbar, grid and pagination, then the gallery, purchase block, sale price and countdown, and related row.
+- **C11b: service content, photos, lazy product row (M).** Status: done (46fe6bf).
+  Items 3, 4 and 5 above. Additive and nullable database fields with one migration (no change to existing rows or functions); the admin forms keep
+  their current look (the admin redesign is group 3); the existing service-edit permissions apply. Tests added. **The migration joins the group 1 deploy:
+  group 1 is then no longer a web-only reload, it needs the migration, an API restart and a web reload (C19 writes the guide).**
+  As built (details: `docs/REDESIGN_GROUP1_S5_REPORT.md`): migration `20261214000000_redesign_service_content_photos` (services: included / steps / FAQ per
+  language as JSONB, NULL = none, and `photo_media_id`; service_categories and product_categories: `photo_media_id`; all RESTRICT media keys, each with an
+  index). Service update takes the content and photo, group update and the cosmetics category edit take `photoMediaId`; same permissions; limits 12 items, 300
+  characters, 10 FAQ pairs; media usage list, delete protection and public serving cover the new keys; the public catalog sends `image` and, on the service
+  detail only, the content. Admin: the existing service drawer and the group / category dialogs got a Photo section and the content fields. The home product row
+  is a lazy chunk (skeleton, loads within 600 px of the screen or 2 s after the first paint); home first-load 345.4 KB gzip. The product card is shared
+  (`ProductCard`) by the home row, the list and the related row.
 
-- **C13: cart, checkout, orders (L).** Status: todo.
+- **C12: products list and detail (L).** Status: done (9ae12ea).
+  Toolbar, grid and pagination, then the gallery, purchase block, sale price and countdown, and related row.
+  As built: title band, list band with search, sort, chips (from 640 px; a phone keeps the filter sheet) and a 2 / 3 / 4 column grid, pager, commitment band; the
+  product page is a split hero (gallery with arrows), an about band (description, usage / ingredients accordion, where to buy), a commitment band and a related
+  row. The purchase block, sale price and countdown are unchanged. The old direction C product rules stay in `site.css` (overridden under `[data-ui='v2']`).
+
+- **C13: cart, checkout, orders (L).** Status: done (8308b67).
   Rows, summary card, radio-card payment methods, order list and detail. The PayOS states are unchanged.
   Verify: G7, and the money flow still works against the scratch DB.
-  Carry-over (Owner, session 2 review): the checkout coupon fields shrink to a sliver at 130 % text; fix here.
+  Carry-over (Owner, session 2 review): the checkout coupon fields shrink to a sliver at 130 % text; fix here. Done: the rows wrap, the field keeps at least 10 rem.
+  As built: `ShopScreen` (title band + content band) for the cart and checkout; one 720 px checkout column with PayOS as the one (selected) radio card; the order
+  page has the record left, a summary card (totals, Pay / Cancel) and the delivery card right, and a timeline of the real moments (placed, paid, shipped,
+  delivered). The orders list is the kit table already and the member frame around it (no title band) is C15. Money flow checked on the scratch stack: cart,
+  checkout, order placed, PayOS link reached.
 
 ### Session 6
 
@@ -197,8 +228,11 @@ Status values: `todo` / `done` (with commit hash).
   A sweep of all states and long text, plus a keyboard/focus/label audit. The DOM audit compared with the C1 baseline, then ratchets
   lowered and dead direction C rules deleted from `site.css`/`customer.css`. A copy review (no "khám"), season-layer and toggle
   regression, and a performance check. Full `pnpm test` and `format:check`, then the before/after pairs for Owner approval (G10).
+  Also here: delete the direction C rules that C10 to C13 overrode: the `ls-prod-*`, `ls-sale*`, `ls-qty*`, `ls-shop-*`, `ls-order-*` blocks of `site.css`
+  (about lines 2300 to 4770) and the home and service leftovers.
   Carry-overs (Owner, session 1 review): the 200 % text check and the full 42-page "after" set with the full DOM audit are done here.
   Also accepted by the Owner: `site-fonts.ts` unchanged (Be Vietnam Pro through the v2 tokens on the customer frame only).
 
 - **C19: deploy guide (S).** Status: todo.
   A single `docs/DEPLOY_REDESIGN_GROUP1.md` for the Owner to run. Not a deploy; group 1 ships once, after the Owner approves C18.
+  Group 1 carries the C11b migration (see C11b), so the guide covers: migration, API restart, web reload.
