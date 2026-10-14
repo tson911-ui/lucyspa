@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import {
   homeEnglishApproved,
+  publicPageTargets,
   publicProductTargets,
   publicServiceTargets,
   requestOrigin,
@@ -12,12 +13,13 @@ import { sitemapEntries } from '../lib/seo-core';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const origin = await requestOrigin();
   if (!origin) return [];
-  const [services, products, homeEnglish] = await Promise.all([
+  const [services, products, homeEnglish, pages] = await Promise.all([
     publicServiceTargets(),
     publicProductTargets(),
     homeEnglishApproved(),
+    publicPageTargets(),
   ]);
-  return sitemapEntries(origin, services, products, homeEnglish).map((entry) => ({
+  return sitemapEntries(origin, services, products, homeEnglish, pages).map((entry) => ({
     url: entry.url,
     alternates: { languages: entry.alternates },
   }));

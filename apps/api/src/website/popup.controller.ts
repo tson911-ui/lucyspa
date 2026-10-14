@@ -1,4 +1,6 @@
 import type {
+  PublicPageIndexResponse,
+  PublicPageResponse,
   PublicPopupResponse,
   PublicCampaignsResponse,
   PublicProductCodesResponse,
@@ -255,6 +257,37 @@ export class PublicWebsiteController {
     response.setHeader('cache-control', 'public, max-age=60');
     response.setHeader('vary', 'Accept-Encoding');
     return site;
+  }
+
+  @Get('pages')
+  @ApiOkResponse({
+    description:
+      'The published information pages (address and last change) for the sitemap. Cached for 60 seconds.',
+  })
+  async pageIndex(
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PublicPageIndexResponse> {
+    const index = await this.website.pageIndex();
+    response.setHeader('cache-control', 'public, max-age=60');
+    response.setHeader('vary', 'Accept-Encoding');
+    return index;
+  }
+
+  @Get('pages/:slug')
+  @ApiOkResponse({
+    description:
+      'One published information page in the visitor language (`locale=vi|en`; without English text the Vietnamese text is served and `language` says so). A draft or unknown address is 404. Cached for 60 seconds.',
+  })
+  async page(
+    @Param('slug') slug: string,
+    @Query('locale') locale: string | undefined,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PublicPageResponse> {
+    if (locale !== 'vi' && locale !== 'en') throw new AuthError('VALIDATION_FAILED', 'locale');
+    const page = await this.website.page(locale, slug);
+    response.setHeader('cache-control', 'public, max-age=60');
+    response.setHeader('vary', 'Accept-Encoding');
+    return page;
   }
 
   @Get('services')

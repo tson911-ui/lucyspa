@@ -41,6 +41,8 @@ export function InfoPage({
   lead,
   back,
   tocLabel,
+  intro,
+  language,
   sections,
 }: {
   title: string;
@@ -48,6 +50,10 @@ export function InfoPage({
   back?: ReactNode;
   /** The accessible name of the table of contents ("On this page"). */
   tocLabel: string;
+  /** What comes before the first section (no heading, no table-of-contents entry). */
+  intro?: ReactNode;
+  /** The language of the text when it is not the page's own (an English page showing Vietnamese text), for `lang`. */
+  language?: string | undefined;
   sections: readonly InfoSection[];
 }) {
   const toc = sections.length >= 2;
@@ -56,7 +62,8 @@ export function InfoPage({
       <InfoTitle title={title} lead={lead} back={back} />
       <Band tone="page" className="ls-band--base">
         <div className="ls-info-layout" data-toc={toc ? 'true' : undefined}>
-          <article className="ls-info-article">
+          <article className="ls-info-article" lang={language}>
+            {intro ? <div className="ls-info-intro">{intro}</div> : null}
             {sections.map((section) => (
               <section
                 key={section.id}

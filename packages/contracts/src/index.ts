@@ -5,6 +5,7 @@ import type {
   NotificationParams,
   NotificationType,
 } from './notification-registry.js';
+import type { PublicPageLink } from './website-page.js';
 import type { InvoiceBirthdayGift } from './birthday.js';
 import type {
   InvoiceComboLineResponse,
@@ -2292,6 +2293,8 @@ export * from './reward.js';
 export * from './customer-loyalty.js';
 // Owner request 2026-10-06: the shop's Facebook / Zalo contact links (validation and the links the public site opens).
 export * from './contact-links.js';
+
+export * from './website-page.js';
 // Phase 6 P6-8: product lines on invoices (seller, reservation, product-only invoices).
 export * from './product-sale.js';
 export * from './product-return.js';
@@ -3650,6 +3653,11 @@ export interface PublicSiteResponse {
   englishApproved: boolean;
   /** The chat entry is shown (AI master switch and the chat switch are both on); the widget still falls back to the callback form. */
   chatEnabled: boolean;
+  /**
+   * The published policy, terms and privacy pages for the footer (the policy column and the legal line), in the visitor language.
+   * Empty when none is published: the footer then shows neither. Older answers without it read as empty.
+   */
+  pages: PublicPageLink[];
 }
 
 export interface WebsiteShopInfoInput {

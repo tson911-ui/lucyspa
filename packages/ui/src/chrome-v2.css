@@ -215,6 +215,57 @@
   line-height: var(--ls-lh-caption);
 }
 
+/* A third column (the Owner's published policy pages) takes the room the brand block gave: the brand then spans three of the twelve. */
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-site-footer-grid[data-columns='3'] > .ls-site-footer-brand {
+    grid-column: span 3;
+  }
+}
+
+/* The base line (session 7b): the rights text, and under it (a phone) or beside it (from 768 px) the legal line, the links of the terms
+   and privacy pages. The line is not drawn when no such page is published. */
+[data-ui='v2'] .ls-site-footer-base {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ls-space-2);
+}
+
+@media (min-width: 768px) {
+  [data-ui='v2'] .ls-site-footer-base {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}
+
+[data-ui='v2'] .ls-site-footer-legal ul {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-ui='v2'] .ls-site-footer-legal li + li::before {
+  content: '\00b7';
+  padding-inline: var(--ls-space-3);
+}
+
+[data-ui='v2'] .ls-site-footer-legal a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-site-footer-legal a:hover {
+    text-decoration: underline;
+  }
+}
+
 /* ---- Phone tab bar (8.5) ------------------------------------------------------------------------------ */
 /* The app shell is unchanged (in flow, opaque, the safe area as padding inside it). The bar is the page color under a hairline; tabs are 12 / 500
    with the label under the icon, the current one is accent. The booking tab is a flat accent disc raised over the hairline, no shadow; on the

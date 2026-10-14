@@ -1,4 +1,4 @@
-import type { PublicPopupResponse } from '@lucy-spa/contracts';
+import { isWebsiteLink, type PublicPopupResponse } from '@lucy-spa/contracts';
 import type { PromoContent } from '@lucy-spa/ui';
 import type { Locale } from '../i18n/locales';
 
@@ -9,14 +9,9 @@ import type { Locale } from '../i18n/locales';
 
 export const POPUP_LIMITS = Object.freeze({ title: 120, body: 300, ctaLabel: 40, ctaUrl: 500 });
 
-/** The same link rule as the server and the database: an internal locale path or an https URL. */
+/** The same link rule as the server and the database (the one in the contracts): an internal locale path or an https URL. */
 export function validPopupUrl(value: string): boolean {
-  if ([...value].length > POPUP_LIMITS.ctaUrl) return false;
-  if (/^\/(vi|en|\{locale\})(\/[^\s<>"'\\]*)?$/.test(value)) return true;
-  if (!/^https:\/\/[^\s<>"'\\/]/.test(value) || /[\s<>"'\\]/.test(value)) return false;
-  if (!URL.canParse(value)) return false;
-  const url = new URL(value);
-  return url.protocol === 'https:' && url.username === '' && url.password === '';
+  return isWebsiteLink(value, POPUP_LIMITS.ctaUrl);
 }
 
 /** The public popup request: anonymous, no cookie, cached for a minute by the API. */

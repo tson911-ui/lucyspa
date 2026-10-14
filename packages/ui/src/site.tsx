@@ -76,7 +76,7 @@ export function SiteFooter({
 }) {
   return (
     <footer className="ls-site-footer">
-      <div className="ls-container ls-site-footer-grid">
+      <div className="ls-container ls-site-footer-grid" data-columns={columns.length}>
         <div className="ls-site-footer-brand">
           {brand}
           {blocks.length > 0 ? (

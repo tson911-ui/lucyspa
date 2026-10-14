@@ -257,7 +257,10 @@ Items 3, 4 and 5 are Step C11b below. Answers 1 and 2 close the matching "pendin
   takes an `allowCustomer` option that only the email change sets (password change stays staff only). The birthday is **never empty** (registration
   requires it, the column is NOT NULL, no other path creates a customer), so the "editable while empty" rule cannot occur; it is shown read only. No staff
   screen changes a customer's birthday yet. Both points are pending Owner decision.
-- **Item 3:** info pages (admin editor, public rendering, footer, contact). Status: todo.
+- **Item 3:** info pages (admin editor, public rendering, footer, contact). Status: done (migration `20261215000001_website_info_pages`).
+  Pages live at `/{locale}/{slug}` (catch-all, reserved-slug list); the policy column holds POLICY pages, the legal line TERMS then PRIVACY;
+  `/contact` has a keyless Google embed. See `docs/REDESIGN_GROUP1_S7B_REPORT.md`. Pending Owner: the staff-only email guard relaxed for customers,
+  the birthday rule (never empty), no staff screen for a customer's birthday.
 
 ### Session 8
 

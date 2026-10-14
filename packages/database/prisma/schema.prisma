@@ -492,6 +492,8 @@ model User {
   updatedWebsiteSlides           WebsiteSlide[]                   @relation("WebsiteSlideUpdater")
   createdWebsiteSeasons          WebsiteSeason[]                  @relation("WebsiteSeasonCreator")
   updatedWebsiteSeasons          WebsiteSeason[]                  @relation("WebsiteSeasonUpdater")
+  createdWebsitePages            WebsitePage[]                    @relation("WebsitePageCreator")
+  updatedWebsitePages            WebsitePage[]                    @relation("WebsitePageUpdater")
   checkedInBookings              Booking[]                        @relation("BookingCheckedInBy")
   cancelledBookings              Booking[]                        @relation("BookingCancelledBy")
   noShowBookings                 Booking[]                        @relation("BookingNoShowBy")
@@ -2513,6 +2515,42 @@ model WebsiteShopInfo {
   @@index([heroMediaId], map: "website_shop_info_media_idx")
   @@index([hoursBranchId], map: "website_shop_info_branch_idx")
   @@map("website_shop_info")
+}
+
+// Session 7b: information pages the Owner writes (about, policies, terms, privacy). `bodyVi`/`bodyEn` are the page text in the
+// small markup of `packages/contracts/src/website-page.ts` (validated on every save, drawn as elements, never as HTML). Vietnamese is
+// required, English optional (the English page then shows the Vietnamese text). The footer legal line names one published
+// TERMS and one published PRIVACY page: the partial unique index `website_pages_published_legal_key` (SQL only) keeps it so.
+enum WebsitePageRole {
+  INFO
+  POLICY
+  TERMS
+  PRIVACY
+}
+
+model WebsitePage {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug             String          @unique(map: "website_pages_slug_key")
+  role             WebsitePageRole @default(INFO)
+  titleVi          String          @map("title_vi")
+  titleEn          String?         @map("title_en")
+  bodyVi           String          @map("body_vi")
+  bodyEn           String?         @map("body_en")
+  seoTitleVi       String?         @map("seo_title_vi")
+  seoTitleEn       String?         @map("seo_title_en")
+  seoDescriptionVi String?         @map("seo_description_vi")
+  seoDescriptionEn String?         @map("seo_description_en")
+  isPublished      Boolean         @default(false) @map("is_published")
+  rowVersion       Int             @default(1) @map("row_version")
+  createdByUserId  String          @map("created_by_user_id") @db.Uuid
+  createdBy        User            @relation("WebsitePageCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  updatedByUserId  String          @map("updated_by_user_id") @db.Uuid
+  updatedBy        User            @relation("WebsitePageUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([isPublished, role, titleVi], map: "website_pages_published_idx")
+  @@map("website_pages")
 }
 
 // UX/UI Step 13: the homepage slider (design 16.6). Marketing content, not history: a real delete is allowed.

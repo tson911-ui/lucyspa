@@ -1,6 +1,7 @@
 import {
   FOOTER_SOCIAL_NETWORKS,
   SHOP_FACT_ICONS,
+  WEBSITE_PAGE_ROLES,
   WHY_ICONS,
   type FooterSocialNetwork,
   type PublicCampaign,
@@ -8,6 +9,9 @@ import {
   type PublicFeaturedGroup,
   type PublicFooterBlock,
   type PublicHoursGroup,
+  type PublicPageIndexResponse,
+  type PublicPageLink,
+  type PublicPageResponse,
   type PublicProductCard,
   type PublicProductCategory,
   type PublicProductsResponse,
@@ -307,7 +311,75 @@ export function parsePublicSite(value: unknown): PublicSiteResponse | null {
     seoDescription: isNullableString(value['seoDescription']) ? value['seoDescription'] : null,
     englishApproved: value['englishApproved'] === true,
     chatEnabled: value['chatEnabled'] === true,
+    // An API that predates the pages (a restart in progress) sends none: the footer then simply has no policy links.
+    pages: parsePageLinks(value['pages']),
   };
+}
+
+/** The footer's page links; anything malformed is left out, never an error (the footer must always draw). */
+function parsePageLinks(value: unknown): PublicPageLink[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item): PublicPageLink[] =>
+    isRecord(item) &&
+    isString(item['slug']) &&
+    /^[a-z0-9]+(-[a-z0-9]+)*$/.test(item['slug']) &&
+    isString(item['title']) &&
+    item['title'].trim() !== '' &&
+    isString(item['role']) &&
+    (WEBSITE_PAGE_ROLES as readonly string[]).includes(item['role'])
+      ? [{ slug: item['slug'], title: item['title'], role: item['role'] as PublicPageLink['role'] }]
+      : [],
+  );
+}
+
+/** One published page, or null when the answer is not one. */
+export function parsePublicPage(value: unknown): PublicPageResponse | null {
+  if (!isRecord(value)) return null;
+  if (
+    !isString(value['slug']) ||
+    !isString(value['title']) ||
+    !isString(value['body']) ||
+    !isString(value['role']) ||
+    !(WEBSITE_PAGE_ROLES as readonly string[]).includes(value['role']) ||
+    (value['language'] !== 'vi' && value['language'] !== 'en') ||
+    !isNullableString(value['seoTitle']) ||
+    !isNullableString(value['seoDescription']) ||
+    !isString(value['updatedAt'])
+  ) {
+    return null;
+  }
+  return {
+    slug: value['slug'],
+    role: value['role'] as PublicPageResponse['role'],
+    title: value['title'],
+    body: value['body'],
+    language: value['language'],
+    seoTitle: value['seoTitle'],
+    seoDescription: value['seoDescription'],
+    updatedAt: value['updatedAt'],
+  };
+}
+
+/** The published pages for the sitemap; null when the answer is not one. */
+export function parsePublicPageIndex(value: unknown): PublicPageIndexResponse | null {
+  if (!isRecord(value) || !Array.isArray(value['items'])) return null;
+  const items: PublicPageIndexResponse['items'] = [];
+  for (const item of value['items'] as unknown[]) {
+    if (
+      !isRecord(item) ||
+      !isString(item['slug']) ||
+      !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(item['slug']) ||
+      !isString(item['updatedAt'])
+    ) {
+      return null;
+    }
+    items.push({
+      slug: item['slug'],
+      updatedAt: item['updatedAt'],
+      englishAvailable: item['englishAvailable'] === true,
+    });
+  }
+  return { items };
 }
 
 /** A photo the API may not send yet (an older API during a restart): absent reads as no photo, a malformed one is refused. */

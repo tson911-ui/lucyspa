@@ -40,6 +40,7 @@ const site: PublicSiteResponse = {
   ],
   heroImage: null,
   chatEnabled: false,
+  pages: [],
   seoDescription: null,
   englishApproved: false,
 };
@@ -170,6 +171,8 @@ test('the sitemap lists every Vietnamese page, and an English page only once its
       'https://lucyspa.vn/vi/products/kem-duong',
       'https://lucyspa.vn/en/products/kem-duong',
       'https://lucyspa.vn/vi/products/mat%20na',
+      'https://lucyspa.vn/vi/contact',
+      'https://lucyspa.vn/en/contact',
     ],
   );
   // An approved page names both languages; an unapproved one only itself and the default.
@@ -192,11 +195,28 @@ test('the sitemap lists every Vietnamese page, and an English page only once its
     none.some((entry) => entry.url.includes('/en')),
     false,
   );
-  assert.equal(none.length, 5);
+  assert.equal(none.length, 6);
   // Without product codes (nothing published, or the list could not be read) the cosmetics list is left out too.
   assert.equal(
     sitemapEntries('https://lucyspa.vn', []).filter((entry) => /products/.test(entry.url)).length,
     0,
+  );
+});
+
+test('the Owner\x27s published pages are listed by their address, English only when the page has English text', () => {
+  const entries = sitemapEntries('https://lucyspa.vn', [], [], false, [
+    target('chinh-sach-bao-mat', true),
+    target('dieu-khoan-su-dung', false),
+  ]);
+  const urls = entries.map((entry) => entry.url);
+  assert.ok(urls.includes('https://lucyspa.vn/vi/chinh-sach-bao-mat'));
+  assert.ok(urls.includes('https://lucyspa.vn/en/chinh-sach-bao-mat'));
+  assert.ok(urls.includes('https://lucyspa.vn/vi/dieu-khoan-su-dung'));
+  assert.ok(!urls.includes('https://lucyspa.vn/en/dieu-khoan-su-dung'));
+  // The contact page has no English entry until the English home page is approved.
+  assert.ok(
+    urls.includes('https://lucyspa.vn/vi/contact') &&
+      !urls.includes('https://lucyspa.vn/en/contact'),
   );
 });
 

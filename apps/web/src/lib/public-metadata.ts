@@ -4,6 +4,8 @@ import type { Locale } from '../i18n/locales';
 import { getSiteText } from '../i18n/site';
 import { isPlainList, type ProductsState } from './public-products-core';
 import {
+  fetchPublicPage,
+  fetchPublicPageIndex,
   fetchPublicProduct,
   fetchPublicProductCodes,
   fetchPublicProducts,
@@ -16,6 +18,7 @@ import {
   clip,
   languageAlternates,
   ogLocale,
+  pageLead,
   productDescription,
   serviceDescription,
   siteOrigin,
@@ -128,6 +131,53 @@ export async function serviceMetadata(locale: Locale, code: string): Promise<Met
     image: null,
     english: detail.service.englishApproved,
   });
+}
+
+/**
+ * An information page the Owner published. The title and description are the ones the Owner typed for search (or the page title and
+ * its first paragraph); a page without English text shows its Vietnamese text to an English visitor, so that English address stays out
+ * of the index and the page lists no English alternate. An unknown, unpublished or unreadable page keeps out of the index.
+ */
+export async function pageMetadata(locale: Locale, slug: string): Promise<Metadata> {
+  const [page, english, origin] = await Promise.all([
+    fetchPublicPage(locale, slug),
+    fetchPublicPage('en', slug),
+    requestOrigin(),
+  ]);
+  const text = getSiteText(locale);
+  if (page === 'missing' || page === null) {
+    return { title: `${text.infoPage.notFoundTitle} · ${SITE_NAME}`, robots: { index: false } };
+  }
+  return indexable({
+    locale,
+    origin,
+    path: `/${slug}`,
+    title: page.seoTitle ?? `${page.title} · ${SITE_NAME}`,
+    description: page.seoDescription ?? clip(pageLead(page.body) ?? page.title),
+    image: null,
+    english: english !== 'missing' && english !== null && english.language === 'en',
+  });
+}
+
+/** The contact page: its words are the shop's own data, so its English page follows the home page's approval. */
+export async function contactMetadata(locale: Locale): Promise<Metadata> {
+  const [site, origin] = await Promise.all([fetchPublicSite(locale), requestOrigin()]);
+  const text = getSiteText(locale);
+  return indexable({
+    locale,
+    origin,
+    path: '/contact',
+    title: `${text.contactPage.title} · ${SITE_NAME}`,
+    description: clip(site ? `${text.contactPage.lead} ${site.address}` : text.contactPage.lead),
+    image: null,
+    english: site?.englishApproved ?? false,
+  });
+}
+
+/** The published information pages with whether they have English text, for the sitemap (empty when they cannot be read). */
+export async function publicPageTargets(): Promise<SitemapTarget[]> {
+  const items = await fetchPublicPageIndex();
+  return items.map((item) => ({ code: item.slug, english: item.englishAvailable }));
 }
 
 /** Every service the public catalogue shows, with whether its English text is approved, for the sitemap (empty when it cannot be read). */

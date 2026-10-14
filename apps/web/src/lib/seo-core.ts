@@ -1,3 +1,4 @@
+import { inlineText, parseRichText } from '@lucy-spa/contracts';
 import type {
   PublicHoursGroup,
   PublicProductDetail,
@@ -191,6 +192,8 @@ export function sitemapEntries(
   services: readonly SitemapTarget[],
   products: readonly SitemapTarget[] = [],
   homeEnglish = false,
+  /** The published information pages (`code` is the address after the language; `english` when the page has English text). */
+  infoPages: readonly SitemapTarget[] = [],
 ): SitemapEntry[] {
   const pages: { path: string; english: boolean }[] = [
     { path: '', english: homeEnglish },
@@ -207,6 +210,12 @@ export function sitemapEntries(
       path: `/products/${encodeURIComponent(entry.code)}`,
       english: entry.english,
     })),
+    // The contact page is the shop's own data in both languages: its English page follows the home page's approval.
+    { path: '/contact', english: homeEnglish },
+    ...infoPages.map((entry) => ({
+      path: `/${encodeURIComponent(entry.code)}`,
+      english: entry.english,
+    })),
   ];
   return pages.flatMap((page) =>
     SEO_LOCALES.filter((locale) => locale === 'vi' || page.english).map((locale) => ({
@@ -214,6 +223,14 @@ export function sitemapEntries(
       alternates: languageAlternates(origin, page.path, page.english),
     })),
   );
+}
+
+/** The first paragraph of an information page as plain words (for a search description when the page sets none), or null. */
+export function pageLead(body: string): string | null {
+  const parsed = parseRichText(body);
+  if (!parsed.ok) return null;
+  const first = parsed.blocks.find((block) => block.type === 'p');
+  return first && first.type === 'p' ? inlineText(first.inlines).trim() || null : null;
 }
 
 /** The absolute address of one of the site's own relative image paths, or null for anything that is not one. */

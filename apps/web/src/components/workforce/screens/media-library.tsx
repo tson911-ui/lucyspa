@@ -66,6 +66,7 @@ import {
   useSubmit,
   useSuccessToast,
 } from '../ui';
+import { PagesPanel } from './website-pages';
 import { PopupsPanel } from './website-popups';
 import { SeasonsPanel } from './website-seasons';
 import { ShopInfoPanel } from './website-shop-info';
@@ -253,6 +254,7 @@ function MediaLibrary() {
   const onSlider = list.tab === 'slider';
   const onSeasons = list.tab === 'season';
   const onShop = list.tab === 'shop';
+  const onPages = list.tab === 'pages';
   const mediaPanel = (
     <>
       {dragging ? <Notice tone="info">{t.media.dropOverlay}</Notice> : null}
@@ -368,7 +370,9 @@ function MediaLibrary() {
                 ? t.seasons.intro
                 : onShop
                   ? t.shopInfo.intro
-                  : t.media.intro
+                  : onPages
+                    ? t.pages.intro
+                    : t.media.intro
         }
       >
         {onSeasons ? (
@@ -390,6 +394,14 @@ function MediaLibrary() {
             onClick={() => navigate?.(`${base}/website/popups/new`)}
           >
             {t.popups.create}
+          </Button>
+        ) : onPages ? (
+          <Button
+            variant="primary"
+            icon="plus"
+            onClick={() => navigate?.(`${base}/website/pages/new`)}
+          >
+            {t.pages.create}
           </Button>
         ) : onShop ? null : (
           <>
@@ -431,6 +443,7 @@ function MediaLibrary() {
           },
           { id: 'season', label: t.website.season, panel: <SeasonsPanel /> },
           { id: 'shop', label: t.website.shop, panel: <ShopInfoPanel /> },
+          { id: 'pages', label: t.website.pages, panel: <PagesPanel /> },
         ]}
       />
       {overlay?.kind === 'detail' ? (

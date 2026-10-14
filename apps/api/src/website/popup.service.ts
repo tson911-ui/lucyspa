@@ -1,4 +1,6 @@
 import type {
+  PublicPageIndexResponse,
+  PublicPageResponse,
   PublicPopupResponse,
   PublicCampaignsResponse,
   PublicProductCodesResponse,
@@ -45,6 +47,7 @@ import {
   publicProducts,
 } from '../products/public-products.core.js';
 import type { PublicProductsQuery } from '../products/public-products.logic.js';
+import { publicPage, publicPageIndex } from './page.core.js';
 import { publicServiceDetail, publicServices } from './public-catalog.core.js';
 import { activeSeason } from './season.core.js';
 import { publicSite } from './shop-info.core.js';
@@ -177,6 +180,16 @@ export class PublicWebsiteService {
   /** The shop profile (tagline, address, hotline, hours, hero image) in the visitor's language. */
   site(locale: PublicLocale): Promise<PublicSiteResponse> {
     return this.read((tx) => publicSite(tx, locale));
+  }
+
+  /** One published information page in the visitor's language; a draft or unknown address is 404. */
+  page(locale: PublicLocale, slug: string): Promise<PublicPageResponse> {
+    return this.read((tx) => publicPage(tx, locale, slug));
+  }
+
+  /** The published pages (address and last change), for the sitemap. */
+  pageIndex(): Promise<PublicPageIndexResponse> {
+    return this.read((tx) => publicPageIndex(tx));
   }
 
   /** The service catalogue a visitor may see: active services of active categories offered by an active branch. */

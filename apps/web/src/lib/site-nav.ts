@@ -6,7 +6,7 @@ import type { SiteText } from '../i18n/site';
  * (for example the cosmetics shop in a later phase) is one entry here plus its route and its text; nothing else changes.
  */
 export interface SiteNavEntry {
-  key: 'home' | 'services' | 'products' | 'book' | 'bookings' | 'invoices' | 'account';
+  key: 'home' | 'services' | 'products' | 'book' | 'bookings' | 'invoices' | 'account' | 'contact';
   /** Path after `/{locale}`. */
   path: string;
   /** `exact` matches only the path; `prefix` also its sub-pages. */
@@ -88,6 +88,17 @@ export const SITE_NAV: readonly SiteNavEntry[] = [
     header: true,
     phoneTab: 'receipt',
     footer: null,
+  },
+  // The contact page (session 7b): a footer link only (the floating contact button is the way in everywhere else).
+  {
+    key: 'contact',
+    path: '/contact',
+    match: 'exact',
+    enabled: true,
+    members: false,
+    header: false,
+    phoneTab: null,
+    footer: 'discover',
   },
   // The account pages as a whole (overview, sign-in): only the account menu leads there.
   {

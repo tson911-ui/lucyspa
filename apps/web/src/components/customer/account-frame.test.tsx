@@ -103,12 +103,12 @@ test('C15: sign-in is the wordmark above one centered card on the flat panel, no
   assert.doesNotMatch(html, /ls-member-aside|ls-member-auth/);
 });
 
-test('S7: the profile tab shows the name and language of the signed-in member inside the frame, with no form', () => {
+test('S7: the profile tab opens inside the frame with its one title and no form before the profile is read (ProfileView draws the details, see profile.test.tsx)', () => {
   for (const locale of ['vi', 'en'] as const) {
     const html = paint(<CustomerProfileScreen />, locale);
     assert.equal(html.match(/<h1\b/g)?.length, 1);
-    assert.ok(html.includes('Lan'));
     assert.ok(html.includes(locale === 'vi' ? 'Hồ sơ' : 'Profile'));
+    assert.match(html, /role="status"/, 'the page shows that it is loading');
     assert.doesNotMatch(html, /<form|<input|<textarea/);
   }
 });

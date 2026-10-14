@@ -1,10 +1,14 @@
 import type {
+  PublicPageIndexResponse,
+  PublicPageResponse,
   PublicServiceDetailResponse,
   PublicServicesResponse,
   PublicSiteResponse,
 } from '@lucy-spa/contracts';
 import type { Locale } from '../i18n/locales';
 import {
+  parsePublicPage,
+  parsePublicPageIndex,
   parsePublicServices,
   parsePublicSite,
   parseServiceDetail,
@@ -83,6 +87,30 @@ export async function fetchPublicService(
   );
   if (answer?.status === 404) return 'missing';
   return answer?.status === 200 ? parseServiceDetail(answer.body) : null;
+}
+
+/**
+ * One published information page: the page, 'missing' when the API says there is no such published page (a draft, an unpublished
+ * page or an unknown address: a real 404), null when it could not be read (an unreachable API must show the error page, never a
+ * remembered 404).
+ */
+export async function fetchPublicPage(
+  locale: Locale,
+  slug: string,
+  fetcher: typeof fetch = fetch,
+): Promise<PublicPageResponse | 'missing' | null> {
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) || slug.length > 80) return 'missing';
+  const answer = await read(`/api/v1/public/pages/${slug}?locale=${locale}`, fetcher);
+  if (answer?.status === 404) return 'missing';
+  return answer?.status === 200 ? parsePublicPage(answer.body) : null;
+}
+
+/** The published pages for the sitemap (empty when they cannot be read). */
+export async function fetchPublicPageIndex(
+  fetcher: typeof fetch = fetch,
+): Promise<PublicPageIndexResponse['items']> {
+  const answer = await read('/api/v1/public/pages', fetcher);
+  return (answer?.status === 200 ? parsePublicPageIndex(answer.body)?.items : null) ?? [];
 }
 
 /** One page of the cosmetics catalog for the address bar's state, or null when it could not be read. */

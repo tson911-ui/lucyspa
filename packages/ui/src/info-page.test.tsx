@@ -41,6 +41,28 @@ test('C16 info page: fewer than two sections (a short page, or none yet) has no 
   }
 });
 
+test('info page: an intro before the first section has no heading and no table-of-contents entry; another text language is marked', () => {
+  const html = renderToStaticMarkup(
+    <InfoPage
+      title="Policy"
+      tocLabel="On this page"
+      intro={<p>Mở đầu.</p>}
+      language="vi"
+      sections={sections}
+    />,
+  );
+  assert.match(
+    html,
+    /<article class="ls-info-article" lang="vi"><div class="ls-info-intro"><p>Mở đầu.<\/p><\/div><section/,
+  );
+  assert.equal(html.match(/<h2\b/g)?.length, 3);
+  assert.equal(html.match(/<li>/g)?.length, 3, 'the table lists the sections, not the intro');
+  const plain = renderToStaticMarkup(
+    <InfoPage title="Policy" tocLabel="On this page" sections={sections} />,
+  );
+  assert.doesNotMatch(plain, /lang=|ls-info-intro/);
+});
+
 test('C16 contact page: the place first, then the details and the contact pills, one h1', () => {
   const html = renderToStaticMarkup(
     <ContactPage

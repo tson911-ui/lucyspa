@@ -4964,3 +4964,75 @@ button.ls-link {
     width: 10rem;
   }
 }
+
+/* The information page editor (session 7b): a formatting bar and a write/preview switch over the text, and the preview with reading
+   styles of its own (the website's own article styles are scoped to the customer frame). */
+.ls-rich-field {
+  display: grid;
+  gap: var(--ls-space-2);
+  min-width: 0;
+}
+
+.ls-rich-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ls-space-2) var(--ls-space-4);
+}
+
+/* The write/preview switch keeps a width of its own, so "Soạn thảo" never wraps inside its half. */
+.ls-rich-bar .ls-segmented {
+  width: var(--ls-field-md);
+  max-width: 100%;
+}
+
+.ls-rich-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2);
+}
+
+.ls-prose {
+  min-width: 0;
+  max-width: 42.5rem;
+  overflow-wrap: anywhere;
+  font-size: var(--ls-text-md);
+  line-height: var(--ls-leading-md);
+}
+
+.ls-prose :is(h2, h3) {
+  margin: var(--ls-space-6) 0 var(--ls-space-3);
+  font-weight: 600;
+  line-height: var(--ls-leading-lg);
+}
+
+.ls-prose h2 {
+  font-size: var(--ls-text-xl);
+}
+
+.ls-prose h3 {
+  font-size: var(--ls-text-lg);
+}
+
+.ls-prose :is(h2, h3):first-child {
+  margin-top: 0;
+}
+
+.ls-prose :is(p, ul, ol) {
+  margin: 0 0 var(--ls-space-4);
+}
+
+.ls-prose :is(ul, ol) {
+  padding-inline-start: var(--ls-space-6);
+}
+
+.ls-prose li + li {
+  margin-top: var(--ls-space-2);
+}
+
+.ls-prose a {
+  color: var(--ls-brand);
+  text-decoration: underline;
+  text-underline-offset: var(--ls-space-1);
+}

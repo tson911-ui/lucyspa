@@ -1,3 +1,4 @@
+import { isWebsiteLink } from '@lucy-spa/contracts';
 import type {
   PublicPopupResponse,
   WebsitePopupEnabledRequest,
@@ -31,7 +32,6 @@ export { UUID };
 export const POPUP_LIMITS = Object.freeze({ title: 120, body: 300, ctaLabel: 40, ctaUrl: 500 });
 /** One fixed key serializes every save that enables a popup, so two saves cannot both pass the overlap check. */
 export const POPUP_LOCK = 4_120_016_501n;
-const INTERNAL_URL = /^\/(vi|en|\{locale\})(\/[^\s<>"'\\]*)?$/;
 const MAX_VERSION = 2_147_483_647;
 
 /** Draft is "not enabled"; an enabled popup is Scheduled until it starts, Active while live, then Ended. */
@@ -49,17 +49,11 @@ export function popupStatus(
 
 /**
  * The link rule of design 16.2: an internal `/vi/...`, `/en/...` or `/{locale}/...` path, or an `https://` URL
- * with a host and no credentials. Never `javascript:`, `data:`, `http:` or a protocol-relative `//host`.
+ * with a host and no credentials. Never `javascript:`, `data:`, `http:` or a protocol-relative `//host`. The one rule lives
+ * in the contracts (`isWebsiteLink`), shared with the information pages.
  */
 export function validPopupUrl(value: string): boolean {
-  if ([...value].length > POPUP_LIMITS.ctaUrl) return false;
-  if (INTERNAL_URL.test(value)) return true;
-  if (!/^https:\/\/[^\s<>"'\\/]/.test(value) || /[\s<>"'\\]/.test(value)) return false;
-  if (!URL.canParse(value)) return false;
-  const url = new URL(value);
-  return (
-    url.protocol === 'https:' && url.username === '' && url.password === '' && url.hostname !== ''
-  );
+  return isWebsiteLink(value, POPUP_LIMITS.ctaUrl);
 }
 
 /** Plain text only: NFC, trimmed, empty becomes null. Single-line fields collapse whitespace; the body keeps line breaks. */

@@ -16,6 +16,8 @@ export interface SiteText {
     account: string;
     /** The booking tab of the phone bar (the one booking call to action). */
     bookNow: string;
+    /** The contact page (footer link). */
+    contact: string;
   };
   /** The account menu in the header: sign-in and registration, or the account page, rewards and sign-out. */
   member: {
@@ -52,6 +54,22 @@ export interface SiteText {
       viewAll: string;
     };
     theme: { group: string; light: string; dark: string; auto: string; switchTo: string };
+  };
+  /** Information pages the Owner writes (policies, terms): the table of contents, and the page that is not there. */
+  infoPage: { toc: string; notFoundTitle: string; newTab: string };
+  /** The contact page: the map, the address, the hours and the ways to reach the spa. */
+  contactPage: {
+    title: string;
+    lead: string;
+    mapTitle: string;
+    openMap: string;
+    address: string;
+    hotline: string;
+    hours: string;
+    call: string;
+    zalo: string;
+    messenger: string;
+    loadError: string;
   };
   /** The floating contact button (Owner request 2026-10-06): the button, its group and the three ways to reach the spa. */
   contactFab: {
@@ -105,6 +123,9 @@ export interface SiteText {
   };
   footer: {
     links: string;
+    /** The column of the shop's published policy pages, and the label of the legal line under the columns. */
+    policies: string;
+    legal: string;
     contact: string;
     /** One entry for both: Đăng nhập / Đăng ký. */
     signInUp: string;
@@ -280,6 +301,7 @@ const text = {
       invoices: 'Hóa đơn',
       account: 'Tài khoản',
       bookNow: 'Đặt lịch',
+      contact: 'Liên hệ',
     },
     member: {
       signIn: 'Đăng nhập',
@@ -311,6 +333,24 @@ const text = {
         auto: 'Theo giờ',
         switchTo: 'Chuyển sang {name}',
       },
+    },
+    infoPage: {
+      toc: 'Trong trang này',
+      notFoundTitle: 'Không tìm thấy trang này',
+      newTab: 'mở trong tab mới',
+    },
+    contactPage: {
+      title: 'Liên hệ',
+      lead: 'Địa chỉ, giờ mở cửa và các cách liên hệ với Lucy Spa.',
+      mapTitle: 'Bản đồ đường đến Lucy Spa',
+      openMap: 'Mở trong Google Maps',
+      address: 'Địa chỉ',
+      hotline: 'Hotline',
+      hours: 'Giờ mở cửa',
+      call: 'Gọi ngay',
+      zalo: 'Nhắn Zalo',
+      messenger: 'Nhắn Messenger',
+      loadError: 'Chưa đọc được thông tin liên hệ. Vui lòng tải lại trang.',
     },
     contactFab: {
       open: 'Liên hệ',
@@ -361,6 +401,8 @@ const text = {
     },
     footer: {
       links: 'Liên kết',
+      policies: 'Chính sách',
+      legal: 'Thông tin pháp lý',
       contact: 'Liên hệ',
       signInUp: 'Đăng nhập / Đăng ký',
       phone: 'Điện thoại: {value}',
@@ -517,6 +559,7 @@ const text = {
       invoices: 'Invoices',
       account: 'Account',
       bookNow: 'Book now',
+      contact: 'Contact',
     },
     member: {
       signIn: 'Sign in',
@@ -548,6 +591,24 @@ const text = {
         auto: 'By time of day',
         switchTo: 'Switch to {name}',
       },
+    },
+    infoPage: {
+      toc: 'On this page',
+      notFoundTitle: 'We could not find this page',
+      newTab: 'opens in a new tab',
+    },
+    contactPage: {
+      title: 'Contact',
+      lead: 'The address, opening hours and ways to reach Lucy Spa.',
+      mapTitle: 'Map to Lucy Spa',
+      openMap: 'Open in Google Maps',
+      address: 'Address',
+      hotline: 'Hotline',
+      hours: 'Opening hours',
+      call: 'Call now',
+      zalo: 'Message on Zalo',
+      messenger: 'Message on Messenger',
+      loadError: 'The contact details could not be loaded. Please reload the page.',
     },
     contactFab: {
       open: 'Contact',
@@ -598,6 +659,8 @@ const text = {
     },
     footer: {
       links: 'Links',
+      policies: 'Policies',
+      legal: 'Legal',
       contact: 'Contact',
       signInUp: 'Sign in / Create account',
       phone: 'Phone: {value}',

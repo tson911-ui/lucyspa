@@ -2236,6 +2236,15 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   line-height: var(--ls-lh-body);
 }
 
+/* What comes before the first heading: the same reading styles, and nothing hanging under the last paragraph. */
+[data-ui='v2'] .ls-info-intro {
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-info-intro > :last-child {
+  margin-bottom: 0;
+}
+
 [data-ui='v2'] .ls-info-section {
   scroll-margin-top: calc(var(--ls-site-header-h-compact) + var(--ls-space-6));
   min-width: 0;
@@ -2355,6 +2364,50 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   display: flex;
   flex-wrap: wrap;
   gap: var(--ls-space-2) var(--ls-space-3);
+}
+
+/* The contact page's place: Google's own embed of the address in a rounded 4:3 frame, then the address and the plain link to the same place. */
+[data-ui='v2'] .ls-contact-place {
+  display: grid;
+  gap: var(--ls-space-4);
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-contact-map {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-sunken);
+}
+
+[data-ui='v2'] .ls-contact-map iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+[data-ui='v2'] .ls-contact-address p {
+  margin: 0;
+}
+
+[data-ui='v2'] .ls-place-label {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-contact-open {
+  justify-self: start;
+}
+
+[data-ui='v2'] .ls-contact-hours {
+  display: grid;
+  gap: var(--ls-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 /* ---- Motion pass (C17, DESIGN.md 11) ---------------------------------------------------------------------------------------------------- */

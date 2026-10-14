@@ -79,6 +79,7 @@ const site: PublicSiteResponse = {
   hours: [{ weekdays: [1, 2, 3, 4, 5, 6], closed: false, opensAt: '09:00', closesAt: '21:00' }],
   heroImage: null,
   chatEnabled: false,
+  pages: [],
   seoDescription: null,
   englishApproved: false,
 };

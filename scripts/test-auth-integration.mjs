@@ -30,6 +30,7 @@ await import('../apps/api/dist/account/my-account.integration.test.js');
 await import('../apps/api/dist/account/my-password.integration.test.js');
 await import('../apps/api/dist/account/email-change.integration.test.js');
 await import('../apps/api/dist/account/customer-profile.integration.test.js');
+await import('../apps/api/dist/website/page.integration.test.js');
 await import('../apps/api/dist/collaborator-work/collaborator-work.integration.test.js');
 await import('../apps/api/dist/auth/password-policy.integration.test.js');
 await import('../apps/api/dist/account/my-income.integration.test.js');

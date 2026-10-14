@@ -63,6 +63,12 @@ export function PublicFooter({
   hasProducts?: boolean;
 }) {
   const text = getSiteText(locale);
+  // The policy column lists the policy pages; the legal line the terms page then the privacy page (a role holds at most one).
+  const pages = site?.pages ?? [];
+  const policyPages = pages.filter((page) => page.role === 'POLICY');
+  const legalPages = (['TERMS', 'PRIVACY'] as const).flatMap((role) =>
+    pages.filter((page) => page.role === role),
+  );
   const hours = site ? hoursHeadline(site.hours, locale, getSiteText(locale).home.closed) : null;
   // The shop's real data, in the order of the reference: brand and tagline, contact, links.
   const [phoneBefore = '', phoneAfter = ''] = text.footer.phone.split('{value}');
@@ -131,7 +137,27 @@ export function PublicFooter({
         </Link>,
       ],
     },
+    // The Owner's published policy pages (Admin > Website > Pages): a column only while there is one, so nothing is drawn for none.
+    ...(policyPages.length > 0
+      ? [
+          {
+            key: 'policies',
+            title: text.footer.policies,
+            items: policyPages.map((page) => (
+              <Link
+                key={page.slug}
+                href={`/${locale}/${page.slug}`}
+                prefetch
+                transitionTypes={NAV_TRANSITION}
+              >
+                {page.title}
+              </Link>
+            )),
+          },
+        ]
+      : []),
   ];
+  const rights = text.footer.rights.replace('{year}', String(year ?? new Date().getFullYear()));
   return (
     <SiteFooter
       brand={
@@ -160,7 +186,29 @@ export function PublicFooter({
       }
       blocks={footerBlockItems(site?.footerBlocks ?? [], locale)}
       columns={columns}
-      base={text.footer.rights.replace('{year}', String(year ?? new Date().getFullYear()))}
+      base={
+        <>
+          <span>{rights}</span>
+          {/* The legal line: the terms page, then the privacy page, only the ones that are published. */}
+          {legalPages.length > 0 ? (
+            <nav className="ls-site-footer-legal" aria-label={text.footer.legal}>
+              <ul>
+                {legalPages.map((page) => (
+                  <li key={page.slug}>
+                    <Link
+                      href={`/${locale}/${page.slug}`}
+                      prefetch
+                      transitionTypes={NAV_TRANSITION}
+                    >
+                      {page.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ) : null}
+        </>
+      }
     />
   );
 }

@@ -141,6 +141,8 @@ import { TeamController } from './teams/team.controller.js';
 import { TeamService } from './teams/team.service.js';
 import { MediaController } from './website/media.controller.js';
 import { MediaService } from './website/media.service.js';
+import { PageController } from './website/page.controller.js';
+import { PageService } from './website/page.service.js';
 import { PopupController, PublicWebsiteController } from './website/popup.controller.js';
 import { ShopInfoController } from './website/shop-info.controller.js';
 import { ShopInfoService } from './website/shop-info.service.js';
@@ -236,6 +238,7 @@ export class AppModule {
         TeamController,
         MediaController,
         PopupController,
+        PageController,
         SlideController,
         SeasonController,
         ShopInfoController,
@@ -332,6 +335,7 @@ export class AppModule {
         TeamService,
         MediaService,
         PopupService,
+        PageService,
         SlideService,
         SeasonService,
         ShopInfoService,

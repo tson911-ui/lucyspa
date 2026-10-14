@@ -17,7 +17,7 @@ export const MEDIA_UPLOAD_CONCURRENCY = 3;
 export const MEDIA_ALT_MAX = 300;
 
 /** The website content page: `tab` is the library (default), the popup list (Step 12), the slider (Step 13) or the seasons (S4). */
-export type WebsiteTab = 'media' | 'popup' | 'slider' | 'season';
+export type WebsiteTab = 'media' | 'popup' | 'slider' | 'season' | 'shop' | 'pages';
 
 export const MEDIA_LIST_DEFAULTS: { q: string; page: number; tab: string } = {
   q: '',
@@ -36,7 +36,8 @@ export function normalizeMediaList(state: MediaListState): MediaListState {
       state.tab === 'popup' ||
       state.tab === 'slider' ||
       state.tab === 'season' ||
-      state.tab === 'shop'
+      state.tab === 'shop' ||
+      state.tab === 'pages'
         ? state.tab
         : 'media',
   };

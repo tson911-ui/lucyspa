@@ -19,6 +19,7 @@ import type { Prisma } from '@lucy-spa/database';
 import { AuthError } from '../auth/auth.error.js';
 import { appendAdminAudit, type AdminContext } from '../authorization/admin-command.js';
 import { requireWebsiteContent } from './media.core.js';
+import { publicPageLinks } from './page.core.js';
 import {
   footerMediaIds,
   parseFooterBlocks,
@@ -537,5 +538,7 @@ export async function publicSite(
     seoDescription: (locale === 'vi' ? row.seoDescriptionVi : row.seoDescriptionEn)?.trim() || null,
     englishApproved: (row.seoDescriptionEn ?? '').trim() !== '',
     chatEnabled: Boolean(chat?.enabled && chat.chatEnabled),
+    // The footer policy column and legal line: published policy, terms and privacy pages only (session 7b).
+    pages: await publicPageLinks(tx, locale),
   };
 }

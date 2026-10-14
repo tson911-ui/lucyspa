@@ -94,6 +94,8 @@ const errors = {
   // UX/UI Step 12: promotional popup (design 16.5). `POPUP_OVERLAP` names the conflicting popup's id as the field.
   MEDIA_ALT_REQUIRED: [409, 'Add a Vietnamese description to the image before using it'],
   POPUP_OVERLAP: [409, 'Another enabled popup already covers part of this time'],
+  // Session 7b: information pages. `PAGE_ROLE_TAKEN` names the id of the published page that already holds the terms or privacy role.
+  PAGE_ROLE_TAKEN: [409, 'Another published page already is the terms or privacy page'],
   // UX/UI Step 13: homepage slider (design 16.6, Q-CM7).
   SLIDE_LIMIT: [409, 'At most 8 slides can be visible at the same time'],
   // UX/UI Step S3: seasonal themes (design 20.4). `SEASON_OVERLAP` names the conflicting season's id as the field.

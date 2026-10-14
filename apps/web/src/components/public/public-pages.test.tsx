@@ -55,6 +55,7 @@ const site: PublicSiteResponse = {
   ],
   heroImage: null,
   chatEnabled: false,
+  pages: [],
   seoDescription: null,
   englishApproved: false,
 };
@@ -285,7 +286,9 @@ test('footer: the contact column comes from the shop profile and is absent witho
   );
   assert.doesNotMatch(html, /ls-site-footer-blocks/);
   const bare = renderToStaticMarkup(<PublicFooter locale="vi" site={null} year={2026} />);
-  assert.doesNotMatch(bare, /Liên hệ/);
+  // No contact column without the profile (the contact page link in the links column stays).
+  assert.doesNotMatch(bare, />Liên hệ<\/h2>/);
+  assert.match(bare, /href="\/vi\/contact">Liên hệ<\/a>/);
   assert.match(bare, /Dịch vụ/);
 });
 
