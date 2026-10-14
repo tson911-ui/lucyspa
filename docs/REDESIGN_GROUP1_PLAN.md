@@ -122,7 +122,7 @@ Status values: `todo` / `done` (with commit hash).
   colors differ afterwards; with `ls-theme=auto` it only flags when the clock resolves to dark, with a fixed cookie it always flagged. The tool now takes
   `--theme` and compares the theme button with an untouched tool in the new theme; light, dark and auto all pass.
 
-- **C9: footer, tab bar, contact button, popup (M).** Status: done (d6b1f7a).
+- **C9: footer, tab bar, contact button, popup (M).** Status: done (3ba876e).
   Footer from the existing footer blocks (no brand-red band, no waves), phone tab bar and app shell, contact button, promo popup.
   Verify: `uxui-tabbar-check` and safe areas.
   Carry-over (Owner, session 1 review): footer icon spacing. Targets are 48 px with 4 px between neighbours; DESIGN.md 12 wants 8 px. Fix here.
