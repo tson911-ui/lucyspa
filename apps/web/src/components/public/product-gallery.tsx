@@ -1,7 +1,7 @@
 'use client';
 
 import type { PublicSlideImage } from '@lucy-spa/contracts';
-import { FallbackImage, Icon } from '@lucy-spa/ui';
+import { FallbackImage, Icon, IconButton } from '@lucy-spa/ui';
 import { useRef, useState } from 'react';
 import { ProductImage } from './product-image';
 
@@ -14,12 +14,17 @@ export function ProductGallery({
   images,
   label,
   thumbLabel,
+  previousLabel,
+  nextLabel,
 }: {
   images: readonly PublicSlideImage[];
   /** The frame's accessible name, e.g. "Ảnh sản phẩm". */
   label: string;
   /** With {n}: the name of the thumbnail that shows picture n. */
   thumbLabel: string;
+  /** The names of the two arrow buttons (shown with several pictures). */
+  previousLabel: string;
+  nextLabel: string;
 }) {
   const viewport = useRef<HTMLDivElement | null>(null);
   const [current, setCurrent] = useState(0);
@@ -33,35 +38,57 @@ export function ProductGallery({
 
   return (
     <div className="ls-prod-gallery">
-      <div
-        ref={viewport}
-        className="ls-prod-viewport"
-        role="group"
-        aria-roledescription="carousel"
-        aria-label={label}
-        tabIndex={images.length > 1 ? 0 : -1}
-        onScroll={(event) => {
-          const element = event.currentTarget;
-          const index = Math.round(element.scrollLeft / Math.max(1, element.clientWidth));
-          if (index !== current) setCurrent(index);
-        }}
-      >
-        {images.length === 0 ? (
-          <div className="ls-prod-slide" aria-hidden="true">
-            <Icon name="droplet" size={48} />
-          </div>
-        ) : (
-          images.map((image, index) => (
-            <figure key={image.sources[0]?.url ?? index} className="ls-prod-slide">
-              <ProductImage
-                placeholderSize={48}
-                image={image}
-                sizes="(min-width: 1024px) 50vw, 100vw"
-                priority={index === 0}
-              />
-            </figure>
-          ))
-        )}
+      <div className="ls-prod-stage">
+        <div
+          ref={viewport}
+          className="ls-prod-viewport"
+          role="group"
+          aria-roledescription="carousel"
+          aria-label={label}
+          tabIndex={images.length > 1 ? 0 : -1}
+          onScroll={(event) => {
+            const element = event.currentTarget;
+            const index = Math.round(element.scrollLeft / Math.max(1, element.clientWidth));
+            if (index !== current) setCurrent(index);
+          }}
+        >
+          {images.length === 0 ? (
+            <div className="ls-prod-slide" aria-hidden="true">
+              <Icon name="droplet" size={48} />
+            </div>
+          ) : (
+            images.map((image, index) => (
+              <figure key={image.sources[0]?.url ?? index} className="ls-prod-slide">
+                <ProductImage
+                  placeholderSize={48}
+                  image={image}
+                  sizes="(min-width: 1024px) 50vw, 100vw"
+                  priority={index === 0}
+                />
+              </figure>
+            ))
+          )}
+        </div>
+        {images.length > 1 ? (
+          <>
+            <IconButton
+              className="ls-prod-arrow"
+              data-side="start"
+              icon="chevron-left"
+              label={previousLabel}
+              disabled={current <= 0}
+              onClick={() => show(current - 1)}
+            />
+            <IconButton
+              className="ls-prod-arrow"
+              data-side="end"
+              icon="chevron-right"
+              label={nextLabel}
+              disabled={current >= images.length - 1}
+              onClick={() => show(current + 1)}
+            />
+          </>
+        ) : null}
       </div>
       {images.length > 1 ? (
         <div className="ls-prod-thumbs">

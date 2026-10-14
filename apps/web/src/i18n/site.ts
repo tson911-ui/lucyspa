@@ -248,6 +248,8 @@ export interface SiteText {
     gallery: string;
     /** With {n}: the thumbnail that shows picture n. */
     pictureN: string;
+    galleryPrevious: string;
+    galleryNext: string;
     variants: string;
     descriptionTitle: string;
     /** The fixed headings of the four description sections (Claude integration); the text under each comes from the product. */
@@ -482,6 +484,8 @@ const text = {
       detailLead: 'Giá niêm yết và tình trạng hàng của sản phẩm.',
       gallery: 'Ảnh sản phẩm',
       pictureN: 'Xem ảnh {n}',
+      galleryPrevious: 'Ảnh trước',
+      galleryNext: 'Ảnh tiếp theo',
       variants: 'Loại',
       descriptionTitle: 'Mô tả',
       sections: {
@@ -719,6 +723,8 @@ const text = {
       detailLead: 'Listed price and availability of the product.',
       gallery: 'Product pictures',
       pictureN: 'Show picture {n}',
+      galleryPrevious: 'Previous picture',
+      galleryNext: 'Next picture',
       variants: 'Option',
       descriptionTitle: 'Description',
       sections: {

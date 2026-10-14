@@ -881,7 +881,9 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
 [data-ui='v2']
   :is(
     .ls-svc-intro,
-    .ls-svd-hero > .ls-container
+    .ls-svd-hero > .ls-container,
+    .ls-prod-title > .ls-container,
+    .ls-pd-hero > .ls-container
   )
   > .ls-back-row {
   margin-block-end: 0;
@@ -1170,4 +1172,323 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   line-height: var(--ls-lh-price);
   white-space: nowrap;
   font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* ---- Products (C12, DESIGN.md 9.2): the list ------------------------------------------------------------------------------------------- */
+/* The title band and the list band lay their blocks out in one column with one gap, so the spacing between them is even. */
+[data-ui='v2'] :is(.ls-prod-title, .ls-prod-list) > .ls-container {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ls-space-6);
+}
+
+[data-ui='v2'] .ls-prod-title .ls-public-title {
+  padding-top: 0;
+  margin-bottom: 0;
+}
+
+/* The Owner's hero in the title band: the words (and the picture, from 768 px, beside them), flat, no box. */
+[data-ui='v2'] .ls-prod-hero {
+  margin-top: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+[data-ui='v2'] .ls-prod-hero-copy {
+  padding: 0;
+}
+
+[data-ui='v2'] .ls-prod-hero-picture {
+  overflow: hidden;
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-field);
+}
+
+@media (min-width: 768px) {
+  [data-ui='v2'] .ls-prod-hero-image {
+    align-items: center;
+    gap: var(--ls-space-8);
+  }
+
+  [data-ui='v2'] .ls-prod-hero-copy {
+    padding: 0;
+  }
+}
+
+/* The list band: the heading with the search and the sort on one row, the chips under it, the grid, the pager. */
+[data-ui='v2'] .ls-prod-head {
+  gap: var(--ls-space-4);
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+[data-ui='v2'] .ls-prod-head .ls-site-h2 {
+  margin: 0;
+}
+
+/* The filter button belongs to the phone; from 640 px the chips replace it. */
+@media (min-width: 640px) {
+  [data-ui='v2'] .ls-prod-filter-button {
+    display: none;
+  }
+}
+
+[data-ui='v2'] .ls-prod-chips {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  [data-ui='v2'] .ls-prod-chips {
+    display: grid;
+    gap: var(--ls-space-2);
+  }
+
+  /* A row of chips scrolls inside itself, never the page. */
+  [data-ui='v2'] .ls-prod-chips .ls-pills {
+    flex-wrap: nowrap;
+    margin: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  [data-ui='v2'] .ls-prod-chips .ls-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-ui='v2'] .ls-prod-chips .ls-pills > * {
+    flex: none;
+  }
+}
+
+/* The grid: two cards across on a phone, three from 768 px, four from 1280 px. */
+[data-ui='v2'] .ls-prod-grid {
+  gap: var(--ls-space-6) var(--ls-space-4);
+}
+
+@media (min-width: 768px) {
+  [data-ui='v2'] .ls-prod-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  [data-ui='v2'] .ls-prod-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+[data-ui='v2'] .ls-prod-grid > li > .ls-reveal {
+  display: block;
+}
+
+[data-ui='v2'] .ls-prod-grid .ls-pcard {
+  height: 100%;
+}
+
+[data-ui='v2'] .ls-prod-pager {
+  margin-top: 0;
+}
+
+/* The shop's commitment, the where-to-buy block: flat cards on their band (the opposite step), no border, no shadow. */
+[data-ui='v2'] :is(.ls-prod-commitment, .ls-prod-store) {
+  gap: var(--ls-space-4);
+  padding: var(--ls-space-6);
+  border: 0;
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
+  box-shadow: none;
+}
+
+[data-ui='v2'] :is(.ls-prod-commitment, .ls-prod-store) :is(h2, h3) {
+  font-size: var(--ls-type-heading);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] :is(.ls-prod-commitment li, .ls-prod-store p, .ls-prod-store dd) {
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+[data-ui='v2'] .ls-prod-store dt {
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+/* A filter list in the phone's sheet: links that read like radios (kept from the sheet's earlier form). */
+[data-ui='v2'] .ls-prod-filter-group h3 {
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+/* ---- Products: the product page ----------------------------------------------------------------------------------------------------------- */
+[data-ui='v2'] .ls-pd-hero > .ls-container {
+  display: grid;
+  gap: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-prod-detail {
+  margin-bottom: 0;
+  gap: var(--ls-space-7);
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-prod-detail {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--ls-space-10);
+  }
+}
+
+/* The gallery: one large square picture on the field step, swipe or arrows, small pictures under it. */
+[data-ui='v2'] .ls-prod-stage {
+  position: relative;
+}
+
+[data-ui='v2'] .ls-prod-viewport {
+  border: 0;
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-field);
+}
+
+[data-ui='v2'] .ls-prod-slide img {
+  filter: var(--ls-image-filter);
+}
+
+[data-ui='v2'] .ls-prod-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  translate: 0 -50%;
+  background: var(--ls-band-base);
+  color: var(--ls-text);
+}
+
+[data-ui='v2'] .ls-prod-arrow[data-side='start'] {
+  inset-inline-start: var(--ls-space-3);
+}
+
+[data-ui='v2'] .ls-prod-arrow[data-side='end'] {
+  inset-inline-end: var(--ls-space-3);
+}
+
+[data-ui='v2'] .ls-prod-arrow:disabled {
+  opacity: 0.4;
+}
+
+[data-ui='v2'] .ls-prod-thumb {
+  border: 0;
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-field);
+  box-shadow: none;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+[data-ui='v2'] .ls-prod-thumb[aria-current='true'] {
+  outline-color: var(--ls-brand);
+}
+
+[data-ui='v2'] .ls-prod-thumb:focus-visible {
+  outline-color: var(--ls-focus);
+}
+
+/* The name, the labels, the price at the title role, the variants, the buy row. */
+[data-ui='v2'] .ls-prod-info {
+  gap: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-prod-info .ls-h1-display {
+  margin: 0;
+}
+
+[data-ui='v2'] .ls-prod-meta {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-sale[data-size='page'] .ls-sale-now strong {
+  font-size: var(--ls-type-title);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-title);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+[data-ui='v2'] .ls-sale-pct {
+  color: var(--ls-text);
+}
+
+/* A price that is not on sale reads like the sale price: ink, at the title role. */
+[data-ui='v2'] .ls-prod-offer .ls-prod-detail-price strong {
+  color: var(--ls-text);
+  font-size: var(--ls-type-title);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-title);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+[data-ui='v2'] .ls-prod-stock {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-shop-buy {
+  gap: var(--ls-space-4);
+  margin-top: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-shop-buy-row {
+  gap: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-shop-facts li {
+  gap: var(--ls-space-3);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-shop-facts strong {
+  font-weight: var(--ls-weight-label);
+}
+
+/* The about band: the description, the accordion (usage, ingredients) and the where-to-buy card, side by side from 1024 px. */
+[data-ui='v2'] .ls-pd-about-grid {
+  display: grid;
+  gap: var(--ls-space-7);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-pd-about-grid {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: var(--ls-space-10);
+  }
+}
+
+[data-ui='v2'] .ls-pd-about-text {
+  display: grid;
+  gap: var(--ls-space-6);
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-pd-about .ls-prod-desc {
+  gap: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-pd-about .ls-prod-copy {
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+[data-ui='v2'] .ls-prod-sections {
+  gap: 0;
+}
+
+[data-ui='v2'] .ls-prod-related {
+  display: block;
 }

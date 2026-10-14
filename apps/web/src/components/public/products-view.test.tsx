@@ -149,7 +149,7 @@ test('cards: image, category, name link, price, struck list price, percent, "M�
   assert.ok(text.includes('>Hết hàng<'), 'sold out is a badge');
   assert.ok(text.includes('Đặt trước, dự kiến 3–5 ngày'));
   assert.ok(text.includes('từ 100.000 ₫'), 'a range reads "from"');
-  assert.match(text, /<h3[^>]*class="[^"]*ls-prod-name[^"]*"/);
+  assert.match(text, /<h3[^>]*class="[^"]*ls-pcard-name[^"]*"/);
   assert.ok(!/còn \d+|\d+ sản phẩm|tồn|quantity/i.test(text), 'no quantity anywhere');
   // A card without a picture shows a quiet placeholder icon, not a made-up photo.
   assert.ok(text.includes('<svg'));
@@ -173,11 +173,13 @@ test('filters: category links with the chosen one marked, sub-categories under t
   );
   assert.ok(text.includes('href="/vi/products?category=rua"'), 'the chosen filter, back at page 1');
   assert.match(text, /<a[^>]*aria-current="true"[^>]*>Sữa rửa mặt<\/a>/);
-  assert.ok(
-    text.indexOf('Chăm sóc da') < text.indexOf('Sữa rửa mặt') &&
-      text.indexOf('Sữa rửa mặt') < text.indexOf('Mặt nạ'),
-  );
-  assert.ok(text.includes('ls-prod-option-child'));
+  // The chip rows (from 640 px): the top-level categories first, the chosen one's parent marked, then its sub-categories in a second row.
+  const rows = text.split('<nav class="ls-pills"').slice(1);
+  assert.equal(rows.length, 2);
+  assert.match(rows[0]!, /aria-current="true"[^>]*>Chăm sóc da<\/a>/);
+  assert.ok(rows[0]!.includes('Mặt nạ') && !rows[0]!.includes('Sữa rửa mặt'));
+  assert.match(rows[1]!, /aria-current="true"[^>]*>Sữa rửa mặt<\/a>/);
+  // The phone's sheet keeps the full link list with the sub-category under its parent (rendered only while the sheet is open).
   assert.ok(!text.includes('Thương hiệu</h3>'), 'one brand is nothing to filter by');
   const many = html(
     <ProductsView
@@ -281,6 +283,80 @@ test('detail: one h1, gallery, price per variant with its own stock, where to bu
   // Online ordering is Wave 4: no cart, no buy button, no quantity.
   assert.ok(!/Mua ngay|Thêm vào giỏ|Add to cart|Buy now|name="quantity"/i.test(text));
   assert.ok(!/<form\b/.test(text));
+});
+
+test('detail (C12): bands alternate from the hero, the gallery has arrows with names, the related products are a scroll row', () => {
+  const text = html(
+    <ProductDetailView locale="vi" detail={detail()} site={site} />,
+    '/vi/products/kem-duong',
+  );
+  // Hero alt, the about band base, the commitment alt, the related row base.
+  assert.deepEqual(
+    [...text.matchAll(/ls-band--(base|alt)/g)].map((match) => match[1]),
+    ['alt', 'base', 'alt', 'base'],
+  );
+  // Two pictures: the arrows are named, the first is disabled at the start, the second is not.
+  assert.match(text, /<button[^>]*data-side="start"[^>]*aria-label="Ảnh trước"[^>]*disabled=""/);
+  assert.match(text, /<button[^>]*data-side="end"[^>]*aria-label="Ảnh tiếp theo"(?![^>]*disabled)/);
+  assert.match(text, /<ul class="ls-snap-track" aria-label="Sản phẩm cùng danh mục"/);
+  // One picture: no arrows, no row of small pictures.
+  const one = html(
+    <ProductDetailView locale="vi" detail={detail({ images: [image] })} site={site} />,
+    '/vi/products/kem-duong',
+  );
+  assert.doesNotMatch(one, /data-side=|ls-prod-thumbs/);
+  // Nothing to say about the product, the shop or a commitment: those bands are not drawn.
+  const bare = html(
+    <ProductDetailView
+      locale="vi"
+      detail={{ ...detail({ description: null, sections: [] }), commitment: null, related: [] }}
+      site={null}
+    />,
+    '/vi/products/kem-duong',
+  );
+  assert.deepEqual(
+    [...bare.matchAll(/ls-band--(base|alt)/g)].map((match) => match[1]),
+    ['alt'],
+  );
+});
+
+test('list (C12): chips for the categories and brands from 640 px, the second row holds the sub-categories of the chosen parent', () => {
+  const rich = data({
+    categories: [
+      { code: 'da', name: 'Chăm sóc da', parentCode: null, image: null },
+      { code: 'rua', name: 'Sữa rửa mặt', parentCode: 'da', image: null },
+    ],
+    brands: [
+      { code: 'b1', name: 'Hãng một' },
+      { code: 'b2', name: 'Hãng hai' },
+    ],
+  });
+  const start = html(<ProductsView locale="vi" data={rich} state={EMPTY_PRODUCTS_STATE} />);
+  assert.equal(
+    start.match(/<nav class="ls-pills"/g)?.length,
+    2,
+    'categories and brands; no sub-category row yet',
+  );
+  assert.match(start, /<div class="ls-prod-chips">/);
+  const chosen = html(
+    <ProductsView locale="vi" data={rich} state={{ ...EMPTY_PRODUCTS_STATE, category: 'da' }} />,
+  );
+  assert.equal(
+    chosen.match(/<nav class="ls-pills"/g)?.length,
+    3,
+    'the parent chosen: its sub-categories join',
+  );
+  // A chip is a link carrying the whole state, so the list can be shared; the chosen one is marked.
+  assert.match(
+    chosen,
+    /<a aria-current="true" href="\/vi\/products\?category=da">Chăm sóc da<\/a>/,
+  );
+  assert.match(chosen, /href="\/vi\/products\?category=da&amp;brand=b2">Hãng hai/);
+  // Nothing to filter by: no chip rows at all.
+  assert.doesNotMatch(
+    html(<ProductsView locale="vi" data={data()} state={EMPTY_PRODUCTS_STATE} />),
+    /ls-prod-chips/,
+  );
 });
 
 test('detail: one variant has no picker; no picture shows a placeholder; no shop profile means no store block', () => {
@@ -521,7 +597,9 @@ test('sale price block: struck list price with the percent, the sale price large
     />,
   );
   assert.ok(list.includes('<del>750.000 ₫</del>'));
-  assert.ok(list.includes('class="ls-sale-pct">-23%</span>'));
+  // The percent is one label over the picture (ink), not repeated in the price block.
+  assert.equal(count(list, /ls-badge-ink">-23%</g), 1);
+  assert.ok(!list.includes('class="ls-sale-pct"'));
   assert.ok(list.includes('class="ls-sale-now"><strong>580.000 ₫</strong>'));
   assert.ok(list.includes('Tiết kiệm <span class="ls-nowrap">170.000 ₫</span>'));
   assert.equal(count(list, /class="ls-sale"/g), 1, 'only the product on sale has the block');
@@ -586,7 +664,11 @@ test('detail: the four description sections come in their fixed order with their
     order,
   );
   assert.ok(!page.includes('Thành phần'), 'an empty section is not shown');
-  assert.match(page, /<h3[^>]*>Công dụng<\/h3>/);
+  // The sections are an accordion: each title is a button inside an h3, its text a hidden region until opened.
+  assert.match(
+    page,
+    /<h3 class="ls-accordion-heading"><button[^>]*aria-expanded="false"[^>]*><span class="ls-accordion-title">Công dụng<\/span>/,
+  );
   assert.ok(page.includes('Dưỡng ẩm cả ngày.'));
   assert.ok(
     !html(<ProductDetailView locale="vi" detail={detail()} site={null} />).includes(
@@ -600,5 +682,5 @@ test('detail: the four description sections come in their fixed order with their
       site={null}
     />,
   );
-  assert.match(english, /<h3[^>]*>Ingredients<\/h3>/);
+  assert.match(english, /<span class="ls-accordion-title">Ingredients<\/span>/);
 });

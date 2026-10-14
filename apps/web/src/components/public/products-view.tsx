@@ -1,38 +1,42 @@
 import type {
   PublicCampaign,
-  PublicProductCard,
   PublicProductDetailResponse,
   PublicProductsCommitment,
   PublicProductsResponse,
   PublicSiteResponse,
 } from '@lucy-spa/contracts';
-import { Badge, buttonClass, EmptyState, Icon, PublicMain, Reveal } from '@lucy-spa/ui';
+import {
+  Accordion,
+  Badge,
+  Band,
+  buttonClass,
+  EmptyState,
+  Icon,
+  PublicMain,
+  Reveal,
+} from '@lucy-spa/ui';
 import Link from 'next/link';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import {
   activeFilterCount,
   activeCampaign,
-  cardPriceText,
   PRODUCTS_LIST_ID,
-  productHref,
   productsHref,
-  stockLabel,
   withFilter,
   type ProductsState,
 } from '../../lib/public-products-core';
 import { directionsUrl, hoursHeadline, telHref } from '../../lib/public-site-core';
 import { PageBack } from '../navigation/page-back';
-import { CampaignHero, CampaignStrips, PriceCampaignLine } from './campaign-views';
+import { CampaignHero, CampaignStrips } from './campaign-views';
 import { LoadNotice } from './home-sections';
-import { SalePrice } from './sale-price';
+import { ProductCard } from './product-card';
 import { ProductGallery } from './product-gallery';
 import { ProductImage } from './product-image';
 import { ProductOffer } from './product-offer';
 import { ProductsPager, ProductsToolbar } from './products-controls';
 import { PublicBreadcrumbs } from './public-breadcrumbs';
-
-const CARD_SIZES = '(min-width: 1024px) 22vw, (min-width: 768px) 30vw, 46vw';
+import { ScrollRow } from './scroll-row';
 
 function ProductsBack({ locale }: { locale: Locale }) {
   return (
@@ -44,64 +48,7 @@ function ProductsBack({ locale }: { locale: Locale }) {
   );
 }
 
-/**
- * One product as a card: the picture with its badges ("-x%", "Mới", "Hết hàng"), the category, the name (the card's one link,
- * stretched over the whole card), the availability line and the price with the struck list price while a promotion runs.
- */
-export function ProductCardView({
-  locale,
-  card,
-  level = 3,
-  priority = false,
-}: {
-  locale: Locale;
-  card: PublicProductCard;
-  level?: 2 | 3;
-  priority?: boolean;
-}) {
-  const text = getSiteText(locale).products;
-  const Heading = level === 2 ? 'h2' : 'h3';
-  const stock = stockLabel(card.stock, text);
-  return (
-    <article className="ls-prod-card">
-      <div className="ls-prod-media">
-        {card.image ? (
-          <ProductImage image={card.image} sizes={CARD_SIZES} priority={priority} />
-        ) : (
-          <Icon name="droplet" size={40} aria-hidden="true" />
-        )}
-        {card.isNew || card.stock.state === 'OUT_OF_STOCK' ? (
-          <div className="ls-prod-badges">
-            {card.isNew ? <Badge tone="brand">{text.badgeNew}</Badge> : null}
-            {card.stock.state === 'OUT_OF_STOCK' ? (
-              <Badge tone="neutral">{text.outOfStock}</Badge>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-      <div className="ls-prod-body">
-        {card.category || card.brand ? (
-          <span className="ls-prod-meta">{card.category?.name ?? card.brand}</span>
-        ) : null}
-        <Heading className="ls-site-h3 ls-prod-name">
-          <Link href={productHref(locale, card.code)} title={card.name}>
-            {card.name}
-          </Link>
-        </Heading>
-        <div className="ls-prod-foot">
-          {stock && card.stock.state === 'PRE_ORDER' ? (
-            <p className="ls-prod-stock" data-state={card.stock.state}>
-              {stock}
-            </p>
-          ) : null}
-          <SalePrice locale={locale} price={card.price} nowText={cardPriceText(card, locale)} />
-          <PriceCampaignLine locale={locale} price={card.price} />
-        </div>
-      </div>
-    </article>
-  );
-}
-
+/** The shop's commitment, as the Owner wrote it: a flat card on its band with a check beside each line. */
 function CommitmentBox({
   commitment,
   headingLevel,
@@ -127,7 +74,7 @@ function CommitmentBox({
   );
 }
 
-/** Category (with sub-categories under their parent) and brand as link lists: they work without scripts and can be shared. */
+/** Category (with sub-categories under their parent) and brand as link lists for the phone's filter sheet: they work without scripts. */
 function FilterGroups({
   locale,
   state,
@@ -207,9 +154,79 @@ function FilterGroups({
 }
 
 /**
- * The public cosmetics list (design 16): the Owner's hero (hidden when empty; the page then opens with a plain title), then
- * the search, filters and sort, the sidebar with the commitment box and the grid of cards. Everything the visitor chose is in
- * the address, so the server draws exactly that page. The page has one `h1`.
+ * The category and brand chips of the list (DESIGN.md 9.2), from 640 px; a phone has the filter sheet instead. They are links, so they work
+ * without scripts and can be shared. The first row is the top-level categories; once one is chosen (or one of its sub-categories) a
+ * second row offers its sub-categories. Choosing the parent again is the way back to all of it.
+ */
+function FilterChips({
+  locale,
+  state,
+  data,
+}: {
+  locale: Locale;
+  state: ProductsState;
+  data: PublicProductsResponse;
+}) {
+  const text = getSiteText(locale).products;
+  const top = data.categories.filter((category) => category.parentCode === null);
+  const chosen = data.categories.find((category) => category.code === state.category);
+  const activeTop = chosen ? (chosen.parentCode ?? chosen.code) : '';
+  const subs = data.categories.filter((category) => category.parentCode === activeTop);
+  const href = (patch: Partial<ProductsState>) => productsHref(locale, withFilter(state, patch));
+  const chip = (key: string, label: string, selected: boolean, to: string) => (
+    <Link
+      key={key}
+      href={to}
+      prefetch={false}
+      scroll={false}
+      aria-current={selected ? 'true' : undefined}
+    >
+      {label}
+    </Link>
+  );
+  return (
+    <div className="ls-prod-chips">
+      {top.length > 0 ? (
+        <nav className="ls-pills" aria-label={text.categories}>
+          {chip('all', text.allCategories, state.category === '', href({ category: '' }))}
+          {top.map((category) =>
+            chip(
+              category.code,
+              category.name,
+              activeTop === category.code,
+              href({ category: category.code }),
+            ),
+          )}
+        </nav>
+      ) : null}
+      {subs.length > 0 ? (
+        <nav className="ls-pills" aria-label={text.categories}>
+          {subs.map((category) =>
+            chip(
+              category.code,
+              category.name,
+              state.category === category.code,
+              href({ category: category.code }),
+            ),
+          )}
+        </nav>
+      ) : null}
+      {data.brands.length > 1 ? (
+        <nav className="ls-pills" aria-label={text.brands}>
+          {chip('all-brands', text.allBrands, state.brand === '', href({ brand: '' }))}
+          {data.brands.map((brand) =>
+            chip(brand.code, brand.name, state.brand === brand.code, href({ brand: brand.code })),
+          )}
+        </nav>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The public cosmetics list (DESIGN.md 9.2): the title band (the Owner's hero, or a plain title) with the campaign strips, then the list band
+ * with the search, the sort, the category and brand chips, the grid of cards (2 / 3 / 4 across) and the pager, and the Owner's commitment as
+ * a last band. Everything the visitor chose is in the address, so the server draws exactly that page. The page has one `h1`.
  */
 export function ProductsView({
   locale,
@@ -239,9 +256,15 @@ export function ProductsView({
     locale,
     withFilter(state, { q: '', category: '', brand: '', ...(sale ? {} : { campaign: '' }) }),
   );
+  const nothingPublished =
+    data !== null &&
+    data.total === 0 &&
+    state.q === '' &&
+    activeFilterCount(state) === 0 &&
+    data.categories.length === 0;
   return (
     <PublicMain>
-      <div className="ls-container">
+      <Band tone="page" className="ls-band--alt ls-prod-title">
         <ProductsBack locale={locale} />
         {sale ? (
           <CampaignHero locale={locale} campaign={sale} onlineOpen={onlineOpen} />
@@ -271,26 +294,27 @@ export function ProductsView({
         {plain && !sale ? (
           <CampaignStrips locale={locale} campaigns={campaigns} onlineOpen={onlineOpen} />
         ) : null}
-        {data === null ? (
+      </Band>
+      {data === null ? (
+        <Band tone="page" className="ls-band--base">
           <LoadNotice locale={locale} section={t.title} />
-        ) : data.total === 0 &&
-          state.q === '' &&
-          activeFilterCount(state) === 0 &&
-          data.categories.length === 0 ? (
-          <div className="ls-prod-section">
-            <EmptyState
-              icon="droplet"
-              action={
-                <Link className={buttonClass('secondary')} href={`/${locale}/services`}>
-                  {t.emptyAction}
-                </Link>
-              }
-            >
-              {t.empty}
-            </EmptyState>
-          </div>
-        ) : (
-          <section className="ls-prod-section" aria-labelledby={PRODUCTS_LIST_ID}>
+        </Band>
+      ) : nothingPublished ? (
+        <Band tone="page" className="ls-band--base">
+          <EmptyState
+            icon="droplet"
+            action={
+              <Link className={buttonClass('secondary')} href={`/${locale}/services`}>
+                {t.emptyAction}
+              </Link>
+            }
+          >
+            {t.empty}
+          </EmptyState>
+        </Band>
+      ) : (
+        <>
+          <Band tone="page" labelledBy={PRODUCTS_LIST_ID} className="ls-band--base ls-prod-list">
             <div className="ls-prod-head">
               <h2 className="ls-site-h2" id={PRODUCTS_LIST_ID}>
                 {t.sectionTitle}
@@ -299,51 +323,45 @@ export function ProductsView({
                 {hasFilters ? filterGroups : null}
               </ProductsToolbar>
             </div>
-            <div className="ls-prod-layout">
-              <div className="ls-prod-main">
-                {data.items.length === 0 ? (
-                  <EmptyState
-                    icon="search"
-                    action={
-                      <Link className={buttonClass('secondary')} href={reset}>
-                        {t.filterReset}
-                      </Link>
-                    }
-                  >
-                    {t.noMatch}
-                  </EmptyState>
-                ) : (
-                  <ul className="ls-prod-grid">
-                    {data.items.map((card, index) => (
-                      <li key={card.code}>
-                        <Reveal index={index % 6}>
-                          <ProductCardView locale={locale} card={card} priority={index < 2} />
-                        </Reveal>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {data.total > 0 ? (
-                  <ProductsPager locale={locale} state={state} total={data.total} />
-                ) : null}
-              </div>
-              {hasFilters || data.commitment ? (
-                <div className="ls-prod-side">
-                  {hasFilters ? <div className="ls-prod-aside">{filterGroups}</div> : null}
-                  {data.commitment ? (
-                    <CommitmentBox commitment={data.commitment} headingLevel={2} />
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          </section>
-        )}
-      </div>
+            {hasFilters ? <FilterChips locale={locale} state={state} data={data} /> : null}
+            {data.items.length === 0 ? (
+              <EmptyState
+                icon="search"
+                action={
+                  <Link className={buttonClass('secondary')} href={reset}>
+                    {t.filterReset}
+                  </Link>
+                }
+              >
+                {t.noMatch}
+              </EmptyState>
+            ) : (
+              <ul className="ls-prod-grid">
+                {data.items.map((card, index) => (
+                  <li key={card.code}>
+                    <Reveal index={index % 6}>
+                      <ProductCard locale={locale} card={card} priority={index < 2} />
+                    </Reveal>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {data.total > 0 ? (
+              <ProductsPager locale={locale} state={state} total={data.total} />
+            ) : null}
+          </Band>
+          {data.commitment ? (
+            <Band tone="page" className="ls-band--alt">
+              <CommitmentBox commitment={data.commitment} headingLevel={2} />
+            </Band>
+          ) : null}
+        </>
+      )}
     </PublicMain>
   );
 }
 
-/** "Mua trực tiếp tại cửa hàng": where to buy, from the shop profile (no cart or checkout exists yet). */
+/** "Mua trực tiếp tại cửa hàng": where to buy, from the shop profile. */
 function StoreBlock({ locale, site }: { locale: Locale; site: PublicSiteResponse }) {
   const text = getSiteText(locale);
   const t = text.products.store;
@@ -386,8 +404,9 @@ function StoreBlock({ locale, site }: { locale: Locale; site: PublicSiteResponse
 }
 
 /**
- * One product on its own page (design 16.4): gallery, name, price and availability per variant, the description, where to buy
- * (the shop's own details) and the other products of the category.
+ * One product on its own page (DESIGN.md 9.2): a split hero with the gallery on the left and the name, price, labels, variants and purchase
+ * block on the right; then a band with the description, the usage / ingredients accordion and where to buy (the shop's own details), the
+ * Owner's commitment, and the other products of the category as a row. A band is drawn only when it has content.
  */
 export function ProductDetailView({
   locale,
@@ -403,20 +422,26 @@ export function ProductDetailView({
   if (detail === null) {
     return (
       <PublicMain>
-        <div className="ls-container">
+        <Band tone="page" className="ls-band--alt ls-prod-title">
           <ProductsBack locale={locale} />
           <div className="ls-public-title">
             <h1 className="ls-h1-display">{t.title}</h1>
           </div>
+        </Band>
+        <Band tone="page" className="ls-band--base">
           <LoadNotice locale={locale} section={t.title} />
-        </div>
+        </Band>
       </PublicMain>
     );
   }
   const { product, commitment, related } = detail;
+  // The hero band is the alternate color; the bands after it alternate down the page.
+  let tone: 'alt' | 'base' = 'alt';
+  const nextTone = () => (tone = tone === 'alt' ? 'base' : 'alt');
+  const hasAbout = Boolean(product.description) || product.sections.length > 0 || site !== null;
   return (
     <PublicMain>
-      <div className="ls-container ls-prod-page">
+      <Band tone="page" className="ls-band--alt ls-pd-hero">
         <ProductsBack locale={locale} />
         <PublicBreadcrumbs
           label={t.breadcrumbs}
@@ -434,7 +459,13 @@ export function ProductDetailView({
           ]}
         />
         <div className="ls-prod-detail">
-          <ProductGallery images={product.images} label={t.gallery} thumbLabel={t.pictureN} />
+          <ProductGallery
+            images={product.images}
+            label={t.gallery}
+            thumbLabel={t.pictureN}
+            previousLabel={t.galleryPrevious}
+            nextLabel={t.galleryNext}
+          />
           <div className="ls-prod-info">
             {product.category || product.brand ? (
               <span className="ls-prod-meta">
@@ -444,53 +475,67 @@ export function ProductDetailView({
             <h1 className="ls-h1-display">{product.name}</h1>
             {product.isNew ? (
               <div className="ls-prod-detail-badges">
-                <Badge tone="brand">{t.badgeNew}</Badge>
+                <Badge tone="outline">{t.badgeNew}</Badge>
               </div>
             ) : null}
             <ProductOffer locale={locale} variants={product.variants} />
-            {product.description ? (
-              <section className="ls-prod-desc" aria-labelledby="product-description-title">
-                <h2 className="ls-site-h3" id="product-description-title">
-                  {t.descriptionTitle}
-                </h2>
-                <p className="ls-prod-copy">{product.description}</p>
-              </section>
-            ) : null}
-            {product.sections.length > 0 ? (
-              <div className="ls-prod-sections">
-                {product.sections.map((section) => (
-                  <section
-                    key={section.key}
-                    className="ls-prod-section"
-                    aria-labelledby={`product-section-${section.key}`}
-                  >
-                    <h3 className="ls-prod-section-title" id={`product-section-${section.key}`}>
-                      {t.sections[section.key]}
-                    </h3>
-                    <p className="ls-prod-copy">{section.text}</p>
-                  </section>
-                ))}
-              </div>
-            ) : null}
-            {site ? <StoreBlock locale={locale} site={site} /> : null}
-            {commitment ? <CommitmentBox commitment={commitment} headingLevel={2} /> : null}
           </div>
         </div>
-        {related.length > 0 ? (
-          <section className="ls-prod-related" aria-labelledby="product-related-title">
-            <h2 className="ls-site-h2-sub" id="product-related-title">
+      </Band>
+      {hasAbout ? (
+        <Band tone="page" className={`ls-band--${nextTone()} ls-pd-about`}>
+          <div className="ls-pd-about-grid">
+            <div className="ls-pd-about-text">
+              {product.description ? (
+                <section className="ls-prod-desc" aria-labelledby="product-description-title">
+                  <h2 className="ls-site-h2" id="product-description-title">
+                    {t.descriptionTitle}
+                  </h2>
+                  <p className="ls-prod-copy">{product.description}</p>
+                </section>
+              ) : null}
+              {product.sections.length > 0 ? (
+                <div className="ls-prod-sections">
+                  <Accordion
+                    headingLevel={3}
+                    items={product.sections.map((section) => ({
+                      id: `product-section-${section.key}`,
+                      title: t.sections[section.key],
+                      content: <p className="ls-prod-copy">{section.text}</p>,
+                    }))}
+                  />
+                </div>
+              ) : null}
+            </div>
+            {site ? <StoreBlock locale={locale} site={site} /> : null}
+          </div>
+        </Band>
+      ) : null}
+      {commitment ? (
+        <Band tone="page" className={`ls-band--${nextTone()}`}>
+          <CommitmentBox commitment={commitment} headingLevel={2} />
+        </Band>
+      ) : null}
+      {related.length > 0 ? (
+        <Band
+          tone="page"
+          labelledBy="product-related-title"
+          className={`ls-band--${nextTone()} ls-prod-related`}
+        >
+          <Reveal>
+            <h2 className="ls-site-h2" id="product-related-title">
               {t.related}
             </h2>
-            <ul className="ls-prod-grid">
-              {related.map((card) => (
-                <li key={card.code}>
-                  <ProductCardView locale={locale} card={card} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-      </div>
+          </Reveal>
+          <ScrollRow label={t.related} previous={text.home.rowPrevious} next={text.home.rowNext}>
+            {related.map((card) => (
+              <li key={card.code} className="ls-snap-item">
+                <ProductCard locale={locale} card={card} />
+              </li>
+            ))}
+          </ScrollRow>
+        </Band>
+      ) : null}
     </PublicMain>
   );
 }
