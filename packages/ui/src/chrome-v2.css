@@ -222,6 +222,13 @@
   }
 }
 
+/* Below 1024 px the policy column takes the whole row: its page titles are long, and two narrow columns wrapped them. */
+@media (max-width: 1023px) {
+  [data-ui='v2'] .ls-site-footer-grid > [data-column='policies'] {
+    grid-column: 1 / -1;
+  }
+}
+
 /* The base line (session 7b): the rights text, and under it (a phone) or beside it (from 768 px) the legal line, the links of the terms
    and privacy pages. The line is not drawn when no such page is published. */
 [data-ui='v2'] .ls-site-footer-base {

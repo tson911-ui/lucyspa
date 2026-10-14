@@ -272,6 +272,9 @@ function NameDialog({
           {(control) => (
             <TextInput
               {...control}
+              // The page names the problem beside the field (H12), not the browser's own bubble.
+              required={false}
+              aria-required="true"
               autoComplete="name"
               maxLength={NAME_MAX}
               value={name}
@@ -310,11 +313,20 @@ function EmailDialog({
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [shown, setShown] = useState(false);
+  const [emailLeft, setEmailLeft] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const problem = emailProblem(password, email, profile.email.address);
   const coding = step.kind === 'code';
+  // The new address: after a failed submit, or once the person left the field with something typed (the password is not its business).
+  const addressProblem = emailProblem('x', email, profile.email.address);
+  const emailMessage =
+    addressProblem !== null &&
+    addressProblem !== 'passwordRequired' &&
+    (shown || (emailLeft && email.trim() !== ''))
+      ? text[addressProblem]
+      : undefined;
 
   /** One request at a time; a failure stays in the dialog with everything typed kept. */
   async function guarded(work: () => Promise<void>) {
@@ -409,6 +421,8 @@ function EmailDialog({
               {(control) => (
                 <PasswordInput
                   {...control}
+                  required={false}
+                  aria-required="true"
                   showLabel={t.auth.showPassword}
                   hideLabel={t.auth.hidePassword}
                   maxLength={1024}
@@ -425,20 +439,20 @@ function EmailDialog({
               label={text.newEmail}
               required
               requiredLabel={t.common.required}
-              error={
-                shown && problem !== null && problem !== 'passwordRequired'
-                  ? text[problem]
-                  : undefined
-              }
+              error={emailMessage}
             >
               {(control) => (
                 <TextInput
                   {...control}
+                  required={false}
+                  aria-required="true"
                   type="email"
                   inputMode="email"
                   maxLength={254}
                   autoComplete="email"
                   value={email}
+                  // H12: the address is checked when the field is left, not only on submit.
+                  onBlur={() => setEmailLeft(true)}
                   onChange={(event) => {
                     setShown(false);
                     setEmail(event.target.value);
@@ -462,6 +476,8 @@ function EmailDialog({
             {(control) => (
               <TextInput
                 {...control}
+                required={false}
+                aria-required="true"
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 pattern="[0-9]{6}"
