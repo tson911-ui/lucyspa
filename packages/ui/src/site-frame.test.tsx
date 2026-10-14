@@ -603,88 +603,137 @@ test('the hero photo motion: settle and zoom on tokens, parallax only where it i
   }
 });
 
-test('Reveal is visible in the server markup and starts hidden only below the fold', async () => {
+test('Reveal is visible in the server markup and starts hidden only below the fold, then the GSAP wrapper shows it', async () => {
   const server = renderToStaticMarkup(
     <ui.Reveal index={2}>
       <p>Nội dung</p>
     </ui.Reveal>,
   );
   assert.doesNotMatch(server, /data-reveal/);
-  assert.match(server, /--ls-reveal-index:2/);
 
-  const observers: { callback: IntersectionObserverCallback; disconnected: boolean }[] = [];
   class FakeObserver {
-    constructor(callback: IntersectionObserverCallback) {
-      observers.push({ callback, disconnected: false });
-    }
     observe() {}
-    disconnect() {
-      const last = observers[observers.length - 1];
-      if (last) last.disconnected = true;
-    }
+    disconnect() {}
   }
   const globals = window as unknown as Record<string, unknown>;
   globals.IntersectionObserver = FakeObserver;
   (globalThis as Record<string, unknown>).IntersectionObserver = FakeObserver;
   Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 });
+  const calls = {
+    loads: 0,
+    triggers: [] as Record<string, unknown>[],
+    tweens: [] as unknown[][],
+    reverted: 0,
+  };
+  const modules = {
+    gsap: {
+      context: (build: () => void) => {
+        build();
+        return {
+          revert: () => {
+            calls.reverted += 1;
+          },
+        };
+      },
+      fromTo: (...args: unknown[]) => calls.tweens.push(args),
+    },
+    ScrollTrigger: { create: (options: Record<string, unknown>) => calls.triggers.push(options) },
+  };
+  const { configureMotion } = await import('./motion');
+  const install = (load?: () => Promise<never>) =>
+    configureMotion({
+      load:
+        load ??
+        (async () => {
+          calls.loads += 1;
+          return modules as never;
+        }),
+      afterFirstPaint: (callback) => callback(),
+    });
+  install();
   const proto = window.HTMLElement.prototype;
   const original = proto.getBoundingClientRect;
-  const mountAt = (top: number) => {
+  const settle = () => act(async () => void (await Promise.resolve()));
+  const mountAt = async (top: number) => {
     proto.getBoundingClientRect = () => ({ top, bottom: top + 200 }) as DOMRect;
     const container = window.document.createElement('div');
     window.document.body.appendChild(container);
     const root = createRoot(container);
     act(() =>
       root.render(
-        <ui.Reveal>
+        <ui.Reveal index={3}>
           <p>Nội dung</p>
         </ui.Reveal>,
       ),
     );
-    return { container, root };
+    await settle();
+    return { container, root, element: container.querySelector('.ls-reveal') as HTMLElement };
   };
 
-  const above = mountAt(100);
-  assert.equal(above.container.querySelector('.ls-reveal')?.getAttribute('data-reveal'), null);
+  // On screen at mount: never hidden, GSAP is not even loaded.
+  const above = await mountAt(100);
+  assert.equal(above.element.getAttribute('data-reveal'), null);
+  assert.equal(calls.loads, 0);
   act(() => above.root.unmount());
 
-  const below = mountAt(1500);
-  const element = below.container.querySelector('.ls-reveal') as HTMLElement;
-  assert.equal(element.getAttribute('data-reveal'), 'hidden');
-  const observer = observers[observers.length - 1];
-  assert.ok(observer);
-  // Not on screen at the observer's first look: it stays hidden, and fades in when it later enters the screen.
-  act(() =>
-    observer.callback(
-      [{ isIntersecting: false } as IntersectionObserverEntry],
-      {} as IntersectionObserver,
-    ),
-  );
-  assert.equal(element.getAttribute('data-reveal'), 'hidden');
-  act(() =>
-    observer.callback(
-      [{ isIntersecting: true } as IntersectionObserverEntry],
-      {} as IntersectionObserver,
-    ),
-  );
-  assert.equal(element.getAttribute('data-reveal'), 'shown');
-  assert.equal(observer.disconnected, true);
+  // Below the fold: hidden until the trigger fires, then the tween runs from the tokens (jsdom has none: 0), staggered by position.
+  const below = await mountAt(1500);
+  assert.equal(below.element.getAttribute('data-reveal'), 'hidden');
+  assert.equal(calls.loads, 1);
+  const trigger = calls.triggers[calls.triggers.length - 1];
+  assert.ok(trigger);
+  assert.equal(trigger['once'], true);
+  assert.equal(trigger['start'], 'top 85%');
+  assert.equal(trigger['trigger'], below.element);
+  assert.equal(calls.tweens.length, 0, 'nothing animates before the trigger');
+  act(() => (trigger['onEnter'] as () => void)());
+  assert.equal(below.element.getAttribute('data-reveal'), null);
+  const [target, from, to] = calls.tweens[0] ?? [];
+  assert.equal(target, below.element);
+  assert.deepEqual(from, { opacity: 0, y: 0 });
+  assert.equal((to as Record<string, unknown>)['ease'], 'power3.out');
+  assert.equal((to as Record<string, unknown>)['clearProps'], 'opacity,transform');
   act(() => below.root.unmount());
+  assert.equal(calls.reverted, 1, 'unmount reverts the context');
 
-  // Already on screen at the observer's first look (the page was scrolled in between): shown without the fade.
-  const late = mountAt(1500);
-  const lateElement = late.container.querySelector('.ls-reveal') as HTMLElement;
-  assert.equal(lateElement.getAttribute('data-reveal'), 'hidden');
-  const lateObserver = observers[observers.length - 1];
-  assert.ok(lateObserver);
-  act(() =>
-    lateObserver.callback(
-      [{ isIntersecting: true } as IntersectionObserverEntry],
-      {} as IntersectionObserver,
-    ),
-  );
-  assert.equal(lateElement.getAttribute('data-reveal'), null);
+  // Scrolled past while GSAP was loading: shown, no fade.
+  const late = await mountAt(1500);
+  proto.getBoundingClientRect = () => ({ top: -400, bottom: -200 }) as DOMRect;
+  const tweens = calls.tweens.length;
+  act(() => (calls.triggers[calls.triggers.length - 1]?.['onEnter'] as () => void)());
+  assert.equal(late.element.getAttribute('data-reveal'), null);
+  assert.equal(calls.tweens.length, tweens);
   act(() => late.root.unmount());
+
+  // The off switch (`ls-fx=off`): the block is shown, GSAP never loads, no tween.
+  const loadsBefore = calls.loads;
+  window.document.cookie = 'ls-fx=off; Path=/';
+  const off = await mountAt(1500);
+  assert.equal(off.element.getAttribute('data-reveal'), null);
+  assert.equal(calls.loads, loadsBefore);
+  act(() => off.root.unmount());
+  window.document.cookie = 'ls-fx=; Max-Age=0; Path=/';
+
+  // Motion turned off while the page is open: the context is reverted and the block is shown.
+  const live = await mountAt(1500);
+  assert.equal(live.element.getAttribute('data-reveal'), 'hidden');
+  const revertedBefore = calls.reverted;
+  window.document.documentElement.dataset['lsMotion'] = 'reduced';
+  await settle();
+  assert.equal(live.element.getAttribute('data-reveal'), null);
+  assert.equal(calls.reverted, revertedBefore + 1);
+  act(() => live.root.unmount());
+  delete window.document.documentElement.dataset['lsMotion'];
+
+  // GSAP cannot load (offline): the block is shown, nothing throws.
+  install(async () => {
+    throw new Error('chunk lost');
+  });
+  const failed = await mountAt(1500);
+  await settle();
+  assert.equal(failed.element.getAttribute('data-reveal'), null);
+  act(() => failed.root.unmount());
+  configureMotion();
   proto.getBoundingClientRect = original;
 });
 
@@ -692,7 +741,15 @@ test('site.css: tokens only, no color or duration literals, reveal reads the mot
   assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b/i);
   assert.doesNotMatch(css, /\b(?:rgb|rgba|hsl|hsla)\(/i);
   assert.doesNotMatch(css, /\b\d*\.?\d+m?s\b(?!\))/, 'a literal duration');
-  assert.match(css, /transition:[^;]*var\(--ls-dur-reveal\) var\(--ls-ease-premium\)/);
+  assert.doesNotMatch(
+    css,
+    /data-reveal='shown'/,
+    'the tween belongs to the GSAP wrapper, not to a CSS transition',
+  );
+  assert.match(
+    css,
+    /html\[data-ls-motion='reduced'\] \.ls-site \.ls-reveal\[data-reveal='hidden'\]/,
+  );
   assert.match(css, /--ls-reveal-shift/);
   assert.match(css, /\.ls-site \.ls-reveal\[data-reveal='hidden'\]/);
 });

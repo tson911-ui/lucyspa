@@ -1,16 +1,17 @@
 'use client';
 
-import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { cx } from './cx';
 import { findScroller } from './scroller';
-import { motionAllowed, readMotionEnvironment, staggerIndex, startsVisible } from './reveal-core';
+import { useMotion } from './motion';
+import { staggerIndex, startsVisible } from './reveal-core';
 
 /**
- * Content reveal (Part 2 contract 7, pattern M1): a block below the fold eases in once (opacity and a small
- * translate) when it first enters the viewport. It is visible in the server markup and without JavaScript; only
- * after mount, and only for blocks that are not on screen yet, does it start hidden, so the first paint (and the
- * largest contentful paint) never waits for motion. Reduced motion, data saver and low memory devices see the
- * content at once. One observer per block, no scroll listener.
+ * Content reveal (Part 2 contract 7, pattern M1; DESIGN.md 11.4): a block below the fold eases in once (opacity and a small
+ * translate up) when it first enters the viewport, through the GSAP wrapper (`ScrollTrigger`, `once`, `top 85%`, no scrub). It is
+ * visible in the server markup and without JavaScript; only after mount, and only for blocks that are not on screen yet, does it
+ * start hidden, so the first paint (and the largest contentful paint) never waits for motion. When motion is off (reduced motion,
+ * data saver, low memory, the `ls-fx` switch) or GSAP cannot load, the block is simply shown.
  */
 export function Reveal({
   index = 0,
@@ -23,9 +24,11 @@ export function Reveal({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const motion = useMotion();
+  const position = staggerIndex(index);
   useEffect(() => {
     const element = ref.current;
-    if (!element || !motionAllowed(readMotionEnvironment())) return;
+    if (!element || !motion.enabled) return;
     // Below 1024 px the page scrolls inside the shell's scroller: measure against it, not against the window.
     const scroller = findScroller(element);
     const rect = element.getBoundingClientRect();
@@ -40,26 +43,41 @@ export function Reveal({
     )
       return;
     element.dataset.reveal = 'hidden';
-    let first = true;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const initial = first;
-        first = false;
-        if (!entries.some((entry) => entry.isIntersecting)) return;
-        // Already on screen when the observer first looked (the page was scrolled or resized in between): show it
-        // without the fade, so nothing visible is ever hidden and then faded in.
-        if (initial) delete element.dataset.reveal;
-        else element.dataset.reveal = 'shown';
-        observer.disconnect();
+    const show = () => {
+      delete element.dataset.reveal;
+    };
+    return motion.run(
+      element,
+      (kit) => {
+        kit.ScrollTrigger.create({
+          trigger: element,
+          scroller: kit.scroller(),
+          start: 'top 85%',
+          once: true,
+          onEnter: () => {
+            show();
+            // Already scrolled past, or under a text field's caret: no fade, just there.
+            if (element.getBoundingClientRect().bottom <= 0 || !kit.canAnimate(element)) return;
+            kit.gsap.fromTo(
+              element,
+              { opacity: 0, y: kit.shift() },
+              {
+                opacity: 1,
+                y: 0,
+                duration: kit.duration('reveal'),
+                delay: kit.stagger(position),
+                ease: 'power3.out',
+                clearProps: 'opacity,transform',
+              },
+            );
+          },
+        });
       },
-      { rootMargin: '0px 0px -10% 0px' },
+      { onUnavailable: show },
     );
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  const style = { '--ls-reveal-index': staggerIndex(index) } as CSSProperties;
+  }, [motion.enabled, motion.run, position]);
   return (
-    <div ref={ref} className={cx('ls-reveal', className)} style={style}>
+    <div ref={ref} className={cx('ls-reveal', className)}>
       {children}
     </div>
   );

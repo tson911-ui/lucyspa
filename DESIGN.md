@@ -395,7 +395,7 @@ style, not size. Footers are Cancel then primary, primary last (kept).
 
 ### 8.7 Badges and chips
 
-- Pill, height 24, padding 4 x 10, 12/500 (never wraps, never truncates a word). Optional 16 px leading icon.
+- Pill, height 24, padding 4 x 12, 12/500 (never wraps, never truncates a word). Optional 16 px leading icon.
 - **Shop labels** (one accent family, no second chromatic color): **Bán chạy** = accent fill; **Mới** = accent outline; **-20 %**
   (sale) = `--ls-text` fill (ink on light, `#f5f5f7` on dark) with inverse text. The sale amount is a number plus the percent
   sign; the old price is shown struck through beside the new price.

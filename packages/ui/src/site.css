@@ -2677,23 +2677,16 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 }
 
 /* ---------- motion (customer side only; contract 7) ---------- */
-.ls-reveal {
-  /* The component sets the real position inline (0-5). */
-  --ls-reveal-index: 0;
-}
-
+/* A block below the fold starts hidden (set by Reveal after mount) and the GSAP wrapper (motion.ts) tweens it in: opacity and a
+   rise of --ls-reveal-shift, over --ls-dur-reveal. Motion turned off while the page is open shows what is still hidden at once. */
 .ls-site .ls-reveal[data-reveal='hidden'] {
   opacity: 0;
   transform: translateY(var(--ls-reveal-shift));
 }
 
-.ls-site .ls-reveal[data-reveal='shown'] {
+html[data-ls-motion='reduced'] .ls-site .ls-reveal[data-reveal='hidden'] {
   opacity: 1;
   transform: none;
-  transition:
-    opacity var(--ls-dur-reveal) var(--ls-ease-premium),
-    transform var(--ls-dur-reveal) var(--ls-ease-premium);
-  transition-delay: calc(var(--ls-reveal-index) * var(--ls-stagger));
 }
 
 /* ---------- controls (M9): one hover and press style for every button and link-button of the public site ---------- */

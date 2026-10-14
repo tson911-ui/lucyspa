@@ -73,15 +73,36 @@ Status values: `todo` / `done` (with commit hash).
   As built: the new `Accordion`; `suspended` on Dialog / Drawer (the discard prompt hides the form under v2, so one modal shows); the form overlays
   and the confirm dialog use the neutral Cancel; `Pagination` takes an optional `pageOf` label (callers add it as they are rebuilt, C12-C15).
   Toasts: none is mounted on the customer site yet (the provider is in the staff shell), so a customer page that needs one mounts the provider inside the frame. Not changed (behavior, shared with staff): the toast keeps 4 at most, no `role="alert"` for errors and no action button (DESIGN.md 8.6 says 3, alert, 8 s with an action).
+  Owner (session 2 review): deferred until a customer page first mounts a toast, or group 2.
+
+### Owner decisions on the session 2 report (2026-10-14)
+
+- Default `Button` = accent outline; each page Step picks its one primary (accepted).
+- Badge side padding 12 px (accepted); `DESIGN.md` 8.7 updated to 12 px.
+- Select arrow: replace the platform arrow with the chevron from `packages/ui/src/icons.tsx` (a positioned icon element, no gradient, no
+  colored image), customer v2 scope only. Done in C8.
+- Toast rules of `DESIGN.md` 8.6 (max 3, `role="alert"`, 8 s with an action): deferred until a customer page first mounts a toast, or group 2.
+- Table columns per page: accepted; each page Step chooses its own.
+- Checkout coupon fields at 130 % text: fixed in C13.
 
 ### Session 3
 
-- **C7: GSAP wrapper (M).** Status: todo.
+- **C7: GSAP wrapper (M).** Status: done (see the commit below).
   License check on gsap.com, then add `gsap` core + ScrollTrigger with a dynamic import. Set the bundle budget and measure it. Add the
   `useMotion` hook (durations from tokens, clamped to 200 ms in the compact scope). Extend `MotionGate` and `ls-fx=off` into the global off
   switch, with the staff-wide motion setting stubbed. Re-base `Reveal` on the wrapper.
   Verify: reduced motion and the off switch both give the final state with no tween, plus a bundle-size report. The only Step that installs
   a package.
+  As built: `gsap` 3.15.0 (exact) in `packages/ui`. Files: `motion-core.ts` (pure: the switches, token parsing, the 200 ms staff cap),
+  `motion.ts` (`useMotion().run(scope, build)`, one dynamic import of `gsap` + `gsap/ScrollTrigger` after the first paint, a `gsap.context`
+  per scope that is reverted on unmount and when motion turns off), `MotionGate` (now also reads `ls-fx=off`, a `staffSetting` prop that is the
+  stubbed staff-wide setting, and the kill flag; the attribute `data-ls-motion` stays the one mark the stylesheet and the wrapper read).
+  `Reveal` runs through the wrapper (ScrollTrigger, `once`, `top 85%`); the CSS transition path is gone.
+  License (gsap.com/standard-license, effective 2025-04-30, modified 2025-05-30; npm `license: Standard 'no charge' license`): free for anyone,
+  commercial use included, ScrollTrigger included; the only limit is building a no-code visual animation tool that competes with Webflow.
+  Bundle budget: first load may grow by at most 3 KB gzip for the wrapper, and the lazy GSAP chunks stay at or under 50 KB gzip together.
+  Measured (gzip, home `/vi`): first load 340.4 to 342.4 KB (+2.0), lazy GSAP 44.6 KB (core 27.2 + ScrollTrigger 17.4; 114 KB raw), loaded
+  after first paint only. A build with `NEXT_PUBLIC_LS_MOTION=off` emits no GSAP chunk at all.
 
 - **C8: header, nav, theme and language (L).** Status: todo.
   Wordmark, translucent sticky header with blur, the always-visible "Đặt lịch" pill, compact-on-scroll (64 to 52), the three-option theme
@@ -89,6 +110,7 @@ Status values: `todo` / `done` (with commit hash).
   Verify: `uxui-touch-check`, no layout shift, and the season layer renders as before.
   Carry-over (Owner, session 1 review): `uxui-touch-check` flags the theme button, which changes theme on tap. Verify against HEAD whether
   this is a time-of-day artifact or a real failure, and say which.
+  Owner decision (session 2 review): the v2 select drops the platform arrow for the `icons.tsx` chevron (customer scope only), done here.
 
 - **C9: footer, tab bar, contact button, popup (M).** Status: todo.
   Footer from the existing footer blocks (no brand-red band, no waves), phone tab bar and app shell, contact button, promo popup.
@@ -113,6 +135,7 @@ Status values: `todo` / `done` (with commit hash).
 - **C13: cart, checkout, orders (L).** Status: todo.
   Rows, summary card, radio-card payment methods, order list and detail. The PayOS states are unchanged.
   Verify: G7, and the money flow still works against the scratch DB.
+  Carry-over (Owner, session 2 review): the checkout coupon fields shrink to a sliver at 130 % text; fix here.
 
 ### Session 6
 
