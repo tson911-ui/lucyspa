@@ -413,10 +413,18 @@ test('services list: the filter links, one section per group, a chosen group alo
   assert.match(all, /<a class="[^"]*ls-back[^"]*" href="\/vi">.*Quay lại.*<h1/s);
   assert.match(all, /aria-current="true"[^>]*>Tất cả/);
   assert.match(all, /Gội thường/);
-  // A row is one link (the name, a leader, the price and the time) plus a separate booking button named after the service.
+  // A card is one link (the name, stretched over the card) plus a separate booking button named after the service; the photo is a flat
+  // placeholder. The title band and the chips row come before the first group, and the bands alternate from the base color.
   assert.match(
     all,
-    /<a class="ls-svc-main" href="\/vi\/services\/GOI_THUONG"><span class="ls-svc-name" title="Gội thường">Gội thường<\/span><span class="ls-svc-dots" aria-hidden="true"><\/span>/,
+    /<h3 class="ls-svc-card-name"><a title="Gội thường" href="\/vi\/services\/GOI_THUONG">Gội thường<\/a><\/h3>/,
+  );
+  assert.match(all, /class="ls-image-frame ls-svc-media"/);
+  assert.ok(all.indexOf('ls-svc-title') < all.indexOf('ls-svc-chips'));
+  assert.ok(all.indexOf('ls-svc-chips') < all.indexOf('ls-svc-grid'));
+  assert.deepEqual(
+    [...all.matchAll(/ls-band--(base|alt)/g)].map((match) => match[1]),
+    ['alt', 'base', 'alt'],
   );
   assert.match(all, /aria-label="Đặt lịch: Gội thường"/);
   assert.match(all, /role="search"/);
@@ -436,6 +444,12 @@ test('services list: the filter links, one section per group, a chosen group alo
     renderToStaticMarkup(<ServicesView locale="en" data={{ groups: [] }} group="" />),
     /There are no services to show yet/,
   );
+  // The empty and error states keep the title band and the page's one h1, and draw no chips or cards.
+  for (const data of [null, { groups: [] }]) {
+    const state = renderToStaticMarkup(<ServicesView locale="vi" data={data} group="" />);
+    assert.equal(state.match(/<h1[ >]/g)?.length, 1);
+    assert.doesNotMatch(state, /ls-svc-chips|ls-svc-grid/);
+  }
 });
 
 test('service detail: facts, the per-nail note, the booking link and the group neighbours', () => {
@@ -456,6 +470,21 @@ test('service detail: facts, the per-nail note, the booking link and the group n
   assert.match(html, /href="\/vi\/account\/book\?service=DINH_DA"/);
   assert.match(html, /Sơn gel/);
   assert.match(html, /href="\/vi\/services\?group=NAIL"/);
+  // Split hero: the photo placeholder beside the copy; one primary in the hero and one in the booking band, the phone bar (hidden until the
+  // page has measured) and the related services as a scroll row of cards. No FAQ, steps or "what is included": the data has none.
+  assert.match(html, /class="ls-slot ls-svd-slot"/);
+  assert.equal(html.match(/data-book-cta=/g)?.length, 2);
+  assert.match(
+    html,
+    /class="ls-action-bar ls-svc-bar" data-shown="false" role="region" aria-label="Đặt lịch dịch vụ này"/,
+  );
+  assert.match(html, /<ul class="ls-snap-track" aria-label="Dịch vụ cùng nhóm"/);
+  assert.match(html, /id="cta-title"/);
+  assert.doesNotMatch(html, /FAQ|Câu hỏi|Bao gồm|Các bước/i);
+  assert.deepEqual(
+    [...html.matchAll(/ls-band--(base|alt)/g)].map((match) => match[1]),
+    ['alt', 'base', 'alt'],
+  );
   const plain = renderToStaticMarkup(
     <ServiceDetailView
       locale="vi"

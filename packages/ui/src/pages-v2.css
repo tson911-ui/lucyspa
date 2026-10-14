@@ -795,3 +795,256 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-home-prod-media img {
     color: var(--ls-on-brand);
   }
 }
+
+/* The floating contact button rests in a slot between the last band and the footer; it takes the color of an alternate last band, so it never
+   shows as a strip of its own (the base color is the page's, so the slot already matches it). */
+[data-ui='v2'] .site-shell:has(.ls-site-main > .ls-band--alt:last-child) > .ls-contact {
+  background: var(--ls-band-alt);
+}
+
+/* ---- Services list (9.2) ----------------------------------------------------------------------------------------------------------------- */
+/* The title band: the Back button, the one h1, its sentence and the search; then the chips row, which stays under the header while the
+   page scrolls (the header is 64 px and its surface compacts to 52 px, so the row sticks at the compact height). Then one band per group. */
+[data-ui='v2'] .ls-svc-intro {
+  display: grid;
+  gap: var(--ls-space-4);
+  justify-items: start;
+}
+
+[data-ui='v2'] .ls-svc-intro .ls-h1-display {
+  margin: 0;
+}
+
+/* The Back row pulls its container's gap in by 8 px; here the gaps are even, so the pull is taken back. */
+[data-ui='v2'] :is(.ls-svc-intro, .ls-svd-hero > .ls-container) > .ls-back-row {
+  margin-block-end: 0;
+}
+
+[data-ui='v2'] .ls-svc-search {
+  max-width: 28rem;
+  margin-top: var(--ls-space-6);
+}
+
+[data-ui='v2'] .ls-svc-chips {
+  position: sticky;
+  top: var(--ls-site-header-h-compact);
+  z-index: var(--ls-z-sticky);
+  padding-block: var(--ls-space-2);
+  border-bottom: 1px solid var(--ls-border);
+  background: var(--ls-band-base);
+}
+
+[data-ui='v2'] .ls-svc-chips .ls-pills {
+  margin: 0;
+}
+
+[data-ui='v2'] .ls-svc-grid {
+  display: grid;
+  gap: var(--ls-space-7) var(--ls-space-4);
+  margin: var(--ls-space-7) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 640px) {
+  [data-ui='v2'] .ls-svc-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-svc-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  [data-ui='v2'] .ls-svc-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* A card: the photo placeholder, the name (the one link, stretched over the card), the time, the price, and the pill with its own target. */
+[data-ui='v2'] .ls-svc-item {
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-svc-card {
+  position: relative;
+  display: grid;
+  gap: var(--ls-space-3);
+  align-content: start;
+  height: 100%;
+}
+
+[data-ui='v2'] .ls-svc-card-body {
+  display: grid;
+  gap: var(--ls-space-1);
+  align-content: start;
+}
+
+[data-ui='v2'] .ls-svc-card-name {
+  margin: 0;
+  font-size: var(--ls-type-heading);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+}
+
+/* Two lines tall at least: the link box is a 44 px target even for a one-line name, and the cards of a row stay one height. */
+[data-ui='v2'] .ls-svc-card-name a {
+  display: block;
+  min-height: 2.6em;
+  color: var(--ls-text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+[data-ui='v2'] .ls-svc-card-name a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+[data-ui='v2'] .ls-svc-card-meta {
+  display: flex;
+  gap: var(--ls-space-2);
+  align-items: center;
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-svc-card-price {
+  margin: 0;
+  font-size: var(--ls-type-price);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-price);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+[data-ui='v2'] .ls-svc-card-book {
+  position: relative;
+  z-index: 1;
+  justify-self: start;
+  align-self: end;
+}
+
+/* ---- Service detail (9.2) ---------------------------------------------------------------------------------------------------------------- */
+[data-ui='v2'] .ls-svd-hero > .ls-container {
+  display: grid;
+  gap: var(--ls-space-6);
+}
+
+[data-ui='v2'] .ls-svd-grid {
+  display: grid;
+  gap: var(--ls-space-7);
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-svd-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--ls-space-10);
+  }
+}
+
+[data-ui='v2'] .ls-svd-copy {
+  display: grid;
+  gap: var(--ls-space-4);
+  justify-items: start;
+}
+
+[data-ui='v2'] .ls-svd-copy .ls-h1-display {
+  margin: 0;
+}
+
+[data-ui='v2'] .ls-svd-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-4) var(--ls-space-7);
+  margin: 0;
+}
+
+[data-ui='v2'] .ls-svd-facts dt {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-svd-facts dd {
+  margin: 0;
+  font-size: var(--ls-type-price);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-price);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+[data-ui='v2'] .ls-svd-desc {
+  max-width: 36rem;
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+  text-wrap: pretty;
+}
+
+[data-ui='v2'] .ls-svd-note {
+  max-width: 36rem;
+  margin: 0;
+  color: var(--ls-text-subtle);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-svd-cta-copy {
+  display: grid;
+  gap: var(--ls-space-4);
+  justify-items: start;
+  max-width: 36rem;
+}
+
+[data-ui='v2'] .ls-svd-cta-copy > p {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+/* The phone has its own booking bar (below), so the booking band is for the larger screens. */
+@media (max-width: 1023.98px) {
+  [data-ui='v2'] .ls-svd-cta {
+    display: none;
+  }
+}
+
+/* The phone booking bar: an action bar at the bottom of the page above the tab bar, drawn only while the page's own booking buttons are out of
+   view (the client sets data-shown) and never from 1024 px. Flat: a hairline on top, no shadow, no radius. */
+[data-ui='v2'] .ls-svc-bar {
+  display: none;
+}
+
+@media (max-width: 1023.98px) {
+  [data-ui='v2'] .ls-svc-bar[data-shown='true'] {
+    display: flex;
+    gap: var(--ls-space-4);
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--ls-space-3) var(--ls-gutter) calc(var(--ls-space-3) + var(--ls-safe-bottom));
+    border-top: 1px solid var(--ls-border);
+    border-radius: 0;
+    background: var(--ls-bg-page);
+    box-shadow: none;
+  }
+}
+
+[data-ui='v2'] .ls-svc-bar-price {
+  margin: 0;
+  font-size: var(--ls-type-price);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-price);
+  white-space: nowrap;
+  font-variant-numeric: lining-nums tabular-nums;
+}

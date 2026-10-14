@@ -108,3 +108,43 @@ test('home offer: one flat accent block, and the button is the inverse of it wit
     /\.ls-btn-offer:hover:not\(\[aria-disabled='true'\]\):not\(:disabled\) \{\s*border-color: var\(--ls-on-brand\);\s*background: var\(--ls-brand-fill-hover\);/,
   );
 });
+
+test('services list: the chips row sticks under the compact header, cards are 1 / 2 / 3 / 4 columns, the name link is a 44 px target', () => {
+  const chips = body("[data-ui='v2'] .ls-svc-chips");
+  assert.match(chips, /position:\s*sticky/);
+  assert.match(chips, /top:\s*var\(--ls-site-header-h-compact\)/);
+  assert.match(chips, /background:\s*var\(--ls-band-base\)/);
+  for (const [width, columns] of [
+    [640, 2],
+    [1024, 3],
+    [1280, 4],
+  ] as const) {
+    assert.match(
+      css,
+      new RegExp(
+        `@media \\(min-width: ${width}px\\) \\{\\s*\\[data-ui='v2'\\] \\.ls-svc-grid \\{\\s*grid-template-columns: repeat\\(${columns}, minmax\\(0, 1fr\\)\\)`,
+      ),
+    );
+  }
+  assert.match(body("[data-ui='v2'] .ls-svc-card-name a"), /min-height:\s*2\.6em/);
+  assert.match(body("[data-ui='v2'] .ls-svc-card-name a::after"), /inset:\s*0/);
+  // The booking pill keeps its own target above the stretched name link.
+  assert.match(body("[data-ui='v2'] .ls-svc-card-book"), /z-index:\s*1/);
+});
+
+test('service detail: the phone bar is drawn only below 1024 px and only when the client says so; the booking band is for larger screens', () => {
+  assert.match(body("[data-ui='v2'] .ls-svc-bar"), /display:\s*none/);
+  assert.match(
+    css,
+    /@media \(max-width: 1023\.98px\) \{\s*\[data-ui='v2'\] \.ls-svc-bar\[data-shown='true'\] \{\s*display: flex;/,
+  );
+  assert.match(
+    css,
+    /@media \(max-width: 1023\.98px\) \{\s*\[data-ui='v2'\] \.ls-svd-cta \{\s*display: none;/,
+  );
+  const shown =
+    all.find((rule) => rule.selector === "[data-ui='v2'] .ls-svc-bar[data-shown='true']")?.body ??
+    '';
+  assert.match(shown, /box-shadow:\s*none/);
+  assert.match(shown, /border-radius:\s*0/);
+});

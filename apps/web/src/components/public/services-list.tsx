@@ -1,7 +1,7 @@
 'use client';
 
 import type { PublicService, PublicServiceGroup } from '@lucy-spa/contracts';
-import { buttonClass, Icon, Notice, Reveal, SearchInput } from '@lucy-spa/ui';
+import { Band, buttonClass, EmptyState, Icon, ImageFrame, Reveal, SearchInput } from '@lucy-spa/ui';
 import Link from 'next/link';
 import { useMemo, useState, type ReactNode } from 'react';
 import type { Locale } from '../../i18n/locales';
@@ -10,55 +10,72 @@ import { fill } from '../../lib/fill';
 import { matchesQuery } from '../../lib/search-core';
 import {
   bookServiceHref,
+  cardPrice,
   serviceEstimate,
   serviceHref,
-  servicePrice,
 } from '../../lib/public-site-core';
 
 /**
- * One service as a row of the price list: the name, a dotted leader and the price on the first line, the estimated time under
- * them, and the booking button at the end. The row is a link to the service's own page; the button is a separate link (two
- * actions, so the list is not one column of identical solid buttons).
+ * One service as a card (DESIGN.md 9.2): the photo (a flat placeholder: no field holds a service photo yet), the name (the card's one link,
+ * stretched over the card), the estimated time, the price ("from" for a per-nail price) and the "Đặt lịch" pill, which keeps its own target
+ * above the stretched link. A card is a list item; `className` lets a row of cards (the related services) add its snap item class.
  */
-export function ServiceRow({ locale, service }: { locale: Locale; service: PublicService }) {
+export function ServiceCard({
+  locale,
+  service,
+  className,
+}: {
+  locale: Locale;
+  service: PublicService;
+  className?: string;
+}) {
   const text = getSiteText(locale).services;
   return (
-    <li className="ls-svc-row">
-      <Link className="ls-svc-main" href={serviceHref(locale, service.code)}>
-        <span className="ls-svc-name" title={service.name}>
-          {service.name}
-        </span>
-        <span className="ls-svc-dots" aria-hidden="true" />
-        <span className="ls-svc-price">{servicePrice(service, locale)}</span>
-        <span className="ls-svc-meta">
-          <Icon name="clock" size={16} aria-hidden="true" />
-          {serviceEstimate(service, locale)}
-        </span>
-      </Link>
-      <Link
-        className={buttonClass('secondary', 'md', 'ls-svc-book', true)}
-        href={bookServiceHref(locale, service.code)}
-        aria-label={`${text.book}: ${service.name}`}
-      >
-        {text.book}
-      </Link>
+    <li className={className ? `ls-svc-item ${className}` : 'ls-svc-item'}>
+      <article className="ls-svc-card">
+        <ImageFrame src={null} alt="" ratio="4/3" className="ls-svc-media" />
+        <div className="ls-svc-card-body">
+          <h3 className="ls-svc-card-name">
+            <Link href={serviceHref(locale, service.code)} title={service.name}>
+              {service.name}
+            </Link>
+          </h3>
+          <p className="ls-svc-card-meta">
+            <Icon name="clock" size={16} aria-hidden="true" />
+            {serviceEstimate(service, locale)}
+          </p>
+          <p className="ls-svc-card-price">{cardPrice(service, locale)}</p>
+        </div>
+        <Link
+          className={buttonClass('secondary', 'md', 'ls-svc-card-book')}
+          href={bookServiceHref(locale, service.code)}
+          aria-label={`${text.book}: ${service.name}`}
+        >
+          {text.book}
+        </Link>
+      </article>
     </li>
   );
 }
 
 /**
- * The service list: a search box (accents and case ignored, on the name and the description) and one section per group.
- * The group filter is the server's (links), so the groups arrive already narrowed; the search narrows what is shown.
+ * The service list page below the server's header (DESIGN.md 9.2): the title band (the server's `intro`: back, h1 and the sentence) with the
+ * search, the sticky chips row (the server's group links), then one band for each group with a heading and the cards. The bands alternate
+ * from the base color after the title band. The group filter is the server's (links), so the groups arrive already narrowed; the search
+ * narrows what is shown (accents and case ignored, on the name and the description).
  */
 export function ServicesList({
   locale,
   groups,
-  children,
+  intro,
+  chips,
 }: {
   locale: Locale;
   groups: readonly PublicServiceGroup[];
-  /** The group filter (links, drawn by the server page), shown with the search in one toolbar. */
-  children?: ReactNode;
+  /** The title band's content: the Back button, the page's one h1 (id `services-title`) and its sentence. */
+  intro: ReactNode;
+  /** The group filter (links, drawn by the server page), kept at the top while the page scrolls. */
+  chips: ReactNode;
 }) {
   const text = getSiteText(locale).services;
   const [query, setQuery] = useState('');
@@ -76,9 +93,9 @@ export function ServicesList({
   );
   return (
     <>
-      <div className="ls-svc-toolbar">
-        {children}
-        <div role="search" aria-label={text.searchLabel}>
+      <Band tone="page" labelledBy="services-title" className="ls-band--alt ls-svc-title">
+        {intro}
+        <div className="ls-svc-search" role="search" aria-label={text.searchLabel}>
           <SearchInput
             label={text.searchLabel}
             clearLabel={text.searchClear}
@@ -87,29 +104,33 @@ export function ServicesList({
             onSearch={setQuery}
           />
         </div>
+      </Band>
+      <div className="ls-svc-chips">
+        <div className="ls-container">{chips}</div>
       </div>
       {shown.length === 0 ? (
-        <div className="ls-page-notice">
-          <Notice tone="info">{fill(text.noMatch, { query })}</Notice>
-        </div>
+        <Band tone="page" className="ls-band--base">
+          <EmptyState icon="search">{fill(text.noMatch, { query })}</EmptyState>
+        </Band>
       ) : (
-        shown.map((group) => (
-          <section
+        shown.map((group, index) => (
+          <Band
             key={group.code}
-            className="ls-svc-section"
-            aria-labelledby={`group-${group.code}`}
+            tone="page"
+            labelledBy={`group-${group.code}`}
+            className={`ls-band--${index % 2 === 0 ? 'base' : 'alt'}`}
           >
             <Reveal>
-              <h2 className="ls-site-h2-sub" id={`group-${group.code}`}>
+              <h2 className="ls-site-h2" id={`group-${group.code}`}>
                 {group.name}
               </h2>
             </Reveal>
-            <ul className="ls-svc-list">
+            <ul className="ls-svc-grid">
               {group.services.map((service) => (
-                <ServiceRow key={service.code} locale={locale} service={service} />
+                <ServiceCard key={service.code} locale={locale} service={service} />
               ))}
             </ul>
-          </section>
+          </Band>
         ))
       )}
     </>

@@ -191,6 +191,12 @@ export interface SiteText {
     notFoundTitle: string;
     notFoundBody: string;
     breadcrumbs: string;
+    /** The booking band at the bottom of a service page: its heading and one sentence (the page's phone bar uses `bookBar` as its name). */
+    ctaTitle: string;
+    ctaLead: string;
+    bookBar: string;
+    /** The caption of the service photo placeholder. */
+    photoService: string;
   };
   /** The public cosmetics catalog (Phase 6 P6-6). Hero and commitment words are the Owner's, from the admin, never from here. */
   products: {
@@ -419,6 +425,10 @@ const text = {
       notFoundTitle: 'Không tìm thấy dịch vụ',
       notFoundBody: 'Dịch vụ này không còn hoặc đang tạm ngưng. Xem các dịch vụ khác của tiệm.',
       breadcrumbs: 'Đường dẫn',
+      ctaTitle: 'Sẵn sàng đặt lịch?',
+      ctaLead: 'Chọn giờ còn trống và giữ chỗ trực tuyến trong vài phút.',
+      bookBar: 'Đặt lịch dịch vụ này',
+      photoService: 'Ảnh của tiệm: dịch vụ này',
     },
     products: {
       title: 'Mỹ phẩm',
@@ -649,6 +659,10 @@ const text = {
       notFoundTitle: 'Service not found',
       notFoundBody: 'This service is no longer offered or is paused. See the shop other services.',
       breadcrumbs: 'Breadcrumbs',
+      ctaTitle: 'Ready to book?',
+      ctaLead: 'Pick a free time and book online in minutes.',
+      bookBar: 'Book this service',
+      photoService: 'The shop’s own photo: this service',
     },
     products: {
       title: 'Cosmetics',
