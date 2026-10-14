@@ -6,11 +6,13 @@ import {
   CardHeader,
   DescriptionList,
   EmptyState,
+  Band,
   Notice,
-  PublicPage,
+  PublicMain,
   Stack,
 } from '@lucy-spa/ui';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import type { Locale } from '../../i18n/locales';
 import { productOrdersDictionary } from '../../i18n/product-orders';
 import { formatBusinessDate, formatVnd } from '../../lib/customer/invoice';
@@ -39,6 +41,34 @@ function expected(
 }
 
 /**
+ * The ticket page frame (DESIGN.md 9.2): one centered column of 30 rem under the wordmark, the title and its sentence centered above it.
+ * The header shows only the wordmark here and the page prints without the site chrome (pages-v2.css).
+ */
+function TicketFrame({
+  title,
+  lead,
+  children,
+}: {
+  title: string;
+  lead?: string | undefined;
+  children: ReactNode;
+}) {
+  return (
+    <PublicMain>
+      <Band tone="page" className="ls-band--base ls-ticket-band">
+        <div className="ls-ticket-page">
+          <div className="ls-public-title">
+            <h1 className="ls-h1-display">{title}</h1>
+            {lead ? <p className="ls-lead">{lead}</p> : null}
+          </div>
+          {children}
+        </div>
+      </Band>
+    </PublicMain>
+  );
+}
+
+/**
  * The digital pick-up ticket for the holder of the secret link: the code to read out at the counter, what was paid, each product with
  * its state and the expected range (an estimate, never a promise). No phone number, no address, no staff name, no other order.
  */
@@ -52,7 +82,7 @@ export function TicketView({
   const d = productOrdersDictionary(locale);
   const p = d.publicTicket;
   return (
-    <PublicPage title={p.title} lead={p.bring} width="narrow">
+    <TicketFrame title={p.title} lead={p.bring}>
       <Stack gap="page">
         {ticket.lines.some((line) => line.status === 'ARRIVED') ? (
           <Notice tone="success">{p.arrivedHint}</Notice>
@@ -107,7 +137,7 @@ export function TicketView({
           </ul>
         </Card>
       </Stack>
-    </PublicPage>
+    </TicketFrame>
   );
 }
 
@@ -115,7 +145,7 @@ export function TicketView({
 export function TicketUnavailable({ locale, retryHref }: { locale: Locale; retryHref: string }) {
   const p = productOrdersDictionary(locale).publicTicket;
   return (
-    <PublicPage title={p.title} width="narrow">
+    <TicketFrame title={p.title}>
       <EmptyState
         title={p.unavailableTitle}
         action={
@@ -126,6 +156,6 @@ export function TicketUnavailable({ locale, retryHref }: { locale: Locale; retry
       >
         {p.loadFailed}
       </EmptyState>
-    </PublicPage>
+    </TicketFrame>
   );
 }

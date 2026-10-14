@@ -223,3 +223,41 @@ test('C15 member area: the tabs show from 768 px, the phone gets the list, a sum
   assert.doesNotMatch(body("[data-ui='v2'] .ls-acct-card"), /hover|transform/);
   assert.match(body("[data-ui='v2'] .ls-acct-content[data-narrow='true']"), /max-width:\s*45rem/);
 });
+
+test('C16 status pages: the direction C ring is gone and the title is the `title` size', () => {
+  assert.match(body("[data-ui='v2'] .ls-public-centered::before"), /content:\s*none/);
+  assert.match(
+    body("[data-ui='v2'] .ls-public-centered .ls-h1-display"),
+    /font-size:\s*var\(--ls-type-section\)/,
+  );
+});
+
+test('C16 ticket: a 30 rem column, the header keeps only the wordmark and the page prints without the site chrome', () => {
+  assert.match(body("[data-ui='v2'] .ls-ticket-page"), /max-width:\s*30rem/);
+  assert.match(
+    stripped,
+    /:has\(\.ls-ticket-page\)\s+:is\(\.ls-site-lead > :not\(\.ls-site-brand\), \.ls-site-tools, \.ls-site-cta, \.ls-tab-bar\) \{\s*display: none;/,
+  );
+  assert.match(
+    stripped,
+    /@media print \{\s*\[data-ui='v2'\]:has\(\.ls-ticket-page\) :is\(\.ls-site-footer, \.ls-contact\)/,
+  );
+});
+
+test('C16 info pages: a 680 px article, the table of contents only from 1024 px, the hover is the solid accent', () => {
+  assert.match(body("[data-ui='v2'] .ls-info-article"), /max-width:\s*42\.5rem/);
+  assert.match(body("[data-ui='v2'] .ls-info-toc"), /display:\s*none/);
+  assert.match(
+    stripped,
+    /@media \(min-width: 1024px\) \{\s*\[data-ui='v2'\] \.ls-info-toc \{\s*position: sticky;/,
+  );
+  assert.match(body("[data-ui='v2'] .ls-info-toc a:hover"), /background:\s*var\(--ls-hover-bg\)/);
+  assert.match(
+    body("[data-ui='v2'] .ls-info-article img"),
+    /border-radius:\s*var\(--ls-radius-lg\)/,
+  );
+  assert.match(
+    stripped,
+    /@media \(min-width: 768px\) \{\s*\[data-ui='v2'\] \.ls-info-split \{\s*grid-template-columns: repeat\(2/,
+  );
+});

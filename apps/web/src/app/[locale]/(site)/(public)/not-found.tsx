@@ -36,8 +36,8 @@ export default function PublicNotFound() {
           <Link className={buttonClass('primary', 'lg')} href={`/${locale}`}>
             {site.errors.home}
           </Link>
-          <Link className={buttonClass('secondary', 'lg')} href={`/${locale}/services`}>
-            {site.errors.services}
+          <Link className={buttonClass('secondary', 'lg')} href={`/${locale}/account/book`}>
+            {site.header.bookNow}
           </Link>
         </div>
       </PublicPage>

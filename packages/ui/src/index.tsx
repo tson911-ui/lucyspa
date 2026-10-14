@@ -55,6 +55,7 @@ export { RouteFade } from './route-fade';
 export { RouteEnter } from './route-enter';
 export { useSlidingPill } from './sliding-pill';
 // Public site and member-area frame (Part 2): header, menu, tab bar, footer, bands, price list, steps, choice card, reveal.
+export { ContactPage, InfoPage, type InfoSection } from './info-page';
 export { Band, PriceList, PublicMain, PublicPage, SiteFooter, Steps, TabBar } from './site';
 export { SiteNav, SiteSubNav } from './site-nav';
 export type {

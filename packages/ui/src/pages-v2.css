@@ -2136,3 +2136,223 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   font-size: var(--ls-type-label);
   line-height: var(--ls-lh-label);
 }
+
+/* ---- Status pages, ticket and info pages (C16, DESIGN.md 9.2) -------------------------------------------------------------------------- */
+/* 404, a page that failed and a missing ticket: centered, the title at the `title` size, one sentence and the actions. The soft ring of
+   direction C is gone (a flat page, no decoration). */
+[data-ui='v2'] .ls-public-centered::before {
+  content: none;
+}
+
+[data-ui='v2'] .ls-public-centered {
+  align-content: center;
+  min-height: min(32rem, 60svh);
+  padding-block: var(--ls-space-9);
+}
+
+[data-ui='v2'] .ls-public-centered .ls-public-title {
+  margin-block: 0 var(--ls-space-6);
+  padding-top: 0;
+}
+
+[data-ui='v2'] .ls-public-centered .ls-h1-display {
+  font-size: var(--ls-type-section);
+  line-height: var(--ls-lh-section);
+}
+
+/* The public ticket: one centered column of 30 rem, the code large. The header keeps only the wordmark and the phone tab bar is gone (the
+   holder of a secret link has no account to go to); printed, the page is the ticket alone. */
+[data-ui='v2'] .ls-ticket-page {
+  display: grid;
+  gap: var(--ls-space-6);
+  width: 100%;
+  max-width: 30rem;
+  min-width: 0;
+  margin-inline: auto;
+}
+
+[data-ui='v2'] .ls-ticket-page .ls-public-title {
+  justify-items: center;
+  margin-bottom: 0;
+  padding-top: 0;
+  text-align: center;
+}
+
+[data-ui='v2'] .ls-ticket-page .ls-h1-display {
+  font-size: var(--ls-type-section);
+  line-height: var(--ls-lh-section);
+}
+
+[data-ui='v2'] .ls-ticket-page .ls-ticket-head {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+[data-ui='v2'] .ls-ticket-page .ls-ticket-code {
+  font-size: var(--ls-type-page);
+  line-height: var(--ls-lh-page);
+  overflow-wrap: anywhere;
+}
+
+[data-ui='v2']:has(.ls-ticket-page)
+  :is(.ls-site-lead > :not(.ls-site-brand), .ls-site-tools, .ls-site-cta, .ls-tab-bar) {
+  display: none;
+}
+
+@media print {
+  [data-ui='v2']:has(.ls-ticket-page) :is(.ls-site-footer, .ls-contact) {
+    display: none;
+  }
+}
+
+/* Info pages: the title band, then one article column of 680 px; from 1024 px a table of contents beside it (only when there are two
+   sections or more). */
+[data-ui='v2'] .ls-info-title .ls-public-title {
+  margin-bottom: 0;
+}
+
+[data-ui='v2'] .ls-info-layout {
+  display: grid;
+  gap: var(--ls-space-8);
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-info-layout[data-toc='true'] {
+    grid-template-columns: minmax(0, 42.5rem) 16rem;
+    column-gap: var(--ls-space-9);
+    align-items: start;
+  }
+}
+
+[data-ui='v2'] .ls-info-article {
+  display: grid;
+  gap: var(--ls-space-7);
+  min-width: 0;
+  max-width: 42.5rem;
+  overflow-wrap: anywhere;
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+[data-ui='v2'] .ls-info-section {
+  scroll-margin-top: calc(var(--ls-site-header-h-compact) + var(--ls-space-6));
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-info-h2 {
+  margin-bottom: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-info-article :is(p, ul, ol, figure, blockquote) {
+  margin: 0 0 var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-info-article :is(h3, h4) {
+  margin: var(--ls-space-6) 0 var(--ls-space-3);
+  font-family: var(--ls-font-display);
+  font-size: var(--ls-type-heading);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-info-article :is(ul, ol) {
+  padding-inline-start: var(--ls-space-6);
+}
+
+[data-ui='v2'] .ls-info-article li + li {
+  margin-top: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-info-article img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--ls-radius-lg);
+}
+
+[data-ui='v2'] .ls-info-article a {
+  color: var(--ls-brand);
+  text-decoration: underline;
+  text-underline-offset: var(--ls-space-1);
+}
+
+[data-ui='v2'] .ls-info-toc {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-info-toc {
+    position: sticky;
+    top: calc(var(--ls-site-header-h-compact) + var(--ls-space-4));
+    display: block;
+  }
+}
+
+[data-ui='v2'] .ls-info-toc-title {
+  margin: 0 0 var(--ls-space-2);
+  padding-inline: var(--ls-space-3);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-info-toc ol {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-ui='v2'] .ls-info-toc a {
+  display: flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+  padding-inline: var(--ls-space-3);
+  border-radius: var(--ls-radius-full);
+  color: var(--ls-text);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-info-toc a:hover {
+    background: var(--ls-hover-bg);
+    color: var(--ls-hover-text);
+  }
+}
+
+/* The contact page: the place left, the details and contact pills right (one column below 768 px, place first). */
+[data-ui='v2'] .ls-info-split {
+  display: grid;
+  gap: var(--ls-space-6);
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  [data-ui='v2'] .ls-info-split {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--ls-space-8);
+    align-items: start;
+  }
+}
+
+[data-ui='v2'] .ls-info-place {
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-info-details {
+  display: grid;
+  gap: var(--ls-space-6);
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-info-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2) var(--ls-space-3);
+}
