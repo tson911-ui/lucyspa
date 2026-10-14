@@ -142,13 +142,26 @@ Status values: `todo` / `done` (with commit hash).
 
 ### Session 4
 
-- **C10: home (L).** Status: todo.
+- **C10: home (L).** Status: done (539bc55).
   Hero, trust band, split intro/services, bestseller row with labels, and the service and cosmetics category grid, built from the existing
   CMS data (slider, facts strip, why-us). No reviews band (Q5). Photo placeholders are flat; the photos to be taken are listed.
   Verify: G4 against section 9.1, all states.
+  As built (details: `docs/REDESIGN_GROUP1_S4_REPORT.md`): new `pages-v2.css` (under `[data-ui='v2']`, guard test), tokens `--ls-scrim` (0.55, 4.5:1
+  over a white photo asserted) and `--ls-on-photo`. Hero = the Owner's `heroImage` under one flat scrim with white text and the outline-white
+  secondary, else the alternate band with normal buttons (PROVISIONAL, pending the Owner: the slider no longer sits in the hero, it sits in the split
+  intro's 18 px photo slot with every function kept; the Slider takes a `ctaVariant`). The product row shows the products the Owner marked "Nổi bật"
+  (the `featured` flag), headed "Sản phẩm nổi bật", labels Mới (outline) and the sale percent (ink); no label says "Bán chạy" because no sales
+  data is public (PROVISIONAL, pending the Owner). Top services = 3 columns (first 3 groups, 3 services each, the Owner's group description kept).
+  Category grid = flat tiles (no category photo field exists). The Owner's why-us cards stay (flat cards, before the offer) and the offer is one flat
+  accent block whose button reads in both modes (the "Mua ngay" contrast fix). Bands alternate base/alt from the hero down whichever are present.
+  `customer.css` lost the direction C home, facts, pebble, offer and photo-slot rules.
 
-- **C11: services list and detail (M).** Status: todo.
+- **C11: services list and detail (M).** Status: done (6020e62).
   Title band, category sections and cards, then a split hero with a sticky mobile bar, accordion FAQ and related row.
+  As built: list = title band + search, a chips row that sticks under the compact header, one band per group, cards (flat photo placeholder, one
+  stretched name link, time, price, "Đặt lịch" pill). Detail = split hero, same-group row (ScrollRow), booking band (from 1024 px) and a phone bar
+  that shows only while the hero and band buttons are out of view and lifts the contact button. NOT built (pending the Owner): the FAQ accordion,
+  "what is included" and steps, because the service data has no such text and writing it would invent policy; the `Accordion` stays unused.
 
 ### Session 5
 
