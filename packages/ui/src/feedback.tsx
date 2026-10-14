@@ -13,7 +13,11 @@ export { Tooltip } from './tooltip';
 // never color-only (a text label is required and an icon is added where space allows).
 
 export type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
-export type BadgeTone = Tone | 'brand';
+/**
+ * `brand` is the selected / current-state chip (soft tint). The three shop labels (one accent family, DESIGN.md 8.7): `accent` is
+ * Bán chạy (accent fill), `outline` is Mới (accent outline), `ink` is the sale percentage (ink fill, inverse text).
+ */
+export type BadgeTone = Tone | 'brand' | 'accent' | 'outline' | 'ink';
 
 const toneIcon: Record<Exclude<Tone, 'neutral'>, IconName> = {
   success: 'check-circle',

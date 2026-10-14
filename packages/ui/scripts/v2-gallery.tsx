@@ -21,20 +21,24 @@ import {
   EmptyState,
   ErrorState,
   Field,
+  FilterChips,
   IconButton,
+  ImageFrame,
   LoadingState,
   Notice,
   NumberInput,
   PasswordInput,
-  ProgressBar,
   RadioGroup,
   SearchInput,
   Select,
+  SegmentedControl,
   Skeleton,
   Spinner,
   Switch,
+  Tabs,
   TextInput,
   Textarea,
+  Tooltip,
 } from '../src/index';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -204,16 +208,26 @@ function Controls() {
   );
 }
 
-function Surfaces() {
+const PICTURE =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 30'%3E%3Crect width='40' height='30' fill='%23cdbfb4'/%3E%3Ccircle cx='28' cy='11' r='5' fill='%23e9dfd6'/%3E%3Cpath d='M0 30 L14 14 L24 24 L30 18 L40 30Z' fill='%23a8998c'/%3E%3C/svg%3E";
+
+function Surfaces({ inCard }: { inCard: boolean }) {
   return (
     <div className="g-stack">
-      <Card>
-        <CardHeader title="Gói chăm sóc da mặt" description="60 phút, có tư vấn da." />
-        <p>Làm sạch sâu, đắp mặt nạ và massage thư giãn vùng mặt, cổ và vai.</p>
-      </Card>
+      {inCard ? null : (
+        <Card>
+          <CardHeader title="Gói chăm sóc da mặt" description="60 phút, có tư vấn da." />
+          <p>Làm sạch sâu, đắp mặt nạ và massage thư giãn vùng mặt, cổ và vai.</p>
+        </Card>
+      )}
       <div className="g-row">
-        <Badge tone="brand">Bán chạy</Badge>
-        <Badge tone="neutral">Mới</Badge>
+        <Badge tone="accent">Bán chạy</Badge>
+        <Badge tone="outline">Mới</Badge>
+        <Badge tone="ink">-20 %</Badge>
+        <Badge tone="brand">Đang chọn</Badge>
+        <Badge tone="neutral">Nháp</Badge>
+      </div>
+      <div className="g-row">
         <Badge tone="success" icon="check-circle">
           Đã xác nhận
         </Badge>
@@ -227,17 +241,63 @@ function Surfaces() {
           Sắp diễn ra
         </Badge>
       </div>
+      <Tabs
+        label="Lịch hẹn"
+        defaultValue="upcoming"
+        tabs={[
+          { id: 'upcoming', label: 'Sắp tới', panel: <p>Nội dung tab sắp tới.</p> },
+          { id: 'done', label: 'Đã xong', panel: null },
+          { id: 'cancelled', label: 'Đã hủy', panel: null },
+          { id: 'off', label: 'Tạm khóa', panel: null, disabled: true },
+        ]}
+      />
+      <SegmentedControl
+        label="Hiển thị"
+        value="grid"
+        onChange={noop}
+        options={[
+          { value: 'grid', label: 'Lưới' },
+          { value: 'list', label: 'Danh sách' },
+        ]}
+      />
+      <FilterChips
+        chips={[
+          { key: 'a', label: 'Chăm sóc da' },
+          { key: 'b', label: 'Dưới 500.000 ₫' },
+        ]}
+        onRemove={noop}
+        removeLabel="Bỏ lọc {filter}"
+      />
+      <nav className="ls-pills" aria-label="Nhóm dịch vụ">
+        <a href="#a" aria-current="true">
+          Tất cả
+        </a>
+        <a href="#b">Massage</a>
+        <a href="#c">Chăm sóc da</a>
+      </nav>
+      <div className="g-row">
+        <div className="g-thumb">
+          <ImageFrame src={PICTURE} alt="Phòng trị liệu" ratio="4/3" />
+        </div>
+        <div className="g-thumb">
+          <ImageFrame src={null} alt="Chưa có ảnh dịch vụ" ratio="1/1" />
+        </div>
+      </div>
       <Notice tone="info">Lịch hẹn được giữ trong 15 phút.</Notice>
-      <Notice tone="success">Đã đặt lịch thành công.</Notice>
+      <Notice tone="success" onDismiss={noop} dismissLabel="Đóng thông báo">
+        Đã đặt lịch thành công.
+      </Notice>
       <Notice tone="warning">Chi nhánh nghỉ lễ ngày 20/10.</Notice>
       <Notice tone="danger">Không tải được lịch trống. Thử lại sau ít phút.</Notice>
       <div className="g-row">
         <Spinner />
-        <Skeleton lines={3} />
+        <Spinner size={24} />
+        <Tooltip content="Thêm vào giỏ">
+          <IconButton icon="plus" label="Thêm vào giỏ" variant="secondary" />
+        </Tooltip>
       </div>
+      <Skeleton lines={3} />
       <LoadingState label="Đang tải dịch vụ" rows={3} />
-      <ProgressBar value={60} label="Tiến độ đặt lịch" />
-      <ProgressBar label="Đang xử lý" />
       <EmptyState
         icon="info"
         title="Chưa có lịch hẹn"
@@ -264,7 +324,7 @@ function Overlays() {
   return <div className="g-stack">Overlays are added with C6.</div>;
 }
 
-const SECTIONS: Record<string, () => ReactNode> = {
+const SECTIONS: Record<string, (props: { inCard: boolean }) => ReactNode> = {
   controls: Controls,
   surfaces: Surfaces,
   overlays: Overlays,
@@ -282,7 +342,7 @@ function Frame({
   band?: 'base' | 'alt';
   wrap?: 'card' | 'dialog';
 }) {
-  const body = <Specimen />;
+  const body = <Specimen inCard={wrap === 'card'} />;
   const inner =
     wrap === 'card' ? (
       <Card>{body}</Card>
@@ -333,6 +393,7 @@ ${sheetLinks}
   .g-title { margin: 0 0 16px; font-size: 14px; font-weight: 600; color: var(--ls-text-muted); }
   .g-stack { display: grid; gap: 24px; }
   .g-form { display: grid; gap: 24px; }
+  .g-thumb { width: 160px; }
   .g-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
   .g-dialog { position: static; transform: none; margin: 0; }
   .g-stage { position: relative; min-height: 620px; transform: translateZ(0); overflow: hidden; }

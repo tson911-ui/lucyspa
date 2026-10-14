@@ -401,3 +401,308 @@
 [data-ui='v2'] .ls-switch:disabled[aria-checked='true'] .ls-switch-thumb {
   background: var(--ls-bg-pressed);
 }
+
+/* ---- Cards (8.3) ------------------------------------------------------------------------------- */
+/* The surface step of its container (a card on a white band is the grey step, on an alternate band it is white): no border, no shadow, 18 px,
+   24 px inside. The card is the only surface; a notice, a table and an empty state render flush inside it. */
+[data-ui='v2'] .ls-card {
+  gap: var(--ls-space-4);
+  padding: var(--ls-space-6);
+  border: 0;
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
+}
+
+[data-ui='v2'] .ls-card-title {
+  font-size: var(--ls-type-heading);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-card-description {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-small);
+}
+
+/* ---- Badges and shop labels (8.7) -------------------------------------------------------------- */
+/* A pill, 24 px high, 12/500, one line, an optional 16 px icon. The status tones are the status tint, the status color, an icon and the
+   word (never color alone). */
+[data-ui='v2'] .ls-badge {
+  gap: var(--ls-space-1);
+  min-height: var(--ls-badge-h);
+  padding: 0 var(--ls-badge-pad-x);
+  border: 1px solid transparent;
+  font-size: var(--ls-type-caption);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-caption);
+  white-space: nowrap;
+}
+
+[data-ui='v2'] .ls-badge svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+[data-ui='v2'] .ls-badge-neutral {
+  border-color: var(--ls-border);
+  color: var(--ls-text-muted);
+  background: var(--ls-bg-field);
+}
+
+/* The selected tint: the current-state chip. */
+[data-ui='v2'] .ls-badge-brand {
+  color: var(--ls-brand-on-soft);
+  background: var(--ls-brand-soft);
+}
+
+/* The three shop labels, one accent family and no second chromatic color: Bán chạy (accent fill), Mới (accent outline) and the sale
+   percentage (ink fill with inverse text). */
+[data-ui='v2'] .ls-badge-accent {
+  color: var(--ls-on-brand);
+  background: var(--ls-brand-fill);
+}
+
+[data-ui='v2'] .ls-badge-outline {
+  border-color: var(--ls-brand);
+  color: var(--ls-brand);
+  background: transparent;
+}
+
+[data-ui='v2'] .ls-badge-ink {
+  color: var(--ls-bg-page);
+  background: var(--ls-text);
+}
+
+/* ---- Notice (a status tint with its icon and words; flush inside a card) ----------------------- */
+[data-ui='v2'] .ls-notice {
+  padding: var(--ls-space-4);
+  border: 0;
+  border-radius: var(--ls-radius-lg);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-small);
+}
+
+[data-ui='v2'] .ls-notice-meta {
+  color: inherit;
+  font-size: var(--ls-type-caption);
+  line-height: var(--ls-lh-caption);
+}
+
+/* The dismiss button is a 44 px target; the negative margin keeps it from making the notice taller than its text needs. */
+[data-ui='v2'] .ls-notice-close {
+  min-width: var(--ls-control-h);
+  min-height: var(--ls-control-h);
+  margin: calc(var(--ls-space-3) * -1) calc(var(--ls-space-3) * -1) calc(var(--ls-space-3) * -1) 0;
+  border-radius: var(--ls-radius-full);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-notice-close:hover {
+    color: var(--ls-hover-text);
+    background: var(--ls-hover-bg);
+  }
+}
+
+/* ---- Chips and filter pills (8.7) -------------------------------------------------------------- */
+/* An applied filter is the selected tint with a 44 px remove button; a filter you can switch on is a pill that turns accent when chosen. */
+[data-ui='v2'] .ls-chip {
+  padding-inline: var(--ls-space-4) var(--ls-space-1);
+  color: var(--ls-brand-on-soft);
+  background: var(--ls-brand-soft);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-pills a {
+  border-color: transparent;
+  color: var(--ls-text);
+  background: var(--ls-bg-field);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-pills a[aria-current='true'] {
+  color: var(--ls-on-brand);
+  background: var(--ls-brand-fill);
+}
+
+/* ---- Tabs and segmented control (8.5) ---------------------------------------------------------- */
+/* A pill track in the field color; the chosen tab is a raised pill with a hairline and ink text. Every tab is a 44 px target; the strip
+   scrolls on a phone and the next tab shows at the edge. */
+[data-ui='v2'] .ls-tablist {
+  gap: var(--ls-space-1);
+  width: fit-content;
+  max-width: 100%;
+  padding: var(--ls-space-1);
+  border: 0;
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-field);
+  scrollbar-width: none;
+}
+
+[data-ui='v2'] .ls-tablist::-webkit-scrollbar {
+  display: none;
+}
+
+[data-ui='v2'] .ls-tab {
+  min-height: var(--ls-control-h);
+  padding-inline: var(--ls-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--ls-radius-full);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-tab-active {
+  border-color: var(--ls-border);
+  color: var(--ls-text);
+  background: var(--ls-bg-raised);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-tab-active:hover:not(:disabled) {
+    border-color: var(--ls-border);
+    color: var(--ls-text);
+    background: var(--ls-bg-raised);
+  }
+}
+
+[data-ui='v2'] .ls-tab:disabled {
+  color: var(--ls-text-subtle);
+}
+
+/* Hover is the solid accent pill (rule 4); the old rule squared the lower corners for an underline tab. */
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-tab:hover:not(:disabled) {
+    border-radius: var(--ls-radius-full);
+  }
+}
+
+[data-ui='v2'] .ls-segmented {
+  padding: var(--ls-space-1);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-field);
+}
+
+[data-ui='v2'] .ls-segmented-thumb {
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-raised);
+}
+
+[data-ui='v2'] .ls-segment {
+  border-radius: var(--ls-radius-full);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-segment-active {
+  color: var(--ls-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-segment:hover {
+    box-shadow: none;
+  }
+
+  [data-ui='v2'] .ls-segment-active:hover {
+    color: var(--ls-text);
+  }
+}
+
+/* ---- Tooltip, skeleton, spinner ---------------------------------------------------------------- */
+/* The tooltip is ink on the page color inverted, 12 px; it shows on hover and on focus and never carries essential information. */
+[data-ui='v2'] .ls-tooltip {
+  padding: var(--ls-space-1) var(--ls-space-2);
+  border-radius: var(--ls-radius-sm);
+  color: var(--ls-bg-page);
+  background: var(--ls-text);
+  font-size: var(--ls-type-caption);
+  line-height: var(--ls-lh-caption);
+}
+
+/* The loading shape is the field step, so it shows on a band and inside a card; it is the one allowed repeating animation. */
+[data-ui='v2'] .ls-skeleton {
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-field);
+}
+
+/* ---- Empty and error blocks ---------------------------------------------------------------------- */
+/* Centered: a 24 px icon, the title, one sentence and one action. No dashed frame. */
+[data-ui='v2'] .ls-empty {
+  gap: var(--ls-space-2);
+  padding: var(--ls-space-9) var(--ls-space-4);
+  border: 0;
+  border-radius: var(--ls-radius-lg);
+  background: transparent;
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+[data-ui='v2'] .ls-empty-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+[data-ui='v2'] .ls-empty-text {
+  text-wrap: pretty;
+}
+
+[data-ui='v2'] .ls-empty-title {
+  font-size: var(--ls-type-heading);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-empty-action {
+  margin-top: var(--ls-space-4);
+}
+
+/* ---- Image frame (8.9) ----------------------------------------------------------------------------- */
+/* 18 px radius, cover, a fixed ratio (no layout shift), and a flat placeholder in the field color with an icon or the wordmark. A
+   photo with a white background is dimmed a little in dark mode (the filter token is none in light). */
+[data-ui='v2'] .ls-image-frame {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-field);
+  aspect-ratio: 4 / 3;
+}
+
+[data-ui='v2'] .ls-image-frame[data-ratio='1/1'] {
+  aspect-ratio: 1 / 1;
+}
+
+[data-ui='v2'] .ls-image-frame[data-ratio='4/5'] {
+  aspect-ratio: 4 / 5;
+}
+
+[data-ui='v2'] .ls-image-frame[data-ratio='3/2'] {
+  aspect-ratio: 3 / 2;
+}
+
+[data-ui='v2'] .ls-image-frame[data-ratio='16/9'] {
+  aspect-ratio: 16 / 9;
+}
+
+[data-ui='v2'] .ls-image-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: var(--ls-image-filter);
+}
+
+[data-ui='v2'] .ls-image-frame-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ls-text-subtle);
+}

@@ -217,6 +217,8 @@ export { ConfirmDialog } from './confirm-dialog';
 export type { ConfirmError, ConfirmFact } from './confirm-dialog';
 export { createConfirmController, typingMatches } from './confirm-core';
 export { FallbackImage, useImageFailure } from './image-fallback';
+export { ImageFrame } from './image-frame';
+export type { ImageFrameRatio } from './image-frame';
 export {
   ListRow,
   MediaGrid,

@@ -589,6 +589,7 @@
   --ls-nav-active-bg: #782b37;
   --ls-nav-active-text: #ffffff;
   --ls-overlay: rgb(0 0 0 / 0.4);
+  --ls-image-filter: none;
 
   /* No shadows: layers separate by the scrim, a surface step or a hairline. The seasonal layer keeps its own. */
   --ls-shadow-sm: none;
@@ -607,6 +608,9 @@
   --ls-row-h: 56px;
   /* A control marked compact (the `compact` prop, or inside `data-density='compact'`) is 40 px on a fine pointer at 1024 px and up. */
   --ls-control-h-compact: 40px;
+  /* A badge is 24 px high with 10 px at the sides (DESIGN.md 8.7). */
+  --ls-badge-h: 24px;
+  --ls-badge-pad-x: 10px;
 
   /* Customer motion (DESIGN.md 11.3). Reduced motion zeroes every one of them below. */
   --ls-dur-fast: 150ms;
@@ -719,6 +723,8 @@
   --ls-nav-active-bg: #e48f9f;
   --ls-nav-active-text: #000000;
   --ls-overlay: rgb(0 0 0 / 0.6);
+  /* A photo with a white background must not glow on a black page (DESIGN.md 6.2): dimmed a little in dark. */
+  --ls-image-filter: brightness(0.92);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -754,6 +760,8 @@
     --ls-nav-active-bg: #e48f9f;
     --ls-nav-active-text: #000000;
     --ls-overlay: rgb(0 0 0 / 0.6);
+    /* A photo with a white background must not glow on a black page (DESIGN.md 6.2): dimmed a little in dark. */
+    --ls-image-filter: brightness(0.92);
   }
 }
 
@@ -792,6 +800,7 @@
   --ls-nav-active-bg: #782b37;
   --ls-nav-active-text: #ffffff;
   --ls-overlay: rgb(0 0 0 / 0.4);
+  --ls-image-filter: none;
 }
 
 /* The document behind the v2 frame (overscroll, the safe-area strips, the page before the frame paints) takes the base band too,
