@@ -54,17 +54,25 @@ Status values: `todo` / `done` (with commit hash).
 
 ### Session 2
 
-- **C4: core controls (M).** Status: todo.
+- **C4: core controls (M).** Status: done (d27edd6).
   Restyle buttons, icon button, inputs, selects, textarea, checkbox, radio and switch under the v2 scope, with pill buttons, boxed 8 px
   fields, labels, error states and the compact prop. Verify: a component gallery covering all states, and 44 px touch targets.
+  As built: all v2 rules are in `components-v2.css` (loaded last, every selector under `[data-ui='v2']`); the gallery is `packages/ui/scripts/v2-gallery.tsx`.
+  Added: the `neutral` button variant, the `compact` prop (buttons and fields), the `--ls-bg-field` tokens (a field is the step its container is not).
+  The select keeps the platform arrow (no gradient chevron). Direction C control rules were removed from `customer.css` and `site.css`.
 
-- **C5: surfaces and feedback (M).** Status: todo.
+- **C5: surfaces and feedback (M).** Status: done (c133e80).
   Cards, badges (Bán chạy / Mới / ink-filled "-%"), chips, tabs/segmented, tooltip, skeleton, spinner, empty/error blocks and image frame
   with its flat placeholder. Verify: gallery in light and dark, no shadow or gradient left.
+  As built: Badge tones accent / outline / ink (the three shop labels), the new `ImageFrame`, applied-filter chips and filter pills, tabs and the
+  segmented control as pill tracks. The pebble cards (`.ls-site-card`, product cards) are rebuilt with their pages (C10-C15).
 
-- **C6: overlays and data parts (M).** Status: todo.
+- **C6: overlays and data parts (M).** Status: done (c61d871).
   Dialog, drawer/sheet, menu/popover, toast, confirm dialog, pagination, customer table, breadcrumbs, accordion, stepper, progress bar and
   quantity stepper. Verify: focus trap and return, Escape, no stacked modals, overlays carry the v2 tokens.
+  As built: the new `Accordion`; `suspended` on Dialog / Drawer (the discard prompt hides the form under v2, so one modal shows); the form overlays
+  and the confirm dialog use the neutral Cancel; `Pagination` takes an optional `pageOf` label (callers add it as they are rebuilt, C12-C15).
+  Toasts: none is mounted on the customer site yet (the provider is in the staff shell), so a customer page that needs one mounts the provider inside the frame. Not changed (behavior, shared with staff): the toast keeps 4 at most, no `role="alert"` for errors and no action button (DESIGN.md 8.6 says 3, alert, 8 s with an action).
 
 ### Session 3
 
