@@ -227,12 +227,17 @@ Items 3, 4 and 5 are Step C11b below. Answers 1 and 2 close the matching "pendin
 
 ### Session 7
 
-- **C16: ticket, info/CMS pages, 404 and error (S-M).** Status: todo.
+- **C16: ticket, info/CMS pages, 404 and error (S-M).** Status: done (07c5365, test fix 81b1346).
   `/ticket/[token]`, the `[...rest]` pages, contact and policies, and the 404/error pages.
+  As built (`docs/REDESIGN_GROUP1_S7_REPORT.md`): ticket = a centered 30 rem column, header reduced to the wordmark, printable. 404, error and missing ticket are flat and
+  centered. `InfoPage` and `ContactPage` layouts exist in `packages/ui` but are **not routed**: no info, contact or policy route, content store or admin exists, so the
+  Owner decides where the content lives (pending). No QR, no map.
 
-- **C17: motion pass (M).** Status: todo.
+- **C17: motion pass (M).** Status: done (7d18d6c).
   Hero sequence, scroll reveals, row/grid stagger, list-to-detail ViewTransition, booking step slide and loyalty counter.
   Verify: G6, with the off switch and reduced motion tested on every page.
+  As built: hero sequence in CSS (transform only, nothing hidden), `data-ls-fx` from the `ls-fx` cookie, `SharedPhoto`, `useStepSlide`, `CountUp` (`Stat countUp`). G6 was run
+  in a real browser on 22 pages in full, off and reduced (`.local/g7/motion-check.mjs`). History Back does not morph the photo back (it cross-fades).
 
 ### Session 8
 
