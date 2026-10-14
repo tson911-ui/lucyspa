@@ -11,8 +11,6 @@ import {
   IconButton,
   MediaThumb,
   Notice,
-  Page,
-  PageHeader,
   Stack,
   buttonClass,
 } from '@lucy-spa/ui';
@@ -33,6 +31,7 @@ import {
 import { useCustomer } from '../customer/session';
 import { LoadState, useFetch } from '../customer/screens/bookings';
 import { QuantityStepper } from './quantity-stepper';
+import { ShopScreen } from './shop-frame';
 import { isOpen, useOnlineSales } from './shop-data';
 
 /** The name of a cart line in the reader's language, with its variant label. */
@@ -61,16 +60,14 @@ export function CartScreen() {
 
   if (sales === null || !cart) {
     return (
-      <Page>
-        <PageHeader title={s.cart.title} description={s.cart.intro} />
+      <ShopScreen title={s.cart.title} description={s.cart.intro}>
         <LoadState error={first.error} retry={first.retry} />
-      </Page>
+      </ShopScreen>
     );
   }
   if (!isOpen(sales)) {
     return (
-      <Page>
-        <PageHeader title={s.cart.title} />
+      <ShopScreen title={s.cart.title} narrow>
         <EmptyState
           icon="cart"
           action={
@@ -81,7 +78,7 @@ export function CartScreen() {
         >
           {s.cart.closed}
         </EmptyState>
-      </Page>
+      </ShopScreen>
     );
   }
 
@@ -105,8 +102,7 @@ export function CartScreen() {
 
   if (cart.lines.length === 0) {
     return (
-      <Page>
-        <PageHeader title={s.cart.title} />
+      <ShopScreen title={s.cart.title} narrow>
         <EmptyState
           icon="cart"
           action={
@@ -117,15 +113,14 @@ export function CartScreen() {
         >
           {s.cart.empty}
         </EmptyState>
-      </Page>
+      </ShopScreen>
     );
   }
 
   const problems = problemLines(cart);
   const unpaidLimit = cart.unpaidOrders >= sales.maxUnpaidOrders;
   return (
-    <Page>
-      <PageHeader title={s.cart.title} description={s.cart.intro} />
+    <ShopScreen title={s.cart.title} description={s.cart.intro}>
       {failure ? <Notice tone="danger">{failure}</Notice> : null}
       <div className="ls-shop-layout">
         <Card as="section" aria-label={s.cart.lines}>
@@ -182,7 +177,7 @@ export function CartScreen() {
           </Stack>
         </Card>
       </div>
-    </Page>
+    </ShopScreen>
   );
 }
 

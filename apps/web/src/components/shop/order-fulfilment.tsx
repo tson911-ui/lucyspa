@@ -37,11 +37,14 @@ export function OrderFulfilment({
   order,
   locale,
   onUpdated,
+  hideDates = false,
 }: {
   order: OnlineOrderResponse;
   locale: Locale;
   /** The order the API answers with after "Tôi đã nhận hàng". */
   onUpdated?: (order: OnlineOrderResponse) => void;
+  /** The order page lists the shipping and delivery dates in its own timeline, so the shipment card leaves them out. */
+  hideDates?: boolean;
 }) {
   const { api, t } = useCustomer();
   const text = onlineFulfilmentDictionary(locale).customer;
@@ -73,10 +76,17 @@ export function OrderFulfilment({
               shipment.trackingCode
             ),
           },
-          { label: text.shippedAt, value: formatDateTime(shipment.shippedAt, SHOP_ZONE, locale) },
+          ...(hideDates
+            ? []
+            : [
+                {
+                  label: text.shippedAt,
+                  value: formatDateTime(shipment.shippedAt, SHOP_ZONE, locale),
+                },
+              ]),
         ]
       : []),
-    ...(order.deliveredAt
+    ...(order.deliveredAt && !hideDates
       ? [
           {
             label: text.deliveredAt,

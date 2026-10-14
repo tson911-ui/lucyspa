@@ -18,9 +18,8 @@ import {
   EmptyState,
   Field,
   Icon,
+  ChoiceCard,
   Notice,
-  Page,
-  PageHeader,
   Stack,
   TextInput,
   buttonClass,
@@ -58,6 +57,7 @@ import { useCustomer } from '../customer/session';
 import { LoadState, useFetch } from '../customer/screens/bookings';
 import { CheckoutAddress } from './checkout-address';
 import { lineName } from './cart-screen';
+import { ShopScreen } from './shop-frame';
 import { isOpen, useOnlineSales } from './shop-data';
 
 type Phase = 'idle' | 'placing' | 'redirecting';
@@ -180,24 +180,21 @@ export function CheckoutScreen() {
   const cart = cartRead.data;
   if (sales === null || (!cart && !cartRead.error) || (!addressRead.data && !addressRead.error)) {
     return (
-      <Page>
-        <PageHeader title={c.title} description={c.intro} />
+      <ShopScreen title={c.title} description={c.intro} narrow>
         <LoadState error={cartRead.error} retry={cartRead.retry} />
-      </Page>
+      </ShopScreen>
     );
   }
   if (!cart || sales === 'failed') {
     return (
-      <Page>
-        <PageHeader title={c.title} />
+      <ShopScreen title={c.title} narrow>
         <LoadState error={cartRead.error ?? new ApiError(0, 'NETWORK')} retry={cartRead.retry} />
-      </Page>
+      </ShopScreen>
     );
   }
   if (!isOpen(sales)) {
     return (
-      <Page width="form">
-        <PageHeader title={c.closedTitle} />
+      <ShopScreen title={c.closedTitle} narrow>
         <EmptyState
           icon="cart"
           action={
@@ -208,13 +205,12 @@ export function CheckoutScreen() {
         >
           {s.cart.closed}
         </EmptyState>
-      </Page>
+      </ShopScreen>
     );
   }
   if (cart.lines.length === 0 && placed.current === null && phase === 'idle') {
     return (
-      <Page width="form">
-        <PageHeader title={c.emptyTitle} />
+      <ShopScreen title={c.emptyTitle} narrow>
         <EmptyState
           icon="cart"
           action={
@@ -225,7 +221,7 @@ export function CheckoutScreen() {
         >
           {c.emptyBody}
         </EmptyState>
-      </Page>
+      </ShopScreen>
     );
   }
 
@@ -368,8 +364,7 @@ export function CheckoutScreen() {
     : formatVnd(cart.subtotalVnd, locale);
   const discount = quote && BigInt(quote.discountVnd) > 0n ? quote.discountVnd : null;
   return (
-    <Page>
-      <PageHeader title={c.title} description={c.intro} />
+    <ShopScreen title={c.title} description={c.intro} narrow>
       {failure ? <Notice tone="danger">{failure}</Notice> : null}
       {quoteFailure ? (
         <Notice tone="warning">
@@ -384,7 +379,7 @@ export function CheckoutScreen() {
         </Notice>
       ) : null}
       <form ref={formRef} noValidate onSubmit={(event) => void submit(event)} aria-label={c.title}>
-        <div className="ls-shop-layout">
+        <div className="ls-checkout-layout">
           <Stack gap="block">
             <CheckoutAddress
               locale={locale}
@@ -401,6 +396,20 @@ export function CheckoutScreen() {
               disabled={busy}
               requiredLabel={t.common.required}
             />
+            <Card as="section" aria-label={c.payment}>
+              <CardHeader title={c.payment} />
+              <div className="ls-pay-methods" role="radiogroup" aria-label={c.payment}>
+                <ChoiceCard
+                  type="radio"
+                  name="payment-method"
+                  value="PAYOS"
+                  checked
+                  onChange={() => undefined}
+                  title={c.paymentPayos}
+                  meta={c.paymentPayosHint}
+                />
+              </div>
+            </Card>
             <Card as="section" aria-label={c.policy}>
               <CardHeader title={c.policy} />
               <Stack gap="block">
@@ -576,6 +585,6 @@ export function CheckoutScreen() {
           onCancel={() => setDeleting(null)}
         />
       ) : null}
-    </Page>
+    </ShopScreen>
   );
 }

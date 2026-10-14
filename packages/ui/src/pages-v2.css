@@ -883,7 +883,8 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
     .ls-svc-intro,
     .ls-svd-hero > .ls-container,
     .ls-prod-title > .ls-container,
-    .ls-pd-hero > .ls-container
+    .ls-pd-hero > .ls-container,
+    .ls-shop-title > .ls-container
   )
   > .ls-back-row {
   margin-block-end: 0;
@@ -1491,4 +1492,183 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
 
 [data-ui='v2'] .ls-prod-related {
   display: block;
+}
+
+/* ---- Shop (C13, DESIGN.md 9.2): cart, checkout, orders ----------------------------------------------------------------------------------- */
+/* The title band of the cart and the checkout: the back link, the one h1 and a sentence, like every inner page. */
+[data-ui='v2'] .ls-shop-title .ls-public-title {
+  margin-bottom: 0;
+}
+
+[data-ui='v2'] .ls-shop-content {
+  display: grid;
+  gap: var(--ls-space-6);
+  min-width: 0;
+}
+
+/* A form page is one column of 720 px. */
+[data-ui='v2'] .ls-shop-content[data-narrow='true'] {
+  max-width: 45rem;
+}
+
+/* The cart: the lines in one surface, the summary card beside them from 1024 px (sticky under the header). */
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-shop-summary {
+    top: calc(var(--ls-site-header-h-compact) + var(--ls-space-4));
+  }
+}
+
+[data-ui='v2'] .ls-shop-line {
+  border-top-color: var(--ls-border);
+}
+
+/* The picture of a line is 64 px on a phone (the words need the room, most of all at large text) and 80 px from 640 px. */
+[data-ui='v2'] .ls-shop-line-thumb .ls-thumb {
+  width: 4rem;
+  height: 4rem;
+  border-radius: var(--ls-radius-sm);
+}
+
+@media (min-width: 640px) {
+  [data-ui='v2'] .ls-shop-line-thumb .ls-thumb {
+    width: 5rem;
+    height: 5rem;
+  }
+}
+
+[data-ui='v2'] .ls-shop-line-name {
+  font-weight: var(--ls-weight-label);
+}
+
+[data-ui='v2'] .ls-shop-line-price {
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-shop-line-price strong {
+  font-weight: var(--ls-weight-label);
+}
+
+[data-ui='v2'] .ls-shop-line-total {
+  font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-title);
+}
+
+[data-ui='v2'] .ls-shop-line-note,
+[data-ui='v2'] .ls-shop-problem {
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+/* The checkout: one column, the form first and the summary after it; the payment method is a radio card. */
+[data-ui='v2'] .ls-checkout-layout {
+  display: grid;
+  gap: var(--ls-space-6);
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-pay-methods {
+  display: grid;
+  gap: var(--ls-space-3);
+}
+
+/* The coupon and staff-code rows: the field takes what the button leaves; when there is no room (a phone, large text) the button goes under
+   the field instead of squeezing it to a sliver. */
+[data-ui='v2'] .ls-shop-voucher {
+  flex-wrap: wrap;
+  gap: var(--ls-space-3);
+}
+
+[data-ui='v2'] .ls-shop-voucher-field {
+  flex: 1 1 10rem;
+}
+
+[data-ui='v2'] .ls-shop-voucher > .ls-btn {
+  flex: 0 0 auto;
+}
+
+[data-ui='v2'] .ls-shop-policy {
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-field);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-shop-mini-total {
+  font-weight: var(--ls-weight-label);
+}
+
+/* An order: the record on the left, the summary card (totals and the pay / cancel buttons) and the delivery card on the right. */
+[data-ui='v2'] .ls-order-side {
+  display: grid;
+  gap: var(--ls-space-6);
+  align-content: start;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-order-side {
+    position: sticky;
+    top: calc(var(--ls-site-header-h-compact) + var(--ls-space-4));
+  }
+}
+
+[data-ui='v2'] .ls-order-actions-stack {
+  display: grid;
+  gap: var(--ls-space-3);
+}
+
+[data-ui='v2'] .ls-shop-state {
+  font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-label);
+}
+
+/* The timeline: a vertical list, an icon and a word for each moment, a hairline joining them. */
+[data-ui='v2'] .ls-timeline {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-ui='v2'] .ls-timeline li {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--ls-space-3);
+  padding-bottom: var(--ls-space-5);
+}
+
+[data-ui='v2'] .ls-timeline li:last-child {
+  padding-bottom: 0;
+}
+
+[data-ui='v2'] .ls-timeline li:not(:last-child)::before {
+  position: absolute;
+  top: var(--ls-space-8);
+  bottom: 0;
+  inset-inline-start: calc(var(--ls-space-8) / 2);
+  width: 1px;
+  background: var(--ls-border);
+  content: '';
+}
+
+[data-ui='v2'] .ls-timeline-icon {
+  display: grid;
+  place-items: center;
+  width: var(--ls-space-8);
+  height: var(--ls-space-8);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-field);
+  color: var(--ls-brand);
+}
+
+[data-ui='v2'] .ls-timeline-text {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-timeline-label {
+  font-weight: var(--ls-weight-label);
 }

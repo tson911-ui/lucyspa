@@ -126,6 +126,9 @@ const vi = {
     preOrderNote:
       'Đơn có hàng đặt trước được gửi một lần khi đủ hàng. Thời gian chỉ là dự kiến, không phải cam kết.',
     preOrder: 'Đặt trước',
+    payment: 'Phương thức thanh toán',
+    paymentPayos: 'Thanh toán trực tuyến qua PayOS',
+    paymentPayosHint: 'Bạn thanh toán đủ tiền hàng trước; không trả tiền khi nhận hàng.',
     policy: 'Chính sách mua hàng online',
     policyAccept: 'Tôi đã đọc và đồng ý với chính sách mua hàng online',
     policyRequired: 'Hãy đọc và đồng ý với chính sách để đặt hàng.',
@@ -368,6 +371,9 @@ const en: ShopText = {
     preOrderNote:
       'An order with pre-order goods is shipped once, when all the goods are in. The time is an estimate, not a promise.',
     preOrder: 'Pre-order',
+    payment: 'Payment method',
+    paymentPayos: 'Pay online with PayOS',
+    paymentPayosHint: 'You pay the full amount before shipping; nothing is collected on delivery.',
     policy: 'Online purchase policy',
     policyAccept: 'I have read and agree to the online purchase policy',
     policyRequired: 'Read and agree to the policy to place the order.',

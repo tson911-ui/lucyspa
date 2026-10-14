@@ -17,12 +17,14 @@ import {
   DataTable,
   DescriptionList,
   EmptyState,
+  Icon,
   Notice,
   Page,
   PageHeader,
   Reveal,
   RowActions,
   Spinner,
+  Stack,
   buttonClass,
   type DataTableColumn,
 } from '@lucy-spa/ui';
@@ -55,6 +57,7 @@ import { useClientPaging } from '../../lib/workforce/use-client-paging';
 import { useCustomer } from '../customer/session';
 import { LoadState, NotFoundPage, useFetch } from '../customer/screens/bookings';
 import { OrderFulfilment } from './order-fulfilment';
+import { onlineFulfilmentDictionary } from '../../i18n/online-fulfilment';
 import { promiseNumbers } from '../../lib/shop/online';
 import { useOnlineSales } from './shop-data';
 
@@ -213,6 +216,56 @@ export function OnlineOrdersScreen() {
   );
 }
 
+/**
+ * What happened to the order, as a vertical list (DESIGN.md 9.2): each step has an icon and a word, so nothing rests on color alone.
+ * Only moments the order really has are listed: it was placed, paid, shipped, delivered.
+ */
+export function OrderTimeline({ order, locale }: { order: OnlineOrderResponse; locale: Locale }) {
+  const o = getShopText(locale).orders;
+  const f = onlineFulfilmentDictionary(locale).customer;
+  const steps = [
+    { key: 'placed', icon: 'cart' as const, label: o.placedAt, at: order.placedAt },
+    ...(order.paidAt
+      ? [{ key: 'paid', icon: 'wallet' as const, label: o.paidAt, at: order.paidAt }]
+      : []),
+    ...(order.shipment
+      ? [
+          {
+            key: 'shipped',
+            icon: 'truck' as const,
+            label: f.shippedAt,
+            at: order.shipment.shippedAt,
+          },
+        ]
+      : []),
+    ...(order.deliveredAt
+      ? [
+          {
+            key: 'delivered',
+            icon: 'check-circle' as const,
+            label: f.deliveredAt,
+            at: order.deliveredAt,
+          },
+        ]
+      : []),
+  ];
+  return (
+    <ol className="ls-timeline">
+      {steps.map((step) => (
+        <li key={step.key}>
+          <span className="ls-timeline-icon">
+            <Icon name={step.icon} size={20} aria-hidden="true" />
+          </span>
+          <span className="ls-timeline-text">
+            <span className="ls-timeline-label">{step.label}</span>
+            <span className="ls-hint">{formatDateTime(step.at, SHOP_ZONE, locale)}</span>
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 /** What the page was opened by: PayOS bringing the customer back, or the checkout failing to open the payment page. */
 interface Arrival {
   returned: boolean;
@@ -353,7 +406,6 @@ export function OnlineOrderDetailScreen({ id }: { id: string }) {
   const timeIsUp = awaiting && left === 0;
   const canPay = order.can.pay && !timeIsUp;
   const canCancel = order.can.cancel && !timeIsUp;
-  const zone = SHOP_ZONE;
   const hasShipping = BigInt(order.shippingFeeVnd) > 0n;
   const words = status.accountBlock;
 
@@ -404,22 +456,6 @@ export function OnlineOrderDetailScreen({ id }: { id: string }) {
             items={[{ label: o.title, href: `${base}/orders` }, { label: order.code }]}
           />
         }
-        actions={
-          awaiting ? (
-            <>
-              {canCancel ? (
-                <Button variant="secondary" onClick={() => setAsking(true)} disabled={paying}>
-                  {o.cancel}
-                </Button>
-              ) : null}
-              {canPay ? (
-                <Button variant="primary" loading={paying} onClick={() => void pay()}>
-                  {paying ? o.paying : o.pay}
-                </Button>
-              ) : null}
-            </>
-          ) : undefined
-        }
       />
       {paidNow ? <Notice tone="success">{o.paidNow}</Notice> : null}
       {cancelledNow ? <Notice tone="info">{o.cancelledDone}</Notice> : null}
@@ -449,14 +485,7 @@ export function OnlineOrderDetailScreen({ id }: { id: string }) {
               >
                 {timeIsUp ? o.expired : stateLine}
               </p>
-              <DescriptionList
-                items={[
-                  { label: o.placedAt, value: formatDateTime(order.placedAt, zone, locale) },
-                  ...(order.paidAt
-                    ? [{ label: o.paidAt, value: formatDateTime(order.paidAt, zone, locale) }]
-                    : []),
-                ]}
-              />
+              <OrderTimeline order={order} locale={locale} />
               {sales &&
               sales !== 'failed' &&
               (order.state === 'PAID' || order.state === 'READY_TO_SHIP') ? (
@@ -464,7 +493,7 @@ export function OnlineOrderDetailScreen({ id }: { id: string }) {
               ) : null}
             </Card>
           </Reveal>
-          <OrderFulfilment order={order} locale={locale} onUpdated={accept} />
+          <OrderFulfilment order={order} locale={locale} onUpdated={accept} hideDates />
           <Reveal>
             <Card as="section" aria-label={o.lines}>
               <CardHeader title={o.lines} />
@@ -517,44 +546,78 @@ export function OnlineOrderDetailScreen({ id }: { id: string }) {
                   };
                 })}
               />
+            </Card>
+          </Reveal>
+        </div>
+        <div className="ls-order-side">
+          <Reveal>
+            <Card as="section" aria-label={s.cart.summary}>
+              <CardHeader title={s.cart.summary} />
+              <Stack gap="block">
+                <DescriptionList
+                  layout="totals"
+                  items={[
+                    { label: o.subtotal, value: formatVnd(order.subtotalVnd, locale) },
+                    ...(BigInt(order.discountVnd) > 0n
+                      ? [{ label: o.discount, value: `−${formatVnd(order.discountVnd, locale)}` }]
+                      : []),
+                    {
+                      label: o.shipping,
+                      value: hasShipping ? formatVnd(order.shippingFeeVnd, locale) : o.free,
+                    },
+                    { label: o.total, value: formatVnd(order.totalVnd, locale), strong: true },
+                  ]}
+                />
+                {awaiting && (canPay || canCancel) ? (
+                  <div className="ls-order-actions-stack">
+                    {canPay ? (
+                      <Button
+                        variant="primary"
+                        size="lg"
+                        fullWidth
+                        loading={paying}
+                        onClick={() => void pay()}
+                      >
+                        {paying ? o.paying : o.pay}
+                      </Button>
+                    ) : null}
+                    {canCancel ? (
+                      <Button
+                        variant="secondary"
+                        fullWidth
+                        onClick={() => setAsking(true)}
+                        disabled={paying}
+                      >
+                        {o.cancel}
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </Stack>
+            </Card>
+          </Reveal>
+          <Reveal>
+            <Card as="section" aria-label={o.delivery}>
+              <CardHeader title={o.delivery} />
               <DescriptionList
-                layout="totals"
                 items={[
-                  { label: o.subtotal, value: formatVnd(order.subtotalVnd, locale) },
-                  ...(BigInt(order.discountVnd) > 0n
-                    ? [{ label: o.discount, value: `−${formatVnd(order.discountVnd, locale)}` }]
-                    : []),
+                  { label: o.recipient, value: order.recipient.name },
+                  { label: o.phone, value: nationalPhone(order.recipient.phone) },
                   {
-                    label: o.shipping,
-                    value: hasShipping ? formatVnd(order.shippingFeeVnd, locale) : o.free,
+                    label: o.address,
+                    value: [
+                      order.recipient.street,
+                      order.recipient.ward,
+                      order.recipient.provinceName,
+                    ]
+                      .filter((part) => part !== '')
+                      .join(', '),
                   },
-                  { label: o.total, value: formatVnd(order.totalVnd, locale), strong: true },
                 ]}
               />
             </Card>
           </Reveal>
         </div>
-        <Reveal>
-          <Card as="section" aria-label={o.delivery}>
-            <CardHeader title={o.delivery} />
-            <DescriptionList
-              items={[
-                { label: o.recipient, value: order.recipient.name },
-                { label: o.phone, value: nationalPhone(order.recipient.phone) },
-                {
-                  label: o.address,
-                  value: [
-                    order.recipient.street,
-                    order.recipient.ward,
-                    order.recipient.provinceName,
-                  ]
-                    .filter((part) => part !== '')
-                    .join(', '),
-                },
-              ]}
-            />
-          </Card>
-        </Reveal>
       </div>
       {asking ? (
         <ConfirmDialog
