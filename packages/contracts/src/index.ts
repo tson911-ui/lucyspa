@@ -268,7 +268,7 @@ export interface SelfPasswordChangeRequest {
 
 /**
  * POST /api/v1/me/email/request → 202 AcceptedFlowResponse. Verified self-service email
- * change for the signed-in Owner or employee: the current password is required; the code is
+ * change for the signed-in Owner, employee or customer (the customer's sign-in email): the current password is required; the code is
  * sent ONLY to `newEmail`. The account's email does not change until verification.
  * Refusals: 401 AUTHENTICATION_FAILED (password), 400 `newEmail` / `newEmailUnchanged`,
  * 409 `email` (taken or reserved), 429.
@@ -610,6 +610,33 @@ export interface MyAccountResponse {
   } | null;
   /** Optimistic-concurrency version shared with employee detail; send back as `expectedVersion`. */
   version: number;
+}
+
+/**
+ * GET /api/v1/me/profile: the signed-in customer's own profile (session identity only, no id in the path).
+ * `phone` is the customer key and is read only. `dateOfBirth` is `YYYY-MM-DD`, or null when no birthday is on file; it is
+ * shown, never written here: registration requires it, so every customer has one, and only staff change it (it protects the
+ * birthday gift). `dateOfBirthLocked` says so (true whenever one is on file).
+ */
+export interface CustomerProfileResponse {
+  fullName: string;
+  email: { address: string; verified: boolean };
+  phone: string | null;
+  dateOfBirth: string | null;
+  dateOfBirthLocked: boolean;
+  locale: PreferredLocale;
+  /** Optimistic-concurrency version; send back as `expectedVersion`. */
+  version: number;
+}
+
+/**
+ * POST /api/v1/me/profile → 200 CustomerProfileResponse. The name only; any other field (phone, birthday, email) is refused as
+ * unknown (400). Email is changed through the verified flow (`/api/v1/me/email/*`, shared with staff).
+ * Refusals: 400 `fullName`, 409 CONFLICT (stale version).
+ */
+export interface CustomerProfileUpdateRequest {
+  expectedVersion: number;
+  fullName: string;
 }
 
 /**

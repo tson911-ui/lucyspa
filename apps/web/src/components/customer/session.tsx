@@ -17,7 +17,7 @@ import { getCustomerDictionary, type CustomerDictionary } from '../../i18n/custo
 import type { Locale } from '../../i18n/locales';
 import { ApiClient } from '../../lib/api/client';
 import { customerLogout, loadCustomerSession, loginHref } from '../../lib/customer/auth';
-import { announceSessionChange } from '../../lib/site-session';
+import { announceSessionChange, SITE_SESSION_CHANGED } from '../../lib/site-session';
 import { useSiteSession } from '../public/site-session';
 
 export interface CustomerContextValue {
@@ -124,6 +124,23 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
       active = false;
     };
     // Resolved once per mount; navigation inside the area keeps the session.
+  }, [api]);
+
+  // A change to the account itself (the profile saved a new name) announces on the window: the account held here follows, so the
+  // greeting on the other pages matches. Only a customer answer is taken; a sign-out is handled by `signOut` below.
+  useEffect(() => {
+    const refresh = () => {
+      loadCustomerSession(api)
+        .then((session) => {
+          if (session.kind !== 'customer') return;
+          setState((current) =>
+            current.kind === 'customer' ? { kind: 'customer', account: session.account } : current,
+          );
+        })
+        .catch(() => undefined);
+    };
+    window.addEventListener(SITE_SESSION_CHANGED, refresh);
+    return () => window.removeEventListener(SITE_SESSION_CHANGED, refresh);
   }, [api]);
 
   const signOut = useCallback(async () => {

@@ -31,6 +31,7 @@ const PASSWORD = 'a calm lotus evening 2026';
 const NEW_PASSWORD = 'jasmine tea by the quiet river';
 const BY_CODE: LoginPrincipal = { realm: 'WORKFORCE', identifierType: 'EMPLOYEE_ID' };
 const BY_EMAIL: LoginPrincipal = { realm: 'WORKFORCE', identifierType: 'EMAIL' };
+const BY_CUSTOMER: LoginPrincipal = { realm: 'CUSTOMER', identifierType: 'EMAIL' };
 
 /** Test-only clock: the same database clock, shifted (for code expiry). */
 class ShiftedThrottle extends AuthThrottleService {
@@ -443,45 +444,73 @@ test(
               assert.equal((await emailOf(person.id)).emailCanonical, person.email);
             });
 
-            await context.test('M. anonymous and customers cannot use the endpoints', async () => {
-              await fails(
-                emails.request(undefined, PASSWORD, address('x1'), peer()),
-                'AUTHENTICATION_REQUIRED',
-              );
-              const anonymous = (await sessions.createAnonymous(tx)).token;
-              await fails(ask(anonymous, address('x2')), 'AUTHENTICATION_REQUIRED');
-              const customer = await principal('CUSTOMER');
-              await fails(ask(await login(customer.id), address('x3')), 'FORBIDDEN');
-              await fails(confirm(anonymous, 'x'.repeat(43), '123456'), 'AUTHENTICATION_REQUIRED');
-              // The database guard: CHANGE_EMAIL only for workforce, never to the stored address.
-              const raw = (userId: string, snapshot: string) =>
-                isolated(() => {
-                  const now = new Date();
-                  return tx.authChallenge.create({
-                    data: {
-                      purpose: 'CHANGE_EMAIL',
-                      flowTokenHash: new Uint8Array(randomBytes(32)),
-                      identityKey: new Uint8Array(randomBytes(32)),
-                      identityKeyVersion: 1,
-                      userId,
-                      verifierDigest: new Uint8Array(randomBytes(32)),
-                      keyVersion: 1,
-                      credentialVersion: 1,
-                      authzVersion: 1,
-                      deliveryEmailSnapshot: snapshot,
-                      maxAttempts: 5,
-                      createdAt: now,
-                      flowExpiresAt: new Date(now.getTime() + 900_000),
-                      codeGeneratedAt: now,
-                      codeExpiresAt: new Date(now.getTime() + 300_000),
-                    },
-                    select: { id: true },
+            await context.test(
+              'M. anonymous cannot use the endpoints; a customer can (session 7b)',
+              async () => {
+                await fails(
+                  emails.request(undefined, PASSWORD, address('x1'), peer()),
+                  'AUTHENTICATION_REQUIRED',
+                );
+                const anonymous = (await sessions.createAnonymous(tx)).token;
+                await fails(ask(anonymous, address('x2')), 'AUTHENTICATION_REQUIRED');
+                const customer = await principal('CUSTOMER');
+                const mine = await login(customer.id);
+                // The same proof as staff: a wrong password sends nothing and changes nothing.
+                await fails(ask(mine, address('x3'), `${PASSWORD}!`), 'AUTHENTICATION_FAILED');
+                const flow = await ask(mine, address('cust-new'));
+                const message = await codeOf(flow.flowToken);
+                assert.equal(
+                  message.to,
+                  address('cust-new'),
+                  'the code goes to the new address only',
+                );
+                assert.equal((await emailOf(customer.id)).emailCanonical, customer.email);
+                const next = await confirm(mine, flow.flowToken, message.code);
+                assert.ok(await alive(next), 'the device continues on a rotated session');
+                assert.equal(await alive(mine), false, 'the old session is revoked');
+                const changed = await emailOf(customer.id);
+                assert.equal(changed.emailCanonical, address('cust-new'));
+                assert.ok(changed.emailVerifiedAt, 'the new address is verified');
+                // The new address signs in (customers sign in by email); the old one no longer does.
+                assert.equal(
+                  (await signIn(address('cust-new'), PASSWORD, BY_CUSTOMER)).account.id,
+                  customer.id,
+                );
+                await fails(signIn(customer.email, PASSWORD, BY_CUSTOMER), 'AUTHENTICATION_FAILED');
+                await fails(
+                  confirm(anonymous, 'x'.repeat(43), '123456'),
+                  'AUTHENTICATION_REQUIRED',
+                );
+                // The database guard: CHANGE_EMAIL never targets the stored address (a customer's included).
+                const raw = (userId: string, snapshot: string) =>
+                  isolated(() => {
+                    const now = new Date();
+                    return tx.authChallenge.create({
+                      data: {
+                        purpose: 'CHANGE_EMAIL',
+                        flowTokenHash: new Uint8Array(randomBytes(32)),
+                        identityKey: new Uint8Array(randomBytes(32)),
+                        identityKeyVersion: 1,
+                        userId,
+                        verifierDigest: new Uint8Array(randomBytes(32)),
+                        keyVersion: 1,
+                        credentialVersion: 1,
+                        authzVersion: 1,
+                        deliveryEmailSnapshot: snapshot,
+                        maxAttempts: 5,
+                        createdAt: now,
+                        flowExpiresAt: new Date(now.getTime() + 900_000),
+                        codeGeneratedAt: now,
+                        codeExpiresAt: new Date(now.getTime() + 300_000),
+                      },
+                      select: { id: true },
+                    });
                   });
-                });
-              await assert.rejects(raw(customer.id, address('raw-c')), /delivery target/);
-              const staff = await principal('EMPLOYEE');
-              await assert.rejects(raw(staff.id, staff.email), /delivery target/);
-            });
+                await assert.rejects(raw(customer.id, address('cust-new')), /delivery target/);
+                const staff = await principal('EMPLOYEE');
+                await assert.rejects(raw(staff.id, staff.email), /delivery target/);
+              },
+            );
 
             await context.test(
               'P–Q, T–U. Owner; forgot password; change password still work',

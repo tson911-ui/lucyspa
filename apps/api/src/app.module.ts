@@ -2,6 +2,8 @@ import { Module, type DynamicModule } from '@nestjs/common';
 import path from 'node:path';
 import type { Logger } from 'pino';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { CustomerProfileController } from './account/customer-profile.controller.js';
+import { CustomerProfileService } from './account/customer-profile.service.js';
 import { EmailChangeService } from './account/email-change.service.js';
 import {
   CollaboratorWorkController,
@@ -184,6 +186,7 @@ export class AppModule {
         MyAccountController,
         MyPasswordController,
         MyEmailController,
+        CustomerProfileController,
         CollaboratorWorkController,
         MyCollaboratorWorkController,
         MyIncomeController,
@@ -281,6 +284,7 @@ export class AppModule {
         LeaveService,
         MyAccountService,
         EmailChangeService,
+        CustomerProfileService,
         CollaboratorWorkService,
         MyIncomeService,
         AvailabilityService,

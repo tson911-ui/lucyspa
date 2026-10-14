@@ -73,13 +73,15 @@ interface Proposed {
   emailDelivery: string;
 }
 
-function workforce(principal: SessionPrincipal | null): principal is SessionPrincipal & {
+function member(principal: SessionPrincipal | null): principal is SessionPrincipal & {
   userId: string;
 } {
   return (
     principal?.kind === 'AUTHENTICATED' &&
     principal.userId !== null &&
-    (principal.userKind === 'OWNER' || principal.userKind === 'EMPLOYEE')
+    (principal.userKind === 'OWNER' ||
+      principal.userKind === 'EMPLOYEE' ||
+      principal.userKind === 'CUSTOMER')
   );
 }
 
@@ -94,7 +96,8 @@ function proposedOf(snapshot: string | null): Proposed | null {
 
 /**
  * "Đổi email / Change email" (follow-up Step 5): a verified, self-service change of the
- * signed-in Owner's or employee's one authoritative email (`users.email_*`).
+ * signed-in Owner's, employee's or (session 7b) customer's one authoritative email (`users.email_*`;
+ * a customer signs in with it).
  *
  * The current email stays authoritative until the NEW address proves control: the proposed
  * address lives only in the CHANGE_EMAIL challenge (`delivery_email_snapshot`), the code is
@@ -139,7 +142,9 @@ export class EmailChangeService {
     const otp = requireOtpKey(this.environment.auth);
     requireDeliveryKey(this.environment.auth);
     // Wrong passwords debit the reauthentication budgets and send nothing.
-    const proof = await this.logins.proveCurrentPassword(sessionToken, currentPassword, peer);
+    const proof = await this.logins.proveCurrentPassword(sessionToken, currentPassword, peer, {
+      allowCustomer: true,
+    });
     const flowToken = generateCapability();
     await guardAuth(() =>
       this.sessions.withTransaction(async (tx) => {
@@ -148,7 +153,7 @@ export class EmailChangeService {
           throw new RateLimitedError(OTP_POLICY.ipIssueWindowSeconds);
         }
         const principal = await this.sessions.resolveForMutation(sessionToken, tx);
-        if (!workforce(principal) || principal.userId !== proof.userId) {
+        if (!member(principal) || principal.userId !== proof.userId) {
           throw new AuthError('AUTHENTICATION_REQUIRED');
         }
         const user = await this.user(tx, principal.userId);
@@ -225,7 +230,7 @@ export class EmailChangeService {
           throw new RateLimitedError(OTP_POLICY.ipIssueWindowSeconds);
         }
         const principal = await this.sessions.resolveForMutation(sessionToken, tx);
-        if (!workforce(principal)) throw new AuthError('AUTHENTICATION_REQUIRED');
+        if (!member(principal)) throw new AuthError('AUTHENTICATION_REQUIRED');
         const locked = await this.lock(tx, digest, principal.userId, now);
         if (!locked) throw new AuthError('VERIFICATION_FAILED');
         const { challenge, user, proposed } = locked;
@@ -268,7 +273,7 @@ export class EmailChangeService {
             throw new RateLimitedError(OTP_POLICY.verifyWindowSeconds);
           }
           const principal = await this.sessions.resolveForMutation(sessionToken, tx);
-          if (!workforce(principal)) throw new AuthError('AUTHENTICATION_REQUIRED');
+          if (!member(principal)) throw new AuthError('AUTHENTICATION_REQUIRED');
           const locked = await this.lock(tx, digest, principal.userId, now);
           if (!locked) return { kind: 'FAILED' };
           const { challenge, user, proposed } = locked;
@@ -395,7 +400,7 @@ export class EmailChangeService {
 
   private async user(tx: Prisma.TransactionClient, userId: string): Promise<LockedUser> {
     const user = await tx.user.findUnique({ where: { id: userId }, select: userSelect });
-    if (!user || user.status !== 'ACTIVE' || (user.kind !== 'OWNER' && user.kind !== 'EMPLOYEE')) {
+    if (!user || user.status !== 'ACTIVE') {
       throw new AuthError('AUTHENTICATION_REQUIRED');
     }
     return user;

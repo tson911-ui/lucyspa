@@ -142,15 +142,14 @@ const copy = {
     vi: {
       subject: 'Lucy Spa – Mã xác minh đổi email tài khoản',
       purpose:
-        'Một tài khoản nhân sự Lucy Spa đang yêu cầu đổi email đăng nhập/khôi phục sang địa chỉ này.',
-      use: 'Nhập mã sau trong mục “Tài khoản của tôi” khi đang đăng nhập để hoàn tất việc đổi email:',
+        'Một tài khoản Lucy Spa đang yêu cầu đổi email đăng nhập/khôi phục sang địa chỉ này.',
+      use: 'Nhập mã sau khi đang đăng nhập để hoàn tất việc đổi email:',
       ignore: 'Nếu bạn không yêu cầu, hãy bỏ qua email này; email của tài khoản sẽ không thay đổi.',
     },
     en: {
       subject: 'Lucy Spa – Confirm your new account email',
-      purpose:
-        'A Lucy Spa staff account asked to change its sign-in and recovery email to this address.',
-      use: 'Enter this code in “My Account” while signed in to finish changing the email:',
+      purpose: 'A Lucy Spa account asked to change its sign-in and recovery email to this address.',
+      use: 'Enter this code while signed in to finish changing the email:',
       ignore: 'If you did not request this, ignore this email; the account email will not change.',
     },
   },

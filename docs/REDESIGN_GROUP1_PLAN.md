@@ -250,7 +250,13 @@ Items 3, 4 and 5 are Step C11b below. Answers 1 and 2 close the matching "pendin
 ### Session 7b (between 7 and 8)
 
 - **Item 0:** pnpm shim block (NVM4306) investigated and cleared, see the session 7b report.
-- **Item 2:** customer profile edit. Status: todo.
+- **Item 2:** customer profile edit. Status: done.
+  `GET/POST /api/v1/me/profile` (session identity; the name is the only field written; phone, birthday and email are refused as unknown fields) and an edit
+  dialog on `/account/profile`. The sign-in email changes through the existing verified flow (`/api/v1/me/email/*`: current password, then a code sent to the
+  new address), now open to customers: migration `20261215000000_customer_email_change_guard` relaxes the challenge trigger, and `proveCurrentPassword`
+  takes an `allowCustomer` option that only the email change sets (password change stays staff only). The birthday is **never empty** (registration
+  requires it, the column is NOT NULL, no other path creates a customer), so the "editable while empty" rule cannot occur; it is shown read only. No staff
+  screen changes a customer's birthday yet. Both points are pending Owner decision.
 - **Item 3:** info pages (admin editor, public rendering, footer, contact). Status: todo.
 
 ### Session 8

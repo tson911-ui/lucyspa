@@ -255,14 +255,17 @@ export class LoginService implements OnModuleInit {
   /**
    * "Prove your current password while signed in", shared by self-service password change
    * (Step 4) and verified email change (Step 5). The session must be an authenticated Owner
-   * or employee (customers: FORBIDDEN). The reauthentication failure budgets apply (per IP
-   * and per User); a wrong password debits them and is one generic AUTHENTICATION_FAILED.
+   * or employee; a customer is FORBIDDEN unless the caller opts in with `allowCustomer` (only the
+   * verified email change does, session 7b: password change stays staff-only). The reauthentication
+   * failure budgets apply (per IP and per User); a wrong password debits them and is one generic
+   * AUTHENTICATION_FAILED.
    * Returns the verified credential evidence; callers re-check it under their own locks.
    */
   async proveCurrentPassword(
     sessionToken: string | undefined,
     currentPassword: string,
     peer: string,
+    options: { allowCustomer?: boolean } = {},
   ): Promise<{ userId: string; user: LoginUser; evidenceHash: string }> {
     const principal = await this.guard(() => this.sessions.resolve(sessionToken));
     if (
@@ -272,7 +275,11 @@ export class LoginService implements OnModuleInit {
     ) {
       throw new AuthError('AUTHENTICATION_REQUIRED');
     }
-    if (principal.userKind !== 'OWNER' && principal.userKind !== 'EMPLOYEE') {
+    if (
+      principal.userKind !== 'OWNER' &&
+      principal.userKind !== 'EMPLOYEE' &&
+      !(options.allowCustomer === true && principal.userKind === 'CUSTOMER')
+    ) {
       throw new AuthError('FORBIDDEN');
     }
     const userId = principal.userId;
