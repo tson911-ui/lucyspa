@@ -63,9 +63,9 @@ test('the default period is the last 30 days ending today; an address with both 
 });
 
 test('money: grouped dong, a minus sign kept in front, strings turned into numbers only for charts', () => {
-  assert.equal(vnd('1250000', 'vi'), '1.250.000 ₫');
-  assert.equal(vnd('-50000', 'vi'), '-50.000 ₫');
-  assert.equal(vnd('1250000', 'en'), '1,250,000 ₫');
+  assert.equal(vnd('1250000', 'vi'), '1.250.000\u00a0₫');
+  assert.equal(vnd('-50000', 'vi'), '-50.000\u00a0₫');
+  assert.equal(vnd('1250000', 'en'), '1,250,000\u00a0₫');
   assert.equal(vndNumber('1250000'), 1250000);
   assert.equal(vndNumber('-5'), -5);
   assert.equal(vndNumber('12.5'), 0);

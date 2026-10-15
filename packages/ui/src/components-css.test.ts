@@ -48,8 +48,10 @@ test('kit polish: badge padding on the grid, flat notice with the card radius, p
 });
 
 test('components.css uses tokens only: no color literals', () => {
-  assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b/i);
-  assert.doesNotMatch(css, /\b(?:rgb|rgba|hsl|hsla)\(/i);
+  // The rules are checked, not the comments: a comment may name the value a token holds (components-v2.css, the secondary button).
+  const rules = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(rules, /#[0-9a-f]{3,8}\b/i);
+  assert.doesNotMatch(rules, /\b(?:rgb|rgba|hsl|hsla)\(/i);
   assert.doesNotMatch(css, /gold|ivory/i);
 });
 
@@ -106,7 +108,8 @@ test('classes used by the components exist in the stylesheet', () => {
   // rules of the other tests do not apply to them.
   const declaredIn = [
     css,
-    ...['tokens.css', 'chrome-v2.css', 'pages-v2.css'].map((name) =>
+    // foundation-v2.css (session 10) is loaded last: the interaction states and the header, footer and auth rules.
+    ...['tokens.css', 'chrome-v2.css', 'pages-v2.css', 'foundation-v2.css'].map((name) =>
       readFileSync(new URL(name, here), 'utf8'),
     ),
   ].join('\n');
@@ -115,10 +118,11 @@ test('classes used by the components exist in the stylesheet', () => {
   for (const file of sourceFiles(uiSrc)) {
     const text = readFileSync(file, 'utf8');
     for (const match of text.matchAll(/['"`]((?:ls-[\w-]+)(?:\s+ls-[\w-]+)*)['"`]/g)) {
-      // `ls-theme` is the theme cookie name, not a class.
-      for (const name of match[1]!.split(/\s+/)) if (name !== 'ls-theme') used.add(name);
+      for (const name of match[1]!.split(/\s+/)) used.add(name);
     }
   }
+  // Session 10 (A1): the theme cookie (`ls-theme`) and the theme switch classes are gone with the switch.
+  for (const name of used) assert.doesNotMatch(name, /^ls-theme(?:-|$)/, name);
   // Classes built from a variant/tone/size/side are checked by their prefix.
   const dynamic = ['ls-btn-', 'ls-badge-', 'ls-notice-', 'ls-toast-', 'ls-dialog-', 'ls-drawer-'];
   const missing = [...used].filter(

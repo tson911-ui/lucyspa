@@ -38,56 +38,11 @@ import {
   type InboxFilters,
 } from '../../lib/notifications';
 import { Badge, Empty, Notice, PageHeader } from '../workforce/ui';
+import { CHANGED, timestampParts, useUnreadCount } from './unread';
 
-/** Announced on the window whenever a notification changes, so every unread count reads again. */
-export const CHANGED = 'lucy-notifications-changed';
-const REFRESH_MS = 30_000;
+export { CHANGED, timestampParts, useUnreadCount };
 
 type NotificationTexts = ReturnType<typeof getNotificationDictionary>;
-
-/**
- * The unread count (archived items are never counted by the API), read now, every 30 seconds and whenever the inbox
- * changes it. `null` as the client reads nothing (nobody is signed in).
- */
-export function useUnreadCount(api: ApiClient | null): { count: number | null; failed: boolean } {
-  const [count, setCount] = useState<number | null>(null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    if (!api) {
-      setCount(null);
-      setFailed(false);
-      return;
-    }
-    let active = true;
-    let generation = 0;
-    const load = async () => {
-      const current = ++generation;
-      try {
-        const response = await api.get<NotificationCountResponse>(
-          '/api/v1/notifications/unread-count',
-          {},
-          { passive: true },
-        );
-        if (active && current === generation) {
-          setCount(response.unreadCount);
-          setFailed(false);
-        }
-      } catch {
-        if (active && current === generation) setFailed(true);
-      }
-    };
-    void load();
-    const timer = window.setInterval(() => void load(), REFRESH_MS);
-    const changed = () => void load();
-    window.addEventListener(CHANGED, changed);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-      window.removeEventListener(CHANGED, changed);
-    };
-  }, [api]);
-  return { count, failed };
-}
 
 /** Bell with the unread badge. */
 export function NotificationIndicator({
@@ -165,17 +120,6 @@ export function notificationMenu(
         ]
       : []),
   ];
-}
-
-export function timestampParts(item: NotificationItem, locale: Locale) {
-  // A person-level notification (leave) has no branch; use the viewer's own time zone.
-  const zone = item.branch ? { timeZone: item.branch.timezone } : {};
-  const tag = locale === 'vi' ? 'vi-VN' : 'en-GB';
-  const at = new Date(item.actionAt);
-  return {
-    date: new Intl.DateTimeFormat(tag, { ...zone, dateStyle: 'medium' }).format(at),
-    time: new Intl.DateTimeFormat(tag, { ...zone, timeStyle: 'short' }).format(at),
-  };
 }
 
 /**

@@ -6,7 +6,6 @@ import { loadSiteDecor, SeasonSiteFrame } from '../season/site-frame';
 import { ContactWidget } from './contact-widget';
 import { PublicFooter, PublicHeader } from './site-chrome';
 import { PublicTabBar } from './site-chrome-client';
-import { siteFontClass } from './site-fonts';
 import { SiteScrollManager } from './site-scroll-manager';
 import { SiteSessionProvider } from './site-session';
 
@@ -35,7 +34,7 @@ export async function SitePageFrame({ locale, children }: { locale: Locale; chil
   return (
     // data-ui="v2": the DESIGN.md token scope (tokens.css). Every dialog, menu and the tab bar render inside this frame, so
     // none of them needs the attribute of its own; nothing here is portaled to the document body.
-    <div className={`ls-site ${siteFontClass}`} data-ui="v2">
+    <div className="ls-site" data-ui="v2">
       <SelectIconScope>
         <SiteSessionProvider>
           {/* Below 1024 px this is the one scroll container of the page (the app shell, site.css); the tab bar below it is in

@@ -10,7 +10,8 @@ const tokens = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
 
 /** The declarations of the first block that starts with `selector`. */
 function block(selector: string): string {
-  // The dark block also carries the preview scope in its selector list (":root[data-theme='dark'], [data-preview-theme='dark'] {").
+  // The dark block also carries the preview scope in its selector list (":root[data-preview-theme='dark'], [data-preview-theme='dark'] {");
+  // there is no theme switch, so the system-preference copy is the other one (tokens.test.ts keeps the two identical).
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const start = new RegExp(`^${escaped}(,[^{]*)? \\{`, 'm').exec(tokens)?.index ?? -1;
   assert.ok(start >= 0, `${selector} block exists`);
@@ -89,7 +90,7 @@ function deltaE(a: string, b: string, kind?: keyof typeof MACHADO): number {
 const BANDS = { light: [0.43, 0.77], dark: [0.48, 0.67] } as const;
 
 for (const mode of ['light', 'dark'] as const) {
-  const css = mode === 'light' ? block(':root') : block(":root[data-theme='dark']");
+  const css = mode === 'light' ? block(':root') : block(":root[data-preview-theme='dark']");
   const { surface, palette } = slots(css);
 
   test(`chart palette (${mode}): lightness band and chroma floor`, () => {
@@ -129,8 +130,8 @@ test('the fixed slot order is wine, blue, orange, teal, violet, green (contract 
     '#7c4dbd',
     '#3f8f3a',
   ]);
-  assert.deepEqual(slots(block(":root[data-theme='dark']")).palette, [
-    '#c9647a',
+  assert.deepEqual(slots(block(":root[data-preview-theme='dark']")).palette, [
+    '#a74c58',
     '#4f8fd6',
     '#d1722f',
     '#2aa89b',
@@ -140,14 +141,14 @@ test('the fixed slot order is wine, blue, orange, teal, violet, green (contract 
 });
 
 test('the neutral "Other" and the previous-period tone are text-safe on the chart surface', () => {
-  for (const css of [block(':root'), block(":root[data-theme='dark']")]) {
+  for (const css of [block(':root'), block(":root[data-preview-theme='dark']")]) {
     const { surface, other } = slots(css);
     assert.ok(contrast(other, surface) >= 3, 'Other mark');
   }
 });
 
 test('no gold or yellow is used by any chart slot (decision D1)', () => {
-  for (const css of [block(':root'), block(":root[data-theme='dark']")]) {
+  for (const css of [block(':root'), block(":root[data-preview-theme='dark']")]) {
     for (const hex of slots(css).palette) {
       const [r, g, b] = rgb(hex);
       const yellowish = r > 0.7 && g > 0.6 && b < 0.4;

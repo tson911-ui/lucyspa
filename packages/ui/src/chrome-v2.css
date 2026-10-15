@@ -94,10 +94,9 @@ html:has([data-ui='v2'] .ls-site-header) {
   }
 }
 
-/* ---- Tools (8.1 icon button): language, theme, cart, bell, account --------------------------------------- */
+/* ---- Tools (8.1 icon button): language, cart, bell, account --------------------------------------- */
 /* Bare 44 px circles in ink; hover is the solid accent, with the on-accent icon (Owner rule 4). A tool inside a panel (the bell's list) is
    not a tool of the bar and keeps its own rules. */
-[data-ui='v2'] .ls-theme-cycle,
 [data-ui='v2'] .ls-site-tool,
 [data-ui='v2'] .ls-site-tools .ls-btn-icon:not(.ls-popover .ls-btn-icon) {
   border-color: transparent;
@@ -109,7 +108,6 @@ html:has([data-ui='v2'] .ls-site-header) {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  [data-ui='v2'] .ls-theme-cycle:hover,
   [data-ui='v2'] .ls-site-tool:hover,
   [data-ui='v2'] .ls-site-tools .ls-btn-icon:not(.ls-popover .ls-btn-icon):hover {
     border-color: var(--ls-hover-border);

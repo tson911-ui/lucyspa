@@ -182,6 +182,73 @@ test('the compact scope clamps every duration to 200 ms and a focused text field
   motion.configureMotion();
 });
 
+test('session 10 (G4, G5): the kit GSAP clamps tweens to 0.2 s in a compact scope, the probe records them, and ls:route kills every context', async () => {
+  const calls = { contexts: 0, reverted: 0, built: [] as MotionKit[] };
+  const tweens: Array<Record<string, unknown>> = [];
+  const modules = fakeModules(calls) as unknown as {
+    gsap: Record<string, unknown>;
+    ScrollTrigger: unknown;
+  };
+  modules.gsap['to'] = (_target: unknown, vars: Record<string, unknown>) => tweens.push(vars);
+  modules.gsap['fromTo'] = (_target: unknown, _from: unknown, vars: Record<string, unknown>) =>
+    tweens.push(vars);
+  motion.configureMotion({
+    load: async () => modules as never,
+    afterFirstPaint: (callback) => callback(),
+  });
+  const root = window.document.documentElement;
+  root.dataset['lsMotion'] = 'full';
+  const probe = window as unknown as { __lsMotionProbe?: boolean; __lsMotionLog?: unknown[] };
+  probe.__lsMotionProbe = true;
+  probe.__lsMotionLog = [];
+  const shell = window.document.createElement('div');
+  shell.setAttribute('data-density', 'compact');
+  shell.innerHTML = '<section class="ls-a"></section>';
+  const loose = window.document.createElement('section');
+  window.document.body.append(shell, loose);
+  const scope = shell.querySelector('section') as HTMLElement;
+
+  let staffKit: MotionKit | undefined;
+  let siteKit: MotionKit | undefined;
+  const stopStaff = motion.runMotion(scope, (made) => (staffKit = made));
+  const stopSite = motion.runMotion(loose, (made) => (siteKit = made));
+  await settle();
+  await settle();
+  assert.ok(staffKit && siteKit);
+  staffKit.gsap.to(scope, { duration: 0.56, delay: 1, ease: 'power2.out' });
+  staffKit.gsap.fromTo(scope, { opacity: 0 }, { duration: 0.1 });
+  siteKit.gsap.to(loose, { duration: 0.56, delay: 1 });
+  assert.deepEqual(
+    tweens.map((vars) => [vars['duration'], vars['delay']]),
+    [
+      [0.2, 0.2],
+      [0.1, undefined],
+      [0.56, 1],
+    ],
+    'compact clamps duration and delay to 0.2 s; the customer scope is untouched',
+  );
+  assert.deepEqual(probe.__lsMotionLog, [
+    { target: 'section.ls-a', duration: 0.2, ease: 'power2.out', compact: true },
+    { target: 'section.ls-a', duration: 0.1, ease: 'default', compact: true },
+    { target: 'section', duration: 0.56, ease: 'default', compact: false },
+  ]);
+
+  // A route change stops every running context at once.
+  assert.equal(typeof motion.killMotionOnRouteChange, 'function');
+  const before = calls.reverted;
+  window.dispatchEvent(new window.Event('ls:route'));
+  assert.equal(calls.reverted - before, 2, 'both live contexts are reverted on ls:route');
+
+  stopStaff();
+  stopSite();
+  delete probe.__lsMotionProbe;
+  delete probe.__lsMotionLog;
+  shell.remove();
+  loose.remove();
+  delete root.dataset['lsMotion'];
+  motion.configureMotion();
+});
+
 test('MotionGate: the ls-fx switch and the staff setting turn the gate to reduced, live, and the document is cleaned up', async () => {
   class Observer {
     observe() {}

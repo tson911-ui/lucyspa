@@ -235,8 +235,8 @@ test('rule values are whole numbers in range and the preview follows the shared 
     rule: { kind: 'PERCENT', value: '20' },
   });
   assert.equal(ruleText({ kind: 'PERCENT', value: '20' }, 'vi'), 'Giảm 20%');
-  assert.equal(ruleText({ kind: 'AMOUNT', value: '30000' }, 'vi'), 'Giảm 30.000 ₫');
-  assert.equal(ruleText({ kind: 'PRICE', value: '99000' }, 'en'), 'Flat price 99,000 ₫');
+  assert.equal(ruleText({ kind: 'AMOUNT', value: '30000' }, 'vi'), 'Giảm 30.000\u00a0₫');
+  assert.equal(ruleText({ kind: 'PRICE', value: '99000' }, 'en'), 'Flat price 99,000\u00a0₫');
 });
 
 test('groups are numbered 1, 2, 3 by order whatever the stored positions are', () => {

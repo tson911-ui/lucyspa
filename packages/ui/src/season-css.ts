@@ -48,10 +48,12 @@ export function buildSeasonCss(presets: readonly SeasonPreset[]): string {
           '--ls-season-line: var(--ls-season-accent);',
         ],
       ),
-      rule([`:root[data-theme='dark'] ${scope}`, `:root[data-theme='dark']${scope}`], dark),
       '@media (prefers-color-scheme: dark) {',
       rule(
-        [`:root:not([data-theme='light']) ${scope}`, `:root:not([data-theme='light'])${scope}`],
+        [
+          `:root:not([data-preview-theme='light']) ${scope}`,
+          `:root:not([data-preview-theme='light'])${scope}`,
+        ],
         dark,
         '  ',
       ),
@@ -65,6 +67,8 @@ export function buildSeasonCss(presets: readonly SeasonPreset[]): string {
     return (['light', 'dark'] as const).map((theme) =>
       rule(
         [
+          // The preview stage forces the theme on <html> itself, which also carries data-season.
+          `:root[data-preview-theme='${theme}']${scope}`,
           `:root [data-preview-theme='${theme}'] ${scope}`,
           `:root [data-preview-theme='${theme}']${scope}`,
         ],

@@ -1,9 +1,14 @@
 'use client';
 
 import { ContactFab, type ContactFabItem } from '@lucy-spa/ui';
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import type { Locale } from '../../i18n/locales';
-import { ChatPanel } from './chat-panel';
+
+// The chat code is a chunk of its own, fetched only when the visitor opens the chat (react-best-practices
+// bundle-dynamic-imports).
+const loadChat = () => import('./chat-panel').then((module) => module.ChatPanel);
+const ChatPanel = dynamic(loadChat, { ssr: false });
 
 /**
  * The floating contact control with the "Chat với Lucy" item (Claude integration Wave B): the item opens the chat panel, which is

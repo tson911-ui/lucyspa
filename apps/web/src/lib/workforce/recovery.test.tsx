@@ -190,7 +190,7 @@ test('anti-enumeration: one neutral message; code failures are never specific', 
   assert.equal(recoveryErrorMessage(new ApiError(429, 'RATE_LIMITED'), vi), vi.errors.rateLimited);
 });
 
-test('forgot password: centered card with the wordmark inside, on the brand background', () => {
+test('forgot password: centered card with the wordmark inside, on the flat compact background', () => {
   for (const [dictionary, locale] of [
     [vi, 'vi'],
     [en, 'en'],
@@ -219,7 +219,9 @@ test('forgot password: centered card with the wordmark inside, on the brand back
       owner,
       locale,
     );
-    assert.match(markup, /<svg class="ls-auth-pattern"/, 'botanical background');
+    // Flat sunken background, compact density, no botanical art (DESIGN.md: staff sign-in).
+    assert.match(markup, /^<div class="ls-auth" data-density="compact">/, 'compact staff frame');
+    assert.doesNotMatch(markup, /ls-auth-pattern/, 'no botanical background');
     assert.doesNotMatch(markup, /ls-auth-panel|ls-auth-side/, 'no split layout');
     const card = markup.indexOf('class="ls-auth-card"');
     assert.ok(

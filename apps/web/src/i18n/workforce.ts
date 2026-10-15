@@ -204,10 +204,6 @@ const vi = {
     closeMenu: 'Đóng menu',
     collapse: 'Thu gọn thanh bên',
     expand: 'Mở rộng thanh bên',
-    appearance: 'Giao diện',
-    themeLight: 'Sáng',
-    themeDark: 'Tối',
-    themeAuto: 'Tự động theo giờ',
     groups: {
       overview: 'Tổng quan',
       operations: 'Vận hành',
@@ -3016,10 +3012,6 @@ const en: Dictionary = {
     closeMenu: 'Close menu',
     collapse: 'Collapse sidebar',
     expand: 'Expand sidebar',
-    appearance: 'Appearance',
-    themeLight: 'Light',
-    themeDark: 'Dark',
-    themeAuto: 'Auto by time',
     groups: {
       overview: 'Overview',
       operations: 'Operations',
@@ -5657,8 +5649,4 @@ export function getWorkforceDictionary(locale: Locale): WorkforceDictionary {
 }
 
 /** Replaces `{key}` placeholders; unknown keys are left visible rather than dropped. */
-export function fill(template: string, values: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (match, key: string) =>
-    key in values ? String(values[key]) : match,
-  );
-}
+export { fill } from './fill';

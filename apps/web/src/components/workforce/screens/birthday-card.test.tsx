@@ -69,7 +69,7 @@ test('a gift added on top of the member discount is a separate success line with
   );
   assert.ok(html.includes('Diamond 7% được áp dụng'), 'the ordinary winner is still announced');
   assert.ok(html.includes(b.stacked));
-  assert.ok(html.includes('50.000 ₫'));
+  assert.ok(html.includes('50.000\u00a0₫'));
   assert.ok(html.includes(b.rowName));
   assert.ok(html.includes(b.source));
   assert.ok(html.includes('01/03/2027'));
@@ -128,7 +128,7 @@ test('a gift that was not used says why: minimum spend, usage limit, or the offe
       />,
       cashier,
     );
-    const text = b.notApplied[reason].replace('{amount}', '300.000 ₫');
+    const text = b.notApplied[reason].replace('{amount}', '300.000\u00a0₫');
     assert.ok(html.includes(text), reason);
     assert.ok(!html.includes(b.stacked));
   }

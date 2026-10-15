@@ -331,7 +331,7 @@ test('a refund is shown with its money, method, code and the corrected reference
       }),
     ]),
   );
-  assert.match(html, /400\.000 ₫/);
+  assert.match(html, /400\.000\u00a0₫/);
   assert.match(html, /chuyển khoản/);
   assert.match(html, /HT000003/);
   assert.match(html, /FT0002/);

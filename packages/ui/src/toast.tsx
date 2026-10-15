@@ -68,7 +68,8 @@ export function ToastProvider({
   return (
     <ToastContext value={api}>
       {children}
-      <div className="ls-toast-region" role="region" aria-label={regionLabel}>
+      {/* Always mounted and polite, so a toast that appears inside it is announced (WIG: async updates need aria-live). */}
+      <div className="ls-toast-region" role="region" aria-label={regionLabel} aria-live="polite">
         {toasts.map((toast) => (
           <ToastItem
             key={toast.id}

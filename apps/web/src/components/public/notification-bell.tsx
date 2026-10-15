@@ -8,7 +8,7 @@ import { getNotificationDictionary } from '../../i18n/notifications';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import { mergeNotifications, notificationHref, notificationMessage } from '../../lib/notifications';
-import { CHANGED, timestampParts, useUnreadCount } from '../notifications/inbox';
+import { CHANGED, timestampParts, useUnreadCount } from '../notifications/unread';
 import { useSiteSession } from './site-session';
 
 /** A bell ring that never reports its end (no animation support) is cleared after this long. */

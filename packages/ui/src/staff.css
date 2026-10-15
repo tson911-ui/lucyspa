@@ -39,15 +39,15 @@
     var(--ls-shadow-md);
 }
 
-/* The logo keeps the size it had in the staff bar (the customer header sets its own). */
+/* The compact bar takes the wordmark one step down the scale (17 px; the customer header uses 21). */
 .ls-topbar-brand {
-  --ls-wordmark-size: 1.25rem;
+  --ls-wordmark-size: var(--ls-type-body);
 }
 
 /* On a phone the logo never grows past 5% of the screen, so a larger text size cannot push the account button off it. */
 @media (max-width: 639px) {
   .ls-topbar-brand {
-    --ls-wordmark-size: min(1.125rem, 5vw);
+    --ls-wordmark-size: min(var(--ls-type-body), 5vw);
   }
 }
 

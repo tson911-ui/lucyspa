@@ -14,8 +14,9 @@ export { Tooltip } from './tooltip';
 
 export type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 /**
- * `brand` is the selected / current-state chip (soft tint). The three shop labels (one accent family, DESIGN.md 8.7): `accent` is
- * Bán chạy (accent fill), `outline` is Mới (accent outline), `ink` is the sale percentage (ink fill, inverse text).
+ * `brand` is the selected / current-state chip (soft tint). The shop labels are neutral (Owner A3/B18, 2026-10-16: the brand colour is
+ * only for what can be clicked or is selected): `accent` is Bán chạy (grey fill), `outline` is Mới (grey outline), `ink` is the sale
+ * percentage (ink fill, inverse text). A status tone always shows its icon beside the word (C5).
  */
 export type BadgeTone = Tone | 'brand' | 'accent' | 'outline' | 'ink';
 
@@ -33,13 +34,18 @@ export function Badge({
   className,
 }: {
   tone?: BadgeTone | undefined;
-  icon?: IconName | undefined;
+  /** A leading icon; a status tone (success, warning, danger, info) shows its own by default (C5). `false` hides it. */
+  icon?: IconName | false | undefined;
   children: ReactNode;
   className?: string | undefined;
 }) {
+  const iconName =
+    icon === false
+      ? null
+      : (icon ?? (tone in toneIcon ? toneIcon[tone as Exclude<Tone, 'neutral'>] : null));
   return (
     <span className={cx('ls-badge', `ls-badge-${tone}`, className)}>
-      {icon ? <Icon name={icon} size={14} /> : null}
+      {iconName ? <Icon name={iconName} size={16} /> : null}
       {children}
     </span>
   );

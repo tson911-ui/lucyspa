@@ -163,8 +163,11 @@ test('payer and cancellation bodies: ids and a reason only', () => {
 });
 
 test('amounts and ranges are shown in the locale without floating point', () => {
-  assert.equal(priceRange(line(), 'vi'), '50.000 ₫–80.000 ₫');
-  assert.equal(priceRange(line({ priceMinVnd: '40000', priceMaxVnd: '40000' }), 'en'), '40,000 ₫');
+  assert.equal(priceRange(line(), 'vi'), '50.000\u00a0₫–80.000\u00a0₫');
+  assert.equal(
+    priceRange(line({ priceMinVnd: '40000', priceMaxVnd: '40000' }), 'en'),
+    '40,000\u00a0₫',
+  );
   assert.equal(invoiceTone('PAID'), 'success');
   assert.equal(invoiceTone('CANCELLED'), 'error');
   assert.equal(invoiceTone('DRAFT'), 'neutral');

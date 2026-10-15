@@ -53,7 +53,7 @@ export function ProductCard({
         <div className="ls-pcard-labels">
           {card.isNew ? <Badge tone="outline">{text.badgeNew}</Badge> : null}
           {percent ? <Badge tone="ink">{percent}</Badge> : null}
-          {outOfStock ? <Badge tone="neutral">{text.outOfStock}</Badge> : null}
+          {outOfStock ? <Badge tone="warning">{text.outOfStock}</Badge> : null}
         </div>
       ) : null}
     </div>

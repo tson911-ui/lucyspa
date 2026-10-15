@@ -1,8 +1,8 @@
 /* Lucy Spa design tokens v2 (docs/UXUI_REDESIGN_DESIGN.md section 6). Semantic names, WCAG-checked
-   by tokens.test.ts. Light values live under :root, dark values are declared twice (explicit
-   toggle and system preference); the test asserts both dark blocks stay identical. */
+   by tokens.test.ts. Light values live under :root; dark values are declared for the system preference and for the admin
+   season preview (data-preview-theme); the test asserts the dark blocks stay identical. The page follows the device (A1). */
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
 
   /* Surfaces */
   --ls-bg-page: #fdf4f2;
@@ -337,7 +337,7 @@
 }
 
 /* Dark: selected, not inverted. Keep the two blocks below identical (tokens.test.ts). */
-:root[data-theme='dark'],
+:root[data-preview-theme='dark'],
 [data-preview-theme='dark'] {
   color-scheme: dark;
   --ls-bg-page: #171012;
@@ -393,9 +393,9 @@
   --ls-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
   --ls-shadow-md: 0 1px 3px rgb(0 0 0 / 0.4), 0 12px 28px -16px rgb(0 0 0 / 0.7);
   --ls-shadow-lg: 0 4px 8px rgb(0 0 0 / 0.45), 0 28px 56px -24px rgb(0 0 0 / 0.8);
-  --ls-chart-surface: #1b1416;
+  --ls-chart-surface: #1c1c1e;
   --ls-chart-grid: #4a3d40;
-  --ls-chart-1: #c9647a;
+  --ls-chart-1: #a74c58; /* B22: no pink in dark (was #c9647a); burgundy dark step 10, 3.09:1 on the chart surface */
   --ls-chart-2: #4f8fd6;
   --ls-chart-3: #d1722f;
   --ls-chart-4: #2aa89b;
@@ -405,7 +405,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  :root:not([data-preview-theme='light']) {
     color-scheme: dark;
     --ls-bg-page: #171012;
     --ls-bg-surface: #21171a;
@@ -460,9 +460,9 @@
     --ls-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
     --ls-shadow-md: 0 1px 3px rgb(0 0 0 / 0.4), 0 12px 28px -16px rgb(0 0 0 / 0.7);
     --ls-shadow-lg: 0 4px 8px rgb(0 0 0 / 0.45), 0 28px 56px -24px rgb(0 0 0 / 0.8);
-    --ls-chart-surface: #1b1416;
+    --ls-chart-surface: #1c1c1e;
     --ls-chart-grid: #4a3d40;
-    --ls-chart-1: #c9647a;
+    --ls-chart-1: #a74c58; /* B22: no pink in dark (was #c9647a); burgundy dark step 10, 3.09:1 on the chart surface */
     --ls-chart-2: #4f8fd6;
     --ls-chart-3: #d1722f;
     --ls-chart-4: #2aa89b;
@@ -562,33 +562,34 @@
   /* Text and lines (neutral scale) */
   --ls-text: #1d1d1f;
   --ls-text-muted: #515154;
-  --ls-text-subtle: #6e6e73;
+  /* B1 (Owner, 2026-10-16): captions were too faint; the quiet text is the muted grey (7.9:1), as in dark. */
+  --ls-text-subtle: #515154;
   --ls-border: #d2d2d7;
   --ls-border-control: #86868b;
   /* Accent (burgundy scale). Fill = 9, fill hover = 10, text / link / focus = 11, text on the soft tint = 12 (light) or 11 (dark) */
-  --ls-brand: #521b24;
+  --ls-brand: #60212a;
   --ls-brand-fill: #782b37;
   --ls-on-brand: #ffffff;
   --ls-brand-fill-hover: #6a242f;
   --ls-brand-soft: #f9eced;
-  --ls-brand-on-soft: #521b24;
-  --ls-focus: #521b24;
+  --ls-brand-on-soft: #60212a;
+  --ls-focus: #60212a;
   --ls-wordmark: #782b37;
-  --ls-outline-border: #782b37;
-  --ls-outline-border-hover: #6a242f;
+  --ls-outline-border: #60212a;
+  --ls-outline-border-hover: #521b24;
   /* Hover (Owner rule 4): the solid accent fill with white text. A table row and a staff sidebar item hover with a neutral tint (Q3). A secondary (outline) button never fills (Owner addendum, 2026-10-15). */
-  --ls-hover-bg: #782b37;
-  --ls-hover-text: #ffffff;
-  --ls-hover-border: #782b37;
-  --ls-hover-ghost-border: #782b37;
+  --ls-hover-bg: #ececef;
+  --ls-hover-text: #1d1d1f;
+  --ls-hover-border: #d2d2d7;
+  --ls-hover-ghost-border: #d2d2d7;
   --ls-row-hover-bg: #f5f5f7;
-  --ls-nav-hover-bg: #e2e2e5;
+  --ls-nav-hover-bg: #ececef;
   --ls-nav-hover-text: #1d1d1f;
   --ls-nav-active-bg: #782b37;
   --ls-nav-active-text: #ffffff;
   /* Flat panel of the sign-in pages (Q4) */
-  --ls-auth-flat: #782b37;
-  --ls-on-auth-flat: #ffffff;
+  --ls-auth-flat: #ffffff;
+  --ls-on-auth-flat: #1d1d1f;
   /* Status. Text / border / icon = 11, tint = 3, solid fill = 9 (danger only: the destructive button). Never color alone: every status has a word or an icon. */
   --ls-danger: #b3150f;
   --ls-danger-bg: #ffe6e2;
@@ -721,10 +722,6 @@
   --ls-dur-slow: 320ms;
   --ls-dur-reveal: 560ms;
   --ls-dur-hero: 800ms;
-  /* Secondary (outline) button hover (Owner addendum, 2026-10-15): lift, zoom and the trailing arrow nudge. Zeroed under reduced motion and the off switch. */
-  --ls-btn-lift: -2px;
-  --ls-btn-zoom: 1.02;
-  --ls-btn-nudge: 3px;
 
   /* Typography (DESIGN.md 6.3): Be Vietnam Pro only, weights 400 / 500 / 600, sizes in rem. The family is loaded once at the root
      (next/font in the locale layout); the heading face is the same family. */
@@ -770,6 +767,42 @@
   --ls-lh-lead: var(--ls-lh-body);
   --ls-type-small: var(--ls-type-label);
   --ls-lh-small: 1.5;
+  --ls-link: #60212a;
+  --ls-link-rest-decoration: none;
+  --ls-brand-fill-pressed: #60212a;
+  --ls-secondary-hover-bg: #f9eced;
+  --ls-secondary-pressed-bg: #f7e1e2;
+  --ls-pressed-bg: #e2e2e5;
+}
+
+/* The older size tokens (--ls-text-*) that the shared kit and the staff screens still read, mapped onto the DESIGN.md 6.3 scale (session 10,
+   D4): the customer default 12 / 14 / 17 / 21 / 28 and, in the compact staff scope, the same roles one step down (12 / 14 / 14 / 17 / 24).
+   Only the size changes, never the face, the weights or the ratios. */
+[data-ui='v2'] {
+  --ls-text-xs: var(--ls-type-caption);
+  --ls-text-sm: var(--ls-type-label);
+  --ls-text-md: var(--ls-type-body);
+  --ls-text-lg: var(--ls-type-heading);
+  --ls-text-xl: var(--ls-type-title);
+  --ls-text-2xl: var(--ls-type-title);
+  --ls-text-3xl: var(--ls-type-title-xl);
+  --ls-text-display: var(--ls-type-display);
+}
+
+[data-ui='v2'][data-density='compact'],
+[data-ui='v2'] [data-density='compact'] {
+  --ls-type-title: 1.5rem;
+  --ls-type-heading: 1.0625rem;
+  --ls-type-body: 0.875rem;
+  --ls-type-price: 1.0625rem;
+  --ls-text-xs: 0.75rem;
+  --ls-text-sm: 0.875rem;
+  --ls-text-md: 0.875rem;
+  --ls-text-lg: 1.0625rem;
+  --ls-text-xl: 1.5rem;
+  --ls-text-2xl: 1.5rem;
+  --ls-text-3xl: 1.5rem;
+  --ls-text-display: 1.5rem;
 }
 
 /* Season defaults inside the v2 frame (no season on): the :root defaults above resolve var(--ls-brand) at the root, which is the old staff value
@@ -811,7 +844,7 @@
 
 /* Dark: black base, stepped greys (the closer to the user, the lighter), a burgundy fill with white text, a muted rose for accent text. Keep the three
    selectors' blocks below identical (tokens-v2.test.ts). */
-:root[data-theme='dark'] [data-ui='v2'],
+:root[data-preview-theme='dark'] [data-ui='v2'],
 [data-preview-theme='dark'] [data-ui='v2'],
 [data-preview-theme='dark'][data-ui='v2'] {
   color-scheme: dark;
@@ -831,29 +864,29 @@
   --ls-border: #444447;
   --ls-border-control: #86868b;
   /* Accent (burgundy scale). Fill = 9, fill hover = 10, text / link / focus = 11, text on the soft tint = 12 (light) or 11 (dark) */
-  --ls-brand: #dcadb0;
+  --ls-brand: #f5f5f7;
   --ls-brand-fill: #9b424e;
   --ls-on-brand: #ffffff;
   --ls-brand-fill-hover: #a74c58;
   --ls-brand-soft: #36171a;
-  --ls-brand-on-soft: #dcadb0;
-  --ls-focus: #dcadb0;
+  --ls-brand-on-soft: #f5f5f7;
+  --ls-focus: #f5f5f7;
   --ls-wordmark: #f5f5f7;
-  --ls-outline-border: #a74c58;
-  --ls-outline-border-hover: #dcadb0;
+  --ls-outline-border: #a1a1a6;
+  --ls-outline-border-hover: #f5f5f7;
   /* Hover (Owner rule 4): the solid accent fill with white text. A table row and a staff sidebar item hover with a neutral tint (Q3). A secondary (outline) button never fills (Owner addendum, 2026-10-15). */
-  --ls-hover-bg: #9b424e;
-  --ls-hover-text: #ffffff;
-  --ls-hover-border: #9b424e;
-  --ls-hover-ghost-border: #9b424e;
+  --ls-hover-bg: #2c2c2e;
+  --ls-hover-text: #f5f5f7;
+  --ls-hover-border: #58585b;
+  --ls-hover-ghost-border: #58585b;
   --ls-row-hover-bg: #2c2c2e;
-  --ls-nav-hover-bg: #3a3a3c;
+  --ls-nav-hover-bg: #2c2c2e;
   --ls-nav-hover-text: #f5f5f7;
   --ls-nav-active-bg: #9b424e;
   --ls-nav-active-text: #ffffff;
   /* Flat panel of the sign-in pages (Q4) */
-  --ls-auth-flat: #1c1c1e;
-  --ls-on-auth-flat: #ffffff;
+  --ls-auth-flat: #000000;
+  --ls-on-auth-flat: #f5f5f7;
   /* Status. Text / border / icon = 11, tint = 3, solid fill = 9 (danger only: the destructive button). Never color alone: every status has a word or an icon. */
   --ls-danger: #ff7f6f;
   --ls-danger-bg: #391410;
@@ -942,10 +975,16 @@
   --ls-info-10: #4076b9;
   --ls-info-11: #8ebcf0;
   --ls-info-12: #dbe9fc;
+  --ls-link: #f5f5f7;
+  --ls-link-rest-decoration: underline;
+  --ls-brand-fill-pressed: #873742;
+  --ls-secondary-hover-bg: #2c2c2e;
+  --ls-secondary-pressed-bg: #3a3a3c;
+  --ls-pressed-bg: #3a3a3c;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) [data-ui='v2'] {
+  :root:not([data-preview-theme='light']) [data-ui='v2'] {
     color-scheme: dark;
     /* Bands and surfaces (elevation, not Radix steps: light white / #f5f5f7, dark black / E1 / E2) */
     --ls-band-base: #000000;
@@ -963,29 +1002,29 @@
     --ls-border: #444447;
     --ls-border-control: #86868b;
     /* Accent (burgundy scale). Fill = 9, fill hover = 10, text / link / focus = 11, text on the soft tint = 12 (light) or 11 (dark) */
-    --ls-brand: #dcadb0;
+    --ls-brand: #f5f5f7;
     --ls-brand-fill: #9b424e;
     --ls-on-brand: #ffffff;
     --ls-brand-fill-hover: #a74c58;
     --ls-brand-soft: #36171a;
-    --ls-brand-on-soft: #dcadb0;
-    --ls-focus: #dcadb0;
+    --ls-brand-on-soft: #f5f5f7;
+    --ls-focus: #f5f5f7;
     --ls-wordmark: #f5f5f7;
-    --ls-outline-border: #a74c58;
-    --ls-outline-border-hover: #dcadb0;
+    --ls-outline-border: #a1a1a6;
+    --ls-outline-border-hover: #f5f5f7;
     /* Hover (Owner rule 4): the solid accent fill with white text. A table row and a staff sidebar item hover with a neutral tint (Q3). A secondary (outline) button never fills (Owner addendum, 2026-10-15). */
-    --ls-hover-bg: #9b424e;
-    --ls-hover-text: #ffffff;
-    --ls-hover-border: #9b424e;
-    --ls-hover-ghost-border: #9b424e;
+    --ls-hover-bg: #2c2c2e;
+    --ls-hover-text: #f5f5f7;
+    --ls-hover-border: #58585b;
+    --ls-hover-ghost-border: #58585b;
     --ls-row-hover-bg: #2c2c2e;
-    --ls-nav-hover-bg: #3a3a3c;
+    --ls-nav-hover-bg: #2c2c2e;
     --ls-nav-hover-text: #f5f5f7;
     --ls-nav-active-bg: #9b424e;
     --ls-nav-active-text: #ffffff;
     /* Flat panel of the sign-in pages (Q4) */
-    --ls-auth-flat: #1c1c1e;
-    --ls-on-auth-flat: #ffffff;
+    --ls-auth-flat: #000000;
+    --ls-on-auth-flat: #f5f5f7;
     /* Status. Text / border / icon = 11, tint = 3, solid fill = 9 (danger only: the destructive button). Never color alone: every status has a word or an icon. */
     --ls-danger: #ff7f6f;
     --ls-danger-bg: #391410;
@@ -1074,11 +1113,18 @@
     --ls-info-10: #4076b9;
     --ls-info-11: #8ebcf0;
     --ls-info-12: #dbe9fc;
+    --ls-link: #f5f5f7;
+    --ls-link-rest-decoration: underline;
+    --ls-brand-fill-pressed: #873742;
+    --ls-secondary-hover-bg: #2c2c2e;
+    --ls-secondary-pressed-bg: #3a3a3c;
+    --ls-pressed-bg: #3a3a3c;
   }
 }
 
 /* Forced light inside a dark page (the admin season preview): the light value of every token the dark block overrides. Same
    specificity as the dark selectors above and later, so it wins. */
+:root[data-preview-theme='light'] [data-ui='v2'],
 :root [data-preview-theme='light'] [data-ui='v2'],
 :root [data-preview-theme='light'][data-ui='v2'] {
   color-scheme: light;
@@ -1094,33 +1140,34 @@
   /* Text and lines (neutral scale) */
   --ls-text: #1d1d1f;
   --ls-text-muted: #515154;
-  --ls-text-subtle: #6e6e73;
+  /* B1 (Owner, 2026-10-16): captions were too faint; the quiet text is the muted grey (7.9:1), as in dark. */
+  --ls-text-subtle: #515154;
   --ls-border: #d2d2d7;
   --ls-border-control: #86868b;
   /* Accent (burgundy scale). Fill = 9, fill hover = 10, text / link / focus = 11, text on the soft tint = 12 (light) or 11 (dark) */
-  --ls-brand: #521b24;
+  --ls-brand: #60212a;
   --ls-brand-fill: #782b37;
   --ls-on-brand: #ffffff;
   --ls-brand-fill-hover: #6a242f;
   --ls-brand-soft: #f9eced;
-  --ls-brand-on-soft: #521b24;
-  --ls-focus: #521b24;
+  --ls-brand-on-soft: #60212a;
+  --ls-focus: #60212a;
   --ls-wordmark: #782b37;
-  --ls-outline-border: #782b37;
-  --ls-outline-border-hover: #6a242f;
+  --ls-outline-border: #60212a;
+  --ls-outline-border-hover: #521b24;
   /* Hover (Owner rule 4): the solid accent fill with white text. A table row and a staff sidebar item hover with a neutral tint (Q3). A secondary (outline) button never fills (Owner addendum, 2026-10-15). */
-  --ls-hover-bg: #782b37;
-  --ls-hover-text: #ffffff;
-  --ls-hover-border: #782b37;
-  --ls-hover-ghost-border: #782b37;
+  --ls-hover-bg: #ececef;
+  --ls-hover-text: #1d1d1f;
+  --ls-hover-border: #d2d2d7;
+  --ls-hover-ghost-border: #d2d2d7;
   --ls-row-hover-bg: #f5f5f7;
-  --ls-nav-hover-bg: #e2e2e5;
+  --ls-nav-hover-bg: #ececef;
   --ls-nav-hover-text: #1d1d1f;
   --ls-nav-active-bg: #782b37;
   --ls-nav-active-text: #ffffff;
   /* Flat panel of the sign-in pages (Q4) */
-  --ls-auth-flat: #782b37;
-  --ls-on-auth-flat: #ffffff;
+  --ls-auth-flat: #ffffff;
+  --ls-on-auth-flat: #1d1d1f;
   /* Status. Text / border / icon = 11, tint = 3, solid fill = 9 (danger only: the destructive button). Never color alone: every status has a word or an icon. */
   --ls-danger: #b3150f;
   --ls-danger-bg: #ffe6e2;
@@ -1209,6 +1256,12 @@
   --ls-info-10: #255691;
   --ls-info-11: #22518a;
   --ls-info-12: #132e50;
+  --ls-link: #60212a;
+  --ls-link-rest-decoration: none;
+  --ls-brand-fill-pressed: #60212a;
+  --ls-secondary-hover-bg: #f9eced;
+  --ls-secondary-pressed-bg: #f7e1e2;
+  --ls-pressed-bg: #e2e2e5;
 }
 
 /* The document behind the v2 frame (overscroll, the safe-area strips, the page before the frame paints) takes the base band too,
@@ -1217,12 +1270,12 @@
   --ls-bg-page: #ffffff;
 }
 
-:root[data-theme='dark']:has([data-ui='v2']) {
+:root[data-preview-theme='dark']:has([data-ui='v2']) {
   --ls-bg-page: #000000;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']):has([data-ui='v2']) {
+  :root:not([data-preview-theme='light']):has([data-ui='v2']) {
     --ls-bg-page: #000000;
   }
 }
@@ -1236,6 +1289,8 @@
   --ls-dur-fast: 120ms;
   --ls-dur-base: 200ms;
   --ls-dur-slow: 200ms;
+  /* The staff route change: one opacity fade (Owner G5, 2026-10-16). */
+  --ls-dur-route: 120ms;
 }
 
 @media (pointer: coarse), (max-width: 1023px) {
@@ -1243,14 +1298,6 @@
     --ls-control-h: 44px;
     --ls-row-h: 56px;
   }
-}
-
-/* The off switch (`ls-fx=off`) and the data-saver mark zero the secondary-button hover movement the same way as reduced motion: the border change is all that is left. */
-html[data-ls-fx='off'] [data-ui='v2'],
-html[data-ls-motion='reduced'] [data-ui='v2'] {
-  --ls-btn-lift: 0px;
-  --ls-btn-zoom: 1;
-  --ls-btn-nudge: 0px;
 }
 
 /* The first reduced-motion block above sits on :root; a v2 scope or a compact scope declares its own durations, so each one
@@ -1268,8 +1315,6 @@ html[data-ls-motion='reduced'] [data-ui='v2'] {
     --ls-dur-slow: 0ms;
     --ls-dur-reveal: 0ms;
     --ls-dur-hero: 0ms;
-    --ls-btn-lift: 0px;
-    --ls-btn-zoom: 1;
-    --ls-btn-nudge: 0px;
+    --ls-dur-route: 0ms;
   }
 }

@@ -60,10 +60,16 @@ test('the site frame puts everything but the tab bar in the one scroller and the
     'the tab bar is outside it',
   );
   // No scroll reader of the customer pages looks at the window alone.
-  for (const file of ['contact-fab.tsx', 'reveal.tsx', 'overlay.tsx']) {
+  for (const file of ['contact-fab.tsx', 'overlay.tsx']) {
     const source = readFileSync(new URL(file, import.meta.url), 'utf8');
     assert.match(source, /from '\.\/scroller'/, `${file} follows the scroller`);
   }
+  // Reveal no longer reads the scroll at all (session 10, G2: a plain wrapper), so it has nothing to follow.
+  const reveal = readFileSync(new URL('reveal.tsx', import.meta.url), 'utf8').replace(
+    /\/\*[\s\S]*?\*\//g,
+    '',
+  );
+  assert.doesNotMatch(reveal, /scroller|scroll|IntersectionObserver|addEventListener/i);
 });
 
 test('the header glass hides the text behind it', () => {

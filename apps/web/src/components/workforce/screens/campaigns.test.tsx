@@ -85,7 +85,7 @@ test('a draft shows its state in the header, one primary action, the review, the
   assert.ok(markup.includes(c.detail.moreActions), 'the delete lives in the more-actions menu');
   assert.ok(markup.includes(c.groups.add));
   assert.ok(markup.includes('Giảm 20%'));
-  assert.ok(markup.includes('Giảm 30.000 ₫'));
+  assert.ok(markup.includes('Giảm 30.000\u00a0₫'));
   assert.ok(markup.includes('8% đến 30%'));
   assert.ok(markup.includes(c.review.noDiscountHint));
   assert.ok(markup.includes(c.review.overlapHint));

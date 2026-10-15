@@ -13,9 +13,9 @@ import {
 
 test('VND amounts are formatted from the integer string, never through floats', () => {
   // Beyond Number.MAX_SAFE_INTEGER: a float round-trip would corrupt the digits.
-  assert.equal(formatVnd('123456789012345678', 'vi'), '123.456.789.012.345.678 ₫');
-  assert.equal(formatVnd('450000', 'en'), '450,000 ₫');
-  assert.equal(formatVnd('0', 'vi'), '0 ₫');
+  assert.equal(formatVnd('123456789012345678', 'vi'), '123.456.789.012.345.678\u00a0₫');
+  assert.equal(formatVnd('450000', 'en'), '450,000\u00a0₫');
+  assert.equal(formatVnd('0', 'vi'), '0\u00a0₫');
   assert.equal(isVndInput('450000'), true);
   for (const bad of ['', '01', '4.5', '-1', '1e6', '450,000', '1234567890123456789']) {
     assert.equal(isVndInput(bad), false, bad);

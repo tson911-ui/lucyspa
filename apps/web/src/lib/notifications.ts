@@ -4,7 +4,7 @@ import type {
   NotificationItem,
   NotificationPage,
 } from '@lucy-spa/contracts';
-import { fill } from '../i18n/workforce';
+import { fill } from '../i18n/fill';
 import type { Locale } from '../i18n/locales';
 import { getNotificationDictionary } from '../i18n/notifications';
 import { canAt, canGlobal } from './workforce/permissions';

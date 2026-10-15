@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { HeaderBar } from './header-bar';
 
 /**
  * The sticky site header of every public and member page: brand and main menu at the start, then tools (language, theme,
@@ -31,16 +32,25 @@ export function SiteHeader({
   return (
     <>
       <div ref={sentinel} className="ls-site-sentinel" aria-hidden="true" />
-      <header className="ls-site-header" data-scrolled={scrolled ? 'true' : undefined}>
-        <div className="ls-container ls-site-header-row">
-          <div className="ls-site-lead">
+      {/* The shared header bar of every area (R7); the customer slots keep their layout classes. */}
+      <HeaderBar
+        className="ls-site-header"
+        rowClassName="ls-container ls-site-header-row"
+        brandClassName="ls-site-lead"
+        brand={
+          <>
             <div className="ls-site-brand">{brand}</div>
             {nav}
-          </div>
-          <div className="ls-site-tools">{tools}</div>
-          {cta ? <div className="ls-site-cta">{cta}</div> : null}
-        </div>
-      </header>
+          </>
+        }
+        end={
+          <>
+            <div className="ls-site-tools">{tools}</div>
+            {cta ? <div className="ls-site-cta">{cta}</div> : null}
+          </>
+        }
+        scrolled={scrolled}
+      />
     </>
   );
 }

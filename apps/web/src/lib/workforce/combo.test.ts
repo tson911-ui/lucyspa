@@ -136,11 +136,11 @@ test('texts: sessions, the sale picker label and combo errors, in both languages
   assert.equal(sessionsText(5, 1, 'en'), '5 sessions + 1 free');
   assert.equal(
     comboOptionLabel({ nameVi: 'Combo A', nameEn: 'Combo B', priceVnd: '1000000' }, 'vi'),
-    'Combo A · 1.000.000 ₫',
+    'Combo A · 1.000.000\u00a0₫',
   );
   assert.equal(
     comboOptionLabel({ nameVi: 'Combo A', nameEn: 'Combo B', priceVnd: '1000000' }, 'en'),
-    'Combo B · 1,000,000 ₫',
+    'Combo B · 1,000,000\u00a0₫',
   );
   const fallback = () => 'shared';
   const refusal = (code: string) => new ApiError(409, code);

@@ -6,7 +6,6 @@ import {
   SiteHeader,
   SiteNav,
   TabBar,
-  ThemeCycle,
   type SiteLinkComponent,
 } from '@lucy-spa/ui';
 import Link from 'next/link';
@@ -101,7 +100,6 @@ export function PublicTools({ locale }: { locale: Locale }) {
       >
         {other.toUpperCase()}
       </Link>
-      <ThemeCycle labels={text.header.theme} />
       <PublicAccountMenu locale={locale} />
     </>
   );

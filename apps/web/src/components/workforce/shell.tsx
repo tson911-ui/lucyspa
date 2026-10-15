@@ -7,7 +7,6 @@ import {
   Icon,
   MotionGate,
   Page,
-  ThemeToggle,
   ToastProvider,
   UserMenu,
   isPathActive,
@@ -20,7 +19,6 @@ import { NAV_ICONS, personalEntries, sidebarGroups } from '../../lib/workforce/n
 import { navigationFor } from '../../lib/workforce/permissions';
 import { PageBack } from '../navigation/page-back';
 import { NotificationIndicator } from '../notifications/inbox';
-import { themeLabels } from './auth-actions';
 import { LanguageSwitch } from './language-switch';
 import { useAccount, useSessionNotice, useWorkforce } from './session';
 import { Notice } from './ui';
@@ -60,7 +58,6 @@ export function WorkforceShell({ children }: { children: ReactNode }) {
         }}
         topbarExtras={
           <>
-            <ThemeToggle labels={themeLabels(t)} />
             <LanguageSwitch />
           </>
         }
@@ -77,8 +74,6 @@ export function WorkforceShell({ children }: { children: ReactNode }) {
                 ))}
               </div>
               <div className="ls-usermenu-section ls-only-phone">
-                <p className="ls-usermenu-label">{t.nav.appearance}</p>
-                <ThemeToggle labels={themeLabels(t)} withLabels />
                 <p className="ls-usermenu-label">{t.nav.language}</p>
                 <LanguageSwitch className="ls-usermenu-link" />
               </div>
@@ -101,7 +96,7 @@ export function WorkforceShell({ children }: { children: ReactNode }) {
         }
       >
         <Page>
-          <PageBack root={base} label={t.common.back} />
+          <PageBack root={base} menuRoot label={t.common.back} />
           <SessionLostNotice />
           {children}
         </Page>

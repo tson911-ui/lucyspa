@@ -147,11 +147,100 @@ function loadGsap(): Promise<GsapModules | null> {
 
 const COMPACT_SELECTOR = "[data-density='compact']";
 
+/** The longest tween the compact (staff) scope allows, in seconds (Owner G5, 2026-10-16). */
+const COMPACT_MAX_S = 0.2;
+
+interface ProbeEntry {
+  target: string;
+  duration: number;
+  ease: string;
+  compact: boolean;
+}
+declare global {
+  interface Window {
+    /** Set by the test driver only (scripts/uxui-capture.py): every tween created through the kit is recorded in __lsMotionLog. */
+    __lsMotionProbe?: boolean;
+    __lsMotionLog?: ProbeEntry[];
+  }
+}
+
+function describe(target: unknown): string {
+  const first = Array.isArray(target) ? target[0] : target;
+  if (first instanceof Element) {
+    const cls =
+      typeof first.className === 'string'
+        ? first.className.trim().split(/\s+/).slice(0, 2).join('.')
+        : '';
+    return first.tagName.toLowerCase() + (cls ? '.' + cls : '');
+  }
+  return typeof first;
+}
+
+/**
+ * The GSAP handed to a component: in the compact scope every duration (and delay) is clamped to 200 ms, so the staff cap is enforced here,
+ * not left to each component; with the test probe on, every tween is recorded (target, duration, ease).
+ */
+function guarded(core: GsapCore, compact: boolean): GsapCore {
+  const fix = (vars: unknown): void => {
+    if (!vars || typeof vars !== 'object') return;
+    const v = vars as { duration?: number; delay?: number; ease?: unknown };
+    if (compact) {
+      if (typeof v.duration === 'number') v.duration = Math.min(v.duration, COMPACT_MAX_S);
+      if (typeof v.delay === 'number') v.delay = Math.min(v.delay, COMPACT_MAX_S);
+    }
+  };
+  const record = (target: unknown, vars: unknown): void => {
+    if (typeof window === 'undefined' || !window.__lsMotionProbe) return;
+    const v = (vars ?? {}) as { duration?: number; ease?: unknown };
+    (window.__lsMotionLog ??= []).push({
+      target: describe(target),
+      duration: typeof v.duration === 'number' ? v.duration : 0.5,
+      ease: typeof v.ease === 'string' ? v.ease : 'default',
+      compact,
+    });
+  };
+  return new Proxy(core, {
+    get(object, key, receiver) {
+      const value = Reflect.get(object, key, receiver) as unknown;
+      if (key === 'to' || key === 'from') {
+        return (target: unknown, vars: unknown) => {
+          fix(vars);
+          record(target, vars);
+          return (value as (t: unknown, v: unknown) => unknown).call(object, target, vars);
+        };
+      }
+      if (key === 'fromTo') {
+        return (target: unknown, from: unknown, vars: unknown) => {
+          fix(vars);
+          record(target, vars);
+          return (value as (t: unknown, f: unknown, v: unknown) => unknown).call(
+            object,
+            target,
+            from,
+            vars,
+          );
+        };
+      }
+      return value;
+    },
+  });
+}
+
+/** Every live context, so a route change can stop all of them at once (G4). */
+const liveContexts = new Set<{ revert: () => void }>();
+let routeListening = false;
+/** Called by the layouts' route tracker on every pathname change: every running tween is killed and its inline styles put back. */
+export function killMotionOnRouteChange(): void {
+  for (const context of liveContexts) context.revert();
+  liveContexts.clear();
+}
+
 function makeKit(modules: GsapModules, scope: Element): MotionKit {
   const compact = scope.closest(COMPACT_SELECTOR) !== null;
   const read = (name: string): string => getComputedStyle(scope).getPropertyValue(name);
   return {
     ...modules,
+    gsap: guarded(modules.gsap, compact),
     scope,
     compact,
     duration: (token) =>
@@ -206,10 +295,16 @@ export function runMotion(
       return;
     }
     context = modules.gsap.context(() => build(makeKit(modules, scope)), scope);
+    liveContexts.add(context);
+    if (!routeListening && typeof window !== 'undefined') {
+      routeListening = true;
+      window.addEventListener('ls:route', killMotionOnRouteChange);
+    }
   });
   return () => {
     stopped = true;
     unsubscribe();
+    if (context) liveContexts.delete(context);
     context?.revert();
     context = null;
   };

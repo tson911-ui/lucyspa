@@ -417,8 +417,8 @@ test('footer: the English footer uses the English badges and wording, and a hidd
 test('services list: the filter links, one section per group, a chosen group alone', () => {
   const all = renderToStaticMarkup(<ServicesView locale="vi" data={services} group="" />);
   assert.equal(all.match(/<h1[ >]/g)?.length, 1);
-  // Back sits above the title and, without history, goes to the home.
-  assert.match(all, /<a class="[^"]*ls-back[^"]*" href="\/vi">.*Quay lại.*<h1/s);
+  // The list is a top-level destination (the area home): no Back (DESIGN.md, C40/B7).
+  assert.doesNotMatch(all, /ls-back/);
   assert.match(all, /aria-current="true"[^>]*>Tất cả/);
   assert.match(all, /Gội thường/);
   // A card is one link (the name, stretched over the card) plus a separate booking button named after the service; the photo is a flat
@@ -559,8 +559,11 @@ test('service detail: facts, the per-nail note, the booking link and the group n
     '/vi/services/DINH_DA',
   );
   assert.match(html, /<h1[^>]*>Đính đá \/ charm<\/h1>/);
-  // Back sits above the title and, without history, goes to the service list.
-  assert.match(html, /<a class="[^"]*ls-back[^"]*" href="\/vi\/services">.*Quay lại.*<h1/s);
+  // Back (an icon-only chevron named "Quay lại") sits above the title and, without history, goes to the service list.
+  assert.match(
+    html,
+    /<a class="[^"]*ls-back ls-btn-icon[^"]*" aria-label="Quay lại" title="Quay lại" href="\/vi\/services"><svg[^>]*>.*?<\/svg><\/a>.*<h1/s,
+  );
   assert.match(html, /5\.000 ₫ – 30\.000 ₫\/ngón/);
   assert.match(html, /Tính theo số ngón/);
   assert.match(html, /href="\/vi\/account\/book\?service=DINH_DA"/);

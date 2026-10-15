@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Be_Vietnam_Pro, Playfair_Display } from 'next/font/google';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
-import { FX_COOKIE, ThemeInitScript } from '@lucy-spa/ui';
+import { FX_COOKIE } from '@lucy-spa/ui';
 import '@lucy-spa/ui/tokens.css';
 // Seasonal presets (docs/UXUI_REDESIGN_DESIGN.md 20): inert until an element carries data-season (set below, S5).
 import '@lucy-spa/ui/season.css';
@@ -19,10 +19,10 @@ import '@lucy-spa/ui/customer-pages.css';
 import '@lucy-spa/ui/components-v2.css';
 import '@lucy-spa/ui/chrome-v2.css';
 import '@lucy-spa/ui/pages-v2.css';
+// Session 10: the interaction states of every area, loaded last.
+import '@lucy-spa/ui/foundation-v2.css';
 import { getDictionary } from '../../i18n/dictionaries';
 import { RouteHistoryTracker } from '../../components/navigation/page-back';
-// Direction C's two faces (Owner, 2026-10-10): the variables sit on the root now, so the staff screens use them too.
-import { siteFontClass } from '../../components/public/site-fonts';
 import { isLocale, locales } from '../../i18n/locales';
 import { ADMIN_HIDE_COOKIE, seasonRootAttributes } from '../../lib/season-core';
 import { fetchActiveSeason } from '../../lib/season-server';
@@ -44,6 +44,8 @@ const playfairDisplay = Playfair_Display({
   weight: ['400', '500', '600'],
   style: ['normal', 'italic'],
   display: 'swap',
+  // Only the season greetings use it: never preloaded on a page that does not show one.
+  preload: false,
   variable: '--font-playfair-display',
 });
 
@@ -65,6 +67,12 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
   // The on-screen keyboard shrinks the page (the shell then ends above it) instead of covering it.
   interactiveWidget: 'resizes-content',
+  // The appearance follows the device only (Owner A1, 2026-10-16): both schemes, and the browser bar takes the page base of each.
+  colorScheme: 'light dark',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#000000' },
+  ],
 };
 
 export function generateStaticParams() {
@@ -99,18 +107,16 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   const effectsOff = jar.get(FX_COOKIE)?.value === 'off';
 
   return (
-    // The pre-paint script may set data-theme from the ls-theme cookie before hydration.
+    // MotionGate marks <html> (data-ls-motion) after hydration.
     <html
       lang={locale}
-      className={`${beVietnamPro.variable} ${playfairDisplay.variable} ${siteFontClass}`}
+      className={`${beVietnamPro.variable} ${playfairDisplay.variable}`}
       suppressHydrationWarning
       {...seasonRootAttributes(season, adminHidden)}
       {...(effectsOff ? { 'data-ls-fx': 'off' } : {})}
     >
-      <head>
-        <ThemeInitScript />
-      </head>
-      <body>
+      {/* One token source for every area (DESIGN.md D1, session 10): the v2 tokens on the whole document. */}
+      <body data-ui="v2">
         <a className="skip-link" href="#main-content">
           {dictionary.skipToContent}
         </a>

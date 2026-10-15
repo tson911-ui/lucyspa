@@ -101,7 +101,7 @@ test('a row opens its order, shows the recipient with a masked phone, the state,
   assert.match(html, /Lê Văn Bình/);
   assert.match(html, /\+84•••••003/);
   assert.match(html, />Chờ gửi</);
-  assert.match(html, /750\.000 ₫/);
+  assert.match(html, /750\.000\u00a0₫/);
   assert.match(html, re(text.queue.preOrder));
   assert.match(html, /Thao tác cho DO000012/);
 });
@@ -274,7 +274,7 @@ test('a shipped order shows the carrier, the tracking code as a link and the cos
   assert.match(html, /GHN/);
   assert.match(html, /href="https:\/\/track\.example\.vn\/\?code=GHN123"/);
   assert.match(html, /rel="noopener noreferrer"/);
-  assert.match(html, /30\.000 ₫/);
+  assert.match(html, /30\.000\u00a0₫/);
   assert.match(html, re(text.detail.internalFee));
   assert.match(html, re(text.detail.actions.correctShipment));
   assert.match(html, re(text.detail.actions.markDelivered));
@@ -283,7 +283,7 @@ test('a shipped order shows the carrier, the tracking code as a link and the cos
       shipment: { ...shipped().shipment!, carrierFeeOutVnd: null, trackingUrl: null },
     }),
   );
-  assert.doesNotMatch(hidden, /30\.000 ₫/);
+  assert.doesNotMatch(hidden, /30\.000\u00a0₫/);
   assert.doesNotMatch(hidden, re(text.detail.shipmentFields.fee));
   assert.doesNotMatch(hidden, re(text.detail.internalFee));
   assert.match(hidden, /GHN123/);
@@ -359,8 +359,8 @@ test('the settlement result is shown with its figures and the stock decision', (
     }),
   );
   assert.match(html, re(text.detail.settlement));
-  assert.match(html, /450\.000 ₫/);
-  assert.match(html, /20\.000 ₫/);
+  assert.match(html, /450\.000\u00a0₫/);
+  assert.match(html, /20\.000\u00a0₫/);
   assert.match(html, re(text.detail.restockResult.NOT_SELLABLE));
   assert.match(html, /Khách từ chối nhận/);
 });
@@ -381,7 +381,7 @@ test('a return case shows its cost and a menu to record it only for a person who
     }),
   );
   assert.match(withCost, /TH000003/);
-  assert.match(withCost, /25\.000 ₫/);
+  assert.match(withCost, /25\.000\u00a0₫/);
   assert.match(withCost, /Thao tác với TH000003/);
   const without = page(
     order({
@@ -496,11 +496,11 @@ test('the settlement dialog shows the formula live: goods, cost out, cost back a
     owner,
   );
   assert.match(html, re(text.settle.goods));
-  assert.match(html, /500\.000 ₫/);
-  assert.match(html, /−30\.000 ₫/);
+  assert.match(html, /500\.000\u00a0₫/);
+  assert.match(html, /−30\.000\u00a0₫/);
   assert.match(html, re(text.settle.formula));
   // Cost back is empty at first, so the refund is goods - cost out.
-  assert.match(html, /470\.000 ₫/);
+  assert.match(html, /470\.000\u00a0₫/);
   assert.match(html, re(text.settle.method));
   assert.match(html, re(text.settle.warning));
 });

@@ -59,15 +59,47 @@ test('buttons: v2 sizes, the neutral and compact variants, disabled is a fill an
     body("[data-ui='v2'] .ls-btn-secondary"),
     /border-color:\s*var\(--ls-outline-border\)/,
   );
-  // Secondary hover (Owner addendum 2026-10-15): the background never fills; the border steps up; lift, zoom and the arrow nudge are tokens.
+  // Button states (Owner A4, 2026-10-16): a colour step on hover, one more on press, the press scale on every button; nothing lifts.
+  const hover = (variant: string) =>
+    body(`[data-ui='v2'] .ls-btn-${variant}:hover:not([aria-disabled='true']):not(:disabled)`);
+  const pressed = (variant: string) =>
+    body(`[data-ui='v2'] .ls-btn-${variant}:active:not([aria-disabled='true']):not(:disabled)`);
+  // Secondary: never lifts, zooms or shows an arrow; hover tints and strengthens the border, the label keeps the accent text.
+  assert.match(hover('secondary'), /background:\s*var\(--ls-secondary-hover-bg\)/);
+  assert.match(hover('secondary'), /border-color:\s*var\(--ls-outline-border-hover\)/);
+  assert.match(hover('secondary'), /color:\s*var\(--ls-brand\)/);
+  assert.match(pressed('secondary'), /background:\s*var\(--ls-secondary-pressed-bg\)/);
+  const secondaryRules = all.filter((rule) => rule.selector.includes('.ls-btn-secondary'));
+  assert.ok(secondaryRules.length >= 3);
+  for (const rule of secondaryRules) {
+    assert.doesNotMatch(rule.selector, /::after/, 'no trailing arrow');
+    assert.doesNotMatch(
+      rule.body,
+      /translate|scale\(var\(--ls-btn-zoom|--ls-btn-(?:lift|zoom|nudge)/,
+    );
+  }
+  assert.doesNotMatch(css, /--ls-btn-(?:lift|zoom|nudge)/, 'the movement tokens are gone');
+  // Primary, neutral, ghost and the danger outline (a tint, never a solid red fill).
+  assert.match(hover('primary'), /background:\s*var\(--ls-brand-fill-hover\)/);
+  assert.match(pressed('primary'), /background:\s*var\(--ls-brand-fill-pressed\)/);
+  assert.match(hover('neutral'), /background:\s*var\(--ls-gray-4\)/);
+  assert.match(pressed('neutral'), /background:\s*var\(--ls-gray-5\)/);
+  assert.match(hover('ghost'), /background:\s*var\(--ls-hover-bg\)/);
+  assert.match(pressed('ghost'), /background:\s*var\(--ls-pressed-bg\)/);
+  assert.match(hover('danger-outline'), /background:\s*var\(--ls-danger-bg\)/);
+  assert.doesNotMatch(hover('danger-outline'), /background:\s*var\(--ls-danger(?:-fill)?\)/);
   assert.match(
-    css,
-    /\.ls-btn-secondary:hover:not\(\[aria-disabled='true'\]\):not\(:disabled\) \{\s*border-color: var\(--ls-outline-border-hover\);\s*color: var\(--ls-brand\);\s*background: transparent;\s*transform: translateY\(var\(--ls-btn-lift\)\) scale\(var\(--ls-btn-zoom\)\);/,
+    body("[data-ui='v2'] .ls-btn:active:not([aria-disabled='true']):not(:disabled)"),
+    /transform:\s*scale\(var\(--ls-press-scale\)\)/,
   );
-  assert.match(css, /::after \{\s*transform: translateX\(var\(--ls-btn-nudge\)\);/);
+  // A danger menu item tints with the danger background, on hover and on keyboard focus.
   assert.match(
-    body("[data-ui='v2'] .ls-btn-secondary"),
-    /transition:\s*transform var\(--ls-dur-fast\) var\(--ls-ease-out\),\s*border-color var\(--ls-dur-fast\) var\(--ls-ease-out\)/,
+    body("[data-ui='v2'] .ls-menu-item-danger:hover:not(.ls-menu-item-disabled)"),
+    /background:\s*var\(--ls-danger-bg\)/,
+  );
+  assert.match(
+    body("[data-ui='v2'] .ls-menu-item-danger:focus-visible:not(.ls-menu-item-disabled)"),
+    /background:\s*var\(--ls-danger-bg\)/,
   );
   assert.match(body("[data-ui='v2'] .ls-btn-neutral"), /background:\s*var\(--ls-bg-field\)/);
   const disabled = body("[data-ui='v2'] .ls-btn:is(:disabled, [aria-disabled='true'])");

@@ -155,7 +155,7 @@ test('text on a panel is readable: panel text on panel is at least 4.5:1 in ligh
   }
 });
 
-test('the generated season.css carries every art token in light, dark, the dark preference and the forced preview', () => {
+test('the generated season.css carries every art token in light, the dark preference and the forced preview (no theme switch)', () => {
   const squash = (css: string): string => css.replace(/\s+/g, '');
   assert.equal(squash(seasonCss), squash(buildSeasonCss(SEASON_PRESETS)), 'run pnpm season:css');
   for (const preset of withArt) {
@@ -163,11 +163,12 @@ test('the generated season.css carries every art token in light, dark, the dark 
       for (const [key, value] of Object.entries(preset.art[theme])) {
         const line = `${artToken(key)}: ${value};`;
         const count = seasonCss.split(line).length - 1;
-        // Light: scope + forced light; dark: toggle + preference + forced dark.
-        assert.ok(count >= (theme === 'light' ? 2 : 3), `${preset.key} ${theme} ${line} x${count}`);
+        // Light: scope + forced light; dark: system preference + forced dark (session 10 A1: no theme toggle copy).
+        assert.ok(count >= 2, `${preset.key} ${theme} ${line} x${count}`);
       }
     }
   }
+  assert.doesNotMatch(seasonCss, /data-theme=/, 'the theme-toggle copy is gone');
   assert.equal(artToken('panelText'), '--ls-art-panel-text');
   assert.equal(artToken('tint1'), '--ls-art-tint-1');
 });

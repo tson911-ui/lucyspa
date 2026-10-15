@@ -143,14 +143,14 @@ test('labels: the product and its variant, the price, and "Hết hàng" when not
     productTitle(option({ nameVi: 'Kem dưỡng da - 50 ml' }), 'vi'),
     'Kem dưỡng da · 50 ml',
   );
-  assert.equal(optionLabel(option(), 'vi'), 'Kem dưỡng da · 50 ml — 200.000 ₫ — còn 5');
+  assert.equal(optionLabel(option(), 'vi'), 'Kem dưỡng da · 50 ml — 200.000\u00a0₫ — còn 5');
   assert.equal(
     optionLabel(option({ available: 0 }), 'vi'),
-    'Kem dưỡng da · 50 ml — 200.000 ₫ — Hết hàng',
+    'Kem dưỡng da · 50 ml — 200.000\u00a0₫ — Hết hàng',
   );
   assert.equal(
     optionLabel(option({ available: 0 }), 'en'),
-    'Skin cream · 50 ml — 200,000 ₫ — Out of stock',
+    'Skin cream · 50 ml — 200,000\u00a0₫ — Out of stock',
   );
   assert.equal(stockTone('CONSUMED'), 'success');
   assert.equal(stockTone('RESERVED'), 'info');
@@ -226,8 +226,8 @@ test('the product lines card: names, seller, price and stock state; actions only
   );
   assert.ok(draft.includes('Kem dưỡng da · 50 ml'));
   assert.ok(draft.includes('Lan'));
-  assert.ok(draft.includes('200.000 ₫'));
-  assert.ok(draft.includes('400.000 ₫'));
+  assert.ok(draft.includes('200.000\u00a0₫'));
+  assert.ok(draft.includes('400.000\u00a0₫'));
   assert.ok(draft.includes('Thêm sản phẩm'), 'a draft offers the add action');
   const rowMenu = fill(getWorkforceDictionary('vi').common.list.actionsFor, {
     name: 'Kem dưỡng da · 50 ml',
@@ -313,8 +313,8 @@ test('the sides card: one row per side that has lines, the offer that won and th
   );
   assert.ok(html.includes('Spa'));
   assert.ok(html.includes('Lucy Beauty'));
-  assert.ok(html.includes('270.000 ₫'));
-  assert.ok(html.includes('− 30.000 ₫'));
+  assert.ok(html.includes('270.000\u00a0₫'));
+  assert.ok(html.includes('− 30.000\u00a0₫'));
   assert.ok(html.includes('Không có ưu đãi'));
   // A product-only invoice has one side with lines; a service-only invoice has no sides at all.
   const only = render(

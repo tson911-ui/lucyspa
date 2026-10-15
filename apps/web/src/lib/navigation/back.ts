@@ -54,3 +54,18 @@ export function parentPath(
   rest.pop();
   return rest.length === 0 ? root : `${root}/${rest.join('/')}`;
 }
+
+/**
+ * Whether a page has a parent to go back to (Owner B7, C40, 2026-10-16): the area's home and, in an area with its own menu (the staff
+ * sidebar, the member tabs), every page that menu opens are top-level destinations and show no Back. A record, a form or a version page
+ * below them does.
+ */
+export function hasParent(pathname: string, root: string, menuRoot: boolean): boolean {
+  const clean = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+  if (clean === root || !clean.startsWith(`${root}/`)) return false;
+  const rest = clean.slice(root.length + 1).split('/');
+  if (!menuRoot) return true;
+  if (Object.keys(TAB_PARENTS).some((prefix) => rest.join('/').startsWith(`${prefix}/`)))
+    return true;
+  return rest.length > 1;
+}

@@ -197,8 +197,15 @@ test('1–3. assignments show role name, code and a distinct GLOBAL or branch sc
   const markup = view();
   assert.ok(markup.includes('<strong>Kỹ thuật viên</strong>'));
   assert.ok(markup.includes('<strong>Quản lý chi nhánh</strong>'));
-  assert.match(markup, /ls-badge-info">Chi nhánh: Lucy A</);
-  assert.match(markup, /ls-badge-warning">Toàn hệ thống</);
+  // A status badge draws its icon before the word (DESIGN.md B18).
+  assert.match(
+    markup,
+    /ls-badge-info"><svg [^>]*aria-hidden="true"[^>]*>.*?<\/svg>Chi nhánh: Lucy A</,
+  );
+  assert.match(
+    markup,
+    /ls-badge-warning"><svg [^>]*aria-hidden="true"[^>]*>.*?<\/svg>Toàn hệ thống</,
+  );
   assert.ok(markup.includes(vi.roles.inactiveRole), 'switched-off role shown as such');
   assert.ok(markup.includes(vi.roles.intro));
   assert.ok(markup.includes(vi.roles.history));

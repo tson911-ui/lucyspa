@@ -53,7 +53,6 @@ export interface SiteText {
       /** The link to the full notifications page. */
       viewAll: string;
     };
-    theme: { group: string; light: string; dark: string; auto: string; switchTo: string };
   };
   /** Information pages the Owner writes (policies, terms): the table of contents, and the page that is not there. */
   infoPage: { toc: string; notFoundTitle: string; newTab: string };
@@ -334,13 +333,6 @@ const text = {
       account: 'Tài khoản của tôi',
       bookNow: 'Đặt lịch',
       bell: { label: 'Thông báo', unread: '{count} chưa đọc', viewAll: 'Xem tất cả' },
-      theme: {
-        group: 'Giao diện',
-        light: 'Sáng',
-        dark: 'Tối',
-        auto: 'Theo giờ',
-        switchTo: 'Chuyển sang {name}',
-      },
     },
     infoPage: {
       toc: 'Trong trang này',
@@ -598,13 +590,6 @@ const text = {
       account: 'My account',
       bookNow: 'Book now',
       bell: { label: 'Notifications', unread: '{count} unread', viewAll: 'View all' },
-      theme: {
-        group: 'Appearance',
-        light: 'Light',
-        dark: 'Dark',
-        auto: 'By time of day',
-        switchTo: 'Switch to {name}',
-      },
     },
     infoPage: {
       toc: 'On this page',

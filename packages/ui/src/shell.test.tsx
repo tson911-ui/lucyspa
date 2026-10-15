@@ -264,55 +264,6 @@ test('tablet: an icon rail that expands as an overlay; Escape and the scrim clos
   dom.setTablet(false);
 });
 
-test('ThemeToggle: one tab stop, arrows select, the choice is stored in the cookie', () => {
-  window.document.cookie = 'ls-theme=; Max-Age=0; Path=/';
-  const toggleLabels = { group: 'Giao diện', light: 'Sáng', dark: 'Tối', auto: 'Tự động theo giờ' };
-  const view = mount(<ui.ThemeToggle labels={toggleLabels} />);
-  const group = $(view.container, '[role="radiogroup"]')!;
-  assert.equal(group.getAttribute('aria-label'), 'Giao diện');
-  const radios = $$(group, '[role="radio"]') as HTMLElement[];
-  assert.deepEqual(
-    radios.map((radio) => radio.getAttribute('aria-label')),
-    ['Sáng', 'Tối', 'Tự động theo giờ'],
-    'icon-only options still have names',
-  );
-  assert.deepEqual(
-    radios.map((radio) => radio.getAttribute('aria-checked')),
-    ['false', 'false', 'true'],
-    'no cookie means Auto by time',
-  );
-  assert.deepEqual(
-    radios.map((radio) => radio.getAttribute('tabindex')),
-    ['-1', '-1', '0'],
-  );
-  radios[2]!.focus();
-  press(radios[2]!, 'ArrowRight');
-  assert.equal(window.document.activeElement, radios[0], 'wraps to Light');
-  assert.equal(radios[0]!.getAttribute('aria-checked'), 'true');
-  assert.equal(window.document.documentElement.getAttribute('data-theme'), 'light');
-  assert.match(window.document.cookie, /ls-theme=light/);
-  click(radios[1]!);
-  assert.equal(window.document.documentElement.getAttribute('data-theme'), 'dark');
-  click(radios[2]!);
-  assert.equal(
-    window.document.documentElement.getAttribute('data-theme'),
-    ui.resolveTheme('auto', new Date()),
-    'Auto by time follows the local hour',
-  );
-  assert.doesNotMatch(window.document.cookie, /ls-theme=/);
-  view.unmount();
-});
-
-test('ThemeToggle with labels shows the text (user menu on phones)', () => {
-  const markup = renderToStaticMarkup(
-    <ui.ThemeToggle
-      withLabels
-      labels={{ group: 'Giao diện', light: 'Sáng', dark: 'Tối', auto: 'Tự động theo giờ' }}
-    />,
-  );
-  assert.ok(markup.includes('Tự động theo giờ') && markup.includes('ls-theme-toggle-labeled'));
-});
-
 test('UserMenu: opens on click, shows name and title, closes on Escape and when a link is chosen', () => {
   const view = mount(
     <ui.UserMenu name="Nguyễn Văn An" subtitle="Quản lý" triggerLabel="Tài khoản">
@@ -360,7 +311,7 @@ test('Breadcrumbs: the last crumb is the current page and is not a link', () => 
   assert.ok(markup.includes('aria-current="page">Vai trò</span>'));
 });
 
-test('AuthLayout: centered card with the wordmark inside, controls top right, art behind', () => {
+test('AuthLayout: centered card with the wordmark inside, controls top right, a flat compact canvas (no art)', () => {
   const markup = renderToStaticMarkup(
     <ui.AuthLayout brand={<span>LUCY SPA</span>} topActions={<a href="#en">English</a>}>
       <h1>Đăng nhập nhân sự</h1>
@@ -368,9 +319,10 @@ test('AuthLayout: centered card with the wordmark inside, controls top right, ar
     </ui.AuthLayout>,
   );
   assert.doesNotMatch(markup, /ls-auth-panel|ls-auth-side|ls-auth-tagline/, 'no split layout');
-  const svg = /<svg class="ls-auth-pattern"[^>]*aria-hidden="true"/.exec(markup);
-  assert.ok(svg && markup.includes('<pattern'), 'botanical SVG, hidden from assistive tech');
-  assert.doesNotMatch(markup, /<img|url\((?!#)|https?:/, 'no external or raster image');
+  // Session 10 (C8, R5): no botanical pattern; the staff sign-in is a compact (staff) scope.
+  assert.match(markup, /^<div class="ls-auth" data-density="compact">/);
+  assert.doesNotMatch(markup, /ls-auth-pattern|<svg|<pattern/, 'no botanical art');
+  assert.doesNotMatch(markup, /<img|url\(|https?:/, 'no external or raster image');
   assert.match(markup, /<main class="ls-auth-main" id="main-content" tabindex="-1">/);
   const card = markup.indexOf('class="ls-auth-card"');
   assert.ok(card > 0);
@@ -569,24 +521,6 @@ test('SegmentedControl: one sliding thumb positioned by the selected index, soli
   assert.match(block(components, '.ls-segment-active:hover'), /color:\s*var\(--ls-on-brand\)/);
 });
 
-test('ThemeInitScript: in the server HTML, never created on the client (no React script warning)', () => {
-  assert.match(
-    renderToStaticMarkup(<ui.ThemeInitScript />),
-    /<script>[^<]*ls-theme[^<]*<\/script>/,
-  );
-  const errors: unknown[] = [];
-  const original = console.error;
-  console.error = (...args: unknown[]) => void errors.push(args);
-  try {
-    const view = mount(<ui.ThemeInitScript />);
-    assert.equal($(view.container, 'script'), null, 'a client render creates no script element');
-    view.unmount();
-  } finally {
-    console.error = original;
-  }
-  assert.deepEqual(errors, [], 'nothing logged');
-});
-
 test('motion tokens: 150-250 ms ease-out, used by the micro-interactions, all off for reduced motion', () => {
   const tokens = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
   const ms = (name: string) => Number(new RegExp(`${name}:\\s*(\\d+)ms`).exec(tokens)?.[1]);
@@ -637,10 +571,13 @@ test('motion (D13): every shared component animates from the tokens; loops are l
   const components = readFileSync(new URL('components.css', import.meta.url), 'utf8');
   const all = components + '\n' + shellCss;
   // Animations read the tokens too. Only the spinner and indeterminate progress (functional indicators) keep a literal.
+  // A fallback inside var() (`var(--ls-dur-route, 120ms)`) is still a token use: the fallback is dropped before the check.
   for (const match of all.matchAll(/animation:([^;]*);/g)) {
-    if (/ls-spin|ls-slide/.test(match[1]!)) continue;
-    assert.doesNotMatch(match[1]!, /\d+m?s\b/, `animation uses tokens: ${match[1]}`);
-    assert.match(match[1]!, /var\(--ls-dur-(?:fast|base|slow|loop|slide)\)/, match[1]);
+    // `animation: none` (the staff first load paints at once) is no animation at all.
+    if (/ls-spin|ls-slide/.test(match[1]!) || match[1]!.trim() === 'none') continue;
+    const value = match[1]!.replace(/var\((--ls-[\w-]+),[^)]*\)/g, 'var($1)');
+    assert.doesNotMatch(value, /\d+m?s\b/, `animation uses tokens: ${match[1]}`);
+    assert.match(value, /var\(--ls-dur-(?:fast|base|slow|loop|slide|route)\)/, match[1]);
   }
   // Repeating animation is the skeleton pulse (and the two indicators) only.
   const infinite = [...all.matchAll(/animation:([^;]*infinite[^;]*);/g)].map((m) => m[1]!.trim());
@@ -662,6 +599,12 @@ test('motion (D13): every shared component animates from the tokens; loops are l
       /\.ls-sidebar-slot\s*\{[^}]*transition: width var\(--ls-dur-base\) var\(--ls-ease-out\)/,
     ],
     [shellCss, /\.ls-route-fade\s*\{[^}]*animation: ls-fade-in var\(--ls-dur-base\)/],
+    // The staff route wrapper (Owner G5): a navigation fades over the compact route token, the first load does not animate.
+    [
+      shellCss,
+      /\.ls-route-enter\[data-enter='route'\]\s*\{[^}]*animation: ls-fade-in var\(--ls-dur-route, 120ms\)/,
+    ],
+    [shellCss, /\.ls-route-enter\s*\{\s*animation-name: none;/],
   ];
   for (const [text, pattern] of wants) assert.match(text, pattern, String(pattern));
   // The route fade is opacity only: no keyframe that moves content is used by it.
@@ -701,6 +644,17 @@ test('Step 5b UX gate fixes (F1-F12, F14): topbar order, control sizes, brand ed
     'notifications, theme, user (F7)',
   );
   assert.ok(order.every((index) => index > 0));
+  // Session 10 (R7, D2): the staff top bar is the shared HeaderBar, and the staff shell is the compact density.
+  assert.match(
+    markup,
+    /^<div class="ls-shell" data-density="compact"><header class="ls-headerbar ls-topbar">/,
+  );
+  assert.match(
+    markup,
+    /<div class="ls-headerbar-brand ls-topbar-brand"><span>Lucy Spa<\/span><\/div>/,
+  );
+  assert.match(markup, /<div class="ls-headerbar-end ls-topbar-end"><i id="bell"><\/i>/);
+  assert.doesNotMatch(markup, /ls-headerbar-row/, 'the staff bar has no inner row');
   const components = readFileSync(new URL('components.css', import.meta.url), 'utf8');
   // F1/F2 (legacy plain-control rules with zero specificity) went away with the last legacy stylesheet in Part 2 P2-8.
   // F3: a badge keeps one line when it can; F12: sort buttons keep a touch-sized width.
@@ -714,9 +668,8 @@ test('Step 5b UX gate fixes (F1-F12, F14): topbar order, control sizes, brand ed
   );
   // F6: on a phone the search and the Filters button share a row.
   assert.match(components, /\.ls-toolbar-row \{[^}]*flex-wrap:\s*nowrap/);
-  // F8/F14: theme options use the control height (40 desktop, 44 touch) in every place.
-  assert.match(block(shellCss, '.ls-theme-option'), /min-height:\s*var\(--ls-control-h\)/);
-  assert.match(block(shellCss, '.ls-theme-option'), /min-width:\s*var\(--ls-control-h\)/);
+  // F8/F14 (theme option sizes) retired with the theme switch (session 10, A1): no theme toggle rule is left.
+  assert.doesNotMatch(shellCss, /\.ls-theme-(?:toggle|option)/, 'the theme toggle styles are gone');
   assert.match(block(shellCss, '.ls-topbar'), /height:\s*var\(--ls-topbar-h\)/);
   // F9: the unread count is brand colored, not amber.
   assert.match(block(shellCss, '.ls-bell-count'), /background:\s*var\(--ls-brand-fill\)/);
@@ -734,10 +687,11 @@ test('Step 5b UX gate fixes (F1-F12, F14): topbar order, control sizes, brand ed
 });
 
 test('auth header: the wordmark leads (twice the topbar size, centered), then a smaller title and a muted subtitle', () => {
-  const rem = (markup: string) => Number(/font-size:([\d.]+)rem/.exec(markup)?.[1]);
+  // The sizes are type-scale tokens now (session 10): the display wordmark is the title step, the bar wordmark the heading step.
   const normal = renderToStaticMarkup(<ui.BrandWordmark />);
   const display = renderToStaticMarkup(<ui.BrandWordmark size="display" />);
-  assert.equal(rem(display), rem(normal) * 2);
+  assert.match(normal, /font-size:var\(--ls-wordmark-size, var\(--ls-type-heading\)\)/);
+  assert.match(display, /font-size:var\(--ls-wordmark-display, var\(--ls-type-title\)\)/);
   assert.doesNotMatch(normal, /padding-inline-start/, 'the topbar wordmark is unchanged');
   assert.match(block(shellCss, '.ls-auth-card-brand'), /text-align:\s*center/);
   const title = block(shellCss, '.ls-auth-card h1');
@@ -779,7 +733,7 @@ test('auth card UX: token rhythm, elevation token in every theme block, segmente
   assert.equal(
     tokens.match(/--ls-auth-card-shadow:/g)?.length,
     4,
-    'defined for light, dark toggle, dark system preference and the forced-light preview scope',
+    'defined for light, the forced dark preview, the dark system preference and the forced-light preview scope',
   );
   // Spacing between blocks comes from spacing tokens only (no px/rem literals on margins or gaps).
   const rhythm = [...shellCss.matchAll(/\.ls-auth-card > [^{]*\{([^}]*)\}/g)].map((m) => m[1]!);
@@ -811,14 +765,30 @@ test('auth card UX: token rhythm, elevation token in every theme block, segmente
   );
 });
 
-test('auth styles: full-screen gradient from tokens, subtle art, card on surface tokens, readable controls', () => {
+test('auth styles: full-screen flat sunken canvas (v2), one hairline raised card, readable controls', () => {
+  assert.match(block(shellCss, '.ls-auth'), /min-height:\s*100svh/, 'the whole screen');
+  // Session 10 (C8, C34, R5): in the v2 frame the canvas is flat (no gradient, no art) and the card is raised with a hairline.
+  const foundation = readFileSync(new URL('foundation-v2.css', import.meta.url), 'utf8');
+  const auth = block(foundation, "[data-ui='v2'] .ls-auth");
+  assert.match(auth, /background:\s*var\(--ls-bg-sunken\)/);
+  assert.match(auth, /color:\s*var\(--ls-text\)/);
+  assert.doesNotMatch(auth, /gradient/);
+  const raised = block(foundation, "[data-ui='v2'] .ls-auth-card");
+  assert.match(raised, /border:\s*1px solid var\(--ls-border\)/);
+  assert.match(raised, /background:\s*var\(--ls-bg-raised\)/);
+  assert.match(raised, /box-shadow:\s*none/);
   assert.match(
-    block(shellCss, '.ls-auth'),
-    /min-height:\s*100svh[\s\S]*linear-gradient\([^)]*var\(--ls-auth-panel-from\)[^)]*var\(--ls-auth-panel-to\)\)/,
-    'the whole screen is the brand gradient, from theme tokens (light and dark)',
+    block(foundation, "[data-ui='v2'] .ls-auth-top a,\n[data-ui='v2'] .ls-auth-top .ls-btn-ghost"),
+    /color:\s*var\(--ls-text\)/,
   );
-  const opacity = Number(/\.ls-auth-pattern \{[^}]*opacity:\s*([\d.]+)/.exec(shellCss)?.[1]);
-  assert.ok(opacity > 0 && opacity <= 0.15, `line art is very subtle (opacity ${opacity})`);
+  assert.match(
+    block(foundation, "[data-ui='v2'] .ls-auth-top :focus-visible"),
+    /outline-color:\s*var\(--ls-focus\)/,
+  );
+  assert.match(
+    foundation,
+    /\.ls-auth-top \.ls-btn-ghost:hover:not\(\[aria-disabled='true'\]\):not\(:disabled\) \{[^}]*background: var\(--ls-hover-bg\)/,
+  );
   const card = block(shellCss, '.ls-auth-card');
   assert.match(
     card,
@@ -837,19 +807,8 @@ test('auth styles: full-screen gradient from tokens, subtle art, card on surface
     /padding:\s*var\(--ls-space-4\)/,
     'side margins on phones',
   );
-  // Top-right controls use the on-red tokens, including the focus ring.
-  assert.match(block(shellCss, '.ls-auth-top a'), /color:\s*var\(--ls-auth-panel-text\)/);
-  assert.match(
-    block(shellCss, '.ls-auth-top :focus-visible'),
-    /outline-color:\s*var\(--ls-auth-panel-text\)/,
-  );
-  assert.match(
-    block(
-      shellCss,
-      '.ls-auth-top .ls-theme-option:hover,\n  .ls-auth-top .ls-theme-option-active:hover',
-    ),
-    /var\(--ls-auth-panel-from\)/,
-  );
+  // The theme switch on the sign-in strip is gone (session 10, A1).
+  assert.doesNotMatch(shellCss, /\.ls-auth-top \.ls-theme-/);
   assert.doesNotMatch(shellCss, /@keyframes/, 'shell keyframes live in components.css (shared)');
   assert.doesNotMatch(
     block(shellCss, '.ls-auth-card'),

@@ -11,6 +11,7 @@
     "./components-v2.css": "./src/components-v2.css",
     "./chrome-v2.css": "./src/chrome-v2.css",
     "./pages-v2.css": "./src/pages-v2.css",
+    "./foundation-v2.css": "./src/foundation-v2.css",
     "./shell.css": "./src/shell.css",
     "./staff.css": "./src/staff.css",
     "./site.css": "./src/site.css",

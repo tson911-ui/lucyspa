@@ -142,10 +142,19 @@ type InputBase = Omit<InputHTMLAttributes<HTMLInputElement>, 'size' | 'className
   ref?: Ref<HTMLInputElement> | undefined;
 };
 
+/** Types that are personal or sign-in data: the browser may fill them; everything else is a work field with autofill off (WIG). */
+const AUTOFILL_TYPES = new Set(['email', 'tel', 'password', 'url']);
+/** Types whose value is an address, a code or a secret: never spell-checked. */
+const NO_SPELLCHECK_TYPES = new Set(['email', 'url', 'password', 'tel']);
+
 export function TextInput({ invalid, compact, className, type = 'text', ...rest }: InputBase) {
   return (
     <input
       {...rest}
+      // A meaningful name for autofill and form tools when the caller gave none (the id is unique and descriptive).
+      name={rest.name ?? rest.id}
+      autoComplete={rest.autoComplete ?? (AUTOFILL_TYPES.has(type) ? undefined : 'off')}
+      spellCheck={rest.spellCheck ?? (NO_SPELLCHECK_TYPES.has(type) ? false : undefined)}
       type={type}
       className={cx('ls-input', compact && 'ls-input-compact', className)}
       aria-invalid={invalid || rest['aria-invalid'] || undefined}
@@ -198,8 +207,14 @@ export function NumberInput({ invalid, compact, className, ...rest }: Omit<Input
   return (
     <input
       {...rest}
+      name={rest.name ?? rest.id}
+      autoComplete={rest.autoComplete ?? 'off'}
       type="number"
-      inputMode="decimal"
+      // Whole numbers (quantities, VND) get the digits keypad; a decimal step gets the decimal one.
+      inputMode={
+        rest.inputMode ??
+        (rest.step !== undefined && !Number.isInteger(Number(rest.step)) ? 'decimal' : 'numeric')
+      }
       className={cx('ls-input', 'ls-input-number', compact && 'ls-input-compact', className)}
       aria-invalid={invalid || rest['aria-invalid'] || undefined}
     />
@@ -343,6 +358,7 @@ export function Textarea({
   return (
     <textarea
       {...rest}
+      name={rest.name ?? rest.id}
       className={cx('ls-input', 'ls-textarea', compact && 'ls-input-compact', className)}
       aria-invalid={invalid || rest['aria-invalid'] || undefined}
     />
@@ -356,10 +372,10 @@ export interface SelectOption {
 }
 
 /**
- * Inside a v2 frame (the customer site) a native select draws the chevron icon of the icon set instead of the platform arrow (DESIGN.md 8.2,
- * Owner 2026-10-14): the select sits in a wrapper with a positioned icon. Elsewhere it is the plain element, so the staff areas keep their markup.
+ * A native select draws the chevron icon of the icon set instead of the platform arrow on every area (DESIGN.md 8.2; Owner B9, 2026-10-16:
+ * the select is styled to the design system in both modes and stays a real select): it sits in a wrapper with a positioned icon.
  */
-const SelectIconContext = createContext(false);
+const SelectIconContext = createContext(true);
 
 export function SelectIconScope({ children }: { children: ReactNode }) {
   return <SelectIconContext value={true}>{children}</SelectIconContext>;

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 // The CSS file is the source of truth; these tests assert the contract in
@@ -29,12 +29,14 @@ function block(selector: RegExp): Record<string, string> {
 }
 
 const light = block(/^:root\s*\{/m);
-const darkAttribute = block(
-  /^:root\[data-theme=['"]dark['"]\],\s*\[data-preview-theme=['"]dark['"]\]\s*\{/m,
+// No theme switch (session 10, A1): dark follows the system preference only; the admin season preview forces it on a subtree
+// (or the whole document) with `data-preview-theme`.
+const darkPreview = block(
+  /^:root\[data-preview-theme=['"]dark['"]\],\s*\[data-preview-theme=['"]dark['"]\]\s*\{/m,
 );
 const scopedLight = block(/^\[data-preview-theme=['"]light['"]\]\s*\{/m);
-const darkSystem = block(/:root:not\(\[data-theme=['"]light['"]\]\)\s*\{/m);
-const dark = darkAttribute;
+const darkSystem = block(/:root:not\(\[data-preview-theme=['"]light['"]\]\)\s*\{/m);
+const dark = darkPreview;
 
 function luminance(hex: string): number {
   const value = parseInt(hex.slice(1), 16);
@@ -58,8 +60,8 @@ const color = (theme: Record<string, string>, name: string): string => {
 
 const themes = { light, dark } as const;
 
-test('dark tokens are declared identically for the toggle and for system preference', () => {
-  assert.deepEqual(darkSystem, darkAttribute);
+test('dark tokens are declared identically for the forced preview and for system preference', () => {
+  assert.deepEqual(darkSystem, darkPreview);
   // Every color token that has a light value has a dark value.
   const colorTokens = Object.keys(light).filter(
     (name) =>
@@ -77,6 +79,19 @@ test('preview scopes: forced light repeats the light value of every token the da
     [],
     'the forced-light scope carries colors only',
   );
+});
+
+test('no theme switch: the root follows the system (light dark) and no stylesheet keys on data-theme', () => {
+  const rootBody = /^:root\s*\{([^}]*)\}/m.exec(css)?.[1] ?? '';
+  assert.match(rootBody, /color-scheme:\s*light dark;/);
+  // A later `color-scheme: light` in the same block would win and pin the page to light.
+  assert.doesNotMatch(rootBody, /color-scheme:\s*light;/, 'no overriding light-only color-scheme');
+  const kit = new URL('.', import.meta.url);
+  const sheets = readdirSync(kit).filter((name) => name.endsWith('.css'));
+  assert.ok(sheets.length > 10, 'the kit stylesheets are read');
+  for (const name of sheets) {
+    assert.doesNotMatch(readFileSync(new URL(name, kit), 'utf8'), /data-theme=/, name);
+  }
 });
 
 test('no gold or yellow token remains', () => {
@@ -203,7 +218,7 @@ test('hover, whole app: solid brand fill with on-brand text (light #782b37 + whi
   // The one exception: a whole table row keeps a subtle tint, never the solid fill.
   assert.notEqual(light['--ls-row-hover-bg'], light['--ls-hover-bg']);
   assert.notEqual(dark['--ls-row-hover-bg'], dark['--ls-hover-bg']);
-  assert.deepEqual(darkSystem, darkAttribute);
+  assert.deepEqual(darkSystem, darkPreview);
 });
 
 test('sidebar items: solid brand fill with its on-brand text in both themes (light red + white, dark primary fill + on-primary)', () => {
@@ -216,7 +231,7 @@ test('sidebar items: solid brand fill with its on-brand text in both themes (lig
   assert.equal(dark['--ls-nav-active-bg'], dark['--ls-nav-hover-bg']);
   assert.equal(dark['--ls-nav-active-text'], dark['--ls-nav-hover-text']);
   assert.equal(dark['--ls-nav-active-bar'], 'transparent', 'the fill carries it');
-  assert.deepEqual(darkSystem, darkAttribute);
+  assert.deepEqual(darkSystem, darkPreview);
   for (const [name, theme] of Object.entries(themes)) {
     for (const state of ['hover', 'active']) {
       const value = ratio(color(theme, `nav-${state}-text`), color(theme, `nav-${state}-bg`));

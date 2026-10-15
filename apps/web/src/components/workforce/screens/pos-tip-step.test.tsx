@@ -38,10 +38,10 @@ test('one KTV: that person only, a choice of none, the presets or another amount
   // The group is named after the one person; no money field until "Khác" is picked.
   assert.match(html, /<legend[^>]*>Tip gửi tới Lê Thị Hoa<\/legend>/);
   assert.doesNotMatch(html, /inputmode="numeric"|inputMode="numeric"/);
-  assert.match(html, /500\.000 ₫/);
+  assert.match(html, /500\.000\u00a0₫/);
   assert.ok(html.includes(c.help));
   // Nothing was chosen: the customer transfers the invoice amount only.
-  assert.equal(html.match(/500\.000 ₫/g)?.length, 2);
+  assert.equal(html.match(/500\.000\u00a0₫/g)?.length, 2);
 });
 
 test('several KTVs: every one of them is listed with their own choice, and the total adds up', () => {
@@ -55,7 +55,7 @@ test('several KTVs: every one of them is listed with their own choice, and the t
   assert.equal(html.match(/role="radiogroup"/g)?.length, 2);
   // "Khác" opens the money field with the typed amount; the transfer is 500.000 + 50.000 + 30.000.
   assert.ok(html.includes('30.000'));
-  assert.ok(html.includes('580.000 ₫'));
+  assert.ok(html.includes('580.000\u00a0₫'));
   assert.ok(html.includes(c.otherAmount));
 });
 

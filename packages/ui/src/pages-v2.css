@@ -1149,11 +1149,12 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   min-width: 0;
 }
 
+/* Photo, body, action: the body takes the spare height, so every card of a row ends with its action on the same line (B6, C18). */
 [data-ui='v2'] .ls-svc-card {
   position: relative;
   display: grid;
+  grid-template-rows: auto 1fr auto;
   gap: var(--ls-space-3);
-  align-content: start;
   height: 100%;
 }
 

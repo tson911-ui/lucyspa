@@ -77,7 +77,7 @@ export function AccountScreen({
   return (
     <>
       <Band tone="page" className="ls-band--alt ls-acct-title">
-        <PageBack root={base} publicHome={`/${locale}`} label={t.common.back} />
+        <PageBack root={base} publicHome={`/${locale}`} menuRoot label={t.common.back} />
         <div className="ls-acct-head">
           <div className="ls-public-title">
             <h1 className="ls-h1-display">{title}</h1>

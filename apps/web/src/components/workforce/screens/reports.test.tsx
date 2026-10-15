@@ -139,7 +139,7 @@ test('the figures: the headline, collected, given back (refunds + exchanges), in
   assert.match(html, /2\.900\.000/);
   assert.match(html, /400\.000/); // 300,000 refunds + 100,000 exchanges
   assert.match(html, new RegExp(w.revenue.kpi.paidInvoices));
-  assert.match(html, /Trung bình 200\.000 ₫ một hóa đơn/);
+  assert.match(html, /Trung bình 200\.000\u00a0₫ một hóa đơn/);
   assert.match(html, new RegExp(w.revenue.kpi.held));
   assert.match(html, /450\.000/);
   assert.match(html, new RegExp(w.revenue.kpi.visits));
@@ -168,7 +168,7 @@ test('money that could not be placed in Spa or Cosmetics is shown, never hidden'
   const quiet = body(report());
   assert.doesNotMatch(quiet, /Có .* chưa biết thuộc nhóm/);
   const loud = body(report({ unclassifiedVnd: '200000' }));
-  assert.match(loud, /Có 200\.000 ₫ chưa biết thuộc nhóm Spa hay Mỹ phẩm/);
+  assert.match(loud, /Có 200\.000\u00a0₫ chưa biết thuộc nhóm Spa hay Mỹ phẩm/);
 });
 
 test('a period with no money shows the empty message instead of a flat chart', () => {

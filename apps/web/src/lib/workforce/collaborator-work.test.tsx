@@ -93,14 +93,14 @@ test('schedule table: CTV, date, branch, mode, hours, agreed pay, status', () =>
     'Full ngày',
     '13:00–18:00',
     '09:00–21:00',
-    '80.000 ₫',
-    '150.000 ₫',
+    '80.000\u00a0₫',
+    '150.000\u00a0₫',
     vi.collaboratorWork.statuses.SCHEDULED,
     vi.collaboratorWork.payShort,
   ]) {
     assert.ok(markup.includes(text), text);
   }
-  assert.ok(table([shift], owner, 'en').includes('80,000 ₫'));
+  assert.ok(table([shift], owner, 'en').includes('80,000\u00a0₫'));
   assert.ok(table([]).includes(vi.collaboratorWork.empty));
   // Pay hidden (no pay visibility): a dash; not agreed yet: "Chưa nhập".
   const withoutPay = hidePay(shift);
@@ -235,8 +235,8 @@ test('My Account: a CTV sees their own schedule and agreed pay, read-only', () =
     vi.myAccount.schedule.title,
     'Theo ca',
     'Full ngày',
-    '80.000 ₫',
-    '150.000 ₫',
+    '80.000\u00a0₫',
+    '150.000\u00a0₫',
   ]) {
     assert.ok(view.includes(text), text);
   }

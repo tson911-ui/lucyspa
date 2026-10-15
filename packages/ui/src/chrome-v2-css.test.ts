@@ -72,12 +72,12 @@ test('menu: 14 / 500 ink links, the current page is accent text with a 2 px unde
 });
 
 test('tools: bare ink circles, hover is the solid accent on a fine pointer only, the call to action shows from 640 px', () => {
-  const tools = all.find((rule) => rule.selector.includes("[data-ui='v2'] .ls-theme-cycle"))?.body;
+  const tools = all.find((rule) => rule.selector.includes("[data-ui='v2'] .ls-site-tool"))?.body;
   assert.ok(tools);
   assert.match(tools, /background:\s*transparent/);
   assert.match(tools, /color:\s*var\(--ls-text\)/);
   const hover = css.match(
-    /@media \(hover: hover\) and \(pointer: fine\) \{\s*\[data-ui='v2'\] \.ls-theme-cycle:hover,[\s\S]*?\}\s*\}/,
+    /@media \(hover: hover\) and \(pointer: fine\) \{\s*\[data-ui='v2'\] \.ls-site-tool:hover,[\s\S]*?\}\s*\}/,
   );
   assert.ok(hover);
   assert.match(hover[0], /background:\s*var\(--ls-hover-bg\)/);

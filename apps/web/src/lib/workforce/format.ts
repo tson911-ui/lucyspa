@@ -1,13 +1,27 @@
 import type { Locale } from '../../i18n/locales';
 
+/** One formatter per locale and options, built once (creating Intl formatters is costly; they are called per row). */
+const formatters = new Map<string, Intl.NumberFormat | Intl.DateTimeFormat>();
+function cached<T extends Intl.NumberFormat | Intl.DateTimeFormat>(key: string, make: () => T): T {
+  let formatter = formatters.get(key) as T | undefined;
+  if (!formatter) {
+    formatter = make();
+    formatters.set(key, formatter);
+  }
+  return formatter;
+}
+
 /**
- * VND is carried as a decimal integer string (bigint on the server). Formatting groups
- * digits on the string itself, so no amount ever passes through a floating-point number.
+ * VND is carried as a decimal integer string (bigint on the server). It is formatted with Intl from a BigInt, so no amount ever
+ * passes through a floating-point number; a no-break space keeps the currency sign on the amount's line.
  */
 export function formatVnd(value: string, locale: Locale): string {
   if (!/^(?:0|[1-9][0-9]*)$/.test(value)) return value;
-  const separator = locale === 'vi' ? '.' : ',';
-  return `${value.replace(/\B(?=(\d{3})+(?!\d))/g, separator)} ₫`;
+  const grouping = cached(
+    `vnd-${locale}`,
+    () => new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-US'),
+  );
+  return `${grouping.format(BigInt(value))}\u00a0₫`;
 }
 
 /** Digits-only VND input (the API's own format); leading zeros and separators rejected. */
@@ -20,33 +34,52 @@ export function formatDate(value: string, locale: Locale): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return value;
   const [, year, month, day] = match;
-  return locale === 'vi' ? `${day}/${month}/${year}` : `${year}-${month}-${day}`;
+  // Intl in UTC on the calendar day itself, so no timezone moves the date: vi 16/10/2026, en 2026-10-16 (en-CA).
+  const calendar = cached(
+    `date-${locale}`,
+    () =>
+      new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-CA', {
+        timeZone: 'UTC',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }),
+  );
+  return calendar.format(new Date(Date.UTC(Number(year), Number(month) - 1, Number(day))));
 }
 
 /** An instant as wall-clock time in the given IANA timezone (the branch's). */
 export function formatTime(instant: string, timeZone: string, locale: Locale): string {
   const date = new Date(instant);
   if (Number.isNaN(date.getTime())) return instant;
-  return new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
-    timeZone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(date);
+  return cached(
+    `time-${locale}-${timeZone}`,
+    () =>
+      new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
+        timeZone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }),
+  ).format(date);
 }
 
 export function formatDateTime(instant: string, timeZone: string, locale: Locale): string {
   const date = new Date(instant);
   if (Number.isNaN(date.getTime())) return instant;
-  return new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(date);
+  return cached(
+    `datetime-${locale}-${timeZone}`,
+    () =>
+      new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }),
+  ).format(date);
 }
 
 /** Today's calendar date (`YYYY-MM-DD`) in an IANA timezone. */

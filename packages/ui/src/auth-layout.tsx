@@ -85,8 +85,7 @@ export function AuthLayout({
   children: ReactNode;
 }) {
   return (
-    <div className="ls-auth">
-      <BotanicalPattern className="ls-auth-pattern" />
+    <div className="ls-auth" data-density="compact">
       <header className="ls-auth-top">{topActions}</header>
       <main className="ls-auth-main" id="main-content" tabIndex={-1}>
         <div className="ls-auth-card">

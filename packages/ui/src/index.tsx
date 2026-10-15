@@ -1,37 +1,29 @@
-// Single wordmark used by every shell and auth page. Same look in light and dark (color is inherited
-// from the surrounding link, which uses the brand token). Replace the body with the logo image when
-// the Owner supplies it; callers stay unchanged.
+// Single wordmark used by every header (customer, POS, admin) and the auth card: the same face, weight and tracking everywhere (DESIGN.md
+// D2). Size is one step of the type scale: the heading step in the bars (21 px; 17 px in the compact staff bar through
+// `--ls-wordmark-size`), the title step on the auth card. Colour comes from the surrounding link (`--ls-wordmark`).
 export function BrandWordmark({
   size = 'md',
-  serif = false,
 }: {
   size?: 'md' | 'display';
-  /** The logo: the serif display face with wide tracking (the customer site and, since direction C, the staff area and its sign-in). */
+  /** Kept for callers; the wordmark has one face (Be Vietnam Pro) since the DESIGN.md redesign. */
   serif?: boolean;
 }) {
   return (
     <span
+      className="ls-wordmark"
       style={{
-        fontFamily: serif ? 'var(--ls-font-display)' : 'var(--ls-font-sans)',
-        // `display` (twice `md`) is for the auth card, where the brand leads the page.
-        // The public header narrows the wordmark on a phone (`--ls-wordmark-size`), so a larger text size never pushes the tools off the screen.
+        fontFamily: 'var(--ls-font-sans)',
         fontSize:
           size === 'display'
-            ? serif
-              ? 'var(--ls-wordmark-display, 2.5rem)'
-              : '2.5rem'
-            : serif
-              ? 'var(--ls-wordmark-size, 1.125rem)'
-              : '1.25rem',
+            ? 'var(--ls-wordmark-display, var(--ls-type-title))'
+            : 'var(--ls-wordmark-size, var(--ls-type-heading))',
         fontWeight: 600,
-        letterSpacing: serif ? '0.28em' : '0.18em',
+        letterSpacing: '0.18em',
         textTransform: 'uppercase',
         whiteSpace: 'nowrap',
         // Centered use: a tight line box, and a leading space equal to the trailing letter-spacing so the
         // letters (not the letters plus a gap) sit on the center line.
-        ...(size === 'display'
-          ? { lineHeight: 1.2, paddingInlineStart: serif ? '0.28em' : '0.18em' }
-          : {}),
+        ...(size === 'display' ? { lineHeight: 1.2, paddingInlineStart: '0.18em' } : {}),
       }}
     >
       Lucy Spa
@@ -41,16 +33,6 @@ export function BrandWordmark({
 
 export { Icon, iconNames } from './icons';
 export type { IconName, IconProps } from './icons';
-export {
-  THEME_COOKIE,
-  THEME_COOKIE_MAX_AGE,
-  parseThemeCookie,
-  resolveTheme,
-  serializeThemeCookie,
-  themeInitScript,
-} from './theme-core';
-export type { ResolvedTheme, ThemePreference } from './theme-core';
-export { ThemeInitScript } from './theme-script';
 export { RouteFade } from './route-fade';
 export { RouteEnter } from './route-enter';
 export { useSlidingPill } from './sliding-pill';
@@ -90,8 +72,6 @@ export type { MotionControls, MotionKit } from './motion';
 export { STAFF_MOTION_CAP_MS } from './motion-core';
 export type { MotionState, MotionToken } from './motion-core';
 export { findScroller, onPageScroll, scrollPosition, SCROLLER_SELECTOR } from './scroller';
-export { ThemeCycle } from './theme-cycle';
-export type { ThemeCycleLabels } from './theme-cycle';
 export {
   LOW_MEMORY_GB,
   MAX_STAGGER_INDEX,
@@ -102,8 +82,6 @@ export {
   startsVisible,
 } from './reveal-core';
 export type { MotionEnvironment } from './reveal-core';
-export { useTheme } from './use-theme';
-export type { ThemeState } from './use-theme';
 
 // Core components (Step 3). Text always comes from props; styles are in `components.css`.
 export { Button, ButtonLink, IconButton, VisuallyHidden } from './button';
@@ -298,14 +276,12 @@ export {
 } from './paging-core';
 export type { PageItem, SortDirection, SortState, SortValue } from './paging-core';
 
-// App shell and auth layout (Step 5): shell, sidebar, user menu, breadcrumbs, theme toggle, split auth page.
+// App shell and auth layout (Step 5): shell, sidebar, user menu, breadcrumbs, split auth page (the appearance follows the device: no theme toggle).
 export { AppShell, Breadcrumbs, SidebarNav, UserMenu } from './app-shell';
 export type { AppShellLabels, Crumb, ShellLink, ShellLinkProps } from './app-shell';
 export { AuthLayout, BotanicalPattern } from './auth-layout';
 export { SegmentedControl, segmentedTarget } from './segmented';
 export type { SegmentedOption } from './segmented';
-export { ThemeToggle } from './theme-toggle';
-export type { ThemeToggleLabels } from './theme-toggle';
 export {
   SIDEBAR_COLLAPSED_KEY,
   SIDEBAR_GROUPS_KEY,

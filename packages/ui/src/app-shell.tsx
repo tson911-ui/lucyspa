@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { IconButton } from './button';
 import { cx } from './cx';
+import { HeaderBar } from './header-bar';
 import { Icon } from './icons';
 import { Drawer } from './overlay';
 import { Popover } from './popover';
@@ -132,24 +133,33 @@ export function AppShell({
   );
 
   return (
-    <div className={cx('ls-shell', className)}>
-      <header className="ls-topbar">
-        {/* Always rendered and hidden by CSS on desktop, so a tablet or phone does not flash the desktop layout. */}
-        <IconButton
-          ref={menuButton}
-          className="ls-menu-button"
-          icon="menu"
-          label={open ? labels.closeMenu : labels.menu}
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-        />
-        <div className="ls-topbar-brand">{brand}</div>
-        <div className="ls-topbar-end">
-          {topbar}
-          <div className="ls-topbar-extras">{topbarExtras}</div>
-          {topbarEnd}
-        </div>
-      </header>
+    // The staff screens take the compact density (DESIGN.md 6.7): the only per-area difference from the customer site.
+    <div className={cx('ls-shell', className)} data-density="compact">
+      {/* The shared header bar of every area (R7): the same component as the customer site, compact density. */}
+      <HeaderBar
+        className="ls-topbar"
+        start={
+          // Always rendered and hidden by CSS on desktop, so a tablet or phone does not flash the desktop layout.
+          <IconButton
+            ref={menuButton}
+            className="ls-menu-button"
+            icon="menu"
+            label={open ? labels.closeMenu : labels.menu}
+            aria-expanded={open}
+            onClick={() => setOpen((value) => !value)}
+          />
+        }
+        brandClassName="ls-topbar-brand"
+        brand={brand}
+        endClassName="ls-topbar-end"
+        end={
+          <>
+            {topbar}
+            <div className="ls-topbar-extras">{topbarExtras}</div>
+            {topbarEnd}
+          </>
+        }
+      />
       <div className="ls-shell-body">
         {phone ? (
           <Drawer

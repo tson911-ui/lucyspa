@@ -6,7 +6,6 @@ import type { Locale } from '../../i18n/locales';
 import { siteDecorSpec } from '../../lib/season-core';
 import { PREVIEW_SOURCE, parsePreviewMessage, seasonOfDraft } from '../../lib/season-preview';
 import { HomeContent } from '../public/home-content';
-import { siteFontClass } from '../public/site-fonts';
 import { PublicFooter, PublicHeader } from '../public/site-chrome';
 import { loadHomeDataInBrowser } from '../../lib/public-site-client';
 import type { HomeData } from '../../lib/public-site-core';
@@ -38,7 +37,7 @@ export function SeasonPreviewStage({ locale }: { locale: Locale }) {
     const html = document.documentElement;
     const before = {
       season: html.getAttribute('data-season'),
-      theme: html.getAttribute('data-theme'),
+      theme: html.getAttribute('data-preview-theme'),
     };
     const origin = window.location.origin;
     const host = window.parent !== window ? window.parent : window.opener;
@@ -53,7 +52,8 @@ export function SeasonPreviewStage({ locale }: { locale: Locale }) {
       const message = parsePreviewMessage(event.data);
       if (message?.type !== 'draft') return;
       const next = seasonOfDraft(message.draft);
-      html.setAttribute('data-theme', message.theme);
+      // The site follows the device theme (no data-theme any more); the preview forces one through the preview attribute.
+      html.setAttribute('data-preview-theme', message.theme);
       if (next) html.setAttribute('data-season', next.presetKey);
       else html.removeAttribute('data-season');
       setSeason(next);
@@ -75,7 +75,7 @@ export function SeasonPreviewStage({ locale }: { locale: Locale }) {
       observer?.disconnect();
       for (const [name, value] of [
         ['data-season', before.season],
-        ['data-theme', before.theme],
+        ['data-preview-theme', before.theme],
       ] as const) {
         if (value === null) html.removeAttribute(name);
         else html.setAttribute(name, value);
@@ -89,7 +89,7 @@ export function SeasonPreviewStage({ locale }: { locale: Locale }) {
   const footer = <PublicFooter locale={locale} site={data?.site ?? null} />;
   const home = data ? <HomeContent locale={locale} data={data} popup={false} /> : null;
   return (
-    <div ref={root} className={`ls-season-preview-root ls-site ${siteFontClass}`} data-ui="v2">
+    <div ref={root} className="ls-season-preview-root ls-site" data-ui="v2">
       {decor ? (
         <SeasonSiteFrame decor={decor} locale={locale} header={header} footer={footer}>
           {home}

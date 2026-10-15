@@ -157,7 +157,7 @@ test('texts: the gift, its window, the combine switches and the usage limit read
   assert.equal(giftText(v, 'en'), '7.5% off');
   assert.equal(giftText(v, 'vi', true), '7,5%');
   const money = version({ kind: 'FIXED_AMOUNT', percentBp: null, fixedAmountVnd: '50000' });
-  assert.equal(giftText(money, 'vi', true), '50.000 ₫');
+  assert.equal(giftText(money, 'vi', true), '50.000\u00a0₫');
   assert.equal(windowText(v, 'vi'), '3 ngày trước và 10 ngày sau ngày sinh nhật');
   assert.equal(
     windowText(version({ windowDaysBefore: 0, windowDaysAfter: 0 }), 'vi'),

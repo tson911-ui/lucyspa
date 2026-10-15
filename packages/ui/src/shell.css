@@ -1,4 +1,4 @@
-/* App shell, navigation, theme toggle, user menu, breadcrumbs and the auth layout
+/* App shell, navigation, user menu, breadcrumbs and the auth layout
    (docs/UXUI_REDESIGN_DESIGN.md sections 4, 12.6 and 13). Tokens only: no color literals.
    Breakpoints: phone < 640, tablet 640-1023, desktop >= 1024 (auth: one centered card). */
 
@@ -122,15 +122,20 @@
   animation: ls-fade-in var(--ls-dur-base) var(--ls-ease-out) backwards;
 }
 
-/* The staff area's route wrapper (RouteEnter): the first load paints at once; a navigation eases the new page in with a
-   small rise (pattern M5, the same motion as the public site). RouteEnter marks the wrapper for a navigation only, on a
-   device that allows motion; the distances are tokens, 0 under reduced motion. */
+/* The staff area's route wrapper (RouteEnter): the first load paints at once; a navigation fades the new page in over
+   120 ms, opacity only (Owner G5, 2026-10-16). RouteEnter marks the wrapper for a navigation only, on a device that allows
+   motion; the duration is a token, 0 under reduced motion. */
 .ls-route-enter {
   animation-name: none;
 }
 
 .ls-route-enter[data-enter='route'] {
-  animation: ls-content-in var(--ls-dur-slide) var(--ls-ease-premium) backwards;
+  animation: ls-fade-in var(--ls-dur-route, 120ms) var(--ls-ease-out) backwards;
+}
+
+/* Staff (Owner G5): the first load paints at once; only a route change fades, over 120 ms, opacity only, no rise. */
+[data-density='compact'] .ls-route-fade:not([data-enter='route']) {
+  animation: none;
 }
 
 /* ---- Sidebar -------------------------------------------------------------------------------- */
@@ -394,8 +399,8 @@
 .ls-sidebar[data-rail='true'] .ls-nav-group + .ls-nav-group {
   margin-top: var(--ls-space-2);
   padding-top: var(--ls-space-2);
-  background: linear-gradient(var(--ls-border), var(--ls-border)) no-repeat center top /
-    calc(100% - var(--ls-space-2)) 1px;
+  /* A hairline between groups (a border, not a gradient: no gradients in the base UI). */
+  border-top: 1px solid var(--ls-border);
 }
 
 /* Tablet: always a rail; the menu button expands it as an overlay. Covered in CSS too, so the first
@@ -436,8 +441,8 @@
   .ls-sidebar:not([data-overlay]) .ls-nav-group + .ls-nav-group {
     margin-top: var(--ls-space-2);
     padding-top: var(--ls-space-2);
-    background: linear-gradient(var(--ls-border), var(--ls-border)) no-repeat center top /
-      calc(100% - var(--ls-space-2)) 1px;
+    /* A hairline between groups (a border, not a gradient: no gradients in the base UI). */
+    border-top: 1px solid var(--ls-border);
   }
 
   /* The collapse toggle is desktop only (the component omits it on tablet after hydration). */
@@ -609,67 +614,6 @@ html[data-ls-motion='reduced'] .ls-shell {
 }
 
 /* ---- Theme toggle ----------------------------------------------------------------------------- */
-.ls-theme-toggle {
-  display: inline-flex;
-  border-radius: var(--ls-radius-full);
-  background: var(--ls-bg-sunken);
-}
-
-.ls-theme-option {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--ls-space-2);
-  min-width: var(--ls-control-h);
-  min-height: var(--ls-control-h);
-  padding: 0 var(--ls-space-2);
-  border: 0;
-  border-radius: var(--ls-radius-full);
-  color: var(--ls-text-muted);
-  background: transparent;
-  font: inherit;
-  font-size: var(--ls-text-sm);
-  cursor: pointer;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ls-theme-option:hover {
-    color: var(--ls-hover-text);
-    background: var(--ls-hover-bg);
-  }
-}
-
-/* The selected mode is the same solid fill as hover; the weight and aria-pressed tell them apart. */
-.ls-theme-option-active {
-  color: var(--ls-on-brand);
-  background: var(--ls-brand-fill);
-  font-weight: 600;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ls-theme-option-active:hover {
-    color: var(--ls-on-brand);
-    background: var(--ls-brand-fill);
-    font-weight: 600;
-  }
-}
-
-.ls-theme-toggle-labeled {
-  display: flex;
-  gap: var(--ls-space-1);
-  padding: var(--ls-space-1);
-  width: 100%;
-  border-radius: var(--ls-radius-md);
-}
-
-.ls-theme-toggle-labeled .ls-theme-option {
-  flex: 1 1 0;
-  flex-direction: column;
-  gap: var(--ls-space-1);
-  padding-block: var(--ls-space-2);
-  border-radius: var(--ls-radius-sm);
-  text-align: center;
-}
 
 /* ---- User menu -------------------------------------------------------------------------------- */
 .ls-usermenu {
@@ -879,19 +823,11 @@ html[data-ls-motion='reduced'] .ls-shell {
   min-height: 100svh;
   overflow: hidden;
   color: var(--ls-auth-panel-text);
-  background: linear-gradient(155deg, var(--ls-auth-panel-from), var(--ls-auth-panel-to));
+  /* Flat (no gradient, no art): the sunken canvas, set with the v2 tokens in foundation-v2.css. */
+  background: var(--ls-bg-sunken);
 }
 
 /* The line art is a texture, not content: very low contrast, edge to edge. */
-.ls-auth-pattern {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  color: var(--ls-auth-panel-line);
-  opacity: 0.08;
-  pointer-events: none;
-}
 
 /* Top right of the page; its controls are restyled below for the red background. */
 .ls-auth-top {
@@ -912,7 +848,7 @@ html[data-ls-motion='reduced'] .ls-shell {
   outline-color: var(--ls-auth-panel-text);
 }
 
-/* On the brand gradient the solid hover is inverted (panel text as fill), as the active theme option is. */
+/* The top actions of the sign-in page (language switch): their v2 hover is the grey tint (foundation-v2.css). */
 @media (hover: hover) and (pointer: fine) {
   .ls-auth-top .ls-btn-ghost:hover:not([aria-disabled='true']):not(:disabled) {
     border-color: var(--ls-auth-panel-text);
@@ -922,29 +858,6 @@ html[data-ls-motion='reduced'] .ls-shell {
 }
 
 /* The outline is an inset ring, so the toggle keeps the same 40/44 px height as elsewhere. */
-.ls-auth-top .ls-theme-toggle {
-  box-shadow: inset 0 0 0 1px var(--ls-auth-panel-text-muted);
-  background: transparent;
-}
-
-.ls-auth-top .ls-theme-option {
-  color: var(--ls-auth-panel-text-muted);
-}
-
-.ls-auth-top .ls-theme-option-active {
-  color: var(--ls-auth-panel-from);
-  background: var(--ls-auth-panel-text);
-  box-shadow: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ls-auth-top .ls-theme-option:hover,
-  .ls-auth-top .ls-theme-option-active:hover {
-    color: var(--ls-auth-panel-from);
-    background: var(--ls-auth-panel-text);
-    box-shadow: none;
-  }
-}
 
 .ls-auth-main {
   position: relative;

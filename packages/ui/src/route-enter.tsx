@@ -8,8 +8,8 @@ import { motionAllowed, readMotionEnvironment } from './reveal-core';
 let pageDrawn = false;
 
 /**
- * The route wrapper of the customer side (Part 2 contract 7, pattern M5): the page content eases in with a small rise
- * on every route change. The first load never animates (nothing waits for motion, so the largest contentful paint is
+ * The route wrapper of the staff area: the page content fades in over 120 ms (opacity only, Owner G5) on every route
+ * change. The first load never animates (nothing waits for motion, so the largest contentful paint is
  * the plain page); neither does a visitor with reduced motion, data saver or a low memory device. Used in a Next
  * `template.tsx`, which remounts on every navigation. The server and the first client render agree (no animation),
  * so there is no hydration difference.

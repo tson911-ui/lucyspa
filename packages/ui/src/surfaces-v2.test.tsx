@@ -8,7 +8,7 @@ import { Badge, ImageFrame } from './index';
 const css = readFileSync(new URL('components-v2.css', import.meta.url), 'utf8');
 const tokens = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
 
-test('Badge: the three shop labels are tones of one accent family', () => {
+test('Badge: the three shop labels are neutral (session 10, A3/B18), and a status tone shows its icon by default', () => {
   assert.match(
     renderToStaticMarkup(<Badge tone="accent">Bán chạy</Badge>),
     /ls-badge ls-badge-accent/,
@@ -21,8 +21,36 @@ test('Badge: the three shop labels are tones of one accent family', () => {
   for (const tone of ['accent', 'outline', 'ink', 'brand', 'neutral']) {
     assert.match(css, new RegExp(`\\.ls-badge-${tone} \\{`), tone);
   }
-  assert.match(css, /\.ls-badge-accent \{[^}]*background: var\(--ls-brand-fill\)/);
-  assert.match(css, /\.ls-badge-outline \{[^}]*border-color: var\(--ls-brand\)/);
+  // The brand colour is only for what can be clicked or is selected: the shop labels are grey.
+  assert.match(
+    css,
+    /\.ls-badge-accent \{[^}]*color: var\(--ls-text\);[^}]*background: var\(--ls-gray-4\)/,
+  );
+  assert.match(
+    css,
+    /\.ls-badge-outline \{[^}]*border-color: var\(--ls-border-control\);[^}]*color: var\(--ls-text\)/,
+  );
+  for (const tone of ['accent', 'outline']) {
+    const body = new RegExp(`\\.ls-badge-${tone} \\{([^}]*)\\}`).exec(css)?.[1] ?? '';
+    assert.doesNotMatch(body, /--ls-brand/, `${tone} label is not the brand colour`);
+  }
+  // A status tone renders its icon (16 px) beside the word; `icon={false}` hides it; a shop label has none.
+  for (const tone of ['success', 'warning', 'danger', 'info'] as const) {
+    const html = renderToStaticMarkup(<Badge tone={tone}>Trạng thái</Badge>);
+    assert.match(html, /<svg[^>]*width="16"[^>]*height="16"/, tone);
+    assert.doesNotMatch(
+      renderToStaticMarkup(
+        <Badge tone={tone} icon={false}>
+          Trạng thái
+        </Badge>,
+      ),
+      /<svg/,
+      `${tone} without icon`,
+    );
+  }
+  for (const tone of ['neutral', 'accent', 'outline', 'ink', 'brand'] as const) {
+    assert.doesNotMatch(renderToStaticMarkup(<Badge tone={tone}>Nhãn</Badge>), /<svg/, tone);
+  }
   assert.match(
     css,
     /\.ls-badge-ink \{[^}]*color: var\(--ls-bg-page\);[^}]*background: var\(--ls-text\)/,

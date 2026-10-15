@@ -199,11 +199,11 @@ test('a new version starts from what is in force; benefits are shown in the read
   assert.equal(benefitLabel(program.current, 'en'), '12.5%');
   assert.equal(
     benefitLabel({ kind: 'FIXED_AMOUNT', percentBp: null, fixedAmountVnd: '50000' }, 'vi'),
-    '50.000 ₫',
+    '50.000\u00a0₫',
   );
   assert.equal(
     benefitLabel({ kind: 'FIXED_AMOUNT', percentBp: null, fixedAmountVnd: '50000' }, 'en'),
-    '50,000 ₫',
+    '50,000\u00a0₫',
   );
 });
 

@@ -388,7 +388,7 @@ test('reveal gate: reduced motion, data saver, low memory and a missing observer
   assert.equal(startsVisible({ top: 1700, bottom: 2000 }, 800, 1500), false);
 });
 
-test('TabBar marks the call-to-action tab; ThemeCycle cycles Light, Dark, Auto like the staff toggle', () => {
+test('TabBar marks the call-to-action tab', () => {
   const html = renderToStaticMarkup(
     <ui.TabBar
       label="Menu điện thoại"
@@ -408,45 +408,6 @@ test('TabBar marks the call-to-action tab; ThemeCycle cycles Light, Dark, Auto l
   assert.match(html, /href="\/vi\/account\/book" data-emphasis="true"/);
   assert.equal(html.match(/data-emphasis/g)?.length, 1);
   assert.match(css, /\.ls-tab-bar a\[data-emphasis='true'\]/);
-
-  const labels = {
-    group: 'Giao diện',
-    light: 'Sáng',
-    dark: 'Tối',
-    auto: 'Theo giờ',
-    switchTo: 'Chuyển sang {name}',
-  };
-  window.document.cookie = 'ls-theme=; Max-Age=0; Path=/';
-  const container = window.document.createElement('div');
-  window.document.body.appendChild(container);
-  const root = createRoot(container);
-  act(() => root.render(<ui.ThemeCycle labels={labels} />));
-  const button = container.querySelector('button') as HTMLButtonElement;
-  const root_ = () => window.document.documentElement;
-  // No choice stored = Auto (by the clock). A press goes to Light, then Dark, then back to Auto.
-  assert.equal(button.dataset['preference'], 'auto');
-  assert.equal(button.getAttribute('aria-label'), 'Giao diện: Theo giờ. Chuyển sang Sáng');
-  assert.ok(
-    container.querySelector('svg path[d*="M12 7"]') || button.querySelector('svg'),
-    'the clock is drawn in Auto',
-  );
-  act(() => button.click());
-  assert.equal(button.dataset['preference'], 'light');
-  assert.equal(root_().getAttribute('data-theme'), 'light');
-  assert.match(window.document.cookie, /ls-theme=light/);
-  assert.equal(button.getAttribute('aria-label'), 'Giao diện: Sáng. Chuyển sang Tối');
-  assert.ok(container.querySelector('svg path[d^="M12 8a4 4"]'), 'the sun is drawn in Light');
-  act(() => button.click());
-  assert.equal(button.dataset['preference'], 'dark');
-  assert.equal(root_().getAttribute('data-theme'), 'dark');
-  assert.match(window.document.cookie, /ls-theme=dark/);
-  assert.equal(button.getAttribute('aria-label'), 'Giao diện: Tối. Chuyển sang Theo giờ');
-  assert.ok(container.querySelector('svg path[d^="M20 14.5"]'), 'the moon is drawn in Dark');
-  act(() => button.click());
-  assert.equal(button.dataset['preference'], 'auto');
-  assert.doesNotMatch(window.document.cookie, /ls-theme=(light|dark)/);
-  assert.equal(button.getAttribute('aria-label'), 'Giao diện: Theo giờ. Chuyển sang Sáng');
-  act(() => root.unmount());
 });
 
 test('MotionGate marks the document full only where scroll effects are allowed, and cleans up', async () => {
@@ -489,13 +450,22 @@ test('MotionGate marks the document full only where scroll effects are allowed, 
   });
 });
 
-test('Reveal is visible in the server markup and starts hidden only below the fold, then the GSAP wrapper shows it', async () => {
+test('Reveal is a plain wrapper (session 10, G2): no data-reveal, no GSAP, `index` ignored, on or below the fold', async () => {
   const server = renderToStaticMarkup(
-    <ui.Reveal index={2}>
+    <ui.Reveal index={2} className="x">
       <p>Nội dung</p>
     </ui.Reveal>,
   );
-  assert.doesNotMatch(server, /data-reveal/);
+  assert.equal(server, '<div class="ls-reveal x"><p>Nội dung</p></div>');
+  assert.equal(
+    renderToStaticMarkup(
+      <ui.Reveal>
+        <p>Nội dung</p>
+      </ui.Reveal>,
+    ),
+    '<div class="ls-reveal"><p>Nội dung</p></div>',
+    'the index changes nothing',
+  );
 
   class FakeObserver {
     observe() {}
@@ -505,42 +475,21 @@ test('Reveal is visible in the server markup and starts hidden only below the fo
   globals.IntersectionObserver = FakeObserver;
   (globalThis as Record<string, unknown>).IntersectionObserver = FakeObserver;
   Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 });
-  const calls = {
-    loads: 0,
-    triggers: [] as Record<string, unknown>[],
-    tweens: [] as unknown[][],
-    reverted: 0,
-  };
-  const modules = {
-    gsap: {
-      context: (build: () => void) => {
-        build();
-        return {
-          revert: () => {
-            calls.reverted += 1;
-          },
-        };
-      },
-      fromTo: (...args: unknown[]) => calls.tweens.push(args),
-    },
-    ScrollTrigger: { create: (options: Record<string, unknown>) => calls.triggers.push(options) },
-  };
+  let loads = 0;
   const { configureMotion } = await import('./motion');
-  const install = (load?: () => Promise<never>) =>
-    configureMotion({
-      load:
-        load ??
-        (async () => {
-          calls.loads += 1;
-          return modules as never;
-        }),
-      afterFirstPaint: (callback) => callback(),
-    });
-  install();
+  configureMotion({
+    load: async () => {
+      loads += 1;
+      return {} as never;
+    },
+    afterFirstPaint: (callback) => callback(),
+  });
   const proto = window.HTMLElement.prototype;
   const original = proto.getBoundingClientRect;
   const settle = () => act(async () => void (await Promise.resolve()));
-  const mountAt = async (top: number) => {
+  // Mounted on screen or far below the fold, with motion allowed: the block is shown at once and GSAP is never asked for.
+  window.document.documentElement.dataset['lsMotion'] = 'full';
+  for (const top of [100, 1500]) {
     proto.getBoundingClientRect = () => ({ top, bottom: top + 200 }) as DOMRect;
     const container = window.document.createElement('div');
     window.document.body.appendChild(container);
@@ -553,72 +502,14 @@ test('Reveal is visible in the server markup and starts hidden only below the fo
       ),
     );
     await settle();
-    return { container, root, element: container.querySelector('.ls-reveal') as HTMLElement };
-  };
-
-  // On screen at mount: never hidden, GSAP is not even loaded.
-  const above = await mountAt(100);
-  assert.equal(above.element.getAttribute('data-reveal'), null);
-  assert.equal(calls.loads, 0);
-  act(() => above.root.unmount());
-
-  // Below the fold: hidden until the trigger fires, then the tween runs from the tokens (jsdom has none: 0), staggered by position.
-  const below = await mountAt(1500);
-  assert.equal(below.element.getAttribute('data-reveal'), 'hidden');
-  assert.equal(calls.loads, 1);
-  const trigger = calls.triggers[calls.triggers.length - 1];
-  assert.ok(trigger);
-  assert.equal(trigger['once'], true);
-  assert.equal(trigger['start'], 'top 85%');
-  assert.equal(trigger['trigger'], below.element);
-  assert.equal(calls.tweens.length, 0, 'nothing animates before the trigger');
-  act(() => (trigger['onEnter'] as () => void)());
-  assert.equal(below.element.getAttribute('data-reveal'), null);
-  const [target, from, to] = calls.tweens[0] ?? [];
-  assert.equal(target, below.element);
-  assert.deepEqual(from, { opacity: 0, y: 0 });
-  assert.equal((to as Record<string, unknown>)['ease'], 'power3.out');
-  assert.equal((to as Record<string, unknown>)['clearProps'], 'opacity,transform');
-  act(() => below.root.unmount());
-  assert.equal(calls.reverted, 1, 'unmount reverts the context');
-
-  // Scrolled past while GSAP was loading: shown, no fade.
-  const late = await mountAt(1500);
-  proto.getBoundingClientRect = () => ({ top: -400, bottom: -200 }) as DOMRect;
-  const tweens = calls.tweens.length;
-  act(() => (calls.triggers[calls.triggers.length - 1]?.['onEnter'] as () => void)());
-  assert.equal(late.element.getAttribute('data-reveal'), null);
-  assert.equal(calls.tweens.length, tweens);
-  act(() => late.root.unmount());
-
-  // The off switch (`ls-fx=off`): the block is shown, GSAP never loads, no tween.
-  const loadsBefore = calls.loads;
-  window.document.cookie = 'ls-fx=off; Path=/';
-  const off = await mountAt(1500);
-  assert.equal(off.element.getAttribute('data-reveal'), null);
-  assert.equal(calls.loads, loadsBefore);
-  act(() => off.root.unmount());
-  window.document.cookie = 'ls-fx=; Max-Age=0; Path=/';
-
-  // Motion turned off while the page is open: the context is reverted and the block is shown.
-  const live = await mountAt(1500);
-  assert.equal(live.element.getAttribute('data-reveal'), 'hidden');
-  const revertedBefore = calls.reverted;
-  window.document.documentElement.dataset['lsMotion'] = 'reduced';
-  await settle();
-  assert.equal(live.element.getAttribute('data-reveal'), null);
-  assert.equal(calls.reverted, revertedBefore + 1);
-  act(() => live.root.unmount());
+    const element = container.querySelector('.ls-reveal') as HTMLElement;
+    assert.equal(element.getAttribute('data-reveal'), null, `top ${top}`);
+    assert.equal(element.getAttribute('style'), null, `top ${top}: no inline motion style`);
+    act(() => root.unmount());
+    container.remove();
+  }
+  assert.equal(loads, 0, 'GSAP is never loaded for a reveal');
   delete window.document.documentElement.dataset['lsMotion'];
-
-  // GSAP cannot load (offline): the block is shown, nothing throws.
-  install(async () => {
-    throw new Error('chunk lost');
-  });
-  const failed = await mountAt(1500);
-  await settle();
-  assert.equal(failed.element.getAttribute('data-reveal'), null);
-  act(() => failed.root.unmount());
   configureMotion();
   proto.getBoundingClientRect = original;
 });
@@ -746,18 +637,29 @@ test('ListRow and IconPicker: a text row with a menu slot, a radio group of icon
   assert.match(picker, /aria-label="Chiếc lá"/);
 });
 
-test('the serif wordmark is the public logo; the staff wordmark keeps the sans face', () => {
+test('the wordmark has one face everywhere (the `serif` prop is kept for callers and changes nothing), sized from tokens', () => {
   const serif = renderToStaticMarkup(<ui.BrandWordmark serif />);
-  assert.match(serif, /font-family:var\(--ls-font-display\)/);
-  assert.match(renderToStaticMarkup(<ui.BrandWordmark />), /font-family:var\(--ls-font-sans\)/);
+  const plain = renderToStaticMarkup(<ui.BrandWordmark />);
+  assert.equal(serif, plain);
+  assert.match(plain, /^<span class="ls-wordmark" style="font-family:var\(--ls-font-sans\);/);
+  assert.doesNotMatch(plain, /--ls-font-display/);
+  assert.match(plain, /font-size:var\(--ls-wordmark-size, var\(--ls-type-heading\)\)/);
+  assert.match(
+    renderToStaticMarkup(<ui.BrandWordmark size="display" />),
+    /font-size:var\(--ls-wordmark-display, var\(--ls-type-title\)\)/,
+  );
 });
 
-test('every public control shares one hover and press style: smooth colours, a slight lift and zoom, a dip on press', () => {
+test('every public control shares one hover and press style: smooth colours, the lift and zoom zeroed in the v2 frame, a dip on press', () => {
   const block = css.slice(css.indexOf('controls (M9)'));
+  // The theme switch is gone (session 10, A1): no theme-cycle tool is styled any more.
+  assert.doesNotMatch(css, /ls-theme-cycle/);
+  // Session 10 (A4): in the v2 frame a hover is a colour step only, so the shared lift and zoom are zeroed there.
+  const v2 = readFileSync(new URL('components-v2.css', import.meta.url), 'utf8');
+  assert.match(v2, /\[data-ui='v2'\] \{\s*--ls-ctl-lift: 0px;\s*--ls-ctl-zoom: 1;\s*\}/);
   // The one shared list: buttons (CTAs, outline, ghost, icon, slider arrows), header tools, pills, menu entries, tab bar.
   for (const selector of [
     '.ls-site .ls-btn',
-    '.ls-site .ls-theme-cycle',
     '.ls-site .ls-site-tool',
     '.ls-site .ls-pills a',
     '.ls-site .ls-site-nav a',
@@ -825,10 +727,20 @@ test('SiteHeader: every page gets the same bar (one sentinel, the logo and menu 
   );
   assert.doesNotMatch(html, /data-overlay/);
   assert.match(html, /<div class="ls-site-sentinel" aria-hidden="true"><\/div>/);
-  assert.match(html, /<header class="ls-site-header">/);
+  // Session 10 (R7, D2): the customer bar is the shared HeaderBar with the customer slot classes.
   assert.match(
     html,
-    /<div class="ls-site-lead"><div class="ls-site-brand">Lucy Spa<\/div><nav>Menu<\/nav><\/div><div class="ls-site-tools">tools<\/div><div class="ls-site-cta">cta<\/div>/,
+    /<header class="ls-headerbar ls-site-header"><div class="ls-headerbar-row ls-container ls-site-header-row">/,
+  );
+  assert.match(
+    html,
+    /<div class="ls-headerbar-brand ls-site-lead"><div class="ls-site-brand">Lucy Spa<\/div><nav>Menu<\/nav><\/div><div class="ls-headerbar-end"><div class="ls-site-tools">tools<\/div><div class="ls-site-cta">cta<\/div><\/div>/,
+  );
+  // The end wrapper adds no box on the customer row (foundation-v2.css), so tools and the call to action stay row siblings.
+  const foundation = readFileSync(new URL('foundation-v2.css', import.meta.url), 'utf8');
+  assert.match(
+    foundation,
+    /\[data-ui='v2'\] \.ls-site-header \.ls-headerbar-end \{\s*display: contents;/,
   );
 });
 

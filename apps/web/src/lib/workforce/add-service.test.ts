@@ -30,10 +30,13 @@ test('nothing is sent without a participant, a service and a key', () => {
 });
 
 test('the reference range is a single amount or a range, in the locale format', () => {
-  assert.equal(referenceRange({ priceMinVnd: '40000', priceMaxVnd: '40000' }, 'vi'), '40.000 ₫');
+  assert.equal(
+    referenceRange({ priceMinVnd: '40000', priceMaxVnd: '40000' }, 'vi'),
+    '40.000\u00a0₫',
+  );
   assert.equal(
     referenceRange({ priceMinVnd: '5000', priceMaxVnd: '10000' }, 'en'),
-    '5,000 ₫–10,000 ₫',
+    '5,000\u00a0₫–10,000\u00a0₫',
   );
 });
 

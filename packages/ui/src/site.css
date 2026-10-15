@@ -252,13 +252,13 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   margin-inline-start: auto;
 }
 
-/* A 360 px phone with a member signed in holds the logo and four 44 px tools (bell, language, theme, account) between
+/* A 360 px phone with a member signed in holds the logo and four 44 px tools (bell, language, account) between
    its gutters: the gaps narrow so the last tool ends on the gutter. */
 @media (max-width: 479px) {
   /* The tools are a fixed 44 px each, so at a larger text size only the wordmark may give way: it never grows past 5% of the
      screen width (18 px on a 360 px phone, as before at the normal text size), and the last tool stays on the screen. */
   .ls-site-header {
-    --ls-wordmark-size: min(1.125rem, 5vw);
+    --ls-wordmark-size: min(var(--ls-type-body), 5vw);
   }
 
   .ls-site-header-row {
@@ -280,8 +280,7 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   display: none;
 }
 
-/* Round tool buttons of the header (language, theme, account) and the pill shape of every kit button on these pages. */
-.ls-theme-cycle,
+/* Round tool buttons of the header (language, account) and the pill shape of every kit button on these pages. */
 .ls-site-tool {
   display: inline-grid;
   place-items: center;
@@ -1706,7 +1705,6 @@ html[data-ls-motion='reduced'] .ls-site .ls-reveal[data-reveal='hidden'] {
    are 0 / 1 under reduced motion. Text links (`.ls-site-link`, footer links) keep colour and arrow motion only: a transform
    on the card's stretched link would shrink its click area. The current menu entry is not lifted: its pill stays put. */
 .ls-site .ls-btn,
-.ls-site .ls-theme-cycle,
 .ls-site .ls-site-tool,
 .ls-site .ls-pills a,
 .ls-site .ls-site-nav a,
@@ -1730,9 +1728,8 @@ html[data-ls-motion='reduced'] .ls-site .ls-reveal[data-reveal='hidden'] {
     transform: translateY(calc(var(--ls-ctl-lift) * -1)) scale(var(--ls-ctl-zoom));
   }
 
-  /* The round header tools (bell, language, theme, account): one effect, a small scale-up, no lift. The menu entries
+  /* The round header tools (bell, language, account): one effect, a small scale-up, no lift. The menu entries
      have none either: their pill glides instead. */
-  .ls-site .ls-theme-cycle:hover,
   .ls-site .ls-site-tool:hover,
   .ls-site .ls-site-tools .ls-btn-icon:not(.ls-popover .ls-btn-icon):hover {
     transform: scale(var(--ls-tool-zoom));
@@ -1740,7 +1737,6 @@ html[data-ls-motion='reduced'] .ls-site .ls-reveal[data-reveal='hidden'] {
 }
 
 .ls-site .ls-btn:where(:not(:disabled, [aria-disabled='true'])):active,
-.ls-site .ls-theme-cycle:active,
 .ls-site .ls-site-tool:active,
 .ls-site .ls-pills a:active,
 .ls-site .ls-site-nav a:active,

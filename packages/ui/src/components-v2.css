@@ -4,7 +4,7 @@
    no spacing literal, no shadow, no gradient (the seasonal layer keeps its own). Order: buttons, fields, checkbox / radio / switch;
    surfaces and feedback and the overlays and data parts follow with C5 and C6. */
 
-/* Hover lifts and zooms are direction C; v2 hover is the color rule only (DESIGN.md 11.2), and the press scale stays. */
+/* Hover lifts and zooms are direction C; v2 hover is a colour step only (Owner A4), and the press scale stays. */
 [data-ui='v2'] {
   --ls-ctl-lift: 0px;
   --ls-ctl-zoom: 1;
@@ -60,61 +60,38 @@
   }
 }
 
-/* Primary: the filled pill (one per view). It darkens on hover (components.css). */
+/* Button states (Owner A4, 2026-10-16; Apple + Radix steps; DESIGN.md 8.1). One solid burgundy fill in the whole kit: the primary. Every state
+   is a colour step (hover one step, pressed one more) plus the press scale; nothing lifts, nothing slides, no arrow is appended.
+   Hover only on a fine pointer (a touch screen keeps no sticky hover); pressed on every pointer. */
+
+/* Primary: burgundy 9, hover 10, pressed 11 (dark: 9, hover 10, pressed 8), white label. Always stronger than the secondary. */
 [data-ui='v2'] .ls-btn-primary {
+  border-color: transparent;
   color: var(--ls-on-brand);
   background: var(--ls-brand-fill);
 }
 
-/* Secondary: an accent outline, paired with a primary. Owner exception to rule 4 (addendum, 2026-10-15): it never fills on hover. The
-   background stays clear, the text keeps its color, the border goes one scale step stronger, the button lifts and grows a little and the
-   trailing arrow nudges forward (150 ms ease-out). Reduced motion and the off switch zero the three movement tokens: the border change is
-   all that is left. The arrow is the icon-set arrow (icons.tsx, 1.75 stroke on a 24 grid) drawn as a mask in the text color; a button that
-   is icon only, or already has its own icon, shows none. */
+/* Secondary: transparent with a 1 px border and label in the link colour (light #60212a; dark the neutral high-contrast text). Hover tints the
+   background one step (light burgundy 3, dark the elevated grey) and strengthens the border (light burgundy 12, its only use; dark grey 12);
+   the label keeps its colour. Pressed is one step more. It never fills solid. */
 [data-ui='v2'] .ls-btn-secondary {
   border-color: var(--ls-outline-border);
   color: var(--ls-brand);
   background: transparent;
-  /* 150 ms ease-out from the motion tokens (the frame's general button transition is the slower premium glide). */
-  transition:
-    transform var(--ls-dur-fast) var(--ls-ease-out),
-    border-color var(--ls-dur-fast) var(--ls-ease-out),
-    color var(--ls-dur-fast) var(--ls-ease-out);
 }
 
-[data-ui='v2'] .ls-btn-secondary:not(.ls-btn-icon):not(:has(> svg))::after {
-  content: '';
-  flex: none;
-  width: 1.25em;
-  height: 1.25em;
-  background: currentColor;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E")
-    center / contain no-repeat;
-  transition: transform var(--ls-dur-fast) var(--ls-ease-out);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  [data-ui='v2'] .ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled) {
-    border-color: var(--ls-outline-border-hover);
-    color: var(--ls-brand);
-    background: transparent;
-    transform: translateY(var(--ls-btn-lift)) scale(var(--ls-btn-zoom));
-  }
-
-  [data-ui='v2'] .ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled)::after {
-    transform: translateX(var(--ls-btn-nudge));
-  }
-}
-
-/* Neutral: the quiet pill (Cancel, filters, toolbar actions). Its fill is the step a field takes, so it shows on either band. */
+/* Neutral: the quiet pill (Cancel, filters, toolbar actions). Its fill is the step a field takes; hover and pressed go down the grey scale. */
 [data-ui='v2'] .ls-btn-neutral {
   border-color: transparent;
   color: var(--ls-text);
   background: var(--ls-bg-field);
 }
 
+/* Ghost (icon tools, bare actions): transparent; hover grey 3, pressed grey 4 (Radix: a transparent component). */
 [data-ui='v2'] .ls-btn-ghost {
+  border-color: transparent;
   color: var(--ls-text);
+  background: transparent;
 }
 
 [data-ui='v2'] .ls-btn-danger-outline {
@@ -124,22 +101,76 @@
 }
 
 /* Danger is a red of its own (never the accent) and always carries an icon in its label. The solid fill is the danger scale's step 9, its hover
-   step 10; dark mode flips the label to near-black because that red is a light one. */
+   step 10; dark mode flips the label to near-black because that red is a light one. Only the confirm dialog uses the solid one. */
 [data-ui='v2'] .ls-btn-danger {
+  border-color: transparent;
   color: var(--ls-on-danger);
   background: var(--ls-danger-fill);
 }
 
 @media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-btn-primary:hover:not([aria-disabled='true']):not(:disabled) {
+    color: var(--ls-on-brand);
+    background: var(--ls-brand-fill-hover);
+  }
+
+  [data-ui='v2'] .ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled) {
+    border-color: var(--ls-outline-border-hover);
+    color: var(--ls-brand);
+    background: var(--ls-secondary-hover-bg);
+  }
+
+  [data-ui='v2'] .ls-btn-neutral:hover:not([aria-disabled='true']):not(:disabled) {
+    border-color: transparent;
+    color: var(--ls-text);
+    background: var(--ls-gray-4);
+  }
+
+  [data-ui='v2'] .ls-btn-ghost:hover:not([aria-disabled='true']):not(:disabled) {
+    border-color: transparent;
+    color: var(--ls-text);
+    background: var(--ls-hover-bg);
+  }
+
   [data-ui='v2'] .ls-btn-danger-outline:hover:not([aria-disabled='true']):not(:disabled) {
-    border-color: var(--ls-danger-fill);
-    color: var(--ls-on-danger);
-    background: var(--ls-danger-fill);
+    border-color: var(--ls-danger);
+    color: var(--ls-danger);
+    background: var(--ls-danger-bg);
   }
 
   [data-ui='v2'] .ls-btn-danger:hover:not([aria-disabled='true']):not(:disabled) {
+    color: var(--ls-on-danger);
     background: var(--ls-danger-fill-hover);
   }
+}
+
+[data-ui='v2'] .ls-btn:active:not([aria-disabled='true']):not(:disabled) {
+  transform: scale(var(--ls-press-scale));
+}
+
+[data-ui='v2'] .ls-btn-primary:active:not([aria-disabled='true']):not(:disabled) {
+  background: var(--ls-brand-fill-pressed);
+}
+
+[data-ui='v2'] .ls-btn-secondary:active:not([aria-disabled='true']):not(:disabled) {
+  border-color: var(--ls-outline-border-hover);
+  background: var(--ls-secondary-pressed-bg);
+}
+
+[data-ui='v2'] .ls-btn-neutral:active:not([aria-disabled='true']):not(:disabled) {
+  background: var(--ls-gray-5);
+}
+
+[data-ui='v2'] .ls-btn-ghost:active:not([aria-disabled='true']):not(:disabled) {
+  background: var(--ls-pressed-bg);
+}
+
+[data-ui='v2'] .ls-btn-danger-outline:active:not([aria-disabled='true']):not(:disabled) {
+  background: var(--ls-danger-4);
+}
+
+[data-ui='v2'] .ls-btn-danger:active:not([aria-disabled='true']):not(:disabled) {
+  background: var(--ls-danger-11);
 }
 
 /* The icon of a danger action (DESIGN.md 8.1: never color alone): a crossed circle from the icon set (1.75 stroke, 24 grid), drawn in the
@@ -154,19 +185,20 @@
     center / contain no-repeat;
 }
 
+/* A danger menu item tints on hover and keyboard focus (never a solid red over the row). */
 [data-ui='v2'] .ls-menu-item-danger:focus-visible:not(.ls-menu-item-disabled) {
-  color: var(--ls-on-danger);
-  background: var(--ls-danger-fill);
+  color: var(--ls-danger);
+  background: var(--ls-danger-bg);
 }
 
 @media (hover: hover) and (pointer: fine) {
   [data-ui='v2'] .ls-menu-item-danger:hover:not(.ls-menu-item-disabled) {
-    color: var(--ls-on-danger);
-    background: var(--ls-danger-fill);
+    color: var(--ls-danger);
+    background: var(--ls-danger-bg);
   }
 }
 
-/* Disabled: the pressed neutral fill and subtle text, a word or reason beside it where it matters; no opacity, no hover. */
+/* Disabled: the pressed neutral fill and subtle text, a word or reason beside it where it matters; no opacity, no hover, no press. */
 [data-ui='v2'] .ls-btn:is(:disabled, [aria-disabled='true']) {
   border-color: transparent;
   color: var(--ls-text-subtle);
@@ -174,7 +206,8 @@
   opacity: 1;
 }
 
-[data-ui='v2'] .ls-btn[aria-busy='true'] {
+/* Busy: a spinner beside the label ("Đang lưu…"), the button keeps its size and its own colours. */
+[data-ui='v2'] .ls-btn-primary[aria-busy='true'] {
   color: var(--ls-on-brand);
   background: var(--ls-brand-fill);
   opacity: 1;
@@ -186,9 +219,9 @@
 }
 
 [data-ui='v2'] .ls-btn-reason {
-  color: var(--ls-text-subtle);
-  font-size: var(--ls-type-caption);
-  line-height: var(--ls-lh-caption);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
 }
 
 /* "Đặt lịch ngay" used a sweeping gradient band: no gradient in the base UI. */
@@ -570,17 +603,17 @@
   background: var(--ls-brand-soft);
 }
 
-/* The three shop labels, one accent family and no second chromatic color: Bán chạy (accent fill), Mới (accent outline) and the sale
-   percentage (ink fill with inverse text). */
+/* The shop labels are neutral (Owner A3/B18, 2026-10-16): the brand colour is for what can be clicked. Bán chạy (grey fill), Mới (grey
+   outline) and the sale percentage (ink fill with inverse text); out of stock is a warning status with its icon. */
 [data-ui='v2'] .ls-badge-accent {
-  color: var(--ls-on-brand);
-  background: var(--ls-brand-fill);
+  color: var(--ls-text);
+  background: var(--ls-gray-4);
 }
 
 [data-ui='v2'] .ls-badge-outline {
-  border-color: var(--ls-brand);
-  color: var(--ls-brand);
-  background: transparent;
+  border-color: var(--ls-border-control);
+  color: var(--ls-text);
+  background: var(--ls-bg-page);
 }
 
 [data-ui='v2'] .ls-badge-ink {

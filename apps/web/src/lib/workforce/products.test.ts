@@ -138,15 +138,15 @@ test('money is whole dong typed as digits, never a float', () => {
   assert.equal(vndAmount('1,000'), null);
   assert.equal(vndAmount('-5'), null);
   assert.equal(vndAmount(''), null);
-  assert.equal(priceRangeText('100000', '100000', 'vi', 'x'), '100.000 ₫');
-  assert.equal(priceRangeText('100000', '250000', 'vi', 'x'), '100.000 ₫ – 250.000 ₫');
+  assert.equal(priceRangeText('100000', '100000', 'vi', 'x'), '100.000\u00a0₫');
+  assert.equal(priceRangeText('100000', '250000', 'vi', 'x'), '100.000\u00a0₫ – 250.000\u00a0₫');
   assert.equal(priceRangeText(null, null, 'vi', 'Chưa có giá'), 'Chưa có giá');
 });
 
 test('a margin is shown only when the API sent it', () => {
   assert.equal(marginText(variant(), 'vi'), '—');
-  assert.equal(marginText(variant({ marginVnd: '110000' }), 'vi'), '110.000 ₫');
-  assert.equal(marginText(variant({ marginVnd: '-5000' }), 'vi'), '-5.000 ₫');
+  assert.equal(marginText(variant({ marginVnd: '110000' }), 'vi'), '110.000\u00a0₫');
+  assert.equal(marginText(variant({ marginVnd: '-5000' }), 'vi'), '-5.000\u00a0₫');
 });
 
 test('list state: unknown values fall back, filters and sort work on names, brand, status and price', () => {

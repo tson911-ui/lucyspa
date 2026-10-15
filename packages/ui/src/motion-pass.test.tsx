@@ -10,11 +10,10 @@ import { Stat } from './stat';
 
 const format = (n: number) => new Intl.NumberFormat('vi-VN').format(n);
 
-test('C17 counter: the final number is in the markup from the start, the counting layer is empty and hidden from readers', () => {
+test('counter (session 10, G3): only the final number is rendered; there is no counting layer any more', () => {
   const html = renderToStaticMarkup(<CountUp value={1250} format={format} />);
-  assert.match(html, /<span class="ls-count-final">1\.250<\/span>/);
-  assert.match(html, /<span class="ls-count-live" aria-hidden="true"><\/span>/);
-  assert.doesNotMatch(html, /data-counting/);
+  assert.equal(html, '<span class="ls-count"><span class="ls-count-final">1.250</span></span>');
+  assert.doesNotMatch(html, /ls-count-live|aria-hidden|data-counting/);
 });
 
 test('C17 counter: only a Stat that asks for it counts (staff screens never do)', () => {
@@ -45,12 +44,14 @@ test('C17 page change: the shared photo has its own class over the page duration
 });
 
 test('C17 motion code holds no literal duration or easing curve outside the tokens', () => {
-  for (const file of ['count-up.tsx', 'step-slide.ts']) {
-    const source = readFileSync(new URL(file, import.meta.url), 'utf8').replace(
-      /\/\*[\s\S]*?\*\//g,
-      '',
-    );
-    assert.doesNotMatch(source, /duration:\s*[\d.]+/, `${file}: duration from a token`);
-    assert.match(source, /kit\.duration\('(?:reveal|base)'\)/);
+  const strip = (file: string): string =>
+    readFileSync(new URL(file, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const slide = strip('step-slide.ts');
+  assert.doesNotMatch(slide, /duration:\s*[\d.]+/, 'step-slide.ts: duration from a token');
+  assert.match(slide, /kit\.duration\('(?:reveal|base)'\)/);
+  // Session 10 (G2, G3): the counter and the reveal wrapper no longer animate at all, so they hold no motion code.
+  for (const file of ['count-up.tsx', 'reveal.tsx']) {
+    const source = strip(file);
+    assert.doesNotMatch(source, /runMotion|useMotion|gsap|duration|requestAnimationFrame/, file);
   }
 });

@@ -40,9 +40,10 @@ function block(css: string, selector: RegExp): Record<string, string> {
 }
 
 const light = block(tokensCss, /^:root\s*\{/m);
+// No theme switch (session 10, A1): the dark block is the forced preview copy (the system-preference copy is identical, tokens.test.ts).
 const dark = block(
   tokensCss,
-  /^:root\[data-theme=['"]dark['"]\],\s*\[data-preview-theme=['"]dark['"]\]\s*\{/m,
+  /^:root\[data-preview-theme=['"]dark['"]\],\s*\[data-preview-theme=['"]dark['"]\]\s*\{/m,
 );
 const themes = { light, dark } as const;
 
@@ -231,31 +232,41 @@ test('season.css is generated from the registry (fails when stale; run pnpm seas
   assert.equal(squash(seasonCss), squash(buildSeasonCss(SEASON_PRESETS)));
 });
 
-test('every preset has scopable light, dark-toggle and dark-system blocks, and the two dark blocks are identical', () => {
+test('every preset has scopable light, forced-preview-dark and dark-system blocks, and the dark blocks agree', () => {
+  assert.doesNotMatch(seasonCss, /data-theme=/, 'no theme switch (A1)');
   for (const preset of SEASON_PRESETS) {
     const scope = `[data-season='${preset.key}']`;
     const escaped = scope.replace(/[[\]'.]/g, '\\$&');
     const lightBlock = block(seasonCss, new RegExp(`^${escaped}\\s*\\{`, 'm'));
-    const darkToggle = block(
+    const darkPreview = block(
       seasonCss,
-      new RegExp(`^:root\\[data-theme='dark'\\] ${escaped}`, 'm'),
+      new RegExp(`^:root \\[data-preview-theme='dark'\\] ${escaped}`, 'm'),
     );
     const darkSystem = block(
       seasonCss,
-      new RegExp(`^\\s*:root:not\\(\\[data-theme='light'\\]\\) ${escaped}`, 'm'),
+      new RegExp(`^\\s*:root:not\\(\\[data-preview-theme='light'\\]\\) ${escaped}`, 'm'),
     );
-    assert.deepEqual(darkSystem, darkToggle, `${preset.key}: dark blocks differ`);
+    // The forced preview block repeats every accent token of the system block (and nothing that the system block lacks).
+    assert.deepEqual(darkPreview, darkSystem, `${preset.key}: dark blocks differ`);
     assert.equal(lightBlock['--ls-season-accent'], preset.light.accent);
-    assert.equal(darkToggle['--ls-season-accent'], preset.dark.accent);
+    assert.equal(darkSystem['--ls-season-accent'], preset.dark.accent);
     assert.equal(lightBlock['--ls-season-line'], 'var(--ls-season-accent)');
     assert.equal(
-      '--ls-season-line' in darkToggle,
+      '--ls-season-line' in darkSystem,
       false,
       `${preset.key}: the line follows the accent, so the dark block does not redeclare it`,
     );
-    // The selector also attaches to the element that carries data-season itself (public <html>).
-    assert.match(seasonCss, new RegExp(`:root\\[data-theme='dark'\\]${escaped}`));
-    assert.match(seasonCss, new RegExp(`:root:not\\(\\[data-theme='light'\\]\\)${escaped}`));
+    // The selector also attaches to the element that carries data-season itself (public <html>; the admin season preview
+    // stage sets data-preview-theme and data-season on <html> too).
+    assert.match(
+      seasonCss,
+      new RegExp(`:root:not\\(\\[data-preview-theme='light'\\]\\)${escaped}`),
+    );
+    assert.match(
+      seasonCss,
+      new RegExp(`:root\\[data-preview-theme='dark'\\]${escaped}`),
+      `${preset.key}: the forced dark preview on <html> reaches the season tokens`,
+    );
   }
   assert.match(seasonCss, /\[data-season\]\[data-season-admin='off'\]/);
 });
@@ -283,7 +294,7 @@ test('neutral defaults equal the brand, so nothing changes without data-season',
     [],
   );
   assert.ok(
-    tokensCss.indexOf('--ls-season-accent:') < tokensCss.indexOf("[data-theme='dark']"),
+    tokensCss.indexOf('--ls-season-accent:') < tokensCss.indexOf("[data-preview-theme='dark']"),
     'defaults are declared before season.css overrides them',
   );
 });

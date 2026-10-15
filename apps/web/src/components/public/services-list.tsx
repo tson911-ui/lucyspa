@@ -26,13 +26,12 @@ export function ServiceCard({
   locale,
   service,
   className,
-  index,
   sharePhoto = false,
 }: {
   locale: Locale;
   service: PublicService;
   className?: string;
-  /** Position in its grid: the card then reveals on scroll with the stagger of its place (C17). */
+  /** Kept for callers: cards no longer reveal on scroll (Owner G2, 2026-10-16). */
   index?: number;
   /** The photo travels to the service's page (the list page only: the name must be unique on a page). */
   sharePhoto?: boolean;
@@ -66,7 +65,7 @@ export function ServiceCard({
         <p className="ls-svc-card-price">{cardPrice(service, locale)}</p>
       </div>
       <Link
-        className={buttonClass('secondary', 'md', 'ls-svc-card-book')}
+        className={buttonClass('primary', 'md', 'ls-svc-card-book')}
         href={bookServiceHref(locale, service.code)}
         aria-label={`${text.book}: ${service.name}`}
       >
@@ -74,11 +73,7 @@ export function ServiceCard({
       </Link>
     </article>
   );
-  return (
-    <li className={className ? `ls-svc-item ${className}` : 'ls-svc-item'}>
-      {index === undefined ? card : <Reveal index={index}>{card}</Reveal>}
-    </li>
-  );
+  return <li className={className ? `ls-svc-item ${className}` : 'ls-svc-item'}>{card}</li>;
 }
 
 /**

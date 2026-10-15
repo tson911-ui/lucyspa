@@ -291,7 +291,7 @@ export function BookScreen() {
     return (
       <PublicMain className="ls-main-tall">
         <Band tone="page" className="ls-band--alt ls-book-title">
-          <PageBack root={base} publicHome={`/${locale}`} label={t.common.back} />
+          <PageBack root={base} publicHome={`/${locale}`} menuRoot label={t.common.back} />
           <div className="ls-public-title" aria-live="polite">
             <h1 ref={heading} tabIndex={-1} className="ls-h1-display">
               {t.book.successTitle}
@@ -402,7 +402,7 @@ export function BookScreen() {
   return (
     <PublicMain className={totals.count > 0 ? 'ls-main-tall ls-booking-bar' : 'ls-main-tall'}>
       <Band tone="page" className="ls-band--alt ls-book-title">
-        <PageBack root={base} publicHome={`/${locale}`} label={t.common.back} />
+        <PageBack root={base} publicHome={`/${locale}`} menuRoot label={t.common.back} />
         <div className="ls-public-title">
           <h1 className="ls-h1-display">{t.book.title}</h1>
         </div>

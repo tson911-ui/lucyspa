@@ -62,11 +62,12 @@ test('inputs take the compact prop as a class and keep it off the DOM', () => {
   assert.doesNotMatch(renderToStaticMarkup(<TextInput aria-label="a" />), /ls-input-compact/);
 });
 
-test('Select: plain outside the v2 frame; inside SelectIconScope it is wrapped with the chevron icon and the caller class moves to the wrapper', () => {
+test('Select: the chevron wrapper is the default everywhere (session 10, B9); SelectIconScope still wraps; the caller class moves to the wrapper', () => {
   const options = [{ value: '1', label: 'Một' }];
   const plain = renderToStaticMarkup(<Select aria-label="s" className="x" options={options} />);
-  assert.doesNotMatch(plain, /ls-select-wrap|ls-select-icon/);
-  assert.match(plain, /^<select [^>]*class="ls-input ls-select x"/);
+  assert.match(plain, /^<span class="ls-select-wrap x"><select [^>]*class="ls-input ls-select"/);
+  assert.match(plain, /<span class="ls-select-icon" aria-hidden="true"><svg/);
+  assert.match(plain, /M6 9l6 6 6-6/, 'the chevron-down path of the icon set');
   const framed = renderToStaticMarkup(
     <SelectIconScope>
       <Select aria-label="s" className="x" options={options} />

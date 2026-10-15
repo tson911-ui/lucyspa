@@ -30,12 +30,15 @@ function block(selector: RegExp): Record<string, string> {
 }
 
 const light = block(/^\[data-ui='v2'\]\s*\{/m);
-const darkAttribute = block(
-  /^:root\[data-theme='dark'\]\s*\[data-ui='v2'\],\s*\[data-preview-theme='dark'\]\s*\[data-ui='v2'\],\s*\[data-preview-theme='dark'\]\[data-ui='v2'\]\s*\{/m,
+// No theme switch (session 10, A1): dark is the system preference, or the admin season preview forcing it (`data-preview-theme`).
+const darkPreview = block(
+  /^:root\[data-preview-theme='dark'\]\s*\[data-ui='v2'\],\s*\[data-preview-theme='dark'\]\s*\[data-ui='v2'\],\s*\[data-preview-theme='dark'\]\[data-ui='v2'\]\s*\{/m,
 );
-const darkSystem = block(/^\s*:root:not\(\[data-theme='light'\]\)\s*\[data-ui='v2'\]\s*\{/m);
+const darkSystem = block(
+  /^\s*:root:not\(\[data-preview-theme='light'\]\)\s*\[data-ui='v2'\]\s*\{/m,
+);
 const forcedLight = block(
-  /^:root \[data-preview-theme='light'\] \[data-ui='v2'\],\s*:root \[data-preview-theme='light'\]\[data-ui='v2'\]\s*\{/m,
+  /^:root\[data-preview-theme='light'\] \[data-ui='v2'\],\s*:root \[data-preview-theme='light'\] \[data-ui='v2'\],\s*:root \[data-preview-theme='light'\]\[data-ui='v2'\]\s*\{/m,
 );
 const compact = block(/^\[data-density='compact'\]\s*\{/m);
 const reducedMotion = block(
@@ -64,12 +67,12 @@ const token = (theme: Record<string, string>, name: string): string =>
   hex(theme[`--ls-${name}`], `--ls-${name}`);
 
 test('the two dark blocks of the v2 scope are identical', () => {
-  assert.deepEqual(darkSystem, darkAttribute);
-  assert.ok(Object.keys(darkAttribute).length >= 30);
+  assert.deepEqual(darkSystem, darkPreview);
+  assert.ok(Object.keys(darkPreview).length >= 30);
 });
 
 test('the dark and the forced-light blocks only override tokens the light block defines', () => {
-  for (const name of Object.keys(darkAttribute)) {
+  for (const name of Object.keys(darkPreview)) {
     assert.ok(name in light, `${name} has a light value`);
   }
   for (const name of Object.keys(forcedLight)) {
@@ -78,11 +81,11 @@ test('the dark and the forced-light blocks only override tokens the light block 
 });
 
 test('forced light repeats the light value of every token the dark block overrides (and carries colors only)', () => {
-  for (const name of Object.keys(darkAttribute)) {
+  for (const name of Object.keys(darkPreview)) {
     assert.equal(forcedLight[name], light[name], `${name} differs in the forced-light scope`);
   }
   assert.deepEqual(
-    Object.keys(forcedLight).filter((name) => !(name in darkAttribute)),
+    Object.keys(forcedLight).filter((name) => !(name in darkPreview)),
     [],
   );
 });
@@ -99,26 +102,36 @@ const ROLE_STEPS: Record<string, [string, string]> = {
   'bg-pressed': ['gray-4', 'gray-4'],
   text: ['gray-12', 'gray-12'],
   'text-muted': ['gray-10', 'gray-10'],
-  'text-subtle': ['gray-8', 'gray-10'],
+  // Owner B1 (session 10): captions were too faint; the light subtle text is gray 10, the same step as muted.
+  'text-subtle': ['gray-10', 'gray-10'],
   border: ['gray-5', 'gray-5'],
   'border-control': ['gray-7', 'gray-7'],
-  brand: ['burgundy-12', 'burgundy-11'],
+  // Session 10 (A3/A4): accent text, link and focus are burgundy 11 in light and the neutral high-contrast text in dark (no pink).
+  brand: ['burgundy-11', 'gray-12'],
+  link: ['burgundy-11', 'gray-12'],
   'brand-fill': ['burgundy-9', 'burgundy-9'],
   'brand-fill-hover': ['burgundy-10', 'burgundy-10'],
+  'brand-fill-pressed': ['burgundy-11', 'burgundy-8'],
   'brand-soft': ['burgundy-3', 'burgundy-3'],
-  'brand-on-soft': ['burgundy-12', 'burgundy-11'],
-  focus: ['burgundy-12', 'burgundy-11'],
+  'brand-on-soft': ['burgundy-11', 'gray-12'],
+  focus: ['burgundy-11', 'gray-12'],
   wordmark: ['burgundy-9', 'gray-12'],
-  'outline-border': ['burgundy-9', 'burgundy-10'],
-  'outline-border-hover': ['burgundy-10', 'burgundy-11'],
-  'hover-bg': ['burgundy-9', 'burgundy-9'],
-  'hover-border': ['burgundy-9', 'burgundy-9'],
-  'hover-ghost-border': ['burgundy-9', 'burgundy-9'],
+  'outline-border': ['burgundy-11', 'gray-10'],
+  'outline-border-hover': ['burgundy-12', 'gray-12'],
+  'secondary-hover-bg': ['burgundy-3', 'gray-3'],
+  'secondary-pressed-bg': ['burgundy-4', 'gray-4'],
+  // A transparent control hovers one grey step and presses the next; the hover text is the ordinary text.
+  'hover-bg': ['gray-3', 'gray-3'],
+  'hover-text': ['gray-12', 'gray-12'],
+  'hover-border': ['gray-5', 'gray-6'],
+  'hover-ghost-border': ['gray-5', 'gray-6'],
+  'pressed-bg': ['gray-4', 'gray-4'],
   'row-hover-bg': ['gray-2', 'gray-3'],
-  'nav-hover-bg': ['gray-4', 'gray-4'],
+  'nav-hover-bg': ['gray-3', 'gray-3'],
   'nav-hover-text': ['gray-12', 'gray-12'],
   'nav-active-bg': ['burgundy-9', 'burgundy-9'],
-  'auth-flat': ['burgundy-9', 'gray-2'],
+  'auth-flat': ['gray-1', 'gray-1'],
+  'on-auth-flat': ['gray-12', 'gray-12'],
   danger: ['danger-11', 'danger-11'],
   'danger-bg': ['danger-3', 'danger-3'],
   'danger-fill': ['danger-9', 'danger-9'],
@@ -156,7 +169,7 @@ const deltaE = (a: string, b: string): number => {
 };
 
 test('every family has 12 steps in the light, both dark and the forced-light blocks', () => {
-  for (const theme of [light, darkAttribute, forcedLight]) {
+  for (const theme of [light, darkPreview, forcedLight]) {
     for (const family of FAMILIES) {
       for (let step = 1; step <= 12; step++)
         hex(theme[`--ls-${family}-${step}`], `${family}-${step}`);
@@ -169,19 +182,68 @@ test('the burgundy light solid is #782b37 and the dark solid is a burgundy, not 
   assert.equal(light['--ls-brand-fill'], '#782b37');
   assert.equal(light['--ls-bg-page'], '#ffffff');
   assert.equal(light['--ls-bg-sunken'], '#f5f5f7');
-  assert.equal(darkAttribute['--ls-bg-page'], '#000000');
-  assert.equal(darkAttribute['--ls-bg-sunken'], '#1c1c1e');
-  assert.equal(darkAttribute['--ls-bg-raised'], '#2c2c2e');
-  assert.equal(darkAttribute['--ls-bg-pressed'], '#3a3a3c');
+  assert.equal(darkPreview['--ls-bg-page'], '#000000');
+  assert.equal(darkPreview['--ls-bg-sunken'], '#1c1c1e');
+  assert.equal(darkPreview['--ls-bg-raised'], '#2c2c2e');
+  assert.equal(darkPreview['--ls-bg-pressed'], '#3a3a3c');
   for (const retired of ['#e48f9f', '#eca5b2', '#3a2227']) {
     assert.ok(
       !v2Css.includes(retired),
       `${retired} (the old candy pink) is gone from the v2 scope`,
     );
   }
-  // White text on the dark fill, as on the light one.
-  assert.equal(darkAttribute['--ls-on-brand'], '#ffffff');
-  assert.equal(darkAttribute['--ls-hover-text'], '#ffffff');
+  // White text on the dark fill, as on the light one; a neutral hover keeps the ordinary text.
+  assert.equal(darkPreview['--ls-on-brand'], '#ffffff');
+  assert.equal(darkPreview['--ls-hover-text'], '#f5f5f7');
+});
+
+test('A3/A4 role values (light / dark) and no role points at the pink steps in dark', () => {
+  const expected: Record<string, [string, string]> = {
+    brand: ['#60212a', '#f5f5f7'],
+    'brand-on-soft': ['#60212a', '#f5f5f7'],
+    focus: ['#60212a', '#f5f5f7'],
+    link: ['#60212a', '#f5f5f7'],
+    'link-rest-decoration': ['none', 'underline'],
+    'outline-border': ['#60212a', '#a1a1a6'],
+    'outline-border-hover': ['#521b24', '#f5f5f7'],
+    'brand-fill-pressed': ['#60212a', '#873742'],
+    'secondary-hover-bg': ['#f9eced', '#2c2c2e'],
+    'secondary-pressed-bg': ['#f7e1e2', '#3a3a3c'],
+    'hover-bg': ['#ececef', '#2c2c2e'],
+    'hover-text': ['#1d1d1f', '#f5f5f7'],
+    'hover-border': ['#d2d2d7', '#58585b'],
+    'hover-ghost-border': ['#d2d2d7', '#58585b'],
+    'pressed-bg': ['#e2e2e5', '#3a3a3c'],
+    'nav-hover-bg': ['#ececef', '#2c2c2e'],
+    'auth-flat': ['#ffffff', '#000000'],
+    'on-auth-flat': ['#1d1d1f', '#f5f5f7'],
+    'text-subtle': ['#515154', '#a1a1a6'],
+  };
+  for (const [role, [lightValue, darkValue]] of Object.entries(expected)) {
+    assert.equal(light[`--ls-${role}`], lightValue, `${role} (light)`);
+    assert.equal(darkPreview[`--ls-${role}`], darkValue, `${role} (dark)`);
+    assert.equal(forcedLight[`--ls-${role}`], lightValue, `${role} (forced light)`);
+  }
+  for (const [name, value] of Object.entries(darkPreview)) {
+    if (/^--ls-burgundy-\d+$/.test(name)) continue;
+    assert.ok(!['#dcadb0', '#f8ddde'].includes(value), `${name} is a pink step (${value}) in dark`);
+  }
+  // Link contrast (WCAG 2.x): light on both bands, dark on black.
+  assert.equal(ratio(token(light, 'link'), '#ffffff').toFixed(2), '12.01');
+  assert.equal(ratio(token(light, 'link'), '#f5f5f7').toFixed(2), '11.03');
+  assert.equal(ratio(token(darkPreview, 'link'), '#000000').toFixed(2), '19.29');
+  // Subtle text (B1): the same contrast as the muted text on both light bands.
+  assert.equal(light['--ls-text-subtle'], light['--ls-text-muted']);
+  assert.equal(ratio(token(light, 'text-subtle'), '#ffffff').toFixed(2), '7.91');
+  assert.equal(ratio(token(light, 'text-subtle'), '#f5f5f7').toFixed(2), '7.26');
+});
+
+test('the secondary-button hover movement tokens are gone; the staff route fade is a compact token', () => {
+  for (const name of ['--ls-btn-lift', '--ls-btn-zoom', '--ls-btn-nudge']) {
+    assert.ok(!css.includes(name), `${name} is deleted`);
+  }
+  assert.equal(compact['--ls-dur-route'], '120ms');
+  assert.equal(reducedMotion['--ls-dur-route'], '0ms');
 });
 
 test('each role token is the documented step of its scale, in both modes', () => {
@@ -192,8 +254,8 @@ test('each role token is the documented step of its scale, in both modes', () =>
       `${role} (light) = ${lightStep}`,
     );
     assert.equal(
-      darkAttribute[`--ls-${role}`],
-      darkAttribute[`--ls-${darkStep}`],
+      darkPreview[`--ls-${role}`],
+      darkPreview[`--ls-${darkStep}`],
       `${role} (dark) = ${darkStep}`,
     );
   }
@@ -232,8 +294,8 @@ test('light: white on the accent fill, its hover and the danger fill is 4.5:1; s
   }
 });
 
-test('dark: text, accent text and status text hold on every elevation step; the accent is a muted rose, 7:1 on E0 and E1', () => {
-  const dark = darkAttribute;
+test('dark: text, accent text and status text hold on every elevation step; the accent text is the neutral high-contrast text, 7:1 on E0 and E1', () => {
+  const dark = darkPreview;
   const [e0, e1, e2, e3] = ['#000000', '#1c1c1e', '#2c2c2e', '#3a3a3c'] as const;
   for (const surface of [e0, e1, e2]) {
     for (const name of [
@@ -256,13 +318,14 @@ test('dark: text, accent text and status text hold on every elevation step; the 
   }
   // E3 is a neutral hover or pressed surface only: ordinary text stays readable on it, the accent text is never used there.
   assert.ok(ratio(token(dark, 'text'), e3) >= 4.5);
-  // Muted rose: clearly less saturated than the old #e48f9f.
+  // No pink in dark (A3): the accent text is the neutral text itself, with no chroma.
+  assert.equal(dark['--ls-brand'], dark['--ls-text']);
   const [, a, b] = oklab(token(dark, 'brand'));
-  assert.ok(Math.hypot(a, b) < 0.07, `accent text chroma ${Math.hypot(a, b).toFixed(3)} < 0.07`);
+  assert.ok(Math.hypot(a, b) < 0.01, `accent text chroma ${Math.hypot(a, b).toFixed(3)} < 0.01`);
 });
 
 test('dark: white text on the accent fill and its hover, dark text on the danger fill, status text on its tint', () => {
-  const dark = darkAttribute;
+  const dark = darkPreview;
   assert.ok(ratio(token(dark, 'on-brand'), token(dark, 'brand-fill')) >= 5);
   assert.ok(ratio(token(dark, 'on-brand'), token(dark, 'brand-fill-hover')) >= 4.5);
   assert.ok(ratio(token(dark, 'brand-on-soft'), token(dark, 'brand-soft')) >= 7);
@@ -281,7 +344,7 @@ test('dark: white text on the accent fill and its hover, dark text on the danger
 test('the brand and the danger color are never close: solid vs solid and text vs text, in both modes', () => {
   for (const [mode, theme] of [
     ['light', light],
-    ['dark', darkAttribute],
+    ['dark', darkPreview],
   ] as const) {
     assert.ok(
       deltaE(token(theme, 'brand-fill'), token(theme, 'danger-fill')) >= 0.15,
@@ -296,21 +359,32 @@ test('the brand and the danger color are never close: solid vs solid and text vs
   assert.ok(deltaE(token(light, 'brand'), token(light, 'text')) >= 0.1);
 });
 
-test('hover: solid accent with its text in both modes (rule 4); rows and sidebar items use a neutral tint (Q3)', () => {
-  for (const theme of [light, darkAttribute]) {
-    assert.equal(theme['--ls-hover-bg'], theme['--ls-brand-fill']);
-    assert.equal(theme['--ls-hover-text'], theme['--ls-on-brand']);
-    assert.equal(theme['--ls-hover-border'], theme['--ls-hover-bg']);
-    assert.notEqual(theme['--ls-row-hover-bg'], theme['--ls-hover-bg']);
-    assert.notEqual(theme['--ls-nav-hover-bg'], theme['--ls-hover-bg']);
+test('hover: never a vivid colour; one grey step on hover, the next on press; the secondary tint and the primary press keep the accent', () => {
+  for (const theme of [light, darkPreview]) {
+    assert.notEqual(theme['--ls-hover-bg'], theme['--ls-brand-fill']);
+    assert.equal(theme['--ls-hover-text'], theme['--ls-text']);
+    assert.equal(theme['--ls-hover-bg'], theme['--ls-gray-3']);
+    assert.equal(theme['--ls-pressed-bg'], theme['--ls-gray-4']);
+    assert.equal(
+      theme['--ls-nav-hover-bg'],
+      theme['--ls-hover-bg'],
+      'the sidebar hovers like the rest',
+    );
+    assert.notEqual(theme['--ls-nav-active-bg'], theme['--ls-nav-hover-bg']);
     assert.ok(ratio(token(theme, 'hover-text'), token(theme, 'hover-bg')) >= 4.5);
+    assert.ok(ratio(token(theme, 'text'), token(theme, 'pressed-bg')) >= 4.5);
     assert.ok(ratio(token(theme, 'text'), token(theme, 'row-hover-bg')) >= 4.5);
     assert.ok(ratio(token(theme, 'nav-hover-text'), token(theme, 'nav-hover-bg')) >= 4.5);
     assert.ok(ratio(token(theme, 'nav-active-text'), token(theme, 'nav-active-bg')) >= 4.5);
+    // The secondary label (the accent text) holds on its hover and pressed tints; white holds on the pressed primary fill.
+    for (const tint of ['secondary-hover-bg', 'secondary-pressed-bg']) {
+      assert.ok(ratio(token(theme, 'brand'), token(theme, tint)) >= 4.5, tint);
+    }
+    assert.ok(ratio(token(theme, 'on-brand'), token(theme, 'brand-fill-pressed')) >= 4.5);
+    assert.ok(ratio(token(theme, 'outline-border'), token(theme, 'bg-page')) >= 3);
   }
   assert.equal(light['--ls-row-hover-bg'], '#f5f5f7');
-  assert.equal(light['--ls-nav-hover-bg'], '#e2e2e5');
-  assert.equal(darkAttribute['--ls-nav-hover-bg'], '#3a3a3c');
+  assert.notEqual(light['--ls-row-hover-bg'], light['--ls-hover-bg']);
 });
 
 test('no shadows, radius 8 / 18 / pill, the scrim and the comfortable sizes (DESIGN.md 6.5, 6.6)', () => {
@@ -324,7 +398,7 @@ test('no shadows, radius 8 / 18 / pill, the scrim and the comfortable sizes (DES
   );
   assert.equal(light['--ls-radius-full'], '980px');
   assert.equal(light['--ls-overlay'], 'rgb(0 0 0 / 0.4)');
-  assert.equal(darkAttribute['--ls-overlay'], 'rgb(0 0 0 / 0.6)');
+  assert.equal(darkPreview['--ls-overlay'], 'rgb(0 0 0 / 0.6)');
   assert.equal(light['--ls-control-h'], '44px');
   assert.equal(light['--ls-row-h'], '56px');
 });
@@ -340,18 +414,19 @@ test('text on a photo: white over one flat scrim that holds 4.5:1 even over a pu
     ratio('#ffffff', hexGrey) >= 4.5,
     `white on the scrim over white: ${ratio('#ffffff', hexGrey).toFixed(2)}`,
   );
-  assert.equal(darkAttribute['--ls-scrim'], undefined, 'a photo does not follow the theme');
+  assert.equal(darkPreview['--ls-scrim'], undefined, 'a photo does not follow the theme');
 });
 
-test('Q4: the flat sign-in panel is the accent (dark #1c1c1e) with white text at 4.5:1, and the card on it is a raised surface', () => {
-  assert.equal(light['--ls-auth-flat'], '#782b37');
-  assert.equal(darkAttribute['--ls-auth-flat'], '#1c1c1e');
-  assert.equal(light['--ls-on-auth-flat'], '#ffffff');
-  assert.ok(ratio(light['--ls-on-auth-flat']!, light['--ls-auth-flat']!) >= 4.5);
-  assert.ok(ratio(light['--ls-on-auth-flat']!, darkAttribute['--ls-auth-flat']!) >= 4.5);
-  // The card is told from the panel by its own step: white on the accent, #2c2c2e on #1c1c1e.
-  assert.notEqual(light['--ls-bg-raised'], light['--ls-auth-flat']);
-  assert.notEqual(darkAttribute['--ls-bg-raised'], darkAttribute['--ls-auth-flat']);
+test('Q4 (session 10): the flat sign-in panel is the base colour (white / black) with the ordinary text, and the staff card is a raised step on the sunken canvas', () => {
+  assert.equal(light['--ls-auth-flat'], '#ffffff');
+  assert.equal(darkPreview['--ls-auth-flat'], '#000000');
+  assert.equal(light['--ls-on-auth-flat'], light['--ls-text']);
+  assert.equal(darkPreview['--ls-on-auth-flat'], darkPreview['--ls-text']);
+  for (const theme of [light, darkPreview]) {
+    assert.ok(ratio(token(theme, 'on-auth-flat'), token(theme, 'auth-flat')) >= 4.5);
+    // The staff sign-in canvas is the sunken band (foundation-v2.css .ls-auth); the card on it is the raised step with a hairline.
+    assert.notEqual(theme['--ls-bg-raised'], theme['--ls-bg-sunken']);
+  }
 });
 
 test('no gold, yellow or gradient in the v2 scope', () => {
@@ -393,6 +468,10 @@ test('the alternate band hands a card the other step; the document behind the fr
   assert.match(css, /:root:has\(\[data-ui='v2'\]\) \{\s*--ls-bg-page: #ffffff;/);
   assert.match(
     css,
-    /:root\[data-theme='dark'\]:has\(\[data-ui='v2'\]\) \{\s*--ls-bg-page: #000000;/,
+    /:root\[data-preview-theme='dark'\]:has\(\[data-ui='v2'\]\) \{\s*--ls-bg-page: #000000;/,
+  );
+  assert.match(
+    css,
+    /:root:not\(\[data-preview-theme='light'\]\):has\(\[data-ui='v2'\]\) \{\s*--ls-bg-page: #000000;/,
   );
 });

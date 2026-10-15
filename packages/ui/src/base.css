@@ -93,3 +93,17 @@ table {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* The same for the visitor's off switch (ls-fx=off, set on <html> by the server from the first paint) and the gate's reduced mark (data saver,
+   low memory): no tweens at all, content in its final state, loops stopped (Owner G6, 2026-10-16). */
+html[data-ls-fx='off'] *,
+html[data-ls-fx='off'] *::before,
+html[data-ls-fx='off'] *::after,
+html[data-ls-motion='reduced'] *,
+html[data-ls-motion='reduced'] *::before,
+html[data-ls-motion='reduced'] *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}

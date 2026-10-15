@@ -122,12 +122,12 @@ test('CTV: agreed total, count, unagreed, branch attribution; precise wording', 
   const markup = view(ctv);
   for (const text of [
     vi.myIncome.total,
-    '280.000 ₫',
+    '280.000\u00a0₫',
     vi.myIncome.count,
     vi.myIncome.unagreed,
     vi.myIncome.unagreedValue,
-    '80.000 ₫',
-    '150.000 ₫',
+    '80.000\u00a0₫',
+    '150.000\u00a0₫',
     'Lucy Spa Đà Nẵng',
     'Lucy Spa Tokyo',
     'Theo ca',
@@ -144,14 +144,14 @@ test('CTV: agreed total, count, unagreed, branch attribution; precise wording', 
   for (const wrong of ['Đã nhận', 'Thực nhận', 'Đã thanh toán']) {
     assert.ok(!markup.includes(wrong), wrong);
   }
-  assert.ok(!markup.includes('>0 ₫<'));
+  assert.ok(!markup.includes('>0\u00a0₫<'));
   // Future sources are named as not yet available, not as zero amounts.
   assert.ok(markup.includes(vi.myIncome.unavailableTitle));
   for (const source of FUTURE) assert.ok(markup.includes(vi.myIncome.sources[source]), source);
   const english = view(ctv, 'en');
   for (const text of [
     'Total agreed work pay',
-    '280,000 ₫',
+    '280,000\u00a0₫',
     'Not agreed yet',
     'Pay not yet agreed',
   ]) {
@@ -168,16 +168,16 @@ test('CTV: agreed total, count, unagreed, branch attribution; precise wording', 
 test('official / manager: configured monthly base salary only; no derived or fake amounts', () => {
   const markup = view(official);
   assert.ok(markup.includes(vi.myIncome.baseSalary));
-  assert.ok(markup.includes('12.000.000 ₫ / tháng'));
+  assert.ok(markup.includes('12.000.000\u00a0₫ / tháng'));
   assert.ok(markup.includes(vi.myIncome.baseSalaryNote));
   assert.ok(!markup.includes(vi.myIncome.ctvTitle));
-  assert.ok(!/(^|[^0-9.])0 ₫/.test(markup), 'no zero amounts');
+  assert.ok(!/(^|[^0-9.])0\u00a0₫/.test(markup), 'no zero amounts');
   assert.ok(
     view({ ...official, baseSalary: { amountVnd: null, unit: 'MONTH' } }).includes(
       vi.myIncome.baseSalaryNotSet,
     ),
   );
-  assert.ok(view(official, 'en').includes('12,000,000 ₫ / month'));
+  assert.ok(view(official, 'en').includes('12,000,000\u00a0₫ / month'));
 });
 
 test('once payroll has started: tour, commission and tips are shown, with counts; only adjustments stay unavailable', () => {
@@ -196,9 +196,9 @@ test('once payroll has started: tour, commission and tips are shown, with counts
   for (const text of [
     vi.myIncome.earningsTitle,
     vi.myIncome.earningsTour,
-    '45.000 ₫',
+    '45.000\u00a0₫',
     '3 lượt',
-    '20.000 ₫',
+    '20.000\u00a0₫',
     vi.myIncome.earningsNote,
   ]) {
     assert.ok(live.includes(text), text);
