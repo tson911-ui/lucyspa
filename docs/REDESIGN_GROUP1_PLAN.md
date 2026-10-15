@@ -262,6 +262,18 @@ Items 3, 4 and 5 are Step C11b below. Answers 1 and 2 close the matching "pendin
   `/contact` has a keyless Google embed. See `docs/REDESIGN_GROUP1_S7B_REPORT.md`. Pending Owner: the staff-only email guard relaxed for customers,
   the birthday rule (never empty), no staff screen for a customer's birthday.
 
+### Owner decisions on the session 7b report (2026-10-15)
+
+1. Customer email change by the current password plus a code to the new address, with `allowCustomer` on the guard: accepted. The "pending Owner"
+   notes of items 2 and 3 above are closed by this answer.
+2. The birthday stays read only for customers. A staff screen to edit a customer's birthday goes into **group 3** (admin); it is not built in group 1.
+3. The contact page's orphan action pills are fixed in session 8 (before C18).
+4. Policy pages: `docs/policies.md` holds the Owner's 8 pages (Vietnamese only, one per `## ` heading, wording unchanged). They are imported as published
+   Info pages, the footer "Chính sách" column lists all 8, the legal line is "Điều khoản sử dụng · Chính sách bảo mật". A one-time idempotent import
+   command is written for production and documented in the deploy guide (run after the group 1 deploy; it skips pages that already exist).
+
+Carried to group 3: a staff screen to edit a customer's birthday (Owner, 2026-10-15).
+
 ### Session 8
 
 - **C18: closing gate (L).** Status: todo.
