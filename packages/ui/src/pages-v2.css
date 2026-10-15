@@ -546,6 +546,12 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   inset: 0;
 }
 
+/* The loading title band: the headline bar and the sentence bar with the gap the real title and sentence have. */
+[data-ui='v2'] .ls-skel-title {
+  display: grid;
+  gap: var(--ls-space-4);
+}
+
 /* The row's stand-in until its code is loaded (and without scripts): quiet bars where the words go, the same box as a card. */
 [data-ui='v2'] .ls-skel {
   display: block;
@@ -1210,6 +1216,11 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
 }
 
 @media (min-width: 768px) {
+  /* The frame keeps its shape beside the words, so a picture that is slow or cannot be shown (the droplet) does not shrink it to a strip. */
+  [data-ui='v2'] .ls-prod-hero-picture {
+    aspect-ratio: 4 / 3;
+  }
+
   [data-ui='v2'] .ls-prod-hero-image {
     align-items: center;
     gap: var(--ls-space-8);
@@ -1281,6 +1292,12 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   [data-ui='v2'] .ls-prod-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+}
+
+/* The loading card has no reveal wrapper: as the item's own child it takes the column's whole width. */
+[data-ui='v2'] .ls-prod-grid > li > .ls-pcard {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 [data-ui='v2'] .ls-prod-grid > li > .ls-reveal {

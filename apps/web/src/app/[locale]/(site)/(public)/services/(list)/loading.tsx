@@ -8,7 +8,7 @@ export default function Loading() {
   return (
     <PublicMain>
       <Band tone="page" className="ls-band--alt ls-svc-title">
-        <div aria-busy="true">
+        <div className="ls-skel-title" aria-busy="true">
           <Skeleton lines={1} height="var(--ls-space-9)" width="40%" />
           <Skeleton lines={1} height="var(--ls-space-5)" width="60%" />
         </div>
