@@ -2287,6 +2287,81 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   text-underline-offset: var(--ls-space-1);
 }
 
+/* A table in the text (refund schedule, membership tiers): one single-border surface like the data table, sentences wrap, nothing
+   scrolls sideways. Below 640 px every row is a stacked block and each value carries its column name. */
+[data-ui='v2'] .ls-info-table-wrap {
+  margin: 0 0 var(--ls-space-4);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+  overflow: hidden;
+}
+
+[data-ui='v2'] .ls-info-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+[data-ui='v2'] .ls-info-table :is(th, td) {
+  padding: var(--ls-space-3) var(--ls-space-4);
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+[data-ui='v2'] .ls-info-table thead th {
+  background: var(--ls-bg-sunken);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-info-table tbody th {
+  font-weight: var(--ls-weight-label);
+}
+
+[data-ui='v2'] .ls-info-table tbody tr + tr {
+  border-top: 1px solid var(--ls-border);
+}
+
+@media (max-width: 639px) {
+  [data-ui='v2'] .ls-info-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  [data-ui='v2'] .ls-info-table :is(tbody, tr, th, td) {
+    display: block;
+  }
+
+  [data-ui='v2'] .ls-info-table tbody tr {
+    padding: var(--ls-space-4);
+  }
+
+  [data-ui='v2'] .ls-info-table :is(th, td) {
+    padding: 0;
+  }
+
+  [data-ui='v2'] .ls-info-table td {
+    margin-top: var(--ls-space-2);
+  }
+
+  [data-ui='v2'] .ls-info-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--ls-text-muted);
+    font-size: var(--ls-type-label);
+    font-weight: var(--ls-weight-label);
+    line-height: var(--ls-lh-label);
+  }
+}
+
 [data-ui='v2'] .ls-info-toc {
   display: none;
 }

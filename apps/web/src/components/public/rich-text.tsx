@@ -1,4 +1,5 @@
-import type { RichBlock, RichInline } from '@lucy-spa/contracts';
+import { inlineText, type RichBlock, type RichInline } from '@lucy-spa/contracts';
+import { InfoTable } from '@lucy-spa/ui';
 import Link from 'next/link';
 import { Fragment } from 'react';
 import type { Locale } from '../../i18n/locales';
@@ -90,6 +91,17 @@ export function RichBlocks({
             );
           case 'p':
             return <p key={index}>{inline(block.inlines)}</p>;
+          case 'table':
+            return (
+              <InfoTable
+                key={index}
+                header={block.header.map((cell) => ({
+                  node: inline(cell),
+                  label: inlineText(cell),
+                }))}
+                rows={block.rows.map((row) => row.map((cell) => inline(cell)))}
+              />
+            );
           case 'ul':
           case 'ol': {
             const List = block.type;

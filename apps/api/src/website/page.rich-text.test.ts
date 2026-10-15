@@ -159,6 +159,58 @@ test('raw HTML, images, other heading levels and control characters are refused 
   assert.ok(parseRichText('#hashtag là chữ thường').ok);
 });
 
+test('a pipe table: header, rule line, rows; bold and links inside cells; it ends at a blank line or any other text', () => {
+  const blocks = blocksOf(
+    [
+      'Trước bảng.',
+      '| Hạng | Điểm | Ưu đãi |',
+      '| --- | --- | --- |',
+      '| Silver | Từ 500 | Giảm **3%** |',
+      '| Gold | Từ 1.000 | Giảm 4% |',
+      'Sau bảng.',
+      '',
+      'Dòng cuối.',
+    ].join('\n'),
+  );
+  assert.deepEqual(
+    blocks.map((block) => block.type),
+    ['p', 'table', 'p', 'p'],
+  );
+  const table = blocks[1];
+  assert.ok(table?.type === 'table');
+  assert.deepEqual(table.header, [[text('Hạng')], [text('Điểm')], [text('Ưu đãi')]]);
+  assert.equal(table.rows.length, 2);
+  assert.deepEqual(table.rows[0]?.[2], [text('Giảm '), { type: 'strong', children: [text('3%')] }]);
+  // The closing bar is optional (a row starts with "|"), and an escaped bar is text.
+  const loose = blocksOf('| Tên | Giá\n| --- | ---\n| A \\| B | 10');
+  assert.ok(loose[0]?.type === 'table');
+  assert.deepEqual(loose[0].rows[0]?.[0], [text('A | B')]);
+});
+
+test('a "|" row that is not a whole table is refused with its line: no rule line, uneven rows, one column, too wide, no data', () => {
+  const problem = (source: string) => problemOf(source);
+  assert.deepEqual(
+    [problem('| A | B |\n| C | D |')?.problem, problem('| A | B |\n| C | D |')?.line],
+    ['table', 1],
+  );
+  assert.deepEqual(
+    [
+      problem('| A | B |\n| --- | --- |\n| 1 |')?.problem,
+      problem('| A | B |\n| --- | --- |\n| 1 |')?.line,
+    ],
+    ['table', 3],
+  );
+  assert.equal(problem('| A |\n| --- |\n| 1 |')?.problem, 'table');
+  assert.equal(problem('| A | B |\n| --- | --- |')?.problem, 'table');
+  assert.equal(problem('| A | B |\n| --- |\n| 1 | 2 |')?.problem, 'table');
+  const wide = (n: number) => (cell: string) => `| ${Array(n).fill(cell).join(' | ')} |`;
+  assert.equal(problem([wide(7)('a'), wide(7)('---'), wide(7)('1')].join('\n'))?.problem, 'table');
+  assert.ok(parseRichText([wide(6)('a'), wide(6)('---'), wide(6)('1')].join('\n')).ok);
+  // Markup rules still hold inside a cell.
+  assert.equal(problem('| A | B |\n| --- | --- |\n| [x](javascript:1) | 2 |')?.problem, 'link');
+  assert.equal(problem('| A | B |\n| --- | --- |\n| <b>x</b> | 2 |')?.problem, 'html');
+});
+
 test('empty text, a heading with no words, too long and too many blocks are refused', () => {
   assert.equal(problemOf('')?.problem, 'empty');
   assert.equal(problemOf('   \n\n  ')?.problem, 'empty');

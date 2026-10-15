@@ -109,7 +109,13 @@ export interface RichList {
   type: 'ul' | 'ol';
   items: RichInline[][];
 }
-export type RichBlock = RichHeading | RichParagraph | RichList;
+/** A pipe table: one header row and at least one body row, every row with the header's number of cells. */
+export interface RichTable {
+  type: 'table';
+  header: RichInline[][];
+  rows: RichInline[][][];
+}
+export type RichBlock = RichHeading | RichParagraph | RichList | RichTable;
 
 export type RichTextProblem =
   /** Raw HTML (`<b>`, `</p>`, `<!--`): write the markup instead. */
@@ -118,6 +124,8 @@ export type RichTextProblem =
   /** A heading level other than `##` and `###` (the page title is the one heading above them). */
   | 'headingLevel'
   | 'link'
+  /** A `|` row that is not a table: no `| --- |` line under the header, a row with another number of cells, or too many columns. */
+  | 'table'
   | 'control'
   | 'empty'
   | 'tooLong'
@@ -129,6 +137,9 @@ export type RichTextResult =
 const HEADING = /^(#{1,6})[ \t]+(.+?)[ \t]*$/;
 const BULLET = /^[-*+][ \t]+(.+)$/;
 const NUMBERED = /^[0-9]{1,3}[.)][ \t]+(.+)$/;
+const TABLE_ROW = /^\|/;
+const TABLE_RULE = /^:?-{3,}:?$/;
+const TABLE_MAX_COLUMNS = 6;
 const HTML_LIKE = /(?<!\\)<[A-Za-z/!?]/;
 const IMAGE_LIKE = /(?<!\\)!\[/;
 // Controls, lone surrogates and the text-direction overrides that can make a link read as another address.
@@ -230,6 +241,27 @@ function parseInlines(source: string, line: number, inLink = false): RichInline[
   return out;
 }
 
+/** The cells of one `| a | b |` row: split on every `|` that is not escaped, the outer bars optional, each cell trimmed. */
+function tableCells(row: string): string[] {
+  const cells: string[] = [];
+  let cell = '';
+  for (let i = row.startsWith('|') ? 1 : 0; i < row.length; i += 1) {
+    const char = row[i] as string;
+    if (char === '\\' && i + 1 < row.length) {
+      cell += char + row[i + 1];
+      i += 1;
+    } else if (char === '|') {
+      cells.push(cell.trim());
+      cell = '';
+    } else {
+      cell += char;
+    }
+  }
+  // A closing bar leaves nothing after it; text after the last bar is a last cell.
+  if (cell.trim() !== '') cells.push(cell.trim());
+  return cells;
+}
+
 /** The index of the next `marker` at or after `from` that is not escaped, or -1. */
 function findClosing(source: string, from: number, marker: string): number {
   for (let i = from; i < source.length; i += 1) {
@@ -293,10 +325,38 @@ function parseBlocks(source: string): RichBlock[] {
     });
     list = null;
   };
+  let table: { text: string; line: number }[] = [];
+  const closeTable = () => {
+    if (table.length === 0) return;
+    const rows = table.map((row) => ({ cells: tableCells(row.text), line: row.line }));
+    table = [];
+    const [head, rule, ...body] = rows as [
+      (typeof rows)[number],
+      (typeof rows)[number] | undefined,
+      ...(typeof rows)[number][],
+    ];
+    const columns = head.cells.length;
+    if (
+      !rule ||
+      body.length === 0 ||
+      columns < 2 ||
+      columns > TABLE_MAX_COLUMNS ||
+      rule.cells.length !== columns ||
+      !rule.cells.every((cell) => TABLE_RULE.test(cell))
+    ) {
+      throw new Problem('table', head.line);
+    }
+    const cellsOf = (row: (typeof rows)[number]) => {
+      if (row.cells.length !== columns) throw new Problem('table', row.line);
+      return row.cells.map((cell) => parseInlines(cell, row.line));
+    };
+    blocks.push({ type: 'table', header: cellsOf(head), rows: body.map(cellsOf) });
+  };
   lines.forEach((raw, index) => {
     const line = index + 1;
     if (CONTROL.test(raw.replace(/\t/g, ' '))) throw new Problem('control', line);
     const row = raw.trim();
+    if (!TABLE_ROW.test(row)) closeTable();
     if (row === '') {
       closeParagraph();
       closeList();
@@ -304,6 +364,12 @@ function parseBlocks(source: string): RichBlock[] {
     }
     if (HTML_LIKE.test(row)) throw new Problem('html', line);
     if (IMAGE_LIKE.test(row)) throw new Problem('image', line);
+    if (TABLE_ROW.test(row)) {
+      closeParagraph();
+      closeList();
+      table.push({ text: row, line });
+      return;
+    }
     const heading = HEADING.exec(row);
     if (heading) {
       closeParagraph();
@@ -337,6 +403,7 @@ function parseBlocks(source: string): RichBlock[] {
   });
   closeParagraph();
   closeList();
+  closeTable();
   if (blocks.length === 0) throw new Problem('empty', 1);
   if (blocks.length > WEBSITE_PAGE_LIMITS.blocks) throw new Problem('tooManyBlocks', 1);
   return blocks;

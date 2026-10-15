@@ -8,3 +8,4 @@ coverage
 packages/database/src/generated
 **/next-env.d.ts
 .claude/skills
+docs/policies.md

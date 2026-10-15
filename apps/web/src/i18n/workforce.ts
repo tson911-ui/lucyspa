@@ -1127,9 +1127,9 @@ const vi = {
         INFO: 'Trang thông tin thường, không tự có liên kết ở chân trang.',
         POLICY: 'Hiện trong cột "Chính sách" ở chân trang.',
         TERMS:
-          'Hiện trong dòng pháp lý dưới cùng của chân trang. Chỉ một trang được xuất bản với loại này.',
+          'Hiện trong cột "Chính sách" và trong dòng pháp lý dưới cùng của chân trang. Chỉ một trang được xuất bản với loại này.',
         PRIVACY:
-          'Hiện trong dòng pháp lý dưới cùng của chân trang. Chỉ một trang được xuất bản với loại này.',
+          'Hiện trong cột "Chính sách" và trong dòng pháp lý dưới cùng của chân trang. Chỉ một trang được xuất bản với loại này.',
       },
       contentSection: 'Nội dung',
       contentHint:
@@ -1138,7 +1138,7 @@ const vi = {
       bodyEn: 'Nội dung (tiếng Anh)',
       bodyHint: 'Còn {left} trong {max} ký tự.',
       syntax:
-        'Mẫu: ## Tiêu đề, ### Tiêu đề nhỏ, - mục danh sách, **đậm**, *nghiêng*, [chữ](https://địa-chỉ).',
+        'Mẫu: ## Tiêu đề, ### Tiêu đề nhỏ, - mục danh sách, **đậm**, *nghiêng*, [chữ](https://địa-chỉ). Bảng: dòng | Cột 1 | Cột 2 |, dòng | --- | --- |, rồi các dòng dữ liệu.',
       toolbar: 'Định dạng nội dung',
       view: 'Chế độ xem',
       write: 'Soạn thảo',
@@ -1185,6 +1185,8 @@ const vi = {
         html: 'Dòng {line} có mã HTML. Hãy dùng ký hiệu định dạng trong thanh công cụ thay cho HTML.',
         image: 'Dòng {line} có ảnh. Trang thông tin chưa hỗ trợ ảnh.',
         headingLevel: 'Dòng {line}: chỉ dùng ## cho tiêu đề và ### cho tiêu đề nhỏ.',
+        table:
+          'Dòng {line}: bảng chưa đúng. Cần dòng tiêu đề cột, dòng | --- | --- | bên dưới, ít nhất một dòng dữ liệu, mọi dòng cùng số cột (2 đến 6).',
         link: 'Dòng {line}: liên kết chưa hợp lệ. Dùng https://, mailto:, tel: hoặc đường dẫn như /vi/services.',
         control: 'Dòng {line} có ký tự không hợp lệ. Hãy xóa và gõ lại dòng này.',
         tooLong: 'Nội dung dài quá {max} ký tự. Hãy rút gọn hoặc tách thành hai trang.',
@@ -3940,9 +3942,9 @@ const en: Dictionary = {
         INFO: 'An ordinary page, with no footer link of its own.',
         POLICY: 'Listed in the "Policies" column of the footer.',
         TERMS:
-          'Linked in the legal line at the very bottom of the footer. Only one page can be published with this type.',
+          'Linked in the "Policies" column and in the legal line at the very bottom of the footer. Only one page can be published with this type.',
         PRIVACY:
-          'Linked in the legal line at the very bottom of the footer. Only one page can be published with this type.',
+          'Linked in the "Policies" column and in the legal line at the very bottom of the footer. Only one page can be published with this type.',
       },
       contentSection: 'Content',
       contentHint:
@@ -3951,7 +3953,7 @@ const en: Dictionary = {
       bodyEn: 'Content (English)',
       bodyHint: '{left} of {max} characters left.',
       syntax:
-        'Pattern: ## Heading, ### Small heading, - list item, **bold**, *italic*, [words](https://address).',
+        'Pattern: ## Heading, ### Small heading, - list item, **bold**, *italic*, [words](https://address). Table: a | Column 1 | Column 2 | line, a | --- | --- | line, then the data lines.',
       toolbar: 'Format the content',
       view: 'View mode',
       write: 'Write',
@@ -3998,6 +4000,8 @@ const en: Dictionary = {
         html: 'Line {line} has HTML. Use the formatting buttons instead of HTML.',
         image: 'Line {line} has an image. Info pages do not support images yet.',
         headingLevel: 'Line {line}: use ## for a heading and ### for a small heading only.',
+        table:
+          'Line {line}: the table is not right. It needs a column heading line, a | --- | --- | line under it, at least one data line, and the same number of columns (2 to 6) on every line.',
         link: 'Line {line}: the link is not valid. Use https://, mailto:, tel: or a path such as /en/services.',
         control: 'Line {line} has an invalid character. Delete and retype this line.',
         tooLong:

@@ -12,6 +12,7 @@
     "test:integration": "node --env-file-if-exists=../../.env --test ../../scripts/test-auth-integration.mjs && node --env-file-if-exists=../../.env --test ../../scripts/test-product-integration.mjs && node --env-file-if-exists=../../.env --test ../../scripts/test-phase7-integration.mjs && node --env-file-if-exists=../../.env --test ../../scripts/test-phase8-integration.mjs && node --env-file-if-exists=../../.env --test ../../scripts/test-claude-integration.mjs",
     "owner:bootstrap": "node --env-file-if-exists=../../.env dist/bootstrap/bootstrap-owner.cli.js",
     "organization:bootstrap": "node --env-file-if-exists=../../.env dist/bootstrap/organization-bootstrap.cli.js",
+    "pages:import-policies": "node --env-file-if-exists=../../.env dist/website/policy-pages.cli.js",
     "owner:reset-password": "node --env-file-if-exists=../../.env dist/bootstrap/owner-password-reset.cli.js"
   },
   "dependencies": {

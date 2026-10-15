@@ -63,11 +63,16 @@ export function PublicFooter({
   hasProducts?: boolean;
 }) {
   const text = getSiteText(locale);
-  // The policy column lists the policy pages; the legal line the terms page then the privacy page (a role holds at most one).
-  const pages = site?.pages ?? [];
-  const policyPages = pages.filter((page) => page.role === 'POLICY');
+  // The policy column lists every published policy page, the terms and privacy pages included (Owner, 2026-10-15); the legal line
+  // repeats those two, terms then privacy (a role holds at most one), under fixed labels.
+  const policyPages = site?.pages ?? [];
   const legalPages = (['TERMS', 'PRIVACY'] as const).flatMap((role) =>
-    pages.filter((page) => page.role === role),
+    policyPages
+      .filter((page) => page.role === role)
+      .map((page) => ({
+        slug: page.slug,
+        label: role === 'TERMS' ? text.footer.legalTerms : text.footer.legalPrivacy,
+      })),
   );
   const hours = site ? hoursHeadline(site.hours, locale, getSiteText(locale).home.closed) : null;
   // The shop's real data, in the order of the reference: brand and tagline, contact, links.
@@ -200,7 +205,7 @@ export function PublicFooter({
                       prefetch
                       transitionTypes={NAV_TRANSITION}
                     >
-                      {page.title}
+                      {page.label}
                     </Link>
                   </li>
                 ))}

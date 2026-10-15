@@ -126,6 +126,9 @@ export interface SiteText {
     /** The column of the shop's published policy pages, and the label of the legal line under the columns. */
     policies: string;
     legal: string;
+    /** The legal line names the two pages by their role, so the line reads the same whatever the pages are titled. */
+    legalTerms: string;
+    legalPrivacy: string;
     contact: string;
     /** One entry for both: Đăng nhập / Đăng ký. */
     signInUp: string;
@@ -403,6 +406,8 @@ const text = {
       links: 'Liên kết',
       policies: 'Chính sách',
       legal: 'Thông tin pháp lý',
+      legalTerms: 'Điều khoản sử dụng',
+      legalPrivacy: 'Chính sách bảo mật',
       contact: 'Liên hệ',
       signInUp: 'Đăng nhập / Đăng ký',
       phone: 'Điện thoại: {value}',
@@ -661,6 +666,8 @@ const text = {
       links: 'Links',
       policies: 'Policies',
       legal: 'Legal',
+      legalTerms: 'Terms of use',
+      legalPrivacy: 'Privacy policy',
       contact: 'Contact',
       signInUp: 'Sign in / Create account',
       phone: 'Phone: {value}',

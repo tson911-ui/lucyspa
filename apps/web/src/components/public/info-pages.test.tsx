@@ -95,6 +95,34 @@ test('an information page: one h1, the text before the first heading, h2 section
   assert.doesNotMatch(html, /lang="/, 'the page is in its own language');
 });
 
+test('a table in the text: a real table with column headings, the first cell a row heading, each value naming its column for a phone', () => {
+  const html = renderToStaticMarkup(
+    <InfoPageView
+      locale="vi"
+      page={page({
+        body: [
+          'Mở đầu.',
+          '',
+          '| Hạng | Điểm | Ưu đãi |',
+          '| --- | --- | --- |',
+          '| Silver | Từ 500 | Giảm **3%** |',
+          '| Gold | Từ 1.000 | Giảm 4% |',
+        ].join('\n'),
+      })}
+    />,
+  );
+  assert.match(html, /<div class="ls-info-table-wrap"><table class="ls-info-table">/);
+  assert.match(
+    html,
+    /<thead><tr><th scope="col">Hạng<\/th><th scope="col">Điểm<\/th><th scope="col">Ưu đãi<\/th><\/tr><\/thead>/,
+  );
+  assert.match(
+    html,
+    /<tr><th scope="row">Silver<\/th><td data-label="Điểm">Từ 500<\/td><td data-label="Ưu đãi">Giảm <strong>3%<\/strong><\/td><\/tr>/,
+  );
+  assert.equal(html.match(/<tbody>/g)?.length, 1);
+});
+
 test('links: the language in /{locale}, a new tab said in words for another site, tel stays plain; markup is never HTML', () => {
   const vi = renderToStaticMarkup(<InfoPageView locale="vi" page={page()} />);
   assert.match(vi, /<a href="\/vi\/services">dịch vụ<\/a>/);
@@ -176,10 +204,14 @@ test('the contact page leaves out the pills it has no link for, and says so when
   assert.match(none, /Chưa đọc được thông tin liên hệ/);
 });
 
-test('footer (session 7b): a Chính sách column and the legal line only for published pages, none when there are none', () => {
+test('footer (session 7b, Owner 2026-10-15): the Chính sách column lists every published page, the legal line repeats terms and privacy under fixed labels', () => {
   const pages = [
     { slug: 'bao-hanh', title: 'Bảo hành', role: 'POLICY' as const },
-    { slug: 'chinh-sach-bao-mat', title: 'Chính sách bảo mật', role: 'PRIVACY' as const },
+    {
+      slug: 'chinh-sach-bao-mat',
+      title: 'Chính sách bảo mật thông tin cá nhân',
+      role: 'PRIVACY' as const,
+    },
     { slug: 'dieu-khoan-su-dung', title: 'Điều khoản sử dụng', role: 'TERMS' as const },
     { slug: 'doi-tra', title: 'Đổi trả', role: 'POLICY' as const },
   ];
@@ -189,14 +221,16 @@ test('footer (session 7b): a Chính sách column and the legal line only for pub
   );
   assert.match(html, /data-columns="3"/);
   assert.match(html, /<h2 class="ls-site-footer-title">Chính sách<\/h2>/);
-  // The column holds the policy pages only, in the order the API sent.
+  // The column holds all of them, terms and privacy too, in the order the API sent (by title).
   const column = html.slice(
     html.indexOf('data-column="policies"'),
     html.indexOf('</ul>', html.indexOf('data-column="policies"')),
   );
-  assert.match(column, /href="\/vi\/bao-hanh">Bảo hành.*href="\/vi\/doi-tra">Đổi trả/);
-  assert.doesNotMatch(column, /Điều khoản|bảo mật/);
-  // The legal line: terms first, then privacy, as a named navigation with a separator between them.
+  assert.match(
+    column,
+    /href="\/vi\/bao-hanh">Bảo hành.*href="\/vi\/chinh-sach-bao-mat">Chính sách bảo mật thông tin cá nhân.*href="\/vi\/dieu-khoan-su-dung">Điều khoản sử dụng.*href="\/vi\/doi-tra">Đổi trả/,
+  );
+  // The legal line: terms first, then privacy, under the fixed labels (not the page titles).
   assert.match(
     html,
     /<nav class="ls-site-footer-legal" aria-label="Thông tin pháp lý"><ul><li><a href="\/vi\/dieu-khoan-su-dung">Điều khoản sử dụng<\/a><\/li><li><a href="\/vi\/chinh-sach-bao-mat">Chính sách bảo mật<\/a><\/li><\/ul><\/nav>/,
@@ -206,13 +240,14 @@ test('footer (session 7b): a Chính sách column and the legal line only for pub
   const empty = renderToStaticMarkup(<PublicFooter locale="vi" site={site} year={2026} />, '/vi');
   assert.doesNotMatch(empty, /Chính sách|ls-site-footer-legal|data-column="policies"/);
   assert.match(empty, /data-columns="2"/);
-  // Only legal pages: the line without the column; only a policy: the column without the line.
+  // Only the terms page: the line and the column; only a policy: the column without the line.
   const legalOnly = renderToStaticMarkup(
     <PublicFooter locale="en" site={{ ...site, pages: [pages[2]!] }} year={2026} />,
     '/en',
   );
   assert.match(legalOnly, /aria-label="Legal"/);
-  assert.doesNotMatch(legalOnly, /data-column="policies"/);
+  assert.match(legalOnly, /data-column="policies"/);
+  assert.match(legalOnly, />Terms of use<\/a>/);
   const policyOnly = renderToStaticMarkup(
     <PublicFooter locale="en" site={{ ...site, pages: [pages[0]!] }} year={2026} />,
     '/en',
