@@ -393,10 +393,10 @@
 @media (max-width: 479px) {
   [data-ui='v2'] .ls-site-header-row {
     padding-inline: min(var(--ls-gutter), 4.5vw);
-    gap: min(var(--ls-space-2), 2.2vw);
+    gap: min(var(--ls-space-2), 2.23vw);
   }
 
   [data-ui='v2'] .ls-site-tools {
-    gap: min(var(--ls-space-1), 1vw);
+    gap: min(var(--ls-space-1), 1.12vw);
   }
 }

@@ -276,7 +276,7 @@ Carried to group 3: a staff screen to edit a customer's birthday (Owner, 2026-10
 
 ### Session 8
 
-- **C18: closing gate (L).** Status: todo.
+- **C18: closing gate (L).** Status: done (code 063962a, 1727c1b, c667c73, 007bec3, 9a50a68, 12bab9b, ad62c11; report `docs/REDESIGN_GROUP1_S8_REPORT.md`).
   A sweep of all states and long text, plus a keyboard/focus/label audit. The DOM audit compared with the C1 baseline, then ratchets
   lowered and dead direction C rules deleted from `site.css`/`customer.css`. A copy review (no "khám"), season-layer and toggle
   regression, and a performance check. Full `pnpm test` and `format:check`, then the before/after pairs for Owner approval (G10).
@@ -284,7 +284,15 @@ Carried to group 3: a staff screen to edit a customer's birthday (Owner, 2026-10
   (about lines 2300 to 4770) and the home and service leftovers.
   Carry-overs (Owner, session 1 review): the 200 % text check and the full 42-page "after" set with the full DOM audit are done here.
   Also accepted by the Owner: `site-fonts.ts` unchanged (Be Vietnam Pro through the v2 tokens on the customer frame only).
+  As built: dead direction C CSS removed by measurement, not by eye (`site.css` 4,790 to 3,5xx lines, `customer.css` 105 to 24, `customer-pages.css` 90 to 41,
+  `customer-tokens.css` and its test deleted, the unused `PriceList` removed): a rule went only when no source uses its class, or deleting it changed no computed
+  value on 275 DOM snapshots (every interactive state simulated, transitions off) and it declares no transition, animation or safe-area value. A computed-style
+  comparison of every element before and after shows no difference at the normal text size outside two fixes it found (a loading card and a campaign hero frame).
+  The 200 % text check (new, `.local/g8/zoomcheck.mjs`) found 41 of 46 pages wider than the screen or with words over each other; all fixed (header, sign-in,
+  product cards, tables as cards, tiers, booking choices, cart lines, product facts). The empty cart is centred in the page. Loading skeletons were rendered
+  (home, products, services) and fixed. The home first load had grown to 360.3 KB gzip (the popup's link check pulled the page-text parser into the shared chunk);
+  the link rule now has its own contracts module and contracts is side-effect free: 348.6 KB (budget line 345.4). Keyboard, focus and labels: 0 problems on 46 pages.
 
-- **C19: deploy guide (S).** Status: todo.
+- **C19: deploy guide (S).** Status: done (`docs/DEPLOY_REDESIGN_GROUP1.md`, 137 migrations, 82 permissions, with the policy import; the commit to install is filled in at push time).
   A single `docs/DEPLOY_REDESIGN_GROUP1.md` for the Owner to run. Not a deploy; group 1 ships once, after the Owner approves C18.
   Group 1 carries the C11b migration (see C11b), so the guide covers: migration, API restart, web reload.

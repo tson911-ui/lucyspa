@@ -2697,3 +2697,8 @@ html[data-ls-fx='off'] [data-ui='v2'] .ls-home-hero-copy > * {
   min-width: 0;
   max-width: 100%;
 }
+
+/* The header row of a table keeps whole words (on a phone it is hidden; on a desktop a narrow column grows instead of breaking a word). */
+[data-ui='v2'] .ls-table thead {
+  overflow-wrap: normal;
+}
