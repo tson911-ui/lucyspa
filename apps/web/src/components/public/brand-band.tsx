@@ -1,4 +1,5 @@
 import type { PublicProductBrand, PublicSlideImage } from '@lucy-spa/contracts';
+import { MotionPause } from '@lucy-spa/ui';
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import type { Locale } from '../../i18n/locales';
@@ -90,7 +91,7 @@ export function BrandBand({ locale, brands }: { locale: Locale; brands: readonly
         </div>
       </div>
       {/* The pause control for moving content (WCAG 2.2.2): a checkbox drawn as a round button, no script; checked = paused. */}
-      <input type="checkbox" className="ls-brand-pause" aria-label={text.home.brandPause} />
+      <MotionPause label={text.home.brandPause} />
     </section>
   );
 }

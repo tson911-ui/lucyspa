@@ -54,6 +54,7 @@ export { ThemeInitScript } from './theme-script';
 export { RouteFade } from './route-fade';
 export { RouteEnter } from './route-enter';
 export { useSlidingPill } from './sliding-pill';
+export { MotionPause } from './motion-pause';
 // Public site and member-area frame (Part 2): header, menu, tab bar, footer, bands, price list, steps, choice card, reveal.
 export { ContactPage, InfoPage, type InfoSection } from './info-page';
 export { InfoTable } from './info-table';
